@@ -45,7 +45,7 @@ Comprehensive guide to **multi-tenancy architectures** with Whizbang - database-
 
 ### Architecture
 
-```mermaid
+```mermaid{caption="Database-per-tenant topology — a tenant resolver selects the connection and a pool manager routes each request to that tenant's dedicated database."}
 flowchart TD
     subgraph App["Multi-Tenant SaaS Application"]
         Resolver["Tenant Resolver<br/>- Header/JWT<br/>- Subdomain"]
@@ -68,7 +68,7 @@ flowchart TD
 
 **TenantContext.cs**:
 
-```csharp{title="Tenant Context (AsyncLocal)" description="**TenantContext." category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Tenant", "Context"]}
+```csharp{title="Tenant Context (AsyncLocal)" description="**TenantContext." category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Tenant", "Context"] unverified="application pattern example — user-authored AsyncLocal TenantContext, not a Whizbang API"}
 public static class TenantContext {
   private static readonly AsyncLocal<string?> _tenantId = new();
 
@@ -93,7 +93,7 @@ public static class TenantContext {
 
 **TenantIdentificationMiddleware.cs**:
 
-```csharp{title="Tenant Identification Middleware" description="**TenantIdentificationMiddleware." category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Tenant", "Identification"]}
+```csharp{title="Tenant Identification Middleware" description="**TenantIdentificationMiddleware." category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Tenant", "Identification"] unverified="application middleware example — user-authored tenant-resolution middleware, not a Whizbang API"}
 public class TenantIdentificationMiddleware {
   private readonly RequestDelegate _next;
 
@@ -132,7 +132,7 @@ public class TenantIdentificationMiddleware {
 
 **Registration (Program.cs)**:
 
-```csharp{title="Tenant Identification Middleware (2)" description="**Registration (Program." category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Tenant", "Identification"]}
+```csharp{title="Tenant Identification Middleware (2)" description="**Registration (Program." category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Tenant", "Identification"] unverified="ASP.NET Core middleware registration — application wiring, not a Whizbang API"}
 app.UseMiddleware<TenantIdentificationMiddleware>();
 ```
 
@@ -140,7 +140,7 @@ app.UseMiddleware<TenantIdentificationMiddleware>();
 
 **TenantDbConnectionFactory.cs**:
 
-```csharp{title="Tenant-Aware Database Connections" description="**TenantDbConnectionFactory." category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Tenant-Aware", "Database"]}
+```csharp{title="Tenant-Aware Database Connections" description="**TenantDbConnectionFactory." category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Tenant-Aware", "Database"] unverified="application pattern example — user-authored connection factory, not a Whizbang API"}
 public interface ITenantDbConnectionFactory {
   Task<IDbConnection> CreateConnectionAsync(CancellationToken ct = default);
 }
@@ -191,7 +191,7 @@ public class TenantDbConnectionFactory : ITenantDbConnectionFactory {
 
 **CreateOrderReceptor.cs**:
 
-```csharp{title="Tenant-Aware Receptors" description="**CreateOrderReceptor." category="Best-Practices" difficulty="ADVANCED" tags=["Fundamentals", "Security", "Tenant-Aware", "Receptors"]}
+```csharp{title="Tenant-Aware Receptors" description="**CreateOrderReceptor." category="Best-Practices" difficulty="ADVANCED" tags=["Fundamentals", "Security", "Tenant-Aware", "Receptors"] unverified="application pattern example — tenant-aware receptor writing to a per-tenant database, not a Whizbang API under test"}
 public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
   private readonly ITenantDbConnectionFactory _dbFactory;
 
@@ -249,7 +249,7 @@ public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
 
 **TenantOnboardingReceptor.cs**:
 
-```csharp{title="Tenant Onboarding" description="**TenantOnboardingReceptor." category="Best-Practices" difficulty="ADVANCED" tags=["Fundamentals", "Security", "Tenant", "Onboarding"]}
+```csharp{title="Tenant Onboarding" description="**TenantOnboardingReceptor." category="Best-Practices" difficulty="ADVANCED" tags=["Fundamentals", "Security", "Tenant", "Onboarding"] unverified="application pattern example — user-authored tenant onboarding receptor, not a Whizbang API"}
 public record CreateTenant : ICommand {
   public required string TenantId { get; init; }
   public required string Name { get; init; }
@@ -337,7 +337,7 @@ CREATE TABLE tenant_globex.orders (
 
 **SchemaPerTenantDbConnectionFactory.cs**:
 
-```csharp{title="Tenant-Aware Connection" description="**SchemaPerTenantDbConnectionFactory." category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Tenant-Aware", "Connection"]}
+```csharp{title="Tenant-Aware Connection" description="**SchemaPerTenantDbConnectionFactory." category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Tenant-Aware", "Connection"] unverified="application pattern example — user-authored schema-per-tenant connection factory, not a Whizbang API"}
 public class SchemaPerTenantDbConnectionFactory : ITenantDbConnectionFactory {
   private readonly IConfiguration _config;
 
@@ -358,7 +358,7 @@ public class SchemaPerTenantDbConnectionFactory : ITenantDbConnectionFactory {
 
 ### Tenant Onboarding (Schema)
 
-```csharp{title="Tenant Onboarding (Schema)" description="Tenant Onboarding (Schema)" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Tenant", "Onboarding"]}
+```csharp{title="Tenant Onboarding (Schema)" description="Tenant Onboarding (Schema)" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Tenant", "Onboarding"] unverified="application pattern example — schema-per-tenant onboarding, not a Whizbang API"}
 public async ValueTask<TenantCreated> HandleAsync(
   CreateTenant command,
   CancellationToken ct = default
@@ -424,7 +424,7 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON orders TO app_user;
 
 **RLSDbConnectionFactory.cs**:
 
-```csharp{title="Tenant Context (PostgreSQL)" description="**RLSDbConnectionFactory." category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Tenant", "Context"]}
+```csharp{title="Tenant Context (PostgreSQL)" description="**RLSDbConnectionFactory." category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Tenant", "Context"] unverified="application pattern example — user-authored RLS connection factory, not a Whizbang API"}
 public class RLSDbConnectionFactory : ITenantDbConnectionFactory {
   private readonly IConfiguration _config;
 
@@ -450,7 +450,7 @@ public class RLSDbConnectionFactory : ITenantDbConnectionFactory {
 
 With RLS enabled, all queries automatically filter by tenant:
 
-```csharp{title="Automatic Tenant Filtering" description="With RLS enabled, all queries automatically filter by tenant:" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Automatic", "Tenant"]}
+```csharp{title="Automatic Tenant Filtering" description="With RLS enabled, all queries automatically filter by tenant:" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Automatic", "Tenant"] unverified="application pattern example — PostgreSQL RLS query behavior, not a Whizbang API"}
 // This query automatically filters to current tenant
 var orders = await connection.QueryAsync<OrderRow>(
   """
@@ -490,7 +490,7 @@ CREATE INDEX idx_orders_tenant_id ON orders(tenant_id);
 
 **CreateOrderReceptor.cs**:
 
-```csharp{title="Manual Filtering" description="**CreateOrderReceptor." category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Manual", "Filtering"]}
+```csharp{title="Manual Filtering" description="**CreateOrderReceptor." category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Manual", "Filtering"] unverified="application pattern example — discriminator-column receptor and query, not a Whizbang API"}
 public async ValueTask<OrderCreated> HandleAsync(
   CreateOrder command,
   CancellationToken ct = default
@@ -537,7 +537,7 @@ var orders = await connection.QueryAsync<OrderRow>(
 
 ### Architecture
 
-```mermaid
+```mermaid{caption="Cross-tenant analytics flow — per-tenant databases feed events to an analytics worker that aggregates them into a shared reporting database."}
 flowchart TD
     subgraph Tenants["Tenant Databases"]
         DBA["DB-A"]
@@ -561,7 +561,7 @@ flowchart TD
 
 **CrossTenantAnalyticsReceptor.cs** — an event receptor (`IReceptor<TEvent>`) that projects into the shared analytics database:
 
-```csharp{title="Cross-Tenant Analytics Receptor" description="**CrossTenantAnalyticsReceptor." category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Cross-Tenant", "Analytics"]}
+```csharp{title="Cross-Tenant Analytics Receptor" description="**CrossTenantAnalyticsReceptor." category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Cross-Tenant", "Analytics"] unverified="application pattern example — cross-tenant analytics receptor, not a Whizbang API under test"}
 public class CrossTenantAnalyticsReceptor : IReceptor<OrderCreated> {
   private readonly IDbConnection _analyticsDb;  // Shared analytics database
 
@@ -586,7 +586,7 @@ public class CrossTenantAnalyticsReceptor : IReceptor<OrderCreated> {
 
 ### Analytics Queries
 
-```csharp{title="Analytics Queries" description="Analytics Queries" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Analytics", "Queries"]}
+```csharp{title="Analytics Queries" description="Analytics Queries" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Analytics", "Queries"] unverified="application pattern example — cross-tenant analytics SQL, not a Whizbang API"}
 // Query across all tenants
 var metrics = await _analyticsDb.QueryAsync<TenantMetrics>(
   """
@@ -610,7 +610,7 @@ var metrics = await _analyticsDb.QueryAsync<TenantMetrics>(
 
 **TenantIsolationTests.cs**:
 
-```csharp{title="Tenant Isolation Testing" description="**TenantIsolationTests." category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Tenant", "Isolation"]}
+```csharp{title="Tenant Isolation Testing" description="**TenantIsolationTests." category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Tenant", "Isolation"] unverified="application test example — illustrates tenant-isolation testing, not a Whizbang API under test"}
 public class TenantIsolationTests {
   [Test]
   public async Task CreateOrder_DifferentTenants_IsolatedData() {
@@ -657,7 +657,7 @@ public class TenantIsolationTests {
 
 **Step 1: Export tenant data**:
 
-```csharp{title="Migrating from Discriminator to Database-Per-Tenant" description="Step 1: Export tenant data:" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Migrating", "Discriminator"]}
+```csharp{title="Migrating from Discriminator to Database-Per-Tenant" description="Step 1: Export tenant data:" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Migrating", "Discriminator"] unverified="application migration script example, not a Whizbang API"}
 var tenantIds = await _db.QueryAsync<string>("SELECT DISTINCT tenant_id FROM orders");
 
 foreach (var tenantId in tenantIds) {
@@ -675,7 +675,7 @@ foreach (var tenantId in tenantIds) {
 
 **Step 2: Create tenant databases**:
 
-```csharp{title="Migrating from Discriminator to Database-Per-Tenant (2)" description="Step 2: Create tenant databases:" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Migrating", "Discriminator"]}
+```csharp{title="Migrating from Discriminator to Database-Per-Tenant (2)" description="Step 2: Create tenant databases:" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Migrating", "Discriminator"] unverified="application migration script example, not a Whizbang API"}
 foreach (var tenantId in tenantIds) {
   await _adminDb.ExecuteAsync($"CREATE DATABASE tenant_{tenantId}");
 
@@ -690,7 +690,7 @@ foreach (var tenantId in tenantIds) {
 
 **Step 3: Import data**:
 
-```csharp{title="Migrating from Discriminator to Database-Per-Tenant (3)" description="Step 3: Import data:" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Migrating", "Discriminator"]}
+```csharp{title="Migrating from Discriminator to Database-Per-Tenant (3)" description="Step 3: Import data:" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Migrating", "Discriminator"] unverified="application migration script example, not a Whizbang API"}
 foreach (var tenantId in tenantIds) {
   var orders = JsonSerializer.Deserialize<OrderRow[]>(
     await File.ReadAllTextAsync($"export/tenant-{tenantId}-orders.json")

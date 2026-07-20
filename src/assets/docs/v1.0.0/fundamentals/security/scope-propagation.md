@@ -53,7 +53,7 @@ As of v1.0.0, `AsSystem()` and `RunAs()` require explicit tenant strategy select
 
 Use `AsSystem()` for timer/scheduler jobs, background workers, or elevated system operations:
 
-```csharp{title="System Operations" description="Use AsSystem() for timer/scheduler jobs, background workers, or elevated system operations:" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "System", "Operations"]}
+```csharp{title="System Operations" description="Use AsSystem() for timer/scheduler jobs, background workers, or elevated system operations:" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "System", "Operations"] tests=["SystemDispatcherBuilderTests.AsSystem_ForAllTenants_SetsTenantIdToAllTenantsConstantAsync", "SystemDispatcherBuilderTests.AsSystem_ForTenant_SetsExplicitTenantIdAsync", "SystemDispatcherBuilderTests.AsSystem_KeepTenant_PreservesAmbientTenantIdAsync", "SystemDispatcherBuilderTests.SystemDispatcherBuilder_DoesNotHaveSendAsyncMethodAsync"]}
 // Cross-tenant system operation (use sparingly)
 await _dispatcher.AsSystem().ForAllTenants().SendAsync(new ReindexAllTenantsCommand());
 
@@ -71,7 +71,7 @@ await _dispatcher.AsSystem().KeepTenant().SendAsync(new ProcessPendingItemsComma
 
 Use `RunAs()` when an admin or service performs operations on behalf of another user:
 
-```csharp{title="Impersonation Operations" description="Use RunAs() when an admin or service performs operations on behalf of another user:" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Impersonation", "Operations"]}
+```csharp{title="Impersonation Operations" description="Use RunAs() when an admin or service performs operations on behalf of another user:" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Impersonation", "Operations"] tests=["ImpersonationDispatcherBuilderTests.RunAs_ForTenant_SetsExplicitTenantIdAsync", "ImpersonationDispatcherBuilderTests.RunAs_KeepTenant_PreservesAmbientTenantIdAsync", "ImpersonationDispatcherBuilderTests.RunAs_ForAllTenants_SetsTenantIdToAllTenantsConstantAsync"]}
 // Support agent debugging in user's tenant
 await _dispatcher.RunAs("target-user@example.com").ForTenant("user-tenant").SendAsync(debugCommand);
 
@@ -94,7 +94,7 @@ await _dispatcher.RunAs("admin-system").ForAllTenants().SendAsync(systemCommand)
 
 The `TenantConstants.AllTenants` constant (`"*"`) represents cross-tenant operations:
 
-```csharp{title="TenantConstants" description="The `TenantConstants." category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "TenantConstants"]}
+```csharp{title="TenantConstants" description="The `TenantConstants." category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "TenantConstants"] tests=["SystemDispatcherBuilderTests.TenantConstants_AllTenants_IsAsteriskAsync"]}
 public static class TenantConstants {
   /// <summary>
   /// Represents "all tenants" for cross-tenant system operations.
@@ -113,7 +113,7 @@ public static class TenantConstants {
 
 Each `MessageHop` can carry a `ScopeDelta` containing only the changes from the previous hop:
 
-```csharp{title="Delta Storage on Message Hops" description="Each MessageHop can carry a ScopeDelta containing only the changes from the previous hop:" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Delta", "Storage"]}
+```csharp{title="Delta Storage on Message Hops" description="Each MessageHop can carry a ScopeDelta containing only the changes from the previous hop:" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Delta", "Storage"] tests=["ScopeDeltaTests.ScopeDelta_Serialization_UsesShortPropertyNamesAsync", "ScopeDeltaTests.ScopeDelta_WithValues_HasChangesAsync", "ScopeDeltaTests.ScopeDelta_WithCollections_HasChangesAsync"]}
 public sealed class ScopeDelta {
   /// <summary>Simple value changes (TenantId, UserId, etc.)</summary>
   [JsonPropertyName("v")]
@@ -129,7 +129,7 @@ public sealed class ScopeDelta {
 
 Collections (Roles, Permissions, SecurityPrincipals) support three operations:
 
-```csharp{title="Collection Changes" description="Collections (Roles, Permissions, SecurityPrincipals) support three operations:" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Collection", "Changes"]}
+```csharp{title="Collection Changes" description="Collections (Roles, Permissions, SecurityPrincipals) support three operations:" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Collection", "Changes"] tests=["ScopeDeltaTests.CollectionChanges_Serialization_UsesShortPropertyNamesAsync", "ScopeDeltaTests.CollectionChanges_WithSet_HasChangesAsync", "ScopeDeltaTests.CollectionChanges_WithAdd_HasChangesAsync", "ScopeDeltaTests.CollectionChanges_WithRemove_HasChangesAsync"]}
 public readonly struct CollectionChanges {
   [JsonPropertyName("s")] public JsonElement? Set { get; init; }    // Replace entire collection
   [JsonPropertyName("a")] public JsonElement? Add { get; init; }    // Add values
@@ -216,7 +216,7 @@ All scope-related types use abbreviated JSON property names for minimal wire siz
 | `_dispatcher.RunAs(id).WithTenant(tid).SendAsync(cmd)` | `_dispatcher.RunAs(id).ForTenant(tid).SendAsync(cmd)` |
 
 For cross-tenant operations (rare):
-```csharp{title="From Previous API" description="For cross-tenant operations (rare):" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Previous", "API"]}
+```csharp{title="From Previous API" description="For cross-tenant operations (rare):" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Previous", "API"] tests=["SystemDispatcherBuilderTests.AsSystem_ForAllTenants_SetsTenantIdToAllTenantsConstantAsync", "ImpersonationDispatcherBuilderTests.RunAs_ForAllTenants_SetsTenantIdToAllTenantsConstantAsync"]}
 _dispatcher.AsSystem().ForAllTenants().SendAsync(cmd)
 _dispatcher.RunAs(identity).ForAllTenants().SendAsync(cmd)
 ```

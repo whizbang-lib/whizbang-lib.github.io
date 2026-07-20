@@ -43,7 +43,7 @@ Whizbang provides audit logging through **System Events** - internal events emit
 
 ## Core Concept
 
-```mermaid
+```mermaid{caption="System-audit emit path — a domain event is audited to the $wb-system stream only when audit is enabled; nothing is emitted when it is off." tests=["SystemEventEmitterTests.EmitEventAuditedAsync_WithEnabledAudit_EmitsEventAuditedToSystemStreamAsync", "SystemEventEmitterTests.EmitEventAuditedAsync_WhenEventAuditDisabled_DoesNotEmitAsync"]}
 flowchart TD
     Appended["Domain Event Appended<br/>(OrderCreated, PaymentProcessed, ...)"]
     Enabled{"System Audit Enabled?"}
@@ -73,7 +73,7 @@ flowchart TD
 
 ### 1. Enable System Audit
 
-```csharp{title="Enable System Audit" description="Enable System Audit" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Enable", "System"]}
+```csharp{title="Enable System Audit" description="Enable System Audit" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Enable", "System"] tests=["CommandAuditTests.EnableAudit_EnablesBothEventAndCommandAudit_Async", "SystemEventOptionsTests.EnableAudit_SetsAuditEnabled_ReturnsThisForFluentApiAsync"]}
 // In Program.cs - BFF or any host that needs audit logging
 services.AddWhizbang(options => {
   options.SystemEvents.EnableAudit();   // Enables BOTH event and command auditing
@@ -119,7 +119,7 @@ public sealed class AuditPerspective : IPerspectiveFor<AuditLogEntry, EventAudit
 
 Inject `ILensQuery<AuditLogEntry>` and query through the fluent scope API — `Scope(QueryScope.X).Query` (or `DefaultScope.Query`) returns an `IQueryable<PerspectiveRow<AuditLogEntry>>` with scope filters pre-applied; the model lives on `row.Model`:
 
-```csharp{title="Query Audit Log" description="Query Audit Log" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Query", "Audit"]}
+```csharp{title="Query Audit Log" description="Query Audit Log" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Query", "Audit"] unverified="ILensQuery scope query — verified in the Scoped Lenses docs, not by these audit tests"}
 public class ComplianceService {
   private readonly ILensQuery<AuditLogEntry> _auditLens;
 
@@ -155,7 +155,7 @@ System events are internal Whizbang events stored in a dedicated `$wb-system` st
 
 ### ISystemEvent Interface
 
-```csharp{title="ISystemEvent Interface" description="ISystemEvent Interface" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "ISystemEvent", "Interface"]}
+```csharp{title="ISystemEvent Interface" description="ISystemEvent Interface" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "ISystemEvent", "Interface"] tests=["EventAuditedTests.EventAudited_ImplementsISystemEvent_ForSystemStreamRoutingAsync", "CommandAuditTests.CommandAudited_ImplementsISystemEvent_Async"]}
 namespace Whizbang.Core.SystemEvents;
 
 /// <summary>
@@ -169,7 +169,7 @@ public interface ISystemEvent : IEvent { }
 
 The `EventAudited` event captures metadata about each domain event:
 
-```csharp{title="EventAudited" description="The EventAudited event captures metadata about each domain event:" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "EventAudited"]}
+```csharp{title="EventAudited" description="The EventAudited event captures metadata about each domain event:" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "EventAudited"] tests=["EventAuditedTests.EventAudited_CapturesOriginalEventType_ForAuditTrailAsync", "EventAuditedTests.EventAudited_CapturesStreamInfo_ForEventLocationAsync", "EventAuditedTests.EventAudited_CapturesOriginalBody_ForFullEventDataAsync", "EventAuditedTests.EventAudited_CapturesScopeInfo_ForComplianceQueriesAsync", "EventAuditedTests.EventAudited_CapturesAuditReason_WhenAttributePresentAsync"]}
 public sealed record EventAudited : ISystemEvent {
   // Identity
   public required Guid Id { get; init; }
@@ -215,7 +215,7 @@ public static class SystemEventStream {
 
 By default, **all events are audited** when system audit is enabled (`SystemEventOptions.AuditMode = AuditMode.OptOut`). Use `[AuditEvent(Exclude = true)]` to opt-out specific event types. Alternatively, set `options.SystemEvents.AuditMode = AuditMode.OptIn` to audit **only** events explicitly marked with `[AuditEvent]`.
 
-```csharp{title="Excluding Events from Audit" description="By default, all events are audited when system audit is enabled." category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Excluding", "Events"]}
+```csharp{title="Excluding Events from Audit" description="By default, all events are audited when system audit is enabled." category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Excluding", "Events"] tests=["AuditingEventStoreDecoratorTests.ShouldAudit_OptOut_ExcludesMarkedEventsAsync", "AuditingEventStoreDecoratorTests.ShouldAudit_OptOut_AuditsRegularEventsAsync", "SystemEventEmitterTests.ShouldExcludeFromAudit_WithExcludedAttribute_ReturnsTrueAsync"]}
 using Whizbang.Core.Attributes;
 
 // High-frequency event - exclude from audit to avoid log bloat
@@ -234,7 +234,7 @@ public record OrderCreated(Guid OrderId, Guid CustomerId) : IEvent;
 
 Use `[AuditEvent]` without `Exclude` to add context to audited events:
 
-```csharp{title="Adding Audit Context" description="Use [AuditEvent] without Exclude to add context to audited events:" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Adding", "Audit"]}
+```csharp{title="Adding Audit Context" description="Use [AuditEvent] without Exclude to add context to audited events:" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Adding", "Audit"] tests=["AuditEventAttributeTests.AuditEventAttribute_CanBeAppliedToEventRecordAsync", "AuditEventAttributeTests.AuditEventAttribute_Reason_CanBeSetAsync", "AuditEventAttributeTests.AuditEventAttribute_Level_CanBeSetAsync"]}
 // Mark with audit reason for compliance queries
 [AuditEvent(Reason = "PII access", Level = AuditLevel.Warning)]
 public record CustomerDataViewed(Guid CustomerId, string ViewedBy) : IEvent;
@@ -256,7 +256,7 @@ In addition to event auditing, Whizbang supports **command auditing** to capture
 
 When command auditing is enabled, Whizbang emits a `CommandAudited` system event for each command processed:
 
-```csharp{title="CommandAudited System Event" description="When command auditing is enabled, Whizbang emits a CommandAudited system event for each command processed:" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "CommandAudited", "System"]}
+```csharp{title="CommandAudited System Event" description="When command auditing is enabled, Whizbang emits a CommandAudited system event for each command processed:" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "CommandAudited", "System"] tests=["CommandAuditTests.CommandAudited_HasRequiredProperties_Async", "CommandAuditTests.CommandAudited_ImplementsISystemEvent_Async"]}
 public sealed record CommandAudited : ISystemEvent {
   // Identity
   public required Guid Id { get; init; }
@@ -288,7 +288,7 @@ public sealed record CommandAudited : ISystemEvent {
 
 ### Enabling Command Auditing
 
-```csharp{title="Enabling Command Auditing" description="Enabling Command Auditing" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Enabling", "Command"]}
+```csharp{title="Enabling Command Auditing" description="Enabling Command Auditing" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Enabling", "Command"] tests=["CommandAuditTests.EnableEventAudit_OnlyEnablesEventAudit_Async", "CommandAuditTests.EnableCommandAudit_OnlyEnablesCommandAudit_Async", "CommandAuditTests.EnableAudit_EnablesBothEventAndCommandAudit_Async"]}
 services.AddWhizbang(options => {
   options.SystemEvents.EnableEventAudit();    // Events only
   options.SystemEvents.EnableCommandAudit();  // Commands only
@@ -324,7 +324,7 @@ public sealed class CommandAuditPerspective
 
 ### Querying Command Audit
 
-```csharp{title="Querying Command Audit" description="Querying Command Audit" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Querying", "Command"]}
+```csharp{title="Querying Command Audit" description="Querying Command Audit" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Querying", "Command"] unverified="ILensQuery scope query — verified in the Scoped Lenses docs, not by these audit tests"}
 public class SecurityService {
   private readonly ILensQuery<CommandAuditEntry> _commandAuditLens;
   private readonly ILensQuery<AuditLogEntry> _auditLens;
@@ -364,7 +364,7 @@ public class SecurityService {
 
 ## AuditEventAttribute
 
-```csharp{title="AuditEventAttribute" description="AuditEventAttribute" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "AuditEventAttribute"]}
+```csharp{title="AuditEventAttribute" description="AuditEventAttribute" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "AuditEventAttribute"] tests=["AuditEventAttributeTests.AuditEventAttribute_InheritsFromMessageTagAttributeAsync", "AuditEventAttributeTests.AuditEventAttribute_Tag_DefaultsToAuditAsync", "AuditEventAttributeTests.AuditEventAttribute_AttributeUsage_AllowsClassTargetAsync", "AuditEventAttributeTests.AuditEventAttribute_AttributeUsage_DoesNotAllowMultipleAsync", "AuditEventAttributeTests.AuditEventAttribute_AttributeUsage_AllowsInheritedAsync", "AuditEventAttributeTests.AuditEventAttribute_Level_DefaultsToInfoAsync"]}
 [AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct, AllowMultiple = false, Inherited = true)]
 public sealed class AuditEventAttribute : MessageTagAttribute {
   /// <summary>Sets Tag = "audit" so the event routes through the tag system.</summary>
@@ -398,7 +398,7 @@ public sealed class AuditEventAttribute : MessageTagAttribute {
 
 Categorize audit entries by severity:
 
-```csharp{title="AuditLevel Enum" description="Categorize audit entries by severity:" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "AuditLevel", "Enum"]}
+```csharp{title="AuditLevel Enum" description="Categorize audit entries by severity:" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "AuditLevel", "Enum"] tests=["AuditLevelTests.AuditLevel_HasThreeValuesAsync", "AuditLevelTests.AuditLevel_Info_IsDefaultAsync", "AuditLevelTests.AuditLevel_Info_IsDefinedAsync", "AuditLevelTests.AuditLevel_Warning_IsDefinedAsync", "AuditLevelTests.AuditLevel_Critical_IsDefinedAsync", "AuditLevelTests.AuditLevel_SeverityOrder_IsCorrectAsync"]}
 public enum AuditLevel {
   Info,     // Routine operations (default)
   Warning,  // Sensitive data access, unusual patterns
@@ -412,7 +412,7 @@ public enum AuditLevel {
 
 For real-time audit alerts in addition to durable persistence, use a tag hook:
 
-```csharp{title="Real-Time Alerts (Optional)" description="For real-time audit alerts in addition to durable persistence, use a tag hook:" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Real-Time", "Alerts"]}
+```csharp{title="Real-Time Alerts (Optional)" description="For real-time audit alerts in addition to durable persistence, use a tag hook:" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Real-Time", "Alerts"] unverified="tag-hook wiring (IMessageTagHook / Tags.UseHook) — verified in the Tag Hooks docs, not by these audit tests"}
 // Hook provides real-time logging/alerts
 // Perspective provides durable persistence
 services.AddWhizbang(options => {
@@ -479,7 +479,7 @@ CREATE INDEX idx_audit_log_level ON wb_audit_log(audit_level) WHERE audit_level 
 
 ### GDPR: User Activity Report
 
-```csharp{title="GDPR: User Activity Report" description="GDPR: User Activity Report" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "GDPR:", "User"]}
+```csharp{title="GDPR: User Activity Report" description="GDPR: User Activity Report" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "GDPR:", "User"] unverified="ILensQuery scope query — verified in the Scoped Lenses docs, not by these audit tests"}
 public async Task<DataAccessReport> GenerateAccessReportAsync(
     string userId, CancellationToken ct) {
   var rows = await _auditLens.Scope(QueryScope.Global).Query
@@ -497,7 +497,7 @@ public async Task<DataAccessReport> GenerateAccessReportAsync(
 
 ### SOX: Financial Transaction Trail
 
-```csharp{title="SOX: Financial Transaction Trail" description="SOX: Financial Transaction Trail" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "SOX:", "Financial"]}
+```csharp{title="SOX: Financial Transaction Trail" description="SOX: Financial Transaction Trail" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "SOX:", "Financial"] unverified="ILensQuery scope query — verified in the Scoped Lenses docs, not by these audit tests"}
 public async Task<IReadOnlyList<AuditLogEntry>> GetFinancialAuditTrailAsync(
     DateTimeOffset from, DateTimeOffset to, CancellationToken ct) {
   var rows = await _auditLens.Scope(QueryScope.Global).Query
@@ -513,7 +513,7 @@ public async Task<IReadOnlyList<AuditLogEntry>> GetFinancialAuditTrailAsync(
 
 The shipped `AuditLogEntry` model does **not** carry `AuditLevel` — to power a level-based dashboard, define your own perspective model that maps `@event.AuditLevel` in `Apply`:
 
-```csharp{title="Critical Events Dashboard" description="Critical Events Dashboard" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Critical", "Events"]}
+```csharp{title="Critical Events Dashboard" description="Critical Events Dashboard" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Critical", "Events"] unverified="ILensQuery scope query over a user-defined model — verified in the Scoped Lenses docs, not by these audit tests"}
 // LeveledAuditEntry is your own model with an AuditLevel property,
 // populated from EventAudited.AuditLevel in your perspective's Apply.
 public async Task<IReadOnlyList<LeveledAuditEntry>> GetCriticalEventsAsync(
@@ -565,7 +565,7 @@ Shipped behavior: only `EventAudited` and `CommandAudited` system event types ex
 :::
 
 Enable specific categories:
-```csharp{title="Other System Events" description="Enable specific categories:" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Other", "System"]}
+```csharp{title="Other System Events" description="Enable specific categories:" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Other", "System"] tests=["SystemEventOptionsTests.EnableAll_SetsAllFlags_ReturnsThisForFluentApiAsync", "SystemEventOptionsTests.EnablePerspectiveEvents_SetsPerspectiveEventsEnabled_Async", "SystemEventOptionsTests.EnableErrorEvents_SetsErrorEventsEnabled_Async", "SystemEventOptionsTests.EnableAudit_SetsAuditEnabled_ReturnsThisForFluentApiAsync"]}
 services.AddWhizbang(options => {
   options.SystemEvents.EnableAudit();             // EventAudited + CommandAudited
   options.SystemEvents.EnablePerspectiveEvents(); // Reserved (no events emitted yet)
