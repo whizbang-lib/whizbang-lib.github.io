@@ -39,7 +39,7 @@ A Receptor is analogous to a biological receptor:
 
 ## IReceptor Interface
 
-```csharp{title="IReceptor Interface" description="IReceptor Interface" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Receptors", "IReceptor", "Interface"]}
+```csharp{title="IReceptor Interface" description="IReceptor Interface" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Receptors", "IReceptor", "Interface"] tests=["ReceptorTests.Receive_ValidCommand_ShouldReturnTypeSafeResponseAsync", "VoidReceptorTests.VoidReceptor_AsynchronousCompletion_ShouldCompleteAsync"]}
 namespace Whizbang.Core;
 
 // Response-producing receptor (commands/queries)
@@ -75,7 +75,7 @@ public interface IReceptor<in TMessage> {
 
 ### Void Receptor Example
 
-```csharp{title="Void Receptor Example" description="IReceptor with no return value for side-effect-only operations" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Receptors", "IReceptor", "Void"]}
+```csharp{title="Void Receptor Example" description="IReceptor with no return value for side-effect-only operations" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Receptors", "IReceptor", "Void"] tests=["VoidReceptorTests.VoidReceptor_AsynchronousCompletion_ShouldCompleteAsync"]}
 public class SendWelcomeEmailReceptor : IReceptor<UserRegistered> {
     private readonly IEmailService _email;
 
@@ -127,7 +127,7 @@ await _dispatcher.LocalInvokeAsync(message);
 For receptors that perform pure computation without async operations, use `ISyncReceptor`:
 :::
 
-```csharp{title="ISyncReceptor Interface" description="ISyncReceptor Interface" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Receptors", "ISyncReceptor", "Interface"]}
+```csharp{title="ISyncReceptor Interface" description="ISyncReceptor Interface" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Receptors", "ISyncReceptor", "Interface"] tests=["SyncReceptorTests.SyncReceptor_Handle_ReturnsTypedResponseAsync", "SyncReceptorTests.VoidSyncReceptor_Handle_ExecutesSynchronouslyAsync"]}
 namespace Whizbang.Core;
 
 public interface ISyncReceptor<in TMessage, out TResponse> {
@@ -163,7 +163,7 @@ The dispatcher uses `VoidSyncReceptorInvoker` (for void receptors) and regular i
 
 ### Sync Receptor Example
 
-```csharp{title="Sync Receptor Example" description="Sync Receptor Example" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Receptors", "Sync", "Receptor"]}
+```csharp{title="Sync Receptor Example" description="Sync Receptor Example" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Receptors", "Sync", "Receptor"] tests=["SyncReceptorTests.SyncReceptor_TupleReturn_ReturnsMultipleValuesAsync"]}
 // Before (async ceremony for pure computation)
 public class CreateOrderReceptor : IReceptor<CreateOrder, (OrderResult, OrderCreated)> {
     public ValueTask<(OrderResult, OrderCreated)> HandleAsync(
@@ -197,7 +197,7 @@ public class CreateOrderReceptor : ISyncReceptor<CreateOrder, (OrderResult, Orde
 
 ### Void Sync Receptor Example
 
-```csharp{title="Void Sync Receptor Example" description="Void Sync Receptor Example" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Receptors", "Void", "Sync"]}
+```csharp{title="Void Sync Receptor Example" description="Void Sync Receptor Example" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Receptors", "Void", "Sync"] tests=["SyncReceptorTests.VoidSyncReceptor_Handle_ExecutesSynchronouslyAsync"]}
 // For side-effect-only operations (logging, caching, etc.)
 public class LogUserActionReceptor : ISyncReceptor<LogUserAction> {
     private readonly ILogger<LogUserActionReceptor> _logger;
@@ -252,7 +252,7 @@ var result = await _dispatcher.LocalInvokeAsync<ProcessPayment, PaymentResult>(c
 
 ## Basic Example
 
-```csharp{title="Basic Example" description="Basic Example" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Receptors", "Basic", "Example"]}
+```csharp{title="Basic Example" description="Basic Example" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Receptors", "Basic", "Example"] tests=["ReceptorTests.Receive_ValidCommand_ShouldReturnTypeSafeResponseAsync", "ReceptorTests.Receive_EmptyItems_ShouldThrowExceptionAsync", "ReceptorTests.Receive_CalculatesTotal_ShouldSumItemPricesAsync"]}
 using Whizbang.Core;
 using Whizbang.Core.ValueObjects;
 
@@ -314,7 +314,7 @@ public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
 
 **Use Case**: State-changing operations
 
-```csharp{title="Pattern 1: Command → Event" description="Use Case: State-changing operations" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Receptors", "Pattern", "Command"]}
+```csharp{title="Pattern 1: Command → Event" description="Use Case: State-changing operations" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Receptors", "Pattern", "Command"] unverified="illustrative application receptor — Dapper/DB business logic, not a framework unit under test"}
 public class CancelOrderReceptor : IReceptor<CancelOrder, OrderCancelled> {
     private readonly IDbConnectionFactory _db;
     private readonly ILogger<CancelOrderReceptor> _logger;
@@ -373,7 +373,7 @@ public class CancelOrderReceptor : IReceptor<CancelOrder, OrderCancelled> {
 
 **Use Case**: Read operations
 
-```csharp{title="Pattern 2: Query → Response" description="Use Case: Read operations" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Receptors", "Pattern", "Query"]}
+```csharp{title="Pattern 2: Query → Response" description="Use Case: Read operations" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Receptors", "Pattern", "Query"] unverified="illustrative query receptor — reads via a consumer lens, not a framework unit under test"}
 public record GetOrderDetails(Guid OrderId);
 
 public record OrderDetails(
@@ -424,7 +424,7 @@ public class GetOrderDetailsReceptor : IReceptor<GetOrderDetails, OrderDetails> 
 
 **Use Case**: Complex business rules
 
-```csharp{title="Pattern 3: Validation-Heavy Receptor" description="Use Case: Complex business rules" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Receptors", "Pattern", "Validation-Heavy"]}
+```csharp{title="Pattern 3: Validation-Heavy Receptor" description="Use Case: Complex business rules" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Receptors", "Pattern", "Validation-Heavy"] unverified="illustrative application receptor — payment-gateway/DB business logic, not a framework unit under test"}
 public class ProcessPaymentReceptor : IReceptor<ProcessPayment, PaymentResult> {
     private readonly IPaymentGateway _gateway;
     private readonly IDbConnectionFactory _db;
@@ -624,7 +624,7 @@ For RPC-style calls where the caller extracts a specific response type from the 
 
 Receptors use **constructor injection** for dependencies:
 
-```csharp{title="Constructor Injection" description="Receptors use constructor injection for dependencies:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Receptors", "Constructor", "Injection"]}
+```csharp{title="Constructor Injection" description="Receptors use constructor injection for dependencies:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Receptors", "Constructor", "Injection"] unverified="illustrative DI pattern — partial snippet, not a framework unit under test"}
 public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
     private readonly IDbConnectionFactory _db;
     private readonly IInventoryService _inventory;
@@ -657,12 +657,12 @@ public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
 ### Registration
 
 **Manual Registration**:
-```csharp{title="Registration" description="Manual Registration:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Receptors", "Registration"]}
+```csharp{title="Registration" description="Manual Registration:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Receptors", "Registration"] unverified="DI registration snippet — configuration, not an assertable behavior"}
 builder.Services.AddTransient<IReceptor<CreateOrder, OrderCreated>, CreateOrderReceptor>();
 ```
 
 **Auto-Discovery** (with Whizbang.Generators):
-```csharp{title="Registration (2)" description="Auto-Discovery (with Whizbang." category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Receptors", "Registration"]}
+```csharp{title="Registration (2)" description="Auto-Discovery (with Whizbang." category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Receptors", "Registration"] unverified="generated registration extension — configuration, not covered by these receptor tests"}
 builder.Services.AddReceptors();  // Generated extension - registers all discovered IReceptor implementations
 ```
 
@@ -675,7 +675,7 @@ builder.Services.AddReceptors();  // Generated extension - registers all discove
 - Stateless (no benefit to reusing instances)
 - Minimal allocation cost
 
-```csharp{title="Lifetime" description="Lifetime" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Receptors", "Lifetime"]}
+```csharp{title="Lifetime" description="Lifetime" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Receptors", "Lifetime"] unverified="DI lifetime configuration — guidance, not an assertable behavior"}
 // Correct
 builder.Services.AddTransient<IReceptor<CreateOrder, OrderCreated>, CreateOrderReceptor>();
 
@@ -692,7 +692,7 @@ builder.Services.AddSingleton<IReceptor<CreateOrder, OrderCreated>, CreateOrderR
 
 Use exceptions for validation failures:
 
-```csharp{title="Validation Errors" description="Use exceptions for validation failures:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Receptors", "Validation", "Errors"]}
+```csharp{title="Validation Errors" description="Use exceptions for validation failures:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Receptors", "Validation", "Errors"] unverified="illustrative validation snippet — exception-type guidance, not a framework unit under test"}
 public async ValueTask<OrderCreated> HandleAsync(
     CreateOrder message,
     CancellationToken ct = default) {
@@ -725,7 +725,7 @@ public async ValueTask<OrderCreated> HandleAsync(
 
 Return error responses for expected failures:
 
-```csharp{title="Business Logic Errors" description="Return error responses for expected failures:" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Receptors", "Business", "Logic"]}
+```csharp{title="Business Logic Errors" description="Return error responses for expected failures:" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Receptors", "Business", "Logic"] unverified="illustrative error-return pattern — application logic, not a framework unit under test"}
 public record PaymentResult(
     Guid OrderId,
     decimal Amount,
@@ -778,7 +778,7 @@ public async ValueTask<PaymentResult> HandleAsync(
 
 Use `ValueTask<T>` for receptor signatures:
 
-```csharp{title="ValueTask vs Task" description="Use ValueTask<T> for receptor signatures:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Receptors", "ValueTask", "Task"]}
+```csharp{title="ValueTask vs Task" description="Use ValueTask<T> for receptor signatures:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Receptors", "ValueTask", "Task"] unverified="signature guidance — the Task<T> variant is an intentional counter-example"}
 // ✅ CORRECT - ValueTask<T>
 public async ValueTask<OrderCreated> HandleAsync(
     CreateOrder message,
@@ -803,7 +803,7 @@ public async Task<OrderCreated> HandleAsync(
 
 Always accept and pass `CancellationToken`:
 
-```csharp{title="Cancellation Token" description="Always accept and pass CancellationToken:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Receptors", "Cancellation", "Token"]}
+```csharp{title="Cancellation Token" description="Always accept and pass CancellationToken:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Receptors", "Cancellation", "Token"] unverified="illustrative cancellation-token pattern — guidance snippet, not a framework unit under test"}
 public async ValueTask<OrderCreated> HandleAsync(
     CreateOrder message,
     CancellationToken ct = default) {  // Accept ct
@@ -834,7 +834,7 @@ public async ValueTask<OrderCreated> HandleAsync(
 
 Test receptors in isolation:
 
-```csharp{title="Unit Tests" description="Test receptors in isolation:" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Receptors", "Unit", "Tests"]}
+```csharp{title="Unit Tests" description="Test receptors in isolation:" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Receptors", "Unit", "Tests"] unverified="illustrative test-authoring example — shows how to unit-test a receptor"}
 public class CreateOrderReceptorTests {
     [Test]
     public async Task HandleAsync_ValidOrder_ReturnsOrderCreatedAsync() {
@@ -883,7 +883,7 @@ public class CreateOrderReceptorTests {
 
 Use mocks for external dependencies:
 
-```csharp{title="Mocking Dependencies" description="Use mocks for external dependencies:" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Receptors", "Mocking", "Dependencies"]}
+```csharp{title="Mocking Dependencies" description="Use mocks for external dependencies:" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Receptors", "Mocking", "Dependencies"] unverified="illustrative test-authoring example — mocking dependencies in receptor tests"}
 public class CancelOrderReceptorTests {
     [Test]
     public async Task HandleAsync_ExistingOrder_ReturnsOrderCancelledAsync() {
@@ -930,7 +930,7 @@ public class CancelOrderReceptorTests {
 
 ### Pattern: Multi-Step Validation
 
-```csharp{title="Pattern: Multi-Step Validation" description="Pattern: Multi-Step Validation" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Receptors", "Pattern:", "Multi-Step"]}
+```csharp{title="Pattern: Multi-Step Validation" description="Pattern: Multi-Step Validation" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Receptors", "Pattern:", "Multi-Step"] unverified="illustrative application receptor — multi-step DB validation, not a framework unit under test"}
 public class ReserveInventoryReceptor : IReceptor<ReserveInventory, InventoryReserved> {
     private readonly IDbConnectionFactory _db;
     private readonly ILogger<ReserveInventoryReceptor> _logger;
@@ -1049,7 +1049,7 @@ internal record InventoryCheck(
 
 ### Pattern: Saga Coordination
 
-```csharp{title="Pattern: Saga Coordination" description="Pattern: Saga Coordination" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Receptors", "Pattern:", "Saga"]}
+```csharp{title="Pattern: Saga Coordination" description="Pattern: Saga Coordination" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Receptors", "Pattern:", "Saga"] unverified="illustrative saga-coordination receptor — application orchestration, not a framework unit under test"}
 public class CompleteOrderReceptor : IReceptor<CompleteOrder, OrderCompleted> {
     private readonly IDispatcher _dispatcher;
     private readonly ILogger<CompleteOrderReceptor> _logger;
