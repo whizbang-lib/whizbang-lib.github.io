@@ -27,7 +27,7 @@ The `[GraphQLLens]` attribute marks lens interfaces for GraphQL exposure, enabli
 
 ## Basic Usage
 
-```csharp{title="Basic Usage" description="Basic Usage" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Basic", "Usage"]}
+```csharp{title="Basic Usage" description="Basic Usage" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Basic", "Usage"] tests=["GraphQLLensAttributeTests.QueryName_ShouldBeSettableAsync"]}
 [GraphQLLens(QueryName = "orders")]
 public interface IOrderLens : ILensQuery<OrderReadModel> { }
 ```
@@ -66,7 +66,7 @@ The `data` field contains your actual business model that the perspective projec
 
 Control which parts of `PerspectiveRow<T>` are exposed:
 
-```csharp{title="Scope Control" description="Control which parts of PerspectiveRow<T> are exposed:" category="API" difficulty="INTERMEDIATE" tags=["Apis", "Graphql", "Scope", "Control"]}
+```csharp{title="Scope Control" description="Control which parts of PerspectiveRow<T> are exposed:" category="API" difficulty="INTERMEDIATE" tags=["Apis", "Graphql", "Scope", "Control"] tests=["GraphQLLensScopeTests.Default_ShouldBeZeroAsync", "GraphQLLensScopeTests.Data_ShouldBeBitFlagAsync", "GraphQLLensScopeTests.Metadata_ShouldBeBitFlagAsync", "GraphQLLensScopeTests.Scope_ShouldBeBitFlagAsync", "GraphQLLensScopeTests.SystemFields_ShouldBeBitFlagAsync", "GraphQLLensScopeTests.DataOnly_ShouldEqualDataAsync", "GraphQLLensScopeTests.NoData_ShouldBeMetadataPlusScopePlusSystemFieldsAsync", "GraphQLLensScopeTests.All_ShouldIncludeAllComponentsAsync", "GraphQLLensScopeTests.FlagsAttribute_ShouldBeAppliedAsync", "GraphQLLensScopeTests.AllValues_ShouldBePowersOfTwoOrZeroAsync"]}
 [Flags]
 public enum GraphQLLensScopes {
     None = 0,              // Use system default (WhizbangGraphQLOptions.DefaultScope)
@@ -88,7 +88,7 @@ public enum GraphQLLensScopes {
 
 Expose only the business data:
 
-```csharp{title="Data Only (Default)" description="Expose only the business data:" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Data", "Only"]}
+```csharp{title="Data Only (Default)" description="Expose only the business data:" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Data", "Only"] tests=["GraphQLLensAttributeTests.Scope_ShouldBeSettableToDataOnlyAsync", "GraphQLLensAttributeTests.QueryName_ShouldBeSettableAsync", "GraphQLLensScopeTests.DataOnly_ShouldEqualDataAsync"]}
 [GraphQLLens(QueryName = "products", Scope = GraphQLLensScopes.DataOnly)]
 public interface IProductLens : ILensQuery<ProductReadModel> { }
 ```
@@ -111,7 +111,7 @@ public interface IProductLens : ILensQuery<ProductReadModel> { }
 
 Include event sourcing metadata:
 
-```csharp{title="With Metadata" description="Include event sourcing metadata:" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Metadata"]}
+```csharp{title="With Metadata" description="Include event sourcing metadata:" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Metadata"] tests=["GraphQLLensAttributeTests.Scope_ShouldBeSettableToComposedFlagsAsync", "GraphQLLensAttributeTests.QueryName_ShouldBeSettableAsync"]}
 [GraphQLLens(
     QueryName = "auditLog",
     Scope = GraphQLLensScopes.Data | GraphQLLensScopes.Metadata | GraphQLLensScopes.SystemFields)]
@@ -142,7 +142,7 @@ public interface IAuditLens : ILensQuery<AuditReadModel> { }
 
 Expose everything including scope data:
 
-```csharp{title="Full Row (Admin View)" description="Expose everything including scope data:" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Full", "Row"]}
+```csharp{title="Full Row (Admin View)" description="Expose everything including scope data:" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Full", "Row"] tests=["GraphQLLensAttributeTests.Scope_ShouldBeSettableToAllAsync", "GraphQLLensAttributeTests.QueryName_ShouldBeSettableAsync", "GraphQLLensScopeTests.All_ShouldIncludeAllComponentsAsync"]}
 [GraphQLLens(QueryName = "adminOrders", Scope = GraphQLLensScopes.All)]
 public interface IAdminOrderLens : ILensQuery<OrderReadModel> { }
 ```
@@ -176,7 +176,7 @@ public interface IAdminOrderLens : ILensQuery<OrderReadModel> { }
 
 Disable paging for simple lists:
 
-```csharp{title="Filter-Only (No Paging)" description="Disable paging for simple lists:" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Filter-Only", "Paging"]}
+```csharp{title="Filter-Only (No Paging)" description="Disable paging for simple lists:" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Filter-Only", "Paging"] tests=["GraphQLLensAttributeTests.EnablePaging_ShouldBeSettableAsync", "GraphQLLensAttributeTests.EnableSorting_ShouldBeSettableAsync", "GraphQLLensAttributeTests.QueryName_ShouldBeSettableAsync"]}
 [GraphQLLens(
     QueryName = "statuses",
     EnablePaging = false,
@@ -200,7 +200,7 @@ public interface IStatusLens : ILensQuery<StatusReadModel> { }
 
 Configure paging limits:
 
-```csharp{title="Custom Page Sizes" description="Configure paging limits:" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Custom", "Page"]}
+```csharp{title="Custom Page Sizes" description="Configure paging limits:" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Custom", "Page"] tests=["GraphQLLensAttributeTests.DefaultPageSize_ShouldBeSettableAsync", "GraphQLLensAttributeTests.MaxPageSize_ShouldBeSettableAsync", "GraphQLLensAttributeTests.QueryName_ShouldBeSettableAsync"]}
 [GraphQLLens(
     QueryName = "transactions",
     DefaultPageSize = 50,
@@ -212,7 +212,7 @@ public interface ITransactionLens : ILensQuery<TransactionReadModel> { }
 
 For a lens like:
 
-```csharp{title="Generated Schema" description="For a lens like:" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Generated", "Schema"]}
+```csharp{title="Generated Schema" description="For a lens like:" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Generated", "Schema"] tests=["GraphQLLensAttributeTests.QueryName_ShouldBeSettableAsync"]}
 [GraphQLLens(QueryName = "orders")]
 public interface IOrderLens : ILensQuery<OrderReadModel> { }
 
@@ -274,7 +274,7 @@ input OrderFilterInput {
 
 You can create multiple lenses for the same model with different configurations:
 
-```csharp{title="Multiple Lenses for Same Model" description="You can create multiple lenses for the same model with different configurations:" category="API" difficulty="INTERMEDIATE" tags=["Apis", "Graphql", "Multiple", "Lenses"]}
+```csharp{title="Multiple Lenses for Same Model" description="You can create multiple lenses for the same model with different configurations:" category="API" difficulty="INTERMEDIATE" tags=["Apis", "Graphql", "Multiple", "Lenses"] tests=["GraphQLLensAttributeTests.Scope_ShouldBeSettableToDataOnlyAsync", "GraphQLLensAttributeTests.Scope_ShouldBeSettableToAllAsync", "GraphQLLensAttributeTests.Scope_ShouldBeSettableToComposedFlagsAsync", "GraphQLLensAttributeTests.EnableFiltering_ShouldBeSettableAsync", "GraphQLLensAttributeTests.QueryName_ShouldBeSettableAsync"]}
 // Public API - data only
 [GraphQLLens(QueryName = "orders", Scope = GraphQLLensScopes.DataOnly)]
 public interface IOrderLens : ILensQuery<OrderReadModel> { }

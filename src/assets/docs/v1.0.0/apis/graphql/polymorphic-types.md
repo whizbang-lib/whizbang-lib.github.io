@@ -40,7 +40,7 @@ dotnet add package Whizbang.Transports.HotChocolate
 
 ### Base Type with Attributes
 
-```csharp{title="Base Type with Attributes" description="Base Type with Attributes" category="API" difficulty="ADVANCED" tags=["Apis", "Graphql", "Base", "Type"]}
+```csharp{title="Base Type with Attributes" description="Base Type with Attributes" category="API" difficulty="ADVANCED" tags=["Apis", "Graphql", "Base", "Type"] unverified="illustrative input — polymorphic model type definitions, not the extension API"}
 [JsonPolymorphic(TypeDiscriminatorPropertyName = "$type")]
 [JsonDerivedType(typeof(TextFieldSettings), "text")]
 [JsonDerivedType(typeof(NumberFieldSettings), "number")]
@@ -74,7 +74,7 @@ public class DateFieldSettings : AbstractFieldSettings {
 
 Automatically discovers derived types from `[JsonDerivedType]` attributes:
 
-```csharp{title="Auto-Discovery" description="Automatically discovers derived types from [JsonDerivedType] attributes:" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Auto-Discovery"]}
+```csharp{title="Auto-Discovery" description="Automatically discovers derived types from [JsonDerivedType] attributes:" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Auto-Discovery"] tests=["PolymorphicTypeExtensionsTests.AddPolymorphicType_WithAutoDiscovery_ReturnsBuilderAsync", "PolymorphicTypeExtensionsTests.AddPolymorphicType_WithAutoDiscovery_BuildsSchemaAsync"]}
 builder.Services.AddGraphQLServer()
     .AddWhizbangLenses()
     .AddPolymorphicType<AbstractFieldSettings>();
@@ -84,7 +84,7 @@ builder.Services.AddGraphQLServer()
 
 Manually specify derived types:
 
-```csharp{title="Explicit Registration" description="Manually specify derived types:" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Explicit", "Registration"]}
+```csharp{title="Explicit Registration" description="Manually specify derived types:" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Explicit", "Registration"] tests=["PolymorphicTypeExtensionsTests.AddPolymorphicType_WithExplicitDerivedTypes_ReturnsBuilderAsync", "PolymorphicTypeExtensionsTests.AddPolymorphicType_WithExplicitDerivedTypes_BuildsSchemaAsync", "PolymorphicTypeExtensionsTests.AddPolymorphicType_CanChainWithOtherMethodsAsync"]}
 builder.Services.AddGraphQLServer()
     .AddWhizbangLenses()
     .AddPolymorphicType<AbstractFieldSettings>(
@@ -180,7 +180,7 @@ type DateFieldSettings implements AbstractFieldSettings {
 
 ### Model Definitions
 
-```csharp{title="Model Definitions" description="Model Definitions" category="API" difficulty="ADVANCED" tags=["Apis", "Graphql", "Model", "Definitions"]}
+```csharp{title="Model Definitions" description="Model Definitions" category="API" difficulty="ADVANCED" tags=["Apis", "Graphql", "Model", "Definitions"] unverified="illustrative input — polymorphic notification model type definitions"}
 [JsonPolymorphic(TypeDiscriminatorPropertyName = "$type")]
 [JsonDerivedType(typeof(EmailNotification), "email")]
 [JsonDerivedType(typeof(SmsNotification), "sms")]
@@ -206,7 +206,7 @@ public class PushNotification : NotificationSettings {
 
 ### Service Registration
 
-```csharp{title="Service Registration" description="Service Registration" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Service", "Registration"]}
+```csharp{title="Service Registration" description="Service Registration" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Service", "Registration"] unverified="HotChocolate and ASP.NET Core host wiring"}
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services
@@ -222,7 +222,7 @@ app.Run();
 
 ### Query Type
 
-```csharp{title="Query Type" description="Query Type" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Query", "Type"]}
+```csharp{title="Query Type" description="Query Type" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Query", "Type"] unverified="HotChocolate wiring — illustrative query resolver"}
 public class Query {
     public NotificationSettings GetUserNotificationSettings(
         [Service] IUserService userService,
@@ -258,7 +258,7 @@ public class Query {
 
 ### Missing JsonPolymorphic Attribute
 
-```csharp{title="Missing JsonPolymorphic Attribute" description="Missing JsonPolymorphic Attribute" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Missing", "JsonPolymorphic"]}
+```csharp{title="Missing JsonPolymorphic Attribute" description="Missing JsonPolymorphic Attribute" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Missing", "JsonPolymorphic"] unverified="counter-example — demonstrates the missing JsonPolymorphic attribute failure path"}
 // This will throw InvalidOperationException
 builder.Services.AddGraphQLServer()
     .AddPolymorphicType<SomeTypeWithoutAttribute>();
@@ -267,7 +267,7 @@ builder.Services.AddGraphQLServer()
 
 ### Missing JsonDerivedType Attributes
 
-```csharp{title="Missing JsonDerivedType Attributes" description="Missing JsonDerivedType Attributes" category="API" difficulty="ADVANCED" tags=["Apis", "Graphql", "Missing", "JsonDerivedType"]}
+```csharp{title="Missing JsonDerivedType Attributes" description="Missing JsonDerivedType Attributes" category="API" difficulty="ADVANCED" tags=["Apis", "Graphql", "Missing", "JsonDerivedType"] unverified="counter-example — demonstrates the missing JsonDerivedType attribute failure path"}
 [JsonPolymorphic]
 public abstract class BaseType { } // No [JsonDerivedType] attributes
 

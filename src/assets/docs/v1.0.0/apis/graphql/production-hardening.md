@@ -21,7 +21,7 @@ testReferences:
 
 `Whizbang.Transports.HotChocolate` provides a single opt-in call that applies production-safe GraphQL defaults:
 
-```csharp{title="Production hardening" description="Demonstrates applying GraphQL security defaults" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Security"]}
+```csharp{title="Production hardening" description="Demonstrates applying GraphQL security defaults" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Security"] tests=["HotChocolateSecurityExtensionsTests.Production_RejectsIntrospectionQueryAsync", "HotChocolateSecurityExtensionsTests.Production_StripsExceptionDetailsFromErrorsAsync"]}
 builder.Services
     .AddGraphQLServer()
     .AddWhizbangLenses()
