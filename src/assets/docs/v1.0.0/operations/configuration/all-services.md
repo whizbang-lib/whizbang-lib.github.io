@@ -55,7 +55,7 @@ services.AddLensServices(configure);
 
 ## Basic Usage
 
-```csharp{title="Register All Services" description="Register all Whizbang services at once" category="DI" difficulty="BEGINNER" tags=["DI", "ServiceRegistration"]}
+```csharp{title="Register All Services" description="Register all Whizbang services at once" category="DI" difficulty="BEGINNER" tags=["DI", "ServiceRegistration"] unverified="DI registration call — the generator output is verified by ServiceRegistrationGeneratorTests"}
 var builder = WebApplication.CreateBuilder(args);
 
 // Register all discovered Perspectives and Lenses
@@ -64,7 +64,7 @@ builder.Services.AddAllWhizbangServices();
 
 ## With Options
 
-```csharp{title="Register with Options" description="Configure all service registrations" category="DI" difficulty="BEGINNER" tags=["DI", "Options"]}
+```csharp{title="Register with Options" description="Configure all service registrations" category="DI" difficulty="BEGINNER" tags=["DI", "Options"] unverified="DI registration call — the generator output is verified by ServiceRegistrationGeneratorTests"}
 // Disable self-registration for all services
 builder.Services.AddAllWhizbangServices(options =>
     options.IncludeSelfRegistration = false);
@@ -72,7 +72,7 @@ builder.Services.AddAllWhizbangServices(options =>
 
 ## Complete Setup Example
 
-```csharp{title="Full Application Setup" description="Complete DI configuration with Whizbang" category="DI" difficulty="INTERMEDIATE" tags=["DI", "Setup", "Example"]}
+```csharp{title="Full Application Setup" description="Complete DI configuration with Whizbang" category="DI" difficulty="INTERMEDIATE" tags=["DI", "Setup", "Example"] unverified="DI registration call — the generator output is verified by ServiceRegistrationGeneratorTests"}
 var builder = WebApplication.CreateBuilder(args);
 
 // 1. Configure database
@@ -102,7 +102,7 @@ var app = builder.Build();
 - You only want to register one type of service
 - You need more granular control
 
-```csharp{title="Individual Registration" description="Register services separately with different options" category="DI" difficulty="INTERMEDIATE" tags=["DI", "Options"]}
+```csharp{title="Individual Registration" description="Register services separately with different options" category="DI" difficulty="INTERMEDIATE" tags=["DI", "Options"] unverified="DI registration call — the generator output is verified by ServiceRegistrationGeneratorTests"}
 // Different options for each service type
 builder.Services.AddPerspectiveServices(options =>
     options.IncludeSelfRegistration = true);
@@ -115,7 +115,7 @@ builder.Services.AddLensServices(options =>
 
 The method returns `IServiceCollection` for fluent configuration:
 
-```csharp{title="Method Chaining" description="Chain service registration methods" category="DI" difficulty="BEGINNER" tags=["DI", "Fluent"]}
+```csharp{title="Method Chaining" description="Chain service registration methods" category="DI" difficulty="BEGINNER" tags=["DI", "Fluent"] unverified="DI registration call — the generator output is verified by ServiceRegistrationGeneratorTests"}
 builder.Services
     .AddPerspectiveServices()
     .AddLensServices();
