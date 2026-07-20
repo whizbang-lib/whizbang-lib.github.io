@@ -110,7 +110,7 @@ Note: the failure functions record the error and release the lease but do **not*
 
 ### Basic Failure and Retry
 
-```mermaid
+```mermaid{caption="Basic failure and retry — a failed message is stamped Failed with an exponential-backoff scheduled_for and its lease released, then reclaimed and reprocessed once the schedule elapses."}
 sequenceDiagram
     participant I as Instance
     participant DB as PostgreSQL
@@ -142,7 +142,7 @@ sequenceDiagram
 
 ### Retry Schedule Timeline
 
-```mermaid
+```mermaid{caption="Retry-schedule timeline — each claim bumps attempts and the next failure schedules 30s x 2^attempts (capped at 5 minutes) until a retry succeeds."}
 flowchart LR
     F0["M1 initial attempt<br/>Fail (attempts=0)<br/>scheduled_for = now + 30s * 2^0 = now + 30s"]
     W0["Cannot claim<br/>(scheduled_for > now)"]
@@ -204,7 +204,7 @@ await coordinator.ProcessWorkBatchAsync(new ProcessWorkBatchRequest {
 
 ### Cascade Release Sequence Diagram
 
-```mermaid
+```mermaid{caption="Cascade release — failing M1 is scheduled for retry while downstream M2/M3 are completed with Status=0 to clear their leases so the stream can continue."}
 sequenceDiagram
     participant I as Instance
     participant DB as PostgreSQL
@@ -327,7 +327,7 @@ When the cap is exceeded, the row is moved to `wh_dead_letters` with `MessageFai
 
 When a message fails, it may have completed some steps before failing. The `CompletedStatus` field tracks what was accomplished.
 
-```csharp{title="CompletedStatus Field" description="When a message fails, it may have completed some steps before failing." category="Architecture" difficulty="BEGINNER" tags=["Messaging", "C#", "CompletedStatus", "Field"]}
+```csharp{title="CompletedStatus Field" description="When a message fails, it may have completed some steps before failing." category="Architecture" difficulty="BEGINNER" tags=["Messaging", "C#", "CompletedStatus", "Field"] tests=["MessageFailureTests.MessageFailure_AllReasonTypes_CanBeAssignedAsync", "MessageFailureTests.MessageFailure_WithReason_StoresReasonAsync", "MessageFailureTests.MessageFailure_WithoutReason_DefaultsToUnknownAsync"]}
 public record MessageFailure {
     public required Guid MessageId { get; init; }
     public required MessageProcessingStatus CompletedStatus { get; init; }
@@ -534,7 +534,7 @@ The retry/failure machinery is split across per-concern migration functions (all
 
 See: `src/Whizbang.Core/Messaging/IWorkCoordinator.cs` (the `MessageFailure` and `MessageCompletion` records live alongside the coordinator interface)
 
-```csharp{title="C# Records" description="MessageFailure record from IWorkCoordinator.cs" category="Architecture" difficulty="BEGINNER" tags=["Messaging", "Records"]}
+```csharp{title="C# Records" description="MessageFailure record from IWorkCoordinator.cs" category="Architecture" difficulty="BEGINNER" tags=["Messaging", "Records"] tests=["MessageFailureTests.MessageFailure_AllReasonTypes_CanBeAssignedAsync", "MessageFailureTests.MessageFailure_WithReason_StoresReasonAsync", "MessageFailureTests.MessageFailure_WithoutReason_DefaultsToUnknownAsync"]}
 public record MessageFailure {
     public required Guid MessageId { get; init; }
     public required MessageProcessingStatus CompletedStatus { get; init; }

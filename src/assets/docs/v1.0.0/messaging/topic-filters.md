@@ -44,7 +44,7 @@ Topic filters allow you to declare which topics or queues your commands should b
 
 Use string literals for simple, ad-hoc topic assignment:
 
-```csharp{title="String-Based Filters" description="Use string literals for simple, ad-hoc topic assignment:" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "String-Based", "Filters"]}
+```csharp{title="String-Based Filters" description="Use string literals for simple, ad-hoc topic assignment:" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "String-Based", "Filters"] tests=["TopicFilterGeneratorTests.Generator_WithStringFilter_GeneratesRegistryAsync", "TopicFilterGeneratorTests.Generator_WithMultipleCommands_GeneratesAllMappingsAsync"]}
 using Whizbang.Core;
 
 namespace MyApp.Commands;
@@ -66,7 +66,7 @@ public record ProcessPaymentCommand : ICommand {
 
 For centralized, type-safe topic definitions, use enums with `[Description]` attributes:
 
-```csharp{title="Enum-Based Filters" description="For centralized, type-safe topic definitions, use enums with [Description] attributes:" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "Enum-Based", "Filters"]}
+```csharp{title="Enum-Based Filters" description="For centralized, type-safe topic definitions, use enums with [Description] attributes:" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "Enum-Based", "Filters"] tests=["TopicFilterGeneratorTests.Generator_WithEnumFilter_ExtractsDescriptionAsync"]}
 using System.ComponentModel;
 using Whizbang.Core;
 
@@ -101,7 +101,7 @@ public record CreateOrderCommand : ICommand {
 
 Commands can have multiple topic filters for fan-out scenarios:
 
-```csharp{title="Multiple Filters" description="Commands can have multiple topic filters for fan-out scenarios:" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Multiple", "Filters"]}
+```csharp{title="Multiple Filters" description="Commands can have multiple topic filters for fan-out scenarios:" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Multiple", "Filters"] tests=["TopicFilterGeneratorTests.Generator_WithMultipleStringFilters_GeneratesAllMappingsAsync"]}
 // Publish to both primary and backup queues
 [TopicFilter("orders.primary")]
 [TopicFilter("orders.backup")]
@@ -122,7 +122,7 @@ public record CreateOrderCommand : ICommand {
 
 The `TopicFilterGenerator` source generator creates an AOT-compatible registry:
 
-```csharp{title="Generated Registry" description="The TopicFilterGenerator source generator creates an AOT-compatible registry:" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Generated", "Registry"]}
+```csharp{title="Generated Registry" description="The TopicFilterGenerator source generator creates an AOT-compatible registry:" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Generated", "Registry"] tests=["TopicFilterGeneratorTests.Generator_WithStringFilter_GeneratesRegistryAsync", "TopicFilterGeneratorTests.Generator_GeneratesGetAllFiltersMethod_ForDiagnosticsAsync", "TopicFilterGeneratorTests.Generator_UsesAssemblySpecificNamespace_AvoidingConflictsAsync"]}
 // Generated code (example)
 namespace MyApp.Generated;
 
@@ -150,7 +150,7 @@ public static class TopicFilterRegistry {
 
 Query topic filters at runtime for routing decisions:
 
-```csharp{title="Usage" description="Query topic filters at runtime for routing decisions:" category="Architecture" difficulty="BEGINNER" tags=["Messaging", "Usage"]}
+```csharp{title="Usage" description="Query topic filters at runtime for routing decisions:" category="Architecture" difficulty="BEGINNER" tags=["Messaging", "Usage"] unverified="consumer query of the generated registry — generator tests verify the emitted methods, not their runtime return values"}
 // Get filters for a specific command type
 var filters = TopicFilterRegistry.GetTopicFilters<CreateOrderCommand>();
 // Returns: ["orders.created"]
@@ -164,7 +164,7 @@ var allFilters = TopicFilterRegistry.GetAllFilters();
 
 Create domain-specific attributes by inheriting from `TopicFilterAttribute`:
 
-```csharp{title="Custom Derived Attributes" description="Create domain-specific attributes by inheriting from TopicFilterAttribute:" category="Architecture" difficulty="ADVANCED" tags=["Messaging", "C#", "Custom", "Derived", "Attributes"]}
+```csharp{title="Custom Derived Attributes" description="Create domain-specific attributes by inheriting from TopicFilterAttribute:" category="Architecture" difficulty="ADVANCED" tags=["Messaging", "C#", "Custom", "Derived", "Attributes"] tests=["TopicFilterGeneratorTests.Generator_WithCustomDerivedAttribute_RecognizesFilterAsync"]}
 using System.ComponentModel;
 using Whizbang.Core;
 
@@ -200,7 +200,7 @@ public record CreateOrderCommand : ICommand {
 
 ### 1. Use Enums for Centralized Configuration
 
-```csharp{title="Use Enums for Centralized Configuration" description="Use Enums for Centralized Configuration" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Use", "Enums", "Centralized"]}
+```csharp{title="Use Enums for Centralized Configuration" description="Use Enums for Centralized Configuration" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Use", "Enums", "Centralized"] unverified="best-practice guidance mixing a correct enum example with a string-literal anti-pattern — no single asserted behavior"}
 // ✅ GOOD: Centralized, type-safe, refactor-friendly
 public enum Topics {
   [Description("orders.created")]
@@ -223,7 +223,7 @@ public record ProcessOrderCommand : ICommand { }
 
 ### 2. Use Description Attributes for Production Values
 
-```csharp{title="Use Description Attributes for Production Values" description="Use Description Attributes for Production Values" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Use", "Description", "Attributes"]}
+```csharp{title="Use Description Attributes for Production Values" description="Use Description Attributes for Production Values" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Use", "Description", "Attributes"] unverified="best-practice naming guidance (good vs bad) — not a distinct generator behavior under test"}
 // ✅ GOOD: Description defines actual topic name
 public enum Topics {
   [Description("prod.orders.v2.created")]  // Production topic name
@@ -238,7 +238,7 @@ public enum Topics {
 
 ### 3. Group Topics by Domain or Transport
 
-```csharp{title="Group Topics by Domain or Transport" description="Group Topics by Domain or Transport" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Group", "Topics", "Domain"]}
+```csharp{title="Group Topics by Domain or Transport" description="Group Topics by Domain or Transport" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Group", "Topics", "Domain"] unverified="organizational guidance (group vs flat enum) — no distinct generator behavior under test"}
 // ✅ GOOD: Organized by domain
 public enum OrderTopics {
   [Description("orders.created")]
@@ -269,7 +269,7 @@ public enum AllTopics {
 
 ### 4. Use Multiple Filters for Fan-Out
 
-```csharp{title="Use Multiple Filters for Fan-Out" description="Use Multiple Filters for Fan-Out" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "Multiple", "Filters", "Fan-Out"]}
+```csharp{title="Use Multiple Filters for Fan-Out" description="Use Multiple Filters for Fan-Out" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "Multiple", "Filters", "Fan-Out"] unverified="best-practice guidance mixing a valid fan-out example with an anti-pattern — no single asserted behavior"}
 // ✅ GOOD: Multiple filters for legitimate fan-out
 [TopicFilter<Topics>(Topics.OrdersCreated)]
 [TopicFilter<Topics>(Topics.AnalyticsStream)]
@@ -284,7 +284,7 @@ public record CreateOrderCommand : ICommand { }
 
 ### 5. Validate Topics at Startup
 
-```csharp{title="Validate Topics at Startup" description="Validate Topics at Startup" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Validate", "Topics", "Startup"]}
+```csharp{title="Validate Topics at Startup" description="Validate Topics at Startup" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Validate", "Topics", "Startup"] unverified="user-written startup validation helper — not framework code under test"}
 // ✅ GOOD: Validate command filters against your expected topic list at startup.
 // (ITransport does not expose a topic-existence query — validate against
 // configuration, or rely on transport auto-provisioning to create topics.)
@@ -307,7 +307,7 @@ public static void ValidateTopics(IReadOnlySet<string> knownTopics) {
 
 Topic filters integrate with Whizbang's transport abstraction:
 
-```csharp{title="Integration with Transports" description="Topic filters integrate with Whizbang's transport abstraction:" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Integration", "Transports"]}
+```csharp{title="Integration with Transports" description="Topic filters integrate with Whizbang's transport abstraction:" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Integration", "Transports"] unverified="consumer integration example using ITransport/TransportDestination — outside the topic-filter generator tests"}
 // Query filters when publishing a command's envelope
 public async Task PublishCommandAsync<TCommand>(
     IMessageEnvelope envelope,
@@ -373,7 +373,7 @@ Reports when no topic filters are found in the assembly.
 
 Using custom attributes for different transports:
 
-```csharp{title="Example: Multi-Transport Scenario" description="Using custom attributes for different transports:" category="Architecture" difficulty="ADVANCED" tags=["Messaging", "Example:", "Multi-Transport", "Scenario"]}
+```csharp{title="Example: Multi-Transport Scenario" description="Using custom attributes for different transports:" category="Architecture" difficulty="ADVANCED" tags=["Messaging", "Example:", "Multi-Transport", "Scenario"] unverified="multi-transport usage example — combines two custom derived attributes plus a runtime GetTopicFilters return that no single generator test executes"}
 // Azure Service Bus topics
 public enum ServiceBusTopics {
   [Description("prod-orders-v2")]

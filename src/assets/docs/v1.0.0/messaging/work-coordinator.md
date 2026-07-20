@@ -46,7 +46,7 @@ The Work Coordinator solves a critical problem: **How do you reliably coordinate
 
 ### What It Coordinates
 
-```mermaid
+```mermaid{caption="The Work Coordinator's focused operations — claim, store, fetch, commit, complete, fail, renew, heartbeat — each atomic in its own call, with the handler-commit path bundling inbox completion and emitted messages."}
 flowchart TD
     subgraph Ops["Focused Coordinator Operations (each atomic in its own call)"]
         Claim["ClaimWorkAsync — lease orphaned/unowned work, return stream ids"]
@@ -124,7 +124,7 @@ public interface IWorkCoordinator {
 ```
 
 **Claim Parameter Object**:
-```csharp{title="ClaimWorkRequest" description="Parameter object for ClaimWorkAsync" category="Architecture" difficulty="ADVANCED" tags=["Messaging", "IWorkCoordinator", "Request"]}
+```csharp{title="ClaimWorkRequest" description="Parameter object for ClaimWorkAsync" category="Architecture" difficulty="ADVANCED" tags=["Messaging", "IWorkCoordinator", "Request"] tests=["ClaimWorkRequestTests.PositionalCtor_RequiredFieldsRoundTripAsync", "ClaimWorkRequestTests.Defaults_MatchProductionTunedConstantsAsync"]}
 public sealed record ClaimWorkRequest(
     Guid InstanceId,        // Calling service instance
     string ServiceName,     // Service name (diagnostics)
@@ -241,7 +241,7 @@ public record WorkBatch {
 
 ### Completions and Failures
 
-```csharp{title="Completions and Failures" description="Completion and failure records" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Message", "Completions"]}
+```csharp{title="Completions and Failures" description="Completion and failure records" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Message", "Completions"] tests=["MessageFailureTests.MessageFailure_WithoutReason_DefaultsToUnknownAsync", "MessageFailureTests.MessageFailure_WithReason_StoresReasonAsync"]}
 public record MessageCompletion {
     public required Guid MessageId { get; init; }
     public required MessageProcessingStatus Status { get; init; }
@@ -327,7 +327,7 @@ These patterns show how the framework's built-in workers use the coordinator. Ap
 
 ### Pattern 1: Claim Work (ClaimWorker)
 
-```csharp{title="Pattern 1: Claim Work" description="ClaimWorker polls claim_work and distributes stream ids to drain channels" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Pattern", "Claim", "Publish"]}
+```csharp{title="Pattern 1: Claim Work" description="ClaimWorker polls claim_work and distributes stream ids to drain channels" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Pattern", "Claim", "Publish"] tests=["ClaimWorkerTests.ExecuteAsync_PollsAtLeastOnceAsync", "ClaimWorkerTests.Distribute_OutboxStreamIds_RoutedToOutboxDrainChannelAsync", "ClaimWorkerTests.Distribute_InboxDrainChannel_WritesStreamIds_EvenWhenIsInFlightTrueAsync"]}
 // ClaimWorker is the only caller of ClaimWorkAsync
 var batch = await coordinator.ClaimWorkAsync(new ClaimWorkRequest(
     InstanceId: instanceId,
@@ -350,7 +350,7 @@ foreach (var streamId in batch.InboxStreamIds) {
 
 ### Pattern 2: Drain and Publish (OutboxDrainWorker)
 
-```csharp{title="Pattern 2: Drain and Publish" description="OutboxDrainWorker fetches leased bodies per stream and publishes in FIFO order" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Pattern", "Report", "Completions"]}
+```csharp{title="Pattern 2: Drain and Publish" description="OutboxDrainWorker fetches leased bodies per stream and publishes in FIFO order" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Pattern", "Report", "Completions"] tests=["OutboxDrainWorkerTests.OutboxDrainWorker_OnStreamId_FetchesBatch_PublishesEach_EnqueuesCompletionAsync", "OutboxDrainWorkerTests.OutboxDrainWorker_BulkResultsMixed_RoutesSuccessToCompletion_FailureToFailureChannelAsync"]}
 // Per-stream drainer: fetch all leased rows for the stream, publish in order
 var rows = await coordinator.FetchOutboxBatchAsync([streamId], instanceId, cancellationToken: ct);
 
@@ -370,7 +370,7 @@ foreach (var row in rows) {
 
 ### Pattern 3: Batched Completions (Flush Workers)
 
-```csharp{title="Pattern 3: Batched Completions" description="Flush workers coalesce completions into one round-trip per batch" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Pattern", "Store", "Event"]}
+```csharp{title="Pattern 3: Batched Completions" description="Flush workers coalesce completions into one round-trip per batch" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Pattern", "Store", "Event"] tests=["OutboxCompletionFlushWorkerTests.EnqueuedIds_FlushedToCoordinatorAsync"]}
 // OutboxCompletionFlushWorker drains the completion channel and flushes in batches
 var publishedIds = DrainPendingCompletionIds();
 var affected = await coordinator.CompleteOutboxPublishedAsync(publishedIds, ct);

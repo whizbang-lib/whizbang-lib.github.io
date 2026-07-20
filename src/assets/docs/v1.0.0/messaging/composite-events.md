@@ -55,6 +55,7 @@ framework: "NET10"
 category: "Messaging"
 difficulty: "INTERMEDIATE"
 tags: ["composite-events", "icompositeevent", "contract", "bulk-operations"]
+tests: ["CompositeEventBaseTests.StampsStreamId_AndYieldsInnerInProducerOrderAsync", "CompositeEventBaseTests.MaxInnerEventsAllowed_DefaultsTo10K_AndIsOverridableAsync"]
 }
 public interface ICompositeEvent : IMessage {
   /// Yields the inner events this composite expands into. Receivers
@@ -118,6 +119,7 @@ framework: "NET10"
 category: "Messaging"
 difficulty: "BEGINNER"
 tags: ["composite-events", "max-inner-events", "cap-override"]
+tests: ["CompositeEventBaseTests.MaxInnerEventsAllowed_DefaultsTo10K_AndIsOverridableAsync"]
 }
 public class LargeBulkComposite : ICompositeEvent {
   public IEnumerable<IMessage> InnerEvents => /* … */;
