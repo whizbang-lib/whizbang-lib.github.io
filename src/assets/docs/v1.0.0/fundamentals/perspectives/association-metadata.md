@@ -104,7 +104,7 @@ internal sealed record PerspectiveAssociationInfo(
 
 The `PerspectiveDiscoveryGenerator` scans for types implementing the `IPerspectiveFor<TModel, TEvent...>` family (and `IPerspectiveWithActionsFor<TModel, TEvent...>`), including classes that implement multiple perspective interfaces:
 
-```csharp{title="Compile-Time Discovery" description="The PerspectiveDiscoveryGenerator scans for types implementing IPerspectiveFor<TModel, TEvent>:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Compile-Time", "Discovery"]}
+```csharp{title="Compile-Time Discovery" description="The PerspectiveDiscoveryGenerator scans for types implementing IPerspectiveFor<TModel, TEvent>:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Compile-Time", "Discovery"] tests=["PerspectiveDiscoveryGeneratorTests.PerspectiveDiscoveryGenerator_SinglePerspectiveMultipleEvents_GeneratesMultipleRegistrationsAsync"]}
 // Your code
 public class OrderSummaryPerspective :
     IPerspectiveFor<OrderSummaryDto, OrderCreated>,
@@ -119,7 +119,7 @@ public class OrderSummaryPerspective :
 
 From the extracted `PerspectiveInfo`, the generator emits `MessageAssociation` entries into `PerspectiveRegistrationExtensions.GetMessageAssociations(serviceName)`:
 
-```csharp{title="Generated Association" description="The generator creates association entries:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Generated", "Association"]}
+```csharp{title="Generated Association" description="The generator creates association entries:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Generated", "Association"] tests=["PerspectiveDiscoveryGeneratorTests.PerspectiveDiscoveryGenerator_GetMessageAssociations_ReturnsCorrectAssociationsAsync", "PerspectiveDiscoveryGeneratorTests.PerspectiveDiscoveryGenerator_TopLevelPerspective_UsesClrTypeNameInMessageAssociationAsync"]}
 // Auto-generated inside GetMessageAssociations(serviceName)
 return new MessageAssociation[] {
   new MessageAssociation("MyApp.Events.OrderCreated, MyApp", "perspective", "MyApp.Perspectives.OrderSummaryPerspective", serviceName),
@@ -131,7 +131,7 @@ return new MessageAssociation[] {
 
 `AddWhizbangPerspectives()` (generated into `{AssemblyName}.Generated`) registers each perspective against its interface as a **Scoped** service:
 
-```csharp{title="Runtime Registration" description="Runtime Registration" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Runtime", "Registration"]}
+```csharp{title="Runtime Registration" description="Runtime Registration" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Runtime", "Registration"] tests=["PerspectiveDiscoveryGeneratorTests.PerspectiveDiscoveryGenerator_SinglePerspectiveOneEvent_GeneratesRegistrationAsync"]}
 // Auto-generated registration inside AddWhizbangPerspectives()
 services.AddScoped<
     IPerspectiveFor<OrderSummaryDto, OrderCreated, OrderShipped>,
@@ -163,7 +163,7 @@ internal sealed class OrderSummaryPerspectiveRunner : IPerspectiveRunner {
 
 `PerspectiveRunnerRegistryGenerator` emits a `PerspectiveRunnerRegistry` class implementing `IPerspectiveRunnerRegistry` with a zero-reflection switch on the CLR type name:
 
-```csharp{title="Registry Entry" description="Registry Entry" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Registry", "Entry"]}
+```csharp{title="Registry Entry" description="Registry Entry" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Registry", "Entry"] tests=["PerspectiveRunnerRegistryGeneratorTests.Generator_WithNonNestedPerspective_UsesSimpleNameAsync"]}
 // In generated PerspectiveRunnerRegistry
 public IPerspectiveRunner? GetRunner(string perspectiveName, IServiceProvider serviceProvider) {
   return perspectiveName switch {
@@ -182,7 +182,7 @@ Module initializers populate the `EventNamespaceRegistry` with the namespaces of
 
 ### Step 1: Define Perspective
 
-```csharp{title="Step 1: Define Perspective" description="Step 1: Define Perspective" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Step", "Define"]}
+```csharp{title="Step 1: Define Perspective" description="Step 1: Define Perspective" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Step", "Define"] tests=["PerspectiveDiscoveryGeneratorTests.PerspectiveDiscoveryGenerator_SinglePerspectiveMultipleEvents_GeneratesMultipleRegistrationsAsync"]}
 public class ProductCatalogPerspective :
     IPerspectiveFor<ProductDto, ProductCreated>,
     IPerspectiveFor<ProductDto, ProductUpdated> {

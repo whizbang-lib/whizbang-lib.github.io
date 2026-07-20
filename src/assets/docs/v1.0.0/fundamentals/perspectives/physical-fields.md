@@ -44,7 +44,7 @@ By default, Whizbang stores perspective model data in a single JSONB column. Whi
 
 `PhysicalFieldInfo` is the generator model that captures metadata about physical fields discovered during source generation. It includes property name, column name, type information, indexing options, and vector-specific settings.
 
-```csharp{title="PhysicalFieldInfo" description="PhysicalFieldInfo is the generator model that captures metadata about physical fields discovered during source" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "PhysicalFieldInfo"]}
+```csharp{title="PhysicalFieldInfo" description="PhysicalFieldInfo is the generator model that captures metadata about physical fields discovered during source" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "PhysicalFieldInfo"] tests=["PhysicalFieldInfoTests.PhysicalFieldInfo_Constructor_SetsAllPropertiesAsync", "PhysicalFieldInfoTests.PhysicalFieldInfo_VectorField_SetsVectorPropertiesAsync"]}
 public sealed record PhysicalFieldInfo(
     string PropertyName,      // Name of the property on the model
     string ColumnName,        // Database column name (snake_case)
@@ -64,7 +64,7 @@ public sealed record PhysicalFieldInfo(
 
 `PhysicalFieldRegistry` is a runtime registry that maps model properties to their physical column names. Source generators populate this at startup, enabling the query translator to redirect `r.Data.PropertyName` queries to physical columns.
 
-```csharp{title="PhysicalFieldRegistry" description="PhysicalFieldRegistry is a runtime registry that maps model properties to their physical column names." category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "PhysicalFieldRegistry"]}
+```csharp{title="PhysicalFieldRegistry" description="PhysicalFieldRegistry is a runtime registry that maps model properties to their physical column names." category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "PhysicalFieldRegistry"] tests=["PhysicalFieldRegistryTests.Register_WithValidParameters_AddsMapping"]}
 // Register a physical field (done by generated code)
 PhysicalFieldRegistry.Register<ProductModel>("Price", "price");
 
@@ -116,7 +116,7 @@ public class PhysicalFieldQueryInterceptor : IQueryExpressionInterceptor {
 
 The `UseWhizbangPhysicalFields()` extension method enables physical field query translation on your DbContext. Call it when configuring your DbContext options.
 
-```csharp{title="UseWhizbangPhysicalFields" description="The UseWhizbangPhysicalFields() extension method enables physical field query translation on your DbContext." category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "UseWhizbangPhysicalFields"]}
+```csharp{title="UseWhizbangPhysicalFields" description="The UseWhizbangPhysicalFields() extension method enables physical field query translation on your DbContext." category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "UseWhizbangPhysicalFields"] unverified="configuration — DbContext options wiring that registers the query interceptor; no unit test covers this call"}
 var optionsBuilder = new DbContextOptionsBuilder<MyDbContext>();
 optionsBuilder
     .UseNpgsql(connectionString)
@@ -129,7 +129,7 @@ This registers the `PhysicalFieldQueryInterceptor` which automatically translate
 
 The `[PerspectiveStorage]` attribute is applied to the **model class** (not the perspective class) to configure how physical fields are stored relative to JSONB. If omitted, the model defaults to `FieldStorageMode.JsonOnly` for backwards compatibility.
 
-```csharp{title="PerspectiveStorageAttribute" description="Configures how physical fields are stored relative to JSONB" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "PerspectiveStorageAttribute"]}
+```csharp{title="PerspectiveStorageAttribute" description="Configures how physical fields are stored relative to JSONB" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "PerspectiveStorageAttribute"] tests=["PerspectiveStorageAttributeTests.PerspectiveStorageAttribute_Constructor_SetsModeAsync", "PerspectiveStorageAttributeTests.PerspectiveStorageAttribute_AttributeUsage_AllowsClassAndStructAsync", "PerspectiveStorageAttributeTests.PerspectiveStorageAttribute_AttributeUsage_DoesNotAllowMultiple_NotInheritedAsync", "PerspectiveStorageAttributeTests.PerspectiveStorageAttribute_IsSealedAsync"]}
 [AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct,
     AllowMultiple = false, Inherited = false)]
 public sealed class PerspectiveStorageAttribute(FieldStorageMode mode) : Attribute {
@@ -153,7 +153,7 @@ public sealed class PerspectiveStorageAttribute(FieldStorageMode mode) : Attribu
 
 ### JsonOnly (Default)
 
-```csharp{title="JsonOnly (Default)" description="JsonOnly (Default)" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "JsonOnly", "Default"]}
+```csharp{title="JsonOnly (Default)" description="JsonOnly (Default)" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "JsonOnly", "Default"] tests=["FieldStorageModeTests.FieldStorageMode_JsonOnly_IsDefaultAsync"]}
 // No attribute needed - this is the default
 public record ProductDto {
     public decimal Price { get; init; }      // Stored in JSONB only
@@ -165,7 +165,7 @@ public record ProductDto {
 
 Physical columns are indexed copies; JSONB still contains the full model. Ideal when you need fast indexed queries but also want full model access via JSONB.
 
-```csharp{title="Extracted Mode" description="Physical columns are indexed copies; JSONB still contains the full model." category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Extracted", "Mode"]}
+```csharp{title="Extracted Mode" description="Physical columns are indexed copies; JSONB still contains the full model." category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Extracted", "Mode"] tests=["PerspectiveStorageAttributeTests.PerspectiveStorageAttribute_Constructor_SetsModeAsync", "PhysicalFieldAttributeTests.PhysicalFieldAttribute_Properties_CanBeSetAsync"]}
 [PerspectiveStorage(FieldStorageMode.Extracted)]
 public record ProductDto {
     [PhysicalField(Indexed = true)]
@@ -179,7 +179,7 @@ public record ProductDto {
 
 Physical columns hold marked fields; JSONB holds only remaining fields. Avoids data duplication but requires reading both sources to reconstruct the model.
 
-```csharp{title="Split Mode" description="Physical columns hold marked fields; JSONB holds only remaining fields." category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Split", "Mode"]}
+```csharp{title="Split Mode" description="Physical columns hold marked fields; JSONB holds only remaining fields." category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Split", "Mode"] tests=["PerspectiveStorageAttributeTests.PerspectiveStorageAttribute_Constructor_SetsModeAsync"]}
 [PerspectiveStorage(FieldStorageMode.Split)]
 public record ProductSearchDto {
     [VectorField(1536)]
@@ -193,7 +193,7 @@ public record ProductSearchDto {
 
 Use the `[PhysicalField]` attribute to mark properties for physical column storage:
 
-```csharp{title="Defining Physical Fields" description="Use the [PhysicalField] attribute to mark properties for physical column storage:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Defining", "Physical"]}
+```csharp{title="Defining Physical Fields" description="Use the [PhysicalField] attribute to mark properties for physical column storage:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Defining", "Physical"] tests=["PhysicalFieldAttributeTests.PhysicalFieldAttribute_Properties_CanBeSetAsync", "PerspectiveStorageAttributeTests.PerspectiveStorageAttribute_Constructor_SetsModeAsync"]}
 [PerspectiveStorage(FieldStorageMode.Extracted)]
 public record ProductDto {
     [StreamId]

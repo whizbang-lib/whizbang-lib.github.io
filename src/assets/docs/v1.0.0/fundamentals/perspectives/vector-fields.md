@@ -42,7 +42,7 @@ Vector fields are a specialized type of physical field designed for storing and 
 
 Use the `[VectorField]` attribute on `float[]` properties:
 
-```csharp{title="Defining Vector Fields" description="Use the [VectorField] attribute on float[] properties:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Defining", "Vector"]}
+```csharp{title="Defining Vector Fields" description="Use the [VectorField] attribute on float[] properties:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Defining", "Vector"] tests=["VectorFieldAttributeTests.VectorFieldAttribute_Constructor_AcceptsValidDimensionsAsync", "VectorFieldAttributeTests.VectorFieldAttribute_Properties_CanBeSetAsync"]}
 [PerspectiveStorage(FieldStorageMode.Split)]
 public record ProductSearchDto {
     [StreamId]
@@ -79,7 +79,7 @@ At commit `1b31f58d`, the generated index DDL honors only `Indexed` and `Dimensi
 
 `VectorIndexType` defines the index algorithm for vector columns. Each type offers different trade-offs between build time, memory usage, and query performance.
 
-```csharp{title="VectorIndexType" description="VectorIndexType defines the index algorithm for vector columns." category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "VectorIndexType"]}
+```csharp{title="VectorIndexType" description="VectorIndexType defines the index algorithm for vector columns." category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "VectorIndexType"] tests=["VectorIndexTypeTests.VectorIndexType_HasThreeValuesAsync", "VectorIndexTypeTests.VectorIndexType_None_HasCorrectIntValueAsync", "VectorIndexTypeTests.VectorIndexType_IVFFlat_HasCorrectIntValueAsync", "VectorIndexTypeTests.VectorIndexType_HNSW_HasCorrectIntValueAsync"]}
 public enum VectorIndexType {
     None = 0,      // No index - exact (sequential) search
     IVFFlat = 1,   // Inverted File Flat - balanced performance
@@ -91,7 +91,7 @@ public enum VectorIndexType {
 
 No index is created; queries perform exact sequential search. Use only for small datasets (under 10,000 rows) or when perfect recall is required.
 
-```csharp{title="None" description="No index is created; queries perform exact sequential search." category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "None"]}
+```csharp{title="None" description="No index is created; queries perform exact sequential search." category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "None"] tests=["VectorIndexTypeTests.VectorIndexType_None_IsDefinedAsync", "VectorFieldAttributeTests.VectorFieldAttribute_Properties_CanBeSetAsync"]}
 [VectorField(1536, IndexType = VectorIndexType.None)]
 public float[]? Embedding { get; init; }
 ```
@@ -100,7 +100,7 @@ public float[]? Embedding { get; init; }
 
 Inverted File Flat index partitions vectors into clusters for faster approximate search. Good balance of build speed and query performance.
 
-```csharp{title="IVFFlat" description="Inverted File Flat index partitions vectors into clusters for faster approximate search." category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "IVFFlat"]}
+```csharp{title="IVFFlat" description="Inverted File Flat index partitions vectors into clusters for faster approximate search." category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "IVFFlat"] tests=["VectorIndexTypeTests.VectorIndexType_IVFFlat_IsDefinedAsync", "VectorFieldAttributeTests.VectorFieldAttribute_Properties_CanBeSetAsync"]}
 [VectorField(1536, IndexType = VectorIndexType.IVFFlat, IndexLists = 100)]
 public float[]? Embedding { get; init; }
 ```
@@ -120,7 +120,7 @@ public float[]? Embedding { get; init; }
 
 Hierarchical Navigable Small World graph provides better recall and query performance at the cost of more memory and slower build time.
 
-```csharp{title="HNSW" description="Hierarchical Navigable Small World graph provides better recall and query performance at the cost of more memory and" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "HNSW"]}
+```csharp{title="HNSW" description="Hierarchical Navigable Small World graph provides better recall and query performance at the cost of more memory and" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "HNSW"] tests=["VectorIndexTypeTests.VectorIndexType_HNSW_IsDefinedAsync", "VectorFieldAttributeTests.VectorFieldAttribute_Properties_CanBeSetAsync"]}
 [VectorField(1536, IndexType = VectorIndexType.HNSW)]
 public float[]? Embedding { get; init; }
 ```
@@ -136,7 +136,7 @@ public float[]? Embedding { get; init; }
 
 `VectorDistanceMetric` defines the similarity measure used for vector comparisons. Each metric corresponds to a PostgreSQL operator for ordering results by similarity.
 
-```csharp{title="VectorDistanceMetric" description="VectorDistanceMetric defines the similarity measure used for vector comparisons." category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "VectorDistanceMetric"]}
+```csharp{title="VectorDistanceMetric" description="VectorDistanceMetric defines the similarity measure used for vector comparisons." category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "VectorDistanceMetric"] tests=["VectorDistanceMetricTests.VectorDistanceMetric_HasThreeValuesAsync", "VectorDistanceMetricTests.VectorDistanceMetric_L2_HasCorrectIntValueAsync", "VectorDistanceMetricTests.VectorDistanceMetric_InnerProduct_HasCorrectIntValueAsync", "VectorDistanceMetricTests.VectorDistanceMetric_Cosine_HasCorrectIntValueAsync"]}
 public enum VectorDistanceMetric {
     L2 = 0,           // Euclidean distance
     InnerProduct = 1, // Negative inner product
@@ -148,7 +148,7 @@ public enum VectorDistanceMetric {
 
 Measures the straight-line distance between vectors. Lower values indicate more similar vectors.
 
-```csharp{title="L2 (Euclidean Distance)" description="Measures the straight-line distance between vectors." category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Euclidean", "Distance"]}
+```csharp{title="L2 (Euclidean Distance)" description="Measures the straight-line distance between vectors." category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Euclidean", "Distance"] tests=["VectorDistanceMetricTests.VectorDistanceMetric_L2_IsDefinedAsync", "VectorFieldAttributeTests.VectorFieldAttribute_Properties_CanBeSetAsync"]}
 [VectorField(1536, DistanceMetric = VectorDistanceMetric.L2)]
 public float[]? Embedding { get; init; }
 ```
@@ -163,7 +163,7 @@ public float[]? Embedding { get; init; }
 
 Measures the dot product between vectors (negated for ordering). Higher original values indicate more similar vectors.
 
-```csharp{title="InnerProduct" description="Measures the dot product between vectors (negated for ordering)." category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "InnerProduct"]}
+```csharp{title="InnerProduct" description="Measures the dot product between vectors (negated for ordering)." category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "InnerProduct"] tests=["VectorDistanceMetricTests.VectorDistanceMetric_InnerProduct_IsDefinedAsync", "VectorFieldAttributeTests.VectorFieldAttribute_Properties_CanBeSetAsync"]}
 [VectorField(1536, DistanceMetric = VectorDistanceMetric.InnerProduct)]
 public float[]? Embedding { get; init; }
 ```
@@ -178,7 +178,7 @@ public float[]? Embedding { get; init; }
 
 Measures the angle between vectors. Lower values indicate more similar vectors (0 = identical, 2 = opposite).
 
-```csharp{title="Cosine (Default)" description="Measures the angle between vectors." category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Cosine", "Default"]}
+```csharp{title="Cosine (Default)" description="Measures the angle between vectors." category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Cosine", "Default"] tests=["VectorDistanceMetricTests.VectorDistanceMetric_Cosine_IsDefinedAsync", "VectorFieldAttributeTests.VectorFieldAttribute_Constructor_HasDefaultValuesAsync"]}
 [VectorField(1536, DistanceMetric = VectorDistanceMetric.Cosine)]
 public float[]? Embedding { get; init; }
 ```
@@ -224,7 +224,7 @@ Vector similarity search is exposed through the `VectorSearchExtensions` LINQ ex
 | `OrderByInnerProductDistance` | `<#>` | Inner product |
 | `WithinCosineDistance` / `WithinL2Distance` | `<=>` / `<->` | Threshold filter |
 
-```csharp{title="Querying Vectors" description="Use the VectorSearchExtensions LINQ API for similarity search:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Querying", "Vectors"]}
+```csharp{title="Querying Vectors" description="Use the VectorSearchExtensions LINQ API for similarity search:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Querying", "Vectors"] tests=["VectorSearchExtensionsTests.OrderByCosineDistance_BuildsValidExpressionTreeAsync"]}
 using Whizbang.Data.EFCore.Postgres;
 
 // Find similar products
@@ -242,7 +242,7 @@ The vector selector targets the **model** (`m => m.ContentEmbedding`, a `float[]
 
 Combine vector search with traditional filters:
 
-```csharp{title="With Filters" description="Combine vector search with traditional filters:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Filters"]}
+```csharp{title="With Filters" description="Combine vector search with traditional filters:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Filters"] tests=["VectorSearchExtensionsTests.WithinCosineDistance_BuildsValidExpressionTreeAsync", "VectorSearchExtensionsTests.OrderByCosineDistance_BuildsValidExpressionTreeAsync"]}
 var results = await productLensQuery.Query
     .Where(r => r.Data.CategoryId == categoryId)
     .Where(r => r.Data.Price <= maxPrice)

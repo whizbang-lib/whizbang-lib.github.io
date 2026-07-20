@@ -35,7 +35,7 @@ The default storage contract is **deliberately permissive** for this case — se
 
 ## How it works
 
-```csharp{title="Opt in"}
+```csharp{title="Opt in" tests=["VersionedApplyTargetTests.StaleEventWrite_OnVersionedTarget_DoesNotRegressTerminalRowAsync", "VersionedApplyTargetTests.NewerEventWrite_OnVersionedTarget_AdvancesRowAsync", "VersionedApplyTargetTests.IdempotentReapply_OnVersionedTarget_DoesNotBumpVersionAsync"]}
 using Whizbang.Core.Perspectives;
 
 public class SagaItemModel : ISagaItem, IVersionedApplyTarget {

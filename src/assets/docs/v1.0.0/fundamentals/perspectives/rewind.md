@@ -147,7 +147,7 @@ This is the v0.688 fix for a slot-3 defect: the original implementation read the
 
 Rewind detection and execution are governed by `PerspectiveRewindOptions`:
 
-```csharp{title="PerspectiveRewindOptions" description="Configuration record for rewind enablement, startup repair mode, concurrency, and the debounce knobs" framework="NET10" category="Configuration" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Rewind", "Configuration"]}
+```csharp{title="PerspectiveRewindOptions" description="Configuration record for rewind enablement, startup repair mode, concurrency, and the debounce knobs" framework="NET10" category="Configuration" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Rewind", "Configuration"] tests=["PerspectiveRewindOptionsTests.Defaults_AllFieldsHaveExpectedValuesAsync", "PerspectiveRewindOptionsTests.RewindStartupMode_HasExpectedValuesAsync"]}
 public class PerspectiveRewindOptions {
   // Master switch for rewind detection and execution.
   // When disabled, out-of-order events are detected but not replayed. Default: true.
