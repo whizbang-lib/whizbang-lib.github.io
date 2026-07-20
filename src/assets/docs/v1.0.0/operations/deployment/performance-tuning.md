@@ -45,7 +45,7 @@ Optimize **Whizbang performance** with zero-allocation patterns, object pooling,
 
 Whizbang's dispatch pipeline is **source-generated**: `Whizbang.Generators` emits a `GeneratedDispatcher` and a `GeneratedReceptorRegistry` whose receptor lookup tables are pre-compiled delegates categorized by message type and lifecycle stage - no reflection, no `MakeGenericType`, no runtime scanning.
 
-```csharp{title="Zero-Allocation Dispatch" description="Source-generated dispatch - no reflection on the hot path" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Zero-Allocation", "Dispatch"]}
+```csharp{title="Zero-Allocation Dispatch" description="Source-generated dispatch - no reflection on the hot path" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Zero-Allocation", "Dispatch"] unverified="DI wiring (AddWhizbangDispatcher/AddReceptors) + illustrative IReceptor shape; no behavior asserted by a mapped test"}
 // Program.cs - the generated extensions wire the zero-reflection pipeline
 services.AddWhizbangDispatcher();  // GeneratedDispatcher + GeneratedReceptorRegistry
 services.AddReceptors();           // explicit registrations for every discovered receptor
@@ -74,7 +74,7 @@ public interface IReceptor<in TMessage> {
 
 Whizbang ships **`PolicyContextPool`** (`Whizbang.Core.Pooling`) - a thread-safe, lock-free pool (max 1024 pooled instances) that reuses `PolicyContext` objects instead of allocating one per message:
 
-```csharp{title="Policy Context Pooling" description="Built-in PolicyContextPool from Whizbang.Core.Pooling" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Policy", "Context"]}
+```csharp{title="Policy Context Pooling" description="Built-in PolicyContextPool from Whizbang.Core.Pooling" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Policy", "Context"] tests=["PolicyContextPoolTests.Rent_ShouldReturnInitializedContextAsync", "PolicyContextPoolTests.RentReturn_ShouldReinitializeContextAsync", "PolicyContextPoolTests.Pool_ShouldCreateNewContext_WhenEmptyAsync", "PolicyContextPoolTests.Pool_ShouldNotExceedMaxSize_WhenReturningManyContextsAsync"]}
 using Whizbang.Core.Pooling;
 
 var context = PolicyContextPool.Rent(message, envelope, services, "production");
@@ -93,7 +93,7 @@ try {
 
 Pool arrays for bulk operations:
 
-```csharp{title="Bulk Processing Pools" description="Pool arrays for bulk operations:" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Bulk", "Processing"]}
+```csharp{title="Bulk Processing Pools" description="Pool arrays for bulk operations:" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Bulk", "Processing"] unverified="user-defined ArrayPool wrapper over System.Buffers.ArrayPool; not a Whizbang API"}
 public static class ArrayPool {
   public static T[] Rent<T>(int minLength) {
     return System.Buffers.ArrayPool<T>.Shared.Rent(minLength);
@@ -107,7 +107,7 @@ public static class ArrayPool {
 
 **Usage**:
 
-```csharp{title="Bulk Processing Pools (2)" description="Bulk Processing Pools" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Bulk", "Processing"]}
+```csharp{title="Bulk Processing Pools (2)" description="Bulk Processing Pools" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Bulk", "Processing"] unverified="illustrative usage of the user-defined pool + app methods (ClaimWorkAsync/ProcessMessagesAsync); not a Whizbang API"}
 var buffer = ArrayPool.Rent<OutboxMessage>(100);
 try {
   var count = await ClaimWorkAsync(buffer);
@@ -125,7 +125,7 @@ try {
 
 You don't write outbox SQL yourself - Whizbang funnels **all** outbox inserts, inbox writes, completions, and failures through a single `process_work_batch` database call per flush. Instead of every message handler making its own DB round-trip, the inbox batch strategy collects messages inside a sliding window and flushes them together. Tune the window via `MessageProcessingOptions`:
 
-```csharp{title="Database Batching" description="MessageProcessingOptions controls process_work_batch batching" category="Configuration" difficulty="ADVANCED" tags=["Operations", "Deployment", "Database", "Batching"]}
+```csharp{title="Database Batching" description="MessageProcessingOptions controls process_work_batch batching" category="Configuration" difficulty="ADVANCED" tags=["Operations", "Deployment", "Database", "Batching"] unverified="MessageProcessingOptions tuning knobs; configuration values, no behavior asserted by a mapped test"}
 // Override defaults before AddTransportConsumer():
 services.AddSingleton(new MessageProcessingOptions {
   MaxConcurrentMessages = 80,   // default 40 - caps concurrent handlers (each holds a DB connection)
@@ -143,7 +143,7 @@ services.AddSingleton(new MessageProcessingOptions {
 
 Transport publishing is also batched by the library. `TransportBatchOptions` controls the sliding window the outbox publisher uses when handing messages to the transport (Azure Service Bus batch sends, RabbitMQ publisher batching):
 
-```csharp{title="Message Publishing Batching" description="TransportBatchOptions controls transport publish batching" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Message", "Publishing"]}
+```csharp{title="Message Publishing Batching" description="TransportBatchOptions controls transport publish batching" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Message", "Publishing"] unverified="TransportBatchOptions tuning knobs; configuration values, no behavior asserted by a mapped test"}
 // Register BEFORE the transport consumer builder - the library uses
 // TryAddSingleton, so your instance wins if registered first.
 services.AddSingleton(new TransportBatchOptions {
@@ -179,7 +179,7 @@ Configure aggressive connection pooling:
 
 Use Dapper with prepared statements:
 
-```csharp{title="Prepared Statements" description="Use Dapper with prepared statements:" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Prepared", "Statements"]}
+```csharp{title="Prepared Statements" description="Use Dapper with prepared statements:" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Prepared", "Statements"] unverified="Dapper query in application code; not a Whizbang API"}
 var orders = await _db.QueryAsync<OrderRow>(
   """
   SELECT * FROM orders
@@ -239,7 +239,7 @@ Benchmark critical paths:
 
 **CreateOrderBenchmark.cs**:
 
-```csharp{title="BenchmarkDotNet" description="**CreateOrderBenchmark." category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "BenchmarkDotNet"]}
+```csharp{title="BenchmarkDotNet" description="**CreateOrderBenchmark." category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "BenchmarkDotNet"] unverified="BenchmarkDotNet harness over a user receptor; not a Whizbang API test"}
 using BenchmarkDotNet.Attributes;
 
 [MemoryDiagnoser]
@@ -293,7 +293,7 @@ dotnet-trace collect --process-id 1234 --profile cpu-sampling
 
 Monitor performance in production:
 
-```csharp{title="Application Insights" description="Monitor performance in production:" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Application", "Insights"]}
+```csharp{title="Application Insights" description="Monitor performance in production:" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Application", "Insights"] unverified="Application Insights / OpenTelemetry DI wiring; third-party configuration"}
 builder.Services.AddApplicationInsightsTelemetry();
 
 builder.Services.AddOpenTelemetryMetrics(metrics => {
@@ -321,7 +321,7 @@ requests
 
 Use structs for small, immutable data:
 
-```csharp{title="Struct Value Types" description="Use structs for small, immutable data:" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Struct", "Value"]}
+```csharp{title="Struct Value Types" description="Use structs for small, immutable data:" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Struct", "Value"] unverified="illustrative struct-vs-class example (incl. anti-pattern); not a Whizbang API"}
 // ✅ GOOD - Struct (stack-allocated)
 public readonly struct MessageId {
   private readonly Guid _value;
@@ -342,7 +342,7 @@ public class MessageId {
 
 Avoid allocations when slicing arrays:
 
-```csharp{title="Span<T> for Slicing" description="Avoid allocations when slicing arrays:" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Span<T>", "Slicing"]}
+```csharp{title="Span<T> for Slicing" description="Avoid allocations when slicing arrays:" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Span<T>", "Slicing"] unverified="general Span<T> slicing idiom (incl. anti-pattern); not a Whizbang API"}
 // ❌ BAD - Allocates new array
 var subset = array.Skip(10).Take(50).ToArray();
 
@@ -354,7 +354,7 @@ var subset = array.AsSpan(10, 50);
 
 Use `ValueTask` for frequently called async methods:
 
-```csharp{title="ValueTask for Hot Paths" description="Use ValueTask for frequently called async methods:" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "ValueTask", "Hot"]}
+```csharp{title="ValueTask for Hot Paths" description="Use ValueTask for frequently called async methods:" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "ValueTask", "Hot"] unverified="illustrative ValueTask hot-path idiom in user code; not a Whizbang API"}
 // ✅ GOOD - ValueTask avoids allocation if completed synchronously
 // (this is why IReceptor.HandleAsync returns ValueTask)
 public ValueTask<OrderCreatedEvent> HandleAsync(
@@ -392,7 +392,7 @@ Inside the perspective worker, per-stream processing is serialized by design (pe
 
 For app-level fan-out (not Whizbang pipeline work), `Parallel.ForEachAsync` with a bounded degree is the standard pattern:
 
-```csharp{title="Parallel Processing" description="Bounded parallel fan-out in application code" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Parallel", "Processing"]}
+```csharp{title="Parallel Processing" description="Bounded parallel fan-out in application code" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Parallel", "Processing"] unverified="app-level Parallel.ForEachAsync fan-out; explicitly not Whizbang pipeline work"}
 await Parallel.ForEachAsync(
   workItems,
   new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount, CancellationToken = ct },
@@ -406,7 +406,7 @@ await Parallel.ForEachAsync(
 
 Use `SemaphoreSlim` for async locking:
 
-```csharp{title="Async Coordination" description="Use SemaphoreSlim for async locking:" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Async", "Coordination"]}
+```csharp{title="Async Coordination" description="Use SemaphoreSlim for async locking:" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Async", "Coordination"] unverified="general SemaphoreSlim async-locking idiom (incl. anti-pattern); not a Whizbang API"}
 // ✅ GOOD - Async-friendly
 private readonly SemaphoreSlim _lock = new(1, 1);
 

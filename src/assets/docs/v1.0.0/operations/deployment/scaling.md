@@ -170,7 +170,7 @@ data:
 
 **PostgreSQL with read replicas**:
 
-```mermaid
+```mermaid{caption="Database read-replica topology — the order service writes to the primary while read queries load-balance across streaming replicas."}
 flowchart TD
     subgraph ReadReplicas["Database Scaling - Read Replicas"]
         Writer["Order Service"]
@@ -189,7 +189,7 @@ flowchart TD
 
 **Connection factory**:
 
-```csharp{title="Read Replicas" description="Connection factory:" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Read", "Replicas"]}
+```csharp{title="Read Replicas" description="Connection factory:" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Read", "Replicas"] unverified="application-level read/write connection factory — not a Whizbang API"}
 public interface IDbConnectionFactory {
   Task<IDbConnection> CreateWriteConnectionAsync(CancellationToken ct = default);
   Task<IDbConnection> CreateReadConnectionAsync(CancellationToken ct = default);
@@ -236,7 +236,7 @@ public class PostgresConnectionFactory : IDbConnectionFactory {
 
 **Usage**:
 
-```csharp{title="Read Replicas (3)" description="Read Replicas" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Read", "Replicas"]}
+```csharp{title="Read Replicas (3)" description="Read Replicas" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Read", "Replicas"] unverified="application read/write routing pattern — not a Whizbang API"}
 // Write operations use primary
 public async ValueTask<OrderCreatedEvent> HandleAsync(CreateOrderCommand command, CancellationToken ct = default) {
   await using var connection = await _dbFactory.CreateWriteConnectionAsync(ct);
@@ -286,7 +286,7 @@ CREATE INDEX idx_orders_2025_02_customer ON orders_2025_02(customer_id);
 
 **Automated partition management**:
 
-```csharp{title="Table Partitioning - PartitionManagementService" description="Automated partition management:" category="Configuration" difficulty="ADVANCED" tags=["Operations", "Deployment", "Table", "Partitioning"]}
+```csharp{title="Table Partitioning - PartitionManagementService" description="Automated partition management:" category="Configuration" difficulty="ADVANCED" tags=["Operations", "Deployment", "Table", "Partitioning"] unverified="application partition-management BackgroundService — not Whizbang library code"}
 public class PartitionManagementService : BackgroundService {
   private readonly IDbConnection _db;
   private readonly ILogger<PartitionManagementService> _logger;
@@ -437,7 +437,7 @@ spec:
 
 **Program.cs**:
 
-```csharp{title="Distributed Cache (Redis)" description="Distributed Cache (Redis)" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Distributed", "Cache"]}
+```csharp{title="Distributed Cache (Redis)" description="Distributed Cache (Redis)" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Distributed", "Cache"] unverified="third-party Redis cache registration — not a Whizbang API"}
 builder.Services.AddStackExchangeRedisCache(options => {
   options.Configuration = builder.Configuration["Redis:ConnectionString"];
   options.InstanceName = "whizbang:";
@@ -446,7 +446,7 @@ builder.Services.AddStackExchangeRedisCache(options => {
 
 **Usage**:
 
-```csharp{title="Distributed Cache (Redis) - GetOrderReceptor" description="Distributed Cache (Redis) - GetOrderReceptor" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Distributed", "Cache"]}
+```csharp{title="Distributed Cache (Redis) - GetOrderReceptor" description="Distributed Cache (Redis) - GetOrderReceptor" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Distributed", "Cache"] unverified="application cache-aside receptor — not Whizbang library behavior"}
 public class GetOrderReceptor : IReceptor<GetOrderQuery, OrderRow?> {
   private readonly IDistributedCache _cache;
   private readonly IDbConnection _db;
@@ -487,7 +487,7 @@ public class GetOrderReceptor : IReceptor<GetOrderQuery, OrderRow?> {
 
 Perspectives are pure `Apply` functions - side effects like cache invalidation belong in a **lifecycle receptor**. `PostPerspectiveInline` fires after the perspective row is committed, so evicting there can never resurrect stale data:
 
-```csharp{title="Cache Invalidation" description="Cache-evicting lifecycle receptor at PostPerspectiveInline" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Cache", "Invalidation"]}
+```csharp{title="Cache Invalidation" description="Cache-evicting lifecycle receptor at PostPerspectiveInline" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Cache", "Invalidation"] unverified="application lifecycle receptor — PostPerspectiveInline stage ordering is covered by the Lifecycle docs, not by scaling tests"}
 [FireAt(LifecycleStage.PostPerspectiveInline)]  // after perspective data is committed
 public sealed class OrderCacheInvalidationReceptor(IDistributedCache cache)
   : IReceptor<OrderCreatedEvent> {
@@ -516,7 +516,7 @@ public sealed class OrderCacheInvalidationReceptor(IDistributedCache cache)
 
 **Connection pool metrics**: Npgsql publishes pool metrics (open/busy/idle connections, pending requests) through its built-in `Npgsql` meter - no custom gauge code required:
 
-```csharp{title="Npgsql Connection Pool - Metrics" description="Subscribe to Npgsql's built-in meter" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Npgsql", "Connection"]}
+```csharp{title="Npgsql Connection Pool - Metrics" description="Subscribe to Npgsql's built-in meter" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Npgsql", "Connection"] unverified="OpenTelemetry/Npgsql meter registration — not a Whizbang API"}
 builder.Services.AddOpenTelemetry()
   .WithMetrics(metrics => {
     metrics
@@ -535,7 +535,7 @@ Size `MaxPoolSize` against `MessageProcessingOptions.MaxConcurrentMessages` - ea
 
 **RateLimitingMiddleware.cs**:
 
-```csharp{title="Distributed Rate Limiting (Redis)" description="**RateLimitingMiddleware." category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Distributed", "Rate"]}
+```csharp{title="Distributed Rate Limiting (Redis)" description="**RateLimitingMiddleware." category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Distributed", "Rate"] unverified="application ASP.NET middleware — not Whizbang library code"}
 public class RateLimitingMiddleware {
   private readonly RequestDelegate _next;
   private readonly IDistributedCache _cache;
