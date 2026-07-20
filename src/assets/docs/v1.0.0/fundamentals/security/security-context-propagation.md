@@ -53,7 +53,7 @@ In distributed systems, security context must flow across multiple hops:
 
 ## Architecture
 
-```mermaid
+```mermaid{caption="End-to-end security context propagation — HTTP middleware establishes the scope, the dispatcher attaches it to the message hop, and on the consumer side the extractor rebuilds it and the provider invokes callbacks before the receptor runs." tests=["MessageHopSecurityExtractorTests.ExtractAsync_WithSecurityContextInHop_ReturnsExtractionAsync", "MessageSecurityContextProviderTests.EstablishContextAsync_WithCallbacks_CallsAllCallbacksAfterContextEstablishedAsync"]}
 flowchart TD
     Request["HTTP Request<br/>(Bearer Token / Cookie)"]
     Middleware["WhizbangScopeMiddleware (HTTP)<br/>• Extracts JWT claims<br/>• Populates IScopeContextAccessor"]
@@ -81,7 +81,7 @@ flowchart TD
 
 The `WhizbangScopeMiddleware` (shipped in `Whizbang.Transports.HotChocolate`) extracts security context from HTTP headers and JWT claims. Register with `AddWhizbangScope()` / `UseWhizbangScope()` and configure via `WhizbangScopeOptions`:
 
-```csharp{title="Step 1: HTTP Request Establishes Context" description="The WhizbangScopeMiddleware extracts security context from HTTP requests:" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Step", "HTTP"]}
+```csharp{title="Step 1: HTTP Request Establishes Context" description="The WhizbangScopeMiddleware extracts security context from HTTP requests:" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Step", "HTTP"] unverified="AddWhizbangScope / WhizbangScopeMiddleware registration lives in the HotChocolate transport, outside these Core security tests"}
 // Program.cs
 builder.Services.AddWhizbangScope(options => {
   options.TenantIdClaimTypes = ["tenant_id"];        // JWT claim(s) for tenant
@@ -194,7 +194,7 @@ await DispatchToReceptorsAsync(envelope, scope.ServiceProvider, cancellationToke
 
 The `MessageHopSecurityExtractor` merges the `ScopeDelta` from every `Current` hop (via `ScopeDelta.ApplyTo`) to rebuild the full scope — roles, permissions, principals, claims, and impersonation info included:
 
-```csharp{title="Step 6: Security Context Extracted from Hops" description="The MessageHopSecurityExtractor merges hop scope deltas into a full extraction:" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "C#", "Step", "Context"]}
+```csharp{title="Step 6: Security Context Extracted from Hops" description="The MessageHopSecurityExtractor merges hop scope deltas into a full extraction:" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "C#", "Step", "Context"] tests=["MessageHopSecurityExtractorTests.Priority_ReturnsDefaultPriority_100Async", "MessageHopSecurityExtractorTests.ExtractAsync_WithSecurityContextInHop_ReturnsExtractionAsync", "MessageHopSecurityExtractorTests.ExtractAsync_WithMultipleHops_MergesRolesFromAllHopsAsync", "MessageHopSecurityExtractorTests.ExtractAsync_WithEmptySecurityContext_ReturnsNullAsync", "MessageHopSecurityExtractorTests.ExtractAsync_WithActualAndEffectivePrincipal_ExtractsPrincipalsAsync"]}
 public sealed partial class MessageHopSecurityExtractor : ISecurityContextExtractor {
   // Extractors run in ascending Priority order (lower runs first).
   public int Priority => 100;
@@ -234,7 +234,7 @@ public sealed partial class MessageHopSecurityExtractor : ISecurityContextExtrac
 
 The `DefaultMessageSecurityContextProvider` establishes the context:
 
-```csharp{title="Step 7: Context Populated and Callbacks Invoked" description="The DefaultMessageSecurityContextProvider establishes the context:" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Step", "Context"]}
+```csharp{title="Step 7: Context Populated and Callbacks Invoked" description="The DefaultMessageSecurityContextProvider establishes the context:" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Step", "Context"] tests=["MessageSecurityContextProviderTests.EstablishContextAsync_ReturnsImmutableScopeContextAsync", "MessageSecurityContextProviderTests.EstablishContextAsync_WithCallbacks_CallsAllCallbacksAfterContextEstablishedAsync", "MessageSecurityContextProviderTests.EstablishContextAsync_EnableAuditLoggingTrue_EmitsAuditEventAsync"]}
 // 1. Extract security (via MessageHopSecurityExtractor)
 var extraction = await extractor.ExtractAsync(envelope, options, ct);
 
@@ -289,7 +289,7 @@ public class CreateOrderReceptor : IReceptor<CreateOrder> {
 
 ### Enable/Disable Globally
 
-```csharp{title="Enable/Disable Globally" description="Enable/Disable Globally" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Enable", "Disable"]}
+```csharp{title="Enable/Disable Globally" description="Enable/Disable Globally" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Enable", "Disable"] tests=["MessageSecurityServiceCollectionExtensionsTests.AddWhizbangMessageSecurity_WithConfiguration_AppliesOptionsAsync", "MessageSecurityOptionsTests.PropagateToOutgoingMessages_Default_IsTrueAsync"]}
 services.AddWhizbangMessageSecurity(options => {
   // Enable/disable propagation globally
   options.PropagateToOutgoingMessages = true; // default
@@ -298,7 +298,7 @@ services.AddWhizbangMessageSecurity(options => {
 
 ### Per-Context Control
 
-```csharp{title="Per-Context Control" description="Per-Context Control" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Per-Context", "Control"]}
+```csharp{title="Per-Context Control" description="Per-Context Control" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Per-Context", "Control"] tests=["ImmutableScopeContextTests.Constructor_WithValidExtraction_CreatesContextAsync", "ImmutableScopeContextTests.Constructor_ShouldPropagateFalse_SetsPropertyAsync"]}
 // Create context with propagation enabled
 var extraction = new SecurityExtraction { /* ... */ };
 var propagate = new ImmutableScopeContext(extraction, shouldPropagate: true);
@@ -311,7 +311,7 @@ var local = new ImmutableScopeContext(extraction, shouldPropagate: false);
 
 For system operations or impersonation, use explicit context:
 
-```csharp{title="Explicit Context Override" description="For system operations or impersonation, use explicit context:" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Explicit", "Context"]}
+```csharp{title="Explicit Context Override" description="For system operations or impersonation, use explicit context:" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Explicit", "Context"] tests=["DispatcherSecurityBuilderTests.AsSystem_SendAsync_SetsContextTypeToSystemAsync", "DispatcherSecurityBuilderTests.AsSystem_SendAsync_SetsEffectivePrincipalToSystemAsync", "DispatcherSecurityBuilderTests.RunAs_SetsContextTypeToImpersonatedAsync", "DispatcherSecurityBuilderTests.RunAs_SendAsync_PreservesActualPrincipalAsync"]}
 // System context (no user) — a tenant strategy is REQUIRED before SendAsync
 await dispatcher.AsSystem().KeepTenant().SendAsync(new MaintenanceCommand());
 // Scope delta on hop: { ContextType = System, EffectivePrincipal = "SYSTEM" }
@@ -362,7 +362,7 @@ Each service adds a new hop to the chain. A hop without an `"sc"` (ScopeDelta) p
 
 Every security context establishment is audited (when `EnableAuditLogging = true`):
 
-```csharp{title="Audit Trail" description="Every security context establishment is audited (when EnableAuditLogging = true):" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Audit", "Trail"]}
+```csharp{title="Audit Trail" description="Every security context establishment is audited (when EnableAuditLogging = true):" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Audit", "Trail"] tests=["MessageSecurityContextProviderTests.EstablishContextAsync_EnableAuditLoggingTrue_EmitsAuditEventAsync"]}
 public sealed record ScopeContextEstablished : ISystemEvent {
   public Guid Id { get; init; } = TrackedGuid.NewMedo();
   public required PerspectiveScope Scope { get; init; }
@@ -387,7 +387,7 @@ This enables:
 
 **Solution**: Use different extractors for internal vs external messages:
 
-```csharp{title="Trust Boundaries" description="Solution: Use different extractors for internal vs external messages:" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Trust", "Boundaries"]}
+```csharp{title="Trust Boundaries" description="Solution: Use different extractors for internal vs external messages:" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Trust", "Boundaries"] tests=["MessageSecurityServiceCollectionExtensionsTests.AddSecurityExtractor_RegistersExtractorAsync", "MessageSecurityServiceCollectionExtensionsTests.AddSecurityExtractor_MultipleExtractors_AllRegisteredAsync", "MessageSecurityContextProviderTests.EstablishContextAsync_MultipleExtractors_CallsInPriorityOrderAsync"]}
 // Internal service-to-service: Trust MessageHop (built-in, Priority 100)
 services.AddSecurityExtractor<MessageHopSecurityExtractor>();
 
@@ -424,7 +424,7 @@ services.AddSecurityExtractor<JwtPayloadExtractor>(); // custom ISecurityContext
 
 For legacy systems with existing `UserContextManager`, use a callback to bridge:
 
-```csharp{title="Integration with UserContextManager" description="For legacy systems with existing UserContextManager, use a callback to bridge:" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Integration", "UserContextManager"]}
+```csharp{title="Integration with UserContextManager" description="For legacy systems with existing UserContextManager, use a callback to bridge:" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Integration", "UserContextManager"] tests=["MessageSecurityServiceCollectionExtensionsTests.AddSecurityContextCallback_RegistersCallbackAsync", "MessageSecurityContextProviderTests.EstablishContextAsync_WithCallbacks_CallsAllCallbacksAfterContextEstablishedAsync"]}
 public class UserContextManagerCallback : ISecurityContextCallback {
   private readonly UserContextManager _userContextManager;
 
