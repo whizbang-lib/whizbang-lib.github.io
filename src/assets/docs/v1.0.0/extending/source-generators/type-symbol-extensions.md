@@ -44,7 +44,7 @@ When a source generator analyzes a type, it often needs access to members declar
 
 Gets all properties from a type and its base types, deduplicated by name. Derived class properties take precedence over base class properties with the same name.
 
-```csharp{title="GetAllProperties" description="Walk the inheritance chain to collect all properties" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "GetAllProperties"]}
+```csharp{title="GetAllProperties" description="Walk the inheritance chain to collect all properties" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "GetAllProperties"] tests=["TypeSymbolExtensionsTests.GetAllProperties_SingleClassNoInheritance_ReturnsAllPublicPropertiesAsync", "TypeSymbolExtensionsTests.GetAllProperties_TwoLevelInheritance_IncludesBaseClassPropertiesAsync"]}
 public static IEnumerable<IPropertySymbol> GetAllProperties(
     this INamedTypeSymbol typeSymbol,
     bool includeNonPublic = false,
@@ -62,7 +62,7 @@ public static IEnumerable<IPropertySymbol> GetAllProperties(
 
 **Example**:
 
-```csharp{title="GetAllProperties Example" description="Collect all public instance properties including inherited ones" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "GetAllProperties", "Example"]}
+```csharp{title="GetAllProperties Example" description="Collect all public instance properties including inherited ones" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "GetAllProperties", "Example"] tests=["TypeSymbolExtensionsTests.GetAllProperties_TwoLevelInheritance_IncludesBaseClassPropertiesAsync", "TypeSymbolExtensionsTests.GetAllProperties_IncludeNonPublic_IncludesAllAccessibilitiesAsync", "TypeSymbolExtensionsTests.GetAllProperties_IncludeStatic_IncludesStaticPropertiesAsync"]}
 // Given this hierarchy:
 // class BaseModel { public Guid Id { get; set; } }
 // class OrderView : BaseModel { public string Status { get; set; } }
@@ -88,14 +88,14 @@ var allWithStatic = typeSymbol.GetAllProperties(includeStatic: true);
 
 Convenience method that returns just the property names as a string array. Calls `GetAllProperties()` internally with default parameters (public, instance, stops at `System.Object`).
 
-```csharp{title="GetAllPublicPropertyNames" description="Get property names as a string array for code generation" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "GetAllPublicPropertyNames"]}
+```csharp{title="GetAllPublicPropertyNames" description="Get property names as a string array for code generation" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "GetAllPublicPropertyNames"] tests=["TypeSymbolExtensionsTests.GetAllPublicPropertyNames_ReturnsStringArrayOfNamesAsync"]}
 public static string[] GetAllPublicPropertyNames(
     this INamedTypeSymbol typeSymbol)
 ```
 
 **Example**:
 
-```csharp{title="GetAllPublicPropertyNames Example" description="Quick access to property names for template generation" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "GetAllPublicPropertyNames", "Example"]}
+```csharp{title="GetAllPublicPropertyNames Example" description="Quick access to property names for template generation" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "GetAllPublicPropertyNames", "Example"] tests=["TypeSymbolExtensionsTests.GetAllPublicPropertyNames_ReturnsStringArrayOfNamesAsync"]}
 var propertyNames = typeSymbol.GetAllPublicPropertyNames();
 // => ["Status", "Id"]
 
@@ -111,7 +111,7 @@ foreach (var name in propertyNames) {
 
 Searches for the first property decorated with a specific attribute, walking from the most derived type up to base classes.
 
-```csharp{title="FindPropertyWithAttribute" description="Find the first property with a given attribute in the hierarchy" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "FindPropertyWithAttribute"]}
+```csharp{title="FindPropertyWithAttribute" description="Find the first property with a given attribute in the hierarchy" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "FindPropertyWithAttribute"] tests=["TypeSymbolExtensionsTests.FindPropertyWithAttribute_DeclaredProperty_FindsPropertyAsync"]}
 public static IPropertySymbol? FindPropertyWithAttribute(
     this INamedTypeSymbol typeSymbol,
     string attributeFullName,
@@ -127,7 +127,7 @@ public static IPropertySymbol? FindPropertyWithAttribute(
 
 **Example**:
 
-```csharp{title="FindPropertyWithAttribute Example" description="Find the property marked with [StreamId] in a type hierarchy" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "FindPropertyWithAttribute", "Example"]}
+```csharp{title="FindPropertyWithAttribute Example" description="Find the property marked with [StreamId] in a type hierarchy" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "FindPropertyWithAttribute", "Example"] tests=["TypeSymbolExtensionsTests.FindPropertyWithAttribute_InheritedProperty_FindsPropertyInBaseClassAsync", "TypeSymbolExtensionsTests.FindPropertyWithAttribute_DeclaredProperty_FindsPropertyAsync"]}
 // Given:
 // class BaseAggregate { [StreamId] public Guid Id { get; set; } }
 // class Order : BaseAggregate { public string Status { get; set; } }
@@ -148,7 +148,7 @@ var streamIdProperty = typeSymbol.FindPropertyWithAttribute(
 
 Gets all ordinary methods from a type and its base types, deduplicated by signature (method name + parameter types). Derived class methods take precedence.
 
-```csharp{title="GetAllMethods" description="Walk the inheritance chain to collect all methods" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "GetAllMethods"]}
+```csharp{title="GetAllMethods" description="Walk the inheritance chain to collect all methods" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "GetAllMethods"] tests=["TypeSymbolExtensionsTests.GetAllMethods_SingleClass_ReturnsAllPublicMethodsAsync"]}
 public static IEnumerable<IMethodSymbol> GetAllMethods(
     this INamedTypeSymbol typeSymbol,
     bool includeNonPublic = false,
@@ -166,7 +166,7 @@ public static IEnumerable<IMethodSymbol> GetAllMethods(
 
 **Example**:
 
-```csharp{title="GetAllMethods Example" description="Collect all ordinary methods including inherited ones" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "GetAllMethods", "Example"]}
+```csharp{title="GetAllMethods Example" description="Collect all ordinary methods including inherited ones" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "GetAllMethods", "Example"] tests=["TypeSymbolExtensionsTests.GetAllMethods_SingleClass_ReturnsAllPublicMethodsAsync", "TypeSymbolExtensionsTests.GetAllMethods_InheritedMethods_IncludesBaseMethodsAsync"]}
 var allMethods = typeSymbol.GetAllMethods();
 
 foreach (var method in allMethods) {
@@ -238,7 +238,7 @@ foreach (var method in applyMethods) {
 
 ### Perspective Property Mapping
 
-```csharp{title="Perspective Property Mapping" description="Use GetAllProperties to generate column mappings for a perspective model" category="Internals" difficulty="ADVANCED" tags=["Extending", "Source-Generators", "Perspective", "Properties"]}
+```csharp{title="Perspective Property Mapping" description="Use GetAllProperties to generate column mappings for a perspective model" category="Internals" difficulty="ADVANCED" tags=["Extending", "Source-Generators", "Perspective", "Properties"] tests=["TypeSymbolExtensionsTests.GetAllProperties_TwoLevelInheritance_IncludesBaseClassPropertiesAsync"]}
 private static void _generateColumnMappings(
     INamedTypeSymbol modelType,
     StringBuilder sb) {
@@ -256,7 +256,7 @@ private static void _generateColumnMappings(
 
 ### Aggregate ID Discovery
 
-```csharp{title="Aggregate ID Discovery" description="Use FindPropertyWithAttribute to locate the stream ID property" category="Internals" difficulty="ADVANCED" tags=["Extending", "Source-Generators", "Aggregate", "StreamId"]}
+```csharp{title="Aggregate ID Discovery" description="Use FindPropertyWithAttribute to locate the stream ID property" category="Internals" difficulty="ADVANCED" tags=["Extending", "Source-Generators", "Aggregate", "StreamId"] tests=["TypeSymbolExtensionsTests.FindPropertyWithAttribute_DeclaredProperty_FindsPropertyAsync", "TypeSymbolExtensionsTests.FindPropertyWithAttribute_InheritedProperty_FindsPropertyInBaseClassAsync"]}
 private static string? _getStreamIdPropertyName(INamedTypeSymbol typeSymbol) {
   var property = typeSymbol.FindPropertyWithAttribute(
       "global::Whizbang.Core.StreamIdAttribute");
@@ -322,7 +322,7 @@ These methods run entirely at compile time within source generators and produce 
 
 ## Testing
 
-```csharp{title="Testing" description="Unit tests verify hierarchy walking and deduplication" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Testing"]}
+```csharp{title="Testing" description="Unit tests verify hierarchy walking and deduplication" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Testing"] tests=["TypeSymbolExtensionsTests.GetAllProperties_TwoLevelInheritance_IncludesBaseClassPropertiesAsync", "TypeSymbolExtensionsTests.GetAllProperties_OverriddenProperty_DerivedTakesPrecedenceAsync"]}
 [Test]
 public async Task GetAllProperties_WithInheritance_IncludesBasePropertiesAsync() {
   var source = @"
