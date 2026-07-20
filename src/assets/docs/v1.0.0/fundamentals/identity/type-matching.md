@@ -260,7 +260,7 @@ public bool ShouldProcess(string messageType, List<MessageFilter> filters) {
 
 TypeMatcher provides a regex overload for advanced pattern matching:
 
-```csharp{title="Regex Overload" description="TypeMatcher provides a regex overload for advanced pattern matching:" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "Regex", "Overload"]}
+```csharp{title="Regex Overload" description="TypeMatcher provides a regex overload for advanced pattern matching:" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "Regex", "Overload"] unverified="regex-overload signature and null/empty handling — no dedicated test covers Matches(null/empty, pattern) or the null-pattern ArgumentNullException"}
 // Method signature
 public static bool Matches(string typeString, Regex pattern);
 
@@ -405,7 +405,7 @@ bool caseInsensitive = TypeMatcher.Matches(
 
 TypeMatcher uses ordinal (binary) comparison for performance and consistency:
 
-```csharp{title="Ordinal Comparison" description="TypeMatcher uses ordinal (binary) comparison for performance and consistency:" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "Ordinal", "Comparison"]}
+```csharp{title="Ordinal Comparison" description="TypeMatcher uses ordinal (binary) comparison for performance and consistency:" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "Ordinal", "Comparison"] unverified="documents ordinal (not culture-sensitive) comparison; the case-sensitive vs case-insensitive behavior is verified on the Case Sensitivity example above, but the culture-insensitivity claim has no dedicated test"}
 // Uses StringComparison.Ordinal (case-sensitive)
 TypeMatcher.Matches(type1, type2, MatchStrictness.Exact);
 

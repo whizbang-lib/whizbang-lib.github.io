@@ -261,7 +261,7 @@ var veryFlexible = MatchStrictness.SimpleName | MatchStrictness.IgnoreCase;
 
 Transformations are applied in a specific order before comparison:
 
-```csharp{title="Order of Operations" description="Transformations are applied in a specific order before comparison:" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Order", "Operations"]}
+```csharp{title="Order of Operations" description="Transformations are applied in a specific order before comparison:" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Order", "Operations"] tests=["TypeMatcherTests.Matches_IgnoreVersion_StripsVersionInfoAsync", "TypeMatcherTests.Matches_IgnoreAssemblyMode_MatchesWithoutAssemblyAsync", "TypeMatcherTests.Matches_IgnoreNamespaceMode_MatchesSimpleNamesAsync", "TypeMatcherTests.Matches_IgnoreCase_CaseInsensitiveAsync"]}
 // Example input
 var type = "MyApp.Events.OrderCreated, MyApp, Version=1.0.0";
 
@@ -391,7 +391,7 @@ bool hasIgnoreCaseAlt = (strictness & MatchStrictness.IgnoreCase) == MatchStrict
 
 ### Adding and Removing Flags
 
-```csharp{title="Adding and Removing Flags" description="Adding and Removing Flags" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Adding", "Removing"]}
+```csharp{title="Adding and Removing Flags" description="Adding and Removing Flags" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Adding", "Removing"] unverified="standard [Flags] enum bitwise add/remove/toggle mechanics — no dedicated test asserts the remove or toggle results"}
 var strictness = MatchStrictness.IgnoreVersion;
 
 // Add a flag

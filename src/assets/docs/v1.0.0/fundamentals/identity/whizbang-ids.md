@@ -817,7 +817,7 @@ var app = builder.Build();
 
 **When**: Using database sequences, tenant-specific IDs, or custom ID generation
 
-```csharp{title="Custom Base Provider" description="When: Using database sequences, tenant-specific IDs, or custom ID generation" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "Custom", "Base"]}
+```csharp{title="Custom Base Provider" description="When: Using database sequences, tenant-specific IDs, or custom ID generation" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "Custom", "Base"] unverified="DI-wiring illustration — user-domain SequenceBasedIdProvider registered after AddWhizbangIdProviders (last-registration-wins); no coverage-map test exercises this register-after pattern"}
 // Custom ID generator — IWhizbangIdProvider.NewGuid() returns TrackedGuid, not Guid.
 // NOTE: generated WhizbangId types validate UUIDv7, so a custom base provider
 // must produce time-ordered (v7-form) GUIDs.
@@ -843,7 +843,7 @@ builder.Services.AddSingleton<IWhizbangIdProvider, SequenceBasedIdProvider>();
 
 **When**: Some IDs need special generation (e.g., CustomerIds from external system)
 
-```csharp{title="Override Specific ID Types" description="When: Some IDs need special generation (e." category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "Override", "Specific"]}
+```csharp{title="Override Specific ID Types" description="When: Some IDs need special generation (e." category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "Override", "Specific"] unverified="DI-wiring illustration — overriding a single typed provider with a user-domain ExternalCustomerIdProvider; no coverage-map test exercises this override"}
 builder.Services.AddWhizbangIdProviders();
 
 // Override CustomerIdProvider
@@ -949,7 +949,7 @@ public class OrderService {
 
 **When**: IDs need tenant prefix or tenant-specific sequences
 
-```csharp{title="Multi-Tenant ID Generation" description="When: IDs need tenant prefix or tenant-specific sequences" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "Multi-Tenant", "Generation"]}
+```csharp{title="Multi-Tenant ID Generation" description="When: IDs need tenant prefix or tenant-specific sequences" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "Multi-Tenant", "Generation"] unverified="custom-implementation illustration — user-domain TenantAwareIdProvider reading tenant context via IHttpContextAccessor; not covered by any coverage-map test"}
 public class TenantAwareIdProvider : IWhizbangIdProvider {
     private readonly IHttpContextAccessor _contextAccessor; // singleton-safe accessor
 
@@ -970,7 +970,7 @@ builder.Services.AddSingleton<IWhizbangIdProvider, TenantAwareIdProvider>();
 
 **When**: Using database-generated sequences for distributed ID generation
 
-```csharp{title="Database Sequence IDs" description="When: Using database-generated sequences for distributed ID generation" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "Database", "Sequence"]}
+```csharp{title="Database Sequence IDs" description="When: Using database-generated sequences for distributed ID generation" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "Database", "Sequence"] unverified="custom-implementation illustration — user-domain PostgresSequenceIdProvider backed by a database sequence; not covered by any coverage-map test"}
 public class PostgresSequenceIdProvider : IWhizbangIdProvider {
     private readonly NpgsqlConnection _connection;
 
@@ -995,7 +995,7 @@ builder.Services.AddSingleton<IWhizbangIdProvider, PostgresSequenceIdProvider>()
 Shipped behavior: `AddWhizbangIdProviders()` registers the base `IWhizbangIdProvider` **and every generated `IWhizbangIdProvider<TId>` as singletons**. Scoped base providers are not supported — a scoped `IWhizbangIdProvider` registration would be captured by the singleton typed providers. If a provider needs per-request data, inject a singleton-safe accessor (e.g. `IHttpContextAccessor`) into a singleton provider, as in the multi-tenant pattern above.
 :::
 
-```csharp{title="Provider Lifetimes" description="All providers registered by AddWhizbangIdProviders are singletons" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "10.", "Lifetimes"]}
+```csharp{title="Provider Lifetimes" description="All providers registered by AddWhizbangIdProviders are singletons" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "10.", "Lifetimes"] unverified="conceptual — singleton-lifetime commentary; no coverage-map test asserts the DI ServiceLifetime of AddWhizbangIdProviders registrations (the singleton-lifetime test covers the separate IWhizbangIdFactory API)"}
 builder.Services.AddWhizbangIdProviders();
 
 // IWhizbangIdProvider        → singleton (the base provider instance)
@@ -1006,7 +1006,7 @@ builder.Services.AddWhizbangIdProviders();
 
 ### Custom Provider Implementation
 
-```csharp{title="Custom Provider Implementation" description="Custom Provider Implementation" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Custom", "Provider"]}
+```csharp{title="Custom Provider Implementation" description="Custom Provider Implementation" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Custom", "Provider"] unverified="custom-implementation illustration — user-domain CustomOrderIdProvider with logging; not covered by any coverage-map test"}
 public class CustomOrderIdProvider : IWhizbangIdProvider<OrderId> {
     private readonly ILogger<CustomOrderIdProvider> _logger;
 
@@ -1027,7 +1027,7 @@ builder.Services.AddSingleton<IWhizbangIdProvider<OrderId>, CustomOrderIdProvide
 
 ### Composite Provider (Multiple Strategies)
 
-```csharp{title="Composite Provider (Multiple Strategies)" description="Composite Provider (Multiple Strategies)" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Composite", "Provider"]}
+```csharp{title="Composite Provider (Multiple Strategies)" description="Composite Provider (Multiple Strategies)" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Composite", "Provider"] unverified="custom-implementation illustration — user-domain composite provider with primary/fallback strategy; not covered by any coverage-map test"}
 public class CompositeIdProvider : IWhizbangIdProvider {
     private readonly IWhizbangIdProvider _primary;
     private readonly IWhizbangIdProvider _fallback;
@@ -1045,7 +1045,7 @@ public class CompositeIdProvider : IWhizbangIdProvider {
 
 ### Logging Wrapper
 
-```csharp{title="Logging Wrapper" description="Logging Wrapper" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Logging", "Wrapper"]}
+```csharp{title="Logging Wrapper" description="Logging Wrapper" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Logging", "Wrapper"] unverified="custom-implementation illustration — user-domain logging decorator over a typed IWhizbangIdProvider; not covered by any coverage-map test"}
 public class LoggingIdProviderWrapper<TId> : IWhizbangIdProvider<TId>
     where TId : struct {
 
@@ -1151,7 +1151,7 @@ services.AddWhizbangIdProviders(new SequentialTestIdProvider());
 
 ### Test with Known IDs
 
-```csharp{title="Test with Known IDs" description="Test with Known IDs" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Test", "Known"]}
+```csharp{title="Test with Known IDs" description="Test with Known IDs" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Test", "Known"] unverified="test-helper illustration — user-domain KnownIdProvider queue that dequeues preset IDs; not itself a coverage-map test"}
 public class KnownIdProvider<TId> : IWhizbangIdProvider<TId>
     where TId : struct {
 
