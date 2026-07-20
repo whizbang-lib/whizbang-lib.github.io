@@ -23,16 +23,21 @@ node src/scripts/coverage-report.mjs --gaps     # only pages with remaining gaps
 - **160 Mermaid diagrams** — 1 migrated to `{caption + tests}`.
 
 ## Progress (updated 2026-07-20)
-- **C# coverage: 2,207 / 2,682 = 82%** (1,157 verified · 1,050 excused · 475 gap).
+- **C# coverage: 2,418 / 2,682 = 90%** (1,162 verified · 1,256 excused · 264 gap).
 - **Mermaid: 62 / 160** carry `caption + tests`.
-- Sections fully swept (verified + excused, honest gaps recorded): `operations/*`
-  (infrastructure, diagnostics, observability, workers, configuration, testing, deployment,
-  dead-letter-queue*), `apis/*` (graphql, rest, mutations, signalr), `extending/*` (attributes,
-  features, internals), `fundamentals/*` (lifecycle, persistence, messaging), `getting-started`,
-  `learn/tutorial`, `learn/examples`. Remaining gap concentrates in the partially-done
-  `fundamentals/*` (perspectives, lenses, events, receptors, security, messages, identity,
-  dispatcher) and `extending/source-generators`, plus a few small unstarted sections
-  (see table). See the git log (`docs(coverage): annotate …`) for per-section commits.
+- Sections fully swept (verified + excused, honest gaps recorded): all of `operations/*`,
+  `apis/*`, `extending/*`, `learn/*`, `getting-started`, and `fundamentals/*` EXCEPT the
+  still-partial sections in the table below. The perspectives, lenses, events, receptors,
+  and source-generators sweeps this cycle drove **78% -> 90%**.
+- Remaining gap (264) concentrates in the partial `fundamentals/*` (security 31, messages 30,
+  identity 22, dispatcher 22), `messaging` (19), `messaging/transports` (17),
+  `operations/diagnostics` (16), `data` (14), and the small unstarted
+  `fundamentals/{sagas 12, offloads 7, workers 5}` + `operations/dead-letter-queue` (11).
+  See the git log (`docs(coverage): annotate …` / `fill … gaps`) for per-section commits.
+- Note on the partial-fill pattern: the remaining sections are heavily *already-green* from
+  prior sessions; the bare fences left over are predominantly consumer/domain illustration,
+  value-object construction covered only by map-absent classes, or genuinely-untested
+  helpers — so expect high excused ratios and a handful of honest "needs test" bare gaps.
 
 ### Recurring ceiling — regenerate `code-tests-map.json`
 The dominant blocker on green ratio is the **staleness of `src/assets/code-tests-map.json`**. Many real,
@@ -71,11 +76,6 @@ is the partially-done `fundamentals/*` sections started by earlier sessions.
 
 | Section | pages | C# | remaining gap | note |
 |---|--:|--:|--:|---|
-| fundamentals/perspectives | 22 | 256 | 71 | partial |
-| fundamentals/lenses | 8 | 106 | 44 | partial |
-| extending/source-generators | 10 | 140 | 38 | partial |
-| fundamentals/events | 8 | 109 | 35 | partial |
-| fundamentals/receptors | 3 | 71 | 34 | partial |
 | fundamentals/security | 9 | 165 | 31 | partial |
 | fundamentals/messages | 9 | 117 | 30 | partial |
 | fundamentals/identity | 7 | 143 | 22 | partial |
@@ -86,9 +86,13 @@ is the partially-done `fundamentals/*` sections started by earlier sessions.
 | data | 13 | 147 | 14 | partial |
 | fundamentals/sagas | 2 | 12 | 12 | **todo — unstarted** |
 | operations/dead-letter-queue | 5 | 11 | 11 | **todo — unstarted** |
+| learn/tutorial | 10 | 78 | 8 | swept — honest residue |
+| operations/configuration | 7 | 47 | 8 | swept — honest residue |
+| operations/workers | 3 | 49 | 7 | swept — honest residue |
+| migration-guide | 9 | 99 | 7 | partial |
 | fundamentals/offloads | 3 | 7 | 7 | **todo — unstarted** |
 | fundamentals/workers | 2 | 5 | 5 | **todo — unstarted** |
-| _(swept sections, small honest residue ≤8)_ | … | … | ≤8 | apis/* (rest, graphql, mutations, signalr), operations/* (configuration, workers, infrastructure, observability, testing, deployment), extending/* (attributes, features, internals, extensibility), fundamentals/* (persistence, messaging, lifecycle), learn/* (tutorial, examples), getting-started, migration-guide |
+| _(swept, small honest residue ≤6)_ | … | … | ≤6 | extending/* (source-generators, attributes, features, internals, extensibility), fundamentals/* (perspectives, lenses, events, receptors, persistence, messaging, lifecycle), apis/* (rest, graphql, mutations, signalr), operations/* (infrastructure, observability, deployment, testing), learn/examples, getting-started |
 
 ## Rollout of enforcement
 `validate-frontmatter.mjs` already hard-fails on Mermaid diagrams missing `caption`/`tests`
