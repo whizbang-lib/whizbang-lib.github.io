@@ -41,7 +41,7 @@ The **Inbox Pattern** ensures exactly-once message processing by storing incomin
 
 ### Naive Approach (BROKEN)
 
-```csharp{title="Naive Approach (BROKEN)" description="Naive Approach (BROKEN)" category="Architecture" difficulty="BEGINNER" tags=["Messaging", "C#", "Naive", "Approach", "BROKEN"]}
+```csharp{title="Naive Approach (BROKEN)" description="Naive Approach (BROKEN)" category="Architecture" difficulty="BEGINNER" tags=["Messaging", "C#", "Naive", "Approach", "BROKEN"] unverified="counter-example — no duplicate detection, processes every message"}
 public async Task ProcessMessageAsync(OrderCreated @event, CancellationToken ct) {
     // ❌ No duplicate detection - processes every message!
 
@@ -63,7 +63,7 @@ public async Task ProcessMessageAsync(OrderCreated @event, CancellationToken ct)
 
 **The Fix**: Record the message ID **before** processing — duplicates are rejected at store time, so a message can never enter the pipeline twice.
 
-```mermaid
+```mermaid{caption="Inbox pipeline — transport arrival, dedup-gated store, lease + stream-FIFO claim, then atomic handler commit."}
 flowchart TD
     S1["1. Message arrives from transport<br/>(unsubscribed messages are discarded at the<br/>receive boundary — no inbox row at all)"]
     S2["2. store_inbox_messages:<br/>INSERT INTO wh_message_deduplication ... ON CONFLICT DO NOTHING<br/><br/>If conflict: SKIP (already seen!) — Exactly-once!<br/>If new: INSERT INTO wh_inbox (same transaction)"]
@@ -173,7 +173,7 @@ You don't write inbox plumbing — the framework workers handle storage, dedupli
 
 ### ReserveInventoryReceptor
 
-```csharp{title="ReserveInventoryReceptor" description="Receptor with business logic — the framework handles the inbox around it" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "InventoryWorker"]}
+```csharp{title="ReserveInventoryReceptor" description="Receptor with business logic — the framework handles the inbox around it" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "InventoryWorker"] unverified="sample receptor business logic — the framework inbox plumbing around it is what's tested, not this body"}
 public class ReserveInventoryReceptor(
     IDispatcher dispatcher,
     ILogger<ReserveInventoryReceptor> logger)
@@ -247,7 +247,7 @@ ORDER BY received_at;
 
 ### How Inbox Ensures Exactly-Once
 
-```mermaid
+```mermaid{caption="Exactly-once via the dedup table — the first insert wins (ROW_COUNT = 1); a duplicate hits ON CONFLICT (ROW_COUNT = 0) and never enters the pipeline."}
 flowchart TD
     M1["Message arrives with MessageId: msg-123"]
     A1["Attempt 1 (Worker A)<br/><br/>1. Dedup insert for msg-123: ROW_COUNT = 1 — First to insert!<br/>2. Inbox row created<br/>3. Handler invoked: SUCCESS<br/>4. Handler commit: SUCCESS"]
@@ -266,7 +266,7 @@ flowchart TD
 
 ### Race Condition Handling
 
-```mermaid
+```mermaid{caption="Concurrent-worker race — both attempt the dedup insert; one wins and processes, the loser's ON CONFLICT DO NOTHING returns zero rows and it skips without error."}
 flowchart TD
     Start["Two workers receive same message simultaneously"]
     WA["Worker A"]
@@ -300,7 +300,7 @@ Even with inbox, **business logic should be idempotent** as a defense-in-depth s
 
 ### Idempotent Update
 
-```csharp{title="Idempotent Update" description="Idempotent Update" category="Architecture" difficulty="BEGINNER" tags=["Messaging", "C#", "Idempotent", "Update"]}
+```csharp{title="Idempotent Update" description="Idempotent Update" category="Architecture" difficulty="BEGINNER" tags=["Messaging", "C#", "Idempotent", "Update"] unverified="user application logic (idempotent SQL) — not framework code"}
 // ✅ Idempotent - safe to run multiple times
 await _db.ExecuteAsync(
     "UPDATE orders SET status = 'Shipped', shipped_at = @ShippedAt WHERE order_id = @OrderId AND status = 'Created'",
@@ -312,7 +312,7 @@ await _db.ExecuteAsync(
 
 ### Non-Idempotent Update (Avoid!)
 
-```csharp{title="Non-Idempotent Update (Avoid!)" description="Non-Idempotent Update (Avoid!)" category="Architecture" difficulty="BEGINNER" tags=["Messaging", "Non-Idempotent", "Update", "Avoid!"]}
+```csharp{title="Non-Idempotent Update (Avoid!)" description="Non-Idempotent Update (Avoid!)" category="Architecture" difficulty="BEGINNER" tags=["Messaging", "Non-Idempotent", "Update", "Avoid!"] unverified="counter-example — non-idempotent update, intentionally wrong"}
 // ❌ Not idempotent - running twice doubles inventory!
 await _db.ExecuteAsync(
     "UPDATE inventory SET reserved = reserved + @Quantity WHERE product_id = @ProductId",
@@ -322,7 +322,7 @@ await _db.ExecuteAsync(
 
 **Fix**: Use inbox to prevent this, OR make logic idempotent:
 
-```csharp{title="Non-Idempotent Update (Avoid!) (2)" description="Fix: Use inbox to prevent this, OR make logic idempotent:" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "Non-Idempotent", "Update", "Avoid!"]}
+```csharp{title="Non-Idempotent Update (Avoid!) (2)" description="Fix: Use inbox to prevent this, OR make logic idempotent:" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "Non-Idempotent", "Update", "Avoid!"] unverified="user application logic — idempotency guard, not framework code"}
 // ✅ Idempotent - check if already reserved
 var alreadyReserved = await _db.QuerySingleAsync<bool>(
     "SELECT EXISTS(SELECT 1 FROM inventory_reservations WHERE order_id = @OrderId AND product_id = @ProductId)",
@@ -373,7 +373,7 @@ await coordinator.ReportFailuresAsync(
 
 When `attempts` exceeds `MessageProcessingOptions.MaxInboxAttempts` (default 10), the row moves to the internal `wh_dead_letters` table with a forensic snapshot, and the SQL function deletes it from `wh_inbox` in the same transaction:
 
-```csharp{title="Dead Letter Queue" description="Dead-letter promotion on max attempts (InboxDispatchWorker)" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Dead", "Letter", "Queue"]}
+```csharp{title="Dead Letter Queue" description="Dead-letter promotion on max attempts (InboxDispatchWorker)" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Dead", "Letter", "Queue"] tests=["InboxDispatchWorkerTests.MaxInboxAttempts_AttemptsOneOverMax_DeadLettersAsync", "InboxDispatchWorkerTests.MaxInboxAttempts_AttemptsEqualToMax_StillProcessesAsync"]}
 // InboxDispatchWorker (automatic):
 if (work.Attempts > _options.MaxInboxAttempts) {
     await _deadLetterStore.MoveAsync(
@@ -421,7 +421,7 @@ if (work.Attempts > _options.MaxInboxAttempts) {
 
 In production, completed rows are **deleted at commit** — pending depth is what you monitor (completed counts live in your logs/metrics, or in debug mode where rows are retained).
 
-```csharp{title="Key Metrics" description="Key Metrics" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Key", "Metrics"]}
+```csharp{title="Key Metrics" description="Key Metrics" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Key", "Metrics"] unverified="user monitoring code — illustrative metrics query, not framework code"}
 public class InboxMetrics {
     public int PendingCount { get; set; }      // Unprocessed, not currently leased
     public int InFlightCount { get; set; }     // Unprocessed, leased by an instance
