@@ -52,7 +52,7 @@ Ensure the type argument to `Query<T>()` or `GetByIdAsync<T>()` is one of the in
 
 ### Before (causes WHIZ400)
 
-```csharp{title="Before (causes WHIZ400)" description="Before (causes WHIZ400)" category="Troubleshooting" difficulty="INTERMEDIATE" tags=["Operations", "Diagnostics", "Before", "Causes"]}
+```csharp{title="Before (causes WHIZ400)" description="Before (causes WHIZ400)" category="Troubleshooting" difficulty="INTERMEDIATE" tags=["Operations", "Diagnostics", "Before", "Causes"] unverified="counter-example — the pattern WHIZ400 flags; detection verified by LensQueryTypeArgumentAnalyzerTests.GetByIdAsync_WithInvalidType_ReportsWHIZ400Async"}
 public class OrderResolver {
   public async Task<ProductDto> GetProduct(
       [Service] ILensQuery<Order, Customer> query, // Only Order and Customer
@@ -67,7 +67,7 @@ public class OrderResolver {
 
 ### Fix Option 1: Use the correct interface
 
-```csharp{title="Fix Option 1: Use the correct interface" description="Fix Option 1: Use the correct interface" category="Troubleshooting" difficulty="INTERMEDIATE" tags=["Operations", "Diagnostics", "Fix", "Option"]}
+```csharp{title="Fix Option 1: Use the correct interface" description="Fix Option 1: Use the correct interface" category="Troubleshooting" difficulty="INTERMEDIATE" tags=["Operations", "Diagnostics", "Fix", "Option"] tests=["LensQueryTypeArgumentAnalyzerTests.ThreeGeneric_Query_WithT3_NoDiagnosticAsync"]}
 public class OrderResolver {
   public async Task<ProductDto> GetProduct(
       [Service] ILensQuery<Order, Customer, Product> query, // Added Product
@@ -82,7 +82,7 @@ public class OrderResolver {
 
 ### Fix Option 2: Use separate single-generic query
 
-```csharp{title="Fix Option 2: Use separate single-generic query" description="Fix Option 2: Use separate single-generic query" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Fix", "Option"]}
+```csharp{title="Fix Option 2: Use separate single-generic query" description="Fix Option 2: Use separate single-generic query" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Fix", "Option"] tests=["LensQueryTypeArgumentAnalyzerTests.SingleGenericILensQuery_NoDiagnosticAsync"]}
 public class OrderResolver {
   public async Task<ProductDto> GetProduct(
       [Service] ILensQuery<Product> productQuery, // Separate query for Product
@@ -96,7 +96,7 @@ public class OrderResolver {
 
 ## Valid Usage Examples
 
-```csharp{title="Valid Usage Examples" description="Valid Usage Examples" category="Troubleshooting" difficulty="INTERMEDIATE" tags=["Operations", "Diagnostics", "Valid", "Usage"]}
+```csharp{title="Valid Usage Examples" description="Valid Usage Examples" category="Troubleshooting" difficulty="INTERMEDIATE" tags=["Operations", "Diagnostics", "Valid", "Usage"] tests=["LensQueryTypeArgumentAnalyzerTests.Query_WithT1_NoDiagnosticAsync", "LensQueryTypeArgumentAnalyzerTests.Query_WithT2_NoDiagnosticAsync", "LensQueryTypeArgumentAnalyzerTests.ThreeGeneric_Query_WithT3_NoDiagnosticAsync", "LensQueryTypeArgumentAnalyzerTests.GetByIdAsync_WithT1_NoDiagnosticAsync"]}
 // ILensQuery<Order, Customer>
 query.Query<Order>();      // OK - T1
 query.Query<Customer>();   // OK - T2
@@ -114,7 +114,7 @@ query.GetByIdAsync<Product>(id);   // OK
 
 In rare cases where you intentionally want to suppress this error (e.g., testing runtime exception behavior), use pragma suppression:
 
-```csharp{title="Suppressing This Diagnostic" description="In rare cases where you intentionally want to suppress this error (e." category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Suppressing", "This"]}
+```csharp{title="Suppressing This Diagnostic" description="In rare cases where you intentionally want to suppress this error (e." category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Suppressing", "This"] unverified="suppression/config — not exercised by a test"}
 #pragma warning disable WHIZ400 // Intentional invalid type for testing
 var result = query.Query<InvalidType>();
 #pragma warning restore WHIZ400

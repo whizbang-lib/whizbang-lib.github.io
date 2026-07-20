@@ -50,7 +50,7 @@ Common reasons to suppress GUID interception:
 
 ### 1. Test Fixtures
 
-```csharp{title="Test Fixtures" description="Test Fixtures" category="Troubleshooting" difficulty="INTERMEDIATE" tags=["Operations", "Diagnostics", "Test", "Fixtures"]}
+```csharp{title="Test Fixtures" description="Test Fixtures" category="Troubleshooting" difficulty="INTERMEDIATE" tags=["Operations", "Diagnostics", "Test", "Fixtures"] unverified="counter-example — the pattern WHIZ059 flags; detection verified by GuidInterceptorGeneratorTests.Generator_SuppressedCall_ReportsWHIZ059DiagnosticAsync"}
 using Whizbang.Core;
 
 [SuppressGuidInterception]
@@ -66,7 +66,7 @@ public static class TestData {
 
 ### 2. Integration with External Systems
 
-```csharp{title="Integration with External Systems" description="Integration with External Systems" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Integration", "External"]}
+```csharp{title="Integration with External Systems" description="Integration with External Systems" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Integration", "External"] unverified="counter-example — the pattern WHIZ059 flags; detection verified by GuidInterceptorGeneratorTests.Generator_SuppressedCall_ReportsWHIZ059DiagnosticAsync"}
 public class ExternalApiClient {
   [SuppressGuidInterception]
   public Guid CreateExternalRequestId() {
@@ -78,7 +78,7 @@ public class ExternalApiClient {
 
 ### 3. Performance-Critical Paths
 
-```csharp{title="Performance-Critical Paths" description="Performance-Critical Paths" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Performance-Critical", "Paths"]}
+```csharp{title="Performance-Critical Paths" description="Performance-Critical Paths" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Performance-Critical", "Paths"] unverified="counter-example — the pattern WHIZ059 flags; detection verified by GuidInterceptorGeneratorTests.Generator_SuppressedCall_ReportsWHIZ059DiagnosticAsync"}
 public class HighThroughputProcessor {
   [SuppressGuidInterception]
   public Guid CreateTransientId() {
@@ -90,7 +90,7 @@ public class HighThroughputProcessor {
 
 ### 4. Legacy Code Migration
 
-```csharp{title="Legacy Code Migration" description="Legacy Code Migration" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Legacy", "Code"]}
+```csharp{title="Legacy Code Migration" description="Legacy Code Migration" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Legacy", "Code"] unverified="counter-example — the pattern WHIZ059 flags; detection verified by GuidInterceptorGeneratorTests.Generator_SuppressedCall_ReportsWHIZ059DiagnosticAsync"}
 [SuppressGuidInterception]
 public class LegacyService {
   // Gradual migration - suppress for now
@@ -104,7 +104,7 @@ The `[SuppressGuidInterception]` attribute can be applied at different scopes:
 
 ### Method Scope
 
-```csharp{title="Method Scope" description="Method Scope" category="Troubleshooting" difficulty="INTERMEDIATE" tags=["Operations", "Diagnostics", "Method", "Scope"]}
+```csharp{title="Method Scope" description="Method Scope" category="Troubleshooting" difficulty="INTERMEDIATE" tags=["Operations", "Diagnostics", "Method", "Scope"] unverified="counter-example — the pattern WHIZ059 flags; detection verified by GuidInterceptorGeneratorTests.Generator_SuppressedCall_ReportsWHIZ059DiagnosticAsync"}
 public class MyService {
   [SuppressGuidInterception]
   public Guid CreateRawGuid() {
@@ -119,7 +119,7 @@ public class MyService {
 
 ### Class Scope
 
-```csharp{title="Class Scope" description="Class Scope" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Class", "Scope"]}
+```csharp{title="Class Scope" description="Class Scope" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Class", "Scope"] unverified="counter-example — the pattern WHIZ059 flags; detection verified by GuidInterceptorGeneratorTests.Generator_SuppressedCall_ReportsWHIZ059DiagnosticAsync"}
 [SuppressGuidInterception]
 public class TestFixtures {
   public Guid Id1 => Guid.NewGuid();  // Suppressed
@@ -129,7 +129,7 @@ public class TestFixtures {
 
 ### Local Function Scope
 
-```csharp{title="Local Function Scope" description="Local Function Scope" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Local", "Function"]}
+```csharp{title="Local Function Scope" description="Local Function Scope" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Local", "Function"] unverified="counter-example — the pattern WHIZ059 flags; detection verified by GuidInterceptorGeneratorTests.Generator_SuppressOnLocalFunction_NoInterceptionAsync"}
 public Guid CreateId() {
   [SuppressGuidInterception]
   static Guid CreateRaw() => Guid.NewGuid();  // Suppressed
@@ -140,7 +140,7 @@ public Guid CreateId() {
 
 ### Assembly Scope
 
-```csharp{title="Assembly Scope" description="Assembly Scope" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Assembly", "Scope"]}
+```csharp{title="Assembly Scope" description="Assembly Scope" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Assembly", "Scope"] unverified="counter-example — the pattern WHIZ059 flags; detection verified by GuidInterceptorGeneratorTests.Generator_AssemblyLevelSuppress_NoInterceptionAsync"}
 // In AssemblyInfo.cs or any file
 [assembly: SuppressGuidInterception]
 // All GUID calls in this assembly are suppressed
@@ -152,7 +152,7 @@ If you don't want to see WHIZ059 diagnostics:
 
 ### Project-Level
 
-```xml{title="Project-Level" description="Project-Level" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Project-Level"]}
+```xml{title="Project-Level" description="Project-Level" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Project-Level"] unverified="suppression/config — NoWarn hides build output, not exercised by a test"}
 <PropertyGroup>
   <NoWarn>$(NoWarn);WHIZ059</NoWarn>
 </PropertyGroup>
@@ -160,7 +160,7 @@ If you don't want to see WHIZ059 diagnostics:
 
 ### Code-Level
 
-```csharp{title="Code-Level" description="Code-Level" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Code-Level"]}
+```csharp{title="Code-Level" description="Code-Level" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Code-Level"] unverified="suppression/config — pragma WHIZ059 hides build output, not exercised by a test"}
 #pragma warning disable WHIZ059
 [SuppressGuidInterception]
 public Guid CreateId() => Guid.NewGuid();

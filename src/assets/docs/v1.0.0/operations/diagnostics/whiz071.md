@@ -56,19 +56,19 @@ Add the `Pgvector` package reference to your project:
 
 ### Using .NET CLI
 
-```bash{title="Using .NET CLI" description="Using .NET CLI" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Using", ".NET"]}
+```bash{title="Using .NET CLI" description="Using .NET CLI" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Using", ".NET"] unverified="install command — not exercised by a test"}
 dotnet add package Pgvector
 ```
 
 ### Using Package Manager Console
 
-```powershell{title="Using Package Manager Console" description="Using Package Manager Console" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Using", "Package"]}
+```powershell{title="Using Package Manager Console" description="Using Package Manager Console" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Using", "Package"] unverified="install command — not exercised by a test"}
 Install-Package Pgvector
 ```
 
 ### Using PackageReference in .csproj
 
-```xml{title="Using PackageReference in .csproj" description="Using PackageReference in .csproj" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Using", "PackageReference"]}
+```xml{title="Using PackageReference in .csproj" description="Using PackageReference in .csproj" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Using", "PackageReference"] unverified="MSBuild package reference — not exercised by a test"}
 <ItemGroup>
   <PackageReference Include="Pgvector" Version="0.3.0" />
 </ItemGroup>
@@ -78,7 +78,7 @@ Install-Package Pgvector
 
 In `Directory.Packages.props`:
 
-```xml{title="Using Central Package Management" description="In `Directory." category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Using", "Central"]}
+```xml{title="Using Central Package Management" description="In `Directory." category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Using", "Central"] unverified="MSBuild package reference — not exercised by a test"}
 <ItemGroup>
   <PackageVersion Include="Pgvector" Version="0.3.0" />
 </ItemGroup>
@@ -86,7 +86,7 @@ In `Directory.Packages.props`:
 
 In your project file:
 
-```xml{title="Using Central Package Management (2)" description="In your project file:" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Using", "Central"]}
+```xml{title="Using Central Package Management (2)" description="In your project file:" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Using", "Central"] unverified="MSBuild package reference — not exercised by a test"}
 <ItemGroup>
   <PackageReference Include="Pgvector" />
 </ItemGroup>
@@ -96,7 +96,7 @@ In your project file:
 
 When using `[VectorField]`, you typically need **both** packages:
 
-```xml{title="Required Packages" description="When using [VectorField], you typically need both packages:" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Required", "Packages"]}
+```xml{title="Required Packages" description="When using [VectorField], you typically need both packages:" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Required", "Packages"] unverified="MSBuild package reference — not exercised by a test"}
 <ItemGroup>
   <!-- Base package for NpgsqlDataSourceBuilder.UseVector() -->
   <PackageReference Include="Pgvector" Version="0.3.0" />
@@ -110,7 +110,7 @@ When using `[VectorField]`, you typically need **both** packages:
 
 ### Before (causes WHIZ071)
 
-```csharp{title="Before (causes WHIZ071)" description="Before (causes WHIZ071)" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Before", "Causes"]}
+```csharp{title="Before (causes WHIZ071)" description="Before (causes WHIZ071)" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Before", "Causes"] unverified="counter-example — the pattern WHIZ071 flags; detection verified by VectorFieldPackageReferenceAnalyzerTests.VectorField_MissingPgvector_ReportsWHIZ071Async"}
 // Missing: <PackageReference Include="Pgvector" />
 
 public record ProductDto {
@@ -130,7 +130,7 @@ public class ProductPerspective : IPerspectiveFor<ProductDto, ProductCreatedEven
 
 ### After (compiles successfully)
 
-```csharp{title="After (compiles successfully)" description="After (compiles successfully)" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "After", "Compiles"]}
+```csharp{title="After (compiles successfully)" description="After (compiles successfully)" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "After", "Compiles"] tests=["VectorFieldPackageReferenceAnalyzerTests.VectorField_WithBothPackages_NoDiagnosticAsync"]}
 // Added: <PackageReference Include="Pgvector" />
 
 public record ProductDto {
@@ -147,13 +147,13 @@ public record ProductDto {
 
 If you intentionally want to use `[VectorField]` without the Pgvector package (e.g., for testing or code generation scenarios), add the assembly-level suppression attribute (defined in `Whizbang.Core.Perspectives`). It disables this analyzer entirely (both WHIZ070 and WHIZ071):
 
-```csharp{title="Suppressing This Diagnostic" description="If you intentionally want to use [VectorField] without the Pgvector package (e." category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Suppressing", "This"]}
+```csharp{title="Suppressing This Diagnostic" description="If you intentionally want to use [VectorField] without the Pgvector package (e." category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Suppressing", "This"] tests=["VectorFieldPackageReferenceAnalyzerTests.VectorField_WithSuppressAttribute_NoDiagnosticAsync"]}
 [assembly: SuppressVectorPackageCheck]
 ```
 
 Pragma suppression does **not** work for this diagnostic — it is reported at compilation end with no source location, which `#pragma warning` regions cannot reach. To suppress it without the attribute, set the severity to `none` in a global analyzer config file:
 
-```ini{title="Suppressing This Diagnostic (2)" description="Project-wide suppression via .globalconfig:" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Suppressing", "This"]}
+```ini{title="Suppressing This Diagnostic (2)" description="Project-wide suppression via .globalconfig:" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Suppressing", "This"] unverified="suppression/config — not exercised by a test"}
 # .globalconfig
 is_global = true
 dotnet_diagnostic.WHIZ071.severity = none
