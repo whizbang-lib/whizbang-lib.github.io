@@ -32,7 +32,7 @@ The **Event Store** is the append-only log of all domain events in your system. 
 
 **Event Sourcing** stores state changes as a sequence of events rather than current state:
 
-```mermaid
+```mermaid{caption="Event sourcing keeps the full event history (OrderCreated → OrderPaid → OrderShipped) rather than only the current-state row that traditional table storage keeps."}
 flowchart RL
     subgraph EventSourcing["Event Sourcing"]
         Stream["Event Stream<br/>OrderCreated<br/>OrderPaid<br/>OrderShipped<br/>(full history)"]
@@ -153,7 +153,7 @@ CREATE TABLE IF NOT EXISTS wh_perspective_cursors (
 
 The simplest way to append events is to pass just the stream ID and event. Whizbang automatically captures tracing context from the `IEnvelopeRegistry`:
 
-```csharp{title="Simple Event Storage (Recommended)" description="The simplest way to append events is to pass just the stream ID and event." category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Event", "Storage", "Recommended"]}
+```csharp{title="Simple Event Storage (Recommended)" description="The simplest way to append events is to pass just the stream ID and event." category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Event", "Storage", "Recommended"] tests=["InMemoryEventStoreTests.AppendAsync_WithMessage_ShouldStoreEventAsync", "InMemoryEventStoreTests.AppendAsync_WithMessage_WhenEnvelopeRegistered_ShouldUseEnvelopeAsync", "InMemoryEventStoreTests.AppendAsync_WithMessage_WhenNoEnvelope_ShouldCreateMinimalEnvelopeAsync", "EFCoreEventStoreTests.AppendAsync_WithRawMessage_CreatesEnvelopeAndAppendsAsync"]}
 public class OrderReceptor(IEventStore eventStore) : IReceptor<CreateOrder, OrderCreated> {
     public async ValueTask<OrderCreated> HandleAsync(
         CreateOrder command,
@@ -182,7 +182,7 @@ If no envelope is found (e.g., in tests without Dispatcher), a minimal envelope 
 
 For advanced scenarios where you need full control over the envelope:
 
-```csharp{title="Full Control with Envelope" description="For advanced scenarios where you need full control over the envelope:" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Full", "Control", "Envelope"]}
+```csharp{title="Full Control with Envelope" description="For advanced scenarios where you need full control over the envelope:" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Full", "Control", "Envelope"] tests=["EFCoreEventStoreTests.AppendAsync_WithValidEnvelope_AppendsEventToStreamAsync"]}
 // Create explicit envelope with custom tracing
 var envelope = new MessageEnvelope<OrderCreated> {
     MessageId = MessageId.New(),
@@ -215,7 +215,7 @@ Entries land in the supplied order. The default implementation loops over `Appen
 
 ### The IEventStore Surface
 
-```csharp{title="The IEventStore Surface" description="Key members of the IEventStore interface:" category="Implementation" difficulty="ADVANCED" tags=["Data", "C#", "IEventStore", "Interface"]}
+```csharp{title="The IEventStore Surface" description="Key members of the IEventStore interface:" category="Implementation" difficulty="ADVANCED" tags=["Data", "C#", "IEventStore", "Interface"] tests=["InMemoryEventStoreTests.AppendAsync_WithMessage_ShouldStoreEventAsync", "EFCoreEventStoreTests.ReadAsync_WithExistingEvents_ReturnsEventsInSequenceOrderAsync", "InMemoryEventStoreTests.ReadPolymorphicAsync_WithMatchingEventType_ShouldReturnEventsAsync", "EFCoreEventStoreTests.GetEventsBetweenPolymorphicAsync_WithMixedEventTypes_ReturnsAllEventsAsync", "EFCoreEventStoreTests.GetLastSequenceAsync_WithExistingEvents_ReturnsHighestSequenceAsync"]}
 public interface IEventStore {
     // Appending
     Task AppendAsync<TMessage>(Guid streamId, MessageEnvelope<TMessage> envelope, CancellationToken ct = default);
@@ -256,7 +256,7 @@ You never pass an expected version. Sequencing and conflict handling are built i
 
 ### Read Full Stream
 
-```csharp{title="Read Full Stream" description="Read Full Stream" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Read", "Full", "Stream"]}
+```csharp{title="Read Full Stream" description="Read Full Stream" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Read", "Full", "Stream"] tests=["EFCoreEventStoreTests.ReadAsync_WithExistingEvents_ReturnsEventsInSequenceOrderAsync"]}
 // Strongly-typed read from the beginning (sequence 0), in order
 await foreach (var envelope in eventStore.ReadAsync<OrderCreated>(orderId, fromSequence: 0, ct)) {
     Console.WriteLine($"{envelope.MessageId}: {envelope.Payload}");
@@ -265,7 +265,7 @@ await foreach (var envelope in eventStore.ReadAsync<OrderCreated>(orderId, fromS
 
 ### Read Stream from a Checkpoint
 
-```csharp{title="Read Stream from a Checkpoint" description="Read Stream from a Checkpoint" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Read", "Stream", "Checkpoint"]}
+```csharp{title="Read Stream from a Checkpoint" description="Read Stream from a Checkpoint" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Read", "Stream", "Checkpoint"] tests=["InMemoryEventStoreTests.ReadAsync_ByEventId_WithSpecificEventId_ShouldReturnEventsAfterItAsync", "EFCoreEventStoreTests.ReadAsync_ByEventId_WithFromEventId_ReturnsEventsAfterIdAsync"]}
 // Events are UUIDv7-ordered - read everything after the last processed event id
 Guid? lastProcessedEventId = /* from your cursor */;
 
@@ -276,7 +276,7 @@ await foreach (var envelope in eventStore.ReadAsync<OrderCreated>(orderId, lastP
 
 ### Read Mixed Event Types (Polymorphic)
 
-```csharp{title="Read Mixed Event Types (Polymorphic)" description="Read Mixed Event Types (Polymorphic)" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Read", "Polymorphic", "Events"]}
+```csharp{title="Read Mixed Event Types (Polymorphic)" description="Read Mixed Event Types (Polymorphic)" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Read", "Polymorphic", "Events"] tests=["InMemoryEventStoreTests.ReadPolymorphicAsync_WithMatchingEventType_ShouldReturnEventsAsync", "EFCoreEventStoreTests.ReadPolymorphicAsync_WithUnknownEventType_SkipsUnknownEventsAsync"]}
 // Deserializes each row to its concrete type via the event_type column.
 // All event types must be listed for AOT compatibility.
 IReadOnlyList<Type> eventTypes = [typeof(OrderCreated), typeof(OrderShipped), typeof(OrderCancelled)];
@@ -291,7 +291,7 @@ await foreach (var envelope in eventStore.ReadPolymorphicAsync(orderId, fromEven
 
 ### Read a Checkpoint Range
 
-```csharp{title="Read a Checkpoint Range" description="Read events between two checkpoints (exclusive start, inclusive end):" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Read", "Range", "Events"]}
+```csharp{title="Read a Checkpoint Range" description="Read events between two checkpoints (exclusive start, inclusive end):" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Read", "Range", "Events"] tests=["EFCoreEventStoreTests.GetEventsBetweenPolymorphicAsync_WithMixedEventTypes_ReturnsAllEventsAsync", "InMemoryEventStoreTests.GetEventsBetweenPolymorphicAsync_WithAfterEventId_ShouldFilterEventsAsync", "EFCoreEventStoreTests.GetEventsBetweenPolymorphicAsync_NullAfterEventId_ReturnsFromStartAsync"]}
 // Used by lifecycle receptors at PostPerspective stages to load exactly
 // the events a perspective just processed.
 var events = await eventStore.GetEventsBetweenPolymorphicAsync(
@@ -374,7 +374,7 @@ CREATE INDEX idx_perspective_snapshots_lookup
 
 Because `event_id` is a UUIDv7, time-based cutoffs map naturally onto event ids. Read the stream and stop at the cutoff:
 
-```csharp{title="Query State at Specific Time" description="Query State at Specific Time" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Query", "State", "Specific"]}
+```csharp{title="Query State at Specific Time" description="Query State at Specific Time" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Query", "State", "Specific"] unverified="application-composed temporal query — the underlying ReadPolymorphicAsync read is verified above; the hop-timestamp cutoff and Apply loop are application logic"}
 public async Task<OrderSummary> GetOrderAsOfAsync(
     IEventStore eventStore,
     Guid orderId,
@@ -420,7 +420,7 @@ First-class event versioning (version attributes, an upcasting registry, and mul
 
 ### Problem: Event Schema Changes
 
-```csharp{title="Problem: Event Schema Changes" description="Problem: Event Schema Changes" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Problem:", "Event", "Schema"]}
+```csharp{title="Problem: Event Schema Changes" description="Problem: Event Schema Changes" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Problem:", "Event", "Schema"] unverified="illustrative event-version record shapes with no behavior to assert — event versioning is a planned framework feature"}
 // Version 1
 public record OrderCreatedV1(
     Guid OrderId,
@@ -439,7 +439,7 @@ public record OrderCreatedV2(
 
 ### Strategy 1: Upcasting
 
-```csharp{title="Strategy 1: Upcasting" description="Strategy 1: Upcasting" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Strategy", "Upcasting"]}
+```csharp{title="Strategy 1: Upcasting" description="Strategy 1: Upcasting" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Strategy", "Upcasting"] unverified="application-level upcasting pattern — event versioning is a planned framework feature, not yet verified by tests"}
 public class EventUpcast {
     public object Upcast(StoredEvent storedEvent) {
         return storedEvent.EventType switch {
@@ -564,7 +564,7 @@ WHERE created_at < NOW() - INTERVAL '1 year';
 
 ### Pattern 1: Event-Sourced Aggregate
 
-```csharp{title="Pattern 1: Event-Sourced Aggregate" description="Pattern 1: Event-Sourced Aggregate" category="Implementation" difficulty="ADVANCED" tags=["Data", "Pattern", "Event-Sourced", "Aggregate"]}
+```csharp{title="Pattern 1: Event-Sourced Aggregate" description="Pattern 1: Event-Sourced Aggregate" category="Implementation" difficulty="ADVANCED" tags=["Data", "Pattern", "Event-Sourced", "Aggregate"] unverified="application-level event-sourced aggregate pattern — not a framework API surface"}
 public class Order {
     public Guid Id { get; private set; }
     public string Status { get; private set; } = "Created";
@@ -610,7 +610,7 @@ public class Order {
 
 ### Pattern 2: Repository with Event Store
 
-```csharp{title="Pattern 2: Repository with Event Store" description="Pattern 2: Repository with Event Store" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Pattern", "Repository", "Event"]}
+```csharp{title="Pattern 2: Repository with Event Store" description="Pattern 2: Repository with Event Store" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Pattern", "Repository", "Event"] unverified="application-level repository pattern composing the verified ReadPolymorphicAsync + AppendAsync APIs"}
 public class OrderRepository(IEventStore eventStore) {
     private static readonly IReadOnlyList<Type> EventTypes =
         [typeof(OrderCreated), typeof(OrderShipped)];
