@@ -237,7 +237,7 @@ For each projection:
 
 ### Namespace Changes
 
-```csharp{title="Namespace Changes" description="Namespace Changes" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-guide", "C#", "Namespace", "Changes"]}
+```csharp{title="Namespace Changes" description="Namespace Changes" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-guide", "C#", "Namespace", "Changes"] unverified="namespace imports — no behavior to assert"}
 // Remove
 using Marten;
 using Marten.Events;
