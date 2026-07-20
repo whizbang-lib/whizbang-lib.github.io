@@ -58,7 +58,7 @@ lastMaintainedCommit: '01f07906'
 
 ### Policy Evaluation Flow
 
-```mermaid
+```mermaid{caption="Message-processing pipeline — rent a PolicyContext from the pool, evaluate policies with MatchAsync, then apply the returned configuration." tests=["PolicyContextPoolTests.Rent_ShouldReturnInitializedContextAsync", "PolicyEngineTests.PolicyEngine_ShouldMatchSinglePolicyAsync"]}
 flowchart TD
     subgraph Processing["Message Processing"]
         Rent["1. Rent PolicyContext from pool<br/>context = PolicyContextPool.Rent(message, ...)"]
@@ -71,7 +71,7 @@ flowchart TD
 
 PolicyEngine Evaluation:
 
-```mermaid
+```mermaid{caption="PolicyEngine evaluation — policies run in registration order and the engine returns on the first match, skipping the remaining policies." tests=["PolicyEngineTests.PolicyEngine_ShouldMatchFirstMatchingPolicyAsync"]}
 flowchart TD
     Match["PolicyEngine.MatchAsync(context)<br/>Policies evaluated in order (first match wins)"]
     Policy1["Policy 1: TenantRouting<br/>Predicate: context.GetMetadata(&quot;tenantId&quot;) == &quot;tenant-a&quot;<br/>Matched: ✅<br/>Configuration: Topic = &quot;tenant-a-events&quot;"]
@@ -102,7 +102,7 @@ PolicyDecisionTrail (Observability) - `context.Trail.Decisions`:
 
 **Registration** — the engine is a plain class with a parameterless constructor; register it (typically as a singleton) and add policies imperatively:
 
-```csharp{title="Register PolicyEngine and add policies" description="Constructs a PolicyEngine and adds two named policies; policies evaluate in registration order and the first match wins." category="Configuration" difficulty="BEGINNER" tags=["policy-engine", "add-policy", "registration", "routing"]}
+```csharp{title="Register PolicyEngine and add policies" description="Constructs a PolicyEngine and adds two named policies; policies evaluate in registration order and the first match wins." category="Configuration" difficulty="BEGINNER" tags=["policy-engine", "add-policy", "registration", "routing"] tests=["PolicyEngineTests.PolicyEngine_ShouldMatchSinglePolicyAsync", "PolicyEngineTests.PolicyEngine_ShouldMatchFirstMatchingPolicyAsync"]}
 var policyEngine = new PolicyEngine();
 
 // Add policies (evaluated in the order they are added)
@@ -141,7 +141,7 @@ var config = await policyEngine.MatchAsync(context);
 **Purpose**: Universal context with message, envelope, services, environment, and the decision trail.
 
 **Properties**:
-```csharp{title="PolicyContext properties" description="Read-only surface exposed to predicates and configure delegates: the message, its runtime type, envelope, DI services, environment name, execution time, and the decision trail." category="API" difficulty="INTERMEDIATE" tags=["policy-context", "message", "envelope", "environment"]}
+```csharp{title="PolicyContext properties" description="Read-only surface exposed to predicates and configure delegates: the message, its runtime type, envelope, DI services, environment name, execution time, and the decision trail." category="API" difficulty="INTERMEDIATE" tags=["policy-context", "message", "envelope", "environment"] tests=["PolicyContextTests.Constructor_InitializesWithMessage_SetsMessageAndMessageTypeAsync", "PolicyContextTests.Constructor_WithEnvelope_SetsEnvelopeAsync", "PolicyContextTests.Constructor_WithServiceProvider_SetsServicesAsync", "PolicyContextTests.Constructor_WithEnvironment_SetsEnvironmentAsync", "PolicyContextTests.Constructor_SetsExecutionTime_ToApproximatelyNowAsync", "PolicyContextTests.Constructor_InitializesTrail_CreatesEmptyDecisionTrailAsync"]}
 public class PolicyContext {
   public object Message { get; }               // The message being processed
   public Type MessageType { get; }             // Runtime type of the message
@@ -156,7 +156,7 @@ public class PolicyContext {
 The public constructor is `PolicyContext(object message, IMessageEnvelope? envelope = null, IServiceProvider? services = null, string environment = "development")`. The **first** positional argument is the message (not the envelope), and `Environment` defaults to the lowercase string `"development"` — match on that exact casing in predicates.
 
 **Helper Methods**:
-```csharp{title="PolicyContext helper methods" description="Service resolution, metadata/tag/flag checks, aggregate-type matching, and stream-id extraction available inside predicates." category="API" difficulty="INTERMEDIATE" tags=["policy-context", "helpers", "metadata", "aggregate-id"]}
+```csharp{title="PolicyContext helper methods" description="Service resolution, metadata/tag/flag checks, aggregate-type matching, and stream-id extraction available inside predicates." category="API" difficulty="INTERMEDIATE" tags=["policy-context", "helpers", "metadata", "aggregate-id"] tests=["PolicyContextTests.GetService_ReturnsService_WhenServiceProviderSetAsync", "PolicyContextTests.GetMetadata_ReturnsValue_WhenKeyExistsAsync", "PolicyContextTests.HasTag_ReturnsTrue_WhenTagExistsInMetadataAsync", "PolicyContextTests.HasFlag_ReturnsTrue_WhenFlagIsSetAsync", "PolicyContextTests.MatchesAggregate_ReturnsTrue_WhenMessageIsForSpecifiedAggregateTypeAsync", "PolicyContextTests.GetAggregateId_WithStreamIdAttribute_ReturnsExtractedIdAsync"]}
 // Service resolution (throws if Services is null or the service isn't registered)
 var repository = context.GetService<IOrderRepository>();
 
@@ -186,7 +186,7 @@ Notes on the helpers:
 - `GetAggregateId()` returns a `Guid` and requires all of: a configured `IServiceProvider`, a registered `IStreamIdExtractor`, and a `[StreamId]`-marked `Guid` property on the message.
 
 **Pooling** — `PolicyContext` is designed to be reused to minimize allocations. Rent from the static pool and always return it:
-```csharp{title="Rent and return a pooled PolicyContext" description="Uses PolicyContextPool to reuse context instances; Return resets the context and re-pools it (or lets it be collected when the pool is full)." category="Configuration" difficulty="INTERMEDIATE" tags=["object-pool", "policy-context", "allocations", "rent-return"]}
+```csharp{title="Rent and return a pooled PolicyContext" description="Uses PolicyContextPool to reuse context instances; Return resets the context and re-pools it (or lets it be collected when the pool is full)." category="Configuration" difficulty="INTERMEDIATE" tags=["object-pool", "policy-context", "allocations", "rent-return"] tests=["PolicyContextPoolTests.Rent_ShouldReturnInitializedContextAsync", "PolicyContextPoolTests.Return_WithNullContext_ShouldNotThrowAsync", "PolicyContextPoolTests.RentReturn_ShouldReinitializeContextAsync"]}
 // Rent from the pool (creates a new instance only when the pool is empty)
 var context = PolicyContextPool.Rent(message, envelope, services, "production");
 
@@ -204,7 +204,7 @@ try {
 **Purpose**: Records every policy decision for debugging and time-travel.
 
 **Usage**:
-```csharp{title="Inspect the policy decision trail" description="MatchAsync records one PolicyDecision per evaluated policy; query matched/unmatched rules or enumerate the full trail for diagnostics." category="Observability" difficulty="INTERMEDIATE" tags=["decision-trail", "observability", "debugging", "audit"]}
+```csharp{title="Inspect the policy decision trail" description="MatchAsync records one PolicyDecision per evaluated policy; query matched/unmatched rules or enumerate the full trail for diagnostics." category="Observability" difficulty="INTERMEDIATE" tags=["decision-trail", "observability", "debugging", "audit"] tests=["PolicyEngineTests.PolicyEngine_ShouldRecordDecisionInTrailAsync", "PolicyDecisionTrailTests.GetMatchedRules_ReturnsOnlyMatchedDecisionsAsync", "PolicyDecisionTrailTests.GetUnmatchedRules_ReturnsOnlyUnmatchedDecisionsAsync"]}
 // PolicyEngine records a decision for every policy it evaluates.
 var config = await policyEngine.MatchAsync(context);
 
@@ -229,7 +229,7 @@ Each `PolicyDecision` carries `PolicyName`, `Rule`, `Matched`, `Configuration`, 
 **Purpose**: Routing and execution configuration returned by the matched policy.
 
 **Properties**:
-```csharp{title="PolicyConfiguration properties" description="The configuration surface a matched policy produces: transport targets, topic/stream identity, execution strategy, partitioning, concurrency, and persistence-size limits." category="API" difficulty="INTERMEDIATE" tags=["policy-configuration", "topic", "stream-id", "execution-strategy"]}
+```csharp{title="PolicyConfiguration properties" description="The configuration surface a matched policy produces: transport targets, topic/stream identity, execution strategy, partitioning, concurrency, and persistence-size limits." category="API" difficulty="INTERMEDIATE" tags=["policy-configuration", "topic", "stream-id", "execution-strategy"] tests=["PolicyConfigurationExtensionsTests.UseTopic_ShouldSetTopicAsync", "PolicyConfigurationExtensionsTests.UseStreamId_ShouldSetStreamIdAsync", "PolicyConfigurationExtensionsTests.UseExecutionStrategy_ShouldSetExecutionStrategyTypeAsync", "PolicyConfigurationExtensionsTests.UsePartitionRouter_ShouldSetPartitionRouterTypeAsync", "PolicyConfigurationExtensionsTests.UseSequenceProvider_ShouldSetSequenceProviderTypeAsync", "PolicyConfigurationExtensionsTests.WithPartitions_ShouldSetPartitionCountAsync", "PolicyConfigurationExtensionsTests.WithConcurrency_ShouldSetMaxConcurrencyAsync", "PolicyConfigurationTransportTests.PolicyConfiguration_PublishToKafka_ShouldAddPublishTargetAsync", "PolicyConfigurationTransportTests.PolicyConfiguration_SubscribeFromKafka_ShouldAddSubscriptionTargetAsync"]}
 public class PolicyConfiguration {
   // Publishing (outbound) and subscribing (inbound) transport targets
   public List<PublishTarget> PublishTargets { get; }
@@ -255,7 +255,7 @@ public class PolicyConfiguration {
 
 **Fluent API** — the `configure` delegate receives a `PolicyConfiguration` (not the context), so every setter takes a constant value. Per-message stream derivation (e.g. building a stream key from an aggregate ID at evaluation time) is **not** available inside `configure` today; `UseStreamId` takes a fixed string.
 
-```csharp{title="Configure routing, execution, and persistence" description="Chains the verified fluent setters: logical topic, constant stream id, execution strategy, partition router, sequence provider, partition/concurrency counts, and a persistence-size guard." category="Configuration" difficulty="BEGINNER" tags=["fluent-api", "use-topic", "use-stream-id", "persistence-size"]}
+```csharp{title="Configure routing, execution, and persistence" description="Chains the verified fluent setters: logical topic, constant stream id, execution strategy, partition router, sequence provider, partition/concurrency counts, and a persistence-size guard." category="Configuration" difficulty="BEGINNER" tags=["fluent-api", "use-topic", "use-stream-id", "persistence-size"] tests=["PolicyConfigurationExtensionsTests.PolicyConfiguration_ShouldSupportMethodChainingAsync", "PolicyConfigurationExtensionsTests.PolicyConfiguration_ShouldSupportComplexChainingAsync", "PolicyEngineTests.PolicyConfiguration_ShouldSupportExecutionStrategyAsync", "PolicyEngineTests.PolicyConfiguration_ShouldSupportPartitionRouterAsync", "PolicyEngineTests.PolicyConfiguration_ShouldSupportSequenceProviderAsync"]}
 configure: config => config
   .UseTopic("order-events")
   .UseStreamId("order-stream")
@@ -275,7 +275,7 @@ configure: config => config
 
 **Transport targets** — beyond the logical `Topic`, `PolicyConfiguration` can add concrete publish and subscribe targets per transport:
 
-```csharp{title="Add transport publish and subscribe targets" description="Appends per-transport publish (outbound) and subscribe (inbound) targets across Kafka, Azure Service Bus, and RabbitMQ; each call adds one PublishTarget/SubscriptionTarget." category="Configuration" difficulty="INTERMEDIATE" tags=["transports", "kafka", "service-bus", "rabbitmq"]}
+```csharp{title="Add transport publish and subscribe targets" description="Appends per-transport publish (outbound) and subscribe (inbound) targets across Kafka, Azure Service Bus, and RabbitMQ; each call adds one PublishTarget/SubscriptionTarget." category="Configuration" difficulty="INTERMEDIATE" tags=["transports", "kafka", "service-bus", "rabbitmq"] tests=["PolicyConfigurationTransportTests.PolicyConfiguration_PublishToKafka_ShouldAddPublishTargetAsync", "PolicyConfigurationTransportTests.PolicyConfiguration_PublishToServiceBus_ShouldAddPublishTargetAsync", "PolicyConfigurationTransportTests.PolicyConfiguration_PublishToRabbitMQ_ShouldAddPublishTargetAsync", "PolicyConfigurationTransportTests.PolicyConfiguration_SubscribeFromKafka_ShouldAddSubscriptionTargetAsync", "PolicyConfigurationTransportTests.PolicyConfiguration_SubscribeFromServiceBus_ShouldAddSubscriptionTargetAsync", "PolicyConfigurationTransportTests.PolicyConfiguration_SubscribeFromRabbitMQ_ShouldAddSubscriptionTargetAsync"]}
 configure: config => config
   // Publishing (outbound)
   .PublishToKafka("orders")
@@ -293,7 +293,7 @@ configure: config => config
 
 ### 1. Multi-Tenant Routing
 
-```csharp{title="Multi-tenant routing by tenant metadata" description="Routes messages to per-tenant Service Bus topics and stream ids based on the tenantId metadata value, with a fallback policy for unknown tenants." category="Configuration" difficulty="INTERMEDIATE" tags=["multi-tenancy", "routing", "metadata", "fallback"]}
+```csharp{title="Multi-tenant routing by tenant metadata" description="Routes messages to per-tenant Service Bus topics and stream ids based on the tenantId metadata value, with a fallback policy for unknown tenants." category="Configuration" difficulty="INTERMEDIATE" tags=["multi-tenancy", "routing", "metadata", "fallback"] tests=["PolicyEngineTests.PolicyEngine_ShouldMatchFirstMatchingPolicyAsync", "PolicyContextTests.GetMetadata_ReturnsValue_WhenKeyExistsAsync", "PolicyConfigurationTransportTests.PolicyConfiguration_PublishToServiceBus_ShouldAddPublishTargetAsync"]}
 policyEngine.AddPolicy(
   name: "TenantARouting",
   predicate: context =>
@@ -325,7 +325,7 @@ policyEngine.AddPolicy(
 
 Match on `context.Environment`, which defaults to the lowercase `"development"`:
 
-```csharp{title="Environment-based routing" description="Selects topic and concurrency per environment by matching the lowercase Environment value (development/staging/production)." category="Configuration" difficulty="INTERMEDIATE" tags=["environment", "routing", "concurrency", "staging-production"]}
+```csharp{title="Environment-based routing" description="Selects topic and concurrency per environment by matching the lowercase Environment value (development/staging/production)." category="Configuration" difficulty="INTERMEDIATE" tags=["environment", "routing", "concurrency", "staging-production"] tests=["PolicyContextTests.Constructor_WithEnvironment_SetsEnvironmentAsync", "PolicyConfigurationExtensionsTests.WithConcurrency_ShouldSetMaxConcurrencyAsync", "PolicyConfigurationTransportTests.PolicyConfiguration_PublishToServiceBus_ShouldAddPublishTargetAsync"]}
 policyEngine.AddPolicy(
   name: "ProductionRouting",
   predicate: context => context.Environment == "production",
@@ -355,7 +355,7 @@ policyEngine.AddPolicy(
 
 Match on the aggregate type via the naming convention, then set a stream id and partitioning:
 
-```csharp{title="Aggregate-based routing and partitioning" description="Uses MatchesAggregate<T>() to route each aggregate type to its own stream id and partition count via the hash partition router." category="Configuration" difficulty="INTERMEDIATE" tags=["aggregate", "partitioning", "hash-router", "stream-id"]}
+```csharp{title="Aggregate-based routing and partitioning" description="Uses MatchesAggregate<T>() to route each aggregate type to its own stream id and partition count via the hash partition router." category="Configuration" difficulty="INTERMEDIATE" tags=["aggregate", "partitioning", "hash-router", "stream-id"] tests=["PolicyContextTests.MatchesAggregate_ReturnsTrue_WhenMessageIsForSpecifiedAggregateTypeAsync", "PolicyEngineTests.PolicyConfiguration_ShouldSupportPartitionRouterAsync", "PolicyConfigurationExtensionsTests.WithPartitions_ShouldSetPartitionCountAsync"]}
 policyEngine.AddPolicy(
   name: "OrderPartitioning",
   predicate: context => context.MatchesAggregate<Order>(),
@@ -377,7 +377,7 @@ policyEngine.AddPolicy(
 
 ### 4. Message Type-Based Execution
 
-```csharp{title="Execution strategy by message type" description="Chooses parallel vs serial execution by inspecting the message type name — parallel for bulk imports, serial for order commands." category="Configuration" difficulty="INTERMEDIATE" tags=["execution-strategy", "message-type", "parallel", "serial"]}
+```csharp{title="Execution strategy by message type" description="Chooses parallel vs serial execution by inspecting the message type name — parallel for bulk imports, serial for order commands." category="Configuration" difficulty="INTERMEDIATE" tags=["execution-strategy", "message-type", "parallel", "serial"] tests=["PolicyContextTests.Constructor_InitializesWithMessage_SetsMessageAndMessageTypeAsync", "PolicyEngineTests.PolicyConfiguration_ShouldSupportExecutionStrategyAsync", "PolicyConfigurationExtensionsTests.WithConcurrency_ShouldSetMaxConcurrencyAsync"]}
 policyEngine.AddPolicy(
   name: "BulkImportExecutionStrategy",
   predicate: context => context.MessageType.Name.Contains("BulkImport"),
@@ -396,7 +396,7 @@ policyEngine.AddPolicy(
 
 ### 5. Tag-Based Routing
 
-```csharp{title="Tag-based routing" description="Routes by envelope tags via HasTag — a high-priority tag to a priority topic, an archival tag to a low-concurrency archive topic." category="Configuration" difficulty="INTERMEDIATE" tags=["tags", "routing", "priority", "archival"]}
+```csharp{title="Tag-based routing" description="Routes by envelope tags via HasTag — a high-priority tag to a priority topic, an archival tag to a low-concurrency archive topic." category="Configuration" difficulty="INTERMEDIATE" tags=["tags", "routing", "priority", "archival"] tests=["PolicyContextTests.HasTag_ReturnsTrue_WhenTagExistsInMetadataAsync", "PolicyConfigurationTransportTests.PolicyConfiguration_PublishToServiceBus_ShouldAddPublishTargetAsync", "PolicyConfigurationExtensionsTests.WithConcurrency_ShouldSetMaxConcurrencyAsync"]}
 policyEngine.AddPolicy(
   name: "HighPriorityRouting",
   predicate: context => context.HasTag("high-priority"),
@@ -420,7 +420,7 @@ policyEngine.AddPolicy(
 
 ### Composite Policies
 
-```csharp{title="Composite predicate combining conditions" description="A single policy whose predicate ANDs aggregate type, a metadata amount threshold, and environment to route high-value production orders serially." category="Configuration" difficulty="INTERMEDIATE" tags=["composite", "predicate", "high-value", "serial"]}
+```csharp{title="Composite predicate combining conditions" description="A single policy whose predicate ANDs aggregate type, a metadata amount threshold, and environment to route high-value production orders serially." category="Configuration" difficulty="INTERMEDIATE" tags=["composite", "predicate", "high-value", "serial"] tests=["PolicyContextTests.MatchesAggregate_ReturnsTrue_WhenMessageIsForSpecifiedAggregateTypeAsync", "PolicyContextTests.GetMetadata_ReturnsValue_WhenKeyExistsAsync", "PolicyContextTests.Constructor_WithEnvironment_SetsEnvironmentAsync"]}
 policyEngine.AddPolicy(
   name: "HighValueOrderRouting",
   predicate: context => {
@@ -439,7 +439,7 @@ policyEngine.AddPolicy(
 
 ### Service-Injected Policies
 
-```csharp{title="Resolve a service inside a predicate" description="Uses context.GetService<T>() to consult a feature-flag service from the DI container before deciding whether the policy matches." category="Configuration" difficulty="INTERMEDIATE" tags=["dependency-injection", "feature-flags", "predicate", "get-service"]}
+```csharp{title="Resolve a service inside a predicate" description="Uses context.GetService<T>() to consult a feature-flag service from the DI container before deciding whether the policy matches." category="Configuration" difficulty="INTERMEDIATE" tags=["dependency-injection", "feature-flags", "predicate", "get-service"] tests=["PolicyContextTests.GetService_ReturnsService_WhenServiceProviderSetAsync", "PolicyConfigurationTransportTests.PolicyConfiguration_PublishToServiceBus_ShouldAddPublishTargetAsync"]}
 policyEngine.AddPolicy(
   name: "FeatureFlagRouting",
   predicate: context => {
@@ -454,7 +454,7 @@ policyEngine.AddPolicy(
 
 ### Time-Based Policies
 
-```csharp{title="Time-based routing on ExecutionTime" description="Branches concurrency on the hour of context.ExecutionTime to give peak-hours traffic more concurrency and off-hours traffic less." category="Configuration" difficulty="INTERMEDIATE" tags=["time-based", "execution-time", "concurrency", "peak-hours"]}
+```csharp{title="Time-based routing on ExecutionTime" description="Branches concurrency on the hour of context.ExecutionTime to give peak-hours traffic more concurrency and off-hours traffic less." category="Configuration" difficulty="INTERMEDIATE" tags=["time-based", "execution-time", "concurrency", "peak-hours"] tests=["PolicyContextTests.Constructor_SetsExecutionTime_ToApproximatelyNowAsync", "PolicyConfigurationExtensionsTests.WithConcurrency_ShouldSetMaxConcurrencyAsync"]}
 policyEngine.AddPolicy(
   name: "PeakHoursRouting",
   predicate: context => {
@@ -479,7 +479,7 @@ policyEngine.AddPolicy(
 
 ### Unit Testing Predicates
 
-```csharp{title="Unit test a tenant predicate and its publish target" description="Builds a PolicyContext with tenant metadata, adds one policy, and asserts MatchAsync returns a configuration whose PublishTargets destination is the tenant topic." category="Configuration" difficulty="INTERMEDIATE" tags=["testing", "predicate", "publish-target", "match-async"]}
+```csharp{title="Unit test a tenant predicate and its publish target" description="Builds a PolicyContext with tenant metadata, adds one policy, and asserts MatchAsync returns a configuration whose PublishTargets destination is the tenant topic." category="Configuration" difficulty="INTERMEDIATE" tags=["testing", "predicate", "publish-target", "match-async"] tests=["PolicyEngineTests.PolicyEngine_ShouldMatchSinglePolicyAsync", "PolicyConfigurationTransportTests.PolicyConfiguration_PublishToServiceBus_ShouldAddPublishTargetAsync"]}
 [Test]
 public async Task TenantARouting_WithTenantA_MatchesAsync() {
   // Arrange
@@ -511,7 +511,7 @@ public async Task TenantARouting_WithTenantA_MatchesAsync() {
 
 ### Testing Topic and Stream Id
 
-```csharp{title="Assert Topic and StreamId on the matched configuration" description="Adds a policy that sets a topic and a constant stream id, then asserts config.Topic and config.StreamId on the returned PolicyConfiguration." category="Configuration" difficulty="INTERMEDIATE" tags=["testing", "topic", "stream-id", "configuration"]}
+```csharp{title="Assert Topic and StreamId on the matched configuration" description="Adds a policy that sets a topic and a constant stream id, then asserts config.Topic and config.StreamId on the returned PolicyConfiguration." category="Configuration" difficulty="INTERMEDIATE" tags=["testing", "topic", "stream-id", "configuration"] tests=["PolicyEngineTests.PolicyConfiguration_ShouldSupportTopicAsync", "PolicyEngineTests.PolicyConfiguration_ShouldSupportStreamIdAsync"]}
 [Test]
 public async Task OrderPolicy_SetsTopicAndStreamIdAsync() {
   // Arrange
@@ -538,7 +538,7 @@ public async Task OrderPolicy_SetsTopicAndStreamIdAsync() {
 
 ### Testing Policy Order
 
-```csharp{title="Verify first-match-wins and skip" description="Registers two always-true policies and asserts only the first ran — its topic is returned and only one matched rule appears in the trail." category="Configuration" difficulty="INTERMEDIATE" tags=["testing", "first-match", "ordering", "decision-trail"]}
+```csharp{title="Verify first-match-wins and skip" description="Registers two always-true policies and asserts only the first ran — its topic is returned and only one matched rule appears in the trail." category="Configuration" difficulty="INTERMEDIATE" tags=["testing", "first-match", "ordering", "decision-trail"] tests=["PolicyEngineTests.PolicyEngine_ShouldMatchFirstMatchingPolicyAsync", "PolicyDecisionTrailTests.GetMatchedRules_ReturnsOnlyMatchedDecisionsAsync", "PolicyConfigurationTransportTests.PolicyConfiguration_PublishToServiceBus_ShouldAddPublishTargetAsync"]}
 [Test]
 public async Task PolicyEngine_FirstMatchWins_SkipsSubsequentPoliciesAsync() {
   // Arrange
@@ -571,7 +571,7 @@ public async Task PolicyEngine_FirstMatchWins_SkipsSubsequentPoliciesAsync() {
 
 ### Testing PolicyDecisionTrail
 
-```csharp{title="Assert every policy is recorded in the trail" description="Registers a non-matching and a matching policy and asserts both appear in context.Trail.Decisions in order with the correct Matched flags." category="Observability" difficulty="INTERMEDIATE" tags=["testing", "decision-trail", "matched", "observability"]}
+```csharp{title="Assert every policy is recorded in the trail" description="Registers a non-matching and a matching policy and asserts both appear in context.Trail.Decisions in order with the correct Matched flags." category="Observability" difficulty="INTERMEDIATE" tags=["testing", "decision-trail", "matched", "observability"] tests=["PolicyEngineTests.PolicyEngine_ShouldRecordDecisionInTrailAsync", "PolicyEngineTests.PolicyEngine_ShouldRecordUnmatchedPoliciesInTrailAsync"]}
 [Test]
 public async Task PolicyEngine_RecordsDecisionTrail_ForAllPoliciesAsync() {
   // Arrange
@@ -632,7 +632,7 @@ public async Task PolicyEngine_RecordsDecisionTrail_ForAllPoliciesAsync() {
 **Cause**: No policies registered or all predicates return `false`.
 
 **Solution**:
-```csharp{title="Add a fallback policy and inspect the trail" description="Registers an always-true fallback and, when MatchAsync still returns null, logs each PolicyDecision to diagnose why nothing matched." category="Diagnostics" difficulty="INTERMEDIATE" tags=["troubleshooting", "fallback", "null-config", "decision-trail"]}
+```csharp{title="Add a fallback policy and inspect the trail" description="Registers an always-true fallback and, when MatchAsync still returns null, logs each PolicyDecision to diagnose why nothing matched." category="Diagnostics" difficulty="INTERMEDIATE" tags=["troubleshooting", "fallback", "null-config", "decision-trail"] tests=["PolicyEngineTests.PolicyEngine_ShouldReturnNullWhenNoPolicyMatchesAsync", "PolicyEngineTests.PolicyEngine_ShouldRecordDecisionInTrailAsync"]}
 // Add fallback policy
 policyEngine.AddPolicy(
   name: "DefaultPolicy",
@@ -661,7 +661,7 @@ if (config is null) {
 **Cause**: Policy order incorrect (fallback registered before specific policies).
 
 **Solution**:
-```csharp{title="Order specific policies before the fallback" description="Contrasts a broken ordering (always-true fallback first) with the correct order — specific predicate first, fallback last." category="Diagnostics" difficulty="BEGINNER" tags=["troubleshooting", "ordering", "fallback", "first-match"]}
+```csharp{title="Order specific policies before the fallback" description="Contrasts a broken ordering (always-true fallback first) with the correct order — specific predicate first, fallback last." category="Diagnostics" difficulty="BEGINNER" tags=["troubleshooting", "ordering", "fallback", "first-match"] unverified="counter-example — the ❌ block shows a deliberately wrong ordering (fallback first); correct first-match-wins ordering is verified by PolicyEngineTests.PolicyEngine_ShouldMatchFirstMatchingPolicyAsync"}
 // ❌ WRONG: Fallback first (always matches)
 policyEngine.AddPolicy("Fallback", ctx => true, config => config.PublishToServiceBus("default"));
 policyEngine.AddPolicy("Specific", ctx => ctx.HasTag("high-priority"), config => config.PublishToServiceBus("priority"));
@@ -678,7 +678,7 @@ policyEngine.AddPolicy("Fallback", ctx => true, config => config.PublishToServic
 **Cause**: An exception thrown in the predicate. The engine catches it, records a failed decision (`Reason: "Evaluation failed: …"`), and continues to the next policy.
 
 **Solution**:
-```csharp{title="Make predicates null-safe" description="Shows a predicate that throws on missing metadata (caught and recorded as a failed decision) versus a null-safe pattern-matched predicate." category="Diagnostics" difficulty="INTERMEDIATE" tags=["troubleshooting", "predicate", "null-safety", "exceptions"]}
+```csharp{title="Make predicates null-safe" description="Shows a predicate that throws on missing metadata (caught and recorded as a failed decision) versus a null-safe pattern-matched predicate." category="Diagnostics" difficulty="INTERMEDIATE" tags=["troubleshooting", "predicate", "null-safety", "exceptions"] tests=["PolicyEngineTests.MatchAsync_WithPredicateThrowingException_ShouldRecordFailureAsync", "PolicyEngineTests.MatchAsync_WithPredicateThrowingException_ShouldContinueToNextPolicyAsync"]}
 // Predicate that can throw — the engine catches it and records the failure
 policyEngine.AddPolicy(
   name: "FaultyPolicy",

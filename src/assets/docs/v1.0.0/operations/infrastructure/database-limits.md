@@ -50,7 +50,7 @@ Whizbang's source generators validate all generated identifiers during compilati
 
 The `IDbProviderLimits` interface defines the contract for provider-specific identifier limits:
 
-```csharp{title="IDbProviderLimits Interface" description="Contract for database provider identifier length limits" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Infrastructure", "Database", "Limits"]}
+```csharp{title="IDbProviderLimits Interface" description="Contract for database provider identifier length limits" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Infrastructure", "Database", "Limits"] tests=["PostgresLimitsTests.ImplementsIDbProviderLimitsAsync"]}
 public interface IDbProviderLimits {
   int MaxTableNameBytes { get; }
   int MaxColumnNameBytes { get; }
@@ -65,7 +65,7 @@ Each database provider package supplies its own implementation with the correct 
 
 PostgreSQL uses **byte-based** limits derived from the `NAMEDATALEN` compile-time constant (default 64, with 1 byte reserved for the null terminator):
 
-```csharp{title="PostgreSQL Limits" description="PostgreSQL identifier limits - 63 bytes for all identifiers" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Infrastructure", "PostgreSQL", "Limits"]}
+```csharp{title="PostgreSQL Limits" description="PostgreSQL identifier limits - 63 bytes for all identifiers" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Infrastructure", "PostgreSQL", "Limits"] tests=["PostgresLimitsTests.MAX_IDENTIFIER_BYTES_Is63Async", "PostgresLimitsTests.MaxTableNameBytes_Returns63Async", "PostgresLimitsTests.MaxColumnNameBytes_Returns63Async", "PostgresLimitsTests.MaxIndexNameBytes_Returns63Async", "PostgresLimitsTests.ProviderName_ReturnsPostgreSQLAsync", "PostgresLimitsTests.Instance_IsSingletonAsync"]}
 public sealed class PostgresLimits : IDbProviderLimits {
   public const int MAX_IDENTIFIER_BYTES = 63;
 
@@ -107,7 +107,7 @@ All validation is performed in **UTF-8 bytes**, not characters. This is critical
 - Multi-byte characters (e.g., accented characters, CJK characters) consume 2-4 bytes each
 - An identifier that appears to be 50 characters may actually be 100+ bytes
 
-```csharp{title="Byte-Based Measurement" description="IdentifierValidation measures in UTF-8 bytes, not characters" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Infrastructure", "Validation", "UTF-8"]}
+```csharp{title="Byte-Based Measurement" description="IdentifierValidation measures in UTF-8 bytes, not characters" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Infrastructure", "Validation", "UTF-8"] tests=["IdentifierValidationTests.GetByteCount_AsciiString_ReturnsLengthAsync", "IdentifierValidationTests.GetByteCount_UnicodeString_ReturnsCorrectBytesAsync"]}
 // ASCII characters: 1 byte each
 IdentifierValidation.GetByteCount("orders");        // 6 bytes
 IdentifierValidation.GetByteCount("order_items");   // 11 bytes
@@ -121,7 +121,7 @@ IdentifierValidation.GetByteCount("pedidos_accion");   // May differ with accent
 
 The `IdentifierValidation` class provides validation for each identifier type:
 
-```csharp{title="Validation Methods" description="Validate identifiers against provider-specific limits" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Infrastructure", "Validation", "Methods"]}
+```csharp{title="Validation Methods" description="Validate identifiers against provider-specific limits" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Infrastructure", "Validation", "Methods"] tests=["IdentifierValidationTests.ValidateTableName_ExceedsLimit_ReturnsErrorAsync", "IdentifierValidationTests.ValidateTableName_WithinLimit_ReturnsNullAsync", "IdentifierValidationTests.ValidateColumnName_WithinLimit_ReturnsNullAsync", "IdentifierValidationTests.ValidateIndexName_WithinLimit_ReturnsNullAsync", "IdentifierValidationTests.IsTableNameValid_WithinLimit_ReturnsTrueAsync", "IdentifierValidationTests.IsColumnNameValid_WithinLimit_ReturnsTrueAsync", "IdentifierValidationTests.IsIndexNameValid_WithinLimit_ReturnsTrueAsync"]}
 var limits = PostgresLimits.Instance;
 
 // Validate table name - returns error message or null
@@ -209,7 +209,7 @@ When you encounter a limit violation, you have several options:
 
 To add support for a new database provider, implement `IDbProviderLimits`:
 
-```csharp{title="Custom Provider Limits" description="Implement IDbProviderLimits for a new database provider" category="Internals" difficulty="INTERMEDIATE" tags=["Operations", "Infrastructure", "Custom", "Provider"]}
+```csharp{title="Custom Provider Limits" description="Implement IDbProviderLimits for a new database provider" category="Internals" difficulty="INTERMEDIATE" tags=["Operations", "Infrastructure", "Custom", "Provider"] unverified="example custom provider implementation — user code illustrating how to implement IDbProviderLimits; MySqlLimits is not a shipped or tested type"}
 public sealed class MySqlLimits : IDbProviderLimits {
   public const int MAX_IDENTIFIER_LENGTH = 64;
 
