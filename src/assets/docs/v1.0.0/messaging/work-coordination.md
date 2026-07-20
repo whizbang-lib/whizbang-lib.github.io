@@ -339,7 +339,7 @@ Horizontal scaling through partition distribution:
 
 The claim entry point on `IWorkCoordinator` (only `ClaimWorker` calls it):
 
-```csharp{title="C# Interface" description="C# Interface" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "Interface"]}
+```csharp{title="C# Interface" description="C# Interface" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "Interface"] unverified="interface declaration — IWorkCoordinator API surface, no behavioral assertion"}
 public sealed record ClaimWorkRequest(
     Guid InstanceId,
     string ServiceName,
