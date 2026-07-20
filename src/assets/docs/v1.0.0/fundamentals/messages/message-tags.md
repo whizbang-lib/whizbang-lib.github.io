@@ -718,7 +718,7 @@ file static class ModuleInitializer {
 
 ### Static Registry API
 
-```csharp{title="Using MessageTagRegistry" description="Query the aggregated tag registry and inspect registration metadata for diagnostics" category="API" difficulty="ADVANCED" tags=["Tags", "Registry", "API"]}
+```csharp{title="Using MessageTagRegistry" description="Query the aggregated tag registry and inspect registration metadata for diagnostics" category="API" difficulty="ADVANCED" tags=["Tags", "Registry", "API"] unverified="diagnostic API-usage illustration — the static MessageTagRegistry GetTagsFor/Register/Count surface is source-verified in MessageTagRegistry.cs; no dedicated runtime test asserts the aggregated query"}
 // Query tags for a message type (queries every registered registry, yields all matches)
 var tags = MessageTagRegistry.GetTagsFor(typeof(OrderCreatedEvent));
 
@@ -1085,7 +1085,7 @@ public record PaymentCompletedEvent(
 5. If applying multiple tags of the same attribute type, ensure `[AttributeUsage]` allows `AllowMultiple = true`.
 6. Check that the assembly references `Whizbang.Generators`.
 
-```csharp{title="Debugging Tag Processing" description="Check whether any tags are registered for a message type and how many registries are loaded" category="Diagnostics" difficulty="BEGINNER" tags=["Tags", "Debugging", "Registry"]}
+```csharp{title="Debugging Tag Processing" description="Check whether any tags are registered for a message type and how many registries are loaded" category="Diagnostics" difficulty="BEGINNER" tags=["Tags", "Debugging", "Registry"] unverified="diagnostic snippet — static MessageTagRegistry.GetTagsFor/Count query, no dedicated runtime test"}
 var tags = MessageTagRegistry.GetTagsFor(typeof(OrderCreatedEvent));
 if (!tags.Any()) {
   Console.WriteLine("No tags registered for OrderCreatedEvent");

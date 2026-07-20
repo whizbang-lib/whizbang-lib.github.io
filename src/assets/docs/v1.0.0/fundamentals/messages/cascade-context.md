@@ -199,7 +199,7 @@ public interface ICascadeContextEnricher {
 
 ### Example: Feature Flag Enricher
 
-```csharp{title="FeatureFlagEnricher" description="Custom enricher adding feature flags to cascade metadata" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "CascadeContext", "Enricher", "Example"]}
+```csharp{title="FeatureFlagEnricher" description="Custom enricher adding feature flags to cascade metadata" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "CascadeContext", "Enricher", "Example"] unverified="illustrative custom enricher — user-domain IFeatureFlagService, not framework code; the enricher pipeline is verified in the ICascadeContextEnricher block above"}
 public class FeatureFlagEnricher : ICascadeContextEnricher {
     private readonly IFeatureFlagService _flags;
 
@@ -231,7 +231,7 @@ services.AddSingleton<ICascadeContextEnricher, FeatureFlagEnricher>();
 
 `IScopeContext` provides the **rich** security context (roles, permissions, claims, security principals) for the current operation. It is populated from HTTP claims, message headers, or explicit injection.
 
-```csharp{title="IScopeContext" description="Rich authorization context interface" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "ScopeContext", "Security"]}
+```csharp{title="IScopeContext" description="Rich authorization context interface" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "ScopeContext", "Security"] unverified="interface declaration — no behavior to assert; concrete implementations are outside the current coverage map"}
 public interface IScopeContext {
     PerspectiveScope Scope { get; }              // TenantId, UserId
     IReadOnlySet<string> Roles { get; }
@@ -253,7 +253,7 @@ public interface IScopeContext {
 
 Messages **own and carry** their scope context. When `IMessageContext` is created, it captures the current `IScopeContext` so that the message carries its authorization state throughout its lifecycle:
 
-```csharp{title="IMessageContext ScopeContext" description="Messages carry their authorization state" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "ScopeContext", "MessageContext"]}
+```csharp{title="IMessageContext ScopeContext" description="Messages carry their authorization state" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "ScopeContext", "MessageContext"] unverified="interface surface — no behavior to assert"}
 public interface IMessageContext {
     // ... MessageId, CorrelationId, CausationId, etc.
 
@@ -270,7 +270,7 @@ This is critical for deferred lifecycle stages (like `PostPerspectiveDetached`) 
 
 The **Initiating Context** is the `IMessageContext` that started the current scope. It serves as the **source of truth** for security identity (`UserId`, `TenantId`).
 
-```csharp{title="IScopeContextAccessor" description="Accessor with InitiatingContext as source of truth" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "InitiatingContext", "ScopeContextAccessor"]}
+```csharp{title="IScopeContextAccessor" description="Accessor with InitiatingContext as source of truth" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "InitiatingContext", "ScopeContextAccessor"] unverified="interface declaration with pointer-property defaults — ScopeContextAccessorTests covers only the instance Current property, not UserId/TenantId resolution from InitiatingContext"}
 public interface IScopeContextAccessor {
     IScopeContext? Current { get; set; }
 
@@ -298,7 +298,7 @@ In event-sourcing systems, **messages carry state**. The `InitiatingContext` sto
 
 `ScopeContextAccessor` uses `AsyncLocal<T>` for ambient context that flows across async calls:
 
-```csharp{title="ScopeContextAccessor Static Accessors" description="Static accessors for singleton services" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Messages", "ScopeContextAccessor", "AsyncLocal"]}
+```csharp{title="ScopeContextAccessor Static Accessors" description="Static accessors for singleton services" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Messages", "ScopeContextAccessor", "AsyncLocal"] unverified="static accessor declaration — ScopeContextAccessorTests exercises the instance Current property, not these static pointer accessors"}
 public sealed class ScopeContextAccessor : IScopeContextAccessor {
     // Static accessors for singleton services (e.g., Dispatcher)
     public static IScopeContext? CurrentContext { get; set; }
@@ -352,7 +352,7 @@ var messageContext = new MessageContext {
 
 Both `IScopeContextAccessor` and `ScopeContextAccessor` expose `UserId` and `TenantId` as **pointer properties**. They are not copies - they read directly from `InitiatingContext`:
 
-```csharp{title="Pointer Properties" description="UserId and TenantId read from InitiatingContext" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "PointerProperties", "ScopeContextAccessor"]}
+```csharp{title="Pointer Properties" description="UserId and TenantId read from InitiatingContext" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "PointerProperties", "ScopeContextAccessor"] unverified="pointer-property declaration — no candidate test exercises accessor UserId/TenantId resolution from InitiatingContext"}
 // IScopeContextAccessor interface default implementations
 string? UserId => InitiatingContext?.UserId;
 string? TenantId => InitiatingContext?.TenantId;

@@ -38,7 +38,7 @@ Messages are the **data carriers** in Whizbang applications. They represent:
 
 ## IMessage Interface {#imessage}
 
-```csharp{title="IMessage Interface" description="IMessage Interface" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "IMessage", "Interface"]}
+```csharp{title="IMessage Interface" description="IMessage Interface" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "IMessage", "Interface"] tests=["MessageRegistryGeneratorTests.MessageRegistryGenerator_ClassWithoutMessageInterface_SkipsAsync"]}
 namespace Whizbang.Core;
 
 /// <summary>

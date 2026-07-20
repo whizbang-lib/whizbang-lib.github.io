@@ -198,7 +198,7 @@ To auto-generate a stream ID for a `[StreamId]`-marked property, add `[GenerateS
 
 For auto-generated stream IDs:
 
-```csharp{title="Using IHasStreamId Interface" description="For auto-generated stream IDs:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Messages", "Using", "IHasStreamId"]}
+```csharp{title="Using IHasStreamId Interface" description="For auto-generated stream IDs:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Messages", "Using", "IHasStreamId"] unverified="illustrative IHasStreamId marker-interface usage — auto-generated StreamId extraction is source-generated, verified outside the current coverage map"}
 public record OrderCreated : IEvent, IHasStreamId {
   public Guid StreamId { get; set; }  // Auto-generated if empty
   public required Guid CustomerId { get; init; }
@@ -235,7 +235,7 @@ Benefits:
 
 When messages are defined in a "contracts" assembly:
 
-```csharp{title="Multi-Assembly Extraction" description="When messages are defined in a 'contracts' assembly:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Messages", "Multi-Assembly", "Extraction"]}
+```csharp{title="Multi-Assembly Extraction" description="When messages are defined in a 'contracts' assembly:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Messages", "Multi-Assembly", "Extraction"] unverified="user-domain contracts-assembly message definition — the multi-assembly registry behavior is verified in the ModuleInitializer registration block below"}
 // MyApp.Contracts assembly
 namespace MyApp.Contracts;
 
@@ -294,7 +294,7 @@ public async Task<ActionResult> CreateOrder(
 
 ### Correlation Tracking
 
-```csharp{title="Correlation Tracking" description="Correlation Tracking" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Correlation", "Tracking"]}
+```csharp{title="Correlation Tracking" description="Correlation Tracking" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Correlation", "Tracking"] unverified="user-domain controller and tracking-service illustration — no framework behavior to assert"}
 // Check status by correlation ID
 [HttpGet("orders/status/{correlationId:guid}")]
 public async Task<ActionResult> GetStatus(Guid correlationId) {
@@ -310,7 +310,7 @@ public async Task<ActionResult> GetStatus(Guid correlationId) {
 
 ### Idempotency
 
-```csharp{title="Idempotency" description="Idempotency" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Idempotency"]}
+```csharp{title="Idempotency" description="Idempotency" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Idempotency"] unverified="user-domain idempotency-store illustration — no framework behavior to assert"}
 // Use MessageId for idempotency
 public async Task ProcessWithIdempotencyAsync(DeliveryReceipt receipt) {
   if (await _idempotencyStore.ExistsAsync(receipt.MessageId)) {
