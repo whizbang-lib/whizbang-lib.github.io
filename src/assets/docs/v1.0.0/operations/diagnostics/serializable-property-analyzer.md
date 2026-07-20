@@ -60,7 +60,7 @@ Using these types in messages causes runtime serialization failures in AOT-compi
 
 ### Valid (AOT-Compatible)
 
-```csharp{title="Valid (AOT-Compatible)" description="Valid (AOT-Compatible)" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Valid", "AOT-Compatible"]}
+```csharp{title="Valid (AOT-Compatible)" description="Valid (AOT-Compatible)" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Valid", "AOT-Compatible"] tests=["SerializablePropertyAnalyzerTests.Analyzer_CommandWithPrimitiveProperties_NoErrorAsync", "SerializablePropertyAnalyzerTests.Analyzer_CommandWithListOfString_NoErrorAsync", "SerializablePropertyAnalyzerTests.Analyzer_CommandWithGenericIList_NoErrorAsync"]}
 public record CreateOrderCommand : ICommand {
   public Guid OrderId { get; init; }
   public string CustomerName { get; init; } = string.Empty;
@@ -74,7 +74,7 @@ Note that the analyzer flags non-generic interfaces only; a generic interface li
 
 ### Invalid (Causes Diagnostics)
 
-```csharp{title="Invalid (Causes Diagnostics)" description="Invalid (Causes Diagnostics)" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "C#", "Invalid", "Causes"]}
+```csharp{title="Invalid (Causes Diagnostics)" description="Invalid (Causes Diagnostics)" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "C#", "Invalid", "Causes"] unverified="counter-example — the pattern this diagnostic flags; detection verified by SerializablePropertyAnalyzerTests.Analyzer_MultipleNonSerializableProperties_ReportsAllAsync"}
 public record BadCommand : ICommand {
   public object Payload { get; init; }          // WHIZ060
   public dynamic Data { get; init; }            // WHIZ061
@@ -86,7 +86,7 @@ public record BadCommand : ICommand {
 
 The analyzer recursively validates nested types:
 
-```csharp{title="Nested Type Checking" description="The analyzer recursively validates nested types:" category="Troubleshooting" difficulty="INTERMEDIATE" tags=["Operations", "Diagnostics", "Nested", "Type"]}
+```csharp{title="Nested Type Checking" description="The analyzer recursively validates nested types:" category="Troubleshooting" difficulty="INTERMEDIATE" tags=["Operations", "Diagnostics", "Nested", "Type"] unverified="counter-example — the pattern this diagnostic flags; detection verified by SerializablePropertyAnalyzerTests.Analyzer_NestedTypeWithObjectProperty_ReportsWHIZ063Async"}
 public record OrderCreated : IEvent {
   [StreamId]
   public Guid OrderId { get; init; }
@@ -103,7 +103,7 @@ public record CustomerInfo {
 
 Types marked with `[WhizbangSerializable]` are also analyzed:
 
-```csharp{title="Whizbang Serializable Attribute" description="Types marked with [WhizbangSerializable] are also analyzed:" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Whizbang", "Serializable"]}
+```csharp{title="Whizbang Serializable Attribute" description="Types marked with [WhizbangSerializable] are also analyzed:" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Whizbang", "Serializable"] unverified="counter-example — the pattern this diagnostic flags; detection verified by SerializablePropertyAnalyzerTests.Analyzer_WhizbangSerializableWithObjectProperty_ReportsWHIZ060Async"}
 [WhizbangSerializable]
 public record ProductDto {
   public Guid Id { get; init; }
@@ -117,7 +117,7 @@ The analyzer is enabled by default. To suppress specific diagnostics:
 
 ### Per-Property Suppression
 
-```csharp{title="Per-Property Suppression" description="Per-Property Suppression" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Per-Property", "Suppression"]}
+```csharp{title="Per-Property Suppression" description="Per-Property Suppression" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Per-Property", "Suppression"] unverified="suppression/config — not exercised by a test"}
 #pragma warning disable WHIZ060
 public object LegacyData { get; init; }
 #pragma warning restore WHIZ060
@@ -127,7 +127,7 @@ public object LegacyData { get; init; }
 
 In an `.editorconfig` (`NoWarn` does not suppress Error-severity diagnostics):
 
-```ini{title="Project-Wide Suppression" description="Project-Wide Suppression" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Project-Wide", "Suppression"]}
+```ini{title="Project-Wide Suppression" description="Project-Wide Suppression" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Project-Wide", "Suppression"] unverified="suppression/config — not exercised by a test"}
 [*.cs]
 dotnet_diagnostic.WHIZ060.severity = none
 dotnet_diagnostic.WHIZ061.severity = none

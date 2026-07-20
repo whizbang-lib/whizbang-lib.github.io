@@ -65,19 +65,19 @@ Add the `Pgvector.EntityFrameworkCore` package reference to your project:
 
 ### Using .NET CLI
 
-```bash{title="Using .NET CLI" description="Using .NET CLI" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Using", ".NET"]}
+```bash{title="Using .NET CLI" description="Using .NET CLI" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Using", ".NET"] unverified="install command — not exercised by a test"}
 dotnet add package Pgvector.EntityFrameworkCore
 ```
 
 ### Using Package Manager Console
 
-```powershell{title="Using Package Manager Console" description="Using Package Manager Console" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Using", "Package"]}
+```powershell{title="Using Package Manager Console" description="Using Package Manager Console" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Using", "Package"] unverified="install command — not exercised by a test"}
 Install-Package Pgvector.EntityFrameworkCore
 ```
 
 ### Using PackageReference in .csproj
 
-```xml{title="Using PackageReference in .csproj" description="Using PackageReference in .csproj" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Using", "PackageReference"]}
+```xml{title="Using PackageReference in .csproj" description="Using PackageReference in .csproj" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Using", "PackageReference"] unverified="MSBuild package reference — not exercised by a test"}
 <ItemGroup>
   <PackageReference Include="Pgvector.EntityFrameworkCore" Version="0.3.0" />
 </ItemGroup>
@@ -87,7 +87,7 @@ Install-Package Pgvector.EntityFrameworkCore
 
 In `Directory.Packages.props`:
 
-```xml{title="Using Central Package Management" description="In `Directory." category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Using", "Central"]}
+```xml{title="Using Central Package Management" description="In `Directory." category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Using", "Central"] unverified="MSBuild package reference — not exercised by a test"}
 <ItemGroup>
   <PackageVersion Include="Pgvector.EntityFrameworkCore" Version="0.3.0" />
 </ItemGroup>
@@ -95,7 +95,7 @@ In `Directory.Packages.props`:
 
 In your project file:
 
-```xml{title="Using Central Package Management (2)" description="In your project file:" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Using", "Central"]}
+```xml{title="Using Central Package Management (2)" description="In your project file:" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Using", "Central"] unverified="MSBuild package reference — not exercised by a test"}
 <ItemGroup>
   <PackageReference Include="Pgvector.EntityFrameworkCore" />
 </ItemGroup>
@@ -105,7 +105,7 @@ In your project file:
 
 ### Before (causes WHIZ070)
 
-```csharp{title="Before (causes WHIZ070)" description="Before (causes WHIZ070)" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Before", "Causes"]}
+```csharp{title="Before (causes WHIZ070)" description="Before (causes WHIZ070)" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Before", "Causes"] unverified="counter-example — the pattern WHIZ070 flags; detection verified by VectorDependencyAnalyzerTests.Analyzer_VectorFieldWithoutPackage_ReportsWHIZ070Async"}
 // Missing: <PackageReference Include="Pgvector.EntityFrameworkCore" />
 
 public record ProductDto {
@@ -119,7 +119,7 @@ public record ProductDto {
 
 ### After (compiles successfully)
 
-```csharp{title="After (compiles successfully)" description="After (compiles successfully)" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "After", "Compiles"]}
+```csharp{title="After (compiles successfully)" description="After (compiles successfully)" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "After", "Compiles"] tests=["VectorDependencyAnalyzerTests.Analyzer_VectorFieldWithPackage_NoWHIZ070Async"]}
 // Added: <PackageReference Include="Pgvector.EntityFrameworkCore" />
 
 public record ProductDto {
@@ -135,13 +135,13 @@ public record ProductDto {
 
 If you intentionally want to use `[VectorField]` without the EF Core package (e.g., for testing or code generation scenarios), add the assembly-level suppression attribute (defined in `Whizbang.Core.Perspectives`):
 
-```csharp{title="Suppressing This Diagnostic" description="If you intentionally want to use [VectorField] without the EF Core package (e." category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Suppressing", "This"]}
+```csharp{title="Suppressing This Diagnostic" description="If you intentionally want to use [VectorField] without the EF Core package (e." category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Suppressing", "This"] tests=["VectorFieldPackageReferenceAnalyzerTests.VectorField_WithSuppressAttribute_NoDiagnosticAsync"]}
 [assembly: SuppressVectorPackageCheck]
 ```
 
 Note: `[assembly: SuppressVectorPackageCheck]` only silences the perspective-model check in `Whizbang.Data.EFCore.Postgres.Generators` (WHIZ070 and [WHIZ071](whiz071.md) from that analyzer). The per-property check in `Whizbang.Generators` is not affected by the attribute — suppress it with a pragma at the property:
 
-```csharp{title="Suppressing This Diagnostic (2)" description="Pragma suppression for the per-property analyzer:" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Suppressing", "This"]}
+```csharp{title="Suppressing This Diagnostic (2)" description="Pragma suppression for the per-property analyzer:" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Suppressing", "This"] unverified="suppression/config — not exercised by a test"}
 #pragma warning disable WHIZ070
 [VectorField(1536)]
 public float[]? Embedding { get; init; }
@@ -150,7 +150,7 @@ public float[]? Embedding { get; init; }
 
 To silence both analyzers project-wide, set the severity to `none` in a global analyzer config file (`NoWarn` does not suppress Error-severity diagnostics, and the compilation-end variant has no source location, so pragmas cannot reach it):
 
-```ini{title="Suppressing This Diagnostic (3)" description="Project-wide suppression via .globalconfig:" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Suppressing", "This"]}
+```ini{title="Suppressing This Diagnostic (3)" description="Project-wide suppression via .globalconfig:" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Suppressing", "This"] unverified="suppression/config — not exercised by a test"}
 # .globalconfig
 is_global = true
 dotnet_diagnostic.WHIZ070.severity = none

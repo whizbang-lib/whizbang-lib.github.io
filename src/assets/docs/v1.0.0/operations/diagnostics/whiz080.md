@@ -68,7 +68,7 @@ public class OrderQueryReceptor : IReceptor<GetOrderQuery, OrderDto> {
 
 For void receptors (event handlers), multiple handlers are expected:
 
-```csharp{title="Event Pattern (Multiple Handlers Allowed)" description="For void receptors (event handlers), multiple handlers are expected:" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Event", "Pattern"]}
+```csharp{title="Event Pattern (Multiple Handlers Allowed)" description="For void receptors (event handlers), multiple handlers are expected:" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Event", "Pattern"] tests=["ReceptorDiscoveryGeneratorTests.Generator_WithMultipleVoidHandlers_NoErrorAsync"]}
 // Event broadcast to multiple handlers - OK
 public record OrderPlaced(Guid OrderId) : IEvent;
 
@@ -142,7 +142,7 @@ public class OrderDetailsReceptor : IReceptor<GetOrderWithDetailsQuery, OrderDet
 
 A future Whizbang release will support key-based RPC handler selection using `[RpcKey]`:
 
-```csharp{title="Future: Key-Based Handler Selection" description="A future Whizbang release will support key-based RPC handler selection using [RpcKey]:" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Future:", "Key-Based"]}
+```csharp{title="Future: Key-Based Handler Selection" description="A future Whizbang release will support key-based RPC handler selection using [RpcKey]:" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Future:", "Key-Based"] unverified="not yet implemented — RpcKey is future syntax with no test"}
 // Future syntax (not yet implemented)
 [RpcKey("default")]
 public class DefaultOrderReceptor : IReceptor<GetOrderQuery, OrderDto> { }
