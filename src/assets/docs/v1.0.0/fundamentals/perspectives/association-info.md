@@ -84,7 +84,7 @@ var updated = ApplyEvent(productModel, productEvent, "ECommerce.BFF.API");
 
 ### Type Definition
 
-```csharp{title="Type Definition" description="Type Definition" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Type", "Definition"]}
+```csharp{title="Type Definition" description="Type Definition" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Type", "Definition"] tests=["PerspectiveDiscoveryGeneratorTests.PerspectiveDiscoveryGenerator_GeneratesPerspectiveAssociationInfoRecordAsync"]}
 /// <summary>
 /// Rich association info with strongly-typed delegate for perspective Apply method.
 /// Provides compile-time type safety and AOT-compatible delegate invocation.
@@ -323,7 +323,7 @@ for (int i = 0; i < 10000; i++) {
 
 PerspectiveAssociationInfo delegates are generated at compile time:
 
-```csharp{title="No Reflection at Runtime" description="PerspectiveAssociationInfo delegates are generated at compile time:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Reflection", "Runtime"]}
+```csharp{title="No Reflection at Runtime" description="PerspectiveAssociationInfo delegates are generated at compile time:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Reflection", "Runtime"] tests=["PerspectiveDiscoveryGeneratorTests.PerspectiveDiscoveryGenerator_GeneratesDelegateWithTypeCheckAsync", "PerspectiveDiscoveryGeneratorTests.PerspectiveDiscoveryGenerator_GeneratesAOTCompatibleDelegatesAsync", "PerspectiveDiscoveryGeneratorTests.PerspectiveDiscoveryGenerator_EmptyResult_ForNonMatchingTypesAsync"]}
 // Generated code (example)
 public static IReadOnlyList<PerspectiveAssociationInfo<TModel, TEvent>>
     GetPerspectiveAssociations<TModel, TEvent>(string serviceName)
@@ -366,7 +366,7 @@ public static IReadOnlyList<PerspectiveAssociationInfo<TModel, TEvent>>
 
 PerspectiveAssociationInfo complements the simpler MessageAssociation type:
 
-```csharp{title="Integration with MessageAssociation" description="PerspectiveAssociationInfo complements the simpler MessageAssociation type:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Integration", "MessageAssociation"]}
+```csharp{title="Integration with MessageAssociation" description="PerspectiveAssociationInfo complements the simpler MessageAssociation type:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Integration", "MessageAssociation"] tests=["PerspectiveDiscoveryGeneratorTests.PerspectiveDiscoveryGenerator_MessageAssociation_IsGeneratedAsync", "PerspectiveDiscoveryGeneratorTests.PerspectiveDiscoveryGenerator_GeneratesPerspectiveAssociationInfoRecordAsync"]}
 // MessageAssociation: Simple string-based association
 public sealed record MessageAssociation(
     string MessageType,
@@ -422,7 +422,7 @@ foreach (var assoc in typedAssocs) {
 
 **Namespace**: `Whizbang.Core.Generated`
 
-```csharp{title="Method Signature" description="Namespace: `Whizbang." category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Method", "Signature"]}
+```csharp{title="Method Signature" description="Namespace: `Whizbang." category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Method", "Signature"] tests=["PerspectiveDiscoveryGeneratorTests.PerspectiveDiscoveryGenerator_GeneratesGetPerspectiveAssociationsMethodAsync"]}
 public static IReadOnlyList<PerspectiveAssociationInfo<TModel, TEvent>>
     GetPerspectiveAssociations<TModel, TEvent>(string serviceName)
     where TEvent : IEvent;
@@ -457,7 +457,7 @@ public static IReadOnlyList<PerspectiveAssociationInfo<TModel, TEvent>>
 
 ### ❌ Forgetting to Check for Empty Results
 
-```csharp{title="❌ Forgetting to Check for Empty Results" description="❌ Forgetting to Check for Empty Results" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Forgetting", "Check"]}
+```csharp{title="❌ Forgetting to Check for Empty Results" description="❌ Forgetting to Check for Empty Results" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Forgetting", "Check"] unverified="counter-example — anti-pattern for empty-result handling"}
 // ❌ WRONG: Assuming associations exist
 var associations = PerspectiveRegistrationExtensions
     .GetPerspectiveAssociations<ProductModel, ProductCreatedEvent>(serviceName);
@@ -475,7 +475,7 @@ if (!associations.Any()) {
 
 ### ❌ Not Caching in Loops
 
-```csharp{title="❌ Not Caching in Loops" description="❌ Not Caching in Loops" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Not", "Caching"]}
+```csharp{title="❌ Not Caching in Loops" description="❌ Not Caching in Loops" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Not", "Caching"] unverified="counter-example — anti-pattern, associations fetched inside the loop"}
 // ❌ WRONG: Getting associations in loop
 foreach (var evt in events) {
     var associations = PerspectiveRegistrationExtensions
@@ -496,7 +496,7 @@ foreach (var evt in events) {
 
 ### ❌ Mixing Type Parameters
 
-```csharp{title="❌ Mixing Type Parameters" description="❌ Mixing Type Parameters" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Mixing", "Type"]}
+```csharp{title="❌ Mixing Type Parameters" description="❌ Mixing Type Parameters" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Mixing", "Type"] unverified="counter-example — mismatched type parameters, intentional compile error"}
 // ❌ WRONG: Mismatched types
 var associations = PerspectiveRegistrationExtensions
     .GetPerspectiveAssociations<ProductModel, OrderCreatedEvent>(serviceName);

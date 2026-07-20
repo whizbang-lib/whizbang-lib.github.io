@@ -31,7 +31,7 @@ When your perspective models contain polymorphic types (abstract classes or `[Js
 
 Use `[PolymorphicDiscriminator]` on a string property that stores the type discriminator value:
 
-```csharp{title="Field Discriminator" description="Use [PolymorphicDiscriminator] on a string property that stores the type discriminator value:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Field", "Discriminator"]}
+```csharp{title="Field Discriminator" description="Use [PolymorphicDiscriminator] on a string property that stores the type discriminator value:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Field", "Discriminator"] tests=["PolymorphicDiscriminatorAttributeTests.PolymorphicDiscriminatorAttribute_AttributeUsage_PropertyOnly_AllowsMultiple_IsInheritedAsync", "PolymorphicDiscriminatorAttributeTests.PolymorphicDiscriminatorAttribute_ColumnName_CanBeSetAsync"]}
 public record FormFieldModel {
     [StreamId]
     public Guid FieldId { get; init; }
@@ -121,7 +121,7 @@ SettingsTypeName = @event.Settings.GetType().FullName
 
 For collections of polymorphic types, consider a separate perspective table:
 
-```csharp{title="Collection Discriminators" description="For collections of polymorphic types, consider a separate perspective table:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Collection", "Discriminators"]}
+```csharp{title="Collection Discriminators" description="For collections of polymorphic types, consider a separate perspective table:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Collection", "Discriminators"] tests=["PolymorphicDiscriminatorAttributeTests.PolymorphicDiscriminatorAttribute_AttributeUsage_PropertyOnly_AllowsMultiple_IsInheritedAsync", "PolymorphicDiscriminatorAttributeTests.PolymorphicDiscriminatorAttribute_DefaultConstructor_HasDefaultValuesAsync"]}
 // Main form perspective
 public record FormModel {
     [StreamId]
@@ -156,7 +156,7 @@ This enables efficient queries like "find all text fields across all forms."
 
 ### Multiple Polymorphic Properties
 
-```csharp{title="Multiple Polymorphic Properties" description="Multiple Polymorphic Properties" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Multiple", "Polymorphic"]}
+```csharp{title="Multiple Polymorphic Properties" description="Multiple Polymorphic Properties" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Multiple", "Polymorphic"] tests=["PolymorphicDiscriminatorAttributeTests.PolymorphicDiscriminatorAttribute_AttributeUsage_PropertyOnly_AllowsMultiple_IsInheritedAsync", "PolymorphicDiscriminatorAttributeTests.PolymorphicDiscriminatorAttribute_ColumnName_CanBeSetAsync"]}
 public record ConfigModel {
     [PolymorphicDiscriminator(ColumnName = "input_type")]
     public string InputSettingsType { get; init; }
@@ -172,7 +172,7 @@ public record ConfigModel {
 
 While string discriminators are most flexible, you can use enums:
 
-```csharp{title="Enum-Based Discriminators" description="While string discriminators are most flexible, you can use enums:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Enum-Based", "Discriminators"]}
+```csharp{title="Enum-Based Discriminators" description="While string discriminators are most flexible, you can use enums:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Enum-Based", "Discriminators"] unverified="uses [PhysicalField], not [PolymorphicDiscriminator] — physical-field indexing is verified on the Physical Fields page"}
 public record FormFieldModel {
     [PhysicalField(Indexed = true)]
     public FieldType FieldType { get; init; }

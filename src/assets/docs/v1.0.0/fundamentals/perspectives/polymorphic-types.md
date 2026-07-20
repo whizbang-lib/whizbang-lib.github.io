@@ -42,7 +42,7 @@ The analyzer finds perspective models containing properties that are:
 
 ### Example Warning
 
-```csharp{title="Example Warning" description="Example Warning" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Example", "Warning"]}
+```csharp{title="Example Warning" description="Example Warning" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Example", "Warning"] tests=["PerspectiveModelPolymorphicAnalyzerTests.PerspectiveModel_WithAbstractClassProperty_ReportsWHIZ811Async"]}
 public record FormModel {
     public Guid FormId { get; init; }
 
@@ -61,7 +61,7 @@ The analyzer recursively checks nested types, so it catches polymorphic properti
 - Collection element types (e.g., `List<AbstractType>`)
 - Generic type arguments
 
-```csharp{title="Recursive Detection" description="- Direct properties - Properties of nested types - Collection element types (e." category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Recursive", "Detection"]}
+```csharp{title="Recursive Detection" description="- Direct properties - Properties of nested types - Collection element types (e." category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Recursive", "Detection"] tests=["PerspectiveModelPolymorphicAnalyzerTests.PerspectiveModel_WithNestedAbstractProperty_ReportsWHIZ811Async", "PerspectiveModelPolymorphicAnalyzerTests.PerspectiveModel_WithListOfAbstract_ReportsWHIZ811Async"]}
 public record FormModel {
     // Analyzer checks FieldConfig for polymorphic properties
     public FieldConfig Config { get; init; }
@@ -81,7 +81,7 @@ Consider a form builder where fields can have different settings types:
 **Discriminator contract correction (re-verified against library commit `1b31f58d`)**: the source generator treats `[JsonPolymorphic]`/`[JsonDerivedType]` as **discovery markers only**. The generated `JsonTypeInfo` always uses the discriminator property **`$type`** and **simple type names** as discriminator values — custom `TypeDiscriminatorPropertyName` and custom `[JsonDerivedType]` strings are **not honored** (`JsonContextSnippets.cs` hardcodes `$type`; the JSON context generator emits simple names). Payloads written expecting custom discriminators fail typed readback. Write examples with the default `$type` + type-name values until attribute configuration is supported.
 :::
 
-```csharp{title="The Problem" description="Consider a form builder where fields can have different settings types:" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Perspectives", "Problem"]}
+```csharp{title="The Problem" description="Consider a form builder where fields can have different settings types:" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Perspectives", "Problem"] unverified="[JsonPolymorphic] type-hierarchy definition + generated $type/simple-name discriminator contract — serialization is verified by the JSON context tests, not the polymorphic analyzer"}
 [JsonPolymorphic]  // Discovery marker; generated discriminator is always $type + simple type names
 [JsonDerivedType(typeof(TextFieldSettings))]
 [JsonDerivedType(typeof(NumberFieldSettings))]
@@ -143,7 +143,7 @@ WHERE settings_type = 'TextFieldSettings';
 
 If you don't need to query by type, suppress the diagnostic:
 
-```csharp{title="Suppressing the Analyzer" description="If you don't need to query by type, suppress the diagnostic:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Suppressing", "Analyzer"]}
+```csharp{title="Suppressing the Analyzer" description="If you don't need to query by type, suppress the diagnostic:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Suppressing", "Analyzer"] unverified="compiler #pragma warning suppression — not a Whizbang behavior; no analyzer test applies"}
 #pragma warning disable WHIZ811
 public AbstractFieldSettings Settings { get; init; }
 #pragma warning restore WHIZ811

@@ -43,7 +43,7 @@ When Whizbang creates perspective tables, it registers metadata about each persp
 
 ### Registration Flow
 
-```mermaid
+```mermaid{caption="Perspective registry reconciliation flow — the source generator emits per-type metadata (CLR type, table name, schema JSON, schema hash) at compile time, then at startup the application calls reconcile_perspective_registry(), which inserts new types and detects renames and drift."}
 flowchart TD
     Generator["Source Generator<br/>(compile time)<br/><br/>Generates metadata:<br/>- CLR type name<br/>- Table name<br/>- Schema JSON<br/>- Schema hash"]
     AppStart["Application Start<br/>(runtime)<br/><br/>Calls reconcile_perspective_registry()"]
@@ -82,7 +82,7 @@ When your application starts, the reconciliation function compares registered pe
 
 ### Example Output
 
-```csharp{title="Example Output" description="Example Output" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Example", "Output"]}
+```csharp{title="Example Output" description="Example Output" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Example", "Output"] unverified="startup log output sample — not executable code"}
 // Startup logs show reconciliation results
 [DBG] Registered new perspective: MyApp.Contracts.OrderData → wh_per_order_data
 [WRN] Renamed perspective table: MyApp.Contracts.CustomerData from wh_per_customer_data → wh_per_customer
@@ -117,7 +117,7 @@ Table names are generated from the perspective **model** type name (see [Table N
 
 ### Before
 
-```csharp{title="Before" description="Before" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Before"]}
+```csharp{title="Before" description="Before" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Before"] tests=["NamingConventionUtilitiesTests.GenerateTableName_WhenStripDisabled_IncludesSuffixAsync"]}
 // Model type CustomerData with suffix stripping disabled
 public class CustomerPerspective : IPerspectiveFor<CustomerData, CustomerCreatedEvent> {
   // Table: wh_per_customer_data
@@ -126,7 +126,7 @@ public class CustomerPerspective : IPerspectiveFor<CustomerData, CustomerCreated
 
 ### After
 
-```csharp{title="After" description="After" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "After"]}
+```csharp{title="After" description="After" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "After"] tests=["NamingConventionUtilitiesTests.StripConfigurableSuffixes_CustomSuffixes_StripsCustomSuffixAsync", "NamingConventionUtilitiesTests.GenerateTableName_WithModel_GeneratesCorrectTableNameAsync"]}
 // "Data" added to WhizbangTableNameSuffixesToStrip in the project file
 public class CustomerPerspective : IPerspectiveFor<CustomerData, CustomerCreatedEvent> {
   // Table: wh_per_customer
@@ -167,7 +167,7 @@ The unique constraint `(clr_type_name, service_name)` allows the same model type
 
 The registry stores the full schema definition as JSON for debugging and migration tooling:
 
-```json{title="Schema JSON Format" description="The registry stores the full schema definition as JSON for debugging and migration tooling:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Schema", "JSON"]}
+```json{title="Schema JSON Format" description="The registry stores the full schema definition as JSON for debugging and migration tooling:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Schema", "JSON"] tests=["SchemaHashUtilitiesTests.ToCanonicalJson_Columns_SortedByNameAsync", "SchemaHashUtilitiesTests.ToCanonicalJson_Indexes_SortedByNameAsync", "SchemaHashUtilitiesTests.ToCanonicalJson_Properties_UsesCamelCaseAsync", "SchemaHashUtilitiesTests.ToCanonicalJson_NullValues_OmitsNullPropertiesAsync"]}
 {
   "columns": [
     {"isPrimaryKey": true, "name": "id", "type": "uuid"},
@@ -225,7 +225,7 @@ WHERE updated_at > NOW() - INTERVAL '1 hour';
 
 The registry is automatically created as part of the Whizbang infrastructure schema. No additional configuration is required.
 
-```csharp{title="Configuration" description="The registry is automatically created as part of the Whizbang infrastructure schema." category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Configuration"]}
+```csharp{title="Configuration" description="The registry is automatically created as part of the Whizbang infrastructure schema." category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Configuration"] unverified="database initialization API — configuration, not covered by registry unit tests"}
 // Registry is included in standard initialization
 await dbContext.EnsureWhizbangDatabaseInitializedAsync();
 ```
