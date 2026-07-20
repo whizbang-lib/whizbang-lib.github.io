@@ -31,7 +31,7 @@ The time provider abstraction solves common challenges:
 
 ## ITimeProvider Interface {#itimeprovider}
 
-```csharp{title="ITimeProvider Interface" description="ITimeProvider Interface" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "ITimeProvider", "Interface"]}
+```csharp{title="ITimeProvider Interface" description="ITimeProvider Interface" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "ITimeProvider", "Interface"] tests=["SystemTimeProviderTests.GetUtcNow_WithFakeTimeProvider_ReturnsExpectedTimeAsync", "SystemTimeProviderTests.GetLocalNow_WithFakeTimeProvider_ReturnsLocalTimeAsync", "SystemTimeProviderTests.GetTimestamp_WithFakeTimeProvider_ReturnsValidTimestampAsync", "SystemTimeProviderTests.GetElapsedTime_WithStartingTimestamp_ReturnsElapsedTimeAsync", "SystemTimeProviderTests.GetElapsedTime_WithStartAndEndTimestamp_ReturnsElapsedTimeAsync", "SystemTimeProviderTests.TimestampFrequency_ReturnsPositiveValueAsync"]}
 namespace Whizbang.Core;
 
 /// <summary>
@@ -74,7 +74,7 @@ public interface ITimeProvider {
 
 The default implementation delegates to .NET's `TimeProvider.System`:
 
-```csharp{title="SystemTimeProvider" description="The default implementation delegates to ." category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "SystemTimeProvider", "Systemtimeprovider"]}
+```csharp{title="SystemTimeProvider" description="The default implementation delegates to ." category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "SystemTimeProvider", "Systemtimeprovider"] tests=["SystemTimeProviderTests.Constructor_Default_UsesSystemTimeProviderAsync", "SystemTimeProviderTests.Constructor_WithCustomTimeProvider_UsesThatProviderAsync", "SystemTimeProviderTests.Constructor_WithNullTimeProvider_ThrowsArgumentNullExceptionAsync", "SystemTimeProviderTests.GetUtcNow_WithFakeTimeProvider_ReturnsExpectedTimeAsync", "SystemTimeProviderTests.GetLocalNow_WithFakeTimeProvider_ReturnsLocalTimeAsync", "SystemTimeProviderTests.GetTimestamp_WithFakeTimeProvider_ReturnsValidTimestampAsync", "SystemTimeProviderTests.GetElapsedTime_WithStartingTimestamp_ReturnsElapsedTimeAsync", "SystemTimeProviderTests.GetElapsedTime_WithStartAndEndTimestamp_ReturnsElapsedTimeAsync", "SystemTimeProviderTests.TimestampFrequency_WithFakeTimeProvider_ReturnsFrequencyAsync"]}
 namespace Whizbang.Core;
 
 public sealed class SystemTimeProvider : ITimeProvider {
@@ -102,7 +102,7 @@ public sealed class SystemTimeProvider : ITimeProvider {
 
 `SystemTimeProvider` is registered as a singleton by default:
 
-```csharp{title="Registration" description="SystemTimeProvider is registered as a singleton by default:" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "Registration"]}
+```csharp{title="Registration" description="SystemTimeProvider is registered as a singleton by default:" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "Registration"] tests=["SystemTimeProviderTests.AddWhizbang_RegistersITimeProvider_AsSingletonAsync", "SystemTimeProviderTests.AddWhizbang_RegistersSystemTimeProvider_AsImplementationAsync"]}
 services.AddWhizbang();
 // ITimeProvider -> SystemTimeProvider (singleton)
 ```
@@ -111,7 +111,7 @@ services.AddWhizbang();
 
 ### Basic Usage
 
-```csharp{title="Basic Usage" description="Basic Usage" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "Basic", "Usage"]}
+```csharp{title="Basic Usage" description="Basic Usage" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "Basic", "Usage"] tests=["SystemTimeProviderTests.GetUtcNow_WithFakeTimeProvider_ReturnsExpectedTimeAsync"]}
 public class OrderService {
   private readonly ITimeProvider _timeProvider;
 
@@ -132,7 +132,7 @@ public class OrderService {
 
 ### Measuring Elapsed Time
 
-```csharp{title="Measuring Elapsed Time" description="Measuring Elapsed Time" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "Measuring", "Elapsed"]}
+```csharp{title="Measuring Elapsed Time" description="Measuring Elapsed Time" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "Measuring", "Elapsed"] tests=["SystemTimeProviderTests.GetTimestamp_WithFakeTimeProvider_ReturnsValidTimestampAsync", "SystemTimeProviderTests.GetElapsedTime_WithStartingTimestamp_ReturnsElapsedTimeAsync"]}
 public async Task ProcessBatchAsync(IEnumerable<Order> orders) {
   var startTimestamp = _timeProvider.GetTimestamp();
 
@@ -147,7 +147,7 @@ public async Task ProcessBatchAsync(IEnumerable<Order> orders) {
 
 ### Testing with Mock Time
 
-```csharp{title="Testing with Mock Time" description="Testing with Mock Time" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Testing", "Mock"]}
+```csharp{title="Testing with Mock Time" description="Testing with Mock Time" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Testing", "Mock"] unverified="illustrative custom ITimeProvider test double — a hand-rolled fake plus a sample OrderService test, not a framework API; Whizbang's own tests use Microsoft.Extensions.Time.Testing.FakeTimeProvider"}
 public class FakeTimeProvider : ITimeProvider {
   private DateTimeOffset _currentTime = DateTimeOffset.UtcNow;
 
@@ -191,7 +191,7 @@ public async Task Order_ExpiresAfter30Minutes_ReturnsExpiredAsync() {
 
 For more sophisticated testing, use `FakeTimeProvider` from `Microsoft.Extensions.TimeProvider.Testing`:
 
-```csharp{title="Using Microsoft.Extensions.TimeProvider.Testing" description="For more sophisticated testing, use FakeTimeProvider from `Microsoft." category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Using", "Microsoft.Extensions.TimeProvider.Testing"]}
+```csharp{title="Using Microsoft.Extensions.TimeProvider.Testing" description="For more sophisticated testing, use FakeTimeProvider from `Microsoft." category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Using", "Microsoft.Extensions.TimeProvider.Testing"] tests=["SystemTimeProviderTests.GetUtcNow_WithFakeTimeProvider_ReturnsExpectedTimeAsync", "SystemTimeProviderTests.Constructor_WithCustomTimeProvider_UsesThatProviderAsync"]}
 using Microsoft.Extensions.Time.Testing;
 
 [Test]
@@ -231,7 +231,7 @@ public void Order_WithFakeTimeProvider_RespectsTimeAdvancementAsync() {
 
 For performance-critical code, use the timestamp methods:
 
-```csharp{title="High-Precision Timing" description="For performance-critical code, use the timestamp methods:" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "High-Precision", "Timing"]}
+```csharp{title="High-Precision Timing" description="For performance-critical code, use the timestamp methods:" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "High-Precision", "Timing"] tests=["SystemTimeProviderTests.GetTimestamp_WithFakeTimeProvider_ReturnsValidTimestampAsync", "SystemTimeProviderTests.GetElapsedTime_WithStartingTimestamp_ReturnsElapsedTimeAsync"]}
 // ✅ GOOD: High-precision timing
 var start = _timeProvider.GetTimestamp();
 DoWork();

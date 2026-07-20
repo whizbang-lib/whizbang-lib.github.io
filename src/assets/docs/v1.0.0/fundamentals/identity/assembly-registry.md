@@ -34,7 +34,7 @@ When types are defined in a "contracts" assembly but used in a "service" assembl
 
 ## AssemblyRegistry<T> {#assemblyregistry}
 
-```csharp{title="AssemblyRegistry<T>" description="AssemblyRegistry<T>" category="Implementation" difficulty="ADVANCED" tags=["Fundamentals", "Identity", "AssemblyRegistry<T>", "Assemblyregistry"]}
+```csharp{title="AssemblyRegistry<T>" description="AssemblyRegistry<T>" category="Implementation" difficulty="ADVANCED" tags=["Fundamentals", "Identity", "AssemblyRegistry<T>", "Assemblyregistry"] tests=["AssemblyRegistryTests.Register_WithValidContribution_ShouldIncreaseCountAsync", "AssemblyRegistryTests.Register_WithNullContribution_ShouldThrowArgumentNullExceptionAsync", "AssemblyRegistryTests.Register_WithDefaultPriority_ShouldUse1000Async", "AssemblyRegistryTests.GetOrderedContributions_WithMultipleContributions_ShouldReturnOrderedByPriorityAsync", "AssemblyRegistryTests.Count_ShouldReflectNumberOfRegistrationsAsync"]}
 namespace Whizbang.Core.Registry;
 
 /// <summary>
@@ -79,7 +79,7 @@ public static class AssemblyRegistry<T> where T : class {
 
 ## Registration Flow
 
-```mermaid
+```mermaid{caption="Assembly-registry load-time flow — each assembly's [ModuleInitializer] self-registers its contribution (contracts at priority 100, services at 1000) before Main(), then GetOrderedContributions() returns them ordered by priority." tests=["AssemblyRegistryTests.Register_WithDefaultPriority_ShouldUse1000Async", "AssemblyRegistryTests.GetOrderedContributions_WithMultipleContributions_ShouldReturnOrderedByPriorityAsync"]}
 graph TB
     A["1. Application starts"]
     B["2. CLR loads assemblies"]
@@ -121,7 +121,7 @@ Lower priority = higher precedence.
 
 ### Registering via ModuleInitializer
 
-```csharp{title="Registering via ModuleInitializer" description="Registering via ModuleInitializer" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Registering", "ModuleInitializer"]}
+```csharp{title="Registering via ModuleInitializer" description="Registering via ModuleInitializer" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Registering", "ModuleInitializer"] tests=["AssemblyRegistryTests.Register_WithPriority_ShouldStoreContributionAsync"]}
 // In MyApp.Contracts assembly
 namespace MyApp.Contracts;
 
@@ -161,7 +161,7 @@ internal static class StreamIdExtractorRegistration {
 
 ### Consuming Registered Contributions
 
-```csharp{title="Consuming Registered Contributions" description="Consuming Registered Contributions" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Consuming", "Registered"]}
+```csharp{title="Consuming Registered Contributions" description="Consuming Registered Contributions" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Consuming", "Registered"] tests=["AssemblyRegistryTests.GetOrderedContributions_WithMultipleContributions_ShouldReturnOrderedByPriorityAsync", "StreamIdExtractorRegistryTests.GetComposite_DelegatesGetGenerationPolicy_ToRegistryAsync", "StreamIdExtractorRegistryTests.GetComposite_DelegatesSetStreamId_ToRegistryAsync"]}
 // In service configuration
 public static class ServiceConfiguration {
   public static IServiceCollection AddMyServices(
@@ -182,7 +182,7 @@ public static class ServiceConfiguration {
 
 ### Creating a Domain-Specific Registry
 
-```csharp{title="Creating a Domain-Specific Registry" description="Creating a Domain-Specific Registry" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Creating", "Domain-Specific"]}
+```csharp{title="Creating a Domain-Specific Registry" description="Creating a Domain-Specific Registry" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Creating", "Domain-Specific"] tests=["AssemblyRegistryTests.Register_WithPriority_ShouldStoreContributionAsync", "AssemblyRegistryTests.GetOrderedContributions_WithMultipleContributions_ShouldReturnOrderedByPriorityAsync"]}
 // Wrapper for type-specific registry
 public static class MyFeatureRegistry {
   public static void Register(IMyFeatureProvider provider, int priority = 1000) {
@@ -212,7 +212,7 @@ var streamId = StreamIdExtractorRegistry.ExtractStreamId(message, type);
 
 ### JsonContextRegistry
 
-```csharp{title="JsonContextRegistry" description="JsonContextRegistry" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "JsonContextRegistry"]}
+```csharp{title="JsonContextRegistry" description="JsonContextRegistry" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "JsonContextRegistry"] tests=["JsonContextRegistryTests.RegisterContext_WithoutProfile_AppliesToAllProfilesAsync", "JsonContextRegistryTests.CreateCombinedOptions_WithRegisteredConverters_IncludesConvertersInOptionsAsync", "JsonContextRegistryTests.GetTypeInfoByName_WithRegisteredType_ReturnsJsonTypeInfoAsync"]}
 // Registers JSON serialization contexts (IJsonTypeInfoResolver) for AOT
 JsonContextRegistry.RegisterContext(MyJsonContext.Default, priority: 100);
 
@@ -228,7 +228,7 @@ var typeInfo = JsonContextRegistry.GetTypeInfoByName(
 
 The registry uses `ConcurrentBag` plus a lock-protected ordered cache (invalidated on each registration and rebuilt from a snapshot to avoid racing concurrent `Register` calls):
 
-```csharp{title="Thread Safety" description="The registry uses ConcurrentBag and caching:" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Thread", "Safety"]}
+```csharp{title="Thread Safety" description="The registry uses ConcurrentBag and caching:" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Thread", "Safety"] tests=["AssemblyRegistryTests.ConcurrentRegistrations_ShouldBeThreadSafeAsync", "AssemblyRegistryTests.ConcurrentGetOrderedContributions_ShouldBeThreadSafeAsync", "AssemblyRegistryTests.GetOrderedContributions_CalledMultipleTimes_ShouldReturnCachedResultAsync", "AssemblyRegistryTests.Register_AfterGetOrderedContributions_ShouldInvalidateCacheAsync"]}
 public static class AssemblyRegistry<T> where T : class {
   private static readonly ConcurrentBag<(int Priority, T Contribution)> _contributions = [];
   private static List<T>? _orderedContributions;  // Cached
@@ -262,7 +262,7 @@ public static class AssemblyRegistry<T> where T : class {
 
 Priority ordering is easy to verify in tests:
 
-```csharp{title="Testing" description="Verifying priority ordering in tests" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Testing"]}
+```csharp{title="Testing" description="Verifying priority ordering in tests" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Testing"] tests=["AssemblyRegistryTests.GetOrderedContributions_WithMultipleContributions_ShouldReturnOrderedByPriorityAsync"]}
 [Test]
 public async Task Registry_WithMultiplePriorities_OrdersByPriorityAsync() {
   // Arrange

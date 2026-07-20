@@ -37,7 +37,7 @@ TypeQualifications is a flag enum that controls how .NET type names are formatte
 
 ### Using TypeQualifications Flags
 
-```csharp{title="Using TypeQualifications Flags" description="Using TypeQualifications Flags" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Using", "TypeQualifications"]}
+```csharp{title="Using TypeQualifications Flags" description="Using TypeQualifications Flags" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Using", "TypeQualifications"] tests=["TypeFormatterTests.FormatType_Simple_ReturnsTypeNameOnlyAsync", "TypeFormatterTests.FormatType_NamespaceQualified_ReturnsFullNamespaceAsync", "TypeFormatterTests.FormatType_FullyQualified_ReturnsTypeWithAssemblyAsync", "TypeFormatterTests.FormatType_FullyQualifiedWithVersion_IncludesVersionInfoAsync"]}
 using Whizbang.Core;
 
 var type = typeof(ECommerce.Contracts.Events.ProductCreatedEvent);
@@ -61,7 +61,7 @@ var withVersion = TypeFormatter.FormatType(type, TypeQualifications.FullyQualifi
 
 ### Combining Individual Flags
 
-```csharp{title="Combining Individual Flags" description="Combining Individual Flags" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Combining", "Individual"]}
+```csharp{title="Combining Individual Flags" description="Combining Individual Flags" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Combining", "Individual"] tests=["TypeFormatterTests.FormatType_FullyQualified_ReturnsTypeWithAssemblyAsync", "TypeFormatterTests.FormatType_GlobalQualified_AddsGlobalPrefixAsync"]}
 // Custom combination: Namespace + Type + Assembly (no version)
 var custom = TypeFormatter.FormatType(
     type,
@@ -95,7 +95,7 @@ Each flag controls a specific part of the type name:
 | `GlobalPrefix` | 64 | Global namespace prefix (e.g., "global::") |
 
 **Example - Combining Flags**:
-```csharp{title="Individual Component Flags" description="Example - Combining Flags:" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "Individual", "Component"]}
+```csharp{title="Individual Component Flags" description="Example - Combining Flags:" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "Individual", "Component"] tests=["TypeFormatterTests.FormatType_NamespaceQualified_ReturnsFullNamespaceAsync", "TypeFormatterTests.FormatType_CustomCombination_WorksCorrectlyAsync"]}
 // Just namespace and type name
 var flags = TypeQualifications.Namespace | TypeQualifications.TypeName;
 var result = TypeFormatter.FormatType(typeof(OrderCreatedEvent), flags);
@@ -121,7 +121,7 @@ Pre-defined combinations for common scenarios:
 | `FullyQualifiedWithVersion` | All flags except `GlobalPrefix` | `"..., Version=1.0.0.0, Culture=neutral, PublicKeyToken=null"` |
 
 **Example - Using Presets**:
-```csharp{title="Composite Presets" description="Example - Using Presets:" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Composite", "Presets"]}
+```csharp{title="Composite Presets" description="Example - Using Presets:" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Composite", "Presets"] tests=["TypeFormatterTests.FormatType_Simple_ReturnsTypeNameOnlyAsync", "TypeFormatterTests.FormatType_FullyQualified_ReturnsTypeWithAssemblyAsync", "TypeFormatterTests.FormatType_GlobalQualified_AddsGlobalPrefixAsync"]}
 var type = typeof(ProductCreatedEvent);
 
 // Simple preset
@@ -143,7 +143,7 @@ var global = TypeFormatter.FormatType(type, TypeQualifications.GlobalQualified);
 
 **When**: Generating code that references types
 
-```csharp{title="Scenario 1: Source Generator Output" description="When: Generating code that references types" category="Implementation" difficulty="ADVANCED" tags=["Fundamentals", "Identity", "Scenario", "Source"]}
+```csharp{title="Scenario 1: Source Generator Output" description="When: Generating code that references types" category="Implementation" difficulty="ADVANCED" tags=["Fundamentals", "Identity", "Scenario", "Source"] tests=["TypeFormatterTests.FormatType_GlobalQualified_AddsGlobalPrefixAsync"]}
 // Generate code with global::-qualified type names (avoids namespace conflicts)
 var messageType = TypeFormatter.FormatType(
     typeof(OrderCreatedEvent),
@@ -165,7 +165,7 @@ var generatedCode = $@"
 
 **When**: Matching message types by name with different qualification levels
 
-```csharp{title="Scenario 2: Message Association Lookup" description="When: Matching message types by name with different qualification levels" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Scenario", "Message"]}
+```csharp{title="Scenario 2: Message Association Lookup" description="When: Matching message types by name with different qualification levels" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Scenario", "Message"] tests=["TypeFormatterTests.FormatType_Simple_ReturnsTypeNameOnlyAsync", "TypeFormatterTests.FormatType_FullyQualified_ReturnsTypeWithAssemblyAsync"]}
 // Lookup by simple name
 var associations = GetMessageAssociations(serviceName)
     .Where(a => {
@@ -191,7 +191,7 @@ var fullyQualifiedAssociations = GetMessageAssociations(serviceName)
 
 **When**: Showing type names in logs or UI
 
-```csharp{title="Scenario 3: User-Facing Display" description="When: Showing type names in logs or UI" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Scenario", "User-Facing"]}
+```csharp{title="Scenario 3: User-Facing Display" description="When: Showing type names in logs or UI" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Scenario", "User-Facing"] tests=["TypeFormatterTests.FormatType_Simple_ReturnsTypeNameOnlyAsync", "TypeFormatterTests.FormatType_FullyQualified_ReturnsTypeWithAssemblyAsync"]}
 public void LogEventProcessing(Type eventType) {
     // Simple name for user-friendly display
     var displayName = TypeFormatter.FormatType(eventType, TypeQualifications.Simple);
@@ -209,7 +209,7 @@ public void LogEventProcessing(Type eventType) {
 
 **When**: Matching types across different assembly versions
 
-```csharp{title="Scenario 4: Version-Aware Type Matching" description="When: Matching types across different assembly versions" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Scenario", "Version-Aware"]}
+```csharp{title="Scenario 4: Version-Aware Type Matching" description="When: Matching types across different assembly versions" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Scenario", "Version-Aware"] tests=["TypeFormatterTests.FormatType_FullyQualified_ReturnsTypeWithAssemblyAsync", "TypeFormatterTests.FormatType_FullyQualifiedWithVersion_IncludesVersionInfoAsync"]}
 // Format without version information
 var typeWithoutVersion = TypeFormatter.FormatType(
     type,
@@ -236,7 +236,7 @@ bool matchesIgnoringVersion = TypeMatcher.Matches(
 
 TypeQualifications uses the `[Flags]` attribute, enabling bitwise operations:
 
-```csharp{title="Bitwise Operations" description="TypeQualifications uses the [Flags] attribute, enabling bitwise operations:" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Bitwise", "Operations"]}
+```csharp{title="Bitwise Operations" description="TypeQualifications uses the [Flags] attribute, enabling bitwise operations:" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Bitwise", "Operations"] tests=["TypeQualificationTests.TypeQualification_ComponentFlags_CanBeCombinedAsync", "TypeQualificationTests.TypeQualification_IndividualFlags_HaveDistinctValuesAsync"]}
 // Check if a flag is set
 bool hasNamespace = (qualification & TypeQualifications.Namespace) == TypeQualifications.Namespace;
 // OR
@@ -254,7 +254,7 @@ var toggled = qualification ^ TypeQualifications.GlobalPrefix;
 
 ### Building Qualification Dynamically
 
-```csharp{title="Building Qualification Dynamically" description="Building Qualification Dynamically" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Building", "Qualification"]}
+```csharp{title="Building Qualification Dynamically" description="Building Qualification Dynamically" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Building", "Qualification"] tests=["TypeQualificationTests.TypeQualification_ComponentFlags_CanBeCombinedAsync"]}
 public TypeQualifications BuildQualification(
     bool includeNamespace,
     bool includeAssembly,
@@ -290,7 +290,7 @@ var qual = BuildQualification(
 
 TypeQualifications is designed to work seamlessly with TypeFormatter:
 
-```csharp{title="Integration with TypeFormatter" description="TypeQualifications is designed to work seamlessly with TypeFormatter:" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Integration", "TypeFormatter"]}
+```csharp{title="Integration with TypeFormatter" description="TypeQualifications is designed to work seamlessly with TypeFormatter:" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Integration", "TypeFormatter"] tests=["TypeFormatterTests.FormatType_FullyQualified_ReturnsTypeWithAssemblyAsync", "TypeFormatterTests.FormatType_None_ReturnsEmptyStringAsync", "TypeFormatterTests.FormatType_CustomCombination_WorksCorrectlyAsync"]}
 // TypeFormatter respects all flags
 var formatted = TypeFormatter.FormatType(type, TypeQualifications.FullyQualified);
 
@@ -312,7 +312,7 @@ var custom = TypeFormatter.FormatType(
 
 **Namespace**: `Whizbang.Core`
 
-```csharp{title="Enum Definition" description="Namespace: `Whizbang." category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Enum", "Definition"]}
+```csharp{title="Enum Definition" description="Namespace: `Whizbang." category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Enum", "Definition"] tests=["TypeQualificationTests.TypeQualification_IndividualFlags_HaveDistinctValuesAsync", "TypeQualificationTests.TypeQualification_None_HasValueZeroAsync", "TypeQualificationTests.TypeQualification_Simple_MapsToTypeNameOnlyAsync", "TypeQualificationTests.TypeQualification_NamespaceQualified_MapsToNamespaceAndTypeNameAsync", "TypeQualificationTests.TypeQualification_FullyQualified_MapToCorrectFlagsAsync", "TypeQualificationTests.TypeQualification_GlobalQualified_IncludesGlobalPrefixAsync", "TypeQualificationTests.TypeQualification_FullyQualifiedWithVersion_IncludesAllComponentsAsync"]}
 [Flags]
 public enum TypeQualifications {
   None = 0,
@@ -338,7 +338,7 @@ public enum TypeQualifications {
 
 ### Usage with TypeFormatter
 
-```csharp{title="Usage with TypeFormatter" description="Usage with TypeFormatter" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Usage", "TypeFormatter"]}
+```csharp{title="Usage with TypeFormatter" description="Usage with TypeFormatter" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Usage", "TypeFormatter"] tests=["TypeFormatterTests.FormatType_Simple_ReturnsTypeNameOnlyAsync", "TypeFormatterTests.FormatType_FullyQualified_ReturnsTypeWithAssemblyAsync", "TypeFormatterTests.FormatType_NamespaceQualified_ReturnsFullNamespaceAsync"]}
 // Format a type with qualification
 string formatted = TypeFormatter.FormatType(Type type, TypeQualifications qualification);
 
@@ -365,7 +365,7 @@ var custom = TypeFormatter.FormatType(
 
 ### ❌ Forgetting TypeName Flag
 
-```csharp{title="❌ Forgetting TypeName Flag" description="❌ Forgetting TypeName Flag" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "Forgetting", "TypeName"]}
+```csharp{title="❌ Forgetting TypeName Flag" description="❌ Forgetting TypeName Flag" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "Forgetting", "TypeName"] unverified="counter-example — the wrong branch omits TypeName and is intentionally invalid; the correct FullyQualified formatting is verified in the API Reference examples"}
 // ❌ WRONG: Missing TypeName
 var qual = TypeQualifications.Namespace | TypeQualifications.Assembly;
 var result = TypeFormatter.FormatType(type, qual);
@@ -379,7 +379,7 @@ var result = TypeFormatter.FormatType(type, qual);
 
 ### ❌ Confusing Component Flags with Presets
 
-```csharp{title="❌ Confusing Component Flags with Presets" description="❌ Confusing Component Flags with Presets" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "Confusing", "Component"]}
+```csharp{title="❌ Confusing Component Flags with Presets" description="❌ Confusing Component Flags with Presets" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "Confusing", "Component"] unverified="counter-example — pitfall illustrating flag-arithmetic style, not an assertable behavior; NamespaceQualified equivalence is verified in the Composite Presets examples"}
 // ❌ WRONG: Trying to "remove" from a preset
 var qualification = TypeQualifications.FullyQualified & ~TypeQualifications.Assembly;
 // This works but is less clear
@@ -390,7 +390,7 @@ var qualification = TypeQualifications.Namespace | TypeQualifications.TypeName;
 
 ### ❌ Assuming Default Behavior
 
-```csharp{title="❌ Assuming Default Behavior" description="❌ Assuming Default Behavior" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "Assuming", "Default"]}
+```csharp{title="❌ Assuming Default Behavior" description="❌ Assuming Default Behavior" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "Assuming", "Default"] unverified="counter-example — pitfall contrasting an assumed vs actual result; the underlying Simple/NamespaceQualified formatting is verified in the API Reference examples"}
 // ❌ WRONG: Assuming default includes namespace
 var formatted = TypeFormatter.FormatType(type, TypeQualifications.TypeName);
 // Result: "ProductCreatedEvent" - No namespace!
