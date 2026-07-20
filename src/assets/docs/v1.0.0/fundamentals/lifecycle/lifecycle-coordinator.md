@@ -97,7 +97,7 @@ When an event goes through **multiple processing paths** (e.g., `Route.Both()`),
 
 `Route.Both()` example:
 
-```mermaid
+```mermaid{caption="Route.Both fan-in — the local path signals its completion and the distributed path (outbox to inbox to perspectives) signals its own; only when both arrive at the WhenAll gate does PostLifecycle fire exactly once." tests=["LifecycleCoordinatorTests.WhenAll_BothComplete_FiresPostLifecycleOnceAsync", "LifecycleCoordinatorTests.WhenAll_LocalAlone_DoesNotFirePostLifecycleDetachedAsync"]}
 graph LR
     E["Event"]
     LD["Dispatcher processes"]
@@ -121,7 +121,7 @@ graph LR
 
 ### Usage
 
-```csharp{title="WhenAll Pattern" description="Coordinating PostLifecycle across multiple processing paths" category="Architecture" difficulty="ADVANCED" tags=["Lifecycle", "Coordinator", "WhenAll"]}
+```csharp{title="WhenAll Pattern" description="Coordinating PostLifecycle across multiple processing paths" category="Architecture" difficulty="ADVANCED" tags=["Lifecycle", "Coordinator", "WhenAll"] tests=["LifecycleCoordinatorTests.WhenAll_LocalAlone_DoesNotFirePostLifecycleDetachedAsync", "LifecycleCoordinatorTests.WhenAll_BothComplete_FiresPostLifecycleOnceAsync"]}
 // At cascade time — register expected completions
 coordinator.ExpectCompletionsFrom(eventId,
   PostLifecycleCompletionSource.Local,
@@ -152,7 +152,7 @@ await coordinator.SignalSegmentCompleteAsync(
 
 When an event is processed by **multiple perspectives**, `PostAllPerspectivesDetached` must fire only after ALL perspectives complete. The coordinator tracks expected perspective completions per event:
 
-```mermaid
+```mermaid{caption="Perspective WhenAll fan-in — five perspectives each signal completion, and PostAllPerspectivesDetached fires only after the fifth (5/5) signal arrives; a partial set leaves the gate closed." tests=["LifecycleCoordinatorTests.ExpectPerspectiveCompletions_AllSignal_ReturnsTrueAsync", "LifecycleCoordinatorTests.ExpectPerspectiveCompletions_PartialSignal_ReturnsFalseAsync"]}
 graph TB
     E["Event arrives → 5 perspectives registered"]
     PA["PerspectiveA completes → signal &quot;A done&quot; (1/5)"]
@@ -187,7 +187,7 @@ graph TB
 
 ### Usage
 
-```csharp{title="Perspective WhenAll" description="Coordinating PostAllPerspectives across multiple perspectives" category="Architecture" difficulty="ADVANCED" tags=["Lifecycle", "Coordinator", "Perspectives", "WhenAll"]}
+```csharp{title="Perspective WhenAll" description="Coordinating PostAllPerspectives across multiple perspectives" category="Architecture" difficulty="ADVANCED" tags=["Lifecycle", "Coordinator", "Perspectives", "WhenAll"] tests=["LifecycleCoordinatorTests.ExpectPerspectiveCompletions_AllSignal_ReturnsTrueAsync", "LifecycleCoordinatorTests.ExpectPerspectiveCompletions_PartialSignal_ReturnsFalseAsync"]}
 // Register expected perspectives for an event
 coordinator.ExpectPerspectiveCompletions(eventId, ["PerspectiveA", "PerspectiveB", "PerspectiveC"]);
 
@@ -249,7 +249,7 @@ Lifecycle coordinator metrics are automatically registered via `AddWhizbang()`.
 
 ### `ILifecycleCoordinator`
 
-```csharp{title="ILifecycleCoordinator Interface" description="Centralized lifecycle stage coordination" category="API" difficulty="INTERMEDIATE" tags=["Lifecycle", "Coordinator", "API"]}
+```csharp{title="ILifecycleCoordinator Interface" description="Centralized lifecycle stage coordination" category="API" difficulty="INTERMEDIATE" tags=["Lifecycle", "Coordinator", "API"] unverified="interface declaration — API surface; the coordinator's methods are exercised by LifecycleCoordinatorTests"}
 public interface ILifecycleCoordinator {
   // Begin tracking an event at the specified entry stage
   ILifecycleTracking BeginTracking(
@@ -287,7 +287,7 @@ public interface ILifecycleCoordinator {
 
 ### `ILifecycleTracking`
 
-```csharp{title="ILifecycleTracking Interface" description="Per-event tracking handle for stage advancement" category="API" difficulty="INTERMEDIATE" tags=["Lifecycle", "Tracking", "API"]}
+```csharp{title="ILifecycleTracking Interface" description="Per-event tracking handle for stage advancement" category="API" difficulty="INTERMEDIATE" tags=["Lifecycle", "Tracking", "API"] unverified="interface declaration — API surface; AdvanceToAsync and AdvanceBatchAsync are exercised by LifecycleCoordinatorTests"}
 public interface ILifecycleTracking {
   Guid EventId { get; }
   LifecycleStage CurrentStage { get; }
@@ -333,7 +333,7 @@ The `ILifecycleTrackingContext` extends `ILifecycleContext` with coordinator-spe
 
 ### Usage
 
-```csharp{title="ILifecycleTrackingContext" description="Accessing tracking context in a lifecycle receptor" category="API" difficulty="INTERMEDIATE" tags=["Lifecycle", "Tracking", "Context"]}
+```csharp{title="ILifecycleTrackingContext" description="Accessing tracking context in a lifecycle receptor" category="API" difficulty="INTERMEDIATE" tags=["Lifecycle", "Tracking", "Context"] unverified="illustrative receptor usage — reading StageElapsed / StageHistory and calling Cancel / OnStage; no in-map test asserts these tracking-context capabilities"}
 [FireAt(LifecycleStage.PostPerspectiveInline)]
 public class PerformanceMonitorReceptor : IReceptor<IEvent> {
   private readonly ILifecycleTrackingContext _tracking;
@@ -386,7 +386,7 @@ The `ILifecyclePerspectiveStageContext` carries perspective-relevant information
 
 ### Usage
 
-```csharp{title="ILifecyclePerspectiveStageContext" description="Accessing perspective stage context in a lifecycle receptor" category="API" difficulty="INTERMEDIATE" tags=["Lifecycle", "Perspective", "Context"]}
+```csharp{title="ILifecyclePerspectiveStageContext" description="Accessing perspective stage context in a lifecycle receptor" category="API" difficulty="INTERMEDIATE" tags=["Lifecycle", "Perspective", "Context"] unverified="illustrative receptor usage — reading perspective stage context (StreamId, PerspectiveNames, LastProcessedEventId, PerspectiveType); no in-map test asserts this context surface"}
 [FireAt(LifecycleStage.PostPerspectiveInline)]
 public class PerspectiveAuditReceptor : IReceptor<IEvent> {
   private readonly ILifecyclePerspectiveStageContext _perspectiveContext;
@@ -415,7 +415,7 @@ public class PerspectiveAuditReceptor : IReceptor<IEvent> {
 
 ### PerspectiveWorker (Game Loop)
 
-```csharp{title="PerspectiveWorker Integration" description="Batch-synchronized stage advancement" category="Architecture" difficulty="ADVANCED" tags=["Lifecycle", "PerspectiveWorker", "GameLoop"]}
+```csharp{title="PerspectiveWorker Integration" description="Batch-synchronized stage advancement" category="Architecture" difficulty="ADVANCED" tags=["Lifecycle", "PerspectiveWorker", "GameLoop"] unverified="verified by PerspectiveWorkerPostLifecycleTests, which is outside the current coverage map"}
 // ENTRY: Begin tracking for each unique event in the batch
 foreach (var (eventId, (envelope, streamId)) in batchProcessedEvents) {
   coordinator.BeginTracking(eventId, envelope,
@@ -436,7 +436,7 @@ foreach (var (eventId, (envelope, streamId)) in batchProcessedEvents) {
 
 ### Dispatcher (Independent)
 
-```csharp{title="Dispatcher Integration" description="Independent lifecycle for local dispatch" category="Architecture" difficulty="INTERMEDIATE" tags=["Lifecycle", "Dispatcher", "Local"]}
+```csharp{title="Dispatcher Integration" description="Independent lifecycle for local dispatch" category="Architecture" difficulty="INTERMEDIATE" tags=["Lifecycle", "Dispatcher", "Local"] unverified="verified by PostLifecyclePipelineTests, which is outside the current coverage map"}
 // ENTRY: Begin tracking
 var tracking = coordinator.BeginTracking(
   messageId, envelope, LifecycleStage.PostLifecycleDetached, MessageSource.Local);
@@ -476,7 +476,7 @@ The coordinator is a **singleton** registered in DI. It uses `ConcurrentDictiona
 
 The coordinator is automatically registered when calling `AddWhizbang()`:
 
-```csharp{title="Registration" description="Automatic registration via AddWhizbang" category="Configuration" difficulty="BEGINNER" tags=["Lifecycle", "DI", "Registration"]}
+```csharp{title="Registration" description="Automatic registration via AddWhizbang" category="Configuration" difficulty="BEGINNER" tags=["Lifecycle", "DI", "Registration"] unverified="AddWhizbang DI registration — the coordinator is wired as a singleton automatically; no runtime behavior to assert"}
 services.AddWhizbang(options => {
   // ILifecycleCoordinator is registered as singleton automatically
 });
