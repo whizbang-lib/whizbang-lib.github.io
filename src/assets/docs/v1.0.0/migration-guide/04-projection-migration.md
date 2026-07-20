@@ -47,7 +47,7 @@ Whizbang Perspectives are **pure functions** by design:
 
 ### Marten Single-Stream
 
-```csharp{title="Marten Single-Stream" description="Marten Single-Stream" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-Guide", "Marten", "Single-Stream"]}
+```csharp{title="Marten Single-Stream" description="Marten Single-Stream" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-Guide", "Marten", "Single-Stream"] unverified="other framework — migration before-state"}
 // Marten: Can mutate, can have side effects
 public class OrderSummaryProjection : SingleStreamProjection<OrderSummary> {
     public OrderSummary Create(OrderCreated @event) {
@@ -79,7 +79,7 @@ public class OrderSummaryProjection : SingleStreamProjection<OrderSummary> {
 
 ### Whizbang Perspective
 
-```csharp{title="Whizbang Perspective" description="Whizbang Perspective" category="Reference" difficulty="ADVANCED" tags=["Migration-guide", "C#", "Whizbang", "Perspective"]}
+```csharp{title="Whizbang Perspective" description="Whizbang Perspective" category="Reference" difficulty="ADVANCED" tags=["Migration-guide", "C#", "Whizbang", "Perspective"] tests=["IPerspectiveForTests.Perspective_ImplementingIPerspectiveFor_HasApplyMethodAsync", "IPerspectiveForTests.Perspective_ImplementingMultipleEventTypes_HasApplyForEachAsync", "IPerspectiveForTests.Perspective_ImplementingIPerspectiveFor_ApplyIsPureFunctionAsync"]}
 // Whizbang: Pure functions, returns new model
 // Event types must implement IEvent; up to 20 event types per perspective
 public class OrderSummaryPerspective :
@@ -123,7 +123,7 @@ public class OrderSummaryPerspective :
 
 ### Marten Multi-Stream
 
-```csharp{title="Marten Multi-Stream" description="Marten Multi-Stream" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-Guide", "Marten", "Multi-Stream"]}
+```csharp{title="Marten Multi-Stream" description="Marten Multi-Stream" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-Guide", "Marten", "Multi-Stream"] unverified="other framework — migration before-state"}
 // Marten: Aggregates across streams
 public class CustomerOrderStatsProjection :
     MultiStreamProjection<CustomerOrderStats, Guid> {
@@ -154,7 +154,7 @@ public class CustomerOrderStatsProjection :
 
 ### Whizbang Global Perspective
 
-```csharp{title="Whizbang Global Perspective" description="Whizbang Global Perspective" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-guide", "C#", "Whizbang", "Global", "Perspective"]}
+```csharp{title="Whizbang Global Perspective" description="Whizbang Global Perspective" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-guide", "C#", "Whizbang", "Global", "Perspective"] tests=["IGlobalPerspectiveForTests.GlobalPerspective_HasGetPartitionKeyMethod_ExtractsPartitionFromEventAsync", "IGlobalPerspectiveForTests.GlobalPerspective_MultipleEventTypes_HasGetPartitionKeyForEachAsync", "IGlobalPerspectiveForTests.GlobalPerspective_ApplyMethod_IsPureFunctionAsync"]}
 // Whizbang: Global perspective with partition key
 // GetPartitionKey mirrors Marten's Identity() method
 // (variants currently support up to 3 event types)
@@ -193,7 +193,7 @@ public class CustomerOrderStatsPerspective :
 
 **Marten (mutation)**:
 
-```csharp{title="Pattern: Mutation → `with` Expression" description="Marten (mutation):" category="Reference" difficulty="BEGINNER" tags=["Migration-guide", "C#", "Pattern:", "Mutation"]}
+```csharp{title="Pattern: Mutation → `with` Expression" description="Marten (mutation):" category="Reference" difficulty="BEGINNER" tags=["Migration-guide", "C#", "Pattern:", "Mutation"] unverified="other framework — migration before-state"}
 public void Apply(OrderUpdated @event, OrderSummary model) {
     model.Title = @event.Title;
     model.Total = @event.Total;
@@ -203,7 +203,7 @@ public void Apply(OrderUpdated @event, OrderSummary model) {
 
 **Whizbang (immutable)**:
 
-```csharp{title="Pattern: Mutation → `with` Expression (2)" description="Whizbang (immutable):" category="Reference" difficulty="BEGINNER" tags=["Migration-guide", "C#", "Pattern:", "Mutation"]}
+```csharp{title="Pattern: Mutation → `with` Expression (2)" description="Whizbang (immutable):" category="Reference" difficulty="BEGINNER" tags=["Migration-guide", "C#", "Pattern:", "Mutation"] tests=["IPerspectiveForTests.Perspective_ImplementingIPerspectiveFor_ApplyIsPureFunctionAsync"]}
 public OrderSummary Apply(OrderSummary current, OrderUpdated @event) {
     return current with {
         Title = @event.Title,
@@ -217,7 +217,7 @@ public OrderSummary Apply(OrderSummary current, OrderUpdated @event) {
 
 **Marten (conditional mutation)**:
 
-```csharp{title="Pattern: Conditional Logic" description="Marten (conditional mutation):" category="Reference" difficulty="BEGINNER" tags=["Migration-guide", "C#", "Pattern:", "Conditional", "Logic"]}
+```csharp{title="Pattern: Conditional Logic" description="Marten (conditional mutation):" category="Reference" difficulty="BEGINNER" tags=["Migration-guide", "C#", "Pattern:", "Conditional", "Logic"] unverified="other framework — migration before-state"}
 public void Apply(PaymentReceived @event, OrderSummary model) {
     model.PaidAmount += @event.Amount;
     if (model.PaidAmount >= model.Total) {
@@ -228,7 +228,7 @@ public void Apply(PaymentReceived @event, OrderSummary model) {
 
 **Whizbang (conditional immutable)**:
 
-```csharp{title="Pattern: Conditional Logic (2)" description="Whizbang (conditional immutable):" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-guide", "C#", "Pattern:", "Conditional", "Logic"]}
+```csharp{title="Pattern: Conditional Logic (2)" description="Whizbang (conditional immutable):" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-guide", "C#", "Pattern:", "Conditional", "Logic"] tests=["IPerspectiveForTests.Perspective_ImplementingIPerspectiveFor_ApplyIsPureFunctionAsync"]}
 public OrderSummary Apply(OrderSummary current, PaymentReceived @event) {
     var newPaidAmount = current.PaidAmount + @event.Amount;
     var newStatus = newPaidAmount >= current.Total
@@ -246,7 +246,7 @@ public OrderSummary Apply(OrderSummary current, PaymentReceived @event) {
 
 **Marten (list mutation)**:
 
-```csharp{title="Pattern: Collection Updates" description="Marten (list mutation):" category="Reference" difficulty="BEGINNER" tags=["Migration-guide", "C#", "Pattern:", "Collection", "Updates"]}
+```csharp{title="Pattern: Collection Updates" description="Marten (list mutation):" category="Reference" difficulty="BEGINNER" tags=["Migration-guide", "C#", "Pattern:", "Collection", "Updates"] unverified="other framework — migration before-state"}
 public void Apply(ItemAdded @event, ShoppingCart model) {
     model.Items.Add(new CartItem(@event.ProductId, @event.Quantity));
 }
@@ -254,7 +254,7 @@ public void Apply(ItemAdded @event, ShoppingCart model) {
 
 **Whizbang (immutable collection)**:
 
-```csharp{title="Pattern: Collection Updates (2)" description="Whizbang (immutable collection):" category="Reference" difficulty="BEGINNER" tags=["Migration-guide", "C#", "Pattern:", "Collection", "Updates"]}
+```csharp{title="Pattern: Collection Updates (2)" description="Whizbang (immutable collection):" category="Reference" difficulty="BEGINNER" tags=["Migration-guide", "C#", "Pattern:", "Collection", "Updates"] tests=["IPerspectiveForTests.Perspective_ImplementingIPerspectiveFor_ApplyIsPureFunctionAsync"]}
 public ShoppingCart Apply(ShoppingCart current, ItemAdded @event) {
     var newItems = current.Items
         .Append(new CartItem(@event.ProductId, @event.Quantity))
@@ -270,7 +270,7 @@ public ShoppingCart Apply(ShoppingCart current, ItemAdded @event) {
 
 **Before (class with mutable properties)**:
 
-```csharp{title="Use Records for Immutability" description="Before (class with mutable properties):" category="Reference" difficulty="BEGINNER" tags=["Migration-guide", "C#", "Use", "Records", "Immutability"]}
+```csharp{title="Use Records for Immutability" description="Before (class with mutable properties):" category="Reference" difficulty="BEGINNER" tags=["Migration-guide", "C#", "Use", "Records", "Immutability"] unverified="model definition — before-state mutable class, no behavior to assert"}
 public class OrderSummary {
     public Guid Id { get; set; }
     public OrderStatus Status { get; set; }
@@ -280,7 +280,7 @@ public class OrderSummary {
 
 **After (record with init properties)**:
 
-```csharp{title="Use Records for Immutability - OrderSummary" description="After (record with init properties):" category="Reference" difficulty="BEGINNER" tags=["Migration-guide", "C#", "Use", "Records", "Immutability"]}
+```csharp{title="Use Records for Immutability - OrderSummary" description="After (record with init properties):" category="Reference" difficulty="BEGINNER" tags=["Migration-guide", "C#", "Use", "Records", "Immutability"] unverified="model definition — record type declaration, no behavior to assert"}
 public sealed record OrderSummary {
     public required Guid Id { get; init; }
     public OrderStatus Status { get; init; }
@@ -295,7 +295,7 @@ public sealed record OrderSummary {
 
 ### Marten Async Projections
 
-```csharp{title="Marten Async Projections" description="Marten Async Projections" category="Reference" difficulty="BEGINNER" tags=["Migration-guide", "C#", "Marten", "Async", "Projections"]}
+```csharp{title="Marten Async Projections" description="Marten Async Projections" category="Reference" difficulty="BEGINNER" tags=["Migration-guide", "C#", "Marten", "Async", "Projections"] unverified="other framework — migration before-state"}
 // Marten: Can do async work in projections
 public async Task Apply(OrderCreated @event, OrderSummary model, IQuerySession session) {
     var customer = await session.LoadAsync<Customer>(@event.CustomerId);
@@ -339,7 +339,7 @@ public class OrderSummaryPerspective : IPerspectiveFor<OrderSummary, OrderCreate
 
 ### Marten Projection Registration
 
-```csharp{title="Marten Projection Registration" description="Marten Projection Registration" category="Reference" difficulty="BEGINNER" tags=["Migration-guide", "C#", "Marten", "Projection", "Registration"]}
+```csharp{title="Marten Projection Registration" description="Marten Projection Registration" category="Reference" difficulty="BEGINNER" tags=["Migration-guide", "C#", "Marten", "Projection", "Registration"] unverified="other framework — migration before-state"}
 services.AddMarten(opts => {
     opts.Projections.Add<OrderSummaryProjection>(ProjectionLifecycle.Async);
     opts.Projections.Add<CustomerOrderStatsProjection>(ProjectionLifecycle.Inline);
@@ -348,7 +348,7 @@ services.AddMarten(opts => {
 
 ### Whizbang Perspective Registration
 
-```csharp{title="Whizbang Perspective Registration" description="Whizbang Perspective Registration" category="Reference" difficulty="BEGINNER" tags=["Migration-guide", "C#", "Whizbang", "Perspective", "Registration"]}
+```csharp{title="Whizbang Perspective Registration" description="Whizbang Perspective Registration" category="Reference" difficulty="BEGINNER" tags=["Migration-guide", "C#", "Whizbang", "Perspective", "Registration"] unverified="configuration — DI service registration, not covered by this page's perspective tests"}
 // Perspectives are auto-discovered at compile time by source generators.
 // The storage chain registers every discovered perspective automatically -
 // there is no per-perspective registration call and no lifecycle enum:
@@ -364,7 +364,7 @@ There is no equivalent of Marten's `ProjectionLifecycle.Inline`/`Async` choice: 
 
 Perspectives are easy to test because they're pure functions:
 
-```csharp{title="Testing Perspectives" description="Perspectives are easy to test because they're pure functions:" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-guide", "C#", "Testing", "Perspectives"]}
+```csharp{title="Testing Perspectives" description="Perspectives are easy to test because they're pure functions:" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-guide", "C#", "Testing", "Perspectives"] tests=["IPerspectiveForTests.Perspective_ImplementingIPerspectiveFor_HasApplyMethodAsync", "IPerspectiveForTests.Perspective_ImplementingIPerspectiveFor_ApplyIsPureFunctionAsync"]}
 [Test]
 public async Task Apply_OrderCreated_CreatesNewSummaryAsync() {
     // Arrange
