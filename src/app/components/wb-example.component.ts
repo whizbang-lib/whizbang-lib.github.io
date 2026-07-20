@@ -15,8 +15,8 @@ import { CardModule } from "primeng/card";
         <iframe [src]="safeSrc"
                 width="100%" height="400" frameborder="0"></iframe>
       }
-      <button pButton icon="pi pi-copy" label="Open"
-              (click)="open()"></button>
+      <button pButton
+              (click)="open()"><i class="pi pi-copy" pButtonIcon></i><span pButtonLabel>Open</span></button>
     </p-card>
   `
 })

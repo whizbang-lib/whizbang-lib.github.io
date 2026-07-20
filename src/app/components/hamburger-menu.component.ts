@@ -38,15 +38,16 @@ interface NavTreeNode {
     VersionSelectorComponent
   ],
   template: `
-    <button 
-      pButton 
-      type="button" 
-      icon="pi pi-bars" 
+    <button
+      pButton
+      iconOnly
+      type="button"
       class="p-button-text p-button-rounded hamburger-btn"
       (click)="toggleMenu()"
       [attr.aria-label]="'Open navigation menu'"
       pTooltip="Navigation Menu"
       tooltipPosition="bottom">
+      <i class="pi pi-bars" pButtonIcon></i>
     </button>
 
     <!-- Custom push sidebar -->
@@ -59,15 +60,16 @@ interface NavTreeNode {
             class="sidebar-logo"
             alt="Whizbang Logo"
           />
-          <button 
-            pButton 
-            type="button" 
-            icon="pi pi-times" 
+          <button
+            pButton
+            iconOnly
+            type="button"
             class="p-button-text p-button-rounded sidebar-close-btn"
             (click)="closeMenu()"
             [attr.aria-label]="'Close navigation menu'"
             pTooltip="Close Menu"
             tooltipPosition="bottom">
+            <i class="pi pi-times" pButtonIcon></i>
           </button>
         </div>
       </div>

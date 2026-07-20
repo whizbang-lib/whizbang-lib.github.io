@@ -13,6 +13,19 @@ import { MessageService } from 'primeng/api';
     </p-toast>
   `,
   styles: [`
+    /* Disable PrimeNG 22's collapsed-stack ("pile") behavior so messages flow
+       as a normal vertical list instead of overlapping. styleClass is not placed
+       on the .p-toast container in v22, so target .p-toast-message directly. */
+    :host ::ng-deep .p-toast-message {
+      position: relative !important;
+      transform: none !important;
+      inset: auto !important;
+      top: auto !important;
+      left: auto !important;
+      right: auto !important;
+      margin-bottom: 12px !important;
+    }
+
     /* Global toast styling - enhanced glassmorphism for all toast types */
     :host ::ng-deep .global-toast .p-toast-message,
     :host ::ng-deep .mobile-toast-fix .p-toast-message {

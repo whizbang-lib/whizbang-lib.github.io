@@ -27,21 +27,21 @@ import { Subject, debounceTime, distinctUntilChanged, takeUntil } from 'rxjs';
           (focus)="onFocus()"
           class="search-input"
         />
-        <button 
-          pButton 
-          type="button" 
-          icon="pi pi-search"
+        <button
+          pButton
+          iconOnly
+          type="button"
           (click)="onSearchClick()"
           [disabled]="!searchQuery.trim()"
-        ></button>
-        <button 
+        ><i class="pi pi-search" pButtonIcon></i></button>
+        <button
           *ngIf="searchQuery.trim()"
-          pButton 
-          type="button" 
-          icon="pi pi-times"
+          pButton
+          iconOnly
+          type="button"
           (click)="clearSearch()"
           class="p-button-text"
-        ></button>
+        ><i class="pi pi-times" pButtonIcon></i></button>
       </div>
 
       <p-popover
