@@ -39,7 +39,7 @@ TypeFormatter is a static utility class that formats .NET Type objects into stri
 
 ### Basic Formatting
 
-```csharp{title="Basic Formatting" description="Basic Formatting" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "Basic", "Formatting"]}
+```csharp{title="Basic Formatting" description="Basic Formatting" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "Basic", "Formatting"] tests=["TypeFormatterTests.FormatType_Simple_ReturnsTypeNameOnlyAsync", "TypeFormatterTests.FormatType_FullyQualified_ReturnsTypeWithAssemblyAsync", "TypeFormatterTests.FormatType_NamespaceQualified_ReturnsFullNamespaceAsync"]}
 using Whizbang.Core;
 
 var type = typeof(ECommerce.Contracts.Events.ProductCreatedEvent);
@@ -64,7 +64,7 @@ Console.WriteLine(custom);
 
 ### Formatting with Version Information
 
-```csharp{title="Formatting with Version Information" description="Formatting with Version Information" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Formatting", "Version"]}
+```csharp{title="Formatting with Version Information" description="Formatting with Version Information" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Formatting", "Version"] tests=["TypeFormatterTests.FormatType_FullyQualifiedWithVersion_IncludesVersionInfoAsync", "TypeFormatterTests.FormatType_FullyQualified_ReturnsTypeWithAssemblyAsync"]}
 // Full assembly qualification with version
 var withVersion = TypeFormatter.FormatType(
     type,
@@ -99,7 +99,7 @@ TypeFormatter outputs components in this order:
 
 ### Flag Combinations
 
-```csharp{title="Flag Combinations" description="Flag Combinations" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Flag", "Combinations"]}
+```csharp{title="Flag Combinations" description="Flag Combinations" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Flag", "Combinations"] tests=["TypeFormatterTests.FormatType_TypeNameOnly_ReturnsSimpleNameAsync", "TypeFormatterTests.FormatType_NamespaceQualified_ReturnsFullNamespaceAsync", "TypeFormatterTests.FormatType_CustomCombination_WorksCorrectlyAsync", "TypeFormatterTests.FormatType_GlobalQualified_AddsGlobalPrefixAsync", "TypeFormatterTests.FormatType_None_ReturnsEmptyStringAsync"]}
 var type = typeof(OrderCreatedEvent);
 
 // TypeName only
@@ -158,7 +158,7 @@ var withVersion = TypeFormatter.FormatType(
 
 **When**: Generating C# code that references types
 
-```csharp{title="Scenario 1: Source Generator Output" description="When: Generating C# code that references types" category="Implementation" difficulty="ADVANCED" tags=["Fundamentals", "Identity", "Scenario", "Source"]}
+```csharp{title="Scenario 1: Source Generator Output" description="When: Generating C# code that references types" category="Implementation" difficulty="ADVANCED" tags=["Fundamentals", "Identity", "Scenario", "Source"] tests=["TypeFormatterTests.FormatType_GlobalQualified_AddsGlobalPrefixAsync"]}
 public string GenerateEventHandler(Type eventType) {
     // Use GlobalQualified to avoid namespace conflicts
     var typeName = TypeFormatter.FormatType(
@@ -187,7 +187,7 @@ public class GeneratedHandler {{
 
 **When**: Displaying type information in logs
 
-```csharp{title="Scenario 2: Logging and Diagnostics" description="When: Displaying type information in logs" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Scenario", "Logging"]}
+```csharp{title="Scenario 2: Logging and Diagnostics" description="When: Displaying type information in logs" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Scenario", "Logging"] tests=["TypeFormatterTests.FormatType_Simple_ReturnsTypeNameOnlyAsync", "TypeFormatterTests.FormatType_FullyQualified_ReturnsTypeWithAssemblyAsync", "TypeFormatterTests.FormatType_FullyQualifiedWithVersion_IncludesVersionInfoAsync"]}
 public void LogTypeInfo(Type type) {
     // Simple name for user-friendly output
     var simple = TypeFormatter.FormatType(type, TypeQualifications.Simple);
@@ -215,7 +215,7 @@ public void LogTypeInfo(Type type) {
 
 **When**: Storing type names in configuration or serializing to JSON
 
-```csharp{title="Scenario 3: Configuration and Serialization" description="When: Storing type names in configuration or serializing to JSON" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Scenario", "Configuration"]}
+```csharp{title="Scenario 3: Configuration and Serialization" description="When: Storing type names in configuration or serializing to JSON" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Scenario", "Configuration"] unverified="configuration/serialization scenario — round-trips through BCL Type.GetType, not covered by TypeFormatter tests"}
 public class EventConfiguration {
     // Store fully qualified name for reliable deserialization
     public string EventType { get; set; } = null!;
@@ -242,7 +242,7 @@ public Type GetEventType(EventConfiguration config) {
 
 **When**: Building UI that shows type information
 
-```csharp{title="Scenario 4: Dynamic Type Display" description="When: Building UI that shows type information" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Scenario", "Dynamic"]}
+```csharp{title="Scenario 4: Dynamic Type Display" description="When: Building UI that shows type information" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Scenario", "Dynamic"] tests=["TypeFormatterTests.FormatType_Simple_ReturnsTypeNameOnlyAsync", "TypeFormatterTests.FormatType_NamespaceQualified_ReturnsFullNamespaceAsync"]}
 public class TypeDisplayInfo {
     public string SimpleName { get; init; } = null!;
     public string FullName { get; init; } = null!;
@@ -368,7 +368,7 @@ public class CachedTypeFormatter {
 
 TypeFormatter is used extensively in message association APIs:
 
-```csharp{title="Integration with Message Associations" description="TypeFormatter is used extensively in message association APIs:" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Integration", "Message"]}
+```csharp{title="Integration with Message Associations" description="TypeFormatter is used extensively in message association APIs:" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Integration", "Message"] unverified="integration example — perspective-association lookup (GetPerspectivesForEvent) is verified in the Perspectives docs, not by TypeFormatter tests"}
 // Format event type for lookup
 var eventType = typeof(ProductCreatedEvent);
 var simpleType = TypeFormatter.FormatType(eventType, TypeQualifications.Simple);
@@ -390,7 +390,7 @@ var storedType = TypeFormatter.FormatType(eventType, TypeQualifications.FullyQua
 
 **Namespace**: `Whizbang.Core`
 
-```csharp{title="Method Signature" description="Namespace: `Whizbang." category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Method", "Signature"]}
+```csharp{title="Method Signature" description="Namespace: `Whizbang." category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Method", "Signature"] tests=["TypeFormatterTests.FormatType_Simple_ReturnsTypeNameOnlyAsync", "TypeFormatterTests.ParseAssemblyName_WithVersion_StripsVersionInfoAsync", "TypeFormatterTests.ParseAssemblyName_WithoutVersion_ReturnsFullAssemblyStringAsync", "TypeFormatterTests.ParseAssemblyName_NoAssemblyInfo_ReturnsEmptyStringAsync"]}
 public static class TypeFormatter {
     /// <summary>
     /// Formats a Type according to the specified TypeQualifications flags.
@@ -442,7 +442,7 @@ public static class TypeFormatter {
 
 ### ❌ Formatting Null Types
 
-```csharp{title="❌ Formatting Null Types" description="❌ Formatting Null Types" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "Formatting", "Null"]}
+```csharp{title="❌ Formatting Null Types" description="❌ Formatting Null Types" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "Formatting", "Null"] unverified="counter-example — passing null throws ArgumentNullException; not covered by a TypeFormatter test"}
 // ❌ WRONG: Null type
 Type? nullType = null;
 var formatted = TypeFormatter.FormatType(nullType!, TypeQualifications.Simple);
@@ -456,7 +456,7 @@ if (type != null) {
 
 ### ❌ Assuming Default Format
 
-```csharp{title="❌ Assuming Default Format" description="❌ Assuming Default Format" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "Assuming", "Default"]}
+```csharp{title="❌ Assuming Default Format" description="❌ Assuming Default Format" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "Assuming", "Default"] unverified="counter-example — ToString() vs FormatType, illustrative anti-pattern"}
 // ❌ WRONG: Assuming ToString() matches formatted output
 var toString = type.ToString();
 var formatted = TypeFormatter.FormatType(type, TypeQualifications.FullyQualified);
@@ -468,7 +468,7 @@ var formatted = TypeFormatter.FormatType(type, TypeQualifications.FullyQualified
 
 ### ❌ Hardcoding Type Names
 
-```csharp{title="❌ Hardcoding Type Names" description="❌ Hardcoding Type Names" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "Hardcoding", "Type"]}
+```csharp{title="❌ Hardcoding Type Names" description="❌ Hardcoding Type Names" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "Hardcoding", "Type"] unverified="counter-example — hardcoded type name vs FormatType, illustrative anti-pattern"}
 // ❌ WRONG: Hardcoded type name
 var typeName = "ECommerce.Contracts.Events.ProductCreatedEvent, ECommerce.Contracts";
 
@@ -481,7 +481,7 @@ var typeName = TypeFormatter.FormatType(
 
 ### ❌ Ignoring Culture in Manual Formatting
 
-```csharp{title="❌ Ignoring Culture in Manual Formatting" description="❌ Ignoring Culture in Manual Formatting" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "Ignoring", "Culture"]}
+```csharp{title="❌ Ignoring Culture in Manual Formatting" description="❌ Ignoring Culture in Manual Formatting" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "Ignoring", "Culture"] unverified="counter-example — culture-dependent manual formatting vs FormatType, illustrative anti-pattern"}
 // ❌ WRONG: Culture-dependent formatting
 var version = type.Assembly.GetName().Version;
 var formatted = $"Version={version}"; // May use locale-specific format
