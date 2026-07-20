@@ -35,7 +35,7 @@ In event sourcing, events are organized into **streams**:
 
 ## StreamId Value Object {#streamid}
 
-```csharp{title="StreamId Value Object" description="StreamId Value Object" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "StreamId", "Value"]}
+```csharp{title="StreamId Value Object" description="StreamId Value Object" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "StreamId", "Value"] unverified="value-object type declaration; no runtime behavior asserted"}
 namespace Whizbang.Core.ValueObjects;
 
 /// <summary>
@@ -49,7 +49,7 @@ public readonly partial struct StreamId;
 
 ### Creating StreamIds
 
-```csharp{title="Creating StreamIds" description="Creating StreamIds" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Creating", "StreamIds"]}
+```csharp{title="Creating StreamIds" description="Creating StreamIds" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Creating", "StreamIds"] unverified="StreamId value-object construction and parsing; verified by IdentityValueObjectTests, which is absent from the test map"}
 // Create new StreamId (UUIDv7)
 var streamId = StreamId.New();
 

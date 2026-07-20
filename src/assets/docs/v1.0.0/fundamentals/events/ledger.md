@@ -100,7 +100,7 @@ var store = new InMemoryEventStore(envelopeRegistry);
 
 Relational backends persist one `EventStoreRecord` per event:
 
-```csharp{title="Record Structure" description="EventStoreRecord - the persisted shape of a ledger entry" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Event", "Structure"]}
+```csharp{title="Record Structure" description="EventStoreRecord - the persisted shape of a ledger entry" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Event", "Structure"] unverified="EventStoreRecord is the relational-backend persisted shape — not exercised by the in-memory ledger tests referenced by this page"}
 public sealed class EventStoreRecord {
   public Guid Id { get; set; }                       // Event ID (UUIDv7)
   public required Guid StreamId { get; set; }        // Stream (aggregate) identity

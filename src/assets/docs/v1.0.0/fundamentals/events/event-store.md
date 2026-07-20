@@ -113,7 +113,7 @@ var syncResult = await _eventStore.AppendAndWaitAsync<OrderCreatedEvent, OrderPr
 
 The single-type-parameter overload `AppendAndWaitAsync<TMessage>` waits for **all** registered perspectives to process the event, rather than a specific one:
 
-```csharp{title="Wait for All Perspectives" description="Append and wait for all perspectives to process" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "AppendAndWait", "All"]}
+```csharp{title="Wait for All Perspectives" description="Append and wait for all perspectives to process" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "AppendAndWait", "All"] unverified="Single-parameter all-perspectives AppendAndWaitAsync overload; its coverage lives in AppendAndWaitEventStoreDecoratorCallbackTests, not this page's referenced tests"}
 var syncResult = await _eventStore.AppendAndWaitAsync(
     streamId: orderId,
     message: new OrderCreatedEvent(orderId, customerId, items),
