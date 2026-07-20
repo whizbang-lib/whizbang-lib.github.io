@@ -22,22 +22,36 @@ node src/scripts/coverage-report.mjs --gaps     # only pages with remaining gaps
 - **2,682 C# examples** — coverage (verified or excused) starts at **~1%**.
 - **160 Mermaid diagrams** — 1 migrated to `{caption + tests}`.
 
-## Progress (updated 2026-07-20)
-- **C# coverage: 2,418 / 2,682 = 90%** (1,162 verified · 1,256 excused · 264 gap).
-- **Mermaid: 62 / 160** carry `caption + tests`.
-- Sections fully swept (verified + excused, honest gaps recorded): all of `operations/*`,
-  `apis/*`, `extending/*`, `learn/*`, `getting-started`, and `fundamentals/*` EXCEPT the
-  still-partial sections in the table below. The perspectives, lenses, events, receptors,
-  and source-generators sweeps this cycle drove **78% -> 90%**.
-- Remaining gap (264) concentrates in the partial `fundamentals/*` (security 31, messages 30,
-  identity 22, dispatcher 22), `messaging` (19), `messaging/transports` (17),
-  `operations/diagnostics` (16), `data` (14), and the small unstarted
-  `fundamentals/{sagas 12, offloads 7, workers 5}` + `operations/dead-letter-queue` (11).
-  See the git log (`docs(coverage): annotate …` / `fill … gaps`) for per-section commits.
-- Note on the partial-fill pattern: the remaining sections are heavily *already-green* from
-  prior sessions; the bare fences left over are predominantly consumer/domain illustration,
-  value-object construction covered only by map-absent classes, or genuinely-untested
-  helpers — so expect high excused ratios and a handful of honest "needs test" bare gaps.
+## Progress (updated 2026-07-20 — effective floor reached)
+- **C# coverage: 2,607 / 2,682 = 97%** (verified + excused). **75 bare gaps remain** — this is the
+  intended honest floor, not unfinished work (see below).
+- **Mermaid: 63 / 160** carry `caption + tests` (the rest are caption-only conceptual/overview
+  diagrams no single in-map test verifies — report-only).
+- **Every section has been swept.** All four previously-unstarted sections
+  (`fundamentals/sagas`, `operations/dead-letter-queue`, `fundamentals/offloads`,
+  `fundamentals/workers`) are done; all partial `fundamentals/*` / `messaging*` / `data`
+  sections were gap-filled to their floor. The full arc this program: ~1% → 90% (prior sessions)
+  → **97%** (reconciliation + gap-fill cycle). See the git log (`docs(coverage): …`).
+- **The remaining 75 gaps are deliberate, split two ways:**
+  1. **Genuine "needs test" amber** — a documented behavior with no verifying test anywhere
+     (e.g. `InProcessTransport.InitializeAsync`/`IsInitialized`, the unwired WHIZ802 descriptor,
+     assorted disabled-by-default diagnostic patterns). This is the *"callout what is missing"*
+     signal working as designed — do NOT convert these to `unverified=`.
+  2. **Map-absent residue** — a real, passing verifier exists but is outside
+     `code-tests-map.json`, so it cannot render green. These are the true target of the
+     map-regeneration follow-up below, not more excuse-labeling.
+- Residual gaps by section (2026-07-20): operations/diagnostics 16, operations/configuration 8,
+  learn/tutorial 8, operations/workers 7, migration-guide 7, extending/source-generators 6,
+  fundamentals/perspectives 5, apis/rest 4, apis/graphql 4, operations/infrastructure 3,
+  operations/observability 2, fundamentals/persistence 2, operations/deployment 1,
+  messaging/transports 1, extending/extensibility 1.
+
+## Tooling note (2026-07-20)
+Fixed a real fence-metadata parsing bug found during this work: a naive `{[^}]*}` capture in
+both the runtime parser (`code-block-parser.service.ts`) and `coverage-report.mjs` truncated a
+fence's metadata at the first `}` inside a *quoted value* (e.g. `description="Using {PropertyName}
+…"`), dropping trailing `tests=`/`unverified=` keys and spilling metadata text into the rendered
+code. Both are now quote-aware. Commit `fix(docs): quote-aware code-fence metadata parsing`.
 
 ### Recurring ceiling — regenerate `code-tests-map.json`
 The dominant blocker on green ratio is the **staleness of `src/assets/code-tests-map.json`**. Many real,
@@ -68,34 +82,25 @@ honest amber. When you can't confidently map an example, leave it as a gap.
 6. (Local preview only) add any new keys to the git-excluded dev fixture
    `src/assets/data/test-status/Whizbang.Core.Tests.json` so badges render green in dev.
 
-## Section priority (remaining C# gap, updated 2026-07-20)
-Work section-by-section; each section shares test classes so mapping is coherent. Regenerate this
-table any time with `node src/scripts/coverage-report.mjs` (aggregate the `gap` column by section).
-Fully-swept sections (gap is only honest/map-ceiling residue) are omitted; the biggest remaining work
-is the partially-done `fundamentals/*` sections started by earlier sessions.
+## Status: all sections swept (2026-07-20)
+Every section has been annotated to its floor — there is no "next section to start". Regenerate the
+live residual-gap table any time with `node src/scripts/coverage-report.mjs` (aggregate `gap` by
+section). The 75 remaining bare gaps are the deliberate honest floor described under **Progress**
+above (genuine "needs test" amber + map-absent residue); they are listed per-section there.
 
-| Section | pages | C# | remaining gap | note |
-|---|--:|--:|--:|---|
-| fundamentals/security | 9 | 165 | 31 | partial |
-| fundamentals/messages | 9 | 117 | 30 | partial |
-| fundamentals/identity | 7 | 143 | 22 | partial |
-| fundamentals/dispatcher | 7 | 162 | 22 | partial (model page done) |
-| messaging | 11 | 82 | 19 | partial |
-| messaging/transports | 6 | 94 | 17 | partial |
-| operations/diagnostics | 15 | 71 | 16 | swept — honest residue |
-| data | 13 | 147 | 14 | partial |
-| fundamentals/sagas | 2 | 12 | 12 | **todo — unstarted** |
-| operations/dead-letter-queue | 5 | 11 | 11 | **todo — unstarted** |
-| learn/tutorial | 10 | 78 | 8 | swept — honest residue |
-| operations/configuration | 7 | 47 | 8 | swept — honest residue |
-| operations/workers | 3 | 49 | 7 | swept — honest residue |
-| migration-guide | 9 | 99 | 7 | partial |
-| fundamentals/offloads | 3 | 7 | 7 | **todo — unstarted** |
-| fundamentals/workers | 2 | 5 | 5 | **todo — unstarted** |
-| _(swept, small honest residue ≤6)_ | … | … | ≤6 | extending/* (source-generators, attributes, features, internals, extensibility), fundamentals/* (perspectives, lenses, events, receptors, persistence, messaging, lifecycle), apis/* (rest, graphql, mutations, signalr), operations/* (infrastructure, observability, deployment, testing), learn/examples, getting-started |
+**Before touching a residual gap, decide which kind it is** (read the fence + its `testReferences`):
+convert only *map-absent* gaps to `unverified="verified by <Class>, which is outside the current
+coverage map"`; leave *genuine needs-test* gaps bare so the amber "needs test" badge keeps surfacing
+what the library doesn't yet cover. Never convert a genuine gap to an excuse just to zero the count.
+
+### #1 follow-up — regenerate `code-tests-map.json` (unblocks the map-absent residue)
+See the ceiling section above. Regenerating the map to include the integration/sample/SQL/EFCore
+suites would flip a large fraction of the *excused* blocks (not just the residual gaps) to genuine
+green — do this before any CI enforcement gate.
 
 ## Rollout of enforcement
 `validate-frontmatter.mjs` already hard-fails on Mermaid diagrams missing `caption`/`tests`
 (163 at baseline) — currently run it with `--report` until diagrams are migrated. A follow-up can
 extend it to require `tests=`/`unverified=` on every C# block (report-only first, then a CI gate once
-a section is backfilled).
+the map is regenerated). Note: it must use the **quote-aware** fence regex (see Tooling note) or it
+will false-flag annotated blocks whose metadata values contain braces.
