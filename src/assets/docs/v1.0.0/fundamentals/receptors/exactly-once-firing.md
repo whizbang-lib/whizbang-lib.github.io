@@ -74,7 +74,7 @@ The check is **skipped** for perspective-scoped stages (listed above) so that N-
 
 Some receptors are legitimately safe to re-invoke — dependent read-model updaters, derived-perspective maintainers, and anything idempotent by design. Decorate with `[ReceptorIdempotent]` to bypass the guardrail:
 
-```csharp{title="Idempotent Receptor" description="Opt out of the exactly-once guardrail when the receptor is safe to re-fire" category="Architecture" difficulty="INTERMEDIATE" tags=["Receptors", "Idempotency"]}
+```csharp{title="Idempotent Receptor" description="Opt out of the exactly-once guardrail when the receptor is safe to re-fire" category="Architecture" difficulty="INTERMEDIATE" tags=["Receptors", "Idempotency"] unverified="illustrative consumer receptor showing the ReceptorIdempotent opt-out — not exercised by this page's guardrail and dedup-store tests"}
 [ReceptorIdempotent]
 [FireAt(LifecycleStage.PostPerspectiveInline)]
 public class DependentReadModelUpdater : IReceptor<OrderCreatedEvent> {
