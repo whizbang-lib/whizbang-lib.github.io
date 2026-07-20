@@ -270,7 +270,7 @@ docker run -d \
 
 With Aspire, PostgreSQL starts automatically:
 
-```csharp{title="Option B: .NET Aspire (Automatic)" description="With Aspire, PostgreSQL starts automatically:" category="Configuration" difficulty="BEGINNER" tags=["Getting-started", "C#", "Option", "Aspire"]}
+```csharp{title="Option B: .NET Aspire (Automatic)" description="With Aspire, PostgreSQL starts automatically:" category="Configuration" difficulty="BEGINNER" tags=["Getting-started", "C#", "Option", "Aspire"] unverified="install/Aspire AppHost orchestration setup — hand-written consumer code, not generated output; Whizbang service/DI registration generation is verified by ServiceRegistrationGeneratorTests and EFCoreServiceRegistrationGeneratorTests"}
 // AppHost/Program.cs
 var builder = DistributedApplication.CreateBuilder(args);
 
