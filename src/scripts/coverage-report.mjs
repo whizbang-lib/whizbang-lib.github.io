@@ -38,7 +38,10 @@ for (const f of walk(ROOT)) {
   // Match each fence opener + its {metadata} (which may span multiple lines up to
   // the first `}`) — mirrors the site's runtime parser. Handles both the inline
   // `key="v"` and multi-line `key: v` metadata forms.
-  for (const m of text.matchAll(/^```([A-Za-z0-9#+_-]+)(\{[^}]*\})?/gm)) {
+  // Metadata capture is quote-aware (mirrors code-block-parser.service.ts): a `}`
+  // inside a quoted value must not end the metadata region, else trailing
+  // tests=/unverified= keys are missed and the block is miscounted as a gap.
+  for (const m of text.matchAll(/^```([A-Za-z0-9#+_-]+)(\{(?:"[^"]*"|'[^']*'|[^}"'])*\})?/gm)) {
     const lang = m[1].toLowerCase();
     const meta = m[2] || '';
     if (lang === 'mermaid') {

@@ -22,7 +22,13 @@ export class CodeBlockParser {
     // the regular-block pass below then mispaired their fences (its regex
     // can't match a ```lang{ opening) and swallowed the PROSE between blocks —
     // whole sections silently vanished from rendered pages.
-    const enhancedCodeBlockRegex = /```([\w#+-]+)\{([^}]*)\}([\s\S]*?)```/g;
+    // Metadata capture is quote-aware: a `}` inside a quoted value (e.g.
+    // description="Using {PropertyName} placeholders") must NOT terminate the
+    // metadata region. A naive `[^}]*` truncated at the first inner brace,
+    // dropping trailing keys (tests=/unverified=) and spilling metadata text
+    // into the rendered code. The alternation consumes whole quoted strings
+    // before falling back to any non-brace/non-quote char.
+    const enhancedCodeBlockRegex = /```([\w#+-]+)\{((?:"[^"]*"|'[^']*'|[^}"'])*)\}([\s\S]*?)```/g;
     let match;
 
     while ((match = enhancedCodeBlockRegex.exec(content)) !== null) {
