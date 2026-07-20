@@ -98,7 +98,7 @@ Aggregate order statistics per customer across all order streams.
 
 ### Events
 
-```csharp{title="Events" description="Events" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Events"]}
+```csharp{title="Events" description="Events" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Events"] unverified="consumer domain event record definitions, not a core library API"}
 using Whizbang.Core;
 
 // Order created event (separate stream per order)
@@ -123,7 +123,7 @@ public record OrderCompletedEvent : IEvent {
 
 ### Read Model
 
-```csharp{title="Read Model" description="Read Model" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Read", "Model"]}
+```csharp{title="Read Model" description="Read Model" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Read", "Model"] unverified="consumer domain read-model record definition, not a core library API"}
 // Customer statistics model (one per customer)
 public record CustomerStatisticsDto {
   public Guid CustomerId { get; init; }           // Partition key
@@ -226,7 +226,7 @@ public class CategorySalesPerspective :
 
 ### Composite Partition Key
 
-```csharp{title="Composite Partition Key" description="Composite Partition Key" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Composite", "Partition"]}
+```csharp{title="Composite Partition Key" description="Composite Partition Key" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Composite", "Partition"] unverified="consumer illustration of a composite partition-key record with elided Apply body; no composite-key test exists in IGlobalPerspectiveForTests"}
 // Partition by tenant + customer
 public record TenantCustomerKey(Guid TenantId, Guid CustomerId);
 

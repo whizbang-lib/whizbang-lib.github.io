@@ -238,7 +238,7 @@ public class OrderPerspective :
 
 An Apply method can choose different actions based on event data. This is useful when the same event type might update or delete depending on context.
 
-```csharp{title="Conditional Action" description="Apply method choosing between update and purge based on event data" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Perspectives", "Conditional", "ApplyResult"]}
+```csharp{title="Conditional Action" description="Apply method choosing between update and purge based on event data" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Perspectives", "Conditional", "ApplyResult"] unverified="domain ArchivePerspective illustrating conditional purge-or-update branching, no dedicated test"}
 using Whizbang.Core;
 using Whizbang.Core.Perspectives;
 

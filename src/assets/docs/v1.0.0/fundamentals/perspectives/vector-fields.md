@@ -195,7 +195,7 @@ public float[]? Embedding { get; init; }
 
 Vector fields are always stored as physical columns. Use `FieldStorageMode.Split` to avoid storing large vector arrays in JSONB:
 
-```csharp{title="Storage Mode for Vectors" description="Vector fields are always stored as physical columns." category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Storage", "Mode"]}
+```csharp{title="Storage Mode for Vectors" description="Vector fields are always stored as physical columns." category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Storage", "Mode"] unverified="consumer DTO illustrating Split storage mode; the no-JSONB-duplication behavior is covered only by SplitModeProductionTests, which is map-absent"}
 [PerspectiveStorage(FieldStorageMode.Split)]
 public record DocumentSearchDto {
     [StreamId]

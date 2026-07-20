@@ -193,7 +193,7 @@ Key features ensuring AOT compatibility:
 
 **When**: Building a generic event processing pipeline
 
-```csharp{title="Scenario 1: Generic Event Processor" description="When: Building a generic event processing pipeline" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Scenario", "Generic"]}
+```csharp{title="Scenario 1: Generic Event Processor" description="When: Building a generic event processing pipeline" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Scenario", "Generic"] unverified="consumer EventProcessor wrapper illustration — pipeline usage pattern, not a mapped test of the generated API"}
 public class EventProcessor {
     private readonly string _serviceName;
 
@@ -233,7 +233,7 @@ var updatedOrder = processor.ProcessEvent(orderModel, orderCreatedEvent);
 
 **When**: Replaying historical events to rebuild state
 
-```csharp{title="Scenario 2: Event Replay Engine" description="When: Replaying historical events to rebuild state" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Scenario", "Event"]}
+```csharp{title="Scenario 2: Event Replay Engine" description="When: Replaying historical events to rebuild state" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Scenario", "Event"] unverified="consumer EventReplayEngine illustration — replay usage pattern, not a mapped library test"}
 public class EventReplayEngine {
     public async Task<TModel> ReplayAsync<TModel, TEvent>(
         TModel initialModel,
@@ -276,7 +276,7 @@ var currentState = await replayEngine.ReplayAsync(
 
 **When**: Testing that all perspectives handle an event correctly
 
-```csharp{title="Scenario 3: Multi-Perspective Testing" description="When: Testing that all perspectives handle an event correctly" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Scenario", "Multi-Perspective"]}
+```csharp{title="Scenario 3: Multi-Perspective Testing" description="When: Testing that all perspectives handle an event correctly" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Scenario", "Multi-Perspective"] unverified="sample consumer test showing per-perspective iteration — illustrative, not a mapped library test"}
 [Test]
 public async Task AllPerspectives_HandleProductCreatedEvent_CorrectlyAsync() {
     // Arrange
@@ -308,7 +308,7 @@ public async Task AllPerspectives_HandleProductCreatedEvent_CorrectlyAsync() {
 
 **When**: Applying perspectives based on runtime conditions
 
-```csharp{title="Scenario 4: Conditional Perspective Application" description="When: Applying perspectives based on runtime conditions" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Scenario", "Conditional"]}
+```csharp{title="Scenario 4: Conditional Perspective Application" description="When: Applying perspectives based on runtime conditions" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Scenario", "Conditional"] unverified="consumer ConditionalPerspectiveApplier illustration — filtered application pattern, nothing library-side to assert"}
 public class ConditionalPerspectiveApplier {
     public TModel ApplyWithFilter<TModel, TEvent>(
         TModel model,
@@ -343,7 +343,7 @@ var filtered = applier.ApplyWithFilter(
 
 **When**: Monitoring perspective performance
 
-```csharp{title="Scenario 5: Performance Monitoring" description="When: Monitoring perspective performance" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Scenario", "Performance"]}
+```csharp{title="Scenario 5: Performance Monitoring" description="When: Monitoring perspective performance" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Scenario", "Performance"] unverified="consumer MonitoredPerspectiveApplier illustration — logging/metrics pattern, nothing library-side to assert"}
 public class MonitoredPerspectiveApplier {
     private readonly ILogger _logger;
 
@@ -410,7 +410,7 @@ var associations3 = PerspectiveRegistrationExtensions
 At commit `1b31f58d`, when **multiple perspectives handle the same model/event combination**, `GetPerspectiveAssociations<TModel, TEvent>` returns only the **first** matching perspective, not all of them. The generator emits one type-check block per (perspective, event) pair, and each block returns a single-element array immediately -- a second perspective with an identical `(TModel, TEvent)` signature is unreachable. Perspectives with *different* model or event types are unaffected. If you need every handler for a model/event pair, use the string-based `GetMessageAssociations(serviceName)` API, which returns one `MessageAssociation` entry per perspective.
 :::
 
-```csharp{title="Multiple Perspectives" description="Two perspectives sharing the same model/event pair - only the first is returned by the typed API:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "C#", "Multiple"]}
+```csharp{title="Multiple Perspectives" description="Two perspectives sharing the same model/event pair - only the first is returned by the typed API:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "C#", "Multiple"] unverified="ECommerce domain illustration of the first-match-only limitation — the MultiplePerspectives generator tests cover distinct model/event pairs, not two perspectives sharing one pair"}
 // Two perspectives handling ProductModel + ProductCreatedEvent
 public class InventoryPerspective : IPerspectiveFor<ProductModel, ProductCreatedEvent> { }
 public class CatalogPerspective : IPerspectiveFor<ProductModel, ProductCreatedEvent> { }

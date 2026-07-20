@@ -91,7 +91,7 @@ The `PerspectiveWorker` uses stream locking during both **rewind** and **bootstr
 
 ### Rewind Path
 
-```csharp{title="Rewind Lock Lifecycle" description="How the PerspectiveWorker manages locks during rewind" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Stream Locking", "Rewind"]}
+```csharp{title="Rewind Lock Lifecycle" description="How the PerspectiveWorker manages locks during rewind" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Stream Locking", "Rewind"] unverified="PerspectiveWorker lock-lifecycle orchestration excerpt; this flow is covered only by PerspectiveWorkerRewindTests, which is map-absent"}
 // 1. Acquire lock
 var lockAcquired = await streamLocker.TryAcquireLockAsync(
     streamId, perspectiveName, instanceId, "rewind", ct);
@@ -125,7 +125,7 @@ During snapshot bootstrap, the lock is acquired with reason `"bootstrap"`. If th
 
 ## PerspectiveStreamLockOptions
 
-```csharp{title="PerspectiveStreamLockOptions" description="Configuration for lock duration and keepalive" category="Configuration" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Stream Locking", "Configuration"]}
+```csharp{title="PerspectiveStreamLockOptions" description="Configuration for lock duration and keepalive" category="Configuration" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Stream Locking", "Configuration"] unverified="configuration options POCO with default values; no PerspectiveStreamLockOptions unit test exists in the candidate set"}
 public class PerspectiveStreamLockOptions {
   // How long a lock is valid before expiring (default: 30 seconds)
   // Must be longer than KeepAliveInterval

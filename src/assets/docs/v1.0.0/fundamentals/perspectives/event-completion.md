@@ -153,7 +153,7 @@ flowchart TD
 
 The dispatcher checks `DispatchOptions.WaitForPerspectives` after receptor execution:
 
-```csharp{title="Implementation" description="The dispatcher checks `DispatchOptions." category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Implementation"]}
+```csharp{title="Implementation" description="The dispatcher checks `DispatchOptions." category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Implementation"] unverified="Dispatcher internal LocalInvokeAsync pipeline sketch; Dispatcher is not among this page's referenced test classes"}
 public async ValueTask<TResult> LocalInvokeAsync<TResult>(
     object message,
     DispatchOptions options) {
@@ -176,7 +176,7 @@ public async ValueTask<TResult> LocalInvokeAsync<TResult>(
 
 ### _waitForPerspectivesIfNeededAsync Implementation
 
-```csharp{title="_waitForPerspectivesIfNeededAsync Implementation" description="_waitForPerspectivesIfNeededAsync Implementation" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Perspectives", "_waitForPerspectivesIfNeededAsync", "Implementation"]}
+```csharp{title="_waitForPerspectivesIfNeededAsync Implementation" description="_waitForPerspectivesIfNeededAsync Implementation" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Perspectives", "_waitForPerspectivesIfNeededAsync", "Implementation"] unverified="Dispatcher private-method implementation body; Dispatcher is not among this page's referenced test classes"}
 private async ValueTask _waitForPerspectivesIfNeededAsync(DispatchOptions options) {
   // Short-circuit if not waiting for perspectives
   if (!options.WaitForPerspectives) {
@@ -230,7 +230,7 @@ This enables event tracking even when the dispatcher is a singleton.
 
 Events are automatically captured during receptor execution:
 
-```csharp{title="Key Features" description="Events are automatically captured during receptor execution:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Key", "Features"]}
+```csharp{title="Key Features" description="Events are automatically captured during receptor execution:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Key", "Features"] unverified="illustrative snippet mixing consumer receptor code with ScopedEventTracker capture; ScopedEventTracker is not among this page's referenced test classes"}
 // Receptor emits events
 await _eventStore.AppendAsync(streamId, new OrderCreatedEvent());
 
@@ -248,7 +248,7 @@ var eventIds = scopedTracker.GetEmittedEvents()
 
 When timeout occurs, throws `PerspectiveSyncTimeoutException`:
 
-```csharp{title="Key Features (2)" description="When timeout occurs, throws PerspectiveSyncTimeoutException:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Key", "Features"]}
+```csharp{title="Key Features (2)" description="When timeout occurs, throws PerspectiveSyncTimeoutException:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Key", "Features"] unverified="consumer error-handling illustration catching PerspectiveSyncTimeoutException"}
 try {
   var options = new DispatchOptions().WithPerspectiveWait();
   await _dispatcher.LocalInvokeAsync(command, options);
@@ -262,7 +262,7 @@ try {
 
 Multiple short-circuit checks ensure zero overhead when `WaitForPerspectives = false`:
 
-```csharp{title="Key Features (3)" description="Multiple short-circuit checks ensure zero overhead when WaitForPerspectives = false:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Key", "Features"]}
+```csharp{title="Key Features (3)" description="Multiple short-circuit checks ensure zero overhead when WaitForPerspectives = false:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Key", "Features"] unverified="excerpt of Dispatcher private-method short-circuit guards; Dispatcher is not among this page's referenced test classes"}
 if (!options.WaitForPerspectives) return;        // First check
 if (_eventCompletionAwaiter is null) return;     // Not registered
 if (scopedTracker is null) return;               // No scope
@@ -273,7 +273,7 @@ if (eventIds.Count == 0) return;                 // No events
 
 The integration works across all `LocalInvokeAsync` overloads that accept `DispatchOptions`:
 
-```csharp{title="All LocalInvokeAsync Overloads" description="The integration works across all LocalInvokeAsync overloads that accept DispatchOptions:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "All", "LocalInvokeAsync"]}
+```csharp{title="All LocalInvokeAsync Overloads" description="The integration works across all LocalInvokeAsync overloads that accept DispatchOptions:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "All", "LocalInvokeAsync"] unverified="IDispatcher overload signature listing, not an executable example"}
 // Receptor with typed business result
 ValueTask<TResult> LocalInvokeAsync<TResult>(
     object message,
@@ -398,7 +398,7 @@ flowchart TD
 
 When perspectives don't complete within the timeout:
 
-```csharp{title="Timeout Handling" description="When perspectives don't complete within the timeout:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Timeout", "Handling"]}
+```csharp{title="Timeout Handling" description="When perspectives don't complete within the timeout:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Timeout", "Handling"] unverified="consumer error-handling illustration catching PerspectiveSyncTimeoutException"}
 var options = new DispatchOptions()
     .WithPerspectiveWait(timeout: TimeSpan.FromSeconds(5));
 

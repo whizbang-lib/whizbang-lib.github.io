@@ -77,7 +77,7 @@ CREATE INDEX idx_form_field_settings_type ON wh_per_form_field(settings_type);
 
 Query the discriminator column directly:
 
-```csharp{title="Direct Column Query" description="Query the discriminator column directly:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Direct", "Column"]}
+```csharp{title="Direct Column Query" description="Query the discriminator column directly:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Direct", "Column"] unverified="lens query illustration — exercises the query/lens layer, not the [PolymorphicDiscriminator] attribute tests"}
 var textFields = await lens.Query
     .Where(r => r.Data.SettingsTypeName == "TextFieldSettings")
     .ToListAsync();
@@ -95,7 +95,7 @@ A `WherePolymorphic(...).As<TDerived>(...)` extension for type-safe polymorphic 
 
 Set the discriminator value when applying events to your perspective:
 
-```csharp{title="Setting the Discriminator Value" description="Set the discriminator value when applying events to your perspective:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Setting", "Discriminator"]}
+```csharp{title="Setting the Discriminator Value" description="Set the discriminator value when applying events to your perspective:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Setting", "Discriminator"] unverified="consumer FormFieldPerspective Apply illustration — domain perspective, not asserted by the attribute tests"}
 public class FormFieldPerspective : IPerspectiveFor<FormFieldModel, FieldCreatedEvent> {
     public FormFieldModel Apply(FormFieldModel current, FieldCreatedEvent @event) {
         return current with {
@@ -112,7 +112,7 @@ public class FormFieldPerspective : IPerspectiveFor<FormFieldModel, FieldCreated
 
 For disambiguation, use fully qualified type names:
 
-```csharp{title="Using Full Type Names" description="For disambiguation, use fully qualified type names:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Using", "Full"]}
+```csharp{title="Using Full Type Names" description="For disambiguation, use fully qualified type names:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Using", "Full"] unverified="one-line consumer snippet setting a type name — nothing library-side to assert"}
 SettingsTypeName = @event.Settings.GetType().FullName
 // e.g., "MyApp.Forms.TextFieldSettings"
 ```
