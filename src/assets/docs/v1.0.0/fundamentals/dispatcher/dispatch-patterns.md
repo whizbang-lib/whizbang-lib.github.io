@@ -29,7 +29,7 @@ Deep-dive reference for each dispatch pattern. For the decision matrix, interfac
 **Use Case**: Send commands with delivery tracking, supports both local and remote dispatch.
 
 **Signature**:
-```csharp{title="Pattern 1: SendAsync - Command Dispatch" description="Pattern 1: SendAsync - Command Dispatch" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Pattern", "SendAsync"]}
+```csharp{title="Pattern 1: SendAsync - Command Dispatch" description="Pattern 1: SendAsync - Command Dispatch" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Pattern", "SendAsync"] tests=["DispatcherTests.Send_WithValidMessage_ShouldReturnDeliveryReceiptAsync"]}
 Task<IDeliveryReceipt> SendAsync<TMessage>(
     TMessage message
 ) where TMessage : notnull;
@@ -39,7 +39,7 @@ Task<IDeliveryReceipt> SendAsync<TMessage>(
 
 ### Basic Usage
 
-```csharp{title="Basic Usage" description="Basic Usage" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Basic", "Usage"]}
+```csharp{title="Basic Usage" description="Basic Usage" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Basic", "Usage"] tests=["DispatcherTests.Send_WithValidMessage_ShouldReturnDeliveryReceiptAsync"]}
 public class OrdersController : ControllerBase {
     private readonly IDispatcher _dispatcher;
 
@@ -96,7 +96,7 @@ await Assert.That(receipt.Destination).Contains("CreateOrder");
 
 ### DeliveryReceipt Structure
 
-```csharp{title="IDeliveryReceipt Interface" description="IDeliveryReceipt Interface" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "DeliveryReceipt", "Structure"]}
+```csharp{title="IDeliveryReceipt Interface" description="IDeliveryReceipt Interface" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "DeliveryReceipt", "Structure"] tests=["DeliveryReceiptTests.AllProperties_AreAccessible_ThroughInterfaceAsync", "DeliveryReceiptTests.Accepted_CreatesReceiptWithAcceptedStatusAsync", "DeliveryReceiptTests.Queued_CreatesReceiptWithQueuedStatusAsync", "DeliveryReceiptTests.Delivered_CreatesReceiptWithDeliveredStatusAsync", "DeliveryReceiptTests.Failed_CreatesReceiptWithFailedStatusAsync", "DeliveryReceiptTests.StreamId_IsAccessible_ThroughInterfaceAsync"]}
 public interface IDeliveryReceipt {
     MessageId MessageId { get; }              // Unique message identifier (value object)
     DateTimeOffset Timestamp { get; }         // When the message was accepted
@@ -133,7 +133,7 @@ public sealed class DeliveryReceipt : IDeliveryReceipt {
 
 ### SendAsync Flow
 
-```mermaid
+```mermaid{caption="SendAsync flow — the caller gets a delivery receipt after the receptor runs and the event is queued to the outbox; a background worker later publishes it to the transport." tests=["DispatcherTests.Send_WithValidMessage_ShouldReturnDeliveryReceiptAsync"]}
 graph TB
     subgraph Client["Client"]
         C1["dispatcher.SendAsync(command)"]
@@ -163,7 +163,7 @@ graph TB
 
 ### Example: Long-Running Order Processing
 
-```csharp{title="Example: Long-Running Order Processing" description="Example: Long-Running Order Processing" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Example:", "Long-Running"]}
+```csharp{title="Example: Long-Running Order Processing" description="Example: Long-Running Order Processing" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Example:", "Long-Running"] tests=["DispatcherTests.Send_WithValidMessage_ShouldReturnDeliveryReceiptAsync"]}
 [HttpPost("orders")]
 public async Task<ActionResult> CreateOrder(
     [FromBody] CreateOrderRequest request,
@@ -205,7 +205,7 @@ public async Task<ActionResult> GetOrderStatus(Guid correlationId) {
 **Use Case**: Fast, synchronous-style command/query execution with typed response.
 
 **Signature**:
-```csharp{title="Pattern 2: LocalInvokeAsync - In-Process RPC" description="Pattern 2: LocalInvokeAsync - In-Process RPC" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Pattern", "LocalInvokeAsync"]}
+```csharp{title="Pattern 2: LocalInvokeAsync - In-Process RPC" description="Pattern 2: LocalInvokeAsync - In-Process RPC" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Pattern", "LocalInvokeAsync"] tests=["DispatcherTests.LocalInvoke_WithValidMessage_ShouldReturnBusinessResultAsync"]}
 ValueTask<TResult> LocalInvokeAsync<TMessage, TResult>(
     TMessage message
 ) where TMessage : notnull;
@@ -217,7 +217,7 @@ ValueTask<TResult> LocalInvokeAsync<TMessage, TResult>(
 
 ### Basic Usage
 
-```csharp{title="Basic Usage (2)" description="Basic Usage" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Basic", "Usage"]}
+```csharp{title="Basic Usage (2)" description="Basic Usage" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Basic", "Usage"] tests=["DispatcherTests.LocalInvoke_WithValidMessage_ShouldReturnBusinessResultAsync", "DispatcherTests.Publish_WithEvent_ShouldNotifyAllHandlersAsync"]}
 [HttpPost("orders")]
 public async Task<ActionResult<OrderCreated>> CreateOrder(
     [FromBody] CreateOrderRequest request,
@@ -246,7 +246,7 @@ public async Task<ActionResult<OrderCreated>> CreateOrder(
 
 ### LocalInvokeAsync Flow
 
-```mermaid
+```mermaid{caption="LocalInvokeAsync flow — the dispatcher resolves the receptor from the compile-time registry and returns its typed result with sub-20ns overhead and zero allocations." tests=["DispatcherTests.LocalInvoke_WithValidMessage_ShouldReturnBusinessResultAsync"]}
 graph TB
     subgraph Client["Client"]
         L1["dispatcher.LocalInvokeAsync&lt;CreateOrder, OrderCreated&gt;(command)"]
@@ -269,7 +269,7 @@ graph TB
 
 ### Example: Query with Typed Response
 
-```csharp{title="Example: Query with Typed Response" description="Example: Query with Typed Response" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Dispatcher", "Example:", "Query"]}
+```csharp{title="Example: Query with Typed Response" description="Example: Query with Typed Response" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Dispatcher", "Example:", "Query"] tests=["DispatcherTests.LocalInvoke_WithValidMessage_ShouldReturnBusinessResultAsync"]}
 public record GetOrderQuery(Guid OrderId);
 
 public record OrderDetails(
@@ -329,7 +329,7 @@ public async Task<ActionResult<OrderDetails>> GetOrder(
 
 ### Type Safety Enforcement
 
-```csharp{title="Type Safety Enforcement" description="Type Safety Enforcement" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Type", "Safety"]}
+```csharp{title="Type Safety Enforcement" description="Type Safety Enforcement" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Type", "Safety"] unverified="compile-time type-safety demo — the wrong overload is a compiler error, not a runtime assertion"}
 // ✅ CORRECT - Type mismatch caught at compile time
 var result = await _dispatcher.LocalInvokeAsync<CreateOrder, OrderCreated>(command);
 
@@ -344,7 +344,7 @@ var wrong = await _dispatcher.LocalInvokeAsync<CreateOrder, PaymentProcessed>(co
 `LocalInvokeAsync` supports both async (`IReceptor`) and sync (`ISyncReceptor`) receptors transparently:
 :::
 
-```csharp{title="Synchronous Receptor Invocation" description="Synchronous Receptor Invocation" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Synchronous", "Receptor"]}
+```csharp{title="Synchronous Receptor Invocation" description="Synchronous Receptor Invocation" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Synchronous", "Receptor"] tests=["DispatcherSyncTests.LocalInvokeAsync_SyncReceptor_InvokesSynchronouslyAsync", "DispatcherSyncTests.LocalInvokeAsync_SyncReceptor_ReturnsCompletedValueTaskAsync"]}
 // Async receptor - uses HandleAsync, returns ValueTask
 public class AsyncOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
     public async ValueTask<OrderCreated> HandleAsync(
@@ -398,7 +398,7 @@ LocalInvokeAsync achieves < 20ns overhead through:
 4. **Zero reflection**: No runtime type discovery
 
 **Generated code example**:
-```csharp{title="Performance Optimization" description="Generated code example:" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Dispatcher", "Performance", "Optimization"]}
+```csharp{title="Performance Optimization" description="Generated code example:" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Dispatcher", "Performance", "Optimization"] unverified="illustrative sketch of source-generator output — not a runtime-asserted snippet"}
 // Generated by Whizbang.Generators
 protected override ReceptorInvoker<TResult>? GetReceptorInvoker<TResult>(
     object message,
@@ -603,7 +603,7 @@ var result = await _dispatcher.LocalInvokeAndSyncAsync<CreateOrder, OrderResult>
 **Use Case**: Broadcast events to multiple listeners (perspectives).
 
 **Signature**:
-```csharp{title="Pattern 3: PublishAsync - Event Broadcasting" description="Pattern 3: PublishAsync - Event Broadcasting" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Pattern", "PublishAsync"]}
+```csharp{title="Pattern 3: PublishAsync - Event Broadcasting" description="Pattern 3: PublishAsync - Event Broadcasting" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Pattern", "PublishAsync"] tests=["DispatcherTests.Publish_WithEvent_ShouldNotifyAllHandlersAsync"]}
 Task<IDeliveryReceipt> PublishAsync<TEvent>(
     TEvent eventData
 );
@@ -613,7 +613,7 @@ Task<IDeliveryReceipt> PublishAsync<TEvent>(
 
 ### Basic Usage
 
-```csharp{title="Basic Usage (4)" description="Basic Usage" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Basic", "Usage"]}
+```csharp{title="Basic Usage (4)" description="Basic Usage" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Basic", "Usage"] tests=["DispatcherTests.LocalInvoke_WithValidMessage_ShouldReturnBusinessResultAsync", "DispatcherTests.Publish_WithEvent_ShouldNotifyAllHandlersAsync"]}
 [HttpPost("orders")]
 public async Task<ActionResult<OrderCreated>> CreateOrder(
     [FromBody] CreateOrderRequest request,
@@ -638,7 +638,7 @@ public async Task<ActionResult<OrderCreated>> CreateOrder(
 
 ### PublishAsync Flow
 
-```mermaid
+```mermaid{caption="PublishAsync flow — one event fans out to every perspective registered for that event type, each updated in parallel." tests=["DispatcherTests.Publish_WithEvent_ShouldNotifyAllHandlersAsync"]}
 graph TB
     subgraph Client["Client"]
         P1["dispatcher.PublishAsync(event)"]
@@ -667,7 +667,7 @@ graph TB
 
 ### Example: Multiple Perspectives
 
-```csharp{title="Example: Multiple Perspectives" description="Example: Multiple Perspectives" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Dispatcher", "Example:", "Multiple"]}
+```csharp{title="Example: Multiple Perspectives" description="Example: Multiple Perspectives" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Dispatcher", "Example:", "Multiple"] tests=["DispatcherTests.Publish_WithEvent_ShouldNotifyAllHandlersAsync"]}
 // Event
 public record OrderCreated(
     Guid OrderId,
@@ -732,7 +732,7 @@ When you call `PublishAsync(orderCreated)`, **all three perspectives** are invok
 
 ### Remote Publishing with Outbox
 
-```csharp{title="Remote Publishing with Outbox" description="Remote Publishing with Outbox" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Dispatcher", "Remote", "Publishing"]}
+```csharp{title="Remote Publishing with Outbox" description="Remote Publishing with Outbox" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Dispatcher", "Remote", "Publishing"] tests=["DispatcherCascadeTests.LocalInvokeAsync_TupleWithEvent_AutoPublishesEventAsync"]}
 // In a receptor, you never write to the outbox by hand.
 // Return the event (auto-cascade) — the framework serializes it to wh_outbox
 // and a background worker publishes it to the transport.
@@ -768,7 +768,7 @@ The outbox write itself happens inside the framework: the dispatcher serializes 
 :::
 
 **Signatures**:
-```csharp{title="SendManyAsync" description="Signatures:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "SendManyAsync"]}
+```csharp{title="SendManyAsync" description="Signatures:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "SendManyAsync"] tests=["DispatcherTests.SendManyAsync_Generic_CreatesTypedEnvelopesAsync", "DispatcherTests.SendManyAsync_Generic_DifferentFromNonGenericVersionAsync"]}
 // Generic (AOT-compatible, preserves type information)
 Task<IEnumerable<IDeliveryReceipt>> SendManyAsync<TMessage>(
     IEnumerable<TMessage> messages) where TMessage : notnull;
@@ -781,7 +781,7 @@ Task<IEnumerable<IDeliveryReceipt>> SendManyAsync(
 **Returns**: `IDeliveryReceipt` per message — `Delivered` for locally-handled messages, `Accepted` for outbox-only messages.
 
 **Example**:
-```csharp{title="SendManyAsync (2)" description="SendManyAsync" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "SendManyAsync"]}
+```csharp{title="SendManyAsync (2)" description="SendManyAsync" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "SendManyAsync"] tests=["DispatcherTests.SendMany_WithMultipleCommands_ShouldReturnAllReceiptsAsync"]}
 // Batch send commands — each gets local processing + outbox delivery
 var commands = new[] {
     new UpdateInventory(productId1, 10),
@@ -813,7 +813,7 @@ var receipts = await _dispatcher.SendManyAsync(commands);
 :::
 
 **Signatures**:
-```csharp{title="Signatures" description="Signatures" category="Fundamentals" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "C#"]}
+```csharp{title="Signatures" description="Signatures" category="Fundamentals" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "C#"] tests=["DispatcherOutboxTests.PublishManyAsync_Generic_QueuesAllEventsWithEventRoutingAsync", "DispatcherOutboxTests.PublishManyAsync_NonGeneric_QueuesAllEventsWithEventRoutingAsync"]}
 // Generic (AOT-compatible, preserves type information)
 Task<IEnumerable<IDeliveryReceipt>> PublishManyAsync<TEvent>(
     IEnumerable<TEvent> events) where TEvent : notnull;
@@ -826,7 +826,7 @@ Task<IEnumerable<IDeliveryReceipt>> PublishManyAsync(
 **Returns**: `IDeliveryReceipt` per event — `Delivered` for locally-handled events, `Accepted` for outbox-only events.
 
 **Example**:
-```csharp{title="Example" description="Example" category="Fundamentals" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "C#"]}
+```csharp{title="Example" description="Example" category="Fundamentals" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "C#"] tests=["DispatcherOutboxTests.PublishManyAsync_Generic_QueuesAllEventsWithEventRoutingAsync"]}
 // Batch publish events — single scope, single flush
 var events = new[] {
     new OrderCreatedEvent(orderId1),
@@ -846,7 +846,7 @@ var receipts = await _dispatcher.PublishManyAsync(events);
 **Use Case**: Send multiple messages to local receptors **only** — no outbox delivery. Useful when you want batch local-only processing without cross-service propagation.
 
 **Signatures**:
-```csharp{title="LocalSendManyAsync" description="Signatures:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "LocalSendManyAsync"]}
+```csharp{title="LocalSendManyAsync" description="Signatures:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "LocalSendManyAsync"] tests=["DispatcherOutboxTests.LocalSendManyAsync_Generic_ProcessesAllMessagesLocallyAsync", "DispatcherOutboxTests.LocalSendManyAsync_NonGeneric_ProcessesAllMessagesLocallyAsync"]}
 // Generic (AOT-compatible)
 ValueTask<IEnumerable<IDeliveryReceipt>> LocalSendManyAsync<TMessage>(
     IEnumerable<TMessage> messages) where TMessage : notnull;
@@ -861,7 +861,7 @@ ValueTask<IEnumerable<IDeliveryReceipt>> LocalSendManyAsync(
 **Throws**: `ReceptorNotFoundException` if any message has no local receptor.
 
 **Example**:
-```csharp{title="LocalSendManyAsync (2)" description="LocalSendManyAsync" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "LocalSendManyAsync"]}
+```csharp{title="LocalSendManyAsync (2)" description="LocalSendManyAsync" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "LocalSendManyAsync"] tests=["DispatcherOutboxTests.LocalSendManyAsync_Generic_ProcessesAllMessagesLocallyAsync", "DispatcherOutboxTests.LocalSendManyAsync_Generic_WithLocalReceptor_DoesNotPublishToOutboxAsync"]}
 // Process commands locally only — no outbox, no cross-service delivery
 var commands = new[] {
     new ValidateOrder(orderId1),
@@ -889,11 +889,13 @@ var receipts = await _dispatcher.LocalSendManyAsync(commands);
 
 ## LocalInvokeWithReceiptAsync - Invoke with Receipt {#local-invoke-with-receipt}
 
+{verified: DispatcherInvokeWithReceiptTests.LocalInvokeWithReceipt_ReturnsBusinessResultAndReceiptAsync}
+
 **Use Case**: Get both the typed business result AND a delivery receipt with dispatch metadata (MessageId, StreamId, CorrelationId, etc.) from a single in-process invocation. This bridges the gap between `LocalInvokeAsync` (typed result only) and `SendAsync` (receipt only).
 
 ### InvokeResult&lt;T&gt;
 
-```csharp{title="InvokeResult Record" description="Combines a typed business result with a delivery receipt" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "InvokeResult", "Receipt"]}
+```csharp{title="InvokeResult Record" description="Combines a typed business result with a delivery receipt" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "InvokeResult", "Receipt"] tests=["DispatcherInvokeWithReceiptTests.LocalInvokeWithReceipt_ReturnsBusinessResultAndReceiptAsync"]}
 public sealed record InvokeResult<TResult>(
     TResult Value,           // The business result from the receptor
     IDeliveryReceipt Receipt // Delivery receipt with MessageId, StreamId, CorrelationId, etc.
@@ -902,7 +904,7 @@ public sealed record InvokeResult<TResult>(
 
 ### Signatures
 
-```csharp{title="LocalInvokeWithReceiptAsync Signatures" description="All overloads for LocalInvokeWithReceiptAsync" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "LocalInvokeWithReceiptAsync", "Signatures"]}
+```csharp{title="LocalInvokeWithReceiptAsync Signatures" description="All overloads for LocalInvokeWithReceiptAsync" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "LocalInvokeWithReceiptAsync", "Signatures"] tests=["DispatcherInvokeWithReceiptTests.LocalInvokeWithReceipt_Generic_ReturnsBusinessResultAndReceiptAsync", "DispatcherInvokeWithReceiptTests.LocalInvokeWithReceipt_WithContext_PreservesCorrelationIdAsync", "DispatcherInvokeWithReceiptTests.LocalInvokeWithReceipt_WithDispatchOptions_ReturnsReceiptAsync"]}
 // Generic (AOT-compatible) - preserves type at compile time
 ValueTask<InvokeResult<TResult>> LocalInvokeWithReceiptAsync<TMessage, TResult>(
     TMessage message) where TMessage : notnull;
@@ -923,7 +925,7 @@ ValueTask<InvokeResult<TResult>> LocalInvokeWithReceiptAsync<TResult>(
 
 ### Basic Usage
 
-```csharp{title="LocalInvokeWithReceiptAsync Usage" description="Get both result and receipt from a single invocation" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "LocalInvokeWithReceiptAsync", "Usage"]}
+```csharp{title="LocalInvokeWithReceiptAsync Usage" description="Get both result and receipt from a single invocation" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "LocalInvokeWithReceiptAsync", "Usage"] tests=["DispatcherInvokeWithReceiptTests.LocalInvokeWithReceipt_ReturnsBusinessResultAndReceiptAsync", "DispatcherInvokeWithReceiptTests.LocalInvokeWithReceipt_WithContext_PreservesCorrelationIdAsync"]}
 [HttpPost("orders")]
 public async Task<ActionResult> CreateOrder(
     [FromBody] CreateOrderRequest request,
@@ -1054,7 +1056,7 @@ try {
 
 ### Pattern: Command + Event in Single Transaction
 
-```csharp{title="Pattern: Command + Event in Single Transaction" description="Pattern: Command + Event in Single Transaction" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Pattern:", "Command"]}
+```csharp{title="Pattern: Command + Event in Single Transaction" description="Pattern: Command + Event in Single Transaction" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Pattern:", "Command"] tests=["DispatcherTests.LocalInvoke_WithValidMessage_ShouldReturnBusinessResultAsync", "DispatcherTests.Publish_WithEvent_ShouldNotifyAllHandlersAsync", "DispatcherTests.Send_WithValidMessage_ShouldReturnDeliveryReceiptAsync"]}
 [HttpPost("orders")]
 public async Task<ActionResult<OrderCreated>> CreateOrder(
     [FromBody] CreateOrderRequest request,
@@ -1084,7 +1086,7 @@ public async Task<ActionResult<OrderCreated>> CreateOrder(
 
 ### Pattern: Conditional Publishing
 
-```csharp{title="Pattern: Conditional Publishing" description="Pattern: Conditional Publishing" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Pattern:", "Conditional"]}
+```csharp{title="Pattern: Conditional Publishing" description="Pattern: Conditional Publishing" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Pattern:", "Conditional"] tests=["DispatcherTests.LocalInvoke_WithValidMessage_ShouldReturnBusinessResultAsync", "DispatcherTests.Publish_WithEvent_ShouldNotifyAllHandlersAsync"]}
 public async Task<ActionResult> ProcessPayment(
     [FromBody] ProcessPaymentRequest request,
     CancellationToken ct) {
@@ -1110,7 +1112,7 @@ public async Task<ActionResult> ProcessPayment(
 
 ### Pattern: Batch Processing
 
-```csharp{title="Pattern: Batch Processing" description="Pattern: Batch Processing" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Pattern:", "Batch"]}
+```csharp{title="Pattern: Batch Processing" description="Pattern: Batch Processing" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Pattern:", "Batch"] tests=["DispatcherTests.LocalInvoke_WithValidMessage_ShouldReturnBusinessResultAsync", "DispatcherTests.Publish_WithEvent_ShouldNotifyAllHandlersAsync"]}
 public async Task<ActionResult> ProcessOrders(
     [FromBody] ProcessOrdersRequest request,
     CancellationToken ct) {

@@ -22,7 +22,8 @@ testReferences:
   - tests/Whizbang.Core.Tests/Dispatcher/DispatcherTests.cs
   - tests/Whizbang.Core.Tests/Dispatcher/DispatcherOutboxTests.cs
   - tests/Whizbang.Core.Tests/Dispatcher/DispatcherInvokeWithReceiptTests.cs
-  - tests/Whizbang.Core.Tests/Dispatcher/DispatcherLocalInvokeAndSyncTests.cs
+  - tests/Whizbang.Core.Tests/Dispatcher/DispatcherSyncModeContractTests.cs
+  - tests/Whizbang.Core.Tests/Dispatcher/DispatcherLocalInvokeAndSyncTimingTests.cs
   - tests/Whizbang.Core.Tests/Dispatcher/DispatcherCascadeTests.cs
   - tests/Whizbang.Core.Tests/Dispatcher/DispatcherRoutedCascadeTests.cs
   - tests/Whizbang.Core.Tests/Dispatch/DispatchOptionsTests.cs
@@ -50,8 +51,8 @@ flowchart LR
 | `SendAsync` | Commands with delivery tracking | `IDeliveryReceipt` | ~100μs | Local or Remote | {verified: DispatcherTests.Send_WithValidMessage_ShouldReturnDeliveryReceiptAsync} |
 | `LocalInvokeAsync` | In-process queries/commands | `TResult` | < 20ns | Local only | {verified: DispatcherTests.LocalInvoke_WithValidMessage_ShouldReturnBusinessResultAsync} |
 | `LocalInvokeWithReceiptAsync` | In-process RPC with receipt | `InvokeResult<TResult>` | ~100μs | Local only | {verified: DispatcherInvokeWithReceiptTests.LocalInvokeWithReceipt_ReturnsBusinessResultAndReceiptAsync} |
-| `LocalInvokeAndSyncAsync` (W4) | Invoke + wait per `SyncMode` (CT-only) | `ValueTask` | Varies | Local only | {verified: DispatcherLocalInvokeAndSyncTests.LocalInvokeAndSyncAsync_NewOverload_ReturnsValueTaskAsync} |
-| `LocalInvokeAndSyncAsync` (legacy, `[Obsolete]`) | Commands with perspective sync | `TResult` / `SyncResult` | Varies | Local only | {verified: DispatcherLocalInvokeAndSyncTests.LocalInvokeAndSyncAsync_OldOverloads_AreMarkedObsoleteAsync} |
+| `LocalInvokeAndSyncAsync` (W4) | Invoke + wait per `SyncMode` (CT-only) | `ValueTask` | Varies | Local only | {verified: DispatcherSyncModeContractTests.LocalInvokeAndSyncAsync_NewOverload_ReturnsValueTaskAsync} |
+| `LocalInvokeAndSyncAsync` (legacy, `[Obsolete]`) | Commands with perspective sync | `TResult` / `SyncResult` | Varies | Local only | {verified: DispatcherSyncModeContractTests.LocalInvokeAndSyncAsync_OldOverloads_AreMarkedObsoleteAsync} |
 | `PublishAsync` | Event broadcasting | `IDeliveryReceipt` | ~50μs | Local or Remote | {verified: DispatcherTests.Publish_WithEvent_ShouldNotifyAllHandlersAsync} |
 | `SendManyAsync` | Batch commands (local + outbox) | `IEnumerable<IDeliveryReceipt>` | Optimized | Local + Remote | {verified: DispatcherOutboxTests.SendManyAsync_QueuesAllMessagesBeforeFlushAsync} |
 | `PublishManyAsync` | Batch event publishing | `IEnumerable<IDeliveryReceipt>` | Optimized | Local + Remote | {verified: DispatcherOutboxTests.PublishAsync_ProductEvent_RoutesToProductsTopicAsync} |
@@ -270,7 +271,7 @@ var options = new DispatchOptions()
 
 Wait for all perspectives to finish processing cascaded events before returning:
 
-```csharp{title="Perspective Synchronization" description="Wait for all perspectives to finish processing cascaded events before returning:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Perspective", "Synchronization"] tests=["DispatchOptionsTests.Default_WaitForPerspectives_IsFalseAsync", "DispatcherLocalInvokeAndSyncTests.LocalInvokeAndSyncAsync_MultipleEventsWaitsOnceAsync"]}
+```csharp{title="Perspective Synchronization" description="Wait for all perspectives to finish processing cascaded events before returning:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Perspective", "Synchronization"] tests=["DispatchOptionsTests.Default_WaitForPerspectives_IsFalseAsync", "DispatcherLocalInvokeAndSyncTimingTests.LocalInvokeAndSyncAsync_MultipleEventsWaitsOnceAsync"]}
 // Wait with default timeout (30 seconds)
 var options = new DispatchOptions().WithPerspectiveWait();
 var result = await dispatcher.LocalInvokeAsync<OrderCreated>(
@@ -295,7 +296,7 @@ var options = new DispatchOptions().WithPerspectiveWait(TimeSpan.FromMinutes(2))
 
 **Alternative API**: Use `LocalInvokeAndSyncAsync` for built-in perspective synchronization without explicit options:
 
-```csharp{title="Perspective Synchronization (2)" description="Alternative API: Use LocalInvokeAndSyncAsync for built-in perspective synchronization without explicit options:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Perspective", "Synchronization"] tests=["DispatcherLocalInvokeAndSyncTests.LocalInvokeAndSyncAsync_NewOverload_ReturnsValueTaskAsync", "DispatcherLocalInvokeAndSyncTests.LocalInvokeAndSyncAsync_MultipleEventsWaitsOnceAsync"]}
+```csharp{title="Perspective Synchronization (2)" description="Alternative API: Use LocalInvokeAndSyncAsync for built-in perspective synchronization without explicit options:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Perspective", "Synchronization"] tests=["DispatcherSyncModeContractTests.LocalInvokeAndSyncAsync_NewOverload_ReturnsValueTaskAsync", "DispatcherLocalInvokeAndSyncTimingTests.LocalInvokeAndSyncAsync_MultipleEventsWaitsOnceAsync"]}
 // Equivalent to LocalInvokeAsync with DispatchOptions.WithPerspectiveWait()
 var result = await dispatcher.LocalInvokeAndSyncAsync<CreateOrder, OrderCreated>(
     command,

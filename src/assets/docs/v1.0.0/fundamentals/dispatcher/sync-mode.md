@@ -33,6 +33,7 @@ framework: "NET10"
 category: "Messaging"
 difficulty: "INTERMEDIATE"
 tags: ["sync-mode", "dispatcher", "read-after-write", "cqrs", "cancellation-token"]
+tests: ["DispatcherSyncModeContractTests.SyncMode_EnumExists_WithStreamOnlyAndAllProjectionsAsync", "DispatcherSyncModeContractTests.LocalInvokeAndSyncAsync_NewOverload_ReturnsValueTaskAsync", "DispatcherSyncModeContractTests.LocalInvokeAndSyncAsync_NewOverload_HasNoTimeSpanParameterAsync", "DispatcherSyncModeContractTests.LocalInvokeAndSyncAsync_NewOverload_SyncModeIsRequiredNotDefaultedAsync"]
 }
 public enum SyncMode {
   /// Wait until events are durably written + the local stream version
@@ -72,6 +73,7 @@ framework: "NET10"
 category: "Messaging"
 difficulty: "INTERMEDIATE"
 tags: ["sync-mode", "dispatcher", "all-projections", "stream-only", "read-after-write"]
+tests: ["DispatcherSyncModeBehaviorTests.AllProjections_WithEventsTracked_InvokesAwaiterWithInfiniteTimeoutAsync", "DispatcherSyncModeBehaviorTests.StreamOnly_WithAwaiterRegistered_DoesNotInvokeAwaiterAsync"]
 }
 // Read-after-write: dispatch + wait for projections before the next read
 await dispatcher.LocalInvokeAndSyncAsync(
@@ -101,6 +103,7 @@ framework: "NET10"
 category: "Messaging"
 difficulty: "INTERMEDIATE"
 tags: ["sync-mode", "dispatcher", "migration", "obsolete", "cancellation-token"]
+tests: ["DispatcherSyncModeContractTests.LocalInvokeAndSyncAsync_OldOverloads_AreMarkedObsoleteAsync"]
 }
 // LEGACY (Obsolete in W4, removed in next major)
 await dispatcher.LocalInvokeAndSyncAsync(
@@ -120,6 +123,7 @@ framework: "NET10"
 category: "Messaging"
 difficulty: "INTERMEDIATE"
 tags: ["sync-mode", "dispatcher", "migration", "typed-result", "read-after-write"]
+tests: ["DispatcherSyncModeContractTests.LocalInvokeAndSyncAsync_OldOverloads_AreMarkedObsoleteAsync"]
 }
 // LEGACY
 var result = await dispatcher.LocalInvokeAndSyncAsync<CreateOrder, OrderResult>(
@@ -151,6 +155,7 @@ framework: "NET10"
 category: "Messaging"
 difficulty: "INTERMEDIATE"
 tags: ["sync-mode", "dispatcher", "cancellation-token", "timeout", "linked-cts"]
+tests: ["DispatcherSyncModeBehaviorTests.AllProjections_AwaiterPropagatesCancellation_OperationCanceledBubblesAsync"]
 }
 using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(httpContext.RequestAborted);
 linkedCts.CancelAfter(TimeSpan.FromMinutes(2));
