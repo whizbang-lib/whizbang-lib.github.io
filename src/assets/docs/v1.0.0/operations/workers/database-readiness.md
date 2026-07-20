@@ -146,7 +146,7 @@ The `PerspectiveWorker` itself consumes work **channels** fed by `ClaimWorker` (
 
 The ASP.NET hosting package includes **`DatabaseAvailabilityMiddleware`**, which returns `503 Service Unavailable` until the gate signals ready — then becomes a pass-through:
 
-```csharp{title="DatabaseAvailabilityMiddleware" description="503 until the schema gate is ready, pass-through afterwards" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Middleware", "Availability"]}
+```csharp{title="DatabaseAvailabilityMiddleware" description="503 until the schema gate is ready, pass-through afterwards" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Middleware", "Availability"] tests=["DatabaseAvailabilityMiddlewareTests.NotReady_Returns503AndRetryAfterAsync", "DatabaseAvailabilityMiddlewareTests.Ready_DelegatesToNextAsync"]}
 public class DatabaseAvailabilityMiddleware(RequestDelegate next, ISchemaReadyGate schemaReadyGate) {
   private static readonly byte[] _responseBody = Encoding.UTF8.GetBytes(
     """{"error":"Service temporarily unavailable","reason":"schema_initializing"}""");
@@ -231,7 +231,7 @@ spec:
 
 Because the gate is a simple signal, tests wire workers with a pre-marked gate (or hold it closed to assert blocking behavior):
 
-```csharp{title="Testing with SchemaReadyGate" description="Tests mark the gate ready before starting workers" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Testing", "Gate"]}
+```csharp{title="Testing with SchemaReadyGate" description="Tests mark the gate ready before starting workers" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Testing", "Gate"] tests=["HeartbeatWorkerTests.ExecuteAsync_FirstTick_CallsRecordHeartbeatWithProviderIdentityAsync", "HeartbeatWorkerTests.ExecuteAsync_BlocksOnSchemaGate_UntilMarkedReadyAsync"]}
 [Test]
 public async Task Worker_WithReadyGate_ProcessesWorkAsync() {
   // Arrange — gate ready, worker may issue SQL immediately

@@ -48,7 +48,7 @@ With `IExecutionStrategy` lifecycle:
 ## IExecutionStrategy Interface
 
 **IExecutionStrategy.cs**:
-```csharp{title="IExecutionStrategy Interface" description="**IExecutionStrategy." category="Implementation" difficulty="ADVANCED" tags=["Operations", "Workers", "IExecutionStrategy", "Interface"]}
+```csharp{title="IExecutionStrategy Interface" description="**IExecutionStrategy." category="Implementation" difficulty="ADVANCED" tags=["Operations", "Workers", "IExecutionStrategy", "Interface"] tests=["ExecutionStrategyContractTests.Name_ShouldNotBeEmptyAsync", "ExecutionStrategyContractTests.ExecuteAsync_ShouldReturnHandlerResultAsync", "ExecutionStrategyContractTests.StartAsync_ShouldBeIdempotentAsync", "ExecutionStrategyContractTests.StopAsync_ShouldPreventNewExecutionsAsync", "ExecutionStrategyContractTests.DrainAsync_ShouldWaitForPendingWorkAsync"]}
 /// <summary>
 /// Defines a strategy for executing message handlers.
 /// Implementations control ordering, concurrency, and lifecycle.
@@ -95,7 +95,7 @@ public interface IExecutionStrategy {
 
 ## Startup Lifecycle Flow
 
-```mermaid
+```mermaid{caption="Host startup-to-shutdown lifecycle: schema provisioning gates worker startup, then IExecutionStrategy StartAsync → normal operation → StopAsync → DrainAsync coordinate a graceful drain."}
 sequenceDiagram
     participant App as Application
     participant Init as WhizbangDatabaseInitializerService
@@ -170,7 +170,7 @@ sequenceDiagram
 ### Execution Strategy Responsibilities
 
 **Example: SerialExecutor** (the built-in serial strategy):
-```csharp{title="Execution Strategy Responsibilities" description="Example: SerialExecutor StartAsync" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Execution", "Strategy"]}
+```csharp{title="Execution Strategy Responsibilities" description="Example: SerialExecutor StartAsync" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Execution", "Strategy"] tests=["SerialExecutorTests.StartAsync_AfterStop_ThrowsInvalidOperationExceptionAsync", "SerialExecutorTests.StateTransitions_IdempotentOperations_SucceedAsync", "ExecutionStrategyContractTests.StartAsync_ShouldBeIdempotentAsync"]}
 public Task StartAsync(CancellationToken ct = default) {
   lock (_stateLock) {
     if (_state == State.Running) {
@@ -206,7 +206,7 @@ private async Task _processWorkItemsAsync(CancellationToken ct) {
 ### BackgroundService Integration
 
 **PerspectiveWorker (BackgroundService)** — startup sequence at the top of `ExecuteAsync`:
-```csharp{title="BackgroundService Integration" description="PerspectiveWorker (BackgroundService) startup sequence" category="Implementation" difficulty="ADVANCED" tags=["Operations", "Workers", "BackgroundService", "Integration"]}
+```csharp{title="BackgroundService Integration" description="PerspectiveWorker (BackgroundService) startup sequence" category="Implementation" difficulty="ADVANCED" tags=["Operations", "Workers", "BackgroundService", "Integration"] unverified="PerspectiveWorker startup sequence — a different component, outside the execution-strategy candidate tests"}
 protected override async Task ExecuteAsync(CancellationToken stoppingToken) {
   LogWorkerStarting(_logger, _instanceProvider.InstanceId, _instanceProvider.ServiceName,
     _instanceProvider.HostName, _instanceProvider.ProcessId, _options.PollingIntervalMilliseconds);
@@ -242,7 +242,7 @@ protected override async Task ExecuteAsync(CancellationToken stoppingToken) {
 ### Execution Strategy Responsibilities
 
 **Example: SerialExecutor**:
-```csharp{title="Execution Strategy Responsibilities (2)" description="Example: SerialExecutor StopAsync" category="Implementation" difficulty="BEGINNER" tags=["Operations", "Workers", "Execution", "Strategy"]}
+```csharp{title="Execution Strategy Responsibilities (2)" description="Example: SerialExecutor StopAsync" category="Implementation" difficulty="BEGINNER" tags=["Operations", "Workers", "Execution", "Strategy"] tests=["ExecutionStrategyContractTests.StopAsync_ShouldPreventNewExecutionsAsync", "SerialExecutorTests.ExecuteAsync_WhenNotRunning_ThrowsInvalidOperationExceptionAsync", "SerialExecutorTests.StateTransitions_IdempotentOperations_SucceedAsync"]}
 public async Task StopAsync(CancellationToken ct = default) {
   lock (_stateLock) {
     if (_state == State.Stopped) {
@@ -286,7 +286,7 @@ public async Task StopAsync(CancellationToken ct = default) {
 ### BackgroundService Integration
 
 **PerspectiveWorker**:
-```csharp{title="BackgroundService Integration (2)" description="PerspectiveWorker shutdown: unsubscribe signals, drain background lifecycle work" category="Implementation" difficulty="ADVANCED" tags=["Operations", "Workers", "BackgroundService", "Integration"]}
+```csharp{title="BackgroundService Integration (2)" description="PerspectiveWorker shutdown: unsubscribe signals, drain background lifecycle work" category="Implementation" difficulty="ADVANCED" tags=["Operations", "Workers", "BackgroundService", "Integration"] unverified="PerspectiveWorker shutdown sequence — a different component, outside the execution-strategy candidate tests"}
 public override Task StopAsync(CancellationToken cancellationToken) {
   // Unsubscribe from the NOTIFY signal so no new wakes arrive during shutdown
   if (_perspectiveSignalSubscribed && _perspectiveNotificationListener is not null) {
@@ -339,7 +339,7 @@ t=250ms:  StopAsync() returns
 ### Execution Strategy Responsibilities
 
 **Example: SerialExecutor**:
-```csharp{title="Execution Strategy Responsibilities (3)" description="Example: SerialExecutor DrainAsync" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Execution", "Strategy"]}
+```csharp{title="Execution Strategy Responsibilities (3)" description="Example: SerialExecutor DrainAsync" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Execution", "Strategy"] tests=["SerialExecutorTests.DrainAsync_WaitsForAllInFlightWork_CompletesAsync", "SerialExecutorTests.DrainAsync_WhenNotRunning_ReturnsImmediatelyAsync", "SerialExecutorTests.DrainAsync_WithWorkerCancellation_HandlesOperationCanceledExceptionAsync", "ExecutionStrategyContractTests.DrainAsync_ShouldWaitForPendingWorkAsync"]}
 public async Task DrainAsync(CancellationToken ct = default) {
   lock (_stateLock) {
     if (_state != State.Running) {
@@ -377,7 +377,7 @@ public async Task DrainAsync(CancellationToken ct = default) {
 ### Application Integration
 
 **ASP.NET Core Program.cs**:
-```csharp{title="Application Integration" description="Application Integration" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Application", "Integration"]}
+```csharp{title="Application Integration" description="Application Integration" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Application", "Integration"] unverified="ASP.NET host wiring and DI registration — not exercised by execution-strategy unit tests"}
 var builder = WebApplication.CreateBuilder(args);
 
 // Configure services
@@ -422,7 +422,7 @@ Workers coordinate startup with database availability through the **`ISchemaRead
 ### Why Schema Readiness Matters
 
 **Without the gate**, workers race the migration runner:
-```csharp{title="Why Schema Readiness Matters" description="Without the gate:" category="Implementation" difficulty="ADVANCED" tags=["Operations", "Workers", "Why", "Database"]}
+```csharp{title="Why Schema Readiness Matters" description="Without the gate:" category="Implementation" difficulty="ADVANCED" tags=["Operations", "Workers", "Why", "Database"] unverified="counter-example — worker racing migrations with no gate; intentionally wrong, nothing to assert"}
 // ❌ Worker starts before migrations have run
 protected override async Task ExecuteAsync(CancellationToken ct) {
   while (!ct.IsCancellationRequested) {
@@ -436,7 +436,7 @@ protected override async Task ExecuteAsync(CancellationToken ct) {
 ```
 
 **With the gate**, workers wait once before their first SQL call:
-```csharp{title="Why Schema Readiness Matters (2)" description="With the gate:" category="Implementation" difficulty="ADVANCED" tags=["Operations", "Workers", "Why", "Database"]}
+```csharp{title="Why Schema Readiness Matters (2)" description="With the gate:" category="Implementation" difficulty="ADVANCED" tags=["Operations", "Workers", "Why", "Database"] unverified="ISchemaReadyGate coordination — its verifier is outside the current coverage map"}
 // ✅ Worker holds off on any SQL until the schema is provisioned
 protected override async Task ExecuteAsync(CancellationToken stoppingToken) {
   try {
@@ -467,7 +467,7 @@ The gate is marked ready by `WhizbangDatabaseInitializerService` after migration
 ### DO ✅
 
 **1. Complete Current Batch**:
-```csharp{title="DO ✅" description="DO ✅" category="Implementation" difficulty="ADVANCED" tags=["Operations", "Workers"]}
+```csharp{title="DO ✅" description="DO ✅" category="Implementation" difficulty="ADVANCED" tags=["Operations", "Workers"] unverified="illustrative best-practice pattern — GetWorkBatchAsync/ProcessWorkItemAsync are pseudocode, not concrete Whizbang APIs"}
 protected override async Task ExecuteAsync(CancellationToken ct) {
   while (!ct.IsCancellationRequested) {
     var workBatch = await GetWorkBatchAsync(ct);
@@ -489,7 +489,7 @@ protected override async Task ExecuteAsync(CancellationToken ct) {
 ```
 
 **2. Set Reasonable Drain Timeout**:
-```csharp{title="DO ✅ (2)" description="DO ✅ (2)" category="Implementation" difficulty="BEGINNER" tags=["Operations", "Workers"]}
+```csharp{title="DO ✅ (2)" description="DO ✅ (2)" category="Implementation" difficulty="BEGINNER" tags=["Operations", "Workers"] unverified="illustrative drain-timeout pattern — _worker.WaitAsync is pseudocode, not the SerialExecutor API"}
 public async Task DrainAsync(CancellationToken ct = default) {
   var timeout = TimeSpan.FromSeconds(30);  // ✅ 30 seconds max
 
@@ -502,7 +502,7 @@ public async Task DrainAsync(CancellationToken ct = default) {
 ```
 
 **3. Use Shutdown Token for New Work**:
-```csharp{title="DO ✅ (3)" description="DO ✅ (3)" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers"]}
+```csharp{title="DO ✅ (3)" description="DO ✅ (3)" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers"] unverified="illustrative shutdown-token pattern — _shutdownToken is pseudocode; SerialExecutor rejects post-stop work via state, covered above"}
 public ValueTask<TResult> ExecuteAsync<TResult>(
   IMessageEnvelope envelope,
   Func<IMessageEnvelope, PolicyContext, ValueTask<TResult>> handler,
@@ -521,7 +521,7 @@ public ValueTask<TResult> ExecuteAsync<TResult>(
 ### DON'T ❌
 
 **1. Don't Abandon In-Flight Work**:
-```csharp{title="DON'T ❌" description="DON'T ❌" category="Implementation" difficulty="ADVANCED" tags=["Operations", "Workers", "DON'T"]}
+```csharp{title="DON'T ❌" description="DON'T ❌" category="Implementation" difficulty="ADVANCED" tags=["Operations", "Workers", "DON'T"] unverified="counter-example — abandons the rest of the batch on cancellation; intentionally wrong"}
 // ❌ BAD: Immediately exit on cancellation
 protected override async Task ExecuteAsync(CancellationToken ct) {
   while (!ct.IsCancellationRequested) {
@@ -539,7 +539,7 @@ protected override async Task ExecuteAsync(CancellationToken ct) {
 ```
 
 **2. Don't Block Shutdown Indefinitely**:
-```csharp{title="DON'T ❌ (2)" description="DON'T ❌ (2)" category="Implementation" difficulty="BEGINNER" tags=["Operations", "Workers", "DON'T"]}
+```csharp{title="DON'T ❌ (2)" description="DON'T ❌ (2)" category="Implementation" difficulty="BEGINNER" tags=["Operations", "Workers", "DON'T"] unverified="counter-example — unbounded drain with no timeout; intentionally wrong"}
 // ❌ BAD: No timeout on drain
 public async Task DrainAsync(CancellationToken ct = default) {
   await _worker;  // ❌ Could wait forever if worker is stuck
@@ -547,7 +547,7 @@ public async Task DrainAsync(CancellationToken ct = default) {
 ```
 
 **3. Don't Throw on Shutdown**:
-```csharp{title="DON'T ❌ (3)" description="DON'T ❌ (3)" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "DON'T"]}
+```csharp{title="DON'T ❌ (3)" description="DON'T ❌ (3)" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "DON'T"] unverified="counter-example — throws during shutdown; intentionally wrong, contrasted with a log-and-continue variant"}
 // ❌ BAD: Throwing exceptions during shutdown
 public async Task StopAsync(CancellationToken ct = default) {
   if (_worker == null) {
@@ -574,7 +574,7 @@ public async Task StopAsync(CancellationToken ct = default) {
 
 ### Logging Startup
 
-```csharp{title="Logging Startup" description="Logging Startup" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Logging", "Startup"]}
+```csharp{title="Logging Startup" description="Logging Startup" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Logging", "Startup"] unverified="illustrative logging pattern — observability example, nothing asserted"}
 public async Task StartAsync(CancellationToken ct = default) {
   _logger.LogInformation(
     "Starting {StrategyName} execution strategy",
@@ -592,7 +592,7 @@ public async Task StartAsync(CancellationToken ct = default) {
 
 ### Logging Shutdown
 
-```csharp{title="Logging Shutdown" description="Logging Shutdown" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Logging", "Shutdown"]}
+```csharp{title="Logging Shutdown" description="Logging Shutdown" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Logging", "Shutdown"] unverified="illustrative logging pattern — observability example, nothing asserted"}
 public async Task StopAsync(CancellationToken ct = default) {
   _logger.LogInformation(
     "{StrategyName} stopping - no new work will be accepted",
@@ -621,7 +621,7 @@ public async Task DrainAsync(CancellationToken ct = default) {
 ### Metrics
 
 **Track shutdown duration**:
-```csharp{title="Metrics" description="Track shutdown duration:" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Metrics"]}
+```csharp{title="Metrics" description="Track shutdown duration:" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Metrics"] unverified="illustrative metrics pattern — Stopwatch timing example, nothing asserted"}
 private readonly Stopwatch _shutdownTimer = new();
 
 public async Task StopAsync(CancellationToken ct = default) {
@@ -646,7 +646,7 @@ public async Task DrainAsync(CancellationToken ct = default) {
 
 ### Testing StartAsync
 
-```csharp{title="Testing StartAsync" description="Testing StartAsync" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Testing", "StartAsync"]}
+```csharp{title="Testing StartAsync" description="Testing StartAsync" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Testing", "StartAsync"] tests=["ExecutionStrategyContractTests.StartAsync_ShouldBeIdempotentAsync", "SerialExecutorTests.StateTransitions_IdempotentOperations_SucceedAsync"]}
 [Test]
 public async Task StartAsync_ShouldBeIdempotentAsync() {
   // Arrange
@@ -663,7 +663,7 @@ public async Task StartAsync_ShouldBeIdempotentAsync() {
 
 ### Testing StopAsync
 
-```csharp{title="Testing StopAsync" description="Testing StopAsync" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Testing", "StopAsync"]}
+```csharp{title="Testing StopAsync" description="Testing StopAsync" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Testing", "StopAsync"] tests=["ExecutionStrategyContractTests.StopAsync_ShouldPreventNewExecutionsAsync", "SerialExecutorTests.ExecuteAsync_WhenNotRunning_ThrowsInvalidOperationExceptionAsync"]}
 [Test]
 public async Task StopAsync_ShouldPreventNewExecutionsAsync() {
   // Arrange
@@ -686,7 +686,7 @@ public async Task StopAsync_ShouldPreventNewExecutionsAsync() {
 
 ### Testing DrainAsync
 
-```csharp{title="Testing DrainAsync" description="Testing DrainAsync" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Testing", "DrainAsync"]}
+```csharp{title="Testing DrainAsync" description="Testing DrainAsync" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Testing", "DrainAsync"] tests=["ExecutionStrategyContractTests.DrainAsync_ShouldWaitForPendingWorkAsync", "SerialExecutorTests.DrainAsync_WaitsForAllInFlightWork_CompletesAsync"]}
 [Test]
 public async Task DrainAsync_ShouldWaitForPendingWorkAsync() {
   // Arrange
@@ -727,7 +727,7 @@ public async Task DrainAsync_ShouldWaitForPendingWorkAsync() {
 **Problem**: Worker needs database migrations before starting.
 
 **Solution** — await `ISchemaReadyGate` (signal-based, no polling):
-```csharp{title="Pattern 1: Initialization Dependencies" description="Pattern 1: Initialization Dependencies" category="Implementation" difficulty="ADVANCED" tags=["Operations", "Workers", "Pattern", "Initialization"]}
+```csharp{title="Pattern 1: Initialization Dependencies" description="Pattern 1: Initialization Dependencies" category="Implementation" difficulty="ADVANCED" tags=["Operations", "Workers", "Pattern", "Initialization"] unverified="ISchemaReadyGate coordination — its verifier is outside the current coverage map"}
 public class MyDatabaseWorker : BackgroundService {
   private readonly ISchemaReadyGate _schemaReadyGate;
 
@@ -751,7 +751,7 @@ public class MyDatabaseWorker : BackgroundService {
 **Problem**: Need to drain work from multiple channels.
 
 **Solution**:
-```csharp{title="Pattern 2: Multi-Phase Shutdown" description="Pattern 2: Multi-Phase Shutdown" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Pattern", "Multi-Phase"]}
+```csharp{title="Pattern 2: Multi-Phase Shutdown" description="Pattern 2: Multi-Phase Shutdown" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Pattern", "Multi-Phase"] unverified="illustrative multi-channel drain pattern — not the single-channel SerialExecutor API"}
 public async Task DrainAsync(CancellationToken ct = default) {
   // Phase 1: Drain primary work queue
   _primaryChannel.Writer.Complete();
@@ -770,7 +770,7 @@ public async Task DrainAsync(CancellationToken ct = default) {
 **Problem**: Expose readiness to container orchestrator (Kubernetes).
 
 **Solution**:
-```csharp{title="Pattern 3: Startup Health Checks" description="Pattern 3: Startup Health Checks" category="Implementation" difficulty="BEGINNER" tags=["Operations", "Workers", "Pattern", "Startup"]}
+```csharp{title="Pattern 3: Startup Health Checks" description="Pattern 3: Startup Health Checks" category="Implementation" difficulty="BEGINNER" tags=["Operations", "Workers", "Pattern", "Startup"] unverified="ASP.NET health-check wiring — SchemaReadyHealthCheck/ExecutionStrategyHealthCheck not exercised by execution-strategy unit tests"}
 // ASP.NET Core health checks (SchemaReadyHealthCheck wraps ISchemaReadyGate.IsReady —
 // see the Database Readiness page for the implementation)
 builder.Services.AddHealthChecks()
@@ -791,7 +791,7 @@ app.MapHealthChecks("/health/ready", new HealthCheckOptions {
 **Symptoms**: Exceptions on startup, "relation does not exist" or "connection refused" errors.
 
 **Solution**: Await `ISchemaReadyGate` before the first SQL call:
-```csharp{title="Problem: Worker Starts Before Database Ready" description="Solution: Await ISchemaReadyGate before the first SQL call:" category="Implementation" difficulty="BEGINNER" tags=["Operations", "Workers", "Problem:", "Worker"]}
+```csharp{title="Problem: Worker Starts Before Database Ready" description="Solution: Await ISchemaReadyGate before the first SQL call:" category="Implementation" difficulty="BEGINNER" tags=["Operations", "Workers", "Problem:", "Worker"] unverified="ISchemaReadyGate coordination — its verifier is outside the current coverage map"}
 try {
   await _schemaReadyGate.WaitForReadyAsync(stoppingToken);
 } catch (OperationCanceledException) {
@@ -810,7 +810,7 @@ try {
 3. Deadlock in work processing
 
 **Solution**: Add timeout to drain:
-```csharp{title="Problem: Shutdown Hangs Indefinitely" description="Solution: Add timeout to drain:" category="Implementation" difficulty="BEGINNER" tags=["Operations", "Workers", "Problem:", "Shutdown"]}
+```csharp{title="Problem: Shutdown Hangs Indefinitely" description="Solution: Add timeout to drain:" category="Implementation" difficulty="BEGINNER" tags=["Operations", "Workers", "Problem:", "Shutdown"] unverified="illustrative drain-timeout pattern — _worker.WaitAsync is pseudocode, not the SerialExecutor API"}
 public async Task DrainAsync(CancellationToken ct = default) {
   try {
     await _worker.WaitAsync(TimeSpan.FromSeconds(30), ct);
@@ -830,7 +830,7 @@ public async Task DrainAsync(CancellationToken ct = default) {
 3. `DrainAsync()` not awaited
 
 **Solution**: Complete current batch before exiting:
-```csharp{title="Problem: Work Abandoned on Shutdown" description="Solution: Complete current batch before exiting:" category="Implementation" difficulty="ADVANCED" tags=["Operations", "Workers", "Problem:", "Work"]}
+```csharp{title="Problem: Work Abandoned on Shutdown" description="Solution: Complete current batch before exiting:" category="Implementation" difficulty="ADVANCED" tags=["Operations", "Workers", "Problem:", "Work"] unverified="illustrative complete-current-batch pattern — generic BackgroundService loop, not a concrete Whizbang API"}
 protected override async Task ExecuteAsync(CancellationToken ct) {
   while (!ct.IsCancellationRequested) {
     var batch = await GetWorkBatchAsync(ct);
