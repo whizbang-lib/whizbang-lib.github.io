@@ -39,7 +39,7 @@ Integration tests must wait for **asynchronous perspective processing** to compl
 
 Traditional polling approach checks if database queues are empty:
 
-```csharp{title="Why Polling Fails" description="Traditional polling approach checks if database queues are empty:" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Operations", "Testing", "Why", "Polling"]}
+```csharp{title="Why Polling Fails" description="Traditional polling approach checks if database queues are empty:" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Operations", "Testing", "Why", "Polling"] unverified="counter-example — polling checks an empty queue with Task.Delay; illustrates the race this page replaces, not a behavior under test"}
 // ❌ RACE CONDITION!
 public async Task WaitForEventProcessingAsync() {
   for (var i = 0; i < 100; i++) {
@@ -53,7 +53,7 @@ public async Task WaitForEventProcessingAsync() {
 ```
 
 **The Problem**:
-```mermaid
+```mermaid{caption="Race condition — the work queue is already empty while the message is still in-flight through Service Bus, so a polling test sees empty and asserts before the perspective applies the event"}
 sequenceDiagram
     participant Test
     participant Queue as Work Queue
@@ -79,7 +79,7 @@ sequenceDiagram
 
 ### Test Failures
 
-```csharp{title="Test Failures" description="Test Failures" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Operations", "Testing", "Test", "Failures"]}
+```csharp{title="Test Failures" description="Test Failures" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Operations", "Testing", "Test", "Failures"] unverified="counter-example — the polling helper returns early and the assertion fails randomly; illustrates the race, not a behavior under test"}
 [Test]
 public async Task CreateProduct_UpdatesProductCatalog_FailsRandomlyAsync() {
   // Arrange
@@ -110,7 +110,7 @@ The **`PostPerspectiveInline` lifecycle stage** fires:
 - ✅ **Blocks** checkpoint reporting until receptors complete
 
 **Timing Diagram**:
-```mermaid
+```mermaid{caption="PostPerspectiveInline timing — the test awaits a completion signal while the worker runs the perspective and commits its writes; the lifecycle receptor fires at PostPerspectiveInline and sets the result, resuming the test only after data is committed" tests=["LifecycleStageAwaiterTests.WaitAsync_ReceptorInvokedAtMatchingStage_CompletesWithMessageAsync", "LifecycleStageAwaiterTests.Factory_ForPerspectiveCompletion_UsesPostPerspectiveInlineAsync"]}
 sequenceDiagram
     participant Test
     participant Dispatcher
@@ -147,7 +147,7 @@ sequenceDiagram
 
 Before hand-rolling a receptor, check the **`Whizbang.Testing`** package - it ships ready-made awaiters that encapsulate the pattern below (including the deadlock-safe `TaskCompletionSource` setup and automatic registration/cleanup):
 
-```csharp{title="LifecycleAwaiter Helper" description="First-class awaiter from the Whizbang.Testing package" category="Best-Practices" difficulty="BEGINNER" tags=["Operations", "Testing", "LifecycleAwaiter", "Whizbang.Testing"]}
+```csharp{title="LifecycleAwaiter Helper" description="First-class awaiter from the Whizbang.Testing package" category="Best-Practices" difficulty="BEGINNER" tags=["Operations", "Testing", "LifecycleAwaiter", "Whizbang.Testing"] tests=["LifecycleStageAwaiterTests.Factory_ForPerspectiveCompletion_UsesPostPerspectiveInlineAsync", "LifecycleStageAwaiterTests.WaitAsync_ReceptorInvokedAtMatchingStage_CompletesWithMessageAsync", "LifecycleStageAwaiterTests.WaitAsync_PerspectiveNameMatch_CompletesAsync", "LifecycleStageAwaiterTests.WaitAsync_MillisecondOverload_TimesOutWithStageInMessageAsync", "LifecycleStageAwaiterTests.Ctor_RegistersReceptorAtRequestedStageAsync", "LifecycleStageAwaiterTests.Dispose_UnregistersReceptor_AndIsIdempotentAsync"]}
 using Whizbang.Testing.Lifecycle;
 
 [Test]
@@ -179,7 +179,7 @@ The rest of this page shows the underlying pattern so you can build custom synch
 
 ### Step 1: Create Completion Receptor
 
-```csharp{title="Step 1: Create Completion Receptor" description="Step 1: Create Completion Receptor" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Operations", "Testing", "Step", "Create"]}
+```csharp{title="Step 1: Create Completion Receptor" description="Step 1: Create Completion Receptor" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Operations", "Testing", "Step", "Create"] tests=["LifecycleStageAwaiterTests.WaitAsync_ReceptorInvokedAtMatchingStage_CompletesWithMessageAsync", "LifecycleStageAwaiterTests.WaitAsync_PerspectiveNameMatch_CompletesAsync", "LifecycleStageAwaiterTests.WaitAsync_PerspectiveNameMismatch_DoesNotCompleteAsync", "LifecycleStageAwaiterTests.WaitAsync_StageMismatch_DoesNotCompleteAsync"]}
 using Whizbang.Core;
 using Whizbang.Core.Messaging;
 
@@ -218,7 +218,7 @@ public sealed class PerspectiveCompletionReceptor<TEvent> : IReceptor<TEvent>
 
 ### Step 2: Register at Runtime
 
-```csharp{title="Step 2: Register at Runtime" description="Step 2: Register at Runtime" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Operations", "Testing", "Step", "Register"]}
+```csharp{title="Step 2: Register at Runtime" description="Step 2: Register at Runtime" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Operations", "Testing", "Step", "Register"] unverified="verified by ReceptorRegistryRuntimeRegistrationTests, which is outside the current coverage map"}
 [Test]
 public async Task CreateProduct_UpdatesProductCatalog_DeterministicallyAsync() {
   // Arrange
@@ -264,7 +264,7 @@ public async Task CreateProduct_UpdatesProductCatalog_DeterministicallyAsync() {
 
 Create a reusable helper method in your test fixtures:
 
-```csharp{title="Extension Method" description="Create a reusable helper method in your test fixtures:" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Operations", "Testing", "Extension", "Method"]}
+```csharp{title="Extension Method" description="Create a reusable helper method in your test fixtures:" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Operations", "Testing", "Extension", "Method"] tests=["LifecycleStageAwaiterTests.Ctor_RegistersReceptorAtRequestedStageAsync", "LifecycleStageAwaiterTests.WaitAsync_ReceptorInvokedAtMatchingStage_CompletesWithMessageAsync", "LifecycleStageAwaiterTests.Dispose_UnregistersReceptor_AndIsIdempotentAsync"]}
 // File: samples/ECommerce/tests/ECommerce.Integration.TestUtilities/Fixtures/LifecycleReceptorTestExtensions.cs
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -303,7 +303,7 @@ public static class LifecycleReceptorTestExtensions {
 
 ### Simplified Test Usage
 
-```csharp{title="Simplified Test Usage" description="Simplified Test Usage" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Operations", "Testing", "Simplified", "Test"]}
+```csharp{title="Simplified Test Usage" description="Simplified Test Usage" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Operations", "Testing", "Simplified", "Test"] tests=["LifecycleStageAwaiterTests.WaitAsync_ReceptorInvokedAtMatchingStage_CompletesWithMessageAsync", "LifecycleStageAwaiterTests.WaitAsync_PerspectiveNameMatch_CompletesAsync"]}
 [Test]
 public async Task CreateProduct_UpdatesProductCatalog_SimpleAsync() {
   // Arrange
@@ -339,7 +339,7 @@ public async Task CreateProduct_UpdatesProductCatalog_SimpleAsync() {
 
 Wait for multiple different events (e.g., command triggers multiple perspectives):
 
-```csharp{title="Pattern 1: Multiple Event Types" description="Wait for multiple different events (e." category="Best-Practices" difficulty="ADVANCED" tags=["Operations", "Testing", "Pattern", "Multiple"]}
+```csharp{title="Pattern 1: Multiple Event Types" description="Wait for multiple different events (e." category="Best-Practices" difficulty="ADVANCED" tags=["Operations", "Testing", "Pattern", "Multiple"] unverified="sample test-fixture helper — reflection-based multi-event registration; no direct unit test in the coverage map"}
 public static async Task WaitForMultiplePerspectiveCompletionsAsync(
     this IHost host,
     Type[] eventTypes,
@@ -400,7 +400,7 @@ public static async Task WaitForMultiplePerspectiveCompletionsAsync(
 ```
 
 **Usage**:
-```csharp{title="Pattern 1: Multiple Event Types (2)" description="Pattern 1: Multiple Event Types" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Operations", "Testing", "Pattern", "Multiple"]}
+```csharp{title="Pattern 1: Multiple Event Types (2)" description="Pattern 1: Multiple Event Types" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Operations", "Testing", "Pattern", "Multiple"] unverified="usage of the reflection-based multi-event helper above — no direct unit test in the coverage map"}
 [Test]
 public async Task UpdateInventory_UpdatesMultiplePerspectives_DeterministicallyAsync() {
   // Arrange
@@ -428,7 +428,7 @@ public async Task UpdateInventory_UpdatesMultiplePerspectives_DeterministicallyA
 
 Wait for a specific perspective to complete (useful when multiple perspectives process same event):
 
-```csharp{title="Pattern 2: Perspective-Specific Filtering" description="Wait for a specific perspective to complete (useful when multiple perspectives process same event):" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Operations", "Testing", "Pattern", "Perspective-Specific"]}
+```csharp{title="Pattern 2: Perspective-Specific Filtering" description="Wait for a specific perspective to complete (useful when multiple perspectives process same event):" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Operations", "Testing", "Pattern", "Perspective-Specific"] tests=["LifecycleStageAwaiterTests.WaitAsync_PerspectiveNameMatch_CompletesAsync", "LifecycleStageAwaiterTests.WaitAsync_PerspectiveNameMismatch_DoesNotCompleteAsync"]}
 [Test]
 public async Task CreateProduct_UpdatesOnlyProductCatalog_NotInventoryAsync() {
   // Arrange
@@ -456,7 +456,7 @@ public async Task CreateProduct_UpdatesOnlyProductCatalog_NotInventoryAsync() {
 
 Handle timeouts gracefully with diagnostic information:
 
-```csharp{title="Pattern 3: Timeout Handling" description="Handle timeouts gracefully with diagnostic information:" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Operations", "Testing", "Pattern", "Timeout"]}
+```csharp{title="Pattern 3: Timeout Handling" description="Handle timeouts gracefully with diagnostic information:" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Operations", "Testing", "Pattern", "Timeout"] tests=["LifecycleStageAwaiterTests.WaitAsync_MillisecondOverload_TimesOutWithStageInMessageAsync"]}
 [Test]
 public async Task SlowPerspective_TimesOut_WithDiagnosticsAsync() {
   // Arrange
@@ -491,7 +491,7 @@ public async Task SlowPerspective_TimesOut_WithDiagnosticsAsync() {
 
 Wait for **any one** of multiple events (first to complete):
 
-```csharp{title="Pattern 4: Any-Of-Multiple Events" description="Wait for any one of multiple events (first to complete):" category="Best-Practices" difficulty="ADVANCED" tags=["Operations", "Testing", "Pattern", "Any-Of-Multiple"]}
+```csharp{title="Pattern 4: Any-Of-Multiple Events" description="Wait for any one of multiple events (first to complete):" category="Best-Practices" difficulty="ADVANCED" tags=["Operations", "Testing", "Pattern", "Any-Of-Multiple"] unverified="any-of pattern (Task.WhenAny over two runtime-registered receptors) — no in-map test covers the first-to-complete variant"}
 [Test]
 public async Task Command_TriggersOneOfSeveralEvents_FlexiblyAsync() {
   // Arrange
@@ -542,7 +542,7 @@ public async Task Command_TriggersOneOfSeveralEvents_FlexiblyAsync() {
 
 ### Base Fixture Setup
 
-```csharp{title="Base Fixture Setup" description="Base Fixture Setup" category="Best-Practices" difficulty="ADVANCED" tags=["Operations", "Testing", "Base", "Fixture"]}
+```csharp{title="Base Fixture Setup" description="Base Fixture Setup" category="Best-Practices" difficulty="ADVANCED" tags=["Operations", "Testing", "Base", "Fixture"] unverified="test-fixture setup — host bootstrapping and DI wiring, no behavior under test"}
 public class ServiceBusIntegrationFixture : IAsyncDisposable {
   protected IHost _inventoryHost = null!;
   protected IHost _bffHost = null!;
@@ -588,7 +588,7 @@ public class ServiceBusIntegrationFixture : IAsyncDisposable {
 
 ### Test Class Usage
 
-```csharp{title="Test Class Usage" description="Test Class Usage" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Operations", "Testing", "Test", "Class"]}
+```csharp{title="Test Class Usage" description="Test Class Usage" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Operations", "Testing", "Test", "Class"] tests=["LifecycleStageAwaiterTests.WaitAsync_ReceptorInvokedAtMatchingStage_CompletesWithMessageAsync", "LifecycleStageAwaiterTests.WaitAsync_PerspectiveNameMatch_CompletesAsync"]}
 public class CreateProductWorkflowTests : ServiceBusIntegrationFixture {
 
   [Test]
@@ -632,7 +632,7 @@ public class CreateProductWorkflowTests : ServiceBusIntegrationFixture {
 4. **Message routing issue** - Event not reaching perspective
 
 **Debugging**:
-```csharp{title="Problem: TimeoutException" description="Problem: TimeoutException" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Operations", "Testing", "Problem:", "TimeoutException"]}
+```csharp{title="Problem: TimeoutException" description="Problem: TimeoutException" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Operations", "Testing", "Problem:", "TimeoutException"] unverified="diagnostic snippet — queries work items, checkpoints, and events for debugging, no behavior under test"}
 // Check pending work items
 var pendingWork = await _dbContext.WorkItems.ToListAsync();
 Console.WriteLine($"Pending work: {pendingWork.Count}");
@@ -659,7 +659,7 @@ Console.WriteLine($"ProductCreatedEvent count: {events.Count}");
 3. **Detached stage instead of Inline** - Use `PostPerspectiveInline`, not `PostPerspectiveDetached`
 
 **Fix**:
-```csharp{title="Problem: Test Passes But Assertions Fail" description="Problem: Test Passes But Assertions Fail" category="Best-Practices" difficulty="BEGINNER" tags=["Operations", "Testing", "Problem:", "Test"]}
+```csharp{title="Problem: Test Passes But Assertions Fail" description="Problem: Test Passes But Assertions Fail" category="Best-Practices" difficulty="BEGINNER" tags=["Operations", "Testing", "Problem:", "Test"] unverified="counter-example — contrasts PostPerspectiveDetached (wrong, fire-and-forget) with PostPerspectiveInline (correct, blocking)"}
 // ❌ WRONG: PostPerspectiveDetached (fire-and-forget, does not block the pipeline)
 [FireAt(LifecycleStage.PostPerspectiveDetached)]
 public class CompletionReceptor : IReceptor<ProductCreatedEvent> { }
@@ -680,7 +680,7 @@ public class CompletionReceptor : IReceptor<ProductCreatedEvent> { }
 4. **Perspective name filter excludes event** - Check filter logic
 
 **Debugging**:
-```csharp{title="Problem: Receptor Not Firing" description="Problem: Receptor Not Firing" category="Best-Practices" difficulty="BEGINNER" tags=["Operations", "Testing", "Problem:", "Receptor"]}
+```csharp{title="Problem: Receptor Not Firing" description="Problem: Receptor Not Firing" category="Best-Practices" difficulty="BEGINNER" tags=["Operations", "Testing", "Problem:", "Receptor"] unverified="diagnostic snippet — adds console logging to the receptor for debugging, no behavior under test"}
 // Add logging to receptor
 public ValueTask HandleAsync(ProductCreatedEvent evt, CancellationToken ct) {
   Console.WriteLine($"RECEPTOR FIRED: {evt.GetType().Name}");
@@ -697,7 +697,7 @@ public ValueTask HandleAsync(ProductCreatedEvent evt, CancellationToken ct) {
 **Symptoms**: `GetRequiredService<IReceptorRegistry>()` throws exception.
 
 **Fix**: `IReceptorRegistry` is registered by the source-generated `AddWhizbangDispatcher()` extension (which calls `AddWhizbangReceptorRegistry()` internally). Make sure your host wiring includes it:
-```csharp{title="Problem: Registry Not Found" description="Fix: Register in DI container:" category="Best-Practices" difficulty="BEGINNER" tags=["Operations", "Testing", "Problem:", "Registry"]}
+```csharp{title="Problem: Registry Not Found" description="Fix: Register in DI container:" category="Best-Practices" difficulty="BEGINNER" tags=["Operations", "Testing", "Problem:", "Registry"] unverified="DI wiring — AddWhizbang / AddWhizbangDispatcher / AddReceptors service registration, no behavior under test"}
 // In Program.cs
 services
   .AddWhizbang()
@@ -728,7 +728,7 @@ services.AddReceptors();
 
 ### Timeout Recommendations
 
-```csharp{title="Timeout Recommendations" description="Timeout Recommendations" category="Best-Practices" difficulty="BEGINNER" tags=["Operations", "Testing", "Timeout", "Recommendations"]}
+```csharp{title="Timeout Recommendations" description="Timeout Recommendations" category="Best-Practices" difficulty="BEGINNER" tags=["Operations", "Testing", "Timeout", "Recommendations"] unverified="configuration guidance — recommended timeout values per environment, no executable behavior"}
 // Local development (fast)
 timeoutMilliseconds: 5000   // 5 seconds
 
@@ -745,7 +745,7 @@ timeoutMilliseconds: 30000  // 30 seconds
 
 ### Before: Polling-Based Tests
 
-```csharp{title="Before: Polling-Based Tests" description="Before: Polling-Based Tests" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Operations", "Testing", "Before:", "Polling-Based"]}
+```csharp{title="Before: Polling-Based Tests" description="Before: Polling-Based Tests" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Operations", "Testing", "Before:", "Polling-Based"] unverified="counter-example — the polling/Task.Delay approach being replaced; illustrates the race, not a behavior under test"}
 [Test]
 public async Task OldTest_UsesPollingSyncAsync() {
   // Arrange
@@ -773,7 +773,7 @@ private async Task WaitForEventProcessingAsync() {
 
 ### After: Lifecycle Synchronization
 
-```csharp{title="After: Lifecycle Synchronization" description="After: Lifecycle Synchronization" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Operations", "Testing", "After:", "Lifecycle"]}
+```csharp{title="After: Lifecycle Synchronization" description="After: Lifecycle Synchronization" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Operations", "Testing", "After:", "Lifecycle"] tests=["LifecycleStageAwaiterTests.WaitAsync_ReceptorInvokedAtMatchingStage_CompletesWithMessageAsync", "LifecycleStageAwaiterTests.WaitAsync_PerspectiveNameMatch_CompletesAsync"]}
 [Test]
 public async Task NewTest_UsesLifecycleSyncAsync() {
   // Arrange
