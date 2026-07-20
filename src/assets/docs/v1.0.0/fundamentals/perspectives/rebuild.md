@@ -90,7 +90,7 @@ public record RebuildResult(
 
 Trigger rebuilds across distributed services via messaging:
 
-```csharp{title="System Commands" description="Trigger rebuilds across distributed services via messaging:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "System", "Commands"]}
+```csharp{title="System Commands" description="Trigger rebuilds across distributed services via messaging:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "System", "Commands"] unverified="Dispatcher command-send illustration; RebuildPerspectiveCommand and CancelPerspectiveRebuildCommand are covered by SystemCommandsTests, outside this page's PerspectiveRebuilderTests candidate set"}
 // Rebuild specific perspectives
 await dispatcher.SendAsync(new RebuildPerspectiveCommand(
     PerspectiveNames: ["OrderPerspective", "InventoryPerspective"],
@@ -132,7 +132,7 @@ See [Migration Tracking](../../operations/infrastructure/migrations.md) for deta
 
 A built-in read model tracks all perspective health:
 
-```csharp{title="PerspectiveStatusModel" description="A built-in read model tracks all perspective health:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "PerspectiveStatusModel"]}
+```csharp{title="PerspectiveStatusModel" description="A built-in read model tracks all perspective health:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "PerspectiveStatusModel"] unverified="PerspectiveStatusModel read-model definition has no mapped test and is outside this page's PerspectiveRebuilderTests candidate set"}
 public sealed record PerspectiveStatusModel {
   [StreamId]
   public Guid Id { get; init; }

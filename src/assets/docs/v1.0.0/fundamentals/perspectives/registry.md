@@ -149,7 +149,7 @@ Note that renaming the **model type itself** changes the registry key (`clr_type
 
 In microservice architectures, multiple services may define perspectives. The registry tracks which service owns each perspective via the `service_name` column.
 
-```csharp{title="Multi-Service Scenarios" description="In microservice architectures, multiple services may define perspectives." category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Multi-Service", "Scenarios"]}
+```csharp{title="Multi-Service Scenarios" description="In microservice architectures, multiple services may define perspectives." category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Multi-Service", "Scenarios"] unverified="domain illustration of multi-service registration and the service_name unique constraint, not an isolated library API"}
 // Service A: OrderService
 public class OrderProjection : IPerspectiveFor<OrderData, OrderCreatedEvent> { }
 // Registered as: clr_type_name = "OrderService.Contracts.OrderData",

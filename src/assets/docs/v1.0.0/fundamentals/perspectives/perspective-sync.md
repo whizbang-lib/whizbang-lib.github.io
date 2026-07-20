@@ -384,7 +384,7 @@ public sealed class SyncContext {
 
 Inject `SyncContext` to access sync results (particularly useful with `FireAlways` behavior):
 
-```csharp{title="Using SyncContext in Handlers" description="Inject SyncContext to access sync results (particularly useful with FireAlways behavior):" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Using", "SyncContext"]}
+```csharp{title="Using SyncContext in Handlers" description="Inject SyncContext to access sync results (particularly useful with FireAlways behavior):" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Using", "SyncContext"] unverified="consumer handler illustration — GetOrderHandler injecting SyncContext with FireAlways, not a library-API assertion"}
 [AwaitPerspectiveSync(typeof(OrderPerspective),
     FireBehavior = SyncFireBehavior.FireAlways)]
 public class GetOrderHandler : IReceptor<GetOrderQuery, Order?> {
@@ -488,7 +488,7 @@ public class Dispatcher {
 
 **The Solution**: Use `AsyncLocal<T>` for ambient access:
 
-```csharp{title="Why AsyncLocal? - Dispatcher" description="The Solution: Use AsyncLocal<T> for ambient access:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Why", "AsyncLocal?"]}
+```csharp{title="Why AsyncLocal? - Dispatcher" description="The Solution: Use AsyncLocal<T> for ambient access:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Why", "AsyncLocal?"] unverified="illustrative correct-pattern snippet — ambient tracker access from a singleton Dispatcher, not a runtime-asserted example"}
 // ✅ CORRECT - Ambient access via AsyncLocal
 public class Dispatcher {
   public void Send(IMessage message) {
@@ -502,7 +502,7 @@ public class Dispatcher {
 
 #### Implementation
 
-```csharp{title="Implementation" description="Implementation" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Implementation"]}
+```csharp{title="Implementation" description="Implementation" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Implementation"] unverified="implementation snippet — ScopedEventTrackerAccessor has no dedicated test in the map"}
 public static class ScopedEventTrackerAccessor {
   private static readonly AsyncLocal<IScopedEventTracker?> _current = new();
 
@@ -560,7 +560,7 @@ public interface IScopedEventTracker {
 
 **Usage**: Query events within the same request for `SyncFilter.CurrentScope()`:
 
-```csharp{title="IScopedEventTracker - Request-Scoped Tracking (2)" description="Usage: Query events within the same request for `SyncFilter." category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "IScopedEventTracker", "Request-Scoped"]}
+```csharp{title="IScopedEventTracker - Request-Scoped Tracking (2)" description="Usage: Query events within the same request for `SyncFilter." category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "IScopedEventTracker", "Request-Scoped"] unverified="usage illustration combining event-store append and scoped-tracker read, not an isolated tested assertion"}
 // Handler emits events
 await _eventStore.AppendAsync(streamId, new OrderCreatedEvent());
 
@@ -706,7 +706,7 @@ flowchart TD
 
 Track EventIds explicitly and send them to the database:
 
-```csharp{title="The Solution" description="Track EventIds explicitly and send them to the database:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Solution"]}
+```csharp{title="The Solution" description="Track EventIds explicitly and send them to the database:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Solution"] unverified="conceptual four-step walkthrough with a pseudo _processWorkBatch delegate, not a library-API assertion"}
 // 1. Capture EventId when emitted
 _scopedTracker.TrackEmittedEvent(streamId, typeof(OrderCreatedEvent), eventId);
 
@@ -784,7 +784,7 @@ flowchart LR
 
 The attribute handler automatically discovers pending events from the database outbox:
 
-```csharp{title="The Solution: DiscoverPendingFromOutbox" description="The attribute handler automatically discovers pending events from the database outbox:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Solution:", "DiscoverPendingFromOutbox"]}
+```csharp{title="The Solution: DiscoverPendingFromOutbox" description="The attribute handler automatically discovers pending events from the database outbox:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Solution:", "DiscoverPendingFromOutbox"] unverified="simplified pseudo-code for the attribute handler's outbox discovery, not a runtime-asserted example"}
 // Attribute handler logic (simplified)
 var incomingEventId = message.GetEventId();  // abc123 from the event being processed
 
@@ -872,7 +872,7 @@ public enum SyncFireBehavior {
 
 Handler only executes if sync completes:
 
-```csharp{title="FireOnSuccess (Default)" description="Handler only executes if sync completes:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "FireOnSuccess", "Default"]}
+```csharp{title="FireOnSuccess (Default)" description="Handler only executes if sync completes:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "FireOnSuccess", "Default"] unverified="consumer handler illustration of FireOnSuccess behavior, not a library-API assertion"}
 [AwaitPerspectiveSync(typeof(OrderPerspective))]  // Default: FireOnSuccess
 public class Handler : IReceptor<OrderCreatedEvent> {
   public async ValueTask HandleAsync(OrderCreatedEvent evt, CancellationToken ct) {
@@ -889,7 +889,7 @@ public class Handler : IReceptor<OrderCreatedEvent> {
 
 Handler always executes, inject `SyncContext` to check outcome:
 
-```csharp{title="FireAlways" description="Handler always executes, inject SyncContext to check outcome:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "FireAlways"]}
+```csharp{title="FireAlways" description="Handler always executes, inject SyncContext to check outcome:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "FireAlways"] unverified="consumer handler illustration of FireAlways behavior, not a library-API assertion"}
 [AwaitPerspectiveSync(typeof(OrderPerspective),
     FireBehavior = SyncFireBehavior.FireAlways)]
 public class Handler : IReceptor<GetOrderQuery, Order?> {
@@ -923,7 +923,7 @@ The `Dispatcher` integrates with perspective sync through the `_awaitPerspective
 
 The method is called from all local invocation paths:
 
-```csharp{title="Integration Points" description="The method is called from all local invocation paths:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Integration", "Points"]}
+```csharp{title="Integration Points" description="The method is called from all local invocation paths:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Integration", "Points"] unverified="internal Dispatcher invocation-path illustration, not an isolated tested assertion"}
 // LocalInvokeAsync with return value
 public async ValueTask<TResult> LocalInvokeAsync<TMessage, TResult>(TMessage message) {
   var invoker = GetReceptorInvoker<TResult>(message, messageType);
@@ -964,7 +964,7 @@ public async ValueTask LocalInvokeAsync<TMessage>(TMessage message) {
 
 #### Implementation Logic
 
-```csharp{title="Implementation Logic" description="Implementation Logic" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Perspectives", "Implementation", "Logic"]}
+```csharp{title="Implementation Logic" description="Implementation Logic" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Perspectives", "Implementation", "Logic"] unverified="internal Dispatcher sync-orchestration implementation, not an isolated tested assertion"}
 private async ValueTask _awaitPerspectiveSyncIfNeededAsync(
     object message,
     Type messageType,
@@ -1085,7 +1085,7 @@ var order = await _orderLens.GetByIdAsync(orderId, ct);
 - Need guarantee ALL perspectives have processed before responding
 - Caller needs complete side-effect confirmation
 
-```csharp{title="When to Use Each (2)" description="Event-Based (IEventCompletionAwaiter): - Making RPC calls via LocalInvokeAsync - Need guarantee ALL perspectives have" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "When", "Each"]}
+```csharp{title="When to Use Each (2)" description="Event-Based (IEventCompletionAwaiter): - Making RPC calls via LocalInvokeAsync - Need guarantee ALL perspectives have" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "When", "Each"] tests=["DispatchOptionsTests.WithPerspectiveWait_SetsWaitForPerspectivesToTrueAsync"]}
 // Wait for ALL perspectives before returning RPC response
 var options = new DispatchOptions().WithPerspectiveWait();
 await _dispatcher.LocalInvokeAsync(command, options, ct);
@@ -1139,7 +1139,7 @@ public class OrderHandler : IReceptor<OrderCreatedEvent> {
 
 Declaratively wait before receptor execution:
 
-```csharp{title="Approach 2: Lifecycle Attribute" description="Declaratively wait before receptor execution:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Approach", "Lifecycle"]}
+```csharp{title="Approach 2: Lifecycle Attribute" description="Declaratively wait before receptor execution:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Approach", "Lifecycle"] unverified="consumer handler illustration using the [AwaitPerspectiveSync] attribute, not a library-API assertion"}
 using Whizbang.Core.Messaging;
 using Whizbang.Core.Perspectives.Sync;
 

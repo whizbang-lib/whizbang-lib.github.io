@@ -34,7 +34,7 @@ This page covers the **generic** `PerspectiveAssociationInfo<TModel, TEvent>` re
 
 ### Getting Typed Associations
 
-```csharp{title="Getting Typed Associations" description="Getting Typed Associations" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Getting", "Typed"]}
+```csharp{title="Getting Typed Associations" description="Getting Typed Associations" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Getting", "Typed"] unverified="consumer usage example with fictional domain types, not verified verbatim"}
 using Whizbang.Core.Generated;
 
 // Get associations for specific model and event types
@@ -55,7 +55,7 @@ foreach (var assoc in associations) {
 
 ### Using Delegates
 
-```csharp{title="Using Delegates" description="Using Delegates" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Using", "Delegates"]}
+```csharp{title="Using Delegates" description="Using Delegates" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Using", "Delegates"] unverified="consumer illustration of a custom generic apply helper"}
 // Example: Generic perspective applier
 public TModel ApplyEvent<TModel, TEvent>(
     TModel model,
@@ -121,7 +121,7 @@ public sealed record PerspectiveAssociationInfo<TModel, TEvent>(
 
 ### Direct Invocation
 
-```csharp{title="Direct Invocation" description="Direct Invocation" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Direct", "Invocation"]}
+```csharp{title="Direct Invocation" description="Direct Invocation" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Direct", "Invocation"] unverified="consumer usage example with fictional domain types"}
 var associations = PerspectiveRegistrationExtensions
     .GetPerspectiveAssociations<InventoryModel, ProductCreatedEvent>("ECommerce.BFF.API");
 
@@ -137,7 +137,7 @@ foreach (var assoc in associations) {
 
 ### Generic Invocation Helper
 
-```csharp{title="Generic Invocation Helper" description="Generic Invocation Helper" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Generic", "Invocation"]}
+```csharp{title="Generic Invocation Helper" description="Generic Invocation Helper" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Generic", "Invocation"] unverified="consumer illustration of a custom applier class"}
 public class PerspectiveApplier {
     private readonly string _serviceName;
 
@@ -170,7 +170,7 @@ var updatedModel = applier.ApplyAll(currentModel, newEvent);
 
 **When**: Building a generic perspective materialization engine
 
-```csharp{title="Scenario 1: Generic Perspective Runner" description="When: Building a generic perspective materialization engine" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Perspectives", "Scenario", "Generic"]}
+```csharp{title="Scenario 1: Generic Perspective Runner" description="When: Building a generic perspective materialization engine" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Perspectives", "Scenario", "Generic"] unverified="consumer illustration of a custom materializer class"}
 public class PerspectiveMaterializer {
     public async Task<TModel> MaterializeAsync<TModel, TEvent>(
         TModel initialModel,
@@ -215,7 +215,7 @@ var model = await materializer.MaterializeAsync(
 
 **When**: Discovering available perspectives at runtime
 
-```csharp{title="Scenario 2: Perspective Discovery and Diagnostics" description="When: Discovering available perspectives at runtime" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Scenario", "Perspective"]}
+```csharp{title="Scenario 2: Perspective Discovery and Diagnostics" description="When: Discovering available perspectives at runtime" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Scenario", "Perspective"] unverified="consumer illustration of a diagnostics helper with console output"}
 public class PerspectiveDiagnostics {
     public void PrintPerspectiveInfo<TModel, TEvent>(string serviceName)
         where TEvent : IEvent {
@@ -257,7 +257,7 @@ diagnostics.PrintPerspectiveInfo<ProductModel, ProductCreatedEvent>("ECommerce.B
 
 **When**: Unit testing perspectives in isolation
 
-```csharp{title="Scenario 3: Testing Perspective Behavior" description="When: Unit testing perspectives in isolation" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Scenario", "Testing"]}
+```csharp{title="Scenario 3: Testing Perspective Behavior" description="When: Unit testing perspectives in isolation" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Scenario", "Testing"] unverified="sample consumer test, not a library test"}
 [Test]
 public async Task ProductPerspective_ApplyProductCreatedEvent_IncrementsCountAsync() {
     // Arrange
@@ -281,7 +281,7 @@ public async Task ProductPerspective_ApplyProductCreatedEvent_IncrementsCountAsy
 
 **When**: Caching associations for high-throughput scenarios
 
-```csharp{title="Scenario 4: Performance Optimization with Caching" description="When: Caching associations for high-throughput scenarios" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Scenario", "Performance"]}
+```csharp{title="Scenario 4: Performance Optimization with Caching" description="When: Caching associations for high-throughput scenarios" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Scenario", "Performance"] unverified="consumer illustration of a caching applier"}
 public class CachedPerspectiveApplier {
     private readonly ConcurrentDictionary<Type, object> _associationCache = new();
     private readonly string _serviceName;
@@ -397,7 +397,7 @@ public sealed record PerspectiveAssociationInfo<TModel, TEvent>(
 
 ### Converting Between Types
 
-```csharp{title="Converting Between Types" description="Converting Between Types" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Converting", "Between"]}
+```csharp{title="Converting Between Types" description="Converting Between Types" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Converting", "Between"] unverified="consumer usage example with fictional domain types"}
 // Get MessageAssociations (all perspectives)
 var messageAssocs = PerspectiveRegistrationExtensions
     .GetMessageAssociations("ECommerce.BFF.API");
@@ -518,7 +518,7 @@ assoc.ApplyDelegate(model, productEvent); // Works!
 
 ### Delegate Invocation Cost
 
-```csharp{title="Delegate Invocation Cost" description="Delegate Invocation Cost" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Delegate", "Invocation"]}
+```csharp{title="Delegate Invocation Cost" description="Delegate Invocation Cost" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Delegate", "Invocation"] unverified="illustrative performance commentary with approximate timings"}
 // Delegate invocation: ~1-2ns per call (very fast)
 var model = assoc.ApplyDelegate(currentModel, evt);
 
@@ -528,7 +528,7 @@ var model = assoc.ApplyDelegate(currentModel, evt);
 
 ### Caching Strategy
 
-```csharp{title="Caching Strategy" description="Caching Strategy" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Caching", "Strategy"]}
+```csharp{title="Caching Strategy" description="Caching Strategy" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Caching", "Strategy"] unverified="consumer illustration of a cached-field pattern"}
 // For high-throughput scenarios, cache associations
 private readonly IReadOnlyList<PerspectiveAssociationInfo<ProductModel, ProductCreatedEvent>> _cached;
 

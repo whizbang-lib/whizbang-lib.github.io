@@ -46,7 +46,7 @@ The discovery metadata provides this bridge between compile-time analysis and ru
 
 `PerspectiveDiscoveryGenerator` extracts one `PerspectiveInfo` per discovered perspective interface. It is a value-equality record (critical for incremental generator performance) defined in `Whizbang.Generators`:
 
-```csharp{title="PerspectiveInfo (abridged)" description="Generator-internal discovery metadata record" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Structure"]}
+```csharp{title="PerspectiveInfo (abridged)" description="Generator-internal discovery metadata record" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Structure"] unverified="abridged generator-internal record, not asserted verbatim by a test"}
 namespace Whizbang.Generators;
 
 /// <summary>
@@ -71,7 +71,7 @@ internal sealed record PerspectiveInfo(
 
 The generated `PerspectiveRunnerRegistry` exposes registered perspectives through `IPerspectiveRunnerRegistry.GetRegisteredPerspectives()`:
 
-```csharp{title="PerspectiveRegistrationInfo" description="Public runtime metadata exposed by IPerspectiveRunnerRegistry" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Structure"]}
+```csharp{title="PerspectiveRegistrationInfo" description="Public runtime metadata exposed by IPerspectiveRunnerRegistry" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Structure"] unverified="hand-written public record definition, no generator test asserts its shape"}
 namespace Whizbang.Core.Perspectives;
 
 /// <summary>
@@ -89,7 +89,7 @@ public sealed record PerspectiveRegistrationInfo(
 
 The EF Core association generator carries its own minimal internal record — a (perspective, message-type) pair used to emit JSON association registrations:
 
-```csharp{title="EF Core PerspectiveAssociationInfo" description="Internal record in Whizbang.Data.EFCore.Postgres.Generators" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Structure"]}
+```csharp{title="EF Core PerspectiveAssociationInfo" description="Internal record in Whizbang.Data.EFCore.Postgres.Generators" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Structure"] unverified="abridged internal EF Core generator record, not asserted verbatim"}
 namespace Whizbang.Data.EFCore.Postgres.Generators;
 
 internal sealed record PerspectiveAssociationInfo(
@@ -146,7 +146,7 @@ For each discovered perspective, the generators create:
 
 `PerspectiveRunnerGenerator` emits an `IPerspectiveRunner` implementation per perspective. `RunAsync` returns a `PerspectiveCursorCompletion`:
 
-```csharp{title="Perspective Runner" description="Perspective Runner" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Perspective", "Runner"]}
+```csharp{title="Perspective Runner" description="Perspective Runner" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Perspective", "Runner"] unverified="illustrative generated runner skeleton with placeholder body"}
 internal sealed class OrderSummaryPerspectiveRunner : IPerspectiveRunner {
   // Implements event replay logic
   public async Task<PerspectiveCursorCompletion> RunAsync(
@@ -206,7 +206,7 @@ public class ProductCatalogPerspective :
 
 ### Step 2: Generator Extracts Metadata
 
-```csharp{title="Step 2: Generator Extracts Metadata" description="Step 2: Generator Extracts Metadata" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Perspectives", "Step", "Generator"]}
+```csharp{title="Step 2: Generator Extracts Metadata" description="Step 2: Generator Extracts Metadata" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Perspectives", "Step", "Generator"] unverified="illustrative metadata extraction example, not asserted verbatim"}
 // Extracted at compile time (generator-internal, one per perspective interface)
 new PerspectiveInfo(
   ClassName: "global::MyApp.Perspectives.ProductCatalogPerspective",
@@ -220,7 +220,7 @@ new PerspectiveInfo(
 
 ### Step 3: Generator Creates Runner
 
-```csharp{title="Step 3: Generator Creates Runner" description="Step 3: Generator Creates Runner" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Perspectives", "Step", "Generator"]}
+```csharp{title="Step 3: Generator Creates Runner" description="Step 3: Generator Creates Runner" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Perspectives", "Step", "Generator"] unverified="simplified illustrative generated runner"}
 // Auto-generated runner (simplified)
 internal sealed class ProductCatalogPerspectiveRunner : IPerspectiveRunner {
   public async Task<PerspectiveCursorCompletion> RunAsync(...) {

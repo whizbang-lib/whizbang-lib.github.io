@@ -589,7 +589,7 @@ public class ProductCatalogPerspective :
 
 One event can update **multiple read models**:
 
-```csharp{title="Multiple Perspectives per Event" description="One event can update multiple read models:" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Perspectives", "C#", "Multiple"]}
+```csharp{title="Multiple Perspectives per Event" description="One event can update multiple read models:" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Perspectives", "C#", "Multiple"] unverified="domain illustration of the one-event-to-many-read-models pattern, not an isolated library API"}
 // Event published once
 public record OrderCreatedEvent : IEvent {
     [StreamId]
@@ -952,7 +952,7 @@ For detailed rebuild operations, modes, system events, and status tracking, see 
 
 Since `Apply()` methods are pure functions with no I/O, they rarely throw exceptions. Common cases:
 
-```csharp{title="Pure Functions Don't Throw I/O Errors" description="Since Apply() methods are pure functions with no I/O, they rarely throw exceptions." category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Pure", "Functions"]}
+```csharp{title="Pure Functions Don't Throw I/O Errors" description="Since Apply() methods are pure functions with no I/O, they rarely throw exceptions." category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Pure", "Functions"] unverified="domain illustration of defensive null handling in a pure Apply, not an isolated library API"}
 public ProductDto Apply(ProductDto currentData, ProductUpdatedEvent @event) {
     // Defensive: handle null current data
     if (currentData == null) {

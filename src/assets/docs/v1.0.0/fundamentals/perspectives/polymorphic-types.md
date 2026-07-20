@@ -111,7 +111,7 @@ WHERE data->'Settings'->>'$type' = 'TextFieldSettings';
 
 Add a discriminator column that stores the type information:
 
-```csharp{title="The Solution" description="Add a discriminator column that stores the type information:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Solution"]}
+```csharp{title="The Solution" description="Add a discriminator column that stores the type information:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Solution"] unverified="consumer FormModel illustration of discriminator-column query optimization — the analyzer tests still report WHIZ811 on the abstract property regardless of this discriminator, so this shape is not verified by them"}
 public record FormModel {
     [StreamId]
     public Guid FormId { get; init; }

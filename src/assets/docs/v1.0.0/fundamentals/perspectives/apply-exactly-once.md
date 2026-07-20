@@ -47,6 +47,7 @@ framework: "NET10"
 category: "Perspectives"
 difficulty: "ADVANCED"
 tags: ["perspectives", "apply", "exactly-once", "idempotency", "projection"]
+unverified: "consumer UberDraftJobModel projection illustration; PerspectiveApplyExactlyOnceTests is absent from the code-tests map"
 }
 public UberDraftJobModel Apply(UberDraftJobModel current, DraftJobEssentialFunctionRowAddedEvent evt) {
   current.EssentialFunctionRows.Add(new EssentialFunctionRow { RowId = evt.RowId, /* … */ });
