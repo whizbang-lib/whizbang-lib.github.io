@@ -31,7 +31,7 @@ Whizbang's scope middleware provides automatic multi-tenancy and security filter
 
 The `WhizbangScopeMiddleware` extracts scope information from HTTP requests (JWT claims and headers) and makes it available to lens queries for automatic filtering.
 
-```mermaid
+```mermaid{caption="HTTP request reaches WhizbangScopeMiddleware, which extracts scope values into an IScopeContext, sets IScopeContextAccessor.Current, and propagates it into lens query filtering" tests=["WhizbangScopeMiddlewareTests.InvokeAsync_ShouldSetScopeContextOnAccessorAsync", "WhizbangScopeMiddlewareTests.InvokeAsync_ImmutableScopeContext_ShouldPropagateAsync"]}
 flowchart TD
     Request["HTTP Request<br/>- JWT Claims (tenant_id, sub, groups, ...)<br/>- Headers (X-Tenant-Id, X-User-Id, ...)"]
     Middleware["WhizbangScopeMiddleware<br/>- Extracts scope values<br/>- Creates IScopeContext"]
@@ -45,13 +45,13 @@ flowchart TD
 
 ### 1. Register Services
 
-```csharp{title="Register Services" description="Register Services" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Register", "Services"]}
+```csharp{title="Register Services" description="Register Services" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Register", "Services"] tests=["ScopeMiddlewareExtensionsTests.AddWhizbangScope_ShouldRegisterIScopeContextAccessorAsync"]}
 builder.Services.AddWhizbangScope();
 ```
 
 ### 2. Add Middleware
 
-```csharp{title="Add Middleware" description="Add Middleware" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Add", "Middleware"]}
+```csharp{title="Add Middleware" description="Add Middleware" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Add", "Middleware"] tests=["ScopeMiddlewareExtensionsTests.UseWhizbangScope_ShouldReturnApplicationBuilderForChainingAsync"]}
 app.UseAuthentication();
 app.UseWhizbangScope();  // After auth
 app.MapGraphQL();
@@ -74,7 +74,7 @@ app.MapGraphQL();
 
 ### Custom Configuration
 
-```csharp{title="Custom Configuration" description="Custom Configuration" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Custom", "Configuration"]}
+```csharp{title="Custom Configuration" description="Custom Configuration" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Custom", "Configuration"] tests=["ScopeMiddlewareExtensionsTests.AddWhizbangScope_WithConfigure_ShouldRegisterOptionsAsync"]}
 builder.Services.AddWhizbangScope(options => {
     // Custom claim types
     options.TenantIdClaimType = "https://myapp.com/tenant_id";
@@ -96,7 +96,7 @@ builder.Services.AddWhizbangScope(options => {
 
 The middleware extracts scope from the request:
 
-```csharp{title="Scope Extraction" description="The middleware extracts scope from the request:" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Scope", "Extraction"]}
+```csharp{title="Scope Extraction" description="The middleware extracts scope from the request:" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Scope", "Extraction"] tests=["WhizbangScopeMiddlewareTests.InvokeAsync_ClaimsHavePriorityOverHeaders_ForSameFieldAsync"]}
 // Conceptually (simplified): each configured claim type is tried in order,
 // and JWT claims take priority over headers
 var tenantId = options.TenantIdClaimTypes
@@ -109,7 +109,7 @@ var tenantId = options.TenantIdClaimTypes
 
 The scope context is populated with:
 
-```csharp{title="Context Population" description="The scope context is populated with:" category="API" difficulty="INTERMEDIATE" tags=["Apis", "Graphql", "Context", "Population"]}
+```csharp{title="Context Population" description="The scope context is populated with:" category="API" difficulty="INTERMEDIATE" tags=["Apis", "Graphql", "Context", "Population"] tests=["WhizbangScopeMiddlewareTests.InvokeAsync_ShouldSetScopeContextOnAccessorAsync", "WhizbangScopeMiddlewareTests.InvokeAsync_ImmutableScopeContext_ShouldHaveCorrectSourceAsync", "WhizbangScopeMiddlewareTests.InvokeAsync_ImmutableScopeContext_ShouldPropagateAsync"]}
 // The middleware wraps everything it extracted in a SecurityExtraction,
 // then publishes it as an immutable, propagating scope context
 var extraction = new SecurityExtraction {
@@ -138,7 +138,7 @@ scopeContextAccessor.Current = new ImmutableScopeContext(extraction, shouldPropa
 
 Your lens implementation uses the scope context:
 
-```csharp{title="Lens Filtering" description="Your lens implementation uses the scope context:" category="API" difficulty="INTERMEDIATE" tags=["Apis", "Graphql", "Lens", "Filtering"]}
+```csharp{title="Lens Filtering" description="Your lens implementation uses the scope context:" category="API" difficulty="INTERMEDIATE" tags=["Apis", "Graphql", "Lens", "Filtering"] unverified="verified by ScopedQueryTests, which is outside the current coverage map"}
 public class ScopedOrderLens : IOrderLens {
     private readonly IScopeContextAccessor _scopeContextAccessor;
     private readonly DbContext _db;
@@ -179,7 +179,7 @@ public class ScopedOrderLens : IOrderLens {
 
 Each `PerspectiveRow` can have `AllowedPrincipals`:
 
-```csharp{title="Row-Level Security" description="Each PerspectiveRow can have AllowedPrincipals:" category="API" difficulty="INTERMEDIATE" tags=["Apis", "Graphql", "Row-Level", "Security"]}
+```csharp{title="Row-Level Security" description="Each PerspectiveRow can have AllowedPrincipals:" category="API" difficulty="INTERMEDIATE" tags=["Apis", "Graphql", "Row-Level", "Security"] unverified="verified by ScopedQueryTests, which is outside the current coverage map"}
 var order = new PerspectiveRow<OrderReadModel> {
     Data = orderData,
     Scope = new PerspectiveScope {
@@ -205,7 +205,7 @@ WHERE scope->'AllowedPrincipals' ?| ARRAY['user:user-456', 'group:sales-team']
 
 ### Via IScopeContextAccessor
 
-```csharp{title="Via IScopeContextAccessor" description="Via IScopeContextAccessor" category="API" difficulty="INTERMEDIATE" tags=["Apis", "Graphql", "IScopeContextAccessor"]}
+```csharp{title="Via IScopeContextAccessor" description="Via IScopeContextAccessor" category="API" difficulty="INTERMEDIATE" tags=["Apis", "Graphql", "IScopeContextAccessor"] unverified="verified by ScopedQueryTests, which is outside the current coverage map"}
 public class Query {
     public CurrentUser GetCurrentUser([Service] IScopeContextAccessor accessor) {
         var context = accessor.Current;
@@ -240,7 +240,7 @@ type ScopeInfo {
 
 Each row has a `TenantId` in its scope:
 
-```csharp{title="Tenant-Per-Row" description="Each row has a TenantId in its scope:" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Tenant-Per-Row"]}
+```csharp{title="Tenant-Per-Row" description="Each row has a TenantId in its scope:" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Tenant-Per-Row"] unverified="verified by ScopedQueryTests, which is outside the current coverage map"}
 [GraphQLLens(QueryName = "orders")]
 public interface IOrderLens : ILensQuery<OrderReadModel> { }
 
@@ -264,7 +264,7 @@ builder.Services.AddScoped<IOrderLens>(sp => {
 
 ### In Resolvers
 
-```csharp{title="In Resolvers" description="In Resolvers" category="API" difficulty="INTERMEDIATE" tags=["Apis", "Graphql", "Resolvers"]}
+```csharp{title="In Resolvers" description="In Resolvers" category="API" difficulty="INTERMEDIATE" tags=["Apis", "Graphql", "Resolvers"] tests=["WhizbangScopeMiddlewareTests.HasPermission_WithMatchingPermission_ShouldReturnTrueAsync", "WhizbangScopeMiddlewareTests.HasPermission_WithoutMatchingPermission_ShouldReturnFalseAsync"]}
 public class Query {
     public async Task<OrderReadModel?> GetOrder(
         Guid id,
@@ -298,7 +298,7 @@ public IQueryable<PerspectiveRow<OrderReadModel>> GetOrders(
 
 ## Testing Scoped Queries
 
-```csharp{title="Testing Scoped Queries" description="Testing Scoped Queries" category="API" difficulty="INTERMEDIATE" tags=["Apis", "Graphql", "Testing", "Scoped"]}
+```csharp{title="Testing Scoped Queries" description="Testing Scoped Queries" category="API" difficulty="INTERMEDIATE" tags=["Apis", "Graphql", "Testing", "Scoped"] unverified="verified by ScopedQueryTests, which is outside the current coverage map"}
 [Test]
 public async Task Query_FiltersByTenantAsync() {
     // Arrange - seed the ambient scope the same way the middleware does
