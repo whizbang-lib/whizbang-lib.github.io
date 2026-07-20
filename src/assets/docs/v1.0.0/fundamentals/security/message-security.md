@@ -499,7 +499,7 @@ public class OrderCreatedReceptor : IReceptor<OrderCreated> {
 
 Security context flows through nested dispatches from cascaded receptors:
 
-```csharp{title="Nested Dispatch Context Inheritance" description="Security context flows through nested dispatches from cascaded receptors:" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Nested", "Dispatch"]}
+```csharp{title="Nested Dispatch Context Inheritance" description="Security context flows through nested dispatches from cascaded receptors:" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Nested", "Dispatch"] unverified="consumer receptor illustration — OrderCreatedReceptor is user code, not a shipped Whizbang API"}
 public class OrderCreatedReceptor : IReceptor<OrderCreated> {
     private readonly IDispatcher _dispatcher;
     private readonly IMessageContext _context;

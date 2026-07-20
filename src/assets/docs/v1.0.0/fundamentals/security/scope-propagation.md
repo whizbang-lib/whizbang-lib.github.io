@@ -146,7 +146,7 @@ public readonly struct CollectionChanges {
 
 To get the current full scope, call `GetCurrentScope()` on the envelope:
 
-```csharp{title="Rebuilding Full Scope" description="To get the current full scope, call GetCurrentScope() on the envelope:" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Rebuilding", "Full"]}
+```csharp{title="Rebuilding Full Scope" description="To get the current full scope, call GetCurrentScope() on the envelope:" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Rebuilding", "Full"] unverified="Illustrative pseudocode for MessageEnvelope.GetCurrentScope; MessageEnvelopeTests is outside this page's test references"}
 var envelope = /* received message envelope */;
 var fullScope = envelope.GetCurrentScope();  // MessageEnvelope.GetCurrentScope() → ScopeContext?
 

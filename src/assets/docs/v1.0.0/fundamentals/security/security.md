@@ -325,7 +325,7 @@ public class OrderService {
 
 The `IPermissionExtractor` interface allows custom extraction of permissions, roles, and security principals from claims, tokens, or other sources.
 
-```csharp{title="Permission Extractors" description="The IPermissionExtractor interface allows custom extraction of permissions, roles, and security principals from claims:" category="Best-Practices" difficulty="ADVANCED" tags=["Fundamentals", "Security", "Permission", "Extractors"]}
+```csharp{title="Permission Extractors" description="The IPermissionExtractor interface allows custom extraction of permissions, roles, and security principals from claims:" category="Best-Practices" difficulty="ADVANCED" tags=["Fundamentals", "Security", "Permission", "Extractors"] unverified="Custom RolePermissionExtractor is a consumer implementation; PermissionExtractorTests covers the built-in claim extractors, not this example"}
 public interface IPermissionExtractor {
   IEnumerable<Permission> ExtractPermissions(IReadOnlyDictionary<string, string> claims);
   IEnumerable<string> ExtractRoles(IReadOnlyDictionary<string, string> claims);
@@ -565,7 +565,7 @@ When querying with `ScopeFilters.Principal`, records are returned where the call
 
 A complete example showing row-level security for orders:
 
-```csharp{title="Order Example" description="A complete example showing row-level security for orders:" category="Best-Practices" difficulty="ADVANCED" tags=["Fundamentals", "Security", "Order", "Example"]}
+```csharp{title="Order Example" description="A complete example showing row-level security for orders:" category="Best-Practices" difficulty="ADVANCED" tags=["Fundamentals", "Security", "Order", "Example"] unverified="Consumer domain example (Order and OrderService); not exercised by Core security unit tests"}
 public class Order {
   public required Guid OrderId { get; init; }
   public required string CustomerId { get; init; }
@@ -621,7 +621,7 @@ Column-level security restricts which fields a user can view based on their perm
 
 A complete example showing column-level security for customer data:
 
-```csharp{title="Customer Example" description="A complete example showing column-level security for customer data:" category="Best-Practices" difficulty="ADVANCED" tags=["Fundamentals", "Security", "Customer", "Example"]}
+```csharp{title="Customer Example" description="A complete example showing column-level security for customer data:" category="Best-Practices" difficulty="ADVANCED" tags=["Fundamentals", "Security", "Customer", "Example"] unverified="Consumer domain example (Customer and CustomerService); not exercised by Core security unit tests"}
 public class Customer {
   public required string CustomerId { get; init; }
   public required string TenantId { get; init; }
@@ -695,7 +695,7 @@ public class CustomerService {
 
 The `MaskingStrategy` enum (paired with the `[FieldPermission]` attribute) defines strategies for masking sensitive fields when the caller lacks the required permission.
 
-```csharp{title="Data Masking" description="MaskingStrategy and the FieldPermission attribute define how sensitive fields are masked." category="Best-Practices" difficulty="ADVANCED" tags=["Fundamentals", "Security", "Data", "Masking"]}
+```csharp{title="Data Masking" description="MaskingStrategy and the FieldPermission attribute define how sensitive fields are masked." category="Best-Practices" difficulty="ADVANCED" tags=["Fundamentals", "Security", "Data", "Masking"] unverified="MaskingStrategy and FieldPermissionAttribute are covered only by SecurityAttributeTests, which is absent from the test map"}
 public enum MaskingStrategy {
   /// <summary>Completely hide the value (return null/default)</summary>
   Hide = 0,
@@ -722,7 +722,7 @@ public sealed class FieldPermissionAttribute(
 
 ### Using Masking with Column Security
 
-```csharp{title="Using Masking with Column Security" description="Using Masking with Column Security" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "C#", "Using", "Masking"]}
+```csharp{title="Using Masking with Column Security" description="Using Masking with Column Security" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "C#", "Using", "Masking"] unverified="Consumer domain example using the FieldPermission attribute; covered only by SecurityAttributeTests, which is absent from the test map"}
 public class Customer {
   public required string CustomerId { get; init; }
   public required string Name { get; init; }
@@ -774,7 +774,7 @@ The security system emits events for auditing.
 
 Emitted when access is denied due to insufficient permissions.
 
-```csharp{title="AccessDenied" description="Emitted when access is denied due to insufficient permissions." category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "AccessDenied"]}
+```csharp{title="AccessDenied" description="Emitted when access is denied due to insufficient permissions." category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "AccessDenied"] unverified="Audit system-event record (SystemEvents.Security); no unit test in the security test suite"}
 public sealed record AccessDenied : ISystemEvent {
   public Guid Id { get; init; } = TrackedGuid.NewMedo();
   public required string ResourceType { get; init; }
@@ -792,7 +792,7 @@ public sealed record AccessDenied : ISystemEvent {
 
 Emitted when access to a sensitive resource is granted (optional, for audit trails).
 
-```csharp{title="AccessGranted" description="Emitted when access to a sensitive resource is granted (optional, for audit trails)." category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "AccessGranted"]}
+```csharp{title="AccessGranted" description="Emitted when access to a sensitive resource is granted (optional, for audit trails)." category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "AccessGranted"] unverified="Audit system-event record (SystemEvents.Security); no unit test in the security test suite"}
 public sealed record AccessGranted : ISystemEvent {
   public Guid Id { get; init; } = TrackedGuid.NewMedo();
   public required string ResourceType { get; init; }
@@ -884,7 +884,7 @@ var options = new SecurityOptions()
 
 Optional marker interfaces for models that include scope in their data:
 
-```csharp{title="Marker Interfaces" description="Optional marker interfaces for models that include scope in their data:" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Marker", "Interfaces"]}
+```csharp{title="Marker Interfaces" description="Optional marker interfaces for models that include scope in their data:" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Marker", "Interfaces"] unverified="Optional scope marker interfaces covered only by MarkerInterfaceTests, which is absent from the test map"}
 public interface ITenantScoped {
   string TenantId { get; }
 }

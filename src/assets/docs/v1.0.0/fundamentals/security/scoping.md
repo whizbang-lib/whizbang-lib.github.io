@@ -106,7 +106,7 @@ Whizbang provides marker interfaces for models that include scope identifiers in
 
 ### ITenantScoped
 
-```csharp{title="ITenantScoped" description="ITenantScoped" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "ITenantScoped"]}
+```csharp{title="ITenantScoped" description="ITenantScoped" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "ITenantScoped"] unverified="Marker interface declaration; MarkerInterfaceTests is absent from the code-tests map"}
 public interface ITenantScoped {
   string TenantId { get; }
 }
@@ -114,7 +114,7 @@ public interface ITenantScoped {
 
 Use when tenant ID is part of the domain model:
 
-```csharp{title="ITenantScoped - Order" description="Use when tenant ID is part of the domain model:" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "ITenantScoped"]}
+```csharp{title="ITenantScoped - Order" description="Use when tenant ID is part of the domain model:" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "ITenantScoped"] unverified="Consumer domain model implementing the marker interface, not a library API"}
 public class Order : ITenantScoped {
   public string TenantId { get; init; }
   public string OrderNumber { get; init; }
@@ -124,7 +124,7 @@ public class Order : ITenantScoped {
 
 ### IUserScoped
 
-```csharp{title="IUserScoped" description="IUserScoped" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "IUserScoped"]}
+```csharp{title="IUserScoped" description="IUserScoped" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "IUserScoped"] unverified="Marker interface declaration; MarkerInterfaceTests is absent from the code-tests map"}
 public interface IUserScoped : ITenantScoped {
   string UserId { get; }
 }
@@ -132,7 +132,7 @@ public interface IUserScoped : ITenantScoped {
 
 For models scoped to both tenant and user:
 
-```csharp{title="IUserScoped - SavedSearch" description="For models scoped to both tenant and user:" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "IUserScoped"]}
+```csharp{title="IUserScoped - SavedSearch" description="For models scoped to both tenant and user:" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "IUserScoped"] unverified="Consumer domain model illustration, not a library API"}
 public class SavedSearch : IUserScoped {
   public string TenantId { get; init; }
   public string UserId { get; init; }
@@ -143,7 +143,7 @@ public class SavedSearch : IUserScoped {
 
 ### IOrganizationScoped
 
-```csharp{title="IOrganizationScoped" description="IOrganizationScoped" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "IOrganizationScoped"]}
+```csharp{title="IOrganizationScoped" description="IOrganizationScoped" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "IOrganizationScoped"] unverified="Marker interface declaration; MarkerInterfaceTests is absent from the code-tests map"}
 public interface IOrganizationScoped : ITenantScoped {
   string OrganizationId { get; }
 }
@@ -151,7 +151,7 @@ public interface IOrganizationScoped : ITenantScoped {
 
 For models scoped to organization within a tenant:
 
-```csharp{title="IOrganizationScoped - Department" description="For models scoped to organization within a tenant:" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "IOrganizationScoped"]}
+```csharp{title="IOrganizationScoped - Department" description="For models scoped to organization within a tenant:" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "IOrganizationScoped"] unverified="Consumer domain model illustration, not a library API"}
 public class Department : IOrganizationScoped {
   public string TenantId { get; init; }
   public string OrganizationId { get; init; }
@@ -161,7 +161,7 @@ public class Department : IOrganizationScoped {
 
 ### ICustomerScoped
 
-```csharp{title="ICustomerScoped" description="ICustomerScoped" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "ICustomerScoped"]}
+```csharp{title="ICustomerScoped" description="ICustomerScoped" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "ICustomerScoped"] unverified="Marker interface declaration; MarkerInterfaceTests is absent from the code-tests map"}
 public interface ICustomerScoped : ITenantScoped {
   string CustomerId { get; }
 }
@@ -169,7 +169,7 @@ public interface ICustomerScoped : ITenantScoped {
 
 For models scoped to customer within a tenant:
 
-```csharp{title="ICustomerScoped - Invoice" description="For models scoped to customer within a tenant:" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "ICustomerScoped"]}
+```csharp{title="ICustomerScoped - Invoice" description="For models scoped to customer within a tenant:" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "ICustomerScoped"] unverified="Consumer domain model illustration, not a library API"}
 public class Invoice : ICustomerScoped {
   public string TenantId { get; init; }
   public string CustomerId { get; init; }
@@ -350,7 +350,7 @@ factory.GetMyOrSharedLens<T>();   // Tenant | User | Principal
 
 Lenses that support filtering implement `IFilterableLens`:
 
-```csharp{title="IFilterableLens" description="Lenses that support filtering implement IFilterableLens:" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "IFilterableLens"]}
+```csharp{title="IFilterableLens" description="Lenses that support filtering implement IFilterableLens:" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "IFilterableLens"] unverified="Interface contract declaration with no dedicated mapped test"}
 public interface IFilterableLens {
   void ApplyFilter(ScopeFilterInfo filterInfo);
 }
@@ -364,7 +364,7 @@ When a lens is resolved through `IScopedLensFactory`, the filter info is automat
 
 Every record belongs to exactly one tenant:
 
-```csharp{title="Tenant Isolation" description="Every record belongs to exactly one tenant:" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Tenant", "Isolation"]}
+```csharp{title="Tenant Isolation" description="Every record belongs to exactly one tenant:" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Tenant", "Isolation"] unverified="Consumer usage pattern combining the perspective store and lens query; TenantIsolationTests is absent from the code-tests map"}
 // Store with tenant scope
 await perspective.UpsertAsync(streamId, order, new PerspectiveScope {
   TenantId = currentTenant
@@ -379,7 +379,7 @@ var orders = await lens.Query.ToListAsync();  // Only current tenant's rows
 
 Records owned by specific users:
 
-```csharp{title="User Ownership" description="Records owned by specific users:" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "User", "Ownership"]}
+```csharp{title="User Ownership" description="Records owned by specific users:" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "User", "Ownership"] unverified="Consumer usage pattern storing and querying through the scoped lens"}
 // Store with user scope
 await perspective.UpsertAsync(streamId, savedSearch, new PerspectiveScope {
   TenantId = currentTenant,
@@ -395,7 +395,7 @@ var searches = await lens.Query.ToListAsync();  // Only current user's rows
 
 Records shared with security groups:
 
-```csharp{title="Group-Based Sharing" description="Records shared with security groups:" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Group-Based", "Sharing"]}
+```csharp{title="Group-Based Sharing" description="Records shared with security groups:" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Group-Based", "Sharing"] unverified="Consumer usage pattern for principal sharing; SecurityPrincipalId construction is incidental to the illustration"}
 // Store with allowed principals
 await perspective.UpsertAsync(streamId, report, new PerspectiveScope {
   TenantId = currentTenant,
@@ -415,7 +415,7 @@ var reports = await lens.Query.ToListAsync();  // Rows accessible to caller
 
 Combining user ownership and group sharing:
 
-```csharp{title="My Records OR Shared With Me" description="Combining user ownership and group sharing:" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Records", "Shared"]}
+```csharp{title="My Records OR Shared With Me" description="Combining user ownership and group sharing:" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Records", "Shared"] unverified="Consumer usage pattern illustrating the my-or-shared lens"}
 // Get lens for "my records + shared"
 var lens = factory.GetMyOrSharedLens<IDocumentLens>();
 var docs = await lens.Query.ToListAsync();
@@ -429,7 +429,7 @@ var docs = await lens.Query.ToListAsync();
 
 Add custom scope properties without schema changes:
 
-```csharp{title="Extension Properties" description="Add custom scope properties without schema changes:" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Extension", "Properties"]}
+```csharp{title="Extension Properties" description="Add custom scope properties without schema changes:" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Extension", "Properties"] unverified="Consumer usage pattern combining scope extensions with a persistence and EF query workflow"}
 // Store with extensions
 var scope = new PerspectiveScope {
   TenantId = currentTenant
