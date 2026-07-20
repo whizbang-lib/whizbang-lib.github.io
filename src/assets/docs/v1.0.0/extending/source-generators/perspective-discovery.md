@@ -234,7 +234,7 @@ public class OrderSummaryPerspective :
 
 ### Pattern 3: Aggregated Statistics
 
-```csharp{title="Pattern 3: Aggregated Statistics" description="Fold aggregations into the model" category="Internals" difficulty="ADVANCED" tags=["Extending", "Source-Generators", "Pattern", "Aggregated"]}
+```csharp{title="Pattern 3: Aggregated Statistics" description="Fold aggregations into the model" category="Internals" difficulty="ADVANCED" tags=["Extending", "Source-Generators", "Pattern", "Aggregated"] unverified="consumer perspective implementation illustration — not generated output asserted by tests"}
 public class CustomerStatisticsPerspective :
     IPerspectiveFor<CustomerStats, OrderCreated, OrderShipped> {
 

@@ -52,7 +52,7 @@ The `ConfigurationUtilities` class provides static methods for reading MSBuild p
 
 Reads table name configuration from MSBuild properties:
 
-```csharp{title="GetTableNameConfig" description="Reads table name configuration from MSBuild properties:" category="Internals" difficulty="ADVANCED" tags=["Extending", "Source-Generators", "GetTableNameConfig"]}
+```csharp{title="GetTableNameConfig" description="Reads table name configuration from MSBuild properties:" category="Internals" difficulty="ADVANCED" tags=["Extending", "Source-Generators", "GetTableNameConfig"] unverified="generator pipeline wiring illustration; SelectTableNameConfig integration not isolated by a mapped test"}
 using Whizbang.Generators.Shared.Utilities;
 
 public void Initialize(IncrementalGeneratorInitializationContext context) {
@@ -153,7 +153,7 @@ public class OrderReadModel {
 
 ### Pipeline Integration
 
-```csharp{title="Pipeline Integration" description="Pipeline Integration" category="Internals" difficulty="ADVANCED" tags=["Extending", "Source-Generators", "Pipeline", "Integration"]}
+```csharp{title="Pipeline Integration" description="Pipeline Integration" category="Internals" difficulty="ADVANCED" tags=["Extending", "Source-Generators", "Pipeline", "Integration"] unverified="full generator pipeline illustration, not an isolated tested API"}
 [Generator]
 public class PerspectiveSchemaGenerator : IIncrementalGenerator {
     public void Initialize(IncrementalGeneratorInitializationContext context) {

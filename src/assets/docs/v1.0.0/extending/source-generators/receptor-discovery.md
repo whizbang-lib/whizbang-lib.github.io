@@ -43,7 +43,7 @@ foreach (var type in assembly.GetTypes()) {
 
 Whizbang uses **Roslyn source generators** for compile-time discovery:
 
-```csharp{title="Zero Reflection Philosophy (2)" description="Whizbang uses Roslyn source generators for compile-time discovery:" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Zero", "Reflection"]}
+```csharp{title="Zero Reflection Philosophy (2)" description="Whizbang uses Roslyn source generators for compile-time discovery:" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Zero", "Reflection"] unverified="simplified conceptual registration — the real generated code uses keyed and non-keyed transient, not plain AddScoped"}
 // ✅ Zero reflection (AOT-compatible, instant startup)
 services.AddScoped<IReceptor<CreateOrder, OrderCreated>, OrderReceptor>();
 services.AddScoped<IReceptor<ShipOrder, OrderShipped>, ShipOrderReceptor>();
@@ -207,7 +207,7 @@ app.Run();
 
 ### Pattern 1: Command → Event
 
-```csharp{title="Pattern 1: Command → Event" description="Pattern 1: Command → Event" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Pattern", "Command"]}
+```csharp{title="Pattern 1: Command → Event" description="Pattern 1: Command → Event" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Pattern", "Command"] unverified="consumer receptor implementation illustration — not generated output asserted by tests"}
 public class OrderReceptor : IReceptor<CreateOrder, OrderCreated> {
     public async ValueTask<OrderCreated> HandleAsync(
         CreateOrder message,
@@ -237,7 +237,7 @@ if (messageType == typeof(CreateOrder)) {
 
 ### Pattern 2: Query → Result
 
-```csharp{title="Pattern 2: Query → Result" description="Pattern 2: Query → Result" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Pattern", "Query"]}
+```csharp{title="Pattern 2: Query → Result" description="Pattern 2: Query → Result" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Pattern", "Query"] unverified="consumer receptor implementation illustration (Dapper query) — not generated output asserted by tests"}
 public class GetOrderReceptor : IReceptor<GetOrder, OrderSummary> {
     private readonly IDbConnectionFactory _db;
 
@@ -258,7 +258,7 @@ public class GetOrderReceptor : IReceptor<GetOrder, OrderSummary> {
 
 ### Pattern 3: Void Receptor (No Response)
 
-```csharp{title="Pattern 3: Void Receptor (No Response)" description="Pattern 3: Void Receptor (No Response)" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Pattern", "Void"]}
+```csharp{title="Pattern 3: Void Receptor (No Response)" description="Pattern 3: Void Receptor (No Response)" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Pattern", "Void"] unverified="consumer void-receptor implementation illustration — not generated output asserted by tests"}
 public class SendEmailReceptor : IReceptor<SendEmail> {  // No response type
     private readonly IEmailService _email;
 
@@ -439,7 +439,7 @@ warning WHIZ002: No IReceptor implementations were found in the compilation
 
 **One message, multiple destinations**:
 
-```csharp{title="Multiple Receptors Per Message" description="One message, multiple destinations:" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Multiple", "Receptors"]}
+```csharp{title="Multiple Receptors Per Message" description="One message, multiple destinations:" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Multiple", "Receptors"] unverified="consumer receptor implementations illustration — not generated output asserted by tests"}
 // Local receptor (in-process)
 public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
     public async ValueTask<OrderCreated> HandleAsync(CreateOrder message, CancellationToken ct) {
@@ -458,7 +458,7 @@ public class NotifyInventoryReceptor : IReceptor<CreateOrder, InventoryNotified>
 ```
 
 **Generator handles both**:
-```csharp{title="Multiple Receptors Per Message (2)" description="Generator handles both:" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Multiple", "Receptors"]}
+```csharp{title="Multiple Receptors Per Message (2)" description="Generator handles both:" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Multiple", "Receptors"] unverified="conceptual pseudo-code — uses an invalid wildcard type and a publish loop not present in the real generated dispatcher"}
 // SendAsync: Routes to first receptor
 if (messageType == typeof(CreateOrder)) {
     var receptor = _serviceProvider.GetRequiredService<IReceptor<CreateOrder, OrderCreated>>();
@@ -544,7 +544,7 @@ public async Task LocalInvokeAsync_CreateOrder() {
 
 Generated routing uses **object pooling** to avoid allocations:
 
-```csharp{title="Zero Allocations" description="Generated routing uses object pooling to avoid allocations:" category="Internals" difficulty="ADVANCED" tags=["Extending", "Source-Generators", "Zero", "Allocations"]}
+```csharp{title="Zero Allocations" description="Generated routing uses object pooling to avoid allocations:" category="Internals" difficulty="ADVANCED" tags=["Extending", "Source-Generators", "Zero", "Allocations"] unverified="simplified hypothetical generated code — the cached-invoker pooling shown is not the actual emitted shape and is not asserted by tests"}
 // Generated code (simplified)
 protected override ReceptorInvoker<TResult>? GetReceptorInvoker<TResult>(
     object message,
@@ -606,7 +606,7 @@ cached == current;  // ❌ false (different references, generator always re-runs
 
 Generator uses **real C# templates** with IDE support:
 
-```csharp{title="Template-Based Generation" description="Generator uses real C# templates with IDE support:" category="Internals" difficulty="ADVANCED" tags=["Extending", "Source-Generators", "Template-Based", "Generation"]}
+```csharp{title="Template-Based Generation" description="Generator uses real C# templates with IDE support:" category="Internals" difficulty="ADVANCED" tags=["Extending", "Source-Generators", "Template-Based", "Generation"] unverified="internal generator template source — tests assert the generated output, not the template file shape"}
 // Templates/DispatcherTemplate.cs
 namespace Whizbang.Core.Generated;
 
@@ -679,7 +679,7 @@ public class GeneratedDispatcher : Dispatcher {
 2. Namespace import missing
 
 **Solution**:
-```csharp{title="Problem: No Receptors Found (WHIZ002)" description="Problem: No Receptors Found (WHIZ002)" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Problem:", "Receptors"]}
+```csharp{title="Problem: No Receptors Found (WHIZ002)" description="Problem: No Receptors Found (WHIZ002)" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Problem:", "Receptors"] unverified="consumer troubleshooting snippet — shows the required using and interface, not generated output asserted by tests"}
 using Whizbang.Core;  // Required!
 
 public class OrderReceptor : IReceptor<CreateOrder, OrderCreated> {

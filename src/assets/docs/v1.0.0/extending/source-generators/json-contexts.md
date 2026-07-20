@@ -47,7 +47,7 @@ var deserialized = JsonSerializer.Deserialize<CreateOrder>(json);  // Reflection
 
 **Solution**: **Source-Generated JsonSerializerContext**:
 
-```csharp{title="Why JSON Source Generation? (2)" description="Solution: Source-Generated JsonSerializerContext:" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Why", "JSON"]}
+```csharp{title="Why JSON Source Generation? (2)" description="Solution: Source-Generated JsonSerializerContext:" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Why", "JSON"] unverified="consumer usage of the generated context, not generator output verified by a mapped test"}
 // ✅ AOT-compatible (compile-time metadata)
 var options = new JsonSerializerOptions {
     TypeInfoResolver = new WhizbangJsonContext()  // Generated at compile-time
@@ -371,7 +371,7 @@ public record CreateOrder(
 
 ### Pattern 4: WhizbangId Converter Discovery
 
-```csharp{title="Pattern 4: WhizbangId Converter Discovery" description="Pattern 4: WhizbangId Converter Discovery" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Pattern", "WhizbangId"]}
+```csharp{title="Pattern 4: WhizbangId Converter Discovery" description="Pattern 4: WhizbangId Converter Discovery" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Pattern", "WhizbangId"] unverified="illustrates converter inference by naming convention; mapped WhizbangId tests cover skip-generation, not CreateOptions registration"}
 // Generator infers converters for *Id types
 public record CreateOrder(
     ProductId ProductId,  // ← Infers ProductIdJsonConverter
@@ -380,7 +380,7 @@ public record CreateOrder(
 ```
 
 **Result**: Converters automatically registered in `CreateOptions()`:
-```csharp{title="Pattern 4: WhizbangId Converter Discovery (2)" description="Result: Converters automatically registered in CreateOptions():" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Pattern", "WhizbangId"]}
+```csharp{title="Pattern 4: WhizbangId Converter Discovery (2)" description="Result: Converters automatically registered in CreateOptions():" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Pattern", "WhizbangId"] unverified="generated CreateOptions converter registration not asserted by any mapped test"}
 options.Converters.Add(new ProductIdJsonConverter());
 options.Converters.Add(new CustomerIdJsonConverter());
 ```
@@ -391,7 +391,7 @@ options.Converters.Add(new CustomerIdJsonConverter());
 
 ### Basic Serialization
 
-```csharp{title="Basic Serialization" description="Basic Serialization" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Basic", "Serialization"]}
+```csharp{title="Basic Serialization" description="Basic Serialization" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Basic", "Serialization"] unverified="consumer serialization usage illustration"}
 using MyApp.Generated;
 
 // Create options with generated context
@@ -409,7 +409,7 @@ var deserialized = JsonSerializer.Deserialize<CreateOrder>(json, options);
 
 ### Dependency Injection
 
-```csharp{title="Dependency Injection" description="Dependency Injection" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Dependency", "Injection"]}
+```csharp{title="Dependency Injection" description="Dependency Injection" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Dependency", "Injection"] unverified="consumer DI wiring illustration"}
 // Program.cs
 using MyApp.Generated;
 
@@ -429,7 +429,7 @@ builder.Services.Configure<JsonOptions>(options => {
 
 ### Outbox/Inbox Serialization
 
-```csharp{title="Outbox/Inbox Serialization" description="Outbox/Inbox Serialization" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Outbox", "Inbox"]}
+```csharp{title="Outbox/Inbox Serialization" description="Outbox/Inbox Serialization" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Outbox", "Inbox"] unverified="consumer OutboxPublisher domain illustration"}
 public class OutboxPublisher {
     private readonly JsonSerializerOptions _jsonOptions;
 
@@ -595,7 +595,7 @@ public record OrderItem(Guid ProductId, int Quantity);
 **Cause**: Converter not auto-discovered (name doesn't match convention).
 
 **Solution**: Ensure converter follows naming convention:
-```csharp{title="Problem: WhizbangId Converter Not Registered" description="Solution: Ensure converter follows naming convention:" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Problem:", "WhizbangId"]}
+```csharp{title="Problem: WhizbangId Converter Not Registered" description="Solution: Ensure converter follows naming convention:" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Problem:", "WhizbangId"] unverified="hand-written converter illustration for troubleshooting"}
 // Type: ProductId
 // Converter: ProductIdJsonConverter (must match!)
 public class ProductIdJsonConverter : JsonConverter<ProductId> {

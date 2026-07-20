@@ -380,7 +380,7 @@ code --install-extension whizbang.whizbang-vscode
 
 Inline annotations above message types:
 
-```csharp{title="CodeLens Annotations" description="Inline annotations above message types:" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "CodeLens", "Annotations"]}
+```csharp{title="CodeLens Annotations" description="Inline annotations above message types:" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "CodeLens", "Annotations"] unverified="editor CodeLens rendering illustration, not compilable generator behavior"}
 // [3 dispatchers] [1 receptor] [0 perspectives]
 public record CreateOrder(Guid CustomerId, OrderItem[] Items) : ICommand;
 ```
@@ -541,7 +541,7 @@ public class OrderReceptor : IReceptor<CreateOrder, OrderCreated> {
 **Result**: CreateOrder appears in registry even though `ICommand` is external.
 
 **External Messages**:
-```csharp{title="Cross-Assembly Messages - CustomerCreated" description="External Messages:" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Cross-Assembly", "Messages"]}
+```csharp{title="Cross-Assembly Messages - CustomerCreated" description="External Messages:" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Cross-Assembly", "Messages"] tests=["MessageRegistryGeneratorTests.MessageRegistryGenerator_ReferencedAssemblyMessage_InfersTypeAsync", "MessageRegistryGeneratorTests.MessageRegistryGenerator_PerspectiveOnly_InfersEventTypeAsync"]}
 // In SharedMessages (referenced assembly)
 public record CustomerCreated([property: StreamId] Guid CustomerId) : IEvent;
 
@@ -712,7 +712,7 @@ public class OrderReceptor : IReceptor<CreateOrder, OrderCreated> {
 
 **Solution**: Generator only includes messages that are actually **used** in the project. If you want external messages in registry, add at least one handler:
 
-```csharp{title="Problem: External Messages Not Found" description="Solution: Generator only includes messages that are actually used in the project." category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Problem:", "External"]}
+```csharp{title="Problem: External Messages Not Found" description="Solution: Generator only includes messages that are actually used in the project." category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Problem:", "External"] unverified="consumer troubleshooting illustration using IPerspectiveOf/UpdateAsync, not the IPerspectiveFor pattern the generator discovers"}
 // Add a perspective for external event
 public class ExternalEventPerspective : IPerspectiveOf<SharedMessages.CustomerCreated> {
     public async Task UpdateAsync(CustomerCreated @event, CancellationToken ct) {

@@ -46,7 +46,7 @@ var topic = topicAttr?.Filter;  // Runtime reflection
 
 Whizbang uses **Roslyn source generators** for compile-time topic extraction:
 
-```csharp{title="Zero Reflection Philosophy (2)" description="Whizbang uses Roslyn source generators for compile-time topic extraction:" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Zero", "Reflection"]}
+```csharp{title="Zero Reflection Philosophy (2)" description="Whizbang uses Roslyn source generators for compile-time topic extraction:" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Zero", "Reflection"] unverified="consumer usage of the generated registry, not a generator behavior a test asserts"}
 // ✅ Zero reflection (AOT-compatible, compile-time validation)
 var topics = TopicFilterRegistry.GetTopicFilters<CreateOrderCommand>();
 // Returns: ["orders.created"]
@@ -176,7 +176,7 @@ public static class TopicFilterRegistry {
 
 ### Basic Lookup
 
-```csharp{title="Basic Lookup" description="Basic Lookup" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Basic", "Lookup"]}
+```csharp{title="Basic Lookup" description="Basic Lookup" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Basic", "Lookup"] unverified="consumer usage of the generated registry in routing code, not asserted by generator tests"}
 using MyApp.Generated;
 
 // Get topic filters for a specific command
@@ -194,7 +194,7 @@ foreach (var topic in topics) {
 
 ### Startup Validation
 
-```csharp{title="Startup Validation" description="Startup Validation" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Startup", "Validation"]}
+```csharp{title="Startup Validation" description="Startup Validation" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Startup", "Validation"] unverified="consumer startup-validation illustration using the generated registry, not a generator behavior a test asserts"}
 // Validate all topics exist in message broker at startup
 public static void ValidateTopics(IServiceProvider services) {
   var allFilters = TopicFilterRegistry.GetAllFilters();
@@ -214,7 +214,7 @@ public static void ValidateTopics(IServiceProvider services) {
 
 ### Diagnostics and Tooling
 
-```csharp{title="Diagnostics and Tooling" description="Diagnostics and Tooling" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Diagnostics", "Tooling"]}
+```csharp{title="Diagnostics and Tooling" description="Diagnostics and Tooling" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Diagnostics", "Tooling"] unverified="consumer diagnostics illustration iterating the generated registry, not asserted by generator tests"}
 // List all command → topic mappings
 var allFilters = TopicFilterRegistry.GetAllFilters();
 
@@ -239,7 +239,7 @@ foreach (var (command, topics) in allFilters) {
 
 ### Value Type Record for Caching
 
-```csharp{title="Value Type Record for Caching" description="Value Type Record for Caching" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Value", "Type"]}
+```csharp{title="Value Type Record for Caching" description="Value Type Record for Caching" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Value", "Type"] unverified="generator-internal caching record; source-gen tests assert generated output, not the internal record shape"}
 internal sealed record TopicFilterInfo(
   string CommandType,
   string Filter
@@ -257,7 +257,7 @@ internal sealed record TopicFilterInfo(
 
 Generator uses **syntactic predicates** to filter 95%+ of nodes before expensive semantic analysis:
 
-```csharp{title="Syntactic Filtering" description="Generator uses syntactic predicates to filter 95%+ of nodes before expensive semantic analysis:" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Syntactic", "Filtering"]}
+```csharp{title="Syntactic Filtering" description="Generator uses syntactic predicates to filter 95%+ of nodes before expensive semantic analysis:" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Syntactic", "Filtering"] unverified="generator-internal predicate/transform pipeline code, not asserted by generated-output tests"}
 // Fast syntactic check (no semantic model access)
 predicate: static (node, _) =>
   (node is ClassDeclarationSyntax or RecordDeclarationSyntax) &&
@@ -351,7 +351,7 @@ Roslyn incremental generators use **value-based caching** to skip work when inpu
 | **GetAllFilters()** | ~10ns | Dictionary access |
 
 **Benchmark**:
-```csharp{title="Lookup Performance" description="Lookup Performance" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Lookup", "Performance"]}
+```csharp{title="Lookup Performance" description="Lookup Performance" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Lookup", "Performance"] unverified="benchmark illustration, not covered by a test"}
 [Benchmark]
 public string[] GetTopicFilters_CreateOrder() {
   return TopicFilterRegistry.GetTopicFilters<CreateOrderCommand>();
@@ -528,7 +528,7 @@ info WHIZ026: No [TopicFilter] attributes were found in the compilation. TopicFi
 2. Namespace import missing
 
 **Solution**:
-```csharp{title="Problem: No Topic Filters Found (WHIZ026)" description="Problem: No Topic Filters Found (WHIZ026)" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Problem:", "Topic"]}
+```csharp{title="Problem: No Topic Filters Found (WHIZ026)" description="Problem: No Topic Filters Found (WHIZ026)" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Problem:", "Topic"] tests=["TopicFilterGeneratorTests.Generator_WithStringFilter_GeneratesRegistryAsync"]}
 using Whizbang.Core;  // Required!
 
 [TopicFilter("orders.created")]
@@ -564,7 +564,7 @@ public enum Topics {
 **Causes**: Missing `using Whizbang.Core;` directive.
 
 **Solution**:
-```csharp{title="Problem: TopicFilter Attribute Not Found" description="Problem: TopicFilter Attribute Not Found" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Problem:", "TopicFilter"]}
+```csharp{title="Problem: TopicFilter Attribute Not Found" description="Problem: TopicFilter Attribute Not Found" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Problem:", "TopicFilter"] tests=["TopicFilterGeneratorTests.Generator_WithStringFilter_GeneratesRegistryAsync"]}
 using Whizbang.Core;  // Required!
 
 [TopicFilter("orders.created")]
