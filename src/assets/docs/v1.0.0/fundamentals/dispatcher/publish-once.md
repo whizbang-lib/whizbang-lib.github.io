@@ -35,7 +35,7 @@ The old pattern — `SELECT … WHERE already_emitted; INSERT IF NOT EXISTS` —
 
 ## API
 
-```csharp{title="PublishOnceAsync signature" category="Architecture" tags=["Dispatcher", "Idempotency"]}
+```csharp{title="PublishOnceAsync signature" category="Architecture" tags=["Dispatcher", "Idempotency"] unverified="verified by DispatcherPublishOnceTests, which is outside the current coverage map"}
 namespace Whizbang.Core;
 
 public interface IDispatcher {
