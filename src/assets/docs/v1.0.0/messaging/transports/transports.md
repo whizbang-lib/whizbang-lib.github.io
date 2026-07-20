@@ -65,7 +65,7 @@ Think of transports as the postal service of your application - they ensure mess
 
 The real `ITransport` surface (`src/Whizbang.Core/Transports/ITransport.cs`):
 
-```csharp{title="ITransport interface" description="The transport abstraction: initialization, capabilities, publish, batch subscribe, request/response, and bulk publish" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Core", "Interface"]}
+```csharp{title="ITransport interface" description="The transport abstraction: initialization, capabilities, publish, batch subscribe, request/response, and bulk publish" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Core", "Interface"] tests=["ITransportTests.ITransport_Capabilities_ReturnsTransportCapabilitiesAsync", "ITransportTests.ITransport_PublishAsync_WithValidMessage_CompletesSuccessfullyAsync", "ITransportTests.ITransport_SubscribeBatchAsync_RegistersHandler_ReturnsSubscriptionAsync", "ITransportTests.ITransport_PublishBatchAsync_WithoutBulkPublishCapability_ThrowsNotSupportedExceptionAsync"]}
 public interface ITransport {
     // Lifecycle
     bool IsInitialized { get; }
@@ -130,7 +130,7 @@ public readonly record struct TransportMessage(
 
 `TransportCapabilities` is a `[Flags]` enum - transports combine the flags they support:
 
-```csharp{title="TransportCapabilities flags" description="Capability flags a transport can declare" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Capabilities"]}
+```csharp{title="TransportCapabilities flags" description="Capability flags a transport can declare" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Capabilities"] tests=["TransportCapabilitiesTests.TransportCapabilities_HasNoneValueAsync", "TransportCapabilitiesTests.TransportCapabilities_HasBulkPublishAsync", "TransportCapabilitiesTests.TransportCapabilities_AllFlag_ContainsAllCapabilitiesAsync", "TransportCapabilitiesTests.TransportCapabilities_CanCombineFlagsAsync"]}
 [Flags]
 public enum TransportCapabilities {
     None             = 0,
@@ -155,7 +155,7 @@ public enum TransportCapabilities {
 
 Where a message goes is expressed with `TransportDestination` - an address, an optional routing key, and optional transport-specific metadata:
 
-```csharp{title="TransportDestination" description="Address, routing key, and metadata describing where a message is sent" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Destination"]}
+```csharp{title="TransportDestination" description="Address, routing key, and metadata describing where a message is sent" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Destination"] tests=["TransportDestinationTests.TransportDestination_WithAddress_SetsAddressAsync", "TransportDestinationTests.TransportDestination_WithAddressAndRoutingKey_SetsPropertiesAsync", "TransportDestinationTests.TransportDestination_WithMetadata_SetsMetadataAsync", "TransportDestinationTests.TransportDestination_EmptyOrWhitespaceAddress_ThrowsArgumentExceptionAsync"]}
 public record TransportDestination(
     string Address,                                        // queue/topic/exchange name (required, non-empty)
     string? RoutingKey = null,                             // e.g. "orders.created"
@@ -169,7 +169,7 @@ Each transport interprets these differently - see [Infrastructure Mapping](infra
 
 Messages travel as `IMessageEnvelope` instances. The concrete `MessageEnvelope<T>` requires an id, payload, dispatch context, and at least one hop:
 
-```csharp{title="Constructing an envelope" description="MessageEnvelope<T> with its required properties" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Envelope"]}
+```csharp{title="Constructing an envelope" description="MessageEnvelope<T> with its required properties" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Envelope"] tests=["MessageTracingTests.MessageEnvelope_Constructor_SetsAllPropertiesAsync", "MessageTracingTests.MessageEnvelope_RequiresAtLeastOneHopAsync"]}
 var envelope = new MessageEnvelope<OrderCreatedEvent> {
     MessageId = MessageId.New(),
     Payload = new OrderCreatedEvent { OrderId = orderId, CustomerId = customerId },
@@ -196,7 +196,7 @@ In normal application code you rarely build envelopes by hand - the **Dispatcher
 
 `InProcessTransport` delivers envelopes directly in memory - no serialization, no network. `PublishAsync` enqueues into each active subscription's batch collector; paused subscriptions are skipped. `SendAsync` implements request/response by subscribing to a per-request `response-{messageId}` destination before publishing the request.
 
-```csharp{title="In-process publish and batch subscribe" description="Using InProcessTransport directly - the same ITransport calls work against RabbitMQ and Azure Service Bus" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "In-Process"]}
+```csharp{title="In-process publish and batch subscribe" description="Using InProcessTransport directly - the same ITransport calls work against RabbitMQ and Azure Service Bus" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "In-Process"] tests=["InProcessTransportTests.SubscribeBatchAsync_ReturnsActiveSubscriptionAsync", "InProcessTransportTests.PublishAsync_WithSingleSubscriber_InvokesHandlerAsync", "InProcessTransportTests.Subscription_PauseAsync_SetsIsActiveToFalseAsync", "InProcessTransportTests.Subscription_ResumeAsync_SetsIsActiveToTrueAsync", "InProcessTransportTests.Subscription_Dispose_RemovesHandlerFromTransportAsync"]}
 var transport = new InProcessTransport();
 await transport.InitializeAsync();
 
@@ -226,7 +226,7 @@ subscription.Dispose();
 
 Each transport package ships its own DI extension; the in-process transport is registered directly:
 
-```csharp{title="Transport Registration" description="Registering a transport - one ITransport per host" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Registration"]}
+```csharp{title="Transport Registration" description="Registering a transport - one ITransport per host" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Registration"] unverified="DI registration wiring; the RabbitMQ/Azure Service Bus extension methods ship in their driver packages"}
 // In-process (tests, single-process apps)
 services.AddSingleton<ITransport>(new InProcessTransport());
 
@@ -257,7 +257,7 @@ When a transport supports `BulkPublish`, the outbox publish path drains multiple
 
 ### Capability Detection
 
-```csharp{title="Capability Detection" category="Configuration" difficulty="INTERMEDIATE" tags=["Transports", "BulkPublish"]}
+```csharp{title="Capability Detection" category="Configuration" difficulty="INTERMEDIATE" tags=["Transports", "BulkPublish"] tests=["TransportCapabilitiesTests.TransportCapabilities_BulkPublish_CanCombineWithOtherFlagsAsync", "ITransportTests.ITransport_PublishBatchAsync_WithoutBulkPublishCapability_ThrowsNotSupportedExceptionAsync"]}
 // Transports declare their capabilities via the Capabilities property
 public TransportCapabilities Capabilities =>
     TransportCapabilities.PublishSubscribe |
@@ -276,7 +276,7 @@ Each `BulkPublishItem` carries the envelope, its type name, a `MessageId`, an op
 
 ### Configuration
 
-```csharp{title="Bulk Publish Options" category="Configuration" difficulty="BEGINNER" tags=["Transports", "BulkPublish", "Options"]}
+```csharp{title="Bulk Publish Options" category="Configuration" difficulty="BEGINNER" tags=["Transports", "BulkPublish", "Options"] unverified="options configuration; no behavioral assertion"}
 services.Configure<OutboxPublishWorkerOptions>(options => {
     options.MaxBulkPublishBatchSize = 50; // Default: 100
 });

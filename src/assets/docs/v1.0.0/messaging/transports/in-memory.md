@@ -61,7 +61,7 @@ The **in-memory transport** (`InProcessTransport`, part of `Whizbang.Core` — t
 
 ### Batch Delivery Model
 
-```mermaid
+```mermaid{caption="In-memory batch delivery — PublishAsync enqueues the live envelope into each active subscription's TransportBatchCollector, which flushes to the batch handler on size, slide-window, or max-wait." tests=["InProcessTransportTests.PublishAsync_WithSingleSubscriber_InvokesHandlerAsync"]}
 flowchart TD
     Publisher["Publisher"]
     Enqueue["PublishAsync(envelope, destination)<br/>enqueues into each active subscription's<br/>TransportBatchCollector"]
@@ -88,7 +88,7 @@ flowchart TD
 
 ### 1. Register Transport (Built-In)
 
-```csharp{title="Register Transport (Built-In)" description="Register Transport (Built-In)" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Register", "Transport"]}
+```csharp{title="Register Transport (Built-In)" description="Register Transport (Built-In)" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Register", "Transport"] unverified="bare DI registration — no runtime behavior to assert"}
 using Whizbang.Core.Transports;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -120,7 +120,7 @@ Console.WriteLine(transport.IsInitialized);  // True
 
 There is no `MessageEnvelope.Create(...)` factory — envelopes are constructed with an object initializer. `MessageId`, `Payload`, `Hops` (at least one), and `DispatchContext` are required:
 
-```csharp{title="Constructing an envelope" description="Envelopes are built with object initializers; MessageId, Payload, Hops, and DispatchContext are required." category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Envelope"]}
+```csharp{title="Constructing an envelope" description="Envelopes are built with object initializers; MessageId, Payload, Hops, and DispatchContext are required." category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Envelope"] unverified="illustrative envelope construction — mirrors the test fixture helper, no test asserts the envelope shape directly"}
 using Whizbang.Core.Dispatch;
 using Whizbang.Core.Observability;
 using Whizbang.Core.ValueObjects;
@@ -150,7 +150,7 @@ In application code you rarely build envelopes by hand — the `IDispatcher` wra
 
 ### Publish/Subscribe
 
-```csharp{title="Publish/Subscribe" description="Publish/Subscribe" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Publish", "Subscribe"]}
+```csharp{title="Publish/Subscribe" description="Publish/Subscribe" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Publish", "Subscribe"] tests=["InProcessTransportTests.PublishAsync_WithSingleSubscriber_InvokesHandlerAsync"]}
 using Whizbang.Core.Transports;
 using Whizbang.Core.Workers;
 
@@ -180,7 +180,7 @@ await transport.PublishAsync(
 
 ### Multiple Subscribers
 
-```csharp{title="Multiple Subscribers" description="Multiple Subscribers" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Multiple", "Subscribers"]}
+```csharp{title="Multiple Subscribers" description="Multiple Subscribers" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Multiple", "Subscribers"] tests=["InProcessTransportTests.PublishAsync_WithMultipleSubscribers_InvokesAllHandlersAsync"]}
 var batchOptions = new TransportBatchOptions { BatchSize = 1 };
 
 // Multiple subscribers receive the same message
@@ -210,7 +210,7 @@ await transport.PublishAsync(envelope, new TransportDestination("orders"));
 
 ### Request/Response Pattern
 
-```csharp{title="Request/Response Pattern" description="Request/Response Pattern" category="Configuration" difficulty="ADVANCED" tags=["Messaging", "Transports", "Request", "Response"]}
+```csharp{title="Request/Response Pattern" description="Request/Response Pattern" category="Configuration" difficulty="ADVANCED" tags=["Messaging", "Transports", "Request", "Response"] tests=["InProcessTransportTests.SendAsync_WithResponder_ReturnsResponseEnvelopeAsync"]}
 // Setup responder
 await transport.SubscribeBatchAsync(
   batchHandler: async (batch, ct) => {
@@ -249,7 +249,7 @@ Console.WriteLine($"Order created: {responseEnvelope.Payload}");
 
 ### Pause and Resume
 
-```csharp{title="Pause and Resume" description="Pause and Resume" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Pause", "Resume"]}
+```csharp{title="Pause and Resume" description="Pause and Resume" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Pause", "Resume"] tests=["InProcessTransportTests.Subscription_PauseAsync_SetsIsActiveToFalseAsync", "InProcessTransportTests.Subscription_ResumeAsync_SetsIsActiveToTrueAsync", "InProcessTransportTests.Subscription_InVariousStates_BehavesCorrectlyAsync"]}
 var subscription = await transport.SubscribeBatchAsync(
   batchHandler: async (batch, ct) => {
     foreach (var msg in batch) {
@@ -280,7 +280,7 @@ await transport.PublishAsync(envelope, destination);  // Delivered
 
 ### Dispose
 
-```csharp{title="Dispose" description="Dispose" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Dispose"]}
+```csharp{title="Dispose" description="Dispose" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Dispose"] tests=["InProcessTransportTests.Subscription_Dispose_RemovesHandlerFromTransportAsync", "InProcessTransportTests.Subscription_DisposeMultipleTimes_IsIdempotentAsync"]}
 // Remove subscription entirely
 subscription.Dispose();
 
@@ -297,7 +297,7 @@ subscription.Dispose();  // Safe to call multiple times
 
 The in-memory transport declares these capabilities:
 
-```csharp{title="Transport Capabilities" description="The in-memory transport declares these capabilities:" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Transport", "Capabilities"]}
+```csharp{title="Transport Capabilities" description="The in-memory transport declares these capabilities:" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Transport", "Capabilities"] tests=["InProcessTransportTests.Capabilities_ReturnsExpectedFlagsAsync"]}
 TransportCapabilities.RequestResponse |   // ✅ SendAsync support
 TransportCapabilities.PublishSubscribe |  // ✅ PublishAsync/SubscribeBatchAsync
 TransportCapabilities.Ordered |           // ✅ In-order enqueue per destination
@@ -319,7 +319,7 @@ TransportCapabilities.Reliable            // ✅ Direct invocation (no network f
 
 ### Concurrent Publishes
 
-```csharp{title="Concurrent Publishes" description="Concurrent Publishes" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Concurrent", "Publishes"]}
+```csharp{title="Concurrent Publishes" description="Concurrent Publishes" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Concurrent", "Publishes"] tests=["InProcessTransportTests.PublishAsync_ConcurrentPublishes_AllHandlersInvokedAsync"]}
 var transport = new InProcessTransport();
 var destination = new TransportDestination("orders");
 
@@ -347,7 +347,7 @@ await Task.WhenAll(tasks);  // Thread-safe - all messages enqueued and delivered
 
 ### Concurrent Subscriptions
 
-```csharp{title="Concurrent Subscriptions" description="Concurrent Subscriptions" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Concurrent", "Subscriptions"]}
+```csharp{title="Concurrent Subscriptions" description="Concurrent Subscriptions" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Concurrent", "Subscriptions"] tests=["InProcessTransportTests.SubscribeBatchAsync_ConcurrentSubscriptions_AllRegisteredAsync"]}
 // Subscribe concurrently from multiple threads
 var subscribeTasks = Enumerable.Range(0, 50)
   .Select(i => transport.SubscribeBatchAsync(
@@ -380,7 +380,7 @@ await transport.PublishAsync(envelope, new TransportDestination("orders"));
 
 Batch handler exceptions do **not** propagate to the publisher — `PublishAsync` has already returned by the time the collector flushes. Instead, the collector catches the exception and **re-queues the failed batch** for retry on the next flush.
 
-```csharp{title="Handler Exceptions" description="Handler Exceptions" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Handler", "Exceptions"]}
+```csharp{title="Handler Exceptions" description="Handler Exceptions" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Handler", "Exceptions"] tests=["InProcessTransportTests.PublishAsync_HandlerThrowsException_BatchCollectorRequeuesForRetryAsync"]}
 await transport.SubscribeBatchAsync(
   batchHandler: (batch, ct) => {
     // Handle errors INSIDE the handler - the publisher never sees them
@@ -405,7 +405,7 @@ await transport.PublishAsync(envelope, destination);  // Completes normally
 
 ### Cancellation
 
-```csharp{title="Cancellation" description="Cancellation" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Cancellation"]}
+```csharp{title="Cancellation" description="Cancellation" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Cancellation"] tests=["InProcessTransportTests.SendAsync_WithTimeout_ThrowsTimeoutExceptionAsync", "InProcessTransportTests.SendAsync_WithCancelledToken_ThrowsOperationCanceledExceptionAsync"]}
 var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
 
 try {
@@ -454,7 +454,7 @@ try {
 
 ### Capturing Published Messages
 
-```csharp{title="Capturing Published Messages" description="Capture what a component publishes by subscribing with a batch size of 1." category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Unit", "Testing"]}
+```csharp{title="Capturing Published Messages" description="Capture what a component publishes by subscribing with a batch size of 1." category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Unit", "Testing"] tests=["InProcessTransportTests.PublishAsync_WithSingleSubscriber_InvokesHandlerAsync"]}
 [Test]
 public async Task OrderFlow_PublishesOrderCreatedAsync() {
   // Arrange
@@ -484,7 +484,7 @@ public async Task OrderFlow_PublishesOrderCreatedAsync() {
 
 ### Fan-Out Pattern
 
-```csharp{title="Fan-Out Pattern" description="Fan-Out Pattern" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Fan-Out", "Pattern"]}
+```csharp{title="Fan-Out Pattern" description="Fan-Out Pattern" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Fan-Out", "Pattern"] tests=["InProcessTransportTests.PublishAsync_WithMultipleSubscribers_InvokesAllHandlersAsync"]}
 // Single publisher, multiple subscribers (fan-out)
 var transport = new InProcessTransport();
 var destination = new TransportDestination("order-created");
@@ -546,7 +546,7 @@ await transport.PublishAsync(orderCreatedEnvelope, destination);
 
 **Solution**:
 
-```csharp{title="Problem: Handler Not Invoked" description="Problem: Handler Not Invoked" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Problem:", "Handler"]}
+```csharp{title="Problem: Handler Not Invoked" description="Problem: Handler Not Invoked" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Problem:", "Handler"] unverified="troubleshooting checklist — diagnostic checks, not a single asserted behavior"}
 // Verify destination addresses match EXACTLY
 var publishDest = new TransportDestination("orders");
 var subscribeDest = new TransportDestination("orders");
@@ -566,7 +566,7 @@ await subscription.ResumeAsync();          // Resume if paused
 
 **Solution**:
 
-```csharp{title="Problem: SendAsync Hangs Forever" description="Problem: SendAsync Hangs Forever" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Problem:", "SendAsync"]}
+```csharp{title="Problem: SendAsync Hangs Forever" description="Problem: SendAsync Hangs Forever" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Problem:", "SendAsync"] tests=["InProcessTransportTests.SendAsync_WithTimeout_ThrowsTimeoutExceptionAsync"]}
 // Always use timeout with SendAsync
 var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
 
@@ -590,7 +590,7 @@ try {
 
 **Solution**:
 
-```csharp{title="Problem: Memory Leak with Subscriptions" description="Problem: Memory Leak with Subscriptions" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Problem:", "Memory"]}
+```csharp{title="Problem: Memory Leak with Subscriptions" description="Problem: Memory Leak with Subscriptions" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Problem:", "Memory"] tests=["InProcessTransportTests.Subscription_Dispose_RemovesHandlerFromTransportAsync"]}
 // Always dispose subscriptions
 var subscription = await transport.SubscribeBatchAsync(handler, destination, batchOptions);
 
