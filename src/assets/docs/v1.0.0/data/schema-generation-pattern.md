@@ -46,7 +46,7 @@ Whizbang uses a **database-agnostic schema definition pattern** where infrastruc
 
 **Solution**: Define schema once using `TableDefinition`, `ColumnDefinition`, `IndexDefinition`, then transform to database-specific SQL via `ISchemaBuilder` implementations.
 
-```mermaid
+```mermaid{caption="Database-agnostic C# schema definitions flow through ISchemaBuilder implementations to produce database-specific DDL." tests=["PostgresSchemaBuilderTests.BuildInfrastructureSchema_GeneratesAllTablesAsync"]}
 flowchart TD
     Definitions["C# Schema Definitions<br/>(Database-Agnostic)<br/>- InboxSchema<br/>- OutboxSchema<br/>- EventStoreSchema<br/>- PerspectiveCursors"]
     Builder["ISchemaBuilder"]
@@ -70,7 +70,7 @@ flowchart TD
 
 ## ISchemaBuilder Interface
 
-```csharp{title="ISchemaBuilder Interface" description="ISchemaBuilder Interface" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "ISchemaBuilder", "Interface"]}
+```csharp{title="ISchemaBuilder Interface" description="ISchemaBuilder Interface" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "ISchemaBuilder", "Interface"] tests=["PostgresSchemaBuilderTests.BuildCreateTable_SimpleTable_GeneratesCreateStatementAsync", "PostgresSchemaBuilderTests.BuildCreateIndex_SimpleIndex_GeneratesCreateIndexAsync", "PostgresSchemaBuilderTests.BuildCreateSequence_SimpleSequence_GeneratesCreateSequenceAsync", "PostgresSchemaBuilderTests.BuildInfrastructureSchema_GeneratesAllTablesAsync"]}
 public interface ISchemaBuilder {
   /// <summary>
   /// Database engine name (e.g., "Postgres", "SQLite", "MySQL").
@@ -119,7 +119,7 @@ public interface ISchemaBuilder {
 
 ### TableDefinition
 
-```csharp{title="TableDefinition" description="TableDefinition" category="Implementation" difficulty="BEGINNER" tags=["Data", "TableDefinition"]}
+```csharp{title="TableDefinition" description="TableDefinition" category="Implementation" difficulty="BEGINNER" tags=["Data", "TableDefinition"] tests=["TableDefinitionTests.TableDefinition_WithRequiredProperties_CreatesInstanceAsync", "TableDefinitionTests.TableDefinition_WithoutIndexes_UsesDefaultAsync", "TableDefinitionTests.TableDefinition_WithIndexes_StoresAllAsync"]}
 public sealed record TableDefinition(
   string Name,                                              // Table name without prefix
   ImmutableArray<ColumnDefinition> Columns,                 // Column definitions
@@ -130,7 +130,7 @@ public sealed record TableDefinition(
 
 **Example - Inbox Table** (abridged; the shipped `InboxSchema` has 18 columns):
 
-```csharp{title="TableDefinition - InboxSchema" description="Example - Inbox Table (abridged):" category="Implementation" difficulty="ADVANCED" tags=["Data", "TableDefinition"]}
+```csharp{title="TableDefinition - InboxSchema" description="Example - Inbox Table (abridged):" category="Implementation" difficulty="ADVANCED" tags=["Data", "TableDefinition"] tests=["InboxSchemaTests.Table_ShouldDefineCorrectColumnsAsync", "InboxSchemaTests.Table_ShouldHavePrimaryKeyAsync", "InboxSchemaTests.Table_ColumnDefaults_ShouldBeCorrectAsync", "InboxSchemaTests.Table_ShouldDefineCorrectIndexesAsync"]}
 using System.Collections.Immutable;
 using Whizbang.Data.Schema;
 using Whizbang.Data.Schema.Schemas;
@@ -173,7 +173,7 @@ public static class InboxSchema {
 
 ### ColumnDefinition
 
-```csharp{title="ColumnDefinition" description="ColumnDefinition" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "ColumnDefinition"]}
+```csharp{title="ColumnDefinition" description="ColumnDefinition" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "ColumnDefinition"] tests=["ColumnDefinitionTests.ColumnDefinition_WithRequiredProperties_CreatesInstanceAsync", "ColumnDefinitionTests.ColumnDefinition_WithoutOptionalProperties_UsesDefaultsAsync", "ColumnDefinitionTests.ColumnDefinition_WithAllProperties_SetsAllAsync"]}
 public sealed record ColumnDefinition(
   string Name,                     // Column name (snake_case by convention)
   WhizbangDataType DataType,       // Database-agnostic type
@@ -186,7 +186,7 @@ public sealed record ColumnDefinition(
 ```
 
 **WhizbangDataType Enum**:
-```csharp{title="ColumnDefinition - WhizbangDataType" description="WhizbangDataType Enum:" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "ColumnDefinition"]}
+```csharp{title="ColumnDefinition - WhizbangDataType" description="WhizbangDataType Enum:" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "ColumnDefinition"] tests=["WhizbangDataTypeTests.WhizbangDataType_HasExactlyEightTypesAsync", "WhizbangDataTypeTests.WhizbangDataType_ToStringReturnsCorrectNamesAsync"]}
 public enum WhizbangDataType {
   UUID,           // UUID/GUID
   STRING,         // VARCHAR(n) / TEXT
@@ -201,7 +201,7 @@ public enum WhizbangDataType {
 
 ### IndexDefinition
 
-```csharp{title="IndexDefinition" description="IndexDefinition" category="Implementation" difficulty="BEGINNER" tags=["Data", "IndexDefinition"]}
+```csharp{title="IndexDefinition" description="IndexDefinition" category="Implementation" difficulty="BEGINNER" tags=["Data", "IndexDefinition"] tests=["IndexDefinitionTests.IndexDefinition_WithRequiredProperties_CreatesInstanceAsync", "IndexDefinitionTests.IndexDefinition_WithoutOptionalProperties_UsesDefaultsAsync", "IndexDefinitionTests.IndexDefinition_WithUnique_SetsPropertyAsync"]}
 public sealed record IndexDefinition(
   string Name,                            // Index name
   ImmutableArray<string> Columns,         // Indexed columns
@@ -211,7 +211,7 @@ public sealed record IndexDefinition(
 ```
 
 **Example - Partial Index**:
-```csharp{title="IndexDefinition (2)" description="Example - Partial Index:" category="Implementation" difficulty="BEGINNER" tags=["Data", "IndexDefinition"]}
+```csharp{title="IndexDefinition (2)" description="Example - Partial Index:" category="Implementation" difficulty="BEGINNER" tags=["Data", "IndexDefinition"] tests=["SchemaDefinitionTests.PartialIndexes_ShouldExistForStatusQueriesAsync"]}
 new IndexDefinition(
   Name: "idx_inbox_lease_expiry",
   Columns: ImmutableArray.Create("lease_expiry"),
@@ -225,7 +225,7 @@ new IndexDefinition(
 
 ### PostgresSchemaBuilder
 
-```csharp{title="PostgresSchemaBuilder" description="PostgresSchemaBuilder (simplified from the shipped implementation)" category="Implementation" difficulty="ADVANCED" tags=["Data", "PostgresSchemaBuilder"]}
+```csharp{title="PostgresSchemaBuilder" description="PostgresSchemaBuilder (simplified from the shipped implementation)" category="Implementation" difficulty="ADVANCED" tags=["Data", "PostgresSchemaBuilder"] tests=["PostgresSchemaBuilderTests.BuildCreateTable_SimpleTable_GeneratesCreateStatementAsync", "PostgresSchemaBuilderTests.BuildCreateTable_EmitsAlterTableAddColumnIfNotExistsPerColumnAsync", "PostgresSchemaBuilderTests.BuildCreateIndex_SimpleIndex_GeneratesCreateIndexAsync", "PostgresSchemaBuilderTests.BuildInfrastructureSchema_GeneratesAllTablesAsync"]}
 using Whizbang.Data.Schema;
 using Whizbang.Data.Schema.Schemas;
 
@@ -284,7 +284,7 @@ public class PostgresSchemaBuilder : ISchemaBuilder {
 ```
 
 **Type Mapping - Postgres**:
-```csharp{title="PostgresSchemaBuilder - PostgresTypeMapper" description="Type Mapping - Postgres:" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "PostgresSchemaBuilder"]}
+```csharp{title="PostgresSchemaBuilder - PostgresTypeMapper" description="Type Mapping - Postgres:" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "PostgresSchemaBuilder"] tests=["PostgresTypeMapperTests.MapDataType_Uuid_ReturnsUuidAsync", "PostgresTypeMapperTests.MapDataType_String_ReturnsTextAsync", "PostgresTypeMapperTests.MapDataType_StringWithMaxLength_ReturnsVarcharAsync", "PostgresTypeMapperTests.MapDataType_TimestampTz_ReturnsTimestamptzAsync", "PostgresTypeMapperTests.MapDataType_Json_ReturnsJsonbAsync", "PostgresTypeMapperTests.MapDataType_BigInt_ReturnsBigintAsync", "PostgresTypeMapperTests.MapDataType_Integer_ReturnsIntegerAsync", "PostgresTypeMapperTests.MapDataType_Boolean_ReturnsBooleanAsync"]}
 public static class PostgresTypeMapper {
   public static string MapDataType(WhizbangDataType dataType, int? maxLength = null) {
     return dataType switch {
@@ -310,7 +310,7 @@ public static class PostgresTypeMapper {
 
 ### Pattern 1: EF Core Migration Generator
 
-```csharp{title="Pattern 1: EF Core Migration Generator" description="Pattern 1: EF Core Migration Generator" category="Implementation" difficulty="ADVANCED" tags=["Data", "C#", "Pattern", "Core", "Migration"]}
+```csharp{title="Pattern 1: EF Core Migration Generator" description="Pattern 1: EF Core Migration Generator" category="Implementation" difficulty="ADVANCED" tags=["Data", "C#", "Pattern", "Core", "Migration"] tests=["PostgresSchemaBuilderTests.BuildInfrastructureSchema_GeneratesAllTablesAsync"]}
 using Whizbang.Data.Schema;
 using Whizbang.Data.Postgres.Schema;
 
@@ -333,7 +333,7 @@ public class InfrastructureMigration {
 
 ### Pattern 2: Dapper Embedded Schema
 
-```csharp{title="Pattern 2: Dapper Embedded Schema" description="Pattern 2: Dapper Embedded Schema" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Pattern", "Dapper", "Embedded"]}
+```csharp{title="Pattern 2: Dapper Embedded Schema" description="Pattern 2: Dapper Embedded Schema" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Pattern", "Dapper", "Embedded"] tests=["PostgresSchemaBuilderTests.BuildInfrastructureSchema_GeneratesAllTablesAsync"]}
 using Whizbang.Data.Schema;
 using Whizbang.Data.Postgres.Schema;
 
@@ -380,7 +380,7 @@ public class PerspectiveSchemaGenerator {
 
 ## SchemaConfiguration
 
-```csharp{title="SchemaConfiguration" description="SchemaConfiguration" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "SchemaConfiguration"]}
+```csharp{title="SchemaConfiguration" description="SchemaConfiguration" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "SchemaConfiguration"] tests=["SchemaConfigurationTests.SchemaConfiguration_WithoutParameters_UsesDefaultsAsync", "SchemaConfigurationTests.SchemaConfiguration_WithAllCustom_SetsAllAsync"]}
 public sealed record SchemaConfiguration(
   string InfrastructurePrefix = "wh_",   // Prefix for infrastructure tables
   string PerspectivePrefix = "wh_per_",  // Prefix for perspective tables (read models)
@@ -411,7 +411,7 @@ Whizbang provides pre-defined schemas for core infrastructure:
 
 ### InboxSchema
 
-```csharp{title="InboxSchema" description="InboxSchema" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "InboxSchema"]}
+```csharp{title="InboxSchema" description="InboxSchema" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "InboxSchema"] tests=["InboxSchemaTests.Table_ShouldHaveCorrectNameAsync", "InboxSchemaTests.Table_ShouldDefineCorrectColumnsAsync", "InboxSchemaTests.Table_ShouldDefineCorrectIndexesAsync", "InboxSchemaTests.Table_ShouldHavePrimaryKeyAsync"]}
 public static class InboxSchema {
   public static readonly TableDefinition Table = new(
     Name: "inbox",
@@ -437,7 +437,7 @@ public static class InboxSchema {
 
 ### OutboxSchema
 
-```csharp{title="OutboxSchema" description="OutboxSchema" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "OutboxSchema"]}
+```csharp{title="OutboxSchema" description="OutboxSchema" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "OutboxSchema"] tests=["OutboxSchemaTests.Table_ShouldHaveCorrectNameAsync", "OutboxSchemaTests.Table_ShouldDefineCorrectColumnsAsync", "OutboxSchemaTests.Table_ShouldDefineCorrectIndexesAsync", "OutboxSchemaTests.Table_ShouldHavePrimaryKeyAsync"]}
 public static class OutboxSchema {
   public static readonly TableDefinition Table = new(
     Name: "outbox",
@@ -464,7 +464,7 @@ public static class OutboxSchema {
 
 ### EventStoreSchema
 
-```csharp{title="EventStoreSchema" description="EventStoreSchema" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "EventStoreSchema"]}
+```csharp{title="EventStoreSchema" description="EventStoreSchema" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "EventStoreSchema"] tests=["EventStoreSchemaTests.Table_ShouldHaveCorrectNameAsync", "EventStoreSchemaTests.Table_ShouldDefineCorrectColumnsAsync", "EventStoreSchemaTests.Table_ShouldDefineCorrectIndexesAsync", "EventStoreSchemaTests.Table_ShouldHavePrimaryKeyAsync"]}
 public static class EventStoreSchema {
   public static readonly TableDefinition Table = new(
     Name: "event_store",
@@ -487,7 +487,7 @@ public static class EventStoreSchema {
 
 ### PerspectiveCursorsSchema
 
-```csharp{title="PerspectiveCursorsSchema" description="PerspectiveCursorsSchema" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "PerspectiveCursorsSchema"]}
+```csharp{title="PerspectiveCursorsSchema" description="PerspectiveCursorsSchema" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "PerspectiveCursorsSchema"] tests=["PerspectiveCursorsSchemaTests.Table_HasCorrectNameAsync", "PerspectiveCursorsSchemaTests.Table_HasCorrectColumnsAsync", "PerspectiveCursorsSchemaTests.Table_HasCorrectIndexesAsync", "PerspectiveCursorsSchemaTests.Table_StreamId_IsCompositePrimaryKeyAsync", "PerspectiveCursorsSchemaTests.Table_PerspectiveName_IsCompositePrimaryKeyAsync"]}
 public static class PerspectiveCursorsSchema {
   public static readonly TableDefinition Table = new(
     Name: "perspective_cursors",
@@ -513,7 +513,7 @@ public static class PerspectiveCursorsSchema {
 
 ### Unit Test Pattern
 
-```csharp{title="Unit Test Pattern" description="Unit Test Pattern" category="Implementation" difficulty="ADVANCED" tags=["Data", "C#", "Unit", "Test", "Pattern"]}
+```csharp{title="Unit Test Pattern" description="Unit Test Pattern" category="Implementation" difficulty="ADVANCED" tags=["Data", "C#", "Unit", "Test", "Pattern"] tests=["PostgresSchemaBuilderTests.BuildCreateTable_SimpleTable_GeneratesCreateStatementAsync", "PostgresSchemaBuilderTests.BuildInfrastructureSchema_GeneratesAllTablesAsync"]}
 using TUnit.Assertions;
 using TUnit.Core;
 using Whizbang.Data.Schema;
@@ -570,7 +570,7 @@ public class PostgresSchemaBuilderTests {
 
 ### Step 1: Create ISchemaBuilder Implementation
 
-```csharp{title="Step 1: Create ISchemaBuilder Implementation" description="Step 1: Create ISchemaBuilder Implementation" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Step", "Create", "ISchemaBuilder"]}
+```csharp{title="Step 1: Create ISchemaBuilder Implementation" description="Step 1: Create ISchemaBuilder Implementation" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Step", "Create", "ISchemaBuilder"] unverified="illustrative MySQL builder skeleton — custom-database-support template with unimplemented method bodies, not a shipped or tested implementation"}
 using Whizbang.Data.Schema;
 
 public class MySqlSchemaBuilder : ISchemaBuilder {
@@ -603,7 +603,7 @@ public class MySqlSchemaBuilder : ISchemaBuilder {
 
 ### Step 2: Implement Type Mapper
 
-```csharp{title="Step 2: Implement Type Mapper" description="Step 2: Implement Type Mapper" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Step", "Implement", "Type"]}
+```csharp{title="Step 2: Implement Type Mapper" description="Step 2: Implement Type Mapper" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Step", "Implement", "Type"] unverified="illustrative MySQL type mapper skeleton — custom-database-support template, not a shipped or tested implementation"}
 internal static class MySqlTypeMapper {
   public static string MapDataType(WhizbangDataType type, int? maxLength) {
     return type switch {

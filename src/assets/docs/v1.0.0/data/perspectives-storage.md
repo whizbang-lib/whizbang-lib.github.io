@@ -136,7 +136,7 @@ CREATE TABLE order_summaries (
 
 **Framework equivalent** — with a managed Whizbang perspective you express the same denormalization as a pure function; the framework performs the UPSERT into `wh_per_order_summary` for you:
 
-```csharp{title="Pattern 1: Flat Denormalized Model - OrderSummaryPerspective" description="Framework-managed perspective: pure Apply function, generated storage" category="Implementation" difficulty="ADVANCED" tags=["Data", "C#", "Pattern", "Flat", "Denormalized"]}
+```csharp{title="Pattern 1: Flat Denormalized Model - OrderSummaryPerspective" description="Framework-managed perspective: pure Apply function, generated storage" category="Implementation" difficulty="ADVANCED" tags=["Data", "C#", "Pattern", "Flat", "Denormalized"] tests=["OrderPerspectiveTests.OrderPerspective_Update_WithOrderCreatedEvent_SavesOrderModelAsync"]}
 [PerspectiveStorage(FieldStorageMode.Extracted)]
 public record OrderSummaryDto {
     public Guid OrderId { get; init; }
@@ -232,7 +232,7 @@ WHERE metadata->>'brand' ILIKE '%TechCorp%';
 ```
 
 **Custom projection handler** (for tables you maintain yourself — managed perspectives get JSONB storage automatically via `PerspectiveRow<TModel>.Data`):
-```csharp{title="Pattern 2: JSONB for Flexible Data (4)" description="Custom projection handler for a self-managed table:" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Pattern", "JSONB", "Flexible"]}
+```csharp{title="Pattern 2: JSONB for Flexible Data (4)" description="Custom projection handler for a self-managed table:" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Pattern", "JSONB", "Flexible"] unverified="illustrative custom projection handler for a self-managed table — not framework-generated perspective storage"}
 public async Task ProjectAsync(ProductAdded @event, CancellationToken ct = default) {
     await using var conn = _db.CreateConnection();
 
@@ -295,7 +295,7 @@ CREATE TABLE customer_statistics (
 ```
 
 **Custom projection handler** (incremental, self-managed table):
-```csharp{title="Pattern 3: Aggregated Data - CustomerStatisticsProjection" description="Custom projection handler (incremental):" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Pattern", "Aggregated"]}
+```csharp{title="Pattern 3: Aggregated Data - CustomerStatisticsProjection" description="Custom projection handler (incremental):" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Pattern", "Aggregated"] unverified="illustrative custom projection handler for a self-managed aggregate table — not framework behavior"}
 public class CustomerStatisticsProjection(IDbConnectionFactory _db) {
     public async Task ProjectAsync(OrderCreated @event, CancellationToken ct = default) {
         await using var conn = _db.CreateConnection();
@@ -328,7 +328,7 @@ public class CustomerStatisticsProjection(IDbConnectionFactory _db) {
 ```
 
 **Query**:
-```csharp{title="Pattern 3: Aggregated Data (3)" description="Pattern 3: Aggregated Data" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Pattern", "Aggregated"]}
+```csharp{title="Pattern 3: Aggregated Data (3)" description="Pattern 3: Aggregated Data" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Pattern", "Aggregated"] unverified="illustrative Dapper query against a self-managed table — not framework behavior"}
 public async Task<CustomerStatistics?> GetCustomerStatsAsync(
     Guid customerId,
     CancellationToken ct = default) {
@@ -384,7 +384,7 @@ CREATE INDEX idx_order_metrics_2024_12_tenant_id ON order_metrics_2024_12 (tenan
 ```
 
 **Custom projection handler** (self-managed table):
-```csharp{title="Pattern 4: Time-Series Data (2)" description="Custom projection handler for a self-managed metrics table:" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Pattern", "Time", "Series"]}
+```csharp{title="Pattern 4: Time-Series Data (2)" description="Custom projection handler for a self-managed metrics table:" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Pattern", "Time", "Series"] unverified="illustrative custom projection handler for a self-managed metrics table — not framework behavior"}
 public async Task ProjectAsync(OrderCreated @event, CancellationToken ct = default) {
     await using var conn = _db.CreateConnection();
 
@@ -519,7 +519,7 @@ USING (tenant_id = current_setting('app.current_tenant_id')::UUID);
 ```
 
 **Application**:
-```csharp{title="Pattern 1: Tenant Column + Row-Level Security (2)" description="Application:" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Pattern", "Tenant", "Column"]}
+```csharp{title="Pattern 1: Tenant Column + Row-Level Security (2)" description="Application:" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Pattern", "Tenant", "Column"] unverified="illustrative Dapper query with a row-level-security session context on a self-managed table — not framework behavior"}
 public async Task<OrderSummary[]> GetOrdersAsync(
     Guid tenantId,
     CancellationToken ct = default) {
@@ -560,7 +560,7 @@ CREATE TABLE tenant_def456.order_summaries (
 ```
 
 **Application**:
-```csharp{title="Pattern 2: Schema-Per-Tenant (2)" description="Application:" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Pattern", "Schema-Per-Tenant"]}
+```csharp{title="Pattern 2: Schema-Per-Tenant (2)" description="Application:" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Pattern", "Schema-Per-Tenant"] unverified="illustrative schema-per-tenant Dapper query on a self-managed table — not framework behavior"}
 public async Task<OrderSummary[]> GetOrdersAsync(
     string tenantSchemaName,
     CancellationToken ct = default) {
@@ -625,7 +625,7 @@ REFRESH MATERIALIZED VIEW CONCURRENTLY order_daily_summary;
 
 ### Strategy 1: Schema Migrations with EF Core
 
-```csharp{title="Strategy 1: Schema Migrations with EF Core" description="Strategy 1: Schema Migrations with EF Core" category="Implementation" difficulty="ADVANCED" tags=["Data", "C#", "Strategy", "Schema", "Migrations"]}
+```csharp{title="Strategy 1: Schema Migrations with EF Core" description="Strategy 1: Schema Migrations with EF Core" category="Implementation" difficulty="ADVANCED" tags=["Data", "C#", "Strategy", "Schema", "Migrations"] unverified="illustrative EF Core migration for a self-managed read-model table — not framework behavior"}
 // Migration: Add order_summaries table
 public partial class AddOrderSummaries : Migration {
     protected override void Up(MigrationBuilder migrationBuilder) {
