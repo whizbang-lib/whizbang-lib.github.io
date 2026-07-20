@@ -34,7 +34,7 @@ This is **Part 4** of the ECommerce Tutorial. Complete [Payment Processing](paym
 
 ## What You'll Build
 
-```mermaid
+```mermaid{caption="Notification Service architecture — Azure Service Bus delivers SendNotificationCommand to SendNotificationReceptor, which renders a template, sends via an email/SMS provider, and publishes NotificationSentEvent to the event store."}
 flowchart TD
     subgraph NSA["Notification Service Architecture"]
         ASB["Azure Service Bus"]
@@ -70,7 +70,7 @@ flowchart TD
 
 **ECommerce.Contracts/Commands/SendNotificationCommand.cs**:
 
-```csharp{title="SendNotificationCommand" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "SendNotification", "Command"]}
+```csharp{title="SendNotificationCommand" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "SendNotification", "Command"] unverified="tutorial worked-example — exercised by the ECommerce sample suite (SendNotificationReceptorTests), which is outside the core unit-test coverage map"}
 using Whizbang.Core;
 
 namespace ECommerce.Contracts.Commands;
@@ -96,7 +96,7 @@ public enum NotificationType {
 
 **ECommerce.Contracts/Events/NotificationSentEvent.cs**:
 
-```csharp{title="NotificationSentEvent" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "NotificationSent", "Event"]}
+```csharp{title="NotificationSentEvent" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "NotificationSent", "Event"] unverified="tutorial worked-example — exercised by the ECommerce sample suite (SendNotificationReceptorTests), which is outside the core unit-test coverage map"}
 using ECommerce.Contracts.Commands;
 using Whizbang.Core;
 
@@ -120,7 +120,7 @@ public record NotificationSentEvent : IEvent {
 
 **ECommerce.NotificationWorker/Receptors/SendNotificationReceptor.cs**:
 
-```csharp{title="Step 2: Implement Receptor" description="**ECommerce." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Step", "Implement"]}
+```csharp{title="Step 2: Implement Receptor" description="**ECommerce." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Step", "Implement"] unverified="tutorial worked-example — exercised by the ECommerce sample suite (SendNotificationReceptorTests), which is outside the core unit-test coverage map"}
 using ECommerce.Contracts.Commands;
 using ECommerce.Contracts.Events;
 using Whizbang.Core;
@@ -179,7 +179,7 @@ The sample simulates delivery. In production, put providers behind interfaces so
 
 **Email provider abstraction**:
 
-```csharp{title="Email Provider (SendGrid)" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Email", "Provider"]}
+```csharp{title="Email Provider (SendGrid)" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Email", "Provider"] unverified="production provider abstraction — not exercised by a test"}
 namespace ECommerce.NotificationWorker.Services;
 
 public interface IEmailProvider {
@@ -201,7 +201,7 @@ public record EmailResult(
 
 **SendGrid implementation (condensed)**:
 
-```csharp{title="Email Provider (SendGrid) - SendGridEmailProvider" description="**ECommerce." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Email", "Provider"]}
+```csharp{title="Email Provider (SendGrid) - SendGridEmailProvider" description="**ECommerce." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Email", "Provider"] unverified="production provider (SendGrid) — not exercised by a test"}
 using SendGrid;
 using SendGrid.Helpers.Mail;
 
@@ -242,7 +242,7 @@ public class SendGridEmailProvider(IConfiguration configuration, ILogger<SendGri
 
 ### Template Rendering (Scriban)
 
-```csharp{title="Step 3: Template Engine" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Step", "Template"]}
+```csharp{title="Step 3: Template Engine" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Step", "Template"] unverified="production template renderer (Scriban) — not exercised by a test"}
 using Scriban;
 
 namespace ECommerce.NotificationWorker.Services;
@@ -287,7 +287,7 @@ public class ScribanTemplateRenderer(IConfiguration configuration) : ITemplateRe
 
 **ECommerce.NotificationWorker/Program.cs** (condensed from the sample):
 
-```csharp{title="Step 4: Service Configuration" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Step", "Service"]}
+```csharp{title="Step 4: Service Configuration" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Step", "Service"] unverified="host/DI wiring — not exercised by a test"}
 using Whizbang.Core;
 using Whizbang.Core.Generated;
 using Whizbang.Data.EFCore.Postgres;
@@ -346,7 +346,7 @@ host.Run();
 
 **ECommerce.AppHost/Program.cs** (excerpt matching the sample):
 
-```csharp{title="Update Aspire" description="**ECommerce." category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Update", "Aspire"]}
+```csharp{title="Update Aspire" description="**ECommerce." category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Update", "Aspire"] unverified="host/DI wiring — not exercised by a test"}
 var notificationDb = postgres.AddDatabase("notificationdb");
 
 ordersTopic.AddServiceBusSubscription("sub-notification-orders");
@@ -384,7 +384,7 @@ ORDER BY created_at DESC;
 
 ### One Receptor per Message Type
 
-```csharp{title="Multi-Event Subscriptions" description="Multi-Event Subscriptions" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Multi-Event", "Subscriptions"]}
+```csharp{title="Multi-Event Subscriptions" description="Multi-Event Subscriptions" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Multi-Event", "Subscriptions"] unverified="tutorial worked-example — exercised by the ECommerce sample suite (SendNotificationReceptorTests), which is outside the core unit-test coverage map"}
 // Commands have receptors...
 public class SendNotificationReceptor : IReceptor<SendNotificationCommand, NotificationSentEvent> { /* ... */ }
 
@@ -401,7 +401,7 @@ Routing determines which topics this worker consumes (`SubscribeTo("ecommerce.or
 
 **tests/ECommerce.NotificationWorker.Tests/SendNotificationReceptorTests.cs** (condensed):
 
-```csharp{title="Unit Test - Send Notification" description="Unit Test - Send Notification" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Unit", "Test"]}
+```csharp{title="Unit Test - Send Notification" description="Unit Test - Send Notification" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Unit", "Test"] unverified="tutorial worked-example — exercised by the ECommerce sample suite (SendNotificationReceptorTests), which is outside the core unit-test coverage map"}
 [Test]
 public async Task HandleAsync_SendsNotification_ReturnsNotificationSentEventAsync() {
   // Arrange

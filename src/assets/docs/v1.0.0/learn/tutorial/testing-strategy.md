@@ -47,7 +47,7 @@ This is **Part 8** of the ECommerce Tutorial. Complete [Analytics Service](analy
 
 ## Testing Pyramid
 
-```mermaid
+```mermaid{caption="Testing pyramid — roughly 60% fast unit tests over receptors and perspectives, 30% integration tests over service+DB+bus, and 10% full-system E2E."}
 flowchart TD
     subgraph Pyramid["Testing Pyramid"]
         E2E["E2E Tests<br/>Full system<br/>← 10% (Slow, Expensive)"]
@@ -72,7 +72,7 @@ Receptors take `IDispatcher` + `ILogger` — no database mocking needed. Use a r
 
 **tests/ECommerce.OrderService.Tests/CreateOrderReceptorTests.cs** (condensed):
 
-```csharp{title="Testing Receptors" description="**ECommerce." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Testing", "Receptors"]}
+```csharp{title="Testing Receptors" description="**ECommerce." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Testing", "Receptors"] unverified="tutorial worked-example — this is the ECommerce sample's CreateOrderReceptorTests (a result-returning receptor with a recording TestDispatcher), which is outside the core unit-test coverage map"}
 using ECommerce.Contracts.Commands;
 using ECommerce.Contracts.Events;
 using ECommerce.OrderService.API.Receptors;
@@ -157,7 +157,7 @@ public class CreateOrderReceptorTests {
 
 Perspectives are **pure functions** — no mocks at all. Call `Apply` with a model and an event, assert on the returned model:
 
-```csharp{title="Testing Perspectives" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Testing", "Perspectives"]}
+```csharp{title="Testing Perspectives" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Testing", "Perspectives"] unverified="tutorial worked-example — the InventoryLevelsPerspective Apply behavior is exercised by the ECommerce sample suite (CreateProductWorkflowTests), which is outside the core unit-test coverage map"}
 using ECommerce.Contracts.Events;
 using ECommerce.Contracts.Lenses;
 using ECommerce.InventoryWorker.Perspectives;
@@ -224,7 +224,7 @@ See **tests/ECommerce.BFF.API.Tests/PerspectiveModelsTests.cs** for the sample's
 
 The fixture pattern (from **tests/ECommerce.RabbitMQ.Integration.Tests/Fixtures/RabbitMqIntegrationFixture.cs**):
 
-```csharp{title="Completion Signal Helper" description="Completion-signal helper from the sample fixture" category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Testing", "Signals"]}
+```csharp{title="Completion Signal Helper" description="Completion-signal helper from the sample fixture" category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Testing", "Signals"] unverified="tutorial worked-example — this sample fixture helper is exercised by the ECommerce sample suite (CreateProductWorkflowTests), which is outside the core unit-test coverage map"}
 /// <summary>
 /// Waits until the PerspectiveWorker has applied the expected number of events.
 /// Uses the worker's OnPerspectiveEventProcessed hook + TaskCompletionSource —
@@ -262,7 +262,7 @@ Whizbang workers expose these hooks as first-class API (useful in production obs
 
 **tests/ECommerce.RabbitMQ.Integration.Tests/Workflows/CreateProductWorkflowTests.cs** (condensed):
 
-```csharp{title="Testing Event Flow" description="**ECommerce." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Testing", "Event"]}
+```csharp{title="Testing Event Flow" description="**ECommerce." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Testing", "Event"] unverified="tutorial worked-example — this is the ECommerce sample's CreateProductWorkflowTests integration test, which is outside the core unit-test coverage map"}
 using ECommerce.Contracts.Commands;
 using ECommerce.RabbitMQ.Integration.Tests.Fixtures;
 using Medo;

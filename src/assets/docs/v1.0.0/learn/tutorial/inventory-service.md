@@ -44,7 +44,7 @@ This is **Part 2** of the ECommerce Tutorial. Complete [Order Management](order-
 
 ## What You'll Build
 
-```mermaid
+```mermaid{caption="Inventory Worker flow: a ReserveInventoryCommand arrives from Azure Service Bus, is deduped through wh_inbox, handled by ReserveInventoryReceptor which appends to the event store and outbox, the InventoryLevels perspective materializes the read model, and InventoryReservedEvent is published back to the bus."}
 flowchart TD
     subgraph ISA["Inventory Service Architecture"]
         ASBIn["Azure Service Bus"]
@@ -85,7 +85,7 @@ flowchart TD
 
 **ECommerce.Contracts/Commands/ReserveInventoryCommand.cs**:
 
-```csharp{title="ReserveInventoryCommand" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "ReserveInventory", "Command"]}
+```csharp{title="ReserveInventoryCommand" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "ReserveInventory", "Command"] unverified="tutorial worked-example — exercised by the ECommerce sample suite (RestockInventoryReceptorTests), which is outside the core unit-test coverage map"}
 using Whizbang.Core;
 
 namespace ECommerce.Contracts.Commands;
@@ -105,7 +105,7 @@ public record ReserveInventoryCommand : ICommand {
 
 **ECommerce.Contracts/Events/InventoryReservedEvent.cs**:
 
-```csharp{title="InventoryReserved Event" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "InventoryReserved", "Event"]}
+```csharp{title="InventoryReserved Event" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "InventoryReserved", "Event"] unverified="tutorial worked-example — exercised by the ECommerce sample suite (RestockInventoryReceptorTests), which is outside the core unit-test coverage map"}
 using Whizbang.Core;
 
 namespace ECommerce.Contracts.Events;
@@ -126,7 +126,7 @@ public record InventoryReservedEvent : IEvent {
 
 **ECommerce.Contracts/Events/InventoryReleasedEvent.cs**:
 
-```csharp{title="InventoryReleased Event (Compensation)" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "InventoryReleased", "Event"]}
+```csharp{title="InventoryReleased Event (Compensation)" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "InventoryReleased", "Event"] unverified="tutorial worked-example — exercised by the ECommerce sample suite (AdjustInventoryReceptorTests), which is outside the core unit-test coverage map"}
 using Whizbang.Core;
 
 namespace ECommerce.Contracts.Events;
@@ -159,7 +159,7 @@ Earlier drafts hand-wrote `inventory`, `inventory_reservations`, and `inbox` tab
 
 **ECommerce.InventoryWorker/InventoryDbContext.cs** follows the same pattern as the Order Service:
 
-```csharp{title="Step 2: Persistence" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Persistence", "DbContext"]}
+```csharp{title="Step 2: Persistence" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Persistence", "DbContext"] unverified="host/DI wiring — not exercised by a test"}
 using Microsoft.EntityFrameworkCore;
 using Whizbang.Data.EFCore.Custom;
 
@@ -177,7 +177,7 @@ public partial class InventoryDbContext(DbContextOptions<InventoryDbContext> opt
 
 **ECommerce.InventoryWorker/Receptors/ReserveInventoryReceptor.cs**:
 
-```csharp{title="Step 3: Implement Receptor" description="**ECommerce." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Step", "Implement"]}
+```csharp{title="Step 3: Implement Receptor" description="**ECommerce." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Step", "Implement"] unverified="tutorial worked-example — exercised by the ECommerce sample suite (RestockInventoryReceptorTests), which is outside the core unit-test coverage map"}
 using ECommerce.Contracts.Commands;
 using ECommerce.Contracts.Events;
 using Whizbang.Core;
@@ -236,7 +236,7 @@ Perspectives are **pure functions** — `Apply(currentData, event)` returns a ne
 
 **Model** (**ECommerce.Contracts/Lenses/InventoryLevelDto.cs**):
 
-```csharp{title="Step 4: Perspective Model" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Step", "Perspective"]}
+```csharp{title="Step 4: Perspective Model" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Step", "Perspective"] unverified="tutorial worked-example — exercised by the ECommerce sample suite (RestockInventoryWorkflowTests), which is outside the core unit-test coverage map"}
 using Whizbang;
 using Whizbang.Core;
 
@@ -255,7 +255,7 @@ public record InventoryLevelDto {
 
 **Perspective** (**ECommerce.InventoryWorker/Perspectives/InventoryLevelsPerspective.cs**, condensed):
 
-```csharp{title="Step 4: Perspective (Read Model)" description="**ECommerce." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Step", "Perspective"]}
+```csharp{title="Step 4: Perspective (Read Model)" description="**ECommerce." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Step", "Perspective"] unverified="tutorial worked-example — exercised by the ECommerce sample suite (RestockInventoryWorkflowTests), which is outside the core unit-test coverage map"}
 using ECommerce.Contracts.Events;
 using ECommerce.Contracts.Lenses;
 using Whizbang.Core.Perspectives;
@@ -331,7 +331,7 @@ There is no `IPerspectiveOf<TEvent>` interface with a `HandleAsync` that perform
 
 **Querying the read model — Lenses** (**ECommerce.InventoryWorker/Lenses/InventoryLens.cs**, condensed):
 
-```csharp{title="Step 4: Lens Query" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Step", "Lens"]}
+```csharp{title="Step 4: Lens Query" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Step", "Lens"] unverified="tutorial worked-example — exercised by the ECommerce sample suite (RestockInventoryWorkflowTests), which is outside the core unit-test coverage map"}
 using ECommerce.Contracts.Lenses;
 using Microsoft.EntityFrameworkCore;
 using Whizbang.Core.Lenses;
@@ -372,7 +372,7 @@ public class InventoryLens(ILensQuery<InventoryLevelDto> query) : IInventoryLens
 
 **ECommerce.InventoryWorker/Program.cs** (condensed from the sample):
 
-```csharp{title="Step 5: Worker Configuration" description="**ECommerce." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Step", "Worker"]}
+```csharp{title="Step 5: Worker Configuration" description="**ECommerce." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Step", "Worker"] unverified="host/DI wiring — not exercised by a test"}
 using ECommerce.Contracts.Generated;
 using ECommerce.InventoryWorker;
 using ECommerce.InventoryWorker.Generated;
@@ -460,7 +460,7 @@ There is no hand-written work-claiming loop. `AddTransportConsumer()` registers 
 
 **Update ECommerce.AppHost/Program.cs** (excerpt matching the sample):
 
-```csharp{title="Step 6: Aspire Integration" description="**Update ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Step", "Aspire"]}
+```csharp{title="Step 6: Aspire Integration" description="**Update ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Step", "Aspire"] unverified="host/DI wiring — not exercised by a test"}
 var inventoryDb = postgres.AddDatabase("inventorydb");  // NEW
 
 // Topics + subscriptions for the inventory worker
@@ -536,7 +536,7 @@ SELECT * FROM inventory_levels;
 
 ### Inbox Pattern (Exactly-Once Processing)
 
-```mermaid
+```mermaid{caption="Inbox exactly-once processing: a delivered message is inserted into wh_inbox (the insert dedupes by message id), dispatched to its receptor, then marked complete; a duplicate delivery is a no-op insert and is skipped."}
 flowchart TD
     subgraph IP["Inbox Pattern - Exactly-Once Processing"]
         ASB["Azure Service Bus<br/>- Message delivered to worker"]
@@ -558,7 +558,7 @@ flowchart TD
 
 ### Compensation (Saga Pattern)
 
-```mermaid
+```mermaid{caption="Saga success versus compensation: the success path runs OrderCreated to InventoryReserved to PaymentProcessed to ShipmentCreated, while a payment failure triggers InventoryReleased to compensate the earlier reservation."}
 flowchart TD
     subgraph Success["Success Flow"]
         direction LR
@@ -576,7 +576,7 @@ flowchart TD
 
 A compensation receptor subscribes to `PaymentFailedEvent` and publishes `InventoryReleasedEvent`:
 
-```csharp{title="Compensation (Saga Pattern)" description="Compensation receptor sketch" category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Compensation", "Saga"]}
+```csharp{title="Compensation (Saga Pattern)" description="Compensation receptor sketch" category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Compensation", "Saga"] unverified="tutorial worked-example — exercised by the ECommerce sample suite (AdjustInventoryReceptorTests), which is outside the core unit-test coverage map"}
 public class ReleaseInventoryReceptor(IDispatcher dispatcher, ILogger<ReleaseInventoryReceptor> logger)
   : IReceptor<PaymentFailedEvent, InventoryReleasedEvent> {
 
@@ -609,7 +609,7 @@ The `InventoryLevelsPerspective` can then handle `InventoryReleasedEvent` with a
 
 Receptor unit tests use a recording `TestDispatcher` and `NullLogger` — no database required (see **tests/ECommerce.InventoryWorker.Tests**):
 
-```csharp{title="Unit Test - Reserve Inventory" description="Unit Test - Reserve Inventory" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Unit", "Test"]}
+```csharp{title="Unit Test - Reserve Inventory" description="Unit Test - Reserve Inventory" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Unit", "Test"] unverified="tutorial worked-example — exercised by the ECommerce sample suite (RestockInventoryReceptorTests), which is outside the core unit-test coverage map"}
 [Test]
 public async Task ReserveInventoryReceptor_ValidCommand_PublishesEventAsync() {
   // Arrange
@@ -635,7 +635,7 @@ public async Task ReserveInventoryReceptor_ValidCommand_PublishesEventAsync() {
 
 Perspective tests are even simpler — pure function in, model out:
 
-```csharp{title="Unit Test - Perspective Apply" description="Unit Test - Perspective Apply" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Unit", "Test"]}
+```csharp{title="Unit Test - Perspective Apply" description="Unit Test - Perspective Apply" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Unit", "Test"] unverified="tutorial worked-example — exercised by the ECommerce sample suite (RestockInventoryWorkflowTests), which is outside the core unit-test coverage map"}
 [Test]
 public async Task InventoryLevelsPerspective_Reserve_IncrementsReservedAsync() {
   // Arrange
