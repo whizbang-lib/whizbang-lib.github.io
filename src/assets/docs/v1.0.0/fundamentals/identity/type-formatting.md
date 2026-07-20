@@ -140,7 +140,7 @@ var empty = TypeFormatter.FormatType(type, TypeQualifications.None);
 
 TypeFormatter uses `CultureInfo.InvariantCulture` for all formatting to ensure consistent output across locales:
 
-```csharp{title="Culture-Invariant Formatting" description="TypeFormatter uses `CultureInfo." category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "Culture-Invariant", "Formatting"]}
+```csharp{title="Culture-Invariant Formatting" description="TypeFormatter uses `CultureInfo." category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "Culture-Invariant", "Formatting"] unverified="conceptual — illustrates culture-invariant (InvariantCulture) formatting; no TypeFormatter test exercises locale-varying output"}
 // Version, Culture, and PublicKeyToken always use InvariantCulture
 var withVersion = TypeFormatter.FormatType(
     type,
@@ -267,7 +267,7 @@ public TypeDisplayInfo GetDisplayInfo(Type type) {
 
 ### Empty Namespace
 
-```csharp{title="Empty Namespace" description="Empty Namespace" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "Empty", "Namespace"]}
+```csharp{title="Empty Namespace" description="Empty Namespace" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "Empty", "Namespace"] unverified="illustrates empty/global-namespace handling (no leading dot); not covered by a TypeFormatter test"}
 // Type with no namespace (global namespace)
 public class GlobalType { }
 
@@ -280,7 +280,7 @@ var formatted = TypeFormatter.FormatType(
 
 ### Generic Types
 
-```csharp{title="Generic Types" description="Generic Types" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "Generic", "Types"]}
+```csharp{title="Generic Types" description="Generic Types" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "Generic", "Types"] unverified="illustrates TypeFormatter generic handling (Type.Name arity, args not expanded); not covered by a TypeFormatter test — contrast with TypeNameFormatter"}
 var genericType = typeof(List<OrderCreatedEvent>);
 
 var formatted = TypeFormatter.FormatType(
@@ -294,7 +294,7 @@ var formatted = TypeFormatter.FormatType(
 
 ### Nested Types
 
-```csharp{title="Nested Types" description="Nested Types" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Nested", "Types"]}
+```csharp{title="Nested Types" description="Nested Types" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Nested", "Types"] unverified="illustrates TypeFormatter nested-type handling (Type.Name, declaring type omitted); not covered by a TypeFormatter test — contrast with TypeNameFormatter plus-separator"}
 public class OuterClass {
     public class InnerClass { }
 }
@@ -313,7 +313,7 @@ var formatted = TypeFormatter.FormatType(
 
 ### Public Key Token
 
-```csharp{title="Public Key Token" description="Public Key Token" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Public", "Key"]}
+```csharp{title="Public Key Token" description="Public Key Token" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Public", "Key"] unverified="illustrates PublicKeyToken output for strong-named vs non-strong-named assemblies; not covered by a TypeFormatter test"}
 // Strong-named assembly
 var strongType = typeof(System.String);
 
@@ -339,7 +339,7 @@ var withoutToken = TypeFormatter.FormatType(
 
 TypeFormatter uses `StringBuilder` internally for efficient string building:
 
-```csharp{title="StringBuilder Allocation" description="TypeFormatter uses StringBuilder internally for efficient string building:" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "StringBuilder", "Allocation"]}
+```csharp{title="StringBuilder Allocation" description="TypeFormatter uses StringBuilder internally for efficient string building:" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "StringBuilder", "Allocation"] unverified="performance illustration — internal StringBuilder detail vs manual concatenation; not a verifiable output"}
 // Efficient - single StringBuilder allocation
 var formatted = TypeFormatter.FormatType(type, TypeQualifications.FullyQualified);
 
@@ -351,7 +351,7 @@ var manual = type.Namespace + "." + type.Name + ", " + type.Assembly.GetName().N
 
 Since type formatting is deterministic, consider caching results:
 
-```csharp{title="Caching Formatted Results" description="Since type formatting is deterministic, consider caching results:" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Caching", "Formatted"]}
+```csharp{title="Caching Formatted Results" description="Since type formatting is deterministic, consider caching results:" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Caching", "Formatted"] unverified="user-domain illustration — CachedTypeFormatter caching wrapper, not a Whizbang API"}
 public class CachedTypeFormatter {
     private readonly ConcurrentDictionary<(Type, TypeQualifications), string> _cache = new();
 
