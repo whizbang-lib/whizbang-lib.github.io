@@ -92,7 +92,7 @@ Events without `[GenerateStreamId]` are validated at pipeline boundaries by `Str
 
 ### Usage Example
 
-```csharp{title="Usage Example" description="Usage Example" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Usage", "Example"]}
+```csharp{title="Usage Example" description="Usage Example" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Usage", "Example"] unverified="consumer-facing dispatch illustration; the isolated stream-id generation policy is verified on the How Auto-Generation Works block"}
 // Stream-initiating event with auto-generation
 public record OrderCreated : IEvent {
   [StreamId] [GenerateStreamId]
@@ -141,7 +141,7 @@ if (shouldGenerate && (!onlyIfEmpty || streamId == Guid.Empty)) {
 
 For type-safe stream IDs, use the generated `StreamId` value object:
 
-```csharp{title="StreamId Value Object" description="For type-safe stream IDs, use the generated StreamId value object:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "StreamId", "Value"]}
+```csharp{title="StreamId Value Object" description="For type-safe stream IDs, use the generated StreamId value object:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "StreamId", "Value"] unverified="value-object type declaration; no runtime behavior asserted"}
 namespace Whizbang.Core.ValueObjects;
 
 /// <summary>
@@ -154,7 +154,7 @@ public readonly partial struct StreamId;
 
 ### Usage
 
-```csharp{title="Usage" description="Usage" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Usage"]}
+```csharp{title="Usage" description="Usage" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Usage"] unverified="StreamId value-object construction and parsing; verified by IdentityValueObjectTests, which is absent from the test map"}
 // Create new StreamId (UUIDv7 via TrackedGuid.NewMedo())
 var streamId = StreamId.New();
 

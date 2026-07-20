@@ -74,7 +74,7 @@ public class EventsController : ControllerBase {
 
 ### Global Access (Admin Operations)
 
-```csharp{title="Global Access (Admin Operations)" description="Global Access (Admin Operations)" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "Global", "Access"]}
+```csharp{title="Global Access (Admin Operations)" description="Global Access (Admin Operations)" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "Global", "Access"] unverified="IScopedLensFactory global-access helpers; covered by ScopedLensFactoryImplTests, a lens-factory test not among this page's referenced tests"}
 // Global access requires explicit permission
 var globalQuery = _lensFactory.GetEventStoreQuery(
     ScopeFilters.None,
@@ -86,7 +86,7 @@ var allEvents = _lensFactory.GetGlobalEventStoreQuery();
 
 ### Singleton Services (Background Workers)
 
-```csharp{title="Singleton Services (Background Workers)" description="Singleton Services (Background Workers)" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Events", "Singleton", "Services"]}
+```csharp{title="Singleton Services (Background Workers)" description="Singleton Services (Background Workers)" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Events", "Singleton", "Services"] tests=["IScopedEventStoreQueryTests.IScopedEventStoreQuery_HasQueryAsyncMethodAsync", "IScopedEventStoreQueryTests.IScopedEventStoreQuery_QueryAsyncHasCancellationTokenDefaultAsync"]}
 public class EventAnalyzerWorker : BackgroundService {
   private readonly IScopedEventStoreQuery _scopedQuery;
 

@@ -125,7 +125,7 @@ services.AddSystemEvents(options => {
 
 System events are consumed like domain events - create perspectives:
 
-```csharp{title="Consume System Events" description="System events are consumed like domain events - create perspectives:" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Events", "C#", "Consume", "System"]}
+```csharp{title="Consume System Events" description="System events are consumed like domain events - create perspectives:" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Events", "C#", "Consume", "System"] unverified="consumer-defined perspective classes, not a library API"}
 using Whizbang.Core.Perspectives;
 using Whizbang.Core.SystemEvents;
 using Whizbang.Core.Audit;
@@ -384,7 +384,7 @@ public sealed record CommandAudited : ISystemEvent {
 
 Emitted when a scope context is established for a request/operation.
 
-```csharp{title="ScopeContextEstablished" description="Emitted when a scope context is established for a request/operation." category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "ScopeContextEstablished"]}
+```csharp{title="ScopeContextEstablished" description="Emitted when a scope context is established for a request/operation." category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "ScopeContextEstablished"] unverified="security event record shape; only SecuritySystemEventTests would cover it and that class is absent from the tests map"}
 public sealed record ScopeContextEstablished : ISystemEvent {
   [StreamId]
   public Guid Id { get; init; } = TrackedGuid.NewMedo();
@@ -426,7 +426,7 @@ public sealed record ScopeContextEstablished : ISystemEvent {
 
 Emitted when a user's permissions or roles change.
 
-```csharp{title="PermissionChanged" description="Emitted when a user's permissions or roles change." category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Events", "PermissionChanged"]}
+```csharp{title="PermissionChanged" description="Emitted when a user's permissions or roles change." category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Events", "PermissionChanged"] unverified="security event record shape; only SecuritySystemEventTests would cover it and that class is absent from the tests map"}
 public sealed record PermissionChanged : ISystemEvent {
   [StreamId]
   public Guid Id { get; init; } = TrackedGuid.NewMedo();
@@ -488,7 +488,7 @@ public sealed record PermissionChanged : ISystemEvent {
 
 Emitted when access to a sensitive resource is granted.
 
-```csharp{title="AccessGranted" description="Emitted when access to a sensitive resource is granted." category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "AccessGranted"]}
+```csharp{title="AccessGranted" description="Emitted when access to a sensitive resource is granted." category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "AccessGranted"] unverified="security event record shape; only SecuritySystemEventTests would cover it and that class is absent from the tests map"}
 public sealed record AccessGranted : ISystemEvent {
   [StreamId]
   public Guid Id { get; init; } = TrackedGuid.NewMedo();
@@ -536,7 +536,7 @@ public sealed record AccessGranted : ISystemEvent {
 
 Emitted when access to a resource is denied due to insufficient permissions.
 
-```csharp{title="AccessDenied" description="Emitted when access to a resource is denied due to insufficient permissions." category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Events", "AccessDenied"]}
+```csharp{title="AccessDenied" description="Emitted when access to a resource is denied due to insufficient permissions." category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Events", "AccessDenied"] unverified="security event record shape; only SecuritySystemEventTests would cover it and that class is absent from the tests map"}
 public sealed record AccessDenied : ISystemEvent {
   [StreamId]
   public Guid Id { get; init; } = TrackedGuid.NewMedo();
@@ -646,7 +646,7 @@ public sealed class SystemEventEmitter(
 
 **Manual emission** (advanced scenarios):
 
-```csharp{title="System Event Emitter - MySecurityService" description="Manual emission (advanced scenarios):" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "System", "Event"]}
+```csharp{title="System Event Emitter - MySecurityService" description="Manual emission (advanced scenarios):" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "System", "Event"] unverified="consumer service illustration of manual emission, not a library API"}
 public class MySecurityService {
   private readonly ISystemEventEmitter _emitter;
 
@@ -951,7 +951,7 @@ services.TryAddSingleton(
 
 System events are stored in a dedicated stream with a fixed identifier:
 
-```csharp{title="System Event Stream" description="System events are stored in a dedicated stream with a fixed identifier:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "System", "Event"]}
+```csharp{title="System Event Stream" description="System events are stored in a dedicated stream with a fixed identifier:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "System", "Event"] unverified="SystemEventStreams constants; emitter tests route to this stream but none assert the literal name, prefix, or fixed GUID"}
 public static class SystemEventStreams {
   /// <summary>
   /// The name of the dedicated system event stream.
@@ -1136,7 +1136,7 @@ services.AddSystemEvents(options => {
 
 ### Selective Security Auditing
 
-```csharp{title="Selective Security Auditing" description="Selective Security Auditing" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Selective", "Security"]}
+```csharp{title="Selective Security Auditing" description="Selective Security Auditing" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Selective", "Security"] unverified="consumer DocumentService illustration, not a library API"}
 // Only audit high-sensitivity operations
 public class DocumentService {
   private readonly ISystemEventEmitter _emitter;
@@ -1232,7 +1232,7 @@ These events are emitted during perspective rebuild operations (enabled via `Ena
 
 Emitted when a perspective rebuild starts (any mode).
 
-```csharp{title="PerspectiveRebuildStarted" description="Emitted when a perspective rebuild starts" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Perspective", "Rebuild"]}
+```csharp{title="PerspectiveRebuildStarted" description="Emitted when a perspective rebuild starts" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Perspective", "Rebuild"] unverified="perspective rebuild event record shape; not covered by this page's system-event test references"}
 public record PerspectiveRebuildStarted(
     [property: StreamId] Guid StreamId,
     string PerspectiveName,
@@ -1246,7 +1246,7 @@ public record PerspectiveRebuildStarted(
 
 Emitted periodically during a rebuild to report progress.
 
-```csharp{title="PerspectiveRebuildProgress" description="Emitted periodically during a rebuild to report progress" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Perspective", "Rebuild"]}
+```csharp{title="PerspectiveRebuildProgress" description="Emitted periodically during a rebuild to report progress" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Perspective", "Rebuild"] unverified="perspective rebuild event record shape; not covered by this page's system-event test references"}
 public record PerspectiveRebuildProgress(
     [property: StreamId] Guid StreamId,
     string PerspectiveName,
@@ -1262,7 +1262,7 @@ public record PerspectiveRebuildProgress(
 
 Emitted when a perspective rebuild completes successfully.
 
-```csharp{title="PerspectiveRebuildCompleted" description="Emitted when a perspective rebuild completes successfully" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Perspective", "Rebuild"]}
+```csharp{title="PerspectiveRebuildCompleted" description="Emitted when a perspective rebuild completes successfully" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Perspective", "Rebuild"] unverified="perspective rebuild event record shape; not covered by this page's system-event test references"}
 public record PerspectiveRebuildCompleted(
     [property: StreamId] Guid StreamId,
     string PerspectiveName,
@@ -1277,7 +1277,7 @@ public record PerspectiveRebuildCompleted(
 
 Emitted when a perspective rebuild fails.
 
-```csharp{title="PerspectiveRebuildFailed" description="Emitted when a perspective rebuild fails" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Perspective", "Rebuild"]}
+```csharp{title="PerspectiveRebuildFailed" description="Emitted when a perspective rebuild fails" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Perspective", "Rebuild"] unverified="perspective rebuild event record shape; not covered by this page's system-event test references"}
 public record PerspectiveRebuildFailed(
     [property: StreamId] Guid StreamId,
     string PerspectiveName,
@@ -1299,7 +1299,7 @@ These events are emitted when a perspective rewinds due to a late-arriving event
 
 Emitted when a perspective rewind begins.
 
-```csharp{title="PerspectiveRewindStarted" description="Emitted when a perspective rewind begins due to a late-arriving event" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Perspective", "Rewind"]}
+```csharp{title="PerspectiveRewindStarted" description="Emitted when a perspective rewind begins due to a late-arriving event" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Perspective", "Rewind"] unverified="perspective rewind event record shape; not covered by this page's system-event test references"}
 public record PerspectiveRewindStarted(
     [property: StreamId] Guid StreamId,
     string PerspectiveName,
@@ -1314,7 +1314,7 @@ public record PerspectiveRewindStarted(
 
 Emitted when a perspective rewind completes successfully.
 
-```csharp{title="PerspectiveRewindCompleted" description="Emitted when a perspective rewind completes successfully" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Perspective", "Rewind"]}
+```csharp{title="PerspectiveRewindCompleted" description="Emitted when a perspective rewind completes successfully" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Perspective", "Rewind"] unverified="perspective rewind event record shape; not covered by this page's system-event test references"}
 public record PerspectiveRewindCompleted(
     [property: StreamId] Guid StreamId,
     string PerspectiveName,
@@ -1330,7 +1330,7 @@ public record PerspectiveRewindCompleted(
 
 Stream-level bracket events: `StreamRewindStarted` is emitted once per stream before any per-perspective rewinds begin, and `StreamRewindCompleted` once after all of them finish.
 
-```csharp{title="StreamRewindStarted / StreamRewindCompleted" description="Stream-level events bracketing all per-perspective rewinds for a stream" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Stream", "Rewind"]}
+```csharp{title="StreamRewindStarted / StreamRewindCompleted" description="Stream-level events bracketing all per-perspective rewinds for a stream" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Stream", "Rewind"] unverified="stream-level rewind event record shapes; not covered by this page's system-event test references"}
 public record StreamRewindStarted(
     [property: StreamId] Guid StreamId,
     string[] PerspectiveNames,
@@ -1358,7 +1358,7 @@ These events track the lifecycle of database migrations. They are emitted during
 
 Emitted when an individual migration starts processing.
 
-```csharp{title="MigrationItemStarted" description="Emitted when an individual migration starts processing" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Migration"]}
+```csharp{title="MigrationItemStarted" description="Emitted when an individual migration starts processing" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Migration"] unverified="migration event record shape; not covered by this page's system-event test references"}
 public record MigrationItemStarted(
     [property: StreamId] Guid StreamId,
     string MigrationKey,
@@ -1372,7 +1372,7 @@ public record MigrationItemStarted(
 
 Emitted when an individual migration completes.
 
-```csharp{title="MigrationItemCompleted" description="Emitted when an individual migration completes" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Migration"]}
+```csharp{title="MigrationItemCompleted" description="Emitted when an individual migration completes" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Migration"] unverified="migration event record shape; not covered by this page's system-event test references"}
 public record MigrationItemCompleted(
     [property: StreamId] Guid StreamId,
     string MigrationKey,
@@ -1386,7 +1386,7 @@ public record MigrationItemCompleted(
 
 Emitted when an individual migration fails.
 
-```csharp{title="MigrationItemFailed" description="Emitted when an individual migration fails" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Migration"]}
+```csharp{title="MigrationItemFailed" description="Emitted when an individual migration fails" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Migration"] unverified="migration event record shape; not covered by this page's system-event test references"}
 public record MigrationItemFailed(
     [property: StreamId] Guid StreamId,
     string MigrationKey,
@@ -1401,7 +1401,7 @@ public record MigrationItemFailed(
 
 Emitted when the full migration batch starts (all infrastructure + perspectives).
 
-```csharp{title="MigrationBatchStarted" description="Emitted when the full migration batch starts" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Migration"]}
+```csharp{title="MigrationBatchStarted" description="Emitted when the full migration batch starts" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Migration"] unverified="migration event record shape; not covered by this page's system-event test references"}
 public record MigrationBatchStarted(
     [property: StreamId] Guid StreamId,
     string LibraryVersion,
@@ -1414,7 +1414,7 @@ public record MigrationBatchStarted(
 
 Emitted when the full migration batch completes, including per-item results.
 
-```csharp{title="MigrationBatchCompleted" description="Emitted when the full migration batch completes" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Migration"]}
+```csharp{title="MigrationBatchCompleted" description="Emitted when the full migration batch completes" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Migration"] unverified="migration event record shape; not covered by this page's system-event test references"}
 public record MigrationBatchCompleted(
     [property: StreamId] Guid StreamId,
     string LibraryVersion,

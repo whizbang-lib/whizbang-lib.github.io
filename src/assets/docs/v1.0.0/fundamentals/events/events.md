@@ -34,7 +34,7 @@ Events are the **source of truth** in event-sourced systems:
 
 ## IEvent Interface
 
-```csharp{title="IEvent Interface" description="IEvent Interface" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "IEvent", "Interface"]}
+```csharp{title="IEvent Interface" description="IEvent Interface" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "IEvent", "Interface"] unverified="marker interface with no members — nothing to assert"}
 namespace Whizbang.Core;
 
 /// <summary>
@@ -48,7 +48,7 @@ public interface IEvent : IMessage {
 
 ## EventId Value Object {#eventid}
 
-```csharp{title="EventId Value Object" description="EventId Value Object" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "EventId", "Value"]}
+```csharp{title="EventId Value Object" description="EventId Value Object" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "EventId", "Value"] unverified="EventId identity declaration — behavior would be covered by IdentityValueObjectTests, which is absent from the test map"}
 namespace Whizbang.Core.ValueObjects;
 
 /// <summary>
@@ -62,7 +62,7 @@ public readonly partial struct EventId;
 
 ### Creating EventIds
 
-```csharp{title="Creating EventIds" description="Creating EventIds" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Creating", "EventIds"]}
+```csharp{title="Creating EventIds" description="Creating EventIds" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Creating", "EventIds"] unverified="EventId factory and conversion helpers — covered by IdentityValueObjectTests, which is absent from the test map"}
 // Create new EventId (UUIDv7)
 var eventId = EventId.New();
 
@@ -98,7 +98,7 @@ public record OrderCreated : IEvent {
 
 Capture all relevant information:
 
-```csharp{title="Event with Complete State" description="Capture all relevant information:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Event", "Complete"]}
+```csharp{title="Event with Complete State" description="Capture all relevant information:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Event", "Complete"] unverified="consumer domain event illustration — nothing to assert"}
 public record ProductPriceChanged : IEvent {
   [StreamId]
   public required Guid ProductId { get; init; }
@@ -113,7 +113,7 @@ public record ProductPriceChanged : IEvent {
 
 ### Event with Nested Data
 
-```csharp{title="Event with Nested Data" description="Event with Nested Data" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Event", "Nested"]}
+```csharp{title="Event with Nested Data" description="Event with Nested Data" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Event", "Nested"] unverified="consumer domain event illustration with a nested record — nothing to assert"}
 public record OrderShipped : IEvent {
   [StreamId]
   public required Guid OrderId { get; init; }
@@ -191,7 +191,7 @@ public record AccountBalanceChanged : IEvent {
 
 ### Include Temporal Information
 
-```csharp{title="Include Temporal Information" description="Include Temporal Information" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Include", "Temporal"]}
+```csharp{title="Include Temporal Information" description="Include Temporal Information" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Include", "Temporal"] unverified="design-guidance illustration — domain events showing temporal fields, nothing to assert"}
 public record OrderCreated : IEvent {
   [StreamId]
   public required Guid OrderId { get; init; }
