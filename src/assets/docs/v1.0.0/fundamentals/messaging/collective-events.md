@@ -67,7 +67,7 @@ category-level observed event.
 
 ## When to reach for it
 
-```mermaid
+```mermaid{caption="Decision tree for choosing ICollectiveEvent vs ICompositeEvent vs staying with individual per-entity events"}
 flowchart TD
     Start["Producer wants to mutate multiple streams in one operation"]
     Q1{"Is the mutation uniform across<br/>all targeted streams?"}
@@ -211,6 +211,7 @@ framework: "NET10"
 category: "Messaging"
 difficulty: "INTERMEDIATE"
 tags: ["collective-events", "collective-event-base", "scope", "publish", "generate-stream-id"]
+unverified: "Consumer authoring illustration deriving a domain event from CollectiveEventBase and publishing it; the depicted framework stream-id minting at dispatch is not isolated by a candidate unit test."
 }
 [PinnedId("…")]
 public sealed record ArchiveJobsCollectiveEvent : CollectiveEventBase {
@@ -252,6 +253,7 @@ framework: "NET10"
 category: "Messaging"
 difficulty: "INTERMEDIATE"
 tags: ["collective-events", "collective-apply-for", "collective-spec", "set-property", "scope"]
+tests: ["CollectiveSpecContractTests.ICollectiveSpec_Setters_IsLinqExpressionTreeAsync", "CollectiveSpecContractTests.ICollectiveSetters_ConstantSetProperty_OverloadCompilesAsync"]
 }
 public sealed class JobCollectivePerspective {
   [CollectiveApplyFor]
@@ -348,6 +350,7 @@ framework: "NET10"
 category: "Messaging"
 difficulty: "ADVANCED"
 tags: ["collective-events", "collective-apply-for", "scope-handling", "where", "tenant-safety"]
+tests: ["CollectiveWhereComposerTests.Framework_WithHandlerWhere_AndsScopeAndHandlerAsync", "CollectiveWhereComposerTests.Custom_WithHandlerWhere_StillAndsScopeAsync", "CollectiveSpecContractTests.CollectiveApplyForAttribute_AcceptsExplicitScopeHandlingCustomAsync"]
 }
 // Refine WITHIN the tenant envelope — only jobs with no overlay, in the
 // event's tenant. Framework mode ANDs the scope filter and this Where:
@@ -381,6 +384,7 @@ framework: "NET10"
 category: "Messaging"
 difficulty: "ADVANCED"
 tags: ["collective-events", "collective-query", "sibling", "exists", "cohort"]
+tests: ["CollectiveDispatcherEFCoreIntegrationTests.DispatchAsync_CrossPerspectiveCohort_ScopesBySiblingTableAsync", "DapperCollectiveApplierIntegrationTests.ApplyAsync_CrossPerspectiveCohort_ScopesBySiblingTableAsync"]
 }
 [CollectiveApplyFor]                                  // Framework: tenant envelope AND this cohort
 public ICollectiveSpec<DraftJobModel> ApplyTemplate(TemplateAppliedCollectiveEvent e, ICollectiveQuery q) =>
@@ -438,6 +442,7 @@ framework: "NET10"
 category: "Messaging"
 difficulty: "BEGINNER"
 tags: ["collective-events", "tenant-scope", "collective-scope", "publish", "scope-resolver"]
+tests: ["TenantCollectiveScopeResolverTests.TenantCollectiveScope_ScopeKind_IsTenantAsync", "TenantCollectiveScopeResolverTests.TenantCollectiveScope_CarriesTenantIdAsync", "TenantCollectiveScopeResolverTests.ScopeFilter_CompiledExpression_MatchesRowsByTenantIdAsync"]
 }
 var evt = new ArchiveJobsCollectiveEvent {
   Scope = new TenantCollectiveScope("t-1"),
@@ -483,6 +488,7 @@ framework: "NET10"
 category: "Messaging"
 difficulty: "INTERMEDIATE"
 tags: ["collective-events", "event-flags", "bitmask", "routing", "schema"]
+unverified: "Reproduces the library EventFlags enum; its Collective and Composite bit values are exercised by EventFlagsTransportTests, which is not among this page's testReferences."
 }
 [Flags]
 public enum EventFlags {
@@ -520,7 +526,7 @@ A collective event is a **first-class persisted `IEvent`**
 (`ICollectiveEvent : IEvent`), so it flows through the normal
 produce → persist → project pipeline, with one branch at the apply seam.
 
-```mermaid{title="Collective-event apply pipeline from producer to projection UPDATE" description="A collective event flows through outbox, transport, and inbox; the event-store chain routes it to the fixed __collective__ sink, and the perspective worker dispatches it once through the collective dispatcher into a single scope-filtered SQL UPDATE."}
+```mermaid{title="Collective-event apply pipeline from producer to projection UPDATE" description="A collective event flows through outbox, transport, and inbox; the event-store chain routes it to the fixed __collective__ sink, and the perspective worker dispatches it once through the collective dispatcher into a single scope-filtered SQL UPDATE." caption="End-to-end collective-event pipeline: producer to outbox to transport to event store, routed to the fixed __collective__ sink and dispatched once into a single scope-filtered SQL UPDATE"}
 sequenceDiagram
   autonumber
   participant P as Producer
@@ -661,6 +667,7 @@ framework: "NET10"
 category: "Messaging"
 difficulty: "INTERMEDIATE"
 tags: ["collective-events", "dependency-injection", "ef-core", "postgres", "registration"]
+unverified: "Consumer DI-wiring illustration; the AddCollectiveEventsEFCore and AddCollectiveExecutorEFCore extension methods are not exercised by a candidate test (EFCoreServiceRegistrationGeneratorTests covers generator-emitted registration and schema, not these calls)."
 }
 services
   // entries = your assembly's generated Whizbang.Core.Generated.CollectiveApplyRegistry.Entries

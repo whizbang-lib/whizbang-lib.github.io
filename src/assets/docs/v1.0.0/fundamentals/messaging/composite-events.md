@@ -57,7 +57,7 @@ perspectives) and **never rebroadcast**.
 
 ## When to reach for it
 
-```mermaid
+```mermaid{caption="Decision guide — reach for ICompositeEvent when the producer hand-crafts a specific batch of inner events (rather than a scope-wide uniform mutation, which is ICollectiveEvent) and per-message transport overhead is the cost to amortize."}
 flowchart TD
     Start["Producer wants to emit many events in one operation"]
     Q1{"Is the mutation uniform across a whole scope<br/>(no explicit id list)?"}
@@ -150,6 +150,7 @@ framework: "NET10"
 category: "Messaging"
 difficulty: "INTERMEDIATE"
 tags: ["composite-events", "fan-out", "bulk", "inner-events", "contract"]
+tests: ["CompositeEventBaseTests.StampsStreamId_AndYieldsInnerInProducerOrderAsync", "CompositeEventBaseTests.MaxInnerEventsAllowed_DefaultsTo10K_AndIsOverridableAsync"]
 }
 public interface ICompositeEvent : IMessage {
   // Inner events this composite expands into, in producer-yielded order.
@@ -195,6 +196,7 @@ framework: "NET10"
 category: "Messaging"
 difficulty: "INTERMEDIATE"
 tags: ["composite-events", "composite-event-base", "authoring", "stream-id", "publish"]
+tests: ["CompositeEventBaseTests.StampsStreamId_AndYieldsInnerInProducerOrderAsync", "CompositeEventBaseTests.EnsureWithinCap_ThrowsWhenInnerCountExceedsCapAsync", "CompositeEventBaseTests.EnsureWithinCap_PassesWhenWithinCapAsync"]
 }
 public sealed class DraftJobBulkImportComposite : CompositeEventBase;
 
@@ -315,6 +317,7 @@ framework: "NET10"
 category: "Messaging"
 difficulty: "INTERMEDIATE"
 tags: ["composite-events", "fanout-atomicity", "atomic", "authoring"]
+tests: ["CompositeInboxFanoutTests.TryExpand_NullInner_Atomic_ReturnsFailedAsync", "CompositeInboxFanoutTests.TryExpand_NullInner_Independent_DropsBadChildAndKeepsRestAsync"]
 }
 public sealed class DraftJobBulkImportComposite : CompositeEventBase {
   public DraftJobBulkImportComposite() {
@@ -365,7 +368,7 @@ publishing service is itself a destination. Rather than make the publishing
 service wait to receive its own transported copy back, it fans the composite out
 **locally, at publish** (`Dispatcher._fanOutCompositeLocallyAtPublishAsync`):
 
-```mermaid
+```mermaid{caption="Publish-time local fan-out — the publishing service expands the composite into its own event store at publish (step 1.1) and also sends one wire copy over the outbox (step 1.2); its own transported copy loops back and is echo-discarded, so there is no double fan-out."}
 flowchart TD
     Publish["JobService: PublishAsync(DraftJobBulkImportComposite)<br/>(owned domain)"]
     Step11["1.1 expand → local-publish each inner event<br/>(DispatchModes.Local = local receptors + event store, NO transport)"]
