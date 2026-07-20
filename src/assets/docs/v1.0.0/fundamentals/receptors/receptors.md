@@ -111,7 +111,7 @@ public class LogOrderReceptor : IReceptor<OrderCreated> {
 
 Void receptors are invoked via the dispatcher using `LocalInvokeAsync` without a result type parameter:
 
-```csharp{title="Invoking Void Receptors" description="Dispatching to void receptors via LocalInvokeAsync" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Receptors", "Void", "Dispatcher"]}
+```csharp{title="Invoking Void Receptors" description="Dispatching to void receptors via LocalInvokeAsync" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Receptors", "Void", "Dispatcher"] unverified="dispatcher LocalInvokeAsync invocation snippet — the void-receptor tests call HandleAsync directly, not through the dispatcher"}
 // Generic (AOT-compatible)
 await _dispatcher.LocalInvokeAsync<UserRegistered>(message);
 
@@ -219,7 +219,7 @@ public class LogUserActionReceptor : ISyncReceptor<LogUserAction> {
 
 Sync receptors support the same auto-cascade feature as async receptors:
 
-```csharp{title="Auto-Cascade Works Identically" description="Sync receptors support the same auto-cascade feature as async receptors:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Receptors", "Auto-Cascade", "Works"]}
+```csharp{title="Auto-Cascade Works Identically" description="Sync receptors support the same auto-cascade feature as async receptors:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Receptors", "Auto-Cascade", "Works"] unverified="illustrative sync receptor demonstrating auto-cascade event publishing — the dispatcher auto-publish path is not exercised by the sync receptor unit tests"}
 public class ShipOrderReceptor : ISyncReceptor<ShipOrder, (ShipResult, OrderShipped, InventoryUpdated)> {
     public (ShipResult, OrderShipped, InventoryUpdated) Handle(ShipOrder message) {
         return (
@@ -236,7 +236,7 @@ public class ShipOrderReceptor : ISyncReceptor<ShipOrder, (ShipResult, OrderShip
 
 The Dispatcher API is unchanged - `LocalInvokeAsync` works with both sync and async receptors:
 
-```csharp{title="Invocation via Dispatcher" description="The Dispatcher API is unchanged - LocalInvokeAsync works with both sync and async receptors:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Receptors", "Invocation", "Dispatcher"]}
+```csharp{title="Invocation via Dispatcher" description="The Dispatcher API is unchanged - LocalInvokeAsync works with both sync and async receptors:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Receptors", "Invocation", "Dispatcher"] unverified="dispatcher LocalInvokeAsync invocation snippet — a dispatcher API, not covered by the receptor tests on this page"}
 // Invoking a sync receptor
 var result = await _dispatcher.LocalInvokeAsync<CreateOrder, (OrderResult, OrderCreated)>(command);
 // Internally: sync Handle() called, result wrapped in pre-completed ValueTask
@@ -552,7 +552,7 @@ public class ProcessPaymentReceptor : IReceptor<ProcessPayment, PaymentResult> {
 
 The **auto-cascade** feature automatically publishes `IEvent` instances extracted from receptor return values. This enables a cleaner pattern where receptors return tuples containing both results and events.
 
-```csharp{title="Pattern 4: Tuple Return with Auto-Cascade" description="The auto-cascade feature automatically publishes IEvent instances extracted from receptor return values." category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Receptors", "Pattern", "Tuple"]}
+```csharp{title="Pattern 4: Tuple Return with Auto-Cascade" description="The auto-cascade feature automatically publishes IEvent instances extracted from receptor return values." category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Receptors", "Pattern", "Tuple"] unverified="illustrative tuple-return receptor demonstrating dispatcher auto-cascade publishing — the auto-publish-to-perspectives path is not exercised by the receptor unit tests"}
 public record CreateOrder(Guid CustomerId, OrderLineItem[] Items);
 
 public record OrderResult(Guid OrderId);
