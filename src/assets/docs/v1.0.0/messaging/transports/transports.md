@@ -119,7 +119,7 @@ public interface ITransport {
 
 `TransportMessage` is a lightweight value type pairing a deserialized `IMessageEnvelope` with its assembly-qualified envelope type name:
 
-```csharp{title="TransportMessage" description="A deserialized transport message ready for batch processing" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Batching"]}
+```csharp{title="TransportMessage" description="A deserialized transport message ready for batch processing" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Batching"] unverified="verified by SubscribeBatchTests, which is outside the current coverage map"}
 public readonly record struct TransportMessage(
     IMessageEnvelope Envelope,
     string? EnvelopeType

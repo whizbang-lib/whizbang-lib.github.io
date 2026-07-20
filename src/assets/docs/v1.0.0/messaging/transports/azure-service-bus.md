@@ -552,7 +552,7 @@ When using wildcard routing patterns (e.g., `ns.#` or `ns1.#,ns2.#`), the transp
 
 **Example with Multiple Patterns**:
 
-```csharp{title="Routing Pattern Filters" description="Example with Multiple Patterns:" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Routing", "Pattern"]}
+```csharp{title="Routing Pattern Filters" description="Example with Multiple Patterns:" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Routing", "Pattern"] unverified="verified by SqlFilterPatternMatchingTests, which is outside the current coverage map"}
 // Subscribe to messages from multiple namespaces
 var destination = new TransportDestination(
   Address: "shared.inbox",
@@ -583,7 +583,7 @@ In a Whizbang application you rarely call the transport directly — publishing 
 
 ### Publishing Messages
 
-```csharp{title="Publishing Messages" description="Transport-level publish (normally driven by the outbox workers)" category="Configuration" difficulty="ADVANCED" tags=["Messaging", "Transports", "Publishing", "Messages"]}
+```csharp{title="Publishing Messages" description="Transport-level publish (normally driven by the outbox workers)" category="Configuration" difficulty="ADVANCED" tags=["Messaging", "Transports", "Publishing", "Messages"] tests=["AzureServiceBusTransportTests.PublishAsync_WithValidMessage_SendsToTopicAsync"]}
 using Whizbang.Core.Transports;
 
 // ITransport.PublishAsync signature:
@@ -612,7 +612,7 @@ await transport.PublishAsync(envelope, destination, cancellationToken: ct);
 
 The transport exposes **batch** subscription — `TransportConsumerWorker` uses `SubscribeBatchAsync` and feeds batches into the inbox pipeline:
 
-```csharp{title="Subscribing to Messages" description="Transport-level batch subscribe (normally driven by TransportConsumerWorker)" category="Configuration" difficulty="ADVANCED" tags=["Messaging", "Transports", "Subscribing", "Messages"]}
+```csharp{title="Subscribing to Messages" description="Transport-level batch subscribe (normally driven by TransportConsumerWorker)" category="Configuration" difficulty="ADVANCED" tags=["Messaging", "Transports", "Subscribing", "Messages"] unverified="verified by AzureServiceBusBatchSubscribeTests, which is outside the current coverage map"}
 using Whizbang.Core.Transports;
 
 await transport.InitializeAsync(stoppingToken);
@@ -649,7 +649,7 @@ subscription.Dispose();
 
 **Without Aspire** - Manual filter provisioning:
 
-```csharp{title="Correlation Filters (Production)" description="Without Aspire - Manual filter provisioning:" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Correlation", "Filters"]}
+```csharp{title="Correlation Filters (Production)" description="Without Aspire - Manual filter provisioning:" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Correlation", "Filters"] unverified="verified by AzureServiceBusProvisioningPathTests, which is outside the current coverage map"}
 // Destination metadata triggers automatic filter provisioning
 var destination = new TransportDestination(
   Address: "whizbang-events",
@@ -680,7 +680,7 @@ var subscription = topic.AddSubscription("inventory-service")
 
 The Azure Service Bus transport declares these capabilities:
 
-```csharp{title="Transport Capabilities" description="The Azure Service Bus transport declares these capabilities:" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Transport", "Capabilities"]}
+```csharp{title="Transport Capabilities" description="The Azure Service Bus transport declares these capabilities:" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Transport", "Capabilities"] tests=["AzureServiceBusTransportTests.Capabilities_DefaultOptions_IncludesOrderedAsync", "AzureServiceBusTransportTests.Capabilities_WithEnableSessions_ReturnsOrderedAsync"]}
 TransportCapabilities.PublishSubscribe |   // ✅ Pub/sub via topics
 TransportCapabilities.Reliable |           // ✅ At-least-once delivery
 TransportCapabilities.BulkPublish |        // ✅ Batched sends
@@ -700,7 +700,7 @@ TransportCapabilities.BulkPublish |        // ✅ Batched sends
 
 Azure Service Bus transport uses `JsonContextRegistry` for AOT-compatible serialization:
 
-```csharp{title="JsonContextRegistry Integration" description="Azure Service Bus transport uses JsonContextRegistry for AOT-compatible serialization:" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "JsonContextRegistry", "Integration"]}
+```csharp{title="JsonContextRegistry Integration" description="Azure Service Bus transport uses JsonContextRegistry for AOT-compatible serialization:" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "JsonContextRegistry", "Integration"] unverified="internal serialization detail — not directly exercised by a test"}
 // Publishing (serialize envelope)
 var envelopeType = envelope.GetType();
 var typeInfo = _jsonOptions.GetTypeInfo(envelopeType)
@@ -714,7 +714,7 @@ message.ApplicationProperties["EnvelopeType"] = envelopeType.AssemblyQualifiedNa
 
 **Subscribing (deserialize envelope)**:
 
-```csharp{title="JsonContextRegistry Integration (2)" description="Subscribing (deserialize envelope):" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "JsonContextRegistry", "Integration"]}
+```csharp{title="JsonContextRegistry Integration (2)" description="Subscribing (deserialize envelope):" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "JsonContextRegistry", "Integration"] unverified="internal serialization detail — not directly exercised by a test"}
 // Get envelope type from metadata
 var envelopeTypeName = message.ApplicationProperties["EnvelopeType"] as string;
 var envelopeType = Type.GetType(envelopeTypeName);
@@ -737,7 +737,7 @@ var envelope = JsonSerializer.Deserialize(json, typeInfo) as IMessageEnvelope;
 
 Whizbang detects the emulator automatically:
 
-```csharp{title="Aspire Service Bus Emulator" description="Whizbang detects the emulator automatically:" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Aspire", "Service"]}
+```csharp{title="Aspire Service Bus Emulator" description="Whizbang detects the emulator automatically:" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Aspire", "Service"] unverified="internal emulator-detection logic — not directly exercised by a test"}
 // Detection logic (from the connection string's endpoint)
 _isEmulator = endpoint.Contains("localhost", StringComparison.OrdinalIgnoreCase) ||
               endpoint.Contains("127.0.0.1");
@@ -754,7 +754,7 @@ _isEmulator = endpoint.Contains("localhost", StringComparison.OrdinalIgnoreCase)
 
 **Example**:
 
-```csharp{title="Aspire Service Bus Emulator (2)" description="Aspire Service Bus Emulator" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Aspire", "Service"]}
+```csharp{title="Aspire Service Bus Emulator (2)" description="Aspire Service Bus Emulator" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Aspire", "Service"] unverified="Azure Service Bus / Aspire wiring — not exercised by a test"}
 // AppHost
 var serviceBus = builder.AddAzureServiceBus("messaging")
   .RunAsEmulator();  // Starts container with emulator
@@ -770,7 +770,7 @@ await transport.InitializeAsync();  // Skips admin verification for emulator
 
 ### Automatic Retry with Abandon
 
-```csharp{title="Automatic Retry with Abandon" description="Automatic Retry with Abandon" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Automatic", "Retry"]}
+```csharp{title="Automatic Retry with Abandon" description="Automatic Retry with Abandon" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Automatic", "Retry"] unverified="raw Azure Service Bus SDK processing loop — not exercised by a test"}
 try {
   // Invoke handler
   await handler(envelope, ct);
@@ -852,7 +852,7 @@ var processorOptions = new ServiceBusProcessorOptions {
 
 Azure Service Bus transport emits OpenTelemetry spans:
 
-```csharp{title="OpenTelemetry Integration" description="Azure Service Bus transport emits OpenTelemetry spans:" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "OpenTelemetry", "Integration"]}
+```csharp{title="OpenTelemetry Integration" description="Azure Service Bus transport emits OpenTelemetry spans:" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "OpenTelemetry", "Integration"] unverified="internal OpenTelemetry instrumentation — not directly exercised by a test"}
 using var activity = WhizbangActivitySource.Transport.StartActivity("PublishAsync");
 
 activity?.SetTag("transport.type", "AzureServiceBus");
@@ -879,7 +879,7 @@ app.MapHealthChecks("/health");
 ```
 
 **Health Check Logic**:
-```csharp{title="Health Checks (2)" description="Health Check Logic:" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Health", "Checks"]}
+```csharp{title="Health Checks (2)" description="Health Check Logic:" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Health", "Checks"] unverified="illustrative — diverges from the shipped AzureServiceBusHealthCheck; not exercised by a test"}
 public async Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context, CancellationToken ct) {
   if (!_transport.IsInitialized) {
     return HealthCheckResult.Unhealthy("Transport not initialized");
@@ -922,7 +922,7 @@ options.MaxConcurrentCalls = 20;  // Process 20 messages in parallel
 
 The transport implements bulk publish (`TransportCapabilities.BulkPublish`): messages destined for the same topic are packed into `ServiceBusMessageBatch` chunks and sent with one network call per batch:
 
-```csharp{title="Batching" description="Bulk publish packs messages into ServiceBusMessageBatch chunks" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Batching", "Future"]}
+```csharp{title="Batching" description="Bulk publish packs messages into ServiceBusMessageBatch chunks" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Batching", "Future"] unverified="verified by AzureServiceBusTransportBatchPipelineTests, which is outside the current coverage map"}
 // Inside the bulk publish path (simplified):
 var currentBatch = await sender.CreateMessageBatchAsync(ct);
 // ... TryAddMessage until full, then:
@@ -991,7 +991,7 @@ services.AddWhizbang()
 
 **Solution**:
 
-```csharp{title="Problem: Messages Not Reaching Subscriber" description="Problem: Messages Not Reaching Subscriber" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Problem:", "Messages"]}
+```csharp{title="Problem: Messages Not Reaching Subscriber" description="Problem: Messages Not Reaching Subscriber" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Problem:", "Messages"] unverified="troubleshooting guidance — no asserted behavior"}
 // Verify destination property matches filter
 var destination = new TransportDestination(
   Address: "whizbang-events",
@@ -1037,7 +1037,7 @@ if (typeInfo == null) {
 
 **Solution**:
 
-```csharp{title="Problem: Transport Initialization Fails" description="Problem: Transport Initialization Fails" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Problem:", "Transport"]}
+```csharp{title="Problem: Transport Initialization Fails" description="Problem: Transport Initialization Fails" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Problem:", "Transport"] unverified="failure-path troubleshooting — InitializeAsync exception path not exercised by a test"}
 try {
   await transport.InitializeAsync();
 } catch (InvalidOperationException ex) {
