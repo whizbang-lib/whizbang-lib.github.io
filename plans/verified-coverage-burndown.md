@@ -23,12 +23,16 @@ node src/scripts/coverage-report.mjs --gaps     # only pages with remaining gaps
 - **160 Mermaid diagrams** — 1 migrated to `{caption + tests}`.
 
 ## Progress (updated 2026-07-20)
-- **C# coverage: 1,954 / 2,682 = 73%** (1,042 verified · 912 excused · 728 gap).
-- **Mermaid: 60 / 160** carry `caption + tests`.
-- Sections fully swept this cycle (verified + excused, honest gaps recorded): `operations/*`
-  (infrastructure, diagnostics, observability, workers, configuration, deployment, dead-letter-queue*),
-  `apis/graphql`, `extending/attributes`, `fundamentals/lifecycle`, `learn/tutorial`. See the git log
-  (`docs(coverage): annotate …`) for per-section commits.
+- **C# coverage: 2,207 / 2,682 = 82%** (1,157 verified · 1,050 excused · 475 gap).
+- **Mermaid: 62 / 160** carry `caption + tests`.
+- Sections fully swept (verified + excused, honest gaps recorded): `operations/*`
+  (infrastructure, diagnostics, observability, workers, configuration, testing, deployment,
+  dead-letter-queue*), `apis/*` (graphql, rest, mutations, signalr), `extending/*` (attributes,
+  features, internals), `fundamentals/*` (lifecycle, persistence, messaging), `getting-started`,
+  `learn/tutorial`, `learn/examples`. Remaining gap concentrates in the partially-done
+  `fundamentals/*` (perspectives, lenses, events, receptors, security, messages, identity,
+  dispatcher) and `extending/source-generators`, plus a few small unstarted sections
+  (see table). See the git log (`docs(coverage): annotate …`) for per-section commits.
 
 ### Recurring ceiling — regenerate `code-tests-map.json`
 The dominant blocker on green ratio is the **staleness of `src/assets/code-tests-map.json`**. Many real,
@@ -69,28 +73,22 @@ is the partially-done `fundamentals/*` sections started by earlier sessions.
 |---|--:|--:|--:|---|
 | fundamentals/perspectives | 22 | 256 | 71 | partial |
 | fundamentals/lenses | 8 | 106 | 44 | partial |
-| learn/examples | 4 | 38 | 38 | **todo — unstarted** |
 | extending/source-generators | 10 | 140 | 38 | partial |
-| getting-started | 4 | 35 | 35 | **todo — unstarted** |
 | fundamentals/events | 8 | 109 | 35 | partial |
-| operations/testing | 2 | 34 | 34 | **todo — unstarted** |
 | fundamentals/receptors | 3 | 71 | 34 | partial |
-| apis/rest | 3 | 33 | 33 | **todo — unstarted** |
 | fundamentals/security | 9 | 165 | 31 | partial |
-| fundamentals/persistence | 3 | 30 | 30 | **todo — unstarted** |
 | fundamentals/messages | 9 | 117 | 30 | partial |
-| apis/mutations | 2 | 28 | 28 | **todo — unstarted** |
 | fundamentals/identity | 7 | 143 | 22 | partial |
 | fundamentals/dispatcher | 7 | 162 | 22 | partial (model page done) |
 | messaging | 11 | 82 | 19 | partial |
-| extending/features | 2 | 18 | 18 | **todo — unstarted** |
 | messaging/transports | 6 | 94 | 17 | partial |
-| apis/signalr | 2 | 17 | 17 | **todo — unstarted** |
+| operations/diagnostics | 15 | 71 | 16 | swept — honest residue |
 | data | 13 | 147 | 14 | partial |
-| fundamentals/messaging | 3 | 13 | 13 | **todo — unstarted** |
-| extending/internals | 2 | 13 | 13 | **todo — unstarted** |
-| fundamentals/sagas | 2 | 12 | 12 | partial |
-| _(swept sections, small residue)_ | … | … | ≤11 | operations/*, apis/graphql, extending/attributes, fundamentals/lifecycle, learn/tutorial, migration-guide, extending/extensibility |
+| fundamentals/sagas | 2 | 12 | 12 | **todo — unstarted** |
+| operations/dead-letter-queue | 5 | 11 | 11 | **todo — unstarted** |
+| fundamentals/offloads | 3 | 7 | 7 | **todo — unstarted** |
+| fundamentals/workers | 2 | 5 | 5 | **todo — unstarted** |
+| _(swept sections, small honest residue ≤8)_ | … | … | ≤8 | apis/* (rest, graphql, mutations, signalr), operations/* (configuration, workers, infrastructure, observability, testing, deployment), extending/* (attributes, features, internals, extensibility), fundamentals/* (persistence, messaging, lifecycle), learn/* (tutorial, examples), getting-started, migration-guide |
 
 ## Rollout of enforcement
 `validate-frontmatter.mjs` already hard-fails on Mermaid diagrams missing `caption`/`tests`
