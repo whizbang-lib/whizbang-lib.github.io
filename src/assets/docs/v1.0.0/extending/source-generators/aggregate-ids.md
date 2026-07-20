@@ -271,7 +271,7 @@ public record OrderCancelled(string Reason) : OrderEventBase;
 2. The type is not public (generated code skips non-public types)
 
 **Solution**:
-```csharp{title="Problem: No extractor found" description="Add [StreamId] on a public type" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Problem:", "Extractor"]}
+```csharp{title="Problem: No extractor found" description="Add [StreamId] on a public type" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Problem:", "Extractor"] unverified="Troubleshooting fix illustration; the record-parameter ICommand form is not exercised by StreamIdGeneratorTests, which cover property-form IEvent discovery"}
 public record CreateOrder(
     [property: StreamId] Guid OrderId,  // Add attribute
     Guid CustomerId
