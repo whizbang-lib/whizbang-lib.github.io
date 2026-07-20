@@ -44,7 +44,7 @@ The bare event-sourcing primitives (`PublishAsync`, perspective projection) are 
 
 ## One-line consumer surface
 
-```csharp{title="Declare a saga"}
+```csharp{title="Declare a saga" unverified="consumer-authored saga declaration; the generated events + Service are exercised by SagaGeneratorSmokeTests, which is outside the current coverage map"}
 using Whizbang.Sagas;
 
 namespace AcmeCorp.Sagas;
@@ -65,7 +65,7 @@ That's it. The `[Saga<T>("Name")]` source generator emits, into a sibling `.g.cs
 
 **Consumer usage:**
 
-```csharp{title="Consume the generated service"}
+```csharp{title="Consume the generated service" unverified="illustrative consumer receptor and DI wiring; the BaseSagaService lifecycle calls it shows are covered by BaseSagaServiceTests, but this fence is user-domain code"}
 public class BulkOrderImportReceptor(BulkOrderImportSaga.Service saga) : IReceptor<StartBulkOrderImport> {
   public async ValueTask HandleAsync(StartBulkOrderImport cmd, CancellationToken ct) {
     var context = new SagaContext(SagaId: cmd.OperationId, EntityId: cmd.TenantId);
@@ -94,7 +94,7 @@ Per-item events (`ItemStartedEvent`, `ItemCompletedEvent`, `ItemFailedEvent`) ri
 
 `SagaItemStreams` uses an RFC 4122 v5 UUID (SHA-1 over `{namespace_bytes || utf8("{sagaId:D}/{itemIdentifier}")}`). The default namespace is `acb2e0cf-92d5-4f1b-8c5e-2d7f4a5e8b3a`. Override at startup for consumers migrating from a pre-Whizbang scheme:
 
-```csharp{title="Migration override"}
+```csharp{title="Migration override" unverified="DI-wiring; the per-item-stream namespace override behavior is covered by SagaItemStreamsTests, but this fence is options wiring"}
 services.AddWhizbangSagas(opts =>
   opts.PerItemStreamNamespace = Guid.Parse("0b36f8d4-3884-4c3c-b92b-fc6ec74775ea"));
 ```
@@ -124,6 +124,7 @@ framework: "NET10"
 category: "Sagas"
 difficulty: "INTERMEDIATE"
 tags: ["sagas", "dashboard", "live-progress", "resolvers", "graphql"]
+tests: ["SagaLiveProgressResolversTests.ResolveProcessedCount_Running_ReadsFromRepoAggregateAsync", "SagaLiveProgressResolversTests.ResolveProcessedCount_Terminal_ReturnsStoredAndDoesNotCallRepoAsync"]
 }
 // In a HotChocolate / projection-side resolver:
 public Task<int> GetProcessedCountAsync(
@@ -158,14 +159,14 @@ Add to your OpenTelemetry exporter wiring alongside `Whizbang.Dispatcher`.
 
 ## Customization
 
-```csharp{title="Skip hooks"}
+```csharp{title="Skip hooks" unverified="consumer-authored saga declaration; the generator's hook-omission behavior is exercised by SagaGeneratorSmokeTests, which is outside the current coverage map"}
 [Saga<AcmeEventBase>("BulkOrderImport", IncludeHooks = false)]
 public partial class BulkOrderImportSaga;
 // Generator omits HookStartedEvent + HookCompletedEvent, stubs the
 // Service's BuildHook*Event overrides to throw InvalidOperationException.
 ```
 
-```csharp{title="Custom Service class"}
+```csharp{title="Custom Service class" unverified="consumer-authored custom Service subclass — illustrative override, not framework code under test"}
 [Saga<AcmeEventBase>("BulkOrderImport", GenerateService = false)]
 public partial class BulkOrderImportSaga {
   public sealed class Service(ISagaEventEmitter emitter, ILogger<Service> log) :
@@ -180,7 +181,7 @@ public partial class BulkOrderImportSaga {
 }
 ```
 
-```csharp{title="Extra per-event payload via partial class"}
+```csharp{title="Extra per-event payload via partial class" unverified="consumer-authored partial-class payload extension — illustrative, not a behavior under test"}
 [Saga<AcmeEventBase>("BulkOrderImport")]
 public partial class BulkOrderImportSaga {
   // Consumer extends the generated CompletedEvent with domain payload:
@@ -197,7 +198,7 @@ public partial class BulkOrderImportSaga {
 
 The item-identifier mechanism already supports nesting. A parent saga's `ItemIdentifier` is a child saga's id; when the child completes, a cross-saga receptor marks the parent's item terminal via `UpdateItemAsync` / `FailItemAsync`:
 
-```csharp{title="Parent observes children"}
+```csharp{title="Parent observes children" unverified="consumer-authored nested-saga pattern illustration; the UpdateItemAsync / FailItemAsync calls it uses are covered by BaseSagaServiceTests, but this receptor is user-domain code"}
 public class ChildSagaCompletedReceptor(ParentSaga.Service parent) :
     IReceptor<ChildSaga.CompletedEvent> {
   public async ValueTask HandleAsync(ChildSaga.CompletedEvent e, CancellationToken ct) {
@@ -229,6 +230,7 @@ framework: "NET10"
 category: "Sagas"
 difficulty: "ADVANCED"
 tags: ["sagas", "compensation", "saga-orchestration", "events", "audit"]
+unverified: "consumer-authored compensation event; the framework ships the ISagaCompensatingEvent marker only and does not execute compensation — no behavior under test"
 }
 public class RefundPaymentEvent : AcmeEventBase, ISagaCompensatingEvent {
   public Guid CompensatingForSagaId { get; set; }
@@ -241,7 +243,7 @@ public class RefundPaymentEvent : AcmeEventBase, ISagaCompensatingEvent {
 
 Long-running setup or teardown work (warm a cache, write a manifest, send a notification) sits alongside items as first-class "hook" entries on the saga projection:
 
-```csharp{title="Run a hook"}
+```csharp{title="Run a hook" unverified="consumer usage of TryRunHookAsync; no in-map service-level hook-run test (SagaHookApplyHelperTests covers only the Apply-side hook helpers)"}
 await saga.TryRunHookAsync(
   ctx, sagaProjection: maybeLoadedProjection,
   hookName: "warm-cache", displayName: "Warm response cache",

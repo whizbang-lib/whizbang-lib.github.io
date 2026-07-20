@@ -53,6 +53,7 @@ framework: "NET10"
 category: "Offloads"
 difficulty: "INTERMEDIATE"
 tags: ["body-offload", "claim-check", "azure-blob", "dependency-injection", "size-threshold", "post-serialize-hook"]
+unverified: "end-to-end DI wire-up — composes transport, Azure Blob offload, and hook registration across packages; no single behavior under test"
 }
 services.AddWhizbangRabbitMQ(opts => { /* … */ });   // or AddWhizbangAzureServiceBus
 
@@ -83,6 +84,7 @@ framework: "NET10"
 category: "Offloads"
 difficulty: "ADVANCED"
 tags: ["post-serialize-hook", "body-offload", "claim-check", "hook-chain", "extensibility"]
+unverified: "interface declaration — no behavior to assert; the ordered hook chain that runs these is exercised by PostSerializeHookChainTests"
 }
 public interface IPostSerializeHook {
   /// Lower runs first. Conventions:

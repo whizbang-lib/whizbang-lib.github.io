@@ -137,6 +137,7 @@ framework: "NET10"
 category: "Dead Letter Queue"
 difficulty: "BEGINNER"
 tags: ["dead-letter", "perspective-events", "MaxPerspectiveEventAttempts", "configuration"]
+unverified: "verified by PerspectiveWorkerDeadLetterFilterTests, which is outside the current coverage map"
 }
 services.Configure<PerspectiveWorkerOptions>(o => o.MaxPerspectiveEventAttempts = null);
 ```
