@@ -149,7 +149,7 @@ public class EventStore {
 
 ### Deserializing from Storage
 
-```csharp{title="Deserializing from Storage" description="Deserializing from Storage" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Deserializing", "Storage"]}
+```csharp{title="Deserializing from Storage" description="Deserializing from Storage" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Deserializing", "Storage"] unverified="illustrative example — hand-written EventStore.LoadMessageAsync; the successful DeserializeMessage path has no happy-path test, only error-case tests"}
 public async Task<object> LoadMessageAsync(Guid messageId) {
   var row = await _db.QuerySingleAsync<EventRow>(
       "SELECT * FROM events WHERE message_id = @MessageId",

@@ -33,7 +33,7 @@ When a service starts, it **reconciles** its message associations with the datab
 
 ## MessageAssociationRecord {#messageassociationrecord}
 
-```csharp{title="MessageAssociationRecord" description="MessageAssociationRecord" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Messages", "MessageAssociationRecord", "Messageassociationrecord"]}
+```csharp{title="MessageAssociationRecord" description="MessageAssociationRecord" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Messages", "MessageAssociationRecord", "Messageassociationrecord"] unverified="verified by RecordTypesConstructionTests.MessageAssociationRecord_FullInitialization_ExposesAllFieldsAsync, which is outside the current coverage map"}
 namespace Whizbang.Core.Messaging;
 
 /// <summary>
@@ -81,7 +81,7 @@ public sealed class MessageAssociationRecord {
 
 ## MessageAssociationsSchema {#messageassociationsschema}
 
-```csharp{title="MessageAssociationsSchema" description="MessageAssociationsSchema" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Messages", "MessageAssociationsSchema", "Messageassociationsschema"]}
+```csharp{title="MessageAssociationsSchema" description="MessageAssociationsSchema" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Messages", "MessageAssociationsSchema", "Messageassociationsschema"] unverified="verified by MessageAssociationRegistryTests schema and unique-constraint tests, which is outside the current coverage map"}
 namespace Whizbang.Data.Schema.Schemas;
 
 /// <summary>
