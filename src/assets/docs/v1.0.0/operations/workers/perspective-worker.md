@@ -62,7 +62,7 @@ Earlier versions described a poll-driven "4-phase checkpoint system" (`auto_crea
 
 ## The Perspective Work Pipeline
 
-```mermaid
+```mermaid{caption="Perspective work pipeline — events land in wh_perspective_events and NOTIFY the ClaimWorker, which leases rows and pushes stream ids to the drain channel; the PerspectiveWorker sliding-window batches, fetches pending events, dedups, and applies them, then the flush worker completes rows and advances cursors."}
 sequenceDiagram
     participant ES as Event Store
     participant PE as wh_perspective_events
@@ -109,7 +109,7 @@ sequenceDiagram
 
 The consumer loop blocks on four wake sources simultaneously: the work channel, the drain channel, the perspective NOTIFY signal, and an idle timeout.
 
-```csharp{title="Wake Semantics" description="Channel consumer loop wake sources" category="Implementation" difficulty="ADVANCED" tags=["Operations", "Workers", "Wake", "NOTIFY"]}
+```csharp{title="Wake Semantics" description="Channel consumer loop wake sources" category="Implementation" difficulty="ADVANCED" tags=["Operations", "Workers", "Wake", "NOTIFY"] unverified="verified by PerspectiveWorkerChannelModeTests, which is outside the current coverage map"}
 // When the NOTIFY listener is wired, use the relaxed cadence
 // (safety-net only); otherwise fall back to the legacy tight cadence so a
 // NOTIFY outage doesn't introduce latency.
@@ -168,7 +168,7 @@ The PerspectiveWorker establishes security context before invoking lifecycle rec
 
 Before each perspective event is processed, `_establishSecurityContextAsync` runs:
 
-```csharp{title="How Security Context is Established" description="PerspectiveWorker._establishSecurityContextAsync" category="Implementation" difficulty="ADVANCED" tags=["Operations", "Workers", "Security", "Context"]}
+```csharp{title="How Security Context is Established" description="PerspectiveWorker._establishSecurityContextAsync" category="Implementation" difficulty="ADVANCED" tags=["Operations", "Workers", "Security", "Context"] unverified="verified by PerspectiveWorkerSecurityContextTests, which is outside the current coverage map"}
 private static async ValueTask _establishSecurityContextAsync(
     IMessageEnvelope envelope,
     IServiceProvider scopedProvider,
@@ -235,7 +235,7 @@ This ensures perspectives work in environments without security infrastructure (
 
 ### Per-Envelope Context
 
-```mermaid
+```mermaid{caption="Per-envelope security context — each envelope re-establishes its own UserId before its lifecycle stage runs, so envelope 1 (user-a) and envelope 2 (user-b) never share context within a batch."}
 sequenceDiagram
     participant PW as PerspectiveWorker
     participant SC as SecurityContext
@@ -279,7 +279,7 @@ Work distribution across instances is lease-based, but leases live on the **ephe
 
 **PerspectiveWorkerOptions** (defaults from source):
 
-```csharp{title="Configuration" description="PerspectiveWorkerOptions with shipped defaults" category="Implementation" difficulty="ADVANCED" tags=["Operations", "Workers", "Configuration"]}
+```csharp{title="Configuration" description="PerspectiveWorkerOptions with shipped defaults" category="Implementation" difficulty="ADVANCED" tags=["Operations", "Workers", "Configuration"] unverified="worker config/DI wiring — not exercised by a test"}
 public class PerspectiveWorkerOptions {
   /// Base wake cadence when no NOTIFY listener is available. Default: 1000 (1 second).
   public int PollingIntervalMilliseconds { get; set; } = 1000;
@@ -344,7 +344,7 @@ public class PerspectiveWorkerOptions {
 ```
 
 **Configuration Example**:
-```csharp{title="Configuration (2)" description="Configuration Example:" category="Implementation" difficulty="BEGINNER" tags=["Operations", "Workers", "Configuration"]}
+```csharp{title="Configuration (2)" description="Configuration Example:" category="Implementation" difficulty="BEGINNER" tags=["Operations", "Workers", "Configuration"] unverified="worker config/DI wiring — not exercised by a test"}
 // Program.cs
 builder.Services.Configure<PerspectiveWorkerOptions>(options => {
   options.LeaseSeconds = 600;             // 10-minute leases (longer processing time)
@@ -369,7 +369,7 @@ The PerspectiveWorker uses a **completion strategy** to control when cursor comp
 ### Strategy Interface
 
 **IPerspectiveCompletionStrategy**:
-```csharp{title="Strategy Interface" description="IPerspectiveCompletionStrategy:" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Strategy", "Interface"]}
+```csharp{title="Strategy Interface" description="IPerspectiveCompletionStrategy:" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Strategy", "Interface"] tests=["PerspectiveCompletionStrategyTests.BatchedStrategy_AcknowledgementFlow_RemovesAcknowledgedItems_Async", "PerspectiveCompletionStrategyTests.BatchedStrategy_GetPendingCompletions_ReturnsCollectedCompletions_Async", "PerspectiveCompletionStrategyTests.BatchedStrategy_GetPendingFailures_ReturnsCollectedFailures_Async"]}
 public interface IPerspectiveCompletionStrategy {
   /// Reports a perspective cursor completion.
   Task ReportCompletionAsync(
@@ -414,7 +414,7 @@ Note the send/acknowledge split: items are tracked through **pending → sent �
 
 **Purpose**: Collects completions in memory and reports them on the **next cycle**.
 
-```mermaid
+```mermaid{caption="Batched completion flow — cycle N stores completions in memory without calling the coordinator; cycle N+1 drains GetPendingCompletions, flushes them in one round-trip, then MarkAsAcknowledged clears them." tests=["PerspectiveCompletionStrategyTests.BatchedStrategy_ReportCompletionAsync_DoesNotCallCoordinatorImmediately_Async", "PerspectiveCompletionStrategyTests.BatchedStrategy_GetPendingCompletions_ReturnsCollectedCompletions_Async", "PerspectiveCompletionStrategyTests.BatchedStrategy_AcknowledgementFlow_RemovesAcknowledgedItems_Async"]}
 sequenceDiagram
     participant PW as PerspectiveWorker
     participant S as BatchedStrategy
@@ -449,7 +449,7 @@ sequenceDiagram
 - ✅ **Low latency requirements** - results visible immediately
 
 **Example**:
-```csharp{title="InstantCompletionStrategy" description="Injecting the instant strategy" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "InstantCompletionStrategy"]}
+```csharp{title="InstantCompletionStrategy" description="Injecting the instant strategy" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "InstantCompletionStrategy"] tests=["PerspectiveWorkerStrategyTests.PerspectiveWorker_WithInstantStrategy_ReportsImmediately_Async"]}
 // Register before AddWhizbang so the worker picks it up from DI
 builder.Services.AddSingleton<IPerspectiveCompletionStrategy, InstantCompletionStrategy>();
 ```
@@ -460,7 +460,7 @@ builder.Services.AddSingleton<IPerspectiveCompletionStrategy, InstantCompletionS
 
 `InstantCompletionStrategy` uses lightweight out-of-band methods on `IWorkCoordinator`:
 
-```csharp{title="Out-of-Band Reporting Methods" description="ReportPerspectiveCompletionAsync / ReportPerspectiveFailureAsync" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Out-of-Band", "Reporting"]}
+```csharp{title="Out-of-Band Reporting Methods" description="ReportPerspectiveCompletionAsync / ReportPerspectiveFailureAsync" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Out-of-Band", "Reporting"] tests=["PerspectiveCompletionStrategyTests.InstantStrategy_ReportCompletionAsync_CallsCoordinatorImmediately_Async", "PerspectiveCompletionStrategyTests.InstantStrategy_ReportFailureAsync_CallsCoordinatorImmediately_Async"]}
 // Lightweight: ONLY updates the perspective cursor — no heartbeats, no work claiming.
 // Calls the complete_perspective_cursor_work SQL function directly.
 await coordinator.ReportPerspectiveCompletionAsync(
@@ -515,7 +515,7 @@ Without deduplication, the runner would call Apply a second time for events that
 
 The cache operates in two phases:
 
-```mermaid
+```mermaid{caption="ProcessedEventCache two-phase TTL — entries enter InFlight (never expiring) after Apply, move to Retained with a lease-aligned countdown once the DB acknowledges via ActivateRetention, and are Evicted only after the TTL lapses." tests=["ProcessedEventCacheTests.InFlight_NeverExpires_UntilActivatedAsync", "ProcessedEventCacheTests.ActivateRetention_StartsCountdownAsync", "ProcessedEventCacheTests.EvictExpired_RemovesOnlyRetainedPastTtlAsync"]}
 stateDiagram-v2
     direction LR
     InFlight: InFlight (no expiry)
@@ -534,7 +534,7 @@ stateDiagram-v2
 
 Event deduplication is **automatic** — it uses the existing `LeaseSeconds` option (default: 300 seconds / 5 minutes) as the retention period.
 
-```csharp{title="Event Deduplication Configuration" description="Configuring event deduplication retention period" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Workers", "Deduplication"]}
+```csharp{title="Event Deduplication Configuration" description="Configuring event deduplication retention period" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Workers", "Deduplication"] unverified="worker config/DI wiring — not exercised by a test"}
 builder.Services.Configure<PerspectiveWorkerOptions>(options => {
   options.LeaseSeconds = 300;  // Dedup retention aligns to lease duration (default: 5 min)
 });
@@ -544,7 +544,7 @@ builder.Services.Configure<PerspectiveWorkerOptions>(options => {
 
 Register an `IProcessedEventCacheObserver` for debugging, metrics, or test assertions:
 
-```csharp{title="Dedup Observer" description="Implementing IProcessedEventCacheObserver for debugging" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Deduplication", "Observer"]}
+```csharp{title="Dedup Observer" description="Implementing IProcessedEventCacheObserver for debugging" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Deduplication", "Observer"] tests=["ProcessedEventCacheTests.Observer_OnEventsMarkedInFlight_CalledAsync", "ProcessedEventCacheTests.Observer_OnRetentionActivated_CalledAsync", "ProcessedEventCacheTests.Observer_OnEvicted_CalledAsync", "ProcessedEventCacheTests.Observer_OnEventsRemoved_CalledAsync"]}
 public class MetricsDedupObserver : IProcessedEventCacheObserver {
   public void OnEventsDeduped(IReadOnlyList<Guid> dedupedEventIds, string perspectiveName, Guid streamId) {
     // Log or emit metrics when events are skipped as duplicates
@@ -699,7 +699,7 @@ ORDER BY last_heartbeat_at DESC;
 4. Channel dependencies missing (worker throws `InvalidOperationException` on startup)
 
 **Solution**:
-```csharp{title="Problem: Perspectives Not Materializing" description="Checklist" category="Implementation" difficulty="BEGINNER" tags=["Operations", "Workers", "Problem:", "Checkpoints"]}
+```csharp{title="Problem: Perspectives Not Materializing" description="Checklist" category="Implementation" difficulty="BEGINNER" tags=["Operations", "Workers", "Problem:", "Checkpoints"] unverified="worker config/DI wiring — not exercised by a test"}
 // 1. Use AddWhizbang() — registers ClaimWorker, PerspectiveWorker, flush workers, channels
 builder.Services.AddWhizbang(/* ... */);
 
@@ -725,7 +725,7 @@ The built-in `ProcessedEventCache` automatically prevents duplicate `Apply` call
 
 If duplicates persist, check:
 
-```csharp{title="Problem: Duplicate Processing" description="Demonstrates problem: Duplicate Processing" category="Implementation" difficulty="BEGINNER" tags=["Operations", "Workers", "Problem:", "Duplicate"]}
+```csharp{title="Problem: Duplicate Processing" description="Demonstrates problem: Duplicate Processing" category="Implementation" difficulty="BEGINNER" tags=["Operations", "Workers", "Problem:", "Duplicate"] unverified="worker config/DI wiring — not exercised by a test"}
 // 1. Register a dedup observer to confirm dedup is working
 builder.Services.AddSingleton<IProcessedEventCacheObserver, MetricsDedupObserver>();
 
@@ -784,7 +784,7 @@ Fix the underlying issue; remaining rows retry automatically. Rows that exceeded
 3. Only one service claims and processes work
 
 **Diagnostic Steps**:
-```csharp{title="Problem: Only One Service Processing Work (Multi-Service" description="Diagnostic Steps:" category="Implementation" difficulty="BEGINNER" tags=["Operations", "Workers", "Problem:", "Only"]}
+```csharp{title="Problem: Only One Service Processing Work (Multi-Service" description="Diagnostic Steps:" category="Implementation" difficulty="BEGINNER" tags=["Operations", "Workers", "Problem:", "Only"] unverified="worker config/DI wiring — not exercised by a test"}
 // Enable diagnostic logging to check instance IDs
 builder.Logging.SetMinimumLevel(LogLevel.Debug);
 
@@ -794,7 +794,7 @@ builder.Logging.SetMinimumLevel(LogLevel.Debug);
 ```
 
 **Solution**:
-```csharp{title="Problem: Only One Service Processing Work (Multi-Service" description="Problem: Only One Service Processing Work (Multi-Service" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Problem:", "Only"]}
+```csharp{title="Problem: Only One Service Processing Work (Multi-Service" description="Problem: Only One Service Processing Work (Multi-Service" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Problem:", "Only"] unverified="counter-example — shared-instance-ID collision (WRONG) contrasted with unique per-service instance IDs (CORRECT)"}
 // WRONG: Shared instance ID (causes collision)
 private readonly Guid _sharedInstanceId = Guid.CreateVersion7();
 builder.Services.AddSingleton<IServiceInstanceProvider>(sp =>
