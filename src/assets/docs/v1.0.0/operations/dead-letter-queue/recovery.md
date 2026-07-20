@@ -85,6 +85,7 @@ framework: "NET10"
 category: "Dead Letter Queue"
 difficulty: "ADVANCED"
 tags: ["dead-letter", "recovery", "IDeadLetterRecoveryPolicy", "RecoveryPolicy", "custom-policy"]
+unverified: "user-domain custom-policy illustration — MyCustomPolicy is example consumer code; the DefaultDeadLetterRecoveryPolicy it delegates to is verified by DefaultDeadLetterRecoveryPolicyTests, outside the current coverage map"
 }
 services.AddSingleton<IDeadLetterRecoveryPolicy, MyCustomPolicy>();
 
@@ -163,6 +164,7 @@ framework: "NET10"
 category: "Dead Letter Queue"
 difficulty: "BEGINNER"
 tags: ["dead-letter", "recovery", "generation-replay", "configuration"]
+unverified: "DI configuration snippet — the Enabled killswitch is exercised by DeadLetterRecoveryWorkerTests.DisabledWorker_DoesNotScanAsync, but no unit pins EnableGenerationReplay=false"
 }
 services.Configure<DeadLetterRecoveryOptions>(o => o.EnableGenerationReplay = false);
 

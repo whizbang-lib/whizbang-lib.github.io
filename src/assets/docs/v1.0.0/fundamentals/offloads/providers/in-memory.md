@@ -33,6 +33,7 @@ framework: "NET10"
 category: "Offloads"
 difficulty: "BEGINNER"
 tags: ["body-offload", "in-memory", "testing", "claim-check", "dependency-injection"]
+tests: ["InMemoryMessageBodyStoreTests.AddWhizbangInMemoryOffload_RegistersStoreUnderProviderNameAsync"]
 }
 services.AddWhizbangInMemoryOffload("memory-dev");
 

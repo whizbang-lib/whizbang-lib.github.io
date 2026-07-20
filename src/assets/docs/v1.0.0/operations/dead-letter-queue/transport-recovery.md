@@ -59,6 +59,7 @@ framework: "NET10"
 category: "Operations"
 difficulty: "BEGINNER"
 tags: ["dead-letter", "transport-recovery", "TransportDeadLetterDrainWorkerOptions", "configuration"]
+unverified: "DI configuration snippet — options set via Configure; no framework unit under test on this page"
 }
 services.Configure<TransportDeadLetterDrainWorkerOptions>(o => {
   o.Enabled = true;        // killswitch (default true)
@@ -93,6 +94,7 @@ framework: "NET10"
 category: "Operations"
 difficulty: "INTERMEDIATE"
 tags: ["dead-letter", "transport-recovery", "azure-service-bus", "ITransportDeadLetterDrainer"]
+tests: ["AzureServiceBusDeadLetterDrainerTests.TransportName_FormatsAsAsbTopicSubAsync"]
 }
 services.AddSingleton<ITransportDeadLetterDrainer>(sp =>
   new AzureServiceBusDeadLetterDrainer(
@@ -123,6 +125,7 @@ framework: "NET10"
 category: "Operations"
 difficulty: "INTERMEDIATE"
 tags: ["dead-letter", "transport-recovery", "rabbitmq", "ITransportDeadLetterDrainer"]
+tests: ["RabbitMqDeadLetterDrainerTests.TransportName_FormatsAsRmqDlqAsync"]
 }
 services.AddSingleton<ITransportDeadLetterDrainer>(sp =>
   new RabbitMqDeadLetterDrainer(
@@ -159,6 +162,7 @@ framework: "NET10"
 category: "Operations"
 difficulty: "INTERMEDIATE"
 tags: ["dead-letter", "transport-recovery", "DrainOnceAsync", "operator-endpoint"]
+unverified: "ASP.NET endpoint-wiring illustration — MapPost/RequireAuthorization are user wiring; the DrainOnceAsync sweep it calls is verified by TransportDeadLetterDrainWorkerTests"
 }
 app.MapPost("/admin/transport-dlq/drain-now", async (
     TransportDeadLetterDrainWorker worker,

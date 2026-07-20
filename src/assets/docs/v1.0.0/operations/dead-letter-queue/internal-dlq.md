@@ -121,6 +121,7 @@ framework: "NET10"
 category: "Dead Letter Queue"
 difficulty: "ADVANCED"
 tags: ["dead-letter", "IDeadLetterStore", "MoveAsync", "atomic-move"]
+tests: ["EFCoreDeadLetterStoreTests.MoveAsync_OutboxRow_ReturnsDeadLetterIdAndMovesRowAsync", "EFCoreDeadLetterStoreTests.MoveAsync_SourceRowAlreadyGone_ReturnsNullAsync"]
 }
 public interface IDeadLetterStore {
   Task<Guid?> MoveAsync(
@@ -195,6 +196,7 @@ description: "Sets MaxInboxAttempts to null via Configure to restore v0.501 unbo
 category: "Dead Letter Queue"
 difficulty: "BEGINNER"
 tags: ["dead-letter", "MaxInboxAttempts", "configuration", "inbox"]
+unverified: "DI configuration snippet — sets MaxInboxAttempts to null via Configure; no framework unit pins the null-disable path on this page"
 }
 services.Configure<InboxDispatchWorkerOptions>(o => o.MaxInboxAttempts = null);
 ```
