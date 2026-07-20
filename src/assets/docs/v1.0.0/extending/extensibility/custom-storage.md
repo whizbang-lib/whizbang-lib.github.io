@@ -52,7 +52,7 @@ Whizbang ships PostgreSQL-backed stores (EF Core and Dapper implementations). Cu
 
 The storage abstraction is keyed by **`Guid` stream IDs** for single-stream perspectives and generic **partition keys** for multi-stream (global) perspectives. The core members:
 
-```csharp{title="IPerspectiveStore<TModel>" description="The perspective storage abstraction (core members)" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "IPerspectiveStore"]}
+```csharp{title="IPerspectiveStore<TModel>" description="The perspective storage abstraction (core members)" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "IPerspectiveStore"] tests=["EFCorePostgresPerspectiveStoreTests.UpsertAsync_WhenRecordDoesNotExist_CreatesNewRecordAsync", "EFCorePostgresPerspectiveStoreTests.UpsertAsync_WhenRecordExists_UpdatesExistingRecordAsync", "EFCorePostgresPerspectiveStoreTests.UpsertAsync_IncrementsVersionNumber_OnEachUpdateAsync", "EFCorePostgresPerspectiveStoreTests.PurgeAsync_WhenRecordDoesNotExist_DoesNotThrowAsync", "EFCorePostgresPerspectiveStoreTests.UpsertAsync_WithMetadata_PersistsEventIdForIdempotencyAsync"]}
 namespace Whizbang.Core.Perspectives;
 
 public interface IPerspectiveStore<TModel> where TModel : class {
@@ -100,7 +100,7 @@ Key behavioral contracts (locked by the built-in stores' tests):
 
 ### Pattern 1: MongoDB Perspective Store
 
-```csharp{title="Pattern 1: MongoDB Perspective Store" description="Pattern 1: MongoDB Perspective Store" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Pattern", "MongoDB"]}
+```csharp{title="Pattern 1: MongoDB Perspective Store" description="Pattern 1: MongoDB Perspective Store" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Pattern", "MongoDB"] unverified="user extension example — MongoDB IPerspectiveStore implementation"}
 using MongoDB.Driver;
 using Whizbang.Core.Perspectives;
 
@@ -175,7 +175,7 @@ public class MongoPerspectiveStore<TModel> : IPerspectiveStore<TModel>
 
 The same member set applies; here are the stream-keyed members with the Elasticsearch client:
 
-```csharp{title="Pattern 2: Elasticsearch Perspective Store" description="Pattern 2: Elasticsearch Perspective Store" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Pattern", "Elasticsearch"]}
+```csharp{title="Pattern 2: Elasticsearch Perspective Store" description="Pattern 2: Elasticsearch Perspective Store" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Pattern", "Elasticsearch"] unverified="user extension example — Elasticsearch IPerspectiveStore implementation"}
 using Elastic.Clients.Elasticsearch;
 using Whizbang.Core.Perspectives;
 
@@ -218,7 +218,7 @@ public class ElasticsearchPerspectiveStore<TModel> : IPerspectiveStore<TModel>
 
 ## Registration
 
-```csharp{title="Custom Store Registration" description="Register the custom store for all models" category="Extensibility" difficulty="BEGINNER" tags=["Extending", "Extensibility", "Registration", "DI"]}
+```csharp{title="Custom Store Registration" description="Register the custom store for all models" category="Extensibility" difficulty="BEGINNER" tags=["Extending", "Extensibility", "Registration", "DI"] unverified="user extension example — DI registration of a custom store"}
 // Open-generic registration covers every perspective model type
 builder.Services.AddSingleton(typeof(IPerspectiveStore<>), typeof(MongoPerspectiveStore<>));
 ```
