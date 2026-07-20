@@ -86,7 +86,7 @@ System events are **local-only by default** (`SystemEventOptions.LocalOnly = tru
 
 ### 2. Create Audit Perspective
 
-```csharp{title="Create Audit Perspective" description="Create Audit Perspective" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Create", "Audit"]}
+```csharp{title="Create Audit Perspective" description="Create Audit Perspective" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Create", "Audit"] unverified="consumer perspective illustration — AuditPerspective is user code, not a shipped Whizbang API"}
 using Whizbang.Core.Audit;
 using Whizbang.Core.Perspectives;
 using Whizbang.Core.SystemEvents;
@@ -199,7 +199,7 @@ public sealed record EventAudited : ISystemEvent {
 
 ### Dedicated System Stream
 
-```csharp{title="Dedicated System Stream" description="Dedicated System Stream" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Dedicated", "System"]}
+```csharp{title="Dedicated System Stream" description="Dedicated System Stream" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Dedicated", "System"] unverified="SystemEventStream constants are verified by ISystemEventTests, outside this page's referenced audit tests"}
 public static class SystemEventStream {
   /// <summary>The dedicated system event stream name.</summary>
   public static string Name => "$wb-system";
@@ -298,7 +298,7 @@ services.AddWhizbang(options => {
 
 ### Command Audit Perspective
 
-```csharp{title="Command Audit Perspective" description="Command Audit Perspective" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Command", "Audit"]}
+```csharp{title="Command Audit Perspective" description="Command Audit Perspective" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Command", "Audit"] unverified="consumer perspective illustration — CommandAuditPerspective is user code, not a shipped Whizbang API"}
 // CommandAuditEntry is YOUR perspective model — Whizbang ships the CommandAudited
 // system event; you define the shape you want to persist and query.
 public sealed class CommandAuditPerspective

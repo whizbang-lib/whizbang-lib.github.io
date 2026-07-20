@@ -102,7 +102,7 @@ This middleware:
 
 When business logic dispatches a message, the dispatcher automatically reads the ambient security context:
 
-```csharp{title="Step 2: Dispatcher Reads Ambient Context" description="When business logic dispatches a message, the dispatcher automatically reads the ambient security context:" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Step", "Dispatcher"]}
+```csharp{title="Step 2: Dispatcher Reads Ambient Context" description="When business logic dispatches a message, the dispatcher automatically reads the ambient security context:" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Step", "Dispatcher"] unverified="consumer controller illustration — OrderController is user code, not a shipped Whizbang API"}
 // In your controller or service
 public class OrderController : ControllerBase {
   private readonly IDispatcher _dispatcher;
@@ -126,7 +126,7 @@ No manual context passing required - the dispatcher finds it via `IScopeContextA
 
 The dispatcher attaches the scope to the message's hop as a **`ScopeDelta`** (`MessageHop.Scope`) — only the *changes* from the previous hop are serialized (see [Scope Propagation](scope-propagation.md)):
 
-```csharp{title="Step 3: Scope Attached to MessageHop" description="The dispatcher attaches the scope delta to the message's hop:" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "C#", "Step", "Context"]}
+```csharp{title="Step 3: Scope Attached to MessageHop" description="The dispatcher attaches the scope delta to the message's hop:" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "C#", "Step", "Context"] unverified="conceptual dispatcher internals — illustrative snippet, not a directly callable API"}
 // Inside the dispatcher (conceptual)
 var scopeContext = _scopeContextAccessor.Current;
 
@@ -172,7 +172,7 @@ The message envelope, including the hop chain with its scope delta, is serialize
 
 The `ServiceBusConsumerWorker` receives the message from the transport and deserializes the envelope:
 
-```csharp{title="Step 5: Consumer Receives Message" description="The ServiceBusConsumerWorker receives the message from the transport and deserializes the envelope:" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Step", "Consumer"]}
+```csharp{title="Step 5: Consumer Receives Message" description="The ServiceBusConsumerWorker receives the message from the transport and deserializes the envelope:" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Step", "Consumer"] unverified="conceptual ServiceBusConsumerWorker flow — illustrative snippet, not a directly callable API"}
 // Inside ServiceBusConsumerWorker (conceptual)
 var envelope = await DeserializeEnvelopeAsync(serviceBusMessage);
 
@@ -265,7 +265,7 @@ if (options.EnableAuditLogging) {
 
 The receptor now has full access to the original security context:
 
-```csharp{title="Step 8: Handler Executes with Context" description="The receptor now has full access to the original security context:" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Step", "Handler"]}
+```csharp{title="Step 8: Handler Executes with Context" description="The receptor now has full access to the original security context:" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Step", "Handler"] unverified="consumer receptor illustration — CreateOrderReceptor is user code, not a shipped Whizbang API"}
 public class CreateOrderReceptor : IReceptor<CreateOrder> {
   private readonly IScopeContextAccessor _scopeAccessor;
   private readonly IScopedLensFactory _lensFactory;
