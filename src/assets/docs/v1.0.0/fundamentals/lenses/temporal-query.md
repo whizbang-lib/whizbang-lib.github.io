@@ -45,7 +45,7 @@ While standard `ILensQuery<T>` works with `PerspectiveRow<T>` (one row per strea
 
 ## ITemporalLensQuery Interface
 
-```csharp{title="ITemporalLensQuery Interface" description="ITemporalLensQuery Interface" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "ITemporalLensQuery", "Interface"]}
+```csharp{title="ITemporalLensQuery Interface" description="ITemporalLensQuery Interface" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "ITemporalLensQuery", "Interface"] tests=["ITemporalLensQueryTests.ITemporalLensQuery_ExtendsILensQueryAsync", "ITemporalLensQueryTests.ITemporalLensQuery_HasTemporalAllMethodAsync", "ITemporalLensQueryTests.ITemporalLensQuery_HasLatestPerStreamMethodAsync", "ITemporalLensQueryTests.ITemporalLensQuery_HasTemporalAsOfMethodAsync", "ITemporalLensQueryTests.ITemporalLensQuery_HasTemporalFromToMethodAsync", "ITemporalLensQueryTests.ITemporalLensQuery_HasTemporalContainedInMethodAsync", "ITemporalLensQueryTests.ITemporalLensQuery_HasRecentActivityForStreamMethodAsync", "ITemporalLensQueryTests.ITemporalLensQuery_HasRecentActivityForUserMethodAsync", "ITemporalLensQueryTests.ITemporalLensQuery_ConvenienceMethodsHaveDefaultLimitsAsync"]}
 public interface ITemporalLensQuery<TModel> : ILensQuery where TModel : class {
   // Full history
   IQueryable<TemporalPerspectiveRow<TModel>> TemporalAll();
@@ -70,7 +70,7 @@ public interface ITemporalLensQuery<TModel> : ILensQuery where TModel : class {
 
 Each row in a temporal perspective contains:
 
-```csharp{title="TemporalPerspectiveRow Structure" description="Each row in a temporal perspective contains:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "TemporalPerspectiveRow", "Structure"]}
+```csharp{title="TemporalPerspectiveRow Structure" description="Each row in a temporal perspective contains:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "TemporalPerspectiveRow", "Structure"] tests=["TemporalPerspectiveRowTests.TemporalPerspectiveRow_HasRequiredPropertiesAsync", "TemporalPerspectiveRowTests.TemporalPerspectiveRow_StreamIdTracksAggregateAsync", "TemporalPerspectiveRowTests.TemporalPerspectiveRow_EventIdTracksSourceEventAsync", "TemporalPerspectiveRowTests.TemporalPerspectiveRow_PeriodStartTracksWhenVersionBecameActiveAsync", "TemporalPerspectiveRowTests.TemporalPerspectiveRow_PeriodEndTracksWhenVersionWasSupersededAsync", "TemporalPerspectiveRowTests.TemporalPerspectiveRow_ValidTimeTracksBusinesTimeFromEventAsync", "TemporalPerspectiveRowTests.TemporalPerspectiveRow_HasMetadataAndScopeAsync"]}
 public class TemporalPerspectiveRow<TModel> where TModel : class {
   // Identity
   public required Guid Id { get; init; }           // Unique row ID (UUIDv7)

@@ -32,7 +32,7 @@ Multi-model queries enable LINQ joins across multiple perspective types using a 
 
 When using single-generic `ILensQuery<T>`, each injection gets its own `DbContext`. This prevents LINQ joins across perspective types:
 
-```csharp{title="The Problem: Separate DbContexts Cannot Join" description="When using single-generic ILensQuery<T>, each injection gets its own DbContext." category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "Problem:", "Separate"]}
+```csharp{title="The Problem: Separate DbContexts Cannot Join" description="When using single-generic ILensQuery<T>, each injection gets its own DbContext." category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "Problem:", "Separate"] unverified="counter-example — joining queries from separate single-generic DbContexts intentionally fails; nothing to assert"}
 // WRONG: Cannot join - different DbContexts
 public class OrderResolver {
   public async Task<OrderWithCustomer> GetOrderWithCustomer(
@@ -119,7 +119,7 @@ The `Query<T>()` method validates that `T` is one of the registered type paramet
 - **Compile-time**: The WHIZ400 analyzer reports errors for invalid types
 - **Runtime**: Throws `ArgumentException` if type is not registered
 
-```csharp{title="Type Safety" description="- Compile-time: The WHIZ400 analyzer reports errors for invalid types - Runtime: Throws ArgumentException if type is" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Type", "Safety"]}
+```csharp{title="Type Safety" description="- Compile-time: The WHIZ400 analyzer reports errors for invalid types - Runtime: Throws ArgumentException if type is" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Type", "Safety"] tests=["LensQueryTypeArgumentAnalyzerTests.Query_WithT1_NoDiagnosticAsync", "LensQueryTypeArgumentAnalyzerTests.Query_WithT2_NoDiagnosticAsync", "LensQueryTypeArgumentAnalyzerTests.Query_WithInvalidType_ReportsWHIZ400Async", "MultiModelScopedAccessTests.TwoModel_Query_InvalidType_ThrowsArgumentExceptionAsync"]}
 // Using ILensQuery<Order, Customer>
 var scoped = query.DefaultScope;
 scoped.Query<Order>();     // OK - Order is T1

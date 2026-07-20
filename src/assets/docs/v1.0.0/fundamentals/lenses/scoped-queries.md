@@ -29,7 +29,7 @@ Scoped lens queries solve the challenge of using `ILensQuery<T>` from singleton 
 
 `ILensQuery<T>` is registered as **transient** and requires a scoped `DbContext`. When you need to query from a singleton service (like a background worker), you cannot inject `ILensQuery<T>` directly:
 
-```csharp{title="The Problem: Singleton vs Scoped Services" description="ILensQuery<T> is registered as transient and requires a scoped DbContext." category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Problem:", "Singleton"]}
+```csharp{title="The Problem: Singleton vs Scoped Services" description="ILensQuery<T> is registered as transient and requires a scoped DbContext." category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Problem:", "Singleton"] unverified="counter-example — anti-pattern showing why a transient/scoped ILensQuery cannot be injected into a singleton"}
 // WRONG: Cannot inject transient ILensQuery into singleton
 public class OrderProcessor : BackgroundService {
   private readonly ILensQuery<Order> _lens; // This doesn't work!
@@ -44,7 +44,7 @@ public class OrderProcessor : BackgroundService {
 
 `IScopedLensQuery<T>` automatically creates a fresh service scope for each operation. It is safe to inject into singleton services:
 
-```csharp{title="Solution 1: IScopedLensQuery (Auto-Scoping)" description="IScopedLensQuery<T> automatically creates a fresh service scope for each operation." category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Lenses", "Solution", "IScopedLensQuery"]}
+```csharp{title="Solution 1: IScopedLensQuery (Auto-Scoping)" description="IScopedLensQuery<T> automatically creates a fresh service scope for each operation." category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Lenses", "Solution", "IScopedLensQuery"] tests=["ScopedLensQueryTests.ExecuteAsync_CreatesScope_AndDisposesAfterQueryAsync"]}
 public class OrderProcessor : BackgroundService {
   private readonly IScopedLensQuery<Order> _lens;
 
@@ -74,7 +74,7 @@ public class OrderProcessor : BackgroundService {
 
 ### IScopedLensQuery Methods
 
-```csharp{title="IScopedLensQuery Methods" description="IScopedLensQuery Methods" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "IScopedLensQuery", "Methods"]}
+```csharp{title="IScopedLensQuery Methods" description="IScopedLensQuery Methods" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "IScopedLensQuery", "Methods"] tests=["ScopedLensQueryTests.QueryAsync_CreatesScope_AndStreamResultsAsync", "ScopedLensQueryTests.QueryAsyncProjection_CreatesScope_AndStreamsResultsAsync", "ScopedLensQueryTests.GetByIdAsync_CreatesScope_AndDisposesAfterQueryAsync", "ScopedLensQueryTests.ExecuteAsync_CreatesScope_AndDisposesAfterQueryAsync"]}
 public interface IScopedLensQuery<TModel> where TModel : class {
   // Streaming results (scope disposed after enumeration)
   IAsyncEnumerable<PerspectiveRow<TModel>> QueryAsync(
@@ -99,12 +99,12 @@ public interface IScopedLensQuery<TModel> where TModel : class {
 ### Usage Patterns
 
 **Get by ID**:
-```csharp{title="Usage Patterns" description="Usage Patterns" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Usage", "Patterns"]}
+```csharp{title="Usage Patterns" description="Usage Patterns" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Usage", "Patterns"] tests=["ScopedLensQueryTests.GetByIdAsync_CreatesScope_AndDisposesAfterQueryAsync"]}
 var order = await _scopedLens.GetByIdAsync(orderId, ct);
 ```
 
 **Execute materialized query**:
-```csharp{title="Usage Patterns (2)" description="Execute materialized query:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Usage", "Patterns"]}
+```csharp{title="Usage Patterns (2)" description="Execute materialized query:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Usage", "Patterns"] tests=["ScopedLensQueryTests.ExecuteAsync_CreatesScope_AndDisposesAfterQueryAsync"]}
 var orders = await _scopedLens.ExecuteAsync(
     async (lens, token) => await lens.DefaultScope.Query
         .Where(r => r.Data.CustomerId == customerId)
@@ -114,7 +114,7 @@ var orders = await _scopedLens.ExecuteAsync(
 ```
 
 **Stream results**:
-```csharp{title="Usage Patterns (3)" description="Stream results:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Usage", "Patterns"]}
+```csharp{title="Usage Patterns (3)" description="Stream results:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Usage", "Patterns"] tests=["ScopedLensQueryTests.QueryAsync_CreatesScope_AndStreamResultsAsync"]}
 await foreach (var row in _scopedLens.QueryAsync(
     lens => lens.DefaultScope.Query.Where(r => r.Data.Total > 100),
     ct)) {
@@ -124,7 +124,7 @@ await foreach (var row in _scopedLens.QueryAsync(
 ```
 
 **Projection queries**:
-```csharp{title="Usage Patterns (4)" description="Projection queries:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "Usage", "Patterns"]}
+```csharp{title="Usage Patterns (4)" description="Projection queries:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "Usage", "Patterns"] tests=["ScopedLensQueryTests.QueryAsyncProjection_CreatesScope_AndStreamsResultsAsync"]}
 await foreach (var summary in _scopedLens.QueryAsync<OrderSummary>(
     lens => lens.DefaultScope.Query.Select(r => new OrderSummary {
       Id = r.Id,
@@ -145,7 +145,7 @@ The `ILensQuery<T>` passed to your query builders uses a **scope-before-query** 
 
 `QueryScope` selects a predefined filter level; each value maps to `ScopeFilters` flags via `QueryScopeMapper.ToScopeFilter`:
 
-```csharp{title="QueryScope Enum" description="Predefined query scope levels for the fluent scope-before-query API" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "QueryScope"]}
+```csharp{title="QueryScope Enum" description="Predefined query scope levels for the fluent scope-before-query API" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "QueryScope"] tests=["QueryScopeMapperTests.ToScopeFilter_Global_ReturnsScopeFilterNoneAsync", "QueryScopeMapperTests.ToScopeFilter_Tenant_ReturnsScopeFilterTenantAsync", "QueryScopeMapperTests.ToScopeFilter_Organization_ReturnsTenantAndOrganizationAsync", "QueryScopeMapperTests.ToScopeFilter_Customer_ReturnsTenantAndCustomerAsync", "QueryScopeMapperTests.ToScopeFilter_User_ReturnsTenantAndUserAsync", "QueryScopeMapperTests.ToScopeFilter_Principal_ReturnsTenantAndPrincipalAsync", "QueryScopeMapperTests.ToScopeFilter_UserOrPrincipal_ReturnsTenantUserAndPrincipalAsync"]}
 public enum QueryScope {
   Global,           // No filtering - full access
   Tenant,           // Tenant only
@@ -188,7 +188,7 @@ Multi-model lenses (`ILensQuery<T1, T2>` and higher) return `IScopedMultiLensAcc
 
 When you need multiple queries to share a single scope (for performance or transactional consistency), use `ILensQueryFactory<T>`:
 
-```csharp{title="Solution 2: ILensQueryFactory (Batch Operations)" description="When you need multiple queries to share a single scope (for performance or transactional consistency), use" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "Solution", "ILensQueryFactory"]}
+```csharp{title="Solution 2: ILensQueryFactory (Batch Operations)" description="When you need multiple queries to share a single scope (for performance or transactional consistency), use" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "Solution", "ILensQueryFactory"] tests=["LensQueryFactoryTests.CreateScoped_ReturnsDisposableScopedQueryAsync", "LensQueryFactoryTests.ScopedQuery_SharesSameDbContext_WithinScopeAsync"]}
 public class OrderReportService {
   private readonly ILensQueryFactory<Order> _factory;
 
@@ -230,7 +230,7 @@ public class OrderReportService {
 
 The `LensQueryScope<T>` returned by `CreateScoped()` MUST be disposed to release the service scope:
 
-```csharp{title="LensQueryScope Disposal" description="The LensQueryScope<T> returned by CreateScoped() MUST be disposed to release the service scope:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "LensQueryScope", "Disposal"]}
+```csharp{title="LensQueryScope Disposal" description="The LensQueryScope<T> returned by CreateScoped() MUST be disposed to release the service scope:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "LensQueryScope", "Disposal"] tests=["LensQueryFactoryTests.ScopedQuery_DisposesScope_WhenDisposedAsync", "LensQueryFactoryTests.MultipleScopedQueries_CreateSeparateScopesAsync"]}
 // Correct: using statement ensures disposal
 using var scope = _factory.CreateScoped();
 var lens = scope.Value;
@@ -263,7 +263,7 @@ finally {
 
 Both scoped query types are registered automatically by the Whizbang source generator:
 
-```csharp{title="Registration" description="Both scoped query types are registered automatically by the Whizbang source generator:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Registration"]}
+```csharp{title="Registration" description="Both scoped query types are registered automatically by the Whizbang source generator:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Registration"] unverified="generated DI registration emitted by the Whizbang source generator — not exercised by these lens unit tests"}
 // Auto-generated registration
 services.AddSingleton<IScopedLensQuery<Order>, ScopedLensQuery<Order>>();
 services.AddSingleton<ILensQueryFactory<Order>, LensQueryFactory<Order>>();

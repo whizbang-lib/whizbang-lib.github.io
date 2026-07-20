@@ -70,7 +70,7 @@ For simple Dapper-based lenses that don't use EF Core, implement `ILensQuery` di
 
 **Perspectives** and **Lenses** work together to implement CQRS:
 
-```mermaid
+```mermaid{caption="CQRS collaboration — receptors emit events that perspectives project into denormalized read models, which lenses then query read-only to return DTOs to clients."}
 graph TB
     subgraph WS["WRITE SIDE"]
         W1["Command"] --> W2["Receptor"] --> W3["Event"]
@@ -460,7 +460,7 @@ public async Task<Product[]> GetProductsByCategoryAsync(
 
 **Framework-provided typed lenses**: `ILensQuery<TModel>` (and the multi-model variants) are registered automatically for every discovered perspective model when you wire the unified Whizbang API:
 
-```csharp{title="Registration" description="Registration" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Registration"]}
+```csharp{title="Registration" description="Registration" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Registration"] unverified="framework DI registration — wires ILensQuery<T> per perspective model; configuration, not a lens-query behavior covered by the lens tests"}
 // Registers IPerspectiveStore<T> and ILensQuery<T> for all
 // perspective models discovered on the DbContext:
 builder.Services
@@ -471,7 +471,7 @@ builder.Services
 
 **Custom named lenses** (wrapping `ILensQuery<TModel>` or raw Dapper) are registered per use case:
 
-```csharp{title="Registration (2)" description="Register custom named lenses" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Registration"]}
+```csharp{title="Registration (2)" description="Register custom named lenses" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Registration"] unverified="DI registration for custom named lenses — configuration wiring, not a lens-query behavior under test"}
 builder.Services.AddScoped<IOrderLens, OrderLens>();
 builder.Services.AddScoped<IInventoryLevelsLens, InventoryLevelsLens>();
 ```
@@ -485,7 +485,7 @@ builder.Services.AddScoped<IInventoryLevelsLens, InventoryLevelsLens>();
 - Stateless (no benefit to reusing instances across scopes)
 - Matches the framework's own registration of `ILensQuery<TModel>`
 
-```csharp{title="Lifetime" description="Lifetime" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Lifetime"]}
+```csharp{title="Lifetime" description="Lifetime" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Lifetime"] unverified="DI lifetime registration snippet — configuration, not a lens-query behavior under test"}
 builder.Services.AddScoped<IOrderLens, OrderLens>();
 ```
 
@@ -580,7 +580,7 @@ public class OrderLens : ILensQuery {
 
 **Cache Invalidation**: Perspectives themselves CANNOT invalidate caches — a perspective's `Apply` methods are pure functions (no I/O, no side effects) so replays reconstruct identical state. Invalidate from a **receptor** subscribed to the same event instead, or rely on short TTLs:
 
-```csharp{title="Cache invalidation via receptor" description="Cache invalidation belongs in a receptor (side-effect surface), never in a perspective's pure Apply methods." category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "Distributed", "Caching"]}
+```csharp{title="Cache invalidation via receptor" description="Cache invalidation belongs in a receptor (side-effect surface), never in a perspective's pure Apply methods." category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "Distributed", "Caching"] unverified="receptor example — cache invalidation is a receptor concern, verified under Receptors, not by the lens tests"}
 public class OrderCacheInvalidationReceptor(IDistributedCache cache) : IReceptor<OrderCreatedEvent> {
     public async ValueTask HandleAsync(OrderCreatedEvent @event, CancellationToken ct) {
         // The perspective worker materializes the read model from the event;

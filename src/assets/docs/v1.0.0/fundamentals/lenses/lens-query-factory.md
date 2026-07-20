@@ -28,7 +28,7 @@ The `ILensQueryFactory` provides thread-safe access to read models in scenarios 
 
 EF Core's `DbContext` is **not thread-safe**. When HotChocolate runs field resolvers in parallel within the same HTTP request scope, all resolvers share the same scoped `DbContext` instance:
 
-```csharp{title="The Problem: DbContext Concurrency" description="EF Core's DbContext is not thread-safe." category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Problem:", "DbContext"]}
+```csharp{title="The Problem: DbContext Concurrency" description="EF Core's DbContext is not thread-safe." category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Problem:", "DbContext"] unverified="illustration — GraphQL query showing the DbContext concurrency problem, not a Whizbang API call"}
 // GraphQL query that triggers parallel execution
 {
   products { id name }      // Resolver 1 - uses DbContext
@@ -71,7 +71,7 @@ Use `ILensQueryFactory` when you need multiple queries to **share the same DbCon
 At the current commit, the non-generic `ILensQueryFactory` is the **internal building block** behind every transient `ILensQuery<T>` injection (via `FactoryOwnedLensQuery<T>`) — it is **not registered in DI for direct injection**. For cross-model LINQ joins with a shared DbContext, inject the multi-model `ILensQuery<T1, T2, ...>` instead — see [Multi-Model Queries](multi-model-queries.md). To use the factory directly, construct `EFCoreLensQueryFactory<TDbContext>` yourself or register `ILensQueryFactory` in your own composition root.
 :::
 
-```csharp{title="When to Use ILensQueryFactory" description="Cross-model join with a shared DbContext via a lens query factory" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "When", "ILensQueryFactory"]}
+```csharp{title="When to Use ILensQueryFactory" description="Cross-model join with a shared DbContext via a lens query factory" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "When", "ILensQueryFactory"] tests=["EFCoreLensQueryFactoryTests.GetQuery_ForDifferentModels_SharesSameDbContextAsync"]}
 public class OrderWithCustomerQuery {
   public async Task<OrderWithCustomer?> GetOrderWithCustomer(
       Guid orderId,
@@ -124,7 +124,7 @@ public class ProductQueries {
 
 When joining across models, inject the multi-model `ILensQuery<T1, T2>` — it shares a single DbContext across the declared model types and IS registered in DI:
 
-```csharp{title="Pattern 2: Multi-Model Lens for Joins" description="When joining across models, inject the multi-model ILensQuery:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "Pattern", "Multi-Model"]}
+```csharp{title="Pattern 2: Multi-Model Lens for Joins" description="When joining across models, inject the multi-model ILensQuery:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "Pattern", "Multi-Model"] unverified="multi-model ILensQuery<T1, T2> API — verified in the Multi-Model Queries docs, not by the factory tests"}
 public class InventoryReportQuery {
   public async Task<IEnumerable<InventoryReport>> GetInventoryReport(
       [Service] ILensQuery<Product, InventoryLevel> lens) {
@@ -148,7 +148,7 @@ public class InventoryReportQuery {
 
 For repository classes that need joins via the raw factory (requires the factory to be constructed or registered by your application — see the callout above):
 
-```csharp{title="Pattern 3: Repository with Factory" description="For repository classes that need joins:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "Pattern", "Repository"]}
+```csharp{title="Pattern 3: Repository with Factory" description="For repository classes that need joins:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "Pattern", "Repository"] tests=["EFCoreLensQueryFactoryTests.GetQuery_CalledMultipleTimes_SharesSameDbContextAsync", "EFCoreLensQueryFactoryTests.GetQuery_ForDifferentModels_SharesSameDbContextAsync"]}
 public class OrderRepository {
   private readonly ILensQuery<Order> _orders;
   private readonly ILensQuery<Customer> _customers;
@@ -192,7 +192,7 @@ This approach:
 
 The factory is automatically registered when using the Whizbang fluent API:
 
-```csharp{title="Registration" description="The factory is automatically registered when using the Whizbang fluent API:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Registration"]}
+```csharp{title="Registration" description="The factory is automatically registered when using the Whizbang fluent API:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Registration"] unverified="DI registration and service lifetimes — configuration, not asserted by the factory unit tests"}
 builder.Services
   .AddWhizbang()
   .WithEFCore<MyDbContext>()
@@ -258,7 +258,7 @@ EF Core's `AddPooledDbContextFactory` registers scoped option configurations int
 
 The `EFCoreLensQueryFactory<TDbContext>` is the EF Core implementation of `ILensQueryFactory`:
 
-```csharp{title="EFCoreLensQueryFactory" description="The EFCoreLensQueryFactory<TDbContext> is the EF Core implementation of ILensQueryFactory:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "EFCoreLensQueryFactory"]}
+```csharp{title="EFCoreLensQueryFactory" description="The EFCoreLensQueryFactory<TDbContext> is the EF Core implementation of ILensQueryFactory:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "EFCoreLensQueryFactory"] tests=["EFCoreLensQueryFactoryTests.Constructor_CreatesDbContextFromFactoryAsync", "EFCoreLensQueryFactoryTests.GetQuery_ReturnsLensQueryAsync", "EFCoreLensQueryFactoryTests.GetQuery_WithUnregisteredModel_ThrowsKeyNotFoundExceptionAsync", "EFCoreLensQueryFactoryTests.DisposeAsync_DisposesDbContextAsync", "EFCoreLensQueryFactoryTests.DisposeAsync_AfterDispose_GetQueryThrowsAsync"]}
 public sealed class EFCoreLensQueryFactory<TDbContext> : ILensQueryFactory
     where TDbContext : DbContext {
 
@@ -313,7 +313,7 @@ Key characteristics:
 
 The `FactoryOwnedLensQuery<TModel>` wraps a factory to provide the standard `ILensQuery<T>` interface while managing factory disposal:
 
-```csharp{title="FactoryOwnedLensQuery" description="The FactoryOwnedLensQuery<TModel> wraps a factory to provide the standard ILensQuery<T> interface while managing" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "FactoryOwnedLensQuery"]}
+```csharp{title="FactoryOwnedLensQuery" description="The FactoryOwnedLensQuery<TModel> wraps a factory to provide the standard ILensQuery<T> interface while managing" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "FactoryOwnedLensQuery"] tests=["FactoryOwnedLensQueryTests.Constructor_CallsGetQueryOnFactory_Async", "FactoryOwnedLensQueryTests.Scope_DelegatesToInnerWithSameArgAsync", "FactoryOwnedLensQueryTests.ScopeOverride_DelegatesToInnerWithBothArgsAsync", "FactoryOwnedLensQueryTests.DefaultScope_DelegatesToInnerPropertyAsync", "FactoryOwnedLensQueryTests.GetByIdAsync_DelegatesToInnerQuery_Async", "FactoryOwnedLensQueryTests.Dispose_DisposesFactoryOnceAsync", "FactoryOwnedLensQueryTests.DisposeAsync_DisposesFactory_Async"]}
 public sealed class FactoryOwnedLensQuery<TModel>(ILensQueryFactory factory)
     : ILensQuery<TModel>, IAsyncDisposable, IDisposable
     where TModel : class {
