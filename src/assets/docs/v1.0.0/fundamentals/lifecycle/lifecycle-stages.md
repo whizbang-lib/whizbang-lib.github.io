@@ -49,7 +49,7 @@ Messages flow through **two mutually exclusive paths**:
 
 ### Local Path (Mediator Pattern)
 
-```mermaid
+```mermaid{caption="Local (mediator) path — LocalInvokeAsync processes the message immediately at the LocalImmediate stage, with no persistence and no transport."}
 graph LR
     A[LocalInvokeAsync] --> B[LocalImmediate]
     B --> C[Done]
@@ -63,7 +63,7 @@ graph LR
 
 ### Distributed Path (Outbox/Inbox)
 
-```mermaid
+```mermaid{caption="Distributed (outbox/inbox) path — a dispatched message is persisted to the outbox, published via transport, received into the inbox, then processed by perspectives on the receiver side."}
 graph LR
     A[Dispatch] --> B[Distribute]
     B --> C[Outbox]
@@ -135,7 +135,7 @@ The `LifecycleStage` enum contains 25 values total: 24 true lifecycle stages plu
 - With the [Lifecycle Coordinator](lifecycle-coordinator.md), fires automatically after each stage transition
 
 **Example**:
-```csharp{title="`ImmediateDetached`" description="ImmediateDetached" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lifecycle", "ImmediateDetached"]}
+```csharp{title="`ImmediateDetached`" description="ImmediateDetached" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lifecycle", "ImmediateDetached"] tests=["ReceptorDiscoveryGeneratorTests.Generator_ReceptorWithFireAt_RegisteredOnlyAtSpecifiedStageAsync", "LifecycleCoordinatorTests.AdvanceTo_FiresImmediateDetached_AfterEachStageAsync", "LifecycleStageTests.LifecycleStage_ImmediateDetached_IsDefinedAsync"]}
 [FireAt(LifecycleStage.ImmediateDetached)]
 public class CommandMetricsReceptor : IReceptor<ICommand> {
     private readonly IMetricsCollector _metrics;
@@ -171,7 +171,7 @@ LocalImmediate stages are new in v1.0.0 and enable in-memory mediator-style mess
 - Errors logged but don't affect caller
 
 **Example**:
-```csharp{title="`LocalImmediateDetached` ⭐ **Default Stage for Local Path**" description="LocalImmediateDetached" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lifecycle", "LocalImmediateDetached", "**Default"]}
+```csharp{title="`LocalImmediateDetached` ⭐ **Default Stage for Local Path**" description="LocalImmediateDetached" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lifecycle", "LocalImmediateDetached", "**Default"] tests=["ReceptorDiscoveryGeneratorTests.Generator_ReceptorWithoutFireAt_RegisteredAtDefaultStagesAsync", "LifecycleStageTests.LifecycleStage_LocalImmediateDetached_IsDefinedAsync"]}
 // Receptor WITHOUT [FireAt] fires at LocalImmediateDetached when dispatched locally!
 public class CreateTenantCommandHandler : IReceptor<CreateTenantCommand, TenantCreatedEvent> {
     public async ValueTask<TenantCreatedEvent> HandleAsync(CreateTenantCommand cmd, CancellationToken ct = default) {
@@ -200,7 +200,7 @@ await dispatcher.LocalInvokeAsync(new CreateTenantCommand("Acme"));
 - Errors propagate to caller
 
 **Example**:
-```csharp{title="`LocalImmediateInline`" description="LocalImmediateInline" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lifecycle", "LocalImmediateInline"]}
+```csharp{title="`LocalImmediateInline`" description="LocalImmediateInline" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lifecycle", "LocalImmediateInline"] unverified="verified by LocalImmediateLifecycleStageTests, which is outside the current coverage map"}
 [FireAt(LifecycleStage.LocalImmediateInline)]
 public class LocalDispatchLogger : IReceptor<ICommand> {
     public ValueTask HandleAsync(ICommand cmd, CancellationToken ct = default) {
@@ -448,7 +448,7 @@ Perspective lifecycle stages are new in v1.0.0 and enable deterministic test syn
 **Hook Location**: Generated perspective runner (from `PerspectiveRunnerTemplate.cs`) after perspective data is flushed, before checkpoint save
 
 **Example**:
-```csharp{title="`PostPerspectiveDetached`" description="PostPerspectiveDetached" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lifecycle", "PostPerspectiveDetached"]}
+```csharp{title="`PostPerspectiveDetached`" description="PostPerspectiveDetached" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lifecycle", "PostPerspectiveDetached"] tests=["ReceptorDiscoveryGeneratorTests.Generator_ReceptorWithFireAt_RegisteredOnlyAtSpecifiedStageAsync", "LifecycleCoordinatorTests.AdvanceTo_SetsCorrectContextProperties_OnReceptorInvocationAsync", "LifecycleStageTests.LifecycleStage_PostPerspectiveDetached_IsDefinedAsync"]}
 [FireAt(LifecycleStage.PostPerspectiveDetached)]
 public class PerspectiveMetricsReceptor : IReceptor<IEvent> {
     private readonly IMetricsCollector _metrics;
@@ -477,7 +477,7 @@ public class PerspectiveMetricsReceptor : IReceptor<IEvent> {
 **Hook Location**: `PerspectiveWorker.cs` - fires after the checkpoint commits (the generated runner tracks processed envelopes so the worker can fire this per processed event)
 
 **Example** (Test Synchronization):
-```csharp{title="`PostPerspectiveInline` ⭐ **Critical for Testing**" description="Example (Test Synchronization):" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lifecycle", "PostPerspectiveInline", "**Critical"]}
+```csharp{title="`PostPerspectiveInline` ⭐ **Critical for Testing**" description="Example (Test Synchronization):" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lifecycle", "PostPerspectiveInline", "**Critical"] tests=["ReceptorDiscoveryGeneratorTests.Generator_ReceptorWithFireAt_RegisteredOnlyAtSpecifiedStageAsync", "LifecycleStageTests.LifecycleStage_PostPerspectiveInline_IsDefinedAsync"]}
 [FireAt(LifecycleStage.PostPerspectiveInline)]
 public class PerspectiveCompletionReceptor<TEvent> : IReceptor<TEvent>
     where TEvent : IEvent {
@@ -517,7 +517,7 @@ PostAllPerspectives stages are new in v1.0.0 and fire **once per event** after *
 - Fires **before** PostLifecycle stages
 
 **Example**:
-```csharp{title="`PostAllPerspectivesDetached`" description="Cross-perspective aggregation after all perspectives complete" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lifecycle", "PostAllPerspectivesDetached"]}
+```csharp{title="`PostAllPerspectivesDetached`" description="Cross-perspective aggregation after all perspectives complete" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lifecycle", "PostAllPerspectivesDetached"] tests=["ReceptorDiscoveryGeneratorTests.Generator_PublishToReceptors_OmitsFireAtReceptorsAsync", "LifecycleCoordinatorTests.ExpectPerspectiveCompletions_AllSignal_ReturnsTrueAsync", "LifecycleCoordinatorTests.SignalPerspectiveComplete_ExtraUnrelatedSignal_DoesNotPreventCompletionAsync", "LifecycleStageTests.LifecycleStage_PostAllPerspectivesDetached_IsDefinedAsync"]}
 [FireAt(LifecycleStage.PostAllPerspectivesDetached)]
 public class CrossPerspectiveAggregator : IReceptor<OrderPlacedEvent> {
   private readonly IOrderSummaryService _summaryService;
@@ -575,7 +575,7 @@ PostLifecycle stages are the **final stages** in an event's lifecycle, managed b
 | `Route.Both()` | Last path to complete (WhenAll) |
 
 **Example**:
-```csharp{title="`PostLifecycleDetached`" description="Final notification after all processing completes" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lifecycle", "PostLifecycleDetached"]}
+```csharp{title="`PostLifecycleDetached`" description="Final notification after all processing completes" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lifecycle", "PostLifecycleDetached"] tests=["LifecycleCoordinatorTests.WhenAll_BothComplete_FiresPostLifecycleOnceAsync", "LifecycleCoordinatorTests.SignalSegmentComplete_NoWhenAll_FiresPostLifecycleImmediatelyAsync", "LifecycleCoordinatorTests.WhenAll_LocalAlone_DoesNotFirePostLifecycleDetachedAsync", "LifecycleStageTests.LifecycleStage_PostLifecycleDetached_IsDefinedAsync"]}
 [FireAt(LifecycleStage.PostLifecycleDetached)]
 public class OrderNotificationReceptor : IReceptor<OrderPlacedEvent> {
   private readonly INotificationService _notifications;
@@ -608,7 +608,7 @@ public class OrderNotificationReceptor : IReceptor<OrderPlacedEvent> {
 
 Each worker processes a specific **segment** of the lifecycle. `PostLifecycle` fires at the end of whichever worker is the last to act on the event:
 
-```mermaid
+```mermaid{caption="Pipeline overview — each worker (Dispatcher, OutboxWorker, TransportConsumer, PerspectiveWorker) processes one lifecycle segment; PostLifecycle fires at the end of whichever worker is last to act, gated by WhenAll for multi-path events." tests=["LifecycleCoordinatorTests.WhenAll_BothComplete_FiresPostLifecycleOnceAsync", "LifecycleCoordinatorTests.SignalSegmentComplete_NoWhenAll_FiresPostLifecycleImmediatelyAsync"]}
 graph LR
     subgraph DIS["Dispatcher"]
         direction TB
@@ -678,7 +678,7 @@ See [Lifecycle Coordinator](lifecycle-coordinator.md) for details on entry/exit 
 
 ## Lifecycle Stage Timing Diagram
 
-```mermaid
+```mermaid{caption="Lifecycle stage timing — the ordered sequence of Inline stages a message passes through across the Dispatch, Distribute, Outbox, Inbox, Perspective, PostAllPerspectives, and PostLifecycle phases."}
 sequenceDiagram
     participant Caller
     participant Receptor
@@ -748,7 +748,7 @@ Most lifecycle stages come in pairs:
 
 Use `[FireAt]` attribute for compile-time registration:
 
-```csharp{title="Compile-Time (Production)" description="Use [FireAt] attribute for compile-time registration:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lifecycle", "Compile-Time", "Production"]}
+```csharp{title="Compile-Time (Production)" description="Use [FireAt] attribute for compile-time registration:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lifecycle", "Compile-Time", "Production"] tests=["ReceptorDiscoveryGeneratorTests.Generator_ReceptorWithFireAt_RegisteredOnlyAtSpecifiedStageAsync", "ReceptorDiscoveryGeneratorTests.Generator_WithReceptor_GeneratesReceptorRegistryAsync", "ReceptorDiscoveryGeneratorTests.Generator_GeneratesDispatcherRegistrationsAsync", "LifecycleStageTests.LifecycleStage_PostPerspectiveDetached_IsDefinedAsync"]}
 [FireAt(LifecycleStage.PostPerspectiveDetached)]
 public class MyMetricsReceptor : IReceptor<ProductCreatedEvent> {
     public ValueTask HandleAsync(ProductCreatedEvent evt, CancellationToken ct = default) {
@@ -764,7 +764,7 @@ Source generators discover and wire these automatically.
 
 Use `IReceptorRegistry` for dynamic registration:
 
-```csharp{title="Runtime (Testing)" description="Use IReceptorRegistry for dynamic registration:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lifecycle", "Runtime", "Testing"]}
+```csharp{title="Runtime (Testing)" description="Use IReceptorRegistry for dynamic registration:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lifecycle", "Runtime", "Testing"] unverified="runtime IReceptorRegistry.Register/Unregister test-registration pattern — not exercised by any test class in this page's coverage map"}
 var registry = host.Services.GetRequiredService<IReceptorRegistry>();
 var receptor = new PerspectiveCompletionReceptor<ProductCreatedEvent>(completionSource);
 
