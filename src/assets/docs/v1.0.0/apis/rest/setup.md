@@ -47,7 +47,7 @@ dotnet add package FastEndpoints
 
 ### Minimal Setup
 
-```csharp{title="Minimal Setup" description="Minimal Setup" category="API" difficulty="BEGINNER" tags=["Apis", "Rest", "Minimal", "Setup"]}
+```csharp{title="Minimal Setup" description="Minimal Setup" category="API" difficulty="BEGINNER" tags=["Apis", "Rest", "Minimal", "Setup"] unverified="ASP.NET/DI wiring — Whizbang REST registration verified by ServiceRegistrationTests"}
 // Program.cs
 var builder = WebApplication.CreateBuilder(args);
 
@@ -63,7 +63,7 @@ app.Run();
 
 ### With Whizbang Core
 
-```csharp{title="With Whizbang Core" description="With Whizbang Core" category="API" difficulty="BEGINNER" tags=["Apis", "Rest", "Whizbang", "Core"]}
+```csharp{title="With Whizbang Core" description="With Whizbang Core" category="API" difficulty="BEGINNER" tags=["Apis", "Rest", "Whizbang", "Core"] unverified="ASP.NET/DI wiring — Whizbang REST registration verified by ServiceRegistrationTests"}
 var builder = WebApplication.CreateBuilder(args);
 
 // Add Whizbang core services
@@ -86,7 +86,7 @@ app.Run();
 
 Registers lens endpoint services. Generated lens endpoints are auto-discovered by FastEndpoints.
 
-```csharp{title="AddWhizbangLenses" description="Registers lens endpoint services." category="API" difficulty="BEGINNER" tags=["Apis", "Rest", "AddWhizbangLenses"]}
+```csharp{title="AddWhizbangLenses" description="Registers lens endpoint services." category="API" difficulty="BEGINNER" tags=["Apis", "Rest", "AddWhizbangLenses"] tests=["ServiceRegistrationTests.AddWhizbangLenses_ShouldReturnSameServicesInstanceAsync", "ServiceRegistrationTests.AddWhizbangLenses_ShouldBeCallableMultipleTimesAsync"]}
 builder.Services.AddFastEndpoints()
     .AddWhizbangLenses();
 ```
@@ -95,7 +95,7 @@ builder.Services.AddFastEndpoints()
 
 Registers mutation endpoint services. Generated mutation endpoints are auto-discovered by FastEndpoints.
 
-```csharp{title="AddWhizbangMutations" description="Registers mutation endpoint services." category="API" difficulty="BEGINNER" tags=["Apis", "Rest", "AddWhizbangMutations"]}
+```csharp{title="AddWhizbangMutations" description="Registers mutation endpoint services." category="API" difficulty="BEGINNER" tags=["Apis", "Rest", "AddWhizbangMutations"] tests=["ServiceRegistrationTests.AddWhizbangLenses_AndMutations_CanBeChainedAsync", "ServiceRegistrationTests.AddWhizbangMutations_ShouldReturnSameServicesInstanceAsync"]}
 builder.Services.AddFastEndpoints()
     .AddWhizbangLenses()
     .AddWhizbangMutations();
@@ -138,7 +138,7 @@ public interface IOrderLens : ILensQuery<OrderReadModel> { }
 
 The generator creates (simplified):
 
-```csharp{title="Lens Endpoint - OrderLensEndpoint" description="The generator creates:" category="API" difficulty="INTERMEDIATE" tags=["Apis", "Rest", "Lens", "Endpoint"]}
+```csharp{title="Lens Endpoint - OrderLensEndpoint" description="The generator creates:" category="API" difficulty="INTERMEDIATE" tags=["Apis", "Rest", "Lens", "Endpoint"] tests=["LensEndpointBaseTests.ApplyPaging_ShouldCalculateSkipAndTakeCorrectlyAsync", "LensEndpointBaseTests.ApplyPaging_WithExcessivePageSize_ShouldClampToMaxAsync", "LensEndpointBaseTests.ApplyPaging_WithNullPageSize_ShouldUseDefaultAsync", "LensEndpointBaseTests.ApplyPaging_WithZeroPage_ShouldTreatAsFirstPageAsync"]}
 public partial class OrderLensEndpoint : Endpoint<LensRequest, LensResponse<OrderReadModel>> {
     private readonly IOrderLens _lens;
 
@@ -186,7 +186,7 @@ public class CreateOrderCommand : ICommand {
 
 The generator creates (simplified):
 
-```csharp{title="Mutation Endpoint - CreateOrderCommandEndpoint" description="The generator creates:" category="API" difficulty="INTERMEDIATE" tags=["Apis", "Rest", "Mutation", "Endpoint"]}
+```csharp{title="Mutation Endpoint - CreateOrderCommandEndpoint" description="The generator creates:" category="API" difficulty="INTERMEDIATE" tags=["Apis", "Rest", "Mutation", "Endpoint"] tests=["RestMutationEndpointBaseTests.Execute_ShouldDispatchCommandAsync", "RestMutationEndpointBaseTests.Execute_ShouldPassCommandToDispatchAsync"]}
 public partial class CreateOrderCommandEndpoint
     : RestMutationEndpointBase<CreateOrderCommand, OrderResult>,
       IEndpoint {
@@ -218,7 +218,7 @@ All generated mutation endpoints are registered as **POST** routes. Mutation hoo
 
 Generated endpoints are partial classes, allowing you to add members in your own partial declaration (in the same `.Generated` namespace):
 
-```csharp{title="Customizing Endpoints" description="Generated mutation endpoints expose overridable hooks:" category="API" difficulty="ADVANCED" tags=["Apis", "Rest", "Customizing", "Endpoints"]}
+```csharp{title="Customizing Endpoints" description="Generated mutation endpoints expose overridable hooks:" category="API" difficulty="ADVANCED" tags=["Apis", "Rest", "Customizing", "Endpoints"] tests=["RestMutationEndpointBaseTests.Execute_ShouldCallOnBeforeExecuteAsync", "RestMutationEndpointBaseTests.OnBeforeExecute_ShouldReceiveCommandAsync"]}
 // Your partial class extension of a generated mutation endpoint
 public partial class CreateOrderCommandEndpoint {
     protected override ValueTask OnBeforeExecuteAsync(
