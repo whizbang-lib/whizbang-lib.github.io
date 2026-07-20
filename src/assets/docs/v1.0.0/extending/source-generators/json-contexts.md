@@ -33,7 +33,7 @@ The **MessageJsonContextGenerator** discovers all message types (`ICommand`, `IE
 
 **Problem**: Traditional `JsonSerializer` uses **reflection** at runtime:
 
-```csharp{title="Why JSON Source Generation?" description="Problem: Traditional JsonSerializer uses reflection at runtime:" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Why", "JSON"]}
+```csharp{title="Why JSON Source Generation?" description="Problem: Traditional JsonSerializer uses reflection at runtime:" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Why", "JSON"] unverified="counter-example — reflection-based serialization, intentionally not AOT-compatible"}
 // ❌ Reflection-based (not AOT-compatible)
 var json = JsonSerializer.Serialize(message);  // Scans type at runtime!
 var deserialized = JsonSerializer.Deserialize<CreateOrder>(json);  // Reflection!
@@ -69,7 +69,7 @@ var deserialized = JsonSerializer.Deserialize<CreateOrder>(json, options);
 
 ### 1. Compile-Time Discovery
 
-```mermaid
+```mermaid{caption="Compile-time discovery pipeline — the generator scans messages, nested types, collections, and WhizbangId converter types, then emits the MessageJsonContext implementation, the WhizbangJsonContext facade, and the module-initializer registration." tests=["MessageJsonContextGeneratorTests.Generator_WithSingleCommand_GeneratesWhizbangJsonContextAsync", "MessageJsonContextGeneratorTests.Generator_Initializer_HasModuleInitializerAttributeAsync", "MessageJsonContextGeneratorTests.Generator_ReportsDiagnostic_ForDiscoveredMessageTypeAsync"]}
 flowchart TD
     Generator["MessageJsonContextGenerator (Roslyn)<br/><br/>Discovers:<br/>1. Messages (ICommand, IEvent, [WhizbangSerializable])<br/>2. Nested types (OrderItem in List&lt;OrderItem&gt;)<br/>3. Collection/array/dictionary/enum types<br/>4. WhizbangId converter types (ProductIdJsonConverter)"]
     Generated["Generated Files<br/><br/>1. MessageJsonContext.g.cs<br/>— JsonTypeInfo for all discovered types<br/><br/>2. WhizbangJsonContext.g.cs (facade)<br/>— Chains contexts + CreateOptions()<br/><br/>3. MessageJsonContextInitializer.g.cs<br/>— [ModuleInitializer] JsonContextRegistry registration"]
@@ -86,7 +86,7 @@ flowchart TD
 
 **WhizbangJsonContext.g.cs** (facade) — note this is a hand-rolled resolver chain, **not** an STJ `[JsonSerializable]` attribute context:
 
-```csharp{title="Generated Code" description="**WhizbangJsonContext." category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Generated", "Code"]}
+```csharp{title="Generated Code" description="**WhizbangJsonContext." category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Generated", "Code"] tests=["MessageJsonContextGeneratorTests.Generator_WithSingleCommand_GeneratesWhizbangJsonContextAsync"]}
 namespace MyApp.Generated;
 
 /// <summary>
@@ -126,7 +126,7 @@ public class WhizbangJsonContext : JsonSerializerContext, IJsonTypeInfoResolver 
 ```
 
 **MessageJsonContext.g.cs** (implementation):
-```csharp{title="Generated Code - MessageJsonContext" description="**MessageJsonContext." category="Internals" difficulty="ADVANCED" tags=["Extending", "Source-Generators", "Generated", "Code"]}
+```csharp{title="Generated Code - MessageJsonContext" description="**MessageJsonContext." category="Internals" difficulty="ADVANCED" tags=["Extending", "Source-Generators", "Generated", "Code"] tests=["MessageJsonContextGeneratorTests.Generator_GeneratesGetTypeInfoSwitchAsync", "MessageJsonContextGeneratorTests.Generator_MessageWithMultipleProperties_GeneratesValidJsonObjectCreatorAsync", "MessageJsonContextGeneratorTests.Generator_WithGetOnlyProperty_UsesNullSetterAsync"]}
 using System;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -211,7 +211,7 @@ By default, the `MessageJsonContextGenerator` automatically discovers types that
 
 Use the `[WhizbangSerializable]` attribute to mark any type for automatic inclusion in the generated JSON context:
 
-```csharp{title="WhizbangSerializableAttribute" description="Use the [WhizbangSerializable] attribute to mark any type for automatic inclusion in the generated JSON context:" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "WhizbangSerializableAttribute"]}
+```csharp{title="WhizbangSerializableAttribute" description="Use the [WhizbangSerializable] attribute to mark any type for automatic inclusion in the generated JSON context:" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "WhizbangSerializableAttribute"] unverified="attribute definition from Whizbang.Core, not generator output"}
 namespace Whizbang;
 
 /// <summary>
@@ -229,7 +229,7 @@ public sealed class WhizbangSerializableAttribute : Attribute { }
 
 **Usage Example**:
 
-```csharp{title="WhizbangSerializableAttribute - ProductDto" description="Usage Example:" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "WhizbangSerializableAttribute"]}
+```csharp{title="WhizbangSerializableAttribute - ProductDto" description="Usage Example:" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "WhizbangSerializableAttribute"] tests=["MessageJsonContextGeneratorTests.Generator_TypeWithWhizbangSerializableAttribute_IsDiscoveredAsync"]}
 using Whizbang;
 
 // Perspective lens DTOs (read models)
@@ -282,7 +282,7 @@ public record MoneyValue {
 
 **Generated Code**: marked types get `JsonTypeInfo` factories in `MessageJsonContext.g.cs` alongside commands and events, and are registered by name with `JsonContextRegistry` in the module initializer so cross-assembly, by-name resolution works:
 
-```csharp{title="How It Works" description="Generated Code:" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Works"]}
+```csharp{title="How It Works" description="Generated Code:" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Works"] tests=["MessageJsonContextGeneratorTests.Generator_Initializer_HasModuleInitializerAttributeAsync"]}
 // MessageJsonContextInitializer.g.cs (module initializer, runs at assembly load)
 public static class MessageJsonContextInitializer {
     [ModuleInitializer]
@@ -313,7 +313,7 @@ public static class MessageJsonContextInitializer {
 
 ### Pattern 1: Command/Event Discovery
 
-```csharp{title="Pattern 1: Command/Event Discovery" description="Pattern 1: Command/Event Discovery" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Pattern", "Command"]}
+```csharp{title="Pattern 1: Command/Event Discovery" description="Pattern 1: Command/Event Discovery" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Pattern", "Command"] tests=["MessageJsonContextGeneratorTests.Generator_WithSingleCommand_GeneratesWhizbangJsonContextAsync", "MessageJsonContextGeneratorTests.Generator_WithMultipleMessages_GeneratesAllFactoriesAsync"]}
 // Commands and events are auto-discovered
 public record CreateOrder(
     Guid OrderId,
@@ -335,7 +335,7 @@ public record OrderCreated(
 
 ### Pattern 2: Nested Type Discovery
 
-```csharp{title="Pattern 2: Nested Type Discovery" description="Pattern 2: Nested Type Discovery" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Pattern", "Nested"]}
+```csharp{title="Pattern 2: Nested Type Discovery" description="Pattern 2: Nested Type Discovery" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Pattern", "Nested"] tests=["MessageJsonContextGeneratorTests.Generator_MessageWithNestedCustomType_DiscoversAndGeneratesForBothAsync"]}
 // Command uses OrderItem (nested type)
 public record CreateOrder(
     Guid OrderId,
@@ -357,7 +357,7 @@ public record OrderItem(
 
 ### Pattern 3: Collection Type Discovery
 
-```csharp{title="Pattern 3: Collection Type Discovery" description="Pattern 3: Collection Type Discovery" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Pattern", "Collection"]}
+```csharp{title="Pattern 3: Collection Type Discovery" description="Pattern 3: Collection Type Discovery" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Pattern", "Collection"] tests=["MessageJsonContextGeneratorTests.Generator_MessageWithNestedCustomType_DiscoversAndGeneratesForBothAsync"]}
 // List<T> types discovered from properties
 public record CreateOrder(
     Guid OrderId,
@@ -568,7 +568,7 @@ See [Polymorphic Serialization](polymorphic-serialization.md) for details.
 2. Verify type implements `ICommand`/`IEvent`, or mark it with `[WhizbangSerializable]`
 3. Rebuild project to regenerate context
 
-```csharp{title="Problem: Type Not Serializable in Native AOT" description="Solution: 1." category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Problem:", "Type"]}
+```csharp{title="Problem: Type Not Serializable in Native AOT" description="Solution: 1." category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Problem:", "Type"] tests=["MessageJsonContextGeneratorTests.Generator_InternalCommand_SkipsNonPublicTypeAsync"]}
 // ❌ Internal type (not discovered)
 internal record CreateOrder(...) : ICommand;
 
@@ -583,7 +583,7 @@ public record CreateOrder(...) : ICommand;
 **Cause**: `OrderItem` not public or in different assembly.
 
 **Solution**: Make nested types public in same assembly:
-```csharp{title="Problem: Nested Type Not Found" description="Solution: Make nested types public in same assembly:" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Problem:", "Nested"]}
+```csharp{title="Problem: Nested Type Not Found" description="Solution: Make nested types public in same assembly:" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Problem:", "Nested"] tests=["MessageJsonContextGeneratorTests.Generator_MessageWithNestedCustomType_DiscoversAndGeneratesForBothAsync"]}
 // ✅ Public nested type
 public record OrderItem(Guid ProductId, int Quantity);
 ```

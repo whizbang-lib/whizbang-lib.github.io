@@ -30,7 +30,7 @@ Whizbang source generators read configuration from MSBuild properties, enabling 
 
 Configuration utilities provide a bridge between MSBuild project properties and the incremental source generator pipeline:
 
-```mermaid
+```mermaid{caption="MSBuild configuration flow — ConfigurationUtilities reads AnalyzerConfigOptions from .csproj / Directory.Build.props and returns a TableNameConfig that the source generators consume." tests=["ConfigurationUtilitiesTests.GetTableNameConfig_NullOptions_ReturnsDefaultAsync"]}
 flowchart TD
     Props[".csproj / Directory.Build.props<br/><br/>&lt;WhizbangStripTableNameSuffixes&gt;true&lt;/...&gt;<br/>&lt;WhizbangTableNameSuffixesToStrip&gt;...&lt;/...&gt;"]
     Utils["ConfigurationUtilities<br/><br/>Reads AnalyzerConfigOptions<br/>Returns TableNameConfig"]
@@ -98,7 +98,7 @@ public void Initialize(IncrementalGeneratorInitializationContext context) {
 
 The `TableNameConfig` record holds the parsed configuration:
 
-```csharp{title="TableNameConfig" description="The TableNameConfig record holds the parsed configuration:" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "TableNameConfig"]}
+```csharp{title="TableNameConfig" description="The TableNameConfig record holds the parsed configuration:" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "TableNameConfig"] tests=["ConfigurationUtilitiesTests.GetTableNameConfig_NullOptions_ReturnsDefaultAsync"]}
 public sealed record TableNameConfig(
     bool StripSuffixes,
     string[] SuffixesToStrip
@@ -135,7 +135,7 @@ When `StripSuffixes` is enabled, perspective **model** type names are transforme
 | `AccountDetails` | `AccountDetails` | `wh_per_account_details` |
 
 **Example**:
-```csharp{title="Table Name Suffix Stripping" description="Table Name Suffix Stripping" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Table", "Name"]}
+```csharp{title="Table Name Suffix Stripping" description="Table Name Suffix Stripping" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Table", "Name"] tests=["NamingConventionUtilitiesTests.StripConfigurableSuffixes_WithReadModel_StripsReadModelAsync", "NamingConventionUtilitiesTests.GenerateTableName_WithModel_GeneratesCorrectTableNameAsync"]}
 // Perspective read-model type
 public class OrderReadModel {
     [StreamId]
@@ -200,7 +200,7 @@ public class PerspectiveSchemaGenerator : IIncrementalGenerator {
 
 For simpler scenarios, access configuration directly:
 
-```csharp{title="Direct Access" description="For simpler scenarios, access configuration directly:" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Direct", "Access"]}
+```csharp{title="Direct Access" description="For simpler scenarios, access configuration directly:" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Direct", "Access"] tests=["ConfigurationUtilitiesTests.GetTableNameConfig_NullOptions_ReturnsDefaultAsync"]}
 var config = ConfigurationUtilities.GetTableNameConfig(
     context.AnalyzerConfigOptionsProvider.GlobalOptions
 );
@@ -216,7 +216,7 @@ if (config.StripSuffixes) {
 
 The `ParseSuffixList` method handles comma-separated suffix lists:
 
-```csharp{title="Suffix Parsing" description="The ParseSuffixList method handles comma-separated suffix lists:" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Suffix", "Parsing"]}
+```csharp{title="Suffix Parsing" description="The ParseSuffixList method handles comma-separated suffix lists:" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Suffix", "Parsing"] tests=["ConfigurationUtilitiesTests.ParseSuffixList_CommaSeparated_ReturnsArrayAsync", "ConfigurationUtilitiesTests.ParseSuffixList_WithWhitespace_TrimsValuesAsync", "ConfigurationUtilitiesTests.ParseSuffixList_EmptyEntries_FiltersThemOutAsync", "ConfigurationUtilitiesTests.ParseSuffixList_EmptyString_ReturnsEmptyArrayAsync"]}
 // Parse from MSBuild property
 var suffixes = ConfigurationUtilities.ParseSuffixList("ReadModel, Model, Dto");
 // Result: ["ReadModel", "Model", "Dto"]
