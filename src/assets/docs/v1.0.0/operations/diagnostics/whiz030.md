@@ -48,7 +48,7 @@ Event type 'ProductCreatedEvent' used in perspective 'ProductCatalogPerspective'
 
 Add the `[StreamId]` attribute to exactly one property on your event type:
 
-```csharp{title="How to Fix" description="Add the [StreamId] attribute to exactly one property on your event type:" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Fix"]}
+```csharp{title="How to Fix" description="Add the [StreamId] attribute to exactly one property on your event type:" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Fix"] tests=["PerspectiveDiscoveryGeneratorTests.PerspectiveDiscoveryGenerator_EventWithStreamId_ExtractsStreamIdPropertyAsync"]}
 public record ProductCreatedEvent : IEvent {
   [StreamId]  // ✅ Add this attribute
   public Guid ProductId { get; init; }
@@ -66,7 +66,7 @@ public record ProductCreatedEvent : IEvent {
 ## Example: Product Catalog Perspective
 
 **Before (causes WHIZ030)**:
-```csharp{title="Example: Product Catalog Perspective" description="Before (causes WHIZ030):" category="Troubleshooting" difficulty="INTERMEDIATE" tags=["Operations", "Diagnostics", "Example:", "Product"]}
+```csharp{title="Example: Product Catalog Perspective" description="Before (causes WHIZ030):" category="Troubleshooting" difficulty="INTERMEDIATE" tags=["Operations", "Diagnostics", "Example:", "Product"] unverified="counter-example — the pattern WHIZ030 flags; detection verified by PerspectiveDiscoveryGeneratorTests.PerspectiveDiscoveryGenerator_EventMissingStreamId_ReportsWHIZ030DiagnosticAsync"}
 // ❌ Missing [StreamId] attribute
 public record ProductCreatedEvent : IEvent {
   public Guid ProductId { get; init; }  // No [StreamId]!
@@ -90,7 +90,7 @@ public class ProductCatalogPerspective : IPerspectiveFor<ProductDto, ProductCrea
 ```
 
 **After (error resolved)**:
-```csharp{title="Example: Product Catalog Perspective - ProductCreatedEvent" description="After (error resolved):" category="Troubleshooting" difficulty="INTERMEDIATE" tags=["Operations", "Diagnostics", "Example:", "Product"]}
+```csharp{title="Example: Product Catalog Perspective - ProductCreatedEvent" description="After (error resolved):" category="Troubleshooting" difficulty="INTERMEDIATE" tags=["Operations", "Diagnostics", "Example:", "Product"] tests=["PerspectiveDiscoveryGeneratorTests.PerspectiveDiscoveryGenerator_EventWithStreamId_ExtractsStreamIdPropertyAsync"]}
 // ✅ [StreamId] added to event
 public record ProductCreatedEvent : IEvent {
   [StreamId]  // Identifies the stream

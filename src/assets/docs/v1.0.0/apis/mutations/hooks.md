@@ -66,7 +66,7 @@ ExecuteAsync(command, ct)
 Called before command dispatch. Override to add validation, logging, authorization, or other pre-processing.
 
 **Signature**:
-```csharp{title="OnBeforeExecuteAsync" description="OnBeforeExecuteAsync" category="API" difficulty="BEGINNER" tags=["Apis", "Mutations", "OnBeforeExecuteAsync", "Before"]}
+```csharp{title="OnBeforeExecuteAsync" description="OnBeforeExecuteAsync" category="API" difficulty="BEGINNER" tags=["Apis", "Mutations", "OnBeforeExecuteAsync", "Before"] tests=["MutationEndpointBaseTests.OnBeforeExecuteAsync_Default_ShouldCompleteImmediatelyAsync", "MutationEndpointBaseTests.ExecuteAsync_ShouldCallOnBeforeExecuteAsync", "GraphQLMutationBaseTests.Execute_ShouldCallOnBeforeExecuteAsync"]}
 protected virtual ValueTask OnBeforeExecuteAsync(
     TCommand command,
     IMutationContext context,
@@ -80,7 +80,7 @@ protected virtual ValueTask OnBeforeExecuteAsync(
 
 ### Example: Validation
 
-```csharp{title="Example: Validation" description="Example: Validation" category="API" difficulty="ADVANCED" tags=["Apis", "Mutations", "Example:", "Validation"]}
+```csharp{title="Example: Validation" description="Example: Validation" category="API" difficulty="ADVANCED" tags=["Apis", "Mutations", "Example:", "Validation"] unverified="reject-in-before-hook verified by GraphQLMutationLifecycleTests (FullLifecycle_WithValidation_CanRejectInBeforeHookAsync), which is outside the current coverage map; the FluentValidation ValidateAndThrowAsync call is user domain illustration"}
 public partial class CreateOrderCommandEndpoint {
     private readonly IValidator<CreateOrderCommand> _validator;
 
@@ -97,7 +97,7 @@ public partial class CreateOrderCommandEndpoint {
 
 ### Example: Authorization
 
-```csharp{title="Example: Authorization" description="Example: Authorization" category="API" difficulty="ADVANCED" tags=["Apis", "Mutations", "Example:", "Authorization"]}
+```csharp{title="Example: Authorization" description="Example: Authorization" category="API" difficulty="ADVANCED" tags=["Apis", "Mutations", "Example:", "Authorization"] unverified="reject-in-before-hook verified by GraphQLMutationLifecycleTests (FullLifecycle_WithValidation_CanRejectInBeforeHookAsync), which is outside the current coverage map; the ASP.NET Core IAuthorizationService call is user domain illustration"}
 public partial class UpdateProductCommandEndpoint {
     private readonly IAuthorizationService _authz;
     private readonly ICurrentUser _user;
@@ -121,7 +121,7 @@ public partial class UpdateProductCommandEndpoint {
 
 ### Example: Timing
 
-```csharp{title="Example: Timing" description="Example: Timing" category="API" difficulty="ADVANCED" tags=["Apis", "Mutations", "Example:", "Timing"]}
+```csharp{title="Example: Timing" description="Example: Timing" category="API" difficulty="ADVANCED" tags=["Apis", "Mutations", "Example:", "Timing"] tests=["GraphQLMutationBaseTests.Context_ShouldSupportItemsAsync", "MutationContextTests.Items_ShouldAllowAddingValuesAsync"]}
 public partial class ProcessPaymentCommandEndpoint {
     protected override ValueTask OnBeforeExecuteAsync(
         ProcessPaymentCommand command,
@@ -141,7 +141,7 @@ public partial class ProcessPaymentCommandEndpoint {
 Called after successful command dispatch. Override to add post-processing, notifications, or audit logging. **Not called if dispatch throws an exception.**
 
 **Signature**:
-```csharp{title="OnAfterExecuteAsync" description="OnAfterExecuteAsync" category="API" difficulty="BEGINNER" tags=["Apis", "Mutations", "OnAfterExecuteAsync", "After"]}
+```csharp{title="OnAfterExecuteAsync" description="OnAfterExecuteAsync" category="API" difficulty="BEGINNER" tags=["Apis", "Mutations", "OnAfterExecuteAsync", "After"] tests=["MutationEndpointBaseTests.OnAfterExecuteAsync_Default_ShouldCompleteImmediatelyAsync", "MutationEndpointBaseTests.ExecuteAsync_ShouldCallOnAfterExecuteAsync", "GraphQLMutationBaseTests.Execute_ShouldCallOnAfterExecuteAsync"]}
 protected virtual ValueTask OnAfterExecuteAsync(
     TCommand command,
     TResult result,
@@ -157,7 +157,7 @@ protected virtual ValueTask OnAfterExecuteAsync(
 
 ### Example: Notifications
 
-```csharp{title="Example: Notifications" description="Example: Notifications" category="API" difficulty="ADVANCED" tags=["Apis", "Mutations", "Example:", "Notifications"]}
+```csharp{title="Example: Notifications" description="Example: Notifications" category="API" difficulty="ADVANCED" tags=["Apis", "Mutations", "Example:", "Notifications"] tests=["MutationEndpointBaseTests.ExecuteAsync_ShouldCallOnAfterExecuteAsync", "GraphQLMutationBaseTests.OnAfterExecute_ShouldReceiveResultAsync"]}
 public partial class CreateOrderCommandEndpoint {
     private readonly INotificationService _notifications;
 
@@ -177,7 +177,7 @@ public partial class CreateOrderCommandEndpoint {
 
 ### Example: Audit Logging
 
-```csharp{title="Example: Audit Logging" description="Example: Audit Logging" category="API" difficulty="ADVANCED" tags=["Apis", "Mutations", "Example:", "Audit"]}
+```csharp{title="Example: Audit Logging" description="Example: Audit Logging" category="API" difficulty="ADVANCED" tags=["Apis", "Mutations", "Example:", "Audit"] tests=["MutationEndpointBaseTests.ExecuteAsync_ShouldCallOnAfterExecuteAsync", "MutationEndpointBaseTests.ExecuteAsync_ShouldReturnErrorResult_WhenOnErrorAsyncReturnsValueAsync"]}
 public partial class DeleteUserCommandEndpoint {
     private readonly IAuditLogger _audit;
     private readonly ICurrentUser _user;
@@ -200,7 +200,7 @@ public partial class DeleteUserCommandEndpoint {
 
 ### Example: Performance Logging
 
-```csharp{title="Example: Performance Logging" description="Example: Performance Logging" category="API" difficulty="ADVANCED" tags=["Apis", "Mutations", "Example:", "Performance"]}
+```csharp{title="Example: Performance Logging" description="Example: Performance Logging" category="API" difficulty="ADVANCED" tags=["Apis", "Mutations", "Example:", "Performance"] tests=["GraphQLMutationBaseTests.Context_ShouldSupportItemsAsync", "MutationContextTests.TryGetItem_ShouldReturnTrueForExistingKeyAsync"]}
 public partial class ProcessPaymentCommandEndpoint {
     private readonly ILogger<ProcessPaymentCommandEndpoint> _logger;
 
@@ -230,7 +230,7 @@ public partial class ProcessPaymentCommandEndpoint {
 Called when command dispatch throws an exception. Override to provide custom error handling, logging, or fallback results.
 
 **Signature**:
-```csharp{title="OnErrorAsync" description="OnErrorAsync" category="API" difficulty="BEGINNER" tags=["Apis", "Mutations", "OnErrorAsync"]}
+```csharp{title="OnErrorAsync" description="OnErrorAsync" category="API" difficulty="BEGINNER" tags=["Apis", "Mutations", "OnErrorAsync"] tests=["MutationEndpointBaseTests.OnErrorAsync_Default_ShouldReturnNullAsync", "MutationEndpointBaseTests.ExecuteAsync_ShouldCallOnErrorAsync_WhenDispatchThrowsAsync", "MutationEndpointBaseTests.ExecuteAsync_ShouldReturnErrorResult_WhenOnErrorAsyncReturnsValueAsync", "GraphQLMutationBaseTests.Execute_WhenOnErrorReturnsResult_ShouldReturnThatResultAsync"]}
 protected virtual ValueTask<TResult?> OnErrorAsync(
     TCommand command,
     Exception ex,
@@ -249,7 +249,7 @@ protected virtual ValueTask<TResult?> OnErrorAsync(
 
 ### Example: Error Logging
 
-```csharp{title="Example: Error Logging" description="Example: Error Logging" category="API" difficulty="ADVANCED" tags=["Apis", "Mutations", "Example:", "Error"]}
+```csharp{title="Example: Error Logging" description="Example: Error Logging" category="API" difficulty="ADVANCED" tags=["Apis", "Mutations", "Example:", "Error"] tests=["MutationEndpointBaseTests.OnErrorAsync_Default_ShouldReturnNullAsync", "MutationEndpointBaseTests.ExecuteAsync_ShouldCallOnErrorAsync_WhenDispatchThrowsAsync", "GraphQLMutationBaseTests.Execute_WhenOnErrorReturnsNull_ShouldRethrowAsync"]}
 public partial class CreateOrderCommandEndpoint {
     private readonly ILogger<CreateOrderCommandEndpoint> _logger;
 
@@ -271,7 +271,7 @@ public partial class CreateOrderCommandEndpoint {
 
 ### Example: Fallback Result
 
-```csharp{title="Example: Fallback Result" description="Example: Fallback Result" category="API" difficulty="ADVANCED" tags=["Apis", "Mutations", "Example:", "Fallback"]}
+```csharp{title="Example: Fallback Result" description="Example: Fallback Result" category="API" difficulty="ADVANCED" tags=["Apis", "Mutations", "Example:", "Fallback"] tests=["MutationEndpointBaseTests.ExecuteAsync_ShouldReturnErrorResult_WhenOnErrorAsyncReturnsValueAsync", "GraphQLMutationBaseTests.Execute_WhenOnErrorReturnsResult_ShouldReturnThatResultAsync", "GraphQLMutationBaseTests.Execute_WhenOnErrorReturnsNull_ShouldRethrowAsync"]}
 public partial class GetDataCommandEndpoint {
     private readonly ICache _cache;
 
@@ -296,7 +296,7 @@ public partial class GetDataCommandEndpoint {
 
 ### Example: Error Transformation
 
-```csharp{title="Example: Error Transformation" description="Example: Error Transformation" category="API" difficulty="ADVANCED" tags=["Apis", "Mutations", "Example:", "Error"]}
+```csharp{title="Example: Error Transformation" description="Example: Error Transformation" category="API" difficulty="ADVANCED" tags=["Apis", "Mutations", "Example:", "Error"] tests=["MutationEndpointBaseTests.ExecuteAsync_ShouldReturnErrorResult_WhenOnErrorAsyncReturnsValueAsync", "GraphQLMutationBaseTests.Execute_WhenOnErrorReturnsResult_ShouldReturnThatResultAsync", "GraphQLMutationBaseTests.Execute_WhenOnErrorReturnsNull_ShouldRethrowAsync"]}
 public partial class ApiCommandEndpoint {
     protected override ValueTask<ApiResult?> OnErrorAsync(
         ApiCommand command,
@@ -324,7 +324,7 @@ public partial class ApiCommandEndpoint {
 The `IMutationContext` interface provides context information during mutation execution. It is passed to all hooks and enables sharing state between them.
 
 **Interface**:
-```csharp{title="IMutationContext" description="IMutationContext" category="API" difficulty="INTERMEDIATE" tags=["Apis", "Mutations", "IMutationContext", "Context"]}
+```csharp{title="IMutationContext" description="IMutationContext" category="API" difficulty="INTERMEDIATE" tags=["Apis", "Mutations", "IMutationContext", "Context"] tests=["MutationContextTests.Context_ShouldImplementIMutationContextAsync", "MutationContextTests.Constructor_ShouldSetCancellationTokenAsync", "MutationContextTests.Items_ShouldBeEmptyByDefaultAsync", "GraphQLMutationBaseTests.Context_ShouldContainCancellationTokenAsync"]}
 public interface IMutationContext {
     /// <summary>
     /// The cancellation token for the current request.
@@ -343,7 +343,7 @@ public interface IMutationContext {
 
 The `Items` dictionary enables passing data between hooks:
 
-```csharp{title="Using Items for State Sharing" description="The Items dictionary enables passing data between hooks:" category="API" difficulty="ADVANCED" tags=["Apis", "Mutations", "Using", "Items"]}
+```csharp{title="Using Items for State Sharing" description="The Items dictionary enables passing data between hooks:" category="API" difficulty="ADVANCED" tags=["Apis", "Mutations", "Using", "Items"] tests=["GraphQLMutationBaseTests.Context_ShouldSupportItemsAsync", "MutationContextTests.Items_ShouldAllowAddingValuesAsync", "MutationContextTests.TryGetItem_ShouldReturnTrueForExistingKeyAsync"]}
 public partial class CreateOrderCommandEndpoint {
     protected override ValueTask OnBeforeExecuteAsync(
         CreateOrderCommand command,
@@ -382,7 +382,7 @@ public partial class CreateOrderCommandEndpoint {
 
 The default `MutationContext` class implements `IMutationContext`:
 
-```csharp{title="MutationContext Implementation" description="The default MutationContext class implements IMutationContext:" category="API" difficulty="BEGINNER" tags=["Apis", "Mutations", "MutationContext", "Implementation"]}
+```csharp{title="MutationContext Implementation" description="The default MutationContext class implements IMutationContext:" category="API" difficulty="BEGINNER" tags=["Apis", "Mutations", "MutationContext", "Implementation"] tests=["MutationContextTests.Constructor_ShouldSetCancellationTokenAsync", "MutationContextTests.Context_ShouldImplementIMutationContextAsync", "MutationContextTests.Items_ShouldBeEmptyByDefaultAsync"]}
 public sealed class MutationContext(CancellationToken cancellationToken) : IMutationContext {
 
     public CancellationToken CancellationToken { get; } = cancellationToken;
@@ -395,7 +395,7 @@ public sealed class MutationContext(CancellationToken cancellationToken) : IMuta
 
 Here is a complete example showing all hooks working together:
 
-```csharp{title="Complete Example" description="Here is a complete example showing all hooks working together:" category="API" difficulty="ADVANCED" tags=["Apis", "Mutations", "Complete", "Example"]}
+```csharp{title="Complete Example" description="Here is a complete example showing all hooks working together:" category="API" difficulty="ADVANCED" tags=["Apis", "Mutations", "Complete", "Example"] tests=["MutationEndpointBaseTests.ExecuteAsync_Order_ShouldBe_Before_Dispatch_AfterAsync", "GraphQLMutationBaseTests.Context_ShouldSupportItemsAsync", "MutationEndpointBaseTests.ExecuteAsync_ShouldCallOnErrorAsync_WhenDispatchThrowsAsync"]}
 // The attribute goes on the command class; the generator emits the
 // partial CreateOrderCommandEndpoint (REST) and CreateOrderCommandMutation (GraphQL)
 [CommandEndpoint<CreateOrderCommand, OrderResult>(

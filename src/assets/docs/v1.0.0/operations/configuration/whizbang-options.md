@@ -27,7 +27,7 @@ lastMaintainedCommit: '01f07906'
 
 ## Basic Usage
 
-```csharp{title="Basic Configuration" description="Configure Whizbang with options lambda" category="Configuration" difficulty="BEGINNER" tags=["Configuration", "AddWhizbang"]}
+```csharp{title="Basic Configuration" description="Configure Whizbang with options lambda" category="Configuration" difficulty="BEGINNER" tags=["Configuration", "AddWhizbang"] tests=["ServiceCollectionExtensionsTests.AddWhizbang_WithOptionsLambda_RegistersWhizbangCoreOptions_Async", "ServiceCollectionExtensionsTests.AddWhizbang_WithOptionsLambda_RegistersTagOptions_Async"]}
 services.AddWhizbang(options => {
   // Configure tag processing
   options.Tags.UseHook<NotificationTagAttribute, MyNotificationHook>();
@@ -62,7 +62,7 @@ services.AddWhizbang(options => {
 
 Controls whether message tag processing is enabled. Set to `false` to disable all tag hook invocations.
 
-```csharp{title="Disable Tag Processing" description="Turn off tag processing entirely" category="Configuration" difficulty="BEGINNER" tags=["Configuration", "Tags"]}
+```csharp{title="Disable Tag Processing" description="Turn off tag processing entirely" category="Configuration" difficulty="BEGINNER" tags=["Configuration", "Tags"] tests=["WhizbangCoreOptionsTests.EnableTagProcessing_CanBeSetToFalse_Async", "ServiceCollectionExtensionsTests.AddWhizbang_WithOptionsLambda_RegistersWhizbangCoreOptions_Async"]}
 services.AddWhizbang(options => {
   options.EnableTagProcessing = false; // No hooks will fire
 });
@@ -92,7 +92,7 @@ Tags are processed during lifecycle invocation. Use this when hooks depend on li
 Message → Receptor → Cascade Events → Lifecycle Stages → TAG PROCESSING
 ```
 
-```csharp{title="Lifecycle Stage Mode" description="Process tags after lifecycle stages" category="Configuration" difficulty="INTERMEDIATE" tags=["Configuration", "Tags", "Lifecycle"]}
+```csharp{title="Lifecycle Stage Mode" description="Process tags after lifecycle stages" category="Configuration" difficulty="INTERMEDIATE" tags=["Configuration", "Tags", "Lifecycle"] tests=["WhizbangCoreOptionsTests.TagProcessingMode_CanBeSetToAsLifecycleStage_Async", "ServiceCollectionExtensionsTests.AddWhizbang_WithOptionsLambda_RegistersWhizbangCoreOptions_Async"]}
 services.AddWhizbang(options => {
   options.TagProcessingMode = TagProcessingMode.AsLifecycleStage;
 });
@@ -120,7 +120,7 @@ Access to tag-specific configuration options. See [TagOptions](#tagoptions) belo
 
 Register a hook for a specific tag attribute type:
 
-```csharp{title="Register Tag Hook" description="Register a hook for SignalTagAttribute" category="Configuration" difficulty="BEGINNER" tags=["Configuration", "Tags", "Hooks"]}
+```csharp{title="Register Tag Hook" description="Register a hook for SignalTagAttribute" category="Configuration" difficulty="BEGINNER" tags=["Configuration", "Tags", "Hooks"] tests=["WhizbangCoreOptionsTests.Tags_UseHook_AddsRegistration_Async", "TagOptionsTests.UseHook_AddsRegistrationToListAsync"]}
 services.AddWhizbang(options => {
   options.Tags.UseHook<SignalTagAttribute, SignalRNotificationHook<NotificationHub>>();
 });
@@ -130,7 +130,7 @@ services.AddWhizbang(options => {
 
 Control execution order with priority (lower values execute first). The **default priority is `-100`** (fires first):
 
-```csharp{title="Hook Priority" description="Control hook execution order" category="Configuration" difficulty="INTERMEDIATE" tags=["Configuration", "Tags", "Priority"]}
+```csharp{title="Hook Priority" description="Control hook execution order" category="Configuration" difficulty="INTERMEDIATE" tags=["Configuration", "Tags", "Priority"] tests=["TagOptionsTests.UseHook_AcceptsCustomPriorityAsync", "TagOptionsTests.UseHook_UsesDefaultPriorityAsync", "TagOptionsTests.GetHooksInExecutionOrder_SortsByPriorityAscendingAsync"]}
 services.AddWhizbang(options => {
   options.Tags.UseHook<SignalTagAttribute, ValidationHook>(priority: -100);    // First (default)
   options.Tags.UseHook<SignalTagAttribute, NotificationHook>(priority: 0);     // After
@@ -142,7 +142,7 @@ services.AddWhizbang(options => {
 
 `UseHook` also accepts an optional `fireAt` parameter to restrict a hook to a specific `LifecycleStage`. When `fireAt` is `null` (the default), the hook fires at all stages:
 
-```csharp{title="Stage-Restricted Hook" description="Fire a hook only at a specific lifecycle stage" category="Configuration" difficulty="INTERMEDIATE" tags=["Configuration", "Tags", "Lifecycle"]}
+```csharp{title="Stage-Restricted Hook" description="Fire a hook only at a specific lifecycle stage" category="Configuration" difficulty="INTERMEDIATE" tags=["Configuration", "Tags", "Lifecycle"] tests=["TagOptionsTests.UseHook_AcceptsCustomFireAtAsync", "TagOptionsTests.UseHook_UsesDefaultFireAtNullForAllStagesAsync"]}
 services.AddWhizbang(options => {
   options.Tags.UseHook<SignalTagAttribute, NotificationHook>(
     fireAt: LifecycleStage.PostPerspectiveInline);
@@ -153,7 +153,7 @@ services.AddWhizbang(options => {
 
 Register a hook that fires for **all** tagged messages regardless of attribute type. The hook must implement `IMessageTagHook<MessageTagAttribute>`:
 
-```csharp{title="Universal Hook" description="Hook that fires for all tagged messages" category="Configuration" difficulty="INTERMEDIATE" tags=["Configuration", "Tags", "Universal"]}
+```csharp{title="Universal Hook" description="Hook that fires for all tagged messages" category="Configuration" difficulty="INTERMEDIATE" tags=["Configuration", "Tags", "Universal"] tests=["WhizbangCoreOptionsTests.Tags_UseUniversalHook_WorksCorrectly_Async", "TagOptionsTests.UseUniversalHook_RegistersForMessageTagAttributeAsync"]}
 services.AddWhizbang(options => {
   // This hook fires for every tagged message
   options.Tags.UseUniversalHook<LoggingHook>();
@@ -165,7 +165,7 @@ services.AddWhizbang(options => {
 
 ## Complete Configuration Example
 
-```csharp{title="Complete Configuration" description="Full configuration example with all options" category="Configuration" difficulty="INTERMEDIATE" tags=["Configuration", "Tags", "Example"]}
+```csharp{title="Complete Configuration" description="Full configuration example with all options" category="Configuration" difficulty="INTERMEDIATE" tags=["Configuration", "Tags", "Example"] tests=["ServiceCollectionExtensionsTests.AddWhizbang_WithMultipleHooks_RegistersAllHookTypes_Async", "ServiceCollectionExtensionsTests.AddWhizbang_WithOptionsLambda_RegistersWhizbangCoreOptions_Async"]}
 services.AddWhizbang(options => {
   // Enable tag processing (default is true)
   options.EnableTagProcessing = true;
@@ -222,7 +222,7 @@ Hooks are **Scoped** services, meaning:
 - ✅ Each message dispatch gets a fresh scope
 - ✅ Scope is disposed after processing completes
 
-```csharp{title="Hook with Scoped Dependencies" description="Hooks can safely inject scoped services" category="Implementation" difficulty="INTERMEDIATE" tags=["Hooks", "DI", "Scoped"]}
+```csharp{title="Hook with Scoped Dependencies" description="Hooks can safely inject scoped services" category="Implementation" difficulty="INTERMEDIATE" tags=["Hooks", "DI", "Scoped"] tests=["ServiceCollectionExtensionsTests.AddWhizbang_WithHooks_RegistersHookTypesAsScoped_Async"]}
 public class AuditHook : IMessageTagHook<AuditEventAttribute> {
   private readonly MyDbContext _dbContext; // Scoped - works!
   private readonly IHttpContextAccessor _httpContext; // Scoped - works!
@@ -248,7 +248,7 @@ public class AuditHook : IMessageTagHook<AuditEventAttribute> {
 
 The parameterless `AddWhizbang()` overload still works:
 
-```csharp{title="Parameterless Overload" description="AddWhizbang without configuration" category="Configuration" difficulty="BEGINNER" tags=["Configuration", "Backward-Compatibility"]}
+```csharp{title="Parameterless Overload" description="AddWhizbang without configuration" category="Configuration" difficulty="BEGINNER" tags=["Configuration", "Backward-Compatibility"] tests=["ServiceCollectionExtensionsTests.AddWhizbang_ParameterlessOverload_StillWorks_Async", "ServiceCollectionExtensionsTests.AddWhizbang_WithNullConfigure_UsesDefaults_Async"]}
 // This still works - uses default options
 services.AddWhizbang();
 

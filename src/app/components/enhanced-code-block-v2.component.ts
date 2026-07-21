@@ -7,6 +7,7 @@ import { PopoverModule } from 'primeng/popover';
 import { DialogModule } from 'primeng/dialog';
 import { trigger, state, style, transition, animate } from '@angular/animations';
 import { ThemeService } from '../services/theme.service';
+import { VerifiedBadgeComponent } from './verified-badge.component';
 import hljs from 'highlight.js/lib/core';
 import csharp from 'highlight.js/lib/languages/csharp';
 import typescript from 'highlight.js/lib/languages/typescript';
@@ -26,6 +27,10 @@ interface CodeBlockOptions {
   nugetPackages?: string[];
   description?: string;
   tags?: string[];
+  /** `<ShortClassName>.<MethodName>` test keys that verify this example. */
+  tests?: string[];
+  /** Reason this example is intentionally not verified (counter-example, external API). */
+  unverified?: string;
   category?: string;
   showLineNumbers?: boolean;
   highlightLines?: number[];
@@ -44,7 +49,7 @@ interface CodeBlockOptions {
 
 @Component({
   standalone: true,
-  imports: [CommonModule, ButtonModule, TooltipModule, ChipModule, PopoverModule, DialogModule],
+  imports: [CommonModule, ButtonModule, TooltipModule, ChipModule, PopoverModule, DialogModule, VerifiedBadgeComponent],
   selector: 'wb-enhanced-code-v2',
   changeDetection: ChangeDetectionStrategy.OnPush,
   animations: [
@@ -84,8 +89,16 @@ interface CodeBlockOptions {
       <!-- Header with metadata -->
       <div class="code-header" *ngIf="hasHeader()">
         <div class="code-info">
-          <h4 *ngIf="options.title" class="code-title">{{ options.title }}</h4>
-          
+          <div class="code-title-row" *ngIf="options.title || showVerification()"
+               style="display:flex; align-items:center; gap:0.6rem; flex-wrap:wrap; margin-bottom:0.5rem;">
+            <h4 *ngIf="options.title" class="code-title" style="margin:0;">{{ options.title }}</h4>
+            <wb-verified-badge
+              *ngIf="showVerification()"
+              [tests]="options.tests || []"
+              [naReason]="options.unverified">
+            </wb-verified-badge>
+          </div>
+
           <div class="metadata-row" *ngIf="hasMetadata()">
             <span *ngIf="options.filename" class="filename">
               <i class="pi pi-file"></i>
@@ -105,13 +118,13 @@ interface CodeBlockOptions {
               class="framework-chip">
             </p-chip>
             
-            <p-chip 
+            <p-chip
               *ngIf="options.difficulty"
               [label]="options.difficulty"
               class="difficulty-chip"
               [attr.data-difficulty]="options.difficulty?.toLowerCase()">
             </p-chip>
-            
+
             <!-- Tags moved inline to save vertical space -->
             <p-chip 
               *ngFor="let tag of options.tags" 
@@ -727,6 +740,18 @@ export class EnhancedCodeBlockV2Component implements OnInit, OnDestroy, OnChange
   
   hasMetadata(): boolean {
     return !!(this.options.filename || this.options.language || this.options.framework || this.options.difficulty || (this.options.tags && this.options.tags.length > 0));
+  }
+
+  /**
+   * Whether to show a verification badge. Every C# example should be verified
+   * (green) or explicitly excused (na) — so a C# block with neither tests nor an
+   * `unverified` reason surfaces an amber "needs test" gap. Non-C# blocks
+   * (bash/json/output) only show a badge when tests are explicitly linked.
+   */
+  showVerification(): boolean {
+    const lang = (this.options.language || '').toLowerCase();
+    const isVerifiableLang = lang === 'csharp' || lang === 'cs' || lang === 'c#';
+    return !!(isVerifiableLang || (this.options.tests && this.options.tests.length > 0) || this.options.unverified);
   }
   
   hasAdditionalInfo(): boolean {

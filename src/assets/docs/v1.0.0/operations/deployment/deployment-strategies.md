@@ -44,7 +44,7 @@ Comprehensive guide to **deployment strategies** for Whizbang applications - blu
 
 ### Architecture
 
-```mermaid
+```mermaid{caption="Blue-green deployment — the load balancer serves 100% from Blue (v1.0) until Green (v1.1) is validated, then the selector switch sends all traffic to Green."}
 flowchart TD
     subgraph Initial["Blue-Green Deployment"]
         LB1["Load Balancer"]
@@ -217,7 +217,7 @@ kubectl scale deployment/order-service-blue --replicas=3
 
 ### Architecture
 
-```mermaid
+```mermaid{caption="Canary deployment — traffic shifts gradually from v1.0 to v1.1, starting at a 90/10 split and progressing to 50/50 as metrics are validated at each stage."}
 flowchart TD
     subgraph Initial["Canary Deployment"]
         LB1["Load Balancer"]
@@ -468,7 +468,7 @@ spec:
 
 **Program.cs**:
 
-```csharp{title="LaunchDarkly Integration" description="LaunchDarkly Integration" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "LaunchDarkly", "Integration"]}
+```csharp{title="LaunchDarkly Integration" description="LaunchDarkly Integration" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "LaunchDarkly", "Integration"] unverified="third-party LaunchDarkly client registration — not a Whizbang API"}
 builder.Services.AddSingleton<ILdClient>(sp => {
   var config = Configuration.Builder(builder.Configuration["LaunchDarkly:SdkKey"])
     .Build();
@@ -478,7 +478,7 @@ builder.Services.AddSingleton<ILdClient>(sp => {
 
 **Usage**:
 
-```csharp{title="LaunchDarkly Integration - CreateOrderReceptor" description="LaunchDarkly Integration - CreateOrderReceptor" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "LaunchDarkly", "Integration"]}
+```csharp{title="LaunchDarkly Integration - CreateOrderReceptor" description="LaunchDarkly Integration - CreateOrderReceptor" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "LaunchDarkly", "Integration"] unverified="application feature-flag receptor — not Whizbang library behavior"}
 public class CreateOrderReceptor(ILdClient featureFlags) : IReceptor<CreateOrderCommand, OrderCreatedEvent> {
 
   public async ValueTask<OrderCreatedEvent> HandleAsync(
@@ -515,7 +515,7 @@ Whizbang receptors return `ValueTask` / `ValueTask<TResponse>` from `HandleAsync
 
 ### Gradual Rollout with Feature Flags
 
-```csharp{title="Gradual Rollout with Feature Flags" description="Gradual Rollout with Feature Flags" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Gradual", "Rollout"]}
+```csharp{title="Gradual Rollout with Feature Flags" description="Gradual Rollout with Feature Flags" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Gradual", "Rollout"] unverified="commentary only — no Whizbang API exercised"}
 // LaunchDarkly dashboard:
 // Day 1: Enable for 10% of users
 // Day 2: Enable for 25% of users

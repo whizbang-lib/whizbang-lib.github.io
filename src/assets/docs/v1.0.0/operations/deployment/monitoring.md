@@ -47,7 +47,7 @@ Comprehensive **monitoring and observability** for Whizbang applications - Appli
 
 **Program.cs**:
 
-```csharp{title="Setup" description="Setup" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Setup"]}
+```csharp{title="Setup" description="Setup" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Setup"] unverified="Application Insights SDK configuration — third-party telemetry setup, not a Whizbang behavior"}
 builder.Services.AddApplicationInsightsTelemetry(options => {
   options.ConnectionString = builder.Configuration["ApplicationInsights:ConnectionString"];
   options.EnableAdaptiveSampling = true;
@@ -70,7 +70,7 @@ builder.Services.AddApplicationInsightsTelemetryProcessor<FilterHealthChecksTele
 
 ### Structured Logging
 
-```csharp{title="Structured Logging" description="Structured Logging" category="Configuration" difficulty="ADVANCED" tags=["Operations", "Deployment", "Structured", "Logging"]}
+```csharp{title="Structured Logging" description="Structured Logging" category="Configuration" difficulty="ADVANCED" tags=["Operations", "Deployment", "Structured", "Logging"] unverified="illustrative user receptor with ILogger scopes — application logging pattern, no Whizbang behavior asserted"}
 public class CreateOrderReceptor(
   IDispatcher dispatcher,
   ILogger<CreateOrderReceptor> logger) : IReceptor<CreateOrderCommand, OrderCreatedEvent> {
@@ -175,7 +175,7 @@ requests
 
 **Program.cs**:
 
-```csharp{title="Setup (3)" description="Setup (3)" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Setup"]}
+```csharp{title="Setup (3)" description="Setup (3)" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Setup"] unverified="OpenTelemetry/Prometheus exporter wiring — third-party config; Whizbang meter names verified separately in DispatcherMetricsTests/TableStatisticsMetricsTests"}
 builder.Services.AddOpenTelemetry()
   .WithMetrics(metrics => {
     metrics
@@ -194,7 +194,7 @@ The `Whizbang.*` wildcard picks up the library's meters, including `Whizbang.Dis
 
 **OrderMetrics.cs**:
 
-```csharp{title="Custom Metrics" description="**OrderMetrics." category="Configuration" difficulty="ADVANCED" tags=["Operations", "Deployment", "Custom", "Metrics"]}
+```csharp{title="Custom Metrics" description="**OrderMetrics." category="Configuration" difficulty="ADVANCED" tags=["Operations", "Deployment", "Custom", "Metrics"] unverified="user application Meter/instrument definitions — app-specific metrics, not a Whizbang behavior"}
 using System.Diagnostics.Metrics;
 
 public class OrderMetrics {
@@ -232,7 +232,7 @@ public class OrderMetrics {
 
 **Usage**:
 
-```csharp{title="Custom Metrics (2)" description="Custom Metrics" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Custom", "Metrics"]}
+```csharp{title="Custom Metrics (2)" description="Custom Metrics" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Custom", "Metrics"] unverified="user receptor recording app metrics — illustrative usage, not a Whizbang behavior"}
 public async ValueTask<OrderCreatedEvent> HandleAsync(
   CreateOrderCommand command,
   CancellationToken cancellationToken = default
@@ -289,7 +289,7 @@ rate(orders_created_total[1m]) * 60
 
 Whizbang emits OpenTelemetry spans through named `ActivitySource`s (see `WhizbangActivitySource`). Register them with your tracer provider:
 
-```csharp{title="Register Whizbang Activity Sources" description="OpenTelemetry tracing setup with Whizbang sources" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Tracing", "OpenTelemetry"]}
+```csharp{title="Register Whizbang Activity Sources" description="OpenTelemetry tracing setup with Whizbang sources" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Tracing", "OpenTelemetry"] tests=["WhizbangActivitySourceTests.Execution_ActivitySource_IsInitializedAsync", "WhizbangActivitySourceTests.TracingActivitySource_IsInitializedAsync", "WhizbangActivitySourceTests.Transport_ActivitySource_IsInitializedAsync"]}
 builder.Services.AddOpenTelemetry()
   .WithTracing(tracing => {
     tracing
@@ -312,7 +312,7 @@ You do **not** hand-roll trace propagation with Whizbang. Every message travels 
 
 Add your own child spans with a private `ActivitySource` when you need business-level detail:
 
-```csharp{title="Custom Spans in Receptors" description="App-level ActivitySource for business spans" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Activity", "W3C"]}
+```csharp{title="Custom Spans in Receptors" description="App-level ActivitySource for business spans" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Activity", "W3C"] unverified="user application ActivitySource for business spans — app code, not a Whizbang behavior"}
 public class CreateOrderReceptor(IDispatcher dispatcher) : IReceptor<CreateOrderCommand, OrderCreatedEvent> {
   private static readonly ActivitySource Source = new("ECommerce.OrderService");
 
@@ -358,7 +358,7 @@ Remember to register the app-level source too: `tracing.AddSource("ECommerce.Ord
 
 **Program.cs**:
 
-```csharp{title="Basic Health Checks" description="Basic Health Checks" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Basic", "Health"]}
+```csharp{title="Basic Health Checks" description="Basic Health Checks" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Basic", "Health"] unverified="ASP.NET/third-party health-check registration — deployment config, not a Whizbang behavior"}
 builder.Services.AddHealthChecks()
   .AddNpgSql(
     builder.Configuration["Database:ConnectionString"],
@@ -407,7 +407,7 @@ The `subscriptions` check is tagged `transport`, so you can include it in a read
 
 **OrderServiceHealthCheck.cs**:
 
-```csharp{title="Custom Health Check" description="**OrderServiceHealthCheck." category="Configuration" difficulty="ADVANCED" tags=["Operations", "Deployment", "Custom", "Health"]}
+```csharp{title="Custom Health Check" description="**OrderServiceHealthCheck." category="Configuration" difficulty="ADVANCED" tags=["Operations", "Deployment", "Custom", "Health"] unverified="user IHealthCheck implementation — app-specific health logic, not a Whizbang behavior"}
 public class OrderServiceHealthCheck : IHealthCheck {
   private readonly IDbConnection _db;
 
@@ -445,7 +445,7 @@ public class OrderServiceHealthCheck : IHealthCheck {
 
 **Registration**:
 
-```csharp{title="Custom Health Check (2)" description="Registration:" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Custom", "Health"]}
+```csharp{title="Custom Health Check (2)" description="Registration:" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Custom", "Health"] unverified="health-check registration config — deployment wiring, not a Whizbang behavior"}
 builder.Services.AddHealthChecks()
   .AddCheck<OrderServiceHealthCheck>("order-service", tags: ["ready"]);
 ```
@@ -624,7 +624,7 @@ az monitor metrics alert create \
 
 **Program.cs**:
 
-```csharp{title="Serilog with Sinks" description="Serilog with Sinks" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Serilog", "Sinks"]}
+```csharp{title="Serilog with Sinks" description="Serilog with Sinks" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Serilog", "Sinks"] unverified="Serilog logger/sink configuration — third-party logging setup, not a Whizbang behavior"}
 using Serilog;
 using Serilog.Sinks.ApplicationInsights.TelemetryConverters;
 
@@ -668,7 +668,7 @@ builder.Host.UseSerilog();
 
 **CreateOrderBenchmark.cs**:
 
-```csharp{title="BenchmarkDotNet Integration" description="**CreateOrderBenchmark." category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "BenchmarkDotNet", "Integration"]}
+```csharp{title="BenchmarkDotNet Integration" description="**CreateOrderBenchmark." category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "BenchmarkDotNet", "Integration"] unverified="BenchmarkDotNet harness for a user receptor — performance-test scaffold, not a Whizbang behavior"}
 using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Running;
 

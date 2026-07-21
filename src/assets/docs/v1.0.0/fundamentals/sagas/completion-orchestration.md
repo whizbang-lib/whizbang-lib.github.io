@@ -37,7 +37,7 @@ The **completion watchdog** is the safety net. It fires on a budgeted schedule, 
 
 ## The two completion paths
 
-```mermaid
+```mermaid{caption="The two completion paths — the primary event-driven close (last item terminates, the reconciler agrees with the event store, exactly-one SagaCompletedEvent emits) and the watchdog safety net that re-arms on progress, increments a stall counter on no progress, backs off, and abandons after max consecutive stalls. Tests cover the watchdog safety-net transitions." tests=["TryRecoverViaWatchdogTickAsyncTests.NoProgressBetweenTicks_StallCounterIncrementsAndBacksOffAsync", "TryRecoverViaWatchdogTickAsyncTests.MaxConsecutiveStalls_AbandonsAsync", "TryRecoverViaWatchdogTickAsyncTests.ProgressAfterStalls_ResetsStallCounterAsync", "TryRecoverViaWatchdogTickAsyncTests.NextDelay_ClampedAtMaxAsync"]}
 flowchart TD
     subgraph Primary["PRIMARY: event-driven completion"]
         P1["per-item terminal event"] --> P2["SagaItemCompletedRecoveryHandler"]
@@ -130,7 +130,7 @@ The snapshot lives on the tick event itself — no new table, no per-pod in-memo
 
 Five knobs on `SagaOptions`:
 
-```csharp{title="Adaptive scheduler config"}
+```csharp{title="Adaptive scheduler config" unverified="DI-wiring configuration of SagaOptions; the knobs' runtime effect is exercised by TryRecoverViaWatchdogTickAsyncTests, but this fence is options wiring"}
 services.AddWhizbangSagas(opts => {
   opts.MinWatchdogDelay        = TimeSpan.FromSeconds(30); // floor
   opts.MaxWatchdogDelay        = TimeSpan.FromMinutes(30); // ceiling
@@ -164,7 +164,7 @@ Progress between ticks resets `ConsecutiveStallCount` to zero. A genuinely slow 
 
 A stuck saga (transport-lost terminal event, projection-store wedged, an item caught in an infinite retry loop without emitting terminal) increments the counter on every tick that observes zero progress. After `MaxConsecutiveStalls`:
 
-```csharp{title="SagaCompletionAbandonedEvent"}
+```csharp{title="SagaCompletionAbandonedEvent" tests=["TryRecoverViaWatchdogTickAsyncTests.MaxConsecutiveStalls_AbandonsAsync"]}
 public class SagaCompletionAbandonedEvent : SagaEventBase, ISagaCompletionAbandonedEvent {
   public string SagaName { get; set; }
   public Guid EntityId { get; set; }

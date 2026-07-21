@@ -41,7 +41,7 @@ This guide covers converting Wolverine message handlers to Whizbang Receptors.
 
 **Wolverine**:
 
-```csharp{title="Synchronous Handler" description="Synchronous Handler" category="Reference" difficulty="BEGINNER" tags=["Migration-guide", "C#", "Synchronous", "Handler"]}
+```csharp{title="Synchronous Handler" description="Synchronous Handler" category="Reference" difficulty="BEGINNER" tags=["Migration-guide", "C#", "Synchronous", "Handler"] unverified="other framework — migration before-state"}
 [WolverineHandler]
 public class OrderHandler {
     public OrderCreated Handle(CreateOrder command) {
@@ -53,7 +53,7 @@ public class OrderHandler {
 
 **Whizbang**:
 
-```csharp{title="Synchronous Handler - CreateOrderReceptor" description="Synchronous Handler - CreateOrderReceptor" category="Reference" difficulty="BEGINNER" tags=["Migration-guide", "C#", "Synchronous", "Handler", "CreateOrderReceptor"]}
+```csharp{title="Synchronous Handler - CreateOrderReceptor" description="Synchronous Handler - CreateOrderReceptor" category="Reference" difficulty="BEGINNER" tags=["Migration-guide", "C#", "Synchronous", "Handler", "CreateOrderReceptor"] tests=["ReceptorTests.Receive_ValidCommand_ShouldReturnTypeSafeResponseAsync"]}
 public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
     public ValueTask<OrderCreated> HandleAsync(
         CreateOrder message,
@@ -69,7 +69,7 @@ public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
 
 **Wolverine**:
 
-```csharp{title="Asynchronous Handler" description="Asynchronous Handler" category="Reference" difficulty="BEGINNER" tags=["Migration-guide", "C#", "Asynchronous", "Handler"]}
+```csharp{title="Asynchronous Handler" description="Asynchronous Handler" category="Reference" difficulty="BEGINNER" tags=["Migration-guide", "C#", "Asynchronous", "Handler"] unverified="other framework — migration before-state"}
 [WolverineHandler]
 public class OrderHandler {
     private readonly IOrderRepository _repository;
@@ -83,7 +83,7 @@ public class OrderHandler {
 
 **Whizbang**:
 
-```csharp{title="Asynchronous Handler - CreateOrderReceptor" description="Asynchronous Handler - CreateOrderReceptor" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-guide", "C#", "Asynchronous", "Handler", "CreateOrderReceptor"]}
+```csharp{title="Asynchronous Handler - CreateOrderReceptor" description="Asynchronous Handler - CreateOrderReceptor" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-guide", "C#", "Asynchronous", "Handler", "CreateOrderReceptor"] tests=["ReceptorTests.Receive_AsyncOperation_ShouldCompleteAsynchronouslyAsync", "ReceptorTests.Receive_ValidCommand_ShouldReturnTypeSafeResponseAsync"]}
 public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
     private readonly IOrderRepository _repository;
 
@@ -104,7 +104,7 @@ public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
 
 **Wolverine**:
 
-```csharp{title="Void Handler (Side Effects Only)" description="Void Handler (Side Effects Only)" category="Reference" difficulty="BEGINNER" tags=["Migration-guide", "C#", "Void", "Handler", "Side"]}
+```csharp{title="Void Handler (Side Effects Only)" description="Void Handler (Side Effects Only)" category="Reference" difficulty="BEGINNER" tags=["Migration-guide", "C#", "Void", "Handler", "Side"] unverified="other framework — migration before-state"}
 [WolverineHandler]
 public class NotificationHandler {
     public async Task Handle(SendEmail command, IEmailService emailService) {
@@ -115,7 +115,7 @@ public class NotificationHandler {
 
 **Whizbang**:
 
-```csharp{title="Void Handler (Side Effects Only) - SendEmailReceptor" description="Void Handler (Side Effects Only) - SendEmailReceptor" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-guide", "C#", "Void", "Handler", "Side"]}
+```csharp{title="Void Handler (Side Effects Only) - SendEmailReceptor" description="Void Handler (Side Effects Only) - SendEmailReceptor" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-guide", "C#", "Void", "Handler", "Side"] tests=["VoidReceptorTests.VoidReceptor_AsynchronousCompletion_ShouldCompleteAsync"]}
 public class SendEmailReceptor : IReceptor<SendEmail> {
     private readonly IEmailService _emailService;
 
@@ -141,7 +141,7 @@ public class SendEmailReceptor : IReceptor<SendEmail> {
 
 **Wolverine**:
 
-```csharp{title="Cascading Messages (Tuple Returns)" description="Cascading Messages (Tuple Returns)" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-guide", "C#", "Cascading", "Messages", "Tuple"]}
+```csharp{title="Cascading Messages (Tuple Returns)" description="Cascading Messages (Tuple Returns)" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-guide", "C#", "Cascading", "Messages", "Tuple"] unverified="other framework — migration before-state"}
 [WolverineHandler]
 public class OrderHandler {
     public (OrderCreated, SendOrderConfirmation) Handle(CreateOrder command) {
@@ -184,7 +184,7 @@ public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
 
 **Wolverine** (with Marten):
 
-```csharp{title="Handler with Event Store" description="Wolverine (with Marten):" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-guide", "C#", "Handler", "Event", "Store"]}
+```csharp{title="Handler with Event Store" description="Wolverine (with Marten):" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-guide", "C#", "Handler", "Event", "Store"] unverified="other framework — migration before-state"}
 [WolverineHandler]
 public class OrderHandler {
     public async Task<OrderCreated> HandleAsync(
@@ -201,7 +201,7 @@ public class OrderHandler {
 
 **Whizbang**:
 
-```csharp{title="Handler with Event Store - CreateOrderReceptor" description="Handler with Event Store - CreateOrderReceptor" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-guide", "C#", "Handler", "Event", "Store"]}
+```csharp{title="Handler with Event Store - CreateOrderReceptor" description="Handler with Event Store - CreateOrderReceptor" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-guide", "C#", "Handler", "Event", "Store"] unverified="raw IEventStore.AppendAsync — verified in the Event Store docs, not by these receptor tests"}
 public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
     private readonly IEventStore _eventStore;
 
@@ -230,7 +230,7 @@ public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
 
 **Wolverine** (one class, multiple handlers):
 
-```csharp{title="Multiple Handlers → Multiple Receptors" description="Wolverine (one class, multiple handlers):" category="Reference" difficulty="BEGINNER" tags=["Migration-guide", "C#", "Multiple", "Handlers"]}
+```csharp{title="Multiple Handlers → Multiple Receptors" description="Wolverine (one class, multiple handlers):" category="Reference" difficulty="BEGINNER" tags=["Migration-guide", "C#", "Multiple", "Handlers"] unverified="other framework — migration before-state"}
 [WolverineHandler]
 public class OrderHandlers {
     public OrderCreated Handle(CreateOrder command) { ... }
@@ -241,7 +241,7 @@ public class OrderHandlers {
 
 **Whizbang** (one receptor per message):
 
-```csharp{title="Multiple Handlers → Multiple Receptors - CreateOrderReceptor" description="Whizbang (one receptor per message):" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-guide", "C#", "Multiple", "Handlers"]}
+```csharp{title="Multiple Handlers → Multiple Receptors - CreateOrderReceptor" description="Whizbang (one receptor per message):" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-guide", "C#", "Multiple", "Handlers"] unverified="structural illustration — one receptor per message type, bodies elided"}
 // Separate classes for each message type
 public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
     public ValueTask<OrderCreated> HandleAsync(CreateOrder message, CancellationToken ct) { ... }
@@ -262,7 +262,7 @@ public class CancelOrderReceptor : IReceptor<CancelOrder, OrderCancelled> {
 
 **Wolverine** (dependencies injected per method):
 
-```csharp{title="Wolverine Method Injection" description="Wolverine (dependencies injected per method):" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-guide", "C#", "Wolverine", "Method", "Injection"]}
+```csharp{title="Wolverine Method Injection" description="Wolverine (dependencies injected per method):" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-guide", "C#", "Wolverine", "Method", "Injection"] unverified="other framework — migration before-state"}
 [WolverineHandler]
 public class OrderHandler {
     public async Task<OrderCreated> HandleAsync(

@@ -75,7 +75,7 @@ Receptors implement `IReceptor<TMessage>` (side effects only) or `IReceptor<TMes
 
 The `CreateOrderReceptor` sample takes an `IDispatcher` and an `ILogger<T>`. Wide framework interfaces like `IDispatcher` are easiest to stub with a small hand-rolled fake that records calls; loggers use `NullLogger<T>.Instance`:
 
-```csharp{title="Basic Receptor Test" description="Unit test for CreateOrderReceptor using a recording dispatcher fake" category="Best-Practices" difficulty="ADVANCED" tags=["Operations", "Testing", "Basic", "Receptor"]}
+```csharp{title="Basic Receptor Test" description="Unit test for CreateOrderReceptor using a recording dispatcher fake" category="Best-Practices" difficulty="ADVANCED" tags=["Operations", "Testing", "Basic", "Receptor"] unverified="sample receptor test — exercised by CreateOrderReceptorTests, which is outside the current coverage map"}
 using Microsoft.Extensions.Logging.Abstractions;
 using TUnit.Assertions;
 using TUnit.Core;
@@ -146,7 +146,7 @@ The `TestDispatcher` fake implements `IDispatcher`, adds published events to a `
 
 **Rocks** generates mocks at compile-time using source generators (AOT-compatible, zero reflection). Declare which types to mock with an assembly-level attribute; Rocks emits a `<TypeName>CreateExpectations` class:
 
-```csharp{title="Mocking with Rocks" description="Compile-time mock generation for a narrow app interface" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Operations", "Testing", "Rocks", "Mocking"]}
+```csharp{title="Mocking with Rocks" description="Compile-time mock generation for a narrow app interface" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Operations", "Testing", "Rocks", "Mocking"] unverified="mock/DI-wiring demonstration (Rocks source-generated expectations) — no in-map verifier"}
 using Rocks;
 
 // Assembly-level: tells the Rocks source generator to build a mock for this type
@@ -203,7 +203,7 @@ public class ProcessPaymentReceptorTests {
 
 **OrderTestData.cs**:
 
-```csharp{title="Test Data Generation with Bogus" description="Reusable Bogus-based factory for order commands" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Operations", "Testing", "Test", "Data"]}
+```csharp{title="Test Data Generation with Bogus" description="Reusable Bogus-based factory for order commands" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Operations", "Testing", "Test", "Data"] unverified="Bogus test-data factory — fixture setup, not a behavior under test"}
 using Bogus;
 
 public static class OrderTestData {
@@ -235,7 +235,7 @@ Use your contract's strongly-typed IDs (`OrderId.New()`, `ProductId.New()`, ...)
 
 **Usage**:
 
-```csharp{title="Test Data Generation with Bogus (2)" description="Using the Bogus factory in a receptor test" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Operations", "Testing", "Test", "Data"]}
+```csharp{title="Test Data Generation with Bogus (2)" description="Using the Bogus factory in a receptor test" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Operations", "Testing", "Test", "Data"] tests=["ReceptorTests.Receive_CalculatesTotal_ShouldSumItemPricesAsync"]}
 [Test]
 public async Task HandleAsync_MultipleItems_CalculatesTotalCorrectlyAsync() {
   // Arrange
@@ -262,7 +262,7 @@ Whizbang perspectives are **pure functions**: they implement `IPerspectiveFor<TD
 
 **ProductCatalogPerspectiveTests.cs**:
 
-```csharp{title="Basic Perspective Test" description="Testing pure Apply functions - no mocking required" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Operations", "Testing", "Basic", "Perspective"]}
+```csharp{title="Basic Perspective Test" description="Testing pure Apply functions - no mocking required" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Operations", "Testing", "Basic", "Perspective"] unverified="sample perspective Apply test (ProductCatalogPerspective) — no in-map perspective verifier in the current coverage map"}
 public class ProductCatalogPerspectiveTests {
   [Test]
   public async Task Apply_ProductCreatedEvent_CreatesProductAsync() {
@@ -341,7 +341,7 @@ public class ProductCatalogPerspectiveTests {
 
 TUnit uses `[Before(...)]` / `[After(...)]` hooks instead of xUnit's `IAsyncLifetime` / `IClassFixture`:
 
-```csharp{title="Test Fixtures" description="TUnit per-test database setup and teardown" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Operations", "Testing", "Test", "Fixtures"]}
+```csharp{title="Test Fixtures" description="TUnit per-test database setup and teardown" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Operations", "Testing", "Test", "Fixtures"] unverified="TUnit Before/After fixture setup — no behavior under test"}
 public class CreateOrderReceptorIntegrationTests {
   private NpgsqlConnection _connection = null!;
 
@@ -385,7 +385,7 @@ Use `[Before(Class)]` / `[After(Class)]` (static methods) for expensive resource
 
 **PostgreSQL Container**:
 
-```csharp{title="Integration Testing with Testcontainers" description="PostgreSQL container with TUnit lifecycle hooks" category="Best-Practices" difficulty="ADVANCED" tags=["Operations", "Testing", "C#", "Integration", "Testcontainers"]}
+```csharp{title="Integration Testing with Testcontainers" description="PostgreSQL container with TUnit lifecycle hooks" category="Best-Practices" difficulty="ADVANCED" tags=["Operations", "Testing", "C#", "Integration", "Testcontainers"] unverified="Testcontainers PostgreSQL fixture wiring — no behavior under test"}
 using Testcontainers.PostgreSql;
 
 public class PostgresIntegrationTests {
@@ -422,7 +422,7 @@ public class PostgresIntegrationTests {
 
 **Azure Service Bus Emulator Container**:
 
-```csharp{title="Integration Testing with Testcontainers - Service Bus" description="Azure Service Bus emulator container (Testcontainers.ServiceBus)" category="Best-Practices" difficulty="ADVANCED" tags=["Operations", "Testing", "C#", "Integration", "Testcontainers"]}
+```csharp{title="Integration Testing with Testcontainers - Service Bus" description="Azure Service Bus emulator container (Testcontainers.ServiceBus)" category="Best-Practices" difficulty="ADVANCED" tags=["Operations", "Testing", "C#", "Integration", "Testcontainers"] unverified="Testcontainers Service Bus emulator fixture wiring — no behavior under test"}
 using Testcontainers.ServiceBus;
 
 public class ServiceBusIntegrationTests {
@@ -462,7 +462,7 @@ The Azure Service Bus emulator (`mcr.microsoft.com/azure-messaging/servicebus-em
 
 **TUnit supports parameterized tests** via `[Arguments]`:
 
-```csharp{title="Parameterized Tests" description="TUnit [Arguments] attribute for multiple scenarios" category="Best-Practices" difficulty="ADVANCED" tags=["Operations", "Testing", "Parameterized", "Tests"]}
+```csharp{title="Parameterized Tests" description="TUnit [Arguments] attribute for multiple scenarios" category="Best-Practices" difficulty="ADVANCED" tags=["Operations", "Testing", "Parameterized", "Tests"] unverified="TUnit [Arguments] feature demo; asserts sample CreateOrderReceptor total validation, exercised by CreateOrderReceptorTests, which is outside the current coverage map"}
 public class OrderValidationTests {
   [Test]
   [Arguments(-10.00)]
@@ -501,7 +501,7 @@ public class OrderValidationTests {
 
 ### 1. Use `await` in Assertions
 
-```csharp{title="Use `await` in Assertions" description="TUnit assertions are awaitable and must be awaited" category="Best-Practices" difficulty="BEGINNER" tags=["Operations", "Testing", "Await", "Assertions"]}
+```csharp{title="Use `await` in Assertions" description="TUnit assertions are awaitable and must be awaited" category="Best-Practices" difficulty="BEGINNER" tags=["Operations", "Testing", "Await", "Assertions"] unverified="conceptual await-usage snippet with counter-example — no behavior under test"}
 // ✅ GOOD - Await TUnit assertions
 await Assert.That(result).IsNotNull();
 await Assert.That(result.OrderId).IsEqualTo(command.OrderId);
@@ -512,7 +512,7 @@ Assert.That(result).IsNotNull();  // Won't execute in TUnit
 
 ### 2. Test Cancellation
 
-```csharp{title="Test Cancellation" description="Verify receptors respect CancellationToken" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Operations", "Testing", "Test", "Cancellation"]}
+```csharp{title="Test Cancellation" description="Verify receptors respect CancellationToken" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Operations", "Testing", "Test", "Cancellation"] tests=["VoidReceptorTests.VoidReceptor_CancellationToken_ShouldRespectCancellationAsync"]}
 [Test]
 public async Task HandleAsync_CancellationRequested_ThrowsOperationCanceledExceptionAsync() {
   // Arrange
@@ -530,7 +530,7 @@ public async Task HandleAsync_CancellationRequested_ThrowsOperationCanceledExcep
 
 ### 3. Test Timeout
 
-```csharp{title="Test Timeout" description="TUnit Timeout attribute bounds test runtime" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Operations", "Testing", "Test", "Timeout"]}
+```csharp{title="Test Timeout" description="TUnit Timeout attribute bounds test runtime" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Operations", "Testing", "Test", "Timeout"] unverified="TUnit [Timeout] attribute demonstration — framework feature, not a receptor behavior under test"}
 [Test]
 [Timeout(5000)]  // 5 seconds max
 public async Task HandleAsync_SlowOperation_CompletesWithinTimeoutAsync() {
@@ -556,7 +556,7 @@ public async Task HandleAsync_SlowOperation_CompletesWithinTimeoutAsync() {
 
 Policies are registered on the `IPolicyEngine` as a name + predicate + configuration. Test them by constructing a `PolicyContext` and calling `MatchAsync`:
 
-```csharp{title="Testing Policies" description="PolicyEngine matching tests with PolicyContext" category="Best-Practices" difficulty="ADVANCED" tags=["Operations", "Testing", "C#", "Policies"]}
+```csharp{title="Testing Policies" description="PolicyEngine matching tests with PolicyContext" category="Best-Practices" difficulty="ADVANCED" tags=["Operations", "Testing", "C#", "Policies"] tests=["PolicyEngineTests.PolicyEngine_ShouldMatchSinglePolicyAsync", "PolicyEngineTests.PolicyEngine_ShouldReturnNullWhenNoPolicyMatchesAsync", "PolicyEngineTests.PolicyEngine_ShouldRecordUnmatchedPoliciesInTrailAsync"]}
 using Whizbang.Core.Policies;
 
 public class OrderPolicyTests {

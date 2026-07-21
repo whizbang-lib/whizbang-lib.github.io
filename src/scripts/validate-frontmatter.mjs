@@ -3,6 +3,12 @@
 //   1. Every content page (not _folder.md) has page frontmatter with codeReferences.
 //   2. Every fenced code block of a "should-have" language carries {...} front-matter
 //      (the same set the site flags with a "Missing Front-Matter" banner).
+//   2b. Every ```mermaid diagram carries a non-empty caption (hard gate). A
+//      verifying tests=[…] on every diagram is the GOAL but conceptual/overview
+//      diagrams have no single verifying test, so a missing mermaid tests=[…] is a
+//      WARNING until the map is regenerated; pass --strict-mermaid-tests to make it
+//      an exit-1 failure. (Forcing tests onto untestable diagrams manufactures the
+//      wrong-green badges the whole coverage map exists to avoid.)
 //   3. Taxonomy: pageType (Diátaxis-based enum), audience, status — WARNINGS until
 //      backfill completes; pass --strict-taxonomy to make them exit-1 failures.
 // Drafts / proposals / roadmap are unreleased and exempt from 1–2; taxonomy enum
@@ -15,6 +21,7 @@ import { join } from 'path';
 const ROOT = 'src/assets/docs/v1.0.0';
 const REPORT_ONLY = process.argv.includes('--report');
 const STRICT_TAXONOMY = process.argv.includes('--strict-taxonomy');
+const STRICT_MERMAID_TESTS = process.argv.includes('--strict-mermaid-tests');
 
 const PAGE_TYPES = new Set(['overview', 'concept', 'tutorial', 'guide', 'reference', 'troubleshooting']);
 const AUDIENCES = new Set(['consumer', 'contributor', 'porter']);
@@ -39,6 +46,7 @@ function walk(dir) {
 
 const violations = [];
 const taxonomyWarnings = [];
+const mermaidTestsWarnings = [];
 
 function checkTaxonomy(file, fm, isFolderPage) {
   const scalar = (key) => (fm.match(new RegExp(`^${key}:\\s*(.+)$`, 'm')) || [])[1]?.trim().replace(/^["']|["']$/g, '');
@@ -109,6 +117,21 @@ for (const file of walk(ROOT)) {
       inBlock = true;
       const lang = m[1].toLowerCase();
       const rest = m[2];
+      if (lang === 'mermaid') {
+        // Every diagram must declare a caption and its verifying test(s).
+        const meta = rest.trim();
+        if (!meta.startsWith('{')) {
+          violations.push(`${file}:${i + 1}: mermaid diagram missing {caption="…" tests=["Class.MethodAsync"]} metadata`);
+        } else {
+          if (!/caption\s*=\s*["'][^"']+["']/.test(meta)) {
+            violations.push(`${file}:${i + 1}: mermaid diagram missing a non-empty caption`);
+          }
+          if (!/tests\s*=\s*\[\s*["'][^"']+["']/.test(meta)) {
+            mermaidTestsWarnings.push(`${file}:${i + 1}: mermaid diagram missing tests=["Class.MethodAsync", …]`);
+          }
+        }
+        return;
+      }
       if (LANGS.has(lang) && !rest.includes('{')) {
         violations.push(`${file}:${i + 1}: \`\`\`${lang} code block missing front-matter`);
       }
@@ -126,12 +149,20 @@ if (taxonomyWarnings.length > 0) {
   if (STRICT_TAXONOMY) violations.push(...taxonomyWarnings);
 }
 
+if (mermaidTestsWarnings.length > 0) {
+  const label = STRICT_MERMAID_TESTS ? '✗' : '⚠';
+  console.log(`${label} Mermaid tests: ${mermaidTestsWarnings.length} caption-only diagram(s)${STRICT_MERMAID_TESTS ? '' : ' (warnings — conceptual diagrams; enforce with --strict-mermaid-tests)'}:\n`);
+  for (const w of mermaidTestsWarnings) console.log(`  ${w}`);
+  console.log('');
+  if (STRICT_MERMAID_TESTS) violations.push(...mermaidTestsWarnings);
+}
+
 if (violations.length === 0) {
   console.log('✓ Front-matter validation passed for src/assets/docs/v1.0.0 (pages + code blocks).');
   process.exit(0);
 }
 
 console.log(`✗ Front-matter validation: ${violations.length} issue(s) in released docs (v1.0.0):\n`);
-for (const v of violations.filter((v) => !taxonomyWarnings.includes(v))) console.log(`  ${v}`);
+for (const v of violations.filter((v) => !taxonomyWarnings.includes(v) && !mermaidTestsWarnings.includes(v))) console.log(`  ${v}`);
 console.log('\nSee .claude/skills/whizbang-docs-authoring/SKILL.md for the required format.');
 process.exit(REPORT_ONLY ? 0 : 1);

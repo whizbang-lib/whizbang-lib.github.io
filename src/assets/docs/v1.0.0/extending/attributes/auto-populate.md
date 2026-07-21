@@ -49,7 +49,7 @@ Auto-populate attributes automatically enrich message properties with contextual
 
 ## Namespace
 
-```csharp{title="Namespace" description="Namespaces for auto-populate attributes and infrastructure" category="Reference" difficulty="BEGINNER" tags=["auto-populate", "namespace"]}
+```csharp{title="Namespace" description="Namespaces for auto-populate attributes and infrastructure" category="Reference" difficulty="BEGINNER" tags=["auto-populate", "namespace"] unverified="namespace-only using directives; no runtime behavior to verify"}
 using Whizbang.Core.Attributes;     // Attributes and kind enums
 using Whizbang.Core.AutoPopulate;   // Processor, registry, extensions
 ```
@@ -58,7 +58,7 @@ using Whizbang.Core.AutoPopulate;   // Processor, registry, extensions
 
 Instead of manually setting observability and audit fields on every message, auto-populate attributes let you declare what data a property should receive. The source generator discovers these attributes at compile time and generates populator code that uses record `with` expressions for zero-reflection population.
 
-```csharp{title="Overview" description="A single message decorated with all four auto-populate attribute categories" category="Extending" difficulty="BEGINNER" tags=["auto-populate", "overview", "example"]}
+```csharp{title="Overview" description="A single message decorated with all four auto-populate attribute categories" category="Extending" difficulty="BEGINNER" tags=["auto-populate", "overview", "example"] tests=["AutoPopulateDiscoveryGeneratorTests.Generator_WithMultipleAttributeTypes_DiscoversAllAsync"]}
 public record OrderCreated(
     [property: StreamId] Guid OrderId,
     string ProductName,
@@ -79,7 +79,7 @@ Values are stored in the `MessageEnvelope` metadata to preserve message immutabi
 
 Marks a `DateTimeOffset` or `DateTimeOffset?` property for automatic timestamp population at a specific point in the message lifecycle.
 
-```csharp{title="PopulateTimestamp Attribute" description="Capture timestamps at different lifecycle stages" category="Extending" difficulty="BEGINNER" tags=["auto-populate", "timestamp", "PopulateTimestamp"]}
+```csharp{title="PopulateTimestamp Attribute" description="Capture timestamps at different lifecycle stages" category="Extending" difficulty="BEGINNER" tags=["auto-populate", "timestamp", "PopulateTimestamp"] tests=["PopulateTimestampAttributeTests.PopulateTimestampAttribute_MultipleTimestamps_OnSameRecord_AreAllDiscoverableAsync", "AutoPopulateDiscoveryGeneratorTests.Generator_WithAllTimestampKinds_GeneratesAllAsync"]}
 public record PaymentProcessed(
     [property: StreamId] Guid PaymentId,
     decimal Amount,
@@ -103,7 +103,7 @@ public record PaymentProcessed(
 
 Marks a property for automatic population from `ServiceInstanceInfo`. Useful for observability and distributed tracing to know which service instance processed a message.
 
-```csharp{title="PopulateFromService Attribute" description="Capture service instance information for observability" category="Extending" difficulty="BEGINNER" tags=["auto-populate", "service", "PopulateFromService", "observability"]}
+```csharp{title="PopulateFromService Attribute" description="Capture service instance information for observability" category="Extending" difficulty="BEGINNER" tags=["auto-populate", "service", "PopulateFromService", "observability"] tests=["PopulateFromServiceAttributeTests.PopulateFromServiceAttribute_AllServiceKinds_OnSameRecord_AreDiscoverableAsync", "AutoPopulateDiscoveryGeneratorTests.Generator_WithAllServiceKinds_GeneratesAllAsync"]}
 public record OrderShipped(
     [property: StreamId] Guid OrderId,
     string TrackingNumber,
@@ -127,7 +127,7 @@ public record OrderShipped(
 
 Marks a `Guid` or `Guid?` property for automatic population from message envelope identifiers. Essential for correlation, causation tracking, and saga patterns.
 
-```csharp{title="PopulateFromIdentifier Attribute" description="Capture message identifiers for correlation and causation" category="Extending" difficulty="BEGINNER" tags=["auto-populate", "identifier", "PopulateFromIdentifier", "correlation"]}
+```csharp{title="PopulateFromIdentifier Attribute" description="Capture message identifiers for correlation and causation" category="Extending" difficulty="BEGINNER" tags=["auto-populate", "identifier", "PopulateFromIdentifier", "correlation"] tests=["PopulateFromIdentifierAttributeTests.PopulateFromIdentifierAttribute_AllIdentifierKinds_OnSameRecord_AreDiscoverableAsync", "AutoPopulateDiscoveryGeneratorTests.Generator_WithAllIdentifierKinds_GeneratesAllAsync"]}
 public record ShipmentDispatched(
     [property: StreamId] Guid ShipmentId,
     string TrackingNumber,
@@ -151,7 +151,7 @@ public record ShipmentDispatched(
 
 Marks a `string` property for automatic population from the current security context. Useful for audit trails and multi-tenancy.
 
-```csharp{title="PopulateFromContext Attribute" description="Capture security context for audit trails and multi-tenancy" category="Extending" difficulty="BEGINNER" tags=["auto-populate", "context", "PopulateFromContext", "security", "multi-tenancy"]}
+```csharp{title="PopulateFromContext Attribute" description="Capture security context for audit trails and multi-tenancy" category="Extending" difficulty="BEGINNER" tags=["auto-populate", "context", "PopulateFromContext", "security", "multi-tenancy"] tests=["PopulateFromContextAttributeTests.PopulateFromContextAttribute_BothContextKinds_OnSameRecord_AreDiscoverableAsync", "AutoPopulateDiscoveryGeneratorTests.Generator_WithAllContextKinds_GeneratesAllAsync"]}
 public record DocumentCreated(
     [property: StreamId] Guid DocumentId,
     string Title,
@@ -175,7 +175,7 @@ All four attributes can be applied to:
 - Properties on command types (implementing `ICommand`)
 - Record parameters (using `[property: ...]` attribute target syntax)
 
-```csharp{title="Attribute Targets" description="Auto-populate attributes on properties and record parameters" category="Extending" difficulty="BEGINNER" tags=["auto-populate", "syntax", "attribute-targets"]}
+```csharp{title="Attribute Targets" description="Auto-populate attributes on properties and record parameters" category="Extending" difficulty="BEGINNER" tags=["auto-populate", "syntax", "attribute-targets"] tests=["PopulateTimestampAttributeTests.PopulateTimestampAttribute_CanBeAppliedToRecordParameterAsync", "PopulateTimestampAttributeTests.PopulateTimestampAttribute_AttributeUsage_AllowsPropertyTargetAsync", "PopulateFromContextAttributeTests.PopulateFromContextAttribute_AttributeUsage_AllowsPropertyTargetAsync"]}
 // On record parameters (preferred for positional records)
 public record OrderCreated(
     [property: StreamId] Guid OrderId,
@@ -210,7 +210,7 @@ Both classes self-register via `[ModuleInitializer]` at assembly load time -- no
 
 Population happens at three distinct points in the message lifecycle:
 
-```csharp{title="Lifecycle Phases" description="The three phases where auto-populate values are set" category="Extending" difficulty="INTERMEDIATE" tags=["Extending", "Attributes", "C#", "Lifecycle", "Phases"]}
+```csharp{title="Lifecycle Phases" description="The three phases where auto-populate values are set" category="Extending" difficulty="INTERMEDIATE" tags=["Extending", "Attributes", "C#", "Lifecycle", "Phases"] tests=["AutoPopulateProcessorTests.AutoPopulateProcessor_ProcessAutoPopulate_WithTimestamp_StoresValueInMetadataAsync", "AutoPopulateProcessorTests.AutoPopulateProcessor_ProcessAutoPopulate_QueuedAtTimestamp_ReturnsNullAndSkipsAsync", "AutoPopulateProcessorTests.AutoPopulateProcessor_ProcessAutoPopulate_DeliveredAtTimestamp_ReturnsNullAndSkipsAsync", "JsonAutoPopulateHelperTests.PopulateTimestamp_RegistrationMatches_StampsPropertyOnObjectAsync", "JsonAutoPopulateHelperTests.PopulateTimestampByName_MatchesByFullName_StampsPropertyAsync"]}
 // Phase 1: Sent -- when dispatcher.SendAsync/PublishAsync is called
 // Populates: TimestampKind.SentAt, all ServiceKind, all ContextKind, all IdentifierKind
 
@@ -225,7 +225,7 @@ Population happens at three distinct points in the message lifecycle:
 
 Auto-populated values are stored in the `MessageEnvelope` metadata with an `auto:` prefix, preserving the original message immutability. The generated populator uses record `with` expressions to create new instances:
 
-```csharp{title="Generated Populator" description="Example of source-generated populator using with expressions" category="Reference" difficulty="INTERMEDIATE" tags=["auto-populate", "source-generator", "with-expression"]}
+```csharp{title="Generated Populator" description="Example of source-generated populator using with expressions" category="Reference" difficulty="INTERMEDIATE" tags=["auto-populate", "source-generator", "with-expression"] unverified="illustrative simplified generator output — the real TryPopulateSent with-expression is verified by AutoPopulateDiscoveryGeneratorTests (Generator_WithSentAtTimestamp_GeneratesPopulatorAsync, Generator_WithMultipleAttributes_GeneratesCompoundWithExpressionAsync)"}
 // Generated code (simplified) -- you never write this
 public object? TryPopulateSent(object message, MessageHop hop, MessageId messageId) {
     return message switch {
@@ -246,7 +246,7 @@ public object? TryPopulateSent(object message, MessageHop hop, MessageId message
 
 Use the extension methods on `IMessageEnvelope` to retrieve auto-populated values:
 
-```csharp{title="Reading Values from Envelope" description="Retrieve auto-populated values from the message envelope" category="Extending" difficulty="BEGINNER" tags=["auto-populate", "envelope", "extensions", "reading"]}
+```csharp{title="Reading Values from Envelope" description="Retrieve auto-populated values from the message envelope" category="Extending" difficulty="BEGINNER" tags=["auto-populate", "envelope", "extensions", "reading"] tests=["MessageEnvelopeAutoPopulateExtensionsTests.GetAutoPopulated_ReturnsValue_WhenPropertyExistsAsync", "MessageEnvelopeAutoPopulateExtensionsTests.GetAutoPopulated_DeserializesString_CorrectlyAsync", "MessageEnvelopeAutoPopulateExtensionsTests.GetAutoPopulated_DeserializesGuid_CorrectlyAsync", "MessageEnvelopeAutoPopulateExtensionsTests.TryGetAutoPopulated_ReturnsTrue_WhenPropertyExistsAsync", "MessageEnvelopeAutoPopulateExtensionsTests.HasAutoPopulated_ReturnsTrue_WhenPropertyExistsAsync", "MessageEnvelopeAutoPopulateExtensionsTests.GetAllAutoPopulatedKeys_ReturnsAllKeys_WithoutPrefixAsync"]}
 // Get a specific auto-populated value
 var sentAt = envelope.GetAutoPopulated<DateTimeOffset>("SentAt");
 var userId = envelope.GetAutoPopulated<string>("CreatedBy");
@@ -268,7 +268,7 @@ IEnumerable<string> keys = envelope.GetAllAutoPopulatedKeys();
 
 For transport workers that operate on serialized payloads, `JsonAutoPopulateHelper` provides AOT-safe timestamp population on `JsonElement` values:
 
-```csharp{title="JSON Auto-Populate" description="Populate timestamps on serialized JSON payloads without typed deserialization" category="Extending" difficulty="INTERMEDIATE" tags=["auto-populate", "json", "transport", "aot"]}
+```csharp{title="JSON Auto-Populate" description="Populate timestamps on serialized JSON payloads without typed deserialization" category="Extending" difficulty="INTERMEDIATE" tags=["auto-populate", "json", "transport", "aot"] tests=["JsonAutoPopulateHelperTests.PopulateTimestamp_RegistrationMatches_StampsPropertyOnObjectAsync", "JsonAutoPopulateHelperTests.PopulateTimestampByName_MatchesByFullName_StampsPropertyAsync"]}
 // By Type reference
 var updatedPayload = JsonAutoPopulateHelper.PopulateTimestamp(
     payload: jsonElement,
@@ -290,7 +290,7 @@ var updatedPayload = JsonAutoPopulateHelper.PopulateTimestampByName(
 
 A complete event with full observability using all four attribute categories:
 
-```csharp{title="Complete Observability Event" description="Event with full lifecycle timestamps, service info, security context, and identifiers" category="Extending" difficulty="INTERMEDIATE" tags=["auto-populate", "observability", "audit", "complete-example"]}
+```csharp{title="Complete Observability Event" description="Event with full lifecycle timestamps, service info, security context, and identifiers" category="Extending" difficulty="INTERMEDIATE" tags=["auto-populate", "observability", "audit", "complete-example"] tests=["AutoPopulateProcessorTests.AutoPopulateProcessor_ProcessAutoPopulate_MultipleRegistrations_StoresAllValuesAsync", "AutoPopulateDiscoveryGeneratorTests.Generator_WithMultipleAttributeTypes_DiscoversAllAsync"]}
 public record InvoiceGenerated(
     [property: StreamId] Guid InvoiceId,
     decimal TotalAmount,

@@ -38,7 +38,7 @@ This enables receptors to return multiple values (via tuples) while callers rece
 
 ## Example
 
-```csharp{title="Example" description="Example" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Example"]}
+```csharp{title="Example" description="Example" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Example"] tests=["ResponseExtractorTests.TryExtractResponse_Tuple2_ExtractsFirstElementAsync"]}
 // Command
 public record CreateOrder(Guid OrderId, decimal Amount);
 
@@ -73,7 +73,7 @@ public class CreateOrderReceptor
 
 ### Caller Side
 
-```csharp{title="Caller Side" description="Caller Side" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Caller", "Side"]}
+```csharp{title="Caller Side" description="Caller Side" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Caller", "Side"] tests=["ResponseExtractorTests.TryExtractResponse_Tuple2_ExtractsFirstElementAsync"]}
 // RPC call - OrderConfirmation returned to caller
 var confirmation = await dispatcher.LocalInvokeAsync<OrderConfirmation>(
     new CreateOrder(Guid.NewGuid(), 99.99m));
@@ -107,7 +107,7 @@ After extraction, remaining values cascade based on their routing:
 
 RPC responses are extracted regardless of routing wrappers:
 
-```csharp{title="Routing Wrappers Ignored for RPC" description="RPC responses are extracted regardless of routing wrappers:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Routing", "Wrappers"]}
+```csharp{title="Routing Wrappers Ignored for RPC" description="RPC responses are extracted regardless of routing wrappers:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Routing", "Wrappers"] tests=["ResponseExtractorTests.TryExtractResponse_RouteLocal_ExtractsInnerValueForRpcAsync", "ResponseExtractorTests.TryExtractResponse_RouteOutbox_ExtractsInnerValueForRpcAsync", "ResponseExtractorTests.TryExtractResponse_TupleWithRoutedWrapper_ExtractsFromWrapperAsync"]}
 // Even if wrapped in Route.Local() or Route.Outbox(),
 // the value is still extracted and returned to RPC caller
 return (Route.Local(confirmation), inventory);
@@ -118,7 +118,7 @@ return (Route.Local(confirmation), inventory);
 
 ### Tuples (2-8 elements)
 
-```csharp{title="Tuples (2-8 elements)" description="Tuples (2-8 elements)" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Tuples", "2-8"]}
+```csharp{title="Tuples (2-8 elements)" description="Tuples (2-8 elements)" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Tuples", "2-8"] tests=["ResponseExtractorTests.TryExtractResponse_Tuple2_ExtractsFirstElementAsync", "ResponseExtractorTests.TryExtractResponse_Tuple3_ExtractsMiddleElementAsync", "ResponseExtractorTests.TryExtractResponse_Tuple4_ExtractsLastElementAsync"]}
 // 2-tuple
 IReceptor<Cmd, (Response, Event)>
 
@@ -128,14 +128,14 @@ IReceptor<Cmd, (Response, Event1, Event2)>
 
 ### Mixed with Routing
 
-```csharp{title="Mixed with Routing" description="Mixed with Routing" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Mixed", "Routing"]}
+```csharp{title="Mixed with Routing" description="Mixed with Routing" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Mixed", "Routing"] tests=["ResponseExtractorTests.TryExtractResponse_TupleWithRoutedWrapper_ExtractsFromTupleAsync", "ResponseExtractorTests.TryExtractResponse_TupleWithRoutedWrapper_ExtractsFromWrapperAsync"]}
 // Explicit routing on cascaded events
 IReceptor<Cmd, (Response, Routed<CacheInvalidated>)>
 ```
 
 ### Interface-Based Extraction
 
-```csharp{title="Interface-Based Extraction" description="Interface-Based Extraction" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Interface-Based", "Extraction"]}
+```csharp{title="Interface-Based Extraction" description="Interface-Based Extraction" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Interface-Based", "Extraction"] tests=["ResponseExtractorTests.TryExtractResponse_SingleValue_ExtractsViaInterfaceAsync"]}
 // Extract by interface
 var evt = await dispatcher.LocalInvokeAsync<IEvent>(command);
 // Returns first IEvent found in tuple
@@ -149,7 +149,7 @@ Discriminated unions enable receptors to return multiple possible outcomes in a 
 
 `Route.None()` explicitly marks a tuple position as "no value":
 
-```csharp{title="Using Route.None()" description="Using Route.None()" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Using", "Route.None"]}
+```csharp{title="Using Route.None()" description="Using Route.None()" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Using", "Route.None"] tests=["ResponseExtractorTests.TryExtractResponse_DiscriminatedUnion_ExtractsSuccessPathAsync", "ResponseExtractorTests.TryExtractResponse_DiscriminatedUnion_ExtractsFailurePathAsync"]}
 // Receptor returning success OR failure
 public class ProcessPaymentReceptor
     : IReceptor<ProcessPayment, (PaymentSucceeded?, PaymentFailed?)> {
@@ -175,7 +175,7 @@ public class ProcessPaymentReceptor
 
 The caller extracts whichever value is present:
 
-```csharp{title="Extracting from Discriminated Unions" description="The caller extracts whichever value is present:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Extracting", "Discriminated"]}
+```csharp{title="Extracting from Discriminated Unions" description="The caller extracts whichever value is present:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Extracting", "Discriminated"] tests=["ResponseExtractorTests.TryExtractResponse_DiscriminatedUnion_ExtractsSuccessPathAsync", "ResponseExtractorTests.TryExtractResponse_DiscriminatedUnion_SuccessTypeNotPresentReturnsFalseAsync"]}
 // Try to extract success
 var success = await dispatcher.LocalInvokeAsync<PaymentSucceeded>(command);
 // Returns PaymentSucceeded if success path was taken
@@ -186,7 +186,7 @@ var success = await dispatcher.LocalInvokeAsync<PaymentSucceeded>(command);
 
 For more explicit code, use `Route.None()` instead of `null`:
 
-```csharp{title="Explicit Route.None() Syntax" description="For more explicit code, use `Route." category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Explicit", "Route.None"]}
+```csharp{title="Explicit Route.None() Syntax" description="For more explicit code, use `Route." category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Explicit", "Route.None"] tests=["ResponseExtractorTests.TryExtractResponse_DiscriminatedUnionWithRouteNone_SkipsNoneValueAsync", "RouteTests.None_InTuple_AlternativePathAsync"]}
 return (success: Route.None(), failure: new PaymentFailed(...));
 ```
 
@@ -199,7 +199,7 @@ return (success: Route.None(), failure: new PaymentFailed(...));
 
 `Route.None()` returns a `RoutedNone` struct:
 
-```csharp{title="RoutedNone Type" description="RoutedNone Type" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "RoutedNone", "Type"]}
+```csharp{title="RoutedNone Type" description="RoutedNone Type" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "RoutedNone", "Type"] tests=["RouteTests.None_ReturnsRoutedNoneAsync", "RouteTests.None_ImplementsIRoutedAsync"]}
 /// <summary>
 /// Represents an explicitly empty value in a discriminated union tuple.
 /// </summary>
@@ -218,7 +218,7 @@ public readonly struct RoutedNone : IRouted {
 
 Discriminated unions can have more than two paths:
 
-```csharp{title="Three-Way Unions" description="Discriminated unions can have more than two paths:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Three-Way", "Unions"]}
+```csharp{title="Three-Way Unions" description="Discriminated unions can have more than two paths:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Three-Way", "Unions"] tests=["ResponseExtractorTests.TryExtractResponse_ThreeWayDiscriminatedUnion_ExtractsCorrectPathAsync"]}
 // Success, validation error, or system error
 IReceptor<Cmd, (SuccessResult?, ValidationError?, SystemError?)>
 
@@ -236,7 +236,7 @@ return command.Amount < 0
 
 If the requested type doesn't exist in the return value:
 
-```csharp{title="Type Not Found" description="If the requested type doesn't exist in the return value:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Type", "Not"]}
+```csharp{title="Type Not Found" description="If the requested type doesn't exist in the return value:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Type", "Not"] tests=["ResponseExtractorTests.TryExtractResponse_Tuple2_FailsWhenTypeNotPresentAsync"]}
 // Receptor returns (OrderConfirmation, InventoryReserved)
 // But caller requests PaymentProcessed
 await dispatcher.LocalInvokeAsync<PaymentProcessed>(command);
@@ -247,7 +247,7 @@ await dispatcher.LocalInvokeAsync<PaymentProcessed>(command);
 
 If multiple values match the requested type, the **first** match is returned:
 
-```csharp{title="Multiple Matches" description="If multiple values match the requested type, the first match is returned:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Multiple", "Matches"]}
+```csharp{title="Multiple Matches" description="If multiple values match the requested type, the first match is returned:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Multiple", "Matches"] tests=["ResponseExtractorTests.TryExtractResponse_TupleWithDuplicateTypes_ExtractsFirstMatchAsync"]}
 // Tuple: (OrderCreated{Id="first"}, OrderCreated{Id="second"})
 var order = await dispatcher.LocalInvokeAsync<OrderCreated>(command);
 // order.Id == "first"
@@ -259,7 +259,7 @@ var order = await dispatcher.LocalInvokeAsync<OrderCreated>(command);
 
 When the receptor's return type exactly matches `TResponse`, no extraction is needed:
 
-```csharp{title="Fast Path (Exact Match)" description="When the receptor's return type exactly matches TResponse, no extraction is needed:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Fast", "Path"]}
+```csharp{title="Fast Path (Exact Match)" description="When the receptor's return type exactly matches TResponse, no extraction is needed:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Fast", "Path"] tests=["ResponseExtractorTests.TryExtractResponse_SingleValue_ExtractsDirectMatchAsync"]}
 // Receptor: IReceptor<Cmd, OrderConfirmation>
 // Caller: LocalInvokeAsync<OrderConfirmation>(cmd)
 // Result: Fast path - no extraction overhead

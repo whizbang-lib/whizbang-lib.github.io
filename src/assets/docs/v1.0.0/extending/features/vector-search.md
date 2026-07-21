@@ -39,7 +39,7 @@ For comprehensive usage patterns, query methods, and examples, see the [Lens Vec
 
 Whizbang provides a **turnkey experience** for pgvector. When your perspective models use `[VectorField]` attributes, the source generator automatically creates an `Add{YourDbContext}()` extension method that handles all pgvector configuration:
 
-```csharp{title="Turnkey Setup" description="Whizbang provides a turnkey experience for pgvector." category="Extensibility" difficulty="BEGINNER" tags=["Extending", "Features", "Turnkey", "Setup"]}
+```csharp{title="Turnkey Setup" description="Whizbang provides a turnkey experience for pgvector." category="Extensibility" difficulty="BEGINNER" tags=["Extending", "Features", "Turnkey", "Setup"] unverified="Consumer usage of the source-generated AddMyAppDbContext() extension; the turnkey wiring is exercised only by VectorSearchIntegrationTests, which is absent from the test map."}
 // Single call configures everything:
 // - NpgsqlDataSource with UseVector() (connection string resolved from configuration)
 // - DbContext with UseVector()
@@ -105,7 +105,7 @@ public float[]?              detects attribute
 
 For a model like:
 
-```csharp{title="Generated Configuration" description="For a model like:" category="Extensibility" difficulty="BEGINNER" tags=["Extending", "Features", "Generated", "Configuration"]}
+```csharp{title="Generated Configuration" description="For a model like:" category="Extensibility" difficulty="BEGINNER" tags=["Extending", "Features", "Generated", "Configuration"] tests=["VectorFieldAttributeTests.VectorFieldAttribute_Constructor_AcceptsValidDimensionsAsync", "VectorFieldAttributeTests.VectorFieldAttribute_AttributeUsage_PropertyOnly_NotMultiple_IsInheritedAsync"]}
 public class DocumentModel {
   public Guid Id { get; init; }
 
@@ -116,7 +116,7 @@ public class DocumentModel {
 
 The generator produces:
 
-```csharp{title="Generated Configuration (2)" description="The generator produces:" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Features", "Generated", "Configuration"]}
+```csharp{title="Generated Configuration (2)" description="The generator produces:" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Features", "Generated", "Configuration"] unverified="Shows source-generator output (ConfigureWhizbang and AddMyAppDbContext); the emitted wiring is verified only by VectorSearchIntegrationTests, which is absent from the test map."}
 // In generated DbContext configuration
 public static void ConfigureWhizbang(ModelBuilder modelBuilder) {
   // Auto-configured: pgvector extension required for [VectorField] columns
@@ -187,7 +187,7 @@ If you forget these packages, compiler diagnostics will guide you:
 
 The generated extension reads the connection string from configuration. The default key comes from `[WhizbangDbContext(ConnectionStringName = "...")]`; override it per call:
 
-```csharp{title="Connection String Name" description="Override the configuration key used to resolve the connection string." category="Extensibility" difficulty="BEGINNER" tags=["Extending", "Features", "Configure", "Data"]}
+```csharp{title="Connection String Name" description="Override the configuration key used to resolve the connection string." category="Extensibility" difficulty="BEGINNER" tags=["Extending", "Features", "Configure", "Data"] unverified="Consumer usage of the generated AddMyAppDbContext(connectionStringName:) overload; covered only by VectorSearchIntegrationTests, which is absent from the test map."}
 // Reads ConnectionStrings:chat-service-db from configuration
 builder.Services.AddMyAppDbContext(connectionStringName: "chat-service-db");
 ```
@@ -213,7 +213,7 @@ For anything beyond these knobs (custom Npgsql options, DbContext options callba
 
 If you prefer manual configuration over the turnkey approach:
 
-```csharp{title="Manual Configuration" description="If you prefer manual configuration over the turnkey approach:" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Features", "Manual", "Configuration"]}
+```csharp{title="Manual Configuration" description="If you prefer manual configuration over the turnkey approach:" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Features", "Manual", "Configuration"] unverified="Consumer wiring using third-party Npgsql and pgvector APIs plus the Whizbang builder; not exercised by any mapped vector-search test."}
 // 1. Create data source with UseVector()
 var dataSourceBuilder = new NpgsqlDataSourceBuilder(connectionString);
 dataSourceBuilder.UseVector();

@@ -30,7 +30,7 @@ The **MessageJsonContextGenerator** automatically discovers polymorphic base typ
 
 When returning collections of base-typed messages, traditional approaches require explicit attribute configuration:
 
-```csharp{title="The Problem" description="When returning collections of base-typed messages, traditional approaches require explicit attribute configuration:" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Problem"]}
+```csharp{title="The Problem" description="When returning collections of base-typed messages, traditional approaches require explicit attribute configuration:" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Problem"] unverified="problem-statement setup — the working generator behavior is verified in 'The Solution' and 'User-Defined Base Classes'"}
 // The handler returns a List of a base type
 public class ProcessBatchHandler : IReceptor<ProcessBatchCommand, List<BaseEvent>> {
   public Task<List<BaseEvent>> HandleAsync(ProcessBatchCommand cmd) {
@@ -49,7 +49,7 @@ public class ProcessBatchHandler : IReceptor<ProcessBatchCommand, List<BaseEvent
 ```
 
 **With manual attributes**, you must update the base class for each derived type:
-```csharp{title="The Problem - BaseEvent" description="With manual attributes, you must update the base class for each derived type:" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Problem"]}
+```csharp{title="The Problem - BaseEvent" description="With manual attributes, you must update the base class for each derived type:" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Problem"] unverified="counter-example — the manual [JsonPolymorphic]/[JsonDerivedType] approach the generator replaces"}
 // Maintenance nightmare for hundreds of event types!
 [JsonPolymorphic(TypeDiscriminatorPropertyName = "$type")]
 [JsonDerivedType(typeof(SeedCreatedEvent), "SeedCreatedEvent")]
@@ -65,7 +65,7 @@ public class BaseEvent : IEvent { }
 
 Whizbang **automatically discovers** all inheritance relationships during source generation and configures polymorphic serialization for you:
 
-```csharp{title="The Solution" description="Whizbang automatically discovers all inheritance relationships during source generation and configures polymorphic" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Solution"]}
+```csharp{title="The Solution" description="Whizbang automatically discovers all inheritance relationships during source generation and configures polymorphic" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Solution"] tests=["MessageJsonContextGeneratorTests.Generator_WithUserBaseClass_AutoDiscoversPolymorphicTypesAsync"]}
 // No attributes needed on the base class!
 public class BaseEvent : IEvent {
   public string Id { get; init; } = "";
@@ -115,7 +115,7 @@ During source generation, the `MessageJsonContextGenerator`:
 3. Records base class → derived type relationships (plus interface implementations, keeping only `ICommand`/`IEvent` among `Whizbang.Core` interfaces)
 4. Groups by base type to build the polymorphic registry
 
-```mermaid
+```mermaid{caption="Inheritance discovery and grouping — the generator records each derived→base and derived→interface relationship, then groups by base type (class and interface) to build the polymorphic registry." tests=["MessageJsonContextGeneratorTests.Generator_WithUserBaseClass_AutoDiscoversPolymorphicTypesAsync", "MessageJsonContextGeneratorTests.Generator_WithIEventCollection_IncludesAllEventTypesAsync", "MessageJsonContextGeneratorTests.Generator_WithDeepInheritance_DiscoversAllLevelsAsync"]}
 flowchart TD
     subgraph Discovery["Discovery Phase"]
         D1["SeedCreatedEvent : BaseEvent : IEvent<br/>Records: SeedCreatedEvent → BaseEvent<br/>Records: SeedCreatedEvent → IEvent"]
@@ -142,7 +142,7 @@ The generator uses two internal record types to track inheritance relationships:
 
 A minimal value type that tracks individual inheritance relationships discovered during scanning:
 
-```csharp{title="InheritanceInfo" description="A minimal value type that tracks individual inheritance relationships discovered during scanning:" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "InheritanceInfo"]}
+```csharp{title="InheritanceInfo" description="A minimal value type that tracks individual inheritance relationships discovered during scanning:" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "InheritanceInfo"] unverified="generator-internal data structure — not part of the generated output"}
 internal sealed record InheritanceInfo(
     string DerivedTypeName,  // e.g., "global::MyApp.Events.SeedCreatedEvent"
     string BaseTypeName,     // e.g., "global::MyApp.BaseAppEvent"
@@ -158,7 +158,7 @@ internal sealed record InheritanceInfo(
 
 An aggregated view created by grouping `InheritanceInfo` records:
 
-```csharp{title="PolymorphicTypeInfo" description="An aggregated view created by grouping InheritanceInfo records:" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "PolymorphicTypeInfo"]}
+```csharp{title="PolymorphicTypeInfo" description="An aggregated view created by grouping InheritanceInfo records:" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "PolymorphicTypeInfo"] unverified="generator-internal data structure — not part of the generated output"}
 internal sealed record PolymorphicTypeInfo(
     string BaseTypeName,                    // "global::MyApp.BaseAppEvent"
     string BaseSimpleName,                  // "BaseAppEvent"
@@ -178,7 +178,7 @@ Both records use value equality (critical for incremental generator caching) and
 
 For each polymorphic base type, the generator creates a factory method:
 
-```csharp{title="Generated Code" description="For each polymorphic base type, the generator creates a factory method:" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Generated", "Code"]}
+```csharp{title="Generated Code" description="For each polymorphic base type, the generator creates a factory method:" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Generated", "Code"] tests=["MessageJsonContextGeneratorTests.Generator_WithUserBaseClass_AutoDiscoversPolymorphicTypesAsync"]}
 private JsonTypeInfo<global::MyApp.BaseEvent> CreatePolymorphic_MyApp_BaseEvent(JsonSerializerOptions options) {
   var polyOptions = new JsonPolymorphismOptions {
     TypeDiscriminatorPropertyName = "$type",
@@ -212,7 +212,7 @@ The method name comes from `PolymorphicTypeInfo.UniqueIdentifier` (`CreatePolymo
 
 ### User-Defined Base Classes
 
-```csharp{title="User-Defined Base Classes" description="User-Defined Base Classes" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "User-Defined", "Base"]}
+```csharp{title="User-Defined Base Classes" description="User-Defined Base Classes" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "User-Defined", "Base"] tests=["MessageJsonContextGeneratorTests.Generator_WithUserBaseClass_AutoDiscoversPolymorphicTypesAsync"]}
 // Non-abstract base class
 public class BaseAppEvent : IEvent {
   public string EventId { get; init; } = "";
@@ -225,7 +225,7 @@ public class SeedProcessedEvent : BaseAppEvent { }
 
 ### Interface Collections
 
-```csharp{title="Interface Collections" description="Interface Collections" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Interface", "Collections"]}
+```csharp{title="Interface Collections" description="Interface Collections" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Interface", "Collections"] tests=["MessageJsonContextGeneratorTests.Generator_WithIEventCollection_IncludesAllEventTypesAsync"]}
 // Return all events via IEvent interface
 public record GetAllEventsCommand : ICommand;
 
@@ -241,7 +241,7 @@ public class GetAllEventsHandler : IReceptor<GetAllEventsCommand, List<IEvent>> 
 
 ### ICommand Collections
 
-```csharp{title="ICommand Collections" description="ICommand Collections" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "ICommand", "Collections"]}
+```csharp{title="ICommand Collections" description="ICommand Collections" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "ICommand", "Collections"] tests=["MessageJsonContextGeneratorTests.Generator_WithICommandCollection_IncludesAllCommandTypesAsync"]}
 // Return commands to execute
 public record GetPendingCommands : ICommand;
 
@@ -254,7 +254,7 @@ public class GetPendingCommandsHandler : IReceptor<GetPendingCommands, List<ICom
 
 ### Deep Inheritance
 
-```csharp{title="Deep Inheritance" description="Deep Inheritance" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Deep", "Inheritance"]}
+```csharp{title="Deep Inheritance" description="Deep Inheritance" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Deep", "Inheritance"] tests=["MessageJsonContextGeneratorTests.Generator_WithDeepInheritance_DiscoversAllLevelsAsync"]}
 public class DomainEvent : IEvent { }
 public class AggregateEvent : DomainEvent { }
 public class OrderEvent : AggregateEvent { }
@@ -267,7 +267,7 @@ public class OrderShipped : OrderEvent { }
 
 ### Array Types
 
-```csharp{title="Array Types" description="Array Types" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Array", "Types"]}
+```csharp{title="Array Types" description="Array Types" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Array", "Types"] tests=["MessageJsonContextGeneratorTests.Generator_WithArrayOfBaseType_AutoDiscoversPolymorphicTypesAsync"]}
 // Arrays are also supported
 public record ProcessBatchResult(BaseEvent[] Events);
 ```
@@ -278,7 +278,7 @@ public record ProcessBatchResult(BaseEvent[] Events);
 
 Adding `[JsonPolymorphic]` to a base type **excludes it from automatic polymorphic factory generation** — `_shouldSkipBaseType` in `MessageJsonContextGenerator` skips any base carrying an explicit `[JsonPolymorphic]` attribute, so no `CreatePolymorphic_*` factory is emitted for it (locked by `Generator_WithExplicitJsonPolymorphic_UsesUserAttributesAsync`):
 
-```csharp{title="Explicit Opt-Out" description="Adding [JsonPolymorphic] excludes the base from auto polymorphic factory generation." category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Explicit", "Opt-Out"]}
+```csharp{title="Explicit Opt-Out" description="Adding [JsonPolymorphic] excludes the base from auto polymorphic factory generation." category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Explicit", "Opt-Out"] tests=["MessageJsonContextGeneratorTests.Generator_WithExplicitJsonPolymorphic_UsesUserAttributesAsync"]}
 // Generator will NOT auto-generate a polymorphic factory for this base
 [JsonPolymorphic(TypeDiscriminatorPropertyName = "eventType")]
 [JsonDerivedType(typeof(HighPriorityEvent), "high")]

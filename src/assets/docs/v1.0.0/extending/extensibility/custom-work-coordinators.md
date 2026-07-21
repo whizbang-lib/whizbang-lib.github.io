@@ -128,7 +128,7 @@ public interface IWorkCoordinator {
 
 ### Pattern 1: Redis Queue-Based Coordination
 
-```csharp{title="Pattern 1: Redis Queue-Based Coordination" description="Pattern 1: Redis Queue-Based Coordination" category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Pattern", "Redis"]}
+```csharp{title="Pattern 1: Redis Queue-Based Coordination" description="Pattern 1: Redis Queue-Based Coordination" category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Pattern", "Redis"] unverified="user extension example — Redis IWorkCoordinator implementation"}
 using StackExchange.Redis;
 using Whizbang.Core.Messaging;
 

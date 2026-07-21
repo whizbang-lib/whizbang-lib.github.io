@@ -45,14 +45,14 @@ dotnet add package Whizbang.Transports.HotChocolate
 
 ### 2. Define Your Lens
 
-```csharp{title="Define Your Lens" description="Define Your Lens" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Define", "Your"]}
+```csharp{title="Define Your Lens" description="Define Your Lens" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Define", "Your"] tests=["GraphQLLensAttributeTests.QueryName_ShouldBeSettableAsync", "GraphQLLensAttributeTests.Attribute_ShouldBeApplicableToClassesAndInterfacesAsync"]}
 [GraphQLLens(QueryName = "orders")]
 public interface IOrderLens : ILensQuery<OrderReadModel> { }
 ```
 
 ### 3. Configure Services
 
-```csharp{title="Configure Services" description="Configure Services" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Configure", "Services"]}
+```csharp{title="Configure Services" description="Configure Services" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Configure", "Services"] unverified="HotChocolate schema/DI wiring — Whizbang registration verified by ServiceRegistrationTests"}
 // Program.cs
 builder.Services.AddGraphQLServer()
     .AddWhizbangLenses()
@@ -111,7 +111,7 @@ app.MapGraphQL();
 
 ## Architecture
 
-```mermaid
+```mermaid{caption="GraphQL request pipeline — WhizbangScopeMiddleware extracts TenantId and UserId from claims and headers and sets the request scope context, HotChocolate execution applies the Whizbang filtering, sorting, paging, and projection conventions, then the scope-filtered ILensQuery returns PerspectiveRow rows carrying Data, Metadata, and Scope."}
 flowchart TD
     Request["GraphQL Request"]
     Middleware["WhizbangScopeMiddleware<br/>- Extracts TenantId, UserId from claims/headers<br/>- Sets IScopeContext for request"]

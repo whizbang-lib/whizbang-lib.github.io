@@ -25,7 +25,7 @@ Whizbang provides system-level diagnostics through the `DiagnosticsCommand`, ena
 
 ## Quick Start
 
-```csharp{title="Send Diagnostics Command" description="Collect diagnostics from all services" category="Usage" difficulty="BEGINNER" tags=["Diagnostics", "System-Commands"]}
+```csharp{title="Send Diagnostics Command" description="Collect diagnostics from all services" category="Usage" difficulty="BEGINNER" tags=["Diagnostics", "System-Commands"] tests=["SystemCommandsTests.DiagnosticsCommand_WithHealthCheck_CreatesCorrectlyAsync", "SystemCommandsTests.DiagnosticsCommand_WithCorrelationId_CreatesCorrectlyAsync"]}
 // Collect health checks from all services
 await dispatcher.SendAsync(new DiagnosticsCommand(DiagnosticType.HealthCheck));
 
@@ -43,7 +43,7 @@ await dispatcher.SendAsync(new DiagnosticsCommand(
 
 The `DiagnosticsCommand` is a system command that broadcasts diagnostic requests to all services. Each service that implements a handler for `DiagnosticsCommand` can respond with its current state.
 
-```csharp{title="DiagnosticsCommand Definition" description="System command for collecting diagnostics" category="Reference" difficulty="BEGINNER" tags=["Diagnostics", "System-Commands", "API"]}
+```csharp{title="DiagnosticsCommand Definition" description="System command for collecting diagnostics" category="Reference" difficulty="BEGINNER" tags=["Diagnostics", "System-Commands", "API"] tests=["SystemCommandsTests.DiagnosticsCommand_ImplementsICommandAsync"]}
 public record DiagnosticsCommand(
     DiagnosticType Type,
     Guid? CorrelationId = null
@@ -69,7 +69,7 @@ The `DiagnosticType` enum specifies what information services should report:
 | `PerspectiveStatus` | Perspective and projection state information | < 1s |
 | `Full` | Full diagnostic dump including all categories | 1-3s |
 
-```csharp{title="DiagnosticType Values" description="Available diagnostic types" category="Reference" difficulty="BEGINNER" tags=["Diagnostics", "Types"]}
+```csharp{title="DiagnosticType Values" description="Available diagnostic types" category="Reference" difficulty="BEGINNER" tags=["Diagnostics", "Types"] tests=["SystemCommandsTests.DiagnosticType_HasExpectedValuesAsync", "SystemCommandsTests.DiagnosticsCommand_AllDiagnosticTypes_CreateCorrectlyAsync"]}
 public enum DiagnosticType {
   HealthCheck,
   ResourceMetrics,
@@ -85,7 +85,7 @@ Services implement handlers for `DiagnosticsCommand` to report their status. The
 
 ### Health Check Handler
 
-```csharp{title="Health Check Handler" description="Implement health check diagnostics" category="Usage" difficulty="BEGINNER" tags=["Diagnostics", "Health-Check", "Handlers"]}
+```csharp{title="Health Check Handler" description="Implement health check diagnostics" category="Usage" difficulty="BEGINNER" tags=["Diagnostics", "Health-Check", "Handlers"] unverified="application-specific receptor implementation; no library test exercises this custom handler"}
 public class DiagnosticsReceptor : IReceptor<DiagnosticsCommand, DiagnosticResponse> {
   private readonly IServiceHealthProvider _healthProvider;
   private readonly ILogger<DiagnosticsReceptor> _logger;
@@ -192,7 +192,7 @@ public class DiagnosticsReceptor : IReceptor<DiagnosticsCommand, DiagnosticRespo
 
 Create a response event to publish diagnostic results:
 
-```csharp{title="DiagnosticResponse Event" description="Event for publishing diagnostic results" category="Usage" difficulty="BEGINNER" tags=["Diagnostics", "Events"]}
+```csharp{title="DiagnosticResponse Event" description="Event for publishing diagnostic results" category="Usage" difficulty="BEGINNER" tags=["Diagnostics", "Events"] unverified="application-defined response event with custom factory helpers; not covered by a library test"}
 public record DiagnosticResponse(
     string ServiceName,
     string Status,
@@ -228,7 +228,7 @@ public record DiagnosticResponse(
 
 System commands use the `whizbang.system.commands` routing namespace, which all services automatically subscribe to when using `SharedTopicInboxStrategy`.
 
-```csharp{title="Broadcast Diagnostics Request" description="Send diagnostics command to all services" category="Usage" difficulty="BEGINNER" tags=["Diagnostics", "System-Commands", "Broadcasting"]}
+```csharp{title="Broadcast Diagnostics Request" description="Send diagnostics command to all services" category="Usage" difficulty="BEGINNER" tags=["Diagnostics", "System-Commands", "Broadcasting"] unverified="ASP.NET Core controller example; HTTP broadcasting endpoint not covered by a library test"}
 public class DiagnosticsController : ControllerBase {
   private readonly IDispatcher _dispatcher;
 
@@ -270,7 +270,7 @@ Perspectives are pure functions (`IPerspectiveFor<TModel, TEvent...>`) —
 they hold no state of their own; Whizbang persists the returned model and
 you read it back through a lens query:
 
-```csharp{title="Diagnostic Report Perspective" description="Materialize diagnostic responses into a read model" category="Usage" difficulty="INTERMEDIATE" tags=["Diagnostics", "Perspectives", "Aggregation"]}
+```csharp{title="Diagnostic Report Perspective" description="Materialize diagnostic responses into a read model" category="Usage" difficulty="INTERMEDIATE" tags=["Diagnostics", "Perspectives", "Aggregation"] unverified="application-defined read model and perspective; not covered by a library test"}
 // Read model materialized from DiagnosticResponse events
 public class DiagnosticReport {
   public string ServiceName { get; set; } = "";
@@ -296,7 +296,7 @@ public class DiagnosticReportPerspective :
 
 Read the materialized reports back with `ILensQuery<TModel>`:
 
-```csharp{title="Diagnostic Lens Queries" description="Query materialized diagnostic reports via ILensQuery" category="Usage" difficulty="INTERMEDIATE" tags=["Diagnostics", "Lenses", "Queries"]}
+```csharp{title="Diagnostic Lens Queries" description="Query materialized diagnostic reports via ILensQuery" category="Usage" difficulty="INTERMEDIATE" tags=["Diagnostics", "Lenses", "Queries"] unverified="application-defined lens query example; not covered by a library test"}
 public class DiagnosticsLens(ILensQuery<DiagnosticReport> query) {
   public async Task<IReadOnlyList<DiagnosticReport>> GetByCorrelationAsync(
       Guid correlationId, CancellationToken ct = default) {
@@ -317,7 +317,7 @@ public class DiagnosticsLens(ILensQuery<DiagnosticReport> query) {
 
 Integrate diagnostics with monitoring dashboards:
 
-```csharp{title="Dashboard Diagnostics" description="Expose diagnostics via a SignalR hub backed by a lens query" category="Usage" difficulty="INTERMEDIATE" tags=["Operations", "Observability", "C#", "Dashboard", "Diagnostics"]}
+```csharp{title="Dashboard Diagnostics" description="Expose diagnostics via a SignalR hub backed by a lens query" category="Usage" difficulty="INTERMEDIATE" tags=["Operations", "Observability", "C#", "Dashboard", "Diagnostics"] unverified="SignalR hub integration example; not covered by a library test"}
 public class SystemDiagnosticsHub : Hub {
   private readonly IDispatcher _dispatcher;
   private readonly DiagnosticsLens _diagnosticsLens;
@@ -373,7 +373,7 @@ public class SystemDiagnosticsHub : Hub {
 
 Advanced resource metrics collection:
 
-```csharp{title="Resource Metrics" description="Collect detailed resource metrics" category="Usage" difficulty="ADVANCED" tags=["Diagnostics", "Metrics", "Resources"]}
+```csharp{title="Resource Metrics" description="Collect detailed resource metrics" category="Usage" difficulty="ADVANCED" tags=["Diagnostics", "Metrics", "Resources"] unverified="application-specific process and GC metrics collector; no Whizbang library behavior under test"}
 public class ResourceMetricsCollector {
   public async ValueTask<Dictionary<string, object>> CollectAsync(
       CancellationToken ct) {
@@ -419,7 +419,7 @@ public class ResourceMetricsCollector {
 
 ### Diagnostic Handler Design
 
-```csharp{title="Diagnostic Handler Best Practices" description="Best practices for implementing diagnostic handlers" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Diagnostics", "Best-Practices"]}
+```csharp{title="Diagnostic Handler Best Practices" description="Best practices for implementing diagnostic handlers" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Diagnostics", "Best-Practices"] unverified="best-practices receptor illustration including a DON'T counter-example; not exercised by a library test"}
 // DiagnosticResponse.Timeout / .Error / .Healthy are application-defined
 // factory helpers on your response record, like Unknown / NotImplemented above.
 public class DiagnosticsReceptor : IReceptor<DiagnosticsCommand, DiagnosticResponse> {
@@ -471,7 +471,7 @@ public class DiagnosticsReceptor : IReceptor<DiagnosticsCommand, DiagnosticRespo
 
 ### Correlation and Aggregation
 
-```csharp{title="Correlation Best Practices" description="Best practices for correlating diagnostic responses" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Diagnostics", "Best-Practices", "Correlation"]}
+```csharp{title="Correlation Best Practices" description="Best practices for correlating diagnostic responses" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Diagnostics", "Best-Practices", "Correlation"] unverified="best-practices correlation and aggregation workflow; not covered by a library test"}
 // DO: Always use correlation IDs for request-response tracking
 var correlationId = Guid.NewGuid();
 await dispatcher.SendAsync(

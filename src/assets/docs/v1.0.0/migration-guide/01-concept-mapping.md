@@ -48,7 +48,7 @@ This guide maps concepts from the Marten/Wolverine ("Critter Stack") to their Wh
 
 ### Wolverine Handler Patterns
 
-```csharp{title="Wolverine Handler Patterns" description="Wolverine Handler Patterns" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-guide", "C#", "Wolverine", "Handler", "Patterns"]}
+```csharp{title="Wolverine Handler Patterns" description="Wolverine Handler Patterns" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-guide", "C#", "Wolverine", "Handler", "Patterns"] unverified="other framework — migration before-state"}
 // Wolverine: Attribute-based discovery
 [WolverineHandler]
 public class OrderHandler {
@@ -74,7 +74,7 @@ public class OrderHandler {
 
 ### Whizbang Receptor Equivalents
 
-```csharp{title="Whizbang Receptor Equivalents" description="Whizbang Receptor Equivalents" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-guide", "C#", "Whizbang", "Receptor", "Equivalents"]}
+```csharp{title="Whizbang Receptor Equivalents" description="Whizbang Receptor Equivalents" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-guide", "C#", "Whizbang", "Receptor", "Equivalents"] unverified="illustrative receptor definitions — user code, no framework behavior asserted"}
 // Whizbang: Interface-based discovery (no attributes)
 public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
     public ValueTask<OrderCreated> HandleAsync(
@@ -116,7 +116,7 @@ public class CreateOrderWithNotificationReceptor : IReceptor<CreateOrderWithNoti
 
 ### Marten Single-Stream Projection
 
-```csharp{title="Marten Single-Stream Projection" description="Marten Single-Stream Projection" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-Guide", "Marten", "Single-Stream", "Projection"]}
+```csharp{title="Marten Single-Stream Projection" description="Marten Single-Stream Projection" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-Guide", "Marten", "Single-Stream", "Projection"] unverified="other framework — migration before-state"}
 // Marten: Can mutate, can have side effects
 public class OrderSummaryProjection : SingleStreamProjection<OrderSummary> {
     public OrderSummary Create(OrderCreated @event) {
@@ -136,7 +136,7 @@ public class OrderSummaryProjection : SingleStreamProjection<OrderSummary> {
 
 ### Whizbang Perspective Equivalent
 
-```csharp{title="Whizbang Perspective Equivalent" description="Whizbang Perspective Equivalent" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-guide", "C#", "Whizbang", "Perspective", "Equivalent"]}
+```csharp{title="Whizbang Perspective Equivalent" description="Whizbang Perspective Equivalent" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-guide", "C#", "Whizbang", "Perspective", "Equivalent"] unverified="illustrative perspective definition — user code, pure Apply shown"}
 // Whizbang: Pure functions, returns new model
 public class OrderSummaryPerspective :
     IPerspectiveFor<OrderSummary, OrderCreated, OrderShipped> {
@@ -162,7 +162,7 @@ public class OrderSummaryPerspective :
 
 ### Marten Event Store
 
-```csharp{title="Marten Event Store" description="Marten Event Store" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-guide", "C#", "Marten", "Event", "Store"]}
+```csharp{title="Marten Event Store" description="Marten Event Store" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-guide", "C#", "Marten", "Event", "Store"] unverified="other framework — migration before-state"}
 // Marten: Session-based
 public class OrderService {
     private readonly IDocumentStore _store;
@@ -180,7 +180,7 @@ public class OrderService {
 
 ### Whizbang Event Store
 
-```csharp{title="Whizbang Event Store" description="Whizbang Event Store" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-guide", "C#", "Whizbang", "Event", "Store"]}
+```csharp{title="Whizbang Event Store" description="Whizbang Event Store" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-guide", "C#", "Whizbang", "Event", "Store"] unverified="raw IEventStore.AppendAsync — verified in the Event Store docs, not by these migration tests"}
 // Whizbang: Direct injection, explicit envelope
 public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
     private readonly IEventStore _eventStore;
@@ -216,7 +216,7 @@ public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
 
 ### Wolverine Message Bus
 
-```csharp{title="Wolverine Message Bus" description="Wolverine Message Bus" category="Reference" difficulty="BEGINNER" tags=["Migration-guide", "C#", "Wolverine", "Message", "Bus"]}
+```csharp{title="Wolverine Message Bus" description="Wolverine Message Bus" category="Reference" difficulty="BEGINNER" tags=["Migration-guide", "C#", "Wolverine", "Message", "Bus"] unverified="other framework — migration before-state"}
 // Wolverine: Single pattern
 await _bus.SendAsync(command);
 await _bus.PublishAsync(@event);
@@ -225,7 +225,7 @@ await _bus.InvokeAsync<OrderCreated>(command);
 
 ### Whizbang Dispatcher
 
-```csharp{title="Whizbang Dispatcher" description="Whizbang Dispatcher" category="Reference" difficulty="BEGINNER" tags=["Migration-guide", "C#", "Whizbang", "Dispatcher"]}
+```csharp{title="Whizbang Dispatcher" description="Whizbang Dispatcher" category="Reference" difficulty="BEGINNER" tags=["Migration-guide", "C#", "Whizbang", "Dispatcher"] tests=["DispatcherDeliveryReceiptTests.PublishAsync_EventWithStreamId_DeliveryReceiptHasStreamIdAsync"]}
 // Whizbang: Three distinct patterns
 // 1. SendAsync - Command with delivery receipt (can go over wire)
 IDeliveryReceipt receipt = await _dispatcher.SendAsync(command);

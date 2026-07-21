@@ -25,7 +25,7 @@ Whizbang supports pgvector similarity queries for semantic search, embeddings, a
 
 Whizbang provides a **turnkey experience** for pgvector. When your perspective models use `[VectorField]` attributes, the source generator automatically creates an `Add{YourDbContext}()` extension method that handles all pgvector configuration:
 
-```csharp{title="Turnkey Setup" description="Whizbang provides a turnkey experience for pgvector." category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Turnkey", "Setup"]}
+```csharp{title="Turnkey Setup" description="Whizbang provides a turnkey experience for pgvector." category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Turnkey", "Setup"] tests=["VectorAutoConfigurationTests.TurnkeyExtension_WithVectorField_GeneratesAddDbContextMethodAsync"]}
 // Single call configures everything:
 // - NpgsqlDataSource with UseVector()
 // - DbContext with UseVector()
@@ -46,7 +46,7 @@ When Whizbang detects `[VectorField]` attributes in your perspective models, the
 
 If you need to configure the data source (e.g., for JSON options), pass a callback:
 
-```csharp{title="Customization" description="If you need to configure the data source (e." category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Customization"]}
+```csharp{title="Customization" description="If you need to configure the data source (e." category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Customization"] unverified="configures the generated app-specific AddMyAppDbContext method plus an external Npgsql data-source builder; no mapped library test asserts this callback"}
 builder.Services.AddMyAppDbContext(connectionString, dataSourceBuilder => {
   dataSourceBuilder.ConfigureJsonOptions(jsonOptions);
   dataSourceBuilder.EnableDynamicJson();
@@ -55,7 +55,7 @@ builder.Services.AddMyAppDbContext(connectionString, dataSourceBuilder => {
 
 Or configure DbContext options:
 
-```csharp{title="Customization (2)" description="Or configure DbContext options:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Customization"]}
+```csharp{title="Customization (2)" description="Or configure DbContext options:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Customization"] unverified="configures the generated app-specific AddMyAppDbContext method plus external EF Core DbContext options; no mapped library test asserts this callback"}
 builder.Services.AddMyAppDbContext(connectionString, configureDbContext: options => {
   options.EnableSensitiveDataLogging();
 });
@@ -84,7 +84,7 @@ If you forget these packages, compiler diagnostics will guide you:
 
 Add `[VectorField]` to properties in your perspective model:
 
-```csharp{title="Defining Vector Fields" description="Add [VectorField] to properties in your perspective model:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "Defining", "Vector"]}
+```csharp{title="Defining Vector Fields" description="Add [VectorField] to properties in your perspective model:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "Defining", "Vector"] tests=["VectorFieldAttributeTests.VectorFieldAttribute_Constructor_AcceptsValidDimensionsAsync", "VectorFieldAttributeTests.VectorFieldAttribute_AttributeUsage_PropertyOnly_NotMultiple_IsInheritedAsync"]}
 public class DocumentModel {
   public Guid Id { get; init; }
   public string Title { get; init; } = "";
@@ -115,7 +115,7 @@ All methods use **strongly-typed lambda selectors** for compile-time safety.
 
 Use when the search vector comes from your application (e.g., embedding a user's search query):
 
-```csharp{title="Pattern 1: App-Side Vector (Search Query)" description="Use when the search vector comes from your application (e." category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Pattern", "App-Side"]}
+```csharp{title="Pattern 1: App-Side Vector (Search Query)" description="Use when the search vector comes from your application (e." category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Pattern", "App-Side"] tests=["VectorSearchExtensionsTests.OrderByCosineDistance_BuildsValidExpressionTreeAsync"]}
 // Get embedding from your embedding service (OpenAI, etc.)
 var searchEmbedding = await embeddingService.EmbedAsync(userSearchQuery);
 
@@ -137,7 +137,7 @@ LIMIT 10
 
 Use when comparing two vector columns on the same row (100% SQL, no vector data round-trip):
 
-```csharp{title="Pattern 2: Same-Table Column Comparison" description="Use when comparing two vector columns on the same row (100% SQL, no vector data round-trip):" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "Pattern", "Same-Table"]}
+```csharp{title="Pattern 2: Same-Table Column Comparison" description="Use when comparing two vector columns on the same row (100% SQL, no vector data round-trip):" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "Pattern", "Same-Table"] tests=["VectorSearchExtensionsTests.OrderByCosineDistance_ColumnComparison_BuildsValidExpressionTreeAsync", "VectorSearchExtensionsTests.WithinCosineDistance_ColumnComparison_BuildsValidExpressionTreeAsync"]}
 // Find documents where content differs significantly from summary
 // (potential quality issue - summary doesn't match content)
 var mismatchedDocs = await documentLens.Query
@@ -166,7 +166,7 @@ LIMIT 20
 
 Use when comparing vectors from different tables:
 
-```csharp{title="Pattern 3: Cross-Table Comparison (Joins)" description="Use when comparing vectors from different tables:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "Pattern", "Cross-Table"]}
+```csharp{title="Pattern 3: Cross-Table Comparison (Joins)" description="Use when comparing vectors from different tables:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "Pattern", "Cross-Table"] tests=["VectorSearchExtensionsTests.OrderByCosineDistance_Generic_BuildsValidExpressionTreeAsync"]}
 // Find documents that match a user's preferences
 var userId = currentUserId;
 
@@ -194,7 +194,7 @@ LIMIT 10
 
 Use when you only want results within a certain similarity range:
 
-```csharp{title="Pattern 4: Filtering by Distance Threshold" description="Use when you only want results within a certain similarity range:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Pattern", "Filtering"]}
+```csharp{title="Pattern 4: Filtering by Distance Threshold" description="Use when you only want results within a certain similarity range:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Pattern", "Filtering"] tests=["VectorSearchExtensionsTests.WithinCosineDistance_BuildsValidExpressionTreeAsync", "VectorSearchExtensionsTests.OrderByCosineDistance_BuildsValidExpressionTreeAsync"]}
 var searchEmbedding = await embeddingService.EmbedAsync(userQuery);
 
 // Only return documents with cosine distance < 0.3 (very similar)
@@ -221,7 +221,7 @@ You cannot chain `.OrderBy(r => r.Distance)` or `.Where(r => r.Distance < x)` af
 `OrderByCosineDistance` and `WithinCosineDistance` for SQL-side operations first.
 :::
 
-```csharp{title="Pattern 5: Combined Filter + Sort + Project" description="Pattern 5: Combined Filter + Sort + Project" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "Pattern", "Combined"]}
+```csharp{title="Pattern 5: Combined Filter + Sort + Project" description="Pattern 5: Combined Filter + Sort + Project" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "Pattern", "Combined"] tests=["VectorSearchExtensionsTests.WithinCosineDistance_BuildsValidExpressionTreeAsync", "VectorSearchExtensionsTests.OrderByCosineDistance_BuildsValidExpressionTreeAsync", "VectorSearchExtensionsTests.WithCosineDistance_BuildsValidExpressionTreeAsync", "VectorSearchExtensionsTests.VectorSearchResult_Construction_SetsAllPropertiesAsync"]}
 var searchEmbedding = await embeddingService.EmbedAsync(userQuery);
 
 // Filter -> Sort -> Project with scores
@@ -270,7 +270,7 @@ Returns `VectorSearchResult<TModel>` with:
 
 For testing or manual calculations, use the static helper methods:
 
-```csharp{title="Distance Calculators" description="For testing or manual calculations, use the static helper methods:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Distance", "Calculators"]}
+```csharp{title="Distance Calculators" description="For testing or manual calculations, use the static helper methods:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Distance", "Calculators"] tests=["VectorSearchExtensionsTests.CalculateCosineDistance_IdenticalVectors_ReturnsZeroAsync", "VectorSearchExtensionsTests.CalculateL2Distance_IdenticalVectors_ReturnsZeroAsync", "VectorSearchExtensionsTests.CalculateInnerProductDistance_CalculatesNegativeDotProductAsync"]}
 double cosine = VectorSearchExtensions.CalculateCosineDistance(vectorA, vectorB);
 double l2 = VectorSearchExtensions.CalculateL2Distance(vectorA, vectorB);
 double innerProduct = VectorSearchExtensions.CalculateInnerProductDistance(vectorA, vectorB);
@@ -278,7 +278,7 @@ double innerProduct = VectorSearchExtensions.CalculateInnerProductDistance(vecto
 
 ## Complete Example: Semantic Search with Ranking
 
-```csharp{title="Complete Example: Semantic Search with Ranking" description="Complete Example: Semantic Search with Ranking" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "Complete", "Example:"]}
+```csharp{title="Complete Example: Semantic Search with Ranking" description="Complete Example: Semantic Search with Ranking" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "Complete", "Example:"] tests=["VectorSearchExtensionsTests.WithinCosineDistance_BuildsValidExpressionTreeAsync", "VectorSearchExtensionsTests.OrderByCosineDistance_BuildsValidExpressionTreeAsync", "VectorSearchExtensionsTests.WithCosineDistance_BuildsValidExpressionTreeAsync", "VectorSearchExtensionsTests.VectorSearchResult_Construction_SetsAllPropertiesAsync"]}
 public class SearchService {
   private readonly ILensQueryFactory<DocumentModel> _documentLens;
   private readonly IEmbeddingService _embeddingService;
@@ -310,7 +310,7 @@ public class SearchService {
 
 If you prefer manual configuration over the turnkey approach, you can set up pgvector yourself:
 
-```csharp{title="Manual Configuration" description="If you prefer manual configuration over the turnkey approach, you can set up pgvector yourself:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "Manual", "Configuration"]}
+```csharp{title="Manual Configuration" description="If you prefer manual configuration over the turnkey approach, you can set up pgvector yourself:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "Manual", "Configuration"] unverified="manual NpgsqlDataSource/EF Core pgvector wiring — external Npgsql/EF Core UseVector setup exercised by integration tests, not unit-asserted here"}
 // 1. Create data source with UseVector()
 var dataSourceBuilder = new NpgsqlDataSourceBuilder(connectionString);
 dataSourceBuilder.UseVector();

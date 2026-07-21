@@ -128,7 +128,7 @@ dotnet build -v detailed
 
 ### Suppress (if too noisy)
 
-```xml{title="Suppress (if too noisy)" description="Suppress (if too noisy)" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Suppress", "Too"]}
+```xml{title="Suppress (if too noisy)" description="Suppress (if too noisy)" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Suppress", "Too"] unverified="suppression/config — not exercised by a test"}
 <PropertyGroup>
   <NoWarn>$(NoWarn);WHIZ807</NoWarn>
 </PropertyGroup>
@@ -136,7 +136,7 @@ dotnet build -v detailed
 
 Or per-file:
 
-```csharp{title="Suppress (if too noisy) (2)" description="Or per-file:" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Suppress", "Too"]}
+```csharp{title="Suppress (if too noisy) (2)" description="Or per-file:" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Suppress", "Too"] unverified="suppression/config — not exercised by a test"}
 #pragma warning disable WHIZ807
 ```
 

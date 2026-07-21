@@ -32,7 +32,7 @@ Multi-model queries enable LINQ joins across multiple perspective types using a 
 
 When using single-generic `ILensQuery<T>`, each injection gets its own `DbContext`. This prevents LINQ joins across perspective types:
 
-```csharp{title="The Problem: Separate DbContexts Cannot Join" description="When using single-generic ILensQuery<T>, each injection gets its own DbContext." category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "Problem:", "Separate"]}
+```csharp{title="The Problem: Separate DbContexts Cannot Join" description="When using single-generic ILensQuery<T>, each injection gets its own DbContext." category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "Problem:", "Separate"] unverified="counter-example — joining queries from separate single-generic DbContexts intentionally fails; nothing to assert"}
 // WRONG: Cannot join - different DbContexts
 public class OrderResolver {
   public async Task<OrderWithCustomer> GetOrderWithCustomer(
@@ -58,7 +58,7 @@ public class OrderResolver {
 
 Use `ILensQuery<T1, T2>` (or up to 10 type parameters) to get a shared `DbContext` for all perspective types:
 
-```csharp{title="Solution: Multi-Generic ILensQuery" description="Use ILensQuery<T1, T2> (or up to 10 type parameters) to get a shared DbContext for all perspective types:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "Solution:", "Multi-Generic"]}
+```csharp{title="Solution: Multi-Generic ILensQuery" description="Use ILensQuery<T1, T2> (or up to 10 type parameters) to get a shared DbContext for all perspective types:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "Solution:", "Multi-Generic"] unverified="consumer GraphQL resolver illustration performing a cross-perspective LINQ join; no mapped test asserts the join result"}
 // CORRECT: Shared DbContext enables LINQ joins
 public class OrderResolver {
   public async Task<OrderWithCustomer> GetOrderWithCustomer(
@@ -84,7 +84,7 @@ public class OrderResolver {
 
 Multi-generic interfaces support 2-10 type parameters. Like the single-model lens, they use the **scope-before-query** API — the bare `Query<T>()` and `GetByIdAsync<T>()` members are `[Obsolete]` and delegate to `DefaultScope`:
 
-```csharp{title="Available Interfaces" description="Multi-generic interfaces support 2-10 type parameters:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Available", "Interfaces"]}
+```csharp{title="Available Interfaces" description="Multi-generic interfaces support 2-10 type parameters:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Available", "Interfaces"] unverified="interface declarations reproduced for reference; no runtime behavior to assert"}
 public interface ILensQuery<T1, T2> : ILensQuery, IAsyncDisposable, IDisposable
     where T1 : class
     where T2 : class {
@@ -119,7 +119,7 @@ The `Query<T>()` method validates that `T` is one of the registered type paramet
 - **Compile-time**: The WHIZ400 analyzer reports errors for invalid types
 - **Runtime**: Throws `ArgumentException` if type is not registered
 
-```csharp{title="Type Safety" description="- Compile-time: The WHIZ400 analyzer reports errors for invalid types - Runtime: Throws ArgumentException if type is" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Type", "Safety"]}
+```csharp{title="Type Safety" description="- Compile-time: The WHIZ400 analyzer reports errors for invalid types - Runtime: Throws ArgumentException if type is" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Type", "Safety"] tests=["LensQueryTypeArgumentAnalyzerTests.Query_WithT1_NoDiagnosticAsync", "LensQueryTypeArgumentAnalyzerTests.Query_WithT2_NoDiagnosticAsync", "LensQueryTypeArgumentAnalyzerTests.Query_WithInvalidType_ReportsWHIZ400Async", "MultiModelScopedAccessTests.TwoModel_Query_InvalidType_ThrowsArgumentExceptionAsync"]}
 // Using ILensQuery<Order, Customer>
 var scoped = query.DefaultScope;
 scoped.Query<Order>();     // OK - Order is T1
@@ -131,7 +131,7 @@ scoped.Query<Product>();   // ERROR: WHIZ400 - Product is not T1 or T2
 
 Register multi-generic queries using `RegisterMultiLensQuery`:
 
-```csharp{title="Registration" description="Register multi-generic queries using RegisterMultiLensQuery:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Registration"]}
+```csharp{title="Registration" description="Register multi-generic queries using RegisterMultiLensQuery:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Registration"] unverified="DI registration via EFCoreInfrastructureRegistration.RegisterMultiLensQuery; not exercised by these lens tests"}
 // In your startup or source-generated code
 EFCoreInfrastructureRegistration.RegisterMultiLensQuery<MyDbContext, Order, Customer>(
     services,
@@ -151,7 +151,7 @@ Multi-generic `ILensQuery` is registered as **Transient**:
 - Prevents concurrency errors in parallel GraphQL resolvers
 - The `DbContext` is disposed when the `ILensQuery` is disposed
 
-```csharp{title="Transient Lifecycle" description="- Each injection gets its own instance with its own DbContext - Prevents concurrency errors in parallel GraphQL" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "Transient", "Lifecycle"]}
+```csharp{title="Transient Lifecycle" description="- Each injection gets its own instance with its own DbContext - Prevents concurrency errors in parallel GraphQL" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "Transient", "Lifecycle"] unverified="consumer resolver illustrating transient DI lifecycle; per-injection instancing is a registration concern not covered by these access-object tests"}
 // Each resolver invocation gets a fresh instance
 public class OrderResolver {
   public async Task<Order?> GetOrder(
@@ -176,7 +176,7 @@ public class OrderResolver {
 
 ### Simple Join
 
-```csharp{title="Simple Join" description="Simple Join" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Simple", "Join"]}
+```csharp{title="Simple Join" description="Simple Join" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Simple", "Join"] unverified="cross-perspective LINQ join over the shared DbContext; the two-model tests verify Query per type but none assert a materialized join"}
 var scoped = query.DefaultScope;
 
 var ordersWithCustomers = await (
@@ -188,7 +188,7 @@ var ordersWithCustomers = await (
 
 ### Left Join
 
-```csharp{title="Left Join" description="Left Join" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "Left", "Join"]}
+```csharp{title="Left Join" description="Left Join" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "Left", "Join"] unverified="left join with DefaultIfEmpty over the shared DbContext; no mapped test asserts the join result"}
 var scoped = query.DefaultScope;
 
 var ordersWithOptionalCustomers = await (
@@ -204,7 +204,7 @@ var ordersWithOptionalCustomers = await (
 
 ### Multiple Joins
 
-```csharp{title="Multiple Joins" description="Multiple Joins" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "Multiple", "Joins"]}
+```csharp{title="Multiple Joins" description="Multiple Joins" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "Multiple", "Joins"] unverified="three-model join; higher-arity joins are not exercised by the mapped access-object tests"}
 // Using ILensQuery<Order, Customer, Product>
 var scoped = query.DefaultScope;
 
@@ -232,7 +232,7 @@ Multi-generic `ILensQuery` is fully AOT-compatible:
 
 Multi-generic `ILensQuery` implements `IAsyncDisposable` to properly dispose the shared `DbContext`:
 
-```csharp{title="Disposal" description="Multi-generic ILensQuery implements IAsyncDisposable to properly dispose the shared DbContext:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Disposal"]}
+```csharp{title="Disposal" description="Multi-generic ILensQuery implements IAsyncDisposable to properly dispose the shared DbContext:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Disposal"] unverified="IAsyncDisposable disposal of the multi-generic ILensQuery resolved from DI; not exercised by these access-object unit tests"}
 // In DI scenarios, disposal is automatic
 // For manual use:
 await using var query = serviceProvider.GetRequiredService<ILensQuery<Order, Customer>>();

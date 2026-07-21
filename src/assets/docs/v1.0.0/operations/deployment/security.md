@@ -68,7 +68,7 @@ Comprehensive **security guide** for Whizbang applications - authentication, aut
 
 **Program.cs**:
 
-```csharp{title="JWT with RS256 (2)" description="JWT with RS256" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "JWT", "RS256"]}
+```csharp{title="JWT with RS256 (2)" description="JWT with RS256" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "JWT", "RS256"] unverified="configuration — ASP.NET Core JWT bearer setup, no Whizbang behavior to assert"}
 builder.Services
   .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
   .AddJwtBearer(options => {
@@ -90,7 +90,7 @@ app.UseAuthorization();
 
 ### Require Authentication on Endpoints
 
-```csharp{title="Require Authentication on Endpoints" description="Require Authentication on Endpoints" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Require", "Authentication"]}
+```csharp{title="Require Authentication on Endpoints" description="Require Authentication on Endpoints" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Require", "Authentication"] unverified="configuration — ASP.NET Core endpoint authorization, no Whizbang behavior to assert"}
 app.MapPost("/orders", async (
   CreateOrderCommand command,
   IDispatcher dispatcher
@@ -109,7 +109,7 @@ app.MapPost("/orders", async (
 
 **Program.cs**:
 
-```csharp{title="Policy-Based Authorization" description="Policy-Based Authorization" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Policy-Based", "Authorization"]}
+```csharp{title="Policy-Based Authorization" description="Policy-Based Authorization" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Policy-Based", "Authorization"] unverified="configuration — ASP.NET Core authorization policies, no Whizbang behavior to assert"}
 builder.Services.AddAuthorizationBuilder()
   .AddPolicy("CreateOrder", policy => policy
     .RequireAuthenticatedUser()
@@ -124,7 +124,7 @@ builder.Services.AddAuthorizationBuilder()
 
 **Usage**:
 
-```csharp{title="Policy-Based Authorization (2)" description="Policy-Based Authorization" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Policy-Based", "Authorization"]}
+```csharp{title="Policy-Based Authorization (2)" description="Policy-Based Authorization" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Policy-Based", "Authorization"] unverified="configuration — ASP.NET Core policy-gated endpoints, no Whizbang behavior to assert"}
 app.MapPost("/orders", async (
   CreateOrderCommand command,
   IDispatcher dispatcher
@@ -151,7 +151,7 @@ app.MapGet("/orders/{orderId}", async (
 
 **OrderAuthorizationHandler.cs**:
 
-```csharp{title="Resource-Based Authorization" description="**OrderAuthorizationHandler." category="Configuration" difficulty="ADVANCED" tags=["Operations", "Deployment", "Resource-Based", "Authorization"]}
+```csharp{title="Resource-Based Authorization" description="**OrderAuthorizationHandler." category="Configuration" difficulty="ADVANCED" tags=["Operations", "Deployment", "Resource-Based", "Authorization"] unverified="user code — application AuthorizationHandler, no Whizbang behavior to assert"}
 public class OrderAuthorizationHandler : AuthorizationHandler<OperationAuthorizationRequirement, OrderRow> {
   protected override Task HandleRequirementAsync(
     AuthorizationHandlerContext context,
@@ -181,13 +181,13 @@ public class OrderAuthorizationHandler : AuthorizationHandler<OperationAuthoriza
 
 **Registration**:
 
-```csharp{title="Resource-Based Authorization (2)" description="Registration:" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Resource-Based", "Authorization"]}
+```csharp{title="Resource-Based Authorization (2)" description="Registration:" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Resource-Based", "Authorization"] unverified="configuration — ASP.NET Core IAuthorizationHandler registration, no Whizbang behavior to assert"}
 builder.Services.AddSingleton<IAuthorizationHandler, OrderAuthorizationHandler>();
 ```
 
 **Usage**:
 
-```csharp{title="Resource-Based Authorization (3)" description="Resource-Based Authorization" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Resource-Based", "Authorization"]}
+```csharp{title="Resource-Based Authorization (3)" description="Resource-Based Authorization" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Resource-Based", "Authorization"] unverified="user code — application endpoint using IAuthorizationService, no Whizbang behavior to assert"}
 app.MapDelete("/orders/{orderId}", async (
   string orderId,
   IDbConnection db,
@@ -228,7 +228,7 @@ app.MapDelete("/orders/{orderId}", async (
 
 HTTP-level authorization covers your endpoints; **message-level security** covers everything flowing through the dispatcher and transports. Whizbang ships this as a first-class subsystem:
 
-```csharp{title="Whizbang Message Security" description="AddWhizbangMessageSecurity + receptor permission gates" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Message", "Security"]}
+```csharp{title="Whizbang Message Security" description="AddWhizbangMessageSecurity + receptor permission gates" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Message", "Security"] tests=["MessageSecurityContextProviderTests.EstablishContextAsync_NoExtractors_AllowAnonymousFalse_ThrowsSecurityContextRequiredExceptionAsync", "MessageSecurityContextProviderTests.EstablishContextAsync_EnableAuditLoggingTrue_EmitsAuditEventAsync", "MessageSecurityContextProviderTests.EstablishContextAsync_ValidateCredentialsTrue_PassesValidationFlagToExtractorAsync", "MessageSecurityContextProviderTests.EstablishContextAsync_PropagateToOutgoingTrue_SetsContextForPropagationAsync", "MessageSecurityContextProviderTests.EstablishContextAsync_ExemptMessageType_BypassesSecurityAsync"]}
 // Program.cs - message security pipeline
 builder.Services.AddWhizbangMessageSecurity(options => {
   options.AllowAnonymous = false;               // default: reject messages without a security context
@@ -278,7 +278,7 @@ The security context captured at the edge (e.g., from the JWT) travels **with th
 
 **DataEncryptionService.cs**:
 
-```csharp{title="AES-256 Encryption (At Rest)" description="**DataEncryptionService." category="Configuration" difficulty="ADVANCED" tags=["Operations", "Deployment", "AES-256", "Encryption"]}
+```csharp{title="AES-256 Encryption (At Rest)" description="**DataEncryptionService." category="Configuration" difficulty="ADVANCED" tags=["Operations", "Deployment", "AES-256", "Encryption"] unverified="user code — application AES-256 encryption service, no Whizbang behavior to assert"}
 public interface IDataEncryptionService {
   byte[] Encrypt(byte[] plaintext);
   byte[] Decrypt(byte[] ciphertext);
@@ -336,7 +336,7 @@ public class AesDataEncryptionService : IDataEncryptionService {
 
 **Usage**:
 
-```csharp{title="AES-256 Encryption (At Rest) (2)" description="AES-256 Encryption (At Rest)" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "AES-256", "Encryption"]}
+```csharp{title="AES-256 Encryption (At Rest) (2)" description="AES-256 Encryption (At Rest)" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "AES-256", "Encryption"] unverified="user code — application receptor encrypting fields, no Whizbang behavior to assert"}
 public async ValueTask<PaymentProcessedEvent> HandleAsync(
   ProcessPaymentCommand command,
   CancellationToken cancellationToken = default
@@ -370,7 +370,7 @@ public async ValueTask<PaymentProcessedEvent> HandleAsync(
 
 **Program.cs**:
 
-```csharp{title="Azure Key Vault" description="Azure Key Vault" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Azure", "Key"]}
+```csharp{title="Azure Key Vault" description="Azure Key Vault" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Azure", "Key"] unverified="configuration — Azure Key Vault configuration provider, no Whizbang behavior to assert"}
 var keyVaultUri = new Uri(builder.Configuration["KeyVault:VaultUri"]);
 
 builder.Configuration.AddAzureKeyVault(
@@ -401,7 +401,7 @@ az keyvault secret set \
 
 **Usage**:
 
-```csharp{title="Azure Key Vault (3)" description="Azure Key Vault" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Azure", "Key"]}
+```csharp{title="Azure Key Vault (3)" description="Azure Key Vault" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Azure", "Key"] unverified="configuration — reading resolved secrets from IConfiguration, no Whizbang behavior to assert"}
 // Automatically resolved from Key Vault
 var connectionString = builder.Configuration["Database:ConnectionString"];
 var serviceBusConnectionString = builder.Configuration["AzureServiceBus:ConnectionString"];
@@ -441,7 +441,7 @@ az keyvault set-policy \
 
 **CreateOrderValidator.cs**:
 
-```csharp{title="Command Validation" description="**CreateOrderValidator." category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Command", "Validation"]}
+```csharp{title="Command Validation" description="**CreateOrderValidator." category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Command", "Validation"] unverified="user code — application command validator, no Whizbang behavior to assert"}
 public static class CreateOrderValidator {
   public static ValidationResult Validate(CreateOrderCommand command) {
     var errors = new List<string>();
@@ -469,7 +469,7 @@ public static class CreateOrderValidator {
 
 **Enforce in the receptor** (the pattern used by the ECommerce sample - validation runs before any event is published):
 
-```csharp{title="Command Validation - Receptor Guard" description="Validate at the top of HandleAsync, before publishing" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Command", "Validation"]}
+```csharp{title="Command Validation - Receptor Guard" description="Validate at the top of HandleAsync, before publishing" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Command", "Validation"] unverified="user code — application receptor validation pattern, no Whizbang behavior to assert"}
 public class CreateOrderReceptor(IDispatcher dispatcher, ILogger<CreateOrderReceptor> logger)
   : IReceptor<CreateOrderCommand, OrderCreatedEvent> {
 
@@ -493,7 +493,7 @@ For validation that must run for *every* message of a type regardless of which r
 
 **✅ ALWAYS use parameterized queries**:
 
-```csharp{title="SQL Injection Prevention" description="✅ ALWAYS use parameterized queries:" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "SQL", "Injection"]}
+```csharp{title="SQL Injection Prevention" description="✅ ALWAYS use parameterized queries:" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "SQL", "Injection"] unverified="user code — parameterized-query guidance, no Whizbang behavior to assert"}
 // ✅ GOOD - Parameterized query (safe)
 var orders = await _db.QueryAsync<OrderRow>(
   """
@@ -517,7 +517,7 @@ var orders = await _db.QueryAsync<OrderRow>(
 
 **✅ Mitigation**: Policy-based authorization + resource-based authorization
 
-```csharp{title="Broken Access Control" description="✅ Mitigation: Policy-based authorization + resource-based authorization" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Broken", "Access"]}
+```csharp{title="Broken Access Control" description="✅ Mitigation: Policy-based authorization + resource-based authorization" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Broken", "Access"] unverified="user code — authorization usage snippet, no Whizbang behavior to assert"}
 // Check user can access resource
 var authResult = await _authz.AuthorizeAsync(user, order, "View");
 if (!authResult.Succeeded) {
@@ -529,7 +529,7 @@ if (!authResult.Succeeded) {
 
 **✅ Mitigation**: TLS 1.3 + AES-256 encryption + Azure Key Vault
 
-```csharp{title="Cryptographic Failures" description="✅ Mitigation: TLS 1." category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Cryptographic", "Failures"]}
+```csharp{title="Cryptographic Failures" description="✅ Mitigation: TLS 1." category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Cryptographic", "Failures"] unverified="user code — encryption usage snippet, no Whizbang behavior to assert"}
 // Encrypt sensitive data
 var encryptedData = _encryption.Encrypt(sensitiveData);
 ```
@@ -538,7 +538,7 @@ var encryptedData = _encryption.Encrypt(sensitiveData);
 
 **✅ Mitigation**: Parameterized queries + input validation
 
-```csharp{title="Injection" description="✅ Mitigation: Parameterized queries + input validation" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Injection"]}
+```csharp{title="Injection" description="✅ Mitigation: Parameterized queries + input validation" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Injection"] unverified="user code — parameterized-query snippet, no Whizbang behavior to assert"}
 // Always use parameters
 await _db.ExecuteAsync(
   "INSERT INTO orders (...) VALUES (@Value)",
@@ -550,7 +550,7 @@ await _db.ExecuteAsync(
 
 **✅ Mitigation**: Principle of least privilege + defense in depth
 
-```csharp{title="Insecure Design" description="✅ Mitigation: Principle of least privilege + defense in depth" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Insecure", "Design"]}
+```csharp{title="Insecure Design" description="✅ Mitigation: Principle of least privilege + defense in depth" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Insecure", "Design"] unverified="illustrative — defense-in-depth layering sketch, not a compilable example"}
 // Multiple layers of security
 app.MapPost("/orders", CreateOrderEndpoint)
   .RequireAuthorization("CreateOrder");            // Layer 1: HTTP policy
@@ -567,7 +567,7 @@ public class CreateOrderReceptor : IReceptor<CreateOrderCommand, OrderCreatedEve
 
 **✅ Mitigation**: Secure defaults + configuration validation
 
-```csharp{title="Security Misconfiguration" description="✅ Mitigation: Secure defaults + configuration validation" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Security", "Misconfiguration"]}
+```csharp{title="Security Misconfiguration" description="✅ Mitigation: Secure defaults + configuration validation" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Security", "Misconfiguration"] unverified="user code — startup configuration validation, no Whizbang behavior to assert"}
 // Validate configuration on startup
 var requiredSettings = new[] {
   "Database:ConnectionString",
@@ -618,7 +618,7 @@ jobs:
 
 **✅ Mitigation**: JWT with short expiry + refresh tokens
 
-```csharp{title="Identification and Authentication Failures" description="✅ Mitigation: JWT with short expiry + refresh tokens" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Identification", "Authentication"]}
+```csharp{title="Identification and Authentication Failures" description="✅ Mitigation: JWT with short expiry + refresh tokens" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Identification", "Authentication"] unverified="configuration — ASP.NET Core token lifetime validation, no Whizbang behavior to assert"}
 options.TokenValidationParameters = new TokenValidationParameters {
   ValidateLifetime = true,
   ClockSkew = TimeSpan.Zero  // No grace period
@@ -639,7 +639,7 @@ Every Whizbang message travels in a `MessageEnvelope` with a unique `MessageId` 
 
 **✅ Mitigation**: Structured logging + Application Insights
 
-```csharp{title="Security Logging and Monitoring Failures" description="✅ Mitigation: Structured logging + Application Insights" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Security", "Logging"]}
+```csharp{title="Security Logging and Monitoring Failures" description="✅ Mitigation: Structured logging + Application Insights" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Security", "Logging"] unverified="user code — application security logging snippet, no Whizbang behavior to assert"}
 _logger.LogWarning(
   "Unauthorized access attempt: User {UserId} attempted to access Order {OrderId}",
   userId,
@@ -651,7 +651,7 @@ _logger.LogWarning(
 
 **✅ Mitigation**: Whitelist allowed hosts + URL validation
 
-```csharp{title="Server-Side Request Forgery (SSRF)" description="✅ Mitigation: Whitelist allowed hosts + URL validation" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "10.", "Server-Side"]}
+```csharp{title="Server-Side Request Forgery (SSRF)" description="✅ Mitigation: Whitelist allowed hosts + URL validation" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "10.", "Server-Side"] unverified="user code — application URL allowlist guard, no Whizbang behavior to assert"}
 // Guard any receptor that makes outbound calls from message-supplied URLs
 public static class OutboundUrlGuard {
   private static readonly string[] AllowedHosts = [
@@ -677,7 +677,7 @@ OutboundUrlGuard.EnsureAllowed(command.CallbackUrl);
 
 Whizbang ships a security-headers middleware in **`Whizbang.Hosting.AspNet`** - opt in with one line instead of hand-rolling:
 
-```csharp{title="Security Headers" description="UseWhizbangSecurityHeaders from Whizbang.Hosting.AspNet" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Security", "Headers"]}
+```csharp{title="Security Headers" description="UseWhizbangSecurityHeaders from Whizbang.Hosting.AspNet" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Security", "Headers"] tests=["WhizbangSecurityHeadersMiddlewareTests.Options_Defaults_MatchHardenedBaselineAsync", "WhizbangSecurityHeadersMiddlewareTests.Invoke_PlainHttpGet_SetsAllDefaultHeadersExceptHstsAsync", "WhizbangSecurityHeadersMiddlewareTests.Invoke_CustomHeaderValue_IsEmittedAsync", "WhizbangSecurityHeadersMiddlewareTests.Invoke_OptionSetToNull_SuppressesThatHeaderAsync", "WhizbangSecurityHeadersMiddlewareTests.Invoke_HeaderAlreadyPresent_IsNotOverwrittenAsync"]}
 // Defaults: Strict-Transport-Security (1y, includeSubDomains, preload),
 // X-Content-Type-Options: nosniff, X-Frame-Options: DENY,
 // CSP: frame-ancestors 'none', Referrer-Policy: strict-origin-when-cross-origin,
@@ -699,7 +699,7 @@ Headers are only added when absent, so app-specific values you set elsewhere win
 
 **Program.cs**:
 
-```csharp{title="Rate Limiting" description="Rate Limiting" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Rate", "Limiting"]}
+```csharp{title="Rate Limiting" description="Rate Limiting" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Rate", "Limiting"] unverified="configuration — ASP.NET Core rate limiter, no Whizbang behavior to assert"}
 builder.Services.AddRateLimiter(options => {
   options.AddFixedWindowLimiter("api", limiter => {
     limiter.PermitLimit = 100;
@@ -714,7 +714,7 @@ app.UseRateLimiter();
 
 **Usage**:
 
-```csharp{title="Rate Limiting (2)" description="Rate Limiting" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Rate", "Limiting"]}
+```csharp{title="Rate Limiting (2)" description="Rate Limiting" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Rate", "Limiting"] unverified="configuration — ASP.NET Core rate-limited endpoint, no Whizbang behavior to assert"}
 app.MapPost("/orders", async (
   CreateOrderCommand command,
   IDispatcher dispatcher

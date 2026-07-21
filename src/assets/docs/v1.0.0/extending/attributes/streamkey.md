@@ -33,7 +33,7 @@ The `[StreamKey]` attribute no longer exists as a separate attribute. It has bee
 
 ## Migration
 
-```csharp{title="StreamKey to StreamId" description="Replace StreamKey with the unified StreamId attribute" category="Usage" difficulty="BEGINNER" tags=["StreamKey", "StreamId", "Migration"]}
+```csharp{title="StreamKey to StreamId" description="Replace StreamKey with the unified StreamId attribute" category="Usage" difficulty="BEGINNER" tags=["StreamKey", "StreamId", "Migration"] tests=["StreamIdExtractorTests.ExtractStreamId_EventWithStreamId_ReturnsStreamIdValueAsync", "StreamIdGeneratorTests.Generator_WithStreamIdAttribute_GeneratesExtractorAsync"]}
 // Before (historical API - no longer compiles)
 public record ProductCreatedEvent : IEvent {
   [StreamKey]
@@ -49,7 +49,7 @@ public record ProductCreatedEvent : IEvent {
 
 The same replacement applies to perspective model types - models mark their stream identity property with `[StreamId]`:
 
-```csharp{title="Model StreamId" description="Perspective models use StreamId to identify their stream" category="Usage" difficulty="BEGINNER" tags=["StreamId", "Perspectives", "Models"]}
+```csharp{title="Model StreamId" description="Perspective models use StreamId to identify their stream" category="Usage" difficulty="BEGINNER" tags=["StreamId", "Perspectives", "Models"] unverified="[StreamId] on a perspective model plus an IPerspectiveFor Apply — perspective-model stream-id generation and the pure Apply are covered by perspective-discovery/perspective tests, not by these event/command StreamId extractor and generator tests"}
 public record ProductDto {
   [StreamId]  // Identifies which product this model represents
   public Guid ProductId { get; init; }
@@ -90,7 +90,7 @@ The source generators validate `[StreamId]` usage for perspectives:
 
 **Error**: An event used in a perspective has no `[StreamId]` property.
 
-```csharp{title="WHIZ030: Missing StreamId" description="Error: Event used in perspective has no StreamId property" category="Diagnostics" difficulty="INTERMEDIATE" tags=["StreamId", "Diagnostics", "WHIZ030"]}
+```csharp{title="WHIZ030: Missing StreamId" description="Error: Event used in perspective has no StreamId property" category="Diagnostics" difficulty="INTERMEDIATE" tags=["StreamId", "Diagnostics", "WHIZ030"] unverified="counter-example — an event used in a perspective with no [StreamId] is the pattern WHIZ030 flags; WHIZ030 detection is asserted by the perspective-discovery generator tests, not by these StreamId extractor/generator tests"}
 // ❌ Causes WHIZ030
 public record ProductEvent : IEvent {
   public Guid ProductId { get; init; }  // No [StreamId]!
@@ -109,7 +109,7 @@ See [WHIZ030 Diagnostic](../../operations/diagnostics/whiz030.md) for details.
 
 **Error**: An event has multiple properties marked with `[StreamId]`.
 
-```csharp{title="WHIZ031: Multiple StreamIds" description="Error: Event has multiple StreamId properties" category="Diagnostics" difficulty="INTERMEDIATE" tags=["StreamId", "Diagnostics", "WHIZ031"]}
+```csharp{title="WHIZ031: Multiple StreamIds" description="Error: Event has multiple StreamId properties" category="Diagnostics" difficulty="INTERMEDIATE" tags=["StreamId", "Diagnostics", "WHIZ031"] unverified="counter-example — two [StreamId] properties on one event is the pattern WHIZ031 flags; the WHIZ031 multiple-stream-id diagnostic is not asserted by these StreamId extractor/generator tests"}
 // ❌ Causes WHIZ031
 public record OrderEvent : IEvent {
   [StreamId]

@@ -38,7 +38,7 @@ Without `EnvelopeContextExtractor`, every worker and invoker would repeat this l
 
 The extraction result is a lightweight readonly record struct, nested inside `EnvelopeContextExtractor`:
 
-```csharp{title="ExtractedContext" description="Result of extracting context from envelope hops" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Messages", "Extraction", "ExtractedContext"]}
+```csharp{title="ExtractedContext" description="Result of extracting context from envelope hops" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Messages", "Extraction", "ExtractedContext"] tests=["EnvelopeContextExtractorTests.ExtractFromHops_ExtractsBothTraceAndScopeAsync"]}
 // Nested type: EnvelopeContextExtractor.ExtractedContext
 public readonly record struct ExtractedContext(
     ActivityContext TraceContext,  // For OpenTelemetry trace correlation
@@ -49,7 +49,7 @@ public readonly record struct ExtractedContext(
 
 The primary entry point - extracts context directly from an envelope:
 
-```csharp{title="ExtractFromEnvelope" description="Extract context from a message envelope" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Messages", "Extraction", "Envelope"]}
+```csharp{title="ExtractFromEnvelope" description="Extract context from a message envelope" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Messages", "Extraction", "Envelope"] tests=["EnvelopeContextExtractorTests.ExtractFromEnvelope_DelegatesToExtractFromHopsAsync"]}
 public static ExtractedContext ExtractFromEnvelope(IMessageEnvelope envelope);
 ```
 
@@ -57,7 +57,7 @@ public static ExtractedContext ExtractFromEnvelope(IMessageEnvelope envelope);
 
 Lower-level method when you already have the hop list:
 
-```csharp{title="ExtractFromHops" description="Extract context from message hops" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Messages", "Extraction", "Hops"]}
+```csharp{title="ExtractFromHops" description="Extract context from message hops" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Messages", "Extraction", "Hops"] tests=["EnvelopeContextExtractorTests.ExtractFromHops_WhenHopsNull_ReturnsDefaultContextAsync", "EnvelopeContextExtractorTests.ExtractFromHops_WhenHopsEmpty_ReturnsDefaultContextAsync", "EnvelopeContextExtractorTests.ExtractFromHops_ExtractsBothTraceAndScopeAsync"]}
 public static ExtractedContext ExtractFromHops(IReadOnlyList<MessageHop>? hops);
 ```
 
@@ -67,7 +67,7 @@ Returns `default` `ActivityContext` and `null` scope when hops is null or empty.
 
 For cases where only one type of context is needed:
 
-```csharp{title="Focused Extractors" description="Extract trace or scope context individually" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Extraction", "Trace", "Scope"]}
+```csharp{title="Focused Extractors" description="Extract trace or scope context individually" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Extraction", "Trace", "Scope"] tests=["EnvelopeContextExtractorTests.ExtractTraceContext_WhenMultipleHops_UsesLastTraceParentAsync", "EnvelopeContextExtractorTests.ExtractScope_WhenMultipleHops_MergesScopeDeltasAsync"]}
 // Trace context only (ActivityContext from last hop's TraceParent)
 public static ActivityContext ExtractTraceContext(IReadOnlyList<MessageHop>? hops);
 
@@ -114,7 +114,7 @@ The merged scope is wrapped in an `ImmutableScopeContext` with `ShouldPropagate 
 
 ### In a Worker or Consumer
 
-```csharp{title="Worker Usage" description="Extracting context in a message worker" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Extraction", "Worker"]}
+```csharp{title="Worker Usage" description="Extracting context in a message worker" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Extraction", "Worker"] tests=["EnvelopeContextExtractorTests.ExtractFromEnvelope_DelegatesToExtractFromHopsAsync"]}
 public class OrderEventWorker {
     public async Task ProcessAsync(IMessageEnvelope envelope, CancellationToken ct) {
         // Extract both trace and security context
@@ -139,7 +139,7 @@ public class OrderEventWorker {
 
 ### Trace Context Only
 
-```csharp{title="Trace Context Only" description="Extracting only trace context for telemetry" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Extraction", "Trace"]}
+```csharp{title="Trace Context Only" description="Extracting only trace context for telemetry" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Extraction", "Trace"] tests=["EnvelopeContextExtractorTests.ExtractTraceContext_WhenTraceParentExists_ReturnsActivityContextAsync"]}
 var traceContext = EnvelopeContextExtractor.ExtractTraceContext(envelope.Hops);
 
 using var activity = ActivitySource.StartActivity(
@@ -150,7 +150,7 @@ using var activity = ActivitySource.StartActivity(
 
 ### Security Scope Only
 
-```csharp{title="Security Scope Only" description="Extracting only security scope" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Extraction", "Scope"]}
+```csharp{title="Security Scope Only" description="Extracting only security scope" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Extraction", "Scope"] tests=["EnvelopeContextExtractorTests.ExtractScope_WhenScopeDeltaExists_ReturnsMergedScopeAsync"]}
 var scope = EnvelopeContextExtractor.ExtractScope(envelope.Hops);
 
 if (scope is not null) {

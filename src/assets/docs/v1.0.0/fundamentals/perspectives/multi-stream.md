@@ -39,7 +39,7 @@ lastMaintainedCommit: '01f07906'
 - Partition key extracted from events identifies the model
 - Example: `CustomerStatisticsPerspective` - aggregates order events from many order streams into one customer model
 
-```mermaid
+```mermaid{caption="Single-stream perspectives map one stream to one model instance; multi-stream (global) perspectives fold events from many streams into one model per partition key." tests=["IGlobalPerspectiveForTests.GlobalPerspective_EventsFromDifferentStreams_UpdateSamePartitionAsync"]}
 flowchart TB
     subgraph Single["Single-Stream (IPerspectiveFor)"]
         direction LR
@@ -59,7 +59,7 @@ flowchart TB
 
 ## IGlobalPerspectiveFor Interface
 
-```csharp{title="IGlobalPerspectiveFor Interface" description="IGlobalPerspectiveFor Interface" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "IGlobalPerspectiveFor", "Interface"]}
+```csharp{title="IGlobalPerspectiveFor Interface" description="IGlobalPerspectiveFor Interface" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "IGlobalPerspectiveFor", "Interface"] tests=["IGlobalPerspectiveForTests.GlobalPerspective_HasGetPartitionKeyMethod_ExtractsPartitionFromEventAsync", "IGlobalPerspectiveForTests.GlobalPerspective_ApplyMethod_IsPureFunctionAsync"]}
 /// <summary>
 /// Multi-stream perspective that handles a single event type with partition key extraction.
 /// GetPartitionKey extracts the partition from events (like Marten's Identity method).
@@ -98,7 +98,7 @@ Aggregate order statistics per customer across all order streams.
 
 ### Events
 
-```csharp{title="Events" description="Events" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Events"]}
+```csharp{title="Events" description="Events" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Events"] unverified="consumer domain event record definitions, not a core library API"}
 using Whizbang.Core;
 
 // Order created event (separate stream per order)
@@ -123,7 +123,7 @@ public record OrderCompletedEvent : IEvent {
 
 ### Read Model
 
-```csharp{title="Read Model" description="Read Model" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Read", "Model"]}
+```csharp{title="Read Model" description="Read Model" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Read", "Model"] unverified="consumer domain read-model record definition, not a core library API"}
 // Customer statistics model (one per customer)
 public record CustomerStatisticsDto {
   public Guid CustomerId { get; init; }           // Partition key
@@ -136,7 +136,7 @@ public record CustomerStatisticsDto {
 
 ### Multi-Stream Perspective
 
-```csharp{title="Multi-Stream Perspective" description="Multi-Stream Perspective" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Perspectives", "Multi-Stream", "Perspective"]}
+```csharp{title="Multi-Stream Perspective" description="Multi-Stream Perspective" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Perspectives", "Multi-Stream", "Perspective"] tests=["IGlobalPerspectiveForTests.GlobalPerspective_MultipleEventTypes_HasGetPartitionKeyForEachAsync", "IGlobalPerspectiveForTests.GlobalPerspective_EventsFromDifferentStreams_UpdateSamePartitionAsync"]}
 using Whizbang.Core.Perspectives;
 
 public class CustomerStatisticsPerspective :
@@ -188,7 +188,7 @@ public class CustomerStatisticsPerspective :
 
 ### Guid Partition Key
 
-```csharp{title="Guid Partition Key" description="Guid Partition Key" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Guid", "Partition"]}
+```csharp{title="Guid Partition Key" description="Guid Partition Key" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Guid", "Partition"] tests=["IGlobalPerspectiveForTests.GlobalPerspective_HasGetPartitionKeyMethod_ExtractsPartitionFromEventAsync"]}
 // Partition by customer ID
 public class CustomerActivityPerspective :
   IGlobalPerspectiveFor<CustomerActivityDto, Guid, OrderCreatedEvent> {
@@ -205,7 +205,7 @@ public class CustomerActivityPerspective :
 
 ### String Partition Key
 
-```csharp{title="String Partition Key" description="String Partition Key" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "String", "Partition"]}
+```csharp{title="String Partition Key" description="String Partition Key" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "String", "Partition"] tests=["IGlobalPerspectiveForTests.GlobalPerspective_DifferentPartitionKeys_CanUseStringTypeAsync"]}
 // Partition by product category
 public class CategorySalesPerspective :
   IGlobalPerspectiveFor<CategorySalesDto, string, ProductSoldEvent> {
@@ -226,7 +226,7 @@ public class CategorySalesPerspective :
 
 ### Composite Partition Key
 
-```csharp{title="Composite Partition Key" description="Composite Partition Key" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Composite", "Partition"]}
+```csharp{title="Composite Partition Key" description="Composite Partition Key" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Composite", "Partition"] unverified="consumer illustration of a composite partition-key record with elided Apply body; no composite-key test exists in IGlobalPerspectiveForTests"}
 // Partition by tenant + customer
 public record TenantCustomerKey(Guid TenantId, Guid CustomerId);
 
@@ -249,7 +249,7 @@ public class TenantCustomerPerspective :
 
 Multi-stream perspectives can handle up to 3 event types (v1.0.0):
 
-```csharp{title="Multiple Event Types" description="Multi-stream perspectives can handle up to 3 event types (v1." category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Perspectives", "Multiple", "Event"]}
+```csharp{title="Multiple Event Types" description="Multi-stream perspectives can handle up to 3 event types (v1." category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Perspectives", "Multiple", "Event"] tests=["IGlobalPerspectiveForTests.GlobalPerspective_MultipleEventTypes_HasGetPartitionKeyForEachAsync"]}
 public class CustomerLifecyclePerspective :
   IGlobalPerspectiveFor<CustomerDto, Guid, CustomerRegisteredEvent>,
   IGlobalPerspectiveFor<CustomerDto, Guid, OrderCreatedEvent>,
@@ -308,7 +308,7 @@ Whizbang's multi-stream perspectives are inspired by [Marten's MultiStreamProjec
 
 ### Marten Pattern
 
-```csharp{title="Marten Pattern" description="Marten Pattern" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Marten", "Pattern"]}
+```csharp{title="Marten Pattern" description="Marten Pattern" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Marten", "Pattern"] unverified="Marten API — not Whizbang code, shown for comparison only"}
 // Marten (C#)
 public class TripProjection : MultiStreamProjection<Trip, string> {
   public TripProjection() {
@@ -330,7 +330,7 @@ public class TripProjection : MultiStreamProjection<Trip, string> {
 
 ### Whizbang Pattern
 
-```csharp{title="Whizbang Pattern" description="Whizbang Pattern" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Whizbang", "Pattern"]}
+```csharp{title="Whizbang Pattern" description="Whizbang Pattern" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Whizbang", "Pattern"] tests=["IGlobalPerspectiveForTests.GlobalPerspective_MultipleEventTypes_HasGetPartitionKeyForEachAsync", "IGlobalPerspectiveForTests.GlobalPerspective_ApplyMethod_IsPureFunctionAsync"]}
 // Whizbang (C#)
 public class TripPerspective :
   IGlobalPerspectiveFor<TripDto, string, TripStartedEvent>,
@@ -377,7 +377,7 @@ public class TripPerspective :
 
 Aggregate customer data from multiple event streams:
 
-```csharp{title="Customer Aggregates" description="Aggregate customer data from multiple event streams:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Customer", "Aggregates"]}
+```csharp{title="Customer Aggregates" description="Aggregate customer data from multiple event streams:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Customer", "Aggregates"] tests=["IGlobalPerspectiveForTests.GlobalPerspective_EventsFromDifferentStreams_UpdateSamePartitionAsync"]}
 // Events from different streams
 OrderCreatedEvent (order-001) → CustomerId: abc-123
 PaymentReceivedEvent (payment-042) → CustomerId: abc-123
@@ -395,7 +395,7 @@ CustomerDto (partition: abc-123) {
 
 Pre-compute analytics across streams:
 
-```csharp{title="Analytics & Reporting" description="Pre-compute analytics across streams:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Analytics", "Reporting"]}
+```csharp{title="Analytics & Reporting" description="Pre-compute analytics across streams:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Analytics", "Reporting"] tests=["IGlobalPerspectiveForTests.GlobalPerspective_DifferentPartitionKeys_CanUseStringTypeAsync"]}
 // Category sales perspective
 public class CategorySalesPerspective :
   IGlobalPerspectiveFor<CategorySalesDto, string, ProductSoldEvent> {
@@ -417,7 +417,7 @@ public class CategorySalesPerspective :
 
 Partition by tenant for SaaS applications:
 
-```csharp{title="Multi-Tenant Aggregates" description="Partition by tenant for SaaS applications:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Multi-Tenant", "Aggregates"]}
+```csharp{title="Multi-Tenant Aggregates" description="Partition by tenant for SaaS applications:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Multi-Tenant", "Aggregates"] tests=["IGlobalPerspectiveForTests.GlobalPerspective_MultipleEventTypes_HasGetPartitionKeyForEachAsync"]}
 public class TenantUsagePerspective :
   IGlobalPerspectiveFor<TenantUsageDto, Guid, ApiRequestEvent>,
   IGlobalPerspectiveFor<TenantUsageDto, Guid, DataStoredEvent> {
@@ -451,7 +451,7 @@ public class TenantUsagePerspective :
 
 ### GetPartitionKey - Pure Function
 
-```csharp{title="GetPartitionKey - Pure Function" description="GetPartitionKey - Pure Function" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "GetPartitionKey", "Pure"]}
+```csharp{title="GetPartitionKey - Pure Function" description="GetPartitionKey - Pure Function" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "GetPartitionKey", "Pure"] unverified="counter-example — impure and non-deterministic GetPartitionKey anti-patterns"}
 // ✅ CORRECT: Pure function (deterministic, no side effects)
 public Guid GetPartitionKey(OrderCreatedEvent @event) {
   return @event.CustomerId;
@@ -471,7 +471,7 @@ public string GetPartitionKey(OrderCreatedEvent @event) {
 
 ### Apply - Pure Function
 
-```csharp{title="Apply - Pure Function" description="Apply - Pure Function" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Apply", "Pure"]}
+```csharp{title="Apply - Pure Function" description="Apply - Pure Function" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Apply", "Pure"] tests=["IGlobalPerspectiveForTests.GlobalPerspective_ApplyMethod_IsPureFunctionAsync"]}
 // ✅ CORRECT: Pure function (returns new instance)
 public CustomerDto Apply(CustomerDto currentData, OrderCreatedEvent @event) {
   return new CustomerDto {
@@ -535,7 +535,7 @@ CREATE TABLE IF NOT EXISTS wh_perspective_cursors (
 
 ### Unit Tests
 
-```csharp{title="Unit Tests" description="Unit Tests" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Perspectives", "Unit", "Tests"]}
+```csharp{title="Unit Tests" description="Unit Tests" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Perspectives", "Unit", "Tests"] tests=["IGlobalPerspectiveForTests.GlobalPerspective_HasGetPartitionKeyMethod_ExtractsPartitionFromEventAsync", "IGlobalPerspectiveForTests.GlobalPerspective_ApplyMethod_IsPureFunctionAsync", "IGlobalPerspectiveForTests.GlobalPerspective_EventsFromDifferentStreams_UpdateSamePartitionAsync"]}
 using TUnit.Assertions;
 using TUnit.Core;
 

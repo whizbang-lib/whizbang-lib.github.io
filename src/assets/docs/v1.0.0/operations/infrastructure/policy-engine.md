@@ -42,7 +42,7 @@ This page documents those shipped components.
 
 The shipped policy engine matches a message's context against ordered, named predicates and returns the first matching policy's configuration:
 
-```csharp{title="IPolicyEngine contract" description="The shipped policy engine interface — ordered named policies, first-match-wins evaluation, decision-trail recording" category="API" difficulty="BEGINNER" tags=["policy-engine", "interface", "routing"]}
+```csharp{title="IPolicyEngine contract" description="The shipped policy engine interface — ordered named policies, first-match-wins evaluation, decision-trail recording" category="API" difficulty="BEGINNER" tags=["policy-engine", "interface", "routing"] tests=["PolicyEngineTests.PolicyEngine_ShouldMatchSinglePolicyAsync", "PolicyEngineTests.PolicyEngine_ShouldMatchFirstMatchingPolicyAsync", "PolicyEngineTests.PolicyEngine_ShouldReturnNullWhenNoPolicyMatchesAsync", "PolicyEngineTests.PolicyEngine_ShouldRecordDecisionInTrailAsync"]}
 public interface IPolicyEngine {
   // Policies are evaluated in the order they are added.
   void AddPolicy(
@@ -67,7 +67,7 @@ Cross-cutting resilience is provided by concrete, programmatic components rather
 
 `Whizbang.Core.Resilience.CircuitBreaker<TResult>` wraps any async operation to prevent cascading failures during sustained outages. It is options-configured and returns a caller-supplied fallback value while the circuit is open:
 
-```csharp{title="Wrap an operation in a circuit breaker" description="Creates a CircuitBreaker with options and executes an operation with a fallback value returned while the circuit is open" category="Configuration" difficulty="INTERMEDIATE" tags=["circuit-breaker", "resilience", "fallback"]}
+```csharp{title="Wrap an operation in a circuit breaker" description="Creates a CircuitBreaker with options and executes an operation with a fallback value returned while the circuit is open" category="Configuration" difficulty="INTERMEDIATE" tags=["circuit-breaker", "resilience", "fallback"] tests=["CircuitBreakerTests.ExecuteAsync_Success_ReturnsResultAsync", "CircuitBreakerTests.ExecuteAsync_CircuitOpen_ReturnsFallbackWithoutExecutingAsync"]}
 using Whizbang.Core.Resilience;
 
 var breaker = new CircuitBreaker<ServiceResult>(new CircuitBreakerOptions {
@@ -95,7 +95,7 @@ Key behaviors (all verified against the implementation):
 
 #### Circuit States
 
-```mermaid
+```mermaid{caption="CircuitBreaker state machine — Closed opens once consecutive failures reach the threshold, moves to HalfOpen after the cooldown, then closes on a successful probe or re-opens with a doubled cooldown on a half-open failure." tests=["CircuitBreakerTests.ExecuteAsync_FailuresReachThreshold_OpensCircuitAsync", "CircuitBreakerTests.ExecuteAsync_CooldownExpired_TransitionsToHalfOpenAsync", "CircuitBreakerTests.ExecuteAsync_HalfOpenSuccess_ClosesCircuitAndResetsBackoffAsync", "CircuitBreakerTests.ExecuteAsync_HalfOpenFailure_ReopensWithEscalatedCooldownAsync"]}
 stateDiagram-v2
     [*] --> Closed: Initial
     Closed --> Open: FailureThreshold<br/>consecutive failures
@@ -108,7 +108,7 @@ stateDiagram-v2
 
 Message-processing retry is a **worker concern**, configured via `WorkerRetryOptions` rather than per-handler attributes:
 
-```csharp{title="WorkerRetryOptions defaults" description="Worker completion retry configuration — exponential backoff from 1s doubling to a 60s cap" category="Configuration" difficulty="INTERMEDIATE" tags=["retry", "backoff", "worker", "options"]}
+```csharp{title="WorkerRetryOptions defaults" description="Worker completion retry configuration — exponential backoff from 1s doubling to a 60s cap" category="Configuration" difficulty="INTERMEDIATE" tags=["retry", "backoff", "worker", "options"] unverified="options DTO — default field values, no dedicated behavioral test in the coverage map"}
 public class WorkerRetryOptions {
   public int RetryTimeoutSeconds { get; set; } = 1;        // base timeout; first retry after 1s
   public bool EnableExponentialBackoff { get; set; } = true;

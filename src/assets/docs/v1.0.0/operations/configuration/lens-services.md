@@ -46,7 +46,7 @@ public static IServiceCollection AddLensServices(
 
 ## Basic Usage
 
-```csharp{title="Register Lens Services" description="Register all discovered Lenses" category="DI" difficulty="BEGINNER" tags=["DI", "Lenses"]}
+```csharp{title="Register Lens Services" description="Register all discovered Lenses" category="DI" difficulty="BEGINNER" tags=["DI", "Lenses"] unverified="DI registration call — the generator output is verified by ServiceRegistrationGeneratorTests"}
 var builder = WebApplication.CreateBuilder(args);
 
 // Register all discovered Lens implementations
@@ -55,7 +55,7 @@ builder.Services.AddLensServices();
 
 ## With Options
 
-```csharp{title="Register with Options" description="Customize Lens registration" category="DI" difficulty="BEGINNER" tags=["DI", "Lenses", "Options"]}
+```csharp{title="Register with Options" description="Customize Lens registration" category="DI" difficulty="BEGINNER" tags=["DI", "Lenses", "Options"] unverified="DI registration call — the generator output is verified by ServiceRegistrationGeneratorTests"}
 // Disable self-registration
 builder.Services.AddLensServices(options =>
     options.IncludeSelfRegistration = false);
@@ -69,7 +69,7 @@ The source generator discovers classes that:
 
 For each discovered Lens, it generates:
 
-```csharp{title="Generated Registration" description="Example of generated Lens registration" category="DI" difficulty="INTERMEDIATE" tags=["DI", "SourceGenerator"]}
+```csharp{title="Generated Registration" description="Example of generated Lens registration" category="DI" difficulty="INTERMEDIATE" tags=["DI", "SourceGenerator"] tests=["ServiceRegistrationGeneratorTests.Generator_SelfRegistration_EnabledByDefault_RegistersBothAsync"]}
 // Interface registration
 services.AddTransient<IOrderLens, OrderLens>();
 
@@ -148,7 +148,7 @@ public class OrdersController : ControllerBase {
 
 ## Combining with Other Registrations
 
-```csharp{title="Full Registration Setup" description="Complete DI setup with Lenses" category="DI" difficulty="INTERMEDIATE" tags=["DI", "Setup"]}
+```csharp{title="Full Registration Setup" description="Complete DI setup with Lenses" category="DI" difficulty="INTERMEDIATE" tags=["DI", "Setup"] unverified="DI registration call — the generator output is verified by ServiceRegistrationGeneratorTests"}
 var builder = WebApplication.CreateBuilder(args);
 
 // Database

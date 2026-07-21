@@ -39,6 +39,7 @@ framework: "NET10"
 category: "Operations"
 difficulty: "BEGINNER"
 tags: ["dead-letter", "operator-api", "MapWhizbangDeadLetterEndpoints", "aspnet"]
+tests: ["DeadLetterOperatorEndpointsTests.GetDue_ReturnsEntriesAsJsonAsync", "DeadLetterOperatorEndpointsTests.CustomPrefix_RoutesCorrectlyAsync"]
 }
 using Whizbang.Hosting.AspNet;
 
@@ -58,6 +59,7 @@ framework: "NET10"
 category: "Operations"
 difficulty: "INTERMEDIATE"
 tags: ["dead-letter", "operator-api", "authorization", "security", "aspnet"]
+unverified: "ASP.NET authorization/host-filter wiring illustration — RequireAuthorization/RequireHost are framework built-ins; no Whizbang unit asserts the returned builder's auth chain"
 }
 app.MapWhizbangDeadLetterEndpoints()
    .RequireAuthorization("WhizbangOperator")

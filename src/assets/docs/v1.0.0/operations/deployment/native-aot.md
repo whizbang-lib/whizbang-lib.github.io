@@ -81,7 +81,7 @@ Whizbang uses **source generators** instead of reflection. At build time, `Whizb
 - **`AddReceptors()`** - explicit DI registrations for every discovered receptor
 - **`MessageJsonContext`** - a `JsonSerializerContext` covering every discovered `ICommand` / `IEvent`
 
-```csharp{title="Whizbang is AOT-Ready" description="Reflection-based dispatch vs Whizbang's source-generated registry" category="Configuration" difficulty="ADVANCED" tags=["Operations", "Deployment", "Whizbang", "AOT-Ready"]}
+```csharp{title="Whizbang is AOT-Ready" description="Reflection-based dispatch vs Whizbang's source-generated registry" category="Configuration" difficulty="ADVANCED" tags=["Operations", "Deployment", "Whizbang", "AOT-Ready"] unverified="reflection-vs-generated contrast — counter-example plus generated-registry wiring; registry lookup not covered by this page's mapped tests"}
 // ❌ Reflection-based dispatch (NOT AOT-compatible) - what Whizbang avoids
 var receptorType = typeof(IReceptor<,>).MakeGenericType(messageType, responseType);
 var receptor = services.GetService(receptorType);            // runtime type construction
@@ -115,7 +115,7 @@ Whizbang is built on `System.Text.Json` **source generation** - no reflection-ba
 
 **Automatic generation**: `MessageJsonContextGenerator` (in `Whizbang.Generators`) discovers every `ICommand` / `IEvent` in your assembly and emits a `MessageJsonContext : JsonSerializerContext` with `JsonTypeInfo` for each message type, plus `MessageEnvelope<T>` wrapper registrations for transport deserialization. A `[ModuleInitializer]` registers the context into the cross-assembly **`JsonContextRegistry`** (`Whizbang.Core.Serialization`) at startup - you don't write any of this by hand.
 
-```csharp{title="JSON Serialization (AOT-Compatible)" description="Whizbang's cross-assembly JsonContextRegistry" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "JSON", "Serialization"]}
+```csharp{title="JSON Serialization (AOT-Compatible)" description="Whizbang's cross-assembly JsonContextRegistry" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "JSON", "Serialization"] tests=["JsonContextRegistryTests.CreateCombinedOptions_IsAOTCompatible_NoReflectionAsync", "JsonContextRegistryTests.RoundTrip_IEvent_DeserializesToConcreteTypeAsync"]}
 using Whizbang.Core.Serialization;
 
 // Generated module initializers have already called
@@ -161,7 +161,7 @@ IL2026: Using member 'System.Type.GetType(string)' which has 'RequiresUnreferenc
 
 **Fix**:
 
-```csharp{title="Trim Warnings (2)" description="Trim Warnings" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Trim", "Warnings"]}
+```csharp{title="Trim Warnings (2)" description="Trim Warnings" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Trim", "Warnings"] unverified="counter-example — Type.GetType vs typeof, illustrative do/don't"}
 // ❌ BAD
 var type = Type.GetType("MyNamespace.MyClass");
 
@@ -177,7 +177,7 @@ Use constructor injection with explicit registrations:
 
 **Program.cs**:
 
-```csharp{title="Dependency Injection (AOT-Compatible)" description="Dependency Injection (AOT-Compatible)" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Dependency", "Injection"]}
+```csharp{title="Dependency Injection (AOT-Compatible)" description="Dependency Injection (AOT-Compatible)" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Dependency", "Injection"] unverified="counter-example — explicit registration vs runtime assembly scanning"}
 // ✅ GOOD - Explicit registration (AOT-compatible)
 builder.Services.AddScoped<IReceptor<CreateOrderCommand, OrderCreatedEvent>, CreateOrderReceptor>();
 
@@ -194,7 +194,7 @@ builder.Services.Scan(scan => scan
 
 You don't write these registrations by hand. `ReceptorDiscoveryGenerator` discovers receptors at **compile time** and emits the `DispatcherRegistrations` class with explicit registrations - assembly "scanning" happens in the compiler, not at runtime:
 
-```csharp{title="Dependency Injection (AOT-Compatible) - Generated Registrations" description="Source-generated DI wiring emitted into your assembly" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Dependency", "Injection"]}
+```csharp{title="Dependency Injection (AOT-Compatible) - Generated Registrations" description="Source-generated DI wiring emitted into your assembly" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Dependency", "Injection"] unverified="generated DI extension-method wiring — registration config, not covered by this page's mapped tests"}
 // Program.cs - call the generated extensions
 builder.Services.AddWhizbangDispatcher();  // GeneratedDispatcher + IReceptorRegistry + IReceptorInvoker
 builder.Services.AddReceptors();           // every discovered receptor, registered explicitly
@@ -214,7 +214,7 @@ dotnet ef dbcontext optimize -c OrderDbContext -o CompiledModels
 
 **Generated code**:
 
-```csharp{title="Entity Framework Core (AOT-Compatible) - OrderDbContextModel" description="Generated code:" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Entity", "Framework"]}
+```csharp{title="Entity Framework Core (AOT-Compatible) - OrderDbContextModel" description="Generated code:" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Entity", "Framework"] unverified="EF Core compiled-model output — generated EF code, not a Whizbang behavior"}
 // CompiledModels/OrderDbContextModel.cs
 public partial class OrderDbContextModel : RuntimeModel {
   static OrderDbContextModel() {
@@ -230,7 +230,7 @@ public partial class OrderDbContextModel : RuntimeModel {
 
 **Usage**:
 
-```csharp{title="Entity Framework Core (AOT-Compatible) - OrderDbContext" description="Entity Framework Core (AOT-Compatible) - OrderDbContext" category="Configuration" difficulty="ADVANCED" tags=["Operations", "Deployment", "Entity", "Framework"]}
+```csharp{title="Entity Framework Core (AOT-Compatible) - OrderDbContext" description="Entity Framework Core (AOT-Compatible) - OrderDbContext" category="Configuration" difficulty="ADVANCED" tags=["Operations", "Deployment", "Entity", "Framework"] unverified="user EF Core DbContext configuration — EF Core API, not a Whizbang behavior"}
 public class OrderDbContext : DbContext {
   protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder) {
     optionsBuilder
@@ -248,7 +248,7 @@ Classic Dapper materializes rows with runtime IL emission, which trimming and Na
 
 **✅ GOOD** - typed result classes with explicit column lists (analyzer-verifiable):
 
-```csharp{title="Dapper (AOT-Compatible)" description="Typed Dapper query with explicit columns" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Dapper", "AOT-Compatible"]}
+```csharp{title="Dapper (AOT-Compatible)" description="Typed Dapper query with explicit columns" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Dapper", "AOT-Compatible"] unverified="user Dapper query pattern — third-party data access, not a Whizbang behavior"}
 var orders = await connection.QueryAsync<OrderRow>(
   """
   SELECT order_id, customer_id, total_amount
@@ -261,7 +261,7 @@ var orders = await connection.QueryAsync<OrderRow>(
 
 **❌ BAD** - `dynamic` results (no compile-time type information at all):
 
-```csharp{title="Dapper (AOT-Compatible) (2)" description="Dynamic Dapper query - avoid under AOT" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Dapper", "AOT-Compatible"]}
+```csharp{title="Dapper (AOT-Compatible) (2)" description="Dynamic Dapper query - avoid under AOT" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Dapper", "AOT-Compatible"] unverified="counter-example — dynamic Dapper query to avoid under AOT"}
 var orders = await connection.QueryAsync(  // Dynamic type
   "SELECT * FROM orders WHERE customer_id = @CustomerId",
   new { CustomerId = customerId }
@@ -278,7 +278,7 @@ Azure Service Bus SDK is AOT-compatible in .NET 10:
 
 **Program.cs**:
 
-```csharp{title="Azure Service Bus (AOT-Compatible)" description="Azure Service Bus (AOT-Compatible)" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Azure", "Service"]}
+```csharp{title="Azure Service Bus (AOT-Compatible)" description="Azure Service Bus (AOT-Compatible)" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Azure", "Service"] unverified="Azure Service Bus SDK client registration — third-party config, not a Whizbang behavior"}
 builder.Services.AddSingleton<ServiceBusClient>(sp => {
   var connectionString = builder.Configuration["AzureServiceBus:ConnectionString"];
   return new ServiceBusClient(connectionString);
@@ -348,7 +348,7 @@ IL2026: Using member 'Type.GetType(string)' which has 'RequiresUnreferencedCodeA
 
 **Fix**: Replace reflection with compile-time types:
 
-```csharp{title="Issue 1: Reflection Warnings" description="Fix: Replace reflection with compile-time types:" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Issue", "Reflection"]}
+```csharp{title="Issue 1: Reflection Warnings" description="Fix: Replace reflection with compile-time types:" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Issue", "Reflection"] unverified="counter-example — reflection Type.GetType replaced with a compile-time switch"}
 // ❌ BAD
 var type = Type.GetType(typeName);
 

@@ -79,7 +79,7 @@ Additional subsystem meters:
 
 All metrics classes are automatically registered as singletons by `AddWhizbang()`. The shared `WhizbangMetrics` class holds the `IMeterFactory` reference that each subsystem uses to create its meter.
 
-```csharp{title="Metrics Registration" description="Metrics are auto-registered by AddWhizbang - no extra setup needed" category="Configuration" difficulty="BEGINNER" tags=["Metrics", "Configuration", "DI"]}
+```csharp{title="Metrics Registration" description="Metrics are auto-registered by AddWhizbang - no extra setup needed" category="Configuration" difficulty="BEGINNER" tags=["Metrics", "Configuration", "DI"] unverified="metrics config/query — not exercised by a test"}
 // Metrics are registered automatically - no opt-in required
 services.AddWhizbang(options => {
   // ... your configuration
@@ -117,7 +117,7 @@ builder.Services.AddOpenTelemetry()
 
 The `WhizbangMetrics` class is the shared parent that owns the `IMeterFactory` reference. All subsystem metrics classes inject it to create their meters. When `IMeterFactory` is available (e.g., via OpenTelemetry SDK registration), meters are created through the factory. Otherwise, a standalone `Meter` is created as a fallback.
 
-```csharp{title="WhizbangMetrics" description="Shared parent that provides IMeterFactory to all subsystem metrics" category="Reference" difficulty="BEGINNER" tags=["Metrics", "Architecture", "DI"]}
+```csharp{title="WhizbangMetrics" description="Shared parent that provides IMeterFactory to all subsystem metrics" category="Reference" difficulty="BEGINNER" tags=["Metrics", "Architecture", "DI"] unverified="metrics config/query — not exercised by a test"}
 // Registered automatically as singleton
 public sealed class WhizbangMetrics(IMeterFactory? meterFactory = null) {
   public IMeterFactory? MeterFactory { get; } = meterFactory;
@@ -506,7 +506,7 @@ Whizbang metrics are standard OpenTelemetry instruments, making them compatible 
 
 ### Prometheus Exporter
 
-```csharp{title="Prometheus Setup" description="Configure Prometheus exporter for Whizbang metrics" category="Configuration" difficulty="INTERMEDIATE" tags=["Metrics", "Prometheus", "Configuration"]}
+```csharp{title="Prometheus Setup" description="Configure Prometheus exporter for Whizbang metrics" category="Configuration" difficulty="INTERMEDIATE" tags=["Metrics", "Prometheus", "Configuration"] unverified="metrics config/query — not exercised by a test"}
 builder.Services.AddOpenTelemetry()
     .WithMetrics(metrics => {
       metrics.AddMeter("Whizbang.Dispatcher");
@@ -549,7 +549,7 @@ histogram_quantile(0.95, rate(whizbang_work_coordinator_process_batch_duration_b
 
 For .NET Aspire projects, metrics appear automatically in the Aspire dashboard:
 
-```csharp{title="Aspire Metrics Integration" description="Configure Whizbang meters for Aspire dashboard" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Observability", "C#", "Aspire", "Metrics"]}
+```csharp{title="Aspire Metrics Integration" description="Configure Whizbang meters for Aspire dashboard" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Observability", "C#", "Aspire", "Metrics"] unverified="metrics config/query — not exercised by a test"}
 // In ServiceDefaults project
 builder.Services.AddOpenTelemetry()
     .WithMetrics(metrics => {

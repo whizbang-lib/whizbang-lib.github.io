@@ -57,7 +57,7 @@ The **StreamIdGenerator** discovers properties (or record parameters) marked wit
 
 ### 1. Mark Properties with [StreamId]
 
-```csharp{title="Mark Properties with [StreamId]" description="Mark Properties with [StreamId]" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Mark", "Properties"]}
+```csharp{title="Mark Properties with [StreamId]" description="Mark Properties with [StreamId]" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Mark", "Properties"] tests=["StreamIdGeneratorTests.Generator_WithStreamIdAttribute_GeneratesExtractorAsync"]}
 using Whizbang.Core;
 
 // Command (record parameter form)
@@ -95,7 +95,7 @@ Non-public types are skipped (generated code could not access them), and abstrac
 
 One file, **StreamIdExtractors.g.cs**, is emitted into the `{AssemblyName}.Generated` namespace. Its public surface:
 
-```csharp{title="Generated Code" description="Public surface of StreamIdExtractors.g.cs" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Generated", "Code"]}
+```csharp{title="Generated Code" description="Public surface of StreamIdExtractors.g.cs" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Generated", "Code"] tests=["StreamIdGeneratorTests.GeneratedExtractor_WithValidEvent_GeneratesResolveMethodAsync", "StreamIdGeneratorTests.GeneratedExtractor_WithEvent_GeneratesTryResolveAsGuidAsync"]}
 public static partial class StreamIdExtractors {
     // Resolve stream ID as string (throws if the type has no [StreamId])
     public static string Resolve(IEvent @event);
@@ -122,7 +122,7 @@ public static class StreamIdExtractorRegistrations {
 
 Each discovered type gets a type-dispatch case plus a per-type extractor, e.g.:
 
-```csharp{title="Generated Code (2)" description="Per-type dispatch and extractor" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Generated", "Code"]}
+```csharp{title="Generated Code (2)" description="Per-type dispatch and extractor" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Generated", "Code"] tests=["StreamIdGeneratorTests.Generator_WithStreamIdAttribute_GeneratesExtractorAsync"]}
 // Dispatch (inside Resolve/TryResolveAsGuid)
 if (@event is global::MyApp.Events.OrderCreated e0) {
     return TryExtractAsGuid(e0);
@@ -146,7 +146,7 @@ A `[ModuleInitializer]` in the generated file registers the assembly's extractor
 
 Apply `[GenerateStreamId]` alongside `[StreamId]` to have the Dispatcher mint a stream ID at dispatch time:
 
-```csharp{title="GenerateStreamId" description="Auto-generation patterns" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "GenerateStreamId"]}
+```csharp{title="GenerateStreamId" description="Auto-generation patterns" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "GenerateStreamId"] tests=["StreamIdGeneratorTests.Generator_GenerateStreamIdOnMutableProperty_DoesNotReportWHIZ013Async"]}
 // Stream-initiating event: ALWAYS gets a new StreamId
 public record OrderCreatedEvent : IEvent {
     [StreamId] [GenerateStreamId]
@@ -172,7 +172,7 @@ The generated `GetGenerationPolicy` returns `(ShouldGenerate, OnlyIfEmpty)` per 
 
 `PolicyContext.GetAggregateId()` resolves the `IStreamIdExtractor` from the service provider and extracts the stream ID from the current message:
 
-```csharp{title="PolicyContext Integration" description="PolicyContext.GetAggregateId() uses the generated extractor" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "PolicyContext", "Integration"]}
+```csharp{title="PolicyContext Integration" description="PolicyContext.GetAggregateId() uses the generated extractor" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "PolicyContext", "Integration"] unverified="PolicyContext.GetAggregateId() runtime behavior — verified in the Policies docs, not by StreamIdGenerator source-gen tests"}
 // Inside a policy, the aggregate/stream ID comes from the generated extractor:
 var aggregateId = context.GetAggregateId();
 
@@ -216,7 +216,7 @@ public record OrderCreated(
 
 ### Pattern 2: Nullable Guid
 
-```csharp{title="Pattern 2: Nullable Guid" description="Nullable stream ID" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Pattern", "Nullable"]}
+```csharp{title="Pattern 2: Nullable Guid" description="Nullable stream ID" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Pattern", "Nullable"] tests=["StreamIdGeneratorTests.Generator_WithNullableGuid_HandlesCorrectlyAsync"]}
 public record OrderArchived : IEvent {
     [StreamId]
     public Guid? OrderId { get; set; }  // TryResolveAsGuid returns null when unset
@@ -225,7 +225,7 @@ public record OrderArchived : IEvent {
 
 ### Pattern 3: Inherited [StreamId]
 
-```csharp{title="Pattern 3: Inherited [StreamId]" description="Inherited stream ID from base class" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Pattern", "Inherited"]}
+```csharp{title="Pattern 3: Inherited [StreamId]" description="Inherited stream ID from base class" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Pattern", "Inherited"] tests=["StreamIdGeneratorTests.Generator_WithInheritedAttribute_DiscoversPropertyAsync", "StreamIdGeneratorTests.StreamIdGenerator_SimpleInheritanceChain_TraversesToSystemObjectAsync"]}
 // Base class carries the attribute (Inherited = true)
 public abstract record OrderEventBase : IEvent {
     [StreamId]
@@ -271,7 +271,7 @@ public record OrderCancelled(string Reason) : OrderEventBase;
 2. The type is not public (generated code skips non-public types)
 
 **Solution**:
-```csharp{title="Problem: No extractor found" description="Add [StreamId] on a public type" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Problem:", "Extractor"]}
+```csharp{title="Problem: No extractor found" description="Add [StreamId] on a public type" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Problem:", "Extractor"] unverified="Troubleshooting fix illustration; the record-parameter ICommand form is not exercised by StreamIdGeneratorTests, which cover property-form IEvent discovery"}
 public record CreateOrder(
     [property: StreamId] Guid OrderId,  // Add attribute
     Guid CustomerId

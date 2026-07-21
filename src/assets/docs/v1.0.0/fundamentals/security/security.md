@@ -66,7 +66,7 @@ The security system consists of:
 
 Permissions use a `resource:action` pattern and support wildcard matching.
 
-```csharp{title="Permissions" description="Permissions use a resource:action pattern and support wildcard matching." category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Permissions"]}
+```csharp{title="Permissions" description="Permissions use a resource:action pattern and support wildcard matching." category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Permissions"] tests=["PermissionTests.Permission_Read_CreatesCorrectPermissionAsync", "PermissionTests.Permission_Write_CreatesCorrectPermissionAsync", "PermissionTests.Permission_Delete_CreatesCorrectPermissionAsync", "PermissionTests.Permission_Admin_CreatesCorrectPermissionAsync", "PermissionTests.Permission_All_CreatesWildcardPermissionAsync", "PermissionTests.Permission_Constructor_ValidValue_CreatesInstanceAsync"]}
 // Factory methods for common patterns
 var readOrders = Permission.Read("orders");      // "orders:read"
 var writeOrders = Permission.Write("orders");    // "orders:write"
@@ -95,7 +95,7 @@ var allOrderActions = Permission.All("orders");  // Matches orders:*
 
 Roles are named collections of permissions, defined via fluent configuration.
 
-```csharp{title="Roles" description="Roles are named collections of permissions, defined via fluent configuration." category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Roles"]}
+```csharp{title="Roles" description="Roles are named collections of permissions, defined via fluent configuration." category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Roles"] tests=["SecurityOptionsTests.SecurityOptions_DefineRole_AddsRoleAsync", "SecurityOptionsTests.SecurityOptions_FullConfiguration_WorksCorrectlyAsync", "SecurityOptionsTests.SecurityOptions_DefineMultipleRoles_AllAddedAsync"]}
 var options = new SecurityOptions()
   .DefineRole("Admin", b => b
     .HasAllPermissions("*"))              // Super-admin
@@ -118,7 +118,7 @@ managerRole.HasPermission(Permission.Delete("reports")); // false
 
 The `RoleBuilder` provides a fluent API for defining roles with permissions:
 
-```csharp{title="Role Definition" description="The RoleBuilder provides a fluent API for defining roles with permissions:" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Role", "Definition"]}
+```csharp{title="Role Definition" description="The RoleBuilder provides a fluent API for defining roles with permissions:" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Role", "Definition"] tests=["RoleBuilderTests.RoleBuilder_Chaining_BuildsCompleteRoleAsync", "RoleBuilderTests.RoleBuilder_HasPermission_String_AddsPermissionAsync", "RoleBuilderTests.RoleBuilder_HasReadPermission_AddsReadPermissionAsync", "RoleBuilderTests.RoleBuilder_HasWritePermission_AddsWritePermissionAsync"]}
 public sealed class RoleBuilder(string name) {
   public RoleBuilder HasPermission(Permission permission);
   public RoleBuilder HasPermission(string permission);    // "resource:action"
@@ -141,7 +141,7 @@ var role = new RoleBuilder("OrderManager")
 
 The `Role` type represents a named collection of permissions:
 
-```csharp{title="Role Definition - Role" description="The Role type represents a named collection of permissions:" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Role", "Definition"]}
+```csharp{title="Role Definition - Role" description="The Role type represents a named collection of permissions:" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Role", "Definition"] tests=["RoleTests.Role_HasPermission_WithMatchingPermission_ReturnsTrueAsync", "RoleTests.Role_HasPermission_WithWildcardPermission_ReturnsTrueAsync", "RoleTests.Role_Name_ReturnsConfiguredNameAsync", "RoleTests.Role_Permissions_ReturnsConfiguredPermissionsAsync"]}
 public sealed record Role {
   public required string Name { get; init; }
   public required IReadOnlySet<Permission> Permissions { get; init; }
@@ -156,7 +156,7 @@ public sealed record Role {
 
 Security principals identify users, groups, and services with type prefixes for clarity.
 
-```csharp{title="Security Principals" description="Security principals identify users, groups, and services with type prefixes for clarity." category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Principals", "Security-principals"]}
+```csharp{title="Security Principals" description="Security principals identify users, groups, and services with type prefixes for clarity." category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Principals", "Security-principals"] tests=["SecurityPrincipalIdTests.SecurityPrincipalId_User_HasCorrectPrefixAsync", "SecurityPrincipalIdTests.SecurityPrincipalId_Group_HasCorrectPrefixAsync", "SecurityPrincipalIdTests.SecurityPrincipalId_Service_HasCorrectPrefixAsync", "SecurityPrincipalIdTests.SecurityPrincipalId_Application_HasCorrectPrefixAsync", "SecurityPrincipalIdTests.SecurityPrincipalId_IsUser_ReturnsTrueForUserPrefixAsync", "SecurityPrincipalIdTests.SecurityPrincipalId_IsGroup_ReturnsTrueForGroupPrefixAsync", "SecurityPrincipalIdTests.SecurityPrincipalId_IsService_ReturnsTrueForServicePrefixAsync"]}
 // Factory methods
 var user = SecurityPrincipalId.User("alice");           // "user:alice"
 var group = SecurityPrincipalId.Group("sales-team");    // "group:sales-team"
@@ -173,7 +173,7 @@ service.IsService; // true
 
 The `SecurityPrincipalIdJsonConverter` handles JSON serialization of security principal IDs:
 
-```csharp{title="JSON Serialization" description="The SecurityPrincipalIdJsonConverter handles JSON serialization of security principal IDs:" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "JSON", "Serialization"]}
+```csharp{title="JSON Serialization" description="The SecurityPrincipalIdJsonConverter handles JSON serialization of security principal IDs:" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "JSON", "Serialization"] tests=["SecurityPrincipalIdJsonConverterTests.Serialize_SecurityPrincipalId_WritesAsStringAsync", "SecurityPrincipalIdJsonConverterTests.Deserialize_StringValue_ReturnsSecurityPrincipalIdAsync"]}
 // Serializes to simple string format
 var json = JsonSerializer.Serialize(SecurityPrincipalId.User("alice"));
 // Result: "user:alice"
@@ -187,7 +187,7 @@ var principal = JsonSerializer.Deserialize<SecurityPrincipalId>("\"group:sales-t
 
 Security principals support hierarchical group membership. When a user belongs to a group that's nested within another group, all memberships are pre-flattened in the scope context.
 
-```csharp{title="Nested Group Support" description="Security principals support hierarchical group membership." category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Nested", "Group"]}
+```csharp{title="Nested Group Support" description="Security principals support hierarchical group membership." category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Nested", "Group"] tests=["ScopeContextTests.ScopeContext_IsMemberOfAll_WithAllMatching_ReturnsTrueAsync", "SecurityPrincipalIdTests.SecurityPrincipalId_InHashSet_SupportsContainsCheckAsync"]}
 // Alice is in "sales-team" which is in "all-employees"
 var context = new ScopeContext {
   SecurityPrincipals = new HashSet<SecurityPrincipalId> {
@@ -213,7 +213,7 @@ See the [Principal Filtering with EF Core](#principal-filtering) section below f
 
 `IScopeContext` is the ambient security context for the current operation, populated from JWT claims, message headers, or explicit injection.
 
-```csharp{title="Scope Context" description="IScopeContext is the ambient security context for the current operation, populated from JWT claims, message headers, or" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Scope", "Context"]}
+```csharp{title="Scope Context" description="IScopeContext is the ambient security context for the current operation, populated from JWT claims, message headers, or" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Scope", "Context"] tests=["ScopeContextTests.ScopeContext_HasPermission_WithExactMatch_ReturnsTrueAsync", "ScopeContextTests.ScopeContext_HasAnyPermission_WithOneMatch_ReturnsTrueAsync", "ScopeContextTests.ScopeContext_HasAllPermissions_WithAllMatching_ReturnsTrueAsync", "ScopeContextTests.ScopeContext_HasRole_WithMatch_ReturnsTrueAsync", "ScopeContextTests.ScopeContext_HasAnyRole_WithOneMatch_ReturnsTrueAsync", "ScopeContextTests.ScopeContext_IsMemberOfAny_WithMatchingPrincipal_ReturnsTrueAsync", "ScopeContextTests.ScopeContext_IsMemberOfAll_WithAllMatching_ReturnsTrueAsync"]}
 public interface IScopeContext {
   PerspectiveScope Scope { get; }           // TenantId, UserId, etc.
   IReadOnlySet<string> Roles { get; }
@@ -237,7 +237,7 @@ public interface IScopeContext {
 
 ### Creating Scope Context
 
-```csharp{title="Creating Scope Context" description="Creating Scope Context" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Creating", "Scope"]}
+```csharp{title="Creating Scope Context" description="Creating Scope Context" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Creating", "Scope"] tests=["ScopeContextTests.ScopeContext_HasPermission_WithExactMatch_ReturnsTrueAsync", "ScopeContextTests.ScopeContext_HasRole_WithMatch_ReturnsTrueAsync"]}
 var context = new ScopeContext {
   Scope = new PerspectiveScope {
     TenantId = "tenant-123",
@@ -264,7 +264,7 @@ var context = new ScopeContext {
 
 Access the current scope context via `IScopeContextAccessor`, which uses `AsyncLocal` for request-scoped propagation.
 
-```csharp{title="Scope Context Accessor" description="Access the current scope context via IScopeContextAccessor, which uses AsyncLocal for request-scoped propagation." category="Best-Practices" difficulty="ADVANCED" tags=["Fundamentals", "Security", "Scope", "Context"]}
+```csharp{title="Scope Context Accessor" description="Access the current scope context via IScopeContextAccessor, which uses AsyncLocal for request-scoped propagation." category="Best-Practices" difficulty="ADVANCED" tags=["Fundamentals", "Security", "Scope", "Context"] tests=["ScopeContextAccessorTests.ScopeContextAccessor_Current_AfterSet_ReturnsContextAsync", "ScopeContextAccessorTests.ScopeContextAccessor_Current_InitiallyNull_ReturnsNullAsync", "ScopeContextAccessorTests.ScopeContextAccessor_Current_AcrossAsyncCalls_PropagatesAsync"]}
 public interface IScopeContextAccessor {
   IScopeContext? Current { get; set; }
 
@@ -325,7 +325,7 @@ public class OrderService {
 
 The `IPermissionExtractor` interface allows custom extraction of permissions, roles, and security principals from claims, tokens, or other sources.
 
-```csharp{title="Permission Extractors" description="The IPermissionExtractor interface allows custom extraction of permissions, roles, and security principals from claims:" category="Best-Practices" difficulty="ADVANCED" tags=["Fundamentals", "Security", "Permission", "Extractors"]}
+```csharp{title="Permission Extractors" description="The IPermissionExtractor interface allows custom extraction of permissions, roles, and security principals from claims:" category="Best-Practices" difficulty="ADVANCED" tags=["Fundamentals", "Security", "Permission", "Extractors"] unverified="Custom RolePermissionExtractor is a consumer implementation; PermissionExtractorTests covers the built-in claim extractors, not this example"}
 public interface IPermissionExtractor {
   IEnumerable<Permission> ExtractPermissions(IReadOnlyDictionary<string, string> claims);
   IEnumerable<string> ExtractRoles(IReadOnlyDictionary<string, string> claims);
@@ -366,7 +366,7 @@ public class RolePermissionExtractor : IPermissionExtractor {
 
 Built-in claim-based extraction and custom extractors are registered through `SecurityOptions`:
 
-```csharp{title="Registering Extractors" description="Registering Extractors" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Registering", "Extractors"]}
+```csharp{title="Registering Extractors" description="Registering Extractors" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Registering", "Extractors"] tests=["SecurityOptionsTests.SecurityOptions_ExtractMultipleClaims_AllExtractorsAddedAsync", "PermissionExtractorTests.SecurityOptions_ExtractPermissionsFrom_AddsCustomExtractorAsync"]}
 var options = new SecurityOptions()
   // Built-in claim-based extraction (comma-separated claim values)
   .ExtractPermissionsFromClaim("permissions")
@@ -382,7 +382,7 @@ var options = new SecurityOptions()
 
 ### Composable Scope Filters
 
-```csharp{title="Composable Scope Filters" description="Composable Scope Filters" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Composable", "Scope"]}
+```csharp{title="Composable Scope Filters" description="Composable Scope Filters" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Composable", "Scope"] tests=["ScopeFilterTests.ScopeFilter_None_HasZeroValueAsync", "ScopeFilterTests.ScopeFilter_Tenant_HasCorrectValueAsync", "ScopeFilterTests.ScopeFilter_Organization_HasCorrectValueAsync", "ScopeFilterTests.ScopeFilter_Customer_HasCorrectValueAsync", "ScopeFilterTests.ScopeFilter_User_HasCorrectValueAsync", "ScopeFilterTests.ScopeFilter_Principal_HasCorrectValueAsync"]}
 [Flags]
 public enum ScopeFilters {
   None = 0,           // No filtering (admin access)
@@ -398,7 +398,7 @@ public enum ScopeFilters {
 
 Filters are combined with bitwise OR and applied as AND conditions (except User+Principal which uses OR).
 
-```csharp{title="Filter Combinations" description="Filters are combined with bitwise OR and applied as AND conditions (except User+Principal which uses OR)." category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Filter", "Combinations"]}
+```csharp{title="Filter Combinations" description="Filters are combined with bitwise OR and applied as AND conditions (except User+Principal which uses OR)." category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Filter", "Combinations"] tests=["ScopeFilterTests.ScopeFilter_CombinedFlags_CanBeOrTogetherAsync", "ScopeFilterTests.ScopeFilter_HasFlag_DetectsIndividualFlagsAsync", "ScopedLensFactoryTests.IScopedLensFactory_HasGetLens_ScopeFilter_MethodAsync", "ScopedLensFactoryTests.IScopedLensFactory_HasGetMyOrSharedLensMethodAsync"]}
 // Tenant only
 var lens = factory.GetLens<IOrderLens>(ScopeFilters.Tenant);
 // WHERE TenantId = ?
@@ -418,7 +418,7 @@ var lens = factory.GetMyOrSharedLens<IOrderLens>();
 
 ### Convenience Methods
 
-```csharp{title="Convenience Methods" description="Convenience Methods" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Convenience", "Methods"]}
+```csharp{title="Convenience Methods" description="Convenience Methods" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Convenience", "Methods"] tests=["ScopedLensFactoryTests.IScopedLensFactory_HasGetGlobalLensMethodAsync", "ScopedLensFactoryTests.IScopedLensFactory_HasGetTenantLensMethodAsync", "ScopedLensFactoryTests.IScopedLensFactory_HasGetUserLensMethodAsync", "ScopedLensFactoryTests.IScopedLensFactory_HasGetOrganizationLensMethodAsync", "ScopedLensFactoryTests.IScopedLensFactory_HasGetCustomerLensMethodAsync", "ScopedLensFactoryTests.IScopedLensFactory_HasGetPrincipalLensMethodAsync", "ScopedLensFactoryTests.IScopedLensFactory_HasGetMyOrSharedLensMethodAsync"]}
 // No filtering (admin)
 factory.GetGlobalLens<IOrderLens>();
 
@@ -445,7 +445,7 @@ factory.GetMyOrSharedLens<IOrderLens>();
 
 The factory can enforce permission checks before returning a lens.
 
-```csharp{title="Permission Checks" description="The factory can enforce permission checks before returning a lens." category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Permission", "Checks"]}
+```csharp{title="Permission Checks" description="The factory can enforce permission checks before returning a lens." category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Permission", "Checks"] tests=["ScopedLensFactoryTests.IScopedLensFactory_HasGetLens_ScopeFilter_Permission_MethodAsync", "ScopedLensFactoryTests.IScopedLensFactory_HasGetLens_ScopeFilter_PermissionArray_MethodAsync"]}
 // Single permission required
 var lens = factory.GetLens<IOrderLens>(
   ScopeFilters.Tenant,
@@ -468,7 +468,7 @@ Whizbang provides EF Core integration for principal-based filtering using Postgr
 
 Use `WhizbangDbContextOptionsExtensions.UseWhizbangFunctions()` (on the Npgsql options builder) to enable principal filtering:
 
-```csharp{title="DbContext Configuration" description="Use UseWhizbangFunctions to enable principal filtering:" category="Best-Practices" difficulty="ADVANCED" tags=["Fundamentals", "Security", "DbContext", "Configuration"]}
+```csharp{title="DbContext Configuration" description="Use UseWhizbangFunctions to enable principal filtering:" category="Best-Practices" difficulty="ADVANCED" tags=["Fundamentals", "Security", "DbContext", "Configuration"] unverified="EF Core Postgres DbContext wiring (EFCore.Postgres); outside Core security unit-test scope"}
 public class OrderDbContext : DbContext {
   protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder) {
     optionsBuilder.UseNpgsql(connectionString, npgsqlOptions => {
@@ -482,7 +482,7 @@ public class OrderDbContext : DbContext {
 
 The `WhizbangJsonDbFunctions` static class provides an EF Core-translatable method for JSONB principal checks:
 
-```csharp{title="WhizbangJsonDbFunctions" description="The WhizbangJsonDbFunctions static class provides an EF Core-translatable method for JSONB principal checks:" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "WhizbangJsonDbFunctions"]}
+```csharp{title="WhizbangJsonDbFunctions" description="The WhizbangJsonDbFunctions static class provides an EF Core-translatable method for JSONB principal checks:" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "WhizbangJsonDbFunctions"] unverified="EF Core query-translation marker (EFCore.Postgres); exercised via SQL translation, not a Core unit test"}
 public static class WhizbangJsonDbFunctions {
   /// <summary>
   /// Checks if a row scope's AllowedPrincipals JSONB array contains any of the
@@ -501,7 +501,7 @@ public static class WhizbangJsonDbFunctions {
 
 The `WhizbangMethodCallTranslatorPlugin` and `JsonArrayContainsAnyTranslator` handle translation of LINQ queries to PostgreSQL:
 
-```csharp{title="Query Translation" description="The WhizbangMethodCallTranslatorPlugin and JsonArrayContainsAnyTranslator handle translation of LINQ queries to" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Query", "Translation"]}
+```csharp{title="Query Translation" description="The WhizbangMethodCallTranslatorPlugin and JsonArrayContainsAnyTranslator handle translation of LINQ queries to" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Query", "Translation"] unverified="LINQ-to-SQL translation (EFCore.Postgres); needs Postgres integration, not a Core unit test"}
 // LINQ query over perspective rows
 var orders = await dbContext.Set<PerspectiveRow<Order>>()
   .Where(row => EF.Functions.AllowedPrincipalsContainsAny(
@@ -516,7 +516,7 @@ var orders = await dbContext.Set<PerspectiveRow<Order>>()
 
 ### Principal Filter Example
 
-```csharp{title="Principal Filter Example" description="Principal Filter Example" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Principal", "Filter"]}
+```csharp{title="Principal Filter Example" description="Principal Filter Example" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Principal", "Filter"] unverified="EF Core repository example (EFCore.Postgres); needs Postgres integration, not a Core unit test"}
 public class OrderRepository {
   private readonly OrderDbContext _dbContext;
   private readonly IScopeContextAccessor _scopeAccessor;
@@ -546,7 +546,7 @@ Row-level security restricts which rows a user can access based on their identit
 
 Records can specify which security principals have access:
 
-```csharp{title="Row-Level Security via AllowedPrincipals" description="Records can specify which security principals have access:" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Row-Level", "AllowedPrincipals"]}
+```csharp{title="Row-Level Security via AllowedPrincipals" description="Records can specify which security principals have access:" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Row-Level", "AllowedPrincipals"] tests=["PerspectiveScopeTests.PerspectiveScope_AllowedPrincipals_StoresPrincipalsAsync", "SecurityPrincipalIdTests.SecurityPrincipalId_ImplicitToString_ReturnsValueAsync"]}
 // PerspectiveScope.AllowedPrincipals is a List<string>;
 // SecurityPrincipalId converts implicitly to string
 var scope = new PerspectiveScope {
@@ -565,7 +565,7 @@ When querying with `ScopeFilters.Principal`, records are returned where the call
 
 A complete example showing row-level security for orders:
 
-```csharp{title="Order Example" description="A complete example showing row-level security for orders:" category="Best-Practices" difficulty="ADVANCED" tags=["Fundamentals", "Security", "Order", "Example"]}
+```csharp{title="Order Example" description="A complete example showing row-level security for orders:" category="Best-Practices" difficulty="ADVANCED" tags=["Fundamentals", "Security", "Order", "Example"] unverified="Consumer domain example (Order and OrderService); not exercised by Core security unit tests"}
 public class Order {
   public required Guid OrderId { get; init; }
   public required string CustomerId { get; init; }
@@ -600,7 +600,7 @@ public class OrderService {
 
 Row-level access (`AllowedPrincipals`) is stamped on the row's `PerspectiveScope` when the perspective persists the model — writes flow through commands and events, not through the lens. See [Scoping](./scoping.md) for how scope is captured and inherited.
 
-```csharp{title="Order Example - Row Scope" description="AllowedPrincipals live on the row scope, not the data model:" category="Best-Practices" difficulty="ADVANCED" tags=["Fundamentals", "Security", "Order", "Example"]}
+```csharp{title="Order Example - Row Scope" description="AllowedPrincipals live on the row scope, not the data model:" category="Best-Practices" difficulty="ADVANCED" tags=["Fundamentals", "Security", "Order", "Example"] tests=["PerspectiveScopeTests.PerspectiveScope_AllowedPrincipals_StoresPrincipalsAsync", "PerspectiveScopeTests.PerspectiveScope_TenantId_ReturnsValueAsync", "PerspectiveScopeTests.PerspectiveScope_UserId_ReturnsValueAsync"]}
 // Tenant/user identifiers and AllowedPrincipals ride on the row's scope
 var scope = new PerspectiveScope {
   TenantId = "tenant-123",
@@ -621,7 +621,7 @@ Column-level security restricts which fields a user can view based on their perm
 
 A complete example showing column-level security for customer data:
 
-```csharp{title="Customer Example" description="A complete example showing column-level security for customer data:" category="Best-Practices" difficulty="ADVANCED" tags=["Fundamentals", "Security", "Customer", "Example"]}
+```csharp{title="Customer Example" description="A complete example showing column-level security for customer data:" category="Best-Practices" difficulty="ADVANCED" tags=["Fundamentals", "Security", "Customer", "Example"] unverified="Consumer domain example (Customer and CustomerService); not exercised by Core security unit tests"}
 public class Customer {
   public required string CustomerId { get; init; }
   public required string TenantId { get; init; }
@@ -695,7 +695,7 @@ public class CustomerService {
 
 The `MaskingStrategy` enum (paired with the `[FieldPermission]` attribute) defines strategies for masking sensitive fields when the caller lacks the required permission.
 
-```csharp{title="Data Masking" description="MaskingStrategy and the FieldPermission attribute define how sensitive fields are masked." category="Best-Practices" difficulty="ADVANCED" tags=["Fundamentals", "Security", "Data", "Masking"]}
+```csharp{title="Data Masking" description="MaskingStrategy and the FieldPermission attribute define how sensitive fields are masked." category="Best-Practices" difficulty="ADVANCED" tags=["Fundamentals", "Security", "Data", "Masking"] unverified="MaskingStrategy and FieldPermissionAttribute are covered only by SecurityAttributeTests, which is absent from the test map"}
 public enum MaskingStrategy {
   /// <summary>Completely hide the value (return null/default)</summary>
   Hide = 0,
@@ -722,7 +722,7 @@ public sealed class FieldPermissionAttribute(
 
 ### Using Masking with Column Security
 
-```csharp{title="Using Masking with Column Security" description="Using Masking with Column Security" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "C#", "Using", "Masking"]}
+```csharp{title="Using Masking with Column Security" description="Using Masking with Column Security" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "C#", "Using", "Masking"] unverified="Consumer domain example using the FieldPermission attribute; covered only by SecurityAttributeTests, which is absent from the test map"}
 public class Customer {
   public required string CustomerId { get; init; }
   public required string Name { get; init; }
@@ -746,7 +746,7 @@ public class Customer {
 
 `PerspectiveScope` stores scope metadata on perspective rows, separate from the data model.
 
-```csharp{title="Perspective Scope" description="PerspectiveScope stores scope metadata on perspective rows, separate from the data model." category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Perspective", "Scope"]}
+```csharp{title="Perspective Scope" description="PerspectiveScope stores scope metadata on perspective rows, separate from the data model." category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Perspective", "Scope"] tests=["PerspectiveScopeTests.PerspectiveScope_TenantId_ReturnsValueAsync", "PerspectiveScopeTests.PerspectiveScope_CustomerId_ReturnsValueAsync", "PerspectiveScopeTests.PerspectiveScope_UserId_ReturnsValueAsync", "PerspectiveScopeTests.PerspectiveScope_OrganizationId_ReturnsValueAsync", "PerspectiveScopeTests.PerspectiveScope_AllowedPrincipals_StoresPrincipalsAsync", "PerspectiveScopeTests.PerspectiveScope_GetValue_StandardProperty_TenantId_ReturnsValueAsync", "PerspectiveScopeTests.PerspectiveScope_GetValue_Extension_ReturnsValueAsync", "PerspectiveScopeTests.PerspectiveScope_GetValue_Unknown_ReturnsNullAsync"]}
 public class PerspectiveScope {
   public string? TenantId { get; set; }
   public string? CustomerId { get; set; }
@@ -774,7 +774,7 @@ The security system emits events for auditing.
 
 Emitted when access is denied due to insufficient permissions.
 
-```csharp{title="AccessDenied" description="Emitted when access is denied due to insufficient permissions." category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "AccessDenied"]}
+```csharp{title="AccessDenied" description="Emitted when access is denied due to insufficient permissions." category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "AccessDenied"] unverified="Audit system-event record (SystemEvents.Security); no unit test in the security test suite"}
 public sealed record AccessDenied : ISystemEvent {
   public Guid Id { get; init; } = TrackedGuid.NewMedo();
   public required string ResourceType { get; init; }
@@ -792,7 +792,7 @@ public sealed record AccessDenied : ISystemEvent {
 
 Emitted when access to a sensitive resource is granted (optional, for audit trails).
 
-```csharp{title="AccessGranted" description="Emitted when access to a sensitive resource is granted (optional, for audit trails)." category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "AccessGranted"]}
+```csharp{title="AccessGranted" description="Emitted when access to a sensitive resource is granted (optional, for audit trails)." category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "AccessGranted"] unverified="Audit system-event record (SystemEvents.Security); no unit test in the security test suite"}
 public sealed record AccessGranted : ISystemEvent {
   public Guid Id { get; init; } = TrackedGuid.NewMedo();
   public required string ResourceType { get; init; }
@@ -810,7 +810,7 @@ public sealed record AccessGranted : ISystemEvent {
 
 Thrown when a security check fails due to insufficient permissions.
 
-```csharp{title="AccessDeniedException" description="Thrown when a security check fails due to insufficient permissions." category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "AccessDeniedException"]}
+```csharp{title="AccessDeniedException" description="Thrown when a security check fails due to insufficient permissions." category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "AccessDeniedException"] tests=["AccessDeniedExceptionTests.AccessDeniedException_Constructor_SetsAllPropertiesAsync", "AccessDeniedExceptionTests.AccessDeniedException_DefaultReason_IsInsufficientPermissionAsync", "AccessDeniedExceptionTests.AccessDeniedException_CanBeCaughtAsync"]}
 public sealed class AccessDeniedException : Exception {
   public Permission RequiredPermission { get; }
   public string ResourceType { get; }
@@ -835,7 +835,7 @@ public enum AccessDenialReason {
 
 ### Exception Handling
 
-```csharp{title="Exception Handling" description="Exception Handling" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Exception", "Handling"]}
+```csharp{title="Exception Handling" description="Exception Handling" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Exception", "Handling"] tests=["AccessDeniedExceptionTests.AccessDeniedException_CanBeCaughtAsync", "AccessDeniedExceptionTests.AccessDeniedException_Constructor_SetsAllPropertiesAsync"]}
 try {
   var lens = factory.GetLens<IOrderLens>(
     ScopeFilters.Tenant,
@@ -856,7 +856,7 @@ try {
 
 ### Registering Security Services
 
-```csharp{title="Registering Security Services" description="Registering Security Services" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "C#", "Registering", "Services"]}
+```csharp{title="Registering Security Services" description="Registering Security Services" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "C#", "Registering", "Services"] unverified="DI service-registration wiring; not exercised by Core security unit tests"}
 services.AddSingleton<IScopeContextAccessor, ScopeContextAccessor>();
 services.AddSingleton<ISystemEventEmitter, SystemEventEmitter>();
 services.AddSingleton<LensOptions>();
@@ -873,7 +873,7 @@ services.AddSingleton(new SecurityOptions()
 
 ### Extracting from JWT Claims
 
-```csharp{title="Extracting from JWT Claims" description="Extracting from JWT Claims" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Extracting", "JWT"]}
+```csharp{title="Extracting from JWT Claims" description="Extracting from JWT Claims" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Extracting", "JWT"] tests=["SecurityOptionsTests.SecurityOptions_ExtractMultipleClaims_AllExtractorsAddedAsync", "PermissionExtractorTests.SecurityOptions_ExtractorsFromClaims_ProduceCorrectResultsAsync"]}
 var options = new SecurityOptions()
   .ExtractPermissionsFromClaim("permissions")  // "orders:read, orders:write"
   .ExtractRolesFromClaim("roles")              // "Admin, Support"
@@ -884,7 +884,7 @@ var options = new SecurityOptions()
 
 Optional marker interfaces for models that include scope in their data:
 
-```csharp{title="Marker Interfaces" description="Optional marker interfaces for models that include scope in their data:" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Marker", "Interfaces"]}
+```csharp{title="Marker Interfaces" description="Optional marker interfaces for models that include scope in their data:" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Marker", "Interfaces"] unverified="Optional scope marker interfaces covered only by MarkerInterfaceTests, which is absent from the test map"}
 public interface ITenantScoped {
   string TenantId { get; }
 }

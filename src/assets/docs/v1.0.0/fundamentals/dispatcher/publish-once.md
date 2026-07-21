@@ -35,7 +35,7 @@ The old pattern — `SELECT … WHERE already_emitted; INSERT IF NOT EXISTS` —
 
 ## API
 
-```csharp{title="PublishOnceAsync signature" category="Architecture" tags=["Dispatcher", "Idempotency"]}
+```csharp{title="PublishOnceAsync signature" category="Architecture" tags=["Dispatcher", "Idempotency"] unverified="verified by DispatcherPublishOnceTests, which is outside the current coverage map"}
 namespace Whizbang.Core;
 
 public interface IDispatcher {
@@ -56,7 +56,7 @@ The `claimKey` is opaque to the framework — choose any string unique within yo
 
 Before:
 
-```csharp{title="Before: read-then-check (racy)" category="Architecture" tags=["AntiPattern"]}
+```csharp{title="Before: read-then-check (racy)" category="Architecture" tags=["AntiPattern"] unverified="racy anti-pattern — intentionally wrong, nothing to assert"}
 public async Task TryEmitCompletionAsync(Guid sagaId, IDispatcher dispatcher, ISagaRepository repo) {
   var saga = await repo.LoadAsync(sagaId);
   if (saga.CompletionEventDispatched) {
@@ -71,7 +71,7 @@ public async Task TryEmitCompletionAsync(Guid sagaId, IDispatcher dispatcher, IS
 
 After:
 
-```csharp{title="After: atomic claim" category="Architecture" tags=["Idempotency", "PublishOnce"]}
+```csharp{title="After: atomic claim" category="Architecture" tags=["Idempotency", "PublishOnce"] tests=["BaseSagaServiceTests.CompleteSagaAsync_RoutesThroughPublishOnceWithSagaClaimKeyAsync", "DispatcherSagaEventEmitterTests.PublishOnceAsync_ForwardsClaimKeyAndEventToDispatcherAsync"]}
 public async Task TryEmitCompletionAsync(Guid sagaId, IDispatcher dispatcher) {
   await dispatcher.PublishOnceAsync(
     claimKey: sagaId.ToString(),
@@ -131,7 +131,7 @@ When called outside a transaction, the claim commits independently. If the recep
 
 The Postgres driver registers `EFCoreClaimedEmissionStore` automatically. If you implement a custom store, register it scoped against the same DI scope as `PublishOnceAsync`'s callers (so it participates in their transactions):
 
-```csharp{title="Custom claim store registration" category="DI"}
+```csharp{title="Custom claim store registration" category="DI" unverified="DI registration snippet — configuration, not asserted by a test"}
 services.AddScoped<IClaimedEmissionStore, MyCustomClaimedEmissionStore>();
 ```
 

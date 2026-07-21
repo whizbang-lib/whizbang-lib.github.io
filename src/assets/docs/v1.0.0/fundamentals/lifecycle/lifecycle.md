@@ -38,7 +38,7 @@ The `PauseProcessingCommand` and `ResumeProcessingCommand` enable coordinated pa
 Pauses message processing across all services. Useful for coordinated maintenance operations where you need to ensure no messages are being processed.
 
 **Signature**:
-```csharp{title="PauseProcessingCommand" description="PauseProcessingCommand" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lifecycle", "PauseProcessingCommand"]}
+```csharp{title="PauseProcessingCommand" description="PauseProcessingCommand" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lifecycle", "PauseProcessingCommand"] tests=["SystemCommandsTests.PauseProcessingCommand_DefaultParameters_CreatesCorrectlyAsync", "SystemCommandsTests.PauseProcessingCommand_WithAllParameters_CreatesCorrectlyAsync", "SystemCommandsTests.PauseProcessingCommand_ImplementsICommandAsync"]}
 public record PauseProcessingCommand(
     int? DurationSeconds = null,
     string? Reason = null
@@ -50,7 +50,7 @@ public record PauseProcessingCommand(
 - `Reason` - Optional reason for pausing (for logging/audit purposes)
 
 **Example: Pause for Database Migration**
-```csharp{title="PauseProcessingCommand (2)" description="Example: Pause for Database Migration" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lifecycle", "PauseProcessingCommand"]}
+```csharp{title="PauseProcessingCommand (2)" description="Example: Pause for Database Migration" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lifecycle", "PauseProcessingCommand"] unverified="usage example — pause/resume dispatch workflow with illustrative migration helper; command contract covered by SystemCommandsTests"}
 // Pause processing for 10 minutes during database migration
 await dispatcher.SendAsync(new PauseProcessingCommand(
     DurationSeconds: 600,
@@ -67,7 +67,7 @@ await dispatcher.SendAsync(new ResumeProcessingCommand(
 ```
 
 **Example: Indefinite Pause**
-```csharp{title="PauseProcessingCommand (3)" description="Example: Indefinite Pause" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lifecycle", "PauseProcessingCommand"]}
+```csharp{title="PauseProcessingCommand (3)" description="Example: Indefinite Pause" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lifecycle", "PauseProcessingCommand"] unverified="usage example — indefinite-pause dispatch workflow (illustrative)"}
 // Pause indefinitely (no automatic resume)
 await dispatcher.SendAsync(new PauseProcessingCommand(
     DurationSeconds: null,
@@ -87,7 +87,7 @@ await dispatcher.SendAsync(new ResumeProcessingCommand(
 Resumes message processing across all services after a pause.
 
 **Signature**:
-```csharp{title="ResumeProcessingCommand" description="ResumeProcessingCommand" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lifecycle", "ResumeProcessingCommand"]}
+```csharp{title="ResumeProcessingCommand" description="ResumeProcessingCommand" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lifecycle", "ResumeProcessingCommand"] tests=["SystemCommandsTests.ResumeProcessingCommand_DefaultParameters_CreatesCorrectlyAsync", "SystemCommandsTests.ResumeProcessingCommand_WithReason_CreatesCorrectlyAsync", "SystemCommandsTests.ResumeProcessingCommand_ImplementsICommandAsync"]}
 public record ResumeProcessingCommand(
     string? Reason = null
 ) : ICommand;
@@ -97,7 +97,7 @@ public record ResumeProcessingCommand(
 - `Reason` - Optional reason for resuming (for logging/audit purposes)
 
 **Example: Manual Resume**
-```csharp{title="ResumeProcessingCommand (2)" description="Example: Manual Resume" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lifecycle", "ResumeProcessingCommand"]}
+```csharp{title="ResumeProcessingCommand (2)" description="Example: Manual Resume" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lifecycle", "ResumeProcessingCommand"] unverified="usage example — resume dispatch call (illustrative)"}
 // Resume after maintenance window
 await dispatcher.SendAsync(new ResumeProcessingCommand(
     Reason: "Scheduled maintenance window completed"
@@ -134,7 +134,7 @@ When processing resumes:
 
 ### 1. Database Migrations
 Pause processing while applying schema changes:
-```csharp{title="Database Migrations" description="Pause processing while applying schema changes:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lifecycle", "Database", "Migrations"]}
+```csharp{title="Database Migrations" description="Pause processing while applying schema changes:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lifecycle", "Database", "Migrations"] unverified="usage example — maintenance workflow with illustrative EF Core MigrateAsync call"}
 // Pause for migration
 await dispatcher.SendAsync(new PauseProcessingCommand(
     DurationSeconds: 300,  // 5 minutes
@@ -152,7 +152,7 @@ await dispatcher.SendAsync(new ResumeProcessingCommand(
 
 ### 2. Infrastructure Maintenance
 Coordinate maintenance across services:
-```csharp{title="Infrastructure Maintenance" description="Coordinate maintenance across services:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lifecycle", "Infrastructure", "Maintenance"]}
+```csharp{title="Infrastructure Maintenance" description="Coordinate maintenance across services:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lifecycle", "Infrastructure", "Maintenance"] unverified="usage example — infrastructure workflow with illustrative RestartRabbitMQClusterAsync"}
 // Pause all services
 await dispatcher.SendAsync(new PauseProcessingCommand(
     Reason: "Restarting RabbitMQ cluster"
@@ -169,7 +169,7 @@ await dispatcher.SendAsync(new ResumeProcessingCommand(
 
 ### 3. Emergency Situations
 Quickly pause processing during an incident:
-```csharp{title="Emergency Situations" description="Quickly pause processing during an incident:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lifecycle", "Emergency", "Situations"]}
+```csharp{title="Emergency Situations" description="Quickly pause processing during an incident:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lifecycle", "Emergency", "Situations"] unverified="usage example — incident workflow with illustrative InvestigateAndFixIssueAsync"}
 // Pause indefinitely
 await dispatcher.SendAsync(new PauseProcessingCommand(
     DurationSeconds: null,
@@ -187,7 +187,7 @@ await dispatcher.SendAsync(new ResumeProcessingCommand(
 
 ### 4. Coordinated Deployments
 Pause before deploying breaking changes:
-```csharp{title="Coordinated Deployments" description="Pause before deploying breaking changes:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lifecycle", "Coordinated", "Deployments"]}
+```csharp{title="Coordinated Deployments" description="Pause before deploying breaking changes:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lifecycle", "Coordinated", "Deployments"] unverified="usage example — deployment workflow with illustrative DeployAllServicesAsync"}
 // Pause processing
 await dispatcher.SendAsync(new PauseProcessingCommand(
     DurationSeconds: 600,  // 10 minutes
@@ -207,7 +207,7 @@ await dispatcher.SendAsync(new ResumeProcessingCommand(
 
 ### Always Provide Reasons
 Include descriptive reasons for auditing and troubleshooting:
-```csharp{title="Always Provide Reasons" description="Include descriptive reasons for auditing and troubleshooting:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lifecycle", "Always", "Provide"]}
+```csharp{title="Always Provide Reasons" description="Include descriptive reasons for auditing and troubleshooting:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lifecycle", "Always", "Provide"] unverified="best-practice guidance (good/bad counter-example)"}
 // ✅ Good - clear reason
 await dispatcher.SendAsync(new PauseProcessingCommand(
     Reason: "Weekly maintenance window: 2024-03-15 02:00-04:00 UTC"
@@ -219,7 +219,7 @@ await dispatcher.SendAsync(new PauseProcessingCommand());
 
 ### Use Timeout for Safety
 Set `DurationSeconds` to automatically resume in case manual resume fails:
-```csharp{title="Use Timeout for Safety" description="Set DurationSeconds to automatically resume in case manual resume fails:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lifecycle", "Timeout", "Safety"]}
+```csharp{title="Use Timeout for Safety" description="Set DurationSeconds to automatically resume in case manual resume fails:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lifecycle", "Timeout", "Safety"] unverified="best-practice guidance (good/risky counter-example)"}
 // ✅ Good - will auto-resume after 30 minutes
 await dispatcher.SendAsync(new PauseProcessingCommand(
     DurationSeconds: 1800,
@@ -238,7 +238,7 @@ await dispatcher.SendAsync(new PauseProcessingCommand(
 > **Note**: `IProcessingStateMonitor` shown below is an aspirational pattern illustrating how you might expose pause state to health checks. This interface is not provided by the Whizbang library -- you would implement it in your application based on your pause/resume handler state.
 
 Monitor paused state in your health check endpoints:
-```csharp{title="Implement Health Checks" description="Monitor paused state in your health check endpoints:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lifecycle", "Implement", "Health"]}
+```csharp{title="Implement Health Checks" description="Monitor paused state in your health check endpoints:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lifecycle", "Implement", "Health"] unverified="aspirational pattern — IProcessingStateMonitor is not a library type (see note above)"}
 public class ProcessingHealthCheck : IHealthCheck {
   private readonly IProcessingStateMonitor _monitor;
 
@@ -258,7 +258,7 @@ public class ProcessingHealthCheck : IHealthCheck {
 
 ### Log Pause/Resume Events
 Handle pause/resume commands with logging:
-```csharp{title="Log Pause/Resume Events" description="Handle pause/resume commands with logging:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lifecycle", "Log", "Pause"]}
+```csharp{title="Log Pause/Resume Events" description="Handle pause/resume commands with logging:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lifecycle", "Log", "Pause"] unverified="illustrative consumer receptor (PauseResumeLogger); handler wiring not exercised by tests"}
 [FireAt(LifecycleStage.PostInboxInline)]
 public class PauseResumeLogger : IReceptor<PauseProcessingCommand>,
                                   IReceptor<ResumeProcessingCommand> {
@@ -283,7 +283,7 @@ public class PauseResumeLogger : IReceptor<PauseProcessingCommand>,
 
 ### Test Pause/Resume Behavior
 Verify your services handle pause correctly:
-```csharp{title="Test Pause/Resume Behavior" description="Verify your services handle pause correctly:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lifecycle", "Test", "Pause"]}
+```csharp{title="Test Pause/Resume Behavior" description="Verify your services handle pause correctly:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lifecycle", "Test", "Pause"] unverified="illustrative sample test for consumer services; not a Whizbang library test"}
 [Test]
 public async Task Service_WhenPaused_StopsProcessingMessagesAsync() {
   // Arrange - use lifecycle hooks to synchronize deterministically
@@ -326,7 +326,7 @@ public async Task Service_WhenPaused_StopsProcessingMessagesAsync() {
 > **Note**: `IWorkerCoordinator` shown below is an aspirational pattern illustrating how you might coordinate worker lifecycle in response to pause/resume commands. This interface is not provided by the Whizbang library -- you would implement it in your application to manage your specific worker infrastructure.
 
 Each service should implement handlers for pause/resume commands:
-```csharp{title="Service-Specific Handlers" description="Each service should implement handlers for pause/resume commands:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lifecycle", "Service-Specific", "Handlers"]}
+```csharp{title="Service-Specific Handlers" description="Each service should implement handlers for pause/resume commands:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lifecycle", "Service-Specific", "Handlers"] unverified="aspirational pattern — IWorkerCoordinator is not a library type (see note above)"}
 public class PauseResumeHandler :
   IReceptor<PauseProcessingCommand>,
   IReceptor<ResumeProcessingCommand> {
@@ -367,7 +367,7 @@ public class PauseResumeHandler :
 
 ### Graceful Shutdown
 Combine with graceful shutdown for maintenance:
-```csharp{title="Graceful Shutdown" description="Combine with graceful shutdown for maintenance:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lifecycle", "Graceful", "Shutdown"]}
+```csharp{title="Graceful Shutdown" description="Combine with graceful shutdown for maintenance:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lifecycle", "Graceful", "Shutdown"] unverified="host-wiring example (IHostApplicationLifetime); not exercised by tests"}
 // In Program.cs
 var lifetime = app.Services.GetRequiredService<IHostApplicationLifetime>();
 
@@ -391,7 +391,7 @@ Whizbang provides other system commands for distributed coordination:
 
 ### RebuildPerspectiveCommand
 Rebuild one or more perspectives across all services:
-```csharp{title="RebuildPerspectiveCommand" description="Rebuild one or more perspectives across all services:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lifecycle", "RebuildPerspectiveCommand"]}
+```csharp{title="RebuildPerspectiveCommand" description="Rebuild one or more perspectives across all services:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lifecycle", "RebuildPerspectiveCommand"] tests=["SystemCommandsTests.RebuildPerspectiveCommand_WithPerspectiveNames_CreatesCorrectlyAsync", "SystemCommandsTests.RebuildPerspectiveCommand_WithFromEventId_CreatesCorrectlyAsync"]}
 await dispatcher.SendAsync(new RebuildPerspectiveCommand(
   PerspectiveNames: ["OrderSummary"],
   Mode: RebuildMode.BlueGreen,
@@ -403,7 +403,7 @@ See [Perspectives](../perspectives/perspectives.md#rebuild) for details.
 
 ### CancelPerspectiveRebuildCommand
 Cancel an in-progress perspective rebuild:
-```csharp{title="CancelPerspectiveRebuildCommand" description="Cancel an in-progress perspective rebuild:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lifecycle", "CancelPerspectiveRebuildCommand"]}
+```csharp{title="CancelPerspectiveRebuildCommand" description="Cancel an in-progress perspective rebuild:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lifecycle", "CancelPerspectiveRebuildCommand"] tests=["SystemCommandsTests.CancelPerspectiveRebuildCommand_CreatesCorrectlyAsync"]}
 await dispatcher.SendAsync(new CancelPerspectiveRebuildCommand("OrderSummary"));
 ```
 
@@ -411,7 +411,7 @@ See [Perspectives](../perspectives/perspectives.md#rebuild) for details.
 
 ### ClearCacheCommand
 Clear cached data across all services:
-```csharp{title="ClearCacheCommand" description="Clear cached data across all services:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lifecycle", "ClearCacheCommand"]}
+```csharp{title="ClearCacheCommand" description="Clear cached data across all services:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lifecycle", "ClearCacheCommand"] tests=["SystemCommandsTests.ClearCacheCommand_WithAllParameters_CreatesCorrectlyAsync"]}
 await dispatcher.SendAsync(new ClearCacheCommand(
   CacheKey: "product:*",
   CacheRegion: "products"
@@ -422,7 +422,7 @@ See [Components: Caching](../../data/caching.md#clear-cache) for details.
 
 ### DiagnosticsCommand
 Collect diagnostics from all services:
-```csharp{title="DiagnosticsCommand" description="Collect diagnostics from all services:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lifecycle", "DiagnosticsCommand"]}
+```csharp{title="DiagnosticsCommand" description="Collect diagnostics from all services:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lifecycle", "DiagnosticsCommand"] tests=["SystemCommandsTests.DiagnosticsCommand_WithCorrelationId_CreatesCorrectlyAsync", "SystemCommandsTests.DiagnosticsCommand_AllDiagnosticTypes_CreateCorrectlyAsync"]}
 await dispatcher.SendAsync(new DiagnosticsCommand(
   DiagnosticType.Full,
   CorrelationId: Guid.NewGuid()

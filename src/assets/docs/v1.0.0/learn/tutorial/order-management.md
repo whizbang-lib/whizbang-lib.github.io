@@ -39,7 +39,7 @@ This is **Part 1** of the ECommerce Tutorial. Start with [Tutorial Overview](tut
 
 ## What You'll Build
 
-```mermaid
+```mermaid{caption="Order Service architecture — the HTTP endpoint dispatches CreateOrderCommand to CreateOrderReceptor, which appends OrderCreatedEvent to the framework-managed event store and outbox for delivery to Azure Service Bus."}
 flowchart TD
     subgraph OSA["Order Service Architecture"]
         Endpoint["HTTP Endpoint<br/>POST /api/orders"]
@@ -79,7 +79,7 @@ flowchart TD
 
 **ECommerce.Contracts/Ids.cs**:
 
-```csharp{title="Strongly-Typed IDs" description="**ECommerce." category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Ids"]}
+```csharp{title="Strongly-Typed IDs" description="**ECommerce." category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Ids"] unverified="tutorial worked-example — the sample IDs are exercised by the ECommerce sample suite (CreateOrderReceptorTests), which is outside the core unit-test coverage map"}
 using Whizbang.Core;
 
 namespace ECommerce.Contracts.Commands;
@@ -103,7 +103,7 @@ The `[WhizbangId]` source generator produces `OrderId.New()` (time-ordered UUIDv
 
 **ECommerce.Contracts/Commands/CreateOrderCommand.cs**:
 
-```csharp{title="Commands" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Commands"]}
+```csharp{title="Commands" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Commands"] unverified="tutorial worked-example — exercised by the ECommerce sample suite (CreateOrderReceptorTests), which is outside the core unit-test coverage map"}
 using Whizbang.Core;
 
 namespace ECommerce.Contracts.Commands;
@@ -131,7 +131,7 @@ public record OrderLineItem {
 
 **ECommerce.Contracts/Events/OrderCreatedEvent.cs**:
 
-```csharp{title="Events" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Events"]}
+```csharp{title="Events" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Events"] unverified="tutorial worked-example — exercised by the ECommerce sample suite (CreateOrderReceptorTests), which is outside the core unit-test coverage map"}
 using ECommerce.Contracts.Commands;
 using Whizbang.Core;
 
@@ -165,7 +165,7 @@ Earlier drafts of this tutorial hand-wrote `orders`, `order_items`, and `outbox`
 
 **ECommerce.OrderService.API/OrderDbContext.cs**:
 
-```csharp{title="Step 2: Persistence" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Persistence", "DbContext"]}
+```csharp{title="Step 2: Persistence" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Persistence", "DbContext"] unverified="tutorial worked-example — exercised by the ECommerce sample suite (OrderServiceIntegrationTests), which is outside the core unit-test coverage map"}
 using Microsoft.EntityFrameworkCore;
 using Whizbang.Data.EFCore.Custom;
 
@@ -192,7 +192,7 @@ At startup, the generated `EnsureWhizbangDatabaseInitializedAsync()` extension c
 
 **ECommerce.OrderService.API/Receptors/CreateOrderReceptor.cs**:
 
-```csharp{title="Step 3: Implement Receptor" description="**ECommerce." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Step", "Implement"]}
+```csharp{title="Step 3: Implement Receptor" description="**ECommerce." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Step", "Implement"] unverified="tutorial worked-example — exercised by the ECommerce sample suite (CreateOrderReceptorTests), which is outside the core unit-test coverage map"}
 using ECommerce.Contracts.Commands;
 using ECommerce.Contracts.Events;
 using Whizbang.Core;
@@ -257,7 +257,7 @@ The sample uses **FastEndpoints** for the REST API.
 
 **ECommerce.OrderService.API/Endpoints/Orders/CreateOrderEndpoint.cs**:
 
-```csharp{title="Step 4: HTTP API" description="**ECommerce." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Step", "HTTP"]}
+```csharp{title="Step 4: HTTP API" description="**ECommerce." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Step", "HTTP"] unverified="tutorial worked-example — exercised by the ECommerce sample suite (OrderServiceIntegrationTests), which is outside the core unit-test coverage map"}
 using ECommerce.Contracts.Commands;
 using ECommerce.Contracts.Events;
 using ECommerce.OrderService.API.Endpoints.Models;
@@ -308,7 +308,7 @@ public class CreateOrderEndpoint(IDispatcher dispatcher) : Endpoint<CreateOrderR
 
 **Request/response models** (**ECommerce.OrderService.API/Endpoints/Models/**):
 
-```csharp{title="Step 4: HTTP API - Models" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Step", "HTTP"]}
+```csharp{title="Step 4: HTTP API - Models" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Step", "HTTP"] unverified="tutorial worked-example — exercised by the ECommerce sample suite (OrderServiceIntegrationTests), which is outside the core unit-test coverage map"}
 namespace ECommerce.OrderService.API.Endpoints.Models;
 
 public record CreateOrderRequest {
@@ -341,7 +341,7 @@ public record CreateOrderResponse {
 
 **ECommerce.OrderService.API/Program.cs** (condensed from the sample):
 
-```csharp{title="Step 5: Service Configuration" description="**ECommerce." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Step", "Service"]}
+```csharp{title="Step 5: Service Configuration" description="**ECommerce." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Step", "Service"] unverified="host/DI wiring — not exercised by a test"}
 using ECommerce.Contracts.Generated;
 using ECommerce.OrderService.API;
 using ECommerce.OrderService.API.Generated;
@@ -423,7 +423,7 @@ There is no `AddWhizbang(options => ...)` overload with `ServiceName`/`EnableOut
 
 **ECommerce.AppHost/Program.cs** (condensed from the sample):
 
-```csharp{title="Step 6: Aspire Orchestration" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Step", "Aspire"]}
+```csharp{title="Step 6: Aspire Orchestration" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Step", "Aspire"] unverified="host/DI wiring — not exercised by a test"}
 var builder = DistributedApplication.CreateBuilder(args);
 
 // PostgreSQL with pgAdmin (persistent across restarts)
@@ -521,7 +521,7 @@ Check Aspire Dashboard:
 
 ### Outbox Pattern
 
-```mermaid
+```mermaid{caption="Transactional outbox pattern — the event-store append and outbox insert commit in a single PostgreSQL transaction; the Whizbang outbox worker then claims pending rows and publishes them to Azure Service Bus."}
 flowchart TD
     subgraph TOP["Transactional Outbox Pattern (Whizbang-managed)"]
         TX["PostgreSQL Transaction<br/>1. Append event to wh_event_store<br/>2. INSERT INTO wh_outbox ← Same TX!<br/>COMMIT;"]
@@ -543,7 +543,7 @@ flowchart TD
 
 Every dispatched message carries an `IMessageContext` for correlation and tracing:
 
-```csharp{title="Message Context" description="Message Context" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Message", "Context"]}
+```csharp{title="Message Context" description="Message Context" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Message", "Context"] tests=["MessageContextTests.Properties_CanBeSetViaInitializer_WithInitSyntaxAsync", "MessageContextTests.DefaultConstructor_InitializesRequiredProperties_AutomaticallyAsync", "MessageContextTests.Metadata_IsEmptyByDefaultAsync"]}
 public interface IMessageContext {
   MessageId MessageId { get; }         // Unique ID for this message
   CorrelationId CorrelationId { get; } // Business transaction ID
@@ -584,7 +584,7 @@ This enables **distributed tracing** across services.
 
 **samples/ECommerce/tests/ECommerce.OrderService.Tests/CreateOrderReceptorTests.cs** (condensed):
 
-```csharp{title="Unit Test" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Unit", "Test"]}
+```csharp{title="Unit Test" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Unit", "Test"] unverified="tutorial worked-example — this is the ECommerce sample unit test (CreateOrderReceptorTests) itself, which is outside the core unit-test coverage map"}
 using ECommerce.Contracts.Commands;
 using ECommerce.Contracts.Events;
 using ECommerce.OrderService.API.Receptors;

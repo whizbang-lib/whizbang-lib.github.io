@@ -37,7 +37,7 @@ The **Outbox Pattern** ensures reliable event publishing in distributed systems 
 
 ### Naive Approach (BROKEN)
 
-```csharp{title="Naive Approach (BROKEN)" description="Naive Approach (BROKEN)" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Naive", "Approach", "BROKEN"]}
+```csharp{title="Naive Approach (BROKEN)" description="Naive Approach (BROKEN)" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Naive", "Approach", "BROKEN"] unverified="counter-example — the broken dual-write anti-pattern, intentionally not atomic"}
 public async Task<OrderCreated> HandleAsync(CreateOrder message, CancellationToken ct) {
     // 1. Update database
     await _db.ExecuteAsync(
@@ -65,7 +65,7 @@ public async Task<OrderCreated> HandleAsync(CreateOrder message, CancellationTok
 
 **The Fix**: Store the event in the database (same transaction), then publish it later.
 
-```mermaid
+```mermaid{caption="Outbox solution — the event is stored in wh_outbox atomically with the business write, then background workers claim, drain, publish, and delete the row." tests=["OutboxDrainWorkerTests.OutboxDrainWorker_OnStreamId_FetchesBatch_PublishesEach_EnqueuesCompletionAsync"]}
 flowchart TD
     TX["Database Transaction<br/><br/>1. INSERT INTO orders (...) VALUES (...)<br/>2. INSERT INTO wh_outbox (...) VALUES (...) — Event stored atomically!"]
     Worker["Background Workers<br/><br/>3. ClaimWorker: claim_work leases rows, returns stream ids<br/>4. OutboxDrainWorker: fetch bodies per stream, publish in FIFO order<br/>5. complete_outbox_published: DELETE the row (prod)<br/>&nbsp;&nbsp;&nbsp;&nbsp;(debug mode retains it with published_at stamped)"]
@@ -142,7 +142,7 @@ The outbox flow uses these focused `IWorkCoordinator` operations (see [Work Coor
 
 You don't write outbox plumbing — `dispatcher.PublishAsync()` routes the event into the outbox, and the handler-commit path stores it atomically with your message's completion:
 
-```csharp{title="Example: CreateOrderReceptor" description="Example: CreateOrderReceptor" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Example:", "CreateOrderReceptor"]}
+```csharp{title="Example: CreateOrderReceptor" description="Example: CreateOrderReceptor" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Example:", "CreateOrderReceptor"] unverified="sample receptor from samples/ECommerce — application handler code, not covered by a framework test"}
 public class CreateOrderReceptor(
     IDispatcher dispatcher,
     ILogger<CreateOrderReceptor> logger)
@@ -188,7 +188,7 @@ public class CreateOrderReceptor(
 
 Publishing is handled by a set of cooperating background workers (all registered automatically):
 
-```mermaid
+```mermaid{caption="Outbox publish pipeline — ClaimWorker leases stream ids, OutboxDrainWorker fetches bodies per stream and publishes in created_at FIFO order, then completions flush through complete_outbox_published." tests=["OutboxDrainWorkerTests.OutboxDrainWorker_OnStreamId_FetchesBatch_PublishesEach_EnqueuesCompletionAsync"]}
 sequenceDiagram
     participant CW as ClaimWorker
     participant DB as PostgreSQL
@@ -243,7 +243,7 @@ ORDER BY created_at;
 
 ### Configuration
 
-```csharp{title="Configuration" description="Configuration" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "Configuration"]}
+```csharp{title="Configuration" description="Configuration" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "Configuration"] unverified="configuration example — ClaimWorkerOptions DI wiring, no behavioral assertion"}
 services.Configure<ClaimWorkerOptions>(options => {
     options.PollingIntervalMilliseconds = 250;               // base cadence (default)
     options.PollingMaxIntervalMilliseconds = 10_000;         // adaptive backoff cap (default 10 s)
@@ -283,7 +283,7 @@ The Outbox Pattern provides **at-least-once delivery**:
 
 ### Retry Strategy
 
-```csharp{title="Retry Strategy" description="Failures are reported through the coordinator" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Retry", "Strategy"]}
+```csharp{title="Retry Strategy" description="Failures are reported through the coordinator" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Retry", "Strategy"] unverified="ReportFailuresAsync outbox-failure behavior (error stamped, lease released) is verified by EFCoreFlusherMethodsTests and DapperWorkCoordinatorWithDataTests, which are outside the current coverage map"}
 // FailureFlushWorker batches failures per category:
 await coordinator.ReportFailuresAsync(
     WorkCategory.Outbox,
@@ -348,7 +348,7 @@ SELECT * FROM wh_dead_letters WHERE source_table = 'wh_outbox';
 
 In production, published rows are **deleted at completion** — pending depth is what you monitor (successful-publish counts live in your logs/metrics, or in debug mode where rows are retained).
 
-```csharp{title="Key Metrics" description="Key Metrics" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Key", "Metrics"]}
+```csharp{title="Key Metrics" description="Key Metrics" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Key", "Metrics"] unverified="illustrative monitoring code — user-defined metrics query, not a framework API"}
 public class OutboxMetrics {
     public int PendingCount { get; set; }     // Messages waiting to be published
     public int DeadLetterCount { get; set; }  // Messages that failed max retries
@@ -394,7 +394,7 @@ public async Task<OutboxMetrics> GetMetricsAsync(CancellationToken ct = default)
 
 The framework's own suite exercises the store → claim → fetch → complete cycle (see `FetchOutboxBatchSqlTests.cs` and `CompleteOutboxPublishedSqlTests.cs`):
 
-```csharp{title="Integration Tests" description="Store, publish, and complete an outbox message" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Integration", "Tests"]}
+```csharp{title="Integration Tests" description="Store, publish, and complete an outbox message" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Integration", "Tests"] unverified="illustrative integration test — the store, claim, fetch, complete cycle and production-mode row deletion are verified by FetchOutboxBatchSqlTests and CompleteOutboxPublishedSqlTests, which are outside the current coverage map"}
 [Test]
 public async Task StoreClaimPublishComplete_RemovesRowAsync() {
     // Arrange - store a message (normally done by the handler-commit path)

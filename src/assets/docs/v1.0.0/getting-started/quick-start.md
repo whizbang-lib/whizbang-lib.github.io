@@ -85,7 +85,7 @@ Add connection strings to **appsettings.Development.json**:
 Create a `Messages` folder and define your command and event. Commands implement `ICommand`, events implement `IEvent`, and the `[StreamId]` attribute marks the property that identifies the event stream:
 
 **Messages/CreateOrder.cs**:
-```csharp{title="Step 3: Define Your Messages" description="**Messages/CreateOrder." category="Configuration" difficulty="BEGINNER" tags=["Getting-started", "C#", "Step", "Define", "Your"]}
+```csharp{title="Step 3: Define Your Messages" description="**Messages/CreateOrder." category="Configuration" difficulty="BEGINNER" tags=["Getting-started", "C#", "Step", "Define", "Your"] unverified="sample project — this command-record definition is the tutorial analog of CreateProductCommand, exercised by CreateProductCommandTests, which is outside the current coverage map"}
 using Whizbang.Core;
 
 namespace QuickStartApp.API.Messages;
@@ -100,7 +100,7 @@ public record CreateOrder(
 ```
 
 **Messages/OrderCreated.cs**:
-```csharp{title="Step 3: Define Your Messages - OrderCreated" description="**Messages/OrderCreated." category="Configuration" difficulty="INTERMEDIATE" tags=["Getting-started", "C#", "Step", "Define", "Your"]}
+```csharp{title="Step 3: Define Your Messages - OrderCreated" description="**Messages/OrderCreated." category="Configuration" difficulty="INTERMEDIATE" tags=["Getting-started", "C#", "Step", "Define", "Your"] unverified="user domain event definition — illustrative record, not exercised by a test"}
 using Whizbang.Core;
 
 namespace QuickStartApp.API.Messages;
@@ -128,7 +128,7 @@ public record OrderCreated(
 Receptors are **stateless message handlers** that implement business logic.
 
 **Receptors/CreateOrderReceptor.cs**:
-```csharp{title="Step 4: Create Your First Receptor" description="**Receptors/CreateOrderReceptor." category="Configuration" difficulty="ADVANCED" tags=["Getting-started", "C#", "Step", "Create", "Your"]}
+```csharp{title="Step 4: Create Your First Receptor" description="**Receptors/CreateOrderReceptor." category="Configuration" difficulty="ADVANCED" tags=["Getting-started", "C#", "Step", "Create", "Your"] tests=["ReceptorTests.Receive_ValidCommand_ShouldReturnTypeSafeResponseAsync", "ReceptorTests.Receive_EmptyItems_ShouldThrowExceptionAsync", "ReceptorTests.Receive_CalculatesTotal_ShouldSumItemPricesAsync", "ReceptorTests.Receptor_ShouldBeStateless_NoPersistentStateAsync"]}
 using Whizbang.Core;
 using QuickStartApp.API.Messages;
 
@@ -189,7 +189,7 @@ public class CreateOrderReceptor(ILogger<CreateOrderReceptor> logger)
 Create a partial `DbContext` marked with `[WhizbangDbContext]`. Source generators add the Inbox/Outbox/EventStore `DbSet`s and the schema-initialization extension:
 
 **AppDbContext.cs**:
-```csharp{title="Step 5: DbContext" description="**AppDbContext." category="Configuration" difficulty="INTERMEDIATE" tags=["Getting-started", "C#", "Step", "DbContext", "Whizbang"]}
+```csharp{title="Step 5: DbContext" description="**AppDbContext." category="Configuration" difficulty="INTERMEDIATE" tags=["Getting-started", "C#", "Step", "DbContext", "Whizbang"] unverified="project scaffolding — not exercised by a test"}
 using Microsoft.EntityFrameworkCore;
 using Whizbang.Data.EFCore.Custom;
 
@@ -204,7 +204,7 @@ public partial class AppDbContext(DbContextOptions<AppDbContext> options)
 
 Configure dependency injection in **Program.cs**:
 
-```csharp{title="Step 5: Register Whizbang Services" description="Configure dependency injection in **Program." category="Configuration" difficulty="INTERMEDIATE" tags=["Getting-started", "C#", "Step", "Register", "Whizbang"]}
+```csharp{title="Step 5: Register Whizbang Services" description="Configure dependency injection in **Program." category="Configuration" difficulty="INTERMEDIATE" tags=["Getting-started", "C#", "Step", "Register", "Whizbang"] unverified="project scaffolding — DI wiring in Program.cs, not exercised by a test"}
 using Microsoft.EntityFrameworkCore;
 using QuickStartApp.API;
 using QuickStartApp.API.Generated;
@@ -270,7 +270,7 @@ app.Run();
 Create a controller to dispatch your command:
 
 **Controllers/OrdersController.cs**:
-```csharp{title="Step 6: Create API Endpoint" description="**Controllers/OrdersController." category="Configuration" difficulty="ADVANCED" tags=["Getting-started", "C#", "Step", "Create", "API"]}
+```csharp{title="Step 6: Create API Endpoint" description="**Controllers/OrdersController." category="Configuration" difficulty="ADVANCED" tags=["Getting-started", "C#", "Step", "Create", "API"] unverified="project scaffolding — HTTP controller and dispatch wiring, not exercised by a test"}
 using Microsoft.AspNetCore.Mvc;
 using Whizbang.Core;
 using Whizbang.Core.ValueObjects;
@@ -439,7 +439,7 @@ Return 201 Created with OrderCreated response
 Perspectives are **pure functions** that fold events into read models. The framework persists the model (in a `wh_per_*` table) and tracks progress per stream - your code never touches the database:
 
 **Perspectives/OrderSummaryPerspective.cs**:
-```csharp{title="Add Perspectives (Read Models)" description="**Perspectives/OrderSummaryPerspective." category="Configuration" difficulty="INTERMEDIATE" tags=["Getting-started", "C#", "Add", "Perspectives", "Read"]}
+```csharp{title="Add Perspectives (Read Models)" description="**Perspectives/OrderSummaryPerspective." category="Configuration" difficulty="INTERMEDIATE" tags=["Getting-started", "C#", "Add", "Perspectives", "Read"] unverified="user domain perspective definition — illustrative next-step, not exercised by this page's tests"}
 using Whizbang.Core;
 using Whizbang.Core.Perspectives;
 using QuickStartApp.API.Messages;
@@ -469,7 +469,7 @@ public class OrderSummaryPerspective : IPerspectiveFor<OrderSummary, OrderCreate
 
 Perspectives are discovered by source generators - no manual registration. Query the read model through the automatically registered lens:
 
-```csharp{title="Add Perspectives (Read Models) (2)" description="Query via lens:" category="Configuration" difficulty="BEGINNER" tags=["Getting-started", "C#", "Add", "Perspectives", "Read"]}
+```csharp{title="Add Perspectives (Read Models) (2)" description="Query via lens:" category="Configuration" difficulty="BEGINNER" tags=["Getting-started", "C#", "Add", "Perspectives", "Read"] unverified="lens query illustration — not exercised by a test"}
 [HttpGet("{orderId:guid}")]
 public async Task<ActionResult<OrderSummary>> GetOrder(
     Guid orderId,
@@ -505,7 +505,7 @@ TUnit runs on Microsoft.Testing.Platform, so the test project must be executable
 
 Test your receptor directly - receptors are plain classes:
 
-```csharp{title="Add Tests - CreateOrderReceptorTests" description="Test your receptor:" category="Configuration" difficulty="ADVANCED" tags=["Getting-started", "C#", "Add", "Tests", "CreateOrderReceptorTests"]}
+```csharp{title="Add Tests - CreateOrderReceptorTests" description="Test your receptor:" category="Configuration" difficulty="ADVANCED" tags=["Getting-started", "C#", "Add", "Tests", "CreateOrderReceptorTests"] unverified="tutorial test example — CreateOrderReceptorTests is illustrative and not part of the coverage map"}
 using Microsoft.Extensions.Logging.Abstractions;
 using Whizbang.Core.ValueObjects;
 using QuickStartApp.API.Messages;
@@ -579,7 +579,7 @@ See [ECommerce Tutorial](../../drafts/metrics/overview.md) for complete walkthro
 ## Common Patterns
 
 ### Pattern 1: Command → Event
-```csharp{title="Pattern 1: Command → Event" description="Pattern 1: Command → Event" category="Configuration" difficulty="BEGINNER" tags=["Getting-started", "C#", "Pattern", "Command", "Event"]}
+```csharp{title="Pattern 1: Command → Event" description="Pattern 1: Command → Event" category="Configuration" difficulty="BEGINNER" tags=["Getting-started", "C#", "Pattern", "Command", "Event"] unverified="conceptual flow illustration — not executable code"}
 CreateOrder (command) → CreateOrderReceptor → OrderCreated (event)
 ```
 - Commands express **intent** (imperative: "create order")
@@ -587,7 +587,7 @@ CreateOrder (command) → CreateOrderReceptor → OrderCreated (event)
 - Receptors make **decisions** and return events
 
 ### Pattern 2: Event → Perspectives
-```csharp{title="Pattern 2: Event → Perspectives" description="Pattern 2: Event → Perspectives" category="Configuration" difficulty="BEGINNER" tags=["Getting-started", "C#", "Pattern", "Event", "Perspectives"]}
+```csharp{title="Pattern 2: Event → Perspectives" description="Pattern 2: Event → Perspectives" category="Configuration" difficulty="BEGINNER" tags=["Getting-started", "C#", "Pattern", "Event", "Perspectives"] unverified="conceptual flow illustration — not executable code"}
 OrderCreated (event) → OrderSummaryPerspective.Apply → wh_per_order_summary
                      → InventoryPerspective.Apply    → wh_per_inventory
                      → AnalyticsPerspective.Apply    → wh_per_analytics
@@ -597,7 +597,7 @@ OrderCreated (event) → OrderSummaryPerspective.Apply → wh_per_order_summary
 - Perspectives are **eventually consistent**
 
 ### Pattern 3: Query via Lenses
-```csharp{title="Pattern 3: Query via Lenses" description="Pattern 3: Query via Lenses" category="Configuration" difficulty="BEGINNER" tags=["Getting-started", "C#", "Pattern", "Query"]}
+```csharp{title="Pattern 3: Query via Lenses" description="Pattern 3: Query via Lenses" category="Configuration" difficulty="BEGINNER" tags=["Getting-started", "C#", "Pattern", "Query"] unverified="conceptual flow illustration — not executable code"}
 GET /api/orders/{id} → ILensQuery<OrderSummary> → wh_per_* table → Return model
 ```
 - `ILensQuery<TModel>` is registered automatically per perspective model

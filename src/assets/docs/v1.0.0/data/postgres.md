@@ -46,7 +46,7 @@ dotnet add package Whizbang.Data.EFCore.Postgres
 
 ### Basic Setup
 
-```csharp{title="Basic Setup" description="Basic Setup" category="Implementation" difficulty="BEGINNER" tags=["Data", "C#", "Setup"]}
+```csharp{title="Basic Setup" description="Basic Setup" category="Implementation" difficulty="BEGINNER" tags=["Data", "C#", "Setup"] tests=["EFCoreExtensionsTests.WithEFCore_CanChainToWithDriverAsync", "PostgresDriverExtensionsTests.Postgres_ReturnedBuilder_HasSameServicesAsync"]}
 services.AddWhizbang()
     .WithEFCore<MyDbContext>()
     .WithDriver.Postgres;
@@ -69,7 +69,7 @@ Two retry layers exist depending on the driver:
 - **EF Core driver (turnkey)** — the generated `UseNpgsql` registration enables `EnableRetryOnFailure(maxRetryCount: 3, maxRetryDelay: 5s)` for transient command failures.
 - **Dapper driver** — `AddWhizbangPostgres(...)` waits for the database at startup using `PostgresConnectionRetry` with exponential backoff, configured via `PostgresOptions`:
 
-```csharp{title="With Connection Retry" description="Dapper driver startup connection retry with exponential backoff via PostgresOptions" category="Implementation" difficulty="BEGINNER" tags=["Data", "Connection", "Retry", "Connection-retry"]}
+```csharp{title="With Connection Retry" description="Dapper driver startup connection retry with exponential backoff via PostgresOptions" category="Implementation" difficulty="BEGINNER" tags=["Data", "Connection", "Retry", "Connection-retry"] tests=["PostgresConnectionRetryTests.PostgresOptions_DefaultValues_AreCorrectAsync", "PostgresConnectionRetryTests.WaitForConnectionAsync_WithInvalidConnection_RetriesAndThrowsAsync"]}
 services.AddWhizbangPostgres(
     connectionString,
     jsonOptions,
@@ -107,7 +107,7 @@ With the EF Core turnkey driver, schema initialization runs as a hosted service 
 
 PostgreSQL is the recommended backend for the Whizbang event store:
 
-```csharp{title="Event Store" description="PostgreSQL is the recommended backend for the Whizbang event store:" category="Implementation" difficulty="BEGINNER" tags=["Data", "C#", "Event", "Store"]}
+```csharp{title="Event Store" description="PostgreSQL is the recommended backend for the Whizbang event store:" category="Implementation" difficulty="BEGINNER" tags=["Data", "C#", "Event", "Store"] unverified="raw IEventStore.AppendAsync — verified in the Event Store docs, not by the Postgres provider tests"}
 // Events stored in optimized JSONB columns
 await eventStore.AppendAsync(streamId, new OrderCreatedEvent(...));
 ```
@@ -116,7 +116,7 @@ await eventStore.AppendAsync(streamId, new OrderCreatedEvent(...));
 
 Perspectives are stored as PostgreSQL tables (`wh_per_*`) with automatic schema generation. Each table has the fixed `PerspectiveRow<TModel>` shape (id, data JSONB, metadata JSONB, scope JSONB, created_at, updated_at, version), plus optional physical columns:
 
-```csharp{title="Perspectives" description="Perspective model with physical field storage configuration" category="Implementation" difficulty="BEGINNER" tags=["Data", "Perspectives"]}
+```csharp{title="Perspectives" description="Perspective model with physical field storage configuration" category="Implementation" difficulty="BEGINNER" tags=["Data", "Perspectives"] unverified="perspective model + Apply — verified in the Perspectives docs, not by the Postgres provider tests"}
 // Storage mode is configured on the MODEL via [PerspectiveStorage]
 [PerspectiveStorage(FieldStorageMode.Extracted)]
 public record OrderSummaryDto {
@@ -143,7 +143,7 @@ public class OrderSummaryPerspective : IPerspectiveFor<OrderSummaryDto, OrderCre
 
 pgvector support is turnkey — marking any perspective model property with `[VectorField]` causes the generated registration to call `UseVector()` on the Npgsql data source and create the `vector` extension automatically:
 
-```csharp{title="Vector Search" description="pgvector is enabled automatically when a model has a [VectorField] property" category="Implementation" difficulty="BEGINNER" tags=["Data", "C#", "Vector", "Search"]}
+```csharp{title="Vector Search" description="pgvector is enabled automatically when a model has a [VectorField] property" category="Implementation" difficulty="BEGINNER" tags=["Data", "C#", "Vector", "Search"] unverified="[VectorField] model + pgvector turnkey — verified in the Vector Search docs, not by the Postgres provider tests"}
 [PerspectiveStorage(FieldStorageMode.Split)]
 public record ProductSearchDto {
     [VectorField(1536)]

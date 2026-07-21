@@ -36,7 +36,7 @@ This is **Part 5** of the ECommerce Tutorial. Complete [Notification Service](no
 
 ## What You'll Build
 
-```mermaid
+```mermaid{caption="Shipping Service architecture — PaymentShippingReceptor turns a PaymentProcessedEvent into a CreateShipmentCommand, which CreateShipmentReceptor handles by calling the carrier and publishing ShipmentCreatedEvent through the event store and outbox."}
 flowchart TD
     subgraph SSA["Shipping Service Architecture"]
         ASBIn["Azure Service Bus"]
@@ -75,7 +75,7 @@ flowchart TD
 
 **ECommerce.Contracts/Commands/CreateShipmentCommand.cs**:
 
-```csharp{title="CreateShipmentCommand" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "CreateShipment", "Command"]}
+```csharp{title="CreateShipmentCommand" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "CreateShipment", "Command"] unverified="tutorial worked-example — exercised by the ECommerce sample suite (CreateShipmentReceptorTests), which is outside the core unit-test coverage map"}
 using Whizbang.Core;
 
 namespace ECommerce.Contracts.Commands;
@@ -93,7 +93,7 @@ public record CreateShipmentCommand : ICommand {
 
 **ECommerce.Contracts/Events/ShipmentCreatedEvent.cs**:
 
-```csharp{title="ShipmentCreated Event" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "ShipmentCreated", "Event"]}
+```csharp{title="ShipmentCreated Event" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "ShipmentCreated", "Event"] unverified="tutorial worked-example — exercised by the ECommerce sample suite (CreateShipmentReceptorTests), which is outside the core unit-test coverage map"}
 using Whizbang.Core;
 
 namespace ECommerce.Contracts.Events;
@@ -163,7 +163,7 @@ public class PaymentShippingReceptor(IDispatcher dispatcher, ILogger<PaymentShip
 
 **ECommerce.ShippingWorker/Receptors/CreateShipmentReceptor.cs**:
 
-```csharp{title="Step 3: Implement Receptor" description="**ECommerce." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Step", "Implement"]}
+```csharp{title="Step 3: Implement Receptor" description="**ECommerce." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Step", "Implement"] unverified="tutorial worked-example — exercised by the ECommerce sample suite (CreateShipmentReceptorTests), which is outside the core unit-test coverage map"}
 using ECommerce.Contracts.Commands;
 using ECommerce.Contracts.Events;
 using Microsoft.Extensions.Logging;
@@ -216,7 +216,7 @@ public class CreateShipmentReceptor(IDispatcher dispatcher, ILogger<CreateShipme
 
 The sample simulates the carrier. For production, hide the carrier behind an interface — the receptor stays the same, only the injected implementation changes:
 
-```csharp{title="Step 4: Carrier API Abstraction" description="**ECommerce." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Step", "Carrier"]}
+```csharp{title="Step 4: Carrier API Abstraction" description="**ECommerce." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Step", "Carrier"] unverified="production carrier abstraction — not exercised by a test"}
 namespace ECommerce.ShippingWorker.Services;
 
 public interface ICarrierService {
@@ -266,7 +266,7 @@ A FedEx/UPS/USPS implementation is ordinary `HttpClient` code (OAuth token, POST
 
 **ECommerce.ShippingWorker/Program.cs** (condensed from the sample):
 
-```csharp{title="Step 5: Service Configuration" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Step", "Service"]}
+```csharp{title="Step 5: Service Configuration" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Step", "Service"] unverified="host/DI wiring — not exercised by a test"}
 using Whizbang.Core;
 using Whizbang.Core.Generated;
 using Whizbang.Data.EFCore.Postgres;
@@ -350,7 +350,7 @@ ORDER BY created_at DESC;
 
 **tests/ECommerce.ShippingWorker.Tests/CreateShipmentReceptorTests.cs** follows the same pattern as the other workers:
 
-```csharp{title="Unit Test - Create Shipment" description="Unit Test - Create Shipment" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Unit", "Test"]}
+```csharp{title="Unit Test - Create Shipment" description="Unit Test - Create Shipment" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Unit", "Test"] unverified="tutorial worked-example — exercised by the ECommerce sample suite (CreateShipmentReceptorTests), which is outside the core unit-test coverage map"}
 [Test]
 public async Task HandleAsync_CreatesShipment_PublishesEventAsync() {
   // Arrange
