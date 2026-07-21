@@ -51,7 +51,7 @@ Whizbang uses Roslyn's `AttributeData` API to extract attribute constructor argu
 
 ### Incorrect Code (Triggers WHIZ090)
 
-```csharp{title="Incorrect Code (Triggers WHIZ090)" description="Incorrect Code (Triggers WHIZ090)" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Incorrect", "Code"]}
+```csharp{title="Incorrect Code (Triggers WHIZ090)" description="Incorrect Code (Triggers WHIZ090)" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Incorrect", "Code"] unverified="counter-example — the pattern WHIZ090 flags; detection verified by MessageTagParameterAnalyzerTests.Analyzer_ParameterDoesNotMatchProperty_ReportsDiagnosticAsync"}
 [AttributeUsage(AttributeTargets.Class)]
 public class NotificationTagAttribute : MessageTagAttribute {
   public NotificationTagAttribute(string tagName) {  // WHIZ090: 'tagName' doesn't match 'Tag'
@@ -62,7 +62,7 @@ public class NotificationTagAttribute : MessageTagAttribute {
 
 ### Correct Code
 
-```csharp{title="Correct Code" description="Correct Code" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Correct", "Code"]}
+```csharp{title="Correct Code" description="Correct Code" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Correct", "Code"] tests=["MessageTagParameterAnalyzerTests.Analyzer_ParameterMatchesProperty_NoDiagnosticAsync"]}
 [AttributeUsage(AttributeTargets.Class)]
 public class NotificationTagAttribute : MessageTagAttribute {
   public NotificationTagAttribute(string tag) {  // 'tag' matches 'Tag' (case-insensitive)
@@ -77,7 +77,7 @@ public class NotificationTagAttribute : MessageTagAttribute {
 
 Parameter names are matched to property names case-insensitively:
 
-```csharp{title="Case-Insensitive Matching" description="Parameter names are matched to property names case-insensitively:" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Case-Insensitive", "Matching"]}
+```csharp{title="Case-Insensitive Matching" description="Parameter names are matched to property names case-insensitively:" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Case-Insensitive", "Matching"] tests=["MessageTagParameterAnalyzerTests.Analyzer_ParameterMatchesCaseInsensitive_NoDiagnosticAsync"]}
 // All of these are valid:
 public MyTagAttribute(string tag) { Tag = tag; }            // Exact match
 public MyTagAttribute(string TAG) { Tag = TAG; }            // All caps
@@ -105,7 +105,7 @@ public class MyTagAttribute : MessageTagAttribute {
 
 Parameters can match properties from base classes:
 
-```csharp{title="Inherited Properties" description="Parameters can match properties from base classes:" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Inherited", "Properties"]}
+```csharp{title="Inherited Properties" description="Parameters can match properties from base classes:" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Inherited", "Properties"] tests=["MessageTagParameterAnalyzerTests.Analyzer_ParameterMatchesInheritedProperty_NoDiagnosticAsync"]}
 public class MyTagAttribute : MessageTagAttribute {
   // 'tag' matches inherited 'Tag' property
   // 'extraJson' matches inherited 'ExtraJson' property

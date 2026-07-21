@@ -37,7 +37,7 @@ Whizbang **ships an event store**: `IEventStore` (append via `MessageEnvelope`, 
 
 ## Architecture
 
-```mermaid
+```mermaid{caption="Event sourcing architecture: the write side loads an aggregate, executes a command, then persists and publishes events to an append-only store that feeds read-side projections (perspectives)"}
 flowchart TD
     subgraph ESA["Event Sourcing Architecture"]
         direction TB
@@ -106,7 +106,7 @@ CREATE INDEX idx_snapshots_stream_id ON event_store_snapshots(stream_id);
 
 **OrderEvents.cs**:
 
-```csharp{title="Domain Events" description="**OrderEvents." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Examples", "Domain", "Events"]}
+```csharp{title="Domain Events" description="**OrderEvents." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Examples", "Domain", "Events"] unverified="application domain event records illustrating IEvent and [StreamId], not a core library API under test on this page"}
 using Whizbang.Core;
 
 public record OrderCreatedEvent(
@@ -145,7 +145,7 @@ Events implement `IEvent`, and `[StreamId]` marks the stream (aggregate) identif
 
 **OrderAggregate.cs**:
 
-```csharp{title="Aggregate Root" description="**OrderAggregate." category="Example" difficulty="ADVANCED" tags=["Learn", "Examples", "Aggregate", "Root"]}
+```csharp{title="Aggregate Root" description="**OrderAggregate." category="Example" difficulty="ADVANCED" tags=["Learn", "Examples", "Aggregate", "Root"] unverified="hand-rolled domain aggregate, not a Whizbang library API"}
 public class OrderAggregate {
   private readonly List<object> _uncommittedEvents = [];
 
@@ -298,7 +298,7 @@ public enum OrderStatus {
 
 **EventStoreRepository.cs**:
 
-```csharp{title="Event Store Repository" description="**EventStoreRepository." category="Example" difficulty="ADVANCED" tags=["Learn", "Examples", "Event", "Store"]}
+```csharp{title="Event Store Repository" description="**EventStoreRepository." category="Example" difficulty="ADVANCED" tags=["Learn", "Examples", "Event", "Store"] unverified="hand-rolled teaching repository using raw SQL, not the shipped IEventStore API"}
 public class EventStoreRepository {
   private readonly NpgsqlConnection _db;
   private readonly ILogger<EventStoreRepository> _logger;
@@ -473,7 +473,7 @@ public record SnapshotRow(int Version, string State);
 
 **CreateOrderReceptor.cs**:
 
-```csharp{title="Command Handler (Receptor)" description="**CreateOrderReceptor." category="Example" difficulty="ADVANCED" tags=["Learn", "Examples", "Command", "Handler"]}
+```csharp{title="Command Handler (Receptor)" description="**CreateOrderReceptor." category="Example" difficulty="ADVANCED" tags=["Learn", "Examples", "Command", "Handler"] unverified="application command-handler (receptor) illustration; no receptor test in this page's coverage set"}
 using Whizbang.Core;
 using Whizbang.Core.ValueObjects;
 
@@ -527,7 +527,7 @@ Note the receptor contract: `ValueTask<TResponse> HandleAsync(TMessage message, 
 
 **Get aggregate state at specific point in time**:
 
-```csharp{title="Temporal Queries" description="Get aggregate state at specific point in time:" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Examples", "Temporal", "Queries"]}
+```csharp{title="Temporal Queries" description="Get aggregate state at specific point in time:" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Examples", "Temporal", "Queries"] unverified="hand-rolled temporal query service using raw SQL, not the shipped IEventStoreQuery API"}
 public class EventStoreQueryService {
   private readonly NpgsqlConnection _db;
 
@@ -559,7 +559,7 @@ public class EventStoreQueryService {
 
 **Usage**:
 
-```csharp{title="Temporal Queries (2)" description="Temporal Queries" category="Example" difficulty="BEGINNER" tags=["Learn", "Examples", "Temporal", "Queries"]}
+```csharp{title="Temporal Queries (2)" description="Temporal Queries" category="Example" difficulty="BEGINNER" tags=["Learn", "Examples", "Temporal", "Queries"] unverified="consumer usage snippet for the hand-rolled query service"}
 // Get order state as of yesterday
 var orderYesterday = await queryService.LoadAsOfAsync(
   orderId,
@@ -577,7 +577,7 @@ In Whizbang, projections are **perspectives**: `IPerspectiveFor<TModel, TEvent1,
 
 **OrderSummaryPerspective.cs**:
 
-```csharp{title="Projections (Read Models)" description="**OrderSummaryPerspective." category="Example" difficulty="ADVANCED" tags=["Learn", "Examples", "Projections", "Read"]}
+```csharp{title="Projections (Read Models)" description="**OrderSummaryPerspective." category="Example" difficulty="ADVANCED" tags=["Learn", "Examples", "Projections", "Read"] tests=["IPerspectiveForTests.Perspective_ImplementingIPerspectiveFor_HasApplyMethodAsync", "IPerspectiveForTests.Perspective_ImplementingIPerspectiveFor_ApplyIsPureFunctionAsync", "IPerspectiveForTests.Perspective_ImplementingMultipleEventTypes_HasApplyForEachAsync", "IPerspectiveForTests.Perspective_ApplySignature_ReturnsModelNotTaskAsync"]}
 using Whizbang;
 using Whizbang.Core;
 using Whizbang.Core.Perspectives;
@@ -633,7 +633,7 @@ public class OrderSummaryPerspective :
 
 Because perspectives are pure `Apply` functions over an append-only event log, a read model can always be rebuilt by replaying the stream. Whizbang ships this as a first-class API — `IPerspectiveRebuilder`:
 
-```csharp{title="Rebuilding Projections" description="Rebuild projections from the event store:" category="Example" difficulty="ADVANCED" tags=["Learn", "Examples", "Rebuilding", "Projections"]}
+```csharp{title="Rebuilding Projections" description="Rebuild projections from the event store:" category="Example" difficulty="ADVANCED" tags=["Learn", "Examples", "Rebuilding", "Projections"] tests=["PerspectiveRebuilderTests.RebuildBlueGreenAsync_CompletesSuccessfullyAsync", "PerspectiveRebuilderTests.RebuildInPlaceAsync_WithRegisteredPerspective_ProcessesAllStreamsAsync", "PerspectiveRebuilderTests.RebuildStreamsAsync_WithSpecificStreams_OnlyProcessesThoseAsync", "PerspectiveRebuilderTests.GetRebuildStatusAsync_WithNoActiveRebuild_ReturnsNullAsync"]}
 using Whizbang.Core.Perspectives;
 
 public class RebuildService(IPerspectiveRebuilder rebuilder, ILogger<RebuildService> logger) {
@@ -678,7 +678,7 @@ Create snapshots every 100 events to avoid replaying thousands of events.
 
 Cache frequently accessed aggregates in memory:
 
-```csharp{title="Caching" description="Cache frequently accessed aggregates in memory:" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Examples", "Caching"]}
+```csharp{title="Caching" description="Cache frequently accessed aggregates in memory:" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Examples", "Caching"] unverified="application caching decorator over the hand-rolled repository, not a Whizbang library API"}
 public class CachedEventStoreRepository {
   private readonly EventStoreRepository _inner;
   private readonly IMemoryCache _cache;

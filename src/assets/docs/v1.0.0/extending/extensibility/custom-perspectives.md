@@ -72,7 +72,7 @@ You do **not** write checkpoint-tracking code in perspectives - the runner and w
 
 **Use Case**: Events that should remove the read model row (soft delete or hard purge), not update it.
 
-```csharp{title="Pattern 1: Perspective With Actions" description="Return ApplyResult to express delete/purge operations" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Pattern", "ApplyResult"]}
+```csharp{title="Pattern 1: Perspective With Actions" description="Return ApplyResult to express delete/purge operations" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Pattern", "ApplyResult"] unverified="user extension example — user IPerspectiveWithActionsFor implementation"}
 using Whizbang.Core;
 using Whizbang.Core.Perspectives;
 
@@ -116,7 +116,7 @@ A perspective class can freely mix `IPerspectiveFor<TModel, TEvent>` (update-onl
 
 **Use Case**: Aggregate events from many streams into one model per **partition key** (e.g., per-customer order statistics).
 
-```csharp{title="Pattern 2: Multi-Stream Perspective" description="Aggregate events across streams by partition key" category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Pattern", "Multi-Stream"]}
+```csharp{title="Pattern 2: Multi-Stream Perspective" description="Aggregate events across streams by partition key" category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Pattern", "Multi-Stream"] unverified="user extension example — user IGlobalPerspectiveFor implementation"}
 using Whizbang.Core;
 using Whizbang.Core.Perspectives;
 
@@ -154,7 +154,7 @@ Storage-wise, global perspectives use the partition-key members of `IPerspective
 
 **Use Case**: Rebuild read models after a schema change, a bug fix in `Apply()`, or data corruption - without writing replay plumbing yourself.
 
-```csharp{title="Pattern 3: Perspective Rebuilds" description="Operational rebuild modes via IPerspectiveRebuilder" category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Pattern", "Rebuild"]}
+```csharp{title="Pattern 3: Perspective Rebuilds" description="Operational rebuild modes via IPerspectiveRebuilder" category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Pattern", "Rebuild"] tests=["PerspectiveRebuilderTests.RebuildBlueGreenAsync_CompletesSuccessfullyAsync", "PerspectiveRebuilderTests.RebuildInPlaceAsync_WithRegisteredPerspective_ProcessesAllStreamsAsync", "PerspectiveRebuilderTests.RebuildStreamsAsync_WithSpecificStreams_OnlyProcessesThoseAsync", "PerspectiveRebuilderTests.GetRebuildStatusAsync_WithNoActiveRebuild_ReturnsNullAsync"]}
 public class PerspectiveOperations {
   private readonly IPerspectiveRebuilder _rebuilder;
 
@@ -200,7 +200,7 @@ The rebuilder resolves generated runners from `IPerspectiveRunnerRegistry`, quer
 
 `IPerspectiveStore<TModel>` is keyed by **`Guid` stream IDs** (and generic partition keys for global perspectives). Several overloads (scope, metadata, physical fields) have default implementations that delegate to the simpler members, so a minimal backend implements:
 
-```csharp{title="Pattern 4: IPerspectiveStore Implementation" description="Redis-backed perspective store" category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Pattern", "IPerspectiveStore"]}
+```csharp{title="Pattern 4: IPerspectiveStore Implementation" description="Redis-backed perspective store" category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Pattern", "IPerspectiveStore"] unverified="user extension example — user IPerspectiveStore (Redis) implementation"}
 using Whizbang.Core.Perspectives;
 using StackExchange.Redis;
 using System.Text.Json;
@@ -260,7 +260,7 @@ public class RedisPerspectiveStore<TModel> : IPerspectiveStore<TModel> where TMo
 ```
 
 **Registration**:
-```csharp{title="Custom Store Registration" description="Register a custom perspective store" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Pattern", "IPerspectiveStore"]}
+```csharp{title="Custom Store Registration" description="Register a custom perspective store" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Pattern", "IPerspectiveStore"] unverified="user extension example — registers a user-defined Redis store"}
 builder.Services.AddSingleton<IConnectionMultiplexer>(
   ConnectionMultiplexer.Connect("localhost:6379")
 );
@@ -282,7 +282,7 @@ The metadata-persisting `UpsertAsync` overloads are how generated runners make p
 
 Because `Apply()` methods are pure functions, perspective tests need no mocks, no database, and no framework setup:
 
-```csharp{title="Testing Pure Apply Methods" description="Perspective tests are pure function tests" category="Extensibility" difficulty="BEGINNER" tags=["Extending", "Extensibility", "Testing", "Perspectives"]}
+```csharp{title="Testing Pure Apply Methods" description="Perspective tests are pure function tests" category="Extensibility" difficulty="BEGINNER" tags=["Extending", "Extensibility", "Testing", "Perspectives"] unverified="user extension example — sample perspective unit test"}
 public class OrderPerspectiveTests {
   [Test]
   public async Task Apply_OrderCreated_InitializesModelAsync() {

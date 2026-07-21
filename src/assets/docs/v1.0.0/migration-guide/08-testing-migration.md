@@ -62,7 +62,7 @@ Whizbang recommends **TUnit** with **Rocks** for AOT-compatible testing:
 
 **xUnit + Moq (before)**:
 
-```csharp{title="Handler/Receptor Tests" description="xUnit + Moq (before):" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-Guide", "Handler", "Receptor", "Tests"]}
+```csharp{title="Handler/Receptor Tests" description="xUnit + Moq (before):" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-Guide", "Handler", "Receptor", "Tests"] unverified="other framework — migration before-state"}
 public class OrderHandlerTests {
     [Fact]
     public async Task Handle_ValidOrder_ReturnsOrderCreated() {
@@ -87,7 +87,7 @@ public class OrderHandlerTests {
 
 **TUnit + Rocks (after)**:
 
-```csharp{title="Handler/Receptor Tests - CreateOrderReceptorTests" description="TUnit + Rocks (after):" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-Guide", "Handler", "Receptor", "Tests"]}
+```csharp{title="Handler/Receptor Tests - CreateOrderReceptorTests" description="TUnit + Rocks (after):" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-Guide", "Handler", "Receptor", "Tests"] unverified="Rocks mocking migration pattern — user test code"}
 public class CreateOrderReceptorTests {
     [Test]
     public async Task HandleAsync_ValidOrder_ReturnsOrderCreatedAsync() {
@@ -119,7 +119,7 @@ Perspectives are pure functions - no mocks needed!
 
 **TUnit (Whizbang perspective test)**:
 
-```csharp{title="Perspective Tests" description="TUnit (Whizbang perspective test):" category="Reference" difficulty="ADVANCED" tags=["Migration-guide", "C#", "Perspective", "Tests"]}
+```csharp{title="Perspective Tests" description="TUnit (Whizbang perspective test):" category="Reference" difficulty="ADVANCED" tags=["Migration-guide", "C#", "Perspective", "Tests"] tests=["IPerspectiveForTests.Perspective_ImplementingIPerspectiveFor_HasApplyMethodAsync", "IPerspectiveForTests.Perspective_ImplementingIPerspectiveFor_ApplyIsPureFunctionAsync", "IPerspectiveForTests.Perspective_ImplementingMultipleEventTypes_HasApplyForEachAsync"]}
 public class OrderSummaryPerspectiveTests {
     [Test]
     public async Task Apply_OrderCreated_CreatesNewSummaryAsync() {
@@ -170,7 +170,7 @@ public class OrderSummaryPerspectiveTests {
 
 **Before (Marten)**:
 
-```csharp{title="Marten Test Harness" description="Before (Marten):" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-guide", "C#", "Marten", "Test", "Harness"]}
+```csharp{title="Marten Test Harness" description="Before (Marten):" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-guide", "C#", "Marten", "Test", "Harness"] unverified="other framework — migration before-state"}
 public class OrderIntegrationTests : IAsyncLifetime {
     private IDocumentStore _store = null!;
 
@@ -203,7 +203,7 @@ public class OrderIntegrationTests : IAsyncLifetime {
 
 **After (Whizbang)**:
 
-```csharp{title="Whizbang Test Harness" description="After (Whizbang):" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-guide", "C#", "Whizbang", "Test", "Harness"]}
+```csharp{title="Whizbang Test Harness" description="After (Whizbang):" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-guide", "C#", "Whizbang", "Test", "Harness"] tests=["InMemoryEventStoreTests.AppendAsync_WithMessage_ShouldStoreEventAsync"]}
 public class OrderIntegrationTests : IAsyncLifetime {
     private ServiceProvider _provider = null!;
     private IEventStore _eventStore = null!;
@@ -243,7 +243,7 @@ public class OrderIntegrationTests : IAsyncLifetime {
 
 ### TestContainers for PostgreSQL
 
-```csharp{title="TestContainers for PostgreSQL" description="TestContainers for PostgreSQL" category="Reference" difficulty="ADVANCED" tags=["Migration-guide", "C#", "TestContainers", "PostgreSQL"]}
+```csharp{title="TestContainers for PostgreSQL" description="TestContainers for PostgreSQL" category="Reference" difficulty="ADVANCED" tags=["Migration-guide", "C#", "TestContainers", "PostgreSQL"] unverified="TestContainers integration harness — infrastructure wiring"}
 public class PostgresIntegrationTests : IAsyncLifetime {
     private PostgreSqlContainer _postgres = null!;
     private ServiceProvider _provider = null!;
@@ -292,7 +292,7 @@ public class PostgresIntegrationTests : IAsyncLifetime {
 
 ### Bogus Faker for Test Data
 
-```csharp{title="Bogus Faker for Test Data" description="Bogus Faker for Test Data" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-guide", "C#", "Bogus", "Faker", "Test"]}
+```csharp{title="Bogus Faker for Test Data" description="Bogus Faker for Test Data" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-guide", "C#", "Bogus", "Faker", "Test"] unverified="Bogus test-data generation — user test code"}
 public class OrderFaker : Faker<CreateOrder> {
     public OrderFaker() {
         RuleFor(o => o.CustomerId, f => Guid.CreateVersion7());
@@ -325,7 +325,7 @@ public async Task HandleAsync_ValidOrder_ProcessesCorrectlyAsync() {
 
 ### TUnit Async Assertions
 
-```csharp{title="TUnit Async Assertions" description="TUnit Async Assertions" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-guide", "C#", "TUnit", "Async", "Assertions"]}
+```csharp{title="TUnit Async Assertions" description="TUnit Async Assertions" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-guide", "C#", "TUnit", "Async", "Assertions"] unverified="illustrative TUnit assertion patterns — user test code"}
 [Test]
 public async Task Receptor_ThrowsOnInvalidInput_Async() {
     var receptor = new CreateOrderReceptor(_eventStore);
@@ -357,7 +357,7 @@ public async Task EventStore_ReturnsEventsInOrder_Async() {
 
 All async test methods must end with `Async`:
 
-```csharp{title="Test Naming Convention" description="All async test methods must end with Async:" category="Reference" difficulty="BEGINNER" tags=["Migration-guide", "C#", "Test", "Naming", "Convention"]}
+```csharp{title="Test Naming Convention" description="All async test methods must end with Async:" category="Reference" difficulty="BEGINNER" tags=["Migration-guide", "C#", "Test", "Naming", "Convention"] unverified="naming-convention illustration — no behavior to assert"}
 // ✅ CORRECT
 [Test]
 public async Task HandleAsync_ValidInput_ReturnsExpectedResultAsync() { }

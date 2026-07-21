@@ -37,7 +37,7 @@ This guide covers configuring message transports in Whizbang, including environm
 
 ### Recommended Pattern: Runtime Configuration
 
-```csharp{title="Recommended Pattern: Runtime Configuration" description="Recommended Pattern: Runtime Configuration" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-guide", "C#", "Recommended", "Pattern:", "Runtime"]}
+```csharp{title="Recommended Pattern: Runtime Configuration" description="Recommended Pattern: Runtime Configuration" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-guide", "C#", "Recommended", "Pattern:", "Runtime"] unverified="config/DI wiring — environment-based transport switching, not a single testable unit"}
 var builder = WebApplication.CreateBuilder(args);
 
 // Core Whizbang setup (storage; connection string resolved from configuration)
@@ -104,14 +104,14 @@ if (useRabbitMQ) {
 
 ### Basic Setup
 
-```csharp{title="Basic Setup" description="Basic Setup" category="Reference" difficulty="BEGINNER" tags=["Migration-guide", "C#", "Setup"]}
+```csharp{title="Basic Setup" description="Basic Setup" category="Reference" difficulty="BEGINNER" tags=["Migration-guide", "C#", "Setup"] unverified="config/DI wiring — RabbitMQ transport registration"}
 builder.Services.AddRabbitMQTransport(
     builder.Configuration.GetConnectionString("rabbitmq")!);
 ```
 
 ### Advanced Configuration
 
-```csharp{title="Advanced Configuration" description="Advanced Configuration" category="Reference" difficulty="ADVANCED" tags=["Migration-guide", "C#", "Advanced", "Configuration"]}
+```csharp{title="Advanced Configuration" description="Advanced Configuration" category="Reference" difficulty="ADVANCED" tags=["Migration-guide", "C#", "Advanced", "Configuration"] unverified="config/DI wiring — RabbitMQ options tuning; option-application not covered by a unit test"}
 builder.Services.AddRabbitMQTransport(
     builder.Configuration.GetConnectionString("rabbitmq")!,
     options => {
@@ -140,7 +140,7 @@ builder.Services.AddRabbitMQHealthChecks();
 
 ### Aspire Integration
 
-```csharp{title="Aspire Integration" description="Aspire Integration" category="Reference" difficulty="BEGINNER" tags=["Migration-guide", "C#", "Aspire", "Integration"]}
+```csharp{title="Aspire Integration" description="Aspire Integration" category="Reference" difficulty="BEGINNER" tags=["Migration-guide", "C#", "Aspire", "Integration"] unverified="Aspire AppHost wiring — not a Whizbang API"}
 // In AppHost project
 var rabbitmq = builder.AddRabbitMQ("rabbitmq")
     .WithManagementPlugin();
@@ -149,7 +149,7 @@ var api = builder.AddProject<Projects.MyApp_API>("api")
     .WithReference(rabbitmq);
 ```
 
-```csharp{title="Aspire Integration (2)" description="Aspire Integration" category="Reference" difficulty="BEGINNER" tags=["Migration-guide", "C#", "Aspire", "Integration"]}
+```csharp{title="Aspire Integration (2)" description="Aspire Integration" category="Reference" difficulty="BEGINNER" tags=["Migration-guide", "C#", "Aspire", "Integration"] unverified="config/DI wiring — RabbitMQ transport registration (Aspire-injected connection string)"}
 // In API project - Aspire injects the connection string into configuration
 builder.Services.AddRabbitMQTransport(
     builder.Configuration.GetConnectionString("rabbitmq")!);
@@ -159,14 +159,14 @@ builder.Services.AddRabbitMQTransport(
 
 ### Basic Setup
 
-```csharp{title="Basic Setup (2)" description="Basic Setup" category="Reference" difficulty="BEGINNER" tags=["Migration-guide", "C#", "Setup"]}
+```csharp{title="Basic Setup (2)" description="Basic Setup" category="Reference" difficulty="BEGINNER" tags=["Migration-guide", "C#", "Setup"] unverified="config/DI wiring — Azure Service Bus transport registration"}
 builder.Services.AddAzureServiceBusTransport(
     builder.Configuration.GetConnectionString("servicebus")!);
 ```
 
 ### Advanced Configuration
 
-```csharp{title="Advanced Configuration (2)" description="Advanced Configuration" category="Reference" difficulty="ADVANCED" tags=["Migration-guide", "C#", "Advanced", "Configuration"]}
+```csharp{title="Advanced Configuration (2)" description="Advanced Configuration" category="Reference" difficulty="ADVANCED" tags=["Migration-guide", "C#", "Advanced", "Configuration"] unverified="config/DI wiring — Azure Service Bus options tuning; option-application not covered by a unit test"}
 builder.Services.AddAzureServiceBusTransport(
     builder.Configuration.GetConnectionString("servicebus")!,
     options => {
@@ -201,7 +201,7 @@ builder.Services.AddAzureServiceBusHealthChecks();
 
 `AddAzureServiceBusTransport` takes a connection string, but it reuses any `ServiceBusClient` you have already registered. To authenticate with a managed identity, register the client yourself first:
 
-```csharp{title="Managed Identity Authentication" description="Managed Identity Authentication" category="Reference" difficulty="BEGINNER" tags=["Migration-guide", "C#", "Managed", "Identity", "Authentication"]}
+```csharp{title="Managed Identity Authentication" description="Managed Identity Authentication" category="Reference" difficulty="BEGINNER" tags=["Migration-guide", "C#", "Managed", "Identity", "Authentication"] tests=["ServiceCollectionExtensionsTests.AddAzureServiceBusTransport_WithExistingClient_DoesNotRegisterSecondClientAsync"]}
 // Pre-register a ServiceBusClient using DefaultAzureCredential;
 // the transport registration detects and reuses it.
 builder.Services.AddSingleton(new ServiceBusClient(
@@ -216,7 +216,7 @@ builder.Services.AddAzureServiceBusTransport(
 
 ### Wolverine RabbitMQ
 
-```csharp{title="Wolverine RabbitMQ" description="Wolverine RabbitMQ" category="Reference" difficulty="BEGINNER" tags=["Migration-guide", "C#", "Wolverine", "RabbitMQ"]}
+```csharp{title="Wolverine RabbitMQ" description="Wolverine RabbitMQ" category="Reference" difficulty="BEGINNER" tags=["Migration-guide", "C#", "Wolverine", "RabbitMQ"] unverified="other framework — migration before-state"}
 // Wolverine
 builder.Host.UseWolverine(opts => {
     opts.UseRabbitMq("amqp://guest:guest@localhost:5672")
@@ -225,7 +225,7 @@ builder.Host.UseWolverine(opts => {
 });
 ```
 
-```csharp{title="Wolverine RabbitMQ (2)" description="Wolverine RabbitMQ" category="Reference" difficulty="BEGINNER" tags=["Migration-guide", "C#", "Wolverine", "RabbitMQ"]}
+```csharp{title="Wolverine RabbitMQ (2)" description="Wolverine RabbitMQ" category="Reference" difficulty="BEGINNER" tags=["Migration-guide", "C#", "Wolverine", "RabbitMQ"] unverified="config/DI wiring — RabbitMQ transport registration"}
 // Whizbang
 // - Outbox is built-in to Whizbang Core (no UseDurableOutbox equivalent needed)
 // - Exchanges are auto-provisioned from routing configuration
@@ -234,7 +234,7 @@ builder.Services.AddRabbitMQTransport("amqp://guest:guest@localhost:5672");
 
 ### Wolverine Azure Service Bus
 
-```csharp{title="Wolverine Azure Service Bus" description="Wolverine Azure Service Bus" category="Reference" difficulty="BEGINNER" tags=["Migration-guide", "C#", "Wolverine", "Azure", "Service"]}
+```csharp{title="Wolverine Azure Service Bus" description="Wolverine Azure Service Bus" category="Reference" difficulty="BEGINNER" tags=["Migration-guide", "C#", "Wolverine", "Azure", "Service"] unverified="other framework — migration before-state"}
 // Wolverine
 builder.Host.UseWolverine(opts => {
     opts.UseAzureServiceBus(connectionString)
@@ -243,7 +243,7 @@ builder.Host.UseWolverine(opts => {
 });
 ```
 
-```csharp{title="Wolverine Azure Service Bus (2)" description="Wolverine Azure Service Bus" category="Reference" difficulty="BEGINNER" tags=["Migration-guide", "C#", "Wolverine", "Azure", "Service"]}
+```csharp{title="Wolverine Azure Service Bus (2)" description="Wolverine Azure Service Bus" category="Reference" difficulty="BEGINNER" tags=["Migration-guide", "C#", "Wolverine", "Azure", "Service"] unverified="config/DI wiring — Azure Service Bus transport registration"}
 // Whizbang
 // Topics and subscriptions are auto-provisioned from routing configuration
 builder.Services.AddAzureServiceBusTransport(connectionString);
@@ -253,7 +253,7 @@ builder.Services.AddAzureServiceBusTransport(connectionString);
 
 Routing is namespace-based: events publish to topics derived from their namespace, and commands route point-to-point through a shared inbox topic. Configure it with `WithRouting` on the builder chain:
 
-```csharp{title="Namespace-Based Routing" description="Namespace-Based Routing" category="Reference" difficulty="BEGINNER" tags=["Migration-Guide", "Topic-Based", "Routing"]}
+```csharp{title="Namespace-Based Routing" description="Namespace-Based Routing" category="Reference" difficulty="BEGINNER" tags=["Migration-Guide", "Topic-Based", "Routing"] tests=["RoutingBuilderExtensionsTests.WithRouting_ConfiguresOwnDomainsCorrectlyAsync", "RoutingBuilderExtensionsTests.WithRouting_ConfiguresSubscribeToCorrectlyAsync", "RoutingBuilderExtensionsTests.WithRouting_ConfiguresSharedTopicInboxAsync"]}
 builder.Services
     .AddWhizbang()
     .WithRouting(routing => {
@@ -281,7 +281,7 @@ Per-message-type topic overrides and SQL-style subscription filters are not part
 
 For unit and in-memory integration tests, skip transport registration entirely — local dispatch and the EF Core InMemory driver cover the full pipeline:
 
-```csharp{title="In-Memory Testing Without a Transport" description="In-Memory Testing Without a Transport" category="Reference" difficulty="BEGINNER" tags=["Migration-Guide", "In-Memory", "Transport", "Tests"]}
+```csharp{title="In-Memory Testing Without a Transport" description="In-Memory Testing Without a Transport" category="Reference" difficulty="BEGINNER" tags=["Migration-Guide", "In-Memory", "Transport", "Tests"] unverified="config/DI wiring — in-memory test host setup"}
 public static class TestServices {
     public static ServiceProvider Build() {
         var services = new ServiceCollection();
@@ -301,7 +301,7 @@ public static class TestServices {
 
 Whizbang uses TUnit (not xUnit), so container lifecycle hooks use `[Before(Test)]`/`[After(Test)]` instead of `IAsyncLifetime`:
 
-```csharp{title="Integration Test with TestContainers" description="Integration Test with TestContainers" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-guide", "C#", "Integration", "Test", "TestContainers"]}
+```csharp{title="Integration Test with TestContainers" description="Integration Test with TestContainers" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-guide", "C#", "Integration", "Test", "TestContainers"] unverified="user test-harness scaffolding — not a Whizbang API"}
 public class RabbitMqTransportTests {
     private RabbitMqContainer _rabbitMq = null!;
 

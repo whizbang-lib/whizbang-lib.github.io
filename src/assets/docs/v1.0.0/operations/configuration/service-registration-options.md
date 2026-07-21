@@ -45,7 +45,7 @@ Both carry the same single property.
 Controls whether concrete types are registered as themselves in addition to their interfaces. All generated registrations are **Transient**.
 
 **When enabled (default)**:
-```csharp{title="IncludeSelfRegistration" description="When enabled (default):" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Configuration", "IncludeSelfRegistration"]}
+```csharp{title="IncludeSelfRegistration" description="When enabled (default):" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Configuration", "IncludeSelfRegistration"] tests=["ServiceRegistrationGeneratorTests.Generator_SelfRegistration_EnabledByDefault_RegistersBothAsync"]}
 // Both registrations are made
 services.AddTransient<IOrderLens, OrderLens>();  // Interface registration
 services.AddTransient<OrderLens>();               // Self-registration
@@ -63,7 +63,7 @@ services.AddTransient<IOrderLens, OrderLens>();
 
 `AddWhizbang()` auto-registers all discovered services with default options — no explicit call needed:
 
-```csharp{title="Default Registration" description="Auto-registration via AddWhizbang" category="DI" difficulty="BEGINNER" tags=["DI", "ServiceRegistration"]}
+```csharp{title="Default Registration" description="Auto-registration via AddWhizbang" category="DI" difficulty="BEGINNER" tags=["DI", "ServiceRegistration"] unverified="DI registration option — the generator output is verified by ServiceRegistrationGeneratorTests"}
 // Auto-registers discovered Lenses and Perspectives
 // (IncludeSelfRegistration = true)
 services.AddWhizbang();
@@ -73,7 +73,7 @@ services.AddWhizbang();
 
 Configure the auto-registration path through `options.Services`:
 
-```csharp{title="Configure via AddWhizbang" description="Disable self-registration for auto-registered services" category="DI" difficulty="BEGINNER" tags=["DI", "ServiceRegistration", "Options"]}
+```csharp{title="Configure via AddWhizbang" description="Disable self-registration for auto-registered services" category="DI" difficulty="BEGINNER" tags=["DI", "ServiceRegistration", "Options"] unverified="DI registration option — the generator output is verified by ServiceRegistrationGeneratorTests"}
 services.AddWhizbang(options => {
   options.Services.IncludeSelfRegistration = false;  // Only register interfaces
 });
@@ -81,7 +81,7 @@ services.AddWhizbang(options => {
 
 Or call the generated extension methods explicitly:
 
-```csharp{title="Custom Registration Options" description="Disable self-registration via explicit methods" category="DI" difficulty="BEGINNER" tags=["DI", "ServiceRegistration", "Options"]}
+```csharp{title="Custom Registration Options" description="Disable self-registration via explicit methods" category="DI" difficulty="BEGINNER" tags=["DI", "ServiceRegistration", "Options"] unverified="DI registration option — the generator output is verified by ServiceRegistrationGeneratorTests"}
 // Disable self-registration for all services
 services.AddPerspectiveServices(options => options.IncludeSelfRegistration = false);
 services.AddLensServices(options => options.IncludeSelfRegistration = false);
@@ -106,7 +106,7 @@ services.AddAllWhizbangServices(options => options.IncludeSelfRegistration = fal
 
 The source generator produces code similar to:
 
-```csharp{title="Generated Registration Code" description="Example of generated service registration" category="DI" difficulty="INTERMEDIATE" tags=["DI", "SourceGenerator"]}
+```csharp{title="Generated Registration Code" description="Example of generated service registration" category="DI" difficulty="INTERMEDIATE" tags=["DI", "SourceGenerator"] tests=["ServiceRegistrationGeneratorTests.Generator_UserLensInterface_RegistersInterfaceToImplementationAsync", "ServiceRegistrationGeneratorTests.Generator_SelfRegistration_EnabledByDefault_RegistersBothAsync"]}
 public static IServiceCollection AddLensServices(
     this IServiceCollection services,
     Action<ServiceRegistrationOptions>? configure = null) {

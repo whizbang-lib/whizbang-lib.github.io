@@ -37,7 +37,7 @@ Traditional debugging shows you **where you are now**. Hop chains show you **how
 
 Just as IP packets accumulate hops as they cross routers, Whizbang messages accumulate context hops as they cross receptors and services:
 
-```mermaid
+```mermaid{caption="Network-packet analogy — just as an IP packet accumulates hops as it crosses routers, a Whizbang message envelope accumulates context hops (routing, scope, policy, caller info) as it crosses receptors and services."}
 flowchart LR
     subgraph Packet["Network Packet"]
         direction TB
@@ -62,7 +62,7 @@ flowchart LR
 
 `MessageEnvelope<TMessage>` (implements `IMessageEnvelope<TMessage>`) wraps every message:
 
-```csharp{title="MessageEnvelope structure" description="The envelope Whizbang wraps every message in: message id, payload, the additive hop list, dispatch context, and a schema version." category="Observability" difficulty="INTERMEDIATE" tags=["message-envelope","hops","dispatch-context","payload"]}
+```csharp{title="MessageEnvelope structure" description="The envelope Whizbang wraps every message in: message id, payload, the additive hop list, dispatch context, and a schema version." category="Observability" difficulty="INTERMEDIATE" tags=["message-envelope","hops","dispatch-context","payload"] tests=["MessageTracingTests.MessageEnvelope_Constructor_SetsAllPropertiesAsync", "MessageTracingTests.MessageEnvelope_RequiresAtLeastOneHopAsync", "MessageTracingTests.MessageEnvelope_AddHop_AddsHopToListAsync"]}
 public class MessageEnvelope<TMessage> : IMessageEnvelope<TMessage> {
     public required MessageId MessageId { get; init; }             // unique id for this message
     public required TMessage Payload { get; set; }                 // your command / event / query
@@ -107,7 +107,7 @@ The envelope exposes read helpers that walk the hop list for you. Each filters t
 
 Each hop is an immutable `record` — a complete snapshot of message state at one point in the journey:
 
-```csharp{title="MessageHop record and HopType enum" description="An immutable snapshot of message state at one hop: service instance, routing, scope delta, policy trail, caller info, timing, and a W3C traceparent." category="Observability" difficulty="INTERMEDIATE" tags=["message-hop","hop-type","causation","traceparent"]}
+```csharp{title="MessageHop record and HopType enum" description="An immutable snapshot of message state at one hop: service instance, routing, scope delta, policy trail, caller info, timing, and a W3C traceparent." category="Observability" difficulty="INTERMEDIATE" tags=["message-hop","hop-type","causation","traceparent"] tests=["MessageTracingTests.MessageHop_Constructor_SetsAllPropertiesAsync", "MessageTracingTests.MessageHop_Type_DefaultsToCurrentAsync", "MessageTracingTests.MessageHop_Type_CanBeSetToCausationAsync", "MessageHopTests.MessageHop_WithAllProperties_StoresAllValuesAsync"]}
 public record MessageHop {
     // Hop type
     public HopType Type { get; init; } = HopType.Current;    // Current or Causation
@@ -155,7 +155,7 @@ public enum HopType {
 
 `ServiceInstanceInfo` identifies the exact instance that processed the hop:
 
-```csharp{title="ServiceInstanceInfo identity record" description="Identifies the exact service instance that processed a hop — name, UUIDv7 instance id, host, and process id — with an Unknown sentinel when no provider is configured." category="Observability" difficulty="BEGINNER" tags=["service-instance","instance-id","host-name","process-id"]}
+```csharp{title="ServiceInstanceInfo identity record" description="Identifies the exact service instance that processed a hop — name, UUIDv7 instance id, host, and process id — with an Unknown sentinel when no provider is configured." category="Observability" difficulty="BEGINNER" tags=["service-instance","instance-id","host-name","process-id"] unverified="supporting identity record — its provider population and Unknown sentinel are verified by ServiceInstanceProviderTests and the SystemEventEmitter Unknown-sentinel test, not by these hop/trace tests"}
 public record ServiceInstanceInfo {
     public required string ServiceName { get; init; }   // e.g. "OrderService"
     public required Guid   InstanceId  { get; init; }   // UUIDv7 per running instance
@@ -169,7 +169,7 @@ public record ServiceInstanceInfo {
 
 When a message spawns a child message, the parent's **`Current` hops are carried forward as the child's `Causation` hops**. The child always has at least one `Current` hop (its own origin). This preserves the complete causal chain: from any message you can see the hops of everything that led to it.
 
-```mermaid
+```mermaid{caption="Current vs. causation hops — when a command spawns a child event, the parent's Current hops are carried forward as the child's Causation hops while the child adds its own Current hop; GetCurrentHops and GetCausationHops split the two." tests=["MessageTracingTests.MessageEnvelope_GetCurrentHops_ReturnsOnlyCurrentHopsAsync", "MessageTracingTests.MessageEnvelope_GetCausationHops_ReturnsOnlyCausationHopsAsync", "MessageTracingTests.MessageHop_Type_CanBeSetToCausationAsync"]}
 flowchart LR
     Cmd["CreateOrder command<br/>Hops:<br/>[Current] gateway<br/>[Current] orders"]
     Evt["OrderCreated event<br/>Hops:<br/>[Causation] gateway ← inherited<br/>[Causation] orders ← inherited<br/>[Current] orders (evt) ← this message"]
@@ -185,7 +185,7 @@ Use `envelope.GetCurrentHops()` and `envelope.GetCausationHops()` to split them.
 
 `MessageHop.Scope` uses **delta storage**: a hop records only what changed from the previous hop (a `ScopeDelta`), not the full context. Reassemble the effective scope with `envelope.GetCurrentScope()`, which folds the deltas across all current hops into a `ScopeContext` (tenant/user, roles, permissions, claims, principals).
 
-```csharp{title="Read effective scope from an envelope" description="GetCurrentScope folds each current hop's ScopeDelta into a ScopeContext; ScopeContext.Scope exposes the string tenant and user." category="Observability" difficulty="INTERMEDIATE" tags=["scope","tenant","user","scope-delta"]}
+```csharp{title="Read effective scope from an envelope" description="GetCurrentScope folds each current hop's ScopeDelta into a ScopeContext; ScopeContext.Scope exposes the string tenant and user." category="Observability" difficulty="INTERMEDIATE" tags=["scope","tenant","user","scope-delta"] tests=["MessageTracingTests.MessageEnvelope_GetCurrentSecurityContext_ReturnsMostRecentNonNullValueAsync", "MessageTracingTests.MessageEnvelope_GetCurrentSecurityContext_ReturnsNull_WhenNoHopsAsync", "MessageHopTests.MessageHop_WithSecurityContext_SetsSecurityContextAsync"]}
 var scope  = envelope.GetCurrentScope();
 var tenant = scope?.Scope.TenantId;   // string?
 var user   = scope?.Scope.UserId;     // string?
@@ -199,7 +199,7 @@ The full mechanics — how deltas are captured, merged, and enforced across serv
 
 Policy decisions made at a hop are recorded in `MessageHop.Trail`. `envelope.GetAllPolicyDecisions()` stitches every current hop's decisions together in chronological order.
 
-```csharp{title="PolicyDecisionTrail and PolicyDecision" description="RecordDecision appends a routing decision to a hop's trail; each PolicyDecision captures the policy, rule, match result, configuration, reason, and timestamp." category="Observability" difficulty="INTERMEDIATE" tags=["policy-decision","decision-trail","routing","audit"]}
+```csharp{title="PolicyDecisionTrail and PolicyDecision" description="RecordDecision appends a routing decision to a hop's trail; each PolicyDecision captures the policy, rule, match result, configuration, reason, and timestamp." category="Observability" difficulty="INTERMEDIATE" tags=["policy-decision","decision-trail","routing","audit"] tests=["PolicyDecisionTrailTests.RecordDecision_AddsDecisionWithAllPropertiesAsync", "PolicyDecisionTrailTests.GetMatchedRules_ReturnsOnlyMatchedDecisionsAsync", "PolicyDecisionTrailTests.GetUnmatchedRules_ReturnsOnlyUnmatchedDecisionsAsync", "PolicyDecisionTrailTests.Decisions_IsInitializedEmptyByDefaultAsync"]}
 public class PolicyDecisionTrail {
     public List<PolicyDecision> Decisions { get; init; } = [];
 
@@ -230,7 +230,7 @@ See [Policy engine](../../operations/infrastructure/policies.md) for how policie
 
 Metadata accumulates hop-to-hop. Each hop may **inherit** prior keys, **overwrite** a key, or **add** new ones. `GetAllMetadata()` returns the stitched result (later current hops win); `GetMetadata(key)` returns the latest value for a single key. Values are `JsonElement`, so any JSON shape is allowed.
 
-```csharp{title="Read stitched hop metadata" description="GetAllMetadata and GetMetadata return JsonElement values stitched across current hops, later hops winning; check ValueKind before extracting." category="Observability" difficulty="INTERMEDIATE" tags=["metadata","json-element","stitching","enrichment"]}
+```csharp{title="Read stitched hop metadata" description="GetAllMetadata and GetMetadata return JsonElement values stitched across current hops, later hops winning; check ValueKind before extracting." category="Observability" difficulty="INTERMEDIATE" tags=["metadata","json-element","stitching","enrichment"] tests=["MessageTracingTests.MessageEnvelope_GetAllMetadata_StitchesAllMetadataAsync", "MessageTracingTests.MessageEnvelope_GetMetadata_ReturnsLatestValue_WhenKeyExistsInMultipleHopsAsync", "MessageTracingTests.MessageEnvelope_GetMetadata_ReturnsNull_WhenKeyNotFoundAsync"]}
 var all      = envelope.GetAllMetadata();          // IReadOnlyDictionary<string, JsonElement>
 var priority = envelope.GetMetadata("priority");
 if (priority is { } p && p.ValueKind == JsonValueKind.String) {
@@ -244,7 +244,7 @@ if (priority is { } p && p.ValueKind == JsonValueKind.String) {
 
 Every hop can capture the source location that created it (`CallerMemberName`, `CallerFilePath`, `CallerLineNumber`) and how long it took (`Timestamp`, `Duration`). This turns "where did this originate?" into a file/line answer instead of a distributed stack-trace hunt.
 
-```csharp{title="Find the slowest hops with caller locations" description="Order current hops by Duration and print each hop's service, elapsed time, and captured file and line." category="Observability" difficulty="INTERMEDIATE" tags=["caller-info","duration","timing","profiling"]}
+```csharp{title="Find the slowest hops with caller locations" description="Order current hops by Duration and print each hop's service, elapsed time, and captured file and line." category="Observability" difficulty="INTERMEDIATE" tags=["caller-info","duration","timing","profiling"] tests=["MessageTracingTests.MessageEnvelope_GetCurrentHops_ReturnsOnlyCurrentHopsAsync", "MessageTracingTests.RecordHop_CapturesCallerFilePath_AutomaticallyAsync", "MessageTracingTests.RecordHop_CapturesCallerLineNumber_AutomaticallyAsync", "MessageTracingTests.RecordHop_WithDuration_SetsDurationFieldAsync"]}
 var slowest = envelope.GetCurrentHops()
     .OrderByDescending(h => h.Duration)
     .Take(5);
@@ -263,7 +263,7 @@ foreach (var hop in slowest) {
 
 Envelopes are captured into an `ITraceStore` so you can query the message history after the fact. The dispatcher **automatically stores each envelope** as it dispatches — you don't call `StoreAsync` yourself in application code; you query.
 
-```csharp{title="ITraceStore query surface" description="The store the dispatcher writes envelopes to: fetch by message id, by correlation id, by causal chain, or by time range." category="Observability" difficulty="INTERMEDIATE" tags=["trace-store","query","correlation","causal-chain"]}
+```csharp{title="ITraceStore query surface" description="The store the dispatcher writes envelopes to: fetch by message id, by correlation id, by causal chain, or by time range." category="Observability" difficulty="INTERMEDIATE" tags=["trace-store","query","correlation","causal-chain"] tests=["TraceStoreContractTests.TraceStore_StoreAndRetrieve_ShouldStoreAndRetrieveEnvelopeAsync", "TraceStoreContractTests.TraceStore_GetByMessageId_ShouldReturnNullForNonExistentTraceAsync", "TraceStoreContractTests.TraceStore_GetByCorrelation_ShouldReturnAllMessagesWithSameCorrelationIdAsync", "TraceStoreContractTests.TraceStore_GetCausalChain_ShouldReturnMessageAndParentsAsync", "TraceStoreContractTests.TraceStore_GetByTimeRange_ShouldReturnMessagesInRangeAsync"]}
 public interface ITraceStore {
     Task StoreAsync(IMessageEnvelope envelope, CancellationToken ct = default);
 
@@ -300,7 +300,7 @@ All examples resolve `ITraceStore` from DI.
 
 Inspect the policy decision trail.
 
-```csharp{title="Debug a routing decision from the policy trail" description="Fetch the envelope by id and print each policy decision, showing the resolved PolicyConfiguration when a rule matched." category="Observability" difficulty="INTERMEDIATE" tags=["policy-trail","routing","debugging","trace-store"]}
+```csharp{title="Debug a routing decision from the policy trail" description="Fetch the envelope by id and print each policy decision, showing the resolved PolicyConfiguration when a rule matched." category="Observability" difficulty="INTERMEDIATE" tags=["policy-trail","routing","debugging","trace-store"] tests=["MessageTracingTests.MessageEnvelope_GetAllPolicyDecisions_ReturnsSingleHopDecisionsAsync", "MessageTracingTests.MessageEnvelope_GetAllPolicyDecisions_StitchesDecisionsAcrossMultipleHopsAsync", "TraceStoreContractTests.TraceStore_StoreAndRetrieve_ShouldStoreAndRetrieveEnvelopeAsync"]}
 var envelope = await traceStore.GetByMessageIdAsync(messageId);
 
 foreach (var d in envelope!.GetAllPolicyDecisions()) {
@@ -318,7 +318,7 @@ foreach (var d in envelope!.GetAllPolicyDecisions()) {
 
 Walk the causal chain to find where the failing message came from.
 
-```csharp{title="Walk the causal chain to an error's origin" description="GetCausalChainAsync returns the failing message plus ancestors and descendants in chronological order; print each message's service and caller location." category="Observability" difficulty="INTERMEDIATE" tags=["causal-chain","causation","debugging","caller-info"]}
+```csharp{title="Walk the causal chain to an error's origin" description="GetCausalChainAsync returns the failing message plus ancestors and descendants in chronological order; print each message's service and caller location." category="Observability" difficulty="INTERMEDIATE" tags=["causal-chain","causation","debugging","caller-info"] tests=["InMemoryTraceStoreTests.GetCausalChainAsync_WithChildren_IncludesChildMessagesAsync", "InMemoryTraceStoreTests.GetCausalChainAsync_WithMultiGenerationChildren_IncludesAllDescendantsAsync", "InMemoryTraceStoreTests.GetCausalChainAsync_SortsResultsByTimestampAsync", "TraceStoreContractTests.TraceStore_GetCausalChain_ShouldReturnMessageAndParentsAsync"]}
 var chain = await traceStore.GetCausalChainAsync(failedMessageId);
 
 foreach (var msg in chain) {   // already chronological
@@ -333,7 +333,7 @@ foreach (var msg in chain) {   // already chronological
 
 Merge scope across the current hops and watch for a drop.
 
-```csharp{title="Inspect tenant and user context on a message" description="Read the merged scope from an envelope to see the effective user and tenant, defaulting to NOT SET when unset." category="Observability" difficulty="INTERMEDIATE" tags=["scope","tenant","user","debugging"]}
+```csharp{title="Inspect tenant and user context on a message" description="Read the merged scope from an envelope to see the effective user and tenant, defaulting to NOT SET when unset." category="Observability" difficulty="INTERMEDIATE" tags=["scope","tenant","user","debugging"] tests=["MessageTracingTests.MessageEnvelope_GetCurrentSecurityContext_ReturnsMostRecentNonNullValueAsync", "MessageTracingTests.MessageEnvelope_GetCurrentSecurityContext_IgnoresCausationHopsAsync", "MessageHopTests.MessageHop_WithSecurityContext_SetsSecurityContextAsync"]}
 var envelope = await traceStore.GetByMessageIdAsync(messageId);
 var scope = envelope!.GetCurrentScope();
 Console.WriteLine($"UserId={scope?.Scope.UserId ?? "NOT SET"} TenantId={scope?.Scope.TenantId ?? "NOT SET"}");
@@ -345,7 +345,7 @@ To see the progression hop-by-hop, iterate `envelope.GetCurrentHops()` and inspe
 
 All messages in one workflow share a correlation id.
 
-```csharp{title="List every message in a workflow by correlation id" description="GetByCorrelationAsync returns all envelopes sharing a correlation id, chronological, with service, topic, and stream per message." category="Observability" difficulty="INTERMEDIATE" tags=["correlation","workflow","trace-store","timeline"]}
+```csharp{title="List every message in a workflow by correlation id" description="GetByCorrelationAsync returns all envelopes sharing a correlation id, chronological, with service, topic, and stream per message." category="Observability" difficulty="INTERMEDIATE" tags=["correlation","workflow","trace-store","timeline"] tests=["TraceStoreContractTests.TraceStore_GetByCorrelation_ShouldReturnAllMessagesWithSameCorrelationIdAsync", "TraceStoreContractTests.TraceStore_GetByCorrelation_ShouldReturnEmptyListWhenNoMatchesAsync", "InMemoryTraceStoreTests.GetByCorrelationAsync_WithNullCorrelationIdsInStore_FiltersThemOutAsync"]}
 var workflow = await traceStore.GetByCorrelationAsync(correlationId);
 foreach (var e in workflow) {
     var hop = e.GetCurrentHops().LastOrDefault();
@@ -356,7 +356,7 @@ foreach (var e in workflow) {
 
 ### "What happened between 2:00 and 2:05 PM?"
 
-```csharp{title="Query messages in a time window" description="GetByTimeRangeAsync filters and orders envelopes by their first current hop timestamp." category="Observability" difficulty="INTERMEDIATE" tags=["time-range","trace-store","timeline","debugging"]}
+```csharp{title="Query messages in a time window" description="GetByTimeRangeAsync filters and orders envelopes by their first current hop timestamp." category="Observability" difficulty="INTERMEDIATE" tags=["time-range","trace-store","timeline","debugging"] tests=["TraceStoreContractTests.TraceStore_GetByTimeRange_ShouldReturnMessagesInRangeAsync", "TraceStoreContractTests.TraceStore_GetByTimeRange_ShouldReturnMessagesInChronologicalOrderAsync", "InMemoryTraceStoreTests.GetByTimeRangeAsync_WithNoHops_UsesMinValueTimestampAsync"]}
 var from = new DateTimeOffset(2025, 11, 2, 14, 0, 0, TimeSpan.Zero);
 var to   = new DateTimeOffset(2025, 11, 2, 14, 5, 0, TimeSpan.Zero);
 

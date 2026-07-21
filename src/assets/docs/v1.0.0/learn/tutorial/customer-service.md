@@ -36,7 +36,7 @@ This is **Part 6** of the ECommerce Tutorial. Complete [Shipping Service](shippi
 
 ## What You'll Build
 
-```mermaid
+```mermaid{caption="Customer Service BFF architecture — Azure Service Bus events feed read-model projections (a pure-Apply perspective plus a receptor) into denormalized PostgreSQL read models served over a REST API."}
 flowchart TD
     subgraph CSA["Customer Service Architecture (BFF)"]
         ASB["Azure Service Bus"]
@@ -74,7 +74,7 @@ Whizbang perspectives materialize into **framework-managed tables** — each rea
 
 **ECommerce.CustomerService.API/Lenses/OrderSummaryModel.cs**:
 
-```csharp{title="Order Summary Read Model" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Order", "Summary"]}
+```csharp{title="Order Summary Read Model" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Order", "Summary"] unverified="tutorial worked-example — this order read-model record is exercised by the ECommerce sample suite (OrderReadModelTests), which is outside the core unit-test coverage map"}
 using ECommerce.Contracts.Commands;
 using Whizbang.Core;
 
@@ -128,7 +128,7 @@ A perspective is a set of **pure `Apply` functions** — no I/O, no side effects
 
 **ECommerce.CustomerService.API/Perspectives/OrderSummaryPerspective.cs**:
 
-```csharp{title="Order Summary Perspective" description="**ECommerce." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Order", "Summary"]}
+```csharp{title="Order Summary Perspective" description="**ECommerce." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Order", "Summary"] unverified="tutorial worked-example — the OrderSummaryPerspective Apply projection is exercised by the ECommerce sample suite (OrderReadModelTests), which is outside the core unit-test coverage map"}
 using ECommerce.Contracts.Events;
 using ECommerce.CustomerService.API.Lenses;
 using Whizbang.Core.Perspectives;
@@ -381,7 +381,7 @@ public class OrdersController : ControllerBase {
 
 **ECommerce.CustomerService.API/Program.cs**:
 
-```csharp{title="Step 4: Service Configuration" description="**ECommerce." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Step", "Service"]}
+```csharp{title="Step 4: Service Configuration" description="**ECommerce." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Step", "Service"] unverified="host/DI wiring — not exercised by a test"}
 using Whizbang.Core;
 using Whizbang.Core.Messaging;
 using Whizbang.Core.Observability;
@@ -531,7 +531,7 @@ curl http://localhost:5001/api/orders/0193d5a0-1234-7abc-9def-0123456789ab
 
 ### CQRS (Command Query Responsibility Segregation)
 
-```mermaid
+```mermaid{caption="CQRS: the Order Service write side publishes events to Azure Service Bus; the Customer Service read side projects them into denormalized read models for fast, join-free queries."}
 flowchart TD
     subgraph CQRS["CQRS Pattern"]
         subgraph WRITE["WRITE SIDE (Commands)"]
@@ -561,7 +561,7 @@ flowchart TD
 
 ### Event-Driven Read Models
 
-```csharp{title="Event-Driven Read Models" description="Event-Driven Read Models" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Event-Driven", "Read"]}
+```csharp{title="Event-Driven Read Models" description="Event-Driven Read Models" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Event-Driven", "Read"] unverified="tutorial worked-example — this OrderSummaryPerspective multi-event projection is exercised by the ECommerce sample suite (OrderReadModelTests), which is outside the core unit-test coverage map"}
 // Single perspective applies multiple events - pure functions only
 public class OrderSummaryPerspective :
   IPerspectiveFor<OrderSummaryModel,
@@ -587,7 +587,7 @@ public class OrderSummaryPerspective :
 
 ### BFF (Backend for Frontend)
 
-```mermaid
+```mermaid{caption="BFF pattern — web and mobile clients call a Customer Service that returns client-specific DTOs over aggregated, denormalized data."}
 flowchart LR
     subgraph BFF["BFF Pattern"]
         WebClient["Web Client"]
@@ -614,7 +614,7 @@ flowchart LR
 
 ### Unit Test - Perspective
 
-```csharp{title="Unit Test - Perspective" description="Unit Test - Perspective" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Unit", "Test"]}
+```csharp{title="Unit Test - Perspective" description="Unit Test - Perspective" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Unit", "Test"] unverified="tutorial worked-example — this perspective Apply test mirrors the ECommerce sample suite (OrderReadModelTests), which is outside the core unit-test coverage map"}
 [Test]
 public async Task OrderSummaryPerspective_OrderCreated_CreatesOrderSummaryAsync() {
   // Arrange - pure functions need no mocks, no database

@@ -65,7 +65,7 @@ The **RabbitMQ transport** provides reliable, distributed messaging using Rabbit
 
 ### Topic Exchange Pattern
 
-```mermaid
+```mermaid{caption="Topic-exchange routing — a topic exchange fans messages out to service queues by wildcard binding (product.*, product.created, #), with a dead-letter exchange draining failures to a DLQ."}
 flowchart TD
     subgraph Broker["RabbitMQ Broker"]
         subgraph Exchange["Exchange: #quot;products#quot; (topic)"]
@@ -95,7 +95,7 @@ flowchart TD
 
 RabbitMQ channels are **not thread-safe**, so Whizbang uses a channel pool for concurrent publishing:
 
-```mermaid
+```mermaid{caption="Channel-pool rent/return — publishers rent a channel from the semaphore-bounded pool and it auto-returns on dispose, because RabbitMQ channels are not thread-safe." tests=["RabbitMQChannelPoolTests.RentAsync_ReturnsChannel_FromPoolAsync", "RabbitMQChannelPoolTests.Return_AddsChannelBackToPool_ForReuseAsync"]}
 flowchart TD
     subgraph Pool["RabbitMQChannelPool"]
         subgraph Avail["Available Channels (Semaphore)<br/>Max: 10 (configurable)"]
@@ -121,7 +121,7 @@ flowchart TD
 
 #### Publishing
 
-```mermaid
+```mermaid{caption="Publish path — PublishAsync rents a channel, declares the exchange, serializes the envelope, BasicPublishes to the routing key, then returns the channel to the pool." tests=["RabbitMQTransportTests.PublishAsync_WithValidMessage_RentsAndReturnsChannelAsync"]}
 flowchart TD
     Publisher["Publisher (Order Service)"]
     Transport["RabbitMQTransport<br/><br/>- Rent channel from pool<br/>- Declare exchange (idempotent)<br/>- Serialize MessageEnvelope<br/>- Set BasicProperties:<br/>• MessageId<br/>• CorrelationId<br/>• EnvelopeType (for deser)<br/>- BasicPublish(exchange, key)<br/>- Return channel to pool"]
@@ -138,7 +138,7 @@ flowchart TD
 
 #### Subscribing
 
-```mermaid
+```mermaid{caption="Subscribe path — SubscribeAsync creates a dedicated channel, declares the exchange and DLX-bound queue, binds it, and starts a consumer that dispatches deliveries to the handler." tests=["RabbitMQTransportTests.SubscribeAsync_CreatesConsumer_AndInvokesHandlerAsync"]}
 flowchart TD
     Subscriber["Subscriber (Fulfillment Service)"]
     Transport["RabbitMQTransport<br/><br/>- Create dedicated channel<br/>- Set QoS prefetch (default: 10)<br/>- Declare exchange<br/>- Declare queue with DLX<br/>- Bind queue to exchange<br/>- Create AsyncEventingBasicConsumer"]
@@ -503,7 +503,7 @@ grep -r "RABBITMQ\|AZURESERVICEBUS" ECommerce.InventoryWorker/.whizbang/cache
 
 ### Basic Setup
 
-```csharp{title="Basic Setup" description="Basic Setup" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Basic", "Setup"]}
+```csharp{title="Basic Setup" description="Basic Setup" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Basic", "Setup"] unverified="configuration — no behavior to assert"}
 using Whizbang.Transports.RabbitMQ;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -552,7 +552,7 @@ When `EnableSingleActiveConsumer` is true:
 - If the active consumer disconnects, RabbitMQ promotes another consumer automatically
 - The transport claims `TransportCapabilities.Ordered` only when SAC is enabled
 
-```csharp{title="Enable FIFO Ordering" description="Configure Single Active Consumer for message ordering:" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "FIFO", "SAC"]}
+```csharp{title="Enable FIFO Ordering" description="Configure Single Active Consumer for message ordering:" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "FIFO", "SAC"] unverified="configuration — no behavior to assert"}
 builder.Services.AddRabbitMQTransport(
     connectionString: "amqp://guest:guest@localhost:5672",
     configureOptions: options => {
@@ -573,7 +573,7 @@ When you declare domain ownership via `OwnDomains()`, Whizbang automatically pro
 
 The `RabbitMQInfrastructureProvisioner` is automatically registered and creates topic exchanges for owned domains:
 
-```csharp{title="Domain Topic Auto-Provisioning" description="The RabbitMQInfrastructureProvisioner is automatically registered and creates topic exchanges for owned domains:" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Domain", "Topic"]}
+```csharp{title="Domain Topic Auto-Provisioning" description="The RabbitMQInfrastructureProvisioner is automatically registered and creates topic exchanges for owned domains:" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Domain", "Topic"] unverified="configuration — no behavior to assert"}
 services.AddWhizbang()
     .WithRouting(routing => {
         routing.OwnDomains("myapp.users", "myapp.orders");
@@ -606,7 +606,7 @@ The transport includes built-in connection retry with exponential backoff for ha
 | `RetryIndefinitely` | `true` | Continue retrying after initial attempts |
 
 **Example Configuration**:
-```csharp{title="Connection Retry Options" description="Example Configuration:" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Connection", "Retry"]}
+```csharp{title="Connection Retry Options" description="Example Configuration:" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Connection", "Retry"] unverified="configuration — no behavior to assert"}
 builder.Services.AddRabbitMQTransport(
     connectionString: "amqp://guest:guest@localhost:5672/",
     configureOptions: options => {
@@ -642,7 +642,7 @@ builder.Services.AddRabbitMQTransport(
 - **Infrastructure Outage**: Service survives extended outages and reconnects automatically
 
 **Fail Fast** (disable indefinite retry):
-```csharp{title="Connection Retry Options (2)" description="Fail Fast (disable indefinite retry):" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Connection", "Retry"]}
+```csharp{title="Connection Retry Options (2)" description="Fail Fast (disable indefinite retry):" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Connection", "Retry"] tests=["RabbitMQConnectionRetryTests.CreateConnectionWithRetryAsync_WithRetryIndefinitelyFalse_TriesInitialAttemptsAndThrowsAsync"]}
 options.RetryIndefinitely = false;  // Throws after InitialRetryAttempts
 ```
 
@@ -664,7 +664,7 @@ The transport logs connection state changes for observability:
 - `ConnectionUnblocked` → Information when normal operation resumes
 
 **Configuration**:
-```csharp{title="Runtime Reconnection" description="Configuration:" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Runtime", "Reconnection"]}
+```csharp{title="Runtime Reconnection" description="Configuration:" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Runtime", "Reconnection"] unverified="configuration — no behavior to assert"}
 // NetworkRecoveryInterval is set to match InitialRetryDelay
 options.InitialRetryDelay = TimeSpan.FromSeconds(5);  // Recovery interval = 5s
 ```
@@ -689,7 +689,7 @@ amqps://username:password@hostname:port/virtualhost  # TLS
 
 ### Publishing Messages
 
-```csharp{title="Publishing Messages" description="Publishing Messages" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Publishing", "Messages"]}
+```csharp{title="Publishing Messages" description="Publishing Messages" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Publishing", "Messages"] tests=["RabbitMQTransportTests.PublishAsync_WithValidMessage_RentsAndReturnsChannelAsync"]}
 public class ProductService {
     private readonly ITransport _transport;
     private readonly ILogger<ProductService> _logger;
@@ -729,7 +729,7 @@ public class ProductService {
 
 ### Subscribing to Messages
 
-```csharp{title="Subscribing to Messages" description="Subscribing to Messages" category="Configuration" difficulty="ADVANCED" tags=["Messaging", "Transports", "Subscribing", "Messages"]}
+```csharp{title="Subscribing to Messages" description="Subscribing to Messages" category="Configuration" difficulty="ADVANCED" tags=["Messaging", "Transports", "Subscribing", "Messages"] tests=["RabbitMQTransportTests.SubscribeAsync_CreatesConsumer_AndInvokesHandlerAsync"]}
 public class InventoryWorker : BackgroundService {
     private readonly ITransport _transport;
     private readonly ILogger<InventoryWorker> _logger;
@@ -781,7 +781,7 @@ public class InventoryWorker : BackgroundService {
 
 ### Custom Routing Patterns
 
-```csharp{title="Custom Routing Patterns" description="Custom Routing Patterns" category="Configuration" difficulty="ADVANCED" tags=["Messaging", "Transports", "Custom", "Routing"]}
+```csharp{title="Custom Routing Patterns" description="Custom Routing Patterns" category="Configuration" difficulty="ADVANCED" tags=["Messaging", "Transports", "Custom", "Routing"] unverified="configuration — routing-pattern destinations, no behavior to assert"}
 // Subscribe to specific event types
 var destination = new TransportDestination(
     Address: "products",
@@ -812,7 +812,7 @@ var destination = new TransportDestination(
 
 ### Pause and Resume Subscriptions
 
-```csharp{title="Pause and Resume Subscriptions" description="Pause and Resume Subscriptions" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Pause", "Resume"]}
+```csharp{title="Pause and Resume Subscriptions" description="Pause and Resume Subscriptions" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Pause", "Resume"] tests=["RabbitMQSubscriptionTests.PauseAsync_WhenActive_SetsInactiveAndLogsAsync", "RabbitMQSubscriptionTests.ResumeAsync_WhenPaused_SetsActiveAndLogsAsync", "RabbitMQTransportTests.Subscription_Pause_SetsIsActiveFalseAsync", "RabbitMQTransportTests.Subscription_Resume_SetsIsActiveTrueAsync"]}
 public class OrderProcessor {
     private ISubscription? _subscription;
 
@@ -846,7 +846,7 @@ When `AutoDeclareDeadLetterExchange = true` (default), the transport automatical
 
 ### Message Retry Flow
 
-```mermaid
+```mermaid{caption="Dead-letter flow — a message nacked up to MaxDeliveryAttempts is routed through the queue's x-dead-letter-exchange to the fanout DLX and parked in the DLQ for later inspection."}
 flowchart TD
     Main["Main Queue #quot;orders-queue#quot;<br/><br/>Delivery attempt 1 → Nack<br/>Delivery attempt 2 → Nack<br/>...<br/>Attempt 10 (max) → Nack<br/><br/>x-dead-letter-exchange set"]
     DLX["Dead Letter Exchange<br/>#quot;orders.dlx#quot;"]
@@ -875,7 +875,7 @@ rabbitmqadmin get queue=orders-queue.dlq requeue=true
 
 ### ASP.NET Core Health Checks
 
-```csharp{title="ASP.NET Core Health Checks" description="ASP.NET Core Health Checks" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "ASP.NET", "Core"]}
+```csharp{title="ASP.NET Core Health Checks" description="ASP.NET Core Health Checks" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "ASP.NET", "Core"] unverified="configuration — no behavior to assert"}
 using Whizbang.Transports.RabbitMQ;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -906,7 +906,7 @@ app.Run();
 
 ### Custom Readiness Checks
 
-```csharp{title="Custom Readiness Checks" description="Custom Readiness Checks" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Custom", "Readiness"]}
+```csharp{title="Custom Readiness Checks" description="Custom Readiness Checks" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Custom", "Readiness"] unverified="example ITransportReadinessCheck implementation — behavior verified by RabbitMQReadinessCheck's own tests"}
 public class RabbitMQReadinessCheck : ITransportReadinessCheck {
     private readonly IConnection _connection;
 
@@ -926,7 +926,7 @@ public class RabbitMQReadinessCheck : ITransportReadinessCheck {
 
 ### Unit Testing with Test Doubles
 
-```csharp{title="Unit Testing with Test Doubles" description="Unit Testing with Test Doubles" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Unit", "Testing"]}
+```csharp{title="Unit Testing with Test Doubles" description="Unit Testing with Test Doubles" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Unit", "Testing"] unverified="test-authoring example — demonstrates unit testing with test doubles, not a library behavior"}
 using Whizbang.Transports.RabbitMQ;
 using Whizbang.Transports.RabbitMQ.Tests;
 
@@ -963,7 +963,7 @@ public class ProductServiceTests {
 
 ### Integration Testing with TestContainers
 
-```csharp{title="Integration Testing with TestContainers" description="Integration Testing with TestContainers" category="Configuration" difficulty="ADVANCED" tags=["Messaging", "Transports", "Integration", "Testing"]}
+```csharp{title="Integration Testing with TestContainers" description="Integration Testing with TestContainers" category="Configuration" difficulty="ADVANCED" tags=["Messaging", "Transports", "Integration", "Testing"] unverified="test-authoring example — TestContainers publish/subscribe pattern, not a library behavior"}
 using Testcontainers.RabbitMQ;
 
 [NotInParallel]  // RabbitMQ container isolation
@@ -1052,7 +1052,7 @@ public class RabbitMQIntegrationTests {
 
 **Guideline**: Set `MaxChannels` based on concurrent publishing threads.
 
-```csharp{title="Channel Pool Sizing" description="Guideline: Set MaxChannels based on concurrent publishing threads." category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Channel", "Pool"]}
+```csharp{title="Channel Pool Sizing" description="Guideline: Set MaxChannels based on concurrent publishing threads." category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Channel", "Pool"] unverified="configuration — no behavior to assert"}
 // Low throughput (< 10 msg/sec)
 options.MaxChannels = 10;  // Default
 
@@ -1069,7 +1069,7 @@ options.MaxChannels = 50;
 
 **Guideline**: Set `PrefetchCount` based on message processing time.
 
-```csharp{title="Prefetch Count Tuning" description="Guideline: Set PrefetchCount based on message processing time." category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Prefetch", "Count"]}
+```csharp{title="Prefetch Count Tuning" description="Guideline: Set PrefetchCount based on message processing time." category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Prefetch", "Count"] unverified="configuration — no behavior to assert"}
 // Fast processing (< 100ms per message)
 options.PrefetchCount = 20;
 
@@ -1086,7 +1086,7 @@ options.PrefetchCount = 1;
 
 **Guideline**: Set `MaxDeliveryAttempts` based on failure characteristics.
 
-```csharp{title="Retry Limits" description="Guideline: Set MaxDeliveryAttempts based on failure characteristics." category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Retry", "Limits"]}
+```csharp{title="Retry Limits" description="Guideline: Set MaxDeliveryAttempts based on failure characteristics." category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Retry", "Limits"] unverified="configuration — no behavior to assert"}
 // Transient failures (network glitches)
 options.MaxDeliveryAttempts = 3;
 
@@ -1103,7 +1103,7 @@ options.MaxDeliveryAttempts = 1;  // Fail fast to DLQ
 
 **Convention**: Use hierarchical names for topic routing.
 
-```csharp{title="Exchange and Queue Naming" description="Convention: Use hierarchical names for topic routing." category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Exchange", "Queue"]}
+```csharp{title="Exchange and Queue Naming" description="Convention: Use hierarchical names for topic routing." category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Exchange", "Queue"] unverified="configuration — naming-convention snippet, no behavior to assert"}
 // Good - hierarchical routing
 Address: "ecommerce.products"
 RoutingKey: "product.created"
@@ -1182,7 +1182,7 @@ docker logs <rabbitmq-container>
 **Cause**: All channels rented, none returned (likely exception in `using` block)
 
 **Solution**:
-```csharp{title="Channel Pool Exhaustion" description="Channel Pool Exhaustion" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Channel", "Pool"]}
+```csharp{title="Channel Pool Exhaustion" description="Channel Pool Exhaustion" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Channel", "Pool"] unverified="troubleshooting example — user-code channel-return-on-exception pattern"}
 // Ensure channel returns on exception
 try {
     using (var channel = await pool.RentChannelAsync()) {

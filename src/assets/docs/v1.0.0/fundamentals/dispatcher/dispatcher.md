@@ -22,6 +22,8 @@ testReferences:
   - tests/Whizbang.Core.Tests/Dispatcher/DispatcherTests.cs
   - tests/Whizbang.Core.Tests/Dispatcher/DispatcherOutboxTests.cs
   - tests/Whizbang.Core.Tests/Dispatcher/DispatcherInvokeWithReceiptTests.cs
+  - tests/Whizbang.Core.Tests/Dispatcher/DispatcherSyncModeContractTests.cs
+  - tests/Whizbang.Core.Tests/Dispatcher/DispatcherLocalInvokeAndSyncTimingTests.cs
   - tests/Whizbang.Core.Tests/Dispatcher/DispatcherCascadeTests.cs
   - tests/Whizbang.Core.Tests/Dispatcher/DispatcherRoutedCascadeTests.cs
   - tests/Whizbang.Core.Tests/Dispatch/DispatchOptionsTests.cs
@@ -34,23 +36,31 @@ lastMaintainedCommit: '01f07906'
 
 The **Dispatcher** is Whizbang's central message router. It provides three distinct dispatch patterns for different messaging scenarios: commands, queries, and events.
 
+```mermaid{caption="dispatch routing — SendAsync resolves the message type to its receptor, or falls through to the outbox when no local handler exists." tests=["DispatcherTests.Dispatcher_ShouldRouteToCorrectHandlerAsync", "DispatcherTests.Dispatcher_MultipleReceptorsSameMessage_ShouldRouteToAllAsync", "DispatcherOutboxTests.SendAsync_NoLocalHandler_RoutesToOutboxAsync"]}
+flowchart LR
+    A[Caller] -->|SendAsync| D{Dispatcher}
+    D -->|route by message type| R1[Matched Receptor]
+    D -->|no local handler| O[(Outbox)]
+    R1 --> RC[IDeliveryReceipt]
+```
+
 ## Quick Reference
 
-| Pattern | Use Case | Return Type | Performance | Distribution |
-|---------|----------|-------------|-------------|--------------|
-| `SendAsync` | Commands with delivery tracking | `IDeliveryReceipt` | ~100μs | Local or Remote |
-| `LocalInvokeAsync` | In-process queries/commands | `TResult` | < 20ns | Local only |
-| `LocalInvokeWithReceiptAsync` | In-process RPC with receipt | `InvokeResult<TResult>` | ~100μs | Local only |
-| `LocalInvokeAndSyncAsync` (W4) | Invoke + wait per `SyncMode` (CT-only) | `ValueTask` | Varies | Local only |
-| `LocalInvokeAndSyncAsync` (legacy, `[Obsolete]`) | Commands with perspective sync | `TResult` / `SyncResult` | Varies | Local only |
-| `PublishAsync` | Event broadcasting | `IDeliveryReceipt` | ~50μs | Local or Remote |
-| `SendManyAsync` | Batch commands (local + outbox) | `IEnumerable<IDeliveryReceipt>` | Optimized | Local + Remote |
-| `PublishManyAsync` | Batch event publishing | `IEnumerable<IDeliveryReceipt>` | Optimized | Local + Remote |
-| `LocalSendManyAsync` | Batch local-only dispatch | `IEnumerable<IDeliveryReceipt>` | ~20ns/msg | Local only |
+| Pattern | Use Case | Return Type | Performance | Distribution | Verified |
+|---------|----------|-------------|-------------|--------------|----------|
+| `SendAsync` | Commands with delivery tracking | `IDeliveryReceipt` | ~100μs | Local or Remote | {verified: DispatcherTests.Send_WithValidMessage_ShouldReturnDeliveryReceiptAsync} |
+| `LocalInvokeAsync` | In-process queries/commands | `TResult` | < 20ns | Local only | {verified: DispatcherTests.LocalInvoke_WithValidMessage_ShouldReturnBusinessResultAsync} |
+| `LocalInvokeWithReceiptAsync` | In-process RPC with receipt | `InvokeResult<TResult>` | ~100μs | Local only | {verified: DispatcherInvokeWithReceiptTests.LocalInvokeWithReceipt_ReturnsBusinessResultAndReceiptAsync} |
+| `LocalInvokeAndSyncAsync` (W4) | Invoke + wait per `SyncMode` (CT-only) | `ValueTask` | Varies | Local only | {verified: DispatcherSyncModeContractTests.LocalInvokeAndSyncAsync_NewOverload_ReturnsValueTaskAsync} |
+| `LocalInvokeAndSyncAsync` (legacy, `[Obsolete]`) | Commands with perspective sync | `TResult` / `SyncResult` | Varies | Local only | {verified: DispatcherSyncModeContractTests.LocalInvokeAndSyncAsync_OldOverloads_AreMarkedObsoleteAsync} |
+| `PublishAsync` | Event broadcasting | `IDeliveryReceipt` | ~50μs | Local or Remote | {verified: DispatcherTests.Publish_WithEvent_ShouldNotifyAllHandlersAsync} |
+| `SendManyAsync` | Batch commands (local + outbox) | `IEnumerable<IDeliveryReceipt>` | Optimized | Local + Remote | {verified: DispatcherOutboxTests.SendManyAsync_QueuesAllMessagesBeforeFlushAsync} |
+| `PublishManyAsync` | Batch event publishing | `IEnumerable<IDeliveryReceipt>` | Optimized | Local + Remote | {verified: DispatcherOutboxTests.PublishAsync_ProductEvent_RoutesToProductsTopicAsync} |
+| `LocalSendManyAsync` | Batch local-only dispatch | `IEnumerable<IDeliveryReceipt>` | ~20ns/msg | Local only | {verified: DispatcherTests.SendMany_WithMultipleCommands_ShouldReturnAllReceiptsAsync} |
 
 ## IDispatcher Interface
 
-```csharp{title="IDispatcher Interface" description="IDispatcher Interface" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "IDispatcher", "Interface"]}
+```csharp{title="IDispatcher Interface" description="IDispatcher Interface" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "IDispatcher", "Interface"] tests=["DispatcherTests.Send_WithValidMessage_ShouldReturnDeliveryReceiptAsync", "DispatcherTests.LocalInvoke_WithValidMessage_ShouldReturnBusinessResultAsync", "DispatcherInvokeWithReceiptTests.LocalInvokeWithReceipt_ReturnsBusinessResultAndReceiptAsync"]}
 namespace Whizbang.Core;
 
 public interface IDispatcher {
@@ -128,7 +138,7 @@ Understanding when to use `IEventStore.AppendAsync` versus `IDispatcher.PublishA
 
 **For Events (most common case):**
 
-```csharp{title="Correct Patterns" description="For Events (most common case):" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Correct", "Patterns"]}
+```csharp{title="Correct Patterns" description="For Events (most common case):" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Correct", "Patterns"] tests=["DispatcherTests.Publish_WithEvent_ShouldNotifyAllHandlersAsync"]}
 // ✅ CORRECT: Just publish - handles perspectives + outbox
 public async ValueTask<OrderCreated> HandleAsync(
     CreateOrder command,
@@ -145,14 +155,14 @@ public async ValueTask<OrderCreated> HandleAsync(
 
 **For Commands:**
 
-```csharp{title="Correct Patterns (2)" description="For Commands:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Correct", "Patterns"]}
+```csharp{title="Correct Patterns (2)" description="For Commands:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Correct", "Patterns"] tests=["DispatcherTests.Send_WithValidMessage_ShouldReturnDeliveryReceiptAsync"]}
 // ✅ CORRECT: Send command with delivery tracking
 await _dispatcher.SendAsync(new ProcessPayment(orderId, amount));
 ```
 
 **For Direct Event Store Access (rare - infrastructure/workers only):**
 
-```csharp{title="Correct Patterns (3)" description="For Direct Event Store Access (rare - infrastructure/workers only):" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Correct", "Patterns"]}
+```csharp{title="Correct Patterns (3)" description="For Direct Event Store Access (rare - infrastructure/workers only):" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Correct", "Patterns"] unverified="raw IEventStore.AppendAsync — verified in the Event Store docs, not by Dispatcher tests"}
 // ✅ CORRECT: Direct append for infrastructure code, replay, or migration scripts.
 // No perspectives fire and nothing is queued to the outbox.
 await _eventStore.AppendAsync(streamId, @event, ct);
@@ -160,7 +170,7 @@ await _eventStore.AppendAsync(streamId, @event, ct);
 
 ### Anti-Patterns to Avoid
 
-```csharp{title="Anti-Patterns to Avoid" description="Anti-Patterns to Avoid" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Anti-Patterns", "Avoid"]}
+```csharp{title="Anti-Patterns to Avoid" description="Anti-Patterns to Avoid" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Anti-Patterns", "Avoid"] unverified="counter-example — intentionally wrong, nothing to assert"}
 // ❌ WRONG: Redundant - calling both AppendAsync and PublishAsync
 await _eventStore.AppendAsync(orderId, @event, ct);
 await _dispatcher.PublishAsync(@event);
@@ -183,6 +193,8 @@ await _dispatcher.PublishAsync(@event);
 
 ### When to Use Each Pattern
 
+{verified: DispatcherTests.Send_WithValidMessage_ShouldReturnDeliveryReceiptAsync, DispatcherTests.LocalInvoke_WithValidMessage_ShouldReturnBusinessResultAsync, DispatcherTests.Publish_WithEvent_ShouldNotifyAllHandlersAsync}
+
 | Scenario | Pattern | Reason |
 |----------|---------|--------|
 | **Create order (synchronous response needed)** | `LocalInvokeAsync` | Need typed `OrderCreated` response immediately |
@@ -195,7 +207,7 @@ await _dispatcher.PublishAsync(@event);
 
 ### Pattern Comparison
 
-```csharp{title="Pattern Comparison" description="Pattern Comparison" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Pattern", "Comparison"]}
+```csharp{title="Pattern Comparison" description="Pattern Comparison" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Pattern", "Comparison"] tests=["DispatcherTests.Send_WithValidMessage_ShouldReturnDeliveryReceiptAsync", "DispatcherTests.LocalInvoke_WithValidMessage_ShouldReturnBusinessResultAsync", "DispatcherTests.Publish_WithEvent_ShouldNotifyAllHandlersAsync"]}
 // Scenario: Create an order
 
 // Option 1: SendAsync (async semantics, delivery tracking)
@@ -233,11 +245,13 @@ Message cascading (receptor return values flowing onward automatically, route wr
 
 ## Dispatcher Configuration Options {#dispatch-options}
 
-`DispatchOptions` provides fine-grained control over dispatch behavior, including cancellation, timeouts, and perspective synchronization.
+{verified: DispatchOptionsTests.WithTimeout_SetsTimeout_ReturnsSelfAsync, DispatchOptionsTests.WithCancellationToken_SetsToken_ReturnsSelfAsync, DispatchOptionsTests.FluentApi_CanChainMultipleCalls_Async}
+
+`DispatchOptions` provides fine-grained control over dispatch behavior, including cancellation, timeouts {verified: DispatchOptionsTests.WithTimeout_SetsTimeout_ReturnsSelfAsync}, and perspective synchronization.
 
 ### Basic Options
 
-```csharp{title="Basic Options" description="Basic Options" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Basic", "Options"]}
+```csharp{title="Basic Options" description="Basic Options" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Basic", "Options"] tests=["DispatchOptionsTests.WithTimeout_SetsTimeout_ReturnsSelfAsync", "DispatchOptionsTests.WithCancellationToken_SetsToken_ReturnsSelfAsync"]}
 // Cancellation token
 using var cts = new CancellationTokenSource();
 var options = new DispatchOptions().WithCancellationToken(cts.Token);
@@ -257,7 +271,7 @@ var options = new DispatchOptions()
 
 Wait for all perspectives to finish processing cascaded events before returning:
 
-```csharp{title="Perspective Synchronization" description="Wait for all perspectives to finish processing cascaded events before returning:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Perspective", "Synchronization"]}
+```csharp{title="Perspective Synchronization" description="Wait for all perspectives to finish processing cascaded events before returning:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Perspective", "Synchronization"] tests=["DispatchOptionsTests.Default_WaitForPerspectives_IsFalseAsync", "DispatcherLocalInvokeAndSyncTimingTests.LocalInvokeAndSyncAsync_MultipleEventsWaitsOnceAsync"]}
 // Wait with default timeout (30 seconds)
 var options = new DispatchOptions().WithPerspectiveWait();
 var result = await dispatcher.LocalInvokeAsync<OrderCreated>(
@@ -282,7 +296,7 @@ var options = new DispatchOptions().WithPerspectiveWait(TimeSpan.FromMinutes(2))
 
 **Alternative API**: Use `LocalInvokeAndSyncAsync` for built-in perspective synchronization without explicit options:
 
-```csharp{title="Perspective Synchronization (2)" description="Alternative API: Use LocalInvokeAndSyncAsync for built-in perspective synchronization without explicit options:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Perspective", "Synchronization"]}
+```csharp{title="Perspective Synchronization (2)" description="Alternative API: Use LocalInvokeAndSyncAsync for built-in perspective synchronization without explicit options:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Perspective", "Synchronization"] tests=["DispatcherSyncModeContractTests.LocalInvokeAndSyncAsync_NewOverload_ReturnsValueTaskAsync", "DispatcherLocalInvokeAndSyncTimingTests.LocalInvokeAndSyncAsync_MultipleEventsWaitsOnceAsync"]}
 // Equivalent to LocalInvokeAsync with DispatchOptions.WithPerspectiveWait()
 var result = await dispatcher.LocalInvokeAndSyncAsync<CreateOrder, OrderCreated>(
     command,
@@ -303,7 +317,7 @@ See [LocalInvokeAndSyncAsync](#localinvokeandsyncasync---invoke-with-perspective
 
 ### Example: Timeout Handling
 
-```csharp{title="Example: Timeout Handling" description="Example: Timeout Handling" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Example:", "Timeout"]}
+```csharp{title="Example: Timeout Handling" description="Example: Timeout Handling" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Example:", "Timeout"] tests=["DispatchOptionsTests.WithTimeout_SetsTimeout_ReturnsSelfAsync", "DispatchOptionsTests.WithTimeout_NegativeValue_ThrowsArgumentOutOfRangeExceptionAsync"]}
 try {
     var options = new DispatchOptions()
         .WithTimeout(TimeSpan.FromSeconds(5))
@@ -353,9 +367,11 @@ Envelope creation is internal to the dispatcher — application code never const
 
 ### Outbox Pattern
 
+{verified: DispatcherOutboxTests.SendAsync_NoLocalHandler_RoutesToOutboxAsync, DispatcherOutboxTests.SendManyAsync_QueuesAllMessagesBeforeFlushAsync}
+
 `SendAsync` and `PublishAsync` integrate with the Outbox pattern automatically: messages destined for the transport are serialized into `wh_outbox` in the same batch as the rest of the dispatch's work, then published by background workers.
 
-```csharp{title="Outbox Pattern" description="Dispatch writes to the outbox; background workers publish from it:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Outbox", "Pattern"]}
+```csharp{title="Outbox Pattern" description="Dispatch writes to the outbox; background workers publish from it:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Outbox", "Pattern"] tests=["DispatcherOutboxTests.SendAsync_NoLocalHandler_RoutesToOutboxAsync", "DispatcherOutboxTests.PublishAsync_ProductEvent_RoutesToProductsTopicAsync"]}
 // Application code: just dispatch — the outbox write is part of the dispatch
 var receipt = await _dispatcher.PublishAsync(new OrderCreated(/* ... */));
 
@@ -378,7 +394,7 @@ See [Inbox Pattern](../../messaging/inbox-pattern.md) for details.
 
 ### Testing with Dispatcher
 
-```csharp{title="Testing with Dispatcher" description="Testing with Dispatcher" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "C#", "Testing"]}
+```csharp{title="Testing with Dispatcher" description="Testing with Dispatcher" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "C#", "Testing"] tests=["DispatcherTests.Send_WithValidMessage_ShouldReturnDeliveryReceiptAsync", "DispatcherTests.Send_WithUnknownMessageType_ShouldThrowReceptorNotFoundExceptionAsync"]}
 public class OrderEndpointsTests {
     private IDispatcher _dispatcher;
     private OrdersController _controller;
@@ -422,6 +438,8 @@ public class OrderEndpointsTests {
 
 ### Properties
 
+{verified: DispatchOptionsTests.Timeout_PropertySetter_WorksAsync, DispatchOptionsTests.CancellationToken_PropertySetter_WorksAsync}
+
 | Property | Type | Default | Description |
 |----------|------|---------|-------------|
 | `CancellationToken` | `CancellationToken` | `CancellationToken.None` | Token to cancel the dispatch operation. Throws `OperationCanceledException` when cancelled. |
@@ -431,7 +449,7 @@ public class OrderEndpointsTests {
 
 ### Fluent API
 
-```csharp{title="DispatchOptions Fluent API" description="Fluent builder methods for DispatchOptions" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "DispatchOptions", "Fluent"]}
+```csharp{title="DispatchOptions Fluent API" description="Fluent builder methods for DispatchOptions" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "DispatchOptions", "Fluent"] tests=["DispatchOptionsTests.FluentApi_CanChainMultipleCalls_Async", "DispatchOptionsTests.WithTimeout_SetsTimeout_ReturnsSelfAsync", "DispatchOptionsTests.WithCancellationToken_SetsToken_ReturnsSelfAsync"]}
 // With cancellation token
 using var cts = new CancellationTokenSource();
 var options = new DispatchOptions().WithCancellationToken(cts.Token);
@@ -456,9 +474,11 @@ var options = new DispatchOptions().WithPerspectiveWait(TimeSpan.FromMinutes(2))
 
 ### Perspective Wait
 
+{verified: DispatchOptionsTests.Default_WaitForPerspectives_IsFalseAsync}
+
 Use `WithPerspectiveWait()` for RPC-style calls where you need all perspectives to have processed cascaded events before the response is returned to the caller:
 
-```csharp{title="DispatchOptions Perspective Wait" description="Wait for perspectives to complete before returning" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "DispatchOptions", "PerspectiveWait"]}
+```csharp{title="DispatchOptions Perspective Wait" description="Wait for perspectives to complete before returning" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "DispatchOptions", "PerspectiveWait"] tests=["DispatchOptionsTests.Default_WaitForPerspectives_IsFalseAsync"]}
 [HttpPost("orders")]
 public async Task<ActionResult<OrderResult>> CreateOrder(
     [FromBody] CreateOrderRequest request,

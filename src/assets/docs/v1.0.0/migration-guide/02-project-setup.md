@@ -75,7 +75,7 @@ Add the Whizbang packages from NuGet.org:
 
 **Before (Marten/Wolverine)**:
 
-```csharp{title="Program.cs Migration" description="Before (Marten/Wolverine):" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-guide", "C#", "Program.cs", "Migration"]}
+```csharp{title="Program.cs Migration" description="Before (Marten/Wolverine):" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-guide", "C#", "Program.cs", "Migration"] unverified="other framework — migration before-state"}
 var builder = WebApplication.CreateBuilder(args);
 
 // Marten configuration
@@ -99,7 +99,7 @@ var app = builder.Build();
 
 **After (Whizbang)**:
 
-```csharp{title="Program.cs Migration (2)" description="After (Whizbang):" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-guide", "C#", "Program.cs", "Migration"]}
+```csharp{title="Program.cs Migration (2)" description="After (Whizbang):" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-guide", "C#", "Program.cs", "Migration"] unverified="DI/config wiring — app composition, not a single testable behavior"}
 var builder = WebApplication.CreateBuilder(args);
 
 // Register your EF Core DbContext (marked with [WhizbangDbContext])
@@ -174,7 +174,7 @@ Whizbang uses a different database schema than Marten. Initialize it on startup.
 
 **EF Core path** — the source generator emits an `EnsureWhizbangDatabaseInitializedAsync()` extension on your `[WhizbangDbContext]`-marked context:
 
-```csharp{title="Initialize Whizbang Schema" description="Whizbang uses a different database schema than Marten." category="Reference" difficulty="BEGINNER" tags=["Migration-guide", "C#", "Initialize", "Whizbang", "Schema"]}
+```csharp{title="Initialize Whizbang Schema" description="Whizbang uses a different database schema than Marten." category="Reference" difficulty="BEGINNER" tags=["Migration-guide", "C#", "Initialize", "Whizbang", "Schema"] unverified="DI/config wiring — generated EnsureWhizbangDatabaseInitializedAsync at startup, verified in EF Core provider tests"}
 var app = builder.Build();
 
 // Initialize Whizbang schema (generated extension method —
@@ -190,7 +190,7 @@ app.Run();
 
 **Dapper path** — pass `initializeSchema: true` at registration and the schema is initialized by a hosted service on startup:
 
-```csharp{title="Initialize Whizbang Schema (Dapper)" description="Dapper registration with automatic schema initialization on startup" category="Reference" difficulty="BEGINNER" tags=["Migration-guide", "C#", "Initialize", "Dapper", "Schema"]}
+```csharp{title="Initialize Whizbang Schema (Dapper)" description="Dapper registration with automatic schema initialization on startup" category="Reference" difficulty="BEGINNER" tags=["Migration-guide", "C#", "Initialize", "Dapper", "Schema"] tests=["ServiceCollectionExtensionsTests.AddWhizbangPostgres_InitializeSchemaTrue_NoPerspective_InitializesInfraOnlyAsync", "ServiceCollectionExtensionsTests.AddWhizbangPostgres_InitializeSchemaTrue_WithPerspective_InitializesBothAsync"]}
 builder.Services.AddWhizbangPostgres(
     connectionString,
     jsonOptions,
@@ -212,7 +212,7 @@ builder.Services.AddWhizbangPostgres(
 
 Update your using statements:
 
-```csharp{title="Namespace Changes" description="Update your using statements:" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-guide", "C#", "Namespace", "Changes"]}
+```csharp{title="Namespace Changes" description="Update your using statements:" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-guide", "C#", "Namespace", "Changes"] unverified="namespace/using changes — nothing to assert"}
 // Remove
 using Marten;
 using Marten.Events;
@@ -232,7 +232,7 @@ using Whizbang.Core.Perspectives;
 
 **Before**:
 
-```csharp{title="Service Registration" description="Service Registration" category="Reference" difficulty="BEGINNER" tags=["Migration-guide", "C#", "Service", "Registration"]}
+```csharp{title="Service Registration" description="Service Registration" category="Reference" difficulty="BEGINNER" tags=["Migration-guide", "C#", "Service", "Registration"] unverified="other framework — migration before-state"}
 // Marten session injection
 public class OrderService {
     private readonly IDocumentSession _session;
@@ -245,7 +245,7 @@ public class OrderService {
 
 **After**:
 
-```csharp{title="Service Registration - OrderService" description="Service Registration - OrderService" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-guide", "C#", "Service", "Registration", "OrderService"]}
+```csharp{title="Service Registration - OrderService" description="Service Registration - OrderService" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-guide", "C#", "Service", "Registration", "OrderService"] unverified="user code — illustrative constructor injection, no framework behavior asserted"}
 // Whizbang direct injection
 public class OrderService {
     private readonly IEventStore _eventStore;

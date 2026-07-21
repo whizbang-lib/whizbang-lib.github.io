@@ -56,7 +56,7 @@ essentially free at runtime — there is no reflection and no stack unwinding.
 `MessageHop` exposes the three captured values as nullable properties
 (`src/Whizbang.Core/Observability/MessageHop.cs`):
 
-```csharp{title="MessageHop's caller-info fields" description="The three nullable caller-info properties on MessageHop and the short JSON names they serialize under." category="Observability" difficulty="BEGINNER" tags=["Caller Info", "Message Hops", "Serialization", "Observability"]}
+```csharp{title="MessageHop's caller-info fields" description="The three nullable caller-info properties on MessageHop and the short JSON names they serialize under." category="Observability" difficulty="BEGINNER" tags=["Caller Info", "Message Hops", "Serialization", "Observability"] tests=["MessageTracingTests.MessageHop_CallerInfo_CanBeNullAsync", "MessageHopTests.MessageHop_WithAllProperties_StoresAllValuesAsync", "MessageHopTests.MessageHop_RoundTrip_WithAllProperties_PreservesDataAsync"]}
 public record MessageHop {
     // ... routing, timing, security, policy, metadata ...
 
@@ -128,7 +128,7 @@ Whizbang also ships a small static helper,
 that constructs a hop and captures caller info the same way. It takes a
 `HopContext` value plus the three auto-captured parameters:
 
-```csharp{title="MessageTracing.RecordHop signature" description="The static helper takes a HopContext plus the three auto-captured caller parameters." category="Observability" difficulty="INTERMEDIATE" tags=["Caller Info", "MessageTracing", "RecordHop", "API"]}
+```csharp{title="MessageTracing.RecordHop signature" description="The static helper takes a HopContext plus the three auto-captured caller parameters." category="Observability" difficulty="INTERMEDIATE" tags=["Caller Info", "MessageTracing", "RecordHop", "API"] tests=["MessageTracingTests.RecordHop_CapturesCallerMemberName_AutomaticallyAsync", "MessageTracingTests.RecordHop_CapturesCallerFilePath_AutomaticallyAsync", "MessageTracingTests.RecordHop_CapturesCallerLineNumber_AutomaticallyAsync"]}
 public static MessageHop RecordHop(
     HopContext context,
     [CallerMemberName] string? callerMemberName = null,
@@ -140,7 +140,7 @@ public static MessageHop RecordHop(
 `HopContext` is a `readonly record struct` that groups the non-caller-info
 inputs:
 
-```csharp{title="HopContext groups the non-caller inputs" description="The readonly record struct carrying service instance, topic, stream key, strategy, and optional partition, sequence, and duration." category="Observability" difficulty="BEGINNER" tags=["Caller Info", "HopContext", "MessageTracing", "Records"]}
+```csharp{title="HopContext groups the non-caller inputs" description="The readonly record struct carrying service instance, topic, stream key, strategy, and optional partition, sequence, and duration." category="Observability" difficulty="BEGINNER" tags=["Caller Info", "HopContext", "MessageTracing", "Records"] tests=["MessageTracingTests.RecordHop_SetsTopicStreamAndStrategyAsync", "MessageTracingTests.RecordHop_WithPartitionAndSequence_SetsOptionalFieldsAsync", "MessageTracingTests.RecordHop_WithDuration_SetsDurationFieldAsync"]}
 public readonly record struct HopContext(
     ServiceInstanceInfo ServiceInstance,
     string Topic,
@@ -153,7 +153,7 @@ public readonly record struct HopContext(
 
 Usage — supply the context and let the compiler fill the rest:
 
-```csharp{title="Calling RecordHop and letting the compiler fill caller info" description="Supply the HopContext only; the caller member, file, and line for this call site are injected automatically." category="Observability" difficulty="BEGINNER" tags=["Caller Info", "RecordHop", "Usage", "MessageTracing"]}
+```csharp{title="Calling RecordHop and letting the compiler fill caller info" description="Supply the HopContext only; the caller member, file, and line for this call site are injected automatically." category="Observability" difficulty="BEGINNER" tags=["Caller Info", "RecordHop", "Usage", "MessageTracing"] tests=["MessageTracingTests.RecordHop_CapturesCallerMemberName_AutomaticallyAsync", "MessageTracingTests.RecordHop_CapturesCallerFilePath_AutomaticallyAsync", "MessageTracingTests.RecordHop_CapturesCallerLineNumber_AutomaticallyAsync"]}
 var hop = MessageTracing.RecordHop(
     new HopContext(serviceInstance, "orders", "order-123", "SerialExecutor"));
 
@@ -184,7 +184,7 @@ the *helper*, not `RecordHop`
 (`RecordHop_FromDifferentMethods_CapturesDifferentCallerInfoAsync`,
 `RecordHop_CapturesCallerMemberName_AutomaticallyAsync`).
 
-```csharp{title="A wrapper that forwards caller attributes" description="Put the attributed parameters on your own helper and forward them to RecordHop so the captured location is the wrapper's caller." category="Observability" difficulty="INTERMEDIATE" tags=["Caller Info", "Wrapper Methods", "RecordHop", "Extension Points"]}
+```csharp{title="A wrapper that forwards caller attributes" description="Put the attributed parameters on your own helper and forward them to RecordHop so the captured location is the wrapper's caller." category="Observability" difficulty="INTERMEDIATE" tags=["Caller Info", "Wrapper Methods", "RecordHop", "Extension Points"] unverified="user-domain illustration — CustomTracing.CreateOrderHop is example consumer code; no test forwards caller attributes through a custom wrapper. The call-site-capture principle it relies on is covered by RecordHop_FromDifferentMethods_CapturesDifferentCallerInfoAsync."}
 public static class CustomTracing {
     public static MessageHop CreateOrderHop(
         ServiceInstanceInfo serviceInstance,
@@ -225,7 +225,7 @@ Because line numbers shift when you edit a file, assert that the value was
 captured (not a brittle exact number). The observability tests follow this
 pattern with TUnit:
 
-```csharp{title="Assert caller info was captured, not an exact line" description="The observability tests assert presence and shape (non-null, greater than zero) so edits that shift line numbers don't break them." category="Observability" difficulty="INTERMEDIATE" tags=["Caller Info", "Testing", "TUnit", "Observability"]}
+```csharp{title="Assert caller info was captured, not an exact line" description="The observability tests assert presence and shape (non-null, greater than zero) so edits that shift line numbers don't break them." category="Observability" difficulty="INTERMEDIATE" tags=["Caller Info", "Testing", "TUnit", "Observability"] tests=["MessageTracingTests.RecordHop_CapturesCallerLineNumber_AutomaticallyAsync", "MessageTracingTests.RecordHop_CapturesCallerFilePath_AutomaticallyAsync", "MessageTracingTests.RecordHop_CapturesCallerMemberName_AutomaticallyAsync"]}
 [Test]
 public async Task RecordHop_CapturesCallerLineNumber_AutomaticallyAsync() {
     var hop = _testMethod_ThatRecordsHop();

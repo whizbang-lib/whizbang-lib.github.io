@@ -48,7 +48,7 @@ This guarantees **at-least-once delivery** even if the message broker is tempora
 
 ## Wolverine Outbox Configuration
 
-```csharp{title="Wolverine Outbox Configuration" description="Wolverine Outbox Configuration" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-guide", "C#", "Wolverine", "Outbox", "Configuration"]}
+```csharp{title="Wolverine Outbox Configuration" description="Wolverine Outbox Configuration" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-guide", "C#", "Wolverine", "Outbox", "Configuration"] unverified="other framework — migration before-state"}
 // Wolverine: Explicit outbox configuration
 builder.Host.UseWolverine(opts => {
     opts.UseRabbitMq(connectionString)
@@ -69,7 +69,7 @@ builder.Host.UseWolverine(opts => {
 
 Whizbang's outbox is **built-in and always enabled**. `AddWhizbang()` registers all background workers (outbox publishing, inbox dispatch, drain workers, dead-letter recovery) automatically — you never add hosted services yourself. Tune behavior through `WorkCoordinatorOptions`:
 
-```csharp{title="Whizbang Outbox Configuration" description="Whizbang's outbox is built-in and always enabled." category="Reference" difficulty="BEGINNER" tags=["Migration-guide", "C#", "Whizbang", "Outbox", "Configuration"]}
+```csharp{title="Whizbang Outbox Configuration" description="Whizbang's outbox is built-in and always enabled." category="Reference" difficulty="BEGINNER" tags=["Migration-guide", "C#", "Whizbang", "Outbox", "Configuration"] unverified="dependency-injection and options configuration — no behavior to assert"}
 builder.Services
     .AddWhizbang()
     .WithEFCore<AppDbContext>()
@@ -89,7 +89,7 @@ builder.Services.Configure<WorkCoordinatorOptions>(options => {
 
 ### Wolverine Flow
 
-```csharp{title="Wolverine Flow" description="Wolverine Flow" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-guide", "C#", "Wolverine", "Flow"]}
+```csharp{title="Wolverine Flow" description="Wolverine Flow" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-guide", "C#", "Wolverine", "Flow"] unverified="other framework — migration before-state"}
 // Wolverine: Messages queued to outbox automatically
 [WolverineHandler]
 public async Task<OrderCreated> Handle(
@@ -139,7 +139,7 @@ await _dispatcher.PublishAsync(new NotifyCustomer(customerEmail));
 
 ### Wolverine Inbox
 
-```csharp{title="Wolverine Inbox" description="Wolverine Inbox" category="Reference" difficulty="BEGINNER" tags=["Migration-guide", "C#", "Wolverine", "Inbox"]}
+```csharp{title="Wolverine Inbox" description="Wolverine Inbox" category="Reference" difficulty="BEGINNER" tags=["Migration-guide", "C#", "Wolverine", "Inbox"] unverified="other framework — migration before-state"}
 // Wolverine: Inbox for idempotent processing
 opts.Policies.UseDurableInbox();
 
@@ -149,7 +149,7 @@ opts.Policies.UseDurableInbox();
 
 ### Whizbang Inbox
 
-```csharp{title="Whizbang Inbox" description="Whizbang Inbox" category="Reference" difficulty="BEGINNER" tags=["Migration-guide", "C#", "Whizbang", "Inbox"]}
+```csharp{title="Whizbang Inbox" description="Whizbang Inbox" category="Reference" difficulty="BEGINNER" tags=["Migration-guide", "C#", "Whizbang", "Inbox"] unverified="options configuration — no behavior to assert"}
 // Whizbang: Inbox deduplication is built-in - no configuration required.
 // Messages received from the transport are recorded in wh_inbox and
 // duplicates (same MessageId) are rejected before processing.
@@ -171,7 +171,7 @@ The strategy controls how buffered work (outbox writes, completions) is flushed 
 | `Interval` | Batches and flushes on a timer (`IntervalMilliseconds`) | High-throughput background workers |
 | `Batch` | Flushes at `BatchSize` or after a debounce quiet period | Bulk imports, seeding |
 
-```csharp{title="Selecting a Strategy" description="Selecting a work coordinator strategy:" category="Reference" difficulty="BEGINNER" tags=["Migration-guide", "C#", "Interval", "Strategy", "Default"]}
+```csharp{title="Selecting a Strategy" description="Selecting a work coordinator strategy:" category="Reference" difficulty="BEGINNER" tags=["Migration-guide", "C#", "Interval", "Strategy", "Default"] unverified="options configuration — no behavior to assert"}
 builder.Services.Configure<WorkCoordinatorOptions>(options => {
     options.Strategy = WorkCoordinatorStrategy.Interval;
     options.IntervalMilliseconds = 100;
@@ -185,7 +185,7 @@ Postgres `LISTEN`/`NOTIFY` wake-ups for new work are built into the Postgres dri
 
 ### Wolverine Error Policies
 
-```csharp{title="Wolverine Error Policies" description="Wolverine Error Policies" category="Reference" difficulty="BEGINNER" tags=["Migration-guide", "C#", "Wolverine", "Error", "Policies"]}
+```csharp{title="Wolverine Error Policies" description="Wolverine Error Policies" category="Reference" difficulty="BEGINNER" tags=["Migration-guide", "C#", "Wolverine", "Error", "Policies"] unverified="other framework — migration before-state"}
 opts.Handlers.OnAnyException()
     .RetryWithCooldown(
         TimeSpan.FromSeconds(1),
@@ -202,7 +202,7 @@ Retries are lease-based rather than policy-chain-based:
 - Transports enforce `MaxDeliveryAttempts` (default 10 on both RabbitMQ and Azure Service Bus options) before dead-lettering a message.
 - Rows that exhaust delivery move to the `wh_dead_letters` table, where `DeadLetterRecoveryWorker` applies the configured `IDeadLetterRecoveryPolicy` (re-emit, hold for review, or mark permanently failed).
 
-```csharp{title="Whizbang Retry Configuration" description="Whizbang Retry Configuration" category="Reference" difficulty="BEGINNER" tags=["Migration-guide", "C#", "Whizbang", "Retry", "Configuration"]}
+```csharp{title="Whizbang Retry Configuration" description="Whizbang Retry Configuration" category="Reference" difficulty="BEGINNER" tags=["Migration-guide", "C#", "Whizbang", "Retry", "Configuration"] unverified="dependency-injection and options configuration — no behavior to assert"}
 builder.Services.Configure<WorkCoordinatorOptions>(options => {
     options.LeaseSeconds = 300;                          // lease before failed work is reclaimed
     options.AbandonStaleInstanceThresholdSeconds = 30;   // dead-instance detection
@@ -217,7 +217,7 @@ builder.Services.AddRabbitMQTransport(connectionString, options => {
 
 ### Wolverine Dead Letter
 
-```csharp{title="Wolverine Dead Letter" description="Wolverine Dead Letter" category="Reference" difficulty="BEGINNER" tags=["Migration-guide", "C#", "Wolverine", "Dead", "Letter"]}
+```csharp{title="Wolverine Dead Letter" description="Wolverine Dead Letter" category="Reference" difficulty="BEGINNER" tags=["Migration-guide", "C#", "Wolverine", "Dead", "Letter"] unverified="other framework — migration before-state"}
 // Wolverine moves failed messages to error queue
 // Access via IMessageStore.Inbox.DeadLetterEnvelopes
 ```

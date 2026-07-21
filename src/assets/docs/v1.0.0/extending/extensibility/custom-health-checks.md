@@ -59,7 +59,7 @@ For built-in health checks, see [Health Checks](../../operations/infrastructure/
 
 Whizbang uses the standard ASP.NET Core health check abstraction (`Microsoft.Extensions.Diagnostics.HealthChecks`) - custom checks plug into the same pipeline as the built-in ones:
 
-```csharp{title="IHealthCheck Interface" description="IHealthCheck Interface" category="Extensibility" difficulty="BEGINNER" tags=["Extending", "Extensibility", "IHealthCheck", "Interface"]}
+```csharp{title="IHealthCheck Interface" description="IHealthCheck Interface" category="Extensibility" difficulty="BEGINNER" tags=["Extending", "Extensibility", "IHealthCheck", "Interface"] unverified="ASP.NET Core IHealthCheck abstraction — not a Whizbang type"}
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 public interface IHealthCheck {
@@ -81,7 +81,7 @@ public interface IHealthCheck {
 
 Separate from HTTP health endpoints, Whizbang has its own **transport readiness** hook. The outbox publisher worker consults `ITransportReadinessCheck` to decide whether to publish messages or keep them in the outbox (with renewed leases) until the transport becomes available:
 
-```csharp{title="ITransportReadinessCheck Interface" description="Whizbang transport readiness extension point" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Readiness", "Transports"]}
+```csharp{title="ITransportReadinessCheck Interface" description="Whizbang transport readiness extension point" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Readiness", "Transports"] tests=["DefaultTransportReadinessCheckTests.IsReadyAsync_Always_ReturnsTrueAsync", "DefaultTransportReadinessCheckTests.IsReadyAsync_Cancellation_ThrowsOperationCanceledExceptionAsync", "TransportReadinessCheckTests.ConfigurableCheck_ReturnsConfiguredValue_WhenCalledAsync", "TransportReadinessCheckTests.ConfigurableCheck_RespectsCancellationToken_WhenCancelledAsync"]}
 namespace Whizbang.Core.Transports;
 
 public interface ITransportReadinessCheck {
@@ -92,7 +92,7 @@ public interface ITransportReadinessCheck {
 
 The default implementation, `DefaultTransportReadinessCheck` (namespace `Whizbang.Core.Workers`), always returns `true` - appropriate for in-process transports. Transport packages ship real implementations (e.g. `ServiceBusReadinessCheck`, `RabbitMQReadinessCheck`). Implement this interface when writing a [custom transport](custom-transports.md) that can lose connectivity:
 
-```csharp{title="Custom Readiness Check" description="Readiness check for a custom transport" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Readiness", "Transports"]}
+```csharp{title="Custom Readiness Check" description="Readiness check for a custom transport" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Readiness", "Transports"] unverified="user extension example"}
 public class KafkaReadinessCheck : ITransportReadinessCheck {
   private readonly IAdminClient _adminClient;
 
@@ -118,7 +118,7 @@ public class KafkaReadinessCheck : ITransportReadinessCheck {
 
 ### Pattern 1: Kafka Transport Check
 
-```csharp{title="Pattern 1: Kafka Transport Check" description="Pattern 1: Kafka Transport Check" category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Pattern", "Kafka"]}
+```csharp{title="Pattern 1: Kafka Transport Check" description="Pattern 1: Kafka Transport Check" category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Pattern", "Kafka"] unverified="user extension example"}
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Confluent.Kafka;
 
@@ -166,7 +166,7 @@ public class KafkaHealthCheck : IHealthCheck {
 
 ### Pattern 2: Redis Cache Check
 
-```csharp{title="Pattern 2: Redis Cache Check" description="Pattern 2: Redis Cache Check" category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Pattern", "Redis"]}
+```csharp{title="Pattern 2: Redis Cache Check" description="Pattern 2: Redis Cache Check" category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Pattern", "Redis"] unverified="user extension example"}
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using StackExchange.Redis;
 
@@ -213,7 +213,7 @@ public class RedisHealthCheck : IHealthCheck {
 
 ### Pattern 3: PostgreSQL Check (Advanced)
 
-```csharp{title="Pattern 3: PostgreSQL Check (Advanced)" description="Pattern 3: PostgreSQL Check (Advanced)" category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Pattern", "PostgreSQL"]}
+```csharp{title="Pattern 3: PostgreSQL Check (Advanced)" description="Pattern 3: PostgreSQL Check (Advanced)" category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Pattern", "PostgreSQL"] unverified="user extension example"}
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Npgsql;
 
@@ -268,7 +268,7 @@ public class PostgresHealthCheck : IHealthCheck {
 
 ### Pattern 4: HTTP Dependency Check
 
-```csharp{title="Pattern 4: HTTP Dependency Check" description="Pattern 4: HTTP Dependency Check" category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Pattern", "HTTP"]}
+```csharp{title="Pattern 4: HTTP Dependency Check" description="Pattern 4: HTTP Dependency Check" category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Pattern", "HTTP"] unverified="user extension example"}
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 public class ExternalApiHealthCheck : IHealthCheck {
@@ -316,7 +316,7 @@ public class ExternalApiHealthCheck : IHealthCheck {
 
 ### Pattern 5: Multi-Component Check
 
-```csharp{title="Pattern 5: Multi-Component Check" description="Pattern 5: Multi-Component Check" category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Pattern", "Multi-Component"]}
+```csharp{title="Pattern 5: Multi-Component Check" description="Pattern 5: Multi-Component Check" category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Pattern", "Multi-Component"] unverified="user extension example"}
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 public class WhizbangSystemHealthCheck : IHealthCheck {
@@ -365,7 +365,7 @@ public class WhizbangSystemHealthCheck : IHealthCheck {
 
 ## Registration and Configuration
 
-```csharp{title="Registration and Configuration" description="Registration and Configuration" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Registration", "Configuration"]}
+```csharp{title="Registration and Configuration" description="Registration and Configuration" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Registration", "Configuration"] unverified="ASP.NET Core health-check registration — configuration, not a Whizbang behavior"}
 // Startup.cs
 builder.Services.AddHealthChecks()
   .AddCheck<KafkaHealthCheck>("kafka", tags: new[] { "transport" })

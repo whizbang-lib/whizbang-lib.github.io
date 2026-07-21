@@ -69,7 +69,7 @@ For built-in transports, see [Azure Service Bus](../../messaging/transports/azur
 
 ### ITransport Interface
 
-```csharp{title="ITransport Interface" description="ITransport Interface" category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "ITransport", "Interface"]}
+```csharp{title="ITransport Interface" description="ITransport Interface" category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "ITransport", "Interface"] tests=["ITransportTests.ITransport_Capabilities_ReturnsTransportCapabilitiesAsync", "ITransportTests.ITransport_PublishAsync_WithValidMessage_CompletesSuccessfullyAsync", "ITransportTests.ITransport_SubscribeBatchAsync_RegistersHandler_ReturnsSubscriptionAsync", "ITransportTests.ITransport_SendAsync_WithTimeout_ThrowsTimeoutExceptionAsync", "ITransportTests.ITransport_MaxMessageSizeBytes_InProcessTransport_ReturnsNullAsync", "ITransportTests.ITransport_PublishBatchAsync_WithoutBulkPublishCapability_ThrowsNotSupportedExceptionAsync"]}
 namespace Whizbang.Core.Transports;
 
 /// <summary>
@@ -171,7 +171,7 @@ public interface ITransport {
 
 ### Transport Capabilities
 
-```csharp{title="Transport Capabilities" description="Transport Capabilities" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Transport", "Capabilities"]}
+```csharp{title="Transport Capabilities" description="Transport Capabilities" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Transport", "Capabilities"] tests=["TransportCapabilitiesTests.TransportCapabilities_HasNoneValueAsync", "TransportCapabilitiesTests.TransportCapabilities_HasBulkPublishAsync", "TransportCapabilitiesTests.TransportCapabilities_AllFlag_ContainsAllCapabilitiesAsync", "TransportCapabilitiesTests.TransportCapabilities_CanCombineFlagsAsync"]}
 [Flags]
 public enum TransportCapabilities {
   None = 0,
@@ -205,7 +205,7 @@ public enum TransportCapabilities {
 
 **Use Case**: Call remote HTTP APIs using Whizbang message patterns.
 
-```csharp{title="Pattern 1: HTTP Client Transport" description="Use Case: Call remote HTTP APIs using Whizbang message patterns." category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Pattern", "HTTP"]}
+```csharp{title="Pattern 1: HTTP Client Transport" description="Use Case: Call remote HTTP APIs using Whizbang message patterns." category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Pattern", "HTTP"] unverified="user extension example — custom ITransport implementation"}
 using Whizbang.Core;
 using Whizbang.Core.Transports;
 using System.Net.Http.Json;
@@ -309,7 +309,7 @@ public class HttpTransport : ITransport {
 ```
 
 **Registration**:
-```csharp{title="Pattern 1: HTTP Client Transport (2)" description="Registration:" category="Extensibility" difficulty="BEGINNER" tags=["Extending", "Extensibility", "Pattern", "HTTP"]}
+```csharp{title="Pattern 1: HTTP Client Transport (2)" description="Registration:" category="Extensibility" difficulty="BEGINNER" tags=["Extending", "Extensibility", "Pattern", "HTTP"] unverified="user extension example — DI registration for a custom transport"}
 builder.Services.AddHttpClient<HttpTransport>(client => {
   client.BaseAddress = new Uri("https://api.example.com");
   client.Timeout = TimeSpan.FromSeconds(30);
@@ -319,7 +319,7 @@ builder.Services.AddSingleton<ITransport, HttpTransport>();
 ```
 
 **Usage**:
-```csharp{title="Pattern 1: HTTP Client Transport (3)" description="Pattern 1: HTTP Client Transport" category="Extensibility" difficulty="BEGINNER" tags=["Extending", "Extensibility", "Pattern", "HTTP"]}
+```csharp{title="Pattern 1: HTTP Client Transport (3)" description="Pattern 1: HTTP Client Transport" category="Extensibility" difficulty="BEGINNER" tags=["Extending", "Extensibility", "Pattern", "HTTP"] unverified="user extension example — usage of a custom transport"}
 var request = new MessageEnvelope<CreateOrder> {
   MessageId = MessageId.New(),
   DispatchContext = new MessageDispatchContext {
@@ -353,7 +353,7 @@ var response = await transport.SendAsync<CreateOrder, OrderCreated>(request, des
 
 **Use Case**: High-performance RPC with streaming support.
 
-```csharp{title="Pattern 2: gRPC Channel Transport" description="Use Case: High-performance RPC with streaming support." category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Pattern", "GRPC"]}
+```csharp{title="Pattern 2: gRPC Channel Transport" description="Use Case: High-performance RPC with streaming support." category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Pattern", "GRPC"] unverified="user extension example — custom ITransport implementation"}
 using Whizbang.Core;
 using Whizbang.Core.Transports;
 using Grpc.Net.Client;
@@ -465,7 +465,7 @@ public class GrpcTransport : ITransport {
 
 **Use Case**: High-throughput event streaming with ordering and persistence.
 
-```csharp{title="Pattern 3: Kafka Producer/Consumer Transport" description="Use Case: High-throughput event streaming with ordering and persistence." category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Pattern", "Kafka"]}
+```csharp{title="Pattern 3: Kafka Producer/Consumer Transport" description="Use Case: High-throughput event streaming with ordering and persistence." category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Pattern", "Kafka"] unverified="user extension example — custom ITransport implementation"}
 using Whizbang.Core;
 using Whizbang.Core.Transports;
 using Confluent.Kafka;
@@ -707,7 +707,7 @@ internal class KafkaSubscription : ISubscription {
 ```
 
 **Registration**:
-```csharp{title="Pattern 3: Kafka Producer/Consumer Transport (2)" description="Registration:" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Pattern", "Kafka"]}
+```csharp{title="Pattern 3: Kafka Producer/Consumer Transport (2)" description="Registration:" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Pattern", "Kafka"] unverified="user extension example — DI registration for a custom transport"}
 var producerConfig = new ProducerConfig {
   BootstrapServers = "localhost:9092",
   Acks = Acks.All,  // Wait for all replicas
@@ -737,7 +737,7 @@ builder.Services.AddSingleton<ITransport>(sp =>
 
 ### Pattern 4: Transport with Health Checks
 
-```csharp{title="Pattern 4: Transport with Health Checks" description="Pattern 4: Transport with Health Checks" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Pattern", "Transport"]}
+```csharp{title="Pattern 4: Transport with Health Checks" description="Pattern 4: Transport with Health Checks" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Pattern", "Transport"] unverified="user extension example — custom health check for a custom transport"}
 using Whizbang.Core.Transports;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 
@@ -782,7 +782,7 @@ builder.Services.AddHealthChecks()
 
 ### Pattern 5: Batching Transport (High Throughput)
 
-```csharp{title="Pattern 5: Batching Transport (High Throughput)" description="Pattern 5: Batching Transport (High Throughput)" category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Pattern", "Batching"]}
+```csharp{title="Pattern 5: Batching Transport (High Throughput)" description="Pattern 5: Batching Transport (High Throughput)" category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Pattern", "Batching"] unverified="user extension example — custom ITransport implementation"}
 using Whizbang.Core.Transports;
 using System.Threading.Channels;
 
@@ -873,7 +873,7 @@ If the underlying broker supports batched sends natively, prefer declaring the `
 :::
 
 **Usage**:
-```csharp{title="Pattern 5: Batching Transport (High Throughput) (2)" description="Pattern 5: Batching Transport (High Throughput)" category="Extensibility" difficulty="BEGINNER" tags=["Extending", "Extensibility", "Pattern", "Batching"]}
+```csharp{title="Pattern 5: Batching Transport (High Throughput) (2)" description="Pattern 5: Batching Transport (High Throughput)" category="Extensibility" difficulty="BEGINNER" tags=["Extending", "Extensibility", "Pattern", "Batching"] unverified="user extension example — usage of a custom transport"}
 // Wrap existing transport with batching
 var kafkaTransport = new KafkaTransport(...);
 var batchingTransport = new BatchingTransport(kafkaTransport);
@@ -892,7 +892,7 @@ builder.Services.AddSingleton<ITransport>(batchingTransport);
 
 ### Testing Initialization
 
-```csharp{title="Testing Initialization" description="Testing Initialization" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Testing", "Initialization"]}
+```csharp{title="Testing Initialization" description="Testing Initialization" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Testing", "Initialization"] unverified="user extension example — tests a custom transport implementation"}
 public class KafkaTransportTests {
   [Test]
   public async Task InitializeAsync_ValidBroker_SucceedsAsync() {
@@ -931,7 +931,7 @@ public class KafkaTransportTests {
 
 ### Testing Publish/Subscribe
 
-```csharp{title="Testing Publish/Subscribe" description="Testing Publish/Subscribe" category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Testing", "Publish"]}
+```csharp{title="Testing Publish/Subscribe" description="Testing Publish/Subscribe" category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Testing", "Publish"] unverified="user extension example — tests a custom transport implementation"}
 public class KafkaTransportIntegrationTests {
   [Test]
   public async Task PublishAndSubscribe_MessageReceivedAsync() {

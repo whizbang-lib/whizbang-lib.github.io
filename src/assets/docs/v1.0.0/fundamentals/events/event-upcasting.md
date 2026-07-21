@@ -67,7 +67,7 @@ An upcaster is a cheap predicate plus a transform, with two optional
 type-declaration members used only for the type-change case (see
 [Type-change scoping](#type-change-scoping-foreign-inputs)).
 
-```csharp{title="The IEventUpcaster contract" description="A cheap CanUpcast predicate, an Upcast transform, and optional SourceTypes/TargetTypes that a type-change upcaster declares." framework="NET10" category="Messaging" difficulty="INTERMEDIATE" tags=["event-upcasting", "ieventupcaster", "schema-evolution", "aot"]}
+```csharp{title="The IEventUpcaster contract" description="A cheap CanUpcast predicate, an Upcast transform, and optional SourceTypes/TargetTypes that a type-change upcaster declares." framework="NET10" category="Messaging" difficulty="INTERMEDIATE" tags=["event-upcasting", "ieventupcaster", "schema-evolution", "aot"] tests=["EventUpcasterPipelineTests.Apply_WithMatchingUpcaster_TransformsEventAsync", "EventUpcasterPipelineTests.Apply_WithNonMatchingUpcaster_LeavesEventUntouchedAsync", "EventUpcasterPipelineTests.HasTypeChanges_OnlyWhenAnUpcasterDeclaresSourceAndTargetAsync"]}
 public interface IEventUpcaster {
   // Cheap predicate — true only for events you transform. Called on every event
   // of every read, so keep it allocation-light and side-effect free.
@@ -87,7 +87,7 @@ public interface IEventUpcaster {
 `Upcast` casts to the concrete type you own — that is how it stays
 reflection-free.
 
-```csharp{title="Backfill + type-change upcaster" description="Upcast OrderV1Event to OrderV2Event, backfilling a default Version by returning a new instance of the newer type." framework="NET10" category="Messaging" difficulty="INTERMEDIATE" tags=["event-upcasting", "type-change", "backfill", "versioning"]}
+```csharp{title="Backfill + type-change upcaster" description="Upcast OrderV1Event to OrderV2Event, backfilling a default Version by returning a new instance of the newer type." framework="NET10" category="Messaging" difficulty="INTERMEDIATE" tags=["event-upcasting", "type-change", "backfill", "versioning"] tests=["EventUpcasterPipelineTests.Apply_WithMatchingUpcaster_TransformsEventAsync"]}
 // Backfill + type change: OrderV1 -> OrderV2 (adds a default Version).
 public sealed class V1ToV2Upcaster : IEventUpcaster {
   public bool CanUpcast(IEvent e) => e is OrderV1Event;
@@ -98,7 +98,7 @@ public sealed class V1ToV2Upcaster : IEventUpcaster {
 }
 ```
 
-```csharp{title="Re-key upcaster" description="Cast to the concrete type, set the [StreamId]-marked property to land the event on a different stream, and return the same mutated instance." framework="NET10" category="Messaging" difficulty="ADVANCED" tags=["event-upcasting", "re-key", "stream-id", "sagas"]}
+```csharp{title="Re-key upcaster" description="Cast to the concrete type, set the [StreamId]-marked property to land the event on a different stream, and return the same mutated instance." framework="NET10" category="Messaging" difficulty="ADVANCED" tags=["event-upcasting", "re-key", "stream-id", "sagas"] tests=["EventUpcasterPipelineTests.Apply_RekeyUpcaster_MutatesStreamIdInPlaceAsync"]}
 // Re-key: set the [StreamId]-marked property to land the event on a different
 // stream. Cast to the concrete type, mutate the key, return the SAME instance.
 // KeyFor here is illustrative — a real per-item saga key uses SagaItemStreams.Of.
@@ -126,7 +126,7 @@ Registration is explicit — no assembly scanning, so it is AOT-safe and the
 apply order is the call order. Register upcasters **oldest-shape → newest-shape**
 so a stale event walks the whole chain in one pass.
 
-```csharp{title="Register upcasters oldest-shape first" description="Chain AddEventUpcaster calls in ascending version order so a V1 event composes through V2 to V3 in a single forward pass." framework="NET10" category="Messaging" difficulty="BEGINNER" tags=["event-upcasting", "registration", "dependency-injection", "ordering"]}
+```csharp{title="Register upcasters oldest-shape first" description="Chain AddEventUpcaster calls in ascending version order so a V1 event composes through V2 to V3 in a single forward pass." framework="NET10" category="Messaging" difficulty="BEGINNER" tags=["event-upcasting", "registration", "dependency-injection", "ordering"] tests=["EventUpcasterPipelineTests.Apply_ChainsUpcastersInRegistrationOrder_V1ToV3Async", "EventUpcasterPipelineTests.Apply_RegistrationOrderMatters_ReverseOrderStopsAtV2Async"]}
 services
   .AddEventUpcaster<OrderV1ToV2Upcaster>()   // applied first
   .AddEventUpcaster<OrderV2ToV3Upcaster>();  // then this — a V1 event reaches V3 in one pass
@@ -152,7 +152,7 @@ consumers pay nothing.
 `UpcastingEventStoreDecorator` sits **innermost** in the `IEventStore` decorator
 stack, so every outer decorator and consumer observes upcasted events:
 
-```mermaid
+```mermaid{caption="IEventStore decorator stack — the UpcastingEventStoreDecorator sits innermost (Layer 0) so every outer decorator and consumer observes events already upcasted on read." tests=["UpcastingEventStoreDecoratorTests.ReadPolymorphicAsync_AppliesUpcasterAsync", "UpcastingEventStoreDecoratorTests.GetEventsBetweenPolymorphicAsync_AppliesUpcasterAsync", "UpcastingEventStoreDecoratorTests.DeserializeStreamEvents_AppliesUpcasterAsync"]}
 graph TB
     A["IEventStore"]
     B["AppendAndWaitEventStoreDecorator (Layer 3, outermost)"]
@@ -197,7 +197,7 @@ foreign input would be filtered out *before* the upcaster ever runs.
 To include it, a type-change upcaster declares its `SourceTypes` and
 `TargetTypes`:
 
-```csharp{title="Type-change upcaster for a foreign input" description="Declaring SourceTypes/TargetTypes opts a type-change upcaster into read-widening so a stored type the perspective does not subscribe to can still reach it." framework="NET10" category="Messaging" difficulty="ADVANCED" tags=["event-upcasting", "type-change", "read-seam", "perspective-rebuild"]}
+```csharp{title="Type-change upcaster for a foreign input" description="Declaring SourceTypes/TargetTypes opts a type-change upcaster into read-widening so a stored type the perspective does not subscribe to can still reach it." framework="NET10" category="Messaging" difficulty="ADVANCED" tags=["event-upcasting", "type-change", "read-seam", "perspective-rebuild"] tests=["UpcastingEventStoreDecoratorTests.ReadPolymorphicAsync_DeclaringTypeChange_WidensReadAndYieldsTargetAsync", "EventUpcasterPipelineTests.ExtraInputTypesFor_TargetRequested_ReturnsSourceTypeAsync"]}
 public sealed class ForeignToNewUpcaster : IEventUpcaster {
   public IReadOnlyList<Type> SourceTypes => [typeof(ForeignEvent)];
   public IReadOnlyList<Type> TargetTypes => [typeof(NewEvent)];

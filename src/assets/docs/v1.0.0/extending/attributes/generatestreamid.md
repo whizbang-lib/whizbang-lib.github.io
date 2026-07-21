@@ -27,13 +27,13 @@ The `[GenerateStreamId]` attribute marks an event for automatic StreamId generat
 
 ## Namespace
 
-```csharp{title="Namespace" description="Namespace" category="Reference" difficulty="BEGINNER" tags=["Extending", "Attributes", "Namespace"]}
+```csharp{title="Namespace" description="Namespace" category="Reference" difficulty="BEGINNER" tags=["Extending", "Attributes", "Namespace"] unverified="namespace import — brings [GenerateStreamId] into scope; no behavior under test"}
 using Whizbang.Core;
 ```
 
 ## Syntax
 
-```csharp{title="Syntax" description="Syntax" category="Reference" difficulty="INTERMEDIATE" tags=["Extending", "Attributes", "Syntax"]}
+```csharp{title="Syntax" description="Syntax" category="Reference" difficulty="INTERMEDIATE" tags=["Extending", "Attributes", "Syntax"] unverified="placement reference (property, OnlyIfEmpty, class-level inherited [StreamId], record parameter); the generated GetGenerationPolicy for each form is verified by GenerateStreamIdGeneratorTests, which is outside the current coverage map"}
 // On a property (alongside [StreamId])
 public record OrderCreatedEvent : IEvent {
   [StreamId] [GenerateStreamId]
@@ -76,7 +76,7 @@ The `[GenerateStreamId]` attribute replaces the blunt `AutoGenerateStreamIds` op
 
 Events that start a new stream should always generate a new StreamId, even when cascaded from another event:
 
-```csharp{title="Stream-Initiating Events" description="Events that start a new stream should always generate a new StreamId, even when cascaded from another event:" category="Reference" difficulty="BEGINNER" tags=["Extending", "Attributes", "Stream-Initiating", "Events"]}
+```csharp{title="Stream-Initiating Events" description="Events that start a new stream should always generate a new StreamId, even when cascaded from another event:" category="Reference" difficulty="BEGINNER" tags=["Extending", "Attributes", "Stream-Initiating", "Events"] tests=["StreamIdGeneratorTests.Generator_GenerateStreamIdOnMutableProperty_DoesNotReportWHIZ013Async"]}
 public record OrderCreatedEvent : IEvent {
   [StreamId] [GenerateStreamId]
   public Guid OrderId { get; set; }
@@ -89,7 +89,7 @@ When dispatched, `OrderId` will always be populated with a new UUIDv7 (TrackedGu
 
 Events that must belong to an existing stream should NOT have `[GenerateStreamId]`. If the StreamId is `Guid.Empty` at dispatch time, the `StreamIdGuard` will throw an `InvalidStreamIdException`:
 
-```csharp{title="Appending Events" description="Events that must belong to an existing stream should NOT have [GenerateStreamId]." category="Reference" difficulty="BEGINNER" tags=["Extending", "Attributes", "Appending", "Events"]}
+```csharp{title="Appending Events" description="Events that must belong to an existing stream should NOT have [GenerateStreamId]." category="Reference" difficulty="BEGINNER" tags=["Extending", "Attributes", "Appending", "Events"] tests=["StreamIdGuardTests.ThrowIfEmpty_WithGuidEmpty_ThrowsInvalidStreamIdExceptionAsync", "StreamIdGuardTests.ThrowIfEmpty_WithValidGuid_DoesNotThrowAsync"]}
 public record OrderItemAddedEvent : IEvent {
   [StreamId]
   public Guid OrderId { get; set; }  // MUST be provided by caller
@@ -100,7 +100,7 @@ public record OrderItemAddedEvent : IEvent {
 
 Events that may be dispatched independently OR cascaded from a parent event should use `OnlyIfEmpty = true`:
 
-```csharp{title="Flexible Events" description="Events that may be dispatched independently OR cascaded from a parent event should use OnlyIfEmpty = true:" category="Reference" difficulty="BEGINNER" tags=["Extending", "Attributes", "Flexible", "Events"]}
+```csharp{title="Flexible Events" description="Events that may be dispatched independently OR cascaded from a parent event should use OnlyIfEmpty = true:" category="Reference" difficulty="BEGINNER" tags=["Extending", "Attributes", "Flexible", "Events"] unverified="OnlyIfEmpty = true generation policy is verified by GenerateStreamIdGeneratorTests, which is outside the current coverage map"}
 public record InventoryReserved : IEvent {
   [StreamId] [GenerateStreamId(OnlyIfEmpty = true)]
   public Guid ReservationId { get; set; }

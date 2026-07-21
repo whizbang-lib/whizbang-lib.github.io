@@ -35,7 +35,7 @@ In event sourcing, events are organized into **streams**:
 
 ## StreamId Value Object {#streamid}
 
-```csharp{title="StreamId Value Object" description="StreamId Value Object" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "StreamId", "Value"]}
+```csharp{title="StreamId Value Object" description="StreamId Value Object" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "StreamId", "Value"] unverified="value-object type declaration; no runtime behavior asserted"}
 namespace Whizbang.Core.ValueObjects;
 
 /// <summary>
@@ -49,7 +49,7 @@ public readonly partial struct StreamId;
 
 ### Creating StreamIds
 
-```csharp{title="Creating StreamIds" description="Creating StreamIds" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Creating", "StreamIds"]}
+```csharp{title="Creating StreamIds" description="Creating StreamIds" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Creating", "StreamIds"] unverified="StreamId value-object construction and parsing; verified by IdentityValueObjectTests, which is absent from the test map"}
 // Create new StreamId (UUIDv7)
 var streamId = StreamId.New();
 
@@ -68,7 +68,7 @@ Guid underlying = streamId.Value;
 
 ## Stream Structure
 
-```mermaid
+```mermaid{caption="Two independent event streams (order-123 and order-456), each an ordered sequence of events by ascending sequence number." tests=["EventStoreContractTests.ReadAsync_ShouldReturnEventsInOrderAsync", "EventStoreContractTests.AppendAsync_DifferentStreams_ShouldBeIndependentAsync"]}
 graph TB
     subgraph S1["Stream: order-123"]
         A1["Seq 1: OrderCreated { OrderId, CustomerId, Items }"]
@@ -102,7 +102,7 @@ Each event has:
 
 ### Appending Events
 
-```csharp{title="Appending Events" description="Appending Events" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "C#", "Appending"]}
+```csharp{title="Appending Events" description="Appending Events" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "C#", "Appending"] tests=["InMemoryEventStoreTests.AppendAsync_WithMessage_ShouldStoreEventAsync"]}
 // Append event to a stream
 await eventStore.AppendAsync(order.StreamId, new OrderShipped {
   OrderId = order.Id,
@@ -113,7 +113,7 @@ await eventStore.AppendAsync(order.StreamId, new OrderShipped {
 
 ### Reading Events
 
-```csharp{title="Reading Events" description="Reading Events" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "C#", "Reading"]}
+```csharp{title="Reading Events" description="Reading Events" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "C#", "Reading"] tests=["EventStoreContractTests.ReadAsync_ShouldReturnEventsInOrderAsync"]}
 // Read all events from a stream (ordered by sequence within the stream)
 await foreach (var envelope in eventStore.ReadAsync<IEvent>(streamId, fromSequence: 0)) {
   Console.WriteLine($"Event {envelope.MessageId}: {envelope.Payload.GetType().Name}");
@@ -122,7 +122,7 @@ await foreach (var envelope in eventStore.ReadAsync<IEvent>(streamId, fromSequen
 
 ### Reading from Checkpoint
 
-```csharp{title="Reading from Checkpoint" description="Reading from Checkpoint" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "Reading", "Checkpoint"]}
+```csharp{title="Reading from Checkpoint" description="Reading from Checkpoint" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "Reading", "Checkpoint"] tests=["InMemoryEventStoreTests.ReadAsync_ByEventId_WithSpecificEventId_ShouldReturnEventsAfterItAsync"]}
 // Read events after a specific event ID (checkpoint-based)
 await foreach (var envelope in eventStore.ReadAsync<IEvent>(streamId, fromEventId: lastProcessedId)) {
   await ProcessEventAsync(envelope.Payload);
@@ -131,7 +131,7 @@ await foreach (var envelope in eventStore.ReadAsync<IEvent>(streamId, fromEventI
 
 ### Polymorphic Reads
 
-```csharp{title="Polymorphic Reads" description="Polymorphic Reads" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Polymorphic", "Reads"]}
+```csharp{title="Polymorphic Reads" description="Polymorphic Reads" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Polymorphic", "Reads"] tests=["InMemoryEventStoreTests.ReadPolymorphicAsync_WithMatchingEventType_ShouldReturnEventsAsync"]}
 // Read multiple event types from a stream
 var eventTypes = new[] {
   typeof(OrderCreated),
@@ -162,7 +162,7 @@ await foreach (var envelope in eventStore.ReadPolymorphicAsync(
 
 Events in a stream can rebuild aggregate state:
 
-```csharp{title="Stream-Based Aggregates" description="Events in a stream can rebuild aggregate state:" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Events", "Stream-Based", "Aggregates"]}
+```csharp{title="Stream-Based Aggregates" description="Events in a stream can rebuild aggregate state:" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Events", "Stream-Based", "Aggregates"] unverified="illustrative aggregate rebuild — user-defined Apply fold over ReadPolymorphicAsync, not a framework API under test"}
 public class Order {
   public Guid Id { get; private set; }
   public Guid CustomerId { get; private set; }
@@ -218,7 +218,7 @@ public class Order {
 
 Streams enable partitioning for scalability:
 
-```csharp{title="Stream Partitioning" description="Streams enable partitioning for scalability:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "Stream", "Partitioning"]}
+```csharp{title="Stream Partitioning" description="Streams enable partitioning for scalability:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "Stream", "Partitioning"] unverified="attribute-declaration example illustrating partitioning; no runtime behavior asserted"}
 // Events are partitioned by StreamId
 // Each partition can be processed independently
 public record OrderCreated : IEvent {
@@ -240,7 +240,7 @@ Benefits of stream-based partitioning:
 
 Use the entity's business ID as the stream ID:
 
-```csharp{title="Business Entity ID" description="Use the entity's business ID as the stream ID:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "Business", "Entity"]}
+```csharp{title="Business Entity ID" description="Use the entity's business ID as the stream ID:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "Business", "Entity"] unverified="stream-ID strategy declaration; [StreamId] extractor generation is verified on the Stream ID page"}
 public record OrderCreated : IEvent {
   [StreamId]
   public required Guid OrderId { get; init; }  // OrderId IS the StreamId
@@ -252,7 +252,7 @@ public record OrderCreated : IEvent {
 
 Use `IHasStreamId` for system-generated IDs:
 
-```csharp{title="Auto-Generated Stream ID" description="Use IHasStreamId for system-generated IDs:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "Auto-Generated", "Stream"]}
+```csharp{title="Auto-Generated Stream ID" description="Use IHasStreamId for system-generated IDs:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "Auto-Generated", "Stream"] unverified="IHasStreamId declaration; auto-generation is verified on the Stream ID page"}
 public record OrderCreated : IEvent, IHasStreamId {
   public Guid StreamId { get; set; }  // Auto-generated
   public required Guid CustomerId { get; init; }
@@ -264,7 +264,7 @@ public record OrderCreated : IEvent, IHasStreamId {
 
 For complex scenarios, derive stream ID from multiple fields:
 
-```csharp{title="Composite Stream ID" description="For complex scenarios, derive stream ID from multiple fields:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "Composite", "Stream"]}
+```csharp{title="Composite Stream ID" description="For complex scenarios, derive stream ID from multiple fields:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "Composite", "Stream"] unverified="illustrative custom stream-ID derivation (GetStreamId), not a shipped API"}
 public record TenantOrderCreated : IEvent {
   public required Guid TenantId { get; init; }
   public required Guid OrderId { get; init; }

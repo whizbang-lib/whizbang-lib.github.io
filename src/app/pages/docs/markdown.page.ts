@@ -1,4 +1,4 @@
-import { Component, inject, signal, OnInit, ViewChild, ViewContainerRef, EnvironmentInjector, ComponentRef, AfterViewInit, effect, OnDestroy } from '@angular/core';
+import { Component, inject, signal, OnInit, ViewChild, ViewContainerRef, EnvironmentInjector, ComponentRef, AfterViewInit, effect, OnDestroy, createComponent } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { MarkdownModule } from 'ngx-markdown';
 import { HttpClient } from '@angular/common/http';
@@ -20,10 +20,14 @@ import { ToastModule } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
 import { trigger, transition, style, animate } from '@angular/animations';
 import { TestReferencesPanelComponent } from '../../components/test-references-panel.component';
+import { VerifiedMarkerProcessor, VerifiedMarker } from '../../services/verified-marker-processor.service';
+import { VerifiedBadgeComponent } from '../../components/verified-badge.component';
+import { VerifiedSummaryComponent } from '../../components/verified-summary.component';
+import { VerifiedModalComponent } from '../../components/verified-modal.component';
 
 @Component({
   standalone: true,
-  imports: [MarkdownModule, WbVideoComponent, WbExampleComponent, CommonModule, BreadcrumbComponent, ToastModule, TestReferencesPanelComponent],
+  imports: [MarkdownModule, WbVideoComponent, WbExampleComponent, CommonModule, BreadcrumbComponent, ToastModule, TestReferencesPanelComponent, VerifiedSummaryComponent, VerifiedModalComponent],
   providers: [MessageService],
   template: `
     <div>
@@ -38,7 +42,10 @@ import { TestReferencesPanelComponent } from '../../components/test-references-p
       <div [style.visibility]="isContentReady() ? 'visible' : 'hidden'">
         <!-- Breadcrumb Navigation -->
         <wb-breadcrumb [items]="breadcrumbs()"></wb-breadcrumb>
-        
+
+        <!-- Prominent, collapsible per-method "Verified by tests" summary -->
+        <wb-verified-summary [testReferences]="testReferences()"></wb-verified-summary>
+
         <markdown [data]="processedContent()"></markdown>
         
         <!-- Dynamic code block components for ALL blocks -->
@@ -56,6 +63,9 @@ import { TestReferencesPanelComponent } from '../../components/test-references-p
         <wb-test-references [testReferences]="testReferences()"></wb-test-references>
       </div>
       
+      <!-- Focused modal opened by inline verified-by-tests badges -->
+      <wb-verified-modal></wb-verified-modal>
+
       <!-- Toast notifications -->
       <p-toast></p-toast>
     </div>
@@ -219,6 +229,45 @@ import { TestReferencesPanelComponent } from '../../components/test-references-p
       opacity: 0.8;
       border-style: dashed;
     }
+
+    /* Mermaid diagram figure: diagram + required caption/tests */
+    :host ::ng-deep .mermaid-figure {
+      margin: 1.5rem 0;
+    }
+    :host ::ng-deep .mermaid-figure .mermaid-caption {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      margin-top: 0.5rem;
+      padding: 0 0.25rem;
+      font-size: 0.88rem;
+      font-style: italic;
+      color: var(--p-text-muted-color, #71717a);
+    }
+    :host ::ng-deep .mermaid-figure .mermaid-caption-text::before {
+      content: "Figure — ";
+      font-weight: 600;
+      font-style: normal;
+      color: var(--p-text-color, inherit);
+    }
+    :host ::ng-deep .mermaid-figure .mermaid-missing-meta {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      margin-top: 0.5rem;
+      padding: 0.5rem 0.75rem;
+      border-radius: 0.4rem;
+      font-size: 0.82rem;
+      color: var(--orange-700, #b45309);
+      background: color-mix(in srgb, var(--orange-500, #f59e0b) 15%, transparent);
+      border: 1px solid color-mix(in srgb, var(--orange-500, #f59e0b) 40%, transparent);
+    }
+    :host ::ng-deep .mermaid-figure .mermaid-missing-meta code {
+      background: color-mix(in srgb, var(--p-text-color, #808080) 10%, transparent);
+      padding: 0.05rem 0.3rem;
+      border-radius: 0.25rem;
+    }
   `],
   animations: [
     trigger('fadeIn', [
@@ -242,6 +291,7 @@ export class MarkdownPage implements OnInit, AfterViewInit, OnDestroy {
   private structuredDataService = inject(StructuredDataService);
   private headerProcessor = inject(HeaderProcessorService);
   private calloutProcessor = inject(CalloutProcessorService);
+  private verifiedMarkerProcessor = inject(VerifiedMarkerProcessor);
   private versionService = inject(VersionService);
   private messageService = inject(MessageService);
 
@@ -258,6 +308,8 @@ export class MarkdownPage implements OnInit, AfterViewInit, OnDestroy {
 
   private allCodeBlocks: any[] = [];
   private codeComponentRefs: ComponentRef<EnhancedCodeBlockV2Component>[] = [];
+  private verifiedMarkers: VerifiedMarker[] = [];
+  private verifiedComponentRefs: ComponentRef<VerifiedBadgeComponent>[] = [];
   private intersectionObserver?: IntersectionObserver;
   private currentActiveHeader?: string;
 
@@ -461,7 +513,9 @@ export class MarkdownPage implements OnInit, AfterViewInit, OnDestroy {
     // Clear existing components
     this.codeComponentRefs.forEach(ref => ref.destroy());
     this.codeComponentRefs = [];
-    
+    this.verifiedComponentRefs.forEach(ref => ref.destroy());
+    this.verifiedComponentRefs = [];
+
     // Create new components for ALL blocks
     this.allCodeBlocks.forEach(codeBlock => {
       const componentRef = this.codeBlockParser.createCodeBlockComponent(
@@ -510,7 +564,7 @@ export class MarkdownPage implements OnInit, AfterViewInit, OnDestroy {
               // Create a wrapper div for the component
               const wrapper = document.createElement('div');
               wrapper.appendChild(componentRef.location.nativeElement);
-              
+
               // Replace the text node with the component wrapper
               const parentElement = node.parentElement;
               if (parentElement) {
@@ -522,6 +576,9 @@ export class MarkdownPage implements OnInit, AfterViewInit, OnDestroy {
         }
       });
 
+      // Mount inline verified-by-tests badges from {verified: ...} tokens.
+      this.mountVerifiedMarkers(markdownElement);
+
       // All placeholders have been processed, render Mermaid diagrams
       setTimeout(async () => {
         await this.renderMermaidBlocks();
@@ -529,6 +586,38 @@ export class MarkdownPage implements OnInit, AfterViewInit, OnDestroy {
         // Setup scroll spy after content is ready
         setTimeout(() => this.setupScrollSpy(), 100);
       }, 500);
+    });
+  }
+
+  /**
+   * Swap each `[VERIFIED_n]` placeholder for a mounted wb-verified-badge. The
+   * placeholder may be embedded mid-text (a sentence, a table cell), so we split
+   * the text node around it instead of replacing the whole node. Badges inside
+   * table cells render compact to keep dense tables readable.
+   */
+  private mountVerifiedMarkers(markdownElement: Element) {
+    this.verifiedMarkers.forEach((marker) => {
+      const walker = document.createTreeWalker(markdownElement, NodeFilter.SHOW_TEXT, null);
+      let node: Node | null;
+      while ((node = walker.nextNode())) {
+        const text = node.textContent ?? '';
+        const at = text.indexOf(marker.placeholder);
+        if (at === -1) continue;
+        const parent = node.parentElement;
+        if (!parent) break;
+
+        const ref = createComponent(VerifiedBadgeComponent, { environmentInjector: this.injector });
+        ref.instance.tests = marker.tests;
+        if (parent.closest('td, th')) ref.instance.compact = true;
+        ref.changeDetectorRef.detectChanges();
+        this.verifiedComponentRefs.push(ref);
+
+        // Split: [before][placeholder][after] -> before | <badge> | after
+        const after = (node as Text).splitText(at);
+        after.textContent = (after.textContent ?? '').slice(marker.placeholder.length);
+        parent.insertBefore(ref.location.nativeElement, after);
+        break; // placeholder is unique
+      }
     });
   }
 
@@ -588,8 +677,13 @@ export class MarkdownPage implements OnInit, AfterViewInit, OnDestroy {
         const { processedContent: contentWithCallouts, callouts } = this.calloutProcessor.processCallouts(contentWithHeaders);
         this.callouts.set(callouts);
 
+        // Replace {verified: Class.Method} tokens with placeholders (mounted as
+        // wb-verified-badge after render) — works in prose, tables, captions.
+        const { processedContent: contentWithVerified, markers } = this.verifiedMarkerProcessor.process(contentWithCallouts);
+        this.verifiedMarkers = markers;
+
         // Parse the rest of the content (videos, examples)
-        const { processedContent: finalContent, videos, examples } = this.parseCustomComponents(contentWithCallouts);
+        const { processedContent: finalContent, videos, examples } = this.parseCustomComponents(contentWithVerified);
 
         this.processedContent.set(finalContent);
         this.videos.set(videos);
@@ -601,8 +695,9 @@ export class MarkdownPage implements OnInit, AfterViewInit, OnDestroy {
         // Generate and add structured data for this page
         this.generateStructuredData(content, finalContent, path);
         
-        // Create code block components after content is processed
-        if (this.allCodeBlocks.length > 0) {
+        // Create code block components (and mount verified-badge markers) after
+        // content is processed.
+        if (this.allCodeBlocks.length > 0 || this.verifiedMarkers.length > 0) {
           setTimeout(() => this.createAllCodeBlocks(), 0);
         } else {
           // No code blocks to process, content is ready immediately
@@ -621,11 +716,11 @@ export class MarkdownPage implements OnInit, AfterViewInit, OnDestroy {
     });
   }
 
-  private mermaidBlocks: {placeholder: string, code: string}[] = [];
+  private mermaidBlocks: {placeholder: string, code: string, caption?: string, tests?: string[]}[] = [];
 
   private async renderMermaidBlocks() {
     for (let i = 0; i < this.mermaidBlocks.length; i++) {
-      const { placeholder, code } = this.mermaidBlocks[i];
+      const { placeholder, code, caption, tests } = this.mermaidBlocks[i];
 
       try {
         // Find the placeholder comment in the DOM
@@ -658,16 +753,53 @@ export class MarkdownPage implements OnInit, AfterViewInit, OnDestroy {
               svgElement.insertBefore(titleElement, svgElement.firstChild);
             }
 
-            // Replace comment with diagram
+            // Wrap the diagram in a figure with a required caption + verified badge.
+            const figure = document.createElement('figure');
+            figure.className = 'mermaid-figure';
+            figure.appendChild(container);
+
+            const hasCaption = !!(caption && caption.trim());
+            const hasTests = Array.isArray(tests) && tests.length > 0;
+
+            if (hasCaption || hasTests) {
+              const figcaption = document.createElement('figcaption');
+              figcaption.className = 'mermaid-caption';
+              if (hasCaption) {
+                const text = document.createElement('span');
+                text.className = 'mermaid-caption-text';
+                text.textContent = caption!;
+                figcaption.appendChild(text);
+              }
+              if (hasTests) {
+                const badge = createComponent(VerifiedBadgeComponent, { environmentInjector: this.injector });
+                badge.instance.tests = tests!;
+                badge.changeDetectorRef.detectChanges();
+                this.verifiedComponentRefs.push(badge);
+                figcaption.appendChild(badge.location.nativeElement);
+              }
+              figure.appendChild(figcaption);
+            }
+
+            if (!hasCaption || !hasTests) {
+              const missing = [!hasCaption ? 'a caption' : null, !hasTests ? 'tests' : null].filter(Boolean).join(' and ');
+              const warn = document.createElement('div');
+              warn.className = 'mermaid-missing-meta';
+              warn.innerHTML =
+                `<i class="pi pi-exclamation-triangle"></i> This diagram is missing ${missing}. ` +
+                `Add <code>\`\`\`mermaid{caption="…" tests=["Class.MethodAsync"]}</code>.`;
+              figure.appendChild(warn);
+            }
+
+            // Replace comment with the figure
             if (commentNode.parentNode) {
-              commentNode.parentNode.replaceChild(container, commentNode);
+              commentNode.parentNode.replaceChild(figure, commentNode);
             }
 
             // Apply node classes to edges after SVG is in DOM
             if (svgElement) {
               this.mermaidService.applyNodeClassesToEdges(svgElement);
             }
-            
+
             // Add maximize button to the container
             this.mermaidService.addMaximizeButton(container);
             break;
@@ -727,12 +859,15 @@ export class MarkdownPage implements OnInit, AfterViewInit, OnDestroy {
     // Collect all matches up front: exec() while mutating the scanned string
     // advances lastIndex past unseen content and silently skips every other
     // block on pages with multiple diagrams.
+    // A diagram may carry required metadata: ```mermaid{caption="..." tests=[...]}
     this.mermaidBlocks = [];
-    const mermaidRegex = /```mermaid\s*\r?\n([\s\S]*?)```/g;
+    const mermaidRegex = /```mermaid(\{[\s\S]*?\})?\s*\r?\n([\s\S]*?)```/g;
     const mermaidMatches = [...processedContent.matchAll(mermaidRegex)];
     mermaidMatches.forEach((match, mermaidIndex) => {
       const placeholder = `<!--MERMAID_PLACEHOLDER_${mermaidIndex}-->`;
-      this.mermaidBlocks.push({ placeholder, code: match[1] });
+      const meta = match[1] ? this.codeBlockParser.parseFenceMetadata(match[1].slice(1, -1)) : {};
+      const tests = Array.isArray(meta.tests) ? meta.tests : (meta.tests ? [meta.tests] : []);
+      this.mermaidBlocks.push({ placeholder, code: match[2], caption: meta.caption, tests });
       processedContent = processedContent.replace(match[0], placeholder);
     });
     
@@ -1059,7 +1194,13 @@ export class MarkdownPage implements OnInit, AfterViewInit, OnDestroy {
     if (this.intersectionObserver) {
       this.intersectionObserver.disconnect();
     }
-    
+
+    // Destroy dynamically mounted components
+    this.codeComponentRefs.forEach(ref => ref.destroy());
+    this.codeComponentRefs = [];
+    this.verifiedComponentRefs.forEach(ref => ref.destroy());
+    this.verifiedComponentRefs = [];
+
     // Clean up SEO metadata when component is destroyed
     this.seoService.clearPageMetadata();
     

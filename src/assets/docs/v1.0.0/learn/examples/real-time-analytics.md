@@ -40,7 +40,7 @@ Two Whizbang building blocks do the work:
 
 ## Architecture
 
-```mermaid
+```mermaid{caption="Real-time analytics data flow: domain events feed the metrics perspective and the SignalR notification hook, which pushes tagged events through the hub to dashboard clients"}
 flowchart TD
     subgraph RTA["Real-Time Analytics Architecture"]
         ASB["Azure Service Bus"]
@@ -70,7 +70,7 @@ flowchart TD
 
 **MetricsHub.cs** — a plain ASP.NET Core hub. Whizbang pushes through it; you can also add your own methods:
 
-```csharp{title="SignalR Hub" description="MetricsHub definition" category="Example" difficulty="ADVANCED" tags=["Learn", "Examples", "SignalR", "Hub"]}
+```csharp{title="SignalR Hub" description="MetricsHub definition" category="Example" difficulty="ADVANCED" tags=["Learn", "Examples", "SignalR", "Hub"] unverified="consumer ASP.NET Core Hub subclass, not a Whizbang library API"}
 using Microsoft.AspNetCore.SignalR;
 
 public class MetricsHub : Hub {
@@ -102,7 +102,7 @@ public class MetricsHub : Hub {
 
 **Program.cs registration** — `AddWhizbangSignalR()` wires SignalR's JSON protocol to Whizbang's AOT-compatible `JsonContextRegistry`, and `options.Tags.UseSignalR<THub>()` registers the notification hook:
 
-```csharp{title="Program.cs Registration" description="Register SignalR and the Whizbang notification hook" category="Example" difficulty="BEGINNER" tags=["Learn", "Examples", "SignalR", "Hub"]}
+```csharp{title="Program.cs Registration" description="Register SignalR and the Whizbang notification hook" category="Example" difficulty="BEGINNER" tags=["Learn", "Examples", "SignalR", "Hub"] tests=["SignalRServiceCollectionExtensionsTests.AddWhizbangSignalR_RegistersRequiredServicesAsync", "SignalRTagExtensionsTests.UseSignalR_DefaultPriority_ReturnsSameOptionsAsync"]}
 // AOT-compatible SignalR with Whizbang's JSON serialization
 builder.Services.AddWhizbangSignalR();
 
@@ -120,7 +120,7 @@ app.MapHub<MetricsHub>("/hubs/metrics");
 
 Tag the domain events you want streamed to dashboards. `Properties` narrows the payload to just the fields clients need; `Group` targets a SignalR group (with `{PropertyName}` placeholders):
 
-```csharp{title="Tagged Domain Events" description="SignalTag drives the real-time push" category="Example" difficulty="BEGINNER" tags=["Learn", "Examples", "SignalTag", "Events"]}
+```csharp{title="Tagged Domain Events" description="SignalTag drives the real-time push" category="Example" difficulty="BEGINNER" tags=["Learn", "Examples", "SignalTag", "Events"] unverified="consumer domain event records annotated with SignalTag; attribute-on-record declaration not exercised by a mapped test"}
 [SignalTag(
   Tag = "order-created",
   Properties = ["OrderId", "TotalAmount"],
@@ -136,7 +136,7 @@ public sealed record PaymentProcessed(Guid OrderId, decimal Amount) : IEvent;
 
 After each tagged event is successfully processed, `SignalRNotificationHook<MetricsHub>` sends a `ReceiveNotification` message to all clients (or to the resolved group) with this shape:
 
-```csharp{title="NotificationMessage" description="The wire shape pushed to SignalR clients" category="Example" difficulty="BEGINNER" tags=["Learn", "Examples", "SignalR", "Payload"]}
+```csharp{title="NotificationMessage" description="The wire shape pushed to SignalR clients" category="Example" difficulty="BEGINNER" tags=["Learn", "Examples", "SignalR", "Payload"] tests=["SignalRNotificationHookTests.OnTaggedMessage_IncludesCorrectPriority_InNotificationAsync", "SignalRNotificationHookTests.OnTaggedMessage_IncludesMessageType_InNotificationAsync"]}
 public sealed record NotificationMessage {
   public required string Tag { get; init; }            // "order-created"
   public required string Priority { get; init; }       // "Normal", "High", ...
@@ -152,7 +152,7 @@ public sealed record NotificationMessage {
 
 Perspectives materialize the metrics read model. They are pure — state in, state out. Whizbang persists the result and serves it through lenses:
 
-```csharp{title="Real-Time Metrics Perspective" description="Pure Apply functions materialize the metrics read model" category="Example" difficulty="ADVANCED" tags=["Learn", "Examples", "Real-Time", "Metrics"]}
+```csharp{title="Real-Time Metrics Perspective" description="Pure Apply functions materialize the metrics read model" category="Example" difficulty="ADVANCED" tags=["Learn", "Examples", "Real-Time", "Metrics"] unverified="consumer IPerspectiveFor implementation illustration; IPerspectiveFor tests are not among this page SignalR test references"}
 public class DailySalesPerspective :
   IPerspectiveFor<DailySalesMetrics, OrderCreated, PaymentProcessed> {
 
@@ -198,7 +198,7 @@ public record DailySalesMetrics {
 
 Serve the current metrics for initial dashboard load through a lens query (an API endpoint or hub method):
 
-```csharp{title="Initial Metrics Endpoint" description="Lens query serves current metrics on dashboard load" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Examples", "Lens", "Metrics"]}
+```csharp{title="Initial Metrics Endpoint" description="Lens query serves current metrics on dashboard load" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Examples", "Lens", "Metrics"] unverified="consumer minimal-API endpoint using ILensQuery; not covered by this page SignalR test references"}
 app.MapGet("/api/metrics/current", async (
     ILensQuery<DailySalesMetrics> query,
     CancellationToken ct) => {
@@ -381,7 +381,7 @@ Unlike perspectives, **tag hooks can have dependencies and side effects** — th
 
 ### Sliding Window Aggregation
 
-```csharp{title="Sliding Window Hook" description="Custom tag hook maintaining a 5-minute sliding window" category="Example" difficulty="ADVANCED" tags=["Learn", "Examples", "Streaming", "Aggregations"]}
+```csharp{title="Sliding Window Hook" description="Custom tag hook maintaining a 5-minute sliding window" category="Example" difficulty="ADVANCED" tags=["Learn", "Examples", "Streaming", "Aggregations"] unverified="consumer custom IMessageTagHook implementation with side effects; not a Whizbang library API under test"}
 public sealed class SlidingWindowAnalyticsHook : IMessageTagHook<SignalTagAttribute> {
   private readonly IHubContext<MetricsHub> _hubContext;
   private readonly IDistributedCache _cache;
@@ -453,7 +453,7 @@ public record OrderEventData {
 
 Register it alongside (or instead of) the built-in hook:
 
-```csharp{title="Register Custom Hook" description="Custom hooks register through the same tag options" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Examples", "Hooks"]}
+```csharp{title="Register Custom Hook" description="Custom hooks register through the same tag options" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Examples", "Hooks"] unverified="illustrates custom UseHook registration; the featured UseHook tag-options API is not covered by this page SignalR test references"}
 builder.Services.AddWhizbang(options => {
   options.Tags.UseSignalR<MetricsHub>();                                   // built-in push
   options.Tags.UseHook<SignalTagAttribute, SlidingWindowAnalyticsHook>();  // custom aggregation
@@ -464,7 +464,7 @@ builder.Services.AddWhizbang(options => {
 
 Limit broadcast frequency to avoid overwhelming clients. Register the hook as a singleton dependency-holder or keep state in a shared service:
 
-```csharp{title="Throttling" description="Limit broadcast frequency to avoid overwhelming clients" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Examples", "Throttling"]}
+```csharp{title="Throttling" description="Limit broadcast frequency to avoid overwhelming clients" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Examples", "Throttling"] unverified="consumer custom IMessageTagHook throttling pattern; not a Whizbang library API under test"}
 public sealed class ThrottledBroadcastHook : IMessageTagHook<SignalTagAttribute> {
   private static readonly SemaphoreSlim _semaphore = new(1, 1);
   private static DateTime _lastBroadcast = DateTime.MinValue;
@@ -501,7 +501,7 @@ public sealed class ThrottledBroadcastHook : IMessageTagHook<SignalTagAttribute>
 
 Buffer events in a channel and flush on an interval from a background service:
 
-```csharp{title="Batching" description="Batch multiple updates before broadcasting" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Examples", "Batching"]}
+```csharp{title="Batching" description="Batch multiple updates before broadcasting" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Examples", "Batching"] unverified="consumer custom hook plus BackgroundService batching pattern; not a Whizbang library API under test"}
 public sealed class BatchingBroadcastHook : IMessageTagHook<SignalTagAttribute> {
   private readonly MetricsBatchChannel _channel;
 
@@ -573,7 +573,7 @@ public sealed class MetricsBatchBroadcaster : BackgroundService {
 
 Simpler than SignalR for one-way updates:
 
-```csharp{title="Server-Sent Events (SSE)" description="Simpler than SignalR for one-way updates:" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Examples", "Server-Sent", "Events"]}
+```csharp{title="Server-Sent Events (SSE)" description="Simpler than SignalR for one-way updates:" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Examples", "Server-Sent", "Events"] unverified="consumer SSE endpoint alternative-architecture illustration; not a Whizbang library API under test"}
 app.MapGet("/sse/metrics", async (HttpContext context, ILensQuery<DailySalesMetrics> query) => {
   context.Response.Headers.ContentType = "text/event-stream";
   context.Response.Headers.CacheControl = "no-cache";

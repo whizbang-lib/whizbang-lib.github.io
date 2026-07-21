@@ -27,7 +27,7 @@ This page documents the consumer subscription added in slice 7a.
 
 ## Wake mechanism
 
-```mermaid
+```mermaid{caption="PerspectiveWorker NOTIFY wake — a wh_perspective_events insert fires the DB trigger, NOTIFY reaches the LISTEN dispatcher, and the worker's wake semaphore wins Task.WhenAny to drain."}
 graph LR
   Producer[Producer commits<br/>wh_perspective_events row] -->|trigger fires| PG[(PostgreSQL<br/>NOTIFY 'perspective')]
   PG -->|LISTEN dispatch| Listener[IWorkNotificationListener]

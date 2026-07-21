@@ -60,7 +60,7 @@ The `IScopedLensFactory` is the primary entry point for obtaining scoped lenses.
 
 ### Primary API: Composable Filters
 
-```csharp{title="Primary API: Composable Filters" description="Primary API: Composable Filters" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Primary", "API:"]}
+```csharp{title="Primary API: Composable Filters" description="Primary API: Composable Filters" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Primary", "API:"] tests=["ScopedLensFactoryTests.IScopedLensFactory_IsInterfaceAsync", "ScopedLensFactoryTests.IScopedLensFactory_HasGetLens_ScopeFilter_MethodAsync", "ScopedLensFactoryTests.IScopedLensFactory_HasGetLens_ScopeFilter_Permission_MethodAsync", "ScopedLensFactoryTests.IScopedLensFactory_HasGetLens_ScopeFilter_PermissionArray_MethodAsync"]}
 public interface IScopedLensFactory {
   // Get lens with composable scope filters
   TLens GetLens<TLens>(ScopeFilters filters) where TLens : ILensQuery;
@@ -77,7 +77,7 @@ public interface IScopedLensFactory {
 
 For common patterns, use the convenience methods:
 
-```csharp{title="Convenience Methods" description="For common patterns, use the convenience methods:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "Convenience", "Methods"]}
+```csharp{title="Convenience Methods" description="For common patterns, use the convenience methods:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "Convenience", "Methods"] tests=["ScopedLensFactoryTests.IScopedLensFactory_HasGetGlobalLensMethodAsync", "ScopedLensFactoryTests.IScopedLensFactory_HasGetTenantLensMethodAsync", "ScopedLensFactoryTests.IScopedLensFactory_HasGetUserLensMethodAsync", "ScopedLensFactoryTests.IScopedLensFactory_HasGetOrganizationLensMethodAsync", "ScopedLensFactoryTests.IScopedLensFactory_HasGetCustomerLensMethodAsync", "ScopedLensFactoryTests.IScopedLensFactory_HasGetPrincipalLensMethodAsync", "ScopedLensFactoryTests.IScopedLensFactory_HasGetMyOrSharedLensMethodAsync"]}
 // No filtering (admin access)
 factory.GetGlobalLens<TLens>();       // ScopeFilters.None
 
@@ -102,7 +102,7 @@ factory.GetMyOrSharedLens<TLens>();   // ScopeFilters.Tenant | ScopeFilters.User
 
 ### Usage Examples
 
-```csharp{title="Usage Examples" description="Usage Examples" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "Usage", "Examples"]}
+```csharp{title="Usage Examples" description="Usage Examples" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "Usage", "Examples"] unverified="consumer OrderController illustration calling GetTenantLens/GetUserLens/GetMyOrSharedLens; ScopedLensFactoryTests assert only that the methods exist, not this controller usage"}
 public class OrderController : ControllerBase {
   private readonly IScopedLensFactory _lensFactory;
 
@@ -140,7 +140,7 @@ public class OrderController : ControllerBase {
 
 Combine scope filtering with permission verification:
 
-```csharp{title="Permission Checks" description="Combine scope filtering with permission verification:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "Permission", "Checks"]}
+```csharp{title="Permission Checks" description="Combine scope filtering with permission verification:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "Permission", "Checks"] unverified="consumer usage of the permission-gated GetLens overloads on IOrderLens/IReportLens; no mapped test asserts the AccessDeniedException behavior shown, only that the overload signatures exist"}
 // Throws AccessDeniedException if caller lacks permission
 var lens = _lensFactory.GetLens<IOrderLens>(
   ScopeFilters.Tenant,
@@ -167,7 +167,7 @@ When permission checks fail:
 
 When injecting `ILensQuery<T>` into a singleton service, you get a stale DbContext:
 
-```csharp{title="The Problem" description="When injecting ILensQuery<T> into a singleton service, you get a stale DbContext:" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Lenses", "Problem"]}
+```csharp{title="The Problem" description="When injecting ILensQuery<T> into a singleton service, you get a stale DbContext:" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Lenses", "Problem"] unverified="counter-example — stale-DbContext anti-pattern in a singleton; nothing to assert"}
 // BAD: DbContext becomes stale in singleton
 public class OrderProcessor : BackgroundService {
   private readonly ILensQuery<Order> _lens; // Injected once, never refreshed
@@ -185,7 +185,7 @@ public class OrderProcessor : BackgroundService {
 
 Use `IScopedLensQuery<T>` which creates a fresh service scope for each operation:
 
-```csharp{title="The Solution" description="Use IScopedLensQuery<T> which creates a fresh service scope for each operation:" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Lenses", "Solution"]}
+```csharp{title="The Solution" description="Use IScopedLensQuery<T> which creates a fresh service scope for each operation:" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Lenses", "Solution"] tests=["ScopedLensQueryTests.ExecuteAsync_CreatesScope_AndDisposesAfterQueryAsync", "ScopedLensQueryTests.ConcurrentQueries_CreateSeparateScopesAsync"]}
 // GOOD: Fresh scope per query
 public class OrderProcessor : BackgroundService {
   private readonly IScopedLensQuery<Order> _scopedLens;
@@ -212,7 +212,7 @@ public class OrderProcessor : BackgroundService {
 
 ### IScopedLensQuery Methods
 
-```csharp{title="IScopedLensQuery Methods" description="IScopedLensQuery Methods" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "IScopedLensQuery", "Methods"]}
+```csharp{title="IScopedLensQuery Methods" description="IScopedLensQuery Methods" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "IScopedLensQuery", "Methods"] tests=["ScopedLensQueryTests.QueryAsync_CreatesScope_AndStreamResultsAsync", "ScopedLensQueryTests.QueryAsyncProjection_CreatesScope_AndStreamsResultsAsync", "ScopedLensQueryTests.GetByIdAsync_CreatesScope_AndDisposesAfterQueryAsync", "ScopedLensQueryTests.ExecuteAsync_CreatesScope_AndDisposesAfterQueryAsync"]}
 public interface IScopedLensQuery<TModel> where TModel : class {
   // Stream results with auto-scoping
   IAsyncEnumerable<PerspectiveRow<TModel>> QueryAsync(
@@ -236,7 +236,7 @@ public interface IScopedLensQuery<TModel> where TModel : class {
 
 ### Usage Examples
 
-```csharp{title="Usage Examples - ReportGenerator" description="Usage Examples - ReportGenerator" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Lenses", "Usage", "Examples"]}
+```csharp{title="Usage Examples - ReportGenerator" description="Usage Examples - ReportGenerator" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Lenses", "Usage", "Examples"] tests=["ScopedLensQueryTests.ExecuteAsync_CreatesScope_AndDisposesAfterQueryAsync", "ScopedLensQueryTests.GetByIdAsync_CreatesScope_AndDisposesAfterQueryAsync", "ScopedLensQueryTests.QueryAsync_CreatesScope_AndStreamResultsAsync"]}
 public class ReportGenerator {
   private readonly IScopedLensQuery<OrderSummary> _orderLens;
 
@@ -285,7 +285,7 @@ public class ReportGenerator {
 
 ### Properties
 
-```csharp{title="Properties" description="Properties" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "Properties"]}
+```csharp{title="Properties" description="Properties" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "Properties"] tests=["ScopeDefinitionTests.Constructor_SetsNameAsync", "ScopeDefinitionTests.Constructor_DefaultPropertyValuesAsync", "ScopeDefinitionTests.FilterPropertyName_SetAndGetAsync", "ScopeDefinitionTests.ContextKey_SetAndGetAsync", "ScopeDefinitionTests.FilterMode_SetToInAsync", "ScopeDefinitionTests.NoFilter_SetTrueAsync", "ScopeDefinitionTests.FilterInterfaceType_SetAndGetAsync"]}
 public sealed class ScopeDefinition {
   // Unique name for this scope (e.g., "Tenant", "User", "Global")
   public string Name { get; }
@@ -309,7 +309,7 @@ public sealed class ScopeDefinition {
 
 ### Defining Named Scopes
 
-```csharp{title="Defining Named Scopes" description="Defining Named Scopes" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "Defining", "Named"]}
+```csharp{title="Defining Named Scopes" description="Defining Named Scopes" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "Defining", "Named"] tests=["ScopedLensFactoryTests.LensOptions_DefineScope_AddsScopeDefinitionAsync", "ScopedLensFactoryTests.LensOptions_DefineScope_ConfiguresFilterModeAsync", "ScopedLensFactoryTests.LensOptions_DefineScope_AllowsMultipleScopesAsync"]}
 services.AddWhizbang(options => {
   // Tenant-only scope
   options.Lenses.DefineScope("Tenant", scope => {
@@ -340,7 +340,7 @@ services.AddWhizbang(options => {
 
 ### Using Named Scopes (Legacy API)
 
-```csharp{title="Using Named Scopes (Legacy API)" description="Using Named Scopes (Legacy API)" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Using", "Named"]}
+```csharp{title="Using Named Scopes (Legacy API)" description="Using Named Scopes (Legacy API)" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Using", "Named"] unverified="consumer usage of the legacy string-based named-scope GetLens on IOrderLens; no mapped test exercises string-scope resolution"}
 // Get lens using named scope
 var lens = factory.GetLens<IOrderLens>("Tenant");
 var globalLens = factory.GetLens<IOrderLens>("Global");
@@ -356,7 +356,7 @@ var globalLens = factory.GetLens<IOrderLens>("Global");
 
 ### LensOptions API
 
-```csharp{title="LensOptions API" description="LensOptions API" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "LensOptions", "API"]}
+```csharp{title="LensOptions API" description="LensOptions API" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "LensOptions", "API"] tests=["ScopedLensFactoryTests.LensOptions_Scopes_IsEmptyByDefaultAsync", "ScopedLensFactoryTests.LensOptions_DefineScope_AddsScopeDefinitionAsync", "ScopedLensFactoryTests.LensOptions_GetScope_ReturnsDefinedScopeAsync", "ScopedLensFactoryTests.LensOptions_GetScope_IsCaseInsensitiveAsync"]}
 public sealed class LensOptions {
   // Get all defined scopes
   public IReadOnlyList<ScopeDefinition> Scopes { get; }
@@ -371,7 +371,7 @@ public sealed class LensOptions {
 
 ### Configuration Example
 
-```csharp{title="Configuration Example" description="Configuration Example" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "Configuration", "Example"]}
+```csharp{title="Configuration Example" description="Configuration Example" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "Configuration", "Example"] tests=["ScopedLensFactoryTests.LensOptions_DefineScope_ReturnsSameInstanceForChainingAsync", "ScopedLensFactoryTests.LensOptions_DefineScope_AllowsMultipleScopesAsync"]}
 services.AddWhizbang(options => {
   // Chain multiple scope definitions
   options.Lenses
@@ -392,7 +392,7 @@ services.AddWhizbang(options => {
 
 ### Accessing Configuration at Runtime
 
-```csharp{title="Accessing Configuration at Runtime" description="Accessing Configuration at Runtime" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "Accessing", "Configuration"]}
+```csharp{title="Accessing Configuration at Runtime" description="Accessing Configuration at Runtime" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "Accessing", "Configuration"] tests=["ScopedLensFactoryTests.LensOptions_GetScope_ReturnsDefinedScopeAsync", "ScopedLensFactoryTests.LensOptions_GetScope_ReturnsNullForUndefinedScopeAsync"]}
 public class CustomLensFactory {
   private readonly LensOptions _options;
 
@@ -420,7 +420,7 @@ public class CustomLensFactory {
 
 ### FilterMode Enum
 
-```csharp{title="FilterMode Enum" description="FilterMode Enum" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "FilterMode", "Enum"]}
+```csharp{title="FilterMode Enum" description="FilterMode Enum" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "FilterMode", "Enum"] tests=["FilterModeTests.FilterMode_Equals_HasCorrectIntValueAsync", "FilterModeTests.FilterMode_In_HasCorrectIntValueAsync", "FilterModeTests.FilterMode_HasTwoValuesAsync"]}
 public enum FilterMode {
   // Filter using equality (WHERE property = @value)
   Equals = 0,
@@ -434,7 +434,7 @@ public enum FilterMode {
 
 Use for single-value filtering:
 
-```csharp{title="Equals Mode (Default)" description="Use for single-value filtering:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Equals", "Mode"]}
+```csharp{title="Equals Mode (Default)" description="Use for single-value filtering:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Equals", "Mode"] unverified="illustrative FilterMode.Equals config with conceptual generated SQL; no mapped test asserts the emitted WHERE clause"}
 // Configuration
 scope.FilterPropertyName = "TenantId";
 scope.FilterMode = FilterMode.Equals;
@@ -447,7 +447,7 @@ scope.FilterMode = FilterMode.Equals;
 
 Use for hierarchical or multi-value filtering:
 
-```csharp{title="In Mode" description="Use for hierarchical or multi-value filtering:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Mode"]}
+```csharp{title="In Mode" description="Use for hierarchical or multi-value filtering:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Mode"] unverified="illustrative FilterMode.In config with conceptual generated SQL; no mapped test asserts the emitted IN clause"}
 // Configuration
 scope.FilterPropertyName = "TenantId";
 scope.ContextKey = "TenantHierarchy";  // Returns multiple values
@@ -461,7 +461,7 @@ scope.FilterMode = FilterMode.In;
 
 **Tenant Hierarchies**: A parent tenant can see data from all child tenants:
 
-```csharp{title="Use Cases for IN Mode" description="Tenant Hierarchies: A parent tenant can see data from all child tenants:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Cases", "Mode"]}
+```csharp{title="Use Cases for IN Mode" description="Tenant Hierarchies: A parent tenant can see data from all child tenants:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Cases", "Mode"] tests=["ScopedLensFactoryTests.LensOptions_DefineScope_ConfiguresFilterModeAsync"]}
 // Context provides hierarchy
 scopeContext.Set("TenantHierarchy", new[] { "parent", "child-1", "child-2" });
 
@@ -475,7 +475,7 @@ options.Lenses.DefineScope("TenantHierarchy", scope => {
 
 **Region-based Access**: Access data from multiple regions:
 
-```csharp{title="Use Cases for IN Mode (2)" description="Region-based Access: Access data from multiple regions:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Cases", "Mode"]}
+```csharp{title="Use Cases for IN Mode (2)" description="Region-based Access: Access data from multiple regions:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Cases", "Mode"] tests=["ScopedLensFactoryTests.LensOptions_DefineScope_ConfiguresFilterModeAsync"]}
 scopeContext.Set("AllowedRegions", new[] { "us-west", "us-east" });
 
 options.Lenses.DefineScope("Region", scope => {
@@ -500,7 +500,7 @@ options.Lenses.DefineScope("Region", scope => {
 
 ### Filter Composition
 
-```csharp{title="Filter Composition" description="Filter Composition" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Lenses", "Filter", "Composition"]}
+```csharp{title="Filter Composition" description="Filter Composition" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Lenses", "Filter", "Composition"] tests=["EFCoreFilterableLensQueryTests.Query_NoFilter_ReturnsAllRowsAsync", "EFCoreFilterableLensQueryTests.Query_TenantFilter_ReturnsOnlyTenantRowsAsync", "EFCoreFilterableLensQueryTests.Query_TenantAndOrganizationFilter_ReturnsOnlyOrgRowsAsync", "EFCoreFilterableLensQueryTests.Query_TenantAndCustomerFilter_ReturnsOnlyCustomerRowsAsync", "EFCoreFilterableLensQueryTests.Query_TenantAndUserFilter_ReturnsOnlyUserRowsAsync", "EFCoreFilterableLensQueryTests.Query_TenantAndPrincipalFilter_ReturnsMatchingPrincipalRowsAsync", "EFCoreFilterableLensQueryTests.Query_UserOrPrincipal_ReturnsOwnedAndSharedRowsAsync", "EFCoreFilterableLensQueryTests.Query_AllFilters_CombinesCorrectlyAsync"]}
 public class EFCoreFilterableLensQuery<TModel> : ILensQuery<TModel>, IFilterableLens {
   private ScopeFilterInfo _filterInfo;
 
@@ -569,7 +569,7 @@ public class EFCoreFilterableLensQuery<TModel> : ILensQuery<TModel>, IFilterable
 
 Implement this interface on custom lens implementations to support scope filtering:
 
-```csharp{title="IFilterableLens Interface" description="Implement this interface on custom lens implementations to support scope filtering:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "IFilterableLens", "Interface"]}
+```csharp{title="IFilterableLens Interface" description="Implement this interface on custom lens implementations to support scope filtering:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "IFilterableLens", "Interface"] unverified="IFilterableLens contract plus a fill-in-the-blank custom implementation stub; the interface is exercised via the EFCoreFilterableLensQuery tests above"}
 public interface IFilterableLens {
   void ApplyFilter(ScopeFilterInfo filterInfo);
 }

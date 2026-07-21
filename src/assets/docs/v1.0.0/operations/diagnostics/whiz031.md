@@ -44,7 +44,7 @@ Event type 'OrderEvent' has multiple properties marked with [StreamId]. Only one
 Remove the `[StreamId]` attribute from all but one property. Keep it only on the property that identifies the aggregate/stream:
 
 **Before (causes WHIZ031)**:
-```csharp{title="How to Fix" description="Before (causes WHIZ031):" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Fix"]}
+```csharp{title="How to Fix" description="Before (causes WHIZ031):" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Fix"] unverified="counter-example — the pattern WHIZ031 flags; detection verified by PerspectiveDiscoveryGeneratorTests.PerspectiveDiscoveryGenerator_EventWithMultipleStreamIds_ReportsWHIZ031DiagnosticAsync"}
 public record OrderEvent : IEvent {
   [StreamId]  // ❌ Multiple [StreamId] attributes!
   public Guid OrderId { get; init; }
@@ -57,7 +57,7 @@ public record OrderEvent : IEvent {
 ```
 
 **After (error resolved)**:
-```csharp{title="How to Fix - OrderEvent" description="After (error resolved):" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Fix"]}
+```csharp{title="How to Fix - OrderEvent" description="After (error resolved):" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Fix"] tests=["PerspectiveDiscoveryGeneratorTests.PerspectiveDiscoveryGenerator_EventWithStreamId_ExtractsStreamIdPropertyAsync"]}
 public record OrderEvent : IEvent {
   [StreamId]  // ✅ Single [StreamId] on the aggregate ID
   public Guid OrderId { get; init; }

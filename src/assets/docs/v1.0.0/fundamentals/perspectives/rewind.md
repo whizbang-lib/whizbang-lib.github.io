@@ -83,7 +83,7 @@ The `PerspectiveWorker` picks up a stream whose cursor carries the RewindRequire
 5. The replay is **in-memory** — events are applied without intermediate DB writes, so Lenses keep seeing the pre-replay model. It is not a single pass: a bounded **catch-up loop** re-reads the event store after each apply pass so events that land *during* the replay window are not lost (see [Catch-up loop](#catch-up-loop)).
 6. A **single atomic write** of the model + cursor happens once the loop drains, and then the **keepalive stops and the lock is released** (always, in a `finally`).
 
-```csharp{title="Rewind execution path" description="PerspectiveWorker acquires the rewind lock, runs the generated runner, and releases the lock in a finally" framework="NET10" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Rewind", "Execution"]}
+```csharp{title="Rewind execution path" description="PerspectiveWorker acquires the rewind lock, runs the generated runner, and releases the lock in a finally" framework="NET10" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Rewind", "Execution"] unverified="PerspectiveWorker rewind lock-and-release execution path; its candidate class PerspectiveWorkerRewindTests has no code-tests-map entry"}
 var lockAcquired = await _streamLocker.TryAcquireLockAsync(
     streamId, perspectiveName, _instanceProvider.InstanceId, "rewind", ct);
 if (!lockAcquired) {
@@ -119,7 +119,7 @@ Snapshots are created automatically during normal processing every `SnapshotEver
 
 The in-memory replay is **not a single pass**. `RunFromModelAsync` wraps the apply loop in a bounded catch-up loop: after applying a batch it re-reads the event store from the last event it applied, and if new events arrived during the apply window it applies those too. The loop exits when a read returns zero new events (the store is quiescent with respect to what the rewind has applied), and is bounded by `MAX_REWIND_CATCH_UP_ITERATIONS` (100) as a safety valve against a pathological append rate.
 
-```csharp{title="Rewind catch-up loop" description="The runner re-reads the event store after each apply pass so events appended during the replay window are picked up, not dropped" framework="NET10" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Perspectives", "Rewind", "Catch-up"]}
+```csharp{title="Rewind catch-up loop" description="The runner re-reads the event store after each apply pass so events appended during the replay window are picked up, not dropped" framework="NET10" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Perspectives", "Rewind", "Catch-up"] unverified="Generated-runner catch-up loop; PerspectiveRewindCompletionGapTests that pins it has no code-tests-map entry"}
 const int MAX_REWIND_CATCH_UP_ITERATIONS = 100;
 var anchorEventId = replayFromEventId;   // snapshot event id, or null = from event zero
 var iterations = 0;
@@ -147,7 +147,7 @@ This is the v0.688 fix for a slot-3 defect: the original implementation read the
 
 Rewind detection and execution are governed by `PerspectiveRewindOptions`:
 
-```csharp{title="PerspectiveRewindOptions" description="Configuration record for rewind enablement, startup repair mode, concurrency, and the debounce knobs" framework="NET10" category="Configuration" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Rewind", "Configuration"]}
+```csharp{title="PerspectiveRewindOptions" description="Configuration record for rewind enablement, startup repair mode, concurrency, and the debounce knobs" framework="NET10" category="Configuration" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Rewind", "Configuration"] tests=["PerspectiveRewindOptionsTests.Defaults_AllFieldsHaveExpectedValuesAsync", "PerspectiveRewindOptionsTests.RewindStartupMode_HasExpectedValuesAsync"]}
 public class PerspectiveRewindOptions {
   // Master switch for rewind detection and execution.
   // When disabled, out-of-order events are detected but not replayed. Default: true.
@@ -291,7 +291,7 @@ Rewind failures are **isolated per stream** — one stream's rewind throwing doe
 
 Rewind system events fire as the **System user** across all tenants, published from the generated runner via the dispatcher's fluent security API:
 
-```csharp{title="Rewind system-event dispatch" description="The generated runner publishes rewind events as the System principal with an explicit cross-tenant scope" framework="NET10" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Rewind", "Security"]}
+```csharp{title="Rewind system-event dispatch" description="The generated runner publishes rewind events as the System principal with an explicit cross-tenant scope" framework="NET10" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Rewind", "Security"] unverified="Generated-runner system-event dispatch illustration; StreamRewindEventTests has no code-tests-map entry"}
 await dispatcher.AsSystem().ForAllTenants()
     .PublishAsync(new PerspectiveRewindStarted(
         streamId, perspectiveName, triggeringEventId,

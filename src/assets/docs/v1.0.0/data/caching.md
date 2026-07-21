@@ -37,7 +37,7 @@ The `ClearCacheCommand` is a **system command** (in `Whizbang.Core.Commands.Syst
 
 ### Usage
 
-```csharp{title="Usage" description="Usage" category="Implementation" difficulty="BEGINNER" tags=["Data", "Usage"]}
+```csharp{title="Usage" description="Usage" category="Implementation" difficulty="BEGINNER" tags=["Data", "Usage"] tests=["SystemCommandsTests.ClearCacheCommand_WithCacheKey_CreatesCorrectlyAsync"]}
 using Whizbang.Core.Commands.System;
 
 // Clear a specific cache key
@@ -49,7 +49,7 @@ await dispatcher.SendAsync(command);
 
 ### Command Structure
 
-```csharp{title="Command Structure" description="Command Structure" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Command", "Structure"]}
+```csharp{title="Command Structure" description="Command Structure" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Command", "Structure"] tests=["SystemCommandsTests.ClearCacheCommand_DefaultParameters_CreatesCorrectlyAsync", "SystemCommandsTests.ClearCacheCommand_WithAllParameters_CreatesCorrectlyAsync", "SystemCommandsTests.ClearCacheCommand_ImplementsICommandAsync"]}
 namespace Whizbang.Core.Commands.System;
 
 /// <summary>
@@ -72,21 +72,21 @@ The shipped command takes a single optional `CacheKey` and an optional `CacheReg
 
 #### Clear a Specific Key
 
-```csharp{title="Clear a Specific Key" description="Clear a Specific Key" category="Implementation" difficulty="BEGINNER" tags=["Data", "C#", "Clear", "Specific", "Keys"]}
+```csharp{title="Clear a Specific Key" description="Clear a Specific Key" category="Implementation" difficulty="BEGINNER" tags=["Data", "C#", "Clear", "Specific", "Keys"] tests=["SystemCommandsTests.ClearCacheCommand_WithCacheKey_CreatesCorrectlyAsync"]}
 // Clear one exact key
 await dispatcher.SendAsync(new ClearCacheCommand(CacheKey: "user:123"));
 ```
 
 #### Clear by Region
 
-```csharp{title="Clear by Region" description="Clear by Region" category="Implementation" difficulty="BEGINNER" tags=["Data", "C#", "Clear", "Region"]}
+```csharp{title="Clear by Region" description="Clear by Region" category="Implementation" difficulty="BEGINNER" tags=["Data", "C#", "Clear", "Region"] tests=["SystemCommandsTests.ClearCacheCommand_WithAllParameters_CreatesCorrectlyAsync"]}
 // Clear all keys in a region
 await dispatcher.SendAsync(new ClearCacheCommand(CacheRegion: "ProductCatalog"));
 ```
 
 #### Clear All
 
-```csharp{title="Clear All" description="Clear All" category="Implementation" difficulty="BEGINNER" tags=["Data", "C#", "Clear", "All"]}
+```csharp{title="Clear All" description="Clear All" category="Implementation" difficulty="BEGINNER" tags=["Data", "C#", "Clear", "All"] tests=["SystemCommandsTests.ClearCacheCommand_DefaultParameters_CreatesCorrectlyAsync"]}
 // Clear entire cache
 await dispatcher.SendAsync(new ClearCacheCommand());
 ```
@@ -95,7 +95,7 @@ await dispatcher.SendAsync(new ClearCacheCommand());
 
 Handle cache clearing in your service. Receptors implementing `IReceptor<TMessage, TResponse>` are discovered automatically by the source generators:
 
-```csharp{title="Implementing a Cache Receptor" description="Handle cache clearing in your service:" category="Implementation" difficulty="ADVANCED" tags=["Data", "C#", "Implementing", "Cache", "Receptor"]}
+```csharp{title="Implementing a Cache Receptor" description="Handle cache clearing in your service:" category="Implementation" difficulty="ADVANCED" tags=["Data", "C#", "Implementing", "Cache", "Receptor"] unverified="application-level sample receptor — ICacheService and CacheCleared are app-defined, not framework types"}
 using Whizbang.Core;
 using Whizbang.Core.Commands.System;
 
@@ -149,7 +149,7 @@ public record CacheCleared : IEvent {
 
 Whizbang does not ship a cache service abstraction - define one in your application and register your own implementation:
 
-```csharp{title="ICacheService Interface" description="Application-defined interface for cache implementations:" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "ICacheService", "Interface"]}
+```csharp{title="ICacheService Interface" description="Application-defined interface for cache implementations:" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "ICacheService", "Interface"] unverified="application-defined interface — explicitly not part of Whizbang"}
 // Application-defined abstraction (not part of Whizbang)
 public interface ICacheService {
   // Get/Set
@@ -173,7 +173,7 @@ public interface ICacheService {
 
 Using Redis as distributed cache:
 
-```csharp{title="Distributed Cache Example" description="Using Redis as distributed cache:" category="Implementation" difficulty="ADVANCED" tags=["Data", "C#", "Distributed", "Cache"]}
+```csharp{title="Distributed Cache Example" description="Using Redis as distributed cache:" category="Implementation" difficulty="ADVANCED" tags=["Data", "C#", "Distributed", "Cache"] unverified="application-level Redis implementation of the app-defined ICacheService — not a framework type"}
 using StackExchange.Redis;
 
 public class RedisCacheService : ICacheService {
@@ -244,7 +244,7 @@ public class RedisCacheService : ICacheService {
 
 ## Registration
 
-```csharp{title="Registration" description="Registration" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Registration"]}
+```csharp{title="Registration" description="Registration" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Registration"] unverified="application-level DI registration of app-defined cache services"}
 // Program.cs
 using StackExchange.Redis;
 
@@ -271,7 +271,7 @@ var app = builder.Build();
 
 Update cache when data changes:
 
-```csharp{title="Write-Through Cache" description="Update cache when data changes:" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Write-Through", "Cache"]}
+```csharp{title="Write-Through Cache" description="Update cache when data changes:" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Write-Through", "Cache"] unverified="application-level write-through receptor demonstrating tuple auto-cascade — not a framework API surface"}
 public class UpdateProductReceptor : IReceptor<UpdateProduct, (ProductUpdated, ClearCacheCommand)> {
   private readonly IProductRepository _repository;
 
@@ -297,7 +297,7 @@ public class UpdateProductReceptor : IReceptor<UpdateProduct, (ProductUpdated, C
 
 ### Cache-Aside Pattern
 
-```csharp{title="Cache-Aside Pattern" description="Cache-Aside Pattern" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Cache-Aside", "Pattern"]}
+```csharp{title="Cache-Aside Pattern" description="Cache-Aside Pattern" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Cache-Aside", "Pattern"] unverified="application-level cache-aside pattern using the app-defined ICacheService"}
 public class GetProductReceptor : IReceptor<GetProduct, ProductDto> {
   private readonly ICacheService _cache;
   private readonly IProductLens _lens;

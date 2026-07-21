@@ -42,7 +42,7 @@ Whizbang perspective rows store three JSON columns: `data` (the read model), `me
 
 Every perspective table follows the same schema:
 
-```csharp{title="PerspectiveRow" description="Generic perspective row with JSON columns" category="Architecture" difficulty="BEGINNER" tags=["Data", "EF Core", "PerspectiveRow"]}
+```csharp{title="PerspectiveRow" description="Generic perspective row with JSON columns" category="Architecture" difficulty="BEGINNER" tags=["Data", "EF Core", "PerspectiveRow"] unverified="type-shape illustration of the PerspectiveRow of T columns; the generic row shape itself, no behavioral test"}
 public class PerspectiveRow<TModel> where TModel : class {
   public required Guid Id { get; init; }
   public required TModel Data { get; set; }
@@ -58,7 +58,7 @@ public class PerspectiveRow<TModel> where TModel : class {
 
 Map the JSON columns in your `DbContext`:
 
-```csharp{title="ComplexProperty ToJson Configuration" description="Configure ComplexProperty().ToJson() for perspective columns" category="Configuration" difficulty="INTERMEDIATE" tags=["Data", "EF Core", "ComplexProperty", "ToJson"]}
+```csharp{title="ComplexProperty ToJson Configuration" description="Configure ComplexProperty().ToJson() for perspective columns" category="Configuration" difficulty="INTERMEDIATE" tags=["Data", "EF Core", "ComplexProperty", "ToJson"] unverified="illustrative hand-written OnModelCreating mapping; production uses the generated ConfigureWhizbang() config and the unit tests use InMemory OwnsOne, so no direct test"}
 protected override void OnModelCreating(ModelBuilder modelBuilder) {
   modelBuilder.Entity<PerspectiveRow<OrderModel>>(entity => {
     entity.ToTable("wh_per_order");
@@ -76,7 +76,7 @@ protected override void OnModelCreating(ModelBuilder modelBuilder) {
 
 This enables full server-side LINQ queries against all three JSON columns:
 
-```csharp{title="LINQ Queries on JSON Columns" description="Query across data, metadata, and scope JSON columns" category="Usage" difficulty="INTERMEDIATE" tags=["Data", "EF Core", "LINQ", "JSON"]}
+```csharp{title="LINQ Queries on JSON Columns" description="Query across data, metadata, and scope JSON columns" category="Usage" difficulty="INTERMEDIATE" tags=["Data", "EF Core", "LINQ", "JSON"] tests=["EFCorePostgresLensQueryTests.Query_CanFilterByDataFields_ReturnsMatchingRowsAsync", "EFCorePostgresLensQueryTests.Query_CanFilterByMetadataFields_ReturnsMatchingRowsAsync", "EFCorePostgresLensQueryTests.Query_CanFilterByScopeFields_ReturnsMatchingRowsAsync"]}
 // Filter by data fields
 var highValueOrders = await context.Set<PerspectiveRow<OrderModel>>()
     .Where(r => r.Data.Amount > 1000)
@@ -102,7 +102,7 @@ var usWestOrders = await context.Set<PerspectiveRow<OrderModel>>()
 
 You rarely write the mapping above by hand. The `EFCorePerspectiveConfigurationGenerator` source generator scans the compilation for `IPerspectiveFor<TModel>` (and `IPerspectiveWithActionsFor<TModel>`) implementations, infers each `TModel` from the interface's first type argument, and emits a `ConfigureWhizbang()` extension method on the static `WhizbangModelBuilderExtensions` class in the `Whizbang.Data.EFCore.Postgres.Generated` namespace. One call from `OnModelCreating` configures every discovered perspective plus the inbox/outbox/event-store/service-instance infrastructure entities:
 
-```csharp{title="Call the generated ConfigureWhizbang() extension" description="A single OnModelCreating call configures every discovered perspective and the infrastructure tables" category="Configuration" difficulty="BEGINNER" tags=["EF Core", "Source Generator", "ConfigureWhizbang", "DbContext"]}
+```csharp{title="Call the generated ConfigureWhizbang() extension" description="A single OnModelCreating call configures every discovered perspective and the infrastructure tables" category="Configuration" difficulty="BEGINNER" tags=["EF Core", "Source Generator", "ConfigureWhizbang", "DbContext"] unverified="generated ConfigureWhizbang() DbContext wiring; exercised by source-generator/integration tests, not the perspective unit tests"}
 public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(options) {
   protected override void OnModelCreating(ModelBuilder modelBuilder) {
     // Generated into Whizbang.Data.EFCore.Postgres.Generated.WhizbangModelBuilderExtensions
@@ -113,7 +113,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
 
 For each discovered perspective the generator emits a `PerspectiveRow<TModel>` configuration mapped onto a `wh_per_<snake_case_model_name>` table. Unlike the hand-written example above, the generated version maps all three JSON columns — including `Data` — with `ComplexProperty().ToJson()`, and configures `Scope.Extensions` as a JSON collection under the property name `ex`:
 
-```csharp{title="Generated per-perspective mapping" description="What EFCorePerspectiveConfigurationGenerator emits for each PerspectiveRow<TModel>" category="Configuration" difficulty="INTERMEDIATE" tags=["EF Core", "ComplexProperty", "ToJson", "Generated"]}
+```csharp{title="Generated per-perspective mapping" description="What EFCorePerspectiveConfigurationGenerator emits for each PerspectiveRow<TModel>" category="Configuration" difficulty="INTERMEDIATE" tags=["EF Core", "ComplexProperty", "ToJson", "Generated"] unverified="generated source-generator output (per-perspective ComplexProperty mapping); verified by generator/schema tests, not the perspective unit tests"}
 // Table name: wh_per_<snake_case_model_name>. OrderReadModel -> wh_per_order;
 // the ReadModel/Model/Projection/Dto/View suffixes are stripped by default.
 modelBuilder.Entity<PerspectiveRow<OrderModel>>(entity => {
@@ -149,7 +149,7 @@ Application code rarely touches `PerspectiveRow<TModel>` directly. Two concrete 
 
 - **`EFCorePostgresLensQuery<TModel>`** implements `ILensQuery<TModel>` (read side) and is scope-aware. `DefaultScope`, `Scope(QueryScope)`, and `ScopeOverride(...)` return access that applies tenant/organization/customer/user/principal filters drawn from the ambient `IScopeContext`; the default scope is `QueryScope.Tenant`, so a plain read is tenant-isolated. The bare `Query` property and `GetByIdAsync(Guid)` are `[Obsolete]` in favor of the fluent scope API.
 
-```csharp{title="Store write and scope-aware read" description="Upsert through the perspective store and read through the scope-aware lens query" category="Lenses" difficulty="INTERMEDIATE" tags=["EF Core", "PerspectiveStore", "LensQuery", "Tenant Scope"]}
+```csharp{title="Store write and scope-aware read" description="Upsert through the perspective store and read through the scope-aware lens query" category="Lenses" difficulty="INTERMEDIATE" tags=["EF Core", "PerspectiveStore", "LensQuery", "Tenant Scope"] tests=["EFCorePostgresPerspectiveStoreTests.UpsertAsync_WhenRecordDoesNotExist_CreatesNewRecordAsync", "EFCorePostgresPerspectiveStoreTests.GetByStreamIdAsync_WhenRecordExists_ReturnsModelAsync", "EFCorePostgresLensQueryTests.GetByIdAsync_WhenModelExists_ReturnsModelAsync", "EFCorePostgresLensQueryTests.Query_SupportsComplexLinqOperations_WithOrderByAndSkipTakeAsync"]}
 // Write side - EFCorePostgresPerspectiveStore<TModel> : IPerspectiveStore<TModel>
 await store.UpsertAsync(streamId, orderModel, cancellationToken);
 var current = await store.GetByStreamIdAsync(streamId, cancellationToken);
@@ -175,7 +175,7 @@ EF Core 10's `ComplexProperty().ToJson()` has specific requirements for mapped t
 
 Records have generated copy-constructors that can cause `NullReferenceException` during EF Core query materialization. Both `PerspectiveMetadata` and `PerspectiveScope` are classes:
 
-```csharp{title="Class Design for ComplexProperty" description="Classes with parameterless constructors for EF Core compatibility" category="Architecture" difficulty="INTERMEDIATE" tags=["Data", "EF Core", "ComplexProperty", "Design"]}
+```csharp{title="Class Design for ComplexProperty" description="Classes with parameterless constructors for EF Core compatibility" category="Architecture" difficulty="INTERMEDIATE" tags=["Data", "EF Core", "ComplexProperty", "Design"] unverified="design guidance (class vs record for ComplexProperty); the commented WRONG record is a counter-example"}
 // CORRECT: class with parameterless constructor
 public class PerspectiveMetadata {
   public PerspectiveMetadata() { }
@@ -196,7 +196,7 @@ public class PerspectiveMetadata {
 
 EF Core does NOT support `Dictionary<TKey, TValue>` with `ToJson()` ([GitHub #29825](https://github.com/dotnet/efcore/issues/29825)). Use `List<T>` with a key-value wrapper:
 
-```csharp{title="ScopeExtension Key-Value Pattern" description="List of key-value objects instead of Dictionary for ToJson() compatibility" category="Architecture" difficulty="INTERMEDIATE" tags=["Data", "EF Core", "ComplexProperty", "Collections"]}
+```csharp{title="ScopeExtension Key-Value Pattern" description="List of key-value objects instead of Dictionary for ToJson() compatibility" category="Architecture" difficulty="INTERMEDIATE" tags=["Data", "EF Core", "ComplexProperty", "Collections"] unverified="design guidance (List vs Dictionary for ToJson()); the commented WRONG Dictionary is a counter-example"}
 // CORRECT: List<ScopeExtension> works with ToJson()
 public class ScopeExtension {
   public ScopeExtension() { }
@@ -226,7 +226,7 @@ public class PerspectiveScope {
 
 Properties mapped via `ComplexProperty` need `set` accessors for EF Core materialization:
 
-```csharp{title="Accessor Requirements" description="Use set accessors for EF Core ComplexProperty materialization" category="Architecture" difficulty="BEGINNER" tags=["Data", "EF Core", "ComplexProperty", "Accessors"]}
+```csharp{title="Accessor Requirements" description="Use set accessors for EF Core ComplexProperty materialization" category="Architecture" difficulty="BEGINNER" tags=["Data", "EF Core", "ComplexProperty", "Accessors"] unverified="design guidance (set vs init accessor requirement for ComplexProperty materialization); type-shape illustration"}
 public class PerspectiveRow<TModel> where TModel : class {
   // init is fine for non-complex columns
   public required Guid Id { get; init; }
@@ -247,7 +247,7 @@ EF Core 10's `ComplexProperty().ToJson()` maintains internal indexes for collect
 
 The primary upsert strategy avoids the problem entirely by detaching tracked entities and querying with `AsNoTracking()`:
 
-```csharp{title="Detach-and-Reattach Pattern" description="Avoid tracking corruption by detaching and using AsNoTracking" category="Architecture" difficulty="ADVANCED" tags=["Data", "EF Core", "ComplexProperty", "Upsert"]}
+```csharp{title="Detach-and-Reattach Pattern" description="Avoid tracking corruption by detaching and using AsNoTracking" category="Architecture" difficulty="ADVANCED" tags=["Data", "EF Core", "ComplexProperty", "Upsert"] unverified="verified by BaseUpsertStrategyInPlaceUpdateTests, which is outside the current coverage map"}
 // 1. Detach any locally tracked entity
 var localRow = context.Set<PerspectiveRow<TModel>>().Local
     .FirstOrDefault(r => r.Id == id);
@@ -277,7 +277,7 @@ context.Set<PerspectiveRow<TModel>>().Update(row);
 
 For scenarios where entities are already tracked, in-place update methods modify properties on the **existing object instances** without replacing the `List` references:
 
-```csharp{title="UpdateMetadataInPlace" description="Update metadata properties without replacing the object" category="Architecture" difficulty="INTERMEDIATE" tags=["Data", "EF Core", "ComplexProperty", "In-Place"]}
+```csharp{title="UpdateMetadataInPlace" description="Update metadata properties without replacing the object" category="Architecture" difficulty="INTERMEDIATE" tags=["Data", "EF Core", "ComplexProperty", "In-Place"] unverified="verified by BaseUpsertStrategyInPlaceUpdateTests, which is outside the current coverage map"}
 protected static void UpdateMetadataInPlace(PerspectiveMetadata target, PerspectiveMetadata source) {
   target.EventType = source.EventType;
   target.EventId = source.EventId;
@@ -288,7 +288,7 @@ protected static void UpdateMetadataInPlace(PerspectiveMetadata target, Perspect
 }
 ```
 
-```csharp{title="UpdateScopeInPlace" description="Update scope properties while preserving List instances" category="Architecture" difficulty="ADVANCED" tags=["Data", "EF Core", "ComplexProperty", "In-Place", "Collections"]}
+```csharp{title="UpdateScopeInPlace" description="Update scope properties while preserving List instances" category="Architecture" difficulty="ADVANCED" tags=["Data", "EF Core", "ComplexProperty", "In-Place", "Collections"] unverified="verified by BaseUpsertStrategyInPlaceUpdateTests, which is outside the current coverage map"}
 protected static void UpdateScopeInPlace(PerspectiveScope target, PerspectiveScope source) {
   // Scalar properties -- safe to assign directly
   target.TenantId = source.TenantId;
@@ -316,7 +316,7 @@ protected static void UpdateScopeInPlace(PerspectiveScope target, PerspectiveSco
 
 When creating new `PerspectiveRow` instances (e.g., during upsert), complex types must be cloned to avoid sharing references:
 
-```csharp{title="CloneMetadata" description="Create an independent copy of PerspectiveMetadata" category="Architecture" difficulty="BEGINNER" tags=["Data", "EF Core", "Clone"]}
+```csharp{title="CloneMetadata" description="Create an independent copy of PerspectiveMetadata" category="Architecture" difficulty="BEGINNER" tags=["Data", "EF Core", "Clone"] unverified="verified by BaseUpsertStrategyInPlaceUpdateTests, which is outside the current coverage map"}
 protected static PerspectiveMetadata CloneMetadata(PerspectiveMetadata metadata) {
   return new PerspectiveMetadata {
     EventType = metadata.EventType,
@@ -329,7 +329,7 @@ protected static PerspectiveMetadata CloneMetadata(PerspectiveMetadata metadata)
 }
 ```
 
-```csharp{title="CloneScope" description="Create an independent copy of PerspectiveScope with new List instances" category="Architecture" difficulty="INTERMEDIATE" tags=["Data", "EF Core", "Clone"]}
+```csharp{title="CloneScope" description="Create an independent copy of PerspectiveScope with new List instances" category="Architecture" difficulty="INTERMEDIATE" tags=["Data", "EF Core", "Clone"] unverified="verified by BaseUpsertStrategyInPlaceUpdateTests, which is outside the current coverage map"}
 protected static PerspectiveScope CloneScope(PerspectiveScope scope) {
   return new PerspectiveScope {
     TenantId = scope.TenantId,
@@ -346,7 +346,7 @@ protected static PerspectiveScope CloneScope(PerspectiveScope scope) {
 
 The EF Core InMemory provider does not support JSON columns, so unit tests can't use the generated `ComplexProperty().ToJson()` mapping. Tests instead configure `PerspectiveRow<TModel>` with `OwnsOne()` for `Data` and `Metadata`, and a JSON `HasConversion` for `Scope` so its complex members (`AllowedPrincipals`, `Extensions`) still round-trip:
 
-```csharp{title="InMemory test DbContext configuration" description="OwnsOne plus a JSON HasConversion stand in for ToJson() under the InMemory provider" category="Configuration" difficulty="INTERMEDIATE" tags=["EF Core", "InMemory", "Testing", "OwnsOne"]}
+```csharp{title="InMemory test DbContext configuration" description="OwnsOne plus a JSON HasConversion stand in for ToJson() under the InMemory provider" category="Configuration" difficulty="INTERMEDIATE" tags=["EF Core", "InMemory", "Testing", "OwnsOne"] unverified="InMemory test-harness DbContext config (OwnsOne + JSON HasConversion); this is the test setup itself, not product behavior under test"}
 // Test DbContext - InMemory provider has no JSON columns, so OwnsOne + a JSON
 // conversion stand in for the generated ComplexProperty().ToJson() config.
 modelBuilder.Entity<PerspectiveRow<Order>>(entity => {

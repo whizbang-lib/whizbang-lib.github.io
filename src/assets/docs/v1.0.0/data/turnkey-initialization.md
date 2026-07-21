@@ -30,7 +30,7 @@ Whizbang provides a simple one-line initialization method that ensures your data
 
 ## Quick Start
 
-```csharp{title="Quick Start" description="Quick Start" category="Implementation" difficulty="BEGINNER" tags=["Data", "C#", "Quick", "Start"]}
+```csharp{title="Quick Start" description="Quick Start" category="Implementation" difficulty="BEGINNER" tags=["Data", "C#", "Quick", "Start"] tests=["DbContextInitializationRegistryTests.InitializeAllAsync_CallsAllRegisteredCallbacksAsync"]}
 var app = builder.Build();
 
 // Initialize Whizbang database BEFORE starting the app
@@ -54,7 +54,7 @@ await app.RunAsync();
 
 ### Before (Manual Initialization)
 
-```csharp{title="Before (Manual Initialization)" description="Before (Manual Initialization)" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Before", "Manual", "Initialization"]}
+```csharp{title="Before (Manual Initialization)" description="Before (Manual Initialization)" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Before", "Manual", "Initialization"] unverified="counter-example — error-prone manual per-DbContext pattern the turnkey call replaces"}
 // Error-prone: Must remember to do this for each DbContext
 // Risk: Code might run in the wrong order or be forgotten
 {
@@ -68,7 +68,7 @@ await app.RunAsync();
 
 ### After (Turnkey Initialization)
 
-```csharp{title="After (Turnkey Initialization)" description="After (Turnkey Initialization)" category="Implementation" difficulty="BEGINNER" tags=["Data", "C#", "After", "Turnkey", "Initialization"]}
+```csharp{title="After (Turnkey Initialization)" description="After (Turnkey Initialization)" category="Implementation" difficulty="BEGINNER" tags=["Data", "C#", "After", "Turnkey", "Initialization"] tests=["DbContextInitializationRegistryTests.InitializeAllAsync_CallsAllRegisteredCallbacksAsync"]}
 // Simple: One line initializes ALL registered DbContexts
 // Safe: Runs before app starts, preventing race conditions
 await app.EnsureWhizbangInitializedAsync();
@@ -91,7 +91,7 @@ In addition, `.WithDriver.Postgres` registers a `WhizbangDatabaseInitializerServ
 
 If your application has multiple Whizbang DbContexts, they are all initialized automatically:
 
-```csharp{title="Multiple DbContexts" description="If your application has multiple Whizbang DbContexts, they are all initialized automatically:" category="Implementation" difficulty="BEGINNER" tags=["Data", "C#", "Multiple", "DbContexts"]}
+```csharp{title="Multiple DbContexts" description="If your application has multiple Whizbang DbContexts, they are all initialized automatically:" category="Implementation" difficulty="BEGINNER" tags=["Data", "C#", "Multiple", "DbContexts"] tests=["DbContextInitializationRegistryTests.InitializeAllAsync_CallsAllRegisteredCallbacksAsync", "DbContextInitializationRegistryTests.Count_ReturnsNumberOfRegisteredInitializersAsync"]}
 // Both DbContexts are initialized with one call
 builder.Services.AddWhizbang()
     .WithEFCore<OrderDbContext>()

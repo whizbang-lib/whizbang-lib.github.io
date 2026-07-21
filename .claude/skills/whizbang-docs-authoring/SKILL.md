@@ -54,10 +54,12 @@ Rules:
 - Optional richness: `filename`, `nugetPackages`, `highlightLines`, `usingStatements`.
 
 ### Mermaid diagrams are different
-Mermaid uses an **inline, `=`-delimited** metadata form — only `title` and `description`, no framework/category/difficulty/tags:
+Mermaid uses an **inline, `=`-delimited** metadata form. Every diagram is **required** to
+declare a `caption` and its verifying `tests` (see §3) — the site renders it as a `<figure>`
+with a "Figure — <caption>" caption + a verified badge, and shows a warning if either is missing:
 
 ````markdown
-```mermaid{title="Collective-event apply pipeline" description="Producer → outbox → transport → inbox → perspective runner → one scope-filtered UPDATE."}
+```mermaid{caption="Collective-event apply pipeline — producer → outbox → transport → inbox." tests=["PerspectiveRunnerTests.Apply_ScopeFiltered_SingleUpdateAsync"]}
 sequenceDiagram
   …
 ```
@@ -65,8 +67,62 @@ sequenceDiagram
 
 Never give a mermaid block the multi-line code-block format — it breaks diagram rendering.
 
+## 3. Test verification — the coverage map
+
+Whizbang docs **are the living spec**, so every documented behavior should be *proven by a test*.
+The site labels each C# example / diagram / table row / section with its verification state, so
+gaps are visible instead of silent (checks-and-balances). A **green** badge tells the reader the
+documented behavior actually works; an **amber** badge flags a spec that isn't verified yet.
+
+**Join key:** everything links by `<ShortClassName>.<TestMethodName>` (e.g.
+`DispatcherTests.Send_WithValidMessage_ShouldReturnDeliveryReceiptAsync`) — the same identity used by
+`src/assets/code-tests-map.json` (`testsToCode`) and the live test-status data. Method names end in
+`Async` by project convention.
+
+### Badge states
+| State | When | Author action |
+|-------|------|---------------|
+| 🟢 verified   | linked test(s) found & passing | add `tests=[…]` |
+| 🔴 failing    | a linked test is failing | (fix the code/doc/test) |
+| 🟠 needs test | a C# example with no `tests=`/`unverified=` | link a test, or leave honestly as a gap |
+| ⚪ not verified | intentionally excused, with a reason | add `unverified="reason"` |
+
+### Code fences
+Add the verifying test(s) to the fence metadata:
+```csharp{title="…" … tests=["DispatchOptionsTests.WithTimeout_SetsTimeout_ReturnsSelfAsync"]}```
+- **Every C# block should be verified.** A C# block with neither `tests=` nor `unverified=` renders
+  amber **"needs test"**. Non-C# blocks (bash/json/output) show a badge only when `tests=` is given.
+- **Find the right test** — precision matters (a green badge that points at the wrong test is worse
+  than an honest amber). Use the page's `testReferences` classes as the candidate set, confirm the key
+  exists in `code-tests-map.json`, and read the actual test to confirm it verifies *that* example:
+  ```bash
+  grep -oE '"DispatcherTests\.[A-Za-z0-9_]+Async"' src/assets/code-tests-map.json | sort -u
+  ```
+  If you cannot confidently map an example, **leave it as a gap** — do not guess.
+- **Opt out** with a reason for legitimate non-examples:
+  `unverified="counter-example — intentionally wrong"` (a "don't-do-this" block), or
+  `unverified="raw IEventStore.AppendAsync — verified in the Event Store docs"` (another component's API).
+
+### Inline markers (tables, prose, section headings, diagram captions)
+Use the token `{verified: Class.MethodAsync, Class.OtherAsync}` anywhere in prose. It becomes a badge
+that opens a modal with those exact tests. Put **section** markers on their **own line** right under the
+heading (so heading anchor slugs stay clean). Quick-reference tables get a trailing **Verified** column
+whose cells hold the token.
+
+### Local preview vs production
+Production publishes real per-method results to `src/assets/data/test-status/` (via the library CI).
+Locally that folder is a **git-excluded dev fixture** — to see a badge render green in local dev, its
+key must be in `src/assets/data/test-status/Whizbang.Core.Tests.json`. Never commit the fixture; never
+rely on it for correctness (production has the real data). Correct **keys** are what matter.
+
+### The reference model + burndown
+`fundamentals/dispatcher/dispatcher.md` is the fully-annotated **model page** — copy its patterns.
+Burndown status + the per-page table live in `plans/verified-coverage-burndown.md`.
+
 ## Workflow when adding/editing a page
 1. Add/refresh the page frontmatter (incl. `codeReferences`/`testReferences`).
 2. Give every code fence proper front-matter (mermaid uses the inline form).
-3. `pnpm run validate-frontmatter` — fix anything it flags on `v1.0.0/` pages.
-4. C# examples follow K&R/Egyptian braces (opening brace on the same line).
+3. Add test verification (§3): `tests=[…]` / `unverified="…"` on C# blocks, `caption`+`tests` on
+   diagrams, `{verified: …}` on key tables/sections. Model off `dispatcher.md`.
+4. `pnpm run validate-frontmatter` — fix anything it flags on `v1.0.0/` pages (now incl. mermaid caption/tests).
+5. C# examples follow K&R/Egyptian braces (opening brace on the same line).

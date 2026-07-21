@@ -46,7 +46,7 @@ Think of the ledger as your system's permanent memory - every significant action
 
 The ledger contract is `IEventStore` (`Whizbang.Core.Messaging`). The essential members:
 
-```csharp{title="Core Interface" description="Essential IEventStore members (see Event Store for the full interface)" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Core", "Interface"]}
+```csharp{title="Core Interface" description="Essential IEventStore members (see Event Store for the full interface)" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Core", "Interface"] tests=["InMemoryEventStoreTests.AppendAsync_WithMessage_ShouldStoreEventAsync", "InMemoryEventStoreTests.ReadPolymorphicAsync_WithMatchingEventType_ShouldReturnEventsAsync", "EventStoreContractTests.GetLastSequenceAsync_AfterAppends_ShouldReturnCorrectSequenceAsync"]}
 public interface IEventStore {
   // Append an envelope to a stream
   Task AppendAsync<TMessage>(Guid streamId, MessageEnvelope<TMessage> envelope,
@@ -86,7 +86,7 @@ There is no global "position" counter — ordering is **per stream** (monotonic 
 | `InMemoryEventStore` | `Whizbang.Core` | Testing and single-process scenarios. Thread-safe; NOT for multi-process production use. |
 | Postgres event stores (Dapper / EF Core) | `Whizbang.Data.*` | Production. Events land in the `wh_event_store` table via the work coordinator. |
 
-```csharp{title="In-Memory Implementation" description="InMemoryEventStore for tests and single-process scenarios" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "InMemory", "Implementation"]}
+```csharp{title="In-Memory Implementation" description="InMemoryEventStore for tests and single-process scenarios" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "InMemory", "Implementation"] tests=["InMemoryEventStoreTests.AppendAsync_WithMessage_WhenNoEnvelope_ShouldCreateMinimalEnvelopeAsync", "InMemoryEventStoreTests.AppendAsync_WithMessage_WhenEnvelopeRegistered_ShouldUseEnvelopeAsync"]}
 // Thread-safe in-memory ledger for tests / single-process apps
 var store = new InMemoryEventStore();
 
@@ -100,7 +100,7 @@ var store = new InMemoryEventStore(envelopeRegistry);
 
 Relational backends persist one `EventStoreRecord` per event:
 
-```csharp{title="Record Structure" description="EventStoreRecord - the persisted shape of a ledger entry" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Event", "Structure"]}
+```csharp{title="Record Structure" description="EventStoreRecord - the persisted shape of a ledger entry" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Event", "Structure"] unverified="EventStoreRecord is the relational-backend persisted shape — not exercised by the in-memory ledger tests referenced by this page"}
 public sealed class EventStoreRecord {
   public Guid Id { get; set; }                       // Event ID (UUIDv7)
   public required Guid StreamId { get; set; }        // Stream (aggregate) identity
@@ -121,7 +121,7 @@ public sealed class EventStoreRecord {
 
 Events reach the ledger automatically: receptors return events, and the dispatch pipeline stores them (outbox → work coordinator → event store). You can also append directly:
 
-```csharp{title="Appending Events" description="Appending Events" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "C#", "Appending"]}
+```csharp{title="Appending Events" description="Appending Events" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "C#", "Appending"] tests=["InMemoryEventStoreTests.AppendAsync_WithMessage_ShouldStoreEventAsync", "InMemoryEventStoreTests.AppendAsync_WithMessage_WhenEnvelopeRegistered_ShouldUseEnvelopeAsync"]}
 // Direct append - envelope (with tracing context) is looked up automatically
 await eventStore.AppendAsync(order.StreamId, new OrderShipped {
   OrderId = order.Id,
@@ -131,7 +131,7 @@ await eventStore.AppendAsync(order.StreamId, new OrderShipped {
 
 ### Reading Events
 
-```csharp{title="Reading Events" description="Reading Events" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "C#", "Reading"]}
+```csharp{title="Reading Events" description="Reading Events" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "C#", "Reading"] tests=["EventStoreContractTests.ReadAsync_ShouldReturnEventsInOrderAsync", "InMemoryEventStoreTests.ReadAsync_ByEventId_WithSpecificEventId_ShouldReturnEventsAfterItAsync", "InMemoryEventStoreTests.ReadPolymorphicAsync_WithMatchingEventType_ShouldReturnEventsAsync"]}
 // Read a whole stream, strongly typed
 await foreach (var envelope in eventStore.ReadAsync<OrderCreated>(streamId, fromSequence: 0)) {
   Console.WriteLine($"{envelope.Payload.OrderId}");
@@ -156,7 +156,7 @@ await foreach (var envelope in eventStore.ReadPolymorphicAsync(streamId, fromEve
 
 `InMemoryEventStore` makes ledger-level assertions easy:
 
-```csharp{title="Testing with the Ledger" description="Testing with the Ledger" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Testing", "Ledger"]}
+```csharp{title="Testing with the Ledger" description="Testing with the Ledger" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Testing", "Ledger"] tests=["EventStoreContractTests.GetLastSequenceAsync_EmptyStream_ShouldReturnMinusOneAsync", "EventStoreContractTests.GetLastSequenceAsync_AfterAppends_ShouldReturnCorrectSequenceAsync"]}
 [Test]
 public async Task Append_ShouldIncrementSequenceAsync() {
   // Arrange

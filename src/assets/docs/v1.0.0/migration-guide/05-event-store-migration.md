@@ -41,7 +41,7 @@ This guide covers migrating from Marten's document store and event sourcing to W
 
 **Marten**:
 
-```csharp{title="Appending Events" description="Appending Events" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-guide", "C#", "Appending", "Events"]}
+```csharp{title="Appending Events" description="Appending Events" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-guide", "C#", "Appending", "Events"] unverified="other framework — migration before-state"}
 public class OrderService {
     private readonly IDocumentStore _store;
 
@@ -59,7 +59,7 @@ public class OrderService {
 
 **Whizbang**:
 
-```csharp{title="Appending Events - CreateOrderReceptor" description="Appending Events - CreateOrderReceptor" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-guide", "C#", "Appending", "Events", "CreateOrderReceptor"]}
+```csharp{title="Appending Events - CreateOrderReceptor" description="Appending Events - CreateOrderReceptor" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-guide", "C#", "Appending", "Events", "CreateOrderReceptor"] tests=["InMemoryEventStoreTests.AppendAsync_WithMessage_ShouldStoreEventAsync", "InMemoryEventStoreTests.AppendAsync_WithMessage_WhenEnvelopeRegistered_ShouldUseEnvelopeAsync", "InMemoryEventStoreTests.AppendAsync_WithMessage_WhenNoEnvelope_ShouldCreateMinimalEnvelopeAsync"]}
 public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
     private readonly IEventStore _eventStore;
 
@@ -87,7 +87,7 @@ public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
 
 **Marten**:
 
-```csharp{title="Reading Events" description="Reading Events" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-guide", "C#", "Reading", "Events"]}
+```csharp{title="Reading Events" description="Reading Events" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-guide", "C#", "Reading", "Events"] unverified="other framework — migration before-state"}
 public async Task<Order> RehydrateOrderAsync(Guid orderId) {
     await using var session = _store.QuerySession();
 
@@ -104,7 +104,7 @@ public async Task<Order> RehydrateOrderAsync(Guid orderId) {
 
 **Whizbang**:
 
-```csharp{title="Reading Events (2)" description="Reading Events" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-guide", "C#", "Reading", "Events"]}
+```csharp{title="Reading Events (2)" description="Reading Events" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-guide", "C#", "Reading", "Events"] tests=["EventStoreContractTests.ReadAsync_ShouldReturnEventsInOrderAsync"]}
 public async Task<Order> RehydrateOrderAsync(Guid orderId, CancellationToken ct) {
     var order = new Order();
 
@@ -120,7 +120,7 @@ public async Task<Order> RehydrateOrderAsync(Guid orderId, CancellationToken ct)
 
 **Marten**:
 
-```csharp{title="Multiple Events in One Append" description="Multiple Events in One Append" category="Reference" difficulty="BEGINNER" tags=["Migration-guide", "C#", "Multiple", "Events", "One"]}
+```csharp{title="Multiple Events in One Append" description="Multiple Events in One Append" category="Reference" difficulty="BEGINNER" tags=["Migration-guide", "C#", "Multiple", "Events", "One"] unverified="other framework — migration before-state"}
 await using var session = _store.LightweightSession();
 
 session.Events.Append(orderId,
@@ -157,14 +157,14 @@ await _eventStore.AppendBatchAsync(
 
 **Marten** (implicit stream creation):
 
-```csharp{title="Starting a Stream" description="Marten (implicit stream creation):" category="Reference" difficulty="BEGINNER" tags=["Migration-guide", "C#", "Starting", "Stream"]}
+```csharp{title="Starting a Stream" description="Marten (implicit stream creation):" category="Reference" difficulty="BEGINNER" tags=["Migration-guide", "C#", "Starting", "Stream"] unverified="other framework — migration before-state"}
 // Marten creates stream automatically
 session.Events.Append(newStreamId, firstEvent);
 ```
 
 **Whizbang** (explicit stream):
 
-```csharp{title="Starting a Stream (2)" description="Whizbang (explicit stream):" category="Reference" difficulty="BEGINNER" tags=["Migration-guide", "C#", "Starting", "Stream"]}
+```csharp{title="Starting a Stream (2)" description="Whizbang (explicit stream):" category="Reference" difficulty="BEGINNER" tags=["Migration-guide", "C#", "Starting", "Stream"] tests=["InMemoryEventStoreTests.AppendAsync_WithMessage_ShouldStoreEventAsync"]}
 // Whizbang also creates the stream on first append
 Guid streamId = TrackedGuid.NewMedo();  // UUIDv7 for time-ordering
 await _eventStore.AppendAsync(streamId, firstEvent, ct);
@@ -174,14 +174,14 @@ await _eventStore.AppendAsync(streamId, firstEvent, ct);
 
 **Marten**:
 
-```csharp{title="Checking Stream Existence" description="Checking Stream Existence" category="Reference" difficulty="BEGINNER" tags=["Migration-guide", "C#", "Checking", "Stream", "Existence"]}
+```csharp{title="Checking Stream Existence" description="Checking Stream Existence" category="Reference" difficulty="BEGINNER" tags=["Migration-guide", "C#", "Checking", "Stream", "Existence"] unverified="other framework — migration before-state"}
 var state = await session.Events.FetchStreamStateAsync(streamId);
 var exists = state != null;
 ```
 
 **Whizbang**:
 
-```csharp{title="Checking Stream Existence (2)" description="Checking Stream Existence" category="Reference" difficulty="BEGINNER" tags=["Migration-guide", "C#", "Checking", "Stream", "Existence"]}
+```csharp{title="Checking Stream Existence (2)" description="Checking Stream Existence" category="Reference" difficulty="BEGINNER" tags=["Migration-guide", "C#", "Checking", "Stream", "Existence"] tests=["EventStoreContractTests.GetLastSequenceAsync_AfterAppends_ShouldReturnCorrectSequenceAsync", "EventStoreContractTests.GetLastSequenceAsync_EmptyStream_ShouldReturnMinusOneAsync"]}
 // GetLastSequenceAsync returns the highest sequence number in the stream,
 // or -1 when the stream doesn't exist or is empty
 var lastSequence = await _eventStore.GetLastSequenceAsync(streamId, ct);
@@ -192,7 +192,7 @@ var exists = lastSequence >= 0;
 
 ### Marten Expected Version
 
-```csharp{title="Marten Expected Version" description="Marten Expected Version" category="Reference" difficulty="BEGINNER" tags=["Migration-guide", "C#", "Marten", "Expected", "Version"]}
+```csharp{title="Marten Expected Version" description="Marten Expected Version" category="Reference" difficulty="BEGINNER" tags=["Migration-guide", "C#", "Marten", "Expected", "Version"] unverified="other framework — migration before-state"}
 // Marten: Optimistic concurrency via expected version
 session.Events.Append(orderId, expectedVersion: 5, newEvent);
 await session.SaveChangesAsync();  // Throws if version != 5
@@ -200,7 +200,7 @@ await session.SaveChangesAsync();  // Throws if version != 5
 
 ### Whizbang Sequence-Based
 
-```csharp{title="Whizbang Sequence-Based" description="Whizbang Sequence-Based" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-Guide", "Whizbang", "Sequence-Based"]}
+```csharp{title="Whizbang Sequence-Based" description="Whizbang Sequence-Based" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-Guide", "Whizbang", "Sequence-Based"] tests=["EventStoreContractTests.GetLastSequenceAsync_AfterAppends_ShouldReturnCorrectSequenceAsync", "EventStoreContractTests.AppendAsync_ConcurrentAppends_ShouldBeThreadSafeAsync"]}
 // Whizbang: Sequence-based concurrency
 // Events get monotonic sequence numbers per stream, assigned at append time
 // by the store's internal sequence provider - there is no expectedVersion parameter.
@@ -216,7 +216,7 @@ await _eventStore.AppendAsync(streamId, @event, ct);
 
 ### Marten Unit of Work
 
-```csharp{title="Marten Unit of Work" description="Marten Unit of Work" category="Reference" difficulty="BEGINNER" tags=["Migration-guide", "C#", "Marten", "Unit", "Work"]}
+```csharp{title="Marten Unit of Work" description="Marten Unit of Work" category="Reference" difficulty="BEGINNER" tags=["Migration-guide", "C#", "Marten", "Unit", "Work"] unverified="other framework — migration before-state"}
 // Marten: Batch multiple operations
 await using var session = _store.LightweightSession();
 
@@ -248,7 +248,7 @@ await _eventStore.AppendBatchAsync(
 
 ### Marten Query Session
 
-```csharp{title="Marten Query Session" description="Marten Query Session" category="Reference" difficulty="BEGINNER" tags=["Migration-guide", "C#", "Marten", "Query", "Session"]}
+```csharp{title="Marten Query Session" description="Marten Query Session" category="Reference" difficulty="BEGINNER" tags=["Migration-guide", "C#", "Marten", "Query", "Session"] unverified="other framework — migration before-state"}
 // Marten: Query events directly
 await using var session = _store.QuerySession();
 
@@ -260,7 +260,7 @@ var recentOrders = await session.Events
 
 ### Whizbang Event Queries
 
-```csharp{title="Whizbang Event Queries" description="Whizbang Event Queries" category="Reference" difficulty="BEGINNER" tags=["Migration-guide", "C#", "Whizbang", "Event", "Queries"]}
+```csharp{title="Whizbang Event Queries" description="Whizbang Event Queries" category="Reference" difficulty="BEGINNER" tags=["Migration-guide", "C#", "Whizbang", "Event", "Queries"] tests=["InMemoryEventStoreTests.GetEventsBetweenAsync_NonExistentStream_ShouldReturnEmptyListAsync", "InMemoryEventStoreTests.ReadPolymorphicAsync_WithMatchingEventType_ShouldReturnEventsAsync"]}
 // Whizbang: range queries are per stream, bounded by event IDs
 // (afterEventId is exclusive; pass null to start from the beginning)
 List<MessageEnvelope<OrderCreated>> events =
@@ -290,7 +290,7 @@ You rarely construct `MessageEnvelope<T>` by hand. It has several `required` mem
 - **Dispatched messages**: `IDispatcher` creates the envelope and registers it with `IEnvelopeRegistry`.
 - **Direct appends**: the `AppendAsync(streamId, message, ct)` overload looks up the message's existing envelope via `IEnvelopeRegistry` (preserving hops, correlation, and causation) or creates a minimal one if none exists.
 
-```csharp{title="Envelope-Free Append" description="Let the framework manage envelopes:" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-guide", "C#", "MessageEnvelope", "Creation", "Helper"]}
+```csharp{title="Envelope-Free Append" description="Let the framework manage envelopes:" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-guide", "C#", "MessageEnvelope", "Creation", "Helper"] tests=["InMemoryEventStoreTests.AppendAsync_WithMessage_ShouldStoreEventAsync", "InMemoryEventStoreTests.AppendAsync_WithMessage_WhenEnvelopeRegistered_ShouldUseEnvelopeAsync", "InMemoryEventStoreTests.AppendAsync_WithMessage_WhenNoEnvelope_ShouldCreateMinimalEnvelopeAsync"]}
 // Preferred: append the message; envelope handling is automatic
 await _eventStore.AppendAsync(streamId, orderCreatedEvent, ct);
 ```

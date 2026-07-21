@@ -30,7 +30,7 @@ Build a **complete e-commerce system** using Whizbang to learn all framework fea
 
 A distributed e-commerce platform with 7 microservices:
 
-```mermaid
+```mermaid{caption="High-level ECommerce topology: the Order, Inventory, and Payment command services publish to Azure Service Bus topics, which fan out to the Notification, Shipping, and Analytics event workers."}
 flowchart TD
     subgraph EPA["ECommerce Platform Architecture"]
         OrderSvc["Order Service<br/>(Commands)"]
@@ -266,7 +266,7 @@ The shipped sample at `samples/ECommerce/` in the library repository uses **ECom
 
 ### Event-Driven Architecture
 
-```csharp{title="Event-Driven Architecture" description="Event-Driven Architecture" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Event-Driven", "Architecture"]}
+```csharp{title="Event-Driven Architecture" description="Event-Driven Architecture" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Event-Driven", "Architecture"] unverified="tutorial worked-example — exercised by the ECommerce sample suite (OrderServiceIntegrationTests), which is outside the core unit-test coverage map"}
 // Command: Create Order (synchronous)
 CreateOrderCommand → CreateOrderReceptor → OrderCreatedEvent
 
@@ -291,7 +291,7 @@ OrderCreatedEvent → Published to Azure Service Bus
 
 ### Saga Pattern (Distributed Transactions)
 
-```mermaid
+```mermaid{caption="End-to-end order saga: CreateOrder cascades through inventory, payment, shipment, and notification steps, with a compensation branch that releases inventory when payment fails."}
 flowchart TD
     subgraph Saga["Saga: Order Processing"]
         S1["CreateOrder"] --> S2["OrderCreated"]

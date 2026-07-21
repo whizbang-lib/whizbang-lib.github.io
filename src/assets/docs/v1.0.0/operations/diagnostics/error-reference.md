@@ -57,6 +57,7 @@ framework: "NET10"
 category: "Offloads"
 difficulty: "INTERMEDIATE"
 tags: ["body-offload", "claim-check", "azure-blob", "message-size"]
+unverified: "illustrative DI registration — not exercised by a mapped test"
 }
 services.AddWhizbangBodyOffload();
 services.AddWhizbangAzureBlobOffload("azure-blob");
@@ -314,6 +315,7 @@ framework: "NET10"
 category: "Offloads"
 difficulty: "BEGINNER"
 tags: ["body-offload", "azure-blob", "configuration", "named-options"]
+unverified: "config/registration — not exercised by a mapped test"
 }
 services.Configure<AzureBlobOffloadOptions>("azure-blob", opts => {
   opts.ConnectionString = configuration["Storage:ConnectionString"]!;

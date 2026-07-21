@@ -31,7 +31,7 @@ When processing messages, sometimes only the message payload is available, but t
 
 ## IEnvelopeRegistry Interface {#ienveloperegistry}
 
-```csharp{title="IEnvelopeRegistry Interface" description="IEnvelopeRegistry Interface" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Messages", "IEnvelopeRegistry", "Interface"]}
+```csharp{title="IEnvelopeRegistry Interface" description="IEnvelopeRegistry Interface" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Messages", "IEnvelopeRegistry", "Interface"] tests=["EnvelopeRegistryTests.Register_WithEnvelope_CanBeRetrievedByMessageAsync", "EnvelopeRegistryTests.TryGetEnvelope_WithUnregisteredMessage_ReturnsNullAsync", "EnvelopeRegistryTests.Unregister_ByMessage_RemovesFromRegistryAsync", "EnvelopeRegistryTests.Unregister_ByEnvelope_RemovesFromRegistryAsync"]}
 namespace Whizbang.Core.Observability;
 
 /// <summary>
@@ -75,7 +75,7 @@ public interface IEnvelopeRegistry {
 
 ## Usage Flow
 
-```mermaid
+```mermaid{caption="Envelope registry lifecycle — the dispatcher registers an envelope, the event store looks it up by message reference, then unregisters when processing completes." tests=["EnvelopeRegistryTests.Register_WithEnvelope_CanBeRetrievedByMessageAsync", "EnvelopeRegistryTests.Unregister_ByMessage_RemovesFromRegistryAsync"]}
 graph TB
     S1["1. Dispatcher creates envelope<br/>envelopeRegistry.Register(envelope)"]
     S2["2. Receptor receives message (payload only)<br/>Calls eventStore.AppendAsync(streamId, message)"]
@@ -95,7 +95,7 @@ graph TB
 
 The registry uses **object reference identity**, not equality:
 
-```csharp{title="Reference Identity" description="The registry uses object reference identity, not equality:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Messages", "Reference", "Identity"]}
+```csharp{title="Reference Identity" description="The registry uses object reference identity, not equality:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Messages", "Reference", "Identity"] tests=["EnvelopeRegistryTests.Register_WithEnvelope_CanBeRetrievedByMessageAsync", "EnvelopeRegistryTests.TryGetEnvelope_WithDifferentInstanceSameValue_ReturnsNullAsync"]}
 var message = new OrderCreated { OrderId = orderId };
 
 // Same instance - works
@@ -113,7 +113,7 @@ This is intentional - it ensures the exact message being processed is matched.
 
 The registry is typically scoped to a request/operation:
 
-```csharp{title="Scoped Lifetime" description="The registry is typically scoped to a request/operation:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Messages", "Scoped", "Lifetime"]}
+```csharp{title="Scoped Lifetime" description="The registry is typically scoped to a request/operation:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Messages", "Scoped", "Lifetime"] unverified="DI service-registration config — scoped-lifetime wiring, not an EnvelopeRegistry behavior test"}
 // Registered as scoped in DI
 services.AddScoped<IEnvelopeRegistry, EnvelopeRegistry>();
 
@@ -127,7 +127,7 @@ services.AddScoped<IEnvelopeRegistry, EnvelopeRegistry>();
 
 The event store uses the registry to get envelope context:
 
-```csharp{title="Event Store Integration" description="The event store uses the registry to get envelope context:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Event", "Store"]}
+```csharp{title="Event Store Integration" description="The event store uses the registry to get envelope context:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Event", "Store"] unverified="illustrative EventStore integration — the registry TryGetEnvelope contract is covered by EnvelopeRegistryTests; this wrapper store is not a shipped/tested type"}
 public class EventStore : IEventStore {
   private readonly IEnvelopeRegistry _envelopeRegistry;
 
@@ -157,7 +157,7 @@ public class EventStore : IEventStore {
 
 ### Security Scope Propagation
 
-```csharp{title="Security Scope Propagation" description="Reading the scope carried on envelope hops" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Security", "Context"]}
+```csharp{title="Security Scope Propagation" description="Reading the scope carried on envelope hops" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Security", "Context"] unverified="illustrative custom decorator — the shipped SecurityContextEventStoreDecorator does not use IEnvelopeRegistry (see note below); not a tested type"}
 public class ScopePropagatingEventStoreDecorator : IEventStore {
   private readonly IEnvelopeRegistry _envelopeRegistry;
   private readonly IEventStore _inner;
@@ -186,7 +186,7 @@ The shipped `SecurityContextEventStoreDecorator` in `Whizbang.Core` does **not**
 
 ### Correlation Tracking
 
-```csharp{title="Correlation Tracking" description="Correlation Tracking" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Correlation", "Tracking"]}
+```csharp{title="Correlation Tracking" description="Correlation Tracking" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Correlation", "Tracking"] unverified="illustrative receptor example — envelope lookup + correlation usage, not a tested type"}
 public class CorrelationTrackingReceptor : IReceptor<CreateOrder, OrderCreated> {
   private readonly IEnvelopeRegistry _envelopeRegistry;
 
@@ -213,7 +213,7 @@ public class CorrelationTrackingReceptor : IReceptor<CreateOrder, OrderCreated> 
 
 The default implementation uses a pooled `Dictionary` with `ReferenceEqualityComparer` and explicit locking. After initial warmup, operations are zero-allocation:
 
-```csharp{title="Thread Safety" description="Pooled dictionary implementation with ReferenceEqualityComparer" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Thread", "Safety"]}
+```csharp{title="Thread Safety" description="Pooled dictionary implementation with ReferenceEqualityComparer" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Thread", "Safety"] tests=["EnvelopeRegistryTests.Registry_IsThreadSafe_ConcurrentAccessAsync", "EnvelopeRegistryTests.Dispose_ClearsRegistryAndReturnsDictionaryToPoolAsync", "EnvelopeRegistryTests.PoolReuse_MultipleRegistryInstances_ReusesDictionariesAsync"]}
 public sealed class EnvelopeRegistry : IEnvelopeRegistry, IDisposable {
   private static readonly ConcurrentBag<Dictionary<object, IMessageEnvelope>> _pool = [];
   private readonly Dictionary<object, IMessageEnvelope> _entries;

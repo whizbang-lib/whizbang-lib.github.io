@@ -50,7 +50,7 @@ Replace non-generic interfaces with generic versions or concrete types:
 
 ### Before (causes WHIZ062)
 
-```csharp{title="Before (causes WHIZ062)" description="Before (causes WHIZ062)" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Before", "Causes"]}
+```csharp{title="Before (causes WHIZ062)" description="Before (causes WHIZ062)" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Before", "Causes"] unverified="counter-example — the pattern WHIZ062 flags; detection verified by SerializablePropertyAnalyzerTests.Analyzer_CommandWithNonGenericIEnumerable_ReportsWHIZ062Async"}
 public record CreateOrderCommand : ICommand {
   public Guid OrderId { get; init; }
   public IEnumerable Items { get; init; }      // WHIZ062
@@ -61,7 +61,7 @@ public record CreateOrderCommand : ICommand {
 
 ### After (error resolved)
 
-```csharp{title="After (error resolved)" description="After (error resolved)" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "After", "Error"]}
+```csharp{title="After (error resolved)" description="After (error resolved)" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "After", "Error"] tests=["SerializablePropertyAnalyzerTests.Analyzer_CommandWithGenericIEnumerable_NoErrorAsync", "SerializablePropertyAnalyzerTests.Analyzer_CommandWithGenericIList_NoErrorAsync"]}
 public record CreateOrderCommand : ICommand {
   public Guid OrderId { get; init; }
   public IEnumerable<OrderItem> Items { get; init; } = [];
@@ -74,7 +74,7 @@ public record CreateOrderCommand : ICommand {
 
 Generic interfaces with type parameters are serializable:
 
-```csharp{title="Generic Interfaces Are Allowed" description="Generic interfaces with type parameters are serializable:" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Generic", "Interfaces"]}
+```csharp{title="Generic Interfaces Are Allowed" description="Generic interfaces with type parameters are serializable:" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Generic", "Interfaces"] tests=["SerializablePropertyAnalyzerTests.Analyzer_CommandWithGenericIEnumerable_NoErrorAsync", "SerializablePropertyAnalyzerTests.Analyzer_DictionaryProperty_NoErrorAsync"]}
 public record ValidCommand : ICommand {
   // All OK - generic interfaces
   public IEnumerable<string> Tags { get; init; } = [];
@@ -104,7 +104,7 @@ For custom interfaces, either:
 
 ### Example: Custom Interface Fix
 
-```csharp{title="Example: Custom Interface Fix" description="Example: Custom Interface Fix" category="Troubleshooting" difficulty="INTERMEDIATE" tags=["Operations", "Diagnostics", "Example:", "Custom"]}
+```csharp{title="Example: Custom Interface Fix" description="Example: Custom Interface Fix" category="Troubleshooting" difficulty="INTERMEDIATE" tags=["Operations", "Diagnostics", "Example:", "Custom"] unverified="counter-example — the pattern WHIZ062 flags; detection verified by SerializablePropertyAnalyzerTests.Analyzer_CommandWithCustomInterface_ReportsWHIZ062Async"}
 // Before - non-generic interface
 public interface IPaymentMethod { }
 
@@ -122,7 +122,7 @@ public record ProcessPaymentCommand : ICommand {
 
 If you must use a non-generic interface:
 
-```csharp{title="Suppressing This Diagnostic" description="If you must use a non-generic interface:" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Suppressing", "This"]}
+```csharp{title="Suppressing This Diagnostic" description="If you must use a non-generic interface:" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Suppressing", "This"] unverified="suppression/config — not exercised by a test"}
 #pragma warning disable WHIZ062
 public IEnumerable LegacyItems { get; init; }
 #pragma warning restore WHIZ062
@@ -130,7 +130,7 @@ public IEnumerable LegacyItems { get; init; }
 
 Or project-wide via `.editorconfig` (`NoWarn` does not suppress Error-severity diagnostics):
 
-```ini{title="Suppressing This Diagnostic (2)" description="Project-wide suppression via .editorconfig:" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Suppressing", "This"]}
+```ini{title="Suppressing This Diagnostic (2)" description="Project-wide suppression via .editorconfig:" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Suppressing", "This"] unverified="suppression/config — not exercised by a test"}
 [*.cs]
 dotnet_diagnostic.WHIZ062.severity = none
 ```

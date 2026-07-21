@@ -30,7 +30,7 @@ lastMaintainedCommit: '01f07906'
 
 Drivers are the storage-backend selection layer in Whizbang. Application code (perspectives, receptors, lenses) never talks to a specific database - it works against Whizbang abstractions (`IPerspectiveStore<T>`, `ILensQuery<T>`, `IEventStore`, `IInbox`, `IOutbox`). A **driver** wires those abstractions to a concrete backend at startup via a fluent builder chain:
 
-```csharp{title="Driver Selection" description="Driver Selection" category="Implementation" difficulty="BEGINNER" tags=["Data", "C#", "Driver", "Selection"]}
+```csharp{title="Driver Selection" description="Driver Selection" category="Implementation" difficulty="BEGINNER" tags=["Data", "C#", "Driver", "Selection"] tests=["EFCoreExtensionsTests.WithEFCore_CanChainToWithDriverAsync", "PostgresDriverExtensionsTests.Postgres_ReturnedBuilder_HasSameServicesAsync", "InMemoryDriverExtensionsTests.InMemory_WithValidEFCoreSelector_ReturnsWhizbangPerspectiveBuilderAsync"]}
 // Production: PostgreSQL
 services
     .AddWhizbang()
@@ -59,7 +59,7 @@ Everything after `.WithDriver.` is an **extension property contributed by a driv
 
 `IDriverOptions` is a marker interface that serves as the extension point for driver packages:
 
-```csharp{title="IDriverOptions" description="IDriverOptions" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "IDriverOptions", "Interface"]}
+```csharp{title="IDriverOptions" description="IDriverOptions" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "IDriverOptions", "Interface"] tests=["EFCoreDriverSelectorTests.ImplementsIDriverOptions_InterfaceAsync", "EFCoreDriverSelectorTests.IDriverOptions_Services_ReturnsSameAsDirectPropertyAsync"]}
 namespace Whizbang.Core.Perspectives;
 
 public interface IDriverOptions {
@@ -69,7 +69,7 @@ public interface IDriverOptions {
 
 Driver packages add extension properties to it using C# 14 extension blocks:
 
-```csharp{title="Driver Extension Property" description="Driver Extension Property" category="Implementation" difficulty="ADVANCED" tags=["Data", "C#", "Driver", "Extension"]}
+```csharp{title="Driver Extension Property" description="Driver Extension Property" category="Implementation" difficulty="ADVANCED" tags=["Data", "C#", "Driver", "Extension"] tests=["PostgresDriverExtensionsTests.Postgres_WithNonEFCoreDriverOptions_ThrowsInvalidOperationExceptionAsync", "PostgresDriverExtensionsTests.Postgres_ReturnedBuilder_HasSameServicesAsync"]}
 public static class PostgresDriverExtensions {
     extension(IDriverOptions options) {
         public WhizbangPerspectiveBuilder Postgres {
@@ -91,7 +91,7 @@ public static class PostgresDriverExtensions {
 
 `.WithEFCore<TDbContext>()` returns an `EFCoreDriverSelector`, which captures the `DbContext` type (and optional connection string name) and exposes `.WithDriver`:
 
-```csharp{title="EFCoreDriverSelector" description="EFCoreDriverSelector" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "EFCoreDriverSelector"]}
+```csharp{title="EFCoreDriverSelector" description="EFCoreDriverSelector" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "EFCoreDriverSelector"] tests=["EFCoreDriverSelectorTests.WithDriver_ReturnsIDriverOptionsAsync", "EFCoreDriverSelectorTests.Services_ReturnsCorrectServiceCollectionAsync"]}
 public sealed class EFCoreDriverSelector : IDriverOptions {
     public IServiceCollection Services { get; }
 
@@ -102,7 +102,7 @@ public sealed class EFCoreDriverSelector : IDriverOptions {
 
 `WithEFCore<TDbContext>()` has two overloads:
 
-```csharp{title="WithEFCore Overloads" description="WithEFCore Overloads" category="Implementation" difficulty="BEGINNER" tags=["Data", "C#", "WithEFCore"]}
+```csharp{title="WithEFCore Overloads" description="WithEFCore Overloads" category="Implementation" difficulty="BEGINNER" tags=["Data", "C#", "WithEFCore"] tests=["EFCoreExtensionsTests.WithEFCore_WithValidBuilder_ReturnsEFCoreDriverSelectorAsync", "EFCoreExtensionsTests.WithEFCore_CanChainToWithDriverAsync"]}
 // Connection string name comes from the [WhizbangDbContext] attribute
 // or is derived from the DbContext class name
 // (e.g. BffServiceDbContext -> "bffservice-db")
@@ -132,7 +132,7 @@ Both `WhizbangBuilder` (from `AddWhizbang()`) and `WhizbangPerspectiveBuilder` (
 
 `.WithDriver.InMemory` registers the same storage abstractions against the EF Core InMemory provider using `InMemoryUpsertStrategy` - fast and isolated, ideal for tests and prototyping:
 
-```csharp{title="InMemory for Tests" description="InMemory for Tests" category="Implementation" difficulty="BEGINNER" tags=["Data", "C#", "InMemory", "Testing"]}
+```csharp{title="InMemory for Tests" description="InMemory for Tests" category="Implementation" difficulty="BEGINNER" tags=["Data", "C#", "InMemory", "Testing"] tests=["InMemoryDriverExtensionsTests.InMemory_WithValidEFCoreSelector_ReturnsWhizbangPerspectiveBuilderAsync", "InMemoryDriverExtensionsTests.InMemory_ReturnedBuilder_HasSameServicesAsync"]}
 // In test setup
 services
     .AddWhizbang()

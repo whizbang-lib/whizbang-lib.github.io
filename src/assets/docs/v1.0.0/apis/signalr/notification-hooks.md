@@ -46,7 +46,7 @@ dotnet add package Whizbang.SignalR
 
 Use the `UseSignalR<THub>()` convenience extension from `Whizbang.SignalR.DependencyInjection`:
 
-```csharp{title="Registration" description="Registration" category="API" difficulty="BEGINNER" tags=["Apis", "Signalr", "Registration"]}
+```csharp{title="Registration" description="Registration" category="API" difficulty="BEGINNER" tags=["Apis", "Signalr", "Registration"] tests=["SignalRTagExtensionsTests.UseSignalR_DefaultPriority_ReturnsSameOptionsAsync", "SignalRTagExtensionsTests.UseSignalR_WithPriority_ReturnsSameOptionsAsync"]}
 builder.Services.AddWhizbang(options => {
     options.Tags.UseSignalR<NotificationHub>();
 });
@@ -60,7 +60,7 @@ builder.Services.AddWhizbangSignalR();
 
 ### Basic Notification
 
-```csharp{title="Basic Notification" description="Basic Notification" category="API" difficulty="BEGINNER" tags=["Apis", "Signalr", "Basic", "Notification"]}
+```csharp{title="Basic Notification" description="Basic Notification" category="API" difficulty="BEGINNER" tags=["Apis", "Signalr", "Basic", "Notification"] tests=["SignalRNotificationHookTests.OnTaggedMessage_SendsToAllClients_WhenNoGroupSpecifiedAsync"]}
 [SignalTag(Tag = "system-announcement", Properties = ["Message"])]
 public record SystemAnnouncementEvent(string Message) : IEvent;
 ```
@@ -69,7 +69,7 @@ This sends a broadcast notification to all connected clients (no `Group` specifi
 
 ### Group-Targeted Notification
 
-```csharp{title="Group-Targeted Notification" description="Group-Targeted Notification" category="API" difficulty="BEGINNER" tags=["Apis", "Signalr", "Group-Targeted", "Notification"]}
+```csharp{title="Group-Targeted Notification" description="Group-Targeted Notification" category="API" difficulty="BEGINNER" tags=["Apis", "Signalr", "Group-Targeted", "Notification"] tests=["SignalRNotificationHookTests.OnTaggedMessage_SendsToGroup_WhenGroupSpecifiedAsync", "SignalRNotificationHookTests.OnTaggedMessage_ResolvesGroupPlaceholders_FromPayloadAsync"]}
 [SignalTag(
     Tag = "order-shipped",
     Properties = ["OrderId", "CustomerId", "TrackingNumber"],
@@ -87,7 +87,7 @@ The `{CustomerId}` placeholder is replaced with the actual value from the notifi
 
 `SignalPriority` has four values: `Low = 0`, `Normal = 1` (default), `High = 2`, `Critical = 3`.
 
-```csharp{title="Priority Levels" description="Priority Levels" category="API" difficulty="BEGINNER" tags=["Apis", "Signalr", "Priority", "Levels"]}
+```csharp{title="Priority Levels" description="Priority Levels" category="API" difficulty="BEGINNER" tags=["Apis", "Signalr", "Priority", "Levels"] tests=["SignalRNotificationHookTests.OnTaggedMessage_IncludesCorrectPriority_InNotificationAsync"]}
 [SignalTag(Tag = "new-message", Properties = ["ConversationId", "Preview"], Priority = SignalPriority.Normal)]
 public record NewMessageEvent(Guid ConversationId, string Preview) : IEvent;
 
@@ -111,7 +111,7 @@ public record PaymentFailedEvent(Guid OrderId, string Reason) : IEvent;
 
 Placeholders are replaced from the notification payload or scope:
 
-```csharp{title="Group Placeholders" description="Placeholders are replaced from the message payload or scope:" category="API" difficulty="BEGINNER" tags=["Apis", "Signalr", "Group", "Placeholders"]}
+```csharp{title="Group Placeholders" description="Placeholders are replaced from the message payload or scope:" category="API" difficulty="BEGINNER" tags=["Apis", "Signalr", "Group", "Placeholders"] tests=["SignalRNotificationHookTests.OnTaggedMessage_ResolvesGroupPlaceholders_FromPayloadAsync", "SignalRNotificationHookTests.OnTaggedMessage_ResolvesGroupPlaceholders_FromScopeAsync"]}
 // From payload properties (extracted via Properties)
 [SignalTag(Tag = "order-update", Properties = ["OrderId", "CustomerId"], Group = "customer-{CustomerId}")]
 public record OrderUpdatedEvent(Guid OrderId, Guid CustomerId) : IEvent;
@@ -129,7 +129,7 @@ Placeholder resolution order:
 
 The notification sent to clients includes:
 
-```csharp{title="NotificationMessage Format" description="The notification sent to clients includes:" category="API" difficulty="BEGINNER" tags=["Apis", "Signalr", "NotificationMessage", "Format"]}
+```csharp{title="NotificationMessage Format" description="The notification sent to clients includes:" category="API" difficulty="BEGINNER" tags=["Apis", "Signalr", "NotificationMessage", "Format"] tests=["SignalRNotificationHookTests.OnTaggedMessage_IncludesCorrectPriority_InNotificationAsync", "SignalRNotificationHookTests.OnTaggedMessage_IncludesMessageType_InNotificationAsync"]}
 public sealed record NotificationMessage {
     public required string Tag { get; init; }
     public required string Priority { get; init; }
@@ -194,7 +194,7 @@ useEffect(() => {
 
 ### Server Setup
 
-```csharp{title="Server Setup" description="Server Setup" category="API" difficulty="BEGINNER" tags=["Apis", "Signalr", "Server", "Setup"]}
+```csharp{title="Server Setup" description="Server Setup" category="API" difficulty="BEGINNER" tags=["Apis", "Signalr", "Server", "Setup"] unverified="Complete-application Program.cs illustration; app.MapHub and the host lifecycle are consumer ASP.NET wiring, and AddWhizbangSignalR is covered only by SignalRServiceCollectionExtensionsTests, which is not among this page's test references"}
 // Program.cs
 var builder = WebApplication.CreateBuilder(args);
 
@@ -211,7 +211,7 @@ app.Run();
 
 ### Hub Definition
 
-```csharp{title="Hub Definition" description="Hub Definition" category="API" difficulty="BEGINNER" tags=["Apis", "Signalr", "Hub", "Definition"]}
+```csharp{title="Hub Definition" description="Hub Definition" category="API" difficulty="BEGINNER" tags=["Apis", "Signalr", "Hub", "Definition"] unverified="Consumer SignalR Hub definition, not a Whizbang library API"}
 public class NotificationHub : Hub {
     public async Task JoinCustomerGroup(Guid customerId) {
         await Groups.AddToGroupAsync(Context.ConnectionId, $"customer-{customerId}");
@@ -225,7 +225,7 @@ public class NotificationHub : Hub {
 
 ### Event Definition
 
-```csharp{title="Event Definition" description="Event Definition" category="API" difficulty="INTERMEDIATE" tags=["Apis", "Signalr", "Event", "Definition"]}
+```csharp{title="Event Definition" description="Event Definition" category="API" difficulty="INTERMEDIATE" tags=["Apis", "Signalr", "Event", "Definition"] tests=["SignalRNotificationHookTests.OnTaggedMessage_SendsToGroup_WhenGroupSpecifiedAsync", "SignalRNotificationHookTests.OnTaggedMessage_ResolvesGroupPlaceholders_FromPayloadAsync"]}
 [SignalTag(
     Tag = "order-status-changed",
     Properties = ["OrderId", "CustomerId", "OldStatus", "NewStatus", "ChangedAt"],
@@ -241,7 +241,7 @@ public record OrderStatusChangedEvent(
 
 ### Publishing Events
 
-```csharp{title="Publishing Events" description="Publishing Events" category="API" difficulty="INTERMEDIATE" tags=["Apis", "Signalr", "Publishing", "Events"]}
+```csharp{title="Publishing Events" description="Publishing Events" category="API" difficulty="INTERMEDIATE" tags=["Apis", "Signalr", "Publishing", "Events"] unverified="Consumer OrderService illustration; the end-to-end publish-to-notification flow is not exercised by the isolated hook tests"}
 public class OrderService {
     private readonly IDispatcher _dispatcher;
 

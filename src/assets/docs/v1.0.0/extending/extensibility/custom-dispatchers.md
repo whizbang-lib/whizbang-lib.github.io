@@ -34,7 +34,7 @@ Whizbang's default dispatcher is source-generated (a subclass of the abstract `D
 
 `IDispatcher` (namespace `Whizbang.Core`) exposes three distinct dispatch patterns:
 
-```csharp{title="IDispatcher Core Patterns" description="The three dispatch patterns on IDispatcher" category="Reference" difficulty="INTERMEDIATE" tags=["Dispatcher", "API", "Reference"]}
+```csharp{title="IDispatcher Core Patterns" description="The three dispatch patterns on IDispatcher" category="Reference" difficulty="INTERMEDIATE" tags=["Dispatcher", "API", "Reference"] tests=["DispatcherTests.Send_WithValidMessage_ShouldReturnDeliveryReceiptAsync", "DispatcherTests.LocalInvoke_WithValidMessage_ShouldReturnBusinessResultAsync", "DispatcherTests.Publish_WithEvent_ShouldNotifyAllHandlersAsync"]}
 public interface IDispatcher {
   // SEND - command dispatch with delivery receipt (can work over the wire)
   Task<IDeliveryReceipt> SendAsync<TMessage>(TMessage message) where TMessage : notnull;
@@ -69,7 +69,7 @@ Key semantics to preserve in any custom dispatcher:
 
 `LocalInvokeAsync` already provides MediatR-style request/response over receptors - no custom dispatcher required:
 
-```csharp{title="Built-In Mediator Semantics" description="LocalInvokeAsync provides typed request/response" category="Extensibility" difficulty="BEGINNER" tags=["Dispatcher", "Mediator", "LocalInvoke"]}
+```csharp{title="Built-In Mediator Semantics" description="LocalInvokeAsync provides typed request/response" category="Extensibility" difficulty="BEGINNER" tags=["Dispatcher", "Mediator", "LocalInvoke"] tests=["DispatcherTests.LocalInvoke_WithValidMessage_ShouldReturnBusinessResultAsync"]}
 // Command in, typed business result out - handled by a receptor
 var result = await dispatcher.LocalInvokeAsync<CreateOrder, OrderResult>(
   new CreateOrder { CustomerId = customerId }
@@ -82,7 +82,7 @@ var result = await dispatcher.LocalInvokeAsync<CreateOrder, OrderResult>(
 
 Wrap the inner dispatcher to add cross-cutting behavior. Implement `IDispatcher`, forward every member to the inner instance, and add your logic around the members you care about:
 
-```csharp{title="Auditing Dispatcher Decorator" description="Decorate IDispatcher to audit publishes" category="Extensibility" difficulty="INTERMEDIATE" tags=["Dispatcher", "Decorator", "Auditing"]}
+```csharp{title="Auditing Dispatcher Decorator" description="Decorate IDispatcher to audit publishes" category="Extensibility" difficulty="INTERMEDIATE" tags=["Dispatcher", "Decorator", "Auditing"] unverified="user extension example — decorator implementing IDispatcher"}
 public class AuditingDispatcher : IDispatcher {
   private readonly IDispatcher _inner;
   private readonly ILogger<AuditingDispatcher> _logger;
@@ -117,7 +117,7 @@ public class AuditingDispatcher : IDispatcher {
 
 `AddWhizbang()` registers the generated dispatcher as a singleton `IDispatcher`. Decorate it by replacing the descriptor **after** the Whizbang registration:
 
-```csharp{title="Decorator Registration" description="Wrap the registered IDispatcher" category="Extensibility" difficulty="INTERMEDIATE" tags=["Dispatcher", "Decorator", "DI"]}
+```csharp{title="Decorator Registration" description="Wrap the registered IDispatcher" category="Extensibility" difficulty="INTERMEDIATE" tags=["Dispatcher", "Decorator", "DI"] unverified="user extension example — DI wiring for a custom decorator"}
 // After AddWhizbang() has registered IDispatcher
 var innerDescriptor = services.Single(d => d.ServiceType == typeof(IDispatcher));
 services.Replace(ServiceDescriptor.Singleton<IDispatcher>(sp =>

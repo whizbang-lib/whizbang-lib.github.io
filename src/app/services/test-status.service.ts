@@ -124,4 +124,49 @@ export class TestStatusService {
     }
     return null;
   }
+
+  /**
+   * Batch per-method lookup for a list of `Class.MethodAsync` keys. Returns a
+   * map key -> outcome (null when absent). Stops loading shards once every key
+   * has resolved, so a page whose tests live in one assembly loads one shard.
+   */
+  async getTestStatuses(keys: string[]): Promise<Map<string, TestOutcome | null>> {
+    const result = new Map<string, TestOutcome | null>();
+    for (const k of keys) result.set(k, null);
+    const idx = await this.ensureIndex();
+    if (!idx || keys.length === 0) return result;
+    for (const assembly of Object.keys(idx.assemblies)) {
+      if ([...result.values()].every((v) => v !== null)) break;
+      const shard = await this.loadShard(assembly);
+      if (!shard) continue;
+      for (const k of keys) {
+        if (result.get(k) == null && shard[k]) result.set(k, shard[k]);
+      }
+    }
+    return result;
+  }
+
+  /**
+   * All test methods for a class (short name, e.g. "DispatcherTests") with
+   * their outcomes, sorted by method name. Powers the per-method expansion in
+   * the "Verified by tests" collapsible.
+   */
+  async getClassMethods(
+    className: string
+  ): Promise<Array<{ method: string; key: string; outcome: TestOutcome }>> {
+    const idx = await this.ensureIndex();
+    if (!idx) return [];
+    const prefix = `${className}.`;
+    const rows: Array<{ method: string; key: string; outcome: TestOutcome }> = [];
+    for (const assembly of Object.keys(idx.assemblies)) {
+      const shard = await this.loadShard(assembly);
+      if (!shard) continue;
+      for (const [key, outcome] of Object.entries(shard)) {
+        if (key.startsWith(prefix)) rows.push({ method: key.slice(prefix.length), key, outcome });
+      }
+      if (rows.length > 0) break; // a class lives in a single assembly
+    }
+    rows.sort((a, b) => a.method.localeCompare(b.method));
+    return rows;
+  }
 }

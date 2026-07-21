@@ -40,7 +40,7 @@ The Event Store Query feature provides `IQueryable<EventStoreRecord>` access to 
 
 ### Scoped Access (Web APIs, Receptors)
 
-```csharp{title="Scoped Access (Web APIs, Receptors)" description="Scoped Access (Web APIs, Receptors)" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Scoped", "Access"]}
+```csharp{title="Scoped Access (Web APIs, Receptors)" description="Scoped Access (Web APIs, Receptors)" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Scoped", "Access"] tests=["EFCoreFilterableEventStoreQueryTests.GetStreamEvents_WithTenantFilter_ReturnsFilteredEventsAsync", "EFCoreFilterableEventStoreQueryTests.Query_TenantFilter_ReturnsOnlyTenantEventsAsync"]}
 public class EventsController : ControllerBase {
   private readonly IScopedLensFactory _lensFactory;
 
@@ -74,7 +74,7 @@ public class EventsController : ControllerBase {
 
 ### Global Access (Admin Operations)
 
-```csharp{title="Global Access (Admin Operations)" description="Global Access (Admin Operations)" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "Global", "Access"]}
+```csharp{title="Global Access (Admin Operations)" description="Global Access (Admin Operations)" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "Global", "Access"] unverified="IScopedLensFactory global-access helpers; covered by ScopedLensFactoryImplTests, a lens-factory test not among this page's referenced tests"}
 // Global access requires explicit permission
 var globalQuery = _lensFactory.GetEventStoreQuery(
     ScopeFilters.None,
@@ -86,7 +86,7 @@ var allEvents = _lensFactory.GetGlobalEventStoreQuery();
 
 ### Singleton Services (Background Workers)
 
-```csharp{title="Singleton Services (Background Workers)" description="Singleton Services (Background Workers)" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Events", "Singleton", "Services"]}
+```csharp{title="Singleton Services (Background Workers)" description="Singleton Services (Background Workers)" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Events", "Singleton", "Services"] tests=["IScopedEventStoreQueryTests.IScopedEventStoreQuery_HasQueryAsyncMethodAsync", "IScopedEventStoreQueryTests.IScopedEventStoreQuery_QueryAsyncHasCancellationTokenDefaultAsync"]}
 public class EventAnalyzerWorker : BackgroundService {
   private readonly IScopedEventStoreQuery _scopedQuery;
 
@@ -107,7 +107,7 @@ public class EventAnalyzerWorker : BackgroundService {
 
 ### Batch Operations (Manual Scope Control)
 
-```csharp{title="Batch Operations (Manual Scope Control)" description="Batch Operations (Manual Scope Control)" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "Batch", "Operations"]}
+```csharp{title="Batch Operations (Manual Scope Control)" description="Batch Operations (Manual Scope Control)" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "Batch", "Operations"] tests=["IScopedEventStoreQueryTests.IEventStoreQueryFactory_HasCreateScopedMethodAsync", "IScopedEventStoreQueryTests.EventStoreQueryScope_CanBeUsedWithUsingStatementAsync", "IScopedEventStoreQueryTests.EventStoreQueryScope_Value_ReturnsProvidedQueryAsync"]}
 var factory = serviceProvider.GetRequiredService<IEventStoreQueryFactory>();
 
 using var scope = factory.CreateScoped();
@@ -140,7 +140,7 @@ var events = await scope.Value.Query
 
 Event store queries support filtering by TenantId and UserId (the fields available in `MessageScope`).
 
-```csharp{title="Scope Filtering" description="Event store queries support filtering by TenantId and UserId (the fields available in MessageScope)." category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "Scope", "Filtering"]}
+```csharp{title="Scope Filtering" description="Event store queries support filtering by TenantId and UserId (the fields available in MessageScope)." category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "Scope", "Filtering"] tests=["EFCoreFilterableEventStoreQueryTests.Query_TenantFilter_ReturnsOnlyTenantEventsAsync", "EFCoreFilterableEventStoreQueryTests.Query_TenantAndUserFilter_ReturnsOnlyUserEventsAsync"]}
 // Tenant-only filtering
 var tenantQuery = _lensFactory.GetTenantEventStoreQuery();
 // Generates: WHERE scope->>'TenantId' = 'tenant-123'
@@ -156,7 +156,7 @@ var userQuery = _lensFactory.GetUserEventStoreQuery();
 
 For Dapper users, raw SQL access to the event store table is available:
 
-```csharp{title="Dapper Integration" description="For Dapper users, raw SQL access to the event store table is available:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "Dapper", "Integration"]}
+```csharp{title="Dapper Integration" description="For Dapper users, raw SQL access to the event store table is available:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "Dapper", "Integration"] unverified="Dapper raw-SQL access path against wh_event_store — not exercised by the IEventStoreQuery / EFCore query tests"}
 var events = await connection.QueryAsync<EventStoreRecord>(@"
     SELECT * FROM wh_event_store
     WHERE stream_id = @StreamId
