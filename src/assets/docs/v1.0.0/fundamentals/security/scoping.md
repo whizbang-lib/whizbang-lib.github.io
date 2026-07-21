@@ -43,7 +43,7 @@ Scoping in Whizbang separates data isolation concerns from your domain models:
 
 `PerspectiveScope` is stored in the `scope` column of perspective rows, separate from your data model.
 
-```csharp{title="PerspectiveScope" description="PerspectiveScope is stored in the scope column of perspective rows, separate from your data model." category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "PerspectiveScope", "Perspective-scope"]}
+```csharp{title="PerspectiveScope" description="PerspectiveScope is stored in the scope column of perspective rows, separate from your data model." category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "PerspectiveScope", "Perspective-scope"] tests=["PerspectiveScopeTests.PerspectiveScope_TenantId_ReturnsValueAsync", "PerspectiveScopeTests.PerspectiveScope_UserId_ReturnsValueAsync", "PerspectiveScopeTests.PerspectiveScope_AllowedPrincipals_DefaultsToEmptyListAsync", "PerspectiveScopeTests.PerspectiveScope_GetValue_StandardProperty_TenantId_ReturnsValueAsync"]}
 public class PerspectiveScope {
   // Standard scope properties
   public string? TenantId { get; set; }
@@ -73,7 +73,7 @@ Storing scope separately from your domain data provides:
 
 ### Accessing Scope Values
 
-```csharp{title="Accessing Scope Values" description="Accessing Scope Values" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Accessing", "Scope"]}
+```csharp{title="Accessing Scope Values" description="Accessing Scope Values" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Accessing", "Scope"] tests=["PerspectiveScopeTests.PerspectiveScope_GetValue_StandardProperty_TenantId_ReturnsValueAsync", "PerspectiveScopeTests.PerspectiveScope_GetValue_Extension_ReturnsValueAsync", "PerspectiveScopeTests.PerspectiveScope_GetValue_Unknown_ReturnsNullAsync"]}
 var scope = new PerspectiveScope {
   TenantId = "tenant-123",
   UserId = "user-456"
@@ -106,7 +106,7 @@ Whizbang provides marker interfaces for models that include scope identifiers in
 
 ### ITenantScoped
 
-```csharp{title="ITenantScoped" description="ITenantScoped" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "ITenantScoped"]}
+```csharp{title="ITenantScoped" description="ITenantScoped" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "ITenantScoped"] unverified="Marker interface declaration; MarkerInterfaceTests is absent from the code-tests map"}
 public interface ITenantScoped {
   string TenantId { get; }
 }
@@ -114,7 +114,7 @@ public interface ITenantScoped {
 
 Use when tenant ID is part of the domain model:
 
-```csharp{title="ITenantScoped - Order" description="Use when tenant ID is part of the domain model:" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "ITenantScoped"]}
+```csharp{title="ITenantScoped - Order" description="Use when tenant ID is part of the domain model:" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "ITenantScoped"] unverified="Consumer domain model implementing the marker interface, not a library API"}
 public class Order : ITenantScoped {
   public string TenantId { get; init; }
   public string OrderNumber { get; init; }
@@ -124,7 +124,7 @@ public class Order : ITenantScoped {
 
 ### IUserScoped
 
-```csharp{title="IUserScoped" description="IUserScoped" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "IUserScoped"]}
+```csharp{title="IUserScoped" description="IUserScoped" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "IUserScoped"] unverified="Marker interface declaration; MarkerInterfaceTests is absent from the code-tests map"}
 public interface IUserScoped : ITenantScoped {
   string UserId { get; }
 }
@@ -132,7 +132,7 @@ public interface IUserScoped : ITenantScoped {
 
 For models scoped to both tenant and user:
 
-```csharp{title="IUserScoped - SavedSearch" description="For models scoped to both tenant and user:" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "IUserScoped"]}
+```csharp{title="IUserScoped - SavedSearch" description="For models scoped to both tenant and user:" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "IUserScoped"] unverified="Consumer domain model illustration, not a library API"}
 public class SavedSearch : IUserScoped {
   public string TenantId { get; init; }
   public string UserId { get; init; }
@@ -143,7 +143,7 @@ public class SavedSearch : IUserScoped {
 
 ### IOrganizationScoped
 
-```csharp{title="IOrganizationScoped" description="IOrganizationScoped" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "IOrganizationScoped"]}
+```csharp{title="IOrganizationScoped" description="IOrganizationScoped" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "IOrganizationScoped"] unverified="Marker interface declaration; MarkerInterfaceTests is absent from the code-tests map"}
 public interface IOrganizationScoped : ITenantScoped {
   string OrganizationId { get; }
 }
@@ -151,7 +151,7 @@ public interface IOrganizationScoped : ITenantScoped {
 
 For models scoped to organization within a tenant:
 
-```csharp{title="IOrganizationScoped - Department" description="For models scoped to organization within a tenant:" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "IOrganizationScoped"]}
+```csharp{title="IOrganizationScoped - Department" description="For models scoped to organization within a tenant:" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "IOrganizationScoped"] unverified="Consumer domain model illustration, not a library API"}
 public class Department : IOrganizationScoped {
   public string TenantId { get; init; }
   public string OrganizationId { get; init; }
@@ -161,7 +161,7 @@ public class Department : IOrganizationScoped {
 
 ### ICustomerScoped
 
-```csharp{title="ICustomerScoped" description="ICustomerScoped" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "ICustomerScoped"]}
+```csharp{title="ICustomerScoped" description="ICustomerScoped" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "ICustomerScoped"] unverified="Marker interface declaration; MarkerInterfaceTests is absent from the code-tests map"}
 public interface ICustomerScoped : ITenantScoped {
   string CustomerId { get; }
 }
@@ -169,7 +169,7 @@ public interface ICustomerScoped : ITenantScoped {
 
 For models scoped to customer within a tenant:
 
-```csharp{title="ICustomerScoped - Invoice" description="For models scoped to customer within a tenant:" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "ICustomerScoped"]}
+```csharp{title="ICustomerScoped - Invoice" description="For models scoped to customer within a tenant:" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "ICustomerScoped"] unverified="Consumer domain model illustration, not a library API"}
 public class Invoice : ICustomerScoped {
   public string TenantId { get; init; }
   public string CustomerId { get; init; }
@@ -193,7 +193,7 @@ You can use both together - the marker interface for domain logic and Perspectiv
 
 `ScopeFilters` (note the plural — the enum type is `ScopeFilters`, declared in `ScopeFilter.cs`) is a flags enum for composable filtering.
 
-```csharp{title="Scope Filters" description="ScopeFilters is a flags enum for composable filtering." category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Scope", "Filters"]}
+```csharp{title="Scope Filters" description="ScopeFilters is a flags enum for composable filtering." category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Scope", "Filters"] tests=["ScopeFilterTests.ScopeFilter_None_HasZeroValueAsync", "ScopeFilterTests.ScopeFilter_Tenant_HasCorrectValueAsync", "ScopeFilterTests.ScopeFilter_Organization_HasCorrectValueAsync", "ScopeFilterTests.ScopeFilter_Customer_HasCorrectValueAsync", "ScopeFilterTests.ScopeFilter_User_HasCorrectValueAsync", "ScopeFilterTests.ScopeFilter_Principal_HasCorrectValueAsync"]}
 [Flags]
 public enum ScopeFilters {
   None = 0,           // No filtering (global access)
@@ -209,7 +209,7 @@ public enum ScopeFilters {
 
 Combine filters with bitwise OR:
 
-```csharp{title="Filter Composition" description="Combine filters with bitwise OR:" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Filter", "Composition"]}
+```csharp{title="Filter Composition" description="Combine filters with bitwise OR:" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Filter", "Composition"] tests=["ScopeFilterTests.ScopeFilter_CombinedFlags_CanBeOrTogetherAsync", "ScopeFilterTests.ScopeFilter_HasFlag_DetectsIndividualFlagsAsync"]}
 // Single filter
 var tenantOnly = ScopeFilters.Tenant;
 
@@ -234,7 +234,7 @@ var complex = ScopeFilters.Tenant | ScopeFilters.Organization | ScopeFilters.Pri
 
 When both `User` and `Principal` filters are specified, they're OR'd together (not AND'd). This enables the "my records OR shared with me" pattern:
 
-```csharp{title="Special OR Logic" description="When both User and Principal filters are specified, they're OR'd together (not AND'd)." category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Special", "Logic"]}
+```csharp{title="Special OR Logic" description="When both User and Principal filters are specified, they're OR'd together (not AND'd)." category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Special", "Logic"] tests=["ScopeFilterBuilderTests.ScopeFilterBuilder_TenantUserPrincipal_BuildsTenantAndUserOrPrincipalAsync", "ScopedLensFactoryTests.IScopedLensFactory_HasGetMyOrSharedLensMethodAsync"]}
 // Get my orders and orders shared with my groups
 var lens = factory.GetMyOrSharedLens<IOrderLens>();
 // Equivalent to: ScopeFilters.Tenant | ScopeFilters.User | ScopeFilters.Principal
@@ -246,7 +246,7 @@ var lens = factory.GetMyOrSharedLens<IOrderLens>();
 
 `ScopeFilterExtensions` provides common filter pattern combinations as static properties:
 
-```csharp{title="Filter Patterns" description="ScopeFilterExtensions provides common filter pattern combinations as static properties:" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Filter", "Patterns"]}
+```csharp{title="Filter Patterns" description="ScopeFilterExtensions provides common filter pattern combinations as static properties:" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Filter", "Patterns"] tests=["ScopeFilterTests.ScopeFilterExtensions_TenantUser_ReturnsTenantOrUserAsync", "ScopeFilterTests.ScopeFilterExtensions_TenantPrincipal_ReturnsTenantOrPrincipalAsync", "ScopeFilterTests.ScopeFilterExtensions_TenantUserOrPrincipal_ReturnsAllThreeAsync"]}
 public static class ScopeFilterExtensions {
   // Tenant + User isolation
   // WHERE TenantId = ? AND UserId = ?
@@ -267,7 +267,7 @@ public static class ScopeFilterExtensions {
 
 ### Usage
 
-```csharp{title="Usage" description="Usage" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Usage"]}
+```csharp{title="Usage" description="Usage" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Usage"] tests=["ScopeFilterTests.ScopeFilterExtensions_TenantUser_ReturnsTenantOrUserAsync", "ScopeFilterTests.ScopeFilterExtensions_TenantPrincipal_ReturnsTenantOrPrincipalAsync", "ScopeFilterTests.ScopeFilterExtensions_TenantUserOrPrincipal_ReturnsAllThreeAsync"]}
 // Use predefined patterns
 var myRecords = ScopeFilterExtensions.TenantUser;
 var sharedWithMe = ScopeFilterExtensions.TenantPrincipal;
@@ -281,7 +281,7 @@ var custom = ScopeFilters.Tenant | ScopeFilters.Organization;
 
 `ScopeFilterBuilder` builds filter information from flags and the current scope context.
 
-```csharp{title="Scope Filter Builder" description="ScopeFilterBuilder builds filter information from flags and the current scope context." category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Scope", "Filter"]}
+```csharp{title="Scope Filter Builder" description="ScopeFilterBuilder builds filter information from flags and the current scope context." category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Scope", "Filter"] tests=["ScopeFilterBuilderTests.ScopeFilterBuilder_TenantAndUser_BuildsAndFilterAsync"]}
 // Build filter info
 var filterInfo = ScopeFilterBuilder.Build(
   ScopeFilters.Tenant | ScopeFilters.User,
@@ -296,7 +296,7 @@ filterInfo.UseOrLogicForUserAndPrincipal;  // false
 
 ### ScopeFilterInfo
 
-```csharp{title="ScopeFilterInfo" description="ScopeFilterInfo" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "ScopeFilterInfo"]}
+```csharp{title="ScopeFilterInfo" description="ScopeFilterInfo" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "ScopeFilterInfo"] tests=["ScopeFilterBuilderTests.ScopeFilterInfo_IsEmpty_TrueWhenNoFiltersAsync", "ScopeFilterBuilderTests.ScopeFilterInfo_IsEmpty_FalseWhenFiltersSetAsync"]}
 public readonly record struct ScopeFilterInfo {
   public ScopeFilters Filters { get; init; }
   public string? TenantId { get; init; }
@@ -313,7 +313,7 @@ public readonly record struct ScopeFilterInfo {
 
 `ScopeFilterBuilder.Build` validates that required scope values are present:
 
-```csharp{title="Validation" description="`ScopeFilterBuilder." category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Validation"]}
+```csharp{title="Validation" description="`ScopeFilterBuilder." category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Validation"] tests=["ScopeFilterBuilderTests.ScopeFilterBuilder_MissingTenantId_ThrowsAsync", "ScopeFilterBuilderTests.ScopeFilterBuilder_EmptyPrincipals_ThrowsAsync"]}
 // Throws InvalidOperationException if TenantId is null
 ScopeFilterBuilder.Build(ScopeFilters.Tenant, contextWithoutTenant);
 // "Tenant filter requested but TenantId is not set in scope context."
@@ -327,7 +327,7 @@ ScopeFilterBuilder.Build(ScopeFilters.Principal, contextWithoutPrincipals);
 
 The factory resolves lenses with scope filters automatically applied.
 
-```csharp{title="IScopedLensFactory" description="The factory resolves lenses with scope filters automatically applied." category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "IScopedLensFactory"]}
+```csharp{title="IScopedLensFactory" description="The factory resolves lenses with scope filters automatically applied." category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "IScopedLensFactory"] tests=["ScopedLensFactoryTests.IScopedLensFactory_HasGetLens_ScopeFilter_MethodAsync", "ScopedLensFactoryTests.IScopedLensFactory_HasGetLens_ScopeFilter_Permission_MethodAsync", "ScopedLensFactoryTests.IScopedLensFactory_HasGetGlobalLensMethodAsync", "ScopedLensFactoryTests.IScopedLensFactory_HasGetTenantLensMethodAsync", "ScopedLensFactoryTests.IScopedLensFactory_HasGetUserLensMethodAsync", "ScopedLensFactoryTests.IScopedLensFactory_HasGetOrganizationLensMethodAsync", "ScopedLensFactoryTests.IScopedLensFactory_HasGetCustomerLensMethodAsync", "ScopedLensFactoryTests.IScopedLensFactory_HasGetPrincipalLensMethodAsync", "ScopedLensFactoryTests.IScopedLensFactory_HasGetMyOrSharedLensMethodAsync"]}
 // Get lens with specific filters
 var lens = factory.GetLens<IOrderLens>(ScopeFilters.Tenant);
 
@@ -350,7 +350,7 @@ factory.GetMyOrSharedLens<T>();   // Tenant | User | Principal
 
 Lenses that support filtering implement `IFilterableLens`:
 
-```csharp{title="IFilterableLens" description="Lenses that support filtering implement IFilterableLens:" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "IFilterableLens"]}
+```csharp{title="IFilterableLens" description="Lenses that support filtering implement IFilterableLens:" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "IFilterableLens"] unverified="Interface contract declaration with no dedicated mapped test"}
 public interface IFilterableLens {
   void ApplyFilter(ScopeFilterInfo filterInfo);
 }
@@ -364,7 +364,7 @@ When a lens is resolved through `IScopedLensFactory`, the filter info is automat
 
 Every record belongs to exactly one tenant:
 
-```csharp{title="Tenant Isolation" description="Every record belongs to exactly one tenant:" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Tenant", "Isolation"]}
+```csharp{title="Tenant Isolation" description="Every record belongs to exactly one tenant:" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Tenant", "Isolation"] unverified="Consumer usage pattern combining the perspective store and lens query; TenantIsolationTests is absent from the code-tests map"}
 // Store with tenant scope
 await perspective.UpsertAsync(streamId, order, new PerspectiveScope {
   TenantId = currentTenant
@@ -379,7 +379,7 @@ var orders = await lens.Query.ToListAsync();  // Only current tenant's rows
 
 Records owned by specific users:
 
-```csharp{title="User Ownership" description="Records owned by specific users:" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "User", "Ownership"]}
+```csharp{title="User Ownership" description="Records owned by specific users:" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "User", "Ownership"] unverified="Consumer usage pattern storing and querying through the scoped lens"}
 // Store with user scope
 await perspective.UpsertAsync(streamId, savedSearch, new PerspectiveScope {
   TenantId = currentTenant,
@@ -395,7 +395,7 @@ var searches = await lens.Query.ToListAsync();  // Only current user's rows
 
 Records shared with security groups:
 
-```csharp{title="Group-Based Sharing" description="Records shared with security groups:" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Group-Based", "Sharing"]}
+```csharp{title="Group-Based Sharing" description="Records shared with security groups:" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Group-Based", "Sharing"] unverified="Consumer usage pattern for principal sharing; SecurityPrincipalId construction is incidental to the illustration"}
 // Store with allowed principals
 await perspective.UpsertAsync(streamId, report, new PerspectiveScope {
   TenantId = currentTenant,
@@ -415,7 +415,7 @@ var reports = await lens.Query.ToListAsync();  // Rows accessible to caller
 
 Combining user ownership and group sharing:
 
-```csharp{title="My Records OR Shared With Me" description="Combining user ownership and group sharing:" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Records", "Shared"]}
+```csharp{title="My Records OR Shared With Me" description="Combining user ownership and group sharing:" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Records", "Shared"] unverified="Consumer usage pattern illustrating the my-or-shared lens"}
 // Get lens for "my records + shared"
 var lens = factory.GetMyOrSharedLens<IDocumentLens>();
 var docs = await lens.Query.ToListAsync();
@@ -429,7 +429,7 @@ var docs = await lens.Query.ToListAsync();
 
 Add custom scope properties without schema changes:
 
-```csharp{title="Extension Properties" description="Add custom scope properties without schema changes:" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Extension", "Properties"]}
+```csharp{title="Extension Properties" description="Add custom scope properties without schema changes:" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Extension", "Properties"] unverified="Consumer usage pattern combining scope extensions with a persistence and EF query workflow"}
 // Store with extensions
 var scope = new PerspectiveScope {
   TenantId = currentTenant

@@ -128,7 +128,7 @@ using **consistent hashing**:
 > `Distribution_10kStreams_DistributesEvenlyAsync`,
 > `EdgeCase_SinglePartition_AlwaysReturnsZeroAsync`.
 
-```csharp{title="Deterministic partition selection for a stream key" description="HashPartitionRouter maps a stream key to a fixed partition via FNV-1a so per-stream order survives sharding." category="Messaging" difficulty="INTERMEDIATE" tags=["partition-router", "hashing", "streams", "ordering"]}
+```csharp{title="Deterministic partition selection for a stream key" description="HashPartitionRouter maps a stream key to a fixed partition via FNV-1a so per-stream order survives sharding." category="Messaging" difficulty="INTERMEDIATE" tags=["partition-router", "hashing", "streams", "ordering"] tests=["HashPartitionRouterTests.HashAlgorithm_SameKey_AlwaysProducesSamePartitionAsync"]}
 // Same stream key → same partition, every time
 var router = new HashPartitionRouter();
 int p = router.SelectPartition("order-12345", partitionCount: 16, context);
@@ -145,7 +145,7 @@ transport-specific builder. `IPolicyEngine.AddPolicy(name, predicate, configure)
 first policy whose predicate matches wins, and its `configure` action populates
 the `PolicyConfiguration`.
 
-```csharp{title="Author topic, stream, and partitioning on a policy" description="A matched policy populates PolicyConfiguration with a topic, a string stream key, a partition count, and a hash partition router." category="Messaging" difficulty="INTERMEDIATE" tags=["policies", "routing", "streams", "partitions"]}
+```csharp{title="Author topic, stream, and partitioning on a policy" description="A matched policy populates PolicyConfiguration with a topic, a string stream key, a partition count, and a hash partition router." category="Messaging" difficulty="INTERMEDIATE" tags=["policies", "routing", "streams", "partitions"] tests=["PolicyConfigurationExtensionsTests.PolicyConfiguration_ShouldSupportMethodChainingAsync", "PolicyConfigurationExtensionsTests.UsePartitionRouter_ShouldSetPartitionRouterTypeAsync", "PolicyContextTests.MatchesAggregate_ReturnsTrue_WhenMessageIsForSpecifiedAggregateTypeAsync"]}
 policyEngine.AddPolicy(
     name: "order-routing",
     predicate: ctx => ctx.MatchesAggregate<Order>(),
@@ -269,7 +269,7 @@ to `PolicyConfiguration.PublishTargets` (`PublishTarget`) and
 
 Publish helpers:
 
-```csharp{title="Declare per-transport publish targets on a policy" description="PublishToKafka/ServiceBus/RabbitMQ append typed PublishTargets; RabbitMQ takes an exchange plus routing key." category="Messaging" difficulty="INTERMEDIATE" tags=["publish-targets", "policies", "rabbitmq", "service-bus"]}
+```csharp{title="Declare per-transport publish targets on a policy" description="PublishToKafka/ServiceBus/RabbitMQ append typed PublishTargets; RabbitMQ takes an exchange plus routing key." category="Messaging" difficulty="INTERMEDIATE" tags=["publish-targets", "policies", "rabbitmq", "service-bus"] tests=["PolicyConfigurationTransportTests.PolicyConfiguration_PublishToKafka_ShouldAddPublishTargetAsync", "PolicyConfigurationTransportTests.PolicyConfiguration_PublishToServiceBus_ShouldAddPublishTargetAsync", "PolicyConfigurationTransportTests.PolicyConfiguration_PublishToRabbitMQ_ShouldAddPublishTargetAsync"]}
 config.PublishToKafka("orders");                        // TransportType.Kafka
 config.PublishToServiceBus("orders");                   // TransportType.ServiceBus
 config.PublishToRabbitMQ("orders.exchange", "order.*"); // exchange + routing key
@@ -277,7 +277,7 @@ config.PublishToRabbitMQ("orders.exchange", "order.*"); // exchange + routing ke
 
 Subscribe helpers:
 
-```csharp{title="Declare per-transport subscription targets on a policy" description="SubscribeFromKafka/ServiceBus/RabbitMQ append typed SubscriptionTargets with broker-specific fields." category="Messaging" difficulty="INTERMEDIATE" tags=["subscription-targets", "policies", "consumer-group", "sql-filter"]}
+```csharp{title="Declare per-transport subscription targets on a policy" description="SubscribeFromKafka/ServiceBus/RabbitMQ append typed SubscriptionTargets with broker-specific fields." category="Messaging" difficulty="INTERMEDIATE" tags=["subscription-targets", "policies", "consumer-group", "sql-filter"] tests=["PolicyConfigurationTransportTests.PolicyConfiguration_SubscribeFromKafka_ShouldAddSubscriptionTargetAsync", "PolicyConfigurationTransportTests.PolicyConfiguration_SubscribeFromServiceBus_ShouldAddSubscriptionTargetAsync", "PolicyConfigurationTransportTests.PolicyConfiguration_SubscribeFromRabbitMQ_ShouldAddSubscriptionTargetAsync"]}
 config.SubscribeFromKafka("orders", consumerGroup: "svc", partition: null);
 config.SubscribeFromServiceBus("orders", subscriptionName: "svc", sqlFilter: null);
 config.SubscribeFromRabbitMQ("orders.exchange", queueName: "svc", routingKey: null);

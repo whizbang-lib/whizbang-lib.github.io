@@ -54,7 +54,7 @@ lastMaintainedCommit: '01f07906'
 
 ### Health Check Flow
 
-```mermaid
+```mermaid{caption="Health-check request flow — a GET /health hits the ASP.NET Core health-check middleware, which runs every registered check (AzureServiceBusHealthCheck, PostgresHealthCheck, custom checks) in parallel and aggregates them into a single response."}
 flowchart TD
     Endpoint["Health Check Endpoint: /health<br/>(Kubernetes readiness, load balancer, monitoring)"]
     HealthChecks["Microsoft.Extensions.Diagnostics.HealthChecks<br/>(Built into ASP.NET Core)<br/>Executes all registered health checks in parallel:<br/>- AzureServiceBusHealthCheck<br/>- PostgresHealthCheck<br/>- CustomHealthCheck<br/>- ..."]
@@ -97,7 +97,7 @@ tags: ["Operations", "Health-Checks", "Response"]
 **Purpose**: Verify transport is available and connected.
 
 **Usage**:
-```csharp{title="Azure Service Bus Health Check" description="Azure Service Bus Health Check" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Infrastructure", "Azure", "Service"]}
+```csharp{title="Azure Service Bus Health Check" description="Azure Service Bus Health Check" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Infrastructure", "Azure", "Service"] tests=["ServiceCollectionExtensionsTests.AddAzureServiceBusHealthChecks_RegistersHealthCheckAsync"]}
 using Whizbang.Transports.AzureServiceBus;
 
 builder.Services.AddAzureServiceBusTransport(connectionString);
@@ -108,7 +108,7 @@ app.MapHealthChecks("/health");
 ```
 
 **Implementation**:
-```csharp{title="Azure Service Bus Health Check - AzureServiceBusHealthCheck" description="Implementation:" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Infrastructure", "Azure", "Service"]}
+```csharp{title="Azure Service Bus Health Check - AzureServiceBusHealthCheck" description="Implementation:" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Infrastructure", "Azure", "Service"] tests=["AzureServiceBusHealthCheckTests.CheckHealthAsync_WithAzureServiceBusTransport_ReturnsHealthyAsync", "AzureServiceBusHealthCheckTests.CheckHealthAsync_WithNonAzureServiceBusTransport_ReturnsDegradedAsync"]}
 public class AzureServiceBusHealthCheck(ITransport transport) : IHealthCheck {
   public Task<HealthCheckResult> CheckHealthAsync(
     HealthCheckContext context,
@@ -139,7 +139,7 @@ public class AzureServiceBusHealthCheck(ITransport transport) : IHealthCheck {
 **Purpose**: Verify database connectivity and query execution.
 
 **Usage**:
-```csharp{title="PostgreSQL Health Check" description="PostgreSQL Health Check" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Infrastructure", "PostgreSQL", "Health"]}
+```csharp{title="PostgreSQL Health Check" description="PostgreSQL Health Check" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Infrastructure", "PostgreSQL", "Health"] tests=["ServiceCollectionExtensionsTests.AddWhizbangPostgresHealthChecks_RegistersHealthCheckAsync"]}
 using Whizbang.Data.Dapper.Postgres;
 
 builder.Services.AddWhizbangPostgres(connectionString, jsonOptions);
@@ -183,7 +183,7 @@ public class PostgresHealthCheck(IDbConnectionFactory connectionFactory) : IHeal
 **Purpose**: Cached transport readiness check with initialization verification.
 
 **Usage**:
-```csharp{title="Service Bus Readiness Check" description="Service Bus Readiness Check" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Infrastructure", "Service", "Bus"]}
+```csharp{title="Service Bus Readiness Check" description="Service Bus Readiness Check" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Infrastructure", "Service", "Bus"] tests=["ServiceBusReadinessCheckTests.IsReadyAsync_WithValidClient_ReturnsTrueAsync"]}
 using Whizbang.Hosting.Azure.ServiceBus;
 
 builder.Services.AddSingleton<ITransportReadinessCheck, ServiceBusReadinessCheck>();
@@ -196,7 +196,7 @@ if (!await readinessCheck.IsReadyAsync()) {
 ```
 
 **Implementation**:
-```csharp{title="Service Bus Readiness Check - ServiceBusReadinessCheck" description="Implementation:" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Infrastructure", "Service", "Bus"]}
+```csharp{title="Service Bus Readiness Check - ServiceBusReadinessCheck" description="Implementation:" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Infrastructure", "Service", "Bus"] tests=["ServiceBusReadinessCheckTests.IsReadyAsync_WithValidClient_ReturnsTrueAsync", "ServiceBusReadinessCheckTests.IsReadyAsync_WithClosedClient_ReturnsFalseAsync", "ServiceBusReadinessCheckTests.IsReadyAsync_CachesResult_ForSuccessfulChecksAsync"]}
 public class ServiceBusReadinessCheck : ITransportReadinessCheck {
   private DateTimeOffset? _lastSuccessfulCheck;
   private readonly TimeSpan _cacheDuration = TimeSpan.FromSeconds(30);
@@ -236,7 +236,7 @@ public class ServiceBusReadinessCheck : ITransportReadinessCheck {
 
 ### Basic Registration
 
-```csharp{title="Basic Registration" description="Basic Registration" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Infrastructure", "Basic", "Registration"]}
+```csharp{title="Basic Registration" description="Basic Registration" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Infrastructure", "Basic", "Registration"] unverified="ASP.NET Core AddHealthChecks().AddCheck<T>() framework API, not a Whizbang extension method"}
 builder.Services.AddHealthChecks()
   .AddCheck<AzureServiceBusHealthCheck>("azure_servicebus")
   .AddCheck<PostgresHealthCheck>("postgres");
@@ -263,7 +263,7 @@ app.MapHealthChecks("/health");
 
 ### Detailed Health Checks
 
-```csharp{title="Detailed Health Checks" description="Detailed Health Checks" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Infrastructure", "Detailed", "Health"]}
+```csharp{title="Detailed Health Checks" description="Detailed Health Checks" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Infrastructure", "Detailed", "Health"] unverified="ASP.NET Core AddHealthChecks/MapHealthChecks configuration (tags, predicates), not Whizbang library behavior"}
 builder.Services.AddHealthChecks()
   .AddCheck<AzureServiceBusHealthCheck>(
     name: "azure_servicebus",
@@ -311,7 +311,7 @@ readinessProbe:
 
 ### Implementing IHealthCheck
 
-```csharp{title="Implementing IHealthCheck" description="Implementing IHealthCheck" category="Configuration" difficulty="ADVANCED" tags=["Operations", "Infrastructure", "Implementing", "IHealthCheck"]}
+```csharp{title="Implementing IHealthCheck" description="Implementing IHealthCheck" category="Configuration" difficulty="ADVANCED" tags=["Operations", "Infrastructure", "Implementing", "IHealthCheck"] unverified="user-code example — custom RedisHealthCheck, not Whizbang library code"}
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 public class RedisHealthCheck : IHealthCheck {
@@ -353,7 +353,7 @@ public class RedisHealthCheck : IHealthCheck {
 ```
 
 **Registration**:
-```csharp{title="Implementing IHealthCheck (2)" description="Registration:" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Infrastructure", "Implementing", "IHealthCheck"]}
+```csharp{title="Implementing IHealthCheck (2)" description="Registration:" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Infrastructure", "Implementing", "IHealthCheck"] unverified="user-code example — registering a custom RedisHealthCheck via the ASP.NET Core framework API"}
 builder.Services.AddSingleton<IConnectionMultiplexer>(/* Redis connection */);
 builder.Services.AddHealthChecks()
   .AddCheck<RedisHealthCheck>("redis");
@@ -361,7 +361,7 @@ builder.Services.AddHealthChecks()
 
 ### Timeout and Failure Handling
 
-```csharp{title="Timeout and Failure Handling" description="Timeout and Failure Handling" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Infrastructure", "Timeout", "Failure"]}
+```csharp{title="Timeout and Failure Handling" description="Timeout and Failure Handling" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Infrastructure", "Timeout", "Failure"] unverified="user-code example — custom ExternalApiHealthCheck, not Whizbang library code"}
 public class ExternalApiHealthCheck : IHealthCheck {
   private readonly HttpClient _httpClient;
   private readonly TimeSpan _timeout = TimeSpan.FromSeconds(5);
@@ -400,7 +400,7 @@ public class ExternalApiHealthCheck : IHealthCheck {
 
 When using .NET Aspire, health checks are automatically wired to the dashboard:
 
-```csharp{title="Automatic Health Monitoring" description="When using ." category="Configuration" difficulty="BEGINNER" tags=["Operations", "Infrastructure", "Automatic", "Health"]}
+```csharp{title="Automatic Health Monitoring" description="When using ." category="Configuration" difficulty="BEGINNER" tags=["Operations", "Infrastructure", "Automatic", "Health"] unverified="Aspire ServiceDefaults wiring (AddServiceDefaults/MapDefaultEndpoints), not Whizbang library behavior"}
 // Service Program.cs
 builder.AddServiceDefaults();  // ⭐ Enables Aspire integration
 
@@ -425,7 +425,7 @@ app.Run();
 
 ### Startup Health Check
 
-```csharp{title="Startup Health Check" description="Startup Health Check" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Infrastructure", "Startup", "Health"]}
+```csharp{title="Startup Health Check" description="Startup Health Check" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Infrastructure", "Startup", "Health"] unverified="ASP.NET Core startup validation pattern via HealthCheckService.CheckHealthAsync, not Whizbang library behavior"}
 var builder = WebApplication.CreateBuilder(args);
 
 // Register services and health checks
@@ -460,7 +460,7 @@ app.Run();
 
 ### Cached Health Checks
 
-```csharp{title="Cached Health Checks" description="Cached Health Checks" category="Configuration" difficulty="ADVANCED" tags=["Operations", "Infrastructure", "Cached", "Health"]}
+```csharp{title="Cached Health Checks" description="Cached Health Checks" category="Configuration" difficulty="ADVANCED" tags=["Operations", "Infrastructure", "Cached", "Health"] unverified="user-code example — custom CachedDatabaseHealthCheck, not Whizbang library code"}
 public class CachedDatabaseHealthCheck : IHealthCheck {
   private readonly IDbConnectionFactory _connectionFactory;
   private DateTimeOffset? _lastCheck;
@@ -511,7 +511,7 @@ public class CachedDatabaseHealthCheck : IHealthCheck {
 
 ### Composite Health Checks
 
-```csharp{title="Composite Health Checks" description="Composite Health Checks" category="Configuration" difficulty="ADVANCED" tags=["Operations", "Infrastructure", "Composite", "Health"]}
+```csharp{title="Composite Health Checks" description="Composite Health Checks" category="Configuration" difficulty="ADVANCED" tags=["Operations", "Infrastructure", "Composite", "Health"] unverified="user-code example — custom ApplicationHealthCheck composing user checks, not Whizbang library code"}
 public class ApplicationHealthCheck : IHealthCheck {
   private readonly IHealthCheck[] _checks;
 
@@ -590,7 +590,7 @@ public class ApplicationHealthCheck : IHealthCheck {
 3. Caching not working (re-checking every request)
 
 **Solution**:
-```csharp{title="Problem: Health Check Always Returns Unhealthy" description="Problem: Health Check Always Returns Unhealthy" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Infrastructure", "Problem:", "Health"]}
+```csharp{title="Problem: Health Check Always Returns Unhealthy" description="Problem: Health Check Always Returns Unhealthy" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Infrastructure", "Problem:", "Health"] unverified="troubleshooting snippet — ASP.NET Core diagnostic logging and timeout configuration, not Whizbang library behavior"}
 // 1. Check logs for actual failure reason
 var healthReport = await healthCheckService.CheckHealthAsync();
 foreach (var (key, entry) in healthReport.Entries) {
@@ -616,7 +616,7 @@ if (_lastCheck.HasValue) {
 **Cause**: Liveness check includes database or external dependencies (shouldn't).
 
 **Solution**:
-```csharp{title="Problem: Kubernetes Keeps Restarting Pod" description="Problem: Kubernetes Keeps Restarting Pod" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Infrastructure", "Problem:", "Kubernetes"]}
+```csharp{title="Problem: Kubernetes Keeps Restarting Pod" description="Problem: Kubernetes Keeps Restarting Pod" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Infrastructure", "Problem:", "Kubernetes"] unverified="troubleshooting snippet — ASP.NET Core liveness/readiness tag configuration, not Whizbang library behavior"}
 // Liveness should only check app is running (no external dependencies)
 builder.Services.AddHealthChecks()
   .AddCheck("self", () => HealthCheckResult.Healthy("App is running"), tags: ["live"])
@@ -639,7 +639,7 @@ app.MapHealthChecks("/health/ready", new HealthCheckOptions {
 **Cause**: Kubernetes polling every 5 seconds across 100 pods = 20 queries/second.
 
 **Solution**:
-```csharp{title="Problem: Health Checks Cause Database Overload" description="Problem: Health Checks Cause Database Overload" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Infrastructure", "Problem:", "Health"]}
+```csharp{title="Problem: Health Checks Cause Database Overload" description="Problem: Health Checks Cause Database Overload" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Infrastructure", "Problem:", "Health"] unverified="user-code example — custom CachedPostgresHealthCheck wrapper, not Whizbang library code"}
 // Add caching to reduce database load (wrap the inner check — CheckHealthAsync is not virtual)
 public class CachedPostgresHealthCheck(PostgresHealthCheck inner) : IHealthCheck {
   private DateTimeOffset? _lastCheck;

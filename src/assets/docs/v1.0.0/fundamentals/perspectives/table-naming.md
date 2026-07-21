@@ -133,7 +133,7 @@ Avoid consecutive-uppercase acronyms in model type names -- each uppercase lette
 
 If two perspective model types would generate the same table name, both perspectives end up mapped to the same table -- there is no compile-time duplicate-name diagnostic at this commit:
 
-```csharp{title="Table Name Conflicts" description="Two model types that strip to the same base name collide on one table:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Table", "Name"]}
+```csharp{title="Table Name Conflicts" description="Two model types that strip to the same base name collide on one table:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Table", "Name"] unverified="counter-example — colliding table names produce no compile-time diagnostic, nothing to assert"}
 // Both model types generate wh_per_order
 public class OrderPerspective : IPerspectiveFor<OrderDto, OrderCreatedEvent> { }
 public class OrderAdminPerspective : IPerspectiveFor<OrderModel, OrderCreatedEvent> { }

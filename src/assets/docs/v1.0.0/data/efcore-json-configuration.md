@@ -33,7 +33,7 @@ The key pieces:
 
 With the turnkey pattern, JSON configuration is fully automatic. The source-generated registration callback creates the `NpgsqlDataSource` with the combined JSON options already applied:
 
-```csharp{title="Turnkey Configuration" description="JSON options are configured automatically by the generated registration" category="Implementation" difficulty="BEGINNER" tags=["Data", "C#", "Turnkey"]}
+```csharp{title="Turnkey Configuration" description="JSON options are configured automatically by the generated registration" category="Implementation" difficulty="BEGINNER" tags=["Data", "C#", "Turnkey"] unverified="turnkey DI registration (AddWhizbang().WithEFCore().WithDriver.Postgres); configuration wiring, not exercised by the JsonContextRegistry unit tests"}
 // One line — the generated module initializer handles JSON configuration
 builder.Services.AddWhizbang()
     .WithEFCore<MyDbContext>()
@@ -42,7 +42,7 @@ builder.Services.AddWhizbang()
 
 Under the hood, the generated callback does the equivalent of:
 
-```csharp{title="Generated Registration (simplified)" description="What the source-generated DbContext registration does for JSON" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Generated"]}
+```csharp{title="Generated Registration (simplified)" description="What the source-generated DbContext registration does for JSON" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Generated"] unverified="NpgsqlDataSourceBuilder configuration (ConfigureJsonOptions/EnableDynamicJson); Npgsql data-source wiring, not covered by the JsonContextRegistry unit tests"}
 var dataSourceBuilder = new NpgsqlDataSourceBuilder(connectionString);
 dataSourceBuilder.ConfigureJsonOptions(JsonContextRegistry.CreateCombinedOptions());
 dataSourceBuilder.EnableDynamicJson();
@@ -57,7 +57,7 @@ Earlier drafts of this page recommended registering `JsonSerializerOptions` in D
 
 Frameworks and applications contribute their JSON contexts to the global registry from a module initializer:
 
-```csharp{title="Registering a JsonSerializerContext" description="Self-registration via ModuleInitializer, mirroring EFCoreJsonContext" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Registration"]}
+```csharp{title="Registering a JsonSerializerContext" description="Self-registration via ModuleInitializer, mirroring EFCoreJsonContext" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Registration"] tests=["JsonContextRegistryTests.RegisterContext_WithoutProfile_AppliesToAllProfilesAsync"]}
 [JsonSourceGenerationOptions(DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull)]
 [JsonSerializable(typeof(MyLensDto))]
 public partial class MyAppJsonContext : JsonSerializerContext {
@@ -79,7 +79,7 @@ In practice you rarely write this by hand — the Whizbang source generators emi
 
 Perspective rows store your read-model DTOs in JSONB columns using the fixed `PerspectiveRow<TModel>` shape:
 
-```csharp{title="Example: Perspective Row Storage" description="PerspectiveRow<TModel> fields stored as JSONB" category="Implementation" difficulty="BEGINNER" tags=["Data", "C#", "Perspective", "Row"]}
+```csharp{title="Example: Perspective Row Storage" description="PerspectiveRow<TModel> fields stored as JSONB" category="Implementation" difficulty="BEGINNER" tags=["Data", "C#", "Perspective", "Row"] unverified="type-shape illustration of PerspectiveRow of T stored as JSONB; the row shape itself, not behavior under test"}
 public class PerspectiveRow<TModel> where TModel : class {
   public required Guid Id { get; init; }
   public required TModel Data { get; set; }              // JSONB

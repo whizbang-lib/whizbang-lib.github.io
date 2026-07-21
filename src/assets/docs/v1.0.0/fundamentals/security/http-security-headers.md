@@ -31,7 +31,7 @@ testReferences:
 
 It is **turnkey**: `AddWhizbangAspNet()` auto-wires the middleware via an `IStartupFilter` (the same mechanism as correlation capture), so a service gets the hardened headers with no explicit pipeline call — and picks them up automatically on a framework upgrade.
 
-```csharp{title="Turnkey security headers" description="Demonstrates the automatic wiring" category="Security" difficulty="BEGINNER" tags=["Security", "Headers", "Middleware"]}
+```csharp{title="Turnkey security headers" description="Demonstrates the automatic wiring" category="Security" difficulty="BEGINNER" tags=["Security", "Headers", "Middleware"] tests=["ServiceCollectionExtensionsTests.AddWhizbangAspNet_RegistersSecurityHeadersStartupFilter_TurnkeyAsync", "WhizbangSecurityHeadersStartupFilterTests.StartupFilter_AutoInjectsHardenedHeadersAsync"]}
 // Program.cs — nothing to add; AddWhizbangAspNet() wires the headers for you.
 builder.Services.AddWhizbangAspNet();
 ```
@@ -53,7 +53,7 @@ You can still call `UseWhizbangSecurityHeaders(...)` explicitly if you need to c
 
 Every value is overridable (set to `null` to suppress a header entirely). Configure the turnkey middleware through options:
 
-```csharp{title="Customize headers" description="Demonstrates overriding header defaults" category="Security" difficulty="INTERMEDIATE" tags=["Security", "Headers", "Options"]}
+```csharp{title="Customize headers" description="Demonstrates overriding header defaults" category="Security" difficulty="INTERMEDIATE" tags=["Security", "Headers", "Options"] tests=["WhizbangSecurityHeadersMiddlewareTests.Invoke_CustomHeaderValue_IsEmittedAsync", "WhizbangSecurityHeadersMiddlewareTests.Invoke_OptionSetToNull_SuppressesThatHeaderAsync", "WhizbangSecurityHeadersMiddlewareTests.Invoke_DisallowedMethod_WhenAllowlistConfigured_Returns405WithoutInvokingNextAsync"]}
 builder.Services.Configure<WhizbangSecurityHeadersOptions>(options => {
   options.ContentSecurityPolicy = "frame-ancestors 'self'";
   options.PermissionsPolicy = null;              // don't emit
@@ -77,7 +77,7 @@ builder.Services.Configure<WhizbangSecurityHeadersOptions>(options => {
 
 Response header hardening usually pairs with removing the `Server: Kestrel` banner. Use the Kestrel helper:
 
-```csharp{title="Suppress Server header" description="Demonstrates removing the Server response header" category="Security" difficulty="BEGINNER" tags=["Security", "Kestrel", "Server"]}
+```csharp{title="Suppress Server header" description="Demonstrates removing the Server response header" category="Security" difficulty="BEGINNER" tags=["Security", "Kestrel", "Server"] tests=["WhizbangKestrelExtensionsTests.UseWhizbangKestrelSecurityDefaults_ConfiguresKestrelOptionsViaDIAsync", "WhizbangKestrelExtensionsTests.ApplyWhizbangSecurityDefaults_DisablesServerHeaderAsync"]}
 builder.WebHost.UseWhizbangKestrelSecurityDefaults();   // sets AddServerHeader = false
 ```
 

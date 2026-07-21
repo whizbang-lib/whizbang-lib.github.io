@@ -48,7 +48,7 @@ Earlier pre-v1.0 builds flushed through a single `process_work_batch` orchestrat
 
 All strategies are configured via `WorkCoordinatorOptions`:
 
-```csharp{title="Configuration" description="All strategies are configured via WorkCoordinatorOptions:" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Configuration"]}
+```csharp{title="Configuration" description="All strategies are configured via WorkCoordinatorOptions:" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Configuration"] unverified="configuration surface — per-option behavior is covered by the strategy-selection examples below"}
 services.Configure<WorkCoordinatorOptions>(options => {
   options.Strategy = WorkCoordinatorStrategy.Batch;
   options.BatchSize = 100;               // Batch: flush at this count
@@ -81,7 +81,7 @@ services.Configure<WorkCoordinatorOptions>(options => {
 
 Flushes on every `FlushAsync` call. No batching, no timers.
 
-```csharp{title="Immediate" description="Flushes on every FlushAsync call." category="Implementation" difficulty="BEGINNER" tags=["Data", "Immediate"]}
+```csharp{title="Immediate" description="Flushes on every FlushAsync call." category="Implementation" difficulty="BEGINNER" tags=["Data", "Immediate"] tests=["WorkCoordinatorStrategyRegistrationTests.CreateStrategy_WithImmediateOption_ReturnsImmediateStrategyAsync"]}
 services.Configure<WorkCoordinatorOptions>(o => {
   o.Strategy = WorkCoordinatorStrategy.Immediate;
 });
@@ -95,7 +95,7 @@ services.Configure<WorkCoordinatorOptions>(o => {
 
 Batches operations within a DI scope (e.g., HTTP request). Flushes on explicit `FlushAsync` or scope disposal.
 
-```csharp{title="Scoped (Default)" description="Batches operations within a DI scope (e." category="Implementation" difficulty="BEGINNER" tags=["Data", "C#", "Scoped", "Default"]}
+```csharp{title="Scoped (Default)" description="Batches operations within a DI scope (e." category="Implementation" difficulty="BEGINNER" tags=["Data", "C#", "Scoped", "Default"] tests=["WorkCoordinatorStrategyRegistrationTests.CreateStrategy_DefaultOptions_ReturnsScopedStrategyAsync"]}
 // Default - no configuration needed
 services.Configure<WorkCoordinatorOptions>(o => {
   o.Strategy = WorkCoordinatorStrategy.Scoped;
@@ -110,7 +110,7 @@ services.Configure<WorkCoordinatorOptions>(o => {
 
 Batches operations and flushes on a periodic timer. Registered as a singleton (timer persists across scopes).
 
-```csharp{title="Interval" description="Batches operations and flushes on a periodic timer." category="Implementation" difficulty="BEGINNER" tags=["Data", "Interval"]}
+```csharp{title="Interval" description="Batches operations and flushes on a periodic timer." category="Implementation" difficulty="BEGINNER" tags=["Data", "Interval"] tests=["WorkCoordinatorStrategyRegistrationTests.CreateStrategy_WithIntervalOption_ReturnsIntervalStrategyAsync", "WorkCoordinatorStrategyRegistrationTests.GeneratorPattern_Interval_ResolvesSingletonAsync"]}
 services.Configure<WorkCoordinatorOptions>(o => {
   o.Strategy = WorkCoordinatorStrategy.Interval;
   o.IntervalMilliseconds = 100; // Flush every 100ms
@@ -128,7 +128,7 @@ Combines **count-based** and **debounce-based** triggers. Flushes when either th
 1. **Batch size reached**: When total queued messages (outbox + inbox) reaches `BatchSize`, flush fires immediately.
 2. **Debounce timer expires**: When no new messages arrive for `IntervalMilliseconds`, flush fires for the partial batch.
 
-```csharp{title="Batch" description="Batch" category="Implementation" difficulty="BEGINNER" tags=["Data", "Batch"]}
+```csharp{title="Batch" description="Batch" category="Implementation" difficulty="BEGINNER" tags=["Data", "Batch"] tests=["WorkCoordinatorStrategyRegistrationTests.CreateStrategy_WithBatchOption_ReturnsBatchStrategyAsync", "BatchWorkCoordinatorStrategyTests.BatchSize_TakesPriorityOverDebounceAsync", "BatchWorkCoordinatorStrategyTests.DebounceTimer_FlushesAfterQuietPeriodAsync"]}
 services.Configure<WorkCoordinatorOptions>(o => {
   o.Strategy = WorkCoordinatorStrategy.Batch;
   o.BatchSize = 100;             // Flush at 100 messages
@@ -178,7 +178,7 @@ The `WorkCoordinatorStrategyFactory` provides AOT-safe strategy creation using d
 
 For scenarios where you need explicit control over when messages are persisted — independent of the strategy's automatic triggers — inject `IWorkFlusher`:
 
-```csharp{title="Manual Flushing" description="For scenarios where you need explicit control over when messages are persisted — independent of the strategy's" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Manual", "Flushing"]}
+```csharp{title="Manual Flushing" description="For scenarios where you need explicit control over when messages are persisted — independent of the strategy's" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Manual", "Flushing"] tests=["WorkFlusherTests.ScopedStrategy_FlushAsync_DelegatesToStrategyWithRequiredModeAsync", "BatchWorkCoordinatorStrategyTests.ManualFlushAsync_DoesNotWaitForTimerOrBatchAsync"]}
 public class ImportService(IWorkFlusher flusher) {
   public async Task ImportBatchAsync(IEnumerable<Order> orders, CancellationToken ct) {
     foreach (var order in orders) {

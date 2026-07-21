@@ -61,7 +61,7 @@ The drainer's `Empty → WorkId` recovery runs **independently of the policy**. 
 
 ## Default: Reject
 
-```csharp{title="Default Policy" description="Reject is the secure default in v0.657" category="Configuration" difficulty="BEGINNER" tags=["Configuration", "EmptyStreamId"]}
+```csharp{title="Default Policy" description="Reject is the secure default in v0.657" category="Configuration" difficulty="BEGINNER" tags=["Configuration", "EmptyStreamId"] unverified="policy config — not exercised by a test"}
 services.AddWhizbang(options => {
   // No-op — Reject is already the default.
   // options.EmptyStreamIdPolicy = EmptyStreamIdPolicy.Reject;
@@ -83,7 +83,7 @@ The exception's `MessageId` and `MessageType` properties carry the offending row
 
 ## Lenient Mode: FallbackToMessageId
 
-```csharp{title="Lenient Policy for Migrations" description="Accept Empty stream_id while you fix legacy producers" category="Configuration" difficulty="INTERMEDIATE" tags=["Configuration", "EmptyStreamId", "Migration"]}
+```csharp{title="Lenient Policy for Migrations" description="Accept Empty stream_id while you fix legacy producers" category="Configuration" difficulty="INTERMEDIATE" tags=["Configuration", "EmptyStreamId", "Migration"] unverified="policy config — not exercised by a test"}
 services.AddWhizbang(options => {
   options.EmptyStreamIdPolicy = EmptyStreamIdPolicy.FallbackToMessageId;
 });
@@ -95,7 +95,7 @@ Use the Warning count to track the rate of "still-bad" producer writes. When the
 
 ## Forensic Preservation: DeadLetter
 
-```csharp{title="Forensic DLQ Policy" description="Move bad rows to wh_dead_letters with a distinct reason code" category="Configuration" difficulty="ADVANCED" tags=["Configuration", "EmptyStreamId", "DeadLetter"]}
+```csharp{title="Forensic DLQ Policy" description="Move bad rows to wh_dead_letters with a distinct reason code" category="Configuration" difficulty="ADVANCED" tags=["Configuration", "EmptyStreamId", "DeadLetter"] unverified="verified by DeadLetterRecoverySqlTests, which is outside the current coverage map"}
 services.AddWhizbang(options => {
   options.EmptyStreamIdPolicy = EmptyStreamIdPolicy.DeadLetter;
 });
@@ -107,7 +107,7 @@ Recovery is self-healing: `recover_dead_letter` (migration 051) normalizes `Guid
 
 ## Hard Purge: Purge
 
-```csharp{title="Hard Purge Policy" description="Delete bad rows immediately — use only for known-spammy producers" category="Configuration" difficulty="ADVANCED" tags=["Configuration", "EmptyStreamId", "Purge"]}
+```csharp{title="Hard Purge Policy" description="Delete bad rows immediately — use only for known-spammy producers" category="Configuration" difficulty="ADVANCED" tags=["Configuration", "EmptyStreamId", "Purge"] unverified="policy config — not exercised by a test"}
 services.AddWhizbang(options => {
   options.EmptyStreamIdPolicy = EmptyStreamIdPolicy.Purge;
 });
@@ -119,7 +119,7 @@ services.AddWhizbang(options => {
 
 Three independent surfaces close the silent-stuck pattern:
 
-```mermaid{title="Empty Stream ID Defenses" description="Three layers of defense across the message lifecycle"}
+```mermaid{title="Empty Stream ID Defenses" description="Three layers of defense across the message lifecycle" caption="Empty stream_id defense-in-depth: the producer guard throws or accepts, the drainer coalesces Empty to WorkId with a Warning, and DLQ recovery normalizes Empty to NULL" tests=["EmptyStreamIdGuardTests.ThrowIfEmpty_EmptyStreamIdUnderReject_ThrowsAsync", "EmptyStreamIdGuardTests.ThrowIfEmpty_NonRejectPolicies_DoesNotThrowAsync", "StreamIdCoalescerTests.Coalesce_OutboxRowWithEmptyStreamId_FallsBackToWorkIdAndWarnsAsync"]}
 flowchart LR
   P[Producer call site]
   S{Storage<br/>EmptyStreamIdGuard}
@@ -151,7 +151,7 @@ The structural canary in [Stuck Row Sentinel](../observability/stuck-row-sentine
 
 If you're on `<= v0.656` and have producers writing `Guid.Empty` today, upgrade to v0.657 with `FallbackToMessageId` first to avoid breaking the producer's commit:
 
-```csharp{title="Phase 1: Recover then observe" description="Accept legacy producers while logging their existence" category="Configuration" difficulty="INTERMEDIATE" tags=["Configuration", "EmptyStreamId", "Migration"]}
+```csharp{title="Phase 1: Recover then observe" description="Accept legacy producers while logging their existence" category="Configuration" difficulty="INTERMEDIATE" tags=["Configuration", "EmptyStreamId", "Migration"] unverified="policy config — not exercised by a test"}
 services.AddWhizbang(options => {
   options.EmptyStreamIdPolicy = EmptyStreamIdPolicy.FallbackToMessageId;
 });
@@ -159,7 +159,7 @@ services.AddWhizbang(options => {
 
 Watch the Warning rate (`Empty stream_id detected on outbox row {MessageId}`). Each one names a producer call site you need to fix. When the rate hits zero for a meaningful window:
 
-```csharp{title="Phase 2: Tighten to Reject" description="Close the surface once legacy producers are fixed" category="Configuration" difficulty="INTERMEDIATE" tags=["Configuration", "EmptyStreamId", "Migration"]}
+```csharp{title="Phase 2: Tighten to Reject" description="Close the surface once legacy producers are fixed" category="Configuration" difficulty="INTERMEDIATE" tags=["Configuration", "EmptyStreamId", "Migration"] unverified="policy config — not exercised by a test"}
 services.AddWhizbang(options => {
   options.EmptyStreamIdPolicy = EmptyStreamIdPolicy.Reject;
 });

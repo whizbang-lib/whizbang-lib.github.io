@@ -29,7 +29,7 @@ The **TopicFilterGenerator** discovers all `ICommand` implementations decorated 
 
 Traditional message routing frameworks configure topics at runtime using **reflection** or **configuration files**:
 
-```csharp{title="Zero Reflection Philosophy" description="Traditional message routing frameworks configure topics at runtime using reflection or configuration files:" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Zero", "Reflection"]}
+```csharp{title="Zero Reflection Philosophy" description="Traditional message routing frameworks configure topics at runtime using reflection or configuration files:" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Zero", "Reflection"] unverified="counter-example — traditional reflection/config-based routing, not Whizbang's source-generator approach"}
 // ❌ Reflection-based (incompatible with AOT, error-prone)
 var topicAttr = command.GetType()
     .GetCustomAttribute<TopicFilterAttribute>();
@@ -46,7 +46,7 @@ var topic = topicAttr?.Filter;  // Runtime reflection
 
 Whizbang uses **Roslyn source generators** for compile-time topic extraction:
 
-```csharp{title="Zero Reflection Philosophy (2)" description="Whizbang uses Roslyn source generators for compile-time topic extraction:" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Zero", "Reflection"]}
+```csharp{title="Zero Reflection Philosophy (2)" description="Whizbang uses Roslyn source generators for compile-time topic extraction:" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Zero", "Reflection"] unverified="consumer usage of the generated registry, not a generator behavior a test asserts"}
 // ✅ Zero reflection (AOT-compatible, compile-time validation)
 var topics = TopicFilterRegistry.GetTopicFilters<CreateOrderCommand>();
 // Returns: ["orders.created"]
@@ -66,7 +66,7 @@ var topics = TopicFilterRegistry.GetTopicFilters<CreateOrderCommand>();
 
 ### 1. Compile-Time Discovery
 
-```mermaid
+```mermaid{caption="Compile-time topic filter discovery — TopicFilterGenerator scans attributed ICommand types and emits TopicFilterRegistry.g.cs exposing the GetTopicFilters and GetAllFilters lookup methods." tests=["TopicFilterGeneratorTests.Generator_WithStringFilter_GeneratesRegistryAsync", "TopicFilterGeneratorTests.Generator_GeneratesGetAllFiltersMethod_ForDiagnosticsAsync"]}
 flowchart TD
     Code["Your Code<br/><br/>[TopicFilter(#quot;orders.created#quot;)]<br/>public record CreateOrderCommand : ICommand {<br/>// ...<br/>}"]
     Generator["TopicFilterGenerator (Roslyn)<br/><br/>1. Scan syntax tree for classes/records<br/>2. Filter types with attributes<br/>3. Check for ICommand implementation<br/>4. Extract TopicFilter attribute values<br/>5. Extract enum Description attributes"]
@@ -82,7 +82,7 @@ flowchart TD
 
 ### 2. String-Based Filter Extraction
 
-```csharp{title="String-Based Filter Extraction" description="String-Based Filter Extraction" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "String-Based", "Filter"]}
+```csharp{title="String-Based Filter Extraction" description="String-Based Filter Extraction" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "String-Based", "Filter"] tests=["TopicFilterGeneratorTests.Generator_WithStringFilter_GeneratesRegistryAsync"]}
 // Input: Attribute on command
 [TopicFilter("orders.created")]
 public record CreateOrderCommand : ICommand { }
@@ -96,7 +96,7 @@ if (typeof(TCommand) == typeof(global::MyApp.Commands.CreateOrderCommand)) {
 
 ### 3. Enum-Based Filter Extraction
 
-```csharp{title="Enum-Based Filter Extraction" description="Enum-Based Filter Extraction" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Enum-Based", "Filter"]}
+```csharp{title="Enum-Based Filter Extraction" description="Enum-Based Filter Extraction" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Enum-Based", "Filter"] tests=["TopicFilterGeneratorTests.Generator_WithEnumFilter_ExtractsDescriptionAsync", "TopicFilterGeneratorTests.Generator_WithEnumFilterNoDescription_UsesSymbolNameAsync"]}
 // Input: Enum with Description attribute
 public enum ServiceBusTopics {
   [Description("orders.created")]
@@ -124,7 +124,7 @@ if (typeof(TCommand) == typeof(global::MyApp.Commands.CreateOrderCommand)) {
 
 **TopicFilterRegistry.g.cs**:
 
-```csharp{title="Generated File" description="**TopicFilterRegistry." category="Internals" difficulty="ADVANCED" tags=["Extending", "Source-Generators", "Generated", "File"]}
+```csharp{title="Generated File" description="**TopicFilterRegistry." category="Internals" difficulty="ADVANCED" tags=["Extending", "Source-Generators", "Generated", "File"] tests=["TopicFilterGeneratorTests.Generator_WithMultipleCommands_GeneratesAllMappingsAsync", "TopicFilterGeneratorTests.Generator_WithMultipleStringFilters_GeneratesAllMappingsAsync", "TopicFilterGeneratorTests.Generator_GeneratesGetAllFiltersMethod_ForDiagnosticsAsync"]}
 // <auto-generated/>
 // Generated by TopicFilterGenerator at 2024-12-14 15:00:00 UTC
 // DO NOT EDIT - Changes will be overwritten
@@ -176,7 +176,7 @@ public static class TopicFilterRegistry {
 
 ### Basic Lookup
 
-```csharp{title="Basic Lookup" description="Basic Lookup" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Basic", "Lookup"]}
+```csharp{title="Basic Lookup" description="Basic Lookup" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Basic", "Lookup"] unverified="consumer usage of the generated registry in routing code, not asserted by generator tests"}
 using MyApp.Generated;
 
 // Get topic filters for a specific command
@@ -194,7 +194,7 @@ foreach (var topic in topics) {
 
 ### Startup Validation
 
-```csharp{title="Startup Validation" description="Startup Validation" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Startup", "Validation"]}
+```csharp{title="Startup Validation" description="Startup Validation" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Startup", "Validation"] unverified="consumer startup-validation illustration using the generated registry, not a generator behavior a test asserts"}
 // Validate all topics exist in message broker at startup
 public static void ValidateTopics(IServiceProvider services) {
   var allFilters = TopicFilterRegistry.GetAllFilters();
@@ -214,7 +214,7 @@ public static void ValidateTopics(IServiceProvider services) {
 
 ### Diagnostics and Tooling
 
-```csharp{title="Diagnostics and Tooling" description="Diagnostics and Tooling" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Diagnostics", "Tooling"]}
+```csharp{title="Diagnostics and Tooling" description="Diagnostics and Tooling" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Diagnostics", "Tooling"] unverified="consumer diagnostics illustration iterating the generated registry, not asserted by generator tests"}
 // List all command → topic mappings
 var allFilters = TopicFilterRegistry.GetAllFilters();
 
@@ -239,7 +239,7 @@ foreach (var (command, topics) in allFilters) {
 
 ### Value Type Record for Caching
 
-```csharp{title="Value Type Record for Caching" description="Value Type Record for Caching" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Value", "Type"]}
+```csharp{title="Value Type Record for Caching" description="Value Type Record for Caching" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Value", "Type"] unverified="generator-internal caching record; source-gen tests assert generated output, not the internal record shape"}
 internal sealed record TopicFilterInfo(
   string CommandType,
   string Filter
@@ -257,7 +257,7 @@ internal sealed record TopicFilterInfo(
 
 Generator uses **syntactic predicates** to filter 95%+ of nodes before expensive semantic analysis:
 
-```csharp{title="Syntactic Filtering" description="Generator uses syntactic predicates to filter 95%+ of nodes before expensive semantic analysis:" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Syntactic", "Filtering"]}
+```csharp{title="Syntactic Filtering" description="Generator uses syntactic predicates to filter 95%+ of nodes before expensive semantic analysis:" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Syntactic", "Filtering"] unverified="generator-internal predicate/transform pipeline code, not asserted by generated-output tests"}
 // Fast syntactic check (no semantic model access)
 predicate: static (node, _) =>
   (node is ClassDeclarationSyntax or RecordDeclarationSyntax) &&
@@ -277,7 +277,7 @@ transform: static (ctx, ct) => ExtractTopicFilters(ctx, ct)
 
 Generator recognizes derived attributes:
 
-```csharp{title="Attribute Inheritance Detection" description="Generator recognizes derived attributes:" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Attribute", "Inheritance"]}
+```csharp{title="Attribute Inheritance Detection" description="Generator recognizes derived attributes:" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Attribute", "Inheritance"] tests=["TopicFilterGeneratorTests.Generator_WithCustomDerivedAttribute_RecognizesFilterAsync"]}
 // Check if attribute is TopicFilterAttribute or derived from it
 var currentClass = attr.AttributeClass;
 while (currentClass is not null) {
@@ -297,7 +297,7 @@ while (currentClass is not null) {
 
 ### Enum Description Extraction
 
-```csharp{title="Enum Description Extraction" description="Enum Description Extraction" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Enum", "Description"]}
+```csharp{title="Enum Description Extraction" description="Enum Description Extraction" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Enum", "Description"] tests=["TopicFilterGeneratorTests.Generator_WithEnumFilter_ExtractsDescriptionAsync", "TopicFilterGeneratorTests.Generator_WithEnumFilterNoDescription_UsesSymbolNameAsync"]}
 // Get enum value from attribute constructor argument
 var enumValue = firstArg.Value;  // Numeric value (0, 1, 2...)
 
@@ -351,7 +351,7 @@ Roslyn incremental generators use **value-based caching** to skip work when inpu
 | **GetAllFilters()** | ~10ns | Dictionary access |
 
 **Benchmark**:
-```csharp{title="Lookup Performance" description="Lookup Performance" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Lookup", "Performance"]}
+```csharp{title="Lookup Performance" description="Lookup Performance" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Lookup", "Performance"] unverified="benchmark illustration, not covered by a test"}
 [Benchmark]
 public string[] GetTopicFilters_CreateOrder() {
   return TopicFilterRegistry.GetTopicFilters<CreateOrderCommand>();
@@ -424,7 +424,7 @@ info WHIZ022: Found topic filter 'orders.created' on command 'CreateOrderCommand
 **When**: An enum-based topic filter lacks a `[Description]` attribute. The enum symbol name is used as fallback.
 
 **Fix** (if Description is desired):
-```csharp{title="WHIZ023: Enum Filter No Description" description="Fix (if Description is desired):" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "WHIZ023:", "Enum"]}
+```csharp{title="WHIZ023: Enum Filter No Description" description="Fix (if Description is desired):" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "WHIZ023:", "Enum"] tests=["TopicFilterGeneratorTests.Generator_WithEnumFilter_ExtractsDescriptionAsync"]}
 public enum Topics {
   [Description("orders.created")]  // Add this!
   OrdersCreated
@@ -451,7 +451,7 @@ warning WHIZ025: [TopicFilter] on type 'MyClass' which does not implement IComma
 **When**: `[TopicFilter]` is placed on a type that doesn't implement `ICommand`.
 
 **Fix**:
-```csharp{title="WHIZ025: TopicFilter On Non-Command" description="WHIZ025: TopicFilter On Non-Command" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "WHIZ025:", "TopicFilter"]}
+```csharp{title="WHIZ025: TopicFilter On Non-Command" description="WHIZ025: TopicFilter On Non-Command" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "WHIZ025:", "TopicFilter"] tests=["TopicFilterGeneratorTests.Generator_WithStringFilter_GeneratesRegistryAsync", "TopicFilterGeneratorTests.Generator_WithFilterOnNonCommand_ReportsErrorAsync"]}
 // ✅ CORRECT: Implement ICommand
 [TopicFilter("orders.created")]
 public record CreateOrderCommand : ICommand { }
@@ -528,7 +528,7 @@ info WHIZ026: No [TopicFilter] attributes were found in the compilation. TopicFi
 2. Namespace import missing
 
 **Solution**:
-```csharp{title="Problem: No Topic Filters Found (WHIZ026)" description="Problem: No Topic Filters Found (WHIZ026)" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Problem:", "Topic"]}
+```csharp{title="Problem: No Topic Filters Found (WHIZ026)" description="Problem: No Topic Filters Found (WHIZ026)" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Problem:", "Topic"] tests=["TopicFilterGeneratorTests.Generator_WithStringFilter_GeneratesRegistryAsync"]}
 using Whizbang.Core;  // Required!
 
 [TopicFilter("orders.created")]
@@ -546,7 +546,7 @@ public record CreateOrderCommand : ICommand {
 **Causes**: Forgot to add `[Description]` attribute to enum value.
 
 **Solution**:
-```csharp{title="Problem: Enum Symbol Name Instead of Description" description="Problem: Enum Symbol Name Instead of Description" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Problem:", "Enum"]}
+```csharp{title="Problem: Enum Symbol Name Instead of Description" description="Problem: Enum Symbol Name Instead of Description" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Problem:", "Enum"] tests=["TopicFilterGeneratorTests.Generator_WithEnumFilter_ExtractsDescriptionAsync"]}
 using System.ComponentModel;  // Required for [Description]
 
 public enum Topics {
@@ -564,7 +564,7 @@ public enum Topics {
 **Causes**: Missing `using Whizbang.Core;` directive.
 
 **Solution**:
-```csharp{title="Problem: TopicFilter Attribute Not Found" description="Problem: TopicFilter Attribute Not Found" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Problem:", "TopicFilter"]}
+```csharp{title="Problem: TopicFilter Attribute Not Found" description="Problem: TopicFilter Attribute Not Found" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Problem:", "TopicFilter"] tests=["TopicFilterGeneratorTests.Generator_WithStringFilter_GeneratesRegistryAsync"]}
 using Whizbang.Core;  // Required!
 
 [TopicFilter("orders.created")]

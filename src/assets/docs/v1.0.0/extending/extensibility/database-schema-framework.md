@@ -79,7 +79,7 @@ This documentation is for **library developers** implementing database drivers. 
 
 ### Core Types
 
-```csharp{title="Core Types" description="Core Types" category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Core", "Types"]}
+```csharp{title="Core Types" description="Core Types" category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Core", "Types"] tests=["ColumnDefinitionTests.ColumnDefinition_WithoutOptionalProperties_UsesDefaultsAsync", "ColumnDefinitionTests.ColumnDefinition_WithAllProperties_SetsAllAsync", "TableDefinitionTests.TableDefinition_WithRequiredProperties_CreatesInstanceAsync", "IndexDefinitionTests.IndexDefinition_WithoutOptionalProperties_UsesDefaultsAsync", "WhizbangDataTypeTests.WhizbangDataType_HasExactlyEightTypesAsync", "WhizbangDataTypeTests.WhizbangDataType_ToStringReturnsCorrectNamesAsync", "DefaultValueTests.DefaultValue_FunctionFactory_ReturnsFunctionDefaultAsync", "DefaultValueTests.DefaultValueFunction_HasExactlyFiveValuesAsync"]}
 namespace Whizbang.Data.Schema;
 
 // Complete table definition
@@ -151,7 +151,7 @@ public enum DefaultValueFunction {
 
 Database drivers implement `ISchemaBuilder` to turn these definitions into DDL. Whizbang ships `PostgresSchemaBuilder` (in `Whizbang.Data.Schema`) and `SqliteSchemaBuilder` (in `Whizbang.Data.Dapper.Sqlite`).
 
-```csharp{title="ISchemaBuilder Interface" description="ISchemaBuilder Interface" category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "ISchemaBuilder", "Interface"]}
+```csharp{title="ISchemaBuilder Interface" description="ISchemaBuilder Interface" category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "ISchemaBuilder", "Interface"] tests=["PostgresSchemaBuilderTests.BuildCreateTable_SimpleTable_GeneratesCreateStatementAsync", "PostgresSchemaBuilderTests.BuildCreateIndex_SimpleIndex_GeneratesCreateIndexAsync", "PostgresSchemaBuilderTests.BuildCreateSequence_SimpleSequence_GeneratesCreateSequenceAsync", "PostgresSchemaBuilderTests.BuildInfrastructureSchema_GeneratesAllTablesAsync"]}
 namespace Whizbang.Data.Schema;
 
 public interface ISchemaBuilder {
@@ -184,7 +184,7 @@ public interface ISchemaBuilder {
 
 **Use Case**: Minimal table for permanent message deduplication tracking.
 
-```csharp{title="Pattern 1: Message Deduplication Table (2 Columns)" description="Use Case: Minimal table for permanent message deduplication tracking." category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Pattern", "Message"]}
+```csharp{title="Pattern 1: Message Deduplication Table (2 Columns)" description="Use Case: Minimal table for permanent message deduplication tracking." category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Pattern", "Message"] tests=["MessageDeduplicationSchemaTests.Table_ShouldDefineCorrectColumnsAsync", "MessageDeduplicationSchemaTests.Table_ShouldDefinePrimaryKeyAsync", "MessageDeduplicationSchemaTests.Table_ShouldDefineIndexesAsync", "MessageDeduplicationSchemaTests.Table_FirstSeenAtColumn_ShouldHaveDefaultValueAsync", "MessageDeduplicationSchemaTests.Columns_ShouldProvideTypeConstantsAsync"]}
 using System.Collections.Immutable;
 using Whizbang.Data.Schema;
 
@@ -234,7 +234,7 @@ public static class MessageDeduplicationSchema {
 
 **Use Case**: Complete transactional outbox with work coordination, partitioning, and leasing. This is the actual `OutboxSchema` shipped in `Whizbang.Data.Schema.Schemas`.
 
-```csharp{title="Pattern 2: Outbox Table (21 Columns, 8 Indexes)" description="Use Case: Complete transactional outbox with work coordination, partitioning, and leasing." category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Pattern", "Outbox"]}
+```csharp{title="Pattern 2: Outbox Table (21 Columns, 8 Indexes)" description="Use Case: Complete transactional outbox with work coordination, partitioning, and leasing." category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Pattern", "Outbox"] tests=["OutboxSchemaTests.Table_ShouldDefineCorrectColumnsAsync", "OutboxSchemaTests.Table_ShouldDefineCorrectIndexesAsync", "OutboxSchemaTests.Table_ShouldHavePrimaryKeyAsync", "OutboxSchemaTests.Table_ColumnDefaults_ShouldBeCorrectAsync", "OutboxSchemaTests.Columns_ShouldProvideAllConstantsAsync"]}
 using System.Collections.Immutable;
 
 namespace Whizbang.Data.Schema.Schemas;
@@ -450,7 +450,7 @@ public static class OutboxSchema {
 
 **Use Case**: Convert TableDefinition to PostgreSQL DDL using the shipped `PostgresSchemaBuilder`.
 
-```csharp{title="Pattern 3: Generating CREATE TABLE for PostgreSQL" description="Use Case: Convert TableDefinition to PostgreSQL DDL." category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Pattern", "Generating"]}
+```csharp{title="Pattern 3: Generating CREATE TABLE for PostgreSQL" description="Use Case: Convert TableDefinition to PostgreSQL DDL." category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Pattern", "Generating"] tests=["PostgresSchemaBuilderTests.BuildCreateTable_SimpleTable_GeneratesCreateStatementAsync", "PostgresSchemaBuilderTests.BuildCreateTable_WithDefaultValue_GeneratesDefaultClauseAsync", "PostgresSchemaBuilderTests.BuildCreateIndex_SimpleIndex_GeneratesCreateIndexAsync", "PostgresSchemaBuilderTests.BuildCreateTable_EmitsAlterTableAddColumnIfNotExistsPerColumnAsync", "PostgresSchemaBuilderTests.BuildInfrastructureSchema_OutboxTable_HasCorrectDefaultsAsync"]}
 using Whizbang.Data.Schema;
 using Whizbang.Data.Schema.Schemas;
 
@@ -510,7 +510,7 @@ var createIndexSql = builder.BuildCreateIndex(
 
 **Use Case**: Support a database with different type mappings. Whizbang ships `SqliteSchemaBuilder` (in `Whizbang.Data.Dapper.Sqlite`) — its type mapper shows the pattern to follow for a custom database:
 
-```csharp{title="Pattern 4: Implementing ISchemaBuilder for Another Database" description="Type mapping pattern from the shipped SqliteTypeMapper." category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Pattern", "Generating"]}
+```csharp{title="Pattern 4: Implementing ISchemaBuilder for Another Database" description="Type mapping pattern from the shipped SqliteTypeMapper." category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Pattern", "Generating"] tests=["SqliteTypeMapperTests.MapDataType_Uuid_ReturnsTextAsync", "SqliteTypeMapperTests.MapDataType_TimestampTz_ReturnsTextAsync", "SqliteTypeMapperTests.MapDataType_Json_ReturnsTextAsync", "SqliteTypeMapperTests.MapDataType_Boolean_ReturnsIntegerAsync", "SqliteTypeMapperTests.MapDefaultValue_FunctionUuidGenerate_ReturnsLowerHexAsync", "SqliteTypeMapperTests.MapDefaultValue_FunctionDateTimeUtcNow_ReturnsDatetimeUtcAsync"]}
 using Whizbang.Data.Schema;
 
 public class SqliteSchemaBuilder : ISchemaBuilder {
@@ -573,7 +573,7 @@ public class SqliteSchemaBuilder : ISchemaBuilder {
 
 `SchemaConfiguration` is a shipped sealed record with a dual-prefix system (infrastructure tables vs perspective tables):
 
-```csharp{title="Pattern 5: Using SchemaConfiguration" description="Use Case: Generate schemas for all infrastructure tables with custom prefix." category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Pattern", "Using"]}
+```csharp{title="Pattern 5: Using SchemaConfiguration" description="Use Case: Generate schemas for all infrastructure tables with custom prefix." category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Pattern", "Using"] tests=["SchemaConfigurationTests.SchemaConfiguration_WithoutParameters_UsesDefaultsAsync", "SchemaConfigurationTests.SchemaConfiguration_IsRecordAsync"]}
 namespace Whizbang.Data.Schema;
 
 public sealed record SchemaConfiguration(
@@ -585,7 +585,7 @@ public sealed record SchemaConfiguration(
 ```
 
 **Usage**:
-```csharp{title="Pattern 5: Using SchemaConfiguration (2)" description="Pattern 5: Using SchemaConfiguration" category="Extensibility" difficulty="BEGINNER" tags=["Extending", "Extensibility", "Pattern", "Using"]}
+```csharp{title="Pattern 5: Using SchemaConfiguration (2)" description="Pattern 5: Using SchemaConfiguration" category="Extensibility" difficulty="BEGINNER" tags=["Extending", "Extensibility", "Pattern", "Using"] tests=["PostgresSchemaBuilderTests.BuildInfrastructureSchema_CustomPrefix_UsesCustomPrefixAsync", "PostgresSchemaBuilderTests.BuildInfrastructureSchema_WithNormalSchema_StillQuotesSchemaNameAsync"]}
 var config = new SchemaConfiguration(
   InfrastructurePrefix: "prod_",
   SchemaName: "inventory"
@@ -609,7 +609,7 @@ var fullSchemaSql = builder.BuildInfrastructureSchema(config);
 
 ### Testing Table Generation
 
-```csharp{title="Testing Table Generation" description="Testing Table Generation" category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Testing", "Table"]}
+```csharp{title="Testing Table Generation" description="Testing Table Generation" category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Testing", "Table"] tests=["PostgresSchemaBuilderTests.BuildCreateTable_SimpleTable_GeneratesCreateStatementAsync", "PostgresSchemaBuilderTests.BuildCreateIndex_SimpleIndex_GeneratesCreateIndexAsync", "PostgresSchemaBuilderTests.BuildCreateTable_WithDefaultValue_GeneratesDefaultClauseAsync"]}
 using TUnit.Assertions;
 using TUnit.Core;
 using Whizbang.Data.Schema;

@@ -89,7 +89,7 @@ MyApp/
 
 ### Program.cs Setup
 
-```csharp{title="Program.cs Setup" description="Program.cs Setup" category="Configuration" difficulty="INTERMEDIATE" tags=["Getting-started", "C#", "Program.cs", "Setup"]}
+```csharp{title="Program.cs Setup" description="Program.cs Setup" category="Configuration" difficulty="INTERMEDIATE" tags=["Getting-started", "C#", "Program.cs", "Setup"] unverified="project scaffolding — single-project Program.cs bootstrap and DI wiring, not exercised by a test"}
 using Microsoft.EntityFrameworkCore;
 using Whizbang.Core;
 using Whizbang.Data.EFCore.Postgres;
@@ -139,7 +139,7 @@ app.Run();
 ### Message Organization
 
 **Commands** (imperative - intent to change state):
-```csharp{title="Message Organization" description="Commands (imperative - intent to change state):" category="Configuration" difficulty="INTERMEDIATE" tags=["Getting-started", "C#", "Message", "Organization"]}
+```csharp{title="Message Organization" description="Commands (imperative - intent to change state):" category="Configuration" difficulty="INTERMEDIATE" tags=["Getting-started", "C#", "Message", "Organization"] unverified="illustrative message contract — MyApp sample command shown for project layout, not exercised by a test"}
 // Messages/Commands/CreateOrder.cs
 using Whizbang.Core;
 
@@ -159,7 +159,7 @@ public record OrderLineItem(
 ```
 
 **Events** (past tense - fact of what happened):
-```csharp{title="Message Organization - OrderCreated" description="Events (past tense - fact of what happened):" category="Configuration" difficulty="INTERMEDIATE" tags=["Getting-started", "C#", "Message", "Organization", "OrderCreated"]}
+```csharp{title="Message Organization - OrderCreated" description="Events (past tense - fact of what happened):" category="Configuration" difficulty="INTERMEDIATE" tags=["Getting-started", "C#", "Message", "Organization", "OrderCreated"] unverified="illustrative message contract — MyApp sample event shown for project layout, not exercised by a test"}
 // Messages/Events/OrderCreated.cs
 using Whizbang.Core;
 
@@ -246,7 +246,7 @@ MyApp/
 
 ### Project Dependencies
 
-```mermaid
+```mermaid{caption="Clean Architecture project reference graph — the Messages project references only Whizbang.Core"}
 flowchart TD
     API["MyApp.API"]
     Domain["MyApp.Domain"]
@@ -413,7 +413,7 @@ ECommerce/
 
 ### Communication Pattern
 
-```mermaid
+```mermaid{caption="ECommerce microservices message flow — command to receptor to outbox to Azure Service Bus to workers and BFF perspectives"}
 sequenceDiagram
     participant UI
     participant BFF as BFF.API
@@ -438,7 +438,7 @@ sequenceDiagram
 ### .NET Aspire Orchestration
 
 **ECommerce.AppHost/Program.cs**:
-```csharp{title=".NET Aspire Orchestration" description="**ECommerce." category="Configuration" difficulty="ADVANCED" tags=["Getting-started", "C#", "Aspire", "Orchestration"]}
+```csharp{title=".NET Aspire Orchestration" description="**ECommerce." category="Configuration" difficulty="ADVANCED" tags=["Getting-started", "C#", "Aspire", "Orchestration"] unverified="project scaffolding — Aspire AppHost orchestration bootstrap, not exercised by a test"}
 var builder = DistributedApplication.CreateBuilder(args);
 
 // Infrastructure - one PostgreSQL server, one database per service
@@ -583,7 +583,7 @@ kubectl create secret generic myapp-db --from-literal=connection-string="Host=..
 ### Service Registration Layers
 
 **Layer 1: DbContext + Unified Whizbang API** (EF Core Postgres driver):
-```csharp{title="Service Registration Layers" description="Layer 1: DbContext + Unified Whizbang API:" category="Configuration" difficulty="BEGINNER" tags=["Getting-started", "C#", "Service", "Registration", "Layers"]}
+```csharp{title="Service Registration Layers" description="Layer 1: DbContext + Unified Whizbang API:" category="Configuration" difficulty="BEGINNER" tags=["Getting-started", "C#", "Service", "Registration", "Layers"] unverified="project scaffolding — DbContext and Whizbang DI registration, not exercised by a test"}
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(connectionString));
 
@@ -594,21 +594,21 @@ builder.Services
 ```
 
 **Layer 2: Generated Registrations** (produced by Whizbang.Generators):
-```csharp{title="Service Registration Layers (2)" description="Layer 2: Generated Registrations:" category="Configuration" difficulty="BEGINNER" tags=["Getting-started", "C#", "Service", "Registration", "Layers"]}
+```csharp{title="Service Registration Layers (2)" description="Layer 2: Generated Registrations:" category="Configuration" difficulty="BEGINNER" tags=["Getting-started", "C#", "Service", "Registration", "Layers"] unverified="project scaffolding — generated DI registration, not exercised by a test"}
 builder.Services.AddReceptors();           // All discovered IReceptor implementations
 builder.Services.AddWhizbangDispatcher();  // Generated zero-reflection dispatcher
 builder.Services.AddPerspectiveRunners();  // All discovered perspective runners
 ```
 
 **Layer 3: Transports**:
-```csharp{title="Service Registration Layers (3)" description="Layer 3: Transports:" category="Configuration" difficulty="BEGINNER" tags=["Getting-started", "C#", "Service", "Registration", "Layers"]}
+```csharp{title="Service Registration Layers (3)" description="Layer 3: Transports:" category="Configuration" difficulty="BEGINNER" tags=["Getting-started", "C#", "Service", "Registration", "Layers"] unverified="project scaffolding — transport DI registration, not exercised by a test"}
 builder.Services.AddAzureServiceBusTransport(serviceBusConnection);
 // OR
 builder.Services.AddRabbitMQTransport(rabbitMqConnection);
 ```
 
 **Layer 4: Application Services**:
-```csharp{title="Service Registration Layers (4)" description="Layer 4: Application Services:" category="Configuration" difficulty="BEGINNER" tags=["Getting-started", "C#", "Service", "Registration", "Layers"]}
+```csharp{title="Service Registration Layers (4)" description="Layer 4: Application Services:" category="Configuration" difficulty="BEGINNER" tags=["Getting-started", "C#", "Service", "Registration", "Layers"] unverified="project scaffolding — application-service DI registration, not exercised by a test"}
 builder.Services.AddTransient<OrderQueryService>();  // Wraps ILensQuery<OrderSummary>
 builder.Services.AddSingleton<IEmailService, SendGridEmailService>();
 ```
@@ -630,7 +630,7 @@ builder.Services.AddSingleton<IEmailService, SendGridEmailService>();
 ### Unit Tests
 
 **Test receptors in isolation**:
-```csharp{title="Unit Tests" description="Test receptors in isolation:" category="Configuration" difficulty="INTERMEDIATE" tags=["Getting-started", "C#", "Unit", "Tests"]}
+```csharp{title="Unit Tests" description="Test receptors in isolation:" category="Configuration" difficulty="INTERMEDIATE" tags=["Getting-started", "C#", "Unit", "Tests"] unverified="illustrative test example — MyApp receptor unit-test pattern, not exercised by a test"}
 // tests/MyApp.Domain.Tests/Receptors/CreateOrderReceptorTests.cs
 public class CreateOrderReceptorTests {
     [Test]
@@ -651,7 +651,7 @@ public class CreateOrderReceptorTests {
 ### Integration Tests
 
 **Test full message flow**:
-```csharp{title="Integration Tests" description="Test full message flow:" category="Configuration" difficulty="INTERMEDIATE" tags=["Getting-started", "C#", "Integration", "Tests"]}
+```csharp{title="Integration Tests" description="Test full message flow:" category="Configuration" difficulty="INTERMEDIATE" tags=["Getting-started", "C#", "Integration", "Tests"] unverified="illustrative test example — MyApp integration-test pattern, not exercised by a test"}
 // tests/MyApp.Integration.Tests/OrderWorkflowTests.cs
 public class OrderWorkflowTests {
     private WebApplicationFactory<Program> _factory;
@@ -744,7 +744,7 @@ public class OrderWorkflowTests {
 
 ### Step 1: Define Message
 
-```csharp{title="Step 1: Define Message" description="Step 1: Define Message" category="Configuration" difficulty="INTERMEDIATE" tags=["Getting-started", "C#", "Step", "Define", "Message"]}
+```csharp{title="Step 1: Define Message" description="Step 1: Define Message" category="Configuration" difficulty="INTERMEDIATE" tags=["Getting-started", "C#", "Step", "Define", "Message"] unverified="illustrative message contract — MyApp CancelOrder and OrderCancelled shown for the feature walkthrough, not exercised by a test"}
 // MyApp.Messages/Commands/CancelOrder.cs
 public record CancelOrder(
     [property: StreamId] Guid OrderId,
@@ -761,7 +761,7 @@ public record OrderCancelled(
 
 ### Step 2: Create Receptor
 
-```csharp{title="Step 2: Create Receptor" description="Step 2: Create Receptor" category="Configuration" difficulty="ADVANCED" tags=["Getting-started", "C#", "Step", "Create", "Receptor"]}
+```csharp{title="Step 2: Create Receptor" description="Step 2: Create Receptor" category="Configuration" difficulty="ADVANCED" tags=["Getting-started", "C#", "Step", "Create", "Receptor"] unverified="illustrative example — MyApp CancelOrderReceptor logic shown for the feature walkthrough, not exercised by a test"}
 // MyApp.Domain/Receptors/CancelOrderReceptor.cs
 using Whizbang.Core;
 using MyApp.Messages.Commands;
@@ -797,7 +797,7 @@ public class CancelOrderReceptor(ILensQuery<OrderSummary> orders)
 
 ### Step 3: Update Perspective
 
-```csharp{title="Step 3: Update Perspective" description="Step 3: Update Perspective" category="Configuration" difficulty="INTERMEDIATE" tags=["Getting-started", "C#", "Step", "Update", "Perspective"]}
+```csharp{title="Step 3: Update Perspective" description="Step 3: Update Perspective" category="Configuration" difficulty="INTERMEDIATE" tags=["Getting-started", "C#", "Step", "Update", "Perspective"] unverified="illustrative example — MyApp OrderSummaryPerspective Apply methods shown for the feature walkthrough, not exercised by a test"}
 // MyApp.ReadModels/Perspectives/OrderSummaryPerspective.cs
 public class OrderSummaryPerspective :
     IPerspectiveFor<OrderSummary, OrderCreated, OrderCancelled> {  // Add new event type
@@ -820,7 +820,7 @@ public class OrderSummaryPerspective :
 
 ### Step 4: Add Endpoint
 
-```csharp{title="Step 4: Add Endpoint" description="Step 4: Add Endpoint" category="Configuration" difficulty="INTERMEDIATE" tags=["Getting-started", "C#", "Step", "Add", "Endpoint"]}
+```csharp{title="Step 4: Add Endpoint" description="Step 4: Add Endpoint" category="Configuration" difficulty="INTERMEDIATE" tags=["Getting-started", "C#", "Step", "Add", "Endpoint"] unverified="illustrative example — MyApp controller endpoint shown for the feature walkthrough, not exercised by a test"}
 // MyApp.API/Endpoints/OrdersController.cs
 [HttpPost("{orderId:guid}/cancel")]
 public async Task<ActionResult> CancelOrder(
@@ -838,7 +838,7 @@ public async Task<ActionResult> CancelOrder(
 
 ### Step 5: Test
 
-```csharp{title="Step 5: Test" description="Step 5: Test" category="Configuration" difficulty="INTERMEDIATE" tags=["Getting-started", "C#", "Step", "Test"]}
+```csharp{title="Step 5: Test" description="Step 5: Test" category="Configuration" difficulty="INTERMEDIATE" tags=["Getting-started", "C#", "Step", "Test"] unverified="illustrative test example — MyApp CancelOrderReceptor unit test shown for the feature walkthrough, not exercised by a test"}
 // MyApp.Domain.Tests/Receptors/CancelOrderReceptorTests.cs
 [Test]
 public async Task HandleAsync_ValidOrder_ReturnsOrderCancelledAsync() {

@@ -49,7 +49,7 @@ The **PerspectiveDiscoveryGenerator** discovers all `IPerspectiveFor<TModel, TEv
 
 ### Traditional Approach (Direct Updates)
 
-```csharp{title="Traditional Approach (Direct Updates)" description="Traditional Approach (Direct Updates)" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Traditional", "Approach"]}
+```csharp{title="Traditional Approach (Direct Updates)" description="Traditional Approach (Direct Updates)" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Traditional", "Approach"] unverified="counter-example — traditional tightly-coupled approach, not a Whizbang pattern"}
 // ❌ Tight coupling between command and query models
 public class OrderService {
     public async Task<OrderCreated> CreateOrderAsync(CreateOrder command) {
@@ -69,7 +69,7 @@ public class OrderService {
 
 ### Whizbang Approach (Event-Driven, Pure)
 
-```csharp{title="Whizbang Approach (Event-Driven)" description="Receptor returns event; perspective folds it into the model as a pure function" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Whizbang", "Approach"]}
+```csharp{title="Whizbang Approach (Event-Driven)" description="Receptor returns event; perspective folds it into the model as a pure function" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Whizbang", "Approach"] tests=["PerspectiveDiscoveryGeneratorTests.PerspectiveDiscoveryGenerator_SinglePerspectiveOneEvent_GeneratesRegistrationAsync"]}
 // ✅ Receptor publishes the event - no read-model coupling
 public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
     public ValueTask<OrderCreated> HandleAsync(CreateOrder message, CancellationToken ct = default) {
@@ -115,7 +115,7 @@ public class OrderSummaryPerspective : IPerspectiveFor<OrderSummary, OrderCreate
 
 ### 1. Compile-Time Discovery
 
-```mermaid
+```mermaid{caption="Compile-time perspective discovery — the Roslyn generator scans base lists, skips abstract classes, matches IPerspectiveFor / IPerspectiveWithActionsFor with more than one type argument, and emits PerspectiveRegistrations.g.cs." tests=["PerspectiveDiscoveryGeneratorTests.PerspectiveDiscoveryGenerator_SinglePerspectiveOneEvent_GeneratesRegistrationAsync", "PerspectiveDiscoveryGeneratorTests.PerspectiveDiscoveryGenerator_AbstractClass_IsIgnoredAsync", "PerspectiveDiscoveryGeneratorTests.PerspectiveDiscoveryGenerator_WithActionsForInterface_GeneratesMessageAssociationAsync"]}
 flowchart TD
     Code["Your Code<br/><br/>public class OrderSummaryPerspective<br/>: IPerspectiveFor&lt;OrderSummary, OrderCreated&gt; {<br/>public OrderSummary Apply(<br/>OrderSummary currentData,<br/>OrderCreated eventData) { ... }<br/>}"]
     Generator["PerspectiveDiscoveryGenerator (Roslyn)<br/><br/>1. Scan classes with base lists<br/>2. Skip abstract classes<br/>3. Match IPerspectiveFor / IPerspectiveWithActionsFor<br/>with &gt;1 type argument<br/>4. Extract: Model type, Event types, model [StreamId]"]
@@ -135,7 +135,7 @@ The generator matches both `IPerspectiveFor<TModel, TEvent...>` and `IPerspectiv
 
 **PerspectiveRegistrations.g.cs** (emitted into `{AssemblyName}.Generated`):
 
-```csharp{title="Generated File" description="PerspectiveRegistrations.g.cs surface" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Generated", "File"]}
+```csharp{title="Generated File" description="PerspectiveRegistrations.g.cs surface" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Generated", "File"] tests=["PerspectiveDiscoveryGeneratorTests.PerspectiveDiscoveryGenerator_ReturnsServiceCollectionForMethodChainingAsync", "PerspectiveDiscoveryGeneratorTests.PerspectiveDiscoveryGenerator_GetMessageAssociations_ReturnsCorrectAssociationsAsync", "PerspectiveDiscoveryGeneratorTests.PerspectiveDiscoveryGenerator_GetPerspectivesForEvent_HelperMethodGeneratedAsync", "PerspectiveDiscoveryGeneratorTests.PerspectiveDiscoveryGenerator_GetEventsForPerspective_HelperMethodGeneratedAsync"]}
 public static class PerspectiveRegistrationExtensions {
     /// <summary>
     /// Registers all discovered IPerspectiveFor implementations (Scoped).
@@ -162,7 +162,7 @@ public static class PerspectiveRegistrationExtensions {
 
 The file also declares two records used by the association queries:
 
-```csharp{title="Association Records" description="MessageAssociation and PerspectiveAssociationInfo" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Associations"]}
+```csharp{title="Association Records" description="MessageAssociation and PerspectiveAssociationInfo" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Associations"] tests=["PerspectiveDiscoveryGeneratorTests.PerspectiveDiscoveryGenerator_MessageAssociation_IsGeneratedAsync", "PerspectiveDiscoveryGeneratorTests.PerspectiveDiscoveryGenerator_GeneratesPerspectiveAssociationInfoRecordAsync"]}
 public sealed record MessageAssociation(
   string MessageType,       // "MyApp.Events.OrderCreated, MyApp"
   string AssociationType,   // "perspective"
@@ -192,7 +192,7 @@ Note that `PerspectiveDiscoveryGenerator` produces the DI registrations and asso
 
 ### Pattern 1: Single Event
 
-```csharp{title="Pattern 1: Single Event" description="Single event perspective" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Pattern", "Single"]}
+```csharp{title="Pattern 1: Single Event" description="Single event perspective" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Pattern", "Single"] tests=["PerspectiveDiscoveryGeneratorTests.PerspectiveDiscoveryGenerator_SinglePerspectiveOneEvent_GeneratesRegistrationAsync"]}
 public class OrderSummaryPerspective : IPerspectiveFor<OrderSummary, OrderCreated> {
     public OrderSummary Apply(OrderSummary currentData, OrderCreated eventData) {
         currentData.OrderId = eventData.OrderId;
@@ -203,13 +203,13 @@ public class OrderSummaryPerspective : IPerspectiveFor<OrderSummary, OrderCreate
 ```
 
 **Generated registration**:
-```csharp{title="Pattern 1 Registration" description="Generated registration (1 event)" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Pattern", "Single"]}
+```csharp{title="Pattern 1 Registration" description="Generated registration (1 event)" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Pattern", "Single"] tests=["PerspectiveDiscoveryGeneratorTests.PerspectiveDiscoveryGenerator_SinglePerspectiveOneEvent_GeneratesRegistrationAsync"]}
 services.AddScoped<IPerspectiveFor<OrderSummary, OrderCreated>, OrderSummaryPerspective>();
 ```
 
 ### Pattern 2: Multiple Events
 
-```csharp{title="Pattern 2: Multiple Events" description="One perspective, several events" category="Internals" difficulty="ADVANCED" tags=["Extending", "Source-Generators", "Pattern", "Multiple"]}
+```csharp{title="Pattern 2: Multiple Events" description="One perspective, several events" category="Internals" difficulty="ADVANCED" tags=["Extending", "Source-Generators", "Pattern", "Multiple"] tests=["PerspectiveDiscoveryGeneratorTests.PerspectiveDiscoveryGenerator_SinglePerspectiveMultipleEvents_GeneratesMultipleRegistrationsAsync", "PerspectiveDiscoveryGeneratorTests.Generator_PerspectiveWith10Events_GeneratesRegistrationsAsync"]}
 public class OrderSummaryPerspective :
     IPerspectiveFor<OrderSummary, OrderCreated, OrderShipped, OrderCancelled> {
 
@@ -234,7 +234,7 @@ public class OrderSummaryPerspective :
 
 ### Pattern 3: Aggregated Statistics
 
-```csharp{title="Pattern 3: Aggregated Statistics" description="Fold aggregations into the model" category="Internals" difficulty="ADVANCED" tags=["Extending", "Source-Generators", "Pattern", "Aggregated"]}
+```csharp{title="Pattern 3: Aggregated Statistics" description="Fold aggregations into the model" category="Internals" difficulty="ADVANCED" tags=["Extending", "Source-Generators", "Pattern", "Aggregated"] unverified="consumer perspective implementation illustration — not generated output asserted by tests"}
 public class CustomerStatisticsPerspective :
     IPerspectiveFor<CustomerStats, OrderCreated, OrderShipped> {
 
@@ -309,7 +309,7 @@ Related model-side diagnostics from the runner generators: **WHIZ033** (Warning)
 
 Generated registration uses **no reflection**:
 
-```csharp{title="Zero Reflection Guarantee" description="Generated registration uses no reflection" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Zero", "Reflection"]}
+```csharp{title="Zero Reflection Guarantee" description="Generated registration uses no reflection" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Zero", "Reflection"] tests=["PerspectiveDiscoveryGeneratorTests.PerspectiveDiscoveryGenerator_GeneratesAOTCompatibleDelegatesAsync", "PerspectiveDiscoveryGeneratorTests.PerspectiveDiscoveryGenerator_SinglePerspectiveOneEvent_GeneratesRegistrationAsync"]}
 // ✅ Direct type registration (AOT-compatible)
 services.AddScoped<IPerspectiveFor<OrderSummary, OrderCreated>, OrderSummaryPerspective>();
 
@@ -385,7 +385,7 @@ Or configure explicitly:
 1. No concrete classes implement a perspective interface with >1 type argument
 2. Perspective classes are abstract (skipped — they can't be instantiated)
 
-```csharp{title="Problem: Generator Doesn't Find Perspectives" description="Concrete vs abstract perspectives" category="Internals" difficulty="ADVANCED" tags=["Extending", "Source-Generators", "Problem:", "Generator"]}
+```csharp{title="Problem: Generator Doesn't Find Perspectives" description="Concrete vs abstract perspectives" category="Internals" difficulty="ADVANCED" tags=["Extending", "Source-Generators", "Problem:", "Generator"] tests=["PerspectiveDiscoveryGeneratorTests.PerspectiveDiscoveryGenerator_AbstractClass_IsIgnoredAsync"]}
 // ✅ Concrete class - discovered
 public class OrderSummaryPerspective : IPerspectiveFor<OrderSummary, OrderCreated> { /* ... */ }
 

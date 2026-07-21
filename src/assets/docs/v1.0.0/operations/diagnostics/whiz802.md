@@ -52,7 +52,7 @@ Specify a valid positive integer for the dimensions:
 
 ### Before (causes WHIZ802)
 
-```csharp{title="Before (causes WHIZ802)" description="Before (causes WHIZ802)" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Before", "Causes"]}
+```csharp{title="Before (causes WHIZ802)" description="Before (causes WHIZ802)" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Before", "Causes"] unverified="counter-example — invalid VectorField dimensions; WHIZ802 is defined but not wired into the generator, so no test emits it"}
 public record ProductDto {
   [StreamKey]
   public Guid ProductId { get; init; }
@@ -118,7 +118,7 @@ This is an error diagnostic and should not be suppressed. Fix the dimensions val
 
 If you have a legitimate need:
 
-```csharp{title="Suppressing This Diagnostic" description="If you have a legitimate need:" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Suppressing", "This"]}
+```csharp{title="Suppressing This Diagnostic" description="If you have a legitimate need:" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Suppressing", "This"] unverified="suppression/config — not exercised by a test"}
 #pragma warning disable WHIZ802
 [VectorField(0)]  // Not recommended
 public float[]? TestEmbedding { get; init; }

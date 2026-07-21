@@ -22,11 +22,20 @@ export class CodeBlockParser {
     // the regular-block pass below then mispaired their fences (its regex
     // can't match a ```lang{ opening) and swallowed the PROSE between blocks —
     // whole sections silently vanished from rendered pages.
-    const enhancedCodeBlockRegex = /```([\w#+-]+)\{([^}]*)\}([\s\S]*?)```/g;
+    // Metadata capture is quote-aware: a `}` inside a quoted value (e.g.
+    // description="Using {PropertyName} placeholders") must NOT terminate the
+    // metadata region. A naive `[^}]*` truncated at the first inner brace,
+    // dropping trailing keys (tests=/unverified=) and spilling metadata text
+    // into the rendered code. The alternation consumes whole quoted strings
+    // before falling back to any non-brace/non-quote char.
+    const enhancedCodeBlockRegex = /```([\w#+-]+)\{((?:"[^"]*"|'[^']*'|[^}"'])*)\}([\s\S]*?)```/g;
     let match;
 
     while ((match = enhancedCodeBlockRegex.exec(content)) !== null) {
       const language = match[1];
+      // Mermaid diagrams (even with {caption/tests} metadata) are rendered
+      // separately by the markdown page — never as code blocks.
+      if (language === 'mermaid') continue;
       const metadataString = match[2];
       const code = match[3].trim();
       const placeholder = `[CODE_BLOCK_${blockIndex}]`;
@@ -125,41 +134,60 @@ export class CodeBlockParser {
     return this.parseAllCodeBlocks(content);
   }
   
+  /** Parse a fence metadata string (`key="v" tests=[...]`). Reused for ```mermaid{...}. */
+  parseFenceMetadata(metadataString: string): any {
+    return this.parseMetadata(metadataString);
+  }
+
   private parseMetadata(metadataString: string): any {
     const metadata: any = {};
-    
+
     try {
-      const lines = metadataString.split('\n').map(line => line.trim()).filter(line => line);
-      
-      for (const line of lines) {
-        const colonIndex = line.indexOf(':');
-        if (colonIndex === -1) continue;
-        
-        const key = line.substring(0, colonIndex).trim().replace(/"/g, '');
-        const valueStr = line.substring(colonIndex + 1).trim();
-        
-        if (valueStr.startsWith('[') && valueStr.endsWith(']')) {
-          // Array value
-          try {
-            metadata[key] = JSON.parse(valueStr);
-          } catch {
-            metadata[key] = valueStr.slice(1, -1).split(',').map(s => s.trim().replace(/"/g, ''));
-          }
-        } else {
-          // String value
-          metadata[key] = valueStr.replace(/^["']|["']$/g, '');
+      // Real content overwhelmingly uses the one-line `key="value"` / `key=[...]`
+      // form (e.g. dispatcher.md). A colon+newline (`key: value`) form is legacy
+      // and rare. Detect the equals form by a key immediately assigned a quoted
+      // string or an array — a colon-style value that merely contains "=" (or a
+      // description containing ":") won't false-trigger either branch.
+      if (/\w+\s*=\s*["'[]/.test(metadataString)) {
+        // key="quoted value" | key=[array] | key=bareValue, whitespace/newline separated.
+        const tokenRe = /(\w+)\s*=\s*("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|\[[^\]]*\]|[^\s]+)/g;
+        let m: RegExpExecArray | null;
+        while ((m = tokenRe.exec(metadataString)) !== null) {
+          metadata[m[1]] = this.coerceMetadataValue(m[2]);
+        }
+      } else {
+        // Legacy per-line `key: value` form.
+        const lines = metadataString.split('\n').map(line => line.trim()).filter(line => line);
+        for (const line of lines) {
+          const colonIndex = line.indexOf(':');
+          if (colonIndex === -1) continue;
+          const key = line.substring(0, colonIndex).trim().replace(/"/g, '');
+          metadata[key] = this.coerceMetadataValue(line.substring(colonIndex + 1).trim());
         }
       }
-      
+
       // Set defaults
       metadata.showLineNumbers = metadata.showLineNumbers !== false;
       metadata.showCopyButton = metadata.showCopyButton !== false;
-      
+
     } catch (error) {
       console.warn('Failed to parse code metadata:', error);
     }
-    
+
     return metadata;
+  }
+
+  /** Coerce a raw metadata value: `[...]` -> array, quoted -> unquoted string. */
+  private coerceMetadataValue(raw: string): any {
+    const v = raw.trim();
+    if (v.startsWith('[') && v.endsWith(']')) {
+      try {
+        return JSON.parse(v);
+      } catch {
+        return v.slice(1, -1).split(',').map(s => s.trim().replace(/^["']|["']$/g, '')).filter(Boolean);
+      }
+    }
+    return v.replace(/^["']|["']$/g, '');
   }
   
   createCodeBlockComponent(

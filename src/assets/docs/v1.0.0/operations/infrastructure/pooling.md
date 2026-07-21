@@ -52,7 +52,7 @@ lastMaintainedCommit: '01f07906'
 
 ### PolicyContextPool Design
 
-```mermaid
+```mermaid{caption="PolicyContextPool structure — a thread-safe ConcurrentBag holds up to 1,024 reusable PolicyContext instances; contexts returned when the pool is full are discarded and garbage-collected." tests=["PolicyContextPoolTests.Pool_ShouldNotExceedMaxSize_WhenReturningManyContextsAsync"]}
 flowchart TD
     subgraph Pool["PolicyContextPool (Static)"]
         Bag["ConcurrentBag&lt;PolicyContext&gt;<br/>(Thread-safe, lock-free pool)<br/>[Context1] [Context2] [Context3] ... [Context1024]<br/>Max Size: 1024 (overflow discarded)"]
@@ -61,7 +61,7 @@ flowchart TD
 
 Message Processing Lifecycle:
 
-```mermaid
+```mermaid{caption="PolicyContext pooling lifecycle — Rent initializes a pooled or newly created context, the caller uses it, and Return resets it and either re-pools it or lets it be garbage-collected when the pool is full." tests=["PolicyContextPoolTests.Rent_ShouldReturnInitializedContextAsync", "PolicyContextPoolTests.RentReturn_ShouldReinitializeContextAsync", "PolicyContextPoolTests.Pool_ShouldNotExceedMaxSize_WhenReturningManyContextsAsync"]}
 flowchart TD
     Rent["1. Rent from Pool<br/>context = PolicyContextPool.Rent(message, envelope, services, environment);"]
     Initialize["2. Initialize with Message<br/>(automatic — Rent calls internal Initialize)"]
@@ -79,7 +79,7 @@ flowchart TD
 
 ### Implementation
 
-```csharp{title="Implementation" description="Implementation" category="Configuration" difficulty="ADVANCED" tags=["Operations", "Infrastructure", "Implementation"]}
+```csharp{title="Implementation" description="Implementation" category="Configuration" difficulty="ADVANCED" tags=["Operations", "Infrastructure", "Implementation"] tests=["PolicyContextPoolTests.Rent_ShouldReturnInitializedContextAsync", "PolicyContextPoolTests.Return_WithNullContext_ShouldNotThrowAsync", "PolicyContextPoolTests.RentReturn_ShouldReinitializeContextAsync", "PolicyContextPoolTests.Pool_ShouldCreateNewContext_WhenEmptyAsync", "PolicyContextPoolTests.Pool_ShouldNotExceedMaxSize_WhenReturningManyContextsAsync"]}
 using Whizbang.Core.Pooling;
 
 public static class PolicyContextPool {
@@ -141,7 +141,7 @@ public static class PolicyContextPool {
 
 ### Basic Rent/Return
 
-```csharp{title="Basic Rent/Return" description="Basic Rent/Return" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Infrastructure", "Basic", "Rent"]}
+```csharp{title="Basic Rent/Return" description="Basic Rent/Return" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Infrastructure", "Basic", "Rent"] tests=["PolicyContextPoolTests.Rent_ShouldReturnInitializedContextAsync", "PolicyContextPoolTests.RentReturn_ShouldReinitializeContextAsync"]}
 using Whizbang.Core.Pooling;
 using Whizbang.Core.Policies;
 
@@ -180,7 +180,7 @@ public class MessageHandler {
 
 ### Automatic Return with Using
 
-```csharp{title="Automatic Return with Using" description="Automatic Return with Using" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Infrastructure", "Automatic", "Return"]}
+```csharp{title="Automatic Return with Using" description="Automatic Return with Using" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Infrastructure", "Automatic", "Return"] unverified="illustrative IDisposable wrapper around PolicyContextPool.Rent/Return — user-authored helper, not a shipped type"}
 // Helper class for IDisposable pattern
 public class PooledPolicyContext : IDisposable {
   public PolicyContext Context { get; }
@@ -207,7 +207,7 @@ var config = await policyEngine.MatchAsync(pooled.Context);
 
 ### Async Method Pattern
 
-```csharp{title="Async Method Pattern" description="Async Method Pattern" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Infrastructure", "Async", "Method"]}
+```csharp{title="Async Method Pattern" description="Async Method Pattern" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Infrastructure", "Async", "Method"] tests=["PolicyContextPoolTests.Rent_ShouldReturnInitializedContextAsync"]}
 public async Task ProcessMessageAsync(
   CreateOrder command,
   IMessageEnvelope envelope,
@@ -238,7 +238,7 @@ public async Task ProcessMessageAsync(
 
 ### 1. Rent (Create or Reuse)
 
-```csharp{title="Rent (Create or Reuse)" description="Rent (Create or Reuse)" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Infrastructure", "Rent", "Create"]}
+```csharp{title="Rent (Create or Reuse)" description="Rent (Create or Reuse)" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Infrastructure", "Rent", "Create"] tests=["PolicyContextPoolTests.Rent_ShouldReturnInitializedContextAsync", "PolicyContextPoolTests.Pool_ShouldCreateNewContext_WhenEmptyAsync", "PolicyContextPoolTests.RentReturn_ShouldReinitializeContextAsync"]}
 var context = PolicyContextPool.Rent(message, envelope, services, "production");
 ```
 
@@ -263,7 +263,7 @@ var context = PolicyContextPool.Rent(message, envelope, services, "production");
 
 ### 3. Use
 
-```csharp{title="Use" description="Use" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Infrastructure"]}
+```csharp{title="Use" description="Use" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Infrastructure"] unverified="policy-engine matching and PolicyContext accessors are separate components, not covered by the object-pool tests"}
 var config = await policyEngine.MatchAsync(context);
 var aggregateId = context.GetAggregateId();
 var service = context.GetService<IOrderRepository>();
@@ -292,7 +292,7 @@ var service = context.GetService<IOrderRepository>();
 
 ### 5. Return
 
-```csharp{title="Return" description="Return" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Infrastructure", "Return"]}
+```csharp{title="Return" description="Return" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Infrastructure", "Return"] tests=["PolicyContextPoolTests.Pool_ShouldNotExceedMaxSize_WhenReturningManyContextsAsync", "PolicyContextPoolTests.RentReturn_ShouldReinitializeContextAsync"]}
 PolicyContextPool.Return(context);
 ```
 
@@ -368,7 +368,7 @@ The pool cap is a **fixed internal constant** — `MAX_POOL_SIZE = 1024` — and
 
 `PolicyContextPool` does not expose hit-rate or size metrics. If you need them, wrap the rent/return calls at your call sites:
 
-```csharp{title="Pool monitoring via a call-site wrapper" description="Application-level counters around PolicyContextPool.Rent/Return — the shipped pool exposes no metrics of its own" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Infrastructure", "Pool", "Monitoring"]}
+```csharp{title="Pool monitoring via a call-site wrapper" description="Application-level counters around PolicyContextPool.Rent/Return — the shipped pool exposes no metrics of its own" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Infrastructure", "Pool", "Monitoring"] unverified="application-level wrapper around PolicyContextPool.Rent/Return — user code; the shipped pool exposes no metrics of its own"}
 public static class TrackedContextPool {
   private static long _totalRented;
   private static long _totalReturned;
@@ -407,7 +407,7 @@ public static class TrackedContextPool {
 2. A return path skipped on exceptions
 
 **Solution**:
-```csharp{title="Problem: Pool Never Reuses Contexts" description="Problem: Pool Never Reuses Contexts" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Infrastructure", "Problem:", "Pool"]}
+```csharp{title="Problem: Pool Never Reuses Contexts" description="Problem: Pool Never Reuses Contexts" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Infrastructure", "Problem:", "Pool"] tests=["PolicyContextPoolTests.RentReturn_ShouldReinitializeContextAsync", "PolicyContextPoolTests.Rent_ShouldReturnInitializedContextAsync"]}
 // Verify return in finally — this is the only way contexts get back to the pool
 var context = PolicyContextPool.Rent(message, envelope, services, "production");
 try {

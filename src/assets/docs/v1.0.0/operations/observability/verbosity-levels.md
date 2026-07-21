@@ -27,7 +27,7 @@ The `TraceVerbosity` enum controls how much detail Whizbang emits in traces. Ver
 
 ## Namespace
 
-```csharp{title="Namespace" description="Namespace" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Observability", "Namespace"]}
+```csharp{title="Namespace" description="Namespace" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Observability", "Namespace"] unverified="namespace import — no behavior to verify"}
 using Whizbang.Core.Tracing;
 ```
 
@@ -47,7 +47,7 @@ using Whizbang.Core.Tracing;
 
 No tracing output is emitted. Use this in production when tracing overhead must be eliminated entirely.
 
-```csharp{title="Disable Tracing" description="Turn off all trace output" category="Configuration" difficulty="BEGINNER" tags=["Tracing", "Configuration"]}
+```csharp{title="Disable Tracing" description="Turn off all trace output" category="Configuration" difficulty="BEGINNER" tags=["Tracing", "Configuration"] unverified="DI wiring (AddWhizbang) — tracing config not exercised by unit tests"}
 services.AddWhizbang(options => {
   options.Tracing.Verbosity = TraceVerbosity.Off;
 });
@@ -61,7 +61,7 @@ Emits traces only for:
 - Handlers or messages explicitly marked with `[WhizbangTrace]`
 - Handlers or messages matching patterns in `TracedHandlers` or `TracedMessages`
 
-```csharp{title="Minimal Verbosity" description="Trace only errors and explicit markers" category="Configuration" difficulty="BEGINNER" tags=["Tracing", "Configuration"]}
+```csharp{title="Minimal Verbosity" description="Trace only errors and explicit markers" category="Configuration" difficulty="BEGINNER" tags=["Tracing", "Configuration"] unverified="DI wiring (AddWhizbang) — tracing config not exercised by unit tests"}
 services.AddWhizbang(options => {
   options.Tracing.Verbosity = TraceVerbosity.Minimal;
   options.Tracing.Components = TraceComponents.Production;
@@ -81,7 +81,7 @@ Includes `Minimal` plus:
 - Handler invocation begin/end markers
 - Basic timing information
 
-```csharp{title="Normal Verbosity" description="Include lifecycle transitions" category="Configuration" difficulty="BEGINNER" tags=["Tracing", "Configuration"]}
+```csharp{title="Normal Verbosity" description="Include lifecycle transitions" category="Configuration" difficulty="BEGINNER" tags=["Tracing", "Configuration"] unverified="DI wiring (AddWhizbang) — tracing config not exercised by unit tests"}
 services.AddWhizbang(options => {
   options.Tracing.Verbosity = TraceVerbosity.Normal;
   options.Tracing.Components = TraceComponents.Handlers | TraceComponents.Lifecycle;
@@ -99,7 +99,7 @@ Includes `Normal` plus:
 - Inbox read and processing operations
 - Service resolution details
 
-```csharp{title="Verbose Verbosity" description="Include outbox/inbox and handler discovery" category="Configuration" difficulty="INTERMEDIATE" tags=["Tracing", "Configuration"]}
+```csharp{title="Verbose Verbosity" description="Include outbox/inbox and handler discovery" category="Configuration" difficulty="INTERMEDIATE" tags=["Tracing", "Configuration"] unverified="DI wiring (AddWhizbang) — tracing config not exercised by unit tests"}
 services.AddWhizbang(options => {
   options.Tracing.Verbosity = TraceVerbosity.Verbose;
   options.Tracing.Components = TraceComponents.AllWithoutWorkers;
@@ -117,7 +117,7 @@ Includes `Verbose` plus:
 - Perspective state changes
 - Internal decision points
 
-```csharp{title="Debug Verbosity" description="Full payload and timing breakdown" category="Configuration" difficulty="INTERMEDIATE" tags=["Tracing", "Configuration"]}
+```csharp{title="Debug Verbosity" description="Full payload and timing breakdown" category="Configuration" difficulty="INTERMEDIATE" tags=["Tracing", "Configuration"] unverified="DI wiring (AddWhizbang) — tracing config not exercised by unit tests"}
 services.AddWhizbang(options => {
   options.Tracing.Verbosity = TraceVerbosity.Debug;
   options.Tracing.Components = TraceComponents.All;
@@ -159,7 +159,7 @@ Valid string values: `"Off"`, `"Minimal"`, `"Normal"`, `"Verbose"`, `"Debug"`
 
 Override verbosity for specific handlers regardless of global setting:
 
-```csharp{title="Handler-Specific Verbosity" description="Override verbosity for specific handlers" category="Configuration" difficulty="INTERMEDIATE" tags=["Tracing", "Configuration", "Handlers"]}
+```csharp{title="Handler-Specific Verbosity" description="Override verbosity for specific handlers" category="Configuration" difficulty="INTERMEDIATE" tags=["Tracing", "Configuration", "Handlers"] unverified="DI wiring (AddWhizbang) — tracing config not exercised by unit tests"}
 services.AddWhizbang(options => {
   options.Tracing.Verbosity = TraceVerbosity.Minimal;  // Global: minimal
   options.Tracing.Components = TraceComponents.Handlers;
@@ -174,7 +174,7 @@ services.AddWhizbang(options => {
 
 Override verbosity based on message type:
 
-```csharp{title="Message-Specific Verbosity" description="Override verbosity for specific message types" category="Configuration" difficulty="INTERMEDIATE" tags=["Tracing", "Configuration", "Messages"]}
+```csharp{title="Message-Specific Verbosity" description="Override verbosity for specific message types" category="Configuration" difficulty="INTERMEDIATE" tags=["Tracing", "Configuration", "Messages"] unverified="DI wiring (AddWhizbang) — tracing config not exercised by unit tests"}
 services.AddWhizbang(options => {
   options.Tracing.Verbosity = TraceVerbosity.Minimal;
   options.Tracing.Components = TraceComponents.Messages;
@@ -189,7 +189,7 @@ services.AddWhizbang(options => {
 
 The `TracingOptions.ShouldTrace()` method checks if a trace at a given level should be emitted:
 
-```csharp{title="ShouldTrace Method" description="Check if trace should be emitted at verbosity level" category="Reference" difficulty="ADVANCED" tags=["Tracing", "API"]}
+```csharp{title="ShouldTrace Method" description="Check if trace should be emitted at verbosity level" category="Reference" difficulty="ADVANCED" tags=["Tracing", "API"] tests=["TracingOptionsTests.ShouldTrace_ReturnsTrue_WhenCurrentVerbosityMeetsRequiredAsync", "TracingOptionsTests.ShouldTrace_ReturnsFalse_WhenCurrentVerbosityBelowRequiredAsync"]}
 // Returns true if current verbosity meets or exceeds required level
 if (options.ShouldTrace(TraceVerbosity.Verbose)) {
   // Emit verbose-level trace
@@ -200,7 +200,7 @@ if (options.ShouldTrace(TraceVerbosity.Verbose)) {
 
 ### Production
 
-```csharp{title="Production Verbosity" description="Recommended production configuration" category="Best-Practices" difficulty="BEGINNER" tags=["Tracing", "Production"]}
+```csharp{title="Production Verbosity" description="Recommended production configuration" category="Best-Practices" difficulty="BEGINNER" tags=["Tracing", "Production"] unverified="configuration snippet — not exercised by unit tests"}
 options.Tracing.Verbosity = TraceVerbosity.Minimal;
 options.Tracing.Components = TraceComponents.Production;
 
@@ -210,14 +210,14 @@ options.Tracing.TracedHandlers["PaymentReceptor"] = TraceVerbosity.Normal;
 
 ### Development
 
-```csharp{title="Development Verbosity" description="Recommended development configuration" category="Best-Practices" difficulty="BEGINNER" tags=["Tracing", "Development"]}
+```csharp{title="Development Verbosity" description="Recommended development configuration" category="Best-Practices" difficulty="BEGINNER" tags=["Tracing", "Development"] unverified="configuration snippet — not exercised by unit tests"}
 options.Tracing.Verbosity = TraceVerbosity.Debug;
 options.Tracing.Components = TraceComponents.AllWithoutWorkers;
 ```
 
 ### Debugging Specific Issues
 
-```csharp{title="Targeted Debugging" description="Debug specific handlers with elevated verbosity" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Tracing", "Debugging"]}
+```csharp{title="Targeted Debugging" description="Debug specific handlers with elevated verbosity" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Tracing", "Debugging"] unverified="configuration snippet — not exercised by unit tests"}
 options.Tracing.Verbosity = TraceVerbosity.Minimal;
 options.Tracing.TracedHandlers["ProblematicHandler"] = TraceVerbosity.Debug;
 ```

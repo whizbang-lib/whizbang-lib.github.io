@@ -51,7 +51,7 @@ This is an advanced topic for building extensible systems on top of Whizbang. Mo
 
 Before reaching for dynamic assembly loading, note how Whizbang itself composes "plugins": **module-initializer callbacks**. Source generators (ServiceRegistrationGenerator, ReceptorDiscoveryGenerator, etc.) emit `[ModuleInitializer]` methods in each consumer assembly that assign callbacks on the static `ServiceRegistrationCallbacks` class (`LensServices`, `PerspectiveServices`, `Dispatcher`, `RawReceptors`, `PinnedIdRegistry`, `MessageTypeCatalog`, `PerspectivePersistenceOptions`). `services.AddWhizbang()` then invokes every registered callback — zero reflection, fully AOT-compatible.
 
-```csharp{title="Module Initializer Callbacks" description="Whizbang's AOT-compatible assembly composition" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "ModuleInitializer", "Callbacks"]}
+```csharp{title="Module Initializer Callbacks" description="Whizbang's AOT-compatible assembly composition" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "ModuleInitializer", "Callbacks"] tests=["ServiceCollectionExtensionsTests.AddWhizbang_InvokesLensServicesCallback_WhenRegisteredAsync", "ServiceCollectionExtensionsTests.AddWhizbang_CallsAllCallbacksInOrder_Async"]}
 // Generated module initializer in a consumer/extension assembly:
 [ModuleInitializer]
 internal static void RegisterServiceCallbacks() {
@@ -71,7 +71,7 @@ This is the pattern to prefer for statically-referenced extension assemblies: re
 
 ### Pattern 1: IPlugin Contract
 
-```csharp{title="Pattern 1: IPlugin Contract" description="Pattern 1: IPlugin Contract" category="Extensibility" difficulty="BEGINNER" tags=["Extending", "Extensibility", "Pattern", "IPlugin"]}
+```csharp{title="Pattern 1: IPlugin Contract" description="Pattern 1: IPlugin Contract" category="Extensibility" difficulty="BEGINNER" tags=["Extending", "Extensibility", "Pattern", "IPlugin"] unverified="user extension example — custom IWhizbangPlugin contract, not a Whizbang type"}
 public interface IWhizbangPlugin {
   string Name { get; }
   Version Version { get; }
@@ -83,7 +83,7 @@ public interface IWhizbangPlugin {
 
 ### Pattern 2: Plugin Loader
 
-```csharp{title="Pattern 2: Plugin Loader" description="Pattern 2: Plugin Loader" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Pattern", "Plugin"]}
+```csharp{title="Pattern 2: Plugin Loader" description="Pattern 2: Plugin Loader" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Pattern", "Plugin"] unverified="user extension example — reflection-based plugin loader, not AOT-compatible"}
 using System.Reflection;
 using System.Runtime.Loader;
 
@@ -114,7 +114,7 @@ public class PluginLoader {
 
 ### Pattern 3: Receptor Plugin
 
-```csharp{title="Pattern 3: Receptor Plugin" description="Pattern 3: Receptor Plugin" category="Extensibility" difficulty="BEGINNER" tags=["Extending", "Extensibility", "Pattern", "Receptor"]}
+```csharp{title="Pattern 3: Receptor Plugin" description="Pattern 3: Receptor Plugin" category="Extensibility" difficulty="BEGINNER" tags=["Extending", "Extensibility", "Pattern", "Receptor"] unverified="user extension example — plugin registering a receptor (not fired without compile-time discovery)"}
 // Plugin assembly
 public class CustomReceptorPlugin : IWhizbangPlugin {
   public string Name => "CustomReceptors";
@@ -140,7 +140,7 @@ Receptor discovery in Whizbang is **compile-time** (source generators build the 
 
 ### Pattern 4: Reloadable Plugins
 
-```csharp{title="Pattern 4: Reloadable Plugins" description="Pattern 4: Reloadable Plugins" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Pattern", "Reloadable"]}
+```csharp{title="Pattern 4: Reloadable Plugins" description="Pattern 4: Reloadable Plugins" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Pattern", "Reloadable"] unverified="user extension example — reflection-based hot-reload, not AOT-compatible"}
 public class HotReloadPluginManager {
   private readonly Dictionary<string, AssemblyLoadContext> _contexts = [];
   private FileSystemWatcher? _watcher;

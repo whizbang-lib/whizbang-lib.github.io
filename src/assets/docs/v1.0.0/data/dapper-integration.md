@@ -56,7 +56,7 @@ Whizbang uses the **`IDbConnectionFactory`** pattern (defined in `Whizbang.Core.
 
 ### Interface
 
-```csharp{title="Interface" description="Interface" category="Implementation" difficulty="BEGINNER" tags=["Data", "Interface"]}
+```csharp{title="Interface" description="Interface" category="Implementation" difficulty="BEGINNER" tags=["Data", "Interface"] unverified="IDbConnectionFactory contract definition — a single-method abstraction with no behavior to verify directly"}
 namespace Whizbang.Core.Data;
 
 public interface IDbConnectionFactory {
@@ -74,7 +74,7 @@ public interface IDbConnectionFactory {
 
 The PostgreSQL factory opens the connection before returning it, ensuring proper async initialization:
 
-```csharp{title="PostgreSQL Implementation" description="PostgreSQL Implementation" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "PostgreSQL", "Implementation"]}
+```csharp{title="PostgreSQL Implementation" description="PostgreSQL Implementation" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "PostgreSQL", "Implementation"] unverified="Npgsql connection-factory setup — opens a live connection, exercised only through integration fixtures, not a unit-tested surface"}
 public class PostgresConnectionFactory : IDbConnectionFactory {
     private readonly string _connectionString;
 
@@ -93,7 +93,7 @@ public class PostgresConnectionFactory : IDbConnectionFactory {
 
 ### Registration
 
-```csharp{title="Registration" description="Registration" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Registration"]}
+```csharp{title="Registration" description="Registration" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Registration"] tests=["ServiceCollectionExtensionsTests.AddWhizbangPostgres_InitializeSchemaFalse_DoesNotInitializeAsync", "ServiceCollectionExtensionsTests.AddWhizbangPostgres_InitializeSchemaTrue_NoPerspective_InitializesInfraOnlyAsync"]}
 // appsettings.json
 {
   "ConnectionStrings": {
@@ -119,7 +119,7 @@ builder.Services.AddSingleton<IDbConnectionFactory>(
 
 ### Query Single Row
 
-```csharp{title="Query Single Row" description="Query Single Row" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Query", "Single", "Row"]}
+```csharp{title="Query Single Row" description="Query Single Row" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Query", "Single", "Row"] unverified="consumer Dapper QuerySingleOrDefaultAsync example against a user table — outside Whizbang's tested surface"}
 public class OrderQueries {
     private readonly IDbConnectionFactory _db;
 
@@ -162,7 +162,7 @@ public class OrderQueries {
 
 ### Query Multiple Rows
 
-```csharp{title="Query Multiple Rows" description="Query Multiple Rows" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Query", "Multiple", "Rows"]}
+```csharp{title="Query Multiple Rows" description="Query Multiple Rows" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Query", "Multiple", "Rows"] unverified="consumer Dapper QueryAsync example against a user table — outside Whizbang's tested surface"}
 public async Task<OrderSummary[]> GetOrdersByCustomerAsync(
     Guid customerId,
     CancellationToken ct = default) {
@@ -194,7 +194,7 @@ public async Task<OrderSummary[]> GetOrdersByCustomerAsync(
 
 ### Execute Non-Query
 
-```csharp{title="Execute Non-Query" description="Execute Non-Query" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Execute", "Non-Query"]}
+```csharp{title="Execute Non-Query" description="Execute Non-Query" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Execute", "Non-Query"] unverified="consumer Dapper ExecuteAsync INSERT example against a user table — outside Whizbang's tested surface"}
 public class OrderSummaryWriter {
     private readonly IDbConnectionFactory _db;
 
@@ -231,7 +231,7 @@ public class OrderSummaryWriter {
 
 ### JSONB Columns
 
-```csharp{title="JSONB Columns" description="JSONB Columns" category="Implementation" difficulty="ADVANCED" tags=["Data", "C#", "JSONB", "Columns"]}
+```csharp{title="JSONB Columns" description="JSONB Columns" category="Implementation" difficulty="ADVANCED" tags=["Data", "C#", "JSONB", "Columns"] unverified="consumer Dapper jsonb query/update example — PostgreSQL/Dapper behavior, outside Whizbang's tested surface"}
 // Query JSONB column
 public async Task<Product[]> GetProductsByCategoryAsync(
     string category,
@@ -286,7 +286,7 @@ public async Task UpdateProductMetadataAsync(
 
 ### Array Parameters
 
-```csharp{title="Array Parameters" description="Array Parameters" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Array", "Parameters"]}
+```csharp{title="Array Parameters" description="Array Parameters" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Array", "Parameters"] unverified="consumer Dapper array-parameter (ANY) example — Dapper/Npgsql behavior, outside Whizbang's tested surface"}
 public async Task<Product[]> GetProductsByIdsAsync(
     Guid[] productIds,
     CancellationToken ct = default) {
@@ -310,7 +310,7 @@ public async Task<Product[]> GetProductsByIdsAsync(
 
 ### UPSERT (ON CONFLICT)
 
-```csharp{title="UPSERT (ON CONFLICT)" description="UPSERT (ON CONFLICT)" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "UPSERT", "CONFLICT"]}
+```csharp{title="UPSERT (ON CONFLICT)" description="UPSERT (ON CONFLICT)" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "UPSERT", "CONFLICT"] unverified="consumer Dapper ON CONFLICT upsert example — PostgreSQL/Dapper behavior, outside Whizbang's tested surface"}
 public async Task UpsertInventoryAsync(
     Guid productId,
     int quantity,
@@ -339,7 +339,7 @@ public async Task UpsertInventoryAsync(
 
 ### Basic Transaction
 
-```csharp{title="Basic Transaction" description="Basic Transaction" category="Implementation" difficulty="BEGINNER" tags=["Data", "C#", "Transaction"]}
+```csharp{title="Basic Transaction" description="Basic Transaction" category="Implementation" difficulty="BEGINNER" tags=["Data", "C#", "Transaction"] unverified="consumer Dapper ADO.NET transaction example — outside Whizbang's tested surface"}
 public async Task CreateOrderWithItemsAsync(
     Order order,
     OrderItem[] items,
@@ -383,7 +383,7 @@ public async Task CreateOrderWithItemsAsync(
 
 ### Transaction Scope (Distributed Transactions)
 
-```csharp{title="Transaction Scope (Distributed Transactions)" description="Transaction Scope (Distributed Transactions)" category="Implementation" difficulty="BEGINNER" tags=["Data", "C#", "Transaction", "Scope", "Distributed"]}
+```csharp{title="Transaction Scope (Distributed Transactions)" description="Transaction Scope (Distributed Transactions)" category="Implementation" difficulty="BEGINNER" tags=["Data", "C#", "Transaction", "Scope", "Distributed"] unverified="consumer System.Transactions TransactionScope example — outside Whizbang's tested surface"}
 using var scope = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled);
 
 using var conn = await _db.CreateConnectionAsync(ct);
@@ -401,7 +401,7 @@ scope.Complete();  // Commit
 
 ### Custom Type Mapping
 
-```csharp{title="Custom Type Mapping" description="Custom Type Mapping" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Custom", "Type", "Mapping"]}
+```csharp{title="Custom Type Mapping" description="Custom Type Mapping" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Custom", "Type", "Mapping"] unverified="Dapper SqlMapper.AddTypeHandler example — Dapper API, outside Whizbang's tested surface"}
 // Map custom types
 SqlMapper.AddTypeHandler(new GuidTypeHandler());
 SqlMapper.AddTypeHandler(new DateTimeOffsetTypeHandler());
@@ -419,7 +419,7 @@ public class GuidTypeHandler : SqlMapper.TypeHandler<Guid> {
 
 ### Column Name Mapping
 
-```csharp{title="Column Name Mapping" description="Column Name Mapping" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Column", "Name", "Mapping"]}
+```csharp{title="Column Name Mapping" description="Column Name Mapping" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Column", "Name", "Mapping"] unverified="Dapper column-alias mapping example — Dapper API, outside Whizbang's tested surface"}
 // Explicit column mapping
 public async Task<OrderSummary?> GetOrderAsync(Guid orderId, CancellationToken ct = default) {
     using var conn = await _db.CreateConnectionAsync(ct);
@@ -448,7 +448,7 @@ public async Task<OrderSummary?> GetOrderAsync(Guid orderId, CancellationToken c
 
 ### Buffered vs Unbuffered
 
-```csharp{title="Buffered vs Unbuffered" description="Buffered vs Unbuffered" category="Implementation" difficulty="BEGINNER" tags=["Data", "C#", "Buffered", "Unbuffered"]}
+```csharp{title="Buffered vs Unbuffered" description="Buffered vs Unbuffered" category="Implementation" difficulty="BEGINNER" tags=["Data", "C#", "Buffered", "Unbuffered"] unverified="Dapper buffered/unbuffered query example — Dapper API, outside Whizbang's tested surface"}
 // ✅ Buffered (default) - loads all rows into memory
 var orders = await conn.QueryAsync<OrderSummary>(sql);
 
@@ -461,7 +461,7 @@ await foreach (var order in dbConn.QueryUnbufferedAsync<OrderSummary>(sql)) {
 
 ### Batch Operations
 
-```csharp{title="Batch Operations" description="Batch Operations" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Batch", "Operations"]}
+```csharp{title="Batch Operations" description="Batch Operations" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Batch", "Operations"] unverified="Dapper batch-execute vs per-item loop example — Dapper API, outside Whizbang's tested surface"}
 // ✅ Batch insert - pass a collection and Dapper executes the statement once per item
 await conn.ExecuteAsync(
     "INSERT INTO order_items (order_item_id, order_id, product_id, quantity) VALUES (@OrderItemId, @OrderId, @ProductId, @Quantity)",
@@ -496,7 +496,7 @@ Host=localhost;Database=whizbang;Username=postgres;Password=pass;Minimum Pool Si
 
 ### Unit Tests with Mock
 
-```csharp{title="Unit Tests with Mock" description="Unit Tests with Mock" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Unit", "Tests", "Mock"]}
+```csharp{title="Unit Tests with Mock" description="Unit Tests with Mock" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Unit", "Tests", "Mock"] unverified="consumer test-authoring scaffolding for a user lens — not a Whizbang test"}
 public class OrderLensTests {
     [Test]
     public async Task GetOrderAsync_ExistingOrder_ReturnsOrderAsync() {
@@ -523,7 +523,7 @@ public class OrderLensTests {
 
 ### Integration Tests with PostgreSQL
 
-```csharp{title="Integration Tests with PostgreSQL" description="Integration Tests with PostgreSQL" category="Implementation" difficulty="ADVANCED" tags=["Data", "C#", "Integration", "Tests", "PostgreSQL"]}
+```csharp{title="Integration Tests with PostgreSQL" description="Integration Tests with PostgreSQL" category="Implementation" difficulty="ADVANCED" tags=["Data", "C#", "Integration", "Tests", "PostgreSQL"] unverified="consumer integration-test scaffolding for a user lens — not a Whizbang test"}
 public class OrderLensIntegrationTests {
     private IDbConnectionFactory _db;
     private OrderLens _lens;
@@ -602,7 +602,7 @@ public class OrderLensIntegrationTests {
 Whizbang perspectives do not write SQL - they implement `IPerspectiveFor<TModel, TEvent...>` with pure `Apply` methods and the framework persists the model. Use this pattern only for **custom** projections maintained outside the perspective pipeline.
 :::
 
-```csharp{title="Pattern 1: Idempotent Projection Writer" description="Pattern 1: Idempotent Projection Writer" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Pattern", "Projection", "Update"]}
+```csharp{title="Pattern 1: Idempotent Projection Writer" description="Pattern 1: Idempotent Projection Writer" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Pattern", "Projection", "Update"] unverified="consumer custom-projection Dapper upsert example — outside the Whizbang perspective pipeline and its tested surface"}
 public class OrderSummaryWriter {
     private readonly IDbConnectionFactory _db;
 
@@ -632,7 +632,7 @@ public class OrderSummaryWriter {
 
 ### Pattern 2: Lens Query
 
-```csharp{title="Pattern 2: Lens Query" description="Pattern 2: Lens Query" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Pattern", "Lens", "Query"]}
+```csharp{title="Pattern 2: Lens Query" description="Pattern 2: Lens Query" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Pattern", "Lens", "Query"] unverified="consumer Dapper lens-query example against a user table — outside Whizbang's tested surface"}
 public class OrderLens : ILensQuery {
     private readonly IDbConnectionFactory _db;
 
@@ -661,7 +661,7 @@ public class OrderLens : ILensQuery {
 
 ### Pattern 3: Aggregation
 
-```csharp{title="Pattern 3: Aggregation" description="Pattern 3: Aggregation" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Pattern", "Aggregation"]}
+```csharp{title="Pattern 3: Aggregation" description="Pattern 3: Aggregation" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Pattern", "Aggregation"] unverified="consumer Dapper aggregation-query example against a user table — outside Whizbang's tested surface"}
 public async Task<OrderStatistics> GetOrderStatisticsAsync(
     Guid customerId,
     CancellationToken ct = default) {

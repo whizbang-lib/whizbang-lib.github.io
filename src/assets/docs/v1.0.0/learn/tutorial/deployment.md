@@ -30,7 +30,7 @@ This is **Part 9** (Final) of the ECommerce Tutorial. Complete [Testing Strategy
 
 ## Deployment Architecture
 
-```mermaid
+```mermaid{caption="Production deployment topology — AKS runs the Order/Customer services and per-domain workers behind an nginx ingress, backed by Azure-managed Service Bus, PostgreSQL, and Monitor."}
 flowchart TD
     subgraph AKS["Azure Kubernetes Service (AKS)"]
         Ingress["Ingress Controller (nginx)<br/>- SSL/TLS Termination<br/>- Load Balancing"]
@@ -582,7 +582,7 @@ jobs:
 
 The sample's `ECommerce.ServiceDefaults` project (wired by `builder.AddServiceDefaults()`) already configures OpenTelemetry with the modern `AddOpenTelemetry()` builder:
 
-```csharp{title="Application Insights Integration" description="Application Insights Integration" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Application", "Insights"]}
+```csharp{title="Application Insights Integration" description="Application Insights Integration" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Application", "Insights"] unverified="host/DI wiring — not exercised by a test"}
 // From ECommerce.ServiceDefaults/Extensions.cs (applied via builder.AddServiceDefaults())
 builder.Services.AddOpenTelemetry()
   .WithMetrics(metrics => {
@@ -623,7 +623,7 @@ spec:
 
 **Receptors/CreateOrderReceptor.cs**:
 
-```csharp{title="Custom Metrics" description="**Receptors/CreateOrderReceptor." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Custom", "Metrics"]}
+```csharp{title="Custom Metrics" description="**Receptors/CreateOrderReceptor." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Custom", "Metrics"] unverified="observability instrumentation — the shown metric emission is not asserted by any test"}
 private static readonly Meter _meter = new("ECommerce.OrderService");
 private static readonly Counter<long> _ordersCreated = _meter.CreateCounter<long>(
   "orders_created_total",

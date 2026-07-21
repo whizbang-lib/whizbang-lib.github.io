@@ -74,7 +74,7 @@ The check is **skipped** for perspective-scoped stages (listed above) so that N-
 
 Some receptors are legitimately safe to re-invoke — dependent read-model updaters, derived-perspective maintainers, and anything idempotent by design. Decorate with `[ReceptorIdempotent]` to bypass the guardrail:
 
-```csharp{title="Idempotent Receptor" description="Opt out of the exactly-once guardrail when the receptor is safe to re-fire" category="Architecture" difficulty="INTERMEDIATE" tags=["Receptors", "Idempotency"]}
+```csharp{title="Idempotent Receptor" description="Opt out of the exactly-once guardrail when the receptor is safe to re-fire" category="Architecture" difficulty="INTERMEDIATE" tags=["Receptors", "Idempotency"] unverified="illustrative consumer receptor showing the ReceptorIdempotent opt-out — not exercised by this page's guardrail and dedup-store tests"}
 [ReceptorIdempotent]
 [FireAt(LifecycleStage.PostPerspectiveInline)]
 public class DependentReadModelUpdater : IReceptor<OrderCreatedEvent> {
@@ -121,7 +121,7 @@ Records become durable when the envelope next hits a durable write (outbox row, 
 
 The default implementation is `EnvelopeReceptorDedupStore` (registered via `TryAddSingleton` in `AddWhizbangReceptorRegistry`). A consumer can replace it with a custom implementation — e.g., a database-backed store that writes to a `wh_receptor_invocations(message_id, receptor_id)` composite-PK table for stronger cross-process guarantees. Register a replacement before calling `AddWhizbang()` and the default registration is skipped.
 
-```csharp{title="Custom IReceptorDedupStore" description="Replace the default envelope-backed dedup store" category="Architecture" difficulty="ADVANCED" tags=["Receptors", "Guardrails", "DI"]}
+```csharp{title="Custom IReceptorDedupStore" description="Replace the default envelope-backed dedup store" category="Architecture" difficulty="ADVANCED" tags=["Receptors", "Guardrails", "DI"] unverified="illustrative DI registration of a user-provided custom store — configuration, not a framework unit under test"}
 services.AddSingleton<IReceptorDedupStore, MyDatabaseReceptorDedupStore>();
 services.AddWhizbang()
   .WithEFCore<MyDbContext>()

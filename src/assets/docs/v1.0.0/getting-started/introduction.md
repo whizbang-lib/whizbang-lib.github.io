@@ -41,7 +41,7 @@ Whizbang provides a complete foundation for building modern, scalable applicatio
 
 Every feature in Whizbang is built without runtime reflection:
 
-```csharp{title="Zero Reflection" description="Every feature in Whizbang is built without runtime reflection:" category="Configuration" difficulty="INTERMEDIATE" tags=["Getting-started", "C#", "Zero", "Reflection"]}
+```csharp{title="Zero Reflection" description="Every feature in Whizbang is built without runtime reflection:" category="Configuration" difficulty="INTERMEDIATE" tags=["Getting-started", "C#", "Zero", "Reflection"] tests=["ReceptorTests.Receive_ValidCommand_ShouldReturnTypeSafeResponseAsync"]}
 // Source generators discover this at compile time
 public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
     public async ValueTask<OrderCreated> HandleAsync(
@@ -67,7 +67,7 @@ public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
 
 Whizbang enforces type safety at compile time:
 
-```csharp{title="Type-Safe Messaging" description="Whizbang enforces type safety at compile time:" category="Configuration" difficulty="BEGINNER" tags=["Getting-Started", "Type-Safe", "Messaging"]}
+```csharp{title="Type-Safe Messaging" description="Whizbang enforces type safety at compile time:" category="Configuration" difficulty="BEGINNER" tags=["Getting-Started", "Type-Safe", "Messaging"] tests=["DispatcherTests.LocalInvoke_WithValidMessage_ShouldReturnBusinessResultAsync"]}
 // Compiler knows CreateOrder → OrderCreated
 var result = await dispatcher.LocalInvokeAsync<CreateOrder, OrderCreated>(command);
 
@@ -83,7 +83,7 @@ Built around three core patterns:
 2. **Perspectives**: Event listeners that maintain read models
 3. **Lenses**: Query interfaces for optimized data access
 
-```csharp{title="Event-Driven Architecture" description="Event-Driven Architecture" category="Configuration" difficulty="BEGINNER" tags=["Getting-Started", "Event-Driven", "Architecture"]}
+```csharp{title="Event-Driven Architecture" description="Event-Driven Architecture" category="Configuration" difficulty="BEGINNER" tags=["Getting-Started", "Event-Driven", "Architecture"] unverified="conceptual — empty-bodied pattern signatures only, no behavior to assert; each pattern is verified in its own section below"}
 // Receptor: Receives command, produces event
 public class OrderReceptor : IReceptor<CreateOrder, OrderCreated> { }
 
@@ -100,7 +100,7 @@ public class OrderQueryService(ILensQuery<OrderSummary> lens) { }
 
 Central message router with three dispatch patterns:
 
-```csharp{title="Dispatcher" description="Central message router with three dispatch patterns:" category="Configuration" difficulty="BEGINNER" tags=["Getting-Started", "Dispatcher"]}
+```csharp{title="Dispatcher" description="Central message router with three dispatch patterns:" category="Configuration" difficulty="BEGINNER" tags=["Getting-Started", "Dispatcher"] tests=["DispatcherTests.Send_WithValidMessage_ShouldReturnDeliveryReceiptAsync", "DispatcherTests.LocalInvoke_WithValidMessage_ShouldReturnBusinessResultAsync", "DispatcherTests.Publish_WithEvent_ShouldNotifyAllHandlersAsync"]}
 // SendAsync: Command dispatch with delivery receipt (can work over wire)
 var receipt = await dispatcher.SendAsync(new CreateOrder(/* ... */));
 
@@ -115,7 +115,7 @@ await dispatcher.PublishAsync(@event);
 
 Stateless message handlers:
 
-```csharp{title="Receptors" description="Stateless message handlers:" category="Configuration" difficulty="INTERMEDIATE" tags=["Getting-Started", "Receptors"]}
+```csharp{title="Receptors" description="Stateless message handlers:" category="Configuration" difficulty="INTERMEDIATE" tags=["Getting-Started", "Receptors"] tests=["ReceptorTests.Receive_ValidCommand_ShouldReturnTypeSafeResponseAsync", "ReceptorTests.Receive_EmptyItems_ShouldThrowExceptionAsync", "ReceptorTests.Receive_CalculatesTotal_ShouldSumItemPricesAsync"]}
 public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
     public async ValueTask<OrderCreated> HandleAsync(
         CreateOrder message,
@@ -142,7 +142,7 @@ public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
 
 Event-driven read model updates via **pure Apply functions** — no I/O, no side effects; the framework handles persistence:
 
-```csharp{title="Perspectives" description="Event-driven read model updates:" category="Configuration" difficulty="INTERMEDIATE" tags=["Getting-Started", "Perspectives"]}
+```csharp{title="Perspectives" description="Event-driven read model updates:" category="Configuration" difficulty="INTERMEDIATE" tags=["Getting-Started", "Perspectives"] tests=["IPerspectiveForTests.Perspective_ImplementingIPerspectiveFor_HasApplyMethodAsync", "IPerspectiveForTests.Perspective_ImplementingIPerspectiveFor_ApplyIsPureFunctionAsync", "IPerspectiveForTests.Perspective_ApplySignature_ReturnsModelNotTaskAsync"]}
 public sealed record OrderSummary {
     [StreamId]
     public Guid OrderId { get; init; }
@@ -168,7 +168,7 @@ public class OrderSummaryPerspective : IPerspectiveFor<OrderSummary, OrderCreate
 
 Query-optimized read access. `ILensQuery<TModel>` is registered automatically for every discovered perspective model:
 
-```csharp{title="Lenses" description="Query-optimized read repositories:" category="Configuration" difficulty="INTERMEDIATE" tags=["Getting-Started", "Lenses"]}
+```csharp{title="Lenses" description="Query-optimized read repositories:" category="Configuration" difficulty="INTERMEDIATE" tags=["Getting-Started", "Lenses"] unverified="ILensQuery — out of scope for this page's test classes (Dispatcher/Receptor/IPerspectiveFor); verified in the Lenses fundamentals docs"}
 public class OrderQueryService(ILensQuery<OrderSummary> lens) {
     public Task<OrderSummary?> GetOrderAsync(Guid orderId, CancellationToken ct = default) =>
         lens.DefaultScope.GetByIdAsync(orderId, ct);

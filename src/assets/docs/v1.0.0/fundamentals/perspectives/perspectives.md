@@ -54,7 +54,7 @@ The single-stream perspective interfaces — `IPerspectiveFor<TModel, TEvent…>
 `IGlobalPerspectiveFor` (multi-stream, partition-keyed) and `ITemporalPerspectiveFor` (append-only, `Transform`-based) are **separate** interface families with their own marker bases — `IGlobalPerspectiveFor<TModel, TPartitionKey>` and `ITemporalPerspectiveFor<TModel>` — and do **not** inherit `IPerspectiveBase`. See [Multi-Stream Perspectives](multi-stream.md), [Temporal Perspectives](temporal.md), and [Perspectives with Actions](perspectives-with-actions.md).
 :::
 
-```csharp{title="IPerspectiveFor Interface" description="IPerspectiveFor Interface" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "IPerspectiveFor", "Interface"]}
+```csharp{title="IPerspectiveFor Interface" description="IPerspectiveFor Interface" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "IPerspectiveFor", "Interface"] tests=["IPerspectiveForTests.Perspective_ImplementingIPerspectiveFor_HasApplyMethodAsync", "IPerspectiveForTests.Perspective_ApplySignature_ReturnsModelNotTaskAsync"]}
 namespace Whizbang.Core.Perspectives;
 
 public interface IPerspectiveFor<TModel, TEvent>
@@ -79,7 +79,7 @@ public interface IPerspectiveFor<TModel, TEvent>
 
 Use `[MustExist]` on an `Apply` method to indicate the model must already exist (i.e., it was created by a prior event). The generated runner will throw `InvalidOperationException` if the current model is `null` when that method is called:
 
-```csharp{title="MustExist Attribute" description="Require the model to already exist before applying an event" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "MustExist", "Attribute"]}
+```csharp{title="MustExist Attribute" description="Require the model to already exist before applying an event" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "MustExist", "Attribute"] tests=["MustExistAttributeTests.MustExistAttribute_TargetsMethodsOnlyAsync"]}
 public class OrderPerspective :
     IPerspectiveFor<OrderView, OrderCreated>,
     IPerspectiveFor<OrderView, OrderShipped> {
@@ -101,7 +101,7 @@ public class OrderPerspective :
 
 In multi-DbContext scenarios, use `[WhizbangPerspective("key")]` to route a perspective to specific DbContexts. Without this attribute, perspectives match the default DbContext only:
 
-```csharp{title="WhizbangPerspective Attribute" description="Route perspectives to specific DbContexts in multi-context scenarios" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "WhizbangPerspective", "Attribute", "Multi-DbContext"]}
+```csharp{title="WhizbangPerspective Attribute" description="Route perspectives to specific DbContexts in multi-context scenarios" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "WhizbangPerspective", "Attribute", "Multi-DbContext"] tests=["WhizbangPerspectiveAttributeTests.Constructor_WithSingleKey_ShouldSetKeyAsync", "WhizbangPerspectiveAttributeTests.Constructor_WithMultipleKeys_ShouldSetAllKeysAsync"]}
 // Only included in DbContexts registered with the "catalog" key
 [WhizbangPerspective("catalog")]
 public class ProductPerspective : IPerspectiveFor<ProductModel, ProductCreatedEvent> {
@@ -130,7 +130,7 @@ The `[StreamId]` attribute marks the property that identifies the stream/aggrega
 - **Model types**: Identifies which stream the model represents
 
 **Example**:
-```csharp{title="StreamId Attribute" description="StreamId Attribute" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "StreamId", "Attribute"]}
+```csharp{title="StreamId Attribute" description="StreamId Attribute" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "StreamId", "Attribute"] tests=["StreamIdAttributeTests.StreamIdAttribute_AttributeUsage_AllowsPropertyTargetAsync", "StreamIdAttributeTests.StreamIdAttribute_AttributeUsage_DoesNotAllowMultipleAsync"]}
 using Whizbang.Core;
 
 // Event with StreamId
@@ -168,7 +168,7 @@ public record ProductDto {
 
 ## Basic Example
 
-```csharp{title="Basic Example" description="Basic Example" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Perspectives", "Basic", "Example"]}
+```csharp{title="Basic Example" description="Basic Example" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Perspectives", "Basic", "Example"] tests=["IPerspectiveForTests.Perspective_ImplementingIPerspectiveFor_HasApplyMethodAsync", "IPerspectiveForTests.Perspective_ImplementingIPerspectiveFor_ApplyIsPureFunctionAsync"]}
 using Whizbang.Core;
 using Whizbang.Core.Perspectives;
 
@@ -222,7 +222,7 @@ Whizbang implements CQRS with:
 - **Write side**: Commands → Receptors → Events → Event Store
 - **Read side**: PerspectiveWorker → Runners → Apply() → Read Models
 
-```mermaid
+```mermaid{caption="CQRS in Whizbang — commands run through receptors to the event store on the write side, then the PerspectiveWorker replays stored events through generated runners into denormalized read models that lenses query on the read side."}
 flowchart TB
     subgraph WriteSide["WRITE SIDE"]
         Command["CreateProduct Command"]
@@ -279,7 +279,7 @@ Whizbang automatically generates `IPerspectiveRunner` implementations for each p
 5. Runner saves model + checkpoint **atomically** (unit of work pattern)
 
 **Generated code example**:
-```csharp{title="PerspectiveRunner Architecture" description="Generated code example:" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Perspectives", "PerspectiveRunner", "Architecture"]}
+```csharp{title="PerspectiveRunner Architecture" description="Generated code example:" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Perspectives", "PerspectiveRunner", "Architecture"] unverified="illustrative generated runner — actual runner generation is covered by the source-generator tests"}
 // Auto-generated by Whizbang.Generators
 internal sealed class ProductCatalogPerspectiveRunner : IPerspectiveRunner {
     private readonly IServiceProvider _serviceProvider;
@@ -351,7 +351,7 @@ Perspectives use **pure functions** for event application:
 
 **Example - Pure vs. Impure**:
 
-```csharp{title="Pure Function Pattern" description="**Example - Pure vs." category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Pure", "Function"]}
+```csharp{title="Pure Function Pattern" description="**Example - Pure vs." category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Pure", "Function"] tests=["IPerspectiveForTests.Perspective_ImplementingIPerspectiveFor_ApplyIsPureFunctionAsync"]}
 // ❌ IMPURE: Async I/O, side effects
 public class OldPerspective : IPerspectiveOf<ProductCreatedEvent> {
     private readonly IDbConnectionFactory _db;
@@ -411,7 +411,7 @@ folded during replay and must be deterministic.
 
 ### WHIZ100 — Apply must be synchronous (Error)
 
-```csharp{title="WHIZ100" description="Apply must return the model, not a Task" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Purity", "WHIZ100"]}
+```csharp{title="WHIZ100" description="Apply must return the model, not a Task" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Purity", "WHIZ100"] tests=["PerspectivePurityAnalyzerTests.Analyzer_AsyncApplyMethod_ReportsWHIZ100ErrorAsync"]}
 // ❌ Error WHIZ100 — returns Task
 public Task<ProductDto> Apply(ProductDto current, ProductCreatedEvent @event) {
     return Task.FromResult(current);
@@ -483,7 +483,7 @@ public ProductDto Apply(ProductDto current, ProductCreatedEvent @event) {
 The analyzer warns on member access of `Now`/`UtcNow` on `DateTime` or
 `DateTimeOffset`.
 
-```csharp{title="WHIZ104" description="Use event timestamps instead of wall-clock time" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Purity", "WHIZ104"]}
+```csharp{title="WHIZ104" description="Use event timestamps instead of wall-clock time" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Purity", "WHIZ104"] tests=["PerspectivePurityAnalyzerTests.Analyzer_DateTimeUtcNowUsage_ReportsWHIZ104WarningAsync"]}
 // ⚠️ Warning WHIZ104 — non-deterministic
 public ProductDto Apply(ProductDto current, ProductUpdatedEvent @event) =>
     current with { UpdatedAt = DateTime.UtcNow };
@@ -503,7 +503,7 @@ analyzer warns when a constructor parameter's type (or one of its
 interfaces) is not marked `[PureService]`. Value types, built-in types,
 and enums are ignored.
 
-```csharp{title="WHIZ105" description="Perspectives may only inject services marked [PureService]" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Purity", "WHIZ105", "PureService"]}
+```csharp{title="WHIZ105" description="Perspectives may only inject services marked [PureService]" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Purity", "WHIZ105", "PureService"] tests=["PerspectivePurityAnalyzerTests.Analyzer_NonPureServiceInjection_ReportsWHIZ105WarningAsync"]}
 // ⚠️ Warning WHIZ105 — ILogger is not [PureService]
 public class OrderPerspective : IPerspectiveFor<OrderView, OrderCreated> {
     public OrderPerspective(ILogger<OrderPerspective> logger) { /* ... */ }
@@ -533,7 +533,7 @@ is replay-safe and correctly reports **no** WHIZ106.
 
 A single perspective can handle **multiple event types**:
 
-```csharp{title="Multiple Event Types" description="A single perspective can handle multiple event types:" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Perspectives", "Multiple", "Event"]}
+```csharp{title="Multiple Event Types" description="A single perspective can handle multiple event types:" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Perspectives", "Multiple", "Event"] tests=["IPerspectiveForTests.Perspective_ImplementingMultipleEventTypes_HasApplyForEachAsync"]}
 public class ProductCatalogPerspective :
     IPerspectiveFor<ProductDto, ProductCreatedEvent>,
     IPerspectiveFor<ProductDto, ProductUpdatedEvent>,
@@ -589,7 +589,7 @@ public class ProductCatalogPerspective :
 
 One event can update **multiple read models**:
 
-```csharp{title="Multiple Perspectives per Event" description="One event can update multiple read models:" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Perspectives", "C#", "Multiple"]}
+```csharp{title="Multiple Perspectives per Event" description="One event can update multiple read models:" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Perspectives", "C#", "Multiple"] unverified="domain illustration of the one-event-to-many-read-models pattern, not an isolated library API"}
 // Event published once
 public record OrderCreatedEvent : IEvent {
     [StreamId]
@@ -692,7 +692,7 @@ WHERE product_id = '...';
 
 Different perspectives for different use cases:
 
-```csharp{title="Multiple Read Models" description="Different perspectives for different use cases:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Multiple", "Read"]}
+```csharp{title="Multiple Read Models" description="Different perspectives for different use cases:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Multiple", "Read"] unverified="illustrative read-model type definitions — no behavior to assert"}
 // Read Model 1: Product catalog (for product listing UI)
 public record ProductCatalogDto {
     [StreamId]
@@ -734,7 +734,7 @@ Each read model has its own **perspective** and **table schema** optimized for i
 ### Registration
 
 **Manual**:
-```csharp{title="Registration" description="Registration" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Registration"]}
+```csharp{title="Registration" description="Registration" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Registration"] unverified="DI registration — configuration, not a behavior test"}
 // Register perspective (transient recommended)
 builder.Services.AddTransient<ProductCatalogPerspective>();
 
@@ -743,7 +743,7 @@ builder.Services.AddScoped<IPerspectiveStore<ProductDto>, EFCorePostgresPerspect
 ```
 
 **Auto-Discovery** (with Whizbang.Generators):
-```csharp{title="Registration (2)" description="Auto-Discovery (with Whizbang." category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Registration"]}
+```csharp{title="Registration (2)" description="Auto-Discovery (with Whizbang." category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Registration"] unverified="generated AddWhizbangPerspectives() registration — configuration snippet"}
 // Discovers all IPerspectiveFor implementations and registers runners
 builder.Services.AddWhizbangPerspectives();  // Generated by source generator
 ```
@@ -761,7 +761,7 @@ builder.Services.AddWhizbangPerspectives();  // Generated by source generator
 **Runners**: `Transient` (created per RunAsync call)
 - Stateless (no shared state between runs)
 
-```csharp{title="Lifetime" description="Runners: Transient (created per RunAsync call) - Stateless (no shared state between runs)" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Lifetime"]}
+```csharp{title="Lifetime" description="Runners: Transient (created per RunAsync call) - Stateless (no shared state between runs)" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Lifetime"] unverified="DI lifetime registration — configuration, not a behavior test"}
 builder.Services.AddTransient<ProductCatalogPerspective>();
 builder.Services.AddScoped<IPerspectiveStore<ProductDto>, EFCorePostgresPerspectiveStore<ProductDto>>();
 ```
@@ -772,7 +772,7 @@ builder.Services.AddScoped<IPerspectiveStore<ProductDto>, EFCorePostgresPerspect
 
 ### Unit Tests (Pure Functions)
 
-```csharp{title="Unit Tests (Pure Functions)" description="Unit Tests (Pure Functions)" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Perspectives", "Unit", "Tests"]}
+```csharp{title="Unit Tests (Pure Functions)" description="Unit Tests (Pure Functions)" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Perspectives", "Unit", "Tests"] tests=["IPerspectiveForTests.Perspective_ImplementingIPerspectiveFor_HasApplyMethodAsync", "IPerspectiveForTests.Perspective_ImplementingIPerspectiveFor_ApplyIsPureFunctionAsync", "IPerspectiveForTests.Perspective_ImplementingMultipleEventTypes_HasApplyForEachAsync"]}
 public class ProductCatalogPerspectiveTests {
     [Test]
     public async Task Apply_ProductCreatedEvent_CreatesNewModelAsync() {
@@ -862,7 +862,7 @@ public class ProductCatalogPerspectiveTests {
 
 Perspectives can rebuild from event history (event replay):
 
-```csharp{title="Event Sourcing Integration" description="Perspectives can rebuild from event history (event replay):" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Perspectives", "Event", "Sourcing"]}
+```csharp{title="Event Sourcing Integration" description="Perspectives can rebuild from event history (event replay):" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Perspectives", "Event", "Sourcing"] unverified="illustrative PerspectiveWorker loop — worker runtime is covered by the Perspective Worker docs"}
 // Runner automatically handles event replay
 public class PerspectiveWorker : BackgroundService {
     protected override async Task ExecuteAsync(CancellationToken ct) {
@@ -904,7 +904,7 @@ public class PerspectiveWorker : BackgroundService {
 
 Whizbang provides `IPerspectiveRebuilder` with three rebuild modes:
 
-```csharp{title="Rebuild" description="Whizbang provides IPerspectiveRebuilder with three rebuild modes:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Rebuild"]}
+```csharp{title="Rebuild" description="Whizbang provides IPerspectiveRebuilder with three rebuild modes:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Rebuild"] unverified="IPerspectiveRebuilder API — verified in the Perspective Rebuild guide"}
 // Blue-green: zero-downtime rebuild (new table, replay, atomic swap)
 var result = await rebuilder.RebuildBlueGreenAsync("OrderPerspective");
 
@@ -919,7 +919,7 @@ var result = await rebuilder.RebuildStreamsAsync("OrderPerspective", [orderId1, 
 
 Trigger rebuilds across distributed services via system commands:
 
-```csharp{title="RebuildPerspectiveCommand" description="Trigger rebuilds across distributed services via system commands:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "RebuildPerspectiveCommand"]}
+```csharp{title="RebuildPerspectiveCommand" description="Trigger rebuilds across distributed services via system commands:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "RebuildPerspectiveCommand"] unverified="RebuildPerspectiveCommand dispatch — verified in the Perspective Rebuild guide"}
 // Rebuild specific perspectives with blue-green swap
 await dispatcher.SendAsync(new RebuildPerspectiveCommand(
     PerspectiveNames: ["ProductCatalogPerspective"],
@@ -952,7 +952,7 @@ For detailed rebuild operations, modes, system events, and status tracking, see 
 
 Since `Apply()` methods are pure functions with no I/O, they rarely throw exceptions. Common cases:
 
-```csharp{title="Pure Functions Don't Throw I/O Errors" description="Since Apply() methods are pure functions with no I/O, they rarely throw exceptions." category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Pure", "Functions"]}
+```csharp{title="Pure Functions Don't Throw I/O Errors" description="Since Apply() methods are pure functions with no I/O, they rarely throw exceptions." category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Pure", "Functions"] unverified="domain illustration of defensive null handling in a pure Apply, not an isolated library API"}
 public ProductDto Apply(ProductDto currentData, ProductUpdatedEvent @event) {
     // Defensive: handle null current data
     if (currentData == null) {
@@ -980,7 +980,7 @@ public ProductDto Apply(ProductDto currentData, ProductUpdatedEvent @event) {
 
 **Runners** handle I/O errors and implement retry logic:
 
-```csharp{title="Runner-Level Error Handling" description="Runners handle I/O errors and implement retry logic:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Runner-Level", "Error"]}
+```csharp{title="Runner-Level Error Handling" description="Runners handle I/O errors and implement retry logic:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Runner-Level", "Error"] unverified="illustrative generated runner error handling — not a runnable example"}
 // Generated runner handles errors
 public async Task<PerspectiveCheckpointCompletion> RunAsync(...) {
     try {

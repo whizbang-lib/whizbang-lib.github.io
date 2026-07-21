@@ -37,7 +37,7 @@ For advanced scenarios where LINQ extensions are insufficient, Whizbang provides
 
 Execute parameterized SQL queries with typed results:
 
-```csharp{title="ExecuteSqlAsync" description="Execute parameterized SQL queries with typed results:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "ExecuteSqlAsync"]}
+```csharp{title="ExecuteSqlAsync" description="Execute parameterized SQL queries with typed results:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "ExecuteSqlAsync"] tests=["LensQueryConnectionExtensionsTests.LensQueryConnectionExtensions_HasExecuteSqlAsyncMethodAsync", "LensQueryConnectionExtensionsTests.LensQueryConnectionExtensions_ExecuteSqlAsync_TakesFormattableStringAsync"]}
 var category = "electronics";
 var limit = 10;
 
@@ -49,7 +49,7 @@ var products = await lensQuery.ExecuteSqlAsync<Product, ProductSummary>(
 
 The `FormattableString` parameter ensures parameters are properly escaped:
 
-```csharp{title="SQL Injection Protection" description="The FormattableString parameter ensures parameters are properly escaped:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "SQL", "Injection"]}
+```csharp{title="SQL Injection Protection" description="The FormattableString parameter ensures parameters are properly escaped:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "SQL", "Injection"] tests=["LensQueryConnectionExtensionsTests.LensQueryConnectionExtensions_ExecuteSqlAsync_TakesFormattableStringAsync"]}
 // SAFE: Parameters are extracted and passed separately
 var results = await lensQuery.ExecuteSqlAsync<Order, OrderSummary>(
     $"SELECT id, total FROM orders WHERE status = {status}");
@@ -64,7 +64,7 @@ var results = await lensQuery.ExecuteSqlAsync<Order, OrderSummary>(
 
 Get the underlying connection without opening:
 
-```csharp{title="GetConnection (Synchronous)" description="Get the underlying connection without opening:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "GetConnection", "Synchronous"]}
+```csharp{title="GetConnection (Synchronous)" description="Get the underlying connection without opening:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "GetConnection", "Synchronous"] tests=["LensQueryConnectionExtensionsTests.LensQueryConnectionExtensions_HasGetConnectionMethodAsync", "LensQueryConnectionExtensionsTests.LensQueryConnectionExtensions_GetConnection_ReturnsDbConnectionAsync"]}
 var connection = lensQuery.GetConnection<Order>();
 
 // Use for synchronous operations
@@ -77,7 +77,7 @@ var version = command.ExecuteScalar();
 
 Get the connection and ensure it's open:
 
-```csharp{title="GetConnectionAsync (Asynchronous)" description="Get the connection and ensure it's open:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "GetConnectionAsync", "Asynchronous"]}
+```csharp{title="GetConnectionAsync (Asynchronous)" description="Get the connection and ensure it's open:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "GetConnectionAsync", "Asynchronous"] tests=["LensQueryConnectionExtensionsTests.LensQueryConnectionExtensions_HasGetConnectionAsyncMethodAsync", "LensQueryConnectionExtensionsTests.LensQueryConnectionExtensions_GetConnectionAsync_ReturnsTaskDbConnectionAsync"]}
 await using var connection = await lensQuery.GetConnectionAsync<Order>();
 
 await using var command = connection.CreateCommand();
@@ -89,7 +89,7 @@ await command.ExecuteNonQueryAsync();
 
 ### Stored Procedures
 
-```csharp{title="Stored Procedures" description="Stored Procedures" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Stored", "Procedures"]}
+```csharp{title="Stored Procedures" description="Stored Procedures" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Stored", "Procedures"] unverified="use-case built on raw ADO.NET command execution; the GetConnectionAsync escape hatch itself is verified above"}
 await using var connection = await lensQuery.GetConnectionAsync<Product>();
 await using var command = connection.CreateCommand();
 command.CommandText = "CALL update_inventory(@product_id, @quantity)";
@@ -100,7 +100,7 @@ await command.ExecuteNonQueryAsync();
 
 ### Bulk Import (Npgsql Binary COPY)
 
-```csharp{title="Bulk Import (Npgsql Binary COPY)" description="Bulk Import (Npgsql Binary COPY)" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "Bulk", "Import"]}
+```csharp{title="Bulk Import (Npgsql Binary COPY)" description="Bulk Import (Npgsql Binary COPY)" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lenses", "Bulk", "Import"] unverified="Npgsql binary COPY API — external driver, not a Whizbang method"}
 await using var connection = await lensQuery.GetConnectionAsync<Product>();
 
 await using var writer = await ((NpgsqlConnection)connection)
@@ -118,7 +118,7 @@ await writer.CompleteAsync();
 
 ### Materialized View Refresh
 
-```csharp{title="Materialized View Refresh" description="Materialized View Refresh" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Materialized", "View"]}
+```csharp{title="Materialized View Refresh" description="Materialized View Refresh" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Materialized", "View"] unverified="raw ADO.NET command on the returned connection — not a Whizbang API"}
 await using var connection = await lensQuery.GetConnectionAsync<Analytics>();
 await using var command = connection.CreateCommand();
 command.CommandText = "REFRESH MATERIALIZED VIEW CONCURRENTLY sales_summary";
@@ -127,7 +127,7 @@ await command.ExecuteNonQueryAsync();
 
 ### Database-Specific Functions
 
-```csharp{title="Database-Specific Functions" description="Database-Specific Functions" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Database-Specific", "Functions"]}
+```csharp{title="Database-Specific Functions" description="Database-Specific Functions" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Database-Specific", "Functions"] tests=["LensQueryConnectionExtensionsTests.LensQueryConnectionExtensions_HasExecuteSqlAsyncMethodAsync", "LensQueryConnectionExtensionsTests.LensQueryConnectionExtensions_ExecuteSqlAsync_TakesFormattableStringAsync"]}
 // PostgreSQL full-text search
 var searchResults = await lensQuery.ExecuteSqlAsync<Document, SearchResult>(
     $@"SELECT id, title, ts_rank(search_vector, query) AS rank

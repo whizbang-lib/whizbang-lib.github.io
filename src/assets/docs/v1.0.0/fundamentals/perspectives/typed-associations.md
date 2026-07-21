@@ -36,7 +36,7 @@ GetPerspectiveAssociations is a source-generated method that returns strongly-ty
 
 ### Basic Usage
 
-```csharp{title="Basic Usage" description="Basic Usage" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Basic", "Usage"]}
+```csharp{title="Basic Usage" description="Basic Usage" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Basic", "Usage"] tests=["PerspectiveDiscoveryGeneratorTests.PerspectiveDiscoveryGenerator_GeneratesGetPerspectiveAssociationsMethodAsync", "PerspectiveDiscoveryGeneratorTests.PerspectiveDiscoveryGenerator_GeneratesPerspectiveAssociationInfoRecordAsync"]}
 using Whizbang.Core.Generated;
 
 // Get all perspectives handling ProductCreatedEvent for ProductModel
@@ -57,7 +57,7 @@ Console.WriteLine($"Final model: {model}");
 
 ### Type Safety
 
-```csharp{title="Type Safety" description="Type Safety" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Type", "Safety"]}
+```csharp{title="Type Safety" description="Type Safety" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Type", "Safety"] tests=["PerspectiveDiscoveryGeneratorTests.PerspectiveDiscoveryGenerator_GeneratesPerspectiveAssociationInfoRecordAsync"]}
 // Compile-time type safety ensures matching types
 var associations = PerspectiveRegistrationExtensions
     .GetPerspectiveAssociations<ProductModel, ProductCreatedEvent>(serviceName);
@@ -80,7 +80,7 @@ productModel = assoc.ApplyDelegate(productModel, orderEvent); // Compiler error!
 
 ### Declaration
 
-```csharp{title="Declaration" description="Declaration" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Declaration"]}
+```csharp{title="Declaration" description="Declaration" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Declaration"] tests=["PerspectiveDiscoveryGeneratorTests.PerspectiveDiscoveryGenerator_GeneratesGetPerspectiveAssociationsMethodAsync"]}
 namespace Whizbang.Core.Generated;
 
 public static class PerspectiveRegistrationExtensions {
@@ -126,7 +126,7 @@ public static class PerspectiveRegistrationExtensions {
 
 The source generator produces compile-time type checks for each perspective:
 
-```csharp{title="How It Works" description="The source generator produces compile-time type checks for each perspective:" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Perspectives", "Works"]}
+```csharp{title="How It Works" description="The source generator produces compile-time type checks for each perspective:" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Perspectives", "Works"] tests=["PerspectiveDiscoveryGeneratorTests.PerspectiveDiscoveryGenerator_GeneratesGetPerspectiveAssociationsMethodAsync", "PerspectiveDiscoveryGeneratorTests.PerspectiveDiscoveryGenerator_GeneratesDelegateWithTypeCheckAsync", "PerspectiveDiscoveryGeneratorTests.PerspectiveDiscoveryGenerator_EmptyResult_ForNonMatchingTypesAsync", "PerspectiveDiscoveryGeneratorTests.PerspectiveDiscoveryGenerator_GeneratesAOTCompatibleDelegatesAsync"]}
 // Generated method (simplified example)
 public static IReadOnlyList<PerspectiveAssociationInfo<TModel, TEvent>>
     GetPerspectiveAssociations<TModel, TEvent>(string serviceName)
@@ -193,7 +193,7 @@ Key features ensuring AOT compatibility:
 
 **When**: Building a generic event processing pipeline
 
-```csharp{title="Scenario 1: Generic Event Processor" description="When: Building a generic event processing pipeline" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Scenario", "Generic"]}
+```csharp{title="Scenario 1: Generic Event Processor" description="When: Building a generic event processing pipeline" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Scenario", "Generic"] unverified="consumer EventProcessor wrapper illustration — pipeline usage pattern, not a mapped test of the generated API"}
 public class EventProcessor {
     private readonly string _serviceName;
 
@@ -233,7 +233,7 @@ var updatedOrder = processor.ProcessEvent(orderModel, orderCreatedEvent);
 
 **When**: Replaying historical events to rebuild state
 
-```csharp{title="Scenario 2: Event Replay Engine" description="When: Replaying historical events to rebuild state" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Scenario", "Event"]}
+```csharp{title="Scenario 2: Event Replay Engine" description="When: Replaying historical events to rebuild state" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Scenario", "Event"] unverified="consumer EventReplayEngine illustration — replay usage pattern, not a mapped library test"}
 public class EventReplayEngine {
     public async Task<TModel> ReplayAsync<TModel, TEvent>(
         TModel initialModel,
@@ -276,7 +276,7 @@ var currentState = await replayEngine.ReplayAsync(
 
 **When**: Testing that all perspectives handle an event correctly
 
-```csharp{title="Scenario 3: Multi-Perspective Testing" description="When: Testing that all perspectives handle an event correctly" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Scenario", "Multi-Perspective"]}
+```csharp{title="Scenario 3: Multi-Perspective Testing" description="When: Testing that all perspectives handle an event correctly" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Scenario", "Multi-Perspective"] unverified="sample consumer test showing per-perspective iteration — illustrative, not a mapped library test"}
 [Test]
 public async Task AllPerspectives_HandleProductCreatedEvent_CorrectlyAsync() {
     // Arrange
@@ -308,7 +308,7 @@ public async Task AllPerspectives_HandleProductCreatedEvent_CorrectlyAsync() {
 
 **When**: Applying perspectives based on runtime conditions
 
-```csharp{title="Scenario 4: Conditional Perspective Application" description="When: Applying perspectives based on runtime conditions" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Scenario", "Conditional"]}
+```csharp{title="Scenario 4: Conditional Perspective Application" description="When: Applying perspectives based on runtime conditions" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Scenario", "Conditional"] unverified="consumer ConditionalPerspectiveApplier illustration — filtered application pattern, nothing library-side to assert"}
 public class ConditionalPerspectiveApplier {
     public TModel ApplyWithFilter<TModel, TEvent>(
         TModel model,
@@ -343,7 +343,7 @@ var filtered = applier.ApplyWithFilter(
 
 **When**: Monitoring perspective performance
 
-```csharp{title="Scenario 5: Performance Monitoring" description="When: Monitoring perspective performance" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Scenario", "Performance"]}
+```csharp{title="Scenario 5: Performance Monitoring" description="When: Monitoring perspective performance" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Scenario", "Performance"] unverified="consumer MonitoredPerspectiveApplier illustration — logging/metrics pattern, nothing library-side to assert"}
 public class MonitoredPerspectiveApplier {
     private readonly ILogger _logger;
 
@@ -380,7 +380,7 @@ public class MonitoredPerspectiveApplier {
 
 GetPerspectiveAssociations uses exact type matching (not assignable types):
 
-```csharp{title="Exact Type Matching" description="GetPerspectiveAssociations uses exact type matching (not assignable types):" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Exact", "Type"]}
+```csharp{title="Exact Type Matching" description="GetPerspectiveAssociations uses exact type matching (not assignable types):" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Exact", "Type"] tests=["PerspectiveDiscoveryGeneratorTests.PerspectiveDiscoveryGenerator_GeneratesDelegateWithTypeCheckAsync", "PerspectiveDiscoveryGeneratorTests.PerspectiveDiscoveryGenerator_EmptyResult_ForNonMatchingTypesAsync"]}
 // Perspective definition
 public class ProductPerspective : IPerspectiveFor<ProductModel, ProductCreatedEvent> {
     public ProductModel Apply(ProductModel model, ProductCreatedEvent evt) {
@@ -410,7 +410,7 @@ var associations3 = PerspectiveRegistrationExtensions
 At commit `1b31f58d`, when **multiple perspectives handle the same model/event combination**, `GetPerspectiveAssociations<TModel, TEvent>` returns only the **first** matching perspective, not all of them. The generator emits one type-check block per (perspective, event) pair, and each block returns a single-element array immediately -- a second perspective with an identical `(TModel, TEvent)` signature is unreachable. Perspectives with *different* model or event types are unaffected. If you need every handler for a model/event pair, use the string-based `GetMessageAssociations(serviceName)` API, which returns one `MessageAssociation` entry per perspective.
 :::
 
-```csharp{title="Multiple Perspectives" description="Two perspectives sharing the same model/event pair - only the first is returned by the typed API:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "C#", "Multiple"]}
+```csharp{title="Multiple Perspectives" description="Two perspectives sharing the same model/event pair - only the first is returned by the typed API:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "C#", "Multiple"] unverified="ECommerce domain illustration of the first-match-only limitation — the MultiplePerspectives generator tests cover distinct model/event pairs, not two perspectives sharing one pair"}
 // Two perspectives handling ProductModel + ProductCreatedEvent
 public class InventoryPerspective : IPerspectiveFor<ProductModel, ProductCreatedEvent> { }
 public class CatalogPerspective : IPerspectiveFor<ProductModel, ProductCreatedEvent> { }
@@ -430,7 +430,7 @@ var all = PerspectiveRegistrationExtensions.GetMessageAssociations(serviceName);
 
 ### Caching Associations
 
-```csharp{title="Caching Associations" description="Caching Associations" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Caching", "Associations"]}
+```csharp{title="Caching Associations" description="Caching Associations" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Caching", "Associations"] unverified="best-practice illustration — cache the result outside loops; performance guidance with nothing to assert"}
 // ❌ WRONG: Calling in loop
 foreach (var evt in events) {
     var associations = PerspectiveRegistrationExtensions
@@ -453,7 +453,7 @@ foreach (var evt in events) {
 
 The method uses compile-time type checks, so the JIT compiler can optimize aggressively:
 
-```csharp{title="Compile-Time Optimization" description="The method uses compile-time type checks, so the JIT compiler can optimize aggressively:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Compile-Time", "Optimization"]}
+```csharp{title="Compile-Time Optimization" description="The method uses compile-time type checks, so the JIT compiler can optimize aggressively:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Compile-Time", "Optimization"] unverified="performance note — JIT inlining / timing claim, not asserted by a test"}
 // JIT can inline typeof() checks
 // Result: Very fast (~1-2ns per call once JIT'd)
 var associations = PerspectiveRegistrationExtensions
@@ -462,7 +462,7 @@ var associations = PerspectiveRegistrationExtensions
 
 ### Delegate Invocation Cost
 
-```csharp{title="Delegate Invocation Cost" description="Delegate Invocation Cost" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Delegate", "Invocation"]}
+```csharp{title="Delegate Invocation Cost" description="Delegate Invocation Cost" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Delegate", "Invocation"] unverified="performance note — delegate-vs-reflection timing claim, not asserted by a test"}
 // Delegate invocation is extremely fast
 // Approximately 1-2ns per invocation (similar to virtual method call)
 var result = assoc.ApplyDelegate(model, evt);
@@ -475,7 +475,7 @@ var result = assoc.ApplyDelegate(model, evt);
 
 ### Complementary APIs
 
-```csharp{title="Complementary APIs" description="Complementary APIs" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Complementary", "APIs"]}
+```csharp{title="Complementary APIs" description="Complementary APIs" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Complementary", "APIs"] tests=["PerspectiveDiscoveryGeneratorTests.PerspectiveDiscoveryGenerator_GetMessageAssociations_ReturnsCorrectAssociationsAsync", "PerspectiveDiscoveryGeneratorTests.PerspectiveDiscoveryGenerator_GeneratesGetPerspectiveAssociationsMethodAsync"]}
 // 1. Discovery with MessageAssociation (string-based)
 var allAssociations = PerspectiveRegistrationExtensions
     .GetMessageAssociations(serviceName);
@@ -548,7 +548,7 @@ foreach (var assoc in typedAssociations) {
 
 ### ❌ Not Handling Empty Results
 
-```csharp{title="❌ Not Handling Empty Results" description="❌ Not Handling Empty Results" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Not", "Handling"]}
+```csharp{title="❌ Not Handling Empty Results" description="❌ Not Handling Empty Results" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Not", "Handling"] unverified="pitfall illustration — unchecked First() on an empty result; nothing to assert"}
 // ❌ WRONG: Assuming results exist
 var associations = PerspectiveRegistrationExtensions
     .GetPerspectiveAssociations<ProductModel, ProductCreatedEvent>(serviceName);
@@ -565,7 +565,7 @@ if (associations.Any()) {
 
 ### ❌ Calling in Hot Paths
 
-```csharp{title="❌ Calling in Hot Paths" description="❌ Calling in Hot Paths" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Calling", "Hot"]}
+```csharp{title="❌ Calling in Hot Paths" description="❌ Calling in Hot Paths" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Calling", "Hot"] unverified="pitfall illustration — re-fetching associations per iteration instead of caching; nothing to assert"}
 // ❌ WRONG: Calling repeatedly
 public TModel ProcessEvents<TModel, TEvent>(
     TModel model,
@@ -602,7 +602,7 @@ public TModel ProcessEvents<TModel, TEvent>(
 
 ### ❌ Ignoring Type Constraints
 
-```csharp{title="❌ Ignoring Type Constraints" description="❌ Ignoring Type Constraints" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Ignoring", "Type"]}
+```csharp{title="❌ Ignoring Type Constraints" description="❌ Ignoring Type Constraints" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Ignoring", "Type"] unverified="counter-example — missing where TEvent : IEvent constraint produces a compiler error; nothing to assert"}
 // ❌ WRONG: Forgetting IEvent constraint
 public void ProcessEvent<TModel, TMessage>(TModel model, TMessage message) {
     var associations = PerspectiveRegistrationExtensions

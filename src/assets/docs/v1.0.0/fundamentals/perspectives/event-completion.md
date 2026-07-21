@@ -34,7 +34,7 @@ lastMaintainedCommit: '01f07906'
 
 When using `LocalInvokeAsync` for RPC-style dispatching, the response returns immediately after cascade completes. However, perspectives may still be processing the cascaded events:
 
-```mermaid
+```mermaid{caption="The consistency gap — LocalInvokeAsync returns once the cascade completes, but perspective workers may still be applying the emitted events."}
 flowchart TD
     Invoke["LocalInvokeAsync(CreateOrderCommand)"]
     Handler["Handler executes<br/>Returns OrderId<br/>(Emits OrderCreatedEvent)"]
@@ -81,7 +81,7 @@ Whizbang provides two distinct waiting semantics:
 
 The simplest way to wait for all perspectives is using `DispatchOptions`:
 
-```csharp{title="Usage: DispatchOptions.WithPerspectiveWait()" description="The simplest way to wait for all perspectives is using DispatchOptions:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Usage:", "DispatchOptions.WithPerspectiveWait"]}
+```csharp{title="Usage: DispatchOptions.WithPerspectiveWait()" description="The simplest way to wait for all perspectives is using DispatchOptions:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Usage:", "DispatchOptions.WithPerspectiveWait"] tests=["DispatchOptionsTests.WithCancellationToken_SetsToken_ReturnsSelfAsync", "DispatchOptionsTests.WithPerspectiveWait_WithTimeout_SetsTimeoutAsync"]}
 using Whizbang.Core.Dispatch;
 
 public class OrderService {
@@ -108,7 +108,7 @@ public class OrderService {
 
 ### Configuration Options
 
-```csharp{title="Configuration Options" description="Configuration Options" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Configuration", "Options"]}
+```csharp{title="Configuration Options" description="Configuration Options" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Configuration", "Options"] tests=["DispatchOptionsTests.Default_WaitForPerspectives_IsFalseAsync", "DispatchOptionsTests.Default_PerspectiveWaitTimeout_Is30SecondsAsync", "DispatchOptionsTests.Default_CancellationToken_IsNone_Async"]}
 public sealed class DispatchOptions {
     // When true, LocalInvokeAsync waits for all perspectives to finish
     public bool WaitForPerspectives { get; set; }
@@ -133,7 +133,7 @@ The `Dispatcher` integrates with event completion through the `_waitForPerspecti
 
 ### Integration Architecture
 
-```mermaid
+```mermaid{caption="Dispatcher LocalInvokeAsync pipeline — perspective-sync check, receptor invoke, auto-cascade, then wait for all perspectives before returning the result."}
 flowchart TD
     Invoke["LocalInvokeAsync with DispatchOptions"]
     Step1["1. Check for [AwaitPerspectiveSync] (if present)<br/>_awaitPerspectiveSyncIfNeededAsync()"]
@@ -153,7 +153,7 @@ flowchart TD
 
 The dispatcher checks `DispatchOptions.WaitForPerspectives` after receptor execution:
 
-```csharp{title="Implementation" description="The dispatcher checks `DispatchOptions." category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Implementation"]}
+```csharp{title="Implementation" description="The dispatcher checks `DispatchOptions." category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Implementation"] unverified="Dispatcher internal LocalInvokeAsync pipeline sketch; Dispatcher is not among this page's referenced test classes"}
 public async ValueTask<TResult> LocalInvokeAsync<TResult>(
     object message,
     DispatchOptions options) {
@@ -176,7 +176,7 @@ public async ValueTask<TResult> LocalInvokeAsync<TResult>(
 
 ### _waitForPerspectivesIfNeededAsync Implementation
 
-```csharp{title="_waitForPerspectivesIfNeededAsync Implementation" description="_waitForPerspectivesIfNeededAsync Implementation" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Perspectives", "_waitForPerspectivesIfNeededAsync", "Implementation"]}
+```csharp{title="_waitForPerspectivesIfNeededAsync Implementation" description="_waitForPerspectivesIfNeededAsync Implementation" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Perspectives", "_waitForPerspectivesIfNeededAsync", "Implementation"] unverified="Dispatcher private-method implementation body; Dispatcher is not among this page's referenced test classes"}
 private async ValueTask _waitForPerspectivesIfNeededAsync(DispatchOptions options) {
   // Short-circuit if not waiting for perspectives
   if (!options.WaitForPerspectives) {
@@ -230,7 +230,7 @@ This enables event tracking even when the dispatcher is a singleton.
 
 Events are automatically captured during receptor execution:
 
-```csharp{title="Key Features" description="Events are automatically captured during receptor execution:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Key", "Features"]}
+```csharp{title="Key Features" description="Events are automatically captured during receptor execution:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Key", "Features"] unverified="illustrative snippet mixing consumer receptor code with ScopedEventTracker capture; ScopedEventTracker is not among this page's referenced test classes"}
 // Receptor emits events
 await _eventStore.AppendAsync(streamId, new OrderCreatedEvent());
 
@@ -248,7 +248,7 @@ var eventIds = scopedTracker.GetEmittedEvents()
 
 When timeout occurs, throws `PerspectiveSyncTimeoutException`:
 
-```csharp{title="Key Features (2)" description="When timeout occurs, throws PerspectiveSyncTimeoutException:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Key", "Features"]}
+```csharp{title="Key Features (2)" description="When timeout occurs, throws PerspectiveSyncTimeoutException:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Key", "Features"] unverified="consumer error-handling illustration catching PerspectiveSyncTimeoutException"}
 try {
   var options = new DispatchOptions().WithPerspectiveWait();
   await _dispatcher.LocalInvokeAsync(command, options);
@@ -262,7 +262,7 @@ try {
 
 Multiple short-circuit checks ensure zero overhead when `WaitForPerspectives = false`:
 
-```csharp{title="Key Features (3)" description="Multiple short-circuit checks ensure zero overhead when WaitForPerspectives = false:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Key", "Features"]}
+```csharp{title="Key Features (3)" description="Multiple short-circuit checks ensure zero overhead when WaitForPerspectives = false:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Key", "Features"] unverified="excerpt of Dispatcher private-method short-circuit guards; Dispatcher is not among this page's referenced test classes"}
 if (!options.WaitForPerspectives) return;        // First check
 if (_eventCompletionAwaiter is null) return;     // Not registered
 if (scopedTracker is null) return;               // No scope
@@ -273,7 +273,7 @@ if (eventIds.Count == 0) return;                 // No events
 
 The integration works across all `LocalInvokeAsync` overloads that accept `DispatchOptions`:
 
-```csharp{title="All LocalInvokeAsync Overloads" description="The integration works across all LocalInvokeAsync overloads that accept DispatchOptions:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "All", "LocalInvokeAsync"]}
+```csharp{title="All LocalInvokeAsync Overloads" description="The integration works across all LocalInvokeAsync overloads that accept DispatchOptions:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "All", "LocalInvokeAsync"] unverified="IDispatcher overload signature listing, not an executable example"}
 // Receptor with typed business result
 ValueTask<TResult> LocalInvokeAsync<TResult>(
     object message,
@@ -298,7 +298,7 @@ All paths call `_waitForPerspectivesIfNeededAsync(options)` after receptor execu
 
 For more control, inject `IEventCompletionAwaiter` directly:
 
-```csharp{title="Usage: IEventCompletionAwaiter" description="For more control, inject IEventCompletionAwaiter directly:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Usage:", "IEventCompletionAwaiter"]}
+```csharp{title="Usage: IEventCompletionAwaiter" description="For more control, inject IEventCompletionAwaiter directly:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Usage:", "IEventCompletionAwaiter"] tests=["EventCompletionAwaiterTests.WaitForEventsAsync_WaitsForAllPerspectivesToCompleteAsync", "EventCompletionAwaiterTests.WaitForEventsAsync_HandlesMultipleEventsAsync"]}
 using Whizbang.Core.Perspectives.Sync;
 
 public class OrderOrchestrator {
@@ -334,7 +334,7 @@ public class OrderOrchestrator {
 
 ### API Reference
 
-```csharp{title="API Reference" description="API Reference" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "API", "Reference"]}
+```csharp{title="API Reference" description="API Reference" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "API", "Reference"] tests=["EventCompletionAwaiterTests.WaitForEventsAsync_WaitsForAllPerspectivesToCompleteAsync", "EventCompletionAwaiterTests.AreEventsFullyProcessed_ReturnsTrueWhenNoPerspectivesRemainAsync", "EventCompletionAwaiterTests.AreEventsFullyProcessed_ReturnsFalseWhenPerspectivesPendingAsync"]}
 public interface IEventCompletionAwaiter : IAwaiterIdentity {
     /// <summary>
     /// Unique identity for per-awaiter tracking and cleanup.
@@ -368,7 +368,7 @@ public interface IEventCompletionAwaiter : IAwaiterIdentity {
 
 The event completion system uses per-perspective tracking:
 
-```mermaid
+```mermaid{caption="Per-perspective completion tracking — an event stays tracked until every subscribing perspective marks it processed, at which point WaitForAllPerspectivesAsync signals." tests=["EventCompletionAwaiterTests.WaitForEventsAsync_OneEventThreeSubscribers_OnlyReturnsAfterAllThreeApplyAsync", "SyncEventTrackerTests.MarkProcessedByPerspective_OnlyRemovesSpecificPerspective_LeavesOtherPerspectivesAsync", "SyncEventTrackerTests.WaitForAllPerspectivesAsync_SignalsOnlyWhenAllPerspectivesDoneAsync"]}
 flowchart TD
     Emit["Event emitted (EventId = abc123)"]
 
@@ -398,7 +398,7 @@ flowchart TD
 
 When perspectives don't complete within the timeout:
 
-```csharp{title="Timeout Handling" description="When perspectives don't complete within the timeout:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Timeout", "Handling"]}
+```csharp{title="Timeout Handling" description="When perspectives don't complete within the timeout:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Timeout", "Handling"] unverified="consumer error-handling illustration catching PerspectiveSyncTimeoutException"}
 var options = new DispatchOptions()
     .WithPerspectiveWait(timeout: TimeSpan.FromSeconds(5));
 
@@ -421,7 +421,7 @@ try {
 
 ### Do: Use for External API Responses
 
-```csharp{title="Do: Use for External API Responses" description="Do: Use for External API Responses" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Do:", "External"]}
+```csharp{title="Do: Use for External API Responses" description="Do: Use for External API Responses" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Do:", "External"] tests=["DispatchOptionsTests.WithCancellationToken_SetsToken_ReturnsSelfAsync", "DispatchOptionsTests.WithPerspectiveWait_SetsWaitForPerspectivesToTrueAsync"]}
 [HttpPost]
 public async Task<IActionResult> CreateOrder(CreateOrderRequest request) {
     var options = new DispatchOptions()
@@ -437,7 +437,7 @@ public async Task<IActionResult> CreateOrder(CreateOrderRequest request) {
 
 ### Do: Set Appropriate Timeouts
 
-```csharp{title="Do: Set Appropriate Timeouts" description="Do: Set Appropriate Timeouts" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Do:", "Set"]}
+```csharp{title="Do: Set Appropriate Timeouts" description="Do: Set Appropriate Timeouts" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Do:", "Set"] tests=["DispatchOptionsTests.WithPerspectiveWait_WithTimeout_SetsTimeoutAsync"]}
 // Short timeout for real-time APIs
 .WithPerspectiveWait(TimeSpan.FromSeconds(5))
 
@@ -447,7 +447,7 @@ public async Task<IActionResult> CreateOrder(CreateOrderRequest request) {
 
 ### Don't: Use When Not Needed
 
-```csharp{title="Don't: Use When Not Needed" description="Don't: Use When Not Needed" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Don't:", "When"]}
+```csharp{title="Don't: Use When Not Needed" description="Don't: Use When Not Needed" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Don't:", "When"] tests=["DispatchOptionsTests.WithPerspectiveWait_SetsWaitForPerspectivesToTrueAsync"]}
 // Fire-and-forget scenarios don't need to wait
 await _dispatcher.SendAsync(command); // No waiting
 
@@ -458,7 +458,7 @@ await _dispatcher.LocalInvokeAsync(command, options); // Waits
 
 ### Don't: Confuse with Perspective-Specific Sync
 
-```csharp{title="Don't: Confuse with Perspective-Specific Sync" description="Don't: Confuse with Perspective-Specific Sync" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Don't:", "Confuse"]}
+```csharp{title="Don't: Confuse with Perspective-Specific Sync" description="Don't: Confuse with Perspective-Specific Sync" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Don't:", "Confuse"] unverified="counter-example — contrasts WithPerspectiveWait against IPerspectiveSyncAwaiter single-perspective sync (verified on the Perspective Synchronization page)"}
 // WRONG: Using event completion when you only need one perspective
 var options = new DispatchOptions().WithPerspectiveWait();
 await _dispatcher.LocalInvokeAsync(command, options);
@@ -476,7 +476,7 @@ var order = await _orderLens.GetByIdAsync(orderId, ct);
 
 `IEventCompletionAwaiter` is automatically registered by `AddWhizbang()`:
 
-```csharp{title="DI Registration" description="IEventCompletionAwaiter is automatically registered by AddWhizbang():" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Registration"]}
+```csharp{title="DI Registration" description="IEventCompletionAwaiter is automatically registered by AddWhizbang():" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Registration"] unverified="DI registration config — AddWhizbang() service wiring, not a behavioral assertion"}
 services.AddWhizbang(options => {
     // Configuration
 });

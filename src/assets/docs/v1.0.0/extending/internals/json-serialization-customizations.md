@@ -49,7 +49,7 @@ When data flows through `MessageJsonContext` (especially for polymorphic models 
 
 Handles `DateTimeOffset` values that do not conform to strict ISO 8601 format, particularly from PostgreSQL JSONB storage.
 
-```csharp{title="LenientDateTimeOffsetConverter" description="Custom converter for lenient DateTimeOffset parsing" category="Reference" difficulty="INTERMEDIATE" tags=["JSON", "Serialization", "Converters"]}
+```csharp{title="LenientDateTimeOffsetConverter" description="Custom converter for lenient DateTimeOffset parsing" category="Reference" difficulty="INTERMEDIATE" tags=["JSON", "Serialization", "Converters"] tests=["LenientDateTimeOffsetConverterTests.Read_WithOffset_ParsesCorrectlyAsync", "LenientDateTimeOffsetConverterTests.Read_WithZuluTime_ParsesCorrectlyAsync", "LenientDateTimeOffsetConverterTests.Read_WithoutOffset_ParsesAsUtcAsync", "LenientDateTimeOffsetConverterTests.Read_DateOnly_ParsesAsMidnightUtcAsync", "LenientDateTimeOffsetConverterTests.Read_PostgresNegativeInfinity_ReturnsMinValueAsync", "LenientDateTimeOffsetConverterTests.Read_PostgresInfinity_ReturnsMaxValueAsync"]}
 // Supports various input formats:
 // - ISO 8601 with offset: "2024-01-15T10:30:00+05:00"
 // - Zulu time: "2024-01-15T10:30:00Z"
@@ -78,7 +78,7 @@ Handles `DateTimeOffset` values that do not conform to strict ISO 8601 format, p
 
 Nullable wrapper for `LenientDateTimeOffsetConverter`. Handles `null` JSON values and delegates all other values to the non-nullable converter.
 
-```csharp{title="LenientNullableDateTimeOffsetConverter" description="Nullable wrapper for lenient DateTimeOffset parsing" category="Reference" difficulty="INTERMEDIATE" tags=["JSON", "Serialization", "Converters"]}
+```csharp{title="LenientNullableDateTimeOffsetConverter" description="Nullable wrapper for lenient DateTimeOffset parsing" category="Reference" difficulty="INTERMEDIATE" tags=["JSON", "Serialization", "Converters"] tests=["LenientDateTimeOffsetConverterTests.Read_Null_ReturnsNullAsync", "LenientDateTimeOffsetConverterTests.Read_ValidValue_ReturnsValueAsync"]}
 // Handles:
 // - null -> returns null
 // - Any valid DateTimeOffset string -> delegates to LenientDateTimeOffsetConverter
@@ -90,7 +90,7 @@ Nullable wrapper for `LenientDateTimeOffsetConverter`. Handles `null` JSON value
 
 The `ArrayTypeInfo` record contains information about discovered array types used in messages. This enables the source generator to create `JsonTypeInfo<T[]>` factories automatically.
 
-```csharp{title="ArrayTypeInfo Record" description="Value type for discovered array type information" category="Reference" difficulty="ADVANCED" tags=["JSON", "Serialization", "Source-Generators"]}
+```csharp{title="ArrayTypeInfo Record" description="Value type for discovered array type information" category="Reference" difficulty="ADVANCED" tags=["JSON", "Serialization", "Source-Generators"] unverified="Illustrates the Whizbang.Generators ArrayTypeInfo record; not covered by this page's referenced converter and registry test classes"}
 // Example: For a property of type IEvent[]
 // ArrayTypeName: "global::Whizbang.Core.IEvent[]"
 // ElementTypeName: "global::Whizbang.Core.IEvent"
@@ -117,7 +117,7 @@ The `ElementUniqueIdentifier` sanitizes special characters to create valid C# id
 
 When the message JSON context generator encounters array properties, it automatically generates `JsonTypeInfo<T[]>` factories:
 
-```csharp{title="Array Type Discovery" description="Automatic discovery and generation of array type info" category="Reference" difficulty="ADVANCED" tags=["JSON", "Serialization", "Source-Generators"]}
+```csharp{title="Array Type Discovery" description="Automatic discovery and generation of array type info" category="Reference" difficulty="ADVANCED" tags=["JSON", "Serialization", "Source-Generators"] unverified="Consumer message example plus source-generator array factory output; generator emission is not exercised by this page's referenced test classes"}
 // Message with array property
 public record BatchCommand : ICommand {
   public Guid[] ItemIds { get; init; } = [];

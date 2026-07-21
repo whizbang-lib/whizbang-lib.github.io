@@ -30,7 +30,7 @@ When a perspective's schema changes or data becomes stale, Whizbang provides mul
 
 ## IPerspectiveRebuilder
 
-```csharp{title="IPerspectiveRebuilder" description="IPerspectiveRebuilder" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "IPerspectiveRebuilder"]}
+```csharp{title="IPerspectiveRebuilder" description="IPerspectiveRebuilder" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "IPerspectiveRebuilder"] tests=["PerspectiveRebuilderTests.RebuildBlueGreenAsync_CompletesSuccessfullyAsync", "PerspectiveRebuilderTests.RebuildInPlaceAsync_WithRegisteredPerspective_ProcessesAllStreamsAsync", "PerspectiveRebuilderTests.RebuildStreamsAsync_WithSpecificStreams_OnlyProcessesThoseAsync", "PerspectiveRebuilderTests.GetRebuildStatusAsync_WithNoActiveRebuild_ReturnsNullAsync"]}
 public interface IPerspectiveRebuilder {
   Task<RebuildResult> RebuildBlueGreenAsync(string perspectiveName, CancellationToken ct = default);
   Task<RebuildResult> RebuildInPlaceAsync(string perspectiveName, CancellationToken ct = default);
@@ -45,7 +45,7 @@ public interface IPerspectiveRebuilder {
 
 Create a new table, replay all events into it, then atomically swap with the old table. The old table is kept as a backup.
 
-```csharp{title="Blue-Green" description="Create a new table, replay all events into it, then atomically swap with the old table." category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Blue-Green"]}
+```csharp{title="Blue-Green" description="Create a new table, replay all events into it, then atomically swap with the old table." category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Blue-Green"] tests=["PerspectiveRebuilderTests.RebuildBlueGreenAsync_CompletesSuccessfullyAsync"]}
 var result = await rebuilder.RebuildBlueGreenAsync("OrderPerspective");
 // App continues serving reads from old table during rebuild
 // Swap is atomic — no downtime
@@ -57,7 +57,7 @@ var result = await rebuilder.RebuildBlueGreenAsync("OrderPerspective");
 
 Truncate the active table and replay all events directly. Faster but causes temporary data unavailability during replay.
 
-```csharp{title="In-Place" description="Truncate the active table and replay all events directly." category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "In-Place"]}
+```csharp{title="In-Place" description="Truncate the active table and replay all events directly." category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "In-Place"] tests=["PerspectiveRebuilderTests.RebuildInPlaceAsync_WithRegisteredPerspective_ProcessesAllStreamsAsync"]}
 var result = await rebuilder.RebuildInPlaceAsync("OrderPerspective");
 ```
 
@@ -67,7 +67,7 @@ var result = await rebuilder.RebuildInPlaceAsync("OrderPerspective");
 
 Replay events for specific streams only. Useful for fixing individual corrupted or stale projections without rebuilding everything.
 
-```csharp{title="Selected Streams" description="Replay events for specific streams only." category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Selected", "Streams"]}
+```csharp{title="Selected Streams" description="Replay events for specific streams only." category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Selected", "Streams"] tests=["PerspectiveRebuilderTests.RebuildStreamsAsync_WithSpecificStreams_OnlyProcessesThoseAsync"]}
 var corruptedStreams = new[] { orderId1, orderId2 };
 var result = await rebuilder.RebuildStreamsAsync("OrderPerspective", corruptedStreams);
 ```
@@ -76,7 +76,7 @@ var result = await rebuilder.RebuildStreamsAsync("OrderPerspective", corruptedSt
 
 ## RebuildResult
 
-```csharp{title="RebuildResult" description="RebuildResult" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "RebuildResult"]}
+```csharp{title="RebuildResult" description="RebuildResult" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "RebuildResult"] tests=["PerspectiveRebuilderTests.RebuildInPlaceAsync_WithRegisteredPerspective_ProcessesAllStreamsAsync", "PerspectiveRebuilderTests.RebuildInPlaceAsync_WithUnknownPerspective_ReturnsFailureAsync"]}
 public record RebuildResult(
     string PerspectiveName,
     int StreamsProcessed,
@@ -90,7 +90,7 @@ public record RebuildResult(
 
 Trigger rebuilds across distributed services via messaging:
 
-```csharp{title="System Commands" description="Trigger rebuilds across distributed services via messaging:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "System", "Commands"]}
+```csharp{title="System Commands" description="Trigger rebuilds across distributed services via messaging:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "System", "Commands"] unverified="Dispatcher command-send illustration; RebuildPerspectiveCommand and CancelPerspectiveRebuildCommand are covered by SystemCommandsTests, outside this page's PerspectiveRebuilderTests candidate set"}
 // Rebuild specific perspectives
 await dispatcher.SendAsync(new RebuildPerspectiveCommand(
     PerspectiveNames: ["OrderPerspective", "InventoryPerspective"],
@@ -132,7 +132,7 @@ See [Migration Tracking](../../operations/infrastructure/migrations.md) for deta
 
 A built-in read model tracks all perspective health:
 
-```csharp{title="PerspectiveStatusModel" description="A built-in read model tracks all perspective health:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "PerspectiveStatusModel"]}
+```csharp{title="PerspectiveStatusModel" description="A built-in read model tracks all perspective health:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "PerspectiveStatusModel"] unverified="PerspectiveStatusModel read-model definition has no mapped test and is outside this page's PerspectiveRebuilderTests candidate set"}
 public sealed record PerspectiveStatusModel {
   [StreamId]
   public Guid Id { get; init; }

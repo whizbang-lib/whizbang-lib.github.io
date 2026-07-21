@@ -46,7 +46,7 @@ The Work Coordinator solves a critical problem: **How do you reliably coordinate
 
 ### What It Coordinates
 
-```mermaid
+```mermaid{caption="The Work Coordinator's focused operations — claim, store, fetch, commit, complete, fail, renew, heartbeat — each atomic in its own call, with the handler-commit path bundling inbox completion and emitted messages."}
 flowchart TD
     subgraph Ops["Focused Coordinator Operations (each atomic in its own call)"]
         Claim["ClaimWorkAsync — lease orphaned/unowned work, return stream ids"]
@@ -70,7 +70,7 @@ flowchart TD
 
 The core methods (each has a corresponding SQL function and a dedicated calling worker):
 
-```csharp{title="IWorkCoordinator Interface" description="IWorkCoordinator Interface" category="Architecture" difficulty="ADVANCED" tags=["Messaging", "C#", "IWorkCoordinator", "Interface"]}
+```csharp{title="IWorkCoordinator Interface" description="IWorkCoordinator Interface" category="Architecture" difficulty="ADVANCED" tags=["Messaging", "C#", "IWorkCoordinator", "Interface"] unverified="interface declaration — IWorkCoordinator API surface, no behavioral assertion"}
 public interface IWorkCoordinator {
     // Claim loop (called only by ClaimWorker)
     Task<WorkBatch> ClaimWorkAsync(
@@ -124,7 +124,7 @@ public interface IWorkCoordinator {
 ```
 
 **Claim Parameter Object**:
-```csharp{title="ClaimWorkRequest" description="Parameter object for ClaimWorkAsync" category="Architecture" difficulty="ADVANCED" tags=["Messaging", "IWorkCoordinator", "Request"]}
+```csharp{title="ClaimWorkRequest" description="Parameter object for ClaimWorkAsync" category="Architecture" difficulty="ADVANCED" tags=["Messaging", "IWorkCoordinator", "Request"] tests=["ClaimWorkRequestTests.PositionalCtor_RequiredFieldsRoundTripAsync", "ClaimWorkRequestTests.Defaults_MatchProductionTunedConstantsAsync"]}
 public sealed record ClaimWorkRequest(
     Guid InstanceId,        // Calling service instance
     string ServiceName,     // Service name (diagnostics)
@@ -150,7 +150,7 @@ public sealed record HeartbeatRequest(
 
 **Pattern**: A handler's inbox completion and everything it emitted commit **together or not at all**.
 
-```csharp{title="Atomic Handler Commit" description="Pattern: A handler's inbox completion and its emitted messages commit atomically." category="Architecture" difficulty="ADVANCED" tags=["Messaging", "C#", "Atomic", "Batch", "Processing"]}
+```csharp{title="Atomic Handler Commit" description="Pattern: A handler's inbox completion and its emitted messages commit atomically." category="Architecture" difficulty="ADVANCED" tags=["Messaging", "C#", "Atomic", "Batch", "Processing"] unverified="verified by EFCoreCommitHandlerTests, which is outside the current coverage map"}
 // InboxHandlerWorker batches handler results and commits them in one round-trip
 var results = await _coordinator.CommitHandlerBatchAsync(
     [
@@ -225,7 +225,7 @@ partition_number := abs(hashtext(stream_id::TEXT)) % partition_count;
 
 ### Work Batch (Claim Result)
 
-```csharp{title="WorkBatch" description="Result of ClaimWorkAsync" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "WorkBatch"]}
+```csharp{title="WorkBatch" description="Result of ClaimWorkAsync" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "WorkBatch"] unverified="verified by EFCoreClaimWorkTests, which is outside the current coverage map"}
 public record WorkBatch {
     public required List<OutboxWork> OutboxWork { get; init; }
     public required List<InboxWork> InboxWork { get; init; }
@@ -241,7 +241,7 @@ public record WorkBatch {
 
 ### Completions and Failures
 
-```csharp{title="Completions and Failures" description="Completion and failure records" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Message", "Completions"]}
+```csharp{title="Completions and Failures" description="Completion and failure records" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Message", "Completions"] tests=["MessageFailureTests.MessageFailure_WithoutReason_DefaultsToUnknownAsync", "MessageFailureTests.MessageFailure_WithReason_StoresReasonAsync"]}
 public record MessageCompletion {
     public required Guid MessageId { get; init; }
     public required MessageProcessingStatus Status { get; init; }
@@ -271,7 +271,7 @@ public enum WorkCategory { Outbox, Inbox, PerspectiveEvent }
 
 ### Perspective Cursor Completion
 
-```csharp{title="Perspective Cursor Completion" description="Cursor advancement spec for CompletePerspectiveAsync" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Event", "Store", "Tracking"]}
+```csharp{title="Perspective Cursor Completion" description="Cursor advancement spec for CompletePerspectiveAsync" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Event", "Store", "Tracking"] unverified="verified by WorkCoordinatorDtoSurfaceTests, which is outside the current coverage map"}
 public record PerspectiveCursorCompletion {
     public required Guid StreamId { get; init; }
     public required string PerspectiveName { get; init; }
@@ -288,7 +288,7 @@ public record PerspectiveCursorCompletion {
 
 ### New Messages
 
-```csharp{title="New Messages" description="Envelope-based message records for the store methods" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "New", "Messages"]}
+```csharp{title="New Messages" description="Envelope-based message records for the store methods" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "New", "Messages"] unverified="supporting type declaration — store-method envelope records, no dedicated surface test"}
 public record OutboxMessage {
     public required Guid MessageId { get; init; }
     public string? Destination { get; init; }
@@ -327,7 +327,7 @@ These patterns show how the framework's built-in workers use the coordinator. Ap
 
 ### Pattern 1: Claim Work (ClaimWorker)
 
-```csharp{title="Pattern 1: Claim Work" description="ClaimWorker polls claim_work and distributes stream ids to drain channels" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Pattern", "Claim", "Publish"]}
+```csharp{title="Pattern 1: Claim Work" description="ClaimWorker polls claim_work and distributes stream ids to drain channels" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Pattern", "Claim", "Publish"] tests=["ClaimWorkerTests.ExecuteAsync_PollsAtLeastOnceAsync", "ClaimWorkerTests.Distribute_OutboxStreamIds_RoutedToOutboxDrainChannelAsync", "ClaimWorkerTests.Distribute_InboxDrainChannel_WritesStreamIds_EvenWhenIsInFlightTrueAsync"]}
 // ClaimWorker is the only caller of ClaimWorkAsync
 var batch = await coordinator.ClaimWorkAsync(new ClaimWorkRequest(
     InstanceId: instanceId,
@@ -350,7 +350,7 @@ foreach (var streamId in batch.InboxStreamIds) {
 
 ### Pattern 2: Drain and Publish (OutboxDrainWorker)
 
-```csharp{title="Pattern 2: Drain and Publish" description="OutboxDrainWorker fetches leased bodies per stream and publishes in FIFO order" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Pattern", "Report", "Completions"]}
+```csharp{title="Pattern 2: Drain and Publish" description="OutboxDrainWorker fetches leased bodies per stream and publishes in FIFO order" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Pattern", "Report", "Completions"] tests=["OutboxDrainWorkerTests.OutboxDrainWorker_OnStreamId_FetchesBatch_PublishesEach_EnqueuesCompletionAsync", "OutboxDrainWorkerTests.OutboxDrainWorker_BulkResultsMixed_RoutesSuccessToCompletion_FailureToFailureChannelAsync"]}
 // Per-stream drainer: fetch all leased rows for the stream, publish in order
 var rows = await coordinator.FetchOutboxBatchAsync([streamId], instanceId, cancellationToken: ct);
 
@@ -370,7 +370,7 @@ foreach (var row in rows) {
 
 ### Pattern 3: Batched Completions (Flush Workers)
 
-```csharp{title="Pattern 3: Batched Completions" description="Flush workers coalesce completions into one round-trip per batch" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Pattern", "Store", "Event"]}
+```csharp{title="Pattern 3: Batched Completions" description="Flush workers coalesce completions into one round-trip per batch" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Pattern", "Store", "Event"] tests=["OutboxCompletionFlushWorkerTests.EnqueuedIds_FlushedToCoordinatorAsync"]}
 // OutboxCompletionFlushWorker drains the completion channel and flushes in batches
 var publishedIds = DrainPendingCompletionIds();
 var affected = await coordinator.CompleteOutboxPublishedAsync(publishedIds, ct);
@@ -382,7 +382,7 @@ await coordinator.ReportFailuresAsync(WorkCategory.Outbox, pendingFailures, ct);
 
 ### Pattern 4: Lease Renewal (LeaseRenewalWorker)
 
-```csharp{title="Pattern 4: Lease Renewal" description="LeaseRenewalWorker extends leases for in-flight work approaching expiry" category="Architecture" difficulty="BEGINNER" tags=["Messaging", "C#", "Pattern", "Store", "Inbox"]}
+```csharp{title="Pattern 4: Lease Renewal" description="LeaseRenewalWorker extends leases for in-flight work approaching expiry" category="Architecture" difficulty="BEGINNER" tags=["Messaging", "C#", "Pattern", "Store", "Inbox"] unverified="verified by LeaseRenewalWorkerCapTests, which is outside the current coverage map"}
 // When in-flight items approach lease/3 from expiry, renew in batch per category
 var renewed = await coordinator.RenewLeasesAsync(
     WorkCategory.Inbox,
@@ -483,7 +483,7 @@ CREATE OR REPLACE FUNCTION claim_work(
 
 The coordinator exposes queue-depth statistics via `GatherStatisticsAsync`:
 
-```csharp{title="Key Metrics" description="Key Metrics" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Key", "Metrics"]}
+```csharp{title="Key Metrics" description="Key Metrics" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Key", "Metrics"] unverified="verified by CoordinatorRecordSurfaceTests, which is outside the current coverage map"}
 public record WorkCoordinatorStatistics {
     public long PendingPerspectiveEvents { get; init; }  // wh_perspective_events unprocessed
     public long PendingOutbox { get; init; }             // wh_outbox unprocessed
