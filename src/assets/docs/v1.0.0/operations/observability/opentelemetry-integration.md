@@ -30,7 +30,7 @@ Whizbang integrates with OpenTelemetry through message tag hooks, providing auto
 
 ## Quick Start
 
-```csharp{title="Enable OpenTelemetry Hooks" description="Register OpenTelemetry hooks in AddWhizbang" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Observability", "C#", "Enable", "OpenTelemetry"]}
+```csharp{title="Enable OpenTelemetry Hooks" description="Register OpenTelemetry hooks in AddWhizbang" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Observability", "C#", "Enable", "OpenTelemetry"] unverified="OTel exporter/DI wiring — not exercised by a test"}
 services.AddWhizbang(options => {
   // Register both span and metric hooks
   options.Tags.UseOpenTelemetry();
@@ -52,7 +52,7 @@ builder.Services.AddOpenTelemetry()
 
 The `ObservabilityTagExtensions` class provides extension methods for registering OpenTelemetry hooks with the message tag system.
 
-```csharp{title="ObservabilityTagExtensions Methods" description="Extension methods for OpenTelemetry hook registration" category="Reference" difficulty="BEGINNER" tags=["OpenTelemetry", "Registration", "API"]}
+```csharp{title="ObservabilityTagExtensions Methods" description="Extension methods for OpenTelemetry hook registration" category="Reference" difficulty="BEGINNER" tags=["OpenTelemetry", "Registration", "API"] tests=["ObservabilityTagExtensionsTests.UseOpenTelemetry_ReturnsSameOptionsForChainingAsync", "ObservabilityTagExtensionsTests.UseOpenTelemetryTracing_AcceptsCustomPriorityAsync", "ObservabilityTagExtensionsTests.UseOpenTelemetryMetrics_AcceptsCustomPriorityAsync"]}
 services.AddWhizbang(options => {
   // Register all OpenTelemetry hooks (spans + metrics)
   options.Tags.UseOpenTelemetry();
@@ -75,7 +75,7 @@ services.AddWhizbang(options => {
 
 For custom configuration, register hooks individually:
 
-```csharp{title="Manual Hook Registration" description="Register hooks with custom priority" category="Configuration" difficulty="INTERMEDIATE" tags=["OpenTelemetry", "Registration", "Priority"]}
+```csharp{title="Manual Hook Registration" description="Register hooks with custom priority" category="Configuration" difficulty="INTERMEDIATE" tags=["OpenTelemetry", "Registration", "Priority"] unverified="OTel exporter/DI wiring — not exercised by a test"}
 services.AddWhizbang(options => {
   // Register with specific priority (lower runs first)
   options.Tags.UseHook<TelemetryTagAttribute, OpenTelemetrySpanHook>(priority: -100);
@@ -89,7 +89,7 @@ The `OpenTelemetrySpanHook` creates OpenTelemetry spans for messages marked with
 
 ### Usage
 
-```csharp{title="TelemetryTag Usage" description="Mark events for OpenTelemetry span creation" category="Usage" difficulty="BEGINNER" tags=["OpenTelemetry", "Spans", "Telemetry"]}
+```csharp{title="TelemetryTag Usage" description="Mark events for OpenTelemetry span creation" category="Usage" difficulty="BEGINNER" tags=["OpenTelemetry", "Spans", "Telemetry"] tests=["OpenTelemetrySpanHookTests.OnTaggedMessage_CreatesActivity_WithSpanNameFromAttributeAsync", "OpenTelemetrySpanHookTests.OnTaggedMessage_AddsPayloadAttributes_WhenPropertiesSpecifiedAsync", "OpenTelemetrySpanHookTests.OnTaggedMessage_MapsSpanKindToActivityKind_CorrectlyAsync"]}
 // Mark an event for telemetry
 [TelemetryTag(
     Tag = "payment-processed",
@@ -173,7 +173,7 @@ The `OpenTelemetryMetricHook` records metrics for messages marked with `MetricTa
 
 ### Usage
 
-```csharp{title="MetricTag Usage" description="Mark events for OpenTelemetry metric recording" category="Usage" difficulty="BEGINNER" tags=["OpenTelemetry", "Metrics", "Telemetry"]}
+```csharp{title="MetricTag Usage" description="Mark events for OpenTelemetry metric recording" category="Usage" difficulty="BEGINNER" tags=["OpenTelemetry", "Metrics", "Telemetry"] tests=["OpenTelemetryMetricHookTests.OnTaggedMessage_RecordsCounter_WhenTypeIsCounterAsync", "OpenTelemetryMetricHookTests.OnTaggedMessage_RecordsHistogram_WhenTypeIsHistogramAsync", "OpenTelemetryMetricHookTests.OnTaggedMessage_AddsDimensionsFromProperties_WhenPropertiesSpecifiedAsync"]}
 // Counter metric - increments on each event
 [MetricTag(
     Tag = "order-created",
@@ -228,7 +228,7 @@ public record PaymentProcessedEvent(
 
 Properties specified in `Properties` array become metric dimensions:
 
-```csharp{title="Metric Dimensions" description="Add dimensions to metrics for segmentation" category="Usage" difficulty="INTERMEDIATE" tags=["OpenTelemetry", "Metrics", "Dimensions"]}
+```csharp{title="Metric Dimensions" description="Add dimensions to metrics for segmentation" category="Usage" difficulty="INTERMEDIATE" tags=["OpenTelemetry", "Metrics", "Dimensions"] tests=["OpenTelemetryMetricHookTests.OnTaggedMessage_AddsDimensionsFromProperties_WhenPropertiesSpecifiedAsync", "OpenTelemetryMetricHookTests.OnTaggedMessage_HandlesMixedPropertyTypes_InDimensionsAsync"]}
 [MetricTag(
     Tag = "api-call",
     MetricName = "api.requests",
@@ -248,7 +248,7 @@ public record ApiRequestCompletedEvent(
 
 Scope values (`TenantId`, `UserId`, `CustomerId`, `OrganizationId`) are automatically added as dimensions when present:
 
-```csharp{title="Scope Dimensions" description="Automatic scope-based metric dimensions" category="Usage" difficulty="INTERMEDIATE" tags=["OpenTelemetry", "Metrics", "Scope"]}
+```csharp{title="Scope Dimensions" description="Automatic scope-based metric dimensions" category="Usage" difficulty="INTERMEDIATE" tags=["OpenTelemetry", "Metrics", "Scope"] tests=["OpenTelemetryMetricHookTests.OnTaggedMessage_AddsDimensionsFromScope_WhenScopeProvidedAsync"]}
 // Event with metric tag
 [MetricTag(Tag = "order-created", MetricName = "orders.created", Type = MetricType.Counter)]
 public record OrderCreatedEvent(Guid OrderId) : IEvent;
@@ -262,7 +262,7 @@ public record OrderCreatedEvent(Guid OrderId) : IEvent;
 
 ## Complete Integration Example
 
-```csharp{title="Complete OpenTelemetry Setup" description="Full OpenTelemetry integration with Whizbang" category="Example" difficulty="INTERMEDIATE" tags=["OpenTelemetry", "Configuration", "Example"]}
+```csharp{title="Complete OpenTelemetry Setup" description="Full OpenTelemetry integration with Whizbang" category="Example" difficulty="INTERMEDIATE" tags=["OpenTelemetry", "Configuration", "Example"] unverified="OTel exporter/DI wiring — not exercised by a test"}
 // Program.cs
 var builder = WebApplication.CreateBuilder(args);
 
@@ -290,7 +290,7 @@ builder.Services.AddWhizbang(options => {
 });
 ```
 
-```csharp{title="Tagged Events" description="Events with telemetry and metric tags" category="Example" difficulty="BEGINNER" tags=["OpenTelemetry", "Events", "Tags"]}
+```csharp{title="Tagged Events" description="Events with telemetry and metric tags" category="Example" difficulty="BEGINNER" tags=["OpenTelemetry", "Events", "Tags"] tests=["OpenTelemetrySpanHookTests.OnTaggedMessage_CreatesActivity_WithSpanNameFromAttributeAsync", "OpenTelemetrySpanHookTests.OnTaggedMessage_AddsPayloadAttributes_WhenPropertiesSpecifiedAsync", "OpenTelemetryMetricHookTests.OnTaggedMessage_RecordsCounter_WhenTypeIsCounterAsync", "OpenTelemetryMetricHookTests.OnTaggedMessage_RecordsHistogram_WhenTypeIsHistogramAsync"]}
 // Telemetry for distributed tracing
 [TelemetryTag(
     Tag = "order-submitted",
@@ -325,7 +325,7 @@ public record OrderCompletedEvent(
 
 For .NET Aspire projects, traces and metrics appear automatically in the Aspire dashboard:
 
-```csharp{title="Aspire Integration" description="Configure OpenTelemetry for Aspire dashboard" category="Configuration" difficulty="BEGINNER" tags=["OpenTelemetry", "Aspire", "Configuration"]}
+```csharp{title="Aspire Integration" description="Configure OpenTelemetry for Aspire dashboard" category="Configuration" difficulty="BEGINNER" tags=["OpenTelemetry", "Aspire", "Configuration"] unverified="OTel exporter/DI wiring — not exercised by a test"}
 // ServiceDefaults project
 public static IHostApplicationBuilder AddServiceDefaults(
     this IHostApplicationBuilder builder) {
@@ -349,7 +349,7 @@ public static IHostApplicationBuilder AddServiceDefaults(
 
 ### Tagging Strategy
 
-```csharp{title="Tagging Best Practices" description="Recommended patterns for telemetry tags" category="Best-Practices" difficulty="INTERMEDIATE" tags=["OpenTelemetry", "Best-Practices", "Tags"]}
+```csharp{title="Tagging Best Practices" description="Recommended patterns for telemetry tags" category="Best-Practices" difficulty="INTERMEDIATE" tags=["OpenTelemetry", "Best-Practices", "Tags"] unverified="counter-example — best-practice DO/DON'T guidance, not exercised by a test"}
 // DO: Use descriptive, consistent tag names
 [TelemetryTag(Tag = "orders.payment-processed", SpanName = "ProcessOrderPayment")]
 

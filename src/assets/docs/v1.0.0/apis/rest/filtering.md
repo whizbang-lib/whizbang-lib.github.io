@@ -45,7 +45,7 @@ Shipped behavior at this commit: generated lens endpoints bind `page`, `pageSize
 
 The `LensRequest` class captures filtering, sorting, and paging parameters:
 
-```csharp{title="LensRequest Model" description="The LensRequest class captures filtering, sorting, and paging parameters:" category="API" difficulty="BEGINNER" tags=["Apis", "Rest", "LensRequest", "Model"]}
+```csharp{title="LensRequest Model" description="The LensRequest class captures filtering, sorting, and paging parameters:" category="API" difficulty="BEGINNER" tags=["Apis", "Rest", "LensRequest", "Model"] tests=["LensRequestTests.Constructor_ShouldSetDefaultsAsync", "LensRequestTests.Page_ShouldBeSettableAsync", "LensRequestTests.PageSize_ShouldBeSettableAsync", "LensRequestTests.Sort_ShouldBeSettableAsync", "LensRequestTests.Filter_ShouldBeSettableAsync"]}
 public class LensRequest {
     public int Page { get; set; } = 1;
     public int? PageSize { get; set; }
@@ -122,14 +122,14 @@ All filters are AND'd together.
 
 ### Basic Lens
 
-```csharp{title="Basic Lens" description="Basic Lens" category="API" difficulty="BEGINNER" tags=["Apis", "Rest", "Basic", "Lens"]}
+```csharp{title="Basic Lens" description="Basic Lens" category="API" difficulty="BEGINNER" tags=["Apis", "Rest", "Basic", "Lens"] tests=["RestLensAttributeTests.Route_ShouldBeSettableAsync", "RestLensAttributeTests.Attribute_ShouldBeApplicableToClassesAndInterfacesAsync"]}
 [RestLens(Route = "/api/orders")]
 public interface IOrderLens : ILensQuery<OrderReadModel> { }
 ```
 
 ### With Custom Paging
 
-```csharp{title="With Custom Paging" description="With Custom Paging" category="API" difficulty="BEGINNER" tags=["Apis", "Rest", "Custom", "Paging"]}
+```csharp{title="With Custom Paging" description="With Custom Paging" category="API" difficulty="BEGINNER" tags=["Apis", "Rest", "Custom", "Paging"] tests=["RestLensAttributeTests.Route_ShouldBeSettableAsync", "RestLensAttributeTests.DefaultPageSize_ShouldBeSettableAsync", "RestLensAttributeTests.MaxPageSize_ShouldBeSettableAsync"]}
 [RestLens(
     Route = "/api/orders",
     DefaultPageSize = 25,
@@ -139,7 +139,7 @@ public interface IOrderLens : ILensQuery<OrderReadModel> { }
 
 ### Filtering Only (No Sorting)
 
-```csharp{title="Filtering Only (No Sorting)" description="Filtering Only (No Sorting)" category="API" difficulty="BEGINNER" tags=["Apis", "Rest", "Filtering", "Only"]}
+```csharp{title="Filtering Only (No Sorting)" description="Filtering Only (No Sorting)" category="API" difficulty="BEGINNER" tags=["Apis", "Rest", "Filtering", "Only"] tests=["RestLensAttributeTests.EnableSorting_ShouldBeSettableAsync", "RestLensAttributeTests.EnablePaging_ShouldBeSettableAsync", "RestLensAttributeTests.Route_ShouldBeSettableAsync"]}
 [RestLens(
     Route = "/api/statuses",
     EnableSorting = false,
@@ -162,7 +162,7 @@ public interface IStatusLens : ILensQuery<StatusReadModel> { }
 
 ### LensResponse
 
-```csharp{title="LensResponse" description="LensResponse" category="API" difficulty="INTERMEDIATE" tags=["Apis", "Rest", "LensResponse"]}
+```csharp{title="LensResponse" description="LensResponse" category="API" difficulty="INTERMEDIATE" tags=["Apis", "Rest", "LensResponse"] tests=["LensResponseTests.Constructor_ShouldSetDefaultsAsync", "LensResponseTests.TotalPages_ShouldCalculateCorrectlyAsync", "LensResponseTests.TotalPages_WithZeroPageSize_ShouldBeZeroAsync", "LensResponseTests.HasNextPage_ShouldBeTrueWhenMorePagesExistAsync", "LensResponseTests.HasNextPage_ShouldBeFalseOnLastPageAsync", "LensResponseTests.HasPreviousPage_ShouldBeTrueWhenNotOnFirstPageAsync", "LensResponseTests.HasPreviousPage_ShouldBeFalseOnFirstPageAsync"]}
 public class LensResponse<TModel> where TModel : class {
     public IReadOnlyList<TModel> Data { get; set; } = [];
     public int TotalCount { get; set; }
@@ -202,7 +202,7 @@ public class LensResponse<TModel> where TModel : class {
 
 The `LensEndpointBase<TModel>` class provides a static helper for parsing sort strings:
 
-```csharp{title="Sort Expression Parsing" description="The LensEndpointBase provides a helper for parsing sort strings:" category="API" difficulty="BEGINNER" tags=["Apis", "Rest", "Sort", "Expression"]}
+```csharp{title="Sort Expression Parsing" description="The LensEndpointBase provides a helper for parsing sort strings:" category="API" difficulty="BEGINNER" tags=["Apis", "Rest", "Sort", "Expression"] tests=["LensEndpointBaseTests.ParseSortExpression_WithDescendingPrefix_ShouldParseCorrectlyAsync", "LensEndpointBaseTests.ParseSortExpression_WithAscendingPrefix_ShouldParseCorrectlyAsync", "LensEndpointBaseTests.ParseSortExpression_WithNoPrefix_ShouldDefaultToAscendingAsync", "LensEndpointBaseTests.ParseSortExpression_WithNullInput_ShouldReturnEmptyAsync", "LensEndpointBaseTests.ParseSortExpression_WithEmptyInput_ShouldReturnEmptyAsync"]}
 protected static IReadOnlyList<SortExpression> ParseSortExpression(string? sort);
 
 public readonly record struct SortExpression(string Field, bool Descending);
@@ -210,7 +210,7 @@ public readonly record struct SortExpression(string Field, bool Descending);
 
 ### Example
 
-```csharp{title="Example" description="Example" category="API" difficulty="BEGINNER" tags=["Apis", "Rest", "Example"]}
+```csharp{title="Example" description="Example" category="API" difficulty="BEGINNER" tags=["Apis", "Rest", "Example"] tests=["LensEndpointBaseTests.ParseSortExpression_WithMultipleFields_ShouldParseAllAsync", "LensEndpointBaseTests.ParseSortExpression_WithDescendingPrefix_ShouldParseCorrectlyAsync", "LensEndpointBaseTests.ParseSortExpression_WithNoPrefix_ShouldDefaultToAscendingAsync", "LensEndpointBaseTests.ParseSortExpression_WithAscendingPrefix_ShouldParseCorrectlyAsync"]}
 var sorts = ParseSortExpression("-createdAt,name,+status");
 // Returns:
 // [
@@ -224,7 +224,7 @@ var sorts = ParseSortExpression("-createdAt,name,+status");
 
 The base class provides bounds-checked paging:
 
-```csharp{title="Paging Calculation" description="The base class provides bounds-checked paging:" category="API" difficulty="BEGINNER" tags=["Apis", "Rest", "Paging", "Calculation"]}
+```csharp{title="Paging Calculation" description="The base class provides bounds-checked paging:" category="API" difficulty="BEGINNER" tags=["Apis", "Rest", "Paging", "Calculation"] tests=["LensEndpointBaseTests.ApplyPaging_ShouldCalculateSkipAndTakeCorrectlyAsync", "LensEndpointBaseTests.ApplyPaging_WithFirstPage_ShouldSkipZeroAsync", "LensEndpointBaseTests.ApplyPaging_WithNullPageSize_ShouldUseDefaultAsync", "LensEndpointBaseTests.ApplyPaging_WithExcessivePageSize_ShouldClampToMaxAsync", "LensEndpointBaseTests.ApplyPaging_WithZeroPage_ShouldTreatAsFirstPageAsync", "LensEndpointBaseTests.ApplyPaging_WithNegativePage_ShouldTreatAsFirstPageAsync"]}
 protected static (int skip, int take) CalculatePaging(
     LensRequest request,
     int defaultPageSize,
@@ -233,7 +233,7 @@ protected static (int skip, int take) CalculatePaging(
 
 ### Example
 
-```csharp{title="Example (2)" description="Example (2)" category="API" difficulty="BEGINNER" tags=["Apis", "Rest", "Example"]}
+```csharp{title="Example (2)" description="Example (2)" category="API" difficulty="BEGINNER" tags=["Apis", "Rest", "Example"] tests=["LensEndpointBaseTests.ApplyPaging_ShouldCalculateSkipAndTakeCorrectlyAsync"]}
 // With request: page=3, pageSize=50, max=100
 var (skip, take) = CalculatePaging(request, 10, 100);
 // skip = 100 (page 3, 0-indexed: 2 * 50)
@@ -244,7 +244,7 @@ var (skip, take) = CalculatePaging(request, 10, 100);
 
 `LensEndpointBase<TModel>` exposes `OnBeforeQueryAsync` and `OnAfterQueryAsync` hooks for endpoints that inherit from it:
 
-```csharp{title="Customizing Filter Behavior" description="Override LensEndpointBase hooks to add custom filtering:" category="API" difficulty="ADVANCED" tags=["Apis", "Rest", "Customizing", "Filter"]}
+```csharp{title="Customizing Filter Behavior" description="Override LensEndpointBase hooks to add custom filtering:" category="API" difficulty="ADVANCED" tags=["Apis", "Rest", "Customizing", "Filter"] tests=["LensEndpointBaseTests.OnBeforeQueryAsync_Default_ShouldCompleteImmediatelyAsync", "LensEndpointBaseTests.OnAfterQueryAsync_Default_ShouldCompleteImmediatelyAsync", "LensEndpointBaseTests.Endpoint_ShouldBeAbstractAsync"]}
 public class OrderLensEndpoint : LensEndpointBase<OrderReadModel> {
     protected override ValueTask OnBeforeQueryAsync(LensRequest request, CancellationToken ct) {
         // Add default filters
@@ -310,7 +310,7 @@ const orders = await getOrders({
 
 ### C# HttpClient
 
-```csharp{title="C# HttpClient" description="C# HttpClient" category="API" difficulty="INTERMEDIATE" tags=["Apis", "Rest", "HttpClient"]}
+```csharp{title="C# HttpClient" description="C# HttpClient" category="API" difficulty="INTERMEDIATE" tags=["Apis", "Rest", "HttpClient"] unverified="consumer HttpClient sample — builds the query string and deserializes LensResponse over HTTP; not part of the tested framework surface"}
 public async Task<LensResponse<OrderReadModel>> GetOrdersAsync(
     int page = 1,
     int pageSize = 10,

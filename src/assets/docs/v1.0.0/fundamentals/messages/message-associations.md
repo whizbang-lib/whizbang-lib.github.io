@@ -33,7 +33,7 @@ When a service starts, it **reconciles** its message associations with the datab
 
 ## MessageAssociationRecord {#messageassociationrecord}
 
-```csharp{title="MessageAssociationRecord" description="MessageAssociationRecord" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Messages", "MessageAssociationRecord", "Messageassociationrecord"]}
+```csharp{title="MessageAssociationRecord" description="MessageAssociationRecord" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Messages", "MessageAssociationRecord", "Messageassociationrecord"] unverified="verified by RecordTypesConstructionTests.MessageAssociationRecord_FullInitialization_ExposesAllFieldsAsync, which is outside the current coverage map"}
 namespace Whizbang.Core.Messaging;
 
 /// <summary>
@@ -81,7 +81,7 @@ public sealed class MessageAssociationRecord {
 
 ## MessageAssociationsSchema {#messageassociationsschema}
 
-```csharp{title="MessageAssociationsSchema" description="MessageAssociationsSchema" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Messages", "MessageAssociationsSchema", "Messageassociationsschema"]}
+```csharp{title="MessageAssociationsSchema" description="MessageAssociationsSchema" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Messages", "MessageAssociationsSchema", "Messageassociationsschema"] unverified="verified by MessageAssociationRegistryTests schema and unique-constraint tests, which is outside the current coverage map"}
 namespace Whizbang.Data.Schema.Schemas;
 
 /// <summary>
@@ -138,7 +138,7 @@ public static class MessageAssociationsSchema {
 
 At startup, services reconcile their associations:
 
-```mermaid
+```mermaid{caption="Startup reconciliation flow — scan assemblies, discover message associations, upsert new / prune stale rows in the database, then auto-create checkpoints for new perspectives."}
 graph TB
     S1["1. Service starts<br/>Scan assemblies for perspectives and receptors"]
     S2["2. Discover associations<br/>OrderSummaryPerspective handles OrderCreated, OrderShipped<br/>InventoryReceptor handles OrderCreated"]
@@ -154,7 +154,7 @@ graph TB
 
 ### Implementation Example
 
-```csharp{title="Implementation Example" description="Implementation Example" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Implementation", "Example"]}
+```csharp{title="Implementation Example" description="Implementation Example" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Implementation", "Example"] unverified="illustrative example — hand-written Dapper reconciler, not a Whizbang API"}
 public class MessageAssociationReconciler {
   private readonly IDbConnection _db;
   private readonly string _serviceName;
@@ -193,7 +193,7 @@ public class MessageAssociationReconciler {
 
 When a new perspective is deployed, associations enable automatic checkpoint creation:
 
-```csharp{title="Auto-Creating Perspective Checkpoints" description="When a new perspective is deployed, associations enable automatic checkpoint creation:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Auto-Creating", "Perspective"]}
+```csharp{title="Auto-Creating Perspective Checkpoints" description="When a new perspective is deployed, associations enable automatic checkpoint creation:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Auto-Creating", "Perspective"] unverified="illustrative example — hand-written checkpoint query, not a Whizbang API"}
 public async Task EnsureCheckpointsAsync(CancellationToken ct = default) {
   // Find perspectives without checkpoints
   var missingCheckpoints = await _db.QueryAsync<string>(
@@ -221,7 +221,7 @@ public async Task EnsureCheckpointsAsync(CancellationToken ct = default) {
 
 Query which consumers handle a message type:
 
-```csharp{title="Runtime Message Flow Inspection" description="Query which consumers handle a message type:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Runtime", "Message"]}
+```csharp{title="Runtime Message Flow Inspection" description="Query which consumers handle a message type:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Runtime", "Message"] unverified="illustrative example — hand-written consumer query, not a Whizbang API"}
 public async Task<IEnumerable<ConsumerInfo>> GetConsumersAsync(
     string messageType,
     CancellationToken ct = default) {
@@ -241,7 +241,7 @@ public async Task<IEnumerable<ConsumerInfo>> GetConsumersAsync(
 
 Find all message types consumed by a service:
 
-```csharp{title="Service Dependency Analysis" description="Find all message types consumed by a service:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Service", "Dependency"]}
+```csharp{title="Service Dependency Analysis" description="Find all message types consumed by a service:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Service", "Dependency"] unverified="illustrative example — hand-written consumer query, not a Whizbang API"}
 public async Task<IEnumerable<string>> GetConsumedTypesAsync(
     string serviceName,
     CancellationToken ct = default) {

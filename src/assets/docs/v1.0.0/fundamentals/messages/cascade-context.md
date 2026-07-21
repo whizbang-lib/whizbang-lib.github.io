@@ -41,7 +41,7 @@ When a message produces child messages, **CascadeContext** carries everything th
 
 ## How It Fits Together
 
-```mermaid
+```mermaid{caption="Cascade context assembly — an incoming envelope becomes a CascadeContext via the factory, enrichers add metadata, then MessageContext.Create builds the child message's context." tests=["CascadeContextFactoryTests.FromEnvelope_AppliesEnrichersWithEnvelopeAsync", "CascadeContextFactoryTests.EnricherPipeline_AppliesEnrichersInOrderAsync", "MessageContextTests.Create_WithCascadeContext_CopiesCorrelationIdAsync"]}
 graph TB
     IE["Incoming Envelope"]
     F["CascadeContextFactory<br/>.FromEnvelope()"]
@@ -65,7 +65,7 @@ graph TB
 
 A lightweight, immutable record containing only the data that must propagate from parent to child messages.
 
-```csharp{title="CascadeContext" description="Immutable record carrying propagation data" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Messages", "CascadeContext"]}
+```csharp{title="CascadeContext" description="Immutable record carrying propagation data" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Messages", "CascadeContext"] tests=["CascadeContextTests.Constructor_WithRequiredProperties_InitializesCorrectlyAsync", "CascadeContextTests.Constructor_WithNullSecurityContext_AllowsNullAsync", "CascadeContextTests.Constructor_WithMetadata_SetsMetadataAsync"]}
 public sealed record CascadeContext {
     public required CorrelationId CorrelationId { get; init; }
     public required MessageId CausationId { get; init; }
@@ -87,7 +87,7 @@ public sealed record CascadeContext {
 
 When starting a brand-new message flow with no parent, use the static factory methods:
 
-```csharp{title="Root Context Creation" description="Starting a new message flow" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Messages", "CascadeContext", "Root"]}
+```csharp{title="Root Context Creation" description="Starting a new message flow" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Messages", "CascadeContext", "Root"] tests=["CascadeContextTests.NewRoot_GeneratesNewCorrelationIdAsync", "CascadeContextTests.NewRootWithAmbientSecurity_WithAmbientContext_InheritsSecurityAsync", "CascadeContextTests.NewRootWithAmbientSecurity_NoAmbientContext_ReturnsNullSecurityAsync"]}
 // No security context
 var root = CascadeContext.NewRoot();
 
@@ -101,7 +101,7 @@ var rootWithSecurity = CascadeContext.NewRootWithAmbientSecurity();
 
 CascadeContext is immutable. The `WithMetadata` methods return new instances:
 
-```csharp{title="WithMetadata" description="Adding custom metadata to cascade context" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "CascadeContext", "Metadata"]}
+```csharp{title="WithMetadata" description="Adding custom metadata to cascade context" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "CascadeContext", "Metadata"] tests=["CascadeContextTests.WithMetadata_SingleKey_AddsMetadataAsync", "CascadeContextTests.WithMetadata_Dictionary_MergesAllEntriesAsync", "CascadeContextTests.WithMetadata_OverwritesExistingKey_WhenSameKeyProvidedAsync"]}
 // Add a single key
 var enriched = cascade.WithMetadata("FeatureFlag", "new-checkout-v2");
 
@@ -117,7 +117,7 @@ var merged = cascade.WithMetadata(additional);
 
 The `SecurityContext` carried by `CascadeContext` is a simple record capturing authentication identity at a point in time:
 
-```csharp{title="SecurityContext" description="Authentication identity in cascade context" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Messages", "SecurityContext"]}
+```csharp{title="SecurityContext" description="Authentication identity in cascade context" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Messages", "SecurityContext"] tests=["SecurityContextTests.Constructor_SetsUserIdAsync", "SecurityContextTests.Constructor_SetsTenantIdAsync", "SecurityContextTests.RecordEquality_SameValues_AreEqualAsync"]}
 public record SecurityContext {
     public string? UserId { get; init; }
     public string? TenantId { get; init; }
@@ -132,13 +132,13 @@ This is distinct from the richer `IScopeContext` (which includes roles, permissi
 
 The factory centralizes creation and enrichment of `CascadeContext`. Register it as a singleton:
 
-```csharp{title="CascadeContextFactory Registration" description="DI registration for CascadeContextFactory" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Messages", "CascadeContext", "Factory"]}
+```csharp{title="CascadeContextFactory Registration" description="DI registration for CascadeContextFactory" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Messages", "CascadeContext", "Factory"] unverified="DI registration — no behavior to assert"}
 services.AddSingleton<CascadeContextFactory>();
 ```
 
 ### Factory Methods
 
-```csharp{title="CascadeContextFactory API" description="Factory methods for creating CascadeContext" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "CascadeContext", "Factory"]}
+```csharp{title="CascadeContextFactory API" description="Factory methods for creating CascadeContext" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "CascadeContext", "Factory"] tests=["CascadeContextFactoryTests.FromEnvelope_ExtractsCorrelationIdFromFirstHopAsync", "CascadeContextFactoryTests.FromMessageContext_CopiesCorrelationIdAsync", "CascadeContextFactoryTests.NewRoot_GeneratesNewIdentifiersAsync"]}
 public sealed class CascadeContextFactory(IEnumerable<ICascadeContextEnricher>? enrichers) {
     // From an incoming envelope (most common in workers)
     public CascadeContext FromEnvelope(IMessageEnvelope envelope);
@@ -161,7 +161,7 @@ All three methods apply registered `ICascadeContextEnricher` instances in regist
 
 ### Typical Usage
 
-```csharp{title="Using CascadeContextFactory in a Worker" description="Extracting cascade context from incoming envelope" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "CascadeContext", "Factory", "Worker"]}
+```csharp{title="Using CascadeContextFactory in a Worker" description="Extracting cascade context from incoming envelope" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "CascadeContext", "Factory", "Worker"] tests=["CascadeContextFactoryTests.FromEnvelope_ExtractsCorrelationIdFromFirstHopAsync", "CascadeContextFactoryTests.FromEnvelope_SetsCausationIdToEnvelopeMessageIdAsync"]}
 public class OrderWorker {
     private readonly CascadeContextFactory _cascadeFactory;
     private readonly IDispatcher _dispatcher;
@@ -191,7 +191,7 @@ public class OrderWorker {
 
 Enrichers inject custom data into the cascade context during factory creation. They run in registration order and must be stateless, idempotent, and thread-safe.
 
-```csharp{title="ICascadeContextEnricher" description="Interface for enriching cascade context" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "CascadeContext", "Enricher"]}
+```csharp{title="ICascadeContextEnricher" description="Interface for enriching cascade context" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "CascadeContext", "Enricher"] tests=["CascadeContextFactoryTests.EnricherPipeline_AppliesEnrichersInOrderAsync", "CascadeContextFactoryTests.FromEnvelope_AppliesEnrichersWithEnvelopeAsync"]}
 public interface ICascadeContextEnricher {
     CascadeContext Enrich(CascadeContext context, IMessageEnvelope? sourceEnvelope);
 }
@@ -199,7 +199,7 @@ public interface ICascadeContextEnricher {
 
 ### Example: Feature Flag Enricher
 
-```csharp{title="FeatureFlagEnricher" description="Custom enricher adding feature flags to cascade metadata" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "CascadeContext", "Enricher", "Example"]}
+```csharp{title="FeatureFlagEnricher" description="Custom enricher adding feature flags to cascade metadata" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "CascadeContext", "Enricher", "Example"] unverified="illustrative custom enricher — user-domain IFeatureFlagService, not framework code; the enricher pipeline is verified in the ICascadeContextEnricher block above"}
 public class FeatureFlagEnricher : ICascadeContextEnricher {
     private readonly IFeatureFlagService _flags;
 
@@ -231,7 +231,7 @@ services.AddSingleton<ICascadeContextEnricher, FeatureFlagEnricher>();
 
 `IScopeContext` provides the **rich** security context (roles, permissions, claims, security principals) for the current operation. It is populated from HTTP claims, message headers, or explicit injection.
 
-```csharp{title="IScopeContext" description="Rich authorization context interface" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "ScopeContext", "Security"]}
+```csharp{title="IScopeContext" description="Rich authorization context interface" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "ScopeContext", "Security"] unverified="interface declaration — no behavior to assert; concrete implementations are outside the current coverage map"}
 public interface IScopeContext {
     PerspectiveScope Scope { get; }              // TenantId, UserId
     IReadOnlySet<string> Roles { get; }
@@ -253,7 +253,7 @@ public interface IScopeContext {
 
 Messages **own and carry** their scope context. When `IMessageContext` is created, it captures the current `IScopeContext` so that the message carries its authorization state throughout its lifecycle:
 
-```csharp{title="IMessageContext ScopeContext" description="Messages carry their authorization state" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "ScopeContext", "MessageContext"]}
+```csharp{title="IMessageContext ScopeContext" description="Messages carry their authorization state" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "ScopeContext", "MessageContext"] unverified="interface surface — no behavior to assert"}
 public interface IMessageContext {
     // ... MessageId, CorrelationId, CausationId, etc.
 
@@ -270,7 +270,7 @@ This is critical for deferred lifecycle stages (like `PostPerspectiveDetached`) 
 
 The **Initiating Context** is the `IMessageContext` that started the current scope. It serves as the **source of truth** for security identity (`UserId`, `TenantId`).
 
-```csharp{title="IScopeContextAccessor" description="Accessor with InitiatingContext as source of truth" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "InitiatingContext", "ScopeContextAccessor"]}
+```csharp{title="IScopeContextAccessor" description="Accessor with InitiatingContext as source of truth" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "InitiatingContext", "ScopeContextAccessor"] unverified="interface declaration with pointer-property defaults — ScopeContextAccessorTests covers only the instance Current property, not UserId/TenantId resolution from InitiatingContext"}
 public interface IScopeContextAccessor {
     IScopeContext? Current { get; set; }
 
@@ -298,7 +298,7 @@ In event-sourcing systems, **messages carry state**. The `InitiatingContext` sto
 
 `ScopeContextAccessor` uses `AsyncLocal<T>` for ambient context that flows across async calls:
 
-```csharp{title="ScopeContextAccessor Static Accessors" description="Static accessors for singleton services" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Messages", "ScopeContextAccessor", "AsyncLocal"]}
+```csharp{title="ScopeContextAccessor Static Accessors" description="Static accessors for singleton services" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Messages", "ScopeContextAccessor", "AsyncLocal"] unverified="static accessor declaration — ScopeContextAccessorTests exercises the instance Current property, not these static pointer accessors"}
 public sealed class ScopeContextAccessor : IScopeContextAccessor {
     // Static accessors for singleton services (e.g., Dispatcher)
     public static IScopeContext? CurrentContext { get; set; }
@@ -333,7 +333,7 @@ Correlation and causation must flow **unchanged** down a whole causal tree: an i
 2. **The ambient parent message context** — a *locally-cascaded* message has no envelope, so it inherits from the receptor whose handler emitted it. This branch also **rescues** an inbound message whose hop somehow lost its correlation, so a dropped hop can never silently fork a fresh correlation tree (defence in depth).
 3. **A fresh root** — only when there is genuinely no parent (a true entry point), aligned to the ambient OpenTelemetry trace.
 
-```csharp{title="ResolveInheritedIdentity" description="The single handle-side correlation resolver" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Messages", "Correlation", "Cascade"]}
+```csharp{title="ResolveInheritedIdentity" description="The single handle-side correlation resolver" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Messages", "Correlation", "Cascade"] tests=["SecurityContextHelperTests.SetMessageContextFromEnvelope_HopHasCorrelation_UsesHopNotAmbientParentAsync", "SecurityContextHelperTests.SetMessageContextFromEnvelope_HopHasNoCorrelation_RescuesFromAmbientParentAsync"]}
 // Every message-context establishment site routes through this — never re-implement the rule inline.
 var (correlation, causation) = CascadeContext.ResolveInheritedIdentity(envelope);
 var messageContext = new MessageContext {
@@ -352,7 +352,7 @@ var messageContext = new MessageContext {
 
 Both `IScopeContextAccessor` and `ScopeContextAccessor` expose `UserId` and `TenantId` as **pointer properties**. They are not copies - they read directly from `InitiatingContext`:
 
-```csharp{title="Pointer Properties" description="UserId and TenantId read from InitiatingContext" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "PointerProperties", "ScopeContextAccessor"]}
+```csharp{title="Pointer Properties" description="UserId and TenantId read from InitiatingContext" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "PointerProperties", "ScopeContextAccessor"] unverified="pointer-property declaration — no candidate test exercises accessor UserId/TenantId resolution from InitiatingContext"}
 // IScopeContextAccessor interface default implementations
 string? UserId => InitiatingContext?.UserId;
 string? TenantId => InitiatingContext?.TenantId;
@@ -384,7 +384,7 @@ This ensures tenant context is always available, even in deferred lifecycle stag
 
 `MessageContext.New()` captures the current ambient scope so the message **owns and carries** its security context:
 
-```csharp{title="MessageContext.New()" description="Creates message context with ambient security capture" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "MessageContext", "New"]}
+```csharp{title="MessageContext.New()" description="Creates message context with ambient security capture" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "MessageContext", "New"] tests=["MessageContextTests.New_CapturesScopeContextFromInitiatingContextAsync", "MessageContextTests.New_InitiatingContextTakesPrecedenceOverAmbientForScopeContextAsync"]}
 // Priority for UserId/TenantId:
 // 1. InitiatingContext (SOURCE OF TRUTH)
 // 2. CurrentContext.Scope (backward-compatibility fallback)
@@ -399,7 +399,7 @@ var context = MessageContext.New();
 
 When creating child messages from a cascade:
 
-```csharp{title="MessageContext.Create(cascade)" description="Creates message context from cascade context" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "MessageContext", "CascadeContext"]}
+```csharp{title="MessageContext.Create(cascade)" description="Creates message context from cascade context" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "MessageContext", "CascadeContext"] tests=["MessageContextTests.Create_WithCascadeContext_CopiesCorrelationIdAsync", "MessageContextTests.Create_WithCascadeContext_UsesCascadeCausationIdAsContextCausationIdAsync", "MessageContextTests.Create_WithCascadeContext_GeneratesNewMessageIdAsync", "MessageContextTests.Create_WithCascadeContext_CopiesSecurityContextAsync"]}
 var cascade = cascadeFactory.FromEnvelope(envelope);
 var childContext = MessageContext.Create(cascade);
 
@@ -416,7 +416,7 @@ var childContext = MessageContext.Create(cascade);
 
 Here is how cascade context flows through a complete message lifecycle:
 
-```mermaid
+```mermaid{caption="End-to-end cascade lifecycle — NewRoot at the HTTP entry point, FromMessageContext when a receptor emits an event, envelope hops across the outbox and Service Bus, and FromEnvelope rehydration in the worker; one correlation flows throughout." tests=["CascadeContextFactoryTests.NewRoot_GeneratesNewIdentifiersAsync", "CascadeContextFactoryTests.FromMessageContext_CopiesCorrelationIdAsync", "CascadeContextFactoryTests.FromEnvelope_ExtractsCorrelationIdFromFirstHopAsync", "SecurityContextHelperTests.Cascade_MultiLevelChain_CorrelationPropagatesAndCausationLinksThroughAllLevelsAsync"]}
 graph TB
     S1["1. HTTP Request arrives<br/>ScopeContextAccessor.Current = IScopeContext (from claims)<br/>ScopeContextAccessor.InitiatingContext = IMessageContext"]
     S2["2. Controller dispatches command<br/>CascadeContextFactory.NewRoot()<br/>Enrichers add metadata<br/>CascadeContext { CorrelationId, CausationId, SecurityContext }"]

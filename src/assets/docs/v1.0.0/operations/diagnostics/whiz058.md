@@ -60,7 +60,7 @@ The following GUID creation methods are intercepted:
 
 Add to your project file:
 
-```xml{title="Enabling Interception" description="Add to your project file:" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Enabling", "Interception"]}
+```xml{title="Enabling Interception" description="Add to your project file:" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Enabling", "Interception"] unverified="config — MSBuild property, not exercised by a test"}
 <PropertyGroup>
   <WhizbangGuidInterceptionEnabled>true</WhizbangGuidInterceptionEnabled>
 </PropertyGroup>
@@ -72,7 +72,7 @@ If you want to suppress interception for specific code:
 
 ### Method-Level Suppression
 
-```csharp{title="Method-Level Suppression" description="Method-Level Suppression" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Method-Level", "Suppression"]}
+```csharp{title="Method-Level Suppression" description="Method-Level Suppression" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Method-Level", "Suppression"] tests=["GuidInterceptorGeneratorTests.Generator_SuppressOnMethod_NoInterceptionAsync"]}
 using Whizbang.Core;
 
 [SuppressGuidInterception]
@@ -83,7 +83,7 @@ public Guid CreateRawGuid() {
 
 ### Class-Level Suppression
 
-```csharp{title="Class-Level Suppression" description="Class-Level Suppression" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Class-Level", "Suppression"]}
+```csharp{title="Class-Level Suppression" description="Class-Level Suppression" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Class-Level", "Suppression"] tests=["GuidInterceptorGeneratorTests.Generator_SuppressOnClass_NoInterceptionAsync"]}
 [SuppressGuidInterception]
 public class TestFixtures {
   // All GUID calls in this class are not intercepted
@@ -94,7 +94,7 @@ public class TestFixtures {
 
 Wrapping a call in `#pragma warning disable WHIZ055` (or `WHIZ056`) disables interception entirely for that call — no interceptor is generated and neither WHIZ058 nor WHIZ059 is reported:
 
-```csharp{title="Pragma Suppression" description="Pragma Suppression" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Pragma", "Suppression"]}
+```csharp{title="Pragma Suppression" description="Pragma Suppression" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Pragma", "Suppression"] tests=["GuidInterceptorGeneratorTests.Generator_PragmaDisableWhiz055_SuppressesInterceptionAsync"]}
 #pragma warning disable WHIZ055
 var id = Guid.NewGuid();  // Not intercepted, no WHIZ058
 #pragma warning restore WHIZ055
@@ -106,7 +106,7 @@ Note: `#pragma warning disable WHIZ058` does **not** stop interception — the g
 
 Hides the WHIZ058 informational message from build output. This does **not** stop interception — use `[SuppressGuidInterception]` or the WHIZ055/WHIZ056 pragma for that:
 
-```xml{title="Project-Level Suppression" description="Project-Level Suppression" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Project-Level", "Suppression"]}
+```xml{title="Project-Level Suppression" description="Project-Level Suppression" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Project-Level", "Suppression"] unverified="suppression/config — NoWarn hides build output, not exercised by a test"}
 <PropertyGroup>
   <NoWarn>$(NoWarn);WHIZ058</NoWarn>
 </PropertyGroup>

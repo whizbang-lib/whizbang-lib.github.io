@@ -51,7 +51,7 @@ Ensure every `IPerspectiveFor` and `IPerspectiveWithActionsFor` interface on the
 
 ### Before (causes WHIZ300)
 
-```csharp{title="Before (causes WHIZ300)" description="Perspective with mismatched model types across interfaces" category="Troubleshooting" difficulty="INTERMEDIATE" tags=["Operations", "Diagnostics", "Before", "Causes"]}
+```csharp{title="Before (causes WHIZ300)" description="Perspective with mismatched model types across interfaces" category="Troubleshooting" difficulty="INTERMEDIATE" tags=["Operations", "Diagnostics", "Before", "Causes"] unverified="counter-example — the pattern WHIZ300 flags; detection verified by PerspectiveModelConsistencyAnalyzerTests.Analyzer_MixedInterfacesWithDifferentModels_ReportsDiagnosticAsync"}
 // WHIZ300: Different model types (OrderView vs ProductView)
 public class OrderPerspective :
     IPerspectiveFor<OrderView, OrderCreated>,
@@ -69,7 +69,7 @@ public class OrderPerspective :
 
 ### Fix Option 1: Use the same model type
 
-```csharp{title="Fix Option 1: Use the same model type" description="All interfaces share the same TModel" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Fix", "Option"]}
+```csharp{title="Fix Option 1: Use the same model type" description="All interfaces share the same TModel" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Fix", "Option"] tests=["PerspectiveModelConsistencyAnalyzerTests.Analyzer_MixedInterfacesWithSameModel_NoDiagnosticAsync"]}
 public class OrderPerspective :
     IPerspectiveFor<OrderView, OrderCreated>,
     IPerspectiveWithActionsFor<OrderView, OrderDeleted> {
@@ -86,7 +86,7 @@ public class OrderPerspective :
 
 ### Fix Option 2: Split into separate perspective classes
 
-```csharp{title="Fix Option 2: Split into separate perspectives" description="Each perspective class handles a single model type" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Fix", "Option"]}
+```csharp{title="Fix Option 2: Split into separate perspectives" description="Each perspective class handles a single model type" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Fix", "Option"] tests=["PerspectiveModelConsistencyAnalyzerTests.Analyzer_SinglePerspectiveInterface_NoDiagnosticAsync"]}
 public class OrderPerspective :
     IPerspectiveFor<OrderView, OrderCreated> {
 
@@ -106,7 +106,7 @@ public class ProductPerspective :
 
 ## Valid Usage Examples
 
-```csharp{title="Valid Usage Examples" description="Multiple interfaces with the same TModel type" category="Troubleshooting" difficulty="INTERMEDIATE" tags=["Operations", "Diagnostics", "Valid", "Usage"]}
+```csharp{title="Valid Usage Examples" description="Multiple interfaces with the same TModel type" category="Troubleshooting" difficulty="INTERMEDIATE" tags=["Operations", "Diagnostics", "Valid", "Usage"] tests=["PerspectiveModelConsistencyAnalyzerTests.Analyzer_MultiplePerspectivesWithSameModel_NoDiagnosticAsync", "PerspectiveModelConsistencyAnalyzerTests.Analyzer_MixedInterfacesWithSameModel_NoDiagnosticAsync", "PerspectiveModelConsistencyAnalyzerTests.Analyzer_MultipleEventsForSameModel_NoDiagnosticAsync"]}
 // All interfaces use OrderView as TModel - no WHIZ300
 public class OrderPerspective :
     IPerspectiveFor<OrderView, OrderCreated>,
@@ -136,7 +136,7 @@ public class OrderPerspective :
 
 In rare cases where you intentionally want to suppress this error (e.g., testing analyzer behavior), use pragma suppression:
 
-```csharp{title="Suppressing This Diagnostic" description="Use pragma directives to suppress WHIZ300 in rare cases" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Suppressing", "This"]}
+```csharp{title="Suppressing This Diagnostic" description="Use pragma directives to suppress WHIZ300 in rare cases" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Suppressing", "This"] unverified="suppression/config — not exercised by a test"}
 #pragma warning disable WHIZ300 // Intentional inconsistent model types for testing
 public class TestPerspective :
     IPerspectiveFor<OrderView, OrderCreated>,

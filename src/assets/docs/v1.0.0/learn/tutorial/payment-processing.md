@@ -37,7 +37,7 @@ This is **Part 3** of the ECommerce Tutorial. Complete [Inventory Service](inven
 
 ## What You'll Build
 
-```mermaid
+```mermaid{caption="Payment worker flow — a ProcessPaymentCommand enters through the exactly-once wh_inbox, the receptor calls the gateway and writes the event store plus wh_outbox, which publishes PaymentProcessedEvent on success or PaymentFailedEvent for compensation."}
 flowchart TD
     subgraph PSA["Payment Service Architecture"]
         ASB["Azure Service Bus"]
@@ -78,7 +78,7 @@ flowchart TD
 
 **ECommerce.Contracts/Commands/ProcessPaymentCommand.cs**:
 
-```csharp{title="ProcessPaymentCommand" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "ProcessPayment", "Command"]}
+```csharp{title="ProcessPaymentCommand" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "ProcessPayment", "Command"] unverified="tutorial worked-example — exercised by the ECommerce sample suite (ProcessPaymentReceptorTests), which is outside the core unit-test coverage map"}
 using Whizbang.Core;
 
 namespace ECommerce.Contracts.Commands;
@@ -97,7 +97,7 @@ public record ProcessPaymentCommand : ICommand {
 
 **ECommerce.Contracts/Events/PaymentProcessedEvent.cs**:
 
-```csharp{title="PaymentProcessed Event" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "PaymentProcessed", "Event"]}
+```csharp{title="PaymentProcessed Event" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "PaymentProcessed", "Event"] unverified="tutorial worked-example — exercised by the ECommerce sample suite (ProcessPaymentReceptorTests), which is outside the core unit-test coverage map"}
 using Whizbang.Core;
 
 namespace ECommerce.Contracts.Events;
@@ -118,7 +118,7 @@ public record PaymentProcessedEvent : IEvent {
 
 **ECommerce.Contracts/Events/PaymentFailedEvent.cs**:
 
-```csharp{title="PaymentFailed Event (Compensation)" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "PaymentFailed", "Event"]}
+```csharp{title="PaymentFailed Event (Compensation)" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "PaymentFailed", "Event"] unverified="tutorial worked-example — exercised by the ECommerce sample suite (ProcessPaymentReceptorTests), which is outside the core unit-test coverage map"}
 using Whizbang.Core;
 
 namespace ECommerce.Contracts.Events;
@@ -148,7 +148,7 @@ Earlier drafts hand-wrote a `payments` table plus outbox SQL. The sample's `Paym
 
 **ECommerce.PaymentWorker/Receptors/ProcessPaymentReceptor.cs**:
 
-```csharp{title="Step 3: Implement Receptor" description="**ECommerce." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Step", "Implement"]}
+```csharp{title="Step 3: Implement Receptor" description="**ECommerce." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Step", "Implement"] unverified="tutorial worked-example — exercised by the ECommerce sample suite (ProcessPaymentReceptorTests), which is outside the core unit-test coverage map"}
 using ECommerce.Contracts.Commands;
 using ECommerce.Contracts.Events;
 using Microsoft.Extensions.Logging;
@@ -232,7 +232,7 @@ The sample simulates the gateway. In production, put the gateway behind an abstr
 
 **Gateway abstraction**:
 
-```csharp{title="Step 4: Payment Gateway Abstraction" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Step", "Payment"]}
+```csharp{title="Step 4: Payment Gateway Abstraction" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Step", "Payment"] unverified="optional production-hardening pattern — illustrative gateway abstraction, not implemented in the sample or exercised by a test"}
 namespace ECommerce.PaymentWorker.Services;
 
 public interface IPaymentGateway {
@@ -267,7 +267,7 @@ public record RefundResult(
 
 **Retry + circuit breaker (Polly)**:
 
-```csharp{title="Retry Logic with Polly" description="Retry Logic with Polly" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Retry", "Logic"]}
+```csharp{title="Retry Logic with Polly" description="Retry Logic with Polly" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Retry", "Logic"] unverified="optional production-hardening pattern — standard .NET Polly retry/circuit-breaker, not exercised by a Whizbang test"}
 // Exponential backoff: 2s, 4s, 8s
 var retryPolicy = Policy
   .Handle<HttpRequestException>()
@@ -305,7 +305,7 @@ var result = await circuitBreaker.ExecuteAsync(() =>
 
 **ECommerce.PaymentWorker/Program.cs** (condensed from the sample):
 
-```csharp{title="Step 5: Service Configuration" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Step", "Service"]}
+```csharp{title="Step 5: Service Configuration" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Step", "Service"] unverified="host/DI wiring — not exercised by a test"}
 using Whizbang.Core;
 using Whizbang.Core.Generated;
 using Whizbang.Data.EFCore.Postgres;
@@ -359,7 +359,7 @@ host.Run();
 
 **ECommerce.AppHost/Program.cs** (excerpt matching the sample):
 
-```csharp{title="Update Aspire Configuration" description="**ECommerce." category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Update", "Aspire"]}
+```csharp{title="Update Aspire Configuration" description="**ECommerce." category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Update", "Aspire"] unverified="host/DI wiring — Aspire orchestration config, not exercised by a test"}
 var paymentDb = postgres.AddDatabase("paymentdb");
 
 ordersTopic.AddServiceBusSubscription("sub-payment-orders");
@@ -408,7 +408,7 @@ ORDER BY created_at DESC;
 
 ### Saga Pattern - Distributed Transactions
 
-```mermaid
+```mermaid{caption="Order saga happy path — each command produces an event that triggers the next command, from order creation through inventory, payment, shipment, and notification."}
 flowchart TD
     subgraph HappyPath["Saga: Order Processing (Happy Path)"]
         H1["CreateOrderCommand"] --> H2["OrderCreatedEvent"]
@@ -422,7 +422,7 @@ flowchart TD
     class H2,H4,H6,H8,H10 layer-event
 ```
 
-```mermaid
+```mermaid{caption="Order saga compensation — a PaymentFailedEvent drives a ReleaseInventoryCommand, unwinding the reserved inventory when payment fails."}
 flowchart TD
     subgraph Compensation["Saga: Payment Failure (Compensation)"]
         C1["CreateOrderCommand"] --> C2["OrderCreatedEvent"]
@@ -451,7 +451,7 @@ flowchart TD
 
 The real tests live in **tests/ECommerce.PaymentWorker.Tests/ProcessPaymentReceptorTests.cs**. Because the demo receptor is randomized, the tests branch on the outcome:
 
-```csharp{title="Unit Test - Payment Receptor" description="Unit Test - Payment Receptor" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Unit", "Test"]}
+```csharp{title="Unit Test - Payment Receptor" description="Unit Test - Payment Receptor" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Unit", "Test"] unverified="tutorial worked-example test — the ECommerce sample suite (ProcessPaymentReceptorTests), which is outside the core unit-test coverage map"}
 [Test]
 public async Task HandleAsync_ProcessesPayment_PublishesEventAsync() {
   // Arrange

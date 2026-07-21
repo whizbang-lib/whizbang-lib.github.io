@@ -64,7 +64,7 @@ dotnet tool install --global dotnet-ef
 
 EF Core 10 has native **JSONB** support for PostgreSQL via `ComplexProperty().ToJson()`:
 
-```csharp{title="JSONB Column Support" description="EF Core 10 has native JSONB support for PostgreSQL:" category="Implementation" difficulty="ADVANCED" tags=["Data", "C#", "JSONB", "Column", "Support"]}
+```csharp{title="JSONB Column Support" description="EF Core 10 has native JSONB support for PostgreSQL:" category="Implementation" difficulty="ADVANCED" tags=["Data", "C#", "JSONB", "Column", "Support"] unverified="EF Core ComplexProperty().ToJson() mapping config — EF Core API, not Whizbang framework behavior"}
 public class Product {
     public Guid Id { get; set; }
     public string Name { get; set; } = default!;
@@ -100,7 +100,7 @@ protected override void OnModelCreating(ModelBuilder modelBuilder) {
 ```
 
 **Query JSONB**:
-```csharp{title="JSONB Column Support (2)" description="Query JSONB:" category="Implementation" difficulty="BEGINNER" tags=["Data", "C#", "JSONB", "Column", "Support"]}
+```csharp{title="JSONB Column Support (2)" description="Query JSONB:" category="Implementation" difficulty="BEGINNER" tags=["Data", "C#", "JSONB", "Column", "Support"] unverified="EF Core LINQ query over JSONB — EF Core provider behavior, not Whizbang framework behavior"}
 // Query nested JSONB properties
 var products = await context.Products
     .Where(p => p.Metadata.Category == "Electronics")
@@ -116,7 +116,7 @@ var products = await context.Products
 
 Whizbang standardizes on **UUIDv7** (time-ordered GUIDs), generated client-side via `TrackedGuid.NewMedo()`:
 
-```csharp{title="UUIDv7 Support" description="Whizbang standardizes on UUIDv7 (time-ordered GUIDs):" category="Implementation" difficulty="ADVANCED" tags=["Data", "C#", "UUIDv7", "Support"]}
+```csharp{title="UUIDv7 Support" description="Whizbang standardizes on UUIDv7 (time-ordered GUIDs):" category="Implementation" difficulty="ADVANCED" tags=["Data", "C#", "UUIDv7", "Support"] tests=["TrackedGuidTests.TrackedGuid_NewMedo_Version_Returns7Async", "TrackedGuidTests.TrackedGuid_NewMedo_IsTimeOrdered_ReturnsTrueAsync", "TrackedGuidTests.TrackedGuid_ImplicitToGuid_ReturnsUnderlyingValueAsync", "TrackedGuidTests.TrackedGuid_NewMedo_HasSourceMedoMetadataAsync"]}
 using Whizbang.Core.ValueObjects;
 
 public class Order {
@@ -143,7 +143,7 @@ var order = new Order {
 
 EF Core 10 supports **complex types** (value objects without separate tables):
 
-```csharp{title="Complex Types" description="EF Core 10 supports complex types (value objects without separate tables):" category="Implementation" difficulty="ADVANCED" tags=["Data", "C#", "Complex", "Types"]}
+```csharp{title="Complex Types" description="EF Core 10 supports complex types (value objects without separate tables):" category="Implementation" difficulty="ADVANCED" tags=["Data", "C#", "Complex", "Types"] unverified="EF Core [ComplexType]/ComplexProperty mapping — EF Core API, not Whizbang framework behavior"}
 public class Order {
     public Guid Id { get; set; }
     public Money Total { get; set; }  // Complex type
@@ -179,7 +179,7 @@ protected override void OnModelCreating(ModelBuilder modelBuilder) {
 
 ### Basic Configuration
 
-```csharp{title="Basic Configuration" description="Basic Configuration" category="Implementation" difficulty="ADVANCED" tags=["Data", "C#", "Configuration"]}
+```csharp{title="Basic Configuration" description="Basic Configuration" category="Implementation" difficulty="ADVANCED" tags=["Data", "C#", "Configuration"] unverified="EF Core DbContext/OnModelCreating setup — EF Core API, not Whizbang framework behavior"}
 public class ECommerceDbContext : DbContext {
     public ECommerceDbContext(DbContextOptions<ECommerceDbContext> options)
         : base(options) {
@@ -200,7 +200,7 @@ public class ECommerceDbContext : DbContext {
 
 ### Entity Type Configuration
 
-```csharp{title="Entity Type Configuration" description="Entity Type Configuration" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Entity", "Type", "Configuration"]}
+```csharp{title="Entity Type Configuration" description="Entity Type Configuration" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Entity", "Type", "Configuration"] unverified="EF Core IEntityTypeConfiguration mapping — EF Core API, not Whizbang framework behavior"}
 public class OrderConfiguration : IEntityTypeConfiguration<Order> {
     public void Configure(EntityTypeBuilder<Order> builder) {
         builder.ToTable("orders");
@@ -240,7 +240,7 @@ public class OrderConfiguration : IEntityTypeConfiguration<Order> {
 
 ### Registration (Program.cs)
 
-```csharp{title="Registration (Program.cs)" description="Registration (Program.cs)" category="Implementation" difficulty="BEGINNER" tags=["Data", "C#", "Registration", "Program.cs"]}
+```csharp{title="Registration (Program.cs)" description="Registration (Program.cs)" category="Implementation" difficulty="BEGINNER" tags=["Data", "C#", "Registration", "Program.cs"] unverified="EF Core AddDbContext/UseNpgsql DI config — not Whizbang framework behavior"}
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")!;
 
 builder.Services.AddDbContext<ECommerceDbContext>(options => {
@@ -279,7 +279,7 @@ dotnet ef migrations list --project src/ECommerce.Infrastructure --startup-proje
 
 ### Migration Example
 
-```csharp{title="Migration Example" description="Migration Example" category="Implementation" difficulty="ADVANCED" tags=["Data", "C#", "Migration"]}
+```csharp{title="Migration Example" description="Migration Example" category="Implementation" difficulty="ADVANCED" tags=["Data", "C#", "Migration"] unverified="EF Core MigrationBuilder DDL — EF Core migrations API, not Whizbang framework behavior"}
 public partial class InitialCreate : Migration {
     protected override void Up(MigrationBuilder migrationBuilder) {
         migrationBuilder.CreateTable(
@@ -317,7 +317,7 @@ public partial class InitialCreate : Migration {
 
 ### Apply Migrations at Startup
 
-```csharp{title="Apply Migrations at Startup" description="Apply Migrations at Startup" category="Implementation" difficulty="BEGINNER" tags=["Data", "C#", "Apply", "Migrations", "Startup"]}
+```csharp{title="Apply Migrations at Startup" description="Apply Migrations at Startup" category="Implementation" difficulty="BEGINNER" tags=["Data", "C#", "Apply", "Migrations", "Startup"] unverified="EF Core Database.MigrateAsync — EF Core API, not Whizbang framework behavior"}
 // Program.cs - Apply migrations on startup (Development only)
 if (app.Environment.IsDevelopment()) {
     using var scope = app.Services.CreateScope();
@@ -332,7 +332,7 @@ if (app.Environment.IsDevelopment()) {
 
 ### Insert
 
-```csharp{title="Insert" description="Insert" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Insert"]}
+```csharp{title="Insert" description="Insert" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Insert"] unverified="EF Core insert (Add/SaveChangesAsync) — EF Core API, not Whizbang framework behavior"}
 public class OrderService {
     private readonly ECommerceDbContext _context;
 
@@ -367,7 +367,7 @@ public class OrderService {
 
 ### Query
 
-```csharp{title="Query" description="Query" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Query"]}
+```csharp{title="Query" description="Query" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Query"] unverified="EF Core query (Include/FirstOrDefaultAsync) — EF Core API, not Whizbang framework behavior"}
 public async Task<Order?> GetOrderAsync(
     Guid orderId,
     CancellationToken ct = default) {
@@ -391,7 +391,7 @@ public async Task<Order[]> GetOrdersByCustomerAsync(
 
 ### Update
 
-```csharp{title="Update" description="Update" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Update"]}
+```csharp{title="Update" description="Update" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Update"] unverified="EF Core update (change tracking + SaveChangesAsync) — EF Core API, not Whizbang framework behavior"}
 public async Task UpdateOrderStatusAsync(
     Guid orderId,
     string newStatus,
@@ -413,7 +413,7 @@ public async Task UpdateOrderStatusAsync(
 
 ### Delete
 
-```csharp{title="Delete" description="Delete" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Delete"]}
+```csharp{title="Delete" description="Delete" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Delete"] unverified="EF Core delete (Remove/SaveChangesAsync) — EF Core API, not Whizbang framework behavior"}
 public async Task DeleteOrderAsync(
     Guid orderId,
     CancellationToken ct = default) {
@@ -434,7 +434,7 @@ public async Task DeleteOrderAsync(
 
 ### Pagination
 
-```csharp{title="Pagination" description="Pagination" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Pagination"]}
+```csharp{title="Pagination" description="Pagination" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Pagination"] unverified="EF Core pagination (Skip/Take/CountAsync) — EF Core API, not Whizbang framework behavior"}
 public async Task<PagedResult<Order>> GetOrdersPagedAsync(
     int pageNumber,
     int pageSize,
@@ -461,7 +461,7 @@ public async Task<PagedResult<Order>> GetOrdersPagedAsync(
 
 ### Search
 
-```csharp{title="Search" description="Search" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Search"]}
+```csharp{title="Search" description="Search" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Search"] unverified="EF Core filtering (Where/Contains) — EF Core API, not Whizbang framework behavior"}
 public async Task<Order[]> SearchOrdersAsync(
     string searchTerm,
     CancellationToken ct = default) {
@@ -481,7 +481,7 @@ public async Task<Order[]> SearchOrdersAsync(
 
 ### Aggregations
 
-```csharp{title="Aggregations" description="Aggregations" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Aggregations"]}
+```csharp{title="Aggregations" description="Aggregations" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Aggregations"] unverified="EF Core aggregation (GroupBy/Sum/Average) — EF Core API, not Whizbang framework behavior"}
 public async Task<OrderStatistics> GetOrderStatisticsAsync(
     Guid customerId,
     CancellationToken ct = default) {
@@ -503,7 +503,7 @@ public async Task<OrderStatistics> GetOrderStatisticsAsync(
 
 ### Raw SQL Queries
 
-```csharp{title="Raw SQL Queries" description="Raw SQL Queries" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Raw", "SQL", "Queries"]}
+```csharp{title="Raw SQL Queries" description="Raw SQL Queries" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Raw", "SQL", "Queries"] unverified="EF Core Database.SqlQuery raw SQL — EF Core API, not Whizbang framework behavior"}
 public async Task<OrderSummary[]> GetTopCustomersAsync(
     int limit,
     CancellationToken ct = default) {
@@ -529,7 +529,7 @@ public async Task<OrderSummary[]> GetTopCustomersAsync(
 
 ### Explicit Transactions
 
-```csharp{title="Explicit Transactions" description="Explicit Transactions" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Explicit", "Transactions"]}
+```csharp{title="Explicit Transactions" description="Explicit Transactions" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Explicit", "Transactions"] unverified="EF Core BeginTransactionAsync/CommitAsync — EF Core API, not Whizbang framework behavior"}
 public async Task TransferInventoryAsync(
     Guid fromWarehouseId,
     Guid toWarehouseId,
@@ -564,7 +564,7 @@ public async Task TransferInventoryAsync(
 
 ### Implicit Transactions
 
-```csharp{title="Implicit Transactions" description="Implicit Transactions" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Implicit", "Transactions"]}
+```csharp{title="Implicit Transactions" description="Implicit Transactions" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Implicit", "Transactions"] unverified="EF Core implicit SaveChangesAsync transaction — EF Core API, not Whizbang framework behavior"}
 // SaveChangesAsync wraps all changes in a transaction automatically
 public async Task CreateOrderWithItemsAsync(
     Order order,
@@ -589,7 +589,7 @@ public async Task CreateOrderWithItemsAsync(
 
 Use `.AsNoTracking()` for read-only queries (better performance):
 
-```csharp{title="No-Tracking Queries" description="No-Tracking Queries" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "No-Tracking", "Queries"]}
+```csharp{title="No-Tracking Queries" description="No-Tracking Queries" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "No-Tracking", "Queries"] unverified="EF Core AsNoTracking — EF Core API, not Whizbang framework behavior"}
 // ✅ Read-only query (no change tracking overhead)
 public async Task<Order[]> GetOrdersForDisplayAsync(CancellationToken ct = default) {
     return await _context.Orders
@@ -608,7 +608,7 @@ public async Task<Order[]> GetOrdersAsync(CancellationToken ct = default) {
 
 ### Tracking State
 
-```csharp{title="Tracking State" description="Tracking State" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Tracking", "State"]}
+```csharp{title="Tracking State" description="Tracking State" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Tracking", "State"] unverified="EF Core change-tracking EntityState demo — EF Core API, not Whizbang framework behavior"}
 public void DemoTrackingStates() {
     var order = new Order { /* ... */ };
 
@@ -639,7 +639,7 @@ public void DemoTrackingStates() {
 
 ### Split Queries
 
-```csharp{title="Split Queries" description="Split Queries" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Split", "Queries"]}
+```csharp{title="Split Queries" description="Split Queries" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Split", "Queries"] unverified="EF Core AsSplitQuery/AsSingleQuery — EF Core API, not Whizbang framework behavior"}
 // ✅ Split query (multiple queries, better for large data)
 var orders = await _context.Orders
     .Include(o => o.Items)
@@ -661,7 +661,7 @@ var orders = await _context.Orders
 
 ### Batch Operations
 
-```csharp{title="Batch Operations" description="Batch Operations" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Batch", "Operations"]}
+```csharp{title="Batch Operations" description="Batch Operations" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Batch", "Operations"] unverified="EF Core AddRange batching — EF Core API, not Whizbang framework behavior"}
 // ✅ Batch insert (single SaveChanges)
 public async Task BulkInsertOrdersAsync(Order[] orders, CancellationToken ct = default) {
     _context.Orders.AddRange(orders);
@@ -679,7 +679,7 @@ public async Task SlowInsertOrdersAsync(Order[] orders, CancellationToken ct = d
 
 ### Compiled Queries
 
-```csharp{title="Compiled Queries" description="Compiled Queries" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Compiled", "Queries"]}
+```csharp{title="Compiled Queries" description="Compiled Queries" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Compiled", "Queries"] unverified="EF Core EF.CompileAsyncQuery — EF Core API, not Whizbang framework behavior"}
 // Compiled query (cached expression tree)
 private static readonly Func<ECommerceDbContext, Guid, Task<Order?>> GetOrderByIdQuery =
     EF.CompileAsyncQuery(
@@ -702,7 +702,7 @@ public async Task<Order?> GetOrderFastAsync(Guid orderId) {
 
 ### In-Memory Provider
 
-```csharp{title="In-Memory Provider" description="In-Memory Provider" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "In-Memory", "Provider"]}
+```csharp{title="In-Memory Provider" description="In-Memory Provider" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "In-Memory", "Provider"] unverified="EF Core InMemory test provider setup — EF Core API, not Whizbang framework behavior"}
 public class OrderServiceTests {
     private ECommerceDbContext CreateInMemoryContext() {
         var options = new DbContextOptionsBuilder<ECommerceDbContext>()
@@ -735,7 +735,7 @@ public class OrderServiceTests {
 
 ### SQLite Provider (Better for Testing)
 
-```csharp{title="SQLite Provider (Better for Testing)" description="SQLite Provider (Better for Testing)" category="Implementation" difficulty="ADVANCED" tags=["Data", "C#", "SQLite", "Provider", "Better"]}
+```csharp{title="SQLite Provider (Better for Testing)" description="SQLite Provider (Better for Testing)" category="Implementation" difficulty="ADVANCED" tags=["Data", "C#", "SQLite", "Provider", "Better"] unverified="EF Core SQLite test provider setup — EF Core API, not Whizbang framework behavior"}
 public class OrderServiceTests {
     private ECommerceDbContext CreateSqliteContext() {
         var connection = new SqliteConnection("DataSource=:memory:");
@@ -783,7 +783,7 @@ public class OrderServiceTests {
 
 ### Integration Tests with PostgreSQL
 
-```csharp{title="Integration Tests with PostgreSQL" description="Integration Tests with PostgreSQL" category="Implementation" difficulty="ADVANCED" tags=["Data", "C#", "Integration", "Tests", "PostgreSQL"]}
+```csharp{title="Integration Tests with PostgreSQL" description="Integration Tests with PostgreSQL" category="Implementation" difficulty="ADVANCED" tags=["Data", "C#", "Integration", "Tests", "PostgreSQL"] unverified="EF Core Npgsql/EnsureCreated test setup — EF Core API, not Whizbang framework behavior"}
 public class OrderServiceIntegrationTests {
     private ECommerceDbContext _context = default!;
 
@@ -863,7 +863,7 @@ When you build your application, the **EF Core source generator** runs automatic
 
 Initialize your database schema with a single call:
 
-```csharp{title="Schema Initialization" description="Initialize your database schema with a single call:" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Schema", "Initialization"]}
+```csharp{title="Schema Initialization" description="Initialize your database schema with a single call:" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Schema", "Initialization"] tests=["EFCoreServiceRegistrationGeneratorTests.Generator_WithWhizbangDbContextAttribute_DiscoversDbContextAsync", "EFCoreServiceRegistrationGeneratorTests.Generator_WithDiscoveredDbContext_GeneratesSchemaExtensionsAsync"]}
 using Whizbang.Data.EFCore.Custom;
 
 [WhizbangDbContext]  // Triggers source generation
@@ -908,7 +908,7 @@ Optional parameters: `logger`, `initConnectionString` (a direct PostgreSQL conne
 
 When you build your project, the source generator creates this extension method:
 
-```csharp{title="Generated Code Example" description="When you build your project, the source generator creates this extension method (simplified):" category="Implementation" difficulty="ADVANCED" tags=["Data", "C#", "Generated", "Code"]}
+```csharp{title="Generated Code Example" description="When you build your project, the source generator creates this extension method (simplified):" category="Implementation" difficulty="ADVANCED" tags=["Data", "C#", "Generated", "Code"] tests=["EFCoreServiceRegistrationGeneratorTests.Generator_WithDiscoveredDbContext_GeneratesSchemaExtensionsAsync", "EFCoreServiceRegistrationGeneratorTests.Generator_SchemaExtensions_ContainsAllFiveStepsAsync", "EFCoreServiceRegistrationGeneratorTests.Generator_SchemaExtensions_IncludesCoreInfrastructureSchemaAsync", "EFCoreServiceRegistrationGeneratorTests.Generator_SchemaExtensions_UsesXactLockWithTransactionAndRetryAsync"]}
 // Auto-generated schema extension for OrderDbContext (simplified)
 public static partial class OrderDbContextSchemaExtensions {
     public static async Task EnsureWhizbangDatabaseInitializedAsync(
@@ -992,7 +992,7 @@ dotnet publish -c Release -r linux-x64
 
 ### Hybrid Approach (Recommended)
 
-```csharp{title="Hybrid Approach (Recommended)" description="Hybrid Approach (Recommended)" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Hybrid", "Approach", "Recommended"]}
+```csharp{title="Hybrid Approach (Recommended)" description="Hybrid Approach (Recommended)" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Hybrid", "Approach", "Recommended"] unverified="user-domain illustration composing an EF Core write model with an ILensQuery read — application wiring, not a single framework API surface under test"}
 // ✅ EF Core for write model (domain aggregates)
 public class OrderService {
     private readonly ECommerceDbContext _context;
@@ -1053,7 +1053,7 @@ public class OrderQueryService(ILensQuery<OrderSummary> lens) {
 
 ### Pattern 1: Command Handler with EF Core
 
-```csharp{title="Pattern 1: Command Handler with EF Core" description="Pattern 1: Command Handler with EF Core" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Pattern", "Command", "Handler"]}
+```csharp{title="Pattern 1: Command Handler with EF Core" description="Pattern 1: Command Handler with EF Core" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Pattern", "Command", "Handler"] unverified="user-domain illustration — a receptor handler persisting via EF Core, not a framework API surface under test"}
 public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
     private readonly ECommerceDbContext _context;
 
@@ -1091,7 +1091,7 @@ public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
 
 ### Pattern 2: Query with Projection
 
-```csharp{title="Pattern 2: Query with Projection" description="Pattern 2: Query with Projection" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Pattern", "Query", "Projection"]}
+```csharp{title="Pattern 2: Query with Projection" description="Pattern 2: Query with Projection" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Pattern", "Query", "Projection"] unverified="EF Core projection (Select) — EF Core API, not Whizbang framework behavior"}
 public async Task<OrderListItem[]> GetOrderListAsync(
     Guid customerId,
     CancellationToken ct = default) {
@@ -1114,7 +1114,7 @@ public async Task<OrderListItem[]> GetOrderListAsync(
 
 ### Pattern 3: Optimistic Concurrency
 
-```csharp{title="Pattern 3: Optimistic Concurrency" description="Pattern 3: Optimistic Concurrency" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Pattern", "Optimistic", "Concurrency"]}
+```csharp{title="Pattern 3: Optimistic Concurrency" description="Pattern 3: Optimistic Concurrency" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Pattern", "Optimistic", "Concurrency"] unverified="EF Core [Timestamp]/DbUpdateConcurrencyException — EF Core API, not Whizbang framework behavior"}
 public class Order {
     public Guid Id { get; set; }
     public string Status { get; set; } = default!;

@@ -43,7 +43,7 @@ At commit `1b31f58d`, temporal perspectives are **contract-only**: the interface
 
 ## Defining a Temporal Perspective
 
-```csharp{title="Defining a Temporal Perspective" description="Defining a Temporal Perspective" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Defining", "Temporal"]}
+```csharp{title="Defining a Temporal Perspective" description="Defining a Temporal Perspective" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Defining", "Temporal"] tests=["ITemporalPerspectiveForTests.TemporalPerspective_ImplementingITemporalPerspectiveFor_HasTransformMethodAsync", "ITemporalPerspectiveForTests.TemporalPerspective_ImplementingMultipleEventTypes_HasTransformForEachAsync", "ITemporalPerspectiveForTests.TemporalPerspective_DoesNotRequireCurrentStateAsync"]}
 public class ActivityPerspective :
     ITemporalPerspectiveFor<ActivityEntry, OrderCreatedEvent, OrderUpdatedEvent> {
 
@@ -76,7 +76,7 @@ public class ActivityPerspective :
 
 Each temporal row includes:
 
-```csharp{title="Temporal Row Structure" description="Each temporal row includes:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Temporal", "Row"]}
+```csharp{title="Temporal Row Structure" description="Each temporal row includes:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Temporal", "Row"] tests=["TemporalPerspectiveRowTests.TemporalPerspectiveRow_HasRequiredPropertiesAsync", "TemporalPerspectiveRowTests.TemporalPerspectiveRow_HasMetadataAndScopeAsync", "TemporalPerspectiveRowTests.TemporalPerspectiveRow_ValidTimeTracksBusinesTimeFromEventAsync"]}
 public class TemporalPerspectiveRow<TModel> {
   public Guid Id { get; }           // UUIDv7 for time-ordering
   public Guid StreamId { get; }     // Aggregate ID
@@ -97,7 +97,7 @@ public class TemporalPerspectiveRow<TModel> {
 
 ### All History
 
-```csharp{title="All History" description="All History" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "All", "History"]}
+```csharp{title="All History" description="All History" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "All", "History"] unverified="contract-only — no ITemporalLensQuery provider ships yet (see callout); query execution not verified"}
 var allHistory = await temporalLens
     .TemporalAll()
     .Where(r => r.StreamId == orderId)
@@ -107,7 +107,7 @@ var allHistory = await temporalLens
 
 ### Latest Per Stream
 
-```csharp{title="Latest Per Stream" description="Latest Per Stream" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Latest", "Per"]}
+```csharp{title="Latest Per Stream" description="Latest Per Stream" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Latest", "Per"] unverified="contract-only — no ITemporalLensQuery provider ships yet (see callout); query execution not verified"}
 var latestStates = await temporalLens
     .LatestPerStream()
     .ToListAsync();
@@ -115,7 +115,7 @@ var latestStates = await temporalLens
 
 ### Point-in-Time Query (As Of)
 
-```csharp{title="Point-in-Time Query (As Of)" description="Point-in-Time Query (As Of)" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Point-in-Time", "Query"]}
+```csharp{title="Point-in-Time Query (As Of)" description="Point-in-Time Query (As Of)" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Point-in-Time", "Query"] unverified="contract-only — no ITemporalLensQuery provider ships yet (see callout); query execution not verified"}
 var stateLastWeek = await temporalLens
     .TemporalAsOf(DateTimeOffset.UtcNow.AddDays(-7))
     .ToListAsync();
@@ -123,7 +123,7 @@ var stateLastWeek = await temporalLens
 
 ### Time Range Queries
 
-```csharp{title="Time Range Queries" description="Time Range Queries" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Time", "Range"]}
+```csharp{title="Time Range Queries" description="Time Range Queries" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Time", "Range"] unverified="contract-only — no ITemporalLensQuery provider ships yet (see callout); query execution not verified"}
 // Rows active during a range
 var activeRows = await temporalLens
     .TemporalFromTo(startTime, endTime)
@@ -137,7 +137,7 @@ var containedRows = await temporalLens
 
 ### Convenience Methods
 
-```csharp{title="Convenience Methods" description="Convenience Methods" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Convenience", "Methods"]}
+```csharp{title="Convenience Methods" description="Convenience Methods" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Convenience", "Methods"] unverified="contract-only — no ITemporalLensQuery provider ships yet (see callout); query execution not verified"}
 // Recent activity for a stream
 var orderActivity = await temporalLens
     .RecentActivityForStream(orderId, limit: 20)
@@ -153,7 +153,7 @@ var userActivity = await temporalLens
 
 The `TemporalActionType` enum tracks what happened to the entity. Each temporal row includes an `ActionType` that indicates the kind of change:
 
-```csharp{title="Action Types" description="The TemporalActionType enum tracks what happened:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Action", "Types"]}
+```csharp{title="Action Types" description="The TemporalActionType enum tracks what happened:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Action", "Types"] tests=["TemporalActionTypeTests.TemporalActionType_Insert_HasCorrectIntValueAsync", "TemporalActionTypeTests.TemporalActionType_Update_HasCorrectIntValueAsync", "TemporalActionTypeTests.TemporalActionType_Delete_HasCorrectIntValueAsync", "TemporalActionTypeTests.TemporalActionType_HasThreeValuesAsync"]}
 public enum TemporalActionType {
   Insert = 0,   // New entity was created (first entry in temporal history)
   Update = 1,   // Existing entity was modified
@@ -171,7 +171,7 @@ public enum TemporalActionType {
 
 Return `null` from Transform to skip events:
 
-```csharp{title="Filtering Events" description="Return null from Transform to skip events:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Filtering", "Events"]}
+```csharp{title="Filtering Events" description="Return null from Transform to skip events:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Filtering", "Events"] tests=["ITemporalPerspectiveForTests.TemporalPerspective_TransformCanReturnNullToSkipEventAsync"]}
 public ActivityEntry? Transform(OrderCreatedEvent @event) {
   // Only log high-value orders
   if (@event.TotalAmount < 100) {

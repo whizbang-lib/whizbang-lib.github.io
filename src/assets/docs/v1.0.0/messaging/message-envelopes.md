@@ -38,7 +38,7 @@ See [Observability & Message Hops](../fundamentals/persistence/observability.md)
 
 ### Complete Journey
 
-```mermaid
+```mermaid{caption="End-to-end envelope journey — hops accumulate across Service A → B → C over Azure Service Bus, preserving the full causation trace."}
 flowchart TD
     A["Service A (OrderService)<br/><br/>CreateOrder command arrives<br/>Envelope created with Current hop<br/>Receptor processes, creates OrderCreated event<br/>Event stored in Outbox with inherited hops<br/>Background worker publishes to Azure Service Bus<br/>Envelope serialized with all hops"]
     B["Service B (InventoryWorker)<br/><br/>Message arrives from Azure Service Bus<br/>Envelope deserialized (hops restored!)<br/>Stored in Inbox with all original hops<br/>Receptor processes, adds new Current hop<br/>InventoryReserved event created<br/>Published to Azure Service Bus with accumulated hops"]
@@ -62,7 +62,7 @@ The framework creates envelopes for you — when a receptor calls `dispatcher.Pu
 
 Envelope and hop properties serialize with **short JSON names** to keep payloads small:
 
-```csharp{title="Envelope and Hop Shape" description="IMessageEnvelope and MessageHop with their compact JSON property names" category="Architecture" difficulty="ADVANCED" tags=["Messaging", "C#", "Storing", "Envelope", "Outbox"]}
+```csharp{title="Envelope and Hop Shape" description="IMessageEnvelope and MessageHop with their compact JSON property names" category="Architecture" difficulty="ADVANCED" tags=["Messaging", "C#", "Storing", "Envelope", "Outbox"] unverified="wire-shape declaration — the compact JSON property-name contract is verified by MessageEnvelopeVersionTests, which is outside the current coverage map"}
 public interface IMessageEnvelope {
     [JsonPropertyName("v")]  int Version { get; }                        // Envelope schema version
     [JsonPropertyName("dc")] MessageDispatchContext DispatchContext { get; }
@@ -107,7 +107,7 @@ public record MessageHop {
 
 `AzureServiceBusTransport` serializes the full envelope (all hops included) as the message body and maps envelope identity onto broker properties:
 
-```csharp{title="Azure Service Bus Integration" description="How AzureServiceBusTransport maps envelope fields onto ServiceBusMessage" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Azure", "Service", "Bus"]}
+```csharp{title="Azure Service Bus Integration" description="How AzureServiceBusTransport maps envelope fields onto ServiceBusMessage" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Azure", "Service", "Bus"] unverified="AzureServiceBusTransport internals — verified in the Azure Service Bus transport tests, not by envelope tests"}
 // Inside AzureServiceBusTransport.PublishAsync (simplified):
 var message = new ServiceBusMessage(json) {   // json = serialized envelope w/ all hops
     MessageId = envelope.MessageId.Value.ToString(),
@@ -149,7 +149,7 @@ The receive side is handled by `TransportConsumerWorker`:
 3. **Store**: `StoreInboxMessagesAsync` → `store_inbox_messages` persists the row with its `EnvelopeMetadata` (MessageId + Hops); the dedup table rejects duplicates atomically
 4. **Process**: handlers receive the full envelope — hop history, scope, and correlation identity intact
 
-```csharp{title="Reading Envelope Identity" description="Read-only accessors on IMessageEnvelope" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Inbox", "Deduplication", "Hop"]}
+```csharp{title="Reading Envelope Identity" description="Read-only accessors on IMessageEnvelope" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Inbox", "Deduplication", "Hop"] tests=["MessageEnvelopeTests.GetCorrelationId_ReturnsFirstHopCorrelationIdAsync", "MessageEnvelopeTests.GetCausationId_ReturnsFirstHopCausationIdAsync", "MessageEnvelopeTests.GetMessageTimestamp_ReturnsFirstHopTimestampAsync", "MessageEnvelopeTests.GetCurrentScope_IgnoresCausationHopsAsync", "MessageEnvelopeTests.GetMetadata_ReturnsLatestValue_WhenKeyExistsInMultipleHopsAsync", "MessageEnvelopeTests.GetCausationHops_ReturnsOnlyCausationHopsAsync", "MessageEnvelopeTests.GetCurrentHops_ReturnsOnlyCurrentHopsAsync"]}
 // Identity and history are read via accessors — derived from the hop chain:
 CorrelationId? correlationId = envelope.GetCorrelationId();
 MessageId? causationId = envelope.GetCausationId();
@@ -182,7 +182,7 @@ Hop accumulation is **automatic**. When your receptor publishes a new event, the
 2. Appends a fresh `Current` hop stamped with the service instance (`si`), timestamp (`ts`), topic (`to`), stream id (`st`), and the dispatching call site (`cm`/`cf`/`cl` via `[CallerMemberName]` etc.)
 3. Carries the correlation identity and scope delta forward
 
-```csharp{title="Receptor Example" description="Hop inheritance happens inside dispatcher.PublishAsync — no manual envelope code" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "InventoryWorker"]}
+```csharp{title="Receptor Example" description="Hop inheritance happens inside dispatcher.PublishAsync — no manual envelope code" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "InventoryWorker"] unverified="sample receptor — hop inheritance runs inside the dispatcher cascade, not this code"}
 public class ReserveInventoryReceptor(IDispatcher dispatcher)
     : IReceptor<ReserveInventoryCommand, InventoryReservedEvent> {
 
@@ -239,7 +239,7 @@ msg-003    | PaymentProcessed   | payment     | 2024-12-12 10:00:02 | [API Gatew
 
 ### Visualize Hop Accumulation
 
-```csharp{title="Visualize Hop Accumulation" description="Visualize Hop Accumulation" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Visualize", "Hop", "Accumulation"]}
+```csharp{title="Visualize Hop Accumulation" description="Visualize Hop Accumulation" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Visualize", "Hop", "Accumulation"] unverified="user diagnostic helper — illustrative console output, not framework code"}
 public void PrintHopAccumulation(Guid correlationId) {
     var messages = GetMessagesByCorrelation(correlationId);
 
@@ -282,7 +282,7 @@ PaymentProcessed (2024-12-12 10:00:02):
 
 Hops carry **scope deltas** (`sc` / `ScopeDelta`) — each hop records what changed in the security/tenancy scope, and `GetCurrentScope()` folds the deltas into the effective `ScopeContext`:
 
-```csharp{title="Extracting Scope from Hops" description="Extracting Scope from Hops" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Extracting", "Security", "Hops"]}
+```csharp{title="Extracting Scope from Hops" description="Extracting Scope from Hops" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Extracting", "Security", "Hops"] unverified="user application logic — scope-based authorization built on GetCurrentScope(), not framework code"}
 public async ValueTask<InventoryReservedEvent> HandleAsync(
     ReserveInventoryCommand message,
     CancellationToken ct = default) {
@@ -342,7 +342,7 @@ public async ValueTask<InventoryReservedEvent> HandleAsync(
 3. Hops not stored in the outbox metadata column
 
 **Solution**:
-```csharp{title="Problem: Missing Hops" description="Problem: Missing Hops" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Problem:", "Missing", "Hops"]}
+```csharp{title="Problem: Missing Hops" description="Problem: Missing Hops" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Problem:", "Missing", "Hops"] unverified="troubleshooting snippet — publish-from-handler cascade guidance plus an illustrative serialization round-trip check, not framework test code"}
 // Publish from within the handler so the cascade context inherits hops
 await dispatcher.PublishAsync(newEvent);   // ✅ hops inherited automatically
 
@@ -362,7 +362,7 @@ Debug.Assert(deserialized.Hops.Count == envelope.Hops.Count);
 3. Loop repeats forever
 
 **Solution**:
-```csharp{title="Problem: Circular Dependencies" description="Problem: Circular Dependencies" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Problem:", "Circular", "Dependencies"]}
+```csharp{title="Problem: Circular Dependencies" description="Problem: Circular Dependencies" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Problem:", "Circular", "Dependencies"] unverified="user diagnostic pattern — illustrative circular-dependency guard, not framework code"}
 // Detect circular dependency via hop count
 if (envelope.Hops.Count > 10) {
     _logger.LogError(
@@ -389,7 +389,7 @@ if (envelope.Hops.Count > 10) {
 
 ### Serialization Performance
 
-```csharp{title="Serialization Performance" description="Serialization Performance" category="Architecture" difficulty="BEGINNER" tags=["Messaging", "C#", "Serialization", "Performance"]}
+```csharp{title="Serialization Performance" description="Serialization Performance" category="Architecture" difficulty="BEGINNER" tags=["Messaging", "C#", "Serialization", "Performance"] unverified="JsonContextRegistry serialization setup plus reflection counter-example — not verified by envelope tests"}
 // ✅ Efficient: source-generated JsonTypeInfo from the cross-assembly registry
 var options = JsonContextRegistry.CreateCombinedOptions();
 var typeInfo = options.GetTypeInfo(typeof(MessageEnvelope<OrderCreatedEvent>));

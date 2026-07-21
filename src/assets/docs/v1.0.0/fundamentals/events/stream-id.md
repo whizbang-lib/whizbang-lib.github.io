@@ -39,7 +39,7 @@ Every event in Whizbang belongs to a **stream** - a sequence of events for a spe
 
 ## IHasStreamId Interface {#ihasstreamid}
 
-```csharp{title="IHasStreamId Interface" description="IHasStreamId Interface" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "IHasStreamId", "Interface"]}
+```csharp{title="IHasStreamId Interface" description="IHasStreamId Interface" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "IHasStreamId", "Interface"] unverified="marker interface contract declaration; no runtime behavior asserted in the snippet"}
 namespace Whizbang.Core;
 
 /// <summary>
@@ -68,7 +68,7 @@ Stream ID auto-generation is controlled per-event-type using the `[GenerateStrea
 
 Apply `[GenerateStreamId]` alongside `[StreamId]` to opt-in to auto-generation:
 
-```csharp{title="`[GenerateStreamId]` Attribute" description="Apply [GenerateStreamId] alongside [StreamId] to opt-in to auto-generation:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "GenerateStreamId", "Attribute"]}
+```csharp{title="`[GenerateStreamId]` Attribute" description="Apply [GenerateStreamId] alongside [StreamId] to opt-in to auto-generation:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "GenerateStreamId", "Attribute"] unverified="attribute-declaration example; per-type generation policy is exercised by the generator tests, not asserted at runtime here"}
 // Stream-initiating event: ALWAYS gets a new StreamId
 public record OrderCreated : IEvent {
   [StreamId] [GenerateStreamId]
@@ -92,7 +92,7 @@ Events without `[GenerateStreamId]` are validated at pipeline boundaries by `Str
 
 ### Usage Example
 
-```csharp{title="Usage Example" description="Usage Example" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Usage", "Example"]}
+```csharp{title="Usage Example" description="Usage Example" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Usage", "Example"] unverified="consumer-facing dispatch illustration; the isolated stream-id generation policy is verified on the How Auto-Generation Works block"}
 // Stream-initiating event with auto-generation
 public record OrderCreated : IEvent {
   [StreamId] [GenerateStreamId]
@@ -124,7 +124,7 @@ For full details, see the [`[GenerateStreamId]` attribute reference](../../exten
 4. The ID is written back through `IHasStreamId.StreamId` when the message implements it, or through the generated `[StreamId]` property setter otherwise
 5. The message is then processed with the generated ID
 
-```csharp{title="How Auto-Generation Works" description="How Auto-Generation Works" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "Auto-Generation", "Works"]}
+```csharp{title="How Auto-Generation Works" description="How Auto-Generation Works" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "Auto-Generation", "Works"] tests=["StreamIdExtractorRegistryTests.GetGenerationPolicy_WithExtractorThatShouldGenerate_ReturnsTrueAsync", "StreamIdExtractorRegistryTests.GetGenerationPolicy_WithExtractorShouldGenerateOnlyIfEmpty_ReturnsTrueTrueAsync", "StreamIdExtractorRegistryTests.SetStreamId_WithSuccessfulExtractor_ReturnsTrueAsync"]}
 // Internal dispatcher logic (simplified)
 var (shouldGenerate, onlyIfEmpty) = _streamIdExtractor.GetGenerationPolicy(message);
 if (shouldGenerate && (!onlyIfEmpty || streamId == Guid.Empty)) {
@@ -141,7 +141,7 @@ if (shouldGenerate && (!onlyIfEmpty || streamId == Guid.Empty)) {
 
 For type-safe stream IDs, use the generated `StreamId` value object:
 
-```csharp{title="StreamId Value Object" description="For type-safe stream IDs, use the generated StreamId value object:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "StreamId", "Value"]}
+```csharp{title="StreamId Value Object" description="For type-safe stream IDs, use the generated StreamId value object:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "StreamId", "Value"] unverified="value-object type declaration; no runtime behavior asserted"}
 namespace Whizbang.Core.ValueObjects;
 
 /// <summary>
@@ -154,7 +154,7 @@ public readonly partial struct StreamId;
 
 ### Usage
 
-```csharp{title="Usage" description="Usage" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Usage"]}
+```csharp{title="Usage" description="Usage" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Usage"] unverified="StreamId value-object construction and parsing; verified by IdentityValueObjectTests, which is absent from the test map"}
 // Create new StreamId (UUIDv7 via TrackedGuid.NewMedo())
 var streamId = StreamId.New();
 
@@ -182,7 +182,7 @@ Whizbang supports two ways to identify a message's stream:
 
 Use when you want a settable `StreamId` property the framework can write to directly:
 
-```csharp{title="IHasStreamId Interface" description="Use when you want a settable StreamId property:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "IHasStreamId", "Interface"]}
+```csharp{title="IHasStreamId Interface" description="Use when you want a settable StreamId property:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "IHasStreamId", "Interface"] unverified="event-type declaration showing IHasStreamId; no runtime behavior asserted"}
 public record OrderCreated : IEvent, IHasStreamId {
   public Guid StreamId { get; set; }  // Auto-generated if empty (with [GenerateStreamId])
   // ...
@@ -193,7 +193,7 @@ public record OrderCreated : IEvent, IHasStreamId {
 
 Use when the stream ID lives on a **business-named property** — the source generator emits a zero-reflection extractor (and setter) for it:
 
-```csharp{title="[StreamId] Attribute" description="Use when the stream ID lives on a business-named property:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "StreamId", "Attribute"]}
+```csharp{title="[StreamId] Attribute" description="Use when the stream ID lives on a business-named property:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "StreamId", "Attribute"] tests=["StreamIdGeneratorTests.Generator_WithStreamIdAttribute_GeneratesExtractorAsync"]}
 public record OrderCreated : IEvent {
   [StreamId]
   public required Guid OrderId { get; init; }  // Business ID is the stream ID
@@ -217,7 +217,7 @@ The property must be `Guid`, `Guid?`, or a WhizbangId type, and only **one** pro
 
 ### Appending Events
 
-```csharp{title="Appending Events" description="Appending Events" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "C#", "Appending"]}
+```csharp{title="Appending Events" description="Appending Events" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "C#", "Appending"] tests=["InMemoryEventStoreTests.AppendAsync_WithMessage_ShouldStoreEventAsync"]}
 // Event store uses StreamId for organization
 await eventStore.AppendAsync(order.StreamId, new OrderShipped {
   OrderId = order.Id,
@@ -227,7 +227,7 @@ await eventStore.AppendAsync(order.StreamId, new OrderShipped {
 
 ### Reading Events
 
-```csharp{title="Reading Events" description="Reading Events" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "C#", "Reading"]}
+```csharp{title="Reading Events" description="Reading Events" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "C#", "Reading"] tests=["EventStoreContractTests.ReadAsync_ShouldReturnEventsInOrderAsync"]}
 // Read all events for a stream
 await foreach (var envelope in eventStore.ReadAsync<IEvent>(streamId, fromSequence: 0)) {
   var evt = envelope.Payload;
@@ -237,7 +237,7 @@ await foreach (var envelope in eventStore.ReadAsync<IEvent>(streamId, fromSequen
 
 ### Polymorphic Reads
 
-```csharp{title="Polymorphic Reads" description="Polymorphic Reads" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Polymorphic", "Reads"]}
+```csharp{title="Polymorphic Reads" description="Polymorphic Reads" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Polymorphic", "Reads"] tests=["InMemoryEventStoreTests.ReadPolymorphicAsync_WithMatchingEventType_ShouldReturnEventsAsync"]}
 // Read multiple event types from a stream
 var eventTypes = new[] { typeof(OrderCreated), typeof(OrderShipped), typeof(OrderDelivered) };
 

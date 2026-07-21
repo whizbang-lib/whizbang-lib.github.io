@@ -76,7 +76,7 @@ See the Migration Tool Documentation for details.
 
 Whizbang uses Roslyn source generators for all discovery:
 
-```csharp{title="Zero Reflection" description="Whizbang uses Roslyn source generators for all discovery:" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-guide", "C#", "Zero", "Reflection"]}
+```csharp{title="Zero Reflection" description="Whizbang uses Roslyn source generators for all discovery:" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-guide", "C#", "Zero", "Reflection"] unverified="framework comparison — interface shape, no behavior to assert"}
 // Wolverine - Runtime discovery via attributes
 [WolverineHandler]
 public class OrderHandler {
@@ -93,7 +93,7 @@ public class OrderReceptor : IReceptor<CreateOrder, OrderCreated> {
 
 Marten projections can have side effects. Whizbang Perspectives are **pure functions**:
 
-```csharp{title="Pure Function Perspectives" description="Marten projections can have side effects." category="Reference" difficulty="BEGINNER" tags=["Migration-guide", "C#", "Pure", "Function", "Perspectives"]}
+```csharp{title="Pure Function Perspectives" description="Marten projections can have side effects." category="Reference" difficulty="BEGINNER" tags=["Migration-guide", "C#", "Pure", "Function", "Perspectives"] tests=["IPerspectiveForTests.Perspective_ImplementingIPerspectiveFor_ApplyIsPureFunctionAsync", "IPerspectiveForTests.Perspective_ImplementingIPerspectiveFor_HasApplyMethodAsync"]}
 // Marten - Mutation allowed
 public void Apply(OrderSummary model, OrderCreated @event) {
     model.Total += @event.Total;  // Mutates model

@@ -78,7 +78,7 @@ CREATE INDEX IF NOT EXISTS idx_message_dedup_first_seen
 
 ### Processing Flow
 
-```mermaid
+```mermaid{caption="Inbox deduplication flow — store_inbox_messages inserts the message id into wh_message_deduplication with ON CONFLICT DO NOTHING, so a duplicate delivery skips the inbox insert entirely (exactly-once)."}
 sequenceDiagram
     participant T as Transport<br/>(External)
     participant TCW as TransportConsumerWorker
@@ -182,7 +182,7 @@ END IF;
 
 ### Transactional Outbox Pattern
 
-```mermaid
+```mermaid{caption="Transactional outbox — the application checks for an existing entity and, only for a new one, inserts the business row and the wh_outbox event in one committed transaction."}
 graph TD
     A[HTTP Request:<br/>Create Order] -->|BEGIN TRANSACTION| B[Application Logic]
     B --> C[INSERT INTO orders<br/>id=123, status='Created']
@@ -207,7 +207,7 @@ graph TD
 
 ### Example: Idempotent Command Handler
 
-```csharp{title="Example: Idempotent Command Handler" description="Example: Idempotent Command Handler" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Example:", "Idempotent", "Command"]}
+```csharp{title="Example: Idempotent Command Handler" description="Example: Idempotent Command Handler" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Example:", "Idempotent", "Command"] unverified="application-side idempotency handler — user code (EF Core transaction + existence check), not a framework API"}
 public async Task<Result> HandleCreateOrderAsync(CreateOrderCommand command) {
     // Start application transaction
     using var transaction = await _dbContext.Database.BeginTransactionAsync();
@@ -265,7 +265,7 @@ public async Task<Result> HandleCreateOrderAsync(CreateOrderCommand command) {
 
 ### Outbox Processing Flow
 
-```mermaid
+```mermaid{caption="Outbox processing flow — after the application commits, ClaimWorker leases the row, the publish worker sends it to the transport, and complete_outbox_published deletes it." tests=["OutboxPublishWorkerTests.SingularPublish_HappyPath_RoutesToOutboxCompletionChannelAsync"]}
 sequenceDiagram
     participant App as Application
     participant DB as PostgreSQL<br/>(Application DB)
@@ -320,7 +320,7 @@ Duplicate prevention on the outbox side is application logic, so the framework t
 ### Inbox Best Practices
 
 **1. Use Stable Message IDs**:
-```csharp{title="Inbox Best Practices" description="Inbox Best Practices" category="Architecture" difficulty="BEGINNER" tags=["Messaging", "C#", "Inbox", "Best", "Practices"]}
+```csharp{title="Inbox Best Practices" description="Inbox Best Practices" category="Architecture" difficulty="BEGINNER" tags=["Messaging", "C#", "Inbox", "Best", "Practices"] unverified="user guidance — stable message-id reuse pattern with a don't-do-this counter-example, not a framework test"}
 // ✅ Good: Generate the ID once, reuse it for every retry of the same message
 var messageId = TrackedGuid.NewMedo();  // UUIDv7, time-ordered
 await SendWithRetriesAsync(messageId, orderCreatedEvent);
@@ -351,7 +351,7 @@ ON CONFLICT (setting_key) DO UPDATE SET setting_value = EXCLUDED.setting_value;
 ### Outbox Best Practices
 
 **1. Use Deterministic Command IDs**:
-```csharp{title="Outbox Best Practices" description="Outbox Best Practices" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Outbox", "Best", "Practices"]}
+```csharp{title="Outbox Best Practices" description="Outbox Best Practices" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Outbox", "Best", "Practices"] unverified="user guidance — client-generated deterministic command IDs, application code"}
 public class CreateOrderCommand {
     public Guid OrderId { get; init; }  // Deterministic, from client
     // ... other properties
@@ -368,7 +368,7 @@ await httpClient.PostAsync("/orders", command);  // Same OrderId
 ```
 
 **2. Implement Idempotency Checks**:
-```csharp{title="Outbox Best Practices (2)" description="Outbox Best Practices" category="Architecture" difficulty="BEGINNER" tags=["Messaging", "C#", "Outbox", "Best", "Practices"]}
+```csharp{title="Outbox Best Practices (2)" description="Outbox Best Practices" category="Architecture" difficulty="BEGINNER" tags=["Messaging", "C#", "Outbox", "Best", "Practices"] unverified="user guidance — application-side idempotency existence check, not a framework API"}
 // Always check if entity already exists
 var existing = await _dbContext.Orders
     .FirstOrDefaultAsync(o => o.Id == command.OrderId);
@@ -379,7 +379,7 @@ if (existing != null) {
 ```
 
 **3. Use Unique Constraints**:
-```csharp{title="Outbox Best Practices (3)" description="Outbox Best Practices" category="Architecture" difficulty="BEGINNER" tags=["Messaging", "C#", "Outbox", "Best", "Practices"]}
+```csharp{title="Outbox Best Practices (3)" description="Outbox Best Practices" category="Architecture" difficulty="BEGINNER" tags=["Messaging", "C#", "Outbox", "Best", "Practices"] unverified="user configuration — EF Core unique-constraint model builder, not a framework API"}
 modelBuilder.Entity<Order>(entity => {
     entity.HasKey(e => e.Id);
 
@@ -390,7 +390,7 @@ modelBuilder.Entity<Order>(entity => {
 ```
 
 **4. Transaction Scope**:
-```csharp{title="Outbox Best Practices (4)" description="Outbox Best Practices" category="Architecture" difficulty="BEGINNER" tags=["Messaging", "C#", "Outbox", "Best", "Practices"]}
+```csharp{title="Outbox Best Practices (4)" description="Outbox Best Practices" category="Architecture" difficulty="BEGINNER" tags=["Messaging", "C#", "Outbox", "Best", "Practices"] unverified="user guidance — application transaction scope around dispatcher.PublishAsync, not a framework test"}
 // Ensure outbox is in same transaction as business logic
 using var transaction = await _dbContext.Database.BeginTransactionAsync();
 

@@ -46,7 +46,7 @@ public static IServiceCollection AddPerspectiveServices(
 
 ## Basic Usage
 
-```csharp{title="Register Perspective Services" description="Register all discovered Perspectives" category="DI" difficulty="BEGINNER" tags=["DI", "Perspectives"]}
+```csharp{title="Register Perspective Services" description="Register all discovered Perspectives" category="DI" difficulty="BEGINNER" tags=["DI", "Perspectives"] unverified="DI registration call — the generator output is verified by ServiceRegistrationGeneratorTests"}
 var builder = WebApplication.CreateBuilder(args);
 
 // Register all discovered Perspective implementations
@@ -55,7 +55,7 @@ builder.Services.AddPerspectiveServices();
 
 ## With Options
 
-```csharp{title="Register with Options" description="Customize Perspective registration" category="DI" difficulty="BEGINNER" tags=["DI", "Perspectives", "Options"]}
+```csharp{title="Register with Options" description="Customize Perspective registration" category="DI" difficulty="BEGINNER" tags=["DI", "Perspectives", "Options"] unverified="DI registration call — the generator output is verified by ServiceRegistrationGeneratorTests"}
 // Disable self-registration
 builder.Services.AddPerspectiveServices(options =>
     options.IncludeSelfRegistration = false);
@@ -69,7 +69,7 @@ The source generator discovers classes that:
 
 For each discovered Perspective, it generates:
 
-```csharp{title="Generated Registration" description="Example of generated Perspective registration" category="DI" difficulty="INTERMEDIATE" tags=["DI", "SourceGenerator"]}
+```csharp{title="Generated Registration" description="Example of generated Perspective registration" category="DI" difficulty="INTERMEDIATE" tags=["DI", "SourceGenerator"] tests=["ServiceRegistrationGeneratorTests.Generator_DirectPerspectiveImplementation_RegistersAgainstWhizbangInterfaceAsync", "ServiceRegistrationGeneratorTests.Generator_SelfRegistration_EnabledByDefault_RegistersBothAsync"]}
 // Interface registration
 services.AddTransient<IPerspectiveFor<OrderSummary, OrderCreated, OrderShipped>, OrderSummaryPerspective>();
 
@@ -114,7 +114,7 @@ The generator automatically discovers `OrderSummaryPerspective` and generates re
 
 ## Combining with Other Registrations
 
-```csharp{title="Full Registration Setup" description="Complete DI setup with Perspectives" category="DI" difficulty="INTERMEDIATE" tags=["DI", "Setup"]}
+```csharp{title="Full Registration Setup" description="Complete DI setup with Perspectives" category="DI" difficulty="INTERMEDIATE" tags=["DI", "Setup"] unverified="DI registration call — the generator output is verified by ServiceRegistrationGeneratorTests"}
 var builder = WebApplication.CreateBuilder(args);
 
 // Database

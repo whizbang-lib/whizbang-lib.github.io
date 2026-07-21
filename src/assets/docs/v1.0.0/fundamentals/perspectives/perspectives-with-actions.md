@@ -45,7 +45,7 @@ Standard perspectives (`IPerspectiveFor`) assume every event produces a model up
 
 ## IPerspectiveWithActionsFor Interface
 
-```csharp{title="IPerspectiveWithActionsFor Interface" description="Perspective interface that returns ApplyResult for delete/purge support" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "IPerspectiveWithActionsFor", "Interface"]}
+```csharp{title="IPerspectiveWithActionsFor Interface" description="Perspective interface that returns ApplyResult for delete/purge support" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "IPerspectiveWithActionsFor", "Interface"] tests=["IPerspectiveWithActionsForTests.Interface_EnforcesApplyResultReturnTypeAsync"]}
 namespace Whizbang.Core.Perspectives;
 
 public interface IPerspectiveWithActionsFor<TModel, TEvent> : IPerspectiveWithActionsFor<TModel>
@@ -68,7 +68,7 @@ public interface IPerspectiveWithActionsFor<TModel, TEvent> : IPerspectiveWithAc
 
 `ApplyResult<TModel>` is a readonly struct that pairs an optional model with a `ModelAction`. It provides four static factory methods and three implicit conversions for ergonomic usage.
 
-```csharp{title="ApplyResult Factory Methods" description="Static factory methods for creating ApplyResult instances" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "ApplyResult", "Factory"]}
+```csharp{title="ApplyResult Factory Methods" description="Static factory methods for creating ApplyResult instances" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "ApplyResult", "Factory"] tests=["ApplyResultTests.ApplyResult_None_ReturnsNullModelWithNoneActionAsync", "ApplyResultTests.ApplyResult_Delete_ReturnsNullModelWithDeleteActionAsync", "ApplyResultTests.ApplyResult_Purge_ReturnsNullModelWithPurgeActionAsync", "ApplyResultTests.ApplyResult_Update_ReturnsModelWithNoneActionAsync"]}
 namespace Whizbang.Core.Perspectives;
 
 public readonly struct ApplyResult<TModel> where TModel : class {
@@ -101,7 +101,7 @@ public readonly struct ApplyResult<TModel> where TModel : class {
 
 The implicit conversions let you write concise Apply methods without explicitly constructing `ApplyResult`:
 
-```csharp{title="ApplyResult Implicit Conversions" description="Three implicit conversions for ergonomic ApplyResult usage" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "ApplyResult", "ImplicitConversion"]}
+```csharp{title="ApplyResult Implicit Conversions" description="Three implicit conversions for ergonomic ApplyResult usage" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "ApplyResult", "ImplicitConversion"] tests=["IPerspectiveWithActionsForTests.Apply_ReturningModel_HasImplicitConversionToApplyResultAsync", "IPerspectiveWithActionsForTests.Apply_ModelActionImplicitConversion_WorksAsync", "ApplyResultTests.ApplyResult_ImplicitConversion_FromModel_WorksAsync", "ApplyResultTests.ApplyResult_ImplicitConversion_FromModelAction_WorksAsync"]}
 using Whizbang.Core.Perspectives;
 
 public class OrderPerspective : IPerspectiveWithActionsFor<OrderView, OrderUpdated>,
@@ -125,7 +125,7 @@ public class OrderPerspective : IPerspectiveWithActionsFor<OrderView, OrderUpdat
 
 `ModelAction` specifies the lifecycle action for a perspective model after an Apply method executes.
 
-```csharp{title="ModelAction Enum" description="Enum controlling perspective model lifecycle: None, Delete (soft), Purge (hard)" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "ModelAction", "Enum"]}
+```csharp{title="ModelAction Enum" description="Enum controlling perspective model lifecycle: None, Delete (soft), Purge (hard)" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "ModelAction", "Enum"] tests=["ModelActionTests.ModelAction_None_HasValueZeroAsync", "ModelActionTests.ModelAction_Delete_HasValueOneAsync", "ModelActionTests.ModelAction_Purge_HasValueTwoAsync", "ModelActionTests.ModelAction_HasThreeValuesAsync"]}
 namespace Whizbang.Core.Perspectives;
 
 public enum ModelAction {
@@ -151,7 +151,7 @@ public enum ModelAction {
 
 A single perspective class can implement **both** `IPerspectiveFor` and `IPerspectiveWithActionsFor` for different event types. This is the recommended pattern: use `IPerspectiveFor` for events that only update, and `IPerspectiveWithActionsFor` for events that may delete.
 
-```csharp{title="Mixed Perspective" description="Perspective mixing IPerspectiveFor (updates) with IPerspectiveWithActionsFor (deletes)" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Perspectives", "Mixed", "IPerspectiveFor", "IPerspectiveWithActionsFor"]}
+```csharp{title="Mixed Perspective" description="Perspective mixing IPerspectiveFor (updates) with IPerspectiveWithActionsFor (deletes)" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Perspectives", "Mixed", "IPerspectiveFor", "IPerspectiveWithActionsFor"] tests=["IPerspectiveWithActionsForTests.MixedPerspective_BothInterfaceTypes_WorkTogetherAsync", "IPerspectiveWithActionsForTests.MixedPerspective_IPerspectiveFor_ReturnsTModelAsync", "IPerspectiveWithActionsForTests.MixedPerspective_IPerspectiveWithActionsFor_ReturnsApplyResultAsync"]}
 using Whizbang.Core;
 using Whizbang.Core.Perspectives;
 
@@ -238,7 +238,7 @@ public class OrderPerspective :
 
 An Apply method can choose different actions based on event data. This is useful when the same event type might update or delete depending on context.
 
-```csharp{title="Conditional Action" description="Apply method choosing between update and purge based on event data" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Perspectives", "Conditional", "ApplyResult"]}
+```csharp{title="Conditional Action" description="Apply method choosing between update and purge based on event data" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Perspectives", "Conditional", "ApplyResult"] unverified="domain ArchivePerspective illustrating conditional purge-or-update branching, no dedicated test"}
 using Whizbang.Core;
 using Whizbang.Core.Perspectives;
 
@@ -302,7 +302,7 @@ Shipped behavior: `ModelAction.Delete` does **not** automatically stamp `Deleted
 
 By convention, models that support soft delete include a `DateTimeOffset? DeletedAt` property, which the perspective's `Apply` method sets (the framework does not stamp it automatically):
 
-```csharp{title="Soft Delete Model" description="Read model with DeletedAt property for soft-delete support" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "SoftDelete", "Model"]}
+```csharp{title="Soft Delete Model" description="Read model with DeletedAt property for soft-delete support" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "SoftDelete", "Model"] unverified="read-model DTO — property-only, no behavior to assert"}
 using Whizbang.Core;
 
 public record OrderView {
@@ -324,7 +324,7 @@ No special model properties are required for purge. The row is removed entirely 
 
 Testing follows the same pure-function pattern as standard perspectives. No database mocking needed.
 
-```csharp{title="Testing Perspectives with Actions" description="Unit tests for perspectives returning ApplyResult with delete and purge actions" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Perspectives", "Testing", "ApplyResult"]}
+```csharp{title="Testing Perspectives with Actions" description="Unit tests for perspectives returning ApplyResult with delete and purge actions" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Perspectives", "Testing", "ApplyResult"] tests=["IPerspectiveWithActionsForTests.Apply_ReturningDelete_HasCorrectActionAsync", "IPerspectiveWithActionsForTests.Apply_ReturningPurge_HasCorrectActionAsync", "IPerspectiveWithActionsForTests.MixedPerspective_BothInterfaceTypes_WorkTogetherAsync", "IPerspectiveWithActionsForTests.Apply_IsPureFunction_OriginalModelUnchangedAsync"]}
 using Whizbang.Core.Perspectives;
 
 public class OrderPerspectiveTests {

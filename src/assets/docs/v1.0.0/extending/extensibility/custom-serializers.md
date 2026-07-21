@@ -32,7 +32,7 @@ Whizbang uses JSON by default via `JsonMessageSerializer`, backed by source-gene
 
 ## The Extension Point: IMessageSerializer
 
-```csharp{title="IMessageSerializer Interface" description="Envelope serialization extension point" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "IMessageSerializer", "Interface"]}
+```csharp{title="IMessageSerializer Interface" description="Envelope serialization extension point" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "IMessageSerializer", "Interface"] tests=["IMessageSerializerTests.Serialize_WithMessageEnvelope_ReturnsNonEmptyBytesAsync", "IMessageSerializerTests.Deserialize_WithSerializedEnvelope_ReturnsEnvelopeAsync", "IMessageSerializerTests.RoundTrip_PreservesAllMessageHopsAsync"]}
 namespace Whizbang.Core.Transports;
 
 public interface IMessageSerializer {
@@ -83,7 +83,7 @@ Built-in implementations:
 
 Before writing a custom serializer, note that the default is already pluggable. `JsonMessageSerializer` takes either a `JsonSerializerContext` or a `JsonSerializerOptions` with a `TypeInfoResolver`:
 
-```csharp{title="Configuring JsonMessageSerializer" description="AOT-compatible JSON with combined contexts" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "JSON", "AOT"]}
+```csharp{title="Configuring JsonMessageSerializer" description="AOT-compatible JSON with combined contexts" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "JSON", "AOT"] tests=["JsonContextRegistryTests.CreateCombinedOptions_IsAOTCompatible_NoReflectionAsync", "JsonMessageSerializerTests.SerializeAsync_WithValidEnvelope_ShouldSerializeAsync"]}
 using Whizbang.Core.Serialization;
 using Whizbang.Core.Transports;
 
@@ -105,7 +105,7 @@ If your goal is only to make new payload types serializable, register their gene
 
 A custom serializer owns the full envelope round-trip. The simplest robust approach is to define a wire DTO carrying the envelope fields your transport needs, and let MessagePack handle the bytes:
 
-```csharp{title="MessagePack Envelope Serializer" description="Custom binary IMessageSerializer implementation" category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Pattern", "MessagePack"]}
+```csharp{title="MessagePack Envelope Serializer" description="Custom binary IMessageSerializer implementation" category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Pattern", "MessagePack"] unverified="user extension example — user IMessageSerializer implementation"}
 using MessagePack;
 using Whizbang.Core.Observability;
 using Whizbang.Core.Transports;
@@ -146,7 +146,7 @@ For AOT deployments, MessagePack's `ContractlessStandardResolver` uses runtime r
 
 Protobuf shines for **cross-language payload contracts** (gRPC-style). Protobuf messages (`IMessage<T>`) serialize AOT-safely:
 
-```csharp{title="Protobuf Payload Helpers" description="Protobuf payload serialization building blocks" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Pattern", "Protobuf"]}
+```csharp{title="Protobuf Payload Helpers" description="Protobuf payload serialization building blocks" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Pattern", "Protobuf"] unverified="user extension example — Protobuf payload helper snippet"}
 using Google.Protobuf;
 
 public static class ProtobufPayload {
@@ -169,7 +169,7 @@ To use Protobuf on the wire end-to-end, embed these helpers inside an `IMessageS
 
 Transports resolve `IMessageSerializer` from DI. Register your implementation before the transport packages add their default:
 
-```csharp{title="Serializer Registration" description="Swap the message serializer in DI" category="Extensibility" difficulty="BEGINNER" tags=["Extending", "Extensibility", "Registration", "DI"]}
+```csharp{title="Serializer Registration" description="Swap the message serializer in DI" category="Extensibility" difficulty="BEGINNER" tags=["Extending", "Extensibility", "Registration", "DI"] unverified="user extension example — registers a user-defined serializer"}
 builder.Services.AddSingleton<IMessageSerializer, MessagePackMessageSerializer>();
 ```
 

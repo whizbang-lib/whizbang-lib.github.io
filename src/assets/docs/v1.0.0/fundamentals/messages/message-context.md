@@ -37,7 +37,7 @@ Whizbang provides automatic **distributed tracing** through three key identifier
 
 ### Visual Example
 
-```mermaid
+```mermaid{caption="Correlation & causation propagation — every message in a workflow inherits the originating CreateOrder's CorrelationId, while each child event carries its parent's MessageId as its CausationId." tests=["MessageContextTests.Create_WithCascadeContext_CopiesCorrelationIdAsync", "MessageContextTests.Create_WithCascadeContext_UsesCascadeCausationIdAsContextCausationIdAsync"]}
 graph TB
     U["User clicks &quot;Create Order&quot; button"]
     C["CreateOrder Command<br/>MessageId: msg-001<br/>CorrelationId: corr-abc (generated for this workflow)<br/>CausationId: null (no parent)"]
@@ -84,7 +84,7 @@ graph TB
 
 **Type**: Strongly-typed value object using UUIDv7, declared with the `[WhizbangId]` attribute. The source generator emits the members:
 
-```csharp{title="MessageId" description="Type: Strongly-typed value object using UUIDv7." category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Messages", "MessageId"]}
+```csharp{title="MessageId" description="Type: Strongly-typed value object using UUIDv7." category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Messages", "MessageId"] unverified="verified by IdentityValueObjectTests, which is outside the current coverage map"}
 [WhizbangId]
 public readonly partial struct MessageId;
 
@@ -104,7 +104,7 @@ public readonly partial struct MessageId;
 
 ### Usage
 
-```csharp{title="Usage" description="Usage" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Messages", "Usage"]}
+```csharp{title="Usage" description="Usage" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Messages", "Usage"] unverified="conceptual usage illustration — the dispatcher auto-generates MessageId; not a unit under test"}
 // Whizbang creates MessageId automatically
 var receipt = await _dispatcher.SendAsync(command);
 
@@ -124,7 +124,7 @@ Console.WriteLine($"Message ID: {receipt.MessageId}");
 ambient **W3C trace context**; externally-supplied ids — an inbound header, a W3C trace-id, or a client
 `crypto.randomUUID` (UUIDv4) — are accepted verbatim (a W3C trace-id is 128 bits, so it fits a `Guid`).
 
-```csharp{title="CorrelationId" description="Type: 128-bit value object; W3C-aligned when minted, any token when external." category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Messages", "CorrelationId"]}
+```csharp{title="CorrelationId" description="Type: 128-bit value object; W3C-aligned when minted, any token when external." category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Messages", "CorrelationId"] tests=["CorrelationIdTests.New_ProducesUuidV7Async", "CorrelationIdTests.ToString_FormatsAsGuidAsync"]}
 public readonly partial struct CorrelationId {
     // Fresh UUIDv7 (time-ordered, database-friendly).
     public static CorrelationId New();
@@ -173,7 +173,7 @@ public readonly partial struct CorrelationId {
 
 ### Usage
 
-```csharp{title="Usage (2)" description="Usage (2)" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Usage"]}
+```csharp{title="Usage (2)" description="Usage (2)" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Usage"] unverified="conceptual usage illustration — dispatcher correlation-id propagation on a receipt, not a unit under test"}
 // The dispatcher mints (or inherits) the correlation id and propagates it to
 // every message in the workflow — no manual plumbing needed.
 var command = new CreateOrder(customerId, items);
@@ -186,7 +186,7 @@ Console.WriteLine($"Correlation ID: {receipt.CorrelationId}");
 
 ### Querying by CorrelationId
 
-```csharp{title="Querying by CorrelationId" description="Querying by CorrelationId" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Querying", "CorrelationId"]}
+```csharp{title="Querying by CorrelationId" description="Querying by CorrelationId" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Querying", "CorrelationId"] unverified="user-domain query illustration — application-level event-store query, not framework behavior under test"}
 // Find all messages in a workflow
 public async Task<Message[]> GetWorkflowMessagesAsync(
     CorrelationId correlationId,
@@ -219,7 +219,7 @@ public async Task<Message[]> GetWorkflowMessagesAsync(
 
 **Type**: There is **no separate `CausationId` type** — a causation id *is* the parent message's `MessageId`, so Whizbang uses `MessageId` directly (e.g., `IMessageContext.CausationId` is a `MessageId`).
 
-```csharp{title="CausationId" description="CausationId is just the parent's MessageId - no separate type." category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Messages", "CausationId"]}
+```csharp{title="CausationId" description="CausationId is just the parent's MessageId - no separate type." category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Messages", "CausationId"] tests=["MessageContextTests.Create_WithCorrelationIdAndCausationId_UsesProvidedCausationIdAsync", "MessageContextTests.New_GeneratesAllNewIdentifiersAsync"]}
 // From src/Whizbang.Core/ValueObjects/CausationId.cs:
 // "CausationId is just a MessageId of the parent/causing message.
 //  No need for a separate type - use MessageId directly."
@@ -240,7 +240,7 @@ public interface IMessageContext {
 
 ### Causation Chain Example
 
-```mermaid
+```mermaid{caption="Causation chain — each event's CausationId is its parent's MessageId (msg-001 → msg-002 → msg-003 → msg-004), and every message in the chain shares the same CorrelationId." tests=["MessageContextTests.Create_WithCascadeContext_UsesCascadeCausationIdAsContextCausationIdAsync", "MessageContextTests.Create_WithCascadeContext_CopiesCorrelationIdAsync"]}
 graph TB
     M1["CreateOrder Command<br/>MessageId: msg-001<br/>CorrelationId: corr-abc<br/>CausationId: null (no parent)"]
     M2["OrderCreated Event<br/>MessageId: msg-002<br/>CorrelationId: corr-abc<br/>CausationId: msg-001 (caused by CreateOrder)"]
@@ -261,7 +261,7 @@ graph TB
 
 ### Usage
 
-```csharp{title="Usage - CreateOrderReceptor" description="Usage - CreateOrderReceptor" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Usage"]}
+```csharp{title="Usage - CreateOrderReceptor" description="Usage - CreateOrderReceptor" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Usage"] unverified="user-domain receptor illustration — the envelope stamps causation automatically; not a unit under test"}
 // Receptor creates event with causation
 public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
     public async ValueTask<OrderCreated> HandleAsync(
@@ -294,7 +294,7 @@ public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
 
 Whizbang wraps all messages in a **MessageEnvelope** containing context:
 
-```csharp{title="MessageEnvelope" description="Whizbang wraps all messages in a MessageEnvelope containing context:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Messages", "MessageEnvelope"]}
+```csharp{title="MessageEnvelope" description="Whizbang wraps all messages in a MessageEnvelope containing context:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Messages", "MessageEnvelope"] tests=["MessageEnvelopeTests.GetCorrelationId_ReturnsFirstHopCorrelationIdAsync", "MessageEnvelopeTests.GetCausationId_ReturnsFirstHopCausationIdAsync", "MessageEnvelopeTests.ParameterlessConstructor_AllowsObjectInitializerAsync"]}
 public class MessageEnvelope<TMessage> : IMessageEnvelope<TMessage> {
     public required MessageId MessageId { get; init; }
     public required TMessage Payload { get; init; }        // Your actual message
@@ -312,7 +312,7 @@ public class MessageEnvelope<TMessage> : IMessageEnvelope<TMessage> {
 
 ### Automatic Context Propagation
 
-```csharp{title="Automatic Context Propagation" description="Automatic Context Propagation" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Automatic", "Context"]}
+```csharp{title="Automatic Context Propagation" description="Automatic Context Propagation" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Automatic", "Context"] unverified="DI/HTTP-wiring illustration — an ASP.NET controller dispatching a command, not framework behavior under test"}
 // 1. HTTP Request arrives
 [HttpPost("orders")]
 public async Task<ActionResult> CreateOrder(
@@ -345,7 +345,7 @@ public async Task<ActionResult> CreateOrder(
 
 ### Querying Workflow History
 
-```csharp{title="Querying Workflow History" description="Querying Workflow History" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Messages", "Querying", "Workflow"]}
+```csharp{title="Querying Workflow History" description="Querying Workflow History" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Messages", "Querying", "Workflow"] unverified="user-domain query illustration — an application-level workflow tracer, not framework behavior under test"}
 public class WorkflowTracer {
     private readonly IDbConnectionFactory _db;
 
@@ -411,7 +411,7 @@ Workflow: corr-abc
 
 ### Visualizing Causation Chains
 
-```csharp{title="Visualizing Causation Chains" description="Visualizing Causation Chains" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Visualizing", "Causation"]}
+```csharp{title="Visualizing Causation Chains" description="Visualizing Causation Chains" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Visualizing", "Causation"] unverified="user-domain illustration — an application-level causation visualizer, not framework behavior under test"}
 public class CausationVisualizer {
     public void VisualizeCausationChain(TraceMessage[] messages) {
         var messageMap = messages.ToDictionary(m => m.MessageId);
@@ -457,7 +457,7 @@ public class CausationVisualizer {
 
 ### Structured Logging
 
-```csharp{title="Structured Logging" description="Structured Logging" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Structured", "Logging"]}
+```csharp{title="Structured Logging" description="Structured Logging" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Structured", "Logging"] unverified="conceptual logging illustration — ILogger scope usage in a user receptor, not framework behavior under test"}
 public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
     private readonly ILogger<CreateOrderReceptor> _logger;
 
@@ -505,7 +505,7 @@ public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
 
 ### Application Insights Integration
 
-```csharp{title="Application Insights Integration" description="Application Insights Integration" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Application", "Insights"]}
+```csharp{title="Application Insights Integration" description="Application Insights Integration" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Application", "Insights"] unverified="conceptual telemetry illustration — Application Insights wiring in a user receptor, not framework behavior under test"}
 public class OrderReceptor : IReceptor<CreateOrder, OrderCreated> {
     private readonly TelemetryClient _telemetry;
 
@@ -563,7 +563,7 @@ public class OrderReceptor : IReceptor<CreateOrder, OrderCreated> {
 
 ### ASP.NET Core Middleware
 
-```csharp{title="ASP.NET Core Middleware" description="ASP.NET Core Middleware" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "ASP.NET", "Core"]}
+```csharp{title="ASP.NET Core Middleware" description="ASP.NET Core Middleware" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "ASP.NET", "Core"] unverified="DI/HTTP-wiring illustration — an ASP.NET correlation-id middleware, not framework behavior under test"}
 public class CorrelationIdMiddleware {
     private readonly RequestDelegate _next;
 
@@ -592,7 +592,7 @@ app.UseMiddleware<CorrelationIdMiddleware>();
 
 ### Propagating to Downstream Services
 
-```csharp{title="Propagating to Downstream Services" description="Propagating to Downstream Services" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Propagating", "Downstream"]}
+```csharp{title="Propagating to Downstream Services" description="Propagating to Downstream Services" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "Propagating", "Downstream"] unverified="DI/HTTP-wiring illustration — outbound HttpClient correlation propagation, not framework behavior under test"}
 public class HttpClientWithCorrelation {
     private readonly HttpClient _httpClient;
     private readonly IHttpContextAccessor _httpContext;
@@ -619,7 +619,7 @@ public class HttpClientWithCorrelation {
 
 The `IMessageContext` interface provides all context and metadata for a message flowing through the system:
 
-```csharp{title="IMessageContext Interface" description="Full IMessageContext interface with all properties" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "IMessageContext"]}
+```csharp{title="IMessageContext Interface" description="Full IMessageContext interface with all properties" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "IMessageContext"] tests=["MessageContextTests.New_GeneratesAllNewIdentifiersAsync", "MessageContextTests.Metadata_IsEmptyByDefaultAsync", "MessageContextTests.ScopeContext_IsNullByDefaultAsync", "MessageContextTests.CallerInfo_IsNullByDefaultAsync"]}
 public interface IMessageContext {
   MessageId MessageId { get; }
   CorrelationId CorrelationId { get; }
@@ -639,7 +639,7 @@ The `ScopeContext` property carries rich authorization context (Roles, Permissio
 
 **Important**: The ScopeContext is **owned by the message**, not read from ambient `AsyncLocal`. When a message context is created, it captures the current scope context. `AsyncLocal` then reads **from** the initiating message context's ScopeContext, not the other way around.
 
-```csharp{title="ScopeContext Ownership" description="ScopeContext is owned by the message, not AsyncLocal" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "ScopeContext"]}
+```csharp{title="ScopeContext Ownership" description="ScopeContext is owned by the message, not AsyncLocal" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Messages", "ScopeContext"] unverified="user-domain receptor illustration — reads ScopeContext/TenantId off the message context; the ownership model itself is asserted by MessageContextTests.MessageContextOwnsScope_AsyncLocalReadsFromItAsync"}
 // In lifecycle receptors, use ScopeContext from the message context
 // because the original HTTP context is unavailable
 public class OrderLifecycleReceptor : ILifecycleReceptor<OrderCreatedEvent> {
@@ -658,7 +658,7 @@ public class OrderLifecycleReceptor : ILifecycleReceptor<OrderCreatedEvent> {
 
 The `CallerInfo` property captures the caller's source location at dispatch time using `[CallerMemberName]`, `[CallerFilePath]`, and `[CallerLineNumber]`. This enables click-to-navigate in IDEs like VSCode.
 
-```csharp{title="CallerInfo Interface" description="Captures source location at dispatch time" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Messages", "CallerInfo"]}
+```csharp{title="CallerInfo Interface" description="Captures source location at dispatch time" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Messages", "CallerInfo"] tests=["CallerInfoTests.CallerInfo_ImplementsICallerInfoAsync", "CallerInfoTests.CallerInfo_InterfaceProperties_MatchRecordPropertiesAsync"]}
 public interface ICallerInfo {
   string CallerMemberName { get; }  // Method name that dispatched the message
   string CallerFilePath { get; }    // Source file path

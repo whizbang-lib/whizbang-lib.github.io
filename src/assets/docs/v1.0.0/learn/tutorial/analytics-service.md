@@ -32,7 +32,7 @@ This is **Part 7** of the ECommerce Tutorial. Complete [Customer Service](custom
 
 ## What You'll Build
 
-```mermaid
+```mermaid{caption="Analytics service architecture — domain events from Azure Service Bus fan out to time-series projection receptors that upsert partitioned Postgres tables, surfaced through the analytics REST API."}
 flowchart TD
     subgraph ASA["Analytics Service Architecture"]
         ASB["Azure Service Bus"]
@@ -146,7 +146,7 @@ CREATE INDEX idx_product_analytics_revenue ON product_analytics(total_revenue DE
 
 **ECommerce.AnalyticsWorker/Receptors/DailySalesAnalyticsReceptor.cs**:
 
-```csharp{title="Daily Sales Analytics Receptor" description="**ECommerce." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Daily", "Sales"]}
+```csharp{title="Daily Sales Analytics Receptor" description="**ECommerce." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Daily", "Sales"] unverified="tutorial worked-example receptor — implements the void-return IReceptor contract (verified in isolation by VoidReceptorTests); its time-series DB projection is outside the core unit-test coverage map"}
 using Whizbang.Core;
 using ECommerce.Contracts.Events;
 using Npgsql;
@@ -205,7 +205,7 @@ public class DailySalesAnalyticsReceptor : IReceptor<OrderCreatedEvent> {
 
 **ECommerce.AnalyticsWorker/Receptors/HourlySalesAnalyticsReceptor.cs**:
 
-```csharp{title="Hourly Sales Analytics Receptor" description="**ECommerce." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Hourly", "Sales"]}
+```csharp{title="Hourly Sales Analytics Receptor" description="**ECommerce." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Hourly", "Sales"] unverified="tutorial worked-example receptor — implements the void-return IReceptor contract (verified in isolation by VoidReceptorTests); its time-series DB projection is outside the core unit-test coverage map"}
 using Whizbang.Core;
 using ECommerce.Contracts.Events;
 using Npgsql;
@@ -267,7 +267,7 @@ public class HourlySalesAnalyticsReceptor : IReceptor<OrderCreatedEvent> {
 
 **ECommerce.AnalyticsWorker/Receptors/ProductAnalyticsReceptor.cs**:
 
-```csharp{title="Product Analytics Receptor" description="**ECommerce." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Product", "Analytics"]}
+```csharp{title="Product Analytics Receptor" description="**ECommerce." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Product", "Analytics"] unverified="tutorial worked-example receptor — implements the void-return IReceptor contract (verified in isolation by VoidReceptorTests); its time-series DB projection is outside the core unit-test coverage map"}
 using Whizbang.Core;
 using ECommerce.Contracts.Events;
 using Npgsql;
@@ -336,7 +336,7 @@ public class ProductAnalyticsReceptor : IReceptor<OrderCreatedEvent> {
 
 **ECommerce.AnalyticsWorker/Models/DailySalesDto.cs**:
 
-```csharp{title="DTOs" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "DTOs"]}
+```csharp{title="DTOs" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "DTOs"] unverified="tutorial worked-example DTO — a plain data record with no behavior to unit-test"}
 namespace ECommerce.AnalyticsWorker.Models;
 
 public record DailySalesDto(
@@ -351,7 +351,7 @@ public record DailySalesDto(
 
 **ECommerce.AnalyticsWorker/Models/ProductPerformanceDto.cs**:
 
-```csharp{title="DTOs - ProductPerformanceDto" description="**ECommerce." category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "DTOs"]}
+```csharp{title="DTOs - ProductPerformanceDto" description="**ECommerce." category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "DTOs"] unverified="tutorial worked-example DTO — a plain data record with no behavior to unit-test"}
 namespace ECommerce.AnalyticsWorker.Models;
 
 public record ProductPerformanceDto(
@@ -367,7 +367,7 @@ public record ProductPerformanceDto(
 
 **ECommerce.AnalyticsWorker/Controllers/AnalyticsController.cs**:
 
-```csharp{title="Controllers" description="**ECommerce." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Controllers"]}
+```csharp{title="Controllers" description="**ECommerce." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Controllers"] unverified="tutorial worked-example — REST controller and Dapper reporting queries, not exercised by an in-map unit test"}
 using Microsoft.AspNetCore.Mvc;
 using Npgsql;
 using Dapper;
@@ -521,7 +521,7 @@ public record ProductAnalyticsRow(
 
 **ECommerce.AnalyticsWorker/Program.cs**:
 
-```csharp{title="Step 4: Service Configuration" description="**ECommerce." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Step", "Service"]}
+```csharp{title="Step 4: Service Configuration" description="**ECommerce." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Step", "Service"] unverified="host/DI wiring — not exercised by a test"}
 using Whizbang.Core;
 using Whizbang.Core.Messaging;
 using Whizbang.Core.Observability;
@@ -678,7 +678,7 @@ curl "http://localhost:5002/api/analytics/products/top?limit=5"
 
 ### Time-Series Projections
 
-```csharp{title="Time-Series Projections" description="Time-Series Projections" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Time-Series", "Projections"]}
+```csharp{title="Time-Series Projections" description="Time-Series Projections" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Time-Series", "Projections"] unverified="tutorial worked-example — illustrative projection snippet, not exercised by an in-map unit test"}
 // Truncate timestamp to hour for hourly aggregation
 var hour = new DateTime(
   @event.CreatedAt.Year,
@@ -746,7 +746,7 @@ REFRESH MATERIALIZED VIEW CONCURRENTLY monthly_sales_summary;
 
 ### Unit Test - Daily Sales Receptor
 
-```csharp{title="Unit Test - Daily Sales Receptor" description="Unit Test - Daily Sales Receptor" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Unit", "Test"]}
+```csharp{title="Unit Test - Daily Sales Receptor" description="Unit Test - Daily Sales Receptor" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Unit", "Test"] unverified="tutorial worked-example test — illustrative receptor test, not part of the core unit-test coverage map"}
 [Test]
 public async Task DailySalesReceptor_OrderCreated_UpdatesDailySalesAsync() {
   // Arrange

@@ -49,7 +49,7 @@ This guide walks through implementing multi-tenancy in a Whizbang application, f
 
 First, configure the security system with roles and permission extraction.
 
-```csharp{title="Step 1: Configure Security Options" description="First, configure the security system with roles and permission extraction." category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "C#", "Step", "Configure"]}
+```csharp{title="Step 1: Configure Security Options" description="First, configure the security system with roles and permission extraction." category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "C#", "Step", "Configure"] tests=["SecurityOptionsTests.SecurityOptions_FullConfiguration_WorksCorrectlyAsync", "PermissionExtractorTests.SecurityOptions_ExtractorsFromClaims_ProduceCorrectResultsAsync"]}
 // Program.cs
 builder.Services.AddSingleton(new SecurityOptions()
   // Define roles with permissions
@@ -73,7 +73,7 @@ builder.Services.AddSingleton(new SecurityOptions()
 
 Register the security and scoping services.
 
-```csharp{title="Step 2: Register Core Services" description="Register the security and scoping services." category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Step", "Register"]}
+```csharp{title="Step 2: Register Core Services" description="Register the security and scoping services." category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Step", "Register"] unverified="DI registration — service wiring, not asserted by a unit test"}
 // Core services
 builder.Services.AddSingleton<IScopeContextAccessor, ScopeContextAccessor>();
 builder.Services.AddSingleton<ISystemEventEmitter, SystemEventEmitter>();
@@ -91,7 +91,7 @@ builder.Services.AddScoped<ICustomerLens, CustomerLens>();
 
 Create middleware to populate the scope context from the authenticated user.
 
-```csharp{title="Step 3: Create Scope Context Middleware" description="Create middleware to populate the scope context from the authenticated user." category="Best-Practices" difficulty="ADVANCED" tags=["Fundamentals", "Security", "Step", "Create"]}
+```csharp{title="Step 3: Create Scope Context Middleware" description="Create middleware to populate the scope context from the authenticated user." category="Best-Practices" difficulty="ADVANCED" tags=["Fundamentals", "Security", "Step", "Create"] unverified="application middleware example — user-authored ASP.NET Core scope-context population, not a Whizbang API under test"}
 public class ScopeContextMiddleware {
   private readonly RequestDelegate _next;
   private readonly SecurityOptions _securityOptions;
@@ -152,7 +152,7 @@ app.UseAuthorization();
 
 Create lenses that implement `IFilterableLens` to receive scope filters.
 
-```csharp{title="Step 4: Implement Filterable Lenses" description="Create lenses that implement IFilterableLens to receive scope filters." category="Best-Practices" difficulty="ADVANCED" tags=["Fundamentals", "Security", "Step", "Implement"]}
+```csharp{title="Step 4: Implement Filterable Lenses" description="Create lenses that implement IFilterableLens to receive scope filters." category="Best-Practices" difficulty="ADVANCED" tags=["Fundamentals", "Security", "Step", "Implement"] unverified="application lens example — user-authored IFilterableLens implementation, not a Whizbang API under test"}
 public interface IOrderLens : ILensQuery, IFilterableLens {
   Task<List<Order>> GetAllAsync();
   Task<Order?> GetByIdAsync(Guid id);
@@ -208,7 +208,7 @@ public class OrderLens : IOrderLens {
 
 Use the scoped lens factory in your controllers.
 
-```csharp{title="Step 5: Use in Controllers" description="Use the scoped lens factory in your controllers." category="Best-Practices" difficulty="ADVANCED" tags=["Fundamentals", "Security", "Step", "Controllers"]}
+```csharp{title="Step 5: Use in Controllers" description="Use the scoped lens factory in your controllers." category="Best-Practices" difficulty="ADVANCED" tags=["Fundamentals", "Security", "Step", "Controllers"] tests=["ScopedLensFactoryTests.IScopedLensFactory_HasGetTenantLensMethodAsync", "ScopedLensFactoryTests.IScopedLensFactory_HasGetUserLensMethodAsync", "ScopedLensFactoryTests.IScopedLensFactory_HasGetPrincipalLensMethodAsync", "ScopedLensFactoryTests.IScopedLensFactory_HasGetMyOrSharedLensMethodAsync", "ScopedLensFactoryTests.IScopedLensFactory_HasGetLens_ScopeFilter_Permission_MethodAsync"]}
 [ApiController]
 [Route("api/orders")]
 public class OrdersController : ControllerBase {
@@ -267,7 +267,7 @@ public class OrdersController : ControllerBase {
 
 Perspectives implement a pure `Apply` — the perspective runner persists rows and writes the `scope` column automatically from the message's propagated scope. Declare **which** scope fields a row inherits with `[InheritScope]` on the perspective **model**:
 
-```csharp{title="Step 6: Store Data with Scope" description="Declare scope inheritance on the perspective model; the runner persists scope automatically." category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Step", "Store"]}
+```csharp{title="Step 6: Store Data with Scope" description="Declare scope inheritance on the perspective model; the runner persists scope automatically." category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Step", "Store"] tests=["InheritScopeAttributeTests.InheritScope_OnCreate_AcceptsCustomFlagsAsync", "InheritScopeAttributeTests.InheritScope_Defaults_AreTenantOnCreate_AndNoneAlwaysAsync"]}
 // Owner-style rows: tenant + creating user pinned at INSERT, never mutated after.
 [InheritScope(OnCreate = ScopeFields.Tenant | ScopeFields.User)]
 public class Order {
@@ -295,7 +295,7 @@ Scope inheritance rules at this release:
 
 Handle `AccessDeniedException` appropriately.
 
-```csharp{title="Step 7: Handle Access Denied" description="Handle AccessDeniedException appropriately." category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Step", "Handle"]}
+```csharp{title="Step 7: Handle Access Denied" description="Handle AccessDeniedException appropriately." category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Step", "Handle"] unverified="application middleware example — user-authored AccessDeniedException 403 handler, not a Whizbang API under test"}
 public class SecurityExceptionMiddleware {
   private readonly RequestDelegate _next;
   private readonly ILogger<SecurityExceptionMiddleware> _logger;
@@ -325,7 +325,7 @@ public class SecurityExceptionMiddleware {
 
 For organization-based access within a tenant:
 
-```csharp{title="Advanced: Organization Hierarchy" description="For organization-based access within a tenant:" category="Best-Practices" difficulty="ADVANCED" tags=["Fundamentals", "Security", "Advanced:", "Organization"]}
+```csharp{title="Advanced: Organization Hierarchy" description="For organization-based access within a tenant:" category="Best-Practices" difficulty="ADVANCED" tags=["Fundamentals", "Security", "Advanced:", "Organization"] unverified="IPerspectiveStore.UpsertAsync with organization scope — store API usage, not covered by this page's scope/lens tests"}
 // Store with organization scope (IPerspectiveStore<T>.UpsertAsync overload with scope).
 // AllowedPrincipals is List<string>; SecurityPrincipalId converts implicitly.
 await _store.UpsertAsync(id, data, new PerspectiveScope {
@@ -345,7 +345,7 @@ var lens = _lensFactory.GetOrganizationLens<IReportLens>();
 
 Use extensions for custom scope dimensions:
 
-```csharp{title="Advanced: Department-Based Extensions" description="Use extensions for custom scope dimensions:" category="Best-Practices" difficulty="ADVANCED" tags=["Fundamentals", "Security", "Advanced:", "Department-Based"]}
+```csharp{title="Advanced: Department-Based Extensions" description="Use extensions for custom scope dimensions:" category="Best-Practices" difficulty="ADVANCED" tags=["Fundamentals", "Security", "Advanced:", "Department-Based"] tests=["PerspectiveScopeTests.PerspectiveScope_GetValue_Extension_ReturnsValueAsync"]}
 // Store with custom extensions — Extensions is List<ScopeExtension>
 // (not a dictionary, for EF Core ComplexProperty().ToJson() compatibility).
 // Use SetExtension to add entries:
@@ -372,7 +372,7 @@ When using lifecycle receptors (`PostPerspectiveDetached`, `PostPerspectiveInlin
 
 Whizbang captures tenant context when a message is dispatched and propagates it through the entire processing pipeline:
 
-```mermaid
+```mermaid{caption="Security-context propagation — TenantId captured at the HTTP boundary flows through dispatch, the outbox, the consumer, and perspective processing to a background lifecycle receptor with no manual re-plumbing."}
 flowchart TD
     Request["HTTP Request (TenantId from JWT)"]
     Middleware["ScopeContextMiddleware<br/>IScopeContextAccessor.Current<br/>= { TenantId: #quot;tenant-123#quot; }"]
@@ -400,7 +400,7 @@ Choose the access method that fits your needs:
 
 For simple tenant access, inject `IMessageContext`:
 
-```csharp{title="Option 1: IMessageContext (Simplest)" description="For simple tenant access, inject IMessageContext:" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Option", "IMessageContext"]}
+```csharp{title="Option 1: IMessageContext (Simplest)" description="For simple tenant access, inject IMessageContext:" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Option", "IMessageContext"] unverified="application receptor example — user-authored PostPerspectiveDetached handler, not a Whizbang API under test"}
 [FireAt(LifecycleStage.PostPerspectiveDetached)]
 public class TenantAwareBackgroundHandler : IReceptor<OrderCreatedEvent> {
   private readonly IMessageContext _messageContext;
@@ -433,7 +433,7 @@ public class TenantAwareBackgroundHandler : IReceptor<OrderCreatedEvent> {
 
 For access to roles, permissions, and custom properties:
 
-```csharp{title="Option 2: IScopeContextAccessor (Full Scope)" description="For access to roles, permissions, and custom properties:" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Option", "IScopeContextAccessor"]}
+```csharp{title="Option 2: IScopeContextAccessor (Full Scope)" description="For access to roles, permissions, and custom properties:" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Option", "IScopeContextAccessor"] unverified="application receptor example — user-authored authorized background handler, not a Whizbang API under test"}
 [FireAt(LifecycleStage.PostPerspectiveDetached)]
 public class AuthorizedBackgroundHandler : IReceptor<SensitiveEvent> {
   private readonly IScopeContextAccessor _scopeContextAccessor;
@@ -463,7 +463,7 @@ public class AuthorizedBackgroundHandler : IReceptor<SensitiveEvent> {
 
 For integrating with custom services like `UserContextManager`:
 
-```csharp{title="Option 3: ISecurityContextCallback (Custom Service" description="For integrating with custom services like UserContextManager:" category="Best-Practices" difficulty="ADVANCED" tags=["Fundamentals", "Security", "Option", "ISecurityContextCallback"]}
+```csharp{title="Option 3: ISecurityContextCallback (Custom Service" description="For integrating with custom services like UserContextManager:" category="Best-Practices" difficulty="ADVANCED" tags=["Fundamentals", "Security", "Option", "ISecurityContextCallback"] unverified="application example — user-authored ISecurityContextCallback implementation, not a Whizbang API under test"}
 public class UserContextManagerCallback : ISecurityContextCallback {
   private readonly UserContextManager _userContextManager;
 
@@ -508,7 +508,7 @@ services.AddScoped<ISecurityContextCallback, UserContextManagerCallback>();
 
 If you have a custom service like `UserContextManager` that reads from HTTP context, implement a fallback pattern:
 
-```csharp{title="Fallback Pattern for Custom Services" description="If you have a custom service like UserContextManager that reads from HTTP context, implement a fallback pattern:" category="Best-Practices" difficulty="ADVANCED" tags=["Fundamentals", "Security", "Fallback", "Pattern"]}
+```csharp{title="Fallback Pattern for Custom Services" description="If you have a custom service like UserContextManager that reads from HTTP context, implement a fallback pattern:" category="Best-Practices" difficulty="ADVANCED" tags=["Fundamentals", "Security", "Fallback", "Pattern"] unverified="application service example — user-authored UserContextManager fallback, not a Whizbang API"}
 public class UserContextManager {
   private readonly IHttpContextAccessor _httpContextAccessor;
   private readonly IScopeContextAccessor _scopeContextAccessor;
@@ -546,7 +546,7 @@ This pattern allows the same service to work in both HTTP and background context
 
 For system operations that need to target a specific tenant (the older `WithTenant(...)` name was replaced by the explicit tenant-strategy API — `ForTenant(id)` / `ForAllTenants()` / `KeepTenant()`):
 
-```csharp{title="Explicit Tenant Override with ForTenant()" description="For system operations that need to target a specific tenant:" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Explicit", "Tenant"]}
+```csharp{title="Explicit Tenant Override with ForTenant()" description="For system operations that need to target a specific tenant:" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Explicit", "Tenant"] unverified="explicit tenant-strategy API (AsSystem/ForTenant/RunAs) — dispatcher security-context extension, out of scope for this page's scope-filter tests"}
 // System job processing for a specific tenant
 await dispatcher
   .AsSystem()
@@ -566,7 +566,7 @@ See [Message Security](./message-security.md#explicit-security-context-api) for 
 
 Test multi-tenancy with explicit context setup:
 
-```csharp{title="Testing" description="Test multi-tenancy with explicit context setup:" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Testing"]}
+```csharp{title="Testing" description="Test multi-tenancy with explicit context setup:" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Testing"] unverified="application test example — illustrates ScopeContextAccessor/ScopedLensFactory test setup, not a Whizbang API under test"}
 [Test]
 public async Task GetOrders_ReturnsOnlyTenantOrders() {
   // Arrange

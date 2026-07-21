@@ -29,7 +29,7 @@ Whizbang automatically extracts and dispatches `IMessage` instances (both `IEven
 
 ### The Problem (Without Auto-Cascade)
 
-```csharp{title="The Problem (Without Auto-Cascade)" description="The Problem (Without Auto-Cascade)" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Problem", "Without"]}
+```csharp{title="The Problem (Without Auto-Cascade)" description="The Problem (Without Auto-Cascade)" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Problem", "Without"] unverified="illustrative before-pattern (manual publish), no assertion"}
 // ❌ VERBOSE: Explicit PublishAsync required
 public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
     private readonly IDispatcher _dispatcher;
@@ -51,7 +51,7 @@ public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
 
 ### The Solution (With Auto-Cascade)
 
-```csharp{title="The Solution (With Auto-Cascade)" description="The Solution (With Auto-Cascade)" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Solution", "Auto-Cascade"]}
+```csharp{title="The Solution (With Auto-Cascade)" description="The Solution (With Auto-Cascade)" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Solution", "Auto-Cascade"] tests=["DispatcherCascadeTests.LocalInvokeAsync_TupleWithEvent_AutoPublishesEventAsync"]}
 // ✅ CLEAN: Framework auto-publishes events from return value
 public class CreateOrderReceptor : IReceptor<CreateOrder, (OrderResult, OrderCreated)> {
 
@@ -79,7 +79,7 @@ public class CreateOrderReceptor : IReceptor<CreateOrder, (OrderResult, OrderCre
 The auto-cascade feature supports several return patterns:
 
 **Tuple with Event**:
-```csharp{title="Supported Return Types" description="Tuple with Event:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Supported", "Return"]}
+```csharp{title="Supported Return Types" description="Tuple with Event:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Supported", "Return"] tests=["DispatcherCascadeTests.LocalInvokeAsync_TupleWithEvent_AutoPublishesEventAsync", "MessageExtractorTests.ExtractEvents_WithValueTuple_ExtractsOnlyEventsAsync"]}
 public class OrderReceptor : IReceptor<CreateOrder, (OrderResult, OrderCreated)> {
     public ValueTask<(OrderResult, OrderCreated)> HandleAsync(
         CreateOrder command, CancellationToken ct = default) {
@@ -94,7 +94,7 @@ public class OrderReceptor : IReceptor<CreateOrder, (OrderResult, OrderCreated)>
 ```
 
 **Tuple with Multiple Events**:
-```csharp{title="Supported Return Types - ShipOrderReceptor" description="Tuple with Multiple Events:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Supported", "Return"]}
+```csharp{title="Supported Return Types - ShipOrderReceptor" description="Tuple with Multiple Events:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Supported", "Return"] tests=["MessageExtractorTests.ExtractEvents_WithValueTuple_ExtractsOnlyEventsAsync"]}
 public class ShipOrderReceptor : IReceptor<ShipOrder, (ShipResult, OrderShipped, InventoryUpdated)> {
     public ValueTask<(ShipResult, OrderShipped, InventoryUpdated)> HandleAsync(
         ShipOrder command, CancellationToken ct = default) {
@@ -110,7 +110,7 @@ public class ShipOrderReceptor : IReceptor<ShipOrder, (ShipResult, OrderShipped,
 ```
 
 **Array of Events**:
-```csharp{title="Supported Return Types - NotifyReceptor" description="Array of Events:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Supported", "Return"]}
+```csharp{title="Supported Return Types - NotifyReceptor" description="Array of Events:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Supported", "Return"] tests=["MessageExtractorTests.ExtractEvents_WithEventArray_ReturnsAllEventsAsync", "DispatcherEventCascaderTests.CascadeFromResultAsync_EventArray_DispatchesAllEventsAsync"]}
 public class NotifyReceptor : IReceptor<SendNotifications, IEvent[]> {
     public ValueTask<IEvent[]> HandleAsync(
         SendNotifications command, CancellationToken ct = default) {
@@ -130,7 +130,7 @@ public class NotifyReceptor : IReceptor<SendNotifications, IEvent[]> {
 ```
 
 **Nested Tuples**:
-```csharp{title="Supported Return Types - ComplexReceptor" description="Nested Tuples:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Supported", "Return"]}
+```csharp{title="Supported Return Types - ComplexReceptor" description="Nested Tuples:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Supported", "Return"] unverified="verified by DispatcherCascadeTests.LocalInvokeAsync_NestedTupleWithEvents_AutoPublishesAllEventsAsync, which is outside the current coverage map"}
 public class ComplexReceptor : IReceptor<ComplexCommand, (Result, (Event1, Event2))> {
     public ValueTask<(Result, (Event1, Event2))> HandleAsync(
         ComplexCommand command, CancellationToken ct = default) {
@@ -148,7 +148,7 @@ public class ComplexReceptor : IReceptor<ComplexCommand, (Result, (Event1, Event
 
 The auto-cascade system uses the `ITuple` interface for efficient, AOT-compatible message extraction:
 
-```mermaid
+```mermaid{caption="MessageExtractor.ExtractMessages walks the receptor result — yielding IMessage instances directly and recursing through tuples and enumerables — before each extracted message is published to its receptors." tests=["MessageExtractorTests.ExtractEvents_WithSingleEvent_ReturnsSingleEventAsync", "MessageExtractorTests.ExtractEvents_WithTuple_ExtractsOnlyEventsAsync", "MessageExtractorTests.ExtractEvents_WithEventEnumerable_ReturnsAllEventsAsync", "MessageExtractorTests.ExtractEvents_WithCommandArray_ReturnsAllCommandsAsync"]}
 graph TB
     R["Receptor Returns"]
     X1["Dispatcher receives result"]
@@ -184,7 +184,7 @@ graph TB
 
 Auto-cascade works with all dispatch methods and message types:
 
-```csharp{title="Cascades Through All Dispatch Paths" description="Auto-cascade works with all dispatch methods and message types:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Cascades", "Through"]}
+```csharp{title="Cascades Through All Dispatch Paths" description="Auto-cascade works with all dispatch methods and message types:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Cascades", "Through"] tests=["DispatcherCascadeTests.LocalInvokeAsync_TupleWithEvent_AutoPublishesEventAsync"]}
 // Via LocalInvokeAsync - Events auto-published
 var result = await _dispatcher.LocalInvokeAsync<CreateOrder, (OrderResult, OrderCreated)>(command);
 // OrderCreated auto-published ✓
@@ -202,7 +202,7 @@ var receipt = await _dispatcher.SendAsync(command);
 
 Receptors can return both events and commands in a single tuple:
 
-```csharp{title="Mixed Events and Commands" description="Receptors can return both events and commands in a single tuple:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Mixed", "Events"]}
+```csharp{title="Mixed Events and Commands" description="Receptors can return both events and commands in a single tuple:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Mixed", "Events"] tests=["MessageExtractorTests.ExtractEvents_WithMixedEventsAndCommands_ReturnsAllAsync"]}
 public class ProcessOrderReceptor : IReceptor<ProcessOrder, (OrderResult, OrderProcessed, SendInvoice)> {
     public ValueTask<(OrderResult, OrderProcessed, SendInvoice)> HandleAsync(
         ProcessOrder command, CancellationToken ct = default) {
@@ -222,7 +222,7 @@ public class ProcessOrderReceptor : IReceptor<ProcessOrder, (OrderResult, OrderP
 ### Best Practices
 
 **DO**: Return messages (events and commands) alongside business results in tuples
-```csharp{title="Best Practices" description="DO: Return messages (events and commands) alongside business results in tuples" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Best", "Practices"]}
+```csharp{title="Best Practices" description="DO: Return messages (events and commands) alongside business results in tuples" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Best", "Practices"] tests=["DispatcherCascadeTests.LocalInvokeAsync_TupleWithEvent_AutoPublishesEventAsync", "MessageExtractorTests.ExtractEvents_WithMixedEventsAndCommands_ReturnsAllAsync"]}
 // ✅ GOOD: Event returned with result
 public ValueTask<(OrderResult, OrderCreated)> HandleAsync(
     CreateOrder command, CancellationToken ct) {
@@ -243,7 +243,7 @@ public ValueTask<(PaymentResult, SendReceipt)> HandleAsync(
 ```
 
 **DON'T**: Return messages AND manually dispatch them
-```csharp{title="Best Practices (2)" description="DON'T: Return messages AND manually dispatch them" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Best", "Practices"]}
+```csharp{title="Best Practices (2)" description="DON'T: Return messages AND manually dispatch them" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Best", "Practices"] unverified="counter-example — anti-pattern, nothing to assert"}
 // ❌ BAD: Double publishing!
 public async ValueTask<(OrderResult, OrderCreated)> HandleAsync(
     CreateOrder command, CancellationToken ct) {
@@ -258,7 +258,7 @@ public async ValueTask<(OrderResult, OrderCreated)> HandleAsync(
 ```
 
 **DON'T**: Return empty arrays to avoid cascade
-```csharp{title="Best Practices (3)" description="DON'T: Return empty arrays to avoid cascade" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Best", "Practices"]}
+```csharp{title="Best Practices (3)" description="DON'T: Return empty arrays to avoid cascade" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Best", "Practices"] tests=["MessageExtractorTests.ExtractEvents_WithEmptyArray_ReturnsEmptyAsync"]}
 // ⚠️ UNNECESSARY: Empty arrays are handled gracefully
 public ValueTask<(OrderResult, IMessage[])> HandleAsync(
     CreateOrder command, CancellationToken ct) {
@@ -275,7 +275,7 @@ public ValueTask<(OrderResult, IMessage[])> HandleAsync(
 By default, cascaded events are dispatched to local receptors only. To cascade events to the outbox for cross-service delivery, use the `Route` wrapper:
 
 **Route Wrappers**: {#routed-message-cascading}
-```csharp{title="Auto-Cascade to Outbox" description="Route Wrappers: {#routed-message-cascading}" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Auto-Cascade", "Outbox"]}
+```csharp{title="Auto-Cascade to Outbox" description="Route Wrappers: {#routed-message-cascading}" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Auto-Cascade", "Outbox"] tests=["RouteTests.Local_WithValue_ReturnsRoutedWithLocalModeAsync", "RouteTests.LocalNoPersist_WithValue_ReturnsRoutedWithLocalNoPersistModeAsync", "RouteTests.EventStoreOnly_WithValue_ReturnsRoutedWithEventStoreOnlyModeAsync", "RouteTests.Outbox_WithValue_ReturnsRoutedWithOutboxModeAsync", "RouteTests.Both_WithValue_ReturnsRoutedWithBothModeAsync", "DispatcherRoutedCascadeTests.CascadeFromResult_WithRouteLocal_InvokesLocalReceptorAsync"]}
 // Cascade to local receptors AND persist to event store (default)
 return (result, new OrderCreated(orderId));
 
@@ -307,7 +307,7 @@ return (result, Route.Both(new OrderCreated(orderId)));
 - **Historical events**: Import or replay events into the store
 - **Deferred processing**: Store events for later perspective rebuilds
 
-```csharp{title="Event Store Only Mode" description="- Audit events: Record actions without triggering business logic - Historical events: Import or replay events into the" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Event", "Store"]}
+```csharp{title="Event Store Only Mode" description="- Audit events: Record actions without triggering business logic - Historical events: Import or replay events into the" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Event", "Store"] tests=["RouteTests.EventStoreOnly_WithValue_ReturnsRoutedWithEventStoreOnlyModeAsync", "RouteTests.EventStoreOnly_HasFlag_EventStoreAsync", "RouteTests.EventStoreOnly_DoesNotHaveFlag_LocalDispatchAsync"]}
 public class AuditReceptor : IReceptor<ProcessOrder, (OrderResult, Routed<AuditEvent>)> {
     public ValueTask<(OrderResult, Routed<AuditEvent>)> HandleAsync(
         ProcessOrder command, CancellationToken ct = default) {
@@ -337,7 +337,7 @@ public class AuditReceptor : IReceptor<ProcessOrder, (OrderResult, Routed<AuditE
 4. Event is marked as published (completed)
 
 **Example: Cross-Service Event Publishing**:
-```csharp{title="Event Store Only Mode - CreateOrderReceptor" description="Example: Cross-Service Event Publishing:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Event", "Store"]}
+```csharp{title="Event Store Only Mode - CreateOrderReceptor" description="Example: Cross-Service Event Publishing:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Event", "Store"] tests=["RouteTests.Both_WithValue_ReturnsRoutedWithBothModeAsync", "RouteTests.Both_HasFlag_LocalDispatchAsync", "RouteTests.Both_HasFlag_OutboxAsync"]}
 public class CreateOrderReceptor : IReceptor<CreateOrder, (OrderResult, Routed<OrderCreated>)> {
     public ValueTask<(OrderResult, Routed<OrderCreated>)> HandleAsync(
         CreateOrder command, CancellationToken ct = default) {
@@ -365,6 +365,8 @@ public class CreateOrderReceptor : IReceptor<CreateOrder, (OrderResult, Routed<O
 
 `DispatchModes` (note the plural — `Whizbang.Core.Dispatch.DispatchModes`) is a `[Flags]` enum composed from three base flags: `LocalDispatch` (1), `Outbox` (2), and `EventStore` (4). The named convenience values combine these flags:
 
+{verified: RouteTests.Local_HasFlag_LocalDispatchAsync, RouteTests.Local_HasFlag_EventStoreAsync, RouteTests.Both_HasFlag_OutboxAsync, RouteTests.EventStoreOnly_HasFlag_EventStoreAsync}
+
 | Mode | Value | Flags Composition | Local Receptors | Event Store | Outbox |
 |------|-------|-------------------|-----------------|-------------|--------|
 | `None` | 0 | _(none)_ | No | No | No |
@@ -376,6 +378,8 @@ public class CreateOrderReceptor : IReceptor<CreateOrder, (OrderResult, Routed<O
 
 Each `Route.*()` factory method maps to one of these modes:
 
+{verified: RouteTests.Local_WithValue_ReturnsRoutedWithLocalModeAsync, RouteTests.LocalNoPersist_WithValue_ReturnsRoutedWithLocalNoPersistModeAsync, RouteTests.Outbox_WithValue_ReturnsRoutedWithOutboxModeAsync, RouteTests.Both_WithValue_ReturnsRoutedWithBothModeAsync, RouteTests.EventStoreOnly_WithValue_ReturnsRoutedWithEventStoreOnlyModeAsync, RouteTests.None_ReturnsRoutedNoneAsync}
+
 | Route Method | DispatchModes | Description |
 |---|---|---|
 | `Route.Local(value)` | `Local` | Local receptors + event store persistence |
@@ -386,7 +390,7 @@ Each `Route.*()` factory method maps to one of these modes:
 | `Route.None()` | _(RoutedNone)_ | No dispatch; used in discriminated union tuples |
 
 **Generated Code Pattern**: {#cascade-to-outbox}
-```csharp{title="Event Store Only Mode (3)" description="Generated Code Pattern: {#cascade-to-outbox}" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Dispatcher", "Event", "Store"]}
+```csharp{title="Event Store Only Mode (3)" description="Generated Code Pattern: {#cascade-to-outbox}" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Dispatcher", "Event", "Store"] unverified="illustrative generated code (source-generator output)"}
 // Generated by Whizbang.Generators
 protected override Task CascadeToOutboxAsync(IMessage message, Type messageType) {
     if (messageType == typeof(OrderCreated)) {
@@ -436,7 +440,7 @@ This ensures cascaded receptors have access to:
 - `UserContextManager.TenantContext` - Tenant-scoped context
 
 **Example Flow**:
-```csharp{title="Security Context in Cascade" description="Example Flow:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Security", "Context"]}
+```csharp{title="Security Context in Cascade" description="Example Flow:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Security", "Context"] unverified="illustrative user-domain flow — security context shown via comments, no assertion"}
 // 1. HTTP request with UserId = "user@test.com", TenantId = "tenant-123"
 public class OrderCommandHandler : IReceptor<CreateOrder, OrderCreated> {
     private readonly IMessageContext _context;
@@ -478,7 +482,7 @@ public class OrderCreatedReceptor : IReceptor<OrderCreated> {
 
 The generated `GetUntypedReceptorPublisher` method creates a new DI scope for each cascade and establishes security context before invoking receptors:
 
-```csharp{title="Security Context in Cascade (2)" description="The generated GetUntypedReceptorPublisher method creates a new DI scope for each cascade and establishes security" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Dispatcher", "Security", "Context"]}
+```csharp{title="Security Context in Cascade (2)" description="The generated GetUntypedReceptorPublisher method creates a new DI scope for each cascade and establishes security" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Dispatcher", "Security", "Context"] unverified="illustrative generated code (source-generator output)"}
 // Generated by Whizbang.Generators
 protected override Func<object, IMessageEnvelope?, CancellationToken, Task>?
     GetUntypedReceptorPublisher(Type eventType) {
@@ -547,6 +551,7 @@ description: "In-memory channel for events deferred to the next lifecycle loop"
 category: "Architecture"
 difficulty: "ADVANCED"
 tags: ["Dispatcher", "Cascade", "Outbox", "Deferred"]
+tests: ["DeferredOutboxChannelTests.QueueAsync_AddsMessageToPending_SuccessfullyAsync", "DeferredOutboxChannelTests.DrainAll_ReturnsAllQueuedMessages_AndClearsChannelAsync", "DeferredOutboxChannelTests.QueueAsync_PreservesMessageOrder_FIFOAsync"]
 }
 public interface IDeferredOutboxChannel {
   // Queue a message for deferred outbox write in the next lifecycle loop

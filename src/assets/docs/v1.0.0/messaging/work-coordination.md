@@ -82,7 +82,7 @@ Messages within the same stream are processed in strict temporal order, even acr
 
 Shows how an incoming transport message travels through storage, claiming, per-stream draining, and handler commit.
 
-```mermaid
+```mermaid{caption="Inbox message flow — a transport message is stored, claimed by the owning instance, drained per-stream in FIFO order, then dispatched and handler-committed."}
 sequenceDiagram
     participant T as Transport
     participant TCW as TransportConsumerWorker
@@ -109,7 +109,7 @@ sequenceDiagram
 
 Shows how `ClaimWorker` recovers orphaned inbox messages that were not completed (e.g., due to crashes or deployments). Orphan claiming happens inside `claim_work` via the `claim_orphaned_inbox` sub-function.
 
-```mermaid
+```mermaid{caption="Orphaned-inbox recovery — ClaimWorker's adaptive poll loop calls claim_work, which reclaims unowned or expired-lease rows and hands the stream ids to the inbox drain worker." tests=["ClaimWorkerTests.ExecuteAsync_PollsAtLeastOnceAsync", "ClaimWorkerTests.Distribute_InboxDrainChannel_WritesStreamIds_EvenWhenIsInFlightTrueAsync"]}
 sequenceDiagram
     participant CW as ClaimWorker
     participant SQL as claim_work
@@ -182,7 +182,7 @@ The legacy `process_work_batch` orchestrator was decomposed into focused work-pu
 
 ### Normal Operation
 
-```mermaid
+```mermaid{caption="Normal work-pump cycle — claim_work leases and returns stream ids, drain workers fetch bodies in stream-FIFO order and publish or invoke handlers, then flush workers complete the rows."}
 sequenceDiagram
     participant CW as ClaimWorker
     participant DB as PostgreSQL
@@ -211,7 +211,7 @@ Heartbeating runs on its own timer: `HeartbeatWorker` calls `record_heartbeat` e
 
 ### Failure Recovery
 
-```mermaid
+```mermaid{caption="Lease-expiry failover — when Instance 1 crashes without renewing its lease, Instance 2's claim_work finds the expired-lease rows and reclaims them so no messages are lost."}
 sequenceDiagram
     participant I1 as Instance 1
     participant DB as PostgreSQL
@@ -271,7 +271,7 @@ Partition ownership is stable across instance scaling:
 
 ### Claim Loop Configuration
 
-```csharp{title="Claim Loop Configuration" description="Claim Loop Configuration" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Lease", "Configuration"]}
+```csharp{title="Claim Loop Configuration" description="Claim Loop Configuration" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Lease", "Configuration"] unverified="configuration — ClaimWorkerOptions DI wiring, no behavioral assertion"}
 services.Configure<ClaimWorkerOptions>(options => {
     options.PollingIntervalMilliseconds = 250;              // base cadence (default)
     options.PollingMaxIntervalMilliseconds = 10_000;        // adaptive backoff cap (default 10 s)
@@ -284,7 +284,7 @@ services.Configure<ClaimWorkerOptions>(options => {
 
 ### Heartbeat Configuration
 
-```csharp{title="Heartbeat Configuration" description="Heartbeat Configuration" category="Architecture" difficulty="BEGINNER" tags=["Messaging", "C#", "Partition", "Configuration"]}
+```csharp{title="Heartbeat Configuration" description="Heartbeat Configuration" category="Architecture" difficulty="BEGINNER" tags=["Messaging", "C#", "Partition", "Configuration"] unverified="configuration — HeartbeatWorkerOptions DI wiring, no behavioral assertion"}
 services.Configure<HeartbeatWorkerOptions>(options => {
     options.IntervalSeconds = 30;      // heartbeat cadence (default)
     options.SlowIntervalSeconds = 60;  // when advisory alive-lock held (default)
@@ -295,7 +295,7 @@ services.Configure<HeartbeatWorkerOptions>(options => {
 
 For fast tests, use short lease times and a tight safety-net poll:
 
-```csharp{title="Testing Configuration" description="For fast tests, use short lease times and a tight safety-net poll:" category="Architecture" difficulty="BEGINNER" tags=["Messaging", "C#", "Testing", "Configuration"]}
+```csharp{title="Testing Configuration" description="For fast tests, use short lease times and a tight safety-net poll:" category="Architecture" difficulty="BEGINNER" tags=["Messaging", "C#", "Testing", "Configuration"] unverified="configuration — test-tuning ClaimWorkerOptions overrides, no behavioral assertion"}
 services.Configure<ClaimWorkerOptions>(options => {
     options.LeaseSeconds = 2;                                // fast orphan recovery in tests
     options.NotifyHealthyPollingIntervalMilliseconds = 500;  // tight safety-net cadence
@@ -339,7 +339,7 @@ Horizontal scaling through partition distribution:
 
 The claim entry point on `IWorkCoordinator` (only `ClaimWorker` calls it):
 
-```csharp{title="C# Interface" description="C# Interface" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "Interface"]}
+```csharp{title="C# Interface" description="C# Interface" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "Interface"] unverified="interface declaration — IWorkCoordinator API surface, no behavioral assertion"}
 public sealed record ClaimWorkRequest(
     Guid InstanceId,
     string ServiceName,

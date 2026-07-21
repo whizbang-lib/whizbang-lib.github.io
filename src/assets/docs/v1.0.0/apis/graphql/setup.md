@@ -36,7 +36,7 @@ dotnet add package Whizbang.Transports.HotChocolate
 
 ### Minimal Setup
 
-```csharp{title="Minimal Setup" description="Minimal Setup" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Minimal", "Setup"]}
+```csharp{title="Minimal Setup" description="Minimal Setup" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Minimal", "Setup"] unverified="HotChocolate schema/DI wiring — Whizbang registration verified by ServiceRegistrationTests"}
 // Program.cs
 var builder = WebApplication.CreateBuilder(args);
 
@@ -54,7 +54,7 @@ app.Run();
 
 For multi-tenancy and security filtering:
 
-```csharp{title="With Scope Middleware" description="For multi-tenancy and security filtering:" category="API" difficulty="INTERMEDIATE" tags=["Apis", "Graphql", "Scope", "Middleware"]}
+```csharp{title="With Scope Middleware" description="For multi-tenancy and security filtering:" category="API" difficulty="INTERMEDIATE" tags=["Apis", "Graphql", "Scope", "Middleware"] tests=["ScopeMiddlewareExtensionsTests.AddWhizbangScope_ShouldRegisterIScopeContextAccessorAsync", "ScopeMiddlewareExtensionsTests.UseWhizbangScope_ShouldReturnApplicationBuilderForChainingAsync"]}
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services
@@ -80,7 +80,7 @@ app.Run();
 
 Configure default behavior for all lenses:
 
-```csharp{title="WhizbangGraphQLOptions" description="Configure default behavior for all lenses:" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "WhizbangGraphQLOptions"]}
+```csharp{title="WhizbangGraphQLOptions" description="Configure default behavior for all lenses:" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "WhizbangGraphQLOptions"] tests=["ServiceRegistrationTests.AddWhizbangLenses_WithOptions_ShouldApplyConfigurationAsync", "WhizbangGraphQLOptionsTests.DefaultScope_ShouldAcceptComposedFlagsAsync", "WhizbangGraphQLOptionsTests.MaxPageSize_ShouldBeSettableAsync"]}
 builder.Services
     .AddGraphQLServer()
     .AddWhizbangLenses(options => {
@@ -102,7 +102,7 @@ builder.Services
 
 Configure scope extraction from HTTP context:
 
-```csharp{title="WhizbangScopeOptions" description="Configure scope extraction from HTTP context:" category="API" difficulty="INTERMEDIATE" tags=["Apis", "Graphql", "WhizbangScopeOptions"]}
+```csharp{title="WhizbangScopeOptions" description="Configure scope extraction from HTTP context:" category="API" difficulty="INTERMEDIATE" tags=["Apis", "Graphql", "WhizbangScopeOptions"] tests=["ScopeMiddlewareExtensionsTests.AddWhizbangScope_WithConfigure_ShouldRegisterOptionsAsync", "ScopeMiddlewareExtensionsTests.AddWhizbangScope_WithConfigure_ShouldRegisterIScopeContextAccessorAsync"]}
 builder.Services.AddWhizbangScope(options => {
     // Claim types
     options.TenantIdClaimType = "tenant_id";
@@ -165,7 +165,7 @@ public class Query {
 
 Register your lens implementations:
 
-```csharp{title="Service Registration" description="Register your lens implementations:" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Service", "Registration"]}
+```csharp{title="Service Registration" description="Register your lens implementations:" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Service", "Registration"] unverified="HotChocolate schema/DI wiring — Whizbang registration verified by ServiceRegistrationTests"}
 // If using EF Core
 builder.Services.AddScoped<IOrderLens, EFCoreOrderLens>();
 builder.Services.AddScoped<IProductLens, EFCoreProductLens>();

@@ -42,7 +42,7 @@ The `AddTransportConsumer()` extension method:
 
 The recommended approach chains `WithRouting()` and `AddTransportConsumer()`:
 
-```csharp{title="Auto-Configuration" description="The recommended approach chains WithRouting() and AddTransportConsumer():" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Auto-Configuration", "Auto-configuration"]}
+```csharp{title="Auto-Configuration" description="The recommended approach chains WithRouting() and AddTransportConsumer():" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Auto-Configuration", "Auto-configuration"] tests=["TransportConsumerBuilderExtensionsTests.AddTransportConsumer_AutoPopulatesInboxDestination_FromOwnDomainsAsync", "TransportConsumerBuilderExtensionsTests.AddTransportConsumer_AutoPopulatesEventDestinations_FromSubscribeToAsync"]}
 services.AddWhizbang()
     .WithRouting(routing => {
         routing
@@ -75,7 +75,7 @@ If your service has perspectives or receptors that handle events from other name
 
 Add custom destinations beyond auto-generated ones:
 
-```csharp{title="Additional Destinations" description="Add custom destinations beyond auto-generated ones:" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Additional", "Destinations"]}
+```csharp{title="Additional Destinations" description="Add custom destinations beyond auto-generated ones:" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Additional", "Destinations"] tests=["TransportConsumerBuilderExtensionsTests.AddTransportConsumer_WithAdditionalDestinations_IncludesThemAsync", "TransportConsumerBuilderExtensionsTests.AddTransportConsumer_WithMultipleAdditionalDestinations_IncludesAllAsync"]}
 services.AddWhizbang()
     .WithRouting(routing => {
         routing.OwnDomains("myapp.orders.commands");
@@ -97,7 +97,7 @@ Additional destinations are appended after auto-generated ones.
 
 A typical worker service includes transport registration, routing, and consumer:
 
-```csharp{title="Complete Worker Setup" description="A typical worker service includes transport registration, routing, and consumer:" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Complete", "Worker"]}
+```csharp{title="Complete Worker Setup" description="A typical worker service includes transport registration, routing, and consumer:" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Complete", "Worker"] unverified="end-to-end host composition (real transport registration + host.Run()); the AddTransportConsumer auto-configuration it relies on is verified on the Auto-Configuration example"}
 var builder = Host.CreateApplicationBuilder(args);
 
 // 1. Register transport (Azure Service Bus or RabbitMQ)
@@ -139,7 +139,7 @@ Transport-specific behavior is handled by the transport implementation registere
 
 When `WithRouting()` is not called before `AddTransportConsumer()`:
 
-```csharp{title="Error Handling" description="When WithRouting() is not called before AddTransportConsumer():" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Error", "Handling"]}
+```csharp{title="Error Handling" description="When WithRouting() is not called before AddTransportConsumer():" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Error", "Handling"] tests=["TransportConsumerBuilderExtensionsTests.AddTransportConsumer_WithoutRouting_ThrowsInvalidOperationExceptionAsync"]}
 // This throws InvalidOperationException at runtime
 services.AddWhizbang()
     .AddTransportConsumer();  // Error: WithRouting() must be called first
@@ -205,7 +205,7 @@ Attempt 9+: 120 seconds delay (continues at max)
 
 Customize resilience behavior through `TransportConsumerConfiguration`:
 
-```csharp{title="Configuration" description="Customize resilience behavior through TransportConsumerConfiguration:" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Configuration"]}
+```csharp{title="Configuration" description="Customize resilience behavior through TransportConsumerConfiguration:" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Configuration"] unverified="resilience options assignment; retry/backoff semantics are verified in SubscriptionRetryHelperTests (see Retry Behavior)"}
 services.AddWhizbang()
     .WithRouting(routing => {
         routing.OwnDomains("myapp.orders.commands");
@@ -228,7 +228,7 @@ services.AddWhizbang()
 
 When resilience is enabled, a health check is automatically registered:
 
-```csharp{title="Health Monitoring" description="When resilience is enabled, a health check is automatically registered:" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Health", "Monitoring"]}
+```csharp{title="Health Monitoring" description="When resilience is enabled, a health check is automatically registered:" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Health", "Monitoring"] unverified="ASP.NET Core health-check endpoint mapping; subscription health logic is verified in SubscriptionHealthCheckTests"}
 app.MapHealthChecks("/health");  // Includes subscription health
 ```
 
@@ -279,7 +279,7 @@ The consumer uses service name for subscription naming:
 
 Register a custom provider for explicit control:
 
-```csharp{title="Service Name Resolution" description="Register a custom provider for explicit control:" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Service", "Name"]}
+```csharp{title="Service Name Resolution" description="Register a custom provider for explicit control:" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Service", "Name"] tests=["TransportConsumerBuilderExtensionsTests.AddTransportConsumer_UsesServiceInstanceProviderServiceNameAsync"]}
 builder.Services.AddSingleton<IServiceInstanceProvider>(
     new ServiceInstanceProvider("MyOrderService"));
 ```

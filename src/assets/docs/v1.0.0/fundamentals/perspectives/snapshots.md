@@ -35,7 +35,7 @@ When a **late-arriving event** lands before the perspective's current cursor pos
 
 ## IPerspectiveSnapshotStore
 
-```csharp{title="IPerspectiveSnapshotStore" description="Core interface for storing and retrieving perspective snapshots" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "IPerspectiveSnapshotStore"]}
+```csharp{title="IPerspectiveSnapshotStore" description="Core interface for storing and retrieving perspective snapshots" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "IPerspectiveSnapshotStore"] tests=["EFCorePerspectiveSnapshotStoreTests.CreateSnapshotAsync_NewSnapshot_InsertsSuccessfullyAsync", "EFCorePerspectiveSnapshotStoreTests.GetLatestSnapshotAsync_MultipleSnapshots_ReturnsLatestBySequenceAsync", "EFCorePerspectiveSnapshotStoreTests.GetLatestSnapshotBeforeAsync_MixedSnapshots_ReturnsCorrectOneAsync", "EFCorePerspectiveSnapshotStoreTests.GetLatestSnapshotWithCommitSequenceAsync_ReturnsSnapshotCommitSequenceAsync", "EFCorePerspectiveSnapshotStoreTests.GetLatestSnapshotBeforeCommitSequenceAsync_ReturnsLatestBeforeAnchorAsync", "EFCorePerspectiveSnapshotStoreTests.HasAnySnapshotAsync_WithSnapshots_ReturnsTrueAsync", "EFCorePerspectiveSnapshotStoreTests.PruneOldSnapshotsAsync_KeepsNewestAsync", "EFCorePerspectiveSnapshotStoreTests.DeleteAllSnapshotsAsync_RemovesAllAsync"]}
 public interface IPerspectiveSnapshotStore {
   Task CreateSnapshotAsync(Guid streamId, string perspectiveName, Guid snapshotEventId,
     JsonDocument snapshotData, CancellationToken ct = default);
@@ -88,7 +88,7 @@ The snapshot/rewind pattern follows this lifecycle:
 
 Persists a snapshot of the perspective model state at a specific event position. The snapshot data is stored as serialized JSON. If a snapshot already exists for the same `(streamId, perspectiveName, snapshotEventId)` triple, it is replaced (upsert semantics).
 
-```csharp{title="CreateSnapshotAsync" description="Create a snapshot after processing events" category="Usage" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Snapshots", "Create"]}
+```csharp{title="CreateSnapshotAsync" description="Create a snapshot after processing events" category="Usage" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Snapshots", "Create"] tests=["EFCorePerspectiveSnapshotStoreTests.CreateSnapshotAsync_NewSnapshot_InsertsSuccessfullyAsync", "EFCorePerspectiveSnapshotStoreTests.CreateSnapshotAsync_DuplicateEventId_UpsertsDataAsync"]}
 // Snapshot is created automatically by the perspective runner
 // after every N events (configured via PerspectiveSnapshotOptions)
 await snapshotStore.CreateSnapshotAsync(
@@ -102,7 +102,7 @@ await snapshotStore.CreateSnapshotAsync(
 
 Returns the most recent snapshot for a stream/perspective pair, ordered by sequence number. Returns `null` if no snapshots exist.
 
-```csharp{title="GetLatestSnapshotAsync" description="Retrieve the latest snapshot for a stream" category="Usage" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Snapshots", "Query"]}
+```csharp{title="GetLatestSnapshotAsync" description="Retrieve the latest snapshot for a stream" category="Usage" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Snapshots", "Query"] tests=["EFCorePerspectiveSnapshotStoreTests.GetLatestSnapshotAsync_MultipleSnapshots_ReturnsLatestBySequenceAsync", "EFCorePerspectiveSnapshotStoreTests.GetLatestSnapshotAsync_NoSnapshots_ReturnsNullAsync"]}
 var snapshot = await snapshotStore.GetLatestSnapshotAsync(orderId, "OrderPerspective");
 if (snapshot.HasValue) {
     var (eventId, data) = snapshot.Value;
@@ -115,7 +115,7 @@ if (snapshot.HasValue) {
 
 Finds the latest snapshot taken **before** a specified event ID. This is the key method for the rewind pattern -- it locates the safe restore point before the late-arriving event. Uses UUID7 comparison to determine temporal ordering.
 
-```csharp{title="GetLatestSnapshotBeforeAsync" description="Find the nearest snapshot before a late-arriving event" category="Usage" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Snapshots", "Rewind"]}
+```csharp{title="GetLatestSnapshotBeforeAsync" description="Find the nearest snapshot before a late-arriving event" category="Usage" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Snapshots", "Rewind"] tests=["EFCorePerspectiveSnapshotStoreTests.GetLatestSnapshotBeforeAsync_MixedSnapshots_ReturnsCorrectOneAsync", "EFCorePerspectiveSnapshotStoreTests.GetLatestSnapshotBeforeAsync_NoQualifyingSnapshot_ReturnsNullAsync"]}
 // Late-arriving event detected at rewindTriggerEventId
 var snapshot = await snapshotStore.GetLatestSnapshotBeforeAsync(
     orderId, "OrderPerspective", rewindTriggerEventId);
@@ -134,7 +134,7 @@ if (snapshot.HasValue) {
 
 Cheap index-scan check for whether any snapshot exists for a stream/perspective pair. Used for **bootstrap detection** -- when an existing stream has processed events but no snapshots yet, the `PerspectiveWorker` triggers a one-time bootstrap to create the initial snapshot.
 
-```csharp{title="HasAnySnapshotAsync" description="Check if snapshots exist for bootstrap detection" category="Usage" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Snapshots", "Bootstrap"]}
+```csharp{title="HasAnySnapshotAsync" description="Check if snapshots exist for bootstrap detection" category="Usage" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Snapshots", "Bootstrap"] tests=["EFCorePerspectiveSnapshotStoreTests.HasAnySnapshotAsync_WithSnapshots_ReturnsTrueAsync", "EFCorePerspectiveSnapshotStoreTests.HasAnySnapshotAsync_NoSnapshots_ReturnsFalseAsync"]}
 var hasSnapshots = await snapshotStore.HasAnySnapshotAsync(orderId, "OrderPerspective");
 if (!hasSnapshots) {
     // First time -- bootstrap a snapshot from current state
@@ -146,7 +146,7 @@ if (!hasSnapshots) {
 
 Deletes old snapshots, keeping only the most recent N per stream/perspective. Called after each new snapshot creation to bound storage growth.
 
-```csharp{title="PruneOldSnapshotsAsync" description="Prune old snapshots to control storage" category="Usage" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Snapshots", "Pruning"]}
+```csharp{title="PruneOldSnapshotsAsync" description="Prune old snapshots to control storage" category="Usage" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Snapshots", "Pruning"] tests=["EFCorePerspectiveSnapshotStoreTests.PruneOldSnapshotsAsync_KeepsNewestAsync"]}
 // Keep the 5 most recent snapshots, delete the rest
 await snapshotStore.PruneOldSnapshotsAsync(orderId, "OrderPerspective", keepCount: 5);
 ```
@@ -155,14 +155,14 @@ await snapshotStore.PruneOldSnapshotsAsync(orderId, "OrderPerspective", keepCoun
 
 Removes all snapshots for a stream/perspective pair. Used during **perspective rebuild** to invalidate stale snapshots that no longer match the rebuilt model state.
 
-```csharp{title="DeleteAllSnapshotsAsync" description="Delete all snapshots during a perspective rebuild" category="Usage" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Snapshots", "Rebuild"]}
+```csharp{title="DeleteAllSnapshotsAsync" description="Delete all snapshots during a perspective rebuild" category="Usage" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Snapshots", "Rebuild"] tests=["EFCorePerspectiveSnapshotStoreTests.DeleteAllSnapshotsAsync_RemovesAllAsync", "EFCorePerspectiveSnapshotStoreTests.DeleteAllSnapshotsAsync_DifferentStreams_OnlyDeletesTargetAsync"]}
 // During perspective rebuild, invalidate all existing snapshots
 await snapshotStore.DeleteAllSnapshotsAsync(orderId, "OrderPerspective");
 ```
 
 ## PerspectiveSnapshotOptions
 
-```csharp{title="PerspectiveSnapshotOptions" description="Configuration for snapshot frequency and retention" category="Configuration" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Snapshots", "Configuration"]}
+```csharp{title="PerspectiveSnapshotOptions" description="Configuration for snapshot frequency and retention" category="Configuration" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Snapshots", "Configuration"] unverified="configuration options POCO — property defaults have no behavioral test"}
 public class PerspectiveSnapshotOptions {
   // Create a snapshot every N events processed (default: 100)
   public int SnapshotEveryNEvents { get; set; } = 100;
@@ -189,7 +189,7 @@ public class PerspectiveSnapshotOptions {
 
 Configure via dependency injection:
 
-```csharp{title="Configure Snapshot Options" description="Register snapshot options in DI" category="Configuration" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Snapshots", "DI"]}
+```csharp{title="Configure Snapshot Options" description="Register snapshot options in DI" category="Configuration" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Snapshots", "DI"] unverified="configuration wiring (services.Configure) — no behavioral test"}
 services.Configure<PerspectiveSnapshotOptions>(options => {
     options.SnapshotEveryNEvents = 50;   // More frequent snapshots
     options.MaxSnapshotsPerStream = 10;  // Keep more history

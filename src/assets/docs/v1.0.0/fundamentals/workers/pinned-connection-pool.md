@@ -42,7 +42,7 @@ Leave it off for development, single-instance deployments, or any environment wh
 
 ## How it works
 
-```mermaid
+```mermaid{caption="Pinned-pool topology — eligible tier-1+2 workers borrow a direct connection from the pinned pool and bypass pgbouncer's per-transaction DISCARD ALL, while application code and ineligible workers still acquire through pgbouncer and the NOTIFY listener holds its own direct LISTEN connection."}
 graph LR
   Worker[Background worker<br/>tier-1+2 eligible] -->|Borrow| Pool[Pinned pool<br/>Size=1..N]
   Pool -->|Direct| PG[(PostgreSQL<br/>port 5432)]
@@ -99,6 +99,7 @@ framework: "NET10"
 category: "Workers"
 difficulty: "INTERMEDIATE"
 tags: ["pinned-pool", "custom-worker", "eligibility", "hosted-service", "opt-in"]
+unverified: "verified by PinnedPoolRegistrationTests, which is outside the current coverage map"
 }
 services.AddHostedService<MyBulkImportPollingWorker>();
 services.AddPinnedWorker<MyBulkImportPollingWorker>();
@@ -164,6 +165,7 @@ framework: "NET10"
 category: "Workers"
 difficulty: "BEGINNER"
 tags: ["pinned-pool", "registration", "options-binding", "configuration", "dependency-injection"]
+unverified: "verified by PinnedPoolRegistrationTests, which is outside the current coverage map"
 }
 services.AddWhizbangPinnedWorkerPool(opts => {
   // Bind everything from the configured section — both ConnectionStringName
@@ -186,6 +188,7 @@ framework: "NET10"
 category: "Workers"
 difficulty: "BEGINNER"
 tags: ["pinned-pool", "registration", "connection-string", "dev", "dependency-injection"]
+unverified: "verified by PinnedPoolRegistrationTests, which is outside the current coverage map"
 }
 services.AddWhizbangPinnedWorkerPool(opts => {
   opts.ConnectionString = builder.Configuration.GetConnectionString("WorkerDirect");
@@ -203,6 +206,7 @@ framework: "NET10"
 category: "Workers"
 difficulty: "INTERMEDIATE"
 tags: ["pinned-pool", "pool-size", "tuning", "flush-workers", "throughput"]
+unverified: "verified by PinnedPoolRegistrationTests, which is outside the current coverage map"
 }
 services.AddWhizbangPinnedWorkerPool(opts => {
   opts.ConnectionString = builder.Configuration.GetConnectionString("WorkerDirect");
@@ -221,6 +225,7 @@ framework: "NET10"
 category: "Workers"
 difficulty: "ADVANCED"
 tags: ["pinned-pool", "exclude-workers", "heartbeat", "eligibility", "escape-hatch"]
+unverified: "verified by PinnedConnectionPoolPrimitivesTests (Registry_ExcludeWorkers_OverridesTierAsync), which is outside the current coverage map"
 }
 services.AddWhizbangPinnedWorkerPool(opts => {
   opts.ConnectionString = builder.Configuration.GetConnectionString("WorkerDirect");

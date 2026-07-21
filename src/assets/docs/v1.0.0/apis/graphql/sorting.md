@@ -234,7 +234,7 @@ If no `order` is specified, Whizbang does not apply any implicit ordering — ro
 
 When application code applies a default `OrderBy` before HotChocolate's sorting middleware runs, use `[UseOrderByStripping]` to ensure GraphQL sorting takes precedence:
 
-```csharp{title="Sort Precedence with Pre-Existing OrderBy" description="When application code applies a default OrderBy before HotChocolate's sorting middleware runs, use" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Sort", "Precedence"]}
+```csharp{title="Sort Precedence with Pre-Existing OrderBy" description="When application code applies a default OrderBy before HotChocolate's sorting middleware runs, use" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Sort", "Precedence"] unverified="verified by QueryExecutionTests, which is outside the current coverage map"}
 [UsePaging]
 [UseFiltering]
 [UseSorting]
@@ -263,7 +263,7 @@ Use `[UseOrderByStripping]` when:
 ### Example Scenario
 
 Without `[UseOrderByStripping]`:
-```csharp{title="Example Scenario" description="Without [UseOrderByStripping]:" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Example", "Scenario"]}
+```csharp{title="Example Scenario" description="Without [UseOrderByStripping]:" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Example", "Scenario"] unverified="counter-example — the broken ThenBy demotion that [UseOrderByStripping] fixes"}
 // Application code
 return _orders.Query.OrderBy(x => x.Id);  // Default order by ID
 
@@ -272,7 +272,7 @@ return _orders.Query.OrderBy(x => x.Id);  // Default order by ID
 ```
 
 With `[UseOrderByStripping]`:
-```csharp{title="Example Scenario (2)" description="With [UseOrderByStripping]:" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Example", "Scenario"]}
+```csharp{title="Example Scenario (2)" description="With [UseOrderByStripping]:" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Example", "Scenario"] tests=["OrderByStrippingMiddlewareTests.Middleware_WithSortArguments_StripsPreExistingOrderByAsync"]}
 // Application code with middleware
 [UseOrderByStripping]
 return _orders.Query.OrderBy(x => x.Id);

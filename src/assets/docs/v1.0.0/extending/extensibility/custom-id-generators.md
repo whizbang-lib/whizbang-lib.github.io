@@ -37,7 +37,7 @@ Whizbang uses UUIDv7 by default (via `Uuid7IdProvider`, which calls `TrackedGuid
 
 ## The Extension Point: IWhizbangIdProvider
 
-```csharp{title="IWhizbangIdProvider Interface" description="The ID generation extension point" category="Extensibility" difficulty="BEGINNER" tags=["Extending", "Extensibility", "IWhizbangIdProvider", "Interface"]}
+```csharp{title="IWhizbangIdProvider Interface" description="The ID generation extension point" category="Extensibility" difficulty="BEGINNER" tags=["Extending", "Extensibility", "IWhizbangIdProvider", "Interface"] tests=["WhizbangIdProviderTests.NewGuid_WithDefaultProvider_ShouldReturnTrackedGuidWithCorrectMetadataAsync", "IWhizbangIdProviderGenericTests.NewId_WithUuid7Provider_ReturnsValidIdAsync"]}
 namespace Whizbang.Core;
 
 // Global provider - customizes ID generation for all WhizbangId types
@@ -61,7 +61,7 @@ Key points:
 
 ## Configuring a Custom Provider
 
-```csharp{title="Provider Registration" description="Configure the global WhizbangId provider" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Registration", "DI"]}
+```csharp{title="Provider Registration" description="Configure the global WhizbangId provider" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Registration", "DI"] tests=["WhizbangIdServiceCollectionExtensionsTests.ConfigureWhizbangIdProvider_WithValidProvider_ShouldSetGlobalProviderAsync", "WhizbangIdProviderTests.SetProvider_WithValidProvider_ShouldUseCustomProviderAsync", "WhizbangIdServiceCollectionExtensionsTests.AddWhizbangIdProviders_RegistersAllProvidersAsync"]}
 // Program.cs - set the global provider before any IDs are generated
 services.ConfigureWhizbangIdProvider(new MyCustomIdProvider());
 
@@ -72,7 +72,7 @@ WhizbangIdProvider.SetProvider(new MyCustomIdProvider());
 services.AddWhizbangIdProviders();
 ```
 
-```csharp{title="Typed Provider Usage" description="Resolve a strongly-typed ID provider from DI" category="Extensibility" difficulty="BEGINNER" tags=["Extending", "Extensibility", "WhizbangId", "DI"]}
+```csharp{title="Typed Provider Usage" description="Resolve a strongly-typed ID provider from DI" category="Extensibility" difficulty="BEGINNER" tags=["Extending", "Extensibility", "WhizbangId", "DI"] tests=["WhizbangIdServiceCollectionExtensionsTests.TypedProvider_InjectedInService_CreatesValidIdsAsync"]}
 public class OrderService {
   private readonly IWhizbangIdProvider<OrderId> _idProvider;
 
@@ -110,7 +110,7 @@ public class OrderService {
 
 ### Pattern 1: Twitter Snowflake
 
-```csharp{title="Pattern 1: Twitter Snowflake" description="Pattern 1: Twitter Snowflake" category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Pattern", "Twitter"]}
+```csharp{title="Pattern 1: Twitter Snowflake" description="Pattern 1: Twitter Snowflake" category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Pattern", "Twitter"] unverified="user extension example — third-party Snowflake generator, no framework surface"}
 public class SnowflakeIdGenerator {
   private readonly long _epoch = 1_640_995_200_000L;  // Jan 1, 2022
   private readonly long _machineId;
@@ -166,7 +166,7 @@ public class SnowflakeIdGenerator {
 
 Pack the 64-bit Snowflake value into a `Guid` and wrap it with `TrackedGuid.FromExternal`:
 
-```csharp{title="Snowflake Whizbang Provider" description="Adapt Snowflake IDs to IWhizbangIdProvider" category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Snowflake", "IWhizbangIdProvider"]}
+```csharp{title="Snowflake Whizbang Provider" description="Adapt Snowflake IDs to IWhizbangIdProvider" category="Extensibility" difficulty="ADVANCED" tags=["Extending", "Extensibility", "Snowflake", "IWhizbangIdProvider"] unverified="user extension example — user IWhizbangIdProvider implementation"}
 public class SnowflakeWhizbangIdProvider : IWhizbangIdProvider {
   private readonly SnowflakeIdGenerator _generator;
 
@@ -195,7 +195,7 @@ Non-UUIDv7 schemes lose the time-ordering guarantees that Whizbang's event order
 
 ### Pattern 2: Universally Unique Lexicographically Sortable ID
 
-```csharp{title="Pattern 2: Universally Unique Lexicographically Sortable ID" description="Pattern 2: Universally Unique Lexicographically Sortable ID" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Pattern", "Universally"]}
+```csharp{title="Pattern 2: Universally Unique Lexicographically Sortable ID" description="Pattern 2: Universally Unique Lexicographically Sortable ID" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Pattern", "Universally"] unverified="user extension example — user IWhizbangIdProvider implementation"}
 // Ulid struct from the "Ulid" NuGet package (Cysharp)
 public class UlidWhizbangIdProvider : IWhizbangIdProvider {
   public TrackedGuid NewGuid() {
@@ -206,7 +206,7 @@ public class UlidWhizbangIdProvider : IWhizbangIdProvider {
 ```
 
 **Usage**:
-```csharp{title="ULID Provider Usage" description="ULID-backed WhizbangId generation" category="Extensibility" difficulty="BEGINNER" tags=["Extending", "Extensibility", "Pattern", "Universally"]}
+```csharp{title="ULID Provider Usage" description="ULID-backed WhizbangId generation" category="Extensibility" difficulty="BEGINNER" tags=["Extending", "Extensibility", "Pattern", "Universally"] unverified="user extension example — wires a user-defined ULID provider"}
 services.ConfigureWhizbangIdProvider(new UlidWhizbangIdProvider());
 
 var id = WhizbangIdProvider.NewGuid();  // TrackedGuid backed by a ULID

@@ -46,6 +46,7 @@ framework: "NET10"
 category: "Offloads"
 difficulty: "BEGINNER"
 tags: ["body-offload", "azure-blob", "configuration", "claim-check", "dependency-injection"]
+unverified: "verified by AzureBlobOffloadFromConfigurationTests, which is outside the current coverage map"
 }
 using Whizbang.Offloads.AzureBlob;
 
@@ -123,6 +124,7 @@ framework: "NET10"
 category: "Offloads"
 difficulty: "BEGINNER"
 tags: ["body-offload", "azure-blob", "claim-check", "dependency-injection", "configuration"]
+unverified: "verified by AzureBlobOffloadDIRegistrationTests, which is outside the current coverage map"
 }
 services.AddWhizbangAzureBlobOffload("azure-blob-prod", opts => {
   opts.ConnectionString = builder.Configuration.GetConnectionString("Storage");
@@ -151,6 +153,7 @@ framework: "NET10"
 category: "Offloads"
 difficulty: "BEGINNER"
 tags: ["azure-blob", "azurite", "connection-string", "body-offload", "emulator"]
+unverified: "connection-string configuration illustration — the Azure SDK selects emulator vs live from the string; the round-trip behavior is verified by AzureBlobStoreRoundTripTests, which is outside the current coverage map"
 }
 // Azurite (local dev / CI integration tests)
 opts.ConnectionString = "UseDevelopmentStorage=true";
@@ -206,6 +209,7 @@ framework: "NET10"
 category: "Offloads"
 difficulty: "INTERMEDIATE"
 tags: ["body-offload", "azure-blob", "production", "claim-check", "cleanup", "max-download-bytes"]
+unverified: "production deployment wiring — the provider registration surface is verified by AzureBlobOffloadDIRegistrationTests, which is outside the current coverage map"
 }
 services.AddWhizbangAzureBlobOffload("azure-blob-prod", opts => {
   opts.ConnectionString = builder.Configuration.GetConnectionString("Storage")

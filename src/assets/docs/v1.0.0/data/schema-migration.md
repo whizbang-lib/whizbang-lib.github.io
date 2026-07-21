@@ -32,7 +32,7 @@ Whizbang provides automatic schema management for perspective tables, with built
 
 When your application starts, Whizbang automatically creates all required infrastructure tables and perspective tables:
 
-```csharp{title="Automatic Schema Creation" description="When your application starts, Whizbang automatically creates all required infrastructure tables and perspective tables:" category="Implementation" difficulty="BEGINNER" tags=["Data", "C#", "Automatic", "Schema", "Creation"]}
+```csharp{title="Automatic Schema Creation" description="When your application starts, Whizbang automatically creates all required infrastructure tables and perspective tables:" category="Implementation" difficulty="BEGINNER" tags=["Data", "C#", "Automatic", "Schema", "Creation"] tests=["SchemaInitializationTests.EnsureWhizbangDatabaseInitialized_CreatesCoreInfrastructureTablesAsync", "SchemaInitializationTests.EnsureWhizbangDatabaseInitialized_CreatesPerspectiveTablesAsync"]}
 // In your startup code
 await dbContext.EnsureWhizbangDatabaseInitializedAsync();
 ```
@@ -49,7 +49,7 @@ Schema drift occurs when your C# perspective definition doesn't match the databa
 
 ### Detection Flow
 
-```mermaid
+```mermaid{caption="Schema drift detection — the compile-time schema hash is compared against the stored registry hash at runtime; a mismatch logs a drift warning and updates the registry." tests=["SchemaHashUtilitiesTests.ComputeSchemaHash_SameSchema_ProducesSameHashAsync", "SchemaHashUtilitiesTests.ComputeSchemaHash_DifferentColumns_ProducesDifferentHashAsync"]}
 flowchart TD
     CompileTime["Compile Time<br/>Generate schema JSON from C# class<br/>Compute SHA-256 hash of schema"]
     Runtime["Runtime<br/>Compare hash with stored hash in perspective_registry"]
@@ -124,7 +124,7 @@ When you rename a perspective class or change its [table naming](../fundamentals
 
 ### Example
 
-```csharp{title="Example" description="Example" category="Implementation" difficulty="BEGINNER" tags=["Data", "Example"]}
+```csharp{title="Example" description="Example" category="Implementation" difficulty="BEGINNER" tags=["Data", "Example"] unverified="illustrative — class declarations only; shows table-naming config, no runtime behavior to assert in this block"}
 // Before: Table is wh_per_customer_dto
 public class CustomerDto : IPerspectiveFor<CustomerData, CustomerEvent> { }
 

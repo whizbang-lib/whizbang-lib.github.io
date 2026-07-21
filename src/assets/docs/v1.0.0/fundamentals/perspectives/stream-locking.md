@@ -30,7 +30,7 @@ When a perspective needs to **rewind**, **bootstrap a snapshot**, or **purge** d
 
 ## IPerspectiveStreamLocker
 
-```csharp{title="IPerspectiveStreamLocker" description="Core interface for stream-level perspective locking" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "IPerspectiveStreamLocker"]}
+```csharp{title="IPerspectiveStreamLocker" description="Core interface for stream-level perspective locking" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "IPerspectiveStreamLocker"] tests=["DapperPerspectiveStreamLockerTests.TryAcquireLockAsync_UnlockedCursor_AcquiresSuccessfullyAsync", "DapperPerspectiveStreamLockerTests.RenewLockAsync_HeldLock_ExtendsExpiryAsync", "DapperPerspectiveStreamLockerTests.ReleaseLockAsync_HeldLock_ClearsAllLockFieldsAsync"]}
 public interface IPerspectiveStreamLocker {
   Task<bool> TryAcquireLockAsync(Guid streamId, string perspectiveName,
     Guid instanceId, string reason, CancellationToken ct = default);
@@ -55,7 +55,7 @@ public interface IPerspectiveStreamLocker {
 
 Returns `false` if another active instance holds the lock. The caller (typically `PerspectiveWorker`) skips processing for that stream/perspective and moves on.
 
-```csharp{title="TryAcquireLockAsync" description="Attempt to acquire a stream lock for rewind" category="Usage" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Stream Locking", "Acquire"]}
+```csharp{title="TryAcquireLockAsync" description="Attempt to acquire a stream lock for rewind" category="Usage" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Stream Locking", "Acquire"] tests=["DapperPerspectiveStreamLockerTests.TryAcquireLockAsync_UnlockedCursor_AcquiresSuccessfullyAsync", "DapperPerspectiveStreamLockerTests.TryAcquireLockAsync_LockedByDifferentInstance_ReturnsFalseAsync"]}
 var lockAcquired = await streamLocker.TryAcquireLockAsync(
     streamId: orderId,
     perspectiveName: "OrderPerspective",
@@ -72,7 +72,7 @@ if (!lockAcquired) {
 
 `RenewLockAsync` extends the lock expiry. This is called by a background keepalive task during long-running operations to prevent the lock from expiring while work is still in progress. No-op if the lock is not held by the specified instance.
 
-```csharp{title="RenewLockAsync" description="Extend lock expiry during long operations" category="Usage" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Stream Locking", "Renew"]}
+```csharp{title="RenewLockAsync" description="Extend lock expiry during long operations" category="Usage" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Stream Locking", "Renew"] tests=["DapperPerspectiveStreamLockerTests.RenewLockAsync_HeldLock_ExtendsExpiryAsync", "DapperPerspectiveStreamLockerTests.RenewLockAsync_WrongInstance_DoesNotRenewAsync"]}
 // Called periodically by the keepalive background task
 await streamLocker.RenewLockAsync(orderId, "OrderPerspective", instanceId);
 ```
@@ -81,7 +81,7 @@ await streamLocker.RenewLockAsync(orderId, "OrderPerspective", instanceId);
 
 `ReleaseLockAsync` clears the lock fields. Only releases if the lock is held by the specified instance, preventing accidental release of another instance's lock.
 
-```csharp{title="ReleaseLockAsync" description="Release a stream lock after operation completes" category="Usage" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Stream Locking", "Release"]}
+```csharp{title="ReleaseLockAsync" description="Release a stream lock after operation completes" category="Usage" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Stream Locking", "Release"] tests=["DapperPerspectiveStreamLockerTests.ReleaseLockAsync_HeldLock_ClearsAllLockFieldsAsync", "DapperPerspectiveStreamLockerTests.ReleaseLockAsync_WrongInstance_DoesNotReleaseAsync"]}
 await streamLocker.ReleaseLockAsync(orderId, "OrderPerspective", instanceId);
 ```
 
@@ -91,7 +91,7 @@ The `PerspectiveWorker` uses stream locking during both **rewind** and **bootstr
 
 ### Rewind Path
 
-```csharp{title="Rewind Lock Lifecycle" description="How the PerspectiveWorker manages locks during rewind" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Stream Locking", "Rewind"]}
+```csharp{title="Rewind Lock Lifecycle" description="How the PerspectiveWorker manages locks during rewind" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Stream Locking", "Rewind"] unverified="PerspectiveWorker lock-lifecycle orchestration excerpt; this flow is covered only by PerspectiveWorkerRewindTests, which is map-absent"}
 // 1. Acquire lock
 var lockAcquired = await streamLocker.TryAcquireLockAsync(
     streamId, perspectiveName, instanceId, "rewind", ct);
@@ -125,7 +125,7 @@ During snapshot bootstrap, the lock is acquired with reason `"bootstrap"`. If th
 
 ## PerspectiveStreamLockOptions
 
-```csharp{title="PerspectiveStreamLockOptions" description="Configuration for lock duration and keepalive" category="Configuration" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Stream Locking", "Configuration"]}
+```csharp{title="PerspectiveStreamLockOptions" description="Configuration for lock duration and keepalive" category="Configuration" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Stream Locking", "Configuration"] unverified="configuration options POCO with default values; no PerspectiveStreamLockOptions unit test exists in the candidate set"}
 public class PerspectiveStreamLockOptions {
   // How long a lock is valid before expiring (default: 30 seconds)
   // Must be longer than KeepAliveInterval
@@ -139,7 +139,7 @@ public class PerspectiveStreamLockOptions {
 
 Configure via dependency injection:
 
-```csharp{title="Configure Stream Lock Options" description="Register stream lock options in DI" category="Configuration" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Stream Locking", "DI"]}
+```csharp{title="Configure Stream Lock Options" description="Register stream lock options in DI" category="Configuration" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Stream Locking", "DI"] unverified="DI options registration — Configure<PerspectiveStreamLockOptions> wiring is not exercised by the locker integration tests"}
 services.Configure<PerspectiveStreamLockOptions>(options => {
     options.LockTimeout = TimeSpan.FromSeconds(60);      // Longer timeout for large rewinds
     options.KeepAliveInterval = TimeSpan.FromSeconds(20); // Renew every 20 seconds

@@ -45,7 +45,7 @@ Multi-instance coordination ensures reliable, ordered message processing across 
 
 #### Sequence Diagram
 
-```mermaid
+```mermaid{caption="Cross-instance stream ordering — while Instance 1 owns stream S in wh_active_streams, Instance 2 is blocked from claiming any of S's messages until that ownership lapses on Instance 1's death."}
 sequenceDiagram
     participant I1 as Instance 1
     participant DB as PostgreSQL
@@ -95,7 +95,7 @@ Heartbeating runs on its own timer: `HeartbeatWorker` calls `record_heartbeat` e
 
 #### Sequence Diagram
 
-```mermaid
+```mermaid{caption="Stale-instance cleanup — a peer's record_heartbeat detects Instance 1's stale registry row, deletes it, releases its leases and stream ownership, and the orphaned work is reclaimed by Instance 2."}
 sequenceDiagram
     participant I1 as Instance 1
     participant DB as PostgreSQL
@@ -120,7 +120,7 @@ sequenceDiagram
 
 **Timing Diagram**:
 
-```mermaid
+```mermaid{caption="Stale-cleanup timeline — after the 30-second liveness window lapses, opportunistic peer cleanup deletes the dead instance's row, releases its leases and stream ownership, and the survivor claims the orphaned work."}
 flowchart LR
     Crash["I1 Crash"]
     Valid["Heartbeat + LISTEN valid<br/>(30 s window)"]
@@ -155,7 +155,7 @@ flowchart LR
 
 #### Sequence Diagram
 
-```mermaid
+```mermaid{caption="New-instance join — Instance 2 registers via record_heartbeat, ranks recompute to count 2, and only unowned streams (partition_number % 2 = 1) redistribute to it while Instance 1 keeps its pinned streams."}
 sequenceDiagram
     participant I1 as Instance 1<br/>(Active)
     participant DB as PostgreSQL
@@ -205,7 +205,7 @@ sequenceDiagram
 
 #### Sequence Diagram
 
-```mermaid
+```mermaid{caption="Scheduled-retry blocking — a failed M1 with a future scheduled_for blocks the later messages M2, M3 in its stream until the retry time passes, then all three become claimable in created_at order."}
 sequenceDiagram
     participant I1 as Instance 1
     participant DB as PostgreSQL
@@ -240,7 +240,7 @@ sequenceDiagram
 
 **Timing Diagram**:
 
-```mermaid
+```mermaid{caption="Scheduled-retry timeline — M1's failure sets a future scheduled_for that blocks later stream messages until the scheduled time is reached, when M1 and the blocked messages all become claimable."}
 flowchart LR
     Fail["M1 Fail (0s)<br/>scheduled_for = now + 60s<br/>Lease released"]
     Blocked["M2, M3 blocked<br/>(cannot be claimed)"]
@@ -280,7 +280,7 @@ flowchart LR
 
 #### Sequence Diagram
 
-```mermaid
+```mermaid{caption="Lease-expiry reclaim — Instance 1 hangs without renewing its lease, and once lease_expiry passes, Instance 2's claim_orphaned_outbox reclaims M1, M2 (incrementing attempts) for continued processing."}
 sequenceDiagram
     participant I1 as Instance 1<br/>(Crashes)
     participant DB as PostgreSQL
@@ -321,7 +321,7 @@ No Lease                Active Lease              Expired Lease
 
 #### Sequence Diagram
 
-```mermaid
+```mermaid{caption="Inbox deduplication — store_inbox_messages inserts the message id into wh_message_deduplication with ON CONFLICT DO NOTHING, so a redelivered message is skipped and never re-enters the inbox."}
 sequenceDiagram
     participant T as Transport<br/>(Azure Service Bus)
     participant I1 as Instance 1
@@ -365,7 +365,7 @@ CREATE TABLE IF NOT EXISTS wh_message_deduplication (
 
 #### Diagram
 
-```mermaid
+```mermaid{caption="Outbox transactional boundary — the wh_outbox insert commits inside the application transaction (no dedup table), then ClaimWorker leases and OutboxDrainWorker publishes before the row is deleted."}
 graph TD
     A[Application Transaction] -->|BEGIN| B[Business Logic]
     B --> C[INSERT INTO application_table]
@@ -401,7 +401,7 @@ graph TD
 
 #### Sequence Diagram
 
-```mermaid
+```mermaid{caption="Hash-based partition ownership — a stream's compute_partition value modulo the live instance count must equal an instance's rank to claim it, so only the matching instance takes stream S1 and then pins it."}
 sequenceDiagram
     participant I1 as Instance 1<br/>(rank 0)
     participant DB as PostgreSQL
@@ -440,7 +440,7 @@ sequenceDiagram
 
 #### Sequence Diagram
 
-```mermaid
+```mermaid{caption="Stream ownership across scaling — once stream S is pinned to Instance 1, all of its messages (including ones stored after Instance 2 joins) process on Instance 1 in created_at order until Instance 1 dies."}
 sequenceDiagram
     participant I1 as Instance 1
     participant DB as PostgreSQL
@@ -491,7 +491,7 @@ sequenceDiagram
 
 #### Sequence Diagram
 
-```mermaid
+```mermaid{caption="Redistribution on join — a joining Instance 2 recomputes ranks but cannot steal Instance 1's pinned streams; only new unowned streams whose partition matches rank 1 are claimed and pinned to it."}
 sequenceDiagram
     participant I1 as Instance 1<br/>(Alone, rank 0)
     participant DB as PostgreSQL
