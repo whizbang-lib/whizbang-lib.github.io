@@ -4,21 +4,48 @@ Companion to `plans/verified-coverage-burndown.md`. The coverage map is at **97%
 this plan turns the two remaining amber/excused categories green by **writing or exposing the tests in
 the Whizbang library** (`../whizbang/`), then regenerating the map.
 
-## The gaps are two different problems
+## CORRECTION (2026-07-21) — the badge renders from test-status, NOT the map
 
-A regen dry-run (2026-07-21) proved this: regenerating `code-tests-map.json` added 222 keys / 32 new
-classes (the newer ephemeral / scheduling / signal-bus / stream-lifecycle suites) but **unlocked none
-of the classes the docs excuse as "outside the coverage map."** Those tests exist — they just don't
-match the generator's `XxxTests → Xxx` naming convention (e.g. `MoveToDeadLettersSqlTests` tests a SQL
-function, not a class). So the work splits cleanly:
+The original framing below assumed a block can only render green if its key is in
+`code-tests-map.json`. **That is wrong.** `verified-badge.component.ts` → `TestStatusService`
+resolves pass/fail from `src/assets/data/test-status/*.json` alone (a key in *any* shard renders);
+`code-tests-map.json` is only authoring-validation/navigation. Consequence, measured by
+`node src/scripts/test-status-report.mjs`:
+
+- **~109 blocks excused as "outside the coverage map" cite a test that is actually passing in CI** —
+  they render **⚪ excused** today but would render **🟢 green** if re-linked with `tests=[Class.Method]`.
+  This is a **docs-only re-annotation** (the agents already named the method in their notes); it needs
+  **no library change and no new release.** (109 is an upper bound — some are correct
+  consumer-call-site excuses; confirm the method verifies the block before flipping.)
+- **43 distinct linked keys render "no data"** (linked as verified but absent from the published run) —
+  renames/typos or contract-test bases run under derived names. These need auditing, not new tests.
+- The map regen is a red herring for coverage; it only matters for KEEPING the published test-status
+  current — see "new W! release" below.
+
+The revised tracks:
+
+| Track | What it is | Count | Fix |
+|---|---|--:|---|
+| **A** | Excused, but the test passes in CI | ~109 blocks (upper bound) | **Re-link `unverified=` → `tests=[…]`** (docs-only). `--fixable` lists them. |
+| **B** | Linked, but no CI result ("no data") | 43 distinct keys | Fix the key (rename/typo) or excuse honestly. `--missing` lists them. |
+| **C** | Documented, genuinely no test | ~75 blocks + `ScopedQueryTests`/`QueryExecutionTests` | Write the test (see Track 2 below). |
+
+"New W! release should have new test json" still matters — but for **freshness**, not coverage: the
+published run is `0.951.52-alpha.15` @ 2026-07-18. Wire regen + test-status publish into the release so
+newer tests (the 32 ephemeral/scheduling/signal classes a regen already finds) show up as they land.
+
+---
+
+## (Original framing — superseded by the correction above; kept for the Track 2 detail)
+
+A regen dry-run (2026-07-21) added 222 keys / 32 new classes to the map but unlocked none of the
+excused classes (they don't match `XxxTests → Xxx`). That led to the two-track split below — now
+refined by the correction above (most of "Track 1" is really Track A: docs-only re-linking).
 
 | Track | What it is | Count | Fix | Ships with |
 |---|---|--:|---|---|
-| **1** | Test **exists**, not in the map | ~50 classes / 76 blocks | Add `<tests>` XML tags on the library source the test covers, then regen | **New W! release** |
+| **1** | Test **exists**, not in the map | ~50 classes / 76 blocks | Re-link in docs (Track A); library `<tests>` tags only needed to also index them in the *map* | Docs PR (+ optional release) |
 | **2** | Behavior documented, **no test anywhere** | ~75 blocks | Write the test | Library PR + release |
-
-After either track lands: regen the map, re-annotate the affected doc blocks
-(`unverified="…outside the map"` → `tests=[…]`, or bare gap → `tests=[…]`), commit.
 
 ---
 
