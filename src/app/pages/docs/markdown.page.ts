@@ -19,7 +19,6 @@ import { VersionService } from '../../services/version.service';
 import { ToastModule } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
 import { trigger, transition, style, animate } from '@angular/animations';
-import { TestReferencesPanelComponent } from '../../components/test-references-panel.component';
 import { VerifiedMarkerProcessor, VerifiedMarker } from '../../services/verified-marker-processor.service';
 import { VerifiedBadgeComponent } from '../../components/verified-badge.component';
 import { VerifiedSummaryComponent } from '../../components/verified-summary.component';
@@ -27,7 +26,7 @@ import { VerifiedModalComponent } from '../../components/verified-modal.componen
 
 @Component({
   standalone: true,
-  imports: [MarkdownModule, WbVideoComponent, WbExampleComponent, CommonModule, BreadcrumbComponent, ToastModule, TestReferencesPanelComponent, VerifiedSummaryComponent, VerifiedModalComponent],
+  imports: [MarkdownModule, WbVideoComponent, WbExampleComponent, CommonModule, BreadcrumbComponent, ToastModule, VerifiedSummaryComponent, VerifiedModalComponent],
   providers: [MessageService],
   template: `
     <div>
@@ -58,9 +57,6 @@ import { VerifiedModalComponent } from '../../components/verified-modal.componen
         <div *ngFor="let example of examples()" class="my-4">
           <wb-example [id]="example"></wb-example>
         </div>
-
-        <!-- Living docs: tests verifying this page, with live CI status -->
-        <wb-test-references [testReferences]="testReferences()"></wb-test-references>
       </div>
       
       <!-- Focused modal opened by inline verified-by-tests badges -->
