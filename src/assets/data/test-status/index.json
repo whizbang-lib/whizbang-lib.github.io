@@ -4,11 +4,11 @@
     "sha": "563750268c787348b02905e671c343e25ecba991",
     "branch": "develop",
     "libraryVersion": "0.957.2-alpha.152",
-    "completedAt": "2026-07-22T17:11:05.388Z"
+    "completedAt": "2026-07-22T17:43:24.351Z"
   },
   "total": {
-    "passed": 16106,
-    "failed": 1,
+    "passed": 16107,
+    "failed": 0,
     "skipped": 8
   },
   "suites": {
@@ -28,8 +28,8 @@
       "skipped": 0
     },
     "rabbitmq": {
-      "passed": 95,
-      "failed": 1,
+      "passed": 96,
+      "failed": 0,
       "skipped": 0
     },
     "servicebus-ecommerce": {
@@ -99,8 +99,8 @@
     },
     "ECommerce.RabbitMQ.Integration.Tests": {
       "file": "ECommerce.RabbitMQ.Integration.Tests.json",
-      "passed": 60,
-      "failed": 1,
+      "passed": 61,
+      "failed": 0,
       "skipped": 0
     },
     "ECommerce.ShippingWorker.Tests": {
