@@ -1,14 +1,14 @@
 {
   "run": {
-    "runId": "29925184058",
-    "sha": "29f25dfb34b864944161c0b2b924135ddd0816e5",
+    "runId": "29937196959",
+    "sha": "563750268c787348b02905e671c343e25ecba991",
     "branch": "develop",
-    "libraryVersion": "0.957.2-alpha.147",
-    "completedAt": "2026-07-22T14:19:29.625Z"
+    "libraryVersion": "0.957.2-alpha.152",
+    "completedAt": "2026-07-22T17:11:05.388Z"
   },
   "total": {
-    "passed": 16095,
-    "failed": 0,
+    "passed": 16106,
+    "failed": 1,
     "skipped": 8
   },
   "suites": {
@@ -23,13 +23,13 @@
       "skipped": 0
     },
     "postgres": {
-      "passed": 2359,
+      "passed": 2364,
       "failed": 0,
       "skipped": 0
     },
     "rabbitmq": {
-      "passed": 96,
-      "failed": 0,
+      "passed": 95,
+      "failed": 1,
       "skipped": 0
     },
     "servicebus-ecommerce": {
@@ -43,7 +43,7 @@
       "skipped": 0
     },
     "unit": {
-      "passed": 13466,
+      "passed": 13473,
       "failed": 0,
       "skipped": 8
     }
@@ -99,8 +99,8 @@
     },
     "ECommerce.RabbitMQ.Integration.Tests": {
       "file": "ECommerce.RabbitMQ.Integration.Tests.json",
-      "passed": 61,
-      "failed": 0,
+      "passed": 60,
+      "failed": 1,
       "skipped": 0
     },
     "ECommerce.ShippingWorker.Tests": {
@@ -123,7 +123,7 @@
     },
     "Whizbang.Data.EFCore.Postgres.Tests": {
       "file": "Whizbang.Data.EFCore.Postgres.Tests.json",
-      "passed": 1879,
+      "passed": 1884,
       "failed": 0,
       "skipped": 0
     },
@@ -159,7 +159,7 @@
     },
     "Whizbang.Hosting.AspNet.Tests": {
       "file": "Whizbang.Hosting.AspNet.Tests.json",
-      "passed": 52,
+      "passed": 58,
       "failed": 0,
       "skipped": 0
     },
@@ -231,7 +231,7 @@
     },
     "Whizbang.Testing.Tests": {
       "file": "Whizbang.Testing.Tests.json",
-      "passed": 227,
+      "passed": 228,
       "failed": 0,
       "skipped": 0
     },
