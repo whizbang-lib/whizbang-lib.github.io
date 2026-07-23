@@ -1,46 +1,47 @@
 ---
-title: Managed-Resource Control Plane — Run-Control & Health
+title: Managed-Resource Control Plane — Lifecycle, Run-Control & Health
 category: Architecture & Design
 order: 27
-tags: health, run-control, killswitch, liveness, readiness, lifecycle, resilience, migration, transport, offload, drain, health-policy, kubernetes, startup-ordering
+tags: health, run-control, killswitch, lifecycle, state-machine, acknowledgement, drain, liveness, readiness, migration, transport, offload, health-policy, kubernetes, startup-ordering
 ---
 
-# Managed-Resource Control Plane — Run-Control & Health
+# Managed-Resource Control Plane — Lifecycle, Run-Control & Health
 
 Whizbang manages a set of infrastructure resources on the consumer's behalf — the event-store
 database, the message transport, the body-offload store, the worker pipeline, schema
 initialization, the signal bus, the temporal engine. Today, whether those resources are "healthy"
 is decided by whatever ad-hoc `IHealthCheck` a consumer wires up — usually a naive probe (a `SELECT
 count(*)`, a connectivity ping) that has **no idea what state Whizbang is intentionally in**. So a
-resource that is *intentionally* migrating, starting, or paused gets reported as **Unhealthy**, and
-everything downstream — Kubernetes readiness, a deploy pipeline's rollout gate — treats a
+resource that is *intentionally* migrating, connecting, or paused gets reported as **Unhealthy**,
+and everything downstream — Kubernetes readiness, a deploy pipeline's rollout gate — treats a
 by-design state as a failure.
 
 But observing is only half of it. Whizbang doesn't just *report* on these resources — it *controls*
 whether each one is **allowed to run** at all: workers wait on the schema gate, the transport
 consumer can be drained, an offload can be disabled. So the managed-resource abstraction has **two
-symmetric halves**, keyed to the same components and driven by the same lifecycle state + config:
+symmetric faces**, and both are driven by **one thing**: a single lifecycle **state machine** that
+Whizbang owns and advances.
 
-- **Run-control (killswitch)** — a hook that lets the framework **start / pause / stop** each
-  resource. This is the enforcement half: it decides *what is allowed to run*.
-- **Health** — a hook that reports the resulting state. This is the observe half.
+- **Run-control** — the framework broadcasts the current lifecycle state; **each resource interprets
+  it** and does the right thing (stay up, pause, drain, stop). The enforcement face.
+- **Health** — **each resource reports** its state, *knowing the current lifecycle state*, so a
+  resource that is intentionally paused reports healthy-by-design and a resource the current state
+  *depends on* reports its real health. The observe face.
 
-The killswitch **sets** the intentional state; the health hook **reports** it (a resource paused by
-the killswitch reports `PausedByDesign` ⇒ healthy-by-design). `ISchemaReadyGate` is today's single,
-hard-wired instance of the run-control half (gate whether *workers* may run); this proposal
-generalizes it to **every** managed resource and pairs it with state-relative health.
-
-**This proposal makes both halves first-class and gives Whizbang a first-class hand in defining
-them.** The default health policy treats intentional states (Starting / Migrating / PausedByDesign)
-as **healthy** — so a service the framework has intentionally paused parts of stays *ready and
-serving what it can* during a long startup migration instead of being torn down.
+The key design decision this proposal locks: **the resource owns both faces.** Whizbang is the
+**state authority** (it owns the machine, advances it, and documents what each state means) and the
+**aggregator** (it folds the reports into liveness/readiness). It is **not** a central table that
+decides, per component, what "migrating" means — the DB, the workers, the transport each know what a
+state means *for them*, so they interpret it and report it themselves against a documented contract.
+`ISchemaReadyGate` is today's single, hard-wired sliver of this (gate whether *workers* may run);
+this proposal generalizes it to **every** managed resource and to the **whole lifecycle**.
 
 :::planned
 Proposed capability (unreleased). It generalizes the health signal introduced with the opt-in
-non-blocking schema init (`ISchemaReadyGate` +
-`SchemaReadyHealthCheck` + `DatabaseAvailabilityMiddleware`): that shipped a single, binary
-"schema ready?" check hard-wired to report **Unhealthy** while migrating. This proposal reframes
-that as one instance of a general rule and corrects the default so *migrating is healthy*.
+non-blocking schema init (`ISchemaReadyGate` + `SchemaReadyHealthCheck` +
+`DatabaseAvailabilityMiddleware`): that shipped a single, binary "schema ready?" check hard-wired to
+report **Unhealthy** while migrating. This proposal reframes that as one instance of a general rule,
+corrects the default so *migrating is healthy*, and adds the run-control face that partners it.
 :::
 
 ## The problem — health with no notion of state
@@ -49,8 +50,8 @@ A concrete, common failure mode (no consumer specifics — this is generic Kuber
 one-time migration):
 
 1. A service ships a schema change whose one-time migration is longer than the k8s startup-probe
-   budget. With non-blocking schema init the pod
-   binds its port and answers `/alive` immediately, so k8s does **not** kill it. Good.
+   budget. With non-blocking schema init the pod binds its port and answers `/alive` immediately, so
+   k8s does **not** kill it. Good.
 2. But the pod's **readiness** (`/health`) stays red for the whole migration — by our own design,
    plus because the naive DB/transport health checks query tables that are mid-rebuild (locked, or
    not created yet) and **time out**.
@@ -60,97 +61,175 @@ one-time migration):
 
 The startup-probe kill was fixed by keeping `/alive` green. The rollback is a *different* actor
 (the deploy pipeline) watching a *different* signal (readiness) — and the root cause is that
-**"migrating" and "starting" are reported as "unhealthy" when they are neither.** A migration in
+**"migrating" and "connecting" are reported as "unhealthy" when they are neither.** A migration in
 progress is a service operating **correctly for the state it is intentionally in**.
 
 ## The principle
 
 > Health is not "is every subsystem fully operational." Health is **"is this resource operating
-> correctly for the state it is intentionally in right now."** Only the resource can say whether it
-> is *broken*; only the framework knows whether the current state is *intended*; the operator's
-> config has the final say over what each state means for each probe.
+> correctly for the state the system is intentionally in right now."** Only the resource can say
+> whether it is *broken*; the resource is *told* what state the system is in; and the resource — not
+> a central rulebook — decides what that state means for it, on both faces.
 
-That yields a clean separation of duties, and two rules that keep it honest:
+Two rules keep it honest:
 
-- **Provider answers "am I broken?"** — only the Service Bus adapter knows if the broker is
-  reachable; only the blob adapter knows if the offload store answers. It reports raw state,
-  including whether it has been *intentionally* paused/not-yet-started.
-- **Framework answers "is this state intended?"** — it knows the lifecycle (Starting → Migrating →
-  Ready → Paused/Draining) and, via config, maps each `(component, state, probe)` to the effective
-  result. It may **override** a raw report when the state makes it expected.
-- **Intentional ≠ broken.** `Migrating`-and-progressing is healthy; `Migrating`-and-*stalled* is
-  not. `PausedByDesign` is healthy; a transport connection that *actually* dropped while the system
-  is `Ready` is not. Real faults still surface — the policy never blindly returns green.
+- **Intentional ≠ broken.** A resource that is *meant to be off* in the current state reports
+  healthy-by-design. A worker paused during `Migrating` is fine; a transport disconnected during
+  `Stopping` is fine.
+- **A depended-on resource is never masked.** A resource the current state *needs* reports its
+  **real** health, and a fault **counts**. The DB during `Migrating` is *running* (the migration is
+  calling into it), so a DB fault mid-migration is a genuine `Faulted` — you never mask the very
+  dependency the current operation requires. This is also how a wedged migration surfaces: the thing
+  it is stuck on reports broken.
 
-The gate is not the health check. `ISchemaReadyGate` (and its generalization here) decides **what
-is paused**; the health source reports **whether the current state is the intended one**. Today
-those are fused — `SchemaReadyHealthCheck` returns Unhealthy exactly when the gate is closed — which
-is the specific bug this proposal removes.
+## One lifecycle state machine
 
-## Run-control — Whizbang decides what may run
-
-The enforcement half. Each managed resource exposes a run-control hook so the framework can
-**start / pause / stop** it; Whizbang drives those transitions from the lifecycle phase, config, and
-operator commands.
+Whizbang owns a single lifecycle state and advances it. Each state is either **settled** (a resting
+point) or **transitional** (Whizbang has broadcast a change and is waiting for every resource to
+acknowledge — see [coordinated transitions](#coordinated-transitions)).
 
 ```csharp
 /// <docs>resilience/managed-resource-run-control</docs>
-public interface IWhizbangRunControl {
-  /// Same component id space as IWhizbangHealthSource: "transport", "workers", "offload", ...
-  string Component { get; }
-  RunState Current { get; }
-  /// Framework asks the resource to enter the desired run-state (idempotent).
-  ValueTask ApplyAsync(RunState desired, CancellationToken cancellationToken);
-}
+public enum LifecyclePhase {
+  // — startup (transitional) —
+  Starting,     // process booted, host constructing
+  Connecting,   // network warmup: DB / transport / offload connections coming up
+  Migrating,    // schema / data migration in progress (needs the DB connection from Connecting)
 
-public enum RunState {
-  Running,   // permitted to do work
-  Paused,    // intentionally held, resumable — the resource reports ComponentState.PausedByDesign
-  Stopped    // intentionally shut (drained for shutdown / operator killswitch)
+  // — operational (settled) —
+  Running,      // fully operational
+
+  // — pause (transitional ⇄ settled) —
+  Pausing,      // broadcast "pause", awaiting acks
+  Paused,       // settled, resumable
+  Resuming,     // broadcast "resume", awaiting acks
+
+  // — graceful shutdown —
+  Stopping,     // broadcast "stop"; resources drain in-flight, awaiting acks
+  Stopped,      // settled graceful stop
+
+  // — fault path —
+  Faulted,      // a fault occurred; a bounded window to record / report / emit before dying
+  Halted        // terminal dead state (k8s will replace the pod); reachable ONLY from Faulted
 }
 ```
 
-A central run-controller resolves the **desired** run-state per component from
-`WhizbangRunControlOptions` — a `(component × lifecycle-phase)` table plus operator overrides — and
-applies it whenever the phase changes:
+```mermaid
+stateDiagram-v2
+    [*] --> Starting
+    Starting --> Connecting
+    Connecting --> Migrating
+    Migrating --> Running
+    Running --> Pausing
+    Pausing --> Paused
+    Paused --> Resuming
+    Resuming --> Running
+    Running --> Stopping
+    Paused --> Stopping
+    Stopping --> Stopped
+    Stopped --> [*]
+    Starting --> Faulted
+    Connecting --> Faulted
+    Migrating --> Faulted
+    Running --> Faulted
+    Faulted --> Halted
+    Halted --> [*]
+```
+
+Two states earn a note:
+
+- **`Connecting`** is the network-warmup phase — the DB, transport, and (where it connects eagerly)
+  the offload store are opening connections. It sits *before* `Migrating` because the migration
+  needs a live DB connection. A resource that is still connecting is `Starting`-healthy, not broken.
+- **`Faulted → Halted`** is deliberately a two-step death. On a fault we don't drop dead instantly:
+  `Faulted` is a **bounded window to record and report** — log the fault, emit telemetry, flush
+  what's flushable — *then* the machine transitions to `Halted`, the terminal state. Kubernetes will
+  replace the pod regardless, so `Faulted` is our chance to say *why* before it does. `Halted` is
+  reachable **only** from `Faulted` (a graceful shutdown ends in `Stopped`, never `Halted`).
+
+`Running` is the operational steady state (it replaces the old probe-flavored name "Ready" —
+readiness is the *probe*, a different axis, and the phase shouldn't collide with it).
+
+## Coordinated transitions — every resource must acknowledge {#coordinated-transitions}
+
+State changes are **coordinated**, not fire-and-forget. This is what makes the whole thing safe.
+
+- **Every managed resource MUST respond to every state change** — even a no-op returns "applied." So
+  Whizbang *knows* the change reached all of them; no resource silently ignores a transition.
+- **The response is the acknowledgement** — an async `ValueTask`; completing it *is* the ack. A
+  resource with nothing to do returns a completed task.
+- **Timeout → error.** Each resource's response is bounded by a **configurable** timeout; a resource
+  that doesn't ack in time raises an error (which, by default, faults the system — see below).
+- **Barrier.** Whizbang waits for **all** resources to ack the current change before applying the
+  next one.
+- **Queue.** Changes that arrive mid-transition **queue** and apply serially — one coordinated
+  transition at a time.
+
+This is the same "fire once all have reported" shape Whizbang already uses for lifecycle
+coordination (`WhenAll` gating, completion signals) — a transitional state *is* the "broadcast sent,
+awaiting acks" window; the settled state on the other side *is* "all acked."
 
 ```csharp
-public sealed class WhizbangRunControlOptions {
-  // Desired run-state per component per phase. Default (shown) pauses processing + writes during a
-  // migration while leaving read-only paths alone; empty entries inherit Running.
-  //   Migrating: workers=Paused, transport-consume=Paused, writes=Paused; reads unaffected.
-  //   Draining:  everything => Stopped (graceful shutdown).
-  public IDictionary<(string Component, LifecyclePhase Phase), RunState> Phases { get; }
-  // Operator killswitch — force a component's run-state regardless of phase (config or runtime signal).
-  public IDictionary<string, RunState> Overrides { get; }
+/// The single source of truth for the system's lifecycle phase.
+public interface IWhizbangLifecycleState {
+  LifecyclePhase Current { get; }
+}
+
+/// Every managed resource implements this. The coordinator invokes it on each transition and
+/// awaits the returned task (with a configurable per-resource timeout) as the acknowledgement.
+public interface IWhizbangRunControl {
+  /// Same component id space as the health source: "event-store", "transport", "workers", ...
+  string Component { get; }
+  /// Interpret the phase for THIS resource, do the work, and ack by completing. Mandatory — a
+  /// resource that has nothing to do for this phase returns a completed task.
+  ValueTask OnPhaseAsync(LifecyclePhase phase, CancellationToken cancellationToken);
 }
 ```
 
-Two rules mirror the health side:
+A resource **faults** the system in one of two ways: its `OnPhaseAsync` throws or times out during a
+transition, or its health source reports `Faulted` while the system is `Running` (a real dependency
+fault). Either drives the machine to `Faulted` → (record window) → `Halted`.
 
-- **The killswitch is the authority; health is the mirror.** When the controller pauses a resource,
-  that resource's health source reports `PausedByDesign`, which the default policy maps to healthy.
-  Control and observation never disagree because one drives the other.
-- **Run-control is component-scoped and reversible.** Pausing the transport consumer doesn't stop
-  the HTTP read path; resuming is a phase transition or an operator signal, not a restart. This is
-  what lets "serve reads, pause writes + processing during migration" be expressed declaratively
-  instead of by taking the whole pod down.
+## The run-control face — each resource interprets the phase
 
-This is the generalized, enforced form of the invariant: *"never run Whizbang against an unmigrated
-schema"* is the run-controller holding workers/writes at `Paused` until the schema phase clears —
-now available for **every** managed resource, and drivable by an operator (drain a transport,
-disable an offload, quiesce a service for maintenance) without a redeploy.
+There is **no central `(component × phase) → RunState` table.** Whizbang broadcasts the phase; each
+resource decides what it means for itself, because only it knows. `Running`/`Paused`/`Stopped` can't
+even express "drain" (finish in-flight, take no new) — that's a worker-specific behavior only the
+worker can perform. The resource owns it.
 
-## Layer 1 — a health hook on every managed interface
+The framework **documents** the general expectation per resource-role per phase (the contract each
+implementation codes to); the implementations own executing it correctly:
 
-Each Whizbang-managed resource contributes a health source. Consumers **register**, they don't
-hand-roll:
+| Phase | event-store / DB | workers | transport / offload / temporal / signal-bus |
+|---|---|---|---|
+| `Connecting` | opening connection | not yet started | opening connection |
+| `Migrating` | **up** — the migration needs it | paused, no new work | paused intake, no new activity |
+| `Running` | up | pumping | active |
+| `Pausing` → `Paused` | up (or paused if a full quiesce) | pause, no new work | pause intake |
+| `Stopping` → `Stopped` | up until stopped, then close | **drain** — finish in-flight, reject new | stop intake, flush outstanding, disconnect |
+| `Faulted` | record/report, then release | record/report, stop | record/report, disconnect |
+
+**`Paused` / `Stopped` double as the coarse operational override.** The nuance above lives in how
+each resource interprets each *distinct* phase — during `Migrating` the DB stays up while workers
+pause; during `Paused` (the operator's blunt "pause everything") every resource, DB included,
+interprets it as a full quiesce. Same machine, same "interpret the phase" rule; the operator just
+forces the transition out of band. A finer **per-component operator override** (drain *one*
+transport for maintenance while the system stays `Running`) pins a single component's behavior
+independent of the system phase.
+
+## The health face — each resource reports, phase-aware
+
+The same resource reports its health, and it reports **correctly for the current phase** because it
+reads the same lifecycle state. Whizbang does not centrally "override" a raw report — the resource
+already knows whether, in this phase, it is *supposed to be running* (report real health) or
+*supposed to be off* (report healthy-by-design).
 
 ```csharp
 /// <docs>resilience/managed-resource-health</docs>
 public interface IWhizbangHealthSource {
   /// Stable component id: "event-store", "transport", "offload", "workers", "schema", "signal-bus", ...
   string Component { get; }
+  /// Reports intrinsic state, judged against the current LifecyclePhase (injected).
   ValueTask<ComponentHealth> ReportAsync(CancellationToken cancellationToken);
 }
 
@@ -158,48 +237,48 @@ public readonly record struct ComponentHealth(ComponentState State, string? Deta
 
 public enum ComponentState {
   Operational,      // running normally
-  Starting,         // coming up (connecting, warming) — intentional, transient
+  Starting,         // coming up (Starting/Connecting) — intentional, transient
   Migrating,        // schema/data migration in progress — intentional
-  PausedByDesign,   // gated/drained on purpose (e.g. workers held on the schema gate)
+  PausedByDesign,   // gated/drained on purpose in this phase
+  Draining,         // finishing in-flight for a graceful stop — intentional
   Degraded,         // working but impaired (slow, partial) — still serves
   Faulted           // genuinely broken — a real fault
 }
 ```
 
-Resources and what their source knows:
+The judgement each source makes, driven by whether the phase **needs** it:
 
-| Component | `Operational` | Intentional state | `Faulted` |
+| Component | Reports real health when… | …reporting | Healthy-by-design when… |
 |---|---|---|---|
-| **event-store / DB** | reachable, schema current | `Migrating` (tables rebuilding), `Starting` | connection dead |
-| **transport** (Service Bus / RabbitMQ) | broker connected | `Starting` (connecting), `PausedByDesign` (drained) | broker unreachable while `Ready` |
-| **offload** (blob claim-check) | store reachable | `Starting` | store unreachable while running |
-| **workers** | pumping | `PausedByDesign` (held on gate) | pump crash-looping |
-| **schema / migration** | applied + verified | `Migrating` (progressing) | migration failed / **stalled** |
-| **signal bus / temporal** | listening / scheduling | `Starting` | channel/listen dead while `Ready` |
+| **event-store / DB** | any phase from `Connecting` on (always depended-on) | `Migrating`+reachable ⇒ healthy; `Migrating`+unreachable ⇒ **`Faulted`** | — (the DB is essentially always needed) |
+| **transport** | `Running` (broker must be connected) | dropped while `Running` ⇒ `Faulted` | `Connecting`, `Paused`, `Stopping` (drained) |
+| **offload** | `Running` (store must answer) | unreachable while `Running` ⇒ `Faulted` | `Connecting`, `Paused` |
+| **workers** | `Running` (pump must be alive) | crash-looping while `Running` ⇒ `Faulted` | `Migrating`, `Paused` (held on gate) |
+| **schema / migration** | `Migrating` (must be progressing) | progressing ⇒ `Migrating`; stalled/failed ⇒ **`Faulted`** | after `Running` (done) |
+| **signal bus / temporal** | `Running` (must be listening/scheduling) | channel dead while `Running` ⇒ `Faulted` | `Connecting`, `Paused` |
 
 Nobody writes a `SELECT count(*)` against Whizbang's own tables to infer messaging health — the
 transport source reports the *transport's* state, and the event-store source reports `Migrating`
-instead of letting a locked table read as a fault.
+instead of letting a locked table read as a fault. And crucially, the DB source **does** report
+during migration — because the migration needs it — so a migration wedged on a dead DB shows up as
+`Faulted` rather than sitting green forever.
 
-## Layer 2 — the framework overrides raw reports via policy
+## The framework aggregates — a trivial policy
 
-The framework aggregates every source, layers in the current lifecycle state, and maps each
-`(component × state × probe)` to a Healthy / Degraded / Unhealthy result for **liveness** and
-**readiness** separately. `WhizbangHealthOptions` is that mapping table:
+Because the resources already judge intentional-vs-real themselves, all the framework does is
+aggregate every source (worst-wins) and map `ComponentState → HealthStatus` for **liveness** and
+**readiness** separately:
 
 ```csharp
 public sealed class WhizbangHealthOptions {
-  // Default policy — intentional states are healthy/ready.
   public HealthPolicy Default { get; set; } = HealthPolicy.Lenient;
-
   // Per-component overrides, e.g. keep offload strict even at startup.
   public IDictionary<string, HealthPolicy> Components { get; } = new Dictionary<string, HealthPolicy>();
 }
 
-// A policy is a map: (ComponentState, Probe) -> HealthStatus.
-// Lenient (default): Starting/Migrating/PausedByDesign => Healthy on BOTH probes;
-//                    Degraded => Healthy (readiness) ; Faulted => Unhealthy.
-// Strict:            Migrating/Starting => Unhealthy on readiness (pod held out of rotation),
+// Lenient (default): Operational/Starting/Migrating/PausedByDesign/Draining => Healthy on BOTH probes;
+//                    Degraded => Healthy on liveness, Degraded on readiness; Faulted => Unhealthy on readiness.
+// Strict:            Migrating/Starting => Unhealthy on readiness (held out of rotation),
 //                    still Healthy on liveness (never let a probe kill a progressing pod).
 ```
 
@@ -207,53 +286,54 @@ The **default is Lenient** — the behavior this proposal argues for: *migrating
 pod is Ready and serving during migration.* An operator who wants the max-safe "out of rotation
 until fully migrated" posture flips the schema/DB component (or everything) to Strict.
 
-**Liveness is never gated on an intentional state under any policy.** A `Migrating`, `Starting`, or
-`PausedByDesign` resource is *alive*; only a truly wedged process should fail liveness (which is
-why the [progress watchdog](#the-stall-guard) — not a fixed timeout — is what turns a stalled
-migration into `Faulted`).
+**Liveness is never gated on an intentional state under any policy.** A `Starting`, `Connecting`,
+`Migrating`, `PausedByDesign`, or `Draining` resource is *alive*; only a truly wedged process should
+fail liveness (which is why the [stall guard](#the-stall-guard) — not a fixed timeout — is what
+turns a stalled migration into `Faulted`).
 
 Whizbang ships the aggregating liveness/readiness contributions that plug into the ASP.NET health
-system, so a consumer registers **one** Whizbang health contributor. App-specific checks (a
-SignalR backplane, the consumer's own dependencies) remain the consumer's and compose alongside.
+system, so a consumer registers **one** Whizbang health contributor. App-specific checks (a SignalR
+backplane, the consumer's own dependencies) remain the consumer's and compose alongside.
 
 ## What this resolves
 
 - **The rollback goes away without touching the deploy pipeline.** With the Lenient default the pod
   reports **Ready during migration** (its DB/transport sources report intentional states, not
   faults), so the rollout completes and the migration finishes in place.
-- **Workers stay gated by design** (the generalized schema gate) — event processing is paused, and
-  reported `PausedByDesign` = healthy, *not* "not running = broken."
+- **Workers stay gated by design** — event processing is paused, reported `PausedByDesign` = healthy,
+  *not* "not running = broken."
 - **Reads serve; writes/processing wait.** The event-store body-split touches the log tables, not
   the read-model (`wh_per_*`) tables, so read traffic is served while the migration runs; write and
   processing paths stay gated. See [selective availability](#selective-availability).
-- **The invariant is preserved.** "Never run Whizbang against an unmigrated schema" was always the
-  *gate's* job; the gate stays closed. This proposal only stops *misreporting a closed gate as a
-  failure.*
+- **A wedged migration is caught, not masked.** The DB reports real health during `Migrating`, and
+  the schema source flips to `Faulted` when progress stalls — so a stuck migration fails readiness
+  and the rollout ends cleanly instead of the pod sitting green on a broken schema.
 
 ## Related pieces that read the same lifecycle state {#selective-availability}
-
-Two companions consume the same lifecycle-state source so the whole picture is consistent:
 
 - **Selective availability middleware.** `DatabaseAvailabilityMiddleware` today returns `503` for
   *every* non-probe path while the gate is closed. It becomes **opt-in / selective**: gate only the
   configured schema-dependent paths (or, simplest, "block mutations, allow reads"), reading the
   lifecycle state rather than a raw gate bool. Reads flow during migration; writes get a clean
   `503 { "reason": "schema_migrating" }`.
-- **The stall guard.** {#the-stall-guard} The migration source reports `Migrating` while it is
-  *making progress*, and only flips to `Faulted` when progress **stalls** past a configured window —
-  a no-progress watchdog, not a fixed total-time ceiling. This is what makes "a migration may take
-  as long as it needs, as long as it is progressing" a real guarantee: an unbounded-but-progressing
-  migration stays healthy; a genuinely wedged one (deadlock, lock-wait) is caught and fails
-  liveness so the rollout ends cleanly. It requires the long backfill steps to emit a progress
-  heartbeat (batched work + a step/row counter), surfaced as a metric and in the health `Detail`.
+- **The stall guard.** {#the-stall-guard} The schema source reports `Migrating` while it is *making
+  progress*, and only flips to `Faulted` when progress **stalls** past a configured window — a
+  no-progress watchdog, not a fixed total-time ceiling. This is what makes "a migration may take as
+  long as it needs, as long as it is progressing" a real guarantee: an unbounded-but-progressing
+  migration stays healthy; a genuinely wedged one (deadlock, lock-wait) is caught, faults, and the
+  rollout ends cleanly. It requires the long backfill steps to emit a progress heartbeat (batched
+  work + a step/row counter), surfaced as a metric and in the health `Detail`.
 
 ## Configuration
 
 ```jsonc
 // appsettings — defaults shown; every service inherits Lenient unless it opts out.
 "Whizbang": {
+  "Lifecycle": {
+    "TransitionAckTimeoutSeconds": 30     // per-resource ack budget on each coordinated transition
+  },
   "Health": {
-    "Default": "Lenient",                 // Migrating/Starting/PausedByDesign => Healthy on both probes
+    "Default": "Lenient",                 // Migrating/Starting/PausedByDesign/Draining => Healthy on both probes
     "Components": {
       "offload": "Strict"                 // e.g. never consider the blob store "healthy" while it can't be reached
     },
@@ -264,47 +344,57 @@ Two companions consume the same lifecycle-state source so the whole picture is c
 
 ## Build increments (docs-first → strict TDD → PR)
 
-Both tracks share **one lifecycle-state source** (generalized from `ISchemaReadyGate`): run-control
-reads it to decide *what may run*; health reads it to decide *what a state means*.
+Everything hangs off **one lifecycle state machine + coordinator** (generalized from
+`ISchemaReadyGate`); run-control reads it to act, health reads it to report.
 
-**Health track**
-1. **Health contract + aggregator + policy.** `IWhizbangHealthSource`, `ComponentHealth`/
-   `ComponentState`, `WhizbangHealthOptions` (Lenient default), the aggregator, and the
-   liveness/readiness contributions wired into the ASP.NET health system.
-2. **Schema/migration source** — `Migrating ⇒ Ready` by default, `Faulted` on failure/stall.
-   Supersedes `SchemaReadyHealthCheck`'s always-Unhealthy-while-gated behavior. *(This is the
-   increment that reverses the deploy-rollback failure mode.)*
-3. **Transport, offload, worker, DB/event-store sources**; deprecate consumer-side naive checks
-   (ship the framework equivalents).
-4. **Selective availability middleware** + **stall guard / progress heartbeat**, both reading the
+1. **Lifecycle state machine + coordinator.** `LifecyclePhase` (settled/transitional),
+   `IWhizbangLifecycleState`, and the coordinator: broadcast → await-all-ack (configurable timeout) →
+   queue → advance. Fault path (`Faulted` record-window → `Halted`).
+2. **Run-control participant contract.** `IWhizbangRunControl.OnPhaseAsync` (interpret + ack).
+   Generalize `ISchemaReadyGate` (workers-wait-on-schema) into the first participant.
+3. **Health source contract + aggregator + policy.** `IWhizbangHealthSource` (phase-injected),
+   `ComponentHealth`/`ComponentState`, `WhizbangHealthOptions` (Lenient default), the aggregator, and
+   the liveness/readiness contributions wired into the ASP.NET health system.
+4. **Per-resource implementations (both faces).** Each managed resource implements the participant
+   *and* the health source, interpreting/reporting per the documented contract: **schema**,
+   **workers**, **event-store/DB**, **transport**, **offload**, **signal-bus/temporal**. The
+   schema+DB pair is the increment that reverses the deploy-rollback failure mode; it lets consumers
+   delete their naive DB/messaging readiness checks. *Staging:* surfaces that already have a real
+   check ship it (schema + workers phase-based; event-store/DB via a `SELECT 1` probe in the Postgres
+   driver); surfaces without one yet — **transport, offload, signal-bus** — ship as
+   `ConnectivityHealthSource.AssumedHealthy` placeholders (hard-coded healthy, phase-aware) with the
+   real reachability probes as a follow-up pass.
+5. **Selective availability middleware** + **stall guard / progress heartbeat**, both reading the
    shared lifecycle state.
-
-**Run-control track** (parallel; same components, same lifecycle source)
-5. **Run-control contract + controller.** `IWhizbangRunControl`/`RunState`, the central
-   run-controller, and `WhizbangRunControlOptions` (phase table + operator overrides). Generalize
-   `ISchemaReadyGate` (workers-wait-on-schema) into the first adapter behind this contract.
-6. **Per-component run-control adapters** — workers, transport-consume, the write/append path, and
-   offload — pausing/resuming on phase transitions and honoring operator killswitch overrides
-   (config + runtime signal via the signal bus).
+6. **Operator control.** Global coarse `Pause`/`Stop` (operator-forced phase transitions) and the
+   per-component override (pin one component independent of the system phase), via config + a runtime
+   signal on the signal bus.
 
 ## Invariants to lock (regression tests)
 
-- Liveness never fails for `Starting` / `Migrating` / `PausedByDesign` under **any** policy.
-- Lenient default: a `Migrating` schema source ⇒ readiness **Healthy**; a `Faulted` (or
-  stall-detected) schema source ⇒ readiness **Unhealthy**.
-- A genuine fault outside an intentional state (transport dropped while `Ready`, offload
-  unreachable while running) ⇒ **Unhealthy** — the policy never masks a real fault.
-- Strict override on a single component changes only that component's mapping; others stay Lenient.
-- The gate and the health source are independent: the gate stays closed across the whole migration
-  while the health source reports `Healthy (Migrating)`.
+*Lifecycle & coordination:*
+
+- Every registered participant's `OnPhaseAsync` is invoked on every transition; the next transition
+  does not begin until all have acked (barrier).
+- A participant that throws or exceeds the ack timeout drives the system to `Faulted`.
+- `Halted` is reachable only from `Faulted`; a graceful shutdown ends in `Stopped`, never `Halted`.
+- Queued transitions apply serially in order.
 
 *Run-control:*
 
-- Entering `Migrating` transitions the configured components (workers / transport-consume / writes)
-  to `Paused` and leaves read-only paths `Running`; clearing the phase returns them to `Running`
-  without a restart.
-- A component the controller pauses reports `ComponentState.PausedByDesign` from its health source —
-  control and observation never disagree.
-- An operator override forces a component's run-state regardless of phase; removing the override
-  restores the phase-driven state.
-- `Draining` transitions every component to `Stopped` for graceful shutdown.
+- During `Migrating`, the DB participant stays up while workers/transport participants pause; during
+  `Stopping`, workers drain (finish in-flight, take no new) then ack.
+- A per-component operator override pins that component regardless of phase; clearing it returns the
+  component to the phase-driven behavior.
+
+*Health:*
+
+- Liveness never fails for `Starting` / `Connecting` / `Migrating` / `PausedByDesign` / `Draining`
+  under **any** policy.
+- Lenient default: a `Migrating` schema source ⇒ readiness **Healthy**; a `Faulted` (or
+  stall-detected) schema source ⇒ readiness **Unhealthy**.
+- The DB source reports **real** health during `Migrating` — reachable ⇒ Healthy, unreachable ⇒
+  `Faulted` (readiness Unhealthy). The depended-on dependency is never masked.
+- A genuine fault outside an intentional state (transport dropped while `Running`, offload
+  unreachable while running) ⇒ **Unhealthy** — the policy never masks a real fault.
+- Strict override on a single component changes only that component's mapping; others stay Lenient.
