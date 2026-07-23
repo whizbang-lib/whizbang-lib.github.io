@@ -1,11 +1,11 @@
 ---
-title: Lifecycle-Aware Health for Managed Resources
+title: Managed-Resource Control Plane — Run-Control & Health
 category: Architecture & Design
 order: 27
-tags: health, liveness, readiness, lifecycle, resilience, migration, transport, offload, health-policy, kubernetes, startup-ordering
+tags: health, run-control, killswitch, liveness, readiness, lifecycle, resilience, migration, transport, offload, drain, health-policy, kubernetes, startup-ordering
 ---
 
-# Lifecycle-Aware Health for Managed Resources
+# Managed-Resource Control Plane — Run-Control & Health
 
 Whizbang manages a set of infrastructure resources on the consumer's behalf — the event-store
 database, the message transport, the body-offload store, the worker pipeline, schema
@@ -16,11 +16,24 @@ resource that is *intentionally* migrating, starting, or paused gets reported as
 everything downstream — Kubernetes readiness, a deploy pipeline's rollout gate — treats a
 by-design state as a failure.
 
-**This proposal makes health state-relative and gives Whizbang a first-class hand in defining it.**
-Every managed resource exposes its own health hook; the framework overlays the current lifecycle
-state and a configurable policy to produce the effective answer. The default policy treats
-intentional states (Starting / Migrating / PausedByDesign) as **healthy** — so a service stays
-*ready and serving what it can* during a long startup migration instead of being torn down.
+But observing is only half of it. Whizbang doesn't just *report* on these resources — it *controls*
+whether each one is **allowed to run** at all: workers wait on the schema gate, the transport
+consumer can be drained, an offload can be disabled. So the managed-resource abstraction has **two
+symmetric halves**, keyed to the same components and driven by the same lifecycle state + config:
+
+- **Run-control (killswitch)** — a hook that lets the framework **start / pause / stop** each
+  resource. This is the enforcement half: it decides *what is allowed to run*.
+- **Health** — a hook that reports the resulting state. This is the observe half.
+
+The killswitch **sets** the intentional state; the health hook **reports** it (a resource paused by
+the killswitch reports `PausedByDesign` ⇒ healthy-by-design). `ISchemaReadyGate` is today's single,
+hard-wired instance of the run-control half (gate whether *workers* may run); this proposal
+generalizes it to **every** managed resource and pairs it with state-relative health.
+
+**This proposal makes both halves first-class and gives Whizbang a first-class hand in defining
+them.** The default health policy treats intentional states (Starting / Migrating / PausedByDesign)
+as **healthy** — so a service the framework has intentionally paused parts of stays *ready and
+serving what it can* during a long startup migration instead of being torn down.
 
 :::planned
 Proposed capability (unreleased). It generalizes the health signal introduced with the opt-in
@@ -73,6 +86,60 @@ The gate is not the health check. `ISchemaReadyGate` (and its generalization her
 is paused**; the health source reports **whether the current state is the intended one**. Today
 those are fused — `SchemaReadyHealthCheck` returns Unhealthy exactly when the gate is closed — which
 is the specific bug this proposal removes.
+
+## Run-control — Whizbang decides what may run
+
+The enforcement half. Each managed resource exposes a run-control hook so the framework can
+**start / pause / stop** it; Whizbang drives those transitions from the lifecycle phase, config, and
+operator commands.
+
+```csharp
+/// <docs>resilience/managed-resource-run-control</docs>
+public interface IWhizbangRunControl {
+  /// Same component id space as IWhizbangHealthSource: "transport", "workers", "offload", ...
+  string Component { get; }
+  RunState Current { get; }
+  /// Framework asks the resource to enter the desired run-state (idempotent).
+  ValueTask ApplyAsync(RunState desired, CancellationToken cancellationToken);
+}
+
+public enum RunState {
+  Running,   // permitted to do work
+  Paused,    // intentionally held, resumable — the resource reports ComponentState.PausedByDesign
+  Stopped    // intentionally shut (drained for shutdown / operator killswitch)
+}
+```
+
+A central run-controller resolves the **desired** run-state per component from
+`WhizbangRunControlOptions` — a `(component × lifecycle-phase)` table plus operator overrides — and
+applies it whenever the phase changes:
+
+```csharp
+public sealed class WhizbangRunControlOptions {
+  // Desired run-state per component per phase. Default (shown) pauses processing + writes during a
+  // migration while leaving read-only paths alone; empty entries inherit Running.
+  //   Migrating: workers=Paused, transport-consume=Paused, writes=Paused; reads unaffected.
+  //   Draining:  everything => Stopped (graceful shutdown).
+  public IDictionary<(string Component, LifecyclePhase Phase), RunState> Phases { get; }
+  // Operator killswitch — force a component's run-state regardless of phase (config or runtime signal).
+  public IDictionary<string, RunState> Overrides { get; }
+}
+```
+
+Two rules mirror the health side:
+
+- **The killswitch is the authority; health is the mirror.** When the controller pauses a resource,
+  that resource's health source reports `PausedByDesign`, which the default policy maps to healthy.
+  Control and observation never disagree because one drives the other.
+- **Run-control is component-scoped and reversible.** Pausing the transport consumer doesn't stop
+  the HTTP read path; resuming is a phase transition or an operator signal, not a restart. This is
+  what lets "serve reads, pause writes + processing during migration" be expressed declaratively
+  instead of by taking the whole pod down.
+
+This is the generalized, enforced form of the invariant: *"never run Whizbang against an unmigrated
+schema"* is the run-controller holding workers/writes at `Paused` until the schema phase clears —
+now available for **every** managed resource, and drivable by an operator (drain a transport,
+disable an offload, quiesce a service for maintenance) without a redeploy.
 
 ## Layer 1 — a health hook on every managed interface
 
@@ -197,10 +264,13 @@ Two companions consume the same lifecycle-state source so the whole picture is c
 
 ## Build increments (docs-first → strict TDD → PR)
 
-1. **Contract + aggregator + policy.** `IWhizbangHealthSource`, `ComponentHealth`/`ComponentState`,
-   `WhizbangHealthOptions` (Lenient default), the aggregator, and the liveness/readiness
-   contributions wired into the ASP.NET health system. Lifecycle-state source generalized from
-   `ISchemaReadyGate`.
+Both tracks share **one lifecycle-state source** (generalized from `ISchemaReadyGate`): run-control
+reads it to decide *what may run*; health reads it to decide *what a state means*.
+
+**Health track**
+1. **Health contract + aggregator + policy.** `IWhizbangHealthSource`, `ComponentHealth`/
+   `ComponentState`, `WhizbangHealthOptions` (Lenient default), the aggregator, and the
+   liveness/readiness contributions wired into the ASP.NET health system.
 2. **Schema/migration source** — `Migrating ⇒ Ready` by default, `Faulted` on failure/stall.
    Supersedes `SchemaReadyHealthCheck`'s always-Unhealthy-while-gated behavior. *(This is the
    increment that reverses the deploy-rollback failure mode.)*
@@ -208,6 +278,14 @@ Two companions consume the same lifecycle-state source so the whole picture is c
    (ship the framework equivalents).
 4. **Selective availability middleware** + **stall guard / progress heartbeat**, both reading the
    shared lifecycle state.
+
+**Run-control track** (parallel; same components, same lifecycle source)
+5. **Run-control contract + controller.** `IWhizbangRunControl`/`RunState`, the central
+   run-controller, and `WhizbangRunControlOptions` (phase table + operator overrides). Generalize
+   `ISchemaReadyGate` (workers-wait-on-schema) into the first adapter behind this contract.
+6. **Per-component run-control adapters** — workers, transport-consume, the write/append path, and
+   offload — pausing/resuming on phase transitions and honoring operator killswitch overrides
+   (config + runtime signal via the signal bus).
 
 ## Invariants to lock (regression tests)
 
@@ -219,3 +297,14 @@ Two companions consume the same lifecycle-state source so the whole picture is c
 - Strict override on a single component changes only that component's mapping; others stay Lenient.
 - The gate and the health source are independent: the gate stays closed across the whole migration
   while the health source reports `Healthy (Migrating)`.
+
+*Run-control:*
+
+- Entering `Migrating` transitions the configured components (workers / transport-consume / writes)
+  to `Paused` and leaves read-only paths `Running`; clearing the phase returns them to `Running`
+  without a restart.
+- A component the controller pauses reports `ComponentState.PausedByDesign` from its health source —
+  control and observation never disagree.
+- An operator override forces a component's run-state regardless of phase; removing the override
+  restores the phase-driven state.
+- `Draining` transitions every component to `Stopped` for graceful shutdown.
