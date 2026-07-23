@@ -39,31 +39,45 @@ green and `/health` ready — no rollback, no extra code.
 
 ## The two layers
 
-**1. A health source per managed resource.** Each resource reports its own raw state via
-`IWhizbangHealthSource` — only it can tell whether it's broken:
+**1. A health source per managed resource.** Each resource reports its own state via
+`IWhizbangHealthSource`, judged against the current [lifecycle phase](managed-resource-run-control)
+(which it reads) — only the resource knows whether, in this phase, it is *supposed to be running*
+(report real health) or *supposed to be off* (report healthy-by-design):
 
-```csharp{title="Health source contract" description="Each managed resource reports its own state" category="Implementation" difficulty="BEGINNER" tags=["Resilience","Health"] tests=["WhizbangHealthAggregatorTests.LenientDefault_Migrating_IsReadyAsync"]}
+```csharp{title="Health source contract" description="Each managed resource reports its own state, phase-aware" category="Implementation" difficulty="BEGINNER" tags=["Resilience","Health"] tests=["WhizbangHealthAggregatorTests.LenientDefault_Migrating_IsReadyAsync","SchemaHealthSourceTests.FaultedPhase_ReportsFaultedAsync"]}
 public enum ComponentState {
-  Operational, Starting, Migrating, PausedByDesign, Degraded, Faulted
+  Operational, Starting, Connecting, Migrating,   // coming up / migrating (intentional)
+  PausedByDesign, Draining,                        // intentionally off / finishing in-flight
+  Degraded, Faulted                               // impaired / genuinely broken
 }
 
 public interface IWhizbangHealthSource {
-  string Component { get; }                                   // "schema", "workers", "transport", …
-  ValueTask<ComponentHealth> ReportAsync(CancellationToken ct);
+  string Component { get; }                                   // "schema", "workers", "event-store", …
+  ValueTask<ComponentHealth> ReportAsync(CancellationToken ct);   // reads IWhizbangLifecycleState
 }
 ```
 
-Whizbang ships the sources for what it owns (e.g. `SchemaHealthSource` → `Migrating` while the schema
-gate is closed; `WorkerHealthSource` → `PausedByDesign` while workers are held). Register your own
-with `services.AddWhizbangHealthSource<T>()` — you never hand-roll a naive `SELECT count(*)` that a
-migration would make fail.
+Whizbang ships the sources for what it owns: `SchemaHealthSource` (→ `Migrating` while the gate is
+closed, → `Faulted` on a wedged migration), `WorkerHealthSource` (→ `PausedByDesign` while held,
+`Draining` on stop), and `ConnectivityHealthSource` — the reusable phase-aware reachability probe drivers
+wire for the **event-store DB, transport, and offload**. An `AlwaysRequired` resource (the DB) reports a
+failed probe as `Faulted` **even during a migration** (the migration needs it — the depended-on
+dependency is never masked); a `RequiredWhenRunning` resource (transport, offload) is only probed while
+`Running`. Register your own with `services.AddWhizbangHealthSource<T>()` — you never hand-roll a naive
+`SELECT count(*)` that a migration would make fail.
+
+Surfaces without a real connectivity probe yet — **transport, offload, signal-bus** — are registered as
+`ConnectivityHealthSource.AssumedHealthy` placeholders: hard-coded healthy but still phase-aware, so they
+appear in the health model and never fail readiness. Real per-driver reachability checks are a later pass;
+a real source for the same component supersedes its placeholder. The **event-store/DB** source already has
+a real probe (a `SELECT 1` wired in the Postgres driver).
 
 **2. The framework maps state → status via policy.** `WhizbangHealthAggregator` runs every source
 through its `HealthPolicy` and takes the worst status. The default policy is **Lenient**:
 
 | State | Liveness | Readiness |
 |---|---|---|
-| Operational / Starting / Migrating / PausedByDesign | Healthy | **Healthy** |
+| Operational / Starting / Connecting / Migrating / PausedByDesign / Draining | Healthy | **Healthy** |
 | Degraded | Healthy | Degraded |
 | Faulted | Healthy | Unhealthy |
 
