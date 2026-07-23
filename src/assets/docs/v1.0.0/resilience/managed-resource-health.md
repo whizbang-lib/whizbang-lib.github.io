@@ -66,11 +66,15 @@ dependency is never masked); a `RequiredWhenRunning` resource (transport, offloa
 `Running`. Register your own with `services.AddWhizbangHealthSource<T>()` — you never hand-roll a naive
 `SELECT count(*)` that a migration would make fail.
 
-Surfaces without a real connectivity probe yet — **transport, offload, signal-bus** — are registered as
-`ConnectivityHealthSource.AssumedHealthy` placeholders: hard-coded healthy but still phase-aware, so they
-appear in the health model and never fail readiness. Real per-driver reachability checks are a later pass;
-a real source for the same component supersedes its placeholder. The **event-store/DB** source already has
-a real probe (a `SELECT 1` wired in the Postgres driver).
+Most surfaces now have **real** probes: **event-store/DB** (`SELECT 1` in the Postgres driver),
+**transport** (broker connectivity via `ITransport.CheckConnectivityAsync` — RabbitMQ `IConnection.IsOpen`,
+Service Bus `!ServiceBusClient.IsClosed`), and **offload** (`IMessageBodyStore.CheckConnectivityAsync` — a
+blob-service round-trip; in-memory stores are always reachable). Each is registered *smartly*: a real probe
+when the driver is present, an assumed-healthy placeholder when it isn't (single-service apps with no
+transport/offload). **signal-bus** stays assumed-healthy — its real dependency is the same Postgres the
+event-store source already probes (`wh_signals` + `LISTEN/NOTIFY`), so a DB outage surfaces there. Surfaces
+still on placeholders use `ConnectivityHealthSource.AssumedHealthy`: hard-coded healthy but phase-aware, so
+they appear in the health model and never fail readiness.
 
 **2. The framework maps state → status via policy.** `WhizbangHealthAggregator` runs every source
 through its `HealthPolicy` and takes the worst status. The default policy is **Lenient**:
