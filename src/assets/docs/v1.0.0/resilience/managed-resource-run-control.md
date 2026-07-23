@@ -4,70 +4,108 @@ pageType: guide
 version: 1.0.0
 category: Resilience
 order: 3
-description: The per-component killswitch — pause/resume/stop what Whizbang manages, driven by lifecycle phase and operator override
-tags: 'run-control, killswitch, drain, lifecycle, migration, resilience'
+description: The coordinated lifecycle state machine — each resource interprets the phase and acknowledges; plus the operator killswitch
+tags: 'run-control, killswitch, lifecycle, state-machine, acknowledgement, drain, migration, resilience'
 codeReferences:
+  - src/Whizbang.Core/RunControl/LifecyclePhase.cs
   - src/Whizbang.Core/RunControl/IWhizbangRunControl.cs
-  - src/Whizbang.Core/RunControl/WhizbangRunController.cs
-  - src/Whizbang.Core/RunControl/WhizbangRunPermit.cs
-  - src/Whizbang.Core/RunControl/LifecyclePhaseWorker.cs
+  - src/Whizbang.Core/RunControl/WhizbangLifecycleCoordinator.cs
+  - src/Whizbang.Core/RunControl/WhizbangLifecycleState.cs
+  - src/Whizbang.Core/RunControl/IWhizbangKillswitch.cs
 ---
 
 # Managed-Resource Run-Control
 
-Run-control is the **enforcement** counterpart to [health](managed-resource-health): health *reports*
-a resource's state; run-control *decides what is allowed to run*. It generalizes the one-way
-`ISchemaReadyGate` (which gates only workers) into a per-component killswitch over every managed
-resource — workers, transport-consume, the write path, offload — driven by the lifecycle phase, config,
-and operator override.
+Run-control is the **enforcement** face of the managed-resource control plane (its partner is
+[health](managed-resource-health)). Both are driven by **one thing**: a single lifecycle **state
+machine** Whizbang owns and advances. Whizbang broadcasts the current phase; **each resource interprets
+it for itself** (stay up, pause, drain, stop) and **acknowledges**. There is no central table deciding
+what a phase means per component — only the resource knows (the DB stays up during a migration; a worker
+drains on shutdown), so the resource owns the decision.
 
-The two halves can't disagree: the killswitch **sets** a resource's intentional state, and its health
-source **mirrors** it (a controller-paused resource reports `PausedByDesign`, which is healthy by
-default).
+This generalizes the one-way `ISchemaReadyGate` (which gated only workers) into coordinated control over
+every managed resource — workers, transport-consume, the write path, offload, temporal, the signal bus.
 
-## Turnkey — you get this by default
+## The lifecycle state machine
 
-`AddWhizbang()` registers the run-control plane and a driver worker that advances the lifecycle from
-the schema gate:
-
-- at startup → `Migrating` → the configured components are **Paused**;
-- once migrations complete → `Ready` → they **resume**.
-
-On failure the gate never opens, so the phase stays `Migrating` and the components stay paused — the
-fail-closed behavior. No wiring required. (During a migration, workers are already held by the schema
-gate; run-control makes it explicit and adds runtime/operator control and graceful drain.)
-
-## The pieces
-
-```csharp{title="Run-control contract" description="The per-component killswitch" category="Implementation" difficulty="BEGINNER" tags=["Resilience","RunControl"] tests=["WhizbangRunControllerTests.Transition_Migrating_PausesWorkers_KeepsReadsRunningAsync"]}
-public enum RunState { Running, Paused, Stopped }
-public enum LifecyclePhase { Starting, Migrating, Ready, Draining, Faulted }
-
-public interface IWhizbangRunControl {          // one per managed resource
-  string Component { get; }
-  RunState Current { get; }
-  ValueTask ApplyAsync(RunState desired, CancellationToken ct);
+```csharp{title="Lifecycle phases" description="The one state Whizbang owns and advances" category="Implementation" difficulty="BEGINNER" tags=["Resilience","RunControl"] tests=["LifecyclePhaseTests.TransitionalPhases_AreTransitional_NotSettledAsync","WhizbangLifecycleCoordinatorTests.Transition_BroadcastsToEveryParticipantAsync"]}
+public enum LifecyclePhase {
+  Starting,     // process booted (transitional)
+  Connecting,   // network warmup — DB/transport/offload connecting, before the migration (transitional)
+  Migrating,    // schema/data migration in progress (transitional)
+  Running,      // fully operational (settled)
+  Pausing, Paused, Resuming,        // pause/resume (transitional ⇄ settled)
+  Stopping, Stopped,                // graceful shutdown
+  Faulted,      // bounded window to record/report before dying (transitional)
+  Halted        // terminal — reachable ONLY from Faulted (settled)
 }
 ```
 
-- **`WhizbangRunControlOptions`** resolves the desired `RunState` for a `(component, phase)`: an
-  operator **override** wins; `Draining` stops everything; otherwise a phase-table entry; otherwise
-  `Running`. `Default()` pauses `workers` / `transport-consume` / `writes` during a migration and
-  leaves reads running.
-- **`WhizbangRunController`** applies the resolved state to every control on a phase transition, and
-  exposes an operator killswitch (`SetOverrideAsync`).
-- **`WhizbangRunPermit`** is a re-closable gate a subsystem awaits in its loop (Running = open, Paused
-  = blocks until resumed, Stopped = cancels/drains); **`RunPermitControl`** is the ready-made adapter
-  that flips a permit from the controller. A subsystem opts into runtime control by registering a
-  `RunPermitControl` and awaiting its permit.
+A **transitional** phase is the window in which the coordinator has broadcast the change and is awaiting
+every resource's ack; the **settled** phase on the other side is "all acknowledged". `Connecting` sits
+before `Migrating` because the migration needs a live DB connection. `Faulted → Halted` is a two-step
+death: `Faulted` is a bounded window to log/emit/flush, *then* the terminal `Halted` (a graceful
+shutdown ends in `Stopped`, never `Halted`).
 
-## Operator control & overriding
+## Each resource interprets the phase
 
-```csharp{title="Operator killswitch" description="Force and clear a component's run-state at runtime" category="Configuration" difficulty="INTERMEDIATE" tags=["Resilience","RunControl"] tests=["WhizbangRunControllerTests.SetOverride_ForcesComponent_ThenClearRestoresPhaseAsync"]}
-// Drain a transport for maintenance, regardless of phase:
-await controller.SetOverrideAsync("transport-consume", RunState.Stopped, currentPhase, ct);
-// …and restore it (clear the override → re-resolve under the current phase):
-await controller.SetOverrideAsync("transport-consume", null, currentPhase, ct);
+```csharp{title="Run-control participant" description="A resource interprets the phase and acknowledges" category="Implementation" difficulty="BEGINNER" tags=["Resilience","RunControl"] tests=["WhizbangRunPermitTests.Adapter_DrivenByCoordinator_PausesThenRunsThenDrainsAsync"]}
+public interface IWhizbangRunControl {
+  string Component { get; }                                    // "workers", "transport", "event-store", ...
+  // Interpret the phase for THIS resource, do the work, ack by completing. Mandatory — a resource
+  // with nothing to do returns a completed task.
+  ValueTask OnPhaseAsync(LifecyclePhase phase, CancellationToken cancellationToken);
+}
 ```
 
-Change the phase policy via `services.AddWhizbangRunControl(o => …)`.
+`RunPermitControl` is the ready-made adapter that drives a re-closable `WhizbangRunPermit` a subsystem
+awaits in its loop; `RunPermitControl.ForWorkers` is the common interpretation — **run** when `Running`,
+**drain** (finish in-flight, take no new) on `Stopping`, otherwise **pause** (held during startup,
+migration, and pause). Only the resource can express "drain", which is why interpretation lives there.
+
+## Coordinated transitions — every resource acknowledges
+
+```csharp{title="The coordinator" description="Broadcast, barrier, queue, timeout" category="Implementation" difficulty="INTERMEDIATE" tags=["Resilience","RunControl"] tests=["WhizbangLifecycleCoordinatorTests.Transition_Barrier_WaitsForAllAcksBeforeReturningAsync","WhizbangLifecycleCoordinatorTests.Transition_Queue_SerializesTransitionsAsync","WhizbangLifecycleCoordinatorTests.Transition_Timeout_RaisesAckTimeoutAsync"]}
+// WhizbangLifecycleCoordinator coordinates each transition:
+//   • Barrier  — invoke all resources, await ALL acks before returning.
+//   • Timeout  — bound each ack by WhizbangLifecycleOptions.TransitionAckTimeout;
+//                a timeout raises LifecycleAckTimeoutException.
+//   • Queue    — serialize transitions; concurrent calls queue.
+await lifecycle.AdvanceToAsync(LifecyclePhase.Migrating, ct); // broadcasts + awaits all acks
+```
+
+A resource that throws or times out surfaces to `WhizbangLifecycleState`, which owns the **fault path**:
+it drives the system to `Faulted`, holds for `WhizbangLifecycleOptions.FaultRecordWindow` so resources can
+record, then reaches terminal `Halted`.
+
+```csharp{title="Fault path" description="A failed transition faults then halts" category="Implementation" difficulty="INTERMEDIATE" tags=["Resilience","RunControl"] tests=["WhizbangLifecycleStateTests.AdvanceTo_ParticipantThrows_FaultsThenHaltsAfterRecordWindowAsync"]}
+// A participant that throws on a transition => Faulted (record window) => Halted.
+// AdvanceToAsync does not rethrow — the fault is handled by the machine.
+```
+
+## Turnkey — you get this by default
+
+`AddWhizbang()` registers the coordinator, the shared `IWhizbangLifecycleState`, options, and the
+killswitch, plus a driver that advances the lifecycle from the schema gate: `Connecting → Migrating` at
+startup (participants pause/stay-up per their own interpretation), `Running` once migrations complete.
+If initialization never completes the gate never opens, so the phase stays `Migrating` — fail-closed.
+
+## Operator killswitch
+
+```csharp{title="Operator control" description="Pause/stop everything, or pin one component" category="Configuration" difficulty="INTERMEDIATE" tags=["Resilience","RunControl"] tests=["WhizbangKillswitchTests.PauseAsync_DrivesPausingThenPausedAsync","WhizbangKillswitchTests.OverrideComponent_PinsOneResource_IndependentOfSystemPhaseAsync"]}
+// Coarse: drive the whole system through the machine.
+await killswitch.PauseAsync();   // Pausing -> Paused (everything)
+await killswitch.ResumeAsync();  // Resuming -> Running
+await killswitch.StopAsync();    // Stopping -> Stopped
+
+// Fine: pin ONE component independent of the system phase (e.g. drain a transport for maintenance).
+await killswitch.OverrideComponentAsync("transport", LifecyclePhase.Stopping);
+await killswitch.ClearComponentOverrideAsync("transport"); // back to the current system phase
+```
+
+A pinned component ignores system transitions until cleared; every change — coarse or fine — still goes
+through the ack barrier. Tune the ack timeout / fault window via
+`services.AddWhizbangRunControl(o => …)`.
+
+See [Managed-Resource Health](managed-resource-health) for the observe face (the same phase decides what
+each resource's health *means*) and the [availability gate](database-availability-middleware).
