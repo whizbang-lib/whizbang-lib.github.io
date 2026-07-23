@@ -359,7 +359,11 @@ Everything hangs off **one lifecycle state machine + coordinator** (generalized 
    *and* the health source, interpreting/reporting per the documented contract: **schema**,
    **workers**, **event-store/DB**, **transport**, **offload**, **signal-bus/temporal**. The
    schema+DB pair is the increment that reverses the deploy-rollback failure mode; it lets consumers
-   delete their naive DB/messaging readiness checks.
+   delete their naive DB/messaging readiness checks. *Staging:* surfaces that already have a real
+   check ship it (schema + workers phase-based; event-store/DB via a `SELECT 1` probe in the Postgres
+   driver); surfaces without one yet — **transport, offload, signal-bus** — ship as
+   `ConnectivityHealthSource.AssumedHealthy` placeholders (hard-coded healthy, phase-aware) with the
+   real reachability probes as a follow-up pass.
 5. **Selective availability middleware** + **stall guard / progress heartbeat**, both reading the
    shared lifecycle state.
 6. **Operator control.** Global coarse `Pause`/`Stop` (operator-forced phase transitions) and the
