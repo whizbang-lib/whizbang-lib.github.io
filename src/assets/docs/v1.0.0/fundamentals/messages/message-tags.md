@@ -65,7 +65,7 @@ testReferences:
 
 Message tags enable **declarative cross-cutting concerns** - attach attributes to messages and hooks execute automatically when those messages are processed. Build notifications, telemetry, metrics, and audit logs without polluting business logic.
 
-> **Naming note.** The framework's built-in real-time notification tag is **`SignalTagAttribute`** (with **`SignalPriority`**), *not* `NotificationTagAttribute`. `[NotificationTag]` is a a consumer application-application attribute that layers on top of this system; the Whizbang core type is `SignalTagAttribute`. Earlier drafts of this page used the a consumer application name — the examples below use the real core type.
+> **Naming note.** The framework's built-in real-time notification tag is **`SignalTagAttribute`** (with **`SignalPriority`**), *not* `NotificationTagAttribute`. `[NotificationTag]` is an example application-defined attribute that layers on top of this system; the Whizbang core type is `SignalTagAttribute`. Earlier drafts of this page used an application-specific name — the examples below use the real core type.
 
 ## Core Concept
 
@@ -354,7 +354,7 @@ var canRead  = context.Scope?.HasPermission(Permission.Read("orders")) ?? false;
 
 The `Stage` property tells hooks **when** in the message lifecycle they are being called. There are **two ways** to control when a hook runs:
 
-1. **Server-side (registration-time) filtering** — pass `fireAt:` when registering. The framework only invokes the hook at that stage (via `TagOptions.GetHooksFor(attributeType, stage)`). This is the mechanism a consumer application uses.
+1. **Server-side (registration-time) filtering** — pass `fireAt:` when registering. The framework only invokes the hook at that stage (via `TagOptions.GetHooksFor(attributeType, stage)`). This is a common consumer pattern.
 2. **In-hook filtering** — omit `fireAt` (the default `null` means "fire at every stage") and inspect `context.Stage` inside the hook.
 
 ```csharp{title="Server-side stage filtering with fireAt" description="Register a hook to fire only at one lifecycle stage — the framework filters, not the hook" category="Configuration" difficulty="INTERMEDIATE" tags=["Tags", "LifecycleStage", "Hooks"] tests=["TagOptionsTests.UseHook_AcceptsCustomFireAtAsync", "TagOptionsTests.GetHooksFor_WithStage_ExcludesHooksForOtherStagesAsync"]}
@@ -792,7 +792,7 @@ internal sealed class GeneratedMessageTagHookDispatcher_MyAssembly : IMessageTag
 }
 ```
 
-**Ambient scope.** The generated dispatcher sets `ScopeContextAccessor.CurrentContext = ctx.Scope` (an `AsyncLocal`) *before* invoking a custom-attribute hook. This is what lets custom-attribute hooks — `AuditEventAttribute`, and a consumer application's `NotificationTagAttribute` — that read the security context through `IScopeContextAccessor` / `ScopeContextAccessor.CurrentContext` work correctly, even when they never touch `context.Scope` directly. This is the exact behavior `TagHookStageFilteringAndScopeTests` was written to lock in. The three built-in fast-path hooks (`SignalTagAttribute`/`TelemetryTagAttribute`/`MetricTagAttribute`) do **not** get ambient scope set by the processor — they rely on the caller's `AsyncLocal` (the Dispatcher establishes `ScopeContextAccessor.CurrentContext` on the way in). Either way, every hook still receives the scope directly on `TagContext.Scope`.
+**Ambient scope.** The generated dispatcher sets `ScopeContextAccessor.CurrentContext = ctx.Scope` (an `AsyncLocal`) *before* invoking a custom-attribute hook. This is what lets custom-attribute hooks — `AuditEventAttribute`, and a consumer's `NotificationTagAttribute` — that read the security context through `IScopeContextAccessor` / `ScopeContextAccessor.CurrentContext` work correctly, even when they never touch `context.Scope` directly. This is the exact behavior `TagHookStageFilteringAndScopeTests` was written to lock in. The three built-in fast-path hooks (`SignalTagAttribute`/`TelemetryTagAttribute`/`MetricTagAttribute`) do **not** get ambient scope set by the processor — they rely on the caller's `AsyncLocal` (the Dispatcher establishes `ScopeContextAccessor.CurrentContext` on the way in). Either way, every hook still receives the scope directly on `TagContext.Scope`.
 
 **Key Points**:
 - `SignalTagAttribute`, `TelemetryTagAttribute`, `MetricTagAttribute` (and the universal `MessageTagAttribute`) have hardcoded fast paths in `MessageTagProcessor`

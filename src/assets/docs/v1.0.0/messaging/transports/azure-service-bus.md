@@ -314,17 +314,17 @@ Subscription names are automatically derived from the **SubscriberName** metadat
 
 ```csharp{title="Subscription Name Derivation" description="How Subscription Names Are Generated:" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Subscription", "Name"] tests=["ServiceBusSubscriptionNameHelperTests.GenerateSubscriptionNameWithValidNamesReturnsExpectedFormatAsync", "ServiceBusSubscriptionNameHelperTests.GenerateSubscriptionNameWithWildcardSanitizesCorrectlyAsync"]}
 // Format: {subscriberName}-{topicName}
-// Example: "bff-service" + "a consumer.contracts.chat" → "bff-service-a consumer.contracts.chat"
+// Example: "bff-service" + "app.contracts.chat" → "bff-service-app.contracts.chat"
 
 var destination = new TransportDestination(
-  Address: "a consumer.contracts.chat",
+  Address: "app.contracts.chat",
   RoutingKey: "#",  // Wildcard pattern - NOT used as subscription name
   Metadata: new Dictionary<string, JsonElement> {
     ["SubscriberName"] = JsonSerializer.SerializeToElement("bff-service")
   }
 );
 
-// Subscription created: "bff-service-a consumer.contracts.chat"
+// Subscription created: "bff-service-app.contracts.chat"
 ```
 
 **Name Sanitization**:
@@ -453,7 +453,7 @@ When `AutoProvisionInfrastructure` is enabled and an admin client is available, 
 - Zero performance overhead after first message per topic
 
 **When This Helps**:
-- Event destinations resolved dynamically from type namespaces (e.g., `a consumer.contracts.embedding`)
+- Event destinations resolved dynamically from type namespaces (e.g., `app.contracts.embedding`)
 - Topics not covered by `OwnDomains()` startup provisioning
 - Development environments where topics may not be pre-created
 
@@ -958,7 +958,7 @@ await sender.SendMessagesAsync(batch, cancellationToken);  // One call, many mes
 
 ### Problem: "MessagingEntityNotFound" on Publish
 
-**Symptoms**: Publishing fails with `MessagingEntityNotFound` for a topic (e.g., `a consumer.contracts.embedding`).
+**Symptoms**: Publishing fails with `MessagingEntityNotFound` for a topic (e.g., `app.contracts.embedding`).
 
 **Cause**: The destination topic doesn't exist and auto-provisioning is disabled or no admin client is available.
 
@@ -976,7 +976,7 @@ services.AddAzureServiceBusTransport(connectionString, options => {
 // Option 2: Startup provisioning via OwnDomains
 services.AddWhizbang()
     .WithRouting(routing => {
-        routing.OwnDomains("a consumer.contracts.embedding", "a consumer.contracts.search");
+        routing.OwnDomains("app.contracts.embedding", "app.contracts.search");
     });
 ```
 

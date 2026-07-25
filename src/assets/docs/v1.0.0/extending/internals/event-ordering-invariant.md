@@ -69,7 +69,7 @@ Test: `SlidingWindowOutboxBatchStrategyTests.AppendAsync_SameStream_SingleBatchS
 
 **Per-stream-keyed sliding window** (since slice 23) — same shape as the outbox strategy. Each stream_id has its own bounded channel + drain task + sliding-window batcher + idle eviction. On flush, the per-stream batch is sorted by `MessageId` ASC.
 
-Why per-stream (not global): cross-service fan-in. Saga aggregates (e.g. `BulkImportOrchestration`, `Order`) receive events from multiple concurrent producers. The pre-slice-23 global channel flushed everything in a 50 ms window — two transport messages for the same stream arriving more than 50 ms apart landed in *different* flush batches. Each batch was internally sorted but cross-batch ordering was arrival order, which on a fan-in stream is guaranteed to deviate from `MessageId` order. Result on the a consumer bulk-import smoke: ~5,600 `Cursor inversion detected` warnings per run.
+Why per-stream (not global): cross-service fan-in. Saga aggregates (e.g. `BulkImportOrchestration`, `Order`) receive events from multiple concurrent producers. The pre-slice-23 global channel flushed everything in a 50 ms window — two transport messages for the same stream arriving more than 50 ms apart landed in *different* flush batches. Each batch was internally sorted but cross-batch ordering was arrival order, which on a fan-in stream is guaranteed to deviate from `MessageId` order. Result on a large bulk-import smoke test: thousands of `Cursor inversion detected` warnings per run.
 
 With per-stream buffers + 300 ms / 3 s default window, same-stream messages from multiple producers coalesce within the window; the sort runs over the merged per-stream batch; events flush in `MessageId` order even when arrival was out of order. Different streams remain fully parallel. `InboxMessage.StreamId == null` (broadcast-style) routes to a default `Guid.Empty` buffer.
 
@@ -103,14 +103,14 @@ The runner template applies events in the order it receives them.
 
 ## Symptoms of a missing sort
 
-If a new touchpoint is added that batches events without sorting, the a consumer bulk-import load test produces the following pattern:
+If a new touchpoint is added that batches events without sorting, a bulk-import load test produces the following pattern:
 
 - `[WRN] Cursor inversion detected: pending event "<lex-lower>" ≤ cached cursor "<lex-higher>"` — many hundreds per minute on saga streams.
 - `[WRN] No qualifying snapshot found ... performing full replay` — every inversion triggers one.
-- `[ERR] 23505: duplicate key value violates unique constraint "wh_per_*_pkey"` — ~140 per replay (one per pre-existing perspective row that the replay re-inserts).
+- `[ERR] 23505: duplicate key value violates unique constraint "wh_per_*_pkey"` — many per replay (one per pre-existing perspective row that the replay re-inserts).
 - Perspective backlog grows faster than it drains; UI freshness collapses.
 
-The production-grade regression test is the a consumer bulk-import smoke run (350 jobs, 20k+ events). A clean run produces zero `Cursor inversion detected` log entries; any non-zero count points at a touchpoint that lost the sort.
+The production-grade regression test is a bulk-import smoke run (a large number of jobs, tens of thousands of events). A clean run produces zero `Cursor inversion detected` log entries; any non-zero count points at a touchpoint that lost the sort.
 
 ## What this invariant does *not* guarantee
 
@@ -139,7 +139,7 @@ Tests: `BaseUpsertStrategyInPlaceUpdateTests.cs` covers the in-place update path
 
 ## Post-slice-18 residual: cursor-advances-past-orphaned-rows race (slice 25)
 
-After slice 23 narrowed the cross-batch ordering window, a consumer still produced residual inversions with multi-second `MessageId` deltas. Investigation found the source was **not** a missing sort — it was an atomicity gap in the perspective worker's fetch path.
+After slice 23 narrowed the cross-batch ordering window, production still produced residual inversions with multi-second `MessageId` deltas. Investigation found the source was **not** a missing sort — it was an atomicity gap in the perspective worker's fetch path.
 
 The pre-slice-25 `get_stream_events` SQL filtered by `instance_id = p_instance_id AND lease_expiry > p_now`. Rows whose `instance_id` was `NULL` (orphaned at insert), or whose lease had expired, were *invisible* to the fetch. The worker would:
 
@@ -179,11 +179,11 @@ Options: `PerspectiveSnapshotOptions.RewindSnapshotIntervalEvents` (set to 0 to 
 
 ## Apply-boundary batching (slice 22c)
 
-Independent of ordering, the perspective drain path also benefits from coalescing same-stream signals before applying. The pre-slice-22c default sliding window for drain stream-ids was 50 ms / 1 s — too short for the a consumer hot-spot where a single stream (`Order` saga aggregate) receives ~46 events in rapid succession. Each tick triggered a separate apply cycle (read snapshot → apply 1 event → atomic UPSERT) even though all events were already pending.
+Independent of ordering, the perspective drain path also benefits from coalescing same-stream signals before applying. The pre-slice-22c default sliding window for drain stream-ids was 50 ms / 1 s — too short for a production hot-spot where a single stream (`Order` saga aggregate) receives many events in rapid succession. Each tick triggered a separate apply cycle (read snapshot → apply 1 event → atomic UPSERT) even though all events were already pending.
 
 Slice 22c.1 introduces `IApplyBatchStrategy` + per-stream `SlidingWindowApplyBatchStrategy` as a pluggable strategy interface for the apply boundary. Slice 22c.2 retunes the existing in-loop `_accumulateDrainSignalsWithinWindowAsync` accumulator default to 300 ms / 3 s / 1000 — the same window used by the inbox per-stream batcher in slice 23.
 
-Result: 46 events for one stream collapse into one drain cycle; the worker reads the snapshot once, applies all 46 in one Apply pass, writes one atomic UPSERT. CPU on hot streams drops; PG round-trips drop accordingly.
+Result: many events for one stream collapse into one drain cycle; the worker reads the snapshot once, applies all of them in one Apply pass, writes one atomic UPSERT. CPU on hot streams drops; PG round-trips drop accordingly.
 
 Code: [`src/Whizbang.Core/Messaging/IApplyBatchStrategy.cs`](https://github.com/whizbang-lib/whizbang/blob/main/src/Whizbang.Core/Messaging/IApplyBatchStrategy.cs) — pluggable interface.
 

@@ -5,9 +5,9 @@ Accepted (2026-04-25 → 2026-04-26)
 
 ## Context
 
-`process_work_batch` was a 1409-line PL/pgSQL function with 25 parameters. A live diagnostic on the a consumer application dev environment found:
+`process_work_batch` was a 1409-line PL/pgSQL function with 25 parameters. A live diagnostic on a consumer's dev environment found:
 
-- ~22 calls/sec **per service** × 11 service DBs ≈ 242 calls/sec stack-wide
+- A high call rate per service, multiplied across many service databases, added up to a large call volume stack-wide
 - Every idle call returned 0 rows but cost ~17 ms postgres CPU
 - Structural floor: heartbeat + 4 orphan-claim scans + 5 result CTEs all fired even when queues were empty
 - Idle stack consumed ~45% postgres container CPU
@@ -41,7 +41,7 @@ Legacy `process_work_batch` stays in place during migration; new functions live 
 ## Consequences
 
 **Wins:**
-- Idle call cost: ~17 ms → ≤ 1 ms (17×). Idle stack call rate target ≤ 6/sec across 11 DBs (40×).
+- Idle call cost: ~17 ms → ≤ 1 ms (17×). Idle stack call rate target reduced roughly 40× across all databases.
 - Each function has a single SQL plan; postgres per-backend plan cache short-circuits repeats cheaply even under pgbouncer transaction-pooling (which defeats client-side prepared statements).
 - `pg_notify('wh_work', '<category>')` fires from inside `commit_handler_result` and `commit_handler_batch`. Postgres deduplicates `(channel, payload)` at COMMIT — 1000 inserts in one tx → ≤ 3 notifications.
 - SAVEPOINT-batched commit (`commit_handler_batch`) achieves single-fsync throughput for N handlers; target ≥ 2000 handler/s vs ~200 today.

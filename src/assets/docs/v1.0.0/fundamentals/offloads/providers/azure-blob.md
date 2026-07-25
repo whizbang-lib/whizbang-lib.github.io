@@ -57,7 +57,7 @@ services.AddWhizbangAzureBlobOffloadsFromConfiguration(configuration);
 
 With **no providers configured it is a no-op** — no store, no hook chain, publish stays inline. So the same code is safe in every environment, and a deployment turns offload on simply by providing the config keys. Offload is opt-in by config presence, with nothing to wire per-service.
 
-> The provider name (e.g. `a consumer-offload`) is arbitrary; it just ties the provider registration to the selector. `Whizbang:BodyOffload:ProviderName` is what actually **turns offload on** on the send side — without it the hook is registered but selects no target (inline publish), while the receive side can still rehydrate claims because the store is registered.
+> The provider name (e.g. `app-offload`) is arbitrary; it just ties the provider registration to the selector. `Whizbang:BodyOffload:ProviderName` is what actually **turns offload on** on the send side — without it the hook is registered but selects no target (inline publish), while the receive side can still rehydrate claims because the store is registered.
 
 ### Configuration
 
@@ -74,7 +74,7 @@ tags: ["body-offload", "azure-blob", "configuration", "appsettings", "claim-chec
   "Whizbang": {
     "Offloads": {
       "AzureBlob": {
-        "a consumer-offload": {
+        "app-offload": {
           "ConnectionString": "DefaultEndpointsProtocol=https;AccountName=…;AccountKey=…;EndpointSuffix=core.windows.net",
           "ContainerName": "whizbang-offload-bodies",
           "DefaultAccessTier": "Cool",
@@ -83,7 +83,7 @@ tags: ["body-offload", "azure-blob", "configuration", "appsettings", "claim-chec
       }
     },
     "BodyOffload": {
-      "ProviderName": "a consumer-offload",
+      "ProviderName": "app-offload",
       "SizeThresholdBytes": 65536,
       "ActiveCleanup": false
     }
@@ -100,11 +100,11 @@ category: "Offloads"
 difficulty: "BEGINNER"
 tags: ["body-offload", "azure-blob", "configuration", "environment-variables", "kubernetes"]
 }
-Whizbang__Offloads__AzureBlob__jdx-offload__ConnectionString="…"
-Whizbang__Offloads__AzureBlob__jdx-offload__ContainerName="whizbang-offload-bodies"
-Whizbang__Offloads__AzureBlob__jdx-offload__DefaultAccessTier="Cool"
-Whizbang__Offloads__AzureBlob__jdx-offload__MaxDownloadBytes="104857600"
-Whizbang__BodyOffload__ProviderName="a consumer-offload"      # MUST match a provider name above
+Whizbang__Offloads__AzureBlob__app-offload__ConnectionString="…"
+Whizbang__Offloads__AzureBlob__app-offload__ContainerName="whizbang-offload-bodies"
+Whizbang__Offloads__AzureBlob__app-offload__DefaultAccessTier="Cool"
+Whizbang__Offloads__AzureBlob__app-offload__MaxDownloadBytes="104857600"
+Whizbang__BodyOffload__ProviderName="app-offload"      # MUST match a provider name above
 Whizbang__BodyOffload__SizeThresholdBytes="65536"
 Whizbang__BodyOffload__ActiveCleanup="false"
 ```

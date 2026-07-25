@@ -56,10 +56,10 @@ per-row tax.
 
 Canonical use cases:
 
-- "Archive every job in tenant T"
-- "Remove all jobs in tenant T" (soft-delete via a status column)
-- "Change the state of every matching job in a scope"
-- "Apply this template to every Draft/Approved/Published job in a tenant"
+- "Archive every order in tenant T"
+- "Remove all orders in tenant T" (soft-delete via a status column)
+- "Change the state of every matching order in a scope"
+- "Apply this template to every Draft/Approved/Published order in a tenant"
 
 When the producer expresses **intent + scope** rather than a list of
 events, this is the primitive — one event row, one SQL `UPDATE`, one
@@ -110,7 +110,7 @@ extends `IEvent`, and the two run separate code paths end-to-end.
 | Right when | Hand-crafted heterogeneous batches | Uniform mutation across a scope |
 
 Both can coexist in the same workflow — a bulk import emits composite
-per-job events; a tenant cleanup emits a collective event.
+per-order events; a tenant cleanup emits a collective event.
 
 ## Determinism is at scope level, not stream level
 
@@ -133,20 +133,20 @@ not the original execution's state**.
 
 Consider a worked example:
 
-> A producer fires a collective event: "disable every job in tenant T."
-> At the moment of the original write, 10 jobs are visible in the
-> projection (`j₁`…`j₁₀`). A late-arriving event for an 11th job
+> A producer fires a collective event: "disable every order in tenant T."
+> At the moment of the original write, 10 orders are visible in the
+> projection (`j₁`…`j₁₀`). A late-arriving event for an 11th order
 > (`j₁₁`) had been emitted *before* the collective event in correct
 > stream order, but its delivery was delayed by transport hiccups, so
 > it hadn't materialized in the projection yet when the collective
-> event fired. The original execution disabled 10 jobs.
+> event fired. The original execution disabled 10 orders.
 >
 > Later, you replay the projection from scratch. Replay processes the
 > event log in correct order: `j₁₁`'s event arrives at its logically
 > correct position **before** the collective event. By the time the
 > collective event is being applied during replay, `j₁₁` is visible
 > in the projection. The predicate matches `j₁₁` too. Replay disables
-> **11 jobs**.
+> **11 orders**.
 
 That's correct. The original execution was *temporarily wrong* because
 of out-of-order delivery; replay produces the result that should have
@@ -214,13 +214,13 @@ tags: ["collective-events", "collective-event-base", "scope", "publish", "genera
 unverified: "Consumer authoring illustration deriving a domain event from CollectiveEventBase and publishing it; the depicted framework stream-id minting at dispatch is not isolated by a candidate unit test."
 }
 [PinnedId("…")]
-public sealed record ArchiveJobsCollectiveEvent : CollectiveEventBase {
+public sealed record ArchiveOrdersCollectiveEvent : CollectiveEventBase {
   public required DateTimeOffset OccurredAt { get; init; }
 }
 
 // Publish once — the framework mints the event's own stream id,
 // persists it, routes it, and applies it collectively:
-await dispatcher.PublishAsync(new ArchiveJobsCollectiveEvent {
+await dispatcher.PublishAsync(new ArchiveOrdersCollectiveEvent {
   Scope = new TenantCollectiveScope(tenantId),
   OccurredAt = DateTimeOffset.UtcNow,
 });
@@ -255,10 +255,10 @@ difficulty: "INTERMEDIATE"
 tags: ["collective-events", "collective-apply-for", "collective-spec", "set-property", "scope"]
 tests: ["CollectiveSpecContractTests.ICollectiveSpec_Setters_IsLinqExpressionTreeAsync", "CollectiveSpecContractTests.ICollectiveSetters_ConstantSetProperty_OverloadCompilesAsync"]
 }
-public sealed class JobCollectivePerspective {
+public sealed class OrderCollectivePerspective {
   [CollectiveApplyFor]
-  public ICollectiveSpec<JobModel> ArchiveJobs(ArchiveJobsCollectiveEvent e) =>
-    new CollectiveSpec<JobModel>(s => s
+  public ICollectiveSpec<OrderModel> ArchiveOrders(ArchiveOrdersCollectiveEvent e) =>
+    new CollectiveSpec<OrderModel>(s => s
       .SetProperty(j => j.Status, "Archived")
       .SetProperty(j => j.ArchivedAt, e.OccurredAt));
 }
@@ -352,12 +352,12 @@ difficulty: "ADVANCED"
 tags: ["collective-events", "collective-apply-for", "scope-handling", "where", "tenant-safety"]
 tests: ["CollectiveWhereComposerTests.Framework_WithHandlerWhere_AndsScopeAndHandlerAsync", "CollectiveWhereComposerTests.Custom_WithHandlerWhere_StillAndsScopeAsync", "CollectiveSpecContractTests.CollectiveApplyForAttribute_AcceptsExplicitScopeHandlingCustomAsync"]
 }
-// Refine WITHIN the tenant envelope — only jobs with no overlay, in the
+// Refine WITHIN the tenant envelope — only orders with no overlay, in the
 // event's tenant. Framework mode ANDs the scope filter and this Where:
 [CollectiveApplyFor]                                    // ScopeHandling = Framework (default)
 public ICollectiveSpec<OrderModel> ApplyTemplate(TemplateAppliedCollectiveEvent e) =>
   new CollectiveSpec<OrderModel>(
-    Setters: s => s.SetProperty(j => j.JobTemplateId, e.TemplateId),
+    Setters: s => s.SetProperty(j => j.TemplateId, e.TemplateId),
     Where:   r => r.Data.OverlayId == null);
 
 // Own the cohort predicate on the handler's own columns — the resolver
@@ -373,7 +373,7 @@ public ICollectiveSpec<OrderModel> ClearOverlay(OverlayClearedCollectiveEvent e)
 
 A `Where` over `row.Data` only sees the table being mutated. When the
 cohort is defined by a field on a **sibling** read model — e.g.
-JobService's `OrderModel` carries no status (it lives on the sibling
+the order service's `OrderModel` carries no status (it lives on the sibling
 `OrderStatusModel`, keyed by the same id) — the handler's `Apply`
 receives an **`ICollectiveQuery`** and reaches the sibling through it:
 
@@ -389,7 +389,7 @@ tests: ["CollectiveDispatcherEFCoreIntegrationTests.DispatchAsync_CrossPerspecti
 [CollectiveApplyFor]                                  // Framework: tenant envelope AND this cohort
 public ICollectiveSpec<OrderModel> ApplyTemplate(TemplateAppliedCollectiveEvent e, ICollectiveQuery q) =>
   new CollectiveSpec<OrderModel>(
-    Setters: s => s.SetProperty(j => j.JobTemplateId, e.TemplateId),
+    Setters: s => s.SetProperty(j => j.TemplateId, e.TemplateId),
     Where:   r => q.Of<OrderStatusModel>()
                    .Any(st => st.Id == r.Id && Eligible.Contains(st.Data.Status)));
 ```
@@ -444,7 +444,7 @@ difficulty: "BEGINNER"
 tags: ["collective-events", "tenant-scope", "collective-scope", "publish", "scope-resolver"]
 tests: ["TenantCollectiveScopeResolverTests.TenantCollectiveScope_ScopeKind_IsTenantAsync", "TenantCollectiveScopeResolverTests.TenantCollectiveScope_CarriesTenantIdAsync", "TenantCollectiveScopeResolverTests.ScopeFilter_CompiledExpression_MatchesRowsByTenantIdAsync"]
 }
-var evt = new ArchiveJobsCollectiveEvent {
+var evt = new ArchiveOrdersCollectiveEvent {
   Scope = new TenantCollectiveScope("t-1"),
   OccurredAt = clock.GetUtcNow(),
 };
@@ -673,7 +673,7 @@ services
   // entries = your assembly's generated Whizbang.Core.Generated.CollectiveApplyRegistry.Entries
   // (the framework assembly's own copy is empty). Required — no parameterless overload.
   .AddCollectiveEventsEFCore<MyPerspectiveDbContext>(CollectiveApplyRegistry.Entries) // dispatcher + resolver + session + replay applier
-  .AddCollectiveExecutorEFCore<JobModel>();                                           // one per model with a [CollectiveApplyFor]
+  .AddCollectiveExecutorEFCore<OrderModel>();                                         // one per model with a [CollectiveApplyFor]
 // Custom scope kinds: also register your ICollectiveScopeResolver.
 ```
 
@@ -743,7 +743,7 @@ for an apply that did not happen.
 ## Sample project
 
 A self-contained walkthrough lives at `samples/CollectiveEvents/` in the
-library repo. It shows a tiny `JobModel`, a consumer-owned
+library repo. It shows a tiny `OrderModel`, a consumer-owned
 `CollectiveSpec<TModel>` record, a perspective with `[CollectiveApplyFor]`
 handlers (including a per-model `Where` that refines onto the model's own
 columns), and the DI registration. It compiles standalone as a
