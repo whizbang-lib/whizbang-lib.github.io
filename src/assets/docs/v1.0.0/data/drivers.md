@@ -105,7 +105,7 @@ public sealed class EFCoreDriverSelector : IDriverOptions {
 ```csharp{title="WithEFCore Overloads" description="WithEFCore Overloads" category="Implementation" difficulty="BEGINNER" tags=["Data", "C#", "WithEFCore"] tests=["EFCoreExtensionsTests.WithEFCore_WithValidBuilder_ReturnsEFCoreDriverSelectorAsync", "EFCoreExtensionsTests.WithEFCore_CanChainToWithDriverAsync"]}
 // Connection string name comes from the [WhizbangDbContext] attribute
 // or is derived from the DbContext class name
-// (e.g. BffServiceDbContext -> "appservice-db")
+// (e.g. AppServiceDbContext -> "appservice-db")
 services.AddWhizbang().WithEFCore<MyDbContext>().WithDriver.Postgres;
 
 // Explicit connection string name from IConfiguration

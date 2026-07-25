@@ -5,12 +5,12 @@ Accepted (2026-04-26)
 
 ## Context
 
-Whizbang needs server-push notifications so workers can wake on new work without paying the cost of constant polling. Postgres `LISTEN/NOTIFY` is the natural primitive, but the a consumer application production deployment runs pgbouncer in **transaction-pooling mode** between the application and Postgres.
+Whizbang needs server-push notifications so workers can wake on new work without paying the cost of constant polling. Postgres `LISTEN/NOTIFY` is the natural primitive, but a consumer's production deployment runs pgbouncer in **transaction-pooling mode** between the application and Postgres.
 
 LISTEN doesn't survive transaction pooling: the listening session can be handed to a different client between transactions, breaking the `(connection, channel)` subscription. Pgbouncer documentation explicitly warns against using LISTEN through it.
 
 Constraints:
-- ~5 pods × 11 services × multiple environments = hundreds of pods total. Each pod cannot afford a fleet of bypass-pool connections — that defeats pgbouncer's whole purpose.
+- Many pods across many services and environments — hundreds of pods total. Each pod cannot afford a fleet of bypass-pool connections — that defeats pgbouncer's whole purpose.
 - Network policy in production permits both the pgbouncer port (6432) and the postgres-direct port (5432) from each pod, but auditors care about the count.
 
 ## Decision

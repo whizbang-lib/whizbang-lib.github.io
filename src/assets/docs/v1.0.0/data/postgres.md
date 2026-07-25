@@ -56,7 +56,7 @@ services.AddWhizbang()
 
 ### Connection String
 
-The connection string is read from `IConfiguration` under `ConnectionStrings:{name}`, where the name is derived from the DbContext class name by convention (e.g., `BffServiceDbContext` → `appservice-db`). Override the name explicitly with `WithEFCore<MyDbContext>("my-database")`.
+The connection string is read from `IConfiguration` under `ConnectionStrings:{name}`, where the name is derived from the DbContext class name by convention (e.g., `AppServiceDbContext` → `appservice-db`). Override the name explicitly with `WithEFCore<MyDbContext>("my-database")`.
 
 ```
 Host=localhost;Port=5432;Database=myapp;Username=postgres;Password=secret

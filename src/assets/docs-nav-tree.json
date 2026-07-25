@@ -1638,6 +1638,29 @@
       "children": []
     },
     {
+      "name": "resilience",
+      "title": "Resilience",
+      "order": 60,
+      "pages": [
+        {
+          "slug": "v1.0.0/resilience/database-availability-middleware",
+          "title": "Availability Gate & Turnkey Hosting",
+          "order": 1
+        },
+        {
+          "slug": "v1.0.0/resilience/managed-resource-health",
+          "title": "Managed-Resource Health",
+          "order": 2
+        },
+        {
+          "slug": "v1.0.0/resilience/managed-resource-run-control",
+          "title": "Managed-Resource Run-Control",
+          "order": 3
+        }
+      ],
+      "children": []
+    },
+    {
       "name": "tools",
       "title": "Tools",
       "order": 95,
@@ -2015,6 +2038,26 @@
           "slug": "proposals/type-definition-fingerprint",
           "title": "Type-Definition Fingerprint & Lineage",
           "order": 23
+        },
+        {
+          "slug": "proposals/archival-compaction",
+          "title": "Archival & Compaction (Closing the Books)",
+          "order": 24
+        },
+        {
+          "slug": "proposals/carry-forward-tier2",
+          "title": "Carry-forward / Tier-2 (Compaction)",
+          "order": 25
+        },
+        {
+          "slug": "proposals/subject-data-protection",
+          "title": "Subject-Scoped Data Protection (GDPR / Crypto-Shred)",
+          "order": 26
+        },
+        {
+          "slug": "proposals/managed-resource-health",
+          "title": "Managed-Resource Control Plane — Lifecycle, Run-Control & Health",
+          "order": 27
         }
       ],
       "children": []

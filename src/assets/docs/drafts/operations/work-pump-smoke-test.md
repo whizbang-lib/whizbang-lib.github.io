@@ -27,16 +27,10 @@ connection that bypasses pgbouncer. Existing pooled connection strings stay unch
 
 | Service | Existing (no change) | New (provision per environment) |
 |---|---|---|
-| BffService | `ConnectionStrings:appservice-db` | `ConnectionStrings:appservice-db-direct` |
-| ChatService | `ConnectionStrings:chatservice-db` | `ConnectionStrings:chatservice-db-direct` |
-| WorkflowService | `ConnectionStrings:workflowservice-db` | `ConnectionStrings:workflowservice-db-direct` |
-| JobService | `ConnectionStrings:jobservice-db` | `ConnectionStrings:jobservice-db-direct` |
-| UserService | `ConnectionStrings:userservice-db` | `ConnectionStrings:userservice-db-direct` |
-| TaskService | `ConnectionStrings:taskservice-db` | `ConnectionStrings:taskservice-db-direct` |
-| NotificationsService | `ConnectionStrings:notificationsservice-db` | `ConnectionStrings:notificationsservice-db-direct` |
-| UploadService | `ConnectionStrings:uploadservice-db` | `ConnectionStrings:uploadservice-db-direct` |
-| PdfService | `ConnectionStrings:pdfservice-db` | `ConnectionStrings:pdfservice-db-direct` |
-| IntegrationsService | `ConnectionStrings:integrationsservice-db` | `ConnectionStrings:integrationsservice-db-direct` |
+| Order service | `ConnectionStrings:orderservice-db` | `ConnectionStrings:orderservice-db-direct` |
+| User service | `ConnectionStrings:userservice-db` | `ConnectionStrings:userservice-db-direct` |
+| Notifications service | `ConnectionStrings:notificationsservice-db` | `ConnectionStrings:notificationsservice-db-direct` |
+| ...(repeat for every service in your deployment) | | |
 
 The direct string is **optional** — services without it run polling-only (still functional,
 just higher idle baseline). Roll it out service-by-service if convenient.

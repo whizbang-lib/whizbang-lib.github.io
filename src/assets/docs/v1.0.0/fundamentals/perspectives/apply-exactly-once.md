@@ -49,7 +49,7 @@ difficulty: "ADVANCED"
 tags: ["perspectives", "apply", "exactly-once", "idempotency", "projection"]
 unverified: "consumer OrderModel projection illustration; PerspectiveApplyExactlyOnceTests is absent from the code-tests map"
 }
-public OrderModel Apply(OrderModel current, OrderOrderLineRowAddedEvent evt) {
+public OrderModel Apply(OrderModel current, OrderLineRowAddedEvent evt) {
   current.OrderLineRows.Add(new OrderLineRow { RowId = evt.RowId, /* … */ });
   return current;
 }

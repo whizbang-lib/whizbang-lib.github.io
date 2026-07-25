@@ -103,7 +103,7 @@ services.AddWhizbangMessageSecurity(options => {
 });
 
 // Register custom extractors
-services.AddSecurityExtractor<ConsumerMessageTokenExtractor>();
+services.AddSecurityExtractor<AppMessageTokenExtractor>();
 
 // Register callbacks
 services.AddSecurityContextCallback<UserContextManagerCallback>();
@@ -241,13 +241,13 @@ public class JwtPayloadExtractor : ISecurityContextExtractor {
     CancellationToken cancellationToken = default) {
 
     // Check if payload contains JWT token
-    if (envelope.Payload is not IConsumerMessage jdxMessage ||
-        string.IsNullOrEmpty(jdxMessage.Token)) {
+    if (envelope.Payload is not IAppMessage appMessage ||
+        string.IsNullOrEmpty(appMessage.Token)) {
       return ValueTask.FromResult<SecurityExtraction?>(null);
     }
 
     // Decode and validate JWT
-    var claims = DecodeJwt(jdxMessage.Token, options.ValidateCredentials);
+    var claims = DecodeJwt(appMessage.Token, options.ValidateCredentials);
 
     return ValueTask.FromResult<SecurityExtraction?>(new SecurityExtraction {
       Scope = new PerspectiveScope {

@@ -125,8 +125,8 @@ and the reconcile function uses them:
 - **Unacknowledged drift** — the stored name is *not* a recorded former name → the row is left untouched (action
   `drift_detected`, logged as a warning). An accidental or ungoverned rename must be recorded in the ledger first.
 
-This runs automatically on every service startup, so **each environment self-heals** — dev slots, staging, and
-production converge without a manual, per-environment step. It is **non-destructive** (only the registry's
+This runs automatically on every service startup, so **each environment self-heals** — development, staging, and
+production environments converge without a manual, per-environment step. It is **non-destructive** (only the registry's
 `clr_type_name` is touched; stored event data is not rewritten, and the ledger remains the sole history) and
 **idempotent**. It is also backward-compatible during a rolling deploy in both directions (an old service against the
 new function sends no former names and simply falls back to `drift_detected`; a new service against the old function

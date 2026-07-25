@@ -141,7 +141,7 @@ while (true) {
 // Single atomic write of model + cursor happens AFTER the loop drains.
 ```
 
-This is the v0.688 fix for a production defect: the original implementation read the event list **once** and applied that fixed set, so events appended between `PerspectiveRewindStarted` and `PerspectiveRewindCompleted` were silently dropped (a bulk import completed the projection at 347/350 items even though all 350 events were durable). With the catch-up loop, the completed cursor reflects **HEAD-at-commit** rather than HEAD-when-the-replay-began. The behaviour is pinned by `PerspectiveRewindCompletionGapTests` (`FixedRewind_EventsAppendedDuringWindow_AreAppliedTooAsync` and `FixedRewind_NoLateAppends_StillTerminatesAsync`).
+This is the fix for an earlier defect: the original implementation read the event list **once** and applied that fixed set, so events appended between `PerspectiveRewindStarted` and `PerspectiveRewindCompleted` were silently dropped (a bulk import could complete the projection short a handful of items even though every event was durable). With the catch-up loop, the completed cursor reflects **HEAD-at-commit** rather than HEAD-when-the-replay-began. The behaviour is pinned by `PerspectiveRewindCompletionGapTests` (`FixedRewind_EventsAppendedDuringWindow_AreAppliedTooAsync` and `FixedRewind_NoLateAppends_StillTerminatesAsync`).
 
 ## Configuration
 

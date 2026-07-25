@@ -1316,11 +1316,11 @@ owned if it exactly matches an owned domain, or is a **child** of one (prefix fo
 separator). Matching is case-insensitive.
 
 ```csharp{title="Hierarchical owned-namespace matching" description="A namespace is owned when it exactly matches an owned domain or is a child of one (owned prefix plus a dot separator); matching is case-insensitive." category="Architecture" difficulty="BEGINNER" tags=["Dispatcher", "Routing", "OwnedDomains", "Namespaces"] tests=["EventSubscriptionDiscoveryTests.DiscoverEventNamespaces_ExcludesOwnedDomainChildNamespacesAsync", "EventSubscriptionDiscoveryTests.DiscoverEventNamespaces_ExcludesOwnedDomainsExactMatchAsync", "EventSubscriptionDiscoveryTests.DiscoverEventNamespaces_OwnedDomainCaseInsensitiveAsync"]}
-routing.OwnDomains("a consumer.Contracts.Chat");
+routing.OwnDomains("App.Contracts.Orders");
 
-// "a consumer.Contracts.Chat"         → owned (exact match)
-// "a consumer.Contracts.Chat.Common"  → owned (child namespace)
-// "a consumer.Contracts.ChatArchive"  → NOT owned (no '.' boundary after the owned prefix)
+// "App.Contracts.Orders"         → owned (exact match)
+// "App.Contracts.Orders.Common"  → owned (child namespace)
+// "App.Contracts.OrdersArchive"  → NOT owned (no '.' boundary after the owned prefix)
 ```
 
 If a service declares no owned domains, nothing is treated as owned and none of this special-casing
@@ -1376,17 +1376,17 @@ service-name check:
 
 ```mermaid{caption="Transport echo suppression: an owned-namespace event echoed back to the originating service is discarded unconditionally, while an owned-namespace command is discarded only on a self-echo (last hop equals this service); genuine cross-service commands pass through."}
 graph TB
-    E["Event published by ChatService (owns &quot;a consumer.Contracts.Chat&quot;)"]
-    EL["Local fast path: ChatService processes immediately"]
+    E["Event published by OrderService (owns &quot;App.Contracts.Orders&quot;)"]
+    EL["Local fast path: OrderService processes immediately"]
     ET["Transport broadcast"]
-    ET1["arrives at ChatService inbox → DISCARDED (owned event echo, unconditional)"]
-    ET2["arrives at BffService inbox → PROCESSED (cross-service delivery)"]
+    ET1["arrives at OrderService inbox → DISCARDED (owned event echo, unconditional)"]
+    ET2["arrives at BFF inbox → PROCESSED (cross-service delivery)"]
 
-    CA["Command sent by BffService into ChatService's owned namespace"]
-    CA1["arrives at ChatService inbox → PROCESSED (last hop = &quot;BffService&quot; ≠ &quot;ChatService&quot;)"]
+    CA["Command sent by BFF into OrderService's owned namespace"]
+    CA1["arrives at OrderService inbox → PROCESSED (last hop = &quot;BFF&quot; ≠ &quot;OrderService&quot;)"]
 
-    CB["Command emitted by ChatService into its own namespace, echoed back"]
-    CB1["arrives at ChatService inbox → DISCARDED (last hop = &quot;ChatService&quot;, self-echo)"]
+    CB["Command emitted by OrderService into its own namespace, echoed back"]
+    CB1["arrives at OrderService inbox → DISCARDED (last hop = &quot;OrderService&quot;, self-echo)"]
 
     E --> EL
     E --> ET
