@@ -3,8 +3,8 @@
     "runId": "30394925693",
     "sha": "af246cd15709d7b9212c8e77d8d4b97f03dd7977",
     "branch": "develop",
-    "libraryVersion": "0.961.0-alpha.10",
-    "completedAt": "2026-07-28T20:58:12.159Z"
+    "libraryVersion": "0.962.0-alpha.3",
+    "completedAt": "2026-07-28T21:38:59.171Z"
   },
   "total": {
     "passed": 16253,
