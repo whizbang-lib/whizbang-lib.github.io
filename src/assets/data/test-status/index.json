@@ -1,14 +1,14 @@
 {
   "run": {
-    "runId": "30551127820",
-    "sha": "7804b7dcbaa578636e01b62b714e8c8528094391",
+    "runId": "30567045423",
+    "sha": "238a52af686b49c8fd20f4b817bffa4519d58969",
     "branch": "develop",
-    "libraryVersion": "0.962.0-alpha.20",
-    "completedAt": "2026-07-30T14:56:04.661Z"
+    "libraryVersion": "0.963.0-alpha.2",
+    "completedAt": "2026-07-30T18:40:12.385Z"
   },
   "total": {
     "passed": 16285,
-    "failed": 0,
+    "failed": 1,
     "skipped": 8
   },
   "suites": {
@@ -44,7 +44,7 @@
     },
     "unit": {
       "passed": 13630,
-      "failed": 0,
+      "failed": 1,
       "skipped": 8
     }
   },
@@ -112,7 +112,7 @@
     "Whizbang.Core.Tests": {
       "file": "Whizbang.Core.Tests.json",
       "passed": 8947,
-      "failed": 0,
+      "failed": 1,
       "skipped": 0
     },
     "Whizbang.Data.Dapper.Postgres.Tests": {
