@@ -214,6 +214,75 @@ List all documentation grouped by category.
 
 **Output**: Object with categories as keys and document arrays as values
 
+### get-code-location
+
+Find the library code implementing a documentation concept (code↔docs mapping).
+
+**Parameters**:
+- `concept` (required): Documentation concept or URL (e.g., `"dispatcher"` or `"core-concepts/dispatcher"`)
+
+**Output**: Code location(s) implementing the concept
+
+### get-related-docs
+
+Get the documentation URL for a code symbol (reverse of `get-code-location`).
+
+**Parameters**:
+- `symbol` (required): Code symbol name (e.g., `"IDispatcher"`)
+
+**Output**: Documentation page(s) covering the symbol
+
+### get-tests-for-code
+
+Find the tests exercising a code symbol (code↔tests mapping).
+
+**Parameters**:
+- `symbol` (required): Code symbol name (e.g., `"IDispatcher"`, `"Dispatcher"`)
+
+**Output**: Test classes/methods covering the symbol
+
+### get-code-for-test
+
+Find the code a test method exercises (reverse of `get-tests-for-code`).
+
+**Parameters**:
+- `testKey` (required): Test key in the form `"TestClassName.TestMethodName"`
+
+**Output**: Code symbol(s) the test covers
+
+### get-test-status
+
+Get **live** pass/fail status for a test class or method from the latest library CI run — fetched from the docs site, never bundled, never stale.
+
+**Parameters**:
+- `test` (required): Short test class name (e.g., `"DispatcherTests"`) or full key `"TestClassName.TestMethodName"`
+
+**Output**: Pass/fail status with run metadata
+
+### get-coverage-stats
+
+Get test-coverage statistics showing how many code symbols have tests.
+
+**Parameters**: None
+
+**Output**: Coverage summary across the code↔tests mapping
+
+### validate-doc-links
+
+Validate that all code→docs links point to existing documentation.
+
+**Parameters**: None
+
+**Output**: Validation report listing any broken links
+
+### validate-test-links
+
+Validate that all code→test links resolve.
+
+**Parameters**: None
+
+**Output**: Validation report listing any broken links
+
 ## Available Prompts
 
 Prompts are reusable templates that guide Claude in using the tools effectively.
@@ -288,9 +357,9 @@ mcp-docs-server/
 ├── src/
 │   ├── index.ts              # Entry point
 │   ├── server.ts             # MCP server configuration
-│   ├── resources/            # Resource handlers (Phase 3)
-│   ├── tools/                # Tool implementations (Phase 4)
-│   ├── prompts/              # Prompt templates (Phase 5)
+│   ├── resources/            # Resource handlers (doc://, roadmap://)
+│   ├── tools/                # Tool implementations
+│   ├── prompts/              # Prompt templates
 │   └── utils/                # Utilities
 ├── build/                    # Compiled JavaScript
 ├── package.json
@@ -298,37 +367,13 @@ mcp-docs-server/
 └── README.md
 ```
 
-## Implementation Status
+## Status
 
-### ✅ Phase 2 Complete: Foundation
+Feature-complete: all planned phases (foundation, resources, tools, prompts) are implemented and published. Three items from the original plan were superseded by design decisions rather than built as specified:
 
-- [x] Project structure
-- [x] TypeScript configuration
-- [x] Basic server with stdio transport
-- [x] Placeholder handlers for resources, tools, prompts
-- [x] Build system working
-
-### 🔄 Phase 3: Resources (Next)
-
-- [ ] Documentation resources (`doc://`)
-- [ ] Roadmap resources (`roadmap://`)
-- [ ] Code example resources (`code://`)
-- [ ] File loader utilities
-- [ ] Frontmatter parsing
-
-### ⏳ Phase 4: Tools
-
-- [ ] search-docs implementation
-- [ ] semantic-search implementation
-- [ ] find-examples implementation
-- [ ] list-docs-by-category implementation
-- [ ] list-roadmap implementation
-
-### ⏳ Phase 5: Prompts
-
-- [ ] explain-concept prompt
-- [ ] show-example prompt
-- [ ] api-reference prompt
+- **`code://` resources** — reserved; code examples are served inside their `doc://` pages (see "Code Scheme" above)
+- **A separate `semantic-search` tool** — folded into `search-docs` as the `semantic` parameter
+- **An `api-reference` prompt** — replaced by `compare-approaches`
 
 ## License
 
