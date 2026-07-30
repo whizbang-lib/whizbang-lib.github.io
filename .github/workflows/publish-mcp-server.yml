@@ -32,6 +32,9 @@ jobs:
         with:
           node-version-file: '.nvmrc'
           registry-url: 'https://registry.npmjs.org'
+          # v5 auto-caching detects the repo root's pnpm-lock.yaml (docs site)
+          # and fails: pnpm isn't installed here. This job is npm-only.
+          package-manager-cache: false
 
       # OIDC trusted publishing needs npm >= 11.5.1; the runner's bundled npm
       # can lag, so pin the latest.
