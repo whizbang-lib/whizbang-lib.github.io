@@ -351,6 +351,41 @@ as: caps always on, auto-repair never default, every repair loudly attributed.
 
 1. **R1** — re-delivery primitive + request command + convergence integration test (drop-injection
    harness scenario end-to-end). Independently valuable on day one.
+
+   :::new
+   **R1 is built** (with its R0 prerequisite), in four steps:
+
+   - **R0 — directed messages.** `IMessageEnvelope.Target` (wire key `tgt`, omitted when null =
+     broadcast); the transport consumer discards a foreign-targeted message at the receive seam
+     (ordinal match against the service's own identity, fail-open when identity is unknown).
+   - **R1a — selection.** `RedeliveryRequest`/`RedeliveryEvent` + the coordinator's
+     `SelectRedeliveryEventsAsync` (EFCore Postgres, raw SQL, no migration): conjunctive optional
+     filters (tenant, event types, streams, commit-sequence window), ordered `(stream, version)`,
+     hard `MaxEvents` cap; at-most-once occurrences excluded by delivery guarantee, reaped
+     ephemeral bodies excluded structurally by the body join.
+   - **R1a2 — identity-preserving composites.** Composite fan-out ordinarily mints fresh child ids;
+     `IIdentityPreservingComposite` lets `RedeliveryComposite` stamp the ORIGINAL event ids onto
+     its children (strict pairing — a count mismatch dead-letters the bundle). `RedeliveryPump`
+     bundles a selection per stream (chunked), rehydrates payloads through the event store's AOT
+     path, and publishes wire-only through the envelope-serializer seam with `Target` set.
+   - **R1b — the request command.** `RequestRedeliveryCommand` (framework command; auto
+     wire-registered) rides directed messaging: the requester stamps `Target` = origin service and
+     names itself as `RequesterService` + the reply `Topic`. The origin's built-in receptor
+     (driver assembly, runtime-registered) runs the selection and pumps targeted bundles back.
+     The origin clamps every request's `MaxEvents` by its configured
+     `RedeliveryPumpOptions.MaxEventsPerRequest` — a requester can never raise an origin's cap.
+     This command is also the OPERATOR surface: dispatch it in-process on the origin (or targeted
+     from anywhere) to trigger a manual repair.
+   - **R1c — the convergence proof.** The multi-service harness gained per-consumer delivery-fault
+     injection (`SuppressDeliveries`); the flagship test drops deliveries at one consumer,
+     re-delivers via a targeted bundle over the real JSON wire, and proves: the healthy consumer
+     discards at the receive seam, the damaged consumer's fan-out yields children carrying the
+     original event ids and original bodies — convergence is idempotent by identity. The proof
+     surfaced and fixed two real defects: the envelope serializer dropped `Target` on conversion,
+     and generated JSON contexts bound a composite's inner `IMessage` list to their own assembly's
+     options (cross-assembly inner events serialized as empty objects) — now bound to the
+     serializing options via cycle-safe lazy registry accessors.
+   :::
 2. **B** — per-type sequence stamping + checkpoint signal + consumer gap tracker (report-only), then
    the auto-repair hookup behind the ladder.
 3. **S** — reconciler consumption-set diff + birth lineage + startup backfill orchestration.
