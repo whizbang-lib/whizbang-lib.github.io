@@ -76,6 +76,51 @@ coverage (3), subscription growth / consumer bootstrap (4), and scheduled-audit 
 
 ---
 
+## Ephemeral and temporal traffic (wire-covered, window-matched)
+
+Ephemeral events and schedule occurrences cross the wire like any event, and both are protected —
+each phase applies where the payload's *lifetime* makes protection meaningful, rather than blanket
+inclusion or blanket exclusion.
+
+**Ephemeral events** are included in **continuity checkpoints by default**. A dropped ephemeral
+delivery is detected within a checkpoint interval — inside the rewind **grace window**, while the
+origin still retains the body — so repair is **grace-bounded best-effort**: standard re-delivery
+while the origin's copy lives, and on a confirmed gap the origin may place a **destruction hold**
+(the existing destruction-hold mechanism) on the gap's events until re-delivery completes, so
+prompt detection actively extends repairability instead of racing the reaper. Once genuinely
+reaped, the gap is reported as *accepted ephemeral loss* — the same acceptance the out-of-grace
+rewind already makes. The **deep audit excludes ephemeral by mode** — a tautology, not a gap:
+digests cannot converge across sovereign purge lifecycles, and ephemeral has no deep history to
+audit; its entire integrity window *is* the grace window, which the checkpoint phase owns.
+**Backfill** likewise excludes ephemeral types (nothing is retained to deliver; ephemeral state is
+now-scoped by design).
+
+**Schedule occurrences** are ordinary persisted events on the wire: checkpoints detect their drops
+and re-delivery repairs them. Refinements:
+
+- **At-least-once occurrences are fully repairable** — deterministic occurrence ids make
+  re-delivery idempotent by contract, and a recently dropped occurrence is a job the consumer was
+  supposed to run and still should.
+- **At-most-once occurrences are detect-and-report only** — re-delivery would violate the exact
+  guarantee they were declared for. The re-delivery selection filters on the occurrence's
+  `deliveryGuarantee` metadata.
+- **Old occurrence gaps are report-only past a window** (`RepairOccurrenceGapsNoOlderThan`,
+  default = the checkpoint confirmation horizon): whether a *late* fire is wanted is per-schedule
+  taste already expressed by the temporal engine's misfire policy, and integrity does not override
+  it.
+- **Backfill never manufactures occurrence history for a subscription that did not exist when the
+  occurrences fired** (`IncludeScheduleOccurrencesInBackfill = false`, per-type opt-in). The
+  governing line: **repair delivers what a live subscriber missed; backfill builds state — and
+  never re-fires triggers.**
+
+Schedule **definitions** (`wh_schedules`) are service-local durable configuration, outside stream
+integrity entirely: missed fires at the origin are governed solely by the temporal engine's
+misfire policy (coalesce / catch-up / skip, with burst caps) — integrity adds no second mechanism
+that could fight it. Commands and composite envelopes remain structurally out of scope (never
+persisted); composite *inner* events are ordinary facts and fully in scope.
+
+---
+
 ## Design
 
 ### Phase R1 — the re-delivery primitive (everything else depends on it)
@@ -112,6 +157,9 @@ highest-contiguous plus a bounded gap list.
   checks types it consumes.
 - A confirmed gap raises a typed integrity event (report), and — when auto-repair is enabled —
   issues a scoped `RequestRedeliveryCommand` for the gap.
+
+Ephemeral types are **included** here by default — for a self-destructing event the checkpoint
+window is the only integrity window there is (see *Ephemeral and temporal traffic*).
 
 What it cannot see: loss *after* successful receipt (case 2) and anything historical. That is the
 deep audit's job.
@@ -169,9 +217,9 @@ buckets from the store and alarms on drift between the digest table and reality.
   lineage) is *pending-backfill* (informational, auto-resolvable) — not an integrity violation. An
   audit that cries wolf on every deploy trains everyone to ignore it; this discriminator is what
   keeps the alarms meaningful.
-- **Lifecycle floors:** ephemeral types are excluded by mode (their local lifecycles are sovereign
-  by design); each stream's comparison floor is the origin's close/archival point, so
-  closing-the-books truncation never reads as loss.
+- **Lifecycle floors:** ephemeral types are excluded by mode (see *Ephemeral and temporal
+  traffic* — the checkpoint phase owns their window); each stream's comparison floor is the
+  origin's close/archival point, so closing-the-books truncation never reads as loss.
 
 ### Phase L — local perspective-coverage audit
 
