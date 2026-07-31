@@ -439,6 +439,14 @@ as: caps always on, auto-repair never default, every repair loudly attributed.
    and gap detection default ON; repair defaults to `ReportOnly`.
    :::
 3. **S** — reconciler consumption-set diff + birth lineage + startup backfill orchestration.
+
+   :::new
+   **Phase S is built**: the state-only envelope marker (`sto`) with its dispatch-seam gate (S0);
+   the consumed-type registry `wh_consumed_types` with Baseline/Pending/Requested lifecycle (S1);
+   and the startup `SubscriptionExpansionWorker` — first boot baselines, later-boot additions
+   register Pending and repair via one broadcast state-only re-delivery request, with disabled
+   mode recording Pending as the audit surface (S2/S3). On by default.
+   :::
 4. **A1a** — digest table + emit-chain batch maintenance + deletion subtraction + recompute
    self-verification (SQL-first, both Postgres providers).
 5. **A1b** — manifest exchange + comparison protocol (watermarks, two-cycle confirmation,
