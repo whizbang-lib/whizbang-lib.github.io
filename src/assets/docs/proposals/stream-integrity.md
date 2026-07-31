@@ -244,6 +244,25 @@ runbook procedures into a deploy-time non-event. Configurable, **on by default**
 (`StreamIntegrityOptions.BackfillOnSubscriptionGrowth = true`); disabling leaves the expansion
 *recorded* so the audit reports it as pending rather than screaming divergence.
 
+:::updated
+**Design specifics (as built):**
+
+- **The backfill request BROADCASTS** (no `Target`) — an expanding consumer cannot know which
+  origins emitted a type's history. Every service's re-delivery receptor runs the scoped selection;
+  origins holding matching events answer with bundles targeted back at the requester, everyone
+  else selects nothing. A consumer that persisted forwarded copies may answer too — extra sources
+  converge harmlessly by event-id identity.
+- **"Backfill builds state, never re-fires triggers" rides the ENVELOPE**: a `stateOnly` delivery
+  marker (wire key `sto`, sibling of the directed `tgt`) stamped on the bundle by the pump and
+  inherited by every fanned-out child. A state-only child is event-stored and projected normally,
+  but the inbox dispatch SKIPS its trigger-receptor stages. The perspective-side lifecycle
+  completion stages still fire — they are completion accounting, not domain triggers.
+- **First boot baselines**: an empty consumed-type registry records the whole catalog WITHOUT
+  backfilling (nothing existed to miss). Only types appearing on a LATER boot are expansions.
+  The registry (`wh_consumed_types`) carries per-type backfill status — the audit surface for
+  "pending backfill" when the feature is disabled.
+:::
+
 ### Phase A — digest manifests (the scheduled deep audit)
 
 **Digest algebra.** The atomic unit is an order-independent **set hash** per
