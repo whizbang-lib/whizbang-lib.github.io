@@ -449,8 +449,34 @@ as: caps always on, auto-repair never default, every repair loudly attributed.
    :::
 4. **A1a** — digest table + emit-chain batch maintenance + deletion subtraction + recompute
    self-verification (SQL-first, both Postgres providers).
+
+   :::updated
+   **Design amendment (as built): digests are COMPUTED, not maintained.** The incremental
+   `wh_stream_digests` table required emit-chain hot-path surgery plus subtraction hooks in every
+   deletion site (reaper, close-stream, pointer prune) — and a recompute self-verification pass
+   precisely because incremental state drifts. The audit is SCHEDULED and infrequent: computing
+   digests on demand with one indexed `GROUP BY` over the store costs nothing on the hot path,
+   cannot drift, and IS the recompute. The incremental table remains a future optimization for
+   very large stores. Digest algebra: **two-lane 64-bit XOR** of `hashtextextended(event_id, seed)`
+   with seeds 0 and 1 — 128-bit-equivalent collision resistance, order-independent, self-inverse
+   (deletions need no bookkeeping at all), pure SQL. Ephemeral (mode-excluded) and at-most-once
+   occurrences are excluded, matching Phase B's counts. Both sides bound the computation to a
+   **settle window** (events older than `AuditSettleWindowMinutes`, default 60) so in-flight
+   deliveries never read as divergence — replacing two-cycle confirmation at audit cadence.
+   :::
 5. **A1b** — manifest exchange + comparison protocol (watermarks, two-cycle confirmation,
    catalog anchoring, floors) + drill-down + report pipeline.
+
+   :::updated
+   **As built: consumer-driven manifest exchange.** Each consumer's audit worker asks every origin
+   it knows (the checkpoint tracker's origin set — an origin that never checkpoints is already a
+   liveness alarm) for a manifest: a DIRECTED `RequestIntegrityManifest` command; the origin
+   answers with `[Ephemeral]` `IntegrityManifest` events (digest rows, chunked) TARGETED back.
+   The consumer compares against its own from-that-origin digests for subscribed types; a
+   mismatched (tenant, type, stream) bucket raises `IntegrityDivergenceDetected` (Sourced report)
+   and — on the `AutoRepairCapped` rung — a stream-scoped `RequestRedeliveryCommand`. Extras
+   (consumer-only streams) are reported, never auto-deleted (taxonomy #5).
+   :::
 6. **L** — local coverage audit + targeted rebuild remediation.
 7. **Ladder completion** — AutoRepairCapped mode, dry-run, storm caps, operations doc.
 
