@@ -361,6 +361,30 @@ hard rate caps and a dry-run mode that logs the exact repair set without sending
 lesson (repair storms taking down clusters that were merely *suspected* of divergence) is encoded
 as: caps always on, auto-repair never default, every repair loudly attributed.
 
+:::updated
+**Default REVISED (as built): SELF-HEALING out of the box.** `RepairMode` defaults to
+`AutoRepairCapped` — the shipped posture detects AND repairs, with every rung hard-capped
+(per-checkpoint, per-audit-chunk, per-cycle rebuilds, drill-down types, per-request event caps) so
+a mass divergence reports loudly instead of storming. What changed from the original stance: the
+storm-lesson is encoded in the CAPS, not in a disabled-by-default repair — a capped repair of a
+provably-missing delivery is additive and idempotent (the same event id folds once), so the risk
+that made auto-repair dangerous elsewhere (destructive repair of *suspected* divergence) does not
+apply to this design's confirmed-gap, identity-preserving re-delivery. `ReportOnly` remains the
+explicit opt-DOWN for operators who want report-and-decide; every report still states exactly what
+auto-repair would have done, so ReportOnly IS the dry-run.
+
+**Observability (as built): meter `Whizbang.StreamIntegrity`.** Self-healing by default demands
+visibility into what the healer does. Counters:
+`checkpoints_published` / `checkpoints_received` (the liveness beat), `gaps_detected` +
+`divergences_detected` + `coverage_gaps_detected` (the three detection surfaces — sustained
+non-zero means deliveries are being lost; find the infrastructure cause),
+`repairs_requested` (tagged `source=checkpoint|audit`) + `rebuilds_requested` (what the healer
+did about it), `manifests_requested` / `manifest_chunks_sent` / `drill_downs_requested` (audit
+wire activity), `backfills_requested` (Phase S), and `digest_buckets_verified` +
+`digest_drift_healed` (the trust-but-verify sweep — any drift healed means an unaccounted write
+path touched audited rows and warrants investigation).
+:::
+
 ---
 
 ## Standards compliance (definition of done)
