@@ -478,7 +478,22 @@ as: caps always on, auto-repair never default, every repair loudly attributed.
    (consumer-only streams) are reported, never auto-deleted (taxonomy #5).
    :::
 6. **L** — local coverage audit + targeted rebuild remediation.
+
+   :::new
+   **Phases A and L are built** (per the amendments above): computed two-lane XOR digests, the
+   consumer-driven manifest exchange with per-bucket comparison and stream-scoped capped repair,
+   and the local coverage audit with capped local rebuilds — all ON by default, daily, ladder at
+   `ReportOnly`. With R0–R1, B, and S, **every phase of this proposal is implemented**; the
+   `ReportOnly` reports double as the dry-run for `AutoRepairCapped`. Graduation of this proposal
+   into the behavior/configuration reference rides this PR's merge.
+   :::
 7. **Ladder completion** — AutoRepairCapped mode, dry-run, storm caps, operations doc.
+
+   :::new
+   **Closed**: `AutoRepairCapped` is implemented at every repair site (checkpoint gaps, audit
+   divergences, local rebuilds); `ReportOnly` IS the dry-run (every report carries exactly what
+   auto-repair would have done); storm caps exist at every rung.
+   :::
 
 ## Open questions (for review)
 
