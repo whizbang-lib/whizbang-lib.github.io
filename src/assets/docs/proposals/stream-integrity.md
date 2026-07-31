@@ -153,8 +153,24 @@ machinery whose (storage-defect-induced) failure motivated this proposal — acc
 **repair traffic is itself integrity-checked**: re-delivered events carry original sequences, so
 a dropped repair re-alarms at the next checkpoint instead of silently "completing."
 
+**Targeted re-delivery.** Repair sets are computed per (consumer, origin) pair, so the traffic is
+inherently addressed to one service — a `redelivery-target` transport property (the *logical
+service identity* that names the target's subscription, never an instance id) makes the address
+explicit. Non-target consumers discard at the receive seam before deserialization or fan-out
+(the same boundary discipline as unsubscribed-message discard, one property compare); transports
+with native subscription filtering (e.g. `target IS NULL OR target = @me` rules, wired through the
+infrastructure-provisioner seam and advertised via transport capabilities) filter broker-side so
+non-targets never receive the message at all. An **absent** target remains meaningful: broadcast
+re-delivery for operator-initiated origin-wide repairs. A mis-targeted repair is benign — the
+service that needed it discards it, the gap persists, and the next checkpoint re-alarms.
+*Considered and rejected:* opportunistic acceptance by non-targets that coincidentally share the
+gap — it reinstates the broadcast cost for everyone to serve a rare coincidence that the
+coincident consumer's own detection loop repairs anyway; strict discard keeps the cost model
+predictable.
+
 A request/response wrapper (`RequestRedeliveryCommand` on the wire, origin-routed) lets any
-consumer ask an origin for re-delivery without out-of-band coordination.
+consumer ask an origin for re-delivery without out-of-band coordination — the request carries the
+requester's service identity, which becomes the re-delivery target.
 
 ### Phase B — continuity checkpoints (fast drop detection)
 
