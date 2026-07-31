@@ -451,18 +451,13 @@ as: caps always on, auto-repair never default, every repair loudly attributed.
    self-verification (SQL-first, both Postgres providers).
 
    :::updated
-   **Design amendment (as built): digests are COMPUTED, not maintained.** The incremental
-   `wh_stream_digests` table required emit-chain hot-path surgery plus subtraction hooks in every
-   deletion site (reaper, close-stream, pointer prune) — and a recompute self-verification pass
-   precisely because incremental state drifts. The audit is SCHEDULED and infrequent: computing
-   digests on demand with one indexed `GROUP BY` over the store costs nothing on the hot path,
-   cannot drift, and IS the recompute. The incremental table remains a future optimization for
-   very large stores. Digest algebra: **two-lane 64-bit XOR** of `hashtextextended(event_id, seed)`
-   with seeds 0 and 1 — 128-bit-equivalent collision resistance, order-independent, self-inverse
-   (deletions need no bookkeeping at all), pure SQL. Ephemeral (mode-excluded) and at-most-once
-   occurrences are excluded, matching Phase B's counts. Both sides bound the computation to a
-   **settle window** (events older than `AuditSettleWindowMinutes`, default 60) so in-flight
-   deliveries never read as divergence — replacing two-cycle confirmation at audit cadence.
+   **As built (two passes).** Digest algebra: **two-lane 64-bit XOR** of
+   `hashtextextended(event_id, seed)` with seeds 0 and 1 — 128-bit-equivalent collision
+   resistance, order-independent, self-inverse (a deletion is subtracted by folding the same
+   hashes again), pure SQL. Ephemeral (mode-excluded) and at-most-once occurrences are excluded,
+   matching Phase B's counts. The first pass shipped digests as COMPUTED on demand (one indexed
+   `GROUP BY` at audit time); a scalability review then landed the proposal's original incremental
+   design in full — see **A1c** below. The recompute survives as the sweep/verification path.
    :::
 5. **A1b** — manifest exchange + comparison protocol (watermarks, two-cycle confirmation,
    catalog anchoring, floors) + drill-down + report pipeline.
@@ -476,6 +471,43 @@ as: caps always on, auto-repair never default, every repair loudly attributed.
    mismatched (tenant, type, stream) bucket raises `IntegrityDivergenceDetected` (Sourced report)
    and — on the `AutoRepairCapped` rung — a stream-scoped `RequestRedeliveryCommand`. Extras
    (consumer-only streams) are reported, never auto-deleted (taxonomy #5).
+   :::
+
+   **A1c** — the incremental digest table + hierarchical exchange (the scale story).
+
+   :::new
+   **Built as the proposal originally specified, after a scalability review of the computed-only
+   pass.** Growth no longer grows the audit: cost scales with *what changed*, not store size.
+
+   - **`wh_stream_digests`** — one row per (origin, tenant, event type, stream) bucket, PK on
+     those four columns; the zero-uuid origin is this service's own lane, a non-zero origin is
+     the local copy of events received FROM that origin. Maintained by the write paths
+     themselves: both emit-chain functions gain a `digest_folds` CTE (joined to the stored-events
+     CTE so idempotent re-stores never double-fold); `close_stream` and
+     `reclassify_events_ephemeral` XOR the rows they remove back out — and these two are provably
+     the ONLY deletion paths touching audited buckets, because the reaper and pointer-prune act
+     exclusively on ephemeral rows, which the mode exclusion keeps out of digests entirely. An
+     idempotent backfill seeds buckets from existing history; a ledger replay never clobbers
+     maintained values.
+   - **Origin identity, live.** The inbox emit chain now stamps
+     `wh_event_store.origin_service_id / origin_commit_sequence` from the transport-delivered
+     source columns (normalized: a self/zero source is locally-originated and stays NULL). The
+     columns' contract predates this proposal but no writer ever populated them — without this
+     stamp, every consumer-side origin-keyed comparison (checkpoint counts, consumer digests)
+     was inert in production.
+   - **Hierarchical exchange.** Scheduled audits request **type-level roll-ups** first (XOR of a
+     type's stream buckets — valid because they partition the type's events): O(types) wire cost,
+     one comparison proving every stream bucket of the type complete. Mismatched types drill down
+     (capped, `MaxDrillDownTypesPerAudit`) to a directed stream-level exchange; only divergent
+     buckets ever pay stream-level cost. Table-driven compares **settle-skip** buckets whose
+     `updated_at` is inside the settle window on either side — the incremental equivalent of the
+     recompute's created-at filter.
+   - **Trust-but-verify sweep.** Every `FullSweepEveryNthAudit`-th cycle (default 7 — weekly at
+     the daily default), each service reconciles its own table against a full recompute and
+     HEALS it (drifted buckets updated, phantoms removed, missing added; non-zero drift is a loud
+     alarm — an unaccounted write path), and the manifest exchange runs recompute-to-recompute
+     end to end, covering busy buckets that settle-skip on table-driven cycles. Providers without
+     the digest table transparently fall back to the recompute.
    :::
 6. **L** — local coverage audit + targeted rebuild remediation.
 
