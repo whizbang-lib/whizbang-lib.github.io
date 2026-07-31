@@ -189,19 +189,40 @@ requester's service identity (`reply-to`), which becomes the response and re-del
 
 ### Phase B — continuity checkpoints (fast drop detection)
 
-The origin stamps a monotone **per (origin service, tenant, event type) sequence** on each published
-event, and periodically emits a lightweight **checkpoint signal** ("type T in tenant X is at
-sequence N"). Consumers verify contiguity for the types they subscribe to — TCP-SACK-style state:
-highest-contiguous plus a bounded gap list.
+:::updated
+**Design amendment (emit-chain spike result).** The original sketch stamped a NEW monotone
+per-(origin, tenant, type) sequence at emit. The spike showed that cannot ride the wire without
+either hot-path per-(tenant,type) counter rows in the emit chain or publish-time byte patching —
+and it is unnecessary: the origin's **commit sequence already rides every wire envelope**
+(`SourceServiceId` + `SourceCommitSequence`, injected at outbox publish from the async
+commit-order stamper) and **already persists at consumers** (`wh_inbox.source_commit_sequence`;
+received events keep `origin_service_id` + `origin_commit_sequence` in the consumer's event
+store). Phase B therefore adds NO per-event stamping at all — it verifies **counts over origin
+commit-sequence windows**.
+:::
 
-- Detects the incident class **at receive time / within one checkpoint interval**, not at the next
-  nightly audit.
-- Near-zero cost: one counter update folded into the existing outbox emit; checkpoints are doorbell-
-  sized control messages.
-- Subscription subsets are handled by construction — the sequence is per *type*, so a consumer only
-  checks types it consumes.
-- A confirmed gap raises a typed integrity event (report), and — when auto-repair is enabled —
-  issues a scoped `RequestRedeliveryCommand` for the gap.
+The origin periodically publishes a lightweight **`IntegrityCheckpoint`** (an `[Ephemeral]` system
+event, default 60s): "between commit-sequence watermark W₁ (exclusive) and W₂ (inclusive), I
+emitted these per-(tenant, type) counts" — a bounded bucket list. Consumers count the events they
+have persisted from that origin inside the same window (keyed by the already-stored origin
+sequence) for the types they subscribe to, and compare.
+
+- A deficit that persists past the NEXT checkpoint (two-cycle confirmation, absorbing in-flight
+  stragglers) is a **confirmed gap** → typed integrity report event, and — when auto-repair is
+  enabled on the ladder — a scoped `RequestRedeliveryCommand` for exactly that window
+  (`FromCommitSequence = W₁`, `ToCommitSequence = W₂`, the deficit's types/tenant). Window repair
+  converges by identity: already-present events conflict-skip, missing ones land.
+- Detects the incident class **within one to two checkpoint intervals**, not at the next nightly
+  audit.
+- Near-zero origin cost: one `GROUP BY` over the stamped window per interval; checkpoints are
+  doorbell-sized control messages. Checkpoints publish even when the window is empty — a missing
+  checkpoint (3× interval) is itself a **liveness alarm**.
+- Subscription subsets are handled by construction — buckets are per *type*, so a consumer only
+  compares types it consumes. At-most-once schedule occurrences are excluded from the counts (a
+  non-delivered at-most-once occurrence is its declared behavior, not a gap).
+- Re-delivered events carry their ORIGINAL origin identity (`OriginServiceId` + per-child original
+  commit sequences ride the re-delivery composite and are stamped onto the fanned-out children),
+  so a repaired window recounts correctly.
 
 Ephemeral types are **included** here by default — for a self-destructing event the checkpoint
 window is the only integrity window there is (see *Ephemeral and temporal traffic*).
@@ -402,8 +423,11 @@ as: caps always on, auto-repair never default, every repair loudly attributed.
    large scale. Default 128?
 2. Checkpoint carrier: dedicated signal type on the signal bus (doorbell + fetch) vs. a small
    normal event per (tenant, type) — leaning signal-bus doorbell with a fetchable checkpoint table.
-3. Should Phase B sequences live in envelope metadata (like the ephemeral TTL carrier) or as a
-   store column? Metadata keeps the emit chain untouched; a column is queryable for gap forensics.
+3. ~~Should Phase B sequences live in envelope metadata or as a store column?~~ **Resolved by the
+   emit-chain spike:** neither — Phase B introduces no new sequence. The existing
+   `SourceCommitSequence` (wire) / `origin_commit_sequence` (store) carry per-event origin order,
+   and checkpoints verify per-(tenant, type) COUNTS over commit-sequence windows (see the Phase B
+   amendment above).
 4. Cross-origin fan-in: a consumer aggregating N origins runs N independent comparisons — any value
    in a combined report beyond per-origin rows?
 5. Does the digest table participate in debug mode (retain per-operation digest journal) or stay
