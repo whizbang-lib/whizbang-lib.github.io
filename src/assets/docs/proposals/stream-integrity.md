@@ -221,6 +221,19 @@ buckets from the store and alarms on drift between the digest table and reality.
   traffic* — the checkpoint phase owns their window); each stream's comparison floor is the
   origin's close/archival point, so closing-the-books truncation never reads as loss.
 
+**Message economics (chatter scales with divergence, not data).** Per (consumer, origin) pair per
+audit cycle, the healthy path is **two messages**: one manifest request, one sparse top-level
+response (per-(tenant, type) digests, ~60 bytes per non-empty bucket; claim-check offload past the
+size threshold). The consumer diffs locally against its own digest table — a match ends the cycle.
+Origins serve manifests from the maintained digest table (a rollup `SELECT`, never a store scan)
+and may cache the watermarked answer per cycle for multi-consumer fan-in. Drill-down is **one
+batched round-trip per level, never per bucket**: all mismatched (tenant, type) buckets in one
+stream-level exchange, all mismatched streams in one id-level exchange — so even a messy
+divergence costs ~6–8 control messages plus the repair payload itself. The steady-state hum
+belongs to Phase B's checkpoints (one doorbell-sized ephemeral event per origin per interval),
+tunable as emit-on-publish with a slow max-idle heartbeat — never fully silent, because
+checkpoint absence is the transport-liveness alarm.
+
 ### Phase L — local perspective-coverage audit
 
 Entirely local, no manifest exchange: verify per (stream, perspective) that cursor coverage reaches
