@@ -139,6 +139,20 @@ same topics as the original publish; every consumer sees them.
   path replays the stream from its snapshot/anchor with the now-complete event set. Late history
   folds in correctly because the pipeline already knows what late history means.
 
+**Re-delivery rides composites.** A repair set is "many events for one stream" — the composite
+decision-table row, with its measured bulk-transport win. The redelivery pump bundles each
+stream's ordered repair slice into a framework `RedeliveryComposite` (`Independent` atomicity —
+one poison inner event must not dead-letter a stream's whole repair; the next cycle re-detects any
+remainder) and publishes it **wire-only** (the origin already holds these events; no local
+re-processing). Inner events are the original envelopes — original ids, original continuity
+sequences — so identity and gap-tracking are preserved; the `redelivery` marker rides the
+composite and its fanout children. Ordering by stream version makes damaged streams append-only
+composites and wholly-missing streams (bootstrap) naturally init-first. `MaxInnerEventsAllowed`
+and the rate caps double as the chunker. One honest note: repair thereby uses the same fan-out
+machinery whose (storage-defect-induced) failure motivated this proposal — acceptable because
+**repair traffic is itself integrity-checked**: re-delivered events carry original sequences, so
+a dropped repair re-alarms at the next checkpoint instead of silently "completing."
+
 A request/response wrapper (`RequestRedeliveryCommand` on the wire, origin-routed) lets any
 consumer ask an origin for re-delivery without out-of-band coordination.
 
