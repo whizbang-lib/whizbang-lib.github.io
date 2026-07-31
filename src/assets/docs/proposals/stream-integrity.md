@@ -409,6 +409,16 @@ as: caps always on, auto-repair never default, every repair loudly attributed.
    :::
 2. **B** — per-type sequence stamping + checkpoint signal + consumer gap tracker (report-only), then
    the auto-repair hookup behind the ladder.
+
+   :::new
+   **Phase B is built** (per the amended windowed-count design above): re-delivery bundles carry
+   original origin identity (B0); the origin publishes `IntegrityCheckpoint` windows through a
+   multi-instance-safe watermark advance, empty windows included as the liveness beat (B1); the
+   consumer verifies windowed receipt counts with two-cycle confirmation, reports
+   `IntegrityGapDetected`, and — at `AutoRepairCapped` — sends the scoped, directed, wire-only
+   `RequestRedeliveryCommand` back to the origin, storm-capped per checkpoint (B2–B4). Checkpoints
+   and gap detection default ON; repair defaults to `ReportOnly`.
+   :::
 3. **S** — reconciler consumption-set diff + birth lineage + startup backfill orchestration.
 4. **A1a** — digest table + emit-chain batch maintenance + deletion subtraction + recompute
    self-verification (SQL-first, both Postgres providers).
