@@ -153,24 +153,39 @@ machinery whose (storage-defect-induced) failure motivated this proposal — acc
 **repair traffic is itself integrity-checked**: re-delivered events carry original sequences, so
 a dropped repair re-alarms at the next checkpoint instead of silently "completing."
 
-**Targeted re-delivery.** Repair sets are computed per (consumer, origin) pair, so the traffic is
-inherently addressed to one service — a `redelivery-target` transport property (the *logical
-service identity* that names the target's subscription, never an instance id) makes the address
-explicit. Non-target consumers discard at the receive seam before deserialization or fan-out
+**Directed messages (`target`) — a general capability this feature consumes twice.** Repair sets
+are computed per (consumer, origin) pair, so repair traffic is inherently addressed to one
+service; rather than a repair-branded header, Whizbang gains a first-class **`target`** address —
+the *logical service identity* that names the target's subscription (never an instance id) —
+mapped to the transport's **native `To`/`ReplyTo`** properties where they exist (AMQP bare-message
+`to`; Service Bus `To` with SQL-filterable rules) and carried as portable envelope metadata
+elsewhere. Non-target consumers discard at the receive seam before deserialization or fan-out
 (the same boundary discipline as unsubscribed-message discard, one property compare); transports
-with native subscription filtering (e.g. `target IS NULL OR target = @me` rules, wired through the
+with native filtering (`target IS NULL OR target = @me`, wired through the
 infrastructure-provisioner seam and advertised via transport capabilities) filter broker-side so
-non-targets never receive the message at all. An **absent** target remains meaningful: broadcast
-re-delivery for operator-initiated origin-wide repairs. A mis-targeted repair is benign — the
-service that needed it discards it, the gap persists, and the next checkpoint re-alarms.
-*Considered and rejected:* opportunistic acceptance by non-targets that coincidentally share the
-gap — it reinstates the broadcast cost for everyone to serve a rare coincidence that the
-coincident consumer's own detection loop repairs anyway; strict discard keeps the cost model
-predictable.
+non-targets never receive the message at all. An **absent** target means broadcast, as today.
+
+The defining semantic rule — which is what keeps targeting coherent with the rest of this
+proposal: **a targeted message is point-to-point by definition and therefore outside the
+broadcast-integrity universe.** It never increments shared continuity sequences and never enters
+digests; its delivery assurance comes from its own loop (re-delivery is self-checking via
+re-alarm; request/response has a waiting requester). Without this rule, a targeted message would
+punch a permanent false gap into every non-target's continuity tracker. Guidance (a future
+analyzer nudge, not a prohibition): **facts broadcast — direction is for control-plane, repair,
+and response traffic**; targeting ordinary domain events undermines "events are facts anyone can
+consume."
+
+Within this feature: re-delivery composites carry `target` = the damaged consumer (a mis-targeted
+repair is benign — the needing service discards, the gap persists, the next checkpoint
+re-alarms); **manifest responses** carry `target` = the requester (sparing every other service
+even the relevance-discard); Phase S backfill targets the expanding consumer. *Considered and
+rejected:* opportunistic acceptance by non-targets that coincidentally share a gap — it reinstates
+the broadcast cost for everyone to serve a rare coincidence that the coincident consumer's own
+detection loop repairs anyway; strict discard keeps the cost model predictable.
 
 A request/response wrapper (`RequestRedeliveryCommand` on the wire, origin-routed) lets any
 consumer ask an origin for re-delivery without out-of-band coordination — the request carries the
-requester's service identity, which becomes the re-delivery target.
+requester's service identity (`reply-to`), which becomes the response and re-delivery `target`.
 
 ### Phase B — continuity checkpoints (fast drop detection)
 
