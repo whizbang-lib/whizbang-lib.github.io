@@ -355,6 +355,18 @@ disabled, mirroring the detect-by-default / act-by-opt-in convention — except 
 defaults on too, because its action is additive and idempotent (delivering history a service has
 declared it needs).
 
+:::updated
+**Startup audit (as built): the deep audit ALSO runs at startup by default.** The original
+interval-first scheduling (first audit a full interval after boot, to avoid deploy-time audit
+storms) predates A1c — with the type-level exchange an audit costs O(types) on the wire, so the
+storm rationale no longer holds. `AuditOnStartup` (default true) fires the first audit after a
+30-second floor plus a random splay of up to `StartupAuditMaxJitterSeconds` (default 300), so a
+fleet deploy's audits de-synchronize; subsequent cycles follow `AuditIntervalMinutes`. The
+consequence that motivated the change: historical divergence (a consumer that drifted BEFORE the
+current boot — e.g. a read model missing events from an origin) now heals minutes after a deploy
+instead of a day later. Opting out restores interval-first.
+:::
+
 **Repair is a ladder, not a reflex.** `ReportOnly` is the default release posture: typed integrity
 events + metrics + a health signal, no writes. `AutoRepairCapped` opts into scoped re-delivery with
 hard rate caps and a dry-run mode that logs the exact repair set without sending. The industry
