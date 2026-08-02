@@ -227,6 +227,23 @@ sequence) for the types they subscribe to, and compare.
 Ephemeral types are **included** here by default — for a self-destructing event the checkpoint
 window is the only integrity window there is (see *Ephemeral and temporal traffic*).
 
+:::updated
+**Design amendment (live-validation result) — checkpoints ride the origin's own event topics.**
+The first live deployment on a domain-ownership transport topology (per-namespace topics,
+subscriptions generated from the compile-time registry) exposed a delivery hole: publishing the
+checkpoint through the normal dispatcher routes it to the *control-plane namespace topic*, and no
+consumer ever subscribes there — the integrity receptors are **runtime-registered** framework
+receptors, invisible to subscription generation, so the broker silently dropped every checkpoint.
+Origin tracking never populated, and the deep audit (whose origin set is the checkpoint tracker)
+was permanently inert. The checkpoint publisher therefore publishes **directly through the
+transport to the DISTINCT topics of the origin's own audited event types** — the current window's
+types unioned with the historically-emitted own-lane digest types, so quiet periods still
+heartbeat every covered topic — resolved with the production outbox routing strategy. Consumers
+receive checkpoints on exactly the topics they already subscribe to for the origin's events; the
+receive-side receptor ignores the origin's own self-delivered copy. Hosts without transport
+infrastructure (in-memory) keep the dispatcher publish as the fallback.
+:::
+
 What it cannot see: loss *after* successful receipt (case 2) and anything historical. That is the
 deep audit's job.
 
