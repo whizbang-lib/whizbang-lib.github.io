@@ -1,8 +1,11 @@
 ---
-title: Stream Integrity (Cross-Service Anti-Entropy & Repair)
-category: Architecture & Design
-order: 28
-tags: stream-integrity, anti-entropy, re-delivery, backfill, digest, manifest, continuity, checkpoint, repair, cross-service, bootstrap
+title: Stream Integrity
+pageType: guide
+version: 1.0.0
+category: Resilience
+order: 4
+description: Cross-service anti-entropy — continuity checkpoints, digest audits, and idempotent re-delivery repair, self-healing by default
+tags: 'stream-integrity, anti-entropy, re-delivery, backfill, digest, manifest, continuity, checkpoint, repair, cross-service, bootstrap'
 ---
 
 # Stream Integrity (Cross-Service Anti-Entropy & Repair)
@@ -20,9 +23,11 @@ fan-out keyed on). The origin's store was complete; the consumer's copy was miss
 events; nothing errored anywhere. The gap surfaced **weeks later** when a person noticed two UI
 counts disagreeing — and the only repair available was bespoke, app-level re-ingestion.
 
-This proposal makes stream integrity a **first-class, self-healing framework capability**:
-detect divergence in bounded time, name it precisely, and repair it idempotently — the same
-philosophy the migration-ledger redefinition closure applies to schema, applied to data.
+Stream integrity is a **first-class, self-healing framework capability**: detect divergence in
+bounded time, name it precisely, and repair it idempotently — the same philosophy the
+migration-ledger redefinition closure applies to schema, applied to data. It is ON by default,
+with automatic capped repair (`AutoRepairCapped`) and a `ReportOnly` opt-down that doubles as a
+dry run.
 
 ---
 
@@ -400,14 +405,30 @@ are continuous (default interval 60s). Everything is standard options-pattern co
 
 ```csharp
 services.Configure<StreamIntegrityOptions>(o => {
-  o.Enabled = true;                          // master switch — ON by default
-  o.ReconcileOnStartup = true;               // Phase S + registration checks at boot — ON by default
-  o.BackfillOnSubscriptionGrowth = true;     // Phase S action (detection is always recorded)
-  o.CheckpointInterval = TimeSpan.FromSeconds(60);
-  o.DeepAuditSchedule = "0 3 * * *";         // daily, idle-preferred via pre-fire hook
-  o.DeepAuditForceAfter = TimeSpan.FromDays(7);
-  o.RepairMode = RepairMode.ReportOnly;      // ladder: ReportOnly → AutoRepairCapped → (dry-run available)
-  o.MaxRedeliveryEventsPerCycle = 50_000;    // storm caps, always enforced
+  // Phase B — continuity checkpoints (fast drop detection)
+  o.CheckpointsEnabled = true;               // ON by default
+  o.CheckpointIntervalSeconds = 60;
+  o.GapDetectionEnabled = true;
+
+  // Phases A + L — the scheduled deep audit
+  o.AuditEnabled = true;                     // ON by default
+  o.AuditOnStartup = true;                   // first audit ~30s + jitter after boot
+  o.StartupAuditMaxJitterSeconds = 300;      // de-synchronizes a fleet rollout
+  o.AuditIntervalMinutes = 1440;             // daily
+  o.AuditSettleWindowMinutes = 60;           // in-flight deliveries are not gaps
+  o.FullSweepEveryNthAudit = 7;              // trust-but-verify digest sweep (weekly at daily cadence)
+
+  // Repair posture + storm caps (always enforced)
+  o.RepairMode = IntegrityRepairMode.AutoRepairCapped;  // ladder: ReportOnly is the opt-down/dry-run
+  o.MaxAutoRepairRequestsPerCheckpoint = 10;
+  o.MaxAutoRepairRequestsPerAudit = 25;
+  o.MaxAutoRebuildsPerAudit = 5;
+  o.MaxCoverageGapReportsPerAudit = 100;     // both the query and the report loop are bounded
+  o.MaxDrillDownTypesPerAudit = 10;
+  o.MaxDigestsPerManifest = 500;
+
+  // Phase S — subscription growth
+  o.BackfillOnSubscriptionGrowth = true;
 });
 ```
 
@@ -485,7 +506,15 @@ path touched audited rows and warrants investigation).
   (expected/unexpected), events re-delivered, repairs deferred by caps, audit duration, digest
   self-verification drift. A health source degrades on confirmed-unrepaired divergence.
 
-## Increments
+## Implementation status
+
+**Every phase is implemented, shipped, and live-validated** on a real multi-service deployment:
+continuity checkpoints ride the origin's own event topics with session keys, the incremental
+digest table feeds the hierarchical manifest exchange, local coverage gaps rebuild under storm
+caps, and repairs converge idempotently. The increments below are kept as the build record —
+each amendment callout marks where live validation refined the original sketch.
+
+### Build record
 
 1. **R1** — re-delivery primitive + request command + convergence integration test (drop-injection
    harness scenario end-to-end). Independently valuable on day one.
@@ -625,7 +654,15 @@ path touched audited rows and warrants investigation).
    auto-repair would have done); storm caps exist at every rung.
    :::
 
-## Open questions (for review)
+## Future work
+
+- **Persist the origin set?** The checkpoint origin tracker is deliberately in-memory (a restart
+  re-baselines), so after a fleet-wide deploy the FIRST audit usually runs only its local half —
+  the cross-service exchange starts on the next cycle, once checkpoints have re-announced the
+  origins. Persisting the origin set (a small table) would let the first audit exchange
+  immediately, trading a startup-freshness guarantee for it.
+
+### Original review questions
 
 1. Digest width: 64-bit XOR is cheapest; 128-bit additive is safer against accidental collision at
    large scale. Default 128?
