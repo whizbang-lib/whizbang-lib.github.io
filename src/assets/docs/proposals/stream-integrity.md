@@ -347,6 +347,51 @@ the stream head and that the perspective's birth does not postdate history it sh
 
 ## Scheduling, startup, and the repair policy ladder
 
+### How the phases unfold from a cold start
+
+A restarted service reconciles in **layers** — the local layer immediately, the cross-service
+layer as soon as it has *heard from* its origins. The origin set is deliberately in-memory
+(a restart re-baselines it), so the first audit after a fleet-wide deploy usually runs only the
+local half; the next cycle has a warm tracker and runs the full exchange.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant O as Origin service
+    participant B as Broker (origin's event topics)
+    participant C as Consumer service
+
+    Note over C: boot: runtime receptors register,<br/>workers start
+    Note over C: AUDIT #1 (t+30s…jitter):<br/>LOCAL half — coverage gaps →<br/>capped reports + rebuilds.<br/>Origin set still empty →<br/>cross-service half skipped.
+    loop every checkpoint interval (60s)
+        O->>B: IntegrityCheckpoint (session = origin's checkpoint stream)
+        B->>C: delivered on the topics C already subscribes to
+        C->>C: track origin + verify fresh-window counts (Phase B)
+    end
+    Note over C: AUDIT #2 (next cycle):<br/>origin tracker is warm
+    C->>O: RequestIntegrityManifest (directed, type-level)
+    O->>C: IntegrityManifest — per-type digests (chunked, one session)
+    C->>C: compare vs own received-lane digests
+    alt type digests disagree
+        C->>O: drill-down request (stream-level)
+        O->>C: stream-level manifest
+        C->>O: RequestRedeliveryCommand (exact missing window)
+        O->>B: re-publish missing events (per-stream sessions)
+        B->>C: conflict-skip idempotent landing → perspectives fold
+    else all types agree
+        Note over C: nothing lost — cycle complete
+    end
+```
+
+```mermaid
+timeline
+    title One consumer's first minutes after deploy
+    t+0s : boot — receptors registered, workers start
+    t+30s…5m : AUDIT #1 (jittered) — local gaps repaired; origin set empty
+    every 60s : checkpoints flow — origin tracker fills, fresh-window verify active
+    t+~15m : AUDIT #2 — manifest exchange per known origin → divergence → repair
+```
+
 **Scheduling dogfoods the temporal engine.** The deep audit and the local audit are recurring
 `ScheduleDefinition`s (default: daily). The **pre-fire hook** supplies the idle-or-force semantics
 requested: at fire time it checks work-pump depth and defers while the service is busy — but a
