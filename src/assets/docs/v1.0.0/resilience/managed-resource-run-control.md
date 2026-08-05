@@ -12,6 +12,25 @@ codeReferences:
   - src/Whizbang.Core/RunControl/WhizbangLifecycleCoordinator.cs
   - src/Whizbang.Core/RunControl/WhizbangLifecycleState.cs
   - src/Whizbang.Core/RunControl/IWhizbangKillswitch.cs
+  - src/Whizbang.Core/RunControl/IWhizbangLifecycleState.cs
+  - src/Whizbang.Core/RunControl/RunPermitControl.cs
+  - src/Whizbang.Core/RunControl/WhizbangRunPermit.cs
+  - src/Whizbang.Core/RunControl/RunState.cs
+  - src/Whizbang.Core/RunControl/WhizbangLifecycleOptions.cs
+  - src/Whizbang.Core/RunControl/LifecycleAckTimeoutException.cs
+  - src/Whizbang.Core/RunControl/LifecyclePhaseWorker.cs
+  - src/Whizbang.Core/RunControl/WhizbangRunControlServiceCollectionExtensions.cs
+testReferences:
+  - tests/Whizbang.Core.Tests/RunControl/LifecyclePhaseTests.cs
+  - tests/Whizbang.Core.Tests/RunControl/WhizbangLifecycleCoordinatorTests.cs
+  - tests/Whizbang.Core.Tests/RunControl/WhizbangLifecycleStateTests.cs
+  - tests/Whizbang.Core.Tests/RunControl/WhizbangRunPermitTests.cs
+  - tests/Whizbang.Core.Tests/RunControl/WhizbangKillswitchTests.cs
+  - tests/Whizbang.Core.Tests/RunControl/WhizbangRunControlDiTests.cs
+  - tests/Whizbang.Core.Tests/RunControl/LifecyclePhaseWorkerTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/WhizbangDatabaseInitializerServiceTests.cs
+verifiedAgainstCommit: a64ba9a0
+verifiedDate: 2026-08-04
 ---
 
 # Managed-Resource Run-Control

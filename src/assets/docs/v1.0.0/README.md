@@ -1,273 +1,57 @@
 ---
-title: Version 0.1.0 - Foundation Release
-category: Implementation
+title: Whizbang Documentation
+pageType: overview
+category: Overview
 order: 1
+version: 1.0.0
 description: >-
-  The foundation release of Whizbang establishing all core components with
-  comprehensive testing and IDE support
-tags: 'v0.1.0, foundation, implementation'
+  Landing page for the Whizbang v1.0.0 documentation set — core components,
+  getting started, operations, and testing
+tags: 'overview, documentation, components, getting-started'
+verifiedAgainstCommit: a64ba9a0
+verifiedDate: 2026-08-04
 ---
 
-# Version 1.0.0 - Foundation Release
+# Whizbang Documentation
 
-## Overview
+Whizbang is a .NET event-sourcing and messaging framework built around
+source-generated (zero-reflection) wiring: commands flow through the
+**Dispatcher** to **Receptors**, events are recorded in the **Ledger** and
+projected by **Perspectives**, and **Lenses** answer queries — with storage
+**Drivers** and message **Transports** as pluggable infrastructure.
 
-Version 1.0.0 is the foundation release of Whizbang, establishing a **complete skeleton** of all major components with in-memory implementations. This version prioritizes breadth over depth, ensuring every component exists and works together from day one.
+New here? Start with **[Installation](./getting-started/installation.md)**
+and the **[Quick Start](./getting-started/quick-start.md)**.
 
-## Release Goals
+## Core Components
 
-### Primary Goals
-1. **Complete Component Set**: All 8 core components implemented and working
-2. **Zero Reflection**: Everything wired via source generators
-3. **IDE Integration**: Full developer experience from day one
-4. **Testing Foundation**: Comprehensive testing with TUnit and Bogus
-5. **In-Memory Everything**: Fast development and testing cycle
-
-### Success Criteria
-- ✅ All components have basic working implementations
-- ✅ Source generators discover and wire all handlers
-- ✅ IDE tools provide navigation and traceability
-- ✅ Testing framework with scenario generation
-- ✅ 100% test coverage of public APIs
-- ✅ < 1ms in-memory operation performance
-
-## What's Included
-
-### Core Components
 - **[Dispatcher](./fundamentals/dispatcher/dispatcher.md)** - Message routing and coordination
 - **[Receptors](./fundamentals/receptors/receptors.md)** - Command receivers (stateless)
-- **[Perspectives](./fundamentals/perspectives/perspectives.md)** - Event handlers
+- **[Perspectives](./fundamentals/perspectives/perspectives.md)** - Event projection into read models
 - **[Lenses](./fundamentals/lenses/lenses.md)** - Query interfaces
 - **[Policy Engine](./operations/infrastructure/policy-engine.md)** - Cross-cutting concerns
-- **[Ledger](./fundamentals/events/ledger.md)** - Event store interface
+- **[Ledger](./fundamentals/events/ledger.md)** - Event store
 - **[Drivers](./data/drivers.md)** - Storage abstraction
 - **[Transports](./messaging/transports/transports.md)** - Message broker abstraction
 
-### Developer Experience
-- **Source Generators** - Zero-reflection handler discovery
-- **Analyzers** - Compile-time validation
-- **IDE Tools** - CodeLens-style references
-- **Traceability** - Message flow visualization
-- **Debugging** - Time-travel debugging foundation
+## Going Deeper
 
-### Testing Foundation
-- **Testing Strategy** - Overall testing approach
-- **TUnit Integration** - Modern test framework
-- **Bogus Scenarios** - Realistic data generation
-- **Behavior Specs** - BDD-style testing
-- **Test Doubles** - In-memory mocking
+- **[Learn](./learn/tutorial/tutorial-overview.md)** — the multi-service tutorial, plus
+  worked examples: [event sourcing & CQRS](./learn/examples/event-sourcing-cqrs.md),
+  [microservices orchestration](./learn/examples/microservices-orchestration.md),
+  [multi-tenant SaaS](./learn/examples/multi-tenant-saas.md), and
+  [real-time analytics](./learn/examples/real-time-analytics.md)
+- **[Testing](./operations/testing/testing-receptors.md)** — receptor testing and
+  [lifecycle synchronization](./operations/testing/lifecycle-synchronization.md)
+- **[Resilience](./resilience/stream-integrity.md)** — stream integrity,
+  [managed-resource health](./resilience/managed-resource-health.md), and
+  [database-availability middleware](./resilience/database-availability-middleware.md)
+- **[Extending](./extending/source-generators/receptor-discovery.md)** — source
+  generators, analyzers, attributes, and extension points
+- **[Migration Guide](./migration-guide/README.md)** — moving from
+  Marten/Wolverine and other frameworks
 
-## Quick Start
+## Support
 
-### Installation
-
-```bash{title="Installation" description="Installation" category="Usage" difficulty="BEGINNER" tags=["README.md", "Bash", "Installation"]}
-dotnet add package Whizbang.Core --version 1.0.0
-```
-
-### Basic Usage
-
-```csharp{title="Basic Usage" description="Basic Usage" category="Usage" difficulty="ADVANCED" tags=["README.md", "C#"]}
-using Whizbang;
-
-// 1. Define a command
-public record CreateOrder(Guid CustomerId, List<OrderItem> Items);
-
-// 2. Define a receptor
-[WhizbangHandler]
-public class OrderReceptor : IReceptor<CreateOrder, OrderCreated> {
-    public async Task<OrderCreated> Receive(CreateOrder cmd) {
-        // Validation and business logic
-        if (cmd.Items.Count == 0) {
-            throw new InvalidOperationException("Order must have items");
-        }
-        
-        // Emit event
-        return new OrderCreated(Guid.NewGuid(), cmd.CustomerId, cmd.Items);
-    }
-}
-
-// 3. Define perspectives
-[WhizbangHandler]
-public class OrderPerspective : IPerspectiveOf<OrderCreated> {
-    private readonly Dictionary<Guid, Order> _orders = new();
-    
-    public Task Update(OrderCreated e) {
-        _orders[e.OrderId] = new Order {
-            Id = e.OrderId,
-            CustomerId = e.CustomerId,
-            Items = e.Items
-        };
-        return Task.CompletedTask;
-    }
-}
-
-// 4. Define a lens
-public interface IOrderLens : ILens {
-    Order Focus(Guid orderId);
-    IEnumerable<Order> ViewByCustomer(Guid customerId);
-}
-
-[WhizbangLens]
-public class OrderLens : IOrderLens {
-    private readonly Dictionary<Guid, Order> _orders;
-    
-    public Order Focus(Guid orderId) => _orders[orderId];
-    
-    public IEnumerable<Order> ViewByCustomer(Guid customerId) =>
-        _orders.Values.Where(o => o.CustomerId == customerId);
-}
-
-// 5. Configure and use
-var builder = WebApplication.CreateBuilder(args);
-
-builder.Services.AddWhizbang(options => {
-    options.RegisterGeneratedHandlers();  // Source-generated registration
-    options.UseInMemory();                // In-memory implementations
-    options.EnableTraceability();         // IDE tools and debugging
-});
-
-var app = builder.Build();
-
-// 6. Use via dispatcher
-app.MapPost("/orders", async (CreateOrder cmd, IDispatcher dispatcher) => {
-    var result = await dispatcher.Send(cmd);
-    return Results.Ok(result);
-});
-
-app.MapGet("/orders/{id}", (Guid id, IDispatcher dispatcher) => {
-    var lens = dispatcher.GetLens<IOrderLens>();
-    var order = lens.Focus(id);
-    return Results.Ok(order);
-});
-```
-
-## IDE Features
-
-### CodeLens References
-```csharp{title="CodeLens References" description="CodeLens References" category="Usage" difficulty="BEGINNER" tags=["README.md", "C#", "CodeLens", "References"]}
-// IDE shows: "2 handlers | 1 perspective | Last: 50ms ago"
-public record OrderCreated(Guid OrderId, Guid CustomerId);  
-
-// IDE shows: "Handles: CreateOrder | Publishes: OrderCreated"
-public class OrderReceptor : IReceptor<CreateOrder, OrderCreated> { }
-```
-
-### Traceability Overlay
-- See message flow inline in the editor
-- Visualize command → receptor → event → perspective chains
-- Click to navigate between components
-- View execution timings and counts
-
-### Analyzer Warnings
-```csharp{title="Analyzer Warnings" description="Analyzer Warnings" category="Usage" difficulty="BEGINNER" tags=["README.md", "C#", "Analyzer", "Warnings"]}
-// Warning WB0001: Command 'CancelOrder' has no handler
-public record CancelOrder(Guid OrderId);  // Squiggly line here
-
-// Quick Fix: Generate handler for CancelOrder (Ctrl+.)
-```
-
-## Testing Example
-
-```csharp{title="Testing Example" description="Testing Example" category="Usage" difficulty="INTERMEDIATE" tags=["README.md", "C#", "Testing"]}
-[TestClass]
-public class OrderTests : WhizbangTestBase {
-    [Test]
-    [MethodDataSource(nameof(OrderScenarios))]
-    public async Task CreateOrder_ShouldEmitOrderCreated(OrderScenario scenario) {
-        // Arrange
-        var dispatcher = CreateDispatcher();
-        
-        // Act
-        var result = await dispatcher.Send(scenario.Command);
-        
-        // Assert
-        await Verify.Event<OrderCreated>()
-            .WithCustomerId(scenario.CustomerId)
-            .WasPublished();
-    }
-    
-    public static IEnumerable<OrderScenario> OrderScenarios() {
-        var faker = new OrderScenarioFaker();
-        yield return faker.Generate();  // Happy path
-        yield return faker.WithNoItems().Generate();  // Error case
-        yield return faker.WithManyItems(100).Generate();  // Stress case
-    }
-}
-```
-
-## Performance Characteristics
-
-### In-Memory Performance
-| Operation | Target | Actual |
-|-----------|--------|--------|
-| Message Dispatch | < 1μs | TBD |
-| Handler Invocation | < 100ns | TBD |
-| Event Publishing | < 1μs | TBD |
-| Lens Query | < 1ms | TBD |
-| Policy Application | < 10μs | TBD |
-
-### Memory Allocation
-- Zero allocations in dispatch hot path
-- Pooled objects for messages
-- Minimal GC pressure
-
-## Migration Path
-
-### To v0.2.0
-Version 0.2.0 enhances existing components without breaking changes:
-- Receptors gain validation attributes
-- Perspectives support batch updates
-- Lenses add pagination
-- Policies become composable
-
-See v0.2.0 Migration Guide
-
-## Known Limitations
-
-As a foundation release, v1.0.0 has intentional limitations:
-- **In-Memory Only**: No persistent storage yet
-- **Stateless Receptors**: No event sourcing support
-- **Basic Policies**: Limited to Retry, Timeout, Cache, CircuitBreaker
-- **Single Node**: No distributed messaging
-- **No Sagas**: Long-running processes not supported
-
-These limitations are addressed in subsequent versions while maintaining backward compatibility.
-
-## Examples
-
-### Complete Examples
-- **Basic Receptor** - Simple command handling
-- **Policy Usage** - Applying policies to handlers
-- **Test Scenario** - Testing with Bogus
-
-## Component Documentation
-
-### Core Components
-- [Dispatcher](./fundamentals/dispatcher/dispatcher.md)
-- [Receptors](./fundamentals/receptors/receptors.md)
-- [Perspectives](./fundamentals/perspectives/perspectives.md)
-- [Lenses](./fundamentals/lenses/lenses.md)
-- [Policy Engine](./operations/infrastructure/policy-engine.md)
-- [Ledger](./fundamentals/events/ledger.md)
-- [Drivers](./data/drivers.md)
-- [Transports](./messaging/transports/transports.md)
-
-### Developer Experience
-- Source Generators
-- Analyzers
-- IDE Tools
-- Traceability
-
-### Testing
-- Testing Foundation
-- TUnit Integration
-- Bogus Scenarios
-- Behavior Specs
-
-## Feedback
-
-This is the foundation release - your feedback shapes the future:
-- Report issues: https://github.com/whizbang-lib/whizbang/issues
-- Join discussions: https://github.com/whizbang-lib/whizbang/discussions
-- Contribute: See Contributing Guide
+- **Issues**: [github.com/whizbang-lib/whizbang/issues](https://github.com/whizbang-lib/whizbang/issues)
+- **Discussions**: [github.com/whizbang-lib/whizbang/discussions](https://github.com/whizbang-lib/whizbang/discussions)

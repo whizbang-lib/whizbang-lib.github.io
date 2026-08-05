@@ -15,6 +15,44 @@ codeReferences:
   - src/Whizbang.Core/Transports/ControlPlaneDestination.cs
   - src/Whizbang.Data.EFCore.Postgres/IntegrityCheckpointReceptor.cs
   - src/Whizbang.Data.EFCore.Postgres/IntegrityManifestReceptors.cs
+  - src/Whizbang.Core/Messaging/Redelivery.cs
+  - src/Whizbang.Core/Messaging/RedeliveryComposite.cs
+  - src/Whizbang.Core/Messaging/RedeliveryPump.cs
+  - src/Whizbang.Core/Workers/SubscriptionExpansionWorker.cs
+  - src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs
+  - src/Whizbang.Data.EFCore.Postgres/RedeliveryRequestReceptor.cs
+  - src/Whizbang.Core/Messaging/IWorkCoordinator.cs
+  - src/Whizbang.Data.Postgres/Migrations/087_StreamDigests.sql
+  - src/Whizbang.Data.Postgres/Migrations/086_ConsumedTypeRegistry.sql
+  - src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs
+  - src/Whizbang.Core/Workers/TransportConsumerWorker.cs
+  - src/Whizbang.Data.EFCore.Postgres/IntegrityCheckpointReceptorRegistrar.cs
+testReferences:
+  - tests/Whizbang.Core.Tests/Workers/IntegrityCheckpointWorkerTests.cs
+  - tests/Whizbang.Core.Tests/Workers/IntegrityAuditWorkerTests.cs
+  - tests/Whizbang.Core.Tests/Workers/SubscriptionExpansionWorkerTests.cs
+  - tests/Whizbang.Core.Tests/Messaging/IntegrityGapTrackerTests.cs
+  - tests/Whizbang.Core.Tests/Messaging/IntegrityCheckpointWireSerializationTests.cs
+  - tests/Whizbang.Core.Tests/Messaging/StreamIntegrityOptionsDefaultsTests.cs
+  - tests/Whizbang.Core.Tests/Messaging/RedeliveryPumpTests.cs
+  - tests/Whizbang.Core.Tests/Messaging/RedeliveryCompositeWireSerializationTests.cs
+  - tests/Whizbang.Core.Tests/Messaging/CompositeInboxFanoutTests.cs
+  - tests/Whizbang.Core.Tests/MultiService/StreamIntegrityRedeliveryE2ETests.cs
+  - tests/Whizbang.Core.Tests/MultiService/DirectedMessageE2ETests.cs
+  - tests/Whizbang.Core.Tests/Workers/TransportConsumerWorkerDirectedTargetTests.cs
+  - tests/Whizbang.Core.Tests/Observability/StreamIntegrityMetricsTests.cs
+  - tests/Whizbang.Core.Tests/Security/ControlPlaneSecurityExemptionTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityCheckpointAdvanceTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityCheckpointReceptorTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityManifestReceptorTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/RedeliveryRequestReceptorTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/SelectRedeliveryEventsTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/StreamDigestTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/StreamDigestTableSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/ConsumedTypeRegistryTests.cs
+  - tests/Whizbang.Transports.AzureServiceBus.Integration.Tests/ControlPlaneSessionIntegrationTests.cs
+verifiedAgainstCommit: a64ba9a0
+verifiedDate: 2026-08-04
 ---
 
 # Stream Integrity (Cross-Service Anti-Entropy & Repair)
@@ -101,7 +139,8 @@ delivery is detected within a checkpoint interval — inside the rewind **grace 
 origin still retains the body — so repair is **grace-bounded best-effort**: standard re-delivery
 while the origin's copy lives, and on a confirmed gap the origin may place a **destruction hold**
 (the existing destruction-hold mechanism) on the gap's events until re-delivery completes, so
-prompt detection actively extends repairability instead of racing the reaper. Once genuinely
+prompt detection actively extends repairability instead of racing the reaper *(design intent —
+the hold mechanism exists, but no integrity code path invokes it as of a64ba9a)*. Once genuinely
 reaped, the gap is reported as *accepted ephemeral loss* — the same acceptance the out-of-grace
 rewind already makes. The **deep audit excludes ephemeral by mode** — a tautology, not a gap:
 digests cannot converge across sovereign purge lifecycles, and ephemeral has no deep history to
@@ -118,14 +157,16 @@ and re-delivery repairs them. Refinements:
 - **At-most-once occurrences are detect-and-report only** — re-delivery would violate the exact
   guarantee they were declared for. The re-delivery selection filters on the occurrence's
   `deliveryGuarantee` metadata.
-- **Old occurrence gaps are report-only past a window** (`RepairOccurrenceGapsNoOlderThan`,
-  default = the checkpoint confirmation horizon): whether a *late* fire is wanted is per-schedule
-  taste already expressed by the temporal engine's misfire policy, and integrity does not override
-  it.
-- **Backfill never manufactures occurrence history for a subscription that did not exist when the
-  occurrences fired** (`IncludeScheduleOccurrencesInBackfill = false`, per-type opt-in). The
-  governing line: **repair delivers what a live subscriber missed; backfill builds state — and
-  never re-fires triggers.**
+- **Old occurrence gaps are report-only past a window** *(design intent — the config knob for
+  this window is not yet built as of a64ba9a; the intended default is the checkpoint confirmation
+  horizon)*: whether a *late* fire is wanted is per-schedule taste already expressed by the
+  temporal engine's misfire policy, and integrity does not override it.
+- **Backfill builds state and never re-fires triggers** — as built, this rides the request, not a
+  per-type key: backfill requests set `RequestRedeliveryCommand.StateOnly`, so backfilled
+  occurrences are event-stored and projected without firing trigger receptors, and the selection
+  itself excludes at-most-once occurrences outright. A per-type opt-in for including occurrence
+  history in backfill is design intent, not yet built. The governing line: **repair delivers what
+  a live subscriber missed; backfill builds state — and never re-fires triggers.**
 
 Schedule **definitions** (`wh_schedules`) are service-local durable configuration, outside stream
 integrity entirely: missed fires at the origin are governed solely by the temporal engine's
@@ -139,10 +180,13 @@ persisted); composite *inner* events are ordinary facts and fully in scope.
 
 ### Phase R1 — the re-delivery primitive (everything else depends on it)
 
-`IWorkCoordinator.RedeliverAsync(RedeliveryRequest)` on the **origin**: select persisted events by
-(tenant scope, event types, stream ids, commit-sequence range), re-enqueue them through the normal
-outbox → topic path, rate-capped (`MaxEventsPerCycle`, `MaxBatchesPerSecond`). The events go to the
-same topics as the original publish; every consumer sees them.
+`IWorkCoordinator.SelectRedeliveryEventsAsync(RedeliveryRequest)` on the **origin**: select
+persisted events by (tenant scope, event types, stream ids, commit-sequence range); the
+`RedeliveryPump` publishes the selection **wire-only, directly through `ITransport`** — no outbox
+row, no local dispatch (the origin already holds these events, so its own pipeline has nothing to
+do with them) — capped by `RedeliveryPumpOptions.MaxInnerEventsPerComposite` (default 500, the
+per-composite chunk bound) and `RedeliveryPumpOptions.MaxEventsPerRequest` (default 10,000, the
+hard per-request clamp). The events go to the same topics as the original publish.
 
 **Convergence needs no new consumer code** — it composes from delivery semantics that already exist:
 
@@ -159,10 +203,13 @@ stream's ordered repair slice into a framework `RedeliveryComposite` (`Independe
 one poison inner event must not dead-letter a stream's whole repair; the next cycle re-detects any
 remainder) and publishes it **wire-only** (the origin already holds these events; no local
 re-processing). Inner events are the original envelopes — original ids, original continuity
-sequences — so identity and gap-tracking are preserved; the `redelivery` marker rides the
-composite and its fanout children. Ordering by stream version makes damaged streams append-only
-composites and wholly-missing streams (bootstrap) naturally init-first. `MaxInnerEventsAllowed`
-and the rate caps double as the chunker. One honest note: repair thereby uses the same fan-out
+sequences, carried as `RedeliveryComposite.InnerEventIds` / `OriginServiceId` /
+`InnerCommitSequences` — so identity and gap-tracking are preserved; there is no dedicated
+`redelivery` marker — the directed `tgt` (and, for backfill, state-only `sto`) envelope markers
+ride the composite and its fanned-out children. Ordering by stream version makes damaged streams
+append-only composites and wholly-missing streams (bootstrap) naturally init-first.
+`MaxInnerEventsPerComposite` is the sender-side chunker; `CompositeEventBase.MaxInnerEventsAllowed`
+defends the receiver. One honest note: repair thereby uses the same fan-out
 machinery whose (storage-defect-induced) failure motivated this proposal — acceptable because
 **repair traffic is itself integrity-checked**: re-delivered events carry original sequences, so
 a dropped repair re-alarms at the next checkpoint instead of silently "completing."
@@ -171,13 +218,15 @@ a dropped repair re-alarms at the next checkpoint instead of silently "completin
 are computed per (consumer, origin) pair, so repair traffic is inherently addressed to one
 service; rather than a repair-branded header, Whizbang gains a first-class **`target`** address —
 the *logical service identity* that names the target's subscription (never an instance id) —
-mapped to the transport's **native `To`/`ReplyTo`** properties where they exist (AMQP bare-message
-`to`; Service Bus `To` with SQL-filterable rules) and carried as portable envelope metadata
-elsewhere. Non-target consumers discard at the receive seam before deserialization or fan-out
-(the same boundary discipline as unsubscribed-message discard, one property compare); transports
-with native filtering (`target IS NULL OR target = @me`, wired through the
-infrastructure-provisioner seam and advertised via transport capabilities) filter broker-side so
-non-targets never receive the message at all. An **absent** target means broadcast, as today.
+carried as portable envelope metadata (wire key `tgt`). As built, non-target consumers discard at
+the receive seam before deserialization or fan-out (the same boundary discipline as
+unsubscribed-message discard, one property compare) — exactly the R0 build record below. Mapping
+`target` to the transport's **native `To`/`ReplyTo`** properties where they exist (AMQP
+bare-message `to`; Service Bus `To` with SQL-filterable rules) and broker-side filtering
+(`target IS NULL OR target = @me`, wired through the infrastructure-provisioner seam and
+advertised via transport capabilities, so non-targets never receive the message at all) are
+design intent — not yet wired in any transport as of a64ba9a. An **absent** target means
+broadcast, as today.
 
 The defining semantic rule — which is what keeps targeting coherent with the rest of this
 proposal: **a targeted message is point-to-point by definition and therefore outside the
@@ -199,7 +248,8 @@ detection loop repairs anyway; strict discard keeps the cost model predictable.
 
 A request/response wrapper (`RequestRedeliveryCommand` on the wire, origin-routed) lets any
 consumer ask an origin for re-delivery without out-of-band coordination — the request carries the
-requester's service identity (`reply-to`), which becomes the response and re-delivery `target`.
+requester's service identity (`RequesterService`, which becomes the response and re-delivery
+`target`) and the reply `Topic` the bundles publish back on.
 
 ### Phase B — continuity checkpoints (fast drop detection)
 
@@ -255,7 +305,11 @@ types unioned with the historically-emitted own-lane digest types, so quiet peri
 heartbeat every covered topic — resolved with the production outbox routing strategy. Consumers
 receive checkpoints on exactly the topics they already subscribe to for the origin's events; the
 receive-side receptor ignores the origin's own self-delivered copy. Hosts without transport
-infrastructure (in-memory) keep the dispatcher publish as the fallback.
+infrastructure (in-memory) keep the dispatcher publish as the fallback. A companion fix from the
+same live validation: the receive-side discard gates initially dropped messages consumed only by
+these runtime-registered integrity receptors as "unsubscribed" — the
+`IReceptorRegistry.HasRuntimeConsumerFor` seam (commit a64ba9a, PR #412) teaches the discard
+gates to recognize runtime-registered receptors as consumers.
 :::
 
 What it cannot see: loss *after* successful receipt (case 2) and anything historical. That is the
@@ -265,15 +319,19 @@ deep audit's job.
 
 The startup type-definition reconciler already diffs each service's catalog against its persisted
 registration. It gains one comparison: **the consumed-type set**. When a deploy grows it (new
-perspective; perspective adds a type; first boot of a new consumer), the reconciler records the
-expansion (with the fingerprint lineage carrying the *birth* moment), requests re-delivery of the
-new types' history from their origins, and schedules the local rebuild that folds it into the new
-projection once delivery completes.
+perspective; perspective adds a type; first boot of a new consumer), the
+`SubscriptionExpansionWorker` records the expansion in the consumed-type registry and sends **one
+broadcast, state-only `RequestRedeliveryCommand`** for the new types' history. Delivered history
+folds into projections through the normal pipeline (state-only children are event-stored and
+projected); an explicit "schedule the local rebuild once delivery completes" step is design
+intent, not yet wired as of a64ba9a.
 
 This turns "we added a perspective over old events" and "we stood up a new consumer service" from
 runbook procedures into a deploy-time non-event. Configurable, **on by default**
 (`StreamIntegrityOptions.BackfillOnSubscriptionGrowth = true`); disabling leaves the expansion
-*recorded* so the audit reports it as pending rather than screaming divergence.
+*recorded* as Pending in the registry. (Surfacing that Pending state through the deep audit as
+"pending backfill" is design intent — as of a64ba9a the registry is read only by the startup
+worker itself.)
 
 :::updated
 **Design specifics (as built):**
@@ -290,8 +348,9 @@ runbook procedures into a deploy-time non-event. Configurable, **on by default**
   completion stages still fire — they are completion accounting, not domain triggers.
 - **First boot baselines**: an empty consumed-type registry records the whole catalog WITHOUT
   backfilling (nothing existed to miss). Only types appearing on a LATER boot are expansions.
-  The registry (`wh_consumed_types`) carries per-type backfill status — the audit surface for
-  "pending backfill" when the feature is disabled.
+  The registry (`wh_consumed_types`) carries per-type backfill status
+  (Baseline/Pending/Requested); today only the startup worker reads it — wiring it into the
+  deep audit as the "pending backfill" surface is not yet done as of a64ba9a.
 :::
 
 ### Phase A — digest manifests (the scheduled deep audit)
@@ -308,10 +367,13 @@ bucket's events. Properties that fit Whizbang's real lifecycle:
   digest.
 - Identity-only hashing survives crypto-shredding and serialization differences.
 
-Rollups: per (tenant, type) and per (tenant, stream) digests derive from the atomic buckets, giving
-a two/three-level drill-down — mismatch at type level → compare that type's stream digests →
-mismatched stream → exchange its event-id list (streams are short by design; a set-reconciliation
-encoding à la IBLT is a v2 optimization) → the difference IS the repair set.
+Rollups: per (tenant, type) digests derive from the atomic buckets, giving a two-level drill-down
+as built (`ManifestLevel` has exactly `Types` and `Streams`) — mismatch at type level → compare
+that type's stream digests → a mismatched stream goes straight to a stream-scoped re-delivery
+request, which converges by event-id identity. An id-level third step — exchanging the stream's
+event-id list so the set difference IS the repair set (streams are short by design; a
+set-reconciliation encoding à la IBLT as an optimization) — is a future refinement, not yet built
+as of a64ba9a.
 
 **Maintenance strategy.** Digests are maintained **incrementally, transactionally, at batch
 granularity** inside the existing emit chain: one digest upsert per distinct (tenant, type) in the
@@ -322,17 +384,22 @@ buckets from the store and alarms on drift between the digest table and reality.
 
 **Comparison protocol.**
 
-- Manifests are **watermarked**: "complete up to origin commit sequence ≤ N / older than T − grace",
-  so in-flight events never read as divergence. A mismatch alarms only after persisting across
-  **two consecutive cycles**.
+- Manifests settle **by time**, not by commit-sequence watermark: buckets updated inside
+  `AuditSettleWindowMinutes` (default 60) on either side are settle-skipped, so in-flight events
+  never read as divergence. (The original commit-sequence watermark — "complete up to origin
+  commit sequence ≤ N" — remains design intent; as built the audit reports a mismatch on the
+  first settled cycle, while two-cycle confirmation is Phase B's checkpoint discipline.)
 - Scope is **pair-relative and catalog-anchored**: the comparison covers the intersection of the
   origin's published types and the consumer's consumed types, referenced by type-definition ids
   from the fingerprint subsystem, so both sides provably compare the same universe even across
   deploys and reclassifications.
-- **Expected vs unexpected missing:** history older than a subscription's recorded birth (Phase S
-  lineage) is *pending-backfill* (informational, auto-resolvable) — not an integrity violation. An
-  audit that cries wolf on every deploy trains everyone to ignore it; this discriminator is what
-  keeps the alarms meaningful.
+- **Expected vs unexpected missing** *(design intent — not yet built as of a64ba9a)*: history
+  older than a subscription's recorded birth (Phase S lineage) would be *pending-backfill*
+  (informational, auto-resolvable) — not an integrity violation. An audit that cries wolf on every
+  deploy trains everyone to ignore it; this discriminator is what would keep the alarms
+  meaningful. As built, the audit compare takes no birth-lineage input (the registry's
+  `first_seen_at` is recorded but never read by the audit), so backfill-pending history reads the
+  same as any other divergence.
 - **Lifecycle floors:** ephemeral types are excluded by mode (see *Ephemeral and temporal
   traffic* — the checkpoint phase owns their window); each stream's comparison floor is the
   origin's close/archival point, so closing-the-books truncation never reads as loss.
@@ -342,10 +409,11 @@ audit cycle, the healthy path is **two messages**: one manifest request, one spa
 response (per-(tenant, type) digests, ~60 bytes per non-empty bucket; claim-check offload past the
 size threshold). The consumer diffs locally against its own digest table — a match ends the cycle.
 Origins serve manifests from the maintained digest table (a rollup `SELECT`, never a store scan)
-and may cache the watermarked answer per cycle for multi-consumer fan-in. Drill-down is **one
-batched round-trip per level, never per bucket**: all mismatched (tenant, type) buckets in one
-stream-level exchange, all mismatched streams in one id-level exchange — so even a messy
-divergence costs ~6–8 control messages plus the repair payload itself. The steady-state hum
+and may cache the answer per cycle for multi-consumer fan-in (not yet implemented). Drill-down is
+**one batched round-trip per level, never per bucket**: all mismatched (tenant, type) buckets in
+one stream-level exchange — a mismatched stream then goes straight to stream-scoped re-delivery
+(the id-level exchange is a future refinement) — so even a messy divergence costs a handful of
+control messages plus the repair payload itself. The steady-state hum
 belongs to Phase B's checkpoints (one doorbell-sized ephemeral event per origin per interval),
 tunable as emit-on-publish with a slow max-idle heartbeat — never fully silent, because
 checkpoint absence is the transport-liveness alarm.
@@ -403,13 +471,16 @@ timeline
     t+0s : boot — receptors registered, workers start
     t+30s…5m : AUDIT #1 (jittered) — local gaps repaired; origin set empty
     every 60s : checkpoints flow — origin tracker fills, fresh-window verify active
-    t+~15m : AUDIT #2 — manifest exchange per known origin → divergence → repair
+    t+~24h : AUDIT #2 (one AuditIntervalMinutes later — only the first cycle is jittered) — manifest exchange per known origin → divergence → repair
 ```
 
-**Scheduling dogfoods the temporal engine.** The deep audit and the local audit are recurring
-`ScheduleDefinition`s (default: daily). The **pre-fire hook** supplies the idle-or-force semantics
-requested: at fire time it checks work-pump depth and defers while the service is busy — but a
-configurable **grace deadline** (default: weekly) forces the run regardless. Continuity checkpoints
+**Scheduling (as built): a plain background loop.** The deep audit and the local audit run from
+the `IntegrityAuditWorker` — a `BackgroundService` whose first cycle waits a jittered startup
+window and whose subsequent cycles `Task.Delay` for `AuditIntervalMinutes` (default 1440 —
+daily). There is no work-pump-depth check and no grace deadline yet: dogfooding the temporal
+engine — recurring `ScheduleDefinition`s with a **pre-fire hook** supplying idle-or-force
+semantics (defer while busy, a configurable weekly **grace deadline** forcing the run
+regardless) — remains design intent, not yet wired as of a64ba9a. Continuity checkpoints
 are continuous (default interval 60s). Everything is standard options-pattern configuration:
 
 ```csharp{title="StreamIntegrityOptions" description="The shipped self-healing defaults and their storm caps" category="Configuration" difficulty="INTERMEDIATE" tags=["Resilience","StreamIntegrity"] tests=["StreamIntegrityOptionsDefaultsTests.Defaults_SelfHealingOutOfTheBoxAsync","StreamIntegrityOptionsDefaultsTests.Defaults_StormCapsBoundEveryRepairRungAsync"]}
@@ -429,6 +500,8 @@ services.Configure<StreamIntegrityOptions>(o => {
 
   // Repair posture + storm caps (always enforced)
   o.RepairMode = IntegrityRepairMode.AutoRepairCapped;  // ladder: ReportOnly is the opt-down/dry-run
+  o.RepairTopic = null;                      // topic repair requests publish to AND bundles return on
+                                             // (null = the consumer's first subscribed destination)
   o.MaxAutoRepairRequestsPerCheckpoint = 10;
   o.MaxAutoRepairRequestsPerAudit = 25;
   o.MaxAutoRebuildsPerAudit = 5;
@@ -459,11 +532,12 @@ current boot — e.g. a read model missing events from an origin) now heals minu
 instead of a day later. Opting out restores interval-first.
 :::
 
-**Repair is a ladder, not a reflex.** `ReportOnly` is the default release posture: typed integrity
-events + metrics + a health signal, no writes. `AutoRepairCapped` opts into scoped re-delivery with
-hard rate caps and a dry-run mode that logs the exact repair set without sending. The industry
+**Repair is a ladder, not a reflex.** The original proposal made `ReportOnly` the default release
+posture: typed integrity events + metrics (a dedicated integrity health source is still planned —
+none is registered as of a64ba9a), no writes, with `AutoRepairCapped` as the opt-in. The industry
 lesson (repair storms taking down clusters that were merely *suspected* of divergence) is encoded
-as: caps always on, auto-repair never default, every repair loudly attributed.
+as: caps always on, every repair loudly attributed — and, as the revision below records, the
+shipped default landed on `AutoRepairCapped` with `ReportOnly` as the opt-down.
 
 :::updated
 **Default REVISED (as built): SELF-HEALING out of the box.** `RepairMode` defaults to
@@ -484,7 +558,8 @@ visibility into what the healer does. Counters:
 non-zero means deliveries are being lost; find the infrastructure cause),
 `repairs_requested` (tagged `source=checkpoint|audit`) + `rebuilds_requested` (what the healer
 did about it), `manifests_requested` / `manifest_chunks_sent` / `drill_downs_requested` (audit
-wire activity), `backfills_requested` (Phase S), and `digest_buckets_verified` +
+wire activity), `backfills_requested` (Phase S), `redelivery_requests_received` (re-delivery
+requests served as an origin — repair + backfill flows), and `digest_buckets_verified` +
 `digest_drift_healed` (the trust-but-verify sweep — any drift healed means an unaccounted write
 path touched audited rows and warrants investigation).
 :::
@@ -504,16 +579,19 @@ path touched audited rows and warrants investigation).
   mismatch naming the exact stream) and repair (re-delivery → conflict-skip on the healthy
   consumer, inversion-rewind convergence on the damaged one, byte-equal read models afterward).
   Postgres integration covers the emit-chain digest maintenance, deletion subtraction, and the
-  recompute self-verification. Multi-tenant isolation and the expected-vs-unexpected discriminator
-  each get their own regression locks.
+  recompute self-verification. Multi-tenant isolation gets its own regression locks; the
+  expected-vs-unexpected discriminator's lock rides its future implementation (the discriminator
+  is not yet built as of a64ba9a).
 - **Docs.** This proposal graduates alongside the implementation: behavior + configuration
-  reference for `StreamIntegrityOptions`, the integrity event types, the health signal, and an
+  reference for `StreamIntegrityOptions`, the integrity event types, the health signal (planned —
+  no integrity health source is registered as of a64ba9a), and an
   operations note (reading a mismatch report, running a manual audit, invoking re-delivery).
   Code↔docs↔tests linking per the standard: `<docs>` tags on all new public surface, `<tests>`
   tags where convention needs help, maps regenerated and link-validated.
 - **Observability.** Meters: checkpoint gaps detected/confirmed, digest mismatches by class
   (expected/unexpected), events re-delivered, repairs deferred by caps, audit duration, digest
-  self-verification drift. A health source degrades on confirmed-unrepaired divergence.
+  self-verification drift. A health source that degrades on confirmed-unrepaired divergence is
+  planned — not yet registered as of a64ba9a.
 
 ## Implementation status
 
@@ -572,7 +650,8 @@ each amendment callout marks where live validation refined the original sketch.
    consumer verifies windowed receipt counts with two-cycle confirmation, reports
    `IntegrityGapDetected`, and — at `AutoRepairCapped` — sends the scoped, directed, wire-only
    `RequestRedeliveryCommand` back to the origin, storm-capped per checkpoint (B2–B4). Checkpoints
-   and gap detection default ON; repair defaults to `ReportOnly`.
+   and gap detection default ON; repair defaults to `AutoRepairCapped` (the revised self-healing
+   default above — `ReportOnly` is the opt-down).
    :::
 3. **S** — reconciler consumption-set diff + birth lineage + startup backfill orchestration.
 
@@ -606,7 +685,9 @@ each amendment callout marks where live validation refined the original sketch.
    The consumer compares against its own from-that-origin digests for subscribed types; a
    mismatched (tenant, type, stream) bucket raises `IntegrityDivergenceDetected` (Sourced report)
    and — on the `AutoRepairCapped` rung — a stream-scoped `RequestRedeliveryCommand`. Extras
-   (consumer-only streams) are reported, never auto-deleted (taxonomy #5).
+   (consumer-only streams) are never auto-deleted (taxonomy #5), but they are NOT yet reported
+   either: extra detection needs the full manifest set and rides a later increment — as of
+   a64ba9a only origin-reported buckets are compared.
    :::
 
    **A1c** — the incremental digest table + hierarchical exchange (the scale story).
@@ -651,7 +732,8 @@ each amendment callout marks where live validation refined the original sketch.
    **Phases A and L are built** (per the amendments above): computed two-lane XOR digests, the
    consumer-driven manifest exchange with per-bucket comparison and stream-scoped capped repair,
    and the local coverage audit with capped local rebuilds — all ON by default, daily, ladder at
-   `ReportOnly`. With R0–R1, B, and S, **every phase of this proposal is implemented**; the
+   `AutoRepairCapped` (the revised self-healing default — `ReportOnly` is the opt-down). With
+   R0–R1, B, and S, **every phase of this proposal is implemented**; the
    `ReportOnly` reports double as the dry-run for `AutoRepairCapped`. Graduation of this proposal
    into the behavior/configuration reference rides this PR's merge.
    :::

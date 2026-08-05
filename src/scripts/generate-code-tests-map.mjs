@@ -32,7 +32,13 @@
 import { readFileSync, writeFileSync } from 'fs';
 import { join, relative, dirname, resolve, basename } from 'path';
 import { fileURLToPath } from 'url';
-import { glob } from 'glob';
+// Node >=22 ships glob in fs/promises — avoids an undeclared 'glob' package dependency.
+import { glob as fsGlob } from 'fs/promises';
+async function glob(pattern, opts = {}) {
+  const out = [];
+  for await (const entry of fsGlob(pattern, { exclude: opts.ignore ?? [] })) out.push(entry);
+  return out;
+}
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);

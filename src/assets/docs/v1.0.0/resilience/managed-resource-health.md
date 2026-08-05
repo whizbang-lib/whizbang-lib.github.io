@@ -11,6 +11,28 @@ codeReferences:
   - src/Whizbang.Core/Health/HealthPolicy.cs
   - src/Whizbang.Core/Health/WhizbangHealthAggregator.cs
   - src/Whizbang.Hosting.AspNet/WhizbangManagedHealthCheck.cs
+  - src/Whizbang.Core/Health/ComponentHealth.cs
+  - src/Whizbang.Core/Health/ConnectivityHealthSource.cs
+  - src/Whizbang.Core/Health/SchemaHealthSource.cs
+  - src/Whizbang.Core/Health/WorkerHealthSource.cs
+  - src/Whizbang.Core/Health/WhizbangHealthOptions.cs
+  - src/Whizbang.Core/Health/WhizbangHealthServiceCollectionExtensions.cs
+  - src/Whizbang.Hosting.AspNet/WhizbangManagedHealthCheckExtensions.cs
+  - src/Whizbang.Core/Transports/ITransport.cs
+  - src/Whizbang.Core/Offloads/IMessageBodyStore.cs
+testReferences:
+  - tests/Whizbang.Core.Tests/Health/WhizbangHealthAggregatorTests.cs
+  - tests/Whizbang.Core.Tests/Health/SchemaHealthSourceTests.cs
+  - tests/Whizbang.Core.Tests/Health/WorkerHealthSourceTests.cs
+  - tests/Whizbang.Core.Tests/Health/ConnectivityHealthSourceTests.cs
+  - tests/Whizbang.Core.Tests/Health/TransportHealthWiringTests.cs
+  - tests/Whizbang.Core.Tests/Health/OffloadHealthWiringTests.cs
+  - tests/Whizbang.Core.Tests/Health/WhizbangHealthDiTests.cs
+  - tests/Whizbang.Hosting.AspNet.Tests/WhizbangManagedHealthCheckTests.cs
+  - tests/Whizbang.Hosting.AspNet.Tests/AddWhizbangAspNetTurnkeyTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/EventStoreHealthSourceIntegrationTests.cs
+verifiedAgainstCommit: a64ba9a0
+verifiedDate: 2026-08-04
 ---
 
 # Managed-Resource Health
@@ -44,7 +66,7 @@ green and `/health` ready — no rollback, no extra code.
 (which it reads) — only the resource knows whether, in this phase, it is *supposed to be running*
 (report real health) or *supposed to be off* (report healthy-by-design):
 
-```csharp{title="Health source contract" description="Each managed resource reports its own state, phase-aware" category="Implementation" difficulty="BEGINNER" tags=["Resilience","Health"] tests=["WhizbangHealthAggregatorTests.LenientDefault_Migrating_IsReadyAsync","SchemaHealthSourceTests.FaultedPhase_ReportsFaultedAsync"]}
+```csharp{title="Health source contract" description="Each managed resource reports its own state, phase-aware" category="Implementation" difficulty="BEGINNER" tags=["Resilience","Health"] tests=["WhizbangHealthAggregatorTests.LenientDefault_Migrating_IsReadyAsync","SchemaHealthSourceTests.FaultedPhase_ReportsDegradedWarningAsync","SchemaHealthSourceTests.HaltedPhase_ReportsFaultedFailureAsync"]}
 public enum ComponentState {
   Operational, Starting, Connecting, Migrating,   // coming up / migrating (intentional)
   PausedByDesign, Draining,                        // intentionally off / finishing in-flight
@@ -57,9 +79,10 @@ public interface IWhizbangHealthSource {
 }
 ```
 
-Whizbang ships the sources for what it owns: `SchemaHealthSource` (→ `Migrating` while the gate is
-closed, → `Faulted` on a wedged migration), `WorkerHealthSource` (→ `PausedByDesign` while held,
-`Draining` on stop), and `ConnectivityHealthSource` — the reusable phase-aware reachability probe drivers
+Whizbang ships the sources for what it owns: `SchemaHealthSource` (→ `Connecting`/`Migrating` while the
+gate is closed, → `Degraded` during the fault-record window of a failed migration, → `Faulted` only once
+the lifecycle settles in `Halted` — a warning-then-failure escalation), `WorkerHealthSource`
+(→ `PausedByDesign` while held, `Draining` on stop), and `ConnectivityHealthSource` — the reusable phase-aware reachability probe drivers
 wire for the **event-store DB, transport, and offload**. An `AlwaysRequired` resource (the DB) reports a
 failed probe as `Faulted` **even during a migration** (the migration needs it — the depended-on
 dependency is never masked); a `RequiredWhenRunning` resource (transport, offload) is only probed while
