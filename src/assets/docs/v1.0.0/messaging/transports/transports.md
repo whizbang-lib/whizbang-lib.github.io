@@ -1,8 +1,8 @@
 ---
 title: Transports Component
 pageType: overview
-verifiedAgainstCommit: 1b31f58d
-verifiedDate: 2026-07-16
+verifiedAgainstCommit: 0bc6065b
+verifiedDate: 2026-08-05
 version: 1.0.0
 category: Components
 order: 9
@@ -71,6 +71,11 @@ public interface ITransport {
     bool IsInitialized { get; }
     Task InitializeAsync(CancellationToken cancellationToken = default);
 
+    // Cheap, non-throwing broker-reachability probe for the managed-resource
+    // health model. Default returns IsInitialized; live-connection transports
+    // override it (RabbitMQ: IConnection.IsOpen, ASB: !ServiceBusClient.IsClosed).
+    ValueTask<bool> CheckConnectivityAsync(CancellationToken cancellationToken = default);
+
     // What this transport supports (flags)
     TransportCapabilities Capabilities { get; }
 
@@ -116,6 +121,11 @@ public interface ITransport {
         CancellationToken cancellationToken = default);
 }
 ```
+
+Two members ship as **default interface implementations**, so custom transports keep compiling without them:
+
+- `CheckConnectivityAsync` — a health probe consumed by the managed-resource health model (`ConnectivityHealthSource`). The default returns `IsInitialized`; RabbitMQ and Azure Service Bus override it to detect connections that dropped *after* initialization.
+- `SubscribeToDeadLetterAsync` — a push subscription on the broker's dead-letter queue/subqueue, intended to eliminate the polling latency of the `TransportDeadLetterDrainWorker`. The default throws `NotSupportedException`, which keeps the worker on its polling fallback (`TransportDeadLetterDrainWorkerOptions.IntervalMinutes`). No shipped transport overrides it yet — today all three rely on the polling drain worker.
 
 `TransportMessage` is a lightweight value type pairing a deserialized `IMessageEnvelope` with its assembly-qualified envelope type name:
 

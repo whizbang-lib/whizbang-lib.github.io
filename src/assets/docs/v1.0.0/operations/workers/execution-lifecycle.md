@@ -1,8 +1,8 @@
 ---
 title: Execution Lifecycle
 pageType: concept
-verifiedAgainstCommit: 1b31f58d
-verifiedDate: 2026-07-16
+verifiedAgainstCommit: 0bc6065b
+verifiedDate: 2026-08-05
 version: 1.0.0
 category: Workers
 order: 2
@@ -95,7 +95,7 @@ public interface IExecutionStrategy {
 
 ## Startup Lifecycle Flow
 
-```mermaid{caption="Host startup-to-shutdown lifecycle: schema provisioning gates worker startup, then IExecutionStrategy StartAsync → normal operation → StopAsync → DrainAsync coordinate a graceful drain."}
+```mermaid{caption="Host startup-to-shutdown lifecycle: schema provisioning gates worker startup, then IExecutionStrategy StartAsync → normal operation → StopAsync → DrainAsync coordinate a graceful drain." tests=["ExecutionStrategyContractTests.StartAsync_ShouldBeIdempotentAsync", "ExecutionStrategyContractTests.StopAsync_ShouldPreventNewExecutionsAsync", "ExecutionStrategyContractTests.DrainAsync_ShouldWaitForPendingWorkAsync"]}
 sequenceDiagram
     participant App as Application
     participant Init as WhizbangDatabaseInitializerService
@@ -871,4 +871,4 @@ protected override async Task ExecuteAsync(CancellationToken ct) {
 
 ---
 
-*Version 1.0.0 - Foundation Release | Last Updated: 2026-07-16*
+*Version 1.0.0 - Foundation Release | Last Updated: 2026-08-05*

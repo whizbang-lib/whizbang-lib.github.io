@@ -1,8 +1,8 @@
 ---
 title: "Implementing Multi-Tenancy"
 pageType: guide
-verifiedAgainstCommit: 1b31f58d
-verifiedDate: 2026-07-16
+verifiedAgainstCommit: 0bc6065b
+verifiedDate: 2026-08-05
 version: 1.0.0
 category: "Core Concepts"
 order: 9
@@ -24,6 +24,8 @@ codeReferences:
   - src/Whizbang.Core/Perspectives/IPerspectiveScopeFor.cs
   - src/Whizbang.Core/IMessageContext.cs
 testReferences:
+  - tests/Whizbang.Core.Tests/Security/SecurityOptionsTests.cs
+  - tests/Whizbang.Core.Tests/Scoping/PerspectiveScopeTests.cs
   - tests/Whizbang.Core.Tests/Security/RoleBuilderTests.cs
   - tests/Whizbang.Core.Tests/Security/PermissionExtractorTests.cs
   - tests/Whizbang.Core.Tests/Security/ScopeContextTests.cs

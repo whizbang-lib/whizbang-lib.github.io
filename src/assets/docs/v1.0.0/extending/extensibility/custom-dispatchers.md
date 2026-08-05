@@ -1,8 +1,8 @@
 ---
 title: Custom Dispatchers
 pageType: guide
-verifiedAgainstCommit: 1b31f58d
-verifiedDate: 2026-07-16
+verifiedAgainstCommit: 0bc6065b
+verifiedDate: 2026-08-05
 version: 1.0.0
 category: Extensibility
 order: 9
@@ -156,4 +156,4 @@ New to dispatchers? Start with the user guide:
 
 ---
 
-*Version 1.0.0 - Foundation Release | Last Updated: 2026-07-16*
+*Version 1.0.0 - Foundation Release | Last Updated: 2026-08-05*

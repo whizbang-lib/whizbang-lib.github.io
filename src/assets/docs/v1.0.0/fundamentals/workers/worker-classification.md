@@ -1,8 +1,8 @@
 ---
 title: Worker Classification — A through F
 pageType: reference
-verifiedAgainstCommit: 1b31f58d
-verifiedDate: 2026-07-16
+verifiedAgainstCommit: 0bc6065b
+verifiedDate: 2026-08-05
 version: 1.0.0
 category: Fundamentals
 order: 9
@@ -30,6 +30,10 @@ testReferences:
   - tests/Whizbang.Core.Tests/Workers/DeadLetterRecoveryWorkerTests.cs
   - tests/Whizbang.Core.Tests/Workers/TransportDeadLetterDrainWorkerTests.cs
   - tests/Whizbang.Core.Tests/Workers/MaintenanceWorkerTests.cs
+  - tests/Whizbang.Core.Tests/Workers/IntegrityCheckpointWorkerTests.cs
+  - tests/Whizbang.Core.Tests/Workers/IntegrityAuditWorkerTests.cs
+  - tests/Whizbang.Core.Tests/Workers/SubscriptionExpansionWorkerTests.cs
+  - tests/Whizbang.Core.Tests/Workers/BackupTickCoordinatorTests.cs
 ---
 
 # Worker classification
@@ -56,7 +60,7 @@ As of v0.681, zero D-class workers remain — every previously-polling worker ei
 | `ClaimWorker` | A | `OnSignal` + safety-net poll — `NotifyHealthyPollingIntervalMilliseconds` (default 5 s) when NOTIFY is healthy, tight `PollingIntervalMilliseconds` (250 ms base, adaptive backoff) otherwise | Outbox/Inbox/Perspective/OrphanRedistribute via `_onSignal`; `EnableSafetyNetPoll=false` gives pure NOTIFY-only wakes |
 | `PerspectiveWorker` | A | `WorkSignalCategory.Perspective` + `NotifyHealthyPollingIntervalMilliseconds` safety-net (default 1 s, equal to the poll interval; raise to relax) | v0.681 slice 7a wired the previously-unused signal |
 | `DeadLetterRecoveryWorker` | A | `WorkSignalCategory.DeadLetterReady` + `ScanIntervalMinutes` backstop (10 min) | v0.681 slice 7c added the AFTER INSERT trigger |
-| `TransportDeadLetterDrainWorker` | A (mixed) | Broker push subscription (when transport overrides `SubscribeToDeadLetterAsync`) + polling fallback | v0.681 slice 7d added the contract; per-transport push implementations follow up |
+| `TransportDeadLetterDrainWorker` | E (push planned) | Timer poll — `IntervalMinutes` (default 10 min) | v0.681 slice 7d added the `ITransport.SubscribeToDeadLetterAsync` push contract (default throws `NotSupportedException`), but neither this worker nor any shipped transport wires it yet — polling is the only active path today |
 | `OutboxPublishWorker` | B | `IWorkChannelWriter` | Drained when ClaimWorker dispatches |
 | `InboxHandlerWorker` | B | `BatchFlusher<HandlerCommitRequest>` | |
 | `InboxDispatchWorker` | B | `IInboxChannelWriter` | |
@@ -70,8 +74,13 @@ As of v0.681, zero D-class workers remain — every previously-polling worker ei
 | `ServiceBusConsumerWorker` | C | ASB receiver loop | |
 | `HeartbeatWorker` | E | 30 s default; adaptive 60 s when alive-lock held (slice 7b) | See [instance liveness](./instance-liveness.md) |
 | `MaintenanceWorker` | E | 10 min default (`IntervalMinutes`) | Full-table scan; not event-driven |
-| `RecentlyProcessedEventCacheSweepWorker` | E | 60 s | In-memory TTL eviction |
+| `RecentlyProcessedEventCacheSweepWorker` | E | 60 s (`SweepIntervalSeconds`) | In-memory TTL eviction |
+| `IntegrityCheckpointWorker` | E | `CheckpointIntervalSeconds` (default 60 s) | Stream-integrity Phase B origin-side checkpoint publisher; publishes even on empty windows |
+| `IntegrityAuditWorker` | E | `AuditIntervalMinutes` (default 1440 — daily) | Stream-integrity Phases A + L deep audit |
+| `BackupTickCoordinator` | E | Idle-aware: ASLEEP until `IdleThreshold` (30 s), then ticks every `PollingInterval` (30 s; `FastPollingInterval` 5 s when NOTIFY broken) | Runs registered backup ticks only when NOTIFY-driven activity isn't expected |
 | `OrphanInboxJanitor` | F | StartAsync once (startup purge sweep; `ExecuteAsync` is a no-op) | |
+| `SubscriptionExpansionWorker` | F | Runs once after the schema gate | Stream-integrity Phase S startup reconciler; baselines/backfills consumed-type expansions |
+| `WhizbangShutdownService` | F | Shutdown only (`StartAsync` is a no-op) | |
 | `PerspectiveMigrationWorker` | F | On-demand rebuild | |
 
 ## When to read this page

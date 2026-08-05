@@ -1,8 +1,8 @@
 ---
 title: 'WHIZ807: Physical Fields Discovered'
 pageType: troubleshooting
-verifiedAgainstCommit: 1b31f58d
-verifiedDate: 2026-07-16
+verifiedAgainstCommit: 0bc6065b
+verifiedDate: 2026-08-05
 description: >-
   Informational diagnostic when physical fields are discovered on a perspective model
 version: 1.0.0
@@ -56,10 +56,10 @@ public record ProductDto {
 
   public string Description { get; init; } = string.Empty;  // Stored in JSONB
 
-  [PhysicalField]        // Physical column for queries
+  [PhysicalField(Indexed = true)]   // Physical column for queries (Indexed defaults to false)
   public string Status { get; init; } = "draft";
 
-  [PhysicalField]        // Physical column for filtering
+  [PhysicalField(Indexed = true)]   // Physical column for filtering
   public decimal Price { get; init; }
 
   [VectorField(1536)]    // Vector column for similarity search
@@ -97,7 +97,7 @@ CREATE TABLE IF NOT EXISTS wh_per_product (
   embedding vector(1536)             -- [VectorField]
 );
 
--- B-tree indexes for indexed physical fields
+-- B-tree indexes for physical fields marked Indexed = true (or Unique = true)
 CREATE INDEX IF NOT EXISTS ix_wh_per_product_status ON wh_per_product(status);
 CREATE INDEX IF NOT EXISTS ix_wh_per_product_price ON wh_per_product(price);
 

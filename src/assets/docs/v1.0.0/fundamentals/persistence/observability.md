@@ -1,8 +1,8 @@
 ---
 title: Observability & Message Hops
 pageType: concept
-verifiedAgainstCommit: 1b31f58d
-verifiedDate: 2026-07-16
+verifiedAgainstCommit: 0bc6065b
+verifiedDate: 2026-08-05
 version: 1.0.0
 category: Core Concepts
 order: 6
@@ -389,5 +389,3 @@ foreach (var e in messages) {
 - [Policy engine](../../operations/infrastructure/policies.md) — policy authoring and decision trails
 - [OpenTelemetry integration](../../operations/observability/opentelemetry-integration.md) — correlating hops with spans
 - [Distributed tracing](../../operations/observability/tracing.md) — end-to-end tracing operations
-</content>
-</invoke>

@@ -1,8 +1,8 @@
 ---
 title: Event Completion Awaiter
 pageType: concept
-verifiedAgainstCommit: 1b31f58d
-verifiedDate: 2026-07-16
+verifiedAgainstCommit: 0bc6065b
+verifiedDate: 2026-08-05
 version: 1.0.0
 category: Core Concepts
 order: 5
@@ -23,6 +23,7 @@ testReferences:
   - tests/Whizbang.Core.Tests/Perspectives/Sync/EventCompletionAwaiterTests.cs
   - tests/Whizbang.Core.Tests/Perspectives/Sync/SyncEventTrackerTests.cs
   - tests/Whizbang.Core.Tests/Dispatch/DispatchOptionsTests.cs
+  - tests/Whizbang.Core.Tests/Dispatcher/DispatcherPerspectiveSyncCoverageTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -133,7 +134,7 @@ The `Dispatcher` integrates with event completion through the `_waitForPerspecti
 
 ### Integration Architecture
 
-```mermaid{caption="Dispatcher LocalInvokeAsync pipeline — perspective-sync check, receptor invoke, auto-cascade, then wait for all perspectives before returning the result."}
+```mermaid{caption="Dispatcher LocalInvokeAsync pipeline — perspective-sync check, receptor invoke, auto-cascade, then wait for all perspectives before returning the result." tests=["DispatcherPerspectiveSyncCoverageTests.LocalInvokeAsync_WithWaitForPerspectives_NoEventCompletionAwaiter_ReturnsNormallyAsync", "DispatcherPerspectiveSyncCoverageTests.LocalInvokeAsync_WithWaitForPerspectives_NoScopedTracker_ReturnsNormallyAsync"]}
 flowchart TD
     Invoke["LocalInvokeAsync with DispatchOptions"]
     Step1["1. Check for [AwaitPerspectiveSync] (if present)<br/>_awaitPerspectiveSyncIfNeededAsync()"]

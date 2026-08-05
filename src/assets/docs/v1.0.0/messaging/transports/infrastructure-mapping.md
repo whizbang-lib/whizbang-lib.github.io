@@ -1,8 +1,8 @@
 ---
 title: Infrastructure Mapping
 pageType: concept
-verifiedAgainstCommit: 1b31f58d
-verifiedDate: 2026-07-16
+verifiedAgainstCommit: 0bc6065b
+verifiedDate: 2026-08-05
 version: 1.0.0
 category: Transports
 order: 3
@@ -191,8 +191,10 @@ values, but **not all of them have a shipping transport driver**:
 | `EventStore` | 3 | Declared in the enum; **no transport driver ships in this repo** |
 
 > Verified: `InProcessTransport`, `RabbitMQTransport`, and
-> `AzureServiceBusTransport` are the only concrete `ITransport`
-> implementations under `src/`. No Kafka or EventStore transport project exists.
+> `AzureServiceBusTransport` are the only shipping transport drivers under
+> `src/` (the `Whizbang.Testing` multi-service harness additionally implements
+> `ITransport` with an `InMemoryWireTransport` test double). No Kafka or
+> EventStore transport project exists.
 > The enum values themselves are covered by
 > `tests/Whizbang.Policies.Tests/PolicyConfigurationTransportTests.cs:TransportType_ShouldHaveKafkaValueAsync`
 > (and the `ServiceBus`/`RabbitMQ`/`EventStore`/`InProcess` siblings).

@@ -1,8 +1,8 @@
 ---
 title: RabbitMQ Transport
 pageType: concept
-verifiedAgainstCommit: 1b31f58d
-verifiedDate: 2026-07-16
+verifiedAgainstCommit: 0bc6065b
+verifiedDate: 2026-08-05
 version: 1.0.0
 category: Transports
 order: 2
@@ -27,6 +27,8 @@ testReferences:
   - tests/Whizbang.Transports.RabbitMQ.Tests/RabbitMQChannelPoolTests.cs
   - tests/Whizbang.Transports.RabbitMQ.Tests/RabbitMQConnectionRetryTests.cs
   - tests/Whizbang.Transports.RabbitMQ.Tests/RabbitMQBatchSubscribeTests.cs
+  - tests/Whizbang.Transports.RabbitMQ.Tests/RabbitMQTransportBatchPathTests.cs
+  - tests/Whizbang.Transports.RabbitMQ.Tests/RabbitMQTransportFailurePathTests.cs
   - tests/Whizbang.Transports.RabbitMQ.Tests/RabbitMQSubscriptionTests.cs
   - tests/Whizbang.Transports.RabbitMQ.Tests/RabbitMQHealthCheckTests.cs
   - tests/Whizbang.Transports.RabbitMQ.Tests/ServiceCollectionExtensionsTests.cs
@@ -106,7 +108,7 @@ flowchart TD
         end
     end
 
-    Publisher["Publisher (TransportPublishStrategy)<br/><br/>using (var channel =<br/>await pool.RentChannelAsync()) {<br/>// Publish message<br/>// Channel auto-returns on dispose<br/>}"]
+    Publisher["Publisher (TransportPublishStrategy)<br/><br/>using (var channel =<br/>await pool.RentAsync()) {<br/>// Publish message<br/>// Channel auto-returns on dispose<br/>}"]
 
     Publisher -->|"Rent"| Pool
     Pool -->|"Return"| Publisher
@@ -138,13 +140,13 @@ flowchart TD
 
 #### Subscribing
 
-```mermaid{caption="Subscribe path — SubscribeAsync creates a dedicated channel, declares the exchange and DLX-bound queue, binds it, and starts a consumer that dispatches deliveries to the handler." tests=["RabbitMQTransportTests.SubscribeAsync_CreatesConsumer_AndInvokesHandlerAsync"]}
+```mermaid{caption="Subscribe path — SubscribeBatchAsync creates a dedicated channel, declares the exchange and DLX-bound queue, binds it, and starts a consumer that collects deliveries into batches for the handler." tests=["RabbitMQTransportBatchPathTests.SubscribeBatchAsync_BatchSizeReached_InvokesHandlerWithAllMessagesAndAcksEachAsync"]}
 flowchart TD
     Subscriber["Subscriber (Fulfillment Service)"]
-    Transport["RabbitMQTransport<br/><br/>- Create dedicated channel<br/>- Set QoS prefetch (default: 10)<br/>- Declare exchange<br/>- Declare queue with DLX<br/>- Bind queue to exchange<br/>- Create AsyncEventingBasicConsumer"]
-    Handler["Message Handler<br/><br/>- Check subscription.IsActive<br/>- Deserialize via EnvelopeType<br/>- Invoke handler (Receptor)<br/>- BasicAck on success<br/>- BasicNack + requeue on failure<br/>- BasicNack → DLQ after max retries"]
+    Transport["RabbitMQTransport<br/><br/>- Create dedicated channel<br/>- Set QoS prefetch (default: 200)<br/>- Declare exchange<br/>- Declare queue with DLX<br/>- Bind queue to exchange<br/>- Create AsyncEventingBasicConsumer"]
+    Handler["Batch Handler<br/><br/>- Check subscription.IsActive<br/>- Collect deliveries into a batch<br/>- Deserialize via EnvelopeType<br/>- Invoke batch handler<br/>- BasicAck each on success<br/>- BasicNack + requeue on failure<br/>- BasicNack → DLQ after max retries"]
 
-    Subscriber -->|"1. SubscribeAsync(handler, destination)<br/>Destination.Address: #quot;orders#quot;<br/>Destination.RoutingKey: #quot;fulfillment-orders-queue#quot;"| Transport
+    Subscriber -->|"1. SubscribeBatchAsync(batchHandler, destination, batchOptions)<br/>Destination.Address: #quot;orders#quot;<br/>Destination.RoutingKey: #quot;fulfillment-orders-queue#quot;"| Transport
     Transport -->|"2. Receive BasicDeliver event"| Handler
 
     class Subscriber layer-core
@@ -168,9 +170,9 @@ flowchart TD
 
 ```xml{title="Dependencies" description="Dependencies" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Dependencies"]}
 <ItemGroup>
-  <PackageReference Include="RabbitMQ.Client" Version="7.1.2" />
-  <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.1" />
-  <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks" Version="10.0.1" />
+  <PackageReference Include="RabbitMQ.Client" Version="7.2.0" />
+  <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.2" />
+  <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks" Version="10.0.2" />
 </ItemGroup>
 ```
 
@@ -537,7 +539,7 @@ app.Run();
 | `MaxChannels` | 10 | Maximum pooled channels for publishing |
 | `MaxDeliveryAttempts` | 10 | Retry limit before dead-lettering |
 | `DefaultQueueName` | `null` | Fallback queue name if not specified |
-| `PrefetchCount` | 10 | QoS prefetch count per consumer |
+| `PrefetchCount` | 200 | QoS prefetch count per consumer (high default sized for batch receive; match to `TransportBatchOptions.BatchSize`) |
 | `AutoDeclareDeadLetterExchange` | `true` | Auto-create DLX and DLQ |
 | `EnableSingleActiveConsumer` | `false` | Enable Single Active Consumer for FIFO ordering |
 
@@ -729,7 +731,7 @@ public class ProductService {
 
 ### Subscribing to Messages
 
-```csharp{title="Subscribing to Messages" description="Subscribing to Messages" category="Configuration" difficulty="ADVANCED" tags=["Messaging", "Transports", "Subscribing", "Messages"] tests=["RabbitMQTransportTests.SubscribeAsync_CreatesConsumer_AndInvokesHandlerAsync"]}
+```csharp{title="Subscribing to Messages" description="Subscribing to Messages" category="Configuration" difficulty="ADVANCED" tags=["Messaging", "Transports", "Subscribing", "Messages"] tests=["RabbitMQTransportBatchPathTests.SubscribeBatchAsync_BatchSizeReached_InvokesHandlerWithAllMessagesAndAcksEachAsync", "RabbitMQTransportBatchPathTests.SubscribeBatchAsync_HandlerThrows_NacksAllWithRequeueAsync"]}
 public class InventoryWorker : BackgroundService {
     private readonly ITransport _transport;
     private readonly ILogger<InventoryWorker> _logger;
@@ -749,15 +751,19 @@ public class InventoryWorker : BackgroundService {
             }
         );
 
-        _subscription = await _transport.SubscribeAsync(
-            handler: async (envelope, envelopeType, ct) => {
-                _logger.LogInformation("Received message: {MessageId}", envelope.MessageId);
+        // ITransport exposes batch receive; the handler is invoked once per batch.
+        _subscription = await _transport.SubscribeBatchAsync(
+            batchHandler: async (messages, ct) => {
+                foreach (var message in messages) {
+                    _logger.LogInformation("Received message: {MessageId}", message.Envelope.MessageId);
 
-                if (envelope.Payload is ProductCreatedEvent evt) {
-                    await HandleProductCreatedAsync(evt, ct);
+                    if (message.Envelope.Payload is ProductCreatedEvent evt) {
+                        await HandleProductCreatedAsync(evt, ct);
+                    }
                 }
             },
             destination,
+            new TransportBatchOptions(),  // BatchSize 200, SlideMs 20, MaxWaitMs 1000
             stoppingToken
         );
 
@@ -897,7 +903,7 @@ app.Run();
   "results": {
     "rabbitmq": {
       "status": "Healthy",
-      "description": "RabbitMQ connection is open",
+      "description": "RabbitMQ transport is healthy",
       "data": {}
     }
   }
@@ -914,8 +920,8 @@ public class RabbitMQReadinessCheck : ITransportReadinessCheck {
         _connection = connection;
     }
 
-    public ValueTask<bool> IsReadyAsync(CancellationToken ct = default) {
-        return ValueTask.FromResult(_connection.IsOpen);
+    public Task<bool> IsReadyAsync(CancellationToken cancellationToken = default) {
+        return Task.FromResult(_connection.IsOpen);
     }
 }
 ```
@@ -933,14 +939,16 @@ using Whizbang.Transports.RabbitMQ.Tests;
 public class ProductServiceTests {
     [Test]
     public async Task CreateProductAsync_PublishesEvent() {
-        // Arrange
-        var fakeConnection = new FakeConnection();
+        // Arrange - fake IConnection/IChannel doubles (see tests/Whizbang.Transports.RabbitMQ.Tests/TestDoubles.cs)
         var fakeChannel = new FakeChannel();
-        fakeConnection.CreateModelReturns = fakeChannel;
+        var fakeConnection = new FakeConnection(() => Task.FromResult<IChannel>(fakeChannel));
 
+        var options = new RabbitMQOptions();
         var transport = new RabbitMQTransport(
             fakeConnection,
-            new RabbitMQOptions(),
+            JsonContextRegistry.CreateCombinedOptions(),
+            new RabbitMQChannelPool(fakeConnection, options.MaxChannels),
+            options,
             NullLogger<RabbitMQTransport>.Instance
         );
 
@@ -954,9 +962,9 @@ public class ProductServiceTests {
         });
 
         // Assert
-        await Assert.That(fakeChannel.BasicPublishCallCount).IsEqualTo(1);
-        await Assert.That(fakeChannel.LastExchange).IsEqualTo("products");
-        await Assert.That(fakeChannel.LastRoutingKey).IsEqualTo("product.created");
+        await Assert.That(fakeChannel.BasicPublishAsyncCalled).IsTrue();
+        await Assert.That(fakeChannel.PublishedMessages[0].Exchange).IsEqualTo("products");
+        await Assert.That(fakeChannel.PublishedMessages[0].RoutingKey).IsEqualTo("product.created");
     }
 }
 ```
@@ -1000,15 +1008,18 @@ public class RabbitMQIntegrationTests {
             RoutingKey: "test-queue"
         );
 
-        // Subscribe
-        await _transport!.SubscribeAsync(
-            handler: (envelope, type, ct) => {
-                if (envelope.Payload is ProductCreatedEvent evt) {
-                    receivedEvent.SetResult(evt);
+        // Subscribe (batch receive - handler invoked once per collected batch)
+        await _transport!.SubscribeBatchAsync(
+            batchHandler: (messages, ct) => {
+                foreach (var message in messages) {
+                    if (message.Envelope.Payload is ProductCreatedEvent evt) {
+                        receivedEvent.SetResult(evt);
+                    }
                 }
-                return ValueTask.CompletedTask;
+                return Task.CompletedTask;
             },
             destination,
+            new TransportBatchOptions(),
             CancellationToken.None
         );
 
@@ -1070,17 +1081,20 @@ options.MaxChannels = 50;
 **Guideline**: Set `PrefetchCount` based on message processing time.
 
 ```csharp{title="Prefetch Count Tuning" description="Guideline: Set PrefetchCount based on message processing time." category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Prefetch", "Count"] unverified="configuration — no behavior to assert"}
+// Batch-receive workloads (default: 200, matched to TransportBatchOptions.BatchSize)
+options.PrefetchCount = 200;
+
 // Fast processing (< 100ms per message)
 options.PrefetchCount = 20;
 
 // Medium processing (100ms - 1s)
-options.PrefetchCount = 10;  // Default
+options.PrefetchCount = 10;
 
 // Slow processing (> 1s per message)
 options.PrefetchCount = 1;
 ```
 
-**Why**: Higher prefetch improves throughput but increases memory usage and delays redelivery on failure.
+**Why**: Higher prefetch improves throughput but increases memory usage and delays redelivery on failure. The default (200) is sized for the transport consumer's batch receive path.
 
 ### 3. Retry Limits
 
@@ -1141,14 +1155,15 @@ The RabbitMQ transport supports the following `TransportCapabilities`:
 |------------|-----------|-------|
 | **PublishSubscribe** | ✅ Yes | Topic exchanges with wildcard routing |
 | **Reliable** | ✅ Yes | At-least-once delivery with retries |
-| **Ordered** | ❌ No | Not guaranteed with multiple consumers |
+| **BulkPublish** | ✅ Yes | Bulk publish over pooled channels |
+| **Ordered** | ⚠️ Conditional | Claimed only when `EnableSingleActiveConsumer` is true |
 | **RequestResponse** | ❌ No | Not implemented in v1.0.0 |
 | **ExactlyOnce** | ❌ No | Use inbox/outbox pattern (Whizbang.Core) |
 
 **Ordering Considerations**:
-- Single consumer per queue: Ordered within routing key
-- Multiple consumers: No ordering guarantee
-- Use partitioning or Azure Service Bus for strict ordering
+- Single Active Consumer enabled: FIFO ordering, transport claims `TransportCapabilities.Ordered`
+- Multiple consumers (SAC disabled): No ordering guarantee
+- Use partitioning or Azure Service Bus for strict ordering at scale
 
 ---
 
@@ -1185,7 +1200,7 @@ docker logs <rabbitmq-container>
 ```csharp{title="Channel Pool Exhaustion" description="Channel Pool Exhaustion" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Channel", "Pool"] unverified="troubleshooting example — user-code channel-return-on-exception pattern"}
 // Ensure channel returns on exception
 try {
-    using (var channel = await pool.RentChannelAsync()) {
+    using (var channel = await pool.RentAsync()) {
         await transport.PublishAsync(envelope, destination);
     }  // Channel auto-returns here
 } catch (Exception ex) {

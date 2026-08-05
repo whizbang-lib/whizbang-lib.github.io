@@ -1,8 +1,8 @@
 ---
 title: JSON Serialization Customizations
 pageType: concept
-verifiedAgainstCommit: 1b31f58d
-verifiedDate: 2026-07-16
+verifiedAgainstCommit: 0bc6065b
+verifiedDate: 2026-08-05
 version: 1.0.0
 category: Internals
 order: 1
@@ -19,6 +19,7 @@ codeReferences:
 testReferences:
   - tests/Whizbang.Core.Tests/Serialization/LenientDateTimeOffsetConverterTests.cs
   - tests/Whizbang.Core.Tests/JsonContextRegistryTests.cs
+  - tests/Whizbang.Generators.Tests/MessageJsonContextGeneratorTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -78,7 +79,7 @@ Handles `DateTimeOffset` values that do not conform to strict ISO 8601 format, p
 
 Nullable wrapper for `LenientDateTimeOffsetConverter`. Handles `null` JSON values and delegates all other values to the non-nullable converter.
 
-```csharp{title="LenientNullableDateTimeOffsetConverter" description="Nullable wrapper for lenient DateTimeOffset parsing" category="Reference" difficulty="INTERMEDIATE" tags=["JSON", "Serialization", "Converters"] tests=["LenientDateTimeOffsetConverterTests.Read_Null_ReturnsNullAsync", "LenientDateTimeOffsetConverterTests.Read_ValidValue_ReturnsValueAsync"]}
+```csharp{title="LenientNullableDateTimeOffsetConverter" description="Nullable wrapper for lenient DateTimeOffset parsing" category="Reference" difficulty="INTERMEDIATE" tags=["JSON", "Serialization", "Converters"] tests=["LenientNullableDateTimeOffsetConverterTests.Read_Null_ReturnsNullAsync", "LenientNullableDateTimeOffsetConverterTests.Read_ValidValue_ReturnsValueAsync"]}
 // Handles:
 // - null -> returns null
 // - Any valid DateTimeOffset string -> delegates to LenientDateTimeOffsetConverter
