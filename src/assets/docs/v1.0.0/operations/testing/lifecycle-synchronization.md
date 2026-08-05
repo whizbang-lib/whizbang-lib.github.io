@@ -1,8 +1,8 @@
 ---
 title: Lifecycle Synchronization
 pageType: concept
-verifiedAgainstCommit: 1b31f58d
-verifiedDate: 2026-07-16
+verifiedAgainstCommit: 0bc6065b
+verifiedDate: 2026-08-05
 version: 1.0.0
 category: Testing
 order: 3
@@ -804,7 +804,7 @@ public async Task NewTest_UsesLifecycleSyncAsync() {
 
 ## Related Topics
 
-- [Lifecycle Stages](../../fundamentals/lifecycle/lifecycle-stages.md) - All 24 stages with timing guarantees
+- [Lifecycle Stages](../../fundamentals/lifecycle/lifecycle-stages.md) - All 28 stages with timing guarantees
 - [Lifecycle Receptors](../../fundamentals/receptors/lifecycle-receptors.md) - API reference for [FireAt] attribute
 - Integration Testing - Complete integration test patterns
 - [PerspectiveWorker](../workers/perspective-worker.md) - Perspective processing architecture

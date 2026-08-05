@@ -1,8 +1,8 @@
 ---
 title: Event Ordering Invariant
 pageType: concept
-verifiedAgainstCommit: 1b31f58d
-verifiedDate: 2026-07-16
+verifiedAgainstCommit: 0bc6065b
+verifiedDate: 2026-08-05
 version: 1.0.0
 category: Architecture
 order: 2
@@ -27,6 +27,7 @@ codeReferences:
   - src/Whizbang.Data.EFCore.Postgres/BaseUpsertStrategy.cs
   - src/Whizbang.Data.Postgres/Migrations/029_ProcessWorkBatch.sql
   - src/Whizbang.Data.Postgres/Migrations/061_CollectiveEventRouting.sql
+  - src/Whizbang.Data.Postgres/Migrations/087_StreamDigests.sql
   - src/Whizbang.Data.Postgres/Migrations/038_GetStreamEvents.sql
   - src/Whizbang.Data.Postgres/Migrations/042_FetchPendingPerspectiveEvents.sql
   - src/Whizbang.Data.Postgres/Migrations/043_FetchEventsByIds.sql
@@ -85,7 +86,7 @@ Tests:
 
 Belt-and-suspenders: the SQL function that fans the C# batch into `wh_event_store` rows assigns per-stream versions via `ROW_NUMBER() OVER (PARTITION BY stream_id ORDER BY message_id)` — version assignment matches canonical `event_id` order even if a caller forgot to pre-sort. The input array in `store_outbox_messages` is additionally sorted `ORDER BY stream_id NULLS FIRST, message_id` so `wh_active_streams` row locks are acquired in canonical order (deadlock prevention) with `message_id` as the deterministic tiebreaker.
 
-Code: `_emit_event_store_chain` / `_emit_event_store_chain_for_inbox`, defined in [`029_ProcessWorkBatch.sql`](https://github.com/whizbang-lib/whizbang/blob/main/src/Whizbang.Data.Postgres/Migrations/029_ProcessWorkBatch.sql) and last updated in [`061_CollectiveEventRouting.sql`](https://github.com/whizbang-lib/whizbang/blob/main/src/Whizbang.Data.Postgres/Migrations/061_CollectiveEventRouting.sql) (Phase H step 10 slice 1).
+Code: `_emit_event_store_chain` / `_emit_event_store_chain_for_inbox`, defined in [`029_ProcessWorkBatch.sql`](https://github.com/whizbang-lib/whizbang/blob/main/src/Whizbang.Data.Postgres/Migrations/029_ProcessWorkBatch.sql) and redefined by several later migrations (most recently [`087_StreamDigests.sql`](https://github.com/whizbang-lib/whizbang/blob/main/src/Whizbang.Data.Postgres/Migrations/087_StreamDigests.sql)); every redefinition preserves the Phase H step 10 slice 1 `ORDER BY message_id` version assignment.
 
 ### 4. `InboxDispatchWorker` stream-affinity partitioning
 

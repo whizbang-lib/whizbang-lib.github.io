@@ -1,8 +1,8 @@
 ---
 title: Transport Consumer
 pageType: concept
-verifiedAgainstCommit: 1b31f58d
-verifiedDate: 2026-07-16
+verifiedAgainstCommit: 0bc6065b
+verifiedDate: 2026-08-05
 version: 1.0.0
 category: Core Concepts
 description: >-
@@ -23,6 +23,7 @@ testReferences:
   - tests/Whizbang.Core.Tests/Workers/TransportConsumerWorkerConnectionRecoveryTests.cs
   - tests/Whizbang.Core.Tests/Resilience/SubscriptionRetryHelperTests.cs
   - tests/Whizbang.Core.Tests/HealthChecks/SubscriptionHealthCheckTests.cs
+  - tests/Whizbang.Core.Tests/Observability/ServiceInstanceProviderTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -281,7 +282,18 @@ Register a custom provider for explicit control:
 
 ```csharp{title="Service Name Resolution" description="Register a custom provider for explicit control:" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Service", "Name"] tests=["TransportConsumerBuilderExtensionsTests.AddTransportConsumer_UsesServiceInstanceProviderServiceNameAsync"]}
 builder.Services.AddSingleton<IServiceInstanceProvider>(
-    new ServiceInstanceProvider("MyOrderService"));
+    new ServiceInstanceProvider(
+        instanceId: TrackedGuid.NewMedo(),
+        serviceName: "MyOrderService",
+        hostName: Environment.MachineName,
+        processId: Environment.ProcessId));
+```
+
+Alternatively, set the `Whizbang:ServiceName` (or `ServiceName`) configuration key and use the default `ServiceInstanceProvider(IConfiguration?)` constructor, which resolves the name from configuration before falling back to the entry assembly name.
+
+```csharp{title="Service Name via Configuration" description="Resolve service name from configuration:" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Service", "Name"] tests=["ServiceInstanceProviderTests.ServiceInstanceProvider_WithConfiguration_ResolvesServiceName_FromWhizbangKeyAsync"]}
+builder.Services.AddSingleton<IServiceInstanceProvider>(sp =>
+    new ServiceInstanceProvider(sp.GetRequiredService<IConfiguration>()));
 ```
 
 ## Prerequisites

@@ -1,8 +1,8 @@
 ---
 title: Database Readiness
 pageType: concept
-verifiedAgainstCommit: 1b31f58d
-verifiedDate: 2026-07-16
+verifiedAgainstCommit: 0bc6065b
+verifiedDate: 2026-08-05
 version: 1.0.0
 category: Workers
 order: 3
@@ -15,13 +15,17 @@ tags: >-
   migrations, health-checks
 codeReferences:
   - src/Whizbang.Core/Workers/ISchemaReadyGate.cs
+  - src/Whizbang.Core/Workers/SchemaInitializationOptions.cs
   - src/Whizbang.Data.EFCore.Postgres/WhizbangDatabaseInitializerService.cs
   - src/Whizbang.Hosting.AspNet/DatabaseAvailabilityMiddleware.cs
+  - src/Whizbang.Hosting.AspNet/AvailabilityGateMode.cs
   - src/Whizbang.Core/Workers/ClaimWorker.cs
 testReferences:
   - tests/Whizbang.Hosting.AspNet.Tests/DatabaseAvailabilityMiddlewareTests.cs
   - tests/Whizbang.Hosting.AspNet.Tests/DatabaseAvailabilityMiddlewareExtensionsTests.cs
   - tests/Whizbang.Core.Tests/Workers/HeartbeatWorkerTests.cs
+  - tests/Whizbang.Core.Tests/Workers/SchemaInitializationOptionsTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/WhizbangDatabaseInitializerServiceTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -92,17 +96,23 @@ The default implementation, `SchemaReadyGate`, is a single `TaskCompletionSource
 
 ## Who Marks the Gate Ready
 
-The EFCore Postgres driver registers **`WhizbangDatabaseInitializerService`** — a plain `IHostedService` (not a `BackgroundService`), so its `StartAsync` **blocks host startup** until initialization completes:
+The EFCore Postgres driver registers **`WhizbangDatabaseInitializerService`** — a plain `IHostedService` (not a `BackgroundService`). How its `StartAsync` behaves depends on `SchemaInitializationOptions.NonBlockingSchemaInit`:
 
-```csharp{title="WhizbangDatabaseInitializerService.StartAsync" description="Migrations first, then best-effort partition recompute, then MarkReady" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Initializer", "Startup"]}
-public async Task StartAsync(CancellationToken cancellationToken) {
-  await DbContextInitializationRegistry.InitializeAllAsync(
-      _serviceProvider, _logger, cancellationToken);
+- **Non-blocking (`NonBlockingSchemaInit = true`, the turnkey default)**: `StartAsync` returns immediately and initialization runs in the background. The host binds its port and can answer liveness probes while the gate stays closed until migrations succeed. An optional `SchemaInitializationOptions.MigrationTimeout` (default: none) treats a hung migration as failed so the pod doesn't sit alive-but-wedged forever.
+- **Blocking (`NonBlockingSchemaInit = false`, opt-out)**: initialization runs inline in `StartAsync`, so the host does not finish starting (no HTTP port, no workers) until it completes.
+
+Either way, the same initialization sequence runs:
+
+```csharp{title="WhizbangDatabaseInitializerService initialization sequence" description="Migrations first, then best-effort partition recompute, then MarkReady" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Initializer", "Startup"] tests=["WhizbangDatabaseInitializerServiceTests.Blocking_StartAsync_WaitsForInit_ThenMarksReadyAsync", "WhizbangDatabaseInitializerServiceTests.NonBlocking_StartAsync_ReturnsBeforeInit_ThenMarksReadyWhenDoneAsync"]}
+private async Task _runInitializationAsync(CancellationToken cancellationToken) {
+  // ISchemaInitializationRunner.RunAsync — delegates to
+  // DbContextInitializationRegistry.InitializeAllAsync (with MigrationTimeout as a ceiling, if set)
+  await _runMigrationsAsync(cancellationToken);
 
   // Best-effort: recompute partition_number columns that may have drifted across a
   // PartitionCount change. NEVER blocks MarkReady — workers can run on a stale partition
   // map (next claim cycle picks them up correctly via the live PartitionCount).
-  await _tryRecomputePartitionsAsync(cancellationToken);
+  await TryRecomputePartitionsAsync(cancellationToken);
 
   _schemaReadyGate.MarkReady();
 }
@@ -110,11 +120,11 @@ public async Task StartAsync(CancellationToken cancellationToken) {
 
 **Ordering guarantees**:
 
-1. **Migrations run first** (`DbContextInitializationRegistry.InitializeAllAsync`)
+1. **Migrations run first** (`ISchemaInitializationRunner.RunAsync`, which delegates to `DbContextInitializationRegistry.InitializeAllAsync`)
 2. **Partition recompute is best-effort** — a failure logs a warning but does not block readiness
 3. **`MarkReady` is called last** — only after the schema is provisioned
 
-**On migration failure**: the gate is **not** marked ready. `StartAsync` throws, host startup aborts, and workers never enter their main loops. The system halts safely instead of running on a broken schema.
+**On migration failure**: the gate is **not** marked ready (fail-closed), in either mode. In blocking mode `StartAsync` throws, host startup aborts, and workers never enter their main loops. In the non-blocking default the host stays alive (liveness green) but never becomes ready — the pod stays out of traffic rotation and the rollout fails cleanly instead of the pod being killed mid-migration; the failure also drives the managed run-control lifecycle into its fault path (when registered) so health reporting surfaces the failure. Either way, nothing runs against a broken schema.
 
 ---
 
@@ -144,15 +154,22 @@ The `PerspectiveWorker` itself consumes work **channels** fed by `ClaimWorker` (
 
 ## HTTP Availability Middleware
 
-The ASP.NET hosting package includes **`DatabaseAvailabilityMiddleware`**, which returns `503 Service Unavailable` until the gate signals ready — then becomes a pass-through:
+The ASP.NET hosting package includes **`DatabaseAvailabilityMiddleware`**, which returns `503 Service Unavailable` for gated requests until the gate signals ready — then becomes a pass-through. A configurable set of **exempt path prefixes** (default: `/alive`, `/health`, `/version` via `DatabaseAvailabilityMiddleware.DefaultExemptPaths`) always passes through, so liveness/readiness probes keep working while the schema initializes under non-blocking init:
 
-```csharp{title="DatabaseAvailabilityMiddleware" description="503 until the schema gate is ready, pass-through afterwards" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Middleware", "Availability"] tests=["DatabaseAvailabilityMiddlewareTests.NotReady_Returns503AndRetryAfterAsync", "DatabaseAvailabilityMiddlewareTests.Ready_DelegatesToNextAsync"]}
-public class DatabaseAvailabilityMiddleware(RequestDelegate next, ISchemaReadyGate schemaReadyGate) {
+```csharp{title="DatabaseAvailabilityMiddleware" description="503 until the schema gate is ready (probe paths exempt), pass-through afterwards" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Middleware", "Availability"] tests=["DatabaseAvailabilityMiddlewareTests.NotReady_Returns503AndRetryAfterAsync", "DatabaseAvailabilityMiddlewareTests.Ready_DelegatesToNextAsync"]}
+public class DatabaseAvailabilityMiddleware {
+  // Probe endpoints are never gated
+  public static readonly IReadOnlyList<string> DefaultExemptPaths = ["/alive", "/health", "/version"];
+
   private static readonly byte[] _responseBody = Encoding.UTF8.GetBytes(
     """{"error":"Service temporarily unavailable","reason":"schema_initializing"}""");
 
+  public DatabaseAvailabilityMiddleware(
+      RequestDelegate next, ISchemaReadyGate schemaReadyGate, IReadOnlyList<string>? exemptPaths = null,
+      AvailabilityGateMode mode = AvailabilityGateMode.AllNonExempt) { /* ... */ }
+
   public async Task InvokeAsync(HttpContext context) {
-    if (!schemaReadyGate.IsReady) {
+    if (!_schemaReadyGate.IsReady && !_isExempt(context.Request.Path) && _isGated(context.Request.Method)) {
       context.Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
       context.Response.Headers.RetryAfter = "30";
       context.Response.ContentType = "application/json";
@@ -160,12 +177,12 @@ public class DatabaseAvailabilityMiddleware(RequestDelegate next, ISchemaReadyGa
       return;
     }
 
-    await next(context);
+    await _next(context);
   }
 }
 ```
 
-Clients receive a JSON body with `"reason": "schema_initializing"` and a `Retry-After: 30` header while migrations run.
+Clients receive a JSON body with `"reason": "schema_initializing"` and a `Retry-After: 30` header while migrations run. `AvailabilityGateMode` selects what gets gated: `AllNonExempt` (default) 503s every non-exempt request; `MutationsOnly` 503s only unsafe methods (POST/PUT/PATCH/DELETE) so safe reads (GET/HEAD/OPTIONS) against read-model tables keep working during an event-store migration.
 
 ---
 
@@ -296,7 +313,7 @@ public async Task Worker_WithClosedGate_DoesNotTouchDatabaseAsync() {
 **Symptoms**: No worker log output beyond startup lines; no SQL activity; HTTP returns 503 with `"reason": "schema_initializing"`.
 
 **Causes**:
-1. Migrations failed — the initializer threw and the gate was never marked ready
+1. Migrations failed or hit `MigrationTimeout` — the gate was never marked ready (host startup aborts in blocking mode; the host stays alive-but-never-ready in the non-blocking default)
 2. The driver initializer is not registered (custom DI setup that bypasses `AddWhizbang().WithDriver.Postgres`)
 3. Test fixture constructed workers with a `SchemaReadyGate` that was never marked ready
 
@@ -344,4 +361,4 @@ protected override async Task ExecuteAsync(CancellationToken stoppingToken) {
 
 ---
 
-*Version 1.0.0 - Foundation Release | Last Updated: 2026-07-16*
+*Version 1.0.0 - Foundation Release | Last Updated: 2026-08-05*
