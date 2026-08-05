@@ -1,8 +1,8 @@
 ---
 title: PostgreSQL Data Provider
 pageType: concept
-verifiedAgainstCommit: 1b31f58d
-verifiedDate: 2026-07-16
+verifiedAgainstCommit: 0bc6065b
+verifiedDate: 2026-08-05
 version: 1.0.0
 category: Components
 order: 1

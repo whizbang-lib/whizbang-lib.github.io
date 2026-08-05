@@ -1,8 +1,8 @@
 ---
 title: Work Pump — Lease & Heartbeat Semantics
 pageType: concept
-verifiedAgainstCommit: 1b31f58d
-verifiedDate: 2026-07-16
+verifiedAgainstCommit: 0bc6065b
+verifiedDate: 2026-08-05
 version: 1.0.0
 category: Workers
 order: 4
@@ -59,6 +59,7 @@ This page documents three contracts that shape the work pump's write volume and 
 
 - `wh_outbox` / `wh_inbox` rows, keyed by `message_id`
 - `wh_perspective_events` rows, keyed by `event_work_id`
+- `wh_receptor_processing` rows, keyed by `id` (done-ness tracked via `completed_at` rather than `processed_at`; leased by `claim_work` but not renewable through `renew_leases`)
 
 A row is claimable by another instance only when it is unprocessed AND either unowned or expired — the orphan predicate used by the per-category guards inside `claim_work`:
 
@@ -123,7 +124,7 @@ IF EXISTS (
 END IF;
 ```
 
-`cleanup_stale_instances(p_stale_cutoff, p_definitive_dead_cutoff DEFAULT NULL)` deletes stale rows and releases all their leased work (`instance_id = NULL, lease_expiry = NULL` across `wh_outbox`, `wh_inbox`, `wh_perspective_events`). Two guards refine the staleness decision:
+`cleanup_stale_instances(p_stale_cutoff, p_definitive_dead_cutoff DEFAULT NULL)` deletes stale rows and releases all their leased work (`instance_id = NULL, lease_expiry = NULL` across `wh_outbox`, `wh_inbox`, `wh_perspective_events`, and `wh_receptor_processing`, plus `assigned_instance_id = NULL` on `wh_active_streams`). Two guards refine the staleness decision:
 
 - **Alive-lock guard**: a row whose session-level advisory alive-lock (migration 055) is still held in `pg_locks` is *not* deleted, even past the stale cutoff — the lock is the primary liveness signal under the adaptive heartbeat cadence.
 - **Definitive-dead bypass**: a heartbeat older than `p_definitive_dead_cutoff` (5 minutes on the `record_heartbeat` path) bypasses the alive-lock guard. This covers OOM-killed pods on half-open TCP, where the server-side session can hold the advisory lock until OS keepalive fires (~2 h default on Linux).

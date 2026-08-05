@@ -1,8 +1,8 @@
 ---
 title: Event Store Query
 pageType: concept
-verifiedAgainstCommit: 1b31f58d
-verifiedDate: 2026-07-16
+verifiedAgainstCommit: 0bc6065b
+verifiedDate: 2026-08-05
 version: 1.0.0
 category: Core Concepts
 order: 10
@@ -138,19 +138,19 @@ var events = await scope.Value.Query
 
 ## Scope Filtering
 
-Event store queries support filtering by TenantId and UserId (the fields available in `MessageScope`).
+Event store queries filter on the fields of `PerspectiveScope` (the type of `EventStoreRecord.Scope`): TenantId, UserId, OrganizationId, and CustomerId. The scope JSONB uses short keys (`t`, `u`, `o`, `c`).
 
-```csharp{title="Scope Filtering" description="Event store queries support filtering by TenantId and UserId (the fields available in MessageScope)." category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "Scope", "Filtering"] tests=["EFCoreFilterableEventStoreQueryTests.Query_TenantFilter_ReturnsOnlyTenantEventsAsync", "EFCoreFilterableEventStoreQueryTests.Query_TenantAndUserFilter_ReturnsOnlyUserEventsAsync"]}
+```csharp{title="Scope Filtering" description="Event store queries filter on the PerspectiveScope fields stored in the scope JSONB column." category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "Scope", "Filtering"] tests=["EFCoreFilterableEventStoreQueryTests.Query_TenantFilter_ReturnsOnlyTenantEventsAsync", "EFCoreFilterableEventStoreQueryTests.Query_TenantAndUserFilter_ReturnsOnlyUserEventsAsync"]}
 // Tenant-only filtering
 var tenantQuery = _lensFactory.GetTenantEventStoreQuery();
-// Generates: WHERE scope->>'TenantId' = 'tenant-123'
+// Generates: WHERE scope->>'t' = 'tenant-123'
 
 // Tenant + User filtering
 var userQuery = _lensFactory.GetUserEventStoreQuery();
-// Generates: WHERE scope->>'TenantId' = 'tenant-123' AND scope->>'UserId' = 'user-456'
+// Generates: WHERE scope->>'t' = 'tenant-123' AND scope->>'u' = 'user-456'
 ```
 
-> **Note**: Unlike perspective queries, event store queries do not support Organization, Customer, or Principal filtering because `MessageScope` only contains TenantId and UserId.
+> **Note**: Principal filters are not applied for event store queries. Organization and Customer filtering are supported via the composable overload, e.g. `GetEventStoreQuery(ScopeFilters.Tenant | ScopeFilters.Organization)`.
 
 ## Dapper Integration
 
@@ -158,20 +158,23 @@ For Dapper users, raw SQL access to the event store table is available:
 
 ```csharp{title="Dapper Integration" description="For Dapper users, raw SQL access to the event store table is available:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "Dapper", "Integration"] unverified="Dapper raw-SQL access path against wh_event_store — not exercised by the IEventStoreQuery / EFCore query tests"}
 var events = await connection.QueryAsync<EventStoreRecord>(@"
-    SELECT * FROM wh_event_store
-    WHERE stream_id = @StreamId
-    ORDER BY version",
+    SELECT es.*, eb.event_data, eb.metadata
+    FROM wh_event_store es
+    LEFT JOIN wh_event_body eb ON eb.event_id = es.event_id
+    WHERE es.stream_id = @StreamId
+    ORDER BY es.version",
     new { StreamId = streamId });
 ```
 
-The table schema is:
+Since the full pointer/body split (migrations 077/078), `wh_event_store` is a narrow, append-only **pointer table** on the Postgres providers — event payloads and envelope metadata live in the companion `wh_event_body` table (`event_id` UUID PK, `event_data` JSONB, `metadata` JSONB), and readers resolve the body via join (a reaped ephemeral body surfaces as NULL).
+
+The `wh_event_store` pointer table schema is:
 - `event_id` (UUID) - Primary key
 - `stream_id` (UUID) - Stream identifier (indexed)
 - `aggregate_id`, `aggregate_type` - Backwards compatibility
 - `version` (INT) - Sequence within stream
 - `event_type` (VARCHAR) - Fully-qualified type name
-- `event_data` (JSONB) - Event payload
-- `metadata` (JSONB) - Envelope metadata
+- `flags` (INTEGER) - Event flags bitmask (collective, ephemeral, compacted, ...)
 - `scope` (JSONB) - Multi-tenancy scope
 - `created_at` (TIMESTAMPTZ) - Creation timestamp
 - `commit_sequence` (BIGINT, nullable) - Database-local commit order stamp
