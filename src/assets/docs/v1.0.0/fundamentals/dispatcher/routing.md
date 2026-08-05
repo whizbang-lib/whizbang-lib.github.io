@@ -1,8 +1,8 @@
 ---
 title: "Namespace-Based Routing"
 pageType: concept
-verifiedAgainstCommit: 1b31f58d
-verifiedDate: 2026-07-16
+verifiedAgainstCommit: 0bc6065b
+verifiedDate: 2026-08-05
 version: 1.0.0
 category: "Core Concepts"
 order: 2
@@ -1176,7 +1176,7 @@ Message kind is determined by (in order of precedence):
 1. **Attribute**: `[MessageKind(MessageKind.Event)]`
 2. **Interface**: `ICommand`, `IEvent`, `IQuery`
 3. **Namespace convention**: Contains ".commands", ".events", ".queries"
-4. **Type name suffix**: Ends with "Command", "Event", "Query"
+4. **Type name suffix**: Ends with "Command", "Query", or an event suffix ("Event", "Created", "Updated", "Deleted")
 
 ### Examples
 

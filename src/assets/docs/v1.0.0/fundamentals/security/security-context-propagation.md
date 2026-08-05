@@ -1,8 +1,8 @@
 ---
 title: Security Context Propagation
 pageType: concept
-verifiedAgainstCommit: 1b31f58d
-verifiedDate: 2026-07-16
+verifiedAgainstCommit: 0bc6065b
+verifiedDate: 2026-08-05
 version: 1.0.0
 category: Core Concepts
 order: 7
@@ -241,15 +241,7 @@ var extraction = await extractor.ExtractAsync(envelope, options, ct);
 // 2. Wrap in ImmutableScopeContext
 var context = new ImmutableScopeContext(extraction, shouldPropagate: true);
 
-// 3. Set accessor for this scope
-scopeAccessor.Current = context;
-
-// 4. Invoke all callbacks
-foreach (var callback in callbacks) {
-  await callback.OnContextEstablishedAsync(context, envelope, scopedProvider, ct);
-}
-
-// 5. Invoke the audit callback (if EnableAuditLogging and a callback is wired)
+// 3. Invoke the audit callback (if EnableAuditLogging and a callback is wired)
 if (options.EnableAuditLogging) {
   onAuditEvent?.Invoke(new ScopeContextEstablished {
     Scope = context.Scope,
@@ -259,6 +251,15 @@ if (options.EnableAuditLogging) {
     Timestamp = DateTimeOffset.UtcNow
   });
 }
+
+// 4. Invoke all callbacks
+foreach (var callback in callbacks) {
+  await callback.OnContextEstablishedAsync(context, envelope, scopedProvider, ct);
+}
+
+// 5. Return the context — the caller (SecurityContextHelper) sets
+//    IScopeContextAccessor.Current with it for the message's DI scope
+return context;
 ```
 
 ### Step 8: Handler Executes with Context
@@ -331,9 +332,9 @@ HTTP → Service A → Service B → Service C
 User makes request
     ↓ (JWT)
 Service A (API)
-    ↓ MessageHop.SecurityContext = { TenantId, UserId }
+    ↓ MessageHop.Scope (ScopeDelta) = { TenantId, UserId }
 Service B (Worker)
-    ↓ MessageHop.SecurityContext = { TenantId, UserId }
+    ↓ hop without "sc" → scope inherited unchanged
 Service C (Processor)
     ↓ All services see same TenantId, UserId
 ```
@@ -383,7 +384,7 @@ This enables:
 
 ### 1. Trust Boundaries
 
-**Problem**: Services within the trust boundary should accept `MessageHop.SecurityContext` from other services, but messages from external sources should not.
+**Problem**: Services within the trust boundary should accept the scope carried on `MessageHop.Scope` from other services, but messages from external sources should not.
 
 **Solution**: Use different extractors for internal vs external messages:
 
@@ -400,11 +401,11 @@ services.AddSecurityExtractor<JwtPayloadExtractor>(); // custom ISecurityContext
 
 **Problem**: Long-running message processing may outlive the original JWT token.
 
-**Solution**: Extract security at message ingress, not at processing time. The `MessageHop.SecurityContext` is a snapshot, not a live token.
+**Solution**: Extract security at message ingress, not at processing time. The scope on `MessageHop.Scope` is a snapshot, not a live token.
 
 ### 3. Privilege Escalation
 
-**Problem**: Malicious service could forge `MessageHop.SecurityContext` to impersonate users.
+**Problem**: Malicious service could forge the `MessageHop.Scope` delta to impersonate users.
 
 **Solution**:
 - Use message signing/encryption for cross-service communication

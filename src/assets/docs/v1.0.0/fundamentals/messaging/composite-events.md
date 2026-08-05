@@ -1,8 +1,8 @@
 ---
 title: Composite Events
 pageType: concept
-verifiedAgainstCommit: 1b31f58d
-verifiedDate: 2026-07-16
+verifiedAgainstCommit: 0bc6065b
+verifiedDate: 2026-08-05
 order: 6
 description: >-
   Bundle many inner events into one transport hop — one outbox row, one
@@ -25,6 +25,7 @@ codeReferences:
   - src/Whizbang.Core/Dispatcher.cs
   - src/Whizbang.Generators/ReceptorRegistryQueryGenerator.cs
 testReferences:
+  - tests/Whizbang.Core.Tests/Messaging/CompositeEventContractTests.cs
   - tests/Whizbang.Core.Tests/Messaging/CompositeEventBaseTests.cs
   - tests/Whizbang.Core.Tests/Messaging/CompositeInboxFanoutTests.cs
   - tests/Whizbang.Core.Tests/Messaging/DispatchOutboxCollectorTests.cs
@@ -266,9 +267,9 @@ event:
 
 | Field | Behavior |
 |---|---|
-| `Version`, `DispatchContext`, `SourceServiceId`, `SourceCommitSequence`, `CausedByServiceId`, `CausedByCommitSequence` | Copied from the composite envelope. |
+| `Version`, `DispatchContext`, `SourceServiceId`, `SourceCommitSequence`, `CausedByServiceId`, `CausedByCommitSequence`, `StateOnly` | Copied from the composite envelope (re-delivery bundles may override the source service id / commit sequence with the original origin identity). |
 | `Hops` | A composite-lineage chain: a fresh creation hop whose `CausationId` is the composite's `MessageId` and `CausationType` is the composite type name, followed by the composite's own hops. Built once and shared by reference across the whole batch, so "these events came from composite X" is queryable. |
-| `MessageId` | Fresh UUIDv7 per child, so inbox dedup keeps each inner event distinct. |
+| `MessageId` | Fresh UUIDv7 per child, so inbox dedup keeps each inner event distinct. (Identity-preserving re-delivery composites keep each child's original id so consumer convergence rides the event-id conflict skip.) |
 | `StreamId` | The composite's stream (recorded as the first hop's `AggregateId`), falling back to the child's own `MessageId` when absent. |
 | `Flags` | Stamped `EventFlags.NoRebroadcast` on both the persisted inbox row and the in-memory envelope. |
 
@@ -368,7 +369,7 @@ publishing service is itself a destination. Rather than make the publishing
 service wait to receive its own transported copy back, it fans the composite out
 **locally, at publish** (`Dispatcher._fanOutCompositeLocallyAtPublishAsync`):
 
-```mermaid{caption="Publish-time local fan-out — the publishing service expands the composite into its own event store at publish (step 1.1) and also sends one wire copy over the outbox (step 1.2); its own transported copy loops back and is echo-discarded, so there is no double fan-out."}
+```mermaid{caption="Publish-time local fan-out — the publishing service expands the composite into its own event store at publish (step 1.1) and also sends one wire copy over the outbox (step 1.2); its own transported copy loops back and is echo-discarded, so there is no double fan-out." tests=["DispatcherCompositePublishFanoutTests.OwnedComposite_LocalPublishesEachInnerEventAtPublishAsync", "DispatcherCompositePublishFanoutTests.NonOwnedComposite_DoesNotFanOutAtPublishAsync"]}
 flowchart TD
     Publish["OrderService: PublishAsync(OrderBulkImportComposite)<br/>(owned domain)"]
     Step11["1.1 expand → local-publish each inner event<br/>(DispatchModes.Local = local receptors + event store, NO transport)"]

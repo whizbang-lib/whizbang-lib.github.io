@@ -1,8 +1,8 @@
 ---
 title: Metrics Reference
 pageType: reference
-verifiedAgainstCommit: 1b31f58d
-verifiedDate: 2026-07-16
+verifiedAgainstCommit: 0bc6065b
+verifiedDate: 2026-08-05
 version: 1.0.0
 category: Observability
 order: 6
@@ -25,6 +25,7 @@ codeReferences:
   - src/Whizbang.Core/Observability/PinnedPoolMetrics.cs
   - src/Whizbang.Core/Observability/TableStatisticsMetrics.cs
   - src/Whizbang.Core/Observability/TypeRegistryMetrics.cs
+  - src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs
   - src/Whizbang.Core/Workers/TransportDeadLetterDrainWorker.cs
   - src/Whizbang.Core/Routing/MessageDiscardPolicy.cs
   - src/Whizbang.Data.Postgres/Notifications/NotifyMetrics.cs
@@ -42,6 +43,7 @@ testReferences:
   - tests/Whizbang.Core.Tests/Observability/EventCategoryMetricsTests.cs
   - tests/Whizbang.Core.Tests/Observability/TableStatisticsMetricsTests.cs
   - tests/Whizbang.Core.Tests/Observability/TypeRegistryMetricsTests.cs
+  - tests/Whizbang.Core.Tests/Observability/StreamIntegrityMetricsTests.cs
   - tests/Whizbang.Sagas.Tests/SagaMetricsTests.cs
 lastMaintainedCommit: '01f07906'
 ---
@@ -71,6 +73,7 @@ Additional subsystem meters:
 | `Whizbang.Workers.PinnedPool` | `PinnedPoolMetrics` | Pinned connection pool borrows, timeouts, recycles |
 | `Whizbang.TableStatistics` | `TableStatisticsMetrics` | Estimated queue depth and table size gauges |
 | `Whizbang.TypeRegistry` | `TypeRegistryMetrics` | Message type registry renames and drift |
+| `Whizbang.StreamIntegrity` | `StreamIntegrityMetrics` | Continuity checkpoints, gap/divergence detection, repair and manifest flows |
 | `Whizbang.Core.Routing.MessageDiscard` | `MessageDiscardPolicy` | Unsubscribed-message discards at the receive boundary |
 | `Whizbang.Postgres.Notifications` | `NotifyMetrics` | LISTEN/NOTIFY signal delivery and connection state |
 | `Whizbang.Sagas` | `SagaMetrics` | Saga initiation, completion, item and hook outcomes |
@@ -103,6 +106,7 @@ builder.Services.AddOpenTelemetry()
       metrics.AddMeter("Whizbang.Workers.PinnedPool");
       metrics.AddMeter("Whizbang.TableStatistics");
       metrics.AddMeter("Whizbang.TypeRegistry");
+      metrics.AddMeter("Whizbang.StreamIntegrity");
       metrics.AddMeter("Whizbang.Core.Routing.MessageDiscard");
       metrics.AddMeter("Whizbang.Postgres.Notifications");
       metrics.AddMeter("Whizbang.Sagas");
@@ -481,6 +485,27 @@ Meter name: `Whizbang.TypeRegistry` (`TypeRegistryMetrics`)
 |-------------|------|-------------|
 | `whizbang.type_registry.renamed` | Counter\<long\> | Registry rows reconciled old→new for an acknowledged rename; tagged by `service` |
 | `whizbang.type_registry.drift_detected` | Counter\<long\> | Un-acknowledged registry drift left untouched; tagged by `service` |
+
+## Whizbang.StreamIntegrity {#stream-integrity}
+
+Meter name: `Whizbang.StreamIntegrity` (`StreamIntegrityMetrics`)
+
+| Metric Name | Type | Description |
+|-------------|------|-------------|
+| `whizbang.stream_integrity.checkpoints_published` | Counter\<long\> | Continuity checkpoints published (empty windows included - the liveness beat) |
+| `whizbang.stream_integrity.checkpoints_received` | Counter\<long\> | Continuity checkpoints received; tagged by `origin` |
+| `whizbang.stream_integrity.gaps_detected` | Counter\<long\> | Confirmed continuity gaps; tagged by `origin` + `event_type` |
+| `whizbang.stream_integrity.divergences_detected` | Counter\<long\> | Confirmed audit divergences; tagged by `origin` + `event_type` |
+| `whizbang.stream_integrity.coverage_gaps_detected` | Counter\<long\> | Local perspective coverage gaps; tagged by `perspective` |
+| `whizbang.stream_integrity.repairs_requested` | Counter\<long\> | Scoped re-delivery repair requests sent; tagged by `source` (checkpoint \| audit) + `origin` |
+| `whizbang.stream_integrity.rebuilds_requested` | Counter\<long\> | Local rebuilds dispatched for coverage gaps; tagged by `perspective` |
+| `whizbang.stream_integrity.manifests_requested` | Counter\<long\> | Manifest requests sent to origins; tagged by `origin` + `sweep` |
+| `whizbang.stream_integrity.manifest_chunks_sent` | Counter\<long\> | Manifest chunks answered as an origin; tagged by `level` |
+| `whizbang.stream_integrity.drill_downs_requested` | Counter\<long\> | Type-level mismatches escalated to stream-level requests; tagged by `origin` |
+| `whizbang.stream_integrity.backfills_requested` | Counter\<long\> | State-only backfill requests broadcast for consumed-set growth (value = new type count) |
+| `whizbang.stream_integrity.digest_buckets_verified` | Counter\<long\> | Settled digest buckets checked by the trust-but-verify sweep |
+| `whizbang.stream_integrity.digest_drift_healed` | Counter\<long\> | Digest buckets the sweep healed; tagged by `kind` (updated \| removed \| added) |
+| `whizbang.stream_integrity.redelivery_requests_received` | Counter\<long\> | Re-delivery requests served as an origin (repair + backfill flows) |
 
 ## Other Meters {#other-meters}
 

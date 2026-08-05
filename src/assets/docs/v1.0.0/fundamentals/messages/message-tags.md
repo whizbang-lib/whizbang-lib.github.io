@@ -1,8 +1,8 @@
 ---
 title: Message Tags
 pageType: concept
-verifiedAgainstCommit: 1b31f58d
-verifiedDate: 2026-07-16
+verifiedAgainstCommit: 0bc6065b
+verifiedDate: 2026-08-05
 version: 1.0.0
 category: Core Concepts
 order: 10
@@ -388,10 +388,10 @@ public class SignalRNotificationHook : IMessageTagHook<SignalTagAttribute> {
 ```
 
 :::tip
-`LifecycleStage` has **25 members**: 24 real lifecycle stages plus the special value `AfterReceptorCompletion = -1`, which fires synchronously after the receptor completes, *before* any real lifecycle stage is invoked. `AfterReceptorCompletion` is not a true lifecycle stage — it is the tag system's default firing point.
+`LifecycleStage` has **29 members**: 28 real lifecycle stages (including the four destruction stages `PreDestructionDetached`/`PreDestructionInline`/`PostDestructionDetached`/`PostDestructionInline`) plus the special value `AfterReceptorCompletion = -1`, which fires synchronously after the receptor completes, *before* any real lifecycle stage is invoked. `AfterReceptorCompletion` is not a true lifecycle stage — it is the tag system's default firing point.
 :::
 
-> Verified: `src/Whizbang.Core/Messaging/LifecycleStage.cs` — 24 stages + `AfterReceptorCompletion = -1`; the enum's own summary reads "Defines the 24 lifecycle stages". `fireAt` server-side filtering is exercised by `tests/Whizbang.Core.Tests/Tags/TagHookStageFilteringAndScopeTests.cs` (a hook registered at `PostAllPerspectivesDetached` does not fire at `AfterReceptorCompletion`, and does fire at its registered stage).
+> Verified: `src/Whizbang.Core/Messaging/LifecycleStage.cs` — 28 stages + `AfterReceptorCompletion = -1` (the enum's own XML summary still reads "Defines the 24 lifecycle stages"; it predates the destruction stages). `fireAt` server-side filtering is exercised by `tests/Whizbang.Core.Tests/Tags/TagHookStageFilteringAndScopeTests.cs` (a hook registered at `PostAllPerspectivesDetached` does not fire at `AfterReceptorCompletion`, and does fire at its registered stage).
 
 ### Payload Structure
 

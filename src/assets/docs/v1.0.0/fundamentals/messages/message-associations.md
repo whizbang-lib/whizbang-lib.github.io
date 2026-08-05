@@ -1,8 +1,8 @@
 ---
 title: Message Associations
 pageType: concept
-verifiedAgainstCommit: 1b31f58d
-verifiedDate: 2026-07-16
+verifiedAgainstCommit: 0bc6065b
+verifiedDate: 2026-08-05
 version: 1.0.0
 category: Core Concepts
 order: 24
@@ -15,6 +15,8 @@ codeReferences:
 testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/MessageAssociationRegistrationTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/MessageAssociationRegistryTests.cs
+  - tests/Whizbang.Core.Tests/Messaging/RecordTypesConstructionTests.cs
+  - tests/Whizbang.Data.Schema.Tests/ISchemaBuilderContractTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -138,7 +140,7 @@ public static class MessageAssociationsSchema {
 
 At startup, services reconcile their associations:
 
-```mermaid{caption="Startup reconciliation flow — scan assemblies, discover message associations, upsert new / prune stale rows in the database, then auto-create checkpoints for new perspectives."}
+```mermaid{caption="Startup reconciliation flow — scan assemblies, discover message associations, upsert new / prune stale rows in the database, then auto-create checkpoints for new perspectives." tests=["MessageAssociationRegistrationTests.IPerspectiveFor_Create_EventsRegisteredInMessageAssociationsAsync", "MessageAssociationRegistryTests.RegisterMessageAssociations_InsertsNewAssociations_SuccessfullyAsync"]}
 graph TB
     S1["1. Service starts<br/>Scan assemblies for perspectives and receptors"]
     S2["2. Discover associations<br/>OrderSummaryPerspective handles OrderCreated, OrderShipped<br/>InventoryReceptor handles OrderCreated"]

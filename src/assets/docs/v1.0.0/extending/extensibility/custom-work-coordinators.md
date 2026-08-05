@@ -1,8 +1,8 @@
 ---
 title: Custom Work Coordinators
 pageType: guide
-verifiedAgainstCommit: 1b31f58d
-verifiedDate: 2026-07-16
+verifiedAgainstCommit: 0bc6065b
+verifiedDate: 2026-08-05
 version: 1.0.0
 category: Extensibility
 order: 11
@@ -115,7 +115,7 @@ public interface IWorkCoordinator {
 ```
 
 :::updated
-`ProcessWorkBatchAsync(ProcessWorkBatchRequest, CancellationToken)` still exists on the interface but is **compatibility-only**: its default implementation returns an empty `WorkBatch`, and the legacy orchestrator SQL function `process_work_batch` has been dropped. Work coordination is now decomposed into `ClaimWorkAsync`, `StoreOutboxMessagesAsync` / `StoreInboxMessagesAsync`, the per-completion/per-failure flushers, and `CommitHandlerBatchAsync`.
+The legacy `ProcessWorkBatchAsync(ProcessWorkBatchRequest, CancellationToken)` member has been **removed from the interface entirely** (along with the `ProcessWorkBatchRequest` type), and the legacy orchestrator SQL function `process_work_batch` has been dropped. Work coordination is now decomposed into `ClaimWorkAsync`, `StoreOutboxMessagesAsync` / `StoreInboxMessagesAsync`, the per-completion/per-failure flushers, and `CommitHandlerBatchAsync`.
 :::
 
 ### Claim/drain split

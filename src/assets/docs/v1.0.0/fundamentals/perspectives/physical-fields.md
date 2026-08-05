@@ -1,8 +1,8 @@
 ---
 title: Physical Fields
 pageType: concept
-verifiedAgainstCommit: 1b31f58d
-verifiedDate: 2026-07-16
+verifiedAgainstCommit: 0bc6065b
+verifiedDate: 2026-08-05
 version: 1.0.0
 category: Perspectives
 codeReferences:
@@ -21,6 +21,8 @@ testReferences:
   - tests/Whizbang.Core.Tests/Perspectives/FieldStorageModeTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/PhysicalFieldIntegrationTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/PhysicalFieldUpsertStrategyTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/QueryTranslation/PhysicalFieldRegistryTests.cs
+  - tests/Whizbang.Generators.Tests/Models/PhysicalFieldInfoTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 

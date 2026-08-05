@@ -1,8 +1,8 @@
 ---
 title: Perspective Association Info
 pageType: concept
-verifiedAgainstCommit: 1b31f58d
-verifiedDate: 2026-07-16
+verifiedAgainstCommit: 0bc6065b
+verifiedDate: 2026-08-05
 version: 1.0.0
 category: Perspectives
 order: 4
@@ -129,13 +129,12 @@ return new MessageAssociation[] {
 
 ### Runtime Registration
 
-`AddWhizbangPerspectives()` (generated into `{AssemblyName}.Generated`) registers each perspective against its interface as a **Scoped** service:
+`AddWhizbangPerspectives()` (generated into `{AssemblyName}.Generated`) registers each perspective against its interface as a **Scoped** service — one registration per implemented perspective interface:
 
 ```csharp{title="Runtime Registration" description="Runtime Registration" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Runtime", "Registration"] tests=["PerspectiveDiscoveryGeneratorTests.PerspectiveDiscoveryGenerator_SinglePerspectiveOneEvent_GeneratesRegistrationAsync"]}
 // Auto-generated registration inside AddWhizbangPerspectives()
-services.AddScoped<
-    IPerspectiveFor<OrderSummaryDto, OrderCreated, OrderShipped>,
-    OrderSummaryPerspective>();
+services.AddScoped<IPerspectiveFor<OrderSummaryDto, OrderCreated>, OrderSummaryPerspective>();
+services.AddScoped<IPerspectiveFor<OrderSummaryDto, OrderShipped>, OrderSummaryPerspective>();
 ```
 
 ## Generated Components

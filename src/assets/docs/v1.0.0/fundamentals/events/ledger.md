@@ -1,8 +1,8 @@
 ---
 title: Ledger Component
 pageType: concept
-verifiedAgainstCommit: 1b31f58d
-verifiedDate: 2026-07-16
+verifiedAgainstCommit: 0bc6065b
+verifiedDate: 2026-08-05
 version: 1.0.0
 category: Components
 order: 7
@@ -84,7 +84,7 @@ There is no global "position" counter — ordering is **per stream** (monotonic 
 | Implementation | Package | Use |
 |----------------|---------|-----|
 | `InMemoryEventStore` | `Whizbang.Core` | Testing and single-process scenarios. Thread-safe; NOT for multi-process production use. |
-| Postgres event stores (Dapper / EF Core) | `Whizbang.Data.*` | Production. Events land in the `wh_event_store` table via the work coordinator. |
+| Postgres event stores (Dapper / EF Core) | `Whizbang.Data.*` | Production. Events land in the `wh_event_store` table via the work coordinator; event bodies (payload + metadata) live in the companion `wh_event_body` table since the full-body split (migrations 077/078). |
 
 ```csharp{title="In-Memory Implementation" description="InMemoryEventStore for tests and single-process scenarios" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "InMemory", "Implementation"] tests=["InMemoryEventStoreTests.AppendAsync_WithMessage_WhenNoEnvelope_ShouldCreateMinimalEnvelopeAsync", "InMemoryEventStoreTests.AppendAsync_WithMessage_WhenEnvelopeRegistered_ShouldUseEnvelopeAsync"]}
 // Thread-safe in-memory ledger for tests / single-process apps
@@ -108,8 +108,10 @@ public sealed class EventStoreRecord {
   public required string AggregateType { get; set; } // CLR type name (no assembly)
   public required int Version { get; set; }          // Per-stream optimistic-concurrency version
   public required string EventType { get; set; }     // "Namespace.Type, Assembly"
-  public required JsonElement EventData { get; set; }// Event payload as JSON
-  public required EnvelopeMetadata Metadata { get; set; } // Hops, correlation, causation
+  public required JsonElement? EventData { get; set; } // Event payload as JSON; NULL on Postgres
+                                                       // post-077 (body lives in wh_event_body)
+  public required EnvelopeMetadata? Metadata { get; set; } // Hops, correlation, causation; NULL on
+                                                           // Postgres post-077 (in wh_event_body)
   public PerspectiveScope? Scope { get; set; }       // Security scope (tenant/user/...)
   public DateTime CreatedAt { get; set; }
   public long? CommitSequence { get; set; }          // Global commit stamp (async)

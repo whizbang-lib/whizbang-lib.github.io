@@ -1,8 +1,8 @@
 ---
 title: Pinned Worker Connection Pool
 pageType: concept
-verifiedAgainstCommit: 1b31f58d
-verifiedDate: 2026-07-16
+verifiedAgainstCommit: 0bc6065b
+verifiedDate: 2026-08-05
 version: 1.0.0
 category: Fundamentals
 order: 6
@@ -42,7 +42,7 @@ Leave it off for development, single-instance deployments, or any environment wh
 
 ## How it works
 
-```mermaid{caption="Pinned-pool topology — eligible tier-1+2 workers borrow a direct connection from the pinned pool and bypass pgbouncer's per-transaction DISCARD ALL, while application code and ineligible workers still acquire through pgbouncer and the NOTIFY listener holds its own direct LISTEN connection."}
+```mermaid{caption="Pinned-pool topology — eligible tier-1+2 workers borrow a direct connection from the pinned pool and bypass pgbouncer's per-transaction DISCARD ALL, while application code and ineligible workers still acquire through pgbouncer and the NOTIFY listener holds its own direct LISTEN connection." tests=["PinnedConnectionPoolIntegrationTests.RealPool_BorrowAndDispose_RoundTripsConnectionAsync", "PinnedConnectionPoolIntegrationTests.RealPool_IneligibleWorker_ReturnsNoOpBorrowAsync"]}
 graph LR
   Worker[Background worker<br/>tier-1+2 eligible] -->|Borrow| Pool[Pinned pool<br/>Size=1..N]
   Pool -->|Direct| PG[(PostgreSQL<br/>port 5432)]

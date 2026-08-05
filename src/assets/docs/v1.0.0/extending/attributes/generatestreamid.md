@@ -1,8 +1,8 @@
 ---
 title: GenerateStreamId Attribute
 pageType: reference
-verifiedAgainstCommit: 1b31f58d
-verifiedDate: 2026-07-16
+verifiedAgainstCommit: 0bc6065b
+verifiedDate: 2026-08-05
 version: 1.0.0
 category: Attributes
 order: 3
@@ -64,7 +64,7 @@ public record OrderCreated([property: StreamId] [property: GenerateStreamId] Gui
 
 ## Purpose
 
-The `[GenerateStreamId]` attribute replaces the blunt `AutoGenerateStreamIds` option with fine-grained, per-event-type control over when StreamIds are auto-generated. This distinction is critical for event-sourced systems where:
+The `[GenerateStreamId]` attribute replaces the blunt `AutoGenerateStreamIds` option with fine-grained, per-event-type control over when StreamIds are auto-generated. (The legacy `WhizbangOptions.AutoGenerateStreamIds` property still exists for configuration compatibility but is no longer consulted by the pipeline.) This distinction is critical for event-sourced systems where:
 
 1. **Stream-initiating events** should always get a new StreamId
 2. **Appending events** must receive a StreamId from their parent (and fail-fast if missing)
@@ -146,7 +146,6 @@ The guard distinguishes between:
 |---|---|
 | `[StreamId]` | Marks which property IS the stream ID |
 | `[GenerateStreamId]` | Controls whether the stream ID is AUTO-GENERATED |
-| `[StreamKey]` | Alternative string-based stream identification |
 
 `[GenerateStreamId]` requires `[StreamId]` to be present (either on the same property or inherited from a base class).
 

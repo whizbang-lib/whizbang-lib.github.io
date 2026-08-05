@@ -1,8 +1,8 @@
 ---
 title: "Perspective Registry"
 pageType: concept
-verifiedAgainstCommit: 1b31f58d
-verifiedDate: 2026-07-16
+verifiedAgainstCommit: 0bc6065b
+verifiedDate: 2026-08-05
 version: 1.0.0
 category: "Perspectives"
 order: 6
@@ -98,7 +98,7 @@ Schema drift occurs when your C# perspective class changes but the database tabl
 
 - Adding or removing physical field columns on your perspective model
 - Changing physical field column types (e.g., `int` to `long`)
-- Adding or removing indexes (e.g., via `[PhysicalField(indexed: true)]`)
+- Adding or removing indexes (e.g., via `[PhysicalField(Indexed = true)]`)
 - Changing vector field dimensions
 
 ### Handling Drift

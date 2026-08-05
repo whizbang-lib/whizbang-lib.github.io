@@ -1,8 +1,8 @@
 ---
 title: Inventory Service
 pageType: tutorial
-verifiedAgainstCommit: 1b31f58d
-verifiedDate: 2026-07-16
+verifiedAgainstCommit: 0bc6065b
+verifiedDate: 2026-08-05
 version: 1.0.0
 category: Tutorial
 order: 3
@@ -87,12 +87,14 @@ flowchart TD
 
 ```csharp{title="ReserveInventoryCommand" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "ReserveInventory", "Command"] unverified="tutorial worked-example — exercised by the ECommerce sample suite (RestockInventoryReceptorTests), which is outside the core unit-test coverage map"}
 using Whizbang.Core;
+using Whizbang.Core.Attributes;
 
 namespace ECommerce.Contracts.Commands;
 
 /// <summary>
 /// Command to reserve inventory for an order
 /// </summary>
+[PinnedId("6bfe1dee-7a31-4d73-9481-170817327096")]
 public record ReserveInventoryCommand : ICommand {
   public required OrderId OrderId { get; init; }
   [StreamId]
@@ -107,12 +109,14 @@ public record ReserveInventoryCommand : ICommand {
 
 ```csharp{title="InventoryReserved Event" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "InventoryReserved", "Event"] unverified="tutorial worked-example — exercised by the ECommerce sample suite (RestockInventoryReceptorTests), which is outside the core unit-test coverage map"}
 using Whizbang.Core;
+using Whizbang.Core.Attributes;
 
 namespace ECommerce.Contracts.Events;
 
 /// <summary>
 /// Event published when inventory is successfully reserved
 /// </summary>
+[PinnedId("f692e4bc-219c-4a61-82f3-337469454e1b")]
 public record InventoryReservedEvent : IEvent {
   public required string OrderId { get; init; }
   [StreamId]
@@ -128,12 +132,14 @@ public record InventoryReservedEvent : IEvent {
 
 ```csharp{title="InventoryReleased Event (Compensation)" description="**ECommerce." category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "InventoryReleased", "Event"] unverified="tutorial worked-example — exercised by the ECommerce sample suite (AdjustInventoryReceptorTests), which is outside the core unit-test coverage map"}
 using Whizbang.Core;
+using Whizbang.Core.Attributes;
 
 namespace ECommerce.Contracts.Events;
 
 /// <summary>
 /// Event published when previously reserved inventory is released (e.g., order cancelled)
 /// </summary>
+[PinnedId("098a6dcd-438d-47ba-808a-d63f057555bf")]
 public record InventoryReleasedEvent : IEvent {
   public required string OrderId { get; init; }
   [StreamId]
@@ -165,11 +171,13 @@ using Whizbang.Data.EFCore.Custom;
 
 namespace ECommerce.InventoryWorker;
 
-[WhizbangDbContext]
+[WhizbangDbContext(Schema = "inventory")]
 public partial class InventoryDbContext(DbContextOptions<InventoryDbContext> options) : DbContext(options) {
   // DbSet properties and OnModelCreating are auto-generated in partial class
 }
 ```
+
+The `Schema = "inventory"` argument places all of this service's tables in the PostgreSQL `inventory` schema (each service gets its own schema).
 
 ---
 
@@ -269,7 +277,8 @@ namespace ECommerce.InventoryWorker.Perspectives;
 public class InventoryLevelsPerspective :
   IPerspectiveFor<InventoryLevelDto, ProductCreatedEvent, InventoryRestockedEvent, InventoryReservedEvent, InventoryAdjustedEvent> {
 
-  /// <summary>New products start at 0 quantity.</summary>
+  /// <summary>New products start at 0 quantity. (The full sample also preserves
+  /// existing quantities here if a restock event was processed first.)</summary>
   public InventoryLevelDto Apply(InventoryLevelDto currentData, ProductCreatedEvent @event) {
     return new InventoryLevelDto {
       ProductId = @event.ProductId,
@@ -326,7 +335,7 @@ public class InventoryLevelsPerspective :
 ```
 
 :::updated
-There is no `IPerspectiveOf<TEvent>` interface with a `HandleAsync` that performs SQL. The real contract is `IPerspectiveFor<TModel, TEvent1, ..., TEventN>` (up to 20 event types) with pure `Apply(TModel currentData, TEvent eventData)` methods. Whizbang persists the returned model to a generated perspective table and tracks checkpoints for you.
+There is no `IPerspectiveOf<TEvent>` interface with a `HandleAsync` that performs SQL. The real contract is `IPerspectiveFor<TModel, TEvent1, ..., TEventN>` (up to 50 event types) with pure `Apply(TModel currentData, TEvent eventData)` methods. Whizbang persists the returned model to a generated perspective table and tracks checkpoints for you.
 :::
 
 **Querying the read model — Lenses** (**ECommerce.InventoryWorker/Lenses/InventoryLens.cs**, condensed):
@@ -519,11 +528,11 @@ Check Aspire Dashboard:
 ### 4. Verify Database
 
 ```sql{title="Verify Database" description="Verify Database" category="Example" difficulty="BEGINNER" tags=["Learn", "Tutorial", "Verify", "Database"]}
--- Check the event store
-SELECT stream_id, event_type FROM wh_event_store ORDER BY created_at DESC LIMIT 10;
+-- Check the event store (tables live in this service's "inventory" schema)
+SELECT stream_id, event_type FROM inventory.wh_event_store ORDER BY created_at DESC LIMIT 10;
 
 -- Check the perspective read model (table generated for InventoryLevelDto)
-SELECT * FROM inventory_levels;
+SELECT * FROM inventory.inventory_levels;
 ```
 
 **Expected**:
@@ -607,14 +616,14 @@ The `InventoryLevelsPerspective` can then handle `InventoryReleasedEvent` with a
 
 ## Testing
 
-Receptor unit tests use a recording `TestDispatcher` and `NullLogger` — no database required (see **tests/ECommerce.InventoryWorker.Tests**):
+Receptor unit tests use a recording `TestDispatcher` (exposing a `PublishedEvents` list) and a `TestLogger` — no database required (see **tests/ECommerce.InventoryWorker.Tests**):
 
 ```csharp{title="Unit Test - Reserve Inventory" description="Unit Test - Reserve Inventory" category="Example" difficulty="INTERMEDIATE" tags=["Learn", "Tutorial", "Unit", "Test"] unverified="tutorial worked-example — exercised by the ECommerce sample suite (RestockInventoryReceptorTests), which is outside the core unit-test coverage map"}
 [Test]
 public async Task ReserveInventoryReceptor_ValidCommand_PublishesEventAsync() {
   // Arrange
   var dispatcher = new TestDispatcher();
-  var receptor = new ReserveInventoryReceptor(dispatcher, NullLogger<ReserveInventoryReceptor>.Instance);
+  var receptor = new ReserveInventoryReceptor(dispatcher, new TestLogger<ReserveInventoryReceptor>());
 
   var command = new ReserveInventoryCommand {
     OrderId = OrderId.New(),
@@ -628,8 +637,8 @@ public async Task ReserveInventoryReceptor_ValidCommand_PublishesEventAsync() {
   // Assert
   await Assert.That(result.Quantity).IsEqualTo(2);
   await Assert.That(result.ProductId).IsEqualTo(command.ProductId.Value);
-  await Assert.That(dispatcher.PublishCount).IsEqualTo(1);
-  await Assert.That(dispatcher.PublishedMessages[0]).IsTypeOf<InventoryReservedEvent>();
+  await Assert.That(dispatcher.PublishedEvents).HasCount().EqualTo(1);
+  await Assert.That(dispatcher.PublishedEvents[0]).IsTypeOf<InventoryReservedEvent>();
 }
 ```
 

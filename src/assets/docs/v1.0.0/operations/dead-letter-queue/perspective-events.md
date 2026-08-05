@@ -1,8 +1,8 @@
 ---
 title: Perspective-event Dead-lettering
 pageType: concept
-verifiedAgainstCommit: 1b31f58d
-verifiedDate: 2026-07-16
+verifiedAgainstCommit: 0bc6065b
+verifiedDate: 2026-08-05
 version: 1.0.0
 category: Dead-Letter Queue
 order: 5
@@ -17,6 +17,7 @@ codeReferences:
   - src/Whizbang.Core/Messaging/IDeadLetterStore.cs
   - src/Whizbang.Data.Postgres/Migrations/038_GetStreamEvents.sql
   - src/Whizbang.Data.Postgres/Migrations/059_GetStreamEventsOwnershipGate.sql
+  - src/Whizbang.Data.Postgres/Migrations/078_DropInlineBodyColumns.sql
   - src/Whizbang.Data.Postgres/Migrations/050_WhDeadLetters.sql
 testReferences:
   - tests/Whizbang.Core.Tests/Workers/PerspectiveWorkerDeadLetterFilterTests.cs
@@ -60,8 +61,9 @@ DeserializeStreamEvents(survivors)
 
 `wh_perspective_events.attempts` is bumped by SQL — never by C#:
 
-- `get_stream_events` (mig 038; current definition in mig 059) bumps
-  `attempts` when claiming an unowned or expired-lease row.
+- `get_stream_events` (mig 038; ownership gate added in mig 059; current
+  definition in mig 078) bumps `attempts` when claiming an unowned or
+  expired-lease row.
 - `claim_and_fetch_pending_perspective_events` (mig 042) same.
 - `claim_orphaned_perspective_events` (mig 027) bumps when re-claiming
   rows from a dead instance.

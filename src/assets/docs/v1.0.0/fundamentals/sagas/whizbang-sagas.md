@@ -1,8 +1,8 @@
 ---
 title: Whizbang.Sagas — Multi-Stream Saga Coordination
 pageType: concept
-verifiedAgainstCommit: 1b31f58d
-verifiedDate: 2026-07-16
+verifiedAgainstCommit: 0bc6065b
+verifiedDate: 2026-08-05
 version: 1.0.0
 category: Application Blocks
 order: 1
@@ -105,7 +105,7 @@ The derivation is reproducible byte-for-byte in SQL via a canonical `saga_item_s
 
 When all items reach a terminal state, **N concurrent terminal handlers** may each conclude "I'm the last one" and try to emit `CompletedEvent`. The naive `if (!alreadyEmitted) PublishAsync(...)` has a check-to-commit window that collapses N duplicates to a few — but never to one.
 
-`BaseSagaService.CompleteSagaAsync` routes through `SagaCompletionGuard.EmitOnceAsync`, which calls `IDispatcher.PublishOnceAsync(claimKey, evt, ct)` with the convention `"saga-completed:{sagaName}:{sagaId}"`. The dispatcher's atomic `INSERT … ON CONFLICT DO NOTHING` against `wh_unique_emission_claims` gives **exactly-one** emission by construction. See [PublishOnceAsync](../dispatcher/publish-once) for the underlying mechanism.
+`BaseSagaService.CompleteSagaAsync` builds its claim key via `SagaCompletionGuard.ClaimKey` — the convention `"saga-completed:{sagaName}:{sagaId}"` — and calls `ISagaEventEmitter.PublishOnceAsync(claimKey, evt, ct)`; the default `DispatcherSagaEventEmitter` forwards to `IDispatcher.PublishOnceAsync`. (`SagaCompletionGuard.EmitOnceAsync` packages the same idiom for callers holding an `IDispatcher` directly.) The dispatcher's atomic `INSERT … ON CONFLICT DO NOTHING` against `wh_unique_emission_claims` gives **exactly-one** emission by construction. See [PublishOnceAsync](../dispatcher/publish-once) for the underlying mechanism.
 
 ### Stranded-row reconciliation
 

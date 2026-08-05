@@ -1,8 +1,8 @@
 ---
 title: Lifecycle Stages
 pageType: reference
-verifiedAgainstCommit: 1b31f58d
-verifiedDate: 2026-07-16
+verifiedAgainstCommit: 0bc6065b
+verifiedDate: 2026-08-05
 version: 1.0.0
 category: Core Concepts
 order: 9
@@ -23,6 +23,7 @@ codeReferences:
   - src/Whizbang.Core/Workers/TransportConsumerWorker.cs
   - src/Whizbang.Generators/Templates/PerspectiveRunnerTemplate.cs
   - src/Whizbang.Core/Workers/PerspectiveWorker.cs
+  - src/Whizbang.Core/Workers/MaintenanceWorker.cs
 testReferences:
   - tests/Whizbang.Core.Tests/Messaging/LifecycleStageTests.cs
   - tests/Whizbang.Core.Tests/Messaging/LifecycleStageExtensionsTests.cs
@@ -31,6 +32,7 @@ testReferences:
   - tests/Whizbang.Core.Tests/Lifecycle/LifecycleCoordinatorTests.cs
   - tests/Whizbang.Core.Tests/Workers/PerspectiveWorkerPostLifecycleTests.cs
   - tests/Whizbang.Core.Tests/Workers/TransportConsumerWorkerPostLifecycleTests.cs
+  - tests/Whizbang.Core.Tests/Workers/MaintenanceWorkerDestructionHookTests.cs
   - tests/Whizbang.Generators.Tests/ReceptorDiscoveryGeneratorTests.cs
 lastMaintainedCommit: '01f07906'
 ---
@@ -112,10 +114,10 @@ At each stage, **lifecycle receptors** can execute to:
 
 ---
 
-## All 24 Lifecycle Stages
+## All 28 Lifecycle Stages
 
 :::updated
-The `LifecycleStage` enum contains 25 values total: 24 true lifecycle stages plus one special value (`AfterReceptorCompletion = -1`). `AfterReceptorCompletion` is **not** a true lifecycle stage — it is a hook that fires synchronously after a receptor completes in the Dispatcher, before any lifecycle stages are invoked. It exists as the default for backward compatibility with tag hooks.
+The `LifecycleStage` enum contains 29 values total: 28 true lifecycle stages plus one special value (`AfterReceptorCompletion = -1`). `AfterReceptorCompletion` is **not** a true lifecycle stage — it is a hook that fires synchronously after a receptor completes in the Dispatcher, before any lifecycle stages are invoked. It exists as the default for backward compatibility with tag hooks.
 :::
 
 ### Immediate Stage
@@ -604,6 +606,38 @@ public class OrderNotificationReceptor : IReceptor<OrderPlacedEvent> {
 
 ---
 
+### Destruction Stages (4 stages)
+
+:::new
+Destruction stages (E2) hook the destruction of ephemeral data — fired by the `MaintenanceWorker` reaper around the physical delete of consumed, aged-past-grace ephemeral event bodies. Unlike the other stages, they fire through a registered `IDestructionHook` (batched once per maintenance cycle for the whole about-to-reap set), not through `[FireAt]` receptors. Without a registered hook they are inert.
+:::
+
+#### `PreDestructionDetached`
+
+**Timing**: Just before an ephemeral event / stream / perspective row is destroyed (consumption-complete, TTL expiry, stream purge, or erasure). Fire-and-forget, own scope.
+
+**Guarantees**: Detached — does not block the reaper. Best for destruction notifications / metrics that need not gate the delete.
+
+#### `PreDestructionInline`
+
+**Timing**: Just before destruction, **awaited on the reaper's critical path** — side effects must durably commit BEFORE the physical delete.
+
+**Use Cases**: Compact / snapshot / archive / crypto-shred. The hook may return **Cancel** or **Defer** (or a chosen disposition): the whole batch is then held (Cancel = far-future, Defer = until the given instant) and nothing is reaped this cycle — PostDestruction does not fire.
+
+**Guarantees**: Blocking for this unit of destruction. A throwing hook does NOT fail open — the batch is held with backoff and re-offered up to `MaxDestructionRetries`, after which the `OnDestroyFailure` policy decides (forced delete or keep).
+
+#### `PostDestructionDetached`
+
+**Timing**: After the physical delete has committed. Fire-and-forget, own scope.
+
+**Use Cases**: Notify / metrics / cascade.
+
+#### `PostDestructionInline`
+
+**Timing**: After the physical delete, blocking the reaper for this unit until completion. Rare — most post-destruction work is Detached.
+
+---
+
 ### Pipeline Overview
 
 Each worker processes a specific **segment** of the lifecycle. `PostLifecycle` fires at the end of whichever worker is the last to act on the event:
@@ -820,6 +854,7 @@ See [Lifecycle Receptors](../receptors/lifecycle-receptors.md) for API details.
 | `PostPerspectiveInline` | `PerspectiveWorker.cs` | After checkpoint commit (data + checkpoint durable) |
 | `PostAllPerspectives*` | `PerspectiveWorker.cs` | After ALL perspectives complete (WhenAll) — managed by [Lifecycle Coordinator](lifecycle-coordinator.md) |
 | `PostLifecycle*` | `PerspectiveWorker.cs`, `TransportConsumerWorker.cs`, `Dispatcher.cs` | After all processing completes — managed by [Lifecycle Coordinator](lifecycle-coordinator.md) |
+| `PreDestruction*` / `PostDestruction*` | `MaintenanceWorker.cs` | Around the ephemeral reap, via registered `IDestructionHook` (batched once per cycle) |
 
 ---
 
@@ -835,7 +870,7 @@ See [Lifecycle Receptors](../receptors/lifecycle-receptors.md) for API details.
 
 ## Summary
 
-- **24 lifecycle stages** across 8 phases (Immediate, LocalImmediate, Distribute, Outbox, Inbox, Perspective, PostAllPerspectives, PostLifecycle) plus 1 special value (`AfterReceptorCompletion`)
+- **28 lifecycle stages** across 9 phases (Immediate, LocalImmediate, Distribute, Outbox, Inbox, Perspective, PostAllPerspectives, PostLifecycle, Destruction) plus 1 special value (`AfterReceptorCompletion`)
 - **Two mutually exclusive paths**: Local (mediator) and Distributed (outbox/inbox)
 - **Default stages** for receptors without `[FireAt]`:
   - **Local path**: `LocalImmediateDetached`

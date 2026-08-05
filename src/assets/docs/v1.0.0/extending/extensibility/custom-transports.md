@@ -1,8 +1,8 @@
 ---
 title: Custom Transports
 pageType: guide
-verifiedAgainstCommit: 1b31f58d
-verifiedDate: 2026-07-16
+verifiedAgainstCommit: 0bc6065b
+verifiedDate: 2026-08-05
 version: 1.0.0
 category: Extensibility
 order: 4
@@ -94,6 +94,14 @@ public interface ITransport {
   Task InitializeAsync(CancellationToken cancellationToken = default);
 
   /// <summary>
+  /// Cheap, non-throwing connectivity signal for the managed-resource health
+  /// model. Default returns IsInitialized; transports holding a live connection
+  /// handle override to detect a post-initialization drop.
+  /// </summary>
+  ValueTask<bool> CheckConnectivityAsync(CancellationToken cancellationToken = default)
+    => ValueTask.FromResult(IsInitialized);
+
+  /// <summary>
   /// Capabilities this transport supports.
   /// </summary>
   TransportCapabilities Capabilities { get; }
@@ -166,7 +174,7 @@ public interface ITransport {
 ```
 
 :::note
-`SubscribeToDeadLetterAsync`, `PublishBatchAsync`, and `MaxMessageSizeBytes` have default interface implementations — a minimal custom transport only implements `IsInitialized`, `InitializeAsync`, `Capabilities`, `PublishAsync`, `SubscribeBatchAsync`, and `SendAsync`.
+`SubscribeToDeadLetterAsync`, `PublishBatchAsync`, `MaxMessageSizeBytes`, and `CheckConnectivityAsync` have default interface implementations — a minimal custom transport only implements `IsInitialized`, `InitializeAsync`, `Capabilities`, `PublishAsync`, `SubscribeBatchAsync`, and `SendAsync`.
 :::
 
 ### Transport Capabilities

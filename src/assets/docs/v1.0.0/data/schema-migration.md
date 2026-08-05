@@ -1,8 +1,8 @@
 ---
 title: Schema Migration
 pageType: concept
-verifiedAgainstCommit: 1b31f58d
-verifiedDate: 2026-07-16
+verifiedAgainstCommit: 0bc6065b
+verifiedDate: 2026-08-05
 version: 1.0.0
 category: Data Access
 order: 7
@@ -172,7 +172,7 @@ Whizbang infrastructure tables are versioned and migrated automatically. Key tab
 
 ### Migration Files
 
-Infrastructure migrations are embedded in the Whizbang.Data.Postgres package (numbered `000`–`064` at this commit):
+Infrastructure migrations are embedded in the Whizbang.Data.Postgres package (numbered `000`–`087` at this commit):
 
 ```
 Migrations/
@@ -183,7 +183,7 @@ Migrations/
 ├── 030_ReconcilePerspectiveRegistry.sql
 ├── 033_RenamePerspectiveCheckpointsToCursors.sql
 ├── ...
-└── 064_ReconcileMessageTypeRegistry_LedgerAware.sql
+└── 087_StreamDigests.sql
 ```
 
 Migrations are applied automatically and idempotently — each file's hash is tracked in `wh_schema_migrations`, so unchanged migrations are skipped on subsequent startups.
@@ -231,8 +231,8 @@ Vector columns additionally carry `"isVector": true` and `"vectorDimensions": n`
 | `int` | `INTEGER` | `"integer"` |
 | `long` | `BIGINT` | `"bigint"` |
 | `bool` | `BOOLEAN` | `"boolean"` |
-| `DateTime` | `TIMESTAMPTZ` | `"timestamptz"` |
-| `byte[]` | `BYTEA` | `"bytea"` |
+| `DateTime` | `TIMESTAMP` | `"timestamp"` |
+| `DateTimeOffset` | `TIMESTAMPTZ` | `"timestamptz"` |
 | JSON data | `JSONB` | `"jsonb"` |
 | `Vector` | `VECTOR(n)` | `"vector"` |
 

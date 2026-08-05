@@ -1,8 +1,8 @@
 ---
 title: Lifecycle Receptors
 pageType: concept
-verifiedAgainstCommit: 1b31f58d
-verifiedDate: 2026-07-16
+verifiedAgainstCommit: 0bc6065b
+verifiedDate: 2026-08-05
 version: 1.0.0
 category: Core Concepts
 order: 10
@@ -31,6 +31,8 @@ testReferences:
   - tests/Whizbang.Core.Tests/Messaging/ReceptorInvokerTests.cs
   - tests/Whizbang.Core.Tests/Messaging/ReceptorRegistryRuntimeRegistrationTests.cs
   - tests/Whizbang.Core.Tests/Messaging/ReceptorIdempotentAttributeTests.cs
+  - tests/Whizbang.Core.Tests/Messaging/ProcessingModeTests.cs
+  - tests/Whizbang.Generators.Tests/ReceptorDiscoveryGeneratorTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -773,6 +775,10 @@ public interface IReceptorRegistry {
   /// <summary>True when any runtime-registered receptor exists for the given message-type
   /// name - keeps messages alive at the receive-boundary drop gate</summary>
   bool HasAnyRuntimeReceptors(string messageType) => false;
+
+  /// <summary>True when a runtime-registered receptor consumes the given CLR type name -
+  /// consulted by the receive/inbox discard gates alongside the compile-time tables</summary>
+  bool HasRuntimeConsumerFor(string clrTypeName) => false;
 }
 ```
 
@@ -1401,7 +1407,7 @@ See [Automatic Message Cascade](../dispatcher/dispatcher.md#automatic-message-ca
 
 ## Related Topics
 
-- [Lifecycle Stages](../lifecycle/lifecycle-stages.md) - All 24 stages with timing diagrams
+- [Lifecycle Stages](../lifecycle/lifecycle-stages.md) - All 28 stages with timing diagrams
 - [Receptors Guide](receptors.md) - Core receptor concepts and patterns
 - [Testing: Lifecycle Synchronization](../../operations/testing/lifecycle-synchronization.md) - Deterministic test patterns
 - Source Generators - How lifecycle receptors are discovered

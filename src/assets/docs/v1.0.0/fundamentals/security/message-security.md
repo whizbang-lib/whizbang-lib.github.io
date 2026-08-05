@@ -1,8 +1,8 @@
 ---
 title: "Message Security Context Propagation"
 pageType: concept
-verifiedAgainstCommit: 1b31f58d
-verifiedDate: 2026-07-16
+verifiedAgainstCommit: 0bc6065b
+verifiedDate: 2026-08-05
 version: 1.0.0
 category: "Core Concepts"
 order: 10
@@ -37,6 +37,7 @@ testReferences:
   - tests/Whizbang.Core.Tests/Security/MessageHopSecurityExtractorTests.cs
   - tests/Whizbang.Core.Tests/Security/ImmutableScopeContextTests.cs
   - tests/Whizbang.Core.Tests/Security/MessageContextAccessorTests.cs
+  - tests/Whizbang.Core.Tests/Security/SecurityContextHelperTests.cs
   - tests/Whizbang.Core.Tests/Dispatch/DispatcherSecurityBuilderTests.cs
   - tests/Whizbang.Core.Tests/Dispatch/SystemDispatcherBuilderTests.cs
   - tests/Whizbang.Core.Tests/Dispatch/ImpersonationDispatcherBuilderTests.cs
@@ -561,11 +562,14 @@ The `IMessageContext` interface provides direct access to security information f
 
 ```csharp{title="Message Context Accessor" description="The IMessageContext interface provides direct access to security information from the current message being processed." category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Message", "Context"] tests=["MessageSecurityServiceCollectionExtensionsTests.IMessageContext_ReadsUserIdFromScopeContextAccessorAsync", "MessageSecurityServiceCollectionExtensionsTests.IMessageContext_ReadsFromMessageContextAccessorAsync"]}
 public interface IMessageContext {
+  MessageId MessageId { get; }
   CorrelationId CorrelationId { get; }
+  MessageId CausationId { get; }
   DateTimeOffset Timestamp { get; }
   string? UserId { get; }
   string? TenantId { get; }
   IReadOnlyDictionary<string, object> Metadata { get; }
+  // Plus: IScopeContext? ScopeContext, ICallerInfo? CallerInfo
 }
 
 // Usage in a receptor
@@ -698,7 +702,7 @@ When messages are reconstructed from transport (deserialization), the security c
 
 ```csharp{title="Envelope Reconstruction" description="Envelope Reconstruction" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Envelope", "Reconstruction"] tests=["MessageSecurityContextProviderTests.EstablishContextAsync_EventWithSystemSecurityContext_SucceedsAsync"]}
 // Envelope reconstruction preserves security information
-var envelope = new MessageEnvelope {
+var envelope = new MessageEnvelope<MyMessage> {
   MessageId = messageId,
   Payload = deserializedMessage,
   Hops = deserializedHops  // Contains ScopeDelta on each hop

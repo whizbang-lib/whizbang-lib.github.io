@@ -1,8 +1,8 @@
 ---
 title: Perspective Synchronization
 pageType: concept
-verifiedAgainstCommit: 1b31f58d
-verifiedDate: 2026-07-16
+verifiedAgainstCommit: 0bc6065b
+verifiedDate: 2026-08-05
 version: 1.0.0
 category: Core Concepts
 order: 4
@@ -32,6 +32,12 @@ testReferences:
   - tests/Whizbang.Core.Tests/Perspectives/Sync/SyncEventTrackerTests.cs
   - tests/Whizbang.Core.Tests/Perspectives/Sync/SyncFilterBuilderTests.cs
   - tests/Whizbang.Core.Tests/Perspectives/Sync/EventCompletionAwaiterTests.cs
+  - tests/Whizbang.Core.Tests/Perspectives/Sync/ScopedEventTrackerTests.cs
+  - tests/Whizbang.Core.Tests/Perspectives/Sync/SyncInquiryTests.cs
+  - tests/Whizbang.Core.Tests/Perspectives/Sync/SyncContextTests.cs
+  - tests/Whizbang.Core.Tests/Perspectives/Sync/TrackedEventTypeRegistryTests.cs
+  - tests/Whizbang.Core.Tests/Perspectives/Sync/AwaitPerspectiveSyncAttributeTests.cs
+  - tests/Whizbang.Core.Tests/Lenses/SyncAwareLensQueryTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -270,7 +276,7 @@ internal static void InitializeSyncEventTypeRegistry() {
 - Multiple perspectives can track the same event type
 - Thread-safe concurrent registration
 
-For more details, see the [Source Generators](../../apis/graphql/index.md) documentation.
+For more details, see the [Source Generators](../../extending/source-generators/receptor-discovery.md) documentation.
 
 ### Event Tracker Implementation {#tracker-implementation}
 
@@ -321,15 +327,15 @@ await tracker.WaitForAllPerspectivesAsync(
 The tracker uses `TaskCompletionSource<bool>` with race condition protection:
 
 ```csharp{title="Thread-Safe Completion" description="The tracker uses TaskCompletionSource<bool> with race condition protection:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Thread-Safe", "Completion"] tests=["SyncEventTrackerTests.WaitForPerspectiveEventsAsync_RaceConditionFix_SignalsWhenProcessedBeforeRegistrationCompleteAsync"]}
-// Registering a waiter
+// Registering a waiter (inner dictionary keyed by AwaiterId for O(1) cleanup)
 var tcs = new TaskCompletionSource<bool>(
     TaskCreationOptions.RunContinuationsAsynchronously);
 
 var waiters = _perspectiveWaiters.GetOrAdd(
     (eventId, perspectiveName),
-    _ => new ConcurrentBag<TaskCompletionSource<bool>>());
+    _ => new ConcurrentDictionary<Guid, TaskCompletionSource<bool>>());
 
-waiters.Add(tcs);
+waiters[awaiterId] = tcs;
 
 // Race condition fix: Check again after registering
 if (!_trackedEvents.ContainsKey((eventId, perspectiveName))) {
@@ -611,6 +617,9 @@ public interface ISyncEventTracker {
 
   // Unregister a specific awaiter, cancelling its pending waits
   void UnregisterAwaiter(Guid awaiterId);
+
+  // Also: MarkProcessed(eventIds), GetAllTrackedEventIds(),
+  // MarkPerspectiveStreamProcessed(perspectiveName, streamId), and stale-event cleanup
 }
 ```
 
@@ -713,8 +722,9 @@ _scopedTracker.TrackEmittedEvent(streamId, typeof(OrderCreatedEvent), eventId);
 // 2. Include in sync inquiry
 var inquiry = new SyncInquiry {
   StreamId = streamId,
-  PerspectiveType = "OrderPerspective",
-  ExpectedEventIds = [eventId]  // Explicit IDs we're waiting for
+  PerspectiveName = "OrderPerspective",
+  EventIds = [eventId],  // Explicit IDs we're waiting for
+  IncludeProcessedEventIds = true
 };
 
 // 3. Database checks if EventId is in ProcessedEventIds
@@ -729,29 +739,34 @@ return result.ProcessedEventIds.Contains(eventId);
 The `SyncInquiry` includes a flag to request processed EventIds:
 
 ```csharp{title="IncludeProcessedEventIds Option" description="The SyncInquiry includes a flag to request processed EventIds:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "IncludeProcessedEventIds", "Option"]}
-public sealed class SyncInquiry {
-  public Guid StreamId { get; init; }
-  public string PerspectiveType { get; init; }
-  public Type[]? EventTypes { get; init; }
-  public Guid[]? ExpectedEventIds { get; init; }
-  public bool IncludeProcessedEventIds { get; init; } = true;  // Request EventIds
+public sealed record SyncInquiry {
+  public required Guid StreamId { get; init; }
+  public required string PerspectiveName { get; init; }
+  public Guid[]? EventIds { get; init; }             // Optional: check only these events
+  public string[]? EventTypeFilter { get; init; }
+  public bool IncludePendingEventIds { get; init; }
+  public bool IncludeProcessedEventIds { get; init; } // DEFAULT: false — opt in to request EventIds
+  public bool DiscoverPendingFromOutbox { get; init; }
+  public Guid InquiryId { get; init; } = TrackedGuid.NewMedo();
 }
 ```
 
 When `IncludeProcessedEventIds = true`, the database returns:
 
 ```csharp{title="IncludeProcessedEventIds Option - SyncInquiryResult" description="When IncludeProcessedEventIds = true, the database returns:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "IncludeProcessedEventIds", "Option"] tests=["SyncInquiryTests.SyncInquiryResult_WithExpectedEventIds_AllProcessed_IsFullySyncedAsync", "SyncInquiryTests.SyncInquiryResult_WithExpectedEventIds_PartiallyProcessed_NotFullySyncedAsync", "SyncInquiryTests.SyncInquiryResult_WithNullExpectedEventIds_FallsBackToPendingCountAsync"]}
-public sealed class SyncInquiryResult {
-  public int PendingCount { get; init; }
+public sealed record SyncInquiryResult {
+  public required Guid InquiryId { get; init; }
+  public Guid StreamId { get; init; }
+  public required int PendingCount { get; init; }
   public int ProcessedCount { get; init; }
-  public Guid[] ProcessedEventIds { get; init; }  // Actual processed EventIds
-  public Guid[] ExpectedEventIds { get; init; }   // EventIds we're waiting for
+  public Guid[]? PendingEventIds { get; init; }    // Populated if IncludePendingEventIds
+  public Guid[]? ProcessedEventIds { get; init; }  // Actual processed EventIds
+  public Guid[]? ExpectedEventIds { get; init; }   // EventIds we're waiting for (set by the awaiter)
 
   // True only when ALL expected IDs are in ProcessedEventIds
-  public bool IsFullySynced =>
-      ExpectedEventIds?.Length > 0
-          ? ExpectedEventIds.All(id => ProcessedEventIds.Contains(id))
-          : PendingCount == 0;  // Fallback to count-based check
+  public bool IsFullySynced => ExpectedEventIds is { Length: > 0 }
+      ? ProcessedEventIds is not null && ExpectedEventIds.All(id => ProcessedEventIds.Contains(id))
+      : PendingCount == 0;  // Fallback to count-based check
 }
 ```
 
@@ -1045,7 +1060,7 @@ Configuration for synchronization:
 ```csharp{title="PerspectiveSyncOptions" description="Configuration for synchronization:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "PerspectiveSyncOptions", "Options"] tests=["SyncFilterBuilderTests.PerspectiveSyncOptions_DefaultTimeout_Is5SecondsAsync", "SyncFilterBuilderTests.PerspectiveSyncOptions_DefaultDebuggerAwareTimeout_IsTrueAsync"]}
 public sealed class PerspectiveSyncOptions {
     // Filter tree (supports AND/OR combinations)
-    public SyncFilterNode Filter { get; init; }
+    public required SyncFilterNode Filter { get; init; }
 
     // Timeout configuration
     public TimeSpan Timeout { get; init; } = TimeSpan.FromSeconds(5);

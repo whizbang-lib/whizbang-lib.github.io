@@ -1,8 +1,8 @@
 ---
 title: In-Memory Transport
 pageType: concept
-verifiedAgainstCommit: 1b31f58d
-verifiedDate: 2026-07-16
+verifiedAgainstCommit: 0bc6065b
+verifiedDate: 2026-08-05
 version: 1.0.0
 category: Transports
 order: 2
@@ -122,6 +122,7 @@ There is no `MessageEnvelope.Create(...)` factory — envelopes are constructed 
 
 ```csharp{title="Constructing an envelope" description="Envelopes are built with object initializers; MessageId, Payload, Hops, and DispatchContext are required." category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Envelope"] unverified="illustrative envelope construction — mirrors the test fixture helper, no test asserts the envelope shape directly"}
 using Whizbang.Core.Dispatch;
+using Whizbang.Core.Messaging;
 using Whizbang.Core.Observability;
 using Whizbang.Core.ValueObjects;
 

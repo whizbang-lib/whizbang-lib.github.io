@@ -1,8 +1,8 @@
 ---
 title: EF Core 10 JSON Configuration
 pageType: concept
-verifiedAgainstCommit: 1b31f58d
-verifiedDate: 2026-07-16
+verifiedAgainstCommit: 0bc6065b
+verifiedDate: 2026-08-05
 category: Data
 order: 10
 description: How Whizbang configures JSON serialization for EF Core JSONB columns via JsonContextRegistry and the turnkey NpgsqlDataSource registration
@@ -14,6 +14,7 @@ codeReferences:
   - src/Whizbang.Core/Lenses/PerspectiveRow.cs
 testReferences:
   - tests/Whizbang.Core.Tests/JsonContextRegistryTests.cs
+  - tests/Whizbang.Core.Tests/JsonContextRegistryPriorityProfileTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -57,7 +58,7 @@ Earlier drafts of this page recommended registering `JsonSerializerOptions` in D
 
 Frameworks and applications contribute their JSON contexts to the global registry from a module initializer:
 
-```csharp{title="Registering a JsonSerializerContext" description="Self-registration via ModuleInitializer, mirroring EFCoreJsonContext" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Registration"] tests=["JsonContextRegistryTests.RegisterContext_WithoutProfile_AppliesToAllProfilesAsync"]}
+```csharp{title="Registering a JsonSerializerContext" description="Self-registration via ModuleInitializer, mirroring EFCoreJsonContext" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Registration"] tests=["JsonContextRegistryPriorityProfileTests.RegisterContext_WithoutProfile_AppliesToAllProfilesAsync"]}
 [JsonSourceGenerationOptions(DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull)]
 [JsonSerializable(typeof(MyLensDto))]
 public partial class MyAppJsonContext : JsonSerializerContext {

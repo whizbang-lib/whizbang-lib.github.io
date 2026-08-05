@@ -1,8 +1,8 @@
 ---
 title: Event Streams
 pageType: concept
-verifiedAgainstCommit: 1b31f58d
-verifiedDate: 2026-07-16
+verifiedAgainstCommit: 0bc6065b
+verifiedDate: 2026-08-05
 version: 1.0.0
 category: Core Concepts
 order: 13
@@ -71,16 +71,16 @@ Guid underlying = streamId.Value;
 ```mermaid{caption="Two independent event streams (order-123 and order-456), each an ordered sequence of events by ascending sequence number." tests=["EventStoreContractTests.ReadAsync_ShouldReturnEventsInOrderAsync", "EventStoreContractTests.AppendAsync_DifferentStreams_ShouldBeIndependentAsync"]}
 graph TB
     subgraph S1["Stream: order-123"]
-        A1["Seq 1: OrderCreated { OrderId, CustomerId, Items }"]
-        A2["Seq 2: OrderItemAdded { OrderId, ProductId, Quantity }"]
-        A3["Seq 3: OrderShipped { OrderId, TrackingNumber }"]
-        A4["Seq 4: OrderDelivered { OrderId, DeliveredAt }"]
+        A1["Seq 0: OrderCreated { OrderId, CustomerId, Items }"]
+        A2["Seq 1: OrderItemAdded { OrderId, ProductId, Quantity }"]
+        A3["Seq 2: OrderShipped { OrderId, TrackingNumber }"]
+        A4["Seq 3: OrderDelivered { OrderId, DeliveredAt }"]
         A1 --> A2 --> A3 --> A4
     end
 
     subgraph S2["Stream: order-456"]
-        B1["Seq 1: OrderCreated { OrderId, CustomerId, Items }"]
-        B2["Seq 2: OrderCancelled { OrderId, Reason }"]
+        B1["Seq 0: OrderCreated { OrderId, CustomerId, Items }"]
+        B2["Seq 1: OrderCancelled { OrderId, Reason }"]
         B3["(no more events - cancelled)"]
         B1 --> B2 --> B3
     end
@@ -95,7 +95,7 @@ graph TB
 
 Each event has:
 - **StreamId**: Which stream it belongs to
-- **Sequence**: Position within the stream (1, 2, 3, ...)
+- **Sequence**: Position within the stream (0, 1, 2, ...; first event is sequence 0)
 - **EventId**: Globally unique event identifier
 
 ## Working with Streams

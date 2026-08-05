@@ -1,8 +1,8 @@
 ---
 title: Receptor Discovery
 pageType: concept
-verifiedAgainstCommit: 1b31f58d
-verifiedDate: 2026-07-16
+verifiedAgainstCommit: 0bc6065b
+verifiedDate: 2026-08-05
 version: 1.0.0
 category: Source Generators
 order: 1
@@ -192,8 +192,10 @@ using MyApp.Generated;  // Generated namespace
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Register Whizbang dispatchers (generated method)
-builder.Services.AddWhizbangDispatchers();
+// Register receptors + dispatcher (generated methods).
+// If you call AddWhizbang(), the module initializer wires these in for you.
+builder.Services.AddReceptors();
+builder.Services.AddWhizbangDispatcher();
 
 var app = builder.Build();
 app.Run();
@@ -299,7 +301,7 @@ Roslyn incremental generators use **value-based caching** to skip work when inpu
 |----------|------|------|
 | First compilation | Scan syntax tree | 50ms |
 | | Extract receptor info | 20ms |
-| | Generate 3 files | 10ms |
+| | Generate 4 files | 10ms |
 | | **Total** | **80ms** |
 | Subsequent compilation (no changes) | Check cache | 1ms (inputs unchanged) |
 | | Skip generation | 0ms |
@@ -307,7 +309,7 @@ Roslyn incremental generators use **value-based caching** to skip work when inpu
 | Compilation after receptor change | Check cache | 1ms (CreateOrder receptor changed) |
 | | Scan syntax tree | 50ms |
 | | Extract receptor info | 20ms |
-| | Generate 3 files | 10ms |
+| | Generate 4 files | 10ms |
 | | **Total** | **81ms (only re-runs affected pipeline)** |
 
 **Key Insight**: Generator only re-runs when receptors actually change, not on every compilation.
@@ -341,6 +343,7 @@ Generated files are written to:
 obj/Debug/net10.0/generated/Whizbang.Generators/ReceptorDiscoveryGenerator/
 ├── DispatcherRegistrations.g.cs
 ├── Dispatcher.g.cs
+├── ReceptorRegistry.g.cs
 └── ReceptorDiscoveryDiagnostics.g.cs
 ```
 
@@ -415,18 +418,18 @@ info WHIZ001: Found receptor 'OrderReceptor' handling CreateOrder → OrderCreat
 
 ---
 
-### WHIZ002: No Receptors Found
+### WHIZ002: No Message Handlers Found
 
-**Severity**: Warning
+**Severity**: Info
 
-**Message**: `No IReceptor implementations were found in the compilation`
+**Message**: `No IReceptor or IPerspectiveFor implementations were found in the compilation`
 
 **Example**:
 ```
-warning WHIZ002: No IReceptor implementations were found in the compilation
+info WHIZ002: No IReceptor or IPerspectiveFor implementations were found in the compilation
 ```
 
-**When**: No receptors discovered (may indicate missing implementations or namespace issues).
+**When**: No receptors or perspectives discovered (may indicate missing implementations or namespace issues).
 
 **Fix**:
 1. Ensure receptors implement `IReceptor<TMessage, TResponse>`
@@ -575,10 +578,13 @@ Memory Diagnostics:
 ### Value Type Records for Caching
 
 ```csharp{title="Value Type Records for Caching" description="Value Type Records for Caching" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Value", "Type"] tests=["ReceptorInfoTests.ReceptorInfo_Constructor_SetsPropertiesAsync", "ReceptorInfoTests.ReceptorInfo_ValueEquality_ComparesFieldsAsync"]}
-internal sealed record ReceptorInfo(
+public sealed record ReceptorInfo(
     string ClassName,
     string MessageType,
-    string ResponseType
+    string? ResponseType,      // null for void receptors
+    string[] LifecycleStages,  // from [FireAt]; empty = ImmediateDetached
+    bool IsSync = false
+    // ... plus routing, sync, tracing, replay, and idempotency flags ...
 );
 ```
 
@@ -590,8 +596,8 @@ internal sealed record ReceptorInfo(
 **Comparison**:
 ```csharp{title="Value Type Records for Caching (2)" description="Comparison:" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Value", "Type"] tests=["ReceptorInfoTests.ReceptorInfo_ValueEquality_ComparesFieldsAsync"]}
 // With record (value equality)
-var cached = new ReceptorInfo("OrderReceptor", "CreateOrder", "OrderCreated");
-var current = new ReceptorInfo("OrderReceptor", "CreateOrder", "OrderCreated");
+var cached = new ReceptorInfo("OrderReceptor", "CreateOrder", "OrderCreated", []);
+var current = new ReceptorInfo("OrderReceptor", "CreateOrder", "OrderCreated", []);
 cached == current;  // ✅ true (fields match, generator skips re-generation)
 
 // With class (reference equality)
@@ -641,7 +647,7 @@ public class GeneratedDispatcher : Dispatcher {
 - ✅ **Keep receptors small** (single responsibility)
 - ✅ **Use dependency injection** for services
 - ✅ **Return events** from commands (enables perspectives)
-- ✅ **Call AddWhizbangDispatchers()** in Program.cs
+- ✅ **Call AddReceptors() and AddWhizbangDispatcher()** in Program.cs (or let `AddWhizbang()`'s module-initializer wiring do it)
 
 ### DON'T ❌
 
@@ -672,7 +678,7 @@ public class GeneratedDispatcher : Dispatcher {
 
 ### Problem: No Receptors Found (WHIZ002)
 
-**Symptoms**: `warning WHIZ002: No IReceptor implementations were found`
+**Symptoms**: `info WHIZ002: No IReceptor or IPerspectiveFor implementations were found`
 
 **Causes**:
 1. Receptors not implementing correct interface

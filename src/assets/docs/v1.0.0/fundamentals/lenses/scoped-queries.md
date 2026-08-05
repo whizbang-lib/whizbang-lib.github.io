@@ -1,8 +1,8 @@
 ---
 title: Scoped Lens Queries
 pageType: concept
-verifiedAgainstCommit: 1b31f58d
-verifiedDate: 2026-07-16
+verifiedAgainstCommit: 0bc6065b
+verifiedDate: 2026-08-05
 version: 1.0.0
 category: Lenses
 order: 3
@@ -17,6 +17,7 @@ codeReferences:
 testReferences:
   - tests/Whizbang.Core.Tests/Lenses/ScopedLensQueryTests.cs
   - tests/Whizbang.Core.Tests/Lenses/LensQueryFactoryTests.cs
+  - tests/Whizbang.Core.Tests/Lenses/QueryScopeMapperTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/ScopedLensQueryIntegrationTests.cs
 lastMaintainedCommit: '01f07906'
 ---
@@ -27,10 +28,10 @@ Scoped lens queries solve the challenge of using `ILensQuery<T>` from singleton 
 
 ## The Problem: Singleton vs Scoped Services
 
-`ILensQuery<T>` is registered as **transient** and requires a scoped `DbContext`. When you need to query from a singleton service (like a background worker), you cannot inject `ILensQuery<T>` directly:
+`ILensQuery<T>` is registered as **scoped** and requires a scoped `DbContext`. When you need to query from a singleton service (like a background worker), you cannot inject `ILensQuery<T>` directly:
 
-```csharp{title="The Problem: Singleton vs Scoped Services" description="ILensQuery<T> is registered as transient and requires a scoped DbContext." category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Problem:", "Singleton"] unverified="counter-example — anti-pattern showing why a transient/scoped ILensQuery cannot be injected into a singleton"}
-// WRONG: Cannot inject transient ILensQuery into singleton
+```csharp{title="The Problem: Singleton vs Scoped Services" description="ILensQuery<T> is registered as scoped and requires a scoped DbContext." category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lenses", "Problem:", "Singleton"] unverified="counter-example — anti-pattern showing why a scoped ILensQuery cannot be injected into a singleton"}
+// WRONG: Cannot inject scoped ILensQuery into singleton
 public class OrderProcessor : BackgroundService {
   private readonly ILensQuery<Order> _lens; // This doesn't work!
 

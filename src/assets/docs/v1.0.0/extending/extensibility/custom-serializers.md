@@ -1,8 +1,8 @@
 ---
 title: Custom Serializers
 pageType: guide
-verifiedAgainstCommit: 1b31f58d
-verifiedDate: 2026-07-16
+verifiedAgainstCommit: 0bc6065b
+verifiedDate: 2026-08-05
 version: 1.0.0
 category: Extensibility
 order: 7
@@ -17,6 +17,7 @@ codeReferences:
 testReferences:
   - tests/Whizbang.Transports.Tests/IMessageSerializerTests.cs
   - tests/Whizbang.Transports.Tests/JsonMessageSerializerTests.cs
+  - tests/Whizbang.Core.Tests/JsonContextRegistryTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 

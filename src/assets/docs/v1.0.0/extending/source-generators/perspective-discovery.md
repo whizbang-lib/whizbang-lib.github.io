@@ -1,8 +1,8 @@
 ---
 title: Perspective Discovery
 pageType: concept
-verifiedAgainstCommit: 1b31f58d
-verifiedDate: 2026-07-16
+verifiedAgainstCommit: 0bc6065b
+verifiedDate: 2026-08-05
 version: 1.0.0
 category: Source Generators
 order: 2
@@ -25,7 +25,7 @@ lastMaintainedCommit: '01f07906'
 # Perspective Discovery
 
 :::updated
-**Interface renamed in the shipped library (verified at commit `1b31f58d`)**: perspectives implement **`IPerspectiveFor<TModel, TEvent1, ...>`** (model first, up to 20 event types) with **pure `Apply(TModel, TEvent) → TModel` functions** — not the earlier `IPerspectiveOf<TEvent>`/`UpdateAsync` design this page previously described. The framework owns persistence: your perspective never touches the database. Apply methods MUST be pure (no I/O, no side effects, deterministic) — the `PerspectivePurityAnalyzer` enforces this at build time (WHIZ100+ errors).
+**Interface renamed in the shipped library (verified at commit `0bc6065b`)**: perspectives implement **`IPerspectiveFor<TModel, TEvent1, ...>`** (model first, up to 20 event types) with **pure `Apply(TModel, TEvent) → TModel` functions** — not the earlier `IPerspectiveOf<TEvent>`/`UpdateAsync` design this page previously described. The framework owns persistence: your perspective never touches the database. Apply methods MUST be pure (no I/O, no side effects, deterministic) — the `PerspectivePurityAnalyzer` enforces this at build time (WHIZ100+ errors).
 :::
 
 The **PerspectiveDiscoveryGenerator** discovers all `IPerspectiveFor<TModel, TEvent...>` implementations at compile-time and generates zero-reflection DI registration code. Perspectives are event-driven read models: pure functions that fold events into a denormalized model which the framework persists for you.

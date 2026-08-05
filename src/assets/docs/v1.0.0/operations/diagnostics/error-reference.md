@@ -1,8 +1,8 @@
 ---
 title: "Runtime Error Reference"
 pageType: reference
-verifiedAgainstCommit: 1b31f58d
-verifiedDate: 2026-07-16
+verifiedAgainstCommit: 0bc6065b
+verifiedDate: 2026-08-05
 description: >-
   Alphabetical catalog of Whizbang runtime error messages — what triggers each
   one, what the framework does next, and how to fix it. Every entry has a

@@ -1,8 +1,8 @@
 ---
 title: Envelope Serialization
 pageType: concept
-verifiedAgainstCommit: 1b31f58d
-verifiedDate: 2026-07-16
+verifiedAgainstCommit: 0bc6065b
+verifiedDate: 2026-08-05
 version: 1.0.0
 category: Core Concepts
 order: 23
@@ -103,7 +103,7 @@ public sealed record SerializedEnvelope(
 ```mermaid{caption="Envelope serialization flow — capture type metadata, serialize the payload to a JsonElement, then return a SerializedEnvelope." tests=["EnvelopeSerializerTests.SerializeEnvelope_CapturesCorrectTypeMetadataAsync", "EnvelopeSerializerTests.SerializeEnvelope_PayloadSerializesToValidJsonElementAsync", "EnvelopeSerializerTests.SerializeEnvelope_WithValidEnvelope_ReturnsSerializedEnvelopeAsync"]}
 graph TB
     S1["1. Typed Envelope: MessageEnvelope&lt;OrderCreated&gt;<br/>serializer.SerializeEnvelope(envelope)"]
-    S2["2. Capture Type Metadata<br/>EnvelopeType: &quot;MessageEnvelope&#96;1[[OrderCreated,...]], Whizbang.Core&quot;<br/>MessageType: &quot;MyApp.Events.OrderCreated, MyApp&quot;"]
+    S2["2. Capture Type Metadata<br/>EnvelopeType: &quot;Whizbang.Core.Observability.MessageEnvelope&#96;1[[OrderCreated,...]], Whizbang.Core&quot;<br/>MessageType: &quot;MyApp.Events.OrderCreated, MyApp&quot;"]
     S3["3. Convert to JsonElement<br/>Serialize envelope to JSON<br/>Deserialize as MessageEnvelope&lt;JsonElement&gt;"]
     S4["4. Return SerializedEnvelope<br/>Contains JsonEnvelope + type metadata"]
 
@@ -228,7 +228,7 @@ public object DeserializeMessage(
   if (jsonTypeInfo == null) {
     throw new InvalidOperationException(
         $"Failed to resolve message type '{messageTypeName}'. " +
-        $"Ensure the assembly is loaded and registered.");
+        "Ensure the assembly containing this type is loaded and registered via [ModuleInitializer].");
   }
 
   return jsonElement.Deserialize(jsonTypeInfo)!;
@@ -257,7 +257,7 @@ try {
   var serialized = serializer.SerializeEnvelope(envelope);
 } catch (InvalidOperationException ex) {
   // "DOUBLE SERIALIZATION DETECTED..." or
-  // "Envelope type must have an assembly-qualified name..."
+  // "Message type ... must have an assembly-qualified name"
   _logger.LogError(ex, "Envelope serialization failed");
 }
 ```

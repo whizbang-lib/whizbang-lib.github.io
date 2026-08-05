@@ -1,8 +1,8 @@
 ---
 title: Lenses Guide
 pageType: overview
-verifiedAgainstCommit: 1b31f58d
-verifiedDate: 2026-07-16
+verifiedAgainstCommit: 0bc6065b
+verifiedDate: 2026-08-05
 version: 1.0.0
 category: Core Concepts
 order: 4
@@ -19,6 +19,9 @@ codeReferences:
 testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/EFCorePostgresLensQueryTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/ScopedLensQueryIntegrationTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/EFCoreFilterableLensQueryScopedAccessTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/EFCorePostgresLensQueryMultiGenericTests.cs
+  - tests/Whizbang.Core.Tests/Lenses/FactoryOwnedLensQueryTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 

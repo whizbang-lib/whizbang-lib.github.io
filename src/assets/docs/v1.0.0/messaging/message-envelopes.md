@@ -1,8 +1,8 @@
 ---
 title: Message Envelopes Deep Dive
 pageType: concept
-verifiedAgainstCommit: 1b31f58d
-verifiedDate: 2026-07-16
+verifiedAgainstCommit: 0bc6065b
+verifiedDate: 2026-08-05
 version: 1.0.0
 category: Messaging
 order: 4
@@ -23,6 +23,8 @@ testReferences:
   - tests/Whizbang.Core.Tests/Observability/MessageEnvelopeVersionTests.cs
   - tests/Whizbang.Core.Tests/Observability/MessageEnvelopeExtensionsTests.cs
   - tests/Whizbang.Core.Tests/Observability/CascadeEnvelopeWrapperCausationTests.cs
+  - tests/Whizbang.Observability.Tests/MessageTracingTests.cs
+  - tests/Whizbang.Transports.AzureServiceBus.Tests/AzureServiceBusTransportPublishPathTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 

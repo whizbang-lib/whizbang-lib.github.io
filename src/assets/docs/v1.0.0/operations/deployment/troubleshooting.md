@@ -1,8 +1,8 @@
 ---
 title: Troubleshooting Guide
 pageType: troubleshooting
-verifiedAgainstCommit: 1b31f58d
-verifiedDate: 2026-07-16
+verifiedAgainstCommit: 0bc6065b
+verifiedDate: 2026-08-05
 version: 1.0.0
 category: Advanced Topics
 order: 9
@@ -29,7 +29,7 @@ Comprehensive **troubleshooting guide** for Whizbang applications - common issue
 
 | Issue | Symptom | Root Cause | Solution |
 |-------|---------|------------|----------|
-| **No Handler Found** | `InvalidOperationException` | Generated registrations not called | Call `AddWhizbangDispatcher()` + `AddReceptors()` |
+| **No Handler Found** | `ReceptorNotFoundException` | Generated registrations not called | Call `AddWhizbangDispatcher()` + `AddReceptors()` |
 | **Message Not Published** | Events not reaching subscribers | Outbox workers not draining | Check `AddWhizbang()` wiring + `wh_outbox` backlog |
 | **Duplicate Processing** | Side effects run twice | Non-idempotent receptor retried | Use `AttemptNumber` / `[ReceptorIdempotent]` |
 | **High Latency** | Slow responses | Database query | Add indexes |
@@ -42,7 +42,7 @@ Comprehensive **troubleshooting guide** for Whizbang applications - common issue
 ### Symptom
 
 ```
-System.InvalidOperationException: No handler registered for CreateOrderCommand
+Whizbang.Core.ReceptorNotFoundException: No receptor found for message type 'MyApp.CreateOrderCommand'.
 ```
 
 ### Diagnosis

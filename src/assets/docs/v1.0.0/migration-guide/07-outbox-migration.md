@@ -1,8 +1,8 @@
 ---
 title: Outbox Migration
 pageType: guide
-verifiedAgainstCommit: 1b31f58d
-verifiedDate: 2026-07-16
+verifiedAgainstCommit: 0bc6065b
+verifiedDate: 2026-08-05
 version: 1.0.0
 category: Migration Guide
 order: 8
@@ -121,7 +121,7 @@ public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
         CancellationToken ct = default) {
 
         // Returning the event is all that's needed:
-        // the work coordinator persists it (wh_event_store + wh_outbox)
+        // the work coordinator persists it (wh_outbox + wh_event_store)
         // atomically, and the outbox workers publish it to the transport.
         return ValueTask.FromResult(new OrderCreated(message.OrderId));
     }
@@ -261,7 +261,7 @@ CREATE TABLE wolverine_incoming_envelopes (...);
 
 ### Ensuring Atomicity
 
-Atomicity is handled by the framework, not by user-managed transactions. When a receptor returns an event (or you dispatch through `IDispatcher`), the work coordinator persists the event-store row and the outbox row together in a single `process_work_batch` database call — there is no `IOutbox.EnqueueAsync` API to call and no transaction to manage:
+Atomicity is handled by the framework, not by user-managed transactions. When a receptor returns an event (or you dispatch through `IDispatcher`), the work coordinator persists the outbox row and the event-store row together in a single `store_outbox_messages` database call (the function copies newly-inserted outbox events into `wh_event_store` in the same statement) — there is no `IOutbox.EnqueueAsync` API to call and no transaction to manage:
 
 ```csharp{title="Ensuring Atomicity" description="Ensuring Atomicity" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-guide", "C#", "Ensuring", "Atomicity"]}
 public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {

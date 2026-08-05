@@ -1,8 +1,8 @@
 ---
 title: Message Context & Tracing
 pageType: concept
-verifiedAgainstCommit: 1b31f58d
-verifiedDate: 2026-07-16
+verifiedAgainstCommit: 0bc6065b
+verifiedDate: 2026-08-05
 version: 1.0.0
 category: Core Concepts
 order: 5
@@ -20,6 +20,10 @@ codeReferences:
 testReferences:
   - tests/Whizbang.Core.Tests/ValueObjects/IdentityValueObjectTests.cs
   - tests/Whizbang.Core.Tests/ValueObjects/CorrelationIdW3CTests.cs
+  - tests/Whizbang.Core.Tests/ValueObjects/CorrelationIdTests.cs
+  - tests/Whizbang.Core.Tests/MessageContextTests.cs
+  - tests/Whizbang.Core.Tests/Observability/MessageEnvelopeTests.cs
+  - tests/Whizbang.Core.Tests/Observability/CallerInfoTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -297,10 +301,10 @@ Whizbang wraps all messages in a **MessageEnvelope** containing context:
 ```csharp{title="MessageEnvelope" description="Whizbang wraps all messages in a MessageEnvelope containing context:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Messages", "MessageEnvelope"] tests=["MessageEnvelopeTests.GetCorrelationId_ReturnsFirstHopCorrelationIdAsync", "MessageEnvelopeTests.GetCausationId_ReturnsFirstHopCausationIdAsync", "MessageEnvelopeTests.ParameterlessConstructor_AllowsObjectInitializerAsync"]}
 public class MessageEnvelope<TMessage> : IMessageEnvelope<TMessage> {
     public required MessageId MessageId { get; init; }
-    public required TMessage Payload { get; init; }        // Your actual message
+    public required TMessage Payload { get; set; }         // Your actual message
     public required List<MessageHop> Hops { get; init; }   // Trace hops (each hop carries CorrelationId/CausationId/Scope)
-    public int Version { get; init; }
-    public MessageDispatchContext? DispatchContext { get; init; }
+    public int Version { get; init; } = 1;
+    public required MessageDispatchContext DispatchContext { get; init; }
 
     // Correlation and causation are read from the hops:
     public CorrelationId? GetCorrelationId();
@@ -576,8 +580,8 @@ public class CorrelationIdMiddleware {
         var correlationId = context.Request.Headers["X-Correlation-ID"].FirstOrDefault()
             ?? CorrelationId.New().ToString();
 
-        // Store in HttpContext
-        context.Items["CorrelationId"] = CorrelationId.Parse(correlationId);
+        // Store in HttpContext (FromExternal: inbound tokens skip UUIDv7 validation)
+        context.Items["CorrelationId"] = CorrelationId.FromExternal(Guid.Parse(correlationId));
 
         // Add to response headers
         context.Response.Headers["X-Correlation-ID"] = correlationId;
