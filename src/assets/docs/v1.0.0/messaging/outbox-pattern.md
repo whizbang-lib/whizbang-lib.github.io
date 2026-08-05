@@ -1,8 +1,8 @@
 ---
 title: Outbox Pattern
 pageType: concept
-verifiedAgainstCommit: 1b31f58d
-verifiedDate: 2026-07-16
+verifiedAgainstCommit: 0bc6065b
+verifiedDate: 2026-08-05
 version: 1.0.0
 category: Messaging
 order: 1
@@ -122,7 +122,7 @@ CREATE INDEX IF NOT EXISTS idx_outbox_lease_expiry ON wh_outbox (lease_expiry) W
 - **status**: `MessageProcessingStatus` flags bitmask (Stored = 1, Published = 4, Failed = 32768)
 - **instance_id** / **lease_expiry**: Which worker claimed this message, and until when
 - **partition_number**: Consistent hashing for work distribution
-- **created_at**: Order-of-creation timestamp — outbox ordering uses `created_at` (inbox uses `received_at`)
+- **created_at**: Order-of-creation timestamp — claim eligibility ordering uses `created_at` (inbox uses `received_at`); the drain fetch orders each stream by `commit_sequence` (NULLS LAST) with `message_id` (UUIDv7) as the unstamped fallback
 
 ### IWorkCoordinator Operations
 
@@ -188,7 +188,7 @@ public class CreateOrderReceptor(
 
 Publishing is handled by a set of cooperating background workers (all registered automatically):
 
-```mermaid{caption="Outbox publish pipeline — ClaimWorker leases stream ids, OutboxDrainWorker fetches bodies per stream and publishes in created_at FIFO order, then completions flush through complete_outbox_published." tests=["OutboxDrainWorkerTests.OutboxDrainWorker_OnStreamId_FetchesBatch_PublishesEach_EnqueuesCompletionAsync"]}
+```mermaid{caption="Outbox publish pipeline — ClaimWorker leases stream ids, OutboxDrainWorker fetches bodies per stream and publishes in commit-sequence FIFO order (unstamped rows fall back to message_id), then completions flush through complete_outbox_published." tests=["OutboxDrainWorkerTests.OutboxDrainWorker_OnStreamId_FetchesBatch_PublishesEach_EnqueuesCompletionAsync"]}
 sequenceDiagram
     participant CW as ClaimWorker
     participant DB as PostgreSQL
@@ -201,7 +201,7 @@ sequenceDiagram
     CW->>ODW: stream_id via IOutboxDrainChannel
 
     ODW->>DB: fetch_outbox_batch(stream_id)
-    DB-->>ODW: leased bodies in created_at order
+    DB-->>ODW: leased bodies in commit_sequence order (NULLS LAST, message_id tiebreak)
     ODW->>T: publish each (stream-FIFO)
     T-->>ODW: Ack
 

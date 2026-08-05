@@ -1,8 +1,8 @@
 ---
 title: WhizbangCoreOptions
 pageType: reference
-verifiedAgainstCommit: 1b31f58d
-verifiedDate: 2026-07-16
+verifiedAgainstCommit: 0bc6065b
+verifiedDate: 2026-08-05
 version: 1.0.0
 category: Configuration
 order: 1
@@ -49,6 +49,7 @@ services.AddWhizbang(options => {
 | `Tags` | `TagOptions` | — | Tag hook registration (see below) |
 | `Tracing` | `TracingOptions` | — | Handler/message tracing configuration (see [Tracing](../observability/tracing)) |
 | `Services` | `ServiceRegistrationOptions` | — | Auto-registration behavior for discovered Lenses/Perspectives (see [ServiceRegistrationOptions](service-registration-options)) |
+| `AutoRegisterAspNetHosting` | `bool` | `true` | Automatically fold in `AddWhizbangAspNet()` when the Whizbang.Hosting.AspNet assembly is loaded; set `false` to call it yourself |
 | `DefaultQueryScope` | `QueryScope` | `QueryScope.Tenant` | Default scope filtering for `ILensQuery<TModel>.DefaultScope` queries |
 | `ShowBanner` | `bool` | `true` | Print the ASCII art banner on startup (the version log line always prints) |
 | `ImmediateDetachedChainWarningThreshold` | `int` | `10` | Warn when ImmediateDetached dispatch chains reach a multiple of this depth (no hard limit) |

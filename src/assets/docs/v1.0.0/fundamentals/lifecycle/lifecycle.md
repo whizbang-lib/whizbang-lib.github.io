@@ -1,8 +1,8 @@
 ---
 title: Lifecycle Management
 pageType: guide
-verifiedAgainstCommit: 1b31f58d
-verifiedDate: 2026-07-16
+verifiedAgainstCommit: 0bc6065b
+verifiedDate: 2026-08-05
 version: 1.0.0
 category: Core Concepts
 order: 25
@@ -105,6 +105,8 @@ await dispatcher.SendAsync(new ResumeProcessingCommand(
 ```
 
 ## Behavior When Paused
+
+> **Note**: The Whizbang library ships the pause/resume command contracts and routes them to every service, but does not include a built-in pause handler — the behavior described below is the intended contract that your service-specific handlers (see [Implementation Notes](#implementation-notes)) provide.
 
 When message processing is paused:
 

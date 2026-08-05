@@ -1,8 +1,8 @@
 ---
 title: Azure Service Bus Transport
 pageType: concept
-verifiedAgainstCommit: 1b31f58d
-verifiedDate: 2026-07-16
+verifiedAgainstCommit: 0bc6065b
+verifiedDate: 2026-08-05
 version: 1.0.0
 category: Transports
 order: 1
@@ -37,6 +37,10 @@ testReferences:
     tests/Whizbang.Transports.AzureServiceBus.Tests/SqlFilterPatternMatchingTests.cs
   - >-
     tests/Whizbang.Transports.AzureServiceBus.Tests/AzureServiceBusBatchSubscribeTests.cs
+  - >-
+    tests/Whizbang.Transports.AzureServiceBus.Tests/AzureServiceBusTransportPublishPathTests.cs
+  - >-
+    tests/Whizbang.Transports.AzureServiceBus.Tests/AzureServiceBusProvisioningPathTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -158,13 +162,13 @@ var serviceBus = builder.AddAzureServiceBus("messaging")
   .RunAsEmulator();  // Or .PublishAsAzureServiceBusNamespace() for production
 
 // Add topic with subscriptions
-var topic = serviceBus.AddTopic("whizbang-events");
+var topic = serviceBus.AddServiceBusTopic("whizbang-events");
 
 // Inventory service subscription with correlation filter
-var inventorySub = topic.AddSubscription("inventory-service")
+var inventorySub = topic.AddServiceBusSubscription("inventory-service")
   .WithDestinationFilter("inventory");  // Whizbang extension method
 
-var notificationSub = topic.AddSubscription("notification-service")
+var notificationSub = topic.AddServiceBusSubscription("notification-service")
   .WithDestinationFilter("notifications");
 
 // Add service projects with references
@@ -328,7 +332,8 @@ var destination = new TransportDestination(
 ```
 
 **Name Sanitization**:
-- Invalid characters (`#`, `*`, `/`, `\`, `,`) are removed
+- Names are lowercased for consistency
+- Invalid characters (`#`, `*`, `/`, `\`, `,`) are replaced with hyphens (consecutive hyphens collapsed, leading/trailing hyphens trimmed)
 - Maximum length: 50 characters (truncated if exceeded)
 - Fallback to `DefaultSubscriptionName` option if no valid name can be derived
 
@@ -417,7 +422,7 @@ services.AddWhizbang()
 ```
 
 **Provisioning Behavior**:
-- Uses `ServiceBusAdministrationClient.CreateTopicIfNotExistsAsync()`
+- Checks `TopicExistsAsync()`, then calls `CreateTopicAsync()` if missing (topic names are lowercased)
 - Idempotent - safe to call from multiple service instances
 - Handles race conditions gracefully (ignores 409 Conflict)
 - Skips provisioning if `AddAzureServiceBusProvisioner` is not called
@@ -545,10 +550,12 @@ When using wildcard routing patterns (e.g., `ns.#` or `ns1.#,ns2.#`), the transp
 
 | RabbitMQ Pattern | SqlFilter Expression |
 |------------------|---------------------|
-| `#` | `1=1` (match all) |
-| `ns.#` | `[Subject] LIKE 'ns.%'` |
-| `ns.*` | `[Subject] LIKE 'ns.%'` |
-| `ns1.#,ns2.#` | `[Subject] LIKE 'ns1.%' OR [Subject] LIKE 'ns2.%'` |
+| `#` | `sys.Label LIKE '%'` (match all) |
+| `ns.#` | `sys.Label LIKE 'ns.%'` |
+| `ns.*` | `sys.Label LIKE 'ns.%'` |
+| `ns1.#,ns2.#` | `sys.Label LIKE 'ns1.%' OR sys.Label LIKE 'ns2.%'` |
+
+> Azure Service Bus SqlFilter expressions address the Subject property as `sys.Label` — the `[Subject]` syntax does not work in SqlRuleFilter expressions.
 
 **Example with Multiple Patterns**:
 
@@ -566,11 +573,11 @@ var destination = new TransportDestination(
 );
 
 // Creates SqlFilter:
-// [Subject] LIKE 'inventory.%' OR [Subject] LIKE 'orders.%' OR [Subject] LIKE 'shipping.%'
+// sys.Label LIKE 'inventory.%' OR sys.Label LIKE 'orders.%' OR sys.Label LIKE 'shipping.%'
 ```
 
 **Filter Provisioning Behavior**:
-- Removes the `$Default` rule (which matches all messages)
+- Deletes all existing rules on the subscription (including `$Default`, which matches all messages)
 - Creates a `RoutingPatternFilter` rule with the SqlFilter expression
 - Only applied when `RoutingPatterns` metadata is present
 - Requires `AutoProvisionInfrastructure = true` (default)
@@ -583,7 +590,7 @@ In a Whizbang application you rarely call the transport directly — publishing 
 
 ### Publishing Messages
 
-```csharp{title="Publishing Messages" description="Transport-level publish (normally driven by the outbox workers)" category="Configuration" difficulty="ADVANCED" tags=["Messaging", "Transports", "Publishing", "Messages"] tests=["AzureServiceBusTransportTests.PublishAsync_WithValidMessage_SendsToTopicAsync"]}
+```csharp{title="Publishing Messages" description="Transport-level publish (normally driven by the outbox workers)" category="Configuration" difficulty="ADVANCED" tags=["Messaging", "Transports", "Publishing", "Messages"] tests=["AzureServiceBusTransportPublishPathTests.PublishAsync_EnvelopeWithCorrelationAndCausation_ProjectsWirePropertiesAsync", "AzureServiceBusTransportPublishPathTests.PublishAsync_WithPreSerializedBytes_SendsHintBytesAsWireBodyAsync"]}
 using Whizbang.Core.Transports;
 
 // ITransport.PublishAsync signature:
@@ -655,7 +662,7 @@ var destination = new TransportDestination(
   Address: "whizbang-events",
   RoutingKey: "inventory-service",
   Metadata: new Dictionary<string, JsonElement> {
-    // DestinationFilter triggers ApplyCorrelationFilterAsync()
+    // DestinationFilter triggers correlation-filter provisioning during subscribe
     ["DestinationFilter"] = JsonSerializer.SerializeToElement("inventory")
   }
 );
@@ -663,14 +670,15 @@ var destination = new TransportDestination(
 // Transport automatically provisions CorrelationFilter:
 // - Deletes $Default rule
 // - Creates DestinationFilter rule with Destination = "inventory"
-var subscription = await transport.SubscribeAsync(handler, destination);
+var subscription = await transport.SubscribeBatchAsync(
+  batchHandler, destination, new TransportBatchOptions());
 ```
 
 **With Aspire** - Automatic filter provisioning:
 
 ```csharp{title="Correlation Filters (Production) (2)" description="With Aspire - Automatic filter provisioning:" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Correlation", "Filters"] unverified="configuration — no behavior to assert"}
 // Aspire handles filter provisioning in AppHost
-var subscription = topic.AddSubscription("inventory-service")
+var subscription = topic.AddServiceBusSubscription("inventory-service")
   .WithDestinationFilter("inventory");  // Provisioned by Aspire at startup
 ```
 
@@ -680,7 +688,7 @@ var subscription = topic.AddSubscription("inventory-service")
 
 The Azure Service Bus transport declares these capabilities:
 
-```csharp{title="Transport Capabilities" description="The Azure Service Bus transport declares these capabilities:" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Transport", "Capabilities"] tests=["AzureServiceBusTransportTests.Capabilities_DefaultOptions_IncludesOrderedAsync", "AzureServiceBusTransportTests.Capabilities_WithEnableSessions_ReturnsOrderedAsync"]}
+```csharp{title="Transport Capabilities" description="The Azure Service Bus transport declares these capabilities:" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Transport", "Capabilities"] tests=["AzureServiceBusTransportUnitTests.Capabilities_WithEnableSessions_IncludesOrderedAsync", "AzureServiceBusTransportUnitTests.Capabilities_WithoutEnableSessions_ExcludesOrderedAsync"]}
 TransportCapabilities.PublishSubscribe |   // ✅ Pub/sub via topics
 TransportCapabilities.Reliable |           // ✅ At-least-once delivery
 TransportCapabilities.BulkPublish |        // ✅ Batched sends

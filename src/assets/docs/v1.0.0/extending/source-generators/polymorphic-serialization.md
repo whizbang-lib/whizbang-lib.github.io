@@ -1,8 +1,8 @@
 ---
 title: Polymorphic Serialization
 pageType: concept
-verifiedAgainstCommit: 1b31f58d
-verifiedDate: 2026-07-16
+verifiedAgainstCommit: 0bc6065b
+verifiedDate: 2026-08-05
 version: 1.0.0
 category: Source Generators
 order: 6
@@ -99,7 +99,7 @@ public class ProcessBatchHandler : IReceptor<ProcessBatchCommand, List<BaseEvent
 ```
 
 :::updated
-**The discriminator contract is fixed (re-verified against library commit `1b31f58d`)**: generated polymorphic factories always use the property name **`$type`** and **simple type names** as values. `[JsonPolymorphic]` on an abstract base is honored as a *discovery marker* (it triggers derived-type registration), but its `TypeDiscriminatorPropertyName` setting and custom `[JsonDerivedType]` string values are **ignored** by the generated `JsonTypeInfo` (`JsonContextSnippets.cs` — hardcoded `$type`; discriminator values come from `_extractSimpleName`). If you need custom discriminators, that is currently unsupported — using them in attributes produces payloads that cannot be read back as typed events.
+**The discriminator contract is fixed (re-verified against library commit `0bc6065b`)**: generated polymorphic factories always use the property name **`$type`** and **simple type names** as values. `[JsonPolymorphic]` on an abstract base is honored as a *discovery marker* (it triggers derived-type registration), but its `TypeDiscriminatorPropertyName` setting and custom `[JsonDerivedType]` string values are **ignored** by the generated `JsonTypeInfo` (`JsonContextSnippets.cs` — hardcoded `$type`; discriminator values come from `_extractSimpleName`). If you need custom discriminators, that is currently unsupported — using them in attributes produces payloads that cannot be read back as typed events.
 :::
 
 ---
@@ -287,7 +287,7 @@ public class ControlledBaseEvent : IEvent { }
 ```
 
 :::updated
-**Important caveat (verified at commit `1b31f58d`)**: opting out only suppresses the *auto-generated* factory. It does **not** make the generated context honor your custom discriminator settings — as described in the callout above, generated `JsonTypeInfo` always uses `$type` + simple names. On *abstract* types reached through property scanning, `[JsonPolymorphic]`/`[JsonDerivedType]` act as discovery markers (`_processAbstractPolymorphicType` registers the listed derived types), again with the fixed `$type` contract. Fully custom discriminators require your own resolver outside the generated context.
+**Important caveat (verified at commit `0bc6065b`)**: opting out only suppresses the *auto-generated* factory. It does **not** make the generated context honor your custom discriminator settings — as described in the callout above, generated `JsonTypeInfo` always uses `$type` + simple names. On *abstract* types reached through property scanning, `[JsonPolymorphic]`/`[JsonDerivedType]` act as discovery markers (`_processAbstractPolymorphicType` registers the listed derived types), again with the fixed `$type` contract. Fully custom discriminators require your own resolver outside the generated context.
 :::
 
 ---

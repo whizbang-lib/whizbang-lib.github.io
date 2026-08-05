@@ -1,8 +1,8 @@
 ---
 title: Work Coordinator
 pageType: concept
-verifiedAgainstCommit: 1b31f58d
-verifiedDate: 2026-07-16
+verifiedAgainstCommit: 0bc6065b
+verifiedDate: 2026-08-05
 version: 1.0.0
 category: Messaging
 order: 3
@@ -37,7 +37,7 @@ The **Work Coordinator** (`IWorkCoordinator`) is Whizbang's database coordinatio
 > **This page is the API reference.** For conceptual architecture (lease-based coordination, virtual partition distribution, stream ordering guarantees), see [Work Coordination](work-coordination.md).
 
 :::updated
-The legacy `ProcessWorkBatchAsync` mega-call was decomposed into the focused methods below; the `process_work_batch` SQL orchestrator was dropped (migration `029_ProcessWorkBatch.sql`). `ProcessWorkBatchAsync` remains on the interface as a compatibility shim that returns an empty `WorkBatch`.
+The legacy `ProcessWorkBatchAsync` mega-call was decomposed into the focused methods below; the `process_work_batch` SQL orchestrator was dropped (migration `029_ProcessWorkBatch.sql`). `ProcessWorkBatchAsync` no longer exists on `IWorkCoordinator` — the work pump is fully decomposed (`ClaimWorkAsync`, `ReportFailuresAsync`, `CompleteOutboxPublishedAsync`, `CommitHandlerResultAsync`/`CommitHandlerBatchAsync`, `FlushCompletionsAsync`, …).
 :::
 
 ## Overview
@@ -116,6 +116,11 @@ public interface IWorkCoordinator {
     Task<int> RenewLeasesAsync(
         WorkCategory category, IReadOnlyList<Guid> ids,
         int leaseSeconds = 300, CancellationToken cancellationToken = default);
+
+    // Composite single-round-trip flusher (outbox completes + perspective completes
+    // + per-category failures in one call; single fsync at outer commit)
+    Task FlushCompletionsAsync(
+        FlushCompletionsRequest request, CancellationToken cancellationToken = default);
 
     // Scheduled retries + observability
     Task<int> NotifyScheduledRetryDueAsync(CancellationToken cancellationToken = default);
@@ -299,6 +304,8 @@ public record OutboxMessage {
     public bool IsEvent { get; init; }
     public EventFlags Flags { get; init; }
     public PerspectiveScope? Scope { get; init; }
+    public required string MessageType { get; init; }
+    public DateTimeOffset? ScheduledFor { get; init; }  // deferred/scheduled retry delivery
 }
 
 public record InboxMessage {
@@ -414,6 +421,7 @@ Each coordinator method maps to a focused **PostgreSQL function** (hosted primar
 | `CompletePerspectiveAsync` | `complete_perspective` | `PerspectiveCompletionFlushWorker` |
 | `ReportFailuresAsync` | `report_failures` | `FailureFlushWorker` |
 | `RenewLeasesAsync` | `renew_leases` | `LeaseRenewalWorker` |
+| `FlushCompletionsAsync` | `flush_completions` | — (composite surface; the per-category flush workers currently call the focused methods) |
 | `NotifyScheduledRetryDueAsync` | `notify_scheduled_retry_due` | Backup tick (`DefaultBackupTickRegistrar` / `BackupTickCoordinator`) |
 
 ### Claim Function Signature

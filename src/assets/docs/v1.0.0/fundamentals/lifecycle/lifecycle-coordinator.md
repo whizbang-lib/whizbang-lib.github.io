@@ -1,8 +1,8 @@
 ---
 title: Lifecycle Coordinator
 pageType: concept
-verifiedAgainstCommit: 1b31f58d
-verifiedDate: 2026-07-16
+verifiedAgainstCommit: 0bc6065b
+verifiedDate: 2026-08-05
 version: 1.0.0
 category: Core Concepts
 order: 11
@@ -486,7 +486,7 @@ services.AddWhizbang(options => {
 
 ## Related Topics
 
-- [Lifecycle Stages](lifecycle-stages.md) - All 24 lifecycle stages reference
+- [Lifecycle Stages](lifecycle-stages.md) - All 28 lifecycle stages reference
 - [Lifecycle Receptors](../receptors/lifecycle-receptors.md) - `[FireAt]` attribute and `ILifecycleContext`
 - [Testing: Lifecycle Synchronization](../../operations/testing/lifecycle-synchronization.md) - Test patterns with lifecycle hooks
 - [Message Tags](../messages/message-tags.md) - Tags fire at every stage as lifecycle observers

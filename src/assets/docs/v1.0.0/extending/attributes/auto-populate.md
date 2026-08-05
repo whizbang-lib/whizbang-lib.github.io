@@ -1,8 +1,8 @@
 ---
 title: Auto-Populate Attributes
 pageType: reference
-verifiedAgainstCommit: 1b31f58d
-verifiedDate: 2026-07-16
+verifiedAgainstCommit: 0bc6065b
+verifiedDate: 2026-08-05
 version: 1.0.0
 category: Attributes
 order: 5
@@ -16,6 +16,7 @@ codeReferences:
   - src/Whizbang.Core/Attributes/PopulateFromServiceAttribute.cs
   - src/Whizbang.Core/Attributes/PopulateFromIdentifierAttribute.cs
   - src/Whizbang.Core/Attributes/PopulateFromContextAttribute.cs
+  - src/Whizbang.Core/Attributes/PopulateFromHttpHeaderAttribute.cs
   - src/Whizbang.Core/Attributes/TimestampKind.cs
   - src/Whizbang.Core/Attributes/ServiceKind.cs
   - src/Whizbang.Core/Attributes/IdentifierKind.cs
@@ -36,6 +37,7 @@ testReferences:
   - tests/Whizbang.Core.Tests/AutoPopulate/PopulateFromServiceAttributeTests.cs
   - tests/Whizbang.Core.Tests/AutoPopulate/PopulateFromIdentifierAttributeTests.cs
   - tests/Whizbang.Core.Tests/AutoPopulate/PopulateFromContextAttributeTests.cs
+  - tests/Whizbang.Core.Tests/AutoPopulate/AutoPopulateHttpHeaderTests.cs
   - tests/Whizbang.Core.Tests/AutoPopulate/AutoPopulateProcessorTests.cs
   - tests/Whizbang.Core.Tests/AutoPopulate/MessageEnvelopeAutoPopulateExtensionsTests.cs
   - tests/Whizbang.Core.Tests/AutoPopulate/JsonAutoPopulateHelperTests.cs
@@ -45,7 +47,7 @@ lastMaintainedCommit: '01f07906'
 
 # Auto-Populate Attributes
 
-Auto-populate attributes automatically enrich message properties with contextual data -- timestamps, service instance information, security context, and message identifiers -- at dispatch time. Values are populated via source-generated code with zero reflection, making the entire feature fully AOT-compatible.
+Auto-populate attributes automatically enrich message properties with contextual data -- timestamps, service instance information, security context, message identifiers, and captured HTTP headers -- at dispatch time. Values are populated via source-generated code with zero reflection, making the entire feature fully AOT-compatible.
 
 ## Namespace
 
@@ -58,7 +60,7 @@ using Whizbang.Core.AutoPopulate;   // Processor, registry, extensions
 
 Instead of manually setting observability and audit fields on every message, auto-populate attributes let you declare what data a property should receive. The source generator discovers these attributes at compile time and generates populator code that uses record `with` expressions for zero-reflection population.
 
-```csharp{title="Overview" description="A single message decorated with all four auto-populate attribute categories" category="Extending" difficulty="BEGINNER" tags=["auto-populate", "overview", "example"] tests=["AutoPopulateDiscoveryGeneratorTests.Generator_WithMultipleAttributeTypes_DiscoversAllAsync"]}
+```csharp{title="Overview" description="A single message decorated with four auto-populate attribute categories" category="Extending" difficulty="BEGINNER" tags=["auto-populate", "overview", "example"] tests=["AutoPopulateDiscoveryGeneratorTests.Generator_WithMultipleAttributeTypes_DiscoversAllAsync"]}
 public record OrderCreated(
     [property: StreamId] Guid OrderId,
     string ProductName,
@@ -167,9 +169,23 @@ public record DocumentCreated(
 | `UserId` | `string` | The current user's identifier from `SecurityContext` |
 | `TenantId` | `string` | The current tenant's identifier from `SecurityContext` |
 
+### PopulateFromHttpHeader
+
+Marks a `string` property for automatic population from an inbound HTTP header captured at the request edge. The header value is captured into the ambient scope's extensions at the HTTP boundary (via the transport's `ExtensionHeaderMappings`, e.g. `WhizbangScopeMiddleware` in `Whizbang.Transports.HotChocolate`) and rides the message context; the generated populator reads it back onto the property at the Sent phase. The extension key is matched case-insensitively and by convention is the header name itself. Header values are opaque strings, so the target property must be a `string`.
+
+```csharp{title="PopulateFromHttpHeader Attribute" description="Capture an inbound HTTP header onto a message property" category="Extending" difficulty="BEGINNER" tags=["auto-populate", "http-header", "PopulateFromHttpHeader", "correlation"] tests=["AutoPopulateHttpHeaderTests.PopulateSent_HttpHeader_PopulatesFromScopeExtensionAsync", "AutoPopulateHttpHeaderTests.PopulateSent_HttpHeader_MatchesHeaderKeyCaseInsensitivelyAsync"]}
+public record DocumentCreated(
+    [property: StreamId] Guid DocumentId,
+    string Title,
+    [property: PopulateFromHttpHeader("X-Correlation-ID")] string? CorrelationId = null
+) : IEvent;
+```
+
+Unlike the other four attributes, `PopulateFromHttpHeader` takes the header/extension key as a string argument rather than a kind enum.
+
 ## Applies To
 
-All four attributes can be applied to:
+All five attributes can be applied to:
 
 - Properties on event types (implementing `IEvent`)
 - Properties on command types (implementing `ICommand`)
@@ -212,7 +228,8 @@ Population happens at three distinct points in the message lifecycle:
 
 ```csharp{title="Lifecycle Phases" description="The three phases where auto-populate values are set" category="Extending" difficulty="INTERMEDIATE" tags=["Extending", "Attributes", "C#", "Lifecycle", "Phases"] tests=["AutoPopulateProcessorTests.AutoPopulateProcessor_ProcessAutoPopulate_WithTimestamp_StoresValueInMetadataAsync", "AutoPopulateProcessorTests.AutoPopulateProcessor_ProcessAutoPopulate_QueuedAtTimestamp_ReturnsNullAndSkipsAsync", "AutoPopulateProcessorTests.AutoPopulateProcessor_ProcessAutoPopulate_DeliveredAtTimestamp_ReturnsNullAndSkipsAsync", "JsonAutoPopulateHelperTests.PopulateTimestamp_RegistrationMatches_StampsPropertyOnObjectAsync", "JsonAutoPopulateHelperTests.PopulateTimestampByName_MatchesByFullName_StampsPropertyAsync"]}
 // Phase 1: Sent -- when dispatcher.SendAsync/PublishAsync is called
-// Populates: TimestampKind.SentAt, all ServiceKind, all ContextKind, all IdentifierKind
+// Populates: TimestampKind.SentAt, all ServiceKind, all ContextKind, all IdentifierKind,
+//            and PopulateFromHttpHeader values (from the scope's extensions)
 
 // Phase 2: Queued -- after message is written to the outbox
 // Populates: TimestampKind.QueuedAt
@@ -288,7 +305,7 @@ var updatedPayload = JsonAutoPopulateHelper.PopulateTimestampByName(
 
 ## Practical Example
 
-A complete event with full observability using all four attribute categories:
+A complete event with full observability using four attribute categories:
 
 ```csharp{title="Complete Observability Event" description="Event with full lifecycle timestamps, service info, security context, and identifiers" category="Extending" difficulty="INTERMEDIATE" tags=["auto-populate", "observability", "audit", "complete-example"] tests=["AutoPopulateProcessorTests.AutoPopulateProcessor_ProcessAutoPopulate_MultipleRegistrations_StoresAllValuesAsync", "AutoPopulateDiscoveryGeneratorTests.Generator_WithMultipleAttributeTypes_DiscoversAllAsync"]}
 public record InvoiceGenerated(
@@ -327,6 +344,7 @@ After dispatch, every field from `SentAt` downward is automatically populated. Y
 | `PopulateFromServiceAttribute` | `ServiceKind` | `string`, `Guid`, `int` | `ServiceInstanceInfo` |
 | `PopulateFromIdentifierAttribute` | `IdentifierKind` | `Guid`, `Guid?`, `string` | `MessageEnvelope` identifiers |
 | `PopulateFromContextAttribute` | `ContextKind` | `string` | `SecurityContext` |
+| `PopulateFromHttpHeaderAttribute` | — (header name string) | `string` | HTTP headers captured into the scope's extensions |
 
 ### PopulateKind Enum
 
@@ -338,6 +356,7 @@ The `PopulateKind` enum categorizes registrations internally:
 | `Context` | Security context values (UserId, TenantId) |
 | `Service` | Service instance information (ServiceName, InstanceId, HostName, ProcessId) |
 | `Identifier` | Message identifiers (MessageId, CorrelationId, CausationId, StreamId) |
+| `Header` | HTTP header values captured at the request edge (keyed by header name, not an enum) |
 
 ### Key Interfaces
 

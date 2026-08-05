@@ -1,8 +1,8 @@
 ---
 title: Message Registry
 pageType: concept
-verifiedAgainstCommit: 1b31f58d
-verifiedDate: 2026-07-16
+verifiedAgainstCommit: 0bc6065b
+verifiedDate: 2026-08-05
 version: 1.0.0
 category: Source Generators
 order: 3
@@ -601,8 +601,8 @@ Or configured output:
 ### Validate JSON
 
 ```bash{title="Validate JSON" description="Validate JSON" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Validate", "JSON"]}
-# Extract JSON from generated file
-dotnet run --project tools/extract-message-registry.csproj
+# The registry JSON is extracted automatically by the shipped MSBuild target
+dotnet build
 
 # Validate JSON
 cat .whizbang/cache/message-registry.json | jq .

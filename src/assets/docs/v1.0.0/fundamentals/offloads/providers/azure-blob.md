@@ -1,8 +1,8 @@
 ---
 title: Azure Blob Body Store
 pageType: concept
-verifiedAgainstCommit: 1b31f58d
-verifiedDate: 2026-07-16
+verifiedAgainstCommit: 0bc6065b
+verifiedDate: 2026-08-05
 version: 1.0.0
 category: Fundamentals
 order: 2
@@ -241,5 +241,3 @@ See [Body Offload (Claim-Check Pattern)](/docs/fundamentals/offloads/message-bod
 ## Integration tests
 
 The provider's integration test suite (`tests/Whizbang.Offloads.AzureBlob.Integration.Tests/`) uses `Testcontainers.Azurite` to spin up a real Azurite container per test class. Round-trip tests cover the upload/download/delete contract, hash verification, MaxBytes cap behavior, and idempotent delete semantics. The config-driven wiring is locked by `AzureBlobOffloadFromConfigurationTests` (provider discovery, `AccessTier`-from-string binding, no-op-when-empty, multi-provider, malformed-key skipping, and default fallbacks). The same code paths run against live Azure in production deployments.
-</content>
-</invoke>

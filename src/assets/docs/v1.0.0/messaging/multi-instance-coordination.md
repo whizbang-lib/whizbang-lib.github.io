@@ -1,8 +1,8 @@
 ---
 title: "Multi-Instance Coordination"
 pageType: concept
-verifiedAgainstCommit: 1b31f58d
-verifiedDate: 2026-07-16
+verifiedAgainstCommit: 0bc6065b
+verifiedDate: 2026-08-05
 version: 1.0.0
 category: "Messaging"
 order: 8
@@ -26,6 +26,9 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/CleanupStaleInstancesDefinitiveDeathSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/ActiveStreamsOwnershipSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/GetStreamEventsCrossPodOwnershipTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/StoreInboxMessagesSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/OpportunisticHeartbeatSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/ListenLivenessSqlTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -45,7 +48,7 @@ Multi-instance coordination ensures reliable, ordered message processing across 
 
 #### Sequence Diagram
 
-```mermaid{caption="Cross-instance stream ordering — while Instance 1 owns stream S in wh_active_streams, Instance 2 is blocked from claiming any of S's messages until that ownership lapses on Instance 1's death."}
+```mermaid{caption="Cross-instance stream ordering — while Instance 1 owns stream S in wh_active_streams, Instance 2 is blocked from claiming any of S's messages until that ownership lapses on Instance 1's death." tests=["ClaimOrphanedActiveStreamsPinningSqlTests.ClaimOrphanedPerspectiveEvents_RowOwnedByLiveDifferentInstance_PreservesOwnershipAsync"]}
 sequenceDiagram
     participant I1 as Instance 1
     participant DB as PostgreSQL
@@ -91,11 +94,11 @@ sequenceDiagram
 
 **Rule**: Instances that stop heartbeating past the 30-second stale cutoff — and have no live LISTEN connection and no advisory alive-lock — are automatically removed, releasing their messages and stream ownership.
 
-Heartbeating runs on its own timer: `HeartbeatWorker` calls `record_heartbeat` every 30 seconds (60 s in the adaptive lock-aware mode). Stale-peer cleanup fires opportunistically inside `record_heartbeat` (guarded by a cheap `EXISTS` pre-check), with `MaintenanceWorker` running `cleanup_stale_instances` as a backstop. A 5-minute definitive-dead cutoff bypasses the alive-lock guard for OOMKilled pods on half-open TCP.
+Heartbeating runs on its own timer: `HeartbeatWorker` calls `record_heartbeat` every 30 seconds (60 s in the adaptive lock-aware mode). Stale-peer cleanup fires opportunistically inside `record_heartbeat` (guarded by a cheap `EXISTS` pre-check) — this is the only caller of `cleanup_stale_instances`, so cleanup happens as long as any live peer keeps heartbeating. `MaintenanceWorker`'s `perform_maintenance` separately purges abandoned `wh_active_streams` rows once a dead instance's registry row is gone. A 5-minute definitive-dead cutoff bypasses the alive-lock guard for OOMKilled pods on half-open TCP.
 
 #### Sequence Diagram
 
-```mermaid{caption="Stale-instance cleanup — a peer's record_heartbeat detects Instance 1's stale registry row, deletes it, releases its leases and stream ownership, and the orphaned work is reclaimed by Instance 2."}
+```mermaid{caption="Stale-instance cleanup — a peer's record_heartbeat detects Instance 1's stale registry row, deletes it, releases its leases and stream ownership, and the orphaned work is reclaimed by Instance 2." tests=["ActiveStreamsOwnershipSqlTests.RegisterInstanceHeartbeat_StaleInstanceExists_ReleasesItsLeasesAsync", "CleanupStaleInstancesDefinitiveDeathSqlTests.CleanupStaleInstances_HeartbeatPastDefinitiveCutoff_DeletesEvenWhenLockHeldAsync"]}
 sequenceDiagram
     participant I1 as Instance 1
     participant DB as PostgreSQL
@@ -280,7 +283,7 @@ flowchart LR
 
 #### Sequence Diagram
 
-```mermaid{caption="Lease-expiry reclaim — Instance 1 hangs without renewing its lease, and once lease_expiry passes, Instance 2's claim_orphaned_outbox reclaims M1, M2 (incrementing attempts) for continued processing."}
+```mermaid{caption="Lease-expiry reclaim — Instance 1 hangs without renewing its lease, and once lease_expiry passes, Instance 2's claim_orphaned_outbox reclaims M1, M2 (incrementing attempts) for continued processing." tests=["ClaimOrphanedAttemptsIncrementSqlTests.ClaimOrphanedOutbox_LeaseExpiredOnOtherInstance_BumpsAttemptsAsync"]}
 sequenceDiagram
     participant I1 as Instance 1<br/>(Crashes)
     participant DB as PostgreSQL
@@ -321,7 +324,7 @@ No Lease                Active Lease              Expired Lease
 
 #### Sequence Diagram
 
-```mermaid{caption="Inbox deduplication — store_inbox_messages inserts the message id into wh_message_deduplication with ON CONFLICT DO NOTHING, so a redelivered message is skipped and never re-enters the inbox."}
+```mermaid{caption="Inbox deduplication — store_inbox_messages inserts the message id into wh_message_deduplication with ON CONFLICT DO NOTHING, so a redelivered message is skipped and never re-enters the inbox." tests=["StoreInboxMessagesSqlTests.DuplicateMessageId_SecondCallNoOpsViaDedupTableAsync"]}
 sequenceDiagram
     participant T as Transport<br/>(Azure Service Bus)
     participant I1 as Instance 1
@@ -440,7 +443,7 @@ sequenceDiagram
 
 #### Sequence Diagram
 
-```mermaid{caption="Stream ownership across scaling — once stream S is pinned to Instance 1, all of its messages (including ones stored after Instance 2 joins) process on Instance 1 in created_at order until Instance 1 dies."}
+```mermaid{caption="Stream ownership across scaling — once stream S is pinned to Instance 1, all of its messages (including ones stored after Instance 2 joins) process on Instance 1 in created_at order until Instance 1 dies." tests=["ActiveStreamsOwnershipSqlTests.StoreOutboxMessages_ExistingActiveStreamsRow_DoesNotOverrideOwnerAsync"]}
 sequenceDiagram
     participant I1 as Instance 1
     participant DB as PostgreSQL
