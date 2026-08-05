@@ -4,6 +4,90 @@
 
 Docs-side companion to [`plans/missing-tests.md`](missing-tests.md) (code-block coverage-map gaps, Track 1/Track 2) and [`plans/verified-coverage-burndown.md`](verified-coverage-burndown.md) (per-page verified-coverage floor). Those plans work the **code-block** layer; this one works the **symbol / stamp / diagram / sample** layers, from the 2026-07-30 audit refreshed 2026-08-04.
 
+
+## Progress log
+
+- **2026-08-05 — Phases 1–3 DONE** (docs PR #280): 2 broken refs fixed; all 6 unstamped pages verified against `a64ba9a0`, corrected (root README rewritten; stream-integrity 19 corrections; migration-guide CLI section rewritten; health fault-mapping fixed) and stamped with full `testReferences`; both maps regenerated; generators ported off undeclared `glob`.
+- **2026-08-05 — Phase 4 (mechanical) DONE** (library PR #415): 97 stale `<docs>` tags across 57 files retargeted to real pages (incl. the whole `Integrity*` family off `proposals/stream-integrity`). Remaining Phase 4 items are user decisions — see "Phase 4 decisions needed" below.
+- **2026-08-05 — Phase 5 wave 1 DONE** (library PR #418): the 6 worst published targets (84 symbols) investigated; **81 were tested-but-unlinked** → 223 `<tests>` tags added; 1 fabricated tag removed; 2 map-parser misattributions fixed. Doc-linked uncovered symbols: **718 → 638**. Confirmed Track-2 gaps (tests to write): `PinnedPoolMetrics`, `CollectiveApplyBatchSize` DI wiring, `DapperCollectiveTableRegistry`.
+- **Remaining**: Phase 4 decisions (below) · Phase 5 waves 2+ (638 uncovered symbols, 229 published targets — same investigate→tag pipeline) · Phase 6/7 (97 diagram pins + sample tagging; unblocked per-page as symbol tags land) · Phase 8 (re-verification sweep of 173 stale pages).
+
+## Phase 4 decisions needed (user)
+
+Library `<docs>` tags point at doc targets that are not published pages. Per target: **promote** the page into v1.0.0, **write** it, or **retarget/drop** the tags.
+
+**Drafts referenced by code (11 targets → promote or hold):**
+- `drafts/core-concepts/pinned-identity.md`
+- `drafts/fundamentals/signal-bus/signal-bus.md`
+- `drafts/fundamentals/work-coordinator/app-signals.md`
+- `drafts/fundamentals/work-coordinator/batched-flushers.md`
+- `drafts/fundamentals/work-coordinator/claim-loop.md`
+- `drafts/fundamentals/work-coordinator/configuration-reference.md`
+- `drafts/fundamentals/work-coordinator/handler-commit.md`
+- `drafts/fundamentals/work-coordinator/notifications-and-pgbouncer.md`
+
+**Proposals referenced by code (graduate or retarget):**
+- `proposals/carry-forward-tier2.md`
+- `proposals/ephemeral-events.md`
+- `proposals/temporal-engine.md`
+- `proposals/type-definition-fingerprint.md`
+
+**Never-written targets (54, by symbol count — write the page or drop the tag):**
+-  13 syms — `fundamentals/work-coordinator/per-stream-drain`
+-   8 syms — `fundamentals/temporal/pre-fire-hook`
+-   8 syms — `fundamentals/temporal/recurrence`
+-   6 syms — `fundamentals/work-coordinator/commit-sequence`
+-   5 syms — `fundamentals/work-coordinator/backup-tick-coordinator`
+-   5 syms — `internals/outbox-batch-strategy`
+-   4 syms — `testing/multi-service-harness`
+-   4 syms — `fundamentals/work-coordinator/lease-cancellation`
+-   4 syms — `internals/receptor-registry-query`
+-   3 syms — `fundamentals/lifecycle/lifecycle-reconciliation`
+-   3 syms — `fundamentals/work-coordinator/idle-activity-tracking`
+-   3 syms — `fundamentals/work-coordinator/startup-ordering`
+-   3 syms — `internals/inbox-batch-strategy`
+-   3 syms — `fundamentals/perspectives/drain-mode`
+-   3 syms — `internals/apply-batch-strategy`
+-   3 syms — `fundamentals/messaging/directed-messages`
+-   3 syms — `internals/message-discard-policy`
+-   3 syms — `fundamentals/receptors/raw-receptors`
+-   2 syms — `apis/graphql/authorization#require-permission`
+-   2 syms — `fundamentals/perspectives/cursor-inversion`
+-   2 syms — `fundamentals/work-coordinator/inbox-dispatch`
+-   2 syms — `internals/stream-affinity`
+-   2 syms — `operations/workers/processing-hooks`
+-   2 syms — `operations/workers/outbox-publish-worker#processing-hooks`
+-   2 syms — `fundamentals/temporal/saga-deadlines`
+-   2 syms — `resilience/stream-rate-limiter`
+-   2 syms — `operations/testing/chaos-injection`
+-   2 syms — `messaging/inbox-channel`
+-   1 syms — `fundamentals/transport/asb-receive`
+-   1 syms — `fundamentals/security/token-refresh#signalr-default`
+-   1 syms — `operations/diagnostics/whiz900`
+-   1 syms — `operations/infrastructure/deadlock-retry`
+-   1 syms — `operations/workers/inbox-dispatch-worker`
+-   1 syms — `fundamentals/work-coordinator/inbox-drain`
+-   1 syms — `fundamentals/work-coordinator/per-stream-drain#sliding-window`
+-   1 syms — `fundamentals/work-coordinator/maintenance`
+-   1 syms — `operations/workers/publisher-worker`
+-   1 syms — `fundamentals/work-coordinator/per-stream-drain#cross-stream-parallelism`
+-   1 syms — `fundamentals/work-coordinator/outbox-publish`
+-   1 syms — `fundamentals/perspectives/drain-mode#sliding-window`
+-   1 syms — `docs/transport-routing-architecture.md#transport-echo-suppression`
+-   1 syms — `messaging/transports/transport-options`
+-   1 syms — `fundamentals/security/effective-permissions`
+-   1 syms — `fundamentals/security/token-refresh`
+-   1 syms — `fundamentals/security/effective-permissions#in-memory`
+-   1 syms — `fundamentals/security/jwt-claim-builder`
+-   1 syms — `resilience/circuit-breaker`
+-   1 syms — `operations/observability/logging#startup`
+-   1 syms — `fundamentals/serialization/type-binding`
+-   1 syms — `operations/testing/receptor-firing-observer`
+-   1 syms — `operations/maintenance`
+-   1 syms — `fundamentals/transport/message-headers`
+-   1 syms — `internals/ordering-invariant`
+-   1 syms — `operations/observability/receptor-logging`
+
 ## 1. Verification staleness
 
 - 254 pages stamped `verifiedAgainstCommit: 1b31f58d` / `verifiedDate: 2026-07-16` (July sweep; rewritten-history equivalent `cc220ec`).
