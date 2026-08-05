@@ -6,6 +6,15 @@ category: Resilience
 order: 4
 description: Cross-service anti-entropy — continuity checkpoints, digest audits, and idempotent re-delivery repair, self-healing by default
 tags: 'stream-integrity, anti-entropy, re-delivery, backfill, digest, manifest, continuity, checkpoint, repair, cross-service, bootstrap'
+codeReferences:
+  - src/Whizbang.Core/Messaging/IntegrityCheckpoint.cs
+  - src/Whizbang.Core/Messaging/IntegrityAudit.cs
+  - src/Whizbang.Core/Messaging/IntegrityGapTracker.cs
+  - src/Whizbang.Core/Workers/IntegrityCheckpointWorker.cs
+  - src/Whizbang.Core/Workers/IntegrityAuditWorker.cs
+  - src/Whizbang.Core/Transports/ControlPlaneDestination.cs
+  - src/Whizbang.Data.EFCore.Postgres/IntegrityCheckpointReceptor.cs
+  - src/Whizbang.Data.EFCore.Postgres/IntegrityManifestReceptors.cs
 ---
 
 # Stream Integrity (Cross-Service Anti-Entropy & Repair)
@@ -359,7 +368,7 @@ layer as soon as it has *heard from* its origins. The origin set is deliberately
 (a restart re-baselines it), so the first audit after a fleet-wide deploy usually runs only the
 local half; the next cycle has a warm tracker and runs the full exchange.
 
-```mermaid
+```mermaid {caption="One reconcile cycle: checkpoints warm the origin tracker, the audit exchanges digest manifests, divergence drills down to an exact re-delivery" tests=["IntegrityCheckpointWorkerTests.RunCheckpointOnce_WithTransport_PublishesToOwnEventTopicsAsync","IntegrityAuditWorkerTests.KnownOrigins_GetDirectedManifestRequestsAsync","ControlPlaneSessionIntegrationTests.ControlPlanePublish_SessionRequiredSubscription_DeliversAsync"]}
 sequenceDiagram
     autonumber
     participant O as Origin service
@@ -388,7 +397,7 @@ sequenceDiagram
     end
 ```
 
-```mermaid
+```mermaid {caption="A consumer's first minutes after a deploy — local repair immediately, cross-service exchange once the origin tracker is warm" tests=["IntegrityAuditWorkerTests.FirstAuditDelay_OnStartupDefault_IsJitteredStartupWindowAsync","IntegrityCheckpointWorkerTests.RunCheckpointOnce_PublishesWindowWithOriginIdentityAsync"]}
 timeline
     title One consumer's first minutes after deploy
     t+0s : boot — receptors registered, workers start
@@ -403,7 +412,7 @@ requested: at fire time it checks work-pump depth and defers while the service i
 configurable **grace deadline** (default: weekly) forces the run regardless. Continuity checkpoints
 are continuous (default interval 60s). Everything is standard options-pattern configuration:
 
-```csharp
+```csharp{title="StreamIntegrityOptions" description="The shipped self-healing defaults and their storm caps" category="Configuration" difficulty="INTERMEDIATE" tags=["Resilience","StreamIntegrity"] tests=["StreamIntegrityOptionsDefaultsTests.Defaults_SelfHealingOutOfTheBoxAsync","StreamIntegrityOptionsDefaultsTests.Defaults_StormCapsBoundEveryRepairRungAsync"]}
 services.Configure<StreamIntegrityOptions>(o => {
   // Phase B — continuity checkpoints (fast drop detection)
   o.CheckpointsEnabled = true;               // ON by default
