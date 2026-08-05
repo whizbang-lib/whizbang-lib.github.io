@@ -6,9 +6,26 @@ order: 1
 description: Overview of migrating from Marten/Wolverine and other frameworks to Whizbang
 tags: 'migration, marten, wolverine, upgrade, conversion'
 codeReferences:
-  - tools/Whizbang.Migrate/Core/MigrationEngine.cs
+  - tools/Whizbang.Migrate/Program.cs
+  - tools/Whizbang.Migrate/Whizbang.Migrate.csproj
+  - tools/Whizbang.Migrate/Commands/AnalyzeCommand.cs
+  - tools/Whizbang.Migrate/Commands/ApplyCommand.cs
+  - tools/Whizbang.Migrate/Wizard/DecisionFile.cs
   - src/Whizbang.Core/IReceptor.cs
   - src/Whizbang.Core/Perspectives/IPerspectiveFor.cs
+  - src/Whizbang.Core/IDispatcher.cs
+testReferences:
+  - tests/Whizbang.Migrate.Tests/Commands/AnalyzeCommandTests.cs
+  - tests/Whizbang.Migrate.Tests/Commands/ApplyCommandTests.cs
+  - tests/Whizbang.Migrate.Tests/Commands/StatusCommandTests.cs
+  - tests/Whizbang.Migrate.Tests/Commands/RevertCommandTests.cs
+  - tests/Whizbang.Migrate.Tests/Analysis/WolverineAnalyzerTests.cs
+  - tests/Whizbang.Migrate.Tests/Analysis/MartenAnalyzerTests.cs
+  - tests/Whizbang.Core.Tests/Receptors/ReceptorTests.cs
+  - tests/Whizbang.Core.Tests/Perspectives/IPerspectiveForTests.cs
+  - tests/Whizbang.Core.Tests/Dispatcher/DispatcherTests.cs
+verifiedAgainstCommit: a64ba9a0
+verifiedDate: 2026-08-04
 ---
 
 # Migration Guide Overview
@@ -50,25 +67,32 @@ See the **[Migration Checklist](appendix-checklist.md)** for a complete step-by-
 Whizbang provides a CLI migration tool to automate common transformations:
 
 ```bash{title="Automated Migration Tool" description="Whizbang provides a CLI migration tool to automate common transformations:" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-guide", "Bash", "Automated", "Migration", "Tool"]}
-# Install the migration tool
-dotnet tool install -g whizbang-migrate
+# Install the migration tool (command name: whizbang-migrate)
+dotnet tool install -g SoftwareExtravaganza.Whizbang.Migrate
 
-# Analyze your project
-whizbang migrate analyze --project ./MyApp.sln
+# Analyze your project (Wolverine + Marten detection)
+whizbang-migrate analyze --project ./MyApp
 
-# Create a migration plan
-whizbang migrate plan --project ./MyApp.sln --output migration-plan.json
+# Preview what apply would change, without touching files
+whizbang-migrate apply --project ./MyApp --dry-run
 
-# Apply migrations (guided mode with human review)
-whizbang migrate apply --mode guided
+# Generate a decision file, review/edit it, then apply with your decisions
+whizbang-migrate apply --project ./MyApp --generate-decision-file decisions.json
+whizbang-migrate apply --project ./MyApp --decision-file decisions.json
 
-# Apply migrations (full automation)
-whizbang migrate apply --mode auto
+# Scope the transformation set, or leave package refs alone
+whizbang-migrate apply --project ./MyApp --include "**/Handlers/**" --exclude "**/obj/**"
+whizbang-migrate apply --project ./MyApp --no-manage-packages
+
+# Check migration status
+whizbang-migrate status --project ./MyApp
 ```
 
-The tool uses **git worktrees** for safe, isolated migrations with automatic rollback on failure.
-
-See the Migration Tool Documentation for details.
+`analyze` runs the Wolverine and Marten analyzers; `apply` runs the transformer suite
+(handlers→receptors, projections→perspectives, message-bus→dispatcher, serialization, DI
+registrations, and more) and manages package references unless `--no-manage-packages` is set.
+Guided-vs-automatic control is the **decision file**: generate it, review each decision, then
+apply. Use `--dry-run` first on any real codebase.
 
 ## Key Architectural Differences
 
@@ -112,7 +136,7 @@ Whizbang's `IDispatcher` provides three distinct patterns:
 | Pattern | Use Case | Wire Support |
 |---------|----------|--------------|
 | `SendAsync` | Command dispatch with delivery receipt | Yes |
-| `LocalInvokeAsync` | In-process RPC (< 20ns, zero allocation) | No |
+| `LocalInvokeAsync` | In-process RPC (target < 20ns, zero allocation) | No |
 | `PublishAsync` | Event broadcasting (fire-and-forget) | Yes |
 
 ## Getting Help

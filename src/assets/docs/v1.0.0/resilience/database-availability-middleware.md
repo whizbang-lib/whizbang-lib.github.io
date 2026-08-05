@@ -11,6 +11,19 @@ codeReferences:
   - src/Whizbang.Hosting.AspNet/DatabaseAvailabilityMiddleware.cs
   - src/Whizbang.Hosting.AspNet/WhizbangAvailabilityStartupFilter.cs
   - src/Whizbang.Hosting.AspNet/ServiceCollectionExtensions.cs
+  - src/Whizbang.Hosting.AspNet/WhizbangAvailabilityOptions.cs
+  - src/Whizbang.Hosting.AspNet/AvailabilityGateMode.cs
+  - src/Whizbang.Hosting.AspNet/WhizbangAspNetModuleInitializer.cs
+  - src/Whizbang.Core/Configuration/WhizbangCoreOptions.cs
+testReferences:
+  - tests/Whizbang.Hosting.AspNet.Tests/DatabaseAvailabilityMiddlewareTests.cs
+  - tests/Whizbang.Hosting.AspNet.Tests/DatabaseAvailabilityMiddlewareModeTests.cs
+  - tests/Whizbang.Hosting.AspNet.Tests/WhizbangAvailabilityStartupFilterTests.cs
+  - tests/Whizbang.Hosting.AspNet.Tests/AddWhizbangAspNetTurnkeyTests.cs
+  - tests/Whizbang.Core.Tests/Workers/SchemaInitializationOptionsTests.cs
+  - tests/Whizbang.Core.Tests/WhizbangHostingIntegrationTests.cs
+verifiedAgainstCommit: a64ba9a0
+verifiedDate: 2026-08-04
 ---
 
 # Availability Gate & Turnkey Hosting
