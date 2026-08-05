@@ -21,14 +21,14 @@
     "node": ">=24.15.0"
   },
   "dependencies": {
-    "@angular/animations": "~22.0.6",
-    "@angular/common": "~22.0.6",
-    "@angular/compiler": "~22.0.7",
-    "@angular/core": "~22.0.7",
-    "@angular/forms": "~22.0.6",
-    "@angular/platform-browser": "~22.0.7",
-    "@angular/platform-browser-dynamic": "~22.0.7",
-    "@angular/router": "~22.0.6",
+    "@angular/animations": "~22.0.8",
+    "@angular/common": "~22.0.8",
+    "@angular/compiler": "~22.0.8",
+    "@angular/core": "~22.0.8",
+    "@angular/forms": "~22.0.8",
+    "@angular/platform-browser": "~22.0.8",
+    "@angular/platform-browser-dynamic": "~22.0.8",
+    "@angular/router": "~22.0.8",
     "@angular/youtube-player": "^22.0.4",
     "@primeng/themes": "^21.0.4",
     "fuse.js": "^7.5.0",
@@ -49,16 +49,16 @@
     "zone.js": "~0.15.0"
   },
   "devDependencies": {
-    "@angular-devkit/build-angular": "^22.0.7",
-    "@angular/cli": "~22.0.6",
-    "@angular/compiler-cli": "~22.0.7",
+    "@angular-devkit/build-angular": "^22.0.8",
+    "@angular/cli": "~22.0.8",
+    "@angular/compiler-cli": "~22.0.8",
     "@tailwindcss/postcss": "^4.3.3",
     "@types/node": "^26.1.1",
     "@xenova/transformers": "^2.17.2",
     "autoprefixer": "^10.5.4",
     "katex": "^0.17.0",
     "marked-katex-extension": "^5.1.10",
-    "postcss": "^8.5.19",
+    "postcss": "^8.5.23",
     "tailwindcss": "^4.3.3",
     "typescript": "~6.0.2"
   }
