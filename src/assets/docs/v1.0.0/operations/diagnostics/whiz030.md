@@ -1,8 +1,8 @@
 ---
 title: 'WHIZ030: Perspective Event Missing StreamId'
 pageType: troubleshooting
-verifiedAgainstCommit: 1b31f58d
-verifiedDate: 2026-07-16
+verifiedAgainstCommit: 0bc6065b
+verifiedDate: 2026-08-05
 description: >-
   Event type used in perspective must have exactly one property marked with
   [StreamId] attribute
@@ -25,7 +25,7 @@ lastMaintainedCommit: '01f07906'
 # WHIZ030: Perspective Event Missing StreamId
 
 **Severity**: Error
-**Category**: Source Generation
+**Category**: Whizbang.SourceGeneration
 
 ## Description
 

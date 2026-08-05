@@ -1,8 +1,8 @@
 ---
 title: "Commands and Events"
 pageType: concept
-verifiedAgainstCommit: 1b31f58d
-verifiedDate: 2026-07-16
+verifiedAgainstCommit: 0bc6065b
+verifiedDate: 2026-08-05
 version: 1.0.0
 category: "Messaging"
 order: 5
@@ -223,7 +223,7 @@ var receipt = await dispatcher.SendAsync(createOrder);
 //   distributed tracing, CausationId for the parent message, scope
 //   deltas for security context, and the policy decision trail)
 // - SourceServiceId / SourceCommitSequence (origin stamps)
-// - EventFlags (category and treatment flags)
+// - Flags (EventFlags — category and treatment flags)
 ```
 
 See [Message Envelopes](message-envelopes.md) for details.

@@ -1,8 +1,8 @@
 ---
 title: 'WHIZ058: GUID Call Intercepted'
 pageType: troubleshooting
-verifiedAgainstCommit: 1b31f58d
-verifiedDate: 2026-07-16
+verifiedAgainstCommit: 0bc6065b
+verifiedDate: 2026-08-05
 description: >-
   Informational diagnostic indicating a GUID creation call has been intercepted
   and wrapped with TrackedGuid

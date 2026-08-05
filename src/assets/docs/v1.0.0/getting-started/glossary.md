@@ -1,8 +1,8 @@
 ---
 title: Glossary
 pageType: reference
-verifiedAgainstCommit: 1b31f58d
-verifiedDate: 2026-07-16
+verifiedAgainstCommit: 0bc6065b
+verifiedDate: 2026-08-05
 version: 1.0.0
 category: Getting Started
 order: 5
@@ -109,7 +109,7 @@ Singleton that manages stage transitions, guarantees exactly-once firing, and co
 A [Receptor](#receptor) decorated with `[FireAt]` that executes at a specific stage in the message processing pipeline. See [Lifecycle Receptors](../fundamentals/receptors/lifecycle-receptors.md).
 
 **Lifecycle Stage**
-One of 24 stages in the message processing pipeline. Stage names carry a `Detached` or `Inline` suffix (e.g., `ImmediateDetached`, `PostPerspectiveInline`, `PostAllPerspectivesDetached`, `PostLifecycleInline`) covering the Immediate, Distribute, Outbox, Inbox, Perspective, PostAllPerspectives, and PostLifecycle phases. See [Lifecycle Stages](../fundamentals/lifecycle/lifecycle-stages.md).
+One of 28 stages in the message processing pipeline. Stage names carry a `Detached` or `Inline` suffix (e.g., `ImmediateDetached`, `PostPerspectiveInline`, `PostAllPerspectivesDetached`, `PostLifecycleInline`) covering the Immediate, Distribute, Outbox, Inbox, Perspective, PostAllPerspectives, PostLifecycle, and Destruction phases. See [Lifecycle Stages](../fundamentals/lifecycle/lifecycle-stages.md).
 
 ## M
 

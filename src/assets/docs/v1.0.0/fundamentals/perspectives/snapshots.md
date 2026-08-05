@@ -1,8 +1,8 @@
 ---
 title: Perspective Snapshots
 pageType: concept
-verifiedAgainstCommit: 1b31f58d
-verifiedDate: 2026-07-16
+verifiedAgainstCommit: 0bc6065b
+verifiedDate: 2026-08-05
 version: 1.0.0
 category: Perspectives
 order: 11
@@ -169,6 +169,15 @@ public class PerspectiveSnapshotOptions {
 
   // Maximum snapshots to keep per (stream, perspective) pair (default: 5)
   public int MaxSnapshotsPerStream { get; set; } = 5;
+
+  // Snapshot cadence for EPHEMERAL perspectives (those applying at least one
+  // ephemeral event) -- more aggressive to keep a fresh rewind floor within the
+  // grace window before consumed bodies are reaped (default: 10)
+  public int EphemeralSnapshotEveryNEvents { get; set; } = 10;
+
+  // Maximum snapshots kept per (stream, perspective) for EPHEMERAL perspectives.
+  // Single-slot: you can never rewind below the reap boundary (default: 1)
+  public int EphemeralMaxSnapshotsPerStream { get; set; } = 1;
 
   // Whether snapshot creation is enabled (default: true)
   // When disabled, rewinds always replay from event zero

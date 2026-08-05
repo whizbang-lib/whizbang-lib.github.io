@@ -1,8 +1,8 @@
 ---
 title: Database Schema Framework
 pageType: guide
-verifiedAgainstCommit: 1b31f58d
-verifiedDate: 2026-07-16
+verifiedAgainstCommit: 0bc6065b
+verifiedDate: 2026-08-05
 version: 1.0.0
 category: Extensibility
 order: 11
@@ -99,7 +99,9 @@ public sealed record ColumnDefinition(
   bool PrimaryKey = false,
   bool Unique = false,
   int? MaxLength = null,
-  DefaultValue? DefaultValue = null
+  DefaultValue? DefaultValue = null,
+  bool BackfillExempt = false  // Column owned by forward migrations: still in CREATE TABLE,
+                               // but omitted from the ALTER TABLE ... ADD COLUMN backfill pass
 );
 
 // Index definition (simple or composite)
@@ -499,7 +501,7 @@ var createIndexSql = builder.BuildCreateIndex(
 | `BOOLEAN__TRUE` / `BOOLEAN__FALSE` | `TRUE` / `FALSE` |
 
 :::note
-`BuildCreateTable` also emits `ALTER TABLE ... ADD COLUMN IF NOT EXISTS` for every column after the `CREATE TABLE IF NOT EXISTS` statement. This keeps schema builds idempotent: fresh databases get columns from CREATE TABLE; existing databases get newly-added columns backfilled.
+`BuildCreateTable` also emits `ALTER TABLE ... ADD COLUMN IF NOT EXISTS` for every column (except those marked `BackfillExempt` — columns whose lifecycle is owned by forward migrations) after the `CREATE TABLE IF NOT EXISTS` statement. This keeps schema builds idempotent: fresh databases get columns from CREATE TABLE; existing databases get newly-added columns backfilled.
 :::
 
 ---

@@ -1,8 +1,8 @@
 ---
 title: 'WHIZ059: GUID Interception Suppressed'
 pageType: troubleshooting
-verifiedAgainstCommit: 1b31f58d
-verifiedDate: 2026-07-16
+verifiedAgainstCommit: 0bc6065b
+verifiedDate: 2026-08-05
 description: >-
   Informational diagnostic indicating a GUID creation call was not intercepted
   due to suppression

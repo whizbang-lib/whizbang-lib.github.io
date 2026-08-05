@@ -1,8 +1,8 @@
 ---
 title: Perspective Sync
 pageType: concept
-verifiedAgainstCommit: 1b31f58d
-verifiedDate: 2026-07-16
+verifiedAgainstCommit: 0bc6065b
+verifiedDate: 2026-08-05
 version: 1.0.0
 category: Perspectives
 codeReferences:
@@ -138,7 +138,7 @@ else {
 }
 ```
 
-Inquiries can also piggyback on a work batch: set `ProcessWorkBatchRequest.PerspectiveSyncInquiries` and read the answers from `WorkBatch.SyncInquiryResults`.
+Inquiries are resolved through the dedicated `IWorkCoordinator.ResolveSyncInquiriesAsync` batch call (the legacy `ProcessWorkBatchAsync` piggyback request no longer exists). When a coordinator answers inquiries as part of a work batch, the results surface on `WorkBatch.SyncInquiryResults`.
 
 ## IsFullySynced Logic
 

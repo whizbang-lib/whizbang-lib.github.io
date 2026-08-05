@@ -1,8 +1,8 @@
 ---
 title: "GetPerspectiveAssociations: Strongly-Typed Perspective Queries"
 pageType: reference
-verifiedAgainstCommit: 1b31f58d
-verifiedDate: 2026-07-16
+verifiedAgainstCommit: 0bc6065b
+verifiedDate: 2026-08-05
 version: 1.0.0
 category: "Perspectives"
 order: 9
@@ -407,7 +407,7 @@ var associations3 = PerspectiveRegistrationExtensions
 ### Multiple Perspectives
 
 :::updated
-At commit `1b31f58d`, when **multiple perspectives handle the same model/event combination**, `GetPerspectiveAssociations<TModel, TEvent>` returns only the **first** matching perspective, not all of them. The generator emits one type-check block per (perspective, event) pair, and each block returns a single-element array immediately -- a second perspective with an identical `(TModel, TEvent)` signature is unreachable. Perspectives with *different* model or event types are unaffected. If you need every handler for a model/event pair, use the string-based `GetMessageAssociations(serviceName)` API, which returns one `MessageAssociation` entry per perspective.
+At commit `0bc6065b`, when **multiple perspectives handle the same model/event combination**, `GetPerspectiveAssociations<TModel, TEvent>` returns only the **first** matching perspective, not all of them. The generator emits one type-check block per (perspective, event) pair, and each block returns a single-element array immediately -- a second perspective with an identical `(TModel, TEvent)` signature is unreachable. Perspectives with *different* model or event types are unaffected. If you need every handler for a model/event pair, use the string-based `GetMessageAssociations(serviceName)` API, which returns one `MessageAssociation` entry per perspective.
 :::
 
 ```csharp{title="Multiple Perspectives" description="Two perspectives sharing the same model/event pair - only the first is returned by the typed API:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "C#", "Multiple"] unverified="ECommerce domain illustration of the first-match-only limitation — the MultiplePerspectives generator tests cover distinct model/event pairs, not two perspectives sharing one pair"}
@@ -531,7 +531,7 @@ foreach (var assoc in typedAssociations) {
 | `IReadOnlyList<PerspectiveAssociationInfo<TModel, TEvent>>` | Immutable list of typed associations |
 
 - **Empty list**: No perspectives match the specified types
-- **One or more items**: All perspectives handling TModel + TEvent
+- **One item**: The first perspective handling TModel + TEvent (see [Multiple Perspectives](#multiple-perspectives) — the generated code returns a single-element array per match)
 - **Never null**: Always returns a list (empty or populated)
 
 ## Best Practices

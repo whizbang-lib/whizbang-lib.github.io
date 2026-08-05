@@ -1,8 +1,8 @@
 ---
 title: Inbox Pattern
 pageType: concept
-verifiedAgainstCommit: 1b31f58d
-verifiedDate: 2026-07-16
+verifiedAgainstCommit: 0bc6065b
+verifiedDate: 2026-08-05
 version: 1.0.0
 category: Messaging
 order: 2
@@ -63,7 +63,7 @@ public async Task ProcessMessageAsync(OrderCreated @event, CancellationToken ct)
 
 **The Fix**: Record the message ID **before** processing — duplicates are rejected at store time, so a message can never enter the pipeline twice.
 
-```mermaid{caption="Inbox pipeline — transport arrival, dedup-gated store, lease + stream-FIFO claim, then atomic handler commit."}
+```mermaid{caption="Inbox pipeline — transport arrival, dedup-gated store, lease + stream-FIFO claim, then atomic handler commit." tests=["StoreInboxMessagesSqlTests.DuplicateMessageId_SecondCallNoOpsViaDedupTableAsync"]}
 flowchart TD
     S1["1. Message arrives from transport<br/>(unsubscribed messages are discarded at the<br/>receive boundary — no inbox row at all)"]
     S2["2. store_inbox_messages:<br/>INSERT INTO wh_message_deduplication ... ON CONFLICT DO NOTHING<br/><br/>If conflict: SKIP (already seen!) — Exactly-once!<br/>If new: INSERT INTO wh_inbox (same transaction)"]
@@ -110,7 +110,10 @@ CREATE TABLE IF NOT EXISTS wh_inbox (
   failure_reason INTEGER NOT NULL DEFAULT 99,
   scheduled_for TIMESTAMPTZ NULL,             -- Scheduled retry gate
   processed_at TIMESTAMPTZ NULL,
-  received_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+  received_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  flags INTEGER NOT NULL DEFAULT 0,           -- EventFlags bitmask (event categorization)
+  source_service_id UUID NOT NULL,            -- Cross-service source identity (trigger-filled if omitted)
+  source_commit_sequence BIGINT NOT NULL DEFAULT 0
 );
 
 CREATE INDEX IF NOT EXISTS idx_inbox_processed_at ON wh_inbox (processed_at);
@@ -247,7 +250,7 @@ ORDER BY received_at;
 
 ### How Inbox Ensures Exactly-Once
 
-```mermaid{caption="Exactly-once via the dedup table — the first insert wins (ROW_COUNT = 1); a duplicate hits ON CONFLICT (ROW_COUNT = 0) and never enters the pipeline."}
+```mermaid{caption="Exactly-once via the dedup table — the first insert wins (ROW_COUNT = 1); a duplicate hits ON CONFLICT (ROW_COUNT = 0) and never enters the pipeline." tests=["StoreInboxMessagesSqlTests.DuplicateMessageId_SecondCallNoOpsViaDedupTableAsync"]}
 flowchart TD
     M1["Message arrives with MessageId: msg-123"]
     A1["Attempt 1 (Worker A)<br/><br/>1. Dedup insert for msg-123: ROW_COUNT = 1 — First to insert!<br/>2. Inbox row created<br/>3. Handler invoked: SUCCESS<br/>4. Handler commit: SUCCESS"]
@@ -266,7 +269,7 @@ flowchart TD
 
 ### Race Condition Handling
 
-```mermaid{caption="Concurrent-worker race — both attempt the dedup insert; one wins and processes, the loser's ON CONFLICT DO NOTHING returns zero rows and it skips without error."}
+```mermaid{caption="Concurrent-worker race — both attempt the dedup insert; one wins and processes, the loser's ON CONFLICT DO NOTHING returns zero rows and it skips without error." tests=["StoreInboxMessagesSqlTests.DuplicateMessageId_SecondCallNoOpsViaDedupTableAsync"]}
 flowchart TD
     Start["Two workers receive same message simultaneously"]
     WA["Worker A"]
@@ -371,7 +374,7 @@ await coordinator.ReportFailuresAsync(
 
 ### Dead Letter Queue
 
-When `attempts` exceeds `MessageProcessingOptions.MaxInboxAttempts` (default 10), the row moves to the internal `wh_dead_letters` table with a forensic snapshot, and the SQL function deletes it from `wh_inbox` in the same transaction:
+When `attempts` exceeds `InboxDispatchWorkerOptions.MaxInboxAttempts` (default 10), the row moves to the internal `wh_dead_letters` table with a forensic snapshot, and the SQL function deletes it from `wh_inbox` in the same transaction:
 
 ```csharp{title="Dead Letter Queue" description="Dead-letter promotion on max attempts (InboxDispatchWorker)" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Dead", "Letter", "Queue"] tests=["InboxDispatchWorkerTests.MaxInboxAttempts_AttemptsOneOverMax_DeadLettersAsync", "InboxDispatchWorkerTests.MaxInboxAttempts_AttemptsEqualToMax_StillProcessesAsync"]}
 // InboxDispatchWorker (automatic):

@@ -1,8 +1,8 @@
 ---
 title: Migration Checklist
 pageType: guide
-verifiedAgainstCommit: 1b31f58d
-verifiedDate: 2026-07-16
+verifiedAgainstCommit: 0bc6065b
+verifiedDate: 2026-08-05
 version: 1.0.0
 category: Migration Guide
 order: 10
@@ -275,14 +275,14 @@ dotnet tool install -g whizbang-migrate
 # Analyze
 whizbang-migrate analyze --project ./MyApp.sln
 
-# Plan (no changes applied)
+# Plan (no changes applied; currently a stub — prints "not yet implemented")
 whizbang-migrate plan --project ./MyApp.sln
 
 # Apply (preview first with --dry-run)
 whizbang-migrate apply --project ./MyApp.sln --dry-run
 whizbang-migrate apply --project ./MyApp.sln
 
-# Check status / rollback to a checkpoint
+# Check status / rollback to a checkpoint (rollback currently a stub — prints "not yet implemented")
 whizbang-migrate status
 whizbang-migrate rollback
 ```
