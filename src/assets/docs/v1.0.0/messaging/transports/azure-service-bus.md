@@ -16,6 +16,7 @@ codeReferences:
   - src/Whizbang.Transports.AzureServiceBus/AzureServiceBusTransport.cs
   - src/Whizbang.Transports.AzureServiceBus/ServiceCollectionExtensions.cs
   - src/Whizbang.Transports.AzureServiceBus/AzureServiceBusOptions.cs
+  - src/Whizbang.Transports.AzureServiceBus/ReceiveLivenessWatchdog.cs
   - src/Whizbang.Transports.AzureServiceBus/AzureServiceBusConnectionRetry.cs
   - src/Whizbang.Transports.AzureServiceBus/ServiceBusSubscriptionNameHelper.cs
   - src/Whizbang.Transports.AzureServiceBus/IServiceBusAdminClient.cs
@@ -23,6 +24,10 @@ codeReferences:
   - src/Whizbang.Transports.AzureServiceBus/ServiceBusInfrastructureProvisioner.cs
   - src/Whizbang.Hosting.Azure.ServiceBus/ServiceBusSubscriptionExtensions.cs
 testReferences:
+  - >-
+    tests/Whizbang.Transports.AzureServiceBus.Tests/ReceiveLivenessWatchdogTests.cs
+  - >-
+    tests/Whizbang.Transports.AzureServiceBus.Tests/AzureServiceBusTransportLivenessWiringTests.cs
   - >-
     tests/Whizbang.Transports.AzureServiceBus.Tests/AzureServiceBusConnectionRetryTests.cs
   - >-
@@ -853,6 +858,52 @@ var processorOptions = new ServiceBusProcessorOptions {
 **Best Practice**: Set `MaxAutoLockRenewalDuration` to expected max processing time + buffer.
 
 ---
+
+## Receive Liveness
+
+A receiver's underlying AMQP link can drop **without surfacing any error**: no
+`ProcessErrorAsync` callback fires, nothing is dead-lettered, and process-level health checks
+stay green — while messages accumulate unconsumed on the subscription. Session receivers are
+particularly exposed: a dropped session receiver strands every message routed to its
+subscription until the process restarts. The transport's other defenses cannot see this
+failure mode — error-driven recovery needs a surfaced exception, and connectivity checks only
+detect a disposed client, never a dead link on a live one.
+
+The **receive-liveness watchdog** closes the gap by combining two signals, so genuinely idle
+services are never restarted:
+
+1. A subscription has been **silent** (no received messages) past
+   `ReceiveLivenessSilenceThreshold`, **and**
+2. The admin plane reports a **non-empty backlog** for it.
+
+Silence with an empty backlog is healthy idle — the watchdog re-baselines the silence window
+and does not query the admin plane again until the threshold elapses anew. A failed backlog
+probe is inconclusive (logged, no recovery), and the sweep loop survives any error. On
+detection the watchdog invokes the transport's existing recovery path — dispose and
+resubscribe all destinations, the same path used for surfaced connection errors — and resets
+every silence window.
+
+```csharp{title="Receive-Liveness Options" description="Watchdog configuration with defaults" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Liveness", "Recovery"] tests=["AzureServiceBusTransportUnitTests.EnableReceiveLivenessWatchdog_DefaultsToTrueAsync", "AzureServiceBusTransportUnitTests.ReceiveLivenessProbeInterval_DefaultsToSixtySecondsAsync", "AzureServiceBusTransportUnitTests.ReceiveLivenessSilenceThreshold_DefaultsToFiveMinutesAsync"]}
+services.AddWhizbangAzureServiceBusTransport(options => {
+  // Default: enabled. Requires the admin client (management-plane access) — without it the
+  // watchdog disables itself, because silence alone cannot distinguish a stalled receiver
+  // from an idle service.
+  options.EnableReceiveLivenessWatchdog = true;
+
+  // How often the watchdog sweeps tracked subscriptions.
+  options.ReceiveLivenessProbeInterval = TimeSpan.FromSeconds(60);
+
+  // How long a subscription may be silent before the backlog probe decides
+  // stalled-vs-idle.
+  options.ReceiveLivenessSilenceThreshold = TimeSpan.FromMinutes(5);
+});
+```
+
+Recovery re-establishes subscriptions through the same provisioning path as startup. Filter
+rules apply **idempotently** there: when a subscription's rules already match the desired
+state, they are left untouched, so a watchdog-triggered resubscribe does not churn rules (a
+delete-then-recreate would briefly leave the subscription ruleless, silently dropping
+messages published in that window).
 
 ## Observability
 
