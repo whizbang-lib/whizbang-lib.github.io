@@ -1,13 +1,13 @@
 {
   "run": {
-    "runId": "30990213389",
-    "sha": "0bc6065b687083e9758c7a4de6266914362504b5",
+    "runId": "31067334806",
+    "sha": "cc6deb79034026e0d0ade389064c3d2280337899",
     "branch": "develop",
-    "libraryVersion": "0.963.0-alpha.30",
-    "completedAt": "2026-08-05T11:50:04.482Z"
+    "libraryVersion": "0.963.0-alpha.31",
+    "completedAt": "2026-08-06T03:41:20.728Z"
   },
   "total": {
-    "passed": 16389,
+    "passed": 16392,
     "failed": 0,
     "skipped": 8
   },
@@ -38,12 +38,12 @@
       "skipped": 0
     },
     "servicebus-whizbang": {
-      "passed": 73,
+      "passed": 74,
       "failed": 0,
       "skipped": 0
     },
     "unit": {
-      "passed": 13685,
+      "passed": 13687,
       "failed": 0,
       "skipped": 8
     }
@@ -111,7 +111,7 @@
     },
     "Whizbang.Core.Tests": {
       "file": "Whizbang.Core.Tests.json",
-      "passed": 9002,
+      "passed": 9004,
       "failed": 0,
       "skipped": 0
     },
@@ -237,7 +237,7 @@
     },
     "Whizbang.Transports.AzureServiceBus.Integration.Tests": {
       "file": "Whizbang.Transports.AzureServiceBus.Integration.Tests.json",
-      "passed": 73,
+      "passed": 74,
       "failed": 0,
       "skipped": 0
     },
