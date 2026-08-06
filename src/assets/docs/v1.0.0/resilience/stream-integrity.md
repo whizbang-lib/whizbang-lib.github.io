@@ -184,9 +184,25 @@ persisted); composite *inner* events are ordinary facts and fully in scope.
 persisted events by (tenant scope, event types, stream ids, commit-sequence range); the
 `RedeliveryPump` publishes the selection **wire-only, directly through `ITransport`** — no outbox
 row, no local dispatch (the origin already holds these events, so its own pipeline has nothing to
-do with them) — capped by `RedeliveryPumpOptions.MaxInnerEventsPerComposite` (default 500, the
-per-composite chunk bound) and `RedeliveryPumpOptions.MaxEventsPerRequest` (default 10,000, the
-hard per-request clamp). The events go to the same topics as the original publish.
+do with them). The events go to the same topics as the original publish.
+
+**The origin's memory and message sizes are bounded by design**, not by hoping requests stay
+small — a first full audit against a large store arrives as a burst of wide repair requests, and
+an unbounded answer path takes the origin down with it. Four knobs on `RedeliveryPumpOptions`
+(register the instance in DI to override; every default is production-safe):
+
+| Option | Default | Bounds |
+|---|---|---|
+| `MaxEventsPerRequest` | 10,000 | Hard per-request clamp — a requester's `MaxEvents` is never raised above the origin's cap (the storm-cap rung) |
+| `SelectPageSize` | 500 | The origin selects and publishes in **keyset-continued pages** — memory holds one page of bodies regardless of how wide the request is |
+| `MaxInnerEventsPerComposite` | 500 | Per-composite chunk bound by **count** (`CompositeEventBase.MaxInnerEventsAllowed` defends the receiver) |
+| `MaxBytesPerComposite` | 192,000 | Per-composite chunk bound by **raw stored body bytes** — large-bodied histories flush below the count bound instead of exhausting memory during serialization or exceeding the broker's message-size limit; a single event larger than the budget still ships alone |
+
+Pages continue strictly after the previous page's last (stream, version) — no loss, no overlap,
+per-stream order preserved across page boundaries. Additionally, an origin runs **one repair
+build at a time per process**: concurrent request bursts (per-bucket auto-repair and
+subscription-expansion broadcasts land together after a deploy) queue instead of multiplying
+page-plus-serialization footprints.
 
 **Convergence needs no new consumer code** — it composes from delivery semantics that already exist:
 
