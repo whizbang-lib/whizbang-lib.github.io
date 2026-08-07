@@ -389,6 +389,34 @@ audit wave). Types-level digests — both the origin's answer and the consumer's
 answer a types-level question; the SQL fold is bit-identical to the C# roll-up of stream buckets
 because the buckets partition the type's events.
 
+**The repair loop is convergence-bounded.** Detection being bounded is not enough — the *repair
+loop* must converge even when it cannot repair (the origin is down, or a bucket is genuinely
+damaged). Without memory of what it already said and asked, a consumer re-reports and re-requests
+every divergent bucket on every audit cycle forever; observed live, that flood alone — an
+`IntegrityDivergenceDetected` per bucket per cycle, minted faster than the outbox drained —
+saturated a shared database server, which kept the one origin that could heal the divergence from
+ever finishing a startup. Three rules make the loop convergent, all carried by the in-memory
+`IntegrityRepairLedger` (a singleton sibling of the gap tracker; a restart re-reports once, then
+re-bounds):
+
+- **Reports cool down.** An UNCHANGED divergence re-reports only once per
+  `DivergenceReportCooldownMinutes` (default 60) — the audit cadence is not news. A **changed
+  signature** (either side's digest moved: progress, or fresh damage) always reports immediately,
+  and a bucket that heals is forgotten entirely, so a later re-divergence is a brand-new incident.
+- **Repair requests back off.** Each divergent bucket's first repair request goes immediately;
+  every further attempt doubles the wait (`RepairRequestBackoffSeconds` base, default 300), and
+  past `MaxRepairAttemptsPerBucket` (default 8) the requester stops asking — the divergence still
+  re-reports at the cooldown cadence, but a repair that has not worked eight times needs operator
+  eyes, not an infinite loop. A signature change resets the budget.
+- **Requests batch and are directed or not at all.** Divergent streams of one (tenant, type)
+  batch into ONE `RequestRedeliveryCommand` (the origin's selection takes a stream set — per-stream
+  commands multiplied wire volume by the stream count for nothing). And every integrity request —
+  repair, drill-down, manifest — publishes ONLY to the origin-carried request address learned from
+  its checkpoints. When that address is not yet known the request is **withheld and logged**, never
+  published to the requester's own topic: on a shared topic that "fallback" fanned each request out
+  to every service (and back to the requester itself), turning one unhealed divergence into
+  all-to-all noise.
+
 **Digest algebra.** The atomic unit is an order-independent **set hash** per
 **(tenant, event type, stream)**: the XOR (or 128-bit additive) fold of `H(event_id)` over the
 bucket's events. Properties that fit Whizbang's real lifecycle:
@@ -542,6 +570,11 @@ services.Configure<StreamIntegrityOptions>(o => {
   o.MaxCoverageGapReportsPerAudit = 100;     // both the query and the report loop are bounded
   o.MaxDrillDownTypesPerAudit = 10;
   o.MaxDigestsPerManifest = 500;
+
+  // Convergence bounding (the IntegrityRepairLedger's dials)
+  o.DivergenceReportCooldownMinutes = 60;    // unchanged divergence re-reports once per hour, not per cycle
+  o.RepairRequestBackoffSeconds = 300;       // per-bucket retry base; each attempt doubles the wait
+  o.MaxRepairAttemptsPerBucket = 8;          // then stop asking (reports continue); signature change resets
 
   // Phase S — subscription growth
   o.BackfillOnSubscriptionGrowth = true;
