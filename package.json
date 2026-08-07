@@ -50,7 +50,7 @@
   },
   "devDependencies": {
     "@angular-devkit/build-angular": "^22.0.8",
-    "@angular/cli": "~22.0.8",
+    "@angular/cli": "~22.1.2",
     "@angular/compiler-cli": "~22.0.8",
     "@tailwindcss/postcss": "^4.3.3",
     "@types/node": "^26.1.1",
