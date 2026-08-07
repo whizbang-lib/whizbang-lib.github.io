@@ -213,14 +213,21 @@ page-plus-serialization footprints.
   path replays the stream from its snapshot/anchor with the now-complete event set. Late history
   folds in correctly because the pipeline already knows what late history means.
 
-**Re-delivery rides composites.** A repair set is "many events for one stream" — the composite
-decision-table row, with its measured bulk-transport win. The redelivery pump bundles each
-stream's ordered repair slice into a framework `RedeliveryComposite` (`Independent` atomicity —
-one poison inner event must not dead-letter a stream's whole repair; the next cycle re-detects any
-remainder) and publishes it **wire-only** (the origin already holds these events; no local
-re-processing). Inner events are the original envelopes — original ids, original continuity
-sequences, carried as `RedeliveryComposite.InnerEventIds` / `OriginServiceId` /
-`InnerCommitSequences` — so identity and gap-tracking are preserved; there is no dedicated
+**Re-delivery rides composites, and the children ride RAW.** A repair set is "many events for one
+stream" — the composite decision-table row, with its measured bulk-transport win. The redelivery
+pump bundles each stream's ordered repair slice into a framework `RedeliveryComposite`
+(`Independent` atomicity — one poison inner event must not dead-letter a stream's whole repair;
+the next cycle re-detects any remainder) and publishes it **wire-only** (the origin already holds
+these events; no local re-processing). Inner events are carried as the **raw stored wire JSON**
+(`IRawInnerComposite.InnerPayloads`) plus their stored wire type names — the origin never
+rehydrates typed payloads. Re-serializing typed payloads polymorphically was redundant work, an
+upcast/version-skew fidelity risk, and an AOT cliff: a consumer payload shape whose metadata is
+not reachable through the polymorphic resolver chain made the re-serialization throw, so the
+repair never shipped. Raw carry removes the class — the origin needs **no type knowledge at all**
+to repair, and the receive-side fan-out builds children directly from the raw payloads (the child
+envelope IS the inbox storage form; no serializer runs on the path). Original ids and continuity
+sequences ride as `RedeliveryComposite.InnerEventIds` / `OriginServiceId` /
+`InnerCommitSequences` — identity and gap-tracking are preserved; there is no dedicated
 `redelivery` marker — the directed `tgt` (and, for backfill, state-only `sto`) envelope markers
 ride the composite and its fanned-out children. Ordering by stream version makes damaged streams
 append-only composites and wholly-missing streams (bootstrap) naturally init-first.
@@ -370,6 +377,17 @@ worker itself.)
 :::
 
 ### Phase A — digest manifests (the scheduled deep audit)
+
+**Both halves of the exchange are storm-bounded.** Audit traffic is inherently bursty — after a
+deploy, every consumer audits on a similar cadence and every origin answers at once. An origin
+runs **one manifest answer at a time** per process, and a consumer runs **one manifest
+comparison at a time**; concurrent chunks queue instead of multiplying recompute footprints
+(observed live: consumers with unpopulated digest lanes memory-cycled through their first full
+audit wave). Types-level digests — both the origin's answer and the consumer's comparison side —
+**roll up at the store** (`IWorkCoordinator.ComputeTypeDigestsAsync`, a per-(tenant, type)
+`GROUP BY` bounded by types × tenants) instead of materializing one row per stream in memory to
+answer a types-level question; the SQL fold is bit-identical to the C# roll-up of stream buckets
+because the buckets partition the type's events.
 
 **Digest algebra.** The atomic unit is an order-independent **set hash** per
 **(tenant, event type, stream)**: the XOR (or 128-bit additive) fold of `H(event_id)` over the
