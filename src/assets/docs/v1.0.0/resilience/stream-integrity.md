@@ -184,9 +184,25 @@ persisted); composite *inner* events are ordinary facts and fully in scope.
 persisted events by (tenant scope, event types, stream ids, commit-sequence range); the
 `RedeliveryPump` publishes the selection **wire-only, directly through `ITransport`** — no outbox
 row, no local dispatch (the origin already holds these events, so its own pipeline has nothing to
-do with them) — capped by `RedeliveryPumpOptions.MaxInnerEventsPerComposite` (default 500, the
-per-composite chunk bound) and `RedeliveryPumpOptions.MaxEventsPerRequest` (default 10,000, the
-hard per-request clamp). The events go to the same topics as the original publish.
+do with them). The events go to the same topics as the original publish.
+
+**The origin's memory and message sizes are bounded by design**, not by hoping requests stay
+small — a first full audit against a large store arrives as a burst of wide repair requests, and
+an unbounded answer path takes the origin down with it. Four knobs on `RedeliveryPumpOptions`
+(register the instance in DI to override; every default is production-safe):
+
+| Option | Default | Bounds |
+|---|---|---|
+| `MaxEventsPerRequest` | 10,000 | Hard per-request clamp — a requester's `MaxEvents` is never raised above the origin's cap (the storm-cap rung) |
+| `SelectPageSize` | 500 | The origin selects and publishes in **keyset-continued pages** — memory holds one page of bodies regardless of how wide the request is |
+| `MaxInnerEventsPerComposite` | 500 | Per-composite chunk bound by **count** (`CompositeEventBase.MaxInnerEventsAllowed` defends the receiver) |
+| `MaxBytesPerComposite` | 192,000 | Per-composite chunk bound by **raw stored body bytes** — large-bodied histories flush below the count bound instead of exhausting memory during serialization or exceeding the broker's message-size limit; a single event larger than the budget still ships alone |
+
+Pages continue strictly after the previous page's last (stream, version) — no loss, no overlap,
+per-stream order preserved across page boundaries. Additionally, an origin runs **one repair
+build at a time per process**: concurrent request bursts (per-bucket auto-repair and
+subscription-expansion broadcasts land together after a deploy) queue instead of multiplying
+page-plus-serialization footprints.
 
 **Convergence needs no new consumer code** — it composes from delivery semantics that already exist:
 
@@ -197,14 +213,21 @@ hard per-request clamp). The events go to the same topics as the original publis
   path replays the stream from its snapshot/anchor with the now-complete event set. Late history
   folds in correctly because the pipeline already knows what late history means.
 
-**Re-delivery rides composites.** A repair set is "many events for one stream" — the composite
-decision-table row, with its measured bulk-transport win. The redelivery pump bundles each
-stream's ordered repair slice into a framework `RedeliveryComposite` (`Independent` atomicity —
-one poison inner event must not dead-letter a stream's whole repair; the next cycle re-detects any
-remainder) and publishes it **wire-only** (the origin already holds these events; no local
-re-processing). Inner events are the original envelopes — original ids, original continuity
-sequences, carried as `RedeliveryComposite.InnerEventIds` / `OriginServiceId` /
-`InnerCommitSequences` — so identity and gap-tracking are preserved; there is no dedicated
+**Re-delivery rides composites, and the children ride RAW.** A repair set is "many events for one
+stream" — the composite decision-table row, with its measured bulk-transport win. The redelivery
+pump bundles each stream's ordered repair slice into a framework `RedeliveryComposite`
+(`Independent` atomicity — one poison inner event must not dead-letter a stream's whole repair;
+the next cycle re-detects any remainder) and publishes it **wire-only** (the origin already holds
+these events; no local re-processing). Inner events are carried as the **raw stored wire JSON**
+(`IRawInnerComposite.InnerPayloads`) plus their stored wire type names — the origin never
+rehydrates typed payloads. Re-serializing typed payloads polymorphically was redundant work, an
+upcast/version-skew fidelity risk, and an AOT cliff: a consumer payload shape whose metadata is
+not reachable through the polymorphic resolver chain made the re-serialization throw, so the
+repair never shipped. Raw carry removes the class — the origin needs **no type knowledge at all**
+to repair, and the receive-side fan-out builds children directly from the raw payloads (the child
+envelope IS the inbox storage form; no serializer runs on the path). Original ids and continuity
+sequences ride as `RedeliveryComposite.InnerEventIds` / `OriginServiceId` /
+`InnerCommitSequences` — identity and gap-tracking are preserved; there is no dedicated
 `redelivery` marker — the directed `tgt` (and, for backfill, state-only `sto`) envelope markers
 ride the composite and its fanned-out children. Ordering by stream version makes damaged streams
 append-only composites and wholly-missing streams (bootstrap) naturally init-first.
@@ -354,6 +377,45 @@ worker itself.)
 :::
 
 ### Phase A — digest manifests (the scheduled deep audit)
+
+**Both halves of the exchange are storm-bounded.** Audit traffic is inherently bursty — after a
+deploy, every consumer audits on a similar cadence and every origin answers at once. An origin
+runs **one manifest answer at a time** per process, and a consumer runs **one manifest
+comparison at a time**; concurrent chunks queue instead of multiplying recompute footprints
+(observed live: consumers with unpopulated digest lanes memory-cycled through their first full
+audit wave). Types-level digests — both the origin's answer and the consumer's comparison side —
+**roll up at the store** (`IWorkCoordinator.ComputeTypeDigestsAsync`, a per-(tenant, type)
+`GROUP BY` bounded by types × tenants) instead of materializing one row per stream in memory to
+answer a types-level question; the SQL fold is bit-identical to the C# roll-up of stream buckets
+because the buckets partition the type's events.
+
+**The repair loop is convergence-bounded.** Detection being bounded is not enough — the *repair
+loop* must converge even when it cannot repair (the origin is down, or a bucket is genuinely
+damaged). Without memory of what it already said and asked, a consumer re-reports and re-requests
+every divergent bucket on every audit cycle forever; observed live, that flood alone — an
+`IntegrityDivergenceDetected` per bucket per cycle, minted faster than the outbox drained —
+saturated a shared database server, which kept the one origin that could heal the divergence from
+ever finishing a startup. Three rules make the loop convergent, all carried by the in-memory
+`IntegrityRepairLedger` (a singleton sibling of the gap tracker; a restart re-reports once, then
+re-bounds):
+
+- **Reports cool down.** An UNCHANGED divergence re-reports only once per
+  `DivergenceReportCooldownMinutes` (default 60) — the audit cadence is not news. A **changed
+  signature** (either side's digest moved: progress, or fresh damage) always reports immediately,
+  and a bucket that heals is forgotten entirely, so a later re-divergence is a brand-new incident.
+- **Repair requests back off.** Each divergent bucket's first repair request goes immediately;
+  every further attempt doubles the wait (`RepairRequestBackoffSeconds` base, default 300), and
+  past `MaxRepairAttemptsPerBucket` (default 8) the requester stops asking — the divergence still
+  re-reports at the cooldown cadence, but a repair that has not worked eight times needs operator
+  eyes, not an infinite loop. A signature change resets the budget.
+- **Requests batch and are directed or not at all.** Divergent streams of one (tenant, type)
+  batch into ONE `RequestRedeliveryCommand` (the origin's selection takes a stream set — per-stream
+  commands multiplied wire volume by the stream count for nothing). And every integrity request —
+  repair, drill-down, manifest — publishes ONLY to the origin-carried request address learned from
+  its checkpoints. When that address is not yet known the request is **withheld and logged**, never
+  published to the requester's own topic: on a shared topic that "fallback" fanned each request out
+  to every service (and back to the requester itself), turning one unhealed divergence into
+  all-to-all noise.
 
 **Digest algebra.** The atomic unit is an order-independent **set hash** per
 **(tenant, event type, stream)**: the XOR (or 128-bit additive) fold of `H(event_id)` over the
@@ -508,6 +570,11 @@ services.Configure<StreamIntegrityOptions>(o => {
   o.MaxCoverageGapReportsPerAudit = 100;     // both the query and the report loop are bounded
   o.MaxDrillDownTypesPerAudit = 10;
   o.MaxDigestsPerManifest = 500;
+
+  // Convergence bounding (the IntegrityRepairLedger's dials)
+  o.DivergenceReportCooldownMinutes = 60;    // unchanged divergence re-reports once per hour, not per cycle
+  o.RepairRequestBackoffSeconds = 300;       // per-bucket retry base; each attempt doubles the wait
+  o.MaxRepairAttemptsPerBucket = 8;          // then stop asking (reports continue); signature change resets
 
   // Phase S — subscription growth
   o.BackfillOnSubscriptionGrowth = true;
