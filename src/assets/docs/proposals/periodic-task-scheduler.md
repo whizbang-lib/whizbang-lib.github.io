@@ -105,18 +105,62 @@ Realistically **about 15 of the 23** collapse into the scheduler. That is the ho
 - **It is not a general job system.** Durable, cross-instance scheduled work already exists in the temporal engine, with `wh_schedules`, leases and misfire policies. This is strictly for *in-process periodic maintenance* — the work every instance does for itself.
 - **It is not a thread-count optimisation.** Async workers awaiting a delay hold no thread. Anyone approaching this expecting thread savings has the wrong model of the problem.
 
+## Resolved decisions
+
+### Sequential by default; independence is opt-in
+
+The failure this proposal comes from was *too many things happening at once*. A scheduler that fires fifteen due tasks in parallel has reproduced it at a smaller scale.
+
+So the default is **sequential**: due tasks run one after another on the scheduler's own loop. A task that genuinely needs otherwise opts in, along two independent axes:
+
+| Opt-in | Effect |
+|---|---|
+| `OwnWakeup` | scheduled on its own timer rather than batched into a coalescing window |
+| `Concurrent` | may run alongside other tasks instead of taking its turn |
+
+They are separable: a task can want a precise wakeup but still be happy to run in turn, and a long-running task can be happy to be batched but must not block the queue behind it.
+
+**Concurrency is throttled even when opted in.** `Concurrent` means "eligible to overlap", not "unbounded" — the scheduler holds a global limit on simultaneously-running tasks, so opting in cannot recreate the thundering herd.
+
+### Pressure is observed locally, amplified over the bus
+
+Each instance decides from what it can see itself — command latency, connection-pool wait, error rate. That needs no coordination and no new dependency, and it degrades gracefully: an instance that cannot reach the bus still throttles correctly.
+
+The signal bus is an **optional amplifier**, not the source of truth. One instance's view of database pressure is really the fleet's, so publishing it lets peers react before they independently discover the same thing. If the bus is unavailable, local observation carries on unchanged.
+
+### A failing task trips a circuit breaker
+
+Class alone is not enough. `BackgroundCleanup` says "slow, never stop" — but a cleanup task that fails every single run is not relieving pressure, it is adding load and producing nothing. It needs to be shed despite its class.
+
+The standard answer applies, and Whizbang should not invent a different one: a **per-task circuit breaker**.
+
+- **Closed** — normal operation.
+- **Open** — consecutive failures crossed the threshold; the task is skipped entirely for a backoff window that grows exponentially.
+- **Half-open** — after the window, exactly one run is allowed through. Success closes the breaker; failure re-opens it with a longer window.
+
+The breaker is per task, so one broken task cannot shed its healthy neighbours. It composes with class rather than replacing it: class decides what happens under *pressure*, the breaker decides what happens under *failure*.
+
+Observability is part of the contract, not an afterthought:
+
+| Signal | Emitted as |
+|---|---|
+| runs, successes, failures | counters, tagged by task and class |
+| run duration | histogram |
+| breaker state transitions | counter + a structured log at Warning on open |
+| deferrals under pressure | counter, tagged by class and reason |
+| time since last success | gauge — the dead-man signal |
+
+That last one deserves emphasis. Counting failures misses the task that hangs rather than throws; **time since last success** catches both, and it is the single most useful number for answering "is this task actually working?"
+
 ## Open questions
 
-- **Should a task be able to opt out of coalescing?** A task with a tight latency requirement may want its own wakeup rather than being batched with others.
-- **Does the scheduler need its own concurrency limit,** or does per-class pressure gating make that redundant? Running fifteen due tasks simultaneously is its own small thundering herd.
-- **Per-instance or fleet-wide?** Local observation needs no coordination and is simplest. Fleet-wide via the signal bus is more correct — one instance's view of database pressure is really the fleet's — but adds a dependency. Local-first, bus as an optional amplifier, seems right.
-- **How does a task report that it is *making things worse*?** A cleanup task that is failing repeatedly may need to be shed even though its class says slow-not-stop.
+- **Should the breaker's open state be fleet-visible?** If one instance's cleanup task is broken, the others' probably are too — publishing it over the bus would let the fleet skip a known-bad task rather than each discovering it independently. This is the same local-first/bus-amplified shape as pressure, and probably wants the same answer.
 
 ## Build sequence
 
-1. **`PeriodicTaskRegistration` + `PeriodicTaskHost`** — registration, due-time bookkeeping, jitter, dispatch. No migrations yet; the host runs zero tasks and is inert.
+1. **`PeriodicTaskRegistration` + `PeriodicTaskHost`** — registration, due-time bookkeeping, jitter, sequential dispatch. No migrations yet; the host runs zero tasks and is inert.
 2. **Migrate two low-risk tasks** (`TableStatisticsCollector`, a retention sweep) and lock their behaviour with regression tests before touching anything on the delivery path.
-3. **Coalescing + per-class dispatch**, still with no pressure signal — classes are declared and honoured, but nothing sheds yet.
+3. **Coalescing, `OwnWakeup` / `Concurrent` opt-ins with a global concurrency limit, and per-task circuit breakers** — still with no pressure signal. Classes are declared and honoured, breakers trip on failure, but nothing sheds under load yet.
 4. **Migrate the remaining background tasks.** Delivery-path workers move last, or not at all, depending on what the regression suite says.
 5. **Attach the pressure signal** at the single gate. This is where the separate throttling work plugs in.
 
