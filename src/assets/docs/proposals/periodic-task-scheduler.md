@@ -152,9 +152,13 @@ Observability is part of the contract, not an afterthought:
 
 That last one deserves emphasis. Counting failures misses the task that hangs rather than throws; **time since last success** catches both, and it is the single most useful number for answering "is this task actually working?"
 
-## Open questions
+### Breaker state follows the same rule as pressure
 
-- **Should the breaker's open state be fleet-visible?** If one instance's cleanup task is broken, the others' probably are too — publishing it over the bus would let the fleet skip a known-bad task rather than each discovering it independently. This is the same local-first/bus-amplified shape as pressure, and probably wants the same answer.
+If one instance's cleanup task is broken, the others' almost certainly are too — the cause is usually shared (a migration, a schema change, a dependency outage), not local. So breaker state is **observed locally and published over the bus as an amplifier**, exactly like pressure.
+
+An instance trips its own breaker from its own failures and never waits for consensus. When the bus is available, a peer's open breaker is advisory input that lets others skip a known-bad task rather than each discovering it independently at the cost of another failed run. When the bus is unavailable, every instance still converges on the same state from its own observations — just more slowly, and with more wasted runs along the way.
+
+The rule generalises: **local observation is authoritative, the bus makes the fleet converge faster.** Nothing in the scheduler ever blocks on a signal from another instance.
 
 ## Build sequence
 
