@@ -92,8 +92,9 @@ the setting implies.
 
 ## The shape of the fix
 
-Four changes. They are coupled: the first three are only *safe* because the fourth backstops them, so they
-should land together as one design even if they ship as separate increments.
+Five changes, four of them mechanisms and the fifth an optimization of the same state. They are coupled: the
+deficit and delta paths are only *safe* because the scheduled sweep backstops them, so they should land
+together as one design even if they ship as separate increments.
 
 ### A. Seal verified prefixes
 
@@ -157,6 +158,25 @@ RequestIntegrityManifest {
 The origin answers **only** what changed inside that window, and cannot exceed the stated ceiling. Both sides
 agree on the question before either pays for the answer.
 
+**The answer carries its own watermark.** Every manifest states the sequence it was computed through:
+
+```
+IntegrityManifest {
+  Digests         = [...]
+  ComputedThrough = <origin commit sequence this answer actually covers>
+  Truncated       = <true when MaxDigests capped the answer below ComputedThrough>
+}
+```
+
+This makes the exchange self-describing. The receiver learns exactly **what it got** — so it can advance its
+own seal to `ComputedThrough` rather than guessing — and exactly **what to ask for next**, because the next
+request's `SinceSequence` is simply the previous answer's `ComputedThrough`. No side has to infer coverage
+from the shape of the payload, and a truncated answer resumes precisely where it stopped instead of restarting
+the range.
+
+Without this the whole scheme is unsafe in a specific way: a receiver that advances its seal past data the
+answer did not actually cover would seal over a real gap, and never look at it again.
+
 `scope_tenant` is already part of the digest primary key, so per-tenant segmentation needs no new dimension —
 only that the request and the seal both carry it, so one noisy tenant cannot drag another's reconciliation
 along with it.
@@ -193,6 +213,53 @@ Two properties this must keep:
 
 Retain the counter as a fallback for engines without the temporal driver.
 
+### E. Answer from precomputed state, not from a live aggregation
+
+The type-level rollup — the wire unit of the hierarchical audit — is recomputed **on every read**:
+
+```sql
+SELECT scope_tenant, event_type, bit_xor(digest_lo), bit_xor(digest_hi),
+       SUM(event_count)::int, MAX(updated_at)
+FROM wh_stream_digests
+WHERE origin_service_id = ...
+GROUP BY 1, 2
+```
+
+That is a full `bit_xor` aggregation across every stream row of the requested types, per request. With N
+consumers auditing on their own cadences, the origin performs **N × O(streams)** aggregations to answer a
+question whose result did not change between them.
+
+**Materialize the rollup instead**, and refresh it on a cadence.
+
+**The propagation delay this introduces is free, up to a specific boundary.** `AuditSettleWindowMinutes`
+already means both sides deliberately fold only events *older than the settle window* — an in-flight delivery
+must never read as divergence. The comparison is therefore already blind to fresh data by design. So **while
+the refresh interval stays below the settle window, precomputation adds no staleness the protocol did not
+already have.** That is what makes this a free trade rather than a latency-for-throughput one, and it is how
+the cadence should be chosen: bounded by the settle window, not guessed.
+
+**Refresh periodically; do not fold incrementally.** XOR is incremental, so the rollup *could* be updated on
+the write path — but every stream of a type collapses to a single row, so every append to any stream of that
+type would contend on it. That converts distributed writes into a hot-row lock on the emit chain's critical
+path. A periodic refresh instead reads `wh_stream_digests` (a compact table, not the event store) and writes
+one row per `(origin, tenant, type)` — cold, cheap, and off the hot path. It belongs on the existing
+maintenance cycle rather than a new background worker, for the same reason: another always-on periodic
+database consumer is a cost every host pays.
+
+**This is the same row as the seal.** `sealed_digest_lo/hi` + `sealed_count` at a watermark *is* a precomputed
+rollup, with the additional property that it never needs recomputing below the seal. So the refresh only has
+to scan **unsealed** rows — bounded by recent activity rather than by stream count.
+
+| | aggregation cost |
+|---|---|
+| today | `O(streams)` per request, per consumer |
+| materialized | `O(streams)` per refresh, `O(1)` per request |
+| materialized + sealed | `O(streams changed since the seal)` per refresh, `O(1)` per request |
+
+The precomputed row must carry the watermark it was computed at (§B) — otherwise a stale rollup silently
+answers a question about a newer range, which looks exactly like divergence and re-triggers the drill-down
+loop this proposal exists to remove.
+
 ## What this changes
 
 | | today | proposed |
@@ -201,6 +268,7 @@ Retain the counter as a fallback for engines without the temporal driver.
 | divergent-system exchange | `O(all streams of the type)`, every cycle | `O(streams changed since the seal)` |
 | look-back on the hot path | unbounded — all history, forever | bounded — the open segment only |
 | digest storage growth | grows with streams × history | grows with streams; sealed prefixes collapse |
+| origin CPU per audit | `O(streams)` re-aggregated per request, per consumer | `O(1)` read of a precomputed row |
 | new perspective / new `Apply` | cross-service backfill of full history | **local rebuild**, no transfer |
 | full verification | every Nth audit, arbitrary wall-clock, per-process counter | scheduled, off-peak, splayed, fleet-wide |
 
@@ -218,7 +286,11 @@ Retain the counter as a fallback for engines without the temporal driver.
 4. **Local-first cost.** The local check must be cheaper than the transfer it avoids. Counting local events
    per `(tenant, type)` is exactly what the digest table already stores — is `sealed_count` plus the open
    segment sufficient, or is a store query needed?
-5. **Migration.** Existing deployments have no seals. A first sweep establishes them; until then behaviour is
+5. **Refresh cadence versus settle window.** The argument that precomputation is free holds only while the
+   refresh interval stays below `AuditSettleWindowMinutes`. Should the framework enforce that relationship
+   (derive the cadence from the settle window, or refuse a configuration that inverts them) rather than leave
+   two independent knobs that can silently be set into an unsafe combination?
+6. **Migration.** Existing deployments have no seals. A first sweep establishes them; until then behaviour is
    today's. Should the first seal be established eagerly at upgrade, or lazily on the first successful
    exchange?
 
@@ -228,6 +300,9 @@ Sealing (A) is what makes the look-back finite, and it depends on nothing else. 
 makes a single exchange bounded, and it needs the seal to have something to negotiate *from*. Deficit-and-
 local-first (C) is what makes the healthy case free. Scheduled sweeps (D) are what make the whole thing safe
 to rely on — and (C) in particular is only sound *because* (D) backstops it.
+
+Materialized rollups (E) are an optimization of the same state, not a fifth mechanism: the rollup row and the
+seal row are one row, so E lands naturally with A rather than after it.
 
 Implemented in that order, each increment is independently useful, and no increment removes a safety property
 before its replacement exists.
