@@ -16,10 +16,22 @@ This proposal changes the asymptote. The exchange becomes proportional to **what
 held; verified history is **sealed into immutable epochs** and never re-examined on the hot path; and the
 expensive full verification becomes a **scheduled, off-peak** operation that each side runs for itself.
 
-:::planned
-This is a design proposal. Nothing here is implemented yet. It has been through one adversarial review;
-the epoch structure, the two-dimensional resume cursor, the deficit/alarm split, and the seal-coherence
-section all came out of that review.
+:::updated
+**Implemented.** All six sections below are built (migrations 092/093 + the coordinator, receptor,
+and worker changes), test-driven end to end, and documented in the
+[stream-integrity reference](/v1.0.0/resilience/stream-integrity) (see its *Bounded reconciliation*
+section and build-record item 8). This document remains the design rationale. Implementation
+refined the design in three places worth naming:
+
+- **Windows are half-open `[since, until)`** — epoch boundaries then align exactly
+  (`[e·width, (e+1)·width)`) and the answer's watermark IS the next ask's `since`. An
+  inclusive-end convention can never fully contain epoch 0.
+- **A receiver certifies only single-chunk windows** (`ChunkCount == 1`, no resume cursor).
+  Manifest chunks carry no assembly protocol, so "I saw the whole window" must be provable, not
+  assumed; multi-chunk windows still compare and repair — they just never advance a seal.
+- **The two legitimate fold-mutation sites refold their sealed epochs inline** (not at the next
+  sweep), so an origin never serves stale seals between a close and the idle-hour verification;
+  the generation bump then tells consumers to reset rather than alarm.
 :::
 
 ## The problem, precisely
