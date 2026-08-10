@@ -1,11 +1,11 @@
 ---
-title: Bounded Integrity Reconciliation (Sealed Prefixes & Deficit Exchange)
+title: Bounded Integrity Reconciliation (Epoch Seals & Deficit Exchange)
 category: Architecture & Design
 order: 30
-tags: stream-integrity, anti-entropy, reconciliation, digest, sealed-prefix, watermark, deficit, backfill, tenant-scope, full-sweep, scheduling
+tags: stream-integrity, anti-entropy, reconciliation, digest, epoch, sealed-prefix, watermark, deficit, backfill, tenant-scope, full-sweep, scheduling
 ---
 
-# Bounded Integrity Reconciliation (Sealed Prefixes & Deficit Exchange)
+# Bounded Integrity Reconciliation (Epoch Seals & Deficit Exchange)
 
 Stream Integrity answers a real question — *do two services actually hold the same events?* — and answers it
 correctly. But the **cost of asking** currently grows with accumulated history rather than with the size of
@@ -13,17 +13,18 @@ the discrepancy. A deployment that has been running for a year pays a year's wor
 discover that nothing is wrong.
 
 This proposal changes the asymptote. The exchange becomes proportional to **what is missing**, not to what is
-held; verified history is **sealed** and never re-examined on the hot path; and the expensive full
-verification becomes a **scheduled, off-peak** operation instead of a counter that fires whenever it happens
-to come round.
+held; verified history is **sealed into immutable epochs** and never re-examined on the hot path; and the
+expensive full verification becomes a **scheduled, off-peak** operation that each side runs for itself.
 
 :::planned
-This is a design proposal. Nothing here is implemented yet.
+This is a design proposal. Nothing here is implemented yet. It has been through one adversarial review;
+the epoch structure, the two-dimensional resume cursor, the deficit/alarm split, and the seal-coherence
+section all came out of that review.
 :::
 
 ## The problem, precisely
 
-Four behaviours compound. Each is individually defensible; together they make reconciliation grow without
+Four behaviors compound. Each is individually defensible; together they make reconciliation grow without
 limit.
 
 ### 1. Drill-down re-sends everything, every cycle
@@ -47,35 +48,42 @@ And the trigger is self-sustaining. A *persistent* divergence keeps the type mis
 drills down again, and re-ships the same full set. The payload is regenerated on every cycle for as long as
 the divergence exists — which is exactly when the system is least able to absorb it.
 
-### 2. Divergence is the wrong question
+### 2. Divergence is the wrong question to drive repair
 
 A digest mismatch has many causes: a missing event, an extra event, a reclassification, a stale bucket. Only
-one of them is actionable, and only one of them is bounded.
+one of them is repairable by re-delivery, and only one of them is bounded.
 
 - **"Do our digests differ?"** is `O(all streams, forever)`. It never shrinks, and a healthy system still
   pays for it.
-- **"Am I missing events I subscribe to?"** is `O(deficit)`. It is **zero** in the healthy case — a healthy
-  system exchanges nothing at all.
+- **"Am I missing events I subscribe to?"** is `O(deficit)`. It is **zero** in the healthy case.
 
 The checkpoint path already works the second way: `IntegrityGapDetected` reports `ExpectedCount` versus
 `ActualCount` over a bounded commit-sequence window. It is the manifest path that reaches for full-fold
 comparison across all history.
 
-### 3. Needing to *project* events is confused with *missing* them
+This is *not* an argument for dropping the digest comparison — a mismatch at **equal counts** is corruption
+or membership drift, which no deficit check can see, and it is precisely what the digest exists to catch.
+The argument is that the two signals should drive **different actions** (§C).
 
-Adding a perspective, or adding an `Apply` for an event type a perspective did not previously handle, means
-that perspective needs the type's history — **from the local store**. It does not mean the service is missing
-events.
+### 3. The backfill ask is unbounded
 
-Today the subscription-growth path does not make that distinction. On detecting new consumed types it goes
-straight to a broadcast re-delivery request for their whole history, with no check against the local event
-store first. The code is explicit about why it broadcasts:
+When the consumed-type set grows, the service broadcasts a state-only re-delivery request for the new types.
+Two parts of this are *right*, and the original draft of this proposal got them wrong: the consumed-type
+registry records a **baseline** on first boot (`asBaseline: true` — adopting the feature does not trigger a
+mass backfill), and a *genuinely* newly-consumed type has no local history to check, because unsubscribed
+messages are discarded at the receive boundary. For a new type, the transfer is correct.
 
-> ONE broadcast (no Target — the expanding consumer cannot know which origins hold the history)
+What is missing is the **bound**. The request asks for the type's entire history, with no statement of what
+the requester already holds. The real cases:
 
-So a purely local concern — *this projection needs rebuilding* — is answered with a cross-service data
-transfer, and the re-delivered events land in the inbox to be compared against digests the consumer already
-holds.
+- **Partial history.** A service that consumed type `T` from origin sequence `N` onward, and now needs
+  earlier events, should ask for `< N` — not for everything.
+- **A new perspective or a new `Apply` over an already-consumed type** triggers no backfill at all (the type
+  is not newly consumed) — that is a **local rebuild**, and the design should say so explicitly so nobody
+  "fixes" it into a transfer.
+
+The rule: a backfill request must state the requester's local holdings (its floor and ceiling per
+`(origin, tenant, type)`), and the origin must answer only the complement.
 
 ### 4. The full sweep is counted, not scheduled
 
@@ -90,109 +98,115 @@ Nth audit**, at whatever wall-clock time the pod happened to start, and `_cycleC
 a restarting fleet re-rolls the dice continuously, and a pod that restarts often can sweep far more often than
 the setting implies.
 
+Worse, the sweep is **consumer-driven**: a sweeping consumer sends `UseRecompute = true`, forcing the *origin*
+to recompute on the *consumer's* schedule. With N consumers, the origin performs N full recomputes per sweep
+period, at times it does not control.
+
 ## The shape of the fix
 
-Five changes, four of them mechanisms and the fifth an optimization of the same state. They are coupled: the
-deficit and delta paths are only *safe* because the scheduled sweep backstops them, so they should land
-together as one design even if they ship as separate increments.
+Six sections: four mechanisms (A–D), one optimization of the same state (E), and one correctness protocol
+the mechanisms require (F). They are coupled — the deficit and delta paths are only *safe* because the
+scheduled sweep backstops them — so they should land as one design even if they ship as separate increments.
 
-### A. Seal verified prefixes
+### A. Seal verified history into epochs
 
-The digest algebra already supports this, and it is why the algorithm was chosen:
+The digest algebra is why this works, and it is why the algorithm was chosen:
 
 > Two-lane 64-bit XOR of `hashtextextended(event_id, seed)` with seeds 0/1: 128-bit-equivalent collision
 > resistance, **self-inverse** (deletions need no bookkeeping), **arrival-order independent**
 
-XOR is associative, commutative and self-inverse, therefore:
+XOR is associative, commutative and self-inverse, so folds **compose**: the digest of any sequence range is
+the XOR of the folds of its sub-ranges.
 
-```
-digest(≤Y) = digest(≤X) XOR digest(X < e ≤ Y)
-```
+A naive design would keep one sealed watermark per bucket. Adversarial review killed that twice over:
 
-A verified prefix can be collapsed into a **single sealed value** and never recomputed. Agreement on that
-value is a genuine statement about the entire event-id set below it — not a sample, not a heuristic.
+1. **One watermark cannot serve many consumers.** Comparing folds requires both sides to fold the *same
+   range*. Consumer A's seal sits at `X₁`, consumer B's at `X₂`; an origin with a single sealed/open split
+   can answer "changed since *my* watermark" but not "since *yours*" — and N consumers advance independently,
+   so they will never agree.
+2. **The running fold cannot be split retroactively.** Today's `wh_stream_digests` row folds *all* of a
+   stream's events into one value; `digest(≤X)` is not extractable from it. Establishing a seal from the
+   existing table alone is impossible without a range recompute against the event store.
 
-**New state**, one row per `(origin_service_id, scope_tenant, event_type)` — bounded by tenants × types, *not*
-streams × history:
+**Epochs solve both.** Partition each origin's sequence space into windows — epochs — and keep one immutable
+fold per closed epoch:
 
-| column | meaning |
-|---|---|
-| `sealed_through_seq` | origin commit sequence the seal covers |
-| `sealed_digest_lo` / `sealed_digest_hi` | XOR fold of every event at or below the watermark |
-| `sealed_count` | event count below the watermark |
-| `sealed_at` | when the seal last advanced |
+| state | key | mutability |
+|---|---|---|
+| open epoch | `(origin, tenant, type, stream, epoch)` | write path folds into it, exactly as it folds into today's per-stream row — same row-level contention |
+| closed epochs | `(origin, tenant, type, epoch)` | immutable; stream detail collapsed upward |
+| deep seal | `(origin, tenant, type)` | XOR of all epochs older than the retained ring |
 
-Reconciliation then compares only the **open segment** above the seal. On agreement the seal advances by
-folding the open segment in — `sealed ^= open`, `sealed_through_seq = watermark` — and the exchange cost
-returns to zero.
+Any requested range is then the XOR of epoch folds — `O(epochs behind)` to serve **any** consumer at **any**
+epoch boundary, with the origin holding **no per-consumer state**. A consumer too far behind the retained
+ring falls back to the sweep path.
 
-**The ordinal must be the commit sequence, not a timestamp.** `wh_stream_digests` today carries `updated_at`,
-a wall-clock write time, which cannot answer "is an event with a lower ordinal still in flight". The system
-already has the right ordinal — `source_commit_sequence`, monotonic per origin, already stamped on inbox rows
-and already the unit the checkpoint windows use.
+**Epoch closure is a sequence rule, not a clock rule.** An epoch closes when the origin's checkpoint
+watermark has passed its upper bound by at least `AuditSettleWindowMinutes`. This converts the settle window
+from a wall-clock membership test (whose answer depends on whose clock you ask) into a **sequence boundary**
+both sides compute identically. Clock skew stops being able to change membership at all.
 
-**Safety rule:** only seal a prefix whose watermark is older than `AuditSettleWindowMinutes`. That is exactly
-the boundary at which a not-yet-received event stops being in flight and becomes a genuine gap — the premise
-gap detection already depends on. Sealing inside the settle window would seal over a straggler.
+**The ordinal is the origin commit sequence, never a timestamp.** It is origin-assigned, travels with the
+event, and is already queryable on retained consumer rows — `wh_event_store` carries
+`origin_commit_sequence`, and the checkpoint recount (`CountReceivedFromOriginAsync`) already filters on it.
 
-**Storage follows.** Once a prefix is sealed, the per-stream rows beneath it are redundant: they can be
-collapsed into the sealed row, so digest storage stops growing with history as well as with traffic.
+**Storage follows.** Closed epochs collapse: stream-level rows fold upward into the bucket-epoch row once the
+epoch closes, and epochs older than the ring fold into the deep seal. Digest storage becomes
+`O(streams active in the ring)` + `O(buckets × ring length)` — bounded by recent activity, not by history.
 
 ### B. Negotiate the scope; never let one side choose it
 
-Today the requester asks for "digests for these types" and the **origin** decides how much that is — up to
-every stream it has ever seen. Neither side knows the answer's size before it is built.
+Today the requester names types and the **origin** decides how much that is — up to every stream it has ever
+seen. Neither side knows the answer's size before it is built.
 
-The request should carry the bound:
+The request carries the bound:
 
 ```
 RequestIntegrityManifest {
-  EventTypes    = [...]
-  TenantScope   = ...            // segmentation, already a first-class key
-  SinceSequence = <requester's sealed_through_seq>
-  UntilSequence = <settle-window watermark>
-  MaxDigests    = <requester's own ceiling>
+  EventTypes          = [...]
+  TenantScope         = ...        // segmentation — already a first-class digest key
+  SinceSequence       = <requester's last sealed epoch boundary>
+  UntilSequence       = <origin checkpoint watermark minus settle>
+  MaxDigests          = <requester's own ceiling>
+  ResumeAfterStreamId = <null, or the cursor from a truncated answer>
 }
 ```
 
-The origin answers **only** what changed inside that window, and cannot exceed the stated ceiling. Both sides
-agree on the question before either pays for the answer.
-
-**The answer carries its own watermark.** Every manifest states the sequence it was computed through:
+**The answer carries its own coverage, in two dimensions.** Review found that a single `ComputedThrough`
+sequence is ambiguous under truncation: digests are per-stream, `MaxDigests` caps the *stream count*, so
+"covered through sequence Y" says nothing about *which streams* made it into a capped answer. The response
+states both dimensions:
 
 ```
 IntegrityManifest {
-  Digests         = [...]
-  ComputedThrough = <origin commit sequence this answer actually covers>
-  Truncated       = <true when MaxDigests capped the answer below ComputedThrough>
+  Digests             = [...]
+  ComputedThrough     = <sequence the answer covers>
+  ResumeAfterStreamId = <null when complete; else: re-ask from here>
 }
 ```
 
-This makes the exchange self-describing. The receiver learns exactly **what it got** — so it can advance its
-own seal to `ComputedThrough` rather than guessing — and exactly **what to ask for next**, because the next
-request's `SinceSequence` is simply the previous answer's `ComputedThrough`. No side has to infer coverage
-from the shape of the payload, and a truncated answer resumes precisely where it stopped instead of restarting
-the range.
-
-Without this the whole scheme is unsafe in a specific way: a receiver that advances its seal past data the
-answer did not actually cover would seal over a real gap, and never look at it again.
+Streams are ordered deterministically (by stream id), so a truncated answer resumes exactly where it stopped.
+The receiver may advance its seal **only when a window completes with a null cursor** — advancing on a
+truncated answer would seal over the streams that never arrived, permanently, which is the one unrecoverable
+mistake this protocol can make.
 
 `scope_tenant` is already part of the digest primary key, so per-tenant segmentation needs no new dimension —
-only that the request and the seal both carry it, so one noisy tenant cannot drag another's reconciliation
-along with it.
+only that the request, the epochs and the seal all carry it, so one noisy tenant cannot drag another's
+reconciliation along with it.
 
-### C. Ask "what am I missing?", and check locally first
+### C. Two signals, two actions — and a range-bounded backfill
 
-Two rules:
+1. **Deficit drives repair.** Cross-service transfer happens only when the local store is genuinely short of
+   events it subscribes to, and the request is bounded by local holdings (§3): *"I hold `(floor, ceiling)`
+   for this bucket; send the complement inside the negotiated window."*
+2. **Equal-count digest mismatch drives alarm.** Same counts, different folds means corruption or membership
+   drift — re-delivery cannot fix it and must not be asked to try. It lands in the durable divergence ledger
+   and surfaces on the convergence gauges as the operator-attention case.
+3. **Local rebuilds stay local.** A new perspective or new `Apply` over an already-consumed type is a
+   projection rebuild from the local store. It is not an integrity event, and the design states that
+   explicitly so the distinction survives future refactoring.
 
-1. **Local-first.** Before any cross-service request, consult the local event store. If the events are
-   present, the need is a **local rebuild** of the projection, not a sync. This makes the new-perspective and
-   new-`Apply` cases free — they stop being integrity events entirely.
-2. **Deficit, not divergence.** Cross-service transfer is warranted only when the local store is genuinely
-   short of events it subscribes to. Extra events, reordering and reclassification are *not* deficits and
-   must not trigger a transfer.
-
-### D. Schedule the sweep; do not count it
+### D. Each side schedules its own heavy work
 
 Replace the modulo counter with a **cron schedule** on the temporal engine — which already provides
 DST/timezone-aware next-fire computation, DB-clock authority, misfire policies and a leased claim so exactly
@@ -202,18 +216,23 @@ one instance fires:
 public string? FullSweepCron { get; set; } = "0 3 * * *";   // nightly, off-peak
 ```
 
-Two properties this must keep:
+And **invert who does the recomputing**. An origin verifies *its own* digest table on *its own* schedule —
+that is the existing `VerifyDigestTableAsync` half of the sweep. Consumers' sweeps then read the origin's
+already-verified epochs; `UseRecompute = true` stops being something one service can impose on another and
+becomes an explicit operator action. N consumers no longer cost the origin N recomputes.
 
-- **Splay it.** Fourteen services sweeping at `03:00:00` is the same storm with a nicer timestamp. The
-  codebase already has the primitive for this — `StartupAuditMaxJitterSeconds`, used so a fleet deploy's
-  startup audits de-synchronize. The nightly window needs the same treatment.
-- **Defer under load.** When a DB-pressure signal is available, the sweep should stand down rather than run
-  into a busy system. Because misfire policy defaults to *coalesce*, a deferred sweep folds into the next
-  window instead of queueing up.
+Three properties to keep:
 
-Retain the counter as a fallback for engines without the temporal driver.
+- **Splay it.** A fleet sweeping at `03:00:00` in unison is the same storm with a nicer timestamp. The
+  codebase already has the primitive — `StartupAuditMaxJitterSeconds`, used so a fleet deploy's startup
+  audits de-synchronize. The nightly window gets the same treatment.
+- **Defer under load.** When a database-pressure signal exists, the sweep stands down rather than running
+  into a busy system; misfire policy defaults to *coalesce*, so a deferred sweep folds into the next window
+  instead of queueing. Until that signal ships this degrades gracefully to plain scheduling — the dependency
+  is an enhancement, not a prerequisite.
+- **Keep the counter as a fallback** for engines without the temporal driver.
 
-### E. Answer from precomputed state, not from a live aggregation
+### E. Answer from epochs, not from a live aggregation
 
 The type-level rollup — the wire unit of the hierarchical audit — is recomputed **on every read**:
 
@@ -225,84 +244,119 @@ WHERE origin_service_id = ...
 GROUP BY 1, 2
 ```
 
-That is a full `bit_xor` aggregation across every stream row of the requested types, per request. With N
-consumers auditing on their own cadences, the origin performs **N × O(streams)** aggregations to answer a
-question whose result did not change between them.
+A full `bit_xor` aggregation across every stream row of the requested types, per request, per consumer:
+**N × O(streams)** work to answer a question whose result did not change between askers.
 
-**Materialize the rollup instead**, and refresh it on a cadence.
+With epochs the materialization falls out for free: closed epochs **are** the precomputed answer, and the
+refresh folds only the **open epoch** — bounded by current activity. Serving a manifest becomes an `O(ring)`
+read of immutable rows. There is no separate rollup cache to invalidate, because the epoch rows carry their
+own coverage (§B) — a stale answer is impossible to misread as a fresh one, since the receiver sees exactly
+which sequence window it was given.
 
-**The propagation delay this introduces is free, up to a specific boundary.** `AuditSettleWindowMinutes`
-already means both sides deliberately fold only events *older than the settle window* — an in-flight delivery
-must never read as divergence. The comparison is therefore already blind to fresh data by design. So **while
-the refresh interval stays below the settle window, precomputation adds no staleness the protocol did not
-already have.** That is what makes this a free trade rather than a latency-for-throughput one, and it is how
-the cadence should be chosen: bounded by the settle window, not guessed.
+**The staleness this introduces is free, up to a stated boundary.** `AuditSettleWindowMinutes` already means
+both sides deliberately fold only events older than the settle window — an in-flight delivery must never read
+as divergence — so the comparison is blind to fresh data *by design*. While epoch closure lags the watermark
+by the settle window (§A's closure rule), precomputation adds **no staleness the protocol did not already
+have**. That is also how the epoch length should be chosen: derived from the settle window and checkpoint
+cadence, not guessed independently.
 
-**Refresh periodically; do not fold incrementally.** XOR is incremental, so the rollup *could* be updated on
-the write path — but every stream of a type collapses to a single row, so every append to any stream of that
-type would contend on it. That converts distributed writes into a hot-row lock on the emit chain's critical
-path. A periodic refresh instead reads `wh_stream_digests` (a compact table, not the event store) and writes
-one row per `(origin, tenant, type)` — cold, cheap, and off the hot path. It belongs on the existing
-maintenance cycle rather than a new background worker, for the same reason: another always-on periodic
-database consumer is a cost every host pays.
-
-**This is the same row as the seal.** `sealed_digest_lo/hi` + `sealed_count` at a watermark *is* a precomputed
-rollup, with the additional property that it never needs recomputing below the seal. So the refresh only has
-to scan **unsealed** rows — bounded by recent activity rather than by stream count.
+**Do not fold into the rollup on the write path.** XOR would permit it, but every stream of a type collapses
+onto one row — a hot-row lock on the emit chain's critical path. The write path touches only the open epoch's
+per-stream row (same contention as today); closure and collapse run on the existing maintenance cycle, not a
+new background worker, because another always-on periodic database consumer is a cost every host pays.
 
 | | aggregation cost |
 |---|---|
 | today | `O(streams)` per request, per consumer |
-| materialized | `O(streams)` per refresh, `O(1)` per request |
-| materialized + sealed | `O(streams changed since the seal)` per refresh, `O(1)` per request |
+| epochs | fold the open epoch on the maintenance cadence; `O(ring)` immutable reads per request |
 
-The precomputed row must carry the watermark it was computed at (§B) — otherwise a stale rollup silently
-answers a question about a newer range, which looks exactly like divergence and re-triggers the drill-down
-loop this proposal exists to remove.
+### F. Seal coherence: history legitimately mutates, and seals must survive it
+
+This section exists because the review found the failure mode: **unilateral mutation below a seal is
+permanent false divergence.** Whizbang deliberately allows history to change shape — and every such operation
+happens on *one side only*:
+
+- `close_stream` (archival/compaction) truncates events below a close point — and already **subtracts** them
+  from the running digests.
+- `reclassify_events_ephemeral` removes a type's events from the audited set — and already subtracts.
+- Whether ephemeral-*born* events enter the fold at all must be pinned down during implementation; if they
+  do, the tier-2 pointer prune is a third subtraction site.
+
+The running folds handle these locally. The **peer's seal does not move** — so after a legitimate truncation,
+the two sides' sealed folds disagree forever, the sweep re-detects it every night, and re-delivery cannot
+repair it because the events are gone *by design*.
+
+Two protocol elements close the hole:
+
+1. **An origin generation.** When an origin mutates history below its own seal — a books-closing truncate, a
+   restore from backup (which can regress or *fork* the commit sequence, invalidating every seal built on the
+   old line) — it bumps a generation stamped on its checkpoints and manifests. Peers seeing a new generation
+   re-seal from the announced floor on their next sweep, exactly parallel to how a closed stream's
+   carry-forward event becomes its new origin.
+2. **Sealed-region mismatch is an alarm, never repair fodder.** A mismatch below both watermarks *without* a
+   generation change is possible data loss or corruption. It goes to the divergence ledger and the gauges for
+   operator attention; it must never re-enter the repair loop, which by construction cannot fix it.
 
 ## What this changes
 
 | | today | proposed |
 |---|---|---|
-| healthy-system exchange | `O(streams)` per drill-down, repeatedly | **zero** |
-| divergent-system exchange | `O(all streams of the type)`, every cycle | `O(streams changed since the seal)` |
-| look-back on the hot path | unbounded — all history, forever | bounded — the open segment only |
-| digest storage growth | grows with streams × history | grows with streams; sealed prefixes collapse |
-| origin CPU per audit | `O(streams)` re-aggregated per request, per consumer | `O(1)` read of a precomputed row |
-| new perspective / new `Apply` | cross-service backfill of full history | **local rebuild**, no transfer |
-| full verification | every Nth audit, arbitrary wall-clock, per-process counter | scheduled, off-peak, splayed, fleet-wide |
+| healthy-system exchange | `O(streams)` per drill-down, repeatedly | checkpoints + `O(types)` headers; **no stream payloads** |
+| divergent-system exchange | `O(all streams of the type)`, every cycle | `O(streams changed in the open window)` |
+| look-back on the hot path | unbounded — all history, forever | the retained epoch ring |
+| digest storage growth | grows with streams × history | active ring only; closed epochs collapse |
+| origin CPU per audit | `O(streams)` re-aggregated per request, per consumer | `O(ring)` immutable reads |
+| origin CPU per sweep | N consumers × forced recompute | one self-scheduled verify |
+| backfill request | full history, unbounded | complement of stated local holdings |
+| new perspective / new `Apply` | already local — now stated as a design invariant | local rebuild, never a transfer |
+| full verification | every Nth audit, arbitrary wall-clock, per-process counter | scheduled, off-peak, splayed, self-owned |
 
 ## Open questions
 
-1. **Seal granularity.** `(origin, tenant, type)` is proposed. Per-stream seals would be finer but restore
-   `O(streams)` storage; coarser seals lose per-tenant isolation. Is type-level the right unit?
-2. **Detection latency for the sealed region.** A stream that diverged by *not changing* — a consumer that
-   missed an event while the origin also stayed quiet — is invisible to a changed-since delta and is caught
-   only by the scheduled sweep. With a nightly sweep that is a stated worst case of ~24 hours. Acceptable for
-   anti-entropy, but it should be a **documented guarantee**, not an accident of scheduling.
-3. **Seal invalidation.** Reclassification and stream close/truncate legitimately mutate history below a
-   seal. Both already maintain digests by subtraction, so they must also reopen or re-fold the affected seal.
-   Which operations must invalidate, and how far back?
-4. **Local-first cost.** The local check must be cheaper than the transfer it avoids. Counting local events
-   per `(tenant, type)` is exactly what the digest table already stores — is `sealed_count` plus the open
-   segment sufficient, or is a store query needed?
-5. **Refresh cadence versus settle window.** The argument that precomputation is free holds only while the
-   refresh interval stays below `AuditSettleWindowMinutes`. Should the framework enforce that relationship
-   (derive the cadence from the settle window, or refuse a configuration that inverts them) rather than leave
-   two independent knobs that can silently be set into an unsafe combination?
-6. **Migration.** Existing deployments have no seals. A first sweep establishes them; until then behaviour is
-   today's. Should the first seal be established eagerly at upgrade, or lazily on the first successful
-   exchange?
+1. **Epoch length and ring size.** Closure is sequence-gated (§A), but the window width and how many closed
+   epochs stay resident are tuning knobs. Derive from checkpoint cadence and settle window, or expose
+   directly? What is the fallback when a consumer is further behind than the ring retains?
+2. **Detection latency for the sealed region.** A bucket that diverged by *not changing* is invisible to any
+   changed-since exchange and is caught only by the sweep. A nightly sweep makes that a stated worst case of
+   ~24 hours. Acceptable for anti-entropy — but it must be a **documented guarantee**, not an accident of
+   scheduling.
+3. **Ephemeral events and the fold.** Do ephemeral-born events enter digests at emit? The answer decides
+   whether the reaper and the tier-2 pointer prune are seal-invalidation sites, and it must be locked in a
+   regression test either way.
+4. **Local-holdings source for the backfill bound.** Floor/ceiling per `(origin, tenant, type)` — from the
+   epoch table (cheap, coarse) or the event store (exact, a query)? The check must stay cheaper than the
+   transfer it bounds.
+5. **Enforce the cadence relationship.** Epoch closure lagging the settle window is what makes precomputation
+   free. Should the framework derive one from the other outright, rather than exposing two knobs that can be
+   configured into an unsafe combination?
+6. **Migration.** Existing deployments have running folds and no epochs. The first self-sweep can establish
+   an epoch-zero seal (everything before adoption) plus the open epoch. Eager at upgrade, or lazy on first
+   successful exchange?
+
+## Related work
+
+- **Database-pressure run permit** — §D's defer-under-load is this signal's first concrete consumer; until it
+  ships, the sweep degrades to plain scheduling.
+- **Startup orchestration plan** — the audit storm on fleet bring-up is the integrity-specific slice of the
+  broader synchronized-startup problem. This proposal's splay and epoch answers discharge that slice; the
+  startup plan owns discovery, election and general storm control. The two should cross-reference, not
+  duplicate.
+- **Typed name forms** — the new protocol messages cross the same seams where wire-form/CLR-form type-name
+  confusion has already caused a production bug; the new DTOs should be born with the strongly-typed forms.
+- **Report stream population** — the opt-in report-publishing path still mints a new stream per report;
+  bounding it is tracked separately and lands naturally with this proposal's report-path work.
+- **Drain byte budgets** — the inbox fetch is byte-bounded; the outbox sibling is tracked separately. Both
+  are damage-limiting for oversized control-plane payloads; this proposal removes the reason those payloads
+  get large in the first place.
 
 ## Why this ordering
 
-Sealing (A) is what makes the look-back finite, and it depends on nothing else. Scope negotiation (B) is what
-makes a single exchange bounded, and it needs the seal to have something to negotiate *from*. Deficit-and-
-local-first (C) is what makes the healthy case free. Scheduled sweeps (D) are what make the whole thing safe
-to rely on — and (C) in particular is only sound *because* (D) backstops it.
-
-Materialized rollups (E) are an optimization of the same state, not a fifth mechanism: the rollup row and the
-seal row are one row, so E lands naturally with A rather than after it.
+Epochs (A) make the look-back finite and depend on nothing else; the materialized answer (E) falls out of
+them rather than landing after them. Scope negotiation (B) makes a single exchange bounded, and needs epochs
+to negotiate *from*. Deficit-and-local-first (C) makes the healthy case free. Scheduled, self-owned sweeps
+(D) make the whole thing safe to rely on — (C) is only sound *because* (D) backstops it. Seal coherence (F)
+must land **with** (A), not after it: a seal that cannot survive `close_stream` is a false-divergence
+generator from its first nightly sweep.
 
 Implemented in that order, each increment is independently useful, and no increment removes a safety property
 before its replacement exists.
