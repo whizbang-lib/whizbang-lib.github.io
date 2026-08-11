@@ -940,6 +940,65 @@ each amendment callout marks where live validation refined the original sketch.
    waiting for the sweep, so an origin never serves stale seals between a close and 3 AM.
    :::
 
+## Observability
+
+Everything the reconcile system does is visible on one meter: **`Whizbang.StreamIntegrity`**
+(instrument names prefixed `whizbang.stream_integrity.`). The instruments follow three deliberate
+patterns worth understanding before building a dashboard:
+
+1. **Backlog is a gauge, not a counter.** A counter ("how many divergences have we ever noticed")
+   only ever rises and says nothing about *now*. The backlog gauges read the ledger itself, and a
+   heal **deletes** the ledger row — so the gauges fall on their own as repair works. Watch the
+   gauge, alert on the counter's *rate* if you want arrival pressure.
+2. **The collector rides maintenance.** Gauge values are read once per maintenance cycle (the same
+   scope and cadence the reaper already uses) and swapped atomically into the meter's observation
+   callback — no dedicated poller, no extra connections, no half-updated readings.
+3. **Only natural measurements.** Every instrument measures work the system already does — a
+   stopwatch around an existing handler, a counter at an existing branch, an age read back from a
+   row a delete was already destroying. Nothing queries or stores anything *for the metric's sake*,
+   so the meter can never become its own load problem.
+
+### Convergence state (gauges)
+
+| Instrument | Meaning |
+| --- | --- |
+| `unhealed_buckets` | Divergent `(origin, tenant, type, stream)` buckets currently tracked by the ledger — **the reconciliation backlog**. Falls as buckets heal (the heal deletes the row). |
+| `repair_exhausted_buckets` | Unhealed buckets that spent their repair budget (`MaxRepairAttemptsPerBucket`) and stopped asking. These need an operator, not patience — the one number worth an alert. |
+| `oldest_unhealed_age_seconds` | Age of the longest-standing unhealed divergence. Distinguishes a transient blip from a stuck bucket. |
+| `sealed_through` (tag `origin_service_id`) | The per-origin **verified watermark** — the exclusive end of the highest window that audited clean and complete. This is the top-level convergence needle: a lane is provably in sync exactly as far as its seal. Each origin is its own series; one aggregated number would hide a stuck lane. |
+
+### Durations (histograms, seconds)
+
+| Instrument | Measures | Why it matters |
+| --- | --- | --- |
+| `manifest_answer_duration` (tags `level`, `windowed`, `recompute`) | Origin side: receiving a manifest request → last answer chunk published. | Epoch-served answers should be **milliseconds**. A slow answer means the epochs are not serving and the fold fell back to scanning the store. |
+| `manifest_compare_duration` (tag `level`) | Consumer side: receiving a manifest chunk → comparison finished (ledger batches and repair sends included). | **The pressure early-warning.** When p99 approaches the manifest arrival interval, chunks queue behind the compare gate — and a queued chunk holds its deserialized payload in memory. This is the observable form of the compare-slower-than-arrival failure that has OOM-killed fleets. |
+| `redelivery_build_duration` | Origin side: one redelivery request's select-and-publish, end to end. | What each repair/backfill actually costs the origin. |
+| `bucket_heal_seconds` | First sighting of a divergent bucket → its proven heal. | **Per-stream time-to-reconcile.** The age is read from the ledger row the heal's own `DELETE ... RETURNING` destroys — the clock was already there for the oldest-unhealed gauge. An empty reading means "not measured" (single-key fallback), never "instant". |
+
+### Flow (counters)
+
+| Instrument | Counts |
+| --- | --- |
+| `divergences_detected` (tags `origin`, `event_type`, `reason`) | Divergent buckets per comparison. `reason` carries the taxonomy: `deficit` (repairable), `identity_mismatch` / `local_extra` (alarm-only — see [the divergence taxonomy](#the-divergence-taxonomy)). |
+| `repairs_requested` (tags `source`, `origin`) | Directed repair asks. `source=audit` is the per-stream path; `source=bulk` is the threshold-triggered whole-window state-only backfill. |
+| `compares_declined` (tag `origin`) | Manifest chunks declined at the non-queueing compare gate. Sustained growth = comparisons losing to arrivals; read alongside `manifest_compare_duration`. |
+| `manifest_pages_followed` / `manifest_pages_capped` (tag `origin`) | Windowed stream pages walked via the resume cursor, and follow chains stopped at `MaxManifestPagesPerAudit`. Persistent capping means lanes are wider than the per-audit page budget — raise the cap or accept the pace. |
+| `redelivery_events_shipped` | Events selected and shipped in redelivery bundles, as an origin. |
+| `manifests_requested`, `manifest_chunks_sent`, `drill_downs_requested`, `backfills_requested`, `redelivery_requests_received` | The exchange itself, hop by hop. |
+| `checkpoints_published` / `checkpoints_received`, `gaps_detected`, `coverage_gaps_detected`, `rebuilds_requested` | The continuity-checkpoint and coverage halves of the system. |
+| `digest_buckets_verified`, `digest_drift_healed` (tag `kind`) | The trust-but-verify sweep: buckets checked, and drift it healed (an unaccounted write path — investigate `kind`). |
+
+### Reading a recovery
+
+A deficient service converging looks like: `repairs_requested` active → `redelivery_events_shipped`
+climbing at the origin → `unhealed_buckets` falling (heals deleting rows) with `bucket_heal_seconds`
+recording each one → `sealed_through` stepping upward as whole windows certify → everything quiet
+except the checkpoint heartbeat. The failure signatures: `repair_exhausted_buckets` rising (buckets
+out of budget), `compares_declined` sustained (compare pressure), `manifest_pages_capped` persistent
+(page budget too small for the lane), or `sealed_through` frozen while `unhealed_buckets` is flat
+and non-zero (a stuck lane).
+
 ## Future work
 
 - **Persist the origin set?** The checkpoint origin tracker is deliberately in-memory (a restart
