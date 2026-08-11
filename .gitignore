@@ -60,3 +60,6 @@ src/assets/vscode-feed.json
 # RTD build output
 rtd/_build/
 site/
+
+# Local git worktrees — never part of the site source.
+.worktrees/
