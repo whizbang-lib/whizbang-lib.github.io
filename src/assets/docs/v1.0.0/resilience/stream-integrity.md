@@ -633,6 +633,110 @@ path touched audited rows and warrants investigation).
 
 ---
 
+## Bounded reconciliation — epochs, negotiated scope, seals
+
+The phases above answer *"do two services hold the same events?"* correctly — but as originally
+built, the **cost of asking grew with accumulated history** rather than with the size of the
+discrepancy. This layer (designed in the
+[bounded-integrity-reconciliation proposal](/proposals/bounded-integrity-reconciliation) after a
+live deployment paid a year's history per audit) changes the asymptote: the exchange becomes
+proportional to **what is missing**, verified history is **sealed and never re-read on the hot
+path**, and the expensive full verification is **scheduled at an idle hour**.
+
+### Epoch seals (the substrate)
+
+Each origin lane's sequence space is partitioned into fixed-width **epochs** (migration 092,
+`integrity_epoch_width`, default 100 000). One immutable XOR fold per
+`(origin lane, tenant, type, epoch)` bucket lives in `wh_digest_epochs`; a contiguous per-lane
+**frontier** records how far closure has advanced, with the width **pinned per lane at first
+close** (epoch identity is `floor(seq / width)` — a changed setting must never remap existing
+boundaries).
+
+Three deliberate design points:
+
+- **Derived at closure, not on the write path.** The local lane's `commit_sequence` is stamped
+  asynchronously after emit, so emit-time epoch assignment is impossible — and the emit chain is
+  the hottest path in the system. Closure rides the maintenance cycle
+  (`CloseDigestEpochsAsync`, bounded by `MaxEpochClosuresPerMaintenanceCycle`) and recomputes each
+  epoch once; the emit chain is byte-identical to before.
+- **The redelivery guard.** An epoch closes only when the lane's settled max lies beyond it AND no
+  *unsettled* event sits inside its range — redelivery can land a **fresh** event carrying an
+  **old** origin sequence, and a settled-max frontier alone would seal over it.
+- **One canonical fold.** Close, refold (repair), and verify all read the same SQL function
+  (`_wh_epoch_buckets`), so the fold predicates — ephemeral (`flags & 8`) and at-most-once
+  excluded, mirroring the emit-chain digest fold — cannot drift apart across consumers.
+
+### Answers come from seals, not scans
+
+Type-level digest answers (`ComputeTypeDigestsAsync` and the windowed variants) compose sealed
+epochs by XOR and fold **only the open window** live — O(open window), not O(store). Once sealed,
+an epoch is **authoritative for answers**: re-verifying it per answer would re-buy the full-scan
+cost the epochs exist to end. Detecting a bad seal is the sweep's job (below), and the regression
+suite pins the semantics from both directions — a corrupted seal *must* flow into a
+fully-covering answer, and must *not* leak into a partially-covering one (a seal is indivisible;
+fringes fold live).
+
+### Negotiated scope and the two-dimensional cursor
+
+A windowed manifest exchange agrees on a **half-open sequence window `[since, until)`** — chosen
+half-open so epoch boundaries align exactly and the answer's watermark (`ComputedThrough`, the
+exclusive end actually covered, always capped at the origin's settled max) IS the next ask's
+`since`. Stream-level answers additionally page by stream id (`MaxDigests` — the *asker's* memory
+is the constraint — plus `ResumeAfterStreamId`); pages walk whole streams, and a non-null
+returned cursor means the window is incomplete. A **quiet window still answers** (only an answer
+can carry the watermark; silence would freeze the asker forever), and an engine that cannot
+window falls back to the legacy full answer with **no watermark claimed**.
+
+The consumer records its verified watermark per origin in `wh_integrity_seals` and advances it
+only on a window that **provably** passed whole: every bucket matched, `ChunkCount == 1`, no
+resume cursor. Chunks carry no assembly protocol, so a multi-chunk window still compares and
+repairs — it just never certifies. The seal is GREATEST-monotonic (a replayed stale advance can
+never re-open verified history), and steady-state audits ask windowed **from the seal**; the
+sweep deliberately asks full history — it is trust-but-verify for exactly the state the seals
+assume is fine, and a windowed sweep would be circular trust.
+
+### Deficit repairs; mismatch alarms
+
+Only a **deficit** (`localCount < originCount`) is repairable. Equal counts with differing folds
+mean the consumer holds the same *number* of events with different *identity* — redelivery
+re-ships what the origin has, dedup drops what the consumer already holds, the fold never moves,
+and the repair loop can never converge (observed live as an unbounded redelivery storm). A local
+*surplus* cannot be fixed by asking the origin for more, and local history is never auto-deleted
+on a remote's say-so. Both still **alarm** (ledger + report + `reason` metric tag:
+`deficit | identity_mismatch | local_extra`); neither mints a redelivery request. A deficit found
+comparing a *windowed* manifest is a deficit **in that window** — the repair request carries the
+range, so the origin re-ships a slice, never a stream's whole history.
+
+### The scheduled sweep and the seal backstop
+
+The full sweep moves off the every-Nth-audit counter onto the temporal engine
+(`FullSweepCron`, default `"0 3 * * *"`): the heaviest verification runs at a configured idle
+hour, with the default minute replaced by a **stable per-service splay** (FNV-1a of the service
+name — `string.GetHashCode` is randomized per process and would re-randomize the very collisions
+the splay prevents). The counter stands down only once the schedule actually registered
+(`IntegritySweepScheduleState.CronActive`); no engine, a disabled cron, or a registration failure
+all leave `FullSweepEveryNthAudit` in charge — the sweep is never silently lost.
+
+Each sweep also runs the **seal backstop** (`verify_digest_epochs`, bounded by
+`MaxEpochVerificationsPerSweep`): every closed epoch recomputed from the store, compared
+bucket-for-bucket, refolded on drift. Non-zero drift means an unaccounted write path touched
+sealed history — logged as the alarm it is. Epochs holding an unsettled arrival are skipped
+whole, exactly like closure.
+
+### Origin generation — seals survive legitimate mutation
+
+A close-the-books truncation or a reclassification **legitimately changes** what a fold over
+sealed history computes. The two mutation sites (migration 093) now refold the affected sealed
+epochs **inline** — the origin's own answers are correct immediately, not next sweep — and bump
+the **origin generation** (`integrity_origin_generation`), which rides every manifest. The
+consumer-side guard (`integrity_seal_generation_guard`) is one atomic call: an unchanged
+generation proceeds; a changed one **resets the seal once**, records the new generation, and
+skips that comparison round (its windows were aligned to the old world) — the next audit
+re-verifies from the beginning, cheaply, because the origin answers from epochs. Sealed-range
+divergence *without* a generation change remains what it always was: damage.
+
+---
+
 ## Standards compliance (definition of done)
 
 - **AOT / zero reflection.** Type sets, consumed-type derivations, and digest scopes come from the
@@ -810,6 +914,30 @@ each amendment callout marks where live validation refined the original sketch.
    **Closed**: `AutoRepairCapped` is implemented at every repair site (checkpoint gaps, audit
    divergences, local rebuilds); `ReportOnly` IS the dry-run (every report carries exactly what
    auto-repair would have done); storm caps exist at every rung.
+   :::
+
+8. **Bounded reconciliation** — epochs, negotiated scope, seals, deficit exchange, scheduled
+   sweep, origin generation (the [proposal](/proposals/bounded-integrity-reconciliation),
+   motivated by a live deployment whose audits paid a year's history to find nothing wrong).
+
+   :::new
+   **Built end to end** (see the *Bounded reconciliation* section above), in six increments:
+   the epoch substrate + closure/refold primitives (migration 092, closure on the maintenance
+   cadence); epoch-served type answers (sealed-epoch authority, sabotage-tested both
+   directions); the negotiated half-open window + two-dimensional resume cursor (origin
+   honoring, watermark on every chunk, quiet-window answers); the deficit/alarm taxonomy +
+   range-bounded repair (only a deficit can converge under redelivery — the equal-count
+   identity mismatch that stormed live now alarms instead of looping); the consumer seal store
+   + windowed asking end to end (GREATEST-monotonic seals, single-chunk certification rule);
+   the idle-time cron sweep with stable per-service splay + counter fallback, carrying the
+   `verify_digest_epochs` seal backstop; and origin generation (migration 093 — the two
+   legitimate fold-mutation sites refold sealed epochs inline and bump the generation; the
+   consumer guard resets its seal once per change instead of alarming on deliberate history).
+   Implementation refined the design in three places worth naming: windows are half-open
+   `[since, until)` so epoch boundaries align exactly and the watermark IS the next `since`; a
+   receiver certifies only single-chunk windows (chunks carry no assembly protocol, so seeing
+   ALL of a window must be provable, not assumed); and mutation sites refold inline rather than
+   waiting for the sweep, so an origin never serves stale seals between a close and 3 AM.
    :::
 
 ## Future work

@@ -419,6 +419,27 @@
         "linkSource": "XmlTag"
       }
     ],
+    "EnableReceiveLivenessWatchdog": [
+      {
+        "testFile": "tests/Whizbang.Transports.AzureServiceBus.Tests/AzureServiceBusTransportUnitTests.cs",
+        "testMethod": "EnableReceiveLivenessWatchdog_DefaultsToTrueAsync",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "ReceiveLivenessProbeInterval": [
+      {
+        "testFile": "tests/Whizbang.Transports.AzureServiceBus.Tests/AzureServiceBusTransportUnitTests.cs",
+        "testMethod": "ReceiveLivenessProbeInterval_DefaultsToSixtySecondsAsync",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "ReceiveLivenessSilenceThreshold": [
+      {
+        "testFile": "tests/Whizbang.Transports.AzureServiceBus.Tests/AzureServiceBusTransportUnitTests.cs",
+        "testMethod": "ReceiveLivenessSilenceThreshold_DefaultsToFiveMinutesAsync",
+        "linkSource": "XmlTag"
+      }
+    ],
     "IsActive": [
       {
         "testFile": "tests/Whizbang.Transports.Tests/ISubscriptionTests.cs",
@@ -664,6 +685,13 @@
       {
         "testFile": "tests/Whizbang.Transports.AzureServiceBus.Tests/ServiceBusInfrastructureProvisionerTests.cs",
         "testMethod": "EnsureTopicExistsAsync_TopicDoesNotExist_CreatesItAsync",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "GetSubscriptionActiveMessageCountAsync": [
+      {
+        "testFile": "tests/Whizbang.Transports.AzureServiceBus.Tests/ServiceBusAdminClientWrapperTests.cs",
+        "testMethod": "GetSubscriptionActiveMessageCountAsync_ReturnsActiveMessageCountAsync",
         "linkSource": "XmlTag"
       }
     ],
@@ -4140,6 +4168,28 @@
       {
         "testFile": "tests/Whizbang.Core.Tests/Workers/PinnedPoolRegistrationTests.cs",
         "testMethod": "Register_ConnectionStringName_TakesPrecedenceOverInlineAsync",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "NotificationConnectionPlan": [
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/NotificationConnectionPlanTests.cs",
+        "testMethod": "Create_WithRegisteredDataSource_PrefersTheDataSourceAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/NotificationConnectionPlanTests.cs",
+        "testMethod": "Create_WithNullDataSourceWrapper_FallsBackToTheConnectionStringAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/NotificationConnectionPlanTests.cs",
+        "testMethod": "Create_WithNoDataSourceRegistration_UsesTheConnectionStringAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/NotificationConnectionPlanTests.cs",
+        "testMethod": "Create_WithNeitherPath_IsUnavailableAsync",
         "linkSource": "XmlTag"
       }
     ],
@@ -10248,17 +10298,17 @@
     "ServiceBusConsumerWorker": [
       {
         "testFile": "tests/Whizbang.Core.Tests/Workers/ServiceBusConsumerWorkerCoverageTests.cs",
-        "testMethod": "StartAsync_WhenSubscribeFails_LogsAndRethrowsAsync",
-        "linkSource": "XmlTag"
-      },
-      {
-        "testFile": "tests/Whizbang.Core.Tests/Workers/ServiceBusConsumerWorkerCoverageTests.cs",
         "testMethod": "ExecuteAsync_WhenFatalErrorOccurs_LogsAndRethrowsAsync",
         "linkSource": "XmlTag"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/Workers/ServiceBusConsumerWorkerGapTests.cs",
         "testMethod": "HandleMessage_ConcurrencyLimitDisabled_ProcessesWithoutSemaphoreAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Workers/ServiceBusConsumerWorkerDropGateTests.cs",
+        "testMethod": "HandleMessage_CompositeWireType_NotDroppedByNoConsumerGateAsync",
         "linkSource": "XmlTag"
       }
     ],
@@ -10461,6 +10511,48 @@
         "testFile": "tests/Whizbang.Core.Tests/Workers/TransportConsumerBuilderExtensionsTests.cs",
         "testMethod": "AddTransportConsumer_AutoPopulatesInboxDestination_FromOwnDomainsAsync",
         "linkSource": "XmlTag"
+      }
+    ],
+    "TransportConsumerWorker": [
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Workers/TransportConsumerWorkerDropGateTests.cs",
+        "testMethod": "BatchHandler_CompositeWireType_NotDroppedByNoConsumerGateAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Workers/TransportConsumerWorkerTests.cs",
+        "testMethod": "ExecuteAsync_SubscribesToAllDestinations_FromOptionsAsync",
+        "testLine": 27,
+        "testClass": "TransportConsumerWorkerTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Workers/TransportConsumerWorkerTests.cs",
+        "testMethod": "ExecuteAsync_WaitsForReadinessCheck_BeforeSubscribingAsync",
+        "testLine": 66,
+        "testClass": "TransportConsumerWorkerTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Workers/TransportConsumerWorkerTests.cs",
+        "testMethod": "PauseAllSubscriptionsAsync_PausesAllActiveSubscriptionsAsync",
+        "testLine": 118,
+        "testClass": "TransportConsumerWorkerTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Workers/TransportConsumerWorkerTests.cs",
+        "testMethod": "ResumeAllSubscriptionsAsync_ResumesAllPausedSubscriptionsAsync",
+        "testLine": 165,
+        "testClass": "TransportConsumerWorkerTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Workers/TransportConsumerWorkerTests.cs",
+        "testMethod": "StopAsync_DisposesAllSubscriptions_GracefullyAsync",
+        "testLine": 213,
+        "testClass": "TransportConsumerWorkerTests",
+        "linkSource": "Convention"
       }
     ],
     "_handleMessageBatchAsync": [
@@ -16641,6 +16733,13 @@
         "linkSource": "XmlTag"
       }
     ],
+    "IsCompositeWireType": [
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/CompositeInboxFanoutTests.cs",
+        "testMethod": "IsCompositeWireType_CatalogStampsComposite_ReturnsTrueAsync",
+        "linkSource": "XmlTag"
+      }
+    ],
     "TryExpand": [
       {
         "testFile": "tests/Whizbang.Core.Tests/Messaging/CompositeInboxFanoutTests.cs",
@@ -17541,6 +17640,13 @@
       {
         "testFile": "tests/Whizbang.Core.Tests/Workers/PerspectiveWorkerStrategyTests.cs",
         "testMethod": "PerspectiveWorker_OnFailure_UsesStrategyToReportFailure_Async",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "TryClaimTypeDefinitionReconcileAsync": [
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/TypeDefinitionReconcilerTests.cs",
+        "testMethod": "Reconcile_SecondInstanceInTheWindow_SkipsTheWholeWalkAsync",
         "linkSource": "XmlTag"
       }
     ],
@@ -18744,6 +18850,13 @@
         "testLine": 84,
         "testClass": "ReceptorProcessingStatusTests",
         "linkSource": "Convention"
+      }
+    ],
+    "IRawInnerComposite": [
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/CompositeInboxFanoutTests.cs",
+        "testMethod": "TryExpand_RawComposite_ChildrenBuiltFromRawPayloadsAsync",
+        "linkSource": "XmlTag"
       }
     ],
     "scope": [
@@ -26058,6 +26171,99 @@
         "linkSource": "Convention"
       }
     ],
+    "ReceiveLivenessWatchdog": [
+      {
+        "testFile": "tests/Whizbang.Transports.AzureServiceBus.Tests/ReceiveLivenessWatchdogTests.cs",
+        "testMethod": "ProbeAsync_ActivityWithinThreshold_DoesNotProbeBacklogOrRecoverAsync",
+        "testLine": 23,
+        "testClass": "ReceiveLivenessWatchdogTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Transports.AzureServiceBus.Tests/ReceiveLivenessWatchdogTests.cs",
+        "testMethod": "ProbeAsync_SilentPastThresholdWithBacklog_TriggersRecoveryAsync",
+        "testLine": 36,
+        "testClass": "ReceiveLivenessWatchdogTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Transports.AzureServiceBus.Tests/ReceiveLivenessWatchdogTests.cs",
+        "testMethod": "ProbeAsync_SilentPastThresholdWithoutBacklog_RebaselinesInsteadOfRecoveringAsync",
+        "testLine": 48,
+        "testClass": "ReceiveLivenessWatchdogTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Transports.AzureServiceBus.Tests/ReceiveLivenessWatchdogTests.cs",
+        "testMethod": "RecordActivity_ResetsSilenceWindowAsync",
+        "testLine": 68,
+        "testClass": "ReceiveLivenessWatchdogTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Transports.AzureServiceBus.Tests/ReceiveLivenessWatchdogTests.cs",
+        "testMethod": "Track_ExistingSubscription_ResetsBaselineAsync",
+        "testLine": 82,
+        "testClass": "ReceiveLivenessWatchdogTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Transports.AzureServiceBus.Tests/ReceiveLivenessWatchdogTests.cs",
+        "testMethod": "ProbeAsync_NothingTracked_NoOpAsync",
+        "testLine": 95,
+        "testClass": "ReceiveLivenessWatchdogTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Transports.AzureServiceBus.Tests/ReceiveLivenessWatchdogTests.cs",
+        "testMethod": "ProbeAsync_MultipleStalledSubscriptions_SingleRecoveryPerSweepAsync",
+        "testLine": 107,
+        "testClass": "ReceiveLivenessWatchdogTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Transports.AzureServiceBus.Tests/ReceiveLivenessWatchdogTests.cs",
+        "testMethod": "ProbeAsync_AfterRecovery_RebaselinesAllTrackedSubscriptionsAsync",
+        "testLine": 120,
+        "testClass": "ReceiveLivenessWatchdogTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Transports.AzureServiceBus.Tests/ReceiveLivenessWatchdogTests.cs",
+        "testMethod": "ProbeAsync_BacklogProbeThrows_ContinuesToNextSubscriptionWithoutRecoveryAsync",
+        "testLine": 134,
+        "testClass": "ReceiveLivenessWatchdogTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Transports.AzureServiceBus.Tests/ReceiveLivenessWatchdogTests.cs",
+        "testMethod": "Start_TimerTick_RunsSweepAndRecoversStalledSubscriptionAsync",
+        "testLine": 168,
+        "testClass": "ReceiveLivenessWatchdogTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Transports.AzureServiceBus.Tests/ReceiveLivenessWatchdogTests.cs",
+        "testMethod": "Start_CalledTwice_IsIdempotentAsync",
+        "testLine": 191,
+        "testClass": "ReceiveLivenessWatchdogTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Transports.AzureServiceBus.Tests/ReceiveLivenessWatchdogTests.cs",
+        "testMethod": "DisposeAsync_AfterStart_StopsTheLoopAsync",
+        "testLine": 204,
+        "testClass": "ReceiveLivenessWatchdogTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Transports.AzureServiceBus.Tests/ReceiveLivenessWatchdogTests.cs",
+        "testMethod": "DisposeAsync_CalledTwice_IsIdempotentAsync",
+        "testLine": 217,
+        "testClass": "ReceiveLivenessWatchdogTests",
+        "linkSource": "Convention"
+      }
+    ],
     "ServiceBusAdminClientWrapper": [
       {
         "testFile": "tests/Whizbang.Transports.AzureServiceBus.Tests/ServiceBusAdminClientWrapperTests.cs",
@@ -26152,43 +26358,64 @@
       },
       {
         "testFile": "tests/Whizbang.Transports.AzureServiceBus.Tests/ServiceBusAdminClientWrapperTests.cs",
+        "testMethod": "GetSubscriptionActiveMessageCountAsync_ReturnsActiveMessageCountAsync",
+        "testLine": 187,
+        "testClass": "ServiceBusAdminClientWrapperTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Transports.AzureServiceBus.Tests/ServiceBusAdminClientWrapperTests.cs",
+        "testMethod": "GetSubscriptionActiveMessageCountAsync_PassesArgumentsAndCancellationTokenAsync",
+        "testLine": 200,
+        "testClass": "ServiceBusAdminClientWrapperTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Transports.AzureServiceBus.Tests/ServiceBusAdminClientWrapperTests.cs",
+        "testMethod": "GetSubscriptionActiveMessageCountAsync_AdminClientThrows_PropagatesExceptionAsync",
+        "testLine": 212,
+        "testClass": "ServiceBusAdminClientWrapperTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Transports.AzureServiceBus.Tests/ServiceBusAdminClientWrapperTests.cs",
         "testMethod": "GetRulesAsync_EnumeratesAllPagesAsync",
-        "testLine": 189,
+        "testLine": 224,
         "testClass": "ServiceBusAdminClientWrapperTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Transports.AzureServiceBus.Tests/ServiceBusAdminClientWrapperTests.cs",
         "testMethod": "GetRulesAsync_NoRules_YieldsNothingAsync",
-        "testLine": 210,
+        "testLine": 245,
         "testClass": "ServiceBusAdminClientWrapperTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Transports.AzureServiceBus.Tests/ServiceBusAdminClientWrapperTests.cs",
         "testMethod": "GetRulesAsync_PassesCancellationTokenAsync",
-        "testLine": 222,
+        "testLine": 257,
         "testClass": "ServiceBusAdminClientWrapperTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Transports.AzureServiceBus.Tests/ServiceBusAdminClientWrapperTests.cs",
         "testMethod": "DeleteRuleAsync_PassesAllArgumentsAsync",
-        "testLine": 234,
+        "testLine": 269,
         "testClass": "ServiceBusAdminClientWrapperTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Transports.AzureServiceBus.Tests/ServiceBusAdminClientWrapperTests.cs",
         "testMethod": "CreateRuleAsync_PassesOptionsInstanceThroughAsync",
-        "testLine": 246,
+        "testLine": 281,
         "testClass": "ServiceBusAdminClientWrapperTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Transports.AzureServiceBus.Tests/ServiceBusAdminClientWrapperTests.cs",
         "testMethod": "CreateRuleAsync_AdminClientThrows_PropagatesExceptionAsync",
-        "testLine": 259,
+        "testLine": 294,
         "testClass": "ServiceBusAdminClientWrapperTests",
         "linkSource": "Convention"
       }
@@ -31940,204 +32167,211 @@
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/EFCoreServiceRegistrationGeneratorTests.cs",
-        "testMethod": "Generator_SchemaExtensions_CallsExecuteMigrationsAsync",
+        "testMethod": "Generator_SchemaExtensions_RetryPathClearsStaleTransactionEnlistmentAsync",
         "testLine": 778,
         "testClass": "EFCoreServiceRegistrationGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/EFCoreServiceRegistrationGeneratorTests.cs",
+        "testMethod": "Generator_SchemaExtensions_CallsExecuteMigrationsAsync",
+        "testLine": 814,
+        "testClass": "EFCoreServiceRegistrationGeneratorTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Generators.Tests/EFCoreServiceRegistrationGeneratorTests.cs",
         "testMethod": "Generator_SchemaExtensions_UsesXactLockWithTransactionAndRetryAsync",
-        "testLine": 811,
+        "testLine": 847,
         "testClass": "EFCoreServiceRegistrationGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/EFCoreServiceRegistrationGeneratorTests.cs",
         "testMethod": "Generator_InitCallback_ResolvesInitConnectionStringAsync",
-        "testLine": 866,
+        "testLine": 902,
         "testClass": "EFCoreServiceRegistrationGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/EFCoreServiceRegistrationGeneratorTests.cs",
         "testMethod": "Generator_WithValidDbContext_ProducesNoDiagnosticsAsync",
-        "testLine": 914,
+        "testLine": 950,
         "testClass": "EFCoreServiceRegistrationGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/EFCoreServiceRegistrationGeneratorTests.cs",
         "testMethod": "Generator_SchemaExtensions_IncludesGinIndexesForJsonbColumnsAsync",
-        "testLine": 943,
+        "testLine": 979,
         "testClass": "EFCoreServiceRegistrationGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/EFCoreServiceRegistrationGeneratorTests.cs",
         "testMethod": "Generator_SchemaExtensions_IncludesBtreeExpressionIndexForTenantScopeAsync",
-        "testLine": 994,
+        "testLine": 1030,
         "testClass": "EFCoreServiceRegistrationGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/EFCoreServiceRegistrationGeneratorTests.cs",
         "testMethod": "Generator_SchemaExtensions_IncludesPhysicalFieldsInDDLAsync",
-        "testLine": 1043,
+        "testLine": 1079,
         "testClass": "EFCoreServiceRegistrationGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/EFCoreServiceRegistrationGeneratorTests.cs",
         "testMethod": "Generator_SchemaExtensions_MapsKeywordTypeAliasesToCorrectPostgresTypesAsync",
-        "testLine": 1111,
+        "testLine": 1147,
         "testClass": "EFCoreServiceRegistrationGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/EFCoreServiceRegistrationGeneratorTests.cs",
         "testMethod": "Generator_SchemaExtensions_MapsFullyQualifiedTypesToCorrectPostgresTypesAsync",
-        "testLine": 1199,
+        "testLine": 1235,
         "testClass": "EFCoreServiceRegistrationGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/EFCoreServiceRegistrationGeneratorTests.cs",
         "testMethod": "Generator_SchemaExtensions_MapsGlobalQualifiedTypesToCorrectPostgresTypesAsync",
-        "testLine": 1272,
+        "testLine": 1308,
         "testClass": "EFCoreServiceRegistrationGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/EFCoreServiceRegistrationGeneratorTests.cs",
         "testMethod": "Generator_SchemaExtensions_MapsNullableKeywordTypesToCorrectPostgresTypesAsync",
-        "testLine": 1338,
+        "testLine": 1374,
         "testClass": "EFCoreServiceRegistrationGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/EFCoreServiceRegistrationGeneratorTests.cs",
         "testMethod": "Generator_SchemaExtensions_IncludesVectorFieldsInDDLAsync",
-        "testLine": 1410,
+        "testLine": 1446,
         "testClass": "EFCoreServiceRegistrationGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/EFCoreServiceRegistrationGeneratorTests.cs",
         "testMethod": "Generator_WithNestedModelClasses_GeneratesUniqueDbSetNamesAsync",
-        "testLine": 1475,
+        "testLine": 1511,
         "testClass": "EFCoreServiceRegistrationGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/EFCoreServiceRegistrationGeneratorTests.cs",
         "testMethod": "Generator_WithNestedModelClasses_GeneratesCorrectTableNamesAsync",
-        "testLine": 1555,
+        "testLine": 1591,
         "testClass": "EFCoreServiceRegistrationGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/EFCoreServiceRegistrationGeneratorTests.cs",
         "testMethod": "Generator_WithNestedPerspectiveClass_DiscoversPerspectiveAsync",
-        "testLine": 1621,
+        "testLine": 1657,
         "testClass": "EFCoreServiceRegistrationGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/EFCoreServiceRegistrationGeneratorTests.cs",
         "testMethod": "Generator_WithNestedPerspectiveClass_GeneratesLensQueryRegistrationAsync",
-        "testLine": 1679,
+        "testLine": 1715,
         "testClass": "EFCoreServiceRegistrationGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/EFCoreServiceRegistrationGeneratorTests.cs",
         "testMethod": "Generator_WithNestedPerspectiveClass_GeneratesCorrectRegistrationCodeAsync",
-        "testLine": 1728,
+        "testLine": 1764,
         "testClass": "EFCoreServiceRegistrationGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/EFCoreServiceRegistrationGeneratorTests.cs",
         "testMethod": "Generator_WithMultipleNestedPerspectiveClasses_DiscoversAllAsync",
-        "testLine": 1782,
+        "testLine": 1818,
         "testClass": "EFCoreServiceRegistrationGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/EFCoreServiceRegistrationGeneratorTests.cs",
         "testMethod": "Generator_SchemaExtensions_IncludesStep5_RegisterPerspectiveAssociationsAsync",
-        "testLine": 1848,
+        "testLine": 1884,
         "testClass": "EFCoreServiceRegistrationGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/EFCoreServiceRegistrationGeneratorTests.cs",
         "testMethod": "Generator_SchemaExtensions_ContainsAllFiveStepsAsync",
-        "testLine": 1894,
+        "testLine": 1930,
         "testClass": "EFCoreServiceRegistrationGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/EFCoreServiceRegistrationGeneratorTests.cs",
         "testMethod": "Generator_SchemaExtensions_Step5UsesExtensionMethodPatternAsync",
-        "testLine": 1934,
-        "testClass": "EFCoreServiceRegistrationGeneratorTests",
-        "linkSource": "Convention"
-      },
-      {
-        "testFile": "tests/Whizbang.Generators.Tests/EFCoreServiceRegistrationGeneratorTests.cs",
-        "testMethod": "Generator_SchemaExtensions_Step5ComesAfterStep4Async",
         "testLine": 1970,
         "testClass": "EFCoreServiceRegistrationGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/EFCoreServiceRegistrationGeneratorTests.cs",
+        "testMethod": "Generator_SchemaExtensions_Step5ComesAfterStep4Async",
+        "testLine": 2006,
+        "testClass": "EFCoreServiceRegistrationGeneratorTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Generators.Tests/EFCoreServiceRegistrationGeneratorTests.cs",
         "testMethod": "Generator_WithMultiModelLensQueryConstructorParam_GeneratesRegistrationAsync",
-        "testLine": 2056,
+        "testLine": 2092,
         "testClass": "EFCoreServiceRegistrationGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/EFCoreServiceRegistrationGeneratorTests.cs",
         "testMethod": "Generator_WithMultiModelLensQuery_UnknownModel_ReportsWHIZ401Async",
-        "testLine": 2111,
+        "testLine": 2147,
         "testClass": "EFCoreServiceRegistrationGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/EFCoreServiceRegistrationGeneratorTests.cs",
         "testMethod": "Generator_WithMultiModelLensQuery_DuplicateUsage_RegistersOnceAsync",
-        "testLine": 2164,
+        "testLine": 2200,
         "testClass": "EFCoreServiceRegistrationGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/EFCoreServiceRegistrationGeneratorTests.cs",
         "testMethod": "Generator_WithMultiModelLensQuery_ThreeModels_GeneratesRegistrationAsync",
-        "testLine": 2217,
+        "testLine": 2253,
         "testClass": "EFCoreServiceRegistrationGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/EFCoreServiceRegistrationGeneratorTests.cs",
         "testMethod": "Generator_WithMultiModelLensQuery_GeneratesCorrectTableNamesAsync",
-        "testLine": 2269,
+        "testLine": 2305,
         "testClass": "EFCoreServiceRegistrationGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/EFCoreServiceRegistrationGeneratorTests.cs",
         "testMethod": "Generator_ModelWithNestedCollections_EmitsRecursiveDataCoalescerRegistrationAsync",
-        "testLine": 2319,
+        "testLine": 2355,
         "testClass": "EFCoreServiceRegistrationGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/EFCoreServiceRegistrationGeneratorTests.cs",
         "testMethod": "Generator_ModelWithoutCollections_EmitsScopeOnlyCoalescerRegistrationAsync",
-        "testLine": 2385,
+        "testLine": 2421,
         "testClass": "EFCoreServiceRegistrationGeneratorTests",
         "linkSource": "Convention"
       }
@@ -34230,6 +34464,20 @@
         "testLine": 1782,
         "testClass": "MessageRegistryGeneratorTests",
         "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Generators.Tests/MessageRegistryGeneratorTests.cs",
+        "testMethod": "MessageRegistryGenerator_DispatchInTopLevelStatements_DoesNotCrashAsync",
+        "testLine": 1827,
+        "testClass": "MessageRegistryGeneratorTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Generators.Tests/MessageRegistryGeneratorTests.cs",
+        "testMethod": "MessageRegistryGenerator_DispatchInsideRecord_DoesNotCrashAsync",
+        "testLine": 1858,
+        "testClass": "MessageRegistryGeneratorTests",
+        "linkSource": "Convention"
       }
     ],
     "MessageTagDiscoveryGenerator": [
@@ -35611,6 +35859,27 @@
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
         "testMethod": "PerspectiveRunnerGenerator_EventWithInheritedStreamId_GeneratesExtractStreamIdAsync",
         "testLine": 2860,
+        "testClass": "PerspectiveRunnerGeneratorTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
+        "testMethod": "PerspectiveRunnerGenerator_CreateEmptyModel_UsesDirectConstructionWithoutReflectionAsync",
+        "testLine": 2912,
+        "testClass": "PerspectiveRunnerGeneratorTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
+        "testMethod": "PerspectiveRunnerGenerator_StronglyTypedStreamId_ConstructsViaFromFactoryAsync",
+        "testLine": 2958,
+        "testClass": "PerspectiveRunnerGeneratorTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
+        "testMethod": "PerspectiveRunnerGenerator_RequiredModelMembers_AreInitializedSoGeneratedCodeCompilesAsync",
+        "testLine": 3009,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       }
@@ -41541,6 +41810,36 @@
         "linkSource": "Convention"
       }
     ],
+    "CoordinatorIntegrityRepairLedger": [
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/CoordinatorIntegrityRepairLedgerTests.cs",
+        "testMethod": "DelegatesEachCallToTheCoordinatorAsync",
+        "testLine": 87,
+        "testClass": "CoordinatorIntegrityRepairLedgerTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/CoordinatorIntegrityRepairLedgerTests.cs",
+        "testMethod": "WithoutACoordinator_ReportFailsOpenAndRepairFailsClosedAsync",
+        "testLine": 102,
+        "testClass": "CoordinatorIntegrityRepairLedgerTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/CoordinatorIntegrityRepairLedgerTests.cs",
+        "testMethod": "ReturnsTheCoordinatorsAnswer_NotAnOptimisticDefaultAsync",
+        "testLine": 115,
+        "testClass": "CoordinatorIntegrityRepairLedgerTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/CoordinatorIntegrityRepairLedgerTests.cs",
+        "testMethod": "WhenTheLedgerThrows_TheAuditKeepsRunningWithTheSafeDefaultsAsync",
+        "testLine": 152,
+        "testClass": "CoordinatorIntegrityRepairLedgerTests",
+        "linkSource": "Convention"
+      }
+    ],
     "DbContextInitializationRegistry": [
       {
         "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/DbContextInitializationRegistryTests.cs",
@@ -43185,56 +43484,77 @@
       {
         "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityCheckpointReceptorTests.cs",
         "testMethod": "FirstDeficit_IsPendingOnly_NoReportAsync",
-        "testLine": 44,
+        "testLine": 47,
+        "testClass": "IntegrityCheckpointReceptorTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityCheckpointReceptorTests.cs",
+        "testMethod": "ManyConfirmedGaps_ReportsAreCapped_WithOneSummaryAsync",
+        "testLine": 59,
         "testClass": "IntegrityCheckpointReceptorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityCheckpointReceptorTests.cs",
         "testMethod": "DeficitPersistingPastNextCheckpoint_ConfirmsAndReportsAsync",
-        "testLine": 56,
+        "testLine": 86,
         "testClass": "IntegrityCheckpointReceptorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityCheckpointReceptorTests.cs",
         "testMethod": "DeficitHealedBeforeNextCheckpoint_ClearsSilentlyAsync",
-        "testLine": 76,
+        "testLine": 106,
+        "testClass": "IntegrityCheckpointReceptorTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityCheckpointReceptorTests.cs",
+        "testMethod": "ByDefault_ConfirmedGap_RepairsWithoutPublishingAReportAsync",
+        "testLine": 126,
         "testClass": "IntegrityCheckpointReceptorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityCheckpointReceptorTests.cs",
         "testMethod": "AutoRepairCapped_SendsTargetedWireOnlyRepairRequestAsync",
-        "testLine": 91,
+        "testLine": 141,
+        "testClass": "IntegrityCheckpointReceptorTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityCheckpointReceptorTests.cs",
+        "testMethod": "ConfirmedGap_NoOriginRequestTopic_WithholdsRepairRequestAsync",
+        "testLine": 171,
         "testClass": "IntegrityCheckpointReceptorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityCheckpointReceptorTests.cs",
         "testMethod": "OwnCheckpoint_IsIgnoredAsync",
-        "testLine": 121,
+        "testLine": 187,
         "testClass": "IntegrityCheckpointReceptorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityCheckpointReceptorTests.cs",
         "testMethod": "UnsubscribedType_IsNotVerifiedAsync",
-        "testLine": 142,
+        "testLine": 208,
         "testClass": "IntegrityCheckpointReceptorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityCheckpointReceptorTests.cs",
         "testMethod": "Registrar_RegistersReceptorAtThreeDefaultStagesAsync",
-        "testLine": 162,
+        "testLine": 228,
         "testClass": "IntegrityCheckpointReceptorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityCheckpointReceptorTests.cs",
         "testMethod": "ConfirmedGap_WithDefaultOptions_EmitsGapAndRepairCountersAsync",
-        "testLine": 217,
+        "testLine": 284,
         "testClass": "IntegrityCheckpointReceptorTests",
         "linkSource": "Convention"
       }
@@ -43243,84 +43563,266 @@
       {
         "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityManifestReceptorTests.cs",
         "testMethod": "RequestReceptor_SendsChunkedTargetedManifestsAsync",
-        "testLine": 34,
+        "testLine": 35,
         "testClass": "IntegrityManifestReceptorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityManifestReceptorTests.cs",
         "testMethod": "RequestReceptor_NothingEmitted_StaysSilentAsync",
-        "testLine": 66,
+        "testLine": 67,
         "testClass": "IntegrityManifestReceptorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityManifestReceptorTests.cs",
         "testMethod": "ManifestReceptor_IdenticalFolds_StaySilentAsync",
-        "testLine": 80,
+        "testLine": 81,
+        "testClass": "IntegrityManifestReceptorTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityManifestReceptorTests.cs",
+        "testMethod": "ManifestReceptor_MassDivergence_ReportsAreCapped_WithOneSummaryAsync",
+        "testLine": 99,
+        "testClass": "IntegrityManifestReceptorTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityManifestReceptorTests.cs",
+        "testMethod": "ManifestReceptor_ByDefault_DetectsAndRepairsButPublishesNoReportsAsync",
+        "testLine": 161,
         "testClass": "IntegrityManifestReceptorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityManifestReceptorTests.cs",
         "testMethod": "ManifestReceptor_Divergence_ReportsAndCappedRepairsAsync",
-        "testLine": 98,
+        "testLine": 187,
         "testClass": "IntegrityManifestReceptorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityManifestReceptorTests.cs",
         "testMethod": "Registrar_RegistersBothReceptorsAtThreeStagesAsync",
-        "testLine": 135,
+        "testLine": 226,
         "testClass": "IntegrityManifestReceptorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityManifestReceptorTests.cs",
         "testMethod": "RequestReceptor_TypesLevel_AnswersFromTypeTableAsync",
-        "testLine": 154,
+        "testLine": 245,
         "testClass": "IntegrityManifestReceptorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityManifestReceptorTests.cs",
         "testMethod": "RequestReceptor_TypesLevelWithRecompute_RollsUpComputedRowsAsync",
-        "testLine": 179,
-        "testClass": "IntegrityManifestReceptorTests",
-        "linkSource": "Convention"
-      },
-      {
-        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityManifestReceptorTests.cs",
-        "testMethod": "ManifestReceptor_TypeLevelMatch_NoDrillDownAsync",
-        "testLine": 207,
-        "testClass": "IntegrityManifestReceptorTests",
-        "linkSource": "Convention"
-      },
-      {
-        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityManifestReceptorTests.cs",
-        "testMethod": "ManifestReceptor_TypeLevelMismatch_SendsCappedDrillDownAsync",
-        "testLine": 225,
-        "testClass": "IntegrityManifestReceptorTests",
-        "linkSource": "Convention"
-      },
-      {
-        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityManifestReceptorTests.cs",
-        "testMethod": "ManifestReceptor_TypeLevel_SettleSkipsFreshBucketsAsync",
-        "testLine": 252,
-        "testClass": "IntegrityManifestReceptorTests",
-        "linkSource": "Convention"
-      },
-      {
-        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityManifestReceptorTests.cs",
-        "testMethod": "ManifestReceptor_StreamLevel_TableMode_ComparesAgainstTableAsync",
         "testLine": 270,
         "testClass": "IntegrityManifestReceptorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityManifestReceptorTests.cs",
+        "testMethod": "RequestReceptor_TypesLevelRecompute_RollsUpAtTheStoreAsync",
+        "testLine": 298,
+        "testClass": "IntegrityManifestReceptorTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityManifestReceptorTests.cs",
+        "testMethod": "RequestReceptor_ConcurrentRequests_AnswerOneAtATimeAsync",
+        "testLine": 321,
+        "testClass": "IntegrityManifestReceptorTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityManifestReceptorTests.cs",
+        "testMethod": "ManifestReceptor_TypeLevelRecomputed_UsesStoreRollUpAsync",
+        "testLine": 361,
+        "testClass": "IntegrityManifestReceptorTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityManifestReceptorTests.cs",
+        "testMethod": "ManifestReceptor_ConcurrentManifests_CompareOneAtATimeAsync",
+        "testLine": 393,
+        "testClass": "IntegrityManifestReceptorTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityManifestReceptorTests.cs",
+        "testMethod": "ManifestReceptor_TypeLevelMatch_NoDrillDownAsync",
+        "testLine": 432,
+        "testClass": "IntegrityManifestReceptorTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityManifestReceptorTests.cs",
+        "testMethod": "ManifestReceptor_TypeLevelMismatch_SendsCappedDrillDownAsync",
+        "testLine": 450,
+        "testClass": "IntegrityManifestReceptorTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityManifestReceptorTests.cs",
+        "testMethod": "ManifestReceptor_TypeLevel_SettleSkipsFreshBucketsAsync",
+        "testLine": 479,
+        "testClass": "IntegrityManifestReceptorTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityManifestReceptorTests.cs",
+        "testMethod": "ManifestReceptor_StreamLevel_TableMode_ComparesAgainstTableAsync",
+        "testLine": 497,
+        "testClass": "IntegrityManifestReceptorTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityManifestReceptorTests.cs",
         "testMethod": "ManifestReceptor_StreamLevel_RecomputedManifest_ComparesAgainstRecomputeAsync",
-        "testLine": 291,
+        "testLine": 518,
+        "testClass": "IntegrityManifestReceptorTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityManifestReceptorTests.cs",
+        "testMethod": "ManifestReceptor_Divergence_BatchesRepairsIntoOneDirectedRequestAsync",
+        "testLine": 540,
+        "testClass": "IntegrityManifestReceptorTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityManifestReceptorTests.cs",
+        "testMethod": "ManifestReceptor_RepeatedManifest_SuppressesReportsAndRepairsAsync",
+        "testLine": 566,
+        "testClass": "IntegrityManifestReceptorTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityManifestReceptorTests.cs",
+        "testMethod": "ManifestReceptor_UnknownOriginRequestTopic_SkipsRepairPublishAsync",
+        "testLine": 593,
+        "testClass": "IntegrityManifestReceptorTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityManifestReceptorTests.cs",
+        "testMethod": "ManifestReceptor_TypeLevelMismatch_UnknownOriginTopic_SkipsDrillDownAsync",
+        "testLine": 613,
+        "testClass": "IntegrityManifestReceptorTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityManifestReceptorTests.cs",
+        "testMethod": "ManifestReceptor_HealedBucket_ForgetsLedgerStateAsync",
+        "testLine": 629,
+        "testClass": "IntegrityManifestReceptorTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityManifestReceptorTests.cs",
+        "testMethod": "RequestReceptor_StampsTheOriginGeneration_OnEveryAnswerAsync",
+        "testLine": 655,
+        "testClass": "IntegrityManifestReceptorTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityManifestReceptorTests.cs",
+        "testMethod": "ManifestReceptor_GenerationChanged_ResetsAndSkipsTheComparisonAsync",
+        "testLine": 672,
+        "testClass": "IntegrityManifestReceptorTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityManifestReceptorTests.cs",
+        "testMethod": "ManifestReceptor_GenerationUnchanged_ComparesNormallyAsync",
+        "testLine": 701,
+        "testClass": "IntegrityManifestReceptorTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityManifestReceptorTests.cs",
+        "testMethod": "ManifestReceptor_EqualCountDifferentFold_AlarmsButNeverRequestsRepairAsync",
+        "testLine": 725,
+        "testClass": "IntegrityManifestReceptorTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityManifestReceptorTests.cs",
+        "testMethod": "ManifestReceptor_LocalExtra_AlarmsButNeverRequestsRepairAsync",
+        "testLine": 755,
+        "testClass": "IntegrityManifestReceptorTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityManifestReceptorTests.cs",
+        "testMethod": "ManifestReceptor_WindowedManifest_RangeBoundsTheRepairAsync",
+        "testLine": 780,
+        "testClass": "IntegrityManifestReceptorTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityManifestReceptorTests.cs",
+        "testMethod": "ManifestReceptor_CleanCompleteWindow_AdvancesTheSealAsync",
+        "testLine": 819,
+        "testClass": "IntegrityManifestReceptorTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityManifestReceptorTests.cs",
+        "testMethod": "ManifestReceptor_WindowedMismatch_KeepsTheSeal_AndDrillsDownWindowedAsync",
+        "testLine": 847,
+        "testClass": "IntegrityManifestReceptorTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityManifestReceptorTests.cs",
+        "testMethod": "ManifestReceptor_MultiChunkWindow_NeverAdvancesTheSealAsync",
+        "testLine": 885,
+        "testClass": "IntegrityManifestReceptorTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityManifestReceptorTests.cs",
+        "testMethod": "RequestReceptor_WindowedTypesAsk_AnswersFromTheWindowedRead_WithTheWatermarkAsync",
+        "testLine": 924,
+        "testClass": "IntegrityManifestReceptorTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityManifestReceptorTests.cs",
+        "testMethod": "RequestReceptor_WindowedQuietWindow_StillAnswers_SoTheSealCanAdvanceAsync",
+        "testLine": 957,
+        "testClass": "IntegrityManifestReceptorTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityManifestReceptorTests.cs",
+        "testMethod": "RequestReceptor_WindowedNothingNewSettled_StaysSilentAsync",
+        "testLine": 985,
+        "testClass": "IntegrityManifestReceptorTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityManifestReceptorTests.cs",
+        "testMethod": "RequestReceptor_WindowedStreamsAsk_CarriesTheResumeCursorAsync",
+        "testLine": 1008,
+        "testClass": "IntegrityManifestReceptorTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityManifestReceptorTests.cs",
+        "testMethod": "RequestReceptor_WindowedButEngineCannotWindow_FallsBackToTheFullAnswerAsync",
+        "testLine": 1043,
+        "testClass": "IntegrityManifestReceptorTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityManifestReceptorTests.cs",
+        "testMethod": "ManifestReceptor_ReportOnly_StillPublishesReportsAsync",
+        "testLine": 1347,
         "testClass": "IntegrityManifestReceptorTests",
         "linkSource": "Convention"
       }
@@ -45266,42 +45768,56 @@
       {
         "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/RedeliveryRequestReceptorTests.cs",
         "testMethod": "Receptor_MapsSelectionAndPublishesTargetedCompositesAsync",
-        "testLine": 33,
+        "testLine": 34,
         "testClass": "RedeliveryRequestReceptorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/RedeliveryRequestReceptorTests.cs",
         "testMethod": "Receptor_ClampsMaxEventsToTheOriginCapAsync",
-        "testLine": 86,
+        "testLine": 87,
+        "testClass": "RedeliveryRequestReceptorTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/RedeliveryRequestReceptorTests.cs",
+        "testMethod": "Receptor_PagesWideSelections_KeysetAdvancesAndEverythingPublishesAsync",
+        "testLine": 114,
+        "testClass": "RedeliveryRequestReceptorTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/RedeliveryRequestReceptorTests.cs",
+        "testMethod": "Receptor_ConcurrentRequests_BuildOneAtATimeAsync",
+        "testLine": 152,
         "testClass": "RedeliveryRequestReceptorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/RedeliveryRequestReceptorTests.cs",
         "testMethod": "Receptor_EmptySelection_PublishesNothingAsync",
-        "testLine": 112,
+        "testLine": 189,
         "testClass": "RedeliveryRequestReceptorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/RedeliveryRequestReceptorTests.cs",
         "testMethod": "Receptor_MissingInfrastructure_IsInertAsync",
-        "testLine": 126,
+        "testLine": 203,
         "testClass": "RedeliveryRequestReceptorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/RedeliveryRequestReceptorTests.cs",
         "testMethod": "Registrar_RegistersReceptorAtThreeDefaultStagesAsync",
-        "testLine": 137,
+        "testLine": 214,
         "testClass": "RedeliveryRequestReceptorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/RedeliveryRequestReceptorTests.cs",
         "testMethod": "Registrar_NoRegistry_IsInertAsync",
-        "testLine": 161,
+        "testLine": 238,
         "testClass": "RedeliveryRequestReceptorTests",
         "linkSource": "Convention"
       }
@@ -45620,29 +46136,36 @@
     "TypeDefinitionReconciler": [
       {
         "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/TypeDefinitionReconcilerTests.cs",
-        "testMethod": "Reconcile_SettingsDriftToEphemeral_ActEnabled_ReclassifiesAndRecordsLineageAsync",
+        "testMethod": "Reconcile_SecondInstanceInTheWindow_SkipsTheWholeWalkAsync",
         "testLine": 105,
         "testClass": "TypeDefinitionReconcilerTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/TypeDefinitionReconcilerTests.cs",
+        "testMethod": "Reconcile_SettingsDriftToEphemeral_ActEnabled_ReclassifiesAndRecordsLineageAsync",
+        "testLine": 133,
+        "testClass": "TypeDefinitionReconcilerTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/TypeDefinitionReconcilerTests.cs",
         "testMethod": "Reconcile_SettingsDrift_DetectOnly_RecordsLineageButDoesNotReclassifyAsync",
-        "testLine": 130,
+        "testLine": 158,
         "testClass": "TypeDefinitionReconcilerTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/TypeDefinitionReconcilerTests.cs",
         "testMethod": "Reconcile_SyncsPerTypeRewindGraceOverrideAsync",
-        "testLine": 150,
+        "testLine": 178,
         "testClass": "TypeDefinitionReconcilerTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/TypeDefinitionReconcilerTests.cs",
         "testMethod": "Reconcile_NoChange_SameDefinition_NoDriftAsync",
-        "testLine": 169,
+        "testLine": 197,
         "testClass": "TypeDefinitionReconcilerTests",
         "linkSource": "Convention"
       }
@@ -46088,36 +46611,43 @@
       },
       {
         "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/WhizbangDatabaseInitializerServiceTests.cs",
-        "testMethod": "NonBlocking_InitFailure_GateStaysClosedAsync",
+        "testMethod": "NonBlocking_InitFailure_RetriesUntilSuccessAsync",
         "testLine": 80,
         "testClass": "WhizbangDatabaseInitializerServiceTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/WhizbangDatabaseInitializerServiceTests.cs",
-        "testMethod": "NonBlocking_InitFailure_DrivesLifecycleFaultAsync",
-        "testLine": 91,
+        "testMethod": "NonBlocking_InitFailure_GateStaysClosedWhileRetrying_ShutdownStopsTheLoopAsync",
+        "testLine": 101,
+        "testClass": "WhizbangDatabaseInitializerServiceTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/WhizbangDatabaseInitializerServiceTests.cs",
+        "testMethod": "NonBlocking_InitFailure_DoesNotFaultLifecycle_WhileRetryingAsync",
+        "testLine": 125,
         "testClass": "WhizbangDatabaseInitializerServiceTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/WhizbangDatabaseInitializerServiceTests.cs",
         "testMethod": "NonBlocking_InitSuccess_DoesNotFaultLifecycleAsync",
-        "testLine": 106,
+        "testLine": 146,
         "testClass": "WhizbangDatabaseInitializerServiceTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/WhizbangDatabaseInitializerServiceTests.cs",
-        "testMethod": "NonBlocking_MigrationTimeout_GateStaysClosedAsync",
-        "testLine": 122,
+        "testMethod": "NonBlocking_MigrationTimeout_RetriesAndRecoversAsync",
+        "testLine": 162,
         "testClass": "WhizbangDatabaseInitializerServiceTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/WhizbangDatabaseInitializerServiceTests.cs",
         "testMethod": "NonBlocking_WithinTimeout_MarksReadyAsync",
-        "testLine": 139,
+        "testLine": 185,
         "testClass": "WhizbangDatabaseInitializerServiceTests",
         "linkSource": "Convention"
       }
@@ -50379,6 +50909,13 @@
         "testLine": 446,
         "testClass": "InboxDrainWorkerTests",
         "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Workers/InboxDrainWorkerTests.cs",
+        "testMethod": "InboxDrainWorker_EmptyGuidStreamId_IsDrainedUnderItsMessageIdAsync",
+        "testLine": 511,
+        "testClass": "InboxDrainWorkerTests",
+        "linkSource": "Convention"
       }
     ],
     "InboxHandlerWorker": [
@@ -50477,57 +51014,113 @@
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/Workers/IntegrityAuditWorkerTests.cs",
-        "testMethod": "DefaultCycle_RequestsTypeLevelTableManifests_NoVerifyAsync",
-        "testLine": 113,
+        "testMethod": "ClaimDenied_SkipsTheWholeCycleAsync",
+        "testLine": 109,
         "testClass": "IntegrityAuditWorkerTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/Workers/IntegrityAuditWorkerTests.cs",
-        "testMethod": "SweepCycle_ForcesRecomputeAndVerifiesDigestTableAsync",
+        "testMethod": "ClaimGranted_RunsAndPassesHalfTheIntervalAsWindowAsync",
         "testLine": 132,
         "testClass": "IntegrityAuditWorkerTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/Workers/IntegrityAuditWorkerTests.cs",
+        "testMethod": "DefaultCycle_RequestsTypeLevelTableManifests_NoVerifyAsync",
+        "testLine": 154,
+        "testClass": "IntegrityAuditWorkerTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Workers/IntegrityAuditWorkerTests.cs",
+        "testMethod": "SweepCycle_ForcesRecomputeAndVerifiesDigestTableAsync",
+        "testLine": 173,
+        "testClass": "IntegrityAuditWorkerTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Workers/IntegrityAuditWorkerTests.cs",
         "testMethod": "SweepDisabled_NeverVerifiesAsync",
-        "testLine": 152,
+        "testLine": 193,
+        "testClass": "IntegrityAuditWorkerTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Workers/IntegrityAuditWorkerTests.cs",
+        "testMethod": "SweepCycle_AlsoVerifiesTheSealedEpochsAsync",
+        "testLine": 213,
+        "testClass": "IntegrityAuditWorkerTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Workers/IntegrityAuditWorkerTests.cs",
+        "testMethod": "SteadyCycle_NeverVerifiesEpochsAsync",
+        "testLine": 230,
+        "testClass": "IntegrityAuditWorkerTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Workers/IntegrityAuditWorkerTests.cs",
+        "testMethod": "CronScheduledSweep_DisablesTheCounterSweepAsync",
+        "testLine": 244,
+        "testClass": "IntegrityAuditWorkerTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Workers/IntegrityAuditWorkerTests.cs",
+        "testMethod": "RunSweepOnceAsync_ForcesTheFullSweep_RegardlessOfTheCounterAsync",
+        "testLine": 267,
+        "testClass": "IntegrityAuditWorkerTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Workers/IntegrityAuditWorkerTests.cs",
+        "testMethod": "DefaultCycle_AsksWindowed_FromTheStoredSealAsync",
+        "testLine": 290,
+        "testClass": "IntegrityAuditWorkerTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Workers/IntegrityAuditWorkerTests.cs",
+        "testMethod": "SweepCycle_AsksFullHistory_NotWindowedAsync",
+        "testLine": 309,
         "testClass": "IntegrityAuditWorkerTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/Workers/IntegrityAuditWorkerTests.cs",
         "testMethod": "AuditCycle_EmitsGapRebuildAndManifestCountersAsync",
-        "testLine": 179,
+        "testLine": 337,
         "testClass": "IntegrityAuditWorkerTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/Workers/IntegrityAuditWorkerTests.cs",
         "testMethod": "MassCoverageGaps_ReportsAreCapped_WithOneSummaryAsync",
-        "testLine": 217,
+        "testLine": 375,
         "testClass": "IntegrityAuditWorkerTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/Workers/IntegrityAuditWorkerTests.cs",
         "testMethod": "CoverageGapQuery_IsBoundedByTheReportCapAsync",
-        "testLine": 242,
+        "testLine": 400,
         "testClass": "IntegrityAuditWorkerTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/Workers/IntegrityAuditWorkerTests.cs",
         "testMethod": "FirstAuditDelay_OnStartupDefault_IsJitteredStartupWindowAsync",
-        "testLine": 256,
+        "testLine": 414,
         "testClass": "IntegrityAuditWorkerTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/Workers/IntegrityAuditWorkerTests.cs",
         "testMethod": "FirstAuditDelay_StartupDisabled_IsFullIntervalAsync",
-        "testLine": 269,
+        "testLine": 427,
         "testClass": "IntegrityAuditWorkerTests",
         "linkSource": "Convention"
       }
@@ -50574,6 +51167,13 @@
         "testLine": 167,
         "testClass": "IntegrityCheckpointWorkerTests",
         "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Workers/IntegrityCheckpointWorkerTests.cs",
+        "testMethod": "ControlPlaneDestination_For_StampsSessionAndRoutingKeyAsync",
+        "testLine": 186,
+        "testClass": "IntegrityCheckpointWorkerTests",
+        "linkSource": "Convention"
       }
     ],
     "LeaseDispatchExecutor": [
@@ -50615,14 +51215,14 @@
       {
         "testFile": "tests/Whizbang.Core.Tests/Workers/LeaseDispatchExecutorTests.cs",
         "testMethod": "SuccessfulDispatch_DoesNotThrowFirstChanceOceOnLeaseDisposeAsync",
-        "testLine": 138,
+        "testLine": 156,
         "testClass": "LeaseDispatchExecutorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/Workers/LeaseDispatchExecutorTests.cs",
         "testMethod": "NullArgs_ThrowAsync",
-        "testLine": 176,
+        "testLine": 194,
         "testClass": "LeaseDispatchExecutorTests",
         "linkSource": "Convention"
       }
@@ -50955,119 +51555,126 @@
       {
         "testFile": "tests/Whizbang.Core.Tests/Workers/OutboxDrainWorkerTests.cs",
         "testMethod": "OutboxDrainWorker_MultipleStreamsInOneBatch_DrainsConcurrentlyAcrossStreamsAsync",
-        "testLine": 184,
+        "testLine": 194,
+        "testClass": "OutboxDrainWorkerTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Workers/OutboxDrainWorkerTests.cs",
+        "testMethod": "OutboxDrainWorker_MultipleStreamsInOneBatch_IssuesOneMultiStreamFetchAsync",
+        "testLine": 282,
         "testClass": "OutboxDrainWorkerTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/Workers/OutboxDrainWorkerTests.cs",
         "testMethod": "OutboxDrainWorker_StreamWithManyRows_PublishesAsOneBulkCall_WhenStrategySupportsItAsync",
-        "testLine": 276,
+        "testLine": 379,
         "testClass": "OutboxDrainWorkerTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/Workers/OutboxDrainWorkerTests.cs",
         "testMethod": "OutboxDrainWorker_BulkResultsMixed_RoutesSuccessToCompletion_FailureToFailureChannelAsync",
-        "testLine": 361,
+        "testLine": 464,
         "testClass": "OutboxDrainWorkerTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/Workers/OutboxDrainWorkerTests.cs",
         "testMethod": "OutboxDrainWorker_BulkPublishThrows_RoutesAllRowsToFailureChannelAsync",
-        "testLine": 414,
+        "testLine": 517,
         "testClass": "OutboxDrainWorkerTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/Workers/OutboxDrainWorkerTests.cs",
         "testMethod": "OutboxDrainWorker_MaxConcurrentStreams_OneRestoresSerialCrossStreamDrainAsync",
-        "testLine": 466,
+        "testLine": 569,
         "testClass": "OutboxDrainWorkerTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/Workers/OutboxDrainWorkerTests.cs",
         "testMethod": "OutboxDrainWorker_OnStreamId_FetchesBatch_PublishesEach_EnqueuesCompletionAsync",
-        "testLine": 513,
+        "testLine": 616,
         "testClass": "OutboxDrainWorkerTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/Workers/OutboxDrainWorkerTests.cs",
         "testMethod": "OutboxDrainWorker_MoreRowsThanMaxPerStream_LoopsUntilEmptyAsync",
-        "testLine": 566,
+        "testLine": 669,
         "testClass": "OutboxDrainWorkerTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/Workers/OutboxDrainWorkerTests.cs",
         "testMethod": "OutboxDrainWorker_RefetchReturnsSameRows_ExitsWithoutDoublePublishAsync",
-        "testLine": 612,
+        "testLine": 715,
         "testClass": "OutboxDrainWorkerTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/Workers/OutboxDrainWorkerTests.cs",
         "testMethod": "OutboxDrainWorker_RepeatedStreamId_DrainerIsIdempotent_OnceCompletedAsync",
-        "testLine": 687,
+        "testLine": 790,
         "testClass": "OutboxDrainWorkerTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/Workers/OutboxDrainWorkerTests.cs",
         "testMethod": "OutboxDrainWorker_WithLifecycleDeps_FiresPreAndPostOutboxInline_AroundPublishAsync",
-        "testLine": 788,
+        "testLine": 891,
         "testClass": "OutboxDrainWorkerTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/Workers/OutboxDrainWorkerTests.cs",
         "testMethod": "OutboxDrainWorker_NoLifecycleDeps_PublishesWithoutLifecycle_NoOpAsync",
-        "testLine": 841,
+        "testLine": 944,
         "testClass": "OutboxDrainWorkerTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/Workers/OutboxDrainWorkerTests.cs",
         "testMethod": "OutboxDrainWorker_LifecycleReceptorThrows_PublishAndCompletionStillHappenAsync",
-        "testLine": 885,
+        "testLine": 988,
         "testClass": "OutboxDrainWorkerTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/Workers/OutboxDrainWorkerTests.cs",
         "testMethod": "OutboxDrainWorker_NoReceptorsRegistered_LifecycleShortCircuits_PublishStillFiresAsync",
-        "testLine": 975,
+        "testLine": 1078,
         "testClass": "OutboxDrainWorkerTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/Workers/OutboxDrainWorkerTests.cs",
         "testMethod": "OutboxDrainWorker_EmptyDestination_SkipsLifecycle_PublishStillFiresAsync",
-        "testLine": 1028,
+        "testLine": 1131,
         "testClass": "OutboxDrainWorkerTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/Workers/OutboxDrainWorkerTests.cs",
         "testMethod": "OutboxDrainWorker_PublishReturnsFailure_RoutesToFailureChannelAsync",
-        "testLine": 1090,
+        "testLine": 1193,
         "testClass": "OutboxDrainWorkerTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/Workers/OutboxDrainWorkerTests.cs",
         "testMethod": "OutboxDrainWorker_PublishThrows_RoutesToFailureChannelAsync",
-        "testLine": 1150,
+        "testLine": 1253,
         "testClass": "OutboxDrainWorkerTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/Workers/OutboxDrainWorkerTests.cs",
         "testMethod": "OutboxDrainWorker_LifecycleDeserializerThrows_PublishStillFiresAsync",
-        "testLine": 1209,
+        "testLine": 1312,
         "testClass": "OutboxDrainWorkerTests",
         "linkSource": "Convention"
       }
@@ -51664,6 +52271,13 @@
         "testLine": 171,
         "testClass": "SlidingWindowApplyBatchStrategyTests",
         "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Workers/SlidingWindowApplyBatchStrategyTests.cs",
+        "testMethod": "Append_WhenIdleSweepCompletedTheBufferItGrabbed_StillSucceedsAsync",
+        "testLine": 208,
+        "testClass": "SlidingWindowApplyBatchStrategyTests",
+        "linkSource": "Convention"
       }
     ],
     "SlidingWindowBatcher": [
@@ -51858,28 +52472,28 @@
       {
         "testFile": "tests/Whizbang.Core.Tests/Workers/SubscriptionExpansionWorkerTests.cs",
         "testMethod": "FirstBoot_BaselinesWholeCatalog_NoBackfillAsync",
-        "testLine": 35,
+        "testLine": 36,
         "testClass": "SubscriptionExpansionWorkerTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/Workers/SubscriptionExpansionWorkerTests.cs",
         "testMethod": "Expansion_BroadcastsStateOnlyBackfillAndMarksRequestedAsync",
-        "testLine": 48,
+        "testLine": 49,
         "testClass": "SubscriptionExpansionWorkerTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/Workers/SubscriptionExpansionWorkerTests.cs",
         "testMethod": "Disabled_RecordsPendingWithoutRequestingAsync",
-        "testLine": 75,
+        "testLine": 79,
         "testClass": "SubscriptionExpansionWorkerTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/Workers/SubscriptionExpansionWorkerTests.cs",
         "testMethod": "MissingTransport_LeavesPendingForNextBootAsync",
-        "testLine": 91,
+        "testLine": 95,
         "testClass": "SubscriptionExpansionWorkerTests",
         "linkSource": "Convention"
       }
@@ -52104,43 +52718,6 @@
         "testMethod": "MultipleDestinations_PreserveOrderAsync",
         "testLine": 44,
         "testClass": "TransportConsumerOptionsTests",
-        "linkSource": "Convention"
-      }
-    ],
-    "TransportConsumerWorker": [
-      {
-        "testFile": "tests/Whizbang.Core.Tests/Workers/TransportConsumerWorkerTests.cs",
-        "testMethod": "ExecuteAsync_SubscribesToAllDestinations_FromOptionsAsync",
-        "testLine": 27,
-        "testClass": "TransportConsumerWorkerTests",
-        "linkSource": "Convention"
-      },
-      {
-        "testFile": "tests/Whizbang.Core.Tests/Workers/TransportConsumerWorkerTests.cs",
-        "testMethod": "ExecuteAsync_WaitsForReadinessCheck_BeforeSubscribingAsync",
-        "testLine": 66,
-        "testClass": "TransportConsumerWorkerTests",
-        "linkSource": "Convention"
-      },
-      {
-        "testFile": "tests/Whizbang.Core.Tests/Workers/TransportConsumerWorkerTests.cs",
-        "testMethod": "PauseAllSubscriptionsAsync_PausesAllActiveSubscriptionsAsync",
-        "testLine": 118,
-        "testClass": "TransportConsumerWorkerTests",
-        "linkSource": "Convention"
-      },
-      {
-        "testFile": "tests/Whizbang.Core.Tests/Workers/TransportConsumerWorkerTests.cs",
-        "testMethod": "ResumeAllSubscriptionsAsync_ResumesAllPausedSubscriptionsAsync",
-        "testLine": 165,
-        "testClass": "TransportConsumerWorkerTests",
-        "linkSource": "Convention"
-      },
-      {
-        "testFile": "tests/Whizbang.Core.Tests/Workers/TransportConsumerWorkerTests.cs",
-        "testMethod": "StopAsync_DisposesAllSubscriptions_GracefullyAsync",
-        "testLine": 213,
-        "testClass": "TransportConsumerWorkerTests",
         "linkSource": "Convention"
       }
     ],
@@ -52518,6 +53095,43 @@
         "testMethod": "PublishBatchAsync_MixedNullAndNonNullStreamIds_GroupsCorrectlyAsync",
         "testLine": 1277,
         "testClass": "TransportPublishStrategyTests",
+        "linkSource": "Convention"
+      }
+    ],
+    "WorkerThreadPoolFloor": [
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Workers/WorkerThreadPoolFloorTests.cs",
+        "testMethod": "Compute_RaisesSmallContainerDefaultToTheFloorAsync",
+        "testLine": 30,
+        "testClass": "WorkerThreadPoolFloorTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Workers/WorkerThreadPoolFloorTests.cs",
+        "testMethod": "Compute_NeverLowersAnAlreadyHigherMinimumAsync",
+        "testLine": 39,
+        "testClass": "WorkerThreadPoolFloorTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Workers/WorkerThreadPoolFloorTests.cs",
+        "testMethod": "Compute_HonorsConfiguredFloorAndIgnoresNonPositiveAsync",
+        "testLine": 47,
+        "testClass": "WorkerThreadPoolFloorTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Workers/WorkerThreadPoolFloorTests.cs",
+        "testMethod": "Compute_ScalesWithProcessorCountAsync",
+        "testLine": 55,
+        "testClass": "WorkerThreadPoolFloorTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Workers/WorkerThreadPoolFloorTests.cs",
+        "testMethod": "AddWhizbangWorkers_AppliesTheFloor_ProductionWiringGuardAsync",
+        "testLine": 62,
+        "testClass": "WorkerThreadPoolFloorTests",
         "linkSource": "Convention"
       }
     ],
@@ -63016,99 +63630,106 @@
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/Routing/InboxRoutingStrategyTests.cs",
-        "testMethod": "SharedTopicInboxStrategy_GetSubscription_IncludesSystemCommandsInFilterAsync",
+        "testMethod": "SharedTopicInboxStrategy_GetSubscription_IncludesControlPlaneNamespaceAsync",
         "testLine": 85,
         "testClass": "InboxRoutingStrategyTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/Routing/InboxRoutingStrategyTests.cs",
+        "testMethod": "SharedTopicInboxStrategy_GetSubscription_IncludesSystemCommandsInFilterAsync",
+        "testLine": 101,
+        "testClass": "InboxRoutingStrategyTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Routing/InboxRoutingStrategyTests.cs",
         "testMethod": "SharedTopicInboxStrategy_GetSubscription_IncludesOwnedNamespacesInFilterAsync",
-        "testLine": 99,
+        "testLine": 115,
         "testClass": "InboxRoutingStrategyTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/Routing/InboxRoutingStrategyTests.cs",
         "testMethod": "SharedTopicInboxStrategy_GetSubscription_ReturnsRoutingPatternsMetadataAsync",
-        "testLine": 114,
+        "testLine": 130,
         "testClass": "InboxRoutingStrategyTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/Routing/InboxRoutingStrategyTests.cs",
         "testMethod": "SharedTopicInboxStrategy_GetSubscription_RoutingPatternsIncludesSystemAndOwnedAsync",
-        "testLine": 128,
-        "testClass": "InboxRoutingStrategyTests",
-        "linkSource": "Convention"
-      },
-      {
-        "testFile": "tests/Whizbang.Core.Tests/Routing/InboxRoutingStrategyTests.cs",
-        "testMethod": "SharedTopicInboxStrategy_GetSubscription_WildcardNamespace_ConvertsToHashPatternAsync",
         "testLine": 144,
         "testClass": "InboxRoutingStrategyTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/Routing/InboxRoutingStrategyTests.cs",
+        "testMethod": "SharedTopicInboxStrategy_GetSubscription_WildcardNamespace_ConvertsToHashPatternAsync",
+        "testLine": 160,
+        "testClass": "InboxRoutingStrategyTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Routing/InboxRoutingStrategyTests.cs",
         "testMethod": "SharedTopicInboxStrategy_SystemCommandNamespace_ReturnsCorrectValueAsync",
-        "testLine": 158,
+        "testLine": 174,
         "testClass": "InboxRoutingStrategyTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/Routing/InboxRoutingStrategyTests.cs",
         "testMethod": "DomainTopicInboxStrategy_GetSubscription_ReturnsDomainSpecificTopicAsync",
-        "testLine": 168,
+        "testLine": 184,
         "testClass": "InboxRoutingStrategyTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/Routing/InboxRoutingStrategyTests.cs",
         "testMethod": "DomainTopicInboxStrategy_GetSubscription_WithCustomSuffix_ReturnsCustomTopicAsync",
-        "testLine": 181,
+        "testLine": 197,
         "testClass": "InboxRoutingStrategyTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/Routing/InboxRoutingStrategyTests.cs",
         "testMethod": "DomainTopicInboxStrategy_GetSubscription_NoFilterExpression_WhenDomainSpecificAsync",
-        "testLine": 194,
+        "testLine": 210,
         "testClass": "InboxRoutingStrategyTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/Routing/InboxRoutingStrategyTests.cs",
         "testMethod": "DomainTopicInboxStrategy_GetSubscription_MultipleDomains_UsesFirstDomainAsync",
-        "testLine": 207,
+        "testLine": 223,
         "testClass": "InboxRoutingStrategyTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/Routing/InboxRoutingStrategyTests.cs",
         "testMethod": "DomainTopicInboxStrategy_GetSubscription_EmptyDomains_FallsBackToServiceNameAsync",
-        "testLine": 221,
+        "testLine": 237,
         "testClass": "InboxRoutingStrategyTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/Routing/InboxRoutingStrategyTests.cs",
         "testMethod": "SharedTopicInboxStrategy_GetSubscription_EmptyDomains_StillIncludesSystemCommandsAsync",
-        "testLine": 238,
+        "testLine": 254,
         "testClass": "InboxRoutingStrategyTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/Routing/InboxRoutingStrategyTests.cs",
         "testMethod": "SharedTopicInboxStrategy_GetSubscription_NullDomains_ThrowsArgumentNullExceptionAsync",
-        "testLine": 252,
+        "testLine": 268,
         "testClass": "InboxRoutingStrategyTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/Routing/InboxRoutingStrategyTests.cs",
         "testMethod": "DomainTopicInboxStrategy_GetSubscription_NullDomains_ThrowsArgumentNullExceptionAsync",
-        "testLine": 262,
+        "testLine": 278,
         "testClass": "InboxRoutingStrategyTests",
         "linkSource": "Convention"
       }
@@ -70207,6 +70828,13 @@
         "testLine": 16,
         "testClass": "TableStatisticsCollectorTests",
         "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Observability/TableStatisticsCollectorTests.cs",
+        "testMethod": "Collector_PublishesTableBloatRatioAsync",
+        "testLine": 75,
+        "testClass": "TableStatisticsCollectorTests",
+        "linkSource": "Convention"
       }
     ],
     "TableStatisticsMetrics": [
@@ -71305,85 +71933,185 @@
       {
         "testFile": "tests/Whizbang.Core.Tests/Messaging/CompositeInboxFanoutTests.cs",
         "testMethod": "TryExpand_IdentityComposite_ChildrenCarryOriginIdentityAsync",
-        "testLine": 111,
+        "testLine": 112,
         "testClass": "CompositeInboxFanoutTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/Messaging/CompositeInboxFanoutTests.cs",
         "testMethod": "TryExpand_IdentityComposite_SequenceCountMismatch_FailsAsync",
-        "testLine": 142,
+        "testLine": 144,
         "testClass": "CompositeInboxFanoutTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/Messaging/CompositeInboxFanoutTests.cs",
         "testMethod": "TryExpand_IdentityPreservingComposite_IdCountMismatch_FailsAsync",
-        "testLine": 161,
+        "testLine": 164,
         "testClass": "CompositeInboxFanoutTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/Messaging/CompositeInboxFanoutTests.cs",
         "testMethod": "TryExpand_ChildrenAreMarkedAsEventsAsync",
-        "testLine": 179,
+        "testLine": 183,
         "testClass": "CompositeInboxFanoutTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/Messaging/CompositeInboxFanoutTests.cs",
         "testMethod": "TryExpand_ChildrenCarryCompositeLineage_CausationIsCompositeMessageIdAsync",
-        "testLine": 191,
+        "testLine": 195,
         "testClass": "CompositeInboxFanoutTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/Messaging/CompositeInboxFanoutTests.cs",
         "testMethod": "TryExpand_ChildrenCarryNoRebroadcastFlagAsync",
-        "testLine": 214,
+        "testLine": 218,
         "testClass": "CompositeInboxFanoutTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/Messaging/CompositeInboxFanoutTests.cs",
         "testMethod": "TryExpand_CollectiveInnerEvent_ChildKeepsCollectiveFlagAsync",
-        "testLine": 226,
+        "testLine": 230,
         "testClass": "CompositeInboxFanoutTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/Messaging/CompositeInboxFanoutTests.cs",
         "testMethod": "TryExpand_OverCap_ReturnsCapExceededAsync",
-        "testLine": 245,
+        "testLine": 249,
         "testClass": "CompositeInboxFanoutTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/Messaging/CompositeInboxFanoutTests.cs",
         "testMethod": "TryExpand_NullInner_Atomic_ReturnsFailedAsync",
-        "testLine": 260,
+        "testLine": 264,
         "testClass": "CompositeInboxFanoutTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/Messaging/CompositeInboxFanoutTests.cs",
         "testMethod": "TryExpand_NullInner_Independent_DropsBadChildAndKeepsRestAsync",
-        "testLine": 273,
+        "testLine": 277,
         "testClass": "CompositeInboxFanoutTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/Messaging/CompositeInboxFanoutTests.cs",
         "testMethod": "TryExpand_NullInner_Independent_LogsTheDroppedChildAsync",
-        "testLine": 287,
+        "testLine": 291,
         "testClass": "CompositeInboxFanoutTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/Messaging/CompositeInboxFanoutTests.cs",
         "testMethod": "TryExpand_ReplacementInner_FansOutTheReplacementSetAsync",
-        "testLine": 304,
+        "testLine": 308,
         "testClass": "CompositeInboxFanoutTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/CompositeInboxFanoutTests.cs",
+        "testMethod": "TryExpand_RawComposite_ChildrenBuiltFromRawPayloadsAsync",
+        "testLine": 323,
+        "testClass": "CompositeInboxFanoutTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/CompositeInboxFanoutTests.cs",
+        "testMethod": "TryExpand_RawComposite_TypeNameCountMismatch_FailsAsync",
+        "testLine": 355,
+        "testClass": "CompositeInboxFanoutTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/CompositeInboxFanoutTests.cs",
+        "testMethod": "TryExpand_RawComposite_OverCap_ReturnsCapExceededAsync",
+        "testLine": 371,
+        "testClass": "CompositeInboxFanoutTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/CompositeInboxFanoutTests.cs",
+        "testMethod": "IsCompositeWireType_CatalogStampsComposite_ReturnsTrueAsync",
+        "testLine": 525,
+        "testClass": "CompositeInboxFanoutTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/CompositeInboxFanoutTests.cs",
+        "testMethod": "IsCompositeWireType_CatalogStampsPlainEvent_ReturnsFalseAsync",
+        "testLine": 534,
+        "testClass": "CompositeInboxFanoutTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/CompositeInboxFanoutTests.cs",
+        "testMethod": "IsCompositeWireType_TypeNotInCatalog_ReturnsFalseAsync",
+        "testLine": 543,
+        "testClass": "CompositeInboxFanoutTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/CompositeInboxFanoutTests.cs",
+        "testMethod": "IsCompositeWireType_NoMarkerResolver_ReturnsFalseAsync",
+        "testLine": 551,
+        "testClass": "CompositeInboxFanoutTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/CompositeInboxFanoutTests.cs",
+        "testMethod": "IsCompositeWireType_BlankTypeName_ReturnsFalseAsync",
+        "testLine": 559,
+        "testClass": "CompositeInboxFanoutTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/CompositeInboxFanoutTests.cs",
+        "testMethod": "IsCompositeWireType_GenericTypeName_ReturnsFalseAsync",
+        "testLine": 570,
+        "testClass": "CompositeInboxFanoutTests",
+        "linkSource": "Convention"
+      }
+    ],
+    "ControlPlaneTypeRegistry": [
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/ControlPlaneTypeRegistryTests.cs",
+        "testMethod": "FrameworkControlPlaneTypes_AreRegisteredByDefaultAsync",
+        "testLine": 24,
+        "testClass": "ControlPlaneTypeRegistryTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/ControlPlaneTypeRegistryTests.cs",
+        "testMethod": "DomainMessageType_IsNotControlPlaneAsync",
+        "testLine": 38,
+        "testClass": "ControlPlaneTypeRegistryTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/ControlPlaneTypeRegistryTests.cs",
+        "testMethod": "Matches_RegardlessOfAssemblyVersionDecorationAsync",
+        "testLine": 44,
+        "testClass": "ControlPlaneTypeRegistryTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/ControlPlaneTypeRegistryTests.cs",
+        "testMethod": "Register_IsIdempotentAndAcceptsConsumerTypesAsync",
+        "testLine": 54,
+        "testClass": "ControlPlaneTypeRegistryTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/ControlPlaneTypeRegistryTests.cs",
+        "testMethod": "UnknownOrEmptyName_IsNotControlPlaneAsync",
+        "testLine": 63,
+        "testClass": "ControlPlaneTypeRegistryTests",
         "linkSource": "Convention"
       }
     ],
@@ -73166,6 +73894,64 @@
         "linkSource": "Convention"
       }
     ],
+    "IntegrityRepairLedger": [
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/IntegrityRepairLedgerTests.cs",
+        "testMethod": "FirstSighting_ReportsAndRepairsAsync",
+        "testLine": 27,
+        "testClass": "IntegrityRepairLedgerTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/IntegrityRepairLedgerTests.cs",
+        "testMethod": "UnchangedDivergence_WithinCooldown_SuppressesReportAsync",
+        "testLine": 39,
+        "testClass": "IntegrityRepairLedgerTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/IntegrityRepairLedgerTests.cs",
+        "testMethod": "UnchangedDivergence_AfterCooldown_ReportsAgainAsync",
+        "testLine": 51,
+        "testClass": "IntegrityRepairLedgerTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/IntegrityRepairLedgerTests.cs",
+        "testMethod": "SignatureChange_ReportsImmediatelyAndResetsAttemptsAsync",
+        "testLine": 62,
+        "testClass": "IntegrityRepairLedgerTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/IntegrityRepairLedgerTests.cs",
+        "testMethod": "RepairBackoff_DoublesPerAttemptAsync",
+        "testLine": 81,
+        "testClass": "IntegrityRepairLedgerTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/IntegrityRepairLedgerTests.cs",
+        "testMethod": "RepairAttempts_CapExhausted_StopsRequestingAsync",
+        "testLine": 99,
+        "testClass": "IntegrityRepairLedgerTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/IntegrityRepairLedgerTests.cs",
+        "testMethod": "MarkHealed_ForgetsTheBucketAsync",
+        "testLine": 113,
+        "testClass": "IntegrityRepairLedgerTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/IntegrityRepairLedgerTests.cs",
+        "testMethod": "Bounded_EvictsTheOldestEntryAsync",
+        "testLine": 125,
+        "testClass": "IntegrityRepairLedgerTests",
+        "linkSource": "Convention"
+      }
+    ],
     "IntervalUnitOfWorkStrategy": [
       {
         "testFile": "tests/Whizbang.Core.Tests/Messaging/IntervalUnitOfWorkStrategyTests.cs",
@@ -74860,7 +75646,28 @@
       {
         "testFile": "tests/Whizbang.Core.Tests/Messaging/RedeliveryPumpTests.cs",
         "testMethod": "Publish_ChunksStreamsByMaxInnerEventsAsync",
-        "testLine": 66,
+        "testLine": 70,
+        "testClass": "RedeliveryPumpTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/RedeliveryPumpTests.cs",
+        "testMethod": "Publish_ChunksByRawBodyBytes_BelowTheCountBoundAsync",
+        "testLine": 97,
+        "testClass": "RedeliveryPumpTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/RedeliveryPumpTests.cs",
+        "testMethod": "Publish_SingleEventLargerThanByteBudget_StillShipsAloneAsync",
+        "testLine": 123,
+        "testClass": "RedeliveryPumpTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/RedeliveryPumpTests.cs",
+        "testMethod": "Publish_UnknownEventType_StillPublishesAsync",
+        "testLine": 140,
         "testClass": "RedeliveryPumpTests",
         "linkSource": "Convention"
       }
@@ -83157,7 +83964,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Transports.AzureServiceBus/AzureServiceBusTransport.cs",
-        "sourceLine": 1585,
+        "sourceLine": 1646,
         "sourceSymbol": "_ensureInfrastructureExistsAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -83229,6 +84036,33 @@
         "sourceLine": 216,
         "sourceSymbol": "receiver",
         "sourceType": "Method",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "AzureServiceBusTransportUnitTests.EnableReceiveLivenessWatchdog_DefaultsToTrueAsync": [
+      {
+        "sourceFile": "src/Whizbang.Transports.AzureServiceBus/AzureServiceBusOptions.cs",
+        "sourceLine": 270,
+        "sourceSymbol": "EnableReceiveLivenessWatchdog",
+        "sourceType": "Property",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "AzureServiceBusTransportUnitTests.ReceiveLivenessProbeInterval_DefaultsToSixtySecondsAsync": [
+      {
+        "sourceFile": "src/Whizbang.Transports.AzureServiceBus/AzureServiceBusOptions.cs",
+        "sourceLine": 280,
+        "sourceSymbol": "ReceiveLivenessProbeInterval",
+        "sourceType": "Property",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "AzureServiceBusTransportUnitTests.ReceiveLivenessSilenceThreshold_DefaultsToFiveMinutesAsync": [
+      {
+        "sourceFile": "src/Whizbang.Transports.AzureServiceBus/AzureServiceBusOptions.cs",
+        "sourceLine": 291,
+        "sourceSymbol": "ReceiveLivenessSilenceThreshold",
+        "sourceType": "Property",
         "linkSource": "XmlTag"
       }
     ],
@@ -83396,7 +84230,7 @@
     "SubscriptionNameDerivationTests.DeriveSubscriptionNameWithSubscriberNameMetadataUsesServiceNameAndTopicAsync": [
       {
         "sourceFile": "src/Whizbang.Transports.AzureServiceBus/AzureServiceBusTransport.cs",
-        "sourceLine": 1516,
+        "sourceLine": 1577,
         "sourceSymbol": "_deriveSubscriptionName",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -83405,7 +84239,7 @@
     "SubscriptionNameDerivationTests.DeriveSubscriptionNameWithHashWildcardDoesNotUseAsSubscriptionNameAsync": [
       {
         "sourceFile": "src/Whizbang.Transports.AzureServiceBus/AzureServiceBusTransport.cs",
-        "sourceLine": 1517,
+        "sourceLine": 1578,
         "sourceSymbol": "_deriveSubscriptionName",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -83414,7 +84248,7 @@
     "AzureServiceBusProvisioningPathTests.SubscribeAsync_SubscriberNameMetadata_DerivesSubscriptionNameAsync": [
       {
         "sourceFile": "src/Whizbang.Transports.AzureServiceBus/AzureServiceBusTransport.cs",
-        "sourceLine": 1518,
+        "sourceLine": 1579,
         "sourceSymbol": "_deriveSubscriptionName",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -83423,7 +84257,7 @@
     "AzureServiceBusProvisioningPathTests.SubscribeAsync_TopicAndSubscriptionMissing_CreatesBothAsync": [
       {
         "sourceFile": "src/Whizbang.Transports.AzureServiceBus/AzureServiceBusTransport.cs",
-        "sourceLine": 1584,
+        "sourceLine": 1645,
         "sourceSymbol": "_ensureInfrastructureExistsAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -83432,7 +84266,7 @@
     "AzureServiceBusProvisioningPathTests.SubscribeAsync_TopicCreate409Race_ContinuesToSubscriptionCreationAsync": [
       {
         "sourceFile": "src/Whizbang.Transports.AzureServiceBus/AzureServiceBusTransport.cs",
-        "sourceLine": 1586,
+        "sourceLine": 1647,
         "sourceSymbol": "_ensureInfrastructureExistsAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -83441,7 +84275,7 @@
     "AzureServiceBusProvisioningPathTests.SubscribeAsync_RoutingPatterns_AppliesSqlFilterRuleAsync": [
       {
         "sourceFile": "src/Whizbang.Transports.AzureServiceBus/AzureServiceBusTransport.cs",
-        "sourceLine": 1664,
+        "sourceLine": 1725,
         "sourceSymbol": "_applyRoutingPatternFilterAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -83450,7 +84284,7 @@
     "AzureServiceBusProvisioningPathTests.SubscribeAsync_RoutingPatternWithBareWildcard_TranslatesToPercentAsync": [
       {
         "sourceFile": "src/Whizbang.Transports.AzureServiceBus/AzureServiceBusTransport.cs",
-        "sourceLine": 1665,
+        "sourceLine": 1726,
         "sourceSymbol": "_applyRoutingPatternFilterAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -83459,7 +84293,7 @@
     "AzureServiceBusProvisioningPathTests.SubscribeAsync_RoutingPatternRuleCreationFails_ProceedsWithoutFilterAsync": [
       {
         "sourceFile": "src/Whizbang.Transports.AzureServiceBus/AzureServiceBusTransport.cs",
-        "sourceLine": 1666,
+        "sourceLine": 1727,
         "sourceSymbol": "_applyRoutingPatternFilterAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -83468,7 +84302,7 @@
     "AzureServiceBusTransportUnitTests.PublishAsync_WithAdminClient_EnsuresTopicExistsAsync": [
       {
         "sourceFile": "src/Whizbang.Transports.AzureServiceBus/AzureServiceBusTransport.cs",
-        "sourceLine": 1749,
+        "sourceLine": 1828,
         "sourceSymbol": "_ensureTopicExistsViaAdminAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -83477,7 +84311,7 @@
     "AzureServiceBusTransportUnitTests.PublishAsync_WithAdminClient_TopicAlreadyExists_SkipsCreationAsync": [
       {
         "sourceFile": "src/Whizbang.Transports.AzureServiceBus/AzureServiceBusTransport.cs",
-        "sourceLine": 1750,
+        "sourceLine": 1829,
         "sourceSymbol": "_ensureTopicExistsViaAdminAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -83486,7 +84320,7 @@
     "AzureServiceBusTransportUnitTests.PublishAsync_WithAdminClient_RaceCondition_HandlesGracefullyAsync": [
       {
         "sourceFile": "src/Whizbang.Transports.AzureServiceBus/AzureServiceBusTransport.cs",
-        "sourceLine": 1751,
+        "sourceLine": 1830,
         "sourceSymbol": "_ensureTopicExistsViaAdminAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -83543,6 +84377,21 @@
         "sourceSymbol": "EnsureTopicExistsAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
+      }
+    ],
+    "ServiceBusAdminClientWrapperTests.GetSubscriptionActiveMessageCountAsync_ReturnsActiveMessageCountAsync": [
+      {
+        "sourceFile": "src/Whizbang.Transports.AzureServiceBus/IServiceBusAdminClient.cs",
+        "sourceLine": 117,
+        "sourceSymbol": "GetSubscriptionActiveMessageCountAsync",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Transports.AzureServiceBus/ServiceBusAdminClientWrapper.cs",
+        "sourceSymbol": "ServiceBusAdminClientWrapper",
+        "sourceType": "Class",
+        "linkSource": "Convention"
       }
     ],
     "ServiceBusInfrastructureProvisionerTests.ProvisionOwnedDomainsLowercasesTopicNamesAsync": [
@@ -86244,6 +87093,42 @@
         "linkSource": "XmlTag"
       }
     ],
+    "NotificationConnectionPlanTests.Create_WithRegisteredDataSource_PrefersTheDataSourceAsync": [
+      {
+        "sourceFile": "src/Whizbang.Data.Postgres/Notifications/NotificationConnectionPlan.cs",
+        "sourceLine": 21,
+        "sourceSymbol": "NotificationConnectionPlan",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "NotificationConnectionPlanTests.Create_WithNullDataSourceWrapper_FallsBackToTheConnectionStringAsync": [
+      {
+        "sourceFile": "src/Whizbang.Data.Postgres/Notifications/NotificationConnectionPlan.cs",
+        "sourceLine": 22,
+        "sourceSymbol": "NotificationConnectionPlan",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "NotificationConnectionPlanTests.Create_WithNoDataSourceRegistration_UsesTheConnectionStringAsync": [
+      {
+        "sourceFile": "src/Whizbang.Data.Postgres/Notifications/NotificationConnectionPlan.cs",
+        "sourceLine": 23,
+        "sourceSymbol": "NotificationConnectionPlan",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "NotificationConnectionPlanTests.Create_WithNeitherPath_IsUnavailableAsync": [
+      {
+        "sourceFile": "src/Whizbang.Data.Postgres/Notifications/NotificationConnectionPlan.cs",
+        "sourceLine": 24,
+        "sourceSymbol": "NotificationConnectionPlan",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
     "PgSharedNotifyConnectionMetricsTests.SignalsReceived_OutboxPayload_TaggedCategoryOutboxAsync": [
       {
         "sourceFile": "src/Whizbang.Data.Postgres/Notifications/NotifyMetrics.cs",
@@ -87740,7 +88625,7 @@
     "EFCoreWorkCoordinatorTests.GetOrphanedLifecycleEventsAsync_DeserializesOrphanedEvent_AsJsonElementAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 2375,
+        "sourceLine": 2986,
         "sourceSymbol": "MessageEnvelope",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -87749,7 +88634,7 @@
     "EFCoreWorkCoordinatorTests.GetOrphanedLifecycleEventsAsync_FallsBackToJsonDocumentParse_WhenTypeResolverFailsAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 2376,
+        "sourceLine": 2987,
         "sourceSymbol": "MessageEnvelope",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -87758,7 +88643,7 @@
     "EFCoreWorkCoordinatorTests.GetOrphanedLifecycleEventsAsync_DeserializesEventData_WithTypeDiscriminatorAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 2377,
+        "sourceLine": 2988,
         "sourceSymbol": "MessageEnvelope",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -92749,7 +93634,7 @@
     "SecurityContextTimeoutTests.InboxDispatchWorker_SecurityContextHangs_TimesOutAndEnqueuesFailureAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/InboxDispatchWorker.cs",
-        "sourceLine": 938,
+        "sourceLine": 957,
         "sourceSymbol": "SecurityContextTimeoutSeconds",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -92772,7 +93657,7 @@
     "SecurityContextTimeoutTests.OutboxDrainWorker_SecurityContextHangs_TimesOutAndEnqueuesFailureAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/InboxDispatchWorker.cs",
-        "sourceLine": 939,
+        "sourceLine": 958,
         "sourceSymbol": "SecurityContextTimeoutSeconds",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -92795,7 +93680,7 @@
     "OutboxDrainWorkerGapTests.OutboxDrainWorkerOptions_Defaults_MatchDocumentedValuesAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/InboxDispatchWorker.cs",
-        "sourceLine": 940,
+        "sourceLine": 959,
         "sourceSymbol": "SecurityContextTimeoutSeconds",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -92804,21 +93689,21 @@
     "MaintenanceWorkerStuckRowSentinelTests.MaintenanceTick_SentinelDisabled_DoesNotInvokeSentinelMethodsAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-        "sourceLine": 325,
+        "sourceLine": 462,
         "sourceSymbol": "StuckRowSentinelEnabled",
         "sourceType": "Property",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-        "sourceLine": 338,
+        "sourceLine": 475,
         "sourceSymbol": "StuckRowSentinelMaxAttempts",
         "sourceType": "Property",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-        "sourceLine": 349,
+        "sourceLine": 486,
         "sourceSymbol": "StuckRowSentinelLimit",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -92827,14 +93712,14 @@
     "MaintenanceWorkerStuckRowSentinelTests.MaintenanceTick_NoStuckRows_EmitsNoSentinelWarningsAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-        "sourceLine": 326,
+        "sourceLine": 463,
         "sourceSymbol": "StuckRowSentinelEnabled",
         "sourceType": "Property",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-        "sourceLine": 337,
+        "sourceLine": 474,
         "sourceSymbol": "StuckRowSentinelMaxAttempts",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -92843,14 +93728,14 @@
     "MaintenanceWorkerStuckRowSentinelTests.MaintenanceTick_StuckOutboxRow_EmitsWarningPerRowAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-        "sourceLine": 336,
+        "sourceLine": 473,
         "sourceSymbol": "StuckRowSentinelMaxAttempts",
         "sourceType": "Property",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-        "sourceLine": 347,
+        "sourceLine": 484,
         "sourceSymbol": "StuckRowSentinelLimit",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -92866,7 +93751,7 @@
     "MaintenanceWorkerStuckRowSentinelTests.MaintenanceTick_MultipleStuckRows_OneWarningEachAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-        "sourceLine": 348,
+        "sourceLine": 485,
         "sourceSymbol": "StuckRowSentinelLimit",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -92978,7 +93863,7 @@
     "PublishTimeoutTests.OutboxDrainWorker_PublishBatchHangs_TimesOutAndEnqueuesFailurePerRowAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/OutboxDrainWorker.cs",
-        "sourceLine": 1094,
+        "sourceLine": 1225,
         "sourceSymbol": "PublishTimeoutSeconds",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -92987,7 +93872,7 @@
     "PublishTimeoutTests.OutboxDrainWorker_PublishSingularHangs_TimesOutAndEnqueuesFailureAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/OutboxDrainWorker.cs",
-        "sourceLine": 1095,
+        "sourceLine": 1226,
         "sourceSymbol": "PublishTimeoutSeconds",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -92996,7 +93881,7 @@
     "PublishTimeoutTests.OutboxDrainWorker_PublishStrategyIgnoresCt_StillTimesOutAndEnqueuesFailureAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/OutboxDrainWorker.cs",
-        "sourceLine": 1096,
+        "sourceLine": 1227,
         "sourceSymbol": "PublishTimeoutSeconds",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -93005,7 +93890,7 @@
     "OutboxDrainWorkerGapTests.OutboxDrainWorker_PublishTimeoutZero_SingularPath_PublishesAndCompletesAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/OutboxDrainWorker.cs",
-        "sourceLine": 1097,
+        "sourceLine": 1228,
         "sourceSymbol": "PublishTimeoutSeconds",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -93046,7 +93931,7 @@
     "PerspectiveWorkerDeepPathChannelTests.RequestImmediatePoll_CalledRepeatedly_CoalescesWithoutThrowingAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-        "sourceLine": 299,
+        "sourceLine": 304,
         "sourceSymbol": "RequestImmediatePoll",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -93055,7 +93940,7 @@
     "PerspectiveWorkerDeepPathChannelTests.Worker_WithNotificationListener_SubscribesCoalescesAndUnsubscribesAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-        "sourceLine": 300,
+        "sourceLine": 305,
         "sourceSymbol": "RequestImmediatePoll",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -93064,14 +93949,14 @@
     "PerspectiveWorkerStartupAndMaintenanceTests.Startup_RewindScanClean_QueriesExactlyOnceAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-        "sourceLine": 744,
+        "sourceLine": 749,
         "sourceSymbol": "_scanAndRepairRewindsOnStartupAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-        "sourceLine": 4272,
+        "sourceLine": 4278,
         "sourceSymbol": "PerspectiveStartupScanLog",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -93080,14 +93965,14 @@
     "PerspectiveWorkerStartupAndMaintenanceTests.Startup_RewindScanBlockingMode_RepollsUntilNoRewindCursorsRemainAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-        "sourceLine": 745,
+        "sourceLine": 750,
         "sourceSymbol": "_scanAndRepairRewindsOnStartupAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-        "sourceLine": 4274,
+        "sourceLine": 4280,
         "sourceSymbol": "PerspectiveStartupScanLog",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -93101,7 +93986,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-        "sourceLine": 1151,
+        "sourceLine": 1445,
         "sourceSymbol": "RewindCursorInfo",
         "sourceType": "Record",
         "linkSource": "XmlTag"
@@ -93110,7 +93995,7 @@
     "PerspectiveWorkerStartupAndMaintenanceTests.Startup_RewindScanDisabled_NeverQueriesAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-        "sourceLine": 746,
+        "sourceLine": 751,
         "sourceSymbol": "_scanAndRepairRewindsOnStartupAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -93119,7 +94004,7 @@
     "PerspectiveWorkerSecurityContextTests.PrePerspectiveDetached_WithSecurityProvider_EstablishesSecurityContextAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-        "sourceLine": 3740,
+        "sourceLine": 3746,
         "sourceSymbol": "_establishSecurityContextAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -93128,7 +94013,7 @@
     "PerspectiveWorkerSecurityContextTests.EstablishSecurityContext_WhenExtractorSucceeds_ButEnvelopeHasNoScope_UsesExtractorResultForMessageContextAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-        "sourceLine": 3741,
+        "sourceLine": 3747,
         "sourceSymbol": "_establishSecurityContextAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -93137,7 +94022,7 @@
     "PerspectiveWorkerSecurityContextTests.EstablishSecurityContext_WhenExtractorFails_FallsBackToEnvelopeGetCurrentScopeAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-        "sourceLine": 3742,
+        "sourceLine": 3748,
         "sourceSymbol": "_establishSecurityContextAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -93146,7 +94031,7 @@
     "PerspectiveWorkerStartupAndMaintenanceTests.Startup_RewindScanBackgroundMode_DoesNotRepollAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-        "sourceLine": 4273,
+        "sourceLine": 4279,
         "sourceSymbol": "PerspectiveStartupScanLog",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -93197,15 +94082,6 @@
         "linkSource": "XmlTag"
       }
     ],
-    "ServiceBusConsumerWorkerCoverageTests.StartAsync_WhenSubscribeFails_LogsAndRethrowsAsync": [
-      {
-        "sourceFile": "src/Whizbang.Core/Workers/ServiceBusConsumerWorker.cs",
-        "sourceLine": 28,
-        "sourceSymbol": "ServiceBusConsumerWorker",
-        "sourceType": "Class",
-        "linkSource": "XmlTag"
-      }
-    ],
     "ServiceBusConsumerWorkerCoverageTests.ExecuteAsync_WhenFatalErrorOccurs_LogsAndRethrowsAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/ServiceBusConsumerWorker.cs",
@@ -93215,52 +94091,61 @@
         "linkSource": "XmlTag"
       }
     ],
+    "ServiceBusConsumerWorkerDropGateTests.HandleMessage_CompositeWireType_NotDroppedByNoConsumerGateAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Workers/ServiceBusConsumerWorker.cs",
+        "sourceLine": 31,
+        "sourceSymbol": "ServiceBusConsumerWorker",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
     "ServiceBusConsumerWorkerTests.HandleMessage_InvokesPerspectives_BeforeScopeDisposalAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/ServiceBusConsumerWorker.cs",
-        "sourceLine": 183,
+        "sourceLine": 184,
         "sourceSymbol": "ExecuteAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Workers/ServiceBusConsumerWorker.cs",
-        "sourceLine": 556,
+        "sourceLine": 562,
         "sourceSymbol": "_serializeToNewInboxMessage",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Workers/ServiceBusConsumerWorker.cs",
-        "sourceLine": 696,
+        "sourceLine": 702,
         "sourceSymbol": "_extractStreamId",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Workers/ServiceBusConsumerWorker.cs",
-        "sourceLine": 716,
+        "sourceLine": 722,
         "sourceSymbol": "StopAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Workers/ServiceBusConsumerWorker.cs",
-        "sourceLine": 922,
+        "sourceLine": 928,
         "sourceSymbol": "ServiceBusConsumerOptions",
         "sourceType": "Class",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Workers/ServiceBusConsumerWorker.cs",
-        "sourceLine": 928,
+        "sourceLine": 934,
         "sourceSymbol": "List",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Workers/ServiceBusConsumerWorker.cs",
-        "sourceLine": 939,
+        "sourceLine": 945,
         "sourceSymbol": "TopicSubscription",
         "sourceType": "Record",
         "linkSource": "XmlTag"
@@ -93283,49 +94168,49 @@
     "ServiceBusConsumerWorkerTests.HandleMessage_AlreadyProcessed_SkipsPerspectiveInvocationAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/ServiceBusConsumerWorker.cs",
-        "sourceLine": 184,
+        "sourceLine": 185,
         "sourceSymbol": "ExecuteAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Workers/ServiceBusConsumerWorker.cs",
-        "sourceLine": 557,
+        "sourceLine": 563,
         "sourceSymbol": "_serializeToNewInboxMessage",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Workers/ServiceBusConsumerWorker.cs",
-        "sourceLine": 697,
+        "sourceLine": 703,
         "sourceSymbol": "_extractStreamId",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Workers/ServiceBusConsumerWorker.cs",
-        "sourceLine": 717,
+        "sourceLine": 723,
         "sourceSymbol": "StopAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Workers/ServiceBusConsumerWorker.cs",
-        "sourceLine": 923,
+        "sourceLine": 929,
         "sourceSymbol": "ServiceBusConsumerOptions",
         "sourceType": "Class",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Workers/ServiceBusConsumerWorker.cs",
-        "sourceLine": 929,
+        "sourceLine": 935,
         "sourceSymbol": "List",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Workers/ServiceBusConsumerWorker.cs",
-        "sourceLine": 940,
+        "sourceLine": 946,
         "sourceSymbol": "TopicSubscription",
         "sourceType": "Record",
         "linkSource": "XmlTag"
@@ -93524,16 +94409,16 @@
         "linkSource": "XmlTag"
       }
     ],
-    "TransportConsumerWorkerBulkInsertInvariantTests.BatchOf100SubscribedMessages_StoredViaSingleBulkInsertAsync": [
+    "TransportConsumerWorkerDropGateTests.BatchHandler_CompositeWireType_NotDroppedByNoConsumerGateAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/TransportConsumerWorker.cs",
-        "sourceLine": 426,
-        "sourceSymbol": "_handleMessageBatchAsync",
-        "sourceType": "Method",
+        "sourceLine": 45,
+        "sourceSymbol": "TransportConsumerWorker",
+        "sourceType": "Class",
         "linkSource": "XmlTag"
       }
     ],
-    "TransportConsumerWorkerBulkInsertInvariantTests.MixedBatch_DroppedTypesFilteredBeforeBulkInsertAsync": [
+    "TransportConsumerWorkerBulkInsertInvariantTests.BatchOf100SubscribedMessages_StoredViaSingleBulkInsertAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/TransportConsumerWorker.cs",
         "sourceLine": 427,
@@ -93542,10 +94427,19 @@
         "linkSource": "XmlTag"
       }
     ],
-    "TransportConsumerWorkerBulkInsertInvariantTests.BatchProcessing_CreatesExactlyOneScopePerBatchAsync": [
+    "TransportConsumerWorkerBulkInsertInvariantTests.MixedBatch_DroppedTypesFilteredBeforeBulkInsertAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/TransportConsumerWorker.cs",
         "sourceLine": 428,
+        "sourceSymbol": "_handleMessageBatchAsync",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "TransportConsumerWorkerBulkInsertInvariantTests.BatchProcessing_CreatesExactlyOneScopePerBatchAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Workers/TransportConsumerWorker.cs",
+        "sourceLine": 429,
         "sourceSymbol": "_handleMessageBatchAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -102575,10 +103469,19 @@
         "linkSource": "XmlTag"
       }
     ],
+    "CompositeInboxFanoutTests.IsCompositeWireType_CatalogStampsComposite_ReturnsTrueAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/CompositeInboxFanout.cs",
+        "sourceLine": 67,
+        "sourceSymbol": "IsCompositeWireType",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      }
+    ],
     "CompositeInboxFanoutTests.TryExpand_NullInner_Independent_LogsTheDroppedChildAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/CompositeInboxFanout.cs",
-        "sourceLine": 71,
+        "sourceLine": 107,
         "sourceSymbol": "TryExpand",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -104277,10 +105180,25 @@
         "linkSource": "XmlTag"
       }
     ],
+    "TypeDefinitionReconcilerTests.Reconcile_SecondInstanceInTheWindow_SkipsTheWholeWalkAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
+        "sourceLine": 769,
+        "sourceSymbol": "TryClaimTypeDefinitionReconcileAsync",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Fingerprint/TypeDefinitionReconciler.cs",
+        "sourceSymbol": "TypeDefinitionReconciler",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
     "CoordinatorRecordSurfaceTests.RewindCursorInfo_PositionalCtor_RoundTripsAllValuesAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-        "sourceLine": 1149,
+        "sourceLine": 1443,
         "sourceSymbol": "RewindCursorInfo",
         "sourceType": "Record",
         "linkSource": "XmlTag"
@@ -104289,7 +105207,7 @@
     "CoordinatorRecordSurfaceTests.RewindCursorInfo_NullsAreAllowedAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-        "sourceLine": 1150,
+        "sourceLine": 1444,
         "sourceSymbol": "RewindCursorInfo",
         "sourceType": "Record",
         "linkSource": "XmlTag"
@@ -104298,7 +105216,7 @@
     "EventFlagsTransportTests.OutboxMessage_Flags_DefaultsToNoneAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-        "sourceLine": 1454,
+        "sourceLine": 1748,
         "sourceSymbol": "Flags",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -104307,7 +105225,7 @@
     "EventFlagsTransportTests.OutboxMessage_Flags_AcceptsCollectiveAndCompositeAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-        "sourceLine": 1455,
+        "sourceLine": 1749,
         "sourceSymbol": "Flags",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -104316,7 +105234,7 @@
     "EventFlagsTransportTests.InboxMessage_Flags_DefaultsToNoneAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-        "sourceLine": 1541,
+        "sourceLine": 1835,
         "sourceSymbol": "Flags",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -104325,7 +105243,7 @@
     "EventFlagsTransportTests.InboxMessage_Flags_AcceptsCollectiveAndCompositeAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-        "sourceLine": 1542,
+        "sourceLine": 1836,
         "sourceSymbol": "Flags",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -104334,28 +105252,28 @@
     "MessageFailureTests.MessageFailure_WithReason_StoresReasonAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-        "sourceLine": 1606,
+        "sourceLine": 1900,
         "sourceSymbol": "MessageId",
         "sourceType": "Property",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-        "sourceLine": 1615,
+        "sourceLine": 1909,
         "sourceSymbol": "CompletedStatus",
         "sourceType": "Property",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-        "sourceLine": 1623,
+        "sourceLine": 1917,
         "sourceSymbol": "Error",
         "sourceType": "Property",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-        "sourceLine": 1633,
+        "sourceLine": 1927,
         "sourceSymbol": "Reason",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -104370,28 +105288,28 @@
     "MessageFailureTests.MessageFailure_WithoutReason_DefaultsToUnknownAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-        "sourceLine": 1607,
+        "sourceLine": 1901,
         "sourceSymbol": "MessageId",
         "sourceType": "Property",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-        "sourceLine": 1616,
+        "sourceLine": 1910,
         "sourceSymbol": "CompletedStatus",
         "sourceType": "Property",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-        "sourceLine": 1624,
+        "sourceLine": 1918,
         "sourceSymbol": "Error",
         "sourceType": "Property",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-        "sourceLine": 1634,
+        "sourceLine": 1928,
         "sourceSymbol": "Reason",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -104406,28 +105324,28 @@
     "MessageFailureTests.MessageFailure_AllReasonTypes_CanBeAssignedAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-        "sourceLine": 1608,
+        "sourceLine": 1902,
         "sourceSymbol": "MessageId",
         "sourceType": "Property",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-        "sourceLine": 1617,
+        "sourceLine": 1911,
         "sourceSymbol": "CompletedStatus",
         "sourceType": "Property",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-        "sourceLine": 1625,
+        "sourceLine": 1919,
         "sourceSymbol": "Error",
         "sourceType": "Property",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-        "sourceLine": 1635,
+        "sourceLine": 1929,
         "sourceSymbol": "Reason",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -104442,7 +105360,7 @@
     "WorkCoordinatorDtoSurfaceTests.PerspectiveCursorCompletion_ProcessedEventIds_DefaultsEmptyAndRoundTripsAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-        "sourceLine": 1904,
+        "sourceLine": 2198,
         "sourceSymbol": "EventsProcessed",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -104451,7 +105369,7 @@
     "PerspectiveApplyIdempotencyTests.RunAsync_RerunWithSameEvents_SkipsAllAndDoesNotReWriteAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-        "sourceLine": 1905,
+        "sourceLine": 2199,
         "sourceSymbol": "EventsProcessed",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -104460,7 +105378,7 @@
     "PerspectiveApplyIdempotencyTests.RunAsync_RerunWithMixOfAppliedAndNewEvents_AppliesOnlyNewAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-        "sourceLine": 1906,
+        "sourceLine": 2200,
         "sourceSymbol": "EventsProcessed",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -105467,6 +106385,21 @@
         "sourceSymbol": "ReceptorProcessingStatus",
         "sourceType": "Enum",
         "linkSource": "XmlTag"
+      }
+    ],
+    "CompositeInboxFanoutTests.TryExpand_RawComposite_ChildrenBuiltFromRawPayloadsAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/RedeliveryComposite.cs",
+        "sourceLine": 24,
+        "sourceSymbol": "IRawInnerComposite",
+        "sourceType": "Interface",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/CompositeInboxFanout.cs",
+        "sourceSymbol": "CompositeInboxFanout",
+        "sourceType": "Class",
+        "linkSource": "Convention"
       }
     ],
     "ScopedWorkCoordinatorStrategyTests.FlushAsync_BeforeDisposal_FlushesImmediatelyAsync": [
@@ -113805,6 +114738,110 @@
         "linkSource": "Convention"
       }
     ],
+    "ReceiveLivenessWatchdogTests.ProbeAsync_ActivityWithinThreshold_DoesNotProbeBacklogOrRecoverAsync": [
+      {
+        "sourceFile": "src/Whizbang.Transports.AzureServiceBus/ReceiveLivenessWatchdog.cs",
+        "sourceSymbol": "ReceiveLivenessWatchdog",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "ReceiveLivenessWatchdogTests.ProbeAsync_SilentPastThresholdWithBacklog_TriggersRecoveryAsync": [
+      {
+        "sourceFile": "src/Whizbang.Transports.AzureServiceBus/ReceiveLivenessWatchdog.cs",
+        "sourceSymbol": "ReceiveLivenessWatchdog",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "ReceiveLivenessWatchdogTests.ProbeAsync_SilentPastThresholdWithoutBacklog_RebaselinesInsteadOfRecoveringAsync": [
+      {
+        "sourceFile": "src/Whizbang.Transports.AzureServiceBus/ReceiveLivenessWatchdog.cs",
+        "sourceSymbol": "ReceiveLivenessWatchdog",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "ReceiveLivenessWatchdogTests.RecordActivity_ResetsSilenceWindowAsync": [
+      {
+        "sourceFile": "src/Whizbang.Transports.AzureServiceBus/ReceiveLivenessWatchdog.cs",
+        "sourceSymbol": "ReceiveLivenessWatchdog",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "ReceiveLivenessWatchdogTests.Track_ExistingSubscription_ResetsBaselineAsync": [
+      {
+        "sourceFile": "src/Whizbang.Transports.AzureServiceBus/ReceiveLivenessWatchdog.cs",
+        "sourceSymbol": "ReceiveLivenessWatchdog",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "ReceiveLivenessWatchdogTests.ProbeAsync_NothingTracked_NoOpAsync": [
+      {
+        "sourceFile": "src/Whizbang.Transports.AzureServiceBus/ReceiveLivenessWatchdog.cs",
+        "sourceSymbol": "ReceiveLivenessWatchdog",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "ReceiveLivenessWatchdogTests.ProbeAsync_MultipleStalledSubscriptions_SingleRecoveryPerSweepAsync": [
+      {
+        "sourceFile": "src/Whizbang.Transports.AzureServiceBus/ReceiveLivenessWatchdog.cs",
+        "sourceSymbol": "ReceiveLivenessWatchdog",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "ReceiveLivenessWatchdogTests.ProbeAsync_AfterRecovery_RebaselinesAllTrackedSubscriptionsAsync": [
+      {
+        "sourceFile": "src/Whizbang.Transports.AzureServiceBus/ReceiveLivenessWatchdog.cs",
+        "sourceSymbol": "ReceiveLivenessWatchdog",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "ReceiveLivenessWatchdogTests.ProbeAsync_BacklogProbeThrows_ContinuesToNextSubscriptionWithoutRecoveryAsync": [
+      {
+        "sourceFile": "src/Whizbang.Transports.AzureServiceBus/ReceiveLivenessWatchdog.cs",
+        "sourceSymbol": "ReceiveLivenessWatchdog",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "ReceiveLivenessWatchdogTests.Start_TimerTick_RunsSweepAndRecoversStalledSubscriptionAsync": [
+      {
+        "sourceFile": "src/Whizbang.Transports.AzureServiceBus/ReceiveLivenessWatchdog.cs",
+        "sourceSymbol": "ReceiveLivenessWatchdog",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "ReceiveLivenessWatchdogTests.Start_CalledTwice_IsIdempotentAsync": [
+      {
+        "sourceFile": "src/Whizbang.Transports.AzureServiceBus/ReceiveLivenessWatchdog.cs",
+        "sourceSymbol": "ReceiveLivenessWatchdog",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "ReceiveLivenessWatchdogTests.DisposeAsync_AfterStart_StopsTheLoopAsync": [
+      {
+        "sourceFile": "src/Whizbang.Transports.AzureServiceBus/ReceiveLivenessWatchdog.cs",
+        "sourceSymbol": "ReceiveLivenessWatchdog",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "ReceiveLivenessWatchdogTests.DisposeAsync_CalledTwice_IsIdempotentAsync": [
+      {
+        "sourceFile": "src/Whizbang.Transports.AzureServiceBus/ReceiveLivenessWatchdog.cs",
+        "sourceSymbol": "ReceiveLivenessWatchdog",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
     "ServiceBusAdminClientWrapperTests.Constructor_NullAdminClient_ThrowsArgumentNullExceptionAsync": [
       {
         "sourceFile": "src/Whizbang.Transports.AzureServiceBus/ServiceBusAdminClientWrapper.cs",
@@ -113886,6 +114923,22 @@
       }
     ],
     "ServiceBusAdminClientWrapperTests.DeleteSubscriptionAsync_PassesNamesAsync": [
+      {
+        "sourceFile": "src/Whizbang.Transports.AzureServiceBus/ServiceBusAdminClientWrapper.cs",
+        "sourceSymbol": "ServiceBusAdminClientWrapper",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "ServiceBusAdminClientWrapperTests.GetSubscriptionActiveMessageCountAsync_PassesArgumentsAndCancellationTokenAsync": [
+      {
+        "sourceFile": "src/Whizbang.Transports.AzureServiceBus/ServiceBusAdminClientWrapper.cs",
+        "sourceSymbol": "ServiceBusAdminClientWrapper",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "ServiceBusAdminClientWrapperTests.GetSubscriptionActiveMessageCountAsync_AdminClientThrows_PropagatesExceptionAsync": [
       {
         "sourceFile": "src/Whizbang.Transports.AzureServiceBus/ServiceBusAdminClientWrapper.cs",
         "sourceSymbol": "ServiceBusAdminClientWrapper",
@@ -119645,6 +120698,14 @@
         "linkSource": "Convention"
       }
     ],
+    "EFCoreServiceRegistrationGeneratorTests.Generator_SchemaExtensions_RetryPathClearsStaleTransactionEnlistmentAsync": [
+      {
+        "sourceFile": "src/Whizbang.Data.EFCore.Postgres.Generators/EFCoreServiceRegistrationGenerator.cs",
+        "sourceSymbol": "EFCoreServiceRegistrationGenerator",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
     "EFCoreServiceRegistrationGeneratorTests.Generator_SchemaExtensions_UsesXactLockWithTransactionAndRetryAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres.Generators/EFCoreServiceRegistrationGenerator.cs",
@@ -121925,6 +122986,22 @@
         "linkSource": "Convention"
       }
     ],
+    "MessageRegistryGeneratorTests.MessageRegistryGenerator_DispatchInTopLevelStatements_DoesNotCrashAsync": [
+      {
+        "sourceFile": "src/Whizbang.Generators/MessageRegistryGenerator.cs",
+        "sourceSymbol": "MessageRegistryGenerator",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "MessageRegistryGeneratorTests.MessageRegistryGenerator_DispatchInsideRecord_DoesNotCrashAsync": [
+      {
+        "sourceFile": "src/Whizbang.Generators/MessageRegistryGenerator.cs",
+        "sourceSymbol": "MessageRegistryGenerator",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
     "MessageTagDiscoveryGeneratorTests.Generator_WithNotificationTag_GeneratesRegistryAsync": [
       {
         "sourceFile": "src/Whizbang.Generators/MessageTagDiscoveryGenerator.cs",
@@ -123430,6 +124507,30 @@
       }
     ],
     "PerspectiveRunnerGeneratorTests.PerspectiveRunnerGenerator_EventWithInheritedStreamId_GeneratesExtractStreamIdAsync": [
+      {
+        "sourceFile": "src/Whizbang.Generators/PerspectiveRunnerGenerator.cs",
+        "sourceSymbol": "PerspectiveRunnerGenerator",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "PerspectiveRunnerGeneratorTests.PerspectiveRunnerGenerator_CreateEmptyModel_UsesDirectConstructionWithoutReflectionAsync": [
+      {
+        "sourceFile": "src/Whizbang.Generators/PerspectiveRunnerGenerator.cs",
+        "sourceSymbol": "PerspectiveRunnerGenerator",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "PerspectiveRunnerGeneratorTests.PerspectiveRunnerGenerator_StronglyTypedStreamId_ConstructsViaFromFactoryAsync": [
+      {
+        "sourceFile": "src/Whizbang.Generators/PerspectiveRunnerGenerator.cs",
+        "sourceSymbol": "PerspectiveRunnerGenerator",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "PerspectiveRunnerGeneratorTests.PerspectiveRunnerGenerator_RequiredModelMembers_AreInitializedSoGeneratedCodeCompilesAsync": [
       {
         "sourceFile": "src/Whizbang.Generators/PerspectiveRunnerGenerator.cs",
         "sourceSymbol": "PerspectiveRunnerGenerator",
@@ -130453,6 +131554,38 @@
         "linkSource": "Convention"
       }
     ],
+    "CoordinatorIntegrityRepairLedgerTests.DelegatesEachCallToTheCoordinatorAsync": [
+      {
+        "sourceFile": "src/Whizbang.Data.EFCore.Postgres/CoordinatorIntegrityRepairLedger.cs",
+        "sourceSymbol": "CoordinatorIntegrityRepairLedger",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "CoordinatorIntegrityRepairLedgerTests.WithoutACoordinator_ReportFailsOpenAndRepairFailsClosedAsync": [
+      {
+        "sourceFile": "src/Whizbang.Data.EFCore.Postgres/CoordinatorIntegrityRepairLedger.cs",
+        "sourceSymbol": "CoordinatorIntegrityRepairLedger",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "CoordinatorIntegrityRepairLedgerTests.ReturnsTheCoordinatorsAnswer_NotAnOptimisticDefaultAsync": [
+      {
+        "sourceFile": "src/Whizbang.Data.EFCore.Postgres/CoordinatorIntegrityRepairLedger.cs",
+        "sourceSymbol": "CoordinatorIntegrityRepairLedger",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "CoordinatorIntegrityRepairLedgerTests.WhenTheLedgerThrows_TheAuditKeepsRunningWithTheSafeDefaultsAsync": [
+      {
+        "sourceFile": "src/Whizbang.Data.EFCore.Postgres/CoordinatorIntegrityRepairLedger.cs",
+        "sourceSymbol": "CoordinatorIntegrityRepairLedger",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
     "DbContextInitializationRegistryTests.Register_AddsInitializer_IncreasesCountAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/DbContextInitializationRegistry.cs",
@@ -132221,6 +133354,14 @@
         "linkSource": "Convention"
       }
     ],
+    "IntegrityCheckpointReceptorTests.ManyConfirmedGaps_ReportsAreCapped_WithOneSummaryAsync": [
+      {
+        "sourceFile": "src/Whizbang.Data.EFCore.Postgres/IntegrityCheckpointReceptor.cs",
+        "sourceSymbol": "IntegrityCheckpointReceptor",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
     "IntegrityCheckpointReceptorTests.DeficitPersistingPastNextCheckpoint_ConfirmsAndReportsAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/IntegrityCheckpointReceptor.cs",
@@ -132237,7 +133378,23 @@
         "linkSource": "Convention"
       }
     ],
+    "IntegrityCheckpointReceptorTests.ByDefault_ConfirmedGap_RepairsWithoutPublishingAReportAsync": [
+      {
+        "sourceFile": "src/Whizbang.Data.EFCore.Postgres/IntegrityCheckpointReceptor.cs",
+        "sourceSymbol": "IntegrityCheckpointReceptor",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
     "IntegrityCheckpointReceptorTests.AutoRepairCapped_SendsTargetedWireOnlyRepairRequestAsync": [
+      {
+        "sourceFile": "src/Whizbang.Data.EFCore.Postgres/IntegrityCheckpointReceptor.cs",
+        "sourceSymbol": "IntegrityCheckpointReceptor",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "IntegrityCheckpointReceptorTests.ConfirmedGap_NoOriginRequestTopic_WithholdsRepairRequestAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/IntegrityCheckpointReceptor.cs",
         "sourceSymbol": "IntegrityCheckpointReceptor",
@@ -132301,6 +133458,22 @@
         "linkSource": "Convention"
       }
     ],
+    "IntegrityManifestReceptorTests.ManifestReceptor_MassDivergence_ReportsAreCapped_WithOneSummaryAsync": [
+      {
+        "sourceFile": "src/Whizbang.Data.EFCore.Postgres/IntegrityManifestReceptors.cs",
+        "sourceSymbol": "IntegrityManifestReceptor",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "IntegrityManifestReceptorTests.ManifestReceptor_ByDefault_DetectsAndRepairsButPublishesNoReportsAsync": [
+      {
+        "sourceFile": "src/Whizbang.Data.EFCore.Postgres/IntegrityManifestReceptors.cs",
+        "sourceSymbol": "IntegrityManifestReceptor",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
     "IntegrityManifestReceptorTests.ManifestReceptor_Divergence_ReportsAndCappedRepairsAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/IntegrityManifestReceptors.cs",
@@ -132326,6 +133499,38 @@
       }
     ],
     "IntegrityManifestReceptorTests.RequestReceptor_TypesLevelWithRecompute_RollsUpComputedRowsAsync": [
+      {
+        "sourceFile": "src/Whizbang.Data.EFCore.Postgres/IntegrityManifestReceptors.cs",
+        "sourceSymbol": "IntegrityManifestReceptor",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "IntegrityManifestReceptorTests.RequestReceptor_TypesLevelRecompute_RollsUpAtTheStoreAsync": [
+      {
+        "sourceFile": "src/Whizbang.Data.EFCore.Postgres/IntegrityManifestReceptors.cs",
+        "sourceSymbol": "IntegrityManifestReceptor",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "IntegrityManifestReceptorTests.RequestReceptor_ConcurrentRequests_AnswerOneAtATimeAsync": [
+      {
+        "sourceFile": "src/Whizbang.Data.EFCore.Postgres/IntegrityManifestReceptors.cs",
+        "sourceSymbol": "IntegrityManifestReceptor",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "IntegrityManifestReceptorTests.ManifestReceptor_TypeLevelRecomputed_UsesStoreRollUpAsync": [
+      {
+        "sourceFile": "src/Whizbang.Data.EFCore.Postgres/IntegrityManifestReceptors.cs",
+        "sourceSymbol": "IntegrityManifestReceptor",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "IntegrityManifestReceptorTests.ManifestReceptor_ConcurrentManifests_CompareOneAtATimeAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/IntegrityManifestReceptors.cs",
         "sourceSymbol": "IntegrityManifestReceptor",
@@ -132366,6 +133571,166 @@
       }
     ],
     "IntegrityManifestReceptorTests.ManifestReceptor_StreamLevel_RecomputedManifest_ComparesAgainstRecomputeAsync": [
+      {
+        "sourceFile": "src/Whizbang.Data.EFCore.Postgres/IntegrityManifestReceptors.cs",
+        "sourceSymbol": "IntegrityManifestReceptor",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "IntegrityManifestReceptorTests.ManifestReceptor_Divergence_BatchesRepairsIntoOneDirectedRequestAsync": [
+      {
+        "sourceFile": "src/Whizbang.Data.EFCore.Postgres/IntegrityManifestReceptors.cs",
+        "sourceSymbol": "IntegrityManifestReceptor",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "IntegrityManifestReceptorTests.ManifestReceptor_RepeatedManifest_SuppressesReportsAndRepairsAsync": [
+      {
+        "sourceFile": "src/Whizbang.Data.EFCore.Postgres/IntegrityManifestReceptors.cs",
+        "sourceSymbol": "IntegrityManifestReceptor",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "IntegrityManifestReceptorTests.ManifestReceptor_UnknownOriginRequestTopic_SkipsRepairPublishAsync": [
+      {
+        "sourceFile": "src/Whizbang.Data.EFCore.Postgres/IntegrityManifestReceptors.cs",
+        "sourceSymbol": "IntegrityManifestReceptor",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "IntegrityManifestReceptorTests.ManifestReceptor_TypeLevelMismatch_UnknownOriginTopic_SkipsDrillDownAsync": [
+      {
+        "sourceFile": "src/Whizbang.Data.EFCore.Postgres/IntegrityManifestReceptors.cs",
+        "sourceSymbol": "IntegrityManifestReceptor",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "IntegrityManifestReceptorTests.ManifestReceptor_HealedBucket_ForgetsLedgerStateAsync": [
+      {
+        "sourceFile": "src/Whizbang.Data.EFCore.Postgres/IntegrityManifestReceptors.cs",
+        "sourceSymbol": "IntegrityManifestReceptor",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "IntegrityManifestReceptorTests.RequestReceptor_StampsTheOriginGeneration_OnEveryAnswerAsync": [
+      {
+        "sourceFile": "src/Whizbang.Data.EFCore.Postgres/IntegrityManifestReceptors.cs",
+        "sourceSymbol": "IntegrityManifestReceptor",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "IntegrityManifestReceptorTests.ManifestReceptor_GenerationChanged_ResetsAndSkipsTheComparisonAsync": [
+      {
+        "sourceFile": "src/Whizbang.Data.EFCore.Postgres/IntegrityManifestReceptors.cs",
+        "sourceSymbol": "IntegrityManifestReceptor",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "IntegrityManifestReceptorTests.ManifestReceptor_GenerationUnchanged_ComparesNormallyAsync": [
+      {
+        "sourceFile": "src/Whizbang.Data.EFCore.Postgres/IntegrityManifestReceptors.cs",
+        "sourceSymbol": "IntegrityManifestReceptor",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "IntegrityManifestReceptorTests.ManifestReceptor_EqualCountDifferentFold_AlarmsButNeverRequestsRepairAsync": [
+      {
+        "sourceFile": "src/Whizbang.Data.EFCore.Postgres/IntegrityManifestReceptors.cs",
+        "sourceSymbol": "IntegrityManifestReceptor",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "IntegrityManifestReceptorTests.ManifestReceptor_LocalExtra_AlarmsButNeverRequestsRepairAsync": [
+      {
+        "sourceFile": "src/Whizbang.Data.EFCore.Postgres/IntegrityManifestReceptors.cs",
+        "sourceSymbol": "IntegrityManifestReceptor",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "IntegrityManifestReceptorTests.ManifestReceptor_WindowedManifest_RangeBoundsTheRepairAsync": [
+      {
+        "sourceFile": "src/Whizbang.Data.EFCore.Postgres/IntegrityManifestReceptors.cs",
+        "sourceSymbol": "IntegrityManifestReceptor",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "IntegrityManifestReceptorTests.ManifestReceptor_CleanCompleteWindow_AdvancesTheSealAsync": [
+      {
+        "sourceFile": "src/Whizbang.Data.EFCore.Postgres/IntegrityManifestReceptors.cs",
+        "sourceSymbol": "IntegrityManifestReceptor",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "IntegrityManifestReceptorTests.ManifestReceptor_WindowedMismatch_KeepsTheSeal_AndDrillsDownWindowedAsync": [
+      {
+        "sourceFile": "src/Whizbang.Data.EFCore.Postgres/IntegrityManifestReceptors.cs",
+        "sourceSymbol": "IntegrityManifestReceptor",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "IntegrityManifestReceptorTests.ManifestReceptor_MultiChunkWindow_NeverAdvancesTheSealAsync": [
+      {
+        "sourceFile": "src/Whizbang.Data.EFCore.Postgres/IntegrityManifestReceptors.cs",
+        "sourceSymbol": "IntegrityManifestReceptor",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "IntegrityManifestReceptorTests.RequestReceptor_WindowedTypesAsk_AnswersFromTheWindowedRead_WithTheWatermarkAsync": [
+      {
+        "sourceFile": "src/Whizbang.Data.EFCore.Postgres/IntegrityManifestReceptors.cs",
+        "sourceSymbol": "IntegrityManifestReceptor",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "IntegrityManifestReceptorTests.RequestReceptor_WindowedQuietWindow_StillAnswers_SoTheSealCanAdvanceAsync": [
+      {
+        "sourceFile": "src/Whizbang.Data.EFCore.Postgres/IntegrityManifestReceptors.cs",
+        "sourceSymbol": "IntegrityManifestReceptor",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "IntegrityManifestReceptorTests.RequestReceptor_WindowedNothingNewSettled_StaysSilentAsync": [
+      {
+        "sourceFile": "src/Whizbang.Data.EFCore.Postgres/IntegrityManifestReceptors.cs",
+        "sourceSymbol": "IntegrityManifestReceptor",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "IntegrityManifestReceptorTests.RequestReceptor_WindowedStreamsAsk_CarriesTheResumeCursorAsync": [
+      {
+        "sourceFile": "src/Whizbang.Data.EFCore.Postgres/IntegrityManifestReceptors.cs",
+        "sourceSymbol": "IntegrityManifestReceptor",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "IntegrityManifestReceptorTests.RequestReceptor_WindowedButEngineCannotWindow_FallsBackToTheFullAnswerAsync": [
+      {
+        "sourceFile": "src/Whizbang.Data.EFCore.Postgres/IntegrityManifestReceptors.cs",
+        "sourceSymbol": "IntegrityManifestReceptor",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "IntegrityManifestReceptorTests.ManifestReceptor_ReportOnly_StillPublishesReportsAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/IntegrityManifestReceptors.cs",
         "sourceSymbol": "IntegrityManifestReceptor",
@@ -134549,6 +135914,22 @@
         "linkSource": "Convention"
       }
     ],
+    "RedeliveryRequestReceptorTests.Receptor_PagesWideSelections_KeysetAdvancesAndEverythingPublishesAsync": [
+      {
+        "sourceFile": "src/Whizbang.Data.EFCore.Postgres/RedeliveryRequestReceptor.cs",
+        "sourceSymbol": "RedeliveryRequestReceptor",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "RedeliveryRequestReceptorTests.Receptor_ConcurrentRequests_BuildOneAtATimeAsync": [
+      {
+        "sourceFile": "src/Whizbang.Data.EFCore.Postgres/RedeliveryRequestReceptor.cs",
+        "sourceSymbol": "RedeliveryRequestReceptor",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
     "RedeliveryRequestReceptorTests.Receptor_EmptySelection_PublishesNothingAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/RedeliveryRequestReceptor.cs",
@@ -135413,7 +136794,7 @@
         "linkSource": "Convention"
       }
     ],
-    "WhizbangDatabaseInitializerServiceTests.NonBlocking_InitFailure_GateStaysClosedAsync": [
+    "WhizbangDatabaseInitializerServiceTests.NonBlocking_InitFailure_RetriesUntilSuccessAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/WhizbangDatabaseInitializerService.cs",
         "sourceSymbol": "WhizbangDatabaseInitializerService",
@@ -135421,7 +136802,15 @@
         "linkSource": "Convention"
       }
     ],
-    "WhizbangDatabaseInitializerServiceTests.NonBlocking_InitFailure_DrivesLifecycleFaultAsync": [
+    "WhizbangDatabaseInitializerServiceTests.NonBlocking_InitFailure_GateStaysClosedWhileRetrying_ShutdownStopsTheLoopAsync": [
+      {
+        "sourceFile": "src/Whizbang.Data.EFCore.Postgres/WhizbangDatabaseInitializerService.cs",
+        "sourceSymbol": "WhizbangDatabaseInitializerService",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "WhizbangDatabaseInitializerServiceTests.NonBlocking_InitFailure_DoesNotFaultLifecycle_WhileRetryingAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/WhizbangDatabaseInitializerService.cs",
         "sourceSymbol": "WhizbangDatabaseInitializerService",
@@ -135437,7 +136826,7 @@
         "linkSource": "Convention"
       }
     ],
-    "WhizbangDatabaseInitializerServiceTests.NonBlocking_MigrationTimeout_GateStaysClosedAsync": [
+    "WhizbangDatabaseInitializerServiceTests.NonBlocking_MigrationTimeout_RetriesAndRecoversAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/WhizbangDatabaseInitializerService.cs",
         "sourceSymbol": "WhizbangDatabaseInitializerService",
@@ -140613,6 +142002,14 @@
         "linkSource": "Convention"
       }
     ],
+    "InboxDrainWorkerTests.InboxDrainWorker_EmptyGuidStreamId_IsDrainedUnderItsMessageIdAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Workers/InboxDrainWorker.cs",
+        "sourceSymbol": "InboxDrainWorker",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
     "InboxHandlerWorkerTests.Constructor_ThrowsOnNullScopeFactoryAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/InboxHandlerWorker.cs",
@@ -140717,6 +142114,22 @@
         "linkSource": "Convention"
       }
     ],
+    "IntegrityAuditWorkerTests.ClaimDenied_SkipsTheWholeCycleAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Workers/IntegrityAuditWorker.cs",
+        "sourceSymbol": "IntegrityAuditWorker",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "IntegrityAuditWorkerTests.ClaimGranted_RunsAndPassesHalfTheIntervalAsWindowAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Workers/IntegrityAuditWorker.cs",
+        "sourceSymbol": "IntegrityAuditWorker",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
     "IntegrityAuditWorkerTests.DefaultCycle_RequestsTypeLevelTableManifests_NoVerifyAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/IntegrityAuditWorker.cs",
@@ -140734,6 +142147,54 @@
       }
     ],
     "IntegrityAuditWorkerTests.SweepDisabled_NeverVerifiesAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Workers/IntegrityAuditWorker.cs",
+        "sourceSymbol": "IntegrityAuditWorker",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "IntegrityAuditWorkerTests.SweepCycle_AlsoVerifiesTheSealedEpochsAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Workers/IntegrityAuditWorker.cs",
+        "sourceSymbol": "IntegrityAuditWorker",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "IntegrityAuditWorkerTests.SteadyCycle_NeverVerifiesEpochsAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Workers/IntegrityAuditWorker.cs",
+        "sourceSymbol": "IntegrityAuditWorker",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "IntegrityAuditWorkerTests.CronScheduledSweep_DisablesTheCounterSweepAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Workers/IntegrityAuditWorker.cs",
+        "sourceSymbol": "IntegrityAuditWorker",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "IntegrityAuditWorkerTests.RunSweepOnceAsync_ForcesTheFullSweep_RegardlessOfTheCounterAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Workers/IntegrityAuditWorker.cs",
+        "sourceSymbol": "IntegrityAuditWorker",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "IntegrityAuditWorkerTests.DefaultCycle_AsksWindowed_FromTheStoredSealAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Workers/IntegrityAuditWorker.cs",
+        "sourceSymbol": "IntegrityAuditWorker",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "IntegrityAuditWorkerTests.SweepCycle_AsksFullHistory_NotWindowedAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/IntegrityAuditWorker.cs",
         "sourceSymbol": "IntegrityAuditWorker",
@@ -140822,6 +142283,14 @@
       }
     ],
     "IntegrityCheckpointWorkerTests.RunCheckpointOnce_TransportButNoResolvableTypes_FallsBackToDispatcherAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Workers/IntegrityCheckpointWorker.cs",
+        "sourceSymbol": "IntegrityCheckpointWorker",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "IntegrityCheckpointWorkerTests.ControlPlaneDestination_For_StampsSessionAndRoutingKeyAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/IntegrityCheckpointWorker.cs",
         "sourceSymbol": "IntegrityCheckpointWorker",
@@ -141166,6 +142635,14 @@
       }
     ],
     "OutboxDrainWorkerTests.OutboxDrainWorker_MultipleStreamsInOneBatch_DrainsConcurrentlyAcrossStreamsAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Workers/OutboxDrainWorker.cs",
+        "sourceSymbol": "OutboxDrainWorker",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "OutboxDrainWorkerTests.OutboxDrainWorker_MultipleStreamsInOneBatch_IssuesOneMultiStreamFetchAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/OutboxDrainWorker.cs",
         "sourceSymbol": "OutboxDrainWorker",
@@ -141894,6 +143371,14 @@
       }
     ],
     "SlidingWindowApplyBatchStrategyTests.FlushAndStopAsync_CallerCancelled_CancelsStopCtsAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Workers/SlidingWindowApplyBatchStrategy.cs",
+        "sourceSymbol": "SlidingWindowApplyBatchStrategy",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "SlidingWindowApplyBatchStrategyTests.Append_WhenIdleSweepCompletedTheBufferItGrabbed_StillSucceedsAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/SlidingWindowApplyBatchStrategy.cs",
         "sourceSymbol": "SlidingWindowApplyBatchStrategy",
@@ -142705,6 +144190,46 @@
       {
         "sourceFile": "src/Whizbang.Core/Workers/TransportPublishStrategy.cs",
         "sourceSymbol": "TransportPublishStrategy",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "WorkerThreadPoolFloorTests.Compute_RaisesSmallContainerDefaultToTheFloorAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Workers/WorkerThreadPoolFloor.cs",
+        "sourceSymbol": "WorkerThreadPoolFloor",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "WorkerThreadPoolFloorTests.Compute_NeverLowersAnAlreadyHigherMinimumAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Workers/WorkerThreadPoolFloor.cs",
+        "sourceSymbol": "WorkerThreadPoolFloor",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "WorkerThreadPoolFloorTests.Compute_HonorsConfiguredFloorAndIgnoresNonPositiveAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Workers/WorkerThreadPoolFloor.cs",
+        "sourceSymbol": "WorkerThreadPoolFloor",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "WorkerThreadPoolFloorTests.Compute_ScalesWithProcessorCountAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Workers/WorkerThreadPoolFloor.cs",
+        "sourceSymbol": "WorkerThreadPoolFloor",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "WorkerThreadPoolFloorTests.AddWhizbangWorkers_AppliesTheFloor_ProductionWiringGuardAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Workers/WorkerThreadPoolFloor.cs",
+        "sourceSymbol": "WorkerThreadPoolFloor",
         "sourceType": "Class",
         "linkSource": "Convention"
       }
@@ -153853,6 +155378,14 @@
         "linkSource": "Convention"
       }
     ],
+    "InboxRoutingStrategyTests.SharedTopicInboxStrategy_GetSubscription_IncludesControlPlaneNamespaceAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Routing/IInboxRoutingStrategy.cs",
+        "sourceSymbol": "InboxRoutingStrategy",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
     "InboxRoutingStrategyTests.SharedTopicInboxStrategy_GetSubscription_IncludesSystemCommandsInFilterAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Routing/IInboxRoutingStrategy.cs",
@@ -161605,6 +163138,14 @@
         "linkSource": "Convention"
       }
     ],
+    "TableStatisticsCollectorTests.Collector_PublishesTableBloatRatioAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Observability/TableStatisticsCollector.cs",
+        "sourceSymbol": "TableStatisticsCollector",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
     "TableStatisticsMetricsTests.MeterName_IsWhizbangTableStatisticsAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Observability/TableStatisticsMetrics.cs",
@@ -163201,6 +164742,102 @@
       {
         "sourceFile": "src/Whizbang.Core/Messaging/CompositeInboxFanout.cs",
         "sourceSymbol": "CompositeInboxFanout",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "CompositeInboxFanoutTests.TryExpand_RawComposite_TypeNameCountMismatch_FailsAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/CompositeInboxFanout.cs",
+        "sourceSymbol": "CompositeInboxFanout",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "CompositeInboxFanoutTests.TryExpand_RawComposite_OverCap_ReturnsCapExceededAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/CompositeInboxFanout.cs",
+        "sourceSymbol": "CompositeInboxFanout",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "CompositeInboxFanoutTests.IsCompositeWireType_CatalogStampsPlainEvent_ReturnsFalseAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/CompositeInboxFanout.cs",
+        "sourceSymbol": "CompositeInboxFanout",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "CompositeInboxFanoutTests.IsCompositeWireType_TypeNotInCatalog_ReturnsFalseAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/CompositeInboxFanout.cs",
+        "sourceSymbol": "CompositeInboxFanout",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "CompositeInboxFanoutTests.IsCompositeWireType_NoMarkerResolver_ReturnsFalseAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/CompositeInboxFanout.cs",
+        "sourceSymbol": "CompositeInboxFanout",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "CompositeInboxFanoutTests.IsCompositeWireType_BlankTypeName_ReturnsFalseAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/CompositeInboxFanout.cs",
+        "sourceSymbol": "CompositeInboxFanout",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "CompositeInboxFanoutTests.IsCompositeWireType_GenericTypeName_ReturnsFalseAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/CompositeInboxFanout.cs",
+        "sourceSymbol": "CompositeInboxFanout",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "ControlPlaneTypeRegistryTests.FrameworkControlPlaneTypes_AreRegisteredByDefaultAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/ControlPlaneTypeRegistry.cs",
+        "sourceSymbol": "ControlPlaneTypeRegistry",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "ControlPlaneTypeRegistryTests.DomainMessageType_IsNotControlPlaneAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/ControlPlaneTypeRegistry.cs",
+        "sourceSymbol": "ControlPlaneTypeRegistry",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "ControlPlaneTypeRegistryTests.Matches_RegardlessOfAssemblyVersionDecorationAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/ControlPlaneTypeRegistry.cs",
+        "sourceSymbol": "ControlPlaneTypeRegistry",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "ControlPlaneTypeRegistryTests.Register_IsIdempotentAndAcceptsConsumerTypesAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/ControlPlaneTypeRegistry.cs",
+        "sourceSymbol": "ControlPlaneTypeRegistry",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "ControlPlaneTypeRegistryTests.UnknownOrEmptyName_IsNotControlPlaneAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/ControlPlaneTypeRegistry.cs",
+        "sourceSymbol": "ControlPlaneTypeRegistry",
         "sourceType": "Class",
         "linkSource": "Convention"
       }
@@ -164945,6 +166582,70 @@
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IntegrityGapTracker.cs",
         "sourceSymbol": "IntegrityGapTracker",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "IntegrityRepairLedgerTests.FirstSighting_ReportsAndRepairsAsync": [
+      {
+        "sourceFile": "src/Whizbang.Data.EFCore.Postgres/CoordinatorIntegrityRepairLedger.cs",
+        "sourceSymbol": "IntegrityRepairLedger",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "IntegrityRepairLedgerTests.UnchangedDivergence_WithinCooldown_SuppressesReportAsync": [
+      {
+        "sourceFile": "src/Whizbang.Data.EFCore.Postgres/CoordinatorIntegrityRepairLedger.cs",
+        "sourceSymbol": "IntegrityRepairLedger",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "IntegrityRepairLedgerTests.UnchangedDivergence_AfterCooldown_ReportsAgainAsync": [
+      {
+        "sourceFile": "src/Whizbang.Data.EFCore.Postgres/CoordinatorIntegrityRepairLedger.cs",
+        "sourceSymbol": "IntegrityRepairLedger",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "IntegrityRepairLedgerTests.SignatureChange_ReportsImmediatelyAndResetsAttemptsAsync": [
+      {
+        "sourceFile": "src/Whizbang.Data.EFCore.Postgres/CoordinatorIntegrityRepairLedger.cs",
+        "sourceSymbol": "IntegrityRepairLedger",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "IntegrityRepairLedgerTests.RepairBackoff_DoublesPerAttemptAsync": [
+      {
+        "sourceFile": "src/Whizbang.Data.EFCore.Postgres/CoordinatorIntegrityRepairLedger.cs",
+        "sourceSymbol": "IntegrityRepairLedger",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "IntegrityRepairLedgerTests.RepairAttempts_CapExhausted_StopsRequestingAsync": [
+      {
+        "sourceFile": "src/Whizbang.Data.EFCore.Postgres/CoordinatorIntegrityRepairLedger.cs",
+        "sourceSymbol": "IntegrityRepairLedger",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "IntegrityRepairLedgerTests.MarkHealed_ForgetsTheBucketAsync": [
+      {
+        "sourceFile": "src/Whizbang.Data.EFCore.Postgres/CoordinatorIntegrityRepairLedger.cs",
+        "sourceSymbol": "IntegrityRepairLedger",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "IntegrityRepairLedgerTests.Bounded_EvictsTheOldestEntryAsync": [
+      {
+        "sourceFile": "src/Whizbang.Data.EFCore.Postgres/CoordinatorIntegrityRepairLedger.cs",
+        "sourceSymbol": "IntegrityRepairLedger",
         "sourceType": "Class",
         "linkSource": "Convention"
       }
@@ -167310,6 +169011,30 @@
       }
     ],
     "RedeliveryPumpTests.Publish_ChunksStreamsByMaxInnerEventsAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/RedeliveryPump.cs",
+        "sourceSymbol": "RedeliveryPump",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "RedeliveryPumpTests.Publish_ChunksByRawBodyBytes_BelowTheCountBoundAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/RedeliveryPump.cs",
+        "sourceSymbol": "RedeliveryPump",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "RedeliveryPumpTests.Publish_SingleEventLargerThanByteBudget_StillShipsAloneAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/RedeliveryPump.cs",
+        "sourceSymbol": "RedeliveryPump",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "RedeliveryPumpTests.Publish_UnknownEventType_StillPublishesAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/RedeliveryPump.cs",
         "sourceSymbol": "RedeliveryPump",
@@ -174639,11 +176364,11 @@
     ]
   },
   "metadata": {
-    "generated": "2026-08-05T08:43:59.473Z",
-    "sourceFiles": 1335,
-    "testFiles": 1483,
-    "totalLinks": 11742,
-    "codeSymbols": 1548,
-    "testMethods": 10194
+    "generated": "2026-08-10T23:15:48.190Z",
+    "sourceFiles": 1410,
+    "testFiles": 3835,
+    "totalLinks": 11866,
+    "codeSymbols": 1561,
+    "testMethods": 10305
   }
 }
