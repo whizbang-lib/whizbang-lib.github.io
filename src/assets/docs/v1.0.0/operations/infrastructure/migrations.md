@@ -1,8 +1,8 @@
 ---
 title: Migration Tracking
 pageType: concept
-verifiedAgainstCommit: 1b31f58d
-verifiedDate: 2026-07-16
+verifiedAgainstCommit: 0bc6065b
+verifiedDate: 2026-08-05
 version: 1.0.0
 category: Infrastructure
 order: 5
@@ -159,7 +159,7 @@ The canonical example is `063_NormalizeClrTypeNamesV2.sql`, which normalizes sto
 `wh_settings` (a `setting_key` / `setting_value` / `value_type` / `description` key-value table) is the home for two kinds of SQL-side entries:
 
 - **Data-format version markers** — e.g. `clr_type_name_format_version` (above).
-- **Operational tuning knobs** read by SQL functions — e.g. `perform_maintenance` reads `debug_mode`, `dedup_retention_days`, `stuck_inbox_retention_days`, and `abandoned_stream_hours` (the idle grace before an owner-less `wh_active_streams` row is purged).
+- **Operational tuning knobs** read by SQL functions — e.g. `perform_maintenance` reads `debug_mode`, `dedup_retention_days`, `stuck_inbox_retention_days`, `abandoned_stream_hours` (the idle grace before an owner-less `wh_active_streams` row is purged), and `ephemeral_rewind_grace_seconds`. Later migrations redefine `perform_maintenance` in place, so the authoritative knob list is whatever the latest redefinition reads.
 
 Settings are seeded by migrations with `ON CONFLICT (setting_key) DO NOTHING` (so operator overrides survive re-runs). Keep C#-worker-coupled timing constants (retry backoff, work leases, liveness thresholds) *out* of this table — tuning them independently of the workers that assume them causes drift.
 

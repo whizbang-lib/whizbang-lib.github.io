@@ -1,8 +1,8 @@
 ---
 title: 'WHIZ080: Multiple Handlers for RPC Message'
 pageType: troubleshooting
-verifiedAgainstCommit: 1b31f58d
-verifiedDate: 2026-07-16
+verifiedAgainstCommit: 0bc6065b
+verifiedDate: 2026-08-05
 description: >-
   Warning diagnostic when multiple handlers are registered for a message type
   that returns a response (RPC pattern)

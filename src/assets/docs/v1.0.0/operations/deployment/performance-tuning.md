@@ -1,8 +1,8 @@
 ---
 title: Performance Tuning
 pageType: guide
-verifiedAgainstCommit: 1b31f58d
-verifiedDate: 2026-07-16
+verifiedAgainstCommit: 0bc6065b
+verifiedDate: 2026-08-05
 version: 1.0.0
 category: Advanced Topics
 order: 1
@@ -139,11 +139,11 @@ services.AddSingleton(new MessageProcessingOptions {
 
 **Performance**: batching turns ~100 DB round-trips into 1 per flush window.
 
-### 2. Message Publishing Batching (Built In)
+### 2. Transport Receive Batching (Built In)
 
-Transport publishing is also batched by the library. `TransportBatchOptions` controls the sliding window the outbox publisher uses when handing messages to the transport (Azure Service Bus batch sends, RabbitMQ publisher batching):
+Transport delivery is also batched by the library. `TransportBatchOptions` controls the sliding window the batch subscriber (`ITransport.SubscribeBatchAsync`) uses when collecting messages received from the transport before handing them to the inbox in a single flush:
 
-```csharp{title="Message Publishing Batching" description="TransportBatchOptions controls transport publish batching" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Message", "Publishing"] unverified="TransportBatchOptions tuning knobs; configuration values, no behavior asserted by a mapped test"}
+```csharp{title="Transport Receive Batching" description="TransportBatchOptions controls transport receive batching" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Message", "Receive"] unverified="TransportBatchOptions tuning knobs; configuration values, no behavior asserted by a mapped test"}
 // Register BEFORE the transport consumer builder - the library uses
 // TryAddSingleton, so your instance wins if registered first.
 services.AddSingleton(new TransportBatchOptions {
@@ -153,9 +153,9 @@ services.AddSingleton(new TransportBatchOptions {
 });
 ```
 
-Outbox draining uses the same sliding-window pattern (`SlidingWindowOutboxOptions`: `MaxSize` 100, `SlidingWindow` 50ms, `MaxWait` 1s defaults).
+Outbox draining (the publish side) uses the same sliding-window pattern (`SlidingWindowOutboxOptions`: `MaxSize` 100, `SlidingWindow` 50ms, `MaxWait` 1s defaults).
 
-**Performance**: one transport call carries up to `BatchSize` messages instead of one call per message.
+**Performance**: one batch handler invocation (and one inbox flush) carries up to `BatchSize` received messages instead of one call per message.
 
 ---
 
@@ -383,7 +383,7 @@ Whizbang's I/O parallelism is controlled by **explicit config knobs** - the libr
 |------|---------|----------|
 | `MessageProcessingOptions.MaxConcurrentMessages` | 40 | Concurrent message handlers across all subscriptions (each holds a DB connection) |
 | `MessageProcessingOptions.InboxBatchSize` / `InboxBatchSlideMs` / `InboxBatchMaxWaitMs` | 100 / 50 / 1000 | Inbox `process_work_batch` flush triggers |
-| `TransportBatchOptions.BatchSize` / `SlideMs` / `MaxWaitMs` | 200 / 20 / 1000 | Transport publish batch flush triggers |
+| `TransportBatchOptions.BatchSize` / `SlideMs` / `MaxWaitMs` | 200 / 20 / 1000 | Transport receive batch flush triggers |
 | `SlidingWindowOutboxOptions.MaxSize` / `SlidingWindow` / `MaxWait` | 100 / 50ms / 1s | Outbox drain batching |
 
 Inside the perspective worker, per-stream processing is serialized by design (per-stream semaphores plus cross-pod stream pinning) so a stream's events always apply in order - parallelism happens **across** streams, never within one. That invariant is structural; there is no knob that relaxes it.

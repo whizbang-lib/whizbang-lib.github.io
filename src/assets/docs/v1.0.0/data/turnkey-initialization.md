@@ -1,8 +1,8 @@
 ---
 title: Turnkey Database Initialization
 pageType: guide
-verifiedAgainstCommit: 1b31f58d
-verifiedDate: 2026-07-16
+verifiedAgainstCommit: 0bc6065b
+verifiedDate: 2026-08-05
 version: 1.0.0
 category: Data Access
 order: 5
@@ -85,7 +85,11 @@ The source generator automatically registers each `[WhizbangDbContext]`-annotate
 
 This is AOT-compatible with no reflection - all registration happens via source-generated module initializers.
 
-In addition, `.WithDriver.Postgres` registers a `WhizbangDatabaseInitializerService` hosted service that runs the same initialization during host startup and then signals `ISchemaReadyGate`. Whizbang workers await this gate before issuing any SQL, so even if you forget the explicit `EnsureWhizbangInitializedAsync()` call, workers cannot race an uninitialized schema. The explicit call remains useful when your own startup code (seeding, health probes) needs the schema ready before `app.RunAsync()`.
+In addition, `.WithDriver.Postgres` registers a `WhizbangDatabaseInitializerService` hosted service that runs the same initialization and then signals `ISchemaReadyGate`. Whizbang workers await this gate before issuing any SQL, so even if you forget the explicit `EnsureWhizbangInitializedAsync()` call, workers cannot race an uninitialized schema. The explicit call remains useful when your own startup code (seeding, health probes) needs the schema ready before `app.RunAsync()`.
+
+:::updated
+Non-blocking initialization is now the **turnkey default** (`SchemaInitializationOptions.NonBlockingSchemaInit = true`): the hosted service's `StartAsync` returns immediately and initialization runs in the **background**, so the host binds and answers liveness probes while migrations run. `ISchemaReadyGate` stays closed until initialization succeeds (fail-closed on failure), and the availability layer keeps the instance out of traffic in the meantime — `SchemaReadyHealthCheck` reports not-ready and `DatabaseAvailabilityMiddleware` returns 503 with a `Retry-After` header until the gate opens. Set `NonBlockingSchemaInit = false` to opt back into blocking inline initialization (host startup does not complete — no HTTP port, no workers — until migrations finish, and a migration failure aborts startup). An optional `MigrationTimeout` (default: none) caps a single background attempt so a hung migration fails the rollout instead of wedging forever.
+:::
 
 ## Multiple DbContexts
 

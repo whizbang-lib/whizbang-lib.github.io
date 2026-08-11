@@ -1,8 +1,8 @@
 ---
 title: Audit Logging
 pageType: concept
-verifiedAgainstCommit: 1b31f58d
-verifiedDate: 2026-07-16
+verifiedAgainstCommit: 0bc6065b
+verifiedDate: 2026-08-05
 version: 1.0.0
 category: Core Concepts
 order: 7
@@ -74,15 +74,16 @@ flowchart TD
 ### 1. Enable System Audit
 
 ```csharp{title="Enable System Audit" description="Enable System Audit" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Enable", "System"] tests=["CommandAuditTests.EnableAudit_EnablesBothEventAndCommandAudit_Async", "SystemEventOptionsTests.EnableAudit_SetsAuditEnabled_ReturnsThisForFluentApiAsync"]}
-// In Program.cs - BFF or any host that needs audit logging
-services.AddWhizbang(options => {
-  options.SystemEvents.EnableAudit();   // Enables BOTH event and command auditing
-  // options.SystemEvents.EnableEventAudit();   // Events only
-  // options.SystemEvents.EnableCommandAudit(); // Commands only
+// In Program.cs - BFF or any host that needs audit logging.
+// Call AFTER storage registration so the event store can be decorated.
+services.AddSystemEvents(options => {
+  options.EnableAudit();   // Enables BOTH event and command auditing
+  // options.EnableEventAudit();   // Events only
+  // options.EnableCommandAudit(); // Commands only
 });
 ```
 
-System events are **local-only by default** (`SystemEventOptions.LocalOnly = true`): each host audits the events it processes but does not rebroadcast audit events to the outbox/inbox, which prevents duplicate audit entries when multiple hosts enable audit. Call `options.SystemEvents.Broadcast()` for the advanced centralized-collection scenario.
+System events are **local-only by default** (`SystemEventOptions.LocalOnly = true`): each host audits the events it processes but does not rebroadcast audit events to the outbox/inbox, which prevents duplicate audit entries when multiple hosts enable audit. Call `options.Broadcast()` for the advanced centralized-collection scenario.
 
 ### 2. Create Audit Perspective
 
@@ -199,13 +200,16 @@ public sealed record EventAudited : ISystemEvent {
 
 ### Dedicated System Stream
 
-```csharp{title="Dedicated System Stream" description="Dedicated System Stream" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Dedicated", "System"] unverified="SystemEventStream constants are verified by ISystemEventTests, outside this page's referenced audit tests"}
-public static class SystemEventStream {
+```csharp{title="Dedicated System Stream" description="Dedicated System Stream" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Dedicated", "System"] unverified="SystemEventStreams constants are verified by ISystemEventTests, outside this page's referenced audit tests"}
+public static class SystemEventStreams {
   /// <summary>The dedicated system event stream name.</summary>
   public static string Name => "$wb-system";
 
   /// <summary>Stream prefix for system events.</summary>
   public static string Prefix => "$wb-";
+
+  /// <summary>Well-known stream ID all system events are appended to.</summary>
+  public static Guid StreamId { get; } = new("00000000-0000-0000-0000-000000000001");
 }
 ```
 
@@ -213,7 +217,7 @@ public static class SystemEventStream {
 
 ## Excluding Events from Audit
 
-By default, **all events are audited** when system audit is enabled (`SystemEventOptions.AuditMode = AuditMode.OptOut`). Use `[AuditEvent(Exclude = true)]` to opt-out specific event types. Alternatively, set `options.SystemEvents.AuditMode = AuditMode.OptIn` to audit **only** events explicitly marked with `[AuditEvent]`.
+By default, **all events are audited** when system audit is enabled (`SystemEventOptions.AuditMode = AuditMode.OptOut`). Use `[AuditEvent(Exclude = true)]` to opt-out specific event types. Alternatively, set `options.AuditMode = AuditMode.OptIn` inside `AddSystemEvents(...)` to audit **only** events explicitly marked with `[AuditEvent]`.
 
 ```csharp{title="Excluding Events from Audit" description="By default, all events are audited when system audit is enabled." category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Excluding", "Events"] tests=["AuditingEventStoreDecoratorTests.ShouldAudit_OptOut_ExcludesMarkedEventsAsync", "AuditingEventStoreDecoratorTests.ShouldAudit_OptOut_AuditsRegularEventsAsync", "SystemEventEmitterTests.ShouldExcludeFromAudit_WithExcludedAttribute_ReturnsTrueAsync"]}
 using Whizbang.Core.Attributes;
@@ -289,10 +293,12 @@ public sealed record CommandAudited : ISystemEvent {
 ### Enabling Command Auditing
 
 ```csharp{title="Enabling Command Auditing" description="Enabling Command Auditing" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Enabling", "Command"] tests=["CommandAuditTests.EnableEventAudit_OnlyEnablesEventAudit_Async", "CommandAuditTests.EnableCommandAudit_OnlyEnablesCommandAudit_Async", "CommandAuditTests.EnableAudit_EnablesBothEventAndCommandAudit_Async"]}
-services.AddWhizbang(options => {
-  options.SystemEvents.EnableEventAudit();    // Events only
-  options.SystemEvents.EnableCommandAudit();  // Commands only
-  options.SystemEvents.EnableAudit();         // Both events and commands
+// AddSystemEventAuditing also registers the CommandAuditPipelineBehavior
+// that emits CommandAudited for each command processed.
+services.AddSystemEventAuditing(options => {
+  options.EnableEventAudit();    // Events only
+  options.EnableCommandAudit();  // Commands only
+  options.EnableAudit();         // Both events and commands
 });
 ```
 
@@ -416,9 +422,9 @@ For real-time audit alerts in addition to durable persistence, use a tag hook:
 // Hook provides real-time logging/alerts
 // Perspective provides durable persistence
 services.AddWhizbang(options => {
-  options.SystemEvents.EnableAudit();
   options.Tags.UseHook<AuditEventAttribute, AuditAlertHook>();
 });
+services.AddSystemEvents(options => options.EnableAudit());
 
 public sealed class AuditAlertHook : IMessageTagHook<AuditEventAttribute> {
   private readonly ILogger<AuditAlertHook> _logger;
@@ -566,11 +572,11 @@ Shipped behavior: only `EventAudited` and `CommandAudited` system event types ex
 
 Enable specific categories:
 ```csharp{title="Other System Events" description="Enable specific categories:" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Other", "System"] tests=["SystemEventOptionsTests.EnableAll_SetsAllFlags_ReturnsThisForFluentApiAsync", "SystemEventOptionsTests.EnablePerspectiveEvents_SetsPerspectiveEventsEnabled_Async", "SystemEventOptionsTests.EnableErrorEvents_SetsErrorEventsEnabled_Async", "SystemEventOptionsTests.EnableAudit_SetsAuditEnabled_ReturnsThisForFluentApiAsync"]}
-services.AddWhizbang(options => {
-  options.SystemEvents.EnableAudit();             // EventAudited + CommandAudited
-  options.SystemEvents.EnablePerspectiveEvents(); // Reserved (no events emitted yet)
-  options.SystemEvents.EnableErrorEvents();       // Reserved (no events emitted yet)
-  options.SystemEvents.EnableAll();               // All of the above
+services.AddSystemEvents(options => {
+  options.EnableAudit();             // EventAudited + CommandAudited
+  options.EnablePerspectiveEvents(); // Reserved (no events emitted yet)
+  options.EnableErrorEvents();       // Reserved (no events emitted yet)
+  options.EnableAll();               // All of the above
 });
 ```
 

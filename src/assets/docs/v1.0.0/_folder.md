@@ -1,9 +1,7 @@
 ---
-title: Version 0.1.0 - Foundation
+title: Version 1.0.0
 description: >-
-  The foundation release establishing all core components with in-memory
-  implementations
-releaseDate: TBD
-status: planning
+  The Whizbang v1.0.0 documentation set — core components, getting started,
+  operations, resilience, and migration guides
+status: development
 ---
-

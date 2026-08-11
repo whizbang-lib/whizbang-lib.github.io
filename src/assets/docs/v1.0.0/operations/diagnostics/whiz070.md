@@ -1,8 +1,8 @@
 ---
 title: 'WHIZ070: Missing Pgvector.EntityFrameworkCore Package'
 pageType: troubleshooting
-verifiedAgainstCommit: 1b31f58d
-verifiedDate: 2026-07-16
+verifiedAgainstCommit: 0bc6065b
+verifiedDate: 2026-08-05
 description: >-
   Error diagnostic when a perspective model uses [VectorField] but the required
   Pgvector.EntityFrameworkCore package is not referenced

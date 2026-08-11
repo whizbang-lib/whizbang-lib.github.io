@@ -1,8 +1,8 @@
 ---
 title: StreamKey Attribute
 pageType: reference
-verifiedAgainstCommit: 1b31f58d
-verifiedDate: 2026-07-16
+verifiedAgainstCommit: 0bc6065b
+verifiedDate: 2026-08-05
 description: >-
   The historical StreamKey attribute has been unified into StreamId, which now
   drives both event store stream identification and perspective event ordering
@@ -80,7 +80,7 @@ The role the historical `[StreamKey]` attribute played in perspectives is now fi
 
 - **Exactly one** `[StreamId]` property per event type used in a perspective
 - Perspective model types must also have a `[StreamId]` property, or no runner is generated
-- Property type must be `Guid`, `Guid?`, or a WhizbangId-style type (a type exposing a `Guid` value)
+- Property type must yield a `Guid`: `Guid`, `Guid?`, a WhizbangId-style value type, or a `string`/other type whose value parses as a Guid (null or non-parseable values extract no stream ID)
 
 ## Diagnostics
 

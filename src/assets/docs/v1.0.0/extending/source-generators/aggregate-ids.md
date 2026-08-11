@@ -1,8 +1,8 @@
 ---
 title: Aggregate IDs
 pageType: concept
-verifiedAgainstCommit: 1b31f58d
-verifiedDate: 2026-07-16
+verifiedAgainstCommit: 0bc6065b
+verifiedDate: 2026-08-05
 version: 1.0.0
 category: Source Generators
 order: 4
@@ -30,7 +30,7 @@ lastMaintainedCommit: '01f07906'
 # Aggregate IDs
 
 :::updated
-**Renamed in the shipped library (verified at commit `1b31f58d`)**: the early `AggregateIdGenerator` + `[AggregateId]` design described by previous versions of this page was replaced by the **`StreamIdGenerator`** + **`[StreamId]`** attribute. "Aggregate ID" and "stream ID" refer to the same concept — the identifier of the stream (aggregate/entity) a message belongs to — and `PolicyContext.GetAggregateId()` is still the policy-facing accessor, but discovery, generation, and extraction all run through `[StreamId]`.
+**Renamed in the shipped library (verified at commit `0bc6065b`)**: the early `AggregateIdGenerator` + `[AggregateId]` design described by previous versions of this page was replaced by the **`StreamIdGenerator`** + **`[StreamId]`** attribute. "Aggregate ID" and "stream ID" refer to the same concept — the identifier of the stream (aggregate/entity) a message belongs to — and `PolicyContext.GetAggregateId()` is still the policy-facing accessor, but discovery, generation, and extraction all run through `[StreamId]`.
 :::
 
 The **StreamIdGenerator** discovers properties (or record parameters) marked with `[StreamId]` at compile-time and generates zero-reflection extractor methods. This lets the framework resolve which stream a message belongs to — for event sourcing, tracing, and policy decisions — without any runtime reflection.

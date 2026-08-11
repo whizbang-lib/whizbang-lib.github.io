@@ -1,8 +1,8 @@
 ---
 title: Perspective Worker
 pageType: concept
-verifiedAgainstCommit: 1b31f58d
-verifiedDate: 2026-07-16
+verifiedAgainstCommit: 0bc6065b
+verifiedDate: 2026-08-05
 version: 1.0.0
 category: Workers
 order: 1
@@ -101,7 +101,7 @@ sequenceDiagram
 3. **Drain & apply** — PerspectiveWorker consumer loops read the channels, fetch pending events per stream in event-id order, filter duplicates, and invoke runners
 4. **Complete** — completions flow through `PerspectiveCompletionFlushWorker`, which calls `IWorkCoordinator.CompletePerspectiveAsync`: processed `wh_perspective_events` rows are deleted (`complete_perspective_events`, migration 037 — or kept with a marker in [debug mode](#configuration)), cursors advance in `wh_perspective_cursors`, and fully-drained streams are evicted from `wh_active_streams`
 
-**Cursor tracking**: `wh_perspective_cursors` records `(stream_id, perspective_name) → last_event_id, status, error`. Status is a flags value of `PerspectiveProcessingStatus` (`None=0`, `Processing=1`, `Completed=2`, `Failed=4`, `CatchingUp=8`). `complete_perspective_cursor_work` (migration 005) marks **only explicitly-listed event ids** as processed, so concurrent late-arriving events are never swallowed by range-based cursor advancement.
+**Cursor tracking**: `wh_perspective_cursors` records `(stream_id, perspective_name) → last_event_id, status, error`. Status is a flags value of `PerspectiveProcessingStatus` (`None=0`, `Processing=1`, `Completed=2`, `Failed=4`, `CatchingUp=8`, `RewindRequired=32` — set by SQL when a late-arriving event is detected). `complete_perspective_cursor_work` (migration 005) marks **only explicitly-listed event ids** as processed, so concurrent late-arriving events are never swallowed by range-based cursor advancement.
 
 ---
 
@@ -622,7 +622,7 @@ worker.OnWorkProcessingIdle += () => {
 
 ### Database Queries
 
-**Check cursor status** (status is a flags value: 1=Processing, 2=Completed, 4=Failed, 8=CatchingUp):
+**Check cursor status** (status is a flags value: 1=Processing, 2=Completed, 4=Failed, 8=CatchingUp, 32=RewindRequired):
 ```sql{title="Database Queries" description="Check cursor status:" category="Implementation" difficulty="BEGINNER" tags=["Operations", "Workers", "Database", "Queries"]}
 SELECT
   perspective_name,

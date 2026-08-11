@@ -50,7 +50,7 @@ Each pod opens **exactly one** direct connection (bypasses pgbouncer) and multip
            └──────────────────────────────────────────────────┘
 ```
 
-**Total bypass-pool connections per pod: 1.** Multiple subscribers (work signals, commit-order stamping, app signals, future channels) all share that single direct conn. Pre-slice-33 design opened one direct connection per listener type (3 per pod). With horizontal scaling — N pods × M services × E environments — that adds up fast on the Postgres `max_connections` budget.
+**Total bypass-pool connections per pod: 1.** Multiple subscribers (work signals, commit-order stamping, app signals, future channels) all share that single direct conn. Pre-slice-33 design opened one direct connection per listener type (3 per pod). With horizontal scaling — many pods × many services × many environments — that adds up fast on the Postgres `max_connections` budget.
 
 ## The signaling gate
 
@@ -216,11 +216,11 @@ WHERE datname = current_database()
 
 If your deployment doesn't use pgbouncer (or runs it in session-pooling mode), the dual-connection design still works but is simpler — you can use the same connection string for both pooled and direct, or skip the direct string entirely (LISTEN survives session pooling).
 
-For local dev (e.g., a consumer Aspire), there's no pgbouncer; the pooled connection is direct and notifications work without a separate `-direct` string.
+For a local Aspire setup, there's no pgbouncer; the pooled connection is direct and notifications work without a separate `-direct` string.
 
 ## Sizing math
 
-For 50 pods × 11 services in production:
+For 50 pods × 11 services in production (illustrative numbers — scale to your own deployment):
 
 - **Direct connections to postgres (slice 33+)**: 50 × 11 = 550 (one shared LISTEN per pod per service, regardless of how many subscribers — work signals, commit-order stamping, app signals, etc.).
 - **Pre-slice-33 baseline**: 50 × 11 × 3 = 1 650 (three listeners per pod). Slice 33 cuts the direct-conn budget by ~67%.

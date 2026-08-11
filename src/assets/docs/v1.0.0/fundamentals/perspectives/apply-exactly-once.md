@@ -1,8 +1,8 @@
 ---
 title: Apply Exactly-Once Contract
 pageType: concept
-verifiedAgainstCommit: 1b31f58d
-verifiedDate: 2026-07-16
+verifiedAgainstCommit: 0bc6065b
+verifiedDate: 2026-08-05
 version: 1.0.0
 category: Core Concepts
 order: 21
@@ -47,9 +47,9 @@ framework: "NET10"
 category: "Perspectives"
 difficulty: "ADVANCED"
 tags: ["perspectives", "apply", "exactly-once", "idempotency", "projection"]
-unverified: "consumer OrderModel projection illustration; PerspectiveApplyExactlyOnceTests is absent from the code-tests map"
+unverified: "consumer OrderModel projection illustration; the exactly-once dispatch it relies on is covered by PerspectiveApplyExactlyOnceTests"
 }
-public OrderModel Apply(OrderModel current, OrderOrderLineRowAddedEvent evt) {
+public OrderModel Apply(OrderModel current, OrderLineRowAddedEvent evt) {
   current.OrderLineRows.Add(new OrderLineRow { RowId = evt.RowId, /* … */ });
   return current;
 }
@@ -87,7 +87,7 @@ Perspective completions are written back to the database in batches. Between App
 - **Retained** — once the batch is acknowledged (`ActivateRetention`), the TTL countdown starts, aligned to the lease duration.
 - **Evicted** — expired entries are removed at the start of each poll cycle (`EvictExpired`); SQL re-delivery is then allowed again, which is correct for rewind/rebuild scenarios.
 
-Before grouping standard-mode work, the worker filters out any work item whose `WorkId` is already in the cache. During a rewind, the affected event IDs are force-removed so replay is permitted.
+Before grouping standard-mode work, the worker filters out any work item whose `WorkId` is already in the cache. The cache also provides force-removal (`Remove`/`RemoveRange`) for rewind scenarios, allowing replay of previously processed events.
 
 ## Related
 

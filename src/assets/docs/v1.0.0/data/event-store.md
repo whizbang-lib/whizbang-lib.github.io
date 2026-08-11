@@ -1,8 +1,8 @@
 ---
 title: Event Store
 pageType: concept
-verifiedAgainstCommit: 1b31f58d
-verifiedDate: 2026-07-16
+verifiedAgainstCommit: 0bc6065b
+verifiedDate: 2026-08-05
 version: 1.0.0
 category: Data Access
 order: 4
@@ -15,12 +15,17 @@ tags: >-
 codeReferences:
   - src/Whizbang.Core/Messaging/IEventStore.cs
   - src/Whizbang.Core/Messaging/IWorkCoordinator.cs
+  - src/Whizbang.Core/Messaging/IEventUpcaster.cs
   - src/Whizbang.Data.Schema/Schemas/EventStoreSchema.cs
   - src/Whizbang.Data.EFCore.Postgres/EFCoreEventStore.cs
+  - src/Whizbang.Data.Postgres/Migrations/077_FullBodySplit.sql
+  - src/Whizbang.Data.Postgres/Migrations/078_DropInlineBodyColumns.sql
 testReferences:
   - tests/Whizbang.Core.Tests/Messaging/InMemoryEventStoreTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/EFCoreEventStoreTests.cs
   - tests/Whizbang.Data.Schema.Tests/Schemas/EventStoreSchemaTests.cs
+  - tests/Whizbang.Core.Tests/Messaging/EventUpcasterPipelineTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperPostgresEventStore.RetryTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -83,11 +88,15 @@ CREATE UNIQUE INDEX idx_event_store_aggregate ON wh_event_store (aggregate_id, v
 CREATE INDEX idx_event_store_aggregate_type ON wh_event_store (aggregate_type, created_at);
 ```
 
+:::updated
+**Pointer/body split** (migrations `077_FullBodySplit` / `078_DropInlineBodyColumns`): the `event_data` and `metadata` columns above exist in the base CREATE for fresh databases, but the forward migrations move **every** event body into the uniform `wh_event_body` table and drop the inline columns. At HEAD, `wh_event_store` is a narrow append-only **pointer** table (`event_id`, `stream_id`, `version`, `commit_sequence`, `event_type`, `created_at`, `flags`, `scope`, origin columns); readers (`get_stream_events`, `fetch_events_by_ids`, and `EFCoreEventStore`) resolve bodies from `wh_event_body`. Use the framework read APIs rather than selecting `event_data` from `wh_event_store` directly.
+:::
+
 **Key Design Decisions**:
 - **UUIDv7** for `event_id`: Time-ordered, insert-friendly - reads order by `event_id` directly
 - **version**: Position within a single stream (1, 2, 3, ...), enforced by a unique index
 - **commit_sequence** (added by migration `046_CommitSequenceSchema`): global commit ordering, stamped asynchronously after commit for deterministic cross-stream/cross-service ordering
-- **JSONB** for `event_data`/`metadata`/`scope`: Flexible schema, queryable
+- **JSONB** for `event_data`/`metadata`/`scope`: Flexible schema, queryable (bodies live in `wh_event_body` after the full body split)
 - **aggregate_type**: Query/filter by aggregate type (Order, Customer, Product, etc.)
 
 ---
@@ -247,7 +256,7 @@ You never pass an expected version. Sequencing and conflict handling are built i
 
 - Each append assigns the next `version` for the stream (via the store's sequence provider)
 - The **unique index on `(stream_id, version)`** rejects concurrent writers that race to the same slot
-- The Postgres backends **retry with backoff** on unique-violation conflicts until the append lands (or max retries is exceeded under extreme contention)
+- The **Dapper Postgres** backend **retries with backoff** on unique-violation conflicts until the append lands (or max retries is exceeded under extreme contention); the **EF Core Postgres** backend surfaces the conflict as an `InvalidOperationException` ("Concurrent modification detected") for the caller to handle. In normal operation, events emitted through the work coordinator flow through `_emit_event_store_chain`, which takes per-stream advisory locks so version races cannot occur.
 - Use `GetLastSequenceAsync(streamId)` if you need the current stream position (for example, to detect concurrent modification at the application level)
 
 ---
@@ -414,8 +423,8 @@ For ad-hoc analysis you can also query `wh_event_store` directly - `created_at` 
 
 ## Event Versioning
 
-:::planned
-First-class event versioning (version attributes, an upcasting registry, and multi-version `Apply` support) is a planned framework feature. The patterns below work today as application code.
+:::updated
+**Read-path upcasting is now first-class**: implement `IEventUpcaster` (pure, deterministic transform applied after deserialization and before routing/`Apply` on every read path) and register it with `services.AddEventUpcaster<T>()`. Upcasters can change type (`FooV1` → `FooV2`), backfill new fields, or re-key the stream — the stored log is never rewritten. See [Event Upcasting](../fundamentals/events/event-upcasting.md). Version attributes and multi-version `Apply` support remain planned; the hand-rolled patterns below still work as application code.
 :::
 
 ### Problem: Event Schema Changes
@@ -467,9 +476,16 @@ public class EventUpcast {
 ```sql{title="Strategy 2: Transform-in-Place (Migration)" description="Strategy 2: Transform-in-Place (Migration)" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Strategy", "Transform-in-Place", "Migration"]}
 -- Rewrite stored payloads to the new shape (verify with a SELECT first!)
 -- In-place UPDATE preserves event_id and the unique (stream_id, version) index.
+-- Post-body-split (migrations 077/078): event_type lives on the wh_event_store
+-- pointer; the payload lives in wh_event_body.
+UPDATE wh_event_body b
+SET event_data = jsonb_set(b.event_data, '{Currency}', '"USD"')  -- Add default Currency
+FROM wh_event_store es
+WHERE b.event_id = es.event_id
+  AND es.event_type = 'OrderCreatedV1';
+
 UPDATE wh_event_store
-SET event_type = 'OrderCreatedV2',
-    event_data = jsonb_set(event_data, '{Currency}', '"USD"')  -- Add default Currency
+SET event_type = 'OrderCreatedV2'
 WHERE event_type = 'OrderCreatedV1';
 ```
 

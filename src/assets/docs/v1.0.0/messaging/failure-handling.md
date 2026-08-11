@@ -1,8 +1,8 @@
 ---
 title: "Failure Handling"
 pageType: concept
-verifiedAgainstCommit: 1b31f58d
-verifiedDate: 2026-07-16
+verifiedAgainstCommit: 0bc6065b
+verifiedDate: 2026-08-05
 version: 1.0.0
 category: "Messaging"
 order: 6
@@ -18,11 +18,14 @@ codeReferences:
   - src/Whizbang.Core/Messaging/IDeadLetterStore.cs
   - src/Whizbang.Core/Workers/InboxDispatchWorker.cs
   - src/Whizbang.Core/Workers/OutboxPublishWorker.cs
+  - src/Whizbang.Core/Workers/OutboxDrainWorker.cs
   - src/Whizbang.Data.Postgres/Migrations/017_ProcessOutboxFailures.sql
   - src/Whizbang.Data.Postgres/Migrations/018_ProcessInboxFailures.sql
   - src/Whizbang.Data.Postgres/Migrations/029_ProcessWorkBatch.sql
 testReferences:
   - tests/Whizbang.Core.Tests/Messaging/MessageFailureTests.cs
+  - tests/Whizbang.Core.Tests/Messaging/MessageFailureReasonTests.cs
+  - tests/Whizbang.Core.Tests/Messaging/MessageProcessingStatusTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/PostgresFunctionTests.cs
   - tests/Whizbang.Core.Tests/Workers/OutboxPublishWorkerDlqPromotionTests.cs
   - tests/Whizbang.Core.Tests/Workers/InboxDispatchWorkerTests.cs
@@ -42,7 +45,7 @@ Whizbang implements sophisticated failure handling mechanisms including exponent
 
 Messages track their processing state using bitwise flags in the `status` column:
 
-```csharp{title="Message Processing Status" description="Messages track their processing state using bitwise flags in the status column:" category="Architecture" difficulty="BEGINNER" tags=["Messaging", "C#", "Message", "Processing", "Status"] unverified="verified by MessageProcessingStatusTests, which is outside the current coverage map"}
+```csharp{title="Message Processing Status" description="Messages track their processing state using bitwise flags in the status column:" category="Architecture" difficulty="BEGINNER" tags=["Messaging", "C#", "Message", "Processing", "Status"] tests=["MessageProcessingStatusTests.MessageProcessingStatus_IsFlagsEnumAsync", "MessageProcessingStatusTests.MessageProcessingStatus_ValuesBitShiftedCorrectlyAsync", "MessageProcessingStatusTests.MessageProcessingStatus_CanCombineWithFailedAsync"]}
 [Flags]
 public enum MessageProcessingStatus {
     None = 0,           // No processing stages completed
@@ -106,43 +109,45 @@ Attempts at failure time:
 
 Note: the failure functions record the error and release the lease but do **not** increment `attempts` — attempt counting happens solely at claim time (`claim_orphaned_outbox` / `claim_orphaned_inbox` set `attempts = attempts + 1`), so each claim-process-fail cycle counts exactly once.
 
+One exception to the backoff schedule: a failing temporal-schedule occurrence whose schedule declares an at-most-once delivery guarantee is parked terminally (`scheduled_for = 'infinity'`, never claimable again) instead of retried, with the failure durably recorded in `wh_schedule_runs`. All other messages take the exponential-backoff path above.
+
 ## Failure Processing Flow {#failure-flow}
 
 ### Basic Failure and Retry
 
-```mermaid{caption="Basic failure and retry — a failed message is stamped Failed with an exponential-backoff scheduled_for and its lease released, then reclaimed and reprocessed once the schedule elapses."}
+```mermaid{caption="Basic failure and retry — a failed message is stamped Failed with an exponential-backoff scheduled_for and its lease released, then reclaimed and reprocessed once the schedule elapses." tests=["PostgresFunctionTests.ProcessOutboxFailures_SetsFailureFlagsAndSchedulesRetryAsync"]}
 sequenceDiagram
     participant I as Instance
     participant DB as PostgreSQL
     participant H as Handler/Transport
 
-    I->>DB: ProcessWorkBatchAsync()
+    I->>DB: ClaimWorkAsync()
     DB-->>I: WorkBatch: [M1]
 
     I->>H: Process M1
     H-->>I: ❌ Exception: Network timeout
 
-    I->>DB: ProcessWorkBatchAsync(<br/>failures: [M1: error="Network timeout"])
+    I->>DB: ReportFailuresAsync(Outbox,<br/>[M1: error="Network timeout"])
     DB->>DB: UPDATE wh_outbox<br/>SET status = status | Failed (32768),<br/>error = "Network timeout",<br/>failure_reason = ...,<br/>scheduled_for = now + (30s * LEAST(2^attempts, 10)),<br/>instance_id = NULL,<br/>lease_expiry = NULL<br/>WHERE message_id = M1
     Note over DB: M1: attempts=1 (bumped at claim time)<br/>scheduled_for = now + 1 min<br/>Status: Stored | Failed (32769)
 
     Note over I: Wait 1 minute...
 
-    I->>DB: ProcessWorkBatchAsync()
-    DB->>DB: Find claimable messages:<br/>WHERE scheduled_for <= now
+    I->>DB: ClaimWorkAsync()
+    DB->>DB: Find claimable messages:<br/>WHERE scheduled_for IS NULL OR scheduled_for <= now
     DB-->>I: WorkBatch: [M1] (retry)
 
     I->>H: Process M1 (retry)
     H-->>I: ✅ Success
 
-    I->>DB: ProcessWorkBatchAsync(<br/>completions: [M1: Published])
-    DB->>DB: UPDATE status = status | Published,<br/>DELETE (outbox done when published)
+    I->>DB: CompleteOutboxPublishedAsync([M1])
+    DB->>DB: DELETE row<br/>(outbox done when published;<br/>debug mode retains + stamps published_at)
     Note over DB: ✅ M1 processed successfully<br/>after retry
 ```
 
 ### Retry Schedule Timeline
 
-```mermaid{caption="Retry-schedule timeline — each claim bumps attempts and the next failure schedules 30s x 2^attempts (capped at 5 minutes) until a retry succeeds."}
+```mermaid{caption="Retry-schedule timeline — each claim bumps attempts and the next failure schedules 30s x 2^attempts (capped at 5 minutes) until a retry succeeds." tests=["PostgresFunctionTests.ProcessOutboxFailures_CapsExponentialBackoffAt5MinutesAsync"]}
 flowchart LR
     F0["M1 initial attempt<br/>Fail (attempts=0)<br/>scheduled_for = now + 30s * 2^0 = now + 30s"]
     W0["Cannot claim<br/>(scheduled_for > now)"]
@@ -173,12 +178,21 @@ When message M1 in stream S fails, what happens to messages M2, M3, M4 that come
 
 **Whizbang's Approach**: Cascade release with explicit control
 
+:::updated
+The work-pump decomposition (which removed the legacy `ProcessWorkBatchAsync` / `ProcessWorkBatchRequest` API) changed this area in two ways:
+
+1. The `Status = 0` release branch still exists in SQL (`process_outbox_completions`, migration `013`), but no public coordinator API issues a `Status = 0` completion anymore — outbox completions now flow through `CompleteOutboxPublishedAsync`, which deletes the row.
+2. `claim_orphaned_outbox` enforces a stream-ordering check: a later message cannot be claimed while an **earlier** unprocessed message in the same stream has `scheduled_for` in the future. Releasing downstream leases therefore does not let the stream skip past a scheduled failed message; downstream messages become claimable only once the failed message's `scheduled_for` elapses or its row is removed.
+
+The built-in mechanism that actually unblocks a stream today is dead-letter promotion (below), which deletes the failed row from the work table. The material in the rest of this section describes the legacy cascade-release flow and is retained for the SQL-level semantics.
+:::
+
 ### Status=0 Release Pattern
 
 **Mechanism**: Completing a message with `Status = 0` clears its lease without changing status flags, allowing it to be reprocessed.
 
-```csharp{title="Status=0 Release Pattern" description="Mechanism: Completing a message with Status = 0 clears its lease without changing status flags, allowing it to be" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Status=0", "Release", "Pattern"] unverified="conceptual illustration of the Status=0 cascade-release API call; required request fields are elided, so it is not a literal compiled snippet"}
-// Release messages M2, M3 (let them be retried)
+```csharp{title="Status=0 Release Pattern" description="Mechanism: Completing a message with Status = 0 clears its lease without changing status flags, allowing it to be" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Status=0", "Release", "Pattern"] unverified="legacy pre-work-pump API shown for illustration; ProcessWorkBatchAsync/ProcessWorkBatchRequest no longer exist — the Status=0 branch survives only in the process_outbox_completions SQL function (migration 013)"}
+// LEGACY API (removed): release messages M2, M3 (let them be retried)
 await coordinator.ProcessWorkBatchAsync(new ProcessWorkBatchRequest {
     // ... instance identity fields + other required arrays (empty) elided ...
     OutboxCompletions = [
@@ -204,7 +218,7 @@ await coordinator.ProcessWorkBatchAsync(new ProcessWorkBatchRequest {
 
 ### Cascade Release Sequence Diagram
 
-```mermaid{caption="Cascade release — failing M1 is scheduled for retry while downstream M2/M3 are completed with Status=0 to clear their leases so the stream can continue."}
+```mermaid{caption="Cascade release (legacy flow — see the callout above; at HEAD no public API issues Status=0 completions, and the stream-ordering check keeps M2/M3 unclaimable until M1's scheduled_for elapses)."}
 sequenceDiagram
     participant I as Instance
     participant DB as PostgreSQL
@@ -238,7 +252,7 @@ sequenceDiagram
 | M1 State | M2 Lease Cleared? | M2 Claimable? | Ordering Impact |
 |---|---|---|---|
 | Failed, scheduled | No | ❌ Blocked | M2 waits for M1 retry |
-| Failed, scheduled | Yes (Status=0) | ✅ Can claim | Stream continues without M1 |
+| Failed, scheduled | Yes (Status=0) | ❌ Blocked | Stream-ordering check in `claim_orphaned_outbox` blocks M2 until M1's `scheduled_for` elapses |
 | Failed, not scheduled | Yes | ✅ Can claim | Stream continues (M1 poisoned?) |
 | Processing (active lease) | N/A | ❌ Blocked | Normal stream ordering |
 | Completed | N/A | ✅ Can claim | Normal progression |
@@ -312,9 +326,8 @@ When the cap is exceeded, the row is moved to `wh_dead_letters` with `MessageFai
 ### Additional Handling Strategies
 
 **1. Manual Intervention**:
-- Set `scheduled_for = NULL` (prevents retry)
+- Set `scheduled_for = 'infinity'` (never claimable again — this is what the at-most-once schedule path does; note `scheduled_for = NULL` does the opposite and makes the row immediately claimable)
 - Alert operations team
-- Release downstream messages (Status=0)
 
 **2. Circuit Breaker**:
 - Detect repeated failures of same type
@@ -337,10 +350,11 @@ public record MessageFailure {
 ```
 
 **Example**:
-```csharp{title="CompletedStatus Field (2)" description="CompletedStatus Field" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "CompletedStatus", "Field"] unverified="conceptual illustration of the CompletedStatus flag-overlay semantics; uses pseudo-code parameters, not the literal ProcessWorkBatchRequest API"}
+```csharp{title="CompletedStatus Field (2)" description="CompletedStatus Field" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "CompletedStatus", "Field"] tests=["MessageFailureTests.MessageFailure_AllReasonTypes_CanBeAssignedAsync", "PostgresFunctionTests.ProcessOutboxFailures_SetsFailureFlagsAndSchedulesRetryAsync"]}
 // Message M1: Store to DB ✅, Store to Event Store ✅, Publish to Transport ❌
-await coordinator.ProcessWorkBatchAsync(
-    outboxFailures: [
+await coordinator.ReportFailuresAsync(
+    WorkCategory.Outbox,
+    [
         new MessageFailure {
             MessageId = message1Id,
             CompletedStatus = MessageProcessingStatus.Stored | MessageProcessingStatus.EventStored,
@@ -480,9 +494,8 @@ WHERE attempts >= 10
 - Message too large (always exceeds limits)
 
 **Solutions**:
-- Move to dead letter queue
+- Move to dead letter queue (removing the row also unblocks later messages in the stream)
 - Fix underlying issue and reset `attempts = 0`
-- Release downstream messages (Status=0 cascade)
 
 ### Problem: Stream Completely Blocked
 
@@ -507,9 +520,8 @@ WHERE attempts >= 10
    ```
 
 **Solutions**:
-- Release blocking message to dead letter queue
+- Release blocking message to dead letter queue (deleting the row lifts the stream-ordering block on later messages)
 - Reset `scheduled_for = NOW()` to trigger immediate retry
-- Cascade release downstream messages (Status=0)
 
 ## Related Documentation
 
@@ -523,7 +535,7 @@ WHERE attempts >= 10
 
 ### PostgreSQL Functions
 
-The retry/failure machinery is split across per-concern migration functions (all called from `process_work_batch`, migration `029_ProcessWorkBatch.sql`):
+The retry/failure machinery is split across per-concern migration functions, reached through the focused work-pump functions in migration `029_ProcessWorkBatch.sql` (`report_failures` dispatches to the failure functions; `claim_work` calls the claim functions; the legacy `process_work_batch` orchestrator was dropped by that migration):
 
 - `017_ProcessOutboxFailures.sql` — `process_outbox_failures`: Failed flag, error text, failure_reason, exponential backoff
 - `018_ProcessInboxFailures.sql` — `process_inbox_failures`: inbox-side equivalent

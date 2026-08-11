@@ -1,8 +1,8 @@
 ---
 title: Perspectives Guide
 pageType: overview
-verifiedAgainstCommit: 1b31f58d
-verifiedDate: 2026-07-16
+verifiedAgainstCommit: 0bc6065b
+verifiedDate: 2026-08-05
 version: 1.0.0
 category: Core Concepts
 order: 3
@@ -61,7 +61,7 @@ public interface IPerspectiveFor<TModel, TEvent>
     where TModel : class
     where TEvent : IEvent {
 
-    TModel Apply(TModel currentData, TEvent @event);
+    TModel Apply(TModel currentData, TEvent eventData);
 }
 ```
 
@@ -867,8 +867,9 @@ Perspectives can rebuild from event history (event replay):
 public class PerspectiveWorker : BackgroundService {
     protected override async Task ExecuteAsync(CancellationToken ct) {
         while (!ct.IsCancellationRequested) {
-            // Poll for streams with new events
-            var workBatch = await _workCoordinator.ProcessWorkBatchAsync(...);
+            // Poll for streams with new events (in production, ClaimWorker is the
+            // sole poller and distributes claimed work to the worker via channels)
+            var workBatch = await _workCoordinator.ClaimWorkAsync(...);
 
             foreach (var perspectiveWork in workBatch.PerspectiveWork) {
                 // Resolve runner for this perspective

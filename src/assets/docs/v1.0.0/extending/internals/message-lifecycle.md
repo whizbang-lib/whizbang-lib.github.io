@@ -1,8 +1,8 @@
 ---
 title: Message Lifecycle & Architecture
 pageType: concept
-verifiedAgainstCommit: 1b31f58d
-verifiedDate: 2026-07-16
+verifiedAgainstCommit: 0bc6065b
+verifiedDate: 2026-08-05
 version: 1.0.0
 category: Architecture
 order: 1
@@ -247,12 +247,12 @@ sequenceDiagram
     participant OSP as Ordered Stream<br/>Processor
     participant Transport as Azure Service Bus
 
-    loop Every 100ms (configurable interval)
+    loop Adaptive poll (default 250ms base, backoff to 10s on empty polls; NOTIFY wakes immediately)
         Timer->>PublisherWorker: Tick
 
         PublisherWorker->>WorkStrategy: FlushAsync()
 
-        WorkStrategy->>WorkCoord: ProcessWorkBatchAsync(<br/>  InstanceId: worker-guid,<br/>  ServiceName: "OrderService",<br/>  PartitionCount: 10000,<br/>  LeaseSeconds: 300,<br/>  MaxStreamsPerBatch: 300<br/>)
+        WorkStrategy->>WorkCoord: ProcessWorkBatchAsync(<br/>  InstanceId: worker-guid,<br/>  ServiceName: "OrderService",<br/>  PartitionCount: 10000,<br/>  LeaseSeconds: 300,<br/>  MaxStreamsPerBatch: 1000<br/>)
 
         Note over WorkCoord: Atomic lease-based claiming:
 
@@ -732,7 +732,7 @@ $$ LANGUAGE plpgsql;
 ### For Users
 
 New to lifecycle stages? Start with the user guide:
-- [Lifecycle Stages](../../fundamentals/lifecycle/lifecycle-stages.md) — All 24 lifecycle stages, timing guarantees, and how to register lifecycle receptors
+- [Lifecycle Stages](../../fundamentals/lifecycle/lifecycle-stages.md) — All 28 lifecycle stages, timing guarantees, and how to register lifecycle receptors
 
 ---
 

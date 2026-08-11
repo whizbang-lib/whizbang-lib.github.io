@@ -1,8 +1,8 @@
 ---
 title: PerspectiveWorker NOTIFY Wake
 pageType: concept
-verifiedAgainstCommit: 1b31f58d
-verifiedDate: 2026-07-16
+verifiedAgainstCommit: 0bc6065b
+verifiedDate: 2026-08-05
 version: 1.0.0
 category: Fundamentals
 order: 7
@@ -27,7 +27,7 @@ This page documents the consumer subscription added in slice 7a.
 
 ## Wake mechanism
 
-```mermaid{caption="PerspectiveWorker NOTIFY wake — a wh_perspective_events insert fires the DB trigger, NOTIFY reaches the LISTEN dispatcher, and the worker's wake semaphore wins Task.WhenAny to drain."}
+```mermaid{caption="PerspectiveWorker NOTIFY wake — a wh_perspective_events insert fires the DB trigger, NOTIFY reaches the LISTEN dispatcher, and the worker's wake semaphore wins Task.WhenAny to drain." tests=["PerspectiveWorkerDeepPathChannelTests.Worker_WithNotificationListener_SubscribesCoalescesAndUnsubscribesAsync"]}
 graph LR
   Producer[Producer commits<br/>wh_perspective_events row] -->|trigger fires| PG[(PostgreSQL<br/>NOTIFY 'perspective')]
   PG -->|LISTEN dispatch| Listener[IWorkNotificationListener]

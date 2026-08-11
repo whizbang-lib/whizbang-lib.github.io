@@ -1,8 +1,8 @@
 ---
 title: REST Mutations
 pageType: concept
-verifiedAgainstCommit: 1b31f58d
-verifiedDate: 2026-07-16
+verifiedAgainstCommit: 0bc6065b
+verifiedDate: 2026-08-05
 version: 1.0.0
 category: REST
 order: 3
@@ -305,14 +305,16 @@ public class CreateOrderCommandValidator : AbstractValidator<CreateOrderCommand>
 
 ### In Hook
 
-```csharp{title="In Hook" description="In Hook" category="API" difficulty="ADVANCED" tags=["Apis", "Rest", "Hook"] unverified="counter to implementation — ExecuteAsync invokes OnBeforeExecuteAsync outside its try/catch, so a throw here does NOT propagate to OnErrorAsync (only dispatch-time throws do); the stated propagation is not backed by the mutation-endpoint tests"}
+```csharp{title="In Hook" description="In Hook" category="API" difficulty="ADVANCED" tags=["Apis", "Rest", "Hook"] unverified="illustrative validation hook — the OnBefore-throw propagation path itself is not covered by the mutation-endpoint tests"}
 protected override async ValueTask OnBeforeExecuteAsync(
     CreateOrderCommand command,
     IMutationContext context,
     CancellationToken ct) {
     var result = await _validator.ValidateAsync(command, ct);
     if (!result.IsValid) {
-        // Throwing propagates to OnErrorAsync, which can suppress or rethrow
+        // Throwing here propagates directly to the caller (transport error handling).
+        // OnErrorAsync only wraps DispatchCommandAsync - it is NOT called for
+        // exceptions thrown in OnBeforeExecuteAsync.
         throw new ValidationException(result.Errors);
     }
 }

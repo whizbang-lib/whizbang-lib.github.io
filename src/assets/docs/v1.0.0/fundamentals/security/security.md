@@ -1,8 +1,8 @@
 ---
 title: Security
 pageType: overview
-verifiedAgainstCommit: 1b31f58d
-verifiedDate: 2026-07-16
+verifiedAgainstCommit: 0bc6065b
+verifiedDate: 2026-08-05
 version: 1.0.0
 category: Core Concepts
 order: 6
@@ -33,6 +33,8 @@ codeReferences:
   - src/Whizbang.Data.EFCore.Postgres/Functions/WhizbangDbContextOptionsExtensions.cs
 testReferences:
   - tests/Whizbang.Core.Tests/Security/PermissionTests.cs
+  - tests/Whizbang.Core.Tests/Security/SecurityOptionsTests.cs
+  - tests/Whizbang.Core.Tests/Scoping/PerspectiveScopeTests.cs
   - tests/Whizbang.Core.Tests/Security/RoleTests.cs
   - tests/Whizbang.Core.Tests/Security/RoleBuilderTests.cs
   - tests/Whizbang.Core.Tests/Security/SecurityPrincipalIdTests.cs

@@ -13,7 +13,7 @@ description: >-
 tags: 'graphql, lens, graphql-lens-attribute, scope, query-generation, hotchocolate'
 codeReferences:
   - src/Whizbang.Transports.HotChocolate/Attributes/GraphQLLensAttribute.cs
-  - src/Whizbang.Transports.HotChocolate/Attributes/GraphQLLensScopes.cs
+  - src/Whizbang.Transports.HotChocolate/Attributes/GraphQLLensScope.cs
   - src/Whizbang.Transports.HotChocolate.Generators/GraphQLLensTypeGenerator.cs
 testReferences:
   - tests/Whizbang.Transports.HotChocolate.Tests/Unit/GraphQLLensAttributeTests.cs

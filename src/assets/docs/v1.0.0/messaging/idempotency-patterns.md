@@ -1,8 +1,8 @@
 ---
 title: "Idempotency Patterns"
 pageType: concept
-verifiedAgainstCommit: 1b31f58d
-verifiedDate: 2026-07-16
+verifiedAgainstCommit: 0bc6065b
+verifiedDate: 2026-08-05
 version: 1.0.0
 category: "Messaging"
 order: 7
@@ -78,7 +78,7 @@ CREATE INDEX IF NOT EXISTS idx_message_dedup_first_seen
 
 ### Processing Flow
 
-```mermaid{caption="Inbox deduplication flow — store_inbox_messages inserts the message id into wh_message_deduplication with ON CONFLICT DO NOTHING, so a duplicate delivery skips the inbox insert entirely (exactly-once)."}
+```mermaid{caption="Inbox deduplication flow — store_inbox_messages inserts the message id into wh_message_deduplication with ON CONFLICT DO NOTHING, so a duplicate delivery skips the inbox insert entirely (exactly-once)." tests=["StoreInboxMessagesSqlTests.DuplicateMessageId_SecondCallNoOpsViaDedupTableAsync"]}
 sequenceDiagram
     participant T as Transport<br/>(External)
     participant TCW as TransportConsumerWorker

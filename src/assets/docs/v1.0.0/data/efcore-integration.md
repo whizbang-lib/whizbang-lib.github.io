@@ -1,8 +1,8 @@
 ---
 title: EF Core Integration
 pageType: concept
-verifiedAgainstCommit: 1b31f58d
-verifiedDate: 2026-07-16
+verifiedAgainstCommit: 0bc6065b
+verifiedDate: 2026-08-05
 version: 1.0.0
 category: Data Access
 order: 2
@@ -17,6 +17,8 @@ codeReferences:
 testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/EFCoreEventStoreTests.cs
   - tests/Whizbang.Generators.Tests/EFCoreServiceRegistrationGeneratorTests.cs
+  - tests/Whizbang.Core.Tests/ValueObjects/TrackedGuidTests.cs
+  - tests/Whizbang.Data.Schema.Tests/PostgresSchemaBuilderTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -928,10 +930,14 @@ public static partial class OrderDbContextSchemaExtensions {
         //   2. PostgreSQL migrations/functions (process_work_batch, etc.)
         //   3. Perspective tables - one per discovered model:
         //      CREATE TABLE IF NOT EXISTS wh_per_order_summary (
-        //          stream_id UUID NOT NULL PRIMARY KEY,
+        //          id UUID NOT NULL PRIMARY KEY,
         //          data JSONB NOT NULL,
-        //          version BIGINT NOT NULL,
-        //          updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+        //          metadata JSONB NOT NULL,
+        //          scope JSONB NOT NULL,
+        //          created_at TIMESTAMPTZ NOT NULL,
+        //          updated_at TIMESTAMPTZ NOT NULL,
+        //          expires_at TIMESTAMPTZ,
+        //          version INTEGER NOT NULL
         //      );
         //   4. Perspective associations + registry reconciliation
     }

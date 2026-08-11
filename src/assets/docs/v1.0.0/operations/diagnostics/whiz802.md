@@ -1,8 +1,8 @@
 ---
 title: 'WHIZ802: VectorField Invalid Dimensions'
 pageType: troubleshooting
-verifiedAgainstCommit: 1b31f58d
-verifiedDate: 2026-07-16
+verifiedAgainstCommit: 0bc6065b
+verifiedDate: 2026-08-05
 description: >-
   Error diagnostic when a [VectorField] attribute has invalid dimensions value
 version: 1.0.0
@@ -54,7 +54,7 @@ Specify a valid positive integer for the dimensions:
 
 ```csharp{title="Before (causes WHIZ802)" description="Before (causes WHIZ802)" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "Before", "Causes"] unverified="counter-example — invalid VectorField dimensions; WHIZ802 is defined but not wired into the generator, so no test emits it"}
 public record ProductDto {
-  [StreamKey]
+  [StreamId]
   public Guid ProductId { get; init; }
   public string Name { get; init; } = string.Empty;
 
@@ -67,7 +67,7 @@ public record ProductDto {
 
 ```csharp{title="After (error resolved)" description="After (error resolved)" category="Troubleshooting" difficulty="BEGINNER" tags=["Operations", "Diagnostics", "After", "Error"]}
 public record ProductDto {
-  [StreamKey]
+  [StreamId]
   public Guid ProductId { get; init; }
   public string Name { get; init; } = string.Empty;
 
@@ -100,7 +100,7 @@ The dimensions parameter:
 
 ```csharp{title="Example: Multiple Embedding Types" description="Example: Multiple Embedding Types" category="Troubleshooting" difficulty="INTERMEDIATE" tags=["Operations", "Diagnostics", "Example:", "Multiple"]}
 public record DocumentDto {
-  [StreamKey]
+  [StreamId]
   public Guid DocumentId { get; init; }
   public string Title { get; init; } = string.Empty;
 

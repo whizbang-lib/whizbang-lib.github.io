@@ -1,8 +1,8 @@
 ---
 title: Persistence
 pageType: overview
-verifiedAgainstCommit: 1b31f58d
-verifiedDate: 2026-07-16
+verifiedAgainstCommit: 0bc6065b
+verifiedDate: 2026-08-05
 version: 1.0.0
 category: Core Concepts
 order: 12
@@ -25,7 +25,7 @@ lastMaintainedCommit: '01f07906'
 Whizbang provides flexible persistence strategies for event sourcing, allowing you to optimize for throughput, consistency, or reliability based on your specific use case.
 
 :::updated
-**Shipped surface (verified against library commit `1b31f58d`)**: the `PersistenceMode` enum and the `[PersistenceStrategy]` attribute exist exactly as documented below and are locked by tests (`PersistenceModeTests`, `PersistenceStrategyTests`) — but at this commit they are **declarative metadata only**. No runtime component reads the attribute yet, the `Whizbang:Persistence` configuration section shown on this page (`DefaultMode`, the `Batched`/`Outbox` option blocks, named `Strategies`) is not bound or consumed by the library, and `IEventStore` exposes **no `FlushAsync`** member. Events persist through the event-store/outbox pipeline regardless of the declared mode. The mode semantics and configuration shapes below describe the intended behavior documented in the enum's own XML docs.
+**Shipped surface (verified against library commit `0bc6065b`)**: the `PersistenceMode` enum and the `[PersistenceStrategy]` attribute exist exactly as documented below and are locked by tests (`PersistenceModeTests`, `PersistenceStrategyTests`) — but at this commit they are **declarative metadata only**. No runtime component reads the attribute yet, the `Whizbang:Persistence` configuration section shown on this page (`DefaultMode`, the `Batched`/`Outbox` option blocks, named `Strategies`) is not bound or consumed by the library, and `IEventStore` exposes **no `FlushAsync`** member. Events persist through the event-store/outbox pipeline regardless of the declared mode. The mode semantics and configuration shapes below describe the intended behavior documented in the enum's own XML docs.
 :::
 
 ## Overview

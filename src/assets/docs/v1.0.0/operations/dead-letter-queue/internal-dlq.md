@@ -1,8 +1,8 @@
 ---
 title: Internal DLQ (wh_dead_letters)
 pageType: concept
-verifiedAgainstCommit: 1b31f58d
-verifiedDate: 2026-07-16
+verifiedAgainstCommit: 0bc6065b
+verifiedDate: 2026-08-05
 version: 1.0.0
 category: Dead-Letter Queue
 order: 1
@@ -25,6 +25,7 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/MoveToDeadLettersSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/EFCoreDeadLetterStoreTests.cs
   - tests/Whizbang.Core.Tests/Workers/InboxDispatchWorkerTests.cs
+  - tests/Whizbang.Core.Tests/Workers/InboxDispatchWorkerDeadLetterTests.cs
   - tests/Whizbang.Core.Tests/Workers/OutboxPublishWorkerDlqPromotionTests.cs
   - tests/Whizbang.Core.Tests/Workers/PerspectiveWorkerDeadLetterFilterTests.cs
   - tests/Whizbang.Core.Tests/Workers/V502DefaultsTests.cs

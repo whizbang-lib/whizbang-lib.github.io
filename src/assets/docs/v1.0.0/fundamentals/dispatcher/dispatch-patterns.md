@@ -1,8 +1,8 @@
 ---
 title: Dispatch Patterns
 pageType: reference
-verifiedAgainstCommit: 1b31f58d
-verifiedDate: 2026-07-16
+verifiedAgainstCommit: 0bc6065b
+verifiedDate: 2026-08-05
 version: 1.0.0
 category: Core Concepts
 order: 2
@@ -19,6 +19,9 @@ testReferences:
   - tests/Whizbang.Core.Tests/Dispatcher/DispatcherTests.cs
   - tests/Whizbang.Core.Tests/Dispatcher/DispatcherInvokeWithReceiptTests.cs
   - tests/Whizbang.Core.Tests/DeliveryReceiptTests.cs
+  - tests/Whizbang.Core.Tests/Dispatcher/DispatcherOutboxTests.cs
+  - tests/Whizbang.Core.Tests/Dispatcher/DispatcherSyncTests.cs
+  - tests/Whizbang.Core.Tests/Dispatcher/DispatcherCascadeTests.cs
 ---
 
 # Dispatch Patterns
@@ -1007,7 +1010,7 @@ public async Task<ActionResult> CreateOrder(
     } catch (Exception ex) {
         // Unexpected error
         _logger.LogError(ex, "Failed to create order");
-        return StatusCode(500, new { error: "An unexpected error occurred" });
+        return StatusCode(500, new { error = "An unexpected error occurred" });
     }
 }
 ```

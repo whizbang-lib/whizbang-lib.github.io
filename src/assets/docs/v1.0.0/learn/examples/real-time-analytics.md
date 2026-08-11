@@ -1,8 +1,8 @@
 ---
 title: Real-Time Analytics
 pageType: concept
-verifiedAgainstCommit: 1b31f58d
-verifiedDate: 2026-07-16
+verifiedAgainstCommit: 0bc6065b
+verifiedDate: 2026-08-05
 version: 1.0.0
 category: Customization Examples
 order: 4
@@ -165,7 +165,7 @@ public class DailySalesPerspective :
       TotalRevenue = totalRevenue,
       AverageOrderValue = totalRevenue / totalOrders,
       TotalPaymentsProcessed = currentData?.TotalPaymentsProcessed ?? 0,
-      LastUpdated = @event.CreatedAt
+      LastUpdated = DateTime.UtcNow
     };
   }
 
@@ -592,4 +592,4 @@ app.MapGet("/sse/metrics", async (HttpContext context, ILensQuery<DailySalesMetr
 
 ---
 
-*Version 1.0.0 - Foundation Release | Last Updated: 2026-07-16*
+*Version 1.0.0 - Foundation Release | Last Updated: 2026-08-05*

@@ -1,8 +1,8 @@
 ---
 title: Scoping
 pageType: concept
-verifiedAgainstCommit: 1b31f58d
-verifiedDate: 2026-07-16
+verifiedAgainstCommit: 0bc6065b
+verifiedDate: 2026-08-05
 version: 1.0.0
 category: Core Concepts
 description: Multi-tenancy and data isolation through composable scope filters, enabling tenant, user, organization, and principal-based access patterns.
@@ -106,7 +106,7 @@ Whizbang provides marker interfaces for models that include scope identifiers in
 
 ### ITenantScoped
 
-```csharp{title="ITenantScoped" description="ITenantScoped" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "ITenantScoped"] unverified="Marker interface declaration; MarkerInterfaceTests is absent from the code-tests map"}
+```csharp{title="ITenantScoped" description="ITenantScoped" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "ITenantScoped"] tests=["MarkerInterfaceTests.ITenantScoped_ImplementingModel_HasTenantIdAsync"]}
 public interface ITenantScoped {
   string TenantId { get; }
 }
@@ -124,7 +124,7 @@ public class Order : ITenantScoped {
 
 ### IUserScoped
 
-```csharp{title="IUserScoped" description="IUserScoped" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "IUserScoped"] unverified="Marker interface declaration; MarkerInterfaceTests is absent from the code-tests map"}
+```csharp{title="IUserScoped" description="IUserScoped" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "IUserScoped"] tests=["MarkerInterfaceTests.IUserScoped_ImplementingModel_HasUserIdAndTenantIdAsync", "MarkerInterfaceTests.IUserScoped_InheritedFromITenantScoped_CanBeUsedAsTenantScopedAsync"]}
 public interface IUserScoped : ITenantScoped {
   string UserId { get; }
 }
@@ -143,7 +143,7 @@ public class SavedSearch : IUserScoped {
 
 ### IOrganizationScoped
 
-```csharp{title="IOrganizationScoped" description="IOrganizationScoped" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "IOrganizationScoped"] unverified="Marker interface declaration; MarkerInterfaceTests is absent from the code-tests map"}
+```csharp{title="IOrganizationScoped" description="IOrganizationScoped" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "IOrganizationScoped"] tests=["MarkerInterfaceTests.IOrganizationScoped_ImplementingModel_HasOrganizationIdAndTenantIdAsync"]}
 public interface IOrganizationScoped : ITenantScoped {
   string OrganizationId { get; }
 }
@@ -161,7 +161,7 @@ public class Department : IOrganizationScoped {
 
 ### ICustomerScoped
 
-```csharp{title="ICustomerScoped" description="ICustomerScoped" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "ICustomerScoped"] unverified="Marker interface declaration; MarkerInterfaceTests is absent from the code-tests map"}
+```csharp{title="ICustomerScoped" description="ICustomerScoped" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "ICustomerScoped"] tests=["MarkerInterfaceTests.ICustomerScoped_ImplementingModel_HasCustomerIdAndTenantIdAsync"]}
 public interface ICustomerScoped : ITenantScoped {
   string CustomerId { get; }
 }

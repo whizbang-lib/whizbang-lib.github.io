@@ -1,8 +1,8 @@
 ---
 title: Scaling Patterns
 pageType: guide
-verifiedAgainstCommit: 1b31f58d
-verifiedDate: 2026-07-16
+verifiedAgainstCommit: 0bc6065b
+verifiedDate: 2026-08-05
 version: 1.0.0
 category: Advanced Topics
 order: 8
@@ -368,7 +368,7 @@ CREATE TABLE orders_7 PARTITION OF orders FOR VALUES WITH (MODULUS 8, REMAINDER 
 
 You don't shard Whizbang's queues or write claim SQL yourself - horizontal scaling of the message pipeline is the library's job:
 
-- **Add pods, get throughput**: each pod runs a `ClaimWorker` that claims pending work from `wh_outbox` / `wh_inbox` through the `process_work_batch` database function. Claiming uses skip-locked semantics, so competing pods never grab the same work and no static partition assignment (pod ordinals, partition numbers) is required.
+- **Add pods, get throughput**: each pod runs a `ClaimWorker` that claims pending work from `wh_outbox` / `wh_inbox` through the `claim_work` database function (via `IWorkCoordinator.ClaimWorkAsync`). Claiming uses skip-locked semantics, so competing pods never grab the same work and no static partition assignment (pod ordinals, partition numbers) is required.
 - **Poller claims stream IDs, drainers fetch bodies**: the claim pass returns *stream identifiers only*; per-stream drain workers (`OutboxDrainWorker`, `InboxDrainWorker`) then fetch and process the message bodies. This split makes double-processing structurally impossible rather than merely unlikely.
 - **Per-stream ordering is preserved**: a stream is processed by one pod at a time (cross-pod stream pinning plus per-stream serialization inside `PerspectiveWorker`), so scaling out never reorders a stream's events. Parallelism grows **across** streams.
 - **Completed work is deleted**: finished `wh_outbox` / `wh_inbox` rows are removed on completion, keeping claim scans fast without manual partition maintenance.

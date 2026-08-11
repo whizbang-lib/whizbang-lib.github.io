@@ -1,8 +1,8 @@
 ---
 title: Vector Fields
 pageType: concept
-verifiedAgainstCommit: 1b31f58d
-verifiedDate: 2026-07-16
+verifiedAgainstCommit: 0bc6065b
+verifiedDate: 2026-08-05
 version: 1.0.0
 category: Perspectives
 codeReferences:
@@ -72,7 +72,7 @@ public record ProductSearchDto {
 | `ColumnName` | `string?` | `null` | Custom column name (defaults to snake_case of the property name) |
 
 :::updated
-At commit `1b31f58d`, the generated index DDL honors only `Indexed` and `Dimensions`: when `Indexed` is true and `Dimensions <= 2000`, the EF Core Postgres generator emits `CREATE INDEX ... USING ivfflat (column vector_cosine_ops)` -- always IVFFlat with cosine ops. `IndexType`, `DistanceMetric`, and `IndexLists` are declared on the attribute but are **not yet consumed** by index generation (no HNSW DDL, no `WITH (lists = N)`, no L2/inner-product operator classes). For vectors over 2000 dimensions the index is skipped entirely (queries still work, unaccelerated) with a comment suggesting a manual HNSW index on pgvector >= 0.7.0. The distance metric you actually query with is chosen by the query extension method you call (see Querying Vectors below), not by the attribute.
+At commit `0bc6065b`, the generated index DDL honors only `Indexed` and `Dimensions`: when `Indexed` is true and `Dimensions <= 2000`, the EF Core Postgres generator emits `CREATE INDEX ... USING ivfflat (column vector_cosine_ops)` -- always IVFFlat with cosine ops. `IndexType`, `DistanceMetric`, and `IndexLists` are declared on the attribute but are **not yet consumed** by index generation (no HNSW DDL, no `WITH (lists = N)`, no L2/inner-product operator classes). For vectors over 2000 dimensions the index is skipped entirely (queries still work, unaccelerated) with a comment suggesting a manual HNSW index on pgvector >= 0.7.0. The distance metric you actually query with is chosen by the query extension method you call (see Querying Vectors below), not by the attribute.
 :::
 
 ## VectorIndexType {#VectorIndexType}

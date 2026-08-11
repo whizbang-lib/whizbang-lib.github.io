@@ -1,8 +1,8 @@
 ---
 title: Stuck Row Sentinel
 pageType: concept
-verifiedAgainstCommit: 1b31f58d
-verifiedDate: 2026-07-16
+verifiedAgainstCommit: 0bc6065b
+verifiedDate: 2026-08-05
 version: 1.0.0
 category: Observability
 order: 8
@@ -29,7 +29,7 @@ The stuck-row sentinel is a structural canary that surfaces `wh_outbox` and `wh_
 
 ## Background
 
-The production forensic (June 2026) exposed a class of bug where rows accumulate `attempts` indefinitely without reaching the drainer:
+A production forensic investigation exposed a class of bug where rows accumulate `attempts` indefinitely without reaching the drainer:
 
 - No publish attempt is made — so [Dead Letter Queue](../dead-letter-queue/internal-dlq.md) promotion never fires.
 - No exception is thrown — so the failure-capture `error` column stays NULL.
@@ -52,8 +52,8 @@ Each returned row produces one `Warning` log entry:
 
 ```
 Warning: Stuck outbox row sentinel: message_id=019e92b2-1bbb-708d-...
-  type=a consumer.Contracts.Auth.RemoveShellUserCommand stream=...
-  attempts=992 since=2026-06-06T15:30:00.000Z — row claimed past
+  type=App.Contracts.Auth.RemoveUserCommand stream=...
+  attempts=992 since=2026-03-12T09:15:00.000Z — row claimed past
   MaxOutboxAttempts but never drained. Investigate; see
   operations/observability/stuck-row-sentinel.
 ```
@@ -128,7 +128,7 @@ The `attempts > 5` predicate keeps the index ~0-sized under healthy traffic — 
 | Maintenance tick frequency | 1 / 10 min (default) — same cadence as `perform_maintenance` |
 | `Warning` emission | At most `StuckRowSentinelLimit` per cycle per table |
 
-At a consumer-scale (millions of historical rows including processed=NOT NULL pre-cleanup), the sentinel itself doesn't show up in pg_stat_statements — the partial index makes the bulk of the table invisible to the scan.
+At production scale (millions of historical rows including processed=NOT NULL pre-cleanup), the sentinel itself doesn't show up in pg_stat_statements — the partial index makes the bulk of the table invisible to the scan.
 
 ## Operator Workflow
 

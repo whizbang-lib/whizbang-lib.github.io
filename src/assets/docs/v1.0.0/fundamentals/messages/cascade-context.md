@@ -1,8 +1,8 @@
 ---
 title: Cascade Context & Security Propagation
 pageType: concept
-verifiedAgainstCommit: 1b31f58d
-verifiedDate: 2026-07-16
+verifiedAgainstCommit: 0bc6065b
+verifiedDate: 2026-08-05
 version: 1.0.0
 category: Core Concepts
 order: 6
@@ -27,6 +27,8 @@ codeReferences:
 testReferences:
   - tests/Whizbang.Observability.Tests/CascadeContextTests.cs
   - tests/Whizbang.Observability.Tests/CascadeContextFactoryTests.cs
+  - tests/Whizbang.Observability.Tests/SecurityContextTests.cs
+  - tests/Whizbang.Core.Tests/MessageContextTests.cs
   - tests/Whizbang.Core.Tests/Security/ScopeContextAccessorTests.cs
   - tests/Whizbang.Core.Tests/Security/ScopeContextAccessorInitiatingContextTests.cs
   - tests/Whizbang.Core.Tests/Security/ScopedMessageContextTests.cs
@@ -95,7 +97,7 @@ var root = CascadeContext.NewRoot();
 var rootWithSecurity = CascadeContext.NewRootWithAmbientSecurity();
 ```
 
-`NewRoot()` generates fresh `CorrelationId` and `CausationId` values. `NewRootWithAmbientSecurity()` additionally reads the current `ImmutableScopeContext` from `ScopeContextAccessor` (if propagation is enabled) and copies `UserId`/`TenantId` into a `SecurityContext`.
+`NewRoot()` generates fresh `CorrelationId` and `CausationId` values. `NewRootWithAmbientSecurity()` adopts an inbound correlation id captured at the edge (e.g. an `X-Correlation-ID` header) when one is present — otherwise minting one aligned to the ambient OpenTelemetry trace — and additionally reads the current `ImmutableScopeContext` from `ScopeContextAccessor` (if propagation is enabled) and copies `UserId`/`TenantId` into a `SecurityContext`.
 
 ### Adding Metadata
 
@@ -324,14 +326,14 @@ Correlation and causation must flow **unchanged** down a whole causal tree: an i
 
 | Resolver | Side | Used when |
 |----------|------|-----------|
-| `CascadeContext.ResolveCascadeIdentity(sourceEnvelope)` | **publish** | stamping the hop of an event being *emitted* (outbox / event-store writers) |
+| `CascadeContext.ResolveHopFirstIdentity(sourceEnvelope)` | **publish** | stamping the hop of an event being *emitted* (outbox / event-store hop builders) — the source hop captured at the call site is authoritative, falling back to `ResolveCascadeIdentity` (ambient initiating context, then a trace-aligned fresh root) |
 | `CascadeContext.ResolveInheritedIdentity(sourceEnvelope)` | **handle** | establishing the message context of a message being *processed* (transport workers, the local cascade, the receptor invoker, the perspective worker, composite fan-out) |
 
 `ResolveInheritedIdentity` applies a fixed priority:
 
 1. **The message's own envelope hop** — an inbound message carries its authoritative correlation/causation.
 2. **The ambient parent message context** — a *locally-cascaded* message has no envelope, so it inherits from the receptor whose handler emitted it. This branch also **rescues** an inbound message whose hop somehow lost its correlation, so a dropped hop can never silently fork a fresh correlation tree (defence in depth).
-3. **A fresh root** — only when there is genuinely no parent (a true entry point), aligned to the ambient OpenTelemetry trace.
+3. **A fresh root** — only when there is genuinely no parent (a true entry point).
 
 ```csharp{title="ResolveInheritedIdentity" description="The single handle-side correlation resolver" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Messages", "Correlation", "Cascade"] tests=["SecurityContextHelperTests.SetMessageContextFromEnvelope_HopHasCorrelation_UsesHopNotAmbientParentAsync", "SecurityContextHelperTests.SetMessageContextFromEnvelope_HopHasNoCorrelation_RescuesFromAmbientParentAsync"]}
 // Every message-context establishment site routes through this — never re-implement the rule inline.

@@ -1,8 +1,8 @@
 ---
 title: Schema Generation Pattern
 pageType: concept
-verifiedAgainstCommit: 1b31f58d
-verifiedDate: 2026-07-16
+verifiedAgainstCommit: 0bc6065b
+verifiedDate: 2026-08-05
 version: 1.0.0
 category: Data Access
 order: 6
@@ -128,7 +128,7 @@ public sealed record TableDefinition(
 );
 ```
 
-**Example - Inbox Table** (abridged; the shipped `InboxSchema` has 18 columns):
+**Example - Inbox Table** (abridged; the shipped `InboxSchema` has 19 columns):
 
 ```csharp{title="TableDefinition - InboxSchema" description="Example - Inbox Table (abridged):" category="Implementation" difficulty="ADVANCED" tags=["Data", "TableDefinition"] tests=["InboxSchemaTests.Table_ShouldDefineCorrectColumnsAsync", "InboxSchemaTests.Table_ShouldHavePrimaryKeyAsync", "InboxSchemaTests.Table_ColumnDefaults_ShouldBeCorrectAsync", "InboxSchemaTests.Table_ShouldDefineCorrectIndexesAsync"]}
 using System.Collections.Immutable;
@@ -181,7 +181,10 @@ public sealed record ColumnDefinition(
   bool PrimaryKey = false,         // Is primary key
   bool Unique = false,             // Has unique constraint
   int? MaxLength = null,           // For strings
-  DefaultValue? DefaultValue = null // Default value
+  DefaultValue? DefaultValue = null, // Default value
+  bool BackfillExempt = false      // Lifecycle owned by forward migrations; emitted in
+                                   // CREATE TABLE but skipped by the idempotent
+                                   // ALTER TABLE ... ADD COLUMN IF NOT EXISTS backfill pass
 );
 ```
 
@@ -484,6 +487,10 @@ public static class EventStoreSchema {
   );
 }
 ```
+
+:::updated
+**Body split (migrations 077/078)**: `event_data` and `metadata` are marked `BackfillExempt` in the schema definition. The full body-split migration (078) moves event bodies to the `wh_event_body` table (`event_id`, `event_data`, `metadata`) and drops those two columns from `wh_event_store` on migrated databases. They still appear in `CREATE TABLE` for fresh databases, but the idempotent `ALTER TABLE ... ADD COLUMN IF NOT EXISTS` backfill pass skips them so the base schema ensure never re-adds a dropped NOT NULL column (which would fail with Postgres 23502 on a non-empty table).
+:::
 
 ### PerspectiveCursorsSchema
 

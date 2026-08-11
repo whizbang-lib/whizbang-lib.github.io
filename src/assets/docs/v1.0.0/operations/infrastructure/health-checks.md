@@ -1,8 +1,8 @@
 ---
 title: Health Checks
 pageType: concept
-verifiedAgainstCommit: 1b31f58d
-verifiedDate: 2026-07-16
+verifiedAgainstCommit: 0bc6065b
+verifiedDate: 2026-08-05
 version: 1.0.0
 category: Infrastructure
 order: 2
@@ -47,6 +47,10 @@ lastMaintainedCommit: '01f07906'
 - ✅ **Custom Checks** - Extensible `IHealthCheck` pattern
 - ✅ **Caching** - Avoid excessive health check overhead
 - ✅ **Aspire Integration** - Auto-wired dashboard monitoring
+
+:::new
+**Managed-resource health**: beyond the `IHealthCheck` probes on this page, Whizbang ships a managed-resource health model. `AddWhizbangManagedHealth()` registers a `WhizbangHealthAggregator` that folds per-subsystem `IWhizbangHealthSource` contributions (`SchemaHealthSource`, `WorkerHealthSource`, `ConnectivityHealthSource`) into readiness/liveness statuses through a configurable `HealthPolicy`. The default is `HealthPolicy.Lenient` — intentional states (Starting, Migrating, PausedByDesign) stay Healthy for readiness, and liveness never fails on an intentional state or dependency fault, so pods aren't restarted mid-migration. Health endpoints (`/alive`, `/health`, `/version`) are exempt from database-availability request gating by default. See [Managed-Resource Health](../../resilience/managed-resource-health.md).
+:::
 
 ---
 

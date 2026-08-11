@@ -1,8 +1,8 @@
 ---
 title: 'WHIZ090: MessageTag Parameter Naming'
 pageType: troubleshooting
-verifiedAgainstCommit: 1b31f58d
-verifiedDate: 2026-07-16
+verifiedAgainstCommit: 0bc6065b
+verifiedDate: 2026-08-05
 description: >-
   Error diagnostic when a constructor parameter in a MessageTagAttribute subclass
   does not match any property name (case-insensitive)

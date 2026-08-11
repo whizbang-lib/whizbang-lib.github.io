@@ -1,8 +1,8 @@
 ---
 title: Event Store Migration
 pageType: guide
-verifiedAgainstCommit: 1b31f58d
-verifiedDate: 2026-07-16
+verifiedAgainstCommit: 0bc6065b
+verifiedDate: 2026-08-05
 version: 1.0.0
 category: Migration Guide
 order: 6
@@ -13,6 +13,7 @@ codeReferences:
   - src/Whizbang.Core/Messaging/InMemoryEventStore.cs
   - src/Whizbang.Data.EFCore.Postgres/EFCoreEventStore.cs
 testReferences:
+  - src/Whizbang.Testing/Contracts/EventStoreContractTests.cs
   - tests/Whizbang.Core.Tests/Messaging/InMemoryEventStoreTests.cs
   - tests/Whizbang.Core.Tests/Messaging/EventStoreAppendBatchTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperPostgresEventStoreTests.cs

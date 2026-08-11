@@ -1,8 +1,8 @@
 ---
 title: Multi-Stream Perspectives
 pageType: concept
-verifiedAgainstCommit: 1b31f58d
-verifiedDate: 2026-07-16
+verifiedAgainstCommit: 0bc6065b
+verifiedDate: 2026-08-05
 version: 1.0.0
 category: Core Concepts
 order: 1
@@ -297,7 +297,7 @@ public class CustomerLifecyclePerspective :
 ```
 
 :::info Event Type Limits
-`IGlobalPerspectiveFor` currently supports a maximum of **3 event type parameters** per perspective in v1.0.0. This is lower than other perspective variants: `IPerspectiveFor` supports up to 20 event types, and `ITemporalPerspectiveFor`/`IPerspectiveWithActionsFor` support up to 10. Additional variants will be generated in a future release. For now, if you need more than 3 event types, create multiple perspectives targeting the same model.
+`IGlobalPerspectiveFor` currently supports a maximum of **3 event type parameters** per perspective in v1.0.0. This is lower than other perspective variants: `IPerspectiveFor` supports up to 50 event types, and `ITemporalPerspectiveFor`/`IPerspectiveWithActionsFor` support up to 10. Additional variants will be generated in a future release. For now, if you need more than 3 event types, create multiple perspectives targeting the same model.
 :::
 
 ---
@@ -639,7 +639,7 @@ public class CustomerStatisticsPerspectiveTests {
 
 ## Limitations (v1.0.0)
 
-1. **Maximum 3 event types** per multi-stream perspective (vs 20 for `IPerspectiveFor`, 10 for `ITemporalPerspectiveFor`/`IPerspectiveWithActionsFor`)
+1. **Maximum 3 event types** per multi-stream perspective (vs 50 for `IPerspectiveFor`, 10 for `ITemporalPerspectiveFor`/`IPerspectiveWithActionsFor`)
 2. **Partition key must be notnull** (`where TPartitionKey : notnull`)
 3. **Model must be class** (`where TModel : class`)
 4. **No built-in UI for v1.0.0** (manual perspective registration)

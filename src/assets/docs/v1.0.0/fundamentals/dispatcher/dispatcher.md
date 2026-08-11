@@ -1,8 +1,8 @@
 ---
 title: Dispatcher Deep Dive
 pageType: overview
-verifiedAgainstCommit: 1b31f58d
-verifiedDate: 2026-07-16
+verifiedAgainstCommit: 0bc6065b
+verifiedDate: 2026-08-05
 version: 1.0.0
 category: Core Concepts
 order: 1
@@ -222,7 +222,7 @@ var result = await _dispatcher.LocalInvokeAsync<CreateOrder, OrderCreated>(comma
 
 // Option 3: PublishAsync (broadcast to listeners)
 await _dispatcher.PublishAsync(orderCreated);
-// Returns: void
+// Returns: IDeliveryReceipt (often ignored for fire-and-forget)
 // Use: After command completes, update all perspectives
 ```
 
@@ -375,9 +375,10 @@ Envelope creation is internal to the dispatcher — application code never const
 // Application code: just dispatch — the outbox write is part of the dispatch
 var receipt = await _dispatcher.PublishAsync(new OrderCreated(/* ... */));
 
-// Framework internals (workers): work is claimed and flushed through
-// IWorkCoordinator.ProcessWorkBatchAsync(ProcessWorkBatchRequest, ct),
-// which returns OutboxWork / InboxWork / PerspectiveWork batches.
+// Framework internals (workers): work is claimed via
+// IWorkCoordinator.ClaimWorkAsync(ClaimWorkRequest, ct), which returns a
+// WorkBatch of OutboxWork / InboxWork / PerspectiveWork, and completions
+// are flushed via FlushCompletionsAsync(FlushCompletionsRequest, ct).
 ```
 
 See [Outbox Pattern](../../messaging/outbox-pattern.md) for details.
@@ -402,7 +403,7 @@ public class OrderEndpointsTests {
     [Before(Test)]
     public void Setup() {
         var services = new ServiceCollection();
-        services.AddWhizbangCore();
+        services.AddWhizbang();
         services.AddTransient<IReceptor<CreateOrder, OrderCreated>, CreateOrderReceptor>();
 
         var provider = services.BuildServiceProvider();
@@ -446,6 +447,7 @@ public class OrderEndpointsTests {
 | `Timeout` | `TimeSpan?` | `null` (no timeout) | Maximum time to wait for dispatch completion. Throws `OperationCanceledException` when exceeded. |
 | `WaitForPerspectives` | `bool` | `false` | When `true`, `LocalInvokeAsync` waits for all perspectives to finish processing cascaded events before returning. |
 | `PerspectiveWaitTimeout` | `TimeSpan` | 30 seconds | Timeout for waiting for perspectives. Only used when `WaitForPerspectives` is `true`. |
+| `ScheduledFor` | `DateTimeOffset?` | `null` (immediate) | UTC instant when the message becomes eligible for delivery (written to `wh_outbox.scheduled_for`). Set via `WithScheduledFor(...)`. |
 
 ### Fluent API
 
