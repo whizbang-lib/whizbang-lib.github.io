@@ -122,7 +122,11 @@ breathing against throttle and foreground load.
 
 ## Build increments
 
-1. **Window persistence + record-only discovery + fixed-rate drain (MVP).** Ledger window
+1. **Window persistence + record-only discovery + fixed-rate drain (MVP).** ✅ BUILT —
+   migration adds the ledger window columns, a discovery-time stamp, and an atomic
+   SKIP-LOCKED claim mirroring the single-key grant ladder; the stream-level compare is
+   discovery-only under the new default (legacy burst path behind a flag); the drain worker
+   dispatches token-bucket-paced grouped range-bounded requests on `TimeProvider`. Ledger window
    columns stamped at discovery; compares stop sending; the drain worker dispatches at a
    configured constant rate. Already strictly better than budget-bursts.
 2. **AIMD feedback.** The throttle-policy seam + multiplicative-decrease/additive-increase
