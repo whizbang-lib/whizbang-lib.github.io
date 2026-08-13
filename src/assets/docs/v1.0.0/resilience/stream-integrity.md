@@ -208,10 +208,16 @@ page-plus-serialization footprints.
 
 - An event the consumer **already has** hits the event-id conflict skip at the store seam: no row,
   no work items, zero perspective churn. Re-delivery is free where nothing is wrong.
-- An event the consumer **was missing** appends normally and generates perspective work. Because it
-  is *older* than the perspective's cursor, the **cursor-inversion detector** fires and the rewind
-  path replays the stream from its snapshot/anchor with the now-complete event set. Late history
-  folds in correctly because the pipeline already knows what late history means.
+- An event the consumer **was missing** appends normally and generates perspective work — and the
+  emit chain **self-declares the rewind at work-item creation**: the backfilled event keeps its
+  ORIGINAL event id, which slots below the perspective's cursor, so the cursor is flagged
+  RewindRequired with the straggler as trigger right there. (The runtime inversion detector could
+  never catch this case — a backfill's *local* commit_sequence is freshly stamped and sits above
+  the cursor.) The rewind then replays the stream in **origin order** — single-origin batches sort
+  by `(SourceServiceId, SourceCommitSequence)` — slotting the late event at its intended position:
+  the final perspective state equals what a never-missed history would have produced, and newer
+  writers are never clobbered by month-old backfills. Pinned end-to-end by
+  `ReconcileRewindScenarioTests` + `ReconcileRewindDeclarationSqlTests`.
 
 **Re-delivery rides composites, and the children ride RAW.** A repair set is "many events for one
 stream" — the composite decision-table row, with its measured bulk-transport win. The redelivery
