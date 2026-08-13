@@ -405,9 +405,14 @@ re-bounds):
   and a bucket that heals is forgotten entirely, so a later re-divergence is a brand-new incident.
 - **Repair requests back off.** Each divergent bucket's first repair request goes immediately;
   every further attempt doubles the wait (`RepairRequestBackoffSeconds` base, default 300), and
-  past `MaxRepairAttemptsPerBucket` (default 8) the requester stops asking — the divergence still
-  re-reports at the cooldown cadence, but a repair that has not worked eight times needs operator
-  eyes, not an infinite loop. A signature change resets the budget.
+  past `MaxRepairAttemptsPerBucket` (default 8) the ladder stops climbing and flattens to its
+  **terminal cadence** — one ask per base × 2⁶ interval, forever — instead of going silent. A
+  bucket whose whole budget burned against an unreachable origin has a *static* signature
+  (the origin served nothing, so neither side's digest moves and the signature-change reset
+  never fires); a permanent deny would shadow-ban that real, repairable deficit until an
+  operator reset the ledger row by hand. The terminal cadence keeps convergence
+  eventually-true at bounded cost, while the divergence keeps re-reporting at the cooldown
+  cadence for operator eyes. A signature change still resets the budget immediately.
 - **Requests batch and are directed or not at all.** Divergent streams of one (tenant, type)
   batch into ONE `RequestRedeliveryCommand` (the origin's selection takes a stream set — per-stream
   commands multiplied wire volume by the stream count for nothing). And every integrity request —
@@ -574,7 +579,7 @@ services.Configure<StreamIntegrityOptions>(o => {
   // Convergence bounding (the IntegrityRepairLedger's dials)
   o.DivergenceReportCooldownMinutes = 60;    // unchanged divergence re-reports once per hour, not per cycle
   o.RepairRequestBackoffSeconds = 300;       // per-bucket retry base; each attempt doubles the wait
-  o.MaxRepairAttemptsPerBucket = 8;          // then stop asking (reports continue); signature change resets
+  o.MaxRepairAttemptsPerBucket = 8;          // then flatten to the terminal cadence (base x 2^6); signature change resets
 
   // Phase S — subscription growth
   o.BackfillOnSubscriptionGrowth = true;
@@ -616,7 +621,9 @@ provably-missing delivery is additive and idempotent (the same event id folds on
 that made auto-repair dangerous elsewhere (destructive repair of *suspected* divergence) does not
 apply to this design's confirmed-gap, identity-preserving re-delivery. `ReportOnly` remains the
 explicit opt-DOWN for operators who want report-and-decide; every report still states exactly what
-auto-repair would have done, so ReportOnly IS the dry-run.
+auto-repair would have done, so ReportOnly IS the dry-run. The opt-down silences **every** repair
+dispatcher — the burst-path grants and the paced repair drain alike, which neither claims (a claim
+stamps an attempt, burning the row's backoff) nor sends while the mode is not `AutoRepairCapped`.
 
 **Observability (as built): meter `Whizbang.StreamIntegrity`.** Self-healing by default demands
 visibility into what the healer does. Counters:

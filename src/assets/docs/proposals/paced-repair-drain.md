@@ -62,11 +62,14 @@ from the seal → settled-watermark pair — correct, just coarser.
 
 ### 2. The repair drain worker
 
-A continuous worker drains eligible ledger rows — past backoff, under the attempt cap, not
-already in flight — and issues the same directed, range-bounded requests the compare issues
-today, including bulk escalation for threshold-crossing type deficits. Dispatch order:
+A continuous worker drains eligible ledger rows — past backoff (a lane at the attempt cap is
+not denied forever: it flattens to the ladder's terminal cadence, base × 2⁶, so a deficit whose
+budget burned against a down origin still converges once the origin returns), not already in
+flight — and issues the same directed, range-bounded requests the compare issues today,
+including bulk escalation for threshold-crossing type deficits. Dispatch order:
 least-recently-attempted first (the same fairness rule as drill-down rotation), so no lane
-starves behind a hot one.
+starves behind a hot one. The drain honors `IntegrityRepairMode`: `ReportOnly` silences it
+entirely — it neither claims (a claim stamps an attempt) nor dispatches.
 
 Rate control is a **token bucket**: requests spend tokens, tokens refill at the current
 drain rate. The burst dies; the same 500 requests that left in five seconds now leave over
@@ -115,8 +118,8 @@ breathing against throttle and foreground load.
 - **RED-first per increment**: discovery-records-but-never-sends; the drain dispatches
   eligible rows in fairness order with correct window bounds; a throttle observation halves
   the rate and a clean interval raises it; deep foreground queues squeeze the rate; bulk
-  escalation flows through the drain; exhausted lanes stay denied without starving their
-  types (the delivered invariant, re-locked at the drain tier).
+  escalation flows through the drain; capped lanes hold the terminal cadence without starving
+  their types (the delivered invariant, re-locked at the drain tier).
 - **Integration**: fake transport injecting throttle responses proves the closed loop; the
   multi-service harness proves end-to-end heal under a constrained pipe.
 
