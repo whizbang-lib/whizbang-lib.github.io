@@ -82,9 +82,58 @@ Historical *business* time is approximate for existing rows, and that is accepte
 
 Perspective tables are generated per application, so the migration is applied through the same schema-init path that creates them, and the schema hash changes accordingly.
 
+## Consequence: `expires_at` becomes an override, not the anchor
+
+Once `updated_at` is replay-invariant, the stored `expires_at` is doing two unrelated jobs. Job one — carrying `updated_at + ttl` into the database — exists only because the reaper is dynamic SQL with no knowledge of any model's TTL. Job two — letting a *specific row* expire at a time the rule would not have chosen — is a genuine capability. Splitting them:
+
+**Enrollment and duration become separate concerns.** The `[RowTtl]` attribute's job is to tell the reaper **where to look**; a duration is optional.
+
+| Declaration | Reaper scans the table | Default rule | Explicit `expires_at` honored |
+| --- | --- | --- | --- |
+| *(no attribute)* | no | — | no |
+| `[RowTtl]` | yes | none | yes |
+| `[RowTtl(Days = 60)]` | yes | `updated_at + 60d` | yes (wins over the rule) |
+
+So a perspective can enroll for expiry **without** declaring a blanket lifetime, and have individual rows reaped purely by a domain-assigned date — a temporary record inside an otherwise permanent model. That is not expressible today.
+
+**Invariant: a declared TTL is always live.** Enrollment and duration are not independently configurable, so there is no combination that yields a declared-but-inert TTL — `[RowTtl(Days = 60)]` enrolls by construction. The only two things that may suppress a declared TTL are deliberate and operator-visible: the global `Enabled` kill switch, and a per-model override set explicitly to null. Anything else silently ignoring a declared lifetime is a bug, and is regression-locked as one.
+
+### The effective-expiry ladder
+
+Stated as an ordered ladder rather than a `COALESCE`, because the guard is load-bearing:
+
+```
+effective_expiry =
+    expires_at              when explicitly set    -- an override always wins
+    updated_at + ttl        when a TTL is present  -- the default rule
+    NULL                    otherwise              -- never expires
+```
+
+A row is reapable when `effective_expiry IS NOT NULL AND effective_expiry < NOW()`.
+
+:::new{type="breaking"}
+**The TTL-presence check is a safety guard, not style.** `PerspectiveTtlRegistry.ResolveSeconds` returns **`-1`**, not null, for four distinct cases: an unregistered model, a per-model override set to null, a null type, and **the global `Enabled` kill switch being off**. A naive `updated_at + ttl` would therefore compute *one second before* `updated_at` — already expired — and reap every row of every non-TTL perspective, including the entire fleet the moment an operator flips the kill switch whose purpose is to *stop* expiry. SQL would mask this through NULL propagation; C# arithmetic would not. The check must be explicit on both sides.
+:::
+
+### Disabled means disabled
+
+With retention disabled, **nothing expires** — neither the rule nor explicit per-row overrides, and the lens filter stands down so hidden rows become visible again. A kill switch that suppressed the rule but honored overrides would be a partial guarantee nobody can reason about mid-incident.
+
+### Where the reaper looks
+
+Today's reaper enumerates every table carrying an `expires_at` column — which, since the column is part of the standard perspective DDL, means every perspective table in the database. Under enrollment it consults `wh_perspective_registry` instead and scans only enrolled perspectives. That table already exists, already carries the schema hash, and is already reconciled at startup, so it gains `row_ttl_seconds` (nullable — enrolled with no default rule) and the sync comes free.
+
+### The retroactive-TTL caveat
+
+Deriving rather than stamping means **editing a TTL re-times every existing row at once**. Lengthening is harmless. Shortening 60 days to 7 makes a large population reapable on the very next maintenance cycle, where the stamped design would have rolled the change in gradually as rows were rewritten. This is arguably correct — the declaration is the truth — but it is a mass-deletion edge, so a shortened TTL should be introduced with the detect-and-report pass first and the kill switch within reach.
+
+### It also removes the need for a backfill
+
+Today a NULL `expires_at` means *never expires*, which is why rows written before a perspective declared `[RowTtl]` are permanently invisible to retention. Under the ladder, NULL means *fall through to the rule* — so every pre-existing row is correctly governed the moment the code deploys, with no data mutation, no opt-in migration, and nothing to schedule.
+
 ## What this unlocks
 
-- **Retention gets an honest anchor.** `expires_at` becomes a derived, indexable cache of `updated_at + ttl` rather than the only replay-invariant timestamp on the row. The Perspective TTL Backfill proposal then reduces to a single exact statement with no wall-clock proxy.
+- **Retention gets an honest anchor**, and `expires_at` is freed to mean what its name says — a per-row override — rather than being the row's only replay-invariant timestamp. The separately-proposed TTL backfill becomes unnecessary rather than merely exact.
 - **Recency and "what changed" queries work across rebuilds**, which they do not today.
 - **Displayed dates stop lying.** Created dates survive projection maintenance.
 - **The rule generalizes.** Replay-invariance decides where any future timestamp belongs.
@@ -99,8 +148,9 @@ Additive columns on the generated perspective schema, values threaded from the e
 2. **Write paths** — both upsert paths stamp system time from the clock and business time from the applied event's timestamp. RED first with a test asserting today's conflated behavior fails under replay.
 3. **Replay-invariance lock** — the load-bearing regression: apply a stream, capture both axes, rebuild, assert business time is byte-identical and system time advanced.
 4. **Activity suppression** — hook-declared non-activity event types leave business time untouched while still writing the row; precedence tests.
-5. **Terminology sweep** — update every doc and test to the new meanings, including the ones that currently assert wall-clock semantics on `UpdatedAt`.
-6. **Retention rebase** — `expires_at` derives from `updated_at + ttl`; the TTL backfill proposal is revised onto it.
+5. **Enrollment registry** — `row_ttl_seconds` on `wh_perspective_registry`, synced at startup; `[RowTtl]` accepts no-duration enrollment. Reaper scans enrolled perspectives instead of every table with the column.
+6. **Effective-expiry ladder** — override → rule → never, in the lens filter and the reaper. The load-bearing RED test asserts that a `-1` TTL (kill switch off, unregistered model, per-model disable) expires *nothing*, since a naive addition would reap the fleet.
+7. **Terminology sweep** — update every doc and test to the new meanings, including the ones that currently assert wall-clock semantics on `UpdatedAt`, and the sibling docs-site pages under `fundamentals/messaging/apply-hooks`.
 
 ## Relationship to neighboring proposals
 
