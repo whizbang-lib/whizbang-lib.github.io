@@ -133,6 +133,30 @@ Both are offered, following the shape .NET developers already know from `MemoryC
 [RowTtl(Days = 60, MaxAgeDays = 365)]    // slides while used, hard-capped at a year
 ```
 
+### Units
+
+The shipped attribute exposes only `Days` and `Seconds`, which is too coarse at one end and too fine at the other — a presence or draft-autosave row wants minutes, a export-job result wants hours. Each anchor takes the full set, and **components sum**:
+
+```csharp
+[RowTtl(Minutes = 30)]                   // sliding — half an hour of inactivity
+[RowTtl(Hours = 1, Minutes = 30)]        // sliding — ninety minutes
+[RowTtl(Days = 60, MaxAgeHours = 8_760)] // sliding 60d, capped at a year
+```
+
+| Anchor | Components |
+| --- | --- |
+| sliding (from `updated_at`) | `Seconds`, `Minutes`, `Hours`, `Days` |
+| absolute (from `created_at`) | `MaxAgeSeconds`, `MaxAgeMinutes`, `MaxAgeHours`, `MaxAgeDays` |
+
+Summing also **resolves an existing ambiguity**: today `[RowTtl(Days = 1, Seconds = 30)]` has no defined meaning, because the resolver reads one property and silently ignores the other. Under summation it means what it reads like.
+
+Two rules the implementation must hold, both of them the `-1` sentinel hazard again in a new place:
+
+- Unset components are `-1` and **must be skipped, not added**. Summing the sentinel would silently shorten every window by a second per unset unit.
+- A group with no component set has **no anchor**, which is distinct from an anchor of zero. `[RowTtl(Seconds = 0)]` — expire instantly — is almost certainly a mistake and is an analyzer diagnostic rather than an accepted value.
+
+Units are a declaration-surface concern only: the generator normalizes each anchor to whole seconds at compile time, so the registry, the schema, and the reaper continue to deal in seconds and nothing downstream learns about units. A string form (`[RowTtl("90m")]`) was considered and rejected — it trades compile-time checking and IntelliSense for brevity, against the grain of a codebase that resolves everything statically.
+
 **Absolute expiry is only sound because of this proposal.** Anchoring on `created_at` today would be silently broken — a rebuild resets it, so every record's age would restart and nothing would ever reach its cap. It becomes trustworthy only once `created_at` is replay-invariant business time, which is why the two anchors arrive together rather than separately.
 
 ### The effective-expiry ladder
