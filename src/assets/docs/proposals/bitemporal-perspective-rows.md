@@ -174,6 +174,26 @@ effective_expiry =
 
 A row is reapable when `effective_expiry IS NOT NULL AND effective_expiry < NOW()`. With both terms declared the earliest wins, so the cap bounds total lifetime while the sliding term governs idle-out — the same composition the cache APIs use.
 
+### Still one stored column, not two
+
+Two rules do not imply two expiry columns. Both rules are **derived** from columns that already exist — sliding from `updated_at`, absolute from `created_at` — with the durations coming from the registry. Neither needs storage.
+
+Only the override is stored, and an override is a single instant: "this row dies at X." It supersedes both rules at once, so there is no coherent "override the slide but keep the cap" — the answer to *when does this row die* is one timestamp however many rules contributed to it. `expires_at` therefore stays a single nullable column, and no `max_expires_at` is introduced.
+
+The ladder evaluates in SQL as a three-way disjunction, with the override suppressing the rules:
+
+```sql
+WHERE (expires_at IS NOT NULL AND expires_at < NOW())
+   OR (expires_at IS NULL AND r.sliding_seconds IS NOT NULL
+       AND updated_at < NOW() - make_interval(secs => r.sliding_seconds))
+   OR (expires_at IS NULL AND r.max_age_seconds IS NOT NULL
+       AND created_at < NOW() - make_interval(secs => r.max_age_seconds))
+```
+
+**Write the arithmetic on the `NOW()` side.** `updated_at < NOW() - interval` is sargable and uses an index on `updated_at`; the algebraically identical `updated_at + interval < NOW()` is not, and degrades the reaper to a sequential scan of every enrolled table on every maintenance cycle.
+
+That makes an index on `updated_at` a requirement of this design. Perspective tables index `created_at` today but **not** `updated_at`, so the schema work adds it — one more reason the column set and the reaper predicate land in the same increment rather than separately.
+
 :::new{type="breaking"}
 **The TTL-presence check is a safety guard, not style.** `PerspectiveTtlRegistry.ResolveSeconds` returns **`-1`**, not null, for four distinct cases: an unregistered model, a per-model override set to null, a null type, and **the global `Enabled` kill switch being off**. A naive `updated_at + ttl` would therefore compute *one second before* `updated_at` — already expired — and reap every row of every non-TTL perspective, including the entire fleet the moment an operator flips the kill switch whose purpose is to *stop* expiry. SQL would mask this through NULL propagation; C# arithmetic would not. The check must be explicit on both sides.
 :::
