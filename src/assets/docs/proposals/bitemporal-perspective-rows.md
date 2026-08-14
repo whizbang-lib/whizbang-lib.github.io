@@ -70,6 +70,25 @@ Business time is sourced from the applied event's timestamp — the same value t
 
 So business-time stamping is **suppressible per event type**, through the existing `PerEventApplyHooks` seam that already resolves the `updated_at` decision today. The default is **opt-out**: every event counts as activity unless a hook declares otherwise. Forgetting to declare keeps a record alive and visible, which fails safe; an opt-in default would silently expire records nobody remembered to annotate.
 
+## Prerequisite: the Dapper store must stop discarding metadata
+
+Business time is sourced from the applied event's timestamp, which arrives on `PerspectiveMetadata`. The EF Core store already threads it. The Dapper store does not — it writes `metadata = '{}'` for every row.
+
+The cause is not a missing contract. `IPerspectiveStore.UpsertAsync` **already has** a metadata-bearing overload; it is a *default interface method whose body drops the argument*:
+
+```csharp
+Task UpsertAsync(…, PerspectiveMetadata metadata, CancellationToken ct = default)
+  => UpsertAsync(streamId, model, scope, forceUpdateScope, cancellationToken);   // metadata discarded
+```
+
+`DapperPostgresPerspectiveStore` implements only the three non-metadata overloads, so it inherits that default and hardcodes an empty metadata object.
+
+This is the **same defect class** as the event-store decorators that silently served interface defaults for `GetCommitSequenceAsync` and `HasStreamEventsBeforeAsync`: a default interface method is not virtual dispatch, so an implementor that does not override it gets the lossy fallback with no compiler complaint and no runtime error. It is the third instance found in this codebase.
+
+The consequence is wider than timestamps — the Dapper path currently discards **all** perspective metadata: `EventType`, `EventId`, `CorrelationId`, `CausationId`, and `CommitSequence`. Any consumer reading those from a Dapper-backed perspective receives an empty object today.
+
+**Resolution:** implement the metadata overload in the Dapper store and persist the metadata, matching the EF Core path. No contract change is required. Because this is a recurring pattern rather than an isolated slip, the fix ships with a reflection drift-lock — the same guard added for the event-store decorators — asserting that every `IPerspectiveStore` implementation overrides the metadata-bearing overload rather than inheriting a lossy default.
+
 ## Migration
 
 Pre-1.0, so the columns are redefined in place rather than deprecated alongside replacements.
@@ -144,6 +163,7 @@ Additive columns on the generated perspective schema, values threaded from the e
 
 ## Build increments (docs-first → TDD each)
 
+0. **Dapper metadata** — implement the metadata-bearing `UpsertAsync` overload in the Dapper store so it persists `PerspectiveMetadata` instead of `'{}'`, plus the reflection drift-lock over every `IPerspectiveStore` implementation. Prerequisite: without it there is no event-time source on that path, and it independently restores `EventType` / `EventId` / correlation / commit-sequence, which are lost today.
 1. **Schema** — add `sys_created_at` / `sys_updated_at` across the in-sync schema-definition sites plus the schema hash; migration adds and copy-backfills them. Inert: nothing reads them yet.
 2. **Write paths** — both upsert paths stamp system time from the clock and business time from the applied event's timestamp. RED first with a test asserting today's conflated behavior fails under replay.
 3. **Replay-invariance lock** — the load-bearing regression: apply a stream, capture both axes, rebuild, assert business time is byte-identical and system time advanced.
