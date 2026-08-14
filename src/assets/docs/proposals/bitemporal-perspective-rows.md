@@ -211,6 +211,58 @@ That makes an index on `updated_at` a requirement of this design. Perspective ta
 
 With retention disabled, **nothing expires** — neither the rule nor explicit per-row overrides, and the lens filter stands down so hidden rows become visible again. A kill switch that suppressed the rule but honored overrides would be a partial guarantee nobody can reason about mid-incident.
 
+### Count caps — bounding cardinality, not just age
+
+Time-based retention does not bound how many rows exist. A heavy user can accumulate thousands of records all created inside the window, and nothing above touches them. The industry treats a count cap as TTL's companion rather than its alternative — Redis streams pair `MAXLEN` with age trimming, EventStoreDB pairs `$maxCount` with `$maxAge`, Kafka pairs `retention.bytes` with `retention.ms`.
+
+The partition key is already on every row: `PerspectiveScope` is how multi-tenancy works and what lens queries already filter on, so no new concept is required.
+
+```csharp
+[RowCap(PerScope = 50)]        // newest 50 per (tenant, user)
+[RowCap(PerTenant = 10_000)]   // newest 10 000 per tenant
+```
+
+Rank is by `updated_at DESC` — business time — so the cap means "keep the most recently *active*", composing with the sliding term's notion of idleness. Ranking by an arbitrary model field is possible via `[PhysicalField]` promotion but is deliberately out of a first cut.
+
+**A cap is a rank, not an instant**, so it cannot fold into `effective_expiry`. It is a second reap rule, unioned with the time rules: a row goes when it is expired **or** ranked past the cap. Like `MaxAge`, it binds regardless of an override — a per-row date must not defeat a declared resource bound, or pinning enough rows would erase the cap's meaning.
+
+**Cost drives the design.** Ranking within a partition needs a window function, and no index removes the scan:
+
+```sql
+DELETE FROM wh_per_x WHERE id IN (
+  SELECT id FROM (
+    SELECT id, ROW_NUMBER() OVER (PARTITION BY scope ->> 'u' ORDER BY updated_at DESC) rn
+    FROM wh_per_x
+  ) t WHERE rn > 50)
+```
+
+That is a different operational profile from the sargable time predicates, so caps run as their **own maintenance task on a slower cadence**. A cap is a bound, not a deadline — being late costs nothing, while the TTL sweep wants the standard cycle. A `GROUP BY scope HAVING count(*) > N` pre-filter narrows the work to partitions that could be over.
+
+**Caps are physical-only.** Time expiry hides rows at the lens before the reaper removes them; computing rank on every lens read would be ruinous, so a row past the cap stays *visible* until the sweep runs. That is a weaker guarantee than the time half offers and is stated rather than left to be discovered.
+
+**In an event-sourced store a cap is not lossy.** Elsewhere — Redis, Kafka — an evicted entry is gone. Here a count-evicted row on a Sourced perspective is recoverable: resurrection-on-wake re-folds it from the log the moment its stream is touched, and the resurrected row ranks first by `updated_at`, displacing whatever is now coldest. A count-capped Sourced perspective is therefore an **LRU cache over the event log**, not a truncation — which makes aggressive caps safe in a way they are not in the systems the pattern comes from. Snapshots survive cap eviction exactly as they survive TTL reaping, so recovery stays cheap.
+
+Ephemeral-tainted perspectives are excluded, as with `[RowTtl]`: there eviction *is* lossy, because there is no log to re-fold from.
+
+### Behavior under rewind and rebuild
+
+Both mechanisms are **idempotent under replay**, and both are idempotent *only because* of the redefinition this proposal makes.
+
+**TTL.** A rebuild re-applies the log, so a reaped row is re-created — but `updated_at` is recomputed from the same events, reproducing the same value, so `effective_expiry` is unchanged. A row that was past expiry is born expired again and is re-reaped on the next cycle. Meanwhile the lens filter hides it, so **logically it never reappears**; only physically, and only until the next sweep. Under today's wall-clock semantics the same rebuild would reset every window and resurrect the entire reaped population for a further full TTL.
+
+**Count caps.** Ranking depends only on `updated_at`, so a rebuild reproduces the *same ordering* and evicts the *same rows*. Under today's semantics ranking would be catastrophic rather than merely wrong: a rebuild rewrites every `updated_at` to the rebuild moment, so the ranking would reflect **write order**, and the cap would evict essentially arbitrary rows.
+
+The two differ in what a user sees in the interval:
+
+| | physically present after rebuild | visible to lens reads |
+| --- | --- | --- |
+| TTL-expired rows | yes, until the next sweep | **no** — logically filtered |
+| Cap-evicted rows | yes, until the next cap sweep | **yes** — caps are physical-only |
+
+So a rebuild temporarily exceeds the cap, visibly, and the cap sweep is deliberately slow. Rebuild completion should therefore **trigger a cap sweep** for the affected perspective rather than waiting for the cadence — a small hook, but the difference between a brief overshoot and an hours-long one.
+
+**Rewind** behaves the same way with one extra wrinkle: rewinding to a point before the head yields intermediate `updated_at` values, so a row can momentarily read as expired mid-replay and then stop being expired as later events apply. That is a transient visibility flicker rather than a correctness problem — the reaper deleting such a row mid-rewind is harmless, since the next apply re-upserts it from the in-memory fold.
+
 ### Where the reaper looks
 
 Today's reaper enumerates every table carrying an `expires_at` column — which, since the column is part of the standard perspective DDL, means every perspective table in the database. Under enrollment it consults `wh_perspective_registry` instead and scans only enrolled perspectives. That table already exists, already carries the schema hash, and is already reconciled at startup, so it gains `row_ttl_seconds` (nullable — enrolled with no default rule) and the sync comes free.
@@ -242,8 +294,9 @@ Additive columns on the generated perspective schema, values threaded from the e
 3. **Replay-invariance lock** — the load-bearing regression: apply a stream, capture both axes, rebuild, assert business time is byte-identical and system time advanced.
 4. **Activity suppression** — hook-declared non-activity event types leave business time untouched while still writing the row; precedence tests.
 5. **Enrollment registry** — `row_ttl_seconds` on `wh_perspective_registry`, synced at startup; `[RowTtl]` accepts no-duration enrollment. Reaper scans enrolled perspectives instead of every table with the column.
-6. **Effective-expiry ladder** — override → rule → never, in the lens filter and the reaper. The load-bearing RED test asserts that a `-1` TTL (kill switch off, unregistered model, per-model disable) expires *nothing*, since a naive addition would reap the fleet.
-7. **Terminology sweep** — update every doc and test to the new meanings, including the ones that currently assert wall-clock semantics on `UpdatedAt`, and the sibling docs-site pages under `fundamentals/messaging/apply-hooks`.
+6. **Effective-expiry ladder** — override → rule → never, in the lens filter and the reaper, with the cap binding regardless of the override. Two load-bearing RED tests: a `-1` TTL (kill switch off, unregistered model, per-model disable) must expire *nothing*, since a naive addition would reap the fleet; and an `expires_at` beyond `MaxAge` must still be reaped at the ceiling.
+7. **Count caps** — `[RowCap]`, `row_cap_per_scope` on the registry, a separate slower maintenance task, and the post-rebuild sweep hook. Replay tests assert the same rows are evicted after a rebuild, which holds only because ranking uses business time.
+8. **Terminology sweep** — update every doc and test to the new meanings, including the ones that currently assert wall-clock semantics on `UpdatedAt`, and the sibling docs-site pages under `fundamentals/messaging/apply-hooks`.
 
 ## Relationship to neighboring proposals
 
