@@ -46,13 +46,20 @@ UPDATE <perspective_table>
 
 This mirrors [`TypeDefinitionReconciler`](type-definition-fingerprint), which solves the structurally identical problem for `[Ephemeral]` reclassification: a declaration changed, historical data predates it, and the framework offers a bounded, opt-in adoption pass.
 
-### The anchor, and what it costs
+### The anchor, and why it is sound
 
-`updated_at` is the wall-clock time the row was last **written**, not the timestamp of the event that wrote it. The steady-state stamp deliberately uses event time, so this is a genuine divergence and worth stating plainly rather than burying.
+`updated_at` and `expires_at` are written by the *same* upsert, on every apply — but they are anchored differently:
 
-For a normal row the two agree closely: the last write *was* the last event. They diverge after a **rebuild**, which rewrites every row now — so every `updated_at` becomes the rebuild time, and a backfill run afterward grants dormant rows a fresh full window instead of expiring them.
+| Column | Anchor | Set when |
+| --- | --- | --- |
+| `updated_at` | wall clock at write (`hookPlan.UpdatedAt ?? UtcNow`) | every apply |
+| `expires_at` | the applied **event's** timestamp + TTL | every apply, for TTL-registered models only |
 
-That failure mode keeps data **longer** than ideal. It never deletes something live. Given the alternative — an exact per-row join back to the event store for each stream's last event time, which reintroduces the rebuild's cost and defeats the point of the reconciler — erring toward retention is the right trade. A deployment that wants exactness has the rebuild path and always did; this is the cheap, safe 95% case.
+The divergence appears on **replay**. A rebuild re-applies old events *now*, so every `updated_at` becomes the rebuild's timestamp while `expires_at` reproduces the original window — which is exactly the replay-safety property row retention is built on, and the reason `expires_at` is stored rather than derived.
+
+The obvious worry is that this makes `updated_at` a poor backfill anchor: rebuild the perspective, and every dormant row looks freshly touched. **That scenario cannot reach the backfill.** A rebuild writes every row, which stamps `expires_at`, which removes those rows from the backfill's `WHERE expires_at IS NULL` predicate. The two facts compose: the only rows the backfill ever touches are the ones nothing has written since the declaration shipped, and for precisely those rows `updated_at` still holds their last genuine write.
+
+The residual case is a rebuild that ran *before* the declaration shipped, leaving `updated_at` at that rebuild's timestamp rather than the stream's last event. That timestamp is in the past, so it errs toward expiring **sooner**, and for a Sourced perspective the row is recoverable via resurrection-on-wake if the stream turns out to be live. The exact alternative — a per-row join back to the event store for each stream's last event time — reintroduces the rebuild's cost and defeats the point of having a reconciler at all.
 
 The blast radius is bounded on the other side too: for a Sourced perspective a wrongly-reaped row is **recoverable**. Resurrection-on-wake re-folds it from the log the next time its stream receives an event. The backfill can be wrong about *when* a row should go without being wrong about *what the data is*.
 
