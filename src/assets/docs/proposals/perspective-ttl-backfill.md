@@ -46,20 +46,19 @@ UPDATE <perspective_table>
 
 This mirrors [`TypeDefinitionReconciler`](type-definition-fingerprint), which solves the structurally identical problem for `[Ephemeral]` reclassification: a declaration changed, historical data predates it, and the framework offers a bounded, opt-in adoption pass.
 
-### The anchor, and why it is sound
+### The anchor
 
-`updated_at` and `expires_at` are written by the *same* upsert, on every apply — but they are anchored differently:
+**This proposal depends on Bitemporal Perspective Rows** (proposal on an unmerged branch; link resolves once it lands), which redefines `updated_at` as *business time* — the timestamp of the last qualifying event, invariant under replay — and moves the wall-clock write time to `sys_updated_at`.
 
-| Column | Anchor | Set when |
+That dependency is what makes the anchor exact rather than a proxy. `updated_at + ttl` is then the same quantity the steady-state upsert stamps into `expires_at`, so the backfill reproduces what a live apply would have written, and a rebuild cannot disturb it:
+
+| Column | Anchor | Under rebuild |
 | --- | --- | --- |
-| `updated_at` | wall clock at write (`hookPlan.UpdatedAt ?? UtcNow`) | every apply |
-| `expires_at` | the applied **event's** timestamp + TTL | every apply, for TTL-registered models only |
+| `updated_at` (post-redefinition) | last qualifying event's timestamp | invariant |
+| `sys_updated_at` | wall clock at write | changes |
+| `expires_at` | `updated_at + ttl` | invariant |
 
-The divergence appears on **replay**. A rebuild re-applies old events *now*, so every `updated_at` becomes the rebuild's timestamp while `expires_at` reproduces the original window — which is exactly the replay-safety property row retention is built on, and the reason `expires_at` is stored rather than derived.
-
-The obvious worry is that this makes `updated_at` a poor backfill anchor: rebuild the perspective, and every dormant row looks freshly touched. **That scenario cannot reach the backfill.** A rebuild writes every row, which stamps `expires_at`, which removes those rows from the backfill's `WHERE expires_at IS NULL` predicate. The two facts compose: the only rows the backfill ever touches are the ones nothing has written since the declaration shipped, and for precisely those rows `updated_at` still holds their last genuine write.
-
-The residual case is a rebuild that ran *before* the declaration shipped, leaving `updated_at` at that rebuild's timestamp rather than the stream's last event. That timestamp is in the past, so it errs toward expiring **sooner**, and for a Sourced perspective the row is recoverable via resurrection-on-wake if the stream turns out to be live. The exact alternative — a per-row join back to the event store for each stream's last event time — reintroduces the rebuild's cost and defeats the point of having a reconciler at all.
+Ordered the other way — backfilling first, against today's wall-clock `updated_at` — the anchor would only ever be a proxy, sound in the common case but wrong for any deployment rebuilt before adoption. Sequencing the redefinition first removes the compromise entirely rather than documenting it.
 
 The blast radius is bounded on the other side too: for a Sourced perspective a wrongly-reaped row is **recoverable**. Resurrection-on-wake re-folds it from the log the next time its stream receives an event. The backfill can be wrong about *when* a row should go without being wrong about *what the data is*.
 
@@ -125,6 +124,7 @@ The reconciler reads the same source-generated `PerspectiveTtlRegistry` the stea
 
 ## Relationship to neighboring proposals
 
+- **Bitemporal Perspective Rows** (proposal on an unmerged branch; link resolves once it lands): **a prerequisite.** It redefines `updated_at` as replay-invariant business time, which is what turns this backfill's anchor from a defensible proxy into the exact value a live apply would have stamped. Build it first.
 - [Perspective Row Retention](perspective-row-retention): supplies everything this reuses — the `expires_at` column, the registry, the lens filter, the reaper, and resurrection-on-wake as the recovery guarantee. This proposal is purely its adoption path.
 - [Type Definition Fingerprint](type-definition-fingerprint): the precedent. Its startup reconciler answers the same question — "a declaration changed, what about the data that predates it?" — with the same detect-default / act-opt-in posture.
 - [Ephemeral Events](ephemeral-events): defines the ephemeral taint that determines which perspectives the backfill must skip.
