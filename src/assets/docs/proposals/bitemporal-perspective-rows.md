@@ -111,11 +111,29 @@ Once `updated_at` is replay-invariant, the stored `expires_at` is doing two unre
 | --- | --- | --- | --- |
 | *(no attribute)* | no | — | no |
 | `[RowTtl]` | yes | none | yes |
-| `[RowTtl(Days = 60)]` | yes | `updated_at + 60d` | yes (wins over the rule) |
+| `[RowTtl(Days = 60)]` | yes | sliding: `updated_at + 60d` | yes (wins over the rule) |
+| `[RowTtl(MaxAgeDays = 365)]` | yes | absolute: `created_at + 365d` | yes (wins over the rule) |
+| `[RowTtl(Days = 60, MaxAgeDays = 365)]` | yes | earliest of the two | yes (wins over both) |
 
 So a perspective can enroll for expiry **without** declaring a blanket lifetime, and have individual rows reaped purely by a domain-assigned date — a temporary record inside an otherwise permanent model. That is not expressible today.
 
 **Invariant: a declared TTL is always live.** Enrollment and duration are not independently configurable, so there is no combination that yields a declared-but-inert TTL — `[RowTtl(Days = 60)]` enrolls by construction. The only two things that may suppress a declared TTL are deliberate and operator-visible: the global `Enabled` kill switch, and a per-model override set explicitly to null. Anything else silently ignoring a declared lifetime is a bug, and is regression-locked as one.
+
+### Two anchors: sliding and absolute
+
+Because `updated_at` is *last business activity*, the rule `updated_at + ttl` **slides** — every qualifying event pushes expiry forward, so a record stays alive exactly as long as it stays in use. That is the right default for the motivating cases (conversations, sessions, activity feeds) and matches the behavior shipped today.
+
+Sliding alone cannot express the other half of the problem, though. "Delete 60 days after the last message" and "delete 60 days after creation, regardless of activity" are different policies, and the second is what regulatory retention, trial data, and time-boxed records require: an *active* record must still age out.
+
+Both are offered, following the shape .NET developers already know from `MemoryCacheEntryOptions` (`SlidingExpiration` alongside `AbsoluteExpiration`, where sliding renews but never past the absolute cap) and from cookies (`Max-Age` vs `Expires`):
+
+```csharp
+[RowTtl(Days = 60)]                      // sliding — 60 days after last activity
+[RowTtl(MaxAgeDays = 365)]               // absolute — 365 days after creation
+[RowTtl(Days = 60, MaxAgeDays = 365)]    // slides while used, hard-capped at a year
+```
+
+**Absolute expiry is only sound because of this proposal.** Anchoring on `created_at` today would be silently broken — a rebuild resets it, so every record's age would restart and nothing would ever reach its cap. It becomes trustworthy only once `created_at` is replay-invariant business time, which is why the two anchors arrive together rather than separately.
 
 ### The effective-expiry ladder
 
@@ -123,12 +141,14 @@ Stated as an ordered ladder rather than a `COALESCE`, because the guard is load-
 
 ```
 effective_expiry =
-    expires_at              when explicitly set    -- an override always wins
-    updated_at + ttl        when a TTL is present  -- the default rule
-    NULL                    otherwise              -- never expires
+    expires_at                          when explicitly set   -- an override always wins
+    EARLIEST(                           when either present   -- the default rule
+      updated_at + slidingTtl,            (skipping absent terms)
+      created_at + maxAge)
+    NULL                                otherwise             -- never expires
 ```
 
-A row is reapable when `effective_expiry IS NOT NULL AND effective_expiry < NOW()`.
+A row is reapable when `effective_expiry IS NOT NULL AND effective_expiry < NOW()`. With both terms declared the earliest wins, so the cap bounds total lifetime while the sliding term governs idle-out — the same composition the cache APIs use.
 
 :::new{type="breaking"}
 **The TTL-presence check is a safety guard, not style.** `PerspectiveTtlRegistry.ResolveSeconds` returns **`-1`**, not null, for four distinct cases: an unregistered model, a per-model override set to null, a null type, and **the global `Enabled` kill switch being off**. A naive `updated_at + ttl` would therefore compute *one second before* `updated_at` — already expired — and reap every row of every non-TTL perspective, including the entire fleet the moment an operator flips the kill switch whose purpose is to *stop* expiry. SQL would mask this through NULL propagation; C# arithmetic would not. The check must be explicit on both sides.
