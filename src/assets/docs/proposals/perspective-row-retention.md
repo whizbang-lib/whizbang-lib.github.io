@@ -12,7 +12,8 @@ tags: perspectives, retention, row-ttl, reaper, rebuild, rewind, resurrection, r
 The motivating shape is high-cardinality UI read models: conversations, sessions/tabs, activity feeds. Their streams are minted constantly, their content stops being relevant after weeks, yet their rows accumulate forever unless the domain explicitly deletes each one. Event-driven deletion (a lifecycle event folded into an explicit delete action) remains the right tool when deletion is a *business fact*; `[RowTtl]` is the declarative, time-based backstop for everything that merely goes stale.
 
 :::planned
-Proposed capability (unreleased). It reuses the shipped TtlRow substrate — the `expires_at` shadow column, the lens logical-expiry filter, and the maintenance row reaper — and adds three things: a per-perspective declaration, a replay-safe expiry anchor, and a resurrection path that makes reaping *sourced* rows correct.
+Proposed capability — **implementation landed on `develop` via whizbang PR #469** (all six build
+increments; ships with the next alpha). Docs promote to v1.0.0 on release. It reuses the shipped TtlRow substrate — the `expires_at` shadow column, the lens logical-expiry filter, and the maintenance row reaper — and adds three things: a per-perspective declaration, a replay-safe expiry anchor, and a resurrection path that makes reaping *sourced* rows correct.
 :::
 
 ## Why the existing TtlRow cannot simply be opened to Sourced perspectives
@@ -93,12 +94,15 @@ Ephemeral streams are explicitly excluded from this path: they keep today's sema
 
 New meters on the existing `Whizbang` perspective/maintenance sources, all tagged by `perspective_name`:
 
-- `whizbang.perspective.rows_reaped` (counter) — physical deletions per cycle; the primary "is retention working" signal.
-- `whizbang.perspective.rows_resurrected` (counter) — wake-after-reap re-folds. A high rate means the TTL is shorter than real usage; tune upward.
-- `whizbang.perspective.rows_born_expired` (counter) — rows rebuilt already past expiry. Non-zero outside rebuilds indicates clock/anchor bugs; a regression canary.
-- `whizbang.perspective.resurrection_duration` (histogram) — snapshot+tail re-fold cost; watches whether snapshot retention is doing its job.
-- `whizbang.maintenance.row_reap_duration` (histogram) — the reaper task's per-cycle cost as tables scale.
-- Gauge opportunity (cheap, from the reaper's scan): `whizbang.perspective.rows_expired_unreaped` — the logical-vs-physical backlog; sustained growth means the maintenance cadence is losing to churn.
+Shipped (the `Whizbang.Maintenance` meter, in the turnkey export list; both tagged by `task`):
+
+- `whizbang.maintenance.rows_affected` (counter) — rows a maintenance task deleted/processed per cycle. The row-retention signal rides `task=reap_expired_perspective_rows`; zero-row cycles add nothing.
+- `whizbang.maintenance.task_duration` (histogram, ms) — a task's per-cycle wall time; watches reap cost as tables scale. Duration records every cycle (the liveness half of the signal).
+
+Deferred follow-ons (the runner has no metrics seam today; resurrection is fully observable meanwhile via its `Information` log line and the rewind span family it joins):
+
+- `whizbang.perspective.rows_resurrected` (counter) + `resurrection_duration` (histogram) — land when the generated runner grows a metrics injection point.
+- `whizbang.perspective.rows_born_expired` (counter) and a `rows_expired_unreaped` backlog gauge — with the same seam.
 
 Traces: the resurrection re-fold joins the existing rewind span family (it *is* a rewind) with a `resurrection=true` tag — no new span source. High-churn perspectives inherit the established metrics-only default; per-type trace opt-in applies unchanged.
 
@@ -108,8 +112,9 @@ Declarative default with runtime override, on the uniform ladder:
 
 ```csharp
 services.Configure<PerspectiveRowRetentionOptions>(o => {
-  o.Enabled = true;                                  // global kill switch (reaper + stamping; filter stays)
-  o.Overrides["…ConversationModel"] = TimeSpan.FromDays(90);  // operator TTL override, no redeploy
+  o.Enabled = true;                                   // global kill switch (one consult point: stamp + filter + probe)
+  o.Overrides["MyApp.Chat.ConversationModel"] = 7_776_000;  // TTL override in seconds, no redeploy
+  o.Overrides["MyApp.Feed.RecentActivityModel"] = null;     // null = disable retention for one model
 });
 ```
 
