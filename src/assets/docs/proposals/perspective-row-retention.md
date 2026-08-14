@@ -110,13 +110,12 @@ Declarative default with runtime override, on the uniform ladder:
 services.Configure<PerspectiveRowRetentionOptions>(o => {
   o.Enabled = true;                                  // global kill switch (reaper + stamping; filter stays)
   o.Overrides["…ConversationModel"] = TimeSpan.FromDays(90);  // operator TTL override, no redeploy
-  o.KeepSnapshotOnReap = true;                       // resurrection anchor (default true)
 });
 ```
 
-- **`Enabled`** — an operational kill switch that stops stamping and reaping without a rebuild or redeploy (the lens filter keeps honoring already-stamped expiry so behavior stays coherent; set an override of `Timeout.InfiniteTimeSpan` semantics — `null` TTL — to also unhide).
+- **`Enabled`** — an operational kill switch resolved at the ONE consult point (the TTL registry), so stamping, the lens expiry filter, and the resurrection probe all stand down together: rows that were hidden become visible again immediately — the behavior an operator wants mid-incident. Rows whose stamps predate the switch may still physically reap until those stamps drain; Sourced rows remain recoverable via resurrection once re-enabled.
 - **Per-model TTL overrides** — bridged from `IOptions`, they win over the attribute (config is the operator's rung of the ladder). Attribute remains the in-repo source of truth; overrides are for incident response and tenant-scale tuning.
-- **`KeepSnapshotOnReap`** — default `true`; turning it off trades resurrection cost for snapshot storage on extremely high-cardinality perspectives whose streams essentially never wake.
+- **Snapshot retention on reap is unconditional** (keep the latest — the resurrection anchor), locked by a regression test rather than exposed as an option; an opt-out ships only if a concrete high-cardinality need appears.
 - Maintenance cadence reuses the existing `MaintenanceWorkerOptions.IntervalMinutes`; no new scheduler.
 
 ## AOT / zero-reflection statement
