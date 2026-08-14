@@ -89,6 +89,25 @@ The consequence is wider than timestamps — the Dapper path currently discards 
 
 **Resolution:** implement the metadata overload in the Dapper store and persist the metadata, matching the EF Core path. No contract change is required. Because this is a recurring pattern rather than an isolated slip, the fix ships with a reflection drift-lock — the same guard added for the event-store decorators — asserting that every `IPerspectiveStore` implementation overrides the metadata-bearing overload rather than inheriting a lossy default.
 
+## Uniform columns: drop the conditional emission
+
+Today `expires_at` is included in the upsert **conditionally** — omitted from the SQL when the model has no TTL, and set as a shadow property only when one applies. The stated reason is to leave hand-written test schemas and hand-configured contexts untouched. Production tables always carry the column, because the generated DDL emits it.
+
+So the conditional is not protecting production; it is accommodating **fixtures that have drifted from the generated schema**, and it charges for that in three ways:
+
+1. **The statement shape depends on runtime configuration.** `expiresAt.HasValue` derives from `PerspectiveTtlRegistry.ResolveSeconds`, which consults the `Enabled` kill switch and the per-model overrides. Flipping the kill switch therefore changes the emitted INSERT *text*, not just the values bound to it — two statements, two plans, swapped fleet-wide by a config toggle.
+2. **Adopting retention later is a code-path change rather than a data change.** Adding `[RowTtl]` to a perspective that has run for a year makes the very next write take a structurally different INSERT. If the column is absent — an un-migrated deployment, a hand-made table — it fails on first write after adoption, rather than at schema init where a schema problem belongs.
+3. **The unused branch is the untested branch.** Whichever mode a suite does not run is the one nothing exercises, which is precisely how schema drift stays hidden until an unrelated change trips over it.
+
+Every column added afterwards faces the same fork. Uniform emission pays it down once:
+
+- Every perspective table carries `expires_at`, `sys_created_at` and `sys_updated_at`, always.
+- The upsert always writes them — NULL where they do not apply. One statement, one plan, exercised by everyone.
+- Adoption changes a **bound value**, never the statement.
+- Hand-written fixture DDL and hand-configured contexts are updated to mirror the generated schema, which is what they were always supposed to do.
+
+This does **not** revisit the shadow-property decision: a public CLR property would still be auto-mapped into every context by EF, which uniform DDL does not address. `expires_at` and the `sys_` columns remain shadow properties — now declared uniformly rather than conditionally.
+
 ## Migration
 
 Pre-1.0, so the columns are redefined in place rather than deprecated alongside replacements.
@@ -271,6 +290,20 @@ Today's reaper enumerates every table carrying an `expires_at` column — which,
 
 Deriving rather than stamping means **editing a TTL re-times every existing row at once**. Lengthening is harmless. Shortening 60 days to 7 makes a large population reapable on the very next maintenance cycle, where the stamped design would have rolled the change in gradually as rows were rewritten. This is arguably correct — the declaration is the truth — but it is a mass-deletion edge, so a shortened TTL should be introduced with the detect-and-report pass first and the kill switch within reach.
 
+### Adopting retention on a perspective that already has rows
+
+Because both mechanisms are derived rather than stamped, a declaration is **retroactive from the moment it ships**. Adding `[RowTtl(Days = 60)]` to a perspective holding three years of rows means the next maintenance cycle finds the entire backlog expired; adding `[RowCap(PerScope = 50)]` to a scope holding ten thousand rows means the first sweep evicts nine thousand nine hundred and fifty.
+
+That is *correct* — the declaration is the truth, and deriving rather than stamping is what makes it so. It is not automatically *safe*, and the two risks are distinct: the surprise (nobody knew the backlog was that large) and the load (one statement deleting a large population on a shared database).
+
+Two guards, both cheap:
+
+**Detect before enforce, on first adoption.** When the registry observes a TTL or cap a perspective did not carry at the previous startup, report what the first enforcement *would* remove and do not act until explicitly enabled. This is the detect-default / act-opt-in posture already used for ephemeral reclassification, applied at the moment of adoption rather than only when an existing window is shortened. It covers the same ground the separately-proposed TTL backfill reserved for shortening a TTL, and extends it to caps, which had no such gate.
+
+**Pace the first sweep.** Drain a newly-enrolled backlog in bounded chunks across several maintenance cycles rather than one long statement. Steady state is unaffected — once drained, each cycle finds a handful — but adoption stops being a single large delete against a database other workloads share.
+
+Together these make adoption a decision rather than a side effect of a deploy.
+
 ### It also removes the need for a backfill
 
 Today a NULL `expires_at` means *never expires*, which is why rows written before a perspective declared `[RowTtl]` are permanently invisible to retention. Under the ladder, NULL means *fall through to the rule* — so every pre-existing row is correctly governed the moment the code deploys, with no data mutation, no opt-in migration, and nothing to schedule.
@@ -290,12 +323,14 @@ Additive columns on the generated perspective schema, values threaded from the e
 
 0. **Dapper metadata** — implement the metadata-bearing `UpsertAsync` overload in the Dapper store so it persists `PerspectiveMetadata` instead of `'{}'`, plus the reflection drift-lock over every `IPerspectiveStore` implementation. Prerequisite: without it there is no event-time source on that path, and it independently restores `EventType` / `EventId` / correlation / commit-sequence, which are lost today.
 1. **Schema** — add `sys_created_at` / `sys_updated_at` across the in-sync schema-definition sites plus the schema hash; migration adds and copy-backfills them. Inert: nothing reads them yet.
+1b. **Uniform columns** — drop the conditional emission of `expires_at` and the new `sys_` columns; update the hand-written fixture DDL and hand-configured contexts to mirror the generated schema. Lands BEFORE the write paths, since it is what lets them write unconditionally.
 2. **Write paths** — both upsert paths stamp system time from the clock and business time from the applied event's timestamp. RED first with a test asserting today's conflated behavior fails under replay.
 3. **Replay-invariance lock** — the load-bearing regression: apply a stream, capture both axes, rebuild, assert business time is byte-identical and system time advanced.
 4. **Activity suppression** — hook-declared non-activity event types leave business time untouched while still writing the row; precedence tests.
 5. **Enrollment registry** — `row_ttl_seconds` on `wh_perspective_registry`, synced at startup; `[RowTtl]` accepts no-duration enrollment. Reaper scans enrolled perspectives instead of every table with the column.
 6. **Effective-expiry ladder** — override → rule → never, in the lens filter and the reaper, with the cap binding regardless of the override. Two load-bearing RED tests: a `-1` TTL (kill switch off, unregistered model, per-model disable) must expire *nothing*, since a naive addition would reap the fleet; and an `expires_at` beyond `MaxAge` must still be reaped at the ceiling.
 7. **Count caps** — `[RowCap]`, `row_cap_per_scope` on the registry, a separate slower maintenance task, and the post-rebuild sweep hook. Replay tests assert the same rows are evicted after a rebuild, which holds only because ranking uses business time.
+7b. **Adoption safety** — detect-before-enforce when the registry sees a newly-declared TTL or cap, and a paced first sweep that drains a backlog across cycles. Tests: a freshly-enrolled perspective removes nothing until enabled, and a large backlog drains in bounded chunks rather than one statement.
 8. **Terminology sweep** — update every doc and test to the new meanings, including the ones that currently assert wall-clock semantics on `UpdatedAt`, and the sibling docs-site pages under `fundamentals/messaging/apply-hooks`.
 
 ## Relationship to neighboring proposals
