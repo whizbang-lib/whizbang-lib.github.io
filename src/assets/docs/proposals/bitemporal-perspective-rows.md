@@ -111,9 +111,9 @@ Once `updated_at` is replay-invariant, the stored `expires_at` is doing two unre
 | --- | --- | --- | --- |
 | *(no attribute)* | no | — | no |
 | `[RowTtl]` | yes | none | yes |
-| `[RowTtl(Days = 60)]` | yes | sliding: `updated_at + 60d` | yes (wins over the rule) |
-| `[RowTtl(MaxAgeDays = 365)]` | yes | absolute: `created_at + 365d` | yes (wins over the rule) |
-| `[RowTtl(Days = 60, MaxAgeDays = 365)]` | yes | earliest of the two | yes (wins over both) |
+| `[RowTtl(Days = 60)]` | yes | sliding: `updated_at + 60d` | yes — replaces the sliding term |
+| `[RowTtl(MaxAgeDays = 365)]` | yes | absolute: `created_at + 365d` | yes — but the cap still binds |
+| `[RowTtl(Days = 60, MaxAgeDays = 365)]` | yes | earliest of the two | replaces sliding; cap still binds |
 
 So a perspective can enroll for expiry **without** declaring a blanket lifetime, and have individual rows reaped purely by a domain-assigned date — a temporary record inside an otherwise permanent model. That is not expressible today.
 
@@ -163,14 +163,21 @@ Units are a declaration-surface concern only: the generator normalizes each anch
 
 Stated as an ordered ladder rather than a `COALESCE`, because the guard is load-bearing:
 
+The override and the cap are **not peers**. `expires_at` replaces the *sliding* term — its job is "don't let this row idle out, it dies when I say" — while `MaxAge` is a ceiling that always binds:
+
 ```
-effective_expiry =
-    expires_at                          when explicitly set   -- an override always wins
-    EARLIEST(                           when either present   -- the default rule
-      updated_at + slidingTtl,            (skipping absent terms)
-      created_at + maxAge)
-    NULL                                otherwise             -- never expires
+effective_expiry = EARLIEST(                          -- skipping absent terms
+    COALESCE(expires_at, updated_at + slidingTtl),      -- override replaces the idle rule
+    created_at + maxAge)                                -- the cap always binds
+
+                 = NULL when no term applies            -- never expires
 ```
+
+**A per-row write must not breach a policy declared in code.** If the override outranked the cap, setting `expires_at` two years out on a perspective declaring `MaxAgeDays = 365` would silently defeat the retention ceiling — the exact guarantee an absolute anchor exists to provide. Raising a ceiling should require editing the attribute, where it is visible in review, not writing a date into a row.
+
+This is again the `MemoryCacheEntryOptions` shape: `SlidingExpiration` renews but never past `AbsoluteExpiration`. Absolute is a hard bound, not a competing term.
+
+The genuine "retain beyond the ceiling" case — litigation hold — is deliberately *not* served by a far-future `expires_at`. That is a **hold**, a distinct concept, and one this codebase already models on the event side (`wh_event_destruction_hold` with `hold_until`, from the destruction-hook work). If perspective rows need it, they should reuse that shape rather than overload expiry with a second meaning.
 
 A row is reapable when `effective_expiry IS NOT NULL AND effective_expiry < NOW()`. With both terms declared the earliest wins, so the cap bounds total lifetime while the sliding term governs idle-out — the same composition the cache APIs use.
 
@@ -178,17 +185,19 @@ A row is reapable when `effective_expiry IS NOT NULL AND effective_expiry < NOW(
 
 Two rules do not imply two expiry columns. Both rules are **derived** from columns that already exist — sliding from `updated_at`, absolute from `created_at` — with the durations coming from the registry. Neither needs storage.
 
-Only the override is stored, and an override is a single instant: "this row dies at X." It supersedes both rules at once, so there is no coherent "override the slide but keep the cap" — the answer to *when does this row die* is one timestamp however many rules contributed to it. `expires_at` therefore stays a single nullable column, and no `max_expires_at` is introduced.
+Only the override is stored. It replaces the *sliding* term rather than the whole calculation, so it does not need a companion — the cap is still evaluated from `created_at` and the registry. `expires_at` therefore stays a single nullable column, and no `max_expires_at` is introduced.
 
-The ladder evaluates in SQL as a three-way disjunction, with the override suppressing the rules:
+The ladder evaluates in SQL as a disjunction: the override *or* the sliding rule (whichever applies), or the cap independently.
 
 ```sql
 WHERE (expires_at IS NOT NULL AND expires_at < NOW())
    OR (expires_at IS NULL AND r.sliding_seconds IS NOT NULL
        AND updated_at < NOW() - make_interval(secs => r.sliding_seconds))
-   OR (expires_at IS NULL AND r.max_age_seconds IS NOT NULL
+   OR (r.max_age_seconds IS NOT NULL                     -- cap binds regardless of the override
        AND created_at < NOW() - make_interval(secs => r.max_age_seconds))
 ```
+
+Note the third disjunct carries **no** `expires_at IS NULL` guard — that omission is what makes the ceiling unbreachable, and is worth a regression test naming it, since it reads like an oversight next to the other two.
 
 **Write the arithmetic on the `NOW()` side.** `updated_at < NOW() - interval` is sargable and uses an index on `updated_at`; the algebraically identical `updated_at + interval < NOW()` is not, and degrades the reaper to a sequential scan of every enrolled table on every maintenance cycle.
 
