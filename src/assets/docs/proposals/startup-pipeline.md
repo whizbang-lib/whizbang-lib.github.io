@@ -529,6 +529,29 @@ graph TB
 
 That is a real constraint, and it is cheaper to honour from the start than to retrofit: **the pipeline runner must be re-entrant, not one-shot.** Increment 1 should build it that way even though nothing re-enters it yet.
 
+#### Disregarding an instance is not the same as stopping it
+
+Bounding the wait by liveness handles the *decision* — a peer that stopped heartbeating stops counting. It does not handle the *process*, which may still be running.
+
+Today, reaping is not fencing. `cleanup_stale_instances` deletes the stale row and releases its work, but `register_instance_heartbeat` is an unguarded upsert: the reaped instance's next heartbeat re-inserts it and it rejoins as though nothing happened, holding whatever it believed it owned. A pod that was merely paused — a long stop-the-world collection, a brief partition, a throttled node — comes back and carries on against a schema that has since moved.
+
+For most work that is survivable; the claim primitives are built to tolerate it. For a breaking migration it is not, which is why the decision deserves a stronger instrument than being ignored.
+
+**Eviction** is that instrument: a durable, explicit record that this instance may no longer act. Three properties make it work.
+
+It is a **tombstone, not a deletion**. Deleting a row is precisely what the zombie undoes on its next heartbeat. Eviction has to be a fact that survives and that the instance itself consults.
+
+It is **delivered through the heartbeat**, which is the elegant part — the same call that today lets a reaped instance quietly rejoin becomes the one that tells it it may not. Every instance already makes that call on a fixed cadence, so eviction needs no new channel, no new polling, and no working signal bus; notice is bounded by one heartbeat interval, and it works precisely when the notification path is the thing that is broken.
+
+It **fences a process, not a pod**. Instance ids are generated per process, so a restarted pod draws a new id and is unevicted — correct, because a restart means fresh state — while the zombie keeps its id and stays fenced. Eviction cannot poison a deployment slot permanently.
+
+Two distinctions keep this from becoming its own hazard:
+
+- **Disregarding is automatic; evicting is deliberate.** Staleness already means an instance stops counting, and that stays inferred from the lease. Eviction is an *act* — taken by the migrator during a breaking handshake, or by an operator — never an automatic consequence of slowness. Evicting a healthy-but-slow instance is itself an outage.
+- **Noticing is not the same as being unable to act.** A revived instance learns of its eviction on its next heartbeat, which bounds the damage window but does not close it. The fence therefore also belongs where effect happens: acquiring a capability and claiming work should both refuse an evicted instance. That is what turns eviction from a request into a guarantee.
+
+Because it forcibly stops a process, an eviction should record who issued it, when, and why. An operator finding a stopped instance needs that answer without archaeology — and operator-initiated eviction is a useful instrument in its own right, well beyond migrations.
+
 **A standing-by instance also watches the migrator.** If the migrating instance dies rather than failing cleanly, the outcome its peers are waiting for never arrives. The same membership machinery answers it: when the migrator's own instance record goes stale, the wait ends and revival begins. Every path out of standby is therefore bounded — success, clean failure, or a dead migrator.
 
 Which has a consequence worth stating plainly: **the verdict cannot be a startup-only fact.** An instance that was current when it booted becomes obsolete the moment a newer peer migrates underneath it. So `Assess` establishes the verdict, and a lightweight watcher maintains it — re-checking on the same signal-plus-poll footing as capability re-attempt, with the migrator publishing the new version on the bus (which exists by then) as the fast path and a periodic re-read as the floor. Standing down is not a startup decision an instance makes once; it is a state it can enter at any time.
@@ -561,6 +584,7 @@ Startup maintenance is the one piece that should move and shrink. `perform_maint
 - **Consumer-declared steps.** Observation and interrogation are settled — consumers get both. Whether they may *add* steps is not: that turns the descriptor into a public extension contract with the versioning obligations that implies.
 - **Granularity of `Migrate`.** Schema initialization is one opaque step containing seven internal phases, two of which are registry reconciles that other steps arguably depend on. Exposing the phases individually would let those dependencies be declared instead of assumed, at the cost of a much larger surface — and of committing to phase names that are currently free to change.
 - **Which step releases each seam.** That the data plane holds during `Migrate` is settled; which barrier each seam waits on is not, and reads and writes may not want the same one. A dispatch needs the event store and outbox, which `Migrate` provides. A lens needs perspectives drained, which is later than `Migrate` and earlier than `Ready` — coupling it to `Ready` would make reads wait on transport provisioning they do not use. That argues for a dedicated read-model barrier, and ties back to the `Migrate` granularity question above.
+- **How far the eviction fence should reach.** Delivering it through the heartbeat bounds the notice window; refusing an evicted instance at capability acquisition closes it for exclusive work. Extending the check to every work claim would close it entirely, at the cost of a guard on a hot path — worth measuring before deciding.
 - **Whether capability rows want a lease of their own.** They are reaped by cascade when the instance row goes, which covers instance death. It does not cover an instance that is alive but has lost a capability it still has a row for — a narrow window, and possibly one that only matters once a duty can be relinquished without the process exiting.
 - **Startup-probe adoption.** Adding `HealthProbe.Startup` is only useful if the turnkey wiring emits it and the documentation tells operators to bind it. A probe nobody binds is worse than none, because it looks like coverage.
 - **Whether `reason` detail should be enableable per-environment rather than per-host.** The opt-in level is a single switch today. A host that wants failure detail in staging and terse output in production can already achieve that through configuration, but nothing stops the two drifting apart — and the environment where the detail matters most is the one where it is least safe.
