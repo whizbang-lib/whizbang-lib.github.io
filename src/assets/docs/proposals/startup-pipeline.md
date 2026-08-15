@@ -419,7 +419,20 @@ The question people actually ask during a slow boot is *"what is it doing right 
 - **FastEndpoints** — an endpoint registered through the package's own conventions, so it participates in FastEndpoints' security model and preprocessors rather than sitting beside them.
 - **HotChocolate** — a `whizbangStartup` query field contributed by a type extension on the request-executor builder.
 
-All three project the same shape: current step, ordered step list with outcome and duration, progress where a step reports it, and whether the pipeline is complete.
+All three project the same shape, and that shape has **two sections**, because the endpoint gets reached two different ways.
+
+- **`instance`** — the process that answered this request. Current step, the ordered step list with outcome and duration, progress where a step reports it, and whether its pipeline is complete. Read from memory, so it is exact and current.
+- **`fleet`** — every live instance, from the database. Version, phase, capabilities held, and how long since each was last heard from.
+
+An endpoint behind a load balancer answers from whichever instance the balancer picked, and a caller cannot tell which. Without the fleet section, checking a rolling deployment means curling repeatedly and hoping to reach each instance. Without the instance section, there is no way to know *which* instance answered — and hitting a pod directly, through a port-forward or its own address, is exactly what someone does when one instance is behaving differently from the rest. Each section answers a question the other cannot.
+
+They are deliberately not symmetrical, and the response should not imply otherwise:
+
+- **Fidelity differs.** Step-level progress and reasons live in each instance's memory; only the coarser facts are persisted. The fleet section therefore cannot carry per-step detail for anyone but the responder, and a reader must not mistake its absence for *no progress* rather than *not visible from here*.
+- **Freshness differs.** The instance section is live. Every fleet row is only as current as that instance's last heartbeat, so each carries its own age — otherwise an instance that died thirty seconds ago and has not yet been reaped reads as healthy.
+- **The responder appears in both**, which is the point: the instance section names its own id, and that id is the key that finds its row among the rest.
+
+Two moments break the symmetry further, and both argue for the instance section being the one that is always present. Before `Identify`, an instance has no database row at all — so during the earliest and most interesting part of startup it will not appear in its own fleet list. And before `Connect` there is no fleet section to build. In both cases the fleet section is reported as unavailable with the reason, never as an empty fleet.
 
 **They inherit the host's authentication rather than defining their own.** The framework contributes no authorization model here; it returns the host's own extension point and stops:
 
@@ -441,7 +454,7 @@ Three constraints are not negotiable, and each is a way this feature could ship 
 
 **It must not become an information-disclosure surface.** The split that matters is not "less detail versus more" but **content the framework authors versus content it does not control**. The default projection is entirely the former: step names, states, durations, progress counters — every value a framework constant. The `reason` field is the latter: reasons originate in exception messages, which routinely carry schema names, table names, constraint names and raw driver error text. Those are therefore a separate opt-in level, not a verbosity dial. A host that has secured the endpoint may reasonably turn them on; one that has mounted it anonymously for a load balancer should not have them by default.
 
-**It must degrade honestly.** Before the pipeline has started, the endpoint reports *not started*, not `200 {}`. An empty step list and a pipeline that has not begun must not serialize identically.
+**It must degrade honestly.** Before the pipeline has started, the endpoint reports *not started*, not `200 {}` — an empty step list and a pipeline that has not begun must not serialize identically. The same rule governs the fleet section: unreachable is a stated condition, never an empty list, because "no other instances" and "cannot see the other instances" mean opposite things to whoever is reading during an incident.
 
 Push-based progress — streaming stage transitions over the existing SignalR integration rather than polling — is a natural extension of the observer seam and deliberately out of scope here. Poll first; the shape of the data is the same either way.
 
