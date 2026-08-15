@@ -129,7 +129,7 @@ graph TB
     style Down fill:#f8d7da,stroke:#dc3545,stroke-width:2px
 ```
 
-Blue steps require an exclusive capability, so exactly one instance executes them. **Every other step runs on every instance**, including all of `Identify` through `Ready` — exclusivity follows the capability a step requires, not a mode the pipeline enters at `Migrate` and stays in. `Identify` is the clearest case: each instance registers its own row.
+Amber marks the decision point, blue the steps requiring an exclusive capability — so exactly one instance executes those. **Every other step runs on every instance**, including all of `Identify` through `Ready` — exclusivity follows the capability a step requires, not a mode the pipeline enters at `Migrate` and stays in. `Identify` is the clearest case: each instance registers its own row.
 
 The linear chain above is the order of steps, not a single thread of control. Every instance walks the whole pipeline; what differs is what it does at an exclusive step. The grey band is reported but never awaited — see [Steps that cannot block](#steps-that-cannot-block).
 
