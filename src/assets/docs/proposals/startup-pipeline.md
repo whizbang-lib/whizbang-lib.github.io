@@ -431,6 +431,44 @@ Three constraints are not negotiable, and each is a way this feature could ship 
 
 Push-based progress — streaming stage transitions over the existing SignalR integration rather than polling — is a natural extension of the observer seam and deliberately out of scope here. Poll first; the shape of the data is the same either way.
 
+### Rolling upgrades: two versions against one schema
+
+A rolling deployment runs two versions of the library — and of the consumer's application — against one database at the same time, by design. The pipeline has to have an answer for that, and today there is none.
+
+**Nothing compares versions.** `wh_schema_versions` records `library_version` and `application_version` on every initialization and is never read back. There is no minimum-compatible-version, no mismatch detection, and no way for an instance to discover that the schema it just connected to is newer than the code it is running.
+
+**The ledger cannot tell an upgrade from a downgrade.** The applier's rule is `existing_hash != computed_hash → run`, and hash inequality is symmetric. Combined with the pre-v1 convention that migration files are *edited in place*, that produces a live hazard:
+
+1. A new instance applies the edited file and records its hash.
+2. An older instance restarts — a rollback, a surge replacement, a killed pod.
+3. It computes the hash of *its* embedded copy, finds it different, and re-applies the **older** definition through `CREATE OR REPLACE`.
+4. The schema is now downgraded beneath the newer instances still running against it, and nothing has raised an error.
+
+The redefinition closure does not cover this. It expands a replay to every *later* file defining the same objects, and an older instance does not have the later files. The closure solved the same failure shape *within* a version — its own rationale describes procedures reverting to a pre-flags definition and silently persisting wrong values — and the cross-version case remains open.
+
+#### The fence has to run backwards
+
+The intuitive protection is for the migrating instance to wait until older instances are gone. That can never resolve:
+
+- the new instance is not `Ready` until it has migrated;
+- the orchestrator will not retire old instances until the new one is `Ready`;
+- migrating is not safe while old instances are running.
+
+Three conditions, each waiting on another. So the direction has to invert: **an instance that finds itself older than the schema stands itself down** rather than being waited for. That composes with the machinery this proposal already introduces — it releases its capabilities, holds its data plane, and reports not-ready-while-alive, which is precisely the state that tells an orchestrator to replace it and a load balancer to stop sending it traffic. Nothing new is required to *act* on the decision; what is missing is the decision itself.
+
+#### What the signature should be
+
+The data is already recorded. `wh_schema_migrations.version_id` references `wh_schema_versions`, so every applied object already carries the library version that applied it. Two rules follow, and neither needs new state:
+
+- **Never apply older content over newer.** An instance whose library version is behind the version recorded against a migration must not re-apply its own copy. Today it does, unconditionally.
+- **Refuse, do not proceed, when the gap is breaking.** Whether a gap is breaking cannot be inferred from a hash — a hash says *different*, never *incompatible*. It has to be declared: a migration states whether it is backward-compatible with instances running the previous version. Most are, because most follow expand-then-contract by construction; the ones that are not are exactly the ones that matter. The framework ships breaking migrations of its own — a later migration structurally drops columns an earlier version reads — so this is not a hypothetical imposed on consumers.
+
+Application version matters too, and has more of an answer already: perspective schema hashes and the message-type registry both carry drift detection, and the pinned-id ledger governs renames. Those mechanisms report drift without deciding what to do about it, which is the same gap in a different place.
+
+#### What this proposal commits to
+
+Full version negotiation is its own piece of work and is not folded in here. What the pipeline owes it is the seam: `Migrate` is the step that discovers the version relationship, and the capability model is what lets an instance act on the answer. Recording that here fixes the shape of the later work — and the two defects above are worth fixing on their own account, before anything negotiates anything.
+
 ### What moves
 
 The repair work currently sitting ungated inside `PerspectiveWorker.ExecuteAsync` becomes a declared `Repair` step that genuinely cannot begin before `Migrate` completes — which is what the comment in that file already claims and the code does not do. The reconciler becomes a `Reconcile` step ordered before perspective drain rather than racing it. Transport provisioning becomes `Provision`.
@@ -476,6 +514,8 @@ Increments 1, 2 and 5 are additive and independently valuable — they make the 
 ### Fixes that do not wait
 
 Mapping the current behaviour turned up defects that are real today and independently shippable. None of them should be held hostage to the architecture that would have prevented them; each is listed here so the pipeline work does not become the reason they went unfixed.
+
+**An older instance silently downgrades the schema.** The migration applier runs a file whenever its computed hash differs from the recorded one, and inequality is symmetric — it cannot tell newer content from older. Since pre-v1 migration files are edited in place, an instance from the previous version that restarts after a newer one has migrated will re-apply its own older definitions over the newer ones, through `CREATE OR REPLACE`, with no error raised. The redefinition closure does not reach this case: it re-runs *later* files defining the same objects, and an older instance does not have them. The fix is to read a version that is already being written — `wh_schema_migrations.version_id` already references the library version that applied each object — and refuse to apply older content over newer.
 
 **The migration advisory lock excluded nothing.** The key was derived from `string.GetHashCode`, which .NET seeds randomly per process — so every instance computed a different key, every instance acquired its own private lock, and all of them entered the migration path together. Only the in-lock hash re-check and `IF NOT EXISTS` stood between that and concurrent DDL, and neither covers `CREATE OR REPLACE FUNCTION` or settings-gated data migrations. Fixed ahead of this proposal with a process-stable key; noted here because `Migrate` being genuinely fleet-exclusive is an assumption the rest of the pipeline rests on.
 
