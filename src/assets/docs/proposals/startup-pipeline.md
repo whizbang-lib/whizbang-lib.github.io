@@ -207,7 +207,42 @@ Membership still matters, and it is what makes roles safe: it is how the fleet d
 
 #### Noticing a role has come free
 
-An instance never looks up whether it has been *assigned* a role. There is no assignment table, and adding one would reintroduce exactly the orphaned state that electing the role avoids. An instance **attempts acquisition**; the primitive grants or refuses. "Do I hold this role?" is answered by the outcome of the attempt, never by reading a row that claims it.
+Role holdings are **recorded**, but never **consulted to decide**. The distinction is the whole design:
+
+> **The lock decides; the row reports.** An instance acquires a role by attempting the primitive, not by reading a table. If the record and the lock ever disagree, the lock is right and the record is stale.
+
+Treating a stored assignment as authoritative is what would reintroduce orphaned state — a dead instance's row goes on claiming a role until something reaps it, and nobody may proceed until that happens. Treating it as *derived* state costs nothing and buys a great deal, which is why it is worth storing.
+
+It also needs no new staleness machinery. `wh_service_instances` already carries a lease, a heartbeat and a reaper; held roles ride the same rails, so a dead instance's claims expire exactly as its liveness does.
+
+**Both halves are recorded, and the pair is what makes roles operable:**
+
+- **Eligibility** — which roles this instance may stand for. Declared configuration, static for the life of the process.
+- **Holdings** — which roles it currently has. Derived from successful acquisition, refreshed with the heartbeat.
+
+Storing both turns the one failure mode roles introduce into a query rather than new machinery, and separates two operationally different problems that would otherwise look identical:
+
+| Observed | Meaning | Action |
+|---|---|---|
+| Role is unheld, but live instances are eligible | Transient — an eligible instance is about to take it | Wait |
+| Role is unheld and **no live instance is eligible** | Misconfiguration — nothing will ever take it | Human intervention |
+
+Today both present as everything quietly stalling. It also settles how the status surface answers fleet-level questions: with holdings recorded, "which instance is the migrator right now" is a join rather than a broadcast, and remains answerable during the incident where it matters.
+
+Later lifecycle work inherits the same record. Maintenance and operational commands can address *the instance holding role R* rather than guessing, which is the reason to store capability rather than merely elect it.
+
+#### Takeover
+
+An instance never looks up whether it has been *assigned* a role — it **attempts acquisition**, and the primitive grants or refuses. Takeover therefore needs no coordination beyond that attempt:
+
+1. The holder holds its session lock, and its instance row records the role.
+2. The holder dies. Its connection drops and PostgreSQL releases the lock **immediately**, server-side — no timeout, no lease to expire.
+3. Its row is briefly stale, still claiming the role.
+4. Another eligible instance attempts the lock: because it was already blocked on it, on its next poll, or prompted by `InstanceDiedSignal`.
+5. It acquires the lock and **is the holder from that instant**, whatever any row still says.
+6. Its next heartbeat records the role; the dead instance's row is reaped at lease expiry.
+
+The record is inconsistent only between steps 2 and 6, and that is the heartbeat lease window the system already has. Storing roles adds no new class of staleness — it inherits one that is already reaped.
 
 That leaves one question worth engineering: after a holder dies, how quickly does someone else attempt again? Three layers, only one of which carries correctness:
 
@@ -437,6 +472,7 @@ Startup maintenance is the one piece that should move and shrink. `perform_maint
 - **Consumer-declared steps.** Observation and interrogation are settled — consumers get both. Whether they may *add* steps is not: that turns the descriptor into a public extension contract with the versioning obligations that implies.
 - **Granularity of `Migrate`.** Schema initialization is one opaque step containing seven internal phases, two of which are registry reconciles that other steps arguably depend on. Exposing the phases individually would let those dependencies be declared instead of assumed, at the cost of a much larger surface — and of committing to phase names that are currently free to change.
 - **Which step releases each seam.** That the data plane holds during `Migrate` is settled; which barrier each seam waits on is not, and reads and writes may not want the same one. A dispatch needs the event store and outbox, which `Migrate` provides. A lens needs perspectives drained, which is later than `Migrate` and earlier than `Ready` — coupling it to `Ready` would make reads wait on transport provisioning they do not use. That argues for a dedicated read-model barrier, and ties back to the `Migrate` granularity question above.
+- **Where held roles are stored.** `wh_service_instances` already carries a `metadata` JSONB column, a lease and a reaper, so holdings could land there with no migration at all. A first-class column is more queryable and indexable, which matters if operational tooling is going to ask "who holds role R" often. The zero-migration option is tempting and the queryable one is probably right.
 - **Startup-probe adoption.** Adding `HealthProbe.Startup` is only useful if the turnkey wiring emits it and the documentation tells operators to bind it. A probe nobody binds is worse than none, because it looks like coverage.
 - **Whether `reason` detail should be enableable per-environment rather than per-host.** The opt-in level is a single switch today. A host that wants failure detail in staging and terse output in production can already achieve that through configuration, but nothing stops the two drifting apart — and the environment where the detail matters most is the one where it is least safe.
 - **Does progress belong in health detail too?** `ComponentHealth` already has a free-text detail field whose documented example is a progress string. Feeding pipeline progress into it would make every existing health consumer better for free, at the cost of putting a moving value in a field some consumers may treat as stable.
