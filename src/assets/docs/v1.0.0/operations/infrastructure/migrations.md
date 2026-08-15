@@ -127,6 +127,33 @@ Both the Whizbang library version and the consuming application version are reco
 
 This lets you query which app version last applied migrations to a database.
 
+### An older instance never overwrites a newer one
+
+The recorded library version is not only for auditing — the applier reads it before running anything.
+
+The decision to run a migration comes from comparing hashes, and hash inequality is **symmetric**: it says the content *differs*, never which side is newer. Because pre-v1 migration files are edited in place rather than superseded, that leaves a gap during a rolling deployment. An instance from the previous version that restarts after a newer one has migrated computes a different hash for its own older copy, and would re-apply it through `CREATE OR REPLACE` — returning objects to an earlier definition beneath the instances still running against them, with no error raised anywhere.
+
+The [redefinition closure](#how-it-works) does not cover this. It re-runs every *later* file defining the same objects, and an older instance does not have those files.
+
+So before applying, the runner compares its own library version against the version recorded on the ledger row, using **Semantic Versioning precedence**:
+
+| Recorded against the row | Result |
+|---|---|
+| An older version | Applied normally — the ordinary upgrade path |
+| The same version | Applied — this is how a drifted hash is repaired and how the redefinition closure re-runs |
+| A **newer** version | **Skipped**, with a warning naming both versions |
+| Nothing, or an unreadable version | Applied — a row predating version tracking must not leave a schema permanently unmigratable |
+
+If the *running build's own* version is unreadable it applies nothing at all: a build that cannot state what it is has no business writing DDL.
+
+Precedence follows the specification, including the parts that are easy to get wrong and that matter most before 1.0, when every release carries a pre-release label:
+
+- a pre-release ranks **below** the release it precedes, so `1.0.0` outranks `1.0.0-rc.1`;
+- numeric pre-release identifiers compare **numerically**, so `alpha.10` outranks `alpha.2` — comparing them as text inverts the answer;
+- build metadata (`+sha.abc`) takes no part in precedence at all.
+
+An instance that skips on this rule is not broken and needs no intervention: it is correctly declining to undo work done by a newer deployment.
+
 ## Data Migrations vs. Schema Migrations
 
 Hash tracking answers **"did the DDL / object *shape* change?"** — the SHA-256 is over the migration's SQL text, which for schema migrations mirrors the object it defines. That is exactly the wrong question for a **pure data migration** that rewrites *rows* without changing any table's shape: the hash can't tell whether the data still needs the fix, and re-scanning a large table on every startup is wasteful.

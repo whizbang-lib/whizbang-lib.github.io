@@ -64,18 +64,36 @@ The 30 s `cleanup_stale_instances` recovery guarantee is preserved in both cases
 - **Lock-held path**: TCP keepalive detects pod death within 10–30 s. `cleanup_stale_instances` (updated in slice 7b) also skips rows whose advisory lock is still held, so the slow heartbeat write doesn't trip false cleanups.
 - **Lock-not-held path**: HeartbeatWorker reverts to fast cadence automatically; `cleanup_stale_instances` 30 s cutoff catches stale rows on schedule.
 
+## Eviction: reaping is a fence, not just a deletion
+
+Reaping alone never stopped anything. `cleanup_stale_instances` deletes the stale row and releases its leases, but `record_heartbeat` was an unguarded upsert — a reaped instance's next heartbeat simply re-inserted the row and it rejoined as though nothing had happened, still believing it owned work the fleet had already redistributed. A pod paused by a long collection, a brief partition, or a throttled node would return and resume against state that had moved on without it.
+
+Migration **106** closes that:
+
+- Every reaped instance is **tombstoned** in `wh_instance_evictions` (instance id, when, why). A tombstone rather than the deletion itself, because deletion is precisely what the returning zombie's heartbeat undoes.
+- `record_heartbeat` **consults the tombstone and refuses** — its return type changed `VOID → BOOLEAN`. `true` = registered/renewed; `false` = this instance has been evicted and must not consider itself part of the fleet.
+- The refusal travels through the **heartbeat itself** — the same call that used to let the zombie back in is now the one that tells it it may not. No new channel, no dependency on the signal bus, and notice is bounded by one heartbeat interval.
+- `HeartbeatWorker` **stops its loop** on a refused heartbeat and logs the eviction at Error. Retrying can never succeed: the tombstone does not expire on the evicted instance's clock.
+
+The fence is per **process**, not per pod: instance ids are generated per process, so a restarted pod draws a fresh id and is unaffected — correct, because a restart means fresh state — while the zombie keeps its id and stays fenced.
+
+Tombstones are bounded: `perform_maintenance` purges rows older than `instance_eviction_retention_hours` (`wh_settings`, default 24). The tombstone only needs to outlive a realistic pause-and-resume window, and since ids are per-process, anything calling with that id after a day is not the process that was reaped.
+
 ## Migration touch points
 
 | Migration | What changed |
 |---|---|
 | **055** (new) | `claim_instance_alive_lock(uuid) → bool` and `is_instance_alive(uuid, threshold) → bool` |
 | **011** (modified) | `cleanup_stale_instances` skip-while-locked clause added; a later revision (v0.687) added an optional `p_definitive_dead_cutoff` parameter that bypasses the lock guard when the heartbeat is so old the instance is definitely dead (covers OOMKilled pods whose advisory lock lingers on a half-open TCP session until OS keepalive fires) |
+| **106** (new) | `wh_instance_evictions` tombstone table; `cleanup_stale_instances` tombstones what it reaps; `record_heartbeat` returns `BOOLEAN` and refuses evicted instances |
+| **107** (modified) | `perform_maintenance` Task 10 purges tombstones past `instance_eviction_retention_hours` (default 24) |
 
 ## Operator notes
 
 - The lock acquisition is non-fatal: if it returns `false` (duplicate-startup race) or throws (migration 055 not yet applied), the heartbeat-table fallback continues to work.
 - `IsAliveLockHeld` is observable on `IInstanceAliveLockSource` (implemented by `PgSharedNotifyConnection`). The HeartbeatWorker reads it every tick — no eventing/cache invalidation needed.
 - DI: HeartbeatWorker takes `IInstanceAliveLockSource?` as an optional ctor param. When not registered, the worker behaves bit-for-bit like pre-v0.681.
+- An instance logging `has been evicted … heartbeat refused` is not broken and needs no intervention — it was reaped as stale while paused, its work was redistributed, and it is correctly refusing to rejoin. Restart the pod (a new process gets a new instance id) if it should return to service.
 
 ## Verification
 
