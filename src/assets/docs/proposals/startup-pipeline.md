@@ -643,6 +643,19 @@ Startup maintenance is the one piece that should move and shrink. `perform_maint
 
 Increments 1, 2 and 5 are additive and independently valuable — they make the current state legible without changing it, and 5 is worth landing early because a slow boot is easiest to diagnose with a surface that already exists. Increments 3, 4 and 6 onward change behaviour and want the regression coverage that implies. Two carry real blast radius and want their own deliberate rollouts: **6**, because it changes what a running service does with an in-flight request, and **9**, because every part of it lets one instance change another's behaviour.
 
+### The testing bar: multi-instance, end to end
+
+Nearly everything in this proposal is a claim about how *instances* behave together — one migrates while the rest await, a zombie is refused, a duty fails over, a fleet stands by. Unit tests and single-connection SQL tests cannot carry those claims, so every increment ships with **multi-instance end-to-end coverage**: each simulated instance is its own coordinator over its own connection, driven through the real entry points, against a real database.
+
+The bar per increment:
+
+- **Eviction fence** *(shipped with the fence)* — a live instance's ordinary heartbeat reaps a stale peer and releases its leases; the paused peer resumes through the real coordinator and is refused; N instances join concurrently without interference.
+- **Barriers (increment 3)** — initializers racing where one is version-blocked never downgrade; formerly-ungated workers demonstrably hold until `Migrate` completes on a cold database.
+- **Duties (increment 7)** — N instances contend and exactly one holds `migrator`/`maintainer`; the holder dies and another acquires; the recorded holdings match who actually holds the lock.
+- **Rolling upgrades (increment 9)** — the full handshake: newer instance requests standby, older instances drain and acknowledge, migration commits → peers shut down, migration fails → peers revive by re-entering at `Assess`; a dead migrator strands nobody; a non-responsive peer is evicted and the handshake completes without it.
+
+Where the behaviour under test is genuinely *per-process* — hash seeds, the library version baked at build — in-process simulation cannot reproduce it, and the test spawns real child processes instead. The advisory-lock fix proved why this matters: the defect was invisible to any test running in one process.
+
 ### Fixes that do not wait
 
 Mapping the current behaviour turned up defects that are real today and independently shippable. None of them should be held hostage to the architecture that would have prevented them; each is listed here so the pipeline work does not become the reason they went unfixed.
