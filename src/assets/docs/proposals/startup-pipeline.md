@@ -216,7 +216,14 @@ It also needs no new staleness machinery. `wh_service_instances` already carries
 
 Holdings live in their own table keyed by *(instance, capability)* rather than as a column on the instance row, for two reasons that both come from what already exists. An instance holds several capabilities at once, and the relationship carries its own data — `acquired_at` is the field that answers "how long has this instance been the migrator", which is the question a stored record is for. And the heartbeat's UPDATE is deliberately **skipped when the last one was under ten seconds ago**, a guard added against "millions of UPDATEs on a tiny table" in production. Writing holdings onto that row would either be swallowed by that guard for up to ten seconds — inside the takeover window, exactly when the record matters — or would have to bypass it and re-create the write amplification it exists to prevent. A separate table has neither problem: capability writes are small, independent, and on their own cadence. Reaping stays free, because stale instances are genuinely `DELETE`d and the foreign key cascades.
 
-**Each instance also records its own state.** `LifecyclePhase` exists today but lives only in process memory, so no instance can see any other's. The handshake requires exactly that visibility — an instance cannot wait for its peers to reach standby unless reaching standby is something a peer can observe. Persisting the phase alongside the heartbeat makes the handshake possible, and incidentally gives the status surface a fleet-wide answer to "what is everyone doing right now", which is the question during a stalled rollout.
+**Each instance also records its own state and version.** `LifecyclePhase` exists today but lives only in process memory, so no instance can see any other's — and neither can anything else.
+
+Two independent requirements land on that same missing fact, which is what makes recording it worth the write rather than speculative:
+
+- **The handshake needs it.** An instance cannot wait for its peers to reach standby unless reaching standby is something a peer can observe.
+- **The status surface needs it.** A load-balanced endpoint has to report on instances it is not, and it can only report what those instances have written down.
+
+What is recorded is the phase, the library version, and — through the capability rows — what this instance holds. The version matters most in exactly the situation that motivated all of this: during a mixed-version rollout, *which instances are on which version* is the first question anyone asks, and it is unanswerable from an instance that only knows its own.
 
 One caveat carries over from capabilities: a state *transition* must bypass the heartbeat's ten-second freshness guard. The guard exists to stop liveness ticks from writing constantly, and a transition is not a tick — it is the one write that must not be deferred, since the whole handshake turns on peers seeing it promptly.
 
