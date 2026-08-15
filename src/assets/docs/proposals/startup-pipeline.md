@@ -215,6 +215,8 @@ Treating a stored assignment as authoritative is what would reintroduce orphaned
 
 It also needs no new staleness machinery. `wh_service_instances` already carries a lease, a heartbeat and a reaper; held roles ride the same rails, so a dead instance's claims expire exactly as its liveness does.
 
+Holdings live in their own table keyed by *(instance, role)* rather than as a column on the instance row, for two reasons that both come from what already exists. An instance holds several roles at once, and the relationship carries its own data — `acquired_at` is the field that answers "how long has this instance been the migrator", which is the question a stored assignment is for. And the heartbeat's UPDATE is deliberately **skipped when the last one was under ten seconds ago**, a guard added against "millions of UPDATEs on a tiny table" in production. Writing holdings onto that row would either be swallowed by that guard for up to ten seconds — inside the takeover window, exactly when the record matters — or would have to bypass it and re-create the write amplification it exists to prevent. A separate table has neither problem: role writes are small, independent, and on their own cadence. Reaping stays free, because stale instances are genuinely `DELETE`d and the foreign key cascades.
+
 **Both halves are recorded, and the pair is what makes roles operable:**
 
 - **Eligibility** — which roles this instance may stand for. Declared configuration, static for the life of the process.
@@ -236,13 +238,17 @@ Later lifecycle work inherits the same record. Maintenance and operational comma
 An instance never looks up whether it has been *assigned* a role — it **attempts acquisition**, and the primitive grants or refuses. Takeover therefore needs no coordination beyond that attempt:
 
 1. The holder holds its session lock, and its instance row records the role.
-2. The holder dies. Its connection drops and PostgreSQL releases the lock **immediately**, server-side — no timeout, no lease to expire.
+2. The holder dies. On a clean session termination PostgreSQL releases the lock **immediately**, server-side, with no timeout to wait out.
 3. Its row is briefly stale, still claiming the role.
 4. Another eligible instance attempts the lock: because it was already blocked on it, on its next poll, or prompted by `InstanceDiedSignal`.
 5. It acquires the lock and **is the holder from that instant**, whatever any row still says.
 6. Its next heartbeat records the role; the dead instance's row is reaped at lease expiry.
 
 The record is inconsistent only between steps 2 and 6, and that is the heartbeat lease window the system already has. Storing roles adds no new class of staleness — it inherits one that is already reaped.
+
+**Clean session termination is not the only way an instance dies.** A pod killed for exceeding memory can leave a half-open TCP session that PostgreSQL has not yet noticed, and its advisory lock can then linger for hours — long enough that waiters block indefinitely on a holder that no longer exists. The framework already carries the answer: `cleanup_stale_instances` takes a definitive-dead cutoff that deliberately overrides the alive-lock guard, on the reasoning that a heartbeat hours old is better evidence than a socket the server still believes is open.
+
+Role takeover inherits that override, and it is the reason heartbeat-based liveness is a **correctness backstop here rather than a latency optimization**. The lock is the fast, precise path and handles every clean failure; the heartbeat cutoff is what bounds the pathological one. Neither alone is sufficient, which is why both exist.
 
 That leaves one question worth engineering: after a holder dies, how quickly does someone else attempt again? Three layers, only one of which carries correctness:
 
@@ -256,7 +262,7 @@ The middle and lower layers already exist and should be consumed rather than rei
 
 One detail inverts the usual reading of "notify with a poll backstop". PostgreSQL has no trigger on advisory-lock release, and a dying instance cannot announce its own death — so the notification is itself *produced by a poll*, the monitor's periodic scan. The value is not that polling is avoided but that one instance polls and the rest are told, and failover latency is bounded by heartbeat expiry plus scan interval rather than by each instance's own retry cadence.
 
-Which makes the case that matters cost nothing. `Migrate` failover needs none of these layers: the instances waiting on it are already blocked on the advisory lock, and PostgreSQL releases that lock server-side the moment the holder's session drops, so a waiter acquires immediately. The role with the tightest failover requirement has the fastest failover in the system and requires no detection machinery at all — which is fortunate, because it is acquired before `wh_signals` exists and could not have used the bus regardless. The roles that do rely on signal-plus-poll — `maintainer`, and the existing stamper and audit duties — are precisely the ones for which tens of seconds is immaterial.
+Which makes the common case cost nothing. `Migrate` failover needs none of these layers when the holder dies cleanly: the instances waiting on it are already blocked on the advisory lock, PostgreSQL releases it as the session ends, and a waiter acquires immediately. The pathological case — a half-open socket whose lock outlives the process — is what the heartbeat cutoff below exists for. The role with the tightest failover requirement has the fastest failover in the system and requires no detection machinery at all — which is fortunate, because it is acquired before `wh_signals` exists and could not have used the bus regardless. The roles that do rely on signal-plus-poll — `maintainer`, and the existing stamper and audit duties — are precisely the ones for which tens of seconds is immaterial.
 
 #### Leaving room for quorum
 
@@ -472,7 +478,7 @@ Startup maintenance is the one piece that should move and shrink. `perform_maint
 - **Consumer-declared steps.** Observation and interrogation are settled — consumers get both. Whether they may *add* steps is not: that turns the descriptor into a public extension contract with the versioning obligations that implies.
 - **Granularity of `Migrate`.** Schema initialization is one opaque step containing seven internal phases, two of which are registry reconciles that other steps arguably depend on. Exposing the phases individually would let those dependencies be declared instead of assumed, at the cost of a much larger surface — and of committing to phase names that are currently free to change.
 - **Which step releases each seam.** That the data plane holds during `Migrate` is settled; which barrier each seam waits on is not, and reads and writes may not want the same one. A dispatch needs the event store and outbox, which `Migrate` provides. A lens needs perspectives drained, which is later than `Migrate` and earlier than `Ready` — coupling it to `Ready` would make reads wait on transport provisioning they do not use. That argues for a dedicated read-model barrier, and ties back to the `Migrate` granularity question above.
-- **Where held roles are stored.** `wh_service_instances` already carries a `metadata` JSONB column, a lease and a reaper, so holdings could land there with no migration at all. A first-class column is more queryable and indexable, which matters if operational tooling is going to ask "who holds role R" often. The zero-migration option is tempting and the queryable one is probably right.
+- **Whether role rows want a lease of their own.** They are reaped by cascade when the instance row goes, which covers instance death. It does not cover an instance that is alive but has lost a role it still has a row for — a narrow window, and possibly one that only matters once a duty can be relinquished without the process exiting.
 - **Startup-probe adoption.** Adding `HealthProbe.Startup` is only useful if the turnkey wiring emits it and the documentation tells operators to bind it. A probe nobody binds is worse than none, because it looks like coverage.
 - **Whether `reason` detail should be enableable per-environment rather than per-host.** The opt-in level is a single switch today. A host that wants failure detail in staging and terse output in production can already achieve that through configuration, but nothing stops the two drifting apart — and the environment where the detail matters most is the one where it is least safe.
 - **Does progress belong in health detail too?** `ComponentHealth` already has a free-text detail field whose documented example is a progress string. Feeding pipeline progress into it would make every existing health consumer better for free, at the cost of putting a moving value in a field some consumers may treat as stable.
