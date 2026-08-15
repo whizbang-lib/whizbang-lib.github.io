@@ -120,7 +120,7 @@ graph TB
     style Ready fill:#d4edda,stroke:#28a745,stroke-width:2px
 ```
 
-Blue steps require an exclusive role, so exactly one instance executes them. **Every other step runs on every instance**, including all of `Identify` through `Ready` — exclusivity follows the role a step requires, not a mode the pipeline enters at `Migrate` and stays in. `Identify` is the clearest case: each instance registers its own row.
+Blue steps require an exclusive capability, so exactly one instance executes them. **Every other step runs on every instance**, including all of `Identify` through `Ready` — exclusivity follows the capability a step requires, not a mode the pipeline enters at `Migrate` and stays in. `Identify` is the clearest case: each instance registers its own row.
 
 The linear chain above is the order of steps, not a single thread of control. Every instance walks the whole pipeline; what differs is what it does at an exclusive step. The grey band is reported but never awaited — see [Steps that cannot block](#steps-that-cannot-block).
 
@@ -136,8 +136,8 @@ Every step declares, rather than implies:
 
 - **Identity** — a stable name that appears in logs, metrics and health detail
 - **Dependencies** — by name, not by registration position
-- **Required role** — the role an instance must hold to run this step. An exclusive role means one instance runs it; a shared role means every instance does. Defaults to the universal shared role, so a step that says nothing runs everywhere
-- **Non-runner behaviour** — where the required role is exclusive, what the instances that did *not* win it do: `Await` the holder's completion, or `Skip` and carry on
+- **Required capability** — the capability an instance must hold to run this step. An exclusive capability (a *duty*) means one instance runs it; a shared capability means every instance does. Defaults to the universal shared capability, so a step that says nothing runs everywhere
+- **Non-runner behaviour** — where the required capability is a duty, what the instances that did *not* win it do: `Await` the holder's completion, or `Skip` and carry on
 - **Blocking** — must complete before `Ready`, or runs after it
 - **Enablement** — individually switchable, so an operator can skip one step without disabling the worker that hosts it
 - **Outcome** — `Completed` / `Skipped` / `Failed`, with duration and reason
@@ -145,40 +145,29 @@ Every step declares, rather than implies:
 
 The outcome field is load-bearing on its own. It is what makes "this step found nothing to do" distinguishable from "this step could not run", which today it is not.
 
-The required role and non-runner behaviour stay separate fields, because the two steps needing an exclusive role in this proposal want opposite answers and one flag cannot express both:
+The required capability and non-runner behaviour stay separate fields, because the two duties in this proposal want opposite answers and one flag cannot express both:
 
-- **`Migrate` requires the exclusive `migrator` role, and non-holders `Await`.** One instance migrates; the others cannot proceed to `Reconcile` before the schema exists, so they wait for the winner rather than skipping ahead. That is already the behaviour the advisory lock produces — losing instances block, then re-check hashes, find nothing to do, and continue — so this formalizes what the code does rather than changing it.
-- **The post-ready table rewrite requires the exclusive `maintainer` role, and non-holders `Skip`.** One instance rewrites; nobody blocks on a `VACUUM FULL`, which is the entire reason it is post-ready and unbounded.
+- **`Migrate` requires the `migrator` duty, and non-holders `Await`.** One instance migrates; the others cannot proceed to `Reconcile` before the schema exists, so they wait for the winner rather than skipping ahead. That is already the behaviour the advisory lock produces — losing instances block, then re-check hashes, find nothing to do, and continue — so this formalizes what the code does rather than changing it.
+- **The post-ready table rewrite requires the `maintainer` duty, and non-holders `Skip`.** One instance rewrites; nobody blocks on a `VACUUM FULL`, which is the entire reason it is post-ready and unbounded.
 
 Collapsing these would either make every instance wait on a rewrite or let every instance race past an unfinished migration. Both are worse than the status quo.
 
-#### Roles: what an instance may do
+#### Capabilities
 
-Instances are not interchangeable, and the framework has no way to say so. Every host that references Whizbang starts every hosted service, whether it is an API pod that only serves reads or a worker pod that only drains queues. Meanwhile "exactly one instance does this" has already been hand-rolled three separate times — the migration advisory lock, the commit-order stamper's session lock, and the integrity audit's settings-CAS claim — each with its own mechanism and none of them named.
+"Exactly one instance does this" has already been hand-rolled three separate times — the migration advisory lock, the commit-order stamper's session lock, and the integrity audit's settings-CAS claim. Three mechanisms, three shapes, and no name for the thing they have in common.
 
-**Roles** name the capability, and a role is something an instance **holds** — not a label it wears. Following the shape Elasticsearch uses for node roles, where being *master-eligible* is configuration and being *the elected master* is a held position, two layers stay separate:
+A **capability** names it. A capability is something an instance **holds**, acquired by winning it, and an instance holds several at once. Nothing declares in advance which instances may hold what: every instance attempts everything, exactly as today. What changes is that holding becomes a named, recorded fact instead of an implicit consequence of winning a lock.
 
-- **Eligibility is declared configuration** — which roles this instance may stand for. Static, local, known at startup, never inferred. **Defaults to every role**, so a consumer that configures nothing behaves exactly as it does today.
-- **The role is held by election** — among eligible instances, who actually has it right now. Dynamic, contended, and acquired through the same database primitives that already work.
+That capabilities are *won* rather than *assigned* is what keeps the failure path free. There is no durable "this one is the migrator" flag to orphan: an instance that dies releases its advisory lock server-side on disconnect, its transaction rolls back, and the next instance picks the capability up on its next attempt. Reassignment is automatic and needs no reaper — which a statically-assigned capability would.
 
-That the role is *elected* rather than statically assigned is what keeps the failure path free. There is no durable "this one is the migrator" flag to orphan: an instance that dies holding a role releases its advisory lock server-side on disconnect, its transaction rolls back, and the next eligible instance picks the role up on its next attempt. Reassignment is automatic and needs no reaper — which a statically-assigned role would.
+Capabilities come in two kinds, and the distinction is one the pipeline already needs:
 
-Roles come in two kinds, and the distinction is one the pipeline already needs:
+- **Exclusive capabilities** are held by one instance at a time — `migrator`, `maintainer`. Election decides which. An exclusive capability is a **duty**.
+- **Shared capabilities** are held by every instance at once — the ordinary worker and serving capabilities.
 
-- **Exclusive roles** are held by one instance at a time — `migrator`, `maintainer`. Election decides which.
-- **Shared roles** are held by every eligible instance at once — the ordinary worker and serving roles.
+Which means **step exclusivity is not a separate property at all — it falls out of the capability a step requires.** A step needing a duty runs on one instance; a step needing a shared capability runs on all of them. That removes a field from the descriptor and, more usefully, removes the possibility of declaring a contradiction — a step cannot claim to be fleet-exclusive while requiring a capability every instance holds.
 
-Which means **step exclusivity is not a separate property at all — it falls out of the role a step requires.** A step needing an exclusive role runs on one instance; a step needing a shared role runs on all of them. That removes a field from the descriptor and, more usefully, removes the possibility of declaring a contradiction — a step cannot claim to be fleet-exclusive while requiring a role every instance holds.
-
-Three things become expressible that are not today:
-
-- **A dedicated migration job.** Give a short-lived job the `migrator` role and the serving replicas none. Migrations then run where operators already want them — as a deployment step — instead of in whichever replica won a race against live traffic.
-- **An API-only host.** Declare it without the worker roles and it stops starting workers it will never use, rather than starting all of them and having each immediately block on a gate.
-- **A pinned maintenance window.** The unbounded post-ready table rewrite goes to an instance sized and scheduled for it, instead of whichever replica happened to win.
-
-Two constraints keep this from being a regression. Roles must **default to all roles**, so an existing single-deployment consumer that configures nothing behaves exactly as it does now. And a fleet where **no instance holds a required role** must be loud: nobody holding `migrator` means the schema is never migrated and every instance waits forever. Roles introduce the possibility of an unassigned duty, so the pipeline has to surface that as a distinct, diagnosable state rather than an indefinite wait — which is precisely what per-step status and the health surface are for.
-
-Roles are also the natural place to hang later capability partitioning, which is the reason to introduce the concept properly now rather than special-case `Migrate`.
+Because every instance attempts every capability, this introduces no way to misconfigure a fleet into deadlock: a duty nobody currently holds is always one that somebody is about to take. That is a deliberate limit. Restricting *which* instances may attempt a capability — a dedicated migration job, an API-only host that starts no workers — is a real want and a natural later addition, and it is purely additive: an absent restriction means everyone attempts, which is precisely the behaviour defined here. Nothing in the model or the schema has to change to allow it later.
 
 #### How instances coordinate at an exclusive step
 
@@ -186,9 +175,9 @@ Within the eligible set, no instance is *told* to proceed and the waiters do not
 
 For `Migrate` the mechanism already exists and the pipeline formalizes rather than replaces it. Eligible instances attempt the advisory lock. One acquires it and migrates; the rest block in the retry loop. The winner's commit atomically releases the lock *and* publishes the durable evidence — the content hashes in `wh_schema_migrations`. A waiter then acquires the freed lock, re-checks those hashes, finds nothing to do, commits and continues.
 
-The step therefore reports a different **outcome** per instance: `Completed` on the instance that migrated, `Skipped` with reason *"completed by another instance"* on the rest, and `Skipped` with reason *"role not held"* on an instance that was never eligible. Those are three genuinely different facts, and an operator needs to tell them apart.
+The step therefore reports a different **outcome** per instance: `Completed` on the instance that migrated, `Skipped` with reason *"completed by another instance"* on the rest, and `Skipped` with reason *"capability not held"* on an instance that lost the race. Those are three genuinely different facts, and an operator needs to tell them apart.
 
-**Stage state does not belong in the database by default.** Steps that run on every instance are local facts — they belong in memory and are served by that instance's own status surface. Only a step whose required role is exclusive and whose non-holders `Await` needs cross-instance completion state, and for `Migrate` that state already exists durably in the migration ledger.
+**Stage state does not belong in the database by default.** Steps that run on every instance are local facts — they belong in memory and are served by that instance's own status surface. Only a step whose required capability is a duty and whose non-holders `Await` needs cross-instance completion state, and for `Migrate` that state already exists durably in the migration ledger.
 
 #### Election is not membership
 
@@ -197,60 +186,48 @@ These are two different problems and they want two different mechanisms. Conflat
 | Concern | Mechanism | Why |
 |---|---|---|
 | **Election** — who performs an exclusive duty | Database primitive: advisory lock, or CAS on `wh_settings` | Linearizable against the authority every instance already depends on. Self-healing, no timeout to tune, no split-brain window |
-| **Membership** — who is alive, and which roles they hold | Heartbeat plus the `wh_instance_alive` session lock | Already built. Drives rebalancing, observability, and unassigned-duty detection |
+| **Membership** — who is alive, and which capabilities they hold | Heartbeat plus the `wh_instance_alive` session lock | Already built. Drives rebalancing, observability, and prompt re-attempt after a holder dies |
 
 The framework has already reached this conclusion once, and written it down: the instance-liveness migration notes that a dropped connection releases its session lock so peers "detect the death within seconds rather than 30 s of heartbeat-table staleness", with the heartbeat table kept as the *fallback*. Server-side session death beats heartbeat staleness, because the server observes the failure directly instead of inferring it from silence.
 
 That is also why leader liveness should not be re-derived from heartbeats for election purposes. A leader that is alive but briefly slow or partitioned gets declared dead by peers watching a timeout; they elect a replacement; two instances now believe they hold the duty. For `Migrate` that is two instances running DDL at once — the exact failure a process-stable lock key was introduced to prevent. Swapping a mechanism with no split-brain window for one with a tunable window is a regression.
 
-Membership still matters, and it is what makes roles safe: it is how the fleet detects that **no live instance holds a required role**, which is the one new failure mode roles introduce. That is a genuine use of the heartbeat — it is simply not election.
+Membership still matters, and for a reason sharper than observability: it is how the fleet notices a holder that died **without** cleanly releasing its lock. That case is real — a pod killed for memory can leave a half-open session whose advisory lock lingers — and it is why the heartbeat is a correctness backstop here rather than a convenience. It is simply not election.
 
-#### Noticing a role has come free
+#### Noticing a capability has come free
 
-Role holdings are **recorded**, but never **consulted to decide**. The distinction is the whole design:
+Capability holdings are **recorded**, but never **consulted to decide**. The distinction is the whole design:
 
-> **The lock decides; the row reports.** An instance acquires a role by attempting the primitive, not by reading a table. If the record and the lock ever disagree, the lock is right and the record is stale.
+> **The lock decides; the row reports.** An instance acquires a capability by attempting the primitive, not by reading a table. If the record and the lock ever disagree, the lock is right and the record is stale.
 
-Treating a stored assignment as authoritative is what would reintroduce orphaned state — a dead instance's row goes on claiming a role until something reaps it, and nobody may proceed until that happens. Treating it as *derived* state costs nothing and buys a great deal, which is why it is worth storing.
+Treating a stored assignment as authoritative is what would reintroduce orphaned state — a dead instance's row goes on claiming a capability until something reaps it, and nobody may proceed until that happens. Treating it as *derived* state costs nothing and buys a great deal, which is why it is worth storing.
 
-It also needs no new staleness machinery. `wh_service_instances` already carries a lease, a heartbeat and a reaper; held roles ride the same rails, so a dead instance's claims expire exactly as its liveness does.
+It also needs no new staleness machinery. `wh_service_instances` already carries a lease, a heartbeat and a reaper; held capabilities ride the same rails, so a dead instance's claims expire exactly as its liveness does.
 
-Holdings live in their own table keyed by *(instance, role)* rather than as a column on the instance row, for two reasons that both come from what already exists. An instance holds several roles at once, and the relationship carries its own data — `acquired_at` is the field that answers "how long has this instance been the migrator", which is the question a stored assignment is for. And the heartbeat's UPDATE is deliberately **skipped when the last one was under ten seconds ago**, a guard added against "millions of UPDATEs on a tiny table" in production. Writing holdings onto that row would either be swallowed by that guard for up to ten seconds — inside the takeover window, exactly when the record matters — or would have to bypass it and re-create the write amplification it exists to prevent. A separate table has neither problem: role writes are small, independent, and on their own cadence. Reaping stays free, because stale instances are genuinely `DELETE`d and the foreign key cascades.
+Holdings live in their own table keyed by *(instance, capability)* rather than as a column on the instance row, for two reasons that both come from what already exists. An instance holds several capabilities at once, and the relationship carries its own data — `acquired_at` is the field that answers "how long has this instance been the migrator", which is the question a stored record is for. And the heartbeat's UPDATE is deliberately **skipped when the last one was under ten seconds ago**, a guard added against "millions of UPDATEs on a tiny table" in production. Writing holdings onto that row would either be swallowed by that guard for up to ten seconds — inside the takeover window, exactly when the record matters — or would have to bypass it and re-create the write amplification it exists to prevent. A separate table has neither problem: capability writes are small, independent, and on their own cadence. Reaping stays free, because stale instances are genuinely `DELETE`d and the foreign key cascades.
 
-**Both halves are recorded, and the pair is what makes roles operable:**
+What is recorded is simply **which capabilities each live instance currently holds**, and when it acquired them. That is enough to answer the questions that matter during an incident — which instance is the migrator right now, how long it has been, whether a duty is currently unheld — as a query rather than a broadcast to instances that may not be answering. It also settles how the status surface reports fleet-level state: a join, not a fan-out.
 
-- **Eligibility** — which roles this instance may stand for. Declared configuration, static for the life of the process.
-- **Holdings** — which roles it currently has. Derived from successful acquisition, refreshed with the heartbeat.
-
-Storing both turns the one failure mode roles introduce into a query rather than new machinery, and separates two operationally different problems that would otherwise look identical:
-
-| Observed | Meaning | Action |
-|---|---|---|
-| Role is unheld, but live instances are eligible | Transient — an eligible instance is about to take it | Wait |
-| Role is unheld and **no live instance is eligible** | Misconfiguration — nothing will ever take it | Human intervention |
-
-Today both present as everything quietly stalling. It also settles how the status surface answers fleet-level questions: with holdings recorded, "which instance is the migrator right now" is a join rather than a broadcast, and remains answerable during the incident where it matters.
-
-Later lifecycle work inherits the same record. Maintenance and operational commands can address *the instance holding role R* rather than guessing, which is the reason to store capability rather than merely elect it.
+Later lifecycle work inherits the same record. Maintenance and operational commands can address *the instance holding capability X* rather than guessing, which is the reason to store what is held rather than merely elect it.
 
 #### Takeover
 
-An instance never looks up whether it has been *assigned* a role — it **attempts acquisition**, and the primitive grants or refuses. Takeover therefore needs no coordination beyond that attempt:
+An instance never looks up whether it has been *assigned* a capability — it **attempts acquisition**, and the primitive grants or refuses. Takeover therefore needs no coordination beyond that attempt:
 
-1. The holder holds its session lock, and its instance row records the role.
+1. The holder holds its session lock, and its record names the capability it holds.
 2. The holder dies. On a clean session termination PostgreSQL releases the lock **immediately**, server-side, with no timeout to wait out.
-3. Its row is briefly stale, still claiming the role.
+3. Its record is briefly stale, still claiming the capability.
 4. Another eligible instance attempts the lock: because it was already blocked on it, on its next poll, or prompted by `InstanceDiedSignal`.
 5. It acquires the lock and **is the holder from that instant**, whatever any row still says.
-6. Its next heartbeat records the role; the dead instance's row is reaped at lease expiry.
+6. Its next heartbeat records the capability; the dead instance's rows are reaped at lease expiry.
 
-The record is inconsistent only between steps 2 and 6, and that is the heartbeat lease window the system already has. Storing roles adds no new class of staleness — it inherits one that is already reaped.
+The record is inconsistent only between steps 2 and 6, and that is the heartbeat lease window the system already has. Storing capabilities adds no new class of staleness — it inherits one that is already reaped.
 
 **Clean session termination is not the only way an instance dies.** A pod killed for exceeding memory can leave a half-open TCP session that PostgreSQL has not yet noticed, and its advisory lock can then linger for hours — long enough that waiters block indefinitely on a holder that no longer exists. The framework already carries the answer: `cleanup_stale_instances` takes a definitive-dead cutoff that deliberately overrides the alive-lock guard, on the reasoning that a heartbeat hours old is better evidence than a socket the server still believes is open.
 
-Role takeover inherits that override, and it is the reason heartbeat-based liveness is a **correctness backstop here rather than a latency optimization**. The lock is the fast, precise path and handles every clean failure; the heartbeat cutoff is what bounds the pathological one. Neither alone is sufficient, which is why both exist.
+Capability takeover inherits that override, and it is the reason heartbeat-based liveness is a **correctness backstop here rather than a latency optimization**. The lock is the fast, precise path and handles every clean failure; the heartbeat cutoff is what bounds the pathological one. Neither alone is sufficient, which is why both exist.
 
-That leaves one question worth engineering: after a holder dies, how quickly does someone else attempt again? Three layers, only one of which carries correctness:
+That leaves one question worth engineering: after a holder dies, how quickly does another instance attempt again? Three layers, only one of which carries correctness:
 
 | Layer | Purpose | Load-bearing |
 |---|---|---|
@@ -258,11 +235,11 @@ That leaves one question worth engineering: after a holder dies, how quickly doe
 | **Signal** — `InstanceDiedSignal` prompts an immediate re-attempt | Cuts failover latency | No |
 | **Poll backstop** — periodic re-attempt | Bounds latency when a notification is dropped | The floor beneath the signal |
 
-The middle and lower layers already exist and should be consumed rather than reinvented. `PgInstanceLifecycleMonitor` scans `wh_service_instances` for expired leases and emits a durable `InstanceDiedSignal`, delivered Broadcast + Durable specifically so that, in its own words, the fast-path NOTIFY reaches subscribers instantly while the durable log carries the signal across NOTIFY drops. It already drives orphan takeover; role re-attempt is the same shape of reaction to the same event.
+The middle and lower layers already exist and should be consumed rather than reinvented. `PgInstanceLifecycleMonitor` scans `wh_service_instances` for expired leases and emits a durable `InstanceDiedSignal`, delivered Broadcast + Durable specifically so that, in its own words, the fast-path NOTIFY reaches subscribers instantly while the durable log carries the signal across NOTIFY drops. It already drives orphan takeover; capability re-attempt is the same shape of reaction to the same event.
 
 One detail inverts the usual reading of "notify with a poll backstop". PostgreSQL has no trigger on advisory-lock release, and a dying instance cannot announce its own death — so the notification is itself *produced by a poll*, the monitor's periodic scan. The value is not that polling is avoided but that one instance polls and the rest are told, and failover latency is bounded by heartbeat expiry plus scan interval rather than by each instance's own retry cadence.
 
-Which makes the common case cost nothing. `Migrate` failover needs none of these layers when the holder dies cleanly: the instances waiting on it are already blocked on the advisory lock, PostgreSQL releases it as the session ends, and a waiter acquires immediately. The pathological case — a half-open socket whose lock outlives the process — is what the heartbeat cutoff below exists for. The role with the tightest failover requirement has the fastest failover in the system and requires no detection machinery at all — which is fortunate, because it is acquired before `wh_signals` exists and could not have used the bus regardless. The roles that do rely on signal-plus-poll — `maintainer`, and the existing stamper and audit duties — are precisely the ones for which tens of seconds is immaterial.
+Which makes the common case cost nothing. `Migrate` failover needs none of these layers when the holder dies cleanly: the instances waiting on it are already blocked on the advisory lock, PostgreSQL releases it as the session ends, and a waiter acquires immediately. The pathological case — a half-open socket whose lock outlives the process — is what the heartbeat cutoff below exists for. The duty with the tightest failover requirement has the fastest failover in the system and requires no detection machinery at all — which is fortunate, because it is acquired before `wh_signals` exists and could not have used the bus regardless. The duties that do rely on signal-plus-poll — `maintainer`, and the existing stamper and audit duties — are precisely the ones for which tens of seconds is immaterial.
 
 #### Leaving room for quorum
 
@@ -478,7 +455,7 @@ Startup maintenance is the one piece that should move and shrink. `perform_maint
 - **Consumer-declared steps.** Observation and interrogation are settled — consumers get both. Whether they may *add* steps is not: that turns the descriptor into a public extension contract with the versioning obligations that implies.
 - **Granularity of `Migrate`.** Schema initialization is one opaque step containing seven internal phases, two of which are registry reconciles that other steps arguably depend on. Exposing the phases individually would let those dependencies be declared instead of assumed, at the cost of a much larger surface — and of committing to phase names that are currently free to change.
 - **Which step releases each seam.** That the data plane holds during `Migrate` is settled; which barrier each seam waits on is not, and reads and writes may not want the same one. A dispatch needs the event store and outbox, which `Migrate` provides. A lens needs perspectives drained, which is later than `Migrate` and earlier than `Ready` — coupling it to `Ready` would make reads wait on transport provisioning they do not use. That argues for a dedicated read-model barrier, and ties back to the `Migrate` granularity question above.
-- **Whether role rows want a lease of their own.** They are reaped by cascade when the instance row goes, which covers instance death. It does not cover an instance that is alive but has lost a role it still has a row for — a narrow window, and possibly one that only matters once a duty can be relinquished without the process exiting.
+- **Whether capability rows want a lease of their own.** They are reaped by cascade when the instance row goes, which covers instance death. It does not cover an instance that is alive but has lost a capability it still has a row for — a narrow window, and possibly one that only matters once a duty can be relinquished without the process exiting.
 - **Startup-probe adoption.** Adding `HealthProbe.Startup` is only useful if the turnkey wiring emits it and the documentation tells operators to bind it. A probe nobody binds is worse than none, because it looks like coverage.
 - **Whether `reason` detail should be enableable per-environment rather than per-host.** The opt-in level is a single switch today. A host that wants failure detail in staging and terse output in production can already achieve that through configuration, but nothing stops the two drifting apart — and the environment where the detail matters most is the one where it is least safe.
 - **Does progress belong in health detail too?** `ComponentHealth` already has a free-text detail field whose documented example is a progress string. Feeding pipeline progress into it would make every existing health consumer better for free, at the cost of putting a moving value in a field some consumers may treat as stable.
@@ -491,7 +468,7 @@ Startup maintenance is the one piece that should move and shrink. `perform_maint
 4. **`Ready` as a composite** — the terminal signal, on the unused `IHostedLifecycleService.StartedAsync` seam, composed from blocking-step completion. Carries the `ComponentState` addition and the `HealthPolicy` row.
 5. **Status endpoints** — opt-in surfaces over `IStartupPipelineState`: the minimal-API mapping at `/whizbang/startup` (overridable, self-exempting from the availability gate, returning `IEndpointConventionBuilder` so host auth applies), then the FastEndpoints and HotChocolate equivalents. Terse by default, `reason` detail opt-in. Depends only on increments 1–2, so it can land early and pay for itself while the behavioural increments are still in flight.
 6. **Health and the data plane** — a pipeline health source so probes report the current step and its progress, plus the `ComponentState` addition and `HealthProbe.Startup` if adopted; and the seam-level barrier, so `ILensQuery` and `IDispatcher` refuse while the data plane is not running and every surface inherits one check.
-7. **Roles and election** — declared eligibility, held-by-election roles, and the `IDutyElector` seam over the leased slot from [Fleet Startup Orchestration](fleet-startup-orchestration), so exclusive roles mean something. Until this lands, every instance is eligible for everything and an exclusive role degrades to shared — survivable only because both exclusive steps are individually idempotent and separately guarded (the migration by its advisory lock, the rewrite by its request record), and it must be documented as such.
+7. **Capabilities and election** — held-by-election capabilities, the recorded holdings table, and the `IDutyElector` seam over the leased slot from [Fleet Startup Orchestration](fleet-startup-orchestration), so duties mean something. Until this lands, a duty degrades to a shared capability — survivable only because both exclusive steps are individually idempotent and separately guarded (the migration by its advisory lock, the rewrite by its request record), and it must be documented as such.
 8. **Move the rewrites** — requested table rewrites become a post-ready step; the runtime maintenance cycle stops executing them and records requests instead.
 
 Increments 1, 2 and 5 are additive and independently valuable — they make the current state legible without changing it. Increments 3, 4 and 6 onward change behaviour and want the regression coverage that implies. Increment 6 is the one with a visible blast radius: it changes what a running service does with an in-flight request, and wants its own deliberate rollout.
