@@ -66,7 +66,7 @@ These are not independent defects. Each is the same missing abstraction surfacin
 | The type-definition reconciler starts on gate-open and can still be reclassifying history | It races the perspective worker already draining events of those same types |
 | Transport consumers provision and subscribe independently of the gate | Brokers can deliver before the schema is ready |
 | The claim worker performs a redundant heartbeat write | Purely to paper over a race with the heartbeat worker registering the instance row — a race patched instead of sequenced |
-| The HTTP availability gate keys on the same single boolean | It can only answer "is the schema ready", so it cannot express "reads are safe but the read model is still catching up" — see [Serving traffic during startup](#serving-traffic-during-startup) |
+| The HTTP availability gate keys on the same single boolean, at the wrong layer | Keyed on HTTP verb, it cannot express "only reads that touch a perspective" — and cannot express it at all for GraphQL, where every field shares one route — see [Serving traffic during startup](#serving-traffic-during-startup) |
 | Nothing means "finished" | `Running` means *the schema is ready*, not *startup is complete*. Health can answer the first question and has no way to answer the second. |
 | Nothing outside the framework can observe any of it | A consumer cannot see which step is running, what it did, or how long it took. There is no seam to hang a diagnostic, a gauge, or a deployment gate on. |
 
@@ -206,23 +206,51 @@ The stated rationale for letting reads through is that they "hit the read-model 
 
 There is a second, quieter window after that one. Once the schema is ready the gate opens completely, but perspectives may still be draining history — cursors behind, rewind repair unfinished. A lens query answered then returns results that are *structurally valid and semantically wrong*: empty or stale, and indistinguishable from a legitimately empty result. This is the same silent-skip pathology as the rest of the proposal, surfacing on the read path where a caller sees it.
 
-The pipeline gives the gate something better than a boolean to key on:
+#### Gate the lens, not the route
 
-| Pipeline state | Liveness | Readiness | Writes | Lens reads |
-|---|---|---|---|---|
-| Before `Migrate` completes | Healthy | Not ready | 503 | **503** — tables may not exist |
-| `Migrate` … `Ready` | Healthy | Not ready | 503 | 503 by default; opt-in pass-through for hosts whose reads genuinely do not touch Whizbang |
-| After `Ready` | Healthy | Ready | pass | pass |
-| Post-ready steps running | Healthy | Ready | pass | pass |
+The work that is unsafe during startup is **reading a perspective**, so that is what gets gated — not "reads", not "non-exempt paths". Health and liveness endpoints keep answering. So does everything of the consumer's own that never touches a lens.
 
-Liveness stays `Healthy` in every row. That invariant is already correct in `HealthPolicy` and this proposal does not touch it — restarting a process cannot finish a migration, it can only discard the progress that was making one.
+That distinction cannot be drawn at the HTTP layer, which is why the current verb-based mode is a proxy rather than an answer:
 
-The change is that **readiness and the availability gate stop reading the same boolean and start reading pipeline state**, and that the gate's read behaviour gets a defensible default. Serving reads before the read model exists is not a performance optimization; it is a 500 dressed as a 200.
+- **GraphQL multiplexes.** Every field lives behind one route. A middleware can 503 `/graphql` or pass it, and neither is right when one query selects a lens-backed field beside a static one.
+- **Routes are not a reliable signal of what runs.** A consumer's own endpoint may call a lens internally; a Whizbang-shaped route may not touch one at all.
+- **Verbs are wrong in both directions.** A `GET` can read a perspective; a `POST` can be a search that reads one; neither fact is visible from the method.
 
-Two concrete implications for existing types, both small and both load-bearing:
+So the check belongs at the lens execution seam — `ILensQuery<TModel>` — where the thing being protected actually happens. One check, and every caller inherits it:
+
+| Caller | Behaviour while the read model is not serve-able |
+|---|---|
+| Minimal-API / FastEndpoints lens endpoint | `503` with `Retry-After` |
+| HotChocolate lens field | A field error with a machine-readable code, so non-lens fields in the same query still resolve |
+| Consumer code calling a lens directly | A typed exception naming the step it is waiting on |
+| Health, liveness, version | Unaffected — they never run a lens |
+| Consumer endpoints that touch no lens | Unaffected |
+
+Writes keep the coarse protection they have today: the availability gate continues to refuse mutations while the schema initializes. Lens gating is added beside that, not in place of it.
+
+The window this closes is wider than the cold-boot case that motivates it. Gating on *the read model being serve-able* rather than on *the schema existing* also covers the second window — schema ready, perspectives still draining — where a lens answers with results that are structurally valid and semantically wrong. Serving those is not a performance optimization; it is a 500 dressed as a 200.
+
+#### Health reports the stage, and the state of that stage
+
+Probes answer from pipeline state rather than from one boolean:
+
+| Pipeline state | Liveness | Readiness | Detail reported |
+|---|---|---|---|
+| Before `Migrate` completes | Healthy | Not ready | current step, elapsed, progress if the step reports it |
+| `Migrate` … `Ready` | Healthy | Not ready | as above |
+| After `Ready` | Healthy | Ready | complete, with per-step outcomes |
+| Post-ready steps running | Healthy | Ready | complete, plus which post-ready steps are still going |
+
+Liveness stays `Healthy` in every row. That invariant is already correct and this proposal does not touch it — restarting a process cannot finish a migration, it can only discard the progress that was making one.
+
+Most of the machinery for the detail column exists. `IWhizbangHealthSource` reports a `ComponentState` and a free-text `Detail`; the aggregator maps state through a per-component `HealthPolicy`; `WhizbangManagedHealthCheck` already surfaces every component's state and detail into the ASP.NET health result. What is missing is a source that reports *the pipeline* — its current step and that step's progress. Adding one is a small, additive change that makes every existing health consumer more informative without touching the aggregator.
+
+Two type gaps have to close for the table above to be expressible, both small and both load-bearing:
 
 - `ComponentState` has no member between `Migrating` and `Operational`, so a distinct `Ready` has nowhere to land. It needs one, plus the matching `HealthPolicy` row.
 - `HealthProbe` has only `Liveness` and `Readiness`. Kubernetes' startup probe — the one that exists precisely so a slow boot does not get killed by liveness — has no representation. Adding it is what lets a long `Migrate` be *correctly* slow rather than *suspiciously* slow.
+
+`SchemaReadyHealthCheck` keeps working unchanged; it answers a narrower question (is the schema initialized) that stays meaningful once the pipeline can answer the broader one.
 
 ### Extensions must be able to ask
 
@@ -289,7 +317,7 @@ Startup maintenance is the one piece that should move and shrink. `perform_maint
 - **Failure policy per step.** Should a failed non-blocking step degrade readiness, or only be reported? A failed `Repair` is arguably survivable; a failed `Reconcile` may not be.
 - **Consumer-declared steps.** Observation and interrogation are settled — consumers get both. Whether they may *add* steps is not: that turns the descriptor into a public extension contract with the versioning obligations that implies.
 - **Granularity of `Migrate`.** Schema initialization is one opaque step containing seven internal phases, two of which are registry reconciles that other steps arguably depend on. Exposing the phases individually would let those dependencies be declared instead of assumed, at the cost of a much larger surface — and of committing to phase names that are currently free to change.
-- **Default read behaviour during startup.** The table above proposes gating lens reads until `Ready`, which is stricter than today's default and will change behaviour for hosts that currently serve reads during a rolling upgrade. The alternative — keep passing reads through and require opt-in strictness — is safer to ship and leaves the cold-boot hole open. This is a product decision.
+- **Which step makes the read model serve-able.** Gating lens reads is settled; the barrier they wait on is not. `Migrate` is too early — the tables exist but perspectives have not drained. `Ready` is defensible but couples every read to steps a lens does not care about, such as transport provisioning. The honest answer is probably a dedicated read-model barrier, which argues for finer `Migrate` granularity and ties back to the question above it.
 - **Startup-probe adoption.** Adding `HealthProbe.Startup` is only useful if the turnkey wiring emits it and the documentation tells operators to bind it. A probe nobody binds is worse than none, because it looks like coverage.
 - **Whether `reason` detail should be enableable per-environment rather than per-host.** The opt-in level is a single switch today. A host that wants failure detail in staging and terse output in production can already achieve that through configuration, but nothing stops the two drifting apart — and the environment where the detail matters most is the one where it is least safe.
 - **Does progress belong in health detail too?** `ComponentHealth` already has a free-text detail field whose documented example is a progress string. Feeding pipeline progress into it would make every existing health consumer better for free, at the cost of putting a moving value in a field some consumers may treat as stable.
@@ -301,7 +329,7 @@ Startup maintenance is the one piece that should move and shrink. `perform_maint
 3. **Adopt the real barriers** — `ISchemaReadyGate` becomes `Migrate`'s completion signal; the thirteen bypassing services declare what they actually depend on. This is where the ordering defects get fixed, one declared dependency at a time.
 4. **`Ready` as a composite** — the terminal signal, on the unused `IHostedLifecycleService.StartedAsync` seam, composed from blocking-step completion. Carries the `ComponentState` addition and the `HealthPolicy` row.
 5. **Status endpoints** — opt-in surfaces over `IStartupPipelineState`: the minimal-API mapping at `/whizbang/startup` (overridable, self-exempting from the availability gate, returning `IEndpointConventionBuilder` so host auth applies), then the FastEndpoints and HotChocolate equivalents. Terse by default, `reason` detail opt-in. Depends only on increments 1–2, so it can land early and pay for itself while the behavioural increments are still in flight.
-6. **Health and the request pipeline** — readiness and the availability gate move from the schema-ready boolean to pipeline state; lens reads get a defensible default; `HealthProbe.Startup` if adopted.
+6. **Health and the read path** — a pipeline health source so probes report the current step and its progress, plus the `ComponentState` addition and `HealthProbe.Startup` if adopted; and the lens-level barrier, so `ILensQuery` refuses while the read model is not serve-able and every surface inherits one check.
 7. **Exclusivity** — consume the leased slot from [Fleet Startup Orchestration](fleet-startup-orchestration) so `Fleet` steps mean something. Until this lands, `Fleet` degrades to `EveryInstance` and must be documented as such.
 8. **Move the rewrites** — requested table rewrites become a post-ready step; the runtime maintenance cycle stops executing them and records requests instead.
 
