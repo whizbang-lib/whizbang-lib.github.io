@@ -205,6 +205,24 @@ That is also why leader liveness should not be re-derived from heartbeats for el
 
 Membership still matters, and it is what makes roles safe: it is how the fleet detects that **no live instance holds a required role**, which is the one new failure mode roles introduce. That is a genuine use of the heartbeat — it is simply not election.
 
+#### Noticing a role has come free
+
+An instance never looks up whether it has been *assigned* a role. There is no assignment table, and adding one would reintroduce exactly the orphaned state that electing the role avoids. An instance **attempts acquisition**; the primitive grants or refuses. "Do I hold this role?" is answered by the outcome of the attempt, never by reading a row that claims it.
+
+That leaves one question worth engineering: after a holder dies, how quickly does someone else attempt again? Three layers, only one of which carries correctness:
+
+| Layer | Purpose | Load-bearing |
+|---|---|---|
+| **Attempt** — try to acquire | Authoritative | Yes — correct entirely on its own |
+| **Signal** — `InstanceDiedSignal` prompts an immediate re-attempt | Cuts failover latency | No |
+| **Poll backstop** — periodic re-attempt | Bounds latency when a notification is dropped | The floor beneath the signal |
+
+The middle and lower layers already exist and should be consumed rather than reinvented. `PgInstanceLifecycleMonitor` scans `wh_service_instances` for expired leases and emits a durable `InstanceDiedSignal`, delivered Broadcast + Durable specifically so that, in its own words, the fast-path NOTIFY reaches subscribers instantly while the durable log carries the signal across NOTIFY drops. It already drives orphan takeover; role re-attempt is the same shape of reaction to the same event.
+
+One detail inverts the usual reading of "notify with a poll backstop". PostgreSQL has no trigger on advisory-lock release, and a dying instance cannot announce its own death — so the notification is itself *produced by a poll*, the monitor's periodic scan. The value is not that polling is avoided but that one instance polls and the rest are told, and failover latency is bounded by heartbeat expiry plus scan interval rather than by each instance's own retry cadence.
+
+Which makes the case that matters cost nothing. `Migrate` failover needs none of these layers: the instances waiting on it are already blocked on the advisory lock, and PostgreSQL releases that lock server-side the moment the holder's session drops, so a waiter acquires immediately. The role with the tightest failover requirement has the fastest failover in the system and requires no detection machinery at all — which is fortunate, because it is acquired before `wh_signals` exists and could not have used the bus regardless. The roles that do rely on signal-plus-poll — `maintainer`, and the existing stamper and audit duties — are precisely the ones for which tens of seconds is immaterial.
+
 #### Leaving room for quorum
 
 Instance-level agreement does have a home: the case where the database itself is degraded, which is [Fleet Startup Orchestration](fleet-startup-orchestration)'s later increments. That proposal already binds it correctly — transport election stays **advisory**, deciding who coordinates, never who owns a stream, with the database remaining the authority for anything requiring exactly-once semantics. `Migrate` requires exactly-once, so it stays on the database primitive permanently.
