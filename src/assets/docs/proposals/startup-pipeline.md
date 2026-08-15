@@ -475,7 +475,7 @@ Three conditions, each waiting on another. So the direction has to invert: **an 
 The data is already recorded. `wh_schema_migrations.version_id` references `wh_schema_versions`, so every applied object already carries the library version that applied it. Two rules follow, and neither needs new state:
 
 - **Never apply older content over newer.** An instance whose library version is behind the version recorded against a migration must not re-apply its own copy. Today it does, unconditionally.
-- **Refuse, do not proceed, when the gap is breaking.** Whether a gap is breaking cannot be inferred from a hash — a hash says *different*, never *incompatible*. It has to be declared: a migration states whether it is backward-compatible with instances running the previous version. Most are, because most follow expand-then-contract by construction; the ones that are not are exactly the ones that matter. The framework ships breaking migrations of its own — a later migration structurally drops columns an earlier version reads — so this is not a hypothetical imposed on consumers.
+- **Treat any pending change from a newer version as breaking.** A hash says *different*, never *incompatible*, and nothing available at the ledger can tell the two apart — so the conservative reading is the only sound one until compatibility is something a migration author asserts deliberately. The framework ships genuinely breaking migrations of its own, one of which structurally drops columns an earlier version reads, so this is not caution invented for a hypothetical.
 
 Application version matters too, and has more of an answer already: perspective schema hashes and the message-type registry both carry drift detection, and the pinned-id ledger governs renames. Those mechanisms report drift without deciding what to do about it, which is the same gap in a different place.
 
@@ -488,11 +488,26 @@ It is a read. No lock, no transaction, no DDL — compare the library version th
 | What the ledger says | Verdict | What the instance does |
 |---|---|---|
 | Nothing — fresh database | Migrate | Contend for the `migrator` duty |
-| Older than me, compatible | Migrate | Contend for the duty |
-| Same as me | Serve | Skip to the rest of the pipeline |
-| Newer than me, compatible | **Serve, never migrate** | Proceed without applying anything — this is the case the current applier gets wrong |
-| Newer than me, breaking | **Stand down** | Release capabilities, hold the data plane, report not-ready-while-alive |
-| Older than me, breaking | Migrate, after a handshake | Ask live peers to stand by, wait for their acknowledgement, then migrate — see below |
+| Only versions **older** than mine, and I have nothing to apply | Serve | Skip to the rest of the pipeline |
+| Only versions **older** than mine, and I have changes to apply | Migrate, after a handshake | Ask live peers to stand by, wait, then migrate |
+| The same version as mine | Serve | Skip to the rest of the pipeline |
+| Any version **newer** than mine | **Stand down** | Never apply anything; release capabilities, hold the data plane, report not-ready-while-alive |
+
+Two decisions collapse this from a matrix into a list.
+
+**Every migration is treated as breaking.** Compatibility is not declared, inferred or negotiated: if a newer version has schema changes to apply, the handshake runs. This is deliberately the strict end of the range, and the reason is the direction it can evolve. Starting strict means the failure mode is an *unnecessary outage* — visible, annoying, and immediately reported. Starting permissive means the failure mode is *silent corruption*, discovered later by someone reading wrong data. Only one of those is safe to be wrong about, and a migration can always later opt **in** to declaring itself compatible, by an author who has actually thought about what the previous version reads.
+
+The cost is real and worth stating: any release carrying a schema change becomes a planned outage. What keeps that bounded is the second row above — the trigger is *having changes to apply*, not merely *being newer*. A release with no pending migration hits the existing fast path where every hash matches, and no handshake happens at all. Code-only releases stay free.
+
+**Ordering is semantic versioning.** "Newer" and "older" are precedence comparisons on the library version already recorded in `wh_schema_versions`, and three details are load-bearing rather than pedantic:
+
+- **Pre-release precedence is the common path, not an edge case.** Everything before 1.0 ships with a pre-release label, so `0.9.4-alpha.3` versus `0.9.4-beta.1` versus `0.9.4` is the ordinary comparison, exercised on every deploy.
+- **Numeric pre-release identifiers compare numerically.** `alpha.10` is newer than `alpha.2`; compared as strings it is older. This is the single most common way a hand-rolled semver comparison is wrong, and here being wrong means an instance concludes it may migrate when it must stand down.
+- **Build metadata is ignored for precedence.** `1.0.0+abc` and `1.0.0` are the same version.
+
+An unparseable version is not guessed at. The instance refuses to migrate and reports the condition, because every wrong answer at this point is worse than stopping.
+
+The consumer's own application version is recorded but takes no part in the ordering. Requiring an application to be semantically versioned to run the framework would be an imposition the framework has no business making.
 
 The last row needs more than a verdict, because "proceed and let peers work it out" is only safe when they notice in time. A breaking migration applied while an older peer is mid-transaction corrupts that peer's work. It needs a handshake.
 
@@ -583,7 +598,7 @@ Startup maintenance is the one piece that should move and shrink. `perform_maint
 
 ## Open questions
 
-- **Who declares a migration breaking.** A hash says *different*, never *incompatible*, so compatibility has to be asserted by the migration's author — and an author's judgement about what the previous version reads is exactly the thing that is easy to get wrong. Whether that assertion can be checked, or only trusted, decides how much weight the standby handshake can bear.
+- **When to relax "every migration is breaking".** Treating them all as breaking is safe and costly; letting a migration declare itself compatible is cheap and only as good as the author's judgement about what the previous version reads. The question is not whether to relax it but what evidence would justify doing so — and whether a declaration can be checked mechanically or only trusted.
 - **Failure policy per step.** Should a failed non-blocking step degrade readiness, or only be reported? A failed `Repair` is arguably survivable; a failed `Reconcile` may not be.
 - **Consumer-declared steps.** Observation and interrogation are settled — consumers get both. Whether they may *add* steps is not: that turns the descriptor into a public extension contract with the versioning obligations that implies.
 - **Granularity of `Migrate`.** Schema initialization is one opaque step containing seven internal phases, two of which are registry reconciles that other steps arguably depend on. Exposing the phases individually would let those dependencies be declared instead of assumed, at the cost of a much larger surface — and of committing to phase names that are currently free to change.
@@ -598,7 +613,7 @@ Startup maintenance is the one piece that should move and shrink. `perform_maint
 
 1. **Step contract and registry** — the descriptor, explicit registration, and a runner that resolves declared dependencies into an execution order. The runner is **re-entrant from the start**: nothing re-enters it yet, but revival from standby will, and that is far cheaper to honour now than to retrofit. Inert otherwise: every existing step registers with its current behaviour and current (accidental) ordering, so nothing changes yet.
 2. **Observability and hooks** — per-step duration, outcome and reason; `IStartupStepObserver` and `IStartupPipelineState`, with the framework's own logging and metrics written as observers. This alone makes the silent-skip class visible, before any behaviour moves, and gives consumers something to build on while the rest lands.
-3. **Adopt the real barriers** — `ISchemaReadyGate` becomes `Migrate`'s completion signal; the thirteen bypassing services declare what they actually depend on; `Assess` lands as the step before `Elect`, initially with only the never-downgrade verdict it needs to fix the ledger defect. This is where the ordering defects get fixed, one declared dependency at a time.
+3. **Adopt the real barriers** — `ISchemaReadyGate` becomes `Migrate`'s completion signal; the thirteen bypassing services declare what they actually depend on; `Assess` lands as the step before `Elect`, initially with only the never-downgrade verdict it needs to fix the ledger defect. That verdict needs the semantic-version comparison, which is the whole of `Assess`'s machinery — the remaining verdicts are policy on top of it. This is where the ordering defects get fixed, one declared dependency at a time.
 4. **`Ready` as a composite** — the terminal signal, on the unused `IHostedLifecycleService.StartedAsync` seam, composed from blocking-step completion. Carries the `ComponentState` addition and the `HealthPolicy` row.
 5. **Status endpoints** — opt-in surfaces over `IStartupPipelineState`: the minimal-API mapping at `/whizbang/startup` (overridable, self-exempting from the availability gate, returning `IEndpointConventionBuilder` so host auth applies), then the FastEndpoints and HotChocolate equivalents. Terse by default, `reason` detail opt-in. Depends only on increments 1–2, so it can land early and pay for itself while the behavioural increments are still in flight.
 6. **Health and the data plane** — a pipeline health source so probes report the current step and its progress, plus the `ComponentState` addition and `HealthProbe.Startup` if adopted; and the seam-level barrier, so `ILensQuery` and `IDispatcher` refuse while the data plane is not running and every surface inherits one check.
