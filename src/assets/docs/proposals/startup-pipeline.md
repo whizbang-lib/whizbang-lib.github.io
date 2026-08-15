@@ -166,7 +166,7 @@ Collapsing these would either make every instance wait on a rewrite or let every
 
 "Exactly one instance does this" has already been hand-rolled three separate times — the migration advisory lock, the commit-order stamper's session lock, and the integrity audit's settings-CAS claim. Three mechanisms, three shapes, and no name for the thing they have in common.
 
-A **capability** names it. A capability is something an instance **holds**, acquired by winning it, and an instance holds several at once. Nothing declares in advance which instances may hold what: every instance attempts everything, exactly as today. What changes is that holding becomes a named, recorded fact instead of an implicit consequence of winning a lock.
+A **capability** names it. A capability is something an instance **holds**, acquired by winning it, and an instance holds several at once. The word is chosen over *role*, which would otherwise be the obvious one: `Whizbang.Core.Security.Role` already exists as a named collection of permissions for access control, alongside `IScopeContext.Roles` and the transports' own `Roles()` configuration. Two public `Role` types in one library — one meaning *who the caller is*, the other *what this process does* — is a hazard in prose and logs even where the types are distinct. `Capability` is unclaimed, and the framework already uses it for the same idea applied to a different subject in `TransportCapabilities`. Nothing declares in advance which instances may hold what: every instance attempts everything, exactly as today. What changes is that holding becomes a named, recorded fact instead of an implicit consequence of winning a lock.
 
 That capabilities are *won* rather than *assigned* is what keeps the failure path free. There is no durable "this one is the migrator" flag to orphan: an instance that dies releases its advisory lock server-side on disconnect, its transaction rolls back, and the next instance picks the capability up on its next attempt. Reassignment is automatic and needs no reaper — which a statically-assigned capability would.
 
@@ -181,9 +181,9 @@ Because every instance attempts every capability, this introduces no way to misc
 
 #### How instances coordinate at an exclusive step
 
-Within the eligible set, no instance is *told* to proceed and the waiters do not poll application state. Every eligible instance calls the same step; the difference is what the call returns.
+No instance is *told* to proceed, and the waiters do not poll application state. Every instance calls the same step; the difference is what the call returns.
 
-For `Migrate` the mechanism already exists and the pipeline formalizes rather than replaces it. Eligible instances attempt the advisory lock. One acquires it and migrates; the rest block in the retry loop. The winner's commit atomically releases the lock *and* publishes the durable evidence — the content hashes in `wh_schema_migrations`. A waiter then acquires the freed lock, re-checks those hashes, finds nothing to do, commits and continues.
+For `Migrate` the mechanism already exists and the pipeline formalizes rather than replaces it. Every instance attempts the advisory lock. One acquires it and migrates; the rest block in the retry loop. The winner's commit atomically releases the lock *and* publishes the durable evidence — the content hashes in `wh_schema_migrations`. A waiter then acquires the freed lock, re-checks those hashes, finds nothing to do, commits and continues.
 
 The step therefore reports a different **outcome** per instance: `Completed` on the instance that migrated, `Skipped` with reason *"completed by another instance"* on the rest, and `Skipped` with reason *"capability not held"* on an instance that lost the race. Those are three genuinely different facts, and an operator needs to tell them apart.
 
@@ -231,7 +231,7 @@ An instance never looks up whether it has been *assigned* a capability — it **
 1. The holder holds its session lock, and its record names the capability it holds.
 2. The holder dies. On a clean session termination PostgreSQL releases the lock **immediately**, server-side, with no timeout to wait out.
 3. Its record is briefly stale, still claiming the capability.
-4. Another eligible instance attempts the lock: because it was already blocked on it, on its next poll, or prompted by `InstanceDiedSignal`.
+4. Another instance attempts the lock: because it was already blocked on it, on its next poll, or prompted by `InstanceDiedSignal`.
 5. It acquires the lock and **is the holder from that instant**, whatever any row still says.
 6. Its next heartbeat records the capability; the dead instance's rows are reaped at lease expiry.
 
@@ -359,7 +359,7 @@ The rule is one sentence: **while `Migrate` is underway, no Whizbang data-plane 
 
 That single rule needs two different mechanisms, because the work arrives in two different ways.
 
-**Self-initiated work simply does not start.** Workers, transport consumers and the notification stack are not refused — they are *ordered*. Nothing has to say no to a worker; the worker waits on the step it depends on, which is what increments 3 and the `Provision` step exist to arrange. Thirteen background services skip that today and start regardless.
+**Self-initiated work simply does not start.** Workers, transport consumers and the notification stack are not refused — they are *ordered*. Nothing has to say no to a worker; the worker waits on the step it depends on, which is what increment 3 and the `Provision` step exist to arrange. Thirteen background services skip that today and start regardless.
 
 **Inbound work has to be refused**, because a request that has already arrived cannot be un-started. That refusal belongs at the seams where framework work actually begins — `ILensQuery<TModel>` for reads and `IDispatcher` for commands and events — not at the HTTP layer, which cannot see what a request is about to do:
 
