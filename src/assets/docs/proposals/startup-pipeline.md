@@ -91,7 +91,7 @@ graph TB
     subgraph Elect["3 · Elect"]
         E1["leased slot over wh_settings CAS<br/>ONE instance proceeds to exclusive steps"]
     end
-    subgraph Migrate["4 · Migrate &nbsp;&nbsp;[fleet-exclusive]"]
+    subgraph Migrate["4 · Migrate &nbsp;&nbsp;[one runs · all await]"]
         M1["schema init · ledger · version stamp<br/>registry reconciles (in-transaction)"]
     end
     subgraph Identify["5 · Identify"]
@@ -110,7 +110,7 @@ graph TB
         Y1["health flips · workers unpause<br/>availability gate opens"]
     end
     subgraph Post["10 · Post-ready &nbsp;&nbsp;(observed, never awaited)"]
-        Z1["requested table rewrites &nbsp;[fleet-exclusive]<br/>cross-service manifest exchange"]
+        Z1["requested table rewrites &nbsp;[one runs · none await]<br/>cross-service manifest exchange"]
     end
 
     Register --> Connect --> Elect --> Migrate --> Identify --> Reconcile --> Repair --> Provision --> Ready --> Post
@@ -120,7 +120,9 @@ graph TB
     style Ready fill:#d4edda,stroke:#28a745,stroke-width:2px
 ```
 
-Blue steps run on exactly one instance per fleet. The rest run everywhere. The grey band is reported but never awaited — see [Steps that cannot block](#steps-that-cannot-block).
+Blue steps are fleet-exclusive: exactly one instance executes them. **Every other step runs on every instance**, including all of `Identify` through `Ready` — exclusivity is a property of a step, not a mode the pipeline enters at `Migrate` and stays in. `Identify` is the clearest case: each instance registers its own row.
+
+The linear chain above is the order of steps, not a single thread of control. Every instance walks the whole pipeline; what differs is what it does at an exclusive step. The grey band is reported but never awaited — see [Steps that cannot block](#steps-that-cannot-block).
 
 Three steps are new relative to the shape the framework has today, and each exists because real startup work currently has nowhere to live:
 
@@ -135,12 +137,20 @@ Every step declares, rather than implies:
 - **Identity** — a stable name that appears in logs, metrics and health detail
 - **Dependencies** — by name, not by registration position
 - **Exclusivity** — `Fleet` (one instance, via the leased slot) or `EveryInstance`
+- **Non-runner behaviour** — for a `Fleet` step, what the instances that did *not* win it do: `Await` the winner's completion, or `Skip` and carry on
 - **Blocking** — must complete before `Ready`, or runs after it
 - **Enablement** — individually switchable, so an operator can skip one step without disabling the worker that hosts it
 - **Outcome** — `Completed` / `Skipped` / `Failed`, with duration and reason
 - **Progress** — optional, while the step is running: a message, and a `(current, total)` pair when the step knows its own size
 
 The outcome field is load-bearing on its own. It is what makes "this step found nothing to do" distinguishable from "this step could not run", which today it is not.
+
+Exclusivity and non-runner behaviour are deliberately separate, because the two fleet-exclusive steps in this proposal need opposite answers and one flag cannot express both:
+
+- **`Migrate` is `Fleet` + `Await`.** One instance migrates; the others cannot proceed to `Reconcile` before the schema exists, so they wait for the winner rather than skipping ahead. That is already the behaviour the advisory lock produces — losing instances block, then re-check hashes, find nothing to do, and continue — so this formalizes what the code does rather than changing it.
+- **The post-ready table rewrite is `Fleet` + `Skip`.** One instance rewrites; nobody blocks on a `VACUUM FULL`, which is the entire reason it is post-ready and unbounded.
+
+Collapsing these into a single "exclusive" flag would either make every instance wait on a rewrite or let every instance race past an unfinished migration. Both are worse than the status quo.
 
 Progress is what makes a long step legible instead of merely long. The framework already assumes this exists — `ComponentHealth`'s own documentation offers `"migrating: step 7/12, 420k/1.35M rows"` as its example of health detail — but there is no mechanism behind the example. Two rules keep it honest: progress is **optional**, because a step that cannot estimate its size must not invent a denominator; and **absent progress is not stalled progress**, so anything consuming it has to distinguish "this step reports nothing" from "this step reported nothing since 09:14".
 
@@ -334,7 +344,7 @@ Startup maintenance is the one piece that should move and shrink. `perform_maint
 4. **`Ready` as a composite** — the terminal signal, on the unused `IHostedLifecycleService.StartedAsync` seam, composed from blocking-step completion. Carries the `ComponentState` addition and the `HealthPolicy` row.
 5. **Status endpoints** — opt-in surfaces over `IStartupPipelineState`: the minimal-API mapping at `/whizbang/startup` (overridable, self-exempting from the availability gate, returning `IEndpointConventionBuilder` so host auth applies), then the FastEndpoints and HotChocolate equivalents. Terse by default, `reason` detail opt-in. Depends only on increments 1–2, so it can land early and pay for itself while the behavioural increments are still in flight.
 6. **Health and the data plane** — a pipeline health source so probes report the current step and its progress, plus the `ComponentState` addition and `HealthProbe.Startup` if adopted; and the seam-level barrier, so `ILensQuery` and `IDispatcher` refuse while the data plane is not running and every surface inherits one check.
-7. **Exclusivity** — consume the leased slot from [Fleet Startup Orchestration](fleet-startup-orchestration) so `Fleet` steps mean something. Until this lands, `Fleet` degrades to `EveryInstance` and must be documented as such.
+7. **Exclusivity** — consume the leased slot from [Fleet Startup Orchestration](fleet-startup-orchestration) so `Fleet` steps mean something. Until this lands, `Fleet` degrades to `EveryInstance` and must be documented as such — which is survivable only because both current `Fleet` steps are individually idempotent and separately guarded (the migration by its advisory lock, the rewrite by its request record).
 8. **Move the rewrites** — requested table rewrites become a post-ready step; the runtime maintenance cycle stops executing them and records requests instead.
 
 Increments 1, 2 and 5 are additive and independently valuable — they make the current state legible without changing it. Increments 3, 4 and 6 onward change behaviour and want the regression coverage that implies. Increment 6 is the one with a visible blast radius: it changes what a running service does with an in-flight request, and wants its own deliberate rollout.
