@@ -154,6 +154,14 @@ Precedence follows the specification, including the parts that are easy to get w
 
 An instance that skips on this rule is not broken and needs no intervention: it is correctly declining to undo work done by a newer deployment.
 
+### Stale duplicate overloads are swept automatically
+
+Before `drop_all_overloads` resolved its own schema (it filtered by `current_schema()`, which pooled EF connections reduce to `public`), a signature change in a **multi-schema** deployment silently left the old overload beside the new one. Databases migrated through those prerelease versions can carry duplicates that make unqualified calls ambiguous and the next return-type change fail with `42P13`.
+
+The initializer now detects this: when a framework-defined function name has more than one overload in the schema, the migrations defining that name are forced back into the run — their `drop_all_overloads` clears every overload and each file recreates its single canonical definition, with the redefinition closure re-running any later file defining the same object. One extra catalog query on a hash-clean boot; a clean database never re-runs anything. Consumer-defined functions with intentional overloads never trigger it — the check is intersected with the framework's own migration objects.
+
+Log line to look for on an affected database's first boot after upgrading: `re-running to sweep stale duplicate overload(s)`.
+
 ## Data Migrations vs. Schema Migrations
 
 Hash tracking answers **"did the DDL / object *shape* change?"** — the SHA-256 is over the migration's SQL text, which for schema migrations mirrors the object it defines. That is exactly the wrong question for a **pure data migration** that rewrites *rows* without changing any table's shape: the hash can't tell whether the data still needs the fix, and re-scanning a large table on every startup is wasteful.
