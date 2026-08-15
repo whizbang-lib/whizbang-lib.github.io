@@ -206,29 +206,33 @@ The stated rationale for letting reads through is that they "hit the read-model 
 
 There is a second, quieter window after that one. Once the schema is ready the gate opens completely, but perspectives may still be draining history — cursors behind, rewind repair unfinished. A lens query answered then returns results that are *structurally valid and semantically wrong*: empty or stale, and indistinguishable from a legitimately empty result. This is the same silent-skip pathology as the rest of the proposal, surfacing on the read path where a caller sees it.
 
-#### Gate the lens, not the route
+#### The data plane does not run while migrations do
 
-The work that is unsafe during startup is **reading a perspective**, so that is what gets gated — not "reads", not "non-exempt paths". Health and liveness endpoints keep answering. So does everything of the consumer's own that never touches a lens.
+The rule is one sentence: **while `Migrate` is underway, no Whizbang data-plane work runs** — no lens read, no command or event dispatch, no transport consumption, no worker. What keeps answering is everything that is not Whizbang data-plane work: health, liveness, version, and every endpoint of the consumer's own that never touches the framework.
 
-That distinction cannot be drawn at the HTTP layer, which is why the current verb-based mode is a proxy rather than an answer:
+That single rule needs two different mechanisms, because the work arrives in two different ways.
 
-- **GraphQL multiplexes.** Every field lives behind one route. A middleware can 503 `/graphql` or pass it, and neither is right when one query selects a lens-backed field beside a static one.
-- **Routes are not a reliable signal of what runs.** A consumer's own endpoint may call a lens internally; a Whizbang-shaped route may not touch one at all.
-- **Verbs are wrong in both directions.** A `GET` can read a perspective; a `POST` can be a search that reads one; neither fact is visible from the method.
+**Self-initiated work simply does not start.** Workers, transport consumers and the notification stack are not refused — they are *ordered*. Nothing has to say no to a worker; the worker waits on the step it depends on, which is what increments 3 and the `Provision` step exist to arrange. Thirteen background services skip that today and start regardless.
 
-So the check belongs at the lens execution seam — `ILensQuery<TModel>` — where the thing being protected actually happens. One check, and every caller inherits it:
+**Inbound work has to be refused**, because a request that has already arrived cannot be un-started. That refusal belongs at the seams where framework work actually begins — `ILensQuery<TModel>` for reads and `IDispatcher` for commands and events — not at the HTTP layer, which cannot see what a request is about to do:
 
-| Caller | Behaviour while the read model is not serve-able |
+- **GraphQL multiplexes.** Every query and mutation shares one route. A middleware can 503 `/graphql` or pass it, and neither is right when one operation selects a lens-backed field beside a static one.
+- **Routes are not a reliable signal of what runs.** A consumer's own endpoint may query a lens or dispatch a command internally; a Whizbang-shaped route may do neither.
+- **Verbs are wrong in both directions.** A `GET` can read a perspective; a `POST` can be a search that only reads. The method does not say.
+
+Checking at the seam instead means one implementation and no way to route around it:
+
+| Caller | Behaviour while the data plane is not running |
 |---|---|
-| Minimal-API / FastEndpoints lens endpoint | `503` with `Retry-After` |
-| HotChocolate lens field | A field error with a machine-readable code, so non-lens fields in the same query still resolve |
-| Consumer code calling a lens directly | A typed exception naming the step it is waiting on |
-| Health, liveness, version | Unaffected — they never run a lens |
-| Consumer endpoints that touch no lens | Unaffected |
+| Minimal-API / FastEndpoints lens or mutation endpoint | `503` with `Retry-After` |
+| HotChocolate field or mutation | A field error with a machine-readable code, so unaffected fields in the same operation still resolve |
+| Consumer code calling a lens or dispatching directly | A typed exception naming the step it is waiting on |
+| Health, liveness, version | Unaffected — no framework work involved |
+| Consumer endpoints that touch no lens and dispatch nothing | Unaffected |
 
-Writes keep the coarse protection they have today: the availability gate continues to refuse mutations while the schema initializes. Lens gating is added beside that, not in place of it.
+The existing HTTP availability gate keeps its place as a coarse outer guard — it is cheap, it answers before a request reaches application code, and it needs no knowledge of what the endpoint does. It stops being the *mechanism*, though, because verb-shaped approximation is exactly what let reads through on a cold boot in the first place.
 
-The window this closes is wider than the cold-boot case that motivates it. Gating on *the read model being serve-able* rather than on *the schema existing* also covers the second window — schema ready, perspectives still draining — where a lens answers with results that are structurally valid and semantically wrong. Serving those is not a performance optimization; it is a 500 dressed as a 200.
+The window this closes is wider than the cold-boot case that motivates it. Keying on *the data plane being serve-able* rather than on *the schema existing* also covers the second window — schema ready, perspectives still draining — where a lens answers with results that are structurally valid and semantically wrong. Serving those is not a performance optimization; it is a 500 dressed as a 200.
 
 #### Health reports the stage, and the state of that stage
 
@@ -317,7 +321,7 @@ Startup maintenance is the one piece that should move and shrink. `perform_maint
 - **Failure policy per step.** Should a failed non-blocking step degrade readiness, or only be reported? A failed `Repair` is arguably survivable; a failed `Reconcile` may not be.
 - **Consumer-declared steps.** Observation and interrogation are settled — consumers get both. Whether they may *add* steps is not: that turns the descriptor into a public extension contract with the versioning obligations that implies.
 - **Granularity of `Migrate`.** Schema initialization is one opaque step containing seven internal phases, two of which are registry reconciles that other steps arguably depend on. Exposing the phases individually would let those dependencies be declared instead of assumed, at the cost of a much larger surface — and of committing to phase names that are currently free to change.
-- **Which step makes the read model serve-able.** Gating lens reads is settled; the barrier they wait on is not. `Migrate` is too early — the tables exist but perspectives have not drained. `Ready` is defensible but couples every read to steps a lens does not care about, such as transport provisioning. The honest answer is probably a dedicated read-model barrier, which argues for finer `Migrate` granularity and ties back to the question above it.
+- **Which step releases each seam.** That the data plane holds during `Migrate` is settled; which barrier each seam waits on is not, and reads and writes may not want the same one. A dispatch needs the event store and outbox, which `Migrate` provides. A lens needs perspectives drained, which is later than `Migrate` and earlier than `Ready` — coupling it to `Ready` would make reads wait on transport provisioning they do not use. That argues for a dedicated read-model barrier, and ties back to the `Migrate` granularity question above.
 - **Startup-probe adoption.** Adding `HealthProbe.Startup` is only useful if the turnkey wiring emits it and the documentation tells operators to bind it. A probe nobody binds is worse than none, because it looks like coverage.
 - **Whether `reason` detail should be enableable per-environment rather than per-host.** The opt-in level is a single switch today. A host that wants failure detail in staging and terse output in production can already achieve that through configuration, but nothing stops the two drifting apart — and the environment where the detail matters most is the one where it is least safe.
 - **Does progress belong in health detail too?** `ComponentHealth` already has a free-text detail field whose documented example is a progress string. Feeding pipeline progress into it would make every existing health consumer better for free, at the cost of putting a moving value in a field some consumers may treat as stable.
@@ -329,7 +333,7 @@ Startup maintenance is the one piece that should move and shrink. `perform_maint
 3. **Adopt the real barriers** — `ISchemaReadyGate` becomes `Migrate`'s completion signal; the thirteen bypassing services declare what they actually depend on. This is where the ordering defects get fixed, one declared dependency at a time.
 4. **`Ready` as a composite** — the terminal signal, on the unused `IHostedLifecycleService.StartedAsync` seam, composed from blocking-step completion. Carries the `ComponentState` addition and the `HealthPolicy` row.
 5. **Status endpoints** — opt-in surfaces over `IStartupPipelineState`: the minimal-API mapping at `/whizbang/startup` (overridable, self-exempting from the availability gate, returning `IEndpointConventionBuilder` so host auth applies), then the FastEndpoints and HotChocolate equivalents. Terse by default, `reason` detail opt-in. Depends only on increments 1–2, so it can land early and pay for itself while the behavioural increments are still in flight.
-6. **Health and the read path** — a pipeline health source so probes report the current step and its progress, plus the `ComponentState` addition and `HealthProbe.Startup` if adopted; and the lens-level barrier, so `ILensQuery` refuses while the read model is not serve-able and every surface inherits one check.
+6. **Health and the data plane** — a pipeline health source so probes report the current step and its progress, plus the `ComponentState` addition and `HealthProbe.Startup` if adopted; and the seam-level barrier, so `ILensQuery` and `IDispatcher` refuse while the data plane is not running and every surface inherits one check.
 7. **Exclusivity** — consume the leased slot from [Fleet Startup Orchestration](fleet-startup-orchestration) so `Fleet` steps mean something. Until this lands, `Fleet` degrades to `EveryInstance` and must be documented as such.
 8. **Move the rewrites** — requested table rewrites become a post-ready step; the runtime maintenance cycle stops executing them and records requests instead.
 
