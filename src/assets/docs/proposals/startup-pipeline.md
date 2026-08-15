@@ -215,7 +215,11 @@ It also needs no new staleness machinery. `wh_service_instances` already carries
 
 Holdings live in their own table keyed by *(instance, capability)* rather than as a column on the instance row, for two reasons that both come from what already exists. An instance holds several capabilities at once, and the relationship carries its own data — `acquired_at` is the field that answers "how long has this instance been the migrator", which is the question a stored record is for. And the heartbeat's UPDATE is deliberately **skipped when the last one was under ten seconds ago**, a guard added against "millions of UPDATEs on a tiny table" in production. Writing holdings onto that row would either be swallowed by that guard for up to ten seconds — inside the takeover window, exactly when the record matters — or would have to bypass it and re-create the write amplification it exists to prevent. A separate table has neither problem: capability writes are small, independent, and on their own cadence. Reaping stays free, because stale instances are genuinely `DELETE`d and the foreign key cascades.
 
-What is recorded is simply **which capabilities each live instance currently holds**, and when it acquired them. That is enough to answer the questions that matter during an incident — which instance is the migrator right now, how long it has been, whether a duty is currently unheld — as a query rather than a broadcast to instances that may not be answering. It also settles how the status surface reports fleet-level state: a join, not a fan-out.
+**Each instance also records its own state.** `LifecyclePhase` exists today but lives only in process memory, so no instance can see any other's. The handshake requires exactly that visibility — an instance cannot wait for its peers to reach standby unless reaching standby is something a peer can observe. Persisting the phase alongside the heartbeat makes the handshake possible, and incidentally gives the status surface a fleet-wide answer to "what is everyone doing right now", which is the question during a stalled rollout.
+
+One caveat carries over from capabilities: a state *transition* must bypass the heartbeat's ten-second freshness guard. The guard exists to stop liveness ticks from writing constantly, and a transition is not a tick — it is the one write that must not be deferred, since the whole handshake turns on peers seeing it promptly.
+
+What is otherwise recorded is simply **which capabilities each live instance currently holds**, and when it acquired them. That is enough to answer the questions that matter during an incident — which instance is the migrator right now, how long it has been, whether a duty is currently unheld — as a query rather than a broadcast to instances that may not be answering. It also settles how the status surface reports fleet-level state: a join, not a fan-out.
 
 Later lifecycle work inherits the same record. Maintenance and operational commands can address *the instance holding capability X* rather than guessing, which is the reason to store what is held rather than merely elect it.
 
@@ -487,9 +491,45 @@ It is a read. No lock, no transaction, no DDL — compare the library version th
 | Same as me | Serve | Skip to the rest of the pipeline |
 | Newer than me, compatible | **Serve, never migrate** | Proceed without applying anything — this is the case the current applier gets wrong |
 | Newer than me, breaking | **Stand down** | Release capabilities, hold the data plane, report not-ready-while-alive |
-| Older than me, breaking | Migrate | Proceed; peers still on the old version reach the *stand down* verdict themselves |
+| Older than me, breaking | Migrate, after a handshake | Ask live peers to stand by, wait for their acknowledgement, then migrate — see below |
 
-The last row is the one that only works because the fence runs backwards. A migrating instance does not wait for its older peers — it cannot, without deadlocking — so it migrates, and each older peer independently concludes that it is now obsolete.
+The last row needs more than a verdict, because "proceed and let peers work it out" is only safe when they notice in time. A breaking migration applied while an older peer is mid-transaction corrupts that peer's work. It needs a handshake.
+
+#### The standby handshake
+
+A breaking migration is a **planned outage**. That is not a flaw in the design; it is the honest description of what a breaking schema change is. The framework's job is to convert an outage that today is silent and corrupting into one that is bounded, announced and observable.
+
+The sequence:
+
+```mermaid
+graph TB
+    New["New instance · Assess<br/>verdict: older than me, BREAKING"]
+    Ask["Requests standby<br/>recorded against the fleet"]
+    Old["Live older instances<br/>drain in-flight work, hold the data plane,<br/>release capabilities, post STANDING BY"]
+    Wait["New instance waits<br/>for every LIVE peer to acknowledge"]
+    Mig["Migrate<br/>one transaction, commit or rollback"]
+    Ok["Committed → peers shut down"]
+    Bad["Rolled back → peers revive"]
+
+    New --> Ask --> Old --> Wait --> Mig
+    Mig -->|"success"| Ok
+    Mig -->|"failure"| Bad
+
+    style Old fill:#fff3cd,stroke:#ffc107,stroke-width:2px
+    style Mig fill:#cce5ff,stroke:#0d6efd,stroke-width:2px
+    style Ok fill:#d4edda,stroke:#28a745,stroke-width:2px
+    style Bad fill:#f8d7da,stroke:#dc3545,stroke-width:2px
+```
+
+**Standby is not termination**, and that is what keeps this from deadlocking. A standing-by instance stays alive and keeps passing liveness; it simply stops serving. The orchestrator is never asked to retire anything, so the handshake completes without needing the very readiness it is blocking on.
+
+**Only live peers must acknowledge.** Waiting for *every* recorded instance would hang the rollout on a wedged pod forever. Liveness already has a lease and a reaper, so an instance that stops heartbeating stops counting — the wait is bounded by lease expiry rather than by the goodwill of a process that may already be dead. This is the difference between a handshake that completes and one that becomes its own outage.
+
+**Revival is not a second pipeline.** The migration runs as a single transaction: it commits or it rolls back, and a rollback leaves the ledger exactly as the standing-by instances last read it. So "has the database changed?" is answerable precisely, and the answer is the one `Assess` already computes. Coming out of standby is therefore **re-entering the pipeline at `Assess`** — the verdict comes back *same as me*, `Migrate` finds matching hashes and no-ops, capabilities are re-acquired, the data plane reopens. Nothing new is needed except that the pipeline be willing to run a second time.
+
+That is a real constraint, and it is cheaper to honour from the start than to retrofit: **the pipeline runner must be re-entrant, not one-shot.** Increment 1 should build it that way even though nothing re-enters it yet.
+
+**A standing-by instance also watches the migrator.** If the migrating instance dies rather than failing cleanly, the outcome its peers are waiting for never arrives. The same membership machinery answers it: when the migrator's own instance record goes stale, the wait ends and revival begins. Every path out of standby is therefore bounded — success, clean failure, or a dead migrator.
 
 Which has a consequence worth stating plainly: **the verdict cannot be a startup-only fact.** An instance that was current when it booted becomes obsolete the moment a newer peer migrates underneath it. So `Assess` establishes the verdict, and a lightweight watcher maintains it — re-checking on the same signal-plus-poll footing as capability re-attempt, with the migrator publishing the new version on the bus (which exists by then) as the fast path and a periodic re-read as the floor. Standing down is not a startup decision an instance makes once; it is a state it can enter at any time.
 
@@ -528,7 +568,7 @@ Startup maintenance is the one piece that should move and shrink. `perform_maint
 
 ## Build sequence
 
-1. **Step contract and registry** — the descriptor, explicit registration, and a runner that resolves declared dependencies into an execution order. Inert: every existing step registers with its current behaviour and current (accidental) ordering, so nothing changes yet.
+1. **Step contract and registry** — the descriptor, explicit registration, and a runner that resolves declared dependencies into an execution order. The runner is **re-entrant from the start**: nothing re-enters it yet, but revival from standby will, and that is far cheaper to honour now than to retrofit. Inert otherwise: every existing step registers with its current behaviour and current (accidental) ordering, so nothing changes yet.
 2. **Observability and hooks** — per-step duration, outcome and reason; `IStartupStepObserver` and `IStartupPipelineState`, with the framework's own logging and metrics written as observers. This alone makes the silent-skip class visible, before any behaviour moves, and gives consumers something to build on while the rest lands.
 3. **Adopt the real barriers** — `ISchemaReadyGate` becomes `Migrate`'s completion signal; the thirteen bypassing services declare what they actually depend on; `Assess` lands as the step before `Elect`, initially with only the never-downgrade verdict it needs to fix the ledger defect. This is where the ordering defects get fixed, one declared dependency at a time.
 4. **`Ready` as a composite** — the terminal signal, on the unused `IHostedLifecycleService.StartedAsync` seam, composed from blocking-step completion. Carries the `ComponentState` addition and the `HealthPolicy` row.
