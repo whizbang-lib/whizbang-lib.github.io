@@ -120,7 +120,7 @@ graph TB
     style Ready fill:#d4edda,stroke:#28a745,stroke-width:2px
 ```
 
-Blue steps are fleet-exclusive: exactly one instance executes them. **Every other step runs on every instance**, including all of `Identify` through `Ready` — exclusivity is a property of a step, not a mode the pipeline enters at `Migrate` and stays in. `Identify` is the clearest case: each instance registers its own row.
+Blue steps require an exclusive role, so exactly one instance executes them. **Every other step runs on every instance**, including all of `Identify` through `Ready` — exclusivity follows the role a step requires, not a mode the pipeline enters at `Migrate` and stays in. `Identify` is the clearest case: each instance registers its own row.
 
 The linear chain above is the order of steps, not a single thread of control. Every instance walks the whole pipeline; what differs is what it does at an exclusive step. The grey band is reported but never awaited — see [Steps that cannot block](#steps-that-cannot-block).
 
@@ -136,8 +136,8 @@ Every step declares, rather than implies:
 
 - **Identity** — a stable name that appears in logs, metrics and health detail
 - **Dependencies** — by name, not by registration position
-- **Exclusivity** — `Fleet` (one instance, via the leased slot) or `EveryInstance`
-- **Non-runner behaviour** — for a `Fleet` step, what the instances that did *not* win it do: `Await` the winner's completion, or `Skip` and carry on
+- **Required role** — the role an instance must hold to run this step. An exclusive role means one instance runs it; a shared role means every instance does. Defaults to the universal shared role, so a step that says nothing runs everywhere
+- **Non-runner behaviour** — where the required role is exclusive, what the instances that did *not* win it do: `Await` the holder's completion, or `Skip` and carry on
 - **Blocking** — must complete before `Ready`, or runs after it
 - **Enablement** — individually switchable, so an operator can skip one step without disabling the worker that hosts it
 - **Outcome** — `Completed` / `Skipped` / `Failed`, with duration and reason
@@ -145,12 +145,99 @@ Every step declares, rather than implies:
 
 The outcome field is load-bearing on its own. It is what makes "this step found nothing to do" distinguishable from "this step could not run", which today it is not.
 
-Exclusivity and non-runner behaviour are deliberately separate, because the two fleet-exclusive steps in this proposal need opposite answers and one flag cannot express both:
+The required role and non-runner behaviour stay separate fields, because the two steps needing an exclusive role in this proposal want opposite answers and one flag cannot express both:
 
-- **`Migrate` is `Fleet` + `Await`.** One instance migrates; the others cannot proceed to `Reconcile` before the schema exists, so they wait for the winner rather than skipping ahead. That is already the behaviour the advisory lock produces — losing instances block, then re-check hashes, find nothing to do, and continue — so this formalizes what the code does rather than changing it.
-- **The post-ready table rewrite is `Fleet` + `Skip`.** One instance rewrites; nobody blocks on a `VACUUM FULL`, which is the entire reason it is post-ready and unbounded.
+- **`Migrate` requires the exclusive `migrator` role, and non-holders `Await`.** One instance migrates; the others cannot proceed to `Reconcile` before the schema exists, so they wait for the winner rather than skipping ahead. That is already the behaviour the advisory lock produces — losing instances block, then re-check hashes, find nothing to do, and continue — so this formalizes what the code does rather than changing it.
+- **The post-ready table rewrite requires the exclusive `maintainer` role, and non-holders `Skip`.** One instance rewrites; nobody blocks on a `VACUUM FULL`, which is the entire reason it is post-ready and unbounded.
 
-Collapsing these into a single "exclusive" flag would either make every instance wait on a rewrite or let every instance race past an unfinished migration. Both are worse than the status quo.
+Collapsing these would either make every instance wait on a rewrite or let every instance race past an unfinished migration. Both are worse than the status quo.
+
+#### Roles: what an instance may do
+
+Instances are not interchangeable, and the framework has no way to say so. Every host that references Whizbang starts every hosted service, whether it is an API pod that only serves reads or a worker pod that only drains queues. Meanwhile "exactly one instance does this" has already been hand-rolled three separate times — the migration advisory lock, the commit-order stamper's session lock, and the integrity audit's settings-CAS claim — each with its own mechanism and none of them named.
+
+**Roles** name the capability, and a role is something an instance **holds** — not a label it wears. Following the shape Elasticsearch uses for node roles, where being *master-eligible* is configuration and being *the elected master* is a held position, two layers stay separate:
+
+- **Eligibility is declared configuration** — which roles this instance may stand for. Static, local, known at startup, never inferred. **Defaults to every role**, so a consumer that configures nothing behaves exactly as it does today.
+- **The role is held by election** — among eligible instances, who actually has it right now. Dynamic, contended, and acquired through the same database primitives that already work.
+
+That the role is *elected* rather than statically assigned is what keeps the failure path free. There is no durable "this one is the migrator" flag to orphan: an instance that dies holding a role releases its advisory lock server-side on disconnect, its transaction rolls back, and the next eligible instance picks the role up on its next attempt. Reassignment is automatic and needs no reaper — which a statically-assigned role would.
+
+Roles come in two kinds, and the distinction is one the pipeline already needs:
+
+- **Exclusive roles** are held by one instance at a time — `migrator`, `maintainer`. Election decides which.
+- **Shared roles** are held by every eligible instance at once — the ordinary worker and serving roles.
+
+Which means **step exclusivity is not a separate property at all — it falls out of the role a step requires.** A step needing an exclusive role runs on one instance; a step needing a shared role runs on all of them. That removes a field from the descriptor and, more usefully, removes the possibility of declaring a contradiction — a step cannot claim to be fleet-exclusive while requiring a role every instance holds.
+
+Three things become expressible that are not today:
+
+- **A dedicated migration job.** Give a short-lived job the `migrator` role and the serving replicas none. Migrations then run where operators already want them — as a deployment step — instead of in whichever replica won a race against live traffic.
+- **An API-only host.** Declare it without the worker roles and it stops starting workers it will never use, rather than starting all of them and having each immediately block on a gate.
+- **A pinned maintenance window.** The unbounded post-ready table rewrite goes to an instance sized and scheduled for it, instead of whichever replica happened to win.
+
+Two constraints keep this from being a regression. Roles must **default to all roles**, so an existing single-deployment consumer that configures nothing behaves exactly as it does now. And a fleet where **no instance holds a required role** must be loud: nobody holding `migrator` means the schema is never migrated and every instance waits forever. Roles introduce the possibility of an unassigned duty, so the pipeline has to surface that as a distinct, diagnosable state rather than an indefinite wait — which is precisely what per-step status and the health surface are for.
+
+Roles are also the natural place to hang later capability partitioning, which is the reason to introduce the concept properly now rather than special-case `Migrate`.
+
+#### How instances coordinate at an exclusive step
+
+Within the eligible set, no instance is *told* to proceed and the waiters do not poll application state. Every eligible instance calls the same step; the difference is what the call returns.
+
+For `Migrate` the mechanism already exists and the pipeline formalizes rather than replaces it. Eligible instances attempt the advisory lock. One acquires it and migrates; the rest block in the retry loop. The winner's commit atomically releases the lock *and* publishes the durable evidence — the content hashes in `wh_schema_migrations`. A waiter then acquires the freed lock, re-checks those hashes, finds nothing to do, commits and continues.
+
+The step therefore reports a different **outcome** per instance: `Completed` on the instance that migrated, `Skipped` with reason *"completed by another instance"* on the rest, and `Skipped` with reason *"role not held"* on an instance that was never eligible. Those are three genuinely different facts, and an operator needs to tell them apart.
+
+**Stage state does not belong in the database by default.** Steps that run on every instance are local facts — they belong in memory and are served by that instance's own status surface. Only a step whose required role is exclusive and whose non-holders `Await` needs cross-instance completion state, and for `Migrate` that state already exists durably in the migration ledger.
+
+#### Election is not membership
+
+These are two different problems and they want two different mechanisms. Conflating them is how exclusivity designs acquire split-brain.
+
+| Concern | Mechanism | Why |
+|---|---|---|
+| **Election** — who performs an exclusive duty | Database primitive: advisory lock, or CAS on `wh_settings` | Linearizable against the authority every instance already depends on. Self-healing, no timeout to tune, no split-brain window |
+| **Membership** — who is alive, and which roles they hold | Heartbeat plus the `wh_instance_alive` session lock | Already built. Drives rebalancing, observability, and unassigned-duty detection |
+
+The framework has already reached this conclusion once, and written it down: the instance-liveness migration notes that a dropped connection releases its session lock so peers "detect the death within seconds rather than 30 s of heartbeat-table staleness", with the heartbeat table kept as the *fallback*. Server-side session death beats heartbeat staleness, because the server observes the failure directly instead of inferring it from silence.
+
+That is also why leader liveness should not be re-derived from heartbeats for election purposes. A leader that is alive but briefly slow or partitioned gets declared dead by peers watching a timeout; they elect a replacement; two instances now believe they hold the duty. For `Migrate` that is two instances running DDL at once — the exact failure a process-stable lock key was introduced to prevent. Swapping a mechanism with no split-brain window for one with a tunable window is a regression.
+
+Membership still matters, and it is what makes roles safe: it is how the fleet detects that **no live instance holds a required role**, which is the one new failure mode roles introduce. That is a genuine use of the heartbeat — it is simply not election.
+
+#### Leaving room for quorum
+
+Instance-level agreement does have a home: the case where the database itself is degraded, which is [Fleet Startup Orchestration](fleet-startup-orchestration)'s later increments. That proposal already binds it correctly — transport election stays **advisory**, deciding who coordinates, never who owns a stream, with the database remaining the authority for anything requiring exactly-once semantics. `Migrate` requires exactly-once, so it stays on the database primitive permanently.
+
+To keep that path open without building it now, election is abstracted behind a seam rather than called directly:
+
+```csharp
+public interface IDutyElector {
+  Task<IDutyLease?> TryAcquireAsync(string duty, CancellationToken ct);
+  Task WaitForCompletionAsync(string duty, CancellationToken ct);
+}
+```
+
+Three implementations then escalate behind one contract, and adopting a stronger one becomes a registration change rather than a redesign:
+
+1. **Advisory lock** — the default, and the permanent answer for correctness-critical duties.
+2. **Leased slot over the `wh_settings` CAS** — the fleet proposal's admission control, adding concurrency budgets and deferral.
+3. **Transport-backed advisory election** — for a degraded database, advisory only.
+
+One safety requirement belongs in the record now, because it is easy to miss later: **anything lease-based needs fencing.** An advisory lock is safe because it is held on the same session performing the work — if the session dies, that work's transaction dies with it. A lease with an expiry has no such coupling: a holder that stalls past expiry and resumes still believes it holds the duty. Implementations 2 and 3 therefore need fencing tokens, or must keep the database lock as an inner guard.
+
+One constraint bounds the options here permanently: **the signal bus cannot announce migration completion**, because it reads `wh_signals` — a table the migration creates. Coordination for `Migrate` must work on a database that has not been migrated yet, which is precisely why a Postgres advisory lock (a server primitive requiring no table) is the correct tool and a durable notification is not. Any future exclusive step that runs before its own storage exists inherits the same constraint.
+
+#### Per-instance steps must be scoped like per-instance work
+
+If a step runs on every instance, it has to be scoped to what that instance owns — otherwise "runs everywhere" means N replicas doing identical work against the same rows.
+
+The steady-state path already does this: claimed work is scoped by `partition_number` on `wh_inbox`, `wh_outbox` and `wh_active_streams`, recomputed at initialization. Startup repair is not held to the same standard, and the two current cases differ:
+
+- **The rewind startup scan is fine.** It queries every cursor flagged `RewindRequired`, but only to log and then wait until the count reaches zero. The repair itself flows through the claimed, partition-scoped path. Unscoped observation, scoped work.
+- **The orphaned-lifecycle reconcile is not.** Its query filters by hosted event types and age with a `LIMIT`, and carries no ownership predicate, no `FOR UPDATE SKIP LOCKED`, and no claim — yet it performs the replay inline. Every replica draws the same rows and advances the same lifecycles concurrently. Only idempotent completion recording and a per-orphan `catch` keep that from being visibly broken.
+
+So `Repair` becomes a declared step that both waits for `Migrate` and claims what it works on. The scoping requirement generalizes into the step contract: an `EveryInstance` step that touches shared rows must claim them, and the pipeline is the place to state that rule once rather than rediscover it per worker.
 
 Progress is what makes a long step legible instead of merely long. The framework already assumes this exists — `ComponentHealth`'s own documentation offers `"migrating: step 7/12, 420k/1.35M rows"` as its example of health detail — but there is no mechanism behind the example. Two rules keep it honest: progress is **optional**, because a step that cannot estimate its size must not invent a denominator; and **absent progress is not stalled progress**, so anything consuming it has to distinguish "this step reports nothing" from "this step reported nothing since 09:14".
 
@@ -344,7 +431,7 @@ Startup maintenance is the one piece that should move and shrink. `perform_maint
 4. **`Ready` as a composite** — the terminal signal, on the unused `IHostedLifecycleService.StartedAsync` seam, composed from blocking-step completion. Carries the `ComponentState` addition and the `HealthPolicy` row.
 5. **Status endpoints** — opt-in surfaces over `IStartupPipelineState`: the minimal-API mapping at `/whizbang/startup` (overridable, self-exempting from the availability gate, returning `IEndpointConventionBuilder` so host auth applies), then the FastEndpoints and HotChocolate equivalents. Terse by default, `reason` detail opt-in. Depends only on increments 1–2, so it can land early and pay for itself while the behavioural increments are still in flight.
 6. **Health and the data plane** — a pipeline health source so probes report the current step and its progress, plus the `ComponentState` addition and `HealthProbe.Startup` if adopted; and the seam-level barrier, so `ILensQuery` and `IDispatcher` refuse while the data plane is not running and every surface inherits one check.
-7. **Exclusivity** — consume the leased slot from [Fleet Startup Orchestration](fleet-startup-orchestration) so `Fleet` steps mean something. Until this lands, `Fleet` degrades to `EveryInstance` and must be documented as such — which is survivable only because both current `Fleet` steps are individually idempotent and separately guarded (the migration by its advisory lock, the rewrite by its request record).
+7. **Roles and election** — declared eligibility, held-by-election roles, and the `IDutyElector` seam over the leased slot from [Fleet Startup Orchestration](fleet-startup-orchestration), so exclusive roles mean something. Until this lands, every instance is eligible for everything and an exclusive role degrades to shared — survivable only because both exclusive steps are individually idempotent and separately guarded (the migration by its advisory lock, the rewrite by its request record), and it must be documented as such.
 8. **Move the rewrites** — requested table rewrites become a post-ready step; the runtime maintenance cycle stops executing them and records requests instead.
 
 Increments 1, 2 and 5 are additive and independently valuable — they make the current state legible without changing it. Increments 3, 4 and 6 onward change behaviour and want the regression coverage that implies. Increment 6 is the one with a visible blast radius: it changes what a running service does with an in-flight request, and wants its own deliberate rollout.
