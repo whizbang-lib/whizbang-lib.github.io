@@ -144,9 +144,16 @@ try {
 }
 ```
 
-Workers that gate on schema readiness include `ClaimWorker`, `HeartbeatWorker`, `MaintenanceWorker`, `LeaseRenewalWorker`, the inbox/outbox drain and flush workers (`InboxDrainWorker`, `InboxDispatchWorker`, `InboxHandlerWorker`, `OutboxDrainWorker`, `OutboxPublishWorker`, `OutboxCompletionFlushWorker`, `PerspectiveCompletionFlushWorker`, `FailureFlushWorker`), and `DeadLetterRecoveryWorker`.
+Every database-touching worker gates on schema readiness:
 
-The `PerspectiveWorker` itself consumes work **channels** fed by `ClaimWorker` (see [Perspective Worker](perspective-worker.md)) — since the upstream claimer is gated, perspective processing implicitly starts only after the schema is ready.
+- **Work coordination**: `ClaimWorker`, `HeartbeatWorker`, `MaintenanceWorker`, `LeaseRenewalWorker`
+- **Inbox/outbox drain and flush**: `InboxDrainWorker`, `InboxDispatchWorker`, `InboxHandlerWorker`, `OutboxDrainWorker`, `OutboxPublishWorker`, `OutboxCompletionFlushWorker`, `PerspectiveCompletionFlushWorker`, `FailureFlushWorker`, `DeadLetterRecoveryWorker`
+- **Perspectives and repair**: `PerspectiveWorker` (its startup scan — registry init, orphan reconcile, rewind repair — waits directly, not just implicitly through the gated `ClaimWorker`; see [Perspective Worker](perspective-worker.md)), `PerspectiveMigrationWorker`, `OrphanInboxJanitor`
+- **Transport consumers**: `ServiceBusConsumerWorker` and `TransportConsumerWorker` — subscribing lets the broker *deliver*, and delivery lands in inbox tables the migration creates, so nothing subscribes before the gate opens — plus `TransportDeadLetterDrainWorker` and `BackupTickCoordinator`
+- **Postgres notification stack**: `PgDurableSignalTailWorker` (its first act INSERTs this pod's cursor into `wh_signal_cursors`), `PgInstanceLifecycleMonitor` (death detection reads `wh_service_instances` — a death announced against a half-migrated fleet table would trigger takeover from garbage data), `PgDurableSignalRetentionWorker` (gated *before* its interval delay — the delay is a courtesy, not a barrier), and `PgCommitOrderStamperWorker` (its leader loop calls `stamp_pending_commit_sequences`, a function the migration defines)
+- **Startup reconciliation**: `TypeDefinitionReconcilerHostedService` and the Dapper driver's message-type registry reconciliation — the latter no longer populates inline in `StartAsync`, which both raced a non-blocking initializer and stalled every later hosted service behind database work
+
+Two notification services are **deliberately not gated**: `PgSharedNotifyConnection` and `PgWorkNotificationListener` use only `LISTEN`/`NOTIFY` and the session advisory alive-lock — no schema required — and the shared connection is the liveness substrate (`wh_live_instances` joins `pg_stat_activity` on its `application_name`), which startup stages that run *before* migrations need. Purely in-memory workers (e.g. `RecentlyProcessedEventCacheSweepWorker`) don't gate either — there is nothing database-shaped to wait for.
 
 **Key difference from polling designs**: readiness is checked **once**, not per cycle. After the gate opens, transient database failures during runtime surface as ordinary exceptions with retry/backoff in each worker's loop — they are not conflated with "schema not ready yet."
 
