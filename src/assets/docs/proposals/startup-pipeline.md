@@ -88,43 +88,52 @@ graph TB
     subgraph Connect["2 · Connect"]
         C1["pool warm · database reachable"]
     end
-    subgraph Elect["3 · Elect"]
-        E1["leased slot over wh_settings CAS<br/>ONE instance proceeds to exclusive steps"]
+    subgraph Assess["3 · Assess"]
+        A1["compare my version against the ledger<br/>verdict: migrate · serve · stand down"]
     end
-    subgraph Migrate["4 · Migrate &nbsp;&nbsp;[one runs · all await]"]
+    subgraph Elect["4 · Elect"]
+        E1["leased slot over wh_settings CAS<br/>only instances cleared to migrate contend"]
+    end
+    subgraph Migrate["5 · Migrate &nbsp;&nbsp;[one runs · all await]"]
         M1["schema init · ledger · version stamp<br/>registry reconciles (in-transaction)"]
     end
-    subgraph Identify["5 · Identify"]
+    subgraph Identify["6 · Identify"]
         I1["instance row in wh_service_instances<br/>first heartbeat"]
     end
-    subgraph Reconcile["6 · Reconcile"]
+    subgraph Reconcile["7 · Reconcile"]
         R1["type definitions · associations<br/>retention sync"]
     end
-    subgraph Repair["7 · Repair"]
+    subgraph Repair["8 · Repair"]
         P1["orphaned lifecycles · rewind scan"]
     end
-    subgraph Provision["8 · Provision"]
+    subgraph Provision["9 · Provision"]
         V1["transport discovery · subscribe<br/>notification stack"]
     end
-    subgraph Ready["9 · Ready"]
-        Y1["health flips · workers unpause<br/>availability gate opens"]
+    subgraph Ready["10 · Ready"]
+        Y1["health flips · workers unpause<br/>data plane opens"]
     end
-    subgraph Post["10 · Post-ready &nbsp;&nbsp;(observed, never awaited)"]
+    subgraph Post["11 · Post-ready &nbsp;&nbsp;(observed, never awaited)"]
         Z1["requested table rewrites &nbsp;[one runs · none await]<br/>cross-service manifest exchange"]
     end
+    Down["stand down<br/>capabilities released · data plane held<br/>not ready, still alive"]
 
-    Register --> Connect --> Elect --> Migrate --> Identify --> Reconcile --> Repair --> Provision --> Ready --> Post
+    Register --> Connect --> Assess --> Elect --> Migrate --> Identify --> Reconcile --> Repair --> Provision --> Ready --> Post
+    Assess -->|"obsolete"| Down
 
     style Migrate fill:#cce5ff,stroke:#0d6efd,stroke-width:2px
     style Post fill:#e2e3e5,stroke:#6c757d,stroke-width:2px
     style Ready fill:#d4edda,stroke:#28a745,stroke-width:2px
+    style Assess fill:#fff3cd,stroke:#ffc107,stroke-width:2px
+    style Down fill:#f8d7da,stroke:#dc3545,stroke-width:2px
 ```
 
 Blue steps require an exclusive capability, so exactly one instance executes them. **Every other step runs on every instance**, including all of `Identify` through `Ready` — exclusivity follows the capability a step requires, not a mode the pipeline enters at `Migrate` and stays in. `Identify` is the clearest case: each instance registers its own row.
 
 The linear chain above is the order of steps, not a single thread of control. Every instance walks the whole pipeline; what differs is what it does at an exclusive step. The grey band is reported but never awaited — see [Steps that cannot block](#steps-that-cannot-block).
 
-Three steps are new relative to the shape the framework has today, and each exists because real startup work currently has nowhere to live:
+Four steps are new relative to the shape the framework has today, and each exists because real startup work currently has nowhere to live:
+
+- **`Assess`** compares this instance's version against what the ledger says is already applied, and produces a verdict before anything is changed: *migrate*, *serve without migrating*, or *stand down*. It runs on **every instance**, unlike `Migrate` — an instance that will never win the migrator duty still needs to know whether it is obsolete. It sits before `Elect` so that an instance cleared only to serve never contends for a duty it must not perform. It is a read against the ledger: no lock, no transaction, cheap enough that every instance doing it costs nothing.
 
 - **`Register`** covers the in-process wiring that happens before any I/O — receptor registrars, hook binders, retention configuration, warm-ups. Roughly eight services do this today, ordered only by DI registration position. One of them documents that dependency in prose: *"runs before the worker pipeline processes anything (hosted services start in registration order)."* That is an ordering guarantee asserted by comment, which is the thing this proposal exists to replace.
 - **`Identify`** owns "this instance exists in `wh_service_instances`". Nothing owns it today, which is why the claim worker performs a redundant heartbeat write to paper over the race — and why `Elect`, which needs a registered instance to lease a slot, has no declared predecessor.
@@ -465,9 +474,28 @@ The data is already recorded. `wh_schema_migrations.version_id` references `wh_s
 
 Application version matters too, and has more of an answer already: perspective schema hashes and the message-type registry both carry drift detection, and the pinned-id ledger governs renames. Those mechanisms report drift without deciding what to do about it, which is the same gap in a different place.
 
+#### `Assess` — deciding before changing anything
+
+The verdict is a step of its own rather than a branch inside `Migrate`, because the two have different audiences. Migration is a duty: one instance performs it. Assessment is universal: every instance needs to know where it stands, including the ones that will never migrate — those are exactly the instances at risk of being obsolete. Placing it before `Elect` also means an instance cleared only to serve never contends for the migrator duty in the first place.
+
+It is a read. No lock, no transaction, no DDL — compare the library version this process is running against the versions recorded in the ledger, and decide:
+
+| What the ledger says | Verdict | What the instance does |
+|---|---|---|
+| Nothing — fresh database | Migrate | Contend for the `migrator` duty |
+| Older than me, compatible | Migrate | Contend for the duty |
+| Same as me | Serve | Skip to the rest of the pipeline |
+| Newer than me, compatible | **Serve, never migrate** | Proceed without applying anything — this is the case the current applier gets wrong |
+| Newer than me, breaking | **Stand down** | Release capabilities, hold the data plane, report not-ready-while-alive |
+| Older than me, breaking | Migrate | Proceed; peers still on the old version reach the *stand down* verdict themselves |
+
+The last row is the one that only works because the fence runs backwards. A migrating instance does not wait for its older peers — it cannot, without deadlocking — so it migrates, and each older peer independently concludes that it is now obsolete.
+
+Which has a consequence worth stating plainly: **the verdict cannot be a startup-only fact.** An instance that was current when it booted becomes obsolete the moment a newer peer migrates underneath it. So `Assess` establishes the verdict, and a lightweight watcher maintains it — re-checking on the same signal-plus-poll footing as capability re-attempt, with the migrator publishing the new version on the bus (which exists by then) as the fast path and a periodic re-read as the floor. Standing down is not a startup decision an instance makes once; it is a state it can enter at any time.
+
 #### What this proposal commits to
 
-Full version negotiation is its own piece of work and is not folded in here. What the pipeline owes it is the seam: `Migrate` is the step that discovers the version relationship, and the capability model is what lets an instance act on the answer. Recording that here fixes the shape of the later work — and the two defects above are worth fixing on their own account, before anything negotiates anything.
+Full version negotiation — declaring per-migration compatibility, and what a consumer's own application version means — is its own piece of work and is not folded in here. What the pipeline owes it is the seam, and `Assess` is that seam: a declared step whose verdict the capability model already knows how to act on. The two defects above are worth fixing on their own account, before anything negotiates anything, and the smaller of them is precisely `Assess` in miniature — never apply older content over newer.
 
 ### What moves
 
@@ -502,7 +530,7 @@ Startup maintenance is the one piece that should move and shrink. `perform_maint
 
 1. **Step contract and registry** — the descriptor, explicit registration, and a runner that resolves declared dependencies into an execution order. Inert: every existing step registers with its current behaviour and current (accidental) ordering, so nothing changes yet.
 2. **Observability and hooks** — per-step duration, outcome and reason; `IStartupStepObserver` and `IStartupPipelineState`, with the framework's own logging and metrics written as observers. This alone makes the silent-skip class visible, before any behaviour moves, and gives consumers something to build on while the rest lands.
-3. **Adopt the real barriers** — `ISchemaReadyGate` becomes `Migrate`'s completion signal; the thirteen bypassing services declare what they actually depend on. This is where the ordering defects get fixed, one declared dependency at a time.
+3. **Adopt the real barriers** — `ISchemaReadyGate` becomes `Migrate`'s completion signal; the thirteen bypassing services declare what they actually depend on; `Assess` lands as the step before `Elect`, initially with only the never-downgrade verdict it needs to fix the ledger defect. This is where the ordering defects get fixed, one declared dependency at a time.
 4. **`Ready` as a composite** — the terminal signal, on the unused `IHostedLifecycleService.StartedAsync` seam, composed from blocking-step completion. Carries the `ComponentState` addition and the `HealthPolicy` row.
 5. **Status endpoints** — opt-in surfaces over `IStartupPipelineState`: the minimal-API mapping at `/whizbang/startup` (overridable, self-exempting from the availability gate, returning `IEndpointConventionBuilder` so host auth applies), then the FastEndpoints and HotChocolate equivalents. Terse by default, `reason` detail opt-in. Depends only on increments 1–2, so it can land early and pay for itself while the behavioural increments are still in flight.
 6. **Health and the data plane** — a pipeline health source so probes report the current step and its progress, plus the `ComponentState` addition and `HealthProbe.Startup` if adopted; and the seam-level barrier, so `ILensQuery` and `IDispatcher` refuse while the data plane is not running and every surface inherits one check.
