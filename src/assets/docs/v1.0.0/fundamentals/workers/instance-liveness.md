@@ -79,6 +79,14 @@ The fence is per **process**, not per pod: instance ids are generated per proces
 
 Tombstones are bounded: `perform_maintenance` purges rows older than `instance_eviction_retention_hours` (`wh_settings`, default 24). The tombstone only needs to outlive a realistic pause-and-resume window, and since ids are per-process, anything calling with that id after a day is not the process that was reaped.
 
+## Capabilities: won, recorded, and fenced
+
+A **capability** names what an instance may do; an exclusive one — `migrator`, `maintainer` — is a **duty**, held by one instance at a time. Capabilities are *won*, never assigned: an instance attempts the primitive (a session advisory lock on a dedicated direct connection, via `IDutyElector`), and the primitive grants or refuses. That keeps the failure path free — a dead instance's lock releases server-side as its session ends, with no timeout to tune, no split-brain window, and no durable "this one is the migrator" flag to orphan.
+
+Holdings are **recorded but never consulted to decide**: *the lock decides, the row reports.* `wh_instance_capabilities` is keyed `(instance, capability)` with `acquired_at` — "which instance is the migrator right now, and for how long" as a query (and in the startup status surface's fleet section, as a join). It rides the same rails as liveness: reaped instances cascade their holdings, so the record's only staleness window is the heartbeat lease the system already bounds.
+
+The eviction fence reaches acquisition: `record_capability` refuses a tombstoned instance, and the elector releases the lock it just won and stands down — a zombie can win a race but cannot hold a duty. Long-tenure holders fence themselves with `IDutyGrant.VerifyStillHeldAsync`: a grant whose session died (the OOMKill half-open-TCP shape) reports lost before the next unit of exclusive work, because another instance may already hold it.
+
 ## Migration touch points
 
 | Migration | What changed |
