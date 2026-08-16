@@ -208,16 +208,10 @@ page-plus-serialization footprints.
 
 - An event the consumer **already has** hits the event-id conflict skip at the store seam: no row,
   no work items, zero perspective churn. Re-delivery is free where nothing is wrong.
-- An event the consumer **was missing** appends normally and generates perspective work — and the
-  emit chain **self-declares the rewind at work-item creation**: the backfilled event keeps its
-  ORIGINAL event id, which slots below the perspective's cursor, so the cursor is flagged
-  RewindRequired with the straggler as trigger right there. (The runtime inversion detector could
-  never catch this case — a backfill's *local* commit_sequence is freshly stamped and sits above
-  the cursor.) The rewind then replays the stream in **origin order** — single-origin batches sort
-  by `(SourceServiceId, SourceCommitSequence)` — slotting the late event at its intended position:
-  the final perspective state equals what a never-missed history would have produced, and newer
-  writers are never clobbered by month-old backfills. Pinned end-to-end by
-  `ReconcileRewindScenarioTests` + `ReconcileRewindDeclarationSqlTests`.
+- An event the consumer **was missing** appends normally and generates perspective work. Because it
+  is *older* than the perspective's cursor, the **cursor-inversion detector** fires and the rewind
+  path replays the stream from its snapshot/anchor with the now-complete event set. Late history
+  folds in correctly because the pipeline already knows what late history means.
 
 **Re-delivery rides composites, and the children ride RAW.** A repair set is "many events for one
 stream" — the composite decision-table row, with its measured bulk-transport win. The redelivery
@@ -411,14 +405,9 @@ re-bounds):
   and a bucket that heals is forgotten entirely, so a later re-divergence is a brand-new incident.
 - **Repair requests back off.** Each divergent bucket's first repair request goes immediately;
   every further attempt doubles the wait (`RepairRequestBackoffSeconds` base, default 300), and
-  past `MaxRepairAttemptsPerBucket` (default 8) the ladder stops climbing and flattens to its
-  **terminal cadence** — one ask per base × 2⁶ interval, forever — instead of going silent. A
-  bucket whose whole budget burned against an unreachable origin has a *static* signature
-  (the origin served nothing, so neither side's digest moves and the signature-change reset
-  never fires); a permanent deny would shadow-ban that real, repairable deficit until an
-  operator reset the ledger row by hand. The terminal cadence keeps convergence
-  eventually-true at bounded cost, while the divergence keeps re-reporting at the cooldown
-  cadence for operator eyes. A signature change still resets the budget immediately.
+  past `MaxRepairAttemptsPerBucket` (default 8) the requester stops asking — the divergence still
+  re-reports at the cooldown cadence, but a repair that has not worked eight times needs operator
+  eyes, not an infinite loop. A signature change resets the budget.
 - **Requests batch and are directed or not at all.** Divergent streams of one (tenant, type)
   batch into ONE `RequestRedeliveryCommand` (the origin's selection takes a stream set — per-stream
   commands multiplied wire volume by the stream count for nothing). And every integrity request —
@@ -509,6 +498,21 @@ layer as soon as it has *heard from* its origins. The origin set is deliberately
 (a restart re-baselines it), so the first audit after a fleet-wide deploy usually runs only the
 local half; the next cycle has a warm tracker and runs the full exchange.
 
+**A cycle that reached no origins re-arms the startup window instead of the steady interval.**
+That matters because the interval defaults to a day. On a cold fleet start the audit can fire
+before any peer has checkpointed — its origin set is still empty, so the cross-service half has
+nobody to ask and audits nothing. Sleeping out the full interval before looking again would be
+indistinguishable from never discovering the fleet at all, and it fails worst in exactly the
+situation that most needs the audit: when peers are slow to start, their checkpoints are late,
+and cross-service divergence is most likely. The retry keeps the same jitter, so a fleet whose
+instances all reached nobody do not then all retry in unison.
+
+The distinction is between *nobody to ask* and *nothing to ask about*. A deployment with no
+cross-service transport configured is a configuration rather than a cold start, and retrying
+sooner would never help — it keeps the steady interval. So does a cycle another instance already
+claimed. Only a service that has cross-service infrastructure and reached none of its origins
+retries early, and it logs that it is doing so.
+
 ```mermaid {caption="One reconcile cycle: checkpoints warm the origin tracker, the audit exchanges digest manifests, divergence drills down to an exact re-delivery" tests=["IntegrityCheckpointWorkerTests.RunCheckpointOnce_WithTransport_PublishesToOwnEventTopicsAsync","IntegrityAuditWorkerTests.KnownOrigins_GetDirectedManifestRequestsAsync","ControlPlaneSessionIntegrationTests.ControlPlanePublish_SessionRequiredSubscription_DeliversAsync"]}
 sequenceDiagram
     autonumber
@@ -585,7 +589,7 @@ services.Configure<StreamIntegrityOptions>(o => {
   // Convergence bounding (the IntegrityRepairLedger's dials)
   o.DivergenceReportCooldownMinutes = 60;    // unchanged divergence re-reports once per hour, not per cycle
   o.RepairRequestBackoffSeconds = 300;       // per-bucket retry base; each attempt doubles the wait
-  o.MaxRepairAttemptsPerBucket = 8;          // then flatten to the terminal cadence (base x 2^6); signature change resets
+  o.MaxRepairAttemptsPerBucket = 8;          // then stop asking (reports continue); signature change resets
 
   // Phase S — subscription growth
   o.BackfillOnSubscriptionGrowth = true;
@@ -627,9 +631,7 @@ provably-missing delivery is additive and idempotent (the same event id folds on
 that made auto-repair dangerous elsewhere (destructive repair of *suspected* divergence) does not
 apply to this design's confirmed-gap, identity-preserving re-delivery. `ReportOnly` remains the
 explicit opt-DOWN for operators who want report-and-decide; every report still states exactly what
-auto-repair would have done, so ReportOnly IS the dry-run. The opt-down silences **every** repair
-dispatcher — the burst-path grants and the paced repair drain alike, which neither claims (a claim
-stamps an attempt, burning the row's backoff) nor sends while the mode is not `AutoRepairCapped`.
+auto-repair would have done, so ReportOnly IS the dry-run.
 
 **Observability (as built): meter `Whizbang.StreamIntegrity`.** Self-healing by default demands
 visibility into what the healer does. Counters:

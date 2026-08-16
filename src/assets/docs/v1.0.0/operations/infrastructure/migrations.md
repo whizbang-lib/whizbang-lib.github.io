@@ -127,6 +127,49 @@ Both the Whizbang library version and the consuming application version are reco
 
 This lets you query which app version last applied migrations to a database.
 
+### An older instance never overwrites a newer one
+
+The recorded library version is not only for auditing — the applier reads it before running anything.
+
+The decision to run a migration comes from comparing hashes, and hash inequality is **symmetric**: it says the content *differs*, never which side is newer. Because pre-v1 migration files are edited in place rather than superseded, that leaves a gap during a rolling deployment. An instance from the previous version that restarts after a newer one has migrated computes a different hash for its own older copy, and would re-apply it through `CREATE OR REPLACE` — returning objects to an earlier definition beneath the instances still running against them, with no error raised anywhere.
+
+The [redefinition closure](#how-it-works) does not cover this. It re-runs every *later* file defining the same objects, and an older instance does not have those files.
+
+So before applying, the runner compares its own library version against the version recorded on the ledger row, using **Semantic Versioning precedence**:
+
+| Recorded against the row | Result |
+|---|---|
+| An older version | Applied normally — the ordinary upgrade path |
+| The same version | Applied — this is how a drifted hash is repaired and how the redefinition closure re-runs |
+| A **newer** version | **Skipped**, with a warning naming both versions |
+| Nothing, or an unreadable version | Applied — a row predating version tracking must not leave a schema permanently unmigratable |
+
+If the *running build's own* version is unreadable it applies nothing at all: a build that cannot state what it is has no business writing DDL.
+
+Precedence follows the specification, including the parts that are easy to get wrong and that matter most before 1.0, when every release carries a pre-release label:
+
+- a pre-release ranks **below** the release it precedes, so `1.0.0` outranks `1.0.0-rc.1`;
+- numeric pre-release identifiers compare **numerically**, so `alpha.10` outranks `alpha.2` — comparing them as text inverts the answer;
+- build metadata (`+sha.abc`) takes no part in precedence at all.
+
+An instance that skips on this rule is not broken and needs no intervention: it is correctly declining to undo work done by a newer deployment.
+
+### Stale duplicate overloads are swept automatically
+
+Before `drop_all_overloads` resolved its own schema (it filtered by `current_schema()`, which pooled EF connections reduce to `public`), a signature change in a **multi-schema** deployment silently left the old overload beside the new one. Databases migrated through those prerelease versions can carry duplicates that make unqualified calls ambiguous and the next return-type change fail with `42P13`.
+
+The initializer now detects this: when a framework-defined function name has more than one overload in the schema, the migrations defining that name are forced back into the run — their `drop_all_overloads` clears every overload and each file recreates its single canonical definition, with the redefinition closure re-running any later file defining the same object. One extra catalog query on a hash-clean boot; a clean database never re-runs anything. Consumer-defined functions with intentional overloads never trigger it — the check is intersected with the framework's own migration objects.
+
+Log line to look for on an affected database's first boot after upgrading: `re-running to sweep stale duplicate overload(s)`.
+
+### Table rewrites run post-ready, under the maintainer duty
+
+A migration cannot `VACUUM FULL` (both are forbidden inside its transaction), so a migration that leaves a table owing a rewrite — a `DROP COLUMN`, whose bytes Postgres keeps in every pre-existing row — **records** the request via `wh_request_table_rewrite`. The runtime bloat detector records through the same function when churn bloats a table past threshold.
+
+The recorded rewrites are performed by the startup pipeline's **`Rewrite` step**: post-ready (`Blocking = false` — deliberately unbounded work never gates readiness), fleet-exclusive under the `maintainer` duty (one instance rewrites; non-holders skip, because nobody blocks on a `VACUUM FULL`). Execution stays behind `MaintenanceWorkerOptions.AllowTableRewrite` — the framework cannot know how large a consumer's table is, and taking an ACCESS EXCLUSIVE lock unattended must be opted into. A request is cleared only after the bloat ratio is confirmed to have dropped; an ineffective rewrite stays queued for the next boot.
+
+The runtime maintenance cycle **no longer executes rewrites** — an ACCESS EXCLUSIVE lock mid-traffic was always the wrong window. It detects, reports the bloat gauge, and records.
+
 ## Data Migrations vs. Schema Migrations
 
 Hash tracking answers **"did the DDL / object *shape* change?"** — the SHA-256 is over the migration's SQL text, which for schema migrations mirrors the object it defines. That is exactly the wrong question for a **pure data migration** that rewrites *rows* without changing any table's shape: the hash can't tell whether the data still needs the fix, and re-scanning a large table on every startup is wasteful.

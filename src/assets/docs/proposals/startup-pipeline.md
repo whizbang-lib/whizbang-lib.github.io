@@ -11,8 +11,8 @@ Whizbang has startup *stages* but no startup *pipeline*. The lifecycle phases re
 
 This proposal makes startup an explicit, ordered, individually-controllable sequence of declared steps — so that "run this after that", "run this on exactly one instance", and "run this last" become things the framework can express instead of things a comment claims.
 
-:::planned
-Proposed capability, unreleased. It is the sibling of [Fleet Startup Orchestration](fleet-startup-orchestration), which answers *which instance* does startup work. This one answers *in what order, under what control, and how do we know it finished*. Both build on machinery that already exists — the schema-ready gate, the lifecycle phase machine, the `wh_settings` compare-and-swap watermark.
+:::updated
+**Implemented — shipped in v1.0.0.** This document is preserved as the design record; the official documentation lives under [The Startup Pipeline](/v1.0.0/operations/startup/startup-pipeline), [Capabilities and Duties](/v1.0.0/operations/startup/capabilities-and-duties), [Rolling Upgrades](/v1.0.0/operations/startup/rolling-upgrades) and [The Startup Status Surface](/v1.0.0/operations/startup/startup-status), with the seams and Ready composite in [Database Readiness](/v1.0.0/operations/workers/database-readiness) and the lifecycle ladder in [Managed-Resource Run Control](/v1.0.0/resilience/managed-resource-run-control). It is the sibling of [Fleet Startup Orchestration](fleet-startup-orchestration), which answers *which instance* does startup work; this one answers *in what order, under what control, and how do we know it finished*.
 :::
 
 ## Current state
@@ -622,7 +622,13 @@ Startup maintenance is the one piece that should move and shrink. `perform_maint
 - **Failure policy per step.** Should a failed non-blocking step degrade readiness, or only be reported? A failed `Repair` is arguably survivable; a failed `Reconcile` may not be.
 - **Consumer-declared steps.** Observation and interrogation are settled — consumers get both. Whether they may *add* steps is not: that turns the descriptor into a public extension contract with the versioning obligations that implies.
 - **Granularity of `Migrate`.** Schema initialization is one opaque step containing seven internal phases, two of which are registry reconciles that other steps arguably depend on. Exposing the phases individually would let those dependencies be declared instead of assumed, at the cost of a much larger surface — and of committing to phase names that are currently free to change.
-- **Which step releases each seam.** That the data plane holds during `Migrate` is settled; which barrier each seam waits on is not, and reads and writes may not want the same one. A dispatch needs the event store and outbox, which `Migrate` provides. A lens needs perspectives drained, which is later than `Migrate` and earlier than `Ready` — coupling it to `Ready` would make reads wait on transport provisioning they do not use. That argues for a dedicated read-model barrier, and ties back to the `Migrate` granularity question above.
+- **Which step releases each seam.** *Decided: the dedicated read-model barrier.* A dispatch needs the event store and outbox, which `Migrate` provides — writes wait on the schema gate. A lens needs perspectives drained, which is later than `Migrate` and earlier than `Ready` — coupling it to `Ready` would make reads wait on transport provisioning they do not use. The read-model barrier releases when `Migrate` completes and the perspective startup scan has run; a host with no perspectives releases on the schema gate alone. The `Migrate` granularity question above remains open independently.
+
+  *Follow-up, decided during implementation: the seams project onto the lifecycle ladder as a new
+  phase.* `LifecyclePhase.AcceptingCommands` sits between `Migrating` and `Running`: from the schema
+  gate the entire write side is live (commands, events, transport, perspective writes — the startup
+  repair is itself perspective-writing), while lenses keep refusing until the read-model barrier
+  releases at `Running`. A host without the read barrier collapses the two moments into one.
 - **How far the eviction fence should reach.** Delivering it through the heartbeat bounds the notice window; refusing an evicted instance at capability acquisition closes it for exclusive work. Extending the check to every work claim would close it entirely, at the cost of a guard on a hot path — worth measuring before deciding.
 - **Whether capability rows want a lease of their own.** They are reaped by cascade when the instance row goes, which covers instance death. It does not cover an instance that is alive but has lost a capability it still has a row for — a narrow window, and possibly one that only matters once a duty can be relinquished without the process exiting.
 - **Startup-probe adoption.** Adding `HealthProbe.Startup` is only useful if the turnkey wiring emits it and the documentation tells operators to bind it. A probe nobody binds is worse than none, because it looks like coverage.
@@ -642,6 +648,19 @@ Startup maintenance is the one piece that should move and shrink. `perform_maint
 9. **Rolling upgrades** — the rest of `Assess` beyond never-downgrade: persisted instance state so peers can see each other, the standby handshake, revival by re-entry, and eviction as the fence behind it. Depends on increments 3 and 7 and should land last, because every part of it is a way for one instance to change another's behaviour — the highest-consequence thing in this proposal and the one that most wants the observability from increments 2 and 5 already in place.
 
 Increments 1, 2 and 5 are additive and independently valuable — they make the current state legible without changing it, and 5 is worth landing early because a slow boot is easiest to diagnose with a surface that already exists. Increments 3, 4 and 6 onward change behaviour and want the regression coverage that implies. Two carry real blast radius and want their own deliberate rollouts: **6**, because it changes what a running service does with an in-flight request, and **9**, because every part of it lets one instance change another's behaviour.
+
+### The testing bar: multi-instance, end to end
+
+Nearly everything in this proposal is a claim about how *instances* behave together — one migrates while the rest await, a zombie is refused, a duty fails over, a fleet stands by. Unit tests and single-connection SQL tests cannot carry those claims, so every increment ships with **multi-instance end-to-end coverage**: each simulated instance is its own coordinator over its own connection, driven through the real entry points, against a real database.
+
+The bar per increment:
+
+- **Eviction fence** *(shipped with the fence)* — a live instance's ordinary heartbeat reaps a stale peer and releases its leases; the paused peer resumes through the real coordinator and is refused; N instances join concurrently without interference.
+- **Barriers (increment 3)** — initializers racing where one is version-blocked never downgrade; formerly-ungated workers demonstrably hold until `Migrate` completes on a cold database.
+- **Duties (increment 7)** — N instances contend and exactly one holds `migrator`/`maintainer`; the holder dies and another acquires; the recorded holdings match who actually holds the lock.
+- **Rolling upgrades (increment 9)** — the full handshake: newer instance requests standby, older instances drain and acknowledge, migration commits → peers shut down, migration fails → peers revive by re-entering at `Assess`; a dead migrator strands nobody; a non-responsive peer is evicted and the handshake completes without it.
+
+Where the behaviour under test is genuinely *per-process* — hash seeds, the library version baked at build — in-process simulation cannot reproduce it, and the test spawns real child processes instead. The advisory-lock fix proved why this matters: the defect was invisible to any test running in one process.
 
 ### Fixes that do not wait
 

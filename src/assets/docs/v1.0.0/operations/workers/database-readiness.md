@@ -144,9 +144,16 @@ try {
 }
 ```
 
-Workers that gate on schema readiness include `ClaimWorker`, `HeartbeatWorker`, `MaintenanceWorker`, `LeaseRenewalWorker`, the inbox/outbox drain and flush workers (`InboxDrainWorker`, `InboxDispatchWorker`, `InboxHandlerWorker`, `OutboxDrainWorker`, `OutboxPublishWorker`, `OutboxCompletionFlushWorker`, `PerspectiveCompletionFlushWorker`, `FailureFlushWorker`), and `DeadLetterRecoveryWorker`.
+Every database-touching worker gates on schema readiness:
 
-The `PerspectiveWorker` itself consumes work **channels** fed by `ClaimWorker` (see [Perspective Worker](perspective-worker.md)) — since the upstream claimer is gated, perspective processing implicitly starts only after the schema is ready.
+- **Work coordination**: `ClaimWorker`, `HeartbeatWorker`, `MaintenanceWorker`, `LeaseRenewalWorker`
+- **Inbox/outbox drain and flush**: `InboxDrainWorker`, `InboxDispatchWorker`, `InboxHandlerWorker`, `OutboxDrainWorker`, `OutboxPublishWorker`, `OutboxCompletionFlushWorker`, `PerspectiveCompletionFlushWorker`, `FailureFlushWorker`, `DeadLetterRecoveryWorker`
+- **Perspectives and repair**: `PerspectiveWorker` (its startup scan — registry init, orphan reconcile, rewind repair — waits directly, not just implicitly through the gated `ClaimWorker`; see [Perspective Worker](perspective-worker.md)), `PerspectiveMigrationWorker`, `OrphanInboxJanitor`
+- **Transport consumers**: `ServiceBusConsumerWorker` and `TransportConsumerWorker` — subscribing lets the broker *deliver*, and delivery lands in inbox tables the migration creates, so nothing subscribes before the gate opens — plus `TransportDeadLetterDrainWorker` and `BackupTickCoordinator`
+- **Postgres notification stack**: `PgDurableSignalTailWorker` (its first act INSERTs this pod's cursor into `wh_signal_cursors`), `PgInstanceLifecycleMonitor` (death detection reads `wh_service_instances` — a death announced against a half-migrated fleet table would trigger takeover from garbage data), `PgDurableSignalRetentionWorker` (gated *before* its interval delay — the delay is a courtesy, not a barrier), and `PgCommitOrderStamperWorker` (its leader loop calls `stamp_pending_commit_sequences`, a function the migration defines)
+- **Startup reconciliation**: `TypeDefinitionReconcilerHostedService` and the Dapper driver's message-type registry reconciliation — the latter no longer populates inline in `StartAsync`, which both raced a non-blocking initializer and stalled every later hosted service behind database work
+
+Two notification services are **deliberately not gated**: `PgSharedNotifyConnection` and `PgWorkNotificationListener` use only `LISTEN`/`NOTIFY` and the session advisory alive-lock — no schema required — and the shared connection is the liveness substrate (`wh_live_instances` joins `pg_stat_activity` on its `application_name`), which startup stages that run *before* migrations need. Purely in-memory workers (e.g. `RecentlyProcessedEventCacheSweepWorker`) don't gate either — there is nothing database-shaped to wait for.
 
 **Key difference from polling designs**: readiness is checked **once**, not per cycle. After the gate opens, transient database failures during runtime surface as ordinary exceptions with retry/backoff in each worker's loop — they are not conflated with "schema not ready yet."
 
@@ -306,6 +313,57 @@ public async Task Worker_WithClosedGate_DoesNotTouchDatabaseAsync() {
 
 ---
 
+## Ready Is More Than the Gate
+
+The schema gate answers one question — is the database migrated. **`IStartupReadySignal`** answers the broader one: is this instance *fully up*. It is a composite, marked by `StartupReadyService` on the `IHostedLifecycleService.StartedAsync` seam — the hook that runs only after every hosted service's `StartAsync` has returned — once two things hold:
+
+1. **The startup pipeline's blocking steps have drained.** The runner announces its resolved plan before the first step executes, and `IStartupPipelineState.IsReady` becomes true when every planned *blocking* step reaches a terminal outcome without failure. Non-blocking steps live in the post-ready band and never gate it. A failed blocking step keeps readiness pending forever — the same fail-closed posture as the gate itself.
+2. **Every registered `IStartupReadinessContributor` has answered.** The transport consumer workers contribute their `SubscriptionsReady` signal — a fact that existed before but nothing consumed — so "ready" now includes "actually subscribed", not merely "the workers started".
+
+Programmatic consumers wait on it the same way workers wait on the gate:
+
+```csharp{title="Waiting on the composite" description="IStartupReadySignal completes when the instance is fully up" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Readiness", "Startup"]}
+public sealed class AfterStartupWork(IStartupReadySignal ready) : BackgroundService {
+  protected override async Task ExecuteAsync(CancellationToken stoppingToken) {
+    await ready.WaitForReadyAsync(stoppingToken);
+    // every blocking startup step drained, every transport subscribed
+  }
+}
+```
+
+For health, `ComponentState.Ready` sits between `Migrating` and `Operational` — distinct so a probe can tell "the schema is ready" from "the pipeline drained" — and is Healthy on readiness under **both** built-in policies, since Ready is precisely the state `HealthPolicy.Strict` holds a pod out of rotation waiting for.
+
+## The Seam-Level Barriers: Reads and Writes Hold Themselves
+
+The HTTP availability gate protects one edge; the data plane also holds **at its own seams**, so every surface inherits one check:
+
+- **Writes wait for the schema.** `IDispatcher` refuses with `WhizbangNotReadyException` while the schema gate is closed — a dispatch needs the event store and outbox, which `Migrate` provides. HTTP layers should map the exception to 503; writes resume the moment migrations complete.
+- **Reads wait for the read models.** Lens resolution refuses while the **read-model barrier** (`IReadModelsReadyGate`) is closed. The barrier releases when `Migrate` completes *and* the perspective startup scan — registry init, orphan reconcile, rewind repair — has run: later than `Migrate`, because a lens must not read perspectives a migration may have left mid-repair; earlier than the composite `Ready`, because reads never needed the transports. A host with no perspectives releases on the schema gate alone.
+
+Both seams are inert when no gate/barrier is registered, so test fixtures and partial hosts behave exactly as before. Both are fail-closed: a migration or startup repair that never finishes keeps the seam refusing, which is the honest answer while the data cannot be trusted.
+
+The two seams project onto the lifecycle ladder as a phase of their own: `LifecyclePhase.AcceptingCommands` sits between `Migrating` and `Running`, the window where the **write side is fully live** — commands land durably, events flow, the transport delivers, and the perspective startup repair is itself perspective-writing — while lenses keep refusing. `Running` means the read-model barrier released too. A local command's receptor that reads a perspective inherits the read barrier at the lens seam, so each dispatch gets exactly the barrier its dependencies require. See [Managed-Resource Run Control](../../resilience/managed-resource-run-control) for the full ladder.
+
+## The Startup Status Surface
+
+The question people ask during a slow boot is *"what is it doing right now?"* — and the pipeline can answer it over the host's own API surface. [The Startup Status Surface](../startup/startup-status) is the full reference; in short, the surface is **opt-in** (publishing internal state is the host's decision, not a package reference's) and one call mounts it:
+
+```csharp{title="Mounting the status endpoint" description="Opt-in, overridable route, host auth chains" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Startup", "Status"]}
+app.MapWhizbangStartupStatus();                              // GET /whizbang/startup
+app.MapWhizbangStartupStatus("/ops/boot")                    // or wherever the host prefers
+   .RequireAuthorization("ops");                             // inherits host auth — the framework adds none
+```
+
+The response has **two sections**, because the endpoint gets reached two ways. `instance` is the process that answered — current step, the ordered step list with outcome and duration, pipeline readiness and the composite `ready` — read from memory, exact and current. `fleet` is every live instance from `wh_service_instances`, each row carrying its own heartbeat age, supplied by the storage driver through `IStartupFleetStatusSource`.
+
+The same report is available through the other two API extensions — each opt-in, each inside its package's own security model. FastEndpoints hosts declare an endpoint inheriting `WhizbangStartupStatusEndpointBase` (declaring it *is* the opt-in; `Roles()` / `Permissions()` apply as on any endpoint). HotChocolate hosts call `AddWhizbangStartupStatus()` to contribute the `whizbangStartup` query field (`[Authorize]` applies as elsewhere). All three serve the same `StartupStatusReport`, built by one shared `StartupStatusReporter` — the surfaces cannot drift apart in what they disclose. The minimal-API surface stays primary: a GraphQL schema whose build touches lens types may not be buildable during `Migrate` at all, and a diagnostic reachable only through the subsystem under diagnosis is not a diagnostic.
+
+Three properties are load-bearing:
+
+- **No shared failure domain.** Mapping registers the route with the availability gate's exemption set (`WhizbangAvailabilityExemptions`), so the endpoint answers *during* the migration it reports on — on whatever route the host chose. A startup endpoint that cannot answer until startup finishes is worthless precisely when it is wanted. One caution stays with the host: the authentication in front of it must not resolve roles from the database, or it blocks on the very migration the endpoint exists to report.
+- **Terse by default.** The default projection is entirely framework-authored content. `reason` strings originate in exception messages — schema names, constraint names, raw driver text — and are a separate opt-in (`includeReasons: true`), not a verbosity dial.
+- **Honest degradation.** Before the pipeline has begun the response says `started: false` — never an empty step list, because an empty run and a run that has not begun are different facts. The fleet section states *why* it is unavailable (no source registered, query failed) — never an empty list, because "no other instances" and "cannot see the other instances" mean opposite things during an incident.
+
 ## Troubleshooting
 
 ### Problem: Workers Never Start Processing
@@ -348,6 +406,12 @@ protected override async Task ExecuteAsync(CancellationToken stoppingToken) {
 ---
 
 ## Further Reading
+
+**The Startup Pipeline**:
+- [The Startup Pipeline](../startup/startup-pipeline) - The declared step sequence the gate now belongs to
+- [Capabilities and Duties](../startup/capabilities-and-duties) - Who runs fleet-exclusive startup work
+- [Rolling Upgrades](../startup/rolling-upgrades) - Assess, the standby handshake, eviction
+- [The Startup Status Surface](../startup/startup-status) - The status endpoint in full
 
 **Related Workers**:
 - [Perspective Worker](perspective-worker.md) - Background perspective processing
