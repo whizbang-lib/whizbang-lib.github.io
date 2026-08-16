@@ -313,6 +313,26 @@ public async Task Worker_WithClosedGate_DoesNotTouchDatabaseAsync() {
 
 ---
 
+## Ready Is More Than the Gate
+
+The schema gate answers one question — is the database migrated. **`IStartupReadySignal`** answers the broader one: is this instance *fully up*. It is a composite, marked by `StartupReadyService` on the `IHostedLifecycleService.StartedAsync` seam — the hook that runs only after every hosted service's `StartAsync` has returned — once two things hold:
+
+1. **The startup pipeline's blocking steps have drained.** The runner announces its resolved plan before the first step executes, and `IStartupPipelineState.IsReady` becomes true when every planned *blocking* step reaches a terminal outcome without failure. Non-blocking steps live in the post-ready band and never gate it. A failed blocking step keeps readiness pending forever — the same fail-closed posture as the gate itself.
+2. **Every registered `IStartupReadinessContributor` has answered.** The transport consumer workers contribute their `SubscriptionsReady` signal — a fact that existed before but nothing consumed — so "ready" now includes "actually subscribed", not merely "the workers started".
+
+Programmatic consumers wait on it the same way workers wait on the gate:
+
+```csharp{title="Waiting on the composite" description="IStartupReadySignal completes when the instance is fully up" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Readiness", "Startup"]}
+public sealed class AfterStartupWork(IStartupReadySignal ready) : BackgroundService {
+  protected override async Task ExecuteAsync(CancellationToken stoppingToken) {
+    await ready.WaitForReadyAsync(stoppingToken);
+    // every blocking startup step drained, every transport subscribed
+  }
+}
+```
+
+For health, `ComponentState.Ready` sits between `Migrating` and `Operational` — distinct so a probe can tell "the schema is ready" from "the pipeline drained" — and is Healthy on readiness under **both** built-in policies, since Ready is precisely the state `HealthPolicy.Strict` holds a pod out of rotation waiting for.
+
 ## Troubleshooting
 
 ### Problem: Workers Never Start Processing
