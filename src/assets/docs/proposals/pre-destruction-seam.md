@@ -155,6 +155,13 @@ Exact counts land precisely where retention decisions are made — settled strea
 
 What the graph buys back for retention closes the loop: **terminal-path detection** (event types nothing ever follows) turns group-membership candidate selection from hand-picking perspectives into a data-derived decision; **path archetypes** ("completed-saga shape", "import residue", "stalled mid-pattern") let retention policy attach to a shape instead of a table; and a stalled-mid-pattern stream is an *anomaly to surface*, not residue to delete — the same graph that justifies deletion also protects against it.
 
+**Serving the view.** The flow view is not only a maintenance input — it is queried *interactively*: by the VS Code extension during local development (an anchored flow visual of the apply stacks, in the Application Insights style) and against deployed environments over an exposed API. The query surface therefore ships as a first-class, opt-in facility with the same enablement shape as the service-status endpoint:
+
+- **One query contract in core** — anchored ±N view, signature listing, stream drill-in — returning aggregates, path signatures, and event-type names only, never event payloads.
+- **Thin host adapters** expose it over the host's preferred stack: raw ASP.NET minimal-API mapping (the zero-dependency default), FastEndpoints, or Hot Chocolate — adapter packages, so no HTTP framework leaks into core and AOT stays clean.
+- **Disabled by default.** Enabling it in a deployed environment is an explicit choice with the host's own auth in front, and results are scope-filtered — a tenant-scoped caller sees only its own shapes.
+- **The extension is environment-configured** — named environments with URLs — and its *local* mode may connect to the local API, query the dev database directly, or read an offline cache of a previous result. All four transports (env API, local API, direct DB, cache) speak the same contract shape, so the query contract defines the result model once and every consumer renders the same graph.
+
 ## Why one seam and not three features
 
 Because they are one moment. The guard, the coherent sweep, and the fold all need "the set about to be destroyed, before it is destroyed, off the hot path" — and the framework has already built that moment twice (reap-driven snapshots, ephemeral destruction hooks), each time as a one-off. A third, fourth, and fifth one-off would each re-answer batching, failure policy, ordering, and opt-in registration slightly differently. The seam answers them once:
@@ -182,10 +189,11 @@ Because they are one moment. The guard, the coherent sweep, and the fold all nee
 
 ## Build sequence
 
-1. **The flow view, read-only** — the on-demand path query over pointers (no fold, no seam, no schema). Immediately useful for understanding stream makeup, and validates the signature/RLE design against real data before anything persists.
-2. **The seam contract** — generalize the two existing pre-steps (snapshot step, ephemeral hooks) onto collect → guards → observers → destroy, behavior-preserving. The row sweeps gain their collect queries.
-3. **The row guard** (consumer 1) — unblocks retention on blob-referencing perspectives. Smallest consumer, highest immediate value.
-4. **The signature fold** (consumer 3, persistent half) — settled-stream folding + fold-before-discard observers on the sweeps that destroy pointers.
-5. **Stream groups** (consumer 2) — the `[StreamGroup]` attribute + membership dials, the closure at collect, the staged rebuild (fold → barrier → evict → swap) with the presence pass, and the analyzer checks; candidate groups informed by the now-existing flow data.
+1. **The flow view, read-only** — the on-demand path query over pointers (no fold, no seam, no schema). Immediately useful for understanding stream makeup, validates the signature/RLE design against real data before anything persists, and defines the query contract every serving transport reuses.
+2. **The apply-stack API** — the opt-in host adapters (raw ASP.NET / FastEndpoints / Hot Chocolate) over the step-1 contract, service-status-style enablement; the VS Code extension consumes the same surface (env URL, local API, direct DB, or offline cache). Needs only step 1.
+3. **The seam contract** — generalize the two existing pre-steps (snapshot step, ephemeral hooks) onto collect → guards → observers → destroy, behavior-preserving. The row sweeps gain their collect queries.
+4. **The row guard** (consumer 1) — unblocks retention on blob-referencing perspectives. Smallest consumer, highest immediate value.
+5. **The signature fold** (consumer 3, persistent half) — settled-stream folding + fold-before-discard observers on the sweeps that destroy pointers.
+6. **Stream groups** (consumer 2) — the `[StreamGroup]` attribute + membership dials, the closure at collect, the staged rebuild (fold → barrier → evict → swap) with the presence pass, and the analyzer checks; candidate groups informed by the now-existing flow data.
 
 Step 1 ships value with zero risk; each later step consumes the ones before it. Every step lands docs-first with strict TDD — its regression locks written RED before the mechanism exists — and with `<docs>`/`<tests>` linking plus regenerated code↔docs↔tests maps, so the docs, the code, and the invariant tests stay navigable from each other.
