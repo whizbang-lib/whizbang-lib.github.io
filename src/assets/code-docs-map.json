@@ -171,19 +171,19 @@
     "file": "src/Whizbang.Transports.HotChocolate/Extensions/HotChocolateStartupStatusExtensions.cs",
     "line": 16,
     "symbol": "WhizbangStartupStatusGraphOptions",
-    "docs": "proposals/startup-pipeline#status"
+    "docs": "operations/startup/startup-status"
   },
   "WhizbangStartupQueries": {
     "file": "src/Whizbang.Transports.HotChocolate/Extensions/HotChocolateStartupStatusExtensions.cs",
     "line": 30,
     "symbol": "WhizbangStartupQueries",
-    "docs": "proposals/startup-pipeline#status"
+    "docs": "operations/startup/startup-status"
   },
   "HotChocolateStartupStatusExtensions": {
     "file": "src/Whizbang.Transports.HotChocolate/Extensions/HotChocolateStartupStatusExtensions.cs",
     "line": 51,
     "symbol": "HotChocolateStartupStatusExtensions",
-    "docs": "proposals/startup-pipeline#status"
+    "docs": "operations/startup/startup-status"
   },
   "PolymorphicTypeExtensions": {
     "file": "src/Whizbang.Transports.HotChocolate/Extensions/PolymorphicTypeExtensions.cs",
@@ -213,7 +213,7 @@
     "file": "src/Whizbang.Transports.FastEndpoints/Endpoints/WhizbangStartupStatusEndpointBase.cs",
     "line": 28,
     "symbol": "StartupStatusEndpoint",
-    "docs": "proposals/startup-pipeline#status"
+    "docs": "operations/startup/startup-status"
   },
   "AsbMessageHeaderReader": {
     "file": "src/Whizbang.Transports.AzureServiceBus/AsbMessageHeaderReader.cs",
@@ -519,7 +519,7 @@
     "file": "src/Whizbang.Hosting.AspNet/StartupStatusEndpoints.cs",
     "line": 56,
     "symbol": "StartupStatusEndpoints",
-    "docs": "proposals/startup-pipeline#status"
+    "docs": "operations/startup/startup-status"
   },
   "WhizbangAvailabilityExemptions": {
     "file": "src/Whizbang.Hosting.AspNet/WhizbangAvailabilityExemptions.cs",
@@ -879,7 +879,7 @@
     "file": "src/Whizbang.Data.Postgres/DutyLockKey.cs",
     "line": 10,
     "symbol": "DutyLockKey",
-    "docs": "proposals/startup-pipeline#capabilities"
+    "docs": "operations/startup/capabilities-and-duties"
   },
   "MigrationObjectSet": {
     "file": "src/Whizbang.Data.Postgres/MigrationObjectExtractor.cs",
@@ -1005,7 +1005,7 @@
     "file": "src/Whizbang.Data.Postgres/Notifications/PgDutyElector.cs",
     "line": 33,
     "symbol": "PgDutyElector",
-    "docs": "proposals/startup-pipeline#capabilities"
+    "docs": "operations/startup/capabilities-and-duties"
   },
   "PgInstanceLifecycleMonitor": {
     "file": "src/Whizbang.Data.Postgres/Notifications/PgInstanceLifecycleMonitor.cs",
@@ -1233,13 +1233,13 @@
     "file": "src/Whizbang.Data.EFCore.Postgres/EFCorePostgresStartupAssessor.cs",
     "line": 26,
     "symbol": "EFCorePostgresStartupAssessor",
-    "docs": "proposals/startup-pipeline#assess"
+    "docs": "operations/startup/rolling-upgrades#assess"
   },
   "EFCorePostgresStartupFleetStatusSource": {
     "file": "src/Whizbang.Data.EFCore.Postgres/EFCorePostgresStartupFleetStatusSource.cs",
     "line": 16,
     "symbol": "EFCorePostgresStartupFleetStatusSource",
-    "docs": "proposals/startup-pipeline#status"
+    "docs": "operations/startup/startup-status"
   },
   "IntegrityCheckpointReceptor": {
     "file": "src/Whizbang.Data.EFCore.Postgres/IntegrityCheckpointReceptor.cs",
@@ -2391,31 +2391,31 @@
     "file": "src/Whizbang.Core/Workers/ReadModelsReadyDriver.cs",
     "line": 21,
     "symbol": "ReadModelsReadyDriver",
-    "docs": "proposals/startup-pipeline#seams"
+    "docs": "operations/startup/startup-pipeline#seams"
   },
   "WhizbangNotReadyException": {
     "file": "src/Whizbang.Core/Workers/ReadModelsReadyGate.cs",
     "line": 12,
     "symbol": "WhizbangNotReadyException",
-    "docs": "proposals/startup-pipeline#seams"
+    "docs": "operations/startup/startup-pipeline#seams"
   },
   "IReadModelsReadyGate": {
     "file": "src/Whizbang.Core/Workers/ReadModelsReadyGate.cs",
     "line": 30,
     "symbol": "IReadModelsReadyGate",
-    "docs": "proposals/startup-pipeline#seams"
+    "docs": "operations/startup/startup-pipeline#seams"
   },
   "ReadModelsReadyGate": {
     "file": "src/Whizbang.Core/Workers/ReadModelsReadyGate.cs",
     "line": 43,
     "symbol": "ReadModelsReadyGate",
-    "docs": "proposals/startup-pipeline#seams"
+    "docs": "operations/startup/startup-pipeline#seams"
   },
   "ReadModelsGuard": {
     "file": "src/Whizbang.Core/Workers/ReadModelsReadyGate.cs",
     "line": 64,
     "symbol": "ReadModelsGuard",
-    "docs": "proposals/startup-pipeline#seams"
+    "docs": "operations/startup/startup-pipeline#seams"
   },
   "RecentlyProcessedEventCache": {
     "file": "src/Whizbang.Core/Workers/RecentlyProcessedEventCache.cs",
@@ -3063,271 +3063,271 @@
     "file": "src/Whizbang.Core/Startup/AssessStartupStep.cs",
     "line": 9,
     "symbol": "StartupVerdict",
-    "docs": "proposals/startup-pipeline#assess"
+    "docs": "operations/startup/rolling-upgrades#assess"
   },
   "StartupAssessment": {
     "file": "src/Whizbang.Core/Startup/AssessStartupStep.cs",
     "line": 26,
     "symbol": "StartupAssessment",
-    "docs": "proposals/startup-pipeline#assess"
+    "docs": "operations/startup/rolling-upgrades#assess"
   },
   "IStartupAssessor": {
     "file": "src/Whizbang.Core/Startup/AssessStartupStep.cs",
     "line": 34,
     "symbol": "IStartupAssessor",
-    "docs": "proposals/startup-pipeline#assess"
+    "docs": "operations/startup/rolling-upgrades#assess"
   },
   "AssessStartupStep": {
     "file": "src/Whizbang.Core/Startup/AssessStartupStep.cs",
     "line": 62,
     "symbol": "AssessStartupStep",
-    "docs": "proposals/startup-pipeline#assess"
+    "docs": "operations/startup/rolling-upgrades#assess"
   },
   "LoggingStartupStepObserver": {
     "file": "src/Whizbang.Core/Startup/BuiltInStartupObservers.cs",
     "line": 16,
     "symbol": "LoggingStartupStepObserver",
-    "docs": "proposals/startup-pipeline#hooks"
+    "docs": "operations/startup/startup-pipeline#hooks"
   },
   "MetricsStartupStepObserver": {
     "file": "src/Whizbang.Core/Startup/BuiltInStartupObservers.cs",
     "line": 77,
     "symbol": "MetricsStartupStepObserver",
-    "docs": "proposals/startup-pipeline#hooks"
+    "docs": "operations/startup/startup-pipeline#hooks"
   },
   "StartupDuties": {
     "file": "src/Whizbang.Core/Startup/IDutyElector.cs",
     "line": 8,
     "symbol": "StartupDuties",
-    "docs": "proposals/startup-pipeline#capabilities"
+    "docs": "operations/startup/capabilities-and-duties"
   },
   "IDutyGrant": {
     "file": "src/Whizbang.Core/Startup/IDutyElector.cs",
     "line": 22,
     "symbol": "IDutyGrant",
-    "docs": "proposals/startup-pipeline#capabilities"
+    "docs": "operations/startup/capabilities-and-duties"
   },
   "IDutyElector": {
     "file": "src/Whizbang.Core/Startup/IDutyElector.cs",
     "line": 52,
     "symbol": "IDutyElector",
-    "docs": "proposals/startup-pipeline#capabilities"
+    "docs": "operations/startup/capabilities-and-duties"
   },
   "StartupStepContext": {
     "file": "src/Whizbang.Core/Startup/IStartupStepObserver.cs",
     "line": 10,
     "symbol": "StartupStepContext",
-    "docs": "proposals/startup-pipeline#hooks"
+    "docs": "operations/startup/startup-pipeline#hooks"
   },
   "StartupRunPlan": {
     "file": "src/Whizbang.Core/Startup/IStartupStepObserver.cs",
     "line": 19,
     "symbol": "StartupRunPlan",
-    "docs": "proposals/startup-pipeline#hooks"
+    "docs": "operations/startup/startup-pipeline#hooks"
   },
   "StartupSummary": {
     "file": "src/Whizbang.Core/Startup/IStartupStepObserver.cs",
     "line": 24,
     "symbol": "StartupSummary",
-    "docs": "proposals/startup-pipeline#hooks"
+    "docs": "operations/startup/startup-pipeline#hooks"
   },
   "IStartupStepObserver": {
     "file": "src/Whizbang.Core/Startup/IStartupStepObserver.cs",
     "line": 39,
     "symbol": "IStartupStepObserver",
-    "docs": "proposals/startup-pipeline#hooks"
+    "docs": "operations/startup/startup-pipeline#hooks"
   },
   "StandbyHandshake": {
     "file": "src/Whizbang.Core/Startup/StandbyHandshake.cs",
     "line": 20,
     "symbol": "StandbyHandshake",
-    "docs": "proposals/startup-pipeline#handshake"
+    "docs": "operations/startup/rolling-upgrades#the-standby-handshake"
   },
   "StandbyWatcherOptions": {
     "file": "src/Whizbang.Core/Startup/StandbyWatcher.cs",
     "line": 16,
     "symbol": "StandbyWatcherOptions",
-    "docs": "proposals/startup-pipeline#handshake"
+    "docs": "operations/startup/rolling-upgrades#the-standby-handshake"
   },
   "StandbyWatcher": {
     "file": "src/Whizbang.Core/Startup/StandbyWatcher.cs",
     "line": 54,
     "symbol": "StandbyWatcher",
-    "docs": "proposals/startup-pipeline#handshake"
+    "docs": "operations/startup/rolling-upgrades#the-standby-handshake"
   },
   "FleetStatusReport": {
     "file": "src/Whizbang.Core/Startup/StartupFleetStatus.cs",
     "line": 39,
     "symbol": "FleetStatusReport",
-    "docs": "proposals/startup-pipeline#status"
+    "docs": "operations/startup/startup-status"
   },
   "IStartupFleetStatusSource": {
     "file": "src/Whizbang.Core/Startup/StartupFleetStatus.cs",
     "line": 52,
     "symbol": "IStartupFleetStatusSource",
-    "docs": "proposals/startup-pipeline#status"
+    "docs": "operations/startup/startup-status"
   },
   "FrameworkStartupSteps": {
     "file": "src/Whizbang.Core/Startup/StartupPipelineHosting.cs",
     "line": 14,
     "symbol": "FrameworkStartupSteps",
-    "docs": "proposals/startup-pipeline"
+    "docs": "operations/startup/startup-pipeline"
   },
   "MigrateStartupStep": {
     "file": "src/Whizbang.Core/Startup/StartupPipelineHosting.cs",
     "line": 34,
     "symbol": "MigrateStartupStep",
-    "docs": "proposals/startup-pipeline"
+    "docs": "operations/startup/startup-pipeline"
   },
   "StartupPipelineWorker": {
     "file": "src/Whizbang.Core/Startup/StartupPipelineHosting.cs",
     "line": 66,
     "symbol": "StartupPipelineWorker",
-    "docs": "proposals/startup-pipeline"
+    "docs": "operations/startup/startup-pipeline"
   },
   "StartupStepOutcome": {
     "file": "src/Whizbang.Core/Startup/StartupPipelineRunner.cs",
     "line": 16,
     "symbol": "StartupStepOutcome",
-    "docs": "proposals/startup-pipeline"
+    "docs": "operations/startup/startup-pipeline"
   },
   "StartupStepResult": {
     "file": "src/Whizbang.Core/Startup/StartupPipelineRunner.cs",
     "line": 46,
     "symbol": "StartupStepResult",
-    "docs": "proposals/startup-pipeline"
+    "docs": "operations/startup/startup-pipeline"
   },
   "IStartupStep": {
     "file": "src/Whizbang.Core/Startup/StartupPipelineRunner.cs",
     "line": 57,
     "symbol": "IStartupStep",
-    "docs": "proposals/startup-pipeline"
+    "docs": "operations/startup/startup-pipeline"
   },
   "StartupPipelineRunner": {
     "file": "src/Whizbang.Core/Startup/StartupPipelineRunner.cs",
     "line": 85,
     "symbol": "StartupPipelineRunner",
-    "docs": "proposals/startup-pipeline"
+    "docs": "operations/startup/startup-pipeline"
   },
   "StartupStepStatus": {
     "file": "src/Whizbang.Core/Startup/StartupPipelineState.cs",
     "line": 10,
     "symbol": "StartupStepStatus",
-    "docs": "proposals/startup-pipeline#hooks"
+    "docs": "operations/startup/startup-pipeline#hooks"
   },
   "StartupStepSnapshot": {
     "file": "src/Whizbang.Core/Startup/StartupPipelineState.cs",
     "line": 33,
     "symbol": "StartupStepSnapshot",
-    "docs": "proposals/startup-pipeline#status"
+    "docs": "operations/startup/startup-status"
   },
   "IStartupPipelineState": {
     "file": "src/Whizbang.Core/Startup/StartupPipelineState.cs",
     "line": 43,
     "symbol": "IStartupPipelineState",
-    "docs": "proposals/startup-pipeline#hooks"
+    "docs": "operations/startup/startup-pipeline#hooks"
   },
   "StartupPipelineState": {
     "file": "src/Whizbang.Core/Startup/StartupPipelineState.cs",
     "line": 99,
     "symbol": "StartupPipelineState",
-    "docs": "proposals/startup-pipeline#hooks"
+    "docs": "operations/startup/startup-pipeline#hooks"
   },
   "IStartupReadinessContributor": {
     "file": "src/Whizbang.Core/Startup/StartupReadiness.cs",
     "line": 17,
     "symbol": "IStartupReadinessContributor",
-    "docs": "proposals/startup-pipeline"
+    "docs": "operations/startup/startup-pipeline"
   },
   "IStartupReadySignal": {
     "file": "src/Whizbang.Core/Startup/StartupReadiness.cs",
     "line": 32,
     "symbol": "IStartupReadySignal",
-    "docs": "proposals/startup-pipeline"
+    "docs": "operations/startup/startup-pipeline"
   },
   "StartupReadySignal": {
     "file": "src/Whizbang.Core/Startup/StartupReadiness.cs",
     "line": 43,
     "symbol": "StartupReadySignal",
-    "docs": "proposals/startup-pipeline"
+    "docs": "operations/startup/startup-pipeline"
   },
   "StartupReadyService": {
     "file": "src/Whizbang.Core/Startup/StartupReadiness.cs",
     "line": 79,
     "symbol": "StartupReadyService",
-    "docs": "proposals/startup-pipeline"
+    "docs": "operations/startup/startup-pipeline"
   },
   "StartupStatusReport": {
     "file": "src/Whizbang.Core/Startup/StartupStatusReport.cs",
     "line": 16,
     "symbol": "StartupStatusReport",
-    "docs": "proposals/startup-pipeline#status"
+    "docs": "operations/startup/startup-status"
   },
   "InstanceStatusSection": {
     "file": "src/Whizbang.Core/Startup/StartupStatusReport.cs",
     "line": 28,
     "symbol": "InstanceStatusSection",
-    "docs": "proposals/startup-pipeline#status"
+    "docs": "operations/startup/startup-status"
   },
   "StepStatusEntry": {
     "file": "src/Whizbang.Core/Startup/StartupStatusReport.cs",
     "line": 40,
     "symbol": "StepStatusEntry",
-    "docs": "proposals/startup-pipeline#status"
+    "docs": "operations/startup/startup-status"
   },
   "FleetStatusSection": {
     "file": "src/Whizbang.Core/Startup/StartupStatusReport.cs",
     "line": 49,
     "symbol": "FleetStatusSection",
-    "docs": "proposals/startup-pipeline#status"
+    "docs": "operations/startup/startup-status"
   },
   "FleetStatusEntry": {
     "file": "src/Whizbang.Core/Startup/StartupStatusReport.cs",
     "line": 59,
     "symbol": "FleetStatusEntry",
-    "docs": "proposals/startup-pipeline#status"
+    "docs": "operations/startup/startup-status"
   },
   "StartupStatusReporter": {
     "file": "src/Whizbang.Core/Startup/StartupStatusReport.cs",
     "line": 75,
     "symbol": "StartupStatusReporter",
-    "docs": "proposals/startup-pipeline#status"
+    "docs": "operations/startup/startup-status"
   },
   "StartupCapabilities": {
     "file": "src/Whizbang.Core/Startup/StartupStepDescriptor.cs",
     "line": 16,
     "symbol": "StartupCapabilities",
-    "docs": "proposals/startup-pipeline"
+    "docs": "operations/startup/startup-pipeline"
   },
   "NonHolderBehavior": {
     "file": "src/Whizbang.Core/Startup/StartupStepDescriptor.cs",
     "line": 30,
     "symbol": "NonHolderBehavior",
-    "docs": "proposals/startup-pipeline"
+    "docs": "operations/startup/startup-pipeline"
   },
   "StartupStepDescriptor": {
     "file": "src/Whizbang.Core/Startup/StartupStepDescriptor.cs",
     "line": 62,
     "symbol": "StartupStepDescriptor",
-    "docs": "proposals/startup-pipeline"
+    "docs": "operations/startup/startup-pipeline"
   },
   "StartupPipelineConfigurationException": {
     "file": "src/Whizbang.Core/Startup/StartupStepDescriptor.cs",
     "line": 113,
     "symbol": "StartupPipelineConfigurationException",
-    "docs": "proposals/startup-pipeline"
+    "docs": "operations/startup/startup-pipeline"
   },
   "StartupStepOrderResolver": {
     "file": "src/Whizbang.Core/Startup/StartupStepOrderResolver.cs",
     "line": 28,
     "symbol": "StartupStepOrderResolver",
-    "docs": "proposals/startup-pipeline"
+    "docs": "operations/startup/startup-pipeline"
   },
   "TableRewriteStartupStep": {
     "file": "src/Whizbang.Core/Startup/TableRewriteStartupStep.cs",
     "line": 30,
     "symbol": "TableRewriteStartupStep",
-    "docs": "proposals/startup-pipeline#capabilities"
+    "docs": "operations/startup/capabilities-and-duties"
   },
   "BasePollSignalSource": {
     "file": "src/Whizbang.Core/Signals/BasePollSignalSource.cs",
@@ -3705,7 +3705,7 @@
     "file": "src/Whizbang.Core/RunControl/InstanceStateRunControl.cs",
     "line": 29,
     "symbol": "InstanceStateRunControl",
-    "docs": "proposals/startup-pipeline#capabilities"
+    "docs": "operations/startup/capabilities-and-duties"
   },
   "LifecycleAckTimeoutException": {
     "file": "src/Whizbang.Core/RunControl/LifecycleAckTimeoutException.cs",
@@ -4695,13 +4695,13 @@
     "file": "src/Whizbang.Core/Observability/LibraryVersion.cs",
     "line": 10,
     "symbol": "ILibraryVersionProvider",
-    "docs": "proposals/startup-pipeline#capabilities"
+    "docs": "operations/startup/capabilities-and-duties"
   },
   "LibraryVersionProvider": {
     "file": "src/Whizbang.Core/Observability/LibraryVersion.cs",
     "line": 17,
     "symbol": "LibraryVersionProvider",
-    "docs": "proposals/startup-pipeline#capabilities"
+    "docs": "operations/startup/capabilities-and-duties"
   },
   "LifecycleCoordinatorMetrics": {
     "file": "src/Whizbang.Core/Observability/LifecycleCoordinatorMetrics.cs",
@@ -4785,7 +4785,7 @@
     "file": "src/Whizbang.Core/Observability/StartupPipelineMetrics.cs",
     "line": 22,
     "symbol": "StartupPipelineMetrics",
-    "docs": "proposals/startup-pipeline#hooks"
+    "docs": "operations/startup/startup-pipeline#hooks"
   },
   "StreamIntegrityMetrics": {
     "file": "src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs",
@@ -6015,7 +6015,7 @@
     "file": "src/Whizbang.Core/Messaging/StandbyRequest.cs",
     "line": 18,
     "symbol": "StandbyRequest",
-    "docs": "proposals/startup-pipeline#handshake"
+    "docs": "operations/startup/rolling-upgrades#the-standby-handshake"
   },
   "StreamAffinityWorkCoordinatorStrategy": {
     "file": "src/Whizbang.Core/Messaging/StreamAffinityWorkCoordinatorStrategy.cs",
@@ -6303,7 +6303,7 @@
     "file": "src/Whizbang.Core/Health/StartupPipelineHealthSource.cs",
     "line": 29,
     "symbol": "StartupPipelineHealthSource",
-    "docs": "proposals/startup-pipeline#status"
+    "docs": "operations/startup/startup-status"
   },
   "WhizbangHealthAggregator": {
     "file": "src/Whizbang.Core/Health/WhizbangHealthAggregator.cs",

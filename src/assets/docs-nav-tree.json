@@ -7,7 +7,7 @@
       "pages": [
         {
           "slug": "v1.0.0/README",
-          "title": "Version 0.1.0 - Foundation Release",
+          "title": "Whizbang Documentation",
           "order": 1
         }
       ],
@@ -1368,6 +1368,34 @@
             }
           ],
           "children": []
+        },
+        {
+          "name": "startup",
+          "title": "Startup",
+          "order": 8,
+          "pages": [
+            {
+              "slug": "v1.0.0/operations/startup/startup-pipeline",
+              "title": "The Startup Pipeline",
+              "order": 1
+            },
+            {
+              "slug": "v1.0.0/operations/startup/capabilities-and-duties",
+              "title": "Capabilities and Duties",
+              "order": 2
+            },
+            {
+              "slug": "v1.0.0/operations/startup/rolling-upgrades",
+              "title": "Rolling Upgrades",
+              "order": 3
+            },
+            {
+              "slug": "v1.0.0/operations/startup/startup-status",
+              "title": "The Startup Status Surface",
+              "order": 4
+            }
+          ],
+          "children": []
         }
       ]
     },
@@ -1555,6 +1583,11 @@
               "slug": "v1.0.0/extending/internals/event-ordering-invariant",
               "title": "Event Ordering Invariant",
               "order": 2
+            },
+            {
+              "slug": "v1.0.0/extending/internals/type-name-forms",
+              "title": "Type-Name Forms",
+              "order": 5
             }
           ],
           "children": []
@@ -1656,6 +1689,11 @@
           "slug": "v1.0.0/resilience/managed-resource-run-control",
           "title": "Managed-Resource Run-Control",
           "order": 3
+        },
+        {
+          "slug": "v1.0.0/resilience/stream-integrity",
+          "title": "Stream Integrity",
+          "order": 4
         }
       ],
       "children": []
@@ -2058,6 +2096,56 @@
           "slug": "proposals/managed-resource-health",
           "title": "Managed-Resource Control Plane — Lifecycle, Run-Control & Health",
           "order": 27
+        },
+        {
+          "slug": "proposals/migration-ledger-redefinition-closure",
+          "title": "Migration Ledger — Redefinition Closure",
+          "order": 27
+        },
+        {
+          "slug": "proposals/turnkey-configuration-binding",
+          "title": "Turnkey Configuration Binding",
+          "order": 27
+        },
+        {
+          "slug": "proposals/fleet-startup-orchestration",
+          "title": "Fleet Startup Orchestration",
+          "order": 28
+        },
+        {
+          "slug": "proposals/paced-repair-drain",
+          "title": "Paced Repair Drain (Discovery/Dispatch Separation)",
+          "order": 28
+        },
+        {
+          "slug": "proposals/periodic-task-scheduler",
+          "title": "Periodic Task Scheduler",
+          "order": 29
+        },
+        {
+          "slug": "proposals/bounded-integrity-reconciliation",
+          "title": "Bounded Integrity Reconciliation (Epoch Seals & Deficit Exchange)",
+          "order": 30
+        },
+        {
+          "slug": "proposals/perspective-row-retention",
+          "title": "Perspective Row Retention (RowTtl)",
+          "order": 31
+        },
+        {
+          "slug": "proposals/startup-pipeline",
+          "title": "The Startup Pipeline",
+          "order": 31
+        },
+        {
+          "slug": "proposals/perspective-ttl-backfill",
+          "title": "Perspective TTL Backfill",
+          "order": 32
+        },
+        {
+          "slug": "proposals/bitemporal-perspective-rows",
+          "title": "Bitemporal Perspective Rows",
+          "order": 33
         }
       ],
       "children": []

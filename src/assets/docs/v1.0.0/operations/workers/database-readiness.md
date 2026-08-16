@@ -346,7 +346,7 @@ The two seams project onto the lifecycle ladder as a phase of their own: `Lifecy
 
 ## The Startup Status Surface
 
-The question people ask during a slow boot is *"what is it doing right now?"* — and the pipeline can answer it over the host's own API surface. The surface is **opt-in** (publishing internal state is the host's decision, not a package reference's) and one call mounts it:
+The question people ask during a slow boot is *"what is it doing right now?"* — and the pipeline can answer it over the host's own API surface. [The Startup Status Surface](../startup/startup-status) is the full reference; in short, the surface is **opt-in** (publishing internal state is the host's decision, not a package reference's) and one call mounts it:
 
 ```csharp{title="Mounting the status endpoint" description="Opt-in, overridable route, host auth chains" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Startup", "Status"]}
 app.MapWhizbangStartupStatus();                              // GET /whizbang/startup
@@ -406,6 +406,12 @@ protected override async Task ExecuteAsync(CancellationToken stoppingToken) {
 ---
 
 ## Further Reading
+
+**The Startup Pipeline**:
+- [The Startup Pipeline](../startup/startup-pipeline) - The declared step sequence the gate now belongs to
+- [Capabilities and Duties](../startup/capabilities-and-duties) - Who runs fleet-exclusive startup work
+- [Rolling Upgrades](../startup/rolling-upgrades) - Assess, the standby handshake, eviction
+- [The Startup Status Surface](../startup/startup-status) - The status endpoint in full
 
 **Related Workers**:
 - [Perspective Worker](perspective-worker.md) - Background perspective processing

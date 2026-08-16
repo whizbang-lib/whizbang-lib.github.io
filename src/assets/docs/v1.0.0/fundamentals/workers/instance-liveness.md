@@ -137,5 +137,7 @@ After deploy + restart, the heartbeat UPDATE call count in `pg_stat_statements` 
 
 ## Related
 
+- [Capabilities and Duties](/v1.0.0/operations/startup/capabilities-and-duties) — election over the same session-lock machinery; holdings ride the liveness rails.
+- [Rolling Upgrades](/v1.0.0/operations/startup/rolling-upgrades) — the standby handshake and eviction in the deployment story.
 - [Pinned connection pool](./pinned-connection-pool.md) — also uses direct conn(s); future work may add a per-pinned-conn lock for redundancy.
 - [Worker classification](./worker-classification.md) — HeartbeatWorker is classified `E` (timed) with an adaptive twist.

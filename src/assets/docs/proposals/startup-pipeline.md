@@ -11,8 +11,8 @@ Whizbang has startup *stages* but no startup *pipeline*. The lifecycle phases re
 
 This proposal makes startup an explicit, ordered, individually-controllable sequence of declared steps — so that "run this after that", "run this on exactly one instance", and "run this last" become things the framework can express instead of things a comment claims.
 
-:::planned
-Proposed capability, unreleased. It is the sibling of [Fleet Startup Orchestration](fleet-startup-orchestration), which answers *which instance* does startup work. This one answers *in what order, under what control, and how do we know it finished*. Both build on machinery that already exists — the schema-ready gate, the lifecycle phase machine, the `wh_settings` compare-and-swap watermark.
+:::updated
+**Implemented — shipped in v1.0.0.** This document is preserved as the design record; the official documentation lives under [The Startup Pipeline](/v1.0.0/operations/startup/startup-pipeline), [Capabilities and Duties](/v1.0.0/operations/startup/capabilities-and-duties), [Rolling Upgrades](/v1.0.0/operations/startup/rolling-upgrades) and [The Startup Status Surface](/v1.0.0/operations/startup/startup-status), with the seams and Ready composite in [Database Readiness](/v1.0.0/operations/workers/database-readiness) and the lifecycle ladder in [Managed-Resource Run Control](/v1.0.0/resilience/managed-resource-run-control). It is the sibling of [Fleet Startup Orchestration](fleet-startup-orchestration), which answers *which instance* does startup work; this one answers *in what order, under what control, and how do we know it finished*.
 :::
 
 ## Current state
