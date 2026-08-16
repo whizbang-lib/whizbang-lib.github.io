@@ -333,6 +333,24 @@ public sealed class AfterStartupWork(IStartupReadySignal ready) : BackgroundServ
 
 For health, `ComponentState.Ready` sits between `Migrating` and `Operational` — distinct so a probe can tell "the schema is ready" from "the pipeline drained" — and is Healthy on readiness under **both** built-in policies, since Ready is precisely the state `HealthPolicy.Strict` holds a pod out of rotation waiting for.
 
+## The Startup Status Surface
+
+The question people ask during a slow boot is *"what is it doing right now?"* — and the pipeline can answer it over the host's own API surface. The surface is **opt-in** (publishing internal state is the host's decision, not a package reference's) and one call mounts it:
+
+```csharp{title="Mounting the status endpoint" description="Opt-in, overridable route, host auth chains" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Startup", "Status"]}
+app.MapWhizbangStartupStatus();                              // GET /whizbang/startup
+app.MapWhizbangStartupStatus("/ops/boot")                    // or wherever the host prefers
+   .RequireAuthorization("ops");                             // inherits host auth — the framework adds none
+```
+
+The response has **two sections**, because the endpoint gets reached two ways. `instance` is the process that answered — current step, the ordered step list with outcome and duration, pipeline readiness and the composite `ready` — read from memory, exact and current. `fleet` is every live instance from `wh_service_instances`, each row carrying its own heartbeat age, supplied by the storage driver through `IStartupFleetStatusSource`.
+
+Three properties are load-bearing:
+
+- **No shared failure domain.** Mapping registers the route with the availability gate's exemption set (`WhizbangAvailabilityExemptions`), so the endpoint answers *during* the migration it reports on — on whatever route the host chose. A startup endpoint that cannot answer until startup finishes is worthless precisely when it is wanted. One caution stays with the host: the authentication in front of it must not resolve roles from the database, or it blocks on the very migration the endpoint exists to report.
+- **Terse by default.** The default projection is entirely framework-authored content. `reason` strings originate in exception messages — schema names, constraint names, raw driver text — and are a separate opt-in (`includeReasons: true`), not a verbosity dial.
+- **Honest degradation.** Before the pipeline has begun the response says `started: false` — never an empty step list, because an empty run and a run that has not begun are different facts. The fleet section states *why* it is unavailable (no source registered, query failed) — never an empty list, because "no other instances" and "cannot see the other instances" mean opposite things during an incident.
+
 ## Troubleshooting
 
 ### Problem: Workers Never Start Processing
