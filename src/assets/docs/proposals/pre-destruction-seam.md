@@ -2,7 +2,7 @@
 title: The Pre-Destruction Seam
 category: Architecture & Design
 order: 34
-tags: retention, destruction, hooks, stream-ttl, lineage, apply-stacks, blob-cleanup, maintenance, reaper, sankey, flow-graph
+tags: retention, destruction, hooks, stream-groups, cascade, lineage, apply-stacks, blob-cleanup, maintenance, reaper, rebuild, sankey, flow-graph
 ---
 
 # The Pre-Destruction Seam
@@ -12,7 +12,7 @@ Row retention taught Whizbang to delete things. Rows expire on a sliding window,
 Three otherwise-unrelated features turn out to need exactly that last look, at exactly the same moment:
 
 1. **External-resource cleanup** — a `Download` row references a blob; deleting the row orphans the blob. The blob must be verifiably gone *before* the row is.
-2. **Stream-scoped TTL** — a stream that expires should take every perspective row it owns with it, coherently, in one sweep.
+2. **Coherent group eviction** — when a stream is evicted from one perspective, its rows in declared sibling perspectives should leave in the same sweep, not strand as satellites on independent clocks.
 3. **Apply-stack lineage** — the ordered event path that built each stream is analytical gold, and destruction is the last moment it exists. Fold it into an aggregate on the way out, or lose it.
 
 Rather than three ad-hoc pre-steps, this proposal defines **one seam**: a well-defined moment before every destructive sweep where the about-to-be-destroyed set is offered to registered participants. Two of the framework's existing mechanisms — the reap-driven snapshot step and the ephemeral destruction hooks — are already this pattern, built twice independently. This generalizes what they proved.
@@ -47,7 +47,7 @@ graph TB
 
 **Ordering matters and is fixed**: collect → guards → observers → destroy. Guards before observers, because observers record what *actually* dies.
 
-The seam applies uniformly to all five destructive sweeps: row TTL expiry, cap eviction, ephemeral body reap (already partially hooked), ancient pointer prune, and stream close/TTL. A `Download` row orphans its blob identically whether TTL expired it, a cap evicted it, or its stream died — so a guard registered once must fire on all paths.
+The seam applies uniformly to all five destructive sweeps: row TTL expiry, cap eviction, ephemeral body reap (already partially hooked), ancient pointer prune, and stream close. The group cascade (consumer 2) is deliberately *not* a sixth sweep — it expands the collect set of the row sweeps, so a cascaded row passes through the same guards and observers as the row whose eviction triggered it. A `Download` row orphans its blob identically whether TTL expired it, a cap evicted it, or a group cascaded it — so a guard registered once must fire on all paths.
 
 ## Consumer 1 — external-resource cleanup (the row guard)
 
@@ -61,34 +61,77 @@ With the seam:
 
 `Defer` maps onto the existing per-row `expires_at`: bumping it *is* the hold, zero new schema, and the effective-expiry ladder already honors it. Batched offering (one call per sweep with the whole set) lets a blob guard bulk-delete instead of chattering per row.
 
-## Consumer 2 — stream-scoped TTL (the coherent sweep)
+## Consumer 2 — perspective stream groups (the coherent cascade)
 
-Per-perspective row TTLs age each row on its own clock. A chat stream feeds a dozen perspectives; its rows expire at different times, cap-evicting its list row strands its satellites, and write-once satellite rows (extracted facts serving as per-conversation memory) would vanish from *still-active* conversations under any independent sliding window — their `updated_at` never advances and reads wake nothing. Row TTL is the wrong shape for satellites of a living stream. They should die **with the stream**.
+Per-perspective row TTLs age each row on its own clock. A chat stream feeds a dozen perspectives; cap-evicting its list row strands its satellites — per-conversation machinery rows whose own windows won't expire for weeks — and write-once satellite rows (extracted facts serving as per-conversation memory) would vanish from *still-active* conversations under any independent sliding window, because their `updated_at` never advances and reads wake nothing. Satellites should not age independently at all: they should leave **when the stream leaves the perspectives that decide such things**.
 
-A stream TTL is declared on the **contracts** — an inheritable attribute or profile on the stream's event types, the same mechanism ephemeral profiles use — so it resolves virally to every consuming perspective, including cross-service mirrors that per-perspective attributes only reach today by hand-duplication.
+An earlier draft declared a stream TTL on the event contracts. That locus is deliberately reversed here. Retention duration is an *operational tuning value*, not a semantic property of an event — the same reasoning that keeps TTL out of the type-definition settings hash — and a contract-level declaration forces one policy onto every consuming service, when a BFF mirror may legitimately want a different window than the owning service. Retention already lives on perspective models (`RowTtl`, `RowCap`); coherence belongs beside it. Events keep semantic lifecycle (ephemerality); perspectives keep operational retention. Groups are **service-local** — a mirror in another service declares its own group.
 
-Resolution is event-type-keyed end to end, and every piece already exists:
+**The declaration is a group membership.** A perspective model carries one or more `[StreamGroup("key")]` attributes; same key within a service = one group. Each *membership* — not the perspective — carries three dials:
+
+| Dial | Default | Meaning |
+|---|---|---|
+| `Announce` | on | my **own-origin** evictions (my row TTL, my cap, my explicit purge) are announced to this group |
+| `Follow` | on | when this group announces a stream, my row for it dies too |
+| `Bridge` | **off** | evictions I *received* through another group are re-announced into this one |
+
+The own-origin/received distinction is load-bearing. A perspective in two groups announces its own evictions to both — that is not bridging. Whether an eviction *received* from one group propagates through a shared member into the other is `Bridge`, default off so two groups sharing a member don't silently weld into one transitive deletion graph. A perspective with no membership is untouchable by cascades regardless of what streams it shares — deliberately long-retention perspectives simply don't join.
+
+Concretely, with `g1 = {a, b}`, `g2 = {b, d, e}`, and `c` ungrouped with its own long `RowTtl`:
+
+| Origin eviction of stream S | Effect |
+|---|---|
+| `a` evicts S | `b` follows via g1; `d`, `e` only if `b`'s g2 membership bridges; `c` untouched |
+| `b` evicts S (own TTL/cap) | `a`, `d`, `e` all follow — own-origin announces to both groups, no bridging involved |
+| `d` evicts S | `b`, `e` follow via g2; `a` only if `b`'s g1 membership bridges |
+| `c` evicts S | nothing else — `c` is in no group |
+
+**Decisions, not rules.** An eviction decision is irreducibly local to the perspective that made it: its sliding clock is stamped by *its own* applies (perspectives over the same stream apply different event subsets and hold different last-activity times for the same stream), its cap is a ranking over *its own* rows, its defer state is its own. No sibling can recompute the rule — siblings consume the rule's **outputs**, of which there are exactly two: the eviction *event* (the live cascade) and the surviving *row set* (presence, for rebuilds). Nothing in this design derives an "effective group TTL"; no such thing exists.
+
+**The cascade happens at collect.** Origin evictions come from the existing sweeps, unchanged. The group closure — expanding the evicted `(perspective, stream)` set through memberships honoring the dials, to a fixpoint — is in-memory set arithmetic inserted at the seam's collect phase, so guards see the *complete* coherent set in one offering and cyclic bridged groups converge trivially (each pair enters the set at most once).
 
 ```mermaid
 graph TB
-    Decl["Stream TTL declared on event types<br/>(inheritable profile, like Ephemeral)"]
-    Discover["DISCOVERY: streams of declared types whose<br/>newest pointer's business time < now − ttl<br/>(keep-newest invariant guarantees this is queryable)"]
-    Assoc["STREAM → PERSPECTIVES:<br/>event types → association registry → tables<br/>(the same join the reaper coverage gate uses)"]
-    Sweep["COHERENT SWEEP: DELETE WHERE id = ANY(streams)<br/>per consuming table — rows keyed by stream id"]
-    Gate["consumption-gated across ALL consuming<br/>perspectives; the seam's guards + observers fire"]
+    TTL["row TTL sweep"] --> Origin["origin evictions<br/>(perspective, stream) pairs"]
+    Cap["cap eviction sweep"] --> Origin
+    Origin --> Closure["GROUP CLOSURE at collect<br/>expand through Announce / Follow / Bridge<br/>in-memory, to a fixpoint — cycle-safe"]
+    Closure --> SeamFlow["the seam: guards → observers → destroy<br/>one offering, the complete coherent set"]
 
-    Decl --> Discover --> Assoc --> Sweep
-    Gate --> Sweep
-
-    style Discover fill:#fff3cd,stroke:#ffc107,stroke-width:2px
-    style Sweep fill:#f8d7da,stroke:#dc3545,stroke-width:2px
+    style Closure fill:#fff3cd,stroke:#ffc107,stroke-width:2px
+    style SeamFlow fill:#f8d7da,stroke:#dc3545,stroke-width:2px
 ```
 
-The only new cost is discovery — "streams whose last business activity is past the window" — and it is bounded twice: only streams of *declared* types are ever scanned (the same type-filter trick as the ephemeral reaper's flag test), and the deep-maintenance keep-newest-pointer invariant means max-business-time-per-stream stays queryable forever.
+Guard deferral stays **per-row**: if one member's row defers (its blob delete failed), the rest of the group's rows proceed and coherence converges when the defer retries — the row-outlives-blob invariant is per-row and outranks group atomicity.
 
-**Precedence**: the stream TTL is a *floor* — nothing a stream owns outlives the stream. A per-perspective `[RowTtl]` may only be shorter. Declaring a longer per-row window than the stream's is a contradiction the analyzer should flag.
+**Cascade-only; no group clock.** The group controls *togetherness*, not *whether*. Something must still evict first, so at least one member carries a real evictor — and every member should keep its own backstop `RowTtl`, because a group whose only trigger died via a non-bridged cascade would otherwise linger forever.
 
-**The sweep respects the consumption gate per perspective**: a stream expired for one perspective may still hold unprocessed work items in another; the coherent sweep waits for all of them.
+**The event store is not touched.** This is read-model coherence, not stream death. An evicted stream re-folds everywhere on its next event (resurrection-on-wake) — correct, because activity means alive. Stream death — carry-forward, gated truncate, archive — is the close-the-books machinery, scheduled and explicit; and once a truly-dead stream is closed at the log, rebuilds have nothing left to resurrect. Two tiers, two cadences, same seam.
+
+**Rebuilds are staged.** Cascades are edge-triggered, and that breaks naive rebuilds two ways: rebuilding a follower alone resurrects rows whose eviction event fired long ago and cannot re-fire (the origin rows are gone), and mid-rebuild, absence in a sibling's table is ambiguous — "evicted" vs "not folded yet." Symmetric groups (mutual `Follow`) have no rebuild order that avoids reading a table in flux, so ordering tricks cannot fix this; a barrier does. The rebuild of any grouped perspective gains an explicit eviction stage:
+
+1. **Fold** — every perspective in the rebuild set folds to completion. A perspective may inline-skip streams using rules it *owns* (its own absolute TTL against its own business time); it may never consume a sibling's decision here, because those don't all exist until the barrier.
+2. **Evict** — one seam invocation over settled data: each rebuilt perspective's own evictors run (a cap is unrankable until its fold completes, so caps *require* this stage); origin evictions cascade through the closure; then a **presence anti-join** across group members drops streams no reachable announcer holds, catching decisions that predate the rebuild. Post-barrier absence is unambiguous — every table read is either a completed fold or a live table that was never rebuilding — so partial rebuilds work identically.
+3. **Swap** (blue-green) — eviction already ran against the green tables, so the swap never exposes resurrected dead streams.
+
+Rewind needs nothing: it fires only when an event touches the stream, a touched stream is alive, and resurrection is the correct outcome.
+
+**The purity invariant, scoped.** Each perspective's evictors must be a pure function of *its own* apply history — business time, never wall clock — so its own sweep after a rebuild reproduces its own decisions. Per-perspective self-consistency is all convergence requires; cross-perspective purity is neither required nor possible.
+
+**Analyzer.** Three checks: (1) *drift* — the association registry knows which perspectives share stream-feeding event types, so a perspective sharing them with a group's members while joining no group gets a warning, acknowledged by an explicit isolation marker so "I chose to keep these streams" is distinguishable from "I forgot"; (2) a group with no announcing evictor anywhere is inert, flagged; (3) `Bridge` on a membership in a single-member group is meaningless, flagged.
+
+**Cost.** Perspective rows are keyed by stream id, so collect and destroy are `= ANY(@evicted)` index hits — group-size extra single-row deletes per evicted stream. The closure is in-memory. The presence anti-join is the one operation that scans, and it runs only inside rebuild stage 2, never on the maintenance cadence.
+
+**Regression locks** — the invariants the implementation pins as tests (RED before GREEN, code↔docs↔tests maps regenerated as each lands):
+
+- an own-origin eviction announces to *all* memberships; a received cascade crosses groups only when `Bridge` is set
+- a non-member perspective sharing the same streams is never cascaded
+- cyclic bridged groups converge — fixpoint, no row offered twice
+- guards receive the full closure in one batch; a `Defer` holds that row only and retries to coherence
+- rebuild-then-sweep converges to the identical evicted set (business-time purity, per perspective)
+- a follower rebuilt alone: the presence pass drops streams its announcers evicted before the rebuild
+- an announcer rebuilt alone: its own sweep re-evicts and the cascade no-ops idempotently on absent follower rows
+- blue-green: no evicted stream is visible after swap — the eviction stage precedes it
+- an inline fold-skip derived from a sibling's rule is a bug the tests must catch, not an optimization
 
 ## Consumer 3 — apply-stack lineage (the observer)
 
@@ -105,12 +148,12 @@ The aggregate is a **path-signature table**:
 
 The compute splits on a boundary that happens to be exactly the retention boundary:
 
-- **Settled streams** (terminal type at head, or idle past a window) fold **once** into the signature counts and are never revisited. **Fold-before-discard**: when the pointer prune, a stream close, or the stream TTL is about to destroy a stream's pointers, the observer folds its path first. *The stream dies; its shape survives.*
+- **Settled streams** (terminal type at head, or idle past a window) fold **once** into the signature counts and are never revisited. **Fold-before-discard**: when the pointer prune or a stream close is about to destroy a stream's pointers, the observer folds its path first. *The stream dies; its shape survives.*
 - **Live streams** are queried on demand — the industry approach (the flow-graph tooling this imitates computes at view time over a random sample and extrapolates; its own UI admits the sampling). The live set is recent and small; sample it if it isn't.
 
 Exact counts land precisely where retention decisions are made — settled streams — and approximation only ever touches streams that wouldn't be cleaned yet. Nothing runs on the hot path.
 
-What the graph buys back for retention closes the loop: **terminal-path detection** (event types nothing ever follows) turns stream-TTL candidate selection from hand-picking perspectives into a data-derived decision; **path archetypes** ("completed-saga shape", "import residue", "stalled mid-pattern") let retention policy attach to a shape instead of a table; and a stalled-mid-pattern stream is an *anomaly to surface*, not residue to delete — the same graph that justifies deletion also protects against it.
+What the graph buys back for retention closes the loop: **terminal-path detection** (event types nothing ever follows) turns group-membership candidate selection from hand-picking perspectives into a data-derived decision; **path archetypes** ("completed-saga shape", "import residue", "stalled mid-pattern") let retention policy attach to a shape instead of a table; and a stalled-mid-pattern stream is an *anomaly to surface*, not residue to delete — the same graph that justifies deletion also protects against it.
 
 ## Why one seam and not three features
 
@@ -120,7 +163,7 @@ Because they are one moment. The guard, the coherent sweep, and the fold all nee
 - **Opt-in**, per perspective (guards) or globally registered (observers); non-participants cost nothing
 - **Guards before observers before destruction**, always
 - **Guard failure** → the existing retry-then-policy ladder; **observer failure** → logged, never blocking
-- **All destruction paths**, uniformly — TTL, cap, body reap, pointer prune, stream close/TTL
+- **All destruction paths**, uniformly — TTL, cap, group cascade, body reap, pointer prune, stream close
 
 ## What this is not
 
@@ -131,9 +174,10 @@ Because they are one moment. The guard, the coherent sweep, and the fold all nee
 
 ## Open questions
 
-- **Cap-eviction cascade.** When a capped list row is evicted, is that *stream* eviction (satellites go too) or *row* eviction (today's semantics)? Leaning: a distinct, explicitly-declared stream-eviction behavior — not silently widened cap semantics.
+- **Atomic-group defer.** Default is per-row defer with eventual coherence. Is an opt-in "one defer holds the stream across the whole group" mode worth having for consumers where partial presence is worse than lingering?
+- **Group-level idle clock.** v1 is cascade-only. A later `[StreamGroup("k", IdleTtl = …)]` could evict on group-wide idleness — deferred until a real need, since it reintroduces the "whose clock?" question the dials deliberately avoid.
 - **Observed apply order.** Version order is canonical and free. Actual arrival order (before rewinds converge it) is capturable by folding perspective work items before their purge — worth it as an opt-in second signature kind whose divergence from version order is itself a rewind-health signal?
-- **Adoption gating for stream TTL.** Row retention's acknowledge-before-enforce and backlog preview need stream-scoped equivalents — and the preview could *be* the flow graph.
+- **Adoption gating for groups.** Row retention's acknowledge-before-enforce and backlog preview need group-scoped equivalents — "which streams would cascade, from which origin" — and the preview could *be* the flow graph.
 - **Guard time budget.** A guard doing external I/O (blob deletes) inside the maintenance cycle needs a budget so one slow provider can't stall the whole cycle; deferred work self-heals next cycle either way.
 
 ## Build sequence
@@ -142,6 +186,6 @@ Because they are one moment. The guard, the coherent sweep, and the fold all nee
 2. **The seam contract** — generalize the two existing pre-steps (snapshot step, ephemeral hooks) onto collect → guards → observers → destroy, behavior-preserving. The row sweeps gain their collect queries.
 3. **The row guard** (consumer 1) — unblocks retention on blob-referencing perspectives. Smallest consumer, highest immediate value.
 4. **The signature fold** (consumer 3, persistent half) — settled-stream folding + fold-before-discard observers on the sweeps that destroy pointers.
-5. **Stream TTL** (consumer 2) — declaration, discovery, coherent sweep, riding the now-existing seam; candidate selection informed by the now-existing flow data.
+5. **Stream groups** (consumer 2) — the `[StreamGroup]` attribute + membership dials, the closure at collect, the staged rebuild (fold → barrier → evict → swap) with the presence pass, and the analyzer checks; candidate groups informed by the now-existing flow data.
 
-Step 1 ships value with zero risk; each later step consumes the ones before it.
+Step 1 ships value with zero risk; each later step consumes the ones before it. Every step lands docs-first with strict TDD — its regression locks written RED before the mechanism exists — and with `<docs>`/`<tests>` linking plus regenerated code↔docs↔tests maps, so the docs, the code, and the invariant tests stay navigable from each other.
