@@ -64205,7 +64205,14 @@
       {
         "testFile": "tests/Whizbang.Core.Tests/RunControl/LifecyclePhaseWorkerTests.cs",
         "testMethod": "AdvancesConnectingThenMigrating_ThenRunningWhenGateOpensAsync",
-        "testLine": 39,
+        "testLine": 44,
+        "testClass": "LifecyclePhaseWorkerTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/RunControl/LifecyclePhaseWorkerTests.cs",
+        "testMethod": "WithAReadModelGate_HoldsAtAcceptingCommands_UntilTheReadSideReleasesAsync",
+        "testLine": 65,
         "testClass": "LifecyclePhaseWorkerTests",
         "linkSource": "Convention"
       }
@@ -80307,6 +80314,13 @@
         "testFile": "tests/Whizbang.Core.Tests/Health/WorkerHealthSourceTests.cs",
         "testMethod": "Component_IsWorkersAsync",
         "testLine": 53,
+        "testClass": "WorkerHealthSourceTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Health/WorkerHealthSourceTests.cs",
+        "testMethod": "AcceptingCommands_ReportsOperational_TheWriteSideIsLiveAsync",
+        "testLine": 59,
         "testClass": "WorkerHealthSourceTests",
         "linkSource": "Convention"
       }
@@ -98970,7 +98984,7 @@
     "LifecyclePhaseTests.TransitionalPhases_AreTransitional_NotSettledAsync": [
       {
         "sourceFile": "src/Whizbang.Core/RunControl/LifecyclePhase.cs",
-        "sourceLine": 51,
+        "sourceLine": 73,
         "sourceSymbol": "LifecyclePhaseExtensions",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -98979,7 +98993,7 @@
     "LifecyclePhaseTests.SettledPhases_AreSettled_NotTransitionalAsync": [
       {
         "sourceFile": "src/Whizbang.Core/RunControl/LifecyclePhase.cs",
-        "sourceLine": 52,
+        "sourceLine": 74,
         "sourceSymbol": "LifecyclePhaseExtensions",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -98988,7 +99002,7 @@
     "LifecyclePhaseTests.TerminalPhases_AreTerminalAsync": [
       {
         "sourceFile": "src/Whizbang.Core/RunControl/LifecyclePhase.cs",
-        "sourceLine": 53,
+        "sourceLine": 75,
         "sourceSymbol": "LifecyclePhaseExtensions",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -157532,6 +157546,14 @@
         "linkSource": "Convention"
       }
     ],
+    "LifecyclePhaseWorkerTests.WithAReadModelGate_HoldsAtAcceptingCommands_UntilTheReadSideReleasesAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/RunControl/LifecyclePhaseWorker.cs",
+        "sourceSymbol": "LifecyclePhaseWorker",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
     "WhizbangKillswitchTests.ResumeAsync_DrivesResumingThenRunningAsync": [
       {
         "sourceFile": "src/Whizbang.Core/RunControl/IWhizbangKillswitch.cs",
@@ -175140,6 +175162,14 @@
         "linkSource": "Convention"
       }
     ],
+    "WorkerHealthSourceTests.AcceptingCommands_ReportsOperational_TheWriteSideIsLiveAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Health/WorkerHealthSource.cs",
+        "sourceSymbol": "WorkerHealthSource",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
     "DiagnosticCategoryTests.DiagnosticCategory_None_HasValueZeroAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Generated/DiagnosticCategory.cs",
@@ -179174,11 +179204,11 @@
     ]
   },
   "metadata": {
-    "generated": "2026-08-16T13:47:32.290Z",
+    "generated": "2026-08-16T14:25:33.834Z",
     "sourceFiles": 1478,
     "testFiles": 4089,
-    "totalLinks": 12072,
+    "totalLinks": 12074,
     "codeSymbols": 1582,
-    "testMethods": 10490
+    "testMethods": 10492
   }
 }
