@@ -333,6 +333,15 @@ public sealed class AfterStartupWork(IStartupReadySignal ready) : BackgroundServ
 
 For health, `ComponentState.Ready` sits between `Migrating` and `Operational` — distinct so a probe can tell "the schema is ready" from "the pipeline drained" — and is Healthy on readiness under **both** built-in policies, since Ready is precisely the state `HealthPolicy.Strict` holds a pod out of rotation waiting for.
 
+## The Seam-Level Barriers: Reads and Writes Hold Themselves
+
+The HTTP availability gate protects one edge; the data plane also holds **at its own seams**, so every surface inherits one check:
+
+- **Writes wait for the schema.** `IDispatcher` refuses with `WhizbangNotReadyException` while the schema gate is closed — a dispatch needs the event store and outbox, which `Migrate` provides. HTTP layers should map the exception to 503; writes resume the moment migrations complete.
+- **Reads wait for the read models.** Lens resolution refuses while the **read-model barrier** (`IReadModelsReadyGate`) is closed. The barrier releases when `Migrate` completes *and* the perspective startup scan — registry init, orphan reconcile, rewind repair — has run: later than `Migrate`, because a lens must not read perspectives a migration may have left mid-repair; earlier than the composite `Ready`, because reads never needed the transports. A host with no perspectives releases on the schema gate alone.
+
+Both seams are inert when no gate/barrier is registered, so test fixtures and partial hosts behave exactly as before. Both are fail-closed: a migration or startup repair that never finishes keeps the seam refusing, which is the honest answer while the data cannot be trusted.
+
 ## The Startup Status Surface
 
 The question people ask during a slow boot is *"what is it doing right now?"* — and the pipeline can answer it over the host's own API surface. The surface is **opt-in** (publishing internal state is the host's decision, not a package reference's) and one call mounts it:
