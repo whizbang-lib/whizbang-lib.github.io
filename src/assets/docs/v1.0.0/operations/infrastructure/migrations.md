@@ -162,6 +162,14 @@ The initializer now detects this: when a framework-defined function name has mor
 
 Log line to look for on an affected database's first boot after upgrading: `re-running to sweep stale duplicate overload(s)`.
 
+### Table rewrites run post-ready, under the maintainer duty
+
+A migration cannot `VACUUM FULL` (both are forbidden inside its transaction), so a migration that leaves a table owing a rewrite — a `DROP COLUMN`, whose bytes Postgres keeps in every pre-existing row — **records** the request via `wh_request_table_rewrite`. The runtime bloat detector records through the same function when churn bloats a table past threshold.
+
+The recorded rewrites are performed by the startup pipeline's **`Rewrite` step**: post-ready (`Blocking = false` — deliberately unbounded work never gates readiness), fleet-exclusive under the `maintainer` duty (one instance rewrites; non-holders skip, because nobody blocks on a `VACUUM FULL`). Execution stays behind `MaintenanceWorkerOptions.AllowTableRewrite` — the framework cannot know how large a consumer's table is, and taking an ACCESS EXCLUSIVE lock unattended must be opted into. A request is cleared only after the bloat ratio is confirmed to have dropped; an ineffective rewrite stays queued for the next boot.
+
+The runtime maintenance cycle **no longer executes rewrites** — an ACCESS EXCLUSIVE lock mid-traffic was always the wrong window. It detects, reports the bloat gauge, and records.
+
 ## Data Migrations vs. Schema Migrations
 
 Hash tracking answers **"did the DDL / object *shape* change?"** — the SHA-256 is over the migration's SQL text, which for schema migrations mirrors the object it defines. That is exactly the wrong question for a **pure data migration** that rewrites *rows* without changing any table's shape: the hash can't tell whether the data still needs the fix, and re-scanning a large table on every startup is wasteful.
