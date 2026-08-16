@@ -49,20 +49,39 @@ every managed resource — workers, transport-consume, the write path, offload, 
 
 ```csharp{title="Lifecycle phases" description="The one state Whizbang owns and advances" category="Implementation" difficulty="BEGINNER" tags=["Resilience","RunControl"] tests=["LifecyclePhaseTests.TransitionalPhases_AreTransitional_NotSettledAsync","WhizbangLifecycleCoordinatorTests.Transition_BroadcastsToEveryParticipantAsync"]}
 public enum LifecyclePhase {
-  Starting,     // process booted (transitional)
-  Connecting,   // network warmup — DB/transport/offload connecting, before the migration (transitional)
-  Migrating,    // schema/data migration in progress (transitional)
-  Running,      // fully operational (settled)
-  Pausing, Paused, Resuming,        // pause/resume (transitional ⇄ settled)
-  Stopping, Stopped,                // graceful shutdown
-  Faulted,      // bounded window to record/report before dying (transitional)
-  Halted        // terminal — reachable ONLY from Faulted (settled)
+  Starting,           // process booted (transitional)
+  Connecting,         // network warmup — DB/transport/offload connecting, before the migration (transitional)
+  Migrating,          // schema/data migration in progress (transitional)
+  AcceptingCommands,  // the WRITE side is live, the READ side (lenses) not yet (transitional)
+  Running,            // fully operational — reads AND writes serving (settled)
+  Pausing, Paused,    // pause (transitional → settled)
+  StandingBy,         // yielded to a newer migrator; revives or shuts down when it resolves (settled)
+  Resuming,           // resume (transitional)
+  Stopping, Stopped,  // graceful shutdown
+  Faulted,            // bounded window to record/report before dying (transitional)
+  Halted              // terminal — reachable ONLY from Faulted (settled)
 }
 ```
 
 A **transitional** phase is the window in which the coordinator has broadcast the change and is awaiting
 every resource's ack; the **settled** phase on the other side is "all acknowledged". `Connecting` sits
-before `Migrating` because the migration needs a live DB connection. `Faulted → Halted` is a two-step
+before `Migrating` because the migration needs a live DB connection.
+
+`AcceptingCommands` makes the CQRS split visible in the ladder. From the schema gate the entire
+**write side** is live — commands land durably in the event store and outbox, events flow, the
+transport delivers (its client connected back in `Connecting`), and the perspective startup repair is
+itself perspective-writing in progress. The **read side** (lenses) keeps refusing: a lens read is a
+synchronous claim about *now*, and during the repair window it could be **wrong**, not merely late.
+`Running` means the read-model barrier released too — reads and writes both serve. Per dispatch mode:
+an outbox-routed command is a durable promise, safe here unconditionally; a *local* command executes
+its receptor immediately — its event-store writes are safe (the repair rewrites perspectives, never
+events), and if the receptor reads a perspective it inherits the read barrier at the lens seam and
+refuses. Each dispatch gets exactly the barrier its actual dependencies require — the point of
+seam-level gating over edge gating.
+
+`StandingBy` is the rolling-upgrade rung: an older instance yields when a newer migrator requests
+standby, then either revives (rollback — straight to `Running`, both gates are sticky-open) or shuts
+down (the migration committed beneath its binary). `Faulted → Halted` is a two-step
 death: `Faulted` is a bounded window to log/emit/flush, *then* the terminal `Halted` (a graceful
 shutdown ends in `Stopped`, never `Halted`).
 
@@ -105,9 +124,11 @@ record, then reaches terminal `Halted`.
 ## Turnkey — you get this by default
 
 `AddWhizbang()` registers the coordinator, the shared `IWhizbangLifecycleState`, options, and the
-killswitch, plus a driver that advances the lifecycle from the schema gate: `Connecting → Migrating` at
-startup (participants pause/stay-up per their own interpretation), `Running` once migrations complete.
-If initialization never completes the gate never opens, so the phase stays `Migrating` — fail-closed.
+killswitch, plus a driver that advances the lifecycle from the gates: `Connecting → Migrating` at
+startup (participants pause/stay-up per their own interpretation), `AcceptingCommands` when the schema
+gate opens (the write side is live), and `Running` when the read-model barrier releases (lenses serve).
+A host without the read barrier registered collapses the last two moments into one, exactly as before.
+If initialization never completes the gates never open, so the phase stays `Migrating` — fail-closed.
 
 ## Operator killswitch
 

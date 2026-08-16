@@ -342,6 +342,8 @@ The HTTP availability gate protects one edge; the data plane also holds **at its
 
 Both seams are inert when no gate/barrier is registered, so test fixtures and partial hosts behave exactly as before. Both are fail-closed: a migration or startup repair that never finishes keeps the seam refusing, which is the honest answer while the data cannot be trusted.
 
+The two seams project onto the lifecycle ladder as a phase of their own: `LifecyclePhase.AcceptingCommands` sits between `Migrating` and `Running`, the window where the **write side is fully live** — commands land durably, events flow, the transport delivers, and the perspective startup repair is itself perspective-writing — while lenses keep refusing. `Running` means the read-model barrier released too. A local command's receptor that reads a perspective inherits the read barrier at the lens seam, so each dispatch gets exactly the barrier its dependencies require. See [Managed-Resource Run Control](../../resilience/managed-resource-run-control) for the full ladder.
+
 ## The Startup Status Surface
 
 The question people ask during a slow boot is *"what is it doing right now?"* — and the pipeline can answer it over the host's own API surface. The surface is **opt-in** (publishing internal state is the host's decision, not a package reference's) and one call mounts it:
