@@ -1,13 +1,13 @@
 {
   "run": {
-    "runId": "31923317661",
-    "sha": "9eec14b803d92640b5df5922b5b2882eb9901f6e",
+    "runId": "31958443313",
+    "sha": "134c1f6f4d57c9ef76292bc440da6da1e1560f5c",
     "branch": "develop",
-    "libraryVersion": "0.963.0-alpha.81",
-    "completedAt": "2026-08-16T03:44:37.719Z"
+    "libraryVersion": "0.963.0-alpha.82",
+    "completedAt": "2026-08-16T17:16:34.590Z"
   },
   "total": {
-    "passed": 16833,
+    "passed": 17074,
     "failed": 0,
     "skipped": 9
   },
@@ -23,7 +23,7 @@
       "skipped": 0
     },
     "postgres": {
-      "passed": 2667,
+      "passed": 2745,
       "failed": 0,
       "skipped": 0
     },
@@ -43,7 +43,7 @@
       "skipped": 1
     },
     "unit": {
-      "passed": 13892,
+      "passed": 14055,
       "failed": 0,
       "skipped": 8
     }
@@ -111,19 +111,19 @@
     },
     "Whizbang.Core.Tests": {
       "file": "Whizbang.Core.Tests.json",
-      "passed": 9127,
+      "passed": 9278,
       "failed": 0,
       "skipped": 0
     },
     "Whizbang.Data.Dapper.Postgres.Tests": {
       "file": "Whizbang.Data.Dapper.Postgres.Tests.json",
-      "passed": 493,
+      "passed": 494,
       "failed": 0,
       "skipped": 0
     },
     "Whizbang.Data.EFCore.Postgres.Tests": {
       "file": "Whizbang.Data.EFCore.Postgres.Tests.json",
-      "passed": 2174,
+      "passed": 2251,
       "failed": 0,
       "skipped": 0
     },
@@ -159,7 +159,7 @@
     },
     "Whizbang.Hosting.AspNet.Tests": {
       "file": "Whizbang.Hosting.AspNet.Tests.json",
-      "passed": 76,
+      "passed": 84,
       "failed": 0,
       "skipped": 0
     },
@@ -249,13 +249,13 @@
     },
     "Whizbang.Transports.FastEndpoints.Tests": {
       "file": "Whizbang.Transports.FastEndpoints.Tests.json",
-      "passed": 82,
+      "passed": 84,
       "failed": 0,
       "skipped": 0
     },
     "Whizbang.Transports.HotChocolate.Tests": {
       "file": "Whizbang.Transports.HotChocolate.Tests.json",
-      "passed": 259,
+      "passed": 261,
       "failed": 0,
       "skipped": 0
     },
