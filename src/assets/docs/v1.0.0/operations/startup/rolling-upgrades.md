@@ -65,7 +65,7 @@ The verdict is **not a startup-only fact**. An instance that was current when it
 
 A breaking migration is a **planned outage** — that is the honest description of a breaking schema change. The handshake's job is to make it bounded, announced and reversible instead of silent and corrupting.
 
-```mermaid
+```mermaid{caption="The standby handshake — peers drain and stand by, the migration commits or rolls back, and every path out is bounded." tests=["StandbyHandshakeE2ETests.Handshake_CommitPath_PeersDrainAcknowledgeAndShutDownAsync","StandbyHandshakeE2ETests.Handshake_RollbackPath_PeersReviveByReEnteringThePipelineAsync"]}
 graph TB
     New["New instance · Assess<br/>verdict: older peers live, changes pending"]
     Ask["Requests standby<br/>recorded against the fleet"]

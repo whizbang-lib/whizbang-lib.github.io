@@ -36,7 +36,7 @@ Whizbang startup is a **declared pipeline**: an explicit, ordered, individually-
 
 Every instance walks the whole pipeline. What differs between instances is what happens at an *exclusive* step — one whose required capability is a [duty](capabilities-and-duties): there, one instance does the work and the rest either await its completion or skip past, per the step's declaration.
 
-```mermaid
+```mermaid{caption="The startup pipeline — every instance walks it; one instance runs each duty step, and a stand-down verdict holds the pipeline open." tests=["StartupPipelineRunnerDutyTests.DutyStep_NonHolderWithAwait_ReAttemptsUntilTheHoldersReleaseLetsItWinAsync","AssessStartupStepTests.StandDown_ThroughTheRealPipeline_KeepsReadinessPendingForeverAsync"]}
 graph TB
     subgraph Assess["Assess &nbsp;&nbsp;(every instance)"]
         A1["compare my version against the ledger<br/>verdict: migrate · serve · stand down"]
