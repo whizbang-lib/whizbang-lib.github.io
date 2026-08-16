@@ -14481,62 +14481,6 @@
         "linkSource": "XmlTag"
       }
     ],
-    "StreamGroupClosure": [
-      {
-        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/StreamGroupCascadeSqlTests.cs",
-        "testMethod": "LeaderTtlEviction_CascadesToTheFollower_InTheSameCycleAsync",
-        "linkSource": "XmlTag"
-      },
-      {
-        "testFile": "tests/Whizbang.Core.Tests/Perspectives/StreamGroupClosureTests.cs",
-        "testMethod": "OwnOrigin_AnnouncesToAllMemberships_NoBridgingInvolvedAsync",
-        "testLine": 37,
-        "testClass": "StreamGroupClosureTests",
-        "linkSource": "Convention"
-      },
-      {
-        "testFile": "tests/Whizbang.Core.Tests/Perspectives/StreamGroupClosureTests.cs",
-        "testMethod": "Received_CrossesGroupsOnlyWhenTheMembershipBridgesAsync",
-        "testLine": 51,
-        "testClass": "StreamGroupClosureTests",
-        "linkSource": "Convention"
-      },
-      {
-        "testFile": "tests/Whizbang.Core.Tests/Perspectives/StreamGroupClosureTests.cs",
-        "testMethod": "NonMember_IsNeverCascaded_RegardlessOfSharedStreamsAsync",
-        "testLine": 68,
-        "testClass": "StreamGroupClosureTests",
-        "linkSource": "Convention"
-      },
-      {
-        "testFile": "tests/Whizbang.Core.Tests/Perspectives/StreamGroupClosureTests.cs",
-        "testMethod": "CyclicBridgedGroups_Converge_EachPairEntersOnceAsync",
-        "testLine": 78,
-        "testClass": "StreamGroupClosureTests",
-        "linkSource": "Convention"
-      },
-      {
-        "testFile": "tests/Whizbang.Core.Tests/Perspectives/StreamGroupClosureTests.cs",
-        "testMethod": "FollowOff_MemberHearsAnnouncementsButNeverEvictsAsync",
-        "testLine": 97,
-        "testClass": "StreamGroupClosureTests",
-        "linkSource": "Convention"
-      },
-      {
-        "testFile": "tests/Whizbang.Core.Tests/Perspectives/StreamGroupClosureTests.cs",
-        "testMethod": "AnnounceOff_SeedTriggersNothingAsync",
-        "testLine": 112,
-        "testClass": "StreamGroupClosureTests",
-        "linkSource": "Convention"
-      },
-      {
-        "testFile": "tests/Whizbang.Core.Tests/Perspectives/StreamGroupClosureTests.cs",
-        "testMethod": "Seeds_AreNeverInTheCascade_TheyAreAlreadyDestroyedAsync",
-        "testLine": 126,
-        "testClass": "StreamGroupClosureTests",
-        "linkSource": "Convention"
-      }
-    ],
     "TenantCollectiveScopeResolver": [
       {
         "testFile": "tests/Whizbang.Core.Tests/Perspectives/TenantCollectiveScopeResolverTests.cs",
@@ -17755,13 +17699,6 @@
         "linkSource": "XmlTag"
       }
     ],
-    "FoldStreamApplyPathsAsync": [
-      {
-        "testFile": "tests/Whizbang.Core.Tests/Lifecycle/StreamCloserFoldOrderTests.cs",
-        "testMethod": "Close_FoldsTheApplyPath_BeforeTheTruncateAsync",
-        "linkSource": "XmlTag"
-      }
-    ],
     "RewindCursorInfo": [
       {
         "testFile": "tests/Whizbang.Core.Tests/Messaging/CoordinatorRecordSurfaceTests.cs",
@@ -19275,13 +19212,6 @@
       {
         "testFile": "tests/Whizbang.Core.Tests/Lifecycle/DebugAwareStopwatchTests.cs",
         "testMethod": "StageRecord_ToString_ContainsStageAsync",
-        "linkSource": "XmlTag"
-      }
-    ],
-    "CloseAsync": [
-      {
-        "testFile": "tests/Whizbang.Core.Tests/Lifecycle/StreamCloserFoldOrderTests.cs",
-        "testMethod": "Close_FoldsTheApplyPath_BeforeTheTruncateAsync",
         "linkSource": "XmlTag"
       }
     ],
@@ -35927,442 +35857,428 @@
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
-        "testMethod": "PerspectiveRunnerGenerator_StreamGroup_RegistersEachMembershipWithItsDialsAsync",
+        "testMethod": "PerspectiveRunnerGenerator_RowCap_RegistersCapAsync",
         "testLine": 296,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
-        "testMethod": "PerspectiveRunnerGenerator_NoStreamGroup_EmitsNoRegistrationAsync",
-        "testLine": 336,
-        "testClass": "PerspectiveRunnerGeneratorTests",
-        "linkSource": "Convention"
-      },
-      {
-        "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
-        "testMethod": "PerspectiveRunnerGenerator_RowCap_RegistersCapAsync",
-        "testLine": 366,
-        "testClass": "PerspectiveRunnerGeneratorTests",
-        "linkSource": "Convention"
-      },
-      {
-        "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
         "testMethod": "PerspectiveRunnerGenerator_RowCapPerTenant_RegistersTenantScopeKeyAsync",
-        "testLine": 405,
+        "testLine": 335,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
         "testMethod": "PerspectiveRunnerGenerator_NoRowCap_RegistersNoCapAsync",
-        "testLine": 439,
+        "testLine": 369,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
         "testMethod": "PerspectiveRunnerGenerator_RowTtl_OverridesEphemeralDerivedTtlAsync",
-        "testLine": 472,
+        "testLine": 402,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
         "testMethod": "PerspectiveRunnerGenerator_FullHistoryPerspective_RegistersNameAsync",
-        "testLine": 511,
+        "testLine": 441,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
         "testMethod": "PerspectiveRunnerGenerator_ResumablePerspective_DoesNotRegisterFullHistoryAsync",
-        "testLine": 548,
+        "testLine": 478,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
         "testMethod": "PerspectiveRunnerGenerator_SourcedPerspective_UsesStandardSnapshotSettingsAsync",
-        "testLine": 581,
+        "testLine": 511,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
         "testMethod": "PerspectiveRunnerGenerator_PerspectiveWithModelNoStreamId_GeneratesNothingAsync",
-        "testLine": 616,
+        "testLine": 546,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
         "testMethod": "PerspectiveRunnerGenerator_AbstractPerspective_IsIgnoredAsync",
-        "testLine": 654,
+        "testLine": 584,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
         "testMethod": "PerspectiveRunnerGenerator_GeneratesDiagnosticAsync",
-        "testLine": 700,
+        "testLine": 630,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
         "testMethod": "PerspectiveRunnerGenerator_UsesFullyQualifiedTypeNamesAsync",
-        "testLine": 742,
+        "testLine": 672,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
         "testMethod": "PerspectiveRunnerGenerator_CorrectRunnerNameAsync",
-        "testLine": 782,
+        "testLine": 712,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
         "testMethod": "PerspectiveRunnerGenerator_ImplementsIPerspectiveRunnerAsync",
-        "testLine": 822,
+        "testLine": 752,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
         "testMethod": "PerspectiveRunnerGenerator_MultiplePerspectives_GeneratesMultipleRunnersAsync",
-        "testLine": 862,
+        "testLine": 792,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
         "testMethod": "PerspectiveRunnerGenerator_GeneratedCodeUsesCorrectNamespaceAsync",
-        "testLine": 923,
+        "testLine": 853,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
         "testMethod": "PerspectiveRunnerGenerator_StreamIdPropertyNameIncludedAsync",
-        "testLine": 962,
+        "testLine": 892,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
         "testMethod": "PerspectiveRunnerGenerator_GeneratesExtractStreamIdMethod_UsingEventStreamIdAsync",
-        "testLine": 1000,
+        "testLine": 930,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
         "testMethod": "PerspectiveRunnerGenerator_MultipleEvents_GeneratesExtractStreamIdForEachAsync",
-        "testLine": 1055,
+        "testLine": 985,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
         "testMethod": "PerspectiveRunnerGenerator_MustExistAttribute_GeneratesNullCheckAsync",
-        "testLine": 1134,
+        "testLine": 1064,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
         "testMethod": "PerspectiveRunnerGenerator_MustExistAttribute_NoNullCheckForNonAttributedMethodAsync",
-        "testLine": 1192,
+        "testLine": 1122,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
         "testMethod": "PerspectiveRunnerGenerator_MustExistAttribute_AllEventsWithAttribute_GeneratesNullCheckForAllAsync",
-        "testLine": 1253,
+        "testLine": 1183,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
         "testMethod": "PerspectiveRunnerGenerator_NoMustExistAttribute_NoNullCheckGeneratedAsync",
-        "testLine": 1306,
+        "testLine": 1236,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
         "testMethod": "PerspectiveRunnerGenerator_MustExistAttribute_ErrorMessageIncludesContextAsync",
-        "testLine": 1344,
+        "testLine": 1274,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
         "testMethod": "PerspectiveRunnerGenerator_ModelActionReturn_GeneratesActionHandlingAsync",
-        "testLine": 1398,
+        "testLine": 1328,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
         "testMethod": "PerspectiveRunnerGenerator_NullableModelReturn_GeneratesNoChangeCheckAsync",
-        "testLine": 1440,
+        "testLine": 1370,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
         "testMethod": "PerspectiveRunnerGenerator_TupleReturn_GeneratesHybridHandlingAsync",
-        "testLine": 1483,
+        "testLine": 1413,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
         "testMethod": "PerspectiveRunnerGenerator_ApplyResultReturn_GeneratesFullHandlingAsync",
-        "testLine": 1524,
+        "testLine": 1454,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
         "testMethod": "PerspectiveRunnerGenerator_MixedReturnTypes_GeneratesCorrectlyAsync",
-        "testLine": 1570,
+        "testLine": 1500,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
         "testMethod": "PerspectiveRunnerGenerator_NestedClasses_GeneratesUniqueHintNamesAsync",
-        "testLine": 1626,
+        "testLine": 1556,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
         "testMethod": "PerspectiveRunnerGenerator_PerspectiveWith10Events_GeneratesRunnerAsync",
-        "testLine": 1703,
+        "testLine": 1633,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
         "testMethod": "PerspectiveRunnerGenerator_PerspectiveWith25Events_GeneratesRunnerAsync",
-        "testLine": 1761,
+        "testLine": 1691,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
         "testMethod": "PerspectiveRunnerGenerator_ModelMissingStreamId_EmitsWarningAsync",
-        "testLine": 1808,
+        "testLine": 1738,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
         "testMethod": "PerspectiveRunnerGenerator_ModelHasStreamId_NoWarningAsync",
-        "testLine": 1851,
+        "testLine": 1781,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
         "testMethod": "PerspectiveRunnerGenerator_VectorField_GeneratesUpsertWithPhysicalFieldsAsync",
-        "testLine": 1895,
+        "testLine": 1825,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
         "testMethod": "PerspectiveRunnerGenerator_PhysicalField_GeneratesUpsertWithPhysicalFieldsAsync",
-        "testLine": 1941,
+        "testLine": 1871,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
         "testMethod": "PerspectiveRunnerGenerator_NoPhysicalFields_UsesSimpleUpsertAsync",
-        "testLine": 1989,
+        "testLine": 1919,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
         "testMethod": "PerspectiveRunnerGenerator_MultiplePhysicalFields_GeneratesAllFieldsAsync",
-        "testLine": 2033,
+        "testLine": 1963,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
         "testMethod": "PerspectiveRunnerGenerator_VectorFieldWithCustomColumnName_UsesCustomNameAsync",
-        "testLine": 2088,
+        "testLine": 2018,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
         "testMethod": "PerspectiveRunnerGenerator_StaticProperty_NotIncludedInPhysicalFieldsAsync",
-        "testLine": 2131,
+        "testLine": 2061,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
         "testMethod": "PerspectiveRunnerGenerator_PostPerspectiveDetached_EstablishesSecurityContextAsync",
-        "testLine": 2179,
+        "testLine": 2109,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
         "testMethod": "PerspectiveRunnerGenerator_IPerspectiveWithActionsFor_GeneratesRunnerAsync",
-        "testLine": 2245,
+        "testLine": 2175,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
         "testMethod": "PerspectiveRunnerGenerator_MixedInterfaces_BothDetectedAsync",
-        "testLine": 2293,
+        "testLine": 2223,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
         "testMethod": "PerspectiveRunnerGenerator_IPerspectiveWithActionsFor_MultipleEventVariant_GeneratesRunnerAsync",
-        "testLine": 2381,
+        "testLine": 2311,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
         "testMethod": "PerspectiveRunnerGenerator_DeleteAction_GeneratesCorrectHandlingAsync",
-        "testLine": 2437,
+        "testLine": 2367,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
         "testMethod": "PerspectiveRunnerGenerator_PurgeAction_GeneratesCorrectHandlingAsync",
-        "testLine": 2480,
+        "testLine": 2410,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
         "testMethod": "PerspectiveRunnerGenerator_IPerspectiveWithActionsForOnly_GeneratesRunnerAsync",
-        "testLine": 2523,
+        "testLine": 2453,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
         "testMethod": "Generator_WithIScopeEvent_GeneratesScopeHandlingCodeAsync",
-        "testLine": 2598,
+        "testLine": 2528,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
         "testMethod": "Generator_WithIPerspectiveScopeFor_GeneratesApplyScopeCallAsync",
-        "testLine": 2638,
+        "testLine": 2568,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
         "testMethod": "Generator_WithIScopeEventWithoutIPerspectiveScopeFor_UsesDirectScopeAsync",
-        "testLine": 2685,
+        "testLine": 2615,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
         "testMethod": "Generator_WithIScopeEventAndIPerspectiveFor_GeneratesBothCallsAsync",
-        "testLine": 2725,
+        "testLine": 2655,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
         "testMethod": "PerspectiveRunnerGenerator_SplitModeRecordModel_StripsPhysicalFieldsWithExpressionAsync",
-        "testLine": 2788,
+        "testLine": 2718,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
         "testMethod": "PerspectiveRunnerGenerator_SplitModeClassModel_StripsPhysicalFieldsByMutationAsync",
-        "testLine": 2839,
+        "testLine": 2769,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
         "testMethod": "PerspectiveRunnerGenerator_JsonOnlyMode_DoesNotStripPhysicalFieldsAsync",
-        "testLine": 2890,
+        "testLine": 2820,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
         "testMethod": "PerspectiveRunnerGenerator_InheritScopeWithOnCreate_UsesConfiguredFlagsAsync",
-        "testLine": 2939,
+        "testLine": 2869,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
         "testMethod": "PerspectiveRunnerGenerator_InheritScopeWithoutOnCreate_DefaultsToTenantAsync",
-        "testLine": 2978,
+        "testLine": 2908,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
         "testMethod": "PerspectiveRunnerGenerator_NoInheritScope_DefaultsToAllFieldsAsync",
-        "testLine": 3018,
+        "testLine": 2948,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
         "testMethod": "PerspectiveRunnerGenerator_GlobalPerspective_GeneratesRunnerAsync",
-        "testLine": 3059,
+        "testLine": 2989,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
         "testMethod": "PerspectiveRunnerGenerator_EventWithInheritedStreamId_GeneratesExtractStreamIdAsync",
-        "testLine": 3113,
+        "testLine": 3043,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
         "testMethod": "PerspectiveRunnerGenerator_CreateEmptyModel_UsesDirectConstructionWithoutReflectionAsync",
-        "testLine": 3165,
+        "testLine": 3095,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
         "testMethod": "PerspectiveRunnerGenerator_StronglyTypedStreamId_ConstructsViaFromFactoryAsync",
-        "testLine": 3211,
+        "testLine": 3141,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
         "testMethod": "PerspectiveRunnerGenerator_RequiredModelMembers_AreInitializedSoGeneratedCodeCompilesAsync",
-        "testLine": 3262,
+        "testLine": 3192,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       }
@@ -38179,43 +38095,6 @@
         "testMethod": "Generator_WireNameAttribute_GeneratesCompilableCodeAsync",
         "testLine": 79,
         "testClass": "SignalTypeRegistryGeneratorTests",
-        "linkSource": "Convention"
-      }
-    ],
-    "StreamGroupAnalyzer": [
-      {
-        "testFile": "tests/Whizbang.Generators.Tests/StreamGroupAnalyzerTests.cs",
-        "testMethod": "BridgeOnSoleMembership_ReportsWHIZ142Async",
-        "testLine": 30,
-        "testClass": "StreamGroupAnalyzerTests",
-        "linkSource": "Convention"
-      },
-      {
-        "testFile": "tests/Whizbang.Generators.Tests/StreamGroupAnalyzerTests.cs",
-        "testMethod": "BridgeWithTwoMemberships_NoWHIZ142Async",
-        "testLine": 47,
-        "testClass": "StreamGroupAnalyzerTests",
-        "linkSource": "Convention"
-      },
-      {
-        "testFile": "tests/Whizbang.Generators.Tests/StreamGroupAnalyzerTests.cs",
-        "testMethod": "GroupWithNoAnnouncingEvictor_ReportsWHIZ141OnEachMemberAsync",
-        "testLine": 65,
-        "testClass": "StreamGroupAnalyzerTests",
-        "linkSource": "Convention"
-      },
-      {
-        "testFile": "tests/Whizbang.Generators.Tests/StreamGroupAnalyzerTests.cs",
-        "testMethod": "GroupWithAnAnnouncingEvictor_NoWHIZ141Async",
-        "testLine": 86,
-        "testClass": "StreamGroupAnalyzerTests",
-        "linkSource": "Convention"
-      },
-      {
-        "testFile": "tests/Whizbang.Generators.Tests/StreamGroupAnalyzerTests.cs",
-        "testMethod": "UngroupedSharer_ReportsWHIZ140_IsolationMarkerSilencesItAsync",
-        "testLine": 106,
-        "testClass": "StreamGroupAnalyzerTests",
         "linkSource": "Convention"
       }
     ],
@@ -67886,29 +67765,6 @@
         "linkSource": "Convention"
       }
     ],
-    "PerspectiveStreamGroupRegistry": [
-      {
-        "testFile": "tests/Whizbang.Core.Tests/Perspectives/PerspectiveStreamGroupRegistryTests.cs",
-        "testMethod": "Register_MultipleGroups_EachMembershipKeepsItsOwnDialsAsync",
-        "testLine": 23,
-        "testClass": "PerspectiveStreamGroupRegistryTests",
-        "linkSource": "Convention"
-      },
-      {
-        "testFile": "tests/Whizbang.Core.Tests/Perspectives/PerspectiveStreamGroupRegistryTests.cs",
-        "testMethod": "Register_SameKeyTwice_LastWriteWins_IdempotentAsync",
-        "testLine": 37,
-        "testClass": "PerspectiveStreamGroupRegistryTests",
-        "linkSource": "Convention"
-      },
-      {
-        "testFile": "tests/Whizbang.Core.Tests/Perspectives/PerspectiveStreamGroupRegistryTests.cs",
-        "testMethod": "Resolve_UngroupedModel_IsEmpty_UntouchableByCascadesAsync",
-        "testLine": 49,
-        "testClass": "PerspectiveStreamGroupRegistryTests",
-        "linkSource": "Convention"
-      }
-    ],
     "PerspectiveTtlRegistry": [
       {
         "testFile": "tests/Whizbang.Core.Tests/Perspectives/PerspectiveTtlRegistryTests.cs",
@@ -87349,7 +87205,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 2971,
+        "sourceLine": 2972,
         "sourceSymbol": "CascadeToOutboxAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -90333,7 +90189,7 @@
     "EFCoreWorkCoordinatorTests.GetOrphanedLifecycleEventsAsync_DeserializesOrphanedEvent_AsJsonElementAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 3844,
+        "sourceLine": 3691,
         "sourceSymbol": "MessageEnvelope",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -90342,7 +90198,7 @@
     "EFCoreWorkCoordinatorTests.GetOrphanedLifecycleEventsAsync_FallsBackToJsonDocumentParse_WhenTypeResolverFailsAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 3845,
+        "sourceLine": 3692,
         "sourceSymbol": "MessageEnvelope",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -90351,7 +90207,7 @@
     "EFCoreWorkCoordinatorTests.GetOrphanedLifecycleEventsAsync_DeserializesEventData_WithTypeDiscriminatorAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 3846,
+        "sourceLine": 3693,
         "sourceSymbol": "MessageEnvelope",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -92491,7 +92347,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 5206,
+        "sourceLine": 5207,
         "sourceSymbol": "SyncReceptorInvoker",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -92518,7 +92374,7 @@
     "DispatcherCoverageSweepRoutedCascadeTests.SendAsync_OwnedChildNamespaceCommand_NoReceptor_ReturnsAcceptedWithoutOutboxAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 264,
+        "sourceLine": 265,
         "sourceSymbol": "_isOwnedNamespace",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -92527,7 +92383,7 @@
     "DispatcherCoverageSweepRoutedCascadeTests.SendAsync_NonMatchingOwnedDomains_CommandRoutesToOutboxAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 265,
+        "sourceLine": 266,
         "sourceSymbol": "_isOwnedNamespace",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -92536,7 +92392,7 @@
     "DispatcherCoverageSweepSyncRpcTests.LocalInvokeAsync_Void_SyncAttributeSynced_AwaitsPerspectiveThenInvokesReceptorAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 313,
+        "sourceLine": 314,
         "sourceSymbol": "_awaitPerspectiveSyncIfNeededAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -92545,7 +92401,7 @@
     "DispatcherCoverageSweepSyncRpcTests.LocalInvokeAsync_Void_SyncAttributeTimedOut_FireOnSuccess_ThrowsAndSkipsReceptorAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 314,
+        "sourceLine": 315,
         "sourceSymbol": "_awaitPerspectiveSyncIfNeededAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -92554,7 +92410,7 @@
     "DispatcherCoverageSweepSyncRpcTests.LocalInvokeAsync_Void_SyncAttribute_NoStreamId_SkipsAwaiterAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 315,
+        "sourceLine": 316,
         "sourceSymbol": "_awaitPerspectiveSyncIfNeededAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -92563,7 +92419,7 @@
     "DispatcherPerspectiveSyncCoverageTests.LocalInvokeAsync_WithWaitForPerspectives_NoEventCompletionAwaiter_ReturnsNormallyAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 405,
+        "sourceLine": 406,
         "sourceSymbol": "_waitForPerspectivesIfNeededAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -92572,7 +92428,7 @@
     "DispatcherPerspectiveSyncCoverageTests.LocalInvokeAsync_WithWaitForPerspectives_NoScopedTracker_ReturnsNormallyAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 406,
+        "sourceLine": 407,
         "sourceSymbol": "_waitForPerspectivesIfNeededAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -92588,7 +92444,7 @@
     "DispatcherCascadeTests.LocalInvokeAsync_TupleWithEvent_AutoPublishesEventAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 2512,
+        "sourceLine": 2513,
         "sourceSymbol": "_cascadeEventsFromResultAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -92597,7 +92453,7 @@
     "DispatcherRoutedCascadeTests.CascadeFromResult_WithRouteLocal_InvokesLocalReceptorAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 2513,
+        "sourceLine": 2514,
         "sourceSymbol": "_cascadeEventsFromResultAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -92606,7 +92462,7 @@
     "DispatcherUncoveredPathsTests.LocalInvokeAsync_Void_WithImmediateDetachedReceptors_InvokesScopedInvokerAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 2830,
+        "sourceLine": 2831,
         "sourceSymbol": "_invokeImmediateDetachedReceptorsAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -92615,7 +92471,7 @@
     "DispatcherUncoveredPathsTests.LocalInvokeAsync_Void_WithReceptorRegistry_NoImmediateDetachedReceptors_SkipsAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 2831,
+        "sourceLine": 2832,
         "sourceSymbol": "_invokeImmediateDetachedReceptorsAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -92624,7 +92480,7 @@
     "DispatcherUncoveredPathsTests.LocalInvokeAsync_Void_WithTraceStore_NoReceptorRegistry_SkipsImmediateDetachedAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 2832,
+        "sourceLine": 2833,
         "sourceSymbol": "_invokeImmediateDetachedReceptorsAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -92633,7 +92489,7 @@
     "DispatcherPostLifecycleCoverageTests.LocalInvokeAsync_Void_FiresPostLifecycleDetached_WhenReceptorsRegisteredAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 2872,
+        "sourceLine": 2873,
         "sourceSymbol": "_invokePostLifecycleReceptorsAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -92642,7 +92498,7 @@
     "DispatcherPostLifecycleCoverageTests.LocalInvokeAsync_Void_FiresBothAsyncAndInline_WhenBothRegisteredAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 2873,
+        "sourceLine": 2874,
         "sourceSymbol": "_invokePostLifecycleReceptorsAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -92651,7 +92507,7 @@
     "PostLifecyclePipelineTests.Dispatcher_NoWhenAll_FiresPostLifecycleDetachedAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 2874,
+        "sourceLine": 2875,
         "sourceSymbol": "_invokePostLifecycleReceptorsAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -92660,7 +92516,7 @@
     "DispatcherRoutedCascadeTests.CascadeEventStoreOnly_*": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 3001,
+        "sourceLine": 3002,
         "sourceSymbol": "CascadeToEventStoreOnlyAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -92669,7 +92525,7 @@
     "LocalEventStorageTests.RouteEventStoreOnly_*": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 3002,
+        "sourceLine": 3003,
         "sourceSymbol": "CascadeToEventStoreOnlyAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -92678,7 +92534,7 @@
     "DispatcherCoverageSweepRoutedCascadeTests.CascadeMessageAsync_OwnedCommandOutboxMode_IsDowngradedToLocalAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 3269,
+        "sourceLine": 3270,
         "sourceSymbol": "CascadeMessageAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -92687,7 +92543,7 @@
     "DispatcherCoverageSweepRoutedCascadeTests.CascadeMessageAsync_NonOwnedCommandOutboxMode_StaysOnOutboxAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 3270,
+        "sourceLine": 3271,
         "sourceSymbol": "CascadeMessageAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -92696,7 +92552,7 @@
     "ReceptorDiscoveryGeneratorTests.Generator_CascadeToOutbox_CallsPublishToOutboxWithMessageIdAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 3455,
+        "sourceLine": 3456,
         "sourceSymbol": "PublishToOutboxAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -92711,7 +92567,7 @@
     "DispatcherCompositePublishFanoutTests.OwnedComposite_FansOutAtPublish_ViaDispatchOptionsOverloadAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 3601,
+        "sourceLine": 3602,
         "sourceSymbol": "_fanOutCompositeLocallyAtPublishAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -92720,7 +92576,7 @@
     "DispatcherCompositePublishFanoutTests.NonOwnedComposite_DoesNotFanOutAtPublishAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 3602,
+        "sourceLine": 3603,
         "sourceSymbol": "_fanOutCompositeLocallyAtPublishAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -92729,7 +92585,7 @@
     "DispatcherCoverageSweepOutboxTests.PublishToOutboxDynamic_EventWithIHasStreamId_InheritsStreamIdFromSourceAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 3802,
+        "sourceLine": 3803,
         "sourceSymbol": "PublishToOutboxDynamicAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -92738,7 +92594,7 @@
     "DispatcherCoverageSweepOutboxTests.PublishToOutboxDynamic_EventAlreadyHasStreamId_SkipsPropagationAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 3803,
+        "sourceLine": 3804,
         "sourceSymbol": "PublishToOutboxDynamicAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -92747,7 +92603,7 @@
     "DispatcherNoRebroadcastGuardTests.NoRebroadcastSource_IsSuppressedBeforeSerializationAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 3804,
+        "sourceLine": 3805,
         "sourceSymbol": "PublishToOutboxDynamicAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -92756,7 +92612,7 @@
     "DispatcherSyncTests.LocalInvokeAsync_SyncReceptor_ReturnsCompletedValueTaskAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 5207,
+        "sourceLine": 5208,
         "sourceSymbol": "SyncReceptorInvoker",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -95397,21 +95253,21 @@
     "MaintenanceWorkerStuckRowSentinelTests.MaintenanceTick_SentinelDisabled_DoesNotInvokeSentinelMethodsAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-        "sourceLine": 831,
+        "sourceLine": 683,
         "sourceSymbol": "StuckRowSentinelEnabled",
         "sourceType": "Property",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-        "sourceLine": 844,
+        "sourceLine": 696,
         "sourceSymbol": "StuckRowSentinelMaxAttempts",
         "sourceType": "Property",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-        "sourceLine": 855,
+        "sourceLine": 707,
         "sourceSymbol": "StuckRowSentinelLimit",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -95420,14 +95276,14 @@
     "MaintenanceWorkerStuckRowSentinelTests.MaintenanceTick_NoStuckRows_EmitsNoSentinelWarningsAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-        "sourceLine": 832,
+        "sourceLine": 684,
         "sourceSymbol": "StuckRowSentinelEnabled",
         "sourceType": "Property",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-        "sourceLine": 843,
+        "sourceLine": 695,
         "sourceSymbol": "StuckRowSentinelMaxAttempts",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -95436,14 +95292,14 @@
     "MaintenanceWorkerStuckRowSentinelTests.MaintenanceTick_StuckOutboxRow_EmitsWarningPerRowAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-        "sourceLine": 842,
+        "sourceLine": 694,
         "sourceSymbol": "StuckRowSentinelMaxAttempts",
         "sourceType": "Property",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-        "sourceLine": 853,
+        "sourceLine": 705,
         "sourceSymbol": "StuckRowSentinelLimit",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -95459,7 +95315,7 @@
     "MaintenanceWorkerStuckRowSentinelTests.MaintenanceTick_MultipleStuckRows_OneWarningEachAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-        "sourceLine": 854,
+        "sourceLine": 706,
         "sourceSymbol": "StuckRowSentinelLimit",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -95694,7 +95550,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-        "sourceLine": 1909,
+        "sourceLine": 1809,
         "sourceSymbol": "RewindCursorInfo",
         "sourceType": "Record",
         "linkSource": "XmlTag"
@@ -101746,15 +101602,6 @@
         "linkSource": "Convention"
       }
     ],
-    "StreamGroupCascadeSqlTests.LeaderTtlEviction_CascadesToTheFollower_InTheSameCycleAsync": [
-      {
-        "sourceFile": "src/Whizbang.Core/Perspectives/StreamGroupClosure.cs",
-        "sourceLine": 17,
-        "sourceSymbol": "StreamGroupClosure",
-        "sourceType": "Class",
-        "linkSource": "XmlTag"
-      }
-    ],
     "TenantCollectiveScopeResolverTests.Resolver_AcceptsPerspective_AllowsAnyModelAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Perspectives/TenantCollectiveScopeResolver.cs",
@@ -106912,26 +106759,10 @@
         "linkSource": "Convention"
       }
     ],
-    "StreamCloserFoldOrderTests.Close_FoldsTheApplyPath_BeforeTheTruncateAsync": [
-      {
-        "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-        "sourceLine": 1058,
-        "sourceSymbol": "FoldStreamApplyPathsAsync",
-        "sourceType": "Method",
-        "linkSource": "XmlTag"
-      },
-      {
-        "sourceFile": "src/Whizbang.Core/Lifecycle/StreamCloser.cs",
-        "sourceLine": 44,
-        "sourceSymbol": "CloseAsync",
-        "sourceType": "Method",
-        "linkSource": "XmlTag"
-      }
-    ],
     "CoordinatorRecordSurfaceTests.RewindCursorInfo_PositionalCtor_RoundTripsAllValuesAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-        "sourceLine": 1907,
+        "sourceLine": 1807,
         "sourceSymbol": "RewindCursorInfo",
         "sourceType": "Record",
         "linkSource": "XmlTag"
@@ -106940,7 +106771,7 @@
     "CoordinatorRecordSurfaceTests.RewindCursorInfo_NullsAreAllowedAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-        "sourceLine": 1908,
+        "sourceLine": 1808,
         "sourceSymbol": "RewindCursorInfo",
         "sourceType": "Record",
         "linkSource": "XmlTag"
@@ -106949,7 +106780,7 @@
     "EventFlagsTransportTests.OutboxMessage_Flags_DefaultsToNoneAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-        "sourceLine": 2252,
+        "sourceLine": 2145,
         "sourceSymbol": "Flags",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -106958,7 +106789,7 @@
     "EventFlagsTransportTests.OutboxMessage_Flags_AcceptsCollectiveAndCompositeAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-        "sourceLine": 2253,
+        "sourceLine": 2146,
         "sourceSymbol": "Flags",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -106967,7 +106798,7 @@
     "EventFlagsTransportTests.InboxMessage_Flags_DefaultsToNoneAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-        "sourceLine": 2339,
+        "sourceLine": 2232,
         "sourceSymbol": "Flags",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -106976,7 +106807,7 @@
     "EventFlagsTransportTests.InboxMessage_Flags_AcceptsCollectiveAndCompositeAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-        "sourceLine": 2340,
+        "sourceLine": 2233,
         "sourceSymbol": "Flags",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -106985,28 +106816,28 @@
     "MessageFailureTests.MessageFailure_WithReason_StoresReasonAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-        "sourceLine": 2404,
+        "sourceLine": 2297,
         "sourceSymbol": "MessageId",
         "sourceType": "Property",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-        "sourceLine": 2413,
+        "sourceLine": 2306,
         "sourceSymbol": "CompletedStatus",
         "sourceType": "Property",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-        "sourceLine": 2421,
+        "sourceLine": 2314,
         "sourceSymbol": "Error",
         "sourceType": "Property",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-        "sourceLine": 2431,
+        "sourceLine": 2324,
         "sourceSymbol": "Reason",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -107021,28 +106852,28 @@
     "MessageFailureTests.MessageFailure_WithoutReason_DefaultsToUnknownAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-        "sourceLine": 2405,
+        "sourceLine": 2298,
         "sourceSymbol": "MessageId",
         "sourceType": "Property",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-        "sourceLine": 2414,
+        "sourceLine": 2307,
         "sourceSymbol": "CompletedStatus",
         "sourceType": "Property",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-        "sourceLine": 2422,
+        "sourceLine": 2315,
         "sourceSymbol": "Error",
         "sourceType": "Property",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-        "sourceLine": 2432,
+        "sourceLine": 2325,
         "sourceSymbol": "Reason",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -107057,28 +106888,28 @@
     "MessageFailureTests.MessageFailure_AllReasonTypes_CanBeAssignedAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-        "sourceLine": 2406,
+        "sourceLine": 2299,
         "sourceSymbol": "MessageId",
         "sourceType": "Property",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-        "sourceLine": 2415,
+        "sourceLine": 2308,
         "sourceSymbol": "CompletedStatus",
         "sourceType": "Property",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-        "sourceLine": 2423,
+        "sourceLine": 2316,
         "sourceSymbol": "Error",
         "sourceType": "Property",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-        "sourceLine": 2433,
+        "sourceLine": 2326,
         "sourceSymbol": "Reason",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -107093,7 +106924,7 @@
     "WorkCoordinatorDtoSurfaceTests.PerspectiveCursorCompletion_ProcessedEventIds_DefaultsEmptyAndRoundTripsAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-        "sourceLine": 2702,
+        "sourceLine": 2595,
         "sourceSymbol": "EventsProcessed",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -107102,7 +106933,7 @@
     "PerspectiveApplyIdempotencyTests.RunAsync_RerunWithSameEvents_SkipsAllAndDoesNotReWriteAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-        "sourceLine": 2703,
+        "sourceLine": 2596,
         "sourceSymbol": "EventsProcessed",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -107111,7 +106942,7 @@
     "PerspectiveApplyIdempotencyTests.RunAsync_RerunWithMixOfAppliedAndNewEvents_AppliesOnlyNewAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-        "sourceLine": 2704,
+        "sourceLine": 2597,
         "sourceSymbol": "EventsProcessed",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -126167,22 +125998,6 @@
         "linkSource": "Convention"
       }
     ],
-    "PerspectiveRunnerGeneratorTests.PerspectiveRunnerGenerator_StreamGroup_RegistersEachMembershipWithItsDialsAsync": [
-      {
-        "sourceFile": "src/Whizbang.Generators/PerspectiveRunnerGenerator.cs",
-        "sourceSymbol": "PerspectiveRunnerGenerator",
-        "sourceType": "Class",
-        "linkSource": "Convention"
-      }
-    ],
-    "PerspectiveRunnerGeneratorTests.PerspectiveRunnerGenerator_NoStreamGroup_EmitsNoRegistrationAsync": [
-      {
-        "sourceFile": "src/Whizbang.Generators/PerspectiveRunnerGenerator.cs",
-        "sourceSymbol": "PerspectiveRunnerGenerator",
-        "sourceType": "Class",
-        "linkSource": "Convention"
-      }
-    ],
     "PerspectiveRunnerGeneratorTests.PerspectiveRunnerGenerator_RowCap_RegistersCapAsync": [
       {
         "sourceFile": "src/Whizbang.Generators/PerspectiveRunnerGenerator.cs",
@@ -128571,46 +128386,6 @@
       {
         "sourceFile": "src/Whizbang.Generators/SignalTypeRegistryGenerator.cs",
         "sourceSymbol": "SignalTypeRegistryGenerator",
-        "sourceType": "Class",
-        "linkSource": "Convention"
-      }
-    ],
-    "StreamGroupAnalyzerTests.BridgeOnSoleMembership_ReportsWHIZ142Async": [
-      {
-        "sourceFile": "src/Whizbang.Generators/StreamGroupAnalyzer.cs",
-        "sourceSymbol": "StreamGroupAnalyzer",
-        "sourceType": "Class",
-        "linkSource": "Convention"
-      }
-    ],
-    "StreamGroupAnalyzerTests.BridgeWithTwoMemberships_NoWHIZ142Async": [
-      {
-        "sourceFile": "src/Whizbang.Generators/StreamGroupAnalyzer.cs",
-        "sourceSymbol": "StreamGroupAnalyzer",
-        "sourceType": "Class",
-        "linkSource": "Convention"
-      }
-    ],
-    "StreamGroupAnalyzerTests.GroupWithNoAnnouncingEvictor_ReportsWHIZ141OnEachMemberAsync": [
-      {
-        "sourceFile": "src/Whizbang.Generators/StreamGroupAnalyzer.cs",
-        "sourceSymbol": "StreamGroupAnalyzer",
-        "sourceType": "Class",
-        "linkSource": "Convention"
-      }
-    ],
-    "StreamGroupAnalyzerTests.GroupWithAnAnnouncingEvictor_NoWHIZ141Async": [
-      {
-        "sourceFile": "src/Whizbang.Generators/StreamGroupAnalyzer.cs",
-        "sourceSymbol": "StreamGroupAnalyzer",
-        "sourceType": "Class",
-        "linkSource": "Convention"
-      }
-    ],
-    "StreamGroupAnalyzerTests.UngroupedSharer_ReportsWHIZ140_IsolationMarkerSilencesItAsync": [
-      {
-        "sourceFile": "src/Whizbang.Generators/StreamGroupAnalyzer.cs",
-        "sourceSymbol": "StreamGroupAnalyzer",
         "sourceType": "Class",
         "linkSource": "Convention"
       }
@@ -136417,7 +136192,7 @@
     ],
     "RegistryTest.RegisterModels_WithValidRegistrar_StoresCallbackAsync": [
       {
-        "sourceFile": "src/Whizbang.Testing/StreamGroupRegistryTestSeam.cs",
+        "sourceFile": "src/Whizbang.Generators/EventNamespaceRegistryGenerator.cs",
         "sourceSymbol": "Registry",
         "sourceType": "Class",
         "linkSource": "Convention"
@@ -136425,7 +136200,7 @@
     ],
     "RegistryTest.InvokeRegistration_WithNoRegistrar_DoesNotThrowAsync": [
       {
-        "sourceFile": "src/Whizbang.Testing/StreamGroupRegistryTestSeam.cs",
+        "sourceFile": "src/Whizbang.Generators/EventNamespaceRegistryGenerator.cs",
         "sourceSymbol": "Registry",
         "sourceType": "Class",
         "linkSource": "Convention"
@@ -136433,7 +136208,7 @@
     ],
     "RegistryTest.InvokeRegistration_PassesCorrectParametersToRegistrarAsync": [
       {
-        "sourceFile": "src/Whizbang.Testing/StreamGroupRegistryTestSeam.cs",
+        "sourceFile": "src/Whizbang.Generators/EventNamespaceRegistryGenerator.cs",
         "sourceSymbol": "Registry",
         "sourceType": "Class",
         "linkSource": "Convention"
@@ -136441,7 +136216,7 @@
     ],
     "RegistryTest.RegisterModels_MultipleRegistrations_UsesLatestRegistrarAsync": [
       {
-        "sourceFile": "src/Whizbang.Testing/StreamGroupRegistryTestSeam.cs",
+        "sourceFile": "src/Whizbang.Generators/EventNamespaceRegistryGenerator.cs",
         "sourceSymbol": "Registry",
         "sourceType": "Class",
         "linkSource": "Convention"
@@ -161615,30 +161390,6 @@
         "linkSource": "Convention"
       }
     ],
-    "PerspectiveStreamGroupRegistryTests.Register_MultipleGroups_EachMembershipKeepsItsOwnDialsAsync": [
-      {
-        "sourceFile": "src/Whizbang.Core/Perspectives/PerspectiveStreamGroupRegistry.cs",
-        "sourceSymbol": "PerspectiveStreamGroupRegistry",
-        "sourceType": "Class",
-        "linkSource": "Convention"
-      }
-    ],
-    "PerspectiveStreamGroupRegistryTests.Register_SameKeyTwice_LastWriteWins_IdempotentAsync": [
-      {
-        "sourceFile": "src/Whizbang.Core/Perspectives/PerspectiveStreamGroupRegistry.cs",
-        "sourceSymbol": "PerspectiveStreamGroupRegistry",
-        "sourceType": "Class",
-        "linkSource": "Convention"
-      }
-    ],
-    "PerspectiveStreamGroupRegistryTests.Resolve_UngroupedModel_IsEmpty_UntouchableByCascadesAsync": [
-      {
-        "sourceFile": "src/Whizbang.Core/Perspectives/PerspectiveStreamGroupRegistry.cs",
-        "sourceSymbol": "PerspectiveStreamGroupRegistry",
-        "sourceType": "Class",
-        "linkSource": "Convention"
-      }
-    ],
     "PerspectiveTtlRegistryTests.Register_ThenResolve_ReturnsTheSecondsAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Perspectives/PerspectiveTtlRegistry.cs",
@@ -161803,62 +161554,6 @@
       {
         "sourceFile": "src/Whizbang.Core/Perspectives/StreamCompactor.cs",
         "sourceSymbol": "StreamCompactor",
-        "sourceType": "Class",
-        "linkSource": "Convention"
-      }
-    ],
-    "StreamGroupClosureTests.OwnOrigin_AnnouncesToAllMemberships_NoBridgingInvolvedAsync": [
-      {
-        "sourceFile": "src/Whizbang.Core/Perspectives/StreamGroupClosure.cs",
-        "sourceSymbol": "StreamGroupClosure",
-        "sourceType": "Class",
-        "linkSource": "Convention"
-      }
-    ],
-    "StreamGroupClosureTests.Received_CrossesGroupsOnlyWhenTheMembershipBridgesAsync": [
-      {
-        "sourceFile": "src/Whizbang.Core/Perspectives/StreamGroupClosure.cs",
-        "sourceSymbol": "StreamGroupClosure",
-        "sourceType": "Class",
-        "linkSource": "Convention"
-      }
-    ],
-    "StreamGroupClosureTests.NonMember_IsNeverCascaded_RegardlessOfSharedStreamsAsync": [
-      {
-        "sourceFile": "src/Whizbang.Core/Perspectives/StreamGroupClosure.cs",
-        "sourceSymbol": "StreamGroupClosure",
-        "sourceType": "Class",
-        "linkSource": "Convention"
-      }
-    ],
-    "StreamGroupClosureTests.CyclicBridgedGroups_Converge_EachPairEntersOnceAsync": [
-      {
-        "sourceFile": "src/Whizbang.Core/Perspectives/StreamGroupClosure.cs",
-        "sourceSymbol": "StreamGroupClosure",
-        "sourceType": "Class",
-        "linkSource": "Convention"
-      }
-    ],
-    "StreamGroupClosureTests.FollowOff_MemberHearsAnnouncementsButNeverEvictsAsync": [
-      {
-        "sourceFile": "src/Whizbang.Core/Perspectives/StreamGroupClosure.cs",
-        "sourceSymbol": "StreamGroupClosure",
-        "sourceType": "Class",
-        "linkSource": "Convention"
-      }
-    ],
-    "StreamGroupClosureTests.AnnounceOff_SeedTriggersNothingAsync": [
-      {
-        "sourceFile": "src/Whizbang.Core/Perspectives/StreamGroupClosure.cs",
-        "sourceSymbol": "StreamGroupClosure",
-        "sourceType": "Class",
-        "linkSource": "Convention"
-      }
-    ],
-    "StreamGroupClosureTests.Seeds_AreNeverInTheCascade_TheyAreAlreadyDestroyedAsync": [
-      {
-        "sourceFile": "src/Whizbang.Core/Perspectives/StreamGroupClosure.cs",
-        "sourceSymbol": "StreamGroupClosure",
         "sourceType": "Class",
         "linkSource": "Convention"
       }
@@ -179969,11 +179664,11 @@
     ]
   },
   "metadata": {
-    "generated": "2026-08-16T22:49:24.352Z",
-    "sourceFiles": 1510,
-    "testFiles": 4131,
-    "totalLinks": 12133,
-    "codeSymbols": 1592,
-    "testMethods": 10541
+    "generated": "2026-08-16T23:20:16.946Z",
+    "sourceFiles": 1487,
+    "testFiles": 4119,
+    "totalLinks": 12109,
+    "codeSymbols": 1587,
+    "testMethods": 10522
   }
 }

@@ -21,6 +21,7 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/110_StandbyHandshake.sql
 testReferences:
   - tests/Whizbang.Core.Tests/Startup/AssessStartupStepTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/ColdBootJourneyE2ETests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StartupAssessorTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StandbyHandshakeE2ETests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StandbyHandshakeSqlTests.cs
