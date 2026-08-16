@@ -87,6 +87,21 @@ Holdings are **recorded but never consulted to decide**: *the lock decides, the 
 
 The eviction fence reaches acquisition: `record_capability` refuses a tombstoned instance, and the elector releases the lock it just won and stands down — a zombie can win a race but cannot hold a duty. Long-tenure holders fence themselves with `IDutyGrant.VerifyStillHeldAsync`: a grant whose session died (the OOMKill half-open-TCP shape) reports lost before the next unit of exclusive work, because another instance may already hold it.
 
+## The Standby Handshake
+
+A breaking migration is a **planned outage** — the honest description of what a breaking schema change is — and the framework converts an outage that would otherwise be silent and corrupting into one that is bounded, announced and observable.
+
+The migrating instance records **one fleet-wide standby request** (`wh_standby_requests` — single-row by table shape: one handshake at a time, which is what the migrator duty already guarantees). Live older peers' `StandbyWatcher` sees a binding request — from a *newer* version, requester *alive* — and drains: the lifecycle advances to `StandingBy`, pausing every run-control participant and posting `StandingBy` on the instance row for the migrator to observe. The migrator waits for every **live** older peer's recorded acknowledgment — an instance that stops heartbeating stops counting, so the wait is bounded by lease expiry, never by the goodwill of a process that may already be dead.
+
+Every path out of standby is bounded:
+
+- **Committed** — the ledger now records the newer version; standing-by peers re-assess, see `StandDown`, and shut down, as the handshake promises. The orchestrator replaces them.
+- **Rolled back** — the requester withdraws; the ledger is exactly as peers last read it. Revival is *not a second pipeline*: peers re-enter the re-entrant runner at `Assess`, find the schema unchanged, and resume.
+- **Dead migrator** — its heartbeat lapses, its request is void, revival begins. Nobody is stranded.
+- **Unresponsive peer** — eviction is the deliberate instrument (never an automatic consequence of slowness): `evict_instance` writes the tombstone the fence already honours, recording **who** issued it and why, and the handshake completes without the fenced peer — which can no longer heartbeat, win capabilities, or claim work.
+
+The verdict is also **not a startup-only fact**: the watcher re-assesses on a slow cadence, so an instance that was current when it booted stands down when a newer peer migrates underneath it — alive, not ready, reapable, awaiting replacement.
+
 ## Migration touch points
 
 | Migration | What changed |
