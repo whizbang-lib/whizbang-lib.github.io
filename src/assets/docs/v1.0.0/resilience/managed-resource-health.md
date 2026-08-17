@@ -66,7 +66,7 @@ green and `/health` ready — no rollback, no extra code.
 (which it reads) — only the resource knows whether, in this phase, it is *supposed to be running*
 (report real health) or *supposed to be off* (report healthy-by-design):
 
-```csharp{title="Health source contract" description="Each managed resource reports its own state, phase-aware" category="Implementation" difficulty="BEGINNER" tags=["Resilience","Health"] tests=["WhizbangHealthAggregatorTests.LenientDefault_Migrating_IsReadyAsync","SchemaHealthSourceTests.FaultedPhase_ReportsDegradedWarningAsync","SchemaHealthSourceTests.HaltedPhase_ReportsFaultedFailureAsync"]}
+```csharp{title="Health source contract" description="Each managed resource reports its own state, phase-aware" category="Implementation" difficulty="BEGINNER" tags=["Resilience","Health"] tests=["WhizbangHealthAggregatorTests.LenientDefault_Migrating_IsDegradedButServingAsync","SchemaHealthSourceTests.FaultedPhase_ReportsDegradedWarningAsync","SchemaHealthSourceTests.HaltedPhase_ReportsFaultedFailureAsync"]}
 public enum ComponentState {
   Operational, Starting, Connecting, Migrating,   // coming up / migrating (intentional)
   PausedByDesign, Draining,                        // intentionally off / finishing in-flight
@@ -104,9 +104,21 @@ through its `HealthPolicy` and takes the worst status. The default policy is **L
 
 | State | Liveness | Readiness |
 |---|---|---|
-| Operational / Starting / Connecting / Migrating / PausedByDesign / Draining | Healthy | **Healthy** |
+| Operational / Ready | Healthy | **Healthy** |
+| Starting / Connecting / Migrating / PausedByDesign / Draining | Healthy | **Degraded** — HTTP 200, visible |
 | Degraded | Healthy | Degraded |
 | Faulted | Healthy | Unhealthy |
+
+Intentional startup states report **Degraded, not Healthy and not Unhealthy** — the honest middle.
+Unhealthy rolls deployments back: tooling that waits on readiness with a bounded timeout (helm's
+default is three minutes) times out on any migration longer than that, punishing exactly the
+deploys that carry schema changes. Plain Healthy has the mirror flaw: the migration is invisible on
+every dashboard. Degraded is HTTP 200 — the rollout completes and the pod stays in rotation, with
+the availability gate and [data-plane seams](../operations/workers/database-readiness#the-seam-level-barriers-reads-and-writes-hold-themselves)
+refusing what genuinely cannot be served yet — while the state remains visible. The same reasoning
+applies to the legacy opt-in `SchemaReadyHealthCheck`, which now reports Degraded (not hard
+Unhealthy) while the schema gate is closed: one hard-Unhealthy check in an aggregate rolls
+deployments back regardless of policy.
 
 Liveness never fails for an intentional state under any policy — an intentional or dependency-fault
 state must never restart the pod. A genuine `Faulted` (transport dropped while `Ready`, offload
