@@ -2335,25 +2335,25 @@
   },
   "publish": {
     "file": "src/Whizbang.Core/Workers/OutboxDrainWorker.cs",
-    "line": 83,
+    "line": 84,
     "symbol": "publish",
     "docs": "operations/workers/publisher-worker"
   },
   "_drainStreamBatchAsync": {
     "file": "src/Whizbang.Core/Workers/OutboxDrainWorker.cs",
-    "line": 253,
+    "line": 254,
     "symbol": "_drainStreamBatchAsync",
     "docs": "fundamentals/work-coordinator/per-stream-drain"
   },
   "OutboxDrainWorkerOptions": {
     "file": "src/Whizbang.Core/Workers/OutboxDrainWorker.cs",
-    "line": 1132,
+    "line": 1133,
     "symbol": "OutboxDrainWorkerOptions",
     "docs": "fundamentals/work-coordinator/per-stream-drain"
   },
   "MaxConcurrentStreams": {
     "file": "src/Whizbang.Core/Workers/OutboxDrainWorker.cs",
-    "line": 1194,
+    "line": 1195,
     "symbol": "MaxConcurrentStreams",
     "docs": "fundamentals/work-coordinator/per-stream-drain#cross-stream-parallelism"
   },
@@ -3163,7 +3163,7 @@
   },
   "MetricsStartupStepObserver": {
     "file": "src/Whizbang.Core/Startup/BuiltInStartupObservers.cs",
-    "line": 77,
+    "line": 88,
     "symbol": "MetricsStartupStepObserver",
     "docs": "operations/startup/startup-pipeline#hooks"
   },
@@ -3185,6 +3185,18 @@
     "symbol": "IDutyElector",
     "docs": "operations/startup/capabilities-and-duties"
   },
+  "DutyRefusal": {
+    "file": "src/Whizbang.Core/Startup/IDutyElector.cs",
+    "line": 68,
+    "symbol": "DutyRefusal",
+    "docs": "operations/startup/capabilities-and-duties"
+  },
+  "DutyAttempt": {
+    "file": "src/Whizbang.Core/Startup/IDutyElector.cs",
+    "line": 90,
+    "symbol": "DutyAttempt",
+    "docs": "operations/startup/capabilities-and-duties"
+  },
   "StartupStepContext": {
     "file": "src/Whizbang.Core/Startup/IStartupStepObserver.cs",
     "line": 10,
@@ -3197,15 +3209,21 @@
     "symbol": "StartupRunPlan",
     "docs": "operations/startup/startup-pipeline#hooks"
   },
+  "StartupStepWaitContext": {
+    "file": "src/Whizbang.Core/Startup/IStartupStepObserver.cs",
+    "line": 31,
+    "symbol": "StartupStepWaitContext",
+    "docs": "operations/startup/startup-pipeline#hooks"
+  },
   "StartupSummary": {
     "file": "src/Whizbang.Core/Startup/IStartupStepObserver.cs",
-    "line": 24,
+    "line": 37,
     "symbol": "StartupSummary",
     "docs": "operations/startup/startup-pipeline#hooks"
   },
   "IStartupStepObserver": {
     "file": "src/Whizbang.Core/Startup/IStartupStepObserver.cs",
-    "line": 39,
+    "line": 52,
     "symbol": "IStartupStepObserver",
     "docs": "operations/startup/startup-pipeline#hooks"
   },
