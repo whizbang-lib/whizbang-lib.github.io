@@ -234,3 +234,52 @@ For 50 pods × 11 services in production (illustrative numbers — scale to your
 - [Failure and recovery](failure-and-recovery.md)
 - [App signals](app-signals.md)
 - [Contributor: implementing notifications](../../contributing/data-engines/implementing-notifications.md)
+
+## When the doorbell rings: the empty→non-empty edge
+
+A store-level NOTIFY fires exactly when a store call creates a stream's **first pending row** — the moment its queue transitions from empty to non-empty, judged per category (`outbox`, `inbox`, `perspective`) by the **same eligibility predicate the drain fetch uses**. Rows that pile up behind already-pending work are silent: a wake is already owed, and the drain loop's refetch will carry them. A stream whose queue drained to empty **re-arms the edge**, so the next store — seconds or weeks later — rings again.
+
+```mermaid {caption="The doorbell fires on the queue's empty→non-empty transition; pile-ups are silent; draining to empty re-arms the edge" tests=["NotifyAfterStoreSqlTests.StoreInboxMessages_DrainedStreamThenStore_FiresNotifyAsync","NotifyAfterStoreSqlTests.StoreInboxMessages_SecondCallSameStream_DoesNotFireNotifyAsync","NotifyAfterStoreSqlTests.StoreInboxMessages_NewStream_FiresInboxNotifyToCallerAsync"]}
+stateDiagram-v2
+    direction LR
+    Empty : Stream queue EMPTY<br/>(no drainable rows)
+    Busy : Stream queue NON-EMPTY<br/>(work pending / drain in flight)
+
+    Empty --> Busy : store inserts first pending row<br/>🔔 NOTIFY owner
+    Busy --> Busy : store inserts more rows<br/>(silent — wake already owed)
+    Busy --> Empty : drain fetches until an<br/>EMPTY fetch, then parks
+```
+
+This one rule serves both workload extremes with **zero configuration**:
+
+- **Bulk throughput** — a burst of events per stream rings once (the first row), then piles silently behind the backlog. A 17k-event import across 350 streams emits ~350 notifies, not 17k.
+- **Interactive latency** — a conversational stream drains to empty between hops, so every hop is a fresh edge: the owner wakes in milliseconds instead of waiting for the safety-net poll.
+
+| Moment | Queue just before the store | Doorbell |
+|---|---|---|
+| First message of a new session | empty (stream doesn't exist yet) | 🔔 rings |
+| Reply seconds later (previous hop drained) | empty | 🔔 rings |
+| Message after 45 minutes — or a week — idle | empty | 🔔 rings |
+| Burst while the consumer is mid-drain | non-empty | silent |
+
+Three details make the rule exact rather than approximate:
+
+1. **The probe mirrors the drain fetch.** "Pending" means *drainable now*: `processed_at IS NULL` (outbox also `published_at IS NULL`) and schedule-eligible. A retry parked with a future `scheduled_for` is invisible to the drain, so it is invisible to the probe — it can never absorb another store's doorbell.
+2. **The probe is a locking read (`FOR SHARE`).** A plain read racing a concurrent completion of the stream's last pending row could see the stale "still pending" version and stay silent while the drain's final refetch predates the store's commit — a lost wakeup. The locking read serializes against the completion `UPDATE`: whichever side commits second sees the other, so exactly one wake mechanism always fires.
+3. **The `perspective` doorbell is precise.** It rings only when the emit chain actually *created* work items for a previously-empty perspective queue. Event types with no perspective associations create no work — ringing for them would fire on every store, since their queue is permanently empty.
+
+```mermaid {caption="A store into a drained hot stream wakes the pinned owner's claim loop through the real NOTIFY path — the interactive hop never waits on the safety-net poll" tests=["ClaimWorkerNotificationWakeIntegrationTests.ClaimWorker_StoreIntoDrainedHotStream_EdgeDoorbellWakesOwnerAsync","NotifyAfterStoreSqlTests.StoreInboxMessages_CompletionHeldOpenConcurrently_StoreStillWakesOwnerAsync"]}
+sequenceDiagram
+    autonumber
+    participant P as Producer (any instance)
+    participant DB as store_inbox_messages
+    participant O as Pinned owner's ClaimWorker
+
+    Note over O: idle — stream drained, poll relaxed
+    P->>DB: store (stream's queue is EMPTY)
+    DB->>O: 🔔 NOTIFY wh_work_i_&lt;owner&gt; (empty→non-empty edge)
+    O->>DB: claim_work + drain immediately
+    Note over P,O: hop latency: milliseconds, not the poll interval
+```
+
+Routing is unchanged by the edge rule: `notify_instance_owners` still targets the pinned owner's channel (Step 1) or the deterministic partition target for unpinned streams (Step 2). Any instance may produce into any stream — the queue lives in the shared database, so emptiness is a global per-stream fact, and several concurrent producers still collapse to one doorbell while work is pending. The safety-net poll remains as the crash/orphan backstop (a stranded row from a dead worker suppresses the doorbell precisely because a wake is owed to work that lease-expiry will re-offer), never as the interactive latency path.

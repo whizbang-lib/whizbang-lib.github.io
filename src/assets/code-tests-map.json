@@ -95560,7 +95560,7 @@
     "PublishTimeoutTests.OutboxDrainWorker_PublishBatchHangs_TimesOutAndEnqueuesFailurePerRowAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/OutboxDrainWorker.cs",
-        "sourceLine": 1261,
+        "sourceLine": 1262,
         "sourceSymbol": "PublishTimeoutSeconds",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -95569,7 +95569,7 @@
     "PublishTimeoutTests.OutboxDrainWorker_PublishSingularHangs_TimesOutAndEnqueuesFailureAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/OutboxDrainWorker.cs",
-        "sourceLine": 1262,
+        "sourceLine": 1263,
         "sourceSymbol": "PublishTimeoutSeconds",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -95578,7 +95578,7 @@
     "PublishTimeoutTests.OutboxDrainWorker_PublishStrategyIgnoresCt_StillTimesOutAndEnqueuesFailureAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/OutboxDrainWorker.cs",
-        "sourceLine": 1263,
+        "sourceLine": 1264,
         "sourceSymbol": "PublishTimeoutSeconds",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -95587,7 +95587,7 @@
     "OutboxDrainWorkerGapTests.OutboxDrainWorker_PublishTimeoutZero_SingularPath_PublishesAndCompletesAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/OutboxDrainWorker.cs",
-        "sourceLine": 1264,
+        "sourceLine": 1265,
         "sourceSymbol": "PublishTimeoutSeconds",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -180015,9 +180015,9 @@
     ]
   },
   "metadata": {
-    "generated": "2026-08-17T13:47:55.692Z",
-    "sourceFiles": 1495,
-    "testFiles": 4146,
+    "generated": "2026-08-17T19:49:14.781Z",
+    "sourceFiles": 1537,
+    "testFiles": 4196,
     "totalLinks": 12136,
     "codeSymbols": 1591,
     "testMethods": 10545
