@@ -21,6 +21,7 @@ codeReferences:
   - src/Whizbang.Hosting.AspNet/AvailabilityGateMode.cs
   - src/Whizbang.Core/Workers/ClaimWorker.cs
 testReferences:
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/ColdBootJourneyE2ETests.cs
   - tests/Whizbang.Hosting.AspNet.Tests/DatabaseAvailabilityMiddlewareTests.cs
   - tests/Whizbang.Hosting.AspNet.Tests/DatabaseAvailabilityMiddlewareExtensionsTests.cs
   - tests/Whizbang.Core.Tests/Workers/HeartbeatWorkerTests.cs

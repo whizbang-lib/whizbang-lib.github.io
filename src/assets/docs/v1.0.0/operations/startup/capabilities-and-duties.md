@@ -20,6 +20,7 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/108_InstanceCapabilities.sql
 testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/DutyElectionE2ETests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/TableRewriteJourneyE2ETests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/InstanceCapabilitiesSqlTests.cs
   - tests/Whizbang.Core.Tests/Startup/StartupPipelineRunnerDutyTests.cs
 ---

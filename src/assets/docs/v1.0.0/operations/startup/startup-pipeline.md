@@ -22,6 +22,8 @@ codeReferences:
   - src/Whizbang.Core/Startup/StartupReadiness.cs
   - src/Whizbang.Core/Health/StartupPipelineHealthSource.cs
 testReferences:
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/ColdBootJourneyE2ETests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/TableRewriteJourneyE2ETests.cs
   - tests/Whizbang.Core.Tests/Startup/StartupPipelineRunnerTests.cs
   - tests/Whizbang.Core.Tests/Startup/StartupPipelineHooksTests.cs
   - tests/Whizbang.Core.Tests/Startup/StartupPipelineRunnerDutyTests.cs

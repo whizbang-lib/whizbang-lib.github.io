@@ -47,7 +47,7 @@ every managed resource — workers, transport-consume, the write path, offload, 
 
 ## The lifecycle state machine
 
-```csharp{title="Lifecycle phases" description="The one state Whizbang owns and advances" category="Implementation" difficulty="BEGINNER" tags=["Resilience","RunControl"] tests=["LifecyclePhaseTests.TransitionalPhases_AreTransitional_NotSettledAsync","WhizbangLifecycleCoordinatorTests.Transition_BroadcastsToEveryParticipantAsync"]}
+```csharp{title="Lifecycle phases" description="The one state Whizbang owns and advances" category="Implementation" difficulty="BEGINNER" tags=["Resilience","RunControl"] tests=["LifecyclePhaseTests.TransitionalPhases_AreTransitional_NotSettledAsync","WhizbangLifecycleCoordinatorTests.Transition_BroadcastsToEveryParticipantAsync","ColdBootJourneyE2ETests.ColdBoot_TheSeamsRefuse_ThenTheLadderOpensInOrderAsync"]}
 public enum LifecyclePhase {
   Starting,           // process booted (transitional)
   Connecting,         // network warmup — DB/transport/offload connecting, before the migration (transitional)
