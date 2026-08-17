@@ -1,13 +1,13 @@
 {
   "run": {
-    "runId": "32068426703",
-    "sha": "4a7ff0fd62345a024b1c342249b170fedeb180fe",
+    "runId": "32073548339",
+    "sha": "b3a3f7ff5067d0f4401b043c818e8d1c841c33f7",
     "branch": "develop",
-    "libraryVersion": "0.965.0-alpha.7",
-    "completedAt": "2026-08-17T21:57:27.820Z"
+    "libraryVersion": "0.965.0-alpha.8",
+    "completedAt": "2026-08-17T22:42:45.553Z"
   },
   "total": {
-    "passed": 17226,
+    "passed": 17228,
     "failed": 0,
     "skipped": 9
   },
@@ -43,7 +43,7 @@
       "skipped": 1
     },
     "unit": {
-      "passed": 14164,
+      "passed": 14166,
       "failed": 0,
       "skipped": 8
     }
@@ -159,7 +159,7 @@
     },
     "Whizbang.Hosting.AspNet.Tests": {
       "file": "Whizbang.Hosting.AspNet.Tests.json",
-      "passed": 90,
+      "passed": 92,
       "failed": 0,
       "skipped": 0
     },
