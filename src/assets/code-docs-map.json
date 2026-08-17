@@ -383,6 +383,12 @@
     "symbol": "MaintenanceTestDriver",
     "docs": "proposals/pre-destruction-seam"
   },
+  "StreamGroupRegistryTestSeam": {
+    "file": "src/Whizbang.Testing/StreamGroupRegistryTestSeam.cs",
+    "line": 10,
+    "symbol": "StreamGroupRegistryTestSeam",
+    "docs": "proposals/pre-destruction-seam"
+  },
   "PerspectiveWorkerTestHarness": {
     "file": "src/Whizbang.Testing/Workers/PerspectiveWorkerTestHarness.cs",
     "line": 18,
@@ -772,6 +778,12 @@
     "line": 19,
     "symbol": "SignalTypeRegistryGenerator",
     "docs": "fundamentals/signal-bus/signal-bus"
+  },
+  "StreamGroupAnalyzer": {
+    "file": "src/Whizbang.Generators/StreamGroupAnalyzer.cs",
+    "line": 17,
+    "symbol": "StreamGroupAnalyzer",
+    "docs": "proposals/pre-destruction-seam"
   },
   "SyncEventTypeRegistryGenerator": {
     "file": "src/Whizbang.Generators/SyncEventTypeRegistryGenerator.cs",
@@ -1480,12 +1492,6 @@
     "line": 9,
     "symbol": "WhizbangMethodCallTranslatorPlugin",
     "docs": "fundamentals/security/security#principal-filtering"
-  },
-  "EFCoreClaimedEmissionStore": {
-    "file": "src/Whizbang.Data.EFCore.Postgres/Dispatch/EFCoreClaimedEmissionStore.cs",
-    "line": 25,
-    "symbol": "EFCoreClaimedEmissionStore",
-    "docs": "fundamentals/dispatcher/publish-once"
   },
   "helpers": {
     "file": "src/Whizbang.Data.EFCore.Postgres/Collective/CollectiveEventApplier.cs",
@@ -2221,43 +2227,43 @@
   },
   "MaintenanceWorkerOptions": {
     "file": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-    "line": 642,
+    "line": 805,
     "symbol": "MaintenanceWorkerOptions",
     "docs": "fundamentals/work-coordinator/configuration-reference"
   },
   "StuckRowSentinelEnabled": {
     "file": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-    "line": 682,
+    "line": 845,
     "symbol": "StuckRowSentinelEnabled",
     "docs": "operations/observability/stuck-row-sentinel"
   },
   "StuckRowSentinelMaxAttempts": {
     "file": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-    "line": 693,
+    "line": 856,
     "symbol": "StuckRowSentinelMaxAttempts",
     "docs": "operations/observability/stuck-row-sentinel"
   },
   "StuckRowSentinelLimit": {
     "file": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-    "line": 704,
+    "line": 867,
     "symbol": "StuckRowSentinelLimit",
     "docs": "operations/observability/stuck-row-sentinel"
   },
   "DestructionRetryBackoffSeconds": {
     "file": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-    "line": 714,
+    "line": 877,
     "symbol": "DestructionRetryBackoffSeconds",
     "docs": "fundamentals/events/ephemeral-events"
   },
   "MaxDestructionRetries": {
     "file": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-    "line": 721,
+    "line": 884,
     "symbol": "MaxDestructionRetries",
     "docs": "fundamentals/events/ephemeral-events"
   },
   "OnDestroyFailure": {
     "file": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-    "line": 729,
+    "line": 892,
     "symbol": "OnDestroyFailure",
     "docs": "fundamentals/events/ephemeral-events"
   },
@@ -4295,6 +4301,18 @@
     "symbol": "EphemeralMaxSnapshotsPerStream",
     "docs": "fundamentals/events/ephemeral-events"
   },
+  "StreamGroupMembership": {
+    "file": "src/Whizbang.Core/Perspectives/PerspectiveStreamGroupRegistry.cs",
+    "line": 10,
+    "symbol": "StreamGroupMembership",
+    "docs": "proposals/pre-destruction-seam"
+  },
+  "PerspectiveStreamGroupRegistry": {
+    "file": "src/Whizbang.Core/Perspectives/PerspectiveStreamGroupRegistry.cs",
+    "line": 20,
+    "symbol": "PerspectiveStreamGroupRegistry",
+    "docs": "proposals/pre-destruction-seam"
+  },
   "PerspectiveStreamLockOptions": {
     "file": "src/Whizbang.Core/Perspectives/PerspectiveStreamLockOptions.cs",
     "line": 7,
@@ -4348,6 +4366,12 @@
     "line": 33,
     "symbol": "StreamCompactor",
     "docs": "fundamentals/events/ephemeral-events"
+  },
+  "StreamGroupClosure": {
+    "file": "src/Whizbang.Core/Perspectives/StreamGroupClosure.cs",
+    "line": 15,
+    "symbol": "StreamGroupClosure",
+    "docs": "proposals/pre-destruction-seam"
   },
   "VectorDistanceMetric": {
     "file": "src/Whizbang.Core/Perspectives/VectorDistanceMetric.cs",
@@ -5591,171 +5615,183 @@
     "symbol": "ReleasePerspectiveRowHoldsAsync",
     "docs": "proposals/pre-destruction-seam"
   },
-  "PerspectiveRowReapResult": {
-    "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 936,
-    "symbol": "PerspectiveRowReapResult",
-    "docs": "proposals/pre-destruction-seam"
-  },
   "AcknowledgeRetentionEnforcementAsync": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 961,
+    "line": 962,
     "symbol": "AcknowledgeRetentionEnforcementAsync",
+    "docs": "proposals/pre-destruction-seam"
+  },
+  "RequeueRowEvictionsAsync": {
+    "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
+    "line": 1000,
+    "symbol": "RequeueRowEvictionsAsync",
     "docs": "proposals/pre-destruction-seam"
   },
   "DigestVerificationResult": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 1041,
+    "line": 1169,
     "symbol": "DigestVerificationResult",
     "docs": "resilience/stream-integrity"
   },
   "IntegrityStampRepairWindowsAsync": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 1171,
+    "line": 1299,
     "symbol": "IntegrityStampRepairWindowsAsync",
     "docs": "proposals/paced-repair-drain"
   },
   "EphemeralPointerPruneResult": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 1230,
+    "line": 1358,
     "symbol": "EphemeralPointerPruneResult",
     "docs": "fundamentals/events/ephemeral-events"
   },
   "AdvanceIntegritySealAsync": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 1360,
+    "line": 1488,
     "symbol": "AdvanceIntegritySealAsync",
     "docs": "resilience/stream-integrity"
   },
   "EpochVerificationResult": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 1373,
+    "line": 1501,
     "symbol": "EpochVerificationResult",
     "docs": "resilience/stream-integrity"
   },
   "StreamCloseResult": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 1423,
+    "line": 1551,
     "symbol": "StreamCloseResult",
     "docs": "fundamentals/events/ephemeral-events"
   },
   "HoldEphemeralDestructionAsync": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 1492,
+    "line": 1620,
     "symbol": "HoldEphemeralDestructionAsync",
     "docs": "fundamentals/events/ephemeral-events"
   },
   "MaintenanceResult": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 1794,
+    "line": 1922,
     "symbol": "MaintenanceResult",
     "docs": "operations/maintenance"
   },
   "RewindCursorInfo": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 1806,
+    "line": 1934,
     "symbol": "RewindCursorInfo",
     "docs": "fundamentals/perspectives/rewind"
   },
   "OrphanedLifecycleEvent": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 1819,
+    "line": 1947,
     "symbol": "OrphanedLifecycleEvent",
     "docs": "fundamentals/lifecycle/lifecycle-reconciliation"
   },
   "EphemeralReclassificationResult": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 1827,
+    "line": 1955,
     "symbol": "EphemeralReclassificationResult",
     "docs": "fundamentals/events/ephemeral-events"
   },
   "EphemeralTypeGrace": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 1840,
+    "line": 1968,
     "symbol": "EphemeralTypeGrace",
     "docs": "fundamentals/events/ephemeral-events"
   },
   "PerspectiveRetentionDeclaration": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 1852,
+    "line": 1980,
     "symbol": "PerspectiveRetentionDeclaration",
     "docs": "fundamentals/perspectives/row-retention"
   },
   "OffloadClaimRecord": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 1866,
+    "line": 1994,
     "symbol": "OffloadClaimRecord",
     "docs": "fundamentals/messaging/body-offload"
   },
+  "PerspectiveRowReapResult": {
+    "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
+    "line": 2000,
+    "symbol": "PerspectiveRowReapResult",
+    "docs": "proposals/pre-destruction-seam"
+  },
+  "PerspectiveTableName": {
+    "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
+    "line": 2007,
+    "symbol": "PerspectiveTableName",
+    "docs": "proposals/pre-destruction-seam"
+  },
   "EphemeralSnapshotTarget": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 1881,
+    "line": 2016,
     "symbol": "EphemeralSnapshotTarget",
     "docs": "fundamentals/events/ephemeral-events"
   },
   "ArchivedEvent": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 1907,
+    "line": 2042,
     "symbol": "ArchivedEvent",
     "docs": "fundamentals/events/ephemeral-events"
   },
   "EphemeralDestructionTarget": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 1916,
+    "line": 2051,
     "symbol": "EphemeralDestructionTarget",
     "docs": "fundamentals/events/ephemeral-events"
   },
   "TypeDefinitionInfo": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 1923,
+    "line": 2058,
     "symbol": "TypeDefinitionInfo",
     "docs": "fundamentals/events/type-definition-fingerprint"
   },
   "TypeDefinitionRegistration": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 1935,
+    "line": 2070,
     "symbol": "TypeDefinitionRegistration",
     "docs": "fundamentals/events/type-definition-fingerprint"
   },
   "DefinitionRelationship": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 1945,
+    "line": 2080,
     "symbol": "DefinitionRelationship",
     "docs": "fundamentals/events/type-definition-fingerprint"
   },
   "Flags": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 2144,
+    "line": 2279,
     "symbol": "Flags",
     "docs": "fundamentals/messaging/collective-events"
   },
   "EventsProcessed": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 2594,
+    "line": 2729,
     "symbol": "EventsProcessed",
     "docs": "fundamentals/perspectives/rewind#metrics"
   },
   "Attempts": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 2753,
+    "line": 2888,
     "symbol": "Attempts",
     "docs": "operations/dead-letter-queue/perspective-events"
   },
   "PendingPerspectiveEvent": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 2787,
+    "line": 2922,
     "symbol": "PendingPerspectiveEvent",
     "docs": "fundamentals/work-coordinator/per-stream-drain"
   },
   "OutboxBatchRow": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 2794,
+    "line": 2929,
     "symbol": "OutboxBatchRow",
     "docs": "fundamentals/work-coordinator/per-stream-drain"
   },
   "InboxBatchRow": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 2863,
+    "line": 2998,
     "symbol": "InboxBatchRow",
     "docs": "fundamentals/work-coordinator/per-stream-drain"
   },
@@ -6916,6 +6952,12 @@
     "line": 30,
     "symbol": "SignalTagAttribute",
     "docs": "fundamentals/messages/message-tags#signal-tag"
+  },
+  "StreamGroupIsolatedAttribute": {
+    "file": "src/Whizbang.Core/Attributes/StreamGroupIsolatedAttribute.cs",
+    "line": 8,
+    "symbol": "StreamGroupIsolatedAttribute",
+    "docs": "proposals/pre-destruction-seam"
   },
   "TelemetryTagAttribute": {
     "file": "src/Whizbang.Core/Attributes/TelemetryTagAttribute.cs",
