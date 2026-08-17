@@ -104,6 +104,20 @@ sequenceDiagram
 
 The cold-only gate rings on the wrong edge — a stream's *first store ever*. The debounce rings on a time edge — a clock standing in for consumer state. The queue-emptiness edge is the condition both were approximating.
 
+### The edge resets — resume-after-idle is instant
+
+The wake condition is **queue emptiness, not stream age**. The cold-only gate rings once per stream *lifetime* (only a brand-new stream is "cold" — an interactive session is instant for its first message and poll-paced forever after). The emptiness edge rings once per *quiet period*: every time the consumer catches up, the next store — whenever it arrives — is an empty→non-empty transition again.
+
+| Moment | Pending queue just before the store | Doorbell |
+|---|---|---|
+| First message of a new session | empty (stream doesn't exist yet) | 🔔 rings |
+| Reply seconds later (previous hop drained) | empty | 🔔 rings |
+| Message after 45 minutes idle | empty — drained long ago | 🔔 rings |
+| Message after a week idle | empty | 🔔 rings |
+| Burst while the consumer is mid-drain | non-empty | silent — the in-flight drain's refetch picks it up |
+
+Nothing in the rule is time-based, so idle duration cannot matter: an idle stream *is* a drained stream, and the next store re-arms the edge. The only silent case is work already pending — where a wake is already owed and latency is governed by processing, never by a sleeping owner. Stranded pending work (a crashed worker's row) would suppress the doorbell, but that is the crash-recovery scenario the safety-net poll and lease-expiry orphan reclaim already own — unchanged from today.
+
 ---
 
 ## 3. Correctness: the lost-wakeup race is already covered
