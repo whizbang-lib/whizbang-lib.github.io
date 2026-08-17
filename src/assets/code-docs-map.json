@@ -739,13 +739,13 @@
   },
   "types": {
     "file": "src/Whizbang.Generators/MessageJsonContextGenerator.cs",
-    "line": 41,
+    "line": 42,
     "symbol": "types",
     "docs": "extending/source-generators/json-contexts"
   },
   "_generateRenameAliasRegistrations": {
     "file": "src/Whizbang.Generators/MessageJsonContextGenerator.cs",
-    "line": 3234,
+    "line": 3441,
     "symbol": "_generateRenameAliasRegistrations",
     "docs": "fundamentals/identity/pinned-type-ledger"
   },
@@ -856,6 +856,18 @@
     "line": 30,
     "symbol": "SyncEventTypeAutoRegistration",
     "docs": "fundamentals/perspectives/perspective-sync#auto-registration"
+  },
+  "SagaEventShapes": {
+    "file": "src/Whizbang.Generators/Sagas/SagaEventShapes.cs",
+    "line": 46,
+    "symbol": "SagaEventShapes",
+    "docs": "fundamentals/sagas/saga-events"
+  },
+  "SagaRecoveryReceptorShapes": {
+    "file": "src/Whizbang.Generators/Sagas/SagaRecoveryReceptorShapes.cs",
+    "line": 35,
+    "symbol": "SagaRecoveryReceptorShapes",
+    "docs": "fundamentals/sagas/completion-orchestration"
   },
   "MessageTagParameterAnalyzer": {
     "file": "src/Whizbang.Generators/Analyzers/MessageTagParameterAnalyzer.cs",
@@ -3151,7 +3163,7 @@
   },
   "MetricsStartupStepObserver": {
     "file": "src/Whizbang.Core/Startup/BuiltInStartupObservers.cs",
-    "line": 77,
+    "line": 88,
     "symbol": "MetricsStartupStepObserver",
     "docs": "operations/startup/startup-pipeline#hooks"
   },
@@ -3173,6 +3185,18 @@
     "symbol": "IDutyElector",
     "docs": "operations/startup/capabilities-and-duties"
   },
+  "DutyRefusal": {
+    "file": "src/Whizbang.Core/Startup/IDutyElector.cs",
+    "line": 68,
+    "symbol": "DutyRefusal",
+    "docs": "operations/startup/capabilities-and-duties"
+  },
+  "DutyAttempt": {
+    "file": "src/Whizbang.Core/Startup/IDutyElector.cs",
+    "line": 90,
+    "symbol": "DutyAttempt",
+    "docs": "operations/startup/capabilities-and-duties"
+  },
   "StartupStepContext": {
     "file": "src/Whizbang.Core/Startup/IStartupStepObserver.cs",
     "line": 10,
@@ -3185,15 +3209,21 @@
     "symbol": "StartupRunPlan",
     "docs": "operations/startup/startup-pipeline#hooks"
   },
+  "StartupStepWaitContext": {
+    "file": "src/Whizbang.Core/Startup/IStartupStepObserver.cs",
+    "line": 31,
+    "symbol": "StartupStepWaitContext",
+    "docs": "operations/startup/startup-pipeline#hooks"
+  },
   "StartupSummary": {
     "file": "src/Whizbang.Core/Startup/IStartupStepObserver.cs",
-    "line": 24,
+    "line": 37,
     "symbol": "StartupSummary",
     "docs": "operations/startup/startup-pipeline#hooks"
   },
   "IStartupStepObserver": {
     "file": "src/Whizbang.Core/Startup/IStartupStepObserver.cs",
-    "line": 39,
+    "line": 52,
     "symbol": "IStartupStepObserver",
     "docs": "operations/startup/startup-pipeline#hooks"
   },

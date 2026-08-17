@@ -59,11 +59,23 @@ Liveness never decides an election. A holder that is alive but briefly slow woul
 
 ## Winning a duty
 
-```csharp{title="The elector seam" description="Attempt acquisition — the primitive grants or refuses" category="Implementation" difficulty="INTERMEDIATE" tags=["Startup","Duties"] tests=["DutyElectionE2ETests.Contention_ExactlyOneWins_AndTheRowReportsTheLockHolderAsync","DutyElectionE2ETests.DirtyDeath_TheGrantKnowsItIsLost_AndAnotherInstanceAcquiresAsync"]}
+```csharp{title="The elector seam" description="Attempt acquisition — the primitive grants, or refuses with a reason" category="Implementation" difficulty="INTERMEDIATE" tags=["Startup","Duties"] tests=["DutyElectionE2ETests.Contention_ExactlyOneWins_AndTheRowReportsTheLockHolderAsync","DutyElectionE2ETests.DirtyDeath_TheGrantKnowsItIsLost_AndAnotherInstanceAcquiresAsync","StartupPipelineRunnerDutyTests.AwaitDutyStep_WhoseDutyIsNeverGrantable_FailsBoundedlyInsteadOfHangingAsync"]}
 public interface IDutyElector {
-  // Returns the grant when this instance now holds the duty, or null when another
-  // instance does — or when this instance has been evicted. Never blocks on the holder.
-  Task<IDutyGrant?> TryAcquireAsync(string duty, CancellationToken ct);
+  // Grants, or refuses WITH A REASON — losing the race is the only refusal worth retrying,
+  // and a caller that cannot tell the reasons apart retries the unretryable forever.
+  Task<DutyAttempt> TryAcquireAsync(string duty, CancellationToken ct);
+}
+
+public enum DutyRefusal {
+  Contended,     // another instance holds it — retry; the holder's release frees it
+  Unavailable,   // no coordination connection at all — a standing misconfiguration
+  Refused,       // this instance is evicted/unregistered — needs an operator, not a retry
+}
+
+public sealed record DutyAttempt {   // exactly one of Grant / Refusal is present
+  public IDutyGrant? Grant { get; }
+  public DutyRefusal? Refusal { get; }
+  public string? Detail { get; }     // the human-readable diagnosis a log line should carry
 }
 
 public interface IDutyGrant : IAsyncDisposable {
@@ -77,7 +89,7 @@ public interface IDutyGrant : IAsyncDisposable {
 }
 ```
 
-The Postgres implementation takes a session advisory lock on a process-stable key derived from the schema and duty name — process-stable because a per-process hash seed would give every instance its own private lock and exclude nothing. Winning records the holding; losing returns `null` and the [pipeline](startup-pipeline) applies the step's declared `NonHolderBehavior`.
+The Postgres implementation takes a session advisory lock on a process-stable key derived from the schema and duty name — process-stable because a per-process hash seed would give every instance its own private lock and exclude nothing. Winning records the holding; a refusal carries its reason and the [pipeline](startup-pipeline) acts on it: `Skip` non-holders carry on; `Await` non-holders retry **only while the refusal is `Contended`** — an `Unavailable` or `Refused` duty fails the step immediately, naming the duty and the elector's detail, because boot failing loudly beats boot hanging silently. While a legitimate contended wait persists, the runner narrates it through `IStartupStepObserver.OnStepWaitingAsync` on a backoff, so a long wait is a story in the logs rather than silence.
 
 The **eviction fence reaches election**: an instance that has been [evicted](../../fundamentals/workers/instance-liveness#eviction-reaping-is-a-fence-not-just-a-deletion) is refused at acquisition even when it wins the primitive, and the implementation releases what it won. That is what turns eviction from a request into a guarantee for exclusive work.
 

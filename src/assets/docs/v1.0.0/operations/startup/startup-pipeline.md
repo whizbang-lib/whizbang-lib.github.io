@@ -128,6 +128,9 @@ public interface IStartupStepObserver {
   ValueTask OnStepStartingAsync(StartupStepContext context, CancellationToken ct);
   ValueTask OnStepCompletedAsync(StartupStepResult result, CancellationToken ct); // outcome, duration, reason
   ValueTask OnPipelineCompletedAsync(StartupSummary summary, CancellationToken ct);
+  // A step blocked on a contended duty, emitted on a backoff — a long wait narrates itself
+  // instead of hanging silently. Default no-op, so existing observers are unaffected.
+  ValueTask OnStepWaitingAsync(StartupStepWaitContext context, CancellationToken ct) => default;
 }
 ```
 
@@ -152,6 +155,8 @@ public interface IStartupPipelineState {
 ## Ready is a composite
 
 `Ready` is the terminal signal — *startup finished*, a different fact from *the schema is ready*. It rides the `IHostedLifecycleService.StartedAsync` seam (after every hosted service's `StartAsync` has returned) and composes blocking-step completion with `IStartupReadinessContributor`s — transport consumers contribute their subscription readiness, so "ready" includes "subscribed". The sticky `IStartupReadySignal` then flips, `ComponentState.Ready` lands in health, and the [status surface](startup-status) reports the pipeline complete.
+
+The composite is **fail-closed but never silent**: while `StartedAsync` is blocked it names what it is still waiting on — the pending blocking steps with their statuses, the readiness contributor by name, or *"no run has started yet"* — as a Warning on a backoff. A boot that cannot finish is a boot that says why, not a hang with no output.
 
 See [Database Readiness](../workers/database-readiness#ready-is-more-than-the-gate) for the composite's roster and the health-policy rows.
 

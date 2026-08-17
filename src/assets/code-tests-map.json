@@ -29046,35 +29046,35 @@
       {
         "testFile": "tests/Whizbang.Sagas.Tests/DispatcherSagaEventEmitterTests.cs",
         "testMethod": "PublishAsync_WithScheduledFor_RoutesThroughOptionsOverloadAsync",
-        "testLine": 34,
+        "testLine": 35,
         "testClass": "DispatcherSagaEventEmitterTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Sagas.Tests/DispatcherSagaEventEmitterTests.cs",
         "testMethod": "PublishAsync_WithNullScheduledFor_FallsBackToImmediatePathAsync",
-        "testLine": 52,
+        "testLine": 53,
         "testClass": "DispatcherSagaEventEmitterTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Sagas.Tests/DispatcherSagaEventEmitterTests.cs",
         "testMethod": "PublishAsync_NoSchedulingOverload_DelegatesToDispatcherAsync",
-        "testLine": 65,
+        "testLine": 66,
         "testClass": "DispatcherSagaEventEmitterTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Sagas.Tests/DispatcherSagaEventEmitterTests.cs",
         "testMethod": "PublishOnceAsync_ForwardsClaimKeyAndEventToDispatcherAsync",
-        "testLine": 76,
+        "testLine": 77,
         "testClass": "DispatcherSagaEventEmitterTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Sagas.Tests/DispatcherSagaEventEmitterTests.cs",
         "testMethod": "Constructor_NullDispatcher_ThrowsAsync",
-        "testLine": 91,
+        "testLine": 92,
         "testClass": "DispatcherSagaEventEmitterTests",
         "linkSource": "Convention"
       }
@@ -86848,7 +86848,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Generators/MessageJsonContextGenerator.cs",
-        "sourceLine": 3303,
+        "sourceLine": 3510,
         "sourceSymbol": "List",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -86871,7 +86871,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Generators/MessageJsonContextGenerator.cs",
-        "sourceLine": 3368,
+        "sourceLine": 3589,
         "sourceSymbol": "ImmutableArray",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -86887,7 +86887,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Generators/MessageJsonContextGenerator.cs",
-        "sourceLine": 3367,
+        "sourceLine": 3588,
         "sourceSymbol": "ImmutableArray",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -86903,21 +86903,21 @@
       },
       {
         "sourceFile": "src/Whizbang.Generators/MessageJsonContextGenerator.cs",
-        "sourceLine": 1845,
+        "sourceLine": 2052,
         "sourceSymbol": "ImmutableArray",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Generators/MessageJsonContextGenerator.cs",
-        "sourceLine": 2689,
+        "sourceLine": 2896,
         "sourceSymbol": "_generateEnumLazyFields",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Generators/MessageJsonContextGenerator.cs",
-        "sourceLine": 2729,
+        "sourceLine": 2936,
         "sourceSymbol": "_generateEnumFactories",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -86933,14 +86933,14 @@
       },
       {
         "sourceFile": "src/Whizbang.Generators/MessageJsonContextGenerator.cs",
-        "sourceLine": 1846,
+        "sourceLine": 2053,
         "sourceSymbol": "ImmutableArray",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Generators/MessageJsonContextGenerator.cs",
-        "sourceLine": 2730,
+        "sourceLine": 2937,
         "sourceSymbol": "_generateEnumFactories",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -86967,7 +86967,7 @@
     "MessageJsonContextGeneratorTests.Generator_WithGetOnlyProperty_UsesNullSetterAsync": [
       {
         "sourceFile": "src/Whizbang.Generators/MessageJsonContextGenerator.cs",
-        "sourceLine": 38,
+        "sourceLine": 39,
         "sourceSymbol": "types",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -86976,7 +86976,7 @@
     "MessageJsonContextGeneratorTests.Generator_WithRecordStructNestedType_DiscoversStructAsync": [
       {
         "sourceFile": "src/Whizbang.Generators/MessageJsonContextGenerator.cs",
-        "sourceLine": 39,
+        "sourceLine": 40,
         "sourceSymbol": "types",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -86985,7 +86985,7 @@
     "MessageJsonContextGeneratorTests.Generator_WithReadonlyRecordStruct_UsesConstructorInitializationAsync": [
       {
         "sourceFile": "src/Whizbang.Generators/MessageJsonContextGenerator.cs",
-        "sourceLine": 40,
+        "sourceLine": 41,
         "sourceSymbol": "types",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -86994,7 +86994,7 @@
     "MessageJsonContextGeneratorTests.Generator_MessageWithSelfReferencingType_HandlesCorrectlyAsync": [
       {
         "sourceFile": "src/Whizbang.Generators/MessageJsonContextGenerator.cs",
-        "sourceLine": 1696,
+        "sourceLine": 1903,
         "sourceSymbol": "static",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -87003,7 +87003,7 @@
     "MessageJsonContextGeneratorTests.Generator_WithDirectPropertyNestedType_DiscoversNestedTypeAsync": [
       {
         "sourceFile": "src/Whizbang.Generators/MessageJsonContextGenerator.cs",
-        "sourceLine": 1697,
+        "sourceLine": 1904,
         "sourceSymbol": "static",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -87012,7 +87012,7 @@
     "MessageJsonContextGeneratorTests.Generator_WithDeepDirectPropertyNesting_DiscoversAllTypesAsync": [
       {
         "sourceFile": "src/Whizbang.Generators/MessageJsonContextGenerator.cs",
-        "sourceLine": 1698,
+        "sourceLine": 1905,
         "sourceSymbol": "static",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -87021,7 +87021,7 @@
     "MessageJsonContextGeneratorTests.Generator_WithMixedCollectionAndDirectNestedTypes_DiscoversAllTypesAsync": [
       {
         "sourceFile": "src/Whizbang.Generators/MessageJsonContextGenerator.cs",
-        "sourceLine": 1699,
+        "sourceLine": 1906,
         "sourceSymbol": "static",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -87030,7 +87030,7 @@
     "MessageJsonContextGeneratorTests.Generator_DeeplyNestedEnumProperty_DiscoversEnumAsync": [
       {
         "sourceFile": "src/Whizbang.Generators/MessageJsonContextGenerator.cs",
-        "sourceLine": 1847,
+        "sourceLine": 2054,
         "sourceSymbol": "ImmutableArray",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -87039,7 +87039,7 @@
     "MessageJsonContextGeneratorTests.Generator_DictionaryWithArrayValue_DiscoversArrayElementTypeAsync": [
       {
         "sourceFile": "src/Whizbang.Generators/MessageJsonContextGenerator.cs",
-        "sourceLine": 1956,
+        "sourceLine": 2163,
         "sourceSymbol": "analysis",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -87048,7 +87048,7 @@
     "MessageJsonContextGeneratorTests.Generator_TripleNestedList_DiscoversDeepestTypeAsync": [
       {
         "sourceFile": "src/Whizbang.Generators/MessageJsonContextGenerator.cs",
-        "sourceLine": 1957,
+        "sourceLine": 2164,
         "sourceSymbol": "analysis",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -87057,7 +87057,7 @@
     "MessageJsonContextGeneratorTests.Generator_DictionaryWithIEnumerableValue_DiscoversElementTypeAsync": [
       {
         "sourceFile": "src/Whizbang.Generators/MessageJsonContextGenerator.cs",
-        "sourceLine": 1958,
+        "sourceLine": 2165,
         "sourceSymbol": "analysis",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -87066,7 +87066,7 @@
     "MessageJsonContextGeneratorTests.Generator_DictionaryWithNonStringKey_DiscoversValueTypeOnlyAsync": [
       {
         "sourceFile": "src/Whizbang.Generators/MessageJsonContextGenerator.cs",
-        "sourceLine": 2028,
+        "sourceLine": 2235,
         "sourceSymbol": "_findTopLevelComma",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -87075,7 +87075,7 @@
     "MessageJsonContextGeneratorTests.Generator_DictionaryWithNestedGenericValue_DiscoversInnerTypeAsync": [
       {
         "sourceFile": "src/Whizbang.Generators/MessageJsonContextGenerator.cs",
-        "sourceLine": 2029,
+        "sourceLine": 2236,
         "sourceSymbol": "_findTopLevelComma",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -87084,7 +87084,7 @@
     "MessageJsonContextGeneratorTests.Generator_NestedDictionaryValue_DiscoversDeepestTypeAsync": [
       {
         "sourceFile": "src/Whizbang.Generators/MessageJsonContextGenerator.cs",
-        "sourceLine": 2030,
+        "sourceLine": 2237,
         "sourceSymbol": "_findTopLevelComma",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -87093,7 +87093,7 @@
     "MessageJsonContextGeneratorTests.Generator_TripleNestedCollections_DiscoversDeepestTypeAsync": [
       {
         "sourceFile": "src/Whizbang.Generators/MessageJsonContextGenerator.cs",
-        "sourceLine": 2031,
+        "sourceLine": 2238,
         "sourceSymbol": "_findTopLevelComma",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -87102,7 +87102,7 @@
     "MessageJsonContextGeneratorTests.Generator_DictionaryAsDirectProperty_TreatedAsCollectionAsync": [
       {
         "sourceFile": "src/Whizbang.Generators/MessageJsonContextGenerator.cs",
-        "sourceLine": 2051,
+        "sourceLine": 2258,
         "sourceSymbol": "_isCollectionType",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -87111,7 +87111,7 @@
     "MessageJsonContextGeneratorTests.Generator_WithListOfNullableInt_GeneratesListFactoryAsync": [
       {
         "sourceFile": "src/Whizbang.Generators/MessageJsonContextGenerator.cs",
-        "sourceLine": 2135,
+        "sourceLine": 2342,
         "sourceSymbol": "_normalizeKeywordAliases",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -87120,7 +87120,7 @@
     "MessageJsonContextGeneratorTests.Generator_MessageWithArrayProperty_DiscoversArrayTypeAsync": [
       {
         "sourceFile": "src/Whizbang.Generators/MessageJsonContextGenerator.cs",
-        "sourceLine": 2216,
+        "sourceLine": 2423,
         "sourceSymbol": "ImmutableArray",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -87129,21 +87129,21 @@
     "MessageJsonContextGeneratorTests.Generator_MessageWithIReadOnlyListProperty_GeneratesIReadOnlyListFactoryAsync": [
       {
         "sourceFile": "src/Whizbang.Generators/MessageJsonContextGenerator.cs",
-        "sourceLine": 2380,
+        "sourceLine": 2587,
         "sourceSymbol": "ImmutableArray",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Generators/MessageJsonContextGenerator.cs",
-        "sourceLine": 2445,
+        "sourceLine": 2652,
         "sourceSymbol": "_generateIReadOnlyListLazyFields",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Generators/MessageJsonContextGenerator.cs",
-        "sourceLine": 2476,
+        "sourceLine": 2683,
         "sourceSymbol": "_generateIReadOnlyListFactories",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -87152,7 +87152,7 @@
     "MessageJsonContextGeneratorTests.Generator_MultipleIReadOnlyListProperties_GeneratesAllFactoriesAsync": [
       {
         "sourceFile": "src/Whizbang.Generators/MessageJsonContextGenerator.cs",
-        "sourceLine": 2381,
+        "sourceLine": 2588,
         "sourceSymbol": "ImmutableArray",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -87161,7 +87161,7 @@
     "MessageJsonContextGeneratorTests.Generator_BugReport_IReadOnlyListCatalogItem_GeneratesFactoryAsync": [
       {
         "sourceFile": "src/Whizbang.Generators/MessageJsonContextGenerator.cs",
-        "sourceLine": 2382,
+        "sourceLine": 2589,
         "sourceSymbol": "ImmutableArray",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -87170,7 +87170,7 @@
     "MessageJsonContextGeneratorTests.Generator_IReadOnlyListWithNestedGenericElement_GeneratesFactoryAsync": [
       {
         "sourceFile": "src/Whizbang.Generators/MessageJsonContextGenerator.cs",
-        "sourceLine": 2477,
+        "sourceLine": 2684,
         "sourceSymbol": "_generateIReadOnlyListFactories",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -87179,21 +87179,21 @@
     "MessageJsonContextGeneratorTests.Generator_MessageWithDictionaryProperty_GeneratesDictionaryFactoryAsync": [
       {
         "sourceFile": "src/Whizbang.Generators/MessageJsonContextGenerator.cs",
-        "sourceLine": 2553,
+        "sourceLine": 2760,
         "sourceSymbol": "ImmutableArray",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Generators/MessageJsonContextGenerator.cs",
-        "sourceLine": 2631,
+        "sourceLine": 2838,
         "sourceSymbol": "_generateDictionaryLazyFields",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Generators/MessageJsonContextGenerator.cs",
-        "sourceLine": 2663,
+        "sourceLine": 2870,
         "sourceSymbol": "_generateDictionaryFactories",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -87202,14 +87202,14 @@
     "MessageJsonContextGeneratorTests.Generator_MultipleDictionaryProperties_GeneratesAllFactoriesAsync": [
       {
         "sourceFile": "src/Whizbang.Generators/MessageJsonContextGenerator.cs",
-        "sourceLine": 2554,
+        "sourceLine": 2761,
         "sourceSymbol": "ImmutableArray",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Generators/MessageJsonContextGenerator.cs",
-        "sourceLine": 2665,
+        "sourceLine": 2872,
         "sourceSymbol": "_generateDictionaryFactories",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -87218,7 +87218,7 @@
     "MessageJsonContextGeneratorTests.Generator_MultipleDictionaryProperties_DiscoversAllValueTypesAsync": [
       {
         "sourceFile": "src/Whizbang.Generators/MessageJsonContextGenerator.cs",
-        "sourceLine": 2555,
+        "sourceLine": 2762,
         "sourceSymbol": "ImmutableArray",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -87227,7 +87227,7 @@
     "MessageJsonContextGeneratorTests.Generator_DictionaryWithNestedGenericValue_GeneratesFactoryAsync": [
       {
         "sourceFile": "src/Whizbang.Generators/MessageJsonContextGenerator.cs",
-        "sourceLine": 2664,
+        "sourceLine": 2871,
         "sourceSymbol": "_generateDictionaryFactories",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -87236,7 +87236,7 @@
     "MessageJsonContextGeneratorTests.Generator_WithWhizbangIdProperty_SkipsConverterGenerationAsync": [
       {
         "sourceFile": "src/Whizbang.Generators/MessageJsonContextGenerator.cs",
-        "sourceLine": 2770,
+        "sourceLine": 2977,
         "sourceSymbol": "_hasWhizbangIdAttribute",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -87245,7 +87245,7 @@
     "MessageJsonContextGeneratorTests.Generator_WithJsonPolymorphicAbstractType_DiscoversDerivedTypesAsync": [
       {
         "sourceFile": "src/Whizbang.Generators/MessageJsonContextGenerator.cs",
-        "sourceLine": 2981,
+        "sourceLine": 3188,
         "sourceSymbol": "_hasJsonPolymorphicAttribute",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -87261,7 +87261,7 @@
     "MessageJsonContextGeneratorTests.Generator_WithJsonDerivedTypeAttributes_DiscoversDerivedTypesAsync": [
       {
         "sourceFile": "src/Whizbang.Generators/MessageJsonContextGenerator.cs",
-        "sourceLine": 2992,
+        "sourceLine": 3199,
         "sourceSymbol": "List",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -87277,7 +87277,7 @@
     "MessageJsonContextGeneratorTests.Generator_WithJsonDerivedTypeInDifferentNamespace_DiscoversAsync": [
       {
         "sourceFile": "src/Whizbang.Generators/MessageJsonContextGenerator.cs",
-        "sourceLine": 2993,
+        "sourceLine": 3200,
         "sourceSymbol": "List",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -87286,7 +87286,7 @@
     "MessageJsonContextRenameAliasTests.Generator_LedgerRecordsFormerName_EmitsAliasRegistrationAsync": [
       {
         "sourceFile": "src/Whizbang.Generators/MessageJsonContextGenerator.cs",
-        "sourceLine": 3235,
+        "sourceLine": 3442,
         "sourceSymbol": "_generateRenameAliasRegistrations",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -87295,7 +87295,7 @@
     "MessageJsonContextRenameAliasTests.Generator_NoLedger_EmitsNoAliasAsync": [
       {
         "sourceFile": "src/Whizbang.Generators/MessageJsonContextGenerator.cs",
-        "sourceLine": 3236,
+        "sourceLine": 3443,
         "sourceSymbol": "_generateRenameAliasRegistrations",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -87304,7 +87304,7 @@
     "MessageJsonContextRenameAliasTests.Generator_LedgerFormerName_GeneratedAliasCompilesAsync": [
       {
         "sourceFile": "src/Whizbang.Generators/MessageJsonContextGenerator.cs",
-        "sourceLine": 3237,
+        "sourceLine": 3444,
         "sourceSymbol": "_generateRenameAliasRegistrations",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -87313,7 +87313,7 @@
     "MessageJsonContextGeneratorTests.Generator_WithDeepInheritance_DiscoversAllLevelsAsync": [
       {
         "sourceFile": "src/Whizbang.Generators/MessageJsonContextGenerator.cs",
-        "sourceLine": 3304,
+        "sourceLine": 3511,
         "sourceSymbol": "List",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -87358,7 +87358,7 @@
     "ReceptorDiscoveryGeneratorTests.Generator_WithEventReturningReceptor_GeneratesCascadeToOutboxAsync": [
       {
         "sourceFile": "src/Whizbang.Generators/ReceptorDiscoveryGenerator.cs",
-        "sourceLine": 745,
+        "sourceLine": 858,
         "sourceSymbol": "HashSet",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -87380,7 +87380,7 @@
     "ReceptorDiscoveryGeneratorTests.Generator_WithTupleResponse_ExtractsEventsForCascadeAsync": [
       {
         "sourceFile": "src/Whizbang.Generators/ReceptorDiscoveryGenerator.cs",
-        "sourceLine": 844,
+        "sourceLine": 957,
         "sourceSymbol": "List",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -180015,9 +180015,9 @@
     ]
   },
   "metadata": {
-    "generated": "2026-08-17T03:37:54.801Z",
-    "sourceFiles": 1535,
-    "testFiles": 4190,
+    "generated": "2026-08-17T13:47:55.692Z",
+    "sourceFiles": 1495,
+    "testFiles": 4146,
     "totalLinks": 12136,
     "codeSymbols": 1591,
     "testMethods": 10545
