@@ -28,6 +28,8 @@ lastMaintainedCommit: '01f07906'
 
 The **ReceptorDiscoveryGenerator** discovers all `IReceptor<TMessage, TResponse>` implementations at compile-time and generates zero-reflection message routing code. This enables AOT compatibility and optimal runtime performance.
 
+Discovery is syntactic, so receptors emitted by *other* source generators are invisible to it (generators never observe each other's output). Where another Whizbang generator emits receptors — the saga generator's three recovery receptors per `[Saga]` class — this generator synthesizes the equivalent registrations directly from the attribute that determines their shape (`SagaRecoveryReceptorShapes`), so DI registration and routing come from the same array with no parallel code path. `GenerateService = false` suppresses the synthesized receptors along with the service they depend on.
+
 ## Zero Reflection Philosophy
 
 Traditional frameworks discover handlers at runtime using **reflection**:

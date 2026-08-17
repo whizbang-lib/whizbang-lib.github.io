@@ -739,13 +739,13 @@
   },
   "types": {
     "file": "src/Whizbang.Generators/MessageJsonContextGenerator.cs",
-    "line": 41,
+    "line": 42,
     "symbol": "types",
     "docs": "extending/source-generators/json-contexts"
   },
   "_generateRenameAliasRegistrations": {
     "file": "src/Whizbang.Generators/MessageJsonContextGenerator.cs",
-    "line": 3234,
+    "line": 3441,
     "symbol": "_generateRenameAliasRegistrations",
     "docs": "fundamentals/identity/pinned-type-ledger"
   },
@@ -856,6 +856,18 @@
     "line": 30,
     "symbol": "SyncEventTypeAutoRegistration",
     "docs": "fundamentals/perspectives/perspective-sync#auto-registration"
+  },
+  "SagaEventShapes": {
+    "file": "src/Whizbang.Generators/Sagas/SagaEventShapes.cs",
+    "line": 46,
+    "symbol": "SagaEventShapes",
+    "docs": "fundamentals/sagas/saga-events"
+  },
+  "SagaRecoveryReceptorShapes": {
+    "file": "src/Whizbang.Generators/Sagas/SagaRecoveryReceptorShapes.cs",
+    "line": 35,
+    "symbol": "SagaRecoveryReceptorShapes",
+    "docs": "fundamentals/sagas/completion-orchestration"
   },
   "MessageTagParameterAnalyzer": {
     "file": "src/Whizbang.Generators/Analyzers/MessageTagParameterAnalyzer.cs",
