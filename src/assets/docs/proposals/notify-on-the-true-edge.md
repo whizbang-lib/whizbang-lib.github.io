@@ -120,7 +120,7 @@ Nothing in the rule is time-based, so idle duration cannot matter: an idle strea
 
 ---
 
-## 3. Correctness: the lost-wakeup race is already covered
+## 3. Correctness: closing the lost-wakeup race
 
 Every edge-triggered wake protocol has one race to close: the producer inserts *just as* the consumer decides to park. The standard fix is a consumer-side double-check — and Whizbang's drain loop **already performs it**: a drain never parks a stream until a fetch comes back *empty* (the refetch-until-empty loop).
 
@@ -146,6 +146,27 @@ sequenceDiagram
 Whichever side of the final fetch the insert lands on, exactly one mechanism catches it. No timing assumptions, no window to tune. The 5 s safety-net poll remains — demoted to what it should have been all along: a **crash/orphan backstop**, never a latency path.
 
 One implementation invariant makes this airtight: the store-side "pending" predicate must **mirror the drain fetch's predicate exactly** (minus the rows being inserted). If the two ever disagree on what counts as undrained, a row could be invisible to both mechanisms. This is a single shared definition, and the test suite locks it.
+
+### The MVCC refinement: the emptiness check must be a locking read
+
+The before/after dichotomy above is *logical* time. Under `READ COMMITTED` there is a third interleaving: the producer's emptiness check reads pending row **P** just as the drain **completes** P — the check sees a stale "P still pending" (→ silent) while the drain's final refetch snapshot predates the producer's commit (→ empty → park). A microsecond window, but a real lost wakeup.
+
+The fix is classical — the eventcount protocol expressed in SQL: the emptiness check reads the pending rows it counts with **`FOR SHARE`**, serializing it against the completion `UPDATE`:
+
+- **Completion first** — the check blocks briefly, re-evaluates the row's latest version, sees P completed, finds nothing else pending → **notifies**.
+- **Producer first** — the completion and the final refetch both follow the producer's commit → the refetch **sees the new row** and the drain continues.
+
+Either ordering lands on exactly one wake mechanism; neither loses. The alternative shape — a park-flag written under the stream row's lock, with a recheck inside the parking transaction — gives the same serialization but costs a write per drain-dry and new state; the locking read gets it from rows that already exist. A two-connection concurrency test locks this interleaving (the same shape as the exactly-once schedule-claim tests).
+
+### Fleet behavior: routing, producers, and parallelism are untouched
+
+The edge changes *when* a doorbell rings, never *who* receives it or how work is drained:
+
+- **Routing** stays `notify_instance_owners`: a pinned stream rings its owner's channel; an unpinned stream falls to the deterministic partition target (the cold-start path).
+- **Any instance may produce** into any stream — the pending queue lives in the shared database, so emptiness is a global per-stream fact, and several producers storing into one stream still collapse to one doorbell while work is pending.
+- **Multi-stream parallel draining is unchanged**: claim still returns work across many streams, drain workers still fan out concurrently across streams, and per-stream affinity gates still serialize only *within* a stream. Each stream rings its own edge independently.
+- **Owner crash with pending work** remains the safety net's job: lease expiry, orphan reclaim, and the backstop poll — unchanged from today.
+
 
 ---
 
@@ -179,6 +200,18 @@ All coverage lives in `NotifyAfterStoreSqlTests` so the bulk protection and the 
 - **RED → GREEN, the new contract** — pin a stream, drain its pending row (simulate the consumer catching up), store again: the owner **must** be notified (`inbox` variant; `outbox` variant asserting both `outbox` and `perspective` payloads — read-model freshness is the latency users actually see).
 - **End-to-end lock** — pinned stream, safety poll effectively disabled, store → the owner's claim fires promptly on the doorbell alone (completion-signal, no sleeps). This is the "interactive hops are not poll-paced" guarantee, stated as a test.
 - **Predicate-mirror lock** — the store-side emptiness check and the drain fetch agree on what "pending" means.
+
+Every interleaving and fleet behavior named above is itself a lock, not prose:
+
+- **Race locks (two-connection Docker tests, deterministic — no sleeps):**
+  - *Completion-first* — drain completes the last row and parks on an empty refetch; a subsequent store must notify (the rewritten RED).
+  - *Producer-first* — the store commits before the drain's final refetch; the refetch must return the new row (drain continues, no doorbell owed).
+  - *The MVCC knife-edge* — one connection holds the completion `UPDATE` of the last pending row open in a transaction while another runs the store; the store's locking emptiness check must block, re-evaluate on commit, and notify. Same two-connection shape as the exactly-once schedule-claim tests.
+- **Multi-instance routing locks:**
+  - Hot pinned stream's edge doorbell lands on the *pinned owner's* channel, never the partition-modulo deterministic target (store-level extension of the existing `notify_instance_owners` pinned lock).
+  - Producer ≠ owner — instance B stores into a stream owned by instance A; A's channel rings.
+  - Several producers storing into one *busy* stream produce exactly one doorbell while work remains pending.
+- **Parallelism locks:** two streams drain concurrently while a third rings its own edge independently (cross-stream independence); within-stream serialization unchanged (the existing affinity-gate suite is referenced, not duplicated).
 
 ## 6. Rollout
 
