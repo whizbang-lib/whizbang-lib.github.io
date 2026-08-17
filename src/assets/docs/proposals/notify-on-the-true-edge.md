@@ -10,7 +10,7 @@ tags: notify, listen-notify, doorbell, wake-semantics, claim-worker, work-pump, 
 **Store-level doorbell semantics: wake the owner when a stream's queue goes empty → non-empty.**
 
 :::planned
-This is a design proposal under discussion (unreleased). It changes only the NOTIFY *emission* condition inside `store_outbox_messages` / `store_inbox_messages` — no schema, no configuration, no worker code, and no change to `notify_instance_owners` routing.
+**Accepted — implementation in flight** (library migration `114_EdgeNotifyOnEmptyStream.sql` + a 17-test composed suite). The change touches only the NOTIFY *emission* condition inside `store_outbox_messages` / `store_inbox_messages` — no schema, no configuration, no worker code, and no change to `notify_instance_owners` routing. One refinement emerged during implementation: the `perspective` doorbell is **precise** — it rings only when the emit chain actually created work items for a previously-empty perspective queue, because association-less event types (which create no work) would otherwise ring on every store. Operational reference: the released behavior is documented in the work-coordinator notifications page.
 :::
 
 ## 1. The problem: two optimizations, each assuming the other
