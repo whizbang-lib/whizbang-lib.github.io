@@ -162,25 +162,39 @@ Everything after that commit is delivery, and delivery is deliberately **lazy**:
 dashboards and compliance queries, not workflows, so audit traffic must never compete with
 interactive or bulk domain traffic for transport capacity.
 
-Shipping uses a **sliding window with a hard freshness cap**:
+Shipping rides the generic **tag-bound coalescing** feature (see the *Tag-Bound Policies &
+Message Coalescing* proposal): `EventAudited` carries the built-in reserved tag
+**`SystemTags.Audit` (`"sys-audit"`)**, and `EnableAudit()` ships that tag's coalesce binding
+with defaults — a **sliding window with a hard freshness cap**:
 
-- Each new audit record resets a quiet timer (`SystemEventOptions.AuditShipSlideSeconds`, default 15).
-  Shipping fires when the stream goes quiet — a bulk operation's entire audit trail coalesces and
-  ships at burst-end.
-- `SystemEventOptions.AuditShipMaxDelaySeconds` (default 120) bounds staleness: a continuous stream
-  still ships at least every max-delay interval, oldest-first.
-- Matured records ship as **`AuditEventsComposite` batch envelopes** (wire-only, size-capped to the
-  transport's batch limit), fanning out to per-record inbox rows at the consumer. A bulk import that
-  produces thousands of audit records crosses the wire as a handful of envelopes instead of thousands
-  of individual messages.
-- **Failure degrades to slower, never to loss**: every audit row is also minted with
-  `ScheduledFor = now + AuditShipMaxDelaySeconds`, so if the shipper is unavailable the ordinary
-  outbox publisher ships each record individually once the deadline passes.
+- Each new audit record resets a quiet timer (`SlideSeconds`, default 15). Shipping fires when
+  the stream goes quiet — a bulk operation's entire audit trail coalesces and ships at burst-end.
+- `MaxDelaySeconds` (default 120) bounds staleness: a continuous stream still ships at least
+  every max-delay interval, oldest-first.
+- Matured records ship as **`AuditEventsComposite` batch envelopes** (wire-only, size-capped,
+  `MaxBatchCount` default 500), fanning out to per-record inbox rows at the consumer. A bulk
+  import that produces thousands of audit records crosses the wire as a handful of envelopes
+  instead of thousands of individual messages.
+- **Failure degrades to slower, never to loss**: every audit row is minted with the
+  `ScheduledFor = now + MaxDelaySeconds` safety floor; if the coalescer is unavailable, matured
+  rows are released to the ordinary outbox publisher and ship individually.
 - Audit envelopes carry the audited event's security scope (or an explicit system authority). A
   consumer that cannot attribute an audit records it as **unattributed** — the audit trail never
   fails, retries, or dead-letters over attribution.
 
-Set `AuditShipSlideSeconds = 0` to restore immediate per-record shipping.
+**The defaults ship automatically but are yours to override** — bind the same tag in host
+options and your binding replaces the built-in one:
+
+```csharp{title="Override the audit shipping cadence" description="Bind SystemTags.Audit yourself to replace the shipped defaults" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Audit", "Coalescing"] unverified="tag-bound coalescing is an unreleased design (see the Tag-Bound Policies proposal)"}
+services.AddWhizbang(options => {
+  options.Tags.Coalesce(SystemTags.Audit, c => {
+    c.SlideSeconds = 30;
+    c.MaxDelaySeconds = 300;   // relax audit freshness to 5 minutes
+  });
+});
+```
+
+Set `SlideSeconds = 0` on the binding to restore immediate per-record shipping.
 
 ## System Events
 
