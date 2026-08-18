@@ -85,6 +85,34 @@ Ship time — a generic **coalesce worker** (one per service, all groups):
 4. Crash-safety falls out of the transaction: a single is either still pending (floor intact)
    or folded (composite exists) — never both, never neither.
 
+### Hot-path isolation
+
+Coalescing must be invisible — in cost, not just in results — to every message that does not
+participate. During a burst, thousands of coalesce-pending singles sit in `wh_outbox` for up to
+`MaxDelaySeconds`; the normal claim path must not evaluate, scan past, or be woken by them.
+
+- **A real column, not metadata.** `wh_outbox` gains a nullable `coalesce_group` column, stamped
+  at mint only for bound tags. Filtering must be index-served, so the group rides the row.
+- **The hot index excludes them by definition.** The outbox eligible-scan partial index gains
+  `AND coalesce_group IS NULL` in its predicate: coalesce-pending singles never *enter* the
+  index the claim path scans. Non-coalesced traffic pays zero per-row filtering — the exclusion
+  happens at index-membership time, and the claim SQL's shape is unchanged.
+- **The coalesce worker gets its own tiny index.** A partial index on
+  `(coalesce_group, created_at) WHERE coalesce_group IS NOT NULL AND processed_at IS NULL`
+  serves the group scan; only coalesce-pending rows ever live in it.
+- **No doorbell noise.** The empty→non-empty edge doorbell already counts only
+  *schedule-eligible* pending rows, and coalesce singles are minted with a future
+  `ScheduledFor` — so their arrival rings nothing and wakes no claim loop.
+- **Deadline-degrade is an explicit release, not a query union.** Because matured singles are
+  still outside the hot index, the safety floor works as a visible transition: the coalesce
+  worker on recovery — with a maintenance-task backstop — *releases* rows past their deadline
+  (`coalesce_group = NULL, ScheduledFor = NULL`), which moves them into the hot index and the
+  normal pump ships them individually. The degrade is counted (OTel), never silent, and the hot
+  index stays pure in both healthy and degraded states.
+- **Validated like every hot-path SQL change**: copy-table `EXPLAIN ANALYZE` experiments before
+  the migration lands, and regression tests locking that a mixed batch claim returns zero
+  coalesce-pending rows while released rows ship normally.
+
 ### Semantics and guardrails
 
 - **Independence by default.** Coalesce groups are for self-contained records. Default
@@ -111,7 +139,8 @@ envelopes within two minutes — durable from the moment each audited event comm
 ## Build increments
 
 1. `#507` fix + `ScheduledFor` safety floor + `AuditEventsComposite` carrier (in flight).
-2. Coalesce policy options + tag binding + startup ambiguity validation.
+2. Coalesce policy options + tag binding + startup ambiguity validation + the `coalesce_group`
+   column, hot-index predicate change, and worker index (EXPLAIN-ANALYZE-validated).
 3. The generic coalesce worker (sliding window, transactional fold, raw-carry composites).
 4. Audit rebased onto the generic binding; audit-specific pieces deleted.
 5. Analyzer warning for coalesce-bound tags on stream-sequenced types.
