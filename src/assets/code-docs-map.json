@@ -3017,6 +3017,24 @@
     "symbol": "TemporalOptions",
     "docs": "fundamentals/temporal/temporal-engine"
   },
+  "CoalesceFoldBatch": {
+    "file": "src/Whizbang.Core/Tags/CoalesceFoldBatch.cs",
+    "line": 10,
+    "symbol": "CoalesceFoldBatch",
+    "docs": "fundamentals/messages/message-tags#coalescing"
+  },
+  "CoalesceGroupResolver": {
+    "file": "src/Whizbang.Core/Tags/CoalesceGroupResolver.cs",
+    "line": 28,
+    "symbol": "CoalesceGroupResolver",
+    "docs": "fundamentals/messages/message-tags#coalescing"
+  },
+  "CoalescePolicyOptions": {
+    "file": "src/Whizbang.Core/Tags/CoalescePolicyOptions.cs",
+    "line": 24,
+    "symbol": "CoalescePolicyOptions",
+    "docs": "fundamentals/messages/message-tags#coalescing"
+  },
   "IMessageTagHookDispatcher": {
     "file": "src/Whizbang.Core/Tags/IMessageTagHookDispatcher.cs",
     "line": 23,
@@ -3053,6 +3071,12 @@
     "symbol": "SpanKind",
     "docs": "fundamentals/messages/message-tags#span-kind"
   },
+  "SystemTags": {
+    "file": "src/Whizbang.Core/Tags/SystemTags.cs",
+    "line": 15,
+    "symbol": "SystemTags",
+    "docs": "fundamentals/messages/message-tags#system-tags"
+  },
   "TagContext": {
     "file": "src/Whizbang.Core/Tags/TagContext.cs",
     "line": 47,
@@ -3071,17 +3095,35 @@
     "symbol": "TagOptions",
     "docs": "fundamentals/messages/message-tags#configuration"
   },
+  "Coalesce": {
+    "file": "src/Whizbang.Core/Tags/TagOptions.cs",
+    "line": 218,
+    "symbol": "Coalesce",
+    "docs": "fundamentals/messages/message-tags#coalescing"
+  },
+  "TagPolicyConfigurationException": {
+    "file": "src/Whizbang.Core/Tags/TagPolicyConfigurationException.cs",
+    "line": 10,
+    "symbol": "TagPolicyConfigurationException",
+    "docs": "fundamentals/messages/message-tags#validation"
+  },
+  "TagPolicyStartupValidator": {
+    "file": "src/Whizbang.Core/Tags/TagPolicyStartupValidator.cs",
+    "line": 14,
+    "symbol": "TagPolicyStartupValidator",
+    "docs": "fundamentals/messages/message-tags#validation"
+  },
+  "AuditEventsComposite": {
+    "file": "src/Whizbang.Core/SystemEvents/AuditEventsComposite.cs",
+    "line": 35,
+    "symbol": "AuditEventsComposite",
+    "docs": "fundamentals/events/system-events#audit-shipping"
+  },
   "AuditOutboxMessageBuilder": {
     "file": "src/Whizbang.Core/SystemEvents/AuditOutboxMessageBuilder.cs",
     "line": 17,
     "symbol": "AuditOutboxMessageBuilder",
     "docs": "fundamentals/events/system-events#audit-builder"
-  },
-  "EventAudited": {
-    "file": "src/Whizbang.Core/SystemEvents/EventAudited.cs",
-    "line": 43,
-    "symbol": "EventAudited",
-    "docs": "fundamentals/events/system-events#audit"
   },
   "ISystemEvent": {
     "file": "src/Whizbang.Core/SystemEvents/ISystemEvent.cs",
@@ -3101,6 +3143,18 @@
     "symbol": "ITransportPublishFilter",
     "docs": "fundamentals/events/system-events#transport-filtering"
   },
+  "SystemAuditTagAttribute": {
+    "file": "src/Whizbang.Core/SystemEvents/SystemAuditTagAttribute.cs",
+    "line": 19,
+    "symbol": "SystemAuditTagAttribute",
+    "docs": "fundamentals/security/audit-logging#audit-shipping"
+  },
+  "SystemEventCoalesceDefaults": {
+    "file": "src/Whizbang.Core/SystemEvents/SystemEventCoalesceDefaults.cs",
+    "line": 17,
+    "symbol": "SystemEventCoalesceDefaults",
+    "docs": "fundamentals/security/audit-logging#audit-shipping"
+  },
   "AuditMode": {
     "file": "src/Whizbang.Core/SystemEvents/SystemEventOptions.cs",
     "line": 6,
@@ -3112,6 +3166,24 @@
     "line": 49,
     "symbol": "SystemEventOptions",
     "docs": "fundamentals/events/system-events#configuration"
+  },
+  "AuditShipSlideSeconds": {
+    "file": "src/Whizbang.Core/SystemEvents/SystemEventOptions.cs",
+    "line": 132,
+    "symbol": "AuditShipSlideSeconds",
+    "docs": "fundamentals/events/system-events#audit-shipping"
+  },
+  "AuditShipMaxDelaySeconds": {
+    "file": "src/Whizbang.Core/SystemEvents/SystemEventOptions.cs",
+    "line": 143,
+    "symbol": "AuditShipMaxDelaySeconds",
+    "docs": "fundamentals/events/system-events#audit-shipping"
+  },
+  "AuditShipMaxBatchCount": {
+    "file": "src/Whizbang.Core/SystemEvents/SystemEventOptions.cs",
+    "line": 150,
+    "symbol": "AuditShipMaxBatchCount",
+    "docs": "fundamentals/events/system-events#audit-shipping"
   },
   "SystemEventServiceCollectionExtensions": {
     "file": "src/Whizbang.Core/SystemEvents/SystemEventServiceCollectionExtensions.cs",
@@ -5117,6 +5189,12 @@
     "symbol": "ClaimWorkRequest",
     "docs": "fundamentals/work-coordinator/claim-loop"
   },
+  "CoalescedEventsComposite": {
+    "file": "src/Whizbang.Core/Messaging/CoalescedEventsComposite.cs",
+    "line": 34,
+    "symbol": "CoalescedEventsComposite",
+    "docs": "fundamentals/messages/message-tags#coalescing"
+  },
   "CollectiveEventBase": {
     "file": "src/Whizbang.Core/Messaging/CollectiveEventBase.cs",
     "line": 33,
@@ -5723,129 +5801,141 @@
     "symbol": "HoldEphemeralDestructionAsync",
     "docs": "fundamentals/events/ephemeral-events"
   },
+  "CompleteCoalesceFoldAsync": {
+    "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
+    "line": 1943,
+    "symbol": "CompleteCoalesceFoldAsync",
+    "docs": "fundamentals/messages/message-tags#coalescing"
+  },
   "MaintenanceResult": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 1922,
+    "line": 1992,
     "symbol": "MaintenanceResult",
     "docs": "operations/maintenance"
   },
   "RewindCursorInfo": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 1934,
+    "line": 2004,
     "symbol": "RewindCursorInfo",
     "docs": "fundamentals/perspectives/rewind"
   },
   "OrphanedLifecycleEvent": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 1947,
+    "line": 2017,
     "symbol": "OrphanedLifecycleEvent",
     "docs": "fundamentals/lifecycle/lifecycle-reconciliation"
   },
   "EphemeralReclassificationResult": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 1955,
+    "line": 2025,
     "symbol": "EphemeralReclassificationResult",
     "docs": "fundamentals/events/ephemeral-events"
   },
   "EphemeralTypeGrace": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 1968,
+    "line": 2038,
     "symbol": "EphemeralTypeGrace",
     "docs": "fundamentals/events/ephemeral-events"
   },
   "PerspectiveRetentionDeclaration": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 1980,
+    "line": 2050,
     "symbol": "PerspectiveRetentionDeclaration",
     "docs": "fundamentals/perspectives/row-retention"
   },
   "OffloadClaimRecord": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 1994,
+    "line": 2064,
     "symbol": "OffloadClaimRecord",
     "docs": "fundamentals/messaging/body-offload"
   },
   "PerspectiveRowReapResult": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 2000,
+    "line": 2070,
     "symbol": "PerspectiveRowReapResult",
     "docs": "proposals/pre-destruction-seam"
   },
   "PerspectiveTableName": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 2007,
+    "line": 2077,
     "symbol": "PerspectiveTableName",
     "docs": "proposals/pre-destruction-seam"
   },
   "EphemeralSnapshotTarget": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 2016,
+    "line": 2086,
     "symbol": "EphemeralSnapshotTarget",
     "docs": "fundamentals/events/ephemeral-events"
   },
   "ArchivedEvent": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 2042,
+    "line": 2112,
     "symbol": "ArchivedEvent",
     "docs": "fundamentals/events/ephemeral-events"
   },
   "EphemeralDestructionTarget": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 2051,
+    "line": 2121,
     "symbol": "EphemeralDestructionTarget",
     "docs": "fundamentals/events/ephemeral-events"
   },
   "TypeDefinitionInfo": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 2058,
+    "line": 2128,
     "symbol": "TypeDefinitionInfo",
     "docs": "fundamentals/events/type-definition-fingerprint"
   },
   "TypeDefinitionRegistration": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 2070,
+    "line": 2140,
     "symbol": "TypeDefinitionRegistration",
     "docs": "fundamentals/events/type-definition-fingerprint"
   },
   "DefinitionRelationship": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 2080,
+    "line": 2150,
     "symbol": "DefinitionRelationship",
     "docs": "fundamentals/events/type-definition-fingerprint"
   },
   "Flags": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 2279,
+    "line": 2349,
     "symbol": "Flags",
     "docs": "fundamentals/messaging/collective-events"
   },
+  "CoalesceGroupStats": {
+    "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
+    "line": 2409,
+    "symbol": "CoalesceGroupStats",
+    "docs": "fundamentals/messages/message-tags#coalescing"
+  },
   "EventsProcessed": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 2729,
+    "line": 2837,
     "symbol": "EventsProcessed",
     "docs": "fundamentals/perspectives/rewind#metrics"
   },
   "Attempts": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 2888,
+    "line": 2996,
     "symbol": "Attempts",
     "docs": "operations/dead-letter-queue/perspective-events"
   },
   "PendingPerspectiveEvent": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 2922,
+    "line": 3030,
     "symbol": "PendingPerspectiveEvent",
     "docs": "fundamentals/work-coordinator/per-stream-drain"
   },
   "OutboxBatchRow": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 2929,
+    "line": 3037,
     "symbol": "OutboxBatchRow",
     "docs": "fundamentals/work-coordinator/per-stream-drain"
   },
   "InboxBatchRow": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 2998,
+    "line": 3106,
     "symbol": "InboxBatchRow",
     "docs": "fundamentals/work-coordinator/per-stream-drain"
   },
