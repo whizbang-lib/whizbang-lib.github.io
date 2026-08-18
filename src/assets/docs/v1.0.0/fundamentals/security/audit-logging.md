@@ -150,6 +150,38 @@ public class ComplianceService {
 
 ---
 
+## Delivery Model: Durable, Not Real-Time
+
+:::planned
+Sliding-window audit shipping is being implemented; the durability guarantee below already holds today.
+:::
+
+Audit records are **durable from the instant the audited event commits** — the audit outbox row is
+written in the *same transaction* as the audited event, so no audit record can ever be lost.
+Everything after that commit is delivery, and delivery is deliberately **lazy**: audit consumers are
+dashboards and compliance queries, not workflows, so audit traffic must never compete with
+interactive or bulk domain traffic for transport capacity.
+
+Shipping uses a **sliding window with a hard freshness cap**:
+
+- Each new audit record resets a quiet timer (`SystemEventOptions.AuditShipSlideSeconds`, default 15).
+  Shipping fires when the stream goes quiet — a bulk operation's entire audit trail coalesces and
+  ships at burst-end.
+- `SystemEventOptions.AuditShipMaxDelaySeconds` (default 120) bounds staleness: a continuous stream
+  still ships at least every max-delay interval, oldest-first.
+- Matured records ship as **`AuditEventsComposite` batch envelopes** (wire-only, size-capped to the
+  transport's batch limit), fanning out to per-record inbox rows at the consumer. A bulk import that
+  produces thousands of audit records crosses the wire as a handful of envelopes instead of thousands
+  of individual messages.
+- **Failure degrades to slower, never to loss**: every audit row is also minted with
+  `ScheduledFor = now + AuditShipMaxDelaySeconds`, so if the shipper is unavailable the ordinary
+  outbox publisher ships each record individually once the deadline passes.
+- Audit envelopes carry the audited event's security scope (or an explicit system authority). A
+  consumer that cannot attribute an audit records it as **unattributed** — the audit trail never
+  fails, retries, or dead-letters over attribution.
+
+Set `AuditShipSlideSeconds = 0` to restore immediate per-record shipping.
+
 ## System Events
 
 System events are internal Whizbang events stored in a dedicated `$wb-system` stream.
