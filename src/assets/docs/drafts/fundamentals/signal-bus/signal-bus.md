@@ -234,6 +234,47 @@ Dispatch runs subscriber callbacks **synchronously on the shared notify connecti
 - The instance-routed `wh_work_i_<id>` fan-out (one NOTIFY per unique owner) stays a deliberate load reducer for the claim hot path.
 - Cold-stream-only NOTIFY during bulk imports is preserved to avoid notify storms.
 
+## Hosting, wire-route self-test & doorbell liveness
+
+The bus is **hosted by the framework**: `AddWhizbangSignalBus` registers a `SignalBusHostedService`
+that starts every transport and pull source with the host lifecycle. No application code ever calls
+`SignalBus.StartAsync` — a bus that is registered but not started silently drops every wire doorbell
+(the transports never subscribe their channels), leaving all work pumps on polling cadence with no
+error anywhere. That failure mode is now impossible to miss, through two layers:
+
+### Startup wire-route self-test
+
+After the transports start, the host probes the wire route **functionally**: each transport publishes
+a loopback `SignalBusProbeSignal` targeted at the *own* instance and must deliver it back through the
+full route — routing maps → wire → typed dispatch — within `SignalBusOptions.ProbeTimeoutMilliseconds`
+(default 5 s). Transports are probed **individually**, so the in-memory loopback can never vouch for a
+dead Postgres transport. A connection-level self-test is deliberately not enough: the socket can be
+healthy while the routing layer drops everything, which produces a false-healthy with no symptoms
+except latency.
+
+- **Pass** — logged at Information; the `signal-bus` health component reports `Operational`.
+- **Fail** — an **ERROR** log names the failing transport and the consequence ("doorbells are NOT
+  reaching this instance — work pumps are running on polling fallback"), and `signal-bus` reports
+  **`Degraded`**. The service still works — polling is the designed fallback — but every hop pays the
+  poll interval, so the degradation is loud instead of silent.
+
+The probe re-runs every `SignalBusOptions.ReProbeIntervalMilliseconds` (default 5 min), so a listener
+that dies mid-run is caught even on an idle service.
+
+### Runtime doorbell-liveness monitor
+
+The re-probe is corroborated by a zero-cost empirical check on real traffic. The store guarantees a
+doorbell rings on every **empty→non-empty edge** (a stream's first pending row per category). When the
+claim loop discovers *fresh* work on that edge by a plain poll — no doorbell preceded it, while the
+notify gate believes NOTIFY is healthy — it records a **missed doorbell** on `SignalBusLivenessState`;
+a doorbell-preceded discovery resets the streak. After `SignalBusOptions.MissedDoorbellThreshold`
+consecutive misses (default 3) the `signal-bus` component degrades with the reason. Transports also
+stamp `LastWireSignalAt` on every received notification, so "when did a doorbell last actually arrive"
+is always answerable.
+
+Together the layers answer both halves of the operational question: *does the route work at all*
+(probe, on a schedule) and *is it actually being used* (edge accounting, from live traffic).
+
 ## Transports & portability
 
 Push and pull are **transports for the same bus** (the pull side is implemented as `BasePollSignalSource` plus the Postgres work-available pull sources), and the bus manages the pull interval adaptively via `INotifySignalingGate`:

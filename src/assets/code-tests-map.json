@@ -12027,6 +12027,47 @@
         "linkSource": "XmlTag"
       }
     ],
+    "SignalBusHostedService": [
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Signals/SignalBusHostingTests.cs",
+        "testMethod": "AddWhizbangSignalBus_HostStartAlone_StartsRegisteredTransportsAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Signals/SignalBusProbeTests.cs",
+        "testMethod": "HostedStart_ProbeVerifiesWireRoute_ViaInMemoryAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Signals/SignalBusProbeTests.cs",
+        "testMethod": "HostedStart_DeadTransport_ProbeMarksWireRouteFailedAsync",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "SignalBusLivenessState": [
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Signals/SignalBusProbeTests.cs",
+        "testMethod": "Report_ConsecutiveMissedDoorbells_DegradesAtThreshold_DoorbellWakeResetsAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Signals/SignalBusProbeTests.cs",
+        "testMethod": "HostedStart_DeadTransport_ProbeMarksWireRouteFailedAsync",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "struct": [
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Signals/SignalBusProbeTests.cs",
+        "testMethod": "HostedStart_ProbeVerifiesWireRoute_ViaInMemoryAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Signals/SignalBusProbeTests.cs",
+        "testMethod": "HostedStart_DeadTransport_ProbeMarksWireRouteFailedAsync",
+        "linkSource": "XmlTag"
+      }
+    ],
     "register": [
       {
         "testFile": "tests/Whizbang.Core.Tests/JsonContextRegistryTests.cs",
@@ -19705,6 +19746,23 @@
       {
         "testFile": "tests/Whizbang.Core.Tests/Health/OffloadHealthWiringTests.cs",
         "testMethod": "RegisteredStore_Unreachable_WhileRunning_FaultedAsync",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "SignalBusHealthSource": [
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Health/SignalBusHealthWiringTests.cs",
+        "testMethod": "FailedWireRouteProbe_WhileRunning_ReportsDegradedAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Health/SignalBusHealthWiringTests.cs",
+        "testMethod": "MissedDoorbellStreak_WhileRunning_ReportsDegradedAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Health/SignalBusHealthWiringTests.cs",
+        "testMethod": "DegradedState_OutsideRunning_StaysIntentionalAsync",
         "linkSource": "XmlTag"
       }
     ],
@@ -31609,7 +31667,7 @@
     "SchemaReadyHealthCheck": [
       {
         "testFile": "tests/Whizbang.Hosting.AspNet.Tests/SchemaReadyHealthCheckTests.cs",
-        "testMethod": "NotReady_ReportsUnhealthyAsync",
+        "testMethod": "NotReady_ReportsDegradedNotUnhealthyAsync",
         "testLine": 24,
         "testClass": "SchemaReadyHealthCheckTests",
         "linkSource": "Convention"
@@ -31617,7 +31675,7 @@
       {
         "testFile": "tests/Whizbang.Hosting.AspNet.Tests/SchemaReadyHealthCheckTests.cs",
         "testMethod": "Ready_ReportsHealthyAsync",
-        "testLine": 33,
+        "testLine": 35,
         "testClass": "SchemaReadyHealthCheckTests",
         "linkSource": "Convention"
       }
@@ -31819,7 +31877,7 @@
     "WhizbangManagedHealthCheck": [
       {
         "testFile": "tests/Whizbang.Hosting.AspNet.Tests/WhizbangManagedHealthCheckTests.cs",
-        "testMethod": "Readiness_MigratingUnderLenient_IsHealthyAsync",
+        "testMethod": "Readiness_MigratingUnderLenient_IsDegradedButServingAsync",
         "testLine": 26,
         "testClass": "WhizbangManagedHealthCheckTests",
         "linkSource": "Convention"
@@ -31827,35 +31885,35 @@
       {
         "testFile": "tests/Whizbang.Hosting.AspNet.Tests/WhizbangManagedHealthCheckTests.cs",
         "testMethod": "Readiness_Faulted_IsUnhealthyAsync",
-        "testLine": 33,
+        "testLine": 34,
         "testClass": "WhizbangManagedHealthCheckTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Hosting.AspNet.Tests/WhizbangManagedHealthCheckTests.cs",
         "testMethod": "Liveness_Faulted_StaysHealthyAsync",
-        "testLine": 40,
+        "testLine": 41,
         "testClass": "WhizbangManagedHealthCheckTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Hosting.AspNet.Tests/WhizbangManagedHealthCheckTests.cs",
         "testMethod": "Readiness_Degraded_IsDegradedAsync",
-        "testLine": 47,
+        "testLine": 48,
         "testClass": "WhizbangManagedHealthCheckTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Hosting.AspNet.Tests/WhizbangManagedHealthCheckTests.cs",
         "testMethod": "Result_IncludesPerComponentDataAsync",
-        "testLine": 54,
+        "testLine": 55,
         "testClass": "WhizbangManagedHealthCheckTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Hosting.AspNet.Tests/WhizbangManagedHealthCheckTests.cs",
         "testMethod": "Result_DuplicateComponentNames_SurfacesEveryReportWithoutThrowingAsync",
-        "testLine": 61,
+        "testLine": 62,
         "testClass": "WhizbangManagedHealthCheckTests",
         "linkSource": "Convention"
       }
@@ -36816,554 +36874,561 @@
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/ReceptorDiscoveryGeneratorTests.cs",
+        "testMethod": "Generator_EmitsTheReceptorLookupContributionAsync",
+        "testLine": 64,
+        "testClass": "ReceptorDiscoveryGeneratorTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Generators.Tests/ReceptorDiscoveryGeneratorTests.cs",
         "testMethod": "Generator_WithVoidReceptor_GeneratesDispatcherAsync",
-        "testLine": 58,
+        "testLine": 102,
         "testClass": "ReceptorDiscoveryGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/ReceptorDiscoveryGeneratorTests.cs",
         "testMethod": "Generator_WithMultipleReceptors_GeneratesAllRoutesAsync",
-        "testLine": 91,
+        "testLine": 135,
         "testClass": "ReceptorDiscoveryGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/ReceptorDiscoveryGeneratorTests.cs",
         "testMethod": "Generator_WithNoReceptors_GeneratesInfoAsync",
-        "testLine": 130,
+        "testLine": 174,
         "testClass": "ReceptorDiscoveryGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/ReceptorDiscoveryGeneratorTests.cs",
         "testMethod": "Generator_WithPerspectiveButNoReceptor_DoesNotWarnAsync",
-        "testLine": 154,
+        "testLine": 198,
         "testClass": "ReceptorDiscoveryGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/ReceptorDiscoveryGeneratorTests.cs",
         "testMethod": "Generator_WithPerspectiveWithActionsForButNoReceptor_DoesNotWarnAsync",
-        "testLine": 188,
+        "testLine": 232,
         "testClass": "ReceptorDiscoveryGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/ReceptorDiscoveryGeneratorTests.cs",
         "testMethod": "Generator_GeneratesDispatcherRegistrationsAsync",
-        "testLine": 224,
+        "testLine": 268,
         "testClass": "ReceptorDiscoveryGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/ReceptorDiscoveryGeneratorTests.cs",
         "testMethod": "Generator_WithClassNoBaseList_SkipsAsync",
-        "testLine": 256,
+        "testLine": 300,
         "testClass": "ReceptorDiscoveryGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/ReceptorDiscoveryGeneratorTests.cs",
         "testMethod": "Generator_ReportsDiscoveredReceptorsAsync",
-        "testLine": 275,
+        "testLine": 319,
         "testClass": "ReceptorDiscoveryGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/ReceptorDiscoveryGeneratorTests.cs",
         "testMethod": "Generator_WithAbstractReceptor_GeneratesAsync",
-        "testLine": 307,
+        "testLine": 351,
         "testClass": "ReceptorDiscoveryGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/ReceptorDiscoveryGeneratorTests.cs",
         "testMethod": "Generator_WithMultipleReceptorInterfaces_GeneratesForFirstAsync",
-        "testLine": 337,
+        "testLine": 381,
         "testClass": "ReceptorDiscoveryGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/ReceptorDiscoveryGeneratorTests.cs",
         "testMethod": "Generator_WithTypeInGlobalNamespace_HandlesCorrectlyAsync",
-        "testLine": 373,
+        "testLine": 417,
         "testClass": "ReceptorDiscoveryGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/ReceptorDiscoveryGeneratorTests.cs",
         "testMethod": "Generator_GeneratesReceptorDiscoveryDiagnosticsAsync",
-        "testLine": 402,
+        "testLine": 446,
         "testClass": "ReceptorDiscoveryGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/ReceptorDiscoveryGeneratorTests.cs",
         "testMethod": "Generator_WithVoidReceptor_ReportsVoidResponseAsync",
-        "testLine": 433,
+        "testLine": 477,
         "testClass": "ReceptorDiscoveryGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/ReceptorDiscoveryGeneratorTests.cs",
         "testMethod": "Generator_WithClassWithoutReceptorInterface_SkipsAsync",
-        "testLine": 462,
+        "testLine": 506,
         "testClass": "ReceptorDiscoveryGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/ReceptorDiscoveryGeneratorTests.cs",
         "testMethod": "Generator_WithTupleResponseType_SimplifiesInDiagnosticAsync",
-        "testLine": 487,
+        "testLine": 531,
         "testClass": "ReceptorDiscoveryGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/ReceptorDiscoveryGeneratorTests.cs",
         "testMethod": "Generator_WithArrayResponseType_SimplifiesInDiagnosticAsync",
-        "testLine": 535,
+        "testLine": 579,
         "testClass": "ReceptorDiscoveryGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/ReceptorDiscoveryGeneratorTests.cs",
         "testMethod": "Generator_WithNestedTupleResponseType_SimplifiesInDiagnosticAsync",
-        "testLine": 573,
-        "testClass": "ReceptorDiscoveryGeneratorTests",
-        "linkSource": "Convention"
-      },
-      {
-        "testFile": "tests/Whizbang.Generators.Tests/ReceptorDiscoveryGeneratorTests.cs",
-        "testMethod": "Generator_ZeroReceptors_WithPerspective_GeneratesEmptyDispatcherAsync",
         "testLine": 617,
         "testClass": "ReceptorDiscoveryGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/ReceptorDiscoveryGeneratorTests.cs",
+        "testMethod": "Generator_ZeroReceptors_WithPerspective_GeneratesEmptyDispatcherAsync",
+        "testLine": 661,
+        "testClass": "ReceptorDiscoveryGeneratorTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Generators.Tests/ReceptorDiscoveryGeneratorTests.cs",
         "testMethod": "Generator_ZeroReceptors_WithPerspective_GeneratesAddReceptorsAsync",
-        "testLine": 656,
+        "testLine": 700,
         "testClass": "ReceptorDiscoveryGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/ReceptorDiscoveryGeneratorTests.cs",
         "testMethod": "Generator_ZeroReceptors_WithPerspective_GeneratedCodeCompilesAsync",
-        "testLine": 694,
-        "testClass": "ReceptorDiscoveryGeneratorTests",
-        "linkSource": "Convention"
-      },
-      {
-        "testFile": "tests/Whizbang.Generators.Tests/ReceptorDiscoveryGeneratorTests.cs",
-        "testMethod": "Generator_WithWhizbangTraceAttribute_GeneratesTracingCodeAsync",
         "testLine": 738,
         "testClass": "ReceptorDiscoveryGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/ReceptorDiscoveryGeneratorTests.cs",
-        "testMethod": "Generator_WithoutWhizbangTraceAttribute_DoesNotGenerateTracingCodeAsync",
+        "testMethod": "Generator_WithWhizbangTraceAttribute_GeneratesTracingCodeAsync",
         "testLine": 782,
         "testClass": "ReceptorDiscoveryGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/ReceptorDiscoveryGeneratorTests.cs",
+        "testMethod": "Generator_WithoutWhizbangTraceAttribute_DoesNotGenerateTracingCodeAsync",
+        "testLine": 826,
+        "testClass": "ReceptorDiscoveryGeneratorTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Generators.Tests/ReceptorDiscoveryGeneratorTests.cs",
         "testMethod": "Generator_WithSyncReceptor_GeneratesDispatcherAsync",
-        "testLine": 824,
+        "testLine": 868,
         "testClass": "ReceptorDiscoveryGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/ReceptorDiscoveryGeneratorTests.cs",
         "testMethod": "Generator_WithVoidSyncReceptor_GeneratesDispatcherAsync",
-        "testLine": 862,
+        "testLine": 906,
         "testClass": "ReceptorDiscoveryGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/ReceptorDiscoveryGeneratorTests.cs",
         "testMethod": "Generator_WithSyncReceptor_GeneratesRegistrationAsync",
-        "testLine": 894,
+        "testLine": 938,
         "testClass": "ReceptorDiscoveryGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/ReceptorDiscoveryGeneratorTests.cs",
         "testMethod": "Generator_WithBothSyncAndAsyncReceptors_GeneratesBothRoutesAsync",
-        "testLine": 923,
+        "testLine": 967,
         "testClass": "ReceptorDiscoveryGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/ReceptorDiscoveryGeneratorTests.cs",
         "testMethod": "Generator_WithSyncReceptor_ReportsDiagnosticAsync",
-        "testLine": 970,
+        "testLine": 1014,
         "testClass": "ReceptorDiscoveryGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/ReceptorDiscoveryGeneratorTests.cs",
         "testMethod": "Generator_WithReceptor_GeneratesReceptorRegistryAsync",
-        "testLine": 999,
+        "testLine": 1043,
         "testClass": "ReceptorDiscoveryGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/ReceptorDiscoveryGeneratorTests.cs",
         "testMethod": "Generator_ReceptorWithoutFireAt_RegisteredAtDefaultStagesAsync",
-        "testLine": 1032,
+        "testLine": 1076,
         "testClass": "ReceptorDiscoveryGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/ReceptorDiscoveryGeneratorTests.cs",
         "testMethod": "Generator_ReceptorWithFireAt_RegisteredOnlyAtSpecifiedStageAsync",
-        "testLine": 1063,
-        "testClass": "ReceptorDiscoveryGeneratorTests",
-        "linkSource": "Convention"
-      },
-      {
-        "testFile": "tests/Whizbang.Generators.Tests/ReceptorDiscoveryGeneratorTests.cs",
-        "testMethod": "Generator_PublishToReceptors_OmitsFireAtReceptorsAsync",
         "testLine": 1107,
         "testClass": "ReceptorDiscoveryGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/ReceptorDiscoveryGeneratorTests.cs",
+        "testMethod": "Generator_PublishToReceptors_OmitsFireAtReceptorsAsync",
+        "testLine": 1151,
+        "testClass": "ReceptorDiscoveryGeneratorTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Generators.Tests/ReceptorDiscoveryGeneratorTests.cs",
         "testMethod": "Generator_PublishToReceptorsUntyped_KeepsFireAtGuardedByIsDefaultDispatchAsync",
-        "testLine": 1162,
+        "testLine": 1206,
         "testClass": "ReceptorDiscoveryGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/ReceptorDiscoveryGeneratorTests.cs",
         "testMethod": "Generator_ReceptorRegistry_HasCorrectStructureAsync",
-        "testLine": 1201,
+        "testLine": 1245,
         "testClass": "ReceptorDiscoveryGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/ReceptorDiscoveryGeneratorTests.cs",
         "testMethod": "Generator_DispatcherRegistrations_IncludesAddWhizbangReceptorRegistryAsync",
-        "testLine": 1238,
+        "testLine": 1282,
         "testClass": "ReceptorDiscoveryGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/ReceptorDiscoveryGeneratorTests.cs",
         "testMethod": "Generator_ZeroReceptors_GeneratesEmptyReceptorRegistryAsync",
-        "testLine": 1269,
+        "testLine": 1313,
         "testClass": "ReceptorDiscoveryGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/ReceptorDiscoveryGeneratorTests.cs",
         "testMethod": "Generator_WithMultipleRpcHandlers_NoWarningWhenDisabledAsync",
-        "testLine": 1312,
+        "testLine": 1356,
         "testClass": "ReceptorDiscoveryGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/ReceptorDiscoveryGeneratorTests.cs",
         "testMethod": "Generator_WithMultipleVoidHandlers_NoErrorAsync",
-        "testLine": 1357,
+        "testLine": 1401,
         "testClass": "ReceptorDiscoveryGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/ReceptorDiscoveryGeneratorTests.cs",
         "testMethod": "Generator_WithMultipleSyncHandlers_NoErrorAsync",
-        "testLine": 1395,
+        "testLine": 1439,
         "testClass": "ReceptorDiscoveryGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/ReceptorDiscoveryGeneratorTests.cs",
         "testMethod": "Generator_WithDefaultRoutingAttribute_GeneratesRoutingLookupAsync",
-        "testLine": 1436,
-        "testClass": "ReceptorDiscoveryGeneratorTests",
-        "linkSource": "Convention"
-      },
-      {
-        "testFile": "tests/Whizbang.Generators.Tests/ReceptorDiscoveryGeneratorTests.cs",
-        "testMethod": "Generator_WithoutDefaultRoutingAttribute_ReturnsNullAsync",
         "testLine": 1480,
         "testClass": "ReceptorDiscoveryGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/ReceptorDiscoveryGeneratorTests.cs",
+        "testMethod": "Generator_WithoutDefaultRoutingAttribute_ReturnsNullAsync",
+        "testLine": 1524,
+        "testClass": "ReceptorDiscoveryGeneratorTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Generators.Tests/ReceptorDiscoveryGeneratorTests.cs",
         "testMethod": "Generator_WithMixedRoutingAttributes_GeneratesCorrectLookupsAsync",
-        "testLine": 1521,
+        "testLine": 1565,
         "testClass": "ReceptorDiscoveryGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/ReceptorDiscoveryGeneratorTests.cs",
         "testMethod": "Generator_WithEventReturningReceptor_GeneratesCascadeToOutboxAsync",
-        "testLine": 1598,
+        "testLine": 1642,
         "testClass": "ReceptorDiscoveryGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/ReceptorDiscoveryGeneratorTests.cs",
         "testMethod": "Generator_WithMultipleEventTypes_GeneratesTypeSwitchAsync",
-        "testLine": 1640,
+        "testLine": 1684,
         "testClass": "ReceptorDiscoveryGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/ReceptorDiscoveryGeneratorTests.cs",
         "testMethod": "Generator_WithVoidReceptorOnly_GeneratesEmptyCascadeAsync",
-        "testLine": 1691,
+        "testLine": 1735,
         "testClass": "ReceptorDiscoveryGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/ReceptorDiscoveryGeneratorTests.cs",
         "testMethod": "Generator_WithTupleResponse_ExtractsEventsForCascadeAsync",
-        "testLine": 1727,
+        "testLine": 1771,
         "testClass": "ReceptorDiscoveryGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/ReceptorDiscoveryGeneratorTests.cs",
         "testMethod": "Generator_CascadeToOutbox_CallsPublishToOutboxWithMessageIdAsync",
-        "testLine": 1764,
+        "testLine": 1808,
         "testClass": "ReceptorDiscoveryGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/ReceptorDiscoveryGeneratorTests.cs",
         "testMethod": "Generator_WithArrayResponse_IncludesEventTypeInCascadeAsync",
-        "testLine": 1799,
+        "testLine": 1843,
         "testClass": "ReceptorDiscoveryGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/ReceptorDiscoveryGeneratorTests.cs",
         "testMethod": "Generator_WithRoutedResponse_ExtractsInnerTypeForCascadeAsync",
-        "testLine": 1839,
+        "testLine": 1883,
         "testClass": "ReceptorDiscoveryGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/ReceptorDiscoveryGeneratorTests.cs",
         "testMethod": "Generator_WithRoutedNoneResponse_DoesNotGenerateCascadeAsync",
-        "testLine": 1895,
+        "testLine": 1939,
         "testClass": "ReceptorDiscoveryGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/ReceptorDiscoveryGeneratorTests.cs",
         "testMethod": "Generator_WithRoutedResponse_ReportsReceptorInDiagnosticAsync",
-        "testLine": 1945,
+        "testLine": 1989,
         "testClass": "ReceptorDiscoveryGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/ReceptorDiscoveryGeneratorTests.cs",
         "testMethod": "Generator_WithTupleOfRoutedResponses_ExtractsInnerTypesAsync",
-        "testLine": 1986,
+        "testLine": 2030,
         "testClass": "ReceptorDiscoveryGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/ReceptorDiscoveryGeneratorTests.cs",
         "testMethod": "Generator_WithNullableTupleElement_PreservesNullabilityAsync",
-        "testLine": 2035,
+        "testLine": 2079,
         "testClass": "ReceptorDiscoveryGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/ReceptorDiscoveryGeneratorTests.cs",
         "testMethod": "Generator_WithNullableTupleElement_StripsNullabilityInTypeofAsync",
-        "testLine": 2082,
+        "testLine": 2126,
         "testClass": "ReceptorDiscoveryGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/ReceptorDiscoveryGeneratorTests.cs",
         "testMethod": "Generator_WithListInTuple_ExtractsElementTypeForCascadeAsync",
-        "testLine": 2132,
+        "testLine": 2176,
         "testClass": "ReceptorDiscoveryGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/ReceptorDiscoveryGeneratorTests.cs",
         "testMethod": "Generator_WithListResponseType_ExtractsElementTypeForCascadeAsync",
-        "testLine": 2183,
+        "testLine": 2227,
         "testClass": "ReceptorDiscoveryGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/ReceptorDiscoveryGeneratorTests.cs",
         "testMethod": "Generator_WithListOfIEvent_UsesPatternMatchingForCascadeAsync",
-        "testLine": 2225,
+        "testLine": 2269,
         "testClass": "ReceptorDiscoveryGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/ReceptorDiscoveryGeneratorTests.cs",
         "testMethod": "Generator_ProducesUntypedPublisher_WithEnvelopeParameterAsync",
-        "testLine": 2289,
+        "testLine": 2333,
         "testClass": "ReceptorDiscoveryGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/ReceptorDiscoveryGeneratorTests.cs",
         "testMethod": "Generator_ProducesUntypedPublisher_WithCancellationTokenParameterAsync",
-        "testLine": 2332,
+        "testLine": 2376,
         "testClass": "ReceptorDiscoveryGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/ReceptorDiscoveryGeneratorTests.cs",
         "testMethod": "Generator_ProducesUntypedPublisher_CallsEstablishFullContextAsync",
-        "testLine": 2369,
+        "testLine": 2413,
         "testClass": "ReceptorDiscoveryGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/ReceptorDiscoveryGeneratorTests.cs",
         "testMethod": "Generator_ProducesUntypedPublisher_PassesCancellationToHandleAsync",
-        "testLine": 2408,
+        "testLine": 2452,
         "testClass": "ReceptorDiscoveryGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/ReceptorDiscoveryGeneratorTests.cs",
         "testMethod": "Generator_ProducesUntypedPublisher_UsesFullyQualifiedNamesAsync",
-        "testLine": 2445,
+        "testLine": 2489,
         "testClass": "ReceptorDiscoveryGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/ReceptorDiscoveryGeneratorTests.cs",
         "testMethod": "Generator_ProducesUntypedPublisher_ChecksNullEnvelopeAsync",
-        "testLine": 2484,
+        "testLine": 2528,
         "testClass": "ReceptorDiscoveryGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/ReceptorDiscoveryGeneratorTests.cs",
         "testMethod": "Generator_ProducesUntypedPublisher_DisposesScope_InFinallyAsync",
-        "testLine": 2521,
+        "testLine": 2565,
         "testClass": "ReceptorDiscoveryGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/ReceptorDiscoveryGeneratorTests.cs",
         "testMethod": "Generator_ProducesUntypedPublisher_HandlesAsyncDisposable_CorrectlyAsync",
-        "testLine": 2568,
+        "testLine": 2612,
         "testClass": "ReceptorDiscoveryGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/ReceptorDiscoveryGeneratorTests.cs",
         "testMethod": "Generator_WithNullEnvelope_CallsEstablishMessageContextForCascadeAsync",
-        "testLine": 2608,
+        "testLine": 2652,
         "testClass": "ReceptorDiscoveryGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/ReceptorDiscoveryGeneratorTests.cs",
         "testMethod": "Generator_ProducesElseBranch_AfterNullCheckAsync",
-        "testLine": 2646,
+        "testLine": 2690,
         "testClass": "ReceptorDiscoveryGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/ReceptorDiscoveryGeneratorTests.cs",
         "testMethod": "Generator_ElseBranch_CallsCorrectMethodAsync",
-        "testLine": 2687,
+        "testLine": 2731,
         "testClass": "ReceptorDiscoveryGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/ReceptorDiscoveryGeneratorTests.cs",
         "testMethod": "Generator_ElseBranch_UsesFullyQualifiedNameAsync",
-        "testLine": 2726,
+        "testLine": 2770,
         "testClass": "ReceptorDiscoveryGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/ReceptorDiscoveryGeneratorTests.cs",
         "testMethod": "Generator_ElseBranch_IncludesCommentAsync",
-        "testLine": 2763,
+        "testLine": 2807,
         "testClass": "ReceptorDiscoveryGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/ReceptorDiscoveryGeneratorTests.cs",
         "testMethod": "Generator_WithInterfaceReceptor_ExpandsToConcreteTypes_InRegistryAsync",
-        "testLine": 2806,
+        "testLine": 2850,
         "testClass": "ReceptorDiscoveryGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/ReceptorDiscoveryGeneratorTests.cs",
         "testMethod": "Generator_WithInterfaceReceptor_PreservesOriginalInterfaceEntry_InRegistryAsync",
-        "testLine": 2841,
+        "testLine": 2885,
         "testClass": "ReceptorDiscoveryGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/ReceptorDiscoveryGeneratorTests.cs",
         "testMethod": "Generator_WithBaseClassReceptor_ExpandsToConcreteTypes_InRegistryAsync",
-        "testLine": 2873,
+        "testLine": 2917,
         "testClass": "ReceptorDiscoveryGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/ReceptorDiscoveryGeneratorTests.cs",
         "testMethod": "Generator_WithSealedClassReceptor_DoesNotExpandAsync",
-        "testLine": 2906,
+        "testLine": 2950,
         "testClass": "ReceptorDiscoveryGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/ReceptorDiscoveryGeneratorTests.cs",
         "testMethod": "Generator_WithPolymorphicReceptor_SkipsAbstractDerivedTypesAsync",
-        "testLine": 2941,
+        "testLine": 2985,
         "testClass": "ReceptorDiscoveryGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/ReceptorDiscoveryGeneratorTests.cs",
         "testMethod": "Generator_WithPolymorphicReceptor_MergesWithExistingEntriesAsync",
-        "testLine": 2975,
+        "testLine": 3019,
         "testClass": "ReceptorDiscoveryGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/ReceptorDiscoveryGeneratorTests.cs",
         "testMethod": "Generator_WithPolymorphicReceptor_NoImplementors_GeneratesOnlyInterfaceEntryAsync",
-        "testLine": 3017,
+        "testLine": 3061,
         "testClass": "ReceptorDiscoveryGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/ReceptorDiscoveryGeneratorTests.cs",
         "testMethod": "Generator_WithInterfaceReceptor_ExpandsNestedConcreteTypes_InRegistryAsync",
-        "testLine": 3047,
+        "testLine": 3091,
         "testClass": "ReceptorDiscoveryGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/ReceptorDiscoveryGeneratorTests.cs",
         "testMethod": "Generator_CascadeSwitch_EmitsIEventFallbackForPersistenceCompletenessAsync",
-        "testLine": 3087,
+        "testLine": 3131,
         "testClass": "ReceptorDiscoveryGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/ReceptorDiscoveryGeneratorTests.cs",
         "testMethod": "Generator_CascadeSwitch_SkipsRedundantIEventFallback_WhenReceptorReturnsBareInterfaceAsync",
-        "testLine": 3124,
+        "testLine": 3168,
         "testClass": "ReceptorDiscoveryGeneratorTests",
         "linkSource": "Convention"
       }
@@ -60121,6 +60186,43 @@
         "linkSource": "Convention"
       }
     ],
+    "SignalBusProbe": [
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Signals/SignalBusProbeTests.cs",
+        "testMethod": "HostedStart_ProbeVerifiesWireRoute_ViaInMemoryAsync",
+        "testLine": 35,
+        "testClass": "SignalBusProbeTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Signals/SignalBusProbeTests.cs",
+        "testMethod": "HostedStart_DeadTransport_ProbeMarksWireRouteFailedAsync",
+        "testLine": 53,
+        "testClass": "SignalBusProbeTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Signals/SignalBusProbeTests.cs",
+        "testMethod": "HostedStart_ThrowingTransport_ProbeMarksFailed_LoopSurvivesAsync",
+        "testLine": 101,
+        "testClass": "SignalBusProbeTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Signals/SignalBusProbeTests.cs",
+        "testMethod": "ReProbe_TransportDiesAfterFirstPass_LaterProbeDegradesAsync",
+        "testLine": 120,
+        "testClass": "SignalBusProbeTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Signals/SignalBusProbeTests.cs",
+        "testMethod": "Report_ConsecutiveMissedDoorbells_DegradesAtThreshold_DoorbellWakeResetsAsync",
+        "testLine": 153,
+        "testClass": "SignalBusProbeTests",
+        "linkSource": "Convention"
+      }
+    ],
     "SignalBus": [
       {
         "testFile": "tests/Whizbang.Core.Tests/Signals/SignalBusTests.cs",
@@ -77679,22 +77781,43 @@
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/Messaging/StreamAffinityWorkCoordinatorStrategyTests.cs",
+        "testMethod": "QueueOutboxMessageAsync_AuditedEvent_AppendsEventAuditedToSameBatchAsync",
+        "testLine": 64,
+        "testClass": "StreamAffinityWorkCoordinatorStrategyTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/StreamAffinityWorkCoordinatorStrategyTests.cs",
+        "testMethod": "QueueOutboxMessageAsync_AuditDisabled_OnlyDomainMessageBatchedAsync",
+        "testLine": 108,
+        "testClass": "StreamAffinityWorkCoordinatorStrategyTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/StreamAffinityWorkCoordinatorStrategyTests.cs",
+        "testMethod": "QueueOutboxMessageAsync_NonEventMessage_NoAuditCompanionAsync",
+        "testLine": 138,
+        "testClass": "StreamAffinityWorkCoordinatorStrategyTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/StreamAffinityWorkCoordinatorStrategyTests.cs",
         "testMethod": "QueueOutboxMessage_SyncCall_ThrowsAsync",
-        "testLine": 60,
+        "testLine": 172,
         "testClass": "StreamAffinityWorkCoordinatorStrategyTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/Messaging/StreamAffinityWorkCoordinatorStrategyTests.cs",
         "testMethod": "QueueInboxMessage_DelegatesToInnerStrategyAsync",
-        "testLine": 77,
+        "testLine": 189,
         "testClass": "StreamAffinityWorkCoordinatorStrategyTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/Messaging/StreamAffinityWorkCoordinatorStrategyTests.cs",
         "testMethod": "QueueOutboxMessageAsync_ManySameStreamEmits_SingleSortedBatchAsync",
-        "testLine": 98,
+        "testLine": 210,
         "testClass": "StreamAffinityWorkCoordinatorStrategyTests",
         "linkSource": "Convention"
       }
@@ -80564,7 +80687,7 @@
     "WhizbangHealthAggregator": [
       {
         "testFile": "tests/Whizbang.Core.Tests/Health/WhizbangHealthAggregatorTests.cs",
-        "testMethod": "LenientDefault_Migrating_IsReadyAsync",
+        "testMethod": "LenientDefault_Migrating_IsDegradedButServingAsync",
         "testLine": 29,
         "testClass": "WhizbangHealthAggregatorTests",
         "linkSource": "Convention"
@@ -80572,91 +80695,91 @@
       {
         "testFile": "tests/Whizbang.Core.Tests/Health/WhizbangHealthAggregatorTests.cs",
         "testMethod": "LenientDefault_Migrating_IsAliveAsync",
-        "testLine": 36,
+        "testLine": 38,
         "testClass": "WhizbangHealthAggregatorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/Health/WhizbangHealthAggregatorTests.cs",
         "testMethod": "Faulted_FailsReadinessAsync",
-        "testLine": 43,
+        "testLine": 45,
         "testClass": "WhizbangHealthAggregatorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/Health/WhizbangHealthAggregatorTests.cs",
         "testMethod": "Faulted_StillAlive_NeverRestartsOnDependencyFaultAsync",
-        "testLine": 50,
+        "testLine": 52,
         "testClass": "WhizbangHealthAggregatorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/Health/WhizbangHealthAggregatorTests.cs",
         "testMethod": "Aggregate_WorstStatusWinsAsync",
-        "testLine": 57,
+        "testLine": 59,
         "testClass": "WhizbangHealthAggregatorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/Health/WhizbangHealthAggregatorTests.cs",
         "testMethod": "StrictOverride_HoldsThatComponentOutOfRotationAsync",
-        "testLine": 67,
+        "testLine": 69,
         "testClass": "WhizbangHealthAggregatorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/Health/WhizbangHealthAggregatorTests.cs",
         "testMethod": "StrictOverride_DoesNotAffectOtherComponentsAsync",
-        "testLine": 76,
+        "testLine": 78,
         "testClass": "WhizbangHealthAggregatorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/Health/WhizbangHealthAggregatorTests.cs",
         "testMethod": "Liveness_NeverFailsForIntentionalStates_UnderStrictAsync",
-        "testLine": 86,
+        "testLine": 88,
         "testClass": "WhizbangHealthAggregatorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/Health/WhizbangHealthAggregatorTests.cs",
-        "testMethod": "LenientDefault_IntentionalState_IsReadyAsync",
-        "testLine": 98,
+        "testMethod": "LenientDefault_IntentionalState_IsDegradedButServingAsync",
+        "testLine": 100,
         "testClass": "WhizbangHealthAggregatorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/Health/WhizbangHealthAggregatorTests.cs",
         "testMethod": "StrictOverride_IntentionalState_HeldOutOfRotationAsync",
-        "testLine": 107,
+        "testLine": 109,
         "testClass": "WhizbangHealthAggregatorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/Health/WhizbangHealthAggregatorTests.cs",
         "testMethod": "Detail_IsPropagatedToTheReportAsync",
-        "testLine": 117,
+        "testLine": 119,
         "testClass": "WhizbangHealthAggregatorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/Health/WhizbangHealthAggregatorTests.cs",
         "testMethod": "NoSources_IsHealthyAsync",
-        "testLine": 126,
+        "testLine": 128,
         "testClass": "WhizbangHealthAggregatorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/Health/WhizbangHealthAggregatorTests.cs",
         "testMethod": "HealthPolicy_Ready_IsHealthyOnReadinessUnderBothBuiltInsAsync",
-        "testLine": 135,
+        "testLine": 137,
         "testClass": "WhizbangHealthAggregatorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/Health/WhizbangHealthAggregatorTests.cs",
         "testMethod": "HealthPolicy_Ready_IsHealthyOnLivenessUnderBothBuiltInsAsync",
-        "testLine": 145,
+        "testLine": 147,
         "testClass": "WhizbangHealthAggregatorTests",
         "linkSource": "Convention"
       }
@@ -87365,7 +87488,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 2972,
+        "sourceLine": 3091,
         "sourceSymbol": "CascadeToOutboxAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -92480,7 +92603,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 5207,
+        "sourceLine": 5331,
         "sourceSymbol": "SyncReceptorInvoker",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -92507,7 +92630,7 @@
     "DispatcherCoverageSweepRoutedCascadeTests.SendAsync_OwnedChildNamespaceCommand_NoReceptor_ReturnsAcceptedWithoutOutboxAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 265,
+        "sourceLine": 382,
         "sourceSymbol": "_isOwnedNamespace",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -92516,7 +92639,7 @@
     "DispatcherCoverageSweepRoutedCascadeTests.SendAsync_NonMatchingOwnedDomains_CommandRoutesToOutboxAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 266,
+        "sourceLine": 383,
         "sourceSymbol": "_isOwnedNamespace",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -92525,7 +92648,7 @@
     "DispatcherCoverageSweepSyncRpcTests.LocalInvokeAsync_Void_SyncAttributeSynced_AwaitsPerspectiveThenInvokesReceptorAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 314,
+        "sourceLine": 431,
         "sourceSymbol": "_awaitPerspectiveSyncIfNeededAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -92534,7 +92657,7 @@
     "DispatcherCoverageSweepSyncRpcTests.LocalInvokeAsync_Void_SyncAttributeTimedOut_FireOnSuccess_ThrowsAndSkipsReceptorAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 315,
+        "sourceLine": 432,
         "sourceSymbol": "_awaitPerspectiveSyncIfNeededAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -92543,7 +92666,7 @@
     "DispatcherCoverageSweepSyncRpcTests.LocalInvokeAsync_Void_SyncAttribute_NoStreamId_SkipsAwaiterAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 316,
+        "sourceLine": 433,
         "sourceSymbol": "_awaitPerspectiveSyncIfNeededAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -92552,7 +92675,7 @@
     "DispatcherPerspectiveSyncCoverageTests.LocalInvokeAsync_WithWaitForPerspectives_NoEventCompletionAwaiter_ReturnsNormallyAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 406,
+        "sourceLine": 523,
         "sourceSymbol": "_waitForPerspectivesIfNeededAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -92561,7 +92684,7 @@
     "DispatcherPerspectiveSyncCoverageTests.LocalInvokeAsync_WithWaitForPerspectives_NoScopedTracker_ReturnsNormallyAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 407,
+        "sourceLine": 524,
         "sourceSymbol": "_waitForPerspectivesIfNeededAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -92577,7 +92700,7 @@
     "DispatcherCascadeTests.LocalInvokeAsync_TupleWithEvent_AutoPublishesEventAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 2513,
+        "sourceLine": 2631,
         "sourceSymbol": "_cascadeEventsFromResultAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -92586,7 +92709,7 @@
     "DispatcherRoutedCascadeTests.CascadeFromResult_WithRouteLocal_InvokesLocalReceptorAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 2514,
+        "sourceLine": 2632,
         "sourceSymbol": "_cascadeEventsFromResultAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -92595,7 +92718,7 @@
     "DispatcherUncoveredPathsTests.LocalInvokeAsync_Void_WithImmediateDetachedReceptors_InvokesScopedInvokerAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 2831,
+        "sourceLine": 2950,
         "sourceSymbol": "_invokeImmediateDetachedReceptorsAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -92604,7 +92727,7 @@
     "DispatcherUncoveredPathsTests.LocalInvokeAsync_Void_WithReceptorRegistry_NoImmediateDetachedReceptors_SkipsAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 2832,
+        "sourceLine": 2951,
         "sourceSymbol": "_invokeImmediateDetachedReceptorsAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -92613,7 +92736,7 @@
     "DispatcherUncoveredPathsTests.LocalInvokeAsync_Void_WithTraceStore_NoReceptorRegistry_SkipsImmediateDetachedAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 2833,
+        "sourceLine": 2952,
         "sourceSymbol": "_invokeImmediateDetachedReceptorsAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -92622,7 +92745,7 @@
     "DispatcherPostLifecycleCoverageTests.LocalInvokeAsync_Void_FiresPostLifecycleDetached_WhenReceptorsRegisteredAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 2873,
+        "sourceLine": 2992,
         "sourceSymbol": "_invokePostLifecycleReceptorsAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -92631,7 +92754,7 @@
     "DispatcherPostLifecycleCoverageTests.LocalInvokeAsync_Void_FiresBothAsyncAndInline_WhenBothRegisteredAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 2874,
+        "sourceLine": 2993,
         "sourceSymbol": "_invokePostLifecycleReceptorsAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -92640,7 +92763,7 @@
     "PostLifecyclePipelineTests.Dispatcher_NoWhenAll_FiresPostLifecycleDetachedAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 2875,
+        "sourceLine": 2994,
         "sourceSymbol": "_invokePostLifecycleReceptorsAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -92649,7 +92772,7 @@
     "DispatcherRoutedCascadeTests.CascadeEventStoreOnly_*": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 3002,
+        "sourceLine": 3121,
         "sourceSymbol": "CascadeToEventStoreOnlyAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -92658,7 +92781,7 @@
     "LocalEventStorageTests.RouteEventStoreOnly_*": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 3003,
+        "sourceLine": 3122,
         "sourceSymbol": "CascadeToEventStoreOnlyAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -92667,7 +92790,7 @@
     "DispatcherCoverageSweepRoutedCascadeTests.CascadeMessageAsync_OwnedCommandOutboxMode_IsDowngradedToLocalAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 3270,
+        "sourceLine": 3393,
         "sourceSymbol": "CascadeMessageAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -92676,7 +92799,7 @@
     "DispatcherCoverageSweepRoutedCascadeTests.CascadeMessageAsync_NonOwnedCommandOutboxMode_StaysOnOutboxAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 3271,
+        "sourceLine": 3394,
         "sourceSymbol": "CascadeMessageAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -92685,7 +92808,7 @@
     "ReceptorDiscoveryGeneratorTests.Generator_CascadeToOutbox_CallsPublishToOutboxWithMessageIdAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 3456,
+        "sourceLine": 3580,
         "sourceSymbol": "PublishToOutboxAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -92700,7 +92823,7 @@
     "DispatcherCompositePublishFanoutTests.OwnedComposite_FansOutAtPublish_ViaDispatchOptionsOverloadAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 3602,
+        "sourceLine": 3726,
         "sourceSymbol": "_fanOutCompositeLocallyAtPublishAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -92709,7 +92832,7 @@
     "DispatcherCompositePublishFanoutTests.NonOwnedComposite_DoesNotFanOutAtPublishAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 3603,
+        "sourceLine": 3727,
         "sourceSymbol": "_fanOutCompositeLocallyAtPublishAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -92718,7 +92841,7 @@
     "DispatcherCoverageSweepOutboxTests.PublishToOutboxDynamic_EventWithIHasStreamId_InheritsStreamIdFromSourceAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 3803,
+        "sourceLine": 3927,
         "sourceSymbol": "PublishToOutboxDynamicAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -92727,7 +92850,7 @@
     "DispatcherCoverageSweepOutboxTests.PublishToOutboxDynamic_EventAlreadyHasStreamId_SkipsPropagationAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 3804,
+        "sourceLine": 3928,
         "sourceSymbol": "PublishToOutboxDynamicAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -92736,7 +92859,7 @@
     "DispatcherNoRebroadcastGuardTests.NoRebroadcastSource_IsSuppressedBeforeSerializationAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 3805,
+        "sourceLine": 3929,
         "sourceSymbol": "PublishToOutboxDynamicAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -92745,7 +92868,7 @@
     "DispatcherSyncTests.LocalInvokeAsync_SyncReceptor_ReturnsCompletedValueTaskAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 5208,
+        "sourceLine": 5332,
         "sourceSymbol": "SyncReceptorInvoker",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -98497,6 +98620,69 @@
         "sourceSymbol": "AuditEventProjection",
         "sourceType": "Class",
         "linkSource": "XmlTag"
+      }
+    ],
+    "SignalBusHostingTests.AddWhizbangSignalBus_HostStartAlone_StartsRegisteredTransportsAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Signals/SignalBusHostedService.cs",
+        "sourceLine": 26,
+        "sourceSymbol": "SignalBusHostedService",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "SignalBusProbeTests.HostedStart_ProbeVerifiesWireRoute_ViaInMemoryAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Signals/SignalBusHostedService.cs",
+        "sourceLine": 27,
+        "sourceSymbol": "SignalBusHostedService",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Signals/SignalBusProbeSignal.cs",
+        "sourceLine": 12,
+        "sourceSymbol": "struct",
+        "sourceType": "Record",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "SignalBusProbeTests.HostedStart_DeadTransport_ProbeMarksWireRouteFailedAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Signals/SignalBusHostedService.cs",
+        "sourceLine": 28,
+        "sourceSymbol": "SignalBusHostedService",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Signals/SignalBusLivenessState.cs",
+        "sourceLine": 15,
+        "sourceSymbol": "SignalBusLivenessState",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Signals/SignalBusProbeSignal.cs",
+        "sourceLine": 13,
+        "sourceSymbol": "struct",
+        "sourceType": "Record",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "SignalBusProbeTests.Report_ConsecutiveMissedDoorbells_DegradesAtThreshold_DoorbellWakeResetsAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Signals/SignalBusLivenessState.cs",
+        "sourceLine": 14,
+        "sourceSymbol": "SignalBusLivenessState",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Signals/SignalBusProbeSignal.cs",
+        "sourceSymbol": "SignalBusProbe",
+        "sourceType": "Class",
+        "linkSource": "Convention"
       }
     ],
     "JsonContextRegistryTests.RegisterConverter_WithConverterInstance_AddsToConverterCollectionAsync": [
@@ -105088,7 +105274,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/BatchWorkCoordinatorStrategy.cs",
-        "sourceLine": 431,
+        "sourceLine": 436,
         "sourceSymbol": "DisposeAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -105097,14 +105283,14 @@
     "BatchWorkCoordinatorStrategyTests.OnBatchFlushed_BatchSizeTrigger_TriggerIsBatchSizeAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/BatchWorkCoordinatorStrategy.cs",
-        "sourceLine": 590,
+        "sourceLine": 598,
         "sourceSymbol": "FlushTrigger",
         "sourceType": "Enum",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/BatchWorkCoordinatorStrategy.cs",
-        "sourceLine": 606,
+        "sourceLine": 614,
         "sourceSymbol": "WorkBatchFlushedArgs",
         "sourceType": "Record",
         "linkSource": "XmlTag"
@@ -105113,14 +105299,14 @@
     "BatchWorkCoordinatorStrategyTests.OnBatchFlushed_ManualFlush_TriggerIsManualAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/BatchWorkCoordinatorStrategy.cs",
-        "sourceLine": 591,
+        "sourceLine": 599,
         "sourceSymbol": "FlushTrigger",
         "sourceType": "Enum",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/BatchWorkCoordinatorStrategy.cs",
-        "sourceLine": 607,
+        "sourceLine": 615,
         "sourceSymbol": "WorkBatchFlushedArgs",
         "sourceType": "Record",
         "linkSource": "XmlTag"
@@ -105129,7 +105315,7 @@
     "BatchWorkCoordinatorStrategyTests.DebounceTimer_WithLogger_LogsDebounceTimerFiredAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/BatchWorkCoordinatorStrategy.cs",
-        "sourceLine": 592,
+        "sourceLine": 600,
         "sourceSymbol": "FlushTrigger",
         "sourceType": "Enum",
         "linkSource": "XmlTag"
@@ -105138,7 +105324,7 @@
     "BatchWorkCoordinatorStrategyTests.DebounceTimer_ResetsOnEachQueueAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/BatchWorkCoordinatorStrategy.cs",
-        "sourceLine": 608,
+        "sourceLine": 616,
         "sourceSymbol": "WorkBatchFlushedArgs",
         "sourceType": "Record",
         "linkSource": "XmlTag"
@@ -107569,7 +107755,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IntervalWorkCoordinatorStrategy.cs",
-        "sourceLine": 405,
+        "sourceLine": 407,
         "sourceSymbol": "DisposeAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -109410,12 +109596,6 @@
         "sourceSymbol": "ComponentState",
         "sourceType": "Enum",
         "linkSource": "XmlTag"
-      },
-      {
-        "sourceFile": "src/Whizbang.Core/Health/WhizbangHealthAggregator.cs",
-        "sourceSymbol": "WhizbangHealthAggregator",
-        "sourceType": "Class",
-        "linkSource": "Convention"
       }
     ],
     "ConnectivityHealthSourceTests.AssumedHealthy_IsPhaseAware_NeverFaultsFromProbeAsync": [
@@ -109508,7 +109688,7 @@
     "WhizbangHealthAggregatorTests.StrictOverride_HoldsThatComponentOutOfRotationAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Health/HealthPolicy.cs",
-        "sourceLine": 19,
+        "sourceLine": 20,
         "sourceSymbol": "HealthPolicy",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -109530,7 +109710,7 @@
     "WhizbangHealthAggregatorTests.StrictOverride_DoesNotAffectOtherComponentsAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Health/HealthPolicy.cs",
-        "sourceLine": 20,
+        "sourceLine": 21,
         "sourceSymbol": "HealthPolicy",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -109552,7 +109732,7 @@
     "WhizbangHealthDiTests.AddWhizbangManagedHealth_AppliesPolicyConfigurationAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Health/HealthPolicy.cs",
-        "sourceLine": 21,
+        "sourceLine": 22,
         "sourceSymbol": "HealthPolicy",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -109599,6 +109779,33 @@
         "linkSource": "XmlTag"
       }
     ],
+    "SignalBusHealthWiringTests.FailedWireRouteProbe_WhileRunning_ReportsDegradedAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Health/SignalBusHealthSource.cs",
+        "sourceLine": 15,
+        "sourceSymbol": "SignalBusHealthSource",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "SignalBusHealthWiringTests.MissedDoorbellStreak_WhileRunning_ReportsDegradedAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Health/SignalBusHealthSource.cs",
+        "sourceLine": 16,
+        "sourceSymbol": "SignalBusHealthSource",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "SignalBusHealthWiringTests.DegradedState_OutsideRunning_StaysIntentionalAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Health/SignalBusHealthSource.cs",
+        "sourceLine": 17,
+        "sourceSymbol": "SignalBusHealthSource",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
     "WhizbangHealthAggregatorTests.LenientDefault_Migrating_IsReadyAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Health/WhizbangHealthOptions.cs",
@@ -109606,12 +109813,6 @@
         "sourceSymbol": "WhizbangHealthOptions",
         "sourceType": "Class",
         "linkSource": "XmlTag"
-      },
-      {
-        "sourceFile": "src/Whizbang.Core/Health/WhizbangHealthAggregator.cs",
-        "sourceSymbol": "WhizbangHealthAggregator",
-        "sourceType": "Class",
-        "linkSource": "Convention"
       }
     ],
     "WhizbangHealthDiTests.AddWhizbangHealthSource_SameSourceTwice_RegistersOnceAsync": [
@@ -121709,7 +121910,7 @@
         "linkSource": "Convention"
       }
     ],
-    "SchemaReadyHealthCheckTests.NotReady_ReportsUnhealthyAsync": [
+    "SchemaReadyHealthCheckTests.NotReady_ReportsDegradedNotUnhealthyAsync": [
       {
         "sourceFile": "src/Whizbang.Hosting.AspNet/SchemaReadyHealthCheck.cs",
         "sourceSymbol": "SchemaReadyHealthCheck",
@@ -121893,7 +122094,7 @@
         "linkSource": "Convention"
       }
     ],
-    "WhizbangManagedHealthCheckTests.Readiness_MigratingUnderLenient_IsHealthyAsync": [
+    "WhizbangManagedHealthCheckTests.Readiness_MigratingUnderLenient_IsDegradedButServingAsync": [
       {
         "sourceFile": "src/Whizbang.Hosting.AspNet/WhizbangManagedHealthCheck.cs",
         "sourceSymbol": "WhizbangManagedHealthCheck",
@@ -127110,6 +127311,14 @@
       }
     ],
     "ReceptorDiscoveryGeneratorTests.Generator_WithReceptor_GeneratesDispatcherAsync": [
+      {
+        "sourceFile": "src/Whizbang.Generators/RawReceptorDiscoveryGenerator.cs",
+        "sourceSymbol": "ReceptorDiscoveryGenerator",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "ReceptorDiscoveryGeneratorTests.Generator_EmitsTheReceptorLookupContributionAsync": [
       {
         "sourceFile": "src/Whizbang.Generators/RawReceptorDiscoveryGenerator.cs",
         "sourceSymbol": "ReceptorDiscoveryGenerator",
@@ -153509,6 +153718,22 @@
         "linkSource": "Convention"
       }
     ],
+    "SignalBusProbeTests.HostedStart_ThrowingTransport_ProbeMarksFailed_LoopSurvivesAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Signals/SignalBusProbeSignal.cs",
+        "sourceSymbol": "SignalBusProbe",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "SignalBusProbeTests.ReProbe_TransportDiesAfterFirstPass_LaterProbeDegradesAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Signals/SignalBusProbeSignal.cs",
+        "sourceSymbol": "SignalBusProbe",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
     "SignalBusTests.ReceiveAsync_WithSubscriber_InvokesHandlerWithSignalAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Signals/ISignalBus.cs",
@@ -172989,6 +173214,30 @@
         "linkSource": "Convention"
       }
     ],
+    "StreamAffinityWorkCoordinatorStrategyTests.QueueOutboxMessageAsync_AuditedEvent_AppendsEventAuditedToSameBatchAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/StreamAffinityWorkCoordinatorStrategy.cs",
+        "sourceSymbol": "StreamAffinityWorkCoordinatorStrategy",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "StreamAffinityWorkCoordinatorStrategyTests.QueueOutboxMessageAsync_AuditDisabled_OnlyDomainMessageBatchedAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/StreamAffinityWorkCoordinatorStrategy.cs",
+        "sourceSymbol": "StreamAffinityWorkCoordinatorStrategy",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "StreamAffinityWorkCoordinatorStrategyTests.QueueOutboxMessageAsync_NonEventMessage_NoAuditCompanionAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/StreamAffinityWorkCoordinatorStrategy.cs",
+        "sourceSymbol": "StreamAffinityWorkCoordinatorStrategy",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
     "StreamAffinityWorkCoordinatorStrategyTests.QueueOutboxMessage_SyncCall_ThrowsAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/StreamAffinityWorkCoordinatorStrategy.cs",
@@ -175885,7 +176134,23 @@
         "linkSource": "Convention"
       }
     ],
+    "WhizbangHealthAggregatorTests.LenientDefault_Migrating_IsDegradedButServingAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Health/WhizbangHealthAggregator.cs",
+        "sourceSymbol": "WhizbangHealthAggregator",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
     "WhizbangHealthAggregatorTests.LenientDefault_Migrating_IsAliveAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Health/WhizbangHealthAggregator.cs",
+        "sourceSymbol": "WhizbangHealthAggregator",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "WhizbangHealthAggregatorTests.LenientDefault_IntentionalState_IsDegradedButServingAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Health/WhizbangHealthAggregator.cs",
         "sourceSymbol": "WhizbangHealthAggregator",
@@ -180015,11 +180280,11 @@
     ]
   },
   "metadata": {
-    "generated": "2026-08-17T19:49:14.781Z",
-    "sourceFiles": 1537,
-    "testFiles": 4196,
-    "totalLinks": 12136,
-    "codeSymbols": 1591,
-    "testMethods": 10545
+    "generated": "2026-08-18T14:25:23.793Z",
+    "sourceFiles": 1543,
+    "testFiles": 4204,
+    "totalLinks": 12156,
+    "codeSymbols": 1596,
+    "testMethods": 10560
   }
 }
