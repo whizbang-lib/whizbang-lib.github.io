@@ -60,6 +60,30 @@ services.AddWhizbang(options => {
 - One vocabulary, many behaviors: future tag-bound policies (trace sampling, work-class
   priority, retention hints) bind to the same tags without touching a single message type.
 
+### Reserved system tags and override precedence
+
+- **Framework-internal tags carry the `sys-` prefix** (`sys-audit`, `sys-telemetry`, …),
+  following the `$wb-system` / `wh_` naming family, and are exposed as constants
+  (`SystemTags.Audit == "sys-audit"`). The `sys-` prefix is **reserved**: startup validation
+  rejects application-declared tag attributes that mint new `sys-*` tags, so framework and
+  application tag namespaces can never collide.
+- **Built-in policies ship as defaults, never as locks.** Enabling a framework feature registers
+  its tag binding with documented defaults; a host-supplied binding for the same tag **replaces**
+  the built-in one entirely (last-registration-wins at the options layer, with the built-in
+  always registered first). Overriding is the same API as declaring:
+
+```csharp{title="Overriding the built-in audit coalesce binding" description="EnableAudit ships the sys-audit binding with defaults; a host binding for the same tag replaces it" category="Architecture" difficulty="BEGINNER" tags=["Tags","Coalescing","Audit","Configuration"] framework="NET10"}
+services.AddWhizbang(options => {
+  // Ships automatically with EnableAudit(): Coalesce(SystemTags.Audit) with
+  // SlideSeconds=15, MaxDelaySeconds=120, MaxBatchCount=500, Independent.
+  // Override by binding the same tag yourself:
+  options.Tags.Coalesce(SystemTags.Audit, c => {
+    c.SlideSeconds = 30;
+    c.MaxDelaySeconds = 300;   // audit freshness relaxed to 5 minutes
+  });
+});
+```
+
 ### Coalescing mechanics
 
 Mint time — when an outbox message's type carries a tag with a coalesce binding:
@@ -128,10 +152,10 @@ participate. During a burst, thousands of coalesce-pending singles sit in `wh_ou
 
 ### Audit as the first consumer
 
-`EventAudited` carries the built-in audit tag; `AddSystemEvents(o => o.EnableAudit())`
-registers the `"audit"` coalesce binding with the defaults above (knobs surfaced on
-`SystemEventOptions`). The framework dogfoods the public feature — there is no audit-specific
-shipping code. Combined with the #507 attribution fix (system events establish an unattributed
+`EventAudited` carries the built-in `SystemTags.Audit` tag (`"sys-audit"`);
+`AddSystemEvents(o => o.EnableAudit())` registers that tag's coalesce binding with the defaults
+above, and a host binding for `SystemTags.Audit` overrides it (see *Reserved system tags*). The
+framework dogfoods the public feature — there is no audit-specific shipping code. Combined with the #507 attribution fix (system events establish an unattributed
 context rather than dead-lettering), the incident above becomes: ~350 import composites ship in
 real time, chat never notices, and the complete audit trail follows as a handful of composite
 envelopes within two minutes — durable from the moment each audited event committed.
