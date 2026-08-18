@@ -1,0 +1,124 @@
+---
+title: Tag-Bound Policies & Message Coalescing
+category: Architecture & Design
+order: 36
+tags: tags, coalescing, batching, audit, throughput, service-bus, policies, sliding-window
+---
+
+# Tag-Bound Policies & Message Coalescing
+
+Whizbang's message tags (`MessageTagAttribute`) already give every message type a compile-time,
+AOT-discovered **semantic classification** — "this is an audit record", "this is telemetry".
+This proposal makes tags the binding point for **operational policies**: behaviors configured
+per tag in the host, never declared as new attributes or fields on the message types themselves.
+The first tag-bound policy is **coalescing** — a sliding-window batcher that folds tagged
+outbox singles into composite envelopes — and the framework's own audit stream becomes its
+first consumer.
+
+:::planned
+Unreleased design proposal, approved in principle. The audit building blocks (the `#507`
+unattributed-context fix, the `ScheduledFor` safety floor, the `AuditEventsComposite` carrier)
+land first; the generic tag-bound coalescer supersedes the audit-specific shipper before release.
+:::
+
+## Motivation
+
+A measured production incident: a 350-job bulk import published its ~17,500 domain events as
+~350 composite envelopes (efficient by design), but auditing emitted **17,677 individual
+`EventAudited` transport messages** — one per inner event. On Azure Service Bus Standard,
+where the whole namespace shares one per-second credit pool, that flood throttled every
+consumer in the namespace: the import ran 3× slower than its historical baseline, and
+interactive chat hops degraded from 0.4s to 10–21s. The audit records were then all
+dead-lettered at the consumer anyway (a separate attribution bug, #507).
+
+The audit stream needed to be **durable, not real-time**. But bolting a delay/batch knob onto
+`EventAudited` — or introducing a dedicated `[Coalesce]` attribute — would continue a pattern
+worth breaking: every new operational behavior accreting more metadata onto event contracts
+(`[Ephemeral]`, `[RowTtl]`, `[StreamGroup]`, …). Events should declare **what they are** once;
+**how the runtime treats them** should bind externally and evolve freely.
+
+## Design
+
+### Tags classify; policies bind
+
+- A message type carries one or more tags (existing mechanism: subclass `MessageTagAttribute`,
+  discovered by the `MessageTagDiscoveryGenerator`, registered AOT-safe in the
+  `MessageTagRegistry`). Tags are semantic: `"audit"`, `"telemetry"`, `"notification-digest"`.
+- A **policy** is configured in the host against a tag string:
+
+```csharp{title="Binding a coalesce policy to a tag" description="Coalescing is configured against a tag string in host options — no new attribute, no new fields on the event type" category="Architecture" difficulty="INTERMEDIATE" tags=["Tags","Coalescing","Configuration"] framework="NET10"}
+services.AddWhizbang(options => {
+  options.Tags.Coalesce("audit", c => {
+    c.SlideSeconds = 15;        // quiet-timer: resets on each new pending single
+    c.MaxDelaySeconds = 120;    // hard freshness cap, oldest-first under continuous load
+    c.MaxBatchCount = 500;      // inners per composite envelope
+    c.Atomicity = FanoutAtomicity.Independent;  // one bad inner never dead-letters siblings
+  });
+});
+```
+
+- One vocabulary, many behaviors: future tag-bound policies (trace sampling, work-class
+  priority, retention hints) bind to the same tags without touching a single message type.
+
+### Coalescing mechanics
+
+Mint time — when an outbox message's type carries a tag with a coalesce binding:
+
+1. The single is written to the outbox **in the same transaction as its cause** (durability is
+   unchanged and immediate), stamped with `ScheduledFor = now + MaxDelaySeconds`. The floor
+   makes it invisible to the normal claim pump until the deadline — **the safety net, not the
+   mechanism**: if the coalescer never runs, singles ship individually at the deadline.
+   Degraded is slower, never lost.
+
+Ship time — a generic **coalesce worker** (one per service, all groups):
+
+2. Runs a true sliding window per tag group: a quiet timer of `SlideSeconds` that resets
+   whenever new pending singles arrive, firing on quiet — so a burst's entire tail coalesces
+   and ships at burst-end. The `MaxDelaySeconds` cap forces an oldest-first ship under
+   continuous arrivals.
+3. On fire, it claims all pending singles for the group (regardless of their floor), folds them
+   oldest-first into **raw-carry composite envelopes** (the AOT-safe idiom the redelivery pump
+   established — no per-group code generation), capped at `MaxBatchCount` inners, and **in one
+   transaction** writes the composite outbox row(s) and completes the folded singles. The
+   composite ships immediately; the consumer's existing composite fan-out delivers each inner
+   exactly as a single would have arrived.
+4. Crash-safety falls out of the transaction: a single is either still pending (floor intact)
+   or folded (composite exists) — never both, never neither.
+
+### Semantics and guardrails
+
+- **Independence by default.** Coalesce groups are for self-contained records. Default
+  `Atomicity = Independent`; `Atomic` is opt-in for groups that genuinely want all-or-nothing.
+- **Ordering.** Folding is oldest-first and composites ship in order. Messages that participate
+  in same-stream causal sequences should not be coalesced; an analyzer warning flags a
+  coalesce-bound tag on a stream-sequenced event type.
+- **Ambiguity is an error.** A message type whose tags match more than one coalesce binding
+  fails startup validation (the `WHIZ134` precedent) — silent first-match-wins is how policy
+  drift hides.
+- **`SlideSeconds = 0`** disables the group: singles ship immediately with no floor, exactly
+  today's behavior.
+
+### Audit as the first consumer
+
+`EventAudited` carries the built-in audit tag; `AddSystemEvents(o => o.EnableAudit())`
+registers the `"audit"` coalesce binding with the defaults above (knobs surfaced on
+`SystemEventOptions`). The framework dogfoods the public feature — there is no audit-specific
+shipping code. Combined with the #507 attribution fix (system events establish an unattributed
+context rather than dead-lettering), the incident above becomes: ~350 import composites ship in
+real time, chat never notices, and the complete audit trail follows as a handful of composite
+envelopes within two minutes — durable from the moment each audited event committed.
+
+## Build increments
+
+1. `#507` fix + `ScheduledFor` safety floor + `AuditEventsComposite` carrier (in flight).
+2. Coalesce policy options + tag binding + startup ambiguity validation.
+3. The generic coalesce worker (sliding window, transactional fold, raw-carry composites).
+4. Audit rebased onto the generic binding; audit-specific pieces deleted.
+5. Analyzer warning for coalesce-bound tags on stream-sequenced types.
+6. OTel: pending-per-group gauge, folds/ships/deadline-degrades counters, coalesce latency histogram.
+
+## Related Documentation
+
+- Message Tags — the classification substrate this binds to
+- Audit Logging — the first tag-bound consumer
+- Composite Events — the fan-out mechanics composites ride
