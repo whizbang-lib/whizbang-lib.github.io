@@ -133,8 +133,22 @@ participate. During a burst, thousands of coalesce-pending singles sit in `wh_ou
   (`coalesce_group = NULL, ScheduledFor = NULL`), which moves them into the hot index and the
   normal pump ships them individually. The degrade is counted (OTel), never silent, and the hot
   index stays pure in both healthy and degraded states.
-- **Validated like every hot-path SQL change**: copy-table `EXPLAIN ANALYZE` experiments before
-  the migration lands, and regression tests locking that a mixed batch claim returns zero
+- **Validated like every hot-path SQL change** — the copy-table `EXPLAIN ANALYZE` experiment
+  has already been run against a live dev database (120k-row outbox: 100k processed, 200
+  eligible, 20k coalesce-pending):
+
+  | Claim scan for 100 eligible rows | Today's index shape | Membership exclusion |
+  |---|---|---|
+  | Rows removed by per-row filter | 19,814 | 0 |
+  | Buffers touched | 500 | 3 |
+  | Execution time | 6.0 ms | 0.23 ms |
+
+  The baseline degrades linearly with coalesce depth (every pending single is walked per poll,
+  per instance); the proposed shape is flat. The worker's group scan returned 500 rows in
+  0.47 ms from its own 808 kB partial index, and the release semantics were confirmed live
+  (`coalesce_group = NULL` immediately surfaces rows to the claim query). One consequence for
+  the claim SQL: the eligible CTEs add `AND coalesce_group IS NULL` so the planner matches the
+  new index predicate — locked by regression tests that a mixed batch claim returns zero
   coalesce-pending rows while released rows ship normally.
 
 ### Semantics and guardrails
