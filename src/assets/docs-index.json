@@ -2619,6 +2619,19 @@
     "wordCount": 543
   },
   {
+    "slug": "v1.0.0/operations/configuration/configuration-reference",
+    "title": "Configuration Reference",
+    "category": "Configuration",
+    "order": 2,
+    "description": "Every Whizbang configuration key on one page - which sections bind automatically, which you bind yourself, defaults, environment-variable names, and links to the detail pages",
+    "tags": "configuration, options, environment variables, appsettings, reference, binding",
+    "version": "v1.0.0",
+    "pageType": "reference",
+    "readingTime": 49,
+    "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/operations/configuration/configuration-reference.md",
+    "wordCount": 9755
+  },
+  {
     "slug": "v1.0.0/operations/configuration/empty-stream-id-policy",
     "title": "Empty Stream ID Policy",
     "category": "Configuration",
@@ -3206,7 +3219,7 @@
     "pageType": "concept",
     "readingTime": 13,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/operations/infrastructure/health-checks.md",
-    "wordCount": 2505
+    "wordCount": 2525
   },
   {
     "slug": "v1.0.0/operations/infrastructure/migrations",
@@ -3360,9 +3373,9 @@
     "tags": "capabilities, duties, election, advisory-lock, migrator, maintainer, takeover, fencing, multi-instance",
     "version": "v1.0.0",
     "pageType": "concept",
-    "readingTime": 6,
+    "readingTime": 7,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/operations/startup/capabilities-and-duties.md",
-    "wordCount": 1080
+    "wordCount": 1235
   },
   {
     "slug": "v1.0.0/operations/startup/rolling-upgrades",
@@ -3375,7 +3388,7 @@
     "pageType": "concept",
     "readingTime": 7,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/operations/startup/rolling-upgrades.md",
-    "wordCount": 1251
+    "wordCount": 1274
   },
   {
     "slug": "v1.0.0/operations/startup/startup-pipeline",
@@ -3386,9 +3399,9 @@
     "tags": "startup, pipeline, steps, ordering, readiness, hooks, observers, schema-ready-gate, lifecycle",
     "version": "v1.0.0",
     "pageType": "concept",
-    "readingTime": 8,
+    "readingTime": 9,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/operations/startup/startup-pipeline.md",
-    "wordCount": 1553
+    "wordCount": 1678
   },
   {
     "slug": "v1.0.0/operations/startup/startup-status",
@@ -3440,7 +3453,7 @@
     "pageType": "concept",
     "readingTime": 17,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/operations/workers/database-readiness.md",
-    "wordCount": 3221
+    "wordCount": 3223
   },
   {
     "slug": "v1.0.0/operations/workers/execution-lifecycle",
@@ -3505,7 +3518,7 @@
     "pageType": "guide",
     "readingTime": 5,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/resilience/managed-resource-health.md",
-    "wordCount": 802
+    "wordCount": 942
   },
   {
     "slug": "v1.0.0/resilience/managed-resource-run-control",

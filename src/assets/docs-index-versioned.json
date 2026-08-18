@@ -2627,6 +2627,19 @@
         "wordCount": 543
       },
       {
+        "slug": "v1.0.0/operations/configuration/configuration-reference",
+        "title": "Configuration Reference",
+        "category": "Configuration",
+        "order": 2,
+        "description": "Every Whizbang configuration key on one page - which sections bind automatically, which you bind yourself, defaults, environment-variable names, and links to the detail pages",
+        "tags": "configuration, options, environment variables, appsettings, reference, binding",
+        "version": "v1.0.0",
+        "pageType": "reference",
+        "readingTime": 49,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/operations/configuration/configuration-reference.md",
+        "wordCount": 9755
+      },
+      {
         "slug": "v1.0.0/operations/configuration/empty-stream-id-policy",
         "title": "Empty Stream ID Policy",
         "category": "Configuration",
@@ -3214,7 +3227,7 @@
         "pageType": "concept",
         "readingTime": 13,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/operations/infrastructure/health-checks.md",
-        "wordCount": 2505
+        "wordCount": 2525
       },
       {
         "slug": "v1.0.0/operations/infrastructure/migrations",
@@ -3368,9 +3381,9 @@
         "tags": "capabilities, duties, election, advisory-lock, migrator, maintainer, takeover, fencing, multi-instance",
         "version": "v1.0.0",
         "pageType": "concept",
-        "readingTime": 6,
+        "readingTime": 7,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/operations/startup/capabilities-and-duties.md",
-        "wordCount": 1080
+        "wordCount": 1235
       },
       {
         "slug": "v1.0.0/operations/startup/rolling-upgrades",
@@ -3383,7 +3396,7 @@
         "pageType": "concept",
         "readingTime": 7,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/operations/startup/rolling-upgrades.md",
-        "wordCount": 1251
+        "wordCount": 1274
       },
       {
         "slug": "v1.0.0/operations/startup/startup-pipeline",
@@ -3394,9 +3407,9 @@
         "tags": "startup, pipeline, steps, ordering, readiness, hooks, observers, schema-ready-gate, lifecycle",
         "version": "v1.0.0",
         "pageType": "concept",
-        "readingTime": 8,
+        "readingTime": 9,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/operations/startup/startup-pipeline.md",
-        "wordCount": 1553
+        "wordCount": 1678
       },
       {
         "slug": "v1.0.0/operations/startup/startup-status",
@@ -3448,7 +3461,7 @@
         "pageType": "concept",
         "readingTime": 17,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/operations/workers/database-readiness.md",
-        "wordCount": 3221
+        "wordCount": 3223
       },
       {
         "slug": "v1.0.0/operations/workers/execution-lifecycle",
@@ -3513,7 +3526,7 @@
         "pageType": "guide",
         "readingTime": 5,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/resilience/managed-resource-health.md",
-        "wordCount": 802
+        "wordCount": 942
       },
       {
         "slug": "v1.0.0/resilience/managed-resource-run-control",
@@ -3714,9 +3727,9 @@
         "description": "\n# System Signal Bus\n\nWhizbang's control plane — waking the work pump, arming scheduled timers, reacting to rebalances and instance failures — is coordinated by lightweight **signals** delivered over PostgreSQL `LISTEN`/`NOTIFY` with a polling fallback. The **System Signal Bus** unifies these into one typed, multicast, developer-extensible abstraction (`ISignalBus`) built on a **doorbell-not-data** discipline and a **hybrid reliability** model: best-effort signals for low latency, a durable log for the few signals that must not be missed, and periodic reconciliation as the correctness backstop.\n\n:::planned\nThe System Signal Bus is a foundational capability. **The core (F1) is implemented (unreleased):** the\ntransport-agnostic bus, the cross-assembly signal-type registry + generator (with `[WireName]`), the\nPostgres push transport (broadcast **and** targeted) plus polling pull-sources, the durable `wh_signals`\nlog, the instance-lifecycle signals, and the work-pump migration onto the bus are all in place. It\n**generalizes the existing `Whizbang.Core/Notifications` subsystem** rather than replacing it — current\nbehavior is preserved (the existing notification regression suite stays green throughout). Signals that\nbelong to later phases (scheduling, destruction, rebalance, commit-order) are noted as *planned* below.\n:::\n\n## Motivation\n\nToday the control plane uses `LISTEN`/`NOTIFY` in several *bespoke, per-use* wirings: an instance-routed work-availability channel (`wh_work_i_<id>`), a commit-order channel (`wh_committed`), and an app-facing pub/sub channel family (`wh_app_<topic>`). Each has its own producer, subscriber, and fallback logic. Cluster events — a partition **rebalance**, an instance **joining**, an instance **dying** — are handled implicitly inside individual workers rather than surfaced as first-class events that *any* subsystem (or the application developer) can react to.\n\nThe Signal Bus makes that control plane **one typed, multicast bus**:\n\n- **Typed & multicast** — publish a `TSignal`; any number of internal or developer subscribers receive it.\n- **Foundational** — the work pump, the temporal engine (scheduled/recurring events), and the ephemeral reaper all become *consumers* of the same bus.\n- **Extensible** — developers subscribe to system signals (\"on rebalance, warm my cache\") and publish their own.\n\n## What exists today\n\nThe bus builds directly on the mature `Whizbang.Core/Notifications` subsystem:\n\n| Existing abstraction | Role | Becomes |\n|",
         "tags": "signal-bus, notifications, listen-notify, control-plane, rebalance, instance-lifecycle, reliability",
         "version": "drafts",
-        "readingTime": 12,
+        "readingTime": 14,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/drafts/fundamentals/signal-bus/signal-bus.md",
-        "wordCount": 2379
+        "wordCount": 2775
       },
       {
         "slug": "drafts/fundamentals/work-coordinator/app-signals",
@@ -3798,9 +3811,9 @@
         "description": "\n# Notifications and pgbouncer\n\nWhizbang's work coordinator uses postgres `NOTIFY` / `LISTEN` to wake idle workers immediately when new work appears, dropping idle SQL traffic toward zero. This page explains how the shared-connection design works, why it's necessary with pgbouncer, how the signaling gate decides whether to use NOTIFY at all, and how to operate the system.\n\n## The problem with pgbouncer + LISTEN\n\nPostgreSQL's `LISTEN` registration is **session-scoped**: a session declares \"I want notifications on channel X\" and the server delivers them on that session. pgbouncer in transaction-pooling mode (the most common Azure / RDS setup) returns a connection to the pool after each transaction, breaking session affinity. So `LISTEN wh_work` issued through pgbouncer in transaction mode loses its registration almost immediately — the next time pgbouncer hands the same client a different backend connection, the LISTEN is gone.\n\n## Solution: one shared direct connection per pod\n\nEach pod opens **exactly one** direct connection (bypasses pgbouncer) and multiplexes every per-channel subscription onto it. Everything else — claim, commit, flush, heartbeat — goes through pgbouncer normally.\n\n```\n┌─────────────────────────────────────────────────────────────────────────┐\n│                          POD (per service replica)                      │\n│                                                                         │\n│   ┌────────────────────────────┐   ┌─────────────────────────────────┐  │\n│   │  Whizbang workers          │   │  PgSharedNotifyConnection       │  │\n│   │  (claim/flush/heartbeat)   │   │   • implements                  │  │\n│   │                            │   │     INotifySignalingGate        │  │\n│   │  uses Npgsql connection    │   │     (IsAvailable killswitch)    │  │\n│   │  pool                      │   │   • implements                  │  │\n│   └────────────┬───────────────┘   │     ISharedNotifyConnection     │  │\n│                │                   │     (subscription registry)     │  │\n│                │                   │   • runs self-test probe        │  │\n│                │                   │   • dispatches to subscribers   │  │\n│                │                   │     by channel name             │  │\n│                │                   │                                 │  │\n│                │                   │  uses ONE Npgsql connection     │  │\n│                │                   │  ┌───────────────────────────┐  │  │\n│                │                   │  │ Subscribers:              │  │  │\n│                │                   │  │   PgWorkNotificationListener  │\n│                │                   │  │   PgCommitOrderStamperWorker  │\n│                │                   │  │   PgAppSignalChannel      │  │  │\n│                │                   │  └───────────────────────────┘  │  │\n│                │                   └─────────────────┬───────────────┘  │\n│                │                                     │                  │\n└────────────────┼─────────────────────────────────────┼──────────────────┘\n                 │                                     │\n           via pgbouncer (port 6432)             direct (port 5432)\n                 │                                     │\n                 ▼                                     ▼\n           ┌──────────────────────────────────────────────────┐\n           │                  PostgreSQL                      │\n           └──────────────────────────────────────────────────┘\n```\n\n**Total bypass-pool connections per pod: 1.** Multiple subscribers (work signals, commit-order stamping, app signals, future channels) all share that single direct conn. Pre-slice-33 design opened one direct connection per listener type (3 per pod). With horizontal scaling — many pods × many services × many environments — that adds up fast on the Postgres `max_connections` budget.\n\n## The signaling gate\n\n`INotifySignalingGate` is the **single source of truth** for \"is NOTIFY actually working in this process right now?\". Every consumer that depends on NOTIFY consults the gate instead of making its own decision.\n\n```csharp\npublic interface INotifySignalingGate {\n  bool IsAvailable { get; }\n  DateTimeOffset? LastVerifiedAt { get; }\n  DateTimeOffset? LastFailureAt { get; }\n  string? LastFailureReason { get; }\n  event Action<bool>? OnAvailabilityChanged;\n  Task<bool> ProbeNowAsync(CancellationToken cancellationToken = default);\n}\n```\n\n`IsAvailable = true` only when the most recent **self-test probe** round-tripped successfully AND the shared connection is currently usable. The probe catches configurations that \"is the connection string set?\" would miss — pgbouncer in transaction-pooling mode, broken producer-side `pg_notify` SQL functions, firewall rules that allow SQL but drop NOTIFY traffic, etc.\n\n### Probe mechanics\n\nOn startup (and periodically thereafter via `PeriodicReprobeInterval`, default 5 min, while unavailable):\n\n1. Open the shared direct connection.\n2. `LISTEN` on `wh_selftest_{instanceId}_{nonce}` (single-use channel, fresh UUIDv7 nonce per probe).\n3. Open a second ephemeral connection. `SELECT pg_notify('wh_selftest_{instanceId}_{nonce}', 'ping')`. Close it. This second connection exists because Postgres's LISTENing backend doesn't observe its own pre-commit `NOTIFY` on the same backend.\n4. Wait up to `SelfTestTimeout` (default 2 s) for the notification to arrive on the shared connection.\n5. On success → `IsAvailable = true`, drop the self-test channel.\n6. On timeout → `IsAvailable = false`, schedule the next periodic re-probe.\n\n`ProbeNowAsync()` is the ops escape hatch — forces an immediate re-probe without waiting for the periodic schedule.\n\n## How signals flow\n\n1. Some service commits new work via `commit_handler_result`. Inside the SQL function:\n   ```sql\n   IF v_outbox_inserted_count > 0 THEN PERFORM pg_notify('wh_work_i_{owner}', 'outbox'); END IF;\n   IF v_inbox_inserted_count > 0  THEN PERFORM pg_notify('wh_work_i_{owner}', 'inbox');  END IF;\n   ```\n2. Postgres queues notifications. **Dedup at COMMIT**: 10 000 inserts that all `pg_notify('wh_work_i_{owner}', 'outbox')` collapse to **one** delivered notification per `(channel, payload)` tuple — postgres handles this automatically.\n3. On COMMIT, the owning instance's `PgSharedNotifyConnection` is in `WaitAsync` on its direct connection. The notification fires its handler. The handler looks up the channel name in the subscription registry and invokes each subscriber's `OnNotification(payload)` callback synchronously.\n4. `PgWorkNotificationListener` (a thin subscriber) parses the payload and fires `OnSignal(WorkSignalCategory.Outbox)`.\n5. `ClaimWorker` is subscribed to `OnSignal`; it calls `RequestImmediatePoll()` which releases the wake semaphore.\n6. The claim worker's loop returns from its sleep early and immediately polls `claim_work`.\n\nEnd-to-end latency from \"transport delivers a message\" to \"another service starts handling it\" is now governed by network + listener-connection wait + `claim_work` execution — measured in tens of milliseconds even at idle.\n\n## Health monitoring + auto-fallback\n\nWhen the shared connection fails:\n- The gate flips `IsAvailable = false`. `OnAvailabilityChanged` fires; subscribers (notably `ClaimWorker`) react.\n- Reconnect with exponential backoff (1 s → 2 s → 4 s → ... → 30 s cap).\n- After `FailuresBeforeFallback` consecutive failures (default 5), the backoff stretches to `PeriodicReprobeInterval` (default 5 min) — stops hammering a broken connection while still re-probing periodically so the system heals when the underlying problem is fixed out-of-band.\n- When the connection comes back AND the probe succeeds: `OnAvailabilityChanged(true)` fires; `ClaimWorker.RequestImmediatePoll()` runs so any work that accumulated during the unavailable window doesn't wait out the next adaptive-backoff tick.\n\n`ClaimWorker`'s adaptive polling cadence reacts to the gate:\n- When gate `IsAvailable = true`: empty-poll streaks let the wait grow up to `PollingMaxIntervalMilliseconds` (10 s default). The NOTIFY wakes the worker when work arrives, so longer waits are fine.\n- When gate `IsAvailable = false`: the adaptive backoff is clamped to `PollingIntervalMilliseconds` (250 ms default). NOTIFY won't wake us, so we MUST keep polling tight.\n\nPolling stays first-class. Notifications are an accelerator; correctness never depends on them.\n\n## Configuration\n\nEach service has two connection strings:\n\n```json\n{\n  \"ConnectionStrings\": {\n    \"appservice-db\":         \"Host=postgres-pgbouncer:6432;Database=appservice-db;...\",\n    \"appservice-db-direct\":  \"Host=postgres-primary:5432;Database=appservice-db;...\"\n  }\n}\n```\n\nThe `-direct` suffix is convention. Same DB, different port, no pooler.\n\nWhen `<dbname>-direct` is unset, the gate reports `IsAvailable = false` and the system runs polling-only. The system stays correct — polling fallback at the configured base interval (250 ms default) catches any work that would otherwise be discovered by NOTIFY.\n\n### `WhizbangNotificationOptions`\n\nBound from the `Whizbang:Database` section in `IConfiguration`:\n\n| Option | Default | Description |\n|",
         "tags": [],
         "version": "drafts",
-        "readingTime": 10,
+        "readingTime": 13,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/drafts/fundamentals/work-coordinator/notifications-and-pgbouncer.md",
-        "wordCount": 1909
+        "wordCount": 2571
       },
       {
         "slug": "drafts/fundamentals/work-coordinator/overview",
@@ -4185,6 +4198,18 @@
         "wordCount": 2024
       },
       {
+        "slug": "proposals/notify-on-the-true-edge",
+        "title": "Notify on the True Edge (Store-Level Doorbell Semantics)",
+        "category": "Architecture & Design",
+        "order": 35,
+        "description": "\n# Notify on the True Edge\n\n**Store-level doorbell semantics: wake the owner when a stream's queue goes empty → non-empty.**\n\n:::planned\n**Accepted — implementation in flight** (library migration `114_EdgeNotifyOnEmptyStream.sql` + a 17-test composed suite). The change touches only the NOTIFY *emission* condition inside `store_outbox_messages` / `store_inbox_messages` — no schema, no configuration, no worker code, and no change to `notify_instance_owners` routing. One refinement emerged during implementation: the `perspective` doorbell is **precise** — it rings only when the emit chain actually created work items for a previously-empty perspective queue, because association-less event types (which create no work) would otherwise ring on every store. Operational reference: the released behavior is documented in the work-coordinator notifications page.\n:::\n\n## 1. The problem: two optimizations, each assuming the other\n\nWhizbang's work pump wakes on a Postgres `NOTIFY` doorbell, with a periodic claim poll as the safety net. Two changes — each correct for the workload in front of it — combined into a latency hole for a workload neither was looking at:\n\n| Version | Change | Optimized for | Cost paid by |\n|",
+        "tags": "notify, listen-notify, doorbell, wake-semantics, claim-worker, work-pump, latency, interactive-workloads, bulk-import, empty-to-non-empty, lost-wakeup",
+        "version": "proposals",
+        "readingTime": 14,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/proposals/notify-on-the-true-edge.md",
+        "wordCount": 2621
+      },
+      {
         "slug": "proposals/observability-metrics",
         "title": "Observability & Metrics",
         "category": "Architecture & Design",
@@ -4267,6 +4292,18 @@
         "readingTime": 16,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/proposals/policy-engine.md",
         "wordCount": 3184
+      },
+      {
+        "slug": "proposals/pre-destruction-seam",
+        "title": "The Pre-Destruction Seam",
+        "category": "Architecture & Design",
+        "order": 34,
+        "description": "\n# The Pre-Destruction Seam\n\nRow retention taught Whizbang to delete things. Rows expire on a sliding window, caps evict the coldest, reapers collect consumed ephemeral bodies, deep maintenance prunes ancient pointers, and a stream close truncates a log. Every one of those is a *destructive sweep*, and every one of them currently destroys without offering anyone a last look.\n\nThree otherwise-unrelated features turn out to need exactly that last look, at exactly the same moment:\n\n1. **External-resource cleanup** — a `Download` row references a blob; deleting the row orphans the blob. The blob must be verifiably gone *before* the row is.\n2. **Coherent group eviction** — when a stream is evicted from one perspective, its rows in declared sibling perspectives should leave in the same sweep, not strand as satellites on independent clocks.\n3. **Apply-stack lineage** — the ordered event path that built each stream is analytical gold, and destruction is the last moment it exists. Fold it into an aggregate on the way out, or lose it.\n\nRather than three ad-hoc pre-steps, this proposal defines **one seam**: a well-defined moment before every destructive sweep where the about-to-be-destroyed set is offered to registered participants. Two of the framework's existing mechanisms — the reap-driven snapshot step and the ephemeral destruction hooks — are already this pattern, built twice independently. This generalizes what they proved.\n\n:::planned\nProposed capability, unreleased. It builds on the destruction-hook contract from [Destruction Hooks & TTL](destruction-hooks-ttl) — whose `DestructionGranularity.PerspectiveRow` member has existed since the contract was defined and has never been wired — plus the row-retention sweeps, the association registry, and the maintenance worker's established pre-step pattern.\n:::\n\n## The seam\n\nEvery destructive sweep gains the same three-phase shape:\n\n```mermaid\ngraph TB\n    subgraph Sweep[\"One maintenance cycle, per destructive sweep\"]\n        Collect[\"1 · COLLECT<br/>the sweep's DELETE predicate as a SELECT<br/>the about-to-destroy set\"]\n        Guards[\"2 · GUARDS (opt-in, awaited)<br/>Proceed · Defer(until) · Cancel<br/>external cleanup verifies before the row dies\"]\n        Observers[\"3 · OBSERVERS (never block)<br/>fold lineage, count shapes, emit metrics<br/>over the PROCEEDING set only\"]\n        Destroy[\"4 · DESTROY<br/>the surviving set, batched as today\"]\n    end\n\n    Collect --> Guards --> Observers --> Destroy\n\n    style Guards fill:#fff3cd,stroke:#ffc107,stroke-width:2px\n    style Observers fill:#cce5ff,stroke:#0d6efd,stroke-width:2px\n    style Destroy fill:#f8d7da,stroke:#dc3545,stroke-width:2px\n```\n\n**Guards** may veto or postpone. They are the existing `IDestructionHook` contract — `Proceed` / `Defer(until)` / `Cancel` — applied at row and stream granularity, not just event granularity. Opt-in per perspective: a perspective with no guard keeps today's pure-SQL fast path, untouched. A guard that throws gets the existing failure ladder (retry with backoff, then the configured `OnDestroyFailure` policy), never fail-open into deleting a row whose external resource wasn't cleaned.\n\n**Observers** run after guards decide, over the *proceeding* set only — a deferred row is not dead, and must not be counted as dead. Observers can never block destruction; an observer failure is logged and the sweep continues. Lineage folding is an observer.\n\n**Ordering matters and is fixed**: collect → guards → observers → destroy. Guards before observers, because observers record what *actually* dies.\n\nThe seam applies uniformly to all five destructive sweeps: row TTL expiry, cap eviction, ephemeral body reap (already partially hooked), ancient pointer prune, and stream close. The group cascade (consumer 2) is deliberately *not* a sixth sweep — it expands the collect set of the row sweeps, so a cascaded row passes through the same guards and observers as the row whose eviction triggered it. A `Download` row orphans its blob identically whether TTL expired it, a cap evicted it, or a group cascaded it — so a guard registered once must fire on all paths.\n\n## Consumer 1 — external-resource cleanup (the row guard)\n\nThe motivating case: `Download` and upload perspectives whose models carry blob references. Their retention is blocked today precisely because the row reapers are pure SQL — the row would die with the reference inside it, orphaning the blob forever.\n\nWith the seam:\n\n1. The collect phase hands the guard the batch of about-to-reap rows (stream ids + model payloads).\n2. The guard deletes the blobs, **verifies** deletion, and returns `Proceed` for verified rows and `Defer` for the rest.\n3. The database row outlives the blob, never the reverse — a dangling ticket beats an orphaned blob.\n\n`Defer` maps onto the existing per-row `expires_at`: bumping it *is* the hold, zero new schema, and the effective-expiry ladder already honors it. Batched offering (one call per sweep with the whole set) lets a blob guard bulk-delete instead of chattering per row.\n\n## Consumer 2 — perspective stream groups (the coherent cascade)\n\nPer-perspective row TTLs age each row on its own clock. A chat stream feeds a dozen perspectives; cap-evicting its list row strands its satellites — per-conversation machinery rows whose own windows won't expire for weeks — and write-once satellite rows (extracted facts serving as per-conversation memory) would vanish from *still-active* conversations under any independent sliding window, because their `updated_at` never advances and reads wake nothing. Satellites should not age independently at all: they should leave **when the stream leaves the perspectives that decide such things**.\n\nAn earlier draft declared a stream TTL on the event contracts. That locus is deliberately reversed here. Retention duration is an *operational tuning value*, not a semantic property of an event — the same reasoning that keeps TTL out of the type-definition settings hash — and a contract-level declaration forces one policy onto every consuming service, when a BFF mirror may legitimately want a different window than the owning service. Retention already lives on perspective models (`RowTtl`, `RowCap`); coherence belongs beside it. Events keep semantic lifecycle (ephemerality); perspectives keep operational retention. Groups are **service-local** — a mirror in another service declares its own group.\n\n**The declaration is a group membership.** A perspective model carries one or more `[StreamGroup(\"key\")]` attributes; same key within a service = one group. Each *membership* — not the perspective — carries three dials:\n\n| Dial | Default | Meaning |\n|",
+        "tags": "retention, destruction, hooks, stream-groups, cascade, lineage, apply-stacks, blob-cleanup, maintenance, reaper, rebuild, sankey, flow-graph",
+        "version": "proposals",
+        "readingTime": 18,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/proposals/pre-destruction-seam.md",
+        "wordCount": 3500
       },
       {
         "slug": "proposals/projection-management",
