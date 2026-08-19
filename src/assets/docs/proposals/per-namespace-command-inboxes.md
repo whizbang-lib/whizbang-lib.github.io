@@ -85,9 +85,10 @@ scenarios against both.
   service subscribes to. One send + N deliveries — versus N sends if copies were fanned into
   every per-namespace inbox, which would also re-mix the per-area DLQs this proposal just
   untangled. Because framework composite envelopes and system commands share the
-  "every service handles these" property, this entity doubles as the composite inbox (see
-  Open questions). Supersedable control *signals* (probes, checkpoints) later migrate again
-  to the control class from the traffic-classes proposal; durable system commands stay here.
+  "every service handles these" property, this entity carries durable system commands only —
+  composites are split per namespace before publish (see Composite splitting below).
+  Supersedable control *signals* (probes, checkpoints) later migrate again to the control
+  class from the traffic-classes proposal; durable system commands stay here.
 
 ### Entity-count and machinery budgets
 
@@ -184,25 +185,33 @@ idle.
   O(3N) broker operations, not O(3N × subscription count) — the regression lock for the entire
   proposal, asserted against broker operation counters on both transports.
 
+## Resolved design decisions
+
+- **Command ownership is per-service, scale-out is per-instance.** Exactly one *service* may
+  register inbox handlers for a command type — two different services handling the same
+  command is a modeling error (that message is an event) and the analyzer enforces it as an
+  error. Multiple *instances* of the owning service are the normal case and unaffected: they
+  compete on the one subscription (sessions distribute streams across instances), exactly as
+  today.
+- **Composites are split per namespace at build time.** The composite builders gain a
+  splitting step: constituents are grouped by the active topic-naming strategy's key (today,
+  contract namespace) and emitted as one composite per group, so no envelope ever spans
+  entities and each routes exactly like a plain message of its namespace. Hand-assembling a
+  cross-namespace composite outside the helpers draws an analyzer warning. The framework
+  inbox therefore carries system commands only — composite volume stays on the namespace
+  entities where it belongs.
+- **The shared inbox retires entirely.** End state: per-namespace inbox topics + the one
+  system broadcast inbox. No catch-all remnant; phase 3 completes with the shared inbox
+  deleted. Control signals make their second hop to the control class when the traffic-classes
+  arc ships — bundling the two proposals makes that a single migration for those types.
+
 ## Open questions
 
-- **Multi-handler command namespaces: tolerate or enforce?** The topology handles them (that
-  inbox simply has N subscriptions), but a command with two handlers is usually a mismodeled
-  event — point-to-point is what makes the O(3N) win possible, and every extra handler quietly
-  re-grows the tax. Leaning: analyzer *warning* when two services register inbox handlers for
-  the same command type during migration, promoted to an error once the fleet is clean.
-- **Composite/raw-carry envelope routing.** A composite can carry constituents from several
-  contract namespaces, so "route by constituent" would deliver one envelope via multiple
-  entities (dedup absorbs it, but it is waste and blurs entity semantics). Leaning: composites
-  route by **their own type's namespace** — they are framework types, so they land on the
-  framework-namespace inbox, which every service already subscribes to for system commands.
-  Zero new convention; the cost is that the framework inbox is a small shared entity again,
-  bounded by composite/system volume rather than fleet command volume.
-- **Shared-inbox retirement.** With the system inbox part of this proposal (not deferred to the
-  control class), the shared inbox retires at the end of phase 3 with no external dependency.
-  The residual question is only sequencing the second hop: supersedable control signals move
-  once more when the traffic-classes control class ships — shipping both proposals as one arc
-  collapses that into a single migration for those types.
+- **Splitter coupling to the naming strategy.** The composite splitter keys off the topic
+  naming strategy, which today is contract-namespace-based everywhere. If an alternative
+  naming strategy ever ships, the splitter must key off that strategy's routing function, not
+  namespaces — the splitter API should take the strategy as its input from day one. Worth
+  further ideation before the helper API freezes.
 
 ## Related proposals
 
