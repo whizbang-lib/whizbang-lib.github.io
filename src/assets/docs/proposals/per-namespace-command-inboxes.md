@@ -244,14 +244,18 @@ idle.
   construction outside the factory, the same enforcement idiom the ephemeral and tag systems
   already use. Existing framework producers (coalesce fold, raw-carry redelivery) refactor
   onto the factory as its first two consumers.
-- **The factory establishes the minted-event idiom — applied per family, not unified
-  prematurely.** Several framework event families encode construction *policy* (grouping,
-  sizing, cadence, routing consistency) that must not leak to call sites — composites today;
-  checkpoint minting and snapshot/carry-forward events are shaped similarly. The pattern is
-  the idiom — a DI-registered, strategy-aware factory per family + creation-seam + analyzer —
-  documented as the way to add "special" event families. A single generic
-  factory-of-factories is deliberately **not** proposed: unify only if a third family proves
-  the same shape (rule of three), otherwise it is abstraction ahead of evidence.
+- **The minted-event idiom gets one discoverable home.** Every framework event family whose
+  construction encodes policy — composites, collective events, checkpoint minting,
+  snapshot/carry-forward — follows the same idiom (a DI-registered, strategy-aware factory +
+  AOT-safe creation seam + analyzer against direct construction) and lives in **one shared
+  namespace** (`Whizbang.Core.Minting`) behind **one injectable facade**: inject `IEventMint`,
+  and every family is a property away — `mint.Composites.Create(...)`,
+  `mint.Collective.…`, `mint.Checkpoints.…`. Each family keeps its own focused interface (no
+  generic factory abstraction — the facade is pure aggregation for discoverability and a
+  single test seam), so adding a family means implementing its factory and hanging it on the
+  facade, and finding one means typing `mint.`. Existing framework producers (coalesce fold,
+  raw-carry redelivery, collective routing) migrate onto their facade families as the first
+  consumers.
 - **The shared inbox retires entirely.** End state: per-namespace inbox topics + the one
   system broadcast inbox. No catch-all remnant; phase 3 completes with the shared inbox
   deleted. Control signals make their second hop to the control class when the traffic-classes
