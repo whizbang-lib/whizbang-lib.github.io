@@ -61,6 +61,45 @@ Both ends are self-service; neither holds a cross-service routing table. A comma
 namespace only one service handles costs **1 send + 1 receive + 1 complete** — the shared-inbox
 multiplier is gone, against the same credit pool.
 
+### The routing strategy owns every topology decision
+
+The seam already exists — today's shared inbox is literally the default
+`IInboxRoutingStrategy` (`SharedTopicInboxStrategy`), and `IOutboxRoutingStrategy` already
+resolves publish destinations per message type and kind. This proposal widens that seam so
+**every** topology decision flows through one strategy, and everything else — publishers,
+provisioners, the composite splitter, subscription sync, analyzers, acceptor budgeting — asks
+it instead of encoding its own rules:
+
+- **Publish side (exists, extended):** `GetDestination(messageType, kind)` answers for every
+  kind — events to domain topics, commands to their inbox entity, system/broadcast types to
+  the system inbox. Broadcast classification lives *inside* the strategy so publish and
+  subscribe sides agree by construction.
+- **Consume side (widened):** `GetSubscription(ownedDomains, serviceName, kind)` becomes
+  plural and registry-driven — `GetSubscriptions(context)` where the context carries the
+  service's **handled** message metadata (receptor registry), not just its owned domains. The
+  namespace implementation returns one subscription per handled contract namespace plus the
+  system inbox. (The existing `DomainTopicInboxStrategy`, which subscribes only the *primary
+  owned* domain, is superseded by this implementation.)
+- **Composite split key (new):** `GetCompositeGroupKey(constituentType, kind)` with the
+  invariant *same key ⇔ same destination* — the default implementation simply delegates to
+  `GetDestination`, so the splitter can never disagree with the router.
+- **Provisioning manifest (derived):** the provisioner takes the union of publish destinations
+  across the message catalog and the strategy's subscription set — no entity exists that the
+  strategy didn't name, and nothing the strategy names is missing. A helper materializes this
+  as a topology manifest for startup provisioning and for drift checks.
+- **Budget input (derived):** the subscription count per service feeds the acceptor-budget
+  scaling, so machinery cost follows topology automatically.
+
+All inputs come from the generated catalogs and registries (no reflection — AOT holds). The
+invariant that makes the seam sound: **route, split, subscribe, and provision are all
+projections of `GetDestination`** — one function, four consumers, impossible to skew.
+
+Ownership enforcement (one service per command type) has two candidate enforcement points:
+a contracts-level analyzer where all handler registrations are visible at build time, and a
+startup/topology drift check that flags a second service subscription appearing on a command
+inbox entity. The proposal carries both; the census decides whether build-time visibility is
+sufficient.
+
 ### Transport mapping
 
 | Concern | Azure Service Bus | RabbitMQ |
