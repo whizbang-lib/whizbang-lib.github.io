@@ -1328,3 +1328,79 @@ mark.search-highlight {
 .p-tooltip-text {
   white-space: nowrap !important;
 }
+// =============================================================================
+// MARKDOWN TABLES
+// =============================================================================
+// Markdown `|` syntax emits a bare <table>, and browsers give tables almost no
+// default styling (no borders, no background, 1px cell padding) — so doc tables
+// rendered as unstyled floating columns. Scoped to the `markdown` element so
+// PrimeNG's own tables (p-table) are untouched.
+//
+// Colour strategy: only --wb-surface-border and --wb-text-primary are relied on,
+// because those are the two tokens verified to resolve in BOTH themes. On the
+// deployed site --wb-surface-hover, --wb-primary and --wb-text-secondary are
+// currently defined only under :root[data-theme="dark"] and resolve empty in
+// light mode, so using them here would leave light-mode tables unstyled again.
+// Header/stripe/hover are therefore derived from the theme's own ink colour via
+// color-mix, which self-inverts: dark ink on light backgrounds, light ink on
+// dark ones. Every var() also carries a fallback so a missing token degrades to
+// something visible rather than to transparent.
+
+markdown {
+  table {
+    // GitHub's markdown-table pattern: lets wide tables scroll horizontally
+    // instead of forcing the whole page sideways.
+    display: block;
+    width: max-content;
+    max-width: 100%;
+    overflow-x: auto;
+
+    border-collapse: collapse;
+    margin: 1.25rem 0;
+    font-size: 0.9375rem;
+    line-height: 1.5;
+    color: var(--wb-text-primary, currentColor);
+    border: 1px solid var(--wb-surface-border, color-mix(in srgb, currentColor 20%, transparent));
+    border-radius: 6px;
+  }
+
+  thead th {
+    background: color-mix(in srgb, var(--wb-text-primary, currentColor) 7%, transparent);
+    color: var(--wb-text-primary, currentColor);
+    font-weight: 600;
+    text-align: left; // UA default is `center`, which reads oddly in prose
+    white-space: nowrap;
+    border-bottom: 2px solid var(--wb-surface-border, color-mix(in srgb, currentColor 20%, transparent));
+  }
+
+  th,
+  td {
+    padding: 0.5rem 0.875rem; // UA default is 1px — the reason cells collided
+    border-right: 1px solid var(--wb-surface-border, color-mix(in srgb, currentColor 20%, transparent));
+    vertical-align: top;
+    text-align: left;
+
+    &:last-child {
+      border-right: none;
+    }
+  }
+
+  tbody tr {
+    border-top: 1px solid var(--wb-surface-border, color-mix(in srgb, currentColor 20%, transparent));
+
+    &:nth-child(even) {
+      background: color-mix(in srgb, var(--wb-text-primary, currentColor) 3%, transparent);
+    }
+
+    // Stronger than the stripe so hover still reads on even rows.
+    &:hover {
+      background: color-mix(in srgb, var(--wb-text-primary, currentColor) 9%, transparent);
+    }
+  }
+
+  // Keep inline code from wrapping mid-token inside cells.
+  td code,
+  th code {
+    white-space: nowrap;
+  }
+}
