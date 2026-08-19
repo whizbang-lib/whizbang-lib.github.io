@@ -1041,6 +1041,11 @@
               "order": 1
             },
             {
+              "slug": "v1.0.0/operations/configuration/configuration-reference",
+              "title": "Configuration Reference",
+              "order": 2
+            },
+            {
               "slug": "v1.0.0/operations/configuration/service-registration",
               "title": "ServiceRegistrationExtensions",
               "order": 2
@@ -2146,6 +2151,16 @@
           "slug": "proposals/bitemporal-perspective-rows",
           "title": "Bitemporal Perspective Rows",
           "order": 33
+        },
+        {
+          "slug": "proposals/pre-destruction-seam",
+          "title": "The Pre-Destruction Seam",
+          "order": 34
+        },
+        {
+          "slug": "proposals/notify-on-the-true-edge",
+          "title": "Notify on the True Edge (Store-Level Doorbell Semantics)",
+          "order": 35
         }
       ],
       "children": []
