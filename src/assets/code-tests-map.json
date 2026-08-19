@@ -9822,6 +9822,91 @@
         "linkSource": "XmlTag"
       }
     ],
+    "CoalesceShipWorker": [
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Workers/CoalesceShipWorkerTests.cs",
+        "testMethod": "RunOnce_GroupQuiet_FoldsAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Workers/CoalesceShipWorkerTests.cs",
+        "testMethod": "RunOnce_ContinuousArrivalsPastMaxDelay_FoldsAnywayAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Workers/CoalesceShipWorkerTests.cs",
+        "testMethod": "RunOnce_PendingLargerThanMaxBatch_FoldsInChunksAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Workers/CoalesceShipWorkerTests.cs",
+        "testMethod": "ExecuteAsync_NoEnabledBindings_ParksWithoutTouchingTheCoordinatorAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Workers/CoalesceShipWorkerTests.cs",
+        "testMethod": "RunOnce_GroupStillArriving_DoesNotFoldAsync",
+        "testLine": 33,
+        "testClass": "CoalesceShipWorkerTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Workers/CoalesceShipWorkerTests.cs",
+        "testMethod": "RunOnce_UnboundGroupInStats_IsNotFoldedAsync",
+        "testLine": 76,
+        "testClass": "CoalesceShipWorkerTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Workers/CoalesceShipWorkerTests.cs",
+        "testMethod": "RunOnce_DefaultFactory_BuildsRawCarryCompositeFromSinglesAsync",
+        "testLine": 119,
+        "testClass": "CoalesceShipWorkerTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Workers/CoalesceShipWorkerTests.cs",
+        "testMethod": "RunOnce_BindingFactory_BuildsTheBindingsCompositeAsync",
+        "testLine": 149,
+        "testClass": "CoalesceShipWorkerTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Workers/CoalesceShipWorkerTests.cs",
+        "testMethod": "RunOnce_MixedDestinations_OneCompositePerDestinationAsync",
+        "testLine": 171,
+        "testClass": "CoalesceShipWorkerTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Workers/CoalesceShipWorkerTests.cs",
+        "testMethod": "StartupRecovery_ReleasesMaturedForEveryEnabledGroupOnceAsync",
+        "testLine": 193,
+        "testClass": "CoalesceShipWorkerTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Workers/CoalesceShipWorkerTests.cs",
+        "testMethod": "RunOnce_ReleaseBackstopRunsAfterTheFoldPassAsync",
+        "testLine": 203,
+        "testClass": "CoalesceShipWorkerTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Workers/CoalesceShipWorkerTests.cs",
+        "testMethod": "ExecuteAsync_NoResolverAtAll_ParksAsync",
+        "testLine": 245,
+        "testClass": "CoalesceShipWorkerTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Workers/CoalesceShipWorkerTests.cs",
+        "testMethod": "ExecuteAsync_RunsAFirstTickImmediatelyAfterRecoveryAsync",
+        "testLine": 265,
+        "testClass": "CoalesceShipWorkerTests",
+        "linkSource": "Convention"
+      }
+    ],
     "DefaultTransportReadinessCheck": [
       {
         "testFile": "tests/Whizbang.Core.Tests/Workers/DefaultTransportReadinessCheckTests.cs",
@@ -11768,6 +11853,105 @@
         "linkSource": "XmlTag"
       }
     ],
+    "CoalesceFoldBatch": [
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Workers/CoalesceShipWorkerTests.cs",
+        "testMethod": "RunOnce_BindingFactory_BuildsTheBindingsCompositeAsync",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "CoalesceGroupResolver": [
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Tags/CoalesceGroupResolverTests.cs",
+        "testMethod": "Apply_BoundTag_StampsGroupAndMaxDelayFloorAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Tags/CoalesceGroupResolverTests.cs",
+        "testMethod": "Apply_AlreadyScheduledMessage_IsNotCoalescedAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Tags/CoalesceGroupResolverTests.cs",
+        "testMethod": "Apply_ResolutionIsCachedPerTypeNameAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Tags/CoalesceGroupResolverTests.cs",
+        "testMethod": "Apply_UnboundTag_PassesThroughUntouchedAsync",
+        "testLine": 43,
+        "testClass": "CoalesceGroupResolverTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Tags/CoalesceGroupResolverTests.cs",
+        "testMethod": "Apply_UntaggedType_PassesThroughUntouchedAsync",
+        "testLine": 56,
+        "testClass": "CoalesceGroupResolverTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Tags/CoalesceGroupResolverTests.cs",
+        "testMethod": "Apply_DisabledBinding_SlideZero_PassesThroughUntouchedAsync",
+        "testLine": 69,
+        "testClass": "CoalesceGroupResolverTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Tags/CoalesceGroupResolverTests.cs",
+        "testMethod": "Apply_AlreadyStampedMessage_IsNotRestampedAsync",
+        "testLine": 100,
+        "testClass": "CoalesceGroupResolverTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Tags/CoalesceGroupResolverTests.cs",
+        "testMethod": "Apply_NormalizedTypeNameForms_AllResolveAsync",
+        "testLine": 118,
+        "testClass": "CoalesceGroupResolverTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Tags/CoalesceGroupResolverTests.cs",
+        "testMethod": "GetBinding_BoundGroup_ReturnsThePolicyAsync",
+        "testLine": 154,
+        "testClass": "CoalesceGroupResolverTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Tags/CoalesceGroupResolverTests.cs",
+        "testMethod": "GetBinding_UnknownOrDisabledGroup_ReturnsNullAsync",
+        "testLine": 166,
+        "testClass": "CoalesceGroupResolverTests",
+        "linkSource": "Convention"
+      }
+    ],
+    "CoalescePolicyOptions": [
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Tags/CoalescePolicyOptionsTests.cs",
+        "testMethod": "Defaults_MirrorTheAuditShipKnobsAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Tags/CoalescePolicyOptionsTests.cs",
+        "testMethod": "SlideSecondsZero_IsTheDisabledSentinelAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Tags/CoalescePolicyOptionsTests.cs",
+        "testMethod": "Properties_CanBeConfiguredAsync",
+        "testLine": 31,
+        "testClass": "CoalescePolicyOptionsTests",
+        "linkSource": "Convention"
+      }
+    ],
+    "Func": [
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Workers/CoalesceShipWorkerTests.cs",
+        "testMethod": "RunOnce_BindingFactory_BuildsTheBindingsCompositeAsync",
+        "linkSource": "XmlTag"
+      }
+    ],
     "IMessageTagHook": [
       {
         "testFile": "tests/Whizbang.Core.Tests/Tags/MessageTagHookTests.cs",
@@ -11836,6 +12020,13 @@
         "linkSource": "XmlTag"
       }
     ],
+    "GetAllTags": [
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Tags/MessageTagRegistryGetAllTagsTests.cs",
+        "testMethod": "GetAllTags_DefaultInterfaceMember_ReturnsEmptyAsync",
+        "linkSource": "XmlTag"
+      }
+    ],
     "MessageTagHookDispatcherRegistry": [
       {
         "testFile": "tests/Whizbang.Core.Tests/Tags/MessageTagProcessorTests.cs",
@@ -11887,15 +12078,223 @@
         "linkSource": "XmlTag"
       }
     ],
-    "CommandAudited": [
+    "IEnumerable": [
       {
-        "testFile": "tests/Whizbang.Core.Tests/SystemEvents/CommandAuditTests.cs",
-        "testMethod": "CommandAudited_HasRequiredProperties_Async",
+        "testFile": "tests/Whizbang.Core.Tests/Tags/MessageTagRegistryGetAllTagsTests.cs",
+        "testMethod": "GetAllTags_StaticAggregate_IncludesGeneratedRegistrationsFromThisAssemblyAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Core.Tests/SystemEvents/CommandAuditTests.cs",
-        "testMethod": "CommandAudited_ImplementsISystemEvent_Async",
+        "testFile": "tests/Whizbang.Observability.Tests/PolicyDecisionTrailTests.cs",
+        "testMethod": "GetMatchedRules_ReturnsOnlyMatchedDecisionsAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Observability.Tests/PolicyDecisionTrailTests.cs",
+        "testMethod": "GetMatchedRules_ReturnsEmptyWhenNoMatchesAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Observability.Tests/PolicyDecisionTrailTests.cs",
+        "testMethod": "GetMatchedRules_PreservesOrderAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Observability.Tests/PolicyDecisionTrailTests.cs",
+        "testMethod": "GetUnmatchedRules_ReturnsOnlyUnmatchedDecisionsAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Observability.Tests/PolicyDecisionTrailTests.cs",
+        "testMethod": "GetUnmatchedRules_ReturnsEmptyWhenAllMatchedAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Observability.Tests/PolicyDecisionTrailTests.cs",
+        "testMethod": "GetUnmatchedRules_PreservesOrderAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Dispatch/RouteTests.cs",
+        "testMethod": "LocalNoPersist_WithCollection_ReturnsEnumerableOfRoutedAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Dispatch/RouteTests.cs",
+        "testMethod": "EventStoreOnly_WithCollection_ReturnsEnumerableOfRoutedAsync",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "SystemTags": [
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Tags/SystemTagsTests.cs",
+        "testMethod": "Audit_IsSysAuditAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Tags/SystemTagsTests.cs",
+        "testMethod": "IsFrameworkTag_RejectsUnknownSysTagAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Tags/SystemTagsTests.cs",
+        "testMethod": "ReservedPrefix_IsSysDashAsync",
+        "testLine": 24,
+        "testClass": "SystemTagsTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Tags/SystemTagsTests.cs",
+        "testMethod": "Audit_CarriesTheReservedPrefixAsync",
+        "testLine": 31,
+        "testClass": "SystemTagsTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Tags/SystemTagsTests.cs",
+        "testMethod": "IsFrameworkTag_KnowsAuditAsync",
+        "testLine": 38,
+        "testClass": "SystemTagsTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Tags/SystemTagsTests.cs",
+        "testMethod": "IsFrameworkTag_RejectsUnprefixedTagAsync",
+        "testLine": 49,
+        "testClass": "SystemTagsTests",
+        "linkSource": "Convention"
+      }
+    ],
+    "Coalesce": [
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Tags/TagOptionsCoalesceTests.cs",
+        "testMethod": "Coalesce_RegistersBindingForTagAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Tags/TagOptionsCoalesceTests.cs",
+        "testMethod": "Coalesce_LastWinsPerTag_ReplacesNotMergesAsync",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "TagPolicyConfigurationException": [
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Tags/TagPolicyValidatorTests.cs",
+        "testMethod": "Validate_UserTagWithSysPrefix_ThrowsAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Tags/TagPolicyValidatorTests.cs",
+        "testMethod": "Validate_TypeMatchingTwoCoalesceBindings_ThrowsNamingTypeAndBothTagsAsync",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "TagPolicyStartupValidator": [
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Tags/TagPolicyValidatorTests.cs",
+        "testMethod": "StartAsync_SysViolationInRegistrations_FailsHostStartAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Tags/TagPolicyValidatorTests.cs",
+        "testMethod": "AddWhizbang_RegistersTheStartupValidatorAsync",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "TagPolicyValidator": [
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Tags/TagPolicyValidatorTests.cs",
+        "testMethod": "Validate_UserTagWithSysPrefix_ThrowsAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Tags/TagPolicyValidatorTests.cs",
+        "testMethod": "Validate_FrameworkSysAuditOnFrameworkType_DoesNotThrowAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Tags/TagPolicyValidatorTests.cs",
+        "testMethod": "Validate_TypeMatchingTwoCoalesceBindings_ThrowsNamingTypeAndBothTagsAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Tags/TagPolicyValidatorTests.cs",
+        "testMethod": "Validate_AmbiguityIgnoresDisabledBindingsAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Tags/TagPolicyValidatorTests.cs",
+        "testMethod": "Validate_UserTagNamedAuditWithoutPrefix_DoesNotThrowAsync",
+        "testLine": 49,
+        "testClass": "TagPolicyValidatorTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Tags/TagPolicyValidatorTests.cs",
+        "testMethod": "Validate_UserTypeCarryingTheFrameworkAuditTag_DoesNotThrowAsync",
+        "testLine": 59,
+        "testClass": "TagPolicyValidatorTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Tags/TagPolicyValidatorTests.cs",
+        "testMethod": "Validate_TypeMatchingOneCoalesceBinding_DoesNotThrowAsync",
+        "testLine": 92,
+        "testClass": "TagPolicyValidatorTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Tags/TagPolicyValidatorTests.cs",
+        "testMethod": "Validate_TwoTypesEachMatchingOneBinding_DoesNotThrowAsync",
+        "testLine": 105,
+        "testClass": "TagPolicyValidatorTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Tags/TagPolicyValidatorTests.cs",
+        "testMethod": "StartAsync_SysViolationInRegistrations_FailsHostStartAsync",
+        "testLine": 141,
+        "testClass": "TagPolicyValidatorTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Tags/TagPolicyValidatorTests.cs",
+        "testMethod": "StartAsync_CleanRegistrations_CompletesAsync",
+        "testLine": 154,
+        "testClass": "TagPolicyValidatorTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Tags/TagPolicyValidatorTests.cs",
+        "testMethod": "AddWhizbang_RegistersTheStartupValidatorAsync",
+        "testLine": 166,
+        "testClass": "TagPolicyValidatorTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Tags/TagPolicyValidatorTests.cs",
+        "testMethod": "AddWhizbang_CalledTwice_RegistersTheStartupValidatorOnceAsync",
+        "testLine": 179,
+        "testClass": "TagPolicyValidatorTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Tags/TagPolicyValidatorTests.cs",
+        "testMethod": "AddWhizbang_SecondCall_MergesCoalesceBindingsIntoTheFirstTagOptionsAsync",
+        "testLine": 192,
+        "testClass": "TagPolicyValidatorTests",
+        "linkSource": "Convention"
+      }
+    ],
+    "AuditEventsComposite": [
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/CompositeInboxFanoutTests.cs",
+        "testMethod": "TryExpand_AuditEventsComposite_DeliversEachInnerEventAuditedAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/CompositeInboxFanoutTests.cs",
+        "testMethod": "AuditEventsComposite_IsNonAtomic_OneBadRecordMustNotSinkSiblingsAsync",
         "linkSource": "XmlTag"
       }
     ],
@@ -11930,6 +12329,35 @@
       {
         "testFile": "tests/Whizbang.Core.Integration.Tests/LocalOnlyTransportIntegrationTests.cs",
         "testMethod": "LocalOnly_DomainEventsAlwaysReceived_Async",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "SystemAuditTagAttribute": [
+      {
+        "testFile": "tests/Whizbang.Core.Tests/SystemEvents/AuditCoalesceRebaseTests.cs",
+        "testMethod": "EventAudited_CarriesTheSysAuditTag_InTheGeneratedRegistryAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/SystemEvents/AuditCoalesceRebaseTests.cs",
+        "testMethod": "CommandAudited_CarriesTheSysAuditTag_InTheGeneratedRegistryAsync",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "SystemEventCoalesceDefaults": [
+      {
+        "testFile": "tests/Whizbang.Core.Tests/SystemEvents/AuditCoalesceRebaseTests.cs",
+        "testMethod": "Apply_AuditEnabled_RegistersTheBuiltInBindingFromTheKnobsAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/SystemEvents/AuditCoalesceRebaseTests.cs",
+        "testMethod": "Apply_SlideZero_RegistersNothingAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/SystemEvents/AuditCoalesceRebaseTests.cs",
+        "testMethod": "Apply_HostBindingForSysAudit_AlwaysWinsAsync",
         "linkSource": "XmlTag"
       }
     ],
@@ -13629,48 +14057,6 @@
       {
         "testFile": "tests/Whizbang.Observability.Tests/PolicyDecisionTrailTests.cs",
         "testMethod": "RecordDecision_AddsDecisionWithAllPropertiesAsync",
-        "linkSource": "XmlTag"
-      }
-    ],
-    "IEnumerable": [
-      {
-        "testFile": "tests/Whizbang.Observability.Tests/PolicyDecisionTrailTests.cs",
-        "testMethod": "GetMatchedRules_ReturnsOnlyMatchedDecisionsAsync",
-        "linkSource": "XmlTag"
-      },
-      {
-        "testFile": "tests/Whizbang.Observability.Tests/PolicyDecisionTrailTests.cs",
-        "testMethod": "GetMatchedRules_ReturnsEmptyWhenNoMatchesAsync",
-        "linkSource": "XmlTag"
-      },
-      {
-        "testFile": "tests/Whizbang.Observability.Tests/PolicyDecisionTrailTests.cs",
-        "testMethod": "GetMatchedRules_PreservesOrderAsync",
-        "linkSource": "XmlTag"
-      },
-      {
-        "testFile": "tests/Whizbang.Observability.Tests/PolicyDecisionTrailTests.cs",
-        "testMethod": "GetUnmatchedRules_ReturnsOnlyUnmatchedDecisionsAsync",
-        "linkSource": "XmlTag"
-      },
-      {
-        "testFile": "tests/Whizbang.Observability.Tests/PolicyDecisionTrailTests.cs",
-        "testMethod": "GetUnmatchedRules_ReturnsEmptyWhenAllMatchedAsync",
-        "linkSource": "XmlTag"
-      },
-      {
-        "testFile": "tests/Whizbang.Observability.Tests/PolicyDecisionTrailTests.cs",
-        "testMethod": "GetUnmatchedRules_PreservesOrderAsync",
-        "linkSource": "XmlTag"
-      },
-      {
-        "testFile": "tests/Whizbang.Core.Tests/Dispatch/RouteTests.cs",
-        "testMethod": "LocalNoPersist_WithCollection_ReturnsEnumerableOfRoutedAsync",
-        "linkSource": "XmlTag"
-      },
-      {
-        "testFile": "tests/Whizbang.Core.Tests/Dispatch/RouteTests.cs",
-        "testMethod": "EventStoreOnly_WithCollection_ReturnsEnumerableOfRoutedAsync",
         "linkSource": "XmlTag"
       }
     ],
@@ -16869,6 +17255,18 @@
         "linkSource": "XmlTag"
       }
     ],
+    "CoalescedEventsComposite": [
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Workers/CoalesceShipWorkerTests.cs",
+        "testMethod": "RunOnce_DefaultFactory_BuildsRawCarryCompositeFromSinglesAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/CompositeInboxFanoutTests.cs",
+        "testMethod": "TryExpand_CoalescedEventsComposite_DeliversEachInnerAsync",
+        "linkSource": "XmlTag"
+      }
+    ],
     "CollectiveEventBase": [
       {
         "testFile": "tests/Whizbang.Core.Tests/Messaging/CollectiveScopeBaseRoutingTests.cs",
@@ -17812,6 +18210,34 @@
         "linkSource": "XmlTag"
       }
     ],
+    "GetPendingCoalesceGroupStatsAsync": [
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/CoalesceFoldCoordinatorSqlTests.cs",
+        "testMethod": "GetPendingCoalesceGroupStats_ReturnsPerGroupCountsAndAgesAsync",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "FetchPendingCoalesceAsync": [
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/CoalesceFoldCoordinatorSqlTests.cs",
+        "testMethod": "FetchPendingCoalesce_ReturnsOldestFirstUpToLimitAsync",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "CompleteCoalesceFoldAsync": [
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/CoalesceFoldCoordinatorSqlTests.cs",
+        "testMethod": "CompleteCoalesceFold_InsertsCompositeAndCompletesSinglesAtomicallyAsync",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "ReleaseMaturedCoalesceAsync": [
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/CoalesceFoldCoordinatorSqlTests.cs",
+        "testMethod": "ReleaseMaturedCoalesce_ReleasesOnlyMaturedRows_AndClaimShipsThemAsync",
+        "linkSource": "XmlTag"
+      }
+    ],
     "RewindCursorInfo": [
       {
         "testFile": "tests/Whizbang.Core.Tests/Messaging/CoordinatorRecordSurfaceTests.cs",
@@ -17848,6 +18274,20 @@
       {
         "testFile": "tests/Whizbang.Core.Tests/Messaging/EventFlagsTransportTests.cs",
         "testMethod": "InboxMessage_Flags_AcceptsCollectiveAndCompositeAsync",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "null": [
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/OutboxMessageScheduledForTests.cs",
+        "testMethod": "OutboxMessage_ScheduledFor_DefaultIsNullAsync",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "CoalesceGroupStats": [
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Workers/CoalesceShipWorkerTests.cs",
+        "testMethod": "RunOnce_GroupQuiet_FoldsAsync",
         "linkSource": "XmlTag"
       }
     ],
@@ -41800,28 +42240,28 @@
       {
         "testFile": "tests/Whizbang.Data.Schema.Tests/Schemas/OutboxSchemaTests.cs",
         "testMethod": "Table_ShouldDefineCorrectIndexesAsync",
-        "testLine": 91,
+        "testLine": 99,
         "testClass": "OutboxSchemaTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Data.Schema.Tests/Schemas/OutboxSchemaTests.cs",
         "testMethod": "Table_ShouldHavePrimaryKeyAsync",
-        "testLine": 114,
+        "testLine": 122,
         "testClass": "OutboxSchemaTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Data.Schema.Tests/Schemas/OutboxSchemaTests.cs",
         "testMethod": "Columns_ShouldProvideAllConstantsAsync",
-        "testLine": 127,
+        "testLine": 135,
         "testClass": "OutboxSchemaTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Data.Schema.Tests/Schemas/OutboxSchemaTests.cs",
         "testMethod": "Table_ColumnDefaults_ShouldBeCorrectAsync",
-        "testLine": 155,
+        "testLine": 165,
         "testClass": "OutboxSchemaTests",
         "linkSource": "Convention"
       }
@@ -58572,7 +59012,7 @@
       {
         "testFile": "tests/Whizbang.Core.Tests/SystemEvents/AuditOutboxMessageBuilderTests.cs",
         "testMethod": "TryBuildAuditMessage_UnresolvableType_StillBuildsAuditMessageAsync",
-        "testLine": 548,
+        "testLine": 557,
         "testClass": "AuditOutboxMessageBuilderTests",
         "linkSource": "Convention"
       }
@@ -59476,85 +59916,106 @@
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/SystemEvents/SystemEventOptionsTests.cs",
-        "testMethod": "EnableAudit_SetsAuditEnabled_ReturnsThisForFluentApiAsync",
+        "testMethod": "AuditShipSlideSeconds_DefaultsTo15Async",
         "testLine": 19,
         "testClass": "SystemEventOptionsTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/SystemEvents/SystemEventOptionsTests.cs",
+        "testMethod": "AuditShipMaxDelaySeconds_DefaultsTo120Async",
+        "testLine": 27,
+        "testClass": "SystemEventOptionsTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/SystemEvents/SystemEventOptionsTests.cs",
+        "testMethod": "AuditShipMaxBatchCount_DefaultsTo500Async",
+        "testLine": 36,
+        "testClass": "SystemEventOptionsTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/SystemEvents/SystemEventOptionsTests.cs",
+        "testMethod": "EnableAudit_SetsAuditEnabled_ReturnsThisForFluentApiAsync",
+        "testLine": 44,
+        "testClass": "SystemEventOptionsTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/SystemEvents/SystemEventOptionsTests.cs",
         "testMethod": "EnableAll_SetsAllFlags_ReturnsThisForFluentApiAsync",
-        "testLine": 32,
+        "testLine": 57,
         "testClass": "SystemEventOptionsTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/SystemEvents/SystemEventOptionsTests.cs",
         "testMethod": "Broadcast_SetsLocalOnlyFalse_ForCentralizedCollectionAsync",
-        "testLine": 47,
+        "testLine": 72,
         "testClass": "SystemEventOptionsTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/SystemEvents/SystemEventOptionsTests.cs",
         "testMethod": "FluentApi_CanChainMultipleCalls_Async",
-        "testLine": 60,
+        "testLine": 85,
         "testClass": "SystemEventOptionsTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/SystemEvents/SystemEventOptionsTests.cs",
         "testMethod": "IsEnabled_EventAudited_ReturnsTrue_WhenAuditEnabledAsync",
-        "testLine": 75,
+        "testLine": 100,
         "testClass": "SystemEventOptionsTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/SystemEvents/SystemEventOptionsTests.cs",
         "testMethod": "IsEnabled_EventAudited_ReturnsFalse_WhenNotEnabledAsync",
-        "testLine": 84,
+        "testLine": 109,
         "testClass": "SystemEventOptionsTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/SystemEvents/SystemEventOptionsTests.cs",
         "testMethod": "IsEnabled_NonSystemEvent_ReturnsFalse_Async",
-        "testLine": 93,
-        "testClass": "SystemEventOptionsTests",
-        "linkSource": "Convention"
-      },
-      {
-        "testFile": "tests/Whizbang.Core.Tests/SystemEvents/SystemEventOptionsTests.cs",
-        "testMethod": "EnablePerspectiveEvents_SetsPerspectiveEventsEnabled_Async",
-        "testLine": 105,
-        "testClass": "SystemEventOptionsTests",
-        "linkSource": "Convention"
-      },
-      {
-        "testFile": "tests/Whizbang.Core.Tests/SystemEvents/SystemEventOptionsTests.cs",
-        "testMethod": "EnableErrorEvents_SetsErrorEventsEnabled_Async",
         "testLine": 118,
         "testClass": "SystemEventOptionsTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/SystemEvents/SystemEventOptionsTests.cs",
+        "testMethod": "EnablePerspectiveEvents_SetsPerspectiveEventsEnabled_Async",
+        "testLine": 130,
+        "testClass": "SystemEventOptionsTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/SystemEvents/SystemEventOptionsTests.cs",
+        "testMethod": "EnableErrorEvents_SetsErrorEventsEnabled_Async",
+        "testLine": 143,
+        "testClass": "SystemEventOptionsTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/SystemEvents/SystemEventOptionsTests.cs",
         "testMethod": "AuditMode_DefaultsToOptOut_Async",
-        "testLine": 132,
+        "testLine": 157,
         "testClass": "SystemEventOptionsTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/SystemEvents/SystemEventOptionsTests.cs",
         "testMethod": "AuditMode_CanBeSetToOptIn_Async",
-        "testLine": 141,
+        "testLine": 166,
         "testClass": "SystemEventOptionsTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/SystemEvents/SystemEventOptionsTests.cs",
         "testMethod": "AuditMode_FluentConfigurationPattern_WorksAsync",
-        "testLine": 153,
+        "testLine": 178,
         "testClass": "SystemEventOptionsTests",
         "linkSource": "Convention"
       }
@@ -73626,57 +74087,85 @@
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/Messaging/CompositeInboxFanoutTests.cs",
-        "testMethod": "TryExpand_RawComposite_TypeNameCountMismatch_FailsAsync",
+        "testMethod": "TryExpand_AuditEventsComposite_DeliversEachInnerEventAuditedAsync",
         "testLine": 355,
         "testClass": "CompositeInboxFanoutTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/Messaging/CompositeInboxFanoutTests.cs",
+        "testMethod": "AuditEventsComposite_IsNonAtomic_OneBadRecordMustNotSinkSiblingsAsync",
+        "testLine": 394,
+        "testClass": "CompositeInboxFanoutTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/CompositeInboxFanoutTests.cs",
+        "testMethod": "TryExpand_CoalescedEventsComposite_DeliversEachInnerAsync",
+        "testLine": 403,
+        "testClass": "CompositeInboxFanoutTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/CompositeInboxFanoutTests.cs",
+        "testMethod": "CoalescedEventsComposite_DefaultsToIndependentAtomicityAsync",
+        "testLine": 436,
+        "testClass": "CompositeInboxFanoutTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/CompositeInboxFanoutTests.cs",
+        "testMethod": "TryExpand_RawComposite_TypeNameCountMismatch_FailsAsync",
+        "testLine": 445,
+        "testClass": "CompositeInboxFanoutTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/CompositeInboxFanoutTests.cs",
         "testMethod": "TryExpand_RawComposite_OverCap_ReturnsCapExceededAsync",
-        "testLine": 371,
+        "testLine": 461,
         "testClass": "CompositeInboxFanoutTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/Messaging/CompositeInboxFanoutTests.cs",
         "testMethod": "IsCompositeWireType_CatalogStampsComposite_ReturnsTrueAsync",
-        "testLine": 525,
+        "testLine": 615,
         "testClass": "CompositeInboxFanoutTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/Messaging/CompositeInboxFanoutTests.cs",
         "testMethod": "IsCompositeWireType_CatalogStampsPlainEvent_ReturnsFalseAsync",
-        "testLine": 534,
+        "testLine": 624,
         "testClass": "CompositeInboxFanoutTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/Messaging/CompositeInboxFanoutTests.cs",
         "testMethod": "IsCompositeWireType_TypeNotInCatalog_ReturnsFalseAsync",
-        "testLine": 543,
+        "testLine": 633,
         "testClass": "CompositeInboxFanoutTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/Messaging/CompositeInboxFanoutTests.cs",
         "testMethod": "IsCompositeWireType_NoMarkerResolver_ReturnsFalseAsync",
-        "testLine": 551,
+        "testLine": 641,
         "testClass": "CompositeInboxFanoutTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/Messaging/CompositeInboxFanoutTests.cs",
         "testMethod": "IsCompositeWireType_BlankTypeName_ReturnsFalseAsync",
-        "testLine": 559,
+        "testLine": 649,
         "testClass": "CompositeInboxFanoutTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/Messaging/CompositeInboxFanoutTests.cs",
         "testMethod": "IsCompositeWireType_GenericTypeName_ReturnsFalseAsync",
-        "testLine": 570,
+        "testLine": 660,
         "testClass": "CompositeInboxFanoutTests",
         "linkSource": "Convention"
       }
@@ -88491,7 +88980,7 @@
     "OutboxSchemaTests.Columns_ShouldProvideAllConstantsAsync": [
       {
         "sourceFile": "src/Whizbang.Data.Schema/Schemas/OutboxSchema.cs",
-        "sourceLine": 184,
+        "sourceLine": 189,
         "sourceSymbol": "Columns",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -90472,7 +90961,7 @@
     "EFCoreWorkCoordinatorTests.GetOrphanedLifecycleEventsAsync_DeserializesOrphanedEvent_AsJsonElementAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 3868,
+        "sourceLine": 4045,
         "sourceSymbol": "MessageEnvelope",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -90481,7 +90970,7 @@
     "EFCoreWorkCoordinatorTests.GetOrphanedLifecycleEventsAsync_FallsBackToJsonDocumentParse_WhenTypeResolverFailsAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 3869,
+        "sourceLine": 4046,
         "sourceSymbol": "MessageEnvelope",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -90490,7 +90979,7 @@
     "EFCoreWorkCoordinatorTests.GetOrphanedLifecycleEventsAsync_DeserializesEventData_WithTypeDiscriminatorAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 3870,
+        "sourceLine": 4047,
         "sourceSymbol": "MessageEnvelope",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -95118,6 +95607,49 @@
         "linkSource": "Convention"
       }
     ],
+    "CoalesceShipWorkerTests.RunOnce_GroupQuiet_FoldsAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Workers/CoalesceShipWorker.cs",
+        "sourceLine": 40,
+        "sourceSymbol": "CoalesceShipWorker",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
+        "sourceLine": 2410,
+        "sourceSymbol": "CoalesceGroupStats",
+        "sourceType": "Record",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "CoalesceShipWorkerTests.RunOnce_ContinuousArrivalsPastMaxDelay_FoldsAnywayAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Workers/CoalesceShipWorker.cs",
+        "sourceLine": 41,
+        "sourceSymbol": "CoalesceShipWorker",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "CoalesceShipWorkerTests.RunOnce_PendingLargerThanMaxBatch_FoldsInChunksAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Workers/CoalesceShipWorker.cs",
+        "sourceLine": 42,
+        "sourceSymbol": "CoalesceShipWorker",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "CoalesceShipWorkerTests.ExecuteAsync_NoEnabledBindings_ParksWithoutTouchingTheCoordinatorAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Workers/CoalesceShipWorker.cs",
+        "sourceLine": 43,
+        "sourceSymbol": "CoalesceShipWorker",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
     "DefaultTransportReadinessCheckTests.IsReadyAsync_Always_ReturnsTrueAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/DefaultTransportReadinessCheck.cs",
@@ -95806,7 +96338,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-        "sourceLine": 1937,
+        "sourceLine": 2007,
         "sourceSymbol": "RewindCursorInfo",
         "sourceType": "Record",
         "linkSource": "XmlTag"
@@ -98165,6 +98697,73 @@
         "linkSource": "XmlTag"
       }
     ],
+    "CoalesceShipWorkerTests.RunOnce_BindingFactory_BuildsTheBindingsCompositeAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Tags/CoalesceFoldBatch.cs",
+        "sourceLine": 11,
+        "sourceSymbol": "CoalesceFoldBatch",
+        "sourceType": "Record",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Tags/CoalescePolicyOptions.cs",
+        "sourceLine": 64,
+        "sourceSymbol": "Func",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Workers/CoalesceShipWorker.cs",
+        "sourceSymbol": "CoalesceShipWorker",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "CoalesceGroupResolverTests.Apply_BoundTag_StampsGroupAndMaxDelayFloorAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Tags/CoalesceGroupResolver.cs",
+        "sourceLine": 29,
+        "sourceSymbol": "CoalesceGroupResolver",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "CoalesceGroupResolverTests.Apply_AlreadyScheduledMessage_IsNotCoalescedAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Tags/CoalesceGroupResolver.cs",
+        "sourceLine": 30,
+        "sourceSymbol": "CoalesceGroupResolver",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "CoalesceGroupResolverTests.Apply_ResolutionIsCachedPerTypeNameAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Tags/CoalesceGroupResolver.cs",
+        "sourceLine": 31,
+        "sourceSymbol": "CoalesceGroupResolver",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "CoalescePolicyOptionsTests.Defaults_MirrorTheAuditShipKnobsAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Tags/CoalescePolicyOptions.cs",
+        "sourceLine": 25,
+        "sourceSymbol": "CoalescePolicyOptions",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "CoalescePolicyOptionsTests.SlideSecondsZero_IsTheDisabledSentinelAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Tags/CoalescePolicyOptions.cs",
+        "sourceLine": 26,
+        "sourceSymbol": "CoalescePolicyOptions",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
     "MessageTagHookTests.Hook_ReturnsNull_PassesOriginalPayloadToNextHookAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Tags/IMessageTagHook.cs",
@@ -98331,6 +98930,15 @@
         "linkSource": "XmlTag"
       }
     ],
+    "MessageTagRegistryGetAllTagsTests.GetAllTags_DefaultInterfaceMember_ReturnsEmptyAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Tags/IMessageTagRegistry.cs",
+        "sourceLine": 39,
+        "sourceSymbol": "GetAllTags",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      }
+    ],
     "MessageTagProcessorTests.ProcessTagsAsync_WithBuiltInAttribute_UsesDirectDispatchAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Tags/MessageTagHookDispatcherRegistry.cs",
@@ -98370,32 +98978,157 @@
         "linkSource": "XmlTag"
       }
     ],
-    "CommandAuditTests.CommandAudited_HasRequiredProperties_Async": [
+    "MessageTagRegistryGetAllTagsTests.GetAllTags_StaticAggregate_IncludesGeneratedRegistrationsFromThisAssemblyAsync": [
       {
-        "sourceFile": "src/Whizbang.Core/SystemEvents/CommandAudited.cs",
-        "sourceLine": 37,
-        "sourceSymbol": "CommandAudited",
-        "sourceType": "Record",
+        "sourceFile": "src/Whizbang.Core/Tags/MessageTagRegistry.cs",
+        "sourceLine": 57,
+        "sourceSymbol": "IEnumerable",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "SystemTagsTests.Audit_IsSysAuditAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Tags/SystemTags.cs",
+        "sourceLine": 16,
+        "sourceSymbol": "SystemTags",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "SystemTagsTests.IsFrameworkTag_RejectsUnknownSysTagAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Tags/SystemTags.cs",
+        "sourceLine": 17,
+        "sourceSymbol": "SystemTags",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "TagOptionsCoalesceTests.Coalesce_RegistersBindingForTagAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Tags/TagOptions.cs",
+        "sourceLine": 219,
+        "sourceSymbol": "Coalesce",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "TagOptionsCoalesceTests.Coalesce_LastWinsPerTag_ReplacesNotMergesAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Tags/TagOptions.cs",
+        "sourceLine": 220,
+        "sourceSymbol": "Coalesce",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "TagPolicyValidatorTests.Validate_UserTagWithSysPrefix_ThrowsAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Tags/TagPolicyConfigurationException.cs",
+        "sourceLine": 11,
+        "sourceSymbol": "TagPolicyConfigurationException",
+        "sourceType": "Class",
         "linkSource": "XmlTag"
       },
       {
-        "sourceFile": "src/Whizbang.Core/SystemEvents/CommandAuditPipelineBehavior.cs",
-        "sourceSymbol": "CommandAudit",
+        "sourceFile": "src/Whizbang.Core/Tags/TagPolicyValidator.cs",
+        "sourceLine": 10,
+        "sourceSymbol": "TagPolicyValidator",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "TagPolicyValidatorTests.Validate_TypeMatchingTwoCoalesceBindings_ThrowsNamingTypeAndBothTagsAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Tags/TagPolicyConfigurationException.cs",
+        "sourceLine": 12,
+        "sourceSymbol": "TagPolicyConfigurationException",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Tags/TagPolicyValidator.cs",
+        "sourceLine": 12,
+        "sourceSymbol": "TagPolicyValidator",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "TagPolicyValidatorTests.StartAsync_SysViolationInRegistrations_FailsHostStartAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Tags/TagPolicyStartupValidator.cs",
+        "sourceLine": 15,
+        "sourceSymbol": "TagPolicyStartupValidator",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Tags/TagPolicyValidator.cs",
+        "sourceSymbol": "TagPolicyValidator",
         "sourceType": "Class",
         "linkSource": "Convention"
       }
     ],
-    "CommandAuditTests.CommandAudited_ImplementsISystemEvent_Async": [
+    "TagPolicyValidatorTests.AddWhizbang_RegistersTheStartupValidatorAsync": [
       {
-        "sourceFile": "src/Whizbang.Core/SystemEvents/CommandAudited.cs",
-        "sourceLine": 38,
-        "sourceSymbol": "CommandAudited",
-        "sourceType": "Record",
+        "sourceFile": "src/Whizbang.Core/Tags/TagPolicyStartupValidator.cs",
+        "sourceLine": 16,
+        "sourceSymbol": "TagPolicyStartupValidator",
+        "sourceType": "Class",
         "linkSource": "XmlTag"
       },
       {
-        "sourceFile": "src/Whizbang.Core/SystemEvents/CommandAuditPipelineBehavior.cs",
-        "sourceSymbol": "CommandAudit",
+        "sourceFile": "src/Whizbang.Core/Tags/TagPolicyValidator.cs",
+        "sourceSymbol": "TagPolicyValidator",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "TagPolicyValidatorTests.Validate_FrameworkSysAuditOnFrameworkType_DoesNotThrowAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Tags/TagPolicyValidator.cs",
+        "sourceLine": 11,
+        "sourceSymbol": "TagPolicyValidator",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "TagPolicyValidatorTests.Validate_AmbiguityIgnoresDisabledBindingsAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Tags/TagPolicyValidator.cs",
+        "sourceLine": 13,
+        "sourceSymbol": "TagPolicyValidator",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "CompositeInboxFanoutTests.TryExpand_AuditEventsComposite_DeliversEachInnerEventAuditedAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/SystemEvents/AuditEventsComposite.cs",
+        "sourceLine": 36,
+        "sourceSymbol": "AuditEventsComposite",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/CompositeInboxFanout.cs",
+        "sourceSymbol": "CompositeInboxFanout",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "CompositeInboxFanoutTests.AuditEventsComposite_IsNonAtomic_OneBadRecordMustNotSinkSiblingsAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/SystemEvents/AuditEventsComposite.cs",
+        "sourceLine": 37,
+        "sourceSymbol": "AuditEventsComposite",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/CompositeInboxFanout.cs",
+        "sourceSymbol": "CompositeInboxFanout",
         "sourceType": "Class",
         "linkSource": "Convention"
       }
@@ -98457,6 +99190,51 @@
         "sourceLine": 23,
         "sourceSymbol": "ITransportPublishFilter",
         "sourceType": "Interface",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "AuditCoalesceRebaseTests.EventAudited_CarriesTheSysAuditTag_InTheGeneratedRegistryAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/SystemEvents/SystemAuditTagAttribute.cs",
+        "sourceLine": 20,
+        "sourceSymbol": "SystemAuditTagAttribute",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "AuditCoalesceRebaseTests.CommandAudited_CarriesTheSysAuditTag_InTheGeneratedRegistryAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/SystemEvents/SystemAuditTagAttribute.cs",
+        "sourceLine": 21,
+        "sourceSymbol": "SystemAuditTagAttribute",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "AuditCoalesceRebaseTests.Apply_AuditEnabled_RegistersTheBuiltInBindingFromTheKnobsAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/SystemEvents/SystemEventCoalesceDefaults.cs",
+        "sourceLine": 18,
+        "sourceSymbol": "SystemEventCoalesceDefaults",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "AuditCoalesceRebaseTests.Apply_SlideZero_RegistersNothingAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/SystemEvents/SystemEventCoalesceDefaults.cs",
+        "sourceLine": 19,
+        "sourceSymbol": "SystemEventCoalesceDefaults",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "AuditCoalesceRebaseTests.Apply_HostBindingForSysAudit_AlwaysWinsAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/SystemEvents/SystemEventCoalesceDefaults.cs",
+        "sourceLine": 20,
+        "sourceSymbol": "SystemEventCoalesceDefaults",
+        "sourceType": "Class",
         "linkSource": "XmlTag"
       }
     ],
@@ -105330,6 +106108,36 @@
         "linkSource": "XmlTag"
       }
     ],
+    "CoalesceShipWorkerTests.RunOnce_DefaultFactory_BuildsRawCarryCompositeFromSinglesAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/CoalescedEventsComposite.cs",
+        "sourceLine": 35,
+        "sourceSymbol": "CoalescedEventsComposite",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Workers/CoalesceShipWorker.cs",
+        "sourceSymbol": "CoalesceShipWorker",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "CompositeInboxFanoutTests.TryExpand_CoalescedEventsComposite_DeliversEachInnerAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/CoalescedEventsComposite.cs",
+        "sourceLine": 36,
+        "sourceSymbol": "CoalescedEventsComposite",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/CompositeInboxFanout.cs",
+        "sourceSymbol": "CompositeInboxFanout",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
     "CollectiveScopeBaseRoutingTests.CollectiveEventBase_IsAnEvent_CarriesGeneratedStreamAndScopeAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/CollectiveEventBase.cs",
@@ -107112,10 +107920,46 @@
         "linkSource": "XmlTag"
       }
     ],
+    "CoalesceFoldCoordinatorSqlTests.GetPendingCoalesceGroupStats_ReturnsPerGroupCountsAndAgesAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
+        "sourceLine": 1909,
+        "sourceSymbol": "GetPendingCoalesceGroupStatsAsync",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "CoalesceFoldCoordinatorSqlTests.FetchPendingCoalesce_ReturnsOldestFirstUpToLimitAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
+        "sourceLine": 1927,
+        "sourceSymbol": "FetchPendingCoalesceAsync",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "CoalesceFoldCoordinatorSqlTests.CompleteCoalesceFold_InsertsCompositeAndCompletesSinglesAtomicallyAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
+        "sourceLine": 1944,
+        "sourceSymbol": "CompleteCoalesceFoldAsync",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "CoalesceFoldCoordinatorSqlTests.ReleaseMaturedCoalesce_ReleasesOnlyMaturedRows_AndClaimShipsThemAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
+        "sourceLine": 1965,
+        "sourceSymbol": "ReleaseMaturedCoalesceAsync",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      }
+    ],
     "CoordinatorRecordSurfaceTests.RewindCursorInfo_PositionalCtor_RoundTripsAllValuesAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-        "sourceLine": 1935,
+        "sourceLine": 2005,
         "sourceSymbol": "RewindCursorInfo",
         "sourceType": "Record",
         "linkSource": "XmlTag"
@@ -107124,7 +107968,7 @@
     "CoordinatorRecordSurfaceTests.RewindCursorInfo_NullsAreAllowedAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-        "sourceLine": 1936,
+        "sourceLine": 2006,
         "sourceSymbol": "RewindCursorInfo",
         "sourceType": "Record",
         "linkSource": "XmlTag"
@@ -107133,7 +107977,7 @@
     "EventFlagsTransportTests.OutboxMessage_Flags_DefaultsToNoneAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-        "sourceLine": 2280,
+        "sourceLine": 2350,
         "sourceSymbol": "Flags",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -107142,16 +107986,25 @@
     "EventFlagsTransportTests.OutboxMessage_Flags_AcceptsCollectiveAndCompositeAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-        "sourceLine": 2281,
+        "sourceLine": 2351,
         "sourceSymbol": "Flags",
         "sourceType": "Property",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "OutboxMessageScheduledForTests.OutboxMessage_ScheduledFor_DefaultIsNullAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
+        "sourceLine": 2384,
+        "sourceSymbol": "null",
+        "sourceType": "Method",
         "linkSource": "XmlTag"
       }
     ],
     "EventFlagsTransportTests.InboxMessage_Flags_DefaultsToNoneAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-        "sourceLine": 2367,
+        "sourceLine": 2475,
         "sourceSymbol": "Flags",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -107160,7 +108013,7 @@
     "EventFlagsTransportTests.InboxMessage_Flags_AcceptsCollectiveAndCompositeAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-        "sourceLine": 2368,
+        "sourceLine": 2476,
         "sourceSymbol": "Flags",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -107169,28 +108022,28 @@
     "MessageFailureTests.MessageFailure_WithReason_StoresReasonAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-        "sourceLine": 2432,
+        "sourceLine": 2540,
         "sourceSymbol": "MessageId",
         "sourceType": "Property",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-        "sourceLine": 2441,
+        "sourceLine": 2549,
         "sourceSymbol": "CompletedStatus",
         "sourceType": "Property",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-        "sourceLine": 2449,
+        "sourceLine": 2557,
         "sourceSymbol": "Error",
         "sourceType": "Property",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-        "sourceLine": 2459,
+        "sourceLine": 2567,
         "sourceSymbol": "Reason",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -107205,28 +108058,28 @@
     "MessageFailureTests.MessageFailure_WithoutReason_DefaultsToUnknownAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-        "sourceLine": 2433,
+        "sourceLine": 2541,
         "sourceSymbol": "MessageId",
         "sourceType": "Property",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-        "sourceLine": 2442,
+        "sourceLine": 2550,
         "sourceSymbol": "CompletedStatus",
         "sourceType": "Property",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-        "sourceLine": 2450,
+        "sourceLine": 2558,
         "sourceSymbol": "Error",
         "sourceType": "Property",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-        "sourceLine": 2460,
+        "sourceLine": 2568,
         "sourceSymbol": "Reason",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -107241,28 +108094,28 @@
     "MessageFailureTests.MessageFailure_AllReasonTypes_CanBeAssignedAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-        "sourceLine": 2434,
+        "sourceLine": 2542,
         "sourceSymbol": "MessageId",
         "sourceType": "Property",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-        "sourceLine": 2443,
+        "sourceLine": 2551,
         "sourceSymbol": "CompletedStatus",
         "sourceType": "Property",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-        "sourceLine": 2451,
+        "sourceLine": 2559,
         "sourceSymbol": "Error",
         "sourceType": "Property",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-        "sourceLine": 2461,
+        "sourceLine": 2569,
         "sourceSymbol": "Reason",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -107277,7 +108130,7 @@
     "WorkCoordinatorDtoSurfaceTests.PerspectiveCursorCompletion_ProcessedEventIds_DefaultsEmptyAndRoundTripsAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-        "sourceLine": 2730,
+        "sourceLine": 2838,
         "sourceSymbol": "EventsProcessed",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -107286,7 +108139,7 @@
     "PerspectiveApplyIdempotencyTests.RunAsync_RerunWithSameEvents_SkipsAllAndDoesNotReWriteAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-        "sourceLine": 2731,
+        "sourceLine": 2839,
         "sourceSymbol": "EventsProcessed",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -107295,7 +108148,7 @@
     "PerspectiveApplyIdempotencyTests.RunAsync_RerunWithMixOfAppliedAndNewEvents_AppliesOnlyNewAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-        "sourceLine": 2732,
+        "sourceLine": 2840,
         "sourceSymbol": "EventsProcessed",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -107311,7 +108164,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/ImmediateWorkCoordinatorStrategy.cs",
-        "sourceLine": 59,
+        "sourceLine": 60,
         "sourceSymbol": "QueueOutboxMessage",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -107334,7 +108187,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/ScopedWorkCoordinatorStrategy.cs",
-        "sourceLine": 31,
+        "sourceLine": 33,
         "sourceSymbol": "scope",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -107373,7 +108226,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/ImmediateWorkCoordinatorStrategy.cs",
-        "sourceLine": 71,
+        "sourceLine": 72,
         "sourceSymbol": "QueueInboxMessage",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -107396,7 +108249,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/ScopedWorkCoordinatorStrategy.cs",
-        "sourceLine": 33,
+        "sourceLine": 35,
         "sourceSymbol": "scope",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -107498,7 +108351,7 @@
     "ImmediateWorkCoordinatorStrategyTests.FlushAsync_ImmediatelyCallsWorkCoordinatorAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/ImmediateWorkCoordinatorStrategy.cs",
-        "sourceLine": 131,
+        "sourceLine": 132,
         "sourceSymbol": "FlushAndGetBatchAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -107507,7 +108360,7 @@
     "WorkCoordinatorDrainTests.FlushAsync_DrainsDeferredChannel_IncludesInBatchAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/ImmediateWorkCoordinatorStrategy.cs",
-        "sourceLine": 132,
+        "sourceLine": 133,
         "sourceSymbol": "FlushAndGetBatchAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -108322,7 +109175,7 @@
     "ScopedWorkCoordinatorStrategyTests.FlushAsync_BeforeDisposal_FlushesImmediatelyAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/ScopedWorkCoordinatorStrategy.cs",
-        "sourceLine": 32,
+        "sourceLine": 34,
         "sourceSymbol": "scope",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -108331,7 +109184,7 @@
     "WorkFlusherTests.ScopedStrategy_FlushAsync_DelegatesToStrategyWithRequiredModeAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/ScopedWorkCoordinatorStrategy.cs",
-        "sourceLine": 34,
+        "sourceLine": 36,
         "sourceSymbol": "scope",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -144174,6 +145027,62 @@
         "linkSource": "Convention"
       }
     ],
+    "CoalesceShipWorkerTests.RunOnce_GroupStillArriving_DoesNotFoldAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Workers/CoalesceShipWorker.cs",
+        "sourceSymbol": "CoalesceShipWorker",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "CoalesceShipWorkerTests.RunOnce_UnboundGroupInStats_IsNotFoldedAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Workers/CoalesceShipWorker.cs",
+        "sourceSymbol": "CoalesceShipWorker",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "CoalesceShipWorkerTests.RunOnce_MixedDestinations_OneCompositePerDestinationAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Workers/CoalesceShipWorker.cs",
+        "sourceSymbol": "CoalesceShipWorker",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "CoalesceShipWorkerTests.StartupRecovery_ReleasesMaturedForEveryEnabledGroupOnceAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Workers/CoalesceShipWorker.cs",
+        "sourceSymbol": "CoalesceShipWorker",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "CoalesceShipWorkerTests.RunOnce_ReleaseBackstopRunsAfterTheFoldPassAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Workers/CoalesceShipWorker.cs",
+        "sourceSymbol": "CoalesceShipWorker",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "CoalesceShipWorkerTests.ExecuteAsync_NoResolverAtAll_ParksAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Workers/CoalesceShipWorker.cs",
+        "sourceSymbol": "CoalesceShipWorker",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "CoalesceShipWorkerTests.ExecuteAsync_RunsAFirstTickImmediatelyAfterRecoveryAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Workers/CoalesceShipWorker.cs",
+        "sourceSymbol": "CoalesceShipWorker",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
     "CompletionStatusTests.CompletionStatus_Pending_IsDefinedAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/CompletionStatus.cs",
@@ -149982,6 +150891,70 @@
         "linkSource": "Convention"
       }
     ],
+    "CoalesceGroupResolverTests.Apply_UnboundTag_PassesThroughUntouchedAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Tags/CoalesceGroupResolver.cs",
+        "sourceSymbol": "CoalesceGroupResolver",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "CoalesceGroupResolverTests.Apply_UntaggedType_PassesThroughUntouchedAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Tags/CoalesceGroupResolver.cs",
+        "sourceSymbol": "CoalesceGroupResolver",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "CoalesceGroupResolverTests.Apply_DisabledBinding_SlideZero_PassesThroughUntouchedAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Tags/CoalesceGroupResolver.cs",
+        "sourceSymbol": "CoalesceGroupResolver",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "CoalesceGroupResolverTests.Apply_AlreadyStampedMessage_IsNotRestampedAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Tags/CoalesceGroupResolver.cs",
+        "sourceSymbol": "CoalesceGroupResolver",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "CoalesceGroupResolverTests.Apply_NormalizedTypeNameForms_AllResolveAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Tags/CoalesceGroupResolver.cs",
+        "sourceSymbol": "CoalesceGroupResolver",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "CoalesceGroupResolverTests.GetBinding_BoundGroup_ReturnsThePolicyAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Tags/CoalesceGroupResolver.cs",
+        "sourceSymbol": "CoalesceGroupResolver",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "CoalesceGroupResolverTests.GetBinding_UnknownOrDisabledGroup_ReturnsNullAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Tags/CoalesceGroupResolver.cs",
+        "sourceSymbol": "CoalesceGroupResolver",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "CoalescePolicyOptionsTests.Properties_CanBeConfiguredAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Tags/CoalescePolicyOptions.cs",
+        "sourceSymbol": "CoalescePolicyOptions",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
     "MessageTagAttributeTests.MessageTagAttribute_IsAbstract_CannotBeInstantiatedDirectlyAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Attributes/MessageTagAttribute.cs",
@@ -151038,6 +152011,38 @@
         "linkSource": "Convention"
       }
     ],
+    "SystemTagsTests.ReservedPrefix_IsSysDashAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Tags/SystemTags.cs",
+        "sourceSymbol": "SystemTags",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "SystemTagsTests.Audit_CarriesTheReservedPrefixAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Tags/SystemTags.cs",
+        "sourceSymbol": "SystemTags",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "SystemTagsTests.IsFrameworkTag_KnowsAuditAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Tags/SystemTags.cs",
+        "sourceSymbol": "SystemTags",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "SystemTagsTests.IsFrameworkTag_RejectsUnprefixedTagAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Tags/SystemTags.cs",
+        "sourceSymbol": "SystemTags",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
     "TagContextTests.TagContext_Attribute_CanBeSetAndRetrievedAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Tags/TagContext.cs",
@@ -151362,6 +152367,62 @@
       {
         "sourceFile": "src/Whizbang.Core/Tags/TagOptions.cs",
         "sourceSymbol": "TagOptions",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "TagPolicyValidatorTests.Validate_UserTagNamedAuditWithoutPrefix_DoesNotThrowAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Tags/TagPolicyValidator.cs",
+        "sourceSymbol": "TagPolicyValidator",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "TagPolicyValidatorTests.Validate_UserTypeCarryingTheFrameworkAuditTag_DoesNotThrowAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Tags/TagPolicyValidator.cs",
+        "sourceSymbol": "TagPolicyValidator",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "TagPolicyValidatorTests.Validate_TypeMatchingOneCoalesceBinding_DoesNotThrowAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Tags/TagPolicyValidator.cs",
+        "sourceSymbol": "TagPolicyValidator",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "TagPolicyValidatorTests.Validate_TwoTypesEachMatchingOneBinding_DoesNotThrowAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Tags/TagPolicyValidator.cs",
+        "sourceSymbol": "TagPolicyValidator",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "TagPolicyValidatorTests.StartAsync_CleanRegistrations_CompletesAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Tags/TagPolicyValidator.cs",
+        "sourceSymbol": "TagPolicyValidator",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "TagPolicyValidatorTests.AddWhizbang_CalledTwice_RegistersTheStartupValidatorOnceAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Tags/TagPolicyValidator.cs",
+        "sourceSymbol": "TagPolicyValidator",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "TagPolicyValidatorTests.AddWhizbang_SecondCall_MergesCoalesceBindingsIntoTheFirstTagOptionsAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Tags/TagPolicyValidator.cs",
+        "sourceSymbol": "TagPolicyValidator",
         "sourceType": "Class",
         "linkSource": "Convention"
       }
@@ -152406,6 +153467,22 @@
         "linkSource": "Convention"
       }
     ],
+    "CommandAuditTests.CommandAudited_ImplementsISystemEvent_Async": [
+      {
+        "sourceFile": "src/Whizbang.Core/SystemEvents/CommandAuditPipelineBehavior.cs",
+        "sourceSymbol": "CommandAudit",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "CommandAuditTests.CommandAudited_HasRequiredProperties_Async": [
+      {
+        "sourceFile": "src/Whizbang.Core/SystemEvents/CommandAuditPipelineBehavior.cs",
+        "sourceSymbol": "CommandAudit",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
     "CommandAuditTests.CommandAudited_HasAuditEventAttribute_WithExcludeTrue_Async": [
       {
         "sourceFile": "src/Whizbang.Core/SystemEvents/CommandAuditPipelineBehavior.cs",
@@ -152943,6 +154020,30 @@
       }
     ],
     "SystemEventOptionsTests.LocalOnly_DefaultsToTrue_PreventsAccidentalBroadcastAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/SystemEvents/SystemEventOptions.cs",
+        "sourceSymbol": "SystemEventOptions",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "SystemEventOptionsTests.AuditShipSlideSeconds_DefaultsTo15Async": [
+      {
+        "sourceFile": "src/Whizbang.Core/SystemEvents/SystemEventOptions.cs",
+        "sourceSymbol": "SystemEventOptions",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "SystemEventOptionsTests.AuditShipMaxDelaySeconds_DefaultsTo120Async": [
+      {
+        "sourceFile": "src/Whizbang.Core/SystemEvents/SystemEventOptions.cs",
+        "sourceSymbol": "SystemEventOptions",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "SystemEventOptionsTests.AuditShipMaxBatchCount_DefaultsTo500Async": [
       {
         "sourceFile": "src/Whizbang.Core/SystemEvents/SystemEventOptions.cs",
         "sourceSymbol": "SystemEventOptions",
@@ -168374,6 +169475,14 @@
         "linkSource": "Convention"
       }
     ],
+    "CompositeInboxFanoutTests.CoalescedEventsComposite_DefaultsToIndependentAtomicityAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/CompositeInboxFanout.cs",
+        "sourceSymbol": "CompositeInboxFanout",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
     "CompositeInboxFanoutTests.TryExpand_RawComposite_TypeNameCountMismatch_FailsAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/CompositeInboxFanout.cs",
@@ -180280,11 +181389,11 @@
     ]
   },
   "metadata": {
-    "generated": "2026-08-18T14:25:23.793Z",
-    "sourceFiles": 1543,
-    "testFiles": 4204,
-    "totalLinks": 12156,
-    "codeSymbols": 1596,
-    "testMethods": 10560
+    "generated": "2026-08-18T21:25:15.801Z",
+    "sourceFiles": 1555,
+    "testFiles": 4216,
+    "totalLinks": 12242,
+    "codeSymbols": 1616,
+    "testMethods": 10626
   }
 }
