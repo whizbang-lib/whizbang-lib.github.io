@@ -5069,6 +5069,12 @@
     "symbol": "CommitOrderStamperOptions",
     "docs": "fundamentals/work-coordinator/commit-sequence"
   },
+  "FencedRetryInterval": {
+    "file": "src/Whizbang.Core/Notifications/CommitOrderStamperOptions.cs",
+    "line": 56,
+    "symbol": "FencedRetryInterval",
+    "docs": "fundamentals/work-coordinator/commit-sequence#fenced-retry"
+  },
   "INotificationConnectionStringFallback": {
     "file": "src/Whizbang.Core/Notifications/INotificationConnectionStringFallback.cs",
     "line": 16,
