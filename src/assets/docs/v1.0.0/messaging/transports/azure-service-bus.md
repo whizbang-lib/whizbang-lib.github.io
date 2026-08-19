@@ -213,13 +213,42 @@ app.Run();
 | `MaxAutoLockRenewalDuration` | 5 minutes | Maximum duration for automatic lock renewal |
 | `MaxDeliveryAttempts` | 10 | Retry limit before dead-lettering |
 | `DefaultSubscriptionName` | "default" | Fallback subscription name if not specified |
-| `AutoProvisionInfrastructure` | `true` | Auto-create topics and subscriptions when subscribing |
+| `AutoProvisionInfrastructure` | `true` | Auto-create topics and subscriptions when subscribing (**code-only** — see binding note below) |
 | `EnableSessions` | `true` | Session-based FIFO ordering (sets SessionId from StreamId) |
 | `MaxConcurrentSessions` | 200 | Maximum concurrent sessions processed per processor (only when EnableSessions is true) |
-| `SessionIdleTimeout` | 1 second | How long a session processor waits for the next message before releasing the session |
+| `SessionIdleTimeout` | 60 seconds | How long a session processor waits for the next message before releasing the session — see [Session Idle Timeout](#session-idle-timeout) |
 | `PrefetchCount` | 50 | Messages prefetched per processor |
 | `PublishMaxConcurrency` | 200 | Maximum concurrent publish operations |
 | `SendTimeout` | 30 seconds | Timeout applied to each send operation |
+| `EnableOpsRateSelfCheck` | `true` | Warn at subscribe time when the projected idle broker-op rate crosses the threshold — see [Idle Ops-Rate Self-Check](#ops-rate-self-check) |
+| `OpsRateWarningThresholdPerSecond` | 100 | Projected idle ops/sec above which the self-check warns |
+
+#### Configuration Binding {#configuration-binding}
+
+Every runtime knob above also binds from the `Whizbang:Transports:AzureServiceBus` configuration
+section (appsettings.json or environment variables in the
+`Whizbang__Transports__AzureServiceBus__<Property>` form). Binding is applied **after** the
+`configureOptions` code callback, so a deploy-time configuration value always overrides a
+compiled-in one — operators can correct any runtime knob without a redeploy. The binder is
+hand-rolled and AOT-safe (no reflection-based options binder).
+
+The one exception is `AutoProvisionInfrastructure`: it decides at registration time whether the
+admin client is added to the container, and configuration cannot re-shape a container that is
+already built. Set it in code only.
+
+```json{title="Operator override via appsettings.json" description="Configuration wins over the code callback for every runtime knob." category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Configuration", "Binding"] unverified="configuration illustration — binding is covered by ServiceCollectionExtensionsTests"}
+{
+  "Whizbang": {
+    "Transports": {
+      "AzureServiceBus": {
+        "SessionIdleTimeout": "00:00:30",
+        "MaxConcurrentSessions": 100,
+        "OpsRateWarningThresholdPerSecond": 250
+      }
+    }
+  }
+}
+```
 
 ### Sessions and FIFO Ordering {#sessions}
 
@@ -246,6 +275,43 @@ builder.Services.AddAzureServiceBusTransport(
 :::note
 Messages without a `StreamId` (null) do not set a `SessionId`. When sessions are enabled on a subscription, all messages **must** have a SessionId — messages without one will be rejected. This means enabling sessions is an all-or-nothing decision per topic/subscription.
 :::
+
+### Session Idle Timeout {#session-idle-timeout}
+
+`SessionIdleTimeout` bounds how long a session processor slot waits for another message in the
+session it currently holds before releasing it and accepting a different session. The default is
+**60 seconds** (the Azure SDK default), and the reason is broker economics, not latency:
+
+- **A long timeout adds no pickup latency.** A waiting accept is push-completed by the broker
+  the moment a message arrives for the held session, and free slots accept other sessions
+  immediately. The timeout only controls how often an *idle* slot cycles.
+- **A short timeout is a broker-operation faucet.** Every expiry issues a fresh accept — a
+  billable namespace request. Each session-enabled subscription costs up to
+  `MaxConcurrentSessions / SessionIdleTimeout` operations per second per consumer instance
+  **at idle**. At a 1-second timeout with 200 sessions that is 200 idle ops/sec per
+  subscription; a modest fleet multiplies that into an ASB Standard namespace's entire shared
+  request quota (~1,000 ops/sec) with zero messages flowing. The symptom set is brutal and
+  indirect: throttled keepalives ("connection inactive" closures), session-lock loss mid-batch,
+  and indefinite redelivery of live traffic — while message-level metrics show nothing.
+
+The trade-off: during a fan-out burst with more pending sessions than `MaxConcurrentSessions`
+slots, an idle-held session delays the excess sessions by up to the timeout. That cost is
+bounded and clears in waves; the idle-churn cost is unbounded and takes down the namespace.
+Tune lower only when sustained fan-out bursts exceed the session cap AND the namespace tier has
+request quota to burn (Premium) — and watch the [self-check](#ops-rate-self-check) warning when
+you do.
+
+### Idle Ops-Rate Self-Check {#ops-rate-self-check}
+
+Because the idle-churn failure mode produces no errors and no message-level signal, the
+transport checks for it at the moment the configuration becomes knowable: every time a
+session-enabled subscription starts, it re-projects the instance's cumulative worst-case idle
+broker-op rate (`session subscriptions × MaxConcurrentSessions / SessionIdleTimeout`) and logs a
+structured warning when the projection crosses `OpsRateWarningThresholdPerSecond` (default
+100/sec — over a tenth of a Standard namespace's shared quota spent doing nothing). The warning
+names the offending knobs and the remediation. Disable with `EnableOpsRateSelfCheck = false`
+for deliberately churn-heavy Premium-tier setups. Non-session processors long-poll and are not
+projected.
 
 ### Connection Retry Options {#connection-retry}
 
