@@ -15,9 +15,11 @@ inbox by **contract namespace**, mirroring the topology the event side already u
 Azure Service Bus and RabbitMQ transports.
 
 :::planned
-Unreleased design proposal. Companion to **Transport Traffic Classes & Multi-Namespace Routing**
-(order 37): per-namespace inboxes are the unit that traffic-class routing later assigns to
-broker namespaces.
+Unreleased design proposal. Intended to ship **together with Transport Traffic Classes &
+Multi-Namespace Routing** (order 37) as one transport-topology arc for both Service Bus and
+RabbitMQ — the two proposals touch the same provisioning and routing surface, traffic classes
+supply the namespace-level isolation, and per-namespace inboxes are the routable unit those
+classes assign.
 :::
 
 ## Motivation — a measured import
@@ -77,10 +79,15 @@ scenarios against both.
   rarely fires, not a replacement for it.
 - **Inbox idempotency** (store-side dedup by message id) remains — and is what makes the
   migration's dual-delivery window safe.
-- **Broadcast and control-plane messages do not move.** Genuinely all-services traffic
-  (run-control, killswitches, control-plane signals) keeps its own channel — per the
-  traffic-classes proposal, ultimately the control class. The inventory of which types those
-  are is a migration prerequisite, not an afterthought.
+- **System messages get one dedicated broadcast inbox.** Genuinely all-services traffic
+  (run-control, killswitches, rebuild/reseed system commands) is broadcast by nature, so it
+  belongs on a broadcast entity: a single `inbox.<framework-namespace>` topic that every
+  service subscribes to. One send + N deliveries — versus N sends if copies were fanned into
+  every per-namespace inbox, which would also re-mix the per-area DLQs this proposal just
+  untangled. Because framework composite envelopes and system commands share the
+  "every service handles these" property, this entity doubles as the composite inbox (see
+  Open questions). Supersedable control *signals* (probes, checkpoints) later migrate again
+  to the control class from the traffic-classes proposal; durable system commands stay here.
 
 ### Entity-count and machinery budgets
 
@@ -179,12 +186,23 @@ idle.
 
 ## Open questions
 
-- Should multi-handler command namespaces be allowed long-term, or flagged by an analyzer as a
-  design smell (commands are point-to-point by definition; events already have a home)?
-- Does the composite/raw-carry envelope routing want its own dedicated inbox namespace instead
-  of fanning to constituent namespaces?
-- Retirement timing for the shared inbox's broadcast remnant — before or with the control
-  class from the traffic-classes proposal?
+- **Multi-handler command namespaces: tolerate or enforce?** The topology handles them (that
+  inbox simply has N subscriptions), but a command with two handlers is usually a mismodeled
+  event — point-to-point is what makes the O(3N) win possible, and every extra handler quietly
+  re-grows the tax. Leaning: analyzer *warning* when two services register inbox handlers for
+  the same command type during migration, promoted to an error once the fleet is clean.
+- **Composite/raw-carry envelope routing.** A composite can carry constituents from several
+  contract namespaces, so "route by constituent" would deliver one envelope via multiple
+  entities (dedup absorbs it, but it is waste and blurs entity semantics). Leaning: composites
+  route by **their own type's namespace** — they are framework types, so they land on the
+  framework-namespace inbox, which every service already subscribes to for system commands.
+  Zero new convention; the cost is that the framework inbox is a small shared entity again,
+  bounded by composite/system volume rather than fleet command volume.
+- **Shared-inbox retirement.** With the system inbox part of this proposal (not deferred to the
+  control class), the shared inbox retires at the end of phase 3 with no external dependency.
+  The residual question is only sequencing the second hop: supersedable control signals move
+  once more when the traffic-classes control class ships — shipping both proposals as one arc
+  collapses that into a single migration for those types.
 
 ## Related proposals
 
