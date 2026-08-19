@@ -4,11 +4,11 @@
     "sha": "62b178e4900ab2fc2c48bcb4e25d4c81d29fd8ed",
     "branch": "develop",
     "libraryVersion": "0.965.0-alpha.13",
-    "completedAt": "2026-08-19T17:25:12.674Z"
+    "completedAt": "2026-08-19T18:16:35.811Z"
   },
   "total": {
-    "passed": 17374,
-    "failed": 1,
+    "passed": 17375,
+    "failed": 0,
     "skipped": 9
   },
   "suites": {
@@ -38,8 +38,8 @@
       "skipped": 0
     },
     "servicebus-whizbang": {
-      "passed": 75,
-      "failed": 1,
+      "passed": 76,
+      "failed": 0,
       "skipped": 1
     },
     "unit": {
@@ -237,8 +237,8 @@
     },
     "Whizbang.Transports.AzureServiceBus.Integration.Tests": {
       "file": "Whizbang.Transports.AzureServiceBus.Integration.Tests.json",
-      "passed": 75,
-      "failed": 1,
+      "passed": 76,
+      "failed": 0,
       "skipped": 1
     },
     "Whizbang.Transports.AzureServiceBus.Tests": {
