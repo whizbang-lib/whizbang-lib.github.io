@@ -36,12 +36,13 @@ state means *for them*, so they interpret it and report it themselves against a 
 `ISchemaReadyGate` is today's single, hard-wired sliver of this (gate whether *workers* may run);
 this proposal generalizes it to **every** managed resource and to the **whole lifecycle**.
 
-:::planned
-Proposed capability (unreleased). It generalizes the health signal introduced with the opt-in
-non-blocking schema init (`ISchemaReadyGate` + `SchemaReadyHealthCheck` +
-`DatabaseAvailabilityMiddleware`): that shipped a single, binary "schema ready?" check hard-wired to
-report **Unhealthy** while migrating. This proposal reframes that as one instance of a general rule,
-corrects the default so *migrating is healthy*, and adds the run-control face that partners it.
+:::updated
+**Implemented — shipped in v1.0.0.** This document is preserved as the design record; the official
+documentation lives at [Managed-Resource Health](/v1.0.0/resilience/managed-resource-health) and
+[Managed-Resource Run Control](/v1.0.0/resilience/managed-resource-run-control). It generalized the
+health signal introduced with the opt-in non-blocking schema init (`ISchemaReadyGate` +
+`SchemaReadyHealthCheck` + `DatabaseAvailabilityMiddleware`) so that *migrating is healthy*, and
+added the run-control face that partners it.
 :::
 
 ## The problem — health with no notion of state

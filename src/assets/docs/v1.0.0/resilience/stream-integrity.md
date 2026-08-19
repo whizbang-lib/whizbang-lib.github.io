@@ -498,6 +498,21 @@ layer as soon as it has *heard from* its origins. The origin set is deliberately
 (a restart re-baselines it), so the first audit after a fleet-wide deploy usually runs only the
 local half; the next cycle has a warm tracker and runs the full exchange.
 
+**A cycle that reached no origins re-arms the startup window instead of the steady interval.**
+That matters because the interval defaults to a day. On a cold fleet start the audit can fire
+before any peer has checkpointed — its origin set is still empty, so the cross-service half has
+nobody to ask and audits nothing. Sleeping out the full interval before looking again would be
+indistinguishable from never discovering the fleet at all, and it fails worst in exactly the
+situation that most needs the audit: when peers are slow to start, their checkpoints are late,
+and cross-service divergence is most likely. The retry keeps the same jitter, so a fleet whose
+instances all reached nobody do not then all retry in unison.
+
+The distinction is between *nobody to ask* and *nothing to ask about*. A deployment with no
+cross-service transport configured is a configuration rather than a cold start, and retrying
+sooner would never help — it keeps the steady interval. So does a cycle another instance already
+claimed. Only a service that has cross-service infrastructure and reached none of its origins
+retries early, and it logs that it is doing so.
+
 ```mermaid {caption="One reconcile cycle: checkpoints warm the origin tracker, the audit exchanges digest manifests, divergence drills down to an exact re-delivery" tests=["IntegrityCheckpointWorkerTests.RunCheckpointOnce_WithTransport_PublishesToOwnEventTopicsAsync","IntegrityAuditWorkerTests.KnownOrigins_GetDirectedManifestRequestsAsync","ControlPlaneSessionIntegrationTests.ControlPlanePublish_SessionRequiredSubscription_DeliversAsync"]}
 sequenceDiagram
     autonumber

@@ -257,18 +257,6 @@
     "symbol": "AsbMessageHeaderReader",
     "docs": "fundamentals/transport/asb-receive"
   },
-  "struct": {
-    "file": "src/Whizbang.Transports.AzureServiceBus/AsbOpsRateSelfCheck.cs",
-    "line": 8,
-    "symbol": "struct",
-    "docs": "messaging/transports/azure-service-bus#ops-rate-self-check"
-  },
-  "AsbOpsRateSelfCheck": {
-    "file": "src/Whizbang.Transports.AzureServiceBus/AsbOpsRateSelfCheck.cs",
-    "line": 24,
-    "symbol": "AsbOpsRateSelfCheck",
-    "docs": "messaging/transports/azure-service-bus#ops-rate-self-check"
-  },
   "AsbThrottleBackoffPolicy": {
     "file": "src/Whizbang.Transports.AzureServiceBus/AsbThrottleBackoffPolicy.cs",
     "line": 18,
@@ -331,55 +319,31 @@
   },
   "SessionIdleTimeout": {
     "file": "src/Whizbang.Transports.AzureServiceBus/AzureServiceBusOptions.cs",
-    "line": 238,
+    "line": 232,
     "symbol": "SessionIdleTimeout",
     "docs": "messaging/transports/azure-service-bus#session-idle-timeout"
   },
-  "EnableOpsRateSelfCheck": {
-    "file": "src/Whizbang.Transports.AzureServiceBus/AzureServiceBusOptions.cs",
-    "line": 279,
-    "symbol": "EnableOpsRateSelfCheck",
-    "docs": "messaging/transports/azure-service-bus#ops-rate-self-check"
-  },
-  "OpsRateWarningThresholdPerSecond": {
-    "file": "src/Whizbang.Transports.AzureServiceBus/AzureServiceBusOptions.cs",
-    "line": 293,
-    "symbol": "OpsRateWarningThresholdPerSecond",
-    "docs": "messaging/transports/azure-service-bus#ops-rate-self-check"
-  },
   "EnableReceiveLivenessWatchdog": {
     "file": "src/Whizbang.Transports.AzureServiceBus/AzureServiceBusOptions.cs",
-    "line": 327,
+    "line": 290,
     "symbol": "EnableReceiveLivenessWatchdog",
     "docs": "messaging/transports/azure-service-bus#receive-liveness"
   },
   "ReceiveLivenessProbeInterval": {
     "file": "src/Whizbang.Transports.AzureServiceBus/AzureServiceBusOptions.cs",
-    "line": 337,
+    "line": 300,
     "symbol": "ReceiveLivenessProbeInterval",
     "docs": "messaging/transports/azure-service-bus#receive-liveness"
   },
   "ReceiveLivenessSilenceThreshold": {
     "file": "src/Whizbang.Transports.AzureServiceBus/AzureServiceBusOptions.cs",
-    "line": 348,
+    "line": 311,
     "symbol": "ReceiveLivenessSilenceThreshold",
     "docs": "messaging/transports/azure-service-bus#receive-liveness"
   },
-  "AzureServiceBusOptionsPostConfigure": {
-    "file": "src/Whizbang.Transports.AzureServiceBus/AzureServiceBusOptionsPostConfigure.cs",
-    "line": 19,
-    "symbol": "AzureServiceBusOptionsPostConfigure",
-    "docs": "messaging/transports/azure-service-bus#configuration-options"
-  },
-  "_runIdleOpsRateSelfCheck": {
-    "file": "src/Whizbang.Transports.AzureServiceBus/AzureServiceBusTransport.cs",
-    "line": 802,
-    "symbol": "_runIdleOpsRateSelfCheck",
-    "docs": "messaging/transports/azure-service-bus#ops-rate-self-check"
-  },
   "_ensureTopicExistsViaAdminAsync": {
     "file": "src/Whizbang.Transports.AzureServiceBus/AzureServiceBusTransport.cs",
-    "line": 2012,
+    "line": 1980,
     "symbol": "_ensureTopicExistsViaAdminAsync",
     "docs": "messaging/transports/azure-service-bus#publish-auto-provisioning"
   },
@@ -2005,7 +1969,7 @@
   },
   "ClaimWorkerOptions": {
     "file": "src/Whizbang.Core/Workers/ClaimWorker.cs",
-    "line": 576,
+    "line": 573,
     "symbol": "ClaimWorkerOptions",
     "docs": "fundamentals/work-coordinator/configuration-reference"
   },
@@ -2848,6 +2812,12 @@
     "line": 37,
     "symbol": "ISubscription",
     "docs": "messaging/transports/transports"
+  },
+  "struct": {
+    "file": "src/Whizbang.Core/Transports/ITransport.cs",
+    "line": 17,
+    "symbol": "struct",
+    "docs": "messaging/transports/transports#transport-message"
   },
   "ITransport": {
     "file": "src/Whizbang.Core/Transports/ITransport.cs",

@@ -72,6 +72,8 @@ Two guarantees fall out of this:
 
 There is a second, belt-and-suspenders detection path in `complete_perspective_cursor_work` (the function that records a runner's completion). After marking the events a runner actually processed, it looks for any still-unprocessed perspective event with an id *below* the cursor — an event that slipped in during processing and was never applied — and flags RewindRequired for it too. That same completion function **clears** `rewind_trigger_event_id`, `rewind_flagged_at`, and `rewind_first_flagged_at` on a successful run, resetting the cursor so a repaired stream does not rewind in a loop.
 
+The **inbox emit chain** (`_emit_event_store_chain_for_inbox`, migration 100) declares identically for *received* events — the path every cross-service delivery and every stream-integrity backfill takes. This matters most for **reconciliation**: a backfilled event keeps its ORIGINAL event id, so the moment its work item is created the system already knows it slots below the cursor — while its freshly-stamped local `commit_sequence` sits *above* the cursor, which makes the straggler permanently invisible to any later runtime inversion comparison. Reconcile therefore **self-declares** the rewind at work-item creation; no heuristic detection is possible or needed.
+
 ### Execution
 
 The `PerspectiveWorker` picks up a stream whose cursor carries the RewindRequired flag and runs `_executeRewindPathAsync`:
@@ -142,6 +144,20 @@ while (true) {
 ```
 
 This is the fix for an earlier defect: the original implementation read the event list **once** and applied that fixed set, so events appended between `PerspectiveRewindStarted` and `PerspectiveRewindCompleted` were silently dropped (a bulk import could complete the projection short a handful of items even though every event was durable). With the catch-up loop, the completed cursor reflects **HEAD-at-commit** rather than HEAD-when-the-replay-began. The behaviour is pinned by `PerspectiveRewindCompletionGapTests` (`FixedRewind_EventsAppendedDuringWindow_AreAppliedTooAsync` and `FixedRewind_NoLateAppends_StillTerminatesAsync`).
+
+### Replay ordering — slotting reconciled events
+
+Each apply pass sorts its batch with **one comparator, chosen by what the batch can prove**:
+
+1. **Origin order** — when every event in the batch carries the *same, non-empty* `SourceServiceId` and a positive `SourceCommitSequence` (a single-origin stream, the normal cross-service shape). A reconciled straggler keeps its original origin slot but lands with an arrival-fresh **local** sequence — a local-order replay would apply it *last*, which is exactly the arrival-order failure the rewind exists to correct. Origin order slots the backfilled event at its intended position, so the final model equals what a never-missed history would have produced.
+2. **Local commit order** — otherwise, when every event carries its local `commit_sequence` stamp. The inversion detector is commit-sequence-authoritative (same-millisecond UUIDv7 ids can disagree with commit order), and an id-ordered replay would silently undo newer writes.
+3. **Event-id order** — the fallback when any event is unstamped (stamper lag); a partial mix of comparators would interleave two orderings.
+
+Cross-origin events on one stream have **no defined total order** (concurrent writers, per-origin sequence spaces — the numbers collide by design), so mixed-origin batches deliberately fall to rule 2/3 rather than invent one. Origin sequences are only ever compared *within* one origin.
+
+### Frontier checkpoint
+
+The replay checkpoints at the **frontier** — the *maximum* event id and *maximum* local `commit_sequence` applied — not the origin-order-last event's stamp. The idempotency floor's meaning is "everything at or below this is applied", and under origin-order replay the final event applied can carry a *lower* local stamp than a backfilled straggler it slotted. A below-floor checkpoint would also be refused by the perspective store's cross-pod lost-update guard, silently discarding the very correction the rewind computed. The catch-up anchor advances the same way (max id of the read window), so a refetch never re-serves the window's tail. Pinned by `ReconcileRewindScenarioTests` (`RewindReplay_BackfilledStraggler_SlotsIntoOriginOrder_NewerWriterWinsAsync`, `Reconcile_OlderConflictingWriterBackfilled_DeclaredRewindRestoresIntendedOrderAsync`, `Reconcile_LateInitializer_DeclaredRewindMergesBothWritersInOriginOrderAsync`) and `ReconcileRewindDeclarationSqlTests`.
 
 ## Configuration
 

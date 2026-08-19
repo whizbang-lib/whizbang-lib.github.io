@@ -408,7 +408,7 @@
     "SessionIdleTimeout": [
       {
         "testFile": "tests/Whizbang.Transports.AzureServiceBus.Tests/AzureServiceBusTransportUnitTests.cs",
-        "testMethod": "SessionIdleTimeout_DefaultsToSixtySecondsAsync",
+        "testMethod": "SessionIdleTimeout_DefaultsToOneSecondAsync",
         "linkSource": "XmlTag"
       }
     ],
@@ -416,20 +416,6 @@
       {
         "testFile": "tests/Whizbang.Transports.AzureServiceBus.Tests/AzureServiceBusTransportUnitTests.cs",
         "testMethod": "PrefetchCount_DefaultsTo50Async",
-        "linkSource": "XmlTag"
-      }
-    ],
-    "EnableOpsRateSelfCheck": [
-      {
-        "testFile": "tests/Whizbang.Transports.AzureServiceBus.Tests/AzureServiceBusTransportUnitTests.cs",
-        "testMethod": "EnableOpsRateSelfCheck_DefaultsToTrueAsync",
-        "linkSource": "XmlTag"
-      }
-    ],
-    "OpsRateWarningThresholdPerSecond": [
-      {
-        "testFile": "tests/Whizbang.Transports.AzureServiceBus.Tests/AzureServiceBusTransportUnitTests.cs",
-        "testMethod": "OpsRateWarningThreshold_DefaultsTo100Async",
         "linkSource": "XmlTag"
       }
     ],
@@ -451,23 +437,6 @@
       {
         "testFile": "tests/Whizbang.Transports.AzureServiceBus.Tests/AzureServiceBusTransportUnitTests.cs",
         "testMethod": "ReceiveLivenessSilenceThreshold_DefaultsToFiveMinutesAsync",
-        "linkSource": "XmlTag"
-      }
-    ],
-    "AzureServiceBusOptionsPostConfigure": [
-      {
-        "testFile": "tests/Whizbang.Transports.AzureServiceBus.Tests/ServiceCollectionExtensionsTests.cs",
-        "testMethod": "AddAzureServiceBusTransport_BindsEveryRuntimeKnobFromConfigurationAsync",
-        "linkSource": "XmlTag"
-      },
-      {
-        "testFile": "tests/Whizbang.Transports.AzureServiceBus.Tests/ServiceCollectionExtensionsTests.cs",
-        "testMethod": "AddAzureServiceBusTransport_ConfigurationOverridesCodeCallbackAsync",
-        "linkSource": "XmlTag"
-      },
-      {
-        "testFile": "tests/Whizbang.Transports.AzureServiceBus.Tests/ServiceCollectionExtensionsTests.cs",
-        "testMethod": "AddAzureServiceBusTransport_AutoProvisionInfrastructure_IsCodeOnlyAsync",
         "linkSource": "XmlTag"
       }
     ],
@@ -856,140 +825,112 @@
       {
         "testFile": "tests/Whizbang.Transports.AzureServiceBus.Tests/ServiceCollectionExtensionsTests.cs",
         "testMethod": "AddAzureServiceBusTransport_WithWhitespaceConnectionString_ThrowsWithParamNameAsync",
-        "testLine": 39,
+        "testLine": 38,
         "testClass": "ServiceCollectionExtensionsTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Transports.AzureServiceBus.Tests/ServiceCollectionExtensionsTests.cs",
         "testMethod": "AddAzureServiceBusProvisioner_WithWhitespaceConnectionString_ThrowsWithParamNameAsync",
-        "testLine": 54,
+        "testLine": 53,
         "testClass": "ServiceCollectionExtensionsTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Transports.AzureServiceBus.Tests/ServiceCollectionExtensionsTests.cs",
         "testMethod": "AddAzureServiceBusTransport_RegistersCoreServices_AsSingletonsAsync",
-        "testLine": 71,
+        "testLine": 70,
         "testClass": "ServiceCollectionExtensionsTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Transports.AzureServiceBus.Tests/ServiceCollectionExtensionsTests.cs",
         "testMethod": "AddAzureServiceBusTransport_WithExistingClient_DoesNotRegisterSecondClientAsync",
-        "testLine": 105,
+        "testLine": 104,
         "testClass": "ServiceCollectionExtensionsTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Transports.AzureServiceBus.Tests/ServiceCollectionExtensionsTests.cs",
         "testMethod": "AddAzureServiceBusTransport_DefaultOptions_RegistersAdminClientAsSingletonAsync",
-        "testLine": 125,
+        "testLine": 124,
         "testClass": "ServiceCollectionExtensionsTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Transports.AzureServiceBus.Tests/ServiceCollectionExtensionsTests.cs",
         "testMethod": "AddAzureServiceBusTransport_AutoProvisionDisabled_DoesNotRegisterAdminClientAsync",
-        "testLine": 139,
+        "testLine": 138,
         "testClass": "ServiceCollectionExtensionsTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Transports.AzureServiceBus.Tests/ServiceCollectionExtensionsTests.cs",
         "testMethod": "AddAzureServiceBusTransport_WithExistingAdminClient_DoesNotRegisterDuplicateAsync",
-        "testLine": 153,
+        "testLine": 152,
         "testClass": "ServiceCollectionExtensionsTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Transports.AzureServiceBus.Tests/ServiceCollectionExtensionsTests.cs",
         "testMethod": "AddAzureServiceBusTransport_ResolvingAdminClient_ReturnsWrapperAsync",
-        "testLine": 172,
+        "testLine": 171,
         "testClass": "ServiceCollectionExtensionsTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Transports.AzureServiceBus.Tests/ServiceCollectionExtensionsTests.cs",
         "testMethod": "AddAzureServiceBusTransport_OptionsCallback_ReceivesFreshDefaultsAsync",
-        "testLine": 188,
-        "testClass": "ServiceCollectionExtensionsTests",
-        "linkSource": "Convention"
-      },
-      {
-        "testFile": "tests/Whizbang.Transports.AzureServiceBus.Tests/ServiceCollectionExtensionsTests.cs",
-        "testMethod": "AddAzureServiceBusTransport_BindsEveryRuntimeKnobFromConfigurationAsync",
-        "testLine": 218,
-        "testClass": "ServiceCollectionExtensionsTests",
-        "linkSource": "Convention"
-      },
-      {
-        "testFile": "tests/Whizbang.Transports.AzureServiceBus.Tests/ServiceCollectionExtensionsTests.cs",
-        "testMethod": "AddAzureServiceBusTransport_ConfigurationOverridesCodeCallbackAsync",
-        "testLine": 274,
-        "testClass": "ServiceCollectionExtensionsTests",
-        "linkSource": "Convention"
-      },
-      {
-        "testFile": "tests/Whizbang.Transports.AzureServiceBus.Tests/ServiceCollectionExtensionsTests.cs",
-        "testMethod": "AddAzureServiceBusTransport_NoConfigurationRegistered_CallbackAndDefaultsApplyAsync",
-        "testLine": 296,
-        "testClass": "ServiceCollectionExtensionsTests",
-        "linkSource": "Convention"
-      },
-      {
-        "testFile": "tests/Whizbang.Transports.AzureServiceBus.Tests/ServiceCollectionExtensionsTests.cs",
-        "testMethod": "AddAzureServiceBusTransport_AutoProvisionInfrastructure_IsCodeOnlyAsync",
-        "testLine": 311,
+        "testLine": 187,
         "testClass": "ServiceCollectionExtensionsTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Transports.AzureServiceBus.Tests/ServiceCollectionExtensionsTests.cs",
         "testMethod": "AddAzureServiceBusTransport_WithLocalhostClient_InitializesTransportWithoutAdminVerificationAsync",
-        "testLine": 332,
+        "testLine": 211,
         "testClass": "ServiceCollectionExtensionsTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Transports.AzureServiceBus.Tests/ServiceCollectionExtensionsTests.cs",
         "testMethod": "AddAzureServiceBusTransport_NoAdminClient_InitializesTransportWithoutConnectivityCheckAsync",
-        "testLine": 351,
+        "testLine": 230,
         "testClass": "ServiceCollectionExtensionsTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Transports.AzureServiceBus.Tests/ServiceCollectionExtensionsTests.cs",
         "testMethod": "AddAzureServiceBusTransport_WithClosedClient_ResolvingTransportRethrowsInitializationFailureAsync",
-        "testLine": 370,
+        "testLine": 249,
         "testClass": "ServiceCollectionExtensionsTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Transports.AzureServiceBus.Tests/ServiceCollectionExtensionsTests.cs",
         "testMethod": "AddAzureServiceBusTransport_WithSharedTopicOutboxStrategy_UsesConfiguredInboxTopicAsync",
-        "testLine": 393,
+        "testLine": 272,
         "testClass": "ServiceCollectionExtensionsTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Transports.AzureServiceBus.Tests/ServiceCollectionExtensionsTests.cs",
         "testMethod": "AddAzureServiceBusTransport_WithNonSharedTopicOutboxStrategy_FallsBackToDefaultInboxTopicAsync",
-        "testLine": 412,
+        "testLine": 291,
         "testClass": "ServiceCollectionExtensionsTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Transports.AzureServiceBus.Tests/ServiceCollectionExtensionsTests.cs",
         "testMethod": "AddAzureServiceBusProvisioner_RegistersAdminClientAndProvisioner_AsSingletonsAsync",
-        "testLine": 433,
+        "testLine": 312,
         "testClass": "ServiceCollectionExtensionsTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Transports.AzureServiceBus.Tests/ServiceCollectionExtensionsTests.cs",
         "testMethod": "AddAzureServiceBusHealthChecks_RegistersNamedCheck_AndFactoryCreatesHealthCheckAsync",
-        "testLine": 463,
+        "testLine": 342,
         "testClass": "ServiceCollectionExtensionsTests",
         "linkSource": "Convention"
       },
@@ -26503,57 +26444,6 @@
         "testMethod": "Read_NoMessageIdAnywhere_ReturnsNullAsync",
         "testLine": 135,
         "testClass": "AsbMessageHeaderReaderTests",
-        "linkSource": "Convention"
-      }
-    ],
-    "AsbOpsRateSelfCheck": [
-      {
-        "testFile": "tests/Whizbang.Transports.AzureServiceBus.Tests/AsbOpsRateSelfCheckTests.cs",
-        "testMethod": "ProjectIdleOpsPerSecond_HairTriggerConfiguration_Projects200PerSubscriptionAsync",
-        "testLine": 19,
-        "testClass": "AsbOpsRateSelfCheckTests",
-        "linkSource": "Convention"
-      },
-      {
-        "testFile": "tests/Whizbang.Transports.AzureServiceBus.Tests/AsbOpsRateSelfCheckTests.cs",
-        "testMethod": "ProjectIdleOpsPerSecond_TurnkeyDefaults_ScaleLinearlyWithSubscriptionsAsync",
-        "testLine": 35,
-        "testClass": "AsbOpsRateSelfCheckTests",
-        "linkSource": "Convention"
-      },
-      {
-        "testFile": "tests/Whizbang.Transports.AzureServiceBus.Tests/AsbOpsRateSelfCheckTests.cs",
-        "testMethod": "ProjectIdleOpsPerSecond_SessionsDisabled_ProjectsZeroAsync",
-        "testLine": 49,
-        "testClass": "AsbOpsRateSelfCheckTests",
-        "linkSource": "Convention"
-      },
-      {
-        "testFile": "tests/Whizbang.Transports.AzureServiceBus.Tests/AsbOpsRateSelfCheckTests.cs",
-        "testMethod": "ProjectIdleOpsPerSecond_NoSubscriptions_ProjectsZeroAsync",
-        "testLine": 63,
-        "testClass": "AsbOpsRateSelfCheckTests",
-        "linkSource": "Convention"
-      },
-      {
-        "testFile": "tests/Whizbang.Transports.AzureServiceBus.Tests/AsbOpsRateSelfCheckTests.cs",
-        "testMethod": "ProjectIdleOpsPerSecond_ZeroIdleTimeout_IsFiniteAndLargeAsync",
-        "testLine": 72,
-        "testClass": "AsbOpsRateSelfCheckTests",
-        "linkSource": "Convention"
-      },
-      {
-        "testFile": "tests/Whizbang.Transports.AzureServiceBus.Tests/AsbOpsRateSelfCheckTests.cs",
-        "testMethod": "Evaluate_AboveThreshold_ExceedsAsync",
-        "testLine": 87,
-        "testClass": "AsbOpsRateSelfCheckTests",
-        "linkSource": "Convention"
-      },
-      {
-        "testFile": "tests/Whizbang.Transports.AzureServiceBus.Tests/AsbOpsRateSelfCheckTests.cs",
-        "testMethod": "Evaluate_AtOrBelowThreshold_DoesNotExceedAsync",
-        "testLine": 103,
-        "testClass": "AsbOpsRateSelfCheckTests",
         "linkSource": "Convention"
       }
     ],
@@ -86410,7 +86300,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Transports.AzureServiceBus/AzureServiceBusTransport.cs",
-        "sourceLine": 1817,
+        "sourceLine": 1785,
         "sourceSymbol": "_ensureInfrastructureExistsAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -86467,10 +86357,10 @@
         "linkSource": "XmlTag"
       }
     ],
-    "AzureServiceBusTransportUnitTests.SessionIdleTimeout_DefaultsToSixtySecondsAsync": [
+    "AzureServiceBusTransportUnitTests.SessionIdleTimeout_DefaultsToOneSecondAsync": [
       {
         "sourceFile": "src/Whizbang.Transports.AzureServiceBus/AzureServiceBusOptions.cs",
-        "sourceLine": 239,
+        "sourceLine": 233,
         "sourceSymbol": "SessionIdleTimeout",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -86479,34 +86369,16 @@
     "AzureServiceBusTransportUnitTests.PrefetchCount_DefaultsTo50Async": [
       {
         "sourceFile": "src/Whizbang.Transports.AzureServiceBus/AzureServiceBusOptions.cs",
-        "sourceLine": 243,
+        "sourceLine": 237,
         "sourceSymbol": "receiver",
         "sourceType": "Method",
-        "linkSource": "XmlTag"
-      }
-    ],
-    "AzureServiceBusTransportUnitTests.EnableOpsRateSelfCheck_DefaultsToTrueAsync": [
-      {
-        "sourceFile": "src/Whizbang.Transports.AzureServiceBus/AzureServiceBusOptions.cs",
-        "sourceLine": 280,
-        "sourceSymbol": "EnableOpsRateSelfCheck",
-        "sourceType": "Property",
-        "linkSource": "XmlTag"
-      }
-    ],
-    "AzureServiceBusTransportUnitTests.OpsRateWarningThreshold_DefaultsTo100Async": [
-      {
-        "sourceFile": "src/Whizbang.Transports.AzureServiceBus/AzureServiceBusOptions.cs",
-        "sourceLine": 294,
-        "sourceSymbol": "OpsRateWarningThresholdPerSecond",
-        "sourceType": "Property",
         "linkSource": "XmlTag"
       }
     ],
     "AzureServiceBusTransportUnitTests.EnableReceiveLivenessWatchdog_DefaultsToTrueAsync": [
       {
         "sourceFile": "src/Whizbang.Transports.AzureServiceBus/AzureServiceBusOptions.cs",
-        "sourceLine": 328,
+        "sourceLine": 291,
         "sourceSymbol": "EnableReceiveLivenessWatchdog",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -86515,7 +86387,7 @@
     "AzureServiceBusTransportUnitTests.ReceiveLivenessProbeInterval_DefaultsToSixtySecondsAsync": [
       {
         "sourceFile": "src/Whizbang.Transports.AzureServiceBus/AzureServiceBusOptions.cs",
-        "sourceLine": 338,
+        "sourceLine": 301,
         "sourceSymbol": "ReceiveLivenessProbeInterval",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -86524,55 +86396,10 @@
     "AzureServiceBusTransportUnitTests.ReceiveLivenessSilenceThreshold_DefaultsToFiveMinutesAsync": [
       {
         "sourceFile": "src/Whizbang.Transports.AzureServiceBus/AzureServiceBusOptions.cs",
-        "sourceLine": 349,
+        "sourceLine": 312,
         "sourceSymbol": "ReceiveLivenessSilenceThreshold",
         "sourceType": "Property",
         "linkSource": "XmlTag"
-      }
-    ],
-    "ServiceCollectionExtensionsTests.AddAzureServiceBusTransport_BindsEveryRuntimeKnobFromConfigurationAsync": [
-      {
-        "sourceFile": "src/Whizbang.Transports.AzureServiceBus/AzureServiceBusOptionsPostConfigure.cs",
-        "sourceLine": 20,
-        "sourceSymbol": "AzureServiceBusOptionsPostConfigure",
-        "sourceType": "Class",
-        "linkSource": "XmlTag"
-      },
-      {
-        "sourceFile": "src/Whizbang.Transports.RabbitMQ/ServiceCollectionExtensions.cs",
-        "sourceSymbol": "ServiceCollectionExtensions",
-        "sourceType": "Class",
-        "linkSource": "Convention"
-      }
-    ],
-    "ServiceCollectionExtensionsTests.AddAzureServiceBusTransport_ConfigurationOverridesCodeCallbackAsync": [
-      {
-        "sourceFile": "src/Whizbang.Transports.AzureServiceBus/AzureServiceBusOptionsPostConfigure.cs",
-        "sourceLine": 21,
-        "sourceSymbol": "AzureServiceBusOptionsPostConfigure",
-        "sourceType": "Class",
-        "linkSource": "XmlTag"
-      },
-      {
-        "sourceFile": "src/Whizbang.Transports.RabbitMQ/ServiceCollectionExtensions.cs",
-        "sourceSymbol": "ServiceCollectionExtensions",
-        "sourceType": "Class",
-        "linkSource": "Convention"
-      }
-    ],
-    "ServiceCollectionExtensionsTests.AddAzureServiceBusTransport_AutoProvisionInfrastructure_IsCodeOnlyAsync": [
-      {
-        "sourceFile": "src/Whizbang.Transports.AzureServiceBus/AzureServiceBusOptionsPostConfigure.cs",
-        "sourceLine": 22,
-        "sourceSymbol": "AzureServiceBusOptionsPostConfigure",
-        "sourceType": "Class",
-        "linkSource": "XmlTag"
-      },
-      {
-        "sourceFile": "src/Whizbang.Transports.RabbitMQ/ServiceCollectionExtensions.cs",
-        "sourceSymbol": "ServiceCollectionExtensions",
-        "sourceType": "Class",
-        "linkSource": "Convention"
       }
     ],
     "ISubscriptionTests.ISubscription_InitialState_IsActiveAsync": [
@@ -86739,7 +86566,7 @@
     "SubscriptionNameDerivationTests.DeriveSubscriptionNameWithSubscriberNameMetadataUsesServiceNameAndTopicAsync": [
       {
         "sourceFile": "src/Whizbang.Transports.AzureServiceBus/AzureServiceBusTransport.cs",
-        "sourceLine": 1748,
+        "sourceLine": 1716,
         "sourceSymbol": "_deriveSubscriptionName",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -86748,7 +86575,7 @@
     "SubscriptionNameDerivationTests.DeriveSubscriptionNameWithHashWildcardDoesNotUseAsSubscriptionNameAsync": [
       {
         "sourceFile": "src/Whizbang.Transports.AzureServiceBus/AzureServiceBusTransport.cs",
-        "sourceLine": 1749,
+        "sourceLine": 1717,
         "sourceSymbol": "_deriveSubscriptionName",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -86757,7 +86584,7 @@
     "AzureServiceBusProvisioningPathTests.SubscribeAsync_SubscriberNameMetadata_DerivesSubscriptionNameAsync": [
       {
         "sourceFile": "src/Whizbang.Transports.AzureServiceBus/AzureServiceBusTransport.cs",
-        "sourceLine": 1750,
+        "sourceLine": 1718,
         "sourceSymbol": "_deriveSubscriptionName",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -86766,7 +86593,7 @@
     "AzureServiceBusProvisioningPathTests.SubscribeAsync_TopicAndSubscriptionMissing_CreatesBothAsync": [
       {
         "sourceFile": "src/Whizbang.Transports.AzureServiceBus/AzureServiceBusTransport.cs",
-        "sourceLine": 1816,
+        "sourceLine": 1784,
         "sourceSymbol": "_ensureInfrastructureExistsAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -86775,7 +86602,7 @@
     "AzureServiceBusProvisioningPathTests.SubscribeAsync_TopicCreate409Race_ContinuesToSubscriptionCreationAsync": [
       {
         "sourceFile": "src/Whizbang.Transports.AzureServiceBus/AzureServiceBusTransport.cs",
-        "sourceLine": 1818,
+        "sourceLine": 1786,
         "sourceSymbol": "_ensureInfrastructureExistsAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -86784,7 +86611,7 @@
     "AzureServiceBusProvisioningPathTests.SubscribeAsync_RoutingPatterns_AppliesSqlFilterRuleAsync": [
       {
         "sourceFile": "src/Whizbang.Transports.AzureServiceBus/AzureServiceBusTransport.cs",
-        "sourceLine": 1910,
+        "sourceLine": 1878,
         "sourceSymbol": "_applyRoutingPatternFilterAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -86793,7 +86620,7 @@
     "AzureServiceBusProvisioningPathTests.SubscribeAsync_RoutingPatternWithBareWildcard_TranslatesToPercentAsync": [
       {
         "sourceFile": "src/Whizbang.Transports.AzureServiceBus/AzureServiceBusTransport.cs",
-        "sourceLine": 1911,
+        "sourceLine": 1879,
         "sourceSymbol": "_applyRoutingPatternFilterAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -86802,7 +86629,7 @@
     "AzureServiceBusProvisioningPathTests.SubscribeAsync_RoutingPatternRuleCreationFails_ProceedsWithoutFilterAsync": [
       {
         "sourceFile": "src/Whizbang.Transports.AzureServiceBus/AzureServiceBusTransport.cs",
-        "sourceLine": 1912,
+        "sourceLine": 1880,
         "sourceSymbol": "_applyRoutingPatternFilterAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -86811,7 +86638,7 @@
     "AzureServiceBusTransportUnitTests.PublishAsync_WithAdminClient_EnsuresTopicExistsAsync": [
       {
         "sourceFile": "src/Whizbang.Transports.AzureServiceBus/AzureServiceBusTransport.cs",
-        "sourceLine": 2013,
+        "sourceLine": 1981,
         "sourceSymbol": "_ensureTopicExistsViaAdminAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -86820,7 +86647,7 @@
     "AzureServiceBusTransportUnitTests.PublishAsync_WithAdminClient_TopicAlreadyExists_SkipsCreationAsync": [
       {
         "sourceFile": "src/Whizbang.Transports.AzureServiceBus/AzureServiceBusTransport.cs",
-        "sourceLine": 2014,
+        "sourceLine": 1982,
         "sourceSymbol": "_ensureTopicExistsViaAdminAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -86829,7 +86656,7 @@
     "AzureServiceBusTransportUnitTests.PublishAsync_WithAdminClient_RaceCondition_HandlesGracefullyAsync": [
       {
         "sourceFile": "src/Whizbang.Transports.AzureServiceBus/AzureServiceBusTransport.cs",
-        "sourceLine": 2015,
+        "sourceLine": 1983,
         "sourceSymbol": "_ensureTopicExistsViaAdminAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -87017,7 +86844,7 @@
     "ServiceCollectionExtensionsTests.AddWhizbang_ReturnedBuilder_HasSameServicesAsync": [
       {
         "sourceFile": "src/Whizbang.Transports.AzureServiceBus/ServiceCollectionExtensions.cs",
-        "sourceLine": 17,
+        "sourceLine": 16,
         "sourceSymbol": "ServiceCollectionExtensions",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -87032,7 +86859,7 @@
     "ServiceCollectionExtensionsTests.AddWhizbang_RegistersCoreServices_SuccessfullyAsync": [
       {
         "sourceFile": "src/Whizbang.Transports.AzureServiceBus/ServiceCollectionExtensions.cs",
-        "sourceLine": 18,
+        "sourceLine": 17,
         "sourceSymbol": "ServiceCollectionExtensions",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -117296,62 +117123,6 @@
         "linkSource": "Convention"
       }
     ],
-    "AsbOpsRateSelfCheckTests.ProjectIdleOpsPerSecond_HairTriggerConfiguration_Projects200PerSubscriptionAsync": [
-      {
-        "sourceFile": "src/Whizbang.Transports.AzureServiceBus/AsbOpsRateSelfCheck.cs",
-        "sourceSymbol": "AsbOpsRateSelfCheck",
-        "sourceType": "Class",
-        "linkSource": "Convention"
-      }
-    ],
-    "AsbOpsRateSelfCheckTests.ProjectIdleOpsPerSecond_TurnkeyDefaults_ScaleLinearlyWithSubscriptionsAsync": [
-      {
-        "sourceFile": "src/Whizbang.Transports.AzureServiceBus/AsbOpsRateSelfCheck.cs",
-        "sourceSymbol": "AsbOpsRateSelfCheck",
-        "sourceType": "Class",
-        "linkSource": "Convention"
-      }
-    ],
-    "AsbOpsRateSelfCheckTests.ProjectIdleOpsPerSecond_SessionsDisabled_ProjectsZeroAsync": [
-      {
-        "sourceFile": "src/Whizbang.Transports.AzureServiceBus/AsbOpsRateSelfCheck.cs",
-        "sourceSymbol": "AsbOpsRateSelfCheck",
-        "sourceType": "Class",
-        "linkSource": "Convention"
-      }
-    ],
-    "AsbOpsRateSelfCheckTests.ProjectIdleOpsPerSecond_NoSubscriptions_ProjectsZeroAsync": [
-      {
-        "sourceFile": "src/Whizbang.Transports.AzureServiceBus/AsbOpsRateSelfCheck.cs",
-        "sourceSymbol": "AsbOpsRateSelfCheck",
-        "sourceType": "Class",
-        "linkSource": "Convention"
-      }
-    ],
-    "AsbOpsRateSelfCheckTests.ProjectIdleOpsPerSecond_ZeroIdleTimeout_IsFiniteAndLargeAsync": [
-      {
-        "sourceFile": "src/Whizbang.Transports.AzureServiceBus/AsbOpsRateSelfCheck.cs",
-        "sourceSymbol": "AsbOpsRateSelfCheck",
-        "sourceType": "Class",
-        "linkSource": "Convention"
-      }
-    ],
-    "AsbOpsRateSelfCheckTests.Evaluate_AboveThreshold_ExceedsAsync": [
-      {
-        "sourceFile": "src/Whizbang.Transports.AzureServiceBus/AsbOpsRateSelfCheck.cs",
-        "sourceSymbol": "AsbOpsRateSelfCheck",
-        "sourceType": "Class",
-        "linkSource": "Convention"
-      }
-    ],
-    "AsbOpsRateSelfCheckTests.Evaluate_AtOrBelowThreshold_DoesNotExceedAsync": [
-      {
-        "sourceFile": "src/Whizbang.Transports.AzureServiceBus/AsbOpsRateSelfCheck.cs",
-        "sourceSymbol": "AsbOpsRateSelfCheck",
-        "sourceType": "Class",
-        "linkSource": "Convention"
-      }
-    ],
     "AsbReceiveDecisionMakerTests.Decide_NoEnvelopeTypeProperty_ReturnsDeadLetterAsync": [
       {
         "sourceFile": "src/Whizbang.Transports.AzureServiceBus/AsbReceiveDecisionMaker.cs",
@@ -118313,14 +118084,6 @@
       }
     ],
     "ServiceCollectionExtensionsTests.AddAzureServiceBusTransport_ResolvingAdminClient_ReturnsWrapperAsync": [
-      {
-        "sourceFile": "src/Whizbang.Transports.RabbitMQ/ServiceCollectionExtensions.cs",
-        "sourceSymbol": "ServiceCollectionExtensions",
-        "sourceType": "Class",
-        "linkSource": "Convention"
-      }
-    ],
-    "ServiceCollectionExtensionsTests.AddAzureServiceBusTransport_NoConfigurationRegistered_CallbackAndDefaultsApplyAsync": [
       {
         "sourceFile": "src/Whizbang.Transports.RabbitMQ/ServiceCollectionExtensions.cs",
         "sourceSymbol": "ServiceCollectionExtensions",
@@ -181626,11 +181389,11 @@
     ]
   },
   "metadata": {
-    "generated": "2026-08-19T15:46:14.151Z",
-    "sourceFiles": 1492,
-    "testFiles": 4194,
-    "totalLinks": 12259,
-    "codeSymbols": 1620,
-    "testMethods": 10639
+    "generated": "2026-08-19T16:44:02.961Z",
+    "sourceFiles": 1513,
+    "testFiles": 4169,
+    "totalLinks": 12242,
+    "codeSymbols": 1616,
+    "testMethods": 10626
   }
 }

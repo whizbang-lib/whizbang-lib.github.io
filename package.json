@@ -1,6 +1,6 @@
 {
   "name": "whizbang-site",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "scripts": {
     "ng": "ng",
     "prestart": "node src/scripts/gen-docs-list.mjs && node src/scripts/gen-docs-index.mjs && node src/scripts/gen-docs-index-versioned.mjs && node src/scripts/gen-sitemap.mjs && ./build-search-index.sh",
@@ -29,11 +29,11 @@
     "@angular/platform-browser": "~22.0.8",
     "@angular/platform-browser-dynamic": "~22.0.8",
     "@angular/router": "~22.0.8",
-    "@angular/youtube-player": "^22.1.0",
+    "@angular/youtube-player": "^22.1.1",
     "@primeng/themes": "^21.0.4",
     "fuse.js": "^7.5.0",
     "gray-matter": "^4.0.3",
-    "highlight.js": "^11.11.1",
+    "highlight.js": "^11.11.2",
     "mermaid": "^11.16.1",
     "minisearch": "^7.1.2",
     "ngx-markdown": "^22.0.0",
@@ -44,21 +44,21 @@
     "prismjs": "^1.30.0",
     "rxjs": "~7.8.2",
     "sharp": "0.35.3",
-    "shiki": "^4.4.1",
+    "shiki": "^4.4.3",
     "tslib": "^2.8.1",
     "zone.js": "~0.15.0"
   },
   "devDependencies": {
     "@angular-devkit/build-angular": "^22.0.8",
-    "@angular/cli": "~22.1.2",
+    "@angular/cli": "~22.1.3",
     "@angular/compiler-cli": "~22.0.8",
     "@tailwindcss/postcss": "^4.3.3",
-    "@types/node": "^26.1.2",
+    "@types/node": "^26.2.0",
     "@xenova/transformers": "^2.17.2",
     "autoprefixer": "^10.5.4",
     "katex": "^0.17.0",
     "marked-katex-extension": "^5.1.10",
-    "postcss": "^8.5.23",
+    "postcss": "^8.5.26",
     "tailwindcss": "^4.3.3",
     "typescript": "~6.0.2"
   }
