@@ -1,1 +1,1 @@
-{"SendNotificationReceptorTests.HandleAsync_PublishesNotificationSentEvent_ViaDispatcherAsync":{"o":"passed","d":382,"s":"unit"},"SendNotificationReceptorTests.HandleAsync_SendsNotification_ReturnsNotificationSentEventAsync":{"o":"passed","d":388,"s":"unit"}}
+{"SendNotificationReceptorTests.HandleAsync_PublishesNotificationSentEvent_ViaDispatcherAsync":{"o":"passed","d":360,"s":"unit"},"SendNotificationReceptorTests.HandleAsync_SendsNotification_ReturnsNotificationSentEventAsync":{"o":"passed","d":363,"s":"unit"}}
