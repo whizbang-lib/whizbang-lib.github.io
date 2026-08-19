@@ -1,0 +1,11 @@
+# Generated artifacts — never hand-merge. The `ours` merge driver keeps the current branch's
+# copy on conflict instead of producing conflict markers; the next automated regeneration
+# (test-status sync from the library CI, or `node src/scripts/generate-code-*-map.mjs`)
+# refreshes the content either way. If your git client still reports a conflict here
+# (some hosted merge backends ignore merge drivers), resolve by regenerating — never by
+# hand-merging hunks.
+src/assets/code-docs-map.json merge=ours
+src/assets/code-tests-map.json merge=ours
+src/assets/docs-index.json merge=ours
+src/assets/docs-index-versioned.json merge=ours
+src/assets/docs-nav-tree.json merge=ours
