@@ -1,14 +1,14 @@
 {
   "run": {
-    "runId": "32394179263",
-    "sha": "7ec23551643084790e3444a64823f5326ff4a92b",
+    "runId": "32405634786",
+    "sha": "cc19944f406630aeeb4bc7f0356d973899af3180",
     "branch": "develop",
-    "libraryVersion": "0.965.0-alpha.19",
-    "completedAt": "2026-08-20T17:25:18.719Z"
+    "libraryVersion": "0.965.0-alpha.20",
+    "completedAt": "2026-08-20T19:27:51.743Z"
   },
   "total": {
-    "passed": 17431,
-    "failed": 0,
+    "passed": 17429,
+    "failed": 2,
     "skipped": 9
   },
   "suites": {
@@ -28,8 +28,8 @@
       "skipped": 0
     },
     "rabbitmq": {
-      "passed": 96,
-      "failed": 0,
+      "passed": 94,
+      "failed": 2,
       "skipped": 0
     },
     "servicebus-ecommerce": {
@@ -99,8 +99,8 @@
     },
     "ECommerce.RabbitMQ.Integration.Tests": {
       "file": "ECommerce.RabbitMQ.Integration.Tests.json",
-      "passed": 61,
-      "failed": 0,
+      "passed": 59,
+      "failed": 2,
       "skipped": 0
     },
     "ECommerce.ShippingWorker.Tests": {
