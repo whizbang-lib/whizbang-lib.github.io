@@ -1,14 +1,14 @@
 {
   "run": {
-    "runId": "32415767326",
-    "sha": "6d7d88a67c36254f807183510944fe9665b2e32f",
+    "runId": "32417257733",
+    "sha": "173d92cea1fec33a2da7da69626e30208217417e",
     "branch": "develop",
-    "libraryVersion": "0.965.0-alpha.21",
-    "completedAt": "2026-08-20T21:22:54.194Z"
+    "libraryVersion": "0.965.0-alpha.22",
+    "completedAt": "2026-08-20T22:23:43.186Z"
   },
   "total": {
-    "passed": 17432,
-    "failed": 0,
+    "passed": 17973,
+    "failed": 1,
     "skipped": 9
   },
   "suites": {
@@ -28,7 +28,7 @@
       "skipped": 0
     },
     "rabbitmq": {
-      "passed": 97,
+      "passed": 109,
       "failed": 0,
       "skipped": 0
     },
@@ -38,12 +38,12 @@
       "skipped": 0
     },
     "servicebus-whizbang": {
-      "passed": 76,
-      "failed": 0,
+      "passed": 90,
+      "failed": 1,
       "skipped": 1
     },
     "unit": {
-      "passed": 14338,
+      "passed": 14853,
       "failed": 0,
       "skipped": 8
     }
@@ -111,7 +111,7 @@
     },
     "Whizbang.Core.Tests": {
       "file": "Whizbang.Core.Tests.json",
-      "passed": 9459,
+      "passed": 9821,
       "failed": 0,
       "skipped": 0
     },
@@ -153,7 +153,7 @@
     },
     "Whizbang.Generators.Tests": {
       "file": "Whizbang.Generators.Tests.json",
-      "passed": 1479,
+      "passed": 1502,
       "failed": 0,
       "skipped": 0
     },
@@ -237,13 +237,13 @@
     },
     "Whizbang.Transports.AzureServiceBus.Integration.Tests": {
       "file": "Whizbang.Transports.AzureServiceBus.Integration.Tests.json",
-      "passed": 76,
-      "failed": 0,
+      "passed": 90,
+      "failed": 1,
       "skipped": 1
     },
     "Whizbang.Transports.AzureServiceBus.Tests": {
       "file": "Whizbang.Transports.AzureServiceBus.Tests.json",
-      "passed": 435,
+      "passed": 508,
       "failed": 0,
       "skipped": 0
     },
@@ -267,13 +267,13 @@
     },
     "Whizbang.Transports.RabbitMQ.Integration.Tests": {
       "file": "Whizbang.Transports.RabbitMQ.Integration.Tests.json",
-      "passed": 35,
+      "passed": 47,
       "failed": 0,
       "skipped": 0
     },
     "Whizbang.Transports.RabbitMQ.Tests": {
       "file": "Whizbang.Transports.RabbitMQ.Tests.json",
-      "passed": 204,
+      "passed": 261,
       "failed": 0,
       "skipped": 0
     },
