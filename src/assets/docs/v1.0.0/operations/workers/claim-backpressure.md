@@ -1,7 +1,7 @@
 ---
 title: Claim Backpressure — Bounding Outstanding Work
 pageType: concept
-verifiedAgainstCommit: HEAD
+verifiedAgainstCommit: d7d70e528bd84569e4c3bfc3034a71956c6162f9
 verifiedDate: 2026-08-23
 version: 1.0.0
 category: Workers
@@ -142,7 +142,7 @@ Count rows whose abandonment marker was stamped after a known mark, bucketed by 
 lease-expiry timestamp, and **exclude the current minute** — a still-filling bucket reads as a
 decline that is not real:
 
-```sql
+```sql{title="Abandoned-attempt rate by minute" description="Counts rows whose abandonment marker was stamped after a known mark, bucketed by the embedded lease-expiry timestamp and excluding the still-filling current minute." category="Operations" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Backpressure", "Diagnostics"]}
 SELECT to_char(ts,'HH24:MI') AS minute, count(*)
 FROM (
   SELECT (substring(error from 'expired at ([0-9-]+ [0-9]{2}:[0-9]{2}:[0-9]{2})'))::timestamp AS ts
