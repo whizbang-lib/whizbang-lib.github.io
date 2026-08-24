@@ -1,4 +1,16 @@
 {
+  "IRabbitMQNamespaceConnectionFactory": {
+    "file": "src/Whizbang.Transports.RabbitMQ/IRabbitMQNamespaceConnectionFactory.cs",
+    "line": 26,
+    "symbol": "IRabbitMQNamespaceConnectionFactory",
+    "docs": "messaging/transports/rabbitmq#transport-namespaces"
+  },
+  "RabbitMQBacklogPeek": {
+    "file": "src/Whizbang.Transports.RabbitMQ/RabbitMQBacklogPeek.cs",
+    "line": 30,
+    "symbol": "RabbitMQBacklogPeek",
+    "docs": "operations/observability/managed-resource-health#backlog-age"
+  },
   "RabbitMQChannelPool": {
     "file": "src/Whizbang.Transports.RabbitMQ/RabbitMQChannelPool.cs",
     "line": 12,
@@ -11,6 +23,12 @@
     "symbol": "RabbitMQConnectionRetry",
     "docs": "messaging/transports/rabbitmq#connection-retry"
   },
+  "RabbitMQEntityProvisioning": {
+    "file": "src/Whizbang.Transports.RabbitMQ/RabbitMQEntityProvisioning.cs",
+    "line": 13,
+    "symbol": "RabbitMQEntityProvisioning",
+    "docs": "fundamentals/dispatcher/routing#topology-manifest"
+  },
   "RabbitMQHealthCheck": {
     "file": "src/Whizbang.Transports.RabbitMQ/RabbitMQHealthCheck.cs",
     "line": 11,
@@ -19,69 +37,81 @@
   },
   "RabbitMQInfrastructureProvisioner": {
     "file": "src/Whizbang.Transports.RabbitMQ/RabbitMQInfrastructureProvisioner.cs",
-    "line": 10,
+    "line": 15,
     "symbol": "RabbitMQInfrastructureProvisioner",
     "docs": "fundamentals/dispatcher/routing#domain-topic-provisioning"
   },
+  "RabbitMQNamespaceResources": {
+    "file": "src/Whizbang.Transports.RabbitMQ/RabbitMQNamespaceResources.cs",
+    "line": 20,
+    "symbol": "RabbitMQNamespaceResources",
+    "docs": "messaging/transports/rabbitmq#transport-namespaces"
+  },
   "RabbitMQOptions": {
     "file": "src/Whizbang.Transports.RabbitMQ/RabbitMQOptions.cs",
-    "line": 6,
+    "line": 16,
     "symbol": "RabbitMQOptions",
     "docs": "messaging/transports/rabbitmq"
   },
   "MaxChannels": {
     "file": "src/Whizbang.Transports.RabbitMQ/RabbitMQOptions.cs",
-    "line": 28,
+    "line": 38,
     "symbol": "MaxChannels",
     "docs": "messaging/transports/rabbitmq#channels"
   },
   "MaxDeliveryAttempts": {
     "file": "src/Whizbang.Transports.RabbitMQ/RabbitMQOptions.cs",
-    "line": 50,
+    "line": 60,
     "symbol": "MaxDeliveryAttempts",
     "docs": "messaging/transports/rabbitmq#dead-lettering"
   },
   "PrefetchCount": {
     "file": "src/Whizbang.Transports.RabbitMQ/RabbitMQOptions.cs",
-    "line": 89,
+    "line": 99,
     "symbol": "PrefetchCount",
     "docs": "messaging/transports/rabbitmq#prefetch"
   },
   "EnableSingleActiveConsumer": {
     "file": "src/Whizbang.Transports.RabbitMQ/RabbitMQOptions.cs",
-    "line": 109,
+    "line": 119,
     "symbol": "EnableSingleActiveConsumer",
     "docs": "messaging/transports/rabbitmq#single-active-consumer"
   },
   "InitialRetryAttempts": {
     "file": "src/Whizbang.Transports.RabbitMQ/RabbitMQOptions.cs",
-    "line": 126,
+    "line": 136,
     "symbol": "InitialRetryAttempts",
     "docs": "messaging/transports/rabbitmq#connection-retry"
   },
   "InitialRetryDelay": {
     "file": "src/Whizbang.Transports.RabbitMQ/RabbitMQOptions.cs",
-    "line": 136,
+    "line": 146,
     "symbol": "InitialRetryDelay",
     "docs": "messaging/transports/rabbitmq#connection-retry"
   },
   "MaxRetryDelay": {
     "file": "src/Whizbang.Transports.RabbitMQ/RabbitMQOptions.cs",
-    "line": 147,
+    "line": 157,
     "symbol": "MaxRetryDelay",
     "docs": "messaging/transports/rabbitmq#connection-retry"
   },
   "BackoffMultiplier": {
     "file": "src/Whizbang.Transports.RabbitMQ/RabbitMQOptions.cs",
-    "line": 158,
+    "line": 168,
     "symbol": "BackoffMultiplier",
     "docs": "messaging/transports/rabbitmq#connection-retry"
   },
   "RetryIndefinitely": {
     "file": "src/Whizbang.Transports.RabbitMQ/RabbitMQOptions.cs",
-    "line": 169,
+    "line": 179,
     "symbol": "RetryIndefinitely",
     "docs": "messaging/transports/rabbitmq#connection-retry"
+  },
+  "RabbitMQPoisonOptionsPostConfigure": {
+    "file": "src/Whizbang.Transports.RabbitMQ/RabbitMQPoisonOptionsPostConfigure.cs",
+    "line": 17,
+    "symbol": "RabbitMQPoisonOptionsPostConfigure",
+    "docs": "fundamentals/dispatcher/routing#poison-messages"
   },
   "RabbitMQReadinessCheck": {
     "file": "src/Whizbang.Transports.RabbitMQ/RabbitMQReadinessCheck.cs",
@@ -103,15 +133,27 @@
   },
   "RabbitMqDeadLetterDrainer": {
     "file": "src/Whizbang.Transports.RabbitMQ/RabbitMqDeadLetterDrainer.cs",
-    "line": 28,
+    "line": 27,
     "symbol": "RabbitMqDeadLetterDrainer",
+    "docs": "operations/dead-letter-queue/transport-recovery"
+  },
+  "RabbitMqFleetDeadLetterDrainer": {
+    "file": "src/Whizbang.Transports.RabbitMQ/RabbitMqFleetDeadLetterDrainer.cs",
+    "line": 22,
+    "symbol": "RabbitMqFleetDeadLetterDrainer",
     "docs": "operations/dead-letter-queue/transport-recovery"
   },
   "ServiceCollectionExtensions": {
     "file": "src/Whizbang.Transports.RabbitMQ/ServiceCollectionExtensions.cs",
-    "line": 17,
+    "line": 18,
     "symbol": "ServiceCollectionExtensions",
     "docs": "messaging/transports/rabbitmq"
+  },
+  "AddRabbitMQTransport": {
+    "file": "src/Whizbang.Transports.RabbitMQ/ServiceCollectionExtensions.cs",
+    "line": 78,
+    "symbol": "AddRabbitMQTransport",
+    "docs": "messaging/transports/rabbitmq#transport-namespaces"
   },
   "for": {
     "file": "src/Whizbang.Transports.Mutations/Base/MutationEndpointBase.cs",
@@ -251,17 +293,65 @@
     "symbol": "StartupStatusEndpoint",
     "docs": "operations/startup/startup-status"
   },
+  "AsbAcceptorGovernor": {
+    "file": "src/Whizbang.Transports.AzureServiceBus/AsbAcceptorGovernor.cs",
+    "line": 28,
+    "symbol": "AsbAcceptorGovernor",
+    "docs": "messaging/transports/azure-service-bus#adaptive-acceptors"
+  },
+  "AsbBacklogPeek": {
+    "file": "src/Whizbang.Transports.AzureServiceBus/AsbBacklogPeek.cs",
+    "line": 31,
+    "symbol": "AsbBacklogPeek",
+    "docs": "operations/observability/managed-resource-health#backlog-age"
+  },
   "AsbMessageHeaderReader": {
     "file": "src/Whizbang.Transports.AzureServiceBus/AsbMessageHeaderReader.cs",
     "line": 25,
     "symbol": "AsbMessageHeaderReader",
     "docs": "fundamentals/transport/asb-receive"
   },
+  "AsbOpsRateHealthSource": {
+    "file": "src/Whizbang.Transports.AzureServiceBus/AsbOpsRateHealthSource.cs",
+    "line": 23,
+    "symbol": "AsbOpsRateHealthSource",
+    "docs": "messaging/transports/azure-service-bus#ops-rate-self-check"
+  },
+  "struct": {
+    "file": "src/Whizbang.Transports.AzureServiceBus/AsbOpsRateSelfCheck.cs",
+    "line": 8,
+    "symbol": "struct",
+    "docs": "messaging/transports/azure-service-bus#ops-rate-self-check"
+  },
+  "AsbOpsRateSelfCheck": {
+    "file": "src/Whizbang.Transports.AzureServiceBus/AsbOpsRateSelfCheck.cs",
+    "line": 31,
+    "symbol": "AsbOpsRateSelfCheck",
+    "docs": "messaging/transports/azure-service-bus#ops-rate-self-check"
+  },
+  "AsbPoisonOptionsPostConfigure": {
+    "file": "src/Whizbang.Transports.AzureServiceBus/AsbPoisonOptionsPostConfigure.cs",
+    "line": 16,
+    "symbol": "AsbPoisonOptionsPostConfigure",
+    "docs": "fundamentals/dispatcher/routing#poison-messages"
+  },
+  "AsbSessionKey": {
+    "file": "src/Whizbang.Transports.AzureServiceBus/AsbSessionKey.cs",
+    "line": 47,
+    "symbol": "AsbSessionKey",
+    "docs": "transports/azure-service-bus"
+  },
   "AsbThrottleBackoffPolicy": {
     "file": "src/Whizbang.Transports.AzureServiceBus/AsbThrottleBackoffPolicy.cs",
     "line": 18,
     "symbol": "AsbThrottleBackoffPolicy",
     "docs": "transports/azure-service-bus"
+  },
+  "AsbTrafficClassOpsRateSource": {
+    "file": "src/Whizbang.Transports.AzureServiceBus/AsbTrafficClassOpsRateSource.cs",
+    "line": 18,
+    "symbol": "AsbTrafficClassOpsRateSource",
+    "docs": "operations/observability/metrics#traffic-classes"
   },
   "AzureServiceBusConnectionRetry": {
     "file": "src/Whizbang.Transports.AzureServiceBus/AzureServiceBusConnectionRetry.cs",
@@ -271,8 +361,14 @@
   },
   "AzureServiceBusDeadLetterDrainer": {
     "file": "src/Whizbang.Transports.AzureServiceBus/AzureServiceBusDeadLetterDrainer.cs",
-    "line": 30,
+    "line": 26,
     "symbol": "AzureServiceBusDeadLetterDrainer",
+    "docs": "operations/dead-letter-queue/transport-recovery"
+  },
+  "AzureServiceBusFleetDeadLetterDrainer": {
+    "file": "src/Whizbang.Transports.AzureServiceBus/AzureServiceBusFleetDeadLetterDrainer.cs",
+    "line": 21,
+    "symbol": "AzureServiceBusFleetDeadLetterDrainer",
     "docs": "operations/dead-letter-queue/transport-recovery"
   },
   "AutoProvisionInfrastructure": {
@@ -313,39 +409,99 @@
   },
   "MaxConcurrentSessions": {
     "file": "src/Whizbang.Transports.AzureServiceBus/AzureServiceBusOptions.cs",
-    "line": 208,
+    "line": 216,
     "symbol": "MaxConcurrentSessions",
     "docs": "messaging/transports/azure-service-bus#sessions"
   },
   "SessionIdleTimeout": {
     "file": "src/Whizbang.Transports.AzureServiceBus/AzureServiceBusOptions.cs",
-    "line": 232,
+    "line": 246,
     "symbol": "SessionIdleTimeout",
     "docs": "messaging/transports/azure-service-bus#session-idle-timeout"
   },
+  "EnableAdaptiveAcceptors": {
+    "file": "src/Whizbang.Transports.AzureServiceBus/AzureServiceBusOptions.cs",
+    "line": 299,
+    "symbol": "EnableAdaptiveAcceptors",
+    "docs": "messaging/transports/azure-service-bus#adaptive-acceptors"
+  },
+  "AcceptorFloor": {
+    "file": "src/Whizbang.Transports.AzureServiceBus/AzureServiceBusOptions.cs",
+    "line": 311,
+    "symbol": "AcceptorFloor",
+    "docs": "messaging/transports/azure-service-bus#adaptive-acceptors"
+  },
+  "AcceptorEvaluationInterval": {
+    "file": "src/Whizbang.Transports.AzureServiceBus/AzureServiceBusOptions.cs",
+    "line": 322,
+    "symbol": "AcceptorEvaluationInterval",
+    "docs": "messaging/transports/azure-service-bus#adaptive-acceptors"
+  },
+  "EnableOpsRateSelfCheck": {
+    "file": "src/Whizbang.Transports.AzureServiceBus/AzureServiceBusOptions.cs",
+    "line": 339,
+    "symbol": "EnableOpsRateSelfCheck",
+    "docs": "messaging/transports/azure-service-bus#ops-rate-self-check"
+  },
+  "OpsRateWarningThresholdPerSecond": {
+    "file": "src/Whizbang.Transports.AzureServiceBus/AzureServiceBusOptions.cs",
+    "line": 353,
+    "symbol": "OpsRateWarningThresholdPerSecond",
+    "docs": "messaging/transports/azure-service-bus#ops-rate-self-check"
+  },
   "EnableReceiveLivenessWatchdog": {
     "file": "src/Whizbang.Transports.AzureServiceBus/AzureServiceBusOptions.cs",
-    "line": 290,
+    "line": 387,
     "symbol": "EnableReceiveLivenessWatchdog",
     "docs": "messaging/transports/azure-service-bus#receive-liveness"
   },
   "ReceiveLivenessProbeInterval": {
     "file": "src/Whizbang.Transports.AzureServiceBus/AzureServiceBusOptions.cs",
-    "line": 300,
+    "line": 397,
     "symbol": "ReceiveLivenessProbeInterval",
     "docs": "messaging/transports/azure-service-bus#receive-liveness"
   },
   "ReceiveLivenessSilenceThreshold": {
     "file": "src/Whizbang.Transports.AzureServiceBus/AzureServiceBusOptions.cs",
-    "line": 311,
+    "line": 408,
     "symbol": "ReceiveLivenessSilenceThreshold",
     "docs": "messaging/transports/azure-service-bus#receive-liveness"
   },
+  "AzureServiceBusOptionsPostConfigure": {
+    "file": "src/Whizbang.Transports.AzureServiceBus/AzureServiceBusOptionsPostConfigure.cs",
+    "line": 19,
+    "symbol": "AzureServiceBusOptionsPostConfigure",
+    "docs": "messaging/transports/azure-service-bus#configuration-options"
+  },
+  "_createGovernedSessionProcessor": {
+    "file": "src/Whizbang.Transports.AzureServiceBus/AzureServiceBusTransport.cs",
+    "line": 962,
+    "symbol": "_createGovernedSessionProcessor",
+    "docs": "messaging/transports/azure-service-bus#adaptive-acceptors"
+  },
+  "_runIdleOpsRateSelfCheck": {
+    "file": "src/Whizbang.Transports.AzureServiceBus/AzureServiceBusTransport.cs",
+    "line": 1114,
+    "symbol": "_runIdleOpsRateSelfCheck",
+    "docs": "messaging/transports/azure-service-bus#ops-rate-self-check"
+  },
+  "_reevaluateIdleOpsProjection": {
+    "file": "src/Whizbang.Transports.AzureServiceBus/AzureServiceBusTransport.cs",
+    "line": 1129,
+    "symbol": "_reevaluateIdleOpsProjection",
+    "docs": "messaging/transports/azure-service-bus#ops-rate-self-check"
+  },
   "_ensureTopicExistsViaAdminAsync": {
     "file": "src/Whizbang.Transports.AzureServiceBus/AzureServiceBusTransport.cs",
-    "line": 1980,
+    "line": 2354,
     "symbol": "_ensureTopicExistsViaAdminAsync",
     "docs": "messaging/transports/azure-service-bus#publish-auto-provisioning"
+  },
+  "IServiceBusNamespaceClientFactory": {
+    "file": "src/Whizbang.Transports.AzureServiceBus/IServiceBusNamespaceClientFactory.cs",
+    "line": 19,
+    "symbol": "IServiceBusNamespaceClientFactory",
+    "docs": "messaging/transports/azure-service-bus#transport-namespaces"
   },
   "ReceiveLivenessWatchdog": {
     "file": "src/Whizbang.Transports.AzureServiceBus/ReceiveLivenessWatchdog.cs",
@@ -359,9 +515,15 @@
     "symbol": "ServiceBusAdminClientWrapper",
     "docs": "messaging/transports/azure-service-bus#admin-client"
   },
+  "ServiceBusEntityProvisioning": {
+    "file": "src/Whizbang.Transports.AzureServiceBus/ServiceBusEntityProvisioning.cs",
+    "line": 13,
+    "symbol": "ServiceBusEntityProvisioning",
+    "docs": "fundamentals/dispatcher/routing#topology-manifest"
+  },
   "ServiceBusInfrastructureProvisioner": {
     "file": "src/Whizbang.Transports.AzureServiceBus/ServiceBusInfrastructureProvisioner.cs",
-    "line": 11,
+    "line": 14,
     "symbol": "ServiceBusInfrastructureProvisioner",
     "docs": "fundamentals/dispatcher/routing#domain-topic-provisioning"
   },
@@ -370,6 +532,18 @@
     "line": 13,
     "symbol": "ServiceBusSubscriptionNameHelper",
     "docs": "messaging/transports/azure-service-bus#subscription-naming"
+  },
+  "AddAzureServiceBusTransport": {
+    "file": "src/Whizbang.Transports.AzureServiceBus/ServiceCollectionExtensions.cs",
+    "line": 77,
+    "symbol": "AddAzureServiceBusTransport",
+    "docs": "messaging/transports/azure-service-bus#transport-namespaces"
+  },
+  "AddAzureServiceBusProvisioner": {
+    "file": "src/Whizbang.Transports.AzureServiceBus/ServiceCollectionExtensions.cs",
+    "line": 477,
+    "symbol": "AddAzureServiceBusProvisioner",
+    "docs": "messaging/transports/azure-service-bus#transport-namespaces"
   },
   "SessionOccupancyGovernor": {
     "file": "src/Whizbang.Transports.AzureServiceBus/SessionOccupancyGovernor.cs",
@@ -869,11 +1043,23 @@
     "symbol": "SagaRecoveryReceptorShapes",
     "docs": "fundamentals/sagas/completion-orchestration"
   },
+  "CommandOwnershipAnalyzer": {
+    "file": "src/Whizbang.Generators/Analyzers/CommandOwnershipAnalyzer.cs",
+    "line": 29,
+    "symbol": "CommandOwnershipAnalyzer",
+    "docs": "fundamentals/dispatcher/routing#ownership-drift"
+  },
   "MessageTagParameterAnalyzer": {
     "file": "src/Whizbang.Generators/Analyzers/MessageTagParameterAnalyzer.cs",
     "line": 24,
     "symbol": "MessageTagParameterAnalyzer",
     "docs": "operations/diagnostics/whiz090"
+  },
+  "MintedCompositeConstructionAnalyzer": {
+    "file": "src/Whizbang.Generators/Analyzers/MintedCompositeConstructionAnalyzer.cs",
+    "line": 28,
+    "symbol": "MintedCompositeConstructionAnalyzer",
+    "docs": "fundamentals/messaging/composite-events#minting"
   },
   "PerspectiveModelConsistencyAnalyzer": {
     "file": "src/Whizbang.Generators/Analyzers/PerspectiveModelConsistencyAnalyzer.cs",
@@ -952,6 +1138,12 @@
     "line": 10,
     "symbol": "DutyLockKey",
     "docs": "operations/startup/capabilities-and-duties"
+  },
+  "InboxRedeliveryObservationSql": {
+    "file": "src/Whizbang.Data.Postgres/InboxRedeliveryObservationSql.cs",
+    "line": 18,
+    "symbol": "InboxRedeliveryObservationSql",
+    "docs": "fundamentals/dispatcher/routing#poison-messages"
   },
   "MigrationObjectSet": {
     "file": "src/Whizbang.Data.Postgres/MigrationObjectExtractor.cs",
@@ -1925,6 +2117,18 @@
     "symbol": "WhizbangIdServiceCollectionExtensions",
     "docs": "fundamentals/identity/whizbang-ids"
   },
+  "AdaptiveClaimWindow": {
+    "file": "src/Whizbang.Core/Workers/AdaptiveClaimWindow.cs",
+    "line": 38,
+    "symbol": "AdaptiveClaimWindow",
+    "docs": "fundamentals/work-coordinator/batched-flushers"
+  },
+  "AdaptiveOutstandingBudget": {
+    "file": "src/Whizbang.Core/Workers/AdaptiveOutstandingBudget.cs",
+    "line": 34,
+    "symbol": "AdaptiveOutstandingBudget",
+    "docs": "operations/workers/claim-backpressure"
+  },
   "BackupTickCoordinator": {
     "file": "src/Whizbang.Core/Workers/BackupTickCoordinator.cs",
     "line": 34,
@@ -1963,13 +2167,13 @@
   },
   "ClaimWorker": {
     "file": "src/Whizbang.Core/Workers/ClaimWorker.cs",
-    "line": 21,
+    "line": 22,
     "symbol": "ClaimWorker",
     "docs": "fundamentals/work-coordinator/claim-loop"
   },
   "ClaimWorkerOptions": {
     "file": "src/Whizbang.Core/Workers/ClaimWorker.cs",
-    "line": 573,
+    "line": 832,
     "symbol": "ClaimWorkerOptions",
     "docs": "fundamentals/work-coordinator/configuration-reference"
   },
@@ -2125,19 +2329,19 @@
   },
   "InboxDispatchWorker": {
     "file": "src/Whizbang.Core/Workers/InboxDispatchWorker.cs",
-    "line": 50,
+    "line": 51,
     "symbol": "InboxDispatchWorker",
     "docs": "fundamentals/work-coordinator/inbox-dispatch"
   },
   "InboxDispatchWorkerOptions": {
     "file": "src/Whizbang.Core/Workers/InboxDispatchWorker.cs",
-    "line": 904,
+    "line": 915,
     "symbol": "InboxDispatchWorkerOptions",
     "docs": "fundamentals/work-coordinator/configuration-reference"
   },
   "SecurityContextTimeoutSeconds": {
     "file": "src/Whizbang.Core/Workers/InboxDispatchWorker.cs",
-    "line": 956,
+    "line": 967,
     "symbol": "SecurityContextTimeoutSeconds",
     "docs": "operations/dead-letter-queue/internal-dlq"
   },
@@ -2371,7 +2575,7 @@
   },
   "OutboxPublishWorkerOptions": {
     "file": "src/Whizbang.Core/Workers/OutboxPublishWorker.cs",
-    "line": 607,
+    "line": 622,
     "symbol": "OutboxPublishWorkerOptions",
     "docs": "fundamentals/work-coordinator/configuration-reference"
   },
@@ -2413,37 +2617,37 @@
   },
   "RequestImmediatePoll": {
     "file": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-    "line": 318,
+    "line": 324,
     "symbol": "RequestImmediatePoll",
     "docs": "operations/workers/perspective-worker#immediate-poll"
   },
   "_scanAndRepairRewindsOnStartupAsync": {
     "file": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-    "line": 780,
+    "line": 805,
     "symbol": "_scanAndRepairRewindsOnStartupAsync",
     "docs": "fundamentals/perspectives/rewind#startup-scan"
   },
   "ProcessChannelBatchAsync": {
     "file": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-    "line": 851,
+    "line": 876,
     "symbol": "ProcessChannelBatchAsync",
     "docs": "fundamentals/work-coordinator/claim-loop"
   },
   "_processDrainModeStreamsAsync": {
     "file": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-    "line": 1307,
+    "line": 1339,
     "symbol": "_processDrainModeStreamsAsync",
     "docs": "fundamentals/perspectives/drain-mode"
   },
   "PerspectiveStartupScanLog": {
     "file": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-    "line": 4309,
+    "line": 4402,
     "symbol": "PerspectiveStartupScanLog",
     "docs": "fundamentals/perspectives/rewind#startup-scan"
   },
   "DrainBatcher": {
     "file": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-    "line": 4517,
+    "line": 4610,
     "symbol": "DrainBatcher",
     "docs": "fundamentals/perspectives/drain-mode#sliding-window"
   },
@@ -2641,25 +2845,25 @@
   },
   "_handleMessageBatchAsync": {
     "file": "src/Whizbang.Core/Workers/TransportConsumerWorker.cs",
-    "line": 449,
+    "line": 481,
     "symbol": "_handleMessageBatchAsync",
     "docs": "messaging/transports/transport-consumer#batch-handler"
   },
   "_shouldDiscardForeignTarget": {
     "file": "src/Whizbang.Core/Workers/TransportConsumerWorker.cs",
-    "line": 702,
+    "line": 870,
     "symbol": "_shouldDiscardForeignTarget",
     "docs": "fundamentals/messaging/directed-messages"
   },
   "at": {
     "file": "src/Whizbang.Core/Workers/TransportConsumerWorker.cs",
-    "line": 1087,
+    "line": 1255,
     "symbol": "at",
     "docs": "fundamentals/messaging/directed-messages"
   },
   "_isKnownEventType": {
     "file": "src/Whizbang.Core/Workers/TransportConsumerWorker.cs",
-    "line": 1160,
+    "line": 1328,
     "symbol": "_isKnownEventType",
     "docs": "docs/transport-routing-architecture.md#transport-echo-suppression"
   },
@@ -2671,13 +2875,13 @@
   },
   "TransportDeadLetterDrainWorkerOptions": {
     "file": "src/Whizbang.Core/Workers/TransportDeadLetterDrainWorker.cs",
-    "line": 168,
+    "line": 179,
     "symbol": "TransportDeadLetterDrainWorkerOptions",
     "docs": "operations/dead-letter-queue/transport-recovery"
   },
   "messages": {
     "file": "src/Whizbang.Core/Workers/TransportPublishStrategy.cs",
-    "line": 143,
+    "line": 159,
     "symbol": "messages",
     "docs": "fundamentals/dispatcher/message-cascade#event-store-only"
   },
@@ -2686,6 +2890,12 @@
     "line": 37,
     "symbol": "WhizbangPinnedPoolOptions",
     "docs": "fundamentals/workers/pinned-connection-pool"
+  },
+  "WorkCompletionMeter": {
+    "file": "src/Whizbang.Core/Workers/WorkCompletionMeter.cs",
+    "line": 28,
+    "symbol": "WorkCompletionMeter",
+    "docs": "operations/workers/claim-backpressure"
   },
   "WorkProcessingStartedHandler": {
     "file": "src/Whizbang.Core/Workers/WorkerEvents.cs",
@@ -2789,17 +2999,59 @@
     "symbol": "StreamIdGuard",
     "docs": "fundamentals/events/stream-id#validation"
   },
+  "present": {
+    "file": "src/Whizbang.Core/Transports/BrokerDeadLetterImport.cs",
+    "line": 12,
+    "symbol": "present",
+    "docs": "operations/dead-letter-queue/transport-recovery"
+  },
   "BulkPublishItemResult": {
     "file": "src/Whizbang.Core/Transports/BulkPublish.cs",
     "line": 89,
     "symbol": "BulkPublishItemResult",
     "docs": "messaging/transports/transports"
   },
+  "CompositeInfrastructureProvisioner": {
+    "file": "src/Whizbang.Core/Transports/CompositeInfrastructureProvisioner.cs",
+    "line": 28,
+    "symbol": "CompositeInfrastructureProvisioner",
+    "docs": "messaging/transports/transports#transport-namespaces"
+  },
+  "CompositeSubscription": {
+    "file": "src/Whizbang.Core/Transports/CompositeSubscription.cs",
+    "line": 19,
+    "symbol": "CompositeSubscription",
+    "docs": "messaging/transports/transports#transport-namespaces"
+  },
+  "ControlMessageTtl": {
+    "file": "src/Whizbang.Core/Transports/ControlMessageTtl.cs",
+    "line": 29,
+    "symbol": "ControlMessageTtl",
+    "docs": "fundamentals/dispatcher/routing#control-class"
+  },
   "ControlPlaneDestination": {
     "file": "src/Whizbang.Core/Transports/ControlPlaneDestination.cs",
     "line": 12,
     "symbol": "ControlPlaneDestination",
     "docs": "resilience/stream-integrity"
+  },
+  "TrafficClasses": {
+    "file": "src/Whizbang.Core/Transports/IBacklogPeek.cs",
+    "line": 39,
+    "symbol": "TrafficClasses",
+    "docs": "operations/observability/managed-resource-health#backlog-age"
+  },
+  "IBacklogPeek": {
+    "file": "src/Whizbang.Core/Transports/IBacklogPeek.cs",
+    "line": 58,
+    "symbol": "IBacklogPeek",
+    "docs": "operations/observability/managed-resource-health#backlog-age"
+  },
+  "ProvisionManifestAsync": {
+    "file": "src/Whizbang.Core/Transports/IInfrastructureProvisioner.cs",
+    "line": 81,
+    "symbol": "ProvisionManifestAsync",
+    "docs": "fundamentals/dispatcher/routing#topology-manifest"
   },
   "IMessageSerializer": {
     "file": "src/Whizbang.Core/Transports/IMessageSerializer.cs",
@@ -2813,11 +3065,11 @@
     "symbol": "ISubscription",
     "docs": "messaging/transports/transports"
   },
-  "struct": {
-    "file": "src/Whizbang.Core/Transports/ITransport.cs",
-    "line": 17,
-    "symbol": "struct",
-    "docs": "messaging/transports/transports#transport-message"
+  "ITrafficClassOpsRateSource": {
+    "file": "src/Whizbang.Core/Transports/ITrafficClassOpsRateSource.cs",
+    "line": 25,
+    "symbol": "ITrafficClassOpsRateSource",
+    "docs": "operations/observability/metrics#traffic-classes"
   },
   "ITransport": {
     "file": "src/Whizbang.Core/Transports/ITransport.cs",
@@ -2855,11 +3107,35 @@
     "symbol": "ITransportWithRecovery",
     "docs": "messaging/transports/transport-consumer#subscription-resilience"
   },
+  "NamespaceRoutingTransport": {
+    "file": "src/Whizbang.Core/Transports/NamespaceRoutingTransport.cs",
+    "line": 44,
+    "symbol": "NamespaceRoutingTransport",
+    "docs": "messaging/transports/transports#transport-namespaces"
+  },
+  "TransportNamespaceConnectionStrings": {
+    "file": "src/Whizbang.Core/Transports/TransportNamespaceConnectionStrings.cs",
+    "line": 41,
+    "symbol": "TransportNamespaceConnectionStrings",
+    "docs": "messaging/transports/transports#transport-namespaces"
+  },
+  "TransportNamespaces": {
+    "file": "src/Whizbang.Core/Transports/TransportNamespaces.cs",
+    "line": 15,
+    "symbol": "TransportNamespaces",
+    "docs": "messaging/transports/transports#transport-namespaces"
+  },
   "TransportOptions": {
     "file": "src/Whizbang.Core/Transports/TransportOptions.cs",
     "line": 15,
     "symbol": "TransportOptions",
     "docs": "messaging/transports/transport-options"
+  },
+  "diagnostic": {
+    "file": "src/Whizbang.Core/Transports/UnroutableDestinationException.cs",
+    "line": 18,
+    "symbol": "diagnostic",
+    "docs": "fundamentals/dispatcher/routing#namespace-outbox"
   },
   "TraceComponents": {
     "file": "src/Whizbang.Core/Tracing/TraceComponents.cs",
@@ -3019,7 +3295,7 @@
   },
   "CoalesceFoldBatch": {
     "file": "src/Whizbang.Core/Tags/CoalesceFoldBatch.cs",
-    "line": 10,
+    "line": 11,
     "symbol": "CoalesceFoldBatch",
     "docs": "fundamentals/messages/message-tags#coalescing"
   },
@@ -3031,9 +3307,15 @@
   },
   "CoalescePolicyOptions": {
     "file": "src/Whizbang.Core/Tags/CoalescePolicyOptions.cs",
-    "line": 24,
+    "line": 25,
     "symbol": "CoalescePolicyOptions",
     "docs": "fundamentals/messages/message-tags#coalescing"
+  },
+  "ControlClassResolver": {
+    "file": "src/Whizbang.Core/Tags/ControlClassResolver.cs",
+    "line": 29,
+    "symbol": "ControlClassResolver",
+    "docs": "fundamentals/messages/message-tags#system-tags"
   },
   "IMessageTagHookDispatcher": {
     "file": "src/Whizbang.Core/Tags/IMessageTagHookDispatcher.cs",
@@ -3097,9 +3379,15 @@
   },
   "Coalesce": {
     "file": "src/Whizbang.Core/Tags/TagOptions.cs",
-    "line": 218,
+    "line": 224,
     "symbol": "Coalesce",
     "docs": "fundamentals/messages/message-tags#coalescing"
+  },
+  "RouteNamespace": {
+    "file": "src/Whizbang.Core/Tags/TagOptions.cs",
+    "line": 307,
+    "symbol": "RouteNamespace",
+    "docs": "fundamentals/messages/message-tags#transport-namespace-routing"
   },
   "TagPolicyConfigurationException": {
     "file": "src/Whizbang.Core/Tags/TagPolicyConfigurationException.cs",
@@ -3109,15 +3397,21 @@
   },
   "TagPolicyStartupValidator": {
     "file": "src/Whizbang.Core/Tags/TagPolicyStartupValidator.cs",
-    "line": 14,
+    "line": 15,
     "symbol": "TagPolicyStartupValidator",
     "docs": "fundamentals/messages/message-tags#validation"
   },
-  "AuditEventsComposite": {
-    "file": "src/Whizbang.Core/SystemEvents/AuditEventsComposite.cs",
-    "line": 35,
-    "symbol": "AuditEventsComposite",
-    "docs": "fundamentals/events/system-events#audit-shipping"
+  "TagRouteNamespaceConfigurationBinder": {
+    "file": "src/Whizbang.Core/Tags/TagRouteNamespaceConfigurationBinder.cs",
+    "line": 15,
+    "symbol": "TagRouteNamespaceConfigurationBinder",
+    "docs": "fundamentals/messages/message-tags#transport-namespace-routing"
+  },
+  "TransportNamespaceResolver": {
+    "file": "src/Whizbang.Core/Tags/TransportNamespaceResolver.cs",
+    "line": 32,
+    "symbol": "TransportNamespaceResolver",
+    "docs": "fundamentals/messages/message-tags#transport-namespace-routing"
   },
   "AuditOutboxMessageBuilder": {
     "file": "src/Whizbang.Core/SystemEvents/AuditOutboxMessageBuilder.cs",
@@ -3151,7 +3445,7 @@
   },
   "SystemEventCoalesceDefaults": {
     "file": "src/Whizbang.Core/SystemEvents/SystemEventCoalesceDefaults.cs",
-    "line": 17,
+    "line": 18,
     "symbol": "SystemEventCoalesceDefaults",
     "docs": "fundamentals/security/audit-logging#audit-shipping"
   },
@@ -3959,10 +4253,28 @@
     "symbol": "WhizbangRunPermit",
     "docs": "resilience/managed-resource-run-control"
   },
-  "names": {
+  "CommandInboxNaming": {
+    "file": "src/Whizbang.Core/Routing/CommandInboxNaming.cs",
+    "line": 13,
+    "symbol": "CommandInboxNaming",
+    "docs": "fundamentals/dispatcher/routing#namespace-inbox"
+  },
+  "ControlClassOptions": {
+    "file": "src/Whizbang.Core/Routing/ControlClassOptions.cs",
+    "line": 34,
+    "symbol": "ControlClassOptions",
+    "docs": "fundamentals/dispatcher/routing#control-class"
+  },
+  "ControlClassOptionsConfigurationBinder": {
+    "file": "src/Whizbang.Core/Routing/ControlClassOptionsConfigurationBinder.cs",
+    "line": 16,
+    "symbol": "ControlClassOptionsConfigurationBinder",
+    "docs": "fundamentals/dispatcher/routing#control-class"
+  },
+  "NOTE": {
     "file": "src/Whizbang.Core/Routing/DomainTopicInboxStrategy.cs",
     "line": 7,
-    "symbol": "names",
+    "symbol": "NOTE",
     "docs": "fundamentals/dispatcher/routing#domain-topic-inbox"
   },
   "EventNamespaceRegistry": {
@@ -3976,6 +4288,12 @@
     "line": 20,
     "symbol": "EventSubscriptionDiscovery",
     "docs": "fundamentals/dispatcher/routing#event-subscription-discovery"
+  },
+  "ICommandInboxAddressResolver": {
+    "file": "src/Whizbang.Core/Routing/ICommandInboxAddressResolver.cs",
+    "line": 12,
+    "symbol": "ICommandInboxAddressResolver",
+    "docs": "fundamentals/dispatcher/routing#namespace-outbox"
   },
   "IEventNamespaceRegistry": {
     "file": "src/Whizbang.Core/Routing/IEventNamespaceRegistry.cs",
@@ -4001,11 +4319,23 @@
     "symbol": "IOutboxRoutingStrategy",
     "docs": "fundamentals/dispatcher/routing#outbox-routing"
   },
+  "GetCompositeGroupKey": {
+    "file": "src/Whizbang.Core/Routing/IOutboxRoutingStrategy.cs",
+    "line": 44,
+    "symbol": "GetCompositeGroupKey",
+    "docs": "fundamentals/dispatcher/routing#outbox-routing"
+  },
   "InboxSubscription": {
     "file": "src/Whizbang.Core/Routing/InboxSubscription.cs",
     "line": 9,
     "symbol": "InboxSubscription",
     "docs": "fundamentals/dispatcher/routing#inbox-subscription"
+  },
+  "InboxSubscriptionContext": {
+    "file": "src/Whizbang.Core/Routing/InboxSubscriptionContext.cs",
+    "line": 18,
+    "symbol": "InboxSubscriptionContext",
+    "docs": "fundamentals/dispatcher/routing#inbox-routing"
   },
   "IMessageDiscardPolicy": {
     "file": "src/Whizbang.Core/Routing/MessageDiscardPolicy.cs",
@@ -4027,45 +4357,195 @@
   },
   "MessageKindDetector": {
     "file": "src/Whizbang.Core/Routing/MessageKindDetector.cs",
-    "line": 15,
+    "line": 20,
     "symbol": "MessageKindDetector",
     "docs": "fundamentals/dispatcher/routing#message-kind"
   },
+  "NamespaceInboxStrategy": {
+    "file": "src/Whizbang.Core/Routing/NamespaceInboxStrategy.cs",
+    "line": 32,
+    "symbol": "NamespaceInboxStrategy",
+    "docs": "fundamentals/dispatcher/routing#namespace-inbox"
+  },
+  "NamespaceOutboxStrategy": {
+    "file": "src/Whizbang.Core/Routing/NamespaceOutboxStrategy.cs",
+    "line": 41,
+    "symbol": "NamespaceOutboxStrategy",
+    "docs": "fundamentals/dispatcher/routing#namespace-outbox"
+  },
+  "PoisonDetectionCapabilityFinding": {
+    "file": "src/Whizbang.Core/Routing/PoisonDetectionCapabilityState.cs",
+    "line": 13,
+    "symbol": "PoisonDetectionCapabilityFinding",
+    "docs": "fundamentals/dispatcher/routing#poison-messages"
+  },
+  "PoisonDetectionCapabilityState": {
+    "file": "src/Whizbang.Core/Routing/PoisonDetectionCapabilityState.cs",
+    "line": 33,
+    "symbol": "PoisonDetectionCapabilityState",
+    "docs": "fundamentals/dispatcher/routing#poison-messages"
+  },
+  "IPoisonMessageDetector": {
+    "file": "src/Whizbang.Core/Routing/PoisonMessageDetector.cs",
+    "line": 118,
+    "symbol": "IPoisonMessageDetector",
+    "docs": "fundamentals/dispatcher/routing#poison-messages"
+  },
+  "PoisonMessageDetector": {
+    "file": "src/Whizbang.Core/Routing/PoisonMessageDetector.cs",
+    "line": 160,
+    "symbol": "PoisonMessageDetector",
+    "docs": "fundamentals/dispatcher/routing#poison-messages"
+  },
+  "PoisonMessageOptions": {
+    "file": "src/Whizbang.Core/Routing/PoisonMessageOptions.cs",
+    "line": 17,
+    "symbol": "PoisonMessageOptions",
+    "docs": "fundamentals/dispatcher/routing#poison-messages"
+  },
+  "PoisonMessageOptionsConfigurationBinder": {
+    "file": "src/Whizbang.Core/Routing/PoisonMessageOptionsConfigurationBinder.cs",
+    "line": 15,
+    "symbol": "PoisonMessageOptionsConfigurationBinder",
+    "docs": "fundamentals/dispatcher/routing#poison-messages"
+  },
   "RoutingBuilderExtensions": {
     "file": "src/Whizbang.Core/Routing/RoutingBuilderExtensions.cs",
-    "line": 41,
+    "line": 65,
     "symbol": "RoutingBuilderExtensions",
     "docs": "fundamentals/dispatcher/routing#with-routing"
   },
   "WithRouting": {
     "file": "src/Whizbang.Core/Routing/RoutingBuilderExtensions.cs",
-    "line": 78,
+    "line": 101,
     "symbol": "WithRouting",
     "docs": "fundamentals/dispatcher/routing#with-routing"
   },
   "RoutingOptions": {
     "file": "src/Whizbang.Core/Routing/RoutingOptions.cs",
-    "line": 18,
+    "line": 26,
     "symbol": "RoutingOptions",
     "docs": "fundamentals/dispatcher/routing#routing-options"
   },
   "InvalidOperationException": {
     "file": "src/Whizbang.Core/Routing/RoutingOptions.cs",
-    "line": 111,
+    "line": 131,
     "symbol": "InvalidOperationException",
     "docs": "fundamentals/dispatcher/routing#own-namespace-of"
   },
   "SubscribeToAudit": {
     "file": "src/Whizbang.Core/Routing/RoutingOptions.cs",
-    "line": 129,
+    "line": 149,
     "symbol": "SubscribeToAudit",
     "docs": "fundamentals/events/system-events#subscribe-to-audit"
+  },
+  "RouteCommandNamespaceToInbox": {
+    "file": "src/Whizbang.Core/Routing/RoutingOptions.cs",
+    "line": 278,
+    "symbol": "RouteCommandNamespaceToInbox",
+    "docs": "fundamentals/dispatcher/routing#namespace-outbox"
+  },
+  "RouteAllCommandNamespacesToInbox": {
+    "file": "src/Whizbang.Core/Routing/RoutingOptions.cs",
+    "line": 298,
+    "symbol": "RouteAllCommandNamespacesToInbox",
+    "docs": "fundamentals/dispatcher/routing#namespace-outbox"
+  },
+  "RouteNoCommandNamespacesToInbox": {
+    "file": "src/Whizbang.Core/Routing/RoutingOptions.cs",
+    "line": 314,
+    "symbol": "RouteNoCommandNamespacesToInbox",
+    "docs": "fundamentals/dispatcher/routing#namespace-outbox"
+  },
+  "ControlClass": {
+    "file": "src/Whizbang.Core/Routing/RoutingOptions.cs",
+    "line": 358,
+    "symbol": "ControlClass",
+    "docs": "fundamentals/dispatcher/routing#control-class"
+  },
+  "RetireSharedInbox": {
+    "file": "src/Whizbang.Core/Routing/RoutingOptions.cs",
+    "line": 382,
+    "symbol": "RetireSharedInbox",
+    "docs": "fundamentals/dispatcher/routing#namespace-inbox"
+  },
+  "KeepSharedInbox": {
+    "file": "src/Whizbang.Core/Routing/RoutingOptions.cs",
+    "line": 400,
+    "symbol": "KeepSharedInbox",
+    "docs": "fundamentals/dispatcher/routing#namespace-inbox"
+  },
+  "UseNamespaceInboxes": {
+    "file": "src/Whizbang.Core/Routing/RoutingOptions.cs",
+    "line": 543,
+    "symbol": "UseNamespaceInboxes",
+    "docs": "fundamentals/dispatcher/routing#namespace-inbox"
+  },
+  "UseNamespaceRouting": {
+    "file": "src/Whizbang.Core/Routing/RoutingOptions.cs",
+    "line": 655,
+    "symbol": "UseNamespaceRouting",
+    "docs": "fundamentals/dispatcher/routing#namespace-outbox"
+  },
+  "RoutingOptionsConfigurationBinder": {
+    "file": "src/Whizbang.Core/Routing/RoutingOptionsConfigurationBinder.cs",
+    "line": 24,
+    "symbol": "RoutingOptionsConfigurationBinder",
+    "docs": "fundamentals/dispatcher/routing#namespace-outbox"
+  },
+  "TopologyDriftFinding": {
+    "file": "src/Whizbang.Core/Routing/TopologyDriftState.cs",
+    "line": 14,
+    "symbol": "TopologyDriftFinding",
+    "docs": "fundamentals/dispatcher/routing#ownership-drift"
+  },
+  "TopologyDriftState": {
+    "file": "src/Whizbang.Core/Routing/TopologyDriftState.cs",
+    "line": 28,
+    "symbol": "TopologyDriftState",
+    "docs": "fundamentals/dispatcher/routing#ownership-drift"
+  },
+  "TopologyPublishDestination": {
+    "file": "src/Whizbang.Core/Routing/TopologyManifest.cs",
+    "line": 15,
+    "symbol": "TopologyPublishDestination",
+    "docs": "fundamentals/dispatcher/routing#topology-manifest"
+  },
+  "TopologyManifest": {
+    "file": "src/Whizbang.Core/Routing/TopologyManifest.cs",
+    "line": 45,
+    "symbol": "TopologyManifest",
+    "docs": "fundamentals/dispatcher/routing#topology-manifest"
+  },
+  "TopologyManifestBuilder": {
+    "file": "src/Whizbang.Core/Routing/TopologyManifest.cs",
+    "line": 62,
+    "symbol": "TopologyManifestBuilder",
+    "docs": "fundamentals/dispatcher/routing#topology-manifest"
+  },
+  "Build": {
+    "file": "src/Whizbang.Core/Routing/TopologyManifest.cs",
+    "line": 80,
+    "symbol": "Build",
+    "docs": "fundamentals/dispatcher/routing#topology-manifest"
   },
   "TransportSubscriptionBuilder": {
     "file": "src/Whizbang.Core/Routing/TransportSubscriptionBuilder.cs",
     "line": 24,
     "symbol": "TransportSubscriptionBuilder",
     "docs": "fundamentals/dispatcher/routing#transport-subscription-builder"
+  },
+  "fallback": {
+    "file": "src/Whizbang.Core/Routing/TransportSubscriptionBuilder.cs",
+    "line": 100,
+    "symbol": "fallback",
+    "docs": "fundamentals/dispatcher/routing#transport-subscription-builder"
+  },
+  "TryAddTopologyManifest": {
+    "file": "src/Whizbang.Core/Routing/TransportSubscriptionBuilder.cs",
+    "line": 239,
+    "symbol": "TryAddTopologyManifest",
+    "docs": "fundamentals/dispatcher/routing#topology-manifest"
   },
   "CircuitBreakerOptions": {
     "file": "src/Whizbang.Core/Resilience/CircuitBreakerOptions.cs",
@@ -4805,6 +5285,36 @@
     "symbol": "PostSerializeHookChain",
     "docs": "fundamentals/offloads/message-body-store"
   },
+  "BacklogAgeMetrics": {
+    "file": "src/Whizbang.Core/Observability/BacklogAgeMetrics.cs",
+    "line": 22,
+    "symbol": "BacklogAgeMetrics",
+    "docs": "operations/observability/metrics#traffic-classes"
+  },
+  "BacklogAgeFinding": {
+    "file": "src/Whizbang.Core/Observability/BacklogAgeState.cs",
+    "line": 18,
+    "symbol": "BacklogAgeFinding",
+    "docs": "operations/observability/managed-resource-health#backlog-age"
+  },
+  "BacklogAgeState": {
+    "file": "src/Whizbang.Core/Observability/BacklogAgeState.cs",
+    "line": 39,
+    "symbol": "BacklogAgeState",
+    "docs": "operations/observability/managed-resource-health#backlog-age"
+  },
+  "BacklogAgeOptions": {
+    "file": "src/Whizbang.Core/Observability/BacklogAgeWorker.cs",
+    "line": 15,
+    "symbol": "BacklogAgeOptions",
+    "docs": "operations/observability/managed-resource-health#backlog-age"
+  },
+  "BacklogAgeWorker": {
+    "file": "src/Whizbang.Core/Observability/BacklogAgeWorker.cs",
+    "line": 55,
+    "symbol": "BacklogAgeWorker",
+    "docs": "operations/observability/managed-resource-health#backlog-age"
+  },
   "CascadeContext": {
     "file": "src/Whizbang.Core/Observability/CascadeContext.cs",
     "line": 20,
@@ -5159,6 +5669,162 @@
     "symbol": "WhizbangNamingConvention",
     "docs": "fundamentals/work-coordinator/notifications-and-pgbouncer"
   },
+  "AuditEventsComposite": {
+    "file": "src/Whizbang.Core/Minting/AuditEventsComposite.cs",
+    "line": 36,
+    "symbol": "AuditEventsComposite",
+    "docs": "fundamentals/events/system-events#audit-shipping"
+  },
+  "ControlMintRequest": {
+    "file": "src/Whizbang.Core/Minting/CheckpointMint.cs",
+    "line": 14,
+    "symbol": "ControlMintRequest",
+    "docs": "resilience/stream-integrity"
+  },
+  "MintedControlMessage": {
+    "file": "src/Whizbang.Core/Minting/CheckpointMint.cs",
+    "line": 36,
+    "symbol": "MintedControlMessage",
+    "docs": "resilience/stream-integrity"
+  },
+  "CheckpointMint": {
+    "file": "src/Whizbang.Core/Minting/CheckpointMint.cs",
+    "line": 52,
+    "symbol": "CheckpointMint",
+    "docs": "resilience/stream-integrity"
+  },
+  "CoalescedEventsComposite": {
+    "file": "src/Whizbang.Core/Minting/CoalescedEventsComposite.cs",
+    "line": 35,
+    "symbol": "CoalescedEventsComposite",
+    "docs": "fundamentals/messages/message-tags#coalescing"
+  },
+  "CompositeEventBase": {
+    "file": "src/Whizbang.Core/Minting/CompositeEventBase.cs",
+    "line": 34,
+    "symbol": "CompositeEventBase",
+    "docs": "fundamentals/messaging/composite-events"
+  },
+  "CompositeFactory": {
+    "file": "src/Whizbang.Core/Minting/CompositeFactory.cs",
+    "line": 16,
+    "symbol": "CompositeFactory",
+    "docs": "fundamentals/messaging/composite-events#minting"
+  },
+  "CompositeGroupKeySelector": {
+    "file": "src/Whizbang.Core/Minting/CompositeMintRequest.cs",
+    "line": 21,
+    "symbol": "CompositeGroupKeySelector",
+    "docs": "fundamentals/messaging/composite-events#minting"
+  },
+  "CompositeGroupKey": {
+    "file": "src/Whizbang.Core/Minting/CompositeMintRequest.cs",
+    "line": 38,
+    "symbol": "CompositeGroupKey",
+    "docs": "fundamentals/messaging/composite-events#minting"
+  },
+  "CompositeConstituentBatch": {
+    "file": "src/Whizbang.Core/Minting/CompositeMintRequest.cs",
+    "line": 88,
+    "symbol": "CompositeConstituentBatch",
+    "docs": "fundamentals/messaging/composite-events#minting"
+  },
+  "CompositeMintRequest": {
+    "file": "src/Whizbang.Core/Minting/CompositeMintRequest.cs",
+    "line": 100,
+    "symbol": "CompositeMintRequest",
+    "docs": "fundamentals/messaging/composite-events#minting"
+  },
+  "CompositeEnvelopePlan": {
+    "file": "src/Whizbang.Core/Minting/CompositeMintRequest.cs",
+    "line": 142,
+    "symbol": "CompositeEnvelopePlan",
+    "docs": "fundamentals/messaging/composite-events#minting"
+  },
+  "EventMint": {
+    "file": "src/Whizbang.Core/Minting/EventMint.cs",
+    "line": 9,
+    "symbol": "EventMint",
+    "docs": "fundamentals/messaging/composite-events#minting"
+  },
+  "CollectiveMint": {
+    "file": "src/Whizbang.Core/Minting/EventMint.cs",
+    "line": 37,
+    "symbol": "CollectiveMint",
+    "docs": "fundamentals/messaging/collective-events"
+  },
+  "FanoutMode": {
+    "file": "src/Whizbang.Core/Minting/FanoutControl.cs",
+    "line": 11,
+    "symbol": "FanoutMode",
+    "docs": "fundamentals/messaging/composite-events#fanout-control"
+  },
+  "FanoutAtomicity": {
+    "file": "src/Whizbang.Core/Minting/FanoutControl.cs",
+    "line": 28,
+    "symbol": "FanoutAtomicity",
+    "docs": "fundamentals/messaging/composite-events#fanout-control"
+  },
+  "FanoutDirective": {
+    "file": "src/Whizbang.Core/Minting/FanoutControl.cs",
+    "line": 51,
+    "symbol": "FanoutDirective",
+    "docs": "fundamentals/messaging/composite-events#fanout-control"
+  },
+  "DispatchFanoutControl": {
+    "file": "src/Whizbang.Core/Minting/FanoutControl.cs",
+    "line": 101,
+    "symbol": "DispatchFanoutControl",
+    "docs": "fundamentals/messaging/composite-events#fanout-control"
+  },
+  "ICompositeEvent": {
+    "file": "src/Whizbang.Core/Minting/ICompositeEvent.cs",
+    "line": 41,
+    "symbol": "ICompositeEvent",
+    "docs": "fundamentals/messaging/composite-events"
+  },
+  "ICompositeFactory": {
+    "file": "src/Whizbang.Core/Minting/ICompositeFactory.cs",
+    "line": 18,
+    "symbol": "ICompositeFactory",
+    "docs": "fundamentals/messaging/composite-events#minting"
+  },
+  "IEventMint": {
+    "file": "src/Whizbang.Core/Minting/IEventMint.cs",
+    "line": 14,
+    "symbol": "IEventMint",
+    "docs": "fundamentals/messaging/composite-events#minting"
+  },
+  "ICollectiveMint": {
+    "file": "src/Whizbang.Core/Minting/IEventMint.cs",
+    "line": 32,
+    "symbol": "ICollectiveMint",
+    "docs": "fundamentals/messaging/collective-events"
+  },
+  "ICheckpointMint": {
+    "file": "src/Whizbang.Core/Minting/IEventMint.cs",
+    "line": 48,
+    "symbol": "ICheckpointMint",
+    "docs": "resilience/stream-integrity"
+  },
+  "IRawInnerComposite": {
+    "file": "src/Whizbang.Core/Minting/RedeliveryComposite.cs",
+    "line": 24,
+    "symbol": "IRawInnerComposite",
+    "docs": "resilience/stream-integrity"
+  },
+  "IIdentityPreservingComposite": {
+    "file": "src/Whizbang.Core/Minting/RedeliveryComposite.cs",
+    "line": 47,
+    "symbol": "IIdentityPreservingComposite",
+    "docs": "resilience/stream-integrity"
+  },
+  "RedeliveryComposite": {
+    "file": "src/Whizbang.Core/Minting/RedeliveryComposite.cs",
+    "line": 81,
+    "symbol": "RedeliveryComposite",
+    "docs": "resilience/stream-integrity"
+  },
   "BatchWorkCoordinatorStrategy": {
     "file": "src/Whizbang.Core/Messaging/BatchWorkCoordinatorStrategy.cs",
     "line": 27,
@@ -5195,33 +5861,21 @@
     "symbol": "ClaimWorkRequest",
     "docs": "fundamentals/work-coordinator/claim-loop"
   },
-  "CoalescedEventsComposite": {
-    "file": "src/Whizbang.Core/Messaging/CoalescedEventsComposite.cs",
-    "line": 34,
-    "symbol": "CoalescedEventsComposite",
-    "docs": "fundamentals/messages/message-tags#coalescing"
-  },
   "CollectiveEventBase": {
     "file": "src/Whizbang.Core/Messaging/CollectiveEventBase.cs",
     "line": 33,
     "symbol": "CollectiveEventBase",
     "docs": "fundamentals/messaging/collective-events"
   },
-  "CompositeEventBase": {
-    "file": "src/Whizbang.Core/Messaging/CompositeEventBase.cs",
-    "line": 34,
-    "symbol": "CompositeEventBase",
-    "docs": "fundamentals/messaging/composite-events"
-  },
   "CompositeInboxFanout": {
     "file": "src/Whizbang.Core/Messaging/CompositeInboxFanout.cs",
-    "line": 34,
+    "line": 35,
     "symbol": "CompositeInboxFanout",
     "docs": "fundamentals/messaging/composite-events#dispatch-fanout"
   },
   "IsCompositeWireType": {
     "file": "src/Whizbang.Core/Messaging/CompositeInboxFanout.cs",
-    "line": 66,
+    "line": 67,
     "symbol": "IsCompositeWireType",
     "docs": "fundamentals/messaging/composite-events#dispatch-fanout"
   },
@@ -5347,7 +6001,7 @@
   },
   "EventFlagsDeriver": {
     "file": "src/Whizbang.Core/Messaging/EventFlagsDeriver.cs",
-    "line": 11,
+    "line": 12,
     "symbol": "EventFlagsDeriver",
     "docs": "fundamentals/messaging/collective-events"
   },
@@ -5362,30 +6016,6 @@
     "line": 12,
     "symbol": "EventUpcasterServiceCollectionExtensions",
     "docs": "fundamentals/events/event-upcasting"
-  },
-  "FanoutMode": {
-    "file": "src/Whizbang.Core/Messaging/FanoutControl.cs",
-    "line": 11,
-    "symbol": "FanoutMode",
-    "docs": "fundamentals/messaging/composite-events#fanout-control"
-  },
-  "FanoutAtomicity": {
-    "file": "src/Whizbang.Core/Messaging/FanoutControl.cs",
-    "line": 28,
-    "symbol": "FanoutAtomicity",
-    "docs": "fundamentals/messaging/composite-events#fanout-control"
-  },
-  "FanoutDirective": {
-    "file": "src/Whizbang.Core/Messaging/FanoutControl.cs",
-    "line": 51,
-    "symbol": "FanoutDirective",
-    "docs": "fundamentals/messaging/composite-events#fanout-control"
-  },
-  "DispatchFanoutControl": {
-    "file": "src/Whizbang.Core/Messaging/FanoutControl.cs",
-    "line": 101,
-    "symbol": "DispatchFanoutControl",
-    "docs": "fundamentals/messaging/composite-events#fanout-control"
   },
   "FireAtAttribute": {
     "file": "src/Whizbang.Core/Messaging/FireAtAttribute.cs",
@@ -5404,6 +6034,12 @@
     "line": 29,
     "symbol": "ForwardingEventStoreDecorator",
     "docs": "fundamentals/events/event-store"
+  },
+  "HandledMessageInfo": {
+    "file": "src/Whizbang.Core/Messaging/HandledMessageInfo.cs",
+    "line": 27,
+    "symbol": "HandledMessageInfo",
+    "docs": "internals/receptor-registry-query"
   },
   "HandlerCommitRequest": {
     "file": "src/Whizbang.Core/Messaging/HandlerCommitRequest.cs",
@@ -5446,12 +6082,6 @@
     "line": 26,
     "symbol": "ICollectiveScope",
     "docs": "fundamentals/messaging/collective-events"
-  },
-  "ICompositeEvent": {
-    "file": "src/Whizbang.Core/Messaging/ICompositeEvent.cs",
-    "line": 41,
-    "symbol": "ICompositeEvent",
-    "docs": "fundamentals/messaging/composite-events"
   },
   "IControlPlaneMessage": {
     "file": "src/Whizbang.Core/Messaging/IControlPlaneMessage.cs",
@@ -5635,7 +6265,7 @@
   },
   "IReceptorRegistryQuery": {
     "file": "src/Whizbang.Core/Messaging/IReceptorRegistryQuery.cs",
-    "line": 17,
+    "line": 19,
     "symbol": "IReceptorRegistryQuery",
     "docs": "internals/receptor-registry-query"
   },
@@ -5651,297 +6281,309 @@
     "symbol": "IEventStoreQueryFactory",
     "docs": "fundamentals/events/event-store-query"
   },
+  "OutstandingWork": {
+    "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
+    "line": 43,
+    "symbol": "OutstandingWork",
+    "docs": "operations/workers/claim-backpressure"
+  },
   "NotImplementedException": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 65,
+    "line": 127,
     "symbol": "NotImplementedException",
     "docs": "fundamentals/workers/instance-liveness#eviction-reaping-is-a-fence-not-just-a-deletion"
   },
   "CompletePerspectiveAsync": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 125,
+    "line": 187,
     "symbol": "CompletePerspectiveAsync",
     "docs": "fundamentals/work-coordinator/batched-flushers"
   },
   "ReportFailuresAsync": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 177,
+    "line": 278,
     "symbol": "ReportFailuresAsync",
     "docs": "fundamentals/work-coordinator/batched-flushers"
   },
   "CommitHandlerResultAsync": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 193,
+    "line": 294,
     "symbol": "CommitHandlerResultAsync",
     "docs": "fundamentals/work-coordinator/handler-commit"
   },
   "FlushCompletionsAsync": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 239,
+    "line": 340,
     "symbol": "FlushCompletionsAsync",
     "docs": "fundamentals/work-coordinator/batched-flushers"
   },
   "StoreInboxMessagesAsync": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 279,
+    "line": 380,
     "symbol": "StoreInboxMessagesAsync",
     "docs": "messaging/transports/transport-consumer"
   },
   "ReportPerspectiveCompletionAsync": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 359,
+    "line": 486,
     "symbol": "ReportPerspectiveCompletionAsync",
     "docs": "operations/workers/perspective-worker"
   },
   "ReportPerspectiveFailureAsync": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 379,
+    "line": 506,
     "symbol": "ReportPerspectiveFailureAsync",
     "docs": "operations/workers/perspective-worker"
   },
   "RecordLifecycleCompletionAsync": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 423,
+    "line": 550,
     "symbol": "RecordLifecycleCompletionAsync",
     "docs": "fundamentals/lifecycle/lifecycle-reconciliation"
   },
   "RecordDefinitionLineageAsync": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 529,
+    "line": 656,
     "symbol": "RecordDefinitionLineageAsync",
     "docs": "fundamentals/events/type-definition-fingerprint"
   },
   "SyncEphemeralTypeGraceAsync": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 562,
+    "line": 689,
     "symbol": "SyncEphemeralTypeGraceAsync",
     "docs": "fundamentals/events/ephemeral-events"
   },
   "SyncPerspectiveRetentionAsync": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 574,
+    "line": 701,
     "symbol": "SyncPerspectiveRetentionAsync",
     "docs": "fundamentals/perspectives/row-retention"
   },
   "RegisterConsumedTypesAsync": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 668,
+    "line": 795,
     "symbol": "RegisterConsumedTypesAsync",
     "docs": "resilience/stream-integrity"
   },
   "MarkConsumedTypeBackfillRequestedAsync": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 682,
+    "line": 809,
     "symbol": "MarkConsumedTypeBackfillRequestedAsync",
     "docs": "resilience/stream-integrity"
   },
   "RecordOffloadClaimAsync": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 805,
+    "line": 932,
     "symbol": "RecordOffloadClaimAsync",
     "docs": "fundamentals/messaging/body-offload"
   },
   "HoldPerspectiveRowDestructionAsync": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 879,
+    "line": 1006,
     "symbol": "HoldPerspectiveRowDestructionAsync",
     "docs": "proposals/pre-destruction-seam"
   },
   "ReleasePerspectiveRowHoldsAsync": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 891,
+    "line": 1018,
     "symbol": "ReleasePerspectiveRowHoldsAsync",
     "docs": "proposals/pre-destruction-seam"
   },
   "AcknowledgeRetentionEnforcementAsync": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 962,
+    "line": 1089,
     "symbol": "AcknowledgeRetentionEnforcementAsync",
     "docs": "proposals/pre-destruction-seam"
   },
   "RequeueRowEvictionsAsync": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 1000,
+    "line": 1127,
     "symbol": "RequeueRowEvictionsAsync",
     "docs": "proposals/pre-destruction-seam"
   },
   "DigestVerificationResult": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 1169,
+    "line": 1296,
     "symbol": "DigestVerificationResult",
     "docs": "resilience/stream-integrity"
   },
   "IntegrityStampRepairWindowsAsync": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 1299,
+    "line": 1426,
     "symbol": "IntegrityStampRepairWindowsAsync",
     "docs": "proposals/paced-repair-drain"
   },
   "EphemeralPointerPruneResult": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 1358,
+    "line": 1485,
     "symbol": "EphemeralPointerPruneResult",
     "docs": "fundamentals/events/ephemeral-events"
   },
   "AdvanceIntegritySealAsync": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 1488,
+    "line": 1615,
     "symbol": "AdvanceIntegritySealAsync",
     "docs": "resilience/stream-integrity"
   },
   "EpochVerificationResult": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 1501,
+    "line": 1628,
     "symbol": "EpochVerificationResult",
     "docs": "resilience/stream-integrity"
   },
   "StreamCloseResult": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 1551,
+    "line": 1678,
     "symbol": "StreamCloseResult",
     "docs": "fundamentals/events/ephemeral-events"
   },
   "HoldEphemeralDestructionAsync": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 1620,
+    "line": 1747,
     "symbol": "HoldEphemeralDestructionAsync",
     "docs": "fundamentals/events/ephemeral-events"
   },
+  "NotSupportedException": {
+    "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
+    "line": 1833,
+    "symbol": "NotSupportedException",
+    "docs": "operations/dead-letter-queue/transport-recovery"
+  },
   "CompleteCoalesceFoldAsync": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 1943,
+    "line": 2088,
     "symbol": "CompleteCoalesceFoldAsync",
     "docs": "fundamentals/messages/message-tags#coalescing"
   },
   "MaintenanceResult": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 1992,
+    "line": 2137,
     "symbol": "MaintenanceResult",
     "docs": "operations/maintenance"
   },
   "RewindCursorInfo": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 2004,
+    "line": 2149,
     "symbol": "RewindCursorInfo",
     "docs": "fundamentals/perspectives/rewind"
   },
   "OrphanedLifecycleEvent": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 2017,
+    "line": 2162,
     "symbol": "OrphanedLifecycleEvent",
     "docs": "fundamentals/lifecycle/lifecycle-reconciliation"
   },
   "EphemeralReclassificationResult": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 2025,
+    "line": 2170,
     "symbol": "EphemeralReclassificationResult",
     "docs": "fundamentals/events/ephemeral-events"
   },
   "EphemeralTypeGrace": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 2038,
+    "line": 2183,
     "symbol": "EphemeralTypeGrace",
     "docs": "fundamentals/events/ephemeral-events"
   },
   "PerspectiveRetentionDeclaration": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 2050,
+    "line": 2195,
     "symbol": "PerspectiveRetentionDeclaration",
     "docs": "fundamentals/perspectives/row-retention"
   },
   "OffloadClaimRecord": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 2064,
+    "line": 2209,
     "symbol": "OffloadClaimRecord",
     "docs": "fundamentals/messaging/body-offload"
   },
   "PerspectiveRowReapResult": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 2070,
+    "line": 2215,
     "symbol": "PerspectiveRowReapResult",
     "docs": "proposals/pre-destruction-seam"
   },
   "PerspectiveTableName": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 2077,
+    "line": 2222,
     "symbol": "PerspectiveTableName",
     "docs": "proposals/pre-destruction-seam"
   },
   "EphemeralSnapshotTarget": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 2086,
+    "line": 2231,
     "symbol": "EphemeralSnapshotTarget",
     "docs": "fundamentals/events/ephemeral-events"
   },
   "ArchivedEvent": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 2112,
+    "line": 2257,
     "symbol": "ArchivedEvent",
     "docs": "fundamentals/events/ephemeral-events"
   },
   "EphemeralDestructionTarget": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 2121,
+    "line": 2266,
     "symbol": "EphemeralDestructionTarget",
     "docs": "fundamentals/events/ephemeral-events"
   },
   "TypeDefinitionInfo": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 2128,
+    "line": 2273,
     "symbol": "TypeDefinitionInfo",
     "docs": "fundamentals/events/type-definition-fingerprint"
   },
   "TypeDefinitionRegistration": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 2140,
+    "line": 2285,
     "symbol": "TypeDefinitionRegistration",
     "docs": "fundamentals/events/type-definition-fingerprint"
   },
   "DefinitionRelationship": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 2150,
+    "line": 2295,
     "symbol": "DefinitionRelationship",
     "docs": "fundamentals/events/type-definition-fingerprint"
   },
   "Flags": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 2349,
+    "line": 2494,
     "symbol": "Flags",
     "docs": "fundamentals/messaging/collective-events"
   },
   "CoalesceGroupStats": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 2409,
+    "line": 2554,
     "symbol": "CoalesceGroupStats",
     "docs": "fundamentals/messages/message-tags#coalescing"
   },
   "EventsProcessed": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 2837,
+    "line": 2982,
     "symbol": "EventsProcessed",
     "docs": "fundamentals/perspectives/rewind#metrics"
   },
   "Attempts": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 2996,
+    "line": 3141,
     "symbol": "Attempts",
     "docs": "operations/dead-letter-queue/perspective-events"
   },
   "PendingPerspectiveEvent": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 3030,
+    "line": 3175,
     "symbol": "PendingPerspectiveEvent",
     "docs": "fundamentals/work-coordinator/per-stream-drain"
   },
   "OutboxBatchRow": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 3037,
+    "line": 3182,
     "symbol": "OutboxBatchRow",
     "docs": "fundamentals/work-coordinator/per-stream-drain"
   },
   "InboxBatchRow": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 3106,
+    "line": 3251,
     "symbol": "InboxBatchRow",
     "docs": "fundamentals/work-coordinator/per-stream-drain"
   },
@@ -5987,135 +6629,123 @@
     "symbol": "RequestIntegrityManifest",
     "docs": "resilience/stream-integrity"
   },
-  "IntegrityManifest": {
-    "file": "src/Whizbang.Core/Messaging/IntegrityAudit.cs",
-    "line": 83,
-    "symbol": "IntegrityManifest",
-    "docs": "resilience/stream-integrity"
-  },
   "ScheduledIntegritySweep": {
     "file": "src/Whizbang.Core/Messaging/IntegrityAudit.cs",
-    "line": 149,
+    "line": 151,
     "symbol": "ScheduledIntegritySweep",
     "docs": "resilience/stream-integrity"
   },
   "WindowedDigestResult": {
     "file": "src/Whizbang.Core/Messaging/IntegrityAudit.cs",
-    "line": 161,
+    "line": 163,
     "symbol": "WindowedDigestResult",
     "docs": "resilience/stream-integrity"
   },
   "IntegrityDivergenceDetected": {
     "file": "src/Whizbang.Core/Messaging/IntegrityAudit.cs",
-    "line": 182,
+    "line": 184,
     "symbol": "IntegrityDivergenceDetected",
     "docs": "resilience/stream-integrity"
   },
   "PerspectiveCoverageGapDetected": {
     "file": "src/Whizbang.Core/Messaging/IntegrityAudit.cs",
-    "line": 220,
+    "line": 223,
     "symbol": "PerspectiveCoverageGapDetected",
     "docs": "resilience/stream-integrity"
   },
   "PerspectiveCoverageGap": {
     "file": "src/Whizbang.Core/Messaging/IntegrityAudit.cs",
-    "line": 244,
+    "line": 248,
     "symbol": "PerspectiveCoverageGap",
-    "docs": "resilience/stream-integrity"
-  },
-  "IntegrityCheckpoint": {
-    "file": "src/Whizbang.Core/Messaging/IntegrityCheckpoint.cs",
-    "line": 22,
-    "symbol": "IntegrityCheckpoint",
     "docs": "resilience/stream-integrity"
   },
   "CheckpointBucket": {
     "file": "src/Whizbang.Core/Messaging/IntegrityCheckpoint.cs",
-    "line": 58,
+    "line": 59,
     "symbol": "CheckpointBucket",
     "docs": "resilience/stream-integrity"
   },
   "IntegrityCheckpointWindow": {
     "file": "src/Whizbang.Core/Messaging/IntegrityCheckpoint.cs",
-    "line": 75,
+    "line": 76,
     "symbol": "IntegrityCheckpointWindow",
     "docs": "resilience/stream-integrity"
   },
   "IntegrityGapDetected": {
     "file": "src/Whizbang.Core/Messaging/IntegrityCheckpoint.cs",
-    "line": 94,
+    "line": 95,
     "symbol": "IntegrityGapDetected",
     "docs": "resilience/stream-integrity"
   },
   "IntegrityRepairMode": {
     "file": "src/Whizbang.Core/Messaging/IntegrityCheckpoint.cs",
-    "line": 133,
+    "line": 135,
     "symbol": "IntegrityRepairMode",
     "docs": "resilience/stream-integrity"
   },
   "StreamDigest": {
     "file": "src/Whizbang.Core/Messaging/IntegrityCheckpoint.cs",
-    "line": 157,
+    "line": 159,
     "symbol": "StreamDigest",
     "docs": "resilience/stream-integrity"
   },
   "ConsumedTypeRegistration": {
     "file": "src/Whizbang.Core/Messaging/IntegrityCheckpoint.cs",
-    "line": 222,
+    "line": 224,
     "symbol": "ConsumedTypeRegistration",
     "docs": "resilience/stream-integrity"
   },
   "ConsumedTypeBackfillStatus": {
     "file": "src/Whizbang.Core/Messaging/IntegrityCheckpoint.cs",
-    "line": 234,
+    "line": 236,
     "symbol": "ConsumedTypeBackfillStatus",
     "docs": "resilience/stream-integrity"
   },
   "StreamIntegrityOptions": {
     "file": "src/Whizbang.Core/Messaging/IntegrityCheckpoint.cs",
-    "line": 254,
+    "line": 256,
     "symbol": "StreamIntegrityOptions",
     "docs": "resilience/stream-integrity"
   },
   "sweep": {
     "file": "src/Whizbang.Core/Messaging/IntegrityCheckpoint.cs",
-    "line": 396,
+    "line": 398,
     "symbol": "sweep",
     "docs": "resilience/stream-integrity"
   },
   "MaxEpochVerificationsPerSweep": {
     "file": "src/Whizbang.Core/Messaging/IntegrityCheckpoint.cs",
-    "line": 405,
+    "line": 407,
     "symbol": "MaxEpochVerificationsPerSweep",
     "docs": "resilience/stream-integrity"
   },
   "RepairDrainEnabled": {
     "file": "src/Whizbang.Core/Messaging/IntegrityCheckpoint.cs",
-    "line": 446,
+    "line": 448,
     "symbol": "RepairDrainEnabled",
     "docs": "proposals/paced-repair-drain"
   },
   "RepairDrainRatePerSecond": {
     "file": "src/Whizbang.Core/Messaging/IntegrityCheckpoint.cs",
-    "line": 454,
+    "line": 456,
     "symbol": "RepairDrainRatePerSecond",
     "docs": "proposals/paced-repair-drain"
   },
   "RepairDrainBatchSize": {
     "file": "src/Whizbang.Core/Messaging/IntegrityCheckpoint.cs",
-    "line": 461,
+    "line": 463,
     "symbol": "RepairDrainBatchSize",
     "docs": "proposals/paced-repair-drain"
   },
   "EpochClosureEnabled": {
     "file": "src/Whizbang.Core/Messaging/IntegrityCheckpoint.cs",
-    "line": 471,
+    "line": 473,
     "symbol": "EpochClosureEnabled",
     "docs": "resilience/stream-integrity"
   },
   "MaxEpochClosuresPerMaintenanceCycle": {
     "file": "src/Whizbang.Core/Messaging/IntegrityCheckpoint.cs",
-    "line": 482,
+    "line": 484,
     "symbol": "MaxEpochClosuresPerMaintenanceCycle",
     "docs": "resilience/stream-integrity"
   },
@@ -6245,33 +6875,15 @@
     "symbol": "RequestRedeliveryCommand",
     "docs": "resilience/stream-integrity"
   },
-  "IRawInnerComposite": {
-    "file": "src/Whizbang.Core/Messaging/RedeliveryComposite.cs",
-    "line": 23,
-    "symbol": "IRawInnerComposite",
-    "docs": "resilience/stream-integrity"
-  },
-  "IIdentityPreservingComposite": {
-    "file": "src/Whizbang.Core/Messaging/RedeliveryComposite.cs",
-    "line": 46,
-    "symbol": "IIdentityPreservingComposite",
-    "docs": "resilience/stream-integrity"
-  },
-  "RedeliveryComposite": {
-    "file": "src/Whizbang.Core/Messaging/RedeliveryComposite.cs",
-    "line": 80,
-    "symbol": "RedeliveryComposite",
-    "docs": "resilience/stream-integrity"
-  },
   "RedeliveryPumpOptions": {
     "file": "src/Whizbang.Core/Messaging/RedeliveryPump.cs",
-    "line": 13,
+    "line": 14,
     "symbol": "RedeliveryPumpOptions",
     "docs": "resilience/stream-integrity"
   },
   "RedeliveryPump": {
     "file": "src/Whizbang.Core/Messaging/RedeliveryPump.cs",
-    "line": 80,
+    "line": 81,
     "symbol": "RedeliveryPump",
     "docs": "resilience/stream-integrity"
   },
@@ -6293,6 +6905,12 @@
     "symbol": "StuckRow",
     "docs": "operations/observability/stuck-row-sentinel"
   },
+  "SystemControlTagAttribute": {
+    "file": "src/Whizbang.Core/Messaging/SystemControlTagAttribute.cs",
+    "line": 29,
+    "symbol": "SystemControlTagAttribute",
+    "docs": "fundamentals/messages/message-tags#system-tags"
+  },
   "TenantCollectiveScope": {
     "file": "src/Whizbang.Core/Messaging/TenantCollectiveScope.cs",
     "line": 17,
@@ -6307,7 +6925,7 @@
   },
   "WhizbangReceptorRegistryQueryAdapter": {
     "file": "src/Whizbang.Core/Messaging/WhizbangReceptorRegistryQueryAdapter.cs",
-    "line": 10,
+    "line": 12,
     "symbol": "WhizbangReceptorRegistryQueryAdapter",
     "docs": "internals/receptor-registry-query"
   },
@@ -6605,6 +7223,12 @@
     "symbol": "ResponseExtractor",
     "docs": "fundamentals/dispatcher/rpc-extraction"
   },
+  "BacklogAgeHealthSource": {
+    "file": "src/Whizbang.Core/Health/BacklogAgeHealthSource.cs",
+    "line": 26,
+    "symbol": "BacklogAgeHealthSource",
+    "docs": "operations/observability/managed-resource-health#backlog-age"
+  },
   "HealthProbe": {
     "file": "src/Whizbang.Core/Health/ComponentHealth.cs",
     "line": 52,
@@ -6635,6 +7259,12 @@
     "symbol": "IWhizbangHealthSource",
     "docs": "resilience/managed-resource-health"
   },
+  "PoisonDetectionHealthSource": {
+    "file": "src/Whizbang.Core/Health/PoisonDetectionHealthSource.cs",
+    "line": 18,
+    "symbol": "PoisonDetectionHealthSource",
+    "docs": "fundamentals/dispatcher/routing#poison-messages"
+  },
   "SchemaHealthSource": {
     "file": "src/Whizbang.Core/Health/SchemaHealthSource.cs",
     "line": 19,
@@ -6652,6 +7282,12 @@
     "line": 29,
     "symbol": "StartupPipelineHealthSource",
     "docs": "operations/startup/startup-status"
+  },
+  "TopologyDriftHealthSource": {
+    "file": "src/Whizbang.Core/Health/TopologyDriftHealthSource.cs",
+    "line": 15,
+    "symbol": "TopologyDriftHealthSource",
+    "docs": "fundamentals/dispatcher/routing#ownership-drift"
   },
   "WhizbangHealthAggregator": {
     "file": "src/Whizbang.Core/Health/WhizbangHealthAggregator.cs",
@@ -6895,25 +7531,25 @@
   },
   "DefaultQueryScope": {
     "file": "src/Whizbang.Core/Configuration/WhizbangCoreOptions.cs",
-    "line": 123,
+    "line": 149,
     "symbol": "DefaultQueryScope",
     "docs": "fundamentals/lenses/scoped-queries#default-scope"
   },
   "ShowBanner": {
     "file": "src/Whizbang.Core/Configuration/WhizbangCoreOptions.cs",
-    "line": 134,
+    "line": 160,
     "symbol": "ShowBanner",
     "docs": "operations/configuration/whizbang-options#banner"
   },
   "ImmediateDetachedChainWarningThreshold": {
     "file": "src/Whizbang.Core/Configuration/WhizbangCoreOptions.cs",
-    "line": 150,
+    "line": 176,
     "symbol": "ImmediateDetachedChainWarningThreshold",
     "docs": "fundamentals/lifecycle/lifecycle-stages#immediate-async"
   },
   "TagProcessingMode": {
     "file": "src/Whizbang.Core/Configuration/WhizbangCoreOptions.cs",
-    "line": 176,
+    "line": 202,
     "symbol": "TagProcessingMode",
     "docs": "operations/configuration/whizbang-options#tag-processing-mode"
   },
