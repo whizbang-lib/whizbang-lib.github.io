@@ -10,7 +10,7 @@ description: >-
   Why bounding the size of each claim does not bound how much work an instance
   holds, and how the outstanding-row budget prevents a backlog from consuming
   its own retry budget. Covers AdaptiveOutstandingBudget, the rows-versus-streams
-  distinction, cold-start behaviour, stall handling, and the tuning knobs.
+  distinction, cold-start behavior, stall handling, and the tuning knobs.
 tags: >-
   claim-work, backpressure, leases, attempts, max-attempts-exceeded,
   outstanding-work, adaptive-claim-window, dead-letter, admission-control
@@ -63,7 +63,7 @@ selection rather than a cheap pre-filter: selecting by age and filtering for own
 would let one instance's rows permanently occupy another instance's window, so it would claim
 nothing while its own work waited behind them.
 
-`LIMIT NULL` is unlimited in Postgres, so the parameter defaults to the previous behaviour for any
+`LIMIT NULL` is unlimited in Postgres, so the parameter defaults to the previous behavior for any
 caller that passes no bound.
 
 ## Cause 2 — outstanding was read from a truncated query
@@ -83,7 +83,7 @@ instance held roughly **twelve times** the most the budget would ever have permi
 indexed round trip. It is read-only — no leases, no attempt bumps, nothing to strand.
 
 It is deliberately **not** a counter kept in the worker. An in-memory figure stranded by a hung or
-cancelled task stays wrong until the process restarts; an earlier in-memory `IsInFlight` filter on
+canceled task stays wrong until the process restarts; an earlier in-memory `IsInFlight` filter on
 this same path proved unrecoverable in production for exactly that reason.
 
 ## Unmeasured is not zero
