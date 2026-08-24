@@ -1,1 +1,1 @@
-{"XmlDocumentationTests.PublicInterfaces_HaveXmlDocumentation_InWhizbangCoreAsync":{"o":"passed","d":642,"s":"unit"},"XmlDocumentationTests.CoreTypes_AreExported_FromWhizbangCoreAsync":{"o":"passed","d":642,"s":"unit"}}
+{"XmlDocumentationTests.CoreTypes_AreExported_FromWhizbangCoreAsync":{"o":"passed","d":336,"s":"unit"},"XmlDocumentationTests.PublicInterfaces_HaveXmlDocumentation_InWhizbangCoreAsync":{"o":"passed","d":337,"s":"unit"}}
