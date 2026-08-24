@@ -1,1 +1,1 @@
-{"CreateShipmentReceptorTests.HandleAsync_PublishesShipmentCreatedEvent_ViaDispatcherAsync":{"o":"passed","d":249,"s":"unit"},"CreateShipmentReceptorTests.HandleAsync_CreatesShipment_ReturnsShipmentCreatedEventAsync":{"o":"passed","d":253,"s":"unit"}}
+{"CreateShipmentReceptorTests.HandleAsync_CreatesShipment_ReturnsShipmentCreatedEventAsync":{"o":"passed","d":581,"s":"unit"},"CreateShipmentReceptorTests.HandleAsync_PublishesShipmentCreatedEvent_ViaDispatcherAsync":{"o":"passed","d":582,"s":"unit"}}
