@@ -686,6 +686,61 @@ builder.Services.AddSingleton<IReceptor<CreateOrder, OrderCreated>, CreateOrderR
 
 ---
 
+## Manual Construction
+
+Receptor discovery registers **every** `IReceptor<T>` implementation it finds. That is the right
+default — a receptor exists to be resolved and dispatched to. But some receptors are deliberately
+built by their owner instead: a test helper closing over per-test state, one parameterized by a
+callback, one whose collaborator is chosen at runtime. Their constructors take arguments the
+container has no way to supply, and nothing sensibly could supply them.
+
+Registering one of those is not a local problem. The container validates every registered descriptor
+when the provider is built with validation enabled, so a **single** un-constructible receptor aborts
+construction of the **entire** provider — every service in the assembly fails, not just that
+receptor. The resulting error names the receptor without explaining why it was registered at all,
+which reads as an inexplicable DI misconfiguration.
+
+`[SuppressReceptorRegistration]` is the supported way to say "I own this one's lifetime":
+
+```csharp{title="Declaring a hand-constructed receptor" description="Marks a receptor whose constructor takes a callback the container cannot supply, so discovery skips its DI registration while leaving dispatch intact." framework="NET10" category="Receptors" difficulty="INTERMEDIATE" tags=["receptors", "dependency-injection", "testing"]}
+// Built by hand so it can close over state the container knows nothing about.
+[SuppressReceptorRegistration]
+public sealed class CountingReceptor(Action<OrderPlaced> onReceived) : IReceptor<OrderPlaced> {
+  public ValueTask HandleAsync(OrderPlaced message, CancellationToken cancellationToken = default) {
+    onReceived(message);
+    return ValueTask.CompletedTask;
+  }
+}
+```
+
+**Only DI registration is skipped.** The receptor is still discovered and still routed — the
+attribute declares who owns *construction*, not that the type should be ignored. Opting out of the
+container does not cost the receptor its dispatch.
+
+### The WHIZ014 warning
+
+Because this shape is easy to write by accident, the generator warns when a receptor that **will** be
+registered takes a constructor parameter dependency injection is unlikely to supply:
+
+> **WHIZ014** — Receptor `'CountingReceptor'` takes constructor parameter `'onReceived'` of type
+> `'System.Action<OrderPlaced>'`, which dependency injection is unlikely to supply.
+
+This is deliberately a **heuristic** and deliberately a **warning**. A source generator has no view
+of what a given application registers, so it cannot distinguish `Action<T>` from `ILogger<T>` by
+constructibility — only by shape. It flags delegates and bare primitives, which are essentially never
+registered in a container and are exactly what a hand-constructed receptor takes. Parameters with
+default values are ignored, since the container can omit them.
+
+Applying `[SuppressReceptorRegistration]` silences the warning and is also the fix. If instead the
+dependency *should* have been resolvable, register it — the warning has done its job either way.
+
+### Why un-constructible receptors are not skipped automatically
+
+Silently dropping receptors the framework merely *fails* to construct was considered and rejected. It
+would turn a forgotten dependency registration into a receptor that quietly never fires — invisible
+until messages stop being handled, with nothing in the logs to say why. Opting out has to be a
+decision someone wrote down, not something inferred.
+
 ## Error Handling
 
 ### Validation Errors
