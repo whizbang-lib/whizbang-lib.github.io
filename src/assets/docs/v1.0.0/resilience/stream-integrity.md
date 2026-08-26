@@ -633,6 +633,52 @@ apply to this design's confirmed-gap, identity-preserving re-delivery. `ReportOn
 explicit opt-DOWN for operators who want report-and-decide; every report still states exactly what
 auto-repair would have done, so ReportOnly IS the dry-run.
 
+:::warning
+**The confirmed-gap premise fails when a consumer is BEHIND.** The reasoning above rests on repair
+acting only on a gap that is provably real. Confirmation is two-cycle: a deficit seen on one
+checkpoint, still short when the origin's next checkpoint arrives. That window is the checkpoint
+cadence — `CheckpointIntervalSeconds`, **60 seconds** by default.
+
+A consumer running minutes or hours behind reports the same shortfall on BOTH checks and confirms a
+gap while nothing has been lost. The events are not missing; they are queued. Repair then requests
+redelivery, those events land at the back of the same backlog, they cannot arrive within the next
+cadence either, the deficit re-confirms, and repair fires again. **Each cycle adds load, which
+increases lag, which manufactures more false gaps.**
+
+Neither protection above holds in this state:
+
+- *"additive and idempotent — the same event id folds once"* assumes the redelivered event carries
+  the original identity. A consumer whose receptors raise their own events in response mints NEW
+  ids, so nothing folds and the volume compounds.
+- *"every rung hard-capped"* bounds a SINGLE checkpoint. Checkpoints keep arriving on cadence,
+  pendings are re-added from the current window as fast as they are drained, and nothing remembers
+  that a window was already requested or whether the last request helped. Every individual
+  checkpoint is capped while the aggregate rate is unbounded.
+
+Measured in a real deployment: one consumer left on the default emitted roughly **thirty times**
+the events its producer did, for a workload that had previously completed in minutes. Its five
+peers, pinned to `ReportOnly`, were unaffected. Pinning that consumer to `ReportOnly` dropped its
+event production by more than two orders of magnitude and drained its queue to empty.
+
+**Note the asymmetry with the deep audit,** which already guards against exactly this:
+`AuditSettleWindowMinutes` (default 60) exists so that an in-flight delivery never reads as
+divergence. The checkpoint path has no equivalent. That is the defect, tracked as
+[#582](https://github.com/whizbang-lib/whizbang/issues/582).
+
+**Settledness is a property of the SERVICE, never of one instance.** A service runs many instances
+against one shared inbox. An instance that has finished its own claimed streams looks completely
+idle from the inside while peers are still draining, so an instance deciding from its LOCAL view
+re-requests events its own siblings are actively processing — the storm returning through whichever
+replica happened to be free. Any gate must read the shared store: unprocessed rows across the whole
+inbox, consumer lag (depth alone reads zero between claim cycles), and rows currently leased by ANY
+instance.
+
+**Until that lands:** set `RepairMode = ReportOnly` on any consumer that can fall meaningfully
+behind its producers — bulk imports, batch jobs, anything with a fan-out multiplier. Repair is
+background self-healing; waiting for genuine quiet costs nothing, and not waiting is what produced
+the storm.
+:::
+
 **Observability (as built): meter `Whizbang.StreamIntegrity`.** Self-healing by default demands
 visibility into what the healer does. Counters:
 `checkpoints_published` / `checkpoints_received` (the liveness beat), `gaps_detected` +
