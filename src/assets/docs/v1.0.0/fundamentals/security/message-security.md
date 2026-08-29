@@ -184,7 +184,7 @@ Whizbang now records the reason:
 With the intentional cases marked, an absent scope becomes an assertable invariant
 instead of a research project:
 
-```sql
+```sql{title="Find events that lost their scope" description="Audit query for unscoped events once the intentional cases are marked" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Scope", "Audit"] tests=["SystemScopeSentinelTests.ASystemScopeIsDistinguishableFromAnAbsentOneAsync"]}
 -- Anything here is a bug worth chasing.
 SELECT event_type, count(*)
 FROM wh_event_store
@@ -201,7 +201,7 @@ GROUP BY 1 ORDER BY 2 DESC;
 Use the exemption list you already use to tell the security check to stand down.
 The same declaration now records the intent in the stored data:
 
-```csharp
+```csharp{title="Declaring an event unscoped" description="Registering a type whose events legitimately carry no security scope" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Scope", "Configuration"] tests=["DeclaredUnscopedMarkerTests.ADeclaredTypeIsMarkedDeclaredRatherThanLeftBlankAsync"]}
 services.AddWhizbangMessageSecurity(options => {
   // No authenticated user exists yet at this point in the flow.
   options.ExemptMessageTypes.Add(typeof(LoginAttemptEvent));
