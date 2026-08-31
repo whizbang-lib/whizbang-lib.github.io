@@ -1,13 +1,13 @@
 {
   "run": {
-    "runId": "33413981951",
-    "sha": "d1f7d3b47403ce6bd33ef0aaa4870ed87ad6fc08",
+    "runId": "33433673855",
+    "sha": "e32a7f2e47ee9b3d12862979bd540c2becc2ff7d",
     "branch": "develop",
-    "libraryVersion": "0.1025.0-alpha.213",
-    "completedAt": "2026-08-31T16:56:04.041Z"
+    "libraryVersion": "0.1025.0-alpha.247",
+    "completedAt": "2026-08-31T20:35:20.972Z"
   },
   "total": {
-    "passed": 18871,
+    "passed": 19154,
     "failed": 0,
     "skipped": 9
   },
@@ -28,7 +28,7 @@
       "skipped": 0
     },
     "postgres-efcore-": {
-      "passed": 2441,
+      "passed": 2476,
       "failed": 0,
       "skipped": 0
     },
@@ -43,12 +43,12 @@
       "skipped": 0
     },
     "servicebus-whizbang": {
-      "passed": 93,
+      "passed": 101,
       "failed": 0,
       "skipped": 1
     },
     "unit": {
-      "passed": 15616,
+      "passed": 15856,
       "failed": 0,
       "skipped": 8
     }
@@ -116,7 +116,7 @@
     },
     "Whizbang.Core.Tests": {
       "file": "Whizbang.Core.Tests.json",
-      "passed": 10425,
+      "passed": 10552,
       "failed": 0,
       "skipped": 0
     },
@@ -128,7 +128,7 @@
     },
     "Whizbang.Data.EFCore.Postgres.Tests": {
       "file": "Whizbang.Data.EFCore.Postgres.Tests.json",
-      "passed": 2441,
+      "passed": 2476,
       "failed": 0,
       "skipped": 0
     },
@@ -158,7 +158,7 @@
     },
     "Whizbang.Generators.Tests": {
       "file": "Whizbang.Generators.Tests.json",
-      "passed": 1584,
+      "passed": 1674,
       "failed": 0,
       "skipped": 0
     },
@@ -236,19 +236,19 @@
     },
     "Whizbang.Testing.Tests": {
       "file": "Whizbang.Testing.Tests.json",
-      "passed": 232,
+      "passed": 246,
       "failed": 0,
       "skipped": 0
     },
     "Whizbang.Transports.AzureServiceBus.Integration.Tests": {
       "file": "Whizbang.Transports.AzureServiceBus.Integration.Tests.json",
-      "passed": 93,
+      "passed": 101,
       "failed": 0,
       "skipped": 1
     },
     "Whizbang.Transports.AzureServiceBus.Tests": {
       "file": "Whizbang.Transports.AzureServiceBus.Tests.json",
-      "passed": 525,
+      "passed": 534,
       "failed": 0,
       "skipped": 0
     },
