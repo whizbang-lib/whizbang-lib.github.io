@@ -79,4 +79,4 @@ something in this collection.
 
 - [Overriding Defaults](overriding-defaults) - how the shipped defaults are supplied
 - [Injectable Services](injectable-services) - the services that participate
-- [Extending and Customising](extending) - partial compositions, and adding a service of your own
+- [Extending and Customizing](extending) - partial compositions, and adding a service of your own

@@ -68,6 +68,6 @@ registration factory that forgets to pass a logger produces a service that write
 ## Related
 
 - [Overriding Defaults](overriding-defaults)
-- [Extending and Customising](extending)
+- [Extending and Customizing](extending)
 - [Registration Validation](registration-validation)
 - [AddAllWhizbangServices](../configuration/all-services)

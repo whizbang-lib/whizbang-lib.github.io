@@ -1,5 +1,5 @@
 ---
-title: Extending and Customising
+title: Extending and Customizing
 pageType: guide
 version: 1.0.0
 category: DI
@@ -7,7 +7,7 @@ order: 4
 description: >-
   Worked examples for replacing a shipped service, and the pattern to follow when
   adding an injectable service of your own
-tags: 'di, dependency-injection, extending, customising, hooks'
+tags: 'di, dependency-injection, extending, customizing, hooks'
 codeReferences:
   - src/Whizbang.Core/SystemEvents/AuditDecisionHook.cs
   - src/Whizbang.Core/Lifecycle/NoOpDestructionHook.cs
@@ -17,7 +17,7 @@ testReferences:
   - tests/Whizbang.Core.Tests/DependencyInjection/RegistrationValidationTests.cs
 ---
 
-# Extending and Customising
+# Extending and Customizing
 
 ## Replacing a shipped service
 

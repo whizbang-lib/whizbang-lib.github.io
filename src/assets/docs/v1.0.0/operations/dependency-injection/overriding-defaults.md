@@ -74,5 +74,5 @@ For those, composition fails at startup naming the service. See
 
 - [Registration Validation](registration-validation) - what is checked, and when
 - [Injectable Services](injectable-services) - the full list and each shipped default
-- [Extending and Customising](extending) - worked examples, and adding a service of your own
+- [Extending and Customizing](extending) - worked examples, and adding a service of your own
 - [WHIZ500](../diagnostics/whiz500) - the analyzer that catches a dropped dependency
