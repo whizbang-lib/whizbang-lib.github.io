@@ -1,13 +1,13 @@
 {
   "run": {
-    "runId": "33532114336",
-    "sha": "526ffdc4e96526614f91c3d79ca4ff754ba00cdc",
+    "runId": "33538984887",
+    "sha": "6b325ebac94babe80b714a89cd3bfb746fcf7f07",
     "branch": "develop",
-    "libraryVersion": "0.1025.0-alpha.303",
-    "completedAt": "2026-09-01T16:58:41.908Z"
+    "libraryVersion": "0.1025.0-alpha.310",
+    "completedAt": "2026-09-01T18:06:22.885Z"
   },
   "total": {
-    "passed": 19473,
+    "passed": 19483,
     "failed": 0,
     "skipped": 9
   },
@@ -48,7 +48,7 @@
       "skipped": 1
     },
     "unit": {
-      "passed": 16084,
+      "passed": 16094,
       "failed": 0,
       "skipped": 8
     }
@@ -116,7 +116,7 @@
     },
     "Whizbang.Core.Tests": {
       "file": "Whizbang.Core.Tests.json",
-      "passed": 10641,
+      "passed": 10645,
       "failed": 0,
       "skipped": 0
     },
@@ -158,7 +158,7 @@
     },
     "Whizbang.Generators.Tests": {
       "file": "Whizbang.Generators.Tests.json",
-      "passed": 1770,
+      "passed": 1776,
       "failed": 0,
       "skipped": 0
     },
