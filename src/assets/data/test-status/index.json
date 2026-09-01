@@ -1,13 +1,13 @@
 {
   "run": {
-    "runId": "33468881114",
-    "sha": "d98bb0439e3382705654ea3d25229573b28dd1f5",
+    "runId": "33479402545",
+    "sha": "a77c8c15f3705a2859cc2a299f1408c45578ee1d",
     "branch": "develop",
-    "libraryVersion": "0.1025.0-alpha.276",
-    "completedAt": "2026-09-01T04:42:02.000Z"
+    "libraryVersion": "0.1025.0-alpha.288",
+    "completedAt": "2026-09-01T07:20:13.193Z"
   },
   "total": {
-    "passed": 19345,
+    "passed": 19415,
     "failed": 0,
     "skipped": 9
   },
@@ -23,12 +23,12 @@
       "skipped": 0
     },
     "postgres-dapper": {
-      "passed": 528,
+      "passed": 532,
       "failed": 0,
       "skipped": 0
     },
     "postgres-efcore-": {
-      "passed": 2487,
+      "passed": 2501,
       "failed": 0,
       "skipped": 0
     },
@@ -48,7 +48,7 @@
       "skipped": 1
     },
     "unit": {
-      "passed": 16017,
+      "passed": 16069,
       "failed": 0,
       "skipped": 8
     }
@@ -116,19 +116,19 @@
     },
     "Whizbang.Core.Tests": {
       "file": "Whizbang.Core.Tests.json",
-      "passed": 10623,
+      "passed": 10641,
       "failed": 0,
       "skipped": 0
     },
     "Whizbang.Data.Dapper.Postgres.Tests": {
       "file": "Whizbang.Data.Dapper.Postgres.Tests.json",
-      "passed": 528,
+      "passed": 532,
       "failed": 0,
       "skipped": 0
     },
     "Whizbang.Data.EFCore.Postgres.Tests": {
       "file": "Whizbang.Data.EFCore.Postgres.Tests.json",
-      "passed": 2487,
+      "passed": 2501,
       "failed": 0,
       "skipped": 0
     },
@@ -158,7 +158,7 @@
     },
     "Whizbang.Generators.Tests": {
       "file": "Whizbang.Generators.Tests.json",
-      "passed": 1757,
+      "passed": 1766,
       "failed": 0,
       "skipped": 0
     },
@@ -248,7 +248,7 @@
     },
     "Whizbang.Transports.AzureServiceBus.Tests": {
       "file": "Whizbang.Transports.AzureServiceBus.Tests.json",
-      "passed": 536,
+      "passed": 553,
       "failed": 0,
       "skipped": 0
     },
@@ -278,7 +278,7 @@
     },
     "Whizbang.Transports.RabbitMQ.Tests": {
       "file": "Whizbang.Transports.RabbitMQ.Tests.json",
-      "passed": 261,
+      "passed": 269,
       "failed": 0,
       "skipped": 0
     },
