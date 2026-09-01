@@ -1,13 +1,13 @@
 {
   "run": {
-    "runId": "33457485002",
-    "sha": "304179c4bfb9fcc2e39d6810dd385f262997df47",
+    "runId": "33468881114",
+    "sha": "d98bb0439e3382705654ea3d25229573b28dd1f5",
     "branch": "develop",
-    "libraryVersion": "0.1025.0-alpha.253",
-    "completedAt": "2026-09-01T01:36:32.872Z"
+    "libraryVersion": "0.1025.0-alpha.276",
+    "completedAt": "2026-09-01T04:42:02.000Z"
   },
   "total": {
-    "passed": 19161,
+    "passed": 19345,
     "failed": 0,
     "skipped": 9
   },
@@ -23,12 +23,12 @@
       "skipped": 0
     },
     "postgres-dapper": {
-      "passed": 511,
+      "passed": 528,
       "failed": 0,
       "skipped": 0
     },
     "postgres-efcore-": {
-      "passed": 2476,
+      "passed": 2487,
       "failed": 0,
       "skipped": 0
     },
@@ -48,7 +48,7 @@
       "skipped": 1
     },
     "unit": {
-      "passed": 15861,
+      "passed": 16017,
       "failed": 0,
       "skipped": 8
     }
@@ -116,19 +116,19 @@
     },
     "Whizbang.Core.Tests": {
       "file": "Whizbang.Core.Tests.json",
-      "passed": 10557,
+      "passed": 10623,
       "failed": 0,
       "skipped": 0
     },
     "Whizbang.Data.Dapper.Postgres.Tests": {
       "file": "Whizbang.Data.Dapper.Postgres.Tests.json",
-      "passed": 511,
+      "passed": 528,
       "failed": 0,
       "skipped": 0
     },
     "Whizbang.Data.EFCore.Postgres.Tests": {
       "file": "Whizbang.Data.EFCore.Postgres.Tests.json",
-      "passed": 2476,
+      "passed": 2487,
       "failed": 0,
       "skipped": 0
     },
@@ -158,7 +158,7 @@
     },
     "Whizbang.Generators.Tests": {
       "file": "Whizbang.Generators.Tests.json",
-      "passed": 1674,
+      "passed": 1757,
       "failed": 0,
       "skipped": 0
     },
@@ -218,7 +218,7 @@
     },
     "Whizbang.Sagas.Tests": {
       "file": "Whizbang.Sagas.Tests.json",
-      "passed": 178,
+      "passed": 183,
       "failed": 0,
       "skipped": 0
     },
@@ -248,7 +248,7 @@
     },
     "Whizbang.Transports.AzureServiceBus.Tests": {
       "file": "Whizbang.Transports.AzureServiceBus.Tests.json",
-      "passed": 534,
+      "passed": 536,
       "failed": 0,
       "skipped": 0
     },
