@@ -1,13 +1,13 @@
 {
   "run": {
-    "runId": "33485794085",
-    "sha": "2aed52de98ebde26ab588722105dd695e9aad570",
+    "runId": "33523303802",
+    "sha": "202bf1f28fd157940d55d725e1283876a964bc32",
     "branch": "develop",
-    "libraryVersion": "0.1025.0-alpha.292",
-    "completedAt": "2026-09-01T08:43:43.087Z"
+    "libraryVersion": "0.1025.0-alpha.297",
+    "completedAt": "2026-09-01T15:35:20.268Z"
   },
   "total": {
-    "passed": 19433,
+    "passed": 19445,
     "failed": 0,
     "skipped": 9
   },
@@ -28,12 +28,12 @@
       "skipped": 0
     },
     "postgres-efcore-": {
-      "passed": 2513,
+      "passed": 2515,
       "failed": 0,
       "skipped": 0
     },
     "rabbitmq": {
-      "passed": 109,
+      "passed": 112,
       "failed": 0,
       "skipped": 0
     },
@@ -43,12 +43,12 @@
       "skipped": 0
     },
     "servicebus-whizbang": {
-      "passed": 101,
+      "passed": 103,
       "failed": 0,
       "skipped": 1
     },
     "unit": {
-      "passed": 16075,
+      "passed": 16080,
       "failed": 0,
       "skipped": 8
     }
@@ -128,7 +128,7 @@
     },
     "Whizbang.Data.EFCore.Postgres.Tests": {
       "file": "Whizbang.Data.EFCore.Postgres.Tests.json",
-      "passed": 2513,
+      "passed": 2515,
       "failed": 0,
       "skipped": 0
     },
@@ -218,7 +218,7 @@
     },
     "Whizbang.Sagas.Tests": {
       "file": "Whizbang.Sagas.Tests.json",
-      "passed": 183,
+      "passed": 186,
       "failed": 0,
       "skipped": 0
     },
@@ -242,13 +242,13 @@
     },
     "Whizbang.Transports.AzureServiceBus.Integration.Tests": {
       "file": "Whizbang.Transports.AzureServiceBus.Integration.Tests.json",
-      "passed": 101,
+      "passed": 103,
       "failed": 0,
       "skipped": 1
     },
     "Whizbang.Transports.AzureServiceBus.Tests": {
       "file": "Whizbang.Transports.AzureServiceBus.Tests.json",
-      "passed": 559,
+      "passed": 561,
       "failed": 0,
       "skipped": 0
     },
@@ -272,7 +272,7 @@
     },
     "Whizbang.Transports.RabbitMQ.Integration.Tests": {
       "file": "Whizbang.Transports.RabbitMQ.Integration.Tests.json",
-      "passed": 47,
+      "passed": 50,
       "failed": 0,
       "skipped": 0
     },
