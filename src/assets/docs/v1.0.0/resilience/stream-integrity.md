@@ -665,9 +665,74 @@ the events its producer did, for a workload that had previously completed in min
 peers, pinned to `ReportOnly`, were unaffected. Pinning that consumer to `ReportOnly` dropped its
 event production by more than two orders of magnitude and drained its queue to empty.
 
-**Note the asymmetry with the deep audit,** which already guards against exactly this:
+### The repair decision pipeline (as wired)
+
+Every confirmed gap on the checkpoint path now passes through gates in strict order, cheapest
+first. The pipeline is implemented by `IntegrityCheckpointReceptor` consulting
+`IntegrityRepairPolicy` and the repair ledger:
+
+```
+confirmed gap
+  |
+  |- 1. mode == AutoRepairCapped, per-checkpoint budget left    (cheap flags)
+  |
+  |- 2. policy.Evaluate(observation)                            (pure; no side effects)
+  |       |- settledness: depth / lag / leases; ANY one vetoes  -> ConsumerBehind
+  |       |- this window's attempt budget spent?                -> AttemptsExhausted
+  |       |- too many windows already under repair?             -> GlobalBudgetExhausted
+  |
+  |- 3. ledger.TryBeginRepair                                   (durable; RECORDS an attempt)
+  |
+  |- 4. send the request -> policy.RecordRequested              (charged only if actually sent)
+```
+
+The ordering is the design. The policy is pure evaluation, so asking it costs nothing. The
+ledger's grant IS its accounting: a grant that is then discarded burns that bucket's budget on a
+request never sent, so the ledger is consulted last, after everything that could still say no.
+
+**Why three settledness signals.** Each alone is fooled, so any one vetoes:
+
+| signal | catches | fooled by |
+| --- | --- | --- |
+| depth (unprocessed rows) | a queued backlog | reads zero in the gap between claim cycles, even mid-storm |
+| lag (age of the oldest unprocessed row) | a small queue holding a row stuck for an hour | looks healthy on a service idle for unrelated reasons |
+| live leases | a sibling replica dispatching the "missing" events right now | neither of the above sees it |
+
+All three are measured SERVICE-wide, never per instance. An instance that finished its own claimed
+streams looks idle from the inside while its peers are still draining; deciding from that local
+view re-requests events its own siblings are actively processing, and the storm returns through
+whichever replica happened to be free.
+
+The insight behind the veto: a big apparent gap on a backlogged consumer is the STRONGEST evidence
+of lag, not the strongest case for repair. Treating it as urgent is what turns a slow consumer
+into a storm, because repair re-delivers into the very queue that is behind, which adds load,
+deepens lag, and manufactures more false gaps.
+
+**The two budgets.** Per window: a bounded number of requests, and the count RESETS whenever the
+window's received count has risen since the last request. Healing counts as working, and a budget
+must not expire mid-recovery. Globally: a bound on how many windows may be under repair at once.
+This is the cap that was missing everywhere; per-checkpoint caps reset every cadence, so they
+bound one batch while the aggregate series is infinite. Only a concurrent-windows bound limits the
+total rate at which repair adds load to a struggling system. When a window heals between
+checkpoints its slot is released, so healed windows cannot starve genuinely stuck ones.
+
+**Policy and ledger overlap on purpose.** The policy is in-memory and per process: the richer
+decision (lag, global budget, heal-reset), lost on restart. The ledger is database-backed and
+shared across replicas: per-bucket backoff and attempts that survive restarts, which matters
+because restarts are frequently CAUSED by storms, so boot-time state loss used to clear exactly
+the memory that would have suppressed one. Composed, each covers the other's blind spot.
+
+**What the pipeline deliberately does not do.** Detection is never gated: `GapsDetected` fires and
+the confirmation is logged before any repair decision, on every checkpoint. When repair is vetoed
+or exhausted, the system stops ASKING, never stops KNOWING. A gap that survived its attempt budget
+will not be fixed by one more request; it needs an operator, and it keeps surfacing in reports and
+metrics until someone acts.
+
+**Note the asymmetry with the deep audit,** which already guarded against exactly this:
 `AuditSettleWindowMinutes` (default 60) exists so that an in-flight delivery never reads as
-divergence. The checkpoint path has no equivalent. That is the defect, tracked as
+divergence. The checkpoint path originally had no equivalent; it now has a stronger one, described
+in [the repair decision pipeline](#the-repair-decision-pipeline-as-wired). That was the defect
+tracked as
 [#582](https://github.com/whizbang-lib/whizbang/issues/582).
 
 **Settledness is a property of the SERVICE, never of one instance.** A service runs many instances
