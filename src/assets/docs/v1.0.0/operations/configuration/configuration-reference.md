@@ -718,6 +718,7 @@ Operator rung of the row-retention override ladder. **Configure:** `services.Con
 | `MaxDestructionRetries` | `int` | `5` | Retries of a failing destruction batch before a forced delete |
 | `OnDestroyFailure` | `OnDestroyFailure` | `RetryThenForcedDelete` | Policy when a `PreDestruction` hook keeps failing |
 | `RowReapBatchSize` | `int` | `5000` | Rows deleted per perspective per cycle by the expiry sweep |
+| `LifecycleCompletionRetentionDays` | `int` | `7` | Days a lifecycle-completion marker is kept before the sweep removes it; `0` disables the sweep |
 | `RowCapSweepClaimWindowMinutes` | `int` | `60` | Minimum minutes between cap sweeps service-wide |
 | `RowGuardCollectLimit` | `int` | `500` | Rows offered per guarded perspective per cycle |
 | `RowCascadeDrainLimit` | `int` | `1000` | Origin evictions claimed from the journal per cycle |
@@ -778,6 +779,10 @@ Self-healing continuity checking; the defaults are the recommended posture. **Co
 | `Enabled` | `bool` | `true` | Killswitch for the recovery worker |
 | `ScanIntervalMinutes` | `int` | `10` | Backstop minutes between scans |
 | `ScanBatchSize` | `int` | `200` | Max DLQ rows fetched per scan cycle |
+| `LoopBreakerEnabled` | `bool` | `true` | Suspend recovery when it is generating the dead letters it recovers |
+| `LoopBreakerFreshFraction` | `double` | `0.5` | Share of a batch postdating the last scan that reads as self-inflicted |
+| `LoopBreakerConsecutiveCycles` | `int` | `3` | Consecutive self-inflicted cycles before recovery suspends |
+| `LoopBreakerCooldownMinutes` | `int` | `60` | Minutes suspended before retrying; `0` stays open until restart |
 | `EnableGenerationReplay` | `bool` | `true` | Startup scan auto-replaying rows not yet retried on this build generation |
 | `PolicyByReason` | `Dictionary<MessageFailureReason, RecoveryPolicy>` | populated map | Per-failure-reason recovery rules (see the recovery page for the default map) |
 

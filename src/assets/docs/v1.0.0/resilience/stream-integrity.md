@@ -623,7 +623,9 @@ shipped default landed on `AutoRepairCapped` with `ReportOnly` as the opt-down.
 
 :::updated
 **Default REVISED (as built): SELF-HEALING out of the box.** `RepairMode` defaults to
-`AutoRepairCapped` — the shipped posture detects AND repairs, with every rung hard-capped
+`AutoRepairCapped` is the shipped posture: it detects AND repairs, capped in two dimensions, per batch
+(`MaxAutoRepairRequestsPerAudit` / `MaxAutoRepairRequestsPerCheckpoint`) and per bucket across
+occurrences (`RepairRequestBackoffSeconds` / `MaxRepairAttemptsPerBucket`)
 (per-checkpoint, per-audit-chunk, per-cycle rebuilds, drill-down types, per-request event caps) so
 a mass divergence reports loudly instead of storming. What changed from the original stance: the
 storm-lesson is encoded in the CAPS, not in a disabled-by-default repair — a capped repair of a
@@ -650,10 +652,13 @@ Neither protection above holds in this state:
 - *"additive and idempotent — the same event id folds once"* assumes the redelivered event carries
   the original identity. A consumer whose receptors raise their own events in response mints NEW
   ids, so nothing folds and the volume compounds.
-- *"every rung hard-capped"* bounds a SINGLE checkpoint. Checkpoints keep arriving on cadence,
-  pendings are re-added from the current window as fast as they are drained, and nothing remembers
-  that a window was already requested or whether the last request helped. Every individual
-  checkpoint is capped while the aggregate rate is unbounded.
+- *"every rung hard-capped"* used to bound a SINGLE checkpoint and nothing more. Checkpoints keep
+  arriving on cadence, pendings are re-added from the current window as fast as they are drained, so
+  every individual checkpoint was capped while the aggregate rate was unbounded. **Fixed:** the
+  checkpoint rung now consults the repair ledger before requesting, the same guard the manifest rung
+  has always used, so `RepairRequestBackoffSeconds` and `MaxRepairAttemptsPerBucket` bound how often
+  the SAME bucket may be re-requested. The ledger is the memory that was missing. A per-batch cap
+  bounds the storm's rate; only the per-bucket ledger bounds its size, and both are needed.
 
 Measured in a real deployment: one consumer left on the default emitted roughly **thirty times**
 the events its producer did, for a workload that had previously completed in minutes. Its five
@@ -974,7 +979,8 @@ each amendment callout marks where live validation refined the original sketch.
    :::new
    **Closed**: `AutoRepairCapped` is implemented at every repair site (checkpoint gaps, audit
    divergences, local rebuilds); `ReportOnly` IS the dry-run (every report carries exactly what
-   auto-repair would have done); storm caps exist at every rung.
+   auto-repair would have done); storm caps exist at every rung, in both the per-batch and the
+   per-bucket dimension.
    :::
 
 8. **Bounded reconciliation** — epochs, negotiated scope, seals, deficit exchange, scheduled

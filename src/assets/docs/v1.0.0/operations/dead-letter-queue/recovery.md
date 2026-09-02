@@ -62,7 +62,16 @@ signal is wired — migration 056 adds an `AFTER INSERT` trigger on
 once `recovery_attempts` reaches the policy's `MaxRecoveryAttempts`, the
 worker transitions the row to `HoldForReview` (when `true`) or
 `PermanentlyFailed` (when `false`) — it never keeps retrying past the
-budget. Failure reasons without an entry in `PolicyByReason` (e.g. the
+budget.
+
+:::note[`MaxRecoveryAttempts` counts one row, not one message]
+A recovery re-delivers the message; if it fails again the framework records that
+as a **new** dead-letter row with a new `source_id`, not an update to the row it
+came from. Each pass therefore presents a row on its first attempt, so a per-row
+budget alone cannot see a message that keeps coming back, and raising it does not
+help. What bounds that cycle is the redelivery observation counter described
+below.
+::: Failure reasons without an entry in `PolicyByReason` (e.g. the
 newer `SecurityContextEstablishmentFailure`, `EmptyStreamId`,
 `MessageBodyTooLarge` reasons) fall back to the `Unknown` policy.
 
@@ -191,6 +200,54 @@ The worker reports through `DeadLetterMetrics` (meter `Whizbang.DeadLetters`):
 The worker also exposes in-process counters for tests and health endpoints:
 `TotalScans`, `TotalRecovered`, `TotalHeld`, `TotalPermanentlyFailed`,
 `TotalGenerationReplays`.
+
+## Bounding the recovery cycle
+
+Recovery re-delivers a message by writing it back into `wh_inbox`. That is a real
+delivery and is counted like any other: `recover_dead_letter` increments
+`wh_message_deduplication.observation_count` for the message, which is the same
+counter `store_inbox_messages` maintains for normal arrivals and the one
+`PoisonMessageDetector` reads. A message that keeps returning through recovery
+therefore accumulates observations and can be quarantined like any other poison
+message.
+
+The observation is charged only when the insert actually inserted. A
+double-recovery race that delivered nothing is not charged, because spending a
+message's budget on a delivery that never happened would push a healthy message
+toward quarantine.
+
+### The loop breaker
+
+As a second line of defence, `DeadLetterRecoveryWorker` watches whether the rows
+it is recovering are ones it created. A genuine backlog is made of rows that
+already existed before the previous scan and it shrinks; a self-inflicted cycle
+is made of rows that appeared after the previous scan began.
+
+| Option | Default | Meaning |
+| --- | --- | --- |
+| `LoopBreakerEnabled` | `true` | Suspend recovery when it is generating what it recovers |
+| `LoopBreakerFreshFraction` | `0.5` | Share of a batch postdating the last scan that counts as self-inflicted |
+| `LoopBreakerConsecutiveCycles` | `3` | Consecutive such cycles before suspending |
+| `LoopBreakerCooldownMinutes` | `60` | How long it stays suspended; `0` keeps it open until restart |
+
+It never trips on the first scan of a process, which has no baseline to compare
+against and is exactly when a real backlog most needs draining. A quiet cycle
+clears the consecutive run. When it trips it logs at `Error` with the evidence,
+and says plainly that dead letters accumulate while suspended and the underlying
+failure still needs fixing: suspending recovery treats the symptom.
+
+## Retention
+
+`wh_dead_letters` is swept by `perform_maintenance`. Only rows that are settled
+are eligible, meaning `Recovered(3)`, older than `dead_letter_retention_days`
+(default 7). A recovered row is a receipt, not work.
+
+Rows awaiting a human decision (`Pending`, `Recovering`, `HoldForReview`) and the
+forensic record of what never succeeded (`PermanentlyFailed`) are kept regardless
+of age, because age is not evidence that anyone looked at them. The sweep is
+skipped entirely under `debug_mode`, where dead letters are the evidence an
+operator asked to keep.
+
 
 ## See also
 

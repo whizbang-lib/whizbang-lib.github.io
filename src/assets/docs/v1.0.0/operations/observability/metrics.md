@@ -82,40 +82,47 @@ Additional subsystem meters:
 
 All metrics classes are automatically registered as singletons by `AddWhizbang()`. The shared `WhizbangMetrics` class holds the `IMeterFactory` reference that each subsystem uses to create its meter.
 
-```csharp{title="Metrics Registration" description="Metrics are auto-registered by AddWhizbang - no extra setup needed" category="Configuration" difficulty="BEGINNER" tags=["Metrics", "Configuration", "DI"] unverified="metrics config/query — not exercised by a test"}
+```csharp{title="Metrics Registration" description="Subscribe every Whizbang meter without naming them" category="Configuration" difficulty="BEGINNER" tags=["Metrics", "Configuration", "DI"] unverified="metrics config/query — not exercised by a test"}
 // Metrics are registered automatically - no opt-in required
 services.AddWhizbang(options => {
   // ... your configuration
 });
 
-// To export metrics, configure OpenTelemetry SDK
+// To export metrics, configure the OpenTelemetry SDK.
 builder.Services.AddOpenTelemetry()
     .WithMetrics(metrics => {
-      // Subscribe to all Whizbang meters
-      metrics.AddMeter("Whizbang.Dispatcher");
-      metrics.AddMeter("Whizbang.Lifecycle");
-      metrics.AddMeter("Whizbang.LifecycleCoordinator");
-      metrics.AddMeter("Whizbang.Transport");
-      metrics.AddMeter("Whizbang.Perspectives");
-      metrics.AddMeter("Whizbang.WorkCoordinator");
-
-      // Optional subsystem meters (subscribe to the ones you use)
-      metrics.AddMeter("Whizbang.DeadLetters");
-      metrics.AddMeter("Whizbang.TransportDeadLetterDrain");
-      metrics.AddMeter("Whizbang.EventCategories");
-      metrics.AddMeter("Whizbang.Workers.PinnedPool");
-      metrics.AddMeter("Whizbang.TableStatistics");
-      metrics.AddMeter("Whizbang.TypeRegistry");
-      metrics.AddMeter("Whizbang.StreamIntegrity");
-      metrics.AddMeter("Whizbang.Core.Routing.MessageDiscard");
-      metrics.AddMeter("Whizbang.Postgres.Notifications");
-      metrics.AddMeter("Whizbang.Sagas");
+      // Every meter Whizbang publishes, including ones added in later versions.
+      metrics.AddWhizbangInstrumentation();   // Whizbang.Observability
 
       // Export to Prometheus, OTLP, or Aspire
       metrics.AddPrometheusExporter();
       // or: metrics.AddOtlpExporter();
     });
 ```
+
+If you would rather not take the `Whizbang.Observability` package, `WhizbangMeters.All` lives in
+`Whizbang.Core` and does the same job:
+
+```csharp{title="Subscribing without Whizbang.Observability" description="WhizbangMeters.All from Whizbang.Core" category="Configuration" difficulty="BEGINNER" tags=["Metrics", "Configuration"] unverified="metrics config/query — not exercised by a test"}
+metrics.AddMeter([.. WhizbangMeters.All]);   // Whizbang.Core.Observability
+```
+
+:::warning[Do not hand-list meter names]
+Naming meters individually looks harmless and fails silently. The list is written once against the
+meters that exist that day, and every meter added afterwards emits nothing. Nothing logs and nothing
+throws, because a meter with no subscriber is not an error: the instrument is created, the counters
+increment, and the values are discarded at the subscription boundary. The application looks correctly
+instrumented from the inside, and the gap only becomes visible by comparing what the framework
+declares against what actually reaches your backend.
+
+Measured in a real deployment: **16 of 21 meters emitted nothing at all**, across every service, for
+the life of the environment. The silent ones included the dead-letter, maintenance, poison-message
+and startup meters, which are the first things an operator looks for when something is wrong.
+
+`WhizbangMeters.All` is the framework's own list and grows as optional packages self-register, so it
+stays complete without edits. A reflection drift-lock test asserts every `METER_NAME` constant
+appears in it, which is what makes the list trustworthy rather than merely convenient.
+:::
 
 ### WhizbangMetrics
 
