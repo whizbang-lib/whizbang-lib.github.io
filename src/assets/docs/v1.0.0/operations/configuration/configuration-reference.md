@@ -214,7 +214,7 @@ builder.Services.Configure<StreamIntegrityOptions>(options => {
 
 **Recommended section naming:** use `Whizbang:<Area>` (for example `Whizbang:StreamIntegrity`, `Whizbang:Workers:Claim`, `Whizbang:Workers:PinnedPool`) so environment variables follow the same `Whizbang__<Area>__<Key>` shape as the automatically-bound sections. The env-var examples in the sections below assume this convention — **they only work once the section is bound**.
 
-**Framework-bound sections (no service code needed):** the worker pipeline binds `Whizbang:DeadLetterRecovery`, `Whizbang:Workers:TransportDeadLetterDrain`, and `Whizbang:Workers:Claim` itself — setting those env vars just works. The binding is compile-time (configuration binder source generator), so it costs no reflection. Every other section still needs the service to bind it; the lesson behind this feature was a production kill switch (`Whizbang__DeadLetterRecovery__Enabled=false`) that sat on pods for weeks binding to nothing while the worker ran on code defaults.
+**Framework-bound sections (no service code needed):** the worker pipeline binds `Whizbang:DeadLetterRecovery`, `Whizbang:Workers:TransportDeadLetterDrain`, `Whizbang:Workers:Claim`, and `Whizbang:Housekeeping` itself — setting those env vars just works. The binding is compile-time (configuration binder source generator), so it costs no reflection. Every other section still needs the service to bind it; the lesson behind this feature was a production kill switch (`Whizbang__DeadLetterRecovery__Enabled=false`) that sat on pods for weeks binding to nothing while the worker ran on code defaults.
 
 > **Operational tip:** keep a service's bound sections documented next to its `Program.cs`. When someone later finds `Whizbang__X__Y` in a deployment manifest, the first question is always "does anything bind `Whizbang:X`?" — and for code-configured options the answer is "only if this service does".
 
@@ -789,6 +789,14 @@ Self-healing continuity checking; the defaults are the recommended posture. **Co
 | `WaitForIdle` | `bool` | `true` | Recovery re-drives only when the service is settled, via housekeeping arbitration at the highest rank; `false` re-drives on the scan cadence regardless of load |
 | `EnableGenerationReplay` | `bool` | `true` | Startup scan auto-replaying rows not yet retried on this build generation |
 | `PolicyByReason` | `Dictionary<MessageFailureReason, RecoveryPolicy>` | populated map | Per-failure-reason recovery rules (see the recovery page for the default map) |
+
+### HousekeepingCoordinator.Settings
+
+Arbitration tuning for the ranked housekeeping activities (dead-letter recovery, integrity, maintenance). **Configure:** bound by the framework from `Whizbang:Housekeeping` (`Whizbang__Housekeeping__MaxConsecutiveDeferrals=12` works with no service code); a host can also register its own `HousekeepingCoordinator` instance before the framework's TryAdd. **Details:** [Housekeeping Arbitration](../workers/housekeeping-arbitration).
+
+| Property | Type | Default | Purpose |
+|----------|------|---------|---------|
+| `MaxConsecutiveDeferrals` | `int` | `6` | Busy verdicts tolerated before one pass forces through (`ProceedDeferralLimit`) — the starvation floor for recovery and maintenance, counted per activity. At the 10-minute scan cadence, 6 means a never-idle service still recovers roughly hourly |
 
 ### TransportDeadLetterDrainWorkerOptions
 
