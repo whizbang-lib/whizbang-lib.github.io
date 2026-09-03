@@ -212,7 +212,9 @@ builder.Services.Configure<StreamIntegrityOptions>(options => {
 });
 ```
 
-**Recommended section naming:** use `Whizbang:<Area>` (for example `Whizbang:StreamIntegrity`, `Whizbang:Workers:Claim`, `Whizbang:Workers:PinnedPool`) so environment variables follow the same `Whizbang__<Area>__<Key>` shape as the automatically-bound sections. The env-var examples in the sections below assume this convention — **they only work once your service binds the section**.
+**Recommended section naming:** use `Whizbang:<Area>` (for example `Whizbang:StreamIntegrity`, `Whizbang:Workers:Claim`, `Whizbang:Workers:PinnedPool`) so environment variables follow the same `Whizbang__<Area>__<Key>` shape as the automatically-bound sections. The env-var examples in the sections below assume this convention — **they only work once the section is bound**.
+
+**Framework-bound sections (no service code needed):** the worker pipeline binds `Whizbang:DeadLetterRecovery`, `Whizbang:Workers:TransportDeadLetterDrain`, and `Whizbang:Workers:Claim` itself — setting those env vars just works. The binding is compile-time (configuration binder source generator), so it costs no reflection. Every other section still needs the service to bind it; the lesson behind this feature was a production kill switch (`Whizbang__DeadLetterRecovery__Enabled=false`) that sat on pods for weeks binding to nothing while the worker ran on code defaults.
 
 > **Operational tip:** keep a service's bound sections documented next to its `Program.cs`. When someone later finds `Whizbang__X__Y` in a deployment manifest, the first question is always "does anything bind `Whizbang:X`?" — and for code-configured options the answer is "only if this service does".
 
@@ -361,7 +363,7 @@ Flush strategy and lease behavior for work coordinator strategies. **Configure:*
 
 ### ClaimWorkerOptions
 
-The claim loop that distributes outbox/inbox/perspective work. **Configure:** `services.Configure<ClaimWorkerOptions>(…)` — recommended section `Whizbang:Workers:Claim` (`Whizbang__Workers__Claim__MaxStreamsPerBatch`). **Details:** no dedicated page yet.
+The claim loop that distributes outbox/inbox/perspective work. **Configure:** bound by the framework from `Whizbang:Workers:Claim` (`Whizbang__Workers__Claim__FreshWorkShare=1.0` works with no service code); override in code via `services.Configure<ClaimWorkerOptions>(…)`. **Details:** no dedicated page yet.
 
 | Property | Type | Default | Purpose |
 |----------|------|---------|---------|
@@ -371,6 +373,7 @@ The claim loop that distributes outbox/inbox/perspective work. **Configure:** `s
 | `PollingMaxIntervalMilliseconds` | `int` | `10000` | Adaptive backoff cap (constrained by `AbandonStaleInstanceThresholdSeconds`) |
 | `NotifyHealthyPollingIntervalMilliseconds` | `int?` | `5000` | Relaxed base wait while the NOTIFY gate is healthy |
 | `MaxStreamsPerBatch` | `int` | `1000` | Cap on rows returned per `claim_work` call |
+| `FreshWorkShare` | `double` | `0.5` | Share of each inbox batch reserved for fresh-head streams (head row never attempted). Weighted-fair and work-conserving: an empty class hands its share to the other. Raise toward `1.0` where interactive latency outranks backlog drain — strict oldest-first let a 28k-row retry backlog starve every new arrival |
 | `PerspectiveOnly` | `bool` | `false` | Distribute only perspective work (set when the legacy publisher worker is registered) |
 | `PartitionCount` | `int` | `10000` | Modulo partition count |
 | `LeaseSeconds` | `int` | `300` | Lease duration applied to claimed work |
@@ -772,7 +775,7 @@ Self-healing continuity checking; the defaults are the recommended posture. **Co
 
 ### DeadLetterRecoveryOptions
 
-**Configure:** `services.Configure<DeadLetterRecoveryOptions>(…)`; per-reason policies via the `PolicyByReason` dictionary. **Details:** [DLQ Recovery](../dead-letter-queue/recovery#custom-policy).
+**Configure:** bound by the framework from `Whizbang:DeadLetterRecovery` (`Whizbang__DeadLetterRecovery__Enabled=false` works with no service code); override in code via `services.Configure<DeadLetterRecoveryOptions>(…)`. Per-reason policies via the `PolicyByReason` dictionary. **Details:** [DLQ Recovery](../dead-letter-queue/recovery#custom-policy).
 
 | Property | Type | Default | Purpose |
 |----------|------|---------|---------|
@@ -789,7 +792,7 @@ Self-healing continuity checking; the defaults are the recommended posture. **Co
 
 ### TransportDeadLetterDrainWorkerOptions
 
-**Configure:** `services.Configure<TransportDeadLetterDrainWorkerOptions>(…)`. **Details:** [Transport DLQ Recovery](../dead-letter-queue/transport-recovery#defaults).
+**Configure:** bound by the framework from `Whizbang:Workers:TransportDeadLetterDrain`; override in code via `services.Configure<TransportDeadLetterDrainWorkerOptions>(…)`. **Details:** [Transport DLQ Recovery](../dead-letter-queue/transport-recovery#defaults).
 
 | Property | Type | Default | Purpose |
 |----------|------|---------|---------|
