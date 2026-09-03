@@ -60,6 +60,14 @@ public interface IStartupAssessor {
 
 **Ordering is semantic versioning**, with the details that are load-bearing rather than pedantic: pre-release precedence is the common path (`0.9.4-alpha.3` < `0.9.4-beta.1` < `0.9.4`), numeric pre-release identifiers compare numerically (`alpha.10` > `alpha.2`), and build metadata is ignored. An unparseable version is never guessed at — the instance refuses to migrate and reports the condition, because every wrong answer here is worse than stopping. The consumer's application version is recorded but takes no part in the ordering; requiring an application to be semantically versioned is not the framework's call to make.
 
+**Where this binary's version comes from.** The assessor reads it from `ILibraryVersionProvider`. The Postgres driver registers that provider from a build-time constant (`$(Version)`, the same value the migration ledger records), whoever owns the DbContext: a host that registers its own `NpgsqlDataSource` and DbContext, which makes the driver skip its generated turnkey registration, still gets one. Registering your own provider first wins. A host with no provider at all, one that bypasses the driver entirely, stands down with a reason that names the missing registration, which is a different fact from an unparseable version and is reported as one.
+
+```csharp{title="The library version is registered whoever owns the DbContext" description="A consumer that registers its own DbContext before .WithDriver.Postgres still gets ILibraryVersionProvider; an explicit registration wins; no provider at all is reported as the missing registration it is." category="Implementation" difficulty="INTERMEDIATE" tags=["Startup", "RollingUpgrades", "Drivers"] tests=["LibraryVersionRegistrationTests.Postgres_WhenTheConsumerRegisteredItsOwnDbContext_StillRegistersTheLibraryVersionAsync", "LibraryVersionRegistrationTests.Postgres_RegistersTheLibraryVersionAsTryAdd_SoAnExplicitRegistrationWinsAsync", "StartupAssessorTests.NoLibraryVersionProvider_StandsDownNamingTheMissingRegistrationAsync"]}
+services.AddDbContext<OrdersDbContext>(o => o.UseNpgsql(myDataSource));   // consumer-owned
+services.AddWhizbang().WithEFCore<OrdersDbContext>().WithDriver.Postgres;  // skips turnkey DbContext registration ...
+// ... but ILibraryVersionProvider is registered all the same, so Assess can compare versions.
+```
+
 The verdict is **not a startup-only fact**. An instance that was current when it booted becomes obsolete the moment a newer peer migrates underneath it — so a lightweight watcher re-checks on the same signal-plus-poll footing as capability re-attempt, and standing down is a state an instance can enter at any time.
 
 ## The standby handshake
