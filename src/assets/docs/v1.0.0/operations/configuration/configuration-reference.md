@@ -783,6 +783,7 @@ Self-healing continuity checking; the defaults are the recommended posture. **Co
 | `LoopBreakerFreshFraction` | `double` | `0.5` | Share of a batch postdating the last scan that reads as self-inflicted |
 | `LoopBreakerConsecutiveCycles` | `int` | `3` | Consecutive self-inflicted cycles before recovery suspends |
 | `LoopBreakerCooldownMinutes` | `int` | `60` | Minutes suspended before retrying; `0` stays open until restart |
+| `WaitForIdle` | `bool` | `true` | Recovery re-drives only when the service is settled, via housekeeping arbitration at the highest rank; `false` re-drives on the scan cadence regardless of load |
 | `EnableGenerationReplay` | `bool` | `true` | Startup scan auto-replaying rows not yet retried on this build generation |
 | `PolicyByReason` | `Dictionary<MessageFailureReason, RecoveryPolicy>` | populated map | Per-failure-reason recovery rules (see the recovery page for the default map) |
 

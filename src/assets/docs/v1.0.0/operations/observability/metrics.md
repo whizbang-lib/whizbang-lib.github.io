@@ -74,6 +74,7 @@ Additional subsystem meters:
 | `Whizbang.TableStatistics` | `TableStatisticsMetrics` | Estimated queue depth and table size gauges |
 | `Whizbang.TypeRegistry` | `TypeRegistryMetrics` | Message type registry renames and drift |
 | `Whizbang.StreamIntegrity` | `StreamIntegrityMetrics` | Continuity checkpoints, gap/divergence detection, repair and manifest flows |
+| `Whizbang.Housekeeping` | `HousekeepingCoordinator` | Arbitration verdicts, the running activity, per-activity volume rollup, and idle seconds-since-activity |
 | `Whizbang.Core.Routing.MessageDiscard` | `MessageDiscardPolicy` | Unsubscribed-message discards at the receive boundary |
 | `Whizbang.Postgres.Notifications` | `NotifyMetrics` | LISTEN/NOTIFY signal delivery and connection state |
 | `Whizbang.Sagas` | `SagaMetrics` | Saga initiation, completion, item and hook outcomes |
