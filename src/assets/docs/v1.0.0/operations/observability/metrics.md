@@ -450,6 +450,7 @@ Meter name: `Whizbang.DeadLetters` (`DeadLetterMetrics`)
 | `whizbang.dead_letters.cohort_verdicts` | Counter\<long\> | Canary campaign verdicts; tagged by `cohort` (error fingerprint) + `verdict` (`Pass`/`Fail`/`Mixed`) |
 | `whizbang.dead_letters.release_waves` | Counter\<long\> | Trickle release waves for Mixed cohorts; tagged by `cohort` + `outcome` (`clean`/`halted`) |
 | `whizbang.dead_letters.stack_history_pruned` | Counter\<long\> | Rolling stack-history rows pruned by the recovery worker's idle-gated cleanup — the maintenance facet of the stack layer. Also feeds `whizbang.housekeeping.items{activity=Maintenance}` |
+| `whizbang.dead_letters.new_stacks` | Counter\<long\> | Never-before-seen normalized stack ids first recorded — **the new-failure-mode alarm**. A spike right after a deploy is a new bug shipped; no "stack_id with no history" query required |
 
 ## Whizbang.TransportDeadLetterDrain {#transport-dlq}
 
