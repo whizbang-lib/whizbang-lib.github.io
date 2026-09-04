@@ -787,6 +787,9 @@ Self-healing continuity checking; the defaults are the recommended posture. **Co
 | `LoopBreakerConsecutiveCycles` | `int` | `3` | Consecutive self-inflicted cycles before recovery suspends |
 | `LoopBreakerCooldownMinutes` | `int` | `60` | Minutes suspended before retrying; `0` stays open until restart |
 | `WaitForIdle` | `bool` | `true` | Recovery re-drives only when the service is settled, via housekeeping arbitration at the highest rank; `false` re-drives on the scan cadence regardless of load |
+| `RetryHeldOnStartup` | `RetryHeldOnStartupMode` | `Off` | Startup campaign over HELD rows: `Canary` probes each fingerprint cohort and releases on all-probes-recover; `Full` releases everything staggered without probing. See [Canary Recovery](../dead-letter-queue/canary-recovery) |
+| `CanaryProbeSize` | `int` | `10` | Probe rows per cohort in Canary mode, stratified across message types |
+| `ReleaseStaggerMinutes` | `int` | `30` | Window a cohort release is staggered across — release is eligibility for the paced scans, never a firehose |
 | `EnableGenerationReplay` | `bool` | `true` | Startup scan auto-replaying rows not yet retried on this build generation |
 | `PolicyByReason` | `Dictionary<MessageFailureReason, RecoveryPolicy>` | populated map | Per-failure-reason recovery rules (see the recovery page for the default map) |
 
