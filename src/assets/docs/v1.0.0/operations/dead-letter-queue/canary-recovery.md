@@ -127,8 +127,12 @@ The recovery worker prunes the log on its idle-gated scan:
 - A **non-positive** value **disables the rolling cleanup**: the log is kept forever, and
   the worker makes no prune round trip at all.
 
-`first_seen` / `last_seen` on `wh_stacks` are the cheap always-there summary; the daily
-table is the distribution.
+`first_seen`, `last_seen`, and a running `total_occurrences` on `wh_stacks` are the cheap
+always-there summary (how-many / first / last in one row-read); the daily table is the
+distribution. The backfill records a whole batch of stacks in **one** round trip, and each
+prune pass is counted on `whizbang.dead_letters.stack_history_pruned` (and the
+`whizbang.housekeeping.items{activity=Maintenance}` volume rollup) so the cleanup is a
+visible maintenance facet, not just a log line.
 
 ## Restart safety
 

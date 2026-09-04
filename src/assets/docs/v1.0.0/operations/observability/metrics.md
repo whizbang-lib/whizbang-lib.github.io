@@ -449,6 +449,7 @@ Meter name: `Whizbang.DeadLetters` (`DeadLetterMetrics`)
 | `whizbang.dead_letters.arrivals_by_stack` | Counter\<long\> | Dead-letter arrivals tagged by normalized `stack_id` + `source_table` + `reason` — the real-time half of the stack telemetry contract. A `stack_id` with no prior history right after a deploy is the new-failure-mode alarm. `none` = no error text; `overflow` = past the per-process 500-distinct-tag cap (counted, never dropped) |
 | `whizbang.dead_letters.cohort_verdicts` | Counter\<long\> | Canary campaign verdicts; tagged by `cohort` (error fingerprint) + `verdict` (`Pass`/`Fail`/`Mixed`) |
 | `whizbang.dead_letters.release_waves` | Counter\<long\> | Trickle release waves for Mixed cohorts; tagged by `cohort` + `outcome` (`clean`/`halted`) |
+| `whizbang.dead_letters.stack_history_pruned` | Counter\<long\> | Rolling stack-history rows pruned by the recovery worker's idle-gated cleanup — the maintenance facet of the stack layer. Also feeds `whizbang.housekeeping.items{activity=Maintenance}` |
 
 ## Whizbang.TransportDeadLetterDrain {#transport-dlq}
 
