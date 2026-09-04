@@ -73,6 +73,46 @@ are an operator decision until an operator makes one.
    split**: the cohort likely spans more than one real failure, and auto-releasing would
    re-drive the failing part at full volume.
 
+## Deploys re-test the hypothesis automatically
+
+Attempt counts are evidence about a **build**. When a new build generation is detected at
+startup (generation replay found rows from an older build), the campaign runs in Canary
+mode automatically even with the flag `Off` — a deploy that fixed the bug self-heals its
+cohorts at probe cost. `AutoCanaryOnNewGeneration=false` opts out; an explicit operator
+mode always wins. Two boundaries keep this honest:
+
+- **`GenerationBudget`** (default 3): a cohort whose campaigns have *failed* on that many
+  distinct generations stops being probed automatically — permanently pending an operator
+  decision, said loudly in the log.
+- **Observation windows scope to the generation**: a probed message sitting at the
+  redelivery observation bound gets a fresh window (same bound) — otherwise its first
+  probe redelivery would re-cross the bound and auto-fail, silently excluding exactly the
+  poison-quarantine class from recovery.
+
+Failed individual recoveries also back off **exponentially** (policy cooldown × 2^attempts,
+capped at 24 hours) instead of metronomically.
+
+## Mixed cohorts: trickle release
+
+A `Mixed` verdict no longer parks the cohort outright — it earns trust in doublings:
+
+1. A probe-sized first wave releases immediately (staggered, like everything else).
+2. Each **clean** wave (no new dead letters with the cohort's fingerprint since the wave
+   started) doubles the next.
+3. Any **washback** halts the trickle: the remainder stays held, the halt is logged at
+   Warning with the wave number and washback count, and the cohort is pending an operator.
+4. An **empty** wave means the cohort fully drained through clean waves — campaign closed.
+
+Every wave lands on `whizbang.dead_letters.release_waves{cohort, outcome=clean|halted}`.
+
+## Operator endpoints
+
+- `GET /whizbang/dlq/cohorts` — held cohorts (fingerprint, row count, message-type spread):
+  the campaign overview.
+- `POST /whizbang/dlq/cohorts/{fingerprint}/release?staggerMinutes=30` — releases a cohort
+  through the **same staggered-eligibility path** the campaigns use. There is no firehose
+  endpoint, by design.
+
 ## Restart safety
 
 The campaign record (`wh_dlq_probe_campaigns`, one row per fingerprint x build
@@ -85,8 +125,11 @@ set.
 | Key (under `Whizbang:DeadLetterRecovery`) | Default | Meaning |
 |---|---|---|
 | `RetryHeldOnStartup` | `Off` | `Off` / `Canary` / `Full` |
-| `CanaryProbeSize` | `10` | Probe rows per cohort |
+| `CanaryProbeSize` | `10` | Probe rows per cohort; also the first trickle wave size |
 | `ReleaseStaggerMinutes` | `30` | Window a release is spread across |
+| `AutoCanaryOnNewGeneration` | `true` | New build generation auto-canaries held cohorts; an explicit mode wins |
+| `GenerationBudget` | `3` | Distinct generations whose campaigns may FAIL before a cohort is permanently pending operator |
+| `StackBackfillBatchSize` | `500` | Dead letters normalized into the stack layer per scan; `0` disables |
 
 ## Reading the logs
 

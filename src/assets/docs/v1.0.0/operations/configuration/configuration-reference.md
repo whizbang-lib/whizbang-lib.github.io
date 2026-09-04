@@ -790,6 +790,9 @@ Self-healing continuity checking; the defaults are the recommended posture. **Co
 | `RetryHeldOnStartup` | `RetryHeldOnStartupMode` | `Off` | Startup campaign over HELD rows: `Canary` probes each fingerprint cohort and releases on all-probes-recover; `Full` releases everything staggered without probing. See [Canary Recovery](../dead-letter-queue/canary-recovery) |
 | `CanaryProbeSize` | `int` | `10` | Probe rows per cohort in Canary mode, stratified across message types |
 | `ReleaseStaggerMinutes` | `int` | `30` | Window a cohort release is staggered across — release is eligibility for the paced scans, never a firehose |
+| `AutoCanaryOnNewGeneration` | `bool` | `true` | A new build generation auto-canaries held cohorts (deploys that fix bugs self-heal their cohorts at probe cost); an explicit `RetryHeldOnStartup` mode always wins |
+| `GenerationBudget` | `int` | `3` | Distinct build generations whose campaigns may fail before a cohort becomes permanently pending an operator decision |
+| `StackBackfillBatchSize` | `int` | `500` | Dead letters normalized into the relational stack layer per recovery scan; `0` disables the backfill |
 | `EnableGenerationReplay` | `bool` | `true` | Startup scan auto-replaying rows not yet retried on this build generation |
 | `PolicyByReason` | `Dictionary<MessageFailureReason, RecoveryPolicy>` | populated map | Per-failure-reason recovery rules (see the recovery page for the default map) |
 

@@ -67,7 +67,7 @@ Additional subsystem meters:
 
 | Meter | Class | Scope |
 |-------|-------|-------|
-| `Whizbang.DeadLetters` | `DeadLetterMetrics` | Internal DLQ adds, recoveries, holds, generation replay |
+| `Whizbang.DeadLetters` | `DeadLetterMetrics` | Internal DLQ adds, recoveries, holds, generation replay, per-stack arrivals, canary campaign verdicts and trickle waves |
 | `Whizbang.TransportDeadLetterDrain` | `TransportDeadLetterDrainWorker` | Broker-side DLQ drain counts |
 | `Whizbang.EventCategories` | `EventCategoryMetrics` | Category-routed event dispatch and fanout |
 | `Whizbang.Workers.PinnedPool` | `PinnedPoolMetrics` | Pinned connection pool borrows, timeouts, recycles |
@@ -446,6 +446,9 @@ Meter name: `Whizbang.DeadLetters` (`DeadLetterMetrics`)
 | `whizbang.dead_letters.permanently_failed` | Counter\<long\> | Transitions to PermanentlyFailed; tagged by `policy_name` + `reason` |
 | `whizbang.dead_letters.recovery_attempts` | Counter\<long\> | Recovery attempts dispatched (any outcome); tagged by `reason` |
 | `whizbang.dead_letters.generation_replay_scheduled` | Counter\<long\> | Rows scheduled by the generation-replay sweep; tagged by `generation` |
+| `whizbang.dead_letters.arrivals_by_stack` | Counter\<long\> | Dead-letter arrivals tagged by normalized `stack_id` + `source_table` + `reason` — the real-time half of the stack telemetry contract. A `stack_id` with no prior history right after a deploy is the new-failure-mode alarm. `none` = no error text; `overflow` = past the per-process 500-distinct-tag cap (counted, never dropped) |
+| `whizbang.dead_letters.cohort_verdicts` | Counter\<long\> | Canary campaign verdicts; tagged by `cohort` (error fingerprint) + `verdict` (`Pass`/`Fail`/`Mixed`) |
+| `whizbang.dead_letters.release_waves` | Counter\<long\> | Trickle release waves for Mixed cohorts; tagged by `cohort` + `outcome` (`clean`/`halted`) |
 
 ## Whizbang.TransportDeadLetterDrain {#transport-dlq}
 
