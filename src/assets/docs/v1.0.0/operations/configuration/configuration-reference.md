@@ -793,6 +793,7 @@ Self-healing continuity checking; the defaults are the recommended posture. **Co
 | `AutoCanaryOnNewGeneration` | `bool` | `true` | A new build generation auto-canaries held cohorts (deploys that fix bugs self-heal their cohorts at probe cost); an explicit `RetryHeldOnStartup` mode always wins |
 | `GenerationBudget` | `int` | `3` | Distinct build generations whose campaigns may fail before a cohort becomes permanently pending an operator decision |
 | `StackBackfillBatchSize` | `int` | `500` | Dead letters normalized into the relational stack layer per recovery scan; `0` disables the backfill |
+| `StackHistoryRetentionDays` | `int` | `90` | Rolling retention for the stack-history log (`wh_stack_daily`): the recovery worker prunes daily rows older than this on its idle-gated scan. A non-positive value disables the rolling cleanup — the log is kept forever |
 | `EnableGenerationReplay` | `bool` | `true` | Startup scan auto-replaying rows not yet retried on this build generation |
 | `PolicyByReason` | `Dictionary<MessageFailureReason, RecoveryPolicy>` | populated map | Per-failure-reason recovery rules (see the recovery page for the default map) |
 

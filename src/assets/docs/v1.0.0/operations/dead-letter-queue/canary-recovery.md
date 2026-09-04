@@ -113,6 +113,23 @@ Every wave lands on `whizbang.dead_letters.release_waves{cohort, outcome=clean|h
   through the **same staggered-eligibility path** the campaigns use. There is no firehose
   endpoint, by design.
 
+## Stack history — trends that outlive the dead letters
+
+Every recorded stack also increments a **rolling daily log** (`wh_stack_daily`: one row per
+stack per day) and bumps `wh_stacks.last_seen`. This is what answers "which failure shapes
+are trending over time" **after** the underlying dead letters are purged or archived — the
+occurrence timeline is decoupled from DLQ retention. Growth is bounded (a storm is a handful
+of stacks, not a row per event).
+
+The recovery worker prunes the log on its idle-gated scan:
+
+- `StackHistoryRetentionDays` (default **90**) — daily rows older than this are pruned.
+- A **non-positive** value **disables the rolling cleanup**: the log is kept forever, and
+  the worker makes no prune round trip at all.
+
+`first_seen` / `last_seen` on `wh_stacks` are the cheap always-there summary; the daily
+table is the distribution.
+
 ## Restart safety
 
 The campaign record (`wh_dlq_probe_campaigns`, one row per fingerprint x build
