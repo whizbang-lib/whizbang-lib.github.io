@@ -794,6 +794,7 @@ Self-healing continuity checking; the defaults are the recommended posture. **Co
 | `GenerationBudget` | `int` | `3` | Distinct build generations whose campaigns may fail before a cohort becomes permanently pending an operator decision |
 | `StackBackfillBatchSize` | `int` | `500` | Dead letters normalized into the relational stack layer per recovery scan; `0` disables the backfill |
 | `StackHistoryRetentionDays` | `int` | `90` | Rolling retention for the stack-history log (`wh_stack_daily`): the recovery worker prunes daily rows older than this on its idle-gated scan. A non-positive value disables the rolling cleanup — the log is kept forever |
+| `Workers:Claim:NotifyDrainLingerSeconds` | `int` | `8` | Drain linger (doorbell debounce, C# half): after a claim finds fresh work, empty polls keep a tight ~500 ms cadence for this many seconds before the elevated idle cadence resumes. MUST stay above the SQL `notify_debounce_seconds` setting (default 7) so suppression self-expires while the drainer still polls. `0` disables the linger |
 | `EnableGenerationReplay` | `bool` | `true` | Startup scan auto-replaying rows not yet retried on this build generation |
 | `PolicyByReason` | `Dictionary<MessageFailureReason, RecoveryPolicy>` | populated map | Per-failure-reason recovery rules (see the recovery page for the default map) |
 
