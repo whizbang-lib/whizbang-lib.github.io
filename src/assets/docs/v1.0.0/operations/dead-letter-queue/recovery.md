@@ -176,6 +176,54 @@ services.Configure<DeadLetterRecoveryOptions>(o => {
 });
 ```
 
+## Canary verdicts are standing evidence
+
+A held cohort's canary campaign resolves per `(error_fingerprint, build generation)`.
+The verdict is not a one-shot release trigger — it is a durable statement about the
+build, and the recovery worker keeps consulting it:
+
+- **Pass** releases the rows currently in `HoldForReview` *and* grants every later
+  exhausted row of the same fingerprint a fresh attempt on the paced scan cadence
+  (`get_passed_campaign_fingerprints`). Without this, a proven-safe cohort re-quarantined
+  itself one scan batch at a time after the campaign retired, and only a process restart
+  released another slice.
+- A row that keeps failing after the grant still paces itself through the policy
+  cooldown — the bypass never produces a hot loop.
+- Verdicts are generation-scoped: a Pass on one build proves nothing about the next.
+
+### Evidence can be destroyed — verdicts cannot be vacuous
+
+Probe rows live in `wh_dead_letters` like any other row, so retention purges and
+operator deletes can destroy a live campaign's evidence. Two guards make that safe:
+
+- `evaluate_canary_campaign` resolves an empty evidence set (0 succeeded, 0 failed,
+  0 outstanding) to **Pending**, never to a terminal verdict. The `failed = 0` branch
+  previously returned Pass on zero surviving probes.
+- On that empty-evidence Pending, the worker re-mints probes: `begin_canary_probes`
+  refreshes an unresolved campaign's `probe_ids` from the surviving held rows
+  (`started_at` moves with the refresh). While probe rows survive, the call remains
+  the idempotent resume it always was.
+
+### Settled-row retention
+
+`perform_maintenance` purges Recovered rows by **`recovered_at`** (setting
+`dead_letter_retention_days`, default 7) — a freshly recovered row gets its full
+window regardless of how old the original failure was. Retention previously keyed on
+`dead_lettered_at`, which deleted the receipts of an old backlog within one
+maintenance cycle of the drain doing its work. Rows referenced by an unresolved
+campaign's `probe_ids` are exempt until the campaign resolves.
+
+## Disabled subsystems dispose of their dead letters
+
+A dead letter whose inner payload type belongs to a disabled subsystem (for example
+`IntegrityCheckpoint` with `StreamIntegrity:CheckpointsEnabled=false`) is **settled by
+the recovery worker itself** — `mark_dead_letter_discarded` moves it to Recovered with
+an explanatory `operator_notes` entry, and the retention purge ages it out. The check
+runs ahead of the exhaustion transition because quarantine-on-sight policies
+(`PoisonRedeliveryLoop`, MaxAttempts 0) hold rows **before any dispatch**, so the
+inbox-gate discard can never reach them; without the worker-side arm those rows were
+permanently undisposable.
+
 ## Telemetry
 
 The worker reports through `DeadLetterMetrics` (meter `Whizbang.DeadLetters`):
