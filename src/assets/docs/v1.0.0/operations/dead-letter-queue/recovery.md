@@ -33,7 +33,7 @@ testReferences:
 
 `DeadLetterRecoveryWorker` is the policy engine for `wh_dead_letters`. On a
 backstop cadence (default 10 min, `ScanIntervalMinutes`) it scans for due
-rows (up to `ScanBatchSize`, default 200, per cycle), consults the
+rows (up to `ScanBatchSize`, default 2000 — see Adaptive scan batch below, per cycle), consults the
 configured `IDeadLetterRecoveryPolicy` for each, and either re-emits the row
 onto its source work table (via the atomic `recover_dead_letter` SQL
 function, which re-inserts with `attempts=0`), holds it for review, or marks
@@ -172,9 +172,31 @@ services.Configure<DeadLetterRecoveryOptions>(o => o.EnableGenerationReplay = fa
 services.Configure<DeadLetterRecoveryOptions>(o => {
   o.Enabled = true;              // killswitch for the whole worker (default true)
   o.ScanIntervalMinutes = 10;    // backstop cadence (default 10)
-  o.ScanBatchSize = 200;         // rows fetched per scan cycle (default 200)
+  o.ScanBatchSize = 2000;        // CEILING the adaptive controller ramps toward (default 2000)
+  o.AdaptiveScanBatchEnabled = true;  // AIMD sizing on by default; false = fixed ScanBatchSize
+  o.MinScanBatchSize = 50;       // floor / starting batch, and the pressure back-off target
+  o.ScanBatchIncreaseStep = 200; // additive growth per clean, saturated scan
+  o.ScanBatchChurnThreshold = 0.5; // ratio above which the batch halves under pressure
 });
 ```
+
+## Adaptive scan batch
+
+The settled-path scan batch is sized by an AIMD controller — the same
+`AdaptiveStreamBatch` the claim path uses — rather than a fixed number:
+
+- It starts at `MinScanBatchSize` (default 50), the width a freshly started worker uses
+  before it has any drain feedback.
+- Each clean, **saturated** scan (a full batch returned, zero re-drive failures) grows it by
+  `ScanBatchIncreaseStep` (default 200), up to the `ScanBatchSize` ceiling (default 2000).
+- A pass forced through the settledness gate while the service is busy counts as full churn
+  and **halves** the batch, walking it back toward `MinScanBatchSize`.
+
+Because the batch ramps into the ceiling instead of bursting to it cold, a high `ScanBatchSize`
+is safe: an idle service drains a large backlog an order of magnitude faster than the old fixed
+200, while a busy service still trickles at `PressuredScanBatchSize` and backs the batch down.
+Set `AdaptiveScanBatchEnabled = false` to pin every settled scan to the fixed `ScanBatchSize`
+(the pre-2.x behavior).
 
 ## Canary verdicts are standing evidence
 
