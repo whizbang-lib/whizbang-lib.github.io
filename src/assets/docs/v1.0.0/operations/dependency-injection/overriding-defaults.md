@@ -26,7 +26,7 @@ which means **your own registration wins simply by existing**.
 
 Register your implementation before calling `AddWhizbang()`:
 
-```csharp
+```csharp{title="Replacing a shipped default before AddWhizbang" description="Registering your own IAuditDecisionHook first means the framework's TryAdd registration sees it and stands aside." category="Configuration" difficulty="BEGINNER" tags=["dependency-injection", "tryadd", "defaults", "overriding"]}
 services.AddSingleton<IAuditDecisionHook, MyAuditPolicy>();
 services.AddWhizbang();          // TryAdd sees yours and stands aside
 ```
@@ -34,7 +34,7 @@ services.AddWhizbang();          // TryAdd sees yours and stands aside
 Registering afterwards also works for any service the framework registers with `TryAdd`, provided
 you replace rather than append:
 
-```csharp
+```csharp{title="Replacing a shipped default after AddWhizbang" description="RemoveAll followed by AddSingleton replaces the registration rather than appending a second implementation alongside it." category="Configuration" difficulty="BEGINNER" tags=["dependency-injection", "removeall", "defaults", "overriding"]}
 services.AddWhizbang();
 services.RemoveAll<IAuditDecisionHook>();
 services.AddSingleton<IAuditDecisionHook, MyAuditPolicy>();
@@ -46,7 +46,7 @@ Injected dependencies are **required constructor parameters**, not optional ones
 deliberate, and it is the opposite of what it may look like at first: an optional parameter does not
 make a dependency easier to supply, it makes forgetting to supply it invisible.
 
-```csharp
+```csharp{title="How a hand-built registration silently drops a dependency" description="The factory passes three of six arguments; the rest are null at run time, the container is satisfied, and nothing reports it." category="Configuration" difficulty="INTERMEDIATE" tags=["dependency-injection", "anti-pattern", "whiz500", "constructor-injection"] tests=["DiFactoryConstructionAnalyzerTests.OmittingAnOptionalDependencyInsideAFactoryIsReportedAsync"]}
 // A registration that builds the object by hand silently drops anything it does not pass.
 services.AddSingleton<IEventStore>(sp => new AuditingEventStoreDecorator(inner, channel, opts));
 //                                       ^ three of six arguments; the rest are null at run time

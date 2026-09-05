@@ -26,7 +26,7 @@ testReferences:
 
 A constructor declares an injectable dependency as optional:
 
-```csharp
+```csharp{title="The declaration WHIZ501 reports" description="An injectable dependency declared as an optional constructor parameter, the shape that lets a construction site omit it invisibly." category="Diagnostics" difficulty="INTERMEDIATE" tags=["whiz501", "analyzer", "dependency-injection", "constructor-injection"] tests=["OptionalInjectedParameterAnalyzerTests.AnOptionalInterfaceParameterIsReportedAsync", "OptionalInjectedParameterAnalyzerTests.TheDiagnosticNamesTheParameterAsync"]}
 public MyWorker(IStore store, ISchemaReadyGate? gate = null) { }
 //                            ^ WHIZ501
 ```
@@ -44,7 +44,7 @@ so existing construction sites, most often test fixtures, keep compiling unchang
 
 Make the parameter required, and move the default into the registration:
 
-```csharp
+```csharp{title="Clearing WHIZ501 by moving the default into the registration" description="The parameter becomes required and TryAddSingleton supplies the default, so optionality lives in the registration where it is explicit." category="Diagnostics" difficulty="INTERMEDIATE" tags=["whiz501", "analyzer", "tryadd", "defaults"] tests=["OptionalInjectedParameterAnalyzerTests.ARequiredInterfaceParameterIsNotReportedAsync"]}
 public MyWorker(IStore store, ISchemaReadyGate gate) { }
 
 services.TryAddSingleton<ISchemaReadyGate, SchemaReadyGate>();

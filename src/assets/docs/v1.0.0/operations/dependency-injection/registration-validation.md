@@ -43,7 +43,7 @@ Validation runs at **startup**, not at the end of `AddWhizbang()`.
 Storage and transport drivers register their services *after* `AddWhizbang` returns, on the builder
 chain:
 
-```csharp
+```csharp{title="Why validation runs at startup, not at the end of AddWhizbang" description="Storage and transport drivers register their services on the builder chain after AddWhizbang returns, so an earlier check would report every driver-supplied service as missing." category="Configuration" difficulty="INTERMEDIATE" tags=["dependency-injection", "validation", "startup", "drivers"] tests=["RegistrationValidationStartupTests.StartupPassesWhenADriverRegisteredTheDependencyLaterAsync"]}
 services.AddWhizbang()          // core services registered here
         .UseYourStorageProvider();   // IWorkCoordinatorStrategy and friends arrive here
 ```
@@ -62,7 +62,7 @@ no reflection at run time.
 
 ## Turning it off
 
-```csharp
+```csharp{title="Turning registration validation off" description="Disables the startup check for a composition that deliberately registers a subset, such as a test fixture exercising one worker." category="Configuration" difficulty="BEGINNER" tags=["dependency-injection", "validation", "testing", "options"] tests=["RegistrationValidationStartupTests.DisabledValidationDoesNotThrowAsync"]}
 services.AddWhizbang(options => options.ValidateRegistrations = false);
 ```
 

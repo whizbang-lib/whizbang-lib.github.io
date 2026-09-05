@@ -24,7 +24,7 @@ testReferences:
 Every injectable service is registered with `TryAdd`, so registering your own before `AddWhizbang()`
 is all it takes. A worked example, deciding per occurrence whether an event is audited:
 
-```csharp
+```csharp{title="Deciding per occurrence whether an event is audited" description="An IAuditDecisionHook that skips imported edits, collapses a bulk import to a single record, and returns NoOpinion so the [AuditEvent] attribute decides everything else." category="Configuration" difficulty="INTERMEDIATE" tags=["dependency-injection", "audit", "hooks", "tryadd"] tests=["AuditDecisionHookTests.AHookCanVetoAnOccurrenceOfAnAuditedTypeAsync", "AuditDecisionHookTests.AHookCanNameAndDescribeAnOccurrenceAsync", "AuditDecisionHookTests.NoOpinionDefersToTheAttributeRatherThanSuppressingAsync"]}
 public sealed class MyAuditPolicy : IAuditDecisionHook {
   public AuditDecision Decide(object payload, Type eventType) => payload switch {
     // The same event carries both a user's edit and a bulk import, told apart by a payload
@@ -54,7 +54,7 @@ them exactly as they were.
 Follow the same shape the framework holds itself to. Take the dependency as a **required**
 constructor parameter, and register a default in your `Add*` extension:
 
-```csharp
+```csharp{title="Adding an injectable service of your own" description="A required constructor parameter plus a TryAdd default in the Add* extension, so the service works unconfigured while an application's own sink still wins." category="Configuration" difficulty="INTERMEDIATE" tags=["dependency-injection", "tryadd", "extending", "defaults"] unverified="illustrative application-side pattern: ReportBuilder and IReportSink are not framework types"}
 public sealed class ReportBuilder {
   private readonly IReportSink _sink;
 
@@ -91,7 +91,7 @@ service, which is the correct outcome.
 Sometimes "there is genuinely nothing here" is meaningful and needs to be expressible without being
 confusable with "somebody forgot". Express it as a value, not as a missing registration:
 
-```csharp
+```csharp{title="Expressing absence as a value rather than a missing registration" description="A host with no telemetry identity and no schema step to wait on states each explicitly, so it cannot be confused with a forgotten registration." category="Configuration" difficulty="ADVANCED" tags=["dependency-injection", "defaults", "schema-readiness", "telemetry"]}
 // A host with no telemetry identity says so explicitly.
 new MyWorker(UnknownServiceInstanceProvider.Instance);
 
@@ -118,7 +118,7 @@ services too without any attribute or registration on your part.
 A fixture exercising one worker in isolation will not satisfy every requirement. Turn validation off
 rather than registering services the test does not use:
 
-```csharp
+```csharp{title="Turning validation off for a deliberately partial fixture" description="A fixture exercising one worker in isolation disables registration validation instead of registering services the test never uses." category="Configuration" difficulty="INTERMEDIATE" tags=["dependency-injection", "validation", "testing", "fixtures"] tests=["RegistrationValidationStartupTests.DisabledValidationDoesNotThrowAsync"]}
 services.AddWhizbang(options => options.ValidateRegistrations = false);
 ```
 

@@ -28,7 +28,7 @@ A registration built an object with `new` and did not pass one of its injectable
 container is not resolving this constructor; the registration is. Anything not listed is supplied by
 the compiler as the parameter's default, which for an injected service is `null`.
 
-```csharp
+```csharp{title="The omission WHIZ500 reports" description="A factory lambda builds the decorator with new and never passes instanceProvider, so the compiler supplies null at run time." category="Diagnostics" difficulty="INTERMEDIATE" tags=["whiz500", "analyzer", "dependency-injection", "factory"] tests=["DiFactoryConstructionAnalyzerTests.OmittingAnOptionalDependencyInsideAFactoryIsReportedAsync", "DiFactoryConstructionAnalyzerTests.TheDiagnosticNamesTheOmittedParameterAsync"]}
 services.AddSingleton<IEventStore>(sp => new AuditingEventStoreDecorator(inner, channel, opts));
 //                                       ^ WHIZ500: 'instanceProvider' will be null at run time
 ```
@@ -46,7 +46,7 @@ can pass every test and be absent in every deployed application.
 
 Pass the dependency from the provider:
 
-```csharp
+```csharp{title="Clearing WHIZ500 by resolving from the provider" description="Passing every injectable parameter from the IServiceProvider satisfies the analyzer and gives the service its dependencies." category="Diagnostics" difficulty="INTERMEDIATE" tags=["whiz500", "analyzer", "dependency-injection", "factory"] tests=["DiFactoryConstructionAnalyzerTests.SupplyingEveryDependencyIsNotReportedAsync"]}
 services.AddSingleton<IEventStore>(sp => new AuditingEventStoreDecorator(
     inner, channel, opts,
     sp.GetRequiredService<IServiceInstanceProvider>(),
