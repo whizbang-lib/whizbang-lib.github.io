@@ -93,6 +93,16 @@ The Postgres implementation takes a session advisory lock on a process-stable ke
 
 The **eviction fence reaches election**: an instance that has been [evicted](../../fundamentals/workers/instance-liveness#eviction-reaping-is-a-fence-not-just-a-deletion) is refused at acquisition even when it wins the primitive, and the implementation releases what it won. That is what turns eviction from a request into a guarantee for exclusive work.
 
+### When the elector itself fails
+
+A refusal is an *answer*. Separately, the question can fail to be asked at all: the elector reaches its coordination primitive over a network, so a read timeout there is neither a grant nor a refusal — it is the absence of a verdict, and it says nothing about whether the step should run.
+
+Such a failure is **absorbed and retried**, exactly as a `Contended` refusal is, because it is the same class of blip every other worker rides out on its next tick. It is also **bounded**: after `MaxTransientDutyFailures` consecutive failures the step fails, naming the underlying exception. Both halves matter, and for the same reason — retrying a standing outage forever is the other way to be silently broken. A clean refusal in between resets the count, because it proves the elector is reachable and therefore that the earlier failures were blips rather than the leading edge of an outage.
+
+What this deliberately does *not* do is stop the host. The startup pipeline runs as a `BackgroundService`, and .NET's default `HostOptions.BackgroundServiceExceptionBehavior` is `StopHost` — so an exception escaping the pipeline terminates the whole process. Worse, it terminates it *gracefully*: the process exits **zero** and writes an orderly shutdown log, making a host destroyed this way indistinguishable from one that was asked to stop. Nothing watching exit codes, restart reasons, or OOM kills can see it, so it can recur indefinitely while every crash signal stays clean.
+
+Staying up is also the more informative outcome, and fail-closed is what makes it safe: a pipeline that never completes leaves the availability filter refusing writes, so the instance is up, [reports unready](startup-status), and carries the reason in its logs. `NonHolderBehavior.Skip` keeps its single non-blocking attempt throughout — a transient failure reports the step skipped with the elector's error as the reason, rather than quietly promoting it into a waiter.
+
 ## Takeover
 
 An instance never looks up whether it has been *assigned* a capability — it attempts acquisition. Takeover therefore needs no coordinator:

@@ -93,9 +93,16 @@ SELECT COUNT(*) FROM wh_outbox WHERE processed_at IS NULL;
 
 The `whizbang.queue.estimated_depth{queue_name="outbox"}` gauge tracks the same number continuously.
 
-### Solution 1: Whizbang Workers Not Wired
+### Solution 1: Whizbang Workers Not Wired {#workers-not-wired}
 
 **Problem**: The publishing pipeline (claim/drain/publish workers) isn't running. The workers are registered by `AddWhizbang()` (which calls `AddWhizbangWorkers()` internally) together with a storage driver.
+
+Calling `AddWhizbangWorkers()` yourself as well, for example to make the work pump legible next to the thing it drains, is harmless: the method is idempotent, and a second call registers nothing. Earlier versions registered the three startup steps additively, so a second call produced duplicate step names, the startup pipeline refused them inside a background service, and the host stopped during startup with the cause buried behind the schema DDL that `Migrate` logs.
+
+```csharp{title="AddWhizbangWorkers is idempotent" description="A second call, explicit or via AddWhizbang(), registers nothing: one set of startup steps, one set of observers, one hosted instance of each worker." category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Workers", "Idempotency"] tests=["WorkerPipelineIdempotencyTests.AddWhizbangWorkers_CalledTwice_RegistersEachStartupStepOnceAsync", "WorkerPipelineIdempotencyTests.AddWhizbangWorkers_CalledTwice_TheOrderResolverAcceptsTheStepSetAsync", "WorkerPipelineIdempotencyTests.AddWhizbangWorkers_CalledTwice_HostsEachWorkerOnceAsync"]}
+builder.Services.AddWhizbang().WithEFCore<MyDbContext>().WithDriver.Postgres;
+builder.Services.AddWhizbangWorkers();   // documented no-op: AddWhizbang() already did this
+```
 
 **Fix**:
 

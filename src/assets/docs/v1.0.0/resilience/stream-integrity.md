@@ -623,7 +623,9 @@ shipped default landed on `AutoRepairCapped` with `ReportOnly` as the opt-down.
 
 :::updated
 **Default REVISED (as built): SELF-HEALING out of the box.** `RepairMode` defaults to
-`AutoRepairCapped` — the shipped posture detects AND repairs, with every rung hard-capped
+`AutoRepairCapped` is the shipped posture: it detects AND repairs, capped in two dimensions, per batch
+(`MaxAutoRepairRequestsPerAudit` / `MaxAutoRepairRequestsPerCheckpoint`) and per bucket across
+occurrences (`RepairRequestBackoffSeconds` / `MaxRepairAttemptsPerBucket`)
 (per-checkpoint, per-audit-chunk, per-cycle rebuilds, drill-down types, per-request event caps) so
 a mass divergence reports loudly instead of storming. What changed from the original stance: the
 storm-lesson is encoded in the CAPS, not in a disabled-by-default repair — a capped repair of a
@@ -632,6 +634,120 @@ that made auto-repair dangerous elsewhere (destructive repair of *suspected* div
 apply to this design's confirmed-gap, identity-preserving re-delivery. `ReportOnly` remains the
 explicit opt-DOWN for operators who want report-and-decide; every report still states exactly what
 auto-repair would have done, so ReportOnly IS the dry-run.
+
+:::warning
+**The confirmed-gap premise fails when a consumer is BEHIND.** The reasoning above rests on repair
+acting only on a gap that is provably real. Confirmation is two-cycle: a deficit seen on one
+checkpoint, still short when the origin's next checkpoint arrives. That window is the checkpoint
+cadence — `CheckpointIntervalSeconds`, **60 seconds** by default.
+
+A consumer running minutes or hours behind reports the same shortfall on BOTH checks and confirms a
+gap while nothing has been lost. The events are not missing; they are queued. Repair then requests
+redelivery, those events land at the back of the same backlog, they cannot arrive within the next
+cadence either, the deficit re-confirms, and repair fires again. **Each cycle adds load, which
+increases lag, which manufactures more false gaps.**
+
+Neither protection above holds in this state:
+
+- *"additive and idempotent — the same event id folds once"* assumes the redelivered event carries
+  the original identity. A consumer whose receptors raise their own events in response mints NEW
+  ids, so nothing folds and the volume compounds.
+- *"every rung hard-capped"* used to bound a SINGLE checkpoint and nothing more. Checkpoints keep
+  arriving on cadence, pendings are re-added from the current window as fast as they are drained, so
+  every individual checkpoint was capped while the aggregate rate was unbounded. **Fixed:** the
+  checkpoint rung now consults the repair ledger before requesting, the same guard the manifest rung
+  has always used, so `RepairRequestBackoffSeconds` and `MaxRepairAttemptsPerBucket` bound how often
+  the SAME bucket may be re-requested. The ledger is the memory that was missing. A per-batch cap
+  bounds the storm's rate; only the per-bucket ledger bounds its size, and both are needed.
+
+Measured in a real deployment: one consumer left on the default emitted roughly **thirty times**
+the events its producer did, for a workload that had previously completed in minutes. Its five
+peers, pinned to `ReportOnly`, were unaffected. Pinning that consumer to `ReportOnly` dropped its
+event production by more than two orders of magnitude and drained its queue to empty.
+
+### The repair decision pipeline (as wired)
+
+Every confirmed gap on the checkpoint path now passes through gates in strict order, cheapest
+first. The pipeline is implemented by `IntegrityCheckpointReceptor` consulting
+`IntegrityRepairPolicy` and the repair ledger:
+
+```
+confirmed gap
+  |
+  |- 1. mode == AutoRepairCapped, per-checkpoint budget left    (cheap flags)
+  |
+  |- 2. policy.Evaluate(observation)                            (pure; no side effects)
+  |       |- settledness: depth / lag / leases; ANY one vetoes  -> ConsumerBehind
+  |       |- this window's attempt budget spent?                -> AttemptsExhausted
+  |       |- too many windows already under repair?             -> GlobalBudgetExhausted
+  |
+  |- 3. ledger.TryBeginRepair                                   (durable; RECORDS an attempt)
+  |
+  |- 4. send the request -> policy.RecordRequested              (charged only if actually sent)
+```
+
+The ordering is the design. The policy is pure evaluation, so asking it costs nothing. The
+ledger's grant IS its accounting: a grant that is then discarded burns that bucket's budget on a
+request never sent, so the ledger is consulted last, after everything that could still say no.
+
+**Why three settledness signals.** Each alone is fooled, so any one vetoes:
+
+| signal | catches | fooled by |
+| --- | --- | --- |
+| depth (unprocessed rows) | a queued backlog | reads zero in the gap between claim cycles, even mid-storm |
+| lag (age of the oldest unprocessed row) | a small queue holding a row stuck for an hour | looks healthy on a service idle for unrelated reasons |
+| live leases | a sibling replica dispatching the "missing" events right now | neither of the above sees it |
+
+All three are measured SERVICE-wide, never per instance. An instance that finished its own claimed
+streams looks idle from the inside while its peers are still draining; deciding from that local
+view re-requests events its own siblings are actively processing, and the storm returns through
+whichever replica happened to be free.
+
+The insight behind the veto: a big apparent gap on a backlogged consumer is the STRONGEST evidence
+of lag, not the strongest case for repair. Treating it as urgent is what turns a slow consumer
+into a storm, because repair re-delivers into the very queue that is behind, which adds load,
+deepens lag, and manufactures more false gaps.
+
+**The two budgets.** Per window: a bounded number of requests, and the count RESETS whenever the
+window's received count has risen since the last request. Healing counts as working, and a budget
+must not expire mid-recovery. Globally: a bound on how many windows may be under repair at once.
+This is the cap that was missing everywhere; per-checkpoint caps reset every cadence, so they
+bound one batch while the aggregate series is infinite. Only a concurrent-windows bound limits the
+total rate at which repair adds load to a struggling system. When a window heals between
+checkpoints its slot is released, so healed windows cannot starve genuinely stuck ones.
+
+**Policy and ledger overlap on purpose.** The policy is in-memory and per process: the richer
+decision (lag, global budget, heal-reset), lost on restart. The ledger is database-backed and
+shared across replicas: per-bucket backoff and attempts that survive restarts, which matters
+because restarts are frequently CAUSED by storms, so boot-time state loss used to clear exactly
+the memory that would have suppressed one. Composed, each covers the other's blind spot.
+
+**What the pipeline deliberately does not do.** Detection is never gated: `GapsDetected` fires and
+the confirmation is logged before any repair decision, on every checkpoint. When repair is vetoed
+or exhausted, the system stops ASKING, never stops KNOWING. A gap that survived its attempt budget
+will not be fixed by one more request; it needs an operator, and it keeps surfacing in reports and
+metrics until someone acts.
+
+**Note the asymmetry with the deep audit,** which already guarded against exactly this:
+`AuditSettleWindowMinutes` (default 60) exists so that an in-flight delivery never reads as
+divergence. The checkpoint path originally had no equivalent; it now has a stronger one, described
+in [the repair decision pipeline](#the-repair-decision-pipeline-as-wired). That was the defect
+tracked as
+[#582](https://github.com/whizbang-lib/whizbang/issues/582).
+
+**Settledness is a property of the SERVICE, never of one instance.** A service runs many instances
+against one shared inbox. An instance that has finished its own claimed streams looks completely
+idle from the inside while peers are still draining, so an instance deciding from its LOCAL view
+re-requests events its own siblings are actively processing — the storm returning through whichever
+replica happened to be free. Any gate must read the shared store: unprocessed rows across the whole
+inbox, consumer lag (depth alone reads zero between claim cycles), and rows currently leased by ANY
+instance.
+
+**Until that lands:** set `RepairMode = ReportOnly` on any consumer that can fall meaningfully
+behind its producers — bulk imports, batch jobs, anything with a fan-out multiplier. Repair is
+background self-healing; waiting for genuine quiet costs nothing, and not waiting is what produced
+the storm.
+:::
 
 **Observability (as built): meter `Whizbang.StreamIntegrity`.** Self-healing by default demands
 visibility into what the healer does. Counters:
@@ -928,7 +1044,8 @@ each amendment callout marks where live validation refined the original sketch.
    :::new
    **Closed**: `AutoRepairCapped` is implemented at every repair site (checkpoint gaps, audit
    divergences, local rebuilds); `ReportOnly` IS the dry-run (every report carries exactly what
-   auto-repair would have done); storm caps exist at every rung.
+   auto-repair would have done); storm caps exist at every rung, in both the per-batch and the
+   per-bucket dimension.
    :::
 
 8. **Bounded reconciliation** — epochs, negotiated scope, seals, deficit exchange, scheduled
