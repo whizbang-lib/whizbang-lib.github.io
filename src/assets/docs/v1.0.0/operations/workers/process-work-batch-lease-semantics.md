@@ -184,6 +184,30 @@ The `INotifySignalingGate` modulates the baseline:
 
 `RequestImmediatePoll()` works regardless of the current backoff depth — it releases the semaphore and the wait returns immediately. The adaptive path only affects the *timeout* on the wait, not its *interruptibility*.
 
+There are two waits, and they answer to different signals. After a repeat claim or an empty poll with the gate healthy, the loop first takes a **spacing nap** (a plain delay up to the adaptive interval) and only then parks on the semaphore wait. A new-work signal (`SignalNewWork`, the doorbell rung when a strategy persists rows) cancels the nap so a genuinely new row never sits it out. A completion-feedback wake (`RequestImmediatePoll` from the flush workers) deliberately does **not**: it can only release the semaphore, so a burst of completions cannot turn the nap into a tight loop. A **gate transition** in either direction is treated like new work, not like feedback: it cancels the nap and releases the semaphore, because the whole point of the transition wake is that work may have accumulated while NOTIFY was down, and a nap taken before the outage is not a reason to wait it out afterwards.
+
+```csharp{title="Which signals interrupt which wait" description="New-work signals and gate transitions cancel the spacing nap and release the semaphore; completion-feedback wakes only release the semaphore, so they cannot turn the nap into a tight loop." category="Architecture" difficulty="ADVANCED" tags=["Workers", "ClaimWorker", "Polling", "Notify"] tests=["ClaimWorkerGateCadenceTests.GateFlipsToAvailable_TriggersImmediatePollAsync"]}
+// ClaimWorker
+public void SignalNewWork() {            // new rows: doorbell + interrupt everything
+  Volatile.Write(ref _doorbellSinceLastClaim, 1);
+  _wakeNow();
+}
+
+public void RequestImmediatePoll() {     // completion feedback: semaphore only, the nap stands
+  if (_wake.CurrentCount == 0) { _wake.Release(); }
+}
+
+private void _onGateAvailabilityChanged(bool nowAvailable) {
+  // ... catch-up bookkeeping ...
+  _wakeNow();                            // outage edge: interrupt the nap too
+}
+
+private void _wakeNow() {                // release the semaphore AND cancel a nap in progress
+  RequestImmediatePoll();
+  Volatile.Read(ref _napCts)?.Cancel();
+}
+```
+
 ### Tuning knobs (`ClaimWorkerOptions`)
 
 | Option | Default | Notes |

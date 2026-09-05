@@ -375,6 +375,35 @@ foreach (var row in rows) {
 }
 ```
 
+#### Local service identity {#local-service-identity}
+
+Every envelope the drainer publishes is stamped with `SourceServiceId`, the stable identity from the
+singleton `wh_service_config` row, read once per worker lifetime through `GetLocalServiceIdAsync`.
+Downstream consumers key their per-source cursors on it. The lookup is schema-qualified from the EF
+model like every other coordinator query; a bare table name resolved through `search_path`, which
+failed with `42P01` on any non-public schema, or read another schema's row when `public` happened to
+have one.
+
+The lookup is best-effort by design: a coordinator that does not track service identity yields an
+empty id and downstream consumers fall back to their own. A *failed* lookup takes the same fallback,
+but it is no longer silent. The drainer logs a Warning (event id 49) naming the consequence, that every
+envelope this instance publishes will carry an empty `SourceServiceId` and downstream consumers will
+attribute those messages to themselves, and keeps draining.
+
+```csharp{title="Local service identity: qualified lookup, logged fallback" description="GetLocalServiceIdAsync reads wh_service_config in the model's schema; when the lookup fails the drainer keeps publishing with an empty SourceServiceId and says so." category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "WorkCoordinator", "Outbox", "Schema"] tests=["EFCoreWorkCoordinatorServiceIdTests.GetLocalServiceIdAsync_SchemaScopedDbContext_ReadsTheIdFromTheModelSchemaAsync", "EFCoreWorkCoordinatorServiceIdTests.GetLocalServiceIdAsync_PublicSchema_StillReadsTheSeededRowAsync", "OutboxDrainWorkerTests.OutboxDrainWorker_LocalServiceIdLookupFails_LogsTheConsequenceAndKeepsDrainingAsync"]}
+// EFCoreWorkCoordinator: the model says where the table is
+var schema = GetSchemaWithFallback(model.FindEntityType(typeof(OutboxRecord))?.GetSchema(), "public", logger);
+cmd.CommandText = $"SELECT service_id FROM {BuildSchemaQualifiedName(schema, "wh_service_config")} LIMIT 1";
+
+// OutboxDrainWorker: best-effort, but never silent
+try {
+    _localServiceId = await coordinator.GetLocalServiceIdAsync(ct);
+} catch (Exception ex) {
+    _localServiceId = Guid.Empty;
+    LogLocalServiceIdLookupFailed(_logger, ex);   // Warning 49: "...will attribute those messages to themselves"
+}
+```
+
 ### Pattern 3: Batched Completions (Flush Workers)
 
 ```csharp{title="Pattern 3: Batched Completions" description="Flush workers coalesce completions into one round-trip per batch" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Pattern", "Store", "Event"] tests=["OutboxCompletionFlushWorkerTests.EnqueuedIds_FlushedToCoordinatorAsync"]}

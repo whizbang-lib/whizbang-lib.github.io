@@ -67,13 +67,14 @@ Additional subsystem meters:
 
 | Meter | Class | Scope |
 |-------|-------|-------|
-| `Whizbang.DeadLetters` | `DeadLetterMetrics` | Internal DLQ adds, recoveries, holds, generation replay |
+| `Whizbang.DeadLetters` | `DeadLetterMetrics` | Internal DLQ adds, recoveries, holds, generation replay, per-stack arrivals, canary campaign verdicts and trickle waves |
 | `Whizbang.TransportDeadLetterDrain` | `TransportDeadLetterDrainWorker` | Broker-side DLQ drain counts |
 | `Whizbang.EventCategories` | `EventCategoryMetrics` | Category-routed event dispatch and fanout |
 | `Whizbang.Workers.PinnedPool` | `PinnedPoolMetrics` | Pinned connection pool borrows, timeouts, recycles |
 | `Whizbang.TableStatistics` | `TableStatisticsMetrics` | Estimated queue depth and table size gauges |
 | `Whizbang.TypeRegistry` | `TypeRegistryMetrics` | Message type registry renames and drift |
 | `Whizbang.StreamIntegrity` | `StreamIntegrityMetrics` | Continuity checkpoints, gap/divergence detection, repair and manifest flows |
+| `Whizbang.Housekeeping` | `HousekeepingCoordinator` | Arbitration verdicts, the running activity, per-activity volume rollup, and idle seconds-since-activity |
 | `Whizbang.Core.Routing.MessageDiscard` | `MessageDiscardPolicy` | Unsubscribed-message discards at the receive boundary |
 | `Whizbang.Postgres.Notifications` | `NotifyMetrics` | LISTEN/NOTIFY signal delivery and connection state |
 | `Whizbang.Sagas` | `SagaMetrics` | Saga initiation, completion, item and hook outcomes |
@@ -82,40 +83,47 @@ Additional subsystem meters:
 
 All metrics classes are automatically registered as singletons by `AddWhizbang()`. The shared `WhizbangMetrics` class holds the `IMeterFactory` reference that each subsystem uses to create its meter.
 
-```csharp{title="Metrics Registration" description="Metrics are auto-registered by AddWhizbang - no extra setup needed" category="Configuration" difficulty="BEGINNER" tags=["Metrics", "Configuration", "DI"] unverified="metrics config/query — not exercised by a test"}
+```csharp{title="Metrics Registration" description="Subscribe every Whizbang meter without naming them" category="Configuration" difficulty="BEGINNER" tags=["Metrics", "Configuration", "DI"] unverified="metrics config/query — not exercised by a test"}
 // Metrics are registered automatically - no opt-in required
 services.AddWhizbang(options => {
   // ... your configuration
 });
 
-// To export metrics, configure OpenTelemetry SDK
+// To export metrics, configure the OpenTelemetry SDK.
 builder.Services.AddOpenTelemetry()
     .WithMetrics(metrics => {
-      // Subscribe to all Whizbang meters
-      metrics.AddMeter("Whizbang.Dispatcher");
-      metrics.AddMeter("Whizbang.Lifecycle");
-      metrics.AddMeter("Whizbang.LifecycleCoordinator");
-      metrics.AddMeter("Whizbang.Transport");
-      metrics.AddMeter("Whizbang.Perspectives");
-      metrics.AddMeter("Whizbang.WorkCoordinator");
-
-      // Optional subsystem meters (subscribe to the ones you use)
-      metrics.AddMeter("Whizbang.DeadLetters");
-      metrics.AddMeter("Whizbang.TransportDeadLetterDrain");
-      metrics.AddMeter("Whizbang.EventCategories");
-      metrics.AddMeter("Whizbang.Workers.PinnedPool");
-      metrics.AddMeter("Whizbang.TableStatistics");
-      metrics.AddMeter("Whizbang.TypeRegistry");
-      metrics.AddMeter("Whizbang.StreamIntegrity");
-      metrics.AddMeter("Whizbang.Core.Routing.MessageDiscard");
-      metrics.AddMeter("Whizbang.Postgres.Notifications");
-      metrics.AddMeter("Whizbang.Sagas");
+      // Every meter Whizbang publishes, including ones added in later versions.
+      metrics.AddWhizbangInstrumentation();   // Whizbang.Observability
 
       // Export to Prometheus, OTLP, or Aspire
       metrics.AddPrometheusExporter();
       // or: metrics.AddOtlpExporter();
     });
 ```
+
+If you would rather not take the `Whizbang.Observability` package, `WhizbangMeters.All` lives in
+`Whizbang.Core` and does the same job:
+
+```csharp{title="Subscribing without Whizbang.Observability" description="WhizbangMeters.All from Whizbang.Core" category="Configuration" difficulty="BEGINNER" tags=["Metrics", "Configuration"] unverified="metrics config/query — not exercised by a test"}
+metrics.AddMeter([.. WhizbangMeters.All]);   // Whizbang.Core.Observability
+```
+
+:::warning[Do not hand-list meter names]
+Naming meters individually looks harmless and fails silently. The list is written once against the
+meters that exist that day, and every meter added afterwards emits nothing. Nothing logs and nothing
+throws, because a meter with no subscriber is not an error: the instrument is created, the counters
+increment, and the values are discarded at the subscription boundary. The application looks correctly
+instrumented from the inside, and the gap only becomes visible by comparing what the framework
+declares against what actually reaches your backend.
+
+Measured in a real deployment: **16 of 21 meters emitted nothing at all**, across every service, for
+the life of the environment. The silent ones included the dead-letter, maintenance, poison-message
+and startup meters, which are the first things an operator looks for when something is wrong.
+
+`WhizbangMeters.All` is the framework's own list and grows as optional packages self-register, so it
+stays complete without edits. A reflection drift-lock test asserts every `METER_NAME` constant
+appears in it, which is what makes the list trustworthy rather than merely convenient.
+:::
 
 ### WhizbangMetrics
 
@@ -434,10 +442,17 @@ Meter name: `Whizbang.DeadLetters` (`DeadLetterMetrics`)
 |-------------|------|-------------|
 | `whizbang.dead_letters.added` | Counter\<long\> | Rows moved into `wh_dead_letters`; tagged by `source_table` + `reason` |
 | `whizbang.dead_letters.recovered` | Counter\<long\> | Successful recovery re-emits; tagged by `source_table` |
-| `whizbang.dead_letters.held` | Counter\<long\> | Transitions to HoldForReview; tagged by `policy_name` + `reason` |
+| `whizbang.dead_letters.held` | Counter\<long\> | Transitions to HoldForReview; tagged by `policy_name` + `reason`. A transition **rate**, not inventory — it never decreases and resets on restart. For how many rows are held right now, read `whizbang.queue.estimated_depth{queue_name="dead_letters_held"}` |
 | `whizbang.dead_letters.permanently_failed` | Counter\<long\> | Transitions to PermanentlyFailed; tagged by `policy_name` + `reason` |
 | `whizbang.dead_letters.recovery_attempts` | Counter\<long\> | Recovery attempts dispatched (any outcome); tagged by `reason` |
 | `whizbang.dead_letters.generation_replay_scheduled` | Counter\<long\> | Rows scheduled by the generation-replay sweep; tagged by `generation` |
+| `whizbang.dead_letters.arrivals_by_stack` | Counter\<long\> | Dead-letter arrivals tagged by normalized `stack_id` + `source_table` + `reason` — the real-time half of the stack telemetry contract. A `stack_id` with no prior history right after a deploy is the new-failure-mode alarm. `none` = no error text; `overflow` = past the per-process 500-distinct-tag cap (counted, never dropped) |
+| `whizbang.dead_letters.cohort_verdicts` | Counter\<long\> | Canary campaign verdicts; tagged by `cohort` (error fingerprint) + `verdict` (`Pass`/`Fail`/`Mixed`) |
+| `whizbang.dead_letters.release_waves` | Counter\<long\> | Trickle release waves for Mixed cohorts; tagged by `cohort` + `outcome` (`clean`/`halted`) |
+| `whizbang.dead_letters.stack_history_pruned` | Counter\<long\> | Rolling stack-history rows pruned by the recovery worker's idle-gated cleanup — the maintenance facet of the stack layer. Also feeds `whizbang.housekeeping.items{activity=Maintenance}` |
+| `whizbang.dead_letters.new_stacks` | Counter\<long\> | Never-before-seen normalized stack ids first recorded — **the new-failure-mode alarm**. A spike right after a deploy is a new bug shipped; no "stack_id with no history" query required |
+| `whizbang.dispatcher.re_emissions` | Counter\<long\> | Events published that this service also consumes — the re-emission cascade signature (#587), tagged by `type`. A spike during a bulk operation is amplification |
+| `whizbang.work_coordinator.commit_handler.fallbacks` | Counter\<long\> | Handler-commit batches that fell back from the bulk tier to per-handler savepoints (#573). Sustained non-zero: read the paired warning's SQLSTATE |
 
 ## Whizbang.TransportDeadLetterDrain {#transport-dlq}
 
@@ -474,7 +489,7 @@ Meter name: `Whizbang.TableStatistics` (`TableStatisticsMetrics`)
 
 | Metric Name | Type | Description |
 |-------------|------|-------------|
-| `whizbang.queue.estimated_depth` | ObservableGauge | Unprocessed message count for inbox/outbox queues |
+| `whizbang.queue.estimated_depth` | ObservableGauge | Unprocessed message count per queue. `queue_name` values: `inbox`, `outbox`, `dead_letters_held` (HoldForReview quarantine), `dead_letters_pending` (recovery backlog), `dead_letters_failed` (PermanentlyFailed). The dead-letter slices are emitted even at zero — standing inventory is a positively-reported value, not an absent series |
 | `whizbang.table.estimated_bytes` | ObservableGauge | Estimated disk size per table from the database catalog |
 
 ## Whizbang.TypeRegistry {#type-registry}
