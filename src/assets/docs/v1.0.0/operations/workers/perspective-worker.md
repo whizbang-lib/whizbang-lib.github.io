@@ -600,10 +600,16 @@ them:
   `reap_exhausted_orphaned_perspective_rows`, keyed on `MaxPerspectiveEventAttempts` (a row
   attempted that many times with no surviving event is unambiguously an orphan, so attempts
   — not age — are the safety). This closes the burst-livelock window in real time.
-- **Janitorial (maintenance sweep)** — `perform_maintenance` reaps orphaned pending rows
-  that never accumulate enough attempts to be caught reactively, age-bounded by the
-  `orphan_perspective_grace_hours` setting (default **1h**) so a legitimately in-flight event
-  write that has not committed yet is never reaped out from under itself.
+- **Janitorial (maintenance sweep)** — `perform_maintenance` cleans orphans in *both*
+  tables, age-bounded by the `orphan_perspective_grace_hours` setting (default **1h**) so a
+  legitimately in-flight event write is never reaped out from under itself:
+  - **Task 12** reaps orphaned pending rows in `wh_perspective_events` that never accumulate
+    enough attempts to be caught reactively.
+  - **Task 13** settles orphaned rows already in `wh_dead_letters` — a perspective-event dead
+    letter whose *entire* source stream is absent from `wh_event_store` is unrecoverable
+    (recovery would re-drive into an empty join, and generation replay excludes held rows), so
+    it is marked Recovered with a note and retention ages it out. A stream with any surviving
+    event is a genuine apply failure and is left held for review.
 
 Deleting is correct for both: the event is gone, so there is nothing to project and the
 cursor never advanced past the row.
