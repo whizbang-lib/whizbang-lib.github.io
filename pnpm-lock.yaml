@@ -58,7 +58,7 @@ importers:
         version: 7.2.0
       ngx-markdown:
         specifier: ^22.0.0
-        version: 22.0.0(@angular/common@22.0.8(@angular/core@22.0.8(@angular/compiler@22.0.8)(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@22.0.8(@angular/compiler@22.0.8)(rxjs@7.8.2)(zone.js@0.15.1))(@angular/platform-browser@22.0.8(@angular/animations@22.0.8(@angular/core@22.0.8(@angular/compiler@22.0.8)(rxjs@7.8.2)(zone.js@0.15.1)))(@angular/common@22.0.8(@angular/core@22.0.8(@angular/compiler@22.0.8)(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@22.0.8(@angular/compiler@22.0.8)(rxjs@7.8.2)(zone.js@0.15.1)))(katex@0.17.0)(marked-katex-extension@5.1.10(katex@0.17.0)(marked@16.4.2))(marked@16.4.2)(mermaid@11.16.1)(prismjs@1.30.0)(rxjs@7.8.2)(zone.js@0.15.1)
+        version: 22.0.0(@angular/common@22.0.8(@angular/core@22.0.8(@angular/compiler@22.0.8)(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@22.0.8(@angular/compiler@22.0.8)(rxjs@7.8.2)(zone.js@0.15.1))(@angular/platform-browser@22.0.8(@angular/animations@22.0.8(@angular/core@22.0.8(@angular/compiler@22.0.8)(rxjs@7.8.2)(zone.js@0.15.1)))(@angular/common@22.0.8(@angular/core@22.0.8(@angular/compiler@22.0.8)(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@22.0.8(@angular/compiler@22.0.8)(rxjs@7.8.2)(zone.js@0.15.1)))(katex@0.17.0)(marked-katex-extension@5.1.12(katex@0.17.0)(marked@16.4.2))(marked@16.4.2)(mermaid@11.16.1)(prismjs@1.30.0)(rxjs@7.8.2)(zone.js@0.15.1)
       primeflex:
         specifier: ^4.0.0
         version: 4.0.0
@@ -115,8 +115,8 @@ importers:
         specifier: ^0.17.0
         version: 0.17.0
       marked-katex-extension:
-        specifier: ^5.1.10
-        version: 5.1.10(katex@0.17.0)(marked@16.4.2)
+        specifier: ^5.1.12
+        version: 5.1.12(katex@0.17.0)(marked@16.4.2)
       postcss:
         specifier: ^8.5.26
         version: 8.5.26
@@ -4206,10 +4206,10 @@ packages:
     resolution: {integrity: sha512-IfpFq6UM39dUNiphpA6uDezNx/AvWyhwfICWPR3t1VspkgkMZrL+Rk1RbN1bx+aeNYwOrqGJgEgV3yotk+ZUVw==}
     engines: {node: '>=18'}
 
-  marked-katex-extension@5.1.10:
-    resolution: {integrity: sha512-TuqrzguLeXXm6iBaf16leL3+dVmMj8KrBdunMVVzxMS/bwcjtQ0YG0sNytl1j7uUo8yClsXJqBbVjH1yOPurwQ==}
+  marked-katex-extension@5.1.12:
+    resolution: {integrity: sha512-DgfH0CFrOuVwVEXNJ+rTtYOtZZECpHhA0bu7xBiACAJI4geeaCZfDq+hiJ1yJx780fDh2HWHlr+NySxuc2DD1w==}
     peerDependencies:
-      katex: '>=0.16 <0.18'
+      katex: '>=0.16 <0.19'
       marked: '>=4 <19'
 
   marked@16.4.2:
@@ -9443,7 +9443,7 @@ snapshots:
   make-dir@5.1.0:
     optional: true
 
-  marked-katex-extension@5.1.10(katex@0.17.0)(marked@16.4.2):
+  marked-katex-extension@5.1.12(katex@0.17.0)(marked@16.4.2):
     dependencies:
       katex: 0.17.0
       marked: 16.4.2
@@ -9624,7 +9624,7 @@ snapshots:
 
   neo-async@2.6.2: {}
 
-  ngx-markdown@22.0.0(@angular/common@22.0.8(@angular/core@22.0.8(@angular/compiler@22.0.8)(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@22.0.8(@angular/compiler@22.0.8)(rxjs@7.8.2)(zone.js@0.15.1))(@angular/platform-browser@22.0.8(@angular/animations@22.0.8(@angular/core@22.0.8(@angular/compiler@22.0.8)(rxjs@7.8.2)(zone.js@0.15.1)))(@angular/common@22.0.8(@angular/core@22.0.8(@angular/compiler@22.0.8)(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@22.0.8(@angular/compiler@22.0.8)(rxjs@7.8.2)(zone.js@0.15.1)))(katex@0.17.0)(marked-katex-extension@5.1.10(katex@0.17.0)(marked@16.4.2))(marked@16.4.2)(mermaid@11.16.1)(prismjs@1.30.0)(rxjs@7.8.2)(zone.js@0.15.1):
+  ngx-markdown@22.0.0(@angular/common@22.0.8(@angular/core@22.0.8(@angular/compiler@22.0.8)(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@22.0.8(@angular/compiler@22.0.8)(rxjs@7.8.2)(zone.js@0.15.1))(@angular/platform-browser@22.0.8(@angular/animations@22.0.8(@angular/core@22.0.8(@angular/compiler@22.0.8)(rxjs@7.8.2)(zone.js@0.15.1)))(@angular/common@22.0.8(@angular/core@22.0.8(@angular/compiler@22.0.8)(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@22.0.8(@angular/compiler@22.0.8)(rxjs@7.8.2)(zone.js@0.15.1)))(katex@0.17.0)(marked-katex-extension@5.1.12(katex@0.17.0)(marked@16.4.2))(marked@16.4.2)(mermaid@11.16.1)(prismjs@1.30.0)(rxjs@7.8.2)(zone.js@0.15.1):
     dependencies:
       '@angular/common': 22.0.8(@angular/core@22.0.8(@angular/compiler@22.0.8)(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2)
       '@angular/core': 22.0.8(@angular/compiler@22.0.8)(rxjs@7.8.2)(zone.js@0.15.1)
@@ -9635,7 +9635,7 @@ snapshots:
       zone.js: 0.15.1
     optionalDependencies:
       katex: 0.17.0
-      marked-katex-extension: 5.1.10(katex@0.17.0)(marked@16.4.2)
+      marked-katex-extension: 5.1.12(katex@0.17.0)(marked@16.4.2)
       mermaid: 11.16.1
       prismjs: 1.30.0
 
