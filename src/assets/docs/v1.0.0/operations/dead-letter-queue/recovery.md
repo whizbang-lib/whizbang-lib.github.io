@@ -33,7 +33,7 @@ testReferences:
 
 `DeadLetterRecoveryWorker` is the policy engine for `wh_dead_letters`. On a
 backstop cadence (default 10 min, `ScanIntervalMinutes`) it scans for due
-rows (up to `ScanBatchSize`, default 200, per cycle), consults the
+rows (up to `ScanBatchSize`, default 2000 — see Adaptive scan batch below, per cycle), consults the
 configured `IDeadLetterRecoveryPolicy` for each, and either re-emits the row
 onto its source work table (via the atomic `recover_dead_letter` SQL
 function, which re-inserts with `attempts=0`), holds it for review, or marks
@@ -181,9 +181,79 @@ services.Configure<DeadLetterRecoveryOptions>(o => o.EnableGenerationReplay = fa
 services.Configure<DeadLetterRecoveryOptions>(o => {
   o.Enabled = true;              // killswitch for the whole worker (default true)
   o.ScanIntervalMinutes = 10;    // backstop cadence (default 10)
-  o.ScanBatchSize = 200;         // rows fetched per scan cycle (default 200)
+  o.ScanBatchSize = 2000;        // CEILING the adaptive controller ramps toward (default 2000)
+  o.AdaptiveScanBatchEnabled = true;  // AIMD sizing on by default; false = fixed ScanBatchSize
+  o.MinScanBatchSize = 50;       // floor / starting batch, and the pressure back-off target
+  o.ScanBatchIncreaseStep = 200; // additive growth per clean, saturated scan
+  o.ScanBatchChurnThreshold = 0.5; // ratio above which the batch halves under pressure
 });
 ```
+
+## Adaptive scan batch
+
+The settled-path scan batch is sized by an AIMD controller — the same
+`AdaptiveStreamBatch` the claim path uses — rather than a fixed number:
+
+- It starts at `MinScanBatchSize` (default 50), the width a freshly started worker uses
+  before it has any drain feedback.
+- Each clean, **saturated** scan (a full batch returned, zero re-drive failures) grows it by
+  `ScanBatchIncreaseStep` (default 200), up to the `ScanBatchSize` ceiling (default 2000).
+- A pass forced through the settledness gate while the service is busy counts as full churn
+  and **halves** the batch, walking it back toward `MinScanBatchSize`.
+
+Because the batch ramps into the ceiling instead of bursting to it cold, a high `ScanBatchSize`
+is safe: an idle service drains a large backlog an order of magnitude faster than the old fixed
+200, while a busy service still trickles at `PressuredScanBatchSize` and backs the batch down.
+Set `AdaptiveScanBatchEnabled = false` to pin every settled scan to the fixed `ScanBatchSize`
+(the pre-2.x behavior).
+
+## Canary verdicts are standing evidence
+
+A held cohort's canary campaign resolves per `(error_fingerprint, build generation)`.
+The verdict is not a one-shot release trigger — it is a durable statement about the
+build, and the recovery worker keeps consulting it:
+
+- **Pass** releases the rows currently in `HoldForReview` *and* grants every later
+  exhausted row of the same fingerprint a fresh attempt on the paced scan cadence
+  (`get_passed_campaign_fingerprints`). Without this, a proven-safe cohort re-quarantined
+  itself one scan batch at a time after the campaign retired, and only a process restart
+  released another slice.
+- A row that keeps failing after the grant still paces itself through the policy
+  cooldown — the bypass never produces a hot loop.
+- Verdicts are generation-scoped: a Pass on one build proves nothing about the next.
+
+### Evidence can be destroyed — verdicts cannot be vacuous
+
+Probe rows live in `wh_dead_letters` like any other row, so retention purges and
+operator deletes can destroy a live campaign's evidence. Two guards make that safe:
+
+- `evaluate_canary_campaign` resolves an empty evidence set (0 succeeded, 0 failed,
+  0 outstanding) to **Pending**, never to a terminal verdict. The `failed = 0` branch
+  previously returned Pass on zero surviving probes.
+- On that empty-evidence Pending, the worker re-mints probes: `begin_canary_probes`
+  refreshes an unresolved campaign's `probe_ids` from the surviving held rows
+  (`started_at` moves with the refresh). While probe rows survive, the call remains
+  the idempotent resume it always was.
+
+### Settled-row retention
+
+`perform_maintenance` purges Recovered rows by **`recovered_at`** (setting
+`dead_letter_retention_days`, default 7) — a freshly recovered row gets its full
+window regardless of how old the original failure was. Retention previously keyed on
+`dead_lettered_at`, which deleted the receipts of an old backlog within one
+maintenance cycle of the drain doing its work. Rows referenced by an unresolved
+campaign's `probe_ids` are exempt until the campaign resolves.
+
+## Disabled subsystems dispose of their dead letters
+
+A dead letter whose inner payload type belongs to a disabled subsystem (for example
+`IntegrityCheckpoint` with `StreamIntegrity:CheckpointsEnabled=false`) is **settled by
+the recovery worker itself** — `mark_dead_letter_discarded` moves it to Recovered with
+an explanatory `operator_notes` entry, and the retention purge ages it out. The check
+runs ahead of the exhaustion transition because quarantine-on-sight policies
+(`PoisonRedeliveryLoop`, MaxAttempts 0) hold rows **before any dispatch**, so the
+inbox-gate discard can never reach them; without the worker-side arm those rows were
+permanently undisposable.
 
 ## Telemetry
 

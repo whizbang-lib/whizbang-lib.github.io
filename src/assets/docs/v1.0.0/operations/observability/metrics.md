@@ -442,7 +442,7 @@ Meter name: `Whizbang.DeadLetters` (`DeadLetterMetrics`)
 |-------------|------|-------------|
 | `whizbang.dead_letters.added` | Counter\<long\> | Rows moved into `wh_dead_letters`; tagged by `source_table` + `reason` |
 | `whizbang.dead_letters.recovered` | Counter\<long\> | Successful recovery re-emits; tagged by `source_table` |
-| `whizbang.dead_letters.held` | Counter\<long\> | Transitions to HoldForReview; tagged by `policy_name` + `reason` |
+| `whizbang.dead_letters.held` | Counter\<long\> | Transitions to HoldForReview; tagged by `policy_name` + `reason`. A transition **rate**, not inventory — it never decreases and resets on restart. For how many rows are held right now, read `whizbang.queue.estimated_depth{queue_name="dead_letters_held"}` |
 | `whizbang.dead_letters.permanently_failed` | Counter\<long\> | Transitions to PermanentlyFailed; tagged by `policy_name` + `reason` |
 | `whizbang.dead_letters.recovery_attempts` | Counter\<long\> | Recovery attempts dispatched (any outcome); tagged by `reason` |
 | `whizbang.dead_letters.generation_replay_scheduled` | Counter\<long\> | Rows scheduled by the generation-replay sweep; tagged by `generation` |
@@ -489,7 +489,7 @@ Meter name: `Whizbang.TableStatistics` (`TableStatisticsMetrics`)
 
 | Metric Name | Type | Description |
 |-------------|------|-------------|
-| `whizbang.queue.estimated_depth` | ObservableGauge | Unprocessed message count for inbox/outbox queues |
+| `whizbang.queue.estimated_depth` | ObservableGauge | Unprocessed message count per queue. `queue_name` values: `inbox`, `outbox`, `dead_letters_held` (HoldForReview quarantine), `dead_letters_pending` (recovery backlog), `dead_letters_failed` (PermanentlyFailed). The dead-letter slices are emitted even at zero — standing inventory is a positively-reported value, not an absent series |
 | `whizbang.table.estimated_bytes` | ObservableGauge | Estimated disk size per table from the database catalog |
 
 ## Whizbang.TypeRegistry {#type-registry}

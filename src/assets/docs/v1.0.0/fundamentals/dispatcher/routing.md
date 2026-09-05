@@ -169,6 +169,12 @@ services.Configure<RoutingOptions>(opts => {
 });
 ```
 
+:::note
+A manual subscription to a namespace this service also **owns** is refused at startup, because
+discovery would otherwise discard it silently. See
+[Owned and subscribed namespaces](#owned-and-subscribed) for the rule and the two remedies.
+:::
+
 ## System Commands
 
 All services automatically subscribe to system commands (`whizbang.core.commands.system.#`) for framework-level operations. These include commands for pausing/resuming processing, rebuilding perspectives, clearing caches, and collecting diagnostics.
@@ -1325,6 +1331,60 @@ routing.OwnDomains("App.Contracts.Orders");
 
 If a service declares no owned domains, nothing is treated as owned and none of this special-casing
 applies.
+
+The rule lives in one place, `OwnedNamespaceMatcher`, and both event-subscription discovery and the
+owned-and-subscribed refusal below call it, so the two can never disagree about what is owned.
+
+### Owned and subscribed namespaces {#owned-and-subscribed}
+
+Event-subscription discovery removes owned namespaces from the subscription set on purpose: a service
+does not subscribe to the events it publishes. A manual `SubscribeTo` (or `SubscribeToNamespaceOf<T>`)
+on a namespace that is also owned, exactly or as a child, is therefore a declaration the framework can
+never honor. Previously it was discarded silently: the subscription was never created, and a broker
+with no subscriber on the topic dropped the events with no dead letter and no log line. Azure Service
+Bus discards a message published to a topic with no subscriptions, so the only trace was a topic that
+reported zero subscriptions.
+
+The contradiction is now **refused at startup**. The `WithRouting` options factory throws
+`InvalidOperationException` at first resolution (the same seam as the shared-inbox retirement guard),
+and `EventSubscriptionDiscovery.DiscoverEventNamespaces` throws again for options constructed by hand.
+The message names every offending namespace, the owned domain that claims it, and both remedies:
+
+```csharp{title="Owned and subscribed: refused at startup" description="A manual SubscribeTo on a namespace the service also owns is a contradiction discovery would silently discard; the WithRouting factory refuses it at first resolution, naming the namespace, the owning declaration, and the two remedies." category="Architecture" difficulty="INTERMEDIATE" tags=["Dispatcher", "Routing", "OwnedDomains", "Subscriptions"] tests=["RoutingBuilderExtensionsTests.WithRouting_OwnedAndSubscribedNamespace_FailsAtFirstResolutionAsync", "RoutingOptionsTests.ThrowIfSubscribedNamespaceIsOwned_ExactOverlap_ThrowsNamingBothDeclarationsAndTheRemediesAsync", "RoutingOptionsTests.ThrowIfSubscribedNamespaceIsOwned_ChildOverlap_ThrowsNamingTheOwnedDomainAsync", "EventSubscriptionDiscoveryTests.DiscoverEventNamespaces_ManualSubscriptionOnOwnedNamespace_ThrowsAsync"]}
+.WithRouting(routing => {
+  routing.SubscribeToNamespaceOf<OrderPlacedEvent>();      // App.Contracts.Orders: subscribe only, fine
+  routing.OwnNamespaceOf<CreateIdentityCommand>();         // owns App.Contracts.Identity
+  routing.SubscribeToNamespaceOf<IdentityCreatedEvent>();  // App.Contracts.Identity again: refused
+})
+
+// InvalidOperationException at first resolution of IOptions<RoutingOptions>:
+//   Routing declares a namespace as both owned and subscribed:
+//   'app.contracts.identity' (owned via 'app.contracts.identity'). Event-subscription discovery
+//   removes owned namespaces from the subscription set by design (...), so this subscription would
+//   never be created, and a broker with no subscriber on the topic drops the events silently.
+//   Either remove the SubscribeTo / SubscribeToNamespaceOf declaration for it, or call
+//   AbsorbNamespaces(...) for it to create the binding anyway.
+```
+
+Two ways out:
+
+- **Drop the subscription.** Owned events already reach this service's receptors and perspectives
+  through the local dispatch path and the local event store; the transport subscription was never
+  doing anything for the owning service.
+- **Absorb the namespace** when the binding is genuinely wanted, for example to capture events that
+  *other* services publish into a namespace this service also owns. Absorbed namespaces are added
+  after the owned-domain subtraction, and an absorbed namespace is exempt from the refusal.
+
+```csharp{title="Absorbing an owned namespace creates the binding anyway" description="AbsorbNamespaces is the declared way to subscribe to a namespace the service also owns; it survives the owned-domain subtraction and is exempt from the refusal." category="Architecture" difficulty="INTERMEDIATE" tags=["Dispatcher", "Routing", "OwnedDomains", "Absorb"] tests=["RoutingBuilderExtensionsTests.WithRouting_OwnedAndAbsorbedNamespace_ResolvesAsync", "RoutingOptionsTests.ThrowIfSubscribedNamespaceIsOwned_AbsorbedOverlap_DoesNotThrowAsync", "EventSubscriptionDiscoveryTests.DiscoverEventNamespaces_AbsorbedNamespace_SurvivesOwnedDomainSubtractionAsync"]}
+.WithRouting(routing => {
+  routing.OwnNamespaceOf<CreateIdentityCommand>();
+  routing.AbsorbNamespaces("app.contracts.identity");   // binding created; events land in the local event store
+})
+```
+
+Only **manual** subscriptions are checked. An auto-discovered namespace that overlaps an owned domain
+(a perspective over the service's own events) is still excluded silently, because that exclusion is
+the design and nothing the consumer wrote is being ignored.
 
 ### Why this matters
 

@@ -1,13 +1,13 @@
 {
   "run": {
-    "runId": "33589580969",
-    "sha": "6af03e879fa6148921d24e15366bd344af6ac969",
+    "runId": "33982108980",
+    "sha": "3e6b4ade6b2248ae08df609978b33fab23fde874",
     "branch": "develop",
-    "libraryVersion": "0.1025.0-alpha.321",
-    "completedAt": "2026-09-02T04:32:38.535Z"
+    "libraryVersion": "0.1025.0-alpha.570",
+    "completedAt": "2026-09-05T18:03:59.384Z"
   },
   "total": {
-    "passed": 19495,
+    "passed": 20256,
     "failed": 0,
     "skipped": 9
   },
@@ -28,7 +28,7 @@
       "skipped": 0
     },
     "postgres-efcore-": {
-      "passed": 2541,
+      "passed": 2682,
       "failed": 0,
       "skipped": 0
     },
@@ -48,7 +48,7 @@
       "skipped": 1
     },
     "unit": {
-      "passed": 16104,
+      "passed": 16724,
       "failed": 0,
       "skipped": 8
     }
@@ -116,7 +116,7 @@
     },
     "Whizbang.Core.Tests": {
       "file": "Whizbang.Core.Tests.json",
-      "passed": 10652,
+      "passed": 10986,
       "failed": 0,
       "skipped": 0
     },
@@ -128,7 +128,7 @@
     },
     "Whizbang.Data.EFCore.Postgres.Tests": {
       "file": "Whizbang.Data.EFCore.Postgres.Tests.json",
-      "passed": 2541,
+      "passed": 2682,
       "failed": 0,
       "skipped": 0
     },
@@ -140,7 +140,7 @@
     },
     "Whizbang.Data.Tests": {
       "file": "Whizbang.Data.Tests.json",
-      "passed": 89,
+      "passed": 95,
       "failed": 0,
       "skipped": 8
     },
@@ -152,19 +152,19 @@
     },
     "Whizbang.Execution.Tests": {
       "file": "Whizbang.Execution.Tests.json",
-      "passed": 126,
+      "passed": 127,
       "failed": 0,
       "skipped": 0
     },
     "Whizbang.Generators.Tests": {
       "file": "Whizbang.Generators.Tests.json",
-      "passed": 1779,
+      "passed": 1880,
       "failed": 0,
       "skipped": 0
     },
     "Whizbang.Hosting.AspNet.Tests": {
       "file": "Whizbang.Hosting.AspNet.Tests.json",
-      "passed": 121,
+      "passed": 123,
       "failed": 0,
       "skipped": 0
     },
@@ -176,13 +176,13 @@
     },
     "Whizbang.Migrate.Tests": {
       "file": "Whizbang.Migrate.Tests.json",
-      "passed": 338,
+      "passed": 507,
       "failed": 0,
       "skipped": 0
     },
     "Whizbang.Observability.Tests": {
       "file": "Whizbang.Observability.Tests.json",
-      "passed": 307,
+      "passed": 311,
       "failed": 0,
       "skipped": 0
     },
@@ -218,7 +218,7 @@
     },
     "Whizbang.Sagas.Tests": {
       "file": "Whizbang.Sagas.Tests.json",
-      "passed": 186,
+      "passed": 187,
       "failed": 0,
       "skipped": 0
     },
@@ -248,7 +248,7 @@
     },
     "Whizbang.Transports.AzureServiceBus.Tests": {
       "file": "Whizbang.Transports.AzureServiceBus.Tests.json",
-      "passed": 561,
+      "passed": 563,
       "failed": 0,
       "skipped": 0
     },
