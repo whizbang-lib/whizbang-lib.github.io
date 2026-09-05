@@ -123,9 +123,20 @@ info: Whizbang.Initialization[0]
       All Whizbang DbContext(s) initialized successfully
 ```
 
-## Idempotency
+## Idempotency {#idempotency}
 
 All initialization operations are idempotent. It's safe to call `EnsureWhizbangInitializedAsync()` multiple times - existing tables and functions are not recreated.
+
+The in-process guard that turns a repeat call into a no-op is keyed on the **host** (its root service provider), not on the process. A process that builds several hosts, each against its own database (a test suite with a host per test, or a composition root that hosts two services), initializes every one of them. Only the same host asking twice is skipped, and the skip is logged at Debug as "Whizbang database already initialized". Earlier versions kept a single process-wide flag, so every host after the first was skipped and started against a database with no schema at all; the first symptom was the duty elector failing on a missing `record_capability` function, surfaced as a Kestrel bind cancellation.
+
+```csharp{title="Per-host initialization" description="Two hosts in one process each initialize their own database; the same host asking twice is a no-op." category="Configuration" difficulty="INTERMEDIATE" tags=["Data", "Initialization", "Idempotency", "Hosting"] tests=["WhizbangHostExtensionsTests.EnsureWhizbangInitializedAsync_TwoHostsInOneProcess_InitializesBothAsync", "WhizbangHostExtensionsTests.EnsureWhizbangInitializedAsync_SameHostTwice_InitializesOnceAsync", "DbContextInitializationRegistryTests.InitializeAllAsync_DifferentServiceProviders_EachInitializeAsync"]}
+var first = BuildHost(connectionStringA);
+var second = BuildHost(connectionStringB);
+
+await first.EnsureWhizbangInitializedAsync();   // initializes database A
+await second.EnsureWhizbangInitializedAsync();  // initializes database B — not "already initialized"
+await first.EnsureWhizbangInitializedAsync();   // no-op for the same host
+```
 
 ## Multi-Instance Initialization
 

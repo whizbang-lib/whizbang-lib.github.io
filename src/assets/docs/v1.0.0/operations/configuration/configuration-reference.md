@@ -212,7 +212,9 @@ builder.Services.Configure<StreamIntegrityOptions>(options => {
 });
 ```
 
-**Recommended section naming:** use `Whizbang:<Area>` (for example `Whizbang:StreamIntegrity`, `Whizbang:Workers:Claim`, `Whizbang:Workers:PinnedPool`) so environment variables follow the same `Whizbang__<Area>__<Key>` shape as the automatically-bound sections. The env-var examples in the sections below assume this convention — **they only work once your service binds the section**.
+**Recommended section naming:** use `Whizbang:<Area>` (for example `Whizbang:StreamIntegrity`, `Whizbang:Workers:Claim`, `Whizbang:Workers:PinnedPool`) so environment variables follow the same `Whizbang__<Area>__<Key>` shape as the automatically-bound sections. The env-var examples in the sections below assume this convention — **they only work once the section is bound**.
+
+**Framework-bound sections (no service code needed):** the worker pipeline binds `Whizbang:DeadLetterRecovery`, `Whizbang:Workers:TransportDeadLetterDrain`, `Whizbang:Workers:Claim`, and `Whizbang:Housekeeping` itself — setting those env vars just works. The binding is compile-time (configuration binder source generator), so it costs no reflection. Every other section still needs the service to bind it; the lesson behind this feature was a production kill switch (`Whizbang__DeadLetterRecovery__Enabled=false`) that sat on pods for weeks binding to nothing while the worker ran on code defaults.
 
 > **Operational tip:** keep a service's bound sections documented next to its `Program.cs`. When someone later finds `Whizbang__X__Y` in a deployment manifest, the first question is always "does anything bind `Whizbang:X`?" — and for code-configured options the answer is "only if this service does".
 
@@ -361,7 +363,7 @@ Flush strategy and lease behavior for work coordinator strategies. **Configure:*
 
 ### ClaimWorkerOptions
 
-The claim loop that distributes outbox/inbox/perspective work. **Configure:** `services.Configure<ClaimWorkerOptions>(…)` — recommended section `Whizbang:Workers:Claim` (`Whizbang__Workers__Claim__MaxStreamsPerBatch`). **Details:** no dedicated page yet.
+The claim loop that distributes outbox/inbox/perspective work. **Configure:** bound by the framework from `Whizbang:Workers:Claim` (`Whizbang__Workers__Claim__FreshWorkShare=1.0` works with no service code); override in code via `services.Configure<ClaimWorkerOptions>(…)`. **Details:** no dedicated page yet.
 
 | Property | Type | Default | Purpose |
 |----------|------|---------|---------|
@@ -371,6 +373,7 @@ The claim loop that distributes outbox/inbox/perspective work. **Configure:** `s
 | `PollingMaxIntervalMilliseconds` | `int` | `10000` | Adaptive backoff cap (constrained by `AbandonStaleInstanceThresholdSeconds`) |
 | `NotifyHealthyPollingIntervalMilliseconds` | `int?` | `5000` | Relaxed base wait while the NOTIFY gate is healthy |
 | `MaxStreamsPerBatch` | `int` | `1000` | Cap on rows returned per `claim_work` call |
+| `FreshWorkShare` | `double` | `0.5` | Share of each inbox batch reserved for fresh-head streams (head row never attempted). Weighted-fair and work-conserving: an empty class hands its share to the other. Raise toward `1.0` where interactive latency outranks backlog drain — strict oldest-first let a 28k-row retry backlog starve every new arrival |
 | `PerspectiveOnly` | `bool` | `false` | Distribute only perspective work (set when the legacy publisher worker is registered) |
 | `PartitionCount` | `int` | `10000` | Modulo partition count |
 | `LeaseSeconds` | `int` | `300` | Lease duration applied to claimed work |
@@ -718,6 +721,7 @@ Operator rung of the row-retention override ladder. **Configure:** `services.Con
 | `MaxDestructionRetries` | `int` | `5` | Retries of a failing destruction batch before a forced delete |
 | `OnDestroyFailure` | `OnDestroyFailure` | `RetryThenForcedDelete` | Policy when a `PreDestruction` hook keeps failing |
 | `RowReapBatchSize` | `int` | `5000` | Rows deleted per perspective per cycle by the expiry sweep |
+| `LifecycleCompletionRetentionDays` | `int` | `7` | Days a lifecycle-completion marker is kept before the sweep removes it; `0` disables the sweep |
 | `RowCapSweepClaimWindowMinutes` | `int` | `60` | Minimum minutes between cap sweeps service-wide |
 | `RowGuardCollectLimit` | `int` | `500` | Rows offered per guarded perspective per cycle |
 | `RowCascadeDrainLimit` | `int` | `1000` | Origin evictions claimed from the journal per cycle |
@@ -771,19 +775,42 @@ Self-healing continuity checking; the defaults are the recommended posture. **Co
 
 ### DeadLetterRecoveryOptions
 
-**Configure:** `services.Configure<DeadLetterRecoveryOptions>(…)`; per-reason policies via the `PolicyByReason` dictionary. **Details:** [DLQ Recovery](../dead-letter-queue/recovery#custom-policy).
+**Configure:** bound by the framework from `Whizbang:DeadLetterRecovery` (`Whizbang__DeadLetterRecovery__Enabled=false` works with no service code); override in code via `services.Configure<DeadLetterRecoveryOptions>(…)`. Per-reason policies via the `PolicyByReason` dictionary. **Details:** [DLQ Recovery](../dead-letter-queue/recovery#custom-policy).
 
 | Property | Type | Default | Purpose |
 |----------|------|---------|---------|
 | `Enabled` | `bool` | `true` | Killswitch for the recovery worker |
 | `ScanIntervalMinutes` | `int` | `10` | Backstop minutes between scans |
 | `ScanBatchSize` | `int` | `200` | Max DLQ rows fetched per scan cycle |
+| `LoopBreakerEnabled` | `bool` | `true` | Suspend recovery when it is generating the dead letters it recovers |
+| `LoopBreakerFreshFraction` | `double` | `0.5` | Share of a batch postdating the last scan that reads as self-inflicted |
+| `LoopBreakerConsecutiveCycles` | `int` | `3` | Consecutive self-inflicted cycles before recovery suspends |
+| `LoopBreakerCooldownMinutes` | `int` | `60` | Minutes suspended before retrying; `0` stays open until restart |
+| `WaitForIdle` | `bool` | `true` | Recovery re-drives only when the service is settled, via housekeeping arbitration at the highest rank; `false` re-drives on the scan cadence regardless of load |
+| `RetryHeldOnStartup` | `RetryHeldOnStartupMode` | `Off` | Startup campaign over HELD rows: `Canary` probes each fingerprint cohort and releases on all-probes-recover; `Full` releases everything staggered without probing. See [Canary Recovery](../dead-letter-queue/canary-recovery) |
+| `CanaryProbeSize` | `int` | `10` | Probe rows per cohort in Canary mode, stratified across message types |
+| `ReleaseStaggerMinutes` | `int` | `30` | Window a cohort release is staggered across — release is eligibility for the paced scans, never a firehose |
+| `AutoCanaryOnNewGeneration` | `bool` | `true` | A new build generation auto-canaries held cohorts (deploys that fix bugs self-heal their cohorts at probe cost); an explicit `RetryHeldOnStartup` mode always wins |
+| `GenerationBudget` | `int` | `3` | Distinct build generations whose campaigns may fail before a cohort becomes permanently pending an operator decision |
+| `StackBackfillBatchSize` | `int` | `500` | Dead letters normalized into the relational stack layer per recovery scan; `0` disables the backfill |
+| `StackHistoryRetentionDays` | `int` | `90` | Rolling retention for the stack-history log (`wh_stack_daily`): the recovery worker prunes daily rows older than this on its idle-gated scan. A non-positive value disables the rolling cleanup — the log is kept forever |
+| `PressuredScanBatchSize` | `int` | `20` | Recovery scan batch when the pass was FORCED through the settledness gate by the bounded-deferral escape — a trickle under load, never a flood (#669) |
+| `GenerationReplayStaggerMinutes` | `int` | `30` | Window over which a new build's generation replay spreads its re-offers; `0` restores schedule-all-now (#669) |
+| `Workers:Claim:NotifyDrainLingerSeconds` | `int` | `8` | Drain linger (doorbell debounce, C# half): after a claim finds fresh work, empty polls keep a tight ~500 ms cadence for this many seconds before the elevated idle cadence resumes. MUST stay above the SQL `notify_debounce_seconds` setting (default 7) so suppression self-expires while the drainer still polls. `0` disables the linger |
 | `EnableGenerationReplay` | `bool` | `true` | Startup scan auto-replaying rows not yet retried on this build generation |
 | `PolicyByReason` | `Dictionary<MessageFailureReason, RecoveryPolicy>` | populated map | Per-failure-reason recovery rules (see the recovery page for the default map) |
 
+### HousekeepingCoordinator.Settings
+
+Arbitration tuning for the ranked housekeeping activities (dead-letter recovery, integrity, maintenance). **Configure:** bound by the framework from `Whizbang:Housekeeping` (`Whizbang__Housekeeping__MaxConsecutiveDeferrals=12` works with no service code); a host can also register its own `HousekeepingCoordinator` instance before the framework's TryAdd. **Details:** [Housekeeping Arbitration](../workers/housekeeping-arbitration).
+
+| Property | Type | Default | Purpose |
+|----------|------|---------|---------|
+| `MaxConsecutiveDeferrals` | `int` | `6` | Busy verdicts tolerated before one pass forces through (`ProceedDeferralLimit`) — the starvation floor for recovery and maintenance, counted per activity. At the 10-minute scan cadence, 6 means a never-idle service still recovers roughly hourly |
+
 ### TransportDeadLetterDrainWorkerOptions
 
-**Configure:** `services.Configure<TransportDeadLetterDrainWorkerOptions>(…)`. **Details:** [Transport DLQ Recovery](../dead-letter-queue/transport-recovery#defaults).
+**Configure:** bound by the framework from `Whizbang:Workers:TransportDeadLetterDrain`; override in code via `services.Configure<TransportDeadLetterDrainWorkerOptions>(…)`. **Details:** [Transport DLQ Recovery](../dead-letter-queue/transport-recovery#defaults).
 
 | Property | Type | Default | Purpose |
 |----------|------|---------|---------|
@@ -1159,3 +1186,27 @@ These classes have no settable properties; they are configured entirely through 
 - `RoutingOptions` — domain ownership and inbox/outbox routing strategies (fluent builder on the routing registration)
 - `LensOptions` — named lens scopes via `DefineScope(name, configure)`
 - `SecurityOptions` — RBAC/ABAC roles and permission extractors via fluent registration
+
+## Database-side settings (`wh_settings`)
+
+Live-tunable without a redeploy; read by the SQL functions themselves.
+
+| key | default | purpose |
+|---|---|---|
+| `notify_debounce_seconds` | `7` | Doorbell debounce window (must stay below the C# `NotifyDrainLingerSeconds`, default 8). Non-positive disables |
+| `integrity_epoch_max_stall_seconds` | `3600` | Digest-epoch stall escape: a lane whose frontier has not advanced this long closes its first blocked epoch anyway (once per sweep). Non-positive disables |
+
+## Turnkey-bound options sections (complete sweep)
+
+Every options class the framework registers now binds from configuration (issue #646) — a
+documented section that binds to nothing is treated as a defect. Newly bound sections:
+`Whizbang:Ephemeral`, `Whizbang:PerspectiveRowRetention`, `Whizbang:SchemaInitialization`,
+`Whizbang:UnobservedExceptionDiagnostics`, `Whizbang:BacklogAge`, `Whizbang:WorkCoordinator`,
+`Whizbang:Temporal`, `Whizbang:SignalBus`, `Whizbang:OrderedStreamProcessor`, `Whizbang`
+(root, e.g. `ShowBanner`), `Whizbang:StreamIntegrity`, and under `Whizbang:Workers:` —
+`BackupTick`, `Heartbeat`, `OutboxCompletionFlush`, `PerspectiveCompletionFlush`,
+`FailureFlush`, `LeaseRenewal`, `InboxHandler`, `OutboxPublish`, `InboxDispatch`,
+`Maintenance`, `OutboxDrain`, `InboxDrain`, `RecentlyProcessedEventCache`,
+`InboxDeserializeCache`, `LeaseHandle`, `OutboxBatch`, `InboxBatch`, `Perspective`,
+`PinnedPool`. Section shape mirrors each options class's properties; every binding is
+locked by a test in `AllOptionsBindingMatrixTests`.

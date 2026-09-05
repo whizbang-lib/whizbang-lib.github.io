@@ -283,3 +283,27 @@ sequenceDiagram
 ```
 
 Routing is unchanged by the edge rule: `notify_instance_owners` still targets the pinned owner's channel (Step 1) or the deterministic partition target for unpinned streams (Step 2). Any instance may produce into any stream — the queue lives in the shared database, so emptiness is a global per-stream fact, and several concurrent producers still collapse to one doorbell while work is pending. The safety-net poll remains as the crash/orphan backstop (a stranded row from a dead worker suppresses the doorbell precisely because a wake is owed to work that lease-expiry will re-offer), never as the interactive latency path.
+
+## Doorbell debounce and drain linger
+
+Under fan-out load, one `pg_notify` per stored message is almost entirely redundant — the
+target instance is already awake and draining. The debounce collapses it to **one doorbell
+per idle-to-busy edge per payload kind**, with two cooperating halves and one invariant:
+
+- **SQL half** (`wh_notify_state` + the `notify_debounce_seconds` setting in `wh_settings`,
+  default **7**, live-tunable): `claim_work` stamps a per-`(instance, payload kind)`
+  watermark whenever the instance finds work. While a target's same-kind watermark is
+  fresher than the window, a notify toward it is suppressed and the watermark slides — the
+  suppressed store is work the linger poll will find. Firing stamps a predicted-awake
+  watermark. Suppression never applies toward a non-live instance, and a non-positive
+  setting disables the debounce.
+- **C# half** (`Whizbang:Workers:Claim:NotifyDrainLingerSeconds`, default **8**): after
+  fresh work, empty claim polls run at ~500 ms for the linger window before the
+  notify-healthy elevation and adaptive backoff resume. Repeat claims opt out (re-offer
+  damping is preserved), and the doorbell-liveness accounting treats a poll-discovered edge
+  inside the linger as expected-unnotified.
+
+**The invariant: C# linger > SQL window** (8 > 7). Any suppressed doorbell's work is picked
+up by a poll before the drainer slows down — the suppression self-expires first, so there
+is no sleep handshake and no stranded message; the safety-net poll remains the correctness
+floor for every residual race (a target dying inside the window, topology shifts).

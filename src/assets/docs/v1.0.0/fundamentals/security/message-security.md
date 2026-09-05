@@ -1,8 +1,8 @@
 ---
 title: "Message Security Context Propagation"
 pageType: concept
-verifiedAgainstCommit: 0bc6065b
-verifiedDate: 2026-08-05
+verifiedAgainstCommit: ff096461
+verifiedDate: 2026-08-28
 version: 1.0.0
 category: "Core Concepts"
 order: 10
@@ -10,7 +10,7 @@ description: >-
   Automatic security context establishment for incoming messages in distributed
   systems. Covers security extractors, scope context population, transport
   metadata, and audit event emission for compliance.
-tags: 'message-security, security-context, extractors, distributed-security, scope-context, transport-metadata, audit'
+tags: 'message-security, security-context, extractors, distributed-security, scope-context, transport-metadata, audit, scope-markers'
 codeReferences:
   - src/Whizbang.Core/Security/IMessageSecurityContextProvider.cs
   - src/Whizbang.Core/Security/DefaultMessageSecurityContextProvider.cs
@@ -159,6 +159,95 @@ public sealed class MessageSecurityOptions {
   public bool PropagateToOutgoingMessages { get; set; } = true;
 }
 ```
+
+## Why an Event Has No Scope {#scope-markers}
+
+A stored event whose scope is absent used to mean three different things at once,
+and nothing in the data told them apart:
+
+- framework infrastructure that has no user *by design*
+- an application event whose author knows it carries no authority
+- an event whose scope was **lost** — a defect
+
+Because all three stored `null`, "this event has no scope" could not be treated as
+a fault. It had to be investigated every time, and the investigation started from a
+column that looked fine.
+
+Whizbang now records the reason:
+
+| stored `scope` | meaning | who sets it |
+| --- | --- | --- |
+| `{"sys": true}` | Framework infrastructure — checkpoints, manifests, redelivery requests. No user, ever. | the framework |
+| `{"dec": true}` | The application author declared this type carries no authority — pre-authentication events, health checks. | the author, via `ExemptMessageTypes` |
+| `null` | **The scope was lost.** A defect. | nobody |
+
+With the intentional cases marked, an absent scope becomes an assertable invariant
+instead of a research project:
+
+```sql{title="Find events that lost their scope" description="Audit query for unscoped events once the intentional cases are marked" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Scope", "Audit"] tests=["SystemScopeSentinelTests.ASystemScopeIsDistinguishableFromAnAbsentOneAsync"]}
+-- Anything here is a bug worth chasing.
+SELECT event_type, count(*)
+FROM wh_event_store
+WHERE jsonb_typeof(scope::jsonb) = 'null'
+GROUP BY 1 ORDER BY 2 DESC;
+```
+
+> **`jsonb_typeof(...) = 'null'`, not `scope IS NULL`.** The column stores the JSON
+> null *literal*, which `IS NULL` does not match. An audit written the obvious way
+> reports the column fully populated and returns nothing.
+
+### Declaring your own event unscoped {#declaring-unscoped}
+
+Use the exemption list you already use to tell the security check to stand down.
+The same declaration now records the intent in the stored data:
+
+```csharp{title="Declaring an event unscoped" description="Registering a type whose events legitimately carry no security scope" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Scope", "Configuration"] tests=["DeclaredUnscopedMarkerTests.ADeclaredTypeIsMarkedDeclaredRatherThanLeftBlankAsync"]}
+services.AddWhizbangMessageSecurity(options => {
+  // No authenticated user exists yet at this point in the flow.
+  options.ExemptMessageTypes.Add(typeof(LoginAttemptEvent));
+  options.ExemptMessageTypes.Add(typeof(HealthCheckMessage));
+});
+```
+
+Events of those types are stamped `{"dec": true}` when they would otherwise be
+unscoped. Nothing else changes — the exemption behaves as it always has.
+
+### Intent, never permission {#markers-are-not-authority}
+
+Both markers resolve to **no tenant, no user, no principal**. They say *why* an
+event carries no authority; they never grant any. A marker that resolved to a
+tenant would be privilege escalation wearing a diagnostic's clothing — and the
+place it would do the most damage is a pre-authentication event, which is exactly
+what `{"dec": true}` tends to mark.
+
+### Why two markers instead of one {#two-markers}
+
+"The framework published this" and "a human asserted this" deserve different
+scrutiny in a security review. Keeping them separate also means application code
+cannot claim the framework's marker: if it could, `{"sys": true}` would become a
+blanket way to silence the invariant.
+
+Where both could apply, control-plane wins — so the provenance an auditor sees
+never depends on one service's configuration.
+
+### Composites are never marked {#composites-excluded}
+
+A composite (a re-delivery bundle, a coalesced batch) is control-plane traffic,
+but it is deliberately **left unmarked**. Its hop scope becomes the scope of every
+child when the bundle is fanned out at the consumer, and those children are
+ordinary domain events. Marking the wrapper would stamp the framework's marker
+onto real business data and exempt it from the missing-scope check — hiding the
+class of bug the markers exist to expose.
+
+### Upgrading an existing deployment {#scope-marker-backfill}
+
+Markers apply to newly-published events. Control-plane events written by earlier
+versions are stored as `null`, so until they are backfilled they are
+indistinguishable from broken rows and will dominate any unscoped-event report. A
+one-time `UPDATE` per service database sets `{"sys": true}` on the terminal
+control-plane types — **excluding composites**, for the reason above.
+
+---
 
 ## Immutable Context {#immutable-context}
 

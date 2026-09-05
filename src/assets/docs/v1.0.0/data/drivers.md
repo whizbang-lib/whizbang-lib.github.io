@@ -128,6 +128,23 @@ Both `WhizbangBuilder` (from `AddWhizbang()`) and `WhizbangPerspectiveBuilder` (
 - **LISTEN/NOTIFY** - Postgres notification listener with connection-string fallback conventions
 - **Snapshots and metrics** - perspective snapshot store, table statistics collection for OpenTelemetry
 
+### Bring your own DbContext {#bring-your-own-dbcontext}
+
+Registering the DbContext yourself before `.WithDriver.Postgres` (your own `NpgsqlDataSource`, `AddDbContext`, or `AddDbContextFactory`) is supported. The driver logs "DbContext '...' already registered - skipping turnkey registration" and leaves your registration alone. Everything that does not depend on owning the DbContext is still registered. Two of those matter enough to name:
+
+- **The library version.** `ILibraryVersionProvider` is registered from a build-time constant, so the [Assess step](../operations/startup/rolling-upgrades#assess) can compare this binary against the migration ledger. Without it the assessor stands down and the host never reports ready.
+- **Notification credentials.** Under `UseNpgsql(NpgsqlDataSource)` Npgsql redacts the password from every connection-string surface, so the LISTEN/NOTIFY listener, the commit-order stamper, and the duty elector cannot authenticate from a string ("No password has been provided but the backend requires one"). When neither `Whizbang:Database` nor a credential-bearing `ConnectionStrings` entry is configured, the notification stack borrows your DbContext's data source (or, failing that, an `NpgsqlDataSource` registered in DI). Borrowed means used as-is and never disposed by the framework; the choice is logged once at Information. Set `Whizbang:Database:ConnectionStringKey` or call `AddWhizbangNotificationDataSource(...)` when you want a dedicated pool for notifications, which is also the right answer for multi-schema deployments that rely on a `search_path`.
+
+```csharp{title="Consumer-owned DbContext and data source" description="The consumer registers its own NpgsqlDataSource and DbContext; the driver skips its turnkey DbContext registration but still supplies the library version and reuses the data source for notification connections." category="Configuration" difficulty="INTERMEDIATE" tags=["Data", "Drivers", "Postgres", "Notifications"] tests=["LibraryVersionRegistrationTests.Postgres_WhenTheConsumerRegisteredItsOwnDbContext_StillRegistersTheLibraryVersionAsync", "DutyElectionByoDataSourceE2ETests.Elector_UnderUseNpgsqlDataSource_WithNoNotificationConfiguration_AcquiresTheDutyAsync", "NotificationDataSourceAutoDiscoveryTests.AutoDiscovery_NoCredentialInConfiguration_ReusesTheApplicationsDataSourceAsync", "DbContextNotificationConnectionStringFallbackTests.GetDataSource_UseNpgsqlDataSource_ReturnsTheDbContextsDataSourceAsync"]}
+var dataSource = new NpgsqlDataSourceBuilder(connectionString).Build();
+services.AddSingleton(dataSource);
+services.AddDbContext<OrdersDbContext>(o => o.UseNpgsql(dataSource));
+
+services.AddWhizbang()
+  .WithEFCore<OrdersDbContext>()
+  .WithDriver.Postgres;   // "already registered - skipping turnkey registration" — and that is fine
+```
+
 ## The InMemory Driver
 
 `.WithDriver.InMemory` registers the same storage abstractions against the EF Core InMemory provider using `InMemoryUpsertStrategy` - fast and isolated, ideal for tests and prototyping:

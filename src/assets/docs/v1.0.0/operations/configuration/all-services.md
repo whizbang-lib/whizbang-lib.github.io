@@ -132,3 +132,5 @@ builder.Services
 - [AddPerspectiveServices](perspective-services) - Register only Perspectives
 - [AddLensServices](lens-services) - Register only Lenses
 - [WhizbangCoreOptions](./whizbang-options) - Core configuration
+- [Injectable Services](../dependency-injection/injectable-services) - What Whizbang injects, and the defaults it ships
+- [Registration Validation](../dependency-injection/registration-validation) - The startup check that a composition is satisfiable

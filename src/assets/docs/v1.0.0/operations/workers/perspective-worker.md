@@ -587,6 +587,33 @@ Completions and failures leave the worker through bounded channels drained by de
 
 **Dead-lettering**: when a `wh_perspective_events` row's attempts exceed `MaxPerspectiveEventAttempts` (default **10**), the worker moves it into `wh_dead_letters` via `IDeadLetterStore` **before** deserialization + apply. Set the option to `null` to restore the legacy accumulate-forever behavior.
 
+**Orphaned events**: a `wh_perspective_events` row whose source event is **absent** from
+`wh_event_store` (the event was reaped or purged after the perspective work was created)
+can never project — there is nothing to apply. Such a row is invisible to the attempt-cap
+dead-letter above, because that path inspects the *joined* fetch and an orphan produces an
+**empty join**: the drainer sees "no events" and returns, the row re-claims, `attempts`
+climb with a NULL error, and a burst of them livelocks the pipeline. Two layers dispose of
+them:
+
+- **Reactive (on contact)** — when a drain fetch for leased streams returns nothing, the
+  worker disposes exhausted orphans immediately via
+  `reap_exhausted_orphaned_perspective_rows`, keyed on `MaxPerspectiveEventAttempts` (a row
+  attempted that many times with no surviving event is unambiguously an orphan, so attempts
+  — not age — are the safety). This closes the burst-livelock window in real time.
+- **Janitorial (maintenance sweep)** — `perform_maintenance` cleans orphans in *both*
+  tables, age-bounded by the `orphan_perspective_grace_hours` setting (default **1h**) so a
+  legitimately in-flight event write is never reaped out from under itself:
+  - **Task 12** reaps orphaned pending rows in `wh_perspective_events` that never accumulate
+    enough attempts to be caught reactively.
+  - **Task 13** settles orphaned rows already in `wh_dead_letters` — a perspective-event dead
+    letter whose *entire* source stream is absent from `wh_event_store` is unrecoverable
+    (recovery would re-drive into an empty join, and generation replay excludes held rows), so
+    it is marked Recovered with a note and retention ages it out. A stream with any surviving
+    event is a genuine apply failure and is left held for review.
+
+Deleting is correct for both: the event is gone, so there is nothing to project and the
+cursor never advanced past the row.
+
 **Example error record**:
 ```sql{title="Error Tracking & Retry" description="Example error record in wh_perspective_cursors" category="Implementation" difficulty="BEGINNER" tags=["Operations", "Workers", "Error", "Tracking"]}
 -- wh_perspective_cursors after a failure (status is a flags SMALLINT: 4 = Failed)
