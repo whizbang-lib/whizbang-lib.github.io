@@ -794,6 +794,8 @@ Self-healing continuity checking; the defaults are the recommended posture. **Co
 | `GenerationBudget` | `int` | `3` | Distinct build generations whose campaigns may fail before a cohort becomes permanently pending an operator decision |
 | `StackBackfillBatchSize` | `int` | `500` | Dead letters normalized into the relational stack layer per recovery scan; `0` disables the backfill |
 | `StackHistoryRetentionDays` | `int` | `90` | Rolling retention for the stack-history log (`wh_stack_daily`): the recovery worker prunes daily rows older than this on its idle-gated scan. A non-positive value disables the rolling cleanup — the log is kept forever |
+| `PressuredScanBatchSize` | `int` | `20` | Recovery scan batch when the pass was FORCED through the settledness gate by the bounded-deferral escape — a trickle under load, never a flood (#669) |
+| `GenerationReplayStaggerMinutes` | `int` | `30` | Window over which a new build's generation replay spreads its re-offers; `0` restores schedule-all-now (#669) |
 | `Workers:Claim:NotifyDrainLingerSeconds` | `int` | `8` | Drain linger (doorbell debounce, C# half): after a claim finds fresh work, empty polls keep a tight ~500 ms cadence for this many seconds before the elevated idle cadence resumes. MUST stay above the SQL `notify_debounce_seconds` setting (default 7) so suppression self-expires while the drainer still polls. `0` disables the linger |
 | `EnableGenerationReplay` | `bool` | `true` | Startup scan auto-replaying rows not yet retried on this build generation |
 | `PolicyByReason` | `Dictionary<MessageFailureReason, RecoveryPolicy>` | populated map | Per-failure-reason recovery rules (see the recovery page for the default map) |
@@ -1184,3 +1186,27 @@ These classes have no settable properties; they are configured entirely through 
 - `RoutingOptions` — domain ownership and inbox/outbox routing strategies (fluent builder on the routing registration)
 - `LensOptions` — named lens scopes via `DefineScope(name, configure)`
 - `SecurityOptions` — RBAC/ABAC roles and permission extractors via fluent registration
+
+## Database-side settings (`wh_settings`)
+
+Live-tunable without a redeploy; read by the SQL functions themselves.
+
+| key | default | purpose |
+|---|---|---|
+| `notify_debounce_seconds` | `7` | Doorbell debounce window (must stay below the C# `NotifyDrainLingerSeconds`, default 8). Non-positive disables |
+| `integrity_epoch_max_stall_seconds` | `3600` | Digest-epoch stall escape: a lane whose frontier has not advanced this long closes its first blocked epoch anyway (once per sweep). Non-positive disables |
+
+## Turnkey-bound options sections (complete sweep)
+
+Every options class the framework registers now binds from configuration (issue #646) — a
+documented section that binds to nothing is treated as a defect. Newly bound sections:
+`Whizbang:Ephemeral`, `Whizbang:PerspectiveRowRetention`, `Whizbang:SchemaInitialization`,
+`Whizbang:UnobservedExceptionDiagnostics`, `Whizbang:BacklogAge`, `Whizbang:WorkCoordinator`,
+`Whizbang:Temporal`, `Whizbang:SignalBus`, `Whizbang:OrderedStreamProcessor`, `Whizbang`
+(root, e.g. `ShowBanner`), `Whizbang:StreamIntegrity`, and under `Whizbang:Workers:` —
+`BackupTick`, `Heartbeat`, `OutboxCompletionFlush`, `PerspectiveCompletionFlush`,
+`FailureFlush`, `LeaseRenewal`, `InboxHandler`, `OutboxPublish`, `InboxDispatch`,
+`Maintenance`, `OutboxDrain`, `InboxDrain`, `RecentlyProcessedEventCache`,
+`InboxDeserializeCache`, `LeaseHandle`, `OutboxBatch`, `InboxBatch`, `Perspective`,
+`PinnedPool`. Section shape mirrors each options class's properties; every binding is
+locked by a test in `AllOptionsBindingMatrixTests`.
