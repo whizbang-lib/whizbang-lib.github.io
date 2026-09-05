@@ -262,3 +262,16 @@ services.AddWhizbang(options => { });
 - [Message Tags](../../fundamentals/messages/message-tags) - Complete tag processing guide
 - [Lifecycle Stages](../../fundamentals/lifecycle/lifecycle-stages) - Pipeline timing reference
 - [Dispatcher](../../fundamentals/dispatcher/dispatcher) - Message dispatch and routing
+
+## ValidateRegistrations
+
+`bool`, default `true`.
+
+Validates at startup that every registered service can have its constructor satisfied, and throws
+naming both the missing service and the type that wanted it. The check reads service descriptors and
+resolves nothing, so it constructs no services and fires no factory side effects.
+
+Set to `false` for a partial composition that deliberately registers only a subset, such as a test
+fixture exercising one worker in isolation.
+
+See [Registration Validation](../dependency-injection/registration-validation).
