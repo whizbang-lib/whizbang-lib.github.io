@@ -19,6 +19,8 @@ codeReferences:
   - src/Whizbang.Core/Workers/AdaptiveClaimWindow.cs
   - src/Whizbang.Core/Workers/ClaimWorker.cs
   - src/Whizbang.Core/Messaging/IInboxChannelWriter.cs
+testReferences:
+  - tests/Whizbang.Core.Tests/Workers/AdaptiveClaimWindowSampleSizeTests.cs
 ---
 
 ## The failure
@@ -127,14 +129,40 @@ The budget permits `drainRate × leaseSeconds × safetyFactor` rows outstanding.
   work, so a worker that stopped polling could never discover it had recovered. Re-offering rows it
   already holds charges no new attempt.
 
+## The adaptive claim window
+
+{verified: AdaptiveClaimWindowSampleSizeTests.SampleSize_OneReofferedRow_DoesNotHalveTheWindowAsync, AdaptiveClaimWindowSampleSizeTests.SampleSize_NarrowerThanTheFloor_EarnsNoGrowthEitherAsync}
+
+`AdaptiveClaimWindow` sizes each claim (in streams) from observed churn, the share of claimed rows
+that arrived with `attempts > 1`. It starts at its floor (default 25 streams), never goes below it,
+and never exceeds the configured batch size. A cycle whose churn is above the threshold (default
+0.5) halves the window; only a completely clean cycle, once drain has been measured, grows it by the
+additive step (default 25). An empty claim says nothing about capacity and is ignored.
+
+A claim narrower than the window's floor is ignored as well: it neither shrinks nor grows the
+window, because a sample that small is not a signal. One re-offered row in a claim of one read as
+100 % churn, and a run of such claims could halve a wide window several times within a second, so
+the window collapsed to its floor on noise rather than on overload.
+
 ## Tuning
 
 | Option | Default |
 |---|---|
-| `AdaptiveOutstandingBudget` | `true` |
+| `AdaptiveOutstandingBudget` | `false` (off by default; see below) |
 | `MinOutstandingInboxRows` | `100` (also the cold-start value) |
 | `MaxOutstandingInboxRows` | `10000` |
 | `OutstandingBudgetSafetyFactor` | `0.5` |
+
+### Why the budget is off by default
+
+The current budget samples **inbox** completions only, but it counts leased work of **every** category
+as outstanding. When only a perspective backlog remains, the measured drain rate reads zero, headroom
+collapses, and inbox acquisition starves while the database sits idle; the two stages then oscillate
+instead of draining. Converting row headroom into a stream count (`streamsAffordable = headroom /
+rowsPerStream`) turns any collapse into `max(1, ...)`: one row per cycle, a fixed point the 100-row
+floor never reaches. The churn-based [adaptive claim window](#cause-1-acquisition-was-never-bounded)
+remains the bound. Enable the budget where throughput is known to exceed arrival rate; a per-category,
+row-bound budget with a latency signal is the intended default.
 
 ## Verifying it in a live system
 

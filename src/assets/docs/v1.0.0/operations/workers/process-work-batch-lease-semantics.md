@@ -20,6 +20,7 @@ codeReferences:
   - src/Whizbang.Core/Workers/HeartbeatWorker.cs
   - src/Whizbang.Core/Workers/LeaseRenewalWorker.cs
   - src/Whizbang.Core/Workers/LeaseHandleOptions.cs
+  - src/Whizbang.Core/Workers/BatchFlusher.cs
   - src/Whizbang.Data.Postgres/Migrations/029_ProcessWorkBatch.sql
   - src/Whizbang.Data.Postgres/Migrations/011_CleanupStaleInstances.sql
 testReferences:
@@ -27,6 +28,7 @@ testReferences:
   - tests/Whizbang.Core.Tests/Workers/ClaimWorkerGateCadenceTests.cs
   - tests/Whizbang.Core.Tests/Workers/HeartbeatWorkerAdaptiveCadenceTests.cs
   - tests/Whizbang.Core.Tests/Workers/LeaseRenewalWorkerCapTests.cs
+  - tests/Whizbang.Core.Tests/Workers/BatchFlusherRetryTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/ClaimWorkSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/RenewLeasesSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/RecordHeartbeatSqlTests.cs
@@ -84,7 +86,7 @@ END IF;
 
 Long-running dispatches renew their leases through `renew_leases(p_category, p_ids, p_lease_seconds DEFAULT 300)`. It sets `lease_expiry = NOW() + p_lease_seconds` for the supplied ids in the chosen category table (`outbox`, `inbox`, or `perspective_event`), skips rows already processed, returns the rows-affected count, and raises on an unknown category.
 
-On the C# side, dispatch workers enqueue `(category, work_id)` pairs onto `ILeaseRenewalChannel`; `LeaseRenewalWorker` coalesces them through a `BatchFlusher` (defaults: max batch 200, coalesce window 200 ms, immediate-flush threshold 100, channel capacity 5 000) and calls `IWorkCoordinator.RenewLeasesAsync` per category.
+On the C# side, dispatch workers enqueue `(category, work_id)` pairs onto `ILeaseRenewalChannel`; `LeaseRenewalWorker` coalesces them through a `BatchFlusher` (defaults: max batch 200, coalesce window 200 ms, immediate-flush threshold 100, channel capacity 5 000) and calls `IWorkCoordinator.RenewLeasesAsync` per category. A renewal flush that fails is retried in place with the same batch (`FlushRetryBackoffMs`, default 250 ms, doubling per attempt up to `FlushRetryMaxBackoffMs`, default 5000 ms) and dropped only after `MaxFlushAttempts` consecutive failures (default 5), logged at Error. A dropped renewal batch is not silent loss: the rows it covered keep their current `lease_expiry`, lapse, and are re-offered by `claim_orphaned_*`, which is the consequence the Error names. {verified: BatchFlusherRetryTests.FlushFailsOnce_RetriesTheSameBatchAndDeliversItAsync, BatchFlusherRetryTests.FlushAlwaysFails_DropsAfterMaxAttemptsAndNamesTheConsequenceAsync}
 
 ### The renewal cap
 

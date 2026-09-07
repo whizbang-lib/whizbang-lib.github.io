@@ -19,8 +19,14 @@ codeReferences:
   - src/Whizbang.Offloads.AzureBlob/AzureBlobOffloadServiceCollectionExtensions.cs
   - src/Whizbang.Core/Workers/PinnedPoolServiceCollectionExtensions.cs
   - src/Whizbang.Core/Configuration/WhizbangCoreOptions.cs
+  - src/Whizbang.Core/Messaging/WorkCoordinatorGateOptions.cs
+  - src/Whizbang.Core/Workers/BatchFlusher.cs
+  - src/Whizbang.Core/Workers/PerspectiveStreamAffinityOptions.cs
 testReferences:
   - tests/Whizbang.Core.Tests/ServiceCollectionExtensionsTests.cs
+  - tests/Whizbang.Core.Tests/Messaging/WorkCoordinatorGateRegistrationTests.cs
+  - tests/Whizbang.Core.Tests/Workers/BatchFlusherRetryTests.cs
+  - tests/Whizbang.Core.Tests/Workers/PerspectiveWorkerAffinityHoldWatchdogTests.cs
 ---
 
 This page lists **every configuration surface Whizbang exposes**: the sections the library binds from `IConfiguration` automatically, the sections you can opt into binding with a helper, and the (much larger) set of options classes that are configured in code — plus the recipe for making any of them configuration-driven. Each options class lists its properties, types, defaults, and a link to the page that covers it in depth.
@@ -31,7 +37,7 @@ Whizbang follows the standard .NET configuration model ([Microsoft: Configuratio
 
 | Mechanism | What it means | Applies to |
 |-----------|---------------|------------|
-| **Bound automatically** | `AddWhizbang()` / the database driver registration reads these configuration sections with hand-rolled, AOT-safe binders. Setting a key in `appsettings.json` or as an environment variable just works. | `Whizbang:Tracing`, `Whizbang:Database`, `Whizbang:Database:Stamper`, `Whizbang:ServiceName`, `Whizbang:ShowBanner`, `ConnectionStrings:*`, `ConnectionPool:*` |
+| **Bound automatically** | `AddWhizbang()` / the database driver registration reads these configuration sections with hand-rolled, AOT-safe binders. Setting a key in `appsettings.json` or as an environment variable just works. | `Whizbang:Tracing`, `Whizbang:Database`, `Whizbang:Database:Stamper`, `Whizbang:ServiceName`, `Whizbang:ShowBanner`, `Whizbang:WorkCoordinatorGate`, `ConnectionStrings:*`, `ConnectionPool:*` |
 | **Opt-in binding helper** | A one-line registration call reads the section for you. Without that call, the section is inert. | `Whizbang:BodyOffload` + `Whizbang:Offloads:AzureBlob:<name>` (via `AddWhizbangAzureBlobOffloadsFromConfiguration`) |
 | **Code-configured** | The options class is configured through an `Action<TOptions>` lambda (or `services.Configure<TOptions>(...)`). The library never reads a configuration section for it — **a configuration key for one of these does nothing unless your service binds it** (see [the binding recipe](#code-configured-options-the-binding-recipe)). | Everything else on this page |
 
@@ -45,6 +51,7 @@ Whizbang follows the standard .NET configuration model ([Microsoft: Configuratio
 |-------------------|----------------------|
 | `Whizbang:Tracing:Verbosity` | `Whizbang__Tracing__Verbosity` |
 | `Whizbang:Database:SignalingMode` | `Whizbang__Database__SignalingMode` |
+| `Whizbang:WorkCoordinatorGate:MaxConcurrent` | `Whizbang__WorkCoordinatorGate__MaxConcurrent` |
 | `Whizbang:Offloads:AzureBlob:my-provider:ContainerName` | `Whizbang__Offloads__AzureBlob__my-provider__ContainerName` |
 | `ConnectionStrings:myservice-db` | `ConnectionStrings__myservice-db` |
 | `ConnectionPool:MaxPoolSize` | `ConnectionPool__MaxPoolSize` |
@@ -58,6 +65,7 @@ Environment variables are added **after** `appsettings.json` and `appsettings.{E
 | `Whizbang:Tracing` | `TracingOptions` | Automatic |
 | `Whizbang:Database` | `WhizbangNotificationOptions` | Automatic (Postgres driver) |
 | `Whizbang:Database:Stamper` | `CommitOrderStamperOptions` | Automatic (Postgres driver) |
+| `Whizbang:WorkCoordinatorGate` | `WorkCoordinatorGateOptions` | Automatic (worker pipeline); a Postgres driver's `MaxInFlightCommands` fills `MaxConcurrent` when the section leaves it unset |
 | `Whizbang:ServiceName` (falls back to `ServiceName`) | — (string) | Automatic |
 | `Whizbang:ShowBanner` | — (bool) | Automatic |
 | `ConnectionStrings:*` | — (strings, naming conventions below) | Automatic |
@@ -361,6 +369,26 @@ Flush strategy and lease behavior for work coordinator strategies. **Configure:*
 | `CoalesceWindowMilliseconds` | `int` | `0` | Window a Required flush waits to pick up queued items (Interval strategy; ~50ms recommended) |
 | `BatchSize` | `int` | `100` | Queued-message count triggering an immediate flush when `Strategy = Batch` |
 
+### WorkCoordinatorGateOptions
+
+{verified: WorkCoordinatorGateRegistrationTests.AddWhizbangWorkers_BindsTheGateFromConfigurationAsync, WorkCoordinatorGateRegistrationTests.AGateRegisteredBeforeThePipeline_IsKeptAsync}
+
+The process-wide `WorkCoordinatorGate`: a cap on concurrent `IWorkCoordinator` calls and the deadline a caller waits for a slot. **Configure:** bound automatically by `AddWhizbang()` (through `AddWhizbangWorkers()`) from `Whizbang:WorkCoordinatorGate` (`Whizbang__WorkCoordinatorGate__MaxConcurrent`, `Whizbang__WorkCoordinatorGate__AcquireTimeoutMilliseconds`). **Details:** [Pinned Connection Pool](../../fundamentals/workers/pinned-connection-pool#coordinator-gate-exemption) for the callers that bypass the gate; [Perspective Worker](../workers/perspective-worker#drain-width-and-the-coordinator-gate) for how the perspective drain budgets against it.
+
+| Property | Type | Default | Purpose |
+|----------|------|---------|---------|
+| `MaxConcurrent` | `int?` | unset (50 when nothing sets it) | Cap on concurrent coordinator calls per process. Each slot holds at most one pooled connection, so the effective ceiling is `min(MaxConcurrent, Maximum Pool Size)`; 0 or less disables the gate |
+| `AcquireTimeoutMilliseconds` | `int` | `30000` | How long a caller waits for a slot. On expiry the gate logs a Warning that names the current holders and lets the call through without a slot rather than hanging it; 0 or less waits without a deadline |
+
+Precedence for `MaxConcurrent`, lowest to highest:
+
+1. The default, `WorkCoordinatorGateOptions.DefaultMaxConcurrent` (50), when neither of the next two set it.
+2. A Postgres driver's `PostgresOptions.MaxInFlightCommands` (the EF Core `AddWhizbangPostgres` / `PostgresOptions` path, or the Dapper `AddWhizbangPostgres` overloads that take `MaxInFlightCommands`). The driver fills the gap only: it sets `MaxConcurrent` when the section left it unset.
+3. The `Whizbang:WorkCoordinatorGate` section. A value set here is the operator's explicit word and is never overwritten by a driver. `AcquireTimeoutMilliseconds` always comes from the section.
+4. A `WorkCoordinatorGate` the consumer registers in DI before the worker pipeline runs, which is kept as is.
+
+Before this options class existed the pipeline built the gate with a literal 50, so `MaxInFlightCommands` was documented but reached nothing.
+
 ### ClaimWorkerOptions
 
 The claim loop that distributes outbox/inbox/perspective work. **Configure:** bound by the framework from `Whizbang:Workers:Claim` (`Whizbang__Workers__Claim__FreshWorkShare=1.0` works with no service code); override in code via `services.Configure<ClaimWorkerOptions>(…)`. **Details:** no dedicated page yet.
@@ -373,6 +401,7 @@ The claim loop that distributes outbox/inbox/perspective work. **Configure:** bo
 | `PollingMaxIntervalMilliseconds` | `int` | `10000` | Adaptive backoff cap (constrained by `AbandonStaleInstanceThresholdSeconds`) |
 | `NotifyHealthyPollingIntervalMilliseconds` | `int?` | `5000` | Relaxed base wait while the NOTIFY gate is healthy |
 | `MaxStreamsPerBatch` | `int` | `1000` | Cap on rows returned per `claim_work` call |
+| `AdaptiveOutstandingBudget` | `bool` | `false` | Bounds total claimed-but-unprocessed inbox rows; off until it is per work category and row-bound (see [Claim backpressure](../workers/claim-backpressure)) |
 | `FreshWorkShare` | `double` | `0.5` | Share of each inbox batch reserved for fresh-head streams (head row never attempted). Weighted-fair and work-conserving: an empty class hands its share to the other. Raise toward `1.0` where interactive latency outranks backlog drain — strict oldest-first let a 28k-row retry backlog starve every new arrival |
 | `PerspectiveOnly` | `bool` | `false` | Distribute only perspective work (set when the legacy publisher worker is registered) |
 | `PartitionCount` | `int` | `10000` | Modulo partition count |
@@ -518,6 +547,11 @@ Shared tuning shape for the flush workers above. **Configure:** via the owning w
 | `MaxBatchSize` | `int` | `500` | Max items per flush call |
 | `CoalesceWindowMs` | `int` | `25` | Max ms coalescing additional items after the first |
 | `ImmediateFlushThreshold` | `int` | `250` | Flush immediately if the batch reaches this first |
+| `MaxFlushAttempts` | `int` | `5` | Consecutive failed flushes of one batch before it is dropped |
+| `FlushRetryBackoffMs` | `int` | `250` | Backoff before the first retry of a failed flush; doubles per attempt |
+| `FlushRetryMaxBackoffMs` | `int` | `5000` | Cap on the retry backoff |
+
+A flush that throws is retried in place with the same batch (Warning, EventId 1: `BatchFlusher flush failed for batch of {Count} (attempt {Attempt} of {MaxAttempts}); retrying the same batch in {BackoffMs}ms`) rather than discarded. The items are completions, lease renewals and failures, so a dropped batch leaves its rows leased until their lease expires, after which they are re-claimed and redone; that consequence is named in the Error (EventId 3) logged when `MaxFlushAttempts` is exhausted, and the count is visible on the flusher's `ItemsDropped` counter beside `ItemsFlushed`. {verified: BatchFlusherRetryTests.FlushFailsOnce_RetriesTheSameBatchAndDeliversItAsync, BatchFlusherRetryTests.FlushAlwaysFails_DropsAfterMaxAttemptsAndNamesTheConsequenceAsync}
 
 ### MessageProcessingOptions
 
@@ -633,13 +667,15 @@ Re-delivery (repair) pump bounds. **Configure:** `services.Configure<RedeliveryP
 | `PartitionCount` | `int` | `10000` | Partitions for work distribution |
 | `IdleThresholdPolls` | `int` | `2` | Consecutive empty polls before `OnWorkProcessingIdle` |
 | `PerspectiveBatchSize` | `int` | `100` | Events processed per batch before saving model + checkpoint |
-| `MaxConcurrentPerspectives` | `int` | `30` | Max perspective groups processed concurrently per batch |
-| `MaxConcurrentDrainConsumers` | `int` | `4` | Parallel consumer loops on the channel reader |
+| `MaxConcurrentPerspectives` | `int` | `30` | Max perspective groups processed concurrently per batch; the effective per-consumer width is clamped against the coordinator gate (note below) |
+| `MaxConcurrentDrainConsumers` | `int` | `4` | Parallel consumer loops on the channel reader; consumers × per-consumer width may use at most half of `WorkCoordinatorGateOptions.MaxConcurrent` (note below) |
 | `MaxStreamsPerBatch` | `int` | `300` | Max streams returned per batch from the SQL function |
 | `DrainLoopMaxIterations` | `int` | `5` | Cap on per-stream drain-loop refetch iterations; 1 disables |
 | `DrainLoopRefetchMinBatch` | `int` | `2` | Minimum events in an iteration to trigger a refetch |
 | `DrainBatcher` | `SlidingWindowBatcherOptions` | SlidingWindow=300ms, MaxWait=3s, MaxSize=1000 | The perspective apply-batching window |
 | `RetryOptions` | `WorkerRetryOptions` | `new()` | Completion-acknowledgement retry |
+
+`PerspectiveWorker` clamps its per-consumer drain width to `max(1, min(requested, MaxConcurrent / 2 / MaxConcurrentDrainConsumers))`, so the drain can never hold every gate slot while the completion flusher and lease renewal wait for one. With the defaults (4 consumers against a 50-slot gate) each consumer runs at most 6 (stream, perspective) groups at a time, so raising `MaxConcurrentPerspectives` alone changes nothing until the gate cap (`MaxConcurrent`, or `MaxInFlightCommands` with a Postgres driver) is raised with it. A disabled gate (`MaxConcurrent` of 0 or less) leaves the width as requested. The clamp is logged once at Warning (EventId 61). See [Perspective Worker](../workers/perspective-worker#drain-width-and-the-coordinator-gate). {verified: PerspectiveWorkerParallelismTests.ClampWidthToGate_LeavesHalfTheGateForEverythingElseAsync, PerspectiveWorkerParallelismTests.ClampWidthToGate_NeverBelowOne_AndIgnoresADisabledGateAsync}
 
 ### PerspectiveCompletionFlushWorkerOptions
 
@@ -694,6 +730,9 @@ Intra-pod per-stream serialization gate. **Configure:** `services.Configure<Pers
 |----------|------|---------|---------|
 | `IdleEvictionWindow` | `TimeSpan` | `00:15:00` | Idle duration before a stream's gate entry is evictable |
 | `SweepInterval` | `TimeSpan` | `00:01:00` | Minimum time between sweeps |
+| `LongHoldWarning` | `TimeSpan` | `00:01:00` | Age at which a held (stream, perspective) gate is named at Warning (EventId 64) by the affinity-hold watchdog; `00:00:00` turns the watchdog off |
+
+The watchdog runs every `max(5 s, LongHoldWarning / 2)` and reports each hold once when it crosses the threshold and once per further threshold while it persists, naming the processing path and the step the holder is in. See [Perspective Worker](../workers/perspective-worker#affinity-hold-watchdog). {verified: PerspectiveWorkerAffinityHoldWatchdogTests.LongHold_IsNamedAtWarning_OncePerThresholdAsync, PerspectiveWorkerAffinityHoldWatchdogTests.WatchdogOff_ReportsNothingAsync}
 
 ### PerspectiveRowRetentionOptions
 
@@ -737,14 +776,14 @@ Self-healing continuity checking; the defaults are the recommended posture. **Co
 
 | Property | Type | Default | Purpose |
 |----------|------|---------|---------|
-| `CheckpointsEnabled` | `bool` | `true` | Publish periodic continuity checkpoints |
+| `CheckpointsEnabled` | `bool` | `true` | Publish periodic continuity checkpoints. Off: unpublished checkpoints are swept from the outbox each maintenance cycle |
 | `CheckpointIntervalSeconds` | `int` | `60` | Checkpoint cadence |
-| `GapDetectionEnabled` | `bool` | `true` | Verify received counts against other origins' checkpoints |
-| `RepairMode` | `IntegrityRepairMode` | `AutoRepairCapped` | What to do with a confirmed gap; `ReportOnly` is the opt-down |
+| `GapDetectionEnabled` | `bool` | `true` | Verify received counts against other origins' checkpoints. Off: received checkpoints are swept from the inbox each maintenance cycle |
+| `RepairMode` | `IntegrityRepairMode` | `ReportOnly` | What to do with a confirmed gap: report and let an operator decide; `AutoRepairCapped` is the opt-in to self-healing with storm caps. Bilateral: a `ReportOnly` service also declines re-delivery requests as an origin, drops re-delivery bundles as a consumer, and sweeps parked repair rows in maintenance, so healing needs the opt-in on both sides |
 | `MaxAutoRepairRequestsPerCheckpoint` | `int` | `10` | Storm cap on auto-repair requests per received checkpoint |
 | `RepairTopic` | `string?` | `null` (first subscribed destination) | Wire topic for repair requests and bundles |
 | `BackfillOnSubscriptionGrowth` | `bool` | `true` | On consumed-type-set growth, request history for new types |
-| `AuditEnabled` | `bool` | `true` | Run the scheduled deep audit |
+| `AuditEnabled` | `bool` | `true` | Run the scheduled deep audit. Off: this service's unsent manifest requests (outbox) and received manifest answers (inbox) are swept each maintenance cycle; peers' requests are still answered |
 | `AuditIntervalMinutes` | `int` | `1440` (daily) | Audit cadence |
 | `AuditOnStartup` | `bool` | `true` | Run the first deep audit shortly after startup |
 | `StartupAuditMaxJitterSeconds` | `int` | `300` | Max random splay added to the startup audit's 30s floor |
@@ -769,7 +808,7 @@ Self-healing continuity checking; the defaults are the recommended posture. **Co
 | `RepairDrainBatchSize` | `int` | `50` | Max ledger rows claimed per drain pass |
 | `EpochClosureEnabled` | `bool` | `true` | Advance the digest-epoch closure frontier on the maintenance cadence |
 | `MaxEpochClosuresPerMaintenanceCycle` | `int` | `64` | Max epochs closed per maintenance cycle |
-| `PublishReportEvents` | `bool` | `false` | Publish divergence/gap detections as durable events |
+| `PublishReportEvents` | `bool` | `false` | Publish divergence/gap detections as durable events. Off (the default): unpublished report events are swept from the outbox each maintenance cycle |
 
 ## Dead Letters and Recovery
 
@@ -984,8 +1023,8 @@ Connection retry, command timeout, and collective-apply bounds for the PostgreSQ
 | `MaxRetryDelay` | `TimeSpan` | `00:02:00` | Cap on exponential backoff |
 | `BackoffMultiplier` | `double` | `2.0` | Backoff multiplier |
 | `RetryIndefinitely` | `bool` | `true` | Retry forever until connect or cancellation |
-| `CommandTimeoutSeconds` | `int` | `5` | How long one SQL command (e.g. `process_work_batch`) may run |
-| `MaxInFlightCommands` | `int` | `50` | Cap on concurrent work-coordinator calls per process; 0 disables |
+| `CommandTimeoutSeconds` | `int` | `120` | How long one SQL command (e.g. `process_work_batch`) may run; shorter than the worst commit batch loses completions |
+| `MaxInFlightCommands` | `int` | `50` | Cap on concurrent work-coordinator calls per process; post-configured into `WorkCoordinatorGateOptions.MaxConcurrent` (see [WorkCoordinatorGateOptions](#workcoordinatorgateoptions)), so it is the effective gate cap whenever a Postgres driver is registered; 0 disables the gate |
 | `CollectiveApplyBatchSize` | `int` | `1000` | Rows mutated per batched collective-apply UPDATE |
 | `CollectiveApplyStatementTimeoutSeconds` | `int?` | `null` | Server-side `statement_timeout` per collective-apply batch |
 
@@ -1209,4 +1248,6 @@ documented section that binds to nothing is treated as a defect. Newly bound sec
 `Maintenance`, `OutboxDrain`, `InboxDrain`, `RecentlyProcessedEventCache`,
 `InboxDeserializeCache`, `LeaseHandle`, `OutboxBatch`, `InboxBatch`, `Perspective`,
 `PinnedPool`. Section shape mirrors each options class's properties; every binding is
-locked by a test in `AllOptionsBindingMatrixTests`.
+locked by a test in `AllOptionsBindingMatrixTests`. `Whizbang:WorkCoordinatorGate`
+(`WorkCoordinatorGateOptions`) binds the same way from the worker pipeline; its binding is locked
+by `WorkCoordinatorGateRegistrationTests`.

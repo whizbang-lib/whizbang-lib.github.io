@@ -18,10 +18,14 @@ codeReferences:
   - src/Whizbang.Core/Observability/PinnedPoolMetrics.cs
   - src/Whizbang.Data.Postgres/PostgresPinnedPoolServiceCollectionExtensions.cs
   - src/Whizbang.Data.Postgres/PinnedConnectionPool.cs
+  - src/Whizbang.Data.Postgres/CoordinatorConnectionScope.cs
+  - src/Whizbang.Core/Messaging/WorkCoordinatorGate.cs
 testReferences:
   - tests/Whizbang.Core.Tests/Workers/PinnedConnectionPoolPrimitivesTests.cs
   - tests/Whizbang.Core.Tests/Workers/PinnedPoolRegistrationTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/PinnedConnectionPoolIntegrationTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/CoordinatorConnectionScopeLifetimeTests.cs
+  - tests/Whizbang.Core.Tests/Messaging/WorkCoordinatorGatePinnedExemptionTests.cs
 ---
 
 # Pinned Worker Connection Pool
@@ -54,6 +58,22 @@ graph LR
 ```
 
 Eligible workers borrow a connection from the pinned pool for the duration of their transaction, then return it. The connection itself stays open for `ConnectionLifetimeSeconds` (default 30 min) before being recycled. No `DISCARD ALL` fires because the connection never re-enters a multi-tenant pool.
+
+### Connection scope per coordinator call {#coordinator-connection-scope}
+
+{verified: CoordinatorConnectionScopeLifetimeTests.AcquireForEfCore_OpenedTheConnection_ReturnsItToThePoolWhenTheScopeEndsAsync, CoordinatorConnectionScopeLifetimeTests.AcquireForEfCore_ConnectionAlreadyOpen_LeavesItOpenWhenTheScopeEndsAsync}
+
+Every coordinator call acquires its connection through `CoordinatorConnectionScope`, which makes the pinned-versus-fresh decision in one place:
+
+- **Pinned** (`PinnedConnectionContext.Current` is set because an eligible worker borrowed from the pool): the borrowed connection is used, and the scope never closes or disposes it. The pool owns its lifetime.
+- **Dapper driver, no pinned connection**: a fresh `NpgsqlConnection` is opened for the call and disposed when the scope ends.
+- **EF Core driver, no pinned connection**: the `DbContext`'s own connection is used. If the scope finds it closed it opens it, and it now closes it again when the coordinator call ends, returning it to the Npgsql pool. EF Core closes only the connections it opened itself, so a scope that left the connection open kept one pooled connection checked out for the whole life of the DI scope. A connection the caller already had open, or one with a transaction in progress, is left exactly as found.
+
+### Coordinator gate exemption {#coordinator-gate-exemption}
+
+{verified: WorkCoordinatorGatePinnedExemptionTests.PinnedBorrow_PassesASaturatedGateWithoutWaitingOrTakingASlotAsync, WorkCoordinatorGatePinnedExemptionTests.NoPinnedBorrow_StillWaitsForASlotAsync}
+
+Coordinator calls normally take a slot in the process-wide `WorkCoordinatorGate` (`WorkCoordinatorGateOptions.MaxConcurrent`, default 50). A caller with a pinned connection in context passes the gate without taking a slot, logged at Debug: a pinned borrow is already capped at the pool's `Size`, and the borrowing workers (the claim loop, lease renewal, and the completion and failure flushers) must never queue behind un-pinned drain bodies that are holding gate slots. Without the exemption a saturated gate delayed the very calls that complete work and renew leases, so rows lapsed and were re-offered while the drain held every slot. Callers without a pinned connection wait for a slot as before.
 
 ## Worker eligibility (tiers)
 
