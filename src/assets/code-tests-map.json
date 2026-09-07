@@ -22135,8 +22135,8 @@
     ],
     "Postgres": [
       {
-        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/DutyElectionByoDataSourceE2ETests.cs",
-        "testMethod": "Elector_UnderUseNpgsqlDataSource_WithNoNotificationConfiguration_AcquiresTheDutyAsync",
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/PostgresGatePrecedenceTests.cs",
+        "testMethod": "ASectionValue_WinsOverMaxInFlightCommandsAsync",
         "linkSource": "XmlTag"
       },
       {
@@ -24936,6 +24936,36 @@
       {
         "testFile": "tests/Whizbang.Data.Postgres.Tests/ServiceCollectionExtensionsTests.cs",
         "testMethod": "AddWhizbangPostgres_InitializeSchemaTrue_WithPerspective_InitializesBothAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.Dapper.Postgres.Tests/DapperGateWiringTests.cs",
+        "testMethod": "MaxInFlightCommands_ReachesTheWorkCoordinatorGateAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.Dapper.Postgres.Tests/DapperGateWiringTests.cs",
+        "testMethod": "MaxInFlightCommands_ReachesTheGate_ThroughTheSchemaSqlOverloadAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.Dapper.Postgres.Tests/DapperGatePrecedenceTests.cs",
+        "testMethod": "ASectionValue_WinsOverMaxInFlightCommandsAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.Dapper.Postgres.Tests/DapperGateWiringTests.cs",
+        "testMethod": "MaxInFlightCommands_ReachesTheWorkCoordinatorGateAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.Dapper.Postgres.Tests/DapperGateWiringTests.cs",
+        "testMethod": "MaxInFlightCommands_ReachesTheGate_ThroughTheSchemaSqlOverloadAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.Dapper.Postgres.Tests/DapperGatePrecedenceTests.cs",
+        "testMethod": "ASectionValue_WinsOverMaxInFlightCommandsAsync",
         "linkSource": "XmlTag"
       }
     ],
@@ -157038,10 +157068,10 @@
         "linkSource": "XmlTag"
       }
     ],
-    "DutyElectionByoDataSourceE2ETests.Elector_UnderUseNpgsqlDataSource_WithNoNotificationConfiguration_AcquiresTheDutyAsync": [
+    "PostgresGatePrecedenceTests.ASectionValue_WinsOverMaxInFlightCommandsAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/PostgresDriverExtensions.cs",
-        "sourceLine": 54,
+        "sourceLine": 56,
         "sourceSymbol": "Postgres",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -161828,10 +161858,58 @@
         "linkSource": "Convention"
       }
     ],
+    "DapperGateWiringTests.MaxInFlightCommands_ReachesTheWorkCoordinatorGateAsync": [
+      {
+        "sourceFile": "src/Whizbang.Data.Dapper.Postgres/ServiceCollectionExtensions.cs",
+        "sourceLine": 69,
+        "sourceSymbol": "AddWhizbangPostgres",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Data.Dapper.Postgres/ServiceCollectionExtensions.cs",
+        "sourceLine": 209,
+        "sourceSymbol": "AddWhizbangPostgres",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "DapperGateWiringTests.MaxInFlightCommands_ReachesTheGate_ThroughTheSchemaSqlOverloadAsync": [
+      {
+        "sourceFile": "src/Whizbang.Data.Dapper.Postgres/ServiceCollectionExtensions.cs",
+        "sourceLine": 69,
+        "sourceSymbol": "AddWhizbangPostgres",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Data.Dapper.Postgres/ServiceCollectionExtensions.cs",
+        "sourceLine": 209,
+        "sourceSymbol": "AddWhizbangPostgres",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "DapperGatePrecedenceTests.ASectionValue_WinsOverMaxInFlightCommandsAsync": [
+      {
+        "sourceFile": "src/Whizbang.Data.Dapper.Postgres/ServiceCollectionExtensions.cs",
+        "sourceLine": 70,
+        "sourceSymbol": "AddWhizbangPostgres",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Data.Dapper.Postgres/ServiceCollectionExtensions.cs",
+        "sourceLine": 210,
+        "sourceSymbol": "AddWhizbangPostgres",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      }
+    ],
     "ServiceCollectionExtensionsTests.AddWhizbangPostgresHealthChecks_RegistersHealthCheckAsync": [
       {
         "sourceFile": "src/Whizbang.Data.Dapper.Postgres/ServiceCollectionExtensions.cs",
-        "sourceLine": 337,
+        "sourceLine": 341,
         "sourceSymbol": "AddWhizbangPostgresHealthChecks",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -161846,7 +161924,7 @@
     "ServiceCollectionExtensions_DeadLetterRegistrationTests.AddDeadLetterStore_RegistersDeadLetterStoreAsSingletonAsync": [
       {
         "sourceFile": "src/Whizbang.Data.Dapper.Postgres/ServiceCollectionExtensions.cs",
-        "sourceLine": 353,
+        "sourceLine": 357,
         "sourceSymbol": "_addDeadLetterStore",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -287215,11 +287293,11 @@
     ]
   },
   "metadata": {
-    "generated": "2026-09-07T08:50:42.469Z",
+    "generated": "2026-09-07T08:53:29.266Z",
     "sourceFiles": 1674,
     "testFiles": 5067,
-    "totalLinks": 14746,
+    "totalLinks": 14749,
     "codeSymbols": 2008,
-    "testMethods": 12738
+    "testMethods": 12741
   }
 }
