@@ -17,8 +17,10 @@ codeReferences:
   - src/Whizbang.Core/Workers/MaintenanceWorker.cs
   - src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs
   - src/Whizbang.Data.Postgres/Migrations/054_StuckRowSentinel.sql
+  - src/Whizbang.Core/Messaging/WorkCoordinatorGate.cs
 testReferences:
   - tests/Whizbang.Core.Tests/Workers/MaintenanceWorkerStuckRowSentinelTests.cs
+  - tests/Whizbang.Core.Tests/Messaging/WorkCoordinatorGateHolderDiagnosticsTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StuckRowSentinelSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/EFCoreFindStuckRowsTests.cs
 ---
@@ -151,7 +153,7 @@ tags: ["stuck-row", "sentinel", "forensics", "wh_outbox", "operator", "sql"]
    ```
 4. **Check for known patterns**:
    - `stream_id = '00000000-...'` → [Empty Stream ID](../configuration/empty-stream-id-policy.md) — slice 3 auto-recovery should be cleaning these.
-   - `error IS NULL AND attempts > 100` → the drainer literally never attempted. Check the OutboxDrainWorker / WorkCoordinatorGate Debug logs for the path it absorbed.
+   - `error IS NULL AND attempts > 100` → the drainer literally never attempted. Check the OutboxDrainWorker / WorkCoordinatorGate Debug logs for the path it absorbed. If the gate is saturated, its acquire-deadline Warning (`WorkCoordinatorGate.AcquireAsync timed out ...`, EventId 1) ends with `Holders: <Caller> xN (oldest S s), ...`, the held slots grouped by caller, which names what is occupying the gate instead of leaving you to infer it. {verified: WorkCoordinatorGateHolderDiagnosticsTests.Deadline_NamesTheHoldersInTheWarningAsync}
    - `error LIKE '%timeout%'` → publish hang. Check broker health / `PublishTimeoutSeconds`.
 5. **File a Whizbang issue** if the symptom matches a new bug class — the sentinel surfaced it; closing the class needs a code-side fix.
 

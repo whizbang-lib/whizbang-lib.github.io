@@ -19,6 +19,8 @@ codeReferences:
   - src/Whizbang.Core/Workers/AdaptiveClaimWindow.cs
   - src/Whizbang.Core/Workers/ClaimWorker.cs
   - src/Whizbang.Core/Messaging/IInboxChannelWriter.cs
+testReferences:
+  - tests/Whizbang.Core.Tests/Workers/AdaptiveClaimWindowSampleSizeTests.cs
 ---
 
 ## The failure
@@ -126,6 +128,21 @@ The budget permits `drainRate × leaseSeconds × safetyFactor` rows outstanding.
   stalled, and the claim never sizes to zero — polling is the only thing that observes outstanding
   work, so a worker that stopped polling could never discover it had recovered. Re-offering rows it
   already holds charges no new attempt.
+
+## The adaptive claim window
+
+{verified: AdaptiveClaimWindowSampleSizeTests.SampleSize_OneReofferedRow_DoesNotHalveTheWindowAsync, AdaptiveClaimWindowSampleSizeTests.SampleSize_NarrowerThanTheFloor_EarnsNoGrowthEitherAsync}
+
+`AdaptiveClaimWindow` sizes each claim (in streams) from observed churn, the share of claimed rows
+that arrived with `attempts > 1`. It starts at its floor (default 25 streams), never goes below it,
+and never exceeds the configured batch size. A cycle whose churn is above the threshold (default
+0.5) halves the window; only a completely clean cycle, once drain has been measured, grows it by the
+additive step (default 25). An empty claim says nothing about capacity and is ignored.
+
+A claim narrower than the window's floor is ignored as well: it neither shrinks nor grows the
+window, because a sample that small is not a signal. One re-offered row in a claim of one read as
+100 % churn, and a run of such claims could halve a wide window several times within a second, so
+the window collapsed to its floor on noise rather than on overload.
 
 ## Tuning
 

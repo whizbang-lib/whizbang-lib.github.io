@@ -18,6 +18,8 @@ testReferences:
   - tests/Whizbang.Data.Dapper.Postgres.Tests/PostgresConnectionRetryTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/PostgresDriverExtensionsTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/EFCoreExtensionsTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/PostgresDriverRegistrationTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperGateWiringTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -92,7 +94,7 @@ services.AddWhizbangPostgres(
 | `BackoffMultiplier` | 2.0 | Multiplier for exponential backoff |
 | `RetryIndefinitely` | `true` | Continue retrying after initial attempts |
 | `CommandTimeoutSeconds` | 120 | Command timeout for coordinator SQL calls (Dapper driver); see [Command Timeout](#command-timeout) |
-| `MaxInFlightCommands` | 50 | Cap on concurrent work-coordinator calls per process |
+| `MaxInFlightCommands` | 50 | Cap on concurrent work-coordinator calls per process; feeds the `WorkCoordinatorGate`, see [In-Flight Command Cap](#max-in-flight-commands) |
 
 ### Command Timeout {#command-timeout}
 
@@ -106,6 +108,21 @@ poison admission gate throttles the drain to one row per cycle.
   value its `DbContext` uses, regardless of the `Command Timeout` in the consumer's connection string.
   Deliberate exceptions (vacuum, maintenance) set their own. A consumer connection string can therefore
   no longer cancel a commit batch.
+
+### In-Flight Command Cap {#max-in-flight-commands}
+
+{verified: DapperGateWiringTests.MaxInFlightCommands_ReachesTheWorkCoordinatorGateAsync, PostgresDriverRegistrationTests.Postgres_CarriesMaxInFlightCommandsIntoTheWorkCoordinatorGateAsync}
+
+`MaxInFlightCommands` (default 50) is the cap on concurrent work-coordinator calls per process. Both
+drivers carry it into the `WorkCoordinatorGate` the worker pipeline builds: the EF Core driver
+(`AddWhizbangPostgres` / `PostgresOptions`) and the Dapper driver (`AddWhizbangPostgres` with
+`MaxInFlightCommands`) fill `WorkCoordinatorGateOptions.MaxConcurrent` from it when the
+`Whizbang:WorkCoordinatorGate` configuration section has not set the cap itself. A cap set in that
+section is the operator's explicit word and wins over this option. 0 or less disables the gate. Earlier
+releases documented the option but never read it: the gate was built with a literal 50. A
+`WorkCoordinatorGate` registered in DI before the worker pipeline still wins over both. The gate's
+acquire deadline and the full precedence order are in the
+[configuration reference](../operations/configuration/configuration-reference#workcoordinatorgateoptions).
 
 ## Schema Readiness {#readiness}
 
