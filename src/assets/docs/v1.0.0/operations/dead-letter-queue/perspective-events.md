@@ -37,11 +37,11 @@ that cost for a row we already know is doomed.
 
 ```
 get_stream_events SQL fn
-  → returns rows with (event_work_id, event_id, attempts, ...)
+  → returns rows with (event_work_id, event_id, attempts, failures, ...)
 
 PerspectiveWorker.FilterDeadLetteredAsync(rawEvents)
   for each row:
-    if attempts > MaxPerspectiveEventAttempts:
+    if failures > MaxPerspectiveEventAttempts:
       IDeadLetterStore.MoveAsync(
         sourceTable = "wh_perspective_events",
         sourceId = event_work_id,
@@ -56,6 +56,10 @@ DeserializeStreamEvents(survivors)
   → typed envelopes
   → apply runs
 ```
+
+## Two counters: failures decide, attempts diagnose
+
+`wh_perspective_events.failures` is the dead-letter input. Only `process_perspective_event_failures` moves it (one per failed apply), and the retry backoff (`30s * 2^failures`, capped at 5 minutes) escalates on it. `attempts` counts leases (dispatch starts) and is left exactly as it was: the right diagnostic for "how many times has this row been handed to a worker", the wrong input for a poison decision, because a lease can lapse without an apply and a backlog turns lease churn into thrash-casualty dead letters for good events. The reactive orphan disposal still keys on `attempts` (an orphan never reaches an apply, so the lease count is its only signal). {verified: PerspectiveWorkerDeadLetterFilterTests.LeaseCountAboveMax_WithNoFailures_SurvivesAsync, PerspectiveFailureCounterSqlTests.RecordedFailure_BumpsFailures_AndLeavesAttemptsAloneAsync, PerspectiveFailureCounterSqlTests.GetStreamEvents_SurfacesFailures_ForTheDeadLetterDecisionAsync}
 
 ## How attempts are counted
 

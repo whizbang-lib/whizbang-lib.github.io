@@ -305,8 +305,10 @@ public class PerspectiveWorkerOptions {
   /// this (30000+) to reduce poll volume.
   public int NotifyHealthyPollingIntervalMilliseconds { get; set; } = 1_000;
 
-  /// Dead-letter threshold for wh_perspective_events rows: total apply attempts
-  /// permitted before the row moves to wh_dead_letters. Default: 10. Null = no limit.
+  /// Dead-letter threshold for wh_perspective_events rows: apply FAILURES (the
+  /// failures column, moved only by process_perspective_event_failures) permitted
+  /// before the row moves to wh_dead_letters. attempts counts leases, which lapse
+  /// without an apply under a backlog; it is diagnostic only. Default: 10. Null = no limit.
   public int? MaxPerspectiveEventAttempts { get; set; } = 10;
 
   /// Lease duration in seconds. Also drives the dedup cache retention period.
@@ -606,9 +608,9 @@ Completions and failures leave the worker through bounded channels drained by de
 2. A `PerspectiveCursorFailure` is created — `StreamId`, `PerspectiveName`, `LastEventId`, `Status = Failed`, `Error = ex.Message`, plus `ProcessedEventIds` for the events that *did* apply before the failure
 3. The failure flows through the completion strategy / failure channel to SQL
 4. `complete_perspective_cursor_work` persists the error to `wh_perspective_cursors.error`, marks only the actually-processed event ids, and sets the failed status
-5. Un-processed `wh_perspective_events` rows remain, with `attempts` incremented — they are re-claimed and retried on later cycles
+5. Un-processed `wh_perspective_events` rows remain, with `failures` incremented by `process_perspective_event_failures` and the retry backoff escalating on that count — they are re-claimed and retried on later cycles (each claim bumps `attempts`, the lease count)
 
-**Dead-lettering**: when a `wh_perspective_events` row's attempts exceed `MaxPerspectiveEventAttempts` (default **10**), the worker moves it into `wh_dead_letters` via `IDeadLetterStore` **before** deserialization + apply. Set the option to `null` to restore the legacy accumulate-forever behavior.
+**Dead-lettering**: when a `wh_perspective_events` row's `failures` exceed `MaxPerspectiveEventAttempts` (default **10**), the worker moves it into `wh_dead_letters` via `IDeadLetterStore` **before** deserialization + apply. The decision reads `failures`, never `attempts`: `attempts` counts leases (dispatch starts), and a lease can lapse without an apply (the worker skipped the row, died mid-batch, or classified it as recently processed), so under a sustained backlog a perfectly good event would otherwise cross the threshold without one apply ever failing and be dead-lettered as a thrash casualty. Set the option to `null` to restore the legacy accumulate-forever behavior. {verified: PerspectiveWorkerDeadLetterFilterTests.LeaseCountAboveMax_WithNoFailures_SurvivesAsync, PerspectiveWorkerDeadLetterFilterTests.FailuresExceedMax_WithFewLeases_MovesToDeadLetterAsync, PerspectiveFailureCounterSqlTests.RecordedFailure_BumpsFailures_AndLeavesAttemptsAloneAsync}
 
 **Orphaned events**: a `wh_perspective_events` row whose source event is **absent** from
 `wh_event_store` (the event was reaped or purged after the perspective work was created)

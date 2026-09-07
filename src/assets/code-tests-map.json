@@ -9518,6 +9518,11 @@
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
+        "testMethod": "PerspectiveRunnerGenerator_Runner_ProbesHistoryWithItsHandledEventTypesAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
         "testMethod": "PerspectiveRunnerGenerator_StreamGroup_RegistersEachMembershipWithItsDialsAsync",
         "linkSource": "XmlTag"
       },
@@ -20604,204 +20609,211 @@
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/EFCoreServiceRegistrationGeneratorTests.cs",
+        "testMethod": "Generator_NestedModel_RegistryKeyIsTheClrFormAsync",
+        "testLine": 85,
+        "testClass": "EFCoreServiceRegistrationGeneratorTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Generators.Tests/EFCoreServiceRegistrationGeneratorTests.cs",
         "testMethod": "Generator_EveryDbContextRegistration_WiresUseWhizbangFunctionsAsync",
-        "testLine": 315,
+        "testLine": 366,
         "testClass": "EFCoreServiceRegistrationGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/EFCoreServiceRegistrationGeneratorTests.cs",
         "testMethod": "Generator_SchemaExtensions_RetryPathClearsStaleTransactionEnlistmentAsync",
-        "testLine": 778,
+        "testLine": 829,
         "testClass": "EFCoreServiceRegistrationGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/EFCoreServiceRegistrationGeneratorTests.cs",
         "testMethod": "Generator_SchemaExtensions_UsesXactLockWithTransactionAndRetryAsync",
-        "testLine": 847,
+        "testLine": 898,
         "testClass": "EFCoreServiceRegistrationGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/EFCoreServiceRegistrationGeneratorTests.cs",
         "testMethod": "Generator_InitCallback_ResolvesInitConnectionStringAsync",
-        "testLine": 902,
+        "testLine": 953,
         "testClass": "EFCoreServiceRegistrationGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/EFCoreServiceRegistrationGeneratorTests.cs",
         "testMethod": "Generator_SchemaExtensions_IncludesGinIndexesForJsonbColumnsAsync",
-        "testLine": 979,
-        "testClass": "EFCoreServiceRegistrationGeneratorTests",
-        "linkSource": "Convention"
-      },
-      {
-        "testFile": "tests/Whizbang.Generators.Tests/EFCoreServiceRegistrationGeneratorTests.cs",
-        "testMethod": "Generator_SchemaExtensions_IncludesBtreeExpressionIndexForTenantScopeAsync",
         "testLine": 1030,
         "testClass": "EFCoreServiceRegistrationGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/EFCoreServiceRegistrationGeneratorTests.cs",
+        "testMethod": "Generator_SchemaExtensions_IncludesBtreeExpressionIndexForTenantScopeAsync",
+        "testLine": 1081,
+        "testClass": "EFCoreServiceRegistrationGeneratorTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Generators.Tests/EFCoreServiceRegistrationGeneratorTests.cs",
         "testMethod": "Generator_SchemaExtensions_IncludesPhysicalFieldsInDDLAsync",
-        "testLine": 1079,
+        "testLine": 1130,
         "testClass": "EFCoreServiceRegistrationGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/EFCoreServiceRegistrationGeneratorTests.cs",
         "testMethod": "Generator_SchemaExtensions_MapsKeywordTypeAliasesToCorrectPostgresTypesAsync",
-        "testLine": 1147,
+        "testLine": 1198,
         "testClass": "EFCoreServiceRegistrationGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/EFCoreServiceRegistrationGeneratorTests.cs",
         "testMethod": "Generator_SchemaExtensions_MapsFullyQualifiedTypesToCorrectPostgresTypesAsync",
-        "testLine": 1235,
+        "testLine": 1286,
         "testClass": "EFCoreServiceRegistrationGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/EFCoreServiceRegistrationGeneratorTests.cs",
         "testMethod": "Generator_SchemaExtensions_MapsGlobalQualifiedTypesToCorrectPostgresTypesAsync",
-        "testLine": 1308,
+        "testLine": 1359,
         "testClass": "EFCoreServiceRegistrationGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/EFCoreServiceRegistrationGeneratorTests.cs",
         "testMethod": "Generator_SchemaExtensions_MapsNullableKeywordTypesToCorrectPostgresTypesAsync",
-        "testLine": 1374,
+        "testLine": 1425,
         "testClass": "EFCoreServiceRegistrationGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/EFCoreServiceRegistrationGeneratorTests.cs",
         "testMethod": "Generator_SchemaExtensions_IncludesVectorFieldsInDDLAsync",
-        "testLine": 1446,
+        "testLine": 1497,
         "testClass": "EFCoreServiceRegistrationGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/EFCoreServiceRegistrationGeneratorTests.cs",
         "testMethod": "Generator_WithNestedModelClasses_GeneratesUniqueDbSetNamesAsync",
-        "testLine": 1511,
+        "testLine": 1562,
         "testClass": "EFCoreServiceRegistrationGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/EFCoreServiceRegistrationGeneratorTests.cs",
         "testMethod": "Generator_WithNestedModelClasses_GeneratesCorrectTableNamesAsync",
-        "testLine": 1591,
+        "testLine": 1642,
         "testClass": "EFCoreServiceRegistrationGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/EFCoreServiceRegistrationGeneratorTests.cs",
         "testMethod": "Generator_WithNestedPerspectiveClass_DiscoversPerspectiveAsync",
-        "testLine": 1657,
+        "testLine": 1708,
         "testClass": "EFCoreServiceRegistrationGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/EFCoreServiceRegistrationGeneratorTests.cs",
         "testMethod": "Generator_WithNestedPerspectiveClass_GeneratesLensQueryRegistrationAsync",
-        "testLine": 1715,
+        "testLine": 1766,
         "testClass": "EFCoreServiceRegistrationGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/EFCoreServiceRegistrationGeneratorTests.cs",
         "testMethod": "Generator_WithNestedPerspectiveClass_GeneratesCorrectRegistrationCodeAsync",
-        "testLine": 1764,
+        "testLine": 1815,
         "testClass": "EFCoreServiceRegistrationGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/EFCoreServiceRegistrationGeneratorTests.cs",
         "testMethod": "Generator_WithMultipleNestedPerspectiveClasses_DiscoversAllAsync",
-        "testLine": 1818,
+        "testLine": 1869,
         "testClass": "EFCoreServiceRegistrationGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/EFCoreServiceRegistrationGeneratorTests.cs",
         "testMethod": "Generator_SchemaExtensions_IncludesStep5_RegisterPerspectiveAssociationsAsync",
-        "testLine": 1884,
+        "testLine": 1935,
         "testClass": "EFCoreServiceRegistrationGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/EFCoreServiceRegistrationGeneratorTests.cs",
         "testMethod": "Generator_SchemaExtensions_ContainsAllFiveStepsAsync",
-        "testLine": 1930,
+        "testLine": 1981,
         "testClass": "EFCoreServiceRegistrationGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/EFCoreServiceRegistrationGeneratorTests.cs",
         "testMethod": "Generator_SchemaExtensions_Step5UsesExtensionMethodPatternAsync",
-        "testLine": 1970,
+        "testLine": 2021,
         "testClass": "EFCoreServiceRegistrationGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/EFCoreServiceRegistrationGeneratorTests.cs",
         "testMethod": "Generator_SchemaExtensions_Step5ComesAfterStep4Async",
-        "testLine": 2006,
+        "testLine": 2057,
         "testClass": "EFCoreServiceRegistrationGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/EFCoreServiceRegistrationGeneratorTests.cs",
         "testMethod": "Generator_WithMultiModelLensQueryConstructorParam_GeneratesRegistrationAsync",
-        "testLine": 2092,
+        "testLine": 2143,
         "testClass": "EFCoreServiceRegistrationGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/EFCoreServiceRegistrationGeneratorTests.cs",
         "testMethod": "Generator_WithMultiModelLensQuery_UnknownModel_ReportsWHIZ401Async",
-        "testLine": 2147,
+        "testLine": 2198,
         "testClass": "EFCoreServiceRegistrationGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/EFCoreServiceRegistrationGeneratorTests.cs",
         "testMethod": "Generator_WithMultiModelLensQuery_DuplicateUsage_RegistersOnceAsync",
-        "testLine": 2200,
+        "testLine": 2251,
         "testClass": "EFCoreServiceRegistrationGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/EFCoreServiceRegistrationGeneratorTests.cs",
         "testMethod": "Generator_WithMultiModelLensQuery_ThreeModels_GeneratesRegistrationAsync",
-        "testLine": 2253,
+        "testLine": 2304,
         "testClass": "EFCoreServiceRegistrationGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/EFCoreServiceRegistrationGeneratorTests.cs",
         "testMethod": "Generator_WithMultiModelLensQuery_GeneratesCorrectTableNamesAsync",
-        "testLine": 2305,
+        "testLine": 2356,
         "testClass": "EFCoreServiceRegistrationGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/EFCoreServiceRegistrationGeneratorTests.cs",
         "testMethod": "Generator_ModelWithNestedCollections_EmitsRecursiveDataCoalescerRegistrationAsync",
-        "testLine": 2355,
+        "testLine": 2406,
         "testClass": "EFCoreServiceRegistrationGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/EFCoreServiceRegistrationGeneratorTests.cs",
         "testMethod": "Generator_ModelWithoutCollections_EmitsScopeOnlyCoalescerRegistrationAsync",
-        "testLine": 2421,
+        "testLine": 2472,
         "testClass": "EFCoreServiceRegistrationGeneratorTests",
         "linkSource": "Convention"
       }
@@ -22282,6 +22294,26 @@
     "HasStreamEventsBeforeAsync": [
       {
         "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/EventStoreHistoryProbeSqlTests.cs",
+        "testMethod": "TypedProbe_OlderEventsOfOtherTypesOnly_ReturnsFalseAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/EventStoreHistoryProbeSqlTests.cs",
+        "testMethod": "TypedProbe_OlderEventOfHandledType_ReturnsTrueAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/EventStoreHistoryProbeSqlTests.cs",
+        "testMethod": "TypedProbe_MatchesStoredEventTypeFormat_NestedAndAssemblyQualifiedAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/EventStoreHistoryProbeSqlTests.cs",
+        "testMethod": "TypedProbe_NoCandidateTypes_ReturnsFalseAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/EventStoreHistoryProbeSqlTests.cs",
         "testMethod": "Probe_StreamWithOlderEvents_ReturnsTrueAsync",
         "linkSource": "XmlTag"
       },
@@ -22297,6 +22329,26 @@
       },
       {
         "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/EventStoreHistoryProbeSqlTests.cs",
+        "testMethod": "TypedProbe_OlderEventsOfOtherTypesOnly_ReturnsFalseAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/EventStoreHistoryProbeSqlTests.cs",
+        "testMethod": "TypedProbe_OlderEventOfHandledType_ReturnsTrueAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/EventStoreHistoryProbeSqlTests.cs",
+        "testMethod": "TypedProbe_MatchesStoredEventTypeFormat_NestedAndAssemblyQualifiedAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/EventStoreHistoryProbeSqlTests.cs",
+        "testMethod": "TypedProbe_NoCandidateTypes_ReturnsFalseAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/EventStoreHistoryProbeSqlTests.cs",
         "testMethod": "Probe_StreamWithOlderEvents_ReturnsTrueAsync",
         "linkSource": "XmlTag"
       },
@@ -22308,6 +22360,151 @@
       {
         "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/EventStoreHistoryProbeSqlTests.cs",
         "testMethod": "Probe_OnlyLaterEvents_ReturnsFalseAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.Dapper.Postgres.Tests/DapperEventStoreHistoryProbeTests.cs",
+        "testMethod": "Probe_StreamWithOlderEvents_ReturnsTrueAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.Dapper.Postgres.Tests/DapperEventStoreHistoryProbeTests.cs",
+        "testMethod": "Probe_NewStream_ReturnsFalseAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.Dapper.Postgres.Tests/DapperEventStoreHistoryProbeTests.cs",
+        "testMethod": "TypedProbe_OlderEventsOfOtherTypesOnly_ReturnsFalseAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.Dapper.Postgres.Tests/DapperEventStoreHistoryProbeTests.cs",
+        "testMethod": "TypedProbe_OlderEventOfHandledType_ReturnsTrueAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.Dapper.Postgres.Tests/DapperEventStoreHistoryProbeTests.cs",
+        "testMethod": "TypedProbe_MatchesStoredEventTypeFormat_NestedAndAssemblyQualifiedAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.Dapper.Postgres.Tests/DapperEventStoreHistoryProbeTests.cs",
+        "testMethod": "Probe_StreamWithOlderEvents_ReturnsTrueAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.Dapper.Postgres.Tests/DapperEventStoreHistoryProbeTests.cs",
+        "testMethod": "Probe_NewStream_ReturnsFalseAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.Dapper.Postgres.Tests/DapperEventStoreHistoryProbeTests.cs",
+        "testMethod": "TypedProbe_OlderEventsOfOtherTypesOnly_ReturnsFalseAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.Dapper.Postgres.Tests/DapperEventStoreHistoryProbeTests.cs",
+        "testMethod": "TypedProbe_OlderEventOfHandledType_ReturnsTrueAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.Dapper.Postgres.Tests/DapperEventStoreHistoryProbeTests.cs",
+        "testMethod": "TypedProbe_MatchesStoredEventTypeFormat_NestedAndAssemblyQualifiedAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/EventStoreHistoryProbeSqlTests.cs",
+        "testMethod": "TypedProbe_OlderEventsOfOtherTypesOnly_ReturnsFalseAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/EventStoreHistoryProbeSqlTests.cs",
+        "testMethod": "TypedProbe_OlderEventOfHandledType_ReturnsTrueAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/EventStoreHistoryProbeSqlTests.cs",
+        "testMethod": "TypedProbe_MatchesStoredEventTypeFormat_NestedAndAssemblyQualifiedAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/EventStoreHistoryProbeSqlTests.cs",
+        "testMethod": "TypedProbe_NoCandidateTypes_ReturnsFalseAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/EventStoreHistoryProbeSqlTests.cs",
+        "testMethod": "Probe_StreamWithOlderEvents_ReturnsTrueAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/EventStoreHistoryProbeSqlTests.cs",
+        "testMethod": "Probe_NewStream_ReturnsFalseAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/EventStoreHistoryProbeSqlTests.cs",
+        "testMethod": "Probe_OnlyLaterEvents_ReturnsFalseAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/EventStoreHistoryProbeSqlTests.cs",
+        "testMethod": "TypedProbe_OlderEventsOfOtherTypesOnly_ReturnsFalseAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/EventStoreHistoryProbeSqlTests.cs",
+        "testMethod": "TypedProbe_OlderEventOfHandledType_ReturnsTrueAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/EventStoreHistoryProbeSqlTests.cs",
+        "testMethod": "TypedProbe_MatchesStoredEventTypeFormat_NestedAndAssemblyQualifiedAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/EventStoreHistoryProbeSqlTests.cs",
+        "testMethod": "TypedProbe_NoCandidateTypes_ReturnsFalseAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/EventStoreHistoryProbeSqlTests.cs",
+        "testMethod": "Probe_StreamWithOlderEvents_ReturnsTrueAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/EventStoreHistoryProbeSqlTests.cs",
+        "testMethod": "Probe_NewStream_ReturnsFalseAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/EventStoreHistoryProbeSqlTests.cs",
+        "testMethod": "Probe_OnlyLaterEvents_ReturnsFalseAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.Dapper.Postgres.Tests/DapperEventStoreHistoryProbeTests.cs",
+        "testMethod": "Probe_StreamWithOlderEvents_ReturnsTrueAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.Dapper.Postgres.Tests/DapperEventStoreHistoryProbeTests.cs",
+        "testMethod": "Probe_NewStream_ReturnsFalseAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.Dapper.Postgres.Tests/DapperEventStoreHistoryProbeTests.cs",
+        "testMethod": "TypedProbe_OlderEventsOfOtherTypesOnly_ReturnsFalseAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.Dapper.Postgres.Tests/DapperEventStoreHistoryProbeTests.cs",
+        "testMethod": "TypedProbe_OlderEventOfHandledType_ReturnsTrueAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.Dapper.Postgres.Tests/DapperEventStoreHistoryProbeTests.cs",
+        "testMethod": "TypedProbe_MatchesStoredEventTypeFormat_NestedAndAssemblyQualifiedAsync",
         "linkSource": "XmlTag"
       }
     ],
@@ -36306,6 +36503,11 @@
         "linkSource": "XmlTag"
       },
       {
+        "testFile": "tests/Whizbang.Core.Tests/Workers/MaintenanceWorkerIntegritySweepTests.cs",
+        "testMethod": "ReportOnly_CountsTheDiscardsOnTheMetric_PerTableAsync",
+        "linkSource": "XmlTag"
+      },
+      {
         "testFile": "tests/Whizbang.Core.Tests/Workers/MaintenanceWorkerTests.cs",
         "testMethod": "ExecuteAsync_FirstTick_CallsPerformMaintenanceAsync",
         "testLine": 49,
@@ -36749,6 +36951,16 @@
         "testFile": "tests/Whizbang.Core.Tests/Workers/PerspectiveWorkerAffinityHoldWatchdogTests.cs",
         "testMethod": "WatchdogOff_ReportsNothingAsync",
         "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Workers/PerspectiveWorkerAffinityHoldWatchdogTests.cs",
+        "testMethod": "DrainWidth_IsClampedToHalfTheGate_AndLoggedOnceAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Workers/PerspectiveWorkerAffinityHoldWatchdogTests.cs",
+        "testMethod": "Watchdog_TicksOnTheWorkerClock_AndNamesAHoldPastTheThresholdAsync",
+        "linkSource": "XmlTag"
       }
     ],
     "PerspectiveWorker": [
@@ -36833,6 +37045,16 @@
       {
         "testFile": "tests/Whizbang.Core.Tests/Workers/PerspectiveWorkerAffinityHoldWatchdogTests.cs",
         "testMethod": "WatchdogOff_ReportsNothingAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Workers/PerspectiveWorkerAffinityHoldWatchdogTests.cs",
+        "testMethod": "DrainWidth_IsClampedToHalfTheGate_AndLoggedOnceAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Workers/PerspectiveWorkerAffinityHoldWatchdogTests.cs",
+        "testMethod": "Watchdog_TicksOnTheWorkerClock_AndNamesAHoldPastTheThresholdAsync",
         "linkSource": "XmlTag"
       },
       {
@@ -36945,6 +37167,16 @@
       {
         "testFile": "tests/Whizbang.Core.Tests/Workers/PerspectiveWorkerAffinityHoldWatchdogTests.cs",
         "testMethod": "WatchdogOff_ReportsNothingAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Workers/PerspectiveWorkerAffinityHoldWatchdogTests.cs",
+        "testMethod": "DrainWidth_IsClampedToHalfTheGate_AndLoggedOnceAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Workers/PerspectiveWorkerAffinityHoldWatchdogTests.cs",
+        "testMethod": "Watchdog_TicksOnTheWorkerClock_AndNamesAHoldPastTheThresholdAsync",
         "linkSource": "XmlTag"
       }
     ],
@@ -74023,6 +74255,11 @@
         "testFile": "tests/Whizbang.Core.Tests/Messaging/EventStoreDecoratorForwardingTests.cs",
         "testMethod": "Decorator_ForwardsHasStreamEventsBefore_ToInnerStoreAsync",
         "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/EventStoreDecoratorForwardingTests.cs",
+        "testMethod": "Decorator_ForwardsTypedHasStreamEventsBefore_ToInnerStoreAsync",
+        "linkSource": "XmlTag"
       }
     ],
     "HandledMessageInfo": [
@@ -77355,6 +77592,11 @@
         "linkSource": "XmlTag"
       },
       {
+        "testFile": "tests/Whizbang.Core.Tests/Workers/MaintenanceWorkerIntegritySweepTests.cs",
+        "testMethod": "ReportOnly_CountsTheDiscardsOnTheMetric_PerTableAsync",
+        "linkSource": "XmlTag"
+      },
+      {
         "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/DiscardPendingMessagesSqlTests.cs",
         "testMethod": "Discard_DropsUnleasedRowsOfOffFeaturesInEveryStoredForm_LeavesTheRestAsync",
         "linkSource": "XmlTag"
@@ -77409,6 +77651,11 @@
       {
         "testFile": "tests/Whizbang.Core.Tests/Workers/MaintenanceWorkerIntegritySweepTests.cs",
         "testMethod": "SweepCanceled_PropagatesCancellation_AndStopsTheCycleAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Workers/MaintenanceWorkerIntegritySweepTests.cs",
+        "testMethod": "ReportOnly_CountsTheDiscardsOnTheMetric_PerTableAsync",
         "linkSource": "XmlTag"
       },
       {
@@ -101728,442 +101975,449 @@
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
-        "testMethod": "PerspectiveRunnerGenerator_StreamGroup_RegistersEachMembershipWithItsDialsAsync",
+        "testMethod": "PerspectiveRunnerGenerator_Runner_ProbesHistoryWithItsHandledEventTypesAsync",
         "testLine": 296,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
+        "testMethod": "PerspectiveRunnerGenerator_StreamGroup_RegistersEachMembershipWithItsDialsAsync",
+        "testLine": 345,
+        "testClass": "PerspectiveRunnerGeneratorTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
         "testMethod": "PerspectiveRunnerGenerator_NoStreamGroup_EmitsNoRegistrationAsync",
-        "testLine": 336,
+        "testLine": 385,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
         "testMethod": "PerspectiveRunnerGenerator_RowCap_RegistersCapAsync",
-        "testLine": 366,
+        "testLine": 415,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
         "testMethod": "PerspectiveRunnerGenerator_RowCapPerTenant_RegistersTenantScopeKeyAsync",
-        "testLine": 405,
+        "testLine": 454,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
         "testMethod": "PerspectiveRunnerGenerator_NoRowCap_RegistersNoCapAsync",
-        "testLine": 439,
+        "testLine": 488,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
         "testMethod": "PerspectiveRunnerGenerator_RowTtl_OverridesEphemeralDerivedTtlAsync",
-        "testLine": 472,
+        "testLine": 521,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
         "testMethod": "PerspectiveRunnerGenerator_FullHistoryPerspective_RegistersNameAsync",
-        "testLine": 511,
+        "testLine": 560,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
         "testMethod": "PerspectiveRunnerGenerator_ResumablePerspective_DoesNotRegisterFullHistoryAsync",
-        "testLine": 548,
+        "testLine": 597,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
         "testMethod": "PerspectiveRunnerGenerator_SourcedPerspective_UsesStandardSnapshotSettingsAsync",
-        "testLine": 581,
+        "testLine": 630,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
         "testMethod": "PerspectiveRunnerGenerator_PerspectiveWithModelNoStreamId_GeneratesNothingAsync",
-        "testLine": 616,
+        "testLine": 665,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
         "testMethod": "PerspectiveRunnerGenerator_AbstractPerspective_IsIgnoredAsync",
-        "testLine": 654,
+        "testLine": 703,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
         "testMethod": "PerspectiveRunnerGenerator_GeneratesDiagnosticAsync",
-        "testLine": 700,
+        "testLine": 749,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
         "testMethod": "PerspectiveRunnerGenerator_UsesFullyQualifiedTypeNamesAsync",
-        "testLine": 742,
+        "testLine": 791,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
         "testMethod": "PerspectiveRunnerGenerator_CorrectRunnerNameAsync",
-        "testLine": 782,
+        "testLine": 831,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
         "testMethod": "PerspectiveRunnerGenerator_ImplementsIPerspectiveRunnerAsync",
-        "testLine": 822,
+        "testLine": 871,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
         "testMethod": "PerspectiveRunnerGenerator_MultiplePerspectives_GeneratesMultipleRunnersAsync",
-        "testLine": 862,
+        "testLine": 911,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
         "testMethod": "PerspectiveRunnerGenerator_GeneratedCodeUsesCorrectNamespaceAsync",
-        "testLine": 923,
+        "testLine": 972,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
         "testMethod": "PerspectiveRunnerGenerator_StreamIdPropertyNameIncludedAsync",
-        "testLine": 962,
+        "testLine": 1011,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
         "testMethod": "PerspectiveRunnerGenerator_GeneratesExtractStreamIdMethod_UsingEventStreamIdAsync",
-        "testLine": 1000,
+        "testLine": 1049,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
         "testMethod": "PerspectiveRunnerGenerator_MultipleEvents_GeneratesExtractStreamIdForEachAsync",
-        "testLine": 1055,
+        "testLine": 1104,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
         "testMethod": "PerspectiveRunnerGenerator_MustExistAttribute_GeneratesNullCheckAsync",
-        "testLine": 1134,
+        "testLine": 1183,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
         "testMethod": "PerspectiveRunnerGenerator_MustExistAttribute_NoNullCheckForNonAttributedMethodAsync",
-        "testLine": 1192,
+        "testLine": 1241,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
         "testMethod": "PerspectiveRunnerGenerator_MustExistAttribute_AllEventsWithAttribute_GeneratesNullCheckForAllAsync",
-        "testLine": 1253,
+        "testLine": 1302,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
         "testMethod": "PerspectiveRunnerGenerator_NoMustExistAttribute_NoNullCheckGeneratedAsync",
-        "testLine": 1306,
+        "testLine": 1355,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
         "testMethod": "PerspectiveRunnerGenerator_MustExistAttribute_ErrorMessageIncludesContextAsync",
-        "testLine": 1344,
+        "testLine": 1393,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
         "testMethod": "PerspectiveRunnerGenerator_ModelActionReturn_GeneratesActionHandlingAsync",
-        "testLine": 1398,
+        "testLine": 1447,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
         "testMethod": "PerspectiveRunnerGenerator_NullableModelReturn_GeneratesNoChangeCheckAsync",
-        "testLine": 1440,
+        "testLine": 1489,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
         "testMethod": "PerspectiveRunnerGenerator_TupleReturn_GeneratesHybridHandlingAsync",
-        "testLine": 1483,
+        "testLine": 1532,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
         "testMethod": "PerspectiveRunnerGenerator_ApplyResultReturn_GeneratesFullHandlingAsync",
-        "testLine": 1524,
+        "testLine": 1573,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
         "testMethod": "PerspectiveRunnerGenerator_MixedReturnTypes_GeneratesCorrectlyAsync",
-        "testLine": 1570,
+        "testLine": 1619,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
         "testMethod": "PerspectiveRunnerGenerator_NestedClasses_GeneratesUniqueHintNamesAsync",
-        "testLine": 1626,
+        "testLine": 1675,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
         "testMethod": "PerspectiveRunnerGenerator_PerspectiveWith10Events_GeneratesRunnerAsync",
-        "testLine": 1703,
+        "testLine": 1752,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
         "testMethod": "PerspectiveRunnerGenerator_PerspectiveWith25Events_GeneratesRunnerAsync",
-        "testLine": 1761,
+        "testLine": 1810,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
         "testMethod": "PerspectiveRunnerGenerator_ModelMissingStreamId_EmitsWarningAsync",
-        "testLine": 1808,
+        "testLine": 1857,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
         "testMethod": "PerspectiveRunnerGenerator_ModelHasStreamId_NoWarningAsync",
-        "testLine": 1851,
+        "testLine": 1900,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
         "testMethod": "PerspectiveRunnerGenerator_VectorField_GeneratesUpsertWithPhysicalFieldsAsync",
-        "testLine": 1895,
+        "testLine": 1944,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
         "testMethod": "PerspectiveRunnerGenerator_PhysicalField_GeneratesUpsertWithPhysicalFieldsAsync",
-        "testLine": 1941,
+        "testLine": 1990,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
         "testMethod": "PerspectiveRunnerGenerator_NoPhysicalFields_UsesSimpleUpsertAsync",
-        "testLine": 1989,
+        "testLine": 2038,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
         "testMethod": "PerspectiveRunnerGenerator_MultiplePhysicalFields_GeneratesAllFieldsAsync",
-        "testLine": 2033,
+        "testLine": 2082,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
         "testMethod": "PerspectiveRunnerGenerator_VectorFieldWithCustomColumnName_UsesCustomNameAsync",
-        "testLine": 2088,
+        "testLine": 2137,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
         "testMethod": "PerspectiveRunnerGenerator_StaticProperty_NotIncludedInPhysicalFieldsAsync",
-        "testLine": 2131,
+        "testLine": 2180,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
         "testMethod": "PerspectiveRunnerGenerator_PostPerspectiveDetached_EstablishesSecurityContextAsync",
-        "testLine": 2179,
+        "testLine": 2228,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
         "testMethod": "PerspectiveRunnerGenerator_IPerspectiveWithActionsFor_GeneratesRunnerAsync",
-        "testLine": 2245,
+        "testLine": 2294,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
         "testMethod": "PerspectiveRunnerGenerator_MixedInterfaces_BothDetectedAsync",
-        "testLine": 2293,
+        "testLine": 2342,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
         "testMethod": "PerspectiveRunnerGenerator_IPerspectiveWithActionsFor_MultipleEventVariant_GeneratesRunnerAsync",
-        "testLine": 2381,
+        "testLine": 2430,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
         "testMethod": "PerspectiveRunnerGenerator_DeleteAction_GeneratesCorrectHandlingAsync",
-        "testLine": 2437,
+        "testLine": 2486,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
         "testMethod": "PerspectiveRunnerGenerator_PurgeAction_GeneratesCorrectHandlingAsync",
-        "testLine": 2480,
+        "testLine": 2529,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
         "testMethod": "PerspectiveRunnerGenerator_IPerspectiveWithActionsForOnly_GeneratesRunnerAsync",
-        "testLine": 2523,
+        "testLine": 2572,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
         "testMethod": "Generator_WithIScopeEvent_GeneratesScopeHandlingCodeAsync",
-        "testLine": 2598,
+        "testLine": 2647,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
         "testMethod": "Generator_WithIPerspectiveScopeFor_GeneratesApplyScopeCallAsync",
-        "testLine": 2638,
+        "testLine": 2687,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
         "testMethod": "Generator_WithIScopeEventWithoutIPerspectiveScopeFor_UsesDirectScopeAsync",
-        "testLine": 2685,
+        "testLine": 2734,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
         "testMethod": "Generator_WithIScopeEventAndIPerspectiveFor_GeneratesBothCallsAsync",
-        "testLine": 2725,
+        "testLine": 2774,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
         "testMethod": "PerspectiveRunnerGenerator_SplitModeRecordModel_StripsPhysicalFieldsWithExpressionAsync",
-        "testLine": 2788,
+        "testLine": 2837,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
         "testMethod": "PerspectiveRunnerGenerator_SplitModeClassModel_StripsPhysicalFieldsByMutationAsync",
-        "testLine": 2839,
+        "testLine": 2888,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
         "testMethod": "PerspectiveRunnerGenerator_JsonOnlyMode_DoesNotStripPhysicalFieldsAsync",
-        "testLine": 2890,
-        "testClass": "PerspectiveRunnerGeneratorTests",
-        "linkSource": "Convention"
-      },
-      {
-        "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
-        "testMethod": "PerspectiveRunnerGenerator_InheritScopeWithOnCreate_UsesConfiguredFlagsAsync",
         "testLine": 2939,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
+        "testMethod": "PerspectiveRunnerGenerator_InheritScopeWithOnCreate_UsesConfiguredFlagsAsync",
+        "testLine": 2988,
+        "testClass": "PerspectiveRunnerGeneratorTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
         "testMethod": "PerspectiveRunnerGenerator_InheritScopeWithoutOnCreate_DefaultsToTenantAsync",
-        "testLine": 2978,
+        "testLine": 3027,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
         "testMethod": "PerspectiveRunnerGenerator_NoInheritScope_DefaultsToAllFieldsAsync",
-        "testLine": 3018,
+        "testLine": 3067,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
         "testMethod": "PerspectiveRunnerGenerator_GlobalPerspective_GeneratesRunnerAsync",
-        "testLine": 3059,
+        "testLine": 3108,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
         "testMethod": "PerspectiveRunnerGenerator_EventWithInheritedStreamId_GeneratesExtractStreamIdAsync",
-        "testLine": 3113,
+        "testLine": 3162,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
         "testMethod": "PerspectiveRunnerGenerator_CreateEmptyModel_UsesDirectConstructionWithoutReflectionAsync",
-        "testLine": 3165,
+        "testLine": 3214,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
         "testMethod": "PerspectiveRunnerGenerator_StronglyTypedStreamId_ConstructsViaFromFactoryAsync",
-        "testLine": 3211,
+        "testLine": 3260,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorTests.cs",
         "testMethod": "PerspectiveRunnerGenerator_RequiredModelMembers_AreInitializedSoGeneratedCodeCompilesAsync",
-        "testLine": 3262,
+        "testLine": 3311,
         "testClass": "PerspectiveRunnerGeneratorTests",
         "linkSource": "Convention"
       }
@@ -138356,7 +138610,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Generators/MessageJsonContextGenerator.cs",
-        "sourceLine": 3586,
+        "sourceLine": 3580,
         "sourceSymbol": "ImmutableArray",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -138393,7 +138647,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Generators/MessageJsonContextGenerator.cs",
-        "sourceLine": 3585,
+        "sourceLine": 3579,
         "sourceSymbol": "ImmutableArray",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -139228,7 +139482,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Generators/MessageJsonContextGenerator.cs",
-        "sourceLine": 1898,
+        "sourceLine": 1892,
         "sourceSymbol": "static",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -139258,7 +139512,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Generators/MessageJsonContextGenerator.cs",
-        "sourceLine": 1899,
+        "sourceLine": 1893,
         "sourceSymbol": "static",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -139288,7 +139542,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Generators/MessageJsonContextGenerator.cs",
-        "sourceLine": 1900,
+        "sourceLine": 1894,
         "sourceSymbol": "static",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -139434,7 +139688,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Generators/MessageJsonContextGenerator.cs",
-        "sourceLine": 1901,
+        "sourceLine": 1895,
         "sourceSymbol": "static",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -139464,7 +139718,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Generators/MessageJsonContextGenerator.cs",
-        "sourceLine": 1902,
+        "sourceLine": 1896,
         "sourceSymbol": "static",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -139494,7 +139748,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Generators/MessageJsonContextGenerator.cs",
-        "sourceLine": 1903,
+        "sourceLine": 1897,
         "sourceSymbol": "static",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -139737,21 +139991,21 @@
       },
       {
         "sourceFile": "src/Whizbang.Generators/MessageJsonContextGenerator.cs",
-        "sourceLine": 2049,
+        "sourceLine": 2043,
         "sourceSymbol": "ImmutableArray",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Generators/MessageJsonContextGenerator.cs",
-        "sourceLine": 2893,
+        "sourceLine": 2887,
         "sourceSymbol": "_generateEnumLazyFields",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Generators/MessageJsonContextGenerator.cs",
-        "sourceLine": 2933,
+        "sourceLine": 2927,
         "sourceSymbol": "_generateEnumFactories",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -139788,14 +140042,14 @@
       },
       {
         "sourceFile": "src/Whizbang.Generators/MessageJsonContextGenerator.cs",
-        "sourceLine": 2050,
+        "sourceLine": 2044,
         "sourceSymbol": "ImmutableArray",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Generators/MessageJsonContextGenerator.cs",
-        "sourceLine": 2934,
+        "sourceLine": 2928,
         "sourceSymbol": "_generateEnumFactories",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -139825,7 +140079,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Generators/MessageJsonContextGenerator.cs",
-        "sourceLine": 2051,
+        "sourceLine": 2045,
         "sourceSymbol": "ImmutableArray",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -140116,7 +140370,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Generators/MessageJsonContextGenerator.cs",
-        "sourceLine": 2974,
+        "sourceLine": 2968,
         "sourceSymbol": "_hasWhizbangIdAttribute",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -140262,7 +140516,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Generators/MessageJsonContextGenerator.cs",
-        "sourceLine": 2339,
+        "sourceLine": 2333,
         "sourceSymbol": "_normalizeKeywordAliases",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -141104,7 +141358,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Generators/MessageJsonContextGenerator.cs",
-        "sourceLine": 3185,
+        "sourceLine": 3179,
         "sourceSymbol": "_hasJsonPolymorphicAttribute",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -141141,7 +141395,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Generators/MessageJsonContextGenerator.cs",
-        "sourceLine": 3196,
+        "sourceLine": 3190,
         "sourceSymbol": "List",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -141178,7 +141432,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Generators/MessageJsonContextGenerator.cs",
-        "sourceLine": 3197,
+        "sourceLine": 3191,
         "sourceSymbol": "List",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -141418,7 +141672,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Generators/MessageJsonContextGenerator.cs",
-        "sourceLine": 2420,
+        "sourceLine": 2414,
         "sourceSymbol": "ImmutableArray",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -142144,7 +142398,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Generators/MessageJsonContextGenerator.cs",
-        "sourceLine": 2232,
+        "sourceLine": 2226,
         "sourceSymbol": "_findTopLevelComma",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -142174,7 +142428,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Generators/MessageJsonContextGenerator.cs",
-        "sourceLine": 2233,
+        "sourceLine": 2227,
         "sourceSymbol": "_findTopLevelComma",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -142262,7 +142516,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Generators/MessageJsonContextGenerator.cs",
-        "sourceLine": 2234,
+        "sourceLine": 2228,
         "sourceSymbol": "_findTopLevelComma",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -142292,7 +142546,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Generators/MessageJsonContextGenerator.cs",
-        "sourceLine": 2759,
+        "sourceLine": 2753,
         "sourceSymbol": "ImmutableArray",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -142351,7 +142605,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Generators/MessageJsonContextGenerator.cs",
-        "sourceLine": 2235,
+        "sourceLine": 2229,
         "sourceSymbol": "_findTopLevelComma",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -142468,7 +142722,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Generators/MessageJsonContextGenerator.cs",
-        "sourceLine": 2255,
+        "sourceLine": 2249,
         "sourceSymbol": "_isCollectionType",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -142498,21 +142752,21 @@
       },
       {
         "sourceFile": "src/Whizbang.Generators/MessageJsonContextGenerator.cs",
-        "sourceLine": 2757,
+        "sourceLine": 2751,
         "sourceSymbol": "ImmutableArray",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Generators/MessageJsonContextGenerator.cs",
-        "sourceLine": 2835,
+        "sourceLine": 2829,
         "sourceSymbol": "_generateDictionaryLazyFields",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Generators/MessageJsonContextGenerator.cs",
-        "sourceLine": 2867,
+        "sourceLine": 2861,
         "sourceSymbol": "_generateDictionaryFactories",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -142542,14 +142796,14 @@
       },
       {
         "sourceFile": "src/Whizbang.Generators/MessageJsonContextGenerator.cs",
-        "sourceLine": 2758,
+        "sourceLine": 2752,
         "sourceSymbol": "ImmutableArray",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Generators/MessageJsonContextGenerator.cs",
-        "sourceLine": 2869,
+        "sourceLine": 2863,
         "sourceSymbol": "_generateDictionaryFactories",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -142579,7 +142833,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Generators/MessageJsonContextGenerator.cs",
-        "sourceLine": 2868,
+        "sourceLine": 2862,
         "sourceSymbol": "_generateDictionaryFactories",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -142609,21 +142863,21 @@
       },
       {
         "sourceFile": "src/Whizbang.Generators/MessageJsonContextGenerator.cs",
-        "sourceLine": 2584,
+        "sourceLine": 2578,
         "sourceSymbol": "ImmutableArray",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Generators/MessageJsonContextGenerator.cs",
-        "sourceLine": 2649,
+        "sourceLine": 2643,
         "sourceSymbol": "_generateIReadOnlyListLazyFields",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Generators/MessageJsonContextGenerator.cs",
-        "sourceLine": 2680,
+        "sourceLine": 2674,
         "sourceSymbol": "_generateIReadOnlyListFactories",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -142653,7 +142907,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Generators/MessageJsonContextGenerator.cs",
-        "sourceLine": 2585,
+        "sourceLine": 2579,
         "sourceSymbol": "ImmutableArray",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -142683,7 +142937,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Generators/MessageJsonContextGenerator.cs",
-        "sourceLine": 2681,
+        "sourceLine": 2675,
         "sourceSymbol": "_generateIReadOnlyListFactories",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -142713,7 +142967,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Generators/MessageJsonContextGenerator.cs",
-        "sourceLine": 2586,
+        "sourceLine": 2580,
         "sourceSymbol": "ImmutableArray",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -143146,14 +143400,14 @@
     "MessageJsonContextRenameAliasTests.Generator_LedgerRecordsFormerName_EmitsAliasRegistrationAsync": [
       {
         "sourceFile": "src/Whizbang.Generators/MessageJsonContextGenerator.cs",
-        "sourceLine": 3437,
+        "sourceLine": 3431,
         "sourceSymbol": "_generateRenameAliasRegistrations",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Generators/MessageJsonContextGenerator.cs",
-        "sourceLine": 3439,
+        "sourceLine": 3433,
         "sourceSymbol": "_generateRenameAliasRegistrations",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -143162,14 +143416,14 @@
     "MessageJsonContextRenameAliasTests.Generator_NoLedger_EmitsNoAliasAsync": [
       {
         "sourceFile": "src/Whizbang.Generators/MessageJsonContextGenerator.cs",
-        "sourceLine": 3437,
+        "sourceLine": 3431,
         "sourceSymbol": "_generateRenameAliasRegistrations",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Generators/MessageJsonContextGenerator.cs",
-        "sourceLine": 3440,
+        "sourceLine": 3434,
         "sourceSymbol": "_generateRenameAliasRegistrations",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -143178,14 +143432,14 @@
     "MessageJsonContextRenameAliasTests.Generator_LedgerFormerName_GeneratedAliasCompilesAsync": [
       {
         "sourceFile": "src/Whizbang.Generators/MessageJsonContextGenerator.cs",
-        "sourceLine": 3437,
+        "sourceLine": 3431,
         "sourceSymbol": "_generateRenameAliasRegistrations",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Generators/MessageJsonContextGenerator.cs",
-        "sourceLine": 3441,
+        "sourceLine": 3435,
         "sourceSymbol": "_generateRenameAliasRegistrations",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -143194,7 +143448,7 @@
     "MessageJsonContextRenameAliasTests.Generator_FormerNameShadowsLivingType_SkipsAliasAsync": [
       {
         "sourceFile": "src/Whizbang.Generators/MessageJsonContextGenerator.cs",
-        "sourceLine": 3437,
+        "sourceLine": 3431,
         "sourceSymbol": "_generateRenameAliasRegistrations",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -145069,6 +145323,21 @@
       }
     ],
     "PerspectiveRunnerGeneratorTests.PerspectiveRunnerGenerator_RowTtlOnSourcedPerspective_RegistersRowTtlAsync": [
+      {
+        "sourceFile": "src/Whizbang.Generators/PerspectiveInfo.cs",
+        "sourceLine": 22,
+        "sourceSymbol": "PerspectiveInfo",
+        "sourceType": "Record",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Generators/PerspectiveRunnerGenerator.cs",
+        "sourceSymbol": "PerspectiveRunnerGenerator",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "PerspectiveRunnerGeneratorTests.PerspectiveRunnerGenerator_Runner_ProbesHistoryWithItsHandledEventTypesAsync": [
       {
         "sourceFile": "src/Whizbang.Generators/PerspectiveInfo.cs",
         "sourceLine": 22,
@@ -153372,7 +153641,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres.Generators/EFCoreServiceRegistrationGenerator.cs",
-        "sourceLine": 1095,
+        "sourceLine": 1097,
         "sourceSymbol": "_matchesDbContext",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -153388,7 +153657,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres.Generators/EFCoreServiceRegistrationGenerator.cs",
-        "sourceLine": 1096,
+        "sourceLine": 1098,
         "sourceSymbol": "_matchesDbContext",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -153404,7 +153673,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres.Generators/EFCoreServiceRegistrationGenerator.cs",
-        "sourceLine": 1111,
+        "sourceLine": 1113,
         "sourceSymbol": "_generateDbContextPartial",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -153427,7 +153696,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres.Generators/EFCoreServiceRegistrationGenerator.cs",
-        "sourceLine": 1244,
+        "sourceLine": 1246,
         "sourceSymbol": "_generateRegistrationMetadata",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -153450,7 +153719,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres.Generators/EFCoreServiceRegistrationGenerator.cs",
-        "sourceLine": 2005,
+        "sourceLine": 2007,
         "sourceSymbol": "_generateSchemaExtensions",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -153473,7 +153742,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres.Generators/EFCoreServiceRegistrationGenerator.cs",
-        "sourceLine": 1112,
+        "sourceLine": 1114,
         "sourceSymbol": "_generateDbContextPartial",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -153489,7 +153758,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres.Generators/EFCoreServiceRegistrationGenerator.cs",
-        "sourceLine": 1113,
+        "sourceLine": 1115,
         "sourceSymbol": "_generateDbContextPartial",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -153505,7 +153774,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres.Generators/EFCoreServiceRegistrationGenerator.cs",
-        "sourceLine": 1114,
+        "sourceLine": 1116,
         "sourceSymbol": "_generateDbContextPartial",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -153521,7 +153790,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres.Generators/EFCoreServiceRegistrationGenerator.cs",
-        "sourceLine": 1115,
+        "sourceLine": 1117,
         "sourceSymbol": "_generateDbContextPartial",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -153537,7 +153806,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres.Generators/EFCoreServiceRegistrationGenerator.cs",
-        "sourceLine": 1116,
+        "sourceLine": 1118,
         "sourceSymbol": "_generateDbContextPartial",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -153603,14 +153872,14 @@
       },
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres.Generators/EFCoreServiceRegistrationGenerator.cs",
-        "sourceLine": 2006,
+        "sourceLine": 2008,
         "sourceSymbol": "_generateSchemaExtensions",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres.Generators/EFCoreServiceRegistrationGenerator.cs",
-        "sourceLine": 2136,
+        "sourceLine": 2138,
         "sourceSymbol": "_generateMigrationsCode",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -153628,7 +153897,7 @@
     "EFCoreServiceRegistrationGeneratorTests.Generator_WithMultiModelLensQueryConstructorParam_GeneratesRegistrationAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres.Generators/EFCoreServiceRegistrationGenerator.cs",
-        "sourceLine": 1245,
+        "sourceLine": 1247,
         "sourceSymbol": "_generateRegistrationMetadata",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -153637,7 +153906,7 @@
     "EFCoreServiceRegistrationGeneratorTests.Generator_WithMultiModelLensQuery_UnknownModel_ReportsWHIZ401Async": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres.Generators/EFCoreServiceRegistrationGenerator.cs",
-        "sourceLine": 1246,
+        "sourceLine": 1248,
         "sourceSymbol": "_generateRegistrationMetadata",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -153646,7 +153915,7 @@
     "EFCoreServiceRegistrationGeneratorTests.Generator_WithMultiModelLensQuery_DuplicateUsage_RegistersOnceAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres.Generators/EFCoreServiceRegistrationGenerator.cs",
-        "sourceLine": 1247,
+        "sourceLine": 1249,
         "sourceSymbol": "_generateRegistrationMetadata",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -153655,7 +153924,7 @@
     "VectorAutoConfigurationTests.TurnkeyExtension_WithVectorField_GeneratesAddDbContextMethodAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres.Generators/EFCoreServiceRegistrationGenerator.cs",
-        "sourceLine": 1632,
+        "sourceLine": 1634,
         "sourceSymbol": "_generateTurnkeyExtensions",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -153664,7 +153933,7 @@
     "VectorAutoConfigurationTests.TurnkeyExtension_WithoutVectorField_DoesNotIncludeUseVectorAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres.Generators/EFCoreServiceRegistrationGenerator.cs",
-        "sourceLine": 1633,
+        "sourceLine": 1635,
         "sourceSymbol": "_generateTurnkeyExtensions",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -155018,7 +155287,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreEventStore.cs",
-        "sourceLine": 520,
+        "sourceLine": 554,
         "sourceSymbol": "GetLastSequenceAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -155034,7 +155303,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreEventStore.cs",
-        "sourceLine": 521,
+        "sourceLine": 555,
         "sourceSymbol": "GetLastSequenceAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -155050,14 +155319,14 @@
       },
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreEventStore.cs",
-        "sourceLine": 383,
+        "sourceLine": 417,
         "sourceSymbol": "GetEventsBetweenAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IEventStore.cs",
-        "sourceLine": 198,
+        "sourceLine": 215,
         "sourceSymbol": "GetEventsBetweenAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -155073,14 +155342,14 @@
       },
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreEventStore.cs",
-        "sourceLine": 384,
+        "sourceLine": 418,
         "sourceSymbol": "GetEventsBetweenAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IEventStore.cs",
-        "sourceLine": 199,
+        "sourceLine": 216,
         "sourceSymbol": "GetEventsBetweenAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -155096,14 +155365,14 @@
       },
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreEventStore.cs",
-        "sourceLine": 385,
+        "sourceLine": 419,
         "sourceSymbol": "GetEventsBetweenAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IEventStore.cs",
-        "sourceLine": 200,
+        "sourceLine": 217,
         "sourceSymbol": "GetEventsBetweenAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -155119,14 +155388,14 @@
       },
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreEventStore.cs",
-        "sourceLine": 386,
+        "sourceLine": 420,
         "sourceSymbol": "GetEventsBetweenAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IEventStore.cs",
-        "sourceLine": 201,
+        "sourceLine": 218,
         "sourceSymbol": "GetEventsBetweenAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -155142,14 +155411,14 @@
       },
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreEventStore.cs",
-        "sourceLine": 443,
+        "sourceLine": 477,
         "sourceSymbol": "Task",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IEventStore.cs",
-        "sourceLine": 229,
+        "sourceLine": 246,
         "sourceSymbol": "GetEventsBetweenPolymorphicAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -155165,14 +155434,14 @@
       },
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreEventStore.cs",
-        "sourceLine": 444,
+        "sourceLine": 478,
         "sourceSymbol": "Task",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IEventStore.cs",
-        "sourceLine": 230,
+        "sourceLine": 247,
         "sourceSymbol": "GetEventsBetweenPolymorphicAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -155188,14 +155457,14 @@
       },
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreEventStore.cs",
-        "sourceLine": 445,
+        "sourceLine": 479,
         "sourceSymbol": "Task",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IEventStore.cs",
-        "sourceLine": 231,
+        "sourceLine": 248,
         "sourceSymbol": "GetEventsBetweenPolymorphicAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -155211,7 +155480,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreEventStore.cs",
-        "sourceLine": 446,
+        "sourceLine": 480,
         "sourceSymbol": "Task",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -155523,6 +155792,126 @@
         "linkSource": "XmlTag"
       }
     ],
+    "EventStoreHistoryProbeSqlTests.TypedProbe_OlderEventsOfOtherTypesOnly_ReturnsFalseAsync": [
+      {
+        "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreEventStore.cs",
+        "sourceLine": 299,
+        "sourceSymbol": "HasStreamEventsBeforeAsync",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreEventStore.cs",
+        "sourceLine": 315,
+        "sourceSymbol": "HasStreamEventsBeforeAsync",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/IEventStore.cs",
+        "sourceLine": 110,
+        "sourceSymbol": "HasStreamEventsBeforeAsync",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/IEventStore.cs",
+        "sourceLine": 126,
+        "sourceSymbol": "HasStreamEventsBeforeAsync",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "EventStoreHistoryProbeSqlTests.TypedProbe_OlderEventOfHandledType_ReturnsTrueAsync": [
+      {
+        "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreEventStore.cs",
+        "sourceLine": 299,
+        "sourceSymbol": "HasStreamEventsBeforeAsync",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreEventStore.cs",
+        "sourceLine": 315,
+        "sourceSymbol": "HasStreamEventsBeforeAsync",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/IEventStore.cs",
+        "sourceLine": 110,
+        "sourceSymbol": "HasStreamEventsBeforeAsync",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/IEventStore.cs",
+        "sourceLine": 126,
+        "sourceSymbol": "HasStreamEventsBeforeAsync",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "EventStoreHistoryProbeSqlTests.TypedProbe_MatchesStoredEventTypeFormat_NestedAndAssemblyQualifiedAsync": [
+      {
+        "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreEventStore.cs",
+        "sourceLine": 299,
+        "sourceSymbol": "HasStreamEventsBeforeAsync",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreEventStore.cs",
+        "sourceLine": 315,
+        "sourceSymbol": "HasStreamEventsBeforeAsync",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/IEventStore.cs",
+        "sourceLine": 110,
+        "sourceSymbol": "HasStreamEventsBeforeAsync",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/IEventStore.cs",
+        "sourceLine": 126,
+        "sourceSymbol": "HasStreamEventsBeforeAsync",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "EventStoreHistoryProbeSqlTests.TypedProbe_NoCandidateTypes_ReturnsFalseAsync": [
+      {
+        "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreEventStore.cs",
+        "sourceLine": 299,
+        "sourceSymbol": "HasStreamEventsBeforeAsync",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreEventStore.cs",
+        "sourceLine": 315,
+        "sourceSymbol": "HasStreamEventsBeforeAsync",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/IEventStore.cs",
+        "sourceLine": 110,
+        "sourceSymbol": "HasStreamEventsBeforeAsync",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/IEventStore.cs",
+        "sourceLine": 126,
+        "sourceSymbol": "HasStreamEventsBeforeAsync",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      }
+    ],
     "EventStoreHistoryProbeSqlTests.Probe_StreamWithOlderEvents_ReturnsTrueAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreEventStore.cs",
@@ -155532,8 +155921,22 @@
         "linkSource": "XmlTag"
       },
       {
+        "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreEventStore.cs",
+        "sourceLine": 315,
+        "sourceSymbol": "HasStreamEventsBeforeAsync",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
         "sourceFile": "src/Whizbang.Core/Messaging/IEventStore.cs",
         "sourceLine": 110,
+        "sourceSymbol": "HasStreamEventsBeforeAsync",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/IEventStore.cs",
+        "sourceLine": 126,
         "sourceSymbol": "HasStreamEventsBeforeAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -155548,8 +155951,22 @@
         "linkSource": "XmlTag"
       },
       {
+        "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreEventStore.cs",
+        "sourceLine": 315,
+        "sourceSymbol": "HasStreamEventsBeforeAsync",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
         "sourceFile": "src/Whizbang.Core/Messaging/IEventStore.cs",
         "sourceLine": 110,
+        "sourceSymbol": "HasStreamEventsBeforeAsync",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/IEventStore.cs",
+        "sourceLine": 126,
         "sourceSymbol": "HasStreamEventsBeforeAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -155564,8 +155981,22 @@
         "linkSource": "XmlTag"
       },
       {
+        "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreEventStore.cs",
+        "sourceLine": 315,
+        "sourceSymbol": "HasStreamEventsBeforeAsync",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
         "sourceFile": "src/Whizbang.Core/Messaging/IEventStore.cs",
         "sourceLine": 110,
+        "sourceSymbol": "HasStreamEventsBeforeAsync",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/IEventStore.cs",
+        "sourceLine": 126,
         "sourceSymbol": "HasStreamEventsBeforeAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -155574,7 +156005,7 @@
     "DeserializeStreamEventsTests.DeserializeStreamEvents_WhenEventDataIsCorrupt_LogsWarningAndKeepsGoodEventsAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreEventStore.cs",
-        "sourceLine": 596,
+        "sourceLine": 630,
         "sourceSymbol": "List",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -158016,7 +158447,7 @@
     "InboxGracefulReleaseSqlTests.ReleaseUnprocessed_RefundsTheClaimAttemptAndClearsTheLeaseAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 2258,
+        "sourceLine": 2279,
         "sourceSymbol": "ReleaseUnprocessedInboxAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -158032,7 +158463,7 @@
     "InboxGracefulReleaseSqlTests.ConsumerVanishesWithoutReleasing_StillPaysTheAttemptAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 2258,
+        "sourceLine": 2279,
         "sourceSymbol": "ReleaseUnprocessedInboxAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -158048,7 +158479,7 @@
     "InboxGracefulReleaseSqlTests.RepeatedOverClaim_DoesNotAccumulateAttemptsOnUntouchedRowsAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 2258,
+        "sourceLine": 2279,
         "sourceSymbol": "ReleaseUnprocessedInboxAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -158064,7 +158495,7 @@
     "InboxGracefulReleaseSqlTests.ReleaseUnprocessed_NeverDrivesAttemptsNegativeAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 2258,
+        "sourceLine": 2279,
         "sourceSymbol": "ReleaseUnprocessedInboxAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -158080,7 +158511,7 @@
     "InboxGracefulReleaseSqlTests.ReleaseUnprocessed_DoesNotTouchAnotherInstancesClaimAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 2258,
+        "sourceLine": 2279,
         "sourceSymbol": "ReleaseUnprocessedInboxAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -158096,7 +158527,7 @@
     "InboxGracefulReleaseSqlTests.Coordinator_ReleaseUnprocessedInbox_RefundsThroughTheRealCallPathAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 2258,
+        "sourceLine": 2279,
         "sourceSymbol": "ReleaseUnprocessedInboxAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -158112,7 +158543,7 @@
     "InboxGracefulReleaseSqlTests.Coordinator_ReleaseUnprocessedInbox_EmptyList_IsANoOpAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 2258,
+        "sourceLine": 2279,
         "sourceSymbol": "ReleaseUnprocessedInboxAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -158128,7 +158559,7 @@
     "SelectRedeliveryEventsTests.Select_OrdersFiltersAndExcludes_ByContractAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 2295,
+        "sourceLine": 2316,
         "sourceSymbol": "SelectRedeliveryEventsAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -158144,7 +158575,7 @@
     "SelectRedeliveryEventsTests.Select_HonorsStreamTypeSequenceFiltersAndCapAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 2295,
+        "sourceLine": 2316,
         "sourceSymbol": "SelectRedeliveryEventsAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -158160,7 +158591,7 @@
     "SelectRedeliveryEventsTests.Select_KeysetContinuation_PagesWithoutOverlapOrLossAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 2295,
+        "sourceLine": 2316,
         "sourceSymbol": "SelectRedeliveryEventsAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -158176,7 +158607,7 @@
     "IntegrityAuditClaimTests.FirstClaimWins_SiblingWithinWindowLosesAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 2379,
+        "sourceLine": 2400,
         "sourceSymbol": "Task",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -158185,7 +158616,7 @@
     "IntegrityAuditClaimTests.AgedClaim_ReopensAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 2379,
+        "sourceLine": 2400,
         "sourceSymbol": "Task",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -158194,7 +158625,7 @@
     "IntegrityAuditClaimTests.ConcurrentClaims_ExactlyOneWinsAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 2379,
+        "sourceLine": 2400,
         "sourceSymbol": "Task",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -158203,7 +158634,7 @@
     "EFCoreWorkCoordinatorServiceIdTests.GetLocalServiceIdAsync_SchemaScopedDbContext_ReadsTheIdFromTheModelSchemaAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 4627,
+        "sourceLine": 4660,
         "sourceSymbol": "GetLocalServiceIdAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -158212,7 +158643,7 @@
     "EFCoreWorkCoordinatorServiceIdTests.GetLocalServiceIdAsync_PublicSchema_StillReadsTheSeededRowAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs",
-        "sourceLine": 4627,
+        "sourceLine": 4660,
         "sourceSymbol": "GetLocalServiceIdAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -164294,7 +164725,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IEventStore.cs",
-        "sourceLine": 153,
+        "sourceLine": 170,
         "sourceSymbol": "ReadAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -164387,7 +164818,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IEventStore.cs",
-        "sourceLine": 154,
+        "sourceLine": 171,
         "sourceSymbol": "ReadAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -164473,7 +164904,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IEventStore.cs",
-        "sourceLine": 155,
+        "sourceLine": 172,
         "sourceSymbol": "ReadAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -164531,7 +164962,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Data.Dapper.Custom/DapperEventStoreBase.cs",
-        "sourceLine": 202,
+        "sourceLine": 218,
         "sourceSymbol": "GetLastSequenceAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -164545,7 +164976,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IEventStore.cs",
-        "sourceLine": 242,
+        "sourceLine": 259,
         "sourceSymbol": "GetLastSequenceAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -164582,7 +165013,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Data.Dapper.Custom/DapperEventStoreBase.cs",
-        "sourceLine": 203,
+        "sourceLine": 219,
         "sourceSymbol": "GetLastSequenceAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -164596,7 +165027,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IEventStore.cs",
-        "sourceLine": 243,
+        "sourceLine": 260,
         "sourceSymbol": "GetLastSequenceAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -166927,6 +167358,121 @@
         "sourceFile": "src/Whizbang.Data.Dapper.Postgres/DapperPostgresEventStore.cs",
         "sourceLine": 167,
         "sourceSymbol": "IsUniqueConstraintViolation",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "DapperEventStoreHistoryProbeTests.Probe_StreamWithOlderEvents_ReturnsTrueAsync": [
+      {
+        "sourceFile": "src/Whizbang.Data.Dapper.Postgres/DapperPostgresEventStore.cs",
+        "sourceLine": 234,
+        "sourceSymbol": "HasStreamEventsBeforeAsync",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Data.Dapper.Postgres/DapperPostgresEventStore.cs",
+        "sourceLine": 254,
+        "sourceSymbol": "HasStreamEventsBeforeAsync",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/IEventStore.cs",
+        "sourceLine": 127,
+        "sourceSymbol": "HasStreamEventsBeforeAsync",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "DapperEventStoreHistoryProbeTests.Probe_NewStream_ReturnsFalseAsync": [
+      {
+        "sourceFile": "src/Whizbang.Data.Dapper.Postgres/DapperPostgresEventStore.cs",
+        "sourceLine": 234,
+        "sourceSymbol": "HasStreamEventsBeforeAsync",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Data.Dapper.Postgres/DapperPostgresEventStore.cs",
+        "sourceLine": 254,
+        "sourceSymbol": "HasStreamEventsBeforeAsync",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/IEventStore.cs",
+        "sourceLine": 127,
+        "sourceSymbol": "HasStreamEventsBeforeAsync",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "DapperEventStoreHistoryProbeTests.TypedProbe_OlderEventsOfOtherTypesOnly_ReturnsFalseAsync": [
+      {
+        "sourceFile": "src/Whizbang.Data.Dapper.Postgres/DapperPostgresEventStore.cs",
+        "sourceLine": 234,
+        "sourceSymbol": "HasStreamEventsBeforeAsync",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Data.Dapper.Postgres/DapperPostgresEventStore.cs",
+        "sourceLine": 254,
+        "sourceSymbol": "HasStreamEventsBeforeAsync",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/IEventStore.cs",
+        "sourceLine": 127,
+        "sourceSymbol": "HasStreamEventsBeforeAsync",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "DapperEventStoreHistoryProbeTests.TypedProbe_OlderEventOfHandledType_ReturnsTrueAsync": [
+      {
+        "sourceFile": "src/Whizbang.Data.Dapper.Postgres/DapperPostgresEventStore.cs",
+        "sourceLine": 234,
+        "sourceSymbol": "HasStreamEventsBeforeAsync",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Data.Dapper.Postgres/DapperPostgresEventStore.cs",
+        "sourceLine": 254,
+        "sourceSymbol": "HasStreamEventsBeforeAsync",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/IEventStore.cs",
+        "sourceLine": 127,
+        "sourceSymbol": "HasStreamEventsBeforeAsync",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "DapperEventStoreHistoryProbeTests.TypedProbe_MatchesStoredEventTypeFormat_NestedAndAssemblyQualifiedAsync": [
+      {
+        "sourceFile": "src/Whizbang.Data.Dapper.Postgres/DapperPostgresEventStore.cs",
+        "sourceLine": 234,
+        "sourceSymbol": "HasStreamEventsBeforeAsync",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Data.Dapper.Postgres/DapperPostgresEventStore.cs",
+        "sourceLine": 254,
+        "sourceSymbol": "HasStreamEventsBeforeAsync",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/IEventStore.cs",
+        "sourceLine": 127,
+        "sourceSymbol": "HasStreamEventsBeforeAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       }
@@ -179262,6 +179808,29 @@
         "linkSource": "XmlTag"
       }
     ],
+    "MaintenanceWorkerIntegritySweepTests.ReportOnly_CountsTheDiscardsOnTheMetric_PerTableAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
+        "sourceLine": 20,
+        "sourceSymbol": "MaintenanceWorker",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
+        "sourceLine": 2130,
+        "sourceSymbol": "DiscardPendingInboxMessagesAsync",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
+        "sourceLine": 2149,
+        "sourceSymbol": "DiscardPendingOutboxMessagesAsync",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      }
+    ],
     "MaintenanceWorkerStuckRowSentinelTests.MaintenanceTick_SentinelDisabled_DoesNotInvokeSentinelMethodsAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
@@ -179644,14 +180213,14 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-        "sourceLine": 1364,
+        "sourceLine": 1397,
         "sourceSymbol": "IReadOnlyList",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-        "sourceLine": 1388,
+        "sourceLine": 1408,
         "sourceSymbol": "ReportLongAffinityHolds",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -179667,14 +180236,14 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-        "sourceLine": 1364,
+        "sourceLine": 1397,
         "sourceSymbol": "IReadOnlyList",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-        "sourceLine": 1388,
+        "sourceLine": 1408,
         "sourceSymbol": "ReportLongAffinityHolds",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -179690,14 +180259,60 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-        "sourceLine": 1364,
+        "sourceLine": 1397,
         "sourceSymbol": "IReadOnlyList",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-        "sourceLine": 1388,
+        "sourceLine": 1408,
+        "sourceSymbol": "ReportLongAffinityHolds",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "PerspectiveWorkerAffinityHoldWatchdogTests.DrainWidth_IsClampedToHalfTheGate_AndLoggedOnceAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Workers/PerspectiveStreamAffinityOptions.cs",
+        "sourceLine": 28,
+        "sourceSymbol": "PerspectiveStreamAffinityOptions",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
+        "sourceLine": 1397,
+        "sourceSymbol": "IReadOnlyList",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
+        "sourceLine": 1408,
+        "sourceSymbol": "ReportLongAffinityHolds",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "PerspectiveWorkerAffinityHoldWatchdogTests.Watchdog_TicksOnTheWorkerClock_AndNamesAHoldPastTheThresholdAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Workers/PerspectiveStreamAffinityOptions.cs",
+        "sourceLine": 28,
+        "sourceSymbol": "PerspectiveStreamAffinityOptions",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
+        "sourceLine": 1397,
+        "sourceSymbol": "IReadOnlyList",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
+        "sourceLine": 1408,
         "sourceSymbol": "ReportLongAffinityHolds",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -179774,7 +180389,7 @@
     "PerspectiveWorkerDeepPathChannelTests.RequestImmediatePoll_CalledRepeatedly_CoalescesWithoutThrowingAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-        "sourceLine": 392,
+        "sourceLine": 393,
         "sourceSymbol": "RequestImmediatePoll",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -179783,7 +180398,7 @@
     "PerspectiveWorkerDeepPathChannelTests.Worker_WithNotificationListener_SubscribesCoalescesAndUnsubscribesAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-        "sourceLine": 393,
+        "sourceLine": 394,
         "sourceSymbol": "RequestImmediatePoll",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -179792,14 +180407,14 @@
     "PerspectiveWorkerStartupAndMaintenanceTests.Startup_RewindScanClean_QueriesExactlyOnceAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-        "sourceLine": 879,
+        "sourceLine": 884,
         "sourceSymbol": "_scanAndRepairRewindsOnStartupAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-        "sourceLine": 4624,
+        "sourceLine": 4658,
         "sourceSymbol": "PerspectiveStartupScanLog",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -179808,14 +180423,14 @@
     "PerspectiveWorkerStartupAndMaintenanceTests.Startup_RewindScanBlockingMode_RepollsUntilNoRewindCursorsRemainAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-        "sourceLine": 880,
+        "sourceLine": 885,
         "sourceSymbol": "_scanAndRepairRewindsOnStartupAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-        "sourceLine": 4626,
+        "sourceLine": 4660,
         "sourceSymbol": "PerspectiveStartupScanLog",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -179838,7 +180453,7 @@
     "PerspectiveWorkerStartupAndMaintenanceTests.Startup_RewindScanDisabled_NeverQueriesAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-        "sourceLine": 881,
+        "sourceLine": 886,
         "sourceSymbol": "_scanAndRepairRewindsOnStartupAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -179847,7 +180462,7 @@
     "PerspectiveWorkerDrainModeLifecycleTests.DrainMode_FiltersEventsPerPerspective_OnlyMatchingEventsPassedAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-        "sourceLine": 1521,
+        "sourceLine": 1537,
         "sourceSymbol": "_processDrainModeStreamsAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -179856,7 +180471,7 @@
     "PerspectiveWorkerDrainModeLifecycleTests.DrainMode_PerspectiveWithNoMatchingEvents_SkippedAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-        "sourceLine": 1521,
+        "sourceLine": 1537,
         "sourceSymbol": "_processDrainModeStreamsAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -179865,7 +180480,7 @@
     "PerspectiveWorkerDrainModeLifecycleTests.DrainMode_MultipleEventTypes_SharedPerspectiveGetsAllMatchingAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-        "sourceLine": 1521,
+        "sourceLine": 1537,
         "sourceSymbol": "_processDrainModeStreamsAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -179874,7 +180489,7 @@
     "PerspectiveWorkerDrainModeLifecycleTests.DrainMode_PostPerspectiveInline_FiresPerPerspectivePerEventAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-        "sourceLine": 1521,
+        "sourceLine": 1537,
         "sourceSymbol": "_processDrainModeStreamsAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -179883,7 +180498,7 @@
     "PerspectiveWorkerDrainModeLifecycleTests.DrainMode_PostAllPerspectives_FiresAfterAllPerspectivesCompleteAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-        "sourceLine": 1521,
+        "sourceLine": 1537,
         "sourceSymbol": "_processDrainModeStreamsAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -179892,7 +180507,7 @@
     "PerspectiveWorkerDrainModeLifecycleTests.DrainMode_PostLifecycle_FiresAfterPostAllPerspectivesAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-        "sourceLine": 1521,
+        "sourceLine": 1537,
         "sourceSymbol": "_processDrainModeStreamsAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -179901,7 +180516,7 @@
     "PerspectiveWorkerDrainModeLifecycleTests.DrainMode_FullLifecycleChain_AllStagesFireInOrderAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-        "sourceLine": 1521,
+        "sourceLine": 1537,
         "sourceSymbol": "_processDrainModeStreamsAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -179910,7 +180525,7 @@
     "PerspectiveWorkerDrainModeLifecycleTests.DrainMode_TwoEvents_BothGetFullLifecycleAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-        "sourceLine": 1521,
+        "sourceLine": 1537,
         "sourceSymbol": "_processDrainModeStreamsAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -179919,7 +180534,7 @@
     "PerspectiveWorkerDrainModeLifecycleTests.DrainMode_ExpectationsRegisteredBeforeSignals_WhenAllResolvesAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-        "sourceLine": 1521,
+        "sourceLine": 1537,
         "sourceSymbol": "_processDrainModeStreamsAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -179928,7 +180543,7 @@
     "PerspectiveWorkerDrainModeLifecycleTests.DrainMode_DuplicateRawEventIds_HandledGracefullyAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-        "sourceLine": 1521,
+        "sourceLine": 1537,
         "sourceSymbol": "_processDrainModeStreamsAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -179937,7 +180552,7 @@
     "PerspectiveWorkerDrainModeLifecycleTests.DrainMode_PostLifecycle_IsFireAndForgetAfterBatchCompletesAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-        "sourceLine": 1521,
+        "sourceLine": 1537,
         "sourceSymbol": "_processDrainModeStreamsAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -179946,7 +180561,7 @@
     "PerspectiveWorkerDrainModeLifecycleTests.GracefulShutdown_AwaitsPendingPostLifecycleAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-        "sourceLine": 1521,
+        "sourceLine": 1537,
         "sourceSymbol": "_processDrainModeStreamsAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -179955,7 +180570,7 @@
     "PerspectiveWorkerDrainModeLifecycleTests.DrainMode_TwoPerspectivesForSameEvent_BothCalledExactlyOnceAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-        "sourceLine": 1521,
+        "sourceLine": 1537,
         "sourceSymbol": "_processDrainModeStreamsAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -179964,7 +180579,7 @@
     "PerspectiveWorkerDrainModeLifecycleTests.DrainMode_TwoPerspectivesForSameEvent_BothSignalCompletionToCoordinatorAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-        "sourceLine": 1521,
+        "sourceLine": 1537,
         "sourceSymbol": "_processDrainModeStreamsAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -179973,7 +180588,7 @@
     "PerspectiveWorkerDrainModeLifecycleTests.DrainMode_TwoPerspectivesForSameEvent_PostAllPerspectivesFiresExactlyOnceAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-        "sourceLine": 1521,
+        "sourceLine": 1537,
         "sourceSymbol": "_processDrainModeStreamsAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -179982,7 +180597,7 @@
     "PerspectiveWorkerDrainModeLifecycleTests.DrainMode_TwoStreamsTwoPerspectivesEach_EachStreamFiresPostAllPerspectivesOnceAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-        "sourceLine": 1521,
+        "sourceLine": 1537,
         "sourceSymbol": "_processDrainModeStreamsAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -179991,7 +180606,7 @@
     "PerspectiveWorkerDrainModeLifecycleTests.Coordinator_AfterAllPerspectivesSignaled_AdvanceToPostAllPerspectivesFires_Async": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-        "sourceLine": 1521,
+        "sourceLine": 1537,
         "sourceSymbol": "_processDrainModeStreamsAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -180000,14 +180615,14 @@
     "PerspectiveWorkerSecurityContextTests.PrePerspectiveDetached_WithSecurityProvider_EstablishesSecurityContextAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-        "sourceLine": 4060,
+        "sourceLine": 4094,
         "sourceSymbol": "_establishSecurityContextAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-        "sourceLine": 4061,
+        "sourceLine": 4095,
         "sourceSymbol": "_establishSecurityContextAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -180016,7 +180631,7 @@
     "PerspectiveWorkerSecurityContextTests.PrePerspectiveDetached_WithoutSecurityProvider_StillInvokesLifecycleReceptorsAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-        "sourceLine": 4060,
+        "sourceLine": 4094,
         "sourceSymbol": "_establishSecurityContextAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -180025,7 +180640,7 @@
     "PerspectiveWorkerSecurityContextTests.PrePerspectiveDetached_SecurityProviderReturnsNull_DoesNotSetAccessorAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-        "sourceLine": 4060,
+        "sourceLine": 4094,
         "sourceSymbol": "_establishSecurityContextAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -180034,7 +180649,7 @@
     "PerspectiveWorkerSecurityContextTests.PostPerspectiveInline_WithSecurityProvider_EstablishesSecurityContextAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-        "sourceLine": 4060,
+        "sourceLine": 4094,
         "sourceSymbol": "_establishSecurityContextAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -180043,7 +180658,7 @@
     "PerspectiveWorkerSecurityContextTests.MultipleEnvelopes_EstablishesContextForEachEnvelopeAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-        "sourceLine": 4060,
+        "sourceLine": 4094,
         "sourceSymbol": "_establishSecurityContextAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -180052,7 +180667,7 @@
     "PerspectiveWorkerSecurityContextTests.PrePerspectiveDetached_WithoutMessageContextAccessor_StillInvokesLifecycleReceptorsAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-        "sourceLine": 4060,
+        "sourceLine": 4094,
         "sourceSymbol": "_establishSecurityContextAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -180061,14 +180676,14 @@
     "PerspectiveWorkerSecurityContextTests.EstablishSecurityContext_WhenExtractorSucceeds_ButEnvelopeHasNoScope_UsesExtractorResultForMessageContextAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-        "sourceLine": 4060,
+        "sourceLine": 4094,
         "sourceSymbol": "_establishSecurityContextAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-        "sourceLine": 4062,
+        "sourceLine": 4096,
         "sourceSymbol": "_establishSecurityContextAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -180077,14 +180692,14 @@
     "PerspectiveWorkerSecurityContextTests.EstablishSecurityContext_WhenExtractorFails_FallsBackToEnvelopeGetCurrentScopeAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-        "sourceLine": 4060,
+        "sourceLine": 4094,
         "sourceSymbol": "_establishSecurityContextAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-        "sourceLine": 4063,
+        "sourceLine": 4097,
         "sourceSymbol": "_establishSecurityContextAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -180093,7 +180708,7 @@
     "PerspectiveWorkerSecurityContextTests.EstablishSecurityContext_SetsInitiatingContextOnScopeContextAccessorAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-        "sourceLine": 4060,
+        "sourceLine": 4094,
         "sourceSymbol": "_establishSecurityContextAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -180102,7 +180717,7 @@
     "PerspectiveWorkerSecurityContextTests.EstablishSecurityContext_WhenExtractorFailsButEnvelopeHasScope_InvokesCallbacksWithEnvelopeScopeAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-        "sourceLine": 4060,
+        "sourceLine": 4094,
         "sourceSymbol": "_establishSecurityContextAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -180111,7 +180726,7 @@
     "PerspectiveWorkerSecurityContextTests.ImmutableScopeContext_FromScopeContext_HasPropagationEnabledAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-        "sourceLine": 4060,
+        "sourceLine": 4094,
         "sourceSymbol": "_establishSecurityContextAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -180120,7 +180735,7 @@
     "PerspectiveWorkerSecurityContextTests.FakeEventStore_GetEventsBetweenPolymorphic_ReturnsEnvelopesWithScopeInHopsAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-        "sourceLine": 4060,
+        "sourceLine": 4094,
         "sourceSymbol": "_establishSecurityContextAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -180129,7 +180744,7 @@
     "PerspectiveWorkerSecurityContextTests.EstablishSecurityContext_WhenEnvelopeHasScope_WrapsInImmutableScopeContextWithPropagationAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-        "sourceLine": 4060,
+        "sourceLine": 4094,
         "sourceSymbol": "_establishSecurityContextAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -180138,7 +180753,7 @@
     "PerspectiveWorkerSecurityContextTests.EstablishSecurityContext_WhenExtractorSucceeds_DoesNotInvokeCallbacksTwiceAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-        "sourceLine": 4060,
+        "sourceLine": 4094,
         "sourceSymbol": "_establishSecurityContextAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -180147,7 +180762,7 @@
     "PerspectiveWorkerStartupAndMaintenanceTests.Startup_RewindScanBackgroundMode_DoesNotRepollAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-        "sourceLine": 4625,
+        "sourceLine": 4659,
         "sourceSymbol": "PerspectiveStartupScanLog",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -233760,7 +234375,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IEventStore.cs",
-        "sourceLine": 264,
+        "sourceLine": 281,
         "sourceSymbol": "AppendAndWaitAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -233776,7 +234391,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IEventStore.cs",
-        "sourceLine": 264,
+        "sourceLine": 281,
         "sourceSymbol": "AppendAndWaitAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -233792,7 +234407,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IEventStore.cs",
-        "sourceLine": 264,
+        "sourceLine": 281,
         "sourceSymbol": "AppendAndWaitAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -233808,7 +234423,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IEventStore.cs",
-        "sourceLine": 264,
+        "sourceLine": 281,
         "sourceSymbol": "AppendAndWaitAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -233824,7 +234439,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IEventStore.cs",
-        "sourceLine": 264,
+        "sourceLine": 281,
         "sourceSymbol": "AppendAndWaitAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -233840,7 +234455,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IEventStore.cs",
-        "sourceLine": 264,
+        "sourceLine": 281,
         "sourceSymbol": "AppendAndWaitAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -233856,7 +234471,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IEventStore.cs",
-        "sourceLine": 264,
+        "sourceLine": 281,
         "sourceSymbol": "AppendAndWaitAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -233872,7 +234487,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IEventStore.cs",
-        "sourceLine": 264,
+        "sourceLine": 281,
         "sourceSymbol": "AppendAndWaitAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -233888,7 +234503,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IEventStore.cs",
-        "sourceLine": 264,
+        "sourceLine": 281,
         "sourceSymbol": "AppendAndWaitAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -233904,7 +234519,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IEventStore.cs",
-        "sourceLine": 264,
+        "sourceLine": 281,
         "sourceSymbol": "AppendAndWaitAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -233920,7 +234535,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IEventStore.cs",
-        "sourceLine": 264,
+        "sourceLine": 281,
         "sourceSymbol": "AppendAndWaitAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -233936,7 +234551,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IEventStore.cs",
-        "sourceLine": 264,
+        "sourceLine": 281,
         "sourceSymbol": "AppendAndWaitAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -233952,7 +234567,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IEventStore.cs",
-        "sourceLine": 264,
+        "sourceLine": 281,
         "sourceSymbol": "AppendAndWaitAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -238075,6 +238690,15 @@
         "linkSource": "XmlTag"
       }
     ],
+    "EventStoreDecoratorForwardingTests.Decorator_ForwardsTypedHasStreamEventsBefore_ToInnerStoreAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/ForwardingEventStoreDecorator.cs",
+        "sourceLine": 30,
+        "sourceSymbol": "ForwardingEventStoreDecorator",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
     "ReceptorRegistryQueryGeneratorTests.Generator_WithCommandReceptor_EmitsHandledMessageWithCommandKindAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/HandledMessageInfo.cs",
@@ -240138,7 +240762,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IEventStore.cs",
-        "sourceLine": 137,
+        "sourceLine": 154,
         "sourceSymbol": "AppendAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -240161,7 +240785,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IEventStore.cs",
-        "sourceLine": 139,
+        "sourceLine": 156,
         "sourceSymbol": "AppendAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -240184,7 +240808,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IEventStore.cs",
-        "sourceLine": 138,
+        "sourceLine": 155,
         "sourceSymbol": "AppendAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -268906,6 +269530,14 @@
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres.Generators/EFCorePerspectiveAssociationGenerator.cs",
         "sourceSymbol": "EFCorePerspectiveAssociationGenerator",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "EFCoreServiceRegistrationGeneratorTests.Generator_NestedModel_RegistryKeyIsTheClrFormAsync": [
+      {
+        "sourceFile": "src/Whizbang.Data.EFCore.Postgres.Generators/EFCoreServiceRegistrationGenerator.cs",
+        "sourceSymbol": "EFCoreServiceRegistrationGenerator",
         "sourceType": "Class",
         "linkSource": "Convention"
       }
@@ -298920,11 +299552,11 @@
     ]
   },
   "metadata": {
-    "generated": "2026-09-07T08:54:39.667Z",
-    "sourceFiles": 1674,
-    "testFiles": 5067,
-    "totalLinks": 14818,
+    "generated": "2026-09-07T17:59:20.514Z",
+    "sourceFiles": 1588,
+    "testFiles": 4841,
+    "totalLinks": 14833,
     "codeSymbols": 1946,
-    "testMethods": 12872
+    "testMethods": 12887
   }
 }
