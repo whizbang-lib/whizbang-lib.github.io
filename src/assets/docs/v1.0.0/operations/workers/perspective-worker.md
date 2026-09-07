@@ -15,6 +15,7 @@ tags: >-
   deduplication, error-tracking
 codeReferences:
   - src/Whizbang.Core/Workers/PerspectiveWorker.cs
+  - src/Whizbang.Core/Workers/PerspectiveStreamAffinityOptions.cs
   - src/Whizbang.Core/Workers/ClaimWorker.cs
   - src/Whizbang.Core/Workers/ProcessedEventCache.cs
   - src/Whizbang.Core/Workers/IProcessedEventCacheObserver.cs
@@ -33,6 +34,8 @@ testReferences:
   - tests/Whizbang.Core.Tests/Workers/PerspectiveCompletionStrategyTests.cs
   - tests/Whizbang.Core.Tests/Workers/PerspectiveWorkerSecurityContextTests.cs
   - tests/Whizbang.Core.Tests/Workers/PerspectiveWorkerDrainModeTests.cs
+  - tests/Whizbang.Core.Tests/Workers/PerspectiveWorkerParallelismTests.cs
+  - tests/Whizbang.Core.Tests/Workers/PerspectiveWorkerAffinityHoldWatchdogTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -273,6 +276,18 @@ Work distribution across instances is lease-based, but leases live on the **ephe
 - ✅ **No conflicts**: `SKIP LOCKED` claiming + single-owner streams + intra-pod gates make double-apply structurally impossible
 - ✅ **Observability**: `instance_id` on leased rows shows which worker holds what
 
+### Affinity-Hold Watchdog {#affinity-hold-watchdog}
+
+{verified: PerspectiveWorkerAffinityHoldWatchdogTests.HeldGate_IsListedWithItsPhase_AndAgesAgainstTheGivenClockAsync, PerspectiveWorkerAffinityHoldWatchdogTests.LongHold_IsNamedAtWarning_OncePerThresholdAsync, PerspectiveWorkerAffinityHoldWatchdogTests.WatchdogOff_ReportsNothingAsync}
+
+A drain consumer stuck inside an apply used to be invisible: the process looked idle while the rows it had leased kept lapsing and being re-offered. Every held intra-pod affinity gate now records which processing path holds it (`standard` or `drain`), the step it is in (`resolve`, `pre-lifecycle`, `apply`, `load-processed`, `completion`, `report`, `post-lifecycle`, `collective`), and when it was taken. A periodic watchdog (interval `max(5 s, threshold / 2)`) names every hold older than `PerspectiveStreamAffinityOptions.LongHoldWarning` (default 60 seconds) at Warning, EventId 64:
+
+```
+Perspective {PerspectiveName} on stream {StreamId} has held its affinity gate for {HeldSeconds} s in phase {Phase} ({Path} path)
+```
+
+Each hold is reported once when it crosses the threshold and once per further threshold while it persists, so a hung apply produces a steady, attributable signal rather than a flood or silence. Set `LongHoldWarning` to `TimeSpan.Zero` to turn the watchdog off.
+
 ---
 
 ## Configuration {#configuration}
@@ -290,8 +305,10 @@ public class PerspectiveWorkerOptions {
   /// this (30000+) to reduce poll volume.
   public int NotifyHealthyPollingIntervalMilliseconds { get; set; } = 1_000;
 
-  /// Dead-letter threshold for wh_perspective_events rows: total apply attempts
-  /// permitted before the row moves to wh_dead_letters. Default: 10. Null = no limit.
+  /// Dead-letter threshold for wh_perspective_events rows: apply FAILURES (the
+  /// failures column, moved only by process_perspective_event_failures) permitted
+  /// before the row moves to wh_dead_letters. attempts counts leases, which lapse
+  /// without an apply under a backlog; it is diagnostic only. Default: 10. Null = no limit.
   public int? MaxPerspectiveEventAttempts { get; set; } = 10;
 
   /// Lease duration in seconds. Also drives the dedup cache retention period.
@@ -355,10 +372,16 @@ builder.Services.Configure<PerspectiveWorkerOptions>(options => {
 ```
 
 **Tuning Guidelines**:
-- **High throughput**: raise `PerspectiveBatchSize` and `MaxConcurrentPerspectives`
+- **High throughput**: raise `PerspectiveBatchSize` and `MaxConcurrentPerspectives`, together with the coordinator gate cap (see [Drain Width and the Coordinator Gate](#drain-width-and-the-coordinator-gate))
 - **Fault tolerance**: lower `LeaseSeconds` (faster reclaim after crashes — but also shorter dedup retention)
 - **Long processing**: raise `LeaseSeconds` (e.g. 1800 for slow perspectives)
 - **Steady-state DB load**: raise `NotifyHealthyPollingIntervalMilliseconds` when LISTEN/NOTIFY is reliable
+
+### Drain Width and the Coordinator Gate {#drain-width-and-the-coordinator-gate}
+
+{verified: PerspectiveWorkerParallelismTests.ClampWidthToGate_LeavesHalfTheGateForEverythingElseAsync, PerspectiveWorkerParallelismTests.ClampWidthToGate_NeverBelowOne_AndIgnoresADisabledGateAsync}
+
+Every apply goes through the process-wide `WorkCoordinatorGate` (`WorkCoordinatorGateOptions.MaxConcurrent`, default 50), and so do the completion flusher and lease renewal. The drain may use at most half of that gate, split across its consumer loops: the per-consumer width is `max(1, min(requested, MaxConcurrent / 2 / MaxConcurrentDrainConsumers))`, where `requested` is the adaptive width whose ceiling is `MaxConcurrentPerspectives`. With the defaults (4 consumers, a 50-slot gate) each consumer runs at most 6 (stream, perspective) groups at a time. Before the clamp the default 4 × 30 could hold every slot: nothing completed, leases lapsed, and the claim loop re-offered the same rows. When the clamp engages it is logged once at Warning (EventId 61). A disabled gate (`MaxConcurrent` of 0 or less) leaves the width as requested. To raise drain parallelism, raise the gate cap (`PostgresOptions.MaxInFlightCommands` with a Postgres driver, otherwise `Whizbang:WorkCoordinatorGate:MaxConcurrent`) together with `MaxConcurrentPerspectives`.
 
 ---
 
@@ -573,6 +596,8 @@ Completions and failures leave the worker through bounded channels drained by de
 
 **Atomicity**: each flush batch persists in a single database call; unacknowledged items are retried with exponential backoff (`ResetStale`), so a crash mid-flush loses nothing — SQL re-delivers, and the dedup cache prevents double-apply.
 
+**Flush failures**: a flush call that throws is retried in place by the `BatchFlusher` with the same batch, backing off from `FlushRetryBackoffMs` (default 250 ms) and doubling up to `FlushRetryMaxBackoffMs` (default 5000 ms). Only after `MaxFlushAttempts` consecutive failures (default 5) is the batch dropped, at Error, naming the consequence: the rows behind those items stay leased until their lease expires and are then re-claimed and redone. Dropped items count on the flusher's `ItemsDropped` beside `ItemsFlushed`. Earlier releases discarded the batch on the first failure, which left rows leased until expiry after a single transient timeout. {verified: BatchFlusherRetryTests.FlushFailsOnce_RetriesTheSameBatchAndDeliversItAsync, BatchFlusherRetryTests.FlushAlwaysFails_DropsAfterMaxAttemptsAndNamesTheConsequenceAsync}
+
 ---
 
 ## Error Tracking & Retry
@@ -583,9 +608,9 @@ Completions and failures leave the worker through bounded channels drained by de
 2. A `PerspectiveCursorFailure` is created — `StreamId`, `PerspectiveName`, `LastEventId`, `Status = Failed`, `Error = ex.Message`, plus `ProcessedEventIds` for the events that *did* apply before the failure
 3. The failure flows through the completion strategy / failure channel to SQL
 4. `complete_perspective_cursor_work` persists the error to `wh_perspective_cursors.error`, marks only the actually-processed event ids, and sets the failed status
-5. Un-processed `wh_perspective_events` rows remain, with `attempts` incremented — they are re-claimed and retried on later cycles
+5. Un-processed `wh_perspective_events` rows remain, with `failures` incremented by `process_perspective_event_failures` and the retry backoff escalating on that count — they are re-claimed and retried on later cycles (each claim bumps `attempts`, the lease count)
 
-**Dead-lettering**: when a `wh_perspective_events` row's attempts exceed `MaxPerspectiveEventAttempts` (default **10**), the worker moves it into `wh_dead_letters` via `IDeadLetterStore` **before** deserialization + apply. Set the option to `null` to restore the legacy accumulate-forever behavior.
+**Dead-lettering**: when a `wh_perspective_events` row's `failures` exceed `MaxPerspectiveEventAttempts` (default **10**), the worker moves it into `wh_dead_letters` via `IDeadLetterStore` **before** deserialization + apply. The decision reads `failures`, never `attempts`: `attempts` counts leases (dispatch starts), and a lease can lapse without an apply (the worker skipped the row, died mid-batch, or classified it as recently processed), so under a sustained backlog a perfectly good event would otherwise cross the threshold without one apply ever failing and be dead-lettered as a thrash casualty. Set the option to `null` to restore the legacy accumulate-forever behavior. {verified: PerspectiveWorkerDeadLetterFilterTests.LeaseCountAboveMax_WithNoFailures_SurvivesAsync, PerspectiveWorkerDeadLetterFilterTests.FailuresExceedMax_WithFewLeases_MovesToDeadLetterAsync, PerspectiveFailureCounterSqlTests.RecordedFailure_BumpsFailures_AndLeavesAttemptsAloneAsync}
 
 **Orphaned events**: a `wh_perspective_events` row whose source event is **absent** from
 `wh_event_store` (the event was reaped or purged after the perspective work was created)
