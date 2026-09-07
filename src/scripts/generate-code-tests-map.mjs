@@ -82,11 +82,17 @@ function scanSourceFileForTestTags(filePath) {
       continue;
     }
 
-    // Find the symbol name on the next line(s)
+    // Find the symbol name on the first code line after the tag. The rest of the doc comment (a
+    // member may carry many tags) and any attributes between the tag and the declaration are skipped;
+    // a five-line window used to miss members with more than a handful of tags.
     let sourceSymbol = null;
     let sourceType = null;
-    for (let j = i + 1; j < Math.min(i + 5, lines.length); j++) {
+    for (let j = i + 1; j < Math.min(i + 60, lines.length); j++) {
       const nextLine = lines[j];
+      const trimmed = nextLine.trim();
+      if (trimmed.length === 0 || trimmed.startsWith('///') || trimmed.startsWith('[') || trimmed.startsWith('#pragma')) {
+        continue;
+      }
 
       // Match interface/class/struct/record/enum declarations
       const typeMatch = nextLine.match(/(?:public|internal|private|protected)?\s*(interface|class|struct|record|enum)\s+(\w+)/);
@@ -111,6 +117,9 @@ function scanSourceFileForTestTags(filePath) {
         sourceSymbol = propertyMatch[2];
         break;
       }
+
+      // The first code line decides; an unrelated later declaration must not be attributed.
+      break;
     }
 
     if (!sourceSymbol) {
