@@ -931,7 +931,7 @@
   },
   "_generateRenameAliasRegistrations": {
     "file": "src/Whizbang.Generators/MessageJsonContextGenerator.cs",
-    "line": 3438,
+    "line": 3432,
     "symbol": "_generateRenameAliasRegistrations",
     "docs": "fundamentals/identity/pinned-type-ledger"
   },
@@ -1393,7 +1393,7 @@
   },
   "PostgresSignalTransport": {
     "file": "src/Whizbang.Data.Postgres/Notifications/PostgresSignalTransport.cs",
-    "line": 29,
+    "line": 31,
     "symbol": "PostgresSignalTransport",
     "docs": "fundamentals/signal-bus/signal-bus"
   },
@@ -1435,7 +1435,7 @@
   },
   "VectorConfigurationRegistry": {
     "file": "src/Whizbang.Data.EFCore.Postgres.Generators/EFCoreServiceRegistrationGenerator.cs",
-    "line": 1558,
+    "line": 1560,
     "symbol": "VectorConfigurationRegistry",
     "docs": "extending/features/vector-search#auto-config"
   },
@@ -1876,6 +1876,12 @@
     "line": 9,
     "symbol": "DapperCollectiveTableRegistry",
     "docs": "fundamentals/messaging/collective-events"
+  },
+  "probe": {
+    "file": "src/Whizbang.Data.Dapper.Custom/DapperEventStoreBase.cs",
+    "line": 133,
+    "symbol": "probe",
+    "docs": "fundamentals/perspectives/row-retention"
   },
   "CompositeMessageTypeCatalog": {
     "file": "src/Whizbang.Core/CompositeMessageTypeCatalog.cs",
@@ -2773,37 +2779,37 @@
   },
   "RequestImmediatePoll": {
     "file": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-    "line": 391,
+    "line": 392,
     "symbol": "RequestImmediatePoll",
     "docs": "operations/workers/perspective-worker#immediate-poll"
   },
   "_scanAndRepairRewindsOnStartupAsync": {
     "file": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-    "line": 878,
+    "line": 883,
     "symbol": "_scanAndRepairRewindsOnStartupAsync",
     "docs": "fundamentals/perspectives/rewind#startup-scan"
   },
   "ProcessChannelBatchAsync": {
     "file": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-    "line": 949,
+    "line": 954,
     "symbol": "ProcessChannelBatchAsync",
     "docs": "fundamentals/work-coordinator/claim-loop"
   },
   "_processDrainModeStreamsAsync": {
     "file": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-    "line": 1520,
+    "line": 1536,
     "symbol": "_processDrainModeStreamsAsync",
     "docs": "fundamentals/perspectives/drain-mode"
   },
   "PerspectiveStartupScanLog": {
     "file": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-    "line": 4623,
+    "line": 4657,
     "symbol": "PerspectiveStartupScanLog",
     "docs": "fundamentals/perspectives/rewind#startup-scan"
   },
   "DrainBatcher": {
     "file": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-    "line": 4831,
+    "line": 4872,
     "symbol": "DrainBatcher",
     "docs": "fundamentals/perspectives/drain-mode#sliding-window"
   },
@@ -6457,7 +6463,7 @@
   },
   "last": {
     "file": "src/Whizbang.Core/Messaging/IEventStore.cs",
-    "line": 232,
+    "line": 249,
     "symbol": "last",
     "docs": "fundamentals/receptors/lifecycle-receptors"
   },
@@ -6929,21 +6935,27 @@
     "symbol": "Attempts",
     "docs": "operations/dead-letter-queue/perspective-events"
   },
+  "Failures": {
+    "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
+    "line": 3300,
+    "symbol": "Failures",
+    "docs": "operations/dead-letter-queue/perspective-events"
+  },
   "PendingPerspectiveEvent": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 3322,
+    "line": 3334,
     "symbol": "PendingPerspectiveEvent",
     "docs": "fundamentals/work-coordinator/per-stream-drain"
   },
   "OutboxBatchRow": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 3329,
+    "line": 3341,
     "symbol": "OutboxBatchRow",
     "docs": "fundamentals/work-coordinator/per-stream-drain"
   },
   "InboxBatchRow": {
     "file": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-    "line": 3398,
+    "line": 3410,
     "symbol": "InboxBatchRow",
     "docs": "fundamentals/work-coordinator/per-stream-drain"
   },

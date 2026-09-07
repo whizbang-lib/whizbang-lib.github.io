@@ -659,7 +659,7 @@ Re-delivery (repair) pump bounds. **Configure:** `services.Configure<RedeliveryP
 |----------|------|---------|---------|
 | `PollingIntervalMilliseconds` | `int` | `1000` | Wake cadence when no NOTIFY signal is in flight and the listener is unavailable |
 | `NotifyHealthyPollingIntervalMilliseconds` | `int` | `1000` | Safety-net cadence when LISTEN/NOTIFY is verified healthy |
-| `MaxPerspectiveEventAttempts` | `int?` | `10` | Apply attempts before moving to `wh_dead_letters` |
+| `MaxPerspectiveEventAttempts` | `int?` | `10` | Apply failures (`failures` column) before moving to `wh_dead_letters`; `attempts` counts leases and is diagnostic only |
 | `LeaseSeconds` | `int` | `300` | Lease duration for claimed perspective cursors |
 | `AbandonStaleInstanceThresholdSeconds` | `int` | `30` | Grace period before a non-heartbeating instance is abandoned |
 | `InstanceMetadata` | `Dictionary<string, JsonElement>?` | `null` | Optional metadata attached to this service instance |
