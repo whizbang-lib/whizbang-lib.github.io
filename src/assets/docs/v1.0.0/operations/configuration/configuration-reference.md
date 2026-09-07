@@ -738,14 +738,14 @@ Self-healing continuity checking; the defaults are the recommended posture. **Co
 
 | Property | Type | Default | Purpose |
 |----------|------|---------|---------|
-| `CheckpointsEnabled` | `bool` | `true` | Publish periodic continuity checkpoints |
+| `CheckpointsEnabled` | `bool` | `true` | Publish periodic continuity checkpoints. Off: unpublished checkpoints are swept from the outbox each maintenance cycle |
 | `CheckpointIntervalSeconds` | `int` | `60` | Checkpoint cadence |
-| `GapDetectionEnabled` | `bool` | `true` | Verify received counts against other origins' checkpoints |
+| `GapDetectionEnabled` | `bool` | `true` | Verify received counts against other origins' checkpoints. Off: received checkpoints are swept from the inbox each maintenance cycle |
 | `RepairMode` | `IntegrityRepairMode` | `ReportOnly` | What to do with a confirmed gap: report and let an operator decide; `AutoRepairCapped` is the opt-in to self-healing with storm caps. Bilateral: a `ReportOnly` service also declines re-delivery requests as an origin, drops re-delivery bundles as a consumer, and sweeps parked repair rows in maintenance, so healing needs the opt-in on both sides |
 | `MaxAutoRepairRequestsPerCheckpoint` | `int` | `10` | Storm cap on auto-repair requests per received checkpoint |
 | `RepairTopic` | `string?` | `null` (first subscribed destination) | Wire topic for repair requests and bundles |
 | `BackfillOnSubscriptionGrowth` | `bool` | `true` | On consumed-type-set growth, request history for new types |
-| `AuditEnabled` | `bool` | `true` | Run the scheduled deep audit |
+| `AuditEnabled` | `bool` | `true` | Run the scheduled deep audit. Off: this service's unsent manifest requests (outbox) and received manifest answers (inbox) are swept each maintenance cycle; peers' requests are still answered |
 | `AuditIntervalMinutes` | `int` | `1440` (daily) | Audit cadence |
 | `AuditOnStartup` | `bool` | `true` | Run the first deep audit shortly after startup |
 | `StartupAuditMaxJitterSeconds` | `int` | `300` | Max random splay added to the startup audit's 30s floor |
@@ -770,7 +770,7 @@ Self-healing continuity checking; the defaults are the recommended posture. **Co
 | `RepairDrainBatchSize` | `int` | `50` | Max ledger rows claimed per drain pass |
 | `EpochClosureEnabled` | `bool` | `true` | Advance the digest-epoch closure frontier on the maintenance cadence |
 | `MaxEpochClosuresPerMaintenanceCycle` | `int` | `64` | Max epochs closed per maintenance cycle |
-| `PublishReportEvents` | `bool` | `false` | Publish divergence/gap detections as durable events |
+| `PublishReportEvents` | `bool` | `false` | Publish divergence/gap detections as durable events. Off (the default): unpublished report events are swept from the outbox each maintenance cycle |
 
 ## Dead Letters and Recovery
 

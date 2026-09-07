@@ -684,7 +684,34 @@ Detection is untouched: checkpoints, manifests and gap reports still flow, so re
 reports. The consequence for operators is that healing needs the opt-in on both sides: an
 `AutoRepairCapped` consumer asking a `ReportOnly` origin gets a declined request, logged at the
 origin and counted on `whizbang.stream_integrity.repair_traffic_discarded` (tag `role`:
-`origin_request`, `consumer_bundle`, `maintenance_sweep`).
+`origin_request`, `consumer_bundle`, `maintenance_sweep`; tag `table`: `inbox`, `outbox`).
+
+### A feature that is off leaves nothing behind {#feature-off-leaves-nothing-behind}
+
+The same sweep covers every stream-integrity feature, not only repair. Each control-plane message
+belongs to one feature; when that feature is off, pending rows of that type are work the service has
+decided not to do (minted before the operator opted out, or delivered by a peer that does not know),
+and every maintenance cycle discards them from the inbox and the outbox
+(`IWorkCoordinator.DiscardPendingInboxMessagesAsync` / `DiscardPendingOutboxMessagesAsync`, both
+drivers):
+
+| Feature off | Swept from the outbox (minted here, never published) | Swept from the inbox (received, nobody consumes) |
+|-------------|------------------------------------------------------|--------------------------------------------------|
+| `RepairMode = ReportOnly` | `RequestRedeliveryCommand`, `RedeliveryComposite` | `RequestRedeliveryCommand`, `RedeliveryComposite` |
+| `CheckpointsEnabled = false` | `IntegrityCheckpoint` | |
+| `GapDetectionEnabled = false` | | `IntegrityCheckpoint` |
+| `AuditEnabled = false` | `RequestIntegrityManifest` | `IntegrityManifest` (answers to this service's own audits) |
+| `PublishReportEvents = false` | `IntegrityGapDetected`, `IntegrityDivergenceDetected`, `PerspectiveCoverageGapDetected` | |
+
+Two deliberate omissions. Requests from peers (`RequestIntegrityManifest` in the inbox) are still
+answered when this service's own audit is off: a service that does not audit can still be audited.
+And `RebuildPerspectiveCommand` is never swept, because an operator issues the same command by hand;
+a stale auto-rebuild left over from an `AutoRepairCapped` period is indistinguishable from one.
+
+A feature that is on is never touched: the sweep names only the types of features that are off, so
+with everything enabled it does nothing, and with the defaults it drops repair traffic (report-only)
+and unpublished report events (publishing them is opt-in). Leased rows are skipped either way; the
+dispatch seams apply the same checks to the rows they reach.
 
 ### The repair decision pipeline (as wired)
 
