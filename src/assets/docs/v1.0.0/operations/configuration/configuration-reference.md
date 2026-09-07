@@ -373,6 +373,7 @@ The claim loop that distributes outbox/inbox/perspective work. **Configure:** bo
 | `PollingMaxIntervalMilliseconds` | `int` | `10000` | Adaptive backoff cap (constrained by `AbandonStaleInstanceThresholdSeconds`) |
 | `NotifyHealthyPollingIntervalMilliseconds` | `int?` | `5000` | Relaxed base wait while the NOTIFY gate is healthy |
 | `MaxStreamsPerBatch` | `int` | `1000` | Cap on rows returned per `claim_work` call |
+| `AdaptiveOutstandingBudget` | `bool` | `false` | Bounds total claimed-but-unprocessed inbox rows; off until it is per work category and row-bound (see [Claim backpressure](../workers/claim-backpressure)) |
 | `FreshWorkShare` | `double` | `0.5` | Share of each inbox batch reserved for fresh-head streams (head row never attempted). Weighted-fair and work-conserving: an empty class hands its share to the other. Raise toward `1.0` where interactive latency outranks backlog drain — strict oldest-first let a 28k-row retry backlog starve every new arrival |
 | `PerspectiveOnly` | `bool` | `false` | Distribute only perspective work (set when the legacy publisher worker is registered) |
 | `PartitionCount` | `int` | `10000` | Modulo partition count |
@@ -740,7 +741,7 @@ Self-healing continuity checking; the defaults are the recommended posture. **Co
 | `CheckpointsEnabled` | `bool` | `true` | Publish periodic continuity checkpoints |
 | `CheckpointIntervalSeconds` | `int` | `60` | Checkpoint cadence |
 | `GapDetectionEnabled` | `bool` | `true` | Verify received counts against other origins' checkpoints |
-| `RepairMode` | `IntegrityRepairMode` | `AutoRepairCapped` | What to do with a confirmed gap; `ReportOnly` is the opt-down |
+| `RepairMode` | `IntegrityRepairMode` | `ReportOnly` | What to do with a confirmed gap: report and let an operator decide; `AutoRepairCapped` is the opt-in to self-healing with storm caps |
 | `MaxAutoRepairRequestsPerCheckpoint` | `int` | `10` | Storm cap on auto-repair requests per received checkpoint |
 | `RepairTopic` | `string?` | `null` (first subscribed destination) | Wire topic for repair requests and bundles |
 | `BackfillOnSubscriptionGrowth` | `bool` | `true` | On consumed-type-set growth, request history for new types |
@@ -984,7 +985,7 @@ Connection retry, command timeout, and collective-apply bounds for the PostgreSQ
 | `MaxRetryDelay` | `TimeSpan` | `00:02:00` | Cap on exponential backoff |
 | `BackoffMultiplier` | `double` | `2.0` | Backoff multiplier |
 | `RetryIndefinitely` | `bool` | `true` | Retry forever until connect or cancellation |
-| `CommandTimeoutSeconds` | `int` | `5` | How long one SQL command (e.g. `process_work_batch`) may run |
+| `CommandTimeoutSeconds` | `int` | `120` | How long one SQL command (e.g. `process_work_batch`) may run; shorter than the worst commit batch loses completions |
 | `MaxInFlightCommands` | `int` | `50` | Cap on concurrent work-coordinator calls per process; 0 disables |
 | `CollectiveApplyBatchSize` | `int` | `1000` | Rows mutated per batched collective-apply UPDATE |
 | `CollectiveApplyStatementTimeoutSeconds` | `int?` | `null` | Server-side `statement_timeout` per collective-apply batch |

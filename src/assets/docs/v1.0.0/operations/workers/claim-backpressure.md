@@ -131,10 +131,21 @@ The budget permits `drainRate × leaseSeconds × safetyFactor` rows outstanding.
 
 | Option | Default |
 |---|---|
-| `AdaptiveOutstandingBudget` | `true` |
+| `AdaptiveOutstandingBudget` | `false` (off by default; see below) |
 | `MinOutstandingInboxRows` | `100` (also the cold-start value) |
 | `MaxOutstandingInboxRows` | `10000` |
 | `OutstandingBudgetSafetyFactor` | `0.5` |
+
+### Why the budget is off by default
+
+The current budget samples **inbox** completions only, but it counts leased work of **every** category
+as outstanding. When only a perspective backlog remains, the measured drain rate reads zero, headroom
+collapses, and inbox acquisition starves while the database sits idle; the two stages then oscillate
+instead of draining. Converting row headroom into a stream count (`streamsAffordable = headroom /
+rowsPerStream`) turns any collapse into `max(1, ...)`: one row per cycle, a fixed point the 100-row
+floor never reaches. The churn-based [adaptive claim window](#cause-1-acquisition-was-never-bounded)
+remains the bound. Enable the budget where throughput is known to exceed arrival rate; a per-category,
+row-bound budget with a latency signal is the intended default.
 
 ## Verifying it in a live system
 

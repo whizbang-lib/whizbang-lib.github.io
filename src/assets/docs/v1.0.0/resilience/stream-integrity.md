@@ -4,7 +4,7 @@ pageType: guide
 version: 1.0.0
 category: Resilience
 order: 4
-description: Cross-service anti-entropy — continuity checkpoints, digest audits, and idempotent re-delivery repair, self-healing by default
+description: Cross-service anti-entropy — continuity checkpoints, digest audits, and idempotent re-delivery repair; report-only by default, self-healing as the opt-in
 tags: 'stream-integrity, anti-entropy, re-delivery, backfill, digest, manifest, continuity, checkpoint, repair, cross-service, bootstrap'
 codeReferences:
   - src/Whizbang.Core/Messaging/IntegrityCheckpoint.cs
@@ -72,9 +72,10 @@ counts disagreeing — and the only repair available was bespoke, app-level re-i
 
 Stream integrity is a **first-class, self-healing framework capability**: detect divergence in
 bounded time, name it precisely, and repair it idempotently — the same philosophy the
-migration-ledger redefinition closure applies to schema, applied to data. It is ON by default,
-with automatic capped repair (`AutoRepairCapped`) and a `ReportOnly` opt-down that doubles as a
-dry run.
+migration-ledger redefinition closure applies to schema, applied to data. Detection is ON by default;
+repair is `ReportOnly` by default: report the divergence and let an operator decide, which also serves
+as the dry run. `AutoRepairCapped` (storm caps bound every rung) is the explicit opt-in to self-healing.
+A default that mutates data unasked is not a default a consumer can trust out of the box.
 
 ---
 

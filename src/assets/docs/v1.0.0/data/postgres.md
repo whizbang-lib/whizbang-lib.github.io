@@ -91,8 +91,21 @@ services.AddWhizbangPostgres(
 | `MaxRetryDelay` | 120 seconds | Maximum delay (caps exponential backoff) |
 | `BackoffMultiplier` | 2.0 | Multiplier for exponential backoff |
 | `RetryIndefinitely` | `true` | Continue retrying after initial attempts |
-| `CommandTimeoutSeconds` | 5 | Command timeout for coordinator SQL calls |
+| `CommandTimeoutSeconds` | 120 | Command timeout for coordinator SQL calls (Dapper driver); see [Command Timeout](#command-timeout) |
 | `MaxInFlightCommands` | 50 | Cap on concurrent work-coordinator calls per process |
+
+### Command Timeout {#command-timeout}
+
+The coordinator owns the timeout of its own SQL. A coordinator commit batch (handler results, composite
+fan-outs) has been observed at 13 to 30 seconds under a bulk-import backlog; a timeout shorter than the
+worst batch cancels the commit and loses its completions, the rows re-claim as lease expiries, and the
+poison admission gate throttles the drain to one row per cycle.
+
+- **Dapper driver:** `CommandTimeoutSeconds` (default 120) applies to every coordinator command.
+- **EF Core driver:** every command the coordinator creates carries a fixed 180 second budget, the same
+  value its `DbContext` uses, regardless of the `Command Timeout` in the consumer's connection string.
+  Deliberate exceptions (vacuum, maintenance) set their own. A consumer connection string can therefore
+  no longer cancel a commit batch.
 
 ## Schema Readiness {#readiness}
 
