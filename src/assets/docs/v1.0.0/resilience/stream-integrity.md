@@ -615,26 +615,23 @@ current boot — e.g. a read model missing events from an origin) now heals minu
 instead of a day later. Opting out restores interval-first.
 :::
 
-**Repair is a ladder, not a reflex.** The original proposal made `ReportOnly` the default release
-posture: typed integrity events + metrics (a dedicated integrity health source is still planned —
-none is registered as of a64ba9a), no writes, with `AutoRepairCapped` as the opt-in. The industry
-lesson (repair storms taking down clusters that were merely *suspected* of divergence) is encoded
-as: caps always on, every repair loudly attributed — and, as the revision below records, the
-shipped default landed on `AutoRepairCapped` with `ReportOnly` as the opt-down.
+**Repair is a ladder, not a reflex.** `ReportOnly` is the default release posture: typed integrity
+events + metrics (a dedicated integrity health source is still planned; none is registered as of
+a64ba9a), no writes, with `AutoRepairCapped` as the opt-in. The industry lesson (repair storms taking
+down clusters that were merely *suspected* of divergence) is encoded twice: caps always on and every
+repair loudly attributed, and the mutation itself behind an explicit opt-in.
 
 :::updated
-**Default REVISED (as built): SELF-HEALING out of the box.** `RepairMode` defaults to
-`AutoRepairCapped` is the shipped posture: it detects AND repairs, capped in two dimensions, per batch
-(`MaxAutoRepairRequestsPerAudit` / `MaxAutoRepairRequestsPerCheckpoint`) and per bucket across
-occurrences (`RepairRequestBackoffSeconds` / `MaxRepairAttemptsPerBucket`)
-(per-checkpoint, per-audit-chunk, per-cycle rebuilds, drill-down types, per-request event caps) so
-a mass divergence reports loudly instead of storming. What changed from the original stance: the
-storm-lesson is encoded in the CAPS, not in a disabled-by-default repair — a capped repair of a
-provably-missing delivery is additive and idempotent (the same event id folds once), so the risk
-that made auto-repair dangerous elsewhere (destructive repair of *suspected* divergence) does not
-apply to this design's confirmed-gap, identity-preserving re-delivery. `ReportOnly` remains the
-explicit opt-DOWN for operators who want report-and-decide; every report still states exactly what
-auto-repair would have done, so ReportOnly IS the dry-run.
+**Default history.** For a period the shipped default was `AutoRepairCapped`, on the reasoning that a
+capped repair of a provably-missing delivery is additive and idempotent (the same event id folds
+once), so the risk that made auto-repair dangerous elsewhere (destructive repair of *suspected*
+divergence) would not apply to confirmed-gap, identity-preserving re-delivery. The warning below
+records why that premise fails for a consumer that is merely behind, and the default returned to
+`ReportOnly`. The caps (`MaxAutoRepairRequestsPerAudit` / `MaxAutoRepairRequestsPerCheckpoint` per
+batch, `RepairRequestBackoffSeconds` / `MaxRepairAttemptsPerBucket` per bucket across occurrences)
+still bound every rung of `AutoRepairCapped`; they are why the opt-in is safe to take, not a reason to
+take it unasked. `ReportOnly` states exactly what auto-repair would have done, so it is also the dry
+run.
 
 :::warning
 **The confirmed-gap premise fails when a consumer is BEHIND.** The reasoning above rests on repair
@@ -665,6 +662,29 @@ Measured in a real deployment: one consumer left on the default emitted roughly 
 the events its producer did, for a workload that had previously completed in minutes. Its five
 peers, pinned to `ReportOnly`, were unaffected. Pinning that consumer to `ReportOnly` dropped its
 event production by more than two orders of magnitude and drained its queue to empty.
+
+### Report-only is bilateral {#report-only-is-bilateral}
+
+`ReportOnly` means a service takes no part in repair in either direction, not only that it stops
+asking:
+
+- **As an origin** it declines `RequestRedeliveryCommand`: the request completes without a selection
+  and is never retried. Serving a request is the repair act on the origin side, and the memory-heavy
+  one.
+- **As a consumer** it completes a `RedeliveryComposite` without fanning it out: no child rows, no
+  pre-fanout receptors, the same terminal shape as a `Skip` directive. A bundle can reach a consumer
+  that never asked for it (a peer on the same topic did, or this service did before the operator
+  opted down), and folding it in would be the unasked-for mutation the mode exists to prevent.
+- **In maintenance** it sweeps parked repair rows (unleased requests and bundles waiting out a retry
+  backoff) every cycle through `IWorkCoordinator.DiscardPendingInboxMessagesAsync`, so a row that
+  failed while the service was still repairing does not come back when its schedule arrives. Leased
+  rows are left to the dispatch seam, which applies the same check.
+
+Detection is untouched: checkpoints, manifests and gap reports still flow, so report-only still
+reports. The consequence for operators is that healing needs the opt-in on both sides: an
+`AutoRepairCapped` consumer asking a `ReportOnly` origin gets a declined request, logged at the
+origin and counted on `whizbang.stream_integrity.repair_traffic_discarded` (tag `role`:
+`origin_request`, `consumer_bundle`, `maintenance_sweep`).
 
 ### The repair decision pipeline (as wired)
 

@@ -741,7 +741,7 @@ Self-healing continuity checking; the defaults are the recommended posture. **Co
 | `CheckpointsEnabled` | `bool` | `true` | Publish periodic continuity checkpoints |
 | `CheckpointIntervalSeconds` | `int` | `60` | Checkpoint cadence |
 | `GapDetectionEnabled` | `bool` | `true` | Verify received counts against other origins' checkpoints |
-| `RepairMode` | `IntegrityRepairMode` | `ReportOnly` | What to do with a confirmed gap: report and let an operator decide; `AutoRepairCapped` is the opt-in to self-healing with storm caps |
+| `RepairMode` | `IntegrityRepairMode` | `ReportOnly` | What to do with a confirmed gap: report and let an operator decide; `AutoRepairCapped` is the opt-in to self-healing with storm caps. Bilateral: a `ReportOnly` service also declines re-delivery requests as an origin, drops re-delivery bundles as a consumer, and sweeps parked repair rows in maintenance, so healing needs the opt-in on both sides |
 | `MaxAutoRepairRequestsPerCheckpoint` | `int` | `10` | Storm cap on auto-repair requests per received checkpoint |
 | `RepairTopic` | `string?` | `null` (first subscribed destination) | Wire topic for repair requests and bundles |
 | `BackfillOnSubscriptionGrowth` | `bool` | `true` | On consumed-type-set growth, request history for new types |
