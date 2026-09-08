@@ -11,11 +11,12 @@ description: >-
   subscriptions - AOT-compatible with correlation filters
 tags: >-
   transports, azure-service-bus, messaging, topics, subscriptions,
-  correlation-filters, aspire, aot
+  correlation-filters, aspire, aot, sessions, adaptive-acceptors
 codeReferences:
   - src/Whizbang.Transports.AzureServiceBus/AzureServiceBusTransport.cs
   - src/Whizbang.Transports.AzureServiceBus/ServiceCollectionExtensions.cs
   - src/Whizbang.Transports.AzureServiceBus/AzureServiceBusOptions.cs
+  - src/Whizbang.Transports.AzureServiceBus/AsbAcceptorGovernor.cs
   - src/Whizbang.Transports.AzureServiceBus/ReceiveLivenessWatchdog.cs
   - src/Whizbang.Transports.AzureServiceBus/AzureServiceBusConnectionRetry.cs
   - src/Whizbang.Transports.AzureServiceBus/ServiceBusSubscriptionNameHelper.cs
@@ -46,6 +47,10 @@ testReferences:
     tests/Whizbang.Transports.AzureServiceBus.Tests/AzureServiceBusTransportPublishPathTests.cs
   - >-
     tests/Whizbang.Transports.AzureServiceBus.Tests/AzureServiceBusProvisioningPathTests.cs
+  - >-
+    tests/Whizbang.Transports.AzureServiceBus.Tests/AsbAcceptorGovernorTests.cs
+  - >-
+    tests/Whizbang.Transports.AzureServiceBus.Tests/AsbAcceptorAdaptiveWiringTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -215,8 +220,11 @@ app.Run();
 | `DefaultSubscriptionName` | "default" | Fallback subscription name if not specified |
 | `AutoProvisionInfrastructure` | `true` | Auto-create topics and subscriptions when subscribing (**code-only** — see binding note below) |
 | `EnableSessions` | `true` | Session-based FIFO ordering (sets SessionId from StreamId) |
-| `MaxConcurrentSessions` | 200 | Maximum concurrent sessions processed per processor (only when EnableSessions is true) |
+| `MaxConcurrentSessions` | 200 | Ceiling on concurrent sessions per processor (only when EnableSessions is true). With adaptive acceptors (the default) the pool starts at `AcceptorFloor` and grows toward this only under demand, see [Adaptive Acceptors](#adaptive-acceptors) |
 | `SessionIdleTimeout` | 60 seconds | How long a session processor waits for the next message before releasing the session — see [Session Idle Timeout](#session-idle-timeout) |
+| `EnableAdaptiveAcceptors` | `true` | Scale session acceptors with observed demand instead of standing up `MaxConcurrentSessions` acceptors, see [Adaptive Acceptors](#adaptive-acceptors) |
+| `AcceptorFloor` | 4 | Minimum acceptor slots in adaptive mode; the pool starts here and never decays below it |
+| `AcceptorEvaluationInterval` | 30 seconds | Window a pressure or quiet condition must hold before the adaptive pool scales, and the cadence of the periodic evaluation tick |
 | `PrefetchCount` | 50 | Messages prefetched per processor |
 | `PublishMaxConcurrency` | 200 | Maximum concurrent publish operations |
 | `SendTimeout` | 30 seconds | Timeout applied to each send operation |
@@ -256,7 +264,7 @@ Azure Service Bus supports strict FIFO message ordering within a **session**. Wh
 
 - Messages with a `StreamId` have their `SessionId` set to the StreamId value
 - The `SessionProcessor` delivers messages with the same SessionId in order to a single consumer
-- `MaxConcurrentSessions` controls how many different streams are processed in parallel (default: 200)
+- `MaxConcurrentSessions` is the ceiling on how many different streams are processed in parallel (default: 200); with [adaptive acceptors](#adaptive-acceptors) the pool starts at `AcceptorFloor` and grows toward it under demand
 - `MaxConcurrentCallsPerSession` is always 1 (strict FIFO within each session)
 - The transport claims `TransportCapabilities.Ordered` only when sessions are enabled
 
@@ -301,6 +309,80 @@ Tune lower only when sustained fan-out bursts exceed the session cap AND the nam
 request quota to burn (Premium) — and watch the [self-check](#ops-rate-self-check) warning when
 you do.
 
+### Adaptive Acceptors {#adaptive-acceptors}
+{verified: AsbAcceptorGovernorTests.Evaluate_PoolFullyOccupied_GrowsWithoutWaitingTheWindowAsync, AsbAcceptorGovernorTests.Evaluate_PressureBelowFull_SustainedForOneWindow_DoublesConcurrencyAsync, AsbAcceptorGovernorTests.Evaluate_QuietForAFullWindow_HalvesConcurrencyAsync}
+
+A session processor holds one acceptor per concurrent-session slot, and every idle acceptor
+re-issues a billable accept each `SessionIdleTimeout`. A standing pool of `MaxConcurrentSessions`
+acceptors therefore pays an idle cost that scales with the ceiling, with zero messages flowing.
+Adaptive acceptors (`EnableAdaptiveAcceptors`, default `true`) replace the standing pool with one
+that starts at `AcceptorFloor` (default 4) and scales with observed active-session demand, so the
+idle cost trends to the floor by construction. `MaxConcurrentSessions` is the ceiling, not a
+standing pool. Set `EnableAdaptiveAcceptors = false` to make it a fixed concurrency again.
+
+The governor (`AsbAcceptorGovernor`) measures occupancy as active sessions over the current pool
+size and makes three decisions:
+
+| Occupancy | Decision | Why |
+|---|---|---|
+| The pool is full (active sessions equal the pool size) | **Grow at once**: double, capped at the ceiling | The next session is already queueing behind the cap, and every queued session is a stream whose first message waits until a slot frees. A full pool is not a spike, so it does not wait out the window. |
+| At or above 80 percent for one full `AcceptorEvaluationInterval` | **Grow**: double, capped at the ceiling | Sustained near-saturation means sessions are probably queueing. The window filters a momentary burst. |
+| Below 25 percent for one full `AcceptorEvaluationInterval` | **Decay**: halve, floored at `AcceptorFloor` | Most slots are pure idle accept churn. |
+
+Between those bands the pool holds. A growth or decay step restarts both windows, so the next
+decision is measured against the new pool size. Doubling and halving reach any ceiling in a
+logarithmic number of steps without per-step tuning knobs.
+
+A resize applies to the **running** processor through the SDK's dynamic concurrency update
+(`ServiceBusSessionProcessor.UpdateConcurrency`). The processor is never stopped or recreated, and
+in-flight sessions are untouched. Each resize logs one Information line naming the subscription,
+the new concurrency, the active-session count, the floor, and the ceiling, and refreshes the
+[idle ops-rate projection](#ops-rate-self-check) so the self-check tracks the pool the processor
+actually holds.
+
+The governor evaluates at two points:
+
+1. **Every session accept and close.** The processor's session-initializing and session-closing
+   hooks feed demand into the governor and apply its decision in the same callback, so the accept
+   that fills the last slot resizes the pool before the next session has to wait.
+2. **A periodic tick** every `AcceptorEvaluationInterval` (default 30 seconds): one timer per
+   transport, shared by every governed subscription. Without it a pool whose occupancy generates
+   no session events (saturated and steady, or drained and silent) would never re-evaluate.
+
+{verified: AsbAcceptorAdaptiveWiringTests.SessionAccept_FillingThePool_GrowsTheRunningProcessorImmediatelyAsync, AsbAcceptorAdaptiveWiringTests.PeriodicTick_EvaluatesWithoutAnySessionActivityAsync}
+
+Sustain is measured across those evaluation points. A dip between two evaluations is invisible,
+which is deliberate: the evaluation cadence is the sample rate.
+
+| Property | Default | Description |
+|----------|---------|-------------|
+| `EnableAdaptiveAcceptors` | `true` | Scale session acceptors with demand instead of standing up `MaxConcurrentSessions` acceptors. Session mode only; when `false` the processor is created with a fixed `MaxConcurrentSessions` exactly as before. |
+| `AcceptorFloor` | 4 | Minimum acceptor slots. The pool starts here and never decays below it, so a quiet service still picks up the first message of a burst instantly. Clamped to `MaxConcurrentSessions` when configured above the ceiling. |
+| `MaxConcurrentSessions` | 200 | The ceiling growth never exceeds. |
+| `AcceptorEvaluationInterval` | 30 seconds | How long a pressure or quiet condition must hold before the pool scales, and the cadence of the periodic tick. Shorter reacts faster to near-saturation but risks thrashing on noisy occupancy; longer smooths at the cost of up to one extra interval of queued sessions in the near-saturation band. |
+
+```json{
+title: "Adaptive acceptor options via appsettings.json"
+description: "Keeps the default adaptive mode, raises the floor for a service that regularly receives fan-out bursts, and sets the ceiling and the evaluation cadence explicitly."
+category: "Configuration"
+difficulty: "INTERMEDIATE"
+tags: ["azure-service-bus", "adaptive-acceptors", "sessions", "configuration", "idle-ops"]
+unverified: "configuration illustration; the binding is covered by ServiceCollectionExtensionsTests and the floor/ceiling wiring by AsbAcceptorAdaptiveWiringTests"
+}
+{
+  "Whizbang": {
+    "Transports": {
+      "AzureServiceBus": {
+        "EnableAdaptiveAcceptors": true,
+        "AcceptorFloor": 8,
+        "MaxConcurrentSessions": 200,
+        "AcceptorEvaluationInterval": "00:00:30"
+      }
+    }
+  }
+}
+```
+
 ### Idle Ops-Rate Self-Check {#ops-rate-self-check}
 
 Because the idle-churn failure mode produces no errors and no message-level signal, the
@@ -311,7 +393,9 @@ structured warning when the projection crosses `OpsRateWarningThresholdPerSecond
 100/sec — over a tenth of a Standard namespace's shared quota spent doing nothing). The warning
 names the offending knobs and the remediation. Disable with `EnableOpsRateSelfCheck = false`
 for deliberately churn-heavy Premium-tier setups. Non-session processors long-poll and are not
-projected.
+projected. With [adaptive acceptors](#adaptive-acceptors) the projection follows the governors'
+live slot total instead of the standing-army worst case, and it is refreshed on every resize, so it
+shrinks as pools decay.
 
 ### Connection Retry Options {#connection-retry}
 
