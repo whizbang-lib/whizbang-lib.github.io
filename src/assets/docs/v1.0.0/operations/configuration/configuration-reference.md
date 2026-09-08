@@ -70,7 +70,8 @@ Environment variables are added **after** `appsettings.json` and `appsettings.{E
 | `Whizbang:ShowBanner` | — (bool) | Automatic |
 | `ConnectionStrings:*` | — (strings, naming conventions below) | Automatic |
 | `ConnectionPool:*` | — (generated DbContext registration) | Automatic |
-| `Whizbang:BodyOffload` | `MessageBodyOffloadOptions` (3 of 8 keys) | Opt-in helper |
+| `Whizbang:BodyOffload` | `MessageBodyOffloadOptions` (4 of 9 keys) | Opt-in helper |
+| `Whizbang:BodyOffload:Cipher` | the built-in body cipher (`AesGcmEnvelopeCipher`) | Opt-in helper |
 | `Whizbang:Offloads:AzureBlob:<name>` | `AzureBlobOffloadOptions` | Opt-in helper |
 | `Whizbang:Workers:PinnedPool` | `WhizbangPinnedPoolOptions` | Recommended section — consumer-bound |
 | *(any section you choose)* | every other options class below | Code-configured / consumer-bound |
@@ -182,13 +183,25 @@ Every child of `Whizbang:Offloads:AzureBlob` registers one named provider. The p
 
 ### Whizbang:BodyOffload → MessageBodyOffloadOptions
 
-The helper binds **three** keys from configuration; the rest of `MessageBodyOffloadOptions` is code-configured (see [its full table below](#messagebodyoffloadoptions)).
+The helper binds **four** keys from configuration; the rest of `MessageBodyOffloadOptions` is code-configured (see [its full table below](#messagebodyoffloadoptions)).
 
 | Key | Type | Default | Environment variable | Purpose |
 |-----|------|---------|----------------------|---------|
 | `ProviderName` | `string?` | `null` (offload disabled) | `Whizbang__BodyOffload__ProviderName` | Must match a registered provider name |
 | `SizeThresholdBytes` | `long` | `65536` (64 KB) | `Whizbang__BodyOffload__SizeThresholdBytes` | Body size at/above which offload kicks in |
 | `ActiveCleanup` | `bool` | `false` | `Whizbang__BodyOffload__ActiveCleanup` | Delete the body explicitly after the inbox row is acked |
+| `CipherName` | `string?` | `null` (bodies stored as serialized) | `Whizbang__BodyOffload__CipherName` | Names the cipher every offloaded body is sealed with; the cipher itself is registered from the `Cipher` subsection below |
+
+### Whizbang:BodyOffload:Cipher → the built-in AES-256-GCM cipher
+
+Read by the same helper (through `AddWhizbangBodyCipherFromConfiguration`) whenever `Whizbang:BodyOffload:CipherName` is set. A name without a valid key, or a half-configured rotation window, fails at startup naming the setting. **Details, key generation, rotation and the operations checklist:** [Message Body Store](../../fundamentals/offloads/message-body-store#cipher-from-settings). {verified: BodyCipherFromConfigurationTests.WithANameAndAKey_RegistersTheAesGcmCipherByName_AndNamesItOnTheOptionsAsync, BodyCipherFromConfigurationTests.WithANameButNoKey_ThrowsAtStartup_NamingTheSettingAsync, AzureBlobOffloadFromConfigurationTests.FromConfiguration_WithACipherInSettings_BindsTheCipherName_AndRegistersTheCipherAsync}
+
+| Key | Type | Default | Environment variable | Purpose |
+|-----|------|---------|----------------------|---------|
+| `KeyId` | `string` | required with a cipher name | `Whizbang__BodyOffload__Cipher__KeyId` | Rotation label of the current key encryption key; recorded on every claim, never the key |
+| `KeyEncryptionKey` | `string` (base64, 32 bytes) | required with a cipher name | `Whizbang__BodyOffload__Cipher__KeyEncryptionKey` | The current key encryption key; a secret, `openssl rand -base64 32` |
+| `PreviousKeyId` | `string?` | `null` | `Whizbang__BodyOffload__Cipher__PreviousKeyId` | During a rotation window, the label being retired; requires `PreviousKeyEncryptionKey` |
+| `PreviousKeyEncryptionKey` | `string?` (base64, 32 bytes) | `null` | `Whizbang__BodyOffload__Cipher__PreviousKeyEncryptionKey` | During a rotation window, the key being retired; a secret |
 
 ## Code-Configured Options: The Binding Recipe
 
