@@ -10,9 +10,11 @@ description: >-
   Complete reference for all built-in OpenTelemetry metrics emitted by Whizbang -
   counters, histograms, and gauges across dispatcher, lifecycle, transport,
   perspective, work coordinator, and lifecycle coordinator subsystems
-tags: 'metrics, opentelemetry, counters, histograms, monitoring, Prometheus, Grafana'
+tags: 'metrics, opentelemetry, counters, histograms, monitoring, Prometheus, Grafana, passive-counters, maintenance'
 codeReferences:
   - src/Whizbang.Core/Observability/WhizbangMetrics.cs
+  - src/Whizbang.Core/Observability/PassiveCounter.cs
+  - src/Whizbang.Core/Observability/MaintenanceMetrics.cs
   - src/Whizbang.Core/Observability/DispatcherMetrics.cs
   - src/Whizbang.Core/Observability/LifecycleMetrics.cs
   - src/Whizbang.Core/Observability/LifecycleCoordinatorMetrics.cs
@@ -32,6 +34,9 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Notifications/NotifyMetrics.cs
   - src/Whizbang.Sagas/Observability/SagaMetrics.cs
 testReferences:
+  - tests/Whizbang.Core.Tests/Observability/PassiveCounterTests.cs
+  - tests/Whizbang.Core.Tests/Observability/PassiveCounterDriftLockTests.cs
+  - tests/Whizbang.Core.Tests/Observability/MaintenanceMetricsTests.cs
   - tests/Whizbang.Core.Tests/Observability/DispatcherMetricsTests.cs
   - tests/Whizbang.Core.Tests/Observability/LifecycleMetricsTests.cs
   - tests/Whizbang.Core.Tests/Observability/LifecycleCoordinatorMetricsTests.cs
@@ -71,6 +76,7 @@ Additional subsystem meters:
 |-------|-------|-------|
 | `Whizbang.DeadLetters` | `DeadLetterMetrics` | Internal DLQ adds, recoveries, holds, generation replay, per-stack arrivals, canary campaign verdicts and trickle waves |
 | `Whizbang.TransportDeadLetterDrain` | `TransportDeadLetterDrainWorker` | Broker-side DLQ drain counts |
+| `Whizbang.Maintenance` | `MaintenanceMetrics` | Per-task maintenance outcomes (rows affected, duration) and row-retention adoption |
 | `Whizbang.EventCategories` | `EventCategoryMetrics` | Category-routed event dispatch and fanout |
 | `Whizbang.Workers.PinnedPool` | `PinnedPoolMetrics` | Pinned connection pool borrows, timeouts, recycles |
 | `Whizbang.TableStatistics` | `TableStatisticsMetrics` | Estimated queue depth and table size gauges |
@@ -137,6 +143,57 @@ public sealed class WhizbangMetrics(IMeterFactory? meterFactory = null) {
   public IMeterFactory? MeterFactory { get; } = meterFactory;
 }
 ```
+
+## Counters are passive {#passive-counters}
+{verified: PassiveCounterTests.UntaggedSeries_ExistsAtZero_BeforeAnyAddAsync, PassiveCounterTests.Touch_DeclaresClosedDomainSeriesAtZeroAsync, PassiveCounterDriftLockTests.EveryCoreMetricsClass_ReportsEveryCounterAtTheFirstCollectionAsync}
+
+Every framework counter and up-down counter is a `PassiveCounter<T>`. The worker that does the work adds to a live count held in memory; nothing is pushed to the metrics pipeline. At every collection the meter reads the counts it holds and reports them, one measurement per tag set. On the meter the instrument is an observable counter (cumulative, monotonic) or an observable up-down counter, so exporters compute rates and deltas exactly as they do for a pushed counter, and dashboards see the same series names and tags. The tables on this page keep calling them counters and up-down counters; on the meter they are `ObservableCounter<T>` and `ObservableUpDownCounter<T>`. The add itself is an in-memory accumulate under a lock, so it costs the same with or without a listener.
+
+The consequence that matters to an operator: every series exists from the moment the counter is constructed, at zero. A quiet subsystem reads as zero, never as a missing meter. A dead-letter meter that shows `0` is a service with no dead letters. Before this change the same service showed nothing, and nothing is also what a mis-subscribed meter shows, so the two could not be told apart from the backend.
+
+Tag domains:
+
+- The untagged series always exists.
+- A closed tag domain (an enum, a fixed category set) is declared at construction with `Touch`, so each labeled series exists at zero before its first real count.
+- Open tag values (type names, origins, stream ids) appear on first use. Nothing is fabricated.
+
+Histograms keep the push model: a distribution has no meaningful value before its first sample.
+
+What "no series at all" means now: the meter is not subscribed. Check that `AddWhizbangInstrumentation()` (or `WhizbangMeters.All`) is in the metrics pipeline; see [Configuration](#configuration).
+
+A custom passive counter on a consumer meter:
+
+```csharp{
+title: "A passive counter on a consumer meter"
+description: "Creates a passive counter with CreatePassiveCounter, declares a closed tag domain with Touch so every kind reads as zero from the first collection, and adds tagged counts that the meter observes at collection."
+framework: "NET10"
+category: "Observability"
+difficulty: "INTERMEDIATE"
+tags: ["metrics", "passive-counter", "observable-counter", "tags", "meter"]
+tests: ["PassiveCounterTests.Touch_DeclaresClosedDomainSeriesAtZeroAsync", "PassiveCounterTests.Add_AccumulatesAndReportsTheCumulativeValueAtCollectionAsync"]
+}
+using System.Diagnostics.Metrics;
+using Whizbang.Core.Observability;
+
+public sealed class ImportMetrics {
+  private readonly PassiveCounter<long> _filesProcessed;
+
+  public ImportMetrics(IMeterFactory meterFactory) {
+    var meter = meterFactory.Create("MyApp.Import");
+    _filesProcessed = meter.CreatePassiveCounter<long>(
+      "myapp.import.files_processed",
+      description: "Files the importer has processed; tagged by kind");
+
+    // A closed domain: every kind reads as zero from the first collection.
+    _filesProcessed.Touch("kind", ["csv", "json"]);
+  }
+
+  public void RecordFile(string kind) =>
+    _filesProcessed.Add(1, new KeyValuePair<string, object?>("kind", kind));
+}
+```
+
+`CreatePassiveUpDownCounter<T>` is the up-down form. For test authors: a `MeterListener` only sees a passive counter when it calls `RecordObservableInstruments()`. The measurement callback fires at collection, not on `Add`, so a listener that waits for a pushed measurement never sees one.
 
 ## Whizbang.Dispatcher {#dispatcher}
 
@@ -466,6 +523,20 @@ Meter name: `Whizbang.TransportDeadLetterDrain` (created by `TransportDeadLetter
 |-------------|------|-------------|
 | `whizbang.transport_dlq.drained` | Counter\<long\> | Messages re-submitted from a broker's dead-letter queue; tagged by `transport` |
 
+## Whizbang.Maintenance {#maintenance}
+
+Meter name: `Whizbang.Maintenance` (`MaintenanceMetrics`)
+
+`perform_maintenance` returns one result row per task (dedup sweep, ephemeral body reap, expired perspective-row reap, and so on). These instruments make those outcomes queryable and alertable across the fleet instead of only visible in per-pod logs. The primary consumer is perspective row retention: `rows_affected` tagged `task=reap_expired_perspective_rows` is the "is retention working" signal, and a sustained zero with expired rows accumulating means the maintenance cadence is losing to churn.
+
+| Metric Name | Unit / Type | Description |
+|-------------|-------------|-------------|
+| `whizbang.maintenance.rows_affected` | Counter\<long\> | Rows a maintenance task deleted or processed in one cycle; tagged by `task`. Records only when the count is above zero |
+| `whizbang.maintenance.task_duration` | ms | A task's per-cycle wall time; tagged by `task`. Records every cycle, the liveness half of the signal |
+| `whizbang.maintenance.retention_adopted` | Counter\<long\> | Rows past a declared retention window at the moment the maintenance cycle adopted it and opened the enrolled reap's gate; tagged by `perspective` (the model's CLR type name). A zero backlog still records, so the series marks the adoption. The value is the backlog the drain will remove, not a rate |
+
+`Whizbang.WorkCoordinator` also carries the `whizbang.maintenance.task.duration` and `whizbang.maintenance.task.rows_affected` histograms listed under its [Maintenance](#work-coordinator) heading; the per-task counter and the retention adoption signal live here.
+
 ## Whizbang.EventCategories {#event-categories}
 
 Meter name: `Whizbang.EventCategories` (`EventCategoryMetrics`)
@@ -618,6 +689,8 @@ Whizbang uses four OpenTelemetry instrument types:
 | `ObservableGauge` | Pull-based point-in-time values | `pending_events`, `queue.estimated_depth` |
 
 **Histograms** are ideal for latency percentiles (p50, p95, p99) and batch size distributions. **Counters** track cumulative totals - use `rate()` in Prometheus to derive per-second throughput. **UpDownCounters** represent current state and are useful for alerting on resource saturation.
+
+Counters and up-down counters are registered on the meter as observable instruments and exist at zero from construction; see [Counters are passive](#passive-counters). Histograms and observable gauges are unchanged.
 
 ## See Also
 
