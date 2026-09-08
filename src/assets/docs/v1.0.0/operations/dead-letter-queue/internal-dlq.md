@@ -150,7 +150,7 @@ Callers:
 | `InboxDispatchWorker.ProcessOneInnerAsync` | `attempts > MaxInboxAttempts` (also composite fan-out failures, cap-independent) | `InboxDispatchWorkerOptions.MaxInboxAttempts` (default 10) |
 | `OutboxDrainWorker` pre-publish gate | `attempts > MaxOutboxAttempts`, checked before any publish attempt | `OutboxDrainWorkerOptions.MaxOutboxAttempts` (default 10) |
 | `OutboxPublishWorker` post-failure promotion | `attempts >= MaxOutboxAttempts` after a publish failure | `OutboxPublishWorkerOptions.MaxOutboxAttempts` (default 10) |
-| `PerspectiveWorker.FilterDeadLetteredAsync` | `attempts > MaxPerspectiveEventAttempts` | `PerspectiveWorkerOptions.MaxPerspectiveEventAttempts` (default 10) |
+| `PerspectiveWorker.FilterDeadLetteredAsync` | `failures > MaxPerspectiveEventAttempts` (apply failures; `attempts` counts leases and is diagnostic only) | `PerspectiveWorkerOptions.MaxPerspectiveEventAttempts` (default 10) |
 
 The perspective check runs at the drainer's **pre-deserialization** boundary
 so the typed-envelope parse + apply cost is avoided for rows that are already

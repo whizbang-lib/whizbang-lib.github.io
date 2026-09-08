@@ -19,6 +19,7 @@ codeReferences:
   - src/Whizbang.Core/Observability/TransportMetrics.cs
   - src/Whizbang.Core/Observability/PerspectiveMetrics.cs
   - src/Whizbang.Core/Observability/WorkCoordinatorMetrics.cs
+  - src/Whizbang.Core/Messaging/WorkCoordinatorGate.cs
   - src/Whizbang.Core/Observability/InboxMetrics.cs
   - src/Whizbang.Core/Observability/DeadLetterMetrics.cs
   - src/Whizbang.Core/Observability/EventCategoryMetrics.cs
@@ -38,6 +39,7 @@ testReferences:
   - tests/Whizbang.Core.Tests/Observability/PerspectiveMetricsTests.cs
   - tests/Whizbang.Core.Tests/Observability/PerspectiveRewindMetricsTests.cs
   - tests/Whizbang.Core.Tests/Observability/WorkCoordinatorMetricsTests.cs
+  - tests/Whizbang.Core.Tests/Messaging/WorkCoordinatorGateHolderDiagnosticsTests.cs
   - tests/Whizbang.Core.Tests/Observability/InboxMetricsTests.cs
   - tests/Whizbang.Core.Tests/Observability/DeadLetterMetricsTests.cs
   - tests/Whizbang.Core.Tests/Observability/EventCategoryMetricsTests.cs
@@ -433,6 +435,8 @@ Both instruments live on the `Whizbang.WorkCoordinator` meter (`InboxMetrics` de
 |-------------|-------------|-------------|
 | `whizbang.gate.hold_duration_ms` | ms | WorkCoordinatorGate slot-held duration; tagged with caller |
 | `whizbang.inbox.dispatch.duration_ms` | ms | Per-message inbox dispatch wall time, tagged with short message type |
+
+`whizbang.gate.hold_duration_ms` is a history. For a point-in-time view, `WorkCoordinatorGate.SnapshotHolders()` returns every held slot as `(Caller, HeldMs)`, and the gate's acquire-deadline Warning (EventId 1, `WorkCoordinatorGate.AcquireAsync timed out ...`) appends the same snapshot grouped by caller, `Holders: <Caller> xN (oldest S s), ...`, so a saturation warning names what is holding the gate. {verified: WorkCoordinatorGateHolderDiagnosticsTests.SnapshotHolders_NamesEveryCurrentHolder_AndForgetsReleasedOnesAsync, WorkCoordinatorGateHolderDiagnosticsTests.Deadline_NamesTheHoldersInTheWarningAsync}
 
 ## Whizbang.DeadLetters {#dead-letters}
 

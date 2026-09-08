@@ -103,7 +103,9 @@ Signal types choose their reach:
 
 The signal type's `Targeting` declaration is compile-time authority; the publish call carries a `SignalTarget` that says *which* target for a **Targeted** signal (which streams' owners to wake, or which instance directly). Broadcast signals default their target to `SignalTarget.Broadcast` — no extra parameters needed at the call site.
 
-Under the covers, `SignalTarget.Streams(...)` calls the existing `notify_instance_owners(payload, stream_ids)` SQL helper — the same function today's `_emit_event_store_chain`, `store_outbox_messages`, and `store_inbox_messages` procs invoke — so the routing rule is **unified**: pinned owner from `wh_active_streams`, or the deterministic partition-modulo target for streams that haven't been claimed yet. `SignalTarget.Instance(id)` emits `pg_notify` directly on `wh_work_i_<id>`.
+Under the covers, `SignalTarget.Streams(...)` calls `notify_instance_owners_with_payload(kind, payload, stream_ids)`, the general form of the SQL helper whose doorbell form (`notify_instance_owners(payload, stream_ids)`) today's `_emit_event_store_chain`, `store_outbox_messages`, and `store_inbox_messages` procs invoke — so the routing rule is **unified**: pinned owner from `wh_active_streams`, or the deterministic partition-modulo target for streams that haven't been claimed yet. `SignalTarget.Instance(id)` emits `pg_notify` directly on `wh_work_i_<id>`.
+
+The two forms exist because the doorbell debounce keys its state on a **kind** while the wire carries a **payload**. For a doorbell the two coincide by definition (`outbox`, `inbox`, `perspective`, `schedule`), and the doorbell form accepts only that vocabulary. A signal carries its wire name (by default the fully qualified type name) as both its key and its payload, so it needs the general form; a signal's debounce row is never armed by `claim_work`, so a signal is never suppressed. {verified: NotifyKindAndPayloadSqlTests.NotifyInstanceOwners_SignalWireNameLongerThanTwentyCharacters_FiresAsync, NotifyKindAndPayloadSqlTests.NotifyInstanceOwners_DoorbellForm_AcceptsOnlyTheDoorbellVocabularyAsync, PostgresSignalTransportIntegrationTests.StreamsTargetedSignal_WithAFullyQualifiedWireName_RoutesToTheOwningInstanceAsync}
 
 ```csharp{title="SignalTarget — per-publish target selector" description="Structured target for a publish call: broadcast (default), streams (owner resolved via notify_instance_owners), or instance (direct)" category="Architecture" difficulty="INTERMEDIATE" tags=["Signal-Bus","Targeting","Control-Plane"] framework="NET10"}
 /// <docs>fundamentals/signal-bus/signal-bus</docs>
@@ -111,7 +113,7 @@ public readonly struct SignalTarget {
     // No target — every instance's broadcast channel. Default value.
     public static SignalTarget Broadcast => default;
 
-    // Resolve the owning instance(s) via notify_instance_owners(payload, stream_ids).
+    // Resolve the owning instance(s) via notify_instance_owners_with_payload(kind, payload, stream_ids).
     // One NOTIFY per unique owner, exactly like today's work-wake fan-out.
     public static SignalTarget Streams(IReadOnlyList<Guid> streamIds);
 

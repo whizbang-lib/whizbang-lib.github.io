@@ -29,7 +29,7 @@
  * }
  */
 
-import { readFileSync, writeFileSync } from 'fs';
+import { existsSync, readFileSync, writeFileSync } from 'fs';
 import { join, relative, dirname, resolve, basename } from 'path';
 import { fileURLToPath } from 'url';
 // Node >=22 ships glob in fs/promises — avoids an undeclared 'glob' package dependency.
@@ -62,22 +62,37 @@ function scanSourceFileForTestTags(filePath) {
     const testsMatch = line.match(/<tests>(.*?)<\/tests>/);
     if (!testsMatch) continue;
 
-    const testsPath = testsMatch[1]; // Format: "TestProject/TestFile.cs:TestMethodName"
+    const testsPath = testsMatch[1]; // Format: "TestProject/TestFile.cs:TestMethodName" or "TestProject/TestFile.cs"
 
-    // Parse test path
+    // Parse test path. A method-level tag names one test; a file-level tag names a whole test class,
+    // which links every [Test] method in that file (the class under test often has no name-convention
+    // twin, e.g. a scenario class like "WorkCoordinatorGatePrecedenceTests").
     const parts = testsPath.split(':');
-    if (parts.length !== 2) {
-      console.warn(`Warning: Invalid <tests> tag format at ${filePath}:${i + 1}. Expected "TestFile.cs:TestMethod"`);
+    let targets;
+    if (parts.length === 2) {
+      targets = [{ testFile: parts[0], testMethod: parts[1] }];
+    } else if (parts.length === 1 && testsPath.endsWith('.cs')) {
+      targets = testMethodsInFile(testsPath);
+      if (targets.length === 0) {
+        console.warn(`Warning: <tests> tag at ${filePath}:${i + 1} names ${testsPath}, which has no [Test] methods or does not exist`);
+        continue;
+      }
+    } else {
+      console.warn(`Warning: Invalid <tests> tag format at ${filePath}:${i + 1}. Expected "TestFile.cs:TestMethod" or "TestFile.cs"`);
       continue;
     }
 
-    const [testFilePath, testMethodName] = parts;
-
-    // Find the symbol name on the next line(s)
+    // Find the symbol name on the first code line after the tag. The rest of the doc comment (a
+    // member may carry many tags) and any attributes between the tag and the declaration are skipped;
+    // a five-line window used to miss members with more than a handful of tags.
     let sourceSymbol = null;
     let sourceType = null;
-    for (let j = i + 1; j < Math.min(i + 5, lines.length); j++) {
+    for (let j = i + 1; j < Math.min(i + 60, lines.length); j++) {
       const nextLine = lines[j];
+      const trimmed = nextLine.trim();
+      if (trimmed.length === 0 || trimmed.startsWith('///') || trimmed.startsWith('[') || trimmed.startsWith('#pragma')) {
+        continue;
+      }
 
       // Match interface/class/struct/record/enum declarations
       const typeMatch = nextLine.match(/(?:public|internal|private|protected)?\s*(interface|class|struct|record|enum)\s+(\w+)/);
@@ -102,6 +117,9 @@ function scanSourceFileForTestTags(filePath) {
         sourceSymbol = propertyMatch[2];
         break;
       }
+
+      // The first code line decides; an unrelated later declaration must not be attributed.
+      break;
     }
 
     if (!sourceSymbol) {
@@ -109,18 +127,39 @@ function scanSourceFileForTestTags(filePath) {
       continue;
     }
 
-    mappings.push({
-      sourceFile: relative(LIBRARY_PATH, filePath).replace(/\\/g, '/'),
-      sourceLine: i + 1,
-      sourceSymbol,
-      sourceType,
-      testFile: testFilePath,
-      testMethod: testMethodName,
-      linkSource: 'XmlTag'
-    });
+    for (const target of targets) {
+      mappings.push({
+        sourceFile: relative(LIBRARY_PATH, filePath).replace(/\\/g, '/'),
+        sourceLine: i + 1,
+        sourceSymbol,
+        sourceType,
+        testFile: target.testFile,
+        testMethod: target.testMethod,
+        linkSource: 'XmlTag'
+      });
+    }
   }
 
   return mappings;
+}
+
+/**
+ * Every [Test] method in a test file named by a file-level <tests> tag, as {testFile, testMethod}.
+ * An empty list when the file is missing (the warning is the caller's).
+ */
+function testMethodsInFile(testFilePath) {
+  const fullPath = resolve(LIBRARY_PATH, testFilePath);
+  if (!existsSync(fullPath)) {
+    return [];
+  }
+  const content = readFileSync(fullPath, 'utf-8');
+  const regex = /\[Test\][\s\S]*?(?:public\s+)?(?:async\s+)?Task\s+(\w+)\s*\(/g;
+  const targets = [];
+  let match;
+  while ((match = regex.exec(content)) !== null) {
+    targets.push({ testFile: testFilePath, testMethod: match[1] });
+  }
+  return targets;
 }
 
 /**
