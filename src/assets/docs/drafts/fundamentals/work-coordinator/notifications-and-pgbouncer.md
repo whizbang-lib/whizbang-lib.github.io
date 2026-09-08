@@ -1,6 +1,18 @@
 ---
 title: Notifications and pgbouncer
 order: 5
+description: >-
+  How LISTEN/NOTIFY wakes idle workers through one shared direct connection per
+  pod, the signaling gate, the doorbell debounce, why doorbells queue inside the
+  hot transaction and ring in their own commit, and how to operate it.
+tags: 'work-coordinator, notifications, listen-notify, pgbouncer, doorbell, debounce'
+codeReferences:
+  - src/Whizbang.Data.Postgres/Notifications/PgSharedNotifyConnection.cs
+  - src/Whizbang.Data.Postgres/DoorbellRinger.cs
+  - src/Whizbang.Data.Postgres/Migrations/143_NotifyStateNeverWaits.sql
+  - src/Whizbang.Data.Postgres/Migrations/146_DoorbellsRingAfterCommit.sql
+testReferences:
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/DoorbellsRingAfterCommitSqlTests.cs
 ---
 
 # Notifications and pgbouncer
@@ -97,6 +109,10 @@ On startup (and periodically thereafter via `PeriodicReprobeInterval`, default 5
 
 End-to-end latency from "transport delivers a message" to "another service starts handling it" is now governed by network + listener-connection wait + `claim_work` execution — measured in tens of milliseconds even at idle.
 
+:::updated
+**Updated (migration 146)**: the `PERFORM pg_notify(...)` shown in step 1 is now `PERFORM _queue_doorbell(...)`. The hot transaction queues the doorbell and commits; the driver rings the queue in its own autocommit statement immediately afterwards. Channels, payloads and delivery are unchanged. See [Doorbells ring after commit](#doorbells-ring-after-commit).
+:::
+
 ### Doorbell debounce: the key and the payload
 
 Every emission goes through `_notify_debounced(instance, kind, payload, window)`. The **kind** keys the per-instance debounce state in `wh_notify_state` (`claim_work` stamps a found-work watermark per kind; a store toward a live instance whose watermark for that kind is fresh is suppressed, because the drainer is awake and its linger poll will find the work). The **payload** is what `pg_notify` carries when the doorbell fires. For a doorbell the two are the same word, so the store procs call the doorbell form, `notify_instance_owners(payload, stream_ids)`, which accepts only `outbox`, `inbox`, `perspective` and `schedule` and rejects anything else up front. Signals carry their wire name (by default a fully qualified type name) as both, through `notify_instance_owners_with_payload(kind, payload, stream_ids)`; the key column is unbounded text. {verified: NotifyKindAndPayloadSqlTests.NotifyInstanceOwners_KindAndPayloadAreIndependent_PayloadReachesTheWire_KindKeysTheStateAsync, NotifyKindAndPayloadSqlTests.NotifyState_KeyColumnIsUnboundedTextAsync, NotifyKindAndPayloadSqlTests.NotifyInstanceOwners_DoorbellForm_PayloadIsTheKindAsync}
@@ -120,6 +136,45 @@ Migration 143 states the rule: **a doorbell never waits on another writer's tran
 The asymmetry behind every branch: a spurious doorbell is absorbed by the drain's refetch-until-empty loop, a lost wakeup is not, and waiting is the storm. So every contended case rings.
 
 **Residual.** An `INSERT ... ON CONFLICT DO NOTHING` waits when a concurrent transaction holds an uncommitted insert of the same key. Debounce creators are serialized by the advisory lock, so they never meet that way. The only other creator is `claim_work`'s watermark stamp, so the wait is bounded by one claim tick and happens at most once per `(instance, kind)` row lifetime.
+
+## Doorbells ring after commit
+{verified: DoorbellsRingAfterCommitSqlTests.Doorbell_InsideAHotTransaction_QueuesInsteadOfNotifyingAsync, DoorbellsRingAfterCommitSqlTests.HotStore_DoesNotTakeTheNotifySerializationLockAsync, DoorbellsRingAfterCommitSqlTests.RingDoorbells_DeliversQueuedRingsAndCoalescesDuplicatesAsync, DoorbellsRingAfterCommitSqlTests.RingDoorbells_TwoRingersDoNotDoubleRingOrBlockEachOtherAsync}
+
+Migration 143 removed the row lock on `wh_notify_state`. Underneath it was a lock that belongs to PostgreSQL itself. **Every transaction that has issued `NOTIFY` serializes its commit with every other notifying transaction**: at pre-commit the backend takes an `AccessExclusiveLock` on the database object (`pg_locks`: `locktype = object`, `classid = pg_database`, `objid = 0`) and holds it until the transaction commits, so that notification queue entries appear in commit order. Every hot path here rang a doorbell inside its own transaction (the stores, the handler commits, the perspective completions, the commit-sequence stamp, the claim), so under load every notifying commit queued behind the longest one: a handler-commit batch that took seconds to commit held every store and completion toward any instance behind it, and a bulk ingest's progress froze for the length of each batch.
+
+**The rule since migration 146: the hot transaction never calls `pg_notify`.**
+
+1. Where a hot function used to ring, it calls `_queue_doorbell(channel, payload)`: a plain `INSERT` into the **unlogged** table `wh_doorbell_queue`, taking no lock the caller does not already hold and never the NOTIFY lock. The debounce decision and its bookkeeping (migrations 137, 141, 143) are unchanged; only the final ring moves. `_notify_debounced`, both `_emit_event_store_chain` variants (the `wh_committed` doorbell for the commit-order stamper) and the dead-letter-ready trigger all queue instead of notifying.
+2. After the hot statement's transaction has committed, the driver runs `ring_doorbells(p_max DEFAULT 1000)` as its **own autocommit statement** on the connection the hot call just used. It deletes up to `p_max` queued rows `FOR UPDATE SKIP LOCKED`, coalesces identical `(channel, payload)` pairs with `DISTINCT`, issues one `pg_notify` per distinct pair, and returns how many it sent. That transaction holds the NOTIFY lock for the microseconds it takes to commit a few notifies, not for the length of a batch.
+
+```mermaid{caption="Doorbells ring after commit: the hot transaction queues a row in the unlogged wh_doorbell_queue and commits without touching the NOTIFY serialization lock; the driver then rings the queue in a separate tiny autocommit statement that coalesces duplicate (channel, payload) pairs." tests=["DoorbellsRingAfterCommitSqlTests.Doorbell_InsideAHotTransaction_QueuesInsteadOfNotifyingAsync", "DoorbellsRingAfterCommitSqlTests.HotStore_DoesNotTakeTheNotifySerializationLockAsync", "DoorbellsRingAfterCommitSqlTests.RingDoorbells_DeliversQueuedRingsAndCoalescesDuplicatesAsync"]}
+sequenceDiagram
+    autonumber
+    participant D as Driver (EF Core or Dapper coordinator)
+    participant H as Hot function (store, commit, completion, claim)
+    participant Q as wh_doorbell_queue (UNLOGGED)
+    participant R as ring_doorbells()
+    participant L as LISTEN-ing instances
+    D->>H: BEGIN; store_inbox_messages(...)
+    H->>Q: _queue_doorbell('wh_work_i_<owner>', 'inbox')  (plain INSERT)
+    H-->>D: COMMIT (NOTIFY lock never taken)
+    D->>R: SELECT ring_doorbells()  (autocommit)
+    R->>Q: DELETE ... FOR UPDATE SKIP LOCKED, DISTINCT (channel, payload)
+    R->>L: pg_notify per distinct pair
+    R-->>D: number of notifications sent
+```
+
+`DoorbellRinger.RingAsync(connection, qualifiedFunctionName, logger, cancellationToken)` is the one helper every driver uses, placed immediately after every hot call: the inbox and outbox stores, the handler commits, the perspective completions, the schedule claim and the schedule manager's writes, the commit-order stamper, the signal transport. Three properties are worth knowing:
+
+- **A ring never fails the caller.** The work the doorbell points at is already committed. A ring that does not happen costs latency until the next ring from any instance or the claim poll, so a failure is logged at Warning naming the function and swallowed (the call returns -1). Cancellation at shutdown is treated the same way: the queued doorbells are rung by the next ring from any instance.
+- **Any instance may ring what any other queued**, and two ringers never wait on each other (`SKIP LOCKED`). A ring left in the queue by a driver that died between its commit and its ring is picked up by the next ring from anywhere.
+- **The ring is bounded**: a five-second command timeout on a statement that touches a handful of rows in an unlogged table.
+
+**Ambient transactions.** When a store runs inside an ambient transaction (an EF Core `Database.CurrentTransaction` is open, for example a handler commit writing through the same DbContext), the queued rows commit with that transaction and would not be visible to a ring issued before it. The drivers skip the ring in that case rather than ring nothing, and **the next hot call on the connection rings them** along with its own. Latency inside that window is bounded by the next hot call or the claim poll; nothing is lost.
+
+Three properties carry over from the previous design: a doorbell queued by a transaction that **rolls back** is rolled back with it, so there is no spurious ring for work that never committed; the claim poll remains the safety net beneath all of it; and the queue is **unlogged on purpose**, because a crash loses only a doorbell, never the work it pointed at. `cleanup_stale_instances` still notifies directly: it runs on the maintenance path, never inside a hot transaction, and its eviction broadcast is rare by nature.
+
+Also in migration 146: `store_inbox_messages` treats an all-zero `source_service_id` on an inbound envelope as unknown, so the existing fallback to the receiving service's own id applies; see [Source service id on published envelopes](/v1.0.0/fundamentals/dispatcher/message-cascade#source-service-id).
 
 ## Health monitoring + auto-fallback
 

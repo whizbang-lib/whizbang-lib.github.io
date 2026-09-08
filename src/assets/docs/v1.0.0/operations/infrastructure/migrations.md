@@ -20,10 +20,13 @@ codeReferences:
   - src/Whizbang.Data.EFCore.Postgres.Generators/Templates/DbContextSchemaExtensionTemplate.cs
   - src/Whizbang.Data.Postgres/Migrations/063_NormalizeClrTypeNamesV2.sql
   - src/Whizbang.Data.Postgres/Migrations/032_PerformMaintenance.sql
+  - src/Whizbang.Data.Postgres/MigrationFunctionBodies.cs
 testReferences:
   - tests/Whizbang.Data.Dapper.Postgres.Tests/NormalizeClrTypeNamesMigrationTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/PostgresSchemaInitializerTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/PostgresSchemaInitializerBranchTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/MigrationFunctionBodiesTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/StaleFunctionDefinitionSweepTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -161,6 +164,21 @@ Before `drop_all_overloads` resolved its own schema (it filtered by `current_sch
 The initializer now detects this: when a framework-defined function name has more than one overload in the schema, the migrations defining that name are forced back into the run — their `drop_all_overloads` clears every overload and each file recreates its single canonical definition, with the redefinition closure re-running any later file defining the same object. One extra catalog query on a hash-clean boot; a clean database never re-runs anything. Consumer-defined functions with intentional overloads never trigger it — the check is intersected with the framework's own migration objects.
 
 Log line to look for on an affected database's first boot after upgrading: `re-running to sweep stale duplicate overload(s)`.
+
+### Stale function definitions are re-applied automatically
+{verified: StaleFunctionDefinitionSweepTests.Initialize_WhenAFunctionIsOnAnEarlierDefinition_ReappliesItsLastWordAsync, StaleFunctionDefinitionSweepTests.Initialize_WhenAFrameworkFunctionIsMissing_RecreatesItAsync, StaleFunctionDefinitionSweepTests.Initialize_OnADatabaseThatMatchesItsFiles_DoesNotTriggerTheSweepAsync}
+
+The content hashes describe the **files**; nothing above describes the **database**. A replay that predates the [redefinition closure](#how-it-works) could re-run an earlier file that defines a function *after* the later file that gives it its final definition. The database is then left holding the earlier body while every hash reads "unchanged" on every startup, because the last-word file itself never changed and so never re-runs. The symptom is a function a generation old that no restart repairs: for example, the registry reconciler that should honor a type's recorded former names keeps reporting drift for exactly the renamed types, forever.
+
+The EF Core schema initializer now compares the database against the files on every startup. `MigrationFunctionBodies` extracts each dollar-quoted `CREATE [OR REPLACE] FUNCTION` body from the migration set, resolves the **last word** for every function name (the last file in order that defines it, and the body that file gives it), and queries `pg_proc.prosrc` for those names in one catalog query. Bodies are compared whitespace-normalized, because the embedded runner re-indents the file text. For every framework function whose deployed body differs from its last-word body, or that is missing from the schema, the last-word file is put back into the run; the redefinition closure then re-runs any later file defining the same objects, exactly as for a changed hash. {verified: MigrationFunctionBodiesTests.Extract_TwoRenderingsOfTheSameBody_NormalizeEqualAsync, MigrationFunctionBodiesTests.LastWord_LaterFileWins_EarlierFileKeepsItsOtherFunctionsAsync, MigrationFunctionBodiesTests.FilesToRerun_DeployedBodyIsAnEarlierDefinition_RerunsTheLastWordFileAsync, MigrationFunctionBodiesTests.FilesToRerun_FunctionMissingFromTheDatabase_RerunsItsLastWordFileAsync, MigrationFunctionBodiesTests.FilesToRerun_TwoStaleFunctionsInOneFile_ListsTheFileOnceAsync}
+
+Three boundaries keep the sweep self-limiting:
+
+- **A database that matches its files re-runs nothing.** It pays one catalog query per startup, and the fast path (all hashes match, no duplicate overloads) consults the same probe silently before exiting, so a hash-clean database on a stale definition is still healed. {verified: MigrationFunctionBodiesTests.FilesToRerun_DeployedBodyMatchesLastWord_NothingRerunsAsync}
+- **Duplicate overloads are left to the overload sweep above.** A name with more than one `pg_proc` row is skipped here; the overload sweep's `drop_all_overloads` and recreate owns that case. {verified: MigrationFunctionBodiesTests.FilesToRerun_DuplicateOverloads_AreLeftToTheOverloadSweepAsync}
+- **Only bodies the database will hold verbatim are compared.** A `CREATE FUNCTION` that sits inside dynamic SQL (a `format(...)` template with `%I` placeholders) or that has no dollar-quoted body is skipped, so a placeholder can never be mistaken for a stale definition. Over-skipping only narrows the check. {verified: MigrationFunctionBodiesTests.Extract_DynamicSqlTemplate_IsSkippedAsync, MigrationFunctionBodiesTests.Extract_FunctionWithoutADollarQuotedBody_IsSkippedAsync, MigrationFunctionBodiesTests.Extract_TaggedDollarQuote_UsesTheMatchingCloserAsync}
+
+Log line to look for, one per re-run file: `re-running because the database's definition of <functions> does not match this file, its last word`. The Dapper-based `PostgresSchemaInitializer` does not yet run this sweep; only the EF Core initializer (generated from `DbContextSchemaExtensionTemplate`) does.
 
 ### Table rewrites run post-ready, under the maintainer duty
 

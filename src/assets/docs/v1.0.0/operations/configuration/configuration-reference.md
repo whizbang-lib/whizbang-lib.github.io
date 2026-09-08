@@ -401,7 +401,8 @@ The claim loop that distributes outbox/inbox/perspective work. **Configure:** bo
 | `PollingMaxIntervalMilliseconds` | `int` | `10000` | Adaptive backoff cap (constrained by `AbandonStaleInstanceThresholdSeconds`) |
 | `NotifyHealthyPollingIntervalMilliseconds` | `int?` | `5000` | Relaxed base wait while the NOTIFY gate is healthy |
 | `MaxStreamsPerBatch` | `int` | `1000` | Cap on rows returned per `claim_work` call |
-| `AdaptiveOutstandingBudget` | `bool` | `false` | Bounds total claimed-but-unprocessed inbox rows; off until it is per work category and row-bound (see [Claim backpressure](../workers/claim-backpressure)) |
+| `AdaptiveOutstandingBudget` | `bool` | `true` | Bounds total claimed-but-unprocessed inbox rows. On by default now that it is per work category (reads inbox rows only) and row-bound (its headroom is passed to the store as `MaxAcquireRows`); set `false` to fall back to the churn-based claim window alone (see [Claim backpressure](../workers/claim-backpressure)) |
+| `MaxPerspectiveDrainBacklog` | `int` | `2000` | Perspective drain channel backlog (stream ids queued and not yet drained) above which the claim loop stops leasing new perspective work; re-emission of held work continues. `0` disables the cap |
 | `FreshWorkShare` | `double` | `0.5` | Share of each inbox batch reserved for fresh-head streams (head row never attempted). Weighted-fair and work-conserving: an empty class hands its share to the other. Raise toward `1.0` where interactive latency outranks backlog drain — strict oldest-first let a 28k-row retry backlog starve every new arrival |
 | `PerspectiveOnly` | `bool` | `false` | Distribute only perspective work (set when the legacy publisher worker is registered) |
 | `PartitionCount` | `int` | `10000` | Modulo partition count |
