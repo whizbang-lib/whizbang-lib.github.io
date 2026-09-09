@@ -258,7 +258,8 @@ for interactive callers: a caller's bucket is the ambient parent of the handling
 coordinator call made while handling an interactive row may take a reserved permit when the shared
 ones are gone, and a call made for anything else can never take the last reserved permits. Interactive
 callers use the shared permits first, so the reserve is whole whenever it is needed. The reserve
-defaults to one tenth of the permits, rounded up, and is never the whole gate; `InteractiveReserve`
+defaults to one tenth of the permits, rounded down (a gate under ten permits reserves nothing unless
+told to: a reserve that is half of a two-permit gate is a haircut, not a share), and is never the whole gate; `InteractiveReserve`
 in the gate options sets it (bound from `Whizbang:WorkCoordinatorGate:InteractiveReserve`; 0 is the
 operator's explicit word and disables the reserve).
 
