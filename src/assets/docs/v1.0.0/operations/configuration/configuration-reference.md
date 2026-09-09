@@ -23,6 +23,7 @@ codeReferences:
   - src/Whizbang.Core/Workers/BatchFlusher.cs
   - src/Whizbang.Core/Workers/PerspectiveStreamAffinityOptions.cs
 testReferences:
+  - tests/Whizbang.Core.Tests/Messaging/WorkCoordinatorGateInteractiveReserveTests.cs
   - tests/Whizbang.Core.Tests/ServiceCollectionExtensionsTests.cs
   - tests/Whizbang.Core.Tests/Messaging/WorkCoordinatorGateRegistrationTests.cs
   - tests/Whizbang.Core.Tests/Workers/BatchFlusherRetryTests.cs
@@ -379,6 +380,7 @@ The process-wide `WorkCoordinatorGate`: a cap on concurrent `IWorkCoordinator` c
 |----------|------|---------|---------|
 | `MaxConcurrent` | `int?` | unset (50 when nothing sets it) | Cap on concurrent coordinator calls per process. Each slot holds at most one pooled connection, so the effective ceiling is `min(MaxConcurrent, Maximum Pool Size)`; 0 or less disables the gate |
 | `AcquireTimeoutMilliseconds` | `int` | `30000` | How long a caller waits for a slot. On expiry the gate logs a Warning that names the current holders and lets the call through without a slot rather than hanging it; 0 or less waits without a deadline |
+| `InteractiveReserve` | `int?` | one tenth of `MaxConcurrent`, rounded up, never the whole gate | Permits held back for callers running inside an interactive handling (the ambient parent is in the interactive bucket); everyone else can never take the last reserved permits. See [bulkheads](../../fundamentals/messaging/message-priority.md#bulkheads). {verified: WorkCoordinatorGateInteractiveReserveTests.Reserve_DefaultsToOneTenthOfThePermits_AndNeverTheWholeGateAsync} |
 
 Precedence for `MaxConcurrent`, lowest to highest:
 

@@ -25,6 +25,8 @@ codeReferences:
   - src/Whizbang.Data.Schema/Schemas/InboxSchema.cs
   - src/Whizbang.Data.Schema/Schemas/OutboxSchema.cs
   - src/Whizbang.Data.Schema/Schemas/PerspectiveEventsSchema.cs
+  - src/Whizbang.Core/Messaging/WorkCoordinatorGate.cs
+  - src/Whizbang.Core/Messaging/WorkCoordinatorGateOptions.cs
 testReferences:
   - tests/Whizbang.Core.Tests/Priority/WorkPriorityTests.cs
   - tests/Whizbang.Core.Tests/Priority/PriorityHooksTests.cs
@@ -34,6 +36,7 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/MessagePrioritySqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/BucketAwareClaimSqlTests.cs
   - tests/Whizbang.Data.Schema.Tests/Schemas/PriorityColumnTests.cs
+  - tests/Whizbang.Core.Tests/Messaging/WorkCoordinatorGateInteractiveReserveTests.cs
 ---
 
 # Message Priority
@@ -184,6 +187,24 @@ dead-letter move, purges, debug-mode stamping) and reconciled when one is missed
 costs the pending interactive rows, which the premise of the design keeps small. The counters remain
 the answer if the interactive set ever grows large; nothing in the row shape precludes them.
 
+## Bulkheads {#bulkheads}
+
+{verified: WorkCoordinatorGateInteractiveReserveTests.Acquire_NonInteractiveCallers_NeverTakeTheReservedSliceAsync, WorkCoordinatorGateInteractiveReserveTests.Acquire_AnInteractiveCaller_TakesTheReserveWhenTheSharedPermitsAreGoneAsync, WorkCoordinatorGateInteractiveReserveTests.Acquire_AnInteractiveCaller_UsesTheSharedPermitsFirstAsync, WorkCoordinatorGateInteractiveReserveTests.Reserve_DefaultsToOneTenthOfThePermits_AndNeverTheWholeGateAsync}
+
+Ordering alone does not protect latency when the shared resource is held by stalled bulk work. The
+work coordinator gate, the process-wide cap on coordinator calls, reserves a slice of its permits
+for interactive callers: a caller's bucket is the ambient parent of the handling it runs in, so a
+coordinator call made while handling an interactive row may take a reserved permit when the shared
+ones are gone, and a call made for anything else can never take the last reserved permits. Interactive
+callers use the shared permits first, so the reserve is whole whenever it is needed. The reserve
+defaults to one tenth of the permits, rounded up, and is never the whole gate; `InteractiveReserve`
+in the gate options sets it.
+
+The connection pool is not reserved by the framework. The pinned pool already gives the control
+plane (claim, renewal, the completion flushers, the heartbeat) connections the drain bodies cannot
+take, and the dispatch path's connections come from the host's Npgsql pool; the gate reserve bounds
+what the framework's own callers can hold of that pool, which is the lever the framework has.
+
 ## Hooks {#hooks}
 
 {verified: PriorityHooksTests.Chain_RunsProducerHooksInOrder_EachSeeingThePreviousAnswerAsync, PriorityHooksTests.Chain_RunsReceiveHooksInOrder_AndTheLastWordWinsAsync, PriorityHooksTests.Chain_WithNoHooks_ReturnsWhatItWasGivenAsync}
@@ -263,6 +284,24 @@ using (PriorityContext.Enter(effectivePriority)) {
   await handler.HandleAsync(message, ct);   // everything dispatched in here sees CurrentParent
 }
 ```
+
+## What this release leaves for later {#later}
+
+Three parts of the design were assessed for this release and deferred, each with its reason:
+
+- **Lanes on the transport** (a bucket as a routing key to its own subscription). The transport
+  traffic-classes routing this rides on is its own proposal and is not released; adding the bucket as
+  a key before that routing exists would be a second design of the same mechanism. It follows the
+  traffic-classes release.
+- **Notification tags bound to coalescing by default.** The existing coalescing mechanism folds
+  outbox-bound messages into composites, which the consumer expands back into the same children at
+  dispatch, so binding notification tags to it would change the delivery shape without reducing the
+  notifications the tag hooks push. The reduction the design wants belongs in the notification hook
+  itself (one signal per tag per window), which is a new mechanism, not a policy binding over an
+  existing one. It is filed as a follow-up.
+- **Fairness across tenants** (a second round-robin key on the scope). The design records it as a
+  second phase because it multiplies the scheduling budget's dimensions and needs its own
+  measurements; nothing in this release precludes it.
 
 ## Decisions {#decisions}
 
