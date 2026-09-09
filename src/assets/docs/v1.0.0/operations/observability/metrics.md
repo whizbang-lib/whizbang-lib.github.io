@@ -21,6 +21,8 @@ codeReferences:
   - src/Whizbang.Core/Observability/TransportMetrics.cs
   - src/Whizbang.Core/Observability/PerspectiveMetrics.cs
   - src/Whizbang.Core/Observability/WorkCoordinatorMetrics.cs
+  - src/Whizbang.Core/Observability/CompositeMetrics.cs
+  - src/Whizbang.Core/Workers/InboxHandlerWorker.cs
   - src/Whizbang.Core/Messaging/WorkCoordinatorGate.cs
   - src/Whizbang.Core/Observability/InboxMetrics.cs
   - src/Whizbang.Core/Observability/DeadLetterMetrics.cs
@@ -52,6 +54,10 @@ testReferences:
   - tests/Whizbang.Core.Tests/Observability/TypeRegistryMetricsTests.cs
   - tests/Whizbang.Core.Tests/Observability/StreamIntegrityMetricsTests.cs
   - tests/Whizbang.Sagas.Tests/SagaMetricsTests.cs
+  - tests/Whizbang.Core.Tests/Observability/CompositeMetricsTests.cs
+  - tests/Whizbang.Core.Tests/Workers/InboxDispatchWorkerCompositeCommitTests.cs
+  - tests/Whizbang.Core.Tests/Workers/InboxHandlerWorkerQueueDepthTests.cs
+  - tests/Whizbang.Core.Tests/Workers/PerspectiveWorkerCollectiveSinkTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -515,6 +521,14 @@ Meter name: `Whizbang.DeadLetters` (`DeadLetterMetrics`)
 | `whizbang.dispatcher.re_emissions` | Counter\<long\> | Events published that this service also consumes — the re-emission cascade signature (#587), tagged by `type`. A spike during a bulk operation is amplification |
 | `whizbang.work_coordinator.commit_handler.fallbacks` | Counter\<long\> | Handler-commit batches that fell back from the bulk tier to per-handler savepoints (#573). Sustained non-zero: read the paired warning's SQLSTATE |
 
+### Handler commit queue {#handler-commit-queue}
+
+{verified: InboxHandlerWorkerQueueDepthTests.QueuedHandlerCommits_AreObservableAsAGauge_UntilTheyCommitAsync}
+
+| Metric Name | Type | Description |
+|-------------|------|-------------|
+| `whizbang.work_coordinator.handler_commits.queued` | Gauge\<long\> | Handler results dispatched but not yet committed: what waits in the commit channel plus what the flusher has taken up and is committing. This queue is the one place dispatched work waits in memory; under a bulk fan-out it once held whole composite expansions while the lease count stayed capped and nothing said where the memory was (#740). Composite expansions no longer pass through it |
+
 ## Whizbang.Composites {#composites-and-collectives}
 
 Meter name: `Whizbang.Composites` (`CompositeMetrics`)
@@ -531,9 +545,11 @@ A composite disappears once it is expanded (its row is completed and only its ch
 | `whizbang.composites.children_refused` | Counter\<long\> | Children refused by the consumer's expansion budget (`MaxCompositeChildrenPerExpansion`) |
 | `whizbang.composites.dead_lettered` | Counter\<long\> | Composite rows moved to the dead-letter store instead of being expanded |
 | `whizbang.composites.commit_failures` | Counter\<long\> | Expansions whose synchronous commit failed; the row stays leased and is retried on re-offer |
-| `whizbang.collectives.received` | Counter\<long\> | Collective events that reached this consumer's inbox |
-| `whizbang.collectives.applied` | Counter\<long\> | Collective events applied to the collective sink |
-| `whizbang.collectives.skipped` | Counter\<long\> | Collective events the sink skipped (already applied or filtered) |
+| `whizbang.collectives.received` | Counter\<long\> | Collective events the collective sink took up from a leased sink row |
+| `whizbang.collectives.applied` | Counter\<long\> | Collective events the sink applied through the collective dispatcher |
+| `whizbang.collectives.skipped` | Counter\<long\> | Leased sink rows completed without an apply because no collective event was behind them (the cursor had already passed, or a stale re-lease); a rising count is the re-lease loop showing itself |
+
+The collective counters are recorded at the sink, the one place an applied collective leaves no row behind to count. {verified: PerspectiveWorkerCollectiveSinkTests.CollectiveSink_Meters_CountAReceivedAndAppliedCollective_Async, PerspectiveWorkerCollectiveSinkTests.CollectiveSink_Meters_CountALeasedSinkRowWithNoEventAsSkipped_Async}
 
 ## Whizbang.TransportDeadLetterDrain {#transport-dlq}
 
