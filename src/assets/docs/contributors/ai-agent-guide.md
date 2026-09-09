@@ -127,6 +127,18 @@ conclusion. Another crude count said 171 assertion-free tests; excluding `.Throw
 and snapshot assertions gave 141. Before trusting either, the detector was checked against one
 file by hand: 28 tests, 17 asserting, 11 flagged — exactly right.
 
+**Audit the auditor.** The detector above was, in the end, right — 139 of the 141 tests it
+flagged were genuinely assertion-free. But a follow-up check written to *verify* it reported
+"102 false positives," and that check was the broken one: it scanned forward to the next `[Test]`
+attribute, so it picked up neighbouring tests' assertions and called them the flagged test's own.
+A wrong number was briefly reported with confidence. If you write a second tool to check the
+first, it needs the same scrutiny as the first — and where they disagree, resolve it by reading
+one case by hand rather than by trusting the newer tool.
+
+A related trap: a detector run against the **working tree** while agents are editing measures the
+work in progress, not the baseline. Measure against `HEAD` (or a stashed copy) when you want a
+count you can compare to later.
+
 **These races do not reproduce on an idle machine.** A finding that a test is vacuous usually has
 to be demonstrated under real CPU load, or by simulating the lost race directly (for instance,
 cancelling *before* starting, which is what happens when the work item is dequeued after
