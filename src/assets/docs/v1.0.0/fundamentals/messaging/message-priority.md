@@ -42,6 +42,7 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/BucketAwareClaimSqlTests.cs
   - tests/Whizbang.Data.Schema.Tests/Schemas/PriorityColumnTests.cs
   - tests/Whizbang.Core.Tests/Messaging/WorkCoordinatorGateInteractiveReserveTests.cs
+  - tests/Whizbang.Core.Tests/Messaging/WorkCoordinatorGateRegistrationTests.cs
   - tests/Whizbang.Core.Tests/Priority/PriorityTagSurfaceTests.cs
   - tests/Whizbang.Core.Tests/Priority/ClaimWorkerPriorityBatchHookTests.cs
 ---
@@ -249,7 +250,7 @@ the answer if the interactive set ever grows large; nothing in the row shape pre
 
 ## Bulkheads {#bulkheads}
 
-{verified: WorkCoordinatorGateInteractiveReserveTests.Acquire_NonInteractiveCallers_NeverTakeTheReservedSliceAsync, WorkCoordinatorGateInteractiveReserveTests.Acquire_AnInteractiveCaller_TakesTheReserveWhenTheSharedPermitsAreGoneAsync, WorkCoordinatorGateInteractiveReserveTests.Acquire_AnInteractiveCaller_UsesTheSharedPermitsFirstAsync, WorkCoordinatorGateInteractiveReserveTests.Reserve_DefaultsToOneTenthOfThePermits_AndNeverTheWholeGateAsync}
+{verified: WorkCoordinatorGateInteractiveReserveTests.Acquire_NonInteractiveCallers_NeverTakeTheReservedSliceAsync, WorkCoordinatorGateInteractiveReserveTests.Acquire_AnInteractiveCaller_TakesTheReserveWhenTheSharedPermitsAreGoneAsync, WorkCoordinatorGateInteractiveReserveTests.Acquire_AnInteractiveCaller_UsesTheSharedPermitsFirstAsync, WorkCoordinatorGateInteractiveReserveTests.Reserve_DefaultsToOneTenthOfThePermits_AndNeverTheWholeGateAsync, WorkCoordinatorGateRegistrationTests.AddWhizbangWorkers_BindsTheInteractiveReserveFromConfigurationAsync, WorkCoordinatorGateRegistrationTests.AddWhizbangWorkers_WithoutAnInteractiveReserve_HoldsOneTenthBackAsync, WorkCoordinatorGateRegistrationTests.AddWhizbangWorkers_WithInteractiveReserveZero_DisablesTheReserveAsync}
 
 Ordering alone does not protect latency when the shared resource is held by stalled bulk work. The
 work coordinator gate, the process-wide cap on coordinator calls, reserves a slice of its permits
@@ -258,7 +259,8 @@ coordinator call made while handling an interactive row may take a reserved perm
 ones are gone, and a call made for anything else can never take the last reserved permits. Interactive
 callers use the shared permits first, so the reserve is whole whenever it is needed. The reserve
 defaults to one tenth of the permits, rounded up, and is never the whole gate; `InteractiveReserve`
-in the gate options sets it.
+in the gate options sets it (bound from `Whizbang:WorkCoordinatorGate:InteractiveReserve`; 0 is the
+operator's explicit word and disables the reserve).
 
 The connection pool is not reserved by the framework. The pinned pool already gives the control
 plane (claim, renewal, the completion flushers, the heartbeat) connections the drain bodies cannot
