@@ -21,6 +21,8 @@ codeReferences:
   - src/Whizbang.Core/Messaging/IInboxChannelWriter.cs
 testReferences:
   - tests/Whizbang.Core.Tests/Workers/AdaptiveClaimWindowSampleSizeTests.cs
+  - tests/Whizbang.Core.Tests/Workers/AdaptiveOutstandingBudgetTests.cs
+  - tests/Whizbang.Core.Tests/Workers/AdaptiveOutstandingBudgetLeaseAwarenessTests.cs
 ---
 
 ## The failure
@@ -129,6 +131,32 @@ The budget permits `drainRate × leaseSeconds × safetyFactor` rows outstanding.
   work, so a worker that stopped polling could never discover it had recovered. Re-offering rows it
   already holds charges no new attempt.
 
+## The budget follows a slowdown at once {#lease-aware-budget}
+
+{verified: AdaptiveOutstandingBudgetLeaseAwarenessTests.Observe_ARateCollapse_ShrinksTheBudgetOnTheNextSampleAsync, AdaptiveOutstandingBudgetLeaseAwarenessTests.Observe_ARateRise_IsStillSmoothedAsync, AdaptiveOutstandingBudgetLeaseAwarenessTests.Observe_AQuietInterval_StaysSmoothed_ButALowerPositiveRateTakesEffectAtOnceAsync}
+
+The budget is only a bound if the drain rate it multiplies is the rate the consumer has *now*. The
+estimate is exponentially smoothed so that one fast interval cannot license a large claim. Smoothing
+a slowdown the same way had the opposite cost: after a handler slowed or the database began to
+contend, the estimate kept most of the old rate for several intervals and the budget stayed sized to
+it, so the instance went on holding `oldRate × leaseSeconds × safetyFactor` rows while completing
+far fewer. Rows were leased that could not be completed inside their lease, which is exactly what
+the bound exists to prevent, and at the ceiling every lease lapsed together.
+
+The smoothing is asymmetric:
+
+- **A positive sample below the estimate replaces it.** Capacity that has been lost is lost now. The
+  next claim is sized to the observed rate, so `leased ≤ rate × leaseSeconds × safetyFactor` holds
+  for any rate slower than the estimate, whatever the ceiling.
+- **A sample above the estimate is still blended in.** Capacity is earned; one good interval is not
+  evidence of sustained throughput.
+- **A zero sample is still blended in.** One quiet interval is not a stall (the poll may simply have
+  found nothing to complete), so the estimate decays rather than collapsing. A real stall is what the
+  stalled guard above answers.
+
+`ClaimWorker` converts the row budget to a stream count as before. Nothing changes in the conversion,
+only in how fast the row figure tracks a slowdown.
+
 ## The adaptive claim window
 
 {verified: AdaptiveClaimWindowSampleSizeTests.SampleSize_OneReofferedRow_DoesNotHalveTheWindowAsync, AdaptiveClaimWindowSampleSizeTests.SampleSize_NarrowerThanTheFloor_EarnsNoGrowthEitherAsync}
@@ -148,21 +176,22 @@ the window collapsed to its floor on noise rather than on overload.
 
 | Option | Default |
 |---|---|
-| `AdaptiveOutstandingBudget` | `false` (off by default; see below) |
+| `AdaptiveOutstandingBudget` | `true` (on by default; see below) |
 | `MinOutstandingInboxRows` | `100` (also the cold-start value) |
 | `MaxOutstandingInboxRows` | `10000` |
 | `OutstandingBudgetSafetyFactor` | `0.5` |
 
-### Why the budget is off by default
+### What the budget counts
 
-The current budget samples **inbox** completions only, but it counts leased work of **every** category
-as outstanding. When only a perspective backlog remains, the measured drain rate reads zero, headroom
-collapses, and inbox acquisition starves while the database sits idle; the two stages then oscillate
-instead of draining. Converting row headroom into a stream count (`streamsAffordable = headroom /
-rowsPerStream`) turns any collapse into `max(1, ...)`: one row per cycle, a fixed point the 100-row
-floor never reaches. The churn-based [adaptive claim window](#cause-1-acquisition-was-never-bounded)
-remains the bound. Enable the budget where throughput is known to exceed arrival rate; a per-category,
-row-bound budget with a latency signal is the intended default.
+The budget samples **inbox** completions and reads its headroom against **inbox** rows only. An
+earlier version counted leased work of every category as outstanding, so a perspective backlog on
+its own read as a drain rate of zero, inbox headroom collapsed, and inbox acquisition starved while
+the database sat idle. That is why the budget once shipped off by default. With the count scoped to
+the category it measures, perspective acquisition is paced separately (it pauses while the drain
+channel is above `MaxPerspectiveDrainBacklog`), and the budget is on by default. Converting row
+headroom into a stream count (`streamsAffordable = headroom / rowsPerStream`) still floors at
+`max(1, ...)`, so a collapsed budget claims one stream per cycle rather than nothing, and the
+churn-based [adaptive claim window](#cause-1-acquisition-was-never-bounded) remains a bound of its own.
 
 ## Verifying it in a live system
 

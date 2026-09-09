@@ -13,6 +13,7 @@ tags: 'inbox, exactly-once, deduplication, idempotency, message-processing'
 codeReferences:
   - src/Whizbang.Core/Messaging/IWorkCoordinator.cs
   - src/Whizbang.Core/Workers/TransportConsumerWorker.cs
+  - src/Whizbang.Core/Workers/ServiceBusConsumerWorker.cs
   - src/Whizbang.Core/Workers/InboxDispatchWorker.cs
   - src/Whizbang.Data.Postgres/Migrations/021_StoreInboxMessages.sql
   - samples/ECommerce/ECommerce.InventoryWorker/Receptors/ReserveInventoryReceptor.cs
@@ -21,6 +22,7 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/EFCoreStoreInboxMessagesTests.cs
   - tests/Whizbang.Core.Tests/Workers/InboxDispatchWorkerDeadLetterTests.cs
   - tests/Whizbang.Core.Tests/Workers/InboxDispatchWorkerTests.cs
+  - tests/Whizbang.Core.Tests/Workers/ServiceBusConsumerSourceIdentityTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -112,8 +114,8 @@ CREATE TABLE IF NOT EXISTS wh_inbox (
   processed_at TIMESTAMPTZ NULL,
   received_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
   flags INTEGER NOT NULL DEFAULT 0,           -- EventFlags bitmask (event categorization)
-  source_service_id UUID NOT NULL,            -- Cross-service source identity (trigger-filled if omitted)
-  source_commit_sequence BIGINT NOT NULL DEFAULT 0
+  source_service_id UUID NOT NULL,            -- The producing service's id, from the envelope
+  source_commit_sequence BIGINT NOT NULL DEFAULT 0  -- The producer's commit sequence, from the envelope
 );
 
 CREATE INDEX IF NOT EXISTS idx_inbox_processed_at ON wh_inbox (processed_at);
@@ -133,6 +135,7 @@ CREATE TABLE IF NOT EXISTS wh_message_deduplication (
 - **instance_id** / **lease_expiry**: Which worker holds the lease, and until when
 - **scheduled_for**: When set, the row (and later rows in its stream) waits for the retry time
 - **received_at**: Order-of-arrival timestamp — inbox ordering uses `received_at` (outbox uses `created_at`)
+- **source_service_id** / **source_commit_sequence**: The producing service and its commit sequence, copied from the envelope's `SourceServiceId` and `SourceCommitSequence` by every consumer worker, the transport consumer and the Service Bus consumer alike. The store function stamps this service's own id only on a row whose envelope carries none, so the column tells producers apart instead of repeating the consumer's id on every row. {verified: ServiceBusConsumerSourceIdentityTests.HandleMessage_StoresTheProducersServiceIdAndCommitSequence_FromTheEnvelopeAsync}
 
 **Critical**: The `wh_message_deduplication` primary key prevents duplicate processing — the inbox insert only happens when the dedup insert succeeds.
 
