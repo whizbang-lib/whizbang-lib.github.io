@@ -27,6 +27,9 @@ codeReferences:
   - src/Whizbang.Data.Schema/Schemas/PerspectiveEventsSchema.cs
   - src/Whizbang.Core/Messaging/WorkCoordinatorGate.cs
   - src/Whizbang.Core/Messaging/WorkCoordinatorGateOptions.cs
+  - src/Whizbang.Core/Priority/PriorityOptions.cs
+  - src/Whizbang.Core/Priority/PrioritySugarHooks.cs
+  - src/Whizbang.Core/Tags/TagOptions.cs
 testReferences:
   - tests/Whizbang.Core.Tests/Priority/WorkPriorityTests.cs
   - tests/Whizbang.Core.Tests/Priority/PriorityHooksTests.cs
@@ -37,6 +40,7 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/BucketAwareClaimSqlTests.cs
   - tests/Whizbang.Data.Schema.Tests/Schemas/PriorityColumnTests.cs
   - tests/Whizbang.Core.Tests/Messaging/WorkCoordinatorGateInteractiveReserveTests.cs
+  - tests/Whizbang.Core.Tests/Priority/PriorityTagSurfaceTests.cs
 ---
 
 # Message Priority
@@ -124,6 +128,58 @@ in the urgent bucket. {verified: PriorityHooksTests.ReceiveDefault_AcceptsTheDec
 - **The dispatch worker enters the row's number** as the ambient parent for the whole handling, so
   every lifecycle stage and everything a receptor dispatches from inside one inherits it.
   {verified: InboxDispatchWorkerPriorityContextTests.Dispatch_EntersTheRowsPriorityAsTheAmbientParent_ForEveryStageAsync}
+
+### Declaring with tags and classifying by rule {#declaring-with-tags}
+
+{verified: PriorityTagSurfaceTests.DeclarePriority_ForATag_DeclaresEveryMessageCarryingItAsync, PriorityTagSurfaceTests.DeclarePriority_KeepsAnEarlierExplicitDeclarationAsync, PriorityTagSurfaceTests.DeclarePriority_LastBindingPerTagWinsAsync, PriorityTagSurfaceTests.ClassifyNamespace_LowersEverythingInTheNamespace_AndLeavesTheRestAsync, PriorityTagSurfaceTests.ClassifyType_RaisesOneType_AndTheMostSpecificRuleWinsAsync, PriorityTagSurfaceTests.Classify_ARule_DecidesByContent_AndNullKeepsTheDeclaredNumberAsync, PriorityTagSurfaceTests.AddWhizbangPriority_RegistersTheSugarHooksAheadOfTheDefaultsAsync}
+
+The common cases need no hook of their own. A producer declares through the tag surface that already
+binds coalescing and namespace routing, and a consumer classifies through the priority options; both
+are ordinary hooks registered ahead of the framework defaults (Order 500), so the defaults keep what
+the sugar declared.
+
+```csharp{
+title: "Declaring a priority for a producer's tagged message types"
+description: "Tags classify; binding a number to a tag declares every message type that carries it, whatever context it is dispatched from. Last binding per tag wins, like the other tag bindings."
+framework: "NET10"
+category: "Configuration"
+difficulty: "INTERMEDIATE"
+tags: ["priority", "tags", "producer", "configuration"]
+tests: ["PriorityTagSurfaceTests.DeclarePriority_ForATag_DeclaresEveryMessageCarryingItAsync", "PriorityTagSurfaceTests.DeclarePriority_LastBindingPerTagWinsAsync"]
+}
+services.AddWhizbang(options => {
+  options.Tags.DeclarePriority("bulk-import", WorkPriority.BACKGROUND);
+  options.Tags.DeclarePriority("user-session", WorkPriority.INTERACTIVE);
+  // A number anywhere in a band is valid: more urgent than an ordinary interactive message, same bucket.
+  options.Tags.DeclarePriority("permission-revoked", WorkPriority.INTERACTIVE - 40);
+});
+```
+
+```csharp{
+title: "A consumer's classification rules"
+description: "Rules by namespace, by type, or by a predicate over the receive context decide the effective priority; a rule that does not match has no opinion, and the most specific rule wins (type over namespace over predicate)."
+framework: "NET10"
+category: "Configuration"
+difficulty: "INTERMEDIATE"
+tags: ["priority", "classification", "consumer", "configuration"]
+tests: ["PriorityTagSurfaceTests.ClassifyNamespace_LowersEverythingInTheNamespace_AndLeavesTheRestAsync", "PriorityTagSurfaceTests.ClassifyType_RaisesOneType_AndTheMostSpecificRuleWinsAsync", "PriorityTagSurfaceTests.Classify_ARule_DecidesByContent_AndNullKeepsTheDeclaredNumberAsync"]
+}
+services.AddWhizbang(options => {
+  // Everything from the job domain is background for this service, whatever the producer said.
+  options.Priority.ClassifyNamespace("Contracts.Job", WorkPriority.BACKGROUND);
+
+  // A consumer may raise or lower by declared policy; both are recorded. Never by inheritance.
+  options.Priority.ClassifyType<PermissionRevokedEvent>(WorkPriority.INTERACTIVE);
+
+  // Content-dependent: a rule over the receive context; null keeps the declared number.
+  options.Priority.Classify(ctx =>
+    ctx.MessageTypeName.StartsWith("Contracts.Job.Import", StringComparison.Ordinal) ? WorkPriority.BACKGROUND : null);
+});
+```
+
+The classification rules live on `options.Priority` rather than on the routing options the design
+sketched: classification is a scheduling decision, not a topology one, and the routing options are
+not part of the core configuration root.
 
 ## Storage {#storage}
 
