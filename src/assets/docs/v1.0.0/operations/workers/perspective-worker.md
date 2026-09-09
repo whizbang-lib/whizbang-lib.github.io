@@ -238,7 +238,7 @@ This ensures perspectives work in environments without security infrastructure (
 
 ### Per-Envelope Context
 
-```mermaid{caption="Per-envelope security context — each envelope re-establishes its own UserId before its lifecycle stage runs, so envelope 1 (user-a) and envelope 2 (user-b) never share context within a batch."}
+```mermaid{caption="Per-envelope security context — each envelope re-establishes its own UserId before its lifecycle stage runs, so envelope 1 (user-a) and envelope 2 (user-b) never share context within a batch." tests=["PerspectiveWorkerSecurityContextTests.MultipleEnvelopes_EstablishesContextForEachEnvelopeAsync"]}
 sequenceDiagram
     participant PW as PerspectiveWorker
     participant SC as SecurityContext
