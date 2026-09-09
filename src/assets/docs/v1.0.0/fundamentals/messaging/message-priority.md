@@ -21,6 +21,10 @@ codeReferences:
   - src/Whizbang.Core/Workers/InboxDispatchWorker.cs
   - src/Whizbang.Core/Messaging/IWorkCoordinator.cs
   - src/Whizbang.Data.Postgres/Migrations/149_MessagePriority.sql
+  - src/Whizbang.Data.Postgres/Migrations/150_BucketAwareClaim.sql
+  - src/Whizbang.Data.Schema/Schemas/InboxSchema.cs
+  - src/Whizbang.Data.Schema/Schemas/OutboxSchema.cs
+  - src/Whizbang.Data.Schema/Schemas/PerspectiveEventsSchema.cs
 testReferences:
   - tests/Whizbang.Core.Tests/Priority/WorkPriorityTests.cs
   - tests/Whizbang.Core.Tests/Priority/PriorityHooksTests.cs
@@ -28,6 +32,8 @@ testReferences:
   - tests/Whizbang.Core.Tests/Priority/ConsumerPriorityClassificationTests.cs
   - tests/Whizbang.Core.Tests/Priority/InboxDispatchWorkerPriorityContextTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/MessagePrioritySqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/BucketAwareClaimSqlTests.cs
+  - tests/Whizbang.Data.Schema.Tests/Schemas/PriorityColumnTests.cs
 ---
 
 # Message Priority
@@ -118,7 +124,7 @@ in the urgent bucket. {verified: PriorityHooksTests.ReceiveDefault_AcceptsTheDec
 
 ## Storage {#storage}
 
-{verified: MessagePrioritySqlTests.StoreInboxMessages_WritesTheEffectivePriority_AndReadsUndeclaredAsStandardAsync, MessagePrioritySqlTests.StoreOutboxMessages_WritesTheDeclaredPriority_AndReadsUndeclaredAsStandardAsync, MessagePrioritySqlTests.FetchInboxBatch_ReturnsTheRowsPriorityAsync, MessagePrioritySqlTests.CommitHandlerResult_PerspectiveWorkCreatedFromAnInboxEvent_InheritsTheEventRowsPriorityAsync}
+{verified: PriorityColumnTests.Inbox_PriorityColumn_IsIntegerNotNullDefaultStandardAsync, PriorityColumnTests.AllThreeTables_PriorityColumn_SharesTheSameNameAsync, MessagePrioritySqlTests.StoreInboxMessages_WritesTheEffectivePriority_AndReadsUndeclaredAsStandardAsync, MessagePrioritySqlTests.StoreOutboxMessages_WritesTheDeclaredPriority_AndReadsUndeclaredAsStandardAsync, MessagePrioritySqlTests.FetchInboxBatch_ReturnsTheRowsPriorityAsync, MessagePrioritySqlTests.CommitHandlerResult_PerspectiveWorkCreatedFromAnInboxEvent_InheritsTheEventRowsPriorityAsync}
 
 Migration `149_MessagePriority.sql` adds `priority INTEGER NOT NULL DEFAULT 150` to `wh_inbox`,
 `wh_outbox` and `wh_perspective_events`. The store functions read the message's `Priority` and write
@@ -130,6 +136,53 @@ number, so an interactive event's projection is not queued as standard behind bu
 The effective number gets its own column because it is a per-consumer decision, not a property of
 the message, and because the claim orders by it. The meters report the bucket everywhere and the raw
 number only in traces, so a dashboard says "Interactive", not "137".
+
+## The claim {#the-claim}
+
+{verified: BucketAwareClaimSqlTests.ClaimOrphanedInbox_AnInteractiveStream_IsClaimedAheadOfOlderStandardStreamsAsync, BucketAwareClaimSqlTests.ClaimOrphanedInbox_AStreamWithAnInteractiveRowBehindStandardRows_IsPulledForward_InOrderAsync, BucketAwareClaimSqlTests.ClaimOrphanedInbox_BackgroundStreams_KeepAFloorOfTheBatchAsync, BucketAwareClaimSqlTests.ClaimOrphanedInbox_ABackgroundStreamPastItsWaitTarget_IsPromotedIntoTheStandardLaneAsync, BucketAwareClaimSqlTests.ClaimOrphanedInbox_CommandsStayAheadOfEvents_InsideABucketAsync, BucketAwareClaimSqlTests.ClaimWork_ReemitsHeldInboxStreams_MostUrgentBucketFirstAsync, BucketAwareClaimSqlTests.ClaimOrphanedPerspectiveEvents_TakesTheMostUrgentStreamsFirstAsync}
+
+The claim is where contention latency is decided, and it happens in SQL, inside `claim_orphaned_inbox`,
+`claim_work` and `claim_orphaned_perspective_events`, because a C# sort over rows the SQL already
+chose cannot reach the flood. Migration `150_BucketAwareClaim.sql` schedules by bucket.
+
+**The stream is the unit.** Per-stream FIFO means the scheduler never picks a row; it picks a stream
+and takes that stream's rows in order. A stream is claimed by the bucket its most urgent pending row
+falls in: an interactive row queued behind bulk rows on its own stream pulls the whole stream
+forward, and the stream's head is what gets claimed first, since its predecessors are prerequisites.
+Priority reorders streams, never rows within a stream.
+
+**Three lanes, each bounded by the batch.**
+
+- **Interactive** (lane 0): every stream with a pending interactive row anywhere in it. That set is
+  small by nature and served by its own partial index, so the fold over all of a stream's pending
+  rows costs the pending interactive rows, never the backlog.
+- **Standard** (lane 1): standard rows, plus background rows whose stream has waited past the
+  background wait target. Selected breadth-first with an early stop over the standard band's own
+  arrival-order index, as the acquisition rewrite already does for events.
+- **Background** (lane 2): background rows inside the wait target, selected the same way over the
+  background band's index. The bucket always receives a floor of the batch (one tenth) while it has
+  pending streams, so a steady standard flow can never starve it; whatever standard leaves unused
+  goes to background as well.
+
+Inside a lane a command keeps its place ahead of events (the command lane), then streams interleave
+breadth-first as before. The streams an instance already holds are re-offered in the same order,
+folded over the rows it holds, so the drain dispatches an interactive stream before the standard and
+background ones it holds. The perspective claim selects the streams with the most urgent claimable
+event first, oldest first within a priority, and re-offers held perspective streams bucket first.
+
+**Aging.** Within a lane the oldest streams go first, which is aging inside a bucket. Across bands, a
+background stream that has waited past the background wait target (five minutes in this release)
+competes as standard. Interactive is never promoted into, so the urgent lane holds only declared
+urgency; a host that wants a different rule sets a stream's number in the batch hook, where the
+stream's oldest age is available.
+
+**Why the fold is not a counter.** The design review settled on per-bucket pending counters on the
+stream row. The release folds the interactive bucket with a partial-index probe instead, and folds
+standard against background by the stream's head under load and by any pending row otherwise: a
+counter has to be moved by every path that stores or removes a row (the store, completion, the
+dead-letter move, purges, debug-mode stamping) and reconciled when one is missed, while the probe
+costs the pending interactive rows, which the premise of the design keeps small. The counters remain
+the answer if the interactive set ever grows large; nothing in the row shape precludes them.
 
 ## Hooks {#hooks}
 
