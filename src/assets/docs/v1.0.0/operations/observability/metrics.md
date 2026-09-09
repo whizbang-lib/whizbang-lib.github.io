@@ -515,6 +515,26 @@ Meter name: `Whizbang.DeadLetters` (`DeadLetterMetrics`)
 | `whizbang.dispatcher.re_emissions` | Counter\<long\> | Events published that this service also consumes — the re-emission cascade signature (#587), tagged by `type`. A spike during a bulk operation is amplification |
 | `whizbang.work_coordinator.commit_handler.fallbacks` | Counter\<long\> | Handler-commit batches that fell back from the bulk tier to per-handler savepoints (#573). Sustained non-zero: read the paired warning's SQLSTATE |
 
+## Whizbang.Composites {#composites-and-collectives}
+
+Meter name: `Whizbang.Composites` (`CompositeMetrics`)
+
+A composite disappears once it is expanded (its row is completed and only its children remain), so these counters are the only place the amplification of a fan-out is visible. Read them as ratios: `expansions / received` should be one (above one is a composite being expanded more than once, the shape of a re-offer racing a queued commit); `children_created / expansions` is the fan-out width; `children_unsubscribed / (children_created + children_unsubscribed)` is the share of a composite this consumer never wanted.
+{verified: CompositeMetricsTests.Counters_ReportWhatWasAddedWhenPolledAsync, InboxDispatchWorkerCompositeCommitTests.Composite_Meters_CountReceivedExpansionsChildrenAndUnsubscribedDropsAsync}
+
+| Metric Name | Type | Description |
+|-------------|------|-------------|
+| `whizbang.composites.received` | Counter\<long\> | Composite inbox rows the dispatcher took up |
+| `whizbang.composites.expansions` | Counter\<long\> | Times a composite was expanded into children; above `received` means a composite was expanded more than once |
+| `whizbang.composites.children_created` | Counter\<long\> | Child inbox rows produced by expansions |
+| `whizbang.composites.children_unsubscribed` | Counter\<long\> | Children dropped at expansion because this consumer has no subscription for their type; they are never stored |
+| `whizbang.composites.children_refused` | Counter\<long\> | Children refused by the consumer's expansion budget (`MaxCompositeChildrenPerExpansion`) |
+| `whizbang.composites.dead_lettered` | Counter\<long\> | Composite rows moved to the dead-letter store instead of being expanded |
+| `whizbang.composites.commit_failures` | Counter\<long\> | Expansions whose synchronous commit failed; the row stays leased and is retried on re-offer |
+| `whizbang.collectives.received` | Counter\<long\> | Collective events that reached this consumer's inbox |
+| `whizbang.collectives.applied` | Counter\<long\> | Collective events applied to the collective sink |
+| `whizbang.collectives.skipped` | Counter\<long\> | Collective events the sink skipped (already applied or filtered) |
+
 ## Whizbang.TransportDeadLetterDrain {#transport-dlq}
 
 Meter name: `Whizbang.TransportDeadLetterDrain` (created by `TransportDeadLetterDrainWorker`)
