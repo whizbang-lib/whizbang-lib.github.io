@@ -183,14 +183,15 @@ not part of the core configuration root.
 
 ## Storage {#storage}
 
-{verified: PriorityColumnTests.Inbox_PriorityColumn_IsIntegerNotNullDefaultStandardAsync, PriorityColumnTests.AllThreeTables_PriorityColumn_SharesTheSameNameAsync, MessagePrioritySqlTests.StoreInboxMessages_WritesTheEffectivePriority_AndReadsUndeclaredAsStandardAsync, MessagePrioritySqlTests.StoreOutboxMessages_WritesTheDeclaredPriority_AndReadsUndeclaredAsStandardAsync, MessagePrioritySqlTests.FetchInboxBatch_ReturnsTheRowsPriorityAsync, MessagePrioritySqlTests.CommitHandlerResult_PerspectiveWorkCreatedFromAnInboxEvent_InheritsTheEventRowsPriorityAsync}
+{verified: PriorityColumnTests.Inbox_PriorityColumn_IsIntegerNotNullDefaultStandardAsync, PriorityColumnTests.AllThreeTables_PriorityColumn_SharesTheSameNameAsync, MessagePrioritySqlTests.StoreInboxMessages_WritesTheEffectivePriority_AndReadsUndeclaredAsStandardAsync, MessagePrioritySqlTests.StoreOutboxMessages_WritesTheDeclaredPriority_AndReadsUndeclaredAsStandardAsync, MessagePrioritySqlTests.FetchInboxBatch_ReturnsTheRowsPriorityAsync, MessagePrioritySqlTests.ClaimWork_PerspectiveWorkCreatedFromAClaimedInboxEvent_InheritsTheEventRowsPriorityAsync}
 
 Migration `149_MessagePriority.sql` adds `priority INTEGER NOT NULL DEFAULT 150` to `wh_inbox`,
 `wh_outbox` and `wh_perspective_events`. The store functions read the message's `Priority` and write
 it to the row, and an undeclared (zero) number lands in the standard band, so a row is never stored as
 zero and a caller that predates the column behaves as before. The inbox fetch returns the number with
-each row, and the perspective work created when an inbox event is committed inherits the event row's
-number, so an interactive event's projection is not queued as standard behind bulk projections.
+each row, and the perspective work created when a claimed inbox event (or a committed outbox event) is
+copied into the event store inherits the source row's number, so an interactive event's projection is
+not queued as standard behind bulk projections.
 
 The effective number gets its own column because it is a per-consumer decision, not a property of
 the message, and because the claim orders by it. The meters report the bucket everywhere and the raw
