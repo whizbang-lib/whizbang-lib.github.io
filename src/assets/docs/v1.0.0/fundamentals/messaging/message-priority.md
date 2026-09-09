@@ -30,6 +30,8 @@ codeReferences:
   - src/Whizbang.Core/Priority/PriorityOptions.cs
   - src/Whizbang.Core/Priority/PrioritySugarHooks.cs
   - src/Whizbang.Core/Tags/TagOptions.cs
+  - src/Whizbang.Core/Workers/ClaimWorker.cs
+  - src/Whizbang.Data.EFCore.Postgres/ClaimedInboxStreamFolder.cs
 testReferences:
   - tests/Whizbang.Core.Tests/Priority/WorkPriorityTests.cs
   - tests/Whizbang.Core.Tests/Priority/PriorityHooksTests.cs
@@ -41,6 +43,7 @@ testReferences:
   - tests/Whizbang.Data.Schema.Tests/Schemas/PriorityColumnTests.cs
   - tests/Whizbang.Core.Tests/Messaging/WorkCoordinatorGateInteractiveReserveTests.cs
   - tests/Whizbang.Core.Tests/Priority/PriorityTagSurfaceTests.cs
+  - tests/Whizbang.Core.Tests/Priority/ClaimWorkerPriorityBatchHookTests.cs
 ---
 
 # Message Priority
@@ -274,6 +277,12 @@ whose case the provided options do not fit writes the policy; the framework keep
 | `IPriorityProducerHook` | at dispatch | `PriorityDeclarationContext`: the envelope, the message type name, the dispatch context, whether it is scheduled, the parent's effective number, the number declared so far | the declared number |
 | `IPriorityReceiveHook` | at the consumer's receive boundary, before the store | `PriorityReceiveContext`: the number declared so far, the envelope, the message type name | the effective number |
 | `IPriorityBatchHook` | after each claim, before dispatch order is decided | `PriorityBatchEntry` for the stream (its folded number, oldest age, pending rows) and the batch around it | the stream's number for this batch |
+
+The batch hook runs in the claim worker: after each claim the coordinator folds the inbox streams the claim
+returned (the most urgent row, the oldest arrival and the rows in the batch, which `claim_work` returns with
+each inbox row), the registered batch hooks adjust each stream's number, and the streams reach the drain in
+the adjusted order, stable within equal numbers. With no batch hook registered the claim's own bucket order
+stands. {verified: ClaimWorkerPriorityBatchHookTests.Distribute_RunsTheBatchHooks_AndHandsStreamsToTheDrainInTheAdjustedOrderAsync, ClaimWorkerPriorityBatchHookTests.Distribute_WithoutABatchHook_KeepsTheClaimsOrderAsync, BucketAwareClaimSqlTests.ClaimWork_ReturnsThePriorityAndArrivalOfHeldInboxRows_ForTheBatchHooksAsync}
 
 Hooks run in `Order` (lower first; the framework defaults run at 1000), and each sees the previous
 answer, so a host's hook composes with the defaults or replaces them by running later. Each hook is
