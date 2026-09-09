@@ -16,9 +16,18 @@ codeReferences:
   - src/Whizbang.Core/Observability/MessageEnvelope.cs
   - src/Whizbang.Core/Observability/IMessageEnvelope.cs
   - src/Whizbang.Core/ServiceCollectionExtensions.cs
+  - src/Whizbang.Core/Dispatcher.cs
+  - src/Whizbang.Core/Workers/ReceivedInboxMessageBuilder.cs
+  - src/Whizbang.Core/Workers/InboxDispatchWorker.cs
+  - src/Whizbang.Core/Messaging/IWorkCoordinator.cs
+  - src/Whizbang.Data.Postgres/Migrations/149_MessagePriority.sql
 testReferences:
   - tests/Whizbang.Core.Tests/Priority/WorkPriorityTests.cs
   - tests/Whizbang.Core.Tests/Priority/PriorityHooksTests.cs
+  - tests/Whizbang.Core.Tests/Priority/DispatcherPriorityStampingTests.cs
+  - tests/Whizbang.Core.Tests/Priority/ConsumerPriorityClassificationTests.cs
+  - tests/Whizbang.Core.Tests/Priority/InboxDispatchWorkerPriorityContextTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/MessagePrioritySqlTests.cs
 ---
 
 # Message Priority
@@ -90,6 +99,37 @@ kept. The domain-owning service therefore processes its own interactive messages
 secondary consumer of the same messages may treat them as background. Classification is positive: a
 rule that does not match leaves the declared number in place, and a lookup miss never lands a message
 in the urgent bucket. {verified: PriorityHooksTests.ReceiveDefault_AcceptsTheDeclaredNumber_AndReadsUndeclaredAsStandardAsync}
+
+### Where the two decisions run
+
+{verified: DispatcherPriorityStampingTests.Send_OutsideAnyHandling_DeclaresInteractive_OnTheEnvelopeAndTheRowAsync, DispatcherPriorityStampingTests.Send_WhileHandlingBackgroundWork_InheritsBackgroundAsync, DispatcherPriorityStampingTests.Send_WithAHostProducerHook_UsesItsDeclarationAsync, DispatcherPriorityStampingTests.Send_WithNoChainRegistered_LeavesTheEnvelopeUndeclaredAsync, ConsumerPriorityClassificationTests.Receive_StoresTheDeclaredNumber_WhenTheDefaultChainAcceptsItAsync, ConsumerPriorityClassificationTests.Receive_ReadsAnUndeclaredNumberAsStandardAsync, ConsumerPriorityClassificationTests.Receive_AHostReceiveHook_LowersTheNumber_AndTheRowCarriesItsAnswerAsync, ConsumerPriorityClassificationTests.Receive_WithNoChainRegistered_StoresTheDeclaredNumbersEffectiveValueAsync}
+
+- **The dispatcher declares.** Every message it sends to the outbox goes through the producer hooks
+  with the dispatch context, the schedule, the ambient parent and whatever the envelope already
+  carries. The answer lands on the envelope, so it travels, and on the outbox row, so the store keeps
+  it. A host that never registered the chain sends undeclared envelopes exactly as before.
+- **The consumer classifies.** Both consumer workers (the transport consumer and the Service Bus
+  consumer) run the receive hooks before the row is stored and write the answer to the inbox row.
+  Without a chain the row carries the declared number's effective value, so nothing is ever stored
+  as zero.
+- **The dispatch worker enters the row's number** as the ambient parent for the whole handling, so
+  every lifecycle stage and everything a receptor dispatches from inside one inherits it.
+  {verified: InboxDispatchWorkerPriorityContextTests.Dispatch_EntersTheRowsPriorityAsTheAmbientParent_ForEveryStageAsync}
+
+## Storage {#storage}
+
+{verified: MessagePrioritySqlTests.StoreInboxMessages_WritesTheEffectivePriority_AndReadsUndeclaredAsStandardAsync, MessagePrioritySqlTests.StoreOutboxMessages_WritesTheDeclaredPriority_AndReadsUndeclaredAsStandardAsync, MessagePrioritySqlTests.FetchInboxBatch_ReturnsTheRowsPriorityAsync, MessagePrioritySqlTests.CommitHandlerResult_PerspectiveWorkCreatedFromAnInboxEvent_InheritsTheEventRowsPriorityAsync}
+
+Migration `149_MessagePriority.sql` adds `priority INTEGER NOT NULL DEFAULT 150` to `wh_inbox`,
+`wh_outbox` and `wh_perspective_events`. The store functions read the message's `Priority` and write
+it to the row, and an undeclared (zero) number lands in the standard band, so a row is never stored as
+zero and a caller that predates the column behaves as before. The inbox fetch returns the number with
+each row, and the perspective work created when an inbox event is committed inherits the event row's
+number, so an interactive event's projection is not queued as standard behind bulk projections.
+
+The effective number gets its own column because it is a per-consumer decision, not a property of
+the message, and because the claim orders by it. The meters report the bucket everywhere and the raw
+number only in traces, so a dashboard says "Interactive", not "137".
 
 ## Hooks {#hooks}
 
