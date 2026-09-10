@@ -7,9 +7,11 @@ order: 8
 description: >-
   One integer on every message and three scheduling buckets. The producer
   declares from context, the consumer classifies at its receive boundary, a
-  child inherits its parent's effective number, and three hooks (producer,
-  receive, batch) make every default replaceable.
-tags: 'priority, work-class, interactive, background, hooks, inheritance, scheduling'
+  child inherits its parent's effective number, every seam that copies an
+  envelope or a row carries the number across, a minted composite folds its
+  members' numbers, and three hooks (producer, receive, batch) make every
+  default replaceable.
+tags: 'priority, work-class, interactive, background, hooks, inheritance, scheduling, composites, wire'
 codeReferences:
   - src/Whizbang.Core/Priority/WorkPriority.cs
   - src/Whizbang.Core/Priority/PriorityHooks.cs
@@ -32,6 +34,40 @@ codeReferences:
   - src/Whizbang.Core/Tags/TagOptions.cs
   - src/Whizbang.Core/Workers/ClaimWorker.cs
   - src/Whizbang.Data.EFCore.Postgres/ClaimedInboxStreamFolder.cs
+  - src/Whizbang.Core/Priority/IPrioritized.cs
+  - src/Whizbang.Core/Dispatch/DispatchOptions.cs
+  - src/Whizbang.Core/Observability/MessageEnvelopeExtensions.cs
+  - src/Whizbang.Core/Messaging/EnvelopeSerializer.cs
+  - src/Whizbang.Core/Serialization/JsonContextRegistry.cs
+  - src/Whizbang.Generators/MessageJsonContextGenerator.cs
+  - src/Whizbang.Core/Workers/OutboxDrainWorker.cs
+  - src/Whizbang.Core/Workers/InboxDrainWorker.cs
+  - src/Whizbang.Core/Offloads/BodyOffloadPostSerializeHook.cs
+  - src/Whizbang.Core/Messaging/CompositeInboxFanout.cs
+  - src/Whizbang.Core/Workers/CoalesceShipWorker.cs
+  - src/Whizbang.Core/Tags/CoalescePolicyOptions.cs
+  - src/Whizbang.Core/Tags/CompositePriorityFold.cs
+  - src/Whizbang.Core/SystemEvents/AuditOutboxMessageBuilder.cs
+  - src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs
+  - src/Whizbang.Data.Dapper.Postgres/DapperWorkCoordinator.cs
+  - src/Whizbang.Data.Postgres/Migrations/151_PriorityOnTheWire.sql
+  - src/Whizbang.Data.Postgres/Migrations/constants.txt
+  - src/Whizbang.Core/SystemEvents/AuditingEventStoreDecorator.cs
+  - src/Whizbang.Core/SystemEvents/SystemEventEmitter.cs
+  - src/Whizbang.Core/Workers/IntegrityCheckpointWorker.cs
+  - src/Whizbang.Core/Workers/IntegrityAuditWorker.cs
+  - src/Whizbang.Core/Workers/RepairDrainWorker.cs
+  - src/Whizbang.Core/Workers/SubscriptionExpansionWorker.cs
+  - src/Whizbang.Core/Messaging/RedeliveryPump.cs
+  - src/Whizbang.Data.EFCore.Postgres/IntegrityCheckpointReceptor.cs
+  - src/Whizbang.Data.EFCore.Postgres/IntegrityManifestReceptors.cs
+  - src/Whizbang.Core/Transports/DispatcherTransportBridge.cs
+  - src/Whizbang.Core/Transports/TransportManager.cs
+  - src/Whizbang.Core/Messaging/SecurityContextEventStoreDecorator.cs
+  - src/Whizbang.Core/Messaging/InMemoryEventStore.cs
+  - src/Whizbang.Data.Dapper.Postgres/EventEnvelopeJsonbAdapter.cs
+  - src/Whizbang.Data.Dapper.Postgres/DapperPostgresEventStore.cs
+  - src/Whizbang.Data.Dapper.Sqlite/DapperSqliteEventStore.cs
 testReferences:
   - tests/Whizbang.Core.Tests/Priority/WorkPriorityTests.cs
   - tests/Whizbang.Core.Tests/Priority/PriorityHooksTests.cs
@@ -45,6 +81,36 @@ testReferences:
   - tests/Whizbang.Core.Tests/Messaging/WorkCoordinatorGateRegistrationTests.cs
   - tests/Whizbang.Core.Tests/Priority/PriorityTagSurfaceTests.cs
   - tests/Whizbang.Core.Tests/Priority/ClaimWorkerPriorityBatchHookTests.cs
+  - tests/Whizbang.Core.Tests/Messaging/EnvelopeSerializerTests.cs
+  - tests/Whizbang.Core.Tests/Observability/MessageEnvelopeExtensionsTests.cs
+  - tests/Whizbang.Core.Tests/Offloads/BodyOffloadPostSerializeHookTests.cs
+  - tests/Whizbang.Core.Tests/Messaging/CompositeInboxFanoutTests.cs
+  - tests/Whizbang.Core.Tests/JsonContextRegistryTests.cs
+  - tests/Whizbang.Generators.Tests/MessageJsonContextGeneratorTests.cs
+  - tests/Whizbang.Core.Tests/Workers/OutboxDrainWorkerGapTests.cs
+  - tests/Whizbang.Core.Tests/Workers/InboxDrainWorkerTests.cs
+  - tests/Whizbang.Core.Tests/Workers/CoalesceShipWorkerTests.cs
+  - tests/Whizbang.Core.Tests/SystemEvents/AuditOutboxMessageBuilderCoverageTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/PriorityOnTheWireSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/ClaimedInboxStreamFolderTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperWorkCoordinatorWithDataTests.cs
+  - tests/Whizbang.Core.Tests/SystemEvents/AuditingEventStoreDecoratorPriorityTests.cs
+  - tests/Whizbang.Core.Tests/SystemEvents/SystemEventEmitterPriorityTests.cs
+  - tests/Whizbang.Core.Tests/Workers/IntegrityCheckpointWorkerPriorityTests.cs
+  - tests/Whizbang.Core.Tests/Workers/IntegrityAuditWorkerPriorityTests.cs
+  - tests/Whizbang.Core.Tests/Workers/RepairDrainWorkerPriorityTests.cs
+  - tests/Whizbang.Core.Tests/Workers/SubscriptionExpansionWorkerPriorityTests.cs
+  - tests/Whizbang.Core.Tests/Messaging/RedeliveryPumpPriorityTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityReceptorsPriorityTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityManifestReceptorTests.cs
+  - tests/Whizbang.Transports.Tests/DispatcherTransportBridgePriorityTests.cs
+  - tests/Whizbang.Transports.Tests/TransportManagerPriorityTests.cs
+  - tests/Whizbang.Core.Tests/Messaging/SecurityContextEventStoreDecoratorPriorityTests.cs
+  - tests/Whizbang.Core.Tests/Messaging/InMemoryEventStorePriorityTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/EventEnvelopeJsonbAdapterPriorityTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperPostgresEventStorePriorityTests.cs
+  - tests/Whizbang.Data.Tests/DapperSqliteEventStorePriorityTests.cs
+  - tests/Whizbang.Core.Tests/Priority/PriorityOnTheWireEndToEndTests.cs
 ---
 
 # Message Priority
@@ -201,6 +267,40 @@ The effective number gets its own column because it is a per-consumer decision, 
 the message, and because the claim orders by it. The meters report the bucket everywhere and the raw
 number only in traces, so a dashboard says "Interactive", not "137".
 
+## On the wire {#on-the-wire}
+
+{verified: OutboxDrainWorkerGapTests.OutboxDrainWorker_PublishesTheRowsPriorityOnTheWireAsync, OutboxDrainWorkerGapTests.OutboxDrainWorker_WithoutARowNumber_KeepsTheStoredEnvelopesPriorityAsync, MessagePrioritySqlTests.FetchOutboxBatch_ReturnsTheRowsPriorityAsync, DapperWorkCoordinatorWithDataTests.FetchOutboxBatchAsync_ReturnsTheRowsPriorityAsync, DapperWorkCoordinatorWithDataTests.FetchInboxBatchAsync_ReturnsTheRowsPriorityAsync, InboxDrainWorkerTests.InboxDrainWorker_StampsTheRowsPriorityOnTheEnvelopeAsync}
+
+A declaration is only worth what survives the trip. The number is stored on the producer's row and
+inside the stored envelope, but between that row and the consumer's row the framework copies the
+envelope several times, and each copy is a place the number can be lost. The rule is therefore
+stated once and enforced seam by seam: **any code that constructs or copies an envelope or a work
+row either copies the number from its source or declares a band with a reason, and ships with a test
+asserting the number on the far side.**
+
+The seams, in the order a message crosses them:
+
+| seam | what carries the number | rule |
+|---|---|---|
+| the outbox fetch | `fetch_outbox_batch` returns the row's `priority` (migration `151_PriorityOnTheWire.sql`); the EF and Dapper readers map it | a fetch that predates the column leaves the row undeclared |
+| the outbox drain | `OutboxDrainWorker` rebuilds the wire envelope with the row's number, falling back to the stored envelope's (`WorkPriority.FirstDeclared`) | the row is authoritative once it exists |
+| the typed envelope metadata | the generated `MessageEnvelope<T>` metadata and the hand-built polymorphic metadata both name `pri` (omitted when zero) | metadata that does not name the field drops it on every round trip |
+| the storage conversion | `EnvelopeSerializer.SerializeEnvelope` copies the number into the `MessageEnvelope<JsonElement>` form | every store and ship path goes through this conversion |
+| the typed receive | `ReconstructWithPayload` copies the number onto the typed envelope the handler sees | the inheritance rule reads the envelope in the handler's hand |
+| the offload claim | `BodyOffloadPostSerializeHook` copies the number onto the claim envelope | the claim replaces the body, not the scheduling decision |
+| the inbox drain | `InboxDrainWorker` stamps the row's number (the consumer's classification) on the envelope it hands to dispatch | the row wins over the producer's declaration, because the consumer already decided |
+| a composite's fan-out | every child envelope and child row carries the composite's number | a fan-out never re-decides |
+
+{verified: EnvelopeSerializerTests.SerializeEnvelope_CarriesThePriorityIntoTheStorageFormAsync, MessageEnvelopeExtensionsTests.ReconstructWithPayload_NonGeneric_KeepsThePriorityAsync, MessageEnvelopeExtensionsTests.ReconstructWithPayload_Generic_KeepsThePriorityAsync, BodyOffloadPostSerializeHookTests.RunAsync_AboveThreshold_TheClaimEnvelopeKeepsThePriorityAsync, JsonContextRegistryTests.PolymorphicEnvelope_RoundTripsThePriorityAsync, MessageJsonContextGeneratorTests.Generator_WithCompositeEvent_EnvelopeIsDispatchable_NotJustNameRegisteredAsync, CompositeInboxFanoutTests.TryExpand_ChildrenCarryTheCompositesPriorityAsync}
+
+Why the drain seam mattered most: a bulk import stamped its fan-out background on its own rows, and
+every other service received the same events at the standard number, because the drain rebuilt the
+wire envelope field by field without the number and the fetch never returned it. The interactive
+work still won at the consumer, but by one band instead of two, and the margin the design promises
+was missing. The row-over-envelope rule at the inbox drain is the mirror image: the consumer's
+classification is the number the handler's children inherit, so a consumer that pushes a message
+down pushes everything the message causes down with it.
+
 ## The claim {#the-claim}
 
 {verified: BucketAwareClaimSqlTests.ClaimOrphanedInbox_AnInteractiveStream_IsClaimedAheadOfOlderStandardStreamsAsync, BucketAwareClaimSqlTests.ClaimOrphanedInbox_AStreamWithAnInteractiveRowBehindStandardRows_IsPulledForward_InOrderAsync, BucketAwareClaimSqlTests.ClaimOrphanedInbox_BackgroundStreams_KeepAFloorOfTheBatchAsync, BucketAwareClaimSqlTests.ClaimOrphanedInbox_ABackgroundStreamPastItsWaitTarget_IsPromotedIntoTheStandardLaneAsync, BucketAwareClaimSqlTests.ClaimOrphanedInbox_CommandsStayAheadOfEvents_InsideABucketAsync, BucketAwareClaimSqlTests.ClaimWork_ReemitsHeldInboxStreams_MostUrgentBucketFirstAsync, BucketAwareClaimSqlTests.ClaimOrphanedPerspectiveEvents_TakesTheMostUrgentStreamsFirstAsync}
@@ -247,6 +347,103 @@ counter has to be moved by every path that stores or removes a row (the store, c
 dead-letter move, purges, debug-mode stamping) and reconciled when one is missed, while the probe
 costs the pending interactive rows, which the premise of the design keeps small. The counters remain
 the answer if the interactive set ever grows large; nothing in the row shape precludes them.
+
+## Composites {#composites}
+
+{verified: CoalesceShipWorkerTests.RunOnce_DefaultFold_CompositeCarriesTheMostUrgentMemberAsync, CoalesceShipWorkerTests.RunOnce_LeastUrgentFold_CompositeCarriesTheLeastUrgentMemberAsync, CoalesceShipWorkerTests.RunOnce_ManualFold_CompositeCarriesTheBindingsNumberAsync, CoalesceShipWorkerTests.RunOnce_NoMemberDeclared_CompositeStaysUndeclaredAsync, PriorityOnTheWireSqlTests.FetchPendingCoalesce_ReturnsEachSinglesPriorityAsync, PriorityOnTheWireSqlTests.CompleteCoalesceFold_StoresTheCompositesPriorityAsync}
+
+A composite minted by the coalesce ship worker bundles singles that were each declared when they
+were produced, so the composite's number is a **fold over its members**, decided by the binding, and
+the same fold the claim applies to a stream:
+
+| `CoalescePolicyOptions.PriorityFold` | the composite carries | when |
+|---|---|---|
+| `MostUrgent` (the default) | the lowest declared number among the members | the bundle must never be scheduled behind the member somebody is waiting on |
+| `LeastUrgent` | the highest declared number among the members | the bundle may wait with its slowest member: an audit digest, a metrics roll-up |
+| `Manual` | whatever `PriorityFor(batch)` returns | the binding knows something the numbers do not |
+
+Members that carry no number are left out of the fold; a composite whose members are all undeclared
+stays undeclared and the consumer's rules classify it, because the worker never invents a band. A
+`Manual` binding without a callback behaves the same way. The number lands on the composite's outbox
+row and inside its envelope, crosses the wire like any other, and the consumer's fan-out gives every
+child the composite's number, so an import's composite is background end to end and so is each
+child it expands into.
+
+```csharp{
+title: "A digest that waits with its slowest member"
+description: "Binds a coalesce group whose minted composite takes the least urgent member's number instead of the default most urgent fold."
+framework: "NET10"
+category: "Messaging"
+difficulty: "INTERMEDIATE"
+tags: ["priority", "coalesce", "composite", "background"]
+tests: ["CoalesceShipWorkerTests.RunOnce_LeastUrgentFold_CompositeCarriesTheLeastUrgentMemberAsync", "CoalesceShipWorkerTests.RunOnce_ManualFold_CompositeCarriesTheBindingsNumberAsync"]
+}
+services.AddWhizbang(options => {
+  options.Tags.Coalesce("record-digest", c => {
+    c.SlideSeconds = 15;
+    c.PriorityFold = CompositePriorityFold.LeastUrgent;   // the digest is never more urgent than its slowest record
+  });
+  options.Tags.Coalesce("ops-rollup", c => {
+    c.PriorityFold = CompositePriorityFold.Manual;
+    c.PriorityFor = batch => batch.Singles.Count > 100 ? WorkPriority.BACKGROUND : WorkPriority.STANDARD;
+  });
+});
+```
+
+The audit digest is background by construction: every `EventAudited` record is declared background
+when it is built, so the fold over any batch of them is background whichever rule the binding uses.
+{verified: AuditOutboxMessageBuilderCoverageTests.TryBuildAuditMessage_DeclaresTheAuditEventBackgroundAsync}
+
+## Background work {#background-work}
+
+{verified: AuditingEventStoreDecoratorPriorityTests.AppendAsync_WithEnvelope_QueuesTheAuditRecordAsBackground_OnTheRowAndTheEnvelopeAsync, AuditingEventStoreDecoratorPriorityTests.AppendAsync_TheAuditedEventsInteractiveNumber_DoesNotReachTheAuditRecordAsync, SystemEventEmitterPriorityTests.EmitEventAudited_TheAuditEnvelopeIsBackgroundAsync, SystemEventEmitterPriorityTests.EmitCommandAudited_TheAuditEnvelopeIsBackgroundAsync, IntegrityCheckpointWorkerPriorityTests.RunCheckpointOnce_WithTransport_EveryTopicCopyIsBackgroundAsync, IntegrityAuditWorkerPriorityTests.LocalGaps_TheReportAndTheRebuild_AreDispatchedInsideABackgroundHandlingAsync, IntegrityReceptorsPriorityTests.ManifestRequestReceptor_EveryManifestChunkIsBackgroundAsync, IntegrityManifestReceptorTests.ManifestReceptor_Divergence_TheRepairRequestIsBackgroundAsync, IntegrityManifestReceptorTests.ManifestReceptor_TypeLevelMismatch_TheDrillDownRequestIsBackgroundAsync, IntegrityManifestReceptorTests.ManifestReceptor_TypeLevelBulkDeficit_TheBackfillRequestIsBackgroundAsync, RepairDrainWorkerPriorityTests.DrainTick_EveryRepairRequestIsBackgroundAsync, SubscriptionExpansionWorkerPriorityTests.Expansion_TheBackfillRequestIsBackgroundAsync, RedeliveryPumpPriorityTests.Publish_EveryBundleOnTheWireIsBackgroundAsync, PriorityOnTheWireSqlTests.RecoverDeadLetter_OutboxRow_ReentersAsBackgroundAsync, PriorityOnTheWireSqlTests.RecoverDeadLetter_PerspectiveRow_ReentersAsBackgroundAsync}
+
+Work the framework creates for itself is declared **background by construction**, on the envelope and on
+the row, whatever the handling that caused it: nobody is waiting on it, and a flood of it at the standard
+number sits ahead of live work in a FIFO outbox. The declaration is made where the message is built, not
+by a rule a host has to remember:
+
+| emitter | what it declares background |
+|---|---|
+| the audit decorator and the system event emitter | every `EventAudited` and `CommandAudited` record, and so the audit digest folded from them |
+| the integrity checkpoint and audit workers | checkpoints, manifest requests, and the gap reports and rebuilds they dispatch (the worker enters a background handling, so the dispatcher's inheritance rule declares them) |
+| the integrity receptors | manifest answers, drill-down and follow-up requests, repair and backfill requests |
+| the repair drain and the subscription expansion worker | redelivery requests |
+| the redelivery pump | every bundle it ships |
+| `recover_dead_letter` (migration 151) | every row it re-creates: outbox, inbox, perspective, and a broker import re-entering through the inbox door |
+
+The negative case is tested at each site as well: an audit record of an interactive event, or one built
+while an interactive handling is in progress, does not inherit interactive. A worker's ambient background
+handling ends with the cycle, so nothing that runs after it inherits background by accident.
+{verified: AuditingEventStoreDecoratorPriorityTests.AppendAsync_InsideAnInteractiveHandling_TheAuditRecordStaysBackgroundAsync, IntegrityCheckpointWorkerPriorityTests.RunCheckpointOnce_DoesNotLeaveTheBackgroundHandlingBehindAsync, IntegrityAuditWorkerPriorityTests.RunAuditOnce_LeavesNoBackgroundHandlingBehindAsync, RedeliveryPumpPriorityTests.Publish_InsideAnInteractiveHandling_TheBundleStaysBackgroundAsync}
+
+## Producer boundaries outside the dispatcher {#producer-boundaries}
+
+{verified: DispatcherTransportBridgePriorityTests.PublishToTransportAsync_WhilePublishingBackgroundWork_TheEnvelopeCarriesTheAmbientParentAsync, DispatcherTransportBridgePriorityTests.PublishToTransportAsync_OutsideAnyHandling_TheEnvelopeStaysUndeclaredAsync, TransportManagerPriorityTests.PublishToTargetsAsync_WithTwoTargets_BothEnvelopesCarryTheSameNumberAsync, SecurityContextEventStoreDecoratorPriorityTests.AppendAsync_WithMessage_WhileHandlingBackgroundWork_TheEnvelopeCarriesTheAmbientParentAsync, InMemoryEventStorePriorityTests.AppendAsync_WithMessage_WhileHandlingBackgroundWork_TheStoredEnvelopeCarriesTheAmbientParentAsync, EventEnvelopeJsonbAdapterPriorityTests.RoundTrip_KeepsTheDeclaredNumberAsync, DapperPostgresEventStorePriorityTests.AppendAsync_WithMessage_WhileHandlingBackgroundWork_ReadsBackTheAmbientParentAsync, DapperSqliteEventStorePriorityTests.AppendAsync_WithMessage_WhileHandlingBackgroundWork_ReadsBackTheAmbientParentAsync}
+
+A few places build an envelope without the dispatcher: the transport bridge and the transport manager
+(direct publishes), and the event stores' raw `AppendAsync(streamId, message)` overloads that wrap a bare
+message. They declare the **ambient parent** and nothing else: inside a handling the envelope carries the
+handling's number, outside one it stays undeclared for the consumer's rules to classify. They consult no
+hook and invent no band, the same rule the composite fold follows, because a boundary that cannot see the
+dispatch context has nothing to derive a band from. The Dapper event stores persist the number with the
+envelope (`pri` in the metadata column, omitted when undeclared) and restore it on read, so an event
+appended while handling background work reads back as background. An envelope the caller built keeps its
+own number at every one of these boundaries.
+{verified: InMemoryEventStorePriorityTests.AppendAsync_WithEnvelope_KeepsTheEnvelopesOwnNumberAsync, EventEnvelopeJsonbAdapterPriorityTests.ToJsonb_WithAnUndeclaredNumber_OmitsPriAsync, EventEnvelopeJsonbAdapterPriorityTests.FromJsonb_WithoutPriInTheMetadata_StaysUndeclaredAsync}
+
+## End to end {#end-to-end}
+
+{verified: PriorityOnTheWireEndToEndTests.Interactive_ADispatchOutsideAnyHandling_CarriesInteractiveToEveryStoredPointAsync, PriorityOnTheWireEndToEndTests.Background_ADispatchWhileHandlingBackgroundWork_CarriesBackgroundToEveryStoredPointAsync, PriorityOnTheWireEndToEndTests.Explicit_ANumberOnTheDispatchOptions_CarriesThatNumberToEveryStoredPointAsync, PriorityOnTheWireEndToEndTests.TheStoredOutboxEnvelope_NamesTheNumberAsPriAsync}
+
+One test composes the real dispatcher with the priority hooks, the real envelope serializer, the outbox
+row in its stored JSON form, the outbox drain, the transport publish strategy over the in-process
+transport, the consumer worker with the receive hooks, the inbox drain and the typed reconstruction, and
+asserts the number at nine points: the outbox row, the stored outbox envelope, the stored JSON (which
+names it `pri`), the wire envelope, the inbox row, the inbox row's envelope, the work item, the work item's
+envelope, and the typed envelope the handler receives. It runs for an interactive dispatch, a dispatch
+inside a background handling, and an explicit number on the dispatch options. Only the coordinator is an
+in-memory row holder; everything the number crosses is the production code.
 
 ## Bulkheads {#bulkheads}
 
@@ -354,6 +551,44 @@ using (PriorityContext.Enter(effectivePriority)) {
 }
 ```
 
+## The C# API {#the-c-api}
+
+{verified: WorkPriorityTests.Folds_IgnoreUndeclaredMembers_AndAgreeOnTheBandsAsync, WorkPriorityTests.Folds_OverNothingDeclared_StayUndeclaredAsync, WorkPriorityTests.Folds_AcceptAnythingPrioritized_NotOnlyNumbersAsync, WorkPriorityTests.FirstDeclared_PrefersTheFirstNumberSomebodySetAsync, DispatcherPriorityStampingTests.Send_WithAPriorityOnTheOptions_KeepsItOverTheContextRulesAsync, MessageEnvelopeExtensionsTests.WithPriority_SetsTheNumber_AndReturnsTheSameEnvelopeAsync}
+
+The hooks are the policy surface; for the ordinary cases there is a small, plain API, and the
+framework uses the same functions it offers, so a host's fold agrees with the claim's.
+
+| member | what it does |
+|---|---|
+| `DispatchOptions.WithPriority(n)` | declares the number for one dispatch; the framework's default producer hook keeps an explicit declaration |
+| `envelope.WithPriority(n)` | sets the number on a `MessageEnvelope<T>` and returns it, for a builder that declares and keeps constructing; `envelope.Priority` is the plain get and set |
+| `IPrioritized` | the one interface every carrier exposes the number through: envelopes, outbox and inbox rows, batch rows, work items |
+| `WorkPriority.MostUrgent(...)` | the lowest declared number in a collection of numbers or `IPrioritized` items; the stream fold and the composite default |
+| `WorkPriority.LeastUrgent(...)` | the highest declared number |
+| `WorkPriority.Average(...)` | the integer average of the declared numbers |
+| `WorkPriority.FirstDeclared(a, b)` | `a` when it is declared, else `b`; the row-over-envelope rule the drains apply |
+
+Every fold ignores undeclared members and returns `UNDECLARED` when nothing was declared, so a blank
+never outvotes a declaration and a fold over nothing never lands in a band by accident.
+
+```csharp{
+title: "Declaring on one dispatch and folding a batch"
+description: "Uses DispatchOptions.WithPriority for an explicit declaration and the shared fold helpers over a collection of rows."
+framework: "NET10"
+category: "Messaging"
+difficulty: "BEGINNER"
+tags: ["priority", "dispatch-options", "fold", "api"]
+tests: ["DispatcherPriorityStampingTests.Send_WithAPriorityOnTheOptions_KeepsItOverTheContextRulesAsync", "WorkPriorityTests.Folds_AcceptAnythingPrioritized_NotOnlyNumbersAsync"]
+}
+// A re-index nobody is waiting on, started from an endpoint that would otherwise be interactive.
+await dispatcher.SendAsync(new ReindexCatalog(tenantId), new DispatchOptions().WithPriority(WorkPriority.BACKGROUND));
+
+// The band a batch of rows belongs to, by the same rule the claim uses for a stream.
+IReadOnlyList<InboxMessage> batch = await FetchBatchAsync();
+var mostUrgent = WorkPriority.MostUrgent(batch);          // rows are IPrioritized; no projection needed
+var bucket = WorkPriority.Bucket(mostUrgent);
+```
+
 ## What this release leaves for later {#later}
 
 Three parts of the design were assessed for this release and deferred, each with its reason:
@@ -393,6 +628,16 @@ Settled in review; the earlier open questions and their answers:
   and across bands.
 - **What if the provided policies do not fit?** The producer, receive and batch hooks; the provided
   policies are their default implementations.
+- **Which number does a minted composite carry?** A fold over its members, chosen by the binding:
+  most urgent by default (the stream rule), least urgent, or the binding's own callback. The ship
+  worker consults no producer hook of its own: the members were declared through the hooks when they
+  were produced, and a fold of their numbers is not a new declaration.
+- **Row or envelope, when the two disagree?** The row, once it exists. On the producer side the row
+  and the stored envelope agree by construction; on the consumer side the row is the consumer's own
+  classification, which is the number everything the handler causes should inherit.
+- **What band does recovered and replayed work get?** Background, by construction, on every row
+  recovery re-creates. Nobody is waiting on repair, and a recovered row that re-entered at the
+  standard number sat ahead of live work.
 
 ## Related
 
