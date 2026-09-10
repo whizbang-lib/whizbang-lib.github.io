@@ -20,7 +20,11 @@ codeReferences:
   - src/Whizbang.Data.EFCore.Postgres.Generators/Templates/DbContextSchemaExtensionTemplate.cs
   - src/Whizbang.Data.Postgres/Migrations/063_NormalizeClrTypeNamesV2.sql
   - src/Whizbang.Data.Postgres/Migrations/032_PerformMaintenance.sql
+  - src/Whizbang.Data.Postgres/MigrationConstants.cs
+  - src/Whizbang.Data.Postgres/Migrations/constants.txt
+  - scripts/Lint-MigrationSql.ps1
 testReferences:
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/MigrationConstantsTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/NormalizeClrTypeNamesMigrationTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/PostgresSchemaInitializerTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/PostgresSchemaInitializerBranchTests.cs
@@ -205,6 +209,43 @@ The canonical example is `063_NormalizeClrTypeNamesV2.sql`, which normalizes sto
 - **Operational tuning knobs** read by SQL functions — e.g. `perform_maintenance` reads `debug_mode`, `dedup_retention_days`, `stuck_inbox_retention_days`, `abandoned_stream_hours` (the idle grace before an owner-less `wh_active_streams` row is purged), and `ephemeral_rewind_grace_seconds`. Later migrations redefine `perform_maintenance` in place, so the authoritative knob list is whatever the latest redefinition reads.
 
 Settings are seeded by migrations with `ON CONFLICT (setting_key) DO NOTHING` (so operator overrides survive re-runs). Keep C#-worker-coupled timing constants (retry backoff, work leases, liveness thresholds) *out* of this table — tuning them independently of the workers that assume them causes drift.
+
+## Constants {#constants}
+
+{verified: MigrationConstantsTests.TheConstantsFile_DefinesEveryTokenTheMigrationsWriteAsync, MigrationConstantsTests.TheMigrationsTheProviderHandsOut_CarryNoTokens_AndTheValuesAreInPlaceAsync, MigrationConstantsTests.UnknownTokens_NamesATypo_AndIgnoresTheSchemaPlaceholdersAsync, MigrationConstantsTests.Parse_RejectsTheShapesThatWouldMisfireAsync}
+
+A migration modifies a function by redefining it whole (the previous definition plus the delta), so the
+literals a function needs travel with every copy: the empty stream id, the envelope's JSON field names, the
+work-category names, the instance application-name prefix. Repeating a literal in a dozen copies is where a
+mistyped one hides. Those literals are defined once, in `src/Whizbang.Data.Postgres/Migrations/constants.txt`,
+and a migration writes the token where it would otherwise spell the value:
+
+```sql{
+title: "A shared literal written as its token"
+description: "The store function reads the envelope field and compares the stream id through tokens; the values come from constants.txt at apply time."
+category: "Configuration"
+difficulty: "INTERMEDIATE"
+tags: ["migrations", "constants", "tokens", "lint"]
+}
+-- constants.txt
+__EMPTY_UUID__ = '00000000-0000-0000-0000-000000000000'
+__ENVELOPE_FIELD_MESSAGE_ID__ = 'MessageId'
+
+-- a migration
+(elem->>__ENVELOPE_FIELD_MESSAGE_ID__)::UUID AS msg_id,
+... WHERE i.stream_id = __EMPTY_UUID__::uuid
+```
+
+The value is substituted at apply time on the same path as `__SCHEMA__`: the runtime migration provider, the
+embedded-migration path a generated DbContext executes, and the drift comparison that decides whether a
+deployed function body still matches its migration. Values are SQL fragments, quotes included; the SQL adds a
+cast where one is needed. Tokens are UPPER_SNAKE names between double underscores, a token may not be a
+substring of another, and `__SCHEMA__` is the schema placeholder, not a constant.
+
+Two checks hold the rule. `scripts/Lint-MigrationSql.ps1` fails a migration numbered 148 or later that
+writes one of the values raw, or writes a token the file does not define. `MigrationConstantsTests` fails the
+build if any migration, whatever its number, writes a token nothing defines, and proves the provider hands
+out migrations with every token replaced.
 
 ## Pre-v1.0 Note
 
