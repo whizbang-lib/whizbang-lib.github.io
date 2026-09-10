@@ -79,7 +79,7 @@ The npm package bundles a versioned snapshot of these docs (works offline; `bund
 | `get-related-docs` | Which pages document a given code symbol |
 | `get-tests-for-code` / `get-code-for-test` | Navigate the code↔tests map (thousands of linked test methods) |
 | `get-test-status` | **Live pass/fail** for a test class or method from the latest library CI run |
-| `validate-doc-links` / `validate-test-links` | Integrity checks over the linking system |
+| `validate-doc-links` / `validate-test-links` | Integrity checks over the linking system; a test link comes back as a warning when its target exists but never runs (an abstract contract nobody inherits), tests only its own doubles, or asserts nothing |
 | `get-coverage-stats` | How much of the public API has linked tests |
 
 Example: ask *"is the dispatcher's delivery-receipt behavior actually passing on develop?"* — the assistant calls `get-tests-for-code` on `Dispatcher`, then `get-test-status` on `DispatcherTests`, and answers from real CI data.

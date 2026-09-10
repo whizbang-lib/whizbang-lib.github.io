@@ -76689,42 +76689,7 @@
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/Messaging/ImmediateUnitOfWorkStrategyTests.cs",
-        "testMethod": "QueueMessageAsync_ReturnsNonEmptyGuidAsync",
-        "linkSource": "XmlTag"
-      },
-      {
-        "testFile": "tests/Whizbang.Core.Tests/Messaging/ImmediateUnitOfWorkStrategyTests.cs",
-        "testMethod": "QueueMessageAsync_StoresMessageAsync",
-        "linkSource": "XmlTag"
-      },
-      {
-        "testFile": "tests/Whizbang.Core.Tests/Messaging/ImmediateUnitOfWorkStrategyTests.cs",
-        "testMethod": "QueueMessageAsync_WithLifecycleStage_StoresLifecycleMappingAsync",
-        "linkSource": "XmlTag"
-      },
-      {
-        "testFile": "tests/Whizbang.Core.Tests/Messaging/ImmediateUnitOfWorkStrategyTests.cs",
-        "testMethod": "GetMessagesForUnit_NonExistentUnit_ReturnsEmptyAsync",
-        "linkSource": "XmlTag"
-      },
-      {
-        "testFile": "tests/Whizbang.Core.Tests/Messaging/ImmediateUnitOfWorkStrategyTests.cs",
-        "testMethod": "GetLifecycleStagesForUnit_NonExistentUnit_ReturnsEmptyAsync",
-        "linkSource": "XmlTag"
-      },
-      {
-        "testFile": "tests/Whizbang.Core.Tests/Messaging/ImmediateUnitOfWorkStrategyTests.cs",
-        "testMethod": "CancelUnitAsync_ExistingUnit_RemovesUnitAsync",
-        "linkSource": "XmlTag"
-      },
-      {
-        "testFile": "tests/Whizbang.Core.Tests/Messaging/ImmediateUnitOfWorkStrategyTests.cs",
         "testMethod": "CancelUnitAsync_NonExistentUnit_DoesNotThrowAsync",
-        "linkSource": "XmlTag"
-      },
-      {
-        "testFile": "tests/Whizbang.Core.Tests/Messaging/ImmediateUnitOfWorkStrategyTests.cs",
-        "testMethod": "OnFlushRequested_CanBeWiredAsync",
         "linkSource": "XmlTag"
       },
       {
@@ -76774,42 +76739,7 @@
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/Messaging/ScopedUnitOfWorkStrategyTests.cs",
-        "testMethod": "QueueMessageAsync_ReturnsNonEmptyGuidAsync",
-        "linkSource": "XmlTag"
-      },
-      {
-        "testFile": "tests/Whizbang.Core.Tests/Messaging/ScopedUnitOfWorkStrategyTests.cs",
-        "testMethod": "QueueMessageAsync_StoresMessageAsync",
-        "linkSource": "XmlTag"
-      },
-      {
-        "testFile": "tests/Whizbang.Core.Tests/Messaging/ScopedUnitOfWorkStrategyTests.cs",
-        "testMethod": "QueueMessageAsync_WithLifecycleStage_StoresLifecycleMappingAsync",
-        "linkSource": "XmlTag"
-      },
-      {
-        "testFile": "tests/Whizbang.Core.Tests/Messaging/ScopedUnitOfWorkStrategyTests.cs",
-        "testMethod": "GetMessagesForUnit_NonExistentUnit_ReturnsEmptyAsync",
-        "linkSource": "XmlTag"
-      },
-      {
-        "testFile": "tests/Whizbang.Core.Tests/Messaging/ScopedUnitOfWorkStrategyTests.cs",
-        "testMethod": "GetLifecycleStagesForUnit_NonExistentUnit_ReturnsEmptyAsync",
-        "linkSource": "XmlTag"
-      },
-      {
-        "testFile": "tests/Whizbang.Core.Tests/Messaging/ScopedUnitOfWorkStrategyTests.cs",
-        "testMethod": "CancelUnitAsync_ExistingUnit_RemovesUnitAsync",
-        "linkSource": "XmlTag"
-      },
-      {
-        "testFile": "tests/Whizbang.Core.Tests/Messaging/ScopedUnitOfWorkStrategyTests.cs",
         "testMethod": "CancelUnitAsync_NonExistentUnit_DoesNotThrowAsync",
-        "linkSource": "XmlTag"
-      },
-      {
-        "testFile": "tests/Whizbang.Core.Tests/Messaging/ScopedUnitOfWorkStrategyTests.cs",
-        "testMethod": "OnFlushRequested_CanBeWiredAsync",
         "linkSource": "XmlTag"
       },
       {
@@ -76869,42 +76799,7 @@
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/Messaging/IntervalUnitOfWorkStrategyTests.cs",
-        "testMethod": "QueueMessageAsync_ReturnsNonEmptyGuidAsync",
-        "linkSource": "XmlTag"
-      },
-      {
-        "testFile": "tests/Whizbang.Core.Tests/Messaging/IntervalUnitOfWorkStrategyTests.cs",
-        "testMethod": "QueueMessageAsync_StoresMessageAsync",
-        "linkSource": "XmlTag"
-      },
-      {
-        "testFile": "tests/Whizbang.Core.Tests/Messaging/IntervalUnitOfWorkStrategyTests.cs",
-        "testMethod": "QueueMessageAsync_WithLifecycleStage_StoresLifecycleMappingAsync",
-        "linkSource": "XmlTag"
-      },
-      {
-        "testFile": "tests/Whizbang.Core.Tests/Messaging/IntervalUnitOfWorkStrategyTests.cs",
-        "testMethod": "GetMessagesForUnit_NonExistentUnit_ReturnsEmptyAsync",
-        "linkSource": "XmlTag"
-      },
-      {
-        "testFile": "tests/Whizbang.Core.Tests/Messaging/IntervalUnitOfWorkStrategyTests.cs",
-        "testMethod": "GetLifecycleStagesForUnit_NonExistentUnit_ReturnsEmptyAsync",
-        "linkSource": "XmlTag"
-      },
-      {
-        "testFile": "tests/Whizbang.Core.Tests/Messaging/IntervalUnitOfWorkStrategyTests.cs",
-        "testMethod": "CancelUnitAsync_ExistingUnit_RemovesUnitAsync",
-        "linkSource": "XmlTag"
-      },
-      {
-        "testFile": "tests/Whizbang.Core.Tests/Messaging/IntervalUnitOfWorkStrategyTests.cs",
         "testMethod": "CancelUnitAsync_NonExistentUnit_DoesNotThrowAsync",
-        "linkSource": "XmlTag"
-      },
-      {
-        "testFile": "tests/Whizbang.Core.Tests/Messaging/IntervalUnitOfWorkStrategyTests.cs",
-        "testMethod": "OnFlushRequested_CanBeWiredAsync",
         "linkSource": "XmlTag"
       },
       {
@@ -79227,42 +79122,7 @@
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/Messaging/ImmediateUnitOfWorkStrategyTests.cs",
-        "testMethod": "QueueMessageAsync_ReturnsNonEmptyGuidAsync",
-        "linkSource": "XmlTag"
-      },
-      {
-        "testFile": "tests/Whizbang.Core.Tests/Messaging/ImmediateUnitOfWorkStrategyTests.cs",
-        "testMethod": "QueueMessageAsync_StoresMessageAsync",
-        "linkSource": "XmlTag"
-      },
-      {
-        "testFile": "tests/Whizbang.Core.Tests/Messaging/ImmediateUnitOfWorkStrategyTests.cs",
-        "testMethod": "QueueMessageAsync_WithLifecycleStage_StoresLifecycleMappingAsync",
-        "linkSource": "XmlTag"
-      },
-      {
-        "testFile": "tests/Whizbang.Core.Tests/Messaging/ImmediateUnitOfWorkStrategyTests.cs",
-        "testMethod": "GetMessagesForUnit_NonExistentUnit_ReturnsEmptyAsync",
-        "linkSource": "XmlTag"
-      },
-      {
-        "testFile": "tests/Whizbang.Core.Tests/Messaging/ImmediateUnitOfWorkStrategyTests.cs",
-        "testMethod": "GetLifecycleStagesForUnit_NonExistentUnit_ReturnsEmptyAsync",
-        "linkSource": "XmlTag"
-      },
-      {
-        "testFile": "tests/Whizbang.Core.Tests/Messaging/ImmediateUnitOfWorkStrategyTests.cs",
-        "testMethod": "CancelUnitAsync_ExistingUnit_RemovesUnitAsync",
-        "linkSource": "XmlTag"
-      },
-      {
-        "testFile": "tests/Whizbang.Core.Tests/Messaging/ImmediateUnitOfWorkStrategyTests.cs",
         "testMethod": "CancelUnitAsync_NonExistentUnit_DoesNotThrowAsync",
-        "linkSource": "XmlTag"
-      },
-      {
-        "testFile": "tests/Whizbang.Core.Tests/Messaging/ImmediateUnitOfWorkStrategyTests.cs",
-        "testMethod": "OnFlushRequested_CanBeWiredAsync",
         "linkSource": "XmlTag"
       },
       {
@@ -79312,42 +79172,7 @@
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/Messaging/ScopedUnitOfWorkStrategyTests.cs",
-        "testMethod": "QueueMessageAsync_ReturnsNonEmptyGuidAsync",
-        "linkSource": "XmlTag"
-      },
-      {
-        "testFile": "tests/Whizbang.Core.Tests/Messaging/ScopedUnitOfWorkStrategyTests.cs",
-        "testMethod": "QueueMessageAsync_StoresMessageAsync",
-        "linkSource": "XmlTag"
-      },
-      {
-        "testFile": "tests/Whizbang.Core.Tests/Messaging/ScopedUnitOfWorkStrategyTests.cs",
-        "testMethod": "QueueMessageAsync_WithLifecycleStage_StoresLifecycleMappingAsync",
-        "linkSource": "XmlTag"
-      },
-      {
-        "testFile": "tests/Whizbang.Core.Tests/Messaging/ScopedUnitOfWorkStrategyTests.cs",
-        "testMethod": "GetMessagesForUnit_NonExistentUnit_ReturnsEmptyAsync",
-        "linkSource": "XmlTag"
-      },
-      {
-        "testFile": "tests/Whizbang.Core.Tests/Messaging/ScopedUnitOfWorkStrategyTests.cs",
-        "testMethod": "GetLifecycleStagesForUnit_NonExistentUnit_ReturnsEmptyAsync",
-        "linkSource": "XmlTag"
-      },
-      {
-        "testFile": "tests/Whizbang.Core.Tests/Messaging/ScopedUnitOfWorkStrategyTests.cs",
-        "testMethod": "CancelUnitAsync_ExistingUnit_RemovesUnitAsync",
-        "linkSource": "XmlTag"
-      },
-      {
-        "testFile": "tests/Whizbang.Core.Tests/Messaging/ScopedUnitOfWorkStrategyTests.cs",
         "testMethod": "CancelUnitAsync_NonExistentUnit_DoesNotThrowAsync",
-        "linkSource": "XmlTag"
-      },
-      {
-        "testFile": "tests/Whizbang.Core.Tests/Messaging/ScopedUnitOfWorkStrategyTests.cs",
-        "testMethod": "OnFlushRequested_CanBeWiredAsync",
         "linkSource": "XmlTag"
       },
       {
@@ -79407,42 +79232,7 @@
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/Messaging/IntervalUnitOfWorkStrategyTests.cs",
-        "testMethod": "QueueMessageAsync_ReturnsNonEmptyGuidAsync",
-        "linkSource": "XmlTag"
-      },
-      {
-        "testFile": "tests/Whizbang.Core.Tests/Messaging/IntervalUnitOfWorkStrategyTests.cs",
-        "testMethod": "QueueMessageAsync_StoresMessageAsync",
-        "linkSource": "XmlTag"
-      },
-      {
-        "testFile": "tests/Whizbang.Core.Tests/Messaging/IntervalUnitOfWorkStrategyTests.cs",
-        "testMethod": "QueueMessageAsync_WithLifecycleStage_StoresLifecycleMappingAsync",
-        "linkSource": "XmlTag"
-      },
-      {
-        "testFile": "tests/Whizbang.Core.Tests/Messaging/IntervalUnitOfWorkStrategyTests.cs",
-        "testMethod": "GetMessagesForUnit_NonExistentUnit_ReturnsEmptyAsync",
-        "linkSource": "XmlTag"
-      },
-      {
-        "testFile": "tests/Whizbang.Core.Tests/Messaging/IntervalUnitOfWorkStrategyTests.cs",
-        "testMethod": "GetLifecycleStagesForUnit_NonExistentUnit_ReturnsEmptyAsync",
-        "linkSource": "XmlTag"
-      },
-      {
-        "testFile": "tests/Whizbang.Core.Tests/Messaging/IntervalUnitOfWorkStrategyTests.cs",
-        "testMethod": "CancelUnitAsync_ExistingUnit_RemovesUnitAsync",
-        "linkSource": "XmlTag"
-      },
-      {
-        "testFile": "tests/Whizbang.Core.Tests/Messaging/IntervalUnitOfWorkStrategyTests.cs",
         "testMethod": "CancelUnitAsync_NonExistentUnit_DoesNotThrowAsync",
-        "linkSource": "XmlTag"
-      },
-      {
-        "testFile": "tests/Whizbang.Core.Tests/Messaging/IntervalUnitOfWorkStrategyTests.cs",
-        "testMethod": "OnFlushRequested_CanBeWiredAsync",
         "linkSource": "XmlTag"
       },
       {
@@ -81508,42 +81298,7 @@
     "ImmediateUnitOfWorkStrategy": [
       {
         "testFile": "tests/Whizbang.Core.Tests/Messaging/ImmediateUnitOfWorkStrategyTests.cs",
-        "testMethod": "QueueMessageAsync_ReturnsNonEmptyGuidAsync",
-        "linkSource": "XmlTag"
-      },
-      {
-        "testFile": "tests/Whizbang.Core.Tests/Messaging/ImmediateUnitOfWorkStrategyTests.cs",
-        "testMethod": "QueueMessageAsync_StoresMessageAsync",
-        "linkSource": "XmlTag"
-      },
-      {
-        "testFile": "tests/Whizbang.Core.Tests/Messaging/ImmediateUnitOfWorkStrategyTests.cs",
-        "testMethod": "QueueMessageAsync_WithLifecycleStage_StoresLifecycleMappingAsync",
-        "linkSource": "XmlTag"
-      },
-      {
-        "testFile": "tests/Whizbang.Core.Tests/Messaging/ImmediateUnitOfWorkStrategyTests.cs",
-        "testMethod": "GetMessagesForUnit_NonExistentUnit_ReturnsEmptyAsync",
-        "linkSource": "XmlTag"
-      },
-      {
-        "testFile": "tests/Whizbang.Core.Tests/Messaging/ImmediateUnitOfWorkStrategyTests.cs",
-        "testMethod": "GetLifecycleStagesForUnit_NonExistentUnit_ReturnsEmptyAsync",
-        "linkSource": "XmlTag"
-      },
-      {
-        "testFile": "tests/Whizbang.Core.Tests/Messaging/ImmediateUnitOfWorkStrategyTests.cs",
-        "testMethod": "CancelUnitAsync_ExistingUnit_RemovesUnitAsync",
-        "linkSource": "XmlTag"
-      },
-      {
-        "testFile": "tests/Whizbang.Core.Tests/Messaging/ImmediateUnitOfWorkStrategyTests.cs",
         "testMethod": "CancelUnitAsync_NonExistentUnit_DoesNotThrowAsync",
-        "linkSource": "XmlTag"
-      },
-      {
-        "testFile": "tests/Whizbang.Core.Tests/Messaging/ImmediateUnitOfWorkStrategyTests.cs",
-        "testMethod": "OnFlushRequested_CanBeWiredAsync",
         "linkSource": "XmlTag"
       },
       {
@@ -83117,42 +82872,7 @@
     "IntervalUnitOfWorkStrategy": [
       {
         "testFile": "tests/Whizbang.Core.Tests/Messaging/IntervalUnitOfWorkStrategyTests.cs",
-        "testMethod": "QueueMessageAsync_ReturnsNonEmptyGuidAsync",
-        "linkSource": "XmlTag"
-      },
-      {
-        "testFile": "tests/Whizbang.Core.Tests/Messaging/IntervalUnitOfWorkStrategyTests.cs",
-        "testMethod": "QueueMessageAsync_StoresMessageAsync",
-        "linkSource": "XmlTag"
-      },
-      {
-        "testFile": "tests/Whizbang.Core.Tests/Messaging/IntervalUnitOfWorkStrategyTests.cs",
-        "testMethod": "QueueMessageAsync_WithLifecycleStage_StoresLifecycleMappingAsync",
-        "linkSource": "XmlTag"
-      },
-      {
-        "testFile": "tests/Whizbang.Core.Tests/Messaging/IntervalUnitOfWorkStrategyTests.cs",
-        "testMethod": "GetMessagesForUnit_NonExistentUnit_ReturnsEmptyAsync",
-        "linkSource": "XmlTag"
-      },
-      {
-        "testFile": "tests/Whizbang.Core.Tests/Messaging/IntervalUnitOfWorkStrategyTests.cs",
-        "testMethod": "GetLifecycleStagesForUnit_NonExistentUnit_ReturnsEmptyAsync",
-        "linkSource": "XmlTag"
-      },
-      {
-        "testFile": "tests/Whizbang.Core.Tests/Messaging/IntervalUnitOfWorkStrategyTests.cs",
-        "testMethod": "CancelUnitAsync_ExistingUnit_RemovesUnitAsync",
-        "linkSource": "XmlTag"
-      },
-      {
-        "testFile": "tests/Whizbang.Core.Tests/Messaging/IntervalUnitOfWorkStrategyTests.cs",
         "testMethod": "CancelUnitAsync_NonExistentUnit_DoesNotThrowAsync",
-        "linkSource": "XmlTag"
-      },
-      {
-        "testFile": "tests/Whizbang.Core.Tests/Messaging/IntervalUnitOfWorkStrategyTests.cs",
-        "testMethod": "OnFlushRequested_CanBeWiredAsync",
         "linkSource": "XmlTag"
       },
       {
@@ -83512,42 +83232,7 @@
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/Messaging/ImmediateUnitOfWorkStrategyTests.cs",
-        "testMethod": "QueueMessageAsync_ReturnsNonEmptyGuidAsync",
-        "linkSource": "XmlTag"
-      },
-      {
-        "testFile": "tests/Whizbang.Core.Tests/Messaging/ImmediateUnitOfWorkStrategyTests.cs",
-        "testMethod": "QueueMessageAsync_StoresMessageAsync",
-        "linkSource": "XmlTag"
-      },
-      {
-        "testFile": "tests/Whizbang.Core.Tests/Messaging/ImmediateUnitOfWorkStrategyTests.cs",
-        "testMethod": "QueueMessageAsync_WithLifecycleStage_StoresLifecycleMappingAsync",
-        "linkSource": "XmlTag"
-      },
-      {
-        "testFile": "tests/Whizbang.Core.Tests/Messaging/ImmediateUnitOfWorkStrategyTests.cs",
-        "testMethod": "GetMessagesForUnit_NonExistentUnit_ReturnsEmptyAsync",
-        "linkSource": "XmlTag"
-      },
-      {
-        "testFile": "tests/Whizbang.Core.Tests/Messaging/ImmediateUnitOfWorkStrategyTests.cs",
-        "testMethod": "GetLifecycleStagesForUnit_NonExistentUnit_ReturnsEmptyAsync",
-        "linkSource": "XmlTag"
-      },
-      {
-        "testFile": "tests/Whizbang.Core.Tests/Messaging/ImmediateUnitOfWorkStrategyTests.cs",
-        "testMethod": "CancelUnitAsync_ExistingUnit_RemovesUnitAsync",
-        "linkSource": "XmlTag"
-      },
-      {
-        "testFile": "tests/Whizbang.Core.Tests/Messaging/ImmediateUnitOfWorkStrategyTests.cs",
         "testMethod": "CancelUnitAsync_NonExistentUnit_DoesNotThrowAsync",
-        "linkSource": "XmlTag"
-      },
-      {
-        "testFile": "tests/Whizbang.Core.Tests/Messaging/ImmediateUnitOfWorkStrategyTests.cs",
-        "testMethod": "OnFlushRequested_CanBeWiredAsync",
         "linkSource": "XmlTag"
       },
       {
@@ -83597,42 +83282,7 @@
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/Messaging/ScopedUnitOfWorkStrategyTests.cs",
-        "testMethod": "QueueMessageAsync_ReturnsNonEmptyGuidAsync",
-        "linkSource": "XmlTag"
-      },
-      {
-        "testFile": "tests/Whizbang.Core.Tests/Messaging/ScopedUnitOfWorkStrategyTests.cs",
-        "testMethod": "QueueMessageAsync_StoresMessageAsync",
-        "linkSource": "XmlTag"
-      },
-      {
-        "testFile": "tests/Whizbang.Core.Tests/Messaging/ScopedUnitOfWorkStrategyTests.cs",
-        "testMethod": "QueueMessageAsync_WithLifecycleStage_StoresLifecycleMappingAsync",
-        "linkSource": "XmlTag"
-      },
-      {
-        "testFile": "tests/Whizbang.Core.Tests/Messaging/ScopedUnitOfWorkStrategyTests.cs",
-        "testMethod": "GetMessagesForUnit_NonExistentUnit_ReturnsEmptyAsync",
-        "linkSource": "XmlTag"
-      },
-      {
-        "testFile": "tests/Whizbang.Core.Tests/Messaging/ScopedUnitOfWorkStrategyTests.cs",
-        "testMethod": "GetLifecycleStagesForUnit_NonExistentUnit_ReturnsEmptyAsync",
-        "linkSource": "XmlTag"
-      },
-      {
-        "testFile": "tests/Whizbang.Core.Tests/Messaging/ScopedUnitOfWorkStrategyTests.cs",
-        "testMethod": "CancelUnitAsync_ExistingUnit_RemovesUnitAsync",
-        "linkSource": "XmlTag"
-      },
-      {
-        "testFile": "tests/Whizbang.Core.Tests/Messaging/ScopedUnitOfWorkStrategyTests.cs",
         "testMethod": "CancelUnitAsync_NonExistentUnit_DoesNotThrowAsync",
-        "linkSource": "XmlTag"
-      },
-      {
-        "testFile": "tests/Whizbang.Core.Tests/Messaging/ScopedUnitOfWorkStrategyTests.cs",
-        "testMethod": "OnFlushRequested_CanBeWiredAsync",
         "linkSource": "XmlTag"
       },
       {
@@ -83692,42 +83342,7 @@
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/Messaging/IntervalUnitOfWorkStrategyTests.cs",
-        "testMethod": "QueueMessageAsync_ReturnsNonEmptyGuidAsync",
-        "linkSource": "XmlTag"
-      },
-      {
-        "testFile": "tests/Whizbang.Core.Tests/Messaging/IntervalUnitOfWorkStrategyTests.cs",
-        "testMethod": "QueueMessageAsync_StoresMessageAsync",
-        "linkSource": "XmlTag"
-      },
-      {
-        "testFile": "tests/Whizbang.Core.Tests/Messaging/IntervalUnitOfWorkStrategyTests.cs",
-        "testMethod": "QueueMessageAsync_WithLifecycleStage_StoresLifecycleMappingAsync",
-        "linkSource": "XmlTag"
-      },
-      {
-        "testFile": "tests/Whizbang.Core.Tests/Messaging/IntervalUnitOfWorkStrategyTests.cs",
-        "testMethod": "GetMessagesForUnit_NonExistentUnit_ReturnsEmptyAsync",
-        "linkSource": "XmlTag"
-      },
-      {
-        "testFile": "tests/Whizbang.Core.Tests/Messaging/IntervalUnitOfWorkStrategyTests.cs",
-        "testMethod": "GetLifecycleStagesForUnit_NonExistentUnit_ReturnsEmptyAsync",
-        "linkSource": "XmlTag"
-      },
-      {
-        "testFile": "tests/Whizbang.Core.Tests/Messaging/IntervalUnitOfWorkStrategyTests.cs",
-        "testMethod": "CancelUnitAsync_ExistingUnit_RemovesUnitAsync",
-        "linkSource": "XmlTag"
-      },
-      {
-        "testFile": "tests/Whizbang.Core.Tests/Messaging/IntervalUnitOfWorkStrategyTests.cs",
         "testMethod": "CancelUnitAsync_NonExistentUnit_DoesNotThrowAsync",
-        "linkSource": "XmlTag"
-      },
-      {
-        "testFile": "tests/Whizbang.Core.Tests/Messaging/IntervalUnitOfWorkStrategyTests.cs",
-        "testMethod": "OnFlushRequested_CanBeWiredAsync",
         "linkSource": "XmlTag"
       },
       {
@@ -85690,42 +85305,7 @@
     "ScopedUnitOfWorkStrategy": [
       {
         "testFile": "tests/Whizbang.Core.Tests/Messaging/ScopedUnitOfWorkStrategyTests.cs",
-        "testMethod": "QueueMessageAsync_ReturnsNonEmptyGuidAsync",
-        "linkSource": "XmlTag"
-      },
-      {
-        "testFile": "tests/Whizbang.Core.Tests/Messaging/ScopedUnitOfWorkStrategyTests.cs",
-        "testMethod": "QueueMessageAsync_StoresMessageAsync",
-        "linkSource": "XmlTag"
-      },
-      {
-        "testFile": "tests/Whizbang.Core.Tests/Messaging/ScopedUnitOfWorkStrategyTests.cs",
-        "testMethod": "QueueMessageAsync_WithLifecycleStage_StoresLifecycleMappingAsync",
-        "linkSource": "XmlTag"
-      },
-      {
-        "testFile": "tests/Whizbang.Core.Tests/Messaging/ScopedUnitOfWorkStrategyTests.cs",
-        "testMethod": "GetMessagesForUnit_NonExistentUnit_ReturnsEmptyAsync",
-        "linkSource": "XmlTag"
-      },
-      {
-        "testFile": "tests/Whizbang.Core.Tests/Messaging/ScopedUnitOfWorkStrategyTests.cs",
-        "testMethod": "GetLifecycleStagesForUnit_NonExistentUnit_ReturnsEmptyAsync",
-        "linkSource": "XmlTag"
-      },
-      {
-        "testFile": "tests/Whizbang.Core.Tests/Messaging/ScopedUnitOfWorkStrategyTests.cs",
-        "testMethod": "CancelUnitAsync_ExistingUnit_RemovesUnitAsync",
-        "linkSource": "XmlTag"
-      },
-      {
-        "testFile": "tests/Whizbang.Core.Tests/Messaging/ScopedUnitOfWorkStrategyTests.cs",
         "testMethod": "CancelUnitAsync_NonExistentUnit_DoesNotThrowAsync",
-        "linkSource": "XmlTag"
-      },
-      {
-        "testFile": "tests/Whizbang.Core.Tests/Messaging/ScopedUnitOfWorkStrategyTests.cs",
-        "testMethod": "OnFlushRequested_CanBeWiredAsync",
         "linkSource": "XmlTag"
       },
       {
@@ -245487,217 +245067,7 @@
         "linkSource": "XmlTag"
       }
     ],
-    "ImmediateUnitOfWorkStrategyTests.QueueMessageAsync_ReturnsNonEmptyGuidAsync": [
-      {
-        "sourceFile": "src/Whizbang.Core/Messaging/DispatchUnitOfWork.cs",
-        "sourceLine": 12,
-        "sourceSymbol": "DispatchUnitOfWork",
-        "sourceType": "Class",
-        "linkSource": "XmlTag"
-      },
-      {
-        "sourceFile": "src/Whizbang.Core/Messaging/IUnitOfWorkStrategy.cs",
-        "sourceLine": 14,
-        "sourceSymbol": "IUnitOfWorkStrategy",
-        "sourceType": "Interface",
-        "linkSource": "XmlTag"
-      },
-      {
-        "sourceFile": "src/Whizbang.Core/Messaging/ImmediateUnitOfWorkStrategy.cs",
-        "sourceLine": 17,
-        "sourceSymbol": "ImmediateUnitOfWorkStrategy",
-        "sourceType": "Class",
-        "linkSource": "XmlTag"
-      },
-      {
-        "sourceFile": "src/Whizbang.Core/Messaging/LifecycleStage.cs",
-        "sourceLine": 45,
-        "sourceSymbol": "LifecycleStage",
-        "sourceType": "Enum",
-        "linkSource": "XmlTag"
-      }
-    ],
-    "ImmediateUnitOfWorkStrategyTests.QueueMessageAsync_StoresMessageAsync": [
-      {
-        "sourceFile": "src/Whizbang.Core/Messaging/DispatchUnitOfWork.cs",
-        "sourceLine": 12,
-        "sourceSymbol": "DispatchUnitOfWork",
-        "sourceType": "Class",
-        "linkSource": "XmlTag"
-      },
-      {
-        "sourceFile": "src/Whizbang.Core/Messaging/IUnitOfWorkStrategy.cs",
-        "sourceLine": 14,
-        "sourceSymbol": "IUnitOfWorkStrategy",
-        "sourceType": "Interface",
-        "linkSource": "XmlTag"
-      },
-      {
-        "sourceFile": "src/Whizbang.Core/Messaging/ImmediateUnitOfWorkStrategy.cs",
-        "sourceLine": 17,
-        "sourceSymbol": "ImmediateUnitOfWorkStrategy",
-        "sourceType": "Class",
-        "linkSource": "XmlTag"
-      },
-      {
-        "sourceFile": "src/Whizbang.Core/Messaging/LifecycleStage.cs",
-        "sourceLine": 45,
-        "sourceSymbol": "LifecycleStage",
-        "sourceType": "Enum",
-        "linkSource": "XmlTag"
-      }
-    ],
-    "ImmediateUnitOfWorkStrategyTests.QueueMessageAsync_WithLifecycleStage_StoresLifecycleMappingAsync": [
-      {
-        "sourceFile": "src/Whizbang.Core/Messaging/DispatchUnitOfWork.cs",
-        "sourceLine": 12,
-        "sourceSymbol": "DispatchUnitOfWork",
-        "sourceType": "Class",
-        "linkSource": "XmlTag"
-      },
-      {
-        "sourceFile": "src/Whizbang.Core/Messaging/IUnitOfWorkStrategy.cs",
-        "sourceLine": 14,
-        "sourceSymbol": "IUnitOfWorkStrategy",
-        "sourceType": "Interface",
-        "linkSource": "XmlTag"
-      },
-      {
-        "sourceFile": "src/Whizbang.Core/Messaging/ImmediateUnitOfWorkStrategy.cs",
-        "sourceLine": 17,
-        "sourceSymbol": "ImmediateUnitOfWorkStrategy",
-        "sourceType": "Class",
-        "linkSource": "XmlTag"
-      },
-      {
-        "sourceFile": "src/Whizbang.Core/Messaging/LifecycleStage.cs",
-        "sourceLine": 45,
-        "sourceSymbol": "LifecycleStage",
-        "sourceType": "Enum",
-        "linkSource": "XmlTag"
-      }
-    ],
-    "ImmediateUnitOfWorkStrategyTests.GetMessagesForUnit_NonExistentUnit_ReturnsEmptyAsync": [
-      {
-        "sourceFile": "src/Whizbang.Core/Messaging/DispatchUnitOfWork.cs",
-        "sourceLine": 12,
-        "sourceSymbol": "DispatchUnitOfWork",
-        "sourceType": "Class",
-        "linkSource": "XmlTag"
-      },
-      {
-        "sourceFile": "src/Whizbang.Core/Messaging/IUnitOfWorkStrategy.cs",
-        "sourceLine": 14,
-        "sourceSymbol": "IUnitOfWorkStrategy",
-        "sourceType": "Interface",
-        "linkSource": "XmlTag"
-      },
-      {
-        "sourceFile": "src/Whizbang.Core/Messaging/ImmediateUnitOfWorkStrategy.cs",
-        "sourceLine": 17,
-        "sourceSymbol": "ImmediateUnitOfWorkStrategy",
-        "sourceType": "Class",
-        "linkSource": "XmlTag"
-      },
-      {
-        "sourceFile": "src/Whizbang.Core/Messaging/LifecycleStage.cs",
-        "sourceLine": 45,
-        "sourceSymbol": "LifecycleStage",
-        "sourceType": "Enum",
-        "linkSource": "XmlTag"
-      }
-    ],
-    "ImmediateUnitOfWorkStrategyTests.GetLifecycleStagesForUnit_NonExistentUnit_ReturnsEmptyAsync": [
-      {
-        "sourceFile": "src/Whizbang.Core/Messaging/DispatchUnitOfWork.cs",
-        "sourceLine": 12,
-        "sourceSymbol": "DispatchUnitOfWork",
-        "sourceType": "Class",
-        "linkSource": "XmlTag"
-      },
-      {
-        "sourceFile": "src/Whizbang.Core/Messaging/IUnitOfWorkStrategy.cs",
-        "sourceLine": 14,
-        "sourceSymbol": "IUnitOfWorkStrategy",
-        "sourceType": "Interface",
-        "linkSource": "XmlTag"
-      },
-      {
-        "sourceFile": "src/Whizbang.Core/Messaging/ImmediateUnitOfWorkStrategy.cs",
-        "sourceLine": 17,
-        "sourceSymbol": "ImmediateUnitOfWorkStrategy",
-        "sourceType": "Class",
-        "linkSource": "XmlTag"
-      },
-      {
-        "sourceFile": "src/Whizbang.Core/Messaging/LifecycleStage.cs",
-        "sourceLine": 45,
-        "sourceSymbol": "LifecycleStage",
-        "sourceType": "Enum",
-        "linkSource": "XmlTag"
-      }
-    ],
-    "ImmediateUnitOfWorkStrategyTests.CancelUnitAsync_ExistingUnit_RemovesUnitAsync": [
-      {
-        "sourceFile": "src/Whizbang.Core/Messaging/DispatchUnitOfWork.cs",
-        "sourceLine": 12,
-        "sourceSymbol": "DispatchUnitOfWork",
-        "sourceType": "Class",
-        "linkSource": "XmlTag"
-      },
-      {
-        "sourceFile": "src/Whizbang.Core/Messaging/IUnitOfWorkStrategy.cs",
-        "sourceLine": 14,
-        "sourceSymbol": "IUnitOfWorkStrategy",
-        "sourceType": "Interface",
-        "linkSource": "XmlTag"
-      },
-      {
-        "sourceFile": "src/Whizbang.Core/Messaging/ImmediateUnitOfWorkStrategy.cs",
-        "sourceLine": 17,
-        "sourceSymbol": "ImmediateUnitOfWorkStrategy",
-        "sourceType": "Class",
-        "linkSource": "XmlTag"
-      },
-      {
-        "sourceFile": "src/Whizbang.Core/Messaging/LifecycleStage.cs",
-        "sourceLine": 45,
-        "sourceSymbol": "LifecycleStage",
-        "sourceType": "Enum",
-        "linkSource": "XmlTag"
-      }
-    ],
     "ImmediateUnitOfWorkStrategyTests.CancelUnitAsync_NonExistentUnit_DoesNotThrowAsync": [
-      {
-        "sourceFile": "src/Whizbang.Core/Messaging/DispatchUnitOfWork.cs",
-        "sourceLine": 12,
-        "sourceSymbol": "DispatchUnitOfWork",
-        "sourceType": "Class",
-        "linkSource": "XmlTag"
-      },
-      {
-        "sourceFile": "src/Whizbang.Core/Messaging/IUnitOfWorkStrategy.cs",
-        "sourceLine": 14,
-        "sourceSymbol": "IUnitOfWorkStrategy",
-        "sourceType": "Interface",
-        "linkSource": "XmlTag"
-      },
-      {
-        "sourceFile": "src/Whizbang.Core/Messaging/ImmediateUnitOfWorkStrategy.cs",
-        "sourceLine": 17,
-        "sourceSymbol": "ImmediateUnitOfWorkStrategy",
-        "sourceType": "Class",
-        "linkSource": "XmlTag"
-      },
-      {
-        "sourceFile": "src/Whizbang.Core/Messaging/LifecycleStage.cs",
-        "sourceLine": 45,
-        "sourceSymbol": "LifecycleStage",
-        "sourceType": "Enum",
-        "linkSource": "XmlTag"
-      }
-    ],
-    "ImmediateUnitOfWorkStrategyTests.OnFlushRequested_CanBeWiredAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/DispatchUnitOfWork.cs",
         "sourceLine": 12,
@@ -245997,217 +245367,7 @@
         "linkSource": "XmlTag"
       }
     ],
-    "ScopedUnitOfWorkStrategyTests.QueueMessageAsync_ReturnsNonEmptyGuidAsync": [
-      {
-        "sourceFile": "src/Whizbang.Core/Messaging/DispatchUnitOfWork.cs",
-        "sourceLine": 13,
-        "sourceSymbol": "DispatchUnitOfWork",
-        "sourceType": "Class",
-        "linkSource": "XmlTag"
-      },
-      {
-        "sourceFile": "src/Whizbang.Core/Messaging/IUnitOfWorkStrategy.cs",
-        "sourceLine": 15,
-        "sourceSymbol": "IUnitOfWorkStrategy",
-        "sourceType": "Interface",
-        "linkSource": "XmlTag"
-      },
-      {
-        "sourceFile": "src/Whizbang.Core/Messaging/LifecycleStage.cs",
-        "sourceLine": 46,
-        "sourceSymbol": "LifecycleStage",
-        "sourceType": "Enum",
-        "linkSource": "XmlTag"
-      },
-      {
-        "sourceFile": "src/Whizbang.Core/Messaging/ScopedUnitOfWorkStrategy.cs",
-        "sourceLine": 15,
-        "sourceSymbol": "ScopedUnitOfWorkStrategy",
-        "sourceType": "Class",
-        "linkSource": "XmlTag"
-      }
-    ],
-    "ScopedUnitOfWorkStrategyTests.QueueMessageAsync_StoresMessageAsync": [
-      {
-        "sourceFile": "src/Whizbang.Core/Messaging/DispatchUnitOfWork.cs",
-        "sourceLine": 13,
-        "sourceSymbol": "DispatchUnitOfWork",
-        "sourceType": "Class",
-        "linkSource": "XmlTag"
-      },
-      {
-        "sourceFile": "src/Whizbang.Core/Messaging/IUnitOfWorkStrategy.cs",
-        "sourceLine": 15,
-        "sourceSymbol": "IUnitOfWorkStrategy",
-        "sourceType": "Interface",
-        "linkSource": "XmlTag"
-      },
-      {
-        "sourceFile": "src/Whizbang.Core/Messaging/LifecycleStage.cs",
-        "sourceLine": 46,
-        "sourceSymbol": "LifecycleStage",
-        "sourceType": "Enum",
-        "linkSource": "XmlTag"
-      },
-      {
-        "sourceFile": "src/Whizbang.Core/Messaging/ScopedUnitOfWorkStrategy.cs",
-        "sourceLine": 15,
-        "sourceSymbol": "ScopedUnitOfWorkStrategy",
-        "sourceType": "Class",
-        "linkSource": "XmlTag"
-      }
-    ],
-    "ScopedUnitOfWorkStrategyTests.QueueMessageAsync_WithLifecycleStage_StoresLifecycleMappingAsync": [
-      {
-        "sourceFile": "src/Whizbang.Core/Messaging/DispatchUnitOfWork.cs",
-        "sourceLine": 13,
-        "sourceSymbol": "DispatchUnitOfWork",
-        "sourceType": "Class",
-        "linkSource": "XmlTag"
-      },
-      {
-        "sourceFile": "src/Whizbang.Core/Messaging/IUnitOfWorkStrategy.cs",
-        "sourceLine": 15,
-        "sourceSymbol": "IUnitOfWorkStrategy",
-        "sourceType": "Interface",
-        "linkSource": "XmlTag"
-      },
-      {
-        "sourceFile": "src/Whizbang.Core/Messaging/LifecycleStage.cs",
-        "sourceLine": 46,
-        "sourceSymbol": "LifecycleStage",
-        "sourceType": "Enum",
-        "linkSource": "XmlTag"
-      },
-      {
-        "sourceFile": "src/Whizbang.Core/Messaging/ScopedUnitOfWorkStrategy.cs",
-        "sourceLine": 15,
-        "sourceSymbol": "ScopedUnitOfWorkStrategy",
-        "sourceType": "Class",
-        "linkSource": "XmlTag"
-      }
-    ],
-    "ScopedUnitOfWorkStrategyTests.GetMessagesForUnit_NonExistentUnit_ReturnsEmptyAsync": [
-      {
-        "sourceFile": "src/Whizbang.Core/Messaging/DispatchUnitOfWork.cs",
-        "sourceLine": 13,
-        "sourceSymbol": "DispatchUnitOfWork",
-        "sourceType": "Class",
-        "linkSource": "XmlTag"
-      },
-      {
-        "sourceFile": "src/Whizbang.Core/Messaging/IUnitOfWorkStrategy.cs",
-        "sourceLine": 15,
-        "sourceSymbol": "IUnitOfWorkStrategy",
-        "sourceType": "Interface",
-        "linkSource": "XmlTag"
-      },
-      {
-        "sourceFile": "src/Whizbang.Core/Messaging/LifecycleStage.cs",
-        "sourceLine": 46,
-        "sourceSymbol": "LifecycleStage",
-        "sourceType": "Enum",
-        "linkSource": "XmlTag"
-      },
-      {
-        "sourceFile": "src/Whizbang.Core/Messaging/ScopedUnitOfWorkStrategy.cs",
-        "sourceLine": 15,
-        "sourceSymbol": "ScopedUnitOfWorkStrategy",
-        "sourceType": "Class",
-        "linkSource": "XmlTag"
-      }
-    ],
-    "ScopedUnitOfWorkStrategyTests.GetLifecycleStagesForUnit_NonExistentUnit_ReturnsEmptyAsync": [
-      {
-        "sourceFile": "src/Whizbang.Core/Messaging/DispatchUnitOfWork.cs",
-        "sourceLine": 13,
-        "sourceSymbol": "DispatchUnitOfWork",
-        "sourceType": "Class",
-        "linkSource": "XmlTag"
-      },
-      {
-        "sourceFile": "src/Whizbang.Core/Messaging/IUnitOfWorkStrategy.cs",
-        "sourceLine": 15,
-        "sourceSymbol": "IUnitOfWorkStrategy",
-        "sourceType": "Interface",
-        "linkSource": "XmlTag"
-      },
-      {
-        "sourceFile": "src/Whizbang.Core/Messaging/LifecycleStage.cs",
-        "sourceLine": 46,
-        "sourceSymbol": "LifecycleStage",
-        "sourceType": "Enum",
-        "linkSource": "XmlTag"
-      },
-      {
-        "sourceFile": "src/Whizbang.Core/Messaging/ScopedUnitOfWorkStrategy.cs",
-        "sourceLine": 15,
-        "sourceSymbol": "ScopedUnitOfWorkStrategy",
-        "sourceType": "Class",
-        "linkSource": "XmlTag"
-      }
-    ],
-    "ScopedUnitOfWorkStrategyTests.CancelUnitAsync_ExistingUnit_RemovesUnitAsync": [
-      {
-        "sourceFile": "src/Whizbang.Core/Messaging/DispatchUnitOfWork.cs",
-        "sourceLine": 13,
-        "sourceSymbol": "DispatchUnitOfWork",
-        "sourceType": "Class",
-        "linkSource": "XmlTag"
-      },
-      {
-        "sourceFile": "src/Whizbang.Core/Messaging/IUnitOfWorkStrategy.cs",
-        "sourceLine": 15,
-        "sourceSymbol": "IUnitOfWorkStrategy",
-        "sourceType": "Interface",
-        "linkSource": "XmlTag"
-      },
-      {
-        "sourceFile": "src/Whizbang.Core/Messaging/LifecycleStage.cs",
-        "sourceLine": 46,
-        "sourceSymbol": "LifecycleStage",
-        "sourceType": "Enum",
-        "linkSource": "XmlTag"
-      },
-      {
-        "sourceFile": "src/Whizbang.Core/Messaging/ScopedUnitOfWorkStrategy.cs",
-        "sourceLine": 15,
-        "sourceSymbol": "ScopedUnitOfWorkStrategy",
-        "sourceType": "Class",
-        "linkSource": "XmlTag"
-      }
-    ],
     "ScopedUnitOfWorkStrategyTests.CancelUnitAsync_NonExistentUnit_DoesNotThrowAsync": [
-      {
-        "sourceFile": "src/Whizbang.Core/Messaging/DispatchUnitOfWork.cs",
-        "sourceLine": 13,
-        "sourceSymbol": "DispatchUnitOfWork",
-        "sourceType": "Class",
-        "linkSource": "XmlTag"
-      },
-      {
-        "sourceFile": "src/Whizbang.Core/Messaging/IUnitOfWorkStrategy.cs",
-        "sourceLine": 15,
-        "sourceSymbol": "IUnitOfWorkStrategy",
-        "sourceType": "Interface",
-        "linkSource": "XmlTag"
-      },
-      {
-        "sourceFile": "src/Whizbang.Core/Messaging/LifecycleStage.cs",
-        "sourceLine": 46,
-        "sourceSymbol": "LifecycleStage",
-        "sourceType": "Enum",
-        "linkSource": "XmlTag"
-      },
-      {
-        "sourceFile": "src/Whizbang.Core/Messaging/ScopedUnitOfWorkStrategy.cs",
-        "sourceLine": 15,
-        "sourceSymbol": "ScopedUnitOfWorkStrategy",
-        "sourceType": "Class",
-        "linkSource": "XmlTag"
-      }
-    ],
-    "ScopedUnitOfWorkStrategyTests.OnFlushRequested_CanBeWiredAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/DispatchUnitOfWork.cs",
         "sourceLine": 13,
@@ -246567,217 +245727,7 @@
         "linkSource": "XmlTag"
       }
     ],
-    "IntervalUnitOfWorkStrategyTests.QueueMessageAsync_ReturnsNonEmptyGuidAsync": [
-      {
-        "sourceFile": "src/Whizbang.Core/Messaging/DispatchUnitOfWork.cs",
-        "sourceLine": 14,
-        "sourceSymbol": "DispatchUnitOfWork",
-        "sourceType": "Class",
-        "linkSource": "XmlTag"
-      },
-      {
-        "sourceFile": "src/Whizbang.Core/Messaging/IUnitOfWorkStrategy.cs",
-        "sourceLine": 16,
-        "sourceSymbol": "IUnitOfWorkStrategy",
-        "sourceType": "Interface",
-        "linkSource": "XmlTag"
-      },
-      {
-        "sourceFile": "src/Whizbang.Core/Messaging/IntervalUnitOfWorkStrategy.cs",
-        "sourceLine": 16,
-        "sourceSymbol": "IntervalUnitOfWorkStrategy",
-        "sourceType": "Class",
-        "linkSource": "XmlTag"
-      },
-      {
-        "sourceFile": "src/Whizbang.Core/Messaging/LifecycleStage.cs",
-        "sourceLine": 47,
-        "sourceSymbol": "LifecycleStage",
-        "sourceType": "Enum",
-        "linkSource": "XmlTag"
-      }
-    ],
-    "IntervalUnitOfWorkStrategyTests.QueueMessageAsync_StoresMessageAsync": [
-      {
-        "sourceFile": "src/Whizbang.Core/Messaging/DispatchUnitOfWork.cs",
-        "sourceLine": 14,
-        "sourceSymbol": "DispatchUnitOfWork",
-        "sourceType": "Class",
-        "linkSource": "XmlTag"
-      },
-      {
-        "sourceFile": "src/Whizbang.Core/Messaging/IUnitOfWorkStrategy.cs",
-        "sourceLine": 16,
-        "sourceSymbol": "IUnitOfWorkStrategy",
-        "sourceType": "Interface",
-        "linkSource": "XmlTag"
-      },
-      {
-        "sourceFile": "src/Whizbang.Core/Messaging/IntervalUnitOfWorkStrategy.cs",
-        "sourceLine": 16,
-        "sourceSymbol": "IntervalUnitOfWorkStrategy",
-        "sourceType": "Class",
-        "linkSource": "XmlTag"
-      },
-      {
-        "sourceFile": "src/Whizbang.Core/Messaging/LifecycleStage.cs",
-        "sourceLine": 47,
-        "sourceSymbol": "LifecycleStage",
-        "sourceType": "Enum",
-        "linkSource": "XmlTag"
-      }
-    ],
-    "IntervalUnitOfWorkStrategyTests.QueueMessageAsync_WithLifecycleStage_StoresLifecycleMappingAsync": [
-      {
-        "sourceFile": "src/Whizbang.Core/Messaging/DispatchUnitOfWork.cs",
-        "sourceLine": 14,
-        "sourceSymbol": "DispatchUnitOfWork",
-        "sourceType": "Class",
-        "linkSource": "XmlTag"
-      },
-      {
-        "sourceFile": "src/Whizbang.Core/Messaging/IUnitOfWorkStrategy.cs",
-        "sourceLine": 16,
-        "sourceSymbol": "IUnitOfWorkStrategy",
-        "sourceType": "Interface",
-        "linkSource": "XmlTag"
-      },
-      {
-        "sourceFile": "src/Whizbang.Core/Messaging/IntervalUnitOfWorkStrategy.cs",
-        "sourceLine": 16,
-        "sourceSymbol": "IntervalUnitOfWorkStrategy",
-        "sourceType": "Class",
-        "linkSource": "XmlTag"
-      },
-      {
-        "sourceFile": "src/Whizbang.Core/Messaging/LifecycleStage.cs",
-        "sourceLine": 47,
-        "sourceSymbol": "LifecycleStage",
-        "sourceType": "Enum",
-        "linkSource": "XmlTag"
-      }
-    ],
-    "IntervalUnitOfWorkStrategyTests.GetMessagesForUnit_NonExistentUnit_ReturnsEmptyAsync": [
-      {
-        "sourceFile": "src/Whizbang.Core/Messaging/DispatchUnitOfWork.cs",
-        "sourceLine": 14,
-        "sourceSymbol": "DispatchUnitOfWork",
-        "sourceType": "Class",
-        "linkSource": "XmlTag"
-      },
-      {
-        "sourceFile": "src/Whizbang.Core/Messaging/IUnitOfWorkStrategy.cs",
-        "sourceLine": 16,
-        "sourceSymbol": "IUnitOfWorkStrategy",
-        "sourceType": "Interface",
-        "linkSource": "XmlTag"
-      },
-      {
-        "sourceFile": "src/Whizbang.Core/Messaging/IntervalUnitOfWorkStrategy.cs",
-        "sourceLine": 16,
-        "sourceSymbol": "IntervalUnitOfWorkStrategy",
-        "sourceType": "Class",
-        "linkSource": "XmlTag"
-      },
-      {
-        "sourceFile": "src/Whizbang.Core/Messaging/LifecycleStage.cs",
-        "sourceLine": 47,
-        "sourceSymbol": "LifecycleStage",
-        "sourceType": "Enum",
-        "linkSource": "XmlTag"
-      }
-    ],
-    "IntervalUnitOfWorkStrategyTests.GetLifecycleStagesForUnit_NonExistentUnit_ReturnsEmptyAsync": [
-      {
-        "sourceFile": "src/Whizbang.Core/Messaging/DispatchUnitOfWork.cs",
-        "sourceLine": 14,
-        "sourceSymbol": "DispatchUnitOfWork",
-        "sourceType": "Class",
-        "linkSource": "XmlTag"
-      },
-      {
-        "sourceFile": "src/Whizbang.Core/Messaging/IUnitOfWorkStrategy.cs",
-        "sourceLine": 16,
-        "sourceSymbol": "IUnitOfWorkStrategy",
-        "sourceType": "Interface",
-        "linkSource": "XmlTag"
-      },
-      {
-        "sourceFile": "src/Whizbang.Core/Messaging/IntervalUnitOfWorkStrategy.cs",
-        "sourceLine": 16,
-        "sourceSymbol": "IntervalUnitOfWorkStrategy",
-        "sourceType": "Class",
-        "linkSource": "XmlTag"
-      },
-      {
-        "sourceFile": "src/Whizbang.Core/Messaging/LifecycleStage.cs",
-        "sourceLine": 47,
-        "sourceSymbol": "LifecycleStage",
-        "sourceType": "Enum",
-        "linkSource": "XmlTag"
-      }
-    ],
-    "IntervalUnitOfWorkStrategyTests.CancelUnitAsync_ExistingUnit_RemovesUnitAsync": [
-      {
-        "sourceFile": "src/Whizbang.Core/Messaging/DispatchUnitOfWork.cs",
-        "sourceLine": 14,
-        "sourceSymbol": "DispatchUnitOfWork",
-        "sourceType": "Class",
-        "linkSource": "XmlTag"
-      },
-      {
-        "sourceFile": "src/Whizbang.Core/Messaging/IUnitOfWorkStrategy.cs",
-        "sourceLine": 16,
-        "sourceSymbol": "IUnitOfWorkStrategy",
-        "sourceType": "Interface",
-        "linkSource": "XmlTag"
-      },
-      {
-        "sourceFile": "src/Whizbang.Core/Messaging/IntervalUnitOfWorkStrategy.cs",
-        "sourceLine": 16,
-        "sourceSymbol": "IntervalUnitOfWorkStrategy",
-        "sourceType": "Class",
-        "linkSource": "XmlTag"
-      },
-      {
-        "sourceFile": "src/Whizbang.Core/Messaging/LifecycleStage.cs",
-        "sourceLine": 47,
-        "sourceSymbol": "LifecycleStage",
-        "sourceType": "Enum",
-        "linkSource": "XmlTag"
-      }
-    ],
     "IntervalUnitOfWorkStrategyTests.CancelUnitAsync_NonExistentUnit_DoesNotThrowAsync": [
-      {
-        "sourceFile": "src/Whizbang.Core/Messaging/DispatchUnitOfWork.cs",
-        "sourceLine": 14,
-        "sourceSymbol": "DispatchUnitOfWork",
-        "sourceType": "Class",
-        "linkSource": "XmlTag"
-      },
-      {
-        "sourceFile": "src/Whizbang.Core/Messaging/IUnitOfWorkStrategy.cs",
-        "sourceLine": 16,
-        "sourceSymbol": "IUnitOfWorkStrategy",
-        "sourceType": "Interface",
-        "linkSource": "XmlTag"
-      },
-      {
-        "sourceFile": "src/Whizbang.Core/Messaging/IntervalUnitOfWorkStrategy.cs",
-        "sourceLine": 16,
-        "sourceSymbol": "IntervalUnitOfWorkStrategy",
-        "sourceType": "Class",
-        "linkSource": "XmlTag"
-      },
-      {
-        "sourceFile": "src/Whizbang.Core/Messaging/LifecycleStage.cs",
-        "sourceLine": 47,
-        "sourceSymbol": "LifecycleStage",
-        "sourceType": "Enum",
-        "linkSource": "XmlTag"
-      }
-    ],
-    "IntervalUnitOfWorkStrategyTests.OnFlushRequested_CanBeWiredAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/DispatchUnitOfWork.cs",
         "sourceLine": 14,
@@ -309321,12 +308271,148 @@
       }
     ]
   },
+  "linkHealth": [
+    {
+      "kind": "assertionFree",
+      "testFile": "tests/Whizbang.Hosting.AspNet.Tests/WhizbangAvailabilityStartupFilterTests.cs",
+      "testMethod": "Enabled_GatePresent_WriteIsGatedAsync",
+      "sourceTag": "src/Whizbang.Hosting.AspNet/WhizbangAvailabilityOptions.cs:10",
+      "message": "Enabled_GatePresent_WriteIsGatedAsync contains no assertion"
+    },
+    {
+      "kind": "assertionFree",
+      "testFile": "tests/Whizbang.Hosting.AspNet.Tests/WhizbangAvailabilityStartupFilterTests.cs",
+      "testMethod": "Disabled_NotGatedAsync",
+      "sourceTag": "src/Whizbang.Hosting.AspNet/WhizbangAvailabilityOptions.cs:11",
+      "message": "Disabled_NotGatedAsync contains no assertion"
+    },
+    {
+      "kind": "assertionFree",
+      "testFile": "tests/Whizbang.Core.Tests/Notifications/PgNotificationStackStartupGateTests.cs",
+      "testMethod": "DurableSignalTail_DoesNotInitializeItsCursorUntilTheGateOpensAsync",
+      "sourceTag": "src/Whizbang.Data.Postgres/Notifications/PgCommitOrderStamperWorker.cs:43",
+      "message": "DurableSignalTail_DoesNotInitializeItsCursorUntilTheGateOpensAsync contains no assertion"
+    },
+    {
+      "kind": "assertionFree",
+      "testFile": "tests/Whizbang.Core.Tests/Notifications/PgNotificationStackStartupGateTests.cs",
+      "testMethod": "InstanceLifecycleMonitor_DoesNotScanForDeathsUntilTheGateOpensAsync",
+      "sourceTag": "src/Whizbang.Data.Postgres/Notifications/PgCommitOrderStamperWorker.cs:43",
+      "message": "InstanceLifecycleMonitor_DoesNotScanForDeathsUntilTheGateOpensAsync contains no assertion"
+    },
+    {
+      "kind": "assertionFree",
+      "testFile": "tests/Whizbang.Core.Tests/Notifications/PgNotificationStackStartupGateTests.cs",
+      "testMethod": "DurableSignalRetention_DoesNotSweepUntilTheGateOpensAsync",
+      "sourceTag": "src/Whizbang.Data.Postgres/Notifications/PgCommitOrderStamperWorker.cs:43",
+      "message": "DurableSignalRetention_DoesNotSweepUntilTheGateOpensAsync contains no assertion"
+    },
+    {
+      "kind": "assertionFree",
+      "testFile": "tests/Whizbang.Core.Tests/Notifications/PgNotificationStackStartupGateTests.cs",
+      "testMethod": "CommitOrderStamper_DoesNotEnterElectionUntilTheGateOpensAsync",
+      "sourceTag": "src/Whizbang.Data.Postgres/Notifications/PgCommitOrderStamperWorker.cs:43",
+      "message": "CommitOrderStamper_DoesNotEnterElectionUntilTheGateOpensAsync contains no assertion"
+    },
+    {
+      "kind": "selfContained",
+      "testFile": "tests/Whizbang.Generators.Tests/VectorAutoConfigurationTests.cs",
+      "testMethod": "TurnkeyExtension_WithVectorField_GeneratesAddDbContextMethodAsync",
+      "sourceTag": "src/Whizbang.Data.EFCore.Postgres.Generators/EFCoreServiceRegistrationGenerator.cs:1648",
+      "message": "tests/Whizbang.Generators.Tests/VectorAutoConfigurationTests.cs names no concrete type from src/ outside its own nested classes, so it verifies only its own doubles (a default interface member is the one shape this cannot tell apart; check by hand)"
+    },
+    {
+      "kind": "assertionFree",
+      "testFile": "src/Whizbang.Testing/Contracts/RequestResponseStoreContractTests.cs",
+      "testMethod": "SaveRequestAsync_ShouldStoreRequestAsync",
+      "sourceTag": "src/Whizbang.Data.Dapper.Sqlite/DapperSqliteRequestResponseStore.cs:11",
+      "message": "SaveRequestAsync_ShouldStoreRequestAsync contains no assertion"
+    },
+    {
+      "kind": "assertionFree",
+      "testFile": "src/Whizbang.Testing/Contracts/RequestResponseStoreContractTests.cs",
+      "testMethod": "CleanupExpiredAsync_ShouldNotThrowAsync",
+      "sourceTag": "src/Whizbang.Data.Dapper.Sqlite/DapperSqliteRequestResponseStore.cs:15",
+      "message": "CleanupExpiredAsync_ShouldNotThrowAsync contains no assertion"
+    },
+    {
+      "kind": "assertionFree",
+      "testFile": "tests/Whizbang.Data.Tests/DapperTestBase.cs",
+      "testMethod": "SetupAsync",
+      "sourceTag": "src/Whizbang.Data.Dapper.Sqlite/SqliteDateTimeOffsetHandler.cs:11",
+      "message": "SetupAsync contains no assertion"
+    },
+    {
+      "kind": "assertionFree",
+      "testFile": "tests/Whizbang.Data.Dapper.Postgres.Tests/PostgresTestBase.cs",
+      "testMethod": "SetupAsync",
+      "sourceTag": "src/Whizbang.Data.Dapper.Postgres/PostgresConnectionFactory.cs:11",
+      "message": "SetupAsync contains no assertion"
+    },
+    {
+      "kind": "assertionFree",
+      "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/EFCoreTestBase.cs",
+      "testMethod": "InitializeDatabaseAsync",
+      "sourceTag": "src/Whizbang.Data.Dapper.Postgres/PostgresConnectionFactory.cs:12",
+      "message": "InitializeDatabaseAsync contains no assertion"
+    },
+    {
+      "kind": "selfContained",
+      "testFile": "tests/Whizbang.Core.Tests/Scoping/MarkerInterfaceTests.cs",
+      "testMethod": "ITenantScoped_ImplementingModel_HasTenantIdAsync",
+      "sourceTag": "src/Whizbang.Core/Scoping/IScopedInterfaces.cs:8",
+      "message": "tests/Whizbang.Core.Tests/Scoping/MarkerInterfaceTests.cs names no concrete type from src/ outside its own nested classes, so it verifies only its own doubles (a default interface member is the one shape this cannot tell apart; check by hand)"
+    },
+    {
+      "kind": "assertionFree",
+      "testFile": "tests/Whizbang.Core.Tests/Routing/CommandInboxNamingTests.cs",
+      "testMethod": "SystemBroadcastTopic_IsRoutableUnderTagNamespaceRulesAsync",
+      "sourceTag": "src/Whizbang.Core/Routing/CommandInboxNaming.cs:14",
+      "message": "SystemBroadcastTopic_IsRoutableUnderTagNamespaceRulesAsync contains no assertion"
+    },
+    {
+      "kind": "selfContained",
+      "testFile": "tests/Whizbang.Core.Tests/Pipeline/PipelineBehaviorTests.cs",
+      "testMethod": "ExecuteNextAsync_ShouldInvokeNextDelegateAsync",
+      "sourceTag": "src/Whizbang.Core/Pipeline/IPipelineBehavior.cs:18",
+      "message": "tests/Whizbang.Core.Tests/Pipeline/PipelineBehaviorTests.cs names no concrete type from src/ outside its own nested classes, so it verifies only its own doubles (a default interface member is the one shape this cannot tell apart; check by hand)"
+    },
+    {
+      "kind": "selfContained",
+      "testFile": "tests/Whizbang.Core.Tests/Perspectives/ITemporalPerspectiveStoreTests.cs",
+      "testMethod": "ITemporalPerspectiveStore_HasAppendAsyncMethodAsync",
+      "sourceTag": "src/Whizbang.Core/Perspectives/ITemporalPerspectiveStore.cs:10",
+      "message": "tests/Whizbang.Core.Tests/Perspectives/ITemporalPerspectiveStoreTests.cs names no concrete type from src/ outside its own nested classes, so it verifies only its own doubles (a default interface member is the one shape this cannot tell apart; check by hand)"
+    },
+    {
+      "kind": "selfContained",
+      "testFile": "tests/Whizbang.Core.Tests/Messaging/CompositeEventContractTests.cs",
+      "testMethod": "ICompositeEvent_InnerEvents_LazyEnumerationSupportedAsync",
+      "sourceTag": "src/Whizbang.Core/Minting/ICompositeEvent.cs:42",
+      "message": "tests/Whizbang.Core.Tests/Messaging/CompositeEventContractTests.cs names no concrete type from src/ outside its own nested classes, so it verifies only its own doubles (a default interface member is the one shape this cannot tell apart; check by hand)"
+    },
+    {
+      "kind": "assertionFree",
+      "testFile": "tests/Whizbang.Data.Dapper.Postgres.Tests/DapperPostgresEventStore.RetryTests.cs",
+      "testMethod": "SetupAsync",
+      "sourceTag": "src/Whizbang.Core/Data/IJsonbPersistenceAdapter.cs:14",
+      "message": "SetupAsync contains no assertion"
+    },
+    {
+      "kind": "assertionFree",
+      "testFile": "tests/Whizbang.Core.Tests/Async/AsyncTimeoutHelperTests.cs",
+      "testMethod": "WaitWithTimeoutAsync_CompletesBeforeTimeout_SucceedsAsync",
+      "sourceTag": "src/Whizbang.Core/Async/AsyncTimeoutHelper.cs:12",
+      "message": "WaitWithTimeoutAsync_CompletesBeforeTimeout_SucceedsAsync contains no assertion"
+    }
+  ],
   "metadata": {
-    "generated": "2026-09-10T19:45:44.134Z",
+    "generated": "2026-09-10T20:13:26.065Z",
     "sourceFiles": 1701,
     "testFiles": 5880,
-    "totalLinks": 15315,
+    "totalLinks": 15294,
     "codeSymbols": 2002,
-    "testMethods": 13313
+    "testMethods": 13292,
+    "linkHealthFindings": 19
   }
 }
