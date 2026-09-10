@@ -23,7 +23,9 @@ codeReferences:
   - src/Whizbang.Core/Workers/BatchFlusher.cs
   - src/Whizbang.Data.Postgres/Migrations/029_ProcessWorkBatch.sql
   - src/Whizbang.Data.Postgres/Migrations/011_CleanupStaleInstances.sql
+  - src/Whizbang.Data.Postgres/Migrations/148_ActiveStreamLeases.sql
 testReferences:
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/ActiveStreamLeaseExpirySqlTests.cs
   - tests/Whizbang.Core.Tests/Workers/ClaimWorkerTests.cs
   - tests/Whizbang.Core.Tests/Workers/ClaimWorkerGateCadenceTests.cs
   - tests/Whizbang.Core.Tests/Workers/HeartbeatWorkerAdaptiveCadenceTests.cs
@@ -100,6 +102,21 @@ At the default 300 s lease and 6 renewals, a single dispatch gets up to ~30 minu
 ### Failover SLA
 
 Cross-instance orphan claims gate on `lease_expiry < NOW()`. When an instance dies, its rows become claimable at their last-renewed expiry — worst case `LeaseSeconds` (default 300 s) after the final renewal. Instance death is additionally detected by heartbeat staleness (below), which releases all of a dead instance's leases at once.
+
+## Stream leases {#stream-leases}
+
+{verified: ActiveStreamLeaseExpirySqlTests.ClaimOrphanedInbox_LeasesTheStream_WithTheRowLeaseExpiryAsync, ActiveStreamLeaseExpirySqlTests.ClaimOrphanedInbox_RenewsTheStreamLease_WhenTheOwnerClaimsAgainAsync, ActiveStreamLeaseExpirySqlTests.ClaimOrphanedInbox_Steal_NeverTakesAStreamALiveSiblingOwns_EvenWithNoRowLeasedAsync, ActiveStreamLeaseExpirySqlTests.ClaimOrphanedOutbox_LeasesTheStream_WithTheRowLeaseExpiryAsync, ActiveStreamLeaseExpirySqlTests.ClaimOrphanedPerspectiveEvents_LeasesTheStream_WithTheRowLeaseExpiryAsync, ActiveStreamLeaseExpirySqlTests.RenewLeases_ExtendsTheStreamLease_ForTheOwnersStreamsAsync}
+
+Row leases decide who may process a row. Stream leases decide who may take *any* row of a stream. `wh_active_streams` pins a stream to the instance that first claims it (`assigned_instance_id`) and records a `lease_expiry` of its own, and the ownership guards inside `claim_orphaned_inbox`, `claim_orphaned_outbox`, and `claim_orphaned_perspective_events` treat a stream as owned only while that lease is live (`lease_expiry > now`) and the owner is still registered in `wh_service_instances`.
+
+The three acquisition functions write the stream lease from the row lease they grant (migration `148_ActiveStreamLeases.sql`):
+
+- The pin carries `lease_expiry`, so a stream is leased the moment its first row is.
+- A claim by the current owner renews the stream lease with the row leases.
+- On conflict the lease follows the assignment: a stream whose owner is gone from `wh_service_instances` moves to the claimant with a fresh lease, and a stream a live owner holds keeps both its owner and its lease.
+- `renew_leases` extends the stream lease alongside the row leases it renews, so a long handler keeps the whole stream and not only the row it is on.
+
+What this closes: without a writer for the stream lease, the guards could never be satisfied, so an idle instance stealing orphaned work could take a stream's next row between two rows of a live sibling, which is the one interleaving the stream pin exists to prevent. A steal now skips any stream a live sibling holds, even when none of that stream's rows is leased at that instant, and takes only streams no live instance holds.
 
 ## Instance heartbeat
 
