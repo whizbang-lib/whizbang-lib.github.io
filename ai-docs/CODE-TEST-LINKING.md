@@ -245,7 +245,22 @@ internal sealed record TestLinkInfo(
 - `getAllTestMethods()` - Lists all test methods
 - `findUntestedSymbols()` - Finds code without tests
 - `getCoverageStats()` - Calculates coverage statistics
-- `validateTestLinks()` - Validates all links
+- `validateTestLinks()` - Validates all links. A link whose target the generator found unhealthy is reported
+  as a `warning` with the finding's kind and message; the rest are `valid`.
+
+**Link health (issue 742).** A `<tests>` target can exist and still verify nothing, so the generator assesses
+every tagged target and writes its findings to `code-tests-map.json` under `linkHealth` (and prints each as a
+warning; `--strict` exits non-zero when any exist). Three shapes, each named for the live example that
+motivated it:
+
+| kind | what it means | how it is detected |
+|---|---|---|
+| `dormantContract` | the target's declaring class is abstract and no test-tree class inherits it, so the test never runs | the declaring class before the method is `abstract` and no `class X : Base` in tests/ names it (string literals and comments are stripped first, so a generator test's embedded source does not count) |
+| `selfContained` | the target's file exercises only its own doubles | outside its nested private classes the file names no concrete type declared under src/ (interfaces excluded on purpose), calls no src static method, and carries no `<code-under-test>src/...` tag |
+| `assertionFree` | the target method pins nothing | its body contains no `Assert`, `Throws`, or `Should` call |
+
+The checks are heuristics for a human to triage, not a gate: a test of a default interface member is the one
+shape `selfContained` cannot tell from a fake-only file, and the message says so.
 
 **TypeScript Interfaces**:
 ```typescript
