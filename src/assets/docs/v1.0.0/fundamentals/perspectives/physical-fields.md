@@ -252,7 +252,18 @@ ORDER BY sku;
 ## Index Advisories {#index-advisories}
 
 Nothing about a JSON-only filter looks wrong. The results are correct, the tests pass, and the cost
-only appears once the table grows. Whizbang therefore tells you at the point of writing.
+only appears once the table grows. Whizbang handles the common case for you and tells you about the
+rest at the point of writing.
+
+**Equality is handled automatically.** A filter such as `row.Data.TenantId == tenantId` compiles to a
+jsonb containment test that the GIN index on the data column answers, so it is a lookup rather than a
+scan even though the property has no physical column. See
+[JSONB Containment Queries](jsonb-containment.md) for exactly what is rewritten, what is deliberately
+left alone, and how to switch it off.
+
+What containment cannot serve still wants a physical column: ranges and inequalities, ordering,
+pattern matching, dates and times, enumerations, and comparisons under a negation. That is what the
+analyzer below is for.
 
 The [WHIZ302](../../operations/diagnostics/whiz302.md) analyzer warns when a lens query filters,
 orders, or counts on a property that has no physical column. It keys on `PerspectiveRow<TModel>.Data`,
@@ -298,6 +309,7 @@ correlated columns (which want extended statistics, not an index at all).
 
 ## See Also
 
+- [JSONB Containment Queries](jsonb-containment.md) - How an equality filter reaches the GIN index
 - [Vector Fields](vector-fields.md) - Vector similarity search with pgvector
 - [Perspective Registry](registry.md) - Table tracking and renaming
 - [Polymorphic Discriminator](polymorphic-discriminator.md) - Efficient polymorphic queries

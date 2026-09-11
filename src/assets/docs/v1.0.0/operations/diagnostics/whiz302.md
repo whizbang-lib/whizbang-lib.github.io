@@ -11,11 +11,13 @@ order: 302
 tags: 'diagnostics, perspectives, physical-fields, indexing, performance, analyzer'
 codeReferences:
   - src/Whizbang.Generators/Analyzers/PerspectiveFilterIndexAnalyzer.cs
+  - src/Whizbang.Data.EFCore.Postgres/QueryTranslation/JsonbContainmentRewriter.cs
   - src/Whizbang.Core/Perspectives/SuppressIndexAdvisoryAttribute.cs
   - src/Whizbang.Core/Perspectives/PhysicalFieldAttribute.cs
   - src/Whizbang.Generators/PerspectiveSchemaGenerator.cs
 testReferences:
   - tests/Whizbang.Generators.Tests/Analyzers/PerspectiveFilterIndexAnalyzerTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/QueryTranslation/JsonbContainmentSqlMatrixTests.cs
 ---
 
 # WHIZ302: Filtered Perspective Field Has No Index
@@ -33,6 +35,14 @@ The result is correct. The cost is linear in table size, which makes it invisibl
 where the table holds tens of rows, and dominant in production, where it holds millions. WHIZ302
 moves that discovery to the moment the query is written, when promoting the field is a one-line
 change rather than a migration under load.
+
+:::updated
+**Equality is now handled for you.** A plain equality filter on a JSON-only scalar compiles to a jsonb
+containment test that the GIN index on the data column answers, so it no longer scans. See
+[JSONB Containment Queries](../../fundamentals/perspectives/jsonb-containment.md). This diagnostic is
+about the shapes containment cannot serve: ranges, ordering, pattern matching, dates and times,
+enumerations, and comparisons under a negation.
+:::
 
 ## Diagnostic Message
 
@@ -156,37 +166,37 @@ CREATE STATISTICS wh_per_document_tenant_entity (dependencies, ndistinct, mcv)
 ANALYZE wh_per_document;
 ```
 
-### The GIN index on `data` does not serve these queries
+### The GIN index on `data`, and what changed
 
-Every perspective table is created with a GIN index on its `data`, `metadata`, and `scope` columns,
-so it is reasonable to assume a filter on a JSON property already has an index to use. It does not,
-and the reason is narrow enough to be worth stating exactly.
+Every perspective table is created with a GIN index on its `data`, `metadata` and `scope` columns, and
+for a long time nothing could use them. A GIN index with the default operator class answers
+containment and existence, `@>` and friends, and nothing else; a property comparison compiled to a
+`->>` text extraction, which falls outside that.
 
-A GIN index with the default `jsonb_ops` operator class answers the containment and existence
-operators: `@>`, `?`, `?|`, `?&`, `@?`, `@@`. It cannot answer `->>`, which extracts a value as
-text. Entity Framework translates `row.Data.EntityType == value` into an extraction, not a
-containment test, so the predicate falls outside what the index can serve and the planner reads the
-whole table.
+That is no longer the whole story. The lens now compiles an equality filter into the containment form,
+so the index does answer it:
 
-The two plans for the same logical question, on the same table with the GIN index present:
-
-```text{title="Extraction versus containment on the same column" description="The predicate EF Core emits cannot use the GIN index; the containment form can." category="Perspectives" difficulty="ADVANCED" tags=["postgres", "jsonb", "gin", "query-planning"]}
-EXPLAIN SELECT id FROM wh_per_example WHERE data->>'EntityType' = 'x';
-  Seq Scan on wh_per_example  (cost=0.00..19602.12 rows=422 width=16)
-    Filter: ((data ->> 'EntityType'::text) = 'x'::text)
-
-EXPLAIN SELECT id FROM wh_per_example WHERE data @> '{"EntityType":"x"}';
-  Bitmap Heap Scan on wh_per_example  (cost=27.34..43.28 rows=8 width=16)
-    Recheck Cond: (data @> '{"EntityType": "x"}'::jsonb)
-    ->  Bitmap Index Scan on idx_example_data_gin  (cost=0.00..27.34 rows=8 width=0)
+```text{title="Extraction versus containment on the same column" description="Only the containment form, with the bare column on the left, is matched to the index." category="Perspectives" difficulty="ADVANCED" tags=["postgres", "jsonb", "gin", "query-planning"]}
+WHERE data ->> 'EntityType' = 'x'                      -> Seq Scan             cost 19602
+WHERE data @> jsonb_build_object('EntityType', 'x')    -> Bitmap Index Scan    cost 43
 ```
 
-Three consequences follow. The GIN index is not a substitute for promoting a filtered field, which
-is what WHIZ302 is telling you. An expression index on `((data->>'EntityType'))` would serve the
-extraction form, at which point you have paid for an index anyway and a physical column is the
-better shape, because it is typed, it is smaller, and it does not depend on the exact spelling the
-serializer produced. And a GIN index that no query can reach is not free: it is maintained on every
-upsert and occupies storage proportional to the document.
+See [JSONB Containment Queries](../../fundamentals/perspectives/jsonb-containment.md) for what is
+rewritten and what is not.
+
+**So WHIZ302 is about the shapes containment cannot serve.** A plain equality filter on a JSON-only
+scalar is already indexed and needs no attention. What still forces a scan, and still wants a physical
+column, is everything else: ranges and inequalities, ordering, pattern matching, dates and times and
+enumerations, and any comparison under a negation.
+
+Two things remain true regardless. The index cannot be reached by the left operand being anything but
+the bare column, so a containment test over an extraction plans as a scan. And the function form is
+not matched to the index either:
+
+```text{title="Neither an extraction nor the function form reaches the index" description="PostgreSQL matches a GIN index on the operator, and only when the indexed expression is the left operand." category="Perspectives" difficulty="ADVANCED" tags=["postgres", "jsonb", "gin", "query-planning"]}
+WHERE (data -> 'EntityType') @> '"x"'                  -> Seq Scan   cost 19602
+WHERE jsonb_contains(data, '{"EntityType":"x"}')       -> Seq Scan   cost 19390
+```
 
 ### There is no way to pin a table in memory
 

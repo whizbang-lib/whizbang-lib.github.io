@@ -2261,6 +2261,30 @@
     "symbol": "EnsureWhizbangInitializedAsync",
     "docs": "data/turnkey-initialization#idempotency"
   },
+  "JsonbContainment": {
+    "file": "src/Whizbang.Data.EFCore.Postgres/QueryTranslation/JsonbContainment.cs",
+    "line": 45,
+    "symbol": "JsonbContainment",
+    "docs": "fundamentals/perspectives/jsonb-containment"
+  },
+  "JsonbContainmentModelExtensions": {
+    "file": "src/Whizbang.Data.EFCore.Postgres/QueryTranslation/JsonbContainment.cs",
+    "line": 195,
+    "symbol": "JsonbContainmentModelExtensions",
+    "docs": "fundamentals/perspectives/jsonb-containment"
+  },
+  "JsonbContainmentRewriter": {
+    "file": "src/Whizbang.Data.EFCore.Postgres/QueryTranslation/JsonbContainmentRewriter.cs",
+    "line": 39,
+    "symbol": "JsonbContainmentRewriter",
+    "docs": "fundamentals/perspectives/jsonb-containment"
+  },
+  "JsonbContainmentSwitch": {
+    "file": "src/Whizbang.Data.EFCore.Postgres/QueryTranslation/JsonbContainmentSwitch.cs",
+    "line": 22,
+    "symbol": "JsonbContainmentSwitch",
+    "docs": "fundamentals/perspectives/jsonb-containment"
+  },
   "PhysicalFieldExpressionVisitor": {
     "file": "src/Whizbang.Data.EFCore.Postgres/QueryTranslation/PhysicalFieldExpressionVisitor.cs",
     "line": 32,
@@ -2278,6 +2302,12 @@
     "line": 27,
     "symbol": "PhysicalFieldRegistry",
     "docs": "fundamentals/perspectives/physical-fields"
+  },
+  "ProviderCapabilities": {
+    "file": "src/Whizbang.Data.EFCore.Postgres/QueryTranslation/ProviderCapabilities.cs",
+    "line": 32,
+    "symbol": "ProviderCapabilities",
+    "docs": "fundamentals/perspectives/jsonb-containment"
   },
   "UseWhizbangPhysicalFields": {
     "file": "src/Whizbang.Data.EFCore.Postgres/QueryTranslation/WhizbangDbContextOptionsBuilderExtensions.cs",
@@ -2320,6 +2350,12 @@
     "line": 27,
     "symbol": "EFCoreClaimedEmissionStore",
     "docs": "fundamentals/dispatcher/publish-once"
+  },
+  "PerspectiveQueryTranslationOptions": {
+    "file": "src/Whizbang.Data.EFCore.Postgres/Configuration/PerspectiveQueryTranslationOptions.cs",
+    "line": 20,
+    "symbol": "PerspectiveQueryTranslationOptions",
+    "docs": "fundamentals/perspectives/jsonb-containment"
   },
   "helpers": {
     "file": "src/Whizbang.Data.EFCore.Postgres/Collective/CollectiveEventApplier.cs",
