@@ -14,6 +14,8 @@ codeReferences:
   - src/Whizbang.Core/Messaging/ICompositeEvent.cs
   - src/Whizbang.Core/Messaging/CompositeEventBase.cs
   - src/Whizbang.Core/Messaging/CompositeInboxFanout.cs
+  - src/Whizbang.Core/Messaging/CompositeChildIdentity.cs
+  - src/Whizbang.Core/Observability/CompositeMetrics.cs
   - src/Whizbang.Core/Messaging/FanoutControl.cs
   - src/Whizbang.Core/Messaging/DispatchOutboxCollector.cs
   - src/Whizbang.Core/Messaging/NoRebroadcastGuard.cs
@@ -28,6 +30,10 @@ testReferences:
   - tests/Whizbang.Core.Tests/Messaging/CompositeEventContractTests.cs
   - tests/Whizbang.Core.Tests/Messaging/CompositeEventBaseTests.cs
   - tests/Whizbang.Core.Tests/Messaging/CompositeInboxFanoutTests.cs
+  - tests/Whizbang.Core.Tests/Messaging/CompositeInboxFanoutIdentityAndSubscriptionTests.cs
+  - tests/Whizbang.Core.Tests/Messaging/CompositeChildIdentityTests.cs
+  - tests/Whizbang.Core.Tests/Workers/InboxDispatchWorkerCompositeCommitTests.cs
+  - tests/Whizbang.Core.Tests/Observability/CompositeMetricsTests.cs
   - tests/Whizbang.Core.Tests/Messaging/DispatchOutboxCollectorTests.cs
   - tests/Whizbang.Core.Tests/Messaging/DispatchFanoutControlTests.cs
   - tests/Whizbang.Core.Tests/Messaging/NoRebroadcastGuardTests.cs
@@ -233,10 +239,29 @@ claim composite inbox row (InboxDispatchWorker.ProcessOneInnerAsync)
                   NewInboxMessages  = children,
                   NewOutboxMessages = pre-fanout emissions,
                   InboxCompletion.Status = EventStored }
-                → process_inbox_completions stores children + pre-fanout events
-                  AND DELETEs the composite (one transaction)
+                committed SYNCHRONOUSLY through IWorkCoordinator.CommitHandlerResultAsync
+                → commit_handler_result stores children + pre-fanout events
+                  AND DELETEs the composite (one transaction), before the
+                  dispatcher returns; never queued on the batched commit channel
   → children dispatch normally
 ```
+
+### Transactional expansion
+
+The expansion and its commit are one step. The dispatcher used to hand the
+commit request to the batched handler commit channel and return; until that
+batch flushed, the composite row was still leased and unprocessed, the claim loop
+re-offered it on every poll (it re-emits every leased unprocessed row by design),
+and the dispatcher expanded it again. Measured on a bulk import: fifteen copies
+of every inner event, and the queued expansion results were most of the
+consumer's memory. The dispatcher now resolves the coordinator from the dispatch
+scope and awaits `CommitHandlerResultAsync` for the composite before it returns,
+so a composite is never in the "expanded but not committed" state the claim loop
+can see, and no child ever waits in memory between dispatch and commit. A commit
+that fails is logged and counted (`whizbang.composites.commit_failures`); the row
+stays leased and unprocessed for the re-offer to retry, and its in-flight entry is
+released so the retry is not filtered out.
+{verified: InboxDispatchWorkerCompositeCommitTests.Composite_IsExpandedAndCommittedInOneStep_ThroughTheCoordinator_NeverTheCommitChannelAsync, InboxDispatchWorkerCompositeCommitTests.Composite_WhoseCommitFails_ReleasesTheRowForRetry_AndCountsTheFailureAsync}
 
 - **Recognition** — the source generator (`ReceptorRegistryQueryGenerator`)
   discovers every **concrete** `ICompositeEvent` type and lists it in
@@ -269,9 +294,50 @@ event:
 |---|---|
 | `Version`, `DispatchContext`, `SourceServiceId`, `SourceCommitSequence`, `CausedByServiceId`, `CausedByCommitSequence`, `StateOnly` | Copied from the composite envelope (re-delivery bundles may override the source service id / commit sequence with the original origin identity). |
 | `Hops` | A composite-lineage chain: a fresh creation hop whose `CausationId` is the composite's `MessageId` and `CausationType` is the composite type name, followed by the composite's own hops. Built once and shared by reference across the whole batch, so "these events came from composite X" is queryable. |
-| `MessageId` | Fresh UUIDv7 per child, so inbox dedup keeps each inner event distinct. (Identity-preserving re-delivery composites keep each child's original id so consumer convergence rides the event-id conflict skip.) |
+| `MessageId` | Derived from the composite's id, the child's ordinal in the composite, and the child's type (`CompositeChildIdentity.Derive`), UUIDv7-shaped with the composite's time prefix, so a repeated expansion of the same composite produces the same rows and the inbox primary key absorbs it. Identity-preserving re-delivery composites keep each child's original id so consumer convergence rides the event-id conflict skip. |
 | `StreamId` | The composite's stream (recorded as the first hop's `AggregateId`), falling back to the child's own `MessageId` when absent. |
 | `Flags` | Stamped `EventFlags.NoRebroadcast` on both the persisted inbox row and the in-memory envelope. |
+
+### Deterministic child ids
+
+Every child's id is a function of the composite it came from
+(`CompositeChildIdentity.Derive(compositeMessageId, ordinal, childTypeName)`),
+the same construction as emission identity: bytes 0 to 5 inherit the composite's
+UUIDv7 time prefix, the rest is SHA-256 over
+`whizbang.composite-child.v1\n{composite}\n{ordinal}\n{type}` with the version
+and variant bits set. The ordinal is the child's position as the producer packed
+the composite, never its position in the set a given consumer keeps, so two
+consumers of one composite derive the same id for the same child and the audit
+trail matches them across services. This is the last line of defense behind the
+transactional commit: a second instance that takes the row after a lease lapsed
+and expands it again produces rows the primary key already holds.
+{verified: CompositeChildIdentityTests.Derive_SameInputs_ProduceTheSameIdAsync, CompositeInboxFanoutIdentityAndSubscriptionTests.TryExpand_TypedComposite_ExpandedTwice_YieldsTheSameChildIdsAsync, CompositeInboxFanoutIdentityAndSubscriptionTests.TryExpand_DroppedChildren_DoNotConsumeTheOrdinalsOfTheKeptOnesAsync}
+
+### Unsubscribed children are dropped at expansion
+
+A consumer expands only the children it has a subscription for. The dispatcher
+passes its discard policy to `TryExpand` as `hasConsumer`; a child whose type the
+consumer has no handler, receptor, perspective or tag for is not built, and the
+drop is counted (`FanoutResult.UnsubscribedChildren`,
+`whizbang.composites.children_unsubscribed`). Before this, such a child was
+stored, leased, fetched and then discarded at dispatch; worse, because its type
+was missing from the consumer's event catalog, it was stored with
+`is_event = false` and served first by the command lane, ahead of real commands.
+Classification is now positive: a typed child that implements `IEvent` is an
+event whatever the catalog says, and a raw child (a re-delivery bundle) is an
+event because it came from an event store. A catalog miss never demotes a child
+to a command.
+{verified: CompositeInboxFanoutIdentityAndSubscriptionTests.TryExpand_WithAConsumerPredicate_DropsChildrenNobodySubscribesTo_AndCountsThemAsync, CompositeInboxFanoutIdentityAndSubscriptionTests.TryExpand_TypedChildMissingFromTheCatalog_IsStillAnEvent_WhenItIsOneAsync, CompositeInboxFanoutIdentityAndSubscriptionTests.TryExpand_RawChildMissingFromTheCatalog_IsAnEventAsync}
+
+### Meters
+
+`Whizbang.Composites` (see the [metrics reference](../../operations/observability/metrics#composites-and-collectives))
+counts composites received, expansions, children created, children dropped as
+unsubscribed, children refused by the expansion budget, composites dead-lettered,
+and commit failures. Expansions above received is a composite being expanded more
+than once; children per composite and the unsubscribed share read the
+amplification directly.
+{verified: InboxDispatchWorkerCompositeCommitTests.Composite_Meters_CountReceivedExpansionsChildrenAndUnsubscribedDropsAsync, CompositeMetricsTests.Counters_ReportWhatWasAddedWhenPolledAsync}
 
 ## Pre-fanout hook
 
@@ -441,6 +507,7 @@ with its consumer.
 | Inner event is null / child serialization fails under `Atomic` | `CompositeExpansionFailure` (16) | All-or-nothing — no partial inner events recorded; whole composite dead-letters. |
 | Inner event is null / child serialization fails under `Independent` | — | Drop the bad child (logged), fan out the rest. |
 | Producer builds an over-cap composite | — | `EnsureWithinCap()` throws `InvalidOperationException`; at publish, `_fanOutCompositeLocallyAtPublishAsync` throws the same synchronously. |
+| The synchronous commit of an expansion fails | — | Logged and counted; the row stays leased and unprocessed for the claim loop's re-offer to retry, and the in-flight entry is released so the retry is not filtered. The retry expands to the same child ids. |
 
 ## Code ↔ tests
 
@@ -449,6 +516,10 @@ with its consumer.
 | Composite marker / authoring | `ICompositeEvent`, `CompositeEventBase` | `Messaging/CompositeEventBaseTests.cs` |
 | Dispatch recognition (drop-gate) | `ReceptorRegistryQueryGenerator` (`_extractCompositeEntry` → `AnyConsumerTypes`) | `Generators.Tests/ReceptorRegistryQueryGeneratorTests.cs` (`Generator_WithCompositeEvent_HasAnyConsumerReturnsTrueAsync`) |
 | Dispatch-time fan-out | `CompositeInboxFanout`, `InboxDispatchWorker` | `Messaging/CompositeInboxFanoutTests.cs`, `Workers/InboxDispatchWorkerTests.cs` (`CompositeMessage_FansOut*`, `CompositeOverCap_DeadLetters*`) |
+| Transactional expansion, commit failure retry | `InboxDispatchWorker._fanoutCompositeAsync`, `IWorkCoordinator.CommitHandlerResultAsync` | `Workers/InboxDispatchWorkerCompositeCommitTests.cs` |
+| Deterministic child ids | `CompositeChildIdentity`, `CompositeInboxFanout` | `Messaging/CompositeChildIdentityTests.cs`, `Messaging/CompositeInboxFanoutIdentityAndSubscriptionTests.cs` |
+| Unsubscribed children dropped, positive classification | `CompositeInboxFanout.TryExpand(hasConsumer)`, `InboxDispatchWorker` | `Messaging/CompositeInboxFanoutIdentityAndSubscriptionTests.cs`, `Workers/InboxDispatchWorkerCompositeCommitTests.cs` |
+| Composite meters | `CompositeMetrics` | `Observability/CompositeMetricsTests.cs` |
 | Publish-time local fan-out (1.1) | `Dispatcher._fanOutCompositeLocallyAtPublishAsync`, `Dispatcher.PublishAsync` | `Dispatcher/DispatcherCompositePublishFanoutTests.cs` |
 | Pre-fanout hook (atomic emit) | `DispatchOutboxCollector`, `InboxDispatchWorker._invokePreFanoutHookAsync` | `Messaging/DispatchOutboxCollectorTests.cs`, `Workers/InboxDispatchWorkerTests.cs` (`CompositeWithPreFanoutReceptor_*`) |
 | Fan-out control | `FanoutMode`/`FanoutAtomicity`/`FanoutDirective`, `DispatchFanoutControl` | `Messaging/DispatchFanoutControlTests.cs`, `Messaging/CompositeInboxFanoutTests.cs`, `Workers/InboxDispatchWorkerTests.cs` (`CompositeDirective_*`, `CompositeFanoutMode_Manual_*`) |

@@ -18,6 +18,7 @@ codeReferences:
   - src/Whizbang.Core/Messaging/ClaimWorkRequest.cs
   - src/Whizbang.Core/Messaging/HeartbeatRequest.cs
   - src/Whizbang.Core/Messaging/HandlerCommitRequest.cs
+  - src/Whizbang.Core/Messaging/WorkCoordinatorFlushHelper.cs
   - src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs
   - src/Whizbang.Data.Dapper.Postgres/DapperWorkCoordinator.cs
 testReferences:
@@ -27,6 +28,7 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/CompleteOutboxPublishedSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/CommitHandlerBatchSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/FlushCompletionsSqlTests.cs
+  - tests/Whizbang.Core.Tests/Messaging/WorkCoordinatorFlushHelperInboxCompletionTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -273,6 +275,8 @@ public enum WorkCategory { Outbox, Inbox, PerspectiveEvent }
 ```
 
 **Usage**: `ReportFailuresAsync` increments retry counters and stamps `error`/`failure_reason`; completion methods delete rows (production) or stamp them (debug mode).
+
+**Queued completions**: A work strategy that queues completions instead of calling the coordinator hands them to `WorkCoordinatorFlushHelper` at flush time. Outbox completions go to the outbox completion channel and failures to the failure channel. An inbox completion becomes a `HandlerCommitRequest` that carries the completion and no emitted messages: inside a scope it lands on the handler commit channel, and against a bare coordinator it is committed at once with `CommitHandlerResultAsync`. Before this routing existed the helper dropped queued inbox completions, and the rows stayed leased until the lease lapsed. {verified: WorkCoordinatorFlushHelperInboxCompletionTests.ScopePath_InboxCompletions_LandOnTheHandlerCommitChannelAsync, WorkCoordinatorFlushHelperInboxCompletionTests.DirectCoordinatorPath_InboxCompletions_AreCommittedOnTheCoordinatorAsync}
 
 ### Perspective Cursor Completion
 

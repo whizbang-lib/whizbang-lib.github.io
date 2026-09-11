@@ -17,7 +17,17 @@ export interface CodeLinkMapping {
   linkSource?: 'XmlTag' | 'Convention' | 'SemanticAnalysis';
 }
 
+/** A <tests> target that exists but verifies nothing (issue 742); produced by generate-code-tests-map.mjs. */
+export interface LinkHealthFinding {
+  kind: 'dormantContract' | 'selfContained' | 'assertionFree';
+  testFile: string;
+  testMethod: string;
+  sourceTag: string;
+  message: string;
+}
+
 export interface CodeTestsMapData {
+  linkHealth?: LinkHealthFinding[];
   codeToTests: Record<string, TestLinkMapping[]>;
   testsToCode: Record<string, CodeLinkMapping[]>;
   metadata?: {
@@ -146,23 +156,27 @@ export function validateTestLinks(map: CodeTestsMapData): {
   }> = [];
 
   let totalLinks = 0;
-
+  // A link is a warning when the generator found its target dormant, self-contained or assertion-free
+  // (issue 742): the test exists, but it does not verify the symbol its tag claims.
+  const unhealthy = new Map<string, LinkHealthFinding>();
+  for (const finding of map.linkHealth ?? []) {
+    unhealthy.set(`${finding.testFile}:${finding.testMethod}`, finding);
+  }
+  let valid = 0;
   for (const [symbol, tests] of Object.entries(map.codeToTests)) {
     for (const test of tests) {
       totalLinks++;
-
-      // For now, mark all as valid since we just generated the map
-      // In future, could check if test files actually exist
-      details.push({
-        symbol,
-        testMethod: test.testMethod,
-        status: 'valid'
-      });
+      const finding = unhealthy.get(`${test.testFile}:${test.testMethod}`);
+      if (finding) {
+        details.push({ symbol, testMethod: test.testMethod, status: 'warning', message: `${finding.kind}: ${finding.message}` });
+      } else {
+        valid++;
+        details.push({ symbol, testMethod: test.testMethod, status: 'valid' });
+      }
     }
   }
-
   return {
-    valid: totalLinks,
+    valid,
     totalLinks,
     details
   };

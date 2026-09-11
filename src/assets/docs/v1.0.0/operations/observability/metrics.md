@@ -21,6 +21,8 @@ codeReferences:
   - src/Whizbang.Core/Observability/TransportMetrics.cs
   - src/Whizbang.Core/Observability/PerspectiveMetrics.cs
   - src/Whizbang.Core/Observability/WorkCoordinatorMetrics.cs
+  - src/Whizbang.Core/Observability/CompositeMetrics.cs
+  - src/Whizbang.Core/Workers/InboxHandlerWorker.cs
   - src/Whizbang.Core/Messaging/WorkCoordinatorGate.cs
   - src/Whizbang.Core/Observability/InboxMetrics.cs
   - src/Whizbang.Core/Observability/DeadLetterMetrics.cs
@@ -56,6 +58,10 @@ testReferences:
   - tests/Whizbang.Core.Tests/Observability/TypeRegistryMetricsTests.cs
   - tests/Whizbang.Core.Tests/Observability/StreamIntegrityMetricsTests.cs
   - tests/Whizbang.Sagas.Tests/SagaMetricsTests.cs
+  - tests/Whizbang.Core.Tests/Observability/CompositeMetricsTests.cs
+  - tests/Whizbang.Core.Tests/Workers/InboxDispatchWorkerCompositeCommitTests.cs
+  - tests/Whizbang.Core.Tests/Workers/InboxHandlerWorkerQueueDepthTests.cs
+  - tests/Whizbang.Core.Tests/Workers/PerspectiveWorkerCollectiveSinkTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -551,6 +557,36 @@ Meter name: `Whizbang.DeadLetters` (`DeadLetterMetrics`)
 | `whizbang.dead_letters.new_stacks` | Counter\<long\> | Never-before-seen normalized stack ids first recorded — **the new-failure-mode alarm**. A spike right after a deploy is a new bug shipped; no "stack_id with no history" query required |
 | `whizbang.dispatcher.re_emissions` | Counter\<long\> | Events published that this service also consumes — the re-emission cascade signature (#587), tagged by `type`. A spike during a bulk operation is amplification |
 | `whizbang.work_coordinator.commit_handler.fallbacks` | Counter\<long\> | Handler-commit batches that fell back from the bulk tier to per-handler savepoints (#573). Sustained non-zero: read the paired warning's SQLSTATE |
+
+### Handler commit queue {#handler-commit-queue}
+
+{verified: InboxHandlerWorkerQueueDepthTests.QueuedHandlerCommits_AreObservableAsAGauge_UntilTheyCommitAsync}
+
+| Metric Name | Type | Description |
+|-------------|------|-------------|
+| `whizbang.work_coordinator.handler_commits.queued` | Gauge\<long\> | Handler results dispatched but not yet committed: what waits in the commit channel plus what the flusher has taken up and is committing. This queue is the one place dispatched work waits in memory; under a bulk fan-out it once held whole composite expansions while the lease count stayed capped and nothing said where the memory was (#740). Composite expansions no longer pass through it |
+
+## Whizbang.Composites {#composites-and-collectives}
+
+Meter name: `Whizbang.Composites` (`CompositeMetrics`)
+
+A composite disappears once it is expanded (its row is completed and only its children remain), so these counters are the only place the amplification of a fan-out is visible. Read them as ratios: `expansions / received` should be one (above one is a composite being expanded more than once, the shape of a re-offer racing a queued commit); `children_created / expansions` is the fan-out width; `children_unsubscribed / (children_created + children_unsubscribed)` is the share of a composite this consumer never wanted.
+{verified: CompositeMetricsTests.Counters_ReportWhatWasAddedWhenPolledAsync, InboxDispatchWorkerCompositeCommitTests.Composite_Meters_CountReceivedExpansionsChildrenAndUnsubscribedDropsAsync}
+
+| Metric Name | Type | Description |
+|-------------|------|-------------|
+| `whizbang.composites.received` | Counter\<long\> | Composite inbox rows the dispatcher took up |
+| `whizbang.composites.expansions` | Counter\<long\> | Times a composite was expanded into children; above `received` means a composite was expanded more than once |
+| `whizbang.composites.children_created` | Counter\<long\> | Child inbox rows produced by expansions |
+| `whizbang.composites.children_unsubscribed` | Counter\<long\> | Children dropped at expansion because this consumer has no subscription for their type; they are never stored |
+| `whizbang.composites.children_refused` | Counter\<long\> | Children refused by the consumer's expansion budget (`MaxCompositeChildrenPerExpansion`) |
+| `whizbang.composites.dead_lettered` | Counter\<long\> | Composite rows moved to the dead-letter store instead of being expanded |
+| `whizbang.composites.commit_failures` | Counter\<long\> | Expansions whose synchronous commit failed; the row stays leased and is retried on re-offer |
+| `whizbang.collectives.received` | Counter\<long\> | Collective events the collective sink took up from a leased sink row |
+| `whizbang.collectives.applied` | Counter\<long\> | Collective events the sink applied through the collective dispatcher |
+| `whizbang.collectives.skipped` | Counter\<long\> | Leased sink rows completed without an apply because no collective event was behind them (the cursor had already passed, or a stale re-lease); a rising count is the re-lease loop showing itself |
+
+The collective counters are recorded at the sink, the one place an applied collective leaves no row behind to count. {verified: PerspectiveWorkerCollectiveSinkTests.CollectiveSink_Meters_CountAReceivedAndAppliedCollective_Async, PerspectiveWorkerCollectiveSinkTests.CollectiveSink_Meters_CountALeasedSinkRowWithNoEventAsSkipped_Async}
 
 ## Whizbang.TransportDeadLetterDrain {#transport-dlq}
 
