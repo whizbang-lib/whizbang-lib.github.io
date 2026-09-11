@@ -35,7 +35,11 @@ codeReferences:
   - src/Whizbang.Core/Routing/MessageDiscardPolicy.cs
   - src/Whizbang.Data.Postgres/Notifications/NotifyMetrics.cs
   - src/Whizbang.Sagas/Observability/SagaMetrics.cs
+  - src/Whizbang.Core/Observability/InstanceLivenessMetrics.cs
+  - src/Whizbang.Core/Observability/ProbeCadenceMetrics.cs
 testReferences:
+  - tests/Whizbang.Core.Tests/Observability/InstanceLivenessMetricsTests.cs
+  - tests/Whizbang.Core.Tests/Observability/ProbeCadenceMetricsTests.cs
   - tests/Whizbang.Core.Tests/Observability/PassiveCounterTests.cs
   - tests/Whizbang.Core.Tests/Observability/PassiveCounterDriftLockTests.cs
   - tests/Whizbang.Core.Tests/Observability/MaintenanceMetricsTests.cs
@@ -92,6 +96,8 @@ Additional subsystem meters:
 | `Whizbang.Core.Routing.MessageDiscard` | `MessageDiscardPolicy` | Unsubscribed-message discards at the receive boundary |
 | `Whizbang.Postgres.Notifications` | `NotifyMetrics` | LISTEN/NOTIFY signal delivery and connection state |
 | `Whizbang.Sagas` | `SagaMetrics` | Saga initiation, completion, item and hook outcomes |
+| `Whizbang.Liveness` | `InstanceLivenessMetrics` | Heartbeat watchdog and slow beats, death announcements and retractions |
+| `Whizbang.Probes` | `ProbeCadenceMetrics` | Periodic probe ticks by worker and outcome (the idle footprint), suppressed duty attempts |
 
 ## Configuration {#configuration}
 
@@ -475,6 +481,9 @@ Instruments for the core work coordination pipeline - the `process_work_batch` S
 | `whizbang.work_coordinator.process_batch.errors` | Counter\<long\> | SQL errors |
 | `whizbang.work_coordinator.flush.calls` | Counter\<long\> | Total FlushAsync calls |
 | `whizbang.work_coordinator.flush.empty_calls` | Counter\<long\> | Flushes with no queued work |
+| `whizbang.work_coordinator.outbox.emission_deduplicated` | Counter\<long\> | Outbox rows skipped because the same message id was already stored: the republishes a retry would have produced; tagged by `message_type`. Recorded by the EF Core coordinator (the Dapper coordinator deduplicates through the same primary key but does not count). Sustained non-zero points at the completion path, see [Emission identity](/v1.0.0/fundamentals/dispatcher/message-cascade#emission-identity) |
+
+{verified: WorkCoordinatorMetricsTests.WCMetrics_OutboxEmissionDeduplicated_CountsPerMessageTypeAsync, EFCoreOutboxEmissionDedupTests.StoreOutboxMessagesAsync_SameMessageStoredTwice_CountsTheSkippedRowByTypeAsync}
 
 ### Publisher Worker
 
@@ -500,6 +509,34 @@ Both instruments live on the `Whizbang.WorkCoordinator` meter (`InboxMetrics` de
 | `whizbang.inbox.dispatch.duration_ms` | ms | Per-message inbox dispatch wall time, tagged with short message type |
 
 `whizbang.gate.hold_duration_ms` is a history. For a point-in-time view, `WorkCoordinatorGate.SnapshotHolders()` returns every held slot as `(Caller, HeldMs)`, and the gate's acquire-deadline Warning (EventId 1, `WorkCoordinatorGate.AcquireAsync timed out ...`) appends the same snapshot grouped by caller, `Holders: <Caller> xN (oldest S s), ...`, so a saturation warning names what is holding the gate. {verified: WorkCoordinatorGateHolderDiagnosticsTests.SnapshotHolders_NamesEveryCurrentHolder_AndForgetsReleasedOnesAsync, WorkCoordinatorGateHolderDiagnosticsTests.Deadline_NamesTheHoldersInTheWarningAsync}
+
+## Whizbang.Liveness {#liveness}
+
+Meter name: `Whizbang.Liveness` (`InstanceLivenessMetrics`)
+
+Passive counters for instance liveness: the heartbeat writer's out-of-cadence and slow beats, and the lifecycle monitor's death announcements and retractions. Every series exists at zero from construction, so a fleet that never had a false death shows the retraction counter at zero rather than as a missing meter. Design and operator guidance: [Instance liveness](/v1.0.0/fundamentals/workers/instance-liveness#observability).
+
+| Metric Name | Type | Description |
+|-------------|------|-------------|
+| `whizbang.liveness.watchdog_beats` | Counter\<long\> | Heartbeats forced ahead of cadence because the regular beat ran late enough to approach the stale threshold |
+| `whizbang.liveness.slow_beats` | Counter\<long\> | Heartbeats whose round trip took at least one fast interval |
+| `whizbang.liveness.deaths_announced` | Counter\<long\> | `InstanceDied` signals published by the lifecycle monitor |
+| `whizbang.liveness.deaths_retracted` | Counter\<long\> | Announced deaths retracted because the instance was alive again on a later tick; a beat was late, not absent |
+
+{verified: InstanceLivenessMetricsTests.Counters_ReportWhatWasAddedWhenPolledAsync, InstanceLivenessMetricsTests.Meter_IsNamedForTheLivenessDomainAsync, InstanceLivenessMetricsTests.WithoutAMeterFactory_StillConstructsAsync}
+
+## Whizbang.Probes {#probes}
+
+Meter name: `Whizbang.Probes` (`ProbeCadenceMetrics`)
+
+Passive counters for the periodic probes that make up a service's idle footprint on its database. The `idle` series are the footprint; on an empty queue they should grow slowly. Design: [Idle footprint](/v1.0.0/fundamentals/workers/idle-footprint).
+
+| Metric Name | Type | Description |
+|-------------|------|-------------|
+| `whizbang.probes.ticks` | Counter\<long\> | Probe ticks by worker and outcome; tags `probe` (`durable-signal-tail`, `instance-lifecycle`, `backlog-age`) and `outcome` (`work`, `idle`). Both series of every known probe are touched at zero from construction |
+| `whizbang.probes.suppressed_duty_attempts` | Counter\<long\> | Duty attempts answered from memory while a contention window was open, so no lock round trip was made; tagged by `duty` |
+
+{verified: ProbeCadenceMetricsTests.KnownProbes_HaveBothOutcomeSeriesAtZeroFromConstructionAsync, ProbeCadenceMetricsTests.RecordTick_IncrementsTheSeriesForTheOutcomeAsync, ProbeCadenceMetricsTests.SuppressedDutyAttempts_AreCountedPerDutyAsync, ProbeCadenceMetricsTests.Meter_IsNamedForTheProbeDomainAsync}
 
 ## Whizbang.DeadLetters {#dead-letters}
 

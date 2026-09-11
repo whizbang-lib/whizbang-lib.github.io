@@ -7,18 +7,30 @@ version: 1.0.0
 category: Core Concepts
 order: 3
 description: >-
-  How receptor return values cascade automatically — MessageExtractor, route
-  wrappers, outbox auto-cascade, event-store-only mode, and the deferred event channel
-tags: 'dispatcher, cascade, outbox, routing, message-extractor'
+  How receptor return values cascade automatically: MessageExtractor, route
+  wrappers, outbox auto-cascade, event-store-only mode, the deferred event
+  channel, and the deterministic identity of emitted events (a retry is not a republish)
+tags: 'dispatcher, cascade, outbox, routing, message-extractor, emission-identity, idempotency'
 codeReferences:
   - src/Whizbang.Core/Dispatcher.cs
   - src/Whizbang.Core/Dispatch/Route.cs
   - src/Whizbang.Core/Messaging/IDeferredOutboxChannel.cs
   - src/Whizbang.Core/Messaging/DeferredOutboxChannel.cs
+  - src/Whizbang.Core/Messaging/EmissionIdentity.cs
+  - src/Whizbang.Core/Observability/CascadeEnvelopeWrapper.cs
+  - src/Whizbang.Core/Observability/MessageDispatchContext.cs
+  - src/Whizbang.Core/Observability/WorkCoordinatorMetrics.cs
+  - src/Whizbang.Core/Workers/OutboxDrainWorker.cs
 testReferences:
   - tests/Whizbang.Core.Tests/Dispatcher/DispatcherCascadeTests.cs
   - tests/Whizbang.Core.Tests/Dispatcher/DispatcherRoutedCascadeTests.cs
   - tests/Whizbang.Core.Tests/Messaging/DeferredOutboxChannelTests.cs
+  - tests/Whizbang.Core.Tests/Messaging/EmissionIdentityTests.cs
+  - tests/Whizbang.Core.Tests/Dispatcher/DispatcherEmissionIdentityTests.cs
+  - tests/Whizbang.Core.Tests/Observability/MessageEnvelopeHandlerNameTests.cs
+  - tests/Whizbang.Core.Tests/Observability/WorkCoordinatorMetricsTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/EFCoreOutboxEmissionDedupTests.cs
+  - tests/Whizbang.Core.Tests/Workers/OutboxDrainWorkerTests.cs
 ---
 
 # Automatic Message Cascade {#automatic-message-cascade}
@@ -540,6 +552,109 @@ In these cases, receptors run without security context, which is expected behavi
 :::new
 **New**: Security context now automatically propagates through all cascade paths, enabling cascaded receptors to access user and tenant context from the original request.
 :::
+
+---
+
+## Emission identity {#emission-identity}
+{verified: DispatcherEmissionIdentityTests.CascadeMessageAsync_RetryOfSameHandling_DerivesTheSameEventIdsAsync, EmissionIdentityTests.Derive_SameInputs_ReturnsSameIdAsync, EFCoreOutboxEmissionDedupTests.StoreOutboxMessagesAsync_SameMessageStoredTwice_CountsTheSkippedRowByTypeAsync}
+
+**A retry is not a republish.** A handler's emissions and the completion of the inbox row that drove them are separate commits. When a row is dispatched a second time (its first run's completion never committed, or its lease lapsed and the claim cycle re-offered it), the handler runs again and emits again. With a fresh id minted per emission, every copy is a legitimately new message: appended to the event store, placed in the outbox, published to the transport, and fanned out to every subscriber. Under a bulk operation that shape multiplies: the same bodies are written many times each, at the claim re-offer cadence.
+
+The dispatcher now derives the identity of a cascaded event **from the handling itself**, so the second run produces the same ids and the store's primary keys turn the duplicate into a counted no-op.
+
+### The five inputs
+
+`EmissionIdentity.Derive(sourceMessageId, serviceName, handlerName, emittedTypeName, ordinal)` takes exactly what makes an emission unique across a fleet:
+
+| Input | Why it is part of the identity |
+|---|---|
+| Source message id | Which handling. Two different inbound messages must never collide. |
+| Producing service name | Two services handling the same message must not collide on the wire. |
+| Handler name (the inbox row within the service) | Two handler rows of one message in one service must not collide. Threaded in process through `MessageDispatchContext.HandlerName` (`[JsonIgnore]`; persisted and transported envelopes are byte-identical to before). |
+| Emitted type name, rendered by `TypeNameFormatter` | The same handling can emit several types. |
+| Ordinal within the handling | The same type emitted twice in one handling. `EmissionSequence.Next(handlingKey)` hands out 0, 1, 2, ... per source envelope instance (a `ConditionalWeakTable`, so nothing leaks); a retry materializes a fresh envelope, restarts at zero, and re-derives the same sequence. |
+
+```csharp{
+title: "Derive an emission id from the handling"
+description: "Identical inputs always yield the identical id; changing any one input (source, service, handler, type, ordinal) yields a different id. The dispatcher calls this for every cascaded event that has a source envelope."
+framework: "NET10"
+category: "Messaging"
+difficulty: "ADVANCED"
+tags: ["emission-identity", "idempotency", "cascade", "uuidv7", "retry"]
+tests: ["EmissionIdentityTests.Derive_SameInputs_ReturnsSameIdAsync", "EmissionIdentityTests.Derive_DifferentOrdinal_ReturnsDifferentIdAsync", "EmissionIdentityTests.Derive_DifferentHandler_ReturnsDifferentIdAsync", "EmissionIdentityTests.Derive_DifferentService_ReturnsDifferentIdAsync", "EmissionIdentityTests.Derive_DifferentEmittedType_ReturnsDifferentIdAsync", "EmissionIdentityTests.Derive_DifferentSource_ReturnsDifferentIdAsync", "EmissionIdentityTests.Sequence_SameKey_HandsOutConsecutiveOrdinalsFromZeroAsync"]
+}
+Guid eventId = EmissionIdentity.Derive(
+  sourceMessageId: inbound.MessageId.Value,
+  serviceName: instanceProvider.ServiceName,
+  handlerName: inbound.DispatchContext?.HandlerName,
+  emittedTypeName: TypeNameFormatter.Format(typeof(OrderCreated)),
+  ordinal: EmissionSequence.Next(inbound));   // 0 for the first OrderCreated of this handling, 1 for the next
+
+// Re-run the same handling (a retry) and the same five inputs come back: the id is identical.
+```
+
+### Layout: UUIDv7-shaped, derived entropy
+{verified: EmissionIdentityTests.Derive_ResultIsVersion7ShapedWithRfcVariantAsync, EmissionIdentityTests.Derive_ResultIsAcceptedByTheMessageIdValueObjectAsync, EmissionIdentityTests.Derive_InheritsFirst48BitsOfSourceAsync, EmissionIdentityTests.Derive_TwoOrdinals_ShareThePrefixAndDifferInTheHashAsync}
+
+| Bytes | Content |
+|---|---|
+| 0 to 5 | The first 48 bits of the **source** message id (its UUIDv7 millisecond timestamp when the source is a framework id), so derived ids stay time-local to the message that caused them and keep index locality |
+| 6 | Version nibble `7` over the top four bits of the hash |
+| 7 | Hash |
+| 8 | RFC variant `10xx` over the top two bits of the hash |
+| 9 to 15 | Hash |
+
+The hash is SHA-256 over the UTF-8 canonical string `whizbang.emission.v1\n{source:N}\n{service}\n{handler}\n{emittedType}\n{ordinal}`; 74 bits of it land in the id.
+
+Why version 7 rather than the "custom" version 8: the `[WhizbangId]` value objects (`MessageId.From(Guid)`) reject any id that is not v7, and `TrackedGuid` extracts timestamps only from v7. RFC 9562 allows a v7 id's non-timestamp bits to be implementation-chosen data, so a derived v7 is compliant and passes every existing gate exactly like a minted one.
+
+### Where the dispatcher mints
+{verified: DispatcherEmissionIdentityTests.CascadeMessageAsync_NoSourceEnvelope_MintsFreshTimeOrderedIdsAsync, DispatcherEmissionIdentityTests.CascadeMessageAsync_SourceWithoutMessageId_MintsFreshIdsAsync, DispatcherEmissionIdentityTests.CascadeMessageAsync_SiblingHandlerRowOfSameMessage_DerivesDistinctEventIdsAsync, DispatcherEmissionIdentityTests.CascadeMessageAsync_TwoServicesHandlingSameMessage_DeriveDistinctEventIdsAsync, DispatcherEmissionIdentityTests.CascadeMessageAsync_DifferentEmittedTypes_DeriveDistinctEventIdsAsync}
+
+Both cascade paths (the result cascade and `CascadeMessageAsync`, which the generated receptor invokers use) mint through one private method. A **root emission**, with no source envelope or a source without a message id, keeps today's behavior: a fresh time-ordered `TrackedGuid`. Everything else derives. The generated `CascadeToOutboxAsync` override already converts the event id it is handed into the outbox `MessageId`, so the derived id reaches the outbox row with no generator change.
+
+**Nested cascades are anchored.** A local cascade hands in-process receptors a `CascadeEnvelopeWrapper` that reports the *inbound* message's id and handler. Without care, a nested receptor emitting the same type as the top-level handler would derive the same id and be silently deduplicated away. The wrapper therefore carries `EmissionAnchor`: the cascaded event's own id (or, for a cascaded command, which has no event id, the next ordinal-derived id of the handling). Emissions through an anchored wrapper derive from the anchor; an unanchored wrapper falls back to the inbound message id. {verified: DispatcherEmissionIdentityTests.CascadeMessageAsync_LocalDispatch_HandsReceptorsAWrapperAnchoredOnTheCascadedEventAsync, DispatcherEmissionIdentityTests.CascadeMessageAsync_LocalDispatchOfACommand_AnchorsOnAnOrdinalOfTheHandlingAsync, DispatcherEmissionIdentityTests.CascadeMessageAsync_EmissionThroughAnAnchoredWrapper_DerivesFromTheAnchorNotTheInboundMessageAsync, DispatcherEmissionIdentityTests.CascadeMessageAsync_EmissionThroughAnUnanchoredWrapper_FallsBackToTheInboundMessageIdAsync}
+
+Each derivation is logged at Debug: `[CASCADE] Emission id derived from source {SourceMessageId} ordinal {Ordinal}: {EventId}`. {verified: DispatcherEmissionIdentityTests.CascadeMessageAsync_DerivedId_IsLoggedAtDebugWithSourceAndOrdinalAsync}
+
+### The store turns the duplicate into a counted no-op
+{verified: EFCoreOutboxEmissionDedupTests.StoreOutboxMessagesAsync_SameMessageStoredTwice_CountsTheSkippedRowByTypeAsync, EFCoreOutboxEmissionDedupTests.StoreOutboxMessagesAsync_MixedBatch_CountsOnlyTheRowsThatAlreadyExistedAsync, EFCoreOutboxEmissionDedupTests.StoreOutboxMessagesAsync_WithoutMetricsOrLogger_StillDeduplicatesQuietlyAsync, EFCoreOutboxEmissionDedupTests.StoreOutboxMessagesAsync_InsideAnOpenTransaction_StoresAndCountsOnTheSameConnectionAsync, WorkCoordinatorMetricsTests.WCMetrics_OutboxEmissionDeduplicated_CountsPerMessageTypeAsync}
+
+No SQL change was needed for the deduplication itself: `store_outbox_messages` already inserts with `ON CONFLICT ON CONSTRAINT wh_outbox_pkey DO NOTHING` and returns `(message_id, stream_id, was_newly_created)` per row. What changed is that the EF Core work coordinator now reads those result rows, and for every `was_newly_created = false` it adds one to the passive counter **`whizbang.work_coordinator.outbox.emission_deduplicated`** (meter `Whizbang.WorkCoordinator`, tag `message_type`) and logs a Debug line naming the row. The Dapper coordinator still deduplicates through the same primary key; only the count is not recorded on that driver.
+
+Read the counter as a symptom, not a cost: a sustained non-zero rate means rows are being re-dispatched *after* their emissions committed, which points at the completion path (leases lapsing before completion flushes land, or completion commits failing), not at the handler.
+
+```mermaid{caption="A retry re-derives the same emission ids, so the outbox primary key rejects the second copy and the coordinator counts it on whizbang.work_coordinator.outbox.emission_deduplicated instead of republishing." tests=["DispatcherEmissionIdentityTests.CascadeMessageAsync_RetryOfSameHandling_DerivesTheSameEventIdsAsync", "EFCoreOutboxEmissionDedupTests.StoreOutboxMessagesAsync_SameMessageStoredTwice_CountsTheSkippedRowByTypeAsync"]}
+sequenceDiagram
+    autonumber
+    participant I as Inbox row (message M, handler H)
+    participant D as Dispatcher
+    participant S as store_outbox_messages
+    I->>D: first dispatch of M
+    D->>D: OrderCreated id = Derive(M, service, H, type, 0)
+    D->>S: store {id}
+    S-->>D: was_newly_created = true (published downstream)
+    Note over I: completion never lands; lease lapses; M is re-offered
+    I->>D: second dispatch of M (fresh envelope, sequence restarts at 0)
+    D->>D: OrderCreated id = Derive(M, service, H, type, 0)  (same id)
+    D->>S: store {id}
+    S-->>D: was_newly_created = false
+    D->>D: emission_deduplicated{message_type} + 1, Debug log; nothing republished
+```
+
+### Explicit `PublishAsync` inside a handler still mints
+{verified: DispatcherEmissionIdentityTests.CascadeMessageAsync_NoSourceEnvelope_MintsFreshTimeOrderedIdsAsync}
+
+Derivation applies to **cascaded** emissions: events returned from a receptor (auto-cascade) or passed through `CascadeMessageAsync` with a source envelope. An explicit `PublishAsync` call from inside a handler is deliberately left non-deterministic. The ambient initiating context carries no handler identity, so two handler rows of one message in one service that both `PublishAsync` the same type would derive identical ids and one of them would be dropped, which is a worse failure than a republish. Until the handler name is threaded into the initiating context, prefer returning events from the receptor when retry safety matters; that path is covered.
+
+### Source service id on published envelopes {#source-service-id}
+{verified: OutboxDrainWorkerTests.OutboxDrainWorker_LocalServiceIdLookupFailsOnceAtStartup_ResolvesBeforeTheNextBatchAsync, OutboxDrainWorkerTests.OutboxDrainWorker_LocalServiceIdResolvedAtStartup_DoesNotLookItUpAgainAsync, OutboxDrainWorkerTests.OutboxDrainWorker_LocalServiceIdEmptyAtStartup_WarnsAndRetriesBeforeEachBatchAsync, OutboxDrainWorkerTests.OutboxDrainWorker_LocalServiceIdLookupKeepsFailing_RecordsEachRetryAtDebugAsync}
+
+A related identity fix on the publish side. `OutboxDrainWorker` used to resolve the local service id once at startup; a failed or empty lookup left `Guid.Empty` for the life of the process, every published envelope carried the all-zero `SourceServiceId`, consumers copied it into `wh_inbox.source_service_id` verbatim, and the SQL fallback (`COALESCE`) only ever caught `NULL`. Now:
+
+- The worker resolves the id **before each batch while it is still empty**. On a non-empty answer it stores it, logs EventId 51 at Information (`local service identity resolved to {ServiceId}`) and never looks it up again. A lookup that keeps failing logs EventId 52 at Debug before each retry.
+- If startup returned an empty id without throwing, EventId 50 warns that envelopes publish with an empty `SourceServiceId` until a later batch resolves it. The throwing case keeps the existing startup warning and does not double-log.
+- On the consumer side, `store_inbox_messages` (migration 146) treats an all-zero `source_service_id` as **unknown**, so the existing fallback to the receiving service's own id applies to envelopes produced by older instances.
 
 ---
 

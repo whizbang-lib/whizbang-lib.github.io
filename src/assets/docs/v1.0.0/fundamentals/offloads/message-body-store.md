@@ -19,6 +19,8 @@ codeReferences:
   - src/Whizbang.Core/Offloads/IMessageBodyCipher.cs
   - src/Whizbang.Core/Offloads/AesGcmEnvelopeCipher.cs
   - src/Whizbang.Core/Offloads/IMessageBodyKeyWrapper.cs
+  - src/Whizbang.Core/Offloads/RotatingAesKeyWrapper.cs
+  - src/Whizbang.Offloads.AzureBlob/AzureBlobOffloadServiceCollectionExtensions.cs
   - src/Whizbang.Core/Offloads/IPostSerializeHook.cs
   - src/Whizbang.Core/Offloads/PostSerializeHookChain.cs
   - src/Whizbang.Core/Offloads/BodyOffloadPostSerializeHook.cs
@@ -38,6 +40,9 @@ testReferences:
   - tests/Whizbang.Core.Tests/Workers/TransportConsumerWorkerBodyOffloadTests.cs
   - tests/Whizbang.Core.Tests/Offloads/BodyOffloadCipherTests.cs
   - tests/Whizbang.Core.Tests/Offloads/AesGcmEnvelopeCipherTests.cs
+  - tests/Whizbang.Core.Tests/Offloads/BodyCipherFromConfigurationTests.cs
+  - tests/Whizbang.Core.Tests/Offloads/RotatingAesKeyWrapperTests.cs
+  - tests/Whizbang.Offloads.AzureBlob.Tests/AzureBlobOffloadFromConfigurationTests.cs
 ---
 
 # Body Offload (Claim-Check Pattern)
@@ -238,6 +243,62 @@ public sealed class VaultKeyWrapper : IMessageBodyKeyWrapper {
 services.AddWhizbangAesGcmBodyCipher("body-aes-v1",
   sp => new VaultKeyWrapper(sp.GetRequiredService<IKeyVaultClient>(), "https://vault.example/keys/body-kek"));
 ```
+
+### Configuring the cipher from settings {#cipher-from-settings}
+{verified: BodyCipherFromConfigurationTests.WithANameAndAKey_RegistersTheAesGcmCipherByName_AndNamesItOnTheOptionsAsync, BodyCipherFromConfigurationTests.WithoutACipherName_RegistersNoCipher_AndLeavesTheOptionsAloneAsync, AzureBlobOffloadFromConfigurationTests.FromConfiguration_WithACipherInSettings_BindsTheCipherName_AndRegistersTheCipherAsync}
+
+Hosts that register offloads from configuration (`AddWhizbangAzureBlobOffloadsFromConfiguration`) get the built-in cipher from the same settings, with no consumer code. `AddWhizbangBodyCipherFromConfiguration` reads the `Whizbang:BodyOffload` section, registers `AesGcmEnvelopeCipher` under the configured name, and names it on `MessageBodyOffloadOptions` so the send side seals. Without a cipher name, nothing is registered and bodies are stored as serialized, exactly as before.
+
+| Setting | Environment variable form | Value |
+|---|---|---|
+| `Whizbang:BodyOffload:CipherName` | `Whizbang__BodyOffload__CipherName` | The cipher's name, recorded on every claim; for example `body-aes-v1`. Not a secret. |
+| `Whizbang:BodyOffload:Cipher:KeyId` | `Whizbang__BodyOffload__Cipher__KeyId` | The rotation label of the current key encryption key, recorded on every claim; for example `kek-2026-09`. Not a secret. |
+| `Whizbang:BodyOffload:Cipher:KeyEncryptionKey` | `Whizbang__BodyOffload__Cipher__KeyEncryptionKey` | The current key encryption key: 32 bytes, base64 (44 characters). A secret. |
+| `Whizbang:BodyOffload:Cipher:PreviousKeyId` | `Whizbang__BodyOffload__Cipher__PreviousKeyId` | During a rotation window, the label of the key being retired. Not a secret. |
+| `Whizbang:BodyOffload:Cipher:PreviousKeyEncryptionKey` | `Whizbang__BodyOffload__Cipher__PreviousKeyEncryptionKey` | During a rotation window, the key being retired, same form as the current one. A secret. |
+
+Misconfiguration fails at startup and names the setting, because a cipher that silently did not engage would store plaintext under a sealed label:
+
+- A cipher name without a key, or without a key id, throws. {verified: BodyCipherFromConfigurationTests.WithANameButNoKey_ThrowsAtStartup_NamingTheSettingAsync, BodyCipherFromConfigurationTests.WithANameAndAKeyButNoKeyId_ThrowsAtStartup_NamingTheSettingAsync}
+- A key that is not base64, or not 32 bytes once decoded, throws. {verified: BodyCipherFromConfigurationTests.WithAKeyThatIsNotBase64OrNot32Bytes_ThrowsAtStartup_NamingTheSettingAsync}
+- A previous key id without the previous key, or the reverse, throws. {verified: BodyCipherFromConfigurationTests.WithAPreviousKeyId_ButNoPreviousKey_ThrowsAtStartupAsync, RotatingAesKeyWrapperTests.Constructor_RejectsHalfAWindow_AndTheSameIdForBothKeysAsync}
+
+#### Rotating the key
+{verified: BodyCipherFromConfigurationTests.WithAPreviousKey_OpensABodySealedUnderThePreviousKeyId_AndSealsUnderTheCurrentAsync, BodyCipherFromConfigurationTests.AfterTheWindow_ABodySealedUnderTheRetiredKey_FailsToOpenAsync, RotatingAesKeyWrapperTests.KeyId_IsTheCurrentKeyId_AndWrap_UsesTheCurrentKeyAsync, RotatingAesKeyWrapperTests.Unwrap_UnderThePreviousKeyId_UsesThePreviousKeyAsync, RotatingAesKeyWrapperTests.Unwrap_UnderAnUnknownKeyId_ThrowsCryptographicAsync}
+
+The key id is bound into every sealed body, so a body sealed under one label opens only under that label. `RotatingAesKeyWrapper` seals under the current key and opens under either the current or the previous key, chosen by the key id the claim names. A rotation is three settings changes, in this order:
+
+1. Move the current key and its label to `PreviousKeyId` and `PreviousKeyEncryptionKey`, and put the new key and its new label in `KeyId` and `KeyEncryptionKey`. Roll every sending and receiving service. New bodies seal under the new label; bodies already sealed still open.
+2. Wait until no body sealed under the old label remains: the passive expiry (`PassiveExpiry`, 30 days by default) is the upper bound, and active cleanup shortens it.
+3. Remove the two previous-key settings and roll again. A body sealed under the retired label now fails to open and dead-letters as an integrity failure, which is the intended outcome for anything that outlived the window.
+
+#### Operations checklist {#cipher-operations}
+
+For the team that owns secrets and deployments. Nothing here requires a code change on the consumer.
+
+1. Generate the key encryption key once: `openssl rand -base64 32`. Store it in the secret store the services already read from.
+2. Provide the three settings to every service that sends or receives offloaded bodies, using the same value of each on all of them. A service without the key, or with a different one, dead-letters the claim instead of reading it; a service with a different cipher name dead-letters it as `BodyClaimCipherUnknown`.
+3. Keep the two labels stable. They are recorded on every claim; changing a label without changing the key is a rotation with no new key and breaks bodies already sealed.
+4. Plan the rotation window above before the first rotation, and keep the previous key available until the window has drained.
+5. The blob container needs nothing new. The store keeps receiving bytes; they are ciphertext now. An operator with read access to the container, a snapshot, or the account key sees ciphertext and a wrapped key they cannot unwrap.
+
+```json{
+title: "The five cipher settings, as environment variables"
+description: "The complete operator-side configuration for the built-in cipher during a rotation window; outside a window the two previous-key entries are absent."
+category: "Offloads"
+difficulty: "BEGINNER"
+tags: ["body-offload", "encryption", "configuration", "key-rotation", "operations"]
+}
+{
+  "Whizbang__BodyOffload__CipherName": "body-aes-v1",
+  "Whizbang__BodyOffload__Cipher__KeyId": "kek-2026-09",
+  "Whizbang__BodyOffload__Cipher__KeyEncryptionKey": "<44 base64 characters from the secret store>",
+  "Whizbang__BodyOffload__Cipher__PreviousKeyId": "kek-2026-08",
+  "Whizbang__BodyOffload__Cipher__PreviousKeyEncryptionKey": "<the key being retired>"
+}
+```
+
+What is tested and working: the built-in AES-256-GCM cipher (seal, open, tamper detection, wrong key, wrong key id, wrong cipher name, wrong algorithm), the local key wrapper, the rotating key wrapper, registration by name from code and from settings, every startup validation above, and the end-to-end path through the offload hook and the rehydrator. What is not in the library: a vault-backed key wrapper; the example above is illustrative, and a host that needs the key encryption key to stay in a vault writes that wrapper against `IMessageBodyKeyWrapper`.
 
 ## Active cleanup
 
