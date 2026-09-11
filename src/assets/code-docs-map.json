@@ -2269,13 +2269,13 @@
   },
   "JsonbContainmentModelExtensions": {
     "file": "src/Whizbang.Data.EFCore.Postgres/QueryTranslation/JsonbContainment.cs",
-    "line": 195,
+    "line": 324,
     "symbol": "JsonbContainmentModelExtensions",
     "docs": "fundamentals/perspectives/jsonb-containment"
   },
   "JsonbContainmentRewriter": {
     "file": "src/Whizbang.Data.EFCore.Postgres/QueryTranslation/JsonbContainmentRewriter.cs",
-    "line": 39,
+    "line": 43,
     "symbol": "JsonbContainmentRewriter",
     "docs": "fundamentals/perspectives/jsonb-containment"
   },

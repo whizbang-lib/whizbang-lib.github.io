@@ -10,6 +10,7 @@ order: 33
 tags: 'perspectives, jsonb, gin, indexing, query-translation, performance, configuration'
 codeReferences:
   - src/Whizbang.Data.EFCore.Postgres/QueryTranslation/JsonbContainment.cs
+  - src/Whizbang.Data.Postgres/Migrations/152_JsonbContainmentSet.sql
   - src/Whizbang.Data.EFCore.Postgres/QueryTranslation/JsonbContainmentRewriter.cs
   - src/Whizbang.Data.EFCore.Postgres/QueryTranslation/JsonbContainmentSwitch.cs
   - src/Whizbang.Data.EFCore.Postgres/QueryTranslation/ProviderCapabilities.cs
@@ -17,6 +18,11 @@ codeReferences:
   - src/Whizbang.Data.EFCore.Postgres/QueryTranslation/PhysicalFieldQueryInterceptor.cs
 testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/QueryTranslation/JsonbContainmentSqlMatrixTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/QueryTranslation/JsonbContainmentAuthoringTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/QueryTranslation/JsonbContainmentJoinTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/QueryTranslation/JsonbContainmentNamingTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/QueryTranslation/JsonbContainmentTypeSetTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/JsonbContainmentSetFunctionTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/QueryTranslation/JsonbContainmentSwitchTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/QueryTranslation/GinContainmentIntegrationTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/QueryTranslation/ProviderCapabilitiesTests.cs
@@ -75,9 +81,15 @@ query's results never change. Only its plan does.
 | A member compared with `null` | Extraction | An extraction reads a missing key as NULL; containment does not match an absent key |
 | Anything under `!` | Extraction | In a filter both forms exclude a missing key, but `NOT NULL` still excludes while `NOT false` includes |
 | `!=`, `>`, `>=`, `<`, `<=` | Extraction | Containment cannot express an inequality |
-| `Contains`, `StartsWith`, `EndsWith`, `Length` | Extraction | Not expressible as containment |
+| String `row.Data.Field.Contains("ab")`, `StartsWith`, `EndsWith`, `Length` | Extraction | A substring test is not a membership test |
 | Ordering by a JSON member | Extraction | An ordering needs the value, not a membership test |
 | A double, float, DateTime, DateTimeOffset or enum | Extraction | The two text forms are not guaranteed to agree |
+| `Equals` in any spelling, ordinal | Containment | The same comparison as `==`, and see below |
+| `values.Contains(row.Data.Field)` on a top-level member | Containment over a set | See set membership below |
+| A predicate written after `Select(r => r.Data)` | Containment | The row is projected away but the document is the same |
+| A filter on either side of a join | Containment | The join key itself is never rewritten |
+| A comparison in a `Select` or an `OrderBy` | Extraction | Not a filter; see below |
+| `Equals` with a case-insensitive or culture-aware comparison | Extraction | Containment is ordinal and must not claim otherwise |
 | A promoted `[PhysicalField]` property | Its own column | The physical-field pass claims it first |
 
 {verified: JsonbContainmentSqlMatrixTests.CompiledSql_SendsTheFilterWhereExpectedAsync, GinContainmentIntegrationTests.MissingKey_IsWhereContainmentAndExtractionDisagreeAsync}
@@ -91,6 +103,129 @@ comparison keeps the extraction form.
 
 An unexpected expression tree falls back to the comparison the query originally expressed. The worst
 case is a lost index, never a wrong answer.
+
+
+## Only in a filter
+
+The rewrite applies to the lambda of an operator that decides which rows survive: `Where`, `Any`,
+`All`, `Count`, `LongCount`, `TakeWhile`, `SkipWhile`, and the `First`, `Single` and `Last` families,
+including their asynchronous forms.
+
+It deliberately does not apply inside a projection or an ordering key. Inside a filter the two forms
+agree, because an absent key reads as null from an extraction and as false from a containment test and
+either way the row is excluded. A projection returns the comparison's own value, so the caller sees
+the difference; an ordering can see it too, since nulls sort apart from false.
+
+{verified: JsonbContainmentAuthoringTests.ProjectedComparison_IsNotRewrittenAsync, JsonbContainmentAuthoringTests.TerminalOperators_CarryTheRewriteAsync}
+
+## The projected dialect
+
+Most repositories are not written against the row. They project first and filter the model:
+
+```csharp{title="Projecting the row away before filtering" description="The predicate reads a member of the model with no Data in its chain, and still reaches the index." framework="NET10" category="Perspectives" difficulty="INTERMEDIATE" tags=["perspectives", "lens", "jsonb", "query"] tests=["JsonbContainmentAuthoringTests.ProjectedModelPredicates_ReachTheIndexAsync"]}
+return await lens.Query
+  .Select(r => r.Data)
+  .Where(job => job.JobCode == jobCode)
+  .ToListAsync(ct);
+```
+
+There is no `Data` left in the member chain, but the query still runs against the same table and the
+member still compiles to a path into the same document, so it is rewritten too. It is recognized by
+asking the model whether a perspective is stored for that model type, which is a much tighter test
+than judging by the type's shape, and an anonymous projection is correctly not treated as a document.
+
+{verified: JsonbContainmentAuthoringTests.ProjectedModelPredicates_ReachTheIndexAsync, JsonbContainmentAuthoringTests.ProjectedAnonymousShape_IsNotTreatedAsAPerspectiveAsync}
+
+## Equals, and why it is more than a convenience
+
+Every spelling of `Equals` is the comparison `==` is, so all of them are rewritten: the instance
+form, static `string.Equals`, static `object.Equals`, with the member on either side.
+
+The overload taking a `StringComparison` is worth a paragraph of its own, because it is the one place
+this framework does something Entity Framework cannot.
+
+Entity Framework refuses to translate `string.Equals(value, StringComparison)` at all, and the refusal
+is principled rather than cautious: it would have to compile to `=` on text, whose meaning follows the
+collation in force. Under a case-insensitive collation that comparison is case-insensitive, which is
+not what the caller asked for, and there is no correct translation available.
+
+Containment compares values inside the document rather than as collated text, so it is exact whatever
+the collation says. That is ordinal, which is exactly what the overload requested.
+
+```text{title="The same value, the same candidate, differing only in case" description="An extraction follows the collation; containment does not." category="Perspectives" difficulty="ADVANCED" tags=["postgres", "jsonb", "collation", "ordinal"]}
+-- with a non-deterministic, case-insensitive collation in play
+WHERE (data ->> 't') COLLATE case_insensitive = 'abc'   -- matches {"t":"ABC"}
+WHERE data @> '{"t":"abc"}'                             -- does not
+```
+
+{verified: GinContainmentIntegrationTests.ContainmentIsOrdinal_WhereAnExtractionFollowsTheCollationAsync}
+
+Only `Ordinal` is rewritten. A case-insensitive or culture-aware comparison asks for something
+containment does not do, so it keeps the extraction form.
+
+:::new{type="breaking"}
+**This one spelling depends on the rewrite.** Because Entity Framework cannot translate it at all,
+turning the rewrite off does not make such a query slower, it makes it throw. If you disable
+containment, rewrite those call sites to `==` first. Every other spelling degrades to an extraction
+and keeps working.
+:::
+
+## Set membership
+
+"This field is any of these values" reaches the index too:
+
+```csharp{title="Filtering by a set of values" description="Compiles to a containment test against one document per candidate, answered by a single bitmap index scan." framework="NET10" category="Perspectives" difficulty="INTERMEDIATE" tags=["perspectives", "lens", "jsonb", "set-membership"] tests=["JsonbContainmentAuthoringTests.SetMembership_ReachesTheIndexAsync"]}
+return await lens.Query
+  .Where(r => tenantIds.Contains(r.Data.TenantId))
+  .ToListAsync(ct);
+```
+
+```sql{title="What it compiles to" description="One containment document per candidate value, built in SQL from a single array parameter." category="Perspectives" difficulty="ADVANCED" tags=["postgres", "jsonb", "gin", "set-membership"]}
+WHERE data @> ANY (jsonb_containment_set('TenantId', @p))
+```
+
+Containment compares a document with a document, so the right-hand side has to be one document per
+candidate while the candidates arrive as a single array parameter. `jsonb_containment_set`, added by
+migration 152, turns one into the other. It is declared `IMMUTABLE` and written in SQL so the planner
+inlines it, which is what keeps the index in play: an opaque call would be correct and would plan as a
+sequential scan.
+
+{verified: GinContainmentIntegrationTests.SetMembership_ReachesTheIndexThroughAnImmutableHelperAsync, GinContainmentIntegrationTests.SetMembership_ThroughTheLens_ReturnsTheRightRowsAsync, JsonbContainmentSetFunctionTests.IsImmutableSoThePlannerCanInlineItAsync}
+
+Three limits, each for a concrete reason:
+
+| Limit | Why |
+|-------|-----|
+| Arrays and lists only | The candidates arrive already parameterized, so the collection cannot be converted; these are the shapes Npgsql maps to a PostgreSQL array. A set keeps the `IN` form. |
+| Top-level members only | The helper builds single-key documents; a nested path needs one nested document per candidate, which needs the subquery the helper exists to avoid. |
+| Not under a negation | The same three-valued reason equality has. |
+
+{verified: JsonbContainmentAuthoringTests.SetMembership_LeavesTheUnsafeShapesAloneAsync}
+
+An empty candidate set matches no rows, which is what asking for "any of nothing" should mean. That
+falls out of the SQL rather than needing a special case: aggregating zero values yields null, and
+containment against null excludes the row.
+
+{verified: JsonbContainmentSetFunctionTests.AnEmptySetMatchesNothingAsync}
+
+## Joins
+
+A join rewrites the lambda parameter into a transparent identifier, so a predicate afterwards reads
+`pair.Left.Data.Field`. Filters on either side of inner, left, cross and grouped joins are rewritten,
+in both method and query syntax. The join condition itself never is: it compares two rows, and
+containment tests a document against a literal document.
+
+{verified: JsonbContainmentJoinTests.InnerJoin_FilterOnBothSides_ReachesTheIndexTwiceAsync, JsonbContainmentJoinTests.JoinKeys_AreNeverRewrittenAsync, JsonbContainmentJoinTests.LeftJoin_FilterReachesTheIndexAsync}
+
+## The key is the document's key
+
+A containment test names its key literally, so a rewrite that used the C# property name where the
+serializer wrote something else would compile, run, use the index, and match nothing.
+
+It cannot, because the key comes from the provider's own path into the document, the same path the
+extraction form reads. The two always name the same place, whatever the mapping decided it is called.
+
+{verified: JsonbContainmentNamingTests.RenamedProperty_UsesTheStoredKeyAsync, JsonbContainmentNamingTests.NestedPath_ExtractionAndContainmentNameTheSamePlaceAsync}
 
 ## Turning it off
 
@@ -173,9 +308,14 @@ See [Physical Fields](physical-fields.md).
   parameters, nullable members with and without a value, every comparison operator, nested and
   twice-nested members, negation, composition, promoted columns, the row's own columns, query syntax,
   and the query shapes a repository wraps them in. Each asserts where the filter landed.
+- **Authoring cases** cover the spellings a developer actually writes rather than the one the matrix
+  writes: a predicate inline in a terminal operator, a value from a field, a method, a ternary or a
+  coalesce, `Equals` in every form, set membership over an array or a list, and the shapes that must
+  not be touched.
 - **Container-backed tests** on a table of two hundred thousand rows assert that the containment form
-  plans as a bitmap index scan while the extraction form plans as a sequential scan, and that the
-  containment filter returns exactly the rows the equality filter returns.
+  plans as a bitmap index scan while the extraction form plans as a sequential scan, and that each
+  rewritten shape returns exactly the rows its unrewritten form returns. Asserting on generated SQL
+  cannot tell a valid statement from an invalid one, which is why these execute.
 
 {verified: JsonbContainmentSqlMatrixTests.Matrix_CoversEveryAxisAsync, GinContainmentIntegrationTests.ContainmentFilter_ReturnsTheSameRowsAsEqualityAsync, GinContainmentIntegrationTests.ContainmentFilter_MatchesAGuidValueAsync}
 

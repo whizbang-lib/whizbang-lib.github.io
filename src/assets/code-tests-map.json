@@ -17596,6 +17596,26 @@
         "testFile": "tests/Whizbang.Generators.Tests/Analyzers/PerspectiveFilterIndexAnalyzerTests.cs",
         "testMethod": "Filter_WithSuppressionOnAnotherProperty_StillReportsAsync",
         "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Generators.Tests/Analyzers/PerspectiveFilterIndexAnalyzerTests.cs",
+        "testMethod": "EqualityContainmentCanServe_IsNotReportedAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Generators.Tests/Analyzers/PerspectiveFilterIndexAnalyzerTests.cs",
+        "testMethod": "ShapesContainmentCannotServe_AreStillReportedAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Generators.Tests/Analyzers/PerspectiveFilterIndexAnalyzerTests.cs",
+        "testMethod": "OrderingOnAJsonOnlyField_IsStillReportedAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Generators.Tests/Analyzers/PerspectiveFilterIndexAnalyzerTests.cs",
+        "testMethod": "CompoundPredicate_ReportsOnlyTheUnservedHalfAsync",
+        "linkSource": "XmlTag"
       }
     ],
     "PerspectiveModelConsistencyAnalyzer": [
@@ -28233,6 +28253,41 @@
       {
         "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/QueryTranslation/GinContainmentIntegrationTests.cs",
         "testMethod": "MissingKey_IsWhereContainmentAndExtractionDisagreeAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/QueryTranslation/GinContainmentIntegrationTests.cs",
+        "testMethod": "SetMembership_ReachesTheIndexThroughAnImmutableHelperAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/QueryTranslation/GinContainmentIntegrationTests.cs",
+        "testMethod": "SetMembership_ReturnsTheSameRowsAsEqualityAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/QueryTranslation/GinContainmentIntegrationTests.cs",
+        "testMethod": "SetMembership_ThroughTheLens_ReturnsTheRightRowsAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/QueryTranslation/GinContainmentIntegrationTests.cs",
+        "testMethod": "SetMembership_ThroughTheLens_CompilesToTheHelperAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/QueryTranslation/GinContainmentIntegrationTests.cs",
+        "testMethod": "EqualsSpelling_ThroughTheLens_ReturnsTheRightRowsAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/QueryTranslation/GinContainmentIntegrationTests.cs",
+        "testMethod": "ProjectedDialect_ThroughTheLens_ReturnsTheRightRowsAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/QueryTranslation/GinContainmentIntegrationTests.cs",
+        "testMethod": "ContainmentIsOrdinal_WhereAnExtractionFollowsTheCollationAsync",
         "linkSource": "XmlTag"
       },
       {
@@ -153461,6 +153516,42 @@
         "linkSource": "XmlTag"
       }
     ],
+    "PerspectiveFilterIndexAnalyzerTests.EqualityContainmentCanServe_IsNotReportedAsync": [
+      {
+        "sourceFile": "src/Whizbang.Generators/Analyzers/PerspectiveFilterIndexAnalyzer.cs",
+        "sourceLine": 37,
+        "sourceSymbol": "PerspectiveFilterIndexAnalyzer",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "PerspectiveFilterIndexAnalyzerTests.ShapesContainmentCannotServe_AreStillReportedAsync": [
+      {
+        "sourceFile": "src/Whizbang.Generators/Analyzers/PerspectiveFilterIndexAnalyzer.cs",
+        "sourceLine": 37,
+        "sourceSymbol": "PerspectiveFilterIndexAnalyzer",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "PerspectiveFilterIndexAnalyzerTests.OrderingOnAJsonOnlyField_IsStillReportedAsync": [
+      {
+        "sourceFile": "src/Whizbang.Generators/Analyzers/PerspectiveFilterIndexAnalyzer.cs",
+        "sourceLine": 37,
+        "sourceSymbol": "PerspectiveFilterIndexAnalyzer",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "PerspectiveFilterIndexAnalyzerTests.CompoundPredicate_ReportsOnlyTheUnservedHalfAsync": [
+      {
+        "sourceFile": "src/Whizbang.Generators/Analyzers/PerspectiveFilterIndexAnalyzer.cs",
+        "sourceLine": 37,
+        "sourceSymbol": "PerspectiveFilterIndexAnalyzer",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
     "PerspectiveModelConsistencyAnalyzerTests.Analyzer_NoPerspectiveInterfaces_NoDiagnosticAsync": [
       {
         "sourceFile": "src/Whizbang.Generators/Analyzers/PerspectiveModelConsistencyAnalyzer.cs",
@@ -169565,7 +169656,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/QueryTranslation/JsonbContainmentRewriter.cs",
-        "sourceLine": 40,
+        "sourceLine": 44,
         "sourceSymbol": "JsonbContainmentRewriter",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -169588,7 +169679,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/QueryTranslation/JsonbContainmentRewriter.cs",
-        "sourceLine": 40,
+        "sourceLine": 44,
         "sourceSymbol": "JsonbContainmentRewriter",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -169611,7 +169702,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/QueryTranslation/JsonbContainmentRewriter.cs",
-        "sourceLine": 40,
+        "sourceLine": 44,
         "sourceSymbol": "JsonbContainmentRewriter",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -169634,7 +169725,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/QueryTranslation/JsonbContainmentRewriter.cs",
-        "sourceLine": 40,
+        "sourceLine": 44,
         "sourceSymbol": "JsonbContainmentRewriter",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -169675,6 +169766,69 @@
       }
     ],
     "GinContainmentIntegrationTests.MissingKey_IsWhereContainmentAndExtractionDisagreeAsync": [
+      {
+        "sourceFile": "src/Whizbang.Data.EFCore.Postgres/QueryTranslation/JsonbContainment.cs",
+        "sourceLine": 47,
+        "sourceSymbol": "JsonbContainment",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "GinContainmentIntegrationTests.SetMembership_ReachesTheIndexThroughAnImmutableHelperAsync": [
+      {
+        "sourceFile": "src/Whizbang.Data.EFCore.Postgres/QueryTranslation/JsonbContainment.cs",
+        "sourceLine": 47,
+        "sourceSymbol": "JsonbContainment",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "GinContainmentIntegrationTests.SetMembership_ReturnsTheSameRowsAsEqualityAsync": [
+      {
+        "sourceFile": "src/Whizbang.Data.EFCore.Postgres/QueryTranslation/JsonbContainment.cs",
+        "sourceLine": 47,
+        "sourceSymbol": "JsonbContainment",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "GinContainmentIntegrationTests.SetMembership_ThroughTheLens_ReturnsTheRightRowsAsync": [
+      {
+        "sourceFile": "src/Whizbang.Data.EFCore.Postgres/QueryTranslation/JsonbContainment.cs",
+        "sourceLine": 47,
+        "sourceSymbol": "JsonbContainment",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "GinContainmentIntegrationTests.SetMembership_ThroughTheLens_CompilesToTheHelperAsync": [
+      {
+        "sourceFile": "src/Whizbang.Data.EFCore.Postgres/QueryTranslation/JsonbContainment.cs",
+        "sourceLine": 47,
+        "sourceSymbol": "JsonbContainment",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "GinContainmentIntegrationTests.EqualsSpelling_ThroughTheLens_ReturnsTheRightRowsAsync": [
+      {
+        "sourceFile": "src/Whizbang.Data.EFCore.Postgres/QueryTranslation/JsonbContainment.cs",
+        "sourceLine": 47,
+        "sourceSymbol": "JsonbContainment",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "GinContainmentIntegrationTests.ProjectedDialect_ThroughTheLens_ReturnsTheRightRowsAsync": [
+      {
+        "sourceFile": "src/Whizbang.Data.EFCore.Postgres/QueryTranslation/JsonbContainment.cs",
+        "sourceLine": 47,
+        "sourceSymbol": "JsonbContainment",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "GinContainmentIntegrationTests.ContainmentIsOrdinal_WhereAnExtractionFollowsTheCollationAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/QueryTranslation/JsonbContainment.cs",
         "sourceLine": 47,
@@ -309646,12 +309800,12 @@
     }
   ],
   "metadata": {
-    "generated": "2026-09-11T14:38:19.296Z",
+    "generated": "2026-09-11T17:28:23.178Z",
     "sourceFiles": 1708,
-    "testFiles": 5940,
-    "totalLinks": 15358,
+    "testFiles": 5985,
+    "totalLinks": 15369,
     "codeSymbols": 2008,
-    "testMethods": 13350,
+    "testMethods": 13361,
     "linkHealthFindings": 20
   }
 }

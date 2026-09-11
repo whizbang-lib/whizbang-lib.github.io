@@ -37,12 +37,32 @@ moves that discovery to the moment the query is written, when promoting the fiel
 change rather than a migration under load.
 
 :::updated
-**Equality is now handled for you.** A plain equality filter on a JSON-only scalar compiles to a jsonb
-containment test that the GIN index on the data column answers, so it no longer scans. See
-[JSONB Containment Queries](../../fundamentals/perspectives/jsonb-containment.md). This diagnostic is
-about the shapes containment cannot serve: ranges, ordering, pattern matching, dates and times,
-enumerations, and comparisons under a negation.
+**Equality is handled for you, and this diagnostic no longer reports it.** A plain equality filter on a
+JSON-only scalar compiles to a jsonb containment test that the GIN index on the data column answers,
+so it is a lookup already and needs no physical column. The analyzer stays quiet for it, in either
+operand order and including the ordinal `Equals` spellings, and for set membership over a top-level
+member. See [JSONB Containment Queries](../../fundamentals/perspectives/jsonb-containment.md).
+
+What it still reports is what containment cannot express: ranges and inequalities, ordering, pattern
+matching, comparisons against null, anything under a negation, and members typed as a date, a time, an
+enumeration or binary floating point.
 :::
+
+## What is no longer reported
+
+The eligible type set mirrors the rewrite's: string, Guid, bool, short, int, long and decimal, the
+types whose serialized text and PostgreSQL's generated text agree. The duplication between analyzer
+and driver is forced, because an analyzer is referenced as an analyzer rather than as a library and
+neither side can see the other's list, so each pins its own and names the other. Drift shows up as an
+advisory that fires on a filter already indexed, or stays silent on one that scans, never as a wrong
+answer.
+
+{verified: PerspectiveFilterIndexAnalyzerTests.EqualityContainmentCanServe_IsNotReportedAsync, PerspectiveFilterIndexAnalyzerTests.ShapesContainmentCannotServe_AreStillReportedAsync, JsonbContainmentTypeSetTests.EligibleTypes_AreExactlyTheOnesWhoseTextFormsAgreeAsync}
+
+A compound predicate reports only the half containment cannot serve, so the warning points at the
+field that actually needs a column rather than at the whole query.
+
+{verified: PerspectiveFilterIndexAnalyzerTests.CompoundPredicate_ReportsOnlyTheUnservedHalfAsync}
 
 ## Diagnostic Message
 
