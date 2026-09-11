@@ -46,6 +46,13 @@ member. See [JSONB Containment Queries](../../fundamentals/perspectives/jsonb-co
 What it still reports is what containment cannot express: ranges and inequalities, ordering, pattern
 matching, comparisons against null, anything under a negation, and the few member types the rewrite
 does not cover, chiefly `DateTimeOffset`.
+
+**Most of those now have a cheaper fix than promotion.** `[JsonIndexed]` builds an index over the
+stored value, which answers ranges, ordering and null tests without a column, a schema change or any
+write-path work, and `[JsonIndexed(JsonIndexKind.Trigram)]` answers substring matching. Promotion
+stays the answer where you need a constraint or a foreign key, and for a date, whose stored form
+cannot carry an index at all. See
+[Physical Fields](../../fundamentals/perspectives/physical-fields.md#json-indexed).
 :::
 
 ## What is no longer reported

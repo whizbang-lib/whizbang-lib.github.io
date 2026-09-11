@@ -7,6 +7,11 @@ version: 1.0.0
 category: Perspectives
 codeReferences:
   - src/Whizbang.Core/Perspectives/PhysicalFieldAttribute.cs
+  - src/Whizbang.Core/Perspectives/JsonIndexedAttribute.cs
+  - src/Whizbang.Generators.Shared/Models/JsonIndexInfo.cs
+  - src/Whizbang.Generators.Shared/Models/JsonIndexDiscovery.cs
+  - src/Whizbang.Data.EFCore.Postgres/QueryTranslation/JsonIndexRegistry.cs
+  - src/Whizbang.Generators/Analyzers/JsonIndexDeclarationAnalyzer.cs
   - src/Whizbang.Core/Perspectives/SuppressIndexAdvisoryAttribute.cs
   - src/Whizbang.Generators/Analyzers/PerspectiveFilterIndexAnalyzer.cs
   - src/Whizbang.Core/Perspectives/PerspectiveStorageAttribute.cs
@@ -19,6 +24,11 @@ codeReferences:
     src/Whizbang.Data.EFCore.Postgres/QueryTranslation/WhizbangDbContextOptionsBuilderExtensions.cs
 testReferences:
   - tests/Whizbang.Core.Tests/Perspectives/PhysicalFieldAttributeTests.cs
+  - tests/Whizbang.Core.Tests/Perspectives/JsonIndexedAttributeTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/QueryTranslation/JsonIndexUsageTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/QueryTranslation/JsonIndexStandDownTests.cs
+  - tests/Whizbang.Generators.Tests/JsonIndexGenerationTests.cs
+  - tests/Whizbang.Generators.Tests/Analyzers/JsonIndexDeclarationAnalyzerTests.cs
   - tests/Whizbang.Generators.Tests/Analyzers/PerspectiveFilterIndexAnalyzerTests.cs
   - tests/Whizbang.Core.Tests/Perspectives/PerspectiveStorageAttributeTests.cs
   - tests/Whizbang.Core.Tests/Perspectives/FieldStorageModeTests.cs
@@ -35,15 +45,131 @@ Physical fields allow you to store specific properties as dedicated database col
 
 ## Overview
 
-By default, Whizbang stores perspective model data in a single JSONB column. While flexible, JSONB queries can be slower for frequently filtered fields. Physical fields solve this by extracting selected properties to dedicated database columns that support native indexing.
+A perspective stores its model in a single JSONB column by default. There are three tiers of storage
+for a field, and the middle one is the newest and the cheapest thing most fields need.
 
-| Feature | JSONB Only | Physical Fields |
-|---------|------------|-----------------|
-| Storage | Single column | Multiple columns |
-| Indexing | GIN/JSONB path | B-tree, native types |
-| Query performance | Good | Excellent for indexed fields |
-| Schema flexibility | High | Moderate |
-| Storage overhead | Low | Depends on mode |
+| | Undeclared | `[JsonIndexed]` | `[PhysicalField(Indexed = true)]` |
+|---|---|---|---|
+| Where the value lives | the document | the document | its own column |
+| Equality | indexed, through containment | indexed, by btree | indexed |
+| Range, ordering, `IS NULL` | **scans** | **indexed** | indexed |
+| Substring matching | scans | indexed with `Trigram` | scans unless trigram-indexed |
+| Unique constraints, foreign keys | no | no | yes |
+| Costs | nothing | an index | an index, a column, a hydration path |
+| Works for dates and times | equality only | **no** | yes |
+
+{verified: JsonIndexUsageTests.TheGeneratedIndexExpression_IsTheOneAQueryUsesAsync, JsonIndexStandDownTests.ABtreeIndexedField_IsNotCompiledToContainmentAsync}
+
+The reason the middle tier exists is that the GIN index every perspective table already carries answers
+containment and nothing else. That covers equality, which is why an equality filter on a JSON-only
+field is already a lookup. It cannot cover a range or an ordering for any type, whatever the field is
+stored as, because an inverted index returns a set and has no ordered answer space and no ordered
+scan. Those need a btree, and a btree over the extraction is one without a schema change.
+
+## Declaring an index on a JSON-only field {#json-indexed}
+
+```csharp{title="The three tiers side by side" description="An undeclared field, one with an index over its stored value, and one promoted to a real column." framework="NET10" category="Perspectives" difficulty="INTERMEDIATE" tags=["perspectives", "indexing", "jsonb", "physical-fields"] tests=["JsonIndexGenerationTests.ABtreeIndexIsCreatedOverTheExtractionAsync"]}
+public record OrderModel {
+  [StreamId]
+  public Guid OrderId { get; init; }
+
+  // A real column: needed here for the unique constraint.
+  [PhysicalField(Unique = true)]
+  public string OrderNumber { get; init; } = string.Empty;
+
+  // Filtered by range and sorted on. An index over the stored value answers both.
+  [JsonIndexed]
+  public int Rank { get; init; }
+
+  // Filtered by range and searched by substring.
+  [JsonIndexed(JsonIndexKind.Btree | JsonIndexKind.Trigram)]
+  public string Title { get; init; } = string.Empty;
+
+  // Never filtered. Pays for nothing.
+  public string Notes { get; init; } = string.Empty;
+}
+```
+
+The kinds combine because a field can be queried both ways, and the attribute may also be written more
+than once where that reads better than a combination. `Trigram` requires `pg_trgm`, which the schema
+pass creates if it is missing.
+
+For a read model that really is queried every way, say it once on the model instead:
+
+```csharp{title="Indexing every eligible field" description="A perspective-level declaration, for a read model queried every way." framework="NET10" category="Perspectives" difficulty="INTERMEDIATE" tags=["perspectives", "indexing", "jsonb"] tests=["JsonIndexGenerationTests.IndexAllFieldsCoversTheEligibleFieldsOnlyAsync"]}
+[IndexAllFields]
+public record ReportRow {
+  [StreamId]
+  public Guid ReportId { get; init; }
+
+  public int Count { get; init; }
+  public string Label { get; init; } = string.Empty;
+}
+```
+
+A per-property declaration still wins where a field wants different kinds, so an exception stays local
+to the property it applies to. Be deliberate about this one: every index is write amplification on
+each apply and disk that has to stay warm, so a model with many fields that are never filtered is
+better served by naming the few that are. WHIZ302 names them for you, from what your queries actually
+do.
+
+### An equality filter on an indexed field stops using containment
+
+This is worth knowing because it looks like a regression in the generated SQL and is the opposite.
+
+```sql{title="What changes when a field is declared" description="An indexed field keeps the extraction form so its own index is the one used." category="Perspectives" difficulty="ADVANCED" tags=["jsonb", "indexing", "query-translation"]}
+-- Undeclared: containment, answered from the GIN index over the whole document
+WHERE data @> jsonb_build_object('Rank', 7)
+
+-- [JsonIndexed]: the extraction, answered from the field's own btree
+WHERE (data ->> 'Rank')::integer = 7
+```
+
+If the equality were still rewritten, the planner would answer it from the document index and the
+index you just paid for would sit unused, which is the exact problem this whole area exists to fix. It
+is also the faster of the two: a single-column btree equality probe reads one index and goes to the
+heap, while containment reads the document index and then rechecks every candidate row, because the
+default operator class stores keys and values as separate tokens and cannot confirm on its own that a
+pair belongs together.
+
+A `Trigram`-only declaration does **not** change equality, because a trigram index cannot answer one.
+
+{verified: JsonIndexStandDownTests.ABtreeIndexedField_IsNotCompiledToContainmentAsync, JsonIndexStandDownTests.ATrigramOnlyField_StillReachesContainmentForEqualityAsync}
+
+### Which types can carry one
+
+An index has to be built from an immutable expression, so its keys cannot go stale. The cast out of a
+document is immutable for these and stable for a date, which PostgreSQL refuses to index at all.
+
+| Type | Index expression |
+|------|------------------|
+| `string` | `(data ->> 'X')` |
+| `short`, `byte` | `((data ->> 'X')::smallint)` |
+| `int`, an enum over one | `((data ->> 'X')::integer)` |
+| `long`, an enum over an unsigned number | `((data ->> 'X')::bigint)` |
+| `decimal` | `((data ->> 'X')::numeric)` |
+| `float` | `((data ->> 'X')::real)` |
+| `double` | `((data ->> 'X')::double precision)` |
+| `bool` | `((data ->> 'X')::boolean)` |
+| `Guid` | `((data ->> 'X')::uuid)` |
+| `DateTime`, `DateTimeOffset`, `DateOnly`, `TimeOnly`, `TimeSpan` | **none available** |
+
+{verified: JsonIndexUsageTests.TheGeneratedIndexExpression_IsTheOneAQueryUsesAsync, ContainmentTypeEligibilityProbeTests.AnExtractionCanCarryABtreeIndexOnlyWhenItsCastIsImmutableAsync}
+
+Declaring one on a date is reported at build time as **WHIZ303** rather than skipped, because a
+declaration on a specific field is a claim about that field and silence would leave you believing it
+is indexed. For a date you need to range-filter or sort on, promote it to a column.
+
+Each cast mirrors what the query produces, which matters more than it looks: an index over a different
+expression than the query generates is simply a different index, and the planner ignores it while every
+query still returns correct rows. So the failure mode is a silent sequential scan, and that is why
+these are asserted per type against a real query and a real plan rather than by reading the SQL.
+
+A time-ordered identifier is worth a note. Its text form is fixed-width lowercase hexadecimal, so its
+text order, its `uuid` byte order and its creation order all agree, which makes cursor paging over a
+document-held identifier answerable from an index.
+
+{verified: ContainmentTypeEligibilityProbeTests.ATimeOrderedIdentifier_SortsTheSameAsTextAndAsBytesAsync}
 
 ## PhysicalFieldInfo {#PhysicalFieldInfo}
 
