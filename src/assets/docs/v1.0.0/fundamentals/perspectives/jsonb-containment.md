@@ -27,6 +27,8 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/QueryTranslation/GinContainmentIntegrationTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/QueryTranslation/ProviderCapabilitiesTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/QueryTranslation/PerspectiveSqlShapeTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/QueryTranslation/PerspectiveDateFormatLockTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/QueryTranslation/ContainmentTypeEligibilityProbeTests.cs
 ---
 
 # JSONB Containment Queries
@@ -74,7 +76,7 @@ query's results never change. Only its plan does.
 
 | Shape | Compiles to | Why |
 |-------|-------------|-----|
-| `row.Data.Field == value` on a string, Guid, bool, short, int, long or decimal | Containment | The serialized text and PostgreSQL's generated text agree |
+| `row.Data.Field == value` on any eligible type | Containment | The stored value and the generated value are the same; see the type table below |
 | The same with the operands the other way round | Containment | Operand order is irrelevant |
 | A nested member, at any depth | Containment, nested | `jsonb_build_object` nests to match |
 | A nullable member compared with a value | Containment | A non-null comparison cannot lose anything |
@@ -83,7 +85,7 @@ query's results never change. Only its plan does.
 | `!=`, `>`, `>=`, `<`, `<=` | Extraction | Containment cannot express an inequality |
 | String `row.Data.Field.Contains("ab")`, `StartsWith`, `EndsWith`, `Length` | Extraction | A substring test is not a membership test |
 | Ordering by a JSON member | Extraction | An ordering needs the value, not a membership test |
-| A double, float, DateTime, DateTimeOffset or enum | Extraction | The two text forms are not guaranteed to agree |
+| A `DateTimeOffset` member | Extraction | One instant has many stored texts, all equal to it; see below |
 | `Equals` in any spelling, ordinal | Containment | The same comparison as `==`, and see below |
 | `values.Contains(row.Data.Field)` on a top-level member | Containment over a set | See set membership below |
 | A predicate written after `Select(r => r.Data)` | Containment | The row is projected away but the document is the same |
@@ -117,6 +119,107 @@ either way the row is excluded. A projection returns the comparison's own value,
 the difference; an ordering can see it too, since nulls sort apart from false.
 
 {verified: JsonbContainmentAuthoringTests.ProjectedComparison_IsNotRewrittenAsync, JsonbContainmentAuthoringTests.TerminalOperators_CarryTheRewriteAsync}
+
+## Which types are eligible
+
+A containment test compares a document with a document, so the value the query builds has to be the
+value the row holds. Whether it is was settled by writing rows through the real mapping and reading
+back what landed, not by reasoning about what ought to land.
+
+| Type | Eligible | How the value is produced |
+|------|----------|---------------------------|
+| `string`, `Guid`, `bool` | Yes | Passed through |
+| `short`, `int`, `long`, `byte`, `decimal` | Yes | Passed through; jsonb compares numbers by value, so trailing digits do not matter |
+| An enum | Yes | Through the overload for its underlying number, which is how it is stored |
+| `double`, `float` | Yes | Cast to the member's store type, so PostgreSQL renders it the way the serializer did |
+| `DateTime` | Yes | Rendered into the stored text |
+| `DateTimeOffset` | No | Cannot be produced from the value being compared |
+| `DateOnly`, `TimeOnly`, `TimeSpan`, `char` | No | No overload yet; nothing measured rules them out |
+
+{verified: JsonbContainmentTypeSetTests.EligibleTypes_AreExactlyTheOnesWhoseTextFormsAgreeAsync, ContainmentTypeEligibilityProbeTests.ANewlyEligibleType_ReachesTheIndexAsync}
+
+Three of these are worth the detail, because each looked like a wall and only one was.
+
+**Binary floating point** fails if the value is passed through as written. The serializer writes the
+shortest text that round-trips a value, so a `double` 0.1 is stored as `0.1`, while Entity Framework
+renders that same value as a literal in seventeen digits, `0.10000000000000001`. Those round-trip to
+the same `double` but they are different numbers, and jsonb compares numbers by value. Casting the
+compared value to the member's store type hands the normalization to PostgreSQL, which renders it the
+way the serializer did. A parameter already arrives as the store type, so the cast changes nothing
+there; it is the literal that needs it.
+
+Single precision is the one place the rewrite deliberately answers differently from the form it
+replaces, and it is the more correct of the two. The extraction form compares
+`CAST(data ->> 'k' AS real)` against a bare decimal literal, which PostgreSQL reads as `numeric`;
+there is no operator for that pair, so both sides widen to `double precision`, and a single-precision
+0.1 widened is 0.10000000149011612 while the literal is 0.1. It therefore finds nothing, for any
+value that is not exactly representable. Containment compares the stored value and finds the row.
+
+**An enum** is stored as its underlying number, so the comparison is compiled through the overload for
+that number. An enum configured to store as its *name* is a real conversion and keeps the extraction
+form, along with every other value-converted property, because a document built from the unconverted
+value would match nothing at all and look fast doing it.
+
+{verified: ContainmentTypeEligibilityProbeTests.AConvertedMember_KeepsTheExtractionFormAsync, ContainmentTypeEligibilityProbeTests.AnUnconvertedMember_IsStillRewrittenAsync}
+
+## Dates
+
+A date is stored as a JSON string, and strings compare character for character rather than by value,
+so the query side has to reproduce the stored text exactly. It can. The format is a function of the
+instant:
+
+```sql{title="How a date filter is compiled" description="The stored rendering is reproduced from the instant, with the two PostgreSQL infinities named rather than formatted." category="Perspectives" difficulty="ADVANCED" tags=["jsonb", "dates", "query-translation", "gin"]}
+WHERE data @> jsonb_build_object('OccurredAt', CASE
+  WHEN isfinite(@p) THEN to_jsonb(concat(rtrim(rtrim(to_char(
+    timezone('UTC', @p), 'YYYY-MM-DD"T"HH24:MI:SS.US'), '0'), '.'), 'Z'))
+  ELSE to_jsonb(@p)
+END)
+```
+
+Each part of that answers something measured, and the measurements are locked by tests so the
+serializer and the query cannot drift apart:
+
+| Stored as | Why the formula produces it |
+|-----------|-----------------------------|
+| `2026-03-04T05:06:07Z` | A whole second carries no fraction, so both trims run: the zeros, then the point they leave behind |
+| `2026-03-04T05:06:07.1Z` | The serializer writes no trailing zeros; `to_char` always writes six digits, so the zeros are trimmed |
+| `2026-03-04T05:06:07.123456Z` | Microseconds are the finest part written, and the mapping truncates a finer .NET tick to the same precision on the way in |
+| `infinity`, `-infinity` | `DateTime.MaxValue` and `MinValue` are not stored as dates at all, and `to_char` yields nothing for them, so they are produced by name |
+
+{verified: PerspectiveDateFormatLockTests.ADateTime_IsStoredAsThisExactTextAsync, PerspectiveDateFormatLockTests.TheFormulaReproducesTheStoredTextAsync, PerspectiveDateFormatLockTests.TheExtremesAreStoredAsTheInfinitiesAsync}
+
+Two consequences worth knowing. The zone is pinned to UTC rather than left to the session, because
+`to_char` on a `timestamptz` renders in whatever zone the connection is set to while the stored text
+is always UTC. And the rendering is built from `to_char`, which PostgreSQL declares STABLE rather
+than IMMUTABLE, so it cannot appear in an index definition; it can still be used *with* an index,
+because the planner evaluates it once per statement and treats the result as a run-time constant.
+That is asserted on a table large enough for a sequential scan to be the cheaper plan if it were not
+true.
+
+{verified: PerspectiveDateFormatLockTests.ADateFilterCompilesToContainmentAndFindsItsRowAsync, GinContainmentIntegrationTests.ADateFilterUsesTheGinIndexAsync}
+
+### Why `DateTimeOffset` is not eligible
+
+This is the one exclusion that is not about effort, and the difference is worth being precise about.
+
+A `DateTime` filter has one right answer: the instant has a single rendering, and a rendering can be
+reproduced. A `DateTimeOffset` does not. Its stored text preserves the offset the row was written
+with, while equality compares instants, so the same instant written from three places is stored three
+different ways and all three are equal to the value being compared:
+
+| Written as | Stored as |
+|------------|-----------|
+| `2026-03-04T05:06:07+00:00` | `2026-03-04T05:06:07+00:00` |
+| the same instant at `+05:30` | `2026-03-04T10:36:07+05:30` |
+| the same instant at `-08:00` | `2026-03-03T21:06:07-08:00` |
+
+No rendering of one instant can produce all three, so a containment test would find some of the rows
+that equality finds and silently miss the rest. The extraction form compares instants and gets them
+all, which is why it is kept. This is a property of the comparison rather than of the formatting, and
+no amount of format control changes it; normalizing the stored form at write time would, at the cost
+of discarding the offset each row was written with.
+
+{verified: PerspectiveDateFormatLockTests.ADateTimeOffset_KeepsTheOffsetItWasWrittenWithAsync, PerspectiveDateFormatLockTests.AnOffsetFilterKeepsTheExtractionFormAsync, PerspectiveDateFormatLockTests.TheThreeOffsetsAreOneInstantAsync}
 
 ## The projected dialect
 
@@ -304,7 +407,7 @@ See [Physical Fields](physical-fields.md).
 
 ## How it is verified
 
-- **802 compiled-SQL cases** cross every scalar type with both operand orders, constants and captured
+- **816 compiled-SQL cases** cross every scalar type with both operand orders, constants and captured
   parameters, nullable members with and without a value, every comparison operator, nested and
   twice-nested members, negation, composition, promoted columns, the row's own columns, query syntax,
   and the query shapes a repository wraps them in. Each asserts where the filter landed.
@@ -316,8 +419,16 @@ See [Physical Fields](physical-fields.md).
   plans as a bitmap index scan while the extraction form plans as a sequential scan, and that each
   rewritten shape returns exactly the rows its unrewritten form returns. Asserting on generated SQL
   cannot tell a valid statement from an invalid one, which is why these execute.
+- **Measured eligibility.** No type is in the list because it looked safe. A row is written through
+  the real mapping, the stored form is read back, and the containment form is compared against it per
+  type. That is what admitted enums and floating point, both of which had been excluded on a wrong
+  assumption, and what surfaced the value-converter case where the rewrite would have returned zero
+  rows rather than a slow answer.
+- **Locked formats.** The exact text a date is stored as is asserted per precision and at both
+  infinities, as is the SQL that reproduces it. Nothing about it is expected to change; if it ever
+  does, the eligibility built on top of it fails a test instead of silently returning nothing.
 
-{verified: JsonbContainmentSqlMatrixTests.Matrix_CoversEveryAxisAsync, GinContainmentIntegrationTests.ContainmentFilter_ReturnsTheSameRowsAsEqualityAsync, GinContainmentIntegrationTests.ContainmentFilter_MatchesAGuidValueAsync}
+{verified: JsonbContainmentSqlMatrixTests.Matrix_CoversEveryAxisAsync, GinContainmentIntegrationTests.ContainmentFilter_ReturnsTheSameRowsAsEqualityAsync, ContainmentTypeEligibilityProbeTests.ContainmentAgreementPerType_IsRecordedAsync, PerspectiveDateFormatLockTests.ADateTime_IsStoredAsThisExactTextAsync}
 
 ## See Also
 

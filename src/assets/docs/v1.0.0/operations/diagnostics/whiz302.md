@@ -44,18 +44,23 @@ operand order and including the ordinal `Equals` spellings, and for set membersh
 member. See [JSONB Containment Queries](../../fundamentals/perspectives/jsonb-containment.md).
 
 What it still reports is what containment cannot express: ranges and inequalities, ordering, pattern
-matching, comparisons against null, anything under a negation, and members typed as a date, a time, an
-enumeration or binary floating point.
+matching, comparisons against null, anything under a negation, and the few member types the rewrite
+does not cover, chiefly `DateTimeOffset`.
 :::
 
 ## What is no longer reported
 
-The eligible type set mirrors the rewrite's: string, Guid, bool, short, int, long and decimal, the
-types whose serialized text and PostgreSQL's generated text agree. The duplication between analyzer
-and driver is forced, because an analyzer is referenced as an analyzer rather than as a library and
-neither side can see the other's list, so each pins its own and names the other. Drift shows up as an
-advisory that fires on a filter already indexed, or stays silent on one that scans, never as a wrong
-answer.
+The eligible type set mirrors the rewrite's: string, Guid, bool, short, int, long, byte, decimal,
+double, float, `DateTime`, and any enumeration over an eligible underlying number. Each is there
+because the value the query builds was measured against the value a row actually holds, and the
+[containment page](../../fundamentals/perspectives/jsonb-containment.md#which-types-are-eligible)
+gives the per-type reasoning. `DateTimeOffset` is the notable exclusion, and for a reason no amount of
+formatting fixes: one instant corresponds to many stored texts that are all equal to it.
+
+The duplication between analyzer and driver is forced, because an analyzer is referenced as an
+analyzer rather than as a library and neither side can see the other's list, so each pins its own and
+names the other. Drift shows up as an advisory that fires on a filter already indexed, or stays
+silent on one that scans, never as a wrong answer.
 
 {verified: PerspectiveFilterIndexAnalyzerTests.EqualityContainmentCanServe_IsNotReportedAsync, PerspectiveFilterIndexAnalyzerTests.ShapesContainmentCannotServe_AreStillReportedAsync, JsonbContainmentTypeSetTests.EligibleTypes_AreExactlyTheOnesWhoseTextFormsAgreeAsync}
 
@@ -206,8 +211,8 @@ rewritten and what is not.
 
 **So WHIZ302 is about the shapes containment cannot serve.** A plain equality filter on a JSON-only
 scalar is already indexed and needs no attention. What still forces a scan, and still wants a physical
-column, is everything else: ranges and inequalities, ordering, pattern matching, dates and times and
-enumerations, and any comparison under a negation.
+column, is everything else: ranges and inequalities, ordering, pattern matching, comparisons against
+null, an offset-carrying timestamp, and any comparison under a negation.
 
 Two things remain true regardless. The index cannot be reached by the left operand being anything but
 the bare column, so a containment test over an extraction plans as a scan. And the function form is
