@@ -21,6 +21,8 @@ codeReferences:
   - src/Whizbang.Core/Messaging/IInboxChannelWriter.cs
 testReferences:
   - tests/Whizbang.Core.Tests/Workers/AdaptiveClaimWindowSampleSizeTests.cs
+  - tests/Whizbang.Core.Tests/Workers/ClaimWorkerAcquisitionBoundsTests.cs
+  - tests/Whizbang.Core.Tests/Workers/AdaptiveClaimWindowLatencyTests.cs
   - tests/Whizbang.Core.Tests/Workers/AdaptiveOutstandingBudgetTests.cs
   - tests/Whizbang.Core.Tests/Workers/AdaptiveOutstandingBudgetLeaseAwarenessTests.cs
 ---
@@ -180,18 +182,42 @@ the window collapsed to its floor on noise rather than on overload.
 | `MinOutstandingInboxRows` | `100` (also the cold-start value) |
 | `MaxOutstandingInboxRows` | `10000` |
 | `OutstandingBudgetSafetyFactor` | `0.5` |
+| `MaxPerspectiveDrainBacklog` | `2000` stream ids (`0` disables) |
 
-### What the budget counts
+### Why the budget is on by default, and what bounds a claim
 
-The budget samples **inbox** completions and reads its headroom against **inbox** rows only. An
-earlier version counted leased work of every category as outstanding, so a perspective backlog on
-its own read as a drain rate of zero, inbox headroom collapsed, and inbox acquisition starved while
-the database sat idle. That is why the budget once shipped off by default. With the count scoped to
-the category it measures, perspective acquisition is paced separately (it pauses while the drain
-channel is above `MaxPerspectiveDrainBacklog`), and the budget is on by default. Converting row
-headroom into a stream count (`streamsAffordable = headroom / rowsPerStream`) still floors at
-`max(1, ...)`, so a collapsed budget claims one stream per cycle rather than nothing, and the
-churn-based [adaptive claim window](#cause-1-acquisition-was-never-bounded) remains a bound of its own.
+{verified: ClaimWorkerAcquisitionBoundsTests.Budget_ReadsInboxRowsOnly_SoAPerspectiveBacklogCannotCloseInboxHeadroomAsync, ClaimWorkerAcquisitionBoundsTests.Claim_CarriesARowBoundScaledFromTheStreamWindowAsync, ClaimWorkerAcquisitionBoundsTests.Claim_RowBound_NeverExceedsTheOutstandingCeilingAsync, ClaimWorkerAcquisitionBoundsTests.Claim_PausesPerspectiveAcquisitionWhileTheDrainBacklogIsAboveItsCapAsync}
+
+The budget once shipped off because it measured the wrong thing. It is on by default now, and the
+reason is that the defect was in what it counted rather than in the idea.
+
+**It counts one category.** The budget samples inbox completions, so its headroom is read against the
+**inbox rows** this instance holds and never against outbox or perspective rows. Folding all three
+into one figure meant a perspective backlog closed the inbox headroom, and the inbox starved behind
+work it could not affect. Perspective acquisition is paced separately: while the perspective drain
+channel holds more stream ids than `MaxPerspectiveDrainBacklog`, the claim asks the store for no new
+perspective streams and re-emission of held work continues.
+
+**Two bounds apply to a claim, and they are not the same bound.** The row headroom is converted into
+a stream count, because the store claims by stream and rows-per-stream varies by orders of magnitude:
+
+- The conversion is `headroom / rowsPerStream`, floored at one. It never drops to zero, deliberately.
+  The poll is the only thing that observes outstanding work, so a worker that stops polling cannot
+  discover that it has recovered. Re-emitting rows already leased to this instance costs no new
+  attempt, which makes polling at the floor cheap and self-healing.
+- The claim also carries a **row bound** of its own, `ClaimWorkRequest.MaxAcquireRows`, handed to the
+  store as `p_max_rows`. A stream count alone says nothing about how many rows those streams hold, so
+  without it one fat stream could exceed the budget the stream count was derived from.
+
+The churn-based [adaptive claim window](#cause-1-acquisition-was-never-bounded) still bounds each
+individual claim and now reacts to claim **latency** as well: a claim far slower than the learned
+norm halves the window, so acquisition paying for the backlog rather than the batch backs off with no
+operator knob.
+
+The failure the budget prevents is silent, which is why it is no longer opt-in: rows dead-letter as
+`MaxAttemptsExceeded` having never reached a receptor, and consumers are killed for memory while
+holding work they cannot drain. Set `AdaptiveOutstandingBudget = false` to fall back to the
+churn-based window alone.
 
 ## Verifying it in a live system
 
