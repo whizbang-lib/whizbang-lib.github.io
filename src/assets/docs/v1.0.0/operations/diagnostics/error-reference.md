@@ -343,6 +343,7 @@ Compile-time errors and warnings from Whizbang's source generators and analyzers
 | WHIZ120 | Error | [Pinned Type Renamed Without Ledger Acknowledgment](whiz120.md) |
 | WHIZ121 | Warning | [Pinned-Type Ledger Entry Has No Living Type](whiz121.md) |
 | WHIZ300 | Error | [Inconsistent Perspective Model Types](whiz300.md) |
+| WHIZ302 | Warning | [Filtered Perspective Field Has No Index](whiz302.md) |
 | WHIZ400 | Error | [Invalid Type Argument for ILensQuery](whiz400.md) — the same ID is also a Warning ("[InheritScope] on a non-perspective type") in `Whizbang.Generators` |
 | WHIZ802 | Error | [VectorField Invalid Dimensions](whiz802.md) |
 | WHIZ807 | Info | [Physical Fields Discovered](whiz807.md) |

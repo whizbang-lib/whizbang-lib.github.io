@@ -7,6 +7,8 @@ version: 1.0.0
 category: Perspectives
 codeReferences:
   - src/Whizbang.Core/Perspectives/PhysicalFieldAttribute.cs
+  - src/Whizbang.Core/Perspectives/SuppressIndexAdvisoryAttribute.cs
+  - src/Whizbang.Generators/Analyzers/PerspectiveFilterIndexAnalyzer.cs
   - src/Whizbang.Core/Perspectives/PerspectiveStorageAttribute.cs
   - src/Whizbang.Core/Perspectives/FieldStorageMode.cs
   - src/Whizbang.Generators.Shared/Models/PhysicalFieldInfo.cs
@@ -17,6 +19,7 @@ codeReferences:
     src/Whizbang.Data.EFCore.Postgres/QueryTranslation/WhizbangDbContextOptionsBuilderExtensions.cs
 testReferences:
   - tests/Whizbang.Core.Tests/Perspectives/PhysicalFieldAttributeTests.cs
+  - tests/Whizbang.Generators.Tests/Analyzers/PerspectiveFilterIndexAnalyzerTests.cs
   - tests/Whizbang.Core.Tests/Perspectives/PerspectiveStorageAttributeTests.cs
   - tests/Whizbang.Core.Tests/Perspectives/FieldStorageModeTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/PhysicalFieldIntegrationTests.cs
@@ -245,6 +248,45 @@ WHERE category_id = @p0
   AND price >= 100.00
 ORDER BY sku;
 ```
+
+## Index Advisories {#index-advisories}
+
+Nothing about a JSON-only filter looks wrong. The results are correct, the tests pass, and the cost
+only appears once the table grows. Whizbang therefore tells you at the point of writing.
+
+The [WHIZ302](../../operations/diagnostics/whiz302.md) analyzer warns when a lens query filters,
+orders, or counts on a property that has no physical column. It keys on `PerspectiveRow<TModel>.Data`,
+so both the scoped lens surface and the older direct one are covered, in method and in query syntax.
+It stays quiet on projections, which read a field out of rows already chosen, and on properties the
+generators would index anyway: `[StreamId]`, `[PhysicalField(Indexed = true)]`,
+`[PhysicalField(Unique = true)]`, and `[VectorField]`.
+
+A scan is sometimes the right answer. A perspective that holds one row per tenant, a lookup of
+enumeration values, a filter that runs once a day: promoting those fields buys write cost and
+returns nothing. Record the decision where the model is defined.
+
+```csharp{title="Declare that a field is deliberately unindexed" description="SuppressIndexAdvisory silences both the WHIZ302 build warning and the runtime index advisory; the reason is required." framework="NET10" category="Perspectives" difficulty="BEGINNER" tags=["perspectives", "physical-fields", "indexing", "suppression"] tests=["PerspectiveFilterIndexAnalyzerTests.Filter_WithSuppressionOnProperty_NoDiagnosticAsync", "PerspectiveFilterIndexAnalyzerTests.Filter_WithSuppressionOnModel_NoDiagnosticAsync"]}
+[SuppressIndexAdvisory("bounded at a few hundred rows by the retention cap")]
+public record FeatureFlagModel {
+  [StreamId]
+  public Guid FlagId { get; init; }
+
+  public string Name { get; init; } = string.Empty;
+}
+```
+
+The attribute goes on a property, a model, or an assembly. The reason is required, and a blank one
+does not suppress: the attribute's value is the stated rationale, so a placeholder would defeat it.
+The same attribute stands down the runtime index advisory raised by the maintenance cycle, which a
+`#pragma` would not, since a pragma silences only the compiler.
+{verified: PerspectiveFilterIndexAnalyzerTests.Filter_WithBlankSuppressionReason_StillReportsAsync}
+
+Teams upgrading an existing codebase with many such queries should lower the severity once in
+`.editorconfig` and work it back up as fields are promoted, rather than adding suppressions in bulk.
+The [WHIZ302 page](../../operations/diagnostics/whiz302.md) covers that migration, and covers the
+cases where an index is the wrong fix: unselective predicates, small tables, many columns filtered
+in varying combinations (which want single-column indexes and a bitmap scan, not composites), and
+correlated columns (which want extended statistics, not an index at all).
 
 ## Best Practices
 

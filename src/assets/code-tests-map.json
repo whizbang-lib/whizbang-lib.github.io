@@ -17501,6 +17501,103 @@
         "linkSource": "XmlTag"
       }
     ],
+    "PerspectiveFilterIndexAnalyzer": [
+      {
+        "testFile": "tests/Whizbang.Generators.Tests/Analyzers/PerspectiveFilterIndexAnalyzerTests.cs",
+        "testMethod": "Filter_OnJsonOnlyField_ReportsAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Generators.Tests/Analyzers/PerspectiveFilterIndexAnalyzerTests.cs",
+        "testMethod": "Filter_OnPromotedButUnindexedField_ReportsAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Generators.Tests/Analyzers/PerspectiveFilterIndexAnalyzerTests.cs",
+        "testMethod": "Filter_OnTwoJsonOnlyFields_ReportsEachAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Generators.Tests/Analyzers/PerspectiveFilterIndexAnalyzerTests.cs",
+        "testMethod": "OrderBy_OnJsonOnlyField_ReportsAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Generators.Tests/Analyzers/PerspectiveFilterIndexAnalyzerTests.cs",
+        "testMethod": "AsyncOperator_OnJsonOnlyField_ReportsAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Generators.Tests/Analyzers/PerspectiveFilterIndexAnalyzerTests.cs",
+        "testMethod": "QuerySyntaxWhere_OnJsonOnlyField_ReportsAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Generators.Tests/Analyzers/PerspectiveFilterIndexAnalyzerTests.cs",
+        "testMethod": "Filter_OnIndexedPhysicalField_NoDiagnosticAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Generators.Tests/Analyzers/PerspectiveFilterIndexAnalyzerTests.cs",
+        "testMethod": "Filter_OnUniquePhysicalField_NoDiagnosticAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Generators.Tests/Analyzers/PerspectiveFilterIndexAnalyzerTests.cs",
+        "testMethod": "Filter_OnStreamIdField_NoDiagnosticAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Generators.Tests/Analyzers/PerspectiveFilterIndexAnalyzerTests.cs",
+        "testMethod": "Filter_OnVectorField_NoDiagnosticAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Generators.Tests/Analyzers/PerspectiveFilterIndexAnalyzerTests.cs",
+        "testMethod": "Filter_OnUnindexedVectorField_ReportsAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Generators.Tests/Analyzers/PerspectiveFilterIndexAnalyzerTests.cs",
+        "testMethod": "Projection_OfJsonOnlyField_NoDiagnosticAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Generators.Tests/Analyzers/PerspectiveFilterIndexAnalyzerTests.cs",
+        "testMethod": "Filter_OnRowKey_NoDiagnosticAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Generators.Tests/Analyzers/PerspectiveFilterIndexAnalyzerTests.cs",
+        "testMethod": "Filter_OnNonPerspectiveQueryable_NoDiagnosticAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Generators.Tests/Analyzers/PerspectiveFilterIndexAnalyzerTests.cs",
+        "testMethod": "Filter_WithSuppressionOnProperty_NoDiagnosticAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Generators.Tests/Analyzers/PerspectiveFilterIndexAnalyzerTests.cs",
+        "testMethod": "Filter_WithSuppressionOnModel_NoDiagnosticAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Generators.Tests/Analyzers/PerspectiveFilterIndexAnalyzerTests.cs",
+        "testMethod": "Filter_WithSuppressionOnAssembly_NoDiagnosticAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Generators.Tests/Analyzers/PerspectiveFilterIndexAnalyzerTests.cs",
+        "testMethod": "Filter_WithBlankSuppressionReason_StillReportsAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Generators.Tests/Analyzers/PerspectiveFilterIndexAnalyzerTests.cs",
+        "testMethod": "Filter_WithSuppressionOnAnotherProperty_StillReportsAsync",
+        "linkSource": "XmlTag"
+      }
+    ],
     "PerspectiveModelConsistencyAnalyzer": [
       {
         "testFile": "tests/Whizbang.Generators.Tests/Analyzers/PerspectiveModelConsistencyAnalyzerTests.cs",
@@ -109642,63 +109739,63 @@
       {
         "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/PolymorphicQueryExtensionsTests.cs",
         "testMethod": "WhereDiscriminatorEquals_WithValidSelector_ReturnsQueryableAsync",
-        "testLine": 32,
+        "testLine": 34,
         "testClass": "PolymorphicQueryExtensionsTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/PolymorphicQueryExtensionsTests.cs",
         "testMethod": "WhereDiscriminatorEquals_WithTypeName_FiltersCorrectlyAsync",
-        "testLine": 46,
+        "testLine": 48,
         "testClass": "PolymorphicQueryExtensionsTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/PolymorphicQueryExtensionsTests.cs",
         "testMethod": "WhereDiscriminatorEqualsFullName_WithTypeName_FiltersCorrectlyAsync",
-        "testLine": 65,
+        "testLine": 67,
         "testClass": "PolymorphicQueryExtensionsTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/PolymorphicQueryExtensionsTests.cs",
         "testMethod": "WhereDiscriminatorValue_WithStringValue_FiltersCorrectlyAsync",
-        "testLine": 85,
+        "testLine": 87,
         "testClass": "PolymorphicQueryExtensionsTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/PolymorphicQueryExtensionsTests.cs",
         "testMethod": "WhereDiscriminatorIn_WithMultipleValues_FiltersCorrectlyAsync",
-        "testLine": 98,
+        "testLine": 100,
         "testClass": "PolymorphicQueryExtensionsTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/PolymorphicQueryExtensionsTests.cs",
         "testMethod": "WhereDiscriminatorIn_WithSingleValue_DelegatesToWhereDiscriminatorValueAsync",
-        "testLine": 118,
+        "testLine": 120,
         "testClass": "PolymorphicQueryExtensionsTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/PolymorphicQueryExtensionsTests.cs",
         "testMethod": "WhereDiscriminatorIn_WithEmptyValues_ReturnsEmptyQueryAsync",
-        "testLine": 131,
+        "testLine": 133,
         "testClass": "PolymorphicQueryExtensionsTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/PolymorphicQueryExtensionsTests.cs",
         "testMethod": "WhereDiscriminatorEquals_WithNullSelector_ThrowsArgumentNullExceptionAsync",
-        "testLine": 148,
+        "testLine": 150,
         "testClass": "PolymorphicQueryExtensionsTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/PolymorphicQueryExtensionsTests.cs",
         "testMethod": "WhereDiscriminatorValue_WithNullValue_ThrowsArgumentNullExceptionAsync",
-        "testLine": 159,
+        "testLine": 161,
         "testClass": "PolymorphicQueryExtensionsTests",
         "linkSource": "Convention"
       }
@@ -150515,7 +150612,7 @@
     "ReceptorDiscoveryGeneratorTests.Generator_WithEventReturningReceptor_GeneratesCascadeToOutboxAsync": [
       {
         "sourceFile": "src/Whizbang.Generators/ReceptorDiscoveryGenerator.cs",
-        "sourceLine": 933,
+        "sourceLine": 938,
         "sourceSymbol": "HashSet",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -150537,7 +150634,7 @@
     "ReceptorDiscoveryGeneratorTests.Generator_WithTupleResponse_ExtractsEventsForCascadeAsync": [
       {
         "sourceFile": "src/Whizbang.Generators/ReceptorDiscoveryGenerator.cs",
-        "sourceLine": 1032,
+        "sourceLine": 1037,
         "sourceSymbol": "List",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -152814,6 +152911,177 @@
         "sourceFile": "src/Whizbang.Generators/Analyzers/OptionalInjectedParameterAnalyzer.cs",
         "sourceLine": 30,
         "sourceSymbol": "OptionalInjectedParameterAnalyzer",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "PerspectiveFilterIndexAnalyzerTests.Filter_OnJsonOnlyField_ReportsAsync": [
+      {
+        "sourceFile": "src/Whizbang.Generators/Analyzers/PerspectiveFilterIndexAnalyzer.cs",
+        "sourceLine": 37,
+        "sourceSymbol": "PerspectiveFilterIndexAnalyzer",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "PerspectiveFilterIndexAnalyzerTests.Filter_OnPromotedButUnindexedField_ReportsAsync": [
+      {
+        "sourceFile": "src/Whizbang.Generators/Analyzers/PerspectiveFilterIndexAnalyzer.cs",
+        "sourceLine": 37,
+        "sourceSymbol": "PerspectiveFilterIndexAnalyzer",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "PerspectiveFilterIndexAnalyzerTests.Filter_OnTwoJsonOnlyFields_ReportsEachAsync": [
+      {
+        "sourceFile": "src/Whizbang.Generators/Analyzers/PerspectiveFilterIndexAnalyzer.cs",
+        "sourceLine": 37,
+        "sourceSymbol": "PerspectiveFilterIndexAnalyzer",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "PerspectiveFilterIndexAnalyzerTests.OrderBy_OnJsonOnlyField_ReportsAsync": [
+      {
+        "sourceFile": "src/Whizbang.Generators/Analyzers/PerspectiveFilterIndexAnalyzer.cs",
+        "sourceLine": 37,
+        "sourceSymbol": "PerspectiveFilterIndexAnalyzer",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "PerspectiveFilterIndexAnalyzerTests.AsyncOperator_OnJsonOnlyField_ReportsAsync": [
+      {
+        "sourceFile": "src/Whizbang.Generators/Analyzers/PerspectiveFilterIndexAnalyzer.cs",
+        "sourceLine": 37,
+        "sourceSymbol": "PerspectiveFilterIndexAnalyzer",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "PerspectiveFilterIndexAnalyzerTests.QuerySyntaxWhere_OnJsonOnlyField_ReportsAsync": [
+      {
+        "sourceFile": "src/Whizbang.Generators/Analyzers/PerspectiveFilterIndexAnalyzer.cs",
+        "sourceLine": 37,
+        "sourceSymbol": "PerspectiveFilterIndexAnalyzer",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "PerspectiveFilterIndexAnalyzerTests.Filter_OnIndexedPhysicalField_NoDiagnosticAsync": [
+      {
+        "sourceFile": "src/Whizbang.Generators/Analyzers/PerspectiveFilterIndexAnalyzer.cs",
+        "sourceLine": 37,
+        "sourceSymbol": "PerspectiveFilterIndexAnalyzer",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "PerspectiveFilterIndexAnalyzerTests.Filter_OnUniquePhysicalField_NoDiagnosticAsync": [
+      {
+        "sourceFile": "src/Whizbang.Generators/Analyzers/PerspectiveFilterIndexAnalyzer.cs",
+        "sourceLine": 37,
+        "sourceSymbol": "PerspectiveFilterIndexAnalyzer",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "PerspectiveFilterIndexAnalyzerTests.Filter_OnStreamIdField_NoDiagnosticAsync": [
+      {
+        "sourceFile": "src/Whizbang.Generators/Analyzers/PerspectiveFilterIndexAnalyzer.cs",
+        "sourceLine": 37,
+        "sourceSymbol": "PerspectiveFilterIndexAnalyzer",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "PerspectiveFilterIndexAnalyzerTests.Filter_OnVectorField_NoDiagnosticAsync": [
+      {
+        "sourceFile": "src/Whizbang.Generators/Analyzers/PerspectiveFilterIndexAnalyzer.cs",
+        "sourceLine": 37,
+        "sourceSymbol": "PerspectiveFilterIndexAnalyzer",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "PerspectiveFilterIndexAnalyzerTests.Filter_OnUnindexedVectorField_ReportsAsync": [
+      {
+        "sourceFile": "src/Whizbang.Generators/Analyzers/PerspectiveFilterIndexAnalyzer.cs",
+        "sourceLine": 37,
+        "sourceSymbol": "PerspectiveFilterIndexAnalyzer",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "PerspectiveFilterIndexAnalyzerTests.Projection_OfJsonOnlyField_NoDiagnosticAsync": [
+      {
+        "sourceFile": "src/Whizbang.Generators/Analyzers/PerspectiveFilterIndexAnalyzer.cs",
+        "sourceLine": 37,
+        "sourceSymbol": "PerspectiveFilterIndexAnalyzer",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "PerspectiveFilterIndexAnalyzerTests.Filter_OnRowKey_NoDiagnosticAsync": [
+      {
+        "sourceFile": "src/Whizbang.Generators/Analyzers/PerspectiveFilterIndexAnalyzer.cs",
+        "sourceLine": 37,
+        "sourceSymbol": "PerspectiveFilterIndexAnalyzer",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "PerspectiveFilterIndexAnalyzerTests.Filter_OnNonPerspectiveQueryable_NoDiagnosticAsync": [
+      {
+        "sourceFile": "src/Whizbang.Generators/Analyzers/PerspectiveFilterIndexAnalyzer.cs",
+        "sourceLine": 37,
+        "sourceSymbol": "PerspectiveFilterIndexAnalyzer",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "PerspectiveFilterIndexAnalyzerTests.Filter_WithSuppressionOnProperty_NoDiagnosticAsync": [
+      {
+        "sourceFile": "src/Whizbang.Generators/Analyzers/PerspectiveFilterIndexAnalyzer.cs",
+        "sourceLine": 37,
+        "sourceSymbol": "PerspectiveFilterIndexAnalyzer",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "PerspectiveFilterIndexAnalyzerTests.Filter_WithSuppressionOnModel_NoDiagnosticAsync": [
+      {
+        "sourceFile": "src/Whizbang.Generators/Analyzers/PerspectiveFilterIndexAnalyzer.cs",
+        "sourceLine": 37,
+        "sourceSymbol": "PerspectiveFilterIndexAnalyzer",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "PerspectiveFilterIndexAnalyzerTests.Filter_WithSuppressionOnAssembly_NoDiagnosticAsync": [
+      {
+        "sourceFile": "src/Whizbang.Generators/Analyzers/PerspectiveFilterIndexAnalyzer.cs",
+        "sourceLine": 37,
+        "sourceSymbol": "PerspectiveFilterIndexAnalyzer",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "PerspectiveFilterIndexAnalyzerTests.Filter_WithBlankSuppressionReason_StillReportsAsync": [
+      {
+        "sourceFile": "src/Whizbang.Generators/Analyzers/PerspectiveFilterIndexAnalyzer.cs",
+        "sourceLine": 37,
+        "sourceSymbol": "PerspectiveFilterIndexAnalyzer",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "PerspectiveFilterIndexAnalyzerTests.Filter_WithSuppressionOnAnotherProperty_StillReportsAsync": [
+      {
+        "sourceFile": "src/Whizbang.Generators/Analyzers/PerspectiveFilterIndexAnalyzer.cs",
+        "sourceLine": 37,
+        "sourceSymbol": "PerspectiveFilterIndexAnalyzer",
         "sourceType": "Class",
         "linkSource": "XmlTag"
       }
@@ -211791,21 +212059,21 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Priority/WorkPriority.cs",
-        "sourceLine": 100,
+        "sourceLine": 78,
         "sourceSymbol": "MostUrgent",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Priority/WorkPriority.cs",
-        "sourceLine": 104,
+        "sourceLine": 85,
         "sourceSymbol": "LeastUrgent",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Priority/WorkPriority.cs",
-        "sourceLine": 108,
+        "sourceLine": 101,
         "sourceSymbol": "Average",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -212263,14 +212531,14 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Priority/WorkPriority.cs",
-        "sourceLine": 80,
+        "sourceLine": 82,
         "sourceSymbol": "LeastUrgent",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Priority/WorkPriority.cs",
-        "sourceLine": 85,
+        "sourceLine": 89,
         "sourceSymbol": "Average",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -216178,7 +216446,7 @@
     "PerspectiveTtlRegistryTests.Register_ThenResolve_ReturnsTheSecondsAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Perspectives/PerspectiveTtlRegistry.cs",
-        "sourceLine": 56,
+        "sourceLine": 63,
         "sourceSymbol": "ApplyRuntimeConfiguration",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -216194,7 +216462,7 @@
     "PerspectiveTtlRegistryTests.ResolveSeconds_Unregistered_ReturnsMinusOneAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Perspectives/PerspectiveTtlRegistry.cs",
-        "sourceLine": 56,
+        "sourceLine": 63,
         "sourceSymbol": "ApplyRuntimeConfiguration",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -216210,7 +216478,7 @@
     "PerspectiveTtlRegistryTests.RuntimeOverride_WinsOverRegisteredValueAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Perspectives/PerspectiveTtlRegistry.cs",
-        "sourceLine": 56,
+        "sourceLine": 63,
         "sourceSymbol": "ApplyRuntimeConfiguration",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -216226,7 +216494,7 @@
     "PerspectiveTtlRegistryTests.Disabled_KillSwitch_ResolvesEverythingToMinusOneAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Perspectives/PerspectiveTtlRegistry.cs",
-        "sourceLine": 56,
+        "sourceLine": 63,
         "sourceSymbol": "ApplyRuntimeConfiguration",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -308407,12 +308675,12 @@
     }
   ],
   "metadata": {
-    "generated": "2026-09-10T20:13:26.065Z",
-    "sourceFiles": 1701,
-    "testFiles": 5880,
-    "totalLinks": 15294,
-    "codeSymbols": 2002,
-    "testMethods": 13292,
+    "generated": "2026-09-11T12:29:54.715Z",
+    "sourceFiles": 1703,
+    "testFiles": 5888,
+    "totalLinks": 15314,
+    "codeSymbols": 2003,
+    "testMethods": 13311,
     "linkHealthFindings": 19
   }
 }
