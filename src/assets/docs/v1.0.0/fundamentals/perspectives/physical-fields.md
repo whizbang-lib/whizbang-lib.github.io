@@ -138,8 +138,8 @@ A `Trigram`-only declaration does **not** change equality, because a trigram ind
 
 ### Which types can carry one
 
-An index has to be built from an immutable expression, so its keys cannot go stale. The cast out of a
-document is immutable for these and stable for a date, which PostgreSQL refuses to index at all.
+An index has to be built from an immutable expression, so its keys cannot go stale. Every type the
+framework stores as a scalar reaches one.
 
 | Type | Index expression |
 |------|------------------|
@@ -152,13 +152,28 @@ document is immutable for these and stable for a date, which PostgreSQL refuses 
 | `double` | `((data ->> 'X')::double precision)` |
 | `bool` | `((data ->> 'X')::boolean)` |
 | `Guid` | `((data ->> 'X')::uuid)` |
-| `DateTime`, `DateTimeOffset`, `DateOnly`, `TimeOnly`, `TimeSpan` | **none available** |
+| `DateTime`, `DateTimeOffset` | `((data ->> 'X')::bigint)` over microseconds since the epoch |
+| `DateOnly` | `((data ->> 'X')::integer)` over days since the epoch |
+| `TimeOnly` | `((data ->> 'X')::bigint)` over microseconds since midnight |
+| `TimeSpan` | `((data ->> 'X')::bigint)` over the tick count |
 
 {verified: JsonIndexUsageTests.TheGeneratedIndexExpression_IsTheOneAQueryUsesAsync, ContainmentTypeEligibilityProbeTests.AnExtractionCanCarryABtreeIndexOnlyWhenItsCastIsImmutableAsync}
 
-Declaring one on a date is reported at build time as **WHIZ303** rather than skipped, because a
-declaration on a specific field is a claim about that field and silence would leave you believing it
-is indexed. For a date you need to range-filter or sort on, promote it to a column.
+The date family is on that list because its **stored form** is a number, not because anything about
+the index rules moved. Stored as a rendering it could not be indexed at all: the cast from text to a
+timestamp is `STABLE`, and PostgreSQL refuses a stable index expression because a key computed from a
+session setting could go stale. A number casts through `bigint`, which is immutable, so the same
+extraction became indexable. You write an ordinary `DateTime` property and see none of this; the
+stored document is what changed. See
+[JSONB Containment Queries](jsonb-containment.md) for the stored forms and what they cost.
+
+Declaring an index on a property with **no single scalar to extract** (a nested object, a collection,
+a `char`) is reported at build time as **WHIZ303** rather than skipped, because a declaration on a
+specific field is a claim about that field and silence would leave you believing it is indexed.
+
+A declaration on a model whose document is stored as one serialized value is reported as
+[**WHIZ304**](../../operations/diagnostics/whiz304.md), and the index is not created: a filter on a
+field inside such a document never compiles to an extraction, so the index could never be reached.
 
 Each cast mirrors what the query produces, which matters more than it looks: an index over a different
 expression than the query generates is simply a different index, and the planner ignores it while every
