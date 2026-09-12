@@ -2,8 +2,8 @@
 title: 'WHIZ303: Declared Index Cannot Be Built For This Field''s Type'
 pageType: troubleshooting
 description: >-
-  Warning diagnostic when a perspective field declares [JsonIndexed] but its stored form cannot carry
-  an index, because the cast out of the JSON document is not immutable.
+  Warning diagnostic when a perspective field declares [JsonIndexed] but its stored form has no
+  single scalar an immutable cast can reach, so PostgreSQL will not build the index.
 version: 1.0.0
 category: Diagnostics
 severity: Warning
@@ -22,7 +22,7 @@ testReferences:
 # WHIZ303: Declared Index Cannot Be Built For This Field's Type
 
 ```text{title="The message" description="Reported on the property that declares the index." category="Diagnostics" difficulty="BEGINNER" tags=["diagnostics", "indexing"]}
-'OccurredAt' declares [JsonIndexed], but a System.DateTime held in the model's JSON cannot carry an
+'Payload' declares [JsonIndexed], but a System.Object held in the model's JSON cannot carry an
 index: the cast out of the document is not immutable, so PostgreSQL will not index it. Promote it
 with [PhysicalField(Indexed = true)] to get a real indexed column, or remove the declaration to
 leave the field unindexed.
@@ -35,8 +35,16 @@ index expression has to be **immutable**: PostgreSQL has to be certain the key i
 for the life of the row. A stable expression may depend on a session setting, so an index over one
 could silently go stale, and PostgreSQL refuses to create it rather than allow that.
 
-The cast is immutable for text, the integer family, numerics, booleans and identifiers. It is stable
-for a timestamp, a date and a time, which is why those are the types this reports.
+The cast is immutable for text, the integer family, numerics, booleans and identifiers. What this
+reports is a property whose stored form has no single scalar an immutable cast can reach: a nested
+object, a collection, a `char`.
+
+**Dates used to be reported here and are not any more.** Not because the index rules changed, but
+because the stored form did. A date was stored as a rendering, and the cast from text to a timestamp
+is `STABLE`, so PostgreSQL refused it. Dates, times and durations are now stored as numbers, which
+cast through `bigint`, which is immutable. See
+[JSONB Containment Queries](../../fundamentals/perspectives/jsonb-containment.md) for the stored
+forms.
 
 {verified: ContainmentTypeEligibilityProbeTests.AnExtractionCanCarryABtreeIndexOnlyWhenItsCastIsImmutableAsync}
 
@@ -58,33 +66,34 @@ cover. It is not a claim about any one field, so naming each skip would be noise
 
 ## How to fix
 
-**If you filter or sort on the field, promote it to a column.** That is the option available today
-for a date, and it gives you a real `timestamptz` with a btree index.
+**If you filter or sort on the field, promote it to a column.** A promoted field is a real column
+with a real type and a real btree index.
 
-```csharp{title="Promoting a date that is range-filtered" description="A real column is the available answer for a date that has to be range-filtered or sorted." framework="NET10" category="Perspectives" difficulty="INTERMEDIATE" tags=["perspectives", "physical-fields", "indexing"] tests=["JsonIndexDeclarationAnalyzerTests.ATypeThatCannotCarryAnIndex_IsReportedAsync"]}
+```csharp{title="Promoting a field with no scalar to extract" description="A real column is the answer for a value the document holds in a shape no cast can reach." framework="NET10" category="Perspectives" difficulty="INTERMEDIATE" tags=["perspectives", "physical-fields", "indexing"] tests=["JsonIndexDeclarationAnalyzerTests.ATypeThatCannotCarryAnIndex_IsReportedAsync"]}
 public record OrderModel {
   [StreamId]
   public Guid OrderId { get; init; }
 
-  // Was [JsonIndexed], which cannot be built for a date.
+  // Was [JsonIndexed], which cannot be built over a value with no scalar extraction.
   [PhysicalField(Indexed = true)]
-  public DateTime OccurredAt { get; init; }
+  public string Reference { get; init; } = string.Empty;
 }
 ```
 
-**If you only compare it for equality, remove the declaration.** Equality on a date held in the
+**If you only compare it for equality, remove the declaration.** Equality on a value held in the
 document is already answered from the GIN index as a containment test, so it needs nothing. See
-[JSONB Containment Queries](../../fundamentals/perspectives/jsonb-containment.md#dates).
+[JSONB Containment Queries](../../fundamentals/perspectives/jsonb-containment.md).
 
 ## Which types this reports
 
-`DateTime`, `DateTimeOffset`, `DateOnly`, `TimeOnly` and `TimeSpan`. Everything else the framework
-stores in a document can carry an index; see
+A property with no single scalar to extract: a nested object, a collection, or a `char`. Everything
+the framework stores as a scalar can carry an index; see
 [the type table](../../fundamentals/perspectives/physical-fields.md#json-indexed).
 
 An enumeration is **not** reported, because it is stored as its underlying number and indexed as that
 number's type. A nullable value is not reported either, for the same reason: it is stored and
-extracted as its underlying type, and a null simply has no entry.
+extracted as its underlying type, and a null simply has no entry. Nor is any member of the date
+family, which is stored as a number and indexed as one.
 
 {verified: JsonIndexDeclarationAnalyzerTests.AnIndexableType_IsNotReportedAsync, JsonIndexDeclarationAnalyzerTests.AnEnumerationIsNotReportedAsync}
 
@@ -100,3 +109,4 @@ not exist.
 - [Physical Fields](../../fundamentals/perspectives/physical-fields.md#json-indexed)
 - [JSONB Containment Queries](../../fundamentals/perspectives/jsonb-containment.md)
 - [WHIZ302: Filtered Perspective Field Has No Index](whiz302.md)
+- [WHIZ304: Declared Index Cannot Be Reached For This Model's Storage](whiz304.md)
