@@ -41,6 +41,35 @@ extraction with a cast, cannot use it. Rewriting the same filter as
 operator, which is what the index matches. Everything below exists to do that rewrite without ever
 changing which rows come back.
 
+## The fork that decides whether any of this applies
+
+Before any of it, a model takes one of two storage paths, and the pipeline below only exists on one
+of them.
+
+**Mapped.** The model is mapped property by property into the `data` column. A filter compiles to an
+extraction, `(data ->> 'TenantId')::uuid`, which is what the rewrite reshapes, what an expression
+index is built over, and what a value conversion attaches to. Everything on this page is about this
+path.
+
+**Opaque.** The model holds an abstract member, or one marked `[JsonPolymorphic]`. Property-by-property
+mapping reconstructs the declared type on the way back and would lose the derived one, so the whole
+document is stored as a single serialized value that carries a type discriminator. Nothing inside it
+is a mapped property: no extraction to reshape, nothing for the rewrite to recognize, and nowhere to
+attach a conversion. Declared indexes are skipped and
+[WHIZ304](../v1.0.0/operations/diagnostics/whiz304.md) reports why. Fields that must be filtered are
+promoted to real columns.
+
+`PolymorphicModelDiscovery.IsPolymorphic` answers this, in the shared generator project rather than in
+either caller, because the generator that emits the configuration and the analyzer that reports an
+unreachable index have to agree. Two copies of this question would disagree silently, and in the
+direction that is hardest to notice: an index emitted for a model that was told it would get none.
+
+The rule is that **only public properties count**, which is what both the mapped path and the
+serializer already do. This was once not true, and the consequence was large: a `record` carries a
+compiler-generated protected `EqualityContract` of type `System.Type`, `System.Type` is an abstract
+class, so every record answered "opaque" on its first member and sat outside indexing, containment
+and conversion alike, while an identical `class` did not.
+
 ## Why Entity Framework and Dapper get different answers
 
 The two drivers are not two implementations of one idea. They are different problems.
