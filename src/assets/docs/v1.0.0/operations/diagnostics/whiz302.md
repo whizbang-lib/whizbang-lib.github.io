@@ -49,7 +49,7 @@ does not cover, chiefly `DateTimeOffset`.
 
 **Most of those now have a cheaper fix than promotion.** `[Indexed]` builds an index over the
 stored value, which answers ranges, ordering and null tests without a column, a schema change or any
-write-path work, and `[Indexed(IndexKind.Trigram)]` answers substring matching. The date
+write-path work, and `[Indexed(IndexKinds.Trigram)]` answers substring matching. The date
 family is included: its stored form is a number, which casts through an immutable expression where
 the old rendering did not. Promotion stays the answer where you need a constraint or a foreign key,
 and for a model whose document is stored as one serialized value. See

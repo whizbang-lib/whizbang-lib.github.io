@@ -103,7 +103,7 @@ public record OrderModel {
   public int Rank { get; init; }
 
   // Filtered by range and searched by substring.
-  [Indexed(IndexKind.Btree | IndexKind.Trigram)]
+  [Indexed(IndexKinds.Btree | IndexKinds.Trigram)]
   public string Title { get; init; } = string.Empty;
 
   // Never filtered. Pays for nothing.
@@ -150,7 +150,7 @@ because someone asked. A filtered vector with no index is reported by
 ### Opting one field out of a blanket declaration
 
 `[IndexAllFields]` covers every eligible field on the model. A single field declines with
-`IndexKind.None`, which is the only way to say "all of them but this one":
+`IndexKinds.None`, which is the only way to say "all of them but this one":
 
 ```csharp{title="Indexing every field except one" description="A per-field declaration overrides the model's, so asking for no kind is how a field declines an index it would otherwise be given." framework="NET10" category="Perspectives" difficulty="INTERMEDIATE" tags=["perspectives", "indexing", "jsonb"] tests=["JsonIndexGenerationTests.AFieldCanOptOutOfABlanketDeclarationAsync"]}
 [IndexAllFields]
@@ -162,7 +162,7 @@ public record ReportModel {
   public string Label { get; init; } = string.Empty;
 
   // Never filtered, and large. Declining keeps the blanket useful on the rest.
-  [Indexed(IndexKind.None)]
+  [Indexed(IndexKinds.None)]
   public string Payload { get; init; } = string.Empty;
 }
 ```
