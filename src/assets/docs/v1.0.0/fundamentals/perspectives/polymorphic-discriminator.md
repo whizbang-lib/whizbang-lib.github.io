@@ -174,7 +174,7 @@ While string discriminators are most flexible, you can use enums:
 
 ```csharp{title="Enum-Based Discriminators" description="While string discriminators are most flexible, you can use enums:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Enum-Based", "Discriminators"] unverified="uses [PhysicalField], not [PolymorphicDiscriminator] — physical-field indexing is verified on the Physical Fields page"}
 public record FormFieldModel {
-    [PhysicalField(Indexed = true)]
+    [PhysicalField] [Indexed]
     public FieldType FieldType { get; init; }
 
     public AbstractFieldSettings Settings { get; init; }

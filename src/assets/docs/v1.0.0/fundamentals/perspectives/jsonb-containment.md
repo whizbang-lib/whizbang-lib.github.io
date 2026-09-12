@@ -16,7 +16,16 @@ codeReferences:
   - src/Whizbang.Data.EFCore.Postgres/QueryTranslation/ProviderCapabilities.cs
   - src/Whizbang.Data.EFCore.Postgres/Configuration/PerspectiveQueryTranslationOptions.cs
   - src/Whizbang.Data.EFCore.Postgres/QueryTranslation/PhysicalFieldQueryInterceptor.cs
+  - src/Whizbang.Core/Perspectives/CanonicalTemporalFormat.cs
+  - src/Whizbang.Core/Perspectives/CanonicalTemporalJsonConverters.cs
+  - src/Whizbang.Generators.Shared/Models/CanonicalTemporalDiscovery.cs
+  - src/Whizbang.Generators.Shared/Models/CanonicalTemporalBackfillSql.cs
 testReferences:
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/QueryTranslation/PerspectiveIndexSetupTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/QueryTranslation/CanonicalTemporalBackfillTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/QueryTranslation/CanonicalTemporalStorageTests.cs
+  - tests/Whizbang.Core.Tests/Perspectives/CanonicalTemporalJsonConverterTests.cs
+  - tests/Whizbang.Core.Tests/Perspectives/CanonicalTemporalFormatTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/QueryTranslation/JsonbContainmentSqlMatrixTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/QueryTranslation/JsonbContainmentAuthoringTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/QueryTranslation/JsonbContainmentJoinTests.cs
@@ -132,9 +141,9 @@ back what landed, not by reasoning about what ought to land.
 | `short`, `int`, `long`, `byte`, `decimal` | Yes | Passed through; jsonb compares numbers by value, so trailing digits do not matter |
 | An enum | Yes | Through the overload for its underlying number, which is how it is stored |
 | `double`, `float` | Yes | Cast to the member's store type, so PostgreSQL renders it the way the serializer did |
-| `DateTime` | Yes | Rendered into the stored text |
-| `DateTimeOffset` | No | Cannot be produced from the value being compared |
-| `DateOnly`, `TimeOnly`, `TimeSpan`, `char` | No | No overload yet; nothing measured rules them out |
+| `DateTime`, `DateTimeOffset` | Stored as a number | Compared as the number, so equality keeps the extraction form and an index serves it |
+| `DateOnly`, `TimeOnly`, `TimeSpan` | Stored as a number | The same |
+| `char` | No | A `char` has no stored form an index can reach |
 
 {verified: JsonbContainmentTypeSetTests.EligibleTypes_AreExactlyTheOnesWhoseTextFormsAgreeAsync, ContainmentTypeEligibilityProbeTests.ANewlyEligibleType_ReachesTheIndexAsync}
 
@@ -162,64 +171,102 @@ value would match nothing at all and look fast doing it.
 
 {verified: ContainmentTypeEligibilityProbeTests.AConvertedMember_KeepsTheExtractionFormAsync, ContainmentTypeEligibilityProbeTests.AnUnconvertedMember_IsStillRewrittenAsync}
 
-## Dates
+## Dates, times and durations
 
-A date is stored as a JSON string, and strings compare character for character rather than by value,
-so the query side has to reproduce the stored text exactly. It can. The format is a function of the
-instant:
+A date is stored as a **number**, not as a rendering. Four forms, one per type:
 
-```sql{title="How a date filter is compiled" description="The stored rendering is reproduced from the instant, with the two PostgreSQL infinities named rather than formatted." category="Perspectives" difficulty="ADVANCED" tags=["jsonb", "dates", "query-translation", "gin"]}
-WHERE data @> jsonb_build_object('OccurredAt', CASE
-  WHEN isfinite(@p) THEN to_jsonb(concat(rtrim(rtrim(to_char(
-    timezone('UTC', @p), 'YYYY-MM-DD"T"HH24:MI:SS.US'), '0'), '.'), 'Z'))
-  ELSE to_jsonb(@p)
-END)
-```
+| Type | Stored as |
+|------|-----------|
+| `DateTime` | microseconds since the Unix epoch |
+| `DateTimeOffset` | the same, reduced to the instant it names |
+| `DateOnly` | days since the Unix epoch |
+| `TimeOnly` | microseconds since midnight |
+| `TimeSpan` | its tick count |
 
-Each part of that answers something measured, and the measurements are locked by tests so the
-serializer and the query cannot drift apart:
+{verified: CanonicalTemporalFormatTests.ADateTimeIsMicrosecondsSinceTheEpochAsync, CanonicalTemporalFormatTests.ADateOnlyIsDaysSinceTheEpochAsync, CanonicalTemporalFormatTests.ATimeOnlyIsMicrosecondsSinceMidnightAsync, CanonicalTemporalFormatTests.ATimeSpanIsItsTickCountAsync}
 
-| Stored as | Why the formula produces it |
-|-----------|-----------------------------|
-| `2026-03-04T05:06:07Z` | A whole second carries no fraction, so both trims run: the zeros, then the point they leave behind |
-| `2026-03-04T05:06:07.1Z` | The serializer writes no trailing zeros; `to_char` always writes six digits, so the zeros are trimmed |
-| `2026-03-04T05:06:07.123456Z` | Microseconds are the finest part written, and the mapping truncates a finer .NET tick to the same precision on the way in |
-| `infinity`, `-infinity` | `DateTime.MaxValue` and `MinValue` are not stored as dates at all, and `to_char` yields nothing for them, so they are produced by name |
+You write an ordinary `DateTime` property and see none of this. What it buys is that the whole family
+behaves like every other type:
 
-{verified: PerspectiveDateFormatLockTests.ADateTime_IsStoredAsThisExactTextAsync, PerspectiveDateFormatLockTests.TheFormulaReproducesTheStoredTextAsync, PerspectiveDateFormatLockTests.TheExtremesAreStoredAsTheInfinitiesAsync}
+- **An index can be built over it.** The cast from text to a timestamp is `STABLE`, and PostgreSQL
+  refuses a stable index expression because a key computed from a session setting could go stale. A
+  cast to `bigint` is `IMMUTABLE`. This is the reason the format changed.
+- **Ranges and orderings are correct.** The old rendering sorted by fraction width before it sorted by
+  time, so a range over it was not merely unindexed but wrong.
+- **Three problems stop existing rather than being handled.** jsonb compares numbers by value, so
+  trailing zeros stop mattering; the fraction width that varied between six and seven digits by type
+  has nowhere to live; and the extremes, which were stored as the words `infinity` and `-infinity`,
+  become ordinary integers.
 
-Two consequences worth knowing. The zone is pinned to UTC rather than left to the session, because
-`to_char` on a `timestamptz` renders in whatever zone the connection is set to while the stored text
-is always UTC. And the rendering is built from `to_char`, which PostgreSQL declares STABLE rather
-than IMMUTABLE, so it cannot appear in an index definition; it can still be used *with* an index,
-because the planner evaluates it once per statement and treats the result as a run-time constant.
-That is asserted on a table large enough for a sequential scan to be the cheaper plan if it were not
-true.
+{verified: CanonicalTemporalFormatTests.TheStoredNumbersSortChronologicallyAsync, CanonicalTemporalFormatTests.TheExtremesAreOrdinaryNumbersAsync, PerspectiveIndexSetupTests.ATemporalFieldBuildsItsIndexAsync}
 
-{verified: PerspectiveDateFormatLockTests.ADateFilterCompilesToContainmentAndFindsItsRowAsync, GinContainmentIntegrationTests.ADateFilterUsesTheGinIndexAsync}
+The cost is that those fields are no longer readable at a glance in the stored document. It was taken
+against measurement: an eight-byte key indexes at less than half the size of the twenty-seven byte
+text one for the same rows and the same plan.
 
-### Why `DateTimeOffset` is not eligible
+### `DateTimeOffset` loses its offset
 
-This is the one exclusion that is not about effort, and the difference is worth being precise about.
+Reduced to the instant, deliberately. Its rendering preserved the offset the row was written with, so
+one instant had many stored texts and no query could produce them all. Reduced to the instant it
+compares the way equality does, which compares instants. A model that needs the original offset back
+keeps it in a field of its own.
 
-A `DateTime` filter has one right answer: the instant has a single rendering, and a rendering can be
-reproduced. A `DateTimeOffset` does not. Its stored text preserves the offset the row was written
-with, while equality compares instants, so the same instant written from three places is stored three
-different ways and all three are equal to the value being compared:
+{verified: CanonicalTemporalFormatTests.AnOffsetNormalizesToItsInstantAsync, CanonicalTemporalStorageTests.AnOffsetComesBackAsItsInstantAsync}
 
-| Written as | Stored as |
-|------------|-----------|
-| `2026-03-04T05:06:07+00:00` | `2026-03-04T05:06:07+00:00` |
-| the same instant at `+05:30` | `2026-03-04T10:36:07+05:30` |
-| the same instant at `-08:00` | `2026-03-03T21:06:07-08:00` |
+### Equality on a date keeps the extraction form
 
-No rendering of one instant can produce all three, so a containment test would find some of the rows
-that equality finds and silently miss the rest. The extraction form compares instants and gets them
-all, which is why it is kept. This is a property of the comparison rather than of the formatting, and
-no amount of format control changes it; normalizing the stored form at write time would, at the cost
-of discarding the offset each row was written with.
+This is the one place the canonical form gives something up, and it is worth knowing about.
 
-{verified: PerspectiveDateFormatLockTests.ADateTimeOffset_KeepsTheOffsetItWasWrittenWithAsync, PerspectiveDateFormatLockTests.AnOffsetFilterKeepsTheExtractionFormAsync, PerspectiveDateFormatLockTests.TheThreeOffsetsAreOneInstantAsync}
+The value is stored **converted**, and neither containment mechanism builds a document from a
+converted property: the expression-tree rewrite runs before translation, where its operand is typed by
+the model rather than by what the row holds, and the reshape runs after, where the operand arrives
+wrapped in a cast rather than as the bare extraction it matches on. So a date equality compiles to
+`(data ->> 'OccurredAt')::bigint = @p` rather than to containment.
+
+What is gained is larger than what is lost. Ranges, ordering and an index of any kind were impossible
+for a date before and are ordinary now, and a declared btree answers equality *faster* than
+containment did: one index probe and a heap fetch, against a document-index read that then rechecks
+every candidate row. What is given up is the zero-configuration case, an exact date equality on a
+field nobody declared an index for, which used to ride the GIN index for free.
+
+That case is not left silent, which is the condition for the trade being acceptable:
+[WHIZ302](../../operations/diagnostics/whiz302.md) reports it and names the attribute that fixes it.
+
+{verified: CanonicalTemporalStorageTests.ADateEqualityKeepsTheExtractionFormAsync, PerspectiveFilterIndexAnalyzerTests.ShapesContainmentCannotServe_AreStillReportedAsync}
+
+### Existing rows are rewritten
+
+The stored form is a compatibility contract the moment rows exist in it, so a database written by an
+earlier release is converted before anything queries it. The rewrite is emitted per perspective with
+its schema, **ahead of** the index built over the result and ahead of the application serving traffic.
+
+Each statement selects on the stored type still being a string, so a database created by this release
+has nothing to convert and a re-run is a no-op. The guard is the data itself rather than a marker row
+a restore could contradict.
+
+The ordering is load-bearing rather than tidy. PostgreSQL evaluates an index expression for every row,
+so a column still holding a rendering on any row refuses the numeric index outright: a rewrite that
+did not finish stops the schema pass at the next statement instead of leaving an index over a column
+about to change underneath it.
+
+{verified: CanonicalTemporalBackfillTests.AnInstantIsRewrittenAsync, CanonicalTemporalBackfillTests.RunningItTwiceChangesNothingAsync, PerspectiveIndexSetupTests.TheRewriteHasToComeBeforeTheIndexAsync}
+
+### Both writers agree
+
+A perspective document has two writers and only one of them is Entity Framework. A row is written by
+the upsert, which serializes the model with System.Text.Json; the mapping is what reads it back and
+compiles filters over it. Both convert, from the same discovery, so a row written by one is readable
+by the other.
+
+The conversion is applied to **a named model's own temporal properties** rather than to every date the
+serializer touches. That matters: applied per type it reached framework documents that are mapped and
+read with no matching conversion, which turned every row it wrote into one the reader could not parse.
+
+The transport and event-store profile is deliberately unchanged. A date in a message payload is read
+by other systems and by older releases of this one, so the canonical form is scoped to the documents
+this library owns.
+
+{verified: CanonicalTemporalJsonConverterTests.ATemporalPropertyIsWrittenAsANumberAsync, CanonicalTemporalJsonConverterTests.AFrameworkDocumentIsNotConvertedAsync, CanonicalTemporalJsonConverterTests.TheTransportProfileStillWritesARenderingAsync, CanonicalTemporalStorageTests.TheUpsertWriterAgreesWithTheMappingAsync}
 
 ## The projected dialect
 
@@ -394,7 +441,7 @@ any call site.
 
 ## When you still want a physical column
 
-Containment covers equality. It cannot serve anything else, so `[PhysicalField(Indexed = true)]`
+Containment covers equality. It cannot serve anything else, so `[PhysicalField] [Indexed]`
 remains the answer for:
 
 - ranges and inequalities

@@ -13,7 +13,7 @@ codeReferences:
   - src/Whizbang.Generators/Analyzers/JsonIndexDeclarationAnalyzer.cs
   - src/Whizbang.Generators.Shared/Models/PolymorphicModelDiscovery.cs
   - src/Whizbang.Data.EFCore.Postgres.Generators/EFCoreServiceRegistrationGenerator.cs
-  - src/Whizbang.Core/Perspectives/JsonIndexedAttribute.cs
+  - src/Whizbang.Core/Perspectives/IndexedAttribute.cs
 testReferences:
   - tests/Whizbang.Generators.Tests/Analyzers/JsonIndexStorageAnalyzerTests.cs
   - tests/Whizbang.Generators.Tests/JsonIndexGenerationTests.cs
@@ -27,7 +27,7 @@ testReferences:
 (Payment is TestApp.PaymentMethod), so its document is stored as one serialized value rather than as
 mapped properties. A filter on a field inside it never compiles to the extraction the index is built
 over, so the index would be maintained on every write and scanned by nothing. Promote the fields you
-filter on with [PhysicalField(Indexed = true)] to get real indexed columns, or remove the declaration.
+filter on with [PhysicalField] [Indexed] to get real indexed columns, or remove the declaration.
 ```
 
 ## Why
@@ -50,7 +50,7 @@ declared over such a document would be rebuilt on every write and scanned by not
 ## Why it is reported rather than skipped
 
 The index **is** skipped. The generator does not emit it, because emitting it would be the same waste
-`[JsonIndexed]` exists to remove: cost on every write, no read it can serve.
+`[Indexed]` exists to remove: cost on every write, no read it can serve.
 
 Skipping alone would be the worse half of the trade. Nothing would surface it, and you would be left
 believing the fields are indexed while every query on them reads the whole table. That is the more
@@ -87,15 +87,15 @@ public record OrderModel {
   // This is what forces the whole document into a single serialized value.
   public PaymentMethod? Payment { get; init; }
 
-  // Was [JsonIndexed], which nothing could reach. A column can be.
-  [PhysicalField(Indexed = true)]
+  // Was [Indexed], which nothing could reach. A column can be.
+  [PhysicalField] [Indexed]
   public string Reference { get; init; } = string.Empty;
 }
 ```
 
 **Or reshape the model so it is not polymorphic.** If the hierarchy is not doing real work, replacing
 the abstract member with a concrete type returns the whole model to property-by-property mapping, and
-every `[JsonIndexed]` on it starts working.
+every `[Indexed]` on it starts working.
 
 ## What does *not* trigger this
 
@@ -107,7 +107,7 @@ public record OrderModel {
   [StreamId]
   public Guid OrderId { get; init; }
 
-  [JsonIndexed]
+  [Indexed]
   public int Rank { get; init; }
 }
 ```

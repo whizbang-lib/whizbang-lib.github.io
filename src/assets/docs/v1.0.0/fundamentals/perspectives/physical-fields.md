@@ -7,7 +7,7 @@ version: 1.0.0
 category: Perspectives
 codeReferences:
   - src/Whizbang.Core/Perspectives/PhysicalFieldAttribute.cs
-  - src/Whizbang.Core/Perspectives/JsonIndexedAttribute.cs
+  - src/Whizbang.Core/Perspectives/IndexedAttribute.cs
   - src/Whizbang.Generators.Shared/Models/JsonIndexInfo.cs
   - src/Whizbang.Generators.Shared/Models/JsonIndexDiscovery.cs
   - src/Whizbang.Data.EFCore.Postgres/QueryTranslation/JsonIndexRegistry.cs
@@ -23,8 +23,10 @@ codeReferences:
   - >-
     src/Whizbang.Data.EFCore.Postgres/QueryTranslation/WhizbangDbContextOptionsBuilderExtensions.cs
 testReferences:
+  - tests/Whizbang.Generators.Tests/Analyzers/JsonIndexStorageAnalyzerTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/QueryTranslation/PerspectiveIndexSetupTests.cs
   - tests/Whizbang.Core.Tests/Perspectives/PhysicalFieldAttributeTests.cs
-  - tests/Whizbang.Core.Tests/Perspectives/JsonIndexedAttributeTests.cs
+  - tests/Whizbang.Core.Tests/Perspectives/IndexedAttributeTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/QueryTranslation/JsonIndexUsageTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/QueryTranslation/JsonIndexStandDownTests.cs
   - tests/Whizbang.Generators.Tests/JsonIndexGenerationTests.cs
@@ -48,7 +50,7 @@ Physical fields allow you to store specific properties as dedicated database col
 A perspective stores its model in a single JSONB column by default. There are three tiers of storage
 for a field, and the middle one is the newest and the cheapest thing most fields need.
 
-| | Undeclared | `[JsonIndexed]` | `[PhysicalField(Indexed = true)]` |
+| | Undeclared | `[Indexed]` | `[PhysicalField]` + `[Indexed]` |
 |---|---|---|---|
 | Where the value lives | the document | the document | its own column |
 | Equality | indexed, through containment | indexed, by btree | indexed |
@@ -56,9 +58,28 @@ for a field, and the middle one is the newest and the cheapest thing most fields
 | Substring matching | scans | indexed with `Trigram` | scans unless trigram-indexed |
 | Unique constraints, foreign keys | no | no | yes |
 | Costs | nothing | an index | an index, a column, a hydration path |
-| Works for dates and times | equality only | **no** | yes |
+| Dates, times and durations | equality only | **indexed** | indexed |
 
-{verified: JsonIndexUsageTests.TheGeneratedIndexExpression_IsTheOneAQueryUsesAsync, JsonIndexStandDownTests.ABtreeIndexedField_IsNotCompiledToContainmentAsync}
+:::updated
+**One attribute asks for an index.** `[Indexed]` says what you mean, and it means the same thing
+wherever the field lives: this field is filtered, make it fast. Which index serves that follows from
+whether the field was promoted, and the framework already knows that.
+
+On a field held in the document it builds a btree over the extraction a query produces. On a field
+promoted by `[PhysicalField]` it indexes the column. On a `[VectorField]` it builds the vector index
+that field configures. Combine it with either promotion when you need a real column **and** an index
+on it.
+
+That is why `[PhysicalField]` has no `Indexed` flag and `[VectorField]` has none either. A promoted
+column is what you need for a constraint, a foreign key or uniqueness, and those stay where they
+belong; asking for an index is a separate question with one answer.
+
+**The date family is indexable now.** Not because the index rules changed but because the stored form
+did: a date is stored as a number, which casts through an immutable expression where the old text
+rendering did not. See [JSONB Containment Queries](jsonb-containment.md) for the stored forms.
+:::
+
+{verified: JsonIndexUsageTests.TheGeneratedIndexExpression_IsTheOneAQueryUsesAsync, JsonIndexStandDownTests.ABtreeIndexedField_IsNotCompiledToContainmentAsync, PerspectiveIndexSetupTests.ADeclaredIndexBuildsWithTheCastItAskedForAsync, PhysicalFieldAttributeTests.PromotionCarriesNoIndexFlagAsync}
 
 The reason the middle tier exists is that the GIN index every perspective table already carries answers
 containment and nothing else. That covers equality, which is why an equality filter on a JSON-only
@@ -78,11 +99,11 @@ public record OrderModel {
   public string OrderNumber { get; init; } = string.Empty;
 
   // Filtered by range and sorted on. An index over the stored value answers both.
-  [JsonIndexed]
+  [Indexed]
   public int Rank { get; init; }
 
   // Filtered by range and searched by substring.
-  [JsonIndexed(JsonIndexKind.Btree | JsonIndexKind.Trigram)]
+  [Indexed(IndexKind.Btree | IndexKind.Trigram)]
   public string Title { get; init; } = string.Empty;
 
   // Never filtered. Pays for nothing.
@@ -93,6 +114,62 @@ public record OrderModel {
 The kinds combine because a field can be queried both ways, and the attribute may also be written more
 than once where that reads better than a combination. `Trigram` requires `pg_trgm`, which the schema
 pass creates if it is missing.
+
+{verified: PerspectiveIndexSetupTests.ATrigramDeclarationBuildsAGinIndexAsync, PerspectiveIndexSetupTests.BothKindsBuildBothIndexesAsync}
+
+### Combining with a promotion
+
+```csharp{title="A promoted column, and a vector, asking for their indexes" description="The same attribute asks on either side of the promotion; the promotion attribute describes the column." framework="NET10" category="Perspectives" difficulty="INTERMEDIATE" tags=["perspectives", "indexing", "physical-fields", "vector"] tests=["JsonIndexGenerationTests.APromotedFieldIsIndexedByTheSameAttributeAsync"]}
+public record DocumentModel {
+  [StreamId]
+  public Guid DocumentId { get; init; }
+
+  // A real column, and indexed. Two attributes, two separate decisions.
+  [PhysicalField]
+  [Indexed]
+  public Guid TenantId { get; init; }
+
+  // A real column, not indexed: nothing filters it, so it pays for nothing.
+  [PhysicalField]
+  public string Title { get; init; } = string.Empty;
+
+  // A vector column with an index, built the way [VectorField] configures it.
+  [VectorField(1536, IndexType = VectorIndexType.HNSW)]
+  [Indexed]
+  public float[] Embedding { get; init; } = [];
+}
+```
+
+A vector is **not** indexed unless it asks. That changed with the universal attribute, and it follows
+the same opt-in principle as everything else here: an index is write amplification, so it is created
+because someone asked. A filtered vector with no index is reported by
+[WHIZ302](../../operations/diagnostics/whiz302.md) rather than left to be discovered in production.
+
+{verified: JsonIndexGenerationTests.APromotedFieldWithoutTheAttributeIsNotIndexedAsync, PerspectiveIndexSetupTests.APromotedColumnTakesAnOrdinaryIndexAsync}
+
+### Opting one field out of a blanket declaration
+
+`[IndexAllFields]` covers every eligible field on the model. A single field declines with
+`IndexKind.None`, which is the only way to say "all of them but this one":
+
+```csharp{title="Indexing every field except one" description="A per-field declaration overrides the model's, so asking for no kind is how a field declines an index it would otherwise be given." framework="NET10" category="Perspectives" difficulty="INTERMEDIATE" tags=["perspectives", "indexing", "jsonb"] tests=["JsonIndexGenerationTests.AFieldCanOptOutOfABlanketDeclarationAsync"]}
+[IndexAllFields]
+public record ReportModel {
+  [StreamId]
+  public Guid ReportId { get; init; }
+
+  public int Counted { get; init; }
+  public string Label { get; init; } = string.Empty;
+
+  // Never filtered, and large. Declining keeps the blanket useful on the rest.
+  [Indexed(IndexKind.None)]
+  public string Payload { get; init; } = string.Empty;
+}
+```
+
+Declining is not declaring, so it is not reported as a claim the framework cannot honor.
+
+{verified: JsonIndexGenerationTests.AFieldCanOptOutOfABlanketDeclarationAsync, JsonIndexDeclarationAnalyzerTests.OptingOutIsNotReportedAsync, JsonIndexStorageAnalyzerTests.AModelDeclaringOnlyAnOptOutIsNotReportedAsync}
 
 For a read model that really is queried every way, say it once on the model instead:
 
@@ -121,7 +198,7 @@ This is worth knowing because it looks like a regression in the generated SQL an
 -- Undeclared: containment, answered from the GIN index over the whole document
 WHERE data @> jsonb_build_object('Rank', 7)
 
--- [JsonIndexed]: the extraction, answered from the field's own btree
+-- [Indexed]: the extraction, answered from the field's own btree
 WHERE (data ->> 'Rank')::integer = 7
 ```
 
@@ -314,7 +391,7 @@ Physical columns are indexed copies; JSONB still contains the full model. Ideal 
 ```csharp{title="Extracted Mode" description="Physical columns are indexed copies; JSONB still contains the full model." category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Extracted", "Mode"] tests=["PerspectiveStorageAttributeTests.PerspectiveStorageAttribute_Constructor_SetsModeAsync", "PhysicalFieldAttributeTests.PhysicalFieldAttribute_Properties_CanBeSetAsync"]}
 [PerspectiveStorage(FieldStorageMode.Extracted)]
 public record ProductDto {
-    [PhysicalField(Indexed = true)]
+    [PhysicalField] [Indexed]
     public decimal Price { get; init; }      // In JSONB AND physical column
 
     public string Description { get; init; } // JSONB only
@@ -345,10 +422,10 @@ public record ProductDto {
     [StreamId]
     public Guid ProductId { get; init; }
 
-    [PhysicalField(Indexed = true)]
+    [PhysicalField] [Indexed]
     public Guid CategoryId { get; init; }
 
-    [PhysicalField(Indexed = true, MaxLength = 100)]
+    [PhysicalField(MaxLength = 100)] [Indexed]
     public string Sku { get; init; }
 
     [PhysicalField(Unique = true)]
@@ -410,7 +487,7 @@ The [WHIZ302](../../operations/diagnostics/whiz302.md) analyzer warns when a len
 orders, or counts on a property that has no physical column. It keys on `PerspectiveRow<TModel>.Data`,
 so both the scoped lens surface and the older direct one are covered, in method and in query syntax.
 It stays quiet on projections, which read a field out of rows already chosen, and on properties the
-generators would index anyway: `[StreamId]`, `[PhysicalField(Indexed = true)]`,
+generators would index anyway: `[StreamId]`, `[PhysicalField] [Indexed]`,
 `[PhysicalField(Unique = true)]`, and `[VectorField]`.
 
 A scan is sometimes the right answer. A perspective that holds one row per tenant, a lookup of

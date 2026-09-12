@@ -153,7 +153,7 @@ public record OrderSummaryDto {
     public Guid OrderId { get; init; }
     public string CustomerName { get; init; } = "";
 
-    [PhysicalField(Indexed = true)]
+    [PhysicalField] [Indexed]
     public decimal Total { get; init; }
 }
 

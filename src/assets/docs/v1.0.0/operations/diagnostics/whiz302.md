@@ -47,9 +47,9 @@ What it still reports is what containment cannot express: ranges and inequalitie
 matching, comparisons against null, anything under a negation, and the few member types the rewrite
 does not cover, chiefly `DateTimeOffset`.
 
-**Most of those now have a cheaper fix than promotion.** `[JsonIndexed]` builds an index over the
+**Most of those now have a cheaper fix than promotion.** `[Indexed]` builds an index over the
 stored value, which answers ranges, ordering and null tests without a column, a schema change or any
-write-path work, and `[JsonIndexed(JsonIndexKind.Trigram)]` answers substring matching. The date
+write-path work, and `[Indexed(IndexKind.Trigram)]` answers substring matching. The date
 family is included: its stored form is a number, which casts through an immutable expression where
 the old rendering did not. Promotion stays the answer where you need a constraint or a foreign key,
 and for a model whose document is stored as one serialized value. See
@@ -81,8 +81,8 @@ field that actually needs a column rather than at the whole query.
 
 ```text{title="WHIZ302 message text" description="The text the analyzer emits, with the model and property substituted." category="Diagnostics" difficulty="BEGINNER" tags=["diagnostics", "perspectives", "indexing", "message"]}
 This query filters '{Model}.{Property}', which is stored only in the model's JSON, so the database
-reads every row of the perspective. Mark it [JsonIndexed] for an index over the stored value,
-[PhysicalField(Indexed = true)] to promote it to a column, or record the decision with
+reads every row of the perspective. Mark it [Indexed] for an index over the stored value,
+[PhysicalField] [Indexed] to promote it to a column, or record the decision with
 [SuppressIndexAdvisory("reason")].
 ```
 
@@ -95,7 +95,7 @@ following the other advice would land on [WHIZ304](whiz304.md):
 This query filters '{Model}.{Property}', which is stored only in the model's JSON, so the database
 reads every row of the perspective. This model holds a polymorphic member, so its document is stored
 as one serialized value and an index over a field inside it cannot be reached. Promote it with
-[PhysicalField(Indexed = true)] to get a real indexed column, or record the decision with
+[PhysicalField] [Indexed] to get a real indexed column, or record the decision with
 [SuppressIndexAdvisory("reason")].
 ```
 
@@ -129,7 +129,7 @@ A property is taken as index-backed when the generators would give it one, mirro
 | Declaration | Index | Verified |
 |-------------|-------|----------|
 | `[StreamId]` | Becomes the row key, so the primary key serves it | {verified: PerspectiveFilterIndexAnalyzerTests.Filter_OnStreamIdField_NoDiagnosticAsync} |
-| `[PhysicalField(Indexed = true)]` | Asks for one outright | {verified: PerspectiveFilterIndexAnalyzerTests.Filter_OnIndexedPhysicalField_NoDiagnosticAsync} |
+| `[PhysicalField] [Indexed]` | Asks for one outright | {verified: PerspectiveFilterIndexAnalyzerTests.Filter_OnIndexedPhysicalField_NoDiagnosticAsync} |
 | `[PhysicalField(Unique = true)]` | The unique constraint carries one | {verified: PerspectiveFilterIndexAnalyzerTests.Filter_OnUniquePhysicalField_NoDiagnosticAsync} |
 | `[VectorField(n)]` | Indexed unless the declaration sets `Indexed = false` | {verified: PerspectiveFilterIndexAnalyzerTests.Filter_OnVectorField_NoDiagnosticAsync, PerspectiveFilterIndexAnalyzerTests.Filter_OnUnindexedVectorField_ReportsAsync} |
 
@@ -164,10 +164,10 @@ public record DocumentModel {
   [StreamId]
   public Guid DocumentId { get; init; }
 
-  [PhysicalField(Indexed = true)]
+  [PhysicalField] [Indexed]
   public Guid TenantId { get; init; }
 
-  [PhysicalField(Indexed = true)]
+  [PhysicalField] [Indexed]
   public Guid EntityId { get; init; }
 }
 ```

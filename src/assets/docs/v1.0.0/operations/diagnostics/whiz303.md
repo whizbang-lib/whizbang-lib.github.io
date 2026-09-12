@@ -2,7 +2,7 @@
 title: 'WHIZ303: Declared Index Cannot Be Built For This Field''s Type'
 pageType: troubleshooting
 description: >-
-  Warning diagnostic when a perspective field declares [JsonIndexed] but its stored form has no
+  Warning diagnostic when a perspective field declares [Indexed] but its stored form has no
   single scalar an immutable cast can reach, so PostgreSQL will not build the index.
 version: 1.0.0
 category: Diagnostics
@@ -11,7 +11,7 @@ order: 303
 tags: 'diagnostics, perspectives, indexing, jsonb, analyzer, physical-fields'
 codeReferences:
   - src/Whizbang.Generators/Analyzers/JsonIndexDeclarationAnalyzer.cs
-  - src/Whizbang.Core/Perspectives/JsonIndexedAttribute.cs
+  - src/Whizbang.Core/Perspectives/IndexedAttribute.cs
   - src/Whizbang.Generators.Shared/Models/JsonIndexDiscovery.cs
   - src/Whizbang.Generators.Shared/Models/JsonIndexInfo.cs
 testReferences:
@@ -22,9 +22,9 @@ testReferences:
 # WHIZ303: Declared Index Cannot Be Built For This Field's Type
 
 ```text{title="The message" description="Reported on the property that declares the index." category="Diagnostics" difficulty="BEGINNER" tags=["diagnostics", "indexing"]}
-'Payload' declares [JsonIndexed], but a System.Object held in the model's JSON cannot carry an
+'Payload' declares [Indexed], but a System.Object held in the model's JSON cannot carry an
 index: the cast out of the document is not immutable, so PostgreSQL will not index it. Promote it
-with [PhysicalField(Indexed = true)] to get a real indexed column, or remove the declaration to
+with [PhysicalField] [Indexed] to get a real indexed column, or remove the declaration to
 leave the field unindexed.
 ```
 
@@ -74,8 +74,8 @@ public record OrderModel {
   [StreamId]
   public Guid OrderId { get; init; }
 
-  // Was [JsonIndexed], which cannot be built over a value with no scalar extraction.
-  [PhysicalField(Indexed = true)]
+  // Was [Indexed], which cannot be built over a value with no scalar extraction.
+  [PhysicalField] [Indexed]
   public string Reference { get; init; } = string.Empty;
 }
 ```
