@@ -46,7 +46,7 @@
     "sharp": "0.35.4",
     "shiki": "^4.4.3",
     "tslib": "^2.8.1",
-    "zone.js": "~0.15.0"
+    "zone.js": "~0.16.3"
   },
   "devDependencies": {
     "@angular-devkit/build-angular": "^22.0.8",
