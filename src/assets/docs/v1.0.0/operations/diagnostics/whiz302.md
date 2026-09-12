@@ -80,9 +80,25 @@ field that actually needs a column rather than at the whole query.
 
 ```text{title="WHIZ302 message text" description="The text the analyzer emits, with the model and property substituted." category="Diagnostics" difficulty="BEGINNER" tags=["diagnostics", "perspectives", "indexing", "message"]}
 This query filters '{Model}.{Property}', which is stored only in the model's JSON, so the database
-reads every row of the perspective. Mark it [PhysicalField(Indexed = true)], or record the decision
-with [SuppressIndexAdvisory("reason")].
+reads every row of the perspective. Mark it [JsonIndexed] for an index over the stored value,
+[PhysicalField(Indexed = true)] to promote it to a column, or record the decision with
+[SuppressIndexAdvisory("reason")].
 ```
+
+The advice follows how the model is stored. A model holding a polymorphic member is stored as one
+serialized value rather than as mapped properties, so an index over a field inside it cannot be
+reached and the generator skips it. On such a model the message offers only the column, because
+following the other advice would land on [WHIZ304](whiz304.md):
+
+```text{title="WHIZ302 on a model stored as one serialized value" description="The variant emitted when an index over the document could never be reached, so only the column is offered." category="Diagnostics" difficulty="INTERMEDIATE" tags=["diagnostics", "perspectives", "indexing", "polymorphic"]}
+This query filters '{Model}.{Property}', which is stored only in the model's JSON, so the database
+reads every row of the perspective. This model holds a polymorphic member, so its document is stored
+as one serialized value and an index over a field inside it cannot be reached. Promote it with
+[PhysicalField(Indexed = true)] to get a real indexed column, or record the decision with
+[SuppressIndexAdvisory("reason")].
+```
+
+{verified: PerspectiveFilterIndexAnalyzerTests.Filter_OnOpaquelyStoredModel_OffersTheColumnNotTheJsonIndexAsync, PerspectiveFilterIndexAnalyzerTests.Filter_OnMappedModel_StillOffersTheJsonIndexAsync}
 
 ## What the analyzer looks at
 
@@ -337,6 +353,8 @@ covers them.
 ## See Also
 
 - [Physical Fields](../../fundamentals/perspectives/physical-fields.md) - How a property becomes a real column
+- [WHIZ303: Declared Index Cannot Be Built For This Field's Type](whiz303.md) - When the fix this suggests cannot be built
+- [WHIZ304: Declared Index Cannot Be Reached For This Model's Storage](whiz304.md) - When no index over the model's document can be reached
 - [WHIZ300: Inconsistent Perspective Model Types](whiz300.md) - The other perspective-validation diagnostic
 - [Lenses](../../fundamentals/lenses/lenses.md) - The query surface this analyzer watches
 
