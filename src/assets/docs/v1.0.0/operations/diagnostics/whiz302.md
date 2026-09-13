@@ -49,7 +49,7 @@ does not cover, chiefly `DateTimeOffset`.
 
 **Most of those now have a cheaper fix than promotion.** `[Indexed]` builds an index over the
 stored value, which answers ranges, ordering and null tests without a column, a schema change or any
-write-path work, and `[Indexed(IndexKinds.Trigram)]` answers substring matching. The date
+write-path work, and `[Indexed(IndexKinds.Substring)]` answers substring matching. The date
 family is included: its stored form is a number, which casts through an immutable expression where
 the old rendering did not. Promotion stays the answer where you need a constraint or a foreign key,
 and for a model whose document is stored as one serialized value. See
@@ -135,6 +135,36 @@ A property is taken as index-backed when the generators would give it one, mirro
 
 `[PhysicalField]` with neither flag still reports. The scan is narrower, over a typed column instead
 of the JSON document, but it is still a scan.
+
+### A declaration counts only for the comparison it matches {#declaration-matching}
+
+:::new
+An index over a field held in the document is only used for the expression the comparison produces,
+so `[Indexed]` on the field is not on its own enough to silence the advisory. Two things have to line
+up.
+
+**The capability.** `IndexKinds.Substring` answers `Contains`, `StartsWith` and `EndsWith` and
+nothing else; the ordered capability answers equality, ranges, ordering and null tests. A substring
+declaration on a field you sort by still reports.
+
+**The fold.** A comparison written `field.ToLower() == …` is a comparison over the folded value, and
+only `[Indexed(caseInsensitive: true)]` builds an index over that. An unfolded declaration on such a
+field keeps reporting, and the message says which word is missing. The reverse holds too: a folded
+declaration does not answer a comparison that respects case, so a field compared both ways needs
+both declarations. See
+[Comparisons that ignore case](../../fundamentals/perspectives/physical-fields.md#case-insensitive).
+
+`ToUpper()` translates to the upward fold, which no declaration builds an index over, so it is
+reported whatever the field declares and the message names `ToLower()` instead. The invariant forms
+are not treated as folds at all, because they have no translation: a query using them fails rather
+than scanning, so there is no plan for an index advisory to be about.
+
+This matching is why the advisory can be trusted as a to-do list. Before it, a declared field looked
+served by every query on it, and a case-insensitive search kept reading every row with an index
+plainly visible on the field.
+:::
+
+{verified: PerspectiveFilterIndexAnalyzerTests.Filter_FoldingCase_OnAnUnfoldedDeclaration_ReportsAsync, PerspectiveFilterIndexAnalyzerTests.Filter_FoldingCase_OnAFoldedDeclaration_IsNotReportedAsync, PerspectiveFilterIndexAnalyzerTests.Filter_RespectingCase_OnAFoldedDeclaration_ReportsAsync, PerspectiveFilterIndexAnalyzerTests.Filter_OnAFieldDeclaredBothWays_IsNotReportedAsync, PerspectiveFilterIndexAnalyzerTests.Filter_FoldingUpward_ReportsAndNamesTheFoldThatIsIndexedAsync, PerspectiveFilterIndexAnalyzerTests.Filter_FoldingThatDoesNotTranslate_IsNotTreatedAsAFoldAsync}
 
 ## Example
 

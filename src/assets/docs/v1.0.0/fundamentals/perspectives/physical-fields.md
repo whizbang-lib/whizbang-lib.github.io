@@ -55,7 +55,7 @@ for a field, and the middle one is the newest and the cheapest thing most fields
 | Where the value lives | the document | the document | its own column |
 | Equality | indexed, through containment | indexed, by btree | indexed |
 | Range, ordering, `IS NULL` | **scans** | **indexed** | indexed |
-| Substring matching | scans | indexed with `Trigram` | scans unless trigram-indexed |
+| Substring matching | scans | indexed with `Substring` | scans unless trigram-indexed |
 | Unique constraints, foreign keys | no | no | yes |
 | Costs | nothing | an index | an index, a column, a hydration path |
 | Dates, times and durations | equality only | **indexed** | indexed |
@@ -103,7 +103,7 @@ public record OrderModel {
   public int Rank { get; init; }
 
   // Filtered by range and searched by substring.
-  [Indexed(IndexKinds.Btree | IndexKinds.Trigram)]
+  [Indexed(IndexKinds.Ordered | IndexKinds.Substring)]
   public string Title { get; init; } = string.Empty;
 
   // Never filtered. Pays for nothing.
@@ -112,10 +112,66 @@ public record OrderModel {
 ```
 
 The kinds combine because a field can be queried both ways, and the attribute may also be written more
-than once where that reads better than a combination. `Trigram` requires `pg_trgm`, which the schema
+than once where that reads better than a combination. `Substring` requires `pg_trgm`, which the schema
 pass creates if it is missing.
 
 {verified: PerspectiveIndexSetupTests.ATrigramDeclarationBuildsAGinIndexAsync, PerspectiveIndexSetupTests.BothKindsBuildBothIndexesAsync}
+
+### Comparisons that ignore case {#case-insensitive}
+
+:::new
+An index is only used for the expression it was built over, and a comparison that folds case is a
+comparison over the *folded* value. An index over the stored value is not a candidate for it, however
+it is built. So case-insensitive search needs its own declaration:
+
+```csharp{title="A field searched with and without regard to case" description="Case folding changes the indexed expression, so a field compared both ways declares the attribute twice and carries one index for each." framework="NET10" category="Perspectives" difficulty="INTERMEDIATE" tags=["perspectives", "indexing", "case-insensitive", "search"] tests=["JsonIndexGenerationTests.AFieldComparedBothWaysGetsAnIndexForEachAsync", "PerspectiveIndexSetupTests.ACaseInsensitiveDeclarationBuildsOverTheFoldedValueAsync"]}
+public record CustomerModel {
+  [StreamId]
+  public Guid CustomerId { get; init; }
+
+  // Searched by name, case-insensitively, and also sorted on as entered.
+  [Indexed]
+  [Indexed(caseInsensitive: true)]
+  public string LastName { get; init; } = string.Empty;
+
+  // Only ever compared case-insensitively, so only that index is worth paying for.
+  [Indexed(caseInsensitive: true)]
+  public string Email { get; init; } = string.Empty;
+}
+```
+
+The two are different indexes and neither answers the other's query, which is why a field compared
+both ways declares both. It is a separate declaration rather than a default for the same reason: the
+folded index costs a write on every apply and can serve nothing that respects case.
+
+**Write the comparison as `ToLower()`, with no argument.** That is the one form that reaches the
+database, as its own `lower()`, and it is what the index is built over:
+
+```csharp{title="The query shape the folded index answers" description="The parameterless ToLower is the only form the query translation maps; the invariant and culture overloads have no translation at all." framework="NET10" category="Perspectives" difficulty="INTERMEDIATE" tags=["perspectives", "indexing", "case-insensitive", "linq"] tests=["JsonIndexUsageTests.AFoldedComparison_IsAnsweredByTheFoldedIndexOnlyAsync"]}
+// Answered from the folded index.
+var found = await rows
+  .Where(r => r.Data.Email.ToLower() == term.ToLower())
+  .ToListAsync(ct);
+
+// No translation at all: these fail rather than running slowly.
+//   r.Data.Email.ToLowerInvariant() == …
+//   r.Data.Email.ToLower(CultureInfo.InvariantCulture) == …
+//   string.Equals(r.Data.Email, term, StringComparison.OrdinalIgnoreCase)
+
+// Translates, to the upward fold, which no declaration indexes. WHIZ302 reports it.
+//   r.Data.Email.ToUpper() == …
+```
+
+The fold happens in the database under the column's collation, so there is no CLR culture in play and
+none can be expressed. Analyzers that ask for a culture or a `StringComparison` here (CA1304, CA1311,
+CA1862, RCS1155) are answering a question about in-process string handling, and the overloads they
+recommend are exactly the ones with no translation. Suppress them on the query.
+
+Asking for case folding on a field that is not text is reported by
+[WHIZ305](../../operations/diagnostics/whiz305.md) rather than dropped in silence.
+:::
+
+{verified: JsonIndexUsageTests.AFoldedComparison_IsAnsweredByTheFoldedIndexOnlyAsync, JsonIndexGenerationTests.AFieldComparedBothWaysGetsAnIndexForEachAsync, PerspectiveIndexSetupTests.AFieldComparedBothWaysGetsBothIndexesAsync}
 
 ### Combining with a promotion
 
@@ -209,7 +265,7 @@ heap, while containment reads the document index and then rechecks every candida
 default operator class stores keys and values as separate tokens and cannot confirm on its own that a
 pair belongs together.
 
-A `Trigram`-only declaration does **not** change equality, because a trigram index cannot answer one.
+A `Substring`-only declaration does **not** change equality, because a trigram index cannot answer one.
 
 {verified: JsonIndexStandDownTests.ABtreeIndexedField_IsNotCompiledToContainmentAsync, JsonIndexStandDownTests.ATrigramOnlyField_StillReachesContainmentForEqualityAsync}
 
