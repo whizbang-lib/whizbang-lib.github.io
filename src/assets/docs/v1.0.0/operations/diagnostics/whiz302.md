@@ -144,8 +144,14 @@ so `[Indexed]` on the field is not on its own enough to silence the advisory. Tw
 up.
 
 **The capability.** `IndexKinds.Substring` answers `Contains`, `StartsWith` and `EndsWith` and
-nothing else; the ordered capability answers equality, ranges, ordering and null tests. A substring
-declaration on a field you sort by still reports.
+nothing else; the ordered capability answers equality, ranges, ordering and null tests. The match is
+made in both directions: a substring declaration on a field you sort by still reports, and so does an
+ordered declaration on a field you pattern-match. An ordered index is no use to a match with a
+leading wildcard and none to a prefix match either under any ordinary collation.
+
+A **promoted** field is settled by the promotion instead. The capabilities describe indexes over an
+extraction from the document, and nothing can ask for a pattern-matching index on a real column, so
+`[PhysicalField]` with `[Indexed]` is taken as indexed whatever the query shape.
 
 **The fold.** A comparison written `field.ToLower() == …` is a comparison over the folded value, and
 only `[Indexed(caseInsensitive: true)]` builds an index over that. An unfolded declaration on such a
@@ -164,7 +170,7 @@ served by every query on it, and a case-insensitive search kept reading every ro
 plainly visible on the field.
 :::
 
-{verified: PerspectiveFilterIndexAnalyzerTests.Filter_FoldingCase_OnAnUnfoldedDeclaration_ReportsAsync, PerspectiveFilterIndexAnalyzerTests.Filter_FoldingCase_OnAFoldedDeclaration_IsNotReportedAsync, PerspectiveFilterIndexAnalyzerTests.Filter_RespectingCase_OnAFoldedDeclaration_ReportsAsync, PerspectiveFilterIndexAnalyzerTests.Filter_OnAFieldDeclaredBothWays_IsNotReportedAsync, PerspectiveFilterIndexAnalyzerTests.Filter_FoldingUpward_ReportsAndNamesTheFoldThatIsIndexedAsync, PerspectiveFilterIndexAnalyzerTests.Filter_FoldingThatDoesNotTranslate_IsNotTreatedAsAFoldAsync}
+{verified: PerspectiveFilterIndexAnalyzerTests.Filter_SubstringMatch_OnAnOrderedDeclaration_ReportsAsync, PerspectiveFilterIndexAnalyzerTests.Filter_OrderedShapes_OnAnOrderedDeclaration_AreNotReportedAsync, PerspectiveFilterIndexAnalyzerTests.Filter_FoldedSubstringMatch_OnAFoldedSubstringDeclaration_IsNotReportedAsync, PerspectiveFilterIndexAnalyzerTests.Filter_FoldingCase_OnAnUnfoldedDeclaration_ReportsAsync, PerspectiveFilterIndexAnalyzerTests.Filter_FoldingCase_OnAFoldedDeclaration_IsNotReportedAsync, PerspectiveFilterIndexAnalyzerTests.Filter_RespectingCase_OnAFoldedDeclaration_ReportsAsync, PerspectiveFilterIndexAnalyzerTests.Filter_OnAFieldDeclaredBothWays_IsNotReportedAsync, PerspectiveFilterIndexAnalyzerTests.Filter_FoldingUpward_ReportsAndNamesTheFoldThatIsIndexedAsync, PerspectiveFilterIndexAnalyzerTests.Filter_FoldingThatDoesNotTranslate_IsNotTreatedAsAFoldAsync}
 
 ## Example
 
