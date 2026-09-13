@@ -62,7 +62,7 @@ method carrying that attribute lets a request shape the query.
 
 ```csharp{title="Marking an extension's own attribute" description="A domain language that turns a request string into a LINQ expression declares the widest exposure there is." framework="NET10" category="Diagnostics" difficulty="ADVANCED" tags=["whiz306", "extensibility", "marker-attribute", "expressions"] tests=["QueryExposureDetectionTests.AnExpressionSurfaceDeclaresTheWidestExposureAsync"]}
 // An extension that turns a request string into a LINQ expression over any queryable.
-[ComposesQueryFromRequest(QueryExposure.Expression)]
+[ComposesQueryFromRequest(QueryExposures.Expression)]
 [AttributeUsage(AttributeTargets.Method)]
 public sealed class UseExpressionAttribute : Attribute { }
 ```

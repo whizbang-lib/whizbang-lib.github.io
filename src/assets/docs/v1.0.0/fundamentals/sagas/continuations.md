@@ -12,7 +12,7 @@ tags: 'sagas, continuations, chaining, sequencing, priority, claim-capacity'
 codeReferences:
   - src/Whizbang.Sagas.Contracts/ContinuesWithAttribute.cs
   - src/Whizbang.Sagas.Contracts/SagaContinuation.cs
-  - src/Whizbang.Sagas.Contracts/SagaContinuationTrigger.cs
+  - src/Whizbang.Sagas.Contracts/SagaContinuationTriggers.cs
   - src/Whizbang.Sagas/SagaContinuationRegistry.cs
   - src/Whizbang.Sagas/SagaContinuationRequestedEvent.cs
   - src/Whizbang.Sagas/Helpers/SagaContinuationGuard.cs
@@ -65,7 +65,7 @@ matters because there is nothing left to compete with.
 ```csharp{title="Declaring a continuation" description="Enrichment over what the import wrote, which has no reason to run while the import is running." framework="NET10" category="Sagas" difficulty="INTERMEDIATE" tags=["sagas", "continuations", "sequencing", "continues-with"] tests=["SagaContinuationGeneratorTests.ADeclaredChainIsRegisteredAtLoadAsync"]}
 [Saga("BulkImport")]
 [ContinuesWith("DerivedEnrichment")]
-[ContinuesWith("ImportCleanup", SagaContinuationTrigger.Failed)]
+[ContinuesWith("ImportCleanup", SagaContinuationTriggers.Failed)]
 public partial class BulkImportSaga;
 ```
 
@@ -92,9 +92,9 @@ started from either would read a set that is still changing.
 ```csharp{title="A non-terminal status starts nothing" description="Even a trigger naming every terminal status declines for Running, Pending and Reset." framework="NET10" category="Sagas" difficulty="ADVANCED" tags=["sagas", "continuations", "terminal-status"] tests=["SagaContinuationTests.ANonTerminalStatusNeverStartsAContinuationAsync"]}
 var everything = new SagaContinuation(
   "DerivedEnrichment",
-  SagaContinuationTrigger.Completed
-    | SagaContinuationTrigger.CompletedWithFailures
-    | SagaContinuationTrigger.Failed);
+  SagaContinuationTriggers.Completed
+    | SagaContinuationTriggers.CompletedWithFailures
+    | SagaContinuationTriggers.Failed);
 
 everything.StartsAfter(SagaStatus.Running);   // false
 everything.StartsAfter(SagaStatus.Reset);     // false
