@@ -36,6 +36,7 @@ Whizbang follows a **documentation-first** philosophy: features are documented b
 ## Deep dives in this section
 
 - **[Implementing a Data Engine](data-engines/overview)** — the full guide to adding a new database engine: `IWorkCoordinator`, SQL function contracts, capabilities, notifications, testing, and worked examples (SQLite, SQL Server).
+- **[The Perspective Query Pipeline](perspective-query-pipeline)** — where a perspective filter is rewritten so an index can answer it, why Entity Framework and Dapper need different answers, which decision belongs at which stage, and the handful of things in this area that are not guessable.
 
 ## Tooling for contributors
 

@@ -69,7 +69,7 @@ The hash covers the *table* schema — the fixed `PerspectiveRow` columns plus a
 | Remove physical field | Remove `[PhysicalField]` attribute | Yes |
 | Change physical field type | `int Total` → `decimal Total` | Yes |
 | Add vector field | Add `[VectorField(1536)]` or change dimensions | Yes |
-| Add index | Set `[PhysicalField(Indexed = true)]` | Yes |
+| Add index | Set `[PhysicalField] [Indexed]` | Yes |
 | Rename physical field | `Name` → `FullName` (column rename) | Yes |
 | Reorder properties | Move `Email` before `Name` | No** |
 

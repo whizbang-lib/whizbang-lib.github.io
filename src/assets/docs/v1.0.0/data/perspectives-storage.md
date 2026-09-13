@@ -141,7 +141,7 @@ CREATE TABLE order_summaries (
 public record OrderSummaryDto {
     public Guid OrderId { get; init; }
     public string Status { get; init; } = "";
-    [PhysicalField(Indexed = true)]
+    [PhysicalField] [Indexed]
     public Guid CustomerId { get; init; }         // Indexed physical column
     public string CustomerName { get; init; } = "";
     public string CustomerEmail { get; init; } = "";
