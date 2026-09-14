@@ -22,6 +22,8 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/032_PerformMaintenance.sql
   - src/Whizbang.Data.Postgres/MigrationFunctionBodies.cs
   - src/Whizbang.Data.Postgres/MigrationConstants.cs
+  - src/Whizbang.Data.Postgres/SchemaCommandBoundary.cs
+  - src/Whizbang.Generators.Shared/Models/CanonicalTemporalBackfillSql.cs
   - src/Whizbang.Data.Postgres/Migrations/constants.txt
   - scripts/Lint-MigrationSql.ps1
 testReferences:
@@ -31,6 +33,7 @@ testReferences:
   - tests/Whizbang.Data.Dapper.Postgres.Tests/PostgresSchemaInitializerBranchTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/MigrationFunctionBodiesTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/StaleFunctionDefinitionSweepTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/SchemaCommandBoundaryTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -79,6 +82,50 @@ Each perspective schema (CREATE TABLE + indexes) is tracked individually. When a
 - **Destructive change** (type change, column removal): Background event replay queued
 
 This means unchanged perspectives have **zero startup cost** after first deployment.
+
+### Statements that need a commit between them {#statements-that-need-a-commit-between-them}
+
+Most of a perspective's schema belongs in one transaction, so a failure part way through leaves
+nothing half applied. One dependency cannot be expressed that way, and getting it wrong produces a
+schema that can never finish migrating rather than a startup that fails once.
+
+A stored format change rewrites a key and then indexes the result. PostgreSQL builds an index over an
+expression by evaluating that expression on every heap tuple that is not yet dead, and a row version
+superseded by an **uncommitted** update is still live, because other transactions can still see it.
+So an index built in the transaction that rewrote its key is built over the values as they were
+before the rewrite, and the cast in the index expression meets the old rendering:
+
+```text{title="What the initializer reports when the two share a transaction" description="The rewrite ran, the index was built over the superseded row versions, and the whole attempt rolled back." tests=["SchemaCommandBoundaryTests.OneTransactionCannotBuildAnIndexOverAValueItJustRewroteAsync"]}
+22P02: invalid input syntax for type bigint: "2026-04-21T22:38:17.357886+00:00"
+```
+
+Ordering the statements is necessary and not sufficient. The rollback undoes the rewrite along with
+the index, so the next attempt starts from the state that failed and fails identically: a retry loop
+around it never makes progress, and the service reports only that it is still migrating.
+
+So the generator emits a **commit boundary** after a rewrite, and the initializer applies each piece
+on its own connection, committing before the next begins. A rewrite that has succeeded then survives
+a later failure in the same pass, which is what lets a retry get further than the attempt before it.
+
+```sql{title="A perspective whose date is indexed" description="The marker is an ordinary comment, so the script stays valid SQL for a client that does not know about it." tests=["SchemaCommandBoundaryTests.ApplyingAcrossTheBoundaryRewritesAndThenIndexesAsync"]}
+UPDATE "public".wh_per_report
+SET data = data || jsonb_build_object('OccurredAt', /* conversion */ 0)
+WHERE jsonb_typeof(data -> 'OccurredAt') = 'string';
+
+-- @whizbang:commit-boundary
+
+CREATE INDEX IF NOT EXISTS idx_report_occurredat_json
+  ON "public".wh_per_report (((data ->> 'OccurredAt')::bigint));
+```
+
+Schema SQL carrying no boundary is applied exactly as before, inside the initializer's transaction.
+Instances stay mutually excluded either way, because the boundary is only ever crossed while the
+caller holds the initialization lock.
+
+{verified: SchemaCommandBoundaryTests.WithoutTheBoundaryTheSameScriptStillFailsAsync, SchemaCommandBoundaryTests.ApplyingTwiceIsANoOpTheSecondTimeAsync}
+
+Both halves are proven against a real database, including that removing the marker brings the failure
+back, so the boundary cannot quietly become a comment that means nothing.
 
 ## Strategy Detection
 
