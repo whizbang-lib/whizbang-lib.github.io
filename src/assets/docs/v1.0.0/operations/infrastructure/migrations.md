@@ -23,13 +23,30 @@ codeReferences:
   - src/Whizbang.Data.Postgres/MigrationFunctionBodies.cs
   - src/Whizbang.Data.Postgres/MigrationConstants.cs
   - src/Whizbang.Data.Postgres/SchemaCommandBoundary.cs
-  - src/Whizbang.Generators.Shared/Models/CanonicalTemporalBackfillSql.cs
   - src/Whizbang.Data.Postgres/Migrations/constants.txt
   - scripts/Lint-MigrationSql.ps1
+  - src/Whizbang.Data.Postgres/Migrations/153_PerspectiveForms.sql
+  - src/Whizbang.Data.Postgres/Migrations/154_PerspectiveFailureElementNames.sql
+  - src/Whizbang.Data.EFCore.Postgres/Perspectives/CanonicalTemporalRewrite.cs
+  - src/Whizbang.Data.Postgres/FleetVersions.cs
+  - src/Whizbang.Core/Perspectives/StoredFormUnreadable.cs
+  - src/Whizbang.Core/Perspectives/StoredFormFailureRegistry.cs
+  - src/Whizbang.Core/Health/StoredFormHealthSource.cs
+  - src/Whizbang.Core/Workers/PerspectiveWorker.cs
 testReferences:
   - tests/Whizbang.Data.Dapper.Postgres.Tests/MigrationConstantsTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/NormalizeClrTypeNamesMigrationTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/PostgresSchemaInitializerTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/CanonicalTemporalFunctionTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/FleetVersionsTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/CanonicalTemporalRewriteTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/CanonicalTemporalRewriteIntegrationTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/FreshTableFormTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/PerspectiveFailureCounterSqlTests.cs
+  - tests/Whizbang.Generators.Tests/CanonicalTemporalRewriteWiringTests.cs
+  - tests/Whizbang.Core.Tests/Perspectives/StoredFormUnreadableTests.cs
+  - tests/Whizbang.Core.Tests/Workers/PerspectiveWorkerDeepPathDrainTests.StoredForm.cs
+  - tests/Whizbang.Core.Tests/Health/StoredFormHealthSourceTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/PostgresSchemaInitializerBranchTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/MigrationFunctionBodiesTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/StaleFunctionDefinitionSweepTests.cs
@@ -241,6 +258,102 @@ A migration cannot `VACUUM FULL` (both are forbidden inside its transaction), so
 The recorded rewrites are performed by the startup pipeline's **`Rewrite` step**: post-ready (`Blocking = false` — deliberately unbounded work never gates readiness), fleet-exclusive under the `maintainer` duty (one instance rewrites; non-holders skip, because nobody blocks on a `VACUUM FULL`). Execution stays behind `MaintenanceWorkerOptions.AllowTableRewrite` — the framework cannot know how large a consumer's table is, and taking an ACCESS EXCLUSIVE lock unattended must be opted into. A request is cleared only after the bloat ratio is confirmed to have dropped; an ineffective rewrite stays queued for the next boot.
 
 The runtime maintenance cycle **no longer executes rewrites** — an ACCESS EXCLUSIVE lock mid-traffic was always the wrong window. It detects, reports the bloat gauge, and records.
+
+## The stored-form rewrite
+
+A perspective document stores every date, time and duration as one number in one unit,
+microseconds ([dates, times and durations](../../fundamentals/perspectives/jsonb-containment.md#dates-times-and-durations)).
+A database written by an earlier release holds older forms: renderings, and in the first canonical
+release a day count for a date and a tick count for a duration. Those rows are converted at startup,
+once, by a rewrite that is part of the migration path rather than of the schema files.
+
+### What it converts
+
+The rewrite is derived at runtime from the two things that read a document: the model Entity
+Framework built, for a mapped document, and the serializer's metadata, for a document stored as a
+single serialized value. Every placement either reader reaches is a path the rewrite converts, so a
+member inherited from a base class, a nested object, an element of a collection and the framework's
+own metadata are all reached because the readers reach them. Nothing is generated per property, so
+there is no discovery to fall behind the readers.
+
+{verified: CanonicalTemporalRewriteTests.AMappedDocumentYieldsEveryPlacementTheModelMapsAsync, CanonicalTemporalRewriteTests.AnOpaqueDocumentYieldsEveryPlacementTheSerializerReadsAsync, CanonicalTemporalRewriteWiringTests.TheRewriteIsDerivedFromTheModelAtRuntimeAsync, CanonicalTemporalRewriteWiringTests.NothingIsGeneratedPerPropertyAsync}
+
+One SQL function, `wh_canonicalize_temporal`, rewrites one path of one document: a rendering becomes
+the canonical number, a number in the mixed-unit form converts its unit, and anything else is left
+exactly as it was, because a value the reader cannot parse is a thing to look at rather than a thing
+to write over. It is idempotent over its own output.
+
+{verified: CanonicalTemporalFunctionTests.ARenderingAtTheTopLevelBecomesTheNumberAsync, CanonicalTemporalFunctionTests.ANestedPathReachesTheValueAsync, CanonicalTemporalFunctionTests.ACollectionPathConvertsEveryElementAsync, CanonicalTemporalFunctionTests.ANumberInTheMixedUnitFormConvertsItsUnitAsync, CanonicalTemporalFunctionTests.ANumberInTheMicrosecondFormIsNeverTouchedAsync, CanonicalTemporalFunctionTests.WhatIsNotThereIsLeftAloneAsync, CanonicalTemporalFunctionTests.TheFunctionIsIdempotentOverItsOwnOutputAsync}
+
+### The ledger says which unit a table is in
+
+A day count and a microsecond count are both integers, and nothing in a document says which unit a
+number is in. So a ledger says: `wh_perspective_forms` records, per table, the form it is in. A table
+absent from the ledger is in the mixed-unit form (1); the rewrite converts it and records the
+microsecond form (2) in the same transaction, so a failed pass leaves the ledger untouched and the
+next startup tries again. Once a pass at form 2 finds nothing left to convert, the table is
+**settled**, and every later startup skips it without a scan. A table this release creates is
+recorded at form 2 and settled at creation, because it holds nothing older.
+
+| Ledger says | The rewrite does |
+|---|---|
+| No row | Converts renderings and mixed-unit numbers, records form 2 |
+| Form 2, not settled | Converts any rendering left, settles when a pass touches nothing |
+| Settled | Nothing; the table is not scanned |
+
+The conversion is one way. An older release cannot read a microsecond form, and nothing converts
+back.
+
+{verified: CanonicalTemporalRewriteIntegrationTests.OnePassConvertsEveryStoredFormAsync, CanonicalTemporalRewriteIntegrationTests.ASecondPassSettlesAndAThirdSkipsAsync, CanonicalTemporalRewriteIntegrationTests.AFailedPassLeavesTheLedgerUntouchedAsync, CanonicalTemporalRewriteIntegrationTests.AMissingTableIsSkippedAsync, FreshTableFormTests.ATableTheInitializerCreatedIsSettledAtTheMicrosecondFormAsync, FreshTableFormTests.RunningTheInitializerAgainLeavesTheRowAloneAsync}
+
+### It runs on the migrator, after the election, and warns about a mixed fleet
+
+The rewrite needs the ledger and the function a bootstrap-marked migration creates, and it needs to
+run once, so it runs after the [migrator election](#version-auditing) on the instance that won it, or
+on an instance that could not be staged; never on one waiting for the migrator.
+
+A release that changes a stored unit is not safe under a mixed fleet: an older instance still writing
+would write forms this release has just converted away. The migrator cannot refuse to run under a
+rolling update without deadlocking the rollout, so before it rewrites it names, at Warning, every
+other release alive in the instance registry:
+
+```text
+Other releases are alive in the fleet for schema {Schema} while the stored-form rewrite runs: {Releases}
+```
+
+Deploy a unit-changing release without a mixed fleet: scale the older release to zero first, or
+accept that rows it writes after the rewrite are read as renderings, counted on
+`whizbang.perspective.temporal_form_fallbacks`, until the next startup converts them.
+
+{verified: CanonicalTemporalRewriteWiringTests.TheRewriteRunsAfterTheElectionOnTheMigratorAsync, CanonicalTemporalRewriteWiringTests.TheMigratorWarnsAboutOtherReleasesBeforeRewritingAsync, FleetVersionsTests.AnOlderReleaseStillAliveIsReportedAsync, FleetVersionsTests.TheSameReleaseIsNotReportedAsync, FleetVersionsTests.AStaleInstanceIsNotReportedAsync}
+
+### When a row cannot be read
+
+Every reader of a stored temporal refuses a value it cannot read with an exception that names the
+type, the forms accepted and the token found, and the serializer adds the path. The perspective
+worker classifies that failure by its type, wherever it sits in a chain of wrappers, and then:
+
+- logs it **once per perspective and stream**, at Error, with the path and the refusal, under event
+  id 65; the same stream failing again is logged at Debug until it reads again;
+- counts it on `whizbang.perspective.read_failures`, tagged by perspective and by reason
+  `stored_form_unreadable`;
+- reports every leased row of the stream through the failure channel, so the database records the
+  failure, schedules the retry with backoff, and dead-letters the row at the configured threshold.
+  The stream is parked in the database, not retried every cycle;
+- reports the stream on the managed health endpoint as the `perspective-stored-forms` component,
+  Degraded with the count and the first detail, until the stream reads again.
+
+The log line to look for:
+
+```text
+Perspective {PerspectiveName} cannot read its stored document for stream {StreamId} at {Path}: {Detail}
+```
+
+`{Detail}` reads, for example, `A stored DateTime must be a number (microseconds) or a rendering, but
+the document holds True`. A row like that is one the rewrite left alone on purpose; look at the value
+before deciding what to write over it.
+
+{verified: StoredFormUnreadableTests.AWrappedRefusalIsClassifiedAsync, PerspectiveWorkerDeepPathDrainTests.DrainMode_UnreadableStoredForm_IsAnnouncedCountedAndParkedAsync, PerspectiveWorkerDeepPathDrainTests.DrainMode_UnreadableStoredForm_AgainIsQuietAndRecoveryReleasesAsync, PerspectiveFailureCounterSqlTests.RecordedFailure_InTheShapeTheRuntimeWrites_IsRecordedAsync, StoredFormHealthSourceTests.AnUnreadableStreamIsDegradedWithDetailAsync}
 
 ## Data Migrations vs. Schema Migrations
 
