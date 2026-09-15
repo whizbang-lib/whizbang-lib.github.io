@@ -26,6 +26,9 @@ codeReferences:
   - src/Whizbang.Data.Postgres/SchemaMigrationDeferral.cs
   - src/Whizbang.Data.Postgres/AdvisoryLockProbe.cs
   - src/Whizbang.Data.Postgres/SchemaInitializationLockKey.cs
+  - src/Whizbang.Data.Postgres/SchemaBootstrapPhase.cs
+  - src/Whizbang.Data.Postgres/MigratorDutyStaging.cs
+  - src/Whizbang.Generators.Shared/Models/MigrationBootstrapRegions.cs
   - src/Whizbang.Generators.Shared/Models/CanonicalTemporalBackfillSql.cs
   - src/Whizbang.Data.Postgres/Migrations/constants.txt
   - scripts/Lint-MigrationSql.ps1
@@ -40,6 +43,9 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/SchemaMigrationDeferralTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/AdvisoryLockProbeTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/SchemaInitializationConcurrencyTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/SchemaBootstrapPhaseTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/MigratorDutyStagingTests.cs
+  - tests/Whizbang.Generators.Tests/MigrationBootstrapRegionsTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -203,6 +209,95 @@ would read as dead. It also treats two keys that share a low half as the same lo
 instance wait on a lock nobody holds. `objsubid = 1` excludes the two-integer key shape, which shares
 the same catalog representation, and the `database` predicate is needed because advisory locks are
 database-local while `pg_locks` is not.
+
+### Electing the migrator, and the cycle that gets in the way
+
+The advisory lock decides who migrates, and that is enough on its own. Above it sits a named duty,
+so "which instance is the migrator right now, and for how long" is a query against
+`wh_instance_capabilities` rather than a guess, and so the eviction fence reaches the most
+consequential operation a service performs.
+
+Reaching for that duty directly does not work, and the reason is worth knowing before changing
+anything here. The elector records a win by calling `record_capability`, and that function
+
+- **does not exist yet** on a database that has never been migrated, because a migration creates
+  it; and
+- answers **false** for an instance that is not in `wh_service_instances`, which at this point in
+  startup is every instance, because the heartbeat worker starts only once the schema is ready.
+
+So the thing that decides who migrates cannot itself require the migration to have happened. A
+marked subset of the migrations is applied first by whichever instance gets there, the way an
+operating system brings up only enough of itself to load the rest.
+
+```sql{title="Marking the part of a migration an election needs" description="The region between the markers is applied before anything is elected; the rest of the file waits for the ordinary pass." tests=["MigrationBootstrapRegionsTests.TheEvictionMigrationContributesItsTableAndNotItsFunctionsAsync"]}
+-- @whizbang:bootstrap-begin
+CREATE TABLE IF NOT EXISTS "public".wh_instance_evictions (
+  instance_id UUID PRIMARY KEY,
+  evicted_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  reason TEXT
+);
+-- @whizbang:bootstrap-end
+
+-- Everything below is left to the ordinary migration pass.
+CREATE OR REPLACE FUNCTION "public".cleanup_stale_instances(...) ...
+```
+
+A **region** rather than a whole file, because the boundary rarely falls on one. The migration above
+is in the subset for its table, which `record_capability` reads on every acquisition; the functions
+below it are not, because nothing calls them before the schema is migrated and redefining them needs
+objects the bootstrap deliberately does not create.
+
+### Three properties that keep the bootstrap from becoming the problem
+
+Putting anything in front of every startup is a risk, so it is bounded deliberately.
+
+**It records nothing.** The bootstrap makes objects exist and writes no hash rows. Claiming to have
+migrated what it only created would let the ordinary pass skip work that was only partly done.
+{verified: SchemaBootstrapPhaseTests.TheBootstrapRecordsNothingInTheLedgerAsync}
+
+**It does not trust itself.** Having applied the scripts, it asks the database whether an election is
+now possible and reports that answer, rather than reporting that the scripts appeared to work. A
+closure that is missing an object therefore costs the election and not the startup.
+{verified: SchemaBootstrapPhaseTests.AFailedScriptReportsNotReadyRatherThanThrowingAsync}
+
+**No part of the decision is fatal.** A refusal, a missing function, a failed registration, no
+elector configured, an elector that cannot be reached: every one of them ends with this instance
+migrating under the advisory lock, exactly as it would have before a duty existed. Never migrating
+leaves the schema behind for the whole fleet and needs an operator to clear. Migrating without a
+duty only duplicates work.
+{verified: MigratorDutyStagingTests.ARefusedInstanceMigratesUnderTheLockRatherThanThrowingAsync, MigratorDutyStagingTests.AnElectorThatThrowsLeavesTheInstanceUnstagedAsync}
+
+That last one deserves emphasis, because the tempting reading is wrong. A refused capability looks
+like "this instance is evicted and must not do exclusive work". On an established database it far
+more often means "this instance has not joined the registry yet", which is why registration happens
+before the election and why a refusal is a warning rather than a stop.
+
+```mermaid{caption="Staged startup: bring up enough schema to elect, elect, then migrate. Every failure path falls back to the advisory lock." tests=["SchemaBootstrapPhaseTests.AnEmptyDatabaseCanElectAfterTheBootstrapAsync","MigratorDutyStagingTests.AContendedDutyMakesThisInstanceAWaiterAsync"]}
+flowchart TD
+  A[Start] --> B[Phase 0: apply the marked subset]
+  B --> C{Can an election happen now?}
+  C -- no --> L[Migrate under the advisory lock]
+  C -- yes --> D[Phase 1: join the registry]
+  D -- failed --> L
+  D -- joined --> E{Contend for the migrator duty}
+  E -- granted --> M[Migrate, holding the duty]
+  E -- contended --> W[Wait for the holder]
+  E -- refused or unreachable --> L
+  W -- holder finished --> Z[Nothing left to apply]
+  W -- holder gone --> L
+```
+
+### Where the duty is visible
+
+While an instance is migrating, its holding is a row in `wh_instance_capabilities`, and the duty is
+released when the migration ends however it ends. A duty still recorded against an instance that has
+finished would read as a holder that never let go, and every later deployment would wait on it.
+
+{verified: SchemaInitializationConcurrencyTests.Staged_TheMigratorRegistersAndThenReleasesTheDutyAsync, SchemaInitializationConcurrencyTests.Staged_ThreeInstancesConvergeAndNoneKeepsTheDutyAsync}
+
+An instance waiting for the holder watches the **duty** lock, not the schema lock. The two are
+different keys, and watching the wrong one would report the migrator as gone the moment it finished
+its own bootstrap and before it had started migrating.
 
 ### Operational note
 
