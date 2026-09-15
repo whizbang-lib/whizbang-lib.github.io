@@ -284,7 +284,10 @@ compiles filters over it. The two agree by construction rather than by two disco
 step: the serializer's converters are registered on the persistence profile ahead of everything else
 on it, so they apply wherever the type occurs in a document, and an Entity Framework convention walks
 the model Entity Framework built and converts every temporal it maps inside a document. Neither side
-is told which properties by a generator, so there is no property one side can miss.
+is told which properties by a generator, so there is no property one side can miss. The generated
+context applies the same walk at the end of its own `OnModelCreating` as well, so a context built by
+hand from a plain connection string, as a lens context often is, converts its documents whatever
+options it was built with.
 
 A model whose document is stored as a single serialized value, because the mapped path cannot
 materialize it, is read and written under the same profile through an explicit binding of its column.
