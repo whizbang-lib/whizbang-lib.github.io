@@ -23,6 +23,9 @@ codeReferences:
   - src/Whizbang.Data.Postgres/MigrationFunctionBodies.cs
   - src/Whizbang.Data.Postgres/MigrationConstants.cs
   - src/Whizbang.Data.Postgres/SchemaCommandBoundary.cs
+  - src/Whizbang.Data.Postgres/SchemaMigrationDeferral.cs
+  - src/Whizbang.Data.Postgres/AdvisoryLockProbe.cs
+  - src/Whizbang.Data.Postgres/SchemaInitializationLockKey.cs
   - src/Whizbang.Generators.Shared/Models/CanonicalTemporalBackfillSql.cs
   - src/Whizbang.Data.Postgres/Migrations/constants.txt
   - scripts/Lint-MigrationSql.ps1
@@ -34,6 +37,9 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/MigrationFunctionBodiesTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/StaleFunctionDefinitionSweepTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/SchemaCommandBoundaryTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/SchemaMigrationDeferralTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/AdvisoryLockProbeTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/SchemaInitializationConcurrencyTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -126,6 +132,93 @@ caller holds the initialization lock.
 
 Both halves are proven against a real database, including that removing the marker brings the failure
 back, so the boundary cannot quietly become a comment that means nothing.
+
+## Which instance migrates {#which-instance-migrates}
+
+Every replica of a service runs the initializer at startup, and only one of them should do the work.
+The advisory lock that guards the schema is what decides: exactly one instance can win
+`pg_try_advisory_xact_lock`, and winning it **is** being elected the migrator. Nothing else needs to
+be registered or agreed.
+
+What the instances that lose it do next is the part worth understanding, because a failed try-lock
+reports only "not yours". It does not say whether the winner is alive.
+
+| What is actually happening | What the loser should do | What the wrong choice costs |
+|---|---|---|
+| The winner is migrating | wait for its result | two instances issuing the same DDL |
+| The winner's process died holding the lock | take the work over | the schema never advances, and no instance ever starts |
+
+So a loser asks two questions that take no lock, in this order, and keeps asking until one of them
+settles it.
+
+```mermaid{caption="What an instance does after losing the schema lock: the schema's state decides, and the lock's absence only matters while the schema is still behind." tests=["SchemaMigrationDeferralTests.ACommittedMigratorIsNotMistakenForADeadOneAsync","SchemaMigrationDeferralTests.AMigratorThatDiesMidWaitIsNoticedAsync"]}
+flowchart TD
+  A[Lost pg_try_advisory_xact_lock] --> B[Roll back, hold no transaction]
+  B --> C{Schema current?}
+  C -- yes --> D[Done. Apply nothing]
+  C -- no --> E{Anyone still holding the lock?}
+  E -- yes --> F[Wait, then ask again]
+  F --> C
+  E -- no --> G[Migrator is gone. Take over]
+```
+
+**The order of the two questions is the design, not a detail.** A commit releases the lock and marks
+the schema current in the same instant. An instance that asked about the lock first would read
+"released", conclude the migrator had died, and go and redo a migration with nothing left in it. That
+is not incorrect, which is exactly why it would never be noticed: it would simply be paid by every
+replica on every startup.
+
+Waiting has no deadline, deliberately. A large migration legitimately runs for minutes, and any
+timeout short enough to be useful would be short enough to be wrong. A migrator that stops existing
+needs no timeout either, because an advisory lock is released by the server when its session ends
+whether the process exited cleanly or was killed outright.
+
+{verified: SchemaInitializationConcurrencyTests.Deferral_WhenTheMigratorCommits_AppliesNothingItselfAsync, SchemaInitializationConcurrencyTests.Deferral_WhenTheMigratorIsKilled_TakesTheWorkOverAsync}
+
+While it waits, a deferring instance holds no transaction at all, which matters through a
+transaction-pooling front end such as PgBouncer: an idle client connection outside a transaction
+pins no server connection, so a fleet waiting out a migration costs the pool nothing.
+
+### Reading the lock back
+
+An advisory lock taken with a single `bigint` key is reported in `pg_locks` with that key split in
+two, the high 32 bits in `classid` and the low 32 in `objid`. Every key Whizbang computes is a full
+64-bit hash, so both halves have to be put back together.
+
+```sql{title="Whether another session still holds a schema lock" description="Reassembles the 64-bit advisory key from the two halves pg_locks reports, and counts only granted single-bigint locks in the current database held by some other session." tests=["AdvisoryLockProbeTests.TheRealSchemaKeyIsFoundEvenThoughItIsNegativeAsync","AdvisoryLockProbeTests.KeysSharingALowHalfDoNotAliasAsync"]}
+SELECT EXISTS (
+  SELECT 1
+  FROM pg_locks l
+  WHERE l.locktype = 'advisory'
+    AND l.granted
+    AND l.objsubid = 1
+    AND l.database = (SELECT d.oid FROM pg_database d WHERE d.datname = current_database())
+    AND ((l.classid::bigint << 32) | (l.objid::bigint & 4294967295)) = $1
+    AND l.pid <> pg_backend_pid());
+```
+
+Comparing `objid` to the key on its own looks equivalent and is not. It finds nothing for any
+negative key, and the key for the default `public` schema is negative, so every working migrator
+would read as dead. It also treats two keys that share a low half as the same lock, which makes an
+instance wait on a lock nobody holds. `objsubid = 1` excludes the two-integer key shape, which shares
+the same catalog representation, and the `database` predicate is needed because advisory locks are
+database-local while `pg_locks` is not.
+
+### Operational note
+
+An instance that deferred says so once, at information level, and says so again when the wait ended:
+
+```text{title="A replica that waited for another instance to finish" description="Logged once per wait rather than once per poll, so a fleet waiting out a long migration does not fill its logs with the fact that it is still waiting."}
+Another instance is migrating schema public; waiting for its result rather than contending for the lock
+Schema public was brought up to date by another instance after 3 check(s); nothing left to apply
+```
+
+A takeover is a warning, because it means an instance disappeared mid-migration and is worth
+correlating with whatever removed it:
+
+```text{title="A migrator that stopped existing" description="Warning level: the schema was left behind by an instance that is gone, and a survivor is finishing its work."}
+Nothing holds the schema public lock after 12 check(s) and the schema is still behind, so the instance that was migrating it is gone; taking the work over
+```
 
 ## Strategy Detection
 
