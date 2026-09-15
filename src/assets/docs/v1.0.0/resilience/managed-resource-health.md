@@ -15,6 +15,7 @@ codeReferences:
   - src/Whizbang.Core/Health/ConnectivityHealthSource.cs
   - src/Whizbang.Core/Health/SchemaHealthSource.cs
   - src/Whizbang.Core/Health/WorkerHealthSource.cs
+  - src/Whizbang.Core/Health/StoredFormHealthSource.cs
   - src/Whizbang.Core/Health/WhizbangHealthOptions.cs
   - src/Whizbang.Core/Health/WhizbangHealthServiceCollectionExtensions.cs
   - src/Whizbang.Hosting.AspNet/WhizbangManagedHealthCheckExtensions.cs
@@ -24,6 +25,7 @@ testReferences:
   - tests/Whizbang.Core.Tests/Health/WhizbangHealthAggregatorTests.cs
   - tests/Whizbang.Core.Tests/Health/SchemaHealthSourceTests.cs
   - tests/Whizbang.Core.Tests/Health/WorkerHealthSourceTests.cs
+  - tests/Whizbang.Core.Tests/Health/StoredFormHealthSourceTests.cs
   - tests/Whizbang.Core.Tests/Health/ConnectivityHealthSourceTests.cs
   - tests/Whizbang.Core.Tests/Health/TransportHealthWiringTests.cs
   - tests/Whizbang.Core.Tests/Health/OffloadHealthWiringTests.cs
@@ -88,6 +90,14 @@ failed probe as `Faulted` **even during a migration** (the migration needs it �
 dependency is never masked); a `RequiredWhenRunning` resource (transport, offload) is only probed while
 `Running`. Register your own with `services.AddWhizbangHealthSource<T>()` — you never hand-roll a naive
 `SELECT count(*)` that a migration would make fail.
+
+The worker pipeline also registers `StoredFormHealthSource` as the `perspective-stored-forms` component:
+`Degraded`, never `Faulted`, while any perspective stream holds a stored document no reader of this
+release takes, with the count and the first stream's path and refusal in the detail. The rows are parked
+with backoff in the database rather than lost, so the service serves; the component is what makes the
+condition visible after the log line scrolled away. See
+[when a row cannot be read](../operations/infrastructure/migrations#when-a-row-cannot-be-read).
+{verified: StoredFormHealthSourceTests.NothingUnreadableIsOperationalAsync, StoredFormHealthSourceTests.AnUnreadableStreamIsDegradedWithDetailAsync, StoredFormHealthSourceTests.TheWorkerPipelineRegistersTheSourceAsync}
 
 Most surfaces now have **real** probes: **event-store/DB** (`SELECT 1` in the Postgres driver),
 **transport** (broker connectivity via `ITransport.CheckConnectivityAsync` — RabbitMQ `IConnection.IsOpen`,

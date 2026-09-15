@@ -18,14 +18,27 @@ codeReferences:
   - src/Whizbang.Data.EFCore.Postgres/QueryTranslation/PhysicalFieldQueryInterceptor.cs
   - src/Whizbang.Core/Perspectives/CanonicalTemporalFormat.cs
   - src/Whizbang.Core/Perspectives/CanonicalTemporalJsonConverters.cs
-  - src/Whizbang.Generators.Shared/Models/CanonicalTemporalDiscovery.cs
-  - src/Whizbang.Generators.Shared/Models/CanonicalTemporalBackfillSql.cs
+  - src/Whizbang.Core/Perspectives/CanonicalTemporalReaders.cs
+  - src/Whizbang.Core/Perspectives/CanonicalTemporalRenderings.cs
+  - src/Whizbang.Core/Perspectives/StoredFormFallbacks.cs
+  - src/Whizbang.Core/Perspectives/StoredTemporalKind.cs
+  - src/Whizbang.Data.EFCore.Postgres/Perspectives/CanonicalTemporalConvention.cs
+  - src/Whizbang.Data.EFCore.Postgres/Perspectives/CanonicalTemporalJsonReaderWriters.cs
+  - src/Whizbang.Data.EFCore.Postgres/Perspectives/PerspectiveDocumentSerialization.cs
+  - src/Whizbang.Generators.Shared/Models/JsonIndexInfo.cs
 testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/QueryTranslation/PerspectiveIndexSetupTests.cs
-  - tests/Whizbang.Data.EFCore.Postgres.Tests/QueryTranslation/CanonicalTemporalBackfillTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/QueryTranslation/CanonicalTemporalStorageTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/CanonicalTemporalConventionTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/OpaqueDocumentRoundTripTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/CanonicalTemporalRewriteTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/CanonicalTemporalRewriteIntegrationTests.cs
   - tests/Whizbang.Core.Tests/Perspectives/CanonicalTemporalJsonConverterTests.cs
   - tests/Whizbang.Core.Tests/Perspectives/CanonicalTemporalFormatTests.cs
+  - tests/Whizbang.Core.Tests/Perspectives/CanonicalTemporalReadersTests.cs
+  - tests/Whizbang.Core.Tests/Perspectives/CanonicalTemporalReaderToleranceTests.cs
+  - tests/Whizbang.Core.Tests/Perspectives/PersistenceProfileConverterReachProbeTests.cs
+  - tests/Whizbang.Generators.Tests/JsonIndexGenerationTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/QueryTranslation/JsonbContainmentSqlMatrixTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/QueryTranslation/JsonbContainmentAuthoringTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/QueryTranslation/JsonbContainmentJoinTests.cs
@@ -173,17 +186,28 @@ value would match nothing at all and look fast doing it.
 
 ## Dates, times and durations
 
-A date is stored as a **number**, not as a rendering. Four forms, one per type:
+A date is stored as a **number**, not as a rendering, and every kind in the family stores in the
+**same unit**, microseconds:
 
 | Type | Stored as |
 |------|-----------|
 | `DateTime` | microseconds since the Unix epoch |
 | `DateTimeOffset` | the same, reduced to the instant it names |
-| `DateOnly` | days since the Unix epoch |
+| `DateOnly` | microseconds since the Unix epoch at its midnight, UTC |
 | `TimeOnly` | microseconds since midnight |
-| `TimeSpan` | its tick count |
+| `TimeSpan` | microseconds |
 
-{verified: CanonicalTemporalFormatTests.ADateTimeIsMicrosecondsSinceTheEpochAsync, CanonicalTemporalFormatTests.ADateOnlyIsDaysSinceTheEpochAsync, CanonicalTemporalFormatTests.ATimeOnlyIsMicrosecondsSinceMidnightAsync, CanonicalTemporalFormatTests.ATimeSpanIsItsTickCountAsync}
+{verified: CanonicalTemporalFormatTests.ADateTimeIsMicrosecondsSinceTheEpochAsync, CanonicalTemporalFormatTests.ADateOnlyIsMicrosecondsAtMidnightUtcAsync, CanonicalTemporalFormatTests.ATimeOnlyIsMicrosecondsSinceMidnightAsync, CanonicalTemporalFormatTests.ATimeSpanIsMicrosecondsAsync, CanonicalTemporalFormatTests.EveryKindSharesOneUnitAsync}
+
+One unit is the rule, not a coincidence. A day count and a microsecond count are both integers, and
+nothing in a document says which unit a number is in, so two units in one family would be a
+number a reader can only guess at. With one unit a `DateOnly` orders against a `DateTime` directly,
+a `TimeOnly` is a duration from midnight, and a reader never reinterprets a number. The first
+canonical release stored a date as a day count and a duration as a tick count; the
+[stored-form rewrite](../../operations/infrastructure/migrations.md#the-stored-form-rewrite) is
+what converted those rows, and the ledger it keeps is how it knows which unit a table is in.
+
+{verified: CanonicalTemporalFormatTests.ADateOnlyIsTheInstantAtItsMidnightAsync, CanonicalTemporalFormatTests.ATimeOnlyIsADurationFromMidnightAsync, CanonicalTemporalFormatTests.ANumberInsideADayReadsAsThatDayAsync, CanonicalTemporalFunctionTests.ANumberInTheMixedUnitFormConvertsItsUnitAsync}
 
 You write an ordinary `DateTime` property and see none of this. What it buys is that the whole family
 behaves like every other type:
@@ -237,36 +261,58 @@ That case is not left silent, which is the condition for the trade being accepta
 ### Existing rows are rewritten
 
 The stored form is a compatibility contract the moment rows exist in it, so a database written by an
-earlier release is converted before anything queries it. The rewrite is emitted per perspective with
-its schema, **ahead of** the index built over the result and ahead of the application serving traffic.
-
-Each statement selects on the stored type still being a string, so a database created by this release
-has nothing to convert and a re-run is a no-op. The guard is the data itself rather than a marker row
-a restore could contradict.
+earlier release is converted before anything queries it. The rewrite is derived at startup from the
+model Entity Framework built and from the serializer's metadata, the two things that read a document,
+so what a reader reads is what the rewrite converts: a member inherited from a base class, a nested
+object, an element of a collection, and the framework's own metadata. It runs on the one instance
+elected to migrate, one transaction per table, and records what it did in a ledger so a table it
+has settled is never scanned again. The mechanics, the ledger, and the warning it logs under a mixed
+fleet are on the [migrations page](../../operations/infrastructure/migrations.md#the-stored-form-rewrite).
 
 The ordering is load-bearing rather than tidy. PostgreSQL evaluates an index expression for every row,
-so a column still holding a rendering on any row refuses the numeric index outright: a rewrite that
-did not finish stops the schema pass at the next statement instead of leaving an index over a column
-about to change underneath it.
+so a column still holding a rendering on any row refuses the numeric index outright. A date's index
+casts through `bigint` like every other kind's, and because the cast changed, the index is renamed for
+it and the one built over the old cast is dropped.
 
-{verified: CanonicalTemporalBackfillTests.AnInstantIsRewrittenAsync, CanonicalTemporalBackfillTests.RunningItTwiceChangesNothingAsync, PerspectiveIndexSetupTests.TheRewriteHasToComeBeforeTheIndexAsync}
+{verified: CanonicalTemporalRewriteTests.AMappedDocumentYieldsEveryPlacementTheModelMapsAsync, CanonicalTemporalRewriteTests.AnOpaqueDocumentYieldsEveryPlacementTheSerializerReadsAsync, CanonicalTemporalRewriteIntegrationTests.OnePassConvertsEveryStoredFormAsync, CanonicalTemporalRewriteIntegrationTests.AnIndexBuildsOverTheRewrittenExtractionAsync, JsonIndexGenerationTests.EveryTemporalKindIndexesThroughTheSameCastAsync, JsonIndexGenerationTests.ADateIndexIsRenamedForItsNewCastAndTheOldOneDroppedAsync}
 
 ### Both writers agree
 
 A perspective document has two writers and only one of them is Entity Framework. A row is written by
 the upsert, which serializes the model with System.Text.Json; the mapping is what reads it back and
-compiles filters over it. Both convert, from the same discovery, so a row written by one is readable
-by the other.
+compiles filters over it. The two agree by construction rather than by two discoveries staying in
+step: the serializer's converters are registered on the persistence profile ahead of everything else
+on it, so they apply wherever the type occurs in a document, and an Entity Framework convention walks
+the model Entity Framework built and converts every temporal it maps inside a document. Neither side
+is told which properties by a generator, so there is no property one side can miss.
 
-The conversion is applied to **a named model's own temporal properties** rather than to every date the
-serializer touches. That matters: applied per type it reached framework documents that are mapped and
-read with no matching conversion, which turned every row it wrote into one the reader could not parse.
+A model whose document is stored as a single serialized value, because the mapped path cannot
+materialize it, is read and written under the same profile through an explicit binding of its column.
+The data source's own JSON options stay on the default profile, because the outbox, inbox and event
+store metadata columns read through them and their form is the wire's.
 
 The transport and event-store profile is deliberately unchanged. A date in a message payload is read
 by other systems and by older releases of this one, so the canonical form is scoped to the documents
 this library owns.
 
-{verified: CanonicalTemporalJsonConverterTests.ATemporalPropertyIsWrittenAsANumberAsync, CanonicalTemporalJsonConverterTests.AFrameworkDocumentIsNotConvertedAsync, CanonicalTemporalJsonConverterTests.TheTransportProfileStillWritesARenderingAsync, CanonicalTemporalStorageTests.TheUpsertWriterAgreesWithTheMappingAsync}
+{verified: CanonicalTemporalJsonConverterTests.ATemporalPropertyIsWrittenAsANumberAsync, CanonicalTemporalJsonConverterTests.AFrameworkDocumentIsConvertedLikeAnyOtherAsync, CanonicalTemporalJsonConverterTests.TheTransportProfileStillWritesARenderingAsync, CanonicalTemporalStorageTests.TheUpsertWriterAgreesWithTheMappingAsync, CanonicalTemporalConventionTests.EveryTemporalInADocumentIsConvertedAsync, PersistenceProfileConverterReachProbeTests.AnOptionsConverterReachesEveryPlacementInTheModelAsync, OpaqueDocumentRoundTripTests.ARowTheUpsertWroteReadsBackThroughEntityFrameworkAsync}
+
+### Both readers read the same values, and refuse the same ones
+
+A stored document is read two ways: System.Text.Json reads an opaque document through the profile's
+converters, and Entity Framework reads a mapped document through its own JSON reader, property by
+property. Both call one reader per kind. A number is always the canonical unit; a reader never
+guesses whether it is a day count or a microsecond count, because the ledger settles that before any
+reader sees the row. A rendering, on a row the rewrite did not reach, is read as the value it renders
+and counted on `whizbang.perspective.temporal_form_fallbacks`, announced once per kind at Warning.
+The rendering branch goes once that counter reads zero across a release cycle.
+
+Anything else is refused, on both paths, with the same words: the type, the forms accepted and the
+token found. That is what lets the perspective worker classify the failure by its type rather than by
+a stack trace, log it once per stream, count it, and park the stream's rows; see
+[when a row cannot be read](../../operations/infrastructure/migrations.md#when-a-row-cannot-be-read).
+
+{verified: CanonicalTemporalReadersTests.TheConvertersReadThroughTheSameReadersAsync, CanonicalTemporalConventionTests.EveryTemporalInADocumentReadsThroughTheCanonicalReaderAsync, CanonicalTemporalReaderToleranceTests.ARenderingIsReadAsTheValueItRendersAsync, CanonicalTemporalReaderToleranceTests.ReadingARenderingIsCountedByKindAsync, CanonicalTemporalStorageTests.ARenderingInAMappedDocumentReadsBackAsync, CanonicalTemporalStorageTests.AnUnexpectedTokenInAMappedDocumentIsRefusedInTheSameWordsAsync, OpaqueDocumentRoundTripTests.ARowHoldingRenderingsStillReadsAsync}
 
 ## The projected dialect
 
