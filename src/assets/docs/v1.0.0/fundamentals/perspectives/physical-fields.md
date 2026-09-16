@@ -21,10 +21,13 @@ codeReferences:
   - src/Whizbang.Data.EFCore.Postgres/QueryTranslation/PhysicalFieldExpressionVisitor.cs
   - src/Whizbang.Data.EFCore.Postgres/QueryTranslation/PhysicalFieldQueryInterceptor.cs
   - >-
+  - src/Whizbang.Data.Postgres/OptionalExtensionBlocks.cs
     src/Whizbang.Data.EFCore.Postgres/QueryTranslation/WhizbangDbContextOptionsBuilderExtensions.cs
 testReferences:
   - tests/Whizbang.Generators.Tests/Analyzers/JsonIndexStorageAnalyzerTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/QueryTranslation/PerspectiveIndexSetupTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/OptionalExtensionBlocksTests.cs
+  - tests/Whizbang.Generators.Tests/JsonIndexSqlScriptTests.cs
   - tests/Whizbang.Core.Tests/Perspectives/PhysicalFieldAttributeTests.cs
   - tests/Whizbang.Core.Tests/Perspectives/IndexedAttributeTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/QueryTranslation/JsonIndexUsageTests.cs
@@ -112,8 +115,12 @@ public record OrderModel {
 ```
 
 The kinds combine because a field can be queried both ways, and the attribute may also be written more
-than once where that reads better than a combination. `Substring` requires `pg_trgm`, which the schema
-pass creates if it is missing.
+than once where that reads better than a combination. `Substring` requires `pg_trgm`. The schema pass
+creates the extension once per table, inside a block it can skip as a whole: where the server refuses
+the extension (a managed server that does not allow-list it, a role without the privilege, a build
+without it), the pass logs one warning naming the extension and the trigram indexes it skipped, and
+completes. Substring queries then scan, as they do wherever the index is absent, until an operator
+provides the extension; a declaration is never the reason a service fails to start.
 
 {verified: PerspectiveIndexSetupTests.ATrigramDeclarationBuildsAGinIndexAsync, PerspectiveIndexSetupTests.BothKindsBuildBothIndexesAsync}
 
