@@ -31,6 +31,16 @@ On each wake the leader calls `stamp_pending_commit_sequences`, which assigns `c
 values (in `xmin` order, `FOR UPDATE SKIP LOCKED`) to every unstamped row past the ordering
 fence.
 
+### Nothing unstamped, nothing runs
+
+The stamp's eligibility query sorts every unstamped row by transaction id before taking a batch. It
+used to run on every wake whether or not anything was unstamped, and on a backstop tick during a
+bulk load that was measured at roughly half a core per busy database. The leader now asks the
+partial index whether any row is unstamped first, a probe that costs nothing, and runs the stamp only
+when the answer is yes. A wake that finds nothing raises `OnStampSkipped` rather than a stamp of
+zero, so a healthy idle stamper is visible as such.
+{verified: PgCommitOrderStamperWorkerIntegrationTests.Worker_NothingUnstamped_SkipsTheStampOnPollingTicksAsync}
+
 ## The ordering fence is per-database
 
 A row is stampable when its inserting transaction is older than every in-flight transaction

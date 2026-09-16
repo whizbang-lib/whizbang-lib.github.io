@@ -424,6 +424,21 @@ Instruments for the perspective worker pipeline - batch processing, claim, event
 | `whizbang.perspective.streams_updated` | Counter\<long\> | Unique streams updated |
 | `whizbang.perspective.errors` | Counter\<long\> | Processing errors |
 | `whizbang.perspective.empty_batches` | Counter\<long\> | Polling cycles with no work |
+| `whizbang.perspective.read_failures` | Counter\<long\> | Rows a perspective could not read. Tags: `perspective_name`, `reason` (`stored_form_unreadable` for a stored form no reader takes) |
+
+### Stored-form fallbacks
+
+Counted on the same meter by the readers of a stored document, not by the worker. Each one says a
+row the stored-form rewrite did not reach was read anyway, in an older form; the readers announce the
+first of each kind once, at Warning. The rendering branch is removed once these read zero across a
+release cycle. See [dates, times and durations](../../fundamentals/perspectives/jsonb-containment.md#dates-times-and-durations).
+
+| Metric Name | Type | Description |
+|-------------|------|-------------|
+| `whizbang.perspective.temporal_form_fallbacks` | Counter\<long\> | A date, time or duration read from its rendering rather than the canonical number. Tag: `kind` |
+| `whizbang.perspective.identifier_form_fallbacks` | Counter\<long\> | A tracked identifier read from its scalar form rather than the object form. Tag: `type` |
+
+{verified: CanonicalTemporalReaderToleranceTests.ReadingARenderingIsCountedByKindAsync, CanonicalTemporalReaderToleranceTests.TheFirstRenderingOfEachKindIsAnnouncedOnceAsync, CanonicalTemporalReaderToleranceTests.ReadingAScalarIdentifierIsCountedAndAnnouncedAsync, PerspectiveReadFailureMetricsTests.ReadFailures_RecordsWithPerspectiveAndReasonAsync}
 
 ### Backlog & Rewind
 

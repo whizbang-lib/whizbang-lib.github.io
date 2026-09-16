@@ -469,7 +469,46 @@ services.AddWhizbang(options => {
 
 Typical root cause when this fires: a tag attribute omitted `Properties`, so the generator extracted every public property on the event — including fields the hook does not need.
 
-> Verified: `src/Whizbang.Core/Tags/TagOptions.cs` (defaults `PayloadSizeWarningThresholdBytes = 8192`, `PayloadSizeErrorThresholdBytes = null`) and `src/Whizbang.Core/Tags/MessageTagProcessor.cs` (`_enforcePayloadSize` logs at the warning threshold and throws `InvalidOperationException` before dispatching hooks when over the error threshold).
+#### Per-tag thresholds, and binding them from configuration
+
+Some payloads are wide by design: an embedding, a rendered document. Every one of them crossed the
+global line, one warning per hook per message, and nothing let an operator raise it. A tag can carry
+its own thresholds, in code or in configuration, and the processor resolves the tag's value first and
+the global one only for tags that declare none. An explicit `null` per tag disables that threshold
+for the tag alone.
+
+```csharp{title="Raising the line for one tag in code" description="A tag whose payloads are legitimately wide declares its own thresholds; the global ones keep catching the attribute that forgot to narrow its properties" category="Configuration" difficulty="BEGINNER" tags=["Tags", "Configuration", "Payload"] tests=["MessageTagProcessorTests.ProcessTagsAsync_PerTagWarningThreshold_WinsOverTheGlobalOneAsync", "MessageTagProcessorTests.ProcessTagsAsync_PerTagNullWarning_DisablesTheWarningForThatTagAsync", "MessageTagProcessorTests.ProcessTagsAsync_PerTagErrorThreshold_ThrowsWhenTheGlobalOneIsOffAsync"]}
+services.AddWhizbang(options => {
+  options.Tags.PayloadSizeWarningThresholdBytes = 8_192;
+  options.Tags.UsePayloadSizeThresholds("embeddings", warningBytes: 65_536, errorBytes: 262_144);
+});
+```
+
+The same values bind from configuration under `Whizbang:Tags`, read explicitly so they work without
+reflection. An empty value disables the threshold; a value that is not a whole number fails startup
+naming the key.
+
+```json{title="Binding payload-size thresholds from configuration" description="Global thresholds and per-tag overrides under the Whizbang:Tags section; an empty value disables a threshold" category="Configuration" difficulty="BEGINNER" tags=["Tags", "Configuration", "Payload"] tests=["TagPayloadSizeConfigurationBinderTests.Apply_ReadsTheGlobalThresholdsAsync", "TagPayloadSizeConfigurationBinderTests.Apply_ReadsPerTagOverridesAsync", "TagPayloadSizeConfigurationBinderTests.Apply_AnEmptyValueDisablesTheThresholdAsync"]}
+{
+  "Whizbang": {
+    "Tags": {
+      "PayloadSizeWarningThresholdBytes": "8192",
+      "PayloadSizeErrorThresholdBytes": "",
+      "PayloadSizeWarningThresholdBytesByTag": { "embeddings": "65536" },
+      "PayloadSizeErrorThresholdBytesByTag": { "embeddings": "262144" }
+    }
+  }
+}
+```
+
+| Key under `Whizbang:Tags` | Meaning |
+|---|---|
+| `PayloadSizeWarningThresholdBytes` | The global warning threshold; empty disables it. |
+| `PayloadSizeErrorThresholdBytes` | The global error threshold; empty disables it. |
+| `PayloadSizeWarningThresholdBytesByTag:{tag}` | The warning threshold for one tag; empty disables it for that tag. |
+| `PayloadSizeErrorThresholdBytesByTag:{tag}` | The error threshold for one tag; empty disables it for that tag. |
+
+> Verified: `src/Whizbang.Core/Tags/TagOptions.cs` (defaults `PayloadSizeWarningThresholdBytes = 8192`, `PayloadSizeErrorThresholdBytes = null`; `UsePayloadSizeThresholds`, `ResolvePayloadSizeWarningThreshold`, `ResolvePayloadSizeErrorThreshold`), `src/Whizbang.Core/Tags/TagPayloadSizeConfigurationBinder.cs` (the configuration keys above) and `src/Whizbang.Core/Tags/MessageTagProcessor.cs` (`_enforcePayloadSize` resolves the tag's thresholds first, logs at the warning threshold and throws `InvalidOperationException` before dispatching hooks when over the error threshold).
 
 ## Built-in Tag Attributes {#built-in-tags}
 
