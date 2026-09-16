@@ -16,10 +16,16 @@ codeReferences:
   - src/Whizbang.Core/Messaging/ClaimWorkRequest.cs
   - src/Whizbang.Core/Messaging/IWorkCoordinator.cs
   - src/Whizbang.Data.Postgres/Migrations/145_BoundedAcquisitionRewrite.sql
+  - src/Whizbang.Data.Postgres/Migrations/150_BucketAwareClaim.sql
+  - src/Whizbang.Data.Postgres/Migrations/157_ClaimAcquisitionBounded.sql
+  - src/Whizbang.Core/Signals/BasePollSignalSource.cs
+  - src/Whizbang.Core/Signals/PollIdleBackoff.cs
 testReferences:
   - tests/Whizbang.Core.Tests/Workers/ClaimWorkerAcquisitionBoundsTests.cs
   - tests/Whizbang.Core.Tests/Workers/AdaptiveClaimWindowLatencyTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/BoundedAcquisitionRewriteSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/ClaimWorkPlanShapeTests.cs
+  - tests/Whizbang.Core.Tests/Signals/PollSignalSourceIdleBackoffTests.cs
 ---
 
 # Claim loop
@@ -61,6 +67,41 @@ ANY non-empty result → reset to base (250 ms)
 ```
 
 The adaptive cap is auto-clamped at startup to `AbandonStaleInstanceThresholdSeconds × 1000 / 3` so the heartbeat budget stays satisfied.
+
+### The store-backed pull sources back off too
+
+The claim loop is not the only thing that polls. Each work category has a pull source that asks the
+store "is there anything for this instance" on a fixed cadence (5 s) as a backstop for a missed
+NOTIFY, plus a due-schedule probe. With every queue empty those probes were most of the transactions
+a busy database committed: over a hundred a second, a third of the server's CPU with nothing to do.
+
+A pull source now stretches its own cadence while it keeps finding nothing: three empty ticks at the
+base interval, then the interval doubles per empty tick up to a ceiling of one minute. A tick that
+finds work returns it to the base interval and restarts the count, and so does the push transport
+flipping (unavailable tightens the cadence to 500 ms; available relaxes it), because that reschedule
+sets a new base.
+
+```
+empty tick #1..#3 → 5 s     (base; lulls between bursts cost nothing)
+empty tick #4     → 10 s
+empty tick #5     → 20 s
+empty tick #6     → 40 s
+empty tick #7+    → 60 s    (ceiling)
+
+work found, or the signaling gate flips → back to the base interval
+```
+
+The ceiling bounds how long a store can hold work the push transport failed to announce before a poll
+finds it, and it applies only while nothing arrives; a service under load never leaves the base
+cadence. {verified: PollSignalSourceIdleBackoffTests.EmptyTicksPastTheThreshold_DoubleTheIntervalUpToTheCeilingAsync, PollSignalSourceIdleBackoffTests.WorkFound_ReturnsToTheBaseIntervalAsync, PollSignalSourceIdleBackoffTests.RescheduleFromOutside_ResetsTheStreakAndBecomesTheNewBaseAsync}
+
+What remains of the idle transaction rate after the backoff is connection churn, not queries. Each
+probe opens a pooled connection and closes it, and the driver resets a returned connection with a
+`DISCARD ALL` on its next use, which the server counts as a transaction of its own: several hundred a
+second per database were measured with nothing else running. That is a connection-string decision
+on the consumer's side (`No Reset On Close=true` removes the reset; take it only where nothing relies
+on session state being cleared, which the framework's own connections do not), or a smaller pool with
+longer-lived connections.
 
 ## Wake signals
 
@@ -144,6 +185,37 @@ Migration 145 rewrites the selection so that the cost follows the batch:
 - **Locking is unchanged.** Rows are locked under breadth-first order with `SKIP LOCKED`, so a concurrent claimer's rows are skipped, not waited on.
 
 The result order is exactly what it was: commands, then `(stream_seq, received_at, message_id)`. Only the plan changed; on a copy of a large backlog the rewrite read two orders of magnitude fewer buffers for the same rows in the same order.
+
+## The outbox and perspective acquisitions are bounded the same way
+{verified: ClaimWorkPlanShapeTests.ClaimWork_AcquiringFromAnUnownedBacklog_ReadsAFewBatchesNotTheBacklogAsync, ClaimWorkPlanShapeTests.ClaimWork_AfterTheTablesFill_ReadsAFewBatchesNotTheBacklogAsync}
+
+The inbox was the first acquisition bounded by its batch; the other two were still bounded by the
+backlog, and under a bulk load that is where the database's time went. Measured, one claim poll read
+tens of thousands of blocks and the queue tables were scanned whole several times per poll on every
+instance, so the poll alone took most of the server's cores and the backlog grew because of it.
+Adding instances made it worse, because every instance paid the backlog on every poll.
+
+- **The outbox acquisition** orders pending singles by arrival and stops at its row bound, but no
+  index carried that order over the pending rows, so the planner sorted every pending row to keep a
+  batch. Migration 157 adds `idx_outbox_pending_arrival`, a covering partial index in
+  `(created_at, message_id)` order over pending singles, and the same statement now walks it and
+  stops.
+- **The perspective acquisition** chose its most urgent streams by aggregating every claimable
+  event. It now takes a bounded window of the most urgent events (a small multiple of the stream
+  batch, walked in `(priority, event_id)` order from `idx_perspective_event_urgency`, also added by
+  157), chooses streams from that window, and captures each chosen stream in full through a join
+  back to the table, so per-stream ordering is exactly what it was.
+- **The plans follow the tables.** The queue tables are empty between loads, and a session that
+  polled while they were empty kept generic plans made for empty tables; once the tables filled, those
+  plans scanned them whole, nested, and the same poll that takes well under a second on fresh plans
+  did not finish inside the command timeout. `claim_work` runs under
+  `plan_cache_mode = force_custom_plan`, which applies to everything it calls, so every poll plans
+  for the tables as they are.
+
+The test reproduces both shapes: it polls empty tables enough times for the session to settle on the
+plans it will keep, fills every queue table with wide rows, polls again on the same session, and reads
+from `pg_stat_user_tables` how many tuples each table gave up for that one call. A bounded poll reads
+a few batches; one bounded by the backlog reads all of it.
 
 ## The command lane
 {verified: BoundedAcquisitionRewriteSqlTests.ClaimOrphanedInbox_PicksAPendingCommandBeforeAnyEventWhateverTheBacklogAsync, BoundedAcquisitionRewriteSqlTests.ClaimWork_ReemitsCommandsAheadOfEventsAsync}

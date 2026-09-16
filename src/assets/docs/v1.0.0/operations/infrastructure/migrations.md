@@ -253,6 +253,24 @@ Five boundaries keep the sweep self-limiting:
 
 Log line to look for, one per re-run file: `re-running because the database's definition of <functions> does not match this file, its last word`. The Dapper-based `PostgresSchemaInitializer` does not yet run this sweep; only the EF Core initializer (generated from `DbContextSchemaExtensionTemplate`) does.
 
+### The bootstrap closure is applied once per definition, never per start
+
+Before the election, every instance applies the bootstrap closure: the core tables and the regions
+marked `-- @whizbang:bootstrap-begin` / `-- @whizbang:bootstrap-end`, which create what an election
+needs. Every statement in it is idempotent DDL, and idempotent is not free: `CREATE INDEX IF NOT
+EXISTS` on an existing index still takes a share lock on the table before it discovers there is
+nothing to do. An instance an autoscaler started under load ran that DDL against tables the running
+instances were writing, and deadlocked against the maintenance sweep and the work-available poll
+sources within two seconds of starting.
+
+The closure is now recorded. When it applies, the transaction that applied it also writes a hash of
+the scripts it ran to `wh_bootstrap_closure`, a table the closure itself creates. An instance
+starting later hashes the closure it carries, finds the hash recorded, and applies nothing: no
+statement, no lock, no wait. A closure that changed (a new release with a different bootstrap
+region) has a different hash, so it runs in full once and records itself. The migration ledger is
+untouched by any of this; the bootstrap still claims nothing about migrations.
+{verified: SchemaBootstrapPhaseTests.ACurrentClosureIsNotAppliedAgainAsync, SchemaBootstrapPhaseTests.AChangedClosureIsAppliedAsync, SchemaBootstrapPhaseTests.TheBootstrapRecordsNothingInTheLedgerAsync}
+
 ### Table rewrites run post-ready, under the maintainer duty
 
 A migration cannot `VACUUM FULL` (both are forbidden inside its transaction), so a migration that leaves a table owing a rewrite — a `DROP COLUMN`, whose bytes Postgres keeps in every pre-existing row — **records** the request via `wh_request_table_rewrite`. The runtime bloat detector records through the same function when churn bloats a table past threshold.
