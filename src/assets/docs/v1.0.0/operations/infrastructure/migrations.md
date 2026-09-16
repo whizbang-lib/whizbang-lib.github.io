@@ -28,6 +28,7 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/153_PerspectiveForms.sql
   - src/Whizbang.Data.Postgres/Migrations/154_PerspectiveFailureElementNames.sql
   - src/Whizbang.Data.EFCore.Postgres/Perspectives/CanonicalTemporalRewrite.cs
+  - src/Whizbang.Data.Postgres/CanonicalTemporalRewritePhase.cs
   - src/Whizbang.Data.Postgres/FleetVersions.cs
   - src/Whizbang.Core/Perspectives/StoredFormUnreadable.cs
   - src/Whizbang.Core/Perspectives/StoredFormFailureRegistry.cs
@@ -39,6 +40,7 @@ testReferences:
   - tests/Whizbang.Data.Dapper.Postgres.Tests/PostgresSchemaInitializerTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/CanonicalTemporalFunctionTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/FleetVersionsTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/CanonicalTemporalRewritePhaseTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/CanonicalTemporalRewriteTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/CanonicalTemporalRewriteIntegrationTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/FreshTableFormTests.cs
@@ -306,11 +308,40 @@ back.
 
 {verified: CanonicalTemporalRewriteIntegrationTests.OnePassConvertsEveryStoredFormAsync, CanonicalTemporalRewriteIntegrationTests.ASecondPassSettlesAndAThirdSkipsAsync, CanonicalTemporalRewriteIntegrationTests.AFailedPassLeavesTheLedgerUntouchedAsync, CanonicalTemporalRewriteIntegrationTests.AMissingTableIsSkippedAsync, FreshTableFormTests.ATableTheInitializerCreatedIsSettledAtTheMicrosecondFormAsync, FreshTableFormTests.RunningTheInitializerAgainLeavesTheRowAloneAsync}
 
-### It runs on the migrator, after the election, and warns about a mixed fleet
+### It runs once, after the election, and waits for the schema lock
 
 The rewrite needs the ledger and the function a bootstrap-marked migration creates, and it needs to
-run once, so it runs after the [migrator election](#version-auditing) on the instance that won it, or
-on an instance that could not be staged; never on one waiting for the migrator.
+run once, so it runs after the [migrator election](#version-auditing) on whichever instance goes on
+to do the schema work: the instance that won the election, an instance that could not be staged, or
+a waiter whose wait ended with the migrator gone. A migrator killed mid-rewrite leaves the remaining
+tables in the old form and every replacement instance is a waiter, so the takeover path rewrites
+before it contends for the DDL lock, through the same body the migrator runs.
+
+The statements run under the schema-init key, the one the bootstrap and DDL phases take, in one
+transaction of the phase's own with a savepoint per table: a transaction pooler cannot separate the
+lock from the statements, nothing stays held if the instance dies, and one table's failure neither
+undoes an earlier table nor stops a later one. An instance that cannot take the key **waits** for it,
+polling with backoff for up to the schema command timeout. It never skips, because the holder is not
+necessarily rewriting: a sibling's bootstrap or DDL transaction holds the same key and converts
+nothing, and a sibling staged as a waiter never rewrites. Running out of the budget is a warning
+naming the key; the tables stay in their current form, which every reader tolerates, and the next
+start tries again.
+
+Each table's block raises a notice on every exit and the phase relays it, so the startup log says
+what a pass did:
+
+```text
+Stored-format rewrite is waiting for schema lock {LockId}, held by another instance
+Stored-format rewrite: wh_per_thing: converted, 7 row update(s)
+Stored-format rewrite: wh_per_other: settled, skipped
+Stored-format rewrite: wh_per_gone: table absent, nothing to convert
+Stored-format rewrite applied 3 of 3 table statement(s) under schema lock {LockId} in 1840 ms
+```
+
+The count is one per row and path, so a row with three converted keys counts three times. A table
+that failed is a warning naming it, with the exception.
+
+{verified: CanonicalTemporalRewritePhaseTests.AnInstanceWaitsForTheLockAndAppliesOnceItIsReleasedAsync, CanonicalTemporalRewritePhaseTests.AnInstanceGivesUpWhenTheLockStaysHeldAsync, CanonicalTemporalRewritePhaseTests.AFailureAfterASuccessKeepsTheSuccessAsync, CanonicalTemporalRewritePhaseTests.ANoticeRaisedByARewriteIsReportedAsync, CanonicalTemporalRewriteTests.TheStatementReportsEveryOutcomeAsANoticeAsync, CanonicalTemporalRewriteWiringTests.AWaiterThatTakesOverRunsTheRewriteBeforeTheDdlAsync}
 
 A release that changes a stored unit is not safe under a mixed fleet: an older instance still writing
 would write forms this release has just converted away. The migrator cannot refuse to run under a
@@ -326,6 +357,36 @@ accept that rows it writes after the rewrite are read as renderings, counted on
 `whizbang.perspective.temporal_form_fallbacks`, until the next startup converts them.
 
 {verified: CanonicalTemporalRewriteWiringTests.TheRewriteRunsAfterTheElectionOnTheMigratorAsync, CanonicalTemporalRewriteWiringTests.TheMigratorWarnsAboutOtherReleasesBeforeRewritingAsync, FleetVersionsTests.AnOlderReleaseStillAliveIsReportedAsync, FleetVersionsTests.TheSameReleaseIsNotReportedAsync, FleetVersionsTests.AStaleInstanceIsNotReportedAsync}
+
+### Objects you own over a temporal key
+
+Anything you create over a perspective document's temporal key reads the canonical number: a
+trigger, a view, a generated column, an expression index, a mirror table's backfill. A cast of the
+key's text to `timestamptz` was written for the rendering and fails on the number, in two places: the
+rewrite's update of that table, reported as a failed table with the rest of the pass unaffected and
+the table left unconverted, and then every later write the framework makes into that table once it
+stores the number. The framework cannot know such an object exists, so the rewrite's warning naming
+the table is the signal to look for one.
+
+During a transition the object reads either form:
+
+```sql{
+title: "Read a temporal key in either stored form"
+description: "A trigger, view, generated column or expression index over a perspective document's temporal key reads the canonical microsecond number, and during a transition the rendering an older release wrote."
+category: "Perspectives"
+difficulty: "INTERMEDIATE"
+tags: ["stored-forms", "jsonb", "trigger", "timestamptz", "microseconds"]
+}
+CASE jsonb_typeof(NEW.data -> 'PublishedAt')
+  WHEN 'number' THEN TIMESTAMPTZ 'epoch' + ((NEW.data ->> 'PublishedAt')::bigint * INTERVAL '1 microsecond')
+  WHEN 'string' THEN NULLIF(NEW.data ->> 'PublishedAt', '')::timestamptz
+  ELSE NULL
+END
+```
+
+Interval arithmetic rather than `to_timestamp(n / 1e6)`, which goes through a double and can lose
+the last microsecond. A date key is the same number at midnight UTC; a duration is
+`n * INTERVAL '1 microsecond'` with no epoch.
 
 ### When a row cannot be read
 
