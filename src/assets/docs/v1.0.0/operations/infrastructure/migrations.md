@@ -345,6 +345,13 @@ nothing, and a sibling staged as a waiter never rewrites. Running out of the bud
 naming the key; the tables stay in their current form, which every reader tolerates, and the next
 start tries again.
 
+That wait covers a race, not a queue. An instance that finds the key already held when it is about
+to rewrite does not sit inside the rewrite behind a migration that may run for minutes; it watches
+the key the way a waiter watches the migrator duty, through the same deferral, and rewrites when the
+wait ends. A schema someone else brought up to date under it makes the rewrite a settled no-op and
+the fast path an exit. A key released over a schema still behind makes this the instance that does
+the work: it rewrites, then contends for the DDL lock as it always did.
+
 Each table's block raises a notice on every exit and the phase relays it, so the startup log says
 what a pass did:
 
@@ -359,7 +366,7 @@ Stored-format rewrite applied 3 of 3 table statement(s) under schema lock {LockI
 The count is one per row and path, so a row with three converted keys counts three times. A table
 that failed is a warning naming it, with the exception.
 
-{verified: CanonicalTemporalRewritePhaseTests.AnInstanceWaitsForTheLockAndAppliesOnceItIsReleasedAsync, CanonicalTemporalRewritePhaseTests.AnInstanceGivesUpWhenTheLockStaysHeldAsync, CanonicalTemporalRewritePhaseTests.AFailureAfterASuccessKeepsTheSuccessAsync, CanonicalTemporalRewritePhaseTests.ANoticeRaisedByARewriteIsReportedAsync, CanonicalTemporalRewriteTests.TheStatementReportsEveryOutcomeAsANoticeAsync, CanonicalTemporalRewriteWiringTests.AWaiterThatTakesOverRunsTheRewriteBeforeTheDdlAsync}
+{verified: CanonicalTemporalRewritePhaseTests.AnInstanceWaitsForTheLockAndAppliesOnceItIsReleasedAsync, CanonicalTemporalRewritePhaseTests.AnInstanceGivesUpWhenTheLockStaysHeldAsync, CanonicalTemporalRewritePhaseTests.AFailureAfterASuccessKeepsTheSuccessAsync, CanonicalTemporalRewritePhaseTests.ANoticeRaisedByARewriteIsReportedAsync, CanonicalTemporalRewriteTests.TheStatementReportsEveryOutcomeAsANoticeAsync, CanonicalTemporalRewriteWiringTests.AWaiterThatTakesOverRunsTheRewriteBeforeTheDdlAsync, CanonicalTemporalRewriteWiringTests.AnInstanceThatWouldRewriteBehindAHeldSchemaLockWaitsOnTheLockFirstAsync, SchemaInitializationConcurrencyTests.Deferral_WhenTheMigratorCommits_AppliesNothingItselfAsync, SchemaInitializationConcurrencyTests.Deferral_WhenTheMigratorReleasesWithWorkOutstanding_TakesTheWorkOverAsync}
 
 A release that changes a stored unit is not safe under a mixed fleet: an older instance still writing
 would write forms this release has just converted away. The migrator cannot refuse to run under a
