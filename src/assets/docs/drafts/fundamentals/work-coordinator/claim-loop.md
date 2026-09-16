@@ -217,6 +217,59 @@ plans it will keep, fills every queue table with wide rows, polls again on the s
 from `pg_stat_user_tables` how many tuples each table gave up for that one call. A bounded poll reads
 a few batches; one bounded by the backlog reads all of it.
 
+## The re-offer is bounded by the batch too
+{verified: ClaimWorkPlanShapeTests.ClaimWork_ReofferingWhatItHolds_IsPricedByTheBatchNotTheHoldingsAsync}
+
+Acquisition is one half of a poll. The other half is the **re-offer**: a busy instance holds as many
+leased rows as its budget allows, has already handed most of them to a drainer, and polls several
+times a second to hand back the streams it holds so the drainers keep a current work list. With
+acquisition bounded, that half was still priced by the holdings rather than by the batch, and on a
+saturated database it was what remained of the poll's cost.
+
+Migration 158 bounds each part of it:
+
+- **The orphan guards** decide whether to call an acquisition at all. Each read
+  `processed_at IS NULL AND (instance_id IS NULL OR lease_expiry < now)`, and a disjunction has no
+  index order, so proving nothing was orphaned examined every pending row: on a busy instance, its
+  whole holdings, three times a poll. Each guard now probes two index heads instead, unowned rows and
+  the oldest live lease, so an instance whose leases are all live proves it at the first entry.
+- **The outbox re-offer** ranked every held row with a window function the query never read, then
+  sorted them all and kept a batch. It walks a covering index in holder-and-arrival order and stops.
+- **The inbox and perspective re-offers** enumerate the streams the instance holds through a lane
+  index, one index-only probe per stream, lane by lane in the order the batch is ordered: most urgent
+  bucket first, commands before events, and for the inbox the fresh and retried classes side by side
+  so the fresh-work share still holds. Each lane's walk starts at a stream id drawn per poll and
+  wraps once, so a lane larger than the batch does not hand back the same streams on every poll.
+- **The inbox event-store chain**, which gives an inbox event leased at store time its event-store
+  row and its perspective work, re-checked every held event against the event store on every poll.
+  It now reads only rows it has not finished with and stamps the ones whose event it finds there.
+
+**A held inbox stream is handed back as one row per lane, not as every row it holds in that lane.**
+The drainers have consumed stream ids and pulled a stream's rows on demand since the per-stream
+drain landed, and the batch hooks fold a stream's returned rows to its most urgent number and oldest
+arrival, so the further rows inside one lane carried nothing a caller read while ranking them was the
+poll's whole cost. A stream whose rows span priority buckets or the command and event lanes is still
+returned once per lane, and the fold over those rows is unchanged; what changes is that
+`PriorityBatchEntry.PendingRows` counts the lanes a stream appears in (normally one) rather than its
+rows in the batch. The perspective re-offer's small-streams-first tier is gone with it: that tier
+guarded a batch of rows against one large stream, and the drain has been per stream with an unbounded
+channel since the per-stream drain landed, so a large stream no longer displaces small ones.
+
+Measured on a container, one steady-state poll returning 300 rows out of a batch of 100 per category,
+summed over the outbox, inbox, perspective-event and event-store tables and their indexes:
+
+| Held rows per table | Blocks before | Tuples before | Blocks after | Tuples after |
+|---|---|---|---|---|
+| 5,000 | 5,425 | 35,012 | 700 | 305 |
+| 10,000 | 10,705 | 70,012 | 912 | 305 |
+| 40,000 | 42,388 | 280,012 | 925 | 304 |
+
+Eight times the holdings cost eight times as much before and 1.3 times as much after, and the tuples
+a poll examines no longer depend on the holdings at all. The test asserts both ceilings per table,
+once at a full budget of holdings and again at double it: blocks catch the heap fetches, and tuples
+catch an index-only pass over the whole holdings, which is cheap in blocks and still grows with the
+backlog.
+
 ## The command lane
 {verified: BoundedAcquisitionRewriteSqlTests.ClaimOrphanedInbox_PicksAPendingCommandBeforeAnyEventWhateverTheBacklogAsync, BoundedAcquisitionRewriteSqlTests.ClaimWork_ReemitsCommandsAheadOfEventsAsync}
 
@@ -279,7 +332,7 @@ The store side is `release_unstarted_leases(p_instance_id, p_inbox_stream_ids, p
 |---|---|---|
 | `PollingIntervalMilliseconds` | 250 | Base poll cadence. |
 | `PollingMaxIntervalMilliseconds` | 10 000 | Adaptive backoff cap. Clamped to ≤ stale-threshold/3. |
-| `MaxStreamsPerBatch` | 1000 | Cap on rows returned per call. |
+| `MaxStreamsPerBatch` | 1000 | Cap on what one call hands back: streams for inbox and perspective work, rows for outbox and receptor work. Acquisition has its own row bound (`MaxOutstandingInboxRows`, below). |
 | `PartitionCount` | 10 000 | Modulo partition count. |
 | `LeaseSeconds` | 300 | Lease duration on claimed work. |
 | `AdaptiveOutstandingBudget` | true | Bound the total outstanding inbox rows across claims (per category, row-bound). `false` falls back to the churn-based claim window alone. |
