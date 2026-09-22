@@ -104,7 +104,7 @@ Plain `TryAddSingleton` would lose to the placeholder when your extension runs a
 | `IPerspectiveCompletionStrategy` | `BatchedCompletionStrategy`, sized from `PerspectiveWorkerOptions.RetryOptions` | Decides when a perspective's completions are reported |
 | `IStreamIdExtractor` | the composite over every registered extractor | Finds the stream a message belongs to |
 | `IEventNamespaceRegistry` | `StaticEventNamespaceRegistry` | Namespaces the generated registrations declared |
-| `IOutboxRoutingStrategy`, `IInboxRoutingStrategy`, `ICommandInboxAddressResolver` | from `RoutingOptions` | Destination naming for commands and events |
+| `ICommandInboxAddressResolver` | derived from the registered outbox strategy, else a null resolver whose address is the shared inbox | Where a command's inbox lives when namespace routing is not in play |
 | `IEventMarkerResolver`, `IEphemeralModeResolver` | over the message-type catalog | Event and ephemeral flags derived from message types |
 | `IReceptorRegistryQuery` | adapter over `IReceptorRegistry` | Answers "does anything handle this message at this stage?" |
 | `IMessageDiscardPolicy` | `MessageDiscardPolicy` | Drops messages no receptor consumes |
