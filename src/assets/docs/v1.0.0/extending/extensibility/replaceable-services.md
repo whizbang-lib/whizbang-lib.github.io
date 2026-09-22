@@ -58,7 +58,7 @@ listener) follows when it supplies the real implementation of one.
 
 Register yours before `AddWhizbang()`, or use `Replace` afterward:
 
-```csharp
+```csharp{title="Overriding a turnkey default" description="Registering before AddWhizbang lets the framework's TryAdd stand aside; Replace afterward swaps the descriptor the framework added." category="Configuration" difficulty="BEGINNER" tags=["dependency-injection", "tryadd", "replace", "replaceable-services"]}
 // Before AddWhizbang: TryAdd inside the framework sees yours and leaves it.
 services.AddSingleton<IPerspectiveCompletionStrategy, MyCompletionStrategy>();
 services.AddWhizbang(...);
@@ -69,7 +69,7 @@ services.Replace(ServiceDescriptor.Singleton<IPerspectiveCompletionStrategy, MyC
 
 The two worker concurrency governors are **keyed**, because each worker sizes its own:
 
-```csharp
+```csharp{title="Replacing a keyed worker governor" description="Each worker resolves its concurrency governor by its own key, so a replacement is registered under that key." category="Configuration" difficulty="INTERMEDIATE" tags=["dependency-injection", "keyed-services", "concurrency", "replaceable-services"]}
 services.AddKeyedSingleton<IConcurrencyGovernor>(OutboxDrainWorker.GOVERNOR_KEY, new FixedWidthGovernor(8));
 services.AddKeyedSingleton<IConcurrencyGovernor>(PerspectiveWorker.GOVERNOR_KEY, new FixedWidthGovernor(4));
 ```
@@ -79,7 +79,7 @@ services.AddKeyedSingleton<IConcurrencyGovernor>(PerspectiveWorker.GOVERNOR_KEY,
 If you are writing a storage driver, transport, or listener that provides the real implementation
 of a null-defaulted seam, register it so it wins regardless of order but yields to the host:
 
-```csharp
+```csharp{title="Supplying a subsystem's implementation over a null default" description="TryAddSingletonOverNullDefault displaces the framework's placeholder regardless of registration order while leaving a host's own registration alone." category="Extensibility" difficulty="INTERMEDIATE" tags=["dependency-injection", "null-object", "extensibility", "replaceable-services"]}
 services.TryAddSingletonOverNullDefault<IDeadLetterStore>(sp => new MyDeadLetterStore(...));
 ```
 
