@@ -86,6 +86,10 @@ services.AddWhizbangSagas();
 services.AddBulkOrderImportSaga();
 ```
 
+A saga service written by hand — a `BaseSagaService` subclass without `[Saga]` — is registered with
+`services.AddSagaService<TService>()` rather than `AddScoped`, so its completion watchdog ticks have a
+receiver. See [Hand-written sagas](./completion-orchestration#hand-written-sagas).
+
 ## What you get under the covers
 
 ### Per-item streams (cross-pod-safe fan-out)

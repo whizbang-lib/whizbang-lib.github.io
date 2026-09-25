@@ -1,8 +1,8 @@
 ---
 title: Completion Orchestration & Adaptive Watchdog
 pageType: concept
-verifiedAgainstCommit: 0bc6065b
-verifiedDate: 2026-08-05
+verifiedAgainstCommit: 3a670b3a
+verifiedDate: 2026-09-25
 version: 1.0.0
 category: Application Blocks
 order: 2
@@ -17,11 +17,17 @@ codeReferences:
   - src/Whizbang.Sagas/SagaCompletionWatchdogTickEvent.cs
   - src/Whizbang.Sagas/SagaCompletionAbandonedEvent.cs
   - src/Whizbang.Sagas/Services/WatchdogTickOutcome.cs
+  - src/Whizbang.Sagas/Services/ISagaWatchdogParticipant.cs
+  - src/Whizbang.Sagas/Services/SagaWatchdogTickRouter.cs
+  - src/Whizbang.Sagas/Services/SagaWatchdogTickRouterRegistrar.cs
+  - src/Whizbang.Sagas/SagaServiceCollectionExtensions.cs
   - src/Whizbang.Core/Dispatcher.cs
 testReferences:
   - tests/Whizbang.Sagas.Tests/Services/TryRecoverViaWatchdogTickAsyncTests.cs
   - tests/Whizbang.Sagas.Tests/Services/TryRecoverViaWatchdogAsyncTests.cs
   - tests/Whizbang.Sagas.Tests/CompletionOrchestrationGapTests.cs
+  - tests/Whizbang.Sagas.Tests/Services/SagaWatchdogTickRoutingTests.cs
+  - tests/Whizbang.Sagas.Tests/SagaWatchdogTickDeliveryIntegrationTests.cs
   - tests/Whizbang.Core.Tests/Dispatcher/DispatcherScheduledForLocalReceptorTests.cs
 ---
 
@@ -148,6 +154,39 @@ services.AddWhizbangSagas(opts => {
 | `MaxConsecutiveStalls` | 4 | Number of consecutive zero-progress ticks before abandon. Progress between ticks resets the counter — slow sagas don't trigger abandon, stuck ones do. |
 | `StallBackoffMultiplier` | 2.0 | Exponential factor on stall: `MinDelay × Multiplier^stallCount`. Stall 1 = 60s, stall 2 = 120s, stall 3 = 240s, then abandon. |
 
+## Hand-written sagas {#hand-written-sagas}
+
+{verified: SagaWatchdogTickDeliveryIntegrationTests.HandWrittenSagaTick_DeliveredAtTheInboxStage_ReachesTheSagaAsync, SagaWatchdogTickDeliveryIntegrationTests.WithoutTheRouter_AHandWrittenSagaTick_ReachesNothingAsync, SagaWatchdogTickDeliveryIntegrationTests.HandWrittenSagaTick_AtTheSendingStage_DoesNotReachTheSagaAsync, SagaWatchdogTickDeliveryIntegrationTests.SagaAttributeTick_IsLeftToItsGeneratedReceiverAsync}
+
+`BaseSagaService.InitiateSagaAsync` arms the watchdog for **every** saga it starts. A saga declared
+with `[Saga]` gets a generated receiver for its ticks. A saga service written by hand — a class that
+subclasses `BaseSagaService` directly and is registered with the container — does not, so register
+it with `AddSagaService`:
+
+```csharp{title="Registering a hand-written saga service" description="Exposes a BaseSagaService subclass to the framework's watchdog router so its ticks are received" category="Configuration" difficulty="BEGINNER" tags=["Sagas", "Watchdog", "Configuration"] tests=["SagaWatchdogTickRoutingTests.AddSagaService_RegistersTheServiceAndItsWatchdogParticipationAsOneInstanceAsync", "SagaWatchdogTickRoutingTests.AddWhizbangSagas_RegistersTheRouterRegistrarAsync"]}
+services.AddWhizbangSagas();
+services.AddSagaService<ImportSagaService>();   // instead of services.AddScoped<ImportSagaService>()
+```
+
+`AddSagaService<T>()` registers the service scoped and exposes the same instance as an
+`ISagaWatchdogParticipant`, which `BaseSagaService` implements. `AddWhizbangSagas()` registers the
+framework's `SagaWatchdogTickRouter` at startup, and the router hands each delivered tick to the
+participant whose saga name it carries.
+
+**Why it matters.** Before the router existed, a hand-written saga armed its tick, the transport
+delivered it on time, and at the stage the inbox invokes there was no receptor for it — so it was
+discarded without a trace. Nothing failed and nothing logged. On a healthy run the gap is invisible,
+because the per-item fast path completes the saga first; it only matters once something else has
+gone wrong, and then the safety net is simply absent.
+
+Two rules keep the router safe:
+
+- **It registers on the receiving side only** (`PostInboxInline`). A tick is armed for a future time;
+  a receptor on the sending side would run at arming and re-arm immediately — the cascade described
+  above.
+- **A `[Saga]`-declared saga is not a participant.** It already has a generated receiver. Registering
+  it with `AddSagaService` as well would deliver every tick twice and re-arm it twice.
+
 ## When the watchdog is structurally redundant
 
 After the cascade fix, the watchdog is a **safety net**. During healthy fan-out:
@@ -174,6 +213,40 @@ public class SagaCompletionAbandonedEvent : SagaEventBase, ISagaCompletionAbando
 ```
 
 This is the operator-triage signal. Subscribe a consumer-side receptor to it for alerting / paging. The framework does NOT automatically retry or re-initiate the saga — the assumption is that anything reaching abandon needs human inspection.
+
+## Stranded items {#stranded-items}
+
+{verified: TryRecoverViaWatchdogTickAsyncTests.MaxConsecutiveStalls_WithAStrandedItem_FailsItAndReArmsInsteadOfAbandoningAsync, TryRecoverViaWatchdogTickAsyncTests.MaxConsecutiveStalls_ItemAlreadyTerminalInTheStore_IsNotFailedAgainAsync, TryRecoverViaWatchdogTickAsyncTests.MaxConsecutiveStalls_ConsumerRedrivesTheItem_ItIsNotFailedAsync, TryRecoverViaWatchdogTickAsyncTests.StrandedByALostWorker_EndsCompletedWithOneFailure_NotAbandonedAsync}
+
+When the process holding a started item goes away — a deploy, a node drain, a crash — the work goes
+with it. No terminal event is written, no inbox row is left to reclaim, and nothing dead-letters it.
+Abandoning the saga at the stall limit would throw away every item that did finish over the one that
+could not.
+
+So before abandoning, the watchdog **resolves stranded items**. At the stall limit, each item still
+`Pending` or `Running` is checked against its per-item stream:
+
+- **The store already records it as terminal** — skipped. Only the projection is behind, and the
+  reconciler handles that.
+- **No terminal event anywhere** — the worker was most likely lost. The item is offered to
+  `TryRedriveStrandedItemAsync`. By default that returns `false` and the item is **failed** with a
+  reason naming the likely cause, so the saga completes with the failure visible instead of hanging
+  on it.
+
+The watchdog then re-arms with its stall count reset, so the new terminal events can land before the
+saga is judged stuck again. It abandons only when there was nothing to resolve.
+
+A service whose item handler is idempotent can re-dispatch the work instead of failing the item:
+
+```csharp{title="Re-dispatching a stranded item" description="Overrides the stranded-item hook so a lost worker's item is retried rather than failed" category="Sagas" difficulty="INTERMEDIATE" tags=["Sagas", "Watchdog", "Recovery"] tests=["TryRecoverViaWatchdogTickAsyncTests.MaxConsecutiveStalls_ConsumerRedrivesTheItem_ItIsNotFailedAsync"]}
+protected override async Task<bool> TryRedriveStrandedItemAsync(
+    SagaContext ctx, SagaItemModel item, CancellationToken cancellationToken) {
+  await _dispatcher.SendAsync(new ImportItem(ctx.SagaId, item.ItemIdentifier));
+  return true;   // the item stays in progress and the watchdog keeps watching
+}
+```
+
+Only re-dispatch when the handler tolerates running twice: the lost worker may have got partway.
 
 ## Related
 

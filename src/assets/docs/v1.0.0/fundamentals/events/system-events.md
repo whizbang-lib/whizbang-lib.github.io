@@ -293,6 +293,14 @@ public sealed record ServiceHeartbeat : IEvent {
 }
 ```
 
+#### What hooks receive
+
+`EventAudited` carries the whole body of the event it audits in `OriginalBody`, and `CommandAudited`
+carries `CommandBody` — both unbounded. The payload their `sys-audit` tag hands to hooks deliberately
+leaves those bodies out and carries what identifies the change instead. A hook that needs the body
+reads the stored audit record. See [Payload Size Thresholds](../messages/message-tags#payload-size-thresholds).
+{verified: AuditTagPayloadTests.EventAudited_TagPayload_LeavesTheOriginalBodyOutAsync, AuditTagPayloadTests.CommandAudited_TagPayload_LeavesTheCommandBodyOutAsync}
+
 ### CommandAudited
 
 Emitted when a command is processed by a receptor (when `EnableCommandAudit()` is configured).

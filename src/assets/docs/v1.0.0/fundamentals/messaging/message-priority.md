@@ -390,9 +390,12 @@ services.AddWhizbang(options => {
 });
 ```
 
-The audit digest is background by construction: every `EventAudited` record is declared background
-when it is built, so the fold over any batch of them is background whichever rule the binding uses.
-{verified: AuditOutboxMessageBuilderCoverageTests.TryBuildAuditMessage_DeclaresTheAuditEventBackgroundAsync}
+The built-in audit binding **states** `LeastUrgent` rather than inheriting the default. Every audit
+record is minted in the idle band, and nobody waits on one; under `MostUrgent`, a single member
+carrying a lower number — a consumer lowering `AuditPriority`, a message of its own joining the audit
+group — would carry the whole batch out of the idle band and set it competing with the work it
+records. With `LeastUrgent`, an audit composite stays idle whatever joins it.
+{verified: AuditCoalesceRebaseTests.Apply_BuiltInBinding_FoldsWithTheLeastUrgentMemberAsync, AuditCoalesceRebaseTests.AuditComposite_WithOneBelowBandMember_StaysInTheIdleBandAsync}
 
 ## Background work {#background-work}
 
