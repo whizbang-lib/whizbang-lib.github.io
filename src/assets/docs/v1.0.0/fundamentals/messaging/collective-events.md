@@ -28,6 +28,9 @@ codeReferences:
   - src/Whizbang.Data.EFCore.Postgres/Collective/CollectiveSettersRewriter.cs
   - src/Whizbang.Data.EFCore.Postgres/CollectiveEventsEFCoreExtensions.cs
   - src/Whizbang.Data.Dapper.Postgres/Collective/DapperCollectiveSpecCompiler.cs
+  - src/Whizbang.Data.Postgres/Collective/CollectiveElementUpsertSql.cs
+  - src/Whizbang.Data.Postgres/Collective/CollectiveInMemoryEvaluator.cs
+  - src/Whizbang.Core/Perspectives/ICollectiveSetters.cs
   - src/Whizbang.Data.Dapper.Postgres/CollectiveEventsDapperExtensions.cs
   - src/Whizbang.Data.Postgres/Migrations/061_CollectiveEventRouting.sql
   - src/Whizbang.Data.EFCore.Postgres.Generators/EFCoreServiceRegistrationGenerator.cs
@@ -38,6 +41,9 @@ testReferences:
   - tests/Whizbang.Core.Tests/Perspectives/TenantCollectiveScopeResolverTests.cs
   - tests/Whizbang.Core.Tests/Workers/PerspectiveWorkerCollectiveSinkTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Collective/CollectiveDispatcherEFCoreIntegrationTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Collective/CollectiveInMemoryUpsertElementTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Collective/CollectiveElementUpsertSqlTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/Collective/DapperCollectiveApplierIntegrationTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/CollectiveReplayRebuildIntegrationTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/EmitEventStoreChainCollectiveSqlTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/Collective/DapperCollectiveApplierIntegrationTests.cs
@@ -286,7 +292,7 @@ no reflection, AOT-clean by construction. The attribute is read on the
 
 ### What the SET surface can express
 
-`ICollectiveSetters<TModel>` exposes two `SetProperty` overloads:
+`ICollectiveSetters<TModel>` exposes two `SetProperty` overloads, plus `UpsertElement` for [keyed array elements](#keyed-array-elements):
 
 - **`SetProperty(selector, value)`** — assign a **constant** or
   event-supplied (captured) value. This is the primary shape and is
@@ -307,6 +313,42 @@ v1** — both the EF Core `CollectiveSettersRewriter` and the
 likewise throw. The `CollectiveSpecKind.RawSql` enum value is defined as
 the intended escape hatch, but **no concrete raw-SQL spec type ships in
 v1**, so these richer computed shapes have no working path yet.
+
+### Keyed array elements {#keyed-array-elements}
+
+{verified: CollectiveDispatcherEFCoreIntegrationTests.DispatchAsync_UpsertElement_ReplacesTheMatchingElement_KeepingOrderAsync, CollectiveDispatcherEFCoreIntegrationTests.DispatchAsync_UpsertElement_AppendsWhenNoElementHasTheKeyAsync, CollectiveDispatcherEFCoreIntegrationTests.DispatchAsync_UpsertElement_OnAMissingArray_WritesAOneElementArrayAsync, CollectiveDispatcherEFCoreIntegrationTests.DispatchAsync_UpsertElement_ComposesWithSetProperty_InOneUpdateAsync, DapperCollectiveApplierIntegrationTests.UpsertElement_ReplacesTheMatchingElement_KeepingOrder_WithinScopeAsync, CollectiveInMemoryUpsertElementTests.Upsert_ReplacesTheMatchingElement_KeepingOrderAsync}
+
+A read model often keeps a second, rendered copy of a field inside a keyed array: one element per
+field, keyed by a field id, carrying what a UI renders. `SetProperty` on the top-level field leaves
+that element alone, and every surface that reads the array (a preview panel, a read-only view, a
+snapshot captured into a published version) keeps showing the old value.
+
+`UpsertElement` writes the element too, in the same set-based UPDATE:
+
+```csharp{title="Updating a field and its rendered element together" description="Sets the top-level family fields and replaces the family cell in the Cells array for every job in the cohort, in one UPDATE" category="Messaging" difficulty="INTERMEDIATE" tags=["Collective Events", "Perspectives", "Keyed Arrays", "jsonb"] tests=["CollectiveDispatcherEFCoreIntegrationTests.DispatchAsync_UpsertElement_ComposesWithSetProperty_InOneUpdateAsync"]}
+[CollectiveApplyFor]
+public ICollectiveSpec<JobFieldsModel> ApplyFamily(FamilyAppliedToJobsCollectiveEvent e) {
+  var familyCell = FamilyField.RenderCell(e.FamilyId, e.FamilyName);
+  return new CollectiveSpec<JobFieldsModel>(
+    Setters: s => s
+      .SetProperty(m => m.FamilyId, (Guid?)e.FamilyId)
+      .SetProperty(m => m.FamilyName, (string?)e.FamilyName)
+      .UpsertElement(m => m.Cells, c => c.FieldId, familyCell),
+    Where: r => e.JobIds.Contains(r.Data.Id));
+}
+```
+
+- **Replace or append.** The element whose key equals the new element's key is replaced where it
+  stands; every other element keeps its value and its position. When none matches, the element is
+  appended. A missing or null array becomes a one-element array.
+- **Serialized once, as the writer serializes it.** The element is built in C#, once per event, and
+  stored exactly as the model's own writer would store it, so the rendered copy cannot drift in
+  shape from one a normal apply produces.
+- **Keys compare as stored JSON,** so a string, number or identifier key works without a cast.
+- **Direct members only.** The array must be a top-level property and the key a direct property of
+  the element; anything else throws `NotSupportedException`.
+- **Both drivers, and replay.** EF Core and Dapper share one SQL expression, and replay applies the
+  same rule in memory, so a rebuilt read model matches the live one.
 
 ### Per-perspective projection (`Where`)
 
