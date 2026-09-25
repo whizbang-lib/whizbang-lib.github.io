@@ -469,6 +469,19 @@ services.AddWhizbang(options => {
 
 Typical root cause when this fires: a tag attribute omitted `Properties`, so the generator extracted every public property on the event — including fields the hook does not need.
 
+The size is the payload's **UTF-8 byte length**, the unit the thresholds are declared and logged in,
+read from the payload's own buffer so measuring it allocates nothing. The guard exists to catch an
+oversized payload, so it must not cost in proportion to one: it previously materialized the whole
+payload as a string on every check, per tag, which on a 22 MB payload allocated over 100 MB to report
+that the payload was large — and counted UTF-16 characters rather than bytes.
+{verified: MessageTagProcessorTests.PayloadByteLength_CountsUtf8Bytes_NotCharactersAsync, MessageTagProcessorTests.PayloadByteLength_DoesNotAllocateInProportionToThePayloadAsync}
+
+The framework's own audit tag is narrowed the same way. `EventAudited` and `CommandAudited` carry the
+full body of whatever they audit, which is unbounded; their tag declares `Properties` listing what
+identifies the audited change and leaves the body out. Hooks receive identifiers, type, stream,
+position, time, tenant and user — the stored audit record still carries the body.
+{verified: AuditTagPayloadTests.EventAudited_TagPayload_LeavesTheOriginalBodyOutAsync, AuditTagPayloadTests.EventAudited_TagPayload_StillIdentifiesTheAuditedChangeAsync, AuditTagPayloadTests.CommandAudited_TagPayload_LeavesTheCommandBodyOutAsync}
+
 #### Per-tag thresholds, and binding them from configuration
 
 Some payloads are wide by design: an embedding, a rendered document. Every one of them crossed the
