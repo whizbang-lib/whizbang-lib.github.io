@@ -21,6 +21,12 @@ codeReferences:
   - src/Whizbang.Sagas/Services/SagaWatchdogTickRouter.cs
   - src/Whizbang.Sagas/Services/SagaWatchdogTickRouterRegistrar.cs
   - src/Whizbang.Sagas/SagaServiceCollectionExtensions.cs
+  - src/Whizbang.Sagas/Services/StrandedSagaSweepStep.cs
+  - src/Whizbang.Sagas/Services/ISagaWakeLookup.cs
+  - src/Whizbang.Sagas/Services/DispatcherSagaEventEmitter.cs
+  - src/Whizbang.Data.Postgres/StreamsWithPendingMessagesSql.cs
+  - src/Whizbang.Sagas/Models/IncompleteSaga.cs
+  - src/Whizbang.Sagas/Repositories/ISagaItemRepository.cs
   - src/Whizbang.Core/Dispatcher.cs
 testReferences:
   - tests/Whizbang.Sagas.Tests/Services/TryRecoverViaWatchdogTickAsyncTests.cs
@@ -28,6 +34,9 @@ testReferences:
   - tests/Whizbang.Sagas.Tests/CompletionOrchestrationGapTests.cs
   - tests/Whizbang.Sagas.Tests/Services/SagaWatchdogTickRoutingTests.cs
   - tests/Whizbang.Sagas.Tests/SagaWatchdogTickDeliveryIntegrationTests.cs
+  - tests/Whizbang.Sagas.Tests/Services/StrandedSagaSweepTests.cs
+  - tests/Whizbang.Sagas.Tests/Services/StrandedSagaSweepStepTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/StreamsWithPendingMessagesSqlTests.cs
   - tests/Whizbang.Core.Tests/Dispatcher/DispatcherScheduledForLocalReceptorTests.cs
 ---
 
@@ -134,7 +143,7 @@ The snapshot lives on the tick event itself — no new table, no per-pod in-memo
 
 ## Configuration
 
-Five knobs on `SagaOptions`:
+Six knobs on `SagaOptions`:
 
 ```csharp{title="Adaptive scheduler config" unverified="DI-wiring configuration of SagaOptions; the knobs' runtime effect is exercised by TryRecoverViaWatchdogTickAsyncTests, but this fence is options wiring"}
 services.AddWhizbangSagas(opts => {
@@ -143,6 +152,7 @@ services.AddWhizbangSagas(opts => {
   opts.WatchdogSafetyMargin    = TimeSpan.FromSeconds(30); // added to ETA
   opts.MaxConsecutiveStalls    = 4;                        // abandon threshold
   opts.StallBackoffMultiplier  = 2.0;                      // exponential on stall
+  opts.StrandedSagaIdleGuard   = TimeSpan.FromMinutes(5);  // stranded-saga sweep
 });
 ```
 
@@ -153,6 +163,7 @@ services.AddWhizbangSagas(opts => {
 | `WatchdogSafetyMargin` | 30s | Added on top of the ETA when progress was observed, so the next tick lands a bit past the projected completion moment. |
 | `MaxConsecutiveStalls` | 4 | Number of consecutive zero-progress ticks before abandon. Progress between ticks resets the counter — slow sagas don't trigger abandon, stuck ones do. |
 | `StallBackoffMultiplier` | 2.0 | Exponential factor on stall: `MinDelay × Multiplier^stallCount`. Stall 1 = 60s, stall 2 = 120s, stall 3 = 240s, then abandon. |
+| `StrandedSagaIdleGuard` | 5 min | How long a saga with no tick coming must go without any change before the [stranded-saga sweep](#stranded-sagas) re-arms it. Covers a tick on the transport, which no table shows. |
 
 ## Hand-written sagas {#hand-written-sagas}
 
@@ -247,6 +258,55 @@ protected override async Task<bool> TryRedriveStrandedItemAsync(
 ```
 
 Only re-dispatch when the handler tolerates running twice: the lost worker may have got partway.
+
+## Stranded sagas {#stranded-sagas}
+
+{verified: StrandedSagaSweepTests.Sweep_NoTickComingAndIdle_ArmsOneTickAtTheStallLimitInTheSagasTenantAsync, StrandedSagaSweepTests.Sweep_TickStillComing_ArmsNothingAsync, StrandedSagaSweepTests.Sweep_WakeLookupCannotTell_ArmsNothingAsync, StrandedSagaSweepTests.Sweep_RecentItemActivity_ArmsNothingAsync, StrandedSagaSweepTests.Sweep_SameIdleState_ClaimsTheSameKey_NewActivityANewKeyAsync, StrandedSagaSweepTests.ArmedTick_OnArrival_ResolvesTheStrandedItemAsync, StrandedSagaSweepStepTests.Step_AsksTheCoordinatorForPendingTicks_AndHandsItsAnswerToEachSagaAsync}
+
+The watchdog is a chain: the first tick is armed when the saga starts, and each tick arms the next.
+Lose one tick and the chain ends. A tick can be lost to an instance that stops between the saga's work
+and the tick's write, or to a version where nothing received it. The saga then stays in progress
+forever, and upgrading to a version that recovers stranded sagas does not, by itself, recover the ones
+already stranded.
+
+So the maintenance cycle runs a **stranded-saga sweep** as one of its
+[steps](../workers/maintenance-steps#maintenance-steps): after the schema is ready, once the service has
+settled, on the maintenance interval. For each saga service it arms **one** tick for every incomplete
+saga whose chain has ended, already at the stall limit, so the tick resolves
+[stranded items](#stranded-items) the moment it arrives instead of serving a stall count the saga has
+already served.
+
+A chain has ended when both of these hold:
+
+- **No tick is coming.** The sweep asks the work coordinator which of the sagas still have a watchdog
+  tick waiting: in the outbox (unpublished, or scheduled for later) or in an inbox (unclaimed, or being
+  handled now). A saga with one is left alone, however long ago that tick was scheduled for. Waking it
+  would be early, and a second tick would start a second chain that re-arms beside the first forever.
+  When the coordinator cannot tell, the sweep arms nothing.
+- **Nothing has changed recently.** Neither the saga nor any of its items changed within
+  `StrandedSagaIdleGuard` (five minutes). This covers the one place no table shows a tick: on the
+  transport, between the outbox that sent it and the inbox that will receive it. A saga that changed
+  that recently is moving, or has a tick in flight.
+
+Every instance sweeps, and every restart sweeps again, so the tick is published with a claim key made
+of the saga and the time of its last change. They all arrive at one emission. A saga that moves and
+then stops again has a new last change, and is owed one more tick.
+
+The tick is published as the system, in the saga's tenant, so it is handled exactly as the tick the saga
+armed for itself was. That is why the sweep needs to know which sagas are incomplete **and which tenant
+each belongs to**. Override `LoadIncompleteSagasAsync` on the saga service; the default returns none,
+and the sweep then does nothing for that saga:
+
+```csharp{title="Enumerating incomplete sagas for the sweep" description="Returns each incomplete saga with its tenant so the sweep can re-arm a watchdog chain that has ended" category="Sagas" difficulty="INTERMEDIATE" tags=["Sagas", "Watchdog", "Recovery"] tests=["StrandedSagaSweepTests.Sweep_NoTickComingAndIdle_ArmsOneTickAtTheStallLimitInTheSagasTenantAsync"]}
+protected override async Task<IReadOnlyList<IncompleteSaga>> LoadIncompleteSagasAsync(
+    CancellationToken cancellationToken) {
+  var rows = await _sagas.ListIncompleteAcrossTenantsAsync(cancellationToken);
+  return rows.Select(r => new IncompleteSaga(r.ToSagaModel(), r.TenantId)).ToList();
+}
+```
+
+The newest item change comes from `ISagaItemRepository.GetLastActivityAsync`. Its default reads every
+item row of the saga; a repository over a database should override it with a single `MAX` query.
 
 ## Related
 

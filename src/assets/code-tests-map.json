@@ -7387,8 +7387,178 @@
     ],
     "Task": [
       {
+        "testFile": "tests/Whizbang.Sagas.Tests/Services/StrandedSagaSweepTests.cs",
+        "testMethod": "Sweep_NoTickComingAndIdle_ArmsOneTickAtTheStallLimitInTheSagasTenantAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Sagas.Tests/Services/StrandedSagaSweepTests.cs",
+        "testMethod": "Sweep_TickStillComing_ArmsNothingAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Sagas.Tests/Services/StrandedSagaSweepTests.cs",
+        "testMethod": "Sweep_WakeLookupCannotTell_ArmsNothingAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Sagas.Tests/Services/StrandedSagaSweepTests.cs",
+        "testMethod": "Sweep_RecentItemActivity_ArmsNothingAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Sagas.Tests/Services/StrandedSagaSweepTests.cs",
+        "testMethod": "Sweep_RecentSagaActivity_ArmsNothingAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Sagas.Tests/Services/StrandedSagaSweepTests.cs",
+        "testMethod": "Sweep_SkipsCompletedAndEmptySagas_WithoutAskingAboutThemAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Sagas.Tests/Services/StrandedSagaSweepTests.cs",
+        "testMethod": "Sweep_AsksAboutEveryCandidateInOneLookupAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Sagas.Tests/Services/StrandedSagaSweepTests.cs",
+        "testMethod": "Sweep_SameIdleState_ClaimsTheSameKey_NewActivityANewKeyAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Sagas.Tests/Services/StrandedSagaSweepTests.cs",
+        "testMethod": "Sweep_LosingTheClaim_DoesNotCountAsArmedAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Sagas.Tests/Services/StrandedSagaSweepTests.cs",
+        "testMethod": "Sweep_WithNoItemRepository_JudgesByTheSagaRowAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Sagas.Tests/Services/StrandedSagaSweepTests.cs",
+        "testMethod": "ArmedTick_OnArrival_ResolvesTheStrandedItemAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Sagas.Tests/Services/StrandedSagaSweepTests.cs",
+        "testMethod": "ServiceWithoutALoader_ArmsNothingAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Sagas.Tests/Services/StrandedSagaSweepTests.cs",
+        "testMethod": "RepositoryDefault_LastActivityIsTheNewestItemChangeAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Sagas.Tests/Services/StrandedSagaSweepTests.cs",
+        "testMethod": "RepositoryDefault_NoItems_HasNoLastActivityAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Sagas.Tests/Services/StrandedSagaSweepTests.cs",
+        "testMethod": "EmitterDefault_InTenant_ClaimsLikePublishOnceAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Sagas.Tests/Services/StrandedSagaSweepTests.cs",
+        "testMethod": "ParticipantDefault_ArmsNothingAsync",
+        "linkSource": "XmlTag"
+      },
+      {
         "testFile": "tests/Whizbang.Sagas.Tests/Services/TryRecoverViaWatchdogTickAsyncTests.cs",
         "testMethod": "MaxConsecutiveStalls_ConsumerRedrivesTheItem_ItIsNotFailedAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Sagas.Tests/DispatcherSagaEventEmitterTests.cs",
+        "testMethod": "PublishOnceInTenantAsync_PublishesAsTheSystemInThatTenantAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Sagas.Tests/DispatcherSagaEventEmitterTests.cs",
+        "testMethod": "PublishOnceInTenantAsync_NoTenant_PublishesForAllTenantsAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Sagas.Tests/Services/StrandedSagaSweepTests.cs",
+        "testMethod": "Sweep_NoTickComingAndIdle_ArmsOneTickAtTheStallLimitInTheSagasTenantAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Sagas.Tests/Services/StrandedSagaSweepTests.cs",
+        "testMethod": "Sweep_TickStillComing_ArmsNothingAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Sagas.Tests/Services/StrandedSagaSweepTests.cs",
+        "testMethod": "Sweep_WakeLookupCannotTell_ArmsNothingAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Sagas.Tests/Services/StrandedSagaSweepTests.cs",
+        "testMethod": "Sweep_RecentItemActivity_ArmsNothingAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Sagas.Tests/Services/StrandedSagaSweepTests.cs",
+        "testMethod": "Sweep_RecentSagaActivity_ArmsNothingAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Sagas.Tests/Services/StrandedSagaSweepTests.cs",
+        "testMethod": "Sweep_SkipsCompletedAndEmptySagas_WithoutAskingAboutThemAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Sagas.Tests/Services/StrandedSagaSweepTests.cs",
+        "testMethod": "Sweep_AsksAboutEveryCandidateInOneLookupAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Sagas.Tests/Services/StrandedSagaSweepTests.cs",
+        "testMethod": "Sweep_SameIdleState_ClaimsTheSameKey_NewActivityANewKeyAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Sagas.Tests/Services/StrandedSagaSweepTests.cs",
+        "testMethod": "Sweep_LosingTheClaim_DoesNotCountAsArmedAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Sagas.Tests/Services/StrandedSagaSweepTests.cs",
+        "testMethod": "Sweep_WithNoItemRepository_JudgesByTheSagaRowAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Sagas.Tests/Services/StrandedSagaSweepTests.cs",
+        "testMethod": "ArmedTick_OnArrival_ResolvesTheStrandedItemAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Sagas.Tests/Services/StrandedSagaSweepTests.cs",
+        "testMethod": "ServiceWithoutALoader_ArmsNothingAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Sagas.Tests/Services/StrandedSagaSweepTests.cs",
+        "testMethod": "RepositoryDefault_LastActivityIsTheNewestItemChangeAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Sagas.Tests/Services/StrandedSagaSweepTests.cs",
+        "testMethod": "RepositoryDefault_NoItems_HasNoLastActivityAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Sagas.Tests/Services/StrandedSagaSweepTests.cs",
+        "testMethod": "EmitterDefault_InTenant_ClaimsLikePublishOnceAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Sagas.Tests/Services/StrandedSagaSweepTests.cs",
+        "testMethod": "ParticipantDefault_ArmsNothingAsync",
         "linkSource": "XmlTag"
       },
       {
@@ -8237,6 +8407,167 @@
         "linkSource": "XmlTag"
       }
     ],
+    "ArmStrandedSagasAsync": [
+      {
+        "testFile": "tests/Whizbang.Sagas.Tests/Services/StrandedSagaSweepTests.cs",
+        "testMethod": "Sweep_NoTickComingAndIdle_ArmsOneTickAtTheStallLimitInTheSagasTenantAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Sagas.Tests/Services/StrandedSagaSweepTests.cs",
+        "testMethod": "Sweep_TickStillComing_ArmsNothingAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Sagas.Tests/Services/StrandedSagaSweepTests.cs",
+        "testMethod": "Sweep_WakeLookupCannotTell_ArmsNothingAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Sagas.Tests/Services/StrandedSagaSweepTests.cs",
+        "testMethod": "Sweep_RecentItemActivity_ArmsNothingAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Sagas.Tests/Services/StrandedSagaSweepTests.cs",
+        "testMethod": "Sweep_RecentSagaActivity_ArmsNothingAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Sagas.Tests/Services/StrandedSagaSweepTests.cs",
+        "testMethod": "Sweep_SkipsCompletedAndEmptySagas_WithoutAskingAboutThemAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Sagas.Tests/Services/StrandedSagaSweepTests.cs",
+        "testMethod": "Sweep_AsksAboutEveryCandidateInOneLookupAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Sagas.Tests/Services/StrandedSagaSweepTests.cs",
+        "testMethod": "Sweep_SameIdleState_ClaimsTheSameKey_NewActivityANewKeyAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Sagas.Tests/Services/StrandedSagaSweepTests.cs",
+        "testMethod": "Sweep_LosingTheClaim_DoesNotCountAsArmedAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Sagas.Tests/Services/StrandedSagaSweepTests.cs",
+        "testMethod": "Sweep_WithNoItemRepository_JudgesByTheSagaRowAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Sagas.Tests/Services/StrandedSagaSweepTests.cs",
+        "testMethod": "ArmedTick_OnArrival_ResolvesTheStrandedItemAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Sagas.Tests/Services/StrandedSagaSweepTests.cs",
+        "testMethod": "ServiceWithoutALoader_ArmsNothingAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Sagas.Tests/Services/StrandedSagaSweepTests.cs",
+        "testMethod": "RepositoryDefault_LastActivityIsTheNewestItemChangeAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Sagas.Tests/Services/StrandedSagaSweepTests.cs",
+        "testMethod": "RepositoryDefault_NoItems_HasNoLastActivityAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Sagas.Tests/Services/StrandedSagaSweepTests.cs",
+        "testMethod": "EmitterDefault_InTenant_ClaimsLikePublishOnceAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Sagas.Tests/Services/StrandedSagaSweepTests.cs",
+        "testMethod": "ParticipantDefault_ArmsNothingAsync",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "PublishOnceInTenantAsync": [
+      {
+        "testFile": "tests/Whizbang.Sagas.Tests/DispatcherSagaEventEmitterTests.cs",
+        "testMethod": "PublishAsync_WithScheduledFor_RoutesThroughOptionsOverloadAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Sagas.Tests/DispatcherSagaEventEmitterTests.cs",
+        "testMethod": "PublishAsync_WithNullScheduledFor_FallsBackToImmediatePathAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Sagas.Tests/DispatcherSagaEventEmitterTests.cs",
+        "testMethod": "PublishAsync_NoSchedulingOverload_DelegatesToDispatcherAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Sagas.Tests/DispatcherSagaEventEmitterTests.cs",
+        "testMethod": "PublishOnceInTenantAsync_PublishesAsTheSystemInThatTenantAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Sagas.Tests/DispatcherSagaEventEmitterTests.cs",
+        "testMethod": "PublishOnceInTenantAsync_NoTenant_PublishesForAllTenantsAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Sagas.Tests/DispatcherSagaEventEmitterTests.cs",
+        "testMethod": "PublishOnceAsync_ForwardsClaimKeyAndEventToDispatcherAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Sagas.Tests/DispatcherSagaEventEmitterTests.cs",
+        "testMethod": "Constructor_NullDispatcher_ThrowsAsync",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "ISagaWakeLookup": [
+      {
+        "testFile": "tests/Whizbang.Sagas.Tests/Services/StrandedSagaSweepStepTests.cs",
+        "testMethod": "Step_AsksTheCoordinatorForPendingTicks_AndHandsItsAnswerToEachSagaAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Sagas.Tests/Services/StrandedSagaSweepStepTests.cs",
+        "testMethod": "Step_WithNoWorkCoordinator_AnswersUnknownAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Sagas.Tests/Services/StrandedSagaSweepStepTests.cs",
+        "testMethod": "Step_AFailingSaga_IsLogged_AndTheNextStillSweepsAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Sagas.Tests/Services/StrandedSagaSweepStepTests.cs",
+        "testMethod": "Step_Canceled_PropagatesAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Sagas.Tests/Services/StrandedSagaSweepStepTests.cs",
+        "testMethod": "Step_LogsTheTicksItArmed_ByNameAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Sagas.Tests/Services/StrandedSagaSweepStepTests.cs",
+        "testMethod": "Step_ArmingNothing_LogsNothingAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Sagas.Tests/Services/StrandedSagaSweepStepTests.cs",
+        "testMethod": "Step_IsNamedForLogsAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Sagas.Tests/Services/StrandedSagaSweepStepTests.cs",
+        "testMethod": "AddWhizbangSagas_RegistersTheSweepAsAMaintenanceStepOnceAsync",
+        "linkSource": "XmlTag"
+      }
+    ],
     "ISagaWatchdogParticipant": [
       {
         "testFile": "tests/Whizbang.Sagas.Tests/Services/SagaWatchdogTickRoutingTests.cs",
@@ -8300,6 +8631,130 @@
       {
         "testFile": "tests/Whizbang.Sagas.Tests/Services/SagaWatchdogTickRoutingTests.cs",
         "testMethod": "Registrar_WithNoRegistry_StartsWithoutThrowingAsync",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "StrandedSagaSweepStep": [
+      {
+        "testFile": "tests/Whizbang.Sagas.Tests/Services/StrandedSagaSweepStepTests.cs",
+        "testMethod": "Step_AsksTheCoordinatorForPendingTicks_AndHandsItsAnswerToEachSagaAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Sagas.Tests/Services/StrandedSagaSweepStepTests.cs",
+        "testMethod": "Step_WithNoWorkCoordinator_AnswersUnknownAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Sagas.Tests/Services/StrandedSagaSweepStepTests.cs",
+        "testMethod": "Step_AFailingSaga_IsLogged_AndTheNextStillSweepsAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Sagas.Tests/Services/StrandedSagaSweepStepTests.cs",
+        "testMethod": "Step_Canceled_PropagatesAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Sagas.Tests/Services/StrandedSagaSweepStepTests.cs",
+        "testMethod": "Step_LogsTheTicksItArmed_ByNameAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Sagas.Tests/Services/StrandedSagaSweepStepTests.cs",
+        "testMethod": "Step_ArmingNothing_LogsNothingAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Sagas.Tests/Services/StrandedSagaSweepStepTests.cs",
+        "testMethod": "Step_IsNamedForLogsAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Sagas.Tests/Services/StrandedSagaSweepStepTests.cs",
+        "testMethod": "AddWhizbangSagas_RegistersTheSweepAsAMaintenanceStepOnceAsync",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "IncompleteSaga": [
+      {
+        "testFile": "tests/Whizbang.Sagas.Tests/Services/StrandedSagaSweepTests.cs",
+        "testMethod": "Sweep_NoTickComingAndIdle_ArmsOneTickAtTheStallLimitInTheSagasTenantAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Sagas.Tests/Services/StrandedSagaSweepTests.cs",
+        "testMethod": "Sweep_TickStillComing_ArmsNothingAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Sagas.Tests/Services/StrandedSagaSweepTests.cs",
+        "testMethod": "Sweep_WakeLookupCannotTell_ArmsNothingAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Sagas.Tests/Services/StrandedSagaSweepTests.cs",
+        "testMethod": "Sweep_RecentItemActivity_ArmsNothingAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Sagas.Tests/Services/StrandedSagaSweepTests.cs",
+        "testMethod": "Sweep_RecentSagaActivity_ArmsNothingAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Sagas.Tests/Services/StrandedSagaSweepTests.cs",
+        "testMethod": "Sweep_SkipsCompletedAndEmptySagas_WithoutAskingAboutThemAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Sagas.Tests/Services/StrandedSagaSweepTests.cs",
+        "testMethod": "Sweep_AsksAboutEveryCandidateInOneLookupAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Sagas.Tests/Services/StrandedSagaSweepTests.cs",
+        "testMethod": "Sweep_SameIdleState_ClaimsTheSameKey_NewActivityANewKeyAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Sagas.Tests/Services/StrandedSagaSweepTests.cs",
+        "testMethod": "Sweep_LosingTheClaim_DoesNotCountAsArmedAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Sagas.Tests/Services/StrandedSagaSweepTests.cs",
+        "testMethod": "Sweep_WithNoItemRepository_JudgesByTheSagaRowAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Sagas.Tests/Services/StrandedSagaSweepTests.cs",
+        "testMethod": "ArmedTick_OnArrival_ResolvesTheStrandedItemAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Sagas.Tests/Services/StrandedSagaSweepTests.cs",
+        "testMethod": "ServiceWithoutALoader_ArmsNothingAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Sagas.Tests/Services/StrandedSagaSweepTests.cs",
+        "testMethod": "RepositoryDefault_LastActivityIsTheNewestItemChangeAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Sagas.Tests/Services/StrandedSagaSweepTests.cs",
+        "testMethod": "RepositoryDefault_NoItems_HasNoLastActivityAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Sagas.Tests/Services/StrandedSagaSweepTests.cs",
+        "testMethod": "EmitterDefault_InTenant_ClaimsLikePublishOnceAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Sagas.Tests/Services/StrandedSagaSweepTests.cs",
+        "testMethod": "ParticipantDefault_ArmsNothingAsync",
         "linkSource": "XmlTag"
       }
     ],
@@ -22309,6 +22764,38 @@
         "linkSource": "XmlTag"
       }
     ],
+    "StreamsWithPendingMessagesSql": [
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/StreamsWithPendingMessagesSqlTests.cs",
+        "testMethod": "Pending_ReturnsExactlyTheStreamsWithAWakeStillComingAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/StreamsWithPendingMessagesSqlTests.cs",
+        "testMethod": "Pending_IgnoresStreamsNotAskedAboutAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/StreamsWithPendingMessagesSqlTests.cs",
+        "testMethod": "Pending_WithNoStreams_ReturnsAnEmptySetAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.Dapper.Postgres.Tests/DapperStreamsWithPendingMessagesTests.cs",
+        "testMethod": "Pending_ReturnsExactlyTheStreamsWithAWakeStillComingAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.Dapper.Postgres.Tests/DapperStreamsWithPendingMessagesTests.cs",
+        "testMethod": "Pending_IgnoresStreamsNotAskedAboutAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.Dapper.Postgres.Tests/DapperStreamsWithPendingMessagesTests.cs",
+        "testMethod": "Pending_WithNoStreams_ReturnsAnEmptySetAsync",
+        "linkSource": "XmlTag"
+      }
+    ],
     "WhizbangConnectionTuning": [
       {
         "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/WhizbangConnectionTuningTests.cs",
@@ -34772,6 +35259,21 @@
         "testFile": "tests/Whizbang.Core.Tests/Dispatcher/DispatcherPublishOnceTests.cs",
         "testMethod": "PublishOnceAsync_EmitsClaimsLostMetricOnLossAsync",
         "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Dispatcher/DispatcherSecurityBuilderPublishOnceTests.cs",
+        "testMethod": "ForTenant_FirstClaim_PublishesInThatTenantAsSystemAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Dispatcher/DispatcherSecurityBuilderPublishOnceTests.cs",
+        "testMethod": "SameKey_SecondAttempt_PublishesNothingAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Dispatcher/DispatcherSecurityBuilderPublishOnceTests.cs",
+        "testMethod": "AfterPublishing_TheCallersContextIsRestoredAsync",
+        "linkSource": "XmlTag"
       }
     ],
     "LocalInvokeAndSyncAsync": [
@@ -39614,6 +40116,28 @@
       {
         "testFile": "tests/Whizbang.Core.Tests/Workers/HeartbeatWorkerAdaptiveCadenceTests.cs",
         "testMethod": "LockTransitionsHeldToNotHeld_NextResolveReturnsFastCadenceAsync",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "IMaintenanceStep": [
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Workers/MaintenanceWorkerStepTests.cs",
+        "testMethod": "Cycle_RunsEveryRegisteredStep_InRegistrationOrderAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Workers/MaintenanceWorkerStepTests.cs",
+        "testMethod": "Step_ReceivesTheCyclesScopedProviderAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Workers/MaintenanceWorkerStepTests.cs",
+        "testMethod": "FailingStep_IsLogged_AndTheNextStepStillRunsAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Workers/MaintenanceWorkerStepTests.cs",
+        "testMethod": "CanceledStep_PropagatesCancellationAsync",
         "linkSource": "XmlTag"
       }
     ],
@@ -58999,28 +59523,28 @@
       {
         "testFile": "tests/Whizbang.Core.Tests/Resilience/SubscriptionRetryHelperTests.cs",
         "testMethod": "SubscribeWithRetryAsync_OnDisconnected_SetsRecoveringStatusAndLastErrorAsync",
-        "testLine": 289,
+        "testLine": 291,
         "testClass": "SubscriptionRetryHelperTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/Resilience/SubscriptionRetryHelperTests.cs",
         "testMethod": "SubscribeWithRetryAsync_IndefiniteRetry_LogsEvery10AttemptsAsync",
-        "testLine": 322,
+        "testLine": 324,
         "testClass": "SubscriptionRetryHelperTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/Resilience/SubscriptionRetryHelperTests.cs",
         "testMethod": "SubscribeWithRetryAsync_WithRoutingKey_UsesDefaultWildcardInLogsAsync",
-        "testLine": 348,
+        "testLine": 350,
         "testClass": "SubscriptionRetryHelperTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/Resilience/SubscriptionRetryHelperTests.cs",
         "testMethod": "SubscribeWithRetryAsync_RetryAfterMultipleFailures_LogsRetrySuccessAsync",
-        "testLine": 366,
+        "testLine": 368,
         "testClass": "SubscriptionRetryHelperTests",
         "linkSource": "Convention"
       }
@@ -84611,6 +85135,38 @@
         "linkSource": "XmlTag"
       }
     ],
+    "GetStreamsWithPendingMessagesAsync": [
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/StreamsWithPendingMessagesSqlTests.cs",
+        "testMethod": "Pending_ReturnsExactlyTheStreamsWithAWakeStillComingAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/StreamsWithPendingMessagesSqlTests.cs",
+        "testMethod": "Pending_IgnoresStreamsNotAskedAboutAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/StreamsWithPendingMessagesSqlTests.cs",
+        "testMethod": "Pending_WithNoStreams_ReturnsAnEmptySetAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.Dapper.Postgres.Tests/DapperStreamsWithPendingMessagesTests.cs",
+        "testMethod": "Pending_ReturnsExactlyTheStreamsWithAWakeStillComingAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.Dapper.Postgres.Tests/DapperStreamsWithPendingMessagesTests.cs",
+        "testMethod": "Pending_IgnoresStreamsNotAskedAboutAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.Dapper.Postgres.Tests/DapperStreamsWithPendingMessagesTests.cs",
+        "testMethod": "Pending_WithNoStreams_ReturnsAnEmptySetAsync",
+        "linkSource": "XmlTag"
+      }
+    ],
     "GetPendingCoalesceGroupStatsAsync": [
       {
         "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/CoalesceFoldCoordinatorSqlTests.cs",
@@ -106675,15 +107231,29 @@
       },
       {
         "testFile": "tests/Whizbang.Sagas.Tests/DispatcherSagaEventEmitterTests.cs",
+        "testMethod": "PublishOnceInTenantAsync_PublishesAsTheSystemInThatTenantAsync",
+        "testLine": 81,
+        "testClass": "DispatcherSagaEventEmitterTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Sagas.Tests/DispatcherSagaEventEmitterTests.cs",
+        "testMethod": "PublishOnceInTenantAsync_NoTenant_PublishesForAllTenantsAsync",
+        "testLine": 97,
+        "testClass": "DispatcherSagaEventEmitterTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Sagas.Tests/DispatcherSagaEventEmitterTests.cs",
         "testMethod": "PublishOnceAsync_ForwardsClaimKeyAndEventToDispatcherAsync",
-        "testLine": 77,
+        "testLine": 108,
         "testClass": "DispatcherSagaEventEmitterTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Sagas.Tests/DispatcherSagaEventEmitterTests.cs",
         "testMethod": "Constructor_NullDispatcher_ThrowsAsync",
-        "testLine": 92,
+        "testLine": 123,
         "testClass": "DispatcherSagaEventEmitterTests",
         "linkSource": "Convention"
       }
@@ -107241,6 +107811,120 @@
         "testMethod": "AddWhizbangSagas_NullServices_ThrowsAsync",
         "testLine": 101,
         "testClass": "SagaServiceCollectionExtensionsTests",
+        "linkSource": "Convention"
+      }
+    ],
+    "StrandedSagaSweep": [
+      {
+        "testFile": "tests/Whizbang.Sagas.Tests/Services/StrandedSagaSweepTests.cs",
+        "testMethod": "Sweep_NoTickComingAndIdle_ArmsOneTickAtTheStallLimitInTheSagasTenantAsync",
+        "testLine": 56,
+        "testClass": "StrandedSagaSweepTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Sagas.Tests/Services/StrandedSagaSweepTests.cs",
+        "testMethod": "Sweep_TickStillComing_ArmsNothingAsync",
+        "testLine": 84,
+        "testClass": "StrandedSagaSweepTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Sagas.Tests/Services/StrandedSagaSweepTests.cs",
+        "testMethod": "Sweep_WakeLookupCannotTell_ArmsNothingAsync",
+        "testLine": 98,
+        "testClass": "StrandedSagaSweepTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Sagas.Tests/Services/StrandedSagaSweepTests.cs",
+        "testMethod": "Sweep_RecentItemActivity_ArmsNothingAsync",
+        "testLine": 111,
+        "testClass": "StrandedSagaSweepTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Sagas.Tests/Services/StrandedSagaSweepTests.cs",
+        "testMethod": "Sweep_RecentSagaActivity_ArmsNothingAsync",
+        "testLine": 125,
+        "testClass": "StrandedSagaSweepTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Sagas.Tests/Services/StrandedSagaSweepTests.cs",
+        "testMethod": "Sweep_SkipsCompletedAndEmptySagas_WithoutAskingAboutThemAsync",
+        "testLine": 138,
+        "testClass": "StrandedSagaSweepTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Sagas.Tests/Services/StrandedSagaSweepTests.cs",
+        "testMethod": "Sweep_AsksAboutEveryCandidateInOneLookupAsync",
+        "testLine": 154,
+        "testClass": "StrandedSagaSweepTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Sagas.Tests/Services/StrandedSagaSweepTests.cs",
+        "testMethod": "Sweep_SameIdleState_ClaimsTheSameKey_NewActivityANewKeyAsync",
+        "testLine": 170,
+        "testClass": "StrandedSagaSweepTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Sagas.Tests/Services/StrandedSagaSweepTests.cs",
+        "testMethod": "Sweep_LosingTheClaim_DoesNotCountAsArmedAsync",
+        "testLine": 191,
+        "testClass": "StrandedSagaSweepTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Sagas.Tests/Services/StrandedSagaSweepTests.cs",
+        "testMethod": "Sweep_WithNoItemRepository_JudgesByTheSagaRowAsync",
+        "testLine": 204,
+        "testClass": "StrandedSagaSweepTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Sagas.Tests/Services/StrandedSagaSweepTests.cs",
+        "testMethod": "ArmedTick_OnArrival_ResolvesTheStrandedItemAsync",
+        "testLine": 221,
+        "testClass": "StrandedSagaSweepTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Sagas.Tests/Services/StrandedSagaSweepTests.cs",
+        "testMethod": "ServiceWithoutALoader_ArmsNothingAsync",
+        "testLine": 239,
+        "testClass": "StrandedSagaSweepTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Sagas.Tests/Services/StrandedSagaSweepTests.cs",
+        "testMethod": "RepositoryDefault_LastActivityIsTheNewestItemChangeAsync",
+        "testLine": 250,
+        "testClass": "StrandedSagaSweepTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Sagas.Tests/Services/StrandedSagaSweepTests.cs",
+        "testMethod": "RepositoryDefault_NoItems_HasNoLastActivityAsync",
+        "testLine": 261,
+        "testClass": "StrandedSagaSweepTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Sagas.Tests/Services/StrandedSagaSweepTests.cs",
+        "testMethod": "EmitterDefault_InTenant_ClaimsLikePublishOnceAsync",
+        "testLine": 268,
+        "testClass": "StrandedSagaSweepTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Sagas.Tests/Services/StrandedSagaSweepTests.cs",
+        "testMethod": "ParticipantDefault_ArmsNothingAsync",
+        "testLine": 279,
+        "testClass": "StrandedSagaSweepTests",
         "linkSource": "Convention"
       }
     ],
@@ -143757,12 +144441,823 @@
         "linkSource": "XmlTag"
       }
     ],
+    "StrandedSagaSweepTests.Sweep_NoTickComingAndIdle_ArmsOneTickAtTheStallLimitInTheSagasTenantAsync": [
+      {
+        "sourceFile": "src/Whizbang.Sagas/Services/BaseSagaService.cs",
+        "sourceLine": 553,
+        "sourceSymbol": "Task",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Sagas/Services/BaseSagaService.cs",
+        "sourceLine": 559,
+        "sourceSymbol": "ArmStrandedSagasAsync",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Sagas/Repositories/ISagaItemRepository.cs",
+        "sourceLine": 40,
+        "sourceSymbol": "Task",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Sagas/Models/IncompleteSaga.cs",
+        "sourceLine": 16,
+        "sourceSymbol": "IncompleteSaga",
+        "sourceType": "Record",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Sagas/Services/StrandedSagaSweepStep.cs",
+        "sourceSymbol": "StrandedSagaSweep",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "StrandedSagaSweepTests.Sweep_TickStillComing_ArmsNothingAsync": [
+      {
+        "sourceFile": "src/Whizbang.Sagas/Services/BaseSagaService.cs",
+        "sourceLine": 553,
+        "sourceSymbol": "Task",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Sagas/Services/BaseSagaService.cs",
+        "sourceLine": 559,
+        "sourceSymbol": "ArmStrandedSagasAsync",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Sagas/Repositories/ISagaItemRepository.cs",
+        "sourceLine": 40,
+        "sourceSymbol": "Task",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Sagas/Models/IncompleteSaga.cs",
+        "sourceLine": 16,
+        "sourceSymbol": "IncompleteSaga",
+        "sourceType": "Record",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Sagas/Services/StrandedSagaSweepStep.cs",
+        "sourceSymbol": "StrandedSagaSweep",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "StrandedSagaSweepTests.Sweep_WakeLookupCannotTell_ArmsNothingAsync": [
+      {
+        "sourceFile": "src/Whizbang.Sagas/Services/BaseSagaService.cs",
+        "sourceLine": 553,
+        "sourceSymbol": "Task",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Sagas/Services/BaseSagaService.cs",
+        "sourceLine": 559,
+        "sourceSymbol": "ArmStrandedSagasAsync",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Sagas/Repositories/ISagaItemRepository.cs",
+        "sourceLine": 40,
+        "sourceSymbol": "Task",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Sagas/Models/IncompleteSaga.cs",
+        "sourceLine": 16,
+        "sourceSymbol": "IncompleteSaga",
+        "sourceType": "Record",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Sagas/Services/StrandedSagaSweepStep.cs",
+        "sourceSymbol": "StrandedSagaSweep",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "StrandedSagaSweepTests.Sweep_RecentItemActivity_ArmsNothingAsync": [
+      {
+        "sourceFile": "src/Whizbang.Sagas/Services/BaseSagaService.cs",
+        "sourceLine": 553,
+        "sourceSymbol": "Task",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Sagas/Services/BaseSagaService.cs",
+        "sourceLine": 559,
+        "sourceSymbol": "ArmStrandedSagasAsync",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Sagas/Repositories/ISagaItemRepository.cs",
+        "sourceLine": 40,
+        "sourceSymbol": "Task",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Sagas/Models/IncompleteSaga.cs",
+        "sourceLine": 16,
+        "sourceSymbol": "IncompleteSaga",
+        "sourceType": "Record",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Sagas/Services/StrandedSagaSweepStep.cs",
+        "sourceSymbol": "StrandedSagaSweep",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "StrandedSagaSweepTests.Sweep_RecentSagaActivity_ArmsNothingAsync": [
+      {
+        "sourceFile": "src/Whizbang.Sagas/Services/BaseSagaService.cs",
+        "sourceLine": 553,
+        "sourceSymbol": "Task",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Sagas/Services/BaseSagaService.cs",
+        "sourceLine": 559,
+        "sourceSymbol": "ArmStrandedSagasAsync",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Sagas/Repositories/ISagaItemRepository.cs",
+        "sourceLine": 40,
+        "sourceSymbol": "Task",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Sagas/Models/IncompleteSaga.cs",
+        "sourceLine": 16,
+        "sourceSymbol": "IncompleteSaga",
+        "sourceType": "Record",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Sagas/Services/StrandedSagaSweepStep.cs",
+        "sourceSymbol": "StrandedSagaSweep",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "StrandedSagaSweepTests.Sweep_SkipsCompletedAndEmptySagas_WithoutAskingAboutThemAsync": [
+      {
+        "sourceFile": "src/Whizbang.Sagas/Services/BaseSagaService.cs",
+        "sourceLine": 553,
+        "sourceSymbol": "Task",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Sagas/Services/BaseSagaService.cs",
+        "sourceLine": 559,
+        "sourceSymbol": "ArmStrandedSagasAsync",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Sagas/Repositories/ISagaItemRepository.cs",
+        "sourceLine": 40,
+        "sourceSymbol": "Task",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Sagas/Models/IncompleteSaga.cs",
+        "sourceLine": 16,
+        "sourceSymbol": "IncompleteSaga",
+        "sourceType": "Record",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Sagas/Services/StrandedSagaSweepStep.cs",
+        "sourceSymbol": "StrandedSagaSweep",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "StrandedSagaSweepTests.Sweep_AsksAboutEveryCandidateInOneLookupAsync": [
+      {
+        "sourceFile": "src/Whizbang.Sagas/Services/BaseSagaService.cs",
+        "sourceLine": 553,
+        "sourceSymbol": "Task",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Sagas/Services/BaseSagaService.cs",
+        "sourceLine": 559,
+        "sourceSymbol": "ArmStrandedSagasAsync",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Sagas/Repositories/ISagaItemRepository.cs",
+        "sourceLine": 40,
+        "sourceSymbol": "Task",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Sagas/Models/IncompleteSaga.cs",
+        "sourceLine": 16,
+        "sourceSymbol": "IncompleteSaga",
+        "sourceType": "Record",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Sagas/Services/StrandedSagaSweepStep.cs",
+        "sourceSymbol": "StrandedSagaSweep",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "StrandedSagaSweepTests.Sweep_SameIdleState_ClaimsTheSameKey_NewActivityANewKeyAsync": [
+      {
+        "sourceFile": "src/Whizbang.Sagas/Services/BaseSagaService.cs",
+        "sourceLine": 553,
+        "sourceSymbol": "Task",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Sagas/Services/BaseSagaService.cs",
+        "sourceLine": 559,
+        "sourceSymbol": "ArmStrandedSagasAsync",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Sagas/Repositories/ISagaItemRepository.cs",
+        "sourceLine": 40,
+        "sourceSymbol": "Task",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Sagas/Models/IncompleteSaga.cs",
+        "sourceLine": 16,
+        "sourceSymbol": "IncompleteSaga",
+        "sourceType": "Record",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Sagas/Services/StrandedSagaSweepStep.cs",
+        "sourceSymbol": "StrandedSagaSweep",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "StrandedSagaSweepTests.Sweep_LosingTheClaim_DoesNotCountAsArmedAsync": [
+      {
+        "sourceFile": "src/Whizbang.Sagas/Services/BaseSagaService.cs",
+        "sourceLine": 553,
+        "sourceSymbol": "Task",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Sagas/Services/BaseSagaService.cs",
+        "sourceLine": 559,
+        "sourceSymbol": "ArmStrandedSagasAsync",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Sagas/Repositories/ISagaItemRepository.cs",
+        "sourceLine": 40,
+        "sourceSymbol": "Task",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Sagas/Models/IncompleteSaga.cs",
+        "sourceLine": 16,
+        "sourceSymbol": "IncompleteSaga",
+        "sourceType": "Record",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Sagas/Services/StrandedSagaSweepStep.cs",
+        "sourceSymbol": "StrandedSagaSweep",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "StrandedSagaSweepTests.Sweep_WithNoItemRepository_JudgesByTheSagaRowAsync": [
+      {
+        "sourceFile": "src/Whizbang.Sagas/Services/BaseSagaService.cs",
+        "sourceLine": 553,
+        "sourceSymbol": "Task",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Sagas/Services/BaseSagaService.cs",
+        "sourceLine": 559,
+        "sourceSymbol": "ArmStrandedSagasAsync",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Sagas/Repositories/ISagaItemRepository.cs",
+        "sourceLine": 40,
+        "sourceSymbol": "Task",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Sagas/Models/IncompleteSaga.cs",
+        "sourceLine": 16,
+        "sourceSymbol": "IncompleteSaga",
+        "sourceType": "Record",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Sagas/Services/StrandedSagaSweepStep.cs",
+        "sourceSymbol": "StrandedSagaSweep",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "StrandedSagaSweepTests.ArmedTick_OnArrival_ResolvesTheStrandedItemAsync": [
+      {
+        "sourceFile": "src/Whizbang.Sagas/Services/BaseSagaService.cs",
+        "sourceLine": 553,
+        "sourceSymbol": "Task",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Sagas/Services/BaseSagaService.cs",
+        "sourceLine": 559,
+        "sourceSymbol": "ArmStrandedSagasAsync",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Sagas/Repositories/ISagaItemRepository.cs",
+        "sourceLine": 40,
+        "sourceSymbol": "Task",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Sagas/Models/IncompleteSaga.cs",
+        "sourceLine": 16,
+        "sourceSymbol": "IncompleteSaga",
+        "sourceType": "Record",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Sagas/Services/StrandedSagaSweepStep.cs",
+        "sourceSymbol": "StrandedSagaSweep",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "StrandedSagaSweepTests.ServiceWithoutALoader_ArmsNothingAsync": [
+      {
+        "sourceFile": "src/Whizbang.Sagas/Services/BaseSagaService.cs",
+        "sourceLine": 553,
+        "sourceSymbol": "Task",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Sagas/Services/BaseSagaService.cs",
+        "sourceLine": 559,
+        "sourceSymbol": "ArmStrandedSagasAsync",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Sagas/Repositories/ISagaItemRepository.cs",
+        "sourceLine": 40,
+        "sourceSymbol": "Task",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Sagas/Models/IncompleteSaga.cs",
+        "sourceLine": 16,
+        "sourceSymbol": "IncompleteSaga",
+        "sourceType": "Record",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Sagas/Services/StrandedSagaSweepStep.cs",
+        "sourceSymbol": "StrandedSagaSweep",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "StrandedSagaSweepTests.RepositoryDefault_LastActivityIsTheNewestItemChangeAsync": [
+      {
+        "sourceFile": "src/Whizbang.Sagas/Services/BaseSagaService.cs",
+        "sourceLine": 553,
+        "sourceSymbol": "Task",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Sagas/Services/BaseSagaService.cs",
+        "sourceLine": 559,
+        "sourceSymbol": "ArmStrandedSagasAsync",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Sagas/Repositories/ISagaItemRepository.cs",
+        "sourceLine": 40,
+        "sourceSymbol": "Task",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Sagas/Models/IncompleteSaga.cs",
+        "sourceLine": 16,
+        "sourceSymbol": "IncompleteSaga",
+        "sourceType": "Record",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Sagas/Services/StrandedSagaSweepStep.cs",
+        "sourceSymbol": "StrandedSagaSweep",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "StrandedSagaSweepTests.RepositoryDefault_NoItems_HasNoLastActivityAsync": [
+      {
+        "sourceFile": "src/Whizbang.Sagas/Services/BaseSagaService.cs",
+        "sourceLine": 553,
+        "sourceSymbol": "Task",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Sagas/Services/BaseSagaService.cs",
+        "sourceLine": 559,
+        "sourceSymbol": "ArmStrandedSagasAsync",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Sagas/Repositories/ISagaItemRepository.cs",
+        "sourceLine": 40,
+        "sourceSymbol": "Task",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Sagas/Models/IncompleteSaga.cs",
+        "sourceLine": 16,
+        "sourceSymbol": "IncompleteSaga",
+        "sourceType": "Record",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Sagas/Services/StrandedSagaSweepStep.cs",
+        "sourceSymbol": "StrandedSagaSweep",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "StrandedSagaSweepTests.EmitterDefault_InTenant_ClaimsLikePublishOnceAsync": [
+      {
+        "sourceFile": "src/Whizbang.Sagas/Services/BaseSagaService.cs",
+        "sourceLine": 553,
+        "sourceSymbol": "Task",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Sagas/Services/BaseSagaService.cs",
+        "sourceLine": 559,
+        "sourceSymbol": "ArmStrandedSagasAsync",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Sagas/Repositories/ISagaItemRepository.cs",
+        "sourceLine": 40,
+        "sourceSymbol": "Task",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Sagas/Models/IncompleteSaga.cs",
+        "sourceLine": 16,
+        "sourceSymbol": "IncompleteSaga",
+        "sourceType": "Record",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Sagas/Services/StrandedSagaSweepStep.cs",
+        "sourceSymbol": "StrandedSagaSweep",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "StrandedSagaSweepTests.ParticipantDefault_ArmsNothingAsync": [
+      {
+        "sourceFile": "src/Whizbang.Sagas/Services/BaseSagaService.cs",
+        "sourceLine": 553,
+        "sourceSymbol": "Task",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Sagas/Services/BaseSagaService.cs",
+        "sourceLine": 559,
+        "sourceSymbol": "ArmStrandedSagasAsync",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Sagas/Repositories/ISagaItemRepository.cs",
+        "sourceLine": 40,
+        "sourceSymbol": "Task",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Sagas/Models/IncompleteSaga.cs",
+        "sourceLine": 16,
+        "sourceSymbol": "IncompleteSaga",
+        "sourceType": "Record",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Sagas/Services/StrandedSagaSweepStep.cs",
+        "sourceSymbol": "StrandedSagaSweep",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
     "TryRecoverViaWatchdogTickAsyncTests.MaxConsecutiveStalls_ConsumerRedrivesTheItem_ItIsNotFailedAsync": [
       {
         "sourceFile": "src/Whizbang.Sagas/Services/BaseSagaService.cs",
-        "sourceLine": 611,
+        "sourceLine": 694,
         "sourceSymbol": "Task",
         "sourceType": "Method",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "DispatcherSagaEventEmitterTests.PublishOnceInTenantAsync_PublishesAsTheSystemInThatTenantAsync": [
+      {
+        "sourceFile": "src/Whizbang.Sagas/Services/DispatcherSagaEventEmitter.cs",
+        "sourceLine": 42,
+        "sourceSymbol": "Task",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Sagas/Services/ISagaEventEmitter.cs",
+        "sourceLine": 54,
+        "sourceSymbol": "PublishOnceInTenantAsync",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "DispatcherSagaEventEmitterTests.PublishOnceInTenantAsync_NoTenant_PublishesForAllTenantsAsync": [
+      {
+        "sourceFile": "src/Whizbang.Sagas/Services/DispatcherSagaEventEmitter.cs",
+        "sourceLine": 43,
+        "sourceSymbol": "Task",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Sagas/Services/ISagaEventEmitter.cs",
+        "sourceLine": 54,
+        "sourceSymbol": "PublishOnceInTenantAsync",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "DispatcherSagaEventEmitterTests.PublishAsync_WithScheduledFor_RoutesThroughOptionsOverloadAsync": [
+      {
+        "sourceFile": "src/Whizbang.Sagas/Services/ISagaEventEmitter.cs",
+        "sourceLine": 54,
+        "sourceSymbol": "PublishOnceInTenantAsync",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Sagas/Services/DispatcherSagaEventEmitter.cs",
+        "sourceSymbol": "DispatcherSagaEventEmitter",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "DispatcherSagaEventEmitterTests.PublishAsync_WithNullScheduledFor_FallsBackToImmediatePathAsync": [
+      {
+        "sourceFile": "src/Whizbang.Sagas/Services/ISagaEventEmitter.cs",
+        "sourceLine": 54,
+        "sourceSymbol": "PublishOnceInTenantAsync",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Sagas/Services/DispatcherSagaEventEmitter.cs",
+        "sourceSymbol": "DispatcherSagaEventEmitter",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "DispatcherSagaEventEmitterTests.PublishAsync_NoSchedulingOverload_DelegatesToDispatcherAsync": [
+      {
+        "sourceFile": "src/Whizbang.Sagas/Services/ISagaEventEmitter.cs",
+        "sourceLine": 54,
+        "sourceSymbol": "PublishOnceInTenantAsync",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Sagas/Services/DispatcherSagaEventEmitter.cs",
+        "sourceSymbol": "DispatcherSagaEventEmitter",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "DispatcherSagaEventEmitterTests.PublishOnceAsync_ForwardsClaimKeyAndEventToDispatcherAsync": [
+      {
+        "sourceFile": "src/Whizbang.Sagas/Services/ISagaEventEmitter.cs",
+        "sourceLine": 54,
+        "sourceSymbol": "PublishOnceInTenantAsync",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Sagas/Services/DispatcherSagaEventEmitter.cs",
+        "sourceSymbol": "DispatcherSagaEventEmitter",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "DispatcherSagaEventEmitterTests.Constructor_NullDispatcher_ThrowsAsync": [
+      {
+        "sourceFile": "src/Whizbang.Sagas/Services/ISagaEventEmitter.cs",
+        "sourceLine": 54,
+        "sourceSymbol": "PublishOnceInTenantAsync",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Sagas/Services/DispatcherSagaEventEmitter.cs",
+        "sourceSymbol": "DispatcherSagaEventEmitter",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "StrandedSagaSweepStepTests.Step_AsksTheCoordinatorForPendingTicks_AndHandsItsAnswerToEachSagaAsync": [
+      {
+        "sourceFile": "src/Whizbang.Sagas/Services/ISagaWakeLookup.cs",
+        "sourceLine": 12,
+        "sourceSymbol": "ISagaWakeLookup",
+        "sourceType": "Interface",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Sagas/Services/StrandedSagaSweepStep.cs",
+        "sourceLine": 25,
+        "sourceSymbol": "StrandedSagaSweepStep",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "StrandedSagaSweepStepTests.Step_WithNoWorkCoordinator_AnswersUnknownAsync": [
+      {
+        "sourceFile": "src/Whizbang.Sagas/Services/ISagaWakeLookup.cs",
+        "sourceLine": 12,
+        "sourceSymbol": "ISagaWakeLookup",
+        "sourceType": "Interface",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Sagas/Services/StrandedSagaSweepStep.cs",
+        "sourceLine": 25,
+        "sourceSymbol": "StrandedSagaSweepStep",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "StrandedSagaSweepStepTests.Step_AFailingSaga_IsLogged_AndTheNextStillSweepsAsync": [
+      {
+        "sourceFile": "src/Whizbang.Sagas/Services/ISagaWakeLookup.cs",
+        "sourceLine": 12,
+        "sourceSymbol": "ISagaWakeLookup",
+        "sourceType": "Interface",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Sagas/Services/StrandedSagaSweepStep.cs",
+        "sourceLine": 25,
+        "sourceSymbol": "StrandedSagaSweepStep",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "StrandedSagaSweepStepTests.Step_Canceled_PropagatesAsync": [
+      {
+        "sourceFile": "src/Whizbang.Sagas/Services/ISagaWakeLookup.cs",
+        "sourceLine": 12,
+        "sourceSymbol": "ISagaWakeLookup",
+        "sourceType": "Interface",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Sagas/Services/StrandedSagaSweepStep.cs",
+        "sourceLine": 25,
+        "sourceSymbol": "StrandedSagaSweepStep",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "StrandedSagaSweepStepTests.Step_LogsTheTicksItArmed_ByNameAsync": [
+      {
+        "sourceFile": "src/Whizbang.Sagas/Services/ISagaWakeLookup.cs",
+        "sourceLine": 12,
+        "sourceSymbol": "ISagaWakeLookup",
+        "sourceType": "Interface",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Sagas/Services/StrandedSagaSweepStep.cs",
+        "sourceLine": 25,
+        "sourceSymbol": "StrandedSagaSweepStep",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "StrandedSagaSweepStepTests.Step_ArmingNothing_LogsNothingAsync": [
+      {
+        "sourceFile": "src/Whizbang.Sagas/Services/ISagaWakeLookup.cs",
+        "sourceLine": 12,
+        "sourceSymbol": "ISagaWakeLookup",
+        "sourceType": "Interface",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Sagas/Services/StrandedSagaSweepStep.cs",
+        "sourceLine": 25,
+        "sourceSymbol": "StrandedSagaSweepStep",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "StrandedSagaSweepStepTests.Step_IsNamedForLogsAsync": [
+      {
+        "sourceFile": "src/Whizbang.Sagas/Services/ISagaWakeLookup.cs",
+        "sourceLine": 12,
+        "sourceSymbol": "ISagaWakeLookup",
+        "sourceType": "Interface",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Sagas/Services/StrandedSagaSweepStep.cs",
+        "sourceLine": 25,
+        "sourceSymbol": "StrandedSagaSweepStep",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "StrandedSagaSweepStepTests.AddWhizbangSagas_RegistersTheSweepAsAMaintenanceStepOnceAsync": [
+      {
+        "sourceFile": "src/Whizbang.Sagas/Services/ISagaWakeLookup.cs",
+        "sourceLine": 12,
+        "sourceSymbol": "ISagaWakeLookup",
+        "sourceType": "Interface",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Sagas/Services/StrandedSagaSweepStep.cs",
+        "sourceLine": 25,
+        "sourceSymbol": "StrandedSagaSweepStep",
+        "sourceType": "Class",
         "linkSource": "XmlTag"
       }
     ],
@@ -163805,6 +165300,102 @@
         "sourceLine": 62,
         "sourceSymbol": "SchemaMigrationDeferral",
         "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "StreamsWithPendingMessagesSqlTests.Pending_ReturnsExactlyTheStreamsWithAWakeStillComingAsync": [
+      {
+        "sourceFile": "src/Whizbang.Data.Postgres/StreamsWithPendingMessagesSql.cs",
+        "sourceLine": 23,
+        "sourceSymbol": "StreamsWithPendingMessagesSql",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
+        "sourceLine": 2290,
+        "sourceSymbol": "GetStreamsWithPendingMessagesAsync",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "StreamsWithPendingMessagesSqlTests.Pending_IgnoresStreamsNotAskedAboutAsync": [
+      {
+        "sourceFile": "src/Whizbang.Data.Postgres/StreamsWithPendingMessagesSql.cs",
+        "sourceLine": 23,
+        "sourceSymbol": "StreamsWithPendingMessagesSql",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
+        "sourceLine": 2290,
+        "sourceSymbol": "GetStreamsWithPendingMessagesAsync",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "StreamsWithPendingMessagesSqlTests.Pending_WithNoStreams_ReturnsAnEmptySetAsync": [
+      {
+        "sourceFile": "src/Whizbang.Data.Postgres/StreamsWithPendingMessagesSql.cs",
+        "sourceLine": 23,
+        "sourceSymbol": "StreamsWithPendingMessagesSql",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
+        "sourceLine": 2290,
+        "sourceSymbol": "GetStreamsWithPendingMessagesAsync",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "DapperStreamsWithPendingMessagesTests.Pending_ReturnsExactlyTheStreamsWithAWakeStillComingAsync": [
+      {
+        "sourceFile": "src/Whizbang.Data.Postgres/StreamsWithPendingMessagesSql.cs",
+        "sourceLine": 24,
+        "sourceSymbol": "StreamsWithPendingMessagesSql",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
+        "sourceLine": 2291,
+        "sourceSymbol": "GetStreamsWithPendingMessagesAsync",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "DapperStreamsWithPendingMessagesTests.Pending_IgnoresStreamsNotAskedAboutAsync": [
+      {
+        "sourceFile": "src/Whizbang.Data.Postgres/StreamsWithPendingMessagesSql.cs",
+        "sourceLine": 24,
+        "sourceSymbol": "StreamsWithPendingMessagesSql",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
+        "sourceLine": 2291,
+        "sourceSymbol": "GetStreamsWithPendingMessagesAsync",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "DapperStreamsWithPendingMessagesTests.Pending_WithNoStreams_ReturnsAnEmptySetAsync": [
+      {
+        "sourceFile": "src/Whizbang.Data.Postgres/StreamsWithPendingMessagesSql.cs",
+        "sourceLine": 24,
+        "sourceSymbol": "StreamsWithPendingMessagesSql",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
+        "sourceLine": 2291,
+        "sourceSymbol": "GetStreamsWithPendingMessagesAsync",
+        "sourceType": "Method",
         "linkSource": "XmlTag"
       }
     ],
@@ -185602,7 +187193,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Dispatch/DispatcherSecurityBuilder.cs",
-        "sourceLine": 289,
+        "sourceLine": 319,
         "sourceSymbol": "LocalInvokeAndSyncAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -191312,7 +192903,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-        "sourceLine": 2839,
+        "sourceLine": 2873,
         "sourceSymbol": "CoalesceGroupStats",
         "sourceType": "Record",
         "linkSource": "XmlTag"
@@ -192965,6 +194556,42 @@
         "sourceFile": "src/Whizbang.Core/Workers/IInstanceAliveLockSource.cs",
         "sourceLine": 18,
         "sourceSymbol": "IInstanceAliveLockSource",
+        "sourceType": "Interface",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "MaintenanceWorkerStepTests.Cycle_RunsEveryRegisteredStep_InRegistrationOrderAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Workers/IMaintenanceStep.cs",
+        "sourceLine": 20,
+        "sourceSymbol": "IMaintenanceStep",
+        "sourceType": "Interface",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "MaintenanceWorkerStepTests.Step_ReceivesTheCyclesScopedProviderAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Workers/IMaintenanceStep.cs",
+        "sourceLine": 20,
+        "sourceSymbol": "IMaintenanceStep",
+        "sourceType": "Interface",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "MaintenanceWorkerStepTests.FailingStep_IsLogged_AndTheNextStepStillRunsAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Workers/IMaintenanceStep.cs",
+        "sourceLine": 20,
+        "sourceSymbol": "IMaintenanceStep",
+        "sourceType": "Interface",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "MaintenanceWorkerStepTests.CanceledStep_PropagatesCancellationAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Workers/IMaintenanceStep.cs",
+        "sourceLine": 20,
+        "sourceSymbol": "IMaintenanceStep",
         "sourceType": "Interface",
         "linkSource": "XmlTag"
       }
@@ -195286,21 +196913,21 @@
     "MaintenanceWorkerStuckRowSentinelTests.MaintenanceTick_SentinelDisabled_DoesNotInvokeSentinelMethodsAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-        "sourceLine": 1058,
+        "sourceLine": 1082,
         "sourceSymbol": "StuckRowSentinelEnabled",
         "sourceType": "Property",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-        "sourceLine": 1071,
+        "sourceLine": 1095,
         "sourceSymbol": "StuckRowSentinelMaxAttempts",
         "sourceType": "Property",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-        "sourceLine": 1082,
+        "sourceLine": 1106,
         "sourceSymbol": "StuckRowSentinelLimit",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -195309,14 +196936,14 @@
     "MaintenanceWorkerStuckRowSentinelTests.MaintenanceTick_NoStuckRows_EmitsNoSentinelWarningsAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-        "sourceLine": 1059,
+        "sourceLine": 1083,
         "sourceSymbol": "StuckRowSentinelEnabled",
         "sourceType": "Property",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-        "sourceLine": 1070,
+        "sourceLine": 1094,
         "sourceSymbol": "StuckRowSentinelMaxAttempts",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -195325,14 +196952,14 @@
     "MaintenanceWorkerStuckRowSentinelTests.MaintenanceTick_StuckOutboxRow_EmitsWarningPerRowAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-        "sourceLine": 1069,
+        "sourceLine": 1093,
         "sourceSymbol": "StuckRowSentinelMaxAttempts",
         "sourceType": "Property",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-        "sourceLine": 1080,
+        "sourceLine": 1104,
         "sourceSymbol": "StuckRowSentinelLimit",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -195348,7 +196975,7 @@
     "MaintenanceWorkerStuckRowSentinelTests.MaintenanceTick_MultipleStuckRows_OneWarningEachAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/MaintenanceWorker.cs",
-        "sourceLine": 1081,
+        "sourceLine": 1105,
         "sourceSymbol": "StuckRowSentinelLimit",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -195995,7 +197622,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-        "sourceLine": 2398,
+        "sourceLine": 2432,
         "sourceSymbol": "RewindCursorInfo",
         "sourceType": "Record",
         "linkSource": "XmlTag"
@@ -226899,7 +228526,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-        "sourceLine": 2479,
+        "sourceLine": 2513,
         "sourceSymbol": "PerspectiveTableName",
         "sourceType": "Record",
         "linkSource": "XmlTag"
@@ -226964,7 +228591,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-        "sourceLine": 2479,
+        "sourceLine": 2513,
         "sourceSymbol": "PerspectiveTableName",
         "sourceType": "Record",
         "linkSource": "XmlTag"
@@ -227029,7 +228656,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-        "sourceLine": 2479,
+        "sourceLine": 2513,
         "sourceSymbol": "PerspectiveTableName",
         "sourceType": "Record",
         "linkSource": "XmlTag"
@@ -227101,7 +228728,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-        "sourceLine": 2479,
+        "sourceLine": 2513,
         "sourceSymbol": "PerspectiveTableName",
         "sourceType": "Record",
         "linkSource": "XmlTag"
@@ -227166,7 +228793,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-        "sourceLine": 2479,
+        "sourceLine": 2513,
         "sourceSymbol": "PerspectiveTableName",
         "sourceType": "Record",
         "linkSource": "XmlTag"
@@ -227231,7 +228858,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-        "sourceLine": 2479,
+        "sourceLine": 2513,
         "sourceSymbol": "PerspectiveTableName",
         "sourceType": "Record",
         "linkSource": "XmlTag"
@@ -227296,7 +228923,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-        "sourceLine": 2479,
+        "sourceLine": 2513,
         "sourceSymbol": "PerspectiveTableName",
         "sourceType": "Record",
         "linkSource": "XmlTag"
@@ -257665,7 +259292,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-        "sourceLine": 2779,
+        "sourceLine": 2813,
         "sourceSymbol": "Flags",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -257681,7 +259308,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-        "sourceLine": 2780,
+        "sourceLine": 2814,
         "sourceSymbol": "Flags",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -257697,7 +259324,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-        "sourceLine": 2911,
+        "sourceLine": 2945,
         "sourceSymbol": "Flags",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -257713,7 +259340,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-        "sourceLine": 2912,
+        "sourceLine": 2946,
         "sourceSymbol": "Flags",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -262023,7 +263650,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-        "sourceLine": 2462,
+        "sourceLine": 2496,
         "sourceSymbol": "PerspectiveRowReapResult",
         "sourceType": "Record",
         "linkSource": "XmlTag"
@@ -262095,7 +263722,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-        "sourceLine": 2462,
+        "sourceLine": 2496,
         "sourceSymbol": "PerspectiveRowReapResult",
         "sourceType": "Record",
         "linkSource": "XmlTag"
@@ -262167,7 +263794,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-        "sourceLine": 2462,
+        "sourceLine": 2496,
         "sourceSymbol": "PerspectiveRowReapResult",
         "sourceType": "Record",
         "linkSource": "XmlTag"
@@ -262239,7 +263866,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-        "sourceLine": 2462,
+        "sourceLine": 2496,
         "sourceSymbol": "PerspectiveRowReapResult",
         "sourceType": "Record",
         "linkSource": "XmlTag"
@@ -262311,7 +263938,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-        "sourceLine": 2462,
+        "sourceLine": 2496,
         "sourceSymbol": "PerspectiveRowReapResult",
         "sourceType": "Record",
         "linkSource": "XmlTag"
@@ -262383,7 +264010,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-        "sourceLine": 2462,
+        "sourceLine": 2496,
         "sourceSymbol": "PerspectiveRowReapResult",
         "sourceType": "Record",
         "linkSource": "XmlTag"
@@ -262816,7 +264443,7 @@
     "CoalesceFoldCoordinatorSqlTests.GetPendingCoalesceGroupStats_ReturnsPerGroupCountsAndAgesAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-        "sourceLine": 2300,
+        "sourceLine": 2334,
         "sourceSymbol": "GetPendingCoalesceGroupStatsAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -262825,7 +264452,7 @@
     "CoalesceFoldCoordinatorSqlTests.FetchPendingCoalesce_ReturnsOldestFirstUpToLimitAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-        "sourceLine": 2318,
+        "sourceLine": 2352,
         "sourceSymbol": "FetchPendingCoalesceAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -262834,7 +264461,7 @@
     "CoalesceFoldCoordinatorSqlTests.CompleteCoalesceFold_InsertsCompositeAndCompletesSinglesAtomicallyAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-        "sourceLine": 2335,
+        "sourceLine": 2369,
         "sourceSymbol": "CompleteCoalesceFoldAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -262843,7 +264470,7 @@
     "CoalesceFoldCoordinatorSqlTests.ReleaseMaturedCoalesce_ReleasesOnlyMaturedRows_AndClaimShipsThemAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-        "sourceLine": 2356,
+        "sourceLine": 2390,
         "sourceSymbol": "ReleaseMaturedCoalesceAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -262852,7 +264479,7 @@
     "CoordinatorRecordSurfaceTests.RewindCursorInfo_PositionalCtor_RoundTripsAllValuesAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-        "sourceLine": 2396,
+        "sourceLine": 2430,
         "sourceSymbol": "RewindCursorInfo",
         "sourceType": "Record",
         "linkSource": "XmlTag"
@@ -262861,7 +264488,7 @@
     "CoordinatorRecordSurfaceTests.RewindCursorInfo_NullsAreAllowedAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-        "sourceLine": 2397,
+        "sourceLine": 2431,
         "sourceSymbol": "RewindCursorInfo",
         "sourceType": "Record",
         "linkSource": "XmlTag"
@@ -262870,28 +264497,28 @@
     "MessageFailureTests.MessageFailure_WithReason_StoresReasonAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-        "sourceLine": 2976,
+        "sourceLine": 3010,
         "sourceSymbol": "MessageId",
         "sourceType": "Property",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-        "sourceLine": 2985,
+        "sourceLine": 3019,
         "sourceSymbol": "CompletedStatus",
         "sourceType": "Property",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-        "sourceLine": 2993,
+        "sourceLine": 3027,
         "sourceSymbol": "Error",
         "sourceType": "Property",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-        "sourceLine": 3003,
+        "sourceLine": 3037,
         "sourceSymbol": "Reason",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -262906,28 +264533,28 @@
     "MessageFailureTests.MessageFailure_WithoutReason_DefaultsToUnknownAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-        "sourceLine": 2977,
+        "sourceLine": 3011,
         "sourceSymbol": "MessageId",
         "sourceType": "Property",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-        "sourceLine": 2986,
+        "sourceLine": 3020,
         "sourceSymbol": "CompletedStatus",
         "sourceType": "Property",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-        "sourceLine": 2994,
+        "sourceLine": 3028,
         "sourceSymbol": "Error",
         "sourceType": "Property",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-        "sourceLine": 3004,
+        "sourceLine": 3038,
         "sourceSymbol": "Reason",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -262942,28 +264569,28 @@
     "MessageFailureTests.MessageFailure_AllReasonTypes_CanBeAssignedAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-        "sourceLine": 2978,
+        "sourceLine": 3012,
         "sourceSymbol": "MessageId",
         "sourceType": "Property",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-        "sourceLine": 2987,
+        "sourceLine": 3021,
         "sourceSymbol": "CompletedStatus",
         "sourceType": "Property",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-        "sourceLine": 2995,
+        "sourceLine": 3029,
         "sourceSymbol": "Error",
         "sourceType": "Property",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-        "sourceLine": 3005,
+        "sourceLine": 3039,
         "sourceSymbol": "Reason",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -262978,7 +264605,7 @@
     "OutboxDrainWorkerGapTests.OutboxDrainWorker_PublishesTheRowsPriorityOnTheWireAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-        "sourceLine": 3054,
+        "sourceLine": 3088,
         "sourceSymbol": "Priority",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -262987,7 +264614,7 @@
     "WorkCoordinatorDtoSurfaceTests.PerspectiveCursorCompletion_ProcessedEventIds_DefaultsEmptyAndRoundTripsAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-        "sourceLine": 3297,
+        "sourceLine": 3331,
         "sourceSymbol": "EventsProcessed",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -262996,7 +264623,7 @@
     "PerspectiveApplyIdempotencyTests.RunAsync_RerunWithSameEvents_SkipsAllAndDoesNotReWriteAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-        "sourceLine": 3298,
+        "sourceLine": 3332,
         "sourceSymbol": "EventsProcessed",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -263005,7 +264632,7 @@
     "PerspectiveApplyIdempotencyTests.RunAsync_RerunWithMixOfAppliedAndNewEvents_AppliesOnlyNewAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-        "sourceLine": 3299,
+        "sourceLine": 3333,
         "sourceSymbol": "EventsProcessed",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -263014,7 +264641,7 @@
     "MessagePrioritySqlTests.FetchOutboxBatch_ReturnsTheRowsPriorityAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IWorkCoordinator.cs",
-        "sourceLine": 3511,
+        "sourceLine": 3545,
         "sourceSymbol": "Priority",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -276174,6 +277801,33 @@
         "linkSource": "XmlTag"
       }
     ],
+    "DispatcherSecurityBuilderPublishOnceTests.ForTenant_FirstClaim_PublishesInThatTenantAsSystemAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Dispatch/DispatcherSecurityBuilder.cs",
+        "sourceLine": 239,
+        "sourceSymbol": "PublishOnceAsync",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "DispatcherSecurityBuilderPublishOnceTests.SameKey_SecondAttempt_PublishesNothingAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Dispatch/DispatcherSecurityBuilder.cs",
+        "sourceLine": 239,
+        "sourceSymbol": "PublishOnceAsync",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "DispatcherSecurityBuilderPublishOnceTests.AfterPublishing_TheCallersContextIsRestoredAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Dispatch/DispatcherSecurityBuilder.cs",
+        "sourceLine": 239,
+        "sourceSymbol": "PublishOnceAsync",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      }
+    ],
     "ImpersonationDispatcherBuilderTests.RunAs_ForAllTenants_SetsTenantIdToAllTenantsConstantAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatch/DispatcherSecurityExtensions.cs",
@@ -288123,46 +289777,6 @@
       {
         "sourceFile": "src/Whizbang.Sagas/Services/BaseSagaService.cs",
         "sourceSymbol": "BaseSagaService",
-        "sourceType": "Class",
-        "linkSource": "Convention"
-      }
-    ],
-    "DispatcherSagaEventEmitterTests.PublishAsync_WithScheduledFor_RoutesThroughOptionsOverloadAsync": [
-      {
-        "sourceFile": "src/Whizbang.Sagas/Services/DispatcherSagaEventEmitter.cs",
-        "sourceSymbol": "DispatcherSagaEventEmitter",
-        "sourceType": "Class",
-        "linkSource": "Convention"
-      }
-    ],
-    "DispatcherSagaEventEmitterTests.PublishAsync_WithNullScheduledFor_FallsBackToImmediatePathAsync": [
-      {
-        "sourceFile": "src/Whizbang.Sagas/Services/DispatcherSagaEventEmitter.cs",
-        "sourceSymbol": "DispatcherSagaEventEmitter",
-        "sourceType": "Class",
-        "linkSource": "Convention"
-      }
-    ],
-    "DispatcherSagaEventEmitterTests.PublishAsync_NoSchedulingOverload_DelegatesToDispatcherAsync": [
-      {
-        "sourceFile": "src/Whizbang.Sagas/Services/DispatcherSagaEventEmitter.cs",
-        "sourceSymbol": "DispatcherSagaEventEmitter",
-        "sourceType": "Class",
-        "linkSource": "Convention"
-      }
-    ],
-    "DispatcherSagaEventEmitterTests.PublishOnceAsync_ForwardsClaimKeyAndEventToDispatcherAsync": [
-      {
-        "sourceFile": "src/Whizbang.Sagas/Services/DispatcherSagaEventEmitter.cs",
-        "sourceSymbol": "DispatcherSagaEventEmitter",
-        "sourceType": "Class",
-        "linkSource": "Convention"
-      }
-    ],
-    "DispatcherSagaEventEmitterTests.Constructor_NullDispatcher_ThrowsAsync": [
-      {
-        "sourceFile": "src/Whizbang.Sagas/Services/DispatcherSagaEventEmitter.cs",
-        "sourceSymbol": "DispatcherSagaEventEmitter",
         "sourceType": "Class",
         "linkSource": "Convention"
       }
@@ -320640,12 +322254,12 @@
     }
   ],
   "metadata": {
-    "generated": "2026-09-25T12:56:42.288Z",
-    "sourceFiles": 1794,
-    "testFiles": 6773,
-    "totalLinks": 16110,
-    "codeSymbols": 2094,
-    "testMethods": 14016,
+    "generated": "2026-09-25T20:28:15.854Z",
+    "sourceFiles": 1799,
+    "testFiles": 6782,
+    "totalLinks": 16158,
+    "codeSymbols": 2103,
+    "testMethods": 14055,
     "linkHealthFindings": 27
   }
 }
