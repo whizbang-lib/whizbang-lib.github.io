@@ -563,7 +563,7 @@ What happens underneath:
 
 ## Adding a physical field to an existing model {#adding-a-physical-field}
 
-{verified: PhysicalColumnBackfillIntegrationTests.Backfill_RestoresExactlyWhatTheWriterStored_ForEveryTypeAsync, PhysicalColumnBackfillIntegrationTests.Backfill_LeavesAColumnThatAlreadyHasAValueAloneAsync, PhysicalColumnBackfillIntegrationTests.AddColumn_OnATableThatPredatesIt_AddsTheColumn_AndIsIdempotentAsync, PhysicalColumnSqlTests.ExistingTable_GetsTheColumn_ThenTheBackfill_ThenTheIndexAsync, PhysicalColumnSqlTests.SplitStorage_AddsTheColumn_ButHasNoDocumentCopyToBackfillFromAsync}
+{verified: PhysicalColumnBackfillIntegrationTests.Backfill_RestoresExactlyWhatTheWriterStored_ForEveryTypeAsync, PhysicalColumnBackfillIntegrationTests.Backfill_LeavesAColumnThatAlreadyHasAValueAloneAsync, PhysicalColumnBackfillIntegrationTests.AddColumn_OnATableThatPredatesIt_AddsTheColumn_AndIsIdempotentAsync, PhysicalColumnSqlTests.ExistingTable_GetsTheColumn_ThenTheBackfill_ThenTheIndexAsync, PhysicalColumnSqlTests.SplitStorage_AddsTheColumn_ButHasNoDocumentCopyToBackfillFromAsync, PerspectiveSchemaBackfillTests.Extracted_EachPhysicalColumn_IsBackfilledFromTheDocumentAsync, PostgresSchemaInitializerCoverageTests.InitializeSchemaAsync_ColumnCopyAddingPhysicalColumns_BackfillsExistingRowsAsync, DapperPerspectiveStorePhysicalFieldTests.Upsert_Insert_WritesEveryPhysicalColumnAsync}
 
 Promoting a field of a model that already has rows is safe. The schema pass, on the instance elected
 to migrate, does three things in order:
@@ -589,6 +589,10 @@ Some fields are added but not filled, because the document cannot reproduce them
 - **A column type you chose** (`[PhysicalField(ColumnType = "...")]`), an enumeration, or any other type
   whose column encoding the framework cannot know.
 - **Vector fields.**
+
+Both drivers do this. With the Dapper driver, the schema generator places the same fill statements
+after the table, so the column-copy migration that adds the column runs them against the new table, and
+the Dapper store writes every physical column on insert and update, as the EF Core store does.
 
 The fill runs inside the startup schema pass, as one `UPDATE` per field. On a very large table, schedule
 the release that promotes the field for a quiet period, or promote it on an empty table first.
