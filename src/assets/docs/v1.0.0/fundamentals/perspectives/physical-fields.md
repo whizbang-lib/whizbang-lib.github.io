@@ -555,7 +555,12 @@ What happens underneath:
   skipped with a warning and the search scans, still folded and still correct.
 - **Nothing extra is stored.** The index is built over the document (or over the column, for a promoted
   field), so declaring search on a model that already has rows needs no data migration: building the index
-  covers them.
+  covers them. The index is built by the startup schema pass on the release that declares it, and a
+  plain `CREATE INDEX` holds writes to the table while it builds: seconds for tens of thousands of rows, so
+  on a very large table ship the declaration in a quiet window.
+- **Both registration paths.** The rewrite is installed whether the context is registered with
+  `AddWhizbang().WithEFCore<TContext>()` or with the generated `Add{Context}` extension, including for a
+  model whose only special fields are search fields.
 - **Only where declared.** Folding changes what `Contains` means, so it applies to fields declared for
   search and nowhere else. To search another field folded, call it explicitly:
   `EF.Functions.FoldedContains(r.Data.Notes, term)`. That call scans, because nothing indexes that field.
