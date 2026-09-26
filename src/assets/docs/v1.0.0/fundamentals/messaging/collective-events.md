@@ -341,6 +341,10 @@ public ICollectiveSpec<JobFieldsModel> ApplyFamily(FamilyAppliedToJobsCollective
 - **Replace or append.** The element whose key equals the new element's key is replaced where it
   stands; every other element keeps its value and its position. When none matches, the element is
   appended. A missing or null array becomes a one-element array.
+- **Several upserts on one list compose, in call order.** Each upsert starts from the list as the
+  earlier setters in the same spec left it, so upserting a family cell and then a career cell into
+  `Cells` keeps both, and a second upsert of the same key wins. The same holds on the EF Core,
+  Dapper and in-memory replay paths.
 - **Serialized once, as the writer serializes it.** The element is built in C#, once per event, and
   stored exactly as the model's own writer would store it, so the rendered copy cannot drift in
   shape from one a normal apply produces.
