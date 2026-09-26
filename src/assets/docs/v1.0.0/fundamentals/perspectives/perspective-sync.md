@@ -747,7 +747,7 @@ public sealed record SyncInquiry {
   public bool IncludePendingEventIds { get; init; }
   public bool IncludeProcessedEventIds { get; init; } // DEFAULT: false — opt in to request EventIds
   public bool DiscoverPendingFromOutbox { get; init; }
-  public Guid InquiryId { get; init; } = TrackedGuid.NewMedo();
+  public Guid InquiryId { get; init; } = TrackedGuid.New();
 }
 ```
 

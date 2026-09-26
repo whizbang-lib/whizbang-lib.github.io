@@ -322,7 +322,7 @@ SELECT * FROM wh_dead_letters WHERE source_table = 'wh_outbox';
 ### DO ✅
 
 - ✅ Store events in **same transaction** as business data (automatic via the handler-commit path)
-- ✅ Use **UUIDv7** for MessageId — `TrackedGuid.NewMedo()` (time-ordered, avoids index fragmentation)
+- ✅ Use **UUIDv7** for MessageId — `TrackedGuid.New()` (time-ordered, avoids index fragmentation)
 - ✅ Set **reasonable lease duration** (5 minutes default)
 - ✅ **Monitor dead letters** (rows land in `wh_dead_letters` after `MaxOutboxAttempts`, default 10)
 - ✅ Use **consistent hashing** (partition_number) for work distribution
@@ -398,7 +398,7 @@ The framework's own suite exercises the store → claim → fetch → complete c
 [Test]
 public async Task StoreClaimPublishComplete_RemovesRowAsync() {
     // Arrange - store a message (normally done by the handler-commit path)
-    var message = BuildOutboxMessage(messageId: (Guid)TrackedGuid.NewMedo());
+    var message = BuildOutboxMessage(messageId: (Guid)TrackedGuid.New());
     await _coordinator.StoreOutboxMessagesAsync([message], partitionCount: 10_000);
 
     // Act - claim, fetch bodies, complete

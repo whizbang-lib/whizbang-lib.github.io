@@ -415,7 +415,7 @@ public class CorrelationIdMiddleware {
 
   public async Task InvokeAsync(HttpContext context) {
     var correlationId = context.Request.Headers["X-Correlation-ID"].FirstOrDefault()
-      ?? TrackedGuid.NewMedo().ToString();  // UUIDv7 - Whizbang's id convention
+      ?? TrackedGuid.New().ToString();  // UUIDv7 - Whizbang's id convention
 
     context.Response.Headers.Add("X-Correlation-ID", correlationId);
 

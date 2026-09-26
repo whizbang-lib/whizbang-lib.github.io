@@ -383,7 +383,7 @@ When `attempts` exceeds `InboxDispatchWorkerOptions.MaxInboxAttempts` (default 1
 // InboxDispatchWorker (automatic):
 if (work.Attempts > _options.MaxInboxAttempts) {
     await _deadLetterStore.MoveAsync(
-        deadLetterId: (Guid)TrackedGuid.NewMedo(),
+        deadLetterId: (Guid)TrackedGuid.New(),
         sourceTable: DeadLetterSourceTable.INBOX,
         sourceId: work.MessageId,
         failureReason: MessageFailureReason.MaxAttemptsExceeded,
@@ -475,7 +475,7 @@ The framework's own regression suite locks the dedup invariant (see `StoreInboxM
 [Test]
 public async Task DuplicateMessageId_SecondCallNoOpsViaDedupTableAsync() {
     // Arrange
-    var messageId = (Guid)TrackedGuid.NewMedo();
+    var messageId = (Guid)TrackedGuid.New();
     var message = BuildInboxMessage(messageId);
 
     // Act - store the same message twice

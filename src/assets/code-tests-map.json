@@ -19112,7 +19112,7 @@
       {
         "testFile": "tests/Whizbang.Generators.Tests/WhizbangIdGeneratorTests.cs",
         "testMethod": "Generator_GeneratesCreateProviderMethodAsync",
-        "testLine": 448,
+        "testLine": 449,
         "testClass": "WhizbangIdGeneratorTests",
         "linkSource": "Convention"
       }
@@ -44156,6 +44156,11 @@
       {
         "testFile": "tests/Whizbang.Core.Tests/ValueObjects/GuidMetadataTests.cs",
         "testMethod": "GuidMetadata_SourceMedo_IsBit2Async",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/ValueObjects/GuidMetadataTests.cs",
+        "testMethod": "GuidMetadata_SourceWhizbang_IsBit14Async",
         "linkSource": "XmlTag"
       }
     ],
@@ -110593,7 +110598,7 @@
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/GuidUsageAnalyzerTests.cs",
-        "testMethod": "Analyzer_TrackedGuidNewMedo_NoErrorAsync",
+        "testMethod": "Analyzer_TrackedGuidNew_NoErrorAsync",
         "testLine": 47,
         "testClass": "GuidUsageAnalyzerTests",
         "linkSource": "Convention"
@@ -120607,85 +120612,92 @@
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/ValueObjects/GuidMetadataTests.cs",
-        "testMethod": "GuidMetadata_SourceMicrosoft_IsBit3Async",
+        "testMethod": "GuidMetadata_SourceWhizbang_IsBit14Async",
         "testLine": 51,
         "testClass": "GuidMetadataTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/ValueObjects/GuidMetadataTests.cs",
-        "testMethod": "GuidMetadata_SourceParsed_IsBit4Async",
+        "testMethod": "GuidMetadata_SourceMicrosoft_IsBit3Async",
         "testLine": 57,
         "testClass": "GuidMetadataTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/ValueObjects/GuidMetadataTests.cs",
-        "testMethod": "GuidMetadata_SourceExternal_IsBit5Async",
+        "testMethod": "GuidMetadata_SourceParsed_IsBit4Async",
         "testLine": 63,
         "testClass": "GuidMetadataTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/ValueObjects/GuidMetadataTests.cs",
-        "testMethod": "GuidMetadata_SourceUnknown_IsBit6Async",
-        "testLine": 73,
+        "testMethod": "GuidMetadata_SourceExternal_IsBit5Async",
+        "testLine": 69,
         "testClass": "GuidMetadataTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/ValueObjects/GuidMetadataTests.cs",
-        "testMethod": "GuidMetadata_Reserved_IsBit7Async",
+        "testMethod": "GuidMetadata_SourceUnknown_IsBit6Async",
         "testLine": 79,
         "testClass": "GuidMetadataTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/ValueObjects/GuidMetadataTests.cs",
+        "testMethod": "GuidMetadata_Reserved_IsBit7Async",
+        "testLine": 85,
+        "testClass": "GuidMetadataTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/ValueObjects/GuidMetadataTests.cs",
         "testMethod": "GuidMetadata_ThirdPartySources_HaveCorrectBitPositionsAsync",
-        "testLine": 89,
+        "testLine": 95,
         "testClass": "GuidMetadataTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/ValueObjects/GuidMetadataTests.cs",
         "testMethod": "GuidMetadata_IsFlagsEnum_SupportsOrCombinationAsync",
-        "testLine": 106,
+        "testLine": 112,
         "testClass": "GuidMetadataTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/ValueObjects/GuidMetadataTests.cs",
         "testMethod": "GuidMetadata_AllFlags_AreDistinctBitsAsync",
-        "testLine": 123,
+        "testLine": 129,
         "testClass": "GuidMetadataTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/ValueObjects/GuidMetadataTests.cs",
         "testMethod": "GuidMetadata_NoOverlappingBits_BetweenAnyFlagsAsync",
-        "testLine": 144,
+        "testLine": 151,
         "testClass": "GuidMetadataTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/ValueObjects/GuidMetadataTests.cs",
         "testMethod": "GuidMetadata_VersionAndSource_CanBeCombinedAsync",
-        "testLine": 166,
+        "testLine": 174,
         "testClass": "GuidMetadataTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/ValueObjects/GuidMetadataTests.cs",
         "testMethod": "GuidMetadata_UnderlyingType_IsUshortAsync",
-        "testLine": 187,
+        "testLine": 195,
         "testClass": "GuidMetadataTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/ValueObjects/GuidMetadataTests.cs",
         "testMethod": "GuidMetadata_HasFlagsAttribute_ReturnsTrueAsync",
-        "testLine": 194,
+        "testLine": 202,
         "testClass": "GuidMetadataTests",
         "linkSource": "Convention"
       }
@@ -120817,322 +120829,336 @@
       {
         "testFile": "tests/Whizbang.Core.Tests/ValueObjects/TrackedGuidTests.cs",
         "testMethod": "GuidMetadata_CombineFlags_WorksCorrectlyAsync",
-        "testLine": 28,
+        "testLine": 29,
         "testClass": "TrackedGuidTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/ValueObjects/TrackedGuidTests.cs",
-        "testMethod": "TrackedGuid_NewMedo_IsTimeOrdered_ReturnsTrueAsync",
-        "testLine": 43,
+        "testMethod": "TrackedGuid_New_IsTimeOrdered_ReturnsTrueAsync",
+        "testLine": 44,
         "testClass": "TrackedGuidTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/ValueObjects/TrackedGuidTests.cs",
-        "testMethod": "TrackedGuid_NewMedo_SubMillisecondPrecision_ReturnsTrueAsync",
-        "testLine": 52,
+        "testMethod": "TrackedGuid_New_SubMillisecondPrecision_ReturnsTrueAsync",
+        "testLine": 53,
         "testClass": "TrackedGuidTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/ValueObjects/TrackedGuidTests.cs",
-        "testMethod": "TrackedGuid_NewMedo_Timestamp_ReturnsRecentTimeAsync",
-        "testLine": 61,
+        "testMethod": "TrackedGuid_New_Timestamp_ReturnsRecentTimeAsync",
+        "testLine": 62,
         "testClass": "TrackedGuidTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/ValueObjects/TrackedGuidTests.cs",
-        "testMethod": "TrackedGuid_NewMedo_Version_Returns7Async",
-        "testLine": 75,
+        "testMethod": "TrackedGuid_New_Version_Returns7Async",
+        "testLine": 76,
         "testClass": "TrackedGuidTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/ValueObjects/TrackedGuidTests.cs",
-        "testMethod": "TrackedGuid_NewMedo_HasSourceMedoMetadataAsync",
-        "testLine": 84,
+        "testMethod": "TrackedGuid_New_HasSourceWhizbangMetadataAsync",
+        "testLine": 85,
         "testClass": "TrackedGuidTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/ValueObjects/TrackedGuidTests.cs",
-        "testMethod": "TrackedGuid_NewMedo_MultipleIds_AreUniqueAsync",
-        "testLine": 94,
+        "testMethod": "TrackedGuid_New_MultipleIds_AreUniqueAsync",
+        "testLine": 96,
         "testClass": "TrackedGuidTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/ValueObjects/TrackedGuidTests.cs",
-        "testMethod": "TrackedGuid_NewMedo_MultipleIds_AreTimeOrderedAsync",
-        "testLine": 104,
+        "testMethod": "TrackedGuid_New_MultipleIds_AreTimeOrderedAsync",
+        "testLine": 106,
         "testClass": "TrackedGuidTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/ValueObjects/TrackedGuidTests.cs",
         "testMethod": "TrackedGuid_NewMicrosoftV7_IsTimeOrdered_ReturnsTrueAsync",
-        "testLine": 119,
+        "testLine": 121,
         "testClass": "TrackedGuidTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/ValueObjects/TrackedGuidTests.cs",
         "testMethod": "TrackedGuid_NewMicrosoftV7_SubMillisecondPrecision_ReturnsFalseAsync",
-        "testLine": 128,
+        "testLine": 130,
         "testClass": "TrackedGuidTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/ValueObjects/TrackedGuidTests.cs",
         "testMethod": "TrackedGuid_NewMicrosoftV7_Version_Returns7Async",
-        "testLine": 137,
+        "testLine": 139,
         "testClass": "TrackedGuidTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/ValueObjects/TrackedGuidTests.cs",
         "testMethod": "TrackedGuid_NewMicrosoftV7_HasSourceMicrosoftMetadataAsync",
-        "testLine": 146,
+        "testLine": 148,
         "testClass": "TrackedGuidTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/ValueObjects/TrackedGuidTests.cs",
         "testMethod": "TrackedGuid_NewRandom_IsTimeOrdered_ReturnsFalseAsync",
-        "testLine": 161,
+        "testLine": 163,
         "testClass": "TrackedGuidTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/ValueObjects/TrackedGuidTests.cs",
         "testMethod": "TrackedGuid_NewRandom_Version_Returns4Async",
-        "testLine": 170,
+        "testLine": 172,
         "testClass": "TrackedGuidTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/ValueObjects/TrackedGuidTests.cs",
         "testMethod": "TrackedGuid_NewRandom_SubMillisecondPrecision_ReturnsFalseAsync",
-        "testLine": 179,
+        "testLine": 181,
         "testClass": "TrackedGuidTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/ValueObjects/TrackedGuidTests.cs",
         "testMethod": "TrackedGuid_NewRandom_HasVersion4MetadataAsync",
-        "testLine": 188,
+        "testLine": 190,
         "testClass": "TrackedGuidTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/ValueObjects/TrackedGuidTests.cs",
         "testMethod": "TrackedGuid_Parse_MarksAsSourceParsedAsync",
-        "testLine": 203,
+        "testLine": 205,
         "testClass": "TrackedGuidTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/ValueObjects/TrackedGuidTests.cs",
         "testMethod": "TrackedGuid_Parse_WithV7Guid_SetsVersion7MetadataAsync",
-        "testLine": 217,
+        "testLine": 219,
         "testClass": "TrackedGuidTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/ValueObjects/TrackedGuidTests.cs",
         "testMethod": "TrackedGuid_Parse_WithV4Guid_SetsVersion4MetadataAsync",
-        "testLine": 231,
+        "testLine": 233,
         "testClass": "TrackedGuidTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/ValueObjects/TrackedGuidTests.cs",
         "testMethod": "TrackedGuid_TryParse_WithValidGuid_ReturnsTrueAsync",
-        "testLine": 245,
+        "testLine": 247,
         "testClass": "TrackedGuidTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/ValueObjects/TrackedGuidTests.cs",
         "testMethod": "TrackedGuid_TryParse_WithInvalidGuid_ReturnsFalseAsync",
-        "testLine": 258,
+        "testLine": 260,
         "testClass": "TrackedGuidTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/ValueObjects/TrackedGuidTests.cs",
         "testMethod": "TrackedGuid_FromExternal_MarksAsSourceExternalAsync",
-        "testLine": 275,
+        "testLine": 277,
         "testClass": "TrackedGuidTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/ValueObjects/TrackedGuidTests.cs",
         "testMethod": "TrackedGuid_FromExternal_DetectsVersionAsync",
-        "testLine": 288,
+        "testLine": 290,
         "testClass": "TrackedGuidTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/ValueObjects/TrackedGuidTests.cs",
         "testMethod": "TrackedGuid_ImplicitToGuid_ReturnsUnderlyingValueAsync",
-        "testLine": 307,
+        "testLine": 309,
         "testClass": "TrackedGuidTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/ValueObjects/TrackedGuidTests.cs",
         "testMethod": "TrackedGuid_ImplicitFromGuid_MarksAsSourceUnknownAsync",
-        "testLine": 320,
+        "testLine": 322,
         "testClass": "TrackedGuidTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/ValueObjects/TrackedGuidTests.cs",
         "testMethod": "TrackedGuid_ImplicitFromGuid_StillDetectsVersionAsync",
-        "testLine": 333,
+        "testLine": 335,
         "testClass": "TrackedGuidTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/ValueObjects/TrackedGuidTests.cs",
         "testMethod": "TrackedGuid_Equals_WithSameGuid_ReturnsTrueAsync",
-        "testLine": 352,
+        "testLine": 354,
         "testClass": "TrackedGuidTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/ValueObjects/TrackedGuidTests.cs",
         "testMethod": "TrackedGuid_Equals_WithDifferentGuid_ReturnsFalseAsync",
-        "testLine": 364,
+        "testLine": 366,
         "testClass": "TrackedGuidTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/ValueObjects/TrackedGuidTests.cs",
         "testMethod": "TrackedGuid_Equals_IgnoresMetadata_ComparesOnlyValueAsync",
-        "testLine": 375,
+        "testLine": 377,
         "testClass": "TrackedGuidTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/ValueObjects/TrackedGuidTests.cs",
         "testMethod": "TrackedGuid_GetHashCode_WithSameGuid_ReturnsSameHashAsync",
-        "testLine": 387,
+        "testLine": 389,
         "testClass": "TrackedGuidTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/ValueObjects/TrackedGuidTests.cs",
         "testMethod": "TrackedGuid_CompareTo_OrdersChronologicallyAsync",
-        "testLine": 402,
+        "testLine": 404,
         "testClass": "TrackedGuidTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/ValueObjects/TrackedGuidTests.cs",
         "testMethod": "TrackedGuid_ComparisonOperators_WorkCorrectlyAsync",
-        "testLine": 415,
+        "testLine": 417,
         "testClass": "TrackedGuidTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/ValueObjects/TrackedGuidTests.cs",
         "testMethod": "TrackedGuid_ToString_ReturnsGuidStringAsync",
-        "testLine": 433,
+        "testLine": 435,
         "testClass": "TrackedGuidTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/ValueObjects/TrackedGuidTests.cs",
         "testMethod": "TrackedGuid_IsTracking_OnlyAuthoritativeSourcesReturnTrueAsync",
-        "testLine": 449,
+        "testLine": 451,
         "testClass": "TrackedGuidTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/ValueObjects/TrackedGuidTests.cs",
         "testMethod": "TrackedGuid_Default_HasEmptyGuidAsync",
-        "testLine": 472,
+        "testLine": 474,
         "testClass": "TrackedGuidTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/ValueObjects/TrackedGuidTests.cs",
         "testMethod": "TrackedGuid_Empty_HasEmptyGuidAsync",
-        "testLine": 482,
+        "testLine": 484,
         "testClass": "TrackedGuidTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/ValueObjects/TrackedGuidTests.cs",
         "testMethod": "TrackedGuid_FromIntercepted_PreservesGuidValueAsync",
-        "testLine": 495,
+        "testLine": 497,
         "testClass": "TrackedGuidTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/ValueObjects/TrackedGuidTests.cs",
         "testMethod": "TrackedGuid_FromIntercepted_PreservesExactMetadataAsync",
-        "testLine": 508,
+        "testLine": 510,
         "testClass": "TrackedGuidTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/ValueObjects/TrackedGuidTests.cs",
         "testMethod": "TrackedGuid_FromIntercepted_WithVariousMetadata_PreservesMetadataAsync",
-        "testLine": 521,
+        "testLine": 523,
         "testClass": "TrackedGuidTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/ValueObjects/TrackedGuidTests.cs",
         "testMethod": "TrackedGuid_FromIntercepted_IsTracking_ReturnsTrueAsync",
-        "testLine": 539,
+        "testLine": 542,
         "testClass": "TrackedGuidTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/ValueObjects/TrackedGuidTests.cs",
         "testMethod": "TrackedGuid_FromIntercepted_WithV7_IsTimeOrderedAsync",
-        "testLine": 552,
+        "testLine": 555,
         "testClass": "TrackedGuidTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/ValueObjects/TrackedGuidTests.cs",
         "testMethod": "TrackedGuid_FromIntercepted_WithV4_IsNotTimeOrderedAsync",
-        "testLine": 565,
+        "testLine": 568,
         "testClass": "TrackedGuidTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/ValueObjects/TrackedGuidTests.cs",
         "testMethod": "GuidMetadata_ThirdPartySources_HaveCorrectBitPositionsAsync",
-        "testLine": 582,
+        "testLine": 585,
         "testClass": "TrackedGuidTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/ValueObjects/TrackedGuidTests.cs",
         "testMethod": "GuidMetadata_ThirdPartySource_CanCombineWithVersionAsync",
-        "testLine": 594,
+        "testLine": 597,
         "testClass": "TrackedGuidTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/ValueObjects/TrackedGuidTests.cs",
         "testMethod": "TrackedGuid_FromIntercepted_WithMarten_HasCorrectMetadataAsync",
-        "testLine": 605,
+        "testLine": 608,
         "testClass": "TrackedGuidTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/ValueObjects/TrackedGuidTests.cs",
         "testMethod": "TrackedGuid_FromIntercepted_WithUuidNext_HasCorrectMetadataAsync",
-        "testLine": 619,
+        "testLine": 622,
+        "testClass": "TrackedGuidTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/ValueObjects/TrackedGuidTests.cs",
+        "testMethod": "TrackedGuid_DetectedMedoId_HasSubMillisecondPrecisionAndIsTrackingAsync",
+        "testLine": 636,
+        "testClass": "TrackedGuidTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/ValueObjects/TrackedGuidTests.cs",
+        "testMethod": "TrackedGuid_New_IsTaggedAsTheFrameworksOwnSourceAsync",
+        "testLine": 647,
         "testClass": "TrackedGuidTests",
         "linkSource": "Convention"
       }
@@ -121184,7 +121210,7 @@
     "WhizbangId": [
       {
         "testFile": "tests/Whizbang.Core.Tests/ValueObjects/WhizbangIdTests.cs",
-        "testMethod": "WhizbangId_New_UsesTrackedGuidNewMedoAsync",
+        "testMethod": "WhizbangId_New_UsesTrackedGuidNewAsync",
         "testLine": 17,
         "testClass": "WhizbangIdTests",
         "linkSource": "Convention"
@@ -202493,10 +202519,19 @@
         "linkSource": "XmlTag"
       }
     ],
+    "GuidMetadataTests.GuidMetadata_SourceWhizbang_IsBit14Async": [
+      {
+        "sourceFile": "src/Whizbang.Core/ValueObjects/GuidMetadata.cs",
+        "sourceLine": 11,
+        "sourceSymbol": "GuidMetadatas",
+        "sourceType": "Enum",
+        "linkSource": "XmlTag"
+      }
+    ],
     "Uuid7GeneratorTests.NewGuid_IsVersion7WithTheRfcVariantAsync": [
       {
         "sourceFile": "src/Whizbang.Core/ValueObjects/Uuid7Generator.cs",
-        "sourceLine": 47,
+        "sourceLine": 44,
         "sourceSymbol": "Uuid7Generator",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -202505,7 +202540,7 @@
     "Uuid7GeneratorTests.NewGuid_CarriesTheClocksMillisecondInTheFirst48BitsAsync": [
       {
         "sourceFile": "src/Whizbang.Core/ValueObjects/Uuid7Generator.cs",
-        "sourceLine": 47,
+        "sourceLine": 44,
         "sourceSymbol": "Uuid7Generator",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -202514,7 +202549,7 @@
     "Uuid7GeneratorTests.NewGuid_FreshMillisecond_SeedsTheCounterFromRandomWithTheTopBitClearAsync": [
       {
         "sourceFile": "src/Whizbang.Core/ValueObjects/Uuid7Generator.cs",
-        "sourceLine": 47,
+        "sourceLine": 44,
         "sourceSymbol": "Uuid7Generator",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -202523,7 +202558,7 @@
     "Uuid7GeneratorTests.NewGuid_TakesTheLast48BitsFromTheRandomSourceAsync": [
       {
         "sourceFile": "src/Whizbang.Core/ValueObjects/Uuid7Generator.cs",
-        "sourceLine": 47,
+        "sourceLine": 44,
         "sourceSymbol": "Uuid7Generator",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -202532,7 +202567,7 @@
     "Uuid7GeneratorTests.NewGuid_StringFormMatchesTheBigEndianBytesAsync": [
       {
         "sourceFile": "src/Whizbang.Core/ValueObjects/Uuid7Generator.cs",
-        "sourceLine": 47,
+        "sourceLine": 44,
         "sourceSymbol": "Uuid7Generator",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -202541,7 +202576,7 @@
     "Uuid7GeneratorTests.NewGuid_SameMillisecond_EachIdSortsAfterThePreviousAsync": [
       {
         "sourceFile": "src/Whizbang.Core/ValueObjects/Uuid7Generator.cs",
-        "sourceLine": 47,
+        "sourceLine": 44,
         "sourceSymbol": "Uuid7Generator",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -202550,7 +202585,7 @@
     "Uuid7GeneratorTests.NewGuid_SameMillisecond_StepsTheCounterByOneToSixteenAsync": [
       {
         "sourceFile": "src/Whizbang.Core/ValueObjects/Uuid7Generator.cs",
-        "sourceLine": 47,
+        "sourceLine": 44,
         "sourceSymbol": "Uuid7Generator",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -202559,7 +202594,7 @@
     "Uuid7GeneratorTests.NewGuid_TheTailNeverDecidesTheOrderWithinAMillisecondAsync": [
       {
         "sourceFile": "src/Whizbang.Core/ValueObjects/Uuid7Generator.cs",
-        "sourceLine": 47,
+        "sourceLine": 44,
         "sourceSymbol": "Uuid7Generator",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -202568,7 +202603,7 @@
     "Uuid7GeneratorTests.NewGuid_LaterMillisecond_SortsAfterEvenWithASmallerCounterAsync": [
       {
         "sourceFile": "src/Whizbang.Core/ValueObjects/Uuid7Generator.cs",
-        "sourceLine": 47,
+        "sourceLine": 44,
         "sourceSymbol": "Uuid7Generator",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -202577,7 +202612,7 @@
     "Uuid7GeneratorTests.NewGuid_ClockGoesBackwards_KeepsTheLastMillisecondAndKeepsCountingAsync": [
       {
         "sourceFile": "src/Whizbang.Core/ValueObjects/Uuid7Generator.cs",
-        "sourceLine": 47,
+        "sourceLine": 44,
         "sourceSymbol": "Uuid7Generator",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -202586,7 +202621,7 @@
     "Uuid7GeneratorTests.NewGuid_ClockCatchesUpAfterGoingBackwards_ResumesRealTimeAsync": [
       {
         "sourceFile": "src/Whizbang.Core/ValueObjects/Uuid7Generator.cs",
-        "sourceLine": 47,
+        "sourceLine": 44,
         "sourceSymbol": "Uuid7Generator",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -202595,7 +202630,7 @@
     "Uuid7GeneratorTests.NewGuid_CounterExhausted_BorrowsTheNextMillisecondInsteadOfWrappingAsync": [
       {
         "sourceFile": "src/Whizbang.Core/ValueObjects/Uuid7Generator.cs",
-        "sourceLine": 47,
+        "sourceLine": 44,
         "sourceSymbol": "Uuid7Generator",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -202604,7 +202639,7 @@
     "Uuid7GeneratorTests.NewGuid_AfterBorrowing_RealTimeCatchingUpToTheBorrowedMillisecondKeepsOrderAsync": [
       {
         "sourceFile": "src/Whizbang.Core/ValueObjects/Uuid7Generator.cs",
-        "sourceLine": 47,
+        "sourceLine": 44,
         "sourceSymbol": "Uuid7Generator",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -202613,7 +202648,7 @@
     "Uuid7GeneratorTests.NewGuid_DrawsRandomnessInBulk_NotOncePerIdAsync": [
       {
         "sourceFile": "src/Whizbang.Core/ValueObjects/Uuid7Generator.cs",
-        "sourceLine": 47,
+        "sourceLine": 44,
         "sourceSymbol": "Uuid7Generator",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -202622,7 +202657,7 @@
     "Uuid7GeneratorTests.NewGuid_RefillsTheRandomBufferWhenItRunsOutAsync": [
       {
         "sourceFile": "src/Whizbang.Core/ValueObjects/Uuid7Generator.cs",
-        "sourceLine": 47,
+        "sourceLine": 44,
         "sourceSymbol": "Uuid7Generator",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -202631,7 +202666,7 @@
     "Uuid7GeneratorTests.Shared_UsesTheSystemClockAsync": [
       {
         "sourceFile": "src/Whizbang.Core/ValueObjects/Uuid7Generator.cs",
-        "sourceLine": 47,
+        "sourceLine": 44,
         "sourceSymbol": "Uuid7Generator",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -202640,7 +202675,7 @@
     "Uuid7GeneratorTests.Shared_OneMillionIdsInATightLoop_AreStrictlyIncreasingAsync": [
       {
         "sourceFile": "src/Whizbang.Core/ValueObjects/Uuid7Generator.cs",
-        "sourceLine": 47,
+        "sourceLine": 44,
         "sourceSymbol": "Uuid7Generator",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -202649,7 +202684,7 @@
     "Uuid7GeneratorTests.Shared_ManyThreadsAtOnce_AreUniqueAndIncreasingPerThreadAsync": [
       {
         "sourceFile": "src/Whizbang.Core/ValueObjects/Uuid7Generator.cs",
-        "sourceLine": 47,
+        "sourceLine": 44,
         "sourceSymbol": "Uuid7Generator",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -202658,7 +202693,7 @@
     "Uuid7GeneratorTests.Shared_IssueOrderIsSortOrder_AcrossThreadsAsync": [
       {
         "sourceFile": "src/Whizbang.Core/ValueObjects/Uuid7Generator.cs",
-        "sourceLine": 47,
+        "sourceLine": 44,
         "sourceSymbol": "Uuid7Generator",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -202667,7 +202702,7 @@
     "Uuid7GeneratorTests.GetTimestamp_NotVersion7_ReturnsMinValueAsync": [
       {
         "sourceFile": "src/Whizbang.Core/ValueObjects/Uuid7Generator.cs",
-        "sourceLine": 47,
+        "sourceLine": 44,
         "sourceSymbol": "Uuid7Generator",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -202676,7 +202711,7 @@
     "Uuid7GeneratorTests.GetTimestamp_ReadsTheMillisecondFromAnyVersion7IdAsync": [
       {
         "sourceFile": "src/Whizbang.Core/ValueObjects/Uuid7Generator.cs",
-        "sourceLine": 47,
+        "sourceLine": 44,
         "sourceSymbol": "Uuid7Generator",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -202685,7 +202720,7 @@
     "Uuid7GeneratorTests.GetTimestamp_MillisecondPastWhatDateTimeOffsetHolds_ReturnsMinValueAsync": [
       {
         "sourceFile": "src/Whizbang.Core/ValueObjects/Uuid7Generator.cs",
-        "sourceLine": 47,
+        "sourceLine": 44,
         "sourceSymbol": "Uuid7Generator",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -294977,7 +295012,7 @@
         "linkSource": "Convention"
       }
     ],
-    "GuidUsageAnalyzerTests.Analyzer_TrackedGuidNewMedo_NoErrorAsync": [
+    "GuidUsageAnalyzerTests.Analyzer_TrackedGuidNew_NoErrorAsync": [
       {
         "sourceFile": "src/Whizbang.Generators/GuidUsageAnalyzer.cs",
         "sourceSymbol": "GuidUsageAnalyzer",
@@ -308609,7 +308644,7 @@
         "linkSource": "Convention"
       }
     ],
-    "TrackedGuidTests.TrackedGuid_NewMedo_IsTimeOrdered_ReturnsTrueAsync": [
+    "TrackedGuidTests.TrackedGuid_New_IsTimeOrdered_ReturnsTrueAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/TrackedGuidConverter.cs",
         "sourceSymbol": "TrackedGuid",
@@ -308617,7 +308652,7 @@
         "linkSource": "Convention"
       }
     ],
-    "TrackedGuidTests.TrackedGuid_NewMedo_SubMillisecondPrecision_ReturnsTrueAsync": [
+    "TrackedGuidTests.TrackedGuid_New_SubMillisecondPrecision_ReturnsTrueAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/TrackedGuidConverter.cs",
         "sourceSymbol": "TrackedGuid",
@@ -308625,7 +308660,7 @@
         "linkSource": "Convention"
       }
     ],
-    "TrackedGuidTests.TrackedGuid_NewMedo_Timestamp_ReturnsRecentTimeAsync": [
+    "TrackedGuidTests.TrackedGuid_New_Timestamp_ReturnsRecentTimeAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/TrackedGuidConverter.cs",
         "sourceSymbol": "TrackedGuid",
@@ -308633,7 +308668,7 @@
         "linkSource": "Convention"
       }
     ],
-    "TrackedGuidTests.TrackedGuid_NewMedo_Version_Returns7Async": [
+    "TrackedGuidTests.TrackedGuid_New_Version_Returns7Async": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/TrackedGuidConverter.cs",
         "sourceSymbol": "TrackedGuid",
@@ -308641,7 +308676,7 @@
         "linkSource": "Convention"
       }
     ],
-    "TrackedGuidTests.TrackedGuid_NewMedo_HasSourceMedoMetadataAsync": [
+    "TrackedGuidTests.TrackedGuid_New_HasSourceWhizbangMetadataAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/TrackedGuidConverter.cs",
         "sourceSymbol": "TrackedGuid",
@@ -308649,7 +308684,7 @@
         "linkSource": "Convention"
       }
     ],
-    "TrackedGuidTests.TrackedGuid_NewMedo_MultipleIds_AreUniqueAsync": [
+    "TrackedGuidTests.TrackedGuid_New_MultipleIds_AreUniqueAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/TrackedGuidConverter.cs",
         "sourceSymbol": "TrackedGuid",
@@ -308657,7 +308692,7 @@
         "linkSource": "Convention"
       }
     ],
-    "TrackedGuidTests.TrackedGuid_NewMedo_MultipleIds_AreTimeOrderedAsync": [
+    "TrackedGuidTests.TrackedGuid_New_MultipleIds_AreTimeOrderedAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/TrackedGuidConverter.cs",
         "sourceSymbol": "TrackedGuid",
@@ -308969,6 +309004,22 @@
         "linkSource": "Convention"
       }
     ],
+    "TrackedGuidTests.TrackedGuid_DetectedMedoId_HasSubMillisecondPrecisionAndIsTrackingAsync": [
+      {
+        "sourceFile": "src/Whizbang.Data.EFCore.Postgres/TrackedGuidConverter.cs",
+        "sourceSymbol": "TrackedGuid",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "TrackedGuidTests.TrackedGuid_New_IsTaggedAsTheFrameworksOwnSourceAsync": [
+      {
+        "sourceFile": "src/Whizbang.Data.EFCore.Postgres/TrackedGuidConverter.cs",
+        "sourceSymbol": "TrackedGuid",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
     "WhizbangIdProviderRegistryTests.RegisterFactory_WithValidFactory_RegistersSuccessfullyAsync": [
       {
         "sourceFile": "src/Whizbang.Core/WhizbangIdProviderRegistry.cs",
@@ -309017,7 +309068,7 @@
         "linkSource": "Convention"
       }
     ],
-    "WhizbangIdTests.WhizbangId_New_UsesTrackedGuidNewMedoAsync": [
+    "WhizbangIdTests.WhizbangId_New_UsesTrackedGuidNewAsync": [
       {
         "sourceFile": "src/Whizbang.Generators/WhizbangIdConverterInfo.cs",
         "sourceSymbol": "WhizbangId",
@@ -324995,12 +325046,12 @@
     }
   ],
   "metadata": {
-    "generated": "2026-09-26T13:55:44.650Z",
+    "generated": "2026-09-26T14:58:22.824Z",
     "sourceFiles": 1810,
     "testFiles": 6845,
-    "totalLinks": 16289,
+    "totalLinks": 16292,
     "codeSymbols": 2114,
-    "testMethods": 14175,
+    "testMethods": 14178,
     "linkHealthFindings": 26
   }
 }

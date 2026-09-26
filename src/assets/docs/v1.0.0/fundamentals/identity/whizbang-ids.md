@@ -68,17 +68,17 @@ Whizbang uses strongly-typed identity values based on UUIDv7 for all identifiers
 
 For scenarios where you need to work with raw GUIDs while preserving generation metadata, Whizbang provides `TrackedGuid`:
 
-```csharp{title="TrackedGuid: Metadata-Aware GUID Wrapper" description="For scenarios where you need to work with raw GUIDs while preserving generation metadata, Whizbang provides TrackedGuid:" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "TrackedGuid:", "Metadata-Aware"] tests=["TrackedGuidTests.TrackedGuid_NewMedo_IsTimeOrdered_ReturnsTrueAsync", "TrackedGuidTests.TrackedGuid_NewMedo_SubMillisecondPrecision_ReturnsTrueAsync", "TrackedGuidTests.TrackedGuid_NewMedo_Timestamp_ReturnsRecentTimeAsync", "TrackedGuidTests.TrackedGuid_NewMedo_HasSourceMedoMetadataAsync", "TrackedGuidTests.TrackedGuid_ImplicitToGuid_ReturnsUnderlyingValueAsync", "TrackedGuidTests.TrackedGuid_Parse_WithV7Guid_SetsVersion7MetadataAsync", "TrackedGuidTests.TrackedGuid_FromExternal_MarksAsSourceExternalAsync"]}
+```csharp{title="TrackedGuid: Metadata-Aware GUID Wrapper" description="For scenarios where you need to work with raw GUIDs while preserving generation metadata, Whizbang provides TrackedGuid:" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "TrackedGuid:", "Metadata-Aware"] tests=["TrackedGuidTests.TrackedGuid_New_IsTimeOrdered_ReturnsTrueAsync", "TrackedGuidTests.TrackedGuid_New_SubMillisecondPrecision_ReturnsTrueAsync", "TrackedGuidTests.TrackedGuid_New_Timestamp_ReturnsRecentTimeAsync", "TrackedGuidTests.TrackedGuid_New_HasSourceWhizbangMetadataAsync", "TrackedGuidTests.TrackedGuid_ImplicitToGuid_ReturnsUnderlyingValueAsync", "TrackedGuidTests.TrackedGuid_Parse_WithV7Guid_SetsVersion7MetadataAsync", "TrackedGuidTests.TrackedGuid_FromExternal_MarksAsSourceExternalAsync"]}
 using Whizbang.Core.ValueObjects;
 
 // Create with sub-millisecond precision (recommended)
-var tracked = TrackedGuid.NewMedo();  // The framework's UUIDv7 generator
+var tracked = TrackedGuid.New();  // The framework's UUIDv7 generator
 
 // Check metadata
 bool isTimeOrdered = tracked.IsTimeOrdered;           // true
 bool subMs = tracked.SubMillisecondPrecision;         // true
 DateTimeOffset when = tracked.Timestamp;              // Extracted from UUIDv7
-GuidMetadatas metadata = tracked.Metadata;            // Version7 | SourceMedo
+GuidMetadatas metadata = tracked.Metadata;            // Version7 | SourceWhizbang
 
 // Implicit conversion to Guid
 Guid guid = tracked;
@@ -90,7 +90,7 @@ var external = TrackedGuid.FromExternal(someGuid);
 
 ### Why TrackedGuid?
 
-| Feature | `Guid.NewGuid()` | `Guid.CreateVersion7()` | `TrackedGuid.NewMedo()` |
+| Feature | `Guid.NewGuid()` | `Guid.CreateVersion7()` | `TrackedGuid.New()` |
 |---------|------------------|-------------------------|-------------------------|
 | Time-ordered | ❌ No (v4) | ✅ Yes (v7) | ✅ Yes (v7) |
 | Sub-millisecond precision | ❌ N/A | ❌ No (ms only) | ✅ Yes |
@@ -100,10 +100,10 @@ var external = TrackedGuid.FromExternal(someGuid);
 
 **Recommendation**: Use `[WhizbangId]` types for domain identities, `TrackedGuid` for infrastructure code that needs GUID flexibility with metadata preservation.
 
-### How `NewMedo()` orders ids {#uuid7-generator}
+### How `New()` orders ids {#uuid7-generator}
 {verified: Uuid7GeneratorTests.Shared_OneMillionIdsInATightLoop_AreStrictlyIncreasingAsync, Uuid7GeneratorTests.Shared_ManyThreadsAtOnce_AreUniqueAndIncreasingPerThreadAsync, Uuid7GeneratorTests.Shared_IssueOrderIsSortOrder_AcrossThreadsAsync, Uuid7GeneratorTests.NewGuid_CounterExhausted_BorrowsTheNextMillisecondInsteadOfWrappingAsync, Uuid7GeneratorTests.NewGuid_ClockGoesBackwards_KeepsTheLastMillisecondAndKeepsCountingAsync}
 
-`TrackedGuid.NewMedo()` is served by the framework's own UUIDv7 generator. Every id it issues sorts after every id issued before it in the process, compared as big-endian bytes, which is how the string form, the wire and PostgreSQL's `uuid` type order them. Events, cursors and claims are ordered by id across the framework, so that one property carries a lot.
+`TrackedGuid.New()` is served by the framework's own UUIDv7 generator. Every id it issues sorts after every id issued before it in the process, compared as big-endian bytes, which is how the string form, the wire and PostgreSQL's `uuid` type order them. Events, cursors and claims are ordered by id across the framework, so that one property carries a lot.
 
 | Bits | Content |
 |---|---|
@@ -121,18 +121,18 @@ Two edge cases are handled explicitly:
 - **Counter exhausted.** The generator moves to the next millisecond and reseeds, rather than wrapping to a smaller counter inside the same millisecond.
 - **Clock goes backwards.** The generator keeps issuing in the last millisecond it used and keeps counting, then resumes real time once the clock passes it again.
 
-The layout is RFC 9562 version 7 with a fixed-length dedicated counter (section 6.2, method 1). The name `NewMedo` is historical: ids used to come from the Medo.Uuid7 package, and they now come from the framework's own generator. Ids have exactly the shape they had before, so ids already stored or in flight read as they always did.
+The layout is RFC 9562 version 7 with a fixed-length dedicated counter (section 6.2, method 1). Ids used to come from the Medo.Uuid7 package and now come from the framework's own generator, tagged `SourceWhizbang`. They have exactly the shape they had before, so ids already stored or in flight read as they always did.
 
 ### Tracking GUID Sources
 
 `TrackedGuid` tracks where and how each GUID was created using the `GuidMetadatas` flags (note the plural — the enum type is `GuidMetadatas`, declared in `GuidMetadata.cs`):
 
-```csharp{title="Tracking GUID Sources" description="TrackedGuid tracks where and how each GUID was created using the GuidMetadatas flags:" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Tracking", "GUID"] tests=["TrackedGuidTests.TrackedGuid_IsTracking_OnlyAuthoritativeSourcesReturnTrueAsync", "TrackedGuidTests.TrackedGuid_NewMedo_HasSourceMedoMetadataAsync", "TrackedGuidTests.TrackedGuid_FromExternal_MarksAsSourceExternalAsync", "TrackedGuidTests.TrackedGuid_FromExternal_DetectsVersionAsync"]}
+```csharp{title="Tracking GUID Sources" description="TrackedGuid tracks where and how each GUID was created using the GuidMetadatas flags:" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Tracking", "GUID"] tests=["TrackedGuidTests.TrackedGuid_IsTracking_OnlyAuthoritativeSourcesReturnTrueAsync", "TrackedGuidTests.TrackedGuid_New_HasSourceWhizbangMetadataAsync", "TrackedGuidTests.TrackedGuid_FromExternal_MarksAsSourceExternalAsync", "TrackedGuidTests.TrackedGuid_FromExternal_DetectsVersionAsync"]}
 // Freshly created - full metadata available
-var fresh = TrackedGuid.NewMedo();
+var fresh = TrackedGuid.New();
 Console.WriteLine(fresh.IsTracking);           // true (authoritative)
 Console.WriteLine(fresh.SubMillisecondPrecision); // true (known)
-Console.WriteLine(fresh.Metadata);             // Version7 | SourceMedo
+Console.WriteLine(fresh.Metadata);             // Version7 | SourceWhizbang
 
 // Loaded from database - metadata is inferred
 var loaded = TrackedGuid.FromExternal(dbGuid);
@@ -141,7 +141,7 @@ Console.WriteLine(loaded.SubMillisecondPrecision); // false (unknown source)
 Console.WriteLine(loaded.Metadata);            // Version7 | SourceExternal (inferred)
 ```
 
-**Key Point**: Only GUIDs created through `NewMedo()`, `NewMicrosoftV7()`, or `NewRandom()` (and interceptor-generated `FromIntercepted` calls) have **authoritative** metadata (`IsTracking = true` — defined as having a `SourceMedo` or `SourceMicrosoft` flag). GUIDs loaded from external sources have **inferred** metadata based on version detection.
+**Key Point**: Only GUIDs created through `New()`, `NewMicrosoftV7()`, or `NewRandom()` (and interceptor-generated `FromIntercepted` calls) have **authoritative** metadata (`IsTracking = true` — defined as having a `SourceWhizbang`, `SourceMedo` or `SourceMicrosoft` flag). GUIDs loaded from external sources have **inferred** metadata based on version detection.
 
 ### Debugging with TrackedGuid
 
@@ -149,7 +149,7 @@ Console.WriteLine(loaded.Metadata);            // Version7 | SourceExternal (inf
 
 #### Problem 1: "Where did this GUID come from?"
 
-```csharp{title="Problem 1: 'Where did this GUID come from?'" description="Problem 1: 'Where did this GUID come from?'" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Problem", "'Where"] tests=["TrackedGuidTests.TrackedGuid_IsTracking_OnlyAuthoritativeSourcesReturnTrueAsync", "TrackedGuidTests.TrackedGuid_FromExternal_MarksAsSourceExternalAsync", "TrackedGuidTests.TrackedGuid_NewMedo_HasSourceMedoMetadataAsync"]}
+```csharp{title="Problem 1: 'Where did this GUID come from?'" description="Problem 1: 'Where did this GUID come from?'" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Problem", "'Where"] tests=["TrackedGuidTests.TrackedGuid_IsTracking_OnlyAuthoritativeSourcesReturnTrueAsync", "TrackedGuidTests.TrackedGuid_FromExternal_MarksAsSourceExternalAsync", "TrackedGuidTests.TrackedGuid_New_HasSourceWhizbangMetadataAsync"]}
 public class OrderService {
   private readonly ILogger<OrderService> _logger;
 
@@ -163,7 +163,8 @@ public class OrderService {
 
     // Check source
     var source = orderId.Metadata switch {
-      var m when (m & GuidMetadatas.SourceMedo) != 0 => "TrackedGuid.NewMedo()",
+      var m when (m & GuidMetadatas.SourceWhizbang) != 0 => "TrackedGuid.New()",
+      var m when (m & GuidMetadatas.SourceMedo) != 0 => "Medo.Uuid7 (called directly)",
       var m when (m & GuidMetadatas.SourceMicrosoft) != 0 => "Microsoft GUID",
       var m when (m & GuidMetadatas.SourceExternal) != 0 => "Database/API",
       var m when (m & GuidMetadatas.SourceParsed) != 0 => "Parsed string",
@@ -186,7 +187,7 @@ Processing order 019c7df5-494b-77d6-b994-e7145b796ec0 from source: Database/API,
 
 #### Problem 2: "Why are my IDs not sorting chronologically?"
 
-```csharp{title="Problem 2: 'Why are my IDs not sorting chronologically?'" description="Problem 2: 'Why are my IDs not sorting chronologically?'" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Problem", "'Why"] tests=["TrackedGuidTests.TrackedGuid_NewRandom_IsTimeOrdered_ReturnsFalseAsync", "TrackedGuidTests.TrackedGuid_NewMedo_IsTimeOrdered_ReturnsTrueAsync", "TrackedGuidTests.TrackedGuid_NewMedo_SubMillisecondPrecision_ReturnsTrueAsync", "TrackedGuidTests.TrackedGuid_NewMedo_Timestamp_ReturnsRecentTimeAsync"]}
+```csharp{title="Problem 2: 'Why are my IDs not sorting chronologically?'" description="Problem 2: 'Why are my IDs not sorting chronologically?'" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Problem", "'Why"] tests=["TrackedGuidTests.TrackedGuid_NewRandom_IsTimeOrdered_ReturnsFalseAsync", "TrackedGuidTests.TrackedGuid_New_IsTimeOrdered_ReturnsTrueAsync", "TrackedGuidTests.TrackedGuid_New_SubMillisecondPrecision_ReturnsTrueAsync", "TrackedGuidTests.TrackedGuid_New_Timestamp_ReturnsRecentTimeAsync"]}
 public void DebugIdOrdering(List<TrackedGuid> ids) {
   foreach (var id in ids) {
     var timestamp = id.Timestamp;
@@ -217,12 +218,12 @@ ID: 550e8400-e29b-41d4-a716-446655440000, Version: v4, Timestamp: 0001-01-01T00:
 
 #### Problem 3: "Did I use the right GUID generator?"
 
-```csharp{title="Problem 3: 'Did I use the right GUID generator?'" description="Problem 3: 'Did I use the right GUID generator?'" category="Implementation" difficulty="ADVANCED" tags=["Fundamentals", "Identity", "Problem", "'Did"] tests=["TrackedGuidTests.TrackedGuid_NewMedo_HasSourceMedoMetadataAsync", "TrackedGuidTests.TrackedGuid_NewMicrosoftV7_HasSourceMicrosoftMetadataAsync", "TrackedGuidTests.TrackedGuid_NewRandom_HasVersion4MetadataAsync"]}
+```csharp{title="Problem 3: 'Did I use the right GUID generator?'" description="Problem 3: 'Did I use the right GUID generator?'" category="Implementation" difficulty="ADVANCED" tags=["Fundamentals", "Identity", "Problem", "'Did"] tests=["TrackedGuidTests.TrackedGuid_New_HasSourceWhizbangMetadataAsync", "TrackedGuidTests.TrackedGuid_NewMicrosoftV7_HasSourceMicrosoftMetadataAsync", "TrackedGuidTests.TrackedGuid_NewRandom_HasVersion4MetadataAsync"]}
 public class IdGenerationValidator {
   public void ValidateIdUsage(TrackedGuid id, string context) {
     // Check if using recommended generator
-    if ((id.Metadata & GuidMetadatas.SourceMedo) != 0) {
-      Console.WriteLine($"✅ {context}: Using the recommended TrackedGuid.NewMedo()");
+    if ((id.Metadata & GuidMetadatas.SourceWhizbang) != 0) {
+      Console.WriteLine($"✅ {context}: Using the recommended TrackedGuid.New()");
       return;
     }
 
@@ -230,7 +231,7 @@ public class IdGenerationValidator {
     if ((id.Metadata & GuidMetadatas.SourceMicrosoft) != 0 &&
         (id.Metadata & GuidMetadatas.Version7) != 0) {
       Console.WriteLine(
-          $"⚠️  {context}: Using Guid.CreateVersion7() - consider TrackedGuid.NewMedo() for sub-ms precision");
+          $"⚠️  {context}: Using Guid.CreateVersion7() - consider TrackedGuid.New() for sub-ms precision");
       return;
     }
 
@@ -248,19 +249,19 @@ public class IdGenerationValidator {
 
 // Usage
 var validator = new IdGenerationValidator();
-validator.ValidateIdUsage(TrackedGuid.NewMedo(), "OrderId");
+validator.ValidateIdUsage(TrackedGuid.New(), "OrderId");
 validator.ValidateIdUsage(TrackedGuid.NewRandom(), "TestId");
 ```
 
 **Output**:
 ```
-✅ OrderId: Using the recommended TrackedGuid.NewMedo()
+✅ OrderId: Using the recommended TrackedGuid.New()
 ❌ TestId: Using UUIDv4 (random) - not time-ordered, fragments indexes
 ```
 
 #### Problem 4: "When was this GUID created?"
 
-```csharp{title="Problem 4: 'When was this GUID created?'" description="Problem 4: 'When was this GUID created?'" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Problem", "'When"] tests=["TrackedGuidTests.TrackedGuid_NewMedo_Timestamp_ReturnsRecentTimeAsync", "TrackedGuidTests.TrackedGuid_NewRandom_IsTimeOrdered_ReturnsFalseAsync"]}
+```csharp{title="Problem 4: 'When was this GUID created?'" description="Problem 4: 'When was this GUID created?'" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Problem", "'When"] tests=["TrackedGuidTests.TrackedGuid_New_Timestamp_ReturnsRecentTimeAsync", "TrackedGuidTests.TrackedGuid_NewRandom_IsTimeOrdered_ReturnsFalseAsync"]}
 public void InvestigateEventTiming(TrackedGuid eventId) {
   if (!eventId.IsTimeOrdered) {
     Console.WriteLine("Cannot extract timestamp - this is not a UUIDv7");
@@ -303,7 +304,7 @@ public class Order {
 }
 
 var order = new Order {
-  OrderId = TrackedGuid.NewMedo(),
+  OrderId = TrackedGuid.New(),
   CustomerName = "Alice"
 };
 
@@ -361,7 +362,7 @@ The `GuidInterceptorGenerator` uses C# 12 `[InterceptsLocation]` to replace GUID
 
 The `GuidMetadatas` flags enum (declared in `GuidMetadata.cs`) tracks both the UUID version and creation source:
 
-```csharp{title="GuidMetadatas Flags" description="The GuidMetadatas flags enum tracks both the UUID version and creation source:" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "GuidMetadatas", "Flags"] tests=["GuidMetadataTests.GuidMetadata_Version4_IsBit0Async", "GuidMetadataTests.GuidMetadata_Version7_IsBit1Async", "GuidMetadataTests.GuidMetadata_SourceMedo_IsBit2Async", "GuidMetadataTests.GuidMetadata_SourceMicrosoft_IsBit3Async", "GuidMetadataTests.GuidMetadata_SourceExternal_IsBit5Async", "GuidMetadataTests.GuidMetadata_ThirdPartySources_HaveCorrectBitPositionsAsync", "GuidMetadataTests.GuidMetadata_UnderlyingType_IsUshortAsync", "GuidMetadataTests.GuidMetadata_HasFlagsAttribute_ReturnsTrueAsync"]}
+```csharp{title="GuidMetadatas Flags" description="The GuidMetadatas flags enum tracks both the UUID version and creation source:" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "GuidMetadatas", "Flags"] tests=["GuidMetadataTests.GuidMetadata_Version4_IsBit0Async", "GuidMetadataTests.GuidMetadata_Version7_IsBit1Async", "GuidMetadataTests.GuidMetadata_SourceMedo_IsBit2Async", "GuidMetadataTests.GuidMetadata_SourceWhizbang_IsBit14Async", "GuidMetadataTests.GuidMetadata_SourceMicrosoft_IsBit3Async", "GuidMetadataTests.GuidMetadata_SourceExternal_IsBit5Async", "GuidMetadataTests.GuidMetadata_ThirdPartySources_HaveCorrectBitPositionsAsync", "GuidMetadataTests.GuidMetadata_UnderlyingType_IsUshortAsync", "GuidMetadataTests.GuidMetadata_HasFlagsAttribute_ReturnsTrueAsync"]}
 namespace Whizbang.Core.ValueObjects;
 
 [Flags]
@@ -373,7 +374,7 @@ public enum GuidMetadatas : ushort {
   Version7 = 1 << 1,  // Time-ordered UUID - chronologically sortable
 
   // Creation Source (bits 2-6)
-  SourceMedo = 1 << 2,       // TrackedGuid.NewMedo() - sub-millisecond precision
+  SourceMedo = 1 << 2,       // Medo.Uuid7 called directly (detected by interception)
   SourceMicrosoft = 1 << 3,  // Guid.NewGuid() / CreateVersion7()
   SourceParsed = 1 << 4,     // Parsed from string
   SourceExternal = 1 << 5,   // From database, API, deserialization
@@ -386,7 +387,10 @@ public enum GuidMetadatas : ushort {
   SourceDaanV2 = 1 << 10,    // DaanV2.UUID library
   SourceUuids = 1 << 11,     // UUIDs library
   SourceGuidOne = 1 << 12,   // GuidOne library
-  SourceTaiizor = 1 << 13    // Taiizor UUID library
+  SourceTaiizor = 1 << 13,   // Taiizor UUID library
+
+  // Framework (bit 14)
+  SourceWhizbang = 1 << 14   // TrackedGuid.New() - the framework's own generator, sub-millisecond precision
 }
 ```
 
@@ -404,10 +408,11 @@ var id = TrackedGuid.FromIntercepted(
 
 // Check metadata flags
 bool isV7 = (id.Metadata & GuidMetadatas.Version7) != 0;
-bool fromMedo = (id.Metadata & GuidMetadatas.SourceMedo) != 0;
+bool fromWhizbang = (id.Metadata & GuidMetadatas.SourceWhizbang) != 0;  // TrackedGuid.New()
+bool fromMedo = (id.Metadata & GuidMetadatas.SourceMedo) != 0;          // consumer code calling Medo.Uuid7
 
 // Common combinations (internal helpers)
-// MEDO_V7 = Version7 | SourceMedo
+// WHIZBANG_V7 = Version7 | SourceWhizbang
 // MICROSOFT_V7 = Version7 | SourceMicrosoft
 // EXTERNAL_V7 = Version7 | SourceExternal
 ```
@@ -415,7 +420,7 @@ bool fromMedo = (id.Metadata & GuidMetadatas.SourceMedo) != 0;
 **Why Track Sources?**
 
 Different GUID generators have different characteristics:
-- **`TrackedGuid.NewMedo()`** (the framework's generator): Sub-millisecond precision, monotonic counter
+- **`TrackedGuid.New()`** (the framework's generator): Sub-millisecond precision, monotonic counter
 - **Microsoft v7**: Millisecond precision only
 - **Microsoft v4**: Random, not time-ordered
 - **External**: Unknown precision and ordering guarantees
@@ -491,13 +496,13 @@ The analyzer runs during compilation and provides **instant feedback in your IDE
 
 **Severity**: Warning
 
-```csharp{title="WHIZ055: Guid.NewGuid() Usage" description="Severity: Warning" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "WHIZ055:", "Guid.NewGuid"] tests=["GuidUsageAnalyzerTests.Analyzer_GuidNewGuid_ReportsWHIZ055ErrorAsync", "GuidUsageAnalyzerTests.Analyzer_TrackedGuidNewMedo_NoErrorAsync", "GuidUsageAnalyzerTests.Analyzer_WhizbangIdNew_NoErrorAsync"]}
-// ⚠️ Warning: Use TrackedGuid.NewMedo() or a [WhizbangId] type instead
+```csharp{title="WHIZ055: Guid.NewGuid() Usage" description="Severity: Warning" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "WHIZ055:", "Guid.NewGuid"] tests=["GuidUsageAnalyzerTests.Analyzer_GuidNewGuid_ReportsWHIZ055ErrorAsync", "GuidUsageAnalyzerTests.Analyzer_TrackedGuidNew_NoErrorAsync", "GuidUsageAnalyzerTests.Analyzer_WhizbangIdNew_NoErrorAsync"]}
+// ⚠️ Warning: Use TrackedGuid.New() or a [WhizbangId] type instead
 var id = Guid.NewGuid();  // WHIZ055: Detected at compile-time
                           // IDE shows squiggle and warning
 
 // ✅ Fix 1: Use TrackedGuid
-var id = TrackedGuid.NewMedo();
+var id = TrackedGuid.New();
 
 // ✅ Fix 2: Use strongly-typed ID
 var orderId = OrderId.New();
@@ -514,31 +519,31 @@ var orderId = OrderId.New();
 
 **Severity**: Warning
 
-```csharp{title="WHIZ056: Guid.CreateVersion7() Usage" description="Severity: Warning" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "WHIZ056:", "Guid.CreateVersion7"] tests=["GuidUsageAnalyzerTests.Analyzer_GuidCreateVersion7_ReportsWHIZ056ErrorAsync", "GuidUsageAnalyzerTests.Analyzer_TrackedGuidNewMedo_NoErrorAsync"]}
-// ⚠️ Warning: Use TrackedGuid.NewMedo() for sub-millisecond precision
+```csharp{title="WHIZ056: Guid.CreateVersion7() Usage" description="Severity: Warning" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "WHIZ056:", "Guid.CreateVersion7"] tests=["GuidUsageAnalyzerTests.Analyzer_GuidCreateVersion7_ReportsWHIZ056ErrorAsync", "GuidUsageAnalyzerTests.Analyzer_TrackedGuidNew_NoErrorAsync"]}
+// ⚠️ Warning: Use TrackedGuid.New() for sub-millisecond precision
 var id = Guid.CreateVersion7();  // WHIZ056: Detected at compile-time
 
 // ✅ Fix: Use TrackedGuid for sub-millisecond precision
-var id = TrackedGuid.NewMedo();
+var id = TrackedGuid.New();
 ```
 
 **Why**: `Guid.CreateVersion7()` only has **millisecond precision**:
 - In high-throughput scenarios, multiple IDs within same millisecond may not sort correctly
-- `TrackedGuid.NewMedo()` provides **sub-millisecond precision** + a monotonic counter
+- `TrackedGuid.New()` provides **sub-millisecond precision** + a monotonic counter
 - Better ordering guarantees in distributed systems
 
 **Real-World Example**:
 
-```csharp{title="WHIZ056: Guid.CreateVersion7() Usage (2)" description="Real-World Example:" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "WHIZ056:", "Guid.CreateVersion7"] tests=["TrackedGuidTests.TrackedGuid_NewMedo_MultipleIds_AreTimeOrderedAsync"]}
+```csharp{title="WHIZ056: Guid.CreateVersion7() Usage (2)" description="Real-World Example:" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "WHIZ056:", "Guid.CreateVersion7"] tests=["TrackedGuidTests.TrackedGuid_New_MultipleIds_AreTimeOrderedAsync"]}
 // Problematic with Guid.CreateVersion7()
 for (int i = 0; i < 100; i++) {
   var id = Guid.CreateVersion7();  // Multiple IDs in same millisecond
   await InsertEventAsync(id);      // May not sort correctly!
 }
 
-// Fixed with TrackedGuid.NewMedo()
+// Fixed with TrackedGuid.New()
 for (int i = 0; i < 100; i++) {
-  var id = TrackedGuid.NewMedo();  // Sub-millisecond + monotonic counter
+  var id = TrackedGuid.New();  // Sub-millisecond + monotonic counter
   await InsertEventAsync(id);      // Guaranteed correct ordering
 }
 ```
@@ -628,7 +633,7 @@ public readonly partial struct CustomerId;
 
 The `[WhizbangId]` attribute triggers source generation that creates:
 - Value object with `Value` property (Guid)
-- `New()` static method for creating new IDs (uses `TrackedGuid.NewMedo()` internally)
+- `New()` static method for creating new IDs (uses `TrackedGuid.New()` internally)
 - `From(Guid)` / `From(TrackedGuid)` static methods for wrapping existing GUIDs — **both validate UUIDv7** and throw `ArgumentException` for non-v7 values
 - `Parse(string)` method for deserialization (validates UUIDv7)
 - Equality operators and `IComparable<T>`
@@ -639,7 +644,7 @@ The `[WhizbangId]` attribute triggers source generation that creates:
 
 ### Using WhizbangIds
 
-```csharp{title="Using WhizbangIds" description="Using WhizbangIds" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Using", "WhizbangIds"] tests=["WhizbangIdTests.WhizbangId_New_UsesTrackedGuidNewMedoAsync", "WhizbangIdTests.WhizbangId_From_WithV7Guid_SucceedsAsync", "WhizbangIdTests.WhizbangId_From_WithNonV7Guid_ThrowsAsync", "WhizbangIdTests.IWhizbangId_ToGuid_ReturnsUnderlyingValueAsync"]}
+```csharp{title="Using WhizbangIds" description="Using WhizbangIds" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Using", "WhizbangIds"] tests=["WhizbangIdTests.WhizbangId_New_UsesTrackedGuidNewAsync", "WhizbangIdTests.WhizbangId_From_WithV7Guid_SucceedsAsync", "WhizbangIdTests.WhizbangId_From_WithNonV7Guid_ThrowsAsync", "WhizbangIdTests.IWhizbangId_ToGuid_ReturnsUnderlyingValueAsync"]}
 // Static creation (uses global WhizbangIdProvider)
 var orderId = OrderId.New();
 
@@ -912,10 +917,10 @@ var orderId = orderIdProvider.NewId();
 **When**: Want to use the global static provider AND DI
 
 :::updated
-The static configuration method is **`WhizbangIdProvider.SetProvider(...)`** (there is no `Configure` method). Note the shipped behavior: the generated static `OrderId.New()` always calls `TrackedGuid.NewMedo()` directly — it does **not** consult the global provider. `SetProvider` affects only code that calls `WhizbangIdProvider.NewGuid()` itself. Use the DI-based typed providers (`IWhizbangIdProvider<TId>`) when you need to customize ID generation.
+The static configuration method is **`WhizbangIdProvider.SetProvider(...)`** (there is no `Configure` method). Note the shipped behavior: the generated static `OrderId.New()` always calls `TrackedGuid.New()` directly — it does **not** consult the global provider. `SetProvider` affects only code that calls `WhizbangIdProvider.NewGuid()` itself. Use the DI-based typed providers (`IWhizbangIdProvider<TId>`) when you need to customize ID generation.
 :::
 
-```csharp{title="Global Provider Configuration" description="When: Want to use global static provider AND DI" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "Global", "Provider"] tests=["WhizbangIdProviderTests.SetProvider_WithValidProvider_ShouldUseCustomProviderAsync", "WhizbangIdProviderTests.NewGuid_WithDefaultProvider_ShouldReturnUuidV7Async", "WhizbangIdTests.WhizbangId_New_UsesTrackedGuidNewMedoAsync"]}
+```csharp{title="Global Provider Configuration" description="When: Want to use global static provider AND DI" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "Global", "Provider"] tests=["WhizbangIdProviderTests.SetProvider_WithValidProvider_ShouldUseCustomProviderAsync", "WhizbangIdProviderTests.NewGuid_WithDefaultProvider_ShouldReturnUuidV7Async", "WhizbangIdTests.WhizbangId_New_UsesTrackedGuidNewAsync"]}
 // Configure the global static provider
 WhizbangIdProvider.SetProvider(new Uuid7IdProvider());
 
@@ -925,7 +930,7 @@ builder.Services.AddWhizbangIdProviders();
 // Static API — uses the provider set via SetProvider:
 TrackedGuid raw = WhizbangIdProvider.NewGuid();
 
-// Generated static factory — always TrackedGuid.NewMedo(), ignores SetProvider:
+// Generated static factory — always TrackedGuid.New(), ignores SetProvider:
 var id1 = OrderId.New();
 
 // DI path — uses the base provider registered with AddWhizbangIdProviders:
@@ -936,7 +941,7 @@ var id2 = orderIdProvider.NewId();
 
 **When**: Some code uses static `New()`, some uses DI
 
-```csharp{title="Hybrid - Static + DI" description="When: Some code uses static New(), some uses DI" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Hybrid", "Static"] tests=["WhizbangIdTests.WhizbangId_New_UsesTrackedGuidNewMedoAsync", "WhizbangIdServiceCollectionExtensionsTests.TypedProvider_InjectedInService_CreatesValidIdsAsync"]}
+```csharp{title="Hybrid - Static + DI" description="When: Some code uses static New(), some uses DI" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Hybrid", "Static"] tests=["WhizbangIdTests.WhizbangId_New_UsesTrackedGuidNewAsync", "WhizbangIdServiceCollectionExtensionsTests.TypedProvider_InjectedInService_CreatesValidIdsAsync"]}
 // Configure global static provider (used by WhizbangIdProvider.NewGuid() callers)
 WhizbangIdProvider.SetProvider(new Uuid7IdProvider());
 
@@ -944,7 +949,7 @@ WhizbangIdProvider.SetProvider(new Uuid7IdProvider());
 builder.Services.AddWhizbangIdProviders();
 
 public class OrderService {
-    // Option 1: Use static New() — always TrackedGuid.NewMedo() (see callout above)
+    // Option 1: Use static New() — always TrackedGuid.New() (see callout above)
     public Order CreateOrder() {
         return new Order {
             Id = OrderId.New()
@@ -1038,7 +1043,7 @@ public class CustomOrderIdProvider : IWhizbangIdProvider<OrderId> {
     }
 
     public OrderId NewId() {
-        var id = OrderId.From(TrackedGuid.NewMedo());
+        var id = OrderId.From(TrackedGuid.New());
         _logger.LogDebug("Generated OrderId: {OrderId}", id);
         return id;
     }
@@ -1232,9 +1237,9 @@ whizbang-migrate apply --project ./src/MyApp.csproj
 ```
 
 The CLI exposes `analyze`, `plan`, `apply`, `rollback`, and `status` commands (transformers are not selected individually via flags — they run as part of the `apply` pipeline). The `GuidToTrackedGuidTransformer` automatically:
-- Converts `Guid.NewGuid()` → `TrackedGuid.NewMedo()`
-- Converts `Guid.CreateVersion7()` → `TrackedGuid.NewMedo()`
-- Converts Marten's `CombGuidIdGeneration.NewGuid()` → `TrackedGuid.NewMedo()`
+- Converts `Guid.NewGuid()` → `TrackedGuid.New()`
+- Converts `Guid.CreateVersion7()` → `TrackedGuid.New()`
+- Converts Marten's `CombGuidIdGeneration.NewGuid()` → `TrackedGuid.New()`
 - Adds `using Whizbang.Core.ValueObjects;` directive
 - Emits warnings for default-StreamId check patterns and collision-retry patterns that need manual review
 

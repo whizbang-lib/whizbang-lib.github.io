@@ -303,18 +303,18 @@ public record OrderUpdated : IEvent {
 
 ### UUID7 for Time-Ordering
 
-```csharp{title="UUID7 Recommendation" description="Use UUID7 for time-ordered stream IDs" category="Best-Practices" difficulty="INTERMEDIATE" tags=["StreamId", "Best-Practices", "UUID7"] unverified="best-practice recommendation — UUID7 default via TrackedGuid.NewMedo(); the id-generation guidance is outside the [StreamId] extractor/generator coverage map"}
+```csharp{title="UUID7 Recommendation" description="Use UUID7 for time-ordered stream IDs" category="Best-Practices" difficulty="INTERMEDIATE" tags=["StreamId", "Best-Practices", "UUID7"] unverified="best-practice recommendation — UUID7 default via TrackedGuid.New(); the id-generation guidance is outside the [StreamId] extractor/generator coverage map"}
 // UUID7 provides time-ordering which is useful for:
 // - Sequential ID generation without coordination
 // - Natural ordering by creation time
 // - Efficient indexing in databases
 
 [StreamId]
-public Guid OrderId { get; init; } = TrackedGuid.NewMedo();
+public Guid OrderId { get; init; } = TrackedGuid.New();
 ```
 
 :::note
-Use `TrackedGuid.NewMedo()` (UUIDv7 with sub-millisecond precision) rather than `Guid.NewGuid()` or `Guid.CreateVersion7()`. The bundled `GuidUsageAnalyzer` flags the latter two with WHIZ055/WHIZ056 warnings. Alternatively, apply [GenerateStreamId](./generatestreamid) and let the Dispatcher mint the ID.
+Use `TrackedGuid.New()` (UUIDv7 with sub-millisecond precision) rather than `Guid.NewGuid()` or `Guid.CreateVersion7()`. The bundled `GuidUsageAnalyzer` flags the latter two with WHIZ055/WHIZ056 warnings. Alternatively, apply [GenerateStreamId](./generatestreamid) and let the Dispatcher mint the ID.
 :::
 
 ## Zero Reflection and AOT

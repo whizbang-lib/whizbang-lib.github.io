@@ -168,7 +168,7 @@ public class InventoryLevelsPerspectiveTests {
     // Arrange - pure function, no dependencies
     var perspective = new InventoryLevelsPerspective();
     var current = new InventoryLevelDto {
-      ProductId = TrackedGuid.NewMedo().Value,  // time-ordered UUIDv7
+      ProductId = TrackedGuid.New().Value,  // time-ordered UUIDv7
       Quantity = 100,
       Reserved = 0,
       Available = 100,
@@ -196,7 +196,7 @@ public class InventoryLevelsPerspectiveTests {
     var perspective = new InventoryLevelsPerspective();
     var @event = new InventoryReservedEvent {
       OrderId = "order-123",
-      ProductId = TrackedGuid.NewMedo().Value,  // time-ordered UUIDv7
+      ProductId = TrackedGuid.New().Value,  // time-ordered UUIDv7
       Quantity = 2,
       ReservedAt = DateTime.UtcNow
     };
@@ -285,7 +285,7 @@ public class CreateProductWorkflowTests {
     var fixture = _fixture ?? throw new InvalidOperationException("Fixture not initialized");
 
     var command = new CreateProductCommand {
-      ProductId = ProductId.From(TrackedGuid.NewMedo()),
+      ProductId = ProductId.From(TrackedGuid.New()),
       Name = "Integration Test Product",
       Description = "A test product for integration testing",
       Price = 99.99m,
@@ -318,7 +318,7 @@ public class CreateProductWorkflowTests {
 - ✅ `WaitForPerspectiveProcessingAsync` — completion signal registered **before** the command is sent
 - ✅ `WaitForWorkersIdleAsync` — worker-idle signal, not a sleep
 - ✅ Assertions go through **lenses** (the same read path production uses)
-- ✅ `TrackedGuid.NewMedo()` for time-ordered test IDs (never `Guid.NewGuid()` for Whizbang ids)
+- ✅ `TrackedGuid.New()` for time-ordered test IDs (never `Guid.NewGuid()` for Whizbang ids)
 
 ### Transport Matrix
 

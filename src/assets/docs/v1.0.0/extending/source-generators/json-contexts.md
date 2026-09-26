@@ -443,7 +443,7 @@ public class OutboxPublisher {
 
         await _db.ExecuteAsync(
             "INSERT INTO wh_outbox (message_id, payload, ...) VALUES (@MessageId, @Payload::jsonb, ...)",
-            new { MessageId = TrackedGuid.NewMedo(), Payload = json },  // UUIDv7, time-ordered
+            new { MessageId = TrackedGuid.New(), Payload = json },  // UUIDv7, time-ordered
             cancellationToken: ct
         );
     }

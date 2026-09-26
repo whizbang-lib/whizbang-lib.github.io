@@ -51,7 +51,7 @@ public class CreateTenantHandler : IReceptor<CreateTenantCommand, TenantCreatedE
     // Business logic fires at:
     // - LocalImmediateDetached (messages dispatched by this service)
     // - PostInboxDetached (messages arriving from other services via transport)
-    return ValueTask.FromResult(new TenantCreatedEvent(TrackedGuid.NewMedo()));
+    return ValueTask.FromResult(new TenantCreatedEvent(TrackedGuid.New()));
   }
 }
 

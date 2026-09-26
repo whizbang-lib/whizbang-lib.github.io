@@ -4597,7 +4597,7 @@
   },
   "Uuid7Generator": {
     "file": "src/Whizbang.Core/ValueObjects/Uuid7Generator.cs",
-    "line": 46,
+    "line": 43,
     "symbol": "Uuid7Generator",
     "docs": "fundamentals/identity/whizbang-ids#uuid7-generator"
   },

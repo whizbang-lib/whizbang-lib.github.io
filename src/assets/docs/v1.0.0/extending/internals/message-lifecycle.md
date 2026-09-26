@@ -492,7 +492,7 @@ public async ValueTask<OrderCreated> HandleAsync(
     // ...
 
     // HOOK 3: Event Generation
-    Guid orderId = TrackedGuid.NewMedo();  // Time-ordered UUIDv7
+    Guid orderId = TrackedGuid.New();  // Time-ordered UUIDv7
     var total = message.Items.Sum(i => i.Quantity * i.UnitPrice);
 
     var @event = new OrderCreated(
