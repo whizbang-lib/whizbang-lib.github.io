@@ -2143,7 +2143,7 @@
   },
   "VectorConfigurationRegistry": {
     "file": "src/Whizbang.Data.EFCore.Postgres.Generators/EFCoreServiceRegistrationGenerator.cs",
-    "line": 1779,
+    "line": 1782,
     "symbol": "VectorConfigurationRegistry",
     "docs": "extending/features/vector-search#auto-config"
   },
@@ -3019,49 +3019,49 @@
   },
   "FanOutCompositeLocallyAtPublishAsync": {
     "file": "src/Whizbang.Core/Dispatcher.cs",
-    "line": 3816,
+    "line": 3819,
     "symbol": "FanOutCompositeLocallyAtPublishAsync",
     "docs": "fundamentals/messaging/composite-events#publish-time-local-fan-out"
   },
   "PublishToOutboxDynamicAsync": {
     "file": "src/Whizbang.Core/Dispatcher.cs",
-    "line": 4026,
+    "line": 4029,
     "symbol": "PublishToOutboxDynamicAsync",
     "docs": "fundamentals/dispatcher/message-cascade#auto-cascade-to-outbox"
   },
   "_declarePriority": {
     "file": "src/Whizbang.Core/Dispatcher.cs",
-    "line": 4168,
+    "line": 4171,
     "symbol": "_declarePriority",
     "docs": "fundamentals/messaging/message-priority#declaration"
   },
   "receptor": {
     "file": "src/Whizbang.Core/Dispatcher.cs",
-    "line": 5044,
+    "line": 5049,
     "symbol": "receptor",
     "docs": "fundamentals/dispatcher/dispatcher#publishmanyasync"
   },
   "locally": {
     "file": "src/Whizbang.Core/Dispatcher.cs",
-    "line": 5100,
+    "line": 5105,
     "symbol": "locally",
     "docs": "fundamentals/dispatcher/dispatcher#publishmanyasync"
   },
   "SendAsync": {
     "file": "src/Whizbang.Core/Dispatcher.cs",
-    "line": 5153,
+    "line": 5158,
     "symbol": "SendAsync",
     "docs": "fundamentals/dispatcher/dispatch-patterns#localsendmanyasync"
   },
   "MessageHop": {
     "file": "src/Whizbang.Core/Dispatcher.cs",
-    "line": 5234,
+    "line": 5239,
     "symbol": "MessageHop",
     "docs": "fundamentals/dispatcher/dispatcher#deferred-publishing"
   },
   "Log": {
     "file": "src/Whizbang.Core/Dispatcher.cs",
-    "line": 5482,
+    "line": 5487,
     "symbol": "Log",
     "docs": "fundamentals/dispatcher/message-cascade#cascade-security-context"
   },
@@ -4123,43 +4123,43 @@
   },
   "_scanAndRepairRewindsOnStartupAsync": {
     "file": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-    "line": 1009,
+    "line": 1011,
     "symbol": "_scanAndRepairRewindsOnStartupAsync",
     "docs": "fundamentals/perspectives/rewind#startup-scan"
   },
   "ProcessChannelBatchAsync": {
     "file": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-    "line": 1080,
+    "line": 1082,
     "symbol": "ProcessChannelBatchAsync",
     "docs": "fundamentals/work-coordinator/claim-loop"
   },
   "_processDrainModeStreamsAsync": {
     "file": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-    "line": 1703,
+    "line": 1705,
     "symbol": "_processDrainModeStreamsAsync",
     "docs": "fundamentals/perspectives/drain-mode"
   },
   "at": {
     "file": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-    "line": 2499,
+    "line": 2501,
     "symbol": "at",
     "docs": "operations/infrastructure/migrations"
   },
   "_establishSecurityContextAsync": {
     "file": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-    "line": 4375,
+    "line": 4377,
     "symbol": "_establishSecurityContextAsync",
     "docs": "operations/workers/perspective-worker#security-context"
   },
   "PerspectiveStartupScanLog": {
     "file": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-    "line": 4983,
+    "line": 4985,
     "symbol": "PerspectiveStartupScanLog",
     "docs": "fundamentals/perspectives/rewind#startup-scan"
   },
   "DrainBatcher": {
     "file": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-    "line": 5198,
+    "line": 5200,
     "symbol": "DrainBatcher",
     "docs": "fundamentals/perspectives/drain-mode#sliding-window"
   },
@@ -4585,7 +4585,7 @@
   },
   "TrackedGuid": {
     "file": "src/Whizbang.Core/ValueObjects/TrackedGuid.cs",
-    "line": 9,
+    "line": 8,
     "symbol": "TrackedGuid",
     "docs": "fundamentals/identity/whizbang-ids#tracked-guid"
   },
@@ -4594,6 +4594,12 @@
     "line": 18,
     "symbol": "TrackedGuidJsonConverter",
     "docs": "fundamentals/identity/whizbang-ids#tracked-guid"
+  },
+  "Uuid7Generator": {
+    "file": "src/Whizbang.Core/ValueObjects/Uuid7Generator.cs",
+    "line": 46,
+    "symbol": "Uuid7Generator",
+    "docs": "fundamentals/identity/whizbang-ids#uuid7-generator"
   },
   "WhizbangId": {
     "file": "src/Whizbang.Core/ValueObjects/WhizbangId.cs",
@@ -8617,7 +8623,7 @@
   },
   "CompositeChildIdentity": {
     "file": "src/Whizbang.Core/Messaging/CompositeChildIdentity.cs",
-    "line": 25,
+    "line": 26,
     "symbol": "CompositeChildIdentity",
     "docs": "fundamentals/messaging/composite-events#deterministic-child-ids"
   },
@@ -8695,7 +8701,7 @@
   },
   "DerivedIdentity": {
     "file": "src/Whizbang.Core/Messaging/DerivedIdentity.cs",
-    "line": 19,
+    "line": 38,
     "symbol": "DerivedIdentity",
     "docs": "fundamentals/dispatcher/message-cascade#emission-identity"
   },
@@ -8719,13 +8725,13 @@
   },
   "EmissionIdentity": {
     "file": "src/Whizbang.Core/Messaging/EmissionIdentity.cs",
-    "line": 36,
+    "line": 35,
     "symbol": "EmissionIdentity",
     "docs": "fundamentals/dispatcher/message-cascade#emission-identity"
   },
   "EmissionSequence": {
     "file": "src/Whizbang.Core/Messaging/EmissionIdentity.cs",
-    "line": 79,
+    "line": 78,
     "symbol": "EmissionSequence",
     "docs": "fundamentals/dispatcher/message-cascade#emission-identity"
   },

@@ -72,7 +72,7 @@ For scenarios where you need to work with raw GUIDs while preserving generation 
 using Whizbang.Core.ValueObjects;
 
 // Create with sub-millisecond precision (recommended)
-var tracked = TrackedGuid.NewMedo();  // Uses Medo.Uuid7 internally
+var tracked = TrackedGuid.NewMedo();  // The framework's UUIDv7 generator
 
 // Check metadata
 bool isTimeOrdered = tracked.IsTimeOrdered;           // true
@@ -99,6 +99,29 @@ var external = TrackedGuid.FromExternal(someGuid);
 | Database index friendly | ❌ Poor | ✅ Good | ✅ Excellent |
 
 **Recommendation**: Use `[WhizbangId]` types for domain identities, `TrackedGuid` for infrastructure code that needs GUID flexibility with metadata preservation.
+
+### How `NewMedo()` orders ids {#uuid7-generator}
+{verified: Uuid7GeneratorTests.Shared_OneMillionIdsInATightLoop_AreStrictlyIncreasingAsync, Uuid7GeneratorTests.Shared_ManyThreadsAtOnce_AreUniqueAndIncreasingPerThreadAsync, Uuid7GeneratorTests.Shared_IssueOrderIsSortOrder_AcrossThreadsAsync, Uuid7GeneratorTests.NewGuid_CounterExhausted_BorrowsTheNextMillisecondInsteadOfWrappingAsync, Uuid7GeneratorTests.NewGuid_ClockGoesBackwards_KeepsTheLastMillisecondAndKeepsCountingAsync}
+
+`TrackedGuid.NewMedo()` is served by the framework's own UUIDv7 generator. Every id it issues sorts after every id issued before it in the process, compared as big-endian bytes, which is how the string form, the wire and PostgreSQL's `uuid` type order them. Events, cursors and claims are ordered by id across the framework, so that one property carries a lot.
+
+| Bits | Content |
+|---|---|
+| 0 to 47 | Unix time in milliseconds |
+| 48 to 51 | Version `0111` |
+| 52 to 63 | Counter, high 12 bits |
+| 64 to 65 | Variant `10` |
+| 66 to 79 | Counter, low 14 bits |
+| 80 to 127 | Random |
+
+The 26-bit counter orders ids within one millisecond. The first id of a millisecond seeds it from 25 random bits, leaving at least 2^25 of room; each further id adds a random step of 1 to 16, so the next id is hard to guess without costing the order. Every id is issued under one lock, so the order ids leave the generator is their sort order even across threads.
+
+Two edge cases are handled explicitly:
+
+- **Counter exhausted.** The generator moves to the next millisecond and reseeds, rather than wrapping to a smaller counter inside the same millisecond.
+- **Clock goes backwards.** The generator keeps issuing in the last millisecond it used and keeps counting, then resumes real time once the clock passes it again.
+
+The layout is RFC 9562 version 7 with a fixed-length dedicated counter (section 6.2, method 1). The name `NewMedo` is historical: ids used to come from the Medo.Uuid7 package, and they now come from the framework's own generator. Ids have exactly the shape they had before, so ids already stored or in flight read as they always did.
 
 ### Tracking GUID Sources
 
@@ -140,7 +163,7 @@ public class OrderService {
 
     // Check source
     var source = orderId.Metadata switch {
-      var m when (m & GuidMetadatas.SourceMedo) != 0 => "Medo.Uuid7",
+      var m when (m & GuidMetadatas.SourceMedo) != 0 => "TrackedGuid.NewMedo()",
       var m when (m & GuidMetadatas.SourceMicrosoft) != 0 => "Microsoft GUID",
       var m when (m & GuidMetadatas.SourceExternal) != 0 => "Database/API",
       var m when (m & GuidMetadatas.SourceParsed) != 0 => "Parsed string",
@@ -199,7 +222,7 @@ public class IdGenerationValidator {
   public void ValidateIdUsage(TrackedGuid id, string context) {
     // Check if using recommended generator
     if ((id.Metadata & GuidMetadatas.SourceMedo) != 0) {
-      Console.WriteLine($"✅ {context}: Using recommended Medo.Uuid7");
+      Console.WriteLine($"✅ {context}: Using the recommended TrackedGuid.NewMedo()");
       return;
     }
 
@@ -231,7 +254,7 @@ validator.ValidateIdUsage(TrackedGuid.NewRandom(), "TestId");
 
 **Output**:
 ```
-✅ OrderId: Using recommended Medo.Uuid7
+✅ OrderId: Using the recommended TrackedGuid.NewMedo()
 ❌ TestId: Using UUIDv4 (random) - not time-ordered, fragments indexes
 ```
 
@@ -350,7 +373,7 @@ public enum GuidMetadatas : ushort {
   Version7 = 1 << 1,  // Time-ordered UUID - chronologically sortable
 
   // Creation Source (bits 2-6)
-  SourceMedo = 1 << 2,       // Medo.Uuid7 - sub-millisecond precision
+  SourceMedo = 1 << 2,       // TrackedGuid.NewMedo() - sub-millisecond precision
   SourceMicrosoft = 1 << 3,  // Guid.NewGuid() / CreateVersion7()
   SourceParsed = 1 << 4,     // Parsed from string
   SourceExternal = 1 << 5,   // From database, API, deserialization
@@ -392,7 +415,7 @@ bool fromMedo = (id.Metadata & GuidMetadatas.SourceMedo) != 0;
 **Why Track Sources?**
 
 Different GUID generators have different characteristics:
-- **Medo.Uuid7**: Sub-millisecond precision, monotonic counter
+- **`TrackedGuid.NewMedo()`** (the framework's generator): Sub-millisecond precision, monotonic counter
 - **Microsoft v7**: Millisecond precision only
 - **Microsoft v4**: Random, not time-ordered
 - **External**: Unknown precision and ordering guarantees
@@ -501,7 +524,7 @@ var id = TrackedGuid.NewMedo();
 
 **Why**: `Guid.CreateVersion7()` only has **millisecond precision**:
 - In high-throughput scenarios, multiple IDs within same millisecond may not sort correctly
-- Medo.Uuid7 provides **sub-millisecond precision** + monotonic counter
+- `TrackedGuid.NewMedo()` provides **sub-millisecond precision** + a monotonic counter
 - Better ordering guarantees in distributed systems
 
 **Real-World Example**:

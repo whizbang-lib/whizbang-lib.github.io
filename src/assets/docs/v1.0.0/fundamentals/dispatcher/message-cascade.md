@@ -593,20 +593,26 @@ Guid eventId = EmissionIdentity.Derive(
 // Re-run the same handling (a retry) and the same five inputs come back: the id is identical.
 ```
 
-### Layout: UUIDv7-shaped, derived entropy
-{verified: EmissionIdentityTests.Derive_ResultIsVersion7ShapedWithRfcVariantAsync, EmissionIdentityTests.Derive_ResultIsAcceptedByTheMessageIdValueObjectAsync, EmissionIdentityTests.Derive_InheritsFirst48BitsOfSourceAsync, EmissionIdentityTests.Derive_TwoOrdinals_ShareThePrefixAndDifferInTheHashAsync}
+### Layout: sorts where its source sorts
+{verified: DerivedIdentityTests.FromCanonical_KeepsTheSourcesFirst80BitsAsync, DerivedIdentityTests.FromCanonical_PutsTheOrdinalInBits80To91Async, DerivedIdentityTests.FromCanonical_OrdinalPastTheField_SaturatesAndStaysUniqueAsync, DerivedIdentityTests.FromCanonical_ConsecutiveSources_DerivedIdsSortInSourceOrderAsync, DerivedIdentityTests.FromCanonical_OneSource_DerivedIdsSortInOrdinalOrderAsync, EmissionIdentityTests.Derive_ResultIsVersion7ShapedWithRfcVariantAsync, EmissionIdentityTests.Derive_ResultIsAcceptedByTheMessageIdValueObjectAsync, EmissionIdentityTests.Derive_InheritsFirst80BitsOfSourceAsync, DispatcherEmissionIdentityTests.CascadeMessageAsync_BackToBackHandlingsOnOneStream_EventIdsFollowHandlingOrderAsync, DispatcherEmissionIdentityTests.CascadeMessageAsync_SeveralEmissionsOfOneHandling_EventIdsFollowEmissionOrderAsync}
 
-| Bytes | Content |
+| Bits | Content |
 |---|---|
-| 0 to 5 | The first 48 bits of the **source** message id (its UUIDv7 millisecond timestamp when the source is a framework id), so derived ids stay time-local to the message that caused them and keep index locality |
-| 6 | Version nibble `7` over the top four bits of the hash |
-| 7 | Hash |
-| 8 | RFC variant `10xx` over the top two bits of the hash |
-| 9 to 15 | Hash |
+| 0 to 79 | The **source** message id's first 80 bits: its millisecond and the generator's monotonic counter (version forced to `7` and variant to `10` if the source is not a version 7 id) |
+| 80 to 91 | The emission's ordinal within the handling, saturating at 4095 |
+| 92 to 127 | Hash |
 
-The hash is SHA-256 over the UTF-8 canonical string `whizbang.emission.v1\n{source:N}\n{service}\n{handler}\n{emittedType}\n{ordinal}`; 74 bits of it land in the id.
+The hash is SHA-256 over the UTF-8 canonical string `whizbang.emission.v2\n{source:N}\n{service}\n{handler}\n{emittedType}\n{ordinal}`; 36 bits of it land in the id.
+
+**Why the source's counter is kept.** A stream's events are versioned, claimed and applied in event id order. Two commands sent one after the other on one stream are usually issued in the same millisecond and differ only in the generator's counter. An earlier layout kept only the millisecond and filled the rest with hash bits, so the two commands' events sorted in random order and the second command's event could become version 1 (for example, a field added to a record before the record was created, which the read model then lost). Keeping the counter makes an event sort where the command that caused it sorts, and the ordinal then orders the several events one handling emits, in the order it emitted them.
+
+**Limits.** Past ordinal 4095 the field saturates: those ids still sort after every lower ordinal and stay unique, because the hash covers the full ordinal, but their order among themselves is the hash's. The hash also separates two handlers of one message that emit at the same ordinal; with 36 bits, a collision needs about 2^36 such pairs. A source id that did not come from the framework's generator (a client-supplied random id) has no counter to keep, so its events stay unique but carry no order relative to other sources.
+
+**Changing the layout changes derived ids.** A retry re-derives the ids of its first run only when both runs derive the same way. A handling whose first run happened before a deployment that changes the layout, and whose retry happens after it, derives different ids the second time, so that one retry is republished rather than deduplicated. The canonical prefix is versioned (`v2`) so the two derivations can never be mistaken for each other.
 
 Why version 7 rather than the "custom" version 8: the `[WhizbangId]` value objects (`MessageId.From(Guid)`) reject any id that is not v7, and `TrackedGuid` extracts timestamps only from v7. RFC 9562 allows a v7 id's non-timestamp bits to be implementation-chosen data, so a derived v7 is compliant and passes every existing gate exactly like a minted one.
+
+Composite children use the same layout (`CompositeChildIdentity`, canonical prefix `whizbang.composite-child.v2`), so a composite's children sort in the order the composite lists them and after every child of an earlier composite. {verified: CompositeChildIdentityTests.Derive_ChildrenSortInTheirOrderWithinTheCompositeAsync, CompositeChildIdentityTests.Derive_ChildrenOfConsecutiveComposites_SortInCompositeOrderAsync}
 
 ### Where the dispatcher mints
 {verified: DispatcherEmissionIdentityTests.CascadeMessageAsync_NoSourceEnvelope_MintsFreshTimeOrderedIdsAsync, DispatcherEmissionIdentityTests.CascadeMessageAsync_SourceWithoutMessageId_MintsFreshIdsAsync, DispatcherEmissionIdentityTests.CascadeMessageAsync_SiblingHandlerRowOfSameMessage_DerivesDistinctEventIdsAsync, DispatcherEmissionIdentityTests.CascadeMessageAsync_TwoServicesHandlingSameMessage_DeriveDistinctEventIdsAsync, DispatcherEmissionIdentityTests.CascadeMessageAsync_DifferentEmittedTypes_DeriveDistinctEventIdsAsync}

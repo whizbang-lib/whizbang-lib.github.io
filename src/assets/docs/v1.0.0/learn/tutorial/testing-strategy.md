@@ -265,7 +265,7 @@ Whizbang workers expose these hooks as first-class API (useful in production obs
 ```csharp{title="Testing Event Flow" description="**ECommerce." category="Example" difficulty="ADVANCED" tags=["Learn", "Tutorial", "Testing", "Event"] unverified="tutorial worked-example — this is the ECommerce sample's CreateProductWorkflowTests integration test, which is outside the core unit-test coverage map"}
 using ECommerce.Contracts.Commands;
 using ECommerce.RabbitMQ.Integration.Tests.Fixtures;
-using Medo;
+using Whizbang.Core.ValueObjects;
 
 [Category("Integration")]
 [NotInParallel("RabbitMQ")]
@@ -285,7 +285,7 @@ public class CreateProductWorkflowTests {
     var fixture = _fixture ?? throw new InvalidOperationException("Fixture not initialized");
 
     var command = new CreateProductCommand {
-      ProductId = ProductId.From(Uuid7.NewUuid7().ToGuid()),
+      ProductId = ProductId.From(TrackedGuid.NewMedo()),
       Name = "Integration Test Product",
       Description = "A test product for integration testing",
       Price = 99.99m,
@@ -318,7 +318,7 @@ public class CreateProductWorkflowTests {
 - ✅ `WaitForPerspectiveProcessingAsync` — completion signal registered **before** the command is sent
 - ✅ `WaitForWorkersIdleAsync` — worker-idle signal, not a sleep
 - ✅ Assertions go through **lenses** (the same read path production uses)
-- ✅ `Uuid7.NewUuid7()` for time-ordered test IDs (never `Guid.NewGuid()` for Whizbang ids)
+- ✅ `TrackedGuid.NewMedo()` for time-ordered test IDs (never `Guid.NewGuid()` for Whizbang ids)
 
 ### Transport Matrix
 
