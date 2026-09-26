@@ -6,6 +6,11 @@ verifiedDate: 2026-08-05
 version: 1.0.0
 category: Perspectives
 codeReferences:
+  - src/Whizbang.Data.Postgres/Migrations/169_Fold.sql
+  - src/Whizbang.Data.EFCore.Postgres/QueryTranslation/SearchContainsRewriter.cs
+  - src/Whizbang.Data.EFCore.Postgres/Functions/FoldedContainsTranslator.cs
+  - src/Whizbang.Data.EFCore.Postgres/Functions/WhizbangSearchDbFunctions.cs
+  - src/Whizbang.Generators.Shared/Models/PhysicalColumnSql.cs
   - src/Whizbang.Core/Perspectives/PhysicalFieldAttribute.cs
   - src/Whizbang.Core/Perspectives/IndexedAttribute.cs
   - src/Whizbang.Generators.Shared/Models/JsonIndexInfo.cs
@@ -24,6 +29,12 @@ codeReferences:
   - src/Whizbang.Data.Postgres/OptionalExtensionBlocks.cs
     src/Whizbang.Data.EFCore.Postgres/QueryTranslation/WhizbangDbContextOptionsBuilderExtensions.cs
 testReferences:
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/QueryTranslation/SearchQueryIntegrationTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/QueryTranslation/SearchQueryShapeTests.cs
+  - tests/Whizbang.Generators.Tests/SearchIndexGenerationTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/FoldFunctionTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/PhysicalColumnBackfillIntegrationTests.cs
+  - tests/Whizbang.Generators.Tests/PhysicalColumnSqlTests.cs
   - tests/Whizbang.Generators.Tests/Analyzers/JsonIndexStorageAnalyzerTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/QueryTranslation/PerspectiveIndexSetupTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/OptionalExtensionBlocksTests.cs
@@ -507,6 +518,89 @@ public record ProductDto {
 | `Unique` | `bool` | `false` | Apply UNIQUE constraint |
 | `ColumnName` | `string?` | `null` | Custom column name (defaults to snake_case) |
 | `MaxLength` | `int` | `-1` | VARCHAR length for strings (-1 = TEXT) |
+
+## Search {#search}
+
+{verified: SearchQueryIntegrationTests.Search_IgnoresCaseAsync, SearchQueryIntegrationTests.Search_AStraightQuoteTerm_FindsACurlyQuoteTitle_AndDashesAlikeAsync, SearchQueryIntegrationTests.Search_AWildcardInTheTerm_MatchesLiterallyAsync, SearchQueryIntegrationTests.Search_IsAnsweredByTheFoldIndexAsync, SearchQueryShapeTests.Contains_OnASearchField_FoldsTheValueAndTheTermAsync, SearchQueryShapeTests.Contains_OnAPromotedSearchField_FoldsTheColumnAsync, SearchIndexGenerationTests.ASearchField_GetsATrigramIndexOverItsFoldedValueAsync}
+
+A search box needs more than `Contains`: it should ignore case, and a person typing a straight quote
+or a hyphen should still find a title stored with a curly quote or an en dash. Declare the field for
+search and write the query as an ordinary `Contains`:
+
+```csharp{title="A field declared for search" description="Declares two fields for folded substring search and queries them with plain Contains" category="Perspectives" difficulty="BEGINNER" tags=["Perspectives", "Search", "Indexes", "Trigram"] tests=["SearchQueryIntegrationTests.Search_AStraightQuoteTerm_FindsACurlyQuoteTitle_AndDashesAlikeAsync"]}
+public record JobModel {
+  [StreamId] public Guid Id { get; init; }
+
+  [Indexed(IndexKinds.Search)]
+  public string JobName { get; init; } = "";
+
+  [Indexed(IndexKinds.Search)]
+  public string? JobCode { get; init; }
+}
+
+// "o'brien - ops" finds "Chief O’Brien – Operations".
+var jobs = await lens.Query
+  .Where(r => r.Data.JobName.Contains(term) || r.Data.JobCode!.Contains(term))
+  .ToListAsync();
+```
+
+What happens underneath:
+
+- **One fold, both sides.** The framework's `wh_fold` lowercases and maps curly quotes, primes, dashes
+  and no-break spaces to plain ASCII. The field is indexed as `wh_fold(value)`, and the `Contains` is
+  translated to `wh_fold(value) LIKE wh_fold_pattern(term)`, so the stored value and the term are folded
+  by the same function and cannot drift apart. LIKE wildcards in the term match literally.
+- **A trigram index answers it.** The index is a GIN trigram index over the folded value, which serves a
+  match anywhere in the string. It needs the `pg_trgm` extension; where the server refuses it the index is
+  skipped with a warning and the search scans, still folded and still correct.
+- **Nothing extra is stored.** The index is built over the document (or over the column, for a promoted
+  field), so declaring search on a model that already has rows needs no data migration: building the index
+  covers them. The index is built by the startup schema pass on the release that declares it, and a
+  plain `CREATE INDEX` holds writes to the table while it builds: seconds for tens of thousands of rows, so
+  on a very large table ship the declaration in a quiet window.
+- **Both registration paths.** The rewrite is installed whether the context is registered with
+  `AddWhizbang().WithEFCore<TContext>()` or with the generated `Add{Context}` extension, including for a
+  model whose only special fields are search fields.
+- **Only where declared.** Folding changes what `Contains` means, so it applies to fields declared for
+  search and nowhere else. To search another field folded, call it explicitly:
+  `EF.Functions.FoldedContains(r.Data.Notes, term)`. That call scans, because nothing indexes that field.
+- **Text only.** Declaring search on anything else is reported (WHIZ305) and builds nothing.
+
+## Adding a physical field to an existing model {#adding-a-physical-field}
+
+{verified: PhysicalColumnBackfillIntegrationTests.Backfill_RestoresExactlyWhatTheWriterStored_ForEveryTypeAsync, PhysicalColumnBackfillIntegrationTests.Backfill_LeavesAColumnThatAlreadyHasAValueAloneAsync, PhysicalColumnBackfillIntegrationTests.AddColumn_OnATableThatPredatesIt_AddsTheColumn_AndIsIdempotentAsync, PhysicalColumnSqlTests.ExistingTable_GetsTheColumn_ThenTheBackfill_ThenTheIndexAsync, PhysicalColumnSqlTests.SplitStorage_AddsTheColumn_ButHasNoDocumentCopyToBackfillFromAsync, PerspectiveSchemaBackfillTests.Extracted_EachPhysicalColumn_IsBackfilledFromTheDocumentAsync, PostgresSchemaInitializerCoverageTests.InitializeSchemaAsync_ColumnCopyAddingPhysicalColumns_BackfillsExistingRowsAsync, DapperPerspectiveStorePhysicalFieldTests.Upsert_Insert_WritesEveryPhysicalColumnAsync}
+
+Promoting a field of a model that already has rows is safe. The schema pass, on the instance elected
+to migrate, does three things in order:
+
+1. **Adds the column** (`ADD COLUMN IF NOT EXISTS`) to the existing table.
+2. **Fills it from the document** for every row written before it existed: rows that have the value in
+   the document and not in the column. A column the writer has since filled is never overwritten, and
+   running it again finds nothing to do.
+3. **Builds the column's indexes and length constraints,** which need the column to exist.
+
+This matters because the query translator reads a promoted property from its column. Without the fill,
+every filter and sort on the field would read an empty column for the older rows, and return nothing
+for them without an error.
+
+The fill reproduces exactly what the writer stores, type by type: text, identifiers, integers, booleans,
+decimals and floating point, and dates and times. Dates and times are microsecond counts in the
+document, so they are rebuilt by exact arithmetic from the epoch rather than parsed.
+
+Some fields are added but not filled, because the document cannot reproduce them:
+
+- **Split storage.** The value lives only in the column, so older rows need a
+  [rebuild](./rebuild) to fill it.
+- **A column type you chose** (`[PhysicalField(ColumnType = "...")]`), an enumeration, or any other type
+  whose column encoding the framework cannot know.
+- **Vector fields.**
+
+Both drivers do this. With the Dapper driver, the schema generator places the same fill statements
+after the table, so the column-copy migration that adds the column runs them against the new table, and
+the Dapper store writes every physical column on insert and update, as the EF Core store does.
+
+The fill runs inside the startup schema pass, as one `UPDATE` per field. On a very large table, schedule
+the release that promotes the field for a quiet period, or promote it on an empty table first.
 
 ## Query Syntax
 
