@@ -12395,6 +12395,48 @@
         "linkSource": "XmlTag"
       }
     ],
+    "PhysicalColumnSql": [
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/PhysicalColumnBackfillIntegrationTests.cs",
+        "testMethod": "Backfill_RestoresExactlyWhatTheWriterStored_ForEveryTypeAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/PhysicalColumnBackfillIntegrationTests.cs",
+        "testMethod": "Backfill_LeavesAColumnThatAlreadyHasAValueAloneAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/PhysicalColumnBackfillIntegrationTests.cs",
+        "testMethod": "AddColumn_OnATableThatPredatesIt_AddsTheColumn_AndIsIdempotentAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Generators.Tests/PhysicalColumnSqlTests.cs",
+        "testMethod": "ExistingTable_GetsTheColumn_ThenTheBackfill_ThenTheIndexAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Generators.Tests/PhysicalColumnSqlTests.cs",
+        "testMethod": "AColumnTypeTheAuthorChose_IsAddedButNotBackfilledAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Generators.Tests/PhysicalColumnSqlTests.cs",
+        "testMethod": "SplitStorage_AddsTheColumn_ButHasNoDocumentCopyToBackfillFromAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Generators.Tests/PhysicalColumnSqlTests.cs",
+        "testMethod": "Extraction_CoversEachKnownTypeAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Generators.Tests/PhysicalColumnSqlTests.cs",
+        "testMethod": "Extraction_AnUnknownType_OrAVector_IsNotBackfilledAsync",
+        "linkSource": "XmlTag"
+      }
+    ],
     "PhysicalFieldInfo": [
       {
         "testFile": "tests/Whizbang.Generators.Tests/Models/PhysicalFieldInfoTests.cs",
@@ -23466,6 +23508,38 @@
         "linkSource": "Convention"
       }
     ],
+    "CollectiveElementUpsertSql": [
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/Collective/CollectiveElementUpsertSqlTests.cs",
+        "testMethod": "ValueSql_ReplacesByKeyInOrder_AppendsOtherwise_AndTreatsANonArrayAsEmptyAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/Collective/CollectiveElementUpsertSqlTests.cs",
+        "testMethod": "ValueSql_RefusesAnythingButAPlainIdentifierAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/Collective/CollectiveElementUpsertSqlTests.cs",
+        "testMethod": "ValueSql_RefusesABlankElementAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/Collective/CollectiveElementUpsertSqlTests.cs",
+        "testMethod": "Rewriter_UpsertElement_CarriesTheArray_TheKey_AndTheSerializedElementAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/Collective/CollectiveElementUpsertSqlTests.cs",
+        "testMethod": "Rewriter_UpsertElement_ANestedKey_IsRefusedAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/Collective/CollectiveElementUpsertSqlTests.cs",
+        "testMethod": "Rewriter_UpsertElement_ANullElement_IsRefusedAsync",
+        "linkSource": "XmlTag"
+      }
+    ],
     "ReferencedJsonPath": [
       {
         "testFile": "tests/Whizbang.Data.Dapper.Postgres.Tests/Collective/DapperCollectiveUnitTests.cs",
@@ -31152,6 +31226,48 @@
         "linkSource": "XmlTag"
       }
     ],
+    "SearchContainsRewriter": [
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/QueryTranslation/SearchQueryShapeTests.cs",
+        "testMethod": "Contains_OnASearchField_FoldsTheValueAndTheTermAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/QueryTranslation/SearchQueryShapeTests.cs",
+        "testMethod": "Contains_WithACapturedTerm_FoldsTheParameterAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/QueryTranslation/SearchQueryShapeTests.cs",
+        "testMethod": "Contains_OnAFieldNotDeclaredForSearch_IsLeftAloneAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/QueryTranslation/SearchQueryShapeTests.cs",
+        "testMethod": "Contains_InALensShapedQuery_OverTheSelectedModel_IsFoldedAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/QueryTranslation/SearchQueryShapeTests.cs",
+        "testMethod": "SeveralSearchFields_OrTogether_EachFoldedAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/QueryTranslation/SearchQueryShapeTests.cs",
+        "testMethod": "TheExplicitFunction_TranslatesOnAnyFieldAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/QueryTranslation/SearchQueryShapeTests.cs",
+        "testMethod": "TheFunction_CalledInMemory_ThrowsAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/QueryTranslation/SearchQueryShapeTests.cs",
+        "testMethod": "Contains_OnAPromotedSearchField_FoldsTheColumnAsync",
+        "linkSource": "XmlTag"
+      }
+    ],
     "UseWhizbangPhysicalFields": [
       {
         "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/UnifiedQuerySyntaxTests.cs",
@@ -31639,6 +31755,48 @@
         "linkSource": "XmlTag"
       }
     ],
+    "FoldedContainsTranslator": [
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/QueryTranslation/SearchQueryShapeTests.cs",
+        "testMethod": "Contains_OnASearchField_FoldsTheValueAndTheTermAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/QueryTranslation/SearchQueryShapeTests.cs",
+        "testMethod": "Contains_WithACapturedTerm_FoldsTheParameterAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/QueryTranslation/SearchQueryShapeTests.cs",
+        "testMethod": "Contains_OnAFieldNotDeclaredForSearch_IsLeftAloneAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/QueryTranslation/SearchQueryShapeTests.cs",
+        "testMethod": "Contains_InALensShapedQuery_OverTheSelectedModel_IsFoldedAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/QueryTranslation/SearchQueryShapeTests.cs",
+        "testMethod": "SeveralSearchFields_OrTogether_EachFoldedAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/QueryTranslation/SearchQueryShapeTests.cs",
+        "testMethod": "TheExplicitFunction_TranslatesOnAnyFieldAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/QueryTranslation/SearchQueryShapeTests.cs",
+        "testMethod": "TheFunction_CalledInMemory_ThrowsAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/QueryTranslation/SearchQueryShapeTests.cs",
+        "testMethod": "Contains_OnAPromotedSearchField_FoldsTheColumnAsync",
+        "linkSource": "XmlTag"
+      }
+    ],
     "WhizbangDbContextOptionsExtensions": [
       {
         "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/Collective/CollectiveDispatcherEFCoreIntegrationTests.cs",
@@ -31700,6 +31858,48 @@
       {
         "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/QueryTranslation/ConsumerTranslatorSeamTests.cs",
         "testMethod": "TwoContextsWithDifferentPlugins_DoNotShareOneServiceProviderAsync",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "WhizbangSearchDbFunctions": [
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/QueryTranslation/SearchQueryShapeTests.cs",
+        "testMethod": "Contains_OnASearchField_FoldsTheValueAndTheTermAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/QueryTranslation/SearchQueryShapeTests.cs",
+        "testMethod": "Contains_WithACapturedTerm_FoldsTheParameterAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/QueryTranslation/SearchQueryShapeTests.cs",
+        "testMethod": "Contains_OnAFieldNotDeclaredForSearch_IsLeftAloneAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/QueryTranslation/SearchQueryShapeTests.cs",
+        "testMethod": "Contains_InALensShapedQuery_OverTheSelectedModel_IsFoldedAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/QueryTranslation/SearchQueryShapeTests.cs",
+        "testMethod": "SeveralSearchFields_OrTogether_EachFoldedAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/QueryTranslation/SearchQueryShapeTests.cs",
+        "testMethod": "TheExplicitFunction_TranslatesOnAnyFieldAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/QueryTranslation/SearchQueryShapeTests.cs",
+        "testMethod": "TheFunction_CalledInMemory_ThrowsAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/QueryTranslation/SearchQueryShapeTests.cs",
+        "testMethod": "Contains_OnAPromotedSearchField_FoldsTheColumnAsync",
         "linkSource": "XmlTag"
       }
     ],
@@ -62242,6 +62442,158 @@
         "linkSource": "XmlTag"
       }
     ],
+    "UpsertElement": [
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/Collective/CollectiveDispatcherEFCoreIntegrationTests.cs",
+        "testMethod": "DispatchAsync_TenantScoped_AffectsAllRowsInScopeOnlyAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/Collective/CollectiveDispatcherEFCoreIntegrationTests.cs",
+        "testMethod": "DispatchAsync_MultiBatchApply_InvokesOnBatchAppliedPerBatchAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/Collective/CollectiveDispatcherEFCoreIntegrationTests.cs",
+        "testMethod": "DispatchAsync_BumpsStoreManagedUpdatedAtAndVersionAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/Collective/CollectiveDispatcherEFCoreIntegrationTests.cs",
+        "testMethod": "DispatchAsync_RowsMaterializedAfterEventEmitted_AreIncludedAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/Collective/CollectiveDispatcherEFCoreIntegrationTests.cs",
+        "testMethod": "DispatchAsync_ScopeWithNoRows_AffectsZeroRowsAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/Collective/CollectiveDispatcherEFCoreIntegrationTests.cs",
+        "testMethod": "DispatchAsync_FrameworkWithHandlerWhere_RefinesWithinScopeAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/Collective/CollectiveDispatcherEFCoreIntegrationTests.cs",
+        "testMethod": "DispatchAsync_CustomHandlerWhere_StillHonorsTenantScopeAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/Collective/CollectiveDispatcherEFCoreIntegrationTests.cs",
+        "testMethod": "DispatchAsync_CrossPerspectiveCohort_ScopesBySiblingTableAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/Collective/CollectiveDispatcherEFCoreIntegrationTests.cs",
+        "testMethod": "Hook_SetProperty_OverridesSpecField_AndLastRegisteredWinsAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/Collective/CollectiveDispatcherEFCoreIntegrationTests.cs",
+        "testMethod": "Hook_SetColumn_OverridesDefaultUpdatedAt_AndSkipsVersionBumpAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/Collective/CollectiveDispatcherEFCoreIntegrationTests.cs",
+        "testMethod": "Hook_RemoveSetter_DropsASpecFieldSetterAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/Collective/CollectiveDispatcherEFCoreIntegrationTests.cs",
+        "testMethod": "Hook_AndWhere_RefinesTheCohortAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/Collective/CollectiveDispatcherEFCoreIntegrationTests.cs",
+        "testMethod": "Hook_ReplaceWhere_SwapsCohortButScopeStillBindsAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/Collective/CollectiveDispatcherEFCoreIntegrationTests.cs",
+        "testMethod": "Hook_NonMatchingMarker_IsNotAppliedAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/Collective/CollectiveDispatcherEFCoreIntegrationTests.cs",
+        "testMethod": "DispatchAsync_ComputedComparisonSetter_FlipsSingleActive_AtomicallyAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/Collective/CollectiveDispatcherEFCoreIntegrationTests.cs",
+        "testMethod": "DispatchAsync_TwoAppliesSameModelSameEvent_BothApplyAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/Collective/CollectiveDispatcherEFCoreIntegrationTests.cs",
+        "testMethod": "DispatchAsync_NullValuedSetter_ClearsJsonSubPropertyToNullAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/Collective/CollectiveDispatcherEFCoreIntegrationTests.cs",
+        "testMethod": "DispatchAsync_PolymorphicScalarJsonbModel_AppliesViaRawPathAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/Collective/CollectiveDispatcherEFCoreIntegrationTests.cs",
+        "testMethod": "DispatchAsync_EmitsCollectiveApplySpanWithTableAndRowTagsAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/Collective/CollectiveDispatcherEFCoreIntegrationTests.cs",
+        "testMethod": "DispatchAsync_WithStatementTimeout_BoundsApplyServerSideAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/Collective/CollectiveDispatcherEFCoreIntegrationTests.cs",
+        "testMethod": "DispatchAsync_RawPath_SelectsAreBoundedNoWholeCohortGatherAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/Collective/CollectiveDispatcherEFCoreIntegrationTests.cs",
+        "testMethod": "DispatchAsync_CohortLargerThanBatchSize_UpdatesAllInMultipleBatchesAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/Collective/CollectiveDispatcherEFCoreIntegrationTests.cs",
+        "testMethod": "DispatchAsync_TakesExclusiveAdvisoryLockPerBatchAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/Collective/CollectiveDispatcherEFCoreIntegrationTests.cs",
+        "testMethod": "DispatchAsync_NeverCreatesIndexesInTheApplyHotPathAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/Collective/CollectiveDispatcherEFCoreIntegrationTests.cs",
+        "testMethod": "DispatchAsync_UnderRetryingExecutionStrategy_AppliesWithoutUserTxErrorAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/Collective/CollectiveDispatcherEFCoreIntegrationTests.cs",
+        "testMethod": "DispatchAsync_PerHandlerBatchSizeOverride_WinsOverGlobalDefaultAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/Collective/CollectiveDispatcherEFCoreIntegrationTests.cs",
+        "testMethod": "DispatchAsync_UpsertElement_ReplacesTheMatchingElement_KeepingOrderAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/Collective/CollectiveDispatcherEFCoreIntegrationTests.cs",
+        "testMethod": "DispatchAsync_UpsertElement_AppendsWhenNoElementHasTheKeyAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/Collective/CollectiveDispatcherEFCoreIntegrationTests.cs",
+        "testMethod": "DispatchAsync_UpsertElement_OnAMissingArray_WritesAOneElementArrayAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/Collective/CollectiveDispatcherEFCoreIntegrationTests.cs",
+        "testMethod": "DispatchAsync_UpsertElement_ComposesWithSetProperty_InOneUpdateAsync",
+        "linkSource": "XmlTag"
+      }
+    ],
     "ICollectiveSiblingTableSource": [
       {
         "testFile": "tests/Whizbang.Data.Dapper.Postgres.Tests/Collective/CollectivePredicateSqlCompilerTests.cs",
@@ -88647,6 +88999,280 @@
         "linkSource": "XmlTag"
       }
     ],
+    "MessagePayloadLimits": [
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/MessagePayloadLimitsTests.cs",
+        "testMethod": "Default_IsFiveMebibytes_WithWarningAtEightyPercentAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/MessagePayloadLimitsTests.cs",
+        "testMethod": "Measure_IsTheSerializedUtf8LengthAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/MessagePayloadLimitsTests.cs",
+        "testMethod": "Enforce_UnderTheWarningThreshold_PassesWithoutConsultingHooksAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/MessagePayloadLimitsTests.cs",
+        "testMethod": "Enforce_OverTheDefault_ThrowsWithEverythingTheCallerNeedsAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/MessagePayloadLimitsTests.cs",
+        "testMethod": "Enforce_ExactlyAtTheLimit_PassesAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/MessagePayloadLimitsTests.cs",
+        "testMethod": "Enforce_TypeLimitAboveTheDefault_AllowsTheLargerTypeAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/MessagePayloadLimitsTests.cs",
+        "testMethod": "Enforce_TypeLimitBelowTheDefault_RejectsTheSmallerTypeAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/MessagePayloadLimitsTests.cs",
+        "testMethod": "Enforce_CallLimit_OverridesTheTypeAndTheDefaultAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/MessagePayloadLimitsTests.cs",
+        "testMethod": "Enforce_DefaultOff_AcceptsAnySizeAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/MessagePayloadLimitsTests.cs",
+        "testMethod": "Enforce_TypeLimitZero_TurnsTheLimitOffForThatTypeAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/MessagePayloadLimitsTests.cs",
+        "testMethod": "Enforce_CallLimitZero_TurnsTheLimitOffForThatCallAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/MessagePayloadLimitsTests.cs",
+        "testMethod": "Enforce_TypeNotInCatalog_UsesTheDefaultAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/MessagePayloadLimitsTests.cs",
+        "testMethod": "Enforce_InTheWarningZone_PassesLogsAndTellsHooksItIsNotOverAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/MessagePayloadLimitsTests.cs",
+        "testMethod": "Enforce_OverTheLimit_TellsHooksItIsOverAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/MessagePayloadLimitsTests.cs",
+        "testMethod": "Enforce_HookAllows_AcceptsAMessageOverTheLimitAndLogsItAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/MessagePayloadLimitsTests.cs",
+        "testMethod": "Enforce_HookRejects_InTheWarningZone_ThrowsWithTheHooksMessageAndCodeAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/MessagePayloadLimitsTests.cs",
+        "testMethod": "Enforce_HookRejectsWithoutACode_KeepsTheFrameworkCodeAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/MessagePayloadLimitsTests.cs",
+        "testMethod": "Enforce_ARejectionBeatsAnAllowance_WhateverTheOrderAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/MessagePayloadLimitsTests.cs",
+        "testMethod": "Evaluate_ByWireName_ResolvesTheTypeLimitWithoutThrowingAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/MessagePayloadLimitsTests.cs",
+        "testMethod": "Decision_Default_IsNoOpinionAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/MessagePayloadLimitsTests.cs",
+        "testMethod": "Exception_WithoutContext_ThrowsArgumentNullAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/MessagePayloadLimitsTests.cs",
+        "testMethod": "Constructor_NullArguments_ThrowAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/MessagePayloadLimitsTests.cs",
+        "testMethod": "Registration_Defaults_ResolveOneInstanceThatSeesRegisteredHooksAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/MessagePayloadLimitsTests.cs",
+        "testMethod": "Resolve_WithoutRegistration_BuildsFromTheFrameworkDefaultsAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/MessagePayloadLimitsTests.cs",
+        "testMethod": "Resolve_AndCreate_NullProvider_ThrowAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/MessagePayloadLimitsTests.cs",
+        "testMethod": "Enforce_NullType_ThrowsAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/MessagePayloadLimitsTests.cs",
+        "testMethod": "MaxPayloadSizeAttribute_CarriesItsLimitAsync",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "MessagePayloadSizeServiceCollectionExtensions": [
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/MessagePayloadLimitsTests.cs",
+        "testMethod": "Default_IsFiveMebibytes_WithWarningAtEightyPercentAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/MessagePayloadLimitsTests.cs",
+        "testMethod": "Measure_IsTheSerializedUtf8LengthAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/MessagePayloadLimitsTests.cs",
+        "testMethod": "Enforce_UnderTheWarningThreshold_PassesWithoutConsultingHooksAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/MessagePayloadLimitsTests.cs",
+        "testMethod": "Enforce_OverTheDefault_ThrowsWithEverythingTheCallerNeedsAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/MessagePayloadLimitsTests.cs",
+        "testMethod": "Enforce_ExactlyAtTheLimit_PassesAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/MessagePayloadLimitsTests.cs",
+        "testMethod": "Enforce_TypeLimitAboveTheDefault_AllowsTheLargerTypeAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/MessagePayloadLimitsTests.cs",
+        "testMethod": "Enforce_TypeLimitBelowTheDefault_RejectsTheSmallerTypeAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/MessagePayloadLimitsTests.cs",
+        "testMethod": "Enforce_CallLimit_OverridesTheTypeAndTheDefaultAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/MessagePayloadLimitsTests.cs",
+        "testMethod": "Enforce_DefaultOff_AcceptsAnySizeAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/MessagePayloadLimitsTests.cs",
+        "testMethod": "Enforce_TypeLimitZero_TurnsTheLimitOffForThatTypeAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/MessagePayloadLimitsTests.cs",
+        "testMethod": "Enforce_CallLimitZero_TurnsTheLimitOffForThatCallAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/MessagePayloadLimitsTests.cs",
+        "testMethod": "Enforce_TypeNotInCatalog_UsesTheDefaultAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/MessagePayloadLimitsTests.cs",
+        "testMethod": "Enforce_InTheWarningZone_PassesLogsAndTellsHooksItIsNotOverAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/MessagePayloadLimitsTests.cs",
+        "testMethod": "Enforce_OverTheLimit_TellsHooksItIsOverAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/MessagePayloadLimitsTests.cs",
+        "testMethod": "Enforce_HookAllows_AcceptsAMessageOverTheLimitAndLogsItAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/MessagePayloadLimitsTests.cs",
+        "testMethod": "Enforce_HookRejects_InTheWarningZone_ThrowsWithTheHooksMessageAndCodeAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/MessagePayloadLimitsTests.cs",
+        "testMethod": "Enforce_HookRejectsWithoutACode_KeepsTheFrameworkCodeAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/MessagePayloadLimitsTests.cs",
+        "testMethod": "Enforce_ARejectionBeatsAnAllowance_WhateverTheOrderAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/MessagePayloadLimitsTests.cs",
+        "testMethod": "Evaluate_ByWireName_ResolvesTheTypeLimitWithoutThrowingAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/MessagePayloadLimitsTests.cs",
+        "testMethod": "Decision_Default_IsNoOpinionAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/MessagePayloadLimitsTests.cs",
+        "testMethod": "Exception_WithoutContext_ThrowsArgumentNullAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/MessagePayloadLimitsTests.cs",
+        "testMethod": "Constructor_NullArguments_ThrowAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/MessagePayloadLimitsTests.cs",
+        "testMethod": "Registration_Defaults_ResolveOneInstanceThatSeesRegisteredHooksAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/MessagePayloadLimitsTests.cs",
+        "testMethod": "Resolve_WithoutRegistration_BuildsFromTheFrameworkDefaultsAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/MessagePayloadLimitsTests.cs",
+        "testMethod": "Resolve_AndCreate_NullProvider_ThrowAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/MessagePayloadLimitsTests.cs",
+        "testMethod": "Enforce_NullType_ThrowsAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/MessagePayloadLimitsTests.cs",
+        "testMethod": "MaxPayloadSizeAttribute_CarriesItsLimitAsync",
+        "linkSource": "XmlTag"
+      }
+    ],
     "NoChaosInjector": [
       {
         "testFile": "tests/Whizbang.Core.Tests/Messaging/ChaosInjectorDefaultTests.cs",
@@ -97608,6 +98234,48 @@
         "linkSource": "XmlTag"
       }
     ],
+    "WithMaxPayloadBytes": [
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/DispatcherPayloadLimitTests.cs",
+        "testMethod": "Send_UnderTheLimit_ReachesTheOutboxAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/DispatcherPayloadLimitTests.cs",
+        "testMethod": "Send_OverTheLimit_ThrowsAndNeverReachesTheOutboxAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/DispatcherPayloadLimitTests.cs",
+        "testMethod": "Send_Untyped_OverTheLimit_ThrowsAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/DispatcherPayloadLimitTests.cs",
+        "testMethod": "Send_WithACallLimit_OverridesTheDefaultBothWaysAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/DispatcherPayloadLimitTests.cs",
+        "testMethod": "Publish_OverTheLimit_ThrowsAndNeverReachesTheOutboxAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/DispatcherPayloadLimitTests.cs",
+        "testMethod": "Publish_WithACallLimit_OverridesTheDefaultAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/DispatcherPayloadLimitTests.cs",
+        "testMethod": "Cascade_OverTheLimit_ThrowsAndNeverReachesTheOutboxAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/DispatcherPayloadLimitTests.cs",
+        "testMethod": "Send_LimitOff_AcceptsAnySizeAsync",
+        "linkSource": "XmlTag"
+      }
+    ],
     "DispatcherSecurityBuilder": [
       {
         "testFile": "tests/Whizbang.Core.Tests/Dispatch/DispatcherSecurityBuilderTests.cs",
@@ -102204,6 +102872,143 @@
       {
         "testFile": "tests/Whizbang.Core.Tests/AutoPopulate/PopulateFromIdentifierAttributeTests.cs",
         "testMethod": "IdentifierKind_MessageId_HasExpectedValueAsync",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "MaxPayloadSizeAttribute": [
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/MessagePayloadLimitsTests.cs",
+        "testMethod": "Default_IsFiveMebibytes_WithWarningAtEightyPercentAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/MessagePayloadLimitsTests.cs",
+        "testMethod": "Measure_IsTheSerializedUtf8LengthAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/MessagePayloadLimitsTests.cs",
+        "testMethod": "Enforce_UnderTheWarningThreshold_PassesWithoutConsultingHooksAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/MessagePayloadLimitsTests.cs",
+        "testMethod": "Enforce_OverTheDefault_ThrowsWithEverythingTheCallerNeedsAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/MessagePayloadLimitsTests.cs",
+        "testMethod": "Enforce_ExactlyAtTheLimit_PassesAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/MessagePayloadLimitsTests.cs",
+        "testMethod": "Enforce_TypeLimitAboveTheDefault_AllowsTheLargerTypeAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/MessagePayloadLimitsTests.cs",
+        "testMethod": "Enforce_TypeLimitBelowTheDefault_RejectsTheSmallerTypeAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/MessagePayloadLimitsTests.cs",
+        "testMethod": "Enforce_CallLimit_OverridesTheTypeAndTheDefaultAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/MessagePayloadLimitsTests.cs",
+        "testMethod": "Enforce_DefaultOff_AcceptsAnySizeAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/MessagePayloadLimitsTests.cs",
+        "testMethod": "Enforce_TypeLimitZero_TurnsTheLimitOffForThatTypeAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/MessagePayloadLimitsTests.cs",
+        "testMethod": "Enforce_CallLimitZero_TurnsTheLimitOffForThatCallAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/MessagePayloadLimitsTests.cs",
+        "testMethod": "Enforce_TypeNotInCatalog_UsesTheDefaultAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/MessagePayloadLimitsTests.cs",
+        "testMethod": "Enforce_InTheWarningZone_PassesLogsAndTellsHooksItIsNotOverAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/MessagePayloadLimitsTests.cs",
+        "testMethod": "Enforce_OverTheLimit_TellsHooksItIsOverAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/MessagePayloadLimitsTests.cs",
+        "testMethod": "Enforce_HookAllows_AcceptsAMessageOverTheLimitAndLogsItAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/MessagePayloadLimitsTests.cs",
+        "testMethod": "Enforce_HookRejects_InTheWarningZone_ThrowsWithTheHooksMessageAndCodeAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/MessagePayloadLimitsTests.cs",
+        "testMethod": "Enforce_HookRejectsWithoutACode_KeepsTheFrameworkCodeAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/MessagePayloadLimitsTests.cs",
+        "testMethod": "Enforce_ARejectionBeatsAnAllowance_WhateverTheOrderAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/MessagePayloadLimitsTests.cs",
+        "testMethod": "Evaluate_ByWireName_ResolvesTheTypeLimitWithoutThrowingAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/MessagePayloadLimitsTests.cs",
+        "testMethod": "Decision_Default_IsNoOpinionAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/MessagePayloadLimitsTests.cs",
+        "testMethod": "Exception_WithoutContext_ThrowsArgumentNullAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/MessagePayloadLimitsTests.cs",
+        "testMethod": "Constructor_NullArguments_ThrowAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/MessagePayloadLimitsTests.cs",
+        "testMethod": "Registration_Defaults_ResolveOneInstanceThatSeesRegisteredHooksAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/MessagePayloadLimitsTests.cs",
+        "testMethod": "Resolve_WithoutRegistration_BuildsFromTheFrameworkDefaultsAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/MessagePayloadLimitsTests.cs",
+        "testMethod": "Resolve_AndCreate_NullProvider_ThrowAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/MessagePayloadLimitsTests.cs",
+        "testMethod": "Enforce_NullType_ThrowsAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/MessagePayloadLimitsTests.cs",
+        "testMethod": "MaxPayloadSizeAttribute_CarriesItsLimitAsync",
         "linkSource": "XmlTag"
       }
     ],
@@ -109974,6 +110779,13 @@
         "testFile": "tests/Whizbang.Generators.Tests/MessageTypeCatalogGeneratorTests.cs",
         "testMethod": "Generator_StampsMarkerInterfaceFlagsOnEntriesAsync",
         "testLine": 255,
+        "testClass": "MessageTypeCatalogGeneratorTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Generators.Tests/MessageTypeCatalogGeneratorTests.cs",
+        "testMethod": "Generator_StampsMaxPayloadSizeOnEntriesAsync",
+        "testLine": 302,
         "testClass": "MessageTypeCatalogGeneratorTests",
         "linkSource": "Convention"
       }
@@ -148405,7 +149217,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Generators.Shared/Models/JsonIndexInfo.cs",
-        "sourceLine": 112,
+        "sourceLine": 113,
         "sourceSymbol": "JsonIndexSql",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -148435,7 +149247,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Generators.Shared/Models/JsonIndexInfo.cs",
-        "sourceLine": 112,
+        "sourceLine": 113,
         "sourceSymbol": "JsonIndexSql",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -148465,7 +149277,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Generators.Shared/Models/JsonIndexInfo.cs",
-        "sourceLine": 112,
+        "sourceLine": 113,
         "sourceSymbol": "JsonIndexSql",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -148495,7 +149307,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Generators.Shared/Models/JsonIndexInfo.cs",
-        "sourceLine": 112,
+        "sourceLine": 113,
         "sourceSymbol": "JsonIndexSql",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -148525,7 +149337,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Generators.Shared/Models/JsonIndexInfo.cs",
-        "sourceLine": 112,
+        "sourceLine": 113,
         "sourceSymbol": "JsonIndexSql",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -148555,7 +149367,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Generators.Shared/Models/JsonIndexInfo.cs",
-        "sourceLine": 112,
+        "sourceLine": 113,
         "sourceSymbol": "JsonIndexSql",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -148585,7 +149397,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Generators.Shared/Models/JsonIndexInfo.cs",
-        "sourceLine": 112,
+        "sourceLine": 113,
         "sourceSymbol": "JsonIndexSql",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -148615,7 +149427,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Generators.Shared/Models/JsonIndexInfo.cs",
-        "sourceLine": 112,
+        "sourceLine": 113,
         "sourceSymbol": "JsonIndexSql",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -148645,7 +149457,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Generators.Shared/Models/JsonIndexInfo.cs",
-        "sourceLine": 112,
+        "sourceLine": 113,
         "sourceSymbol": "JsonIndexSql",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -148675,7 +149487,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Generators.Shared/Models/JsonIndexInfo.cs",
-        "sourceLine": 112,
+        "sourceLine": 113,
         "sourceSymbol": "JsonIndexSql",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -148705,7 +149517,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Generators.Shared/Models/JsonIndexInfo.cs",
-        "sourceLine": 112,
+        "sourceLine": 113,
         "sourceSymbol": "JsonIndexSql",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -148735,7 +149547,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Generators.Shared/Models/JsonIndexInfo.cs",
-        "sourceLine": 112,
+        "sourceLine": 113,
         "sourceSymbol": "JsonIndexSql",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -148765,7 +149577,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Generators.Shared/Models/JsonIndexInfo.cs",
-        "sourceLine": 112,
+        "sourceLine": 113,
         "sourceSymbol": "JsonIndexSql",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -148795,7 +149607,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Generators.Shared/Models/JsonIndexInfo.cs",
-        "sourceLine": 112,
+        "sourceLine": 113,
         "sourceSymbol": "JsonIndexSql",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -148825,7 +149637,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Generators.Shared/Models/JsonIndexInfo.cs",
-        "sourceLine": 112,
+        "sourceLine": 113,
         "sourceSymbol": "JsonIndexSql",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -148855,7 +149667,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Generators.Shared/Models/JsonIndexInfo.cs",
-        "sourceLine": 112,
+        "sourceLine": 113,
         "sourceSymbol": "JsonIndexSql",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -148916,7 +149728,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Generators.Shared/Models/JsonIndexInfo.cs",
-        "sourceLine": 114,
+        "sourceLine": 115,
         "sourceSymbol": "JsonIndexSql",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -148932,7 +149744,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Generators.Shared/Models/JsonIndexInfo.cs",
-        "sourceLine": 114,
+        "sourceLine": 115,
         "sourceSymbol": "JsonIndexSql",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -148948,7 +149760,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Generators.Shared/Models/JsonIndexInfo.cs",
-        "sourceLine": 114,
+        "sourceLine": 115,
         "sourceSymbol": "JsonIndexSql",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -148964,7 +149776,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Generators.Shared/Models/JsonIndexInfo.cs",
-        "sourceLine": 114,
+        "sourceLine": 115,
         "sourceSymbol": "JsonIndexSql",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -148980,7 +149792,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Generators.Shared/Models/JsonIndexInfo.cs",
-        "sourceLine": 114,
+        "sourceLine": 115,
         "sourceSymbol": "JsonIndexSql",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -148996,7 +149808,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Generators.Shared/Models/JsonIndexInfo.cs",
-        "sourceLine": 114,
+        "sourceLine": 115,
         "sourceSymbol": "JsonIndexSql",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -149012,7 +149824,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Generators.Shared/Models/JsonIndexInfo.cs",
-        "sourceLine": 114,
+        "sourceLine": 115,
         "sourceSymbol": "JsonIndexSql",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -149028,7 +149840,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Generators.Shared/Models/JsonIndexInfo.cs",
-        "sourceLine": 114,
+        "sourceLine": 115,
         "sourceSymbol": "JsonIndexSql",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -149044,7 +149856,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Generators.Shared/Models/JsonIndexInfo.cs",
-        "sourceLine": 114,
+        "sourceLine": 115,
         "sourceSymbol": "JsonIndexSql",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -149060,7 +149872,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Generators.Shared/Models/JsonIndexInfo.cs",
-        "sourceLine": 114,
+        "sourceLine": 115,
         "sourceSymbol": "JsonIndexSql",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -149069,7 +149881,7 @@
     "JsonIndexSqlScriptTests.TheStatementsForOneIndexCarryNoExtensionAsync": [
       {
         "sourceFile": "src/Whizbang.Generators.Shared/Models/JsonIndexInfo.cs",
-        "sourceLine": 113,
+        "sourceLine": 114,
         "sourceSymbol": "JsonIndexSql",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -149078,7 +149890,7 @@
     "JsonIndexSqlScriptTests.TwoSubstringIndexesCreateTheExtensionOnceAsync": [
       {
         "sourceFile": "src/Whizbang.Generators.Shared/Models/JsonIndexInfo.cs",
-        "sourceLine": 113,
+        "sourceLine": 114,
         "sourceSymbol": "JsonIndexSql",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -149087,7 +149899,7 @@
     "JsonIndexSqlScriptTests.NoSubstringIndexMeansNoBlockAsync": [
       {
         "sourceFile": "src/Whizbang.Generators.Shared/Models/JsonIndexInfo.cs",
-        "sourceLine": 113,
+        "sourceLine": 114,
         "sourceSymbol": "JsonIndexSql",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -149096,7 +149908,7 @@
     "JsonIndexSqlScriptTests.MissingArgumentsAreRefusedAsync": [
       {
         "sourceFile": "src/Whizbang.Generators.Shared/Models/JsonIndexInfo.cs",
-        "sourceLine": 113,
+        "sourceLine": 114,
         "sourceSymbol": "JsonIndexSql",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -149363,10 +150175,82 @@
         "linkSource": "XmlTag"
       }
     ],
+    "PhysicalColumnBackfillIntegrationTests.Backfill_RestoresExactlyWhatTheWriterStored_ForEveryTypeAsync": [
+      {
+        "sourceFile": "src/Whizbang.Generators.Shared/Models/PhysicalColumnSql.cs",
+        "sourceLine": 8,
+        "sourceSymbol": "PhysicalColumnSql",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "PhysicalColumnBackfillIntegrationTests.Backfill_LeavesAColumnThatAlreadyHasAValueAloneAsync": [
+      {
+        "sourceFile": "src/Whizbang.Generators.Shared/Models/PhysicalColumnSql.cs",
+        "sourceLine": 8,
+        "sourceSymbol": "PhysicalColumnSql",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "PhysicalColumnBackfillIntegrationTests.AddColumn_OnATableThatPredatesIt_AddsTheColumn_AndIsIdempotentAsync": [
+      {
+        "sourceFile": "src/Whizbang.Generators.Shared/Models/PhysicalColumnSql.cs",
+        "sourceLine": 8,
+        "sourceSymbol": "PhysicalColumnSql",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "PhysicalColumnSqlTests.ExistingTable_GetsTheColumn_ThenTheBackfill_ThenTheIndexAsync": [
+      {
+        "sourceFile": "src/Whizbang.Generators.Shared/Models/PhysicalColumnSql.cs",
+        "sourceLine": 9,
+        "sourceSymbol": "PhysicalColumnSql",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "PhysicalColumnSqlTests.AColumnTypeTheAuthorChose_IsAddedButNotBackfilledAsync": [
+      {
+        "sourceFile": "src/Whizbang.Generators.Shared/Models/PhysicalColumnSql.cs",
+        "sourceLine": 9,
+        "sourceSymbol": "PhysicalColumnSql",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "PhysicalColumnSqlTests.SplitStorage_AddsTheColumn_ButHasNoDocumentCopyToBackfillFromAsync": [
+      {
+        "sourceFile": "src/Whizbang.Generators.Shared/Models/PhysicalColumnSql.cs",
+        "sourceLine": 9,
+        "sourceSymbol": "PhysicalColumnSql",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "PhysicalColumnSqlTests.Extraction_CoversEachKnownTypeAsync": [
+      {
+        "sourceFile": "src/Whizbang.Generators.Shared/Models/PhysicalColumnSql.cs",
+        "sourceLine": 9,
+        "sourceSymbol": "PhysicalColumnSql",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "PhysicalColumnSqlTests.Extraction_AnUnknownType_OrAVector_IsNotBackfilledAsync": [
+      {
+        "sourceFile": "src/Whizbang.Generators.Shared/Models/PhysicalColumnSql.cs",
+        "sourceLine": 9,
+        "sourceSymbol": "PhysicalColumnSql",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
     "PhysicalFieldInfoTests.PhysicalFieldInfo_Constructor_SetsAllPropertiesAsync": [
       {
         "sourceFile": "src/Whizbang.Generators.Shared/Models/PhysicalFieldInfo.cs",
-        "sourceLine": 24,
+        "sourceLine": 32,
         "sourceSymbol": "PhysicalFieldInfo",
         "sourceType": "Record",
         "linkSource": "XmlTag"
@@ -149375,7 +150259,7 @@
     "PhysicalFieldInfoTests.PhysicalFieldInfo_VectorField_SetsVectorPropertiesAsync": [
       {
         "sourceFile": "src/Whizbang.Generators.Shared/Models/PhysicalFieldInfo.cs",
-        "sourceLine": 24,
+        "sourceLine": 32,
         "sourceSymbol": "PhysicalFieldInfo",
         "sourceType": "Record",
         "linkSource": "XmlTag"
@@ -149384,7 +150268,7 @@
     "PhysicalFieldInfoTests.PhysicalFieldInfo_ValueEquality_MatchesWhenFieldsEqualAsync": [
       {
         "sourceFile": "src/Whizbang.Generators.Shared/Models/PhysicalFieldInfo.cs",
-        "sourceLine": 24,
+        "sourceLine": 32,
         "sourceSymbol": "PhysicalFieldInfo",
         "sourceType": "Record",
         "linkSource": "XmlTag"
@@ -149393,7 +150277,7 @@
     "PhysicalFieldInfoTests.PhysicalFieldInfo_ValueEquality_DiffersWhenFieldsDifferAsync": [
       {
         "sourceFile": "src/Whizbang.Generators.Shared/Models/PhysicalFieldInfo.cs",
-        "sourceLine": 24,
+        "sourceLine": 32,
         "sourceSymbol": "PhysicalFieldInfo",
         "sourceType": "Record",
         "linkSource": "XmlTag"
@@ -149402,7 +150286,7 @@
     "PhysicalFieldInfoTests.PhysicalFieldInfo_WithMaxLength_StoresValueAsync": [
       {
         "sourceFile": "src/Whizbang.Generators.Shared/Models/PhysicalFieldInfo.cs",
-        "sourceLine": 24,
+        "sourceLine": 32,
         "sourceSymbol": "PhysicalFieldInfo",
         "sourceType": "Record",
         "linkSource": "XmlTag"
@@ -149411,7 +150295,7 @@
     "PhysicalFieldInfoTests.PhysicalFieldInfo_VectorWithIVFFlat_StoresIndexTypeAsync": [
       {
         "sourceFile": "src/Whizbang.Generators.Shared/Models/PhysicalFieldInfo.cs",
-        "sourceLine": 24,
+        "sourceLine": 32,
         "sourceSymbol": "PhysicalFieldInfo",
         "sourceType": "Record",
         "linkSource": "XmlTag"
@@ -149420,7 +150304,7 @@
     "PhysicalFieldInfoTests.PhysicalFieldInfo_VectorNoIndex_HasNoneIndexTypeAsync": [
       {
         "sourceFile": "src/Whizbang.Generators.Shared/Models/PhysicalFieldInfo.cs",
-        "sourceLine": 24,
+        "sourceLine": 32,
         "sourceSymbol": "PhysicalFieldInfo",
         "sourceType": "Record",
         "linkSource": "XmlTag"
@@ -157699,7 +158583,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 3163,
+        "sourceLine": 3166,
         "sourceSymbol": "CascadeToOutboxAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -166244,6 +167128,13 @@
         "sourceSymbol": "CollectiveApplyHookPlanner",
         "sourceType": "Class",
         "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Perspectives/ICollectiveSetters.cs",
+        "sourceLine": 110,
+        "sourceSymbol": "UpsertElement",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
       }
     ],
     "CollectiveDispatcherEFCoreIntegrationTests.Hook_ReplaceWhere_SwapsCohortButScopeStillBindsAsync": [
@@ -166252,6 +167143,13 @@
         "sourceLine": 29,
         "sourceSymbol": "CollectiveApplyHookPlanner",
         "sourceType": "Class",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Perspectives/ICollectiveSetters.cs",
+        "sourceLine": 110,
+        "sourceSymbol": "UpsertElement",
+        "sourceType": "Method",
         "linkSource": "XmlTag"
       }
     ],
@@ -166268,6 +167166,67 @@
         "sourceLine": 16,
         "sourceSymbol": "CollectiveApplyOptions",
         "sourceType": "Record",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Perspectives/ICollectiveSetters.cs",
+        "sourceLine": 110,
+        "sourceSymbol": "UpsertElement",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "CollectiveElementUpsertSqlTests.ValueSql_ReplacesByKeyInOrder_AppendsOtherwise_AndTreatsANonArrayAsEmptyAsync": [
+      {
+        "sourceFile": "src/Whizbang.Data.Postgres/Collective/CollectiveElementUpsertSql.cs",
+        "sourceLine": 21,
+        "sourceSymbol": "CollectiveElementUpsertSql",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "CollectiveElementUpsertSqlTests.ValueSql_RefusesAnythingButAPlainIdentifierAsync": [
+      {
+        "sourceFile": "src/Whizbang.Data.Postgres/Collective/CollectiveElementUpsertSql.cs",
+        "sourceLine": 21,
+        "sourceSymbol": "CollectiveElementUpsertSql",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "CollectiveElementUpsertSqlTests.ValueSql_RefusesABlankElementAsync": [
+      {
+        "sourceFile": "src/Whizbang.Data.Postgres/Collective/CollectiveElementUpsertSql.cs",
+        "sourceLine": 21,
+        "sourceSymbol": "CollectiveElementUpsertSql",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "CollectiveElementUpsertSqlTests.Rewriter_UpsertElement_CarriesTheArray_TheKey_AndTheSerializedElementAsync": [
+      {
+        "sourceFile": "src/Whizbang.Data.Postgres/Collective/CollectiveElementUpsertSql.cs",
+        "sourceLine": 21,
+        "sourceSymbol": "CollectiveElementUpsertSql",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "CollectiveElementUpsertSqlTests.Rewriter_UpsertElement_ANestedKey_IsRefusedAsync": [
+      {
+        "sourceFile": "src/Whizbang.Data.Postgres/Collective/CollectiveElementUpsertSql.cs",
+        "sourceLine": 21,
+        "sourceSymbol": "CollectiveElementUpsertSql",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "CollectiveElementUpsertSqlTests.Rewriter_UpsertElement_ANullElement_IsRefusedAsync": [
+      {
+        "sourceFile": "src/Whizbang.Data.Postgres/Collective/CollectiveElementUpsertSql.cs",
+        "sourceLine": 21,
+        "sourceSymbol": "CollectiveElementUpsertSql",
+        "sourceType": "Class",
         "linkSource": "XmlTag"
       }
     ],
@@ -166653,7 +167612,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres.Generators/EFCoreServiceRegistrationGenerator.cs",
-        "sourceLine": 1206,
+        "sourceLine": 1217,
         "sourceSymbol": "_matchesDbContext",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -166669,7 +167628,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres.Generators/EFCoreServiceRegistrationGenerator.cs",
-        "sourceLine": 1207,
+        "sourceLine": 1218,
         "sourceSymbol": "_matchesDbContext",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -166685,7 +167644,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres.Generators/EFCoreServiceRegistrationGenerator.cs",
-        "sourceLine": 1222,
+        "sourceLine": 1233,
         "sourceSymbol": "_generateDbContextPartial",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -166708,7 +167667,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres.Generators/EFCoreServiceRegistrationGenerator.cs",
-        "sourceLine": 1363,
+        "sourceLine": 1374,
         "sourceSymbol": "_generateRegistrationMetadataGuarded",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -166731,7 +167690,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres.Generators/EFCoreServiceRegistrationGenerator.cs",
-        "sourceLine": 2213,
+        "sourceLine": 2235,
         "sourceSymbol": "_generateSchemaExtensions",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -166754,7 +167713,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres.Generators/EFCoreServiceRegistrationGenerator.cs",
-        "sourceLine": 1223,
+        "sourceLine": 1234,
         "sourceSymbol": "_generateDbContextPartial",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -166770,7 +167729,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres.Generators/EFCoreServiceRegistrationGenerator.cs",
-        "sourceLine": 1224,
+        "sourceLine": 1235,
         "sourceSymbol": "_generateDbContextPartial",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -166786,7 +167745,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres.Generators/EFCoreServiceRegistrationGenerator.cs",
-        "sourceLine": 1225,
+        "sourceLine": 1236,
         "sourceSymbol": "_generateDbContextPartial",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -166802,7 +167761,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres.Generators/EFCoreServiceRegistrationGenerator.cs",
-        "sourceLine": 1226,
+        "sourceLine": 1237,
         "sourceSymbol": "_generateDbContextPartial",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -166818,7 +167777,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres.Generators/EFCoreServiceRegistrationGenerator.cs",
-        "sourceLine": 1227,
+        "sourceLine": 1238,
         "sourceSymbol": "_generateDbContextPartial",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -166884,14 +167843,14 @@
       },
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres.Generators/EFCoreServiceRegistrationGenerator.cs",
-        "sourceLine": 2214,
+        "sourceLine": 2236,
         "sourceSymbol": "_generateSchemaExtensions",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres.Generators/EFCoreServiceRegistrationGenerator.cs",
-        "sourceLine": 2357,
+        "sourceLine": 2379,
         "sourceSymbol": "_generateBootstrapMigrationsCode",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -166909,7 +167868,7 @@
     "EFCoreServiceRegistrationGeneratorTests.Generator_WithMultiModelLensQueryConstructorParam_GeneratesRegistrationAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres.Generators/EFCoreServiceRegistrationGenerator.cs",
-        "sourceLine": 1364,
+        "sourceLine": 1375,
         "sourceSymbol": "_generateRegistrationMetadataGuarded",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -166918,7 +167877,7 @@
     "EFCoreServiceRegistrationGeneratorTests.Generator_WithMultiModelLensQuery_UnknownModel_ReportsWHIZ401Async": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres.Generators/EFCoreServiceRegistrationGenerator.cs",
-        "sourceLine": 1365,
+        "sourceLine": 1376,
         "sourceSymbol": "_generateRegistrationMetadataGuarded",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -166927,7 +167886,7 @@
     "EFCoreServiceRegistrationGeneratorTests.Generator_WithMultiModelLensQuery_DuplicateUsage_RegistersOnceAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres.Generators/EFCoreServiceRegistrationGenerator.cs",
-        "sourceLine": 1366,
+        "sourceLine": 1377,
         "sourceSymbol": "_generateRegistrationMetadataGuarded",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -166936,7 +167895,7 @@
     "VectorAutoConfigurationTests.TurnkeyExtension_WithVectorField_GeneratesAddDbContextMethodAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres.Generators/EFCoreServiceRegistrationGenerator.cs",
-        "sourceLine": 1834,
+        "sourceLine": 1853,
         "sourceSymbol": "_generateTurnkeyExtensions",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -166945,7 +167904,7 @@
     "VectorAutoConfigurationTests.TurnkeyExtension_WithoutVectorField_DoesNotIncludeUseVectorAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres.Generators/EFCoreServiceRegistrationGenerator.cs",
-        "sourceLine": 1835,
+        "sourceLine": 1854,
         "sourceSymbol": "_generateTurnkeyExtensions",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -179463,6 +180422,190 @@
         "linkSource": "XmlTag"
       }
     ],
+    "SearchQueryShapeTests.Contains_OnASearchField_FoldsTheValueAndTheTermAsync": [
+      {
+        "sourceFile": "src/Whizbang.Data.EFCore.Postgres/QueryTranslation/SearchContainsRewriter.cs",
+        "sourceLine": 14,
+        "sourceSymbol": "SearchContainsRewriter",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Data.EFCore.Postgres/Functions/FoldedContainsTranslator.cs",
+        "sourceLine": 11,
+        "sourceSymbol": "FoldedContainsTranslator",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Data.EFCore.Postgres/Functions/WhizbangSearchDbFunctions.cs",
+        "sourceLine": 13,
+        "sourceSymbol": "WhizbangSearchDbFunctions",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "SearchQueryShapeTests.Contains_WithACapturedTerm_FoldsTheParameterAsync": [
+      {
+        "sourceFile": "src/Whizbang.Data.EFCore.Postgres/QueryTranslation/SearchContainsRewriter.cs",
+        "sourceLine": 14,
+        "sourceSymbol": "SearchContainsRewriter",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Data.EFCore.Postgres/Functions/FoldedContainsTranslator.cs",
+        "sourceLine": 11,
+        "sourceSymbol": "FoldedContainsTranslator",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Data.EFCore.Postgres/Functions/WhizbangSearchDbFunctions.cs",
+        "sourceLine": 13,
+        "sourceSymbol": "WhizbangSearchDbFunctions",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "SearchQueryShapeTests.Contains_OnAFieldNotDeclaredForSearch_IsLeftAloneAsync": [
+      {
+        "sourceFile": "src/Whizbang.Data.EFCore.Postgres/QueryTranslation/SearchContainsRewriter.cs",
+        "sourceLine": 14,
+        "sourceSymbol": "SearchContainsRewriter",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Data.EFCore.Postgres/Functions/FoldedContainsTranslator.cs",
+        "sourceLine": 11,
+        "sourceSymbol": "FoldedContainsTranslator",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Data.EFCore.Postgres/Functions/WhizbangSearchDbFunctions.cs",
+        "sourceLine": 13,
+        "sourceSymbol": "WhizbangSearchDbFunctions",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "SearchQueryShapeTests.Contains_InALensShapedQuery_OverTheSelectedModel_IsFoldedAsync": [
+      {
+        "sourceFile": "src/Whizbang.Data.EFCore.Postgres/QueryTranslation/SearchContainsRewriter.cs",
+        "sourceLine": 14,
+        "sourceSymbol": "SearchContainsRewriter",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Data.EFCore.Postgres/Functions/FoldedContainsTranslator.cs",
+        "sourceLine": 11,
+        "sourceSymbol": "FoldedContainsTranslator",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Data.EFCore.Postgres/Functions/WhizbangSearchDbFunctions.cs",
+        "sourceLine": 13,
+        "sourceSymbol": "WhizbangSearchDbFunctions",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "SearchQueryShapeTests.SeveralSearchFields_OrTogether_EachFoldedAsync": [
+      {
+        "sourceFile": "src/Whizbang.Data.EFCore.Postgres/QueryTranslation/SearchContainsRewriter.cs",
+        "sourceLine": 14,
+        "sourceSymbol": "SearchContainsRewriter",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Data.EFCore.Postgres/Functions/FoldedContainsTranslator.cs",
+        "sourceLine": 11,
+        "sourceSymbol": "FoldedContainsTranslator",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Data.EFCore.Postgres/Functions/WhizbangSearchDbFunctions.cs",
+        "sourceLine": 13,
+        "sourceSymbol": "WhizbangSearchDbFunctions",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "SearchQueryShapeTests.TheExplicitFunction_TranslatesOnAnyFieldAsync": [
+      {
+        "sourceFile": "src/Whizbang.Data.EFCore.Postgres/QueryTranslation/SearchContainsRewriter.cs",
+        "sourceLine": 14,
+        "sourceSymbol": "SearchContainsRewriter",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Data.EFCore.Postgres/Functions/FoldedContainsTranslator.cs",
+        "sourceLine": 11,
+        "sourceSymbol": "FoldedContainsTranslator",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Data.EFCore.Postgres/Functions/WhizbangSearchDbFunctions.cs",
+        "sourceLine": 13,
+        "sourceSymbol": "WhizbangSearchDbFunctions",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "SearchQueryShapeTests.TheFunction_CalledInMemory_ThrowsAsync": [
+      {
+        "sourceFile": "src/Whizbang.Data.EFCore.Postgres/QueryTranslation/SearchContainsRewriter.cs",
+        "sourceLine": 14,
+        "sourceSymbol": "SearchContainsRewriter",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Data.EFCore.Postgres/Functions/FoldedContainsTranslator.cs",
+        "sourceLine": 11,
+        "sourceSymbol": "FoldedContainsTranslator",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Data.EFCore.Postgres/Functions/WhizbangSearchDbFunctions.cs",
+        "sourceLine": 13,
+        "sourceSymbol": "WhizbangSearchDbFunctions",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "SearchQueryShapeTests.Contains_OnAPromotedSearchField_FoldsTheColumnAsync": [
+      {
+        "sourceFile": "src/Whizbang.Data.EFCore.Postgres/QueryTranslation/SearchContainsRewriter.cs",
+        "sourceLine": 14,
+        "sourceSymbol": "SearchContainsRewriter",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Data.EFCore.Postgres/Functions/FoldedContainsTranslator.cs",
+        "sourceLine": 11,
+        "sourceSymbol": "FoldedContainsTranslator",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Data.EFCore.Postgres/Functions/WhizbangSearchDbFunctions.cs",
+        "sourceLine": 13,
+        "sourceSymbol": "WhizbangSearchDbFunctions",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
     "ContainmentModeTests.TheDefaultIsTheExpressionTreeMechanismAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/QueryTranslation/Containment/ContainmentMode.cs",
@@ -180364,6 +181507,13 @@
         "sourceSymbol": "WhizbangDbContextOptionsExtensions",
         "sourceType": "Class",
         "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Perspectives/ICollectiveSetters.cs",
+        "sourceLine": 110,
+        "sourceSymbol": "UpsertElement",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
       }
     ],
     "CollectiveDispatcherEFCoreIntegrationTests.DispatchAsync_BumpsStoreManagedUpdatedAtAndVersionAsync": [
@@ -180372,6 +181522,13 @@
         "sourceLine": 20,
         "sourceSymbol": "WhizbangDbContextOptionsExtensions",
         "sourceType": "Class",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Perspectives/ICollectiveSetters.cs",
+        "sourceLine": 110,
+        "sourceSymbol": "UpsertElement",
+        "sourceType": "Method",
         "linkSource": "XmlTag"
       }
     ],
@@ -180538,6 +181695,13 @@
         "sourceLine": 46,
         "sourceSymbol": "ICollectiveQuery",
         "sourceType": "Interface",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Perspectives/ICollectiveSetters.cs",
+        "sourceLine": 110,
+        "sourceSymbol": "UpsertElement",
+        "sourceType": "Method",
         "linkSource": "XmlTag"
       }
     ],
@@ -184374,7 +185538,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 5479,
+        "sourceLine": 5492,
         "sourceSymbol": "SyncReceptorInvoker",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -186050,7 +187214,7 @@
     "DispatcherCoverageSweepRoutedCascadeTests.SendAsync_OwnedChildNamespaceCommand_NoReceptor_ReturnsAcceptedWithoutOutboxAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 406,
+        "sourceLine": 409,
         "sourceSymbol": "_isOwnedNamespace",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -186059,7 +187223,7 @@
     "DispatcherCoverageSweepRoutedCascadeTests.SendAsync_NonMatchingOwnedDomains_CommandRoutesToOutboxAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 407,
+        "sourceLine": 410,
         "sourceSymbol": "_isOwnedNamespace",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -186068,7 +187232,7 @@
     "DispatcherCoverageSweepSyncRpcTests.LocalInvokeAsync_Void_SyncAttributeSynced_AwaitsPerspectiveThenInvokesReceptorAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 455,
+        "sourceLine": 458,
         "sourceSymbol": "_awaitPerspectiveSyncIfNeededAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -186077,7 +187241,7 @@
     "DispatcherCoverageSweepSyncRpcTests.LocalInvokeAsync_Void_SyncAttributeTimedOut_FireOnSuccess_ThrowsAndSkipsReceptorAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 456,
+        "sourceLine": 459,
         "sourceSymbol": "_awaitPerspectiveSyncIfNeededAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -186086,7 +187250,7 @@
     "DispatcherCoverageSweepSyncRpcTests.LocalInvokeAsync_Void_SyncAttribute_NoStreamId_SkipsAwaiterAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 457,
+        "sourceLine": 460,
         "sourceSymbol": "_awaitPerspectiveSyncIfNeededAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -186095,7 +187259,7 @@
     "DispatcherPerspectiveSyncCoverageTests.LocalInvokeAsync_WithWaitForPerspectives_NoEventCompletionAwaiter_ReturnsNormallyAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 547,
+        "sourceLine": 550,
         "sourceSymbol": "_waitForPerspectivesIfNeededAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -186104,7 +187268,7 @@
     "DispatcherPerspectiveSyncCoverageTests.LocalInvokeAsync_WithWaitForPerspectives_NoScopedTracker_ReturnsNormallyAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 548,
+        "sourceLine": 551,
         "sourceSymbol": "_waitForPerspectivesIfNeededAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -186120,21 +187284,21 @@
     "DispatcherRpcExtractionTests.LocalInvokeAsync_TupleReturn_ExtractsRequestedTypeAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 1360,
+        "sourceLine": 1363,
         "sourceSymbol": "_localInvokeWithCastFallbackAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 1423,
+        "sourceLine": 1426,
         "sourceSymbol": "_localInvokeWithRpcExtractionAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 1478,
+        "sourceLine": 1481,
         "sourceSymbol": "CascadeEventsExcludingResponseAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -186143,21 +187307,21 @@
     "DispatcherRpcExtractionTests.LocalInvokeAsync_TupleReturn_CascadesRemainingEventsAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 1360,
+        "sourceLine": 1363,
         "sourceSymbol": "_localInvokeWithCastFallbackAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 1423,
+        "sourceLine": 1426,
         "sourceSymbol": "_localInvokeWithRpcExtractionAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 1478,
+        "sourceLine": 1481,
         "sourceSymbol": "CascadeEventsExcludingResponseAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -186166,21 +187330,21 @@
     "DispatcherRpcExtractionTests.LocalInvokeAsync_MultiEventTuple_CascadesAllNonResponseEventsAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 1360,
+        "sourceLine": 1363,
         "sourceSymbol": "_localInvokeWithCastFallbackAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 1423,
+        "sourceLine": 1426,
         "sourceSymbol": "_localInvokeWithRpcExtractionAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 1478,
+        "sourceLine": 1481,
         "sourceSymbol": "CascadeEventsExcludingResponseAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -186189,21 +187353,21 @@
     "DispatcherRpcExtractionTests.LocalInvokeAsync_ExactMatch_UsesOptimizedFastPathAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 1360,
+        "sourceLine": 1363,
         "sourceSymbol": "_localInvokeWithCastFallbackAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 1423,
+        "sourceLine": 1426,
         "sourceSymbol": "_localInvokeWithRpcExtractionAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 1478,
+        "sourceLine": 1481,
         "sourceSymbol": "CascadeEventsExcludingResponseAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -186212,21 +187376,21 @@
     "DispatcherRpcExtractionTests.LocalInvokeAsync_TypeNotInTuple_ThrowsInvalidOperationAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 1360,
+        "sourceLine": 1363,
         "sourceSymbol": "_localInvokeWithCastFallbackAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 1423,
+        "sourceLine": 1426,
         "sourceSymbol": "_localInvokeWithRpcExtractionAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 1478,
+        "sourceLine": 1481,
         "sourceSymbol": "CascadeEventsExcludingResponseAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -186235,21 +187399,21 @@
     "DispatcherRpcExtractionTests.LocalInvokeAsync_ExtractViaInterface_WorksAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 1360,
+        "sourceLine": 1363,
         "sourceSymbol": "_localInvokeWithCastFallbackAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 1423,
+        "sourceLine": 1426,
         "sourceSymbol": "_localInvokeWithRpcExtractionAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 1478,
+        "sourceLine": 1481,
         "sourceSymbol": "CascadeEventsExcludingResponseAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -186258,21 +187422,21 @@
     "DispatcherRpcExtractionTests.LocalInvokeAsync_RpcResponseNotCascaded_OnlyOtherValuesAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 1360,
+        "sourceLine": 1363,
         "sourceSymbol": "_localInvokeWithCastFallbackAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 1423,
+        "sourceLine": 1426,
         "sourceSymbol": "_localInvokeWithRpcExtractionAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 1478,
+        "sourceLine": 1481,
         "sourceSymbol": "CascadeEventsExcludingResponseAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -186281,7 +187445,7 @@
     "DispatcherEmissionIdentityTests.CascadeMessageAsync_RetryOfSameHandling_DerivesTheSameEventIdsAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 2767,
+        "sourceLine": 2770,
         "sourceSymbol": "_mintEmissionId",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -186290,7 +187454,7 @@
     "DispatcherEmissionIdentityTests.CascadeMessageAsync_SiblingHandlerRowOfSameMessage_DerivesDistinctEventIdsAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 2767,
+        "sourceLine": 2770,
         "sourceSymbol": "_mintEmissionId",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -186299,7 +187463,7 @@
     "DispatcherEmissionIdentityTests.CascadeMessageAsync_TwoServicesHandlingSameMessage_DeriveDistinctEventIdsAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 2767,
+        "sourceLine": 2770,
         "sourceSymbol": "_mintEmissionId",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -186308,7 +187472,7 @@
     "DispatcherEmissionIdentityTests.CascadeMessageAsync_DifferentEmittedTypes_DeriveDistinctEventIdsAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 2767,
+        "sourceLine": 2770,
         "sourceSymbol": "_mintEmissionId",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -186317,7 +187481,7 @@
     "DispatcherEmissionIdentityTests.CascadeMessageAsync_DerivedEventId_IsVersion7ShapedAndKeepsSourceTimePrefixAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 2767,
+        "sourceLine": 2770,
         "sourceSymbol": "_mintEmissionId",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -186326,7 +187490,7 @@
     "DispatcherEmissionIdentityTests.CascadeMessageAsync_NoSourceEnvelope_MintsFreshTimeOrderedIdsAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 2767,
+        "sourceLine": 2770,
         "sourceSymbol": "_mintEmissionId",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -186335,7 +187499,7 @@
     "DispatcherEmissionIdentityTests.CascadeMessageAsync_SourceWithoutMessageId_MintsFreshIdsAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 2767,
+        "sourceLine": 2770,
         "sourceSymbol": "_mintEmissionId",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -186344,7 +187508,7 @@
     "DispatcherEmissionIdentityTests.CascadeMessageAsync_LocalDispatch_HandsReceptorsAWrapperAnchoredOnTheCascadedEventAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 2767,
+        "sourceLine": 2770,
         "sourceSymbol": "_mintEmissionId",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -186353,7 +187517,7 @@
     "DispatcherEmissionIdentityTests.CascadeMessageAsync_LocalDispatchOfACommand_AnchorsOnAnOrdinalOfTheHandlingAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 2767,
+        "sourceLine": 2770,
         "sourceSymbol": "_mintEmissionId",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -186362,7 +187526,7 @@
     "DispatcherEmissionIdentityTests.CascadeMessageAsync_EmissionThroughAnAnchoredWrapper_DerivesFromTheAnchorNotTheInboundMessageAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 2767,
+        "sourceLine": 2770,
         "sourceSymbol": "_mintEmissionId",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -186371,7 +187535,7 @@
     "DispatcherEmissionIdentityTests.CascadeMessageAsync_EmissionThroughAnUnanchoredWrapper_FallsBackToTheInboundMessageIdAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 2767,
+        "sourceLine": 2770,
         "sourceSymbol": "_mintEmissionId",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -186380,7 +187544,7 @@
     "DispatcherEmissionIdentityTests.CascadeMessageAsync_DerivedId_IsLoggedAtDebugWithSourceAndOrdinalAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 2767,
+        "sourceLine": 2770,
         "sourceSymbol": "_mintEmissionId",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -186389,7 +187553,7 @@
     "DispatcherTagProcessingTests.LocalInvokeAsync_WithTagProcessingEnabled_InvokesTagProcessorAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 2980,
+        "sourceLine": 2983,
         "sourceSymbol": "_processTagsIfEnabledAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -186405,7 +187569,7 @@
     "DispatcherTagProcessingTests.LocalInvokeAsync_WithTagProcessingDisabled_SkipsTagProcessorAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 2980,
+        "sourceLine": 2983,
         "sourceSymbol": "_processTagsIfEnabledAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -186414,14 +187578,14 @@
     "DispatcherTagProcessingTests.LocalInvokeAsync_WithLifecycleStageMode_SkipsImmediateProcessingAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 2980,
+        "sourceLine": 2983,
         "sourceSymbol": "_processTagsIfEnabledAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Configuration/WhizbangCoreOptions.cs",
-        "sourceLine": 229,
+        "sourceLine": 249,
         "sourceSymbol": "TagProcessingMode",
         "sourceType": "Enum",
         "linkSource": "XmlTag"
@@ -186430,7 +187594,7 @@
     "DispatcherTagProcessingTests.LocalInvokeAsync_WithNoTagProcessor_DoesNotThrowAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 2980,
+        "sourceLine": 2983,
         "sourceSymbol": "_processTagsIfEnabledAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -186439,7 +187603,7 @@
     "DispatcherTagProcessingTests.SendAsync_WithTagProcessingEnabled_InvokesTagProcessorAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 2980,
+        "sourceLine": 2983,
         "sourceSymbol": "_processTagsIfEnabledAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -186448,7 +187612,7 @@
     "DispatcherTagProcessingTests.SendAsync_WithTagProcessingDisabled_SkipsTagProcessorAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 2980,
+        "sourceLine": 2983,
         "sourceSymbol": "_processTagsIfEnabledAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -186457,7 +187621,7 @@
     "DispatcherTagProcessingTests.LocalInvokeAsync_MultipleCommands_ProcessesTagsForEachAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 2980,
+        "sourceLine": 2983,
         "sourceSymbol": "_processTagsIfEnabledAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -186466,7 +187630,7 @@
     "DispatcherTagProcessingTests.LocalInvokeAsync_ReceptorThrows_DoesNotInvokeTagProcessorAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 2980,
+        "sourceLine": 2983,
         "sourceSymbol": "_processTagsIfEnabledAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -186475,7 +187639,7 @@
     "DispatcherUncoveredPathsTests.LocalInvokeAsync_Void_WithImmediateDetachedReceptors_InvokesScopedInvokerAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 3022,
+        "sourceLine": 3025,
         "sourceSymbol": "_invokeImmediateDetachedReceptorsAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -186484,7 +187648,7 @@
     "DispatcherUncoveredPathsTests.LocalInvokeAsync_Void_WithReceptorRegistry_NoImmediateDetachedReceptors_SkipsAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 3023,
+        "sourceLine": 3026,
         "sourceSymbol": "_invokeImmediateDetachedReceptorsAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -186493,7 +187657,7 @@
     "DispatcherUncoveredPathsTests.LocalInvokeAsync_Void_WithTraceStore_NoReceptorRegistry_SkipsImmediateDetachedAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 3024,
+        "sourceLine": 3027,
         "sourceSymbol": "_invokeImmediateDetachedReceptorsAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -186502,7 +187666,7 @@
     "DispatcherPostLifecycleCoverageTests.LocalInvokeAsync_Void_FiresPostLifecycleDetached_WhenReceptorsRegisteredAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 3064,
+        "sourceLine": 3067,
         "sourceSymbol": "_invokePostLifecycleReceptorsAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -186511,7 +187675,7 @@
     "DispatcherPostLifecycleCoverageTests.LocalInvokeAsync_Void_FiresBothAsyncAndInline_WhenBothRegisteredAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 3065,
+        "sourceLine": 3068,
         "sourceSymbol": "_invokePostLifecycleReceptorsAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -186520,7 +187684,7 @@
     "PostLifecyclePipelineTests.Dispatcher_NoWhenAll_FiresPostLifecycleDetachedAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 3066,
+        "sourceLine": 3069,
         "sourceSymbol": "_invokePostLifecycleReceptorsAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -186529,7 +187693,7 @@
     "ReceptorDiscoveryGeneratorTests.Generator_CascadeToOutbox_CallsPublishToOutboxWithMessageIdAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 3667,
+        "sourceLine": 3670,
         "sourceSymbol": "PublishToOutboxAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -186544,7 +187708,7 @@
     "DispatcherCoverageSweepOutboxTests.PublishToOutboxDynamic_EventWithIHasStreamId_InheritsStreamIdFromSourceAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 4023,
+        "sourceLine": 4027,
         "sourceSymbol": "PublishToOutboxDynamicAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -186553,7 +187717,7 @@
     "DispatcherCoverageSweepOutboxTests.PublishToOutboxDynamic_EventAlreadyHasStreamId_SkipsPropagationAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 4024,
+        "sourceLine": 4028,
         "sourceSymbol": "PublishToOutboxDynamicAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -186562,7 +187726,7 @@
     "DispatcherNoRebroadcastGuardTests.NoRebroadcastSource_IsSuppressedBeforeSerializationAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 4025,
+        "sourceLine": 4029,
         "sourceSymbol": "PublishToOutboxDynamicAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -186571,7 +187735,7 @@
     "DispatcherPriorityStampingTests.Send_OutsideAnyHandling_DeclaresInteractive_OnTheEnvelopeAndTheRowAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 4164,
+        "sourceLine": 4169,
         "sourceSymbol": "_stampExplicitPriority",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -186580,7 +187744,7 @@
     "DispatcherPriorityStampingTests.Send_WhileHandlingBackgroundWork_InheritsBackgroundAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 4164,
+        "sourceLine": 4169,
         "sourceSymbol": "_stampExplicitPriority",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -186589,7 +187753,7 @@
     "DispatcherPriorityStampingTests.Send_WithAHostProducerHook_UsesItsDeclarationAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 4164,
+        "sourceLine": 4169,
         "sourceSymbol": "_stampExplicitPriority",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -186598,7 +187762,7 @@
     "DispatcherPriorityStampingTests.Send_WithNoChainRegistered_LeavesTheEnvelopeUndeclaredAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 4164,
+        "sourceLine": 4169,
         "sourceSymbol": "_stampExplicitPriority",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -186607,14 +187771,14 @@
     "DispatcherPriorityStampingTests.Send_WithAPriorityOnTheOptions_KeepsItOverTheContextRulesAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 4164,
+        "sourceLine": 4169,
         "sourceSymbol": "_stampExplicitPriority",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 4169,
+        "sourceLine": 4174,
         "sourceSymbol": "_stampExplicitPriority",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -186630,7 +187794,7 @@
     "DeferredDispatchTests.PublishAsync_NoStrategy_QueuesToDeferredChannelAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 5226,
+        "sourceLine": 5235,
         "sourceSymbol": "_deferEventToChannelAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -186639,7 +187803,7 @@
     "DeferredDispatchTests.PublishAsync_WithActiveStrategy_ProcessesImmediately_NoDeferralAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 5226,
+        "sourceLine": 5235,
         "sourceSymbol": "_deferEventToChannelAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -186648,7 +187812,7 @@
     "DeferredDispatchTests.PublishAsync_NoStrategy_MultipleCalls_AllQueuedToDeferredChannelAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 5226,
+        "sourceLine": 5235,
         "sourceSymbol": "_deferEventToChannelAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -186657,7 +187821,7 @@
     "DeferredDispatchTests.PublishAsync_NoStrategy_PreservesMessageIdAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 5226,
+        "sourceLine": 5235,
         "sourceSymbol": "_deferEventToChannelAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -186666,7 +187830,7 @@
     "DeferredDispatchTests.PublishAsync_NoStrategy_SetsIsEventTrueAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 5226,
+        "sourceLine": 5235,
         "sourceSymbol": "_deferEventToChannelAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -186675,7 +187839,7 @@
     "DispatcherSyncTests.LocalInvokeAsync_SyncReceptor_ReturnsCompletedValueTaskAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 5480,
+        "sourceLine": 5493,
         "sourceSymbol": "SyncReceptorInvoker",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -186684,7 +187848,7 @@
     "DispatcherVoidCascadeTests.VoidLocalInvokeAsync_WithNonVoidReceptor_CascadesReturnedEventsAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 5506,
+        "sourceLine": 5519,
         "sourceSymbol": "Func",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -186693,7 +187857,7 @@
     "DispatcherVoidCascadeTests.GenericVoidLocalInvokeAsync_WithNonVoidReceptor_CascadesReturnedEventsAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 5506,
+        "sourceLine": 5519,
         "sourceSymbol": "Func",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -186702,7 +187866,7 @@
     "DispatcherVoidCascadeTests.VoidLocalInvokeAsync_WithContext_CascadesReturnedEventsAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 5506,
+        "sourceLine": 5519,
         "sourceSymbol": "Func",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -186711,7 +187875,7 @@
     "DispatcherVoidCascadeTests.VoidLocalInvokeAsync_WithDispatchOptions_CascadesReturnedEventsAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 5506,
+        "sourceLine": 5519,
         "sourceSymbol": "Func",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -195525,7 +196689,7 @@
     "InboxDispatchWorkerCompositeCommitTests.Composite_IsExpandedAndCommittedInOneStep_ThroughTheCoordinator_NeverTheCommitChannelAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/InboxDispatchWorker.cs",
-        "sourceLine": 598,
+        "sourceLine": 612,
         "sourceSymbol": "_fanoutCompositeAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -195534,7 +196698,7 @@
     "InboxDispatchWorkerCompositeCommitTests.Composite_WithNoCoordinatorInTheScope_FallsBackToTheCommitChannelAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/InboxDispatchWorker.cs",
-        "sourceLine": 598,
+        "sourceLine": 612,
         "sourceSymbol": "_fanoutCompositeAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -195543,7 +196707,7 @@
     "InboxDispatchWorkerCompositeCommitTests.Composite_ChildrenCarryDeterministicIds_AcrossTwoDispatchesOfTheSameRowAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/InboxDispatchWorker.cs",
-        "sourceLine": 598,
+        "sourceLine": 612,
         "sourceSymbol": "_fanoutCompositeAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -195552,7 +196716,7 @@
     "InboxDispatchWorkerCompositeCommitTests.Composite_WhoseCommitFails_ReleasesTheRowForRetry_AndCountsTheFailureAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/InboxDispatchWorker.cs",
-        "sourceLine": 598,
+        "sourceLine": 612,
         "sourceSymbol": "_fanoutCompositeAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -195561,7 +196725,7 @@
     "InboxDispatchWorkerCompositeCommitTests.Composite_Meters_CountReceivedExpansionsChildrenAndUnsubscribedDropsAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/InboxDispatchWorker.cs",
-        "sourceLine": 598,
+        "sourceLine": 612,
         "sourceSymbol": "_fanoutCompositeAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -195570,7 +196734,7 @@
     "SecurityContextTimeoutTests.InboxDispatchWorker_SecurityContextHangs_TimesOutAndEnqueuesFailureAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/InboxDispatchWorker.cs",
-        "sourceLine": 1270,
+        "sourceLine": 1284,
         "sourceSymbol": "SecurityContextTimeoutSeconds",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -195593,7 +196757,7 @@
     "SecurityContextTimeoutTests.OutboxDrainWorker_SecurityContextHangs_TimesOutAndEnqueuesFailureAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/InboxDispatchWorker.cs",
-        "sourceLine": 1271,
+        "sourceLine": 1285,
         "sourceSymbol": "SecurityContextTimeoutSeconds",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -195616,7 +196780,7 @@
     "OutboxDrainWorkerGapTests.OutboxDrainWorkerOptions_Defaults_MatchDocumentedValuesAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/InboxDispatchWorker.cs",
-        "sourceLine": 1272,
+        "sourceLine": 1286,
         "sourceSymbol": "SecurityContextTimeoutSeconds",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -227269,6 +228433,13 @@
         "sourceSymbol": "CollectiveScopeHandling",
         "sourceType": "Enum",
         "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Perspectives/ICollectiveSetters.cs",
+        "sourceLine": 110,
+        "sourceSymbol": "UpsertElement",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
       }
     ],
     "CollectiveSpecContractTests.CollectiveApplyForAttribute_AcceptsExplicitSpecKindRawSqlAsync": [
@@ -227294,6 +228465,13 @@
         "sourceSymbol": "CollectiveApplyOptions",
         "sourceType": "Record",
         "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Perspectives/ICollectiveSetters.cs",
+        "sourceLine": 110,
+        "sourceSymbol": "UpsertElement",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
       }
     ],
     "CollectiveDispatcherEFCoreIntegrationTests.DispatchAsync_CohortLargerThanBatchSize_UpdatesAllInMultipleBatchesAsync": [
@@ -227302,6 +228480,13 @@
         "sourceLine": 18,
         "sourceSymbol": "CollectiveApplyOptions",
         "sourceType": "Record",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Perspectives/ICollectiveSetters.cs",
+        "sourceLine": 110,
+        "sourceSymbol": "UpsertElement",
+        "sourceType": "Method",
         "linkSource": "XmlTag"
       }
     ],
@@ -227493,6 +228678,195 @@
         "sourceLine": 41,
         "sourceSymbol": "ICollectiveSetters",
         "sourceType": "Interface",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "CollectiveDispatcherEFCoreIntegrationTests.DispatchAsync_MultiBatchApply_InvokesOnBatchAppliedPerBatchAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Perspectives/ICollectiveSetters.cs",
+        "sourceLine": 110,
+        "sourceSymbol": "UpsertElement",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "CollectiveDispatcherEFCoreIntegrationTests.DispatchAsync_RowsMaterializedAfterEventEmitted_AreIncludedAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Perspectives/ICollectiveSetters.cs",
+        "sourceLine": 110,
+        "sourceSymbol": "UpsertElement",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "CollectiveDispatcherEFCoreIntegrationTests.DispatchAsync_ScopeWithNoRows_AffectsZeroRowsAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Perspectives/ICollectiveSetters.cs",
+        "sourceLine": 110,
+        "sourceSymbol": "UpsertElement",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "CollectiveDispatcherEFCoreIntegrationTests.DispatchAsync_FrameworkWithHandlerWhere_RefinesWithinScopeAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Perspectives/ICollectiveSetters.cs",
+        "sourceLine": 110,
+        "sourceSymbol": "UpsertElement",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "CollectiveDispatcherEFCoreIntegrationTests.Hook_SetProperty_OverridesSpecField_AndLastRegisteredWinsAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Perspectives/ICollectiveSetters.cs",
+        "sourceLine": 110,
+        "sourceSymbol": "UpsertElement",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "CollectiveDispatcherEFCoreIntegrationTests.Hook_SetColumn_OverridesDefaultUpdatedAt_AndSkipsVersionBumpAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Perspectives/ICollectiveSetters.cs",
+        "sourceLine": 110,
+        "sourceSymbol": "UpsertElement",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "CollectiveDispatcherEFCoreIntegrationTests.Hook_RemoveSetter_DropsASpecFieldSetterAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Perspectives/ICollectiveSetters.cs",
+        "sourceLine": 110,
+        "sourceSymbol": "UpsertElement",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "CollectiveDispatcherEFCoreIntegrationTests.Hook_NonMatchingMarker_IsNotAppliedAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Perspectives/ICollectiveSetters.cs",
+        "sourceLine": 110,
+        "sourceSymbol": "UpsertElement",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "CollectiveDispatcherEFCoreIntegrationTests.DispatchAsync_ComputedComparisonSetter_FlipsSingleActive_AtomicallyAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Perspectives/ICollectiveSetters.cs",
+        "sourceLine": 110,
+        "sourceSymbol": "UpsertElement",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "CollectiveDispatcherEFCoreIntegrationTests.DispatchAsync_TwoAppliesSameModelSameEvent_BothApplyAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Perspectives/ICollectiveSetters.cs",
+        "sourceLine": 110,
+        "sourceSymbol": "UpsertElement",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "CollectiveDispatcherEFCoreIntegrationTests.DispatchAsync_NullValuedSetter_ClearsJsonSubPropertyToNullAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Perspectives/ICollectiveSetters.cs",
+        "sourceLine": 110,
+        "sourceSymbol": "UpsertElement",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "CollectiveDispatcherEFCoreIntegrationTests.DispatchAsync_PolymorphicScalarJsonbModel_AppliesViaRawPathAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Perspectives/ICollectiveSetters.cs",
+        "sourceLine": 110,
+        "sourceSymbol": "UpsertElement",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "CollectiveDispatcherEFCoreIntegrationTests.DispatchAsync_EmitsCollectiveApplySpanWithTableAndRowTagsAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Perspectives/ICollectiveSetters.cs",
+        "sourceLine": 110,
+        "sourceSymbol": "UpsertElement",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "CollectiveDispatcherEFCoreIntegrationTests.DispatchAsync_RawPath_SelectsAreBoundedNoWholeCohortGatherAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Perspectives/ICollectiveSetters.cs",
+        "sourceLine": 110,
+        "sourceSymbol": "UpsertElement",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "CollectiveDispatcherEFCoreIntegrationTests.DispatchAsync_NeverCreatesIndexesInTheApplyHotPathAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Perspectives/ICollectiveSetters.cs",
+        "sourceLine": 110,
+        "sourceSymbol": "UpsertElement",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "CollectiveDispatcherEFCoreIntegrationTests.DispatchAsync_UnderRetryingExecutionStrategy_AppliesWithoutUserTxErrorAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Perspectives/ICollectiveSetters.cs",
+        "sourceLine": 110,
+        "sourceSymbol": "UpsertElement",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "CollectiveDispatcherEFCoreIntegrationTests.DispatchAsync_PerHandlerBatchSizeOverride_WinsOverGlobalDefaultAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Perspectives/ICollectiveSetters.cs",
+        "sourceLine": 110,
+        "sourceSymbol": "UpsertElement",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "CollectiveDispatcherEFCoreIntegrationTests.DispatchAsync_UpsertElement_ReplacesTheMatchingElement_KeepingOrderAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Perspectives/ICollectiveSetters.cs",
+        "sourceLine": 110,
+        "sourceSymbol": "UpsertElement",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "CollectiveDispatcherEFCoreIntegrationTests.DispatchAsync_UpsertElement_AppendsWhenNoElementHasTheKeyAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Perspectives/ICollectiveSetters.cs",
+        "sourceLine": 110,
+        "sourceSymbol": "UpsertElement",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "CollectiveDispatcherEFCoreIntegrationTests.DispatchAsync_UpsertElement_OnAMissingArray_WritesAOneElementArrayAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Perspectives/ICollectiveSetters.cs",
+        "sourceLine": 110,
+        "sourceSymbol": "UpsertElement",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "CollectiveDispatcherEFCoreIntegrationTests.DispatchAsync_UpsertElement_ComposesWithSetProperty_InOneUpdateAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Perspectives/ICollectiveSetters.cs",
+        "sourceLine": 110,
+        "sourceSymbol": "UpsertElement",
+        "sourceType": "Method",
         "linkSource": "XmlTag"
       }
     ],
@@ -227917,14 +229291,14 @@
     "IndexedAttributeTests.DefaultKind_IsBtreeAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Perspectives/IndexedAttribute.cs",
-        "sourceLine": 105,
+        "sourceLine": 126,
         "sourceSymbol": "IndexedAttribute",
         "sourceType": "Class",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Perspectives/IndexedAttribute.cs",
-        "sourceLine": 201,
+        "sourceLine": 222,
         "sourceSymbol": "IndexAllFieldsAttribute",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -227933,14 +229307,14 @@
     "IndexedAttributeTests.KindsCombineAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Perspectives/IndexedAttribute.cs",
-        "sourceLine": 105,
+        "sourceLine": 126,
         "sourceSymbol": "IndexedAttribute",
         "sourceType": "Class",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Perspectives/IndexedAttribute.cs",
-        "sourceLine": 201,
+        "sourceLine": 222,
         "sourceSymbol": "IndexAllFieldsAttribute",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -227949,14 +229323,14 @@
     "IndexedAttributeTests.IsRepeatableOnAPropertyAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Perspectives/IndexedAttribute.cs",
-        "sourceLine": 105,
+        "sourceLine": 126,
         "sourceSymbol": "IndexedAttribute",
         "sourceType": "Class",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Perspectives/IndexedAttribute.cs",
-        "sourceLine": 201,
+        "sourceLine": 222,
         "sourceSymbol": "IndexAllFieldsAttribute",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -227965,14 +229339,14 @@
     "IndexedAttributeTests.NoneIsNotAnIndexAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Perspectives/IndexedAttribute.cs",
-        "sourceLine": 105,
+        "sourceLine": 126,
         "sourceSymbol": "IndexedAttribute",
         "sourceType": "Class",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Perspectives/IndexedAttribute.cs",
-        "sourceLine": 201,
+        "sourceLine": 222,
         "sourceSymbol": "IndexAllFieldsAttribute",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -227981,14 +229355,14 @@
     "IndexedAttributeTests.IndexAllFields_AppliesToAModelAndCarriesAKindAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Perspectives/IndexedAttribute.cs",
-        "sourceLine": 105,
+        "sourceLine": 126,
         "sourceSymbol": "IndexedAttribute",
         "sourceType": "Class",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Perspectives/IndexedAttribute.cs",
-        "sourceLine": 201,
+        "sourceLine": 222,
         "sourceSymbol": "IndexAllFieldsAttribute",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -244736,7 +246110,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Observability/MessageEnvelope.cs",
-        "sourceLine": 204,
+        "sourceLine": 211,
         "sourceSymbol": "AddHop",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -244800,7 +246174,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Observability/MessageEnvelope.cs",
-        "sourceLine": 205,
+        "sourceLine": 212,
         "sourceSymbol": "AddHop",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -244864,7 +246238,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Observability/MessageEnvelope.cs",
-        "sourceLine": 362,
+        "sourceLine": 369,
         "sourceSymbol": "GetMessageTimestamp",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -247833,7 +249207,7 @@
     "MessageTracingTests.MessageEnvelope_GetAllMetadata_StitchesAllMetadataAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Observability/MessageEnvelope.cs",
-        "sourceLine": 417,
+        "sourceLine": 424,
         "sourceSymbol": "IReadOnlyDictionary",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -247891,7 +249265,7 @@
     "MessageTracingTests.MessageEnvelope_GetAllMetadata_ReturnsEmpty_WhenNoHopsHaveMetadataAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Observability/MessageEnvelope.cs",
-        "sourceLine": 418,
+        "sourceLine": 425,
         "sourceSymbol": "IReadOnlyDictionary",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -247949,7 +249323,7 @@
     "MessageTracingTests.MessageEnvelope_GetAllMetadata_IgnoresCausationHopsAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Observability/MessageEnvelope.cs",
-        "sourceLine": 419,
+        "sourceLine": 426,
         "sourceSymbol": "IReadOnlyDictionary",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -248007,7 +249381,7 @@
     "MessageTracingTests.MessageEnvelope_GetAllPolicyDecisions_ReturnsEmpty_WhenNoHopsHaveTrailsAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Observability/MessageEnvelope.cs",
-        "sourceLine": 449,
+        "sourceLine": 456,
         "sourceSymbol": "IReadOnlyList",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -248064,7 +249438,7 @@
     "MessageTracingTests.MessageEnvelope_GetAllPolicyDecisions_ReturnsSingleHopDecisionsAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Observability/MessageEnvelope.cs",
-        "sourceLine": 450,
+        "sourceLine": 457,
         "sourceSymbol": "IReadOnlyList",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -248122,7 +249496,7 @@
     "MessageTracingTests.MessageEnvelope_GetAllPolicyDecisions_StitchesDecisionsAcrossMultipleHopsAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Observability/MessageEnvelope.cs",
-        "sourceLine": 451,
+        "sourceLine": 458,
         "sourceSymbol": "IReadOnlyList",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -248180,7 +249554,7 @@
     "MessageTracingTests.MessageEnvelope_GetAllPolicyDecisions_MaintainsChronologicalOrderAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Observability/MessageEnvelope.cs",
-        "sourceLine": 452,
+        "sourceLine": 459,
         "sourceSymbol": "IReadOnlyList",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -248238,7 +249612,7 @@
     "MessageTracingTests.MessageEnvelope_GetAllPolicyDecisions_SkipsHopsWithoutTrailsAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Observability/MessageEnvelope.cs",
-        "sourceLine": 453,
+        "sourceLine": 460,
         "sourceSymbol": "IReadOnlyList",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -248296,7 +249670,7 @@
     "MessageTracingTests.MessageEnvelope_GetAllPolicyDecisions_IgnoresCausationHopsAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Observability/MessageEnvelope.cs",
-        "sourceLine": 454,
+        "sourceLine": 461,
         "sourceSymbol": "IReadOnlyList",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -248354,7 +249728,7 @@
     "MessageTracingTests.MessageEnvelope_GetCausationHops_ReturnsEmpty_WhenNoCausationHopsAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Observability/MessageEnvelope.cs",
-        "sourceLine": 473,
+        "sourceLine": 480,
         "sourceSymbol": "IReadOnlyList",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -248412,7 +249786,7 @@
     "MessageTracingTests.MessageEnvelope_GetCausationHops_ReturnsOnlyCausationHopsAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Observability/MessageEnvelope.cs",
-        "sourceLine": 474,
+        "sourceLine": 481,
         "sourceSymbol": "IReadOnlyList",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -248470,7 +249844,7 @@
     "MessageTracingTests.MessageEnvelope_GetCurrentHops_ReturnsOnlyCurrentHopsAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Observability/MessageEnvelope.cs",
-        "sourceLine": 489,
+        "sourceLine": 496,
         "sourceSymbol": "IReadOnlyList",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -267647,6 +269021,627 @@
         "linkSource": "XmlTag"
       }
     ],
+    "MessagePayloadLimitsTests.Default_IsFiveMebibytes_WithWarningAtEightyPercentAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/MessagePayloadLimits.cs",
+        "sourceLine": 21,
+        "sourceSymbol": "MessagePayloadLimits",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/MessagePayloadSizeServiceCollectionExtensions.cs",
+        "sourceLine": 9,
+        "sourceSymbol": "MessagePayloadSizeServiceCollectionExtensions",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Attributes/MaxPayloadSizeAttribute.cs",
+        "sourceLine": 13,
+        "sourceSymbol": "MaxPayloadSizeAttribute",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "MessagePayloadLimitsTests.Measure_IsTheSerializedUtf8LengthAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/MessagePayloadLimits.cs",
+        "sourceLine": 21,
+        "sourceSymbol": "MessagePayloadLimits",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/MessagePayloadSizeServiceCollectionExtensions.cs",
+        "sourceLine": 9,
+        "sourceSymbol": "MessagePayloadSizeServiceCollectionExtensions",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Attributes/MaxPayloadSizeAttribute.cs",
+        "sourceLine": 13,
+        "sourceSymbol": "MaxPayloadSizeAttribute",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "MessagePayloadLimitsTests.Enforce_UnderTheWarningThreshold_PassesWithoutConsultingHooksAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/MessagePayloadLimits.cs",
+        "sourceLine": 21,
+        "sourceSymbol": "MessagePayloadLimits",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/MessagePayloadSizeServiceCollectionExtensions.cs",
+        "sourceLine": 9,
+        "sourceSymbol": "MessagePayloadSizeServiceCollectionExtensions",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Attributes/MaxPayloadSizeAttribute.cs",
+        "sourceLine": 13,
+        "sourceSymbol": "MaxPayloadSizeAttribute",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "MessagePayloadLimitsTests.Enforce_OverTheDefault_ThrowsWithEverythingTheCallerNeedsAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/MessagePayloadLimits.cs",
+        "sourceLine": 21,
+        "sourceSymbol": "MessagePayloadLimits",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/MessagePayloadSizeServiceCollectionExtensions.cs",
+        "sourceLine": 9,
+        "sourceSymbol": "MessagePayloadSizeServiceCollectionExtensions",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Attributes/MaxPayloadSizeAttribute.cs",
+        "sourceLine": 13,
+        "sourceSymbol": "MaxPayloadSizeAttribute",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "MessagePayloadLimitsTests.Enforce_ExactlyAtTheLimit_PassesAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/MessagePayloadLimits.cs",
+        "sourceLine": 21,
+        "sourceSymbol": "MessagePayloadLimits",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/MessagePayloadSizeServiceCollectionExtensions.cs",
+        "sourceLine": 9,
+        "sourceSymbol": "MessagePayloadSizeServiceCollectionExtensions",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Attributes/MaxPayloadSizeAttribute.cs",
+        "sourceLine": 13,
+        "sourceSymbol": "MaxPayloadSizeAttribute",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "MessagePayloadLimitsTests.Enforce_TypeLimitAboveTheDefault_AllowsTheLargerTypeAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/MessagePayloadLimits.cs",
+        "sourceLine": 21,
+        "sourceSymbol": "MessagePayloadLimits",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/MessagePayloadSizeServiceCollectionExtensions.cs",
+        "sourceLine": 9,
+        "sourceSymbol": "MessagePayloadSizeServiceCollectionExtensions",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Attributes/MaxPayloadSizeAttribute.cs",
+        "sourceLine": 13,
+        "sourceSymbol": "MaxPayloadSizeAttribute",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "MessagePayloadLimitsTests.Enforce_TypeLimitBelowTheDefault_RejectsTheSmallerTypeAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/MessagePayloadLimits.cs",
+        "sourceLine": 21,
+        "sourceSymbol": "MessagePayloadLimits",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/MessagePayloadSizeServiceCollectionExtensions.cs",
+        "sourceLine": 9,
+        "sourceSymbol": "MessagePayloadSizeServiceCollectionExtensions",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Attributes/MaxPayloadSizeAttribute.cs",
+        "sourceLine": 13,
+        "sourceSymbol": "MaxPayloadSizeAttribute",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "MessagePayloadLimitsTests.Enforce_CallLimit_OverridesTheTypeAndTheDefaultAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/MessagePayloadLimits.cs",
+        "sourceLine": 21,
+        "sourceSymbol": "MessagePayloadLimits",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/MessagePayloadSizeServiceCollectionExtensions.cs",
+        "sourceLine": 9,
+        "sourceSymbol": "MessagePayloadSizeServiceCollectionExtensions",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Attributes/MaxPayloadSizeAttribute.cs",
+        "sourceLine": 13,
+        "sourceSymbol": "MaxPayloadSizeAttribute",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "MessagePayloadLimitsTests.Enforce_DefaultOff_AcceptsAnySizeAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/MessagePayloadLimits.cs",
+        "sourceLine": 21,
+        "sourceSymbol": "MessagePayloadLimits",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/MessagePayloadSizeServiceCollectionExtensions.cs",
+        "sourceLine": 9,
+        "sourceSymbol": "MessagePayloadSizeServiceCollectionExtensions",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Attributes/MaxPayloadSizeAttribute.cs",
+        "sourceLine": 13,
+        "sourceSymbol": "MaxPayloadSizeAttribute",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "MessagePayloadLimitsTests.Enforce_TypeLimitZero_TurnsTheLimitOffForThatTypeAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/MessagePayloadLimits.cs",
+        "sourceLine": 21,
+        "sourceSymbol": "MessagePayloadLimits",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/MessagePayloadSizeServiceCollectionExtensions.cs",
+        "sourceLine": 9,
+        "sourceSymbol": "MessagePayloadSizeServiceCollectionExtensions",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Attributes/MaxPayloadSizeAttribute.cs",
+        "sourceLine": 13,
+        "sourceSymbol": "MaxPayloadSizeAttribute",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "MessagePayloadLimitsTests.Enforce_CallLimitZero_TurnsTheLimitOffForThatCallAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/MessagePayloadLimits.cs",
+        "sourceLine": 21,
+        "sourceSymbol": "MessagePayloadLimits",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/MessagePayloadSizeServiceCollectionExtensions.cs",
+        "sourceLine": 9,
+        "sourceSymbol": "MessagePayloadSizeServiceCollectionExtensions",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Attributes/MaxPayloadSizeAttribute.cs",
+        "sourceLine": 13,
+        "sourceSymbol": "MaxPayloadSizeAttribute",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "MessagePayloadLimitsTests.Enforce_TypeNotInCatalog_UsesTheDefaultAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/MessagePayloadLimits.cs",
+        "sourceLine": 21,
+        "sourceSymbol": "MessagePayloadLimits",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/MessagePayloadSizeServiceCollectionExtensions.cs",
+        "sourceLine": 9,
+        "sourceSymbol": "MessagePayloadSizeServiceCollectionExtensions",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Attributes/MaxPayloadSizeAttribute.cs",
+        "sourceLine": 13,
+        "sourceSymbol": "MaxPayloadSizeAttribute",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "MessagePayloadLimitsTests.Enforce_InTheWarningZone_PassesLogsAndTellsHooksItIsNotOverAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/MessagePayloadLimits.cs",
+        "sourceLine": 21,
+        "sourceSymbol": "MessagePayloadLimits",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/MessagePayloadSizeServiceCollectionExtensions.cs",
+        "sourceLine": 9,
+        "sourceSymbol": "MessagePayloadSizeServiceCollectionExtensions",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Attributes/MaxPayloadSizeAttribute.cs",
+        "sourceLine": 13,
+        "sourceSymbol": "MaxPayloadSizeAttribute",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "MessagePayloadLimitsTests.Enforce_OverTheLimit_TellsHooksItIsOverAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/MessagePayloadLimits.cs",
+        "sourceLine": 21,
+        "sourceSymbol": "MessagePayloadLimits",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/MessagePayloadSizeServiceCollectionExtensions.cs",
+        "sourceLine": 9,
+        "sourceSymbol": "MessagePayloadSizeServiceCollectionExtensions",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Attributes/MaxPayloadSizeAttribute.cs",
+        "sourceLine": 13,
+        "sourceSymbol": "MaxPayloadSizeAttribute",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "MessagePayloadLimitsTests.Enforce_HookAllows_AcceptsAMessageOverTheLimitAndLogsItAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/MessagePayloadLimits.cs",
+        "sourceLine": 21,
+        "sourceSymbol": "MessagePayloadLimits",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/MessagePayloadSizeServiceCollectionExtensions.cs",
+        "sourceLine": 9,
+        "sourceSymbol": "MessagePayloadSizeServiceCollectionExtensions",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Attributes/MaxPayloadSizeAttribute.cs",
+        "sourceLine": 13,
+        "sourceSymbol": "MaxPayloadSizeAttribute",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "MessagePayloadLimitsTests.Enforce_HookRejects_InTheWarningZone_ThrowsWithTheHooksMessageAndCodeAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/MessagePayloadLimits.cs",
+        "sourceLine": 21,
+        "sourceSymbol": "MessagePayloadLimits",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/MessagePayloadSizeServiceCollectionExtensions.cs",
+        "sourceLine": 9,
+        "sourceSymbol": "MessagePayloadSizeServiceCollectionExtensions",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Attributes/MaxPayloadSizeAttribute.cs",
+        "sourceLine": 13,
+        "sourceSymbol": "MaxPayloadSizeAttribute",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "MessagePayloadLimitsTests.Enforce_HookRejectsWithoutACode_KeepsTheFrameworkCodeAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/MessagePayloadLimits.cs",
+        "sourceLine": 21,
+        "sourceSymbol": "MessagePayloadLimits",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/MessagePayloadSizeServiceCollectionExtensions.cs",
+        "sourceLine": 9,
+        "sourceSymbol": "MessagePayloadSizeServiceCollectionExtensions",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Attributes/MaxPayloadSizeAttribute.cs",
+        "sourceLine": 13,
+        "sourceSymbol": "MaxPayloadSizeAttribute",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "MessagePayloadLimitsTests.Enforce_ARejectionBeatsAnAllowance_WhateverTheOrderAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/MessagePayloadLimits.cs",
+        "sourceLine": 21,
+        "sourceSymbol": "MessagePayloadLimits",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/MessagePayloadSizeServiceCollectionExtensions.cs",
+        "sourceLine": 9,
+        "sourceSymbol": "MessagePayloadSizeServiceCollectionExtensions",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Attributes/MaxPayloadSizeAttribute.cs",
+        "sourceLine": 13,
+        "sourceSymbol": "MaxPayloadSizeAttribute",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "MessagePayloadLimitsTests.Evaluate_ByWireName_ResolvesTheTypeLimitWithoutThrowingAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/MessagePayloadLimits.cs",
+        "sourceLine": 21,
+        "sourceSymbol": "MessagePayloadLimits",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/MessagePayloadSizeServiceCollectionExtensions.cs",
+        "sourceLine": 9,
+        "sourceSymbol": "MessagePayloadSizeServiceCollectionExtensions",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Attributes/MaxPayloadSizeAttribute.cs",
+        "sourceLine": 13,
+        "sourceSymbol": "MaxPayloadSizeAttribute",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "MessagePayloadLimitsTests.Decision_Default_IsNoOpinionAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/MessagePayloadLimits.cs",
+        "sourceLine": 21,
+        "sourceSymbol": "MessagePayloadLimits",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/MessagePayloadSizeServiceCollectionExtensions.cs",
+        "sourceLine": 9,
+        "sourceSymbol": "MessagePayloadSizeServiceCollectionExtensions",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Attributes/MaxPayloadSizeAttribute.cs",
+        "sourceLine": 13,
+        "sourceSymbol": "MaxPayloadSizeAttribute",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "MessagePayloadLimitsTests.Exception_WithoutContext_ThrowsArgumentNullAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/MessagePayloadLimits.cs",
+        "sourceLine": 21,
+        "sourceSymbol": "MessagePayloadLimits",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/MessagePayloadSizeServiceCollectionExtensions.cs",
+        "sourceLine": 9,
+        "sourceSymbol": "MessagePayloadSizeServiceCollectionExtensions",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Attributes/MaxPayloadSizeAttribute.cs",
+        "sourceLine": 13,
+        "sourceSymbol": "MaxPayloadSizeAttribute",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "MessagePayloadLimitsTests.Constructor_NullArguments_ThrowAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/MessagePayloadLimits.cs",
+        "sourceLine": 21,
+        "sourceSymbol": "MessagePayloadLimits",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/MessagePayloadSizeServiceCollectionExtensions.cs",
+        "sourceLine": 9,
+        "sourceSymbol": "MessagePayloadSizeServiceCollectionExtensions",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Attributes/MaxPayloadSizeAttribute.cs",
+        "sourceLine": 13,
+        "sourceSymbol": "MaxPayloadSizeAttribute",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "MessagePayloadLimitsTests.Registration_Defaults_ResolveOneInstanceThatSeesRegisteredHooksAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/MessagePayloadLimits.cs",
+        "sourceLine": 21,
+        "sourceSymbol": "MessagePayloadLimits",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/MessagePayloadSizeServiceCollectionExtensions.cs",
+        "sourceLine": 9,
+        "sourceSymbol": "MessagePayloadSizeServiceCollectionExtensions",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Attributes/MaxPayloadSizeAttribute.cs",
+        "sourceLine": 13,
+        "sourceSymbol": "MaxPayloadSizeAttribute",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "MessagePayloadLimitsTests.Resolve_WithoutRegistration_BuildsFromTheFrameworkDefaultsAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/MessagePayloadLimits.cs",
+        "sourceLine": 21,
+        "sourceSymbol": "MessagePayloadLimits",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/MessagePayloadSizeServiceCollectionExtensions.cs",
+        "sourceLine": 9,
+        "sourceSymbol": "MessagePayloadSizeServiceCollectionExtensions",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Attributes/MaxPayloadSizeAttribute.cs",
+        "sourceLine": 13,
+        "sourceSymbol": "MaxPayloadSizeAttribute",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "MessagePayloadLimitsTests.Resolve_AndCreate_NullProvider_ThrowAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/MessagePayloadLimits.cs",
+        "sourceLine": 21,
+        "sourceSymbol": "MessagePayloadLimits",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/MessagePayloadSizeServiceCollectionExtensions.cs",
+        "sourceLine": 9,
+        "sourceSymbol": "MessagePayloadSizeServiceCollectionExtensions",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Attributes/MaxPayloadSizeAttribute.cs",
+        "sourceLine": 13,
+        "sourceSymbol": "MaxPayloadSizeAttribute",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "MessagePayloadLimitsTests.Enforce_NullType_ThrowsAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/MessagePayloadLimits.cs",
+        "sourceLine": 21,
+        "sourceSymbol": "MessagePayloadLimits",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/MessagePayloadSizeServiceCollectionExtensions.cs",
+        "sourceLine": 9,
+        "sourceSymbol": "MessagePayloadSizeServiceCollectionExtensions",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Attributes/MaxPayloadSizeAttribute.cs",
+        "sourceLine": 13,
+        "sourceSymbol": "MaxPayloadSizeAttribute",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "MessagePayloadLimitsTests.MaxPayloadSizeAttribute_CarriesItsLimitAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/MessagePayloadLimits.cs",
+        "sourceLine": 21,
+        "sourceSymbol": "MessagePayloadLimits",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/MessagePayloadSizeServiceCollectionExtensions.cs",
+        "sourceLine": 9,
+        "sourceSymbol": "MessagePayloadSizeServiceCollectionExtensions",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Attributes/MaxPayloadSizeAttribute.cs",
+        "sourceLine": 13,
+        "sourceSymbol": "MaxPayloadSizeAttribute",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
     "ChaosInjectorDefaultTests.TheDefaultInjectorReportsChaosInactiveEvenWhenHooksAreEnabledAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/NoChaosInjector.cs",
@@ -277801,6 +279796,78 @@
         "linkSource": "XmlTag"
       }
     ],
+    "DispatcherPayloadLimitTests.Send_UnderTheLimit_ReachesTheOutboxAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Dispatch/DispatchOptions.cs",
+        "sourceLine": 215,
+        "sourceSymbol": "WithMaxPayloadBytes",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "DispatcherPayloadLimitTests.Send_OverTheLimit_ThrowsAndNeverReachesTheOutboxAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Dispatch/DispatchOptions.cs",
+        "sourceLine": 215,
+        "sourceSymbol": "WithMaxPayloadBytes",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "DispatcherPayloadLimitTests.Send_Untyped_OverTheLimit_ThrowsAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Dispatch/DispatchOptions.cs",
+        "sourceLine": 215,
+        "sourceSymbol": "WithMaxPayloadBytes",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "DispatcherPayloadLimitTests.Send_WithACallLimit_OverridesTheDefaultBothWaysAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Dispatch/DispatchOptions.cs",
+        "sourceLine": 215,
+        "sourceSymbol": "WithMaxPayloadBytes",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "DispatcherPayloadLimitTests.Publish_OverTheLimit_ThrowsAndNeverReachesTheOutboxAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Dispatch/DispatchOptions.cs",
+        "sourceLine": 215,
+        "sourceSymbol": "WithMaxPayloadBytes",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "DispatcherPayloadLimitTests.Publish_WithACallLimit_OverridesTheDefaultAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Dispatch/DispatchOptions.cs",
+        "sourceLine": 215,
+        "sourceSymbol": "WithMaxPayloadBytes",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "DispatcherPayloadLimitTests.Cascade_OverTheLimit_ThrowsAndNeverReachesTheOutboxAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Dispatch/DispatchOptions.cs",
+        "sourceLine": 215,
+        "sourceSymbol": "WithMaxPayloadBytes",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "DispatcherPayloadLimitTests.Send_LimitOff_AcceptsAnySizeAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Dispatch/DispatchOptions.cs",
+        "sourceLine": 215,
+        "sourceSymbol": "WithMaxPayloadBytes",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      }
+    ],
     "DispatcherSecurityBuilderPublishOnceTests.ForTenant_FirstClaim_PublishesInThatTenantAsSystemAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatch/DispatcherSecurityBuilder.cs",
@@ -281932,7 +283999,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Configuration/WhizbangCoreOptions.cs",
-        "sourceLine": 227,
+        "sourceLine": 247,
         "sourceSymbol": "TagProcessingMode",
         "sourceType": "Enum",
         "linkSource": "XmlTag"
@@ -281948,7 +284015,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Configuration/WhizbangCoreOptions.cs",
-        "sourceLine": 228,
+        "sourceLine": 248,
         "sourceSymbol": "TagProcessingMode",
         "sourceType": "Enum",
         "linkSource": "XmlTag"
@@ -292742,6 +294809,14 @@
       }
     ],
     "MessageTypeCatalogGeneratorTests.Generator_StampsMarkerInterfaceFlagsOnEntriesAsync": [
+      {
+        "sourceFile": "src/Whizbang.Generators/MessageTypeCatalogGenerator.cs",
+        "sourceSymbol": "MessageTypeCatalogGenerator",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "MessageTypeCatalogGeneratorTests.Generator_StampsMaxPayloadSizeOnEntriesAsync": [
       {
         "sourceFile": "src/Whizbang.Generators/MessageTypeCatalogGenerator.cs",
         "sourceSymbol": "MessageTypeCatalogGenerator",
@@ -322092,13 +324167,6 @@
       "message": "Disabled_NotGatedAsync contains no assertion"
     },
     {
-      "kind": "selfContained",
-      "testFile": "tests/Whizbang.Generators.Tests/JsonIndexGenerationTests.cs",
-      "testMethod": "ABtreeIndexIsCreatedOverTheExtractionAsync",
-      "sourceTag": "src/Whizbang.Generators.Shared/Models/CanonicalTemporalDiscovery.cs:42",
-      "message": "tests/Whizbang.Generators.Tests/JsonIndexGenerationTests.cs names no concrete type from src/ outside its own nested classes, so it verifies only its own doubles (a default interface member is the one shape this cannot tell apart; check by hand)"
-    },
-    {
       "kind": "assertionFree",
       "testFile": "tests/Whizbang.Core.Tests/Notifications/PgNotificationStackStartupGateTests.cs",
       "testMethod": "DurableSignalTail_DoesNotInitializeItsCursorUntilTheGateOpensAsync",
@@ -322254,12 +324322,12 @@
     }
   ],
   "metadata": {
-    "generated": "2026-09-25T20:28:15.854Z",
-    "sourceFiles": 1799,
-    "testFiles": 6782,
-    "totalLinks": 16158,
-    "codeSymbols": 2103,
-    "testMethods": 14055,
-    "linkHealthFindings": 27
+    "generated": "2026-09-26T02:06:29.638Z",
+    "sourceFiles": 1809,
+    "testFiles": 6840,
+    "totalLinks": 16247,
+    "codeSymbols": 2113,
+    "testMethods": 14134,
+    "linkHealthFindings": 26
   }
 }
