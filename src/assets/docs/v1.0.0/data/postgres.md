@@ -41,7 +41,7 @@ Whizbang provides first-class PostgreSQL support through:
 ## Installation
 
 ```bash{title="Installation" description="Installation" category="Implementation" difficulty="BEGINNER" tags=["Data", "Installation"]}
-dotnet add package Whizbang.Data.EFCore.Postgres
+dotnet add package SoftwareExtravaganza.Whizbang.Data.EFCore.Postgres
 ```
 
 ## Configuration

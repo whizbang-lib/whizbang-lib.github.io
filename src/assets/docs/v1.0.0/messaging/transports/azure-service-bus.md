@@ -132,7 +132,7 @@ flowchart TD
 ### 1. Add NuGet Package
 
 ```bash{title="Add NuGet Package" description="Add NuGet Package" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Add", "NuGet"]}
-dotnet add package Whizbang.Transports.AzureServiceBus
+dotnet add package SoftwareExtravaganza.Whizbang.Transports.AzureServiceBus
 ```
 
 ### 2. Register Transport (Standard .NET)

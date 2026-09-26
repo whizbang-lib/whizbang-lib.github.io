@@ -39,7 +39,7 @@ Notification hooks integrate Whizbang's message tag system with SignalR to:
 ## Installation
 
 ```bash{title="Installation" description="Installation" category="API" difficulty="BEGINNER" tags=["Apis", "Signalr", "Installation"]}
-dotnet add package Whizbang.SignalR
+dotnet add package SoftwareExtravaganza.Whizbang.SignalR
 ```
 
 ## Registration
