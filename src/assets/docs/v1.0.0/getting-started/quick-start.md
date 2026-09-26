@@ -295,7 +295,7 @@ public class OrdersController : ControllerBase {
 
         try {
             var command = new CreateOrder(
-                OrderId: TrackedGuid.NewMedo(),  // time-ordered UUIDv7
+                OrderId: TrackedGuid.New(),  // time-ordered UUIDv7
                 CustomerId: request.CustomerId,
                 ProductName: request.ProductName,
                 Quantity: request.Quantity,
@@ -337,7 +337,7 @@ public record CreateOrderRequest(
 **Key Patterns**:
 - Inject `IDispatcher` into your controller/endpoint
 - Use `LocalInvokeAsync<TMessage, TResponse>` for **in-process** dispatch with typed result
-- Generate stream IDs with `TrackedGuid.NewMedo()` (time-ordered UUIDv7)
+- Generate stream IDs with `TrackedGuid.New()` (time-ordered UUIDv7)
 - Handle exceptions from receptors (validation errors, business rule violations)
 - Return appropriate HTTP status codes (201 Created, 400 Bad Request)
 
@@ -518,8 +518,8 @@ public class CreateOrderReceptorTests {
         var receptor = new CreateOrderReceptor(NullLogger<CreateOrderReceptor>.Instance);
 
         var command = new CreateOrder(
-            OrderId: TrackedGuid.NewMedo(),
-            CustomerId: TrackedGuid.NewMedo(),
+            OrderId: TrackedGuid.New(),
+            CustomerId: TrackedGuid.New(),
             ProductName: "Test Product",
             Quantity: 5,
             UnitPrice: 19.99m
@@ -543,8 +543,8 @@ public class CreateOrderReceptorTests {
         var receptor = new CreateOrderReceptor(NullLogger<CreateOrderReceptor>.Instance);
 
         var command = new CreateOrder(
-            OrderId: TrackedGuid.NewMedo(),
-            CustomerId: TrackedGuid.NewMedo(),
+            OrderId: TrackedGuid.New(),
+            CustomerId: TrackedGuid.New(),
             ProductName: "Test Product",
             Quantity: -1, // Invalid
             UnitPrice: 19.99m

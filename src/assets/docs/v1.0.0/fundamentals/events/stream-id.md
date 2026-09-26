@@ -45,7 +45,7 @@ namespace Whizbang.Core;
 /// <summary>
 /// Interface for messages that have a settable StreamId.
 /// When implemented and StreamId is Guid.Empty, Whizbang automatically
-/// generates a new StreamId using TrackedGuid.NewMedo().
+/// generates a new StreamId using TrackedGuid.New().
 /// </summary>
 public interface IHasStreamId {
   /// <summary>
@@ -120,7 +120,7 @@ For full details, see the [`[GenerateStreamId]` attribute reference](../../exten
 
 1. The source generator discovers `[GenerateStreamId]` on the message type and records its policy (always generate vs. `OnlyIfEmpty`)
 2. At dispatch, the Dispatcher asks the generated stream-id extractor for the message's generation policy
-3. If the policy says generate (and, for `OnlyIfEmpty`, the current StreamId is `Guid.Empty`), a new ID is created via `TrackedGuid.NewMedo()`
+3. If the policy says generate (and, for `OnlyIfEmpty`, the current StreamId is `Guid.Empty`), a new ID is created via `TrackedGuid.New()`
 4. The ID is written back through `IHasStreamId.StreamId` when the message implements it, or through the generated `[StreamId]` property setter otherwise
 5. The message is then processed with the generated ID
 
@@ -128,7 +128,7 @@ For full details, see the [`[GenerateStreamId]` attribute reference](../../exten
 // Internal dispatcher logic (simplified)
 var (shouldGenerate, onlyIfEmpty) = _streamIdExtractor.GetGenerationPolicy(message);
 if (shouldGenerate && (!onlyIfEmpty || streamId == Guid.Empty)) {
-  streamId = TrackedGuid.NewMedo();
+  streamId = TrackedGuid.New();
   if (message is IHasStreamId hasStreamId) {
     hasStreamId.StreamId = streamId;
   } else {
@@ -155,14 +155,14 @@ public readonly partial struct StreamId;
 ### Usage
 
 ```csharp{title="Usage" description="Usage" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Usage"] unverified="StreamId value-object construction and parsing; verified by IdentityValueObjectTests, which is absent from the test map"}
-// Create new StreamId (UUIDv7 via TrackedGuid.NewMedo())
+// Create new StreamId (UUIDv7 via TrackedGuid.New())
 var streamId = StreamId.New();
 
 // From existing Guid — throws ArgumentException if the Guid is not UUIDv7
 var streamId = StreamId.From(existingGuid);
 
 // From a TrackedGuid, preserving tracking metadata (must be time-ordered)
-var streamId = StreamId.From(TrackedGuid.NewMedo());
+var streamId = StreamId.From(TrackedGuid.New());
 
 // Parse from string — validates UUIDv7 (a v4 string here would throw)
 var streamId = StreamId.Parse("01890a5d-ac96-774b-bcce-b302099a8057");

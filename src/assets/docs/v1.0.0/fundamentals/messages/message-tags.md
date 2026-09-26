@@ -413,7 +413,7 @@ The payload is a flat JSON object built from two sources:
     ExtraJson = """{"source": "api", "version": 2}""")]
 public record OrderCreatedEvent(Guid OrderId, Guid CustomerId, decimal Total, string InternalNote);
 
-// When dispatched: new OrderCreatedEvent(TrackedGuid.NewMedo(), TrackedGuid.NewMedo(), 99.99m, "Internal note")
+// When dispatched: new OrderCreatedEvent(TrackedGuid.New(), TrackedGuid.New(), 99.99m, "Internal note")
 // Payload structure:
 // {
 //   "OrderId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",

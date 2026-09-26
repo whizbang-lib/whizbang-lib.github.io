@@ -168,7 +168,7 @@ public class OrderReceptor(IEventStore eventStore) : IReceptor<CreateOrder, Orde
         CreateOrder command,
         CancellationToken ct = default) {
 
-        Guid orderId = TrackedGuid.NewMedo();  // time-ordered UUIDv7
+        Guid orderId = TrackedGuid.New();  // time-ordered UUIDv7
 
         var @event = new OrderCreated(orderId, command.CustomerId, command.Total);
 
@@ -554,7 +554,7 @@ WHERE created_at < NOW() - INTERVAL '1 year';
 ### DO ✅
 
 - ✅ **Append-only** - Never update or delete events
-- ✅ **Use UUIDv7** (`TrackedGuid.NewMedo()`) for stream IDs - event ids are UUIDv7 automatically
+- ✅ **Use UUIDv7** (`TrackedGuid.New()`) for stream IDs - event ids are UUIDv7 automatically
 - ✅ **Trust the built-in versioning** - `version` per stream is assigned and uniqueness-enforced by the store
 - ✅ **Use commit_sequence** for deterministic cross-stream ordering (stamped asynchronously)
 - ✅ **JSONB** for event_data (flexible, queryable)
@@ -568,7 +568,7 @@ WHERE created_at < NOW() - INTERVAL '1 year';
 
 - ❌ Update events (immutable!)
 - ❌ Delete events (append-only!)
-- ❌ Use random UUIDs (index fragmentation) - prefer `TrackedGuid.NewMedo()`
+- ❌ Use random UUIDs (index fragmentation) - prefer `TrackedGuid.New()`
 - ❌ Write your own replay loops (the `PerspectiveWorker` owns replay/rewind)
 - ❌ Store large BLOBs in events (use object storage, store URL)
 - ❌ Break event schemas (upcast instead)

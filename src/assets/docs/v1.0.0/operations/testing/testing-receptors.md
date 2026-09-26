@@ -230,7 +230,7 @@ public static class OrderTestData {
 ```
 
 :::updated
-Use your contract's strongly-typed IDs (`OrderId.New()`, `ProductId.New()`, ...) in test data. If you need a raw `Guid` for a Whizbang identifier, use `TrackedGuid.NewMedo()` (UUIDv7, from `Whizbang.Core.ValueObjects`) instead of `Guid.NewGuid()` - Whizbang enforces UUIDv7 for stream and message IDs.
+Use your contract's strongly-typed IDs (`OrderId.New()`, `ProductId.New()`, ...) in test data. If you need a raw `Guid` for a Whizbang identifier, use `TrackedGuid.New()` (UUIDv7, from `Whizbang.Core.ValueObjects`) instead of `Guid.NewGuid()` - Whizbang enforces UUIDv7 for stream and message IDs.
 :::
 
 **Usage**:

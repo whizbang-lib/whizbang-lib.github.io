@@ -63,7 +63,7 @@ WHERE wh_per_X.metadata->>'EventId' IS NULL
    OR EXCLUDED.metadata->>'EventId' > wh_per_X.metadata->>'EventId'
 ```
 
-UUIDv7 from `TrackedGuid.NewMedo()` orders lexicographically by emission time. "Newer event wins" is the simple, total ordering rule. **Same EventId** (a transport redelivery, a consumer retry) is a strict-greater fail → the redundant UPDATE is skipped → `version` stays at the previous value → the Apply is idempotent.
+UUIDv7 from `TrackedGuid.New()` orders lexicographically by emission time. "Newer event wins" is the simple, total ordering rule. **Same EventId** (a transport redelivery, a consumer retry) is a strict-greater fail → the redundant UPDATE is skipped → `version` stays at the previous value → the Apply is idempotent.
 
 ## Behavior summary
 

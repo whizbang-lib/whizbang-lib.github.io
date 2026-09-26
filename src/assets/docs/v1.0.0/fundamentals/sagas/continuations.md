@@ -121,7 +121,7 @@ public class EnrichmentChainReceptor(DerivedEnrichmentSaga.Service saga)
     var items = await _itemsToEnrichAsync(request.EntityId, ct);
 
     await saga.InitiateSagaAsync(
-      new SagaContext(TrackedGuid.NewMedo(), request.EntityId), items, ct);
+      new SagaContext(TrackedGuid.New(), request.EntityId), items, ct);
   }
 }
 ```

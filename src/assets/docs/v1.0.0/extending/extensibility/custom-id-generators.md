@@ -30,7 +30,7 @@ lastMaintainedCommit: '01f07906'
 **Custom ID generators** provide alternative ID schemes beyond the default UUIDv7. Whizbang's extension point is the `IWhizbangIdProvider` interface - implement it to plug Snowflake IDs, ULID, sequential test IDs, or any custom strategy into every WhizbangId type.
 
 :::note
-Whizbang uses UUIDv7 by default (via `Uuid7IdProvider`, which calls `TrackedGuid.NewMedo()`) for time-ordered, database-friendly IDs with sub-millisecond precision. Custom generators are for specialized scenarios.
+Whizbang uses UUIDv7 by default (via `Uuid7IdProvider`, which calls `TrackedGuid.New()`) for time-ordered, database-friendly IDs with sub-millisecond precision. Custom generators are for specialized scenarios.
 :::
 
 ---
@@ -54,7 +54,7 @@ public interface IWhizbangIdProvider<TId> where TId : struct {
 Key points:
 
 - `NewGuid()` returns a **`TrackedGuid`** - a `Guid` wrapper carrying metadata about how the value was generated (source, precision). Wrap external values with `TrackedGuid.FromExternal(guid)`.
-- The default implementation is **`Uuid7IdProvider`**, which returns `TrackedGuid.NewMedo()` (UUIDv7, time-ordered).
+- The default implementation is **`Uuid7IdProvider`**, which returns `TrackedGuid.New()` (UUIDv7, time-ordered).
 - Typed `IWhizbangIdProvider<TId>` implementations are **source-generated** for every `[WhizbangId]` type and delegate to the configured global provider.
 
 ---

@@ -49,7 +49,7 @@ public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
         CancellationToken cancellationToken = default) {
 
         // Business logic here
-        return new OrderCreated(OrderId: TrackedGuid.NewMedo(), /* ... */);
+        return new OrderCreated(OrderId: TrackedGuid.New(), /* ... */);
     }
 }
 
@@ -128,7 +128,7 @@ public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
 
         // Make decision, return event
         return new OrderCreated(
-            OrderId: TrackedGuid.NewMedo(),
+            OrderId: TrackedGuid.New(),
             CustomerId: message.CustomerId,
             Items: message.Items,
             Total: message.Items.Sum(i => i.Quantity * i.Price),

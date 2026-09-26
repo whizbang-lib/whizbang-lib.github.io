@@ -781,7 +781,7 @@ public class ProductCatalogPerspectiveTests {
         var currentData = new ProductDto();  // Empty model
 
         var @event = new ProductCreatedEvent {
-            ProductId = TrackedGuid.NewMedo(),
+            ProductId = TrackedGuid.New(),
             Name = "Test Product",
             Description = "Test Description",
             Price = 19.99m,
@@ -803,7 +803,7 @@ public class ProductCatalogPerspectiveTests {
     public async Task Apply_Deterministic_SameInputProducesSameOutputAsync() {
         // Arrange
         var perspective = new ProductCatalogPerspective();
-        var currentData = new ProductDto { ProductId = TrackedGuid.NewMedo() };
+        var currentData = new ProductDto { ProductId = TrackedGuid.New() };
         var @event = new ProductUpdatedEvent {
             ProductId = currentData.ProductId,
             Name = "Updated Name",
@@ -825,7 +825,7 @@ public class ProductCatalogPerspectiveTests {
         // Arrange
         var perspective = new ProductCatalogPerspective();
         var createEvent = new ProductCreatedEvent {
-            ProductId = TrackedGuid.NewMedo(),
+            ProductId = TrackedGuid.New(),
             Name = "Product",
             Price = 10m,
             CreatedAt = DateTime.UtcNow

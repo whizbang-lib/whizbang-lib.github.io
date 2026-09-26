@@ -182,8 +182,8 @@ public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
       throw new InvalidOperationException("Order must contain at least one item");
     }
 
-    // Create order (TrackedGuid.NewMedo() generates a time-ordered UUIDv7)
-    Guid orderId = TrackedGuid.NewMedo();
+    // Create order (TrackedGuid.New() generates a time-ordered UUIDv7)
+    Guid orderId = TrackedGuid.New();
     var totalAmount = message.Items.Sum(i => i.Price * i.Quantity);
 
     // Return event (fact)
@@ -384,7 +384,7 @@ public record OrderCreated : IEvent {
 ```csharp{title="Event Design - OrderCreated" description="Event Design - OrderCreated" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Event", "Design", "OrderCreated"] unverified="design guidance with intentional random-GUID counter-example — nothing to assert"}
 // ✅ GOOD: UUIDv7 for database-friendly, time-ordered IDs
 public record OrderCreated : IEvent {
-  public required Guid OrderId { get; init; }  // Generated via TrackedGuid.NewMedo()
+  public required Guid OrderId { get; init; }  // Generated via TrackedGuid.New()
   public required DateTimeOffset CreatedAt { get; init; }
 }
 

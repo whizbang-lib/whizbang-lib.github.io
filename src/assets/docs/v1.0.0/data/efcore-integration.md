@@ -116,9 +116,9 @@ var products = await context.Products
 
 ### UUIDv7 Support
 
-Whizbang standardizes on **UUIDv7** (time-ordered GUIDs), generated client-side via `TrackedGuid.NewMedo()`:
+Whizbang standardizes on **UUIDv7** (time-ordered GUIDs), generated client-side via `TrackedGuid.New()`:
 
-```csharp{title="UUIDv7 Support" description="Whizbang standardizes on UUIDv7 (time-ordered GUIDs):" category="Implementation" difficulty="ADVANCED" tags=["Data", "C#", "UUIDv7", "Support"] tests=["TrackedGuidTests.TrackedGuid_NewMedo_Version_Returns7Async", "TrackedGuidTests.TrackedGuid_NewMedo_IsTimeOrdered_ReturnsTrueAsync", "TrackedGuidTests.TrackedGuid_ImplicitToGuid_ReturnsUnderlyingValueAsync", "TrackedGuidTests.TrackedGuid_NewMedo_HasSourceMedoMetadataAsync"]}
+```csharp{title="UUIDv7 Support" description="Whizbang standardizes on UUIDv7 (time-ordered GUIDs):" category="Implementation" difficulty="ADVANCED" tags=["Data", "C#", "UUIDv7", "Support"] tests=["TrackedGuidTests.TrackedGuid_New_Version_Returns7Async", "TrackedGuidTests.TrackedGuid_New_IsTimeOrdered_ReturnsTrueAsync", "TrackedGuidTests.TrackedGuid_ImplicitToGuid_ReturnsUnderlyingValueAsync", "TrackedGuidTests.TrackedGuid_New_HasSourceWhizbangMetadataAsync"]}
 using Whizbang.Core.ValueObjects;
 
 public class Order {
@@ -129,7 +129,7 @@ public class Order {
 
 // Assign time-ordered IDs when creating entities
 var order = new Order {
-    Id = TrackedGuid.NewMedo(),  // UUIDv7 - implicit conversion to Guid
+    Id = TrackedGuid.New(),  // UUIDv7 - implicit conversion to Guid
     CustomerId = customerId,
     CreatedAt = DateTimeOffset.UtcNow
 };
@@ -209,7 +209,7 @@ public class OrderConfiguration : IEntityTypeConfiguration<Order> {
 
         builder.HasKey(e => e.Id);
 
-        // Id is assigned client-side via TrackedGuid.NewMedo() (UUIDv7)
+        // Id is assigned client-side via TrackedGuid.New() (UUIDv7)
 
         builder.Property(e => e.CustomerId)
             .IsRequired();
@@ -1048,7 +1048,7 @@ public class OrderQueryService(ILensQuery<OrderSummary> lens) {
 - ❌ Use change tracking for read-only queries
 - ❌ Use EF Core for high-performance read models (use Dapper)
 - ❌ Manually write SQL migrations (use `dotnet ef migrations add`)
-- ❌ Use `Guid.NewGuid()` for primary keys (use `TrackedGuid.NewMedo()` for UUIDv7)
+- ❌ Use `Guid.NewGuid()` for primary keys (use `TrackedGuid.New()` for UUIDv7)
 - ❌ Call SaveChanges() in loops (batch instead)
 - ❌ Use Include() for every query (consider projections)
 - ❌ Ignore N+1 query problems (use Include or SplitQuery)

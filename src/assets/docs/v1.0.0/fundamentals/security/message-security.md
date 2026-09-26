@@ -845,7 +845,7 @@ When `EnableAuditLogging` is `true`, a `ScopeContextEstablished` system event is
 
 ```csharp{title="Audit Events" description="When EnableAuditLogging is true, a ScopeContextEstablished system event is emitted:" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Audit", "Events"] tests=["MessageSecurityContextProviderTests.EstablishContextAsync_EnableAuditLoggingTrue_EmitsAuditEventAsync"]}
 public sealed record ScopeContextEstablished : ISystemEvent {
-  public Guid Id { get; init; } = TrackedGuid.NewMedo();
+  public Guid Id { get; init; } = TrackedGuid.New();
   public required PerspectiveScope Scope { get; init; }
   public required IReadOnlySet<string> Roles { get; init; }
   public required IReadOnlySet<Permission> Permissions { get; init; }

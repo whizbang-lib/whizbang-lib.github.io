@@ -83,7 +83,7 @@ public record OrderCreatedEvent : IEvent {
 }
 ```
 
-When dispatched, `OrderId` will always be populated with a new UUIDv7 (TrackedGuid.NewMedo()).
+When dispatched, `OrderId` will always be populated with a new UUIDv7 (TrackedGuid.New()).
 
 ### Appending Events
 
@@ -155,7 +155,7 @@ The `[GenerateStreamId]` attribute is fully AOT-compatible:
 
 - Discovery happens at compile time via the source generator
 - The `GetGenerationPolicy` method uses type-based pattern matching (no reflection)
-- Generation uses `TrackedGuid.NewMedo()` (UUIDv7) for time-ordered, database-friendly IDs
+- Generation uses `TrackedGuid.New()` (UUIDv7) for time-ordered, database-friendly IDs
 
 ## See Also
 

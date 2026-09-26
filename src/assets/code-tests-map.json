@@ -19112,7 +19112,7 @@
       {
         "testFile": "tests/Whizbang.Generators.Tests/WhizbangIdGeneratorTests.cs",
         "testMethod": "Generator_GeneratesCreateProviderMethodAsync",
-        "testLine": 448,
+        "testLine": 449,
         "testClass": "WhizbangIdGeneratorTests",
         "linkSource": "Convention"
       }
@@ -23512,6 +23512,11 @@
       {
         "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/Collective/CollectiveElementUpsertSqlTests.cs",
         "testMethod": "ValueSql_ReplacesByKeyInOrder_AppendsOtherwise_AndTreatsANonArrayAsEmptyAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/Collective/CollectiveElementUpsertSqlTests.cs",
+        "testMethod": "ValueSql_FromAnEarlierValue_ReadsItOnce_InsteadOfTheStoredArrayAsync",
         "linkSource": "XmlTag"
       },
       {
@@ -34641,6 +34646,16 @@
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/Dispatcher/DispatcherEmissionIdentityTests.cs",
+        "testMethod": "CascadeMessageAsync_BackToBackHandlingsOnOneStream_EventIdsFollowHandlingOrderAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Dispatcher/DispatcherEmissionIdentityTests.cs",
+        "testMethod": "CascadeMessageAsync_SeveralEmissionsOfOneHandling_EventIdsFollowEmissionOrderAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Dispatcher/DispatcherEmissionIdentityTests.cs",
         "testMethod": "CascadeMessageAsync_NoSourceEnvelope_MintsFreshTimeOrderedIdsAsync",
         "linkSource": "XmlTag"
       },
@@ -44141,6 +44156,123 @@
       {
         "testFile": "tests/Whizbang.Core.Tests/ValueObjects/GuidMetadataTests.cs",
         "testMethod": "GuidMetadata_SourceMedo_IsBit2Async",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/ValueObjects/GuidMetadataTests.cs",
+        "testMethod": "GuidMetadata_SourceWhizbang_IsBit14Async",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "Uuid7Generator": [
+      {
+        "testFile": "tests/Whizbang.Core.Tests/ValueObjects/Uuid7GeneratorTests.cs",
+        "testMethod": "NewGuid_IsVersion7WithTheRfcVariantAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/ValueObjects/Uuid7GeneratorTests.cs",
+        "testMethod": "NewGuid_CarriesTheClocksMillisecondInTheFirst48BitsAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/ValueObjects/Uuid7GeneratorTests.cs",
+        "testMethod": "NewGuid_FreshMillisecond_SeedsTheCounterFromRandomWithTheTopBitClearAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/ValueObjects/Uuid7GeneratorTests.cs",
+        "testMethod": "NewGuid_TakesTheLast48BitsFromTheRandomSourceAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/ValueObjects/Uuid7GeneratorTests.cs",
+        "testMethod": "NewGuid_StringFormMatchesTheBigEndianBytesAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/ValueObjects/Uuid7GeneratorTests.cs",
+        "testMethod": "NewGuid_SameMillisecond_EachIdSortsAfterThePreviousAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/ValueObjects/Uuid7GeneratorTests.cs",
+        "testMethod": "NewGuid_SameMillisecond_StepsTheCounterByOneToSixteenAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/ValueObjects/Uuid7GeneratorTests.cs",
+        "testMethod": "NewGuid_TheTailNeverDecidesTheOrderWithinAMillisecondAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/ValueObjects/Uuid7GeneratorTests.cs",
+        "testMethod": "NewGuid_LaterMillisecond_SortsAfterEvenWithASmallerCounterAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/ValueObjects/Uuid7GeneratorTests.cs",
+        "testMethod": "NewGuid_ClockGoesBackwards_KeepsTheLastMillisecondAndKeepsCountingAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/ValueObjects/Uuid7GeneratorTests.cs",
+        "testMethod": "NewGuid_ClockCatchesUpAfterGoingBackwards_ResumesRealTimeAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/ValueObjects/Uuid7GeneratorTests.cs",
+        "testMethod": "NewGuid_CounterExhausted_BorrowsTheNextMillisecondInsteadOfWrappingAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/ValueObjects/Uuid7GeneratorTests.cs",
+        "testMethod": "NewGuid_AfterBorrowing_RealTimeCatchingUpToTheBorrowedMillisecondKeepsOrderAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/ValueObjects/Uuid7GeneratorTests.cs",
+        "testMethod": "NewGuid_DrawsRandomnessInBulk_NotOncePerIdAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/ValueObjects/Uuid7GeneratorTests.cs",
+        "testMethod": "NewGuid_RefillsTheRandomBufferWhenItRunsOutAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/ValueObjects/Uuid7GeneratorTests.cs",
+        "testMethod": "Shared_UsesTheSystemClockAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/ValueObjects/Uuid7GeneratorTests.cs",
+        "testMethod": "Shared_OneMillionIdsInATightLoop_AreStrictlyIncreasingAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/ValueObjects/Uuid7GeneratorTests.cs",
+        "testMethod": "Shared_ManyThreadsAtOnce_AreUniqueAndIncreasingPerThreadAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/ValueObjects/Uuid7GeneratorTests.cs",
+        "testMethod": "Shared_IssueOrderIsSortOrder_AcrossThreadsAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/ValueObjects/Uuid7GeneratorTests.cs",
+        "testMethod": "GetTimestamp_NotVersion7_ReturnsMinValueAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/ValueObjects/Uuid7GeneratorTests.cs",
+        "testMethod": "GetTimestamp_ReadsTheMillisecondFromAnyVersion7IdAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/ValueObjects/Uuid7GeneratorTests.cs",
+        "testMethod": "GetTimestamp_MillisecondPastWhatDateTimeOffsetHolds_ReturnsMinValueAsync",
         "linkSource": "XmlTag"
       }
     ],
@@ -62592,6 +62724,11 @@
         "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/Collective/CollectiveDispatcherEFCoreIntegrationTests.cs",
         "testMethod": "DispatchAsync_UpsertElement_ComposesWithSetProperty_InOneUpdateAsync",
         "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/Collective/CollectiveDispatcherEFCoreIntegrationTests.cs",
+        "testMethod": "DispatchAsync_TwoUpsertsOnOneList_BothApply_InCallOrderAsync",
+        "linkSource": "XmlTag"
       }
     ],
     "ICollectiveSiblingTableSource": [
@@ -80824,6 +80961,16 @@
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/Messaging/CompositeChildIdentityTests.cs",
+        "testMethod": "Derive_ChildrenSortInTheirOrderWithinTheCompositeAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/CompositeChildIdentityTests.cs",
+        "testMethod": "Derive_ChildrenOfConsecutiveComposites_SortInCompositeOrderAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/CompositeChildIdentityTests.cs",
         "testMethod": "Derive_RejectsAnEmptyCompositeIdAsync",
         "linkSource": "XmlTag"
       },
@@ -81309,6 +81456,51 @@
     ],
     "DerivedIdentity": [
       {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/DerivedIdentityTests.cs",
+        "testMethod": "FromCanonical_KeepsTheSourcesFirst80BitsAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/DerivedIdentityTests.cs",
+        "testMethod": "FromCanonical_PutsTheOrdinalInBits80To91Async",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/DerivedIdentityTests.cs",
+        "testMethod": "FromCanonical_OrdinalPastTheField_SaturatesAndStaysUniqueAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/DerivedIdentityTests.cs",
+        "testMethod": "FromCanonical_SameInputs_SameIdAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/DerivedIdentityTests.cs",
+        "testMethod": "FromCanonical_DifferentCanonical_SameOrdinal_DifferOnlyAfterTheOrdinalAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/DerivedIdentityTests.cs",
+        "testMethod": "FromCanonical_SourceThatIsNotVersion7_StillYieldsAVersion7IdWithTheRfcVariantAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/DerivedIdentityTests.cs",
+        "testMethod": "FromCanonical_ConsecutiveSources_DerivedIdsSortInSourceOrderAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/DerivedIdentityTests.cs",
+        "testMethod": "FromCanonical_OneSource_DerivedIdsSortInOrdinalOrderAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/DerivedIdentityTests.cs",
+        "testMethod": "FromCanonical_EveryIdOfAnEarlierSource_SortsBeforeEveryIdOfALaterOneAsync",
+        "linkSource": "XmlTag"
+      },
+      {
         "testFile": "tests/Whizbang.Core.Tests/Messaging/EmissionIdentityTests.cs",
         "testMethod": "Derive_SameInputs_ReturnsSameIdAsync",
         "linkSource": "XmlTag"
@@ -81355,12 +81547,22 @@
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/Messaging/EmissionIdentityTests.cs",
-        "testMethod": "Derive_InheritsFirst48BitsOfSourceAsync",
+        "testMethod": "Derive_InheritsFirst80BitsOfSourceAsync",
         "linkSource": "XmlTag"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/Messaging/EmissionIdentityTests.cs",
         "testMethod": "Derive_TwoOrdinals_ShareThePrefixAndDifferInTheHashAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/EmissionIdentityTests.cs",
+        "testMethod": "Derive_EventsOfConsecutiveCommands_SortInCommandOrderAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/EmissionIdentityTests.cs",
+        "testMethod": "Derive_EmissionsOfOneHandling_SortInEmissionOrderAsync",
         "linkSource": "XmlTag"
       },
       {
@@ -81421,6 +81623,16 @@
       {
         "testFile": "tests/Whizbang.Core.Tests/Messaging/CompositeChildIdentityTests.cs",
         "testMethod": "Derive_IsVersion7WithTheRfcVariant_AndKeepsTheCompositesTimePrefixAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/CompositeChildIdentityTests.cs",
+        "testMethod": "Derive_ChildrenSortInTheirOrderWithinTheCompositeAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/CompositeChildIdentityTests.cs",
+        "testMethod": "Derive_ChildrenOfConsecutiveComposites_SortInCompositeOrderAsync",
         "linkSource": "XmlTag"
       },
       {
@@ -81716,12 +81928,22 @@
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/Messaging/EmissionIdentityTests.cs",
-        "testMethod": "Derive_InheritsFirst48BitsOfSourceAsync",
+        "testMethod": "Derive_InheritsFirst80BitsOfSourceAsync",
         "linkSource": "XmlTag"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/Messaging/EmissionIdentityTests.cs",
         "testMethod": "Derive_TwoOrdinals_ShareThePrefixAndDifferInTheHashAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/EmissionIdentityTests.cs",
+        "testMethod": "Derive_EventsOfConsecutiveCommands_SortInCommandOrderAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/EmissionIdentityTests.cs",
+        "testMethod": "Derive_EmissionsOfOneHandling_SortInEmissionOrderAsync",
         "linkSource": "XmlTag"
       },
       {
@@ -81808,12 +82030,22 @@
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/Messaging/EmissionIdentityTests.cs",
-        "testMethod": "Derive_InheritsFirst48BitsOfSourceAsync",
+        "testMethod": "Derive_InheritsFirst80BitsOfSourceAsync",
         "linkSource": "XmlTag"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/Messaging/EmissionIdentityTests.cs",
         "testMethod": "Derive_TwoOrdinals_ShareThePrefixAndDifferInTheHashAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/EmissionIdentityTests.cs",
+        "testMethod": "Derive_EventsOfConsecutiveCommands_SortInCommandOrderAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/EmissionIdentityTests.cs",
+        "testMethod": "Derive_EmissionsOfOneHandling_SortInEmissionOrderAsync",
         "linkSource": "XmlTag"
       },
       {
@@ -89134,6 +89366,11 @@
         "testFile": "tests/Whizbang.Core.Tests/Messaging/MessagePayloadLimitsTests.cs",
         "testMethod": "MaxPayloadSizeAttribute_CarriesItsLimitAsync",
         "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/MessagePayloadLimitsTests.cs",
+        "testMethod": "Resolve_FromAProviderThatKnowsNothing_UsesTheDefaultsAsync",
+        "linkSource": "XmlTag"
       }
     ],
     "MessagePayloadSizeServiceCollectionExtensions": [
@@ -89270,6 +89507,11 @@
       {
         "testFile": "tests/Whizbang.Core.Tests/Messaging/MessagePayloadLimitsTests.cs",
         "testMethod": "MaxPayloadSizeAttribute_CarriesItsLimitAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/MessagePayloadLimitsTests.cs",
+        "testMethod": "Resolve_FromAProviderThatKnowsNothing_UsesTheDefaultsAsync",
         "linkSource": "XmlTag"
       }
     ],
@@ -103010,6 +103252,11 @@
         "testFile": "tests/Whizbang.Core.Tests/Messaging/MessagePayloadLimitsTests.cs",
         "testMethod": "MaxPayloadSizeAttribute_CarriesItsLimitAsync",
         "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Messaging/MessagePayloadLimitsTests.cs",
+        "testMethod": "Resolve_FromAProviderThatKnowsNothing_UsesTheDefaultsAsync",
+        "linkSource": "XmlTag"
       }
     ],
     "PersistenceStrategyAttribute": [
@@ -110351,7 +110598,7 @@
       },
       {
         "testFile": "tests/Whizbang.Generators.Tests/GuidUsageAnalyzerTests.cs",
-        "testMethod": "Analyzer_TrackedGuidNewMedo_NoErrorAsync",
+        "testMethod": "Analyzer_TrackedGuidNew_NoErrorAsync",
         "testLine": 47,
         "testClass": "GuidUsageAnalyzerTests",
         "linkSource": "Convention"
@@ -120085,63 +120332,70 @@
       {
         "testFile": "tests/Whizbang.Core.Tests/Workers/SlidingWindowBatcherTests.cs",
         "testMethod": "ReadBatches_ThreeArrivalsWithinSlidingWindow_FlushesAsOneBatchAsync",
-        "testLine": 39,
+        "testLine": 40,
         "testClass": "SlidingWindowBatcherTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/Workers/SlidingWindowBatcherTests.cs",
         "testMethod": "ReadBatches_HitsMaxSize_FlushesImmediatelyAsync",
-        "testLine": 72,
+        "testLine": 73,
         "testClass": "SlidingWindowBatcherTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/Workers/SlidingWindowBatcherTests.cs",
         "testMethod": "ReadBatches_BusyProducer_FlushesAtMaxWaitAsync",
-        "testLine": 102,
+        "testLine": 103,
         "testClass": "SlidingWindowBatcherTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/Workers/SlidingWindowBatcherTests.cs",
         "testMethod": "ReadBatches_ChannelCompletesEmpty_TerminatesWithNoBatchesAsync",
-        "testLine": 147,
+        "testLine": 148,
         "testClass": "SlidingWindowBatcherTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/Workers/SlidingWindowBatcherTests.cs",
         "testMethod": "ReadBatches_ChannelClosesWithPendingItems_FlushesPendingBatchAsync",
-        "testLine": 166,
+        "testLine": 167,
         "testClass": "SlidingWindowBatcherTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/Workers/SlidingWindowBatcherTests.cs",
         "testMethod": "ReadBatches_CancellationDuringWait_TerminatesAsync",
-        "testLine": 190,
+        "testLine": 191,
         "testClass": "SlidingWindowBatcherTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/Workers/SlidingWindowBatcherTests.cs",
         "testMethod": "ReadBatches_MultipleSequentialBatches_EachIndependentAsync",
-        "testLine": 210,
+        "testLine": 211,
         "testClass": "SlidingWindowBatcherTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/Workers/SlidingWindowBatcherTests.cs",
         "testMethod": "Constructor_InvalidMaxSize_ThrowsAsync",
-        "testLine": 247,
+        "testLine": 248,
         "testClass": "SlidingWindowBatcherTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/Workers/SlidingWindowBatcherTests.cs",
         "testMethod": "Constructor_SlidingWindowGreaterThanMaxWait_ThrowsAsync",
-        "testLine": 259,
+        "testLine": 260,
+        "testClass": "SlidingWindowBatcherTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/Workers/SlidingWindowBatcherTests.cs",
+        "testMethod": "ReadBatches_WindowElapsesAsTheInWindowWaitBegins_StillFlushesAsync",
+        "testLine": 289,
         "testClass": "SlidingWindowBatcherTests",
         "linkSource": "Convention"
       }
@@ -120358,85 +120612,92 @@
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/ValueObjects/GuidMetadataTests.cs",
-        "testMethod": "GuidMetadata_SourceMicrosoft_IsBit3Async",
+        "testMethod": "GuidMetadata_SourceWhizbang_IsBit14Async",
         "testLine": 51,
         "testClass": "GuidMetadataTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/ValueObjects/GuidMetadataTests.cs",
-        "testMethod": "GuidMetadata_SourceParsed_IsBit4Async",
+        "testMethod": "GuidMetadata_SourceMicrosoft_IsBit3Async",
         "testLine": 57,
         "testClass": "GuidMetadataTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/ValueObjects/GuidMetadataTests.cs",
-        "testMethod": "GuidMetadata_SourceExternal_IsBit5Async",
+        "testMethod": "GuidMetadata_SourceParsed_IsBit4Async",
         "testLine": 63,
         "testClass": "GuidMetadataTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/ValueObjects/GuidMetadataTests.cs",
-        "testMethod": "GuidMetadata_SourceUnknown_IsBit6Async",
-        "testLine": 73,
+        "testMethod": "GuidMetadata_SourceExternal_IsBit5Async",
+        "testLine": 69,
         "testClass": "GuidMetadataTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/ValueObjects/GuidMetadataTests.cs",
-        "testMethod": "GuidMetadata_Reserved_IsBit7Async",
+        "testMethod": "GuidMetadata_SourceUnknown_IsBit6Async",
         "testLine": 79,
         "testClass": "GuidMetadataTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/ValueObjects/GuidMetadataTests.cs",
+        "testMethod": "GuidMetadata_Reserved_IsBit7Async",
+        "testLine": 85,
+        "testClass": "GuidMetadataTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/ValueObjects/GuidMetadataTests.cs",
         "testMethod": "GuidMetadata_ThirdPartySources_HaveCorrectBitPositionsAsync",
-        "testLine": 89,
+        "testLine": 95,
         "testClass": "GuidMetadataTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/ValueObjects/GuidMetadataTests.cs",
         "testMethod": "GuidMetadata_IsFlagsEnum_SupportsOrCombinationAsync",
-        "testLine": 106,
+        "testLine": 112,
         "testClass": "GuidMetadataTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/ValueObjects/GuidMetadataTests.cs",
         "testMethod": "GuidMetadata_AllFlags_AreDistinctBitsAsync",
-        "testLine": 123,
+        "testLine": 129,
         "testClass": "GuidMetadataTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/ValueObjects/GuidMetadataTests.cs",
         "testMethod": "GuidMetadata_NoOverlappingBits_BetweenAnyFlagsAsync",
-        "testLine": 144,
+        "testLine": 151,
         "testClass": "GuidMetadataTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/ValueObjects/GuidMetadataTests.cs",
         "testMethod": "GuidMetadata_VersionAndSource_CanBeCombinedAsync",
-        "testLine": 166,
+        "testLine": 174,
         "testClass": "GuidMetadataTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/ValueObjects/GuidMetadataTests.cs",
         "testMethod": "GuidMetadata_UnderlyingType_IsUshortAsync",
-        "testLine": 187,
+        "testLine": 195,
         "testClass": "GuidMetadataTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/ValueObjects/GuidMetadataTests.cs",
         "testMethod": "GuidMetadata_HasFlagsAttribute_ReturnsTrueAsync",
-        "testLine": 194,
+        "testLine": 202,
         "testClass": "GuidMetadataTests",
         "linkSource": "Convention"
       }
@@ -120568,322 +120829,336 @@
       {
         "testFile": "tests/Whizbang.Core.Tests/ValueObjects/TrackedGuidTests.cs",
         "testMethod": "GuidMetadata_CombineFlags_WorksCorrectlyAsync",
-        "testLine": 28,
+        "testLine": 29,
         "testClass": "TrackedGuidTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/ValueObjects/TrackedGuidTests.cs",
-        "testMethod": "TrackedGuid_NewMedo_IsTimeOrdered_ReturnsTrueAsync",
-        "testLine": 43,
+        "testMethod": "TrackedGuid_New_IsTimeOrdered_ReturnsTrueAsync",
+        "testLine": 44,
         "testClass": "TrackedGuidTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/ValueObjects/TrackedGuidTests.cs",
-        "testMethod": "TrackedGuid_NewMedo_SubMillisecondPrecision_ReturnsTrueAsync",
-        "testLine": 52,
+        "testMethod": "TrackedGuid_New_SubMillisecondPrecision_ReturnsTrueAsync",
+        "testLine": 53,
         "testClass": "TrackedGuidTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/ValueObjects/TrackedGuidTests.cs",
-        "testMethod": "TrackedGuid_NewMedo_Timestamp_ReturnsRecentTimeAsync",
-        "testLine": 61,
+        "testMethod": "TrackedGuid_New_Timestamp_ReturnsRecentTimeAsync",
+        "testLine": 62,
         "testClass": "TrackedGuidTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/ValueObjects/TrackedGuidTests.cs",
-        "testMethod": "TrackedGuid_NewMedo_Version_Returns7Async",
-        "testLine": 75,
+        "testMethod": "TrackedGuid_New_Version_Returns7Async",
+        "testLine": 76,
         "testClass": "TrackedGuidTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/ValueObjects/TrackedGuidTests.cs",
-        "testMethod": "TrackedGuid_NewMedo_HasSourceMedoMetadataAsync",
-        "testLine": 84,
+        "testMethod": "TrackedGuid_New_HasSourceWhizbangMetadataAsync",
+        "testLine": 85,
         "testClass": "TrackedGuidTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/ValueObjects/TrackedGuidTests.cs",
-        "testMethod": "TrackedGuid_NewMedo_MultipleIds_AreUniqueAsync",
-        "testLine": 94,
+        "testMethod": "TrackedGuid_New_MultipleIds_AreUniqueAsync",
+        "testLine": 96,
         "testClass": "TrackedGuidTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/ValueObjects/TrackedGuidTests.cs",
-        "testMethod": "TrackedGuid_NewMedo_MultipleIds_AreTimeOrderedAsync",
-        "testLine": 104,
+        "testMethod": "TrackedGuid_New_MultipleIds_AreTimeOrderedAsync",
+        "testLine": 106,
         "testClass": "TrackedGuidTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/ValueObjects/TrackedGuidTests.cs",
         "testMethod": "TrackedGuid_NewMicrosoftV7_IsTimeOrdered_ReturnsTrueAsync",
-        "testLine": 119,
+        "testLine": 121,
         "testClass": "TrackedGuidTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/ValueObjects/TrackedGuidTests.cs",
         "testMethod": "TrackedGuid_NewMicrosoftV7_SubMillisecondPrecision_ReturnsFalseAsync",
-        "testLine": 128,
+        "testLine": 130,
         "testClass": "TrackedGuidTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/ValueObjects/TrackedGuidTests.cs",
         "testMethod": "TrackedGuid_NewMicrosoftV7_Version_Returns7Async",
-        "testLine": 137,
+        "testLine": 139,
         "testClass": "TrackedGuidTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/ValueObjects/TrackedGuidTests.cs",
         "testMethod": "TrackedGuid_NewMicrosoftV7_HasSourceMicrosoftMetadataAsync",
-        "testLine": 146,
+        "testLine": 148,
         "testClass": "TrackedGuidTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/ValueObjects/TrackedGuidTests.cs",
         "testMethod": "TrackedGuid_NewRandom_IsTimeOrdered_ReturnsFalseAsync",
-        "testLine": 161,
+        "testLine": 163,
         "testClass": "TrackedGuidTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/ValueObjects/TrackedGuidTests.cs",
         "testMethod": "TrackedGuid_NewRandom_Version_Returns4Async",
-        "testLine": 170,
+        "testLine": 172,
         "testClass": "TrackedGuidTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/ValueObjects/TrackedGuidTests.cs",
         "testMethod": "TrackedGuid_NewRandom_SubMillisecondPrecision_ReturnsFalseAsync",
-        "testLine": 179,
+        "testLine": 181,
         "testClass": "TrackedGuidTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/ValueObjects/TrackedGuidTests.cs",
         "testMethod": "TrackedGuid_NewRandom_HasVersion4MetadataAsync",
-        "testLine": 188,
+        "testLine": 190,
         "testClass": "TrackedGuidTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/ValueObjects/TrackedGuidTests.cs",
         "testMethod": "TrackedGuid_Parse_MarksAsSourceParsedAsync",
-        "testLine": 203,
+        "testLine": 205,
         "testClass": "TrackedGuidTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/ValueObjects/TrackedGuidTests.cs",
         "testMethod": "TrackedGuid_Parse_WithV7Guid_SetsVersion7MetadataAsync",
-        "testLine": 217,
+        "testLine": 219,
         "testClass": "TrackedGuidTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/ValueObjects/TrackedGuidTests.cs",
         "testMethod": "TrackedGuid_Parse_WithV4Guid_SetsVersion4MetadataAsync",
-        "testLine": 231,
+        "testLine": 233,
         "testClass": "TrackedGuidTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/ValueObjects/TrackedGuidTests.cs",
         "testMethod": "TrackedGuid_TryParse_WithValidGuid_ReturnsTrueAsync",
-        "testLine": 245,
+        "testLine": 247,
         "testClass": "TrackedGuidTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/ValueObjects/TrackedGuidTests.cs",
         "testMethod": "TrackedGuid_TryParse_WithInvalidGuid_ReturnsFalseAsync",
-        "testLine": 258,
+        "testLine": 260,
         "testClass": "TrackedGuidTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/ValueObjects/TrackedGuidTests.cs",
         "testMethod": "TrackedGuid_FromExternal_MarksAsSourceExternalAsync",
-        "testLine": 275,
+        "testLine": 277,
         "testClass": "TrackedGuidTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/ValueObjects/TrackedGuidTests.cs",
         "testMethod": "TrackedGuid_FromExternal_DetectsVersionAsync",
-        "testLine": 288,
+        "testLine": 290,
         "testClass": "TrackedGuidTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/ValueObjects/TrackedGuidTests.cs",
         "testMethod": "TrackedGuid_ImplicitToGuid_ReturnsUnderlyingValueAsync",
-        "testLine": 307,
+        "testLine": 309,
         "testClass": "TrackedGuidTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/ValueObjects/TrackedGuidTests.cs",
         "testMethod": "TrackedGuid_ImplicitFromGuid_MarksAsSourceUnknownAsync",
-        "testLine": 320,
+        "testLine": 322,
         "testClass": "TrackedGuidTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/ValueObjects/TrackedGuidTests.cs",
         "testMethod": "TrackedGuid_ImplicitFromGuid_StillDetectsVersionAsync",
-        "testLine": 333,
+        "testLine": 335,
         "testClass": "TrackedGuidTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/ValueObjects/TrackedGuidTests.cs",
         "testMethod": "TrackedGuid_Equals_WithSameGuid_ReturnsTrueAsync",
-        "testLine": 352,
+        "testLine": 354,
         "testClass": "TrackedGuidTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/ValueObjects/TrackedGuidTests.cs",
         "testMethod": "TrackedGuid_Equals_WithDifferentGuid_ReturnsFalseAsync",
-        "testLine": 364,
+        "testLine": 366,
         "testClass": "TrackedGuidTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/ValueObjects/TrackedGuidTests.cs",
         "testMethod": "TrackedGuid_Equals_IgnoresMetadata_ComparesOnlyValueAsync",
-        "testLine": 375,
+        "testLine": 377,
         "testClass": "TrackedGuidTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/ValueObjects/TrackedGuidTests.cs",
         "testMethod": "TrackedGuid_GetHashCode_WithSameGuid_ReturnsSameHashAsync",
-        "testLine": 387,
+        "testLine": 389,
         "testClass": "TrackedGuidTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/ValueObjects/TrackedGuidTests.cs",
         "testMethod": "TrackedGuid_CompareTo_OrdersChronologicallyAsync",
-        "testLine": 402,
+        "testLine": 404,
         "testClass": "TrackedGuidTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/ValueObjects/TrackedGuidTests.cs",
         "testMethod": "TrackedGuid_ComparisonOperators_WorkCorrectlyAsync",
-        "testLine": 415,
+        "testLine": 417,
         "testClass": "TrackedGuidTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/ValueObjects/TrackedGuidTests.cs",
         "testMethod": "TrackedGuid_ToString_ReturnsGuidStringAsync",
-        "testLine": 433,
+        "testLine": 435,
         "testClass": "TrackedGuidTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/ValueObjects/TrackedGuidTests.cs",
         "testMethod": "TrackedGuid_IsTracking_OnlyAuthoritativeSourcesReturnTrueAsync",
-        "testLine": 449,
+        "testLine": 451,
         "testClass": "TrackedGuidTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/ValueObjects/TrackedGuidTests.cs",
         "testMethod": "TrackedGuid_Default_HasEmptyGuidAsync",
-        "testLine": 472,
+        "testLine": 474,
         "testClass": "TrackedGuidTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/ValueObjects/TrackedGuidTests.cs",
         "testMethod": "TrackedGuid_Empty_HasEmptyGuidAsync",
-        "testLine": 482,
+        "testLine": 484,
         "testClass": "TrackedGuidTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/ValueObjects/TrackedGuidTests.cs",
         "testMethod": "TrackedGuid_FromIntercepted_PreservesGuidValueAsync",
-        "testLine": 495,
+        "testLine": 497,
         "testClass": "TrackedGuidTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/ValueObjects/TrackedGuidTests.cs",
         "testMethod": "TrackedGuid_FromIntercepted_PreservesExactMetadataAsync",
-        "testLine": 508,
+        "testLine": 510,
         "testClass": "TrackedGuidTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/ValueObjects/TrackedGuidTests.cs",
         "testMethod": "TrackedGuid_FromIntercepted_WithVariousMetadata_PreservesMetadataAsync",
-        "testLine": 521,
+        "testLine": 523,
         "testClass": "TrackedGuidTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/ValueObjects/TrackedGuidTests.cs",
         "testMethod": "TrackedGuid_FromIntercepted_IsTracking_ReturnsTrueAsync",
-        "testLine": 539,
+        "testLine": 542,
         "testClass": "TrackedGuidTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/ValueObjects/TrackedGuidTests.cs",
         "testMethod": "TrackedGuid_FromIntercepted_WithV7_IsTimeOrderedAsync",
-        "testLine": 552,
+        "testLine": 555,
         "testClass": "TrackedGuidTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/ValueObjects/TrackedGuidTests.cs",
         "testMethod": "TrackedGuid_FromIntercepted_WithV4_IsNotTimeOrderedAsync",
-        "testLine": 565,
+        "testLine": 568,
         "testClass": "TrackedGuidTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/ValueObjects/TrackedGuidTests.cs",
         "testMethod": "GuidMetadata_ThirdPartySources_HaveCorrectBitPositionsAsync",
-        "testLine": 582,
+        "testLine": 585,
         "testClass": "TrackedGuidTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/ValueObjects/TrackedGuidTests.cs",
         "testMethod": "GuidMetadata_ThirdPartySource_CanCombineWithVersionAsync",
-        "testLine": 594,
+        "testLine": 597,
         "testClass": "TrackedGuidTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/ValueObjects/TrackedGuidTests.cs",
         "testMethod": "TrackedGuid_FromIntercepted_WithMarten_HasCorrectMetadataAsync",
-        "testLine": 605,
+        "testLine": 608,
         "testClass": "TrackedGuidTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/ValueObjects/TrackedGuidTests.cs",
         "testMethod": "TrackedGuid_FromIntercepted_WithUuidNext_HasCorrectMetadataAsync",
-        "testLine": 619,
+        "testLine": 622,
+        "testClass": "TrackedGuidTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/ValueObjects/TrackedGuidTests.cs",
+        "testMethod": "TrackedGuid_DetectedMedoId_HasSubMillisecondPrecisionAndIsTrackingAsync",
+        "testLine": 636,
+        "testClass": "TrackedGuidTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/ValueObjects/TrackedGuidTests.cs",
+        "testMethod": "TrackedGuid_New_IsTaggedAsTheFrameworksOwnSourceAsync",
+        "testLine": 647,
         "testClass": "TrackedGuidTests",
         "linkSource": "Convention"
       }
@@ -120935,7 +121210,7 @@
     "WhizbangId": [
       {
         "testFile": "tests/Whizbang.Core.Tests/ValueObjects/WhizbangIdTests.cs",
-        "testMethod": "WhizbangId_New_UsesTrackedGuidNewMedoAsync",
+        "testMethod": "WhizbangId_New_UsesTrackedGuidNewAsync",
         "testLine": 17,
         "testClass": "WhizbangIdTests",
         "linkSource": "Convention"
@@ -167185,6 +167460,15 @@
         "linkSource": "XmlTag"
       }
     ],
+    "CollectiveElementUpsertSqlTests.ValueSql_FromAnEarlierValue_ReadsItOnce_InsteadOfTheStoredArrayAsync": [
+      {
+        "sourceFile": "src/Whizbang.Data.Postgres/Collective/CollectiveElementUpsertSql.cs",
+        "sourceLine": 21,
+        "sourceSymbol": "CollectiveElementUpsertSql",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
     "CollectiveElementUpsertSqlTests.ValueSql_RefusesAnythingButAPlainIdentifierAsync": [
       {
         "sourceFile": "src/Whizbang.Data.Postgres/Collective/CollectiveElementUpsertSql.cs",
@@ -167690,7 +167974,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres.Generators/EFCoreServiceRegistrationGenerator.cs",
-        "sourceLine": 2235,
+        "sourceLine": 2238,
         "sourceSymbol": "_generateSchemaExtensions",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -167843,14 +168127,14 @@
       },
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres.Generators/EFCoreServiceRegistrationGenerator.cs",
-        "sourceLine": 2236,
+        "sourceLine": 2239,
         "sourceSymbol": "_generateSchemaExtensions",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres.Generators/EFCoreServiceRegistrationGenerator.cs",
-        "sourceLine": 2379,
+        "sourceLine": 2382,
         "sourceSymbol": "_generateBootstrapMigrationsCode",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -167895,7 +168179,7 @@
     "VectorAutoConfigurationTests.TurnkeyExtension_WithVectorField_GeneratesAddDbContextMethodAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres.Generators/EFCoreServiceRegistrationGenerator.cs",
-        "sourceLine": 1853,
+        "sourceLine": 1856,
         "sourceSymbol": "_generateTurnkeyExtensions",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -167904,7 +168188,7 @@
     "VectorAutoConfigurationTests.TurnkeyExtension_WithoutVectorField_DoesNotIncludeUseVectorAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres.Generators/EFCoreServiceRegistrationGenerator.cs",
-        "sourceLine": 1854,
+        "sourceLine": 1857,
         "sourceSymbol": "_generateTurnkeyExtensions",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -185538,7 +185822,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 5492,
+        "sourceLine": 5497,
         "sourceSymbol": "SyncReceptorInvoker",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -187487,6 +187771,24 @@
         "linkSource": "XmlTag"
       }
     ],
+    "DispatcherEmissionIdentityTests.CascadeMessageAsync_BackToBackHandlingsOnOneStream_EventIdsFollowHandlingOrderAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
+        "sourceLine": 2770,
+        "sourceSymbol": "_mintEmissionId",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "DispatcherEmissionIdentityTests.CascadeMessageAsync_SeveralEmissionsOfOneHandling_EventIdsFollowEmissionOrderAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
+        "sourceLine": 2770,
+        "sourceSymbol": "_mintEmissionId",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      }
+    ],
     "DispatcherEmissionIdentityTests.CascadeMessageAsync_NoSourceEnvelope_MintsFreshTimeOrderedIdsAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
@@ -187708,7 +188010,7 @@
     "DispatcherCoverageSweepOutboxTests.PublishToOutboxDynamic_EventWithIHasStreamId_InheritsStreamIdFromSourceAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 4027,
+        "sourceLine": 4030,
         "sourceSymbol": "PublishToOutboxDynamicAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -187717,7 +188019,7 @@
     "DispatcherCoverageSweepOutboxTests.PublishToOutboxDynamic_EventAlreadyHasStreamId_SkipsPropagationAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 4028,
+        "sourceLine": 4031,
         "sourceSymbol": "PublishToOutboxDynamicAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -187726,7 +188028,7 @@
     "DispatcherNoRebroadcastGuardTests.NoRebroadcastSource_IsSuppressedBeforeSerializationAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 4029,
+        "sourceLine": 4032,
         "sourceSymbol": "PublishToOutboxDynamicAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -187735,7 +188037,7 @@
     "DispatcherPriorityStampingTests.Send_OutsideAnyHandling_DeclaresInteractive_OnTheEnvelopeAndTheRowAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 4169,
+        "sourceLine": 4172,
         "sourceSymbol": "_stampExplicitPriority",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -187744,7 +188046,7 @@
     "DispatcherPriorityStampingTests.Send_WhileHandlingBackgroundWork_InheritsBackgroundAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 4169,
+        "sourceLine": 4172,
         "sourceSymbol": "_stampExplicitPriority",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -187753,7 +188055,7 @@
     "DispatcherPriorityStampingTests.Send_WithAHostProducerHook_UsesItsDeclarationAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 4169,
+        "sourceLine": 4172,
         "sourceSymbol": "_stampExplicitPriority",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -187762,7 +188064,7 @@
     "DispatcherPriorityStampingTests.Send_WithNoChainRegistered_LeavesTheEnvelopeUndeclaredAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 4169,
+        "sourceLine": 4172,
         "sourceSymbol": "_stampExplicitPriority",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -187771,14 +188073,14 @@
     "DispatcherPriorityStampingTests.Send_WithAPriorityOnTheOptions_KeepsItOverTheContextRulesAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 4169,
+        "sourceLine": 4172,
         "sourceSymbol": "_stampExplicitPriority",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 4174,
+        "sourceLine": 4177,
         "sourceSymbol": "_stampExplicitPriority",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -187794,7 +188096,7 @@
     "DeferredDispatchTests.PublishAsync_NoStrategy_QueuesToDeferredChannelAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 5235,
+        "sourceLine": 5240,
         "sourceSymbol": "_deferEventToChannelAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -187803,7 +188105,7 @@
     "DeferredDispatchTests.PublishAsync_WithActiveStrategy_ProcessesImmediately_NoDeferralAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 5235,
+        "sourceLine": 5240,
         "sourceSymbol": "_deferEventToChannelAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -187812,7 +188114,7 @@
     "DeferredDispatchTests.PublishAsync_NoStrategy_MultipleCalls_AllQueuedToDeferredChannelAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 5235,
+        "sourceLine": 5240,
         "sourceSymbol": "_deferEventToChannelAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -187821,7 +188123,7 @@
     "DeferredDispatchTests.PublishAsync_NoStrategy_PreservesMessageIdAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 5235,
+        "sourceLine": 5240,
         "sourceSymbol": "_deferEventToChannelAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -187830,7 +188132,7 @@
     "DeferredDispatchTests.PublishAsync_NoStrategy_SetsIsEventTrueAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 5235,
+        "sourceLine": 5240,
         "sourceSymbol": "_deferEventToChannelAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -187839,7 +188141,7 @@
     "DispatcherSyncTests.LocalInvokeAsync_SyncReceptor_ReturnsCompletedValueTaskAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 5493,
+        "sourceLine": 5498,
         "sourceSymbol": "SyncReceptorInvoker",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -187848,7 +188150,7 @@
     "DispatcherVoidCascadeTests.VoidLocalInvokeAsync_WithNonVoidReceptor_CascadesReturnedEventsAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 5519,
+        "sourceLine": 5524,
         "sourceSymbol": "Func",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -187857,7 +188159,7 @@
     "DispatcherVoidCascadeTests.GenericVoidLocalInvokeAsync_WithNonVoidReceptor_CascadesReturnedEventsAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 5519,
+        "sourceLine": 5524,
         "sourceSymbol": "Func",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -187866,7 +188168,7 @@
     "DispatcherVoidCascadeTests.VoidLocalInvokeAsync_WithContext_CascadesReturnedEventsAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 5519,
+        "sourceLine": 5524,
         "sourceSymbol": "Func",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -187875,7 +188177,7 @@
     "DispatcherVoidCascadeTests.VoidLocalInvokeAsync_WithDispatchOptions_CascadesReturnedEventsAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Dispatcher.cs",
-        "sourceLine": 5519,
+        "sourceLine": 5524,
         "sourceSymbol": "Func",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -198555,14 +198857,14 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-        "sourceLine": 1553,
+        "sourceLine": 1555,
         "sourceSymbol": "IReadOnlyList",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-        "sourceLine": 1564,
+        "sourceLine": 1566,
         "sourceSymbol": "ReportLongAffinityHolds",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -198578,14 +198880,14 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-        "sourceLine": 1553,
+        "sourceLine": 1555,
         "sourceSymbol": "IReadOnlyList",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-        "sourceLine": 1564,
+        "sourceLine": 1566,
         "sourceSymbol": "ReportLongAffinityHolds",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -198601,14 +198903,14 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-        "sourceLine": 1553,
+        "sourceLine": 1555,
         "sourceSymbol": "IReadOnlyList",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-        "sourceLine": 1564,
+        "sourceLine": 1566,
         "sourceSymbol": "ReportLongAffinityHolds",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -198624,14 +198926,14 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-        "sourceLine": 1553,
+        "sourceLine": 1555,
         "sourceSymbol": "IReadOnlyList",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-        "sourceLine": 1564,
+        "sourceLine": 1566,
         "sourceSymbol": "ReportLongAffinityHolds",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -198647,14 +198949,14 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-        "sourceLine": 1553,
+        "sourceLine": 1555,
         "sourceSymbol": "IReadOnlyList",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-        "sourceLine": 1564,
+        "sourceLine": 1566,
         "sourceSymbol": "ReportLongAffinityHolds",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -198749,14 +199051,14 @@
     "PerspectiveWorkerStartupAndMaintenanceTests.Startup_RewindScanClean_QueriesExactlyOnceAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-        "sourceLine": 1010,
+        "sourceLine": 1012,
         "sourceSymbol": "_scanAndRepairRewindsOnStartupAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-        "sourceLine": 4984,
+        "sourceLine": 4986,
         "sourceSymbol": "PerspectiveStartupScanLog",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -198765,14 +199067,14 @@
     "PerspectiveWorkerStartupAndMaintenanceTests.Startup_RewindScanBlockingMode_RepollsUntilNoRewindCursorsRemainAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-        "sourceLine": 1011,
+        "sourceLine": 1013,
         "sourceSymbol": "_scanAndRepairRewindsOnStartupAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-        "sourceLine": 4986,
+        "sourceLine": 4988,
         "sourceSymbol": "PerspectiveStartupScanLog",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -198795,7 +199097,7 @@
     "PerspectiveWorkerStartupAndMaintenanceTests.Startup_RewindScanDisabled_NeverQueriesAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-        "sourceLine": 1012,
+        "sourceLine": 1014,
         "sourceSymbol": "_scanAndRepairRewindsOnStartupAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -198804,7 +199106,7 @@
     "PerspectiveWorkerDrainModeLifecycleTests.DrainMode_FiltersEventsPerPerspective_OnlyMatchingEventsPassedAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-        "sourceLine": 1704,
+        "sourceLine": 1706,
         "sourceSymbol": "_processDrainModeStreamsAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -198813,7 +199115,7 @@
     "PerspectiveWorkerDrainModeLifecycleTests.DrainMode_PerspectiveWithNoMatchingEvents_SkippedAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-        "sourceLine": 1704,
+        "sourceLine": 1706,
         "sourceSymbol": "_processDrainModeStreamsAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -198822,7 +199124,7 @@
     "PerspectiveWorkerDrainModeLifecycleTests.DrainMode_MultipleEventTypes_SharedPerspectiveGetsAllMatchingAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-        "sourceLine": 1704,
+        "sourceLine": 1706,
         "sourceSymbol": "_processDrainModeStreamsAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -198831,7 +199133,7 @@
     "PerspectiveWorkerDrainModeLifecycleTests.DrainMode_PostPerspectiveInline_FiresPerPerspectivePerEventAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-        "sourceLine": 1704,
+        "sourceLine": 1706,
         "sourceSymbol": "_processDrainModeStreamsAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -198840,7 +199142,7 @@
     "PerspectiveWorkerDrainModeLifecycleTests.DrainMode_PostAllPerspectives_FiresAfterAllPerspectivesCompleteAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-        "sourceLine": 1704,
+        "sourceLine": 1706,
         "sourceSymbol": "_processDrainModeStreamsAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -198849,7 +199151,7 @@
     "PerspectiveWorkerDrainModeLifecycleTests.DrainMode_PostLifecycle_FiresAfterPostAllPerspectivesAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-        "sourceLine": 1704,
+        "sourceLine": 1706,
         "sourceSymbol": "_processDrainModeStreamsAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -198858,7 +199160,7 @@
     "PerspectiveWorkerDrainModeLifecycleTests.DrainMode_FullLifecycleChain_AllStagesFireInOrderAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-        "sourceLine": 1704,
+        "sourceLine": 1706,
         "sourceSymbol": "_processDrainModeStreamsAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -198867,7 +199169,7 @@
     "PerspectiveWorkerDrainModeLifecycleTests.DrainMode_TwoEvents_BothGetFullLifecycleAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-        "sourceLine": 1704,
+        "sourceLine": 1706,
         "sourceSymbol": "_processDrainModeStreamsAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -198876,7 +199178,7 @@
     "PerspectiveWorkerDrainModeLifecycleTests.DrainMode_ExpectationsRegisteredBeforeSignals_WhenAllResolvesAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-        "sourceLine": 1704,
+        "sourceLine": 1706,
         "sourceSymbol": "_processDrainModeStreamsAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -198885,7 +199187,7 @@
     "PerspectiveWorkerDrainModeLifecycleTests.DrainMode_DuplicateRawEventIds_HandledGracefullyAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-        "sourceLine": 1704,
+        "sourceLine": 1706,
         "sourceSymbol": "_processDrainModeStreamsAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -198894,7 +199196,7 @@
     "PerspectiveWorkerDrainModeLifecycleTests.DrainMode_PostLifecycle_IsFireAndForgetAfterBatchCompletesAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-        "sourceLine": 1704,
+        "sourceLine": 1706,
         "sourceSymbol": "_processDrainModeStreamsAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -198903,7 +199205,7 @@
     "PerspectiveWorkerDrainModeLifecycleTests.GracefulShutdown_AwaitsPendingPostLifecycleAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-        "sourceLine": 1704,
+        "sourceLine": 1706,
         "sourceSymbol": "_processDrainModeStreamsAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -198912,7 +199214,7 @@
     "PerspectiveWorkerDrainModeLifecycleTests.DrainMode_TwoPerspectivesForSameEvent_BothCalledExactlyOnceAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-        "sourceLine": 1704,
+        "sourceLine": 1706,
         "sourceSymbol": "_processDrainModeStreamsAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -198921,7 +199223,7 @@
     "PerspectiveWorkerDrainModeLifecycleTests.DrainMode_TwoPerspectivesForSameEvent_BothSignalCompletionToCoordinatorAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-        "sourceLine": 1704,
+        "sourceLine": 1706,
         "sourceSymbol": "_processDrainModeStreamsAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -198930,7 +199232,7 @@
     "PerspectiveWorkerDrainModeLifecycleTests.DrainMode_TwoPerspectivesForSameEvent_PostAllPerspectivesFiresExactlyOnceAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-        "sourceLine": 1704,
+        "sourceLine": 1706,
         "sourceSymbol": "_processDrainModeStreamsAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -198939,7 +199241,7 @@
     "PerspectiveWorkerDrainModeLifecycleTests.DrainMode_TwoStreamsTwoPerspectivesEach_EachStreamFiresPostAllPerspectivesOnceAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-        "sourceLine": 1704,
+        "sourceLine": 1706,
         "sourceSymbol": "_processDrainModeStreamsAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -198948,7 +199250,7 @@
     "PerspectiveWorkerDrainModeLifecycleTests.Coordinator_AfterAllPerspectivesSignaled_AdvanceToPostAllPerspectivesFires_Async": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-        "sourceLine": 1704,
+        "sourceLine": 1706,
         "sourceSymbol": "_processDrainModeStreamsAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -198957,84 +199259,7 @@
     "PerspectiveWorkerSecurityContextTests.PrePerspectiveDetached_WithSecurityProvider_EstablishesSecurityContextAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-        "sourceLine": 4376,
-        "sourceSymbol": "_establishSecurityContextAsync",
-        "sourceType": "Method",
-        "linkSource": "XmlTag"
-      },
-      {
-        "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-        "sourceLine": 4377,
-        "sourceSymbol": "_establishSecurityContextAsync",
-        "sourceType": "Method",
-        "linkSource": "XmlTag"
-      }
-    ],
-    "PerspectiveWorkerSecurityContextTests.PrePerspectiveDetached_WithoutSecurityProvider_StillInvokesLifecycleReceptorsAsync": [
-      {
-        "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-        "sourceLine": 4376,
-        "sourceSymbol": "_establishSecurityContextAsync",
-        "sourceType": "Method",
-        "linkSource": "XmlTag"
-      }
-    ],
-    "PerspectiveWorkerSecurityContextTests.PrePerspectiveDetached_SecurityProviderReturnsNull_DoesNotSetAccessorAsync": [
-      {
-        "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-        "sourceLine": 4376,
-        "sourceSymbol": "_establishSecurityContextAsync",
-        "sourceType": "Method",
-        "linkSource": "XmlTag"
-      }
-    ],
-    "PerspectiveWorkerSecurityContextTests.PostPerspectiveInline_WithSecurityProvider_EstablishesSecurityContextAsync": [
-      {
-        "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-        "sourceLine": 4376,
-        "sourceSymbol": "_establishSecurityContextAsync",
-        "sourceType": "Method",
-        "linkSource": "XmlTag"
-      }
-    ],
-    "PerspectiveWorkerSecurityContextTests.MultipleEnvelopes_EstablishesContextForEachEnvelopeAsync": [
-      {
-        "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-        "sourceLine": 4376,
-        "sourceSymbol": "_establishSecurityContextAsync",
-        "sourceType": "Method",
-        "linkSource": "XmlTag"
-      }
-    ],
-    "PerspectiveWorkerSecurityContextTests.PrePerspectiveDetached_WithoutMessageContextAccessor_StillInvokesLifecycleReceptorsAsync": [
-      {
-        "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-        "sourceLine": 4376,
-        "sourceSymbol": "_establishSecurityContextAsync",
-        "sourceType": "Method",
-        "linkSource": "XmlTag"
-      }
-    ],
-    "PerspectiveWorkerSecurityContextTests.EstablishSecurityContext_WhenExtractorSucceeds_ButEnvelopeHasNoScope_UsesExtractorResultForMessageContextAsync": [
-      {
-        "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-        "sourceLine": 4376,
-        "sourceSymbol": "_establishSecurityContextAsync",
-        "sourceType": "Method",
-        "linkSource": "XmlTag"
-      },
-      {
-        "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
         "sourceLine": 4378,
-        "sourceSymbol": "_establishSecurityContextAsync",
-        "sourceType": "Method",
-        "linkSource": "XmlTag"
-      }
-    ],
-    "PerspectiveWorkerSecurityContextTests.EstablishSecurityContext_WhenExtractorFails_FallsBackToEnvelopeGetCurrentScopeAsync": [
-      {
-        "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-        "sourceLine": 4376,
         "sourceSymbol": "_establishSecurityContextAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -199047,10 +199272,87 @@
         "linkSource": "XmlTag"
       }
     ],
+    "PerspectiveWorkerSecurityContextTests.PrePerspectiveDetached_WithoutSecurityProvider_StillInvokesLifecycleReceptorsAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
+        "sourceLine": 4378,
+        "sourceSymbol": "_establishSecurityContextAsync",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "PerspectiveWorkerSecurityContextTests.PrePerspectiveDetached_SecurityProviderReturnsNull_DoesNotSetAccessorAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
+        "sourceLine": 4378,
+        "sourceSymbol": "_establishSecurityContextAsync",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "PerspectiveWorkerSecurityContextTests.PostPerspectiveInline_WithSecurityProvider_EstablishesSecurityContextAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
+        "sourceLine": 4378,
+        "sourceSymbol": "_establishSecurityContextAsync",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "PerspectiveWorkerSecurityContextTests.MultipleEnvelopes_EstablishesContextForEachEnvelopeAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
+        "sourceLine": 4378,
+        "sourceSymbol": "_establishSecurityContextAsync",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "PerspectiveWorkerSecurityContextTests.PrePerspectiveDetached_WithoutMessageContextAccessor_StillInvokesLifecycleReceptorsAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
+        "sourceLine": 4378,
+        "sourceSymbol": "_establishSecurityContextAsync",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "PerspectiveWorkerSecurityContextTests.EstablishSecurityContext_WhenExtractorSucceeds_ButEnvelopeHasNoScope_UsesExtractorResultForMessageContextAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
+        "sourceLine": 4378,
+        "sourceSymbol": "_establishSecurityContextAsync",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
+        "sourceLine": 4380,
+        "sourceSymbol": "_establishSecurityContextAsync",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "PerspectiveWorkerSecurityContextTests.EstablishSecurityContext_WhenExtractorFails_FallsBackToEnvelopeGetCurrentScopeAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
+        "sourceLine": 4378,
+        "sourceSymbol": "_establishSecurityContextAsync",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
+        "sourceLine": 4381,
+        "sourceSymbol": "_establishSecurityContextAsync",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      }
+    ],
     "PerspectiveWorkerSecurityContextTests.EstablishSecurityContext_SetsInitiatingContextOnScopeContextAccessorAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-        "sourceLine": 4376,
+        "sourceLine": 4378,
         "sourceSymbol": "_establishSecurityContextAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -199059,7 +199361,7 @@
     "PerspectiveWorkerSecurityContextTests.EstablishSecurityContext_WhenExtractorFailsButEnvelopeHasScope_InvokesCallbacksWithEnvelopeScopeAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-        "sourceLine": 4376,
+        "sourceLine": 4378,
         "sourceSymbol": "_establishSecurityContextAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -199068,7 +199370,7 @@
     "PerspectiveWorkerSecurityContextTests.ImmutableScopeContext_FromScopeContext_HasPropagationEnabledAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-        "sourceLine": 4376,
+        "sourceLine": 4378,
         "sourceSymbol": "_establishSecurityContextAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -199077,7 +199379,7 @@
     "PerspectiveWorkerSecurityContextTests.FakeEventStore_GetEventsBetweenPolymorphic_ReturnsEnvelopesWithScopeInHopsAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-        "sourceLine": 4376,
+        "sourceLine": 4378,
         "sourceSymbol": "_establishSecurityContextAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -199086,7 +199388,7 @@
     "PerspectiveWorkerSecurityContextTests.EstablishSecurityContext_WhenEnvelopeHasScope_WrapsInImmutableScopeContextWithPropagationAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-        "sourceLine": 4376,
+        "sourceLine": 4378,
         "sourceSymbol": "_establishSecurityContextAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -199095,7 +199397,7 @@
     "PerspectiveWorkerSecurityContextTests.EstablishSecurityContext_WhenExtractorSucceeds_DoesNotInvokeCallbacksTwiceAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-        "sourceLine": 4376,
+        "sourceLine": 4378,
         "sourceSymbol": "_establishSecurityContextAsync",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -199104,7 +199406,7 @@
     "PerspectiveWorkerStartupAndMaintenanceTests.Startup_RewindScanBackgroundMode_DoesNotRepollAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/PerspectiveWorker.cs",
-        "sourceLine": 4985,
+        "sourceLine": 4987,
         "sourceSymbol": "PerspectiveStartupScanLog",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -202214,6 +202516,213 @@
         "sourceLine": 10,
         "sourceSymbol": "GuidMetadatas",
         "sourceType": "Enum",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "GuidMetadataTests.GuidMetadata_SourceWhizbang_IsBit14Async": [
+      {
+        "sourceFile": "src/Whizbang.Core/ValueObjects/GuidMetadata.cs",
+        "sourceLine": 11,
+        "sourceSymbol": "GuidMetadatas",
+        "sourceType": "Enum",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "Uuid7GeneratorTests.NewGuid_IsVersion7WithTheRfcVariantAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/ValueObjects/Uuid7Generator.cs",
+        "sourceLine": 44,
+        "sourceSymbol": "Uuid7Generator",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "Uuid7GeneratorTests.NewGuid_CarriesTheClocksMillisecondInTheFirst48BitsAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/ValueObjects/Uuid7Generator.cs",
+        "sourceLine": 44,
+        "sourceSymbol": "Uuid7Generator",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "Uuid7GeneratorTests.NewGuid_FreshMillisecond_SeedsTheCounterFromRandomWithTheTopBitClearAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/ValueObjects/Uuid7Generator.cs",
+        "sourceLine": 44,
+        "sourceSymbol": "Uuid7Generator",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "Uuid7GeneratorTests.NewGuid_TakesTheLast48BitsFromTheRandomSourceAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/ValueObjects/Uuid7Generator.cs",
+        "sourceLine": 44,
+        "sourceSymbol": "Uuid7Generator",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "Uuid7GeneratorTests.NewGuid_StringFormMatchesTheBigEndianBytesAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/ValueObjects/Uuid7Generator.cs",
+        "sourceLine": 44,
+        "sourceSymbol": "Uuid7Generator",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "Uuid7GeneratorTests.NewGuid_SameMillisecond_EachIdSortsAfterThePreviousAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/ValueObjects/Uuid7Generator.cs",
+        "sourceLine": 44,
+        "sourceSymbol": "Uuid7Generator",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "Uuid7GeneratorTests.NewGuid_SameMillisecond_StepsTheCounterByOneToSixteenAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/ValueObjects/Uuid7Generator.cs",
+        "sourceLine": 44,
+        "sourceSymbol": "Uuid7Generator",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "Uuid7GeneratorTests.NewGuid_TheTailNeverDecidesTheOrderWithinAMillisecondAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/ValueObjects/Uuid7Generator.cs",
+        "sourceLine": 44,
+        "sourceSymbol": "Uuid7Generator",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "Uuid7GeneratorTests.NewGuid_LaterMillisecond_SortsAfterEvenWithASmallerCounterAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/ValueObjects/Uuid7Generator.cs",
+        "sourceLine": 44,
+        "sourceSymbol": "Uuid7Generator",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "Uuid7GeneratorTests.NewGuid_ClockGoesBackwards_KeepsTheLastMillisecondAndKeepsCountingAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/ValueObjects/Uuid7Generator.cs",
+        "sourceLine": 44,
+        "sourceSymbol": "Uuid7Generator",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "Uuid7GeneratorTests.NewGuid_ClockCatchesUpAfterGoingBackwards_ResumesRealTimeAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/ValueObjects/Uuid7Generator.cs",
+        "sourceLine": 44,
+        "sourceSymbol": "Uuid7Generator",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "Uuid7GeneratorTests.NewGuid_CounterExhausted_BorrowsTheNextMillisecondInsteadOfWrappingAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/ValueObjects/Uuid7Generator.cs",
+        "sourceLine": 44,
+        "sourceSymbol": "Uuid7Generator",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "Uuid7GeneratorTests.NewGuid_AfterBorrowing_RealTimeCatchingUpToTheBorrowedMillisecondKeepsOrderAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/ValueObjects/Uuid7Generator.cs",
+        "sourceLine": 44,
+        "sourceSymbol": "Uuid7Generator",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "Uuid7GeneratorTests.NewGuid_DrawsRandomnessInBulk_NotOncePerIdAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/ValueObjects/Uuid7Generator.cs",
+        "sourceLine": 44,
+        "sourceSymbol": "Uuid7Generator",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "Uuid7GeneratorTests.NewGuid_RefillsTheRandomBufferWhenItRunsOutAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/ValueObjects/Uuid7Generator.cs",
+        "sourceLine": 44,
+        "sourceSymbol": "Uuid7Generator",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "Uuid7GeneratorTests.Shared_UsesTheSystemClockAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/ValueObjects/Uuid7Generator.cs",
+        "sourceLine": 44,
+        "sourceSymbol": "Uuid7Generator",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "Uuid7GeneratorTests.Shared_OneMillionIdsInATightLoop_AreStrictlyIncreasingAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/ValueObjects/Uuid7Generator.cs",
+        "sourceLine": 44,
+        "sourceSymbol": "Uuid7Generator",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "Uuid7GeneratorTests.Shared_ManyThreadsAtOnce_AreUniqueAndIncreasingPerThreadAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/ValueObjects/Uuid7Generator.cs",
+        "sourceLine": 44,
+        "sourceSymbol": "Uuid7Generator",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "Uuid7GeneratorTests.Shared_IssueOrderIsSortOrder_AcrossThreadsAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/ValueObjects/Uuid7Generator.cs",
+        "sourceLine": 44,
+        "sourceSymbol": "Uuid7Generator",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "Uuid7GeneratorTests.GetTimestamp_NotVersion7_ReturnsMinValueAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/ValueObjects/Uuid7Generator.cs",
+        "sourceLine": 44,
+        "sourceSymbol": "Uuid7Generator",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "Uuid7GeneratorTests.GetTimestamp_ReadsTheMillisecondFromAnyVersion7IdAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/ValueObjects/Uuid7Generator.cs",
+        "sourceLine": 44,
+        "sourceSymbol": "Uuid7Generator",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "Uuid7GeneratorTests.GetTimestamp_MillisecondPastWhatDateTimeOffsetHolds_ReturnsMinValueAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/ValueObjects/Uuid7Generator.cs",
+        "sourceLine": 44,
+        "sourceSymbol": "Uuid7Generator",
+        "sourceType": "Class",
         "linkSource": "XmlTag"
       }
     ],
@@ -228870,6 +229379,15 @@
         "linkSource": "XmlTag"
       }
     ],
+    "CollectiveDispatcherEFCoreIntegrationTests.DispatchAsync_TwoUpsertsOnOneList_BothApply_InCallOrderAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Perspectives/ICollectiveSetters.cs",
+        "sourceLine": 110,
+        "sourceSymbol": "UpsertElement",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      }
+    ],
     "CollectivePredicateSqlCompilerTests.Compile_OfSourceWithoutSiblingTableSource_ThrowsNotSupportedAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Perspectives/ICollectiveSiblingTableSource.cs",
@@ -250217,7 +250735,79 @@
     "MessageHopTests.MessageHop_WithRequiredProperties_InitializesWithDefaultsAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Observability/MessageHop.cs",
+        "sourceLine": 28,
+        "sourceSymbol": "MessageHop",
+        "sourceType": "Record",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Observability/MessageHop.cs",
+        "sourceLine": 87,
+        "sourceSymbol": "ServiceInstance",
+        "sourceType": "Property",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Observability/MessageHop.cs",
+        "sourceLine": 96,
+        "sourceSymbol": "Timestamp",
+        "sourceType": "Property",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Observability/MessageHop.cs",
+        "sourceLine": 104,
+        "sourceSymbol": "Topic",
+        "sourceType": "Property",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Observability/MessageHop.cs",
+        "sourceLine": 113,
+        "sourceSymbol": "StreamId",
+        "sourceType": "Property",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Observability/MessageHop.cs",
+        "sourceLine": 138,
+        "sourceSymbol": "ExecutionStrategy",
+        "sourceType": "Property",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Security/Extractors/MessageHopSecurityExtractor.cs",
+        "sourceSymbol": "MessageHop",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "MessageHopTests.MessageHop_WithCausationType_StoresCausationTypeAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Observability/MessageHop.cs",
         "sourceLine": 29,
+        "sourceSymbol": "MessageHop",
+        "sourceType": "Record",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Observability/MessageHop.cs",
+        "sourceLine": 49,
+        "sourceSymbol": "Type",
+        "sourceType": "Property",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Security/Extractors/MessageHopSecurityExtractor.cs",
+        "sourceSymbol": "MessageHop",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "MessageHopTests.MessageHop_WithAllProperties_StoresAllValuesAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Observability/MessageHop.cs",
+        "sourceLine": 30,
         "sourceSymbol": "MessageHop",
         "sourceType": "Record",
         "linkSource": "XmlTag"
@@ -250258,16 +250848,23 @@
         "linkSource": "XmlTag"
       },
       {
+        "sourceFile": "src/Whizbang.Core/Observability/MessageHop.cs",
+        "sourceLine": 210,
+        "sourceSymbol": "Duration",
+        "sourceType": "Property",
+        "linkSource": "XmlTag"
+      },
+      {
         "sourceFile": "src/Whizbang.Core/Security/Extractors/MessageHopSecurityExtractor.cs",
         "sourceSymbol": "MessageHop",
         "sourceType": "Class",
         "linkSource": "Convention"
       }
     ],
-    "MessageHopTests.MessageHop_WithCausationType_StoresCausationTypeAsync": [
+    "MessageHopTests.MessageHop_TypeDefaultsToCurrent_WhenNotSpecifiedAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Observability/MessageHop.cs",
-        "sourceLine": 30,
+        "sourceLine": 31,
         "sourceSymbol": "MessageHop",
         "sourceType": "Record",
         "linkSource": "XmlTag"
@@ -250286,64 +250883,7 @@
         "linkSource": "Convention"
       }
     ],
-    "MessageHopTests.MessageHop_WithAllProperties_StoresAllValuesAsync": [
-      {
-        "sourceFile": "src/Whizbang.Core/Observability/MessageHop.cs",
-        "sourceLine": 31,
-        "sourceSymbol": "MessageHop",
-        "sourceType": "Record",
-        "linkSource": "XmlTag"
-      },
-      {
-        "sourceFile": "src/Whizbang.Core/Observability/MessageHop.cs",
-        "sourceLine": 89,
-        "sourceSymbol": "ServiceInstance",
-        "sourceType": "Property",
-        "linkSource": "XmlTag"
-      },
-      {
-        "sourceFile": "src/Whizbang.Core/Observability/MessageHop.cs",
-        "sourceLine": 98,
-        "sourceSymbol": "Timestamp",
-        "sourceType": "Property",
-        "linkSource": "XmlTag"
-      },
-      {
-        "sourceFile": "src/Whizbang.Core/Observability/MessageHop.cs",
-        "sourceLine": 106,
-        "sourceSymbol": "Topic",
-        "sourceType": "Property",
-        "linkSource": "XmlTag"
-      },
-      {
-        "sourceFile": "src/Whizbang.Core/Observability/MessageHop.cs",
-        "sourceLine": 115,
-        "sourceSymbol": "StreamId",
-        "sourceType": "Property",
-        "linkSource": "XmlTag"
-      },
-      {
-        "sourceFile": "src/Whizbang.Core/Observability/MessageHop.cs",
-        "sourceLine": 140,
-        "sourceSymbol": "ExecutionStrategy",
-        "sourceType": "Property",
-        "linkSource": "XmlTag"
-      },
-      {
-        "sourceFile": "src/Whizbang.Core/Observability/MessageHop.cs",
-        "sourceLine": 211,
-        "sourceSymbol": "Duration",
-        "sourceType": "Property",
-        "linkSource": "XmlTag"
-      },
-      {
-        "sourceFile": "src/Whizbang.Core/Security/Extractors/MessageHopSecurityExtractor.cs",
-        "sourceSymbol": "MessageHop",
-        "sourceType": "Class",
-        "linkSource": "Convention"
-      }
-    ],
-    "MessageHopTests.MessageHop_TypeDefaultsToCurrent_WhenNotSpecifiedAsync": [
+    "MessageHopTests.MessageHop_MachineName_UsesEnvironmentMachineName_ByDefaultAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Observability/MessageHop.cs",
         "sourceLine": 32,
@@ -250353,29 +250893,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Observability/MessageHop.cs",
-        "sourceLine": 51,
-        "sourceSymbol": "Type",
-        "sourceType": "Property",
-        "linkSource": "XmlTag"
-      },
-      {
-        "sourceFile": "src/Whizbang.Core/Security/Extractors/MessageHopSecurityExtractor.cs",
-        "sourceSymbol": "MessageHop",
-        "sourceType": "Class",
-        "linkSource": "Convention"
-      }
-    ],
-    "MessageHopTests.MessageHop_MachineName_UsesEnvironmentMachineName_ByDefaultAsync": [
-      {
-        "sourceFile": "src/Whizbang.Core/Observability/MessageHop.cs",
-        "sourceLine": 33,
-        "sourceSymbol": "MessageHop",
-        "sourceType": "Record",
-        "linkSource": "XmlTag"
-      },
-      {
-        "sourceFile": "src/Whizbang.Core/Observability/MessageHop.cs",
-        "sourceLine": 90,
+        "sourceLine": 89,
         "sourceSymbol": "ServiceInstance",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -250390,7 +250908,7 @@
     "MessageHopTests.MessageHop_WithCausationAndCorrelationIds_SetsIdsAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Observability/MessageHop.cs",
-        "sourceLine": 34,
+        "sourceLine": 33,
         "sourceSymbol": "MessageHop",
         "sourceType": "Record",
         "linkSource": "XmlTag"
@@ -250405,7 +250923,7 @@
     "MessageHopTests.MessageHop_WithSecurityContext_SetsSecurityContextAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Observability/MessageHop.cs",
-        "sourceLine": 35,
+        "sourceLine": 34,
         "sourceSymbol": "MessageHop",
         "sourceType": "Record",
         "linkSource": "XmlTag"
@@ -250420,14 +250938,14 @@
     "MessageHopTests.MessageHop_WithMetadata_SetsMetadataAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Observability/MessageHop.cs",
-        "sourceLine": 36,
+        "sourceLine": 35,
         "sourceSymbol": "MessageHop",
         "sourceType": "Record",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Observability/MessageHop.cs",
-        "sourceLine": 163,
+        "sourceLine": 162,
         "sourceSymbol": "IReadOnlyDictionary",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -250442,7 +250960,7 @@
     "MessageHopTests.MessageHop_WithTrail_SetsPolicyDecisionTrailAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Observability/MessageHop.cs",
-        "sourceLine": 37,
+        "sourceLine": 36,
         "sourceSymbol": "MessageHop",
         "sourceType": "Record",
         "linkSource": "XmlTag"
@@ -250457,7 +250975,7 @@
     "MessageHopTests.MessageHop_WithExpression_CreatesModifiedCopyAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Observability/MessageHop.cs",
-        "sourceLine": 38,
+        "sourceLine": 37,
         "sourceSymbol": "MessageHop",
         "sourceType": "Record",
         "linkSource": "XmlTag"
@@ -258028,14 +258546,14 @@
     "CompositeChildIdentityTests.Derive_SameInputs_ProduceTheSameIdAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/CompositeChildIdentity.cs",
-        "sourceLine": 26,
+        "sourceLine": 27,
         "sourceSymbol": "CompositeChildIdentity",
         "sourceType": "Class",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/DerivedIdentity.cs",
-        "sourceLine": 21,
+        "sourceLine": 41,
         "sourceSymbol": "DerivedIdentity",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -258044,14 +258562,14 @@
     "CompositeChildIdentityTests.Derive_DifferentOrdinals_ProduceDifferentIdsAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/CompositeChildIdentity.cs",
-        "sourceLine": 26,
+        "sourceLine": 27,
         "sourceSymbol": "CompositeChildIdentity",
         "sourceType": "Class",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/DerivedIdentity.cs",
-        "sourceLine": 21,
+        "sourceLine": 41,
         "sourceSymbol": "DerivedIdentity",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -258060,14 +258578,14 @@
     "CompositeChildIdentityTests.Derive_DifferentTypes_ProduceDifferentIdsAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/CompositeChildIdentity.cs",
-        "sourceLine": 26,
+        "sourceLine": 27,
         "sourceSymbol": "CompositeChildIdentity",
         "sourceType": "Class",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/DerivedIdentity.cs",
-        "sourceLine": 21,
+        "sourceLine": 41,
         "sourceSymbol": "DerivedIdentity",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -258076,14 +258594,14 @@
     "CompositeChildIdentityTests.Derive_DifferentComposites_ProduceDifferentIdsAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/CompositeChildIdentity.cs",
-        "sourceLine": 26,
+        "sourceLine": 27,
         "sourceSymbol": "CompositeChildIdentity",
         "sourceType": "Class",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/DerivedIdentity.cs",
-        "sourceLine": 21,
+        "sourceLine": 41,
         "sourceSymbol": "DerivedIdentity",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -258092,14 +258610,46 @@
     "CompositeChildIdentityTests.Derive_IsVersion7WithTheRfcVariant_AndKeepsTheCompositesTimePrefixAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/CompositeChildIdentity.cs",
-        "sourceLine": 26,
+        "sourceLine": 27,
         "sourceSymbol": "CompositeChildIdentity",
         "sourceType": "Class",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/DerivedIdentity.cs",
-        "sourceLine": 21,
+        "sourceLine": 41,
+        "sourceSymbol": "DerivedIdentity",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "CompositeChildIdentityTests.Derive_ChildrenSortInTheirOrderWithinTheCompositeAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/CompositeChildIdentity.cs",
+        "sourceLine": 27,
+        "sourceSymbol": "CompositeChildIdentity",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/DerivedIdentity.cs",
+        "sourceLine": 41,
+        "sourceSymbol": "DerivedIdentity",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "CompositeChildIdentityTests.Derive_ChildrenOfConsecutiveComposites_SortInCompositeOrderAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/CompositeChildIdentity.cs",
+        "sourceLine": 27,
+        "sourceSymbol": "CompositeChildIdentity",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/DerivedIdentity.cs",
+        "sourceLine": 41,
         "sourceSymbol": "DerivedIdentity",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -258108,14 +258658,14 @@
     "CompositeChildIdentityTests.Derive_RejectsAnEmptyCompositeIdAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/CompositeChildIdentity.cs",
-        "sourceLine": 26,
+        "sourceLine": 27,
         "sourceSymbol": "CompositeChildIdentity",
         "sourceType": "Class",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/DerivedIdentity.cs",
-        "sourceLine": 21,
+        "sourceLine": 41,
         "sourceSymbol": "DerivedIdentity",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -258124,14 +258674,14 @@
     "CompositeChildIdentityTests.Derive_RejectsANegativeOrdinalAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/CompositeChildIdentity.cs",
-        "sourceLine": 26,
+        "sourceLine": 27,
         "sourceSymbol": "CompositeChildIdentity",
         "sourceType": "Class",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/DerivedIdentity.cs",
-        "sourceLine": 21,
+        "sourceLine": 41,
         "sourceSymbol": "DerivedIdentity",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -258140,14 +258690,14 @@
     "CompositeChildIdentityTests.Derive_RejectsAMissingTypeNameAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/CompositeChildIdentity.cs",
-        "sourceLine": 26,
+        "sourceLine": 27,
         "sourceSymbol": "CompositeChildIdentity",
         "sourceType": "Class",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/DerivedIdentity.cs",
-        "sourceLine": 21,
+        "sourceLine": 41,
         "sourceSymbol": "DerivedIdentity",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -258650,24 +259200,105 @@
         "linkSource": "XmlTag"
       }
     ],
+    "DerivedIdentityTests.FromCanonical_KeepsTheSourcesFirst80BitsAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/DerivedIdentity.cs",
+        "sourceLine": 39,
+        "sourceSymbol": "DerivedIdentity",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "DerivedIdentityTests.FromCanonical_PutsTheOrdinalInBits80To91Async": [
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/DerivedIdentity.cs",
+        "sourceLine": 39,
+        "sourceSymbol": "DerivedIdentity",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "DerivedIdentityTests.FromCanonical_OrdinalPastTheField_SaturatesAndStaysUniqueAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/DerivedIdentity.cs",
+        "sourceLine": 39,
+        "sourceSymbol": "DerivedIdentity",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "DerivedIdentityTests.FromCanonical_SameInputs_SameIdAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/DerivedIdentity.cs",
+        "sourceLine": 39,
+        "sourceSymbol": "DerivedIdentity",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "DerivedIdentityTests.FromCanonical_DifferentCanonical_SameOrdinal_DifferOnlyAfterTheOrdinalAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/DerivedIdentity.cs",
+        "sourceLine": 39,
+        "sourceSymbol": "DerivedIdentity",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "DerivedIdentityTests.FromCanonical_SourceThatIsNotVersion7_StillYieldsAVersion7IdWithTheRfcVariantAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/DerivedIdentity.cs",
+        "sourceLine": 39,
+        "sourceSymbol": "DerivedIdentity",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "DerivedIdentityTests.FromCanonical_ConsecutiveSources_DerivedIdsSortInSourceOrderAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/DerivedIdentity.cs",
+        "sourceLine": 39,
+        "sourceSymbol": "DerivedIdentity",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "DerivedIdentityTests.FromCanonical_OneSource_DerivedIdsSortInOrdinalOrderAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/DerivedIdentity.cs",
+        "sourceLine": 39,
+        "sourceSymbol": "DerivedIdentity",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "DerivedIdentityTests.FromCanonical_EveryIdOfAnEarlierSource_SortsBeforeEveryIdOfALaterOneAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/DerivedIdentity.cs",
+        "sourceLine": 39,
+        "sourceSymbol": "DerivedIdentity",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
     "EmissionIdentityTests.Derive_SameInputs_ReturnsSameIdAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/DerivedIdentity.cs",
-        "sourceLine": 20,
+        "sourceLine": 40,
         "sourceSymbol": "DerivedIdentity",
         "sourceType": "Class",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/EmissionIdentity.cs",
-        "sourceLine": 37,
+        "sourceLine": 36,
         "sourceSymbol": "EmissionIdentity",
         "sourceType": "Class",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/EmissionIdentity.cs",
-        "sourceLine": 80,
+        "sourceLine": 79,
         "sourceSymbol": "EmissionSequence",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -258676,21 +259307,21 @@
     "EmissionIdentityTests.Derive_DifferentOrdinal_ReturnsDifferentIdAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/DerivedIdentity.cs",
-        "sourceLine": 20,
+        "sourceLine": 40,
         "sourceSymbol": "DerivedIdentity",
         "sourceType": "Class",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/EmissionIdentity.cs",
-        "sourceLine": 37,
+        "sourceLine": 36,
         "sourceSymbol": "EmissionIdentity",
         "sourceType": "Class",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/EmissionIdentity.cs",
-        "sourceLine": 80,
+        "sourceLine": 79,
         "sourceSymbol": "EmissionSequence",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -258699,21 +259330,21 @@
     "EmissionIdentityTests.Derive_DifferentHandler_ReturnsDifferentIdAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/DerivedIdentity.cs",
-        "sourceLine": 20,
+        "sourceLine": 40,
         "sourceSymbol": "DerivedIdentity",
         "sourceType": "Class",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/EmissionIdentity.cs",
-        "sourceLine": 37,
+        "sourceLine": 36,
         "sourceSymbol": "EmissionIdentity",
         "sourceType": "Class",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/EmissionIdentity.cs",
-        "sourceLine": 80,
+        "sourceLine": 79,
         "sourceSymbol": "EmissionSequence",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -258722,21 +259353,21 @@
     "EmissionIdentityTests.Derive_NullHandlerVersusNamedHandler_ReturnsDifferentIdAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/DerivedIdentity.cs",
-        "sourceLine": 20,
+        "sourceLine": 40,
         "sourceSymbol": "DerivedIdentity",
         "sourceType": "Class",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/EmissionIdentity.cs",
-        "sourceLine": 37,
+        "sourceLine": 36,
         "sourceSymbol": "EmissionIdentity",
         "sourceType": "Class",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/EmissionIdentity.cs",
-        "sourceLine": 80,
+        "sourceLine": 79,
         "sourceSymbol": "EmissionSequence",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -258745,21 +259376,21 @@
     "EmissionIdentityTests.Derive_DifferentService_ReturnsDifferentIdAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/DerivedIdentity.cs",
-        "sourceLine": 20,
+        "sourceLine": 40,
         "sourceSymbol": "DerivedIdentity",
         "sourceType": "Class",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/EmissionIdentity.cs",
-        "sourceLine": 37,
+        "sourceLine": 36,
         "sourceSymbol": "EmissionIdentity",
         "sourceType": "Class",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/EmissionIdentity.cs",
-        "sourceLine": 80,
+        "sourceLine": 79,
         "sourceSymbol": "EmissionSequence",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -258768,21 +259399,21 @@
     "EmissionIdentityTests.Derive_DifferentEmittedType_ReturnsDifferentIdAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/DerivedIdentity.cs",
-        "sourceLine": 20,
+        "sourceLine": 40,
         "sourceSymbol": "DerivedIdentity",
         "sourceType": "Class",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/EmissionIdentity.cs",
-        "sourceLine": 37,
+        "sourceLine": 36,
         "sourceSymbol": "EmissionIdentity",
         "sourceType": "Class",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/EmissionIdentity.cs",
-        "sourceLine": 80,
+        "sourceLine": 79,
         "sourceSymbol": "EmissionSequence",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -258791,21 +259422,21 @@
     "EmissionIdentityTests.Derive_DifferentSource_ReturnsDifferentIdAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/DerivedIdentity.cs",
-        "sourceLine": 20,
+        "sourceLine": 40,
         "sourceSymbol": "DerivedIdentity",
         "sourceType": "Class",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/EmissionIdentity.cs",
-        "sourceLine": 37,
+        "sourceLine": 36,
         "sourceSymbol": "EmissionIdentity",
         "sourceType": "Class",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/EmissionIdentity.cs",
-        "sourceLine": 80,
+        "sourceLine": 79,
         "sourceSymbol": "EmissionSequence",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -258814,21 +259445,21 @@
     "EmissionIdentityTests.Derive_ResultIsVersion7ShapedWithRfcVariantAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/DerivedIdentity.cs",
-        "sourceLine": 20,
+        "sourceLine": 40,
         "sourceSymbol": "DerivedIdentity",
         "sourceType": "Class",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/EmissionIdentity.cs",
-        "sourceLine": 37,
+        "sourceLine": 36,
         "sourceSymbol": "EmissionIdentity",
         "sourceType": "Class",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/EmissionIdentity.cs",
-        "sourceLine": 80,
+        "sourceLine": 79,
         "sourceSymbol": "EmissionSequence",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -258837,44 +259468,44 @@
     "EmissionIdentityTests.Derive_ResultIsAcceptedByTheMessageIdValueObjectAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/DerivedIdentity.cs",
-        "sourceLine": 20,
+        "sourceLine": 40,
         "sourceSymbol": "DerivedIdentity",
         "sourceType": "Class",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/EmissionIdentity.cs",
-        "sourceLine": 37,
+        "sourceLine": 36,
         "sourceSymbol": "EmissionIdentity",
         "sourceType": "Class",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/EmissionIdentity.cs",
-        "sourceLine": 80,
+        "sourceLine": 79,
         "sourceSymbol": "EmissionSequence",
         "sourceType": "Class",
         "linkSource": "XmlTag"
       }
     ],
-    "EmissionIdentityTests.Derive_InheritsFirst48BitsOfSourceAsync": [
+    "EmissionIdentityTests.Derive_InheritsFirst80BitsOfSourceAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/DerivedIdentity.cs",
-        "sourceLine": 20,
+        "sourceLine": 40,
         "sourceSymbol": "DerivedIdentity",
         "sourceType": "Class",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/EmissionIdentity.cs",
-        "sourceLine": 37,
+        "sourceLine": 36,
         "sourceSymbol": "EmissionIdentity",
         "sourceType": "Class",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/EmissionIdentity.cs",
-        "sourceLine": 80,
+        "sourceLine": 79,
         "sourceSymbol": "EmissionSequence",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -258883,21 +259514,67 @@
     "EmissionIdentityTests.Derive_TwoOrdinals_ShareThePrefixAndDifferInTheHashAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/DerivedIdentity.cs",
-        "sourceLine": 20,
+        "sourceLine": 40,
         "sourceSymbol": "DerivedIdentity",
         "sourceType": "Class",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/EmissionIdentity.cs",
-        "sourceLine": 37,
+        "sourceLine": 36,
         "sourceSymbol": "EmissionIdentity",
         "sourceType": "Class",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/EmissionIdentity.cs",
-        "sourceLine": 80,
+        "sourceLine": 79,
+        "sourceSymbol": "EmissionSequence",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "EmissionIdentityTests.Derive_EventsOfConsecutiveCommands_SortInCommandOrderAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/DerivedIdentity.cs",
+        "sourceLine": 40,
+        "sourceSymbol": "DerivedIdentity",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/EmissionIdentity.cs",
+        "sourceLine": 36,
+        "sourceSymbol": "EmissionIdentity",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/EmissionIdentity.cs",
+        "sourceLine": 79,
+        "sourceSymbol": "EmissionSequence",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "EmissionIdentityTests.Derive_EmissionsOfOneHandling_SortInEmissionOrderAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/DerivedIdentity.cs",
+        "sourceLine": 40,
+        "sourceSymbol": "DerivedIdentity",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/EmissionIdentity.cs",
+        "sourceLine": 36,
+        "sourceSymbol": "EmissionIdentity",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/EmissionIdentity.cs",
+        "sourceLine": 79,
         "sourceSymbol": "EmissionSequence",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -258906,21 +259583,21 @@
     "EmissionIdentityTests.Derive_EmptySource_ThrowsAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/DerivedIdentity.cs",
-        "sourceLine": 20,
+        "sourceLine": 40,
         "sourceSymbol": "DerivedIdentity",
         "sourceType": "Class",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/EmissionIdentity.cs",
-        "sourceLine": 37,
+        "sourceLine": 36,
         "sourceSymbol": "EmissionIdentity",
         "sourceType": "Class",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/EmissionIdentity.cs",
-        "sourceLine": 80,
+        "sourceLine": 79,
         "sourceSymbol": "EmissionSequence",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -258929,21 +259606,21 @@
     "EmissionIdentityTests.Derive_NegativeOrdinal_ThrowsAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/DerivedIdentity.cs",
-        "sourceLine": 20,
+        "sourceLine": 40,
         "sourceSymbol": "DerivedIdentity",
         "sourceType": "Class",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/EmissionIdentity.cs",
-        "sourceLine": 37,
+        "sourceLine": 36,
         "sourceSymbol": "EmissionIdentity",
         "sourceType": "Class",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/EmissionIdentity.cs",
-        "sourceLine": 80,
+        "sourceLine": 79,
         "sourceSymbol": "EmissionSequence",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -258952,21 +259629,21 @@
     "EmissionIdentityTests.Derive_NullServiceName_ThrowsAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/DerivedIdentity.cs",
-        "sourceLine": 20,
+        "sourceLine": 40,
         "sourceSymbol": "DerivedIdentity",
         "sourceType": "Class",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/EmissionIdentity.cs",
-        "sourceLine": 37,
+        "sourceLine": 36,
         "sourceSymbol": "EmissionIdentity",
         "sourceType": "Class",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/EmissionIdentity.cs",
-        "sourceLine": 80,
+        "sourceLine": 79,
         "sourceSymbol": "EmissionSequence",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -258975,21 +259652,21 @@
     "EmissionIdentityTests.Derive_NullEmittedTypeName_ThrowsAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/DerivedIdentity.cs",
-        "sourceLine": 20,
+        "sourceLine": 40,
         "sourceSymbol": "DerivedIdentity",
         "sourceType": "Class",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/EmissionIdentity.cs",
-        "sourceLine": 37,
+        "sourceLine": 36,
         "sourceSymbol": "EmissionIdentity",
         "sourceType": "Class",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/EmissionIdentity.cs",
-        "sourceLine": 80,
+        "sourceLine": 79,
         "sourceSymbol": "EmissionSequence",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -258998,21 +259675,21 @@
     "EmissionIdentityTests.Sequence_SameKey_HandsOutConsecutiveOrdinalsFromZeroAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/DerivedIdentity.cs",
-        "sourceLine": 20,
+        "sourceLine": 40,
         "sourceSymbol": "DerivedIdentity",
         "sourceType": "Class",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/EmissionIdentity.cs",
-        "sourceLine": 37,
+        "sourceLine": 36,
         "sourceSymbol": "EmissionIdentity",
         "sourceType": "Class",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/EmissionIdentity.cs",
-        "sourceLine": 80,
+        "sourceLine": 79,
         "sourceSymbol": "EmissionSequence",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -259021,21 +259698,21 @@
     "EmissionIdentityTests.Sequence_DifferentKeys_CountIndependentlyAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/DerivedIdentity.cs",
-        "sourceLine": 20,
+        "sourceLine": 40,
         "sourceSymbol": "DerivedIdentity",
         "sourceType": "Class",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/EmissionIdentity.cs",
-        "sourceLine": 37,
+        "sourceLine": 36,
         "sourceSymbol": "EmissionIdentity",
         "sourceType": "Class",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/EmissionIdentity.cs",
-        "sourceLine": 80,
+        "sourceLine": 79,
         "sourceSymbol": "EmissionSequence",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -259044,21 +259721,21 @@
     "EmissionIdentityTests.Sequence_NullKey_ThrowsAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/DerivedIdentity.cs",
-        "sourceLine": 20,
+        "sourceLine": 40,
         "sourceSymbol": "DerivedIdentity",
         "sourceType": "Class",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/EmissionIdentity.cs",
-        "sourceLine": 37,
+        "sourceLine": 36,
         "sourceSymbol": "EmissionIdentity",
         "sourceType": "Class",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/EmissionIdentity.cs",
-        "sourceLine": 80,
+        "sourceLine": 79,
         "sourceSymbol": "EmissionSequence",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -259108,14 +259785,14 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/ImmediateUnitOfWorkStrategy.cs",
-        "sourceLine": 18,
+        "sourceLine": 17,
         "sourceSymbol": "ImmediateUnitOfWorkStrategy",
         "sourceType": "Class",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IntervalUnitOfWorkStrategy.cs",
-        "sourceLine": 17,
+        "sourceLine": 16,
         "sourceSymbol": "IntervalUnitOfWorkStrategy",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -259129,7 +259806,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/ScopedUnitOfWorkStrategy.cs",
-        "sourceLine": 16,
+        "sourceLine": 15,
         "sourceSymbol": "ScopedUnitOfWorkStrategy",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -259152,14 +259829,14 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/ImmediateUnitOfWorkStrategy.cs",
-        "sourceLine": 18,
+        "sourceLine": 17,
         "sourceSymbol": "ImmediateUnitOfWorkStrategy",
         "sourceType": "Class",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IntervalUnitOfWorkStrategy.cs",
-        "sourceLine": 17,
+        "sourceLine": 16,
         "sourceSymbol": "IntervalUnitOfWorkStrategy",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -259173,7 +259850,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/ScopedUnitOfWorkStrategy.cs",
-        "sourceLine": 16,
+        "sourceLine": 15,
         "sourceSymbol": "ScopedUnitOfWorkStrategy",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -259196,14 +259873,14 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/ImmediateUnitOfWorkStrategy.cs",
-        "sourceLine": 18,
+        "sourceLine": 17,
         "sourceSymbol": "ImmediateUnitOfWorkStrategy",
         "sourceType": "Class",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IntervalUnitOfWorkStrategy.cs",
-        "sourceLine": 17,
+        "sourceLine": 16,
         "sourceSymbol": "IntervalUnitOfWorkStrategy",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -259217,7 +259894,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/ScopedUnitOfWorkStrategy.cs",
-        "sourceLine": 16,
+        "sourceLine": 15,
         "sourceSymbol": "ScopedUnitOfWorkStrategy",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -259240,14 +259917,14 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/ImmediateUnitOfWorkStrategy.cs",
-        "sourceLine": 18,
+        "sourceLine": 17,
         "sourceSymbol": "ImmediateUnitOfWorkStrategy",
         "sourceType": "Class",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IntervalUnitOfWorkStrategy.cs",
-        "sourceLine": 17,
+        "sourceLine": 16,
         "sourceSymbol": "IntervalUnitOfWorkStrategy",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -259261,7 +259938,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/ScopedUnitOfWorkStrategy.cs",
-        "sourceLine": 16,
+        "sourceLine": 15,
         "sourceSymbol": "ScopedUnitOfWorkStrategy",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -259284,14 +259961,14 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/ImmediateUnitOfWorkStrategy.cs",
-        "sourceLine": 18,
+        "sourceLine": 17,
         "sourceSymbol": "ImmediateUnitOfWorkStrategy",
         "sourceType": "Class",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IntervalUnitOfWorkStrategy.cs",
-        "sourceLine": 17,
+        "sourceLine": 16,
         "sourceSymbol": "IntervalUnitOfWorkStrategy",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -259305,7 +259982,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/ScopedUnitOfWorkStrategy.cs",
-        "sourceLine": 16,
+        "sourceLine": 15,
         "sourceSymbol": "ScopedUnitOfWorkStrategy",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -259328,14 +260005,14 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/ImmediateUnitOfWorkStrategy.cs",
-        "sourceLine": 18,
+        "sourceLine": 17,
         "sourceSymbol": "ImmediateUnitOfWorkStrategy",
         "sourceType": "Class",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IntervalUnitOfWorkStrategy.cs",
-        "sourceLine": 17,
+        "sourceLine": 16,
         "sourceSymbol": "IntervalUnitOfWorkStrategy",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -259349,7 +260026,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/ScopedUnitOfWorkStrategy.cs",
-        "sourceLine": 16,
+        "sourceLine": 15,
         "sourceSymbol": "ScopedUnitOfWorkStrategy",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -259372,14 +260049,14 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/ImmediateUnitOfWorkStrategy.cs",
-        "sourceLine": 18,
+        "sourceLine": 17,
         "sourceSymbol": "ImmediateUnitOfWorkStrategy",
         "sourceType": "Class",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IntervalUnitOfWorkStrategy.cs",
-        "sourceLine": 17,
+        "sourceLine": 16,
         "sourceSymbol": "IntervalUnitOfWorkStrategy",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -259393,7 +260070,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/ScopedUnitOfWorkStrategy.cs",
-        "sourceLine": 16,
+        "sourceLine": 15,
         "sourceSymbol": "ScopedUnitOfWorkStrategy",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -259416,14 +260093,14 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/ImmediateUnitOfWorkStrategy.cs",
-        "sourceLine": 18,
+        "sourceLine": 17,
         "sourceSymbol": "ImmediateUnitOfWorkStrategy",
         "sourceType": "Class",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IntervalUnitOfWorkStrategy.cs",
-        "sourceLine": 17,
+        "sourceLine": 16,
         "sourceSymbol": "IntervalUnitOfWorkStrategy",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -259437,7 +260114,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/ScopedUnitOfWorkStrategy.cs",
-        "sourceLine": 16,
+        "sourceLine": 15,
         "sourceSymbol": "ScopedUnitOfWorkStrategy",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -259460,7 +260137,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/ImmediateUnitOfWorkStrategy.cs",
-        "sourceLine": 17,
+        "sourceLine": 16,
         "sourceSymbol": "ImmediateUnitOfWorkStrategy",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -259490,7 +260167,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/ImmediateUnitOfWorkStrategy.cs",
-        "sourceLine": 17,
+        "sourceLine": 16,
         "sourceSymbol": "ImmediateUnitOfWorkStrategy",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -259520,7 +260197,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/ImmediateUnitOfWorkStrategy.cs",
-        "sourceLine": 17,
+        "sourceLine": 16,
         "sourceSymbol": "ImmediateUnitOfWorkStrategy",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -259550,7 +260227,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/ImmediateUnitOfWorkStrategy.cs",
-        "sourceLine": 17,
+        "sourceLine": 16,
         "sourceSymbol": "ImmediateUnitOfWorkStrategy",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -259580,7 +260257,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/ImmediateUnitOfWorkStrategy.cs",
-        "sourceLine": 17,
+        "sourceLine": 16,
         "sourceSymbol": "ImmediateUnitOfWorkStrategy",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -259610,7 +260287,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/ImmediateUnitOfWorkStrategy.cs",
-        "sourceLine": 17,
+        "sourceLine": 16,
         "sourceSymbol": "ImmediateUnitOfWorkStrategy",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -259640,7 +260317,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/ImmediateUnitOfWorkStrategy.cs",
-        "sourceLine": 17,
+        "sourceLine": 16,
         "sourceSymbol": "ImmediateUnitOfWorkStrategy",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -259670,7 +260347,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/ImmediateUnitOfWorkStrategy.cs",
-        "sourceLine": 17,
+        "sourceLine": 16,
         "sourceSymbol": "ImmediateUnitOfWorkStrategy",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -259700,7 +260377,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/ImmediateUnitOfWorkStrategy.cs",
-        "sourceLine": 17,
+        "sourceLine": 16,
         "sourceSymbol": "ImmediateUnitOfWorkStrategy",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -259730,7 +260407,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/ImmediateUnitOfWorkStrategy.cs",
-        "sourceLine": 17,
+        "sourceLine": 16,
         "sourceSymbol": "ImmediateUnitOfWorkStrategy",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -259767,7 +260444,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/ScopedUnitOfWorkStrategy.cs",
-        "sourceLine": 15,
+        "sourceLine": 14,
         "sourceSymbol": "ScopedUnitOfWorkStrategy",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -259797,7 +260474,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/ScopedUnitOfWorkStrategy.cs",
-        "sourceLine": 15,
+        "sourceLine": 14,
         "sourceSymbol": "ScopedUnitOfWorkStrategy",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -259827,7 +260504,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/ScopedUnitOfWorkStrategy.cs",
-        "sourceLine": 15,
+        "sourceLine": 14,
         "sourceSymbol": "ScopedUnitOfWorkStrategy",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -259857,7 +260534,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/ScopedUnitOfWorkStrategy.cs",
-        "sourceLine": 15,
+        "sourceLine": 14,
         "sourceSymbol": "ScopedUnitOfWorkStrategy",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -259887,7 +260564,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/ScopedUnitOfWorkStrategy.cs",
-        "sourceLine": 15,
+        "sourceLine": 14,
         "sourceSymbol": "ScopedUnitOfWorkStrategy",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -259917,7 +260594,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/ScopedUnitOfWorkStrategy.cs",
-        "sourceLine": 15,
+        "sourceLine": 14,
         "sourceSymbol": "ScopedUnitOfWorkStrategy",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -259947,7 +260624,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/ScopedUnitOfWorkStrategy.cs",
-        "sourceLine": 15,
+        "sourceLine": 14,
         "sourceSymbol": "ScopedUnitOfWorkStrategy",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -259977,7 +260654,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/ScopedUnitOfWorkStrategy.cs",
-        "sourceLine": 15,
+        "sourceLine": 14,
         "sourceSymbol": "ScopedUnitOfWorkStrategy",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -260007,7 +260684,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/ScopedUnitOfWorkStrategy.cs",
-        "sourceLine": 15,
+        "sourceLine": 14,
         "sourceSymbol": "ScopedUnitOfWorkStrategy",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -260037,7 +260714,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/ScopedUnitOfWorkStrategy.cs",
-        "sourceLine": 15,
+        "sourceLine": 14,
         "sourceSymbol": "ScopedUnitOfWorkStrategy",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -260067,7 +260744,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/ScopedUnitOfWorkStrategy.cs",
-        "sourceLine": 15,
+        "sourceLine": 14,
         "sourceSymbol": "ScopedUnitOfWorkStrategy",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -260097,7 +260774,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/ScopedUnitOfWorkStrategy.cs",
-        "sourceLine": 15,
+        "sourceLine": 14,
         "sourceSymbol": "ScopedUnitOfWorkStrategy",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -260120,7 +260797,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IntervalUnitOfWorkStrategy.cs",
-        "sourceLine": 16,
+        "sourceLine": 15,
         "sourceSymbol": "IntervalUnitOfWorkStrategy",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -260150,7 +260827,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IntervalUnitOfWorkStrategy.cs",
-        "sourceLine": 16,
+        "sourceLine": 15,
         "sourceSymbol": "IntervalUnitOfWorkStrategy",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -260180,7 +260857,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IntervalUnitOfWorkStrategy.cs",
-        "sourceLine": 16,
+        "sourceLine": 15,
         "sourceSymbol": "IntervalUnitOfWorkStrategy",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -260210,7 +260887,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IntervalUnitOfWorkStrategy.cs",
-        "sourceLine": 16,
+        "sourceLine": 15,
         "sourceSymbol": "IntervalUnitOfWorkStrategy",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -260240,7 +260917,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IntervalUnitOfWorkStrategy.cs",
-        "sourceLine": 16,
+        "sourceLine": 15,
         "sourceSymbol": "IntervalUnitOfWorkStrategy",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -260270,7 +260947,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IntervalUnitOfWorkStrategy.cs",
-        "sourceLine": 16,
+        "sourceLine": 15,
         "sourceSymbol": "IntervalUnitOfWorkStrategy",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -260300,7 +260977,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IntervalUnitOfWorkStrategy.cs",
-        "sourceLine": 16,
+        "sourceLine": 15,
         "sourceSymbol": "IntervalUnitOfWorkStrategy",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -260330,7 +261007,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IntervalUnitOfWorkStrategy.cs",
-        "sourceLine": 16,
+        "sourceLine": 15,
         "sourceSymbol": "IntervalUnitOfWorkStrategy",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -260360,7 +261037,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IntervalUnitOfWorkStrategy.cs",
-        "sourceLine": 16,
+        "sourceLine": 15,
         "sourceSymbol": "IntervalUnitOfWorkStrategy",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -260390,7 +261067,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IntervalUnitOfWorkStrategy.cs",
-        "sourceLine": 16,
+        "sourceLine": 15,
         "sourceSymbol": "IntervalUnitOfWorkStrategy",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -260420,7 +261097,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IntervalUnitOfWorkStrategy.cs",
-        "sourceLine": 16,
+        "sourceLine": 15,
         "sourceSymbol": "IntervalUnitOfWorkStrategy",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -260450,7 +261127,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/Messaging/IntervalUnitOfWorkStrategy.cs",
-        "sourceLine": 16,
+        "sourceLine": 15,
         "sourceSymbol": "IntervalUnitOfWorkStrategy",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -269620,6 +270297,29 @@
       }
     ],
     "MessagePayloadLimitsTests.MaxPayloadSizeAttribute_CarriesItsLimitAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/MessagePayloadLimits.cs",
+        "sourceLine": 21,
+        "sourceSymbol": "MessagePayloadLimits",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Messaging/MessagePayloadSizeServiceCollectionExtensions.cs",
+        "sourceLine": 9,
+        "sourceSymbol": "MessagePayloadSizeServiceCollectionExtensions",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Attributes/MaxPayloadSizeAttribute.cs",
+        "sourceLine": 13,
+        "sourceSymbol": "MaxPayloadSizeAttribute",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "MessagePayloadLimitsTests.Resolve_FromAProviderThatKnowsNothing_UsesTheDefaultsAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/MessagePayloadLimits.cs",
         "sourceLine": 21,
@@ -294312,7 +295012,7 @@
         "linkSource": "Convention"
       }
     ],
-    "GuidUsageAnalyzerTests.Analyzer_TrackedGuidNewMedo_NoErrorAsync": [
+    "GuidUsageAnalyzerTests.Analyzer_TrackedGuidNew_NoErrorAsync": [
       {
         "sourceFile": "src/Whizbang.Generators/GuidUsageAnalyzer.cs",
         "sourceSymbol": "GuidUsageAnalyzer",
@@ -307424,6 +308124,14 @@
         "linkSource": "Convention"
       }
     ],
+    "SlidingWindowBatcherTests.ReadBatches_WindowElapsesAsTheInWindowWaitBegins_StillFlushesAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Workers/SlidingWindowBatcher.cs",
+        "sourceSymbol": "SlidingWindowBatcher",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
     "TransportConsumerOptionsTests.Destinations_DefaultsToEmptyMutableListAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Workers/TransportConsumerOptions.cs",
@@ -307936,7 +308644,7 @@
         "linkSource": "Convention"
       }
     ],
-    "TrackedGuidTests.TrackedGuid_NewMedo_IsTimeOrdered_ReturnsTrueAsync": [
+    "TrackedGuidTests.TrackedGuid_New_IsTimeOrdered_ReturnsTrueAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/TrackedGuidConverter.cs",
         "sourceSymbol": "TrackedGuid",
@@ -307944,7 +308652,7 @@
         "linkSource": "Convention"
       }
     ],
-    "TrackedGuidTests.TrackedGuid_NewMedo_SubMillisecondPrecision_ReturnsTrueAsync": [
+    "TrackedGuidTests.TrackedGuid_New_SubMillisecondPrecision_ReturnsTrueAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/TrackedGuidConverter.cs",
         "sourceSymbol": "TrackedGuid",
@@ -307952,7 +308660,7 @@
         "linkSource": "Convention"
       }
     ],
-    "TrackedGuidTests.TrackedGuid_NewMedo_Timestamp_ReturnsRecentTimeAsync": [
+    "TrackedGuidTests.TrackedGuid_New_Timestamp_ReturnsRecentTimeAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/TrackedGuidConverter.cs",
         "sourceSymbol": "TrackedGuid",
@@ -307960,7 +308668,7 @@
         "linkSource": "Convention"
       }
     ],
-    "TrackedGuidTests.TrackedGuid_NewMedo_Version_Returns7Async": [
+    "TrackedGuidTests.TrackedGuid_New_Version_Returns7Async": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/TrackedGuidConverter.cs",
         "sourceSymbol": "TrackedGuid",
@@ -307968,7 +308676,7 @@
         "linkSource": "Convention"
       }
     ],
-    "TrackedGuidTests.TrackedGuid_NewMedo_HasSourceMedoMetadataAsync": [
+    "TrackedGuidTests.TrackedGuid_New_HasSourceWhizbangMetadataAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/TrackedGuidConverter.cs",
         "sourceSymbol": "TrackedGuid",
@@ -307976,7 +308684,7 @@
         "linkSource": "Convention"
       }
     ],
-    "TrackedGuidTests.TrackedGuid_NewMedo_MultipleIds_AreUniqueAsync": [
+    "TrackedGuidTests.TrackedGuid_New_MultipleIds_AreUniqueAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/TrackedGuidConverter.cs",
         "sourceSymbol": "TrackedGuid",
@@ -307984,7 +308692,7 @@
         "linkSource": "Convention"
       }
     ],
-    "TrackedGuidTests.TrackedGuid_NewMedo_MultipleIds_AreTimeOrderedAsync": [
+    "TrackedGuidTests.TrackedGuid_New_MultipleIds_AreTimeOrderedAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/TrackedGuidConverter.cs",
         "sourceSymbol": "TrackedGuid",
@@ -308296,6 +309004,22 @@
         "linkSource": "Convention"
       }
     ],
+    "TrackedGuidTests.TrackedGuid_DetectedMedoId_HasSubMillisecondPrecisionAndIsTrackingAsync": [
+      {
+        "sourceFile": "src/Whizbang.Data.EFCore.Postgres/TrackedGuidConverter.cs",
+        "sourceSymbol": "TrackedGuid",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "TrackedGuidTests.TrackedGuid_New_IsTaggedAsTheFrameworksOwnSourceAsync": [
+      {
+        "sourceFile": "src/Whizbang.Data.EFCore.Postgres/TrackedGuidConverter.cs",
+        "sourceSymbol": "TrackedGuid",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
     "WhizbangIdProviderRegistryTests.RegisterFactory_WithValidFactory_RegistersSuccessfullyAsync": [
       {
         "sourceFile": "src/Whizbang.Core/WhizbangIdProviderRegistry.cs",
@@ -308344,7 +309068,7 @@
         "linkSource": "Convention"
       }
     ],
-    "WhizbangIdTests.WhizbangId_New_UsesTrackedGuidNewMedoAsync": [
+    "WhizbangIdTests.WhizbangId_New_UsesTrackedGuidNewAsync": [
       {
         "sourceFile": "src/Whizbang.Generators/WhizbangIdConverterInfo.cs",
         "sourceSymbol": "WhizbangId",
@@ -324322,12 +325046,12 @@
     }
   ],
   "metadata": {
-    "generated": "2026-09-26T02:06:29.638Z",
-    "sourceFiles": 1809,
-    "testFiles": 6840,
-    "totalLinks": 16247,
-    "codeSymbols": 2113,
-    "testMethods": 14134,
+    "generated": "2026-09-26T14:58:22.824Z",
+    "sourceFiles": 1810,
+    "testFiles": 6845,
+    "totalLinks": 16292,
+    "codeSymbols": 2114,
+    "testMethods": 14178,
     "linkHealthFindings": 26
   }
 }

@@ -283,7 +283,7 @@ Register a custom provider for explicit control:
 ```csharp{title="Service Name Resolution" description="Register a custom provider for explicit control:" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Service", "Name"] tests=["TransportConsumerBuilderExtensionsTests.AddTransportConsumer_UsesServiceInstanceProviderServiceNameAsync"]}
 builder.Services.AddSingleton<IServiceInstanceProvider>(
     new ServiceInstanceProvider(
-        instanceId: TrackedGuid.NewMedo(),
+        instanceId: TrackedGuid.New(),
         serviceName: "MyOrderService",
         hostName: Environment.MachineName,
         processId: Environment.ProcessId));

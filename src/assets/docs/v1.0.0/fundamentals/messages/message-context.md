@@ -94,7 +94,7 @@ public readonly partial struct MessageId;
 
 // Generated members (via the WhizbangId source generator):
 // public Guid Value { get; init; }
-// public static MessageId New();          // TrackedGuid.NewMedo() — monotonic UUIDv7
+// public static MessageId New();          // TrackedGuid.New() — monotonic UUIDv7
 // public static MessageId From(Guid);     // validates UUIDv7
 // public static MessageId Parse(string);  // validates UUIDv7
 // public override string ToString();
