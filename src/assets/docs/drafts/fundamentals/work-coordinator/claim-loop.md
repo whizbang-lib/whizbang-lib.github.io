@@ -5,8 +5,9 @@ description: >-
   How ClaimWorker polls claim_work: wake sources, adaptive backoff, the command
   lane, row-bounded acquisition, breadth-first head probing, claim-latency
   feedback on the adaptive window, work stealing, the per-category outstanding
-  budget with the perspective drain cap, and the release of unstarted leases by a
-  stuck instance.
+  budget with the perspective drain cap, the release of unstarted leases by a
+  stuck instance, and outbox stream runs with the immediate re-claim after a full
+  outbox acquisition.
 tags: 'work-coordinator, claim-loop, claim-work, acquisition, backpressure, work-stealing, command-lane'
 codeReferences:
   - src/Whizbang.Core/Workers/ClaimWorker.cs
@@ -18,6 +19,8 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/145_BoundedAcquisitionRewrite.sql
   - src/Whizbang.Data.Postgres/Migrations/150_BucketAwareClaim.sql
   - src/Whizbang.Data.Postgres/Migrations/157_ClaimAcquisitionBounded.sql
+  - src/Whizbang.Data.Postgres/Migrations/171_OutboxStreamRuns.sql
+  - src/Whizbang.Core/Workers/OutboxDrainWorker.cs
   - src/Whizbang.Core/Signals/BasePollSignalSource.cs
   - src/Whizbang.Core/Signals/PollIdleBackoff.cs
 testReferences:
@@ -26,6 +29,9 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/BoundedAcquisitionRewriteSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/ClaimWorkPlanShapeTests.cs
   - tests/Whizbang.Core.Tests/Signals/PollSignalSourceIdleBackoffTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/OutboxStreamRunSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/OutboxStreamRunDrainMeasurementTests.cs
+  - tests/Whizbang.Core.Tests/Workers/OutboxDrainWorkerStreamRunTests.cs
 ---
 
 # Claim loop
@@ -117,9 +123,9 @@ Wake is idempotent: multiple producers calling `RequestImmediatePoll()` between 
 
 ## RAISE NOTICE in-band signaling
 
-When `claim_work` returns a full batch (more eligible work than `p_max_streams`), it `RAISE NOTICE 'whizbang.has_more=true'`. The C# claim worker can subscribe to `NpgsqlConnection.Notice` and use this as an in-band drain signal — skip the wait, re-poll immediately. This survives pgbouncer (it's a protocol message, not session state).
+When `claim_work` returns a full batch (more eligible work than `p_max_streams`), it `RAISE NOTICE 'whizbang.has_more=true'`. This survives pgbouncer (it's a protocol message, not session state). It is a hint only: it also fires when the instance merely *holds* a full batch, so re-claiming on it would turn a re-offer into a spin, and the claim loop does not act on it.
 
-This is currently a hint; the polling loop's adaptive backoff will reset to base on the next non-empty result regardless.
+The notice the loop does act on is `whizbang.outbox_acquisition_full=true`, raised only when the outbox acquisition leased its whole row bound in this call, which only new work can do. The EF Core coordinator listens for it for the length of the claim command and reports it as `WorkBatch.OutboxAcquisitionFull`; see [Outbox streams move in runs](#outbox-streams-move-in-runs).
 
 ## Distribution to channels
 
@@ -270,6 +276,76 @@ once at a full budget of holdings and again at double it: blocks catch the heap 
 catch an index-only pass over the whole holdings, which is cheap in blocks and still grows with the
 backlog.
 
+## Outbox streams move in runs
+{verified: OutboxStreamRunSqlTests.ClaimWork_OneLongStream_DrainsInRunsNotRowsAsync, OutboxStreamRunSqlTests.ProcessOutboxFailures_MidRun_ReleasesTheRestOfTheRunToBeRetriedInOrderAsync, ClaimWorkerAcquisitionBoundsTests.FullOutboxAcquisition_ClaimsAgainWithoutSpacingAsync, OutboxDrainWorkerStreamRunTests.ALongStream_IsContinuedFromItsCursorWithoutAClaimCycleAsync}
+
+Measured on a deployed service, an outbox backlog of a few dozen streams of several hundred rows each drained at
+about one row per stream per claim cycle, and a cycle took about two seconds: 7 to 14 minutes while
+the database and the broker were idle. The drain rate tracked how many streams still had rows, never
+the backlog size or the claim settings, so a backlog's drain time was its longest stream times the
+cycle. The same volume spread over many short streams drained quickly, which is why a bulk import
+never showed it. Three things combined:
+
+- **The stream window was the outbox's row cap.** The window starts at `MinStreamsPerBatch` (25) and
+  grows only on inbox evidence, and the outbox acquisition leased the oldest rows up to it. The oldest
+  25 rows of an interleaved backlog are one row on each of 25 streams.
+- **Each run waited for the next claim.** A stream moved once per claim cycle, however quickly its
+  rows published.
+- **A full claim spaced out like a re-offer.** The continuing streams came back with the same stream
+  ids, which the loop reads as a re-offer, so it napped before claiming again.
+
+What the claim and the drain do now:
+
+1. **A claim leases a run of each stream.** The oldest claimable rows still choose which streams move
+   (at most the stream window of them); each chosen stream then leases up to `OutboxRunLength` of its
+   next consecutive rows, as an even share of `MaxOutboxRowsPerBatch` when the chosen streams cannot
+   all have a full run. A run is a prefix: it stops at the first row it may not take (another
+   instance's live lease, a retry deferred into the future) and at a row another session holds
+   locked, so a stream is never leased with a gap. Ordering holds because one instance holds the
+   stream's lease for the whole run and the drain publishes a stream's rows in order.
+2. **The drain continues a stream from its lease.** After a drain cycle publishes a stream's rows
+   without a failure, `IWorkCoordinator.ContinueOutboxStreamsAsync` leases that stream's next page
+   (`OutboxDrainWorkerOptions.MaxPerStream`) under the lease it already holds and returns only the
+   rows after the last one published, so a row whose completion has not landed is never published
+   twice. Up to `MaxContinuationRounds` rounds run per drain cycle; past that the claim cycle carries
+   the stream on, so a few long streams cannot hold the drain while other streams wait.
+3. **A failure stops its stream.** When a row fails to publish, nothing behind it on its stream is
+   published in that cycle, the stream is not continued, and `process_outbox_failures` releases the
+   rest of the run (rows of the same stream after the failed one, still leased to the same holder)
+   with the attempt their claim charged refunded. The failed row is deferred into the future, and the
+   acquisition's ordering rule (an earlier deferred row blocks the later ones) holds the rest behind
+   it, so the stream is retried in order. Before this, the rest stayed leased and the next drain
+   published it ahead of the retry.
+4. **A full outbox acquisition claims again at once.** `MaxOutboxRowsPerBatch` is the outbox's own
+   row bound. When an acquisition fills it, the loop skips the spacing nap and the poll wait and
+   claims again as soon as the batch is handed off (`ClaimWorker.ImmediateReclaimCount`). A pure
+   re-offer or an empty claim still spaces out exactly as before. The run of immediate claims is
+   bounded by what the instance holds: once holdings are measured the bound is the headroom under
+   `MaxOutstandingOutboxRows`, and at that ceiling it is zero, so the claim only re-offers. With
+   nothing measuring holdings the loop keeps its cadence rather than lease without limit.
+
+The claim still returns stream ids to the drain, now **one row per held stream** (its most urgent held
+row): with runs, a batch of held rows let one stream's run fill it and hid every other held stream
+from the drain.
+
+Every new access path is priced by the batch, never the backlog. A run is one range scan per chosen
+stream on `idx_outbox_stream_run` (`stream_id, created_at, message_id`, partial on pending unpublished
+rows), whose key order is the run's order, so the `LIMIT` stops it inside the index; the continuation
+and the failure release read the same way. The index replaces `idx_outbox_stream_unpublished` (same
+predicate and leading key, so the store's emptiness probe is still one descent), and the outbox keeps
+its index count.
+
+Measured on a container (`OutboxStreamRunDrainMeasurementTests`), one instance at a window of 25
+draining 44 interleaved streams:
+
+| Backlog | Claim cycles before | Claim cycles after | Statements before / after | At a 2 s cycle, before / after |
+|---|---|---|---|---|
+| 44 x 100 rows | 176 | 2 | 528 / 12 | ~6 min / ~4 s |
+| 44 x 500 rows | 880 | 2 | 2,640 / 28 | ~29 min / ~5 s |
+
+After the fix the first claim moves the 25 oldest streams and continuation carries each of them to
+the end of its run inside the same drain cycle; the second claim does the same for the other 19.
+
 ## The command lane
 {verified: BoundedAcquisitionRewriteSqlTests.ClaimOrphanedInbox_PicksAPendingCommandBeforeAnyEventWhateverTheBacklogAsync, BoundedAcquisitionRewriteSqlTests.ClaimWork_ReemitsCommandsAheadOfEventsAsync}
 
@@ -333,6 +409,9 @@ The store side is `release_unstarted_leases(p_instance_id, p_inbox_stream_ids, p
 | `PollingIntervalMilliseconds` | 250 | Base poll cadence. |
 | `PollingMaxIntervalMilliseconds` | 10 000 | Adaptive backoff cap. Clamped to ≤ stale-threshold/3. |
 | `MaxStreamsPerBatch` | 1000 | Cap on what one call hands back: streams for inbox and perspective work, rows for outbox and receptor work. Acquisition has its own row bound (`MaxOutstandingInboxRows`, below). |
+| `MaxOutboxRowsPerBatch` | 1000 | Outbox acquisition row bound per claim, independent of the stream window. A claim that fills it is followed at once by another. `0` restores the previous bound (the stream window). |
+| `OutboxRunLength` | 100 | Consecutive rows of one outbox stream a claim may lease. `1` is one row per chosen stream. |
+| `MaxOutstandingOutboxRows` | 10 000 | Ceiling on outbox rows held; once holdings are measured the outbox bound is the headroom under it. |
 | `PartitionCount` | 10 000 | Modulo partition count. |
 | `LeaseSeconds` | 300 | Lease duration on claimed work. |
 | `AdaptiveOutstandingBudget` | true | Bound the total outstanding inbox rows across claims (per category, row-bound). `false` falls back to the churn-based claim window alone. |
