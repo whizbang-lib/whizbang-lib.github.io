@@ -308,6 +308,21 @@ protected override async Task<IReadOnlyList<IncompleteSaga>> LoadIncompleteSagas
 The newest item change comes from `ISagaItemRepository.GetLastActivityAsync`. Its default reads every
 item row of the saga; a repository over a database should override it with a single `MAX` query.
 
+{verified: StrandedSagaSweepTests.Sweep_ItemRepositoryRequiresTenantScope_ReadsInTheSagasTenantAndArmsTheTickAsync, StrandedSagaSweepTests.Sweep_SagasInDifferentTenants_EachIsReadAndArmedInItsOwnTenantAsync, StrandedSagaSweepTests.Sweep_SagaWithNoTenant_IsReadInTheWorkersOwnContextAsync, StrandedSagaSweepTests.Sweep_OneSagasReadThrows_TheOthersAreStillArmedAndTheFailureIsLoggedAsync, StrandedSagaSweepTests.Sweep_CanceledMidSweep_StopsTheSweepAsync}
+
+**Each saga is swept inside its own tenant.** The sweep runs on a maintenance worker with no request
+and no ambient tenant, and one sweep crosses tenants. So everything it does for one saga runs as the
+system in that saga's tenant: the last-activity read, the item aggregate read, and the tick it arms.
+An item repository that reads through a tenant-scoped lens, which refuses to run without an ambient
+tenant, works unchanged. A saga with no tenant is read in the worker's own context.
+`LoadIncompleteSagasAsync` itself still runs with no tenant, because it enumerates sagas across all of
+them; the override has to read across tenants on its own terms, as the example above does.
+
+**One saga's failure does not stop the sweep.** If reading or arming one saga throws, the sweep logs a
+warning naming the saga, its id and its tenant, and moves on to the next. Only the sweep's own
+cancellation stops it. Before this, a single saga whose reads failed ended the whole sweep for its saga
+service, every cycle, so every other stranded saga of that service stayed stranded behind it.
+
 ## Related
 
 - [Whizbang.Sagas overview](./whizbang-sagas) — the application block this is part of.
