@@ -170,8 +170,8 @@ consumer is fixed. Each one is logged at Error level and counted in
 `whizbang.transport.inbox.messages_failed`.
 
 If custody itself cannot be given (the coordinator refuses the import), the message
-is logged at Critical level and the batch handler throws after storing every other
-message in the batch, so the batch is not reported handled. A failed download of an
+is logged at Critical level and the batch fails after every other message in the batch
+is stored (see [failed batches](#failed-batches)). A failed download of an
 offloaded body is still thrown for redelivery, since the body is usually there on a
 later attempt.
 {verified: TransportConsumerWorkerUnstorableMessageTests.SerializationFails_MessageDeadLetteredWithBody_NeighborsStillStoredAsync, TransportConsumerWorkerUnstorableMessageTests.SerializationFails_PayloadNoContextKnows_DeadLetteredWithDescriptorAsync, TransportConsumerWorkerUnstorableMessageTests.OffloadedBodyUnreadable_DeadLetteredWithDownloadedBodyAsync, TransportConsumerWorkerUnstorableMessageTests.OffloadedBodyProviderUnknown_DeadLetteredWithClaimAsync, TransportConsumerWorkerUnstorableMessageTests.CustodyUnavailable_BatchFailsAfterStoringNeighborsAsync}
@@ -190,6 +190,31 @@ still stores and reads what the transport can.
   with its body (`SerializationError`) and never completed. Without a dead-letter
   store, the failure is recorded on the row and the attempts bound governs it.
   {verified: InboxDispatchWorkerUndeserializablePayloadTests.Dispatch_PayloadRefusedBySerializer_DeadLettersWithBody_AndNeverCompletesAsync, InboxDispatchWorkerUndeserializablePayloadTests.LifecycleStages_PayloadRefused_NoStageRuns_AndNoCompletionIsEnqueuedAsync}
+
+## Failed batches {#failed-batches}
+
+A batch can fail as a whole: the inbox store times out, or a message can be neither
+stored nor dead-lettered. The worker logs the failure at Error level (naming SQLSTATE
+57014 when the database canceled the statement) and reports it to the transport as a
+`TransportBatchFailedException`. It never swallows the failure, because every transport
+settles a message by whether its handler returned: a swallowed failure is completed and
+lost. The signal is never a cancellation, so a statement timeout cannot be mistaken for a
+shutdown, and the worker keeps running.
+
+| Transport | What a failed batch gets |
+|---|---|
+| Azure Service Bus, sessions | Each message is abandoned; at `MaxDeliveryAttempts` it is dead-lettered at the broker |
+| Azure Service Bus, no sessions | Each message in the batch is abandoned; at `MaxDeliveryAttempts` it is dead-lettered at the broker |
+| RabbitMQ | Each message is NACKed with requeue |
+| In-process | The batch is re-queued in memory and retried |
+
+On Azure Service Bus a message that keeps failing therefore ends in the broker's
+dead-letter queue, from which the
+[transport dead-letter drain](../../operations/dead-letter-queue/transport-recovery)
+gives it durable custody. RabbitMQ has no delivery count of its own for a requeued
+message: give the queue a delivery limit (a quorum queue with `x-delivery-limit` and a
+dead-letter exchange), or a batch that always fails is redelivered indefinitely. A real host shutdown propagates as itself and is never wrapped.
+{verified: TransportBatchGuardTests.AStatementTimeoutFailsTheBatchAsATypedSignalNotACancellationAsync, TransportConsumerWorkerBatchFailureTests.InboxStoreTimesOut_TransportToldBatchFailed_WorkerStaysUpAndStoresTheRedeliveryAsync, AzureServiceBusTransportBatchPipelineTests.NonSessionBatch_HandlerReportsBatchFailed_AbandonsNeverCompletesAsync, AzureServiceBusTransportBatchPipelineTests.NonSessionBatch_HandlerFailsAtMaxDeliveryCount_DeadLettersNeverCompletesAsync, AzureServiceBusTransportBatchPipelineTests.SessionBatch_HandlerReportsBatchFailedFromACancellation_AbandonsNeverCompletesAsync, RabbitMQTransportBatchPathTests.SubscribeBatchAsync_HandlerReportsBatchFailedFromACancellation_NacksNeverAcksAsync}
 
 ## Subscription Resilience {#subscription-resilience}
 
