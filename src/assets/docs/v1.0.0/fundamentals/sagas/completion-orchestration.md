@@ -64,6 +64,7 @@ flowchart TD
     subgraph Safety["SAFETY NET: time-driven completion"]
         S1["watchdog tick (scheduled_for in outbox)"] --> S2["TryRecoverViaWatchdogTickAsync"]
         S2 -->|"recovered"| S3["exit"]
+        S2 -->|"already complete or saga not found"| S7["exit (chain ends)"]
         S2 -->|"progress observed"| S4["next tick at ETA + safety"]
         S2 -->|"no progress"| S5["stall counter increments"]
         S2 -->|"max stalls reached"| S6["SagaCompletionAbandonedEvent"]
@@ -100,8 +101,10 @@ The current scheduler is **progress-aware**. Each watchdog tick captures a snaps
 
 ```
 on tick:
-  recovered = TryRecoverViaWatchdogAsync(ctx)
-  if recovered: return Recovered
+  result = recover(ctx)             # the recovery TryRecoverViaWatchdogAsync runs
+  if result is Recovered:       return Recovered
+  if result is AlreadyComplete: return AlreadyComplete   # projection: CompletionEventDispatched
+  if result is SagaNotFound:    return SagaNotFound      # loader wired, returned no saga
 
   current = ItemRepository.GetAggregateForSagaAsync(sagaId)
   delta   = (current.Completed + current.Failed)
@@ -140,6 +143,24 @@ on tick:
 ```
 
 The snapshot lives on the tick event itself — no new table, no per-pod in-memory state to fragment across instances.
+
+## Watchdog tick outcomes
+
+`TryRecoverViaWatchdogTickAsync` returns a `WatchdogTickOutcome`. Three of them end the watchdog chain; the other two keep it going or hand it to an operator.
+
+| Outcome | What the tick found | What happens next |
+|---|---|---|
+| `Recovered` | Every item terminal; the tick drove `SagaCompletedEvent` | Chain ends |
+| `AlreadyComplete` | The saga projection carries `CompletionEventDispatched` | Chain ends |
+| `SagaNotFound` | The projection loader returned no saga (deleted, or never known) | Chain ends |
+| `ReArmed` | Saga still in progress | Next tick scheduled at the adaptive delay |
+| `Abandoned` | No progress across `MaxConsecutiveStalls` ticks | `SagaCompletionAbandonedEvent` published |
+
+`AlreadyComplete` is the most common outcome of all: the per-item path usually completes a saga before its watchdog tick fires, and that tick then has nothing to do. It schedules no next tick, counts no stall, resolves no stranded item and never abandons. A late tick cannot fail the items a fail-fast saga left non-terminal when it completed as Failed, and cannot publish an abandon event for a saga that finished normally.
+
+`SagaNotFound` is reported only when the service wires a projection loader (overrides `LoadProjectionAsync`). A service without one cannot see the projection at all, so a missing projection says nothing about the saga, and its ticks keep re-arming as before.
+
+The enum may grow. A receptor or logging override that switches on `WatchdogTickOutcome` should have a default arm.
 
 ## Configuration
 
@@ -204,7 +225,7 @@ After the cascade fix, the watchdog is a **safety net**. During healthy fan-out:
 
 1. The initial watchdog tick fires at `T + ComputeInitialWatchdogBudget(items)` — roughly `30s + items × 100ms`.
 2. By then, most items have already terminated; per-item recovery receptors have been firing inline on every `SagaItemCompletedEvent`.
-3. The watchdog observes either a near-zero remaining count (re-arms close to actual completion) or a recovered saga (exits).
+3. The watchdog observes either a near-zero remaining count (re-arms close to actual completion), a recovered saga (exits), or a saga the per-item path already completed (exits with `AlreadyComplete`).
 
 You only need the watchdog when the event-driven path didn't close — a per-item terminal event got lost in transport, a pod died mid-receptor, or the framework reconciler needs the event-store slow-path for a stranded projection row.
 

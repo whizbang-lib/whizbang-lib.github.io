@@ -22,6 +22,8 @@ codeReferences:
 testReferences:
   - tests/Whizbang.Generators.Tests/MessageJsonContextGeneratorTests.cs
   - tests/Whizbang.Generators.Tests/MessageJsonContextRenameAliasTests.cs
+  - tests/Whizbang.Generators.Tests/MessageJsonContextPropertyNameTests.cs
+  - tests/Whizbang.Core.Tests/Serialization/GeneratedContextJsonPropertyNameTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -308,6 +310,55 @@ public static class MessageJsonContextInitializer {
 - Mark types from external assemblies (use their own context)
 
 ---
+
+## Property Names on the Wire {#property-names}
+
+The generated context names each property the way System.Text.Json does:
+
+- **`[JsonPropertyName("…")]`** on a property: that name is written and read.
+- **No attribute:** the C# property name, exactly as declared. The context does not apply a
+  `PropertyNamingPolicy`; a message without the attribute keeps its C# names on the wire and in stored
+  events regardless of the serializer options.
+- **`[JsonIgnore]`** (or `Condition = Always`): the property is left out of the contract, so it is
+  neither written nor read.
+- **Conditional `[JsonIgnore]`**: the property stays in the contract and is skipped only when writing,
+  as System.Text.Json does. `WhenWritingNull` skips a null value, `WhenWritingDefault` skips the
+  type's default value (`null`, `false`, `0`, …), and `WhenWriting` never writes it. `Never` always
+  writes it. `WhenReading` is accepted but reads are not filtered: the property is written and read.
+
+```csharp{title="Shortening wire names" description="[JsonPropertyName] on a positional record's properties" category="Serialization" difficulty="BEGINNER" tags=["Serialization","JSON","Messages"] tests=["GeneratedContextJsonPropertyNameTests.GeneratedContext_WritesAndReadsTheAttributeNamesAsync"]}
+public sealed record ItemsCountedEvent(
+    [property: StreamId] Guid BatchId,
+    [property: JsonPropertyName("n")] int Count,
+    [property: JsonPropertyName("src")] string Source,
+    string Label) : IEvent {
+  [JsonIgnore]
+  public string Scratch { get; set; } = "";
+}
+
+// {"BatchId":"…","n":3,"src":"import","Label":"batch"}
+```
+
+On a positional record, target the property (`[property: JsonPropertyName("n")]`); the attribute is
+not valid on the constructor parameter alone. Constructor parameters still bind by their C# name, so
+the renamed property deserializes through the constructor as before. The attribute is read from the
+property as declared on the type: an override without the attribute uses its C# name, as it does in
+System.Text.Json.
+
+Before this behavior, a conditional `[JsonIgnore]` removed the property outright, so a value that
+should have been written whenever it was set was never written. A `PerspectiveScope` carried inside a
+message lost its tenant, user and extension values this way; it now round-trips intact.
+
+Typical reasons to use it: keeping a large payload under the transport's body-offload threshold by
+shortening names, or matching an external schema so the generated context and a plain
+`JsonSerializer` produce the same JSON.
+
+:::warning
+Renaming a property that is already on the wire or in stored events is a breaking change for that
+data. Events written under the old name no longer populate the property when read back. Only types
+that add the attribute are affected; add it when a message is introduced, or handle the old name
+through an upcaster or migration.
+:::
 
 ## Discovery Patterns
 
