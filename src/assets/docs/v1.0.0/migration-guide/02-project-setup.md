@@ -48,21 +48,21 @@ Add the Whizbang packages from NuGet.org:
 ```xml{title="Add Whizbang Packages" description="Add the Whizbang packages from NuGet." category="Reference" difficulty="INTERMEDIATE" tags=["Migration-guide", "Xml", "Add", "Whizbang", "Packages"]}
 <ItemGroup>
   <!-- Core Whizbang -->
-  <PackageReference Include="Whizbang.Core" Version="x.x.x" />
-  <PackageReference Include="Whizbang.Generators" Version="x.x.x"
+  <PackageReference Include="SoftwareExtravaganza.Whizbang.Core" Version="x.x.x" />
+  <PackageReference Include="SoftwareExtravaganza.Whizbang.Generators" Version="x.x.x"
                     OutputItemType="Analyzer"
                     ReferenceOutputAssembly="false" />
 
   <!-- Data Layer (choose based on your preference) -->
   <!-- Option A: EF Core (recommended for complex queries) -->
-  <PackageReference Include="Whizbang.Data.EFCore.Postgres" Version="x.x.x" />
+  <PackageReference Include="SoftwareExtravaganza.Whizbang.Data.EFCore.Postgres" Version="x.x.x" />
 
   <!-- Option B: Dapper (recommended for performance) -->
-  <PackageReference Include="Whizbang.Data.Dapper.Postgres" Version="x.x.x" />
+  <PackageReference Include="SoftwareExtravaganza.Whizbang.Data.Dapper.Postgres" Version="x.x.x" />
 
   <!-- Transports (include both for environment switching) -->
-  <PackageReference Include="Whizbang.Transports.RabbitMQ" Version="x.x.x" />
-  <PackageReference Include="Whizbang.Transports.AzureServiceBus" Version="x.x.x" />
+  <PackageReference Include="SoftwareExtravaganza.Whizbang.Transports.RabbitMQ" Version="x.x.x" />
+  <PackageReference Include="SoftwareExtravaganza.Whizbang.Transports.AzureServiceBus" Version="x.x.x" />
 
   <!-- Testing (for test projects) -->
   <PackageReference Include="Whizbang.Testing" Version="x.x.x" />

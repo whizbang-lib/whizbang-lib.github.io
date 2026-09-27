@@ -47,10 +47,10 @@ dotnet sln add QuickStartApp.API
 cd QuickStartApp.API
 
 # Add Whizbang packages
-dotnet add package Whizbang.Core
-dotnet add package Whizbang.Generators
-dotnet add package Whizbang.Data.EFCore.Postgres
-dotnet add package Whizbang.Transports.RabbitMQ
+dotnet add package SoftwareExtravaganza.Whizbang.Core
+dotnet add package SoftwareExtravaganza.Whizbang.Generators
+dotnet add package SoftwareExtravaganza.Whizbang.Data.EFCore.Postgres
+dotnet add package SoftwareExtravaganza.Whizbang.Transports.RabbitMQ
 ```
 
 ## Step 2: Start Infrastructure (Docker)

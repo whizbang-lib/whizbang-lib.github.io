@@ -55,7 +55,7 @@ Install Whizbang packages for your specific needs:
 #### Core Package
 
 ```bash{title="Core Package" description="Core Package" category="Configuration" difficulty="BEGINNER" tags=["Getting-started", "Bash", "Core", "Package"]}
-dotnet add package Whizbang.Core
+dotnet add package SoftwareExtravaganza.Whizbang.Core
 ```
 
 **Includes**:
@@ -69,39 +69,39 @@ dotnet add package Whizbang.Core
 
 **Dapper + PostgreSQL** (lightweight, fast):
 ```bash{title="Data Access Packages" description="Dapper + PostgreSQL (lightweight, fast):" category="Configuration" difficulty="BEGINNER" tags=["Getting-started", "Bash", "Data", "Access", "Packages"]}
-dotnet add package Whizbang.Data.Dapper.Postgres
+dotnet add package SoftwareExtravaganza.Whizbang.Data.Dapper.Postgres
 ```
 
 **EF Core + PostgreSQL** (full-featured):
 ```bash{title="Data Access Packages (2)" description="EF Core + PostgreSQL (full-featured):" category="Configuration" difficulty="BEGINNER" tags=["Getting-started", "Bash", "Data", "Access", "Packages"]}
-dotnet add package Whizbang.Data.EFCore.Postgres
-dotnet add package Whizbang.Data.EFCore.Postgres.Generators
+dotnet add package SoftwareExtravaganza.Whizbang.Data.EFCore.Postgres
+dotnet add package SoftwareExtravaganza.Whizbang.Data.EFCore.Postgres.Generators
 ```
 
 **SQLite** (development/testing):
 ```bash{title="Data Access Packages (3)" description="SQLite (development/testing):" category="Configuration" difficulty="BEGINNER" tags=["Getting-started", "Bash", "Data", "Access", "Packages"]}
-dotnet add package Whizbang.Data.Dapper.Sqlite
+dotnet add package SoftwareExtravaganza.Whizbang.Data.Dapper.Sqlite
 ```
 
 #### Transport Packages
 
 **Azure Service Bus**:
 ```bash{title="Transport Packages" description="Azure Service Bus:" category="Configuration" difficulty="BEGINNER" tags=["Getting-started", "Bash", "Transport", "Packages"]}
-dotnet add package Whizbang.Transports.AzureServiceBus
-dotnet add package Whizbang.Hosting.Azure.ServiceBus
+dotnet add package SoftwareExtravaganza.Whizbang.Transports.AzureServiceBus
+dotnet add package SoftwareExtravaganza.Whizbang.Hosting.Azure.ServiceBus
 ```
 
 **RabbitMQ**:
 ```bash{title="Transport Packages - RabbitMQ" description="RabbitMQ:" category="Configuration" difficulty="BEGINNER" tags=["Getting-started", "Bash", "Transport", "Packages"]}
-dotnet add package Whizbang.Transports.RabbitMQ
-dotnet add package Whizbang.Hosting.RabbitMQ
+dotnet add package SoftwareExtravaganza.Whizbang.Transports.RabbitMQ
+dotnet add package SoftwareExtravaganza.Whizbang.Hosting.RabbitMQ
 ```
 
 #### Source Generators
 
 **Automatic Discovery**:
 ```bash{title="Source Generators" description="Automatic Discovery:" category="Configuration" difficulty="ADVANCED" tags=["Getting-started", "Bash", "Source", "Generators"]}
-dotnet add package Whizbang.Generators
+dotnet add package SoftwareExtravaganza.Whizbang.Generators
 ```
 
 **Includes**:
@@ -118,11 +118,11 @@ For complete functionality, add all packages:
 ```xml{title="Option 2: Package Bundle" description="For complete functionality, add all packages:" category="Configuration" difficulty="BEGINNER" tags=["Getting-started", "Xml", "Option", "Package", "Bundle"]}
 <!-- YourProject.csproj -->
 <ItemGroup>
-  <PackageReference Include="Whizbang.Core" Version="x.x.x" />
-  <PackageReference Include="Whizbang.Generators" Version="x.x.x" />
-  <PackageReference Include="Whizbang.Data.Dapper.Postgres" Version="x.x.x" />
-  <PackageReference Include="Whizbang.Transports.AzureServiceBus" Version="x.x.x" />
-  <PackageReference Include="Whizbang.Hosting.Azure.ServiceBus" Version="x.x.x" />
+  <PackageReference Include="SoftwareExtravaganza.Whizbang.Core" Version="x.x.x" />
+  <PackageReference Include="SoftwareExtravaganza.Whizbang.Generators" Version="x.x.x" />
+  <PackageReference Include="SoftwareExtravaganza.Whizbang.Data.Dapper.Postgres" Version="x.x.x" />
+  <PackageReference Include="SoftwareExtravaganza.Whizbang.Transports.AzureServiceBus" Version="x.x.x" />
+  <PackageReference Include="SoftwareExtravaganza.Whizbang.Hosting.Azure.ServiceBus" Version="x.x.x" />
 </ItemGroup>
 ```
 
@@ -139,13 +139,13 @@ Use `Directory.Packages.props` for version management:
 
   <ItemGroup>
     <!-- Whizbang Packages -->
-    <PackageVersion Include="Whizbang.Core" Version="x.x.x" />
-    <PackageVersion Include="Whizbang.Generators" Version="x.x.x" />
-    <PackageVersion Include="Whizbang.Data.Dapper.Postgres" Version="x.x.x" />
-    <PackageVersion Include="Whizbang.Data.EFCore.Postgres" Version="x.x.x" />
-    <PackageVersion Include="Whizbang.Data.EFCore.Postgres.Generators" Version="x.x.x" />
-    <PackageVersion Include="Whizbang.Transports.AzureServiceBus" Version="x.x.x" />
-    <PackageVersion Include="Whizbang.Hosting.Azure.ServiceBus" Version="x.x.x" />
+    <PackageVersion Include="SoftwareExtravaganza.Whizbang.Core" Version="x.x.x" />
+    <PackageVersion Include="SoftwareExtravaganza.Whizbang.Generators" Version="x.x.x" />
+    <PackageVersion Include="SoftwareExtravaganza.Whizbang.Data.Dapper.Postgres" Version="x.x.x" />
+    <PackageVersion Include="SoftwareExtravaganza.Whizbang.Data.EFCore.Postgres" Version="x.x.x" />
+    <PackageVersion Include="SoftwareExtravaganza.Whizbang.Data.EFCore.Postgres.Generators" Version="x.x.x" />
+    <PackageVersion Include="SoftwareExtravaganza.Whizbang.Transports.AzureServiceBus" Version="x.x.x" />
+    <PackageVersion Include="SoftwareExtravaganza.Whizbang.Hosting.Azure.ServiceBus" Version="x.x.x" />
   </ItemGroup>
 </Project>
 ```
@@ -155,8 +155,8 @@ Then in project files:
 ```xml{title="Option 3: Central Package Management (Recommended for" description="Then in project files:" category="Configuration" difficulty="BEGINNER" tags=["Getting-started", "Xml", "Option", "Central", "Package"]}
 <!-- YourProject.csproj -->
 <ItemGroup>
-  <PackageReference Include="Whizbang.Core" />
-  <PackageReference Include="Whizbang.Generators" />
+  <PackageReference Include="SoftwareExtravaganza.Whizbang.Core" />
+  <PackageReference Include="SoftwareExtravaganza.Whizbang.Generators" />
   <!-- Versions come from Directory.Packages.props -->
 </ItemGroup>
 ```
@@ -175,9 +175,9 @@ dotnet sln add MyWhizbangApp.API
 
 # Add Whizbang packages
 cd MyWhizbangApp.API
-dotnet add package Whizbang.Core
-dotnet add package Whizbang.Generators
-dotnet add package Whizbang.Data.Dapper.Postgres
+dotnet add package SoftwareExtravaganza.Whizbang.Core
+dotnet add package SoftwareExtravaganza.Whizbang.Generators
+dotnet add package SoftwareExtravaganza.Whizbang.Data.Dapper.Postgres
 ```
 
 ### 2. Configure Target Framework
@@ -454,7 +454,7 @@ dotnet test
 ## Additional Resources
 
 - **Sample Projects**: `/samples/ECommerce` in the Whizbang repository
-- **Package Documentation**: https://nuget.org/packages/Whizbang.Core
+- **Package Documentation**: https://nuget.org/packages/SoftwareExtravaganza.Whizbang.Core
 - **GitHub Issues**: https://github.com/whizbang-lib/whizbang/issues
 
 ---
