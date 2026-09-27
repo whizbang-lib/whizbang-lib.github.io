@@ -167,6 +167,12 @@ Both implementations are best-effort:
 A single drainer failing doesn't stop the others — the worker continues
 through the remaining drainers on the current tick.
 
+The transport consumer uses the same custody entry for a message it receives but
+cannot store as an inbox row (a payload with no JSON metadata in the service, an
+offloaded body that cannot be rebuilt): it records the message with its body instead
+of letting the broker settle it. See
+[messages that cannot be stored](../../messaging/transports/transport-consumer#unstorable-messages).
+
 ## On-demand drain
 
 The worker exposes `DrainOnceAsync(CancellationToken)` publicly so
