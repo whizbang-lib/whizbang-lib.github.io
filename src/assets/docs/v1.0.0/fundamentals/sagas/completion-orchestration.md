@@ -143,7 +143,7 @@ The snapshot lives on the tick event itself — no new table, no per-pod in-memo
 
 ## Configuration
 
-Six knobs on `SagaOptions`:
+Seven knobs on `SagaOptions`:
 
 ```csharp{title="Adaptive scheduler config" unverified="DI-wiring configuration of SagaOptions; the knobs' runtime effect is exercised by TryRecoverViaWatchdogTickAsyncTests, but this fence is options wiring"}
 services.AddWhizbangSagas(opts => {
@@ -153,6 +153,7 @@ services.AddWhizbangSagas(opts => {
   opts.MaxConsecutiveStalls    = 4;                        // abandon threshold
   opts.StallBackoffMultiplier  = 2.0;                      // exponential on stall
   opts.StrandedSagaIdleGuard   = TimeSpan.FromMinutes(5);  // stranded-saga sweep
+  opts.StrandedSagaRearmInterval = TimeSpan.FromHours(1);  // stranded-saga re-arm
 });
 ```
 
@@ -164,10 +165,11 @@ services.AddWhizbangSagas(opts => {
 | `MaxConsecutiveStalls` | 4 | Number of consecutive zero-progress ticks before abandon. Progress between ticks resets the counter — slow sagas don't trigger abandon, stuck ones do. |
 | `StallBackoffMultiplier` | 2.0 | Exponential factor on stall: `MinDelay × Multiplier^stallCount`. Stall 1 = 60s, stall 2 = 120s, stall 3 = 240s, then abandon. |
 | `StrandedSagaIdleGuard` | 5 min | How long a saga with no tick coming must go without any change before the [stranded-saga sweep](#stranded-sagas) re-arms it. Covers a tick on the transport, which no table shows. |
+| `StrandedSagaRearmInterval` | 1 hour | How often the [stranded-saga sweep](#stranded-sagas) arms another tick for a saga that stays stranded, counted in whole intervals of stillness since its last change. Must be positive. |
 
 ## Hand-written sagas {#hand-written-sagas}
 
-{verified: SagaWatchdogTickDeliveryIntegrationTests.HandWrittenSagaTick_DeliveredAtTheInboxStage_ReachesTheSagaAsync, SagaWatchdogTickDeliveryIntegrationTests.WithoutTheRouter_AHandWrittenSagaTick_ReachesNothingAsync, SagaWatchdogTickDeliveryIntegrationTests.HandWrittenSagaTick_AtTheSendingStage_DoesNotReachTheSagaAsync, SagaWatchdogTickDeliveryIntegrationTests.SagaAttributeTick_IsLeftToItsGeneratedReceiverAsync}
+{verified: SagaWatchdogTickDeliveryIntegrationTests.HandWrittenSagaTick_DeliveredAtTheInboxStage_ReachesTheSagaAsync, SagaWatchdogTickDeliveryIntegrationTests.WithoutTheRouter_AHandWrittenSagaTick_ReachesNothingAsync, SagaWatchdogTickDeliveryIntegrationTests.HandWrittenSagaTick_AtTheSendingStage_DoesNotReachTheSagaAsync, SagaWatchdogTickDeliveryIntegrationTests.HandWrittenSagaTick_AfterTheInboxCommit_DoesNotReachTheSagaAgainAsync, SagaWatchdogTickDeliveryIntegrationTests.SagaAttributeTick_IsLeftToItsGeneratedReceiverAsync}
 
 `BaseSagaService.InitiateSagaAsync` arms the watchdog for **every** saga it starts. A saga declared
 with `[Saga]` gets a generated receiver for its ticks. A saga service written by hand — a class that
@@ -192,9 +194,13 @@ gone wrong, and then the safety net is simply absent.
 
 Two rules keep the router safe:
 
-- **It registers on the receiving side only** (`PostInboxInline`). A tick is armed for a future time;
-  a receptor on the sending side would run at arming and re-arm immediately — the cascade described
-  above.
+- **It registers on the receiving side only**, at `PreInboxInline`. A tick is armed for a future
+  time; a receptor on the sending side would run at arming and re-arm immediately — the cascade
+  described above. It is the pre-inbox stage rather than the post-inbox one because the receptor
+  invoker skips post-inbox receptors for a message its own service published, on the grounds that
+  it already ran at publish. A saga service arms and receives its own ticks, so at the post-inbox
+  stage every tick, including the ones the stranded-saga sweep arms, was received, committed and
+  handed to nobody.
 - **A `[Saga]`-declared saga is not a participant.** It already has a generated receiver. Registering
   it with `AddSagaService` as well would deliver every tick twice and re-arm it twice.
 
@@ -261,7 +267,7 @@ Only re-dispatch when the handler tolerates running twice: the lost worker may h
 
 ## Stranded sagas {#stranded-sagas}
 
-{verified: StrandedSagaSweepTests.Sweep_NoTickComingAndIdle_ArmsOneTickAtTheStallLimitInTheSagasTenantAsync, StrandedSagaSweepTests.Sweep_TickStillComing_ArmsNothingAsync, StrandedSagaSweepTests.Sweep_WakeLookupCannotTell_ArmsNothingAsync, StrandedSagaSweepTests.Sweep_RecentItemActivity_ArmsNothingAsync, StrandedSagaSweepTests.Sweep_SameIdleState_ClaimsTheSameKey_NewActivityANewKeyAsync, StrandedSagaSweepTests.ArmedTick_OnArrival_ResolvesTheStrandedItemAsync, StrandedSagaSweepStepTests.Step_AsksTheCoordinatorForPendingTicks_AndHandsItsAnswerToEachSagaAsync}
+{verified: StrandedSagaSweepTests.Sweep_NoTickComingAndIdle_ArmsOneTickAtTheStallLimitInTheSagasTenantAsync, StrandedSagaSweepTests.Sweep_TickStillComing_ArmsNothingAsync, StrandedSagaSweepTests.Sweep_WakeLookupCannotTell_ArmsNothingAsync, StrandedSagaSweepTests.Sweep_RecentItemActivity_ArmsNothingAsync, StrandedSagaSweepTests.Sweep_SameIdleState_ClaimsTheSameKey_NewActivityANewKeyAsync, StrandedSagaSweepTests.Sweep_TickLostAndSagaStillStranded_IsReArmedAfterTheInterval_NotBeforeAsync, StrandedSagaSweepTests.Sweep_SeveralInstancesInOneInterval_ArmOneTickAsync, StrandedSagaSweepTests.Sweep_TickStillComing_IsNotReArmedHoweverManyIntervalsHavePassedAsync, SagaWatchdogTickSubscriptionIntegrationTests.SweepTickPublishedByTheSagasOwnService_IsReceivedKeptAndReachesTheSagaAsync, StrandedSagaSweepTests.ArmedTick_OnArrival_ResolvesTheStrandedItemAsync, StrandedSagaSweepStepTests.Step_AsksTheCoordinatorForPendingTicks_AndHandsItsAnswerToEachSagaAsync}
 
 The watchdog is a chain: the first tick is armed when the saga starts, and each tick arms the next.
 Lose one tick and the chain ends. A tick can be lost to an instance that stops between the saga's work
@@ -289,8 +295,20 @@ A chain has ended when both of these hold:
   that recently is moving, or has a tick in flight.
 
 Every instance sweeps, and every restart sweeps again, so the tick is published with a claim key made
-of the saga and the time of its last change. They all arrive at one emission. A saga that moves and
-then stops again has a new last change, and is owed one more tick.
+of the saga, the time of its last change, and the number of whole `StrandedSagaRearmInterval`s (one
+hour) it has been still since. Every instance and restart sweeping the same stop in one interval
+arrives at one emission. A saga that moves and then stops again has a new last change, and is owed
+one more tick.
+
+The claim records that a tick was **published**, not that it was **handled**. A tick can still be
+lost after it is published, and a stranded saga never changes, so without the interval its first
+sweep tick would also be its last. With it, a saga that is still stranded a whole interval later
+is owed another tick, and gets one per interval until something changes. A saga with a tick still
+waiting is never re-armed, whatever the interval.
+
+A saga the tick abandons, with no stranded items to resolve, stays incomplete, so it is re-armed and
+abandoned again once per interval: a repeating operator signal. To stop it, leave abandoned sagas out
+of `LoadIncompleteSagasAsync`.
 
 The tick is published as the system, in the saga's tenant, so it is handled exactly as the tick the saga
 armed for itself was. That is why the sweep needs to know which sagas are incomplete **and which tenant

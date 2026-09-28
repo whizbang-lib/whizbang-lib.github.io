@@ -637,6 +637,33 @@ sequenceDiagram
   logged with a structured error class on `EventCategoryMetrics.Errors`,
   not a crash.
 
+### Rows that also receive per-stream events
+
+A collective's `UPDATE` and a per-stream apply can write the same row at
+the same time: an activation flip across a family
+(`IsActive = Id == activated`) runs while the activated member's own event
+is being applied to that member's row. The per-stream apply reads the
+whole row, folds its event in memory and writes the whole row back, so a
+collective that commits between that read and that write used to be
+**overwritten silently** by the stale copy, leaving the family with no
+active member.
+
+**The guarantee: a collective's committed change is never overwritten by a
+per-stream write computed before it.** The per-stream write lands only on
+the row version it read; when the collective moved the row in between, the
+write is refused, and the per-stream apply re-reads the row, re-applies its
+event onto the collective's result and writes again. The final row reflects
+both. Neither side has to be ordered or timed against the other, and a
+mirror perspective in another service is covered the same way.
+
+Nothing is required of the collective. The version is the PostgreSQL row's
+`xmin`, which every `UPDATE` moves on its own, so a collective whose apply
+hooks skip or override the `version` bump is still seen. The details, and
+what happens when a row keeps changing, are under
+[Concurrent writers](../perspectives/perspectives.md#concurrent-writers).
+The guard covers the EF Core PostgreSQL perspective store; the Dapper store
+does not check versions yet.
+
 ## Apply execution — scoped, bounded, indexed
 
 Each handler's apply is **one predicate `UPDATE` per projection table**,
@@ -667,7 +694,9 @@ hardened so a large cohort can never convoy locks or run away:
   disjoint scopes (e.g. different tenants) run concurrently.
 - **Store-managed columns.** The `UPDATE` also stamps `updated_at` and
   bumps `version` (a collective `UPDATE` writing only `data` would leave
-  them stale and break change-detection).
+  them stale and break change-detection). The per-stream lost-update guard
+  does not depend on that bump (see
+  [Rows that also receive per-stream events](#rows-that-also-receive-per-stream-events)).
 
 The EF Core apply runs each batch as raw parameterized SQL via
 `ExecuteSqlRawAsync` — a hand-built
