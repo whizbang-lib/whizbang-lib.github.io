@@ -18,6 +18,7 @@ codeReferences:
   - src/Whizbang.Core/Routing/NamespaceRoutingStrategy.cs
   - src/Whizbang.Core/Routing/SharedTopicInboxStrategy.cs
   - src/Whizbang.Core/Routing/EventSubscriptionDiscovery.cs
+  - src/Whizbang.Core/Routing/RuntimeEventSubscription.cs
   - src/Whizbang.Core/Routing/MessageKindAttribute.cs
   - src/Whizbang.Core/Dispatcher.cs
   - src/Whizbang.Core/Workers/TransportConsumerWorker.cs
@@ -30,6 +31,7 @@ testReferences:
   - tests/Whizbang.Core.Tests/Routing/InboxRoutingStrategyTests.cs
   - tests/Whizbang.Core.Tests/Routing/OutboxRoutingStrategyTests.cs
   - tests/Whizbang.Core.Tests/Routing/EventSubscriptionDiscoveryTests.cs
+  - tests/Whizbang.Core.Tests/Routing/RuntimeEventSubscriptionTests.cs
   - tests/Whizbang.Core.Tests/Routing/TransportSubscriptionBuilderTests.cs
   - tests/Whizbang.Core.Tests/Routing/MessageKindDetectorTests.cs
 lastMaintainedCommit: '01f07906'
@@ -156,6 +158,26 @@ internal sealed class EventNamespaceSource : IEventNamespaceSource {
     };
 }
 ```
+
+### Runtime Event Subscriptions {#runtime-event-subscriptions}
+
+{verified: RuntimeEventSubscriptionTests.DiscoverEventNamespaces_RuntimeSubscription_SubscribesToTheEventsTopicAsync, RuntimeEventSubscriptionTests.DiscoverEventNamespaces_RuntimeSubscription_UsesTheTopicThePublisherSendsToAsync, RuntimeEventSubscriptionTests.DiscoverEventNamespaces_RuntimeAndCompileTimeConsumersOfOneTopic_SubscribeOnceAsync, RuntimeEventSubscriptionTests.DiscoverEventNamespaces_RuntimeSubscriptionOnAnOwnedNamespace_IsLeftOutLikeACompileTimeOneAsync, RuntimeEventSubscriptionTests.WithRouting_ResolvedDiscovery_IncludesRuntimeSubscriptionsRegisteredInAnyOrderAsync}
+
+Auto-discovery only sees receptors the source generator finds. A receptor registered at startup
+through `IReceptorRegistry.Register` — usually one a library adds on the host's behalf, such as the
+saga watchdog's [tick router](../sagas/completion-orchestration#hand-written-sagas) — is invisible to
+it, so without a declaration the host listens for an event on a topic it never subscribes to. Declare
+the event instead:
+
+```csharp{title="Declaring an event consumed by a startup-registered receptor" description="Subscribes the host to an event's topic when the only receptor for it is registered at startup" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Subscriptions", "Event"] tests=["RuntimeEventSubscriptionTests.AddRuntimeEventSubscription_CalledTwiceForOneEvent_RegistersItOnceAsync", "RuntimeEventSubscriptionTests.WithRouting_ResolvedDiscovery_IncludesRuntimeSubscriptionsRegisteredInAnyOrderAsync"]}
+services.AddRuntimeEventSubscription<ReminderDueEvent>();
+```
+
+`EventSubscriptionDiscovery` adds the event's topic — the one its publisher sends it to, the lowercase
+namespace — to the auto-discovered set, before owned domains are subtracted. The event is therefore
+subscribed exactly as it would be for a generated receptor: once per topic, however many receptors of
+either kind consume it. The declaration is idempotent and independent of where `WithRouting` is
+called.
 
 ### Manual Event Subscriptions {#subscribe-to-namespace-of}
 
