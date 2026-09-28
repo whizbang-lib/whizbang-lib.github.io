@@ -329,6 +329,37 @@ event because it came from an event store. A catalog miss never demotes a child
 to a command.
 {verified: CompositeInboxFanoutIdentityAndSubscriptionTests.TryExpand_WithAConsumerPredicate_DropsChildrenNobodySubscribesTo_AndCountsThemAsync, CompositeInboxFanoutIdentityAndSubscriptionTests.TryExpand_TypedChildMissingFromTheCatalog_IsStillAnEvent_WhenItIsOneAsync, CompositeInboxFanoutIdentityAndSubscriptionTests.TryExpand_RawChildMissingFromTheCatalog_IsAnEventAsync}
 
+### Reading a stored composite at dispatch {#reading-a-stored-composite}
+
+A consumer stores a composite as an ordinary inbox row and reads it back at
+dispatch. Two things decide whether that read succeeds.
+
+**The chain it is read with.** The dispatch deserializer, the envelope
+serializer that writes the row and the body-offload rehydrator all use the
+host's registered `JsonSerializerOptions`, completed by the registry: every
+registered context answers first, the host's own resolver and converters answer
+behind them, and out-of-order metadata is allowed. A host that registered its
+generated `WhizbangJsonContext.CreateOptions()` (four fixed contexts) therefore
+reads a stored composite exactly the way the transport read it inline.
+{verified: JsonContextRegistryCompleteChainTests.WithCompleteChain_HostOptions_ResolvesRegisteredTypesTheHostCannotAsync}
+
+**Where `$type` ends up.** The inbox column is `jsonb`, which orders an object's
+keys by length. An inner event with any key of four characters or fewer (`Id`,
+`Note`, `Seq`) comes back with `$type` after that key. Options that do not allow
+out-of-order metadata refuse the whole composite ("The metadata property is
+either not supported by the type or is not the first property"). Every generated
+message type binds through its constructor, so this happens whether `Inner` is
+constructor-bound or init-only.
+{verified: CompositeCrossContextDispatchTests.Deserialize_CtorBoundInner_StoredByHostOptions_KeepsResolvableAndPlaceholdersTheRestAsync, CompositeCrossContextDispatchTests.Deserialize_SettableInner_StoredByHostOptions_KeepsResolvableAndPlaceholdersTheRestAsync}
+
+With both handled, a consumer that knows only some inner event types gets its
+own types dispatched as children. The ones it cannot name read as placeholders
+and are skipped as unsubscribed.
+{verified: CompositeCrossContextDispatchTests.Dispatch_CtorBoundCrossContextComposite_FansOutResolvableInnerEventsOnlyAsync, CompositeCrossContextDispatchTests.Dispatch_SettableCrossContextComposite_FansOutResolvableInnerEventsOnlyAsync}
+
+If the serializer still refuses the stored payload, the row is dead-lettered
+with its body and never completed. See the failure modes table below.
+
 ### Meters
 
 `Whizbang.Composites` (see the [metrics reference](../../operations/observability/metrics#composites-and-collectives))
@@ -507,6 +538,7 @@ with its consumer.
 | Inner event is null / child serialization fails under `Atomic` | `CompositeExpansionFailure` (16) | All-or-nothing — no partial inner events recorded; whole composite dead-letters. |
 | Inner event is null / child serialization fails under `Independent` | — | Drop the bad child (logged), fan out the rest. |
 | Producer builds an over-cap composite | — | `EnsureWithinCap()` throws `InvalidOperationException`; at publish, `_fanOutCompositeLocallyAtPublishAsync` throws the same synchronously. |
+| The stored composite cannot be deserialized at dispatch (the serializer throws `JsonException` or `NotSupportedException`) | `SerializationError` | The row is dead-lettered with its body through the inbox dead-letter move. It is never completed. With no dead-letter store, or if the move fails, the failure is routed through the failure channel, so the row keeps its body and the attempts bound governs it. {verified: InboxDispatchWorkerUndeserializablePayloadTests.Dispatch_PayloadRefusedBySerializer_DeadLettersWithBody_AndNeverCompletesAsync, InboxDispatchWorkerUndeserializablePayloadTests.Dispatch_PayloadRefused_NoDeadLetterStore_RoutesFailure_AndNeverCompletesAsync} |
 | The synchronous commit of an expansion fails | — | Logged and counted; the row stays leased and unprocessed for the claim loop's re-offer to retry, and the in-flight entry is released so the retry is not filtered. The retry expands to the same child ids. |
 
 ## Code ↔ tests

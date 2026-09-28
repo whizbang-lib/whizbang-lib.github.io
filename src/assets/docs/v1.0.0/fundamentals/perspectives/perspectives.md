@@ -18,6 +18,9 @@ codeReferences:
   - src/Whizbang.Core/Perspectives/IPerspectiveWithActionsFor.cs
   - src/Whizbang.Core/Perspectives/IGlobalPerspectiveFor.cs
   - src/Whizbang.Core/Perspectives/ITemporalPerspectiveFor.cs
+  - src/Whizbang.Core/Perspectives/PerspectiveRowVersion.cs
+  - src/Whizbang.Core/Perspectives/PerspectiveRowConflictException.cs
+  - src/Whizbang.Data.EFCore.Postgres/PerspectiveRowVersionSql.cs
   - src/Whizbang.Generators/PerspectivePurityAnalyzer.cs
   - src/Whizbang.Generators/Utilities/PerspectiveDiscoveryHelper.cs
   - >-
@@ -27,6 +30,9 @@ codeReferences:
 testReferences:
   - tests/Whizbang.Core.Tests/Perspectives/IPerspectiveForTests.cs
   - tests/Whizbang.Generators.Tests/PerspectivePurityAnalyzerTests.cs
+  - tests/Whizbang.Core.Tests/Perspectives/PerspectiveRowConflictRetryTests.cs
+  - >-
+    tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/PerspectiveRowVersionIntegrationTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -274,9 +280,9 @@ Whizbang automatically generates `IPerspectiveRunner` implementations for each p
 **How it works**:
 1. `PerspectiveWorker` polls `IWorkCoordinator` for streams with new events
 2. Worker resolves appropriate runner via `IPerspectiveRunnerRegistry` (zero-reflection, AOT-compatible)
-3. Runner loads current model from `IPerspectiveStore<TModel>` (or creates new)
+3. Runner reads the row's version and metadata (`ReadForApplyAsync`), then loads the current model from `IPerspectiveStore<TModel>` (or creates new)
 4. Runner applies **all new events** using perspective's pure `Apply()` methods
-5. Runner saves model + checkpoint **atomically** (unit of work pattern)
+5. Runner saves model + checkpoint **atomically** (unit of work pattern), on the row version it read (see [Concurrent writers](#concurrent-writers))
 
 **Generated code example**:
 ```csharp{title="PerspectiveRunner Architecture" description="Generated code example:" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Perspectives", "PerspectiveRunner", "Architecture"] unverified="illustrative generated runner — actual runner generation is covered by the source-generator tests"}
@@ -1011,6 +1017,46 @@ public async Task<PerspectiveCheckpointCompletion> RunAsync(...) {
 1. **Partial progress**: Save checkpoint up to last successful event
 2. **Retry**: Worker retries failed perspective work on next poll
 3. **Dead letter**: Log persistent failures for manual review
+
+### Concurrent writers {#concurrent-writers}
+
+A per-stream apply reads the row, folds its events in memory and writes the **whole row** back. Other
+writers can change the same row in between: most often a [collective event](../messaging/collective-events.md)
+whose set-based `UPDATE` covers rows that also receive their own per-stream events (an activation flip
+across a family of rows, `IsActive = Id == activated`, while the activated member's own event is being
+applied), and occasionally a second apply of the same stream.
+
+**The guarantee: a per-stream write computed from a stale read never lands.** The runner reads the row's
+version before it loads the model, and the write lands only on that version:
+
+| What happened between the read and the write | Outcome |
+|---|---|
+| Nothing | The write lands. One read of the version and metadata, one read of the model, one write: the same number of round trips as before, and one fewer full-row read |
+| Another writer changed the row | The write is refused (`PerspectiveRowConflictException`, nothing written). The runner re-reads the row, re-applies the batch's events onto it and writes again, so the final row reflects both writers |
+| A row appeared where there was none, or the row was deleted | Refused and retried the same way; a deleted row is never resurrected by a stale write |
+| The row keeps changing under every attempt | After 5 attempts the runner logs a warning and rethrows. The batch fails through the ordinary failure path and its events are redelivered. Nothing stale is written |
+
+A retry does not fire the pre-perspective lifecycle stages again: they announce the batch, and the retry
+re-folds the same batch. Events another writer already applied are skipped by the idempotency filter on
+the re-read.
+
+On PostgreSQL the version is the row's system column `xmin`, which **every** `UPDATE` moves, whichever
+path issued it (a per-stream write, a collective apply on either driver, your own SQL) and whether or not
+it touched the `version` column. No writer has to opt in, no column or migration is needed, and existing
+rows are covered as they are. The atomic write path checks the version in the same statement
+(`UPDATE … WHERE id = @id AND xmin = @read`, or `INSERT … ON CONFLICT (id) DO NOTHING` for a new row);
+the EF fallback path locks the row (`SELECT … FOR UPDATE`) and checks it in the same transaction as the
+save.
+
+This is not ordering. A write whose version is current but whose metadata is older than the stored
+row's is still refused quietly by the commit-sequence guard (or, for an `IVersionedApplyTarget`, the event
+id guard), exactly as before; the version check sits on top of those guards and does not replace them.
+
+The guard covers the **EF Core PostgreSQL** store. A custom `IPerspectiveStore<TModel>` that does not
+override `ReadForApplyAsync` reports `PerspectiveRowVersion.Unchecked`, and its reads and writes are
+exactly what they were. The Dapper PostgreSQL store does not check versions yet. A rewind's replay (and
+the re-fold that resurrects a reaped row) writes unconditionally, since it recomputes the row from a
+snapshot and the event log rather than from what it read.
 
 ---
 

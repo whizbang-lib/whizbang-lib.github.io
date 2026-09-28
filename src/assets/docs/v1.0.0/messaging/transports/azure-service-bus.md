@@ -327,7 +327,7 @@ size and makes three decisions:
 |---|---|---|
 | The pool is full (active sessions equal the pool size) | **Grow at once**: double, capped at the ceiling | The next session is already queueing behind the cap, and every queued session is a stream whose first message waits until a slot frees. A full pool is not a spike, so it does not wait out the window. |
 | At or above 80 percent for one full `AcceptorEvaluationInterval` | **Grow**: double, capped at the ceiling | Sustained near-saturation means sessions are probably queueing. The window filters a momentary burst. |
-| Below 25 percent for one full `AcceptorEvaluationInterval` | **Decay**: halve, floored at `AcceptorFloor` | Most slots are pure idle accept churn. |
+| Below 25 percent for one full `AcceptorEvaluationInterval`, once no session is held | **Decay**: halve, floored at `AcceptorFloor` | Most slots are pure idle accept churn. Waiting until no session is held means a scale-down never cancels a session mid-drain, which the SDK would log as a `DrainLinkException` at Error. |
 
 Between those bands the pool holds. A growth or decay step restarts both windows, so the next
 decision is measured against the new pool size. Doubling and halving reach any ceiling in a

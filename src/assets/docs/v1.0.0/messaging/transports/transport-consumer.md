@@ -148,6 +148,23 @@ services.AddWhizbang()
 
 The error occurs when resolving `TransportConsumerOptions` from the service provider, not at registration time.
 
+### Messages that cannot be stored or read back {#unreadable-messages}
+
+The framework reads and writes a consumer's stored messages with the host's
+registered `JsonSerializerOptions`, completed by the registry: every registered
+context answers first, the host's resolver and converters answer behind them,
+and out-of-order metadata is allowed because `jsonb` reorders keys. A host that
+registers a narrower chain, such as its generated `WhizbangJsonContext.CreateOptions()`,
+still stores and reads what the transport can.
+{verified: JsonContextRegistryCompleteChainTests.WithCompleteChain_HostOptions_ResolvesRegisteredTypesTheHostCannotAsync}
+
+- A message that cannot become an inbox row is dead-lettered with its raw body at
+  the transport edge. The broker message is never settled as consumed.
+- An inbox row whose payload the serializer refuses at dispatch is dead-lettered
+  with its body (`SerializationError`) and never completed. Without a dead-letter
+  store, the failure is recorded on the row and the attempts bound governs it.
+  {verified: InboxDispatchWorkerUndeserializablePayloadTests.Dispatch_PayloadRefusedBySerializer_DeadLettersWithBody_AndNeverCompletesAsync, InboxDispatchWorkerUndeserializablePayloadTests.LifecycleStages_PayloadRefused_NoStageRuns_AndNoCompletionIsEnqueuedAsync}
+
 ## Subscription Resilience {#subscription-resilience}
 
 :::new
