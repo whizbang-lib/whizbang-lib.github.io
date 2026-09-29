@@ -148,7 +148,35 @@ services.AddWhizbang()
 
 The error occurs when resolving `TransportConsumerOptions` from the service provider, not at registration time.
 
-### Messages that cannot be stored or read back {#unreadable-messages}
+## Messages that cannot be stored {#unstorable-messages}
+
+Every received message becomes an inbox row before anything else happens to it. When
+a message cannot become one, the consumer never skips it and lets the broker settle
+it as consumed. It gives the message dead-letter custody in `wh_dead_letters` through
+`IWorkCoordinator.ImportBrokerDeadLetterAsync`, the same entry the
+[broker dead-letter drain](../../operations/dead-letter-queue/transport-recovery)
+uses, and the rest of the batch is stored as usual:
+
+| Cause | Reason recorded | Body kept |
+|---|---|---|
+| The envelope cannot be serialized for the inbox (no JSON metadata for its payload in this service's options) | `SerializationError`, with the underlying exception | The envelope re-serialized against every context registered at that moment; if even that fails, a descriptor naming the message id, envelope type and failure |
+| An offloaded body downloads but cannot be read as its envelope type | `SerializationError` | The downloaded original body, verbatim |
+| An offloaded body cannot be obtained (unknown provider, integrity failure, unknown cipher) | The rehydrate reason, e.g. `BodyClaimProviderUnknown` | The claim envelope, which still locates the body in its store |
+
+The record lands with `source_table = 'broker'`, the wire message id as its
+idempotency key, the subscription (`topic/subscription`) as its destination, and the
+reason in its error text. Dead-letter recovery re-emits it through the inbox once the
+consumer is fixed. Each one is logged at Error level and counted in
+`whizbang.transport.inbox.messages_failed`.
+
+If custody itself cannot be given (the coordinator refuses the import), the message
+is logged at Critical level and the batch fails after every other message in the batch
+is stored (see [failed batches](#failed-batches)). A failed download of an
+offloaded body is still thrown for redelivery, since the body is usually there on a
+later attempt.
+{verified: TransportConsumerWorkerUnstorableMessageTests.SerializationFails_MessageDeadLetteredWithBody_NeighborsStillStoredAsync, TransportConsumerWorkerUnstorableMessageTests.SerializationFails_PayloadNoContextKnows_DeadLetteredWithDescriptorAsync, TransportConsumerWorkerUnstorableMessageTests.OffloadedBodyUnreadable_DeadLetteredWithDownloadedBodyAsync, TransportConsumerWorkerUnstorableMessageTests.OffloadedBodyProviderUnknown_DeadLetteredWithClaimAsync, TransportConsumerWorkerUnstorableMessageTests.CustodyUnavailable_BatchFailsAfterStoringNeighborsAsync}
+
+### Messages that cannot be read back {#unreadable-messages}
 
 The framework reads and writes a consumer's stored messages with the host's
 registered `JsonSerializerOptions`, completed by the registry: every registered
@@ -158,12 +186,35 @@ registers a narrower chain, such as its generated `WhizbangJsonContext.CreateOpt
 still stores and reads what the transport can.
 {verified: JsonContextRegistryCompleteChainTests.WithCompleteChain_HostOptions_ResolvesRegisteredTypesTheHostCannotAsync}
 
-- A message that cannot become an inbox row is dead-lettered with its raw body at
-  the transport edge. The broker message is never settled as consumed.
 - An inbox row whose payload the serializer refuses at dispatch is dead-lettered
   with its body (`SerializationError`) and never completed. Without a dead-letter
   store, the failure is recorded on the row and the attempts bound governs it.
   {verified: InboxDispatchWorkerUndeserializablePayloadTests.Dispatch_PayloadRefusedBySerializer_DeadLettersWithBody_AndNeverCompletesAsync, InboxDispatchWorkerUndeserializablePayloadTests.LifecycleStages_PayloadRefused_NoStageRuns_AndNoCompletionIsEnqueuedAsync}
+
+## Failed batches {#failed-batches}
+
+A batch can fail as a whole: the inbox store times out, or a message can be neither
+stored nor dead-lettered. The worker logs the failure at Error level (naming SQLSTATE
+57014 when the database canceled the statement) and reports it to the transport as a
+`TransportBatchFailedException`. It never swallows the failure, because every transport
+settles a message by whether its handler returned: a swallowed failure is completed and
+lost. The signal is never a cancellation, so a statement timeout cannot be mistaken for a
+shutdown, and the worker keeps running.
+
+| Transport | What a failed batch gets |
+|---|---|
+| Azure Service Bus, sessions | Each message is abandoned; at `MaxDeliveryAttempts` it is dead-lettered at the broker |
+| Azure Service Bus, no sessions | Each message in the batch is abandoned; at `MaxDeliveryAttempts` it is dead-lettered at the broker |
+| RabbitMQ | Each message is NACKed with requeue |
+| In-process | The batch is re-queued in memory and retried |
+
+On Azure Service Bus a message that keeps failing therefore ends in the broker's
+dead-letter queue, from which the
+[transport dead-letter drain](../../operations/dead-letter-queue/transport-recovery)
+gives it durable custody. RabbitMQ has no delivery count of its own for a requeued
+message: give the queue a delivery limit (a quorum queue with `x-delivery-limit` and a
+dead-letter exchange), or a batch that always fails is redelivered indefinitely. A real host shutdown propagates as itself and is never wrapped.
+{verified: TransportBatchGuardTests.AStatementTimeoutFailsTheBatchAsATypedSignalNotACancellationAsync, TransportConsumerWorkerBatchFailureTests.InboxStoreTimesOut_TransportToldBatchFailed_WorkerStaysUpAndStoresTheRedeliveryAsync, AzureServiceBusTransportBatchPipelineTests.NonSessionBatch_HandlerReportsBatchFailed_AbandonsNeverCompletesAsync, AzureServiceBusTransportBatchPipelineTests.NonSessionBatch_HandlerFailsAtMaxDeliveryCount_DeadLettersNeverCompletesAsync, AzureServiceBusTransportBatchPipelineTests.SessionBatch_HandlerReportsBatchFailedFromACancellation_AbandonsNeverCompletesAsync, RabbitMQTransportBatchPathTests.SubscribeBatchAsync_HandlerReportsBatchFailedFromACancellation_NacksNeverAcksAsync}
 
 ## Subscription Resilience {#subscription-resilience}
 

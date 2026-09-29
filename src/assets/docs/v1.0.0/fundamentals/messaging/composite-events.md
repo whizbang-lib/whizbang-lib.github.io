@@ -26,6 +26,9 @@ codeReferences:
   - src/Whizbang.Core/Workers/TransportConsumerWorker.cs
   - src/Whizbang.Core/Dispatcher.cs
   - src/Whizbang.Generators/ReceptorRegistryQueryGenerator.cs
+  - src/Whizbang.Generators/MessageJsonContextGenerator.cs
+  - src/Whizbang.Core/Messaging/UnresolvedMessage.cs
+  - src/Whizbang.Core/Serialization/JsonContextRegistry.cs
 testReferences:
   - tests/Whizbang.Core.Tests/Messaging/CompositeEventContractTests.cs
   - tests/Whizbang.Core.Tests/Messaging/CompositeEventBaseTests.cs
@@ -44,6 +47,9 @@ testReferences:
   - tests/Whizbang.Core.Tests/Dispatcher/DispatcherCompositePublishFanoutTests.cs
   - tests/Whizbang.Core.Tests/Dispatcher/DispatcherNoRebroadcastGuardTests.cs
   - tests/Whizbang.Generators.Tests/ReceptorRegistryQueryGeneratorTests.cs
+  - tests/Whizbang.Generators.Tests/MessageJsonContextReferencedCompositeTests.cs
+  - tests/Whizbang.Core.Tests/Messaging/CompositeUnresolvedInnerMessageTests.cs
+  - tests/Whizbang.Core.Tests/Workers/TransportConsumerWorkerUnstorableMessageTests.cs
 ---
 
 # Composite events
@@ -223,6 +229,42 @@ path), an `init` `MaxInnerEventsAllowed` (default 10,000), and
 `EnsureWithinCap()` (throws `InvalidOperationException` when the inner count
 exceeds the cap). `InnerEvents` is a `[JsonIgnore]` computed view over `Inner`;
 inner events share the composite's stream.
+
+### Consumers that handle only the inner events {#consumers-of-inner-events}
+
+A composite usually lives in a shared contracts assembly, and most of the services
+that receive it never name it: they handle one or more of its inner events. They
+still have to store it, because the composite arrives as one inbox row and fans
+out at dispatch. So the JSON context the generator emits for a service carries,
+with no code in the service:
+
+- every concrete, public composite declared in a referenced assembly that builds on
+  Whizbang (the framework's own composites stay in the framework's context), and
+- every command or event from a referenced assembly that one of the service's
+  receptors handles (`IReceptor<T>`, `IReceptor<T, TResponse>`, `ISyncReceptor<T>`,
+  `ISyncReceptor<T, TResponse>`), alongside the perspective events it already
+  carried, each registered as an `IMessage` derived type.
+
+The service's own context is the one registered before its JSON options are built,
+so this does not depend on when the contract assembly's own module initializer
+happens to run.
+{verified: MessageJsonContextReferencedCompositeTests.Generator_ConsumerHandlesOnlyInnerEvent_EmitsMetadataForReferencedCompositeAsync, MessageJsonContextReferencedCompositeTests.Generator_ReceptorForReferencedEvent_RegistersInnerEventAsMessageAsync, MessageJsonContextReferencedCompositeTests.Generator_FrameworkComposites_NotDuplicatedIntoConsumerAsync, TransportConsumerWorkerUnstorableMessageTests.Composite_ConsumerHandlesOnlyInnerEvent_StoredAndInnerEventFansOutAsync}
+
+### Inner events this service cannot resolve {#unresolved-inner-events}
+
+A composite may carry inner events whose types a given consumer does not reference
+at all. When the consumer reads the composite (from the wire, from an offloaded
+body, or from its own inbox row), an inner element whose `$type` discriminator it
+cannot resolve reads as an internal placeholder instead of failing the whole
+composite. Fan-out skips placeholders as unsubscribed children, under `Atomic` as
+well as `Independent`, counts them in `FanoutResult.UnsubscribedChildren`, and logs
+the count once per composite at Information level. A type a service cannot name is
+a type no consumer there can handle; if the service does handle one of them, the log
+line says its JSON metadata is missing.
+
+The tolerance applies only to an element nested inside a message the consumer does
+resolve. An envelope whose top-level payload discriminator is unknown still fails.
+{verified: CompositeUnresolvedInnerMessageTests.Deserialize_InnerDiscriminatorUnresolvable_KeepsResolvableInnerEventsAsync, CompositeUnresolvedInnerMessageTests.TryExpand_AtomicCompositeWithUnresolvedInner_ExpandsResolvableChildrenAsync, CompositeUnresolvedInnerMessageTests.Deserialize_TopLevelMessageWithUnknownDiscriminator_StillRefusedAsync, TransportConsumerWorkerUnstorableMessageTests.OffloadedComposite_ConsumerHandlesOnlyInnerEvent_RehydratedStoredAndFansOutAsync}
 
 ## Dispatch lifecycle
 
@@ -540,6 +582,8 @@ with its consumer.
 | Producer builds an over-cap composite | — | `EnsureWithinCap()` throws `InvalidOperationException`; at publish, `_fanOutCompositeLocallyAtPublishAsync` throws the same synchronously. |
 | The stored composite cannot be deserialized at dispatch (the serializer throws `JsonException` or `NotSupportedException`) | `SerializationError` | The row is dead-lettered with its body through the inbox dead-letter move. It is never completed. With no dead-letter store, or if the move fails, the failure is routed through the failure channel, so the row keeps its body and the attempts bound governs it. {verified: InboxDispatchWorkerUndeserializablePayloadTests.Dispatch_PayloadRefusedBySerializer_DeadLettersWithBody_AndNeverCompletesAsync, InboxDispatchWorkerUndeserializablePayloadTests.Dispatch_PayloadRefused_NoDeadLetterStore_RoutesFailure_AndNeverCompletesAsync} |
 | The synchronous commit of an expansion fails | — | Logged and counted; the row stays leased and unprocessed for the claim loop's re-offer to retry, and the in-flight entry is released so the retry is not filtered. The retry expands to the same child ids. |
+| An inner event's type cannot be resolved by this consumer | — | Skipped as an unsubscribed child (both atomicities) and logged once per composite; see [Inner events this service cannot resolve](#unresolved-inner-events). |
+| The composite cannot be stored as an inbox row at all (serialization or offloaded-body rehydrate fails) | `SerializationError` and the rehydrate reasons | Dead-lettered at the transport edge with its body; see [transport consumer failure handling](../../messaging/transports/transport-consumer#unstorable-messages). |
 
 ## Code ↔ tests
 
@@ -558,3 +602,6 @@ with its consumer.
 | No-rebroadcast guard | `EventFlags.NoRebroadcast`, `NoRebroadcastGuard`, `CompositeInboxFanout` stamp | `Messaging/NoRebroadcastGuardTests.cs`, `Messaging/CompositeInboxFanoutTests.cs` (`TryExpand_ChildrenCarryNoRebroadcastFlag`), `Dispatcher/DispatcherNoRebroadcastGuardTests.cs` |
 | Treatment-flag convention (`EventFlags`) | `EventFlags` (category vs treatment) | `Messaging/EventFlagsTests.cs` (bit-position locks), `Messaging/EventFlagsTransportTests.cs` |
 | No transport-edge expansion | `TransportConsumerWorker` | `Workers/TransportConsumerWorkerCompositeNoExpandTests.cs` |
+| Consumers of inner events get composite metadata | `MessageJsonContextGenerator` (`_discoverReferencedComposites`, `_addReferencedReceptorMessageTypes`) | `Generators.Tests/MessageJsonContextReferencedCompositeTests.cs` |
+| Unresolvable inner events skipped | `JsonContextRegistry` (nested `IMessage` fallback), `UnresolvedMessage`, `CompositeInboxFanout` | `Messaging/CompositeUnresolvedInnerMessageTests.cs` |
+| Unstorable composite dead-lettered, not dropped | `TransportConsumerWorker`, `BodyClaimRehydrator` | `Workers/TransportConsumerWorkerUnstorableMessageTests.cs` |
