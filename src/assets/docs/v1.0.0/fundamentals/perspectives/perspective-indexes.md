@@ -14,7 +14,7 @@ codeReferences:
   - src/Whizbang.Generators.Shared/Models/PerspectiveQueriesDiscovery.cs
   - src/Whizbang.Generators.Shared/Models/PerspectiveIndexSql.cs
   - src/Whizbang.Data.EFCore.Postgres.Generators/EFCoreServiceRegistrationGenerator.cs
-  - src/Whizbang.Data.Postgres/Migrations/173_EnsureIndex.sql
+  - src/Whizbang.Data.Postgres/Migrations/174_EnsureIndex.sql
   - src/Whizbang.Generators/Analyzers/PerspectiveFilterIndexAnalyzer.cs
   - src/Whizbang.Generators/Analyzers/QueryExposureIndexAnalyzer.cs
   - src/Whizbang.Generators.Shared/Utilities/PostgresIdentifiers.cs

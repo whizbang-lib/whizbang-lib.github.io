@@ -630,7 +630,7 @@ text form EF Core's own conversion gives it, and a collective refuses to set it.
 
 ### Columns created as text before this {#enum-text-columns}
 
-{verified: EnumColumnRewriteTests.ATextColumnOfNames_IsConvertedToNumbers_KeepingEveryRowAsync, EnumColumnRewriteTests.RunningItAgain_IsANoOpAsync, EnumColumnRewriteTests.AValueThatIsNeitherANameNorANumber_StopsStartup_NamingTheColumnAsync, EnumColumnRewriteTests.AMissingColumn_IsANoOpAsync, EnumPhysicalFieldGenerationTests.ServiceRegistration_EnumColumn_IsAddedAsAnInteger_AndATextColumnIsRewrittenByTheRewritePhaseAsync}
+{verified: EnumColumnRewriteTests.ATextColumnOfNames_IsConvertedToNumbers_KeepingEveryRowAsync, EnumColumnRewriteTests.RunningItAgain_IsANoOpAsync, EnumColumnRewriteTests.AValueThatIsNeitherANameNorANumber_StopsStartup_NamingTheColumnAsync, EnumColumnRewriteTests.AMissingColumn_IsANoOpAsync, EnumColumnRewriteTests.AFlagsColumn_CombinedNames_BecomeTheBitwiseOrOfTheirValuesAsync, EnumColumnRewriteTests.AFlagsColumn_AComponentThatIsNotAMember_StopsStartup_NamingTheValueAsync, EnumColumnRewriteTests.AFlagsColumn_RunningItAgain_ChangesNothingAsync, EnumPhysicalFieldGenerationTests.ServiceRegistration_EnumColumn_IsAddedAsAnInteger_AndATextColumnIsRewrittenByTheRewritePhaseAsync}
 
 Earlier releases typed an enum column as `text` and stored the enum's **name** in it. Such a column is
 converted automatically at startup, with no operator step. The generator writes one rewrite per enum
@@ -645,13 +645,23 @@ the indexes are built, and it waits out older snapshots before indexing.
   Names match exactly, as both drivers wrote them. A value that is already a number is kept as it
   is (for example an undefined value's `ToString()`, or a row a newer instance wrote), and a null
   stays null. The column is then retyped in place with `ALTER TABLE … ALTER COLUMN … TYPE`.
+- **`[Flags]` combinations become their bitwise OR.** For an enum marked `[Flags]`, a value holding
+  combined names in the form .NET writes them (`"Read, Write"`) is converted to the bitwise OR of
+  the named members' values (`3`). Single names and numbers convert as above. Only enums marked
+  `[Flags]` get this decoding; the generator knows from the enum's declaration.
 - **Anything else stops startup.** A value that is neither a member name nor a number (a renamed or
-  removed member, different casing, a `[Flags]` combination written as `"A, B"`) cannot be read, so
-  the phase fails the schema pass with an error naming the table, the column and up to ten of the
-  offending values. Nothing is changed. Correct or clear those values, then restart.
+  removed member, different casing, or for a `[Flags]` enum a combination with a component that is
+  not a member) cannot be read, so the phase fails the schema pass with an error naming the table,
+  the column and up to ten of the offending values. Nothing is changed. Correct or clear those
+  values, then restart.
 
-The rewrite rewrites the table under an exclusive lock while it runs, so expect the first start of
-this release to take longer on a large table with an enum column.
+**The conversion locks the table.** Retyping the column rewrites the whole table under an
+`ACCESS EXCLUSIVE` lock, so nothing can read or write that table until the conversion finishes. It
+happens once, on the first start of this release, and only for a table whose enum column is still
+text. On a large table that start takes correspondingly longer, and reads and writes against the
+table wait for it. This is the accepted cost of an automatic conversion: if that pause is not
+acceptable, convert the column yourself beforehand in a maintenance window, and the rewrite then
+finds a numeric column and does nothing.
 
 ### Enums inside the document {#enum-documents}
 
