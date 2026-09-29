@@ -630,22 +630,39 @@ text form EF Core's own conversion gives it, and a collective refuses to set it.
 
 ### Columns created as text before this {#enum-text-columns}
 
-Earlier releases typed an enum column as `text` and stored the enum's **name** in it. The schema
-pass never changes an existing column's type: `ADD COLUMN IF NOT EXISTS` leaves that column as it is,
-and the pass raises a `WARNING` naming the column and the migration. Postgres does not assign an
-integer to a `text` column, so until the column is migrated every write to it fails with
-`column "…" is of type text but expression is of type integer`, on both drivers. Migrate before
-deploying this release:
+{verified: EnumColumnRewriteTests.ATextColumnOfNames_IsConvertedToNumbers_KeepingEveryRowAsync, EnumColumnRewriteTests.RunningItAgain_IsANoOpAsync, EnumColumnRewriteTests.AValueThatIsNeitherANameNorANumber_StopsStartup_NamingTheColumnAsync, EnumColumnRewriteTests.AMissingColumn_IsANoOpAsync, EnumPhysicalFieldGenerationTests.ServiceRegistration_EnumColumn_IsAddedAsAnInteger_AndATextColumnIsRewrittenByTheRewritePhaseAsync}
 
-```sql{title="Migrating an enum column from names to numbers" description="Converts the stored names to the enum's underlying numbers and retypes the column in one statement" category="Operations" difficulty="INTERMEDIATE" tags=["Perspectives", "Physical Fields", "Enumerations", "Migration"] unverified="Migration template; the mapping has to be written for the enum's own members."}
--- enum Stage { Draft = 0, Open = 1, Closed = 2 }
-ALTER TABLE wh_per_ticket
-  ALTER COLUMN stage TYPE integer
-  USING (CASE stage WHEN 'Draft' THEN 0 WHEN 'Open' THEN 1 WHEN 'Closed' THEN 2 END);
-```
+Earlier releases typed an enum column as `text` and stored the enum's **name** in it. Such a column is
+converted automatically at startup, with no operator step. The generator writes one rewrite per enum
+column from the enum's own members, and the stored-format rewrite phase applies it. That phase is
+the one that converts temporal document keys: it runs once per schema, under the schema lock, before
+the indexes are built, and it waits out older snapshots before indexing.
 
-The `ALTER` rewrites the table under an exclusive lock, so run it in a maintenance window on a large
-table.
+- **Idempotent.** It acts only while the column is still `text` (or `varchar`). A column that is
+  already numeric, or that the schema pass has not created yet, is left alone, so later starts do
+  nothing.
+- **Names become numbers, and numbers are kept.** Each member name maps to its underlying value.
+  Names match exactly, as both drivers wrote them. A value that is already a number is kept as it
+  is (for example an undefined value's `ToString()`, or a row a newer instance wrote), and a null
+  stays null. The column is then retyped in place with `ALTER TABLE … ALTER COLUMN … TYPE`.
+- **Anything else stops startup.** A value that is neither a member name nor a number (a renamed or
+  removed member, different casing, a `[Flags]` combination written as `"A, B"`) cannot be read, so
+  the phase fails the schema pass with an error naming the table, the column and up to ten of the
+  offending values. Nothing is changed. Correct or clear those values, then restart.
+
+The rewrite rewrites the table under an exclusive lock while it runs, so expect the first start of
+this release to take longer on a large table with an enum column.
+
+### Enums inside the document {#enum-documents}
+
+{verified: DocumentEnumFormTests.PersistenceProfile_Enum_IsWrittenAsItsNumberAsync, DocumentEnumFormTests.PersistenceProfile_RegistersNoStringEnumConverterAsync}
+
+Inside `data`, an enumeration was already stored as its underlying number, on every path. The
+persistence serialization profile registers no string-enum converter. The generated JSON contexts
+build an enum's metadata from the built-in numeric converter, and ignore any converter registered on
+the options. EF Core's own `ToJson()` mapping stores enums as numbers by default too, and the collective
+`Where` compiler has always compared a document enum as its number. No document rewrite is needed.
+The wire format for messages is separate and still uses enum names.
 
 ## Collective updates {#collective-updates}
 
