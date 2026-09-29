@@ -253,8 +253,10 @@ ANALYZE wh_per_document;
 
 ### The GIN index on `data`, and what changed
 
-Every perspective table is created with a GIN index on its `data`, `metadata` and `scope` columns, and
-for a long time nothing could use them. A GIN index with the default operator class answers
+Perspective tables were created with a GIN index on their `data`, `metadata` and `scope` columns, and
+for a long time nothing could use them. The `metadata` index is now built only on request, and the
+`data` index follows `[PerspectiveQueries(MatchOnAnyField = ...)]`; see
+[Perspective Indexes](../../fundamentals/perspectives/perspective-indexes.md). A GIN index with the default operator class answers
 containment and existence, `@>` and friends, and nothing else; a property comparison compiled to a
 `->>` text extraction, which falls outside that.
 

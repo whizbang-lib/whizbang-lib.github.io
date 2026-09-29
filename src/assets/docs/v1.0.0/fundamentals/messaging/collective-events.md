@@ -30,6 +30,8 @@ codeReferences:
   - src/Whizbang.Data.Dapper.Postgres/Collective/DapperCollectiveSpecCompiler.cs
   - src/Whizbang.Data.Postgres/Collective/CollectiveElementUpsertSql.cs
   - src/Whizbang.Data.Postgres/Collective/CollectiveInMemoryEvaluator.cs
+  - src/Whizbang.Data.Postgres/Collective/CollectivePhysicalColumns.cs
+  - src/Whizbang.Core/Perspectives/PerspectivePhysicalFieldRegistry.cs
   - src/Whizbang.Core/Perspectives/ICollectiveSetters.cs
   - src/Whizbang.Data.Dapper.Postgres/CollectiveEventsDapperExtensions.cs
   - src/Whizbang.Data.Postgres/Migrations/061_CollectiveEventRouting.sql
@@ -48,6 +50,11 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/EmitEventStoreChainCollectiveSqlTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/Collective/DapperCollectiveApplierIntegrationTests.cs
   - tests/Whizbang.Generators.Tests/EFCoreServiceRegistrationGeneratorTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Collective/CollectivePhysicalColumnIntegrationTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/Collective/DapperCollectivePhysicalColumnIntegrationTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/Collective/CollectivePhysicalColumnCompilerTests.cs
+  - tests/Whizbang.Core.Tests/Perspectives/PerspectivePhysicalFieldRegistryTests.cs
+  - tests/Whizbang.Generators.Tests/PerspectiveRunnerPhysicalFieldRegistrationTests.cs
 ---
 
 # Collective events
@@ -349,10 +356,85 @@ public ICollectiveSpec<JobFieldsModel> ApplyFamily(FamilyAppliedToJobsCollective
   stored exactly as the model's own writer would store it, so the rendered copy cannot drift in
   shape from one a normal apply produces.
 - **Keys compare as stored JSON,** so a string, number or identifier key works without a cast.
+- **In a jsonb column too.** When the array is a `[PhysicalField(ColumnType = "jsonb")]`, the element is
+  upserted in the column by the same rules (see [Physical columns](#physical-columns)).
 - **Direct members only.** The array must be a top-level property and the key a direct property of
   the element; anything else throws `NotSupportedException`.
 - **Both drivers, and replay.** EF Core and Dapper share one SQL expression, and replay applies the
   same rule in memory, so a rebuilt read model matches the live one.
+
+### Physical columns {#physical-columns}
+
+{verified: CollectivePhysicalColumnIntegrationTests.Apply_EnumSetter_WritesTheUnderlyingNumberToTheColumnAsync, CollectivePhysicalColumnIntegrationTests.Apply_WhereOnAnEnumPhysicalField_ComparesTheNumberAsync, CollectivePhysicalColumnIntegrationTests.Apply_VectorSetter_WritesTheVectorColumnAsync, CollectivePhysicalColumnIntegrationTests.Apply_UpsertElementOnAPhysicalJsonbArray_UpsertsInTheColumnAsync, CollectivePhysicalColumnIntegrationTests.Replay_MatchesLive_ForEnumVectorAndKeyedArrayAsync, DapperCollectivePhysicalColumnIntegrationTests.Apply_EnumSetterAndPredicate_UseTheUnderlyingNumberAsync, DapperCollectivePhysicalColumnIntegrationTests.Apply_VectorSetter_WritesTheVectorColumnAsync, DapperCollectivePhysicalColumnIntegrationTests.Apply_UpsertElementOnAPhysicalJsonbArray_UpsertsInTheColumnAsync, DapperCollectivePhysicalColumnIntegrationTests.Replay_MatchesLive_ForEnumVectorAndKeyedArrayAsync, CollectivePhysicalColumnIntegrationTests.Apply_PhysicalOnlySetter_UpdatesTheColumn_AndLeavesDataByteIdenticalAsync, CollectivePhysicalColumnIntegrationTests.Apply_SetterKeptInBothPlaces_UpdatesTheColumnAndTheDocumentAsync, CollectivePhysicalColumnIntegrationTests.Apply_MixedSetters_UpdateTheColumnAndTheDocument_InOneStatementAsync, CollectivePhysicalColumnIntegrationTests.Apply_WhereOnAPhysicalField_FiltersOnTheColumnAsync, CollectivePhysicalColumnIntegrationTests.Replay_MatchesLive_ForColumnAndDocumentAsync, DapperCollectivePhysicalColumnIntegrationTests.Apply_PhysicalOnlySetter_UpdatesTheColumn_AndLeavesDataByteIdenticalAsync, DapperCollectivePhysicalColumnIntegrationTests.Apply_MixedSetters_UpdateTheColumnAndTheDocument_InOneStatementAsync}
+
+A property marked [`[PhysicalField]`](../perspectives/physical-fields.md) is a real column. A
+collective setter that targets one writes the column, as a typed parameter, in the same `UPDATE` as
+every other setter. Whether the document is written too depends on the model's
+[storage mode](../perspectives/physical-fields.md#FieldStorageMode):
+
+| Storage mode | The column | The document path in `data` |
+|---|---|---|
+| `Extracted` (and `JsonOnly` with a `[PhysicalField]`) | written | written, with the same value |
+| `Split` | written | left alone: the field lives only in the column |
+
+A collective whose setters touch only physical-only (`Split`) fields does not assign `data` at all.
+Postgres writes a complete new copy of a jsonb value whenever it changes, including its TOAST
+storage and every index entry over the document, so on a table of large documents that copy is most
+of the cost of a bulk update. Leaving `data` out of the `SET` leaves the document, its TOAST and its
+GIN index untouched, and when no index covers the changed columns the update can be a HOT update.
+
+```csharp{title="A collective that changes only physical columns" description="Lane and Priority are physical-only columns on a Split model, so the collective writes two columns and never rewrites the jsonb document" category="Messaging" difficulty="INTERMEDIATE" tags=["Collective Events", "Perspectives", "Physical Fields", "Performance"] tests=["CollectivePhysicalColumnIntegrationTests.Apply_PhysicalOnlySetter_UpdatesTheColumn_AndLeavesDataByteIdenticalAsync"]}
+[PerspectiveStorage(FieldStorageMode.Split)]
+public sealed class TicketModel {
+  [PhysicalField] public string Lane { get; set; } = "";
+  [PhysicalField] public int Priority { get; set; }
+  public string Title { get; set; } = "";      // document only
+}
+
+[CollectiveApplyFor]
+public ICollectiveSpec<TicketModel> Reroute(TicketsReroutedCollectiveEvent e) =>
+  new CollectiveSpec<TicketModel>(
+    Setters: s => s
+      .SetProperty(t => t.Lane, e.ToLane)
+      .SetProperty(t => t.Priority, e.Priority),
+    Where: r => r.Data.Lane == e.FromLane);
+// UPDATE wh_per_ticket SET "lane" = @…, "priority" = @…, updated_at = @…, version = version + 1
+//  WHERE id = ANY(@ids)          -- no "data =" in the statement
+```
+
+- **Mixed setters are one statement.** A spec that sets a physical field and a document field writes
+  the column and the `jsonb_set` chain in the same `UPDATE`.
+- **The `Where` reads the column.** A condition on a physical property (`r.Data.Lane == value`,
+  `values.Contains(r.Data.Lane)`) compiles to the column, compared against a typed parameter, so an
+  index declared on the column serves it. Conditions on document fields keep compiling to
+  `data->>'X'`.
+- **Computed comparisons read the column too.** `SetProperty(t => t.IsUrgent, t => t.Lane == "hot")`
+  compares the `lane` column, null-safely (`IS NOT DISTINCT FROM`), so the result matches the C#
+  comparison the in-memory replay makes.
+- **Replay matches live.** Replay applies the same setters to the in-memory model, and the
+  perspective runner writes the model's physical fields to their columns (and, outside `Split`, to
+  the document) exactly as it does after any event. A rebuilt row has the same columns and the same
+  document as one the live `UPDATE` produced.
+- **No reflection.** Which properties are columns, their names, their storage mode, an enum's scalar
+  type and a declared column type come from the
+  perspective runner the source generator emits: it registers them at module load in
+  `PerspectivePhysicalFieldRegistry`, and both drivers read that. A model with no perspective has no
+  registration, and its setters stay document writes.
+- **Enumerations are stored as numbers.** An enum column holds the enum's underlying number, and a
+  setter, a `Where` condition and a computed comparison all bind that number, the same scalar the
+  per-event write stores (see [Physical Fields](../perspectives/physical-fields.md#enum-columns)).
+- **Vectors.** A setter on a `[VectorField]` writes the vector column in the same `UPDATE`, in the
+  form the per-event write uses (a pgvector parameter on EF Core, the vector's text form on
+  Dapper). A vector cannot be compared: a `Where` condition or computed comparison on one throws
+  `NotSupportedException`.
+- **Keyed arrays in a jsonb column.** `UpsertElement` on an array declared with
+  `[PhysicalField(ColumnType = "jsonb")]` upserts the element in the column, in the same statement
+  and with the same rules as a document array: replace where it stands or append, several upserts
+  on one list compose in call order, and the document array is upserted too outside `Split`. Any
+  other column type holds no keyed elements, so `UpsertElement` on it throws
+  `NotSupportedException`.
+- **An enumeration in a column whose type you declared** (`ColumnType = "text"`, say) throws
+  `NotSupportedException`: its stored form is then your choice, which a collective cannot know.
 
 ### Per-perspective projection (`Where`)
 
@@ -777,7 +859,8 @@ Both drivers share **one** WHERE compiler
 (`CollectivePredicateSqlCompiler`, in `Whizbang.Data.Postgres`) and the
 same keyset-batched apply shape. The shared compiler translates equality
 over a **scope** field (`row.Scope.Prop == value` → `scope->>'Prop'`)
-**or a data** field (`row.Data.Prop == value` → `data->>'Prop'`);
+**or a data** field (`row.Data.Prop == value` → `data->>'Prop'`, or the
+column itself when `Prop` is a `[PhysicalField]`);
 `&&`-chains mixing both; `Contains` (→ `IN`); and
 `q.Of<TOther>().Any(...)` cross-perspective cohorts (→ a correlated
 `EXISTS`). It throws for richer predicates (non-equality, disjunctions,
@@ -786,7 +869,8 @@ arbitrary top-level columns, nested `EXISTS`).
 For SET clauses, both compilers support scalar top-level
 `SetProperty(j => j.Prop, constant)` with constant/captured-value
 sources, chained setters, and the property-vs-constant `==`/`!=` computed
-comparison. Arithmetic-computed setters and nested paths throw
+comparison. A setter or a condition on a `[PhysicalField]` property
+targets its column (see [Physical columns](#physical-columns)). Arithmetic-computed setters and nested paths throw
 `NotSupportedException` in both (see [What the SET surface can
 express](#what-the-set-surface-can-express)).
 

@@ -21,6 +21,9 @@ codeReferences:
   - src/Whizbang.Generators/Analyzers/PerspectiveFilterIndexAnalyzer.cs
   - src/Whizbang.Core/Perspectives/PerspectiveStorageAttribute.cs
   - src/Whizbang.Core/Perspectives/FieldStorageMode.cs
+  - src/Whizbang.Core/Perspectives/PerspectivePhysicalFieldRegistry.cs
+  - src/Whizbang.Core/Perspectives/PerspectivePhysicalValues.cs
+  - src/Whizbang.Generators.Shared/Models/PhysicalFieldScalar.cs
   - src/Whizbang.Generators.Shared/Models/PhysicalFieldInfo.cs
   - src/Whizbang.Data.EFCore.Postgres/QueryTranslation/PhysicalFieldRegistry.cs
   - src/Whizbang.Data.EFCore.Postgres/QueryTranslation/PhysicalFieldExpressionVisitor.cs
@@ -52,6 +55,10 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/PhysicalFieldUpsertStrategyTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/QueryTranslation/PhysicalFieldRegistryTests.cs
   - tests/Whizbang.Generators.Tests/Models/PhysicalFieldInfoTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Collective/CollectivePhysicalColumnIntegrationTests.cs
+  - tests/Whizbang.Generators.Tests/EnumPhysicalFieldGenerationTests.cs
+  - tests/Whizbang.Core.Tests/Perspectives/PerspectivePhysicalValuesTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/Collective/DapperCollectivePhysicalColumnIntegrationTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -601,6 +608,81 @@ the Dapper store writes every physical column on insert and update, as the EF Co
 
 The fill runs inside the startup schema pass, as one `UPDATE` per field. On a very large table, schedule
 the release that promotes the field for a quiet period, or promote it on an empty table first.
+
+## Enumeration columns {#enum-columns}
+
+{verified: EnumPhysicalFieldGenerationTests.SchemaGenerator_EnumColumn_IsTheUnderlyingIntegerTypeAsync, EnumPhysicalFieldGenerationTests.EFCoreModel_EnumShadowProperty_IsAnIntegerColumnWithANumberConversionAsync, EnumPhysicalFieldGenerationTests.ServiceRegistration_EnumColumn_IsAddedAsAnInteger_AndATextColumnIsFlaggedNotAlteredAsync, DapperCollectivePhysicalColumnIntegrationTests.Store_EnumPhysicalField_IsWrittenAsItsNumberAsync, PerspectivePhysicalValuesTests.ToColumnScalar_NarrowAndUnsignedEnums_WidenToASignedColumnTypeAsync}
+
+An enumeration marked `[PhysicalField]` is stored as its **underlying number**, in a column typed
+from that number. The per-event write (EF Core and Dapper), a collective and replay all bind the same
+scalar, so a `Where` on the column compares numbers and an index on it orders by them.
+
+| Underlying type | Column |
+|---|---|
+| `byte`, `sbyte`, `short` | `smallint` |
+| `ushort`, `int` (the default) | `integer` |
+| `uint`, `long` | `bigint` |
+| `ulong` | `numeric` |
+
+Postgres has no unsigned or single-byte integer, so those widen to the next signed type that holds
+every value. A declared `ColumnType` still wins: an enum declared `ColumnType = "text"` keeps the
+text form EF Core's own conversion gives it, and a collective refuses to set it.
+
+### Columns created as text before this {#enum-text-columns}
+
+{verified: EnumColumnRewriteTests.ATextColumnOfNames_IsConvertedToNumbers_KeepingEveryRowAsync, EnumColumnRewriteTests.RunningItAgain_IsANoOpAsync, EnumColumnRewriteTests.AValueThatIsNeitherANameNorANumber_StopsStartup_NamingTheColumnAsync, EnumColumnRewriteTests.AMissingColumn_IsANoOpAsync, EnumColumnRewriteTests.AFlagsColumn_CombinedNames_BecomeTheBitwiseOrOfTheirValuesAsync, EnumColumnRewriteTests.AFlagsColumn_AComponentThatIsNotAMember_StopsStartup_NamingTheValueAsync, EnumColumnRewriteTests.AFlagsColumn_RunningItAgain_ChangesNothingAsync, EnumPhysicalFieldGenerationTests.ServiceRegistration_EnumColumn_IsAddedAsAnInteger_AndATextColumnIsRewrittenByTheRewritePhaseAsync}
+
+Earlier releases typed an enum column as `text` and stored the enum's **name** in it. Such a column is
+converted automatically at startup, with no operator step. The generator writes one rewrite per enum
+column from the enum's own members, and the stored-format rewrite phase applies it. That phase is
+the one that converts temporal document keys: it runs once per schema, under the schema lock, before
+the indexes are built, and it waits out older snapshots before indexing.
+
+- **Idempotent.** It acts only while the column is still `text` (or `varchar`). A column that is
+  already numeric, or that the schema pass has not created yet, is left alone, so later starts do
+  nothing.
+- **Names become numbers, and numbers are kept.** Each member name maps to its underlying value.
+  Names match exactly, as both drivers wrote them. A value that is already a number is kept as it
+  is (for example an undefined value's `ToString()`, or a row a newer instance wrote), and a null
+  stays null. The column is then retyped in place with `ALTER TABLE … ALTER COLUMN … TYPE`.
+- **`[Flags]` combinations become their bitwise OR.** For an enum marked `[Flags]`, a value holding
+  combined names in the form .NET writes them (`"Read, Write"`) is converted to the bitwise OR of
+  the named members' values (`3`). Single names and numbers convert as above. Only enums marked
+  `[Flags]` get this decoding; the generator knows from the enum's declaration.
+- **Anything else stops startup.** A value that is neither a member name nor a number (a renamed or
+  removed member, different casing, or for a `[Flags]` enum a combination with a component that is
+  not a member) cannot be read, so the phase fails the schema pass with an error naming the table,
+  the column and up to ten of the offending values. Nothing is changed. Correct or clear those
+  values, then restart.
+
+**The conversion locks the table.** Retyping the column rewrites the whole table under an
+`ACCESS EXCLUSIVE` lock, so nothing can read or write that table until the conversion finishes. It
+happens once, on the first start of this release, and only for a table whose enum column is still
+text. On a large table that start takes correspondingly longer, and reads and writes against the
+table wait for it. This is the accepted cost of an automatic conversion: if that pause is not
+acceptable, convert the column yourself beforehand in a maintenance window, and the rewrite then
+finds a numeric column and does nothing.
+
+### Enums inside the document {#enum-documents}
+
+{verified: DocumentEnumFormTests.PersistenceProfile_Enum_IsWrittenAsItsNumberAsync, DocumentEnumFormTests.PersistenceProfile_RegistersNoStringEnumConverterAsync}
+
+Inside `data`, an enumeration was already stored as its underlying number, on every path. The
+persistence serialization profile registers no string-enum converter. The generated JSON contexts
+build an enum's metadata from the built-in numeric converter, and ignore any converter registered on
+the options. EF Core's own `ToJson()` mapping stores enums as numbers by default too, and the collective
+`Where` compiler has always compared a document enum as its number. No document rewrite is needed.
+The wire format for messages is separate and still uses enum names.
+
+## Collective updates {#collective-updates}
+
+A [collective event](../messaging/collective-events.md#physical-columns) can set a physical field.
+The setter writes the column as a typed parameter in the collective's single `UPDATE`, and writes
+the document path as well unless the model is `Split`. A collective that sets only `Split` fields
+leaves `data` out of the statement entirely, so a bulk change to a hot column costs a column write
+rather than a new copy of every document. A collective's `Where` on a physical field filters on the
+column. Enumerations bind their number, a `[VectorField]` can be set (not compared), and a keyed
+array in a `jsonb` column is upserted in the column.
 
 ## Query Syntax
 
