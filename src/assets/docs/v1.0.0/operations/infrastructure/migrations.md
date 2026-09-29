@@ -34,6 +34,7 @@ codeReferences:
   - src/Whizbang.Core/Perspectives/StoredFormFailureRegistry.cs
   - src/Whizbang.Core/Health/StoredFormHealthSource.cs
   - src/Whizbang.Core/Workers/PerspectiveWorker.cs
+  - src/Whizbang.Data.EFCore.Postgres/Perspectives/MappedDocumentReadFailure.cs
 testReferences:
   - tests/Whizbang.Data.Dapper.Postgres.Tests/MigrationConstantsTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/NormalizeClrTypeNamesMigrationTests.cs
@@ -45,6 +46,8 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/CanonicalTemporalRewriteIntegrationTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/FreshTableFormTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/PerspectiveFailureCounterSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/MappedDocumentReadFailureTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/StoredFormScalarMismatchWorkerTests.cs
   - tests/Whizbang.Generators.Tests/CanonicalTemporalRewriteWiringTests.cs
   - tests/Whizbang.Core.Tests/Perspectives/StoredFormUnreadableTests.cs
   - tests/Whizbang.Core.Tests/Workers/PerspectiveWorkerDeepPathDrainTests.StoredForm.cs
@@ -416,8 +419,11 @@ the last microsecond. A date key is the same number at midnight UTC; a duration 
 ### When a row cannot be read
 
 Every reader of a stored temporal refuses a value it cannot read with an exception that names the
-type, the forms accepted and the token found, and the serializer adds the path. The perspective
-worker classifies that failure by its type, wherever it sits in a chain of wrappers, and then:
+type, the forms accepted and the token found, and the serializer adds the path. The same holds for a
+document EF Core maps: when its materializer cannot read a stored value (a number where the property
+is a string, for example), the store classifies the failure as stored-form unreadable and reports it
+with the path of the value (`$.Status`), with the original error inside. The perspective worker
+classifies that failure by its type, wherever it sits in a chain of wrappers, and then:
 
 - logs it **once per perspective and stream**, at Error, with the path and the refusal, under event
   id 65; the same stream failing again is logged at Debug until it reads again;
@@ -425,7 +431,8 @@ worker classifies that failure by its type, wherever it sits in a chain of wrapp
   `stored_form_unreadable`;
 - reports every leased row of the stream through the failure channel, so the database records the
   failure, schedules the retry with backoff, and dead-letters the row at the configured threshold.
-  The stream is parked in the database, not retried every cycle;
+  One failed lease is one recorded failure, however many drains report it, so the threshold counts
+  attempts. The stream is parked in the database, not retried every cycle;
 - reports the stream on the managed health endpoint as the `perspective-stored-forms` component,
   Degraded with the count and the first detail, until the stream reads again.
 
@@ -439,7 +446,7 @@ Perspective {PerspectiveName} cannot read its stored document for stream {Stream
 the document holds True`. A row like that is one the rewrite left alone on purpose; look at the value
 before deciding what to write over it.
 
-{verified: StoredFormUnreadableTests.AWrappedRefusalIsClassifiedAsync, PerspectiveWorkerDeepPathDrainTests.DrainMode_UnreadableStoredForm_IsAnnouncedCountedAndParkedAsync, PerspectiveWorkerDeepPathDrainTests.DrainMode_UnreadableStoredForm_AgainIsQuietAndRecoveryReleasesAsync, PerspectiveFailureCounterSqlTests.RecordedFailure_InTheShapeTheRuntimeWrites_IsRecordedAsync, StoredFormHealthSourceTests.AnUnreadableStreamIsDegradedWithDetailAsync}
+{verified: StoredFormUnreadableTests.AWrappedRefusalIsClassifiedAsync, PerspectiveWorkerDeepPathDrainTests.DrainMode_UnreadableStoredForm_IsAnnouncedCountedAndParkedAsync, PerspectiveWorkerDeepPathDrainTests.DrainMode_UnreadableStoredForm_AgainIsQuietAndRecoveryReleasesAsync, PerspectiveFailureCounterSqlTests.RecordedFailure_InTheShapeTheRuntimeWrites_IsRecordedAsync, StoredFormHealthSourceTests.AnUnreadableStreamIsDegradedWithDetailAsync, MappedDocumentReadFailureTests.AValueOfTheWrongType_IsExplainedWithItsPathAsync, StoredFormScalarMismatchWorkerTests.NumberForAStringProperty_IsClassifiedParkedAndDegraded_OthersFlow_AndACorrectedRowRecoversAsync, PerspectiveFailureCounterSqlTests.RecordedFailure_ReportedTwiceForOneLease_CountsOnce_AndTheNextLeaseCountsAgainAsync}
 
 ## Data Migrations vs. Schema Migrations
 
