@@ -10,7 +10,7 @@ tags: duties, capabilities, election, role-assignment, advisory-lock, fencing, e
 **The advisory lock decides only the vote. The role is a row: a liveness-tied assignment with an epoch that exclusive work presents as a fencing token.**
 
 :::planned
-**Proposed; phase 1 implemented, opt-in** (library migration `173_RoleAssignments.sql`, `PgRoleElector`, enabled with `AddWhizbangRoleAssignment()`). Tracks GitHub issue #966. The released model, a session advisory lock held for the whole tenure, is described on [Capabilities and Duties](/v1.0.0/operations/startup/capabilities-and-duties) and keeps working unchanged until an application opts in. Section 9 lists the phases and what each one delivers.
+**Proposed; phases 1 and 2 implemented, opt-in** (library migration `173_RoleAssignments.sql`, `PgRoleElector`, `DutyHolderWorker`, enabled with `AddWhizbangRoleAssignment()`). Tracks GitHub issue #966. The released model, a session advisory lock held for the whole tenure, is described on [Capabilities and Duties](/v1.0.0/operations/startup/capabilities-and-duties) and keeps working unchanged until an application opts in. Section 9 lists the phases and what each one delivers.
 :::
 
 ## 1. Why the session lock is not enough
@@ -154,13 +154,21 @@ When an instance *becomes* the holder, whether at startup, on a lapse, or on a h
 
 For the new holder to know what is pending, a duty-bound step declares its pending state durably: a pending-work row keyed by (role, step), written when the work becomes owed and cleared only when it is confirmed done. The table-rewrite requests already follow this pattern: a request is cleared only after the ratio is confirmed to have dropped. The hook reads the owed rows for the role it just won and runs their steps with the grant's epoch. Work must be idempotent and resumable, because a hand-off can interrupt it.
 
+### As built (phase 2)
+
+- **Owing.** `wh_owe_role_work(role, work_key)` is idempotent: owing again moves `last_owed_at` and keeps `first_owed_at`. A startup step with `NonHolderBehavior.Skip` that an instance skips as a non-holder is owed automatically, so every new pod in a rolling deploy owes the step, and the pod that wins the role runs it once.
+- **Running.** `DutyHolderWorker` is the holder loop. Each pass verifies the role it holds (which renews the lease, so the loop is the liveness signal), or votes for one it does not, then runs every due piece of owed work it has a handler for. A pass runs once per renew interval and at once when `wh_role_released` announces a release. On stop, it releases what it holds.
+- **Completing.** `wh_complete_role_work` is fenced by `(holder, epoch)` and deletes the row only if nobody owed it again after the holder listed it. `wh_fail_role_work` records the error and backs the work off, doubling from `OwedWorkRetryBase` and capped at one hour. If the fence refuses either call, the loop drops the grant at once.
+- **One process, one tenure.** A second acquisition of a role this instance already holds returns another handle on the same tenure, so the holder loop and a startup step can hold the role together; the last handle to close releases it.
+- **Deferring.** A step owed while this instance's own startup pipeline is still running is deferred, not failed, so the loop never blocks and its lease keeps moving.
+
 ## 8. Several roles, "no holder", and observability
 
 **Several roles.** Each role is its own row with its own epoch and lease, so an instance can hold `maintainer` while another holds a stamper role for the same schema, and a lapse of one never disturbs the other. Batching several roles into one vote transaction is an optimization for later. It is not needed for correctness.
 
-**No holder at all.** `wh_role_assignment_status()` reports `vacant` or `lapsed` for a role nobody validly holds. The health surface (phase 2) reports it as *role unassigned*, degraded rather than failed. A caller that cannot reach the vote gets `Unavailable` or a transient failure, never a grant, so nothing ever runs everywhere at once by default.
+**No holder at all.** `wh_role_assignment_status()` reports `vacant` or `lapsed` for a role nobody validly holds, and how much work is owed to it. The `roles` health component reports *role unassigned* with the reason (vacant and why it was last vacated, lapsed and why, or never elected), Degraded rather than Faulted; a read that fails is Degraded too. A caller that cannot reach the vote gets `Unavailable` or a transient failure, never a grant, so nothing ever runs everywhere at once by default.
 
-**Observability.** The current holder, epoch, last renewal and election count per role are one query. Each hand-off is logged **once**, by the winning instance only, since exactly one vote produces each epoch, with the previous holder and the void reason. A lost grant is logged by the instance that lost it. Metrics (`whizbang.roles.elections`, `whizbang.roles.handoffs{reason}`, `whizbang.roles.lost`, and a held-roles gauge) follow in phase 2.
+**Observability.** The current holder, epoch, last renewal and election count per role are one query. Each hand-off is logged **once**, by the winning instance only, since exactly one vote produces each epoch, with the previous holder and the void reason. A lost grant is logged by the instance that lost it. Meter `Whizbang.Roles`: `whizbang.roles.elections`, `whizbang.roles.handoffs{reason}`, `whizbang.roles.lost`, `whizbang.roles.released`, `whizbang.roles.held` (up/down), and `whizbang.roles.work_runs{outcome}` (completed, left_owed, fenced), all tagged by role. `IRoleAssignmentReader.ReadAssignmentsAsync` returns the same snapshot the health component reads.
 
 ## 9. The resilience requirements, mechanism by mechanism
 
@@ -171,11 +179,11 @@ For the new holder to know what is pending, a duty-bound step declares its pendi
 | 3 | Holder alive but stuck | Lease renewed only by `VerifyStillHeldAsync` from the work loop; no renewal thread | Unrenewed lease lapses although the instance still heartbeats (1); stuck-loop chaos run (4) |
 | 4 | Clock skew | Every timestamp is `now()` in the statement; remaining lease is returned as a duration | Time advanced only in the database, never on the instance (1) |
 | 5 | Flapping | Lease = several renew intervals; cool-down after an involuntary lapse | Lapsed holder refused during cool-down, another instance wins (1) |
-| 6 | Graceful shutdown | Grant disposal and host shutdown call `wh_release_role`; no cool-down for a release | Release hands off at once, no lapse wait (1) |
-| 7 | Work interrupted mid-duty | Acquisition hook plus durable pending-work rows; idempotent, resumable steps | Phase 2 |
+| 6 | Graceful shutdown | Grant disposal and host shutdown call `wh_release_role`; no cool-down for a release; the release NOTIFY wakes waiters | Release hands off at once, no lapse wait (1); NOTIFY delivered, loop wakes (2) |
+| 7 | Work interrupted mid-duty | Acquisition hook (`DutyHolderWorker`) plus pending-work rows; completion fenced and guarded against re-owing | Rolling-deploy gap closed end to end; interrupted work finished once by the next holder, stale write refused (2) |
 | 8 | Database failover or restart | Assignment is a row, so it survives; the grant holds no connection; every vote re-evaluates liveness against `now()` | Assignment and epoch survive every connection being terminated (1) |
-| 9 | No holder at all | `wh_role_assignment_status()` state `vacant` / `lapsed`; health "role unassigned"; no grant without a vote | Status reports vacant after release (1); health (2) |
-| 10 | Observability | Status function; one hand-off log line by the winner; metrics | Status reflects holder, epoch, count (1); metrics (2) |
+| 9 | No holder at all | `wh_role_assignment_status()` state `vacant` / `lapsed`; `roles` health component "role unassigned"; no grant without a vote | Status reports vacant after release (1); health source and reader (2) |
+| 10 | Observability | Status function and reader; one hand-off log line by the winner; `Whizbang.Roles` meters | Status reflects holder, epoch, count (1); reader and meters (2) |
 
 ### Chaos plan (phase 4)
 
@@ -191,6 +199,8 @@ Kill the holder; pause it (`SIGSTOP`); partition it from the database; skew its 
 | **4** | Chaos suite; bridge off by default; `migrator` moved into the bootstrap closure |
 
 ## 11. Open questions
+
+Tracked in GitHub issue #968. Until they are decided, the implementation takes the reversible default for each one: first valid caller wins, no drain or hand-off while the holder is alive, the cool-down applies after any lapse, a stalled bridged holder blocks takeover until its session dies, and work that outlasts a lease lapses and is re-run by the next holder.
 
 - **Long single statements.** A `VACUUM FULL` or a large migration statement can outlast a lease, and the loop cannot renew while it waits. Candidates: size the lease for the longest statement, or renew while the duty's own backend is observed `active` in `pg_stat_activity`, which ties liveness to the work's progress rather than to a timer.
 - **Hand-off while alive.** Should a newer-version instance be able to ask a live older holder to drain and hand over, rather than waiting for its shutdown?
