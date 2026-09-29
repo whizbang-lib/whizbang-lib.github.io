@@ -10,7 +10,7 @@ tags: duties, capabilities, election, role-assignment, advisory-lock, fencing, e
 **The advisory lock decides only the vote. The role is a row: a liveness-tied assignment with an epoch that exclusive work presents as a fencing token.**
 
 :::planned
-**Proposed, phase 1 in flight** (library migration `173_RoleAssignments.sql`, `PgRoleElector`, opt-in through `AddWhizbangRoleAssignment()`). Tracks GitHub issue #966. The released model, a session advisory lock held for the whole tenure, is described on [Capabilities and Duties](/v1.0.0/operations/startup/capabilities-and-duties) and keeps working unchanged until an application opts in. Section 9 lists the phases and what each one delivers.
+**Proposed; phase 1 implemented, opt-in** (library migration `173_RoleAssignments.sql`, `PgRoleElector`, enabled with `AddWhizbangRoleAssignment()`). Tracks GitHub issue #966. The released model, a session advisory lock held for the whole tenure, is described on [Capabilities and Duties](/v1.0.0/operations/startup/capabilities-and-duties) and keeps working unchanged until an application opts in. Section 9 lists the phases and what each one delivers.
 :::
 
 ## 1. Why the session lock is not enough
@@ -116,6 +116,8 @@ The one place two clocks meet is a database failover, when the new primary's `no
 
 Renewals are throttled locally: within one `RenewInterval` of the last successful renewal, measured on the monotonic clock from the moment that request was *sent*, `VerifyStillHeldAsync` answers from memory. That is safe because the database computed the lease from a later instant than the send, and `RenewInterval` is a fraction of the lease. The throttle only saves round trips. It never lets a write through, because writes are fenced in SQL.
 
+A renewal that fails for a transient reason (the database unreachable for a moment) answers false without giving up the grant, because the lease may still be valid and the next verify asks again. An explicit refusal (a lapsed lease, a wrong epoch, a tombstone) loses the grant for good, and a lost grant never asks the database again.
+
 **Hysteresis** has two parts:
 
 - **The lapse threshold is several missed beats.** `lease = RenewInterval × MissedRenewalsBeforeLapse` (defaults 5 s × 3 = 15 s). One slow renewal does not cost the role.
@@ -131,6 +133,8 @@ During a rolling deploy, old instances hold duties with session locks and new in
 |---|---|
 | **New defers to old** | Bridge on (`HoldLegacySessionLock = true`, the default): a new instance first takes the legacy session lock (`DutyLockKey`, the same key the old elector uses) and votes only if it won. If an old instance holds it, the attempt is `Contended` and no assignment is written. Bridge off: the vote itself checks `pg_locks` for the legacy key held by another backend and answers `legacy_holder` |
 | **Old defers to new** | Bridge on: the new holder keeps holding the legacy session lock for as long as it holds the role, so an old instance's `pg_try_advisory_lock` fails exactly as it would against an old holder |
+
+While bridged, the holder checks its bridge session on every verify, not only when it renews: once that session dies, an old instance can take the session lock, so "still held" can no longer be answered from memory. The bridge lock is released explicitly before its connection is closed, because a pooled connection returns to the pool with its session, and its advisory locks, still alive.
 
 The bridge costs the pinned connection the new model exists to remove, so it is temporary: turn it off (`HoldLegacySessionLock = false`) once no instance older than the role-assignment release remains in the fleet. With the bridge off, the `pg_locks` check still refuses a vote while an old holder is visible, but it cannot stop an old instance from taking the session lock *after* the vote, so turning the bridge off with old instances still running is unsafe, and the option says so.
 
