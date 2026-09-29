@@ -356,6 +356,8 @@ public ICollectiveSpec<JobFieldsModel> ApplyFamily(FamilyAppliedToJobsCollective
   stored exactly as the model's own writer would store it, so the rendered copy cannot drift in
   shape from one a normal apply produces.
 - **Keys compare as stored JSON,** so a string, number or identifier key works without a cast.
+- **In a jsonb column too.** When the array is a `[PhysicalField(ColumnType = "jsonb")]`, the element is
+  upserted in the column by the same rules (see [Physical columns](#physical-columns)).
 - **Direct members only.** The array must be a top-level property and the key a direct property of
   the element; anything else throws `NotSupportedException`.
 - **Both drivers, and replay.** EF Core and Dapper share one SQL expression, and replay applies the
@@ -363,7 +365,7 @@ public ICollectiveSpec<JobFieldsModel> ApplyFamily(FamilyAppliedToJobsCollective
 
 ### Physical columns {#physical-columns}
 
-{verified: CollectivePhysicalColumnIntegrationTests.Apply_PhysicalOnlySetter_UpdatesTheColumn_AndLeavesDataByteIdenticalAsync, CollectivePhysicalColumnIntegrationTests.Apply_SetterKeptInBothPlaces_UpdatesTheColumnAndTheDocumentAsync, CollectivePhysicalColumnIntegrationTests.Apply_MixedSetters_UpdateTheColumnAndTheDocument_InOneStatementAsync, CollectivePhysicalColumnIntegrationTests.Apply_WhereOnAPhysicalField_FiltersOnTheColumnAsync, CollectivePhysicalColumnIntegrationTests.Replay_MatchesLive_ForColumnAndDocumentAsync, DapperCollectivePhysicalColumnIntegrationTests.Apply_PhysicalOnlySetter_UpdatesTheColumn_AndLeavesDataByteIdenticalAsync, DapperCollectivePhysicalColumnIntegrationTests.Apply_MixedSetters_UpdateTheColumnAndTheDocument_InOneStatementAsync}
+{verified: CollectivePhysicalColumnIntegrationTests.Apply_EnumSetter_WritesTheUnderlyingNumberToTheColumnAsync, CollectivePhysicalColumnIntegrationTests.Apply_WhereOnAnEnumPhysicalField_ComparesTheNumberAsync, CollectivePhysicalColumnIntegrationTests.Apply_VectorSetter_WritesTheVectorColumnAsync, CollectivePhysicalColumnIntegrationTests.Apply_UpsertElementOnAPhysicalJsonbArray_UpsertsInTheColumnAsync, CollectivePhysicalColumnIntegrationTests.Replay_MatchesLive_ForEnumVectorAndKeyedArrayAsync, DapperCollectivePhysicalColumnIntegrationTests.Apply_EnumSetterAndPredicate_UseTheUnderlyingNumberAsync, DapperCollectivePhysicalColumnIntegrationTests.Apply_VectorSetter_WritesTheVectorColumnAsync, DapperCollectivePhysicalColumnIntegrationTests.Apply_UpsertElementOnAPhysicalJsonbArray_UpsertsInTheColumnAsync, DapperCollectivePhysicalColumnIntegrationTests.Replay_MatchesLive_ForEnumVectorAndKeyedArrayAsync, CollectivePhysicalColumnIntegrationTests.Apply_PhysicalOnlySetter_UpdatesTheColumn_AndLeavesDataByteIdenticalAsync, CollectivePhysicalColumnIntegrationTests.Apply_SetterKeptInBothPlaces_UpdatesTheColumnAndTheDocumentAsync, CollectivePhysicalColumnIntegrationTests.Apply_MixedSetters_UpdateTheColumnAndTheDocument_InOneStatementAsync, CollectivePhysicalColumnIntegrationTests.Apply_WhereOnAPhysicalField_FiltersOnTheColumnAsync, CollectivePhysicalColumnIntegrationTests.Replay_MatchesLive_ForColumnAndDocumentAsync, DapperCollectivePhysicalColumnIntegrationTests.Apply_PhysicalOnlySetter_UpdatesTheColumn_AndLeavesDataByteIdenticalAsync, DapperCollectivePhysicalColumnIntegrationTests.Apply_MixedSetters_UpdateTheColumnAndTheDocument_InOneStatementAsync}
 
 A property marked [`[PhysicalField]`](../perspectives/physical-fields.md) is a real column. A
 collective setter that targets one writes the column, as a typed parameter, in the same `UPDATE` as
@@ -413,14 +415,26 @@ public ICollectiveSpec<TicketModel> Reroute(TicketsReroutedCollectiveEvent e) =>
   perspective runner writes the model's physical fields to their columns (and, outside `Split`, to
   the document) exactly as it does after any event. A rebuilt row has the same columns and the same
   document as one the live `UPDATE` produced.
-- **No reflection.** Which properties are columns, their names and their storage mode come from the
+- **No reflection.** Which properties are columns, their names, their storage mode, an enum's scalar
+  type and a declared column type come from the
   perspective runner the source generator emits: it registers them at module load in
   `PerspectivePhysicalFieldRegistry`, and both drivers read that. A model with no perspective has no
   registration, and its setters stay document writes.
-- **Not supported on a physical column**, each throwing `NotSupportedException` when the spec is
-  compiled: `UpsertElement` (a keyed array lives in the document), a `[VectorField]`, and an
-  enumeration-typed field, whose column form depends on a conversion the collective path does not
-  apply.
+- **Enumerations are stored as numbers.** An enum column holds the enum's underlying number, and a
+  setter, a `Where` condition and a computed comparison all bind that number, the same scalar the
+  per-event write stores (see [Physical Fields](../perspectives/physical-fields.md#enum-columns)).
+- **Vectors.** A setter on a `[VectorField]` writes the vector column in the same `UPDATE`, in the
+  form the per-event write uses (a pgvector parameter on EF Core, the vector's text form on
+  Dapper). A vector cannot be compared: a `Where` condition or computed comparison on one throws
+  `NotSupportedException`.
+- **Keyed arrays in a jsonb column.** `UpsertElement` on an array declared with
+  `[PhysicalField(ColumnType = "jsonb")]` upserts the element in the column, in the same statement
+  and with the same rules as a document array: replace where it stands or append, several upserts
+  on one list compose in call order, and the document array is upserted too outside `Split`. Any
+  other column type holds no keyed elements, so `UpsertElement` on it throws
+  `NotSupportedException`.
+- **An enumeration in a column whose type you declared** (`ColumnType = "text"`, say) throws
+  `NotSupportedException`: its stored form is then your choice, which a collective cannot know.
 
 ### Per-perspective projection (`Where`)
 

@@ -22,6 +22,8 @@ codeReferences:
   - src/Whizbang.Core/Perspectives/PerspectiveStorageAttribute.cs
   - src/Whizbang.Core/Perspectives/FieldStorageMode.cs
   - src/Whizbang.Core/Perspectives/PerspectivePhysicalFieldRegistry.cs
+  - src/Whizbang.Core/Perspectives/PerspectivePhysicalValues.cs
+  - src/Whizbang.Generators.Shared/Models/PhysicalFieldScalar.cs
   - src/Whizbang.Generators.Shared/Models/PhysicalFieldInfo.cs
   - src/Whizbang.Data.EFCore.Postgres/QueryTranslation/PhysicalFieldRegistry.cs
   - src/Whizbang.Data.EFCore.Postgres/QueryTranslation/PhysicalFieldExpressionVisitor.cs
@@ -54,6 +56,9 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/QueryTranslation/PhysicalFieldRegistryTests.cs
   - tests/Whizbang.Generators.Tests/Models/PhysicalFieldInfoTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Collective/CollectivePhysicalColumnIntegrationTests.cs
+  - tests/Whizbang.Generators.Tests/EnumPhysicalFieldGenerationTests.cs
+  - tests/Whizbang.Core.Tests/Perspectives/PerspectivePhysicalValuesTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/Collective/DapperCollectivePhysicalColumnIntegrationTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -604,6 +609,44 @@ the Dapper store writes every physical column on insert and update, as the EF Co
 The fill runs inside the startup schema pass, as one `UPDATE` per field. On a very large table, schedule
 the release that promotes the field for a quiet period, or promote it on an empty table first.
 
+## Enumeration columns {#enum-columns}
+
+{verified: EnumPhysicalFieldGenerationTests.SchemaGenerator_EnumColumn_IsTheUnderlyingIntegerTypeAsync, EnumPhysicalFieldGenerationTests.EFCoreModel_EnumShadowProperty_IsAnIntegerColumnWithANumberConversionAsync, EnumPhysicalFieldGenerationTests.ServiceRegistration_EnumColumn_IsAddedAsAnInteger_AndATextColumnIsFlaggedNotAlteredAsync, DapperCollectivePhysicalColumnIntegrationTests.Store_EnumPhysicalField_IsWrittenAsItsNumberAsync, PerspectivePhysicalValuesTests.ToColumnScalar_NarrowAndUnsignedEnums_WidenToASignedColumnTypeAsync}
+
+An enumeration marked `[PhysicalField]` is stored as its **underlying number**, in a column typed
+from that number. The per-event write (EF Core and Dapper), a collective and replay all bind the same
+scalar, so a `Where` on the column compares numbers and an index on it orders by them.
+
+| Underlying type | Column |
+|---|---|
+| `byte`, `sbyte`, `short` | `smallint` |
+| `ushort`, `int` (the default) | `integer` |
+| `uint`, `long` | `bigint` |
+| `ulong` | `numeric` |
+
+Postgres has no unsigned or single-byte integer, so those widen to the next signed type that holds
+every value. A declared `ColumnType` still wins: an enum declared `ColumnType = "text"` keeps the
+text form EF Core's own conversion gives it, and a collective refuses to set it.
+
+### Columns created as text before this {#enum-text-columns}
+
+Earlier releases typed an enum column as `text` and stored the enum's **name** in it. The schema
+pass never changes an existing column's type: `ADD COLUMN IF NOT EXISTS` leaves that column as it is,
+and the pass raises a `WARNING` naming the column and the migration. Postgres does not assign an
+integer to a `text` column, so until the column is migrated every write to it fails with
+`column "…" is of type text but expression is of type integer`, on both drivers. Migrate before
+deploying this release:
+
+```sql{title="Migrating an enum column from names to numbers" description="Converts the stored names to the enum's underlying numbers and retypes the column in one statement" category="Operations" difficulty="INTERMEDIATE" tags=["Perspectives", "Physical Fields", "Enumerations", "Migration"] unverified="Migration template; the mapping has to be written for the enum's own members."}
+-- enum Stage { Draft = 0, Open = 1, Closed = 2 }
+ALTER TABLE wh_per_ticket
+  ALTER COLUMN stage TYPE integer
+  USING (CASE stage WHEN 'Draft' THEN 0 WHEN 'Open' THEN 1 WHEN 'Closed' THEN 2 END);
+```
+
+The `ALTER` rewrites the table under an exclusive lock, so run it in a maintenance window on a large
+table.
+
 ## Collective updates {#collective-updates}
 
 A [collective event](../messaging/collective-events.md#physical-columns) can set a physical field.
@@ -611,7 +654,8 @@ The setter writes the column as a typed parameter in the collective's single `UP
 the document path as well unless the model is `Split`. A collective that sets only `Split` fields
 leaves `data` out of the statement entirely, so a bulk change to a hot column costs a column write
 rather than a new copy of every document. A collective's `Where` on a physical field filters on the
-column.
+column. Enumerations bind their number, a `[VectorField]` can be set (not compared), and a keyed
+array in a `jsonb` column is upserted in the column.
 
 ## Query Syntax
 
