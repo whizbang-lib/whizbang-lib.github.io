@@ -21,6 +21,7 @@ codeReferences:
   - src/Whizbang.Generators/Analyzers/PerspectiveFilterIndexAnalyzer.cs
   - src/Whizbang.Core/Perspectives/PerspectiveStorageAttribute.cs
   - src/Whizbang.Core/Perspectives/FieldStorageMode.cs
+  - src/Whizbang.Core/Perspectives/PerspectivePhysicalFieldRegistry.cs
   - src/Whizbang.Generators.Shared/Models/PhysicalFieldInfo.cs
   - src/Whizbang.Data.EFCore.Postgres/QueryTranslation/PhysicalFieldRegistry.cs
   - src/Whizbang.Data.EFCore.Postgres/QueryTranslation/PhysicalFieldExpressionVisitor.cs
@@ -52,6 +53,7 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/PhysicalFieldUpsertStrategyTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/QueryTranslation/PhysicalFieldRegistryTests.cs
   - tests/Whizbang.Generators.Tests/Models/PhysicalFieldInfoTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Collective/CollectivePhysicalColumnIntegrationTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -601,6 +603,15 @@ the Dapper store writes every physical column on insert and update, as the EF Co
 
 The fill runs inside the startup schema pass, as one `UPDATE` per field. On a very large table, schedule
 the release that promotes the field for a quiet period, or promote it on an empty table first.
+
+## Collective updates {#collective-updates}
+
+A [collective event](../messaging/collective-events.md#physical-columns) can set a physical field.
+The setter writes the column as a typed parameter in the collective's single `UPDATE`, and writes
+the document path as well unless the model is `Split`. A collective that sets only `Split` fields
+leaves `data` out of the statement entirely, so a bulk change to a hot column costs a column write
+rather than a new copy of every document. A collective's `Where` on a physical field filters on the
+column.
 
 ## Query Syntax
 
