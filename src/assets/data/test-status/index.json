@@ -1,14 +1,14 @@
 {
   "run": {
-    "runId": "36465333252",
-    "sha": "a32cc37819c9f8e02c1591f2251dd40e480d8f6d",
+    "runId": "36563240645",
+    "sha": "3f66fe8a7ca016704603289e9fed612067b684cd",
     "branch": "develop",
-    "libraryVersion": "0.2605.0-alpha.2",
-    "completedAt": "2026-09-28T19:08:41.699Z"
+    "libraryVersion": "0.2605.0-alpha.14",
+    "completedAt": "2026-09-29T12:01:03.510Z"
   },
   "total": {
-    "passed": 26444,
-    "failed": 2,
+    "passed": 26494,
+    "failed": 0,
     "skipped": 9
   },
   "suites": {
@@ -23,13 +23,13 @@
       "skipped": 0
     },
     "postgres-dapper": {
-      "passed": 695,
+      "passed": 718,
       "failed": 0,
       "skipped": 0
     },
     "postgres-efcore-": {
-      "passed": 6110,
-      "failed": 1,
+      "passed": 6115,
+      "failed": 0,
       "skipped": 0
     },
     "rabbitmq": {
@@ -48,8 +48,8 @@
       "skipped": 1
     },
     "unit": {
-      "passed": 19323,
-      "failed": 1,
+      "passed": 19345,
+      "failed": 0,
       "skipped": 8
     }
   },
@@ -116,20 +116,20 @@
     },
     "Whizbang.Core.Tests": {
       "file": "Whizbang.Core.Tests.json",
-      "passed": 12533,
+      "passed": 12542,
       "failed": 0,
       "skipped": 0
     },
     "Whizbang.Data.Dapper.Postgres.Tests": {
       "file": "Whizbang.Data.Dapper.Postgres.Tests.json",
-      "passed": 695,
+      "passed": 718,
       "failed": 0,
       "skipped": 0
     },
     "Whizbang.Data.EFCore.Postgres.Tests": {
       "file": "Whizbang.Data.EFCore.Postgres.Tests.json",
-      "passed": 6110,
-      "failed": 1,
+      "passed": 6115,
+      "failed": 0,
       "skipped": 0
     },
     "Whizbang.Data.Schema.Tests": {
@@ -158,8 +158,8 @@
     },
     "Whizbang.Generators.Tests": {
       "file": "Whizbang.Generators.Tests.json",
-      "passed": 2521,
-      "failed": 1,
+      "passed": 2522,
+      "failed": 0,
       "skipped": 0
     },
     "Whizbang.Hosting.AspNet.Tests": {
@@ -224,7 +224,7 @@
     },
     "Whizbang.Sagas.Tests": {
       "file": "Whizbang.Sagas.Tests.json",
-      "passed": 297,
+      "passed": 309,
       "failed": 0,
       "skipped": 0
     },
