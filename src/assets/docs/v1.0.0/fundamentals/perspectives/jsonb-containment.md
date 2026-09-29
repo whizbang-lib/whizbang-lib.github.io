@@ -400,8 +400,9 @@ Three limits, each for a concrete reason:
 | Arrays and lists only | The candidates arrive already parameterized, so the collection cannot be converted; these are the shapes Npgsql maps to a PostgreSQL array. A set keeps the `IN` form. |
 | Top-level members only | The helper builds single-key documents; a nested path needs one nested document per candidate, which needs the subquery the helper exists to avoid. |
 | Not under a negation | The same three-valued reason equality has. |
+| Not on a field with its own ordered index | The same reason equality stands down: the field's btree answers `= ANY` directly, and a model declaring `[PerspectiveQueries(MatchOnAnyField = false)]` has no whole-document index to send it to. |
 
-{verified: JsonbContainmentAuthoringTests.SetMembership_LeavesTheUnsafeShapesAloneAsync}
+{verified: JsonbContainmentAuthoringTests.SetMembership_LeavesTheUnsafeShapesAloneAsync, JsonIndexStandDownTests.ABtreeIndexedField_InASetFilter_IsNotCompiledToContainmentAsync}
 
 An empty candidate set matches no rows, which is what asking for "any of nothing" should mean. That
 falls out of the SQL rather than needing a special case: aggregating zero values yields null, and

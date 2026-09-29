@@ -16,12 +16,18 @@ codeReferences:
   - src/Whizbang.Data.EFCore.Postgres.Generators/EFCoreServiceRegistrationGenerator.cs
   - src/Whizbang.Data.Postgres/Migrations/173_EnsureIndex.sql
   - src/Whizbang.Generators/Analyzers/PerspectiveFilterIndexAnalyzer.cs
+  - src/Whizbang.Generators/Analyzers/QueryExposureIndexAnalyzer.cs
+  - src/Whizbang.Generators.Shared/Utilities/PostgresIdentifiers.cs
+  - src/Whizbang.Data.EFCore.Postgres/QueryTranslation/JsonbContainmentRewriter.cs
 testReferences:
   - tests/Whizbang.Generators.Tests/PerspectiveDocumentIndexGenerationTests.cs
   - tests/Whizbang.Generators.Tests/PerspectiveIndexSqlTests.cs
   - tests/Whizbang.Generators.Tests/Analyzers/DocumentMatchIndexAnalyzerTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/EnsureIndexFunctionTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/DocumentIndexInitializationTests.cs
+  - tests/Whizbang.Generators.Tests/Analyzers/QueryExposureDocumentMatchTests.cs
+  - tests/Whizbang.Generators.Tests/PostgresIdentifiersTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/QueryTranslation/JsonIndexStandDownTests.cs
 ---
 
 # Perspective Indexes
@@ -52,7 +58,8 @@ see [JSONB Containment Queries](jsonb-containment.md).
 
 A perspective stores its model as a JSON document. An equality filter on a field that has no index of
 its own, `Where(r => r.Data.Status == status)`, is compiled into a **whole-document match**: "rows whose
-document contains `Status: status`". Only an index over the whole document answers that.
+document contains `Status: status`". So is a set filter, `statuses.Contains(r.Data.Status)`, which is
+also what a GraphQL `in` filter becomes. Only an index over the whole document answers that.
 
 That index covers every field of every row. On a busy table it is usually the largest index there,
 and every change to the document rewrites its entries. If none of your queries match that way, it
@@ -92,10 +99,10 @@ inherits it from its base. The nearest declaration wins as a whole.
 
 - **Your filters are on a handful of known fields.** Declare `[Indexed]` on each of them and
   `MatchOnAnyField = false`. A field index is much smaller than the whole-document one and answers
-  ranges and ordering as well as equality. An equality filter on an `[Indexed]` field uses that
-  index, not the whole-document one.
-- **Your filters can be on any field**, such as a filter composed from a request. Declare
-  `MatchOnAnyField = true`.
+  ranges and ordering as well as equality. An equality or set (`in`) filter on an `[Indexed]` field
+  uses that index, not the whole-document one.
+- **Your filters can be on any field**, such as filtering a GraphQL or REST lens composes from the
+  request. Declare `MatchOnAnyField = true`, or index every field a request can name.
 - **You filter on metadata** (`r.Metadata.EventType == ...`). Declare `MatchOnMetadata = true`.
   Nothing in the framework matches on metadata. It reads a row's metadata by key, one row at a
   time, so leave this off unless your own queries need it.
@@ -112,8 +119,12 @@ The build tells you where you stand:
 - [WHIZ308](../../operations/diagnostics/whiz308.md) (Info) marks each filter that relies on the
   index while the model declares nothing. That is the list to check before writing `false`.
 - [WHIZ307](../../operations/diagnostics/whiz307.md) (Warning) fires on a filter that compiles to a
-  whole-document match the declaration leaves without an index: `MatchOnAnyField = false` with a
-  filter on an unindexed field, or any metadata match without `MatchOnMetadata = true`.
+  whole-document match the declaration leaves without an index: `MatchOnAnyField = false` with an
+  equality or set filter on an unindexed field, or any metadata match without
+  `MatchOnMetadata = true`. It also fires on a lens or resolver that lets the **request** compose
+  filters (for example `[UseFiltering]`, or a lens marked `[ComposesQueryFromRequest]`) over a model
+  that opted out while some of its fields still have no index, because no source shows those
+  filters.
 
 The analyzer sees only the queries in the projects it builds. Before you declare
 `MatchOnAnyField = false` on a model other services query, check those services too, and check the
@@ -183,6 +194,28 @@ and creates the index as before, so the comparison can never fail a schema pass.
 Trigram indexes (`IndexKinds.Substring` and `Search`) are the exception. They are created inside the
 optional-extension block that lets a server without `pg_trgm` skip them, so they keep plain
 `CREATE INDEX IF NOT EXISTS`.
+
+### Indexes an earlier release created at apply time
+
+Nothing creates a perspective index at runtime any more. The `idx_wh_per_<table>_scope_t` and
+`idx_wh_per_<table>_data_<field>` indexes an earlier release created during collective applies stay
+in databases that have them, and they keep working. **They are not created on a new database.** If a
+query or a collective predicate depends on one of the `data_<field>` indexes, for example a
+predicate `OverlayId == x`, declare `[Indexed]` on that field in the same release you deploy to a
+new environment. On a database that already has the old index, the declaration doesn't build a
+second one: `wh_ensure_index` finds the old index by its definition and leaves it in place. The
+tenant index needs nothing, because every table declares `idx_<table>_scope_tenant`.
+
+### Long names
+
+PostgreSQL truncates an identifier longer than 63 bytes instead of rejecting it. Two derived index
+names that differed only past that point used to land on one name, and the second index was never
+created. Examples were the case-sensitive and case-insensitive indexes of a long property, or the
+`created_at` and `updated_at` indexes of a long table. A derived name that wouldn't fit now keeps
+its first 54 characters and ends in `_` plus an 8-character digest of the full name. It is stable and
+unique. Names that already fit are unchanged. For a name that changed, `wh_ensure_index` finds the
+existing index under its truncated name and doesn't build it again. The one that had never been
+created is created.
 
 ### Finding and cleaning up duplicates you already have
 

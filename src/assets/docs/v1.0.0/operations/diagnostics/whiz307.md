@@ -11,10 +11,12 @@ order: 307
 tags: 'diagnostics, perspectives, indexing, analyzer, jsonb'
 codeReferences:
   - src/Whizbang.Generators/Analyzers/PerspectiveFilterIndexAnalyzer.cs
+  - src/Whizbang.Generators/Analyzers/QueryExposureIndexAnalyzer.cs
   - src/Whizbang.Generators.Shared/Models/PerspectiveQueriesDiscovery.cs
   - src/Whizbang.Core/Perspectives/PerspectiveQueriesAttribute.cs
 testReferences:
   - tests/Whizbang.Generators.Tests/Analyzers/DocumentMatchIndexAnalyzerTests.cs
+  - tests/Whizbang.Generators.Tests/Analyzers/QueryExposureDocumentMatchTests.cs
 ---
 
 # WHIZ307: Whole-document match has no index
@@ -46,6 +48,11 @@ or record the decision with [SuppressIndexAdvisory("reason")].
 For a match on the row's metadata, the field reads `Metadata.{Field}` and the reason is that the
 model does not declare `MatchOnMetadata = true`.
 
+On a surface that composes filters from the request, the message starts
+`An equality or 'in' filter a request composes on '{Model}' ({Fields})` and names the fields that
+still have no index of their own. It is reported on the lens or resolver, because that is where the
+filtering middleware was attached.
+
 ## When it fires
 
 ```csharp{title="Filters WHIZ307 reports" description="An unindexed field on a model that opted out, and a metadata match without the metadata opt-in." framework="NET10" category="Diagnostics" difficulty="INTERMEDIATE" tags=["whiz307", "perspectives", "indexing"] tests=["DocumentMatchIndexAnalyzerTests.WholeDocumentMatch_OnAModelThatOptedOut_WarnsAsync", "DocumentMatchIndexAnalyzerTests.MetadataMatch_WithoutTheOptIn_WarnsAsync"]}
@@ -55,6 +62,7 @@ public class ShipmentModel {
 }
 
 rows.Where(r => r.Data.Carrier == "acme");            // WHIZ307: nothing answers this
+rows.Where(r => carriers.Contains(r.Data.Carrier));   // WHIZ307: a set filter is the same match
 rows.Where(r => r.Metadata.EventType == "Shipped");   // WHIZ307: metadata index is off
 ```
 
