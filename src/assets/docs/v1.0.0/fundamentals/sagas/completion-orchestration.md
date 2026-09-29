@@ -21,6 +21,8 @@ codeReferences:
   - src/Whizbang.Sagas/Services/SagaWatchdogTickRouter.cs
   - src/Whizbang.Sagas/Services/SagaWatchdogTickRouterRegistrar.cs
   - src/Whizbang.Sagas/SagaServiceCollectionExtensions.cs
+  - src/Whizbang.Core/Routing/RuntimeEventSubscription.cs
+  - src/Whizbang.Core/Routing/EventSubscriptionDiscovery.cs
   - src/Whizbang.Sagas/Services/StrandedSagaSweepStep.cs
   - src/Whizbang.Sagas/Services/ISagaWakeLookup.cs
   - src/Whizbang.Sagas/Services/DispatcherSagaEventEmitter.cs
@@ -34,6 +36,7 @@ testReferences:
   - tests/Whizbang.Sagas.Tests/CompletionOrchestrationGapTests.cs
   - tests/Whizbang.Sagas.Tests/Services/SagaWatchdogTickRoutingTests.cs
   - tests/Whizbang.Sagas.Tests/SagaWatchdogTickDeliveryIntegrationTests.cs
+  - tests/Whizbang.Sagas.Tests/SagaWatchdogTickSubscriptionIntegrationTests.cs
   - tests/Whizbang.Sagas.Tests/Services/StrandedSagaSweepTests.cs
   - tests/Whizbang.Sagas.Tests/Services/StrandedSagaSweepStepTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StreamsWithPendingMessagesSqlTests.cs
@@ -190,14 +193,14 @@ services.AddWhizbangSagas(opts => {
 
 ## Hand-written sagas {#hand-written-sagas}
 
-{verified: SagaWatchdogTickDeliveryIntegrationTests.HandWrittenSagaTick_DeliveredAtTheInboxStage_ReachesTheSagaAsync, SagaWatchdogTickDeliveryIntegrationTests.WithoutTheRouter_AHandWrittenSagaTick_ReachesNothingAsync, SagaWatchdogTickDeliveryIntegrationTests.HandWrittenSagaTick_AtTheSendingStage_DoesNotReachTheSagaAsync, SagaWatchdogTickDeliveryIntegrationTests.HandWrittenSagaTick_AfterTheInboxCommit_DoesNotReachTheSagaAgainAsync, SagaWatchdogTickDeliveryIntegrationTests.SagaAttributeTick_IsLeftToItsGeneratedReceiverAsync}
+{verified: SagaWatchdogTickDeliveryIntegrationTests.HandWrittenSagaTick_DeliveredAtTheInboxStage_ReachesTheSagaAsync, SagaWatchdogTickDeliveryIntegrationTests.WithoutTheRouter_AHandWrittenSagaTick_ReachesNothingAsync, SagaWatchdogTickDeliveryIntegrationTests.HandWrittenSagaTick_AtTheSendingStage_DoesNotReachTheSagaAsync, SagaWatchdogTickDeliveryIntegrationTests.HandWrittenSagaTick_AfterTheInboxCommit_DoesNotReachTheSagaAgainAsync, SagaWatchdogTickDeliveryIntegrationTests.SagaAttributeTick_IsLeftToItsGeneratedReceiverAsync, SagaWatchdogTickSubscriptionIntegrationTests.AddSagaServiceOnly_SubscribesToTheTicksTopic_AndAPublishedTickReachesTheSagaAsync, SagaWatchdogTickSubscriptionIntegrationTests.WithoutWhizbangSagas_TheTicksTopicIsNotSubscribed_AndAPublishedTickIsNeverReceivedAsync, SagaWatchdogTickSubscriptionIntegrationTests.HostWithItsOwnTickReceptor_SubscribesOnce_AndEachTickIsRecoveredOnceAsync, SagaWatchdogTickSubscriptionIntegrationTests.AddSagaServiceOnly_TheTickSubscription_IsLoggedAndHealthyLikeAnyOtherAsync}
 
 `BaseSagaService.InitiateSagaAsync` arms the watchdog for **every** saga it starts. A saga declared
 with `[Saga]` gets a generated receiver for its ticks. A saga service written by hand — a class that
 subclasses `BaseSagaService` directly and is registered with the container — does not, so register
 it with `AddSagaService`:
 
-```csharp{title="Registering a hand-written saga service" description="Exposes a BaseSagaService subclass to the framework's watchdog router so its ticks are received" category="Configuration" difficulty="BEGINNER" tags=["Sagas", "Watchdog", "Configuration"] tests=["SagaWatchdogTickRoutingTests.AddSagaService_RegistersTheServiceAndItsWatchdogParticipationAsOneInstanceAsync", "SagaWatchdogTickRoutingTests.AddWhizbangSagas_RegistersTheRouterRegistrarAsync"]}
+```csharp{title="Registering a hand-written saga service" description="Exposes a BaseSagaService subclass to the framework's watchdog router and subscribes the host to the tick's topic, so its ticks are received" category="Configuration" difficulty="BEGINNER" tags=["Sagas", "Watchdog", "Configuration"] tests=["SagaWatchdogTickRoutingTests.AddSagaService_RegistersTheServiceAndItsWatchdogParticipationAsOneInstanceAsync", "SagaWatchdogTickRoutingTests.AddWhizbangSagas_RegistersTheRouterRegistrarAsync", "SagaWatchdogTickRoutingTests.AddWhizbangSagas_DeclaresTheTickAsConsumed_OnceHoweverOftenItIsCalledAsync", "SagaWatchdogTickSubscriptionIntegrationTests.AddSagaServiceOnly_SubscribesToTheTicksTopic_AndAPublishedTickReachesTheSagaAsync"]}
 services.AddWhizbangSagas();
 services.AddSagaService<ImportSagaService>();   // instead of services.AddScoped<ImportSagaService>()
 ```
@@ -207,11 +210,25 @@ services.AddSagaService<ImportSagaService>();   // instead of services.AddScoped
 framework's `SagaWatchdogTickRouter` at startup, and the router hands each delivered tick to the
 participant whose saga name it carries.
 
+**These two calls are all a hand-written saga needs, including the transport subscription.** A
+service's subscriptions are normally derived at compile time from the receptors and perspectives the
+source generator finds, and the router is registered at startup where that discovery cannot see it.
+So `AddWhizbangSagas()` also declares the tick as an event the host consumes
+([runtime event subscriptions](../dispatcher/routing#runtime-event-subscriptions)), and the transport
+consumer subscribes to the tick's topic (`whizbang.sagas`) exactly as it would for a generated
+receiver. The subscription is created and logged at startup like every other one. Do not write a tick
+receptor of your own to get it: if a receptor you already have forwards ticks to a saga that is now
+registered with `AddSagaService`, remove it, or each tick is recovered twice and re-armed twice. A host
+that keeps such a receptor (for a saga not registered with `AddSagaService`) still subscribes to the
+topic once, so each tick is delivered once.
+
 **Why it matters.** Before the router existed, a hand-written saga armed its tick, the transport
 delivered it on time, and at the stage the inbox invokes there was no receptor for it — so it was
-discarded without a trace. Nothing failed and nothing logged. On a healthy run the gap is invisible,
-because the per-item fast path completes the saga first; it only matters once something else has
-gone wrong, and then the safety net is simply absent.
+discarded without a trace. Nothing failed and nothing logged. Once the router existed, a service that
+relied on it alone still never subscribed to the tick's topic, so its ticks were published and never
+received: they waited unread on the broker, and the stranded-saga sweep re-armed ticks that met the
+same end. On a healthy run either gap is invisible, because the per-item fast path completes the saga
+first; it only matters once something else has gone wrong, and then the safety net is simply absent.
 
 Two rules keep the router safe:
 
