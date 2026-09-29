@@ -255,13 +255,46 @@ healthy while the routing layer drops everything, which produces a false-healthy
 except latency.
 
 - **Pass** — logged at Information; the `signal-bus` health component reports `Operational`.
-- **Fail** — an **ERROR** log names the failing transport and the consequence ("doorbells are NOT
-  reaching this instance — work pumps are running on polling fallback"), and `signal-bus` reports
-  **`Degraded`**. The service still works — polling is the designed fallback — but every hop pays the
-  poll interval, so the degradation is loud instead of silent.
+- **Fail** — the `signal-bus` component reports **`Degraded`**, and the log names the failing
+  transport and the timeout. The verdict feeds the health component only: it does not switch any work
+  pump to polling. If the route really is down, doorbells do not reach this instance and work is
+  discovered at the poll interval, which is the designed fallback, so the degradation is loud instead
+  of silent.
 
 The probe re-runs every `SignalBusOptions.ReProbeIntervalMilliseconds` (default 5 min), so a listener
 that dies mid-run is caught even on an idle service.
+
+### Probe backoff and recovery
+
+A single failed probe is often transient: on a cold start, when many services start at once against
+one PostgreSQL server, the first loopback can miss the timeout while the route itself works. So a
+failed probe does not hold the component `Degraded` for the whole re-probe interval:
+
+- **Short retry backoff.** After a failed probe the loop retries after 5 s, 15 s, 30 s and 60 s
+  (`SignalBusOptions.FailedProbeRetryDelaysMilliseconds`), then returns to the normal interval. The
+  first probe that passes clears the failure and logs a recovery line at Information. Set the option to
+  an empty array to disable the backoff.
+- **Recovery on evidence.** A real wire signal arriving after the failed probe (`LastWireSignalAt`
+  later than `LastProbeAt`) proves the route delivers, and clears the failure at once without waiting
+  for a probe. A signal never sets a verdict before the startup probe has run.
+- **Log levels follow the evidence.** A failure with retries left is a **Warning** that says when the
+  next probe runs. Once the backoff is exhausted, each failure is an **ERROR** that counts the
+  consecutive failures and lists what to check, so a route that is really dead keeps being reported.
+- **Startup grace (optional).** `SignalBusOptions.FirstProbeTimeoutMilliseconds` gives the first probe
+  after startup a longer timeout than later ones. Unset, it uses `ProbeTimeoutMilliseconds`.
+
+```json{title="appsettings.json" description="Signal-bus probe tuning" category="Configuration" difficulty="INTERMEDIATE" tags=["Signal-Bus","Health"]}
+{
+  "Whizbang": {
+    "SignalBus": {
+      "ProbeTimeoutMilliseconds": 5000,
+      "FirstProbeTimeoutMilliseconds": 15000,
+      "ReProbeIntervalMilliseconds": 300000,
+      "FailedProbeRetryDelaysMilliseconds": [5000, 15000, 30000, 60000]
+    }
+  }
+}
+```
 
 ### Runtime doorbell-liveness monitor
 
