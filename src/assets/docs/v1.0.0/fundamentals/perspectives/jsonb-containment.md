@@ -55,8 +55,10 @@ testReferences:
 
 # JSONB Containment Queries
 
-A perspective stores its read model as a JSON document in the `data` column, and every perspective
-table is created with a GIN index on that column. Until now nothing could use it.
+A perspective stores its read model as a JSON document in the `data` column, and a perspective
+table is created with a GIN index on that column unless its model declares
+`[PerspectiveQueries(MatchOnAnyField = false)]` (see [Perspective Indexes](perspective-indexes.md)).
+Until now nothing could use it.
 
 The reason is narrow. A GIN index with the default operator class answers containment and existence,
 `@>` and friends, and nothing else. A property comparison written in LINQ used to compile to a text
