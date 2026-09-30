@@ -11,6 +11,9 @@ codeReferences:
   - src/Whizbang.Data.EFCore.Postgres/Functions/FoldedContainsTranslator.cs
   - src/Whizbang.Data.EFCore.Postgres/Functions/WhizbangSearchDbFunctions.cs
   - src/Whizbang.Generators.Shared/Models/PhysicalColumnSql.cs
+  - src/Whizbang.Data.Postgres/Migrations/179_PhysicalFieldPromotion.sql
+  - src/Whizbang.Data.Postgres/PhysicalColumnFill.cs
+  - src/Whizbang.Data.EFCore.Postgres/PhysicalColumnFillMaintenanceStep.cs
   - src/Whizbang.Core/Perspectives/PhysicalFieldAttribute.cs
   - src/Whizbang.Core/Perspectives/IndexedAttribute.cs
   - src/Whizbang.Generators.Shared/Models/JsonIndexInfo.cs
@@ -40,6 +43,9 @@ testReferences:
   - tests/Whizbang.Data.Dapper.Postgres.Tests/FoldFunctionTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/PhysicalColumnBackfillIntegrationTests.cs
   - tests/Whizbang.Generators.Tests/PhysicalColumnSqlTests.cs
+  - tests/Whizbang.Generators.Tests/PhysicalPromotionIndexGenerationTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/PhysicalFieldPromotionTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/PhysicalColumnFillMaintenanceStepTests.cs
   - tests/Whizbang.Generators.Tests/Analyzers/JsonIndexStorageAnalyzerTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/QueryTranslation/PerspectiveIndexSetupTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/OptionalExtensionBlocksTests.cs
@@ -637,6 +643,71 @@ the Dapper store writes every physical column on insert and update, as the EF Co
 
 The fill runs inside the startup schema pass, as one `UPDATE` per field. On a very large table, schedule
 the release that promotes the field for a quiet period, or promote it on an empty table first.
+
+### Promoting a field that is already indexed {#promoting-an-existing-field}
+
+{verified: PhysicalFieldPromotionTests.APromotedField_LosesItsDocumentIndexesAndGainsColumnIndexesAsync, PhysicalFieldPromotionTests.AnIndexTheSchemaDidNotBuild_IsKeptAsync, PhysicalFieldPromotionTests.ASecondPass_ChangesNothingAsync, PhysicalFieldPromotionTests.ANewTable_HasTheSameColumnIndexesAndArmsNothingAsync, PhysicalPromotionIndexGenerationTests.TheDrops_ComeBeforeTheColumnIndexesThatMayShareTheirNamesAsync}
+
+A field that was already `[Indexed]` in the document has indexes over its extraction: an ordered index
+over `data ->> 'Name'`, and trigram indexes for substring and search. Once the field is promoted, its
+queries read the column, so those indexes are never used again, though every write still maintains them.
+The schema pass that promotes the field moves them:
+
+1. **It drops the document indexes it built for the field.** It finds each one by the name the schema gave
+   it, and drops it only when its definition extracts that field from the document.
+2. **It builds an index of the same kind over the column.** An ordered index becomes a btree on the
+   column, a case-folded one a btree on `lower(column)`, a substring index a trigram index on the column,
+   and a search index a trigram index on `wh_fold(column)`. These are the indexes a table created with the
+   field already promoted gets, so an old database and a new one end up the same.
+
+```csharp{title="Promoting an indexed field" description="The same [Indexed] declarations describe the column's indexes once [PhysicalField] is added." framework="NET10" category="Perspectives" difficulty="INTERMEDIATE" tags=["perspectives", "indexing", "physical-fields"] tests=["PhysicalFieldPromotionTests.APromotedField_LosesItsDocumentIndexesAndGainsColumnIndexesAsync"]}
+public record ItemModel {
+  [StreamId]
+  public Guid Id { get; init; }
+
+  // Before: [Indexed] and [Indexed(IndexKinds.Search)] on a document field.
+  // After: the same declarations, now describing indexes on the name column.
+  [PhysicalField]
+  [Indexed]
+  [Indexed(IndexKinds.Search)]
+  public string? Name { get; init; }
+}
+```
+
+An index the schema did not build is never dropped, even one over the same extraction. If you created
+one yourself, under a name of your own, it stays until you drop it. A column index can share its name
+with the document index it replaces (field `Name`, column `name`), which is why the document index is
+dropped first.
+
+Dropping an index takes a brief exclusive lock on the table, the same lock that adding the column already
+takes in that pass.
+
+### Rows written during a rolling deploy {#rows-written-during-a-rolling-deploy}
+
+{verified: PhysicalColumnFillMaintenanceStepTests.ARowWrittenWithOnlyTheDocumentValue_IsFilledAndFoundByAColumnFilterAsync, PhysicalColumnFillMaintenanceStepTests.ASecondRun_ChangesNothingAsync, PhysicalColumnFillMaintenanceStepTests.AColumnStaysArmedUntilTheSettleWindowHasPassedAsync, PhysicalColumnFillMaintenanceStepTests.ABatchFillsNoMoreThanItsSizeAsync, PhysicalColumnFillMaintenanceStepTests.ASecondRunInTheSameWindow_FillsNothingAsync}
+
+The fill in the schema pass covers the rows that exist when the first instance of the new release starts.
+During a rolling deploy, instances still on the previous release keep writing, and they do not know the
+column. A row they write has the value in the document and null in the column. Queries on the field read
+the column, so a filter misses that row and a sort puts it in the wrong place until the row's next event.
+
+The **physical-column fill** maintenance step closes that gap. The pass that adds a column records it as
+watched, and the step then fills rows that have the value in the document and none in the column:
+
+- **Bounded.** Each run fills at most 1,000 rows per column per batch and at most 20 batches.
+- **Idempotent.** A column is only set where it is null, so a value a writer stored is never replaced,
+  and a run with nothing to fill changes nothing.
+- **Once per fleet.** Only the instance that wins the ten-minute claim window runs it. With nothing
+  watched, the step doesn't claim at all.
+- **Until it has settled.** A column stays watched for a day after the pass that added it, which is longer
+  than a rollout takes. It is released once a run finds nothing left after that.
+
+The Postgres driver registers the step, so it runs wherever the maintenance worker does. A value the
+document holds that the column's type cannot take is reported as a warning, and the column stays watched.
+
+Queries could instead read `COALESCE(column, document value)` for a promoted field, which is correct but
+is a different expression from the column. A filter on it cannot use the column's index, and that index
+is the reason to promote the field. Filling the column keeps every query on the indexed column.
 
 ## Enumeration columns {#enum-columns}
 
