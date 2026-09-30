@@ -497,6 +497,61 @@ public ICollectiveSpec<OrderModel> ClearOverlay(OverlayClearedCollectiveEvent e)
     Where:   r => r.Data.OverlayId == e.OverlayId);
 ```
 
+### Ordering comparisons in `Where` {#ordering-comparisons}
+
+A `Where` can compare with `<`, `<=`, `>` and `>=` as well as `==`, `!=` and
+`Contains`, over a **numeric, enumeration or temporal** member (`DateTime`,
+`DateTimeOffset`, `DateOnly`, `TimeOnly`, `TimeSpan`), on a document path or on a
+[physical column](#physical-columns). The natural use is a monotonic guard that keeps a
+stale collective from overwriting a newer one:
+
+```csharp{
+title: "A monotonic guard in a collective Where"
+description: "Only rows whose recorded ordinal is older than the event's are flipped; a missing key counts as 0 through ??."
+framework: "NET10"
+category: "Messaging"
+difficulty: "INTERMEDIATE"
+tags: ["collective-events", "where", "ordering", "guard"]
+tests: ["DapperCollectiveOrderingIntegrationTests.Ordering_Coalesced_CountsTheMissingKeyAsTheDefaultAsync", "CollectiveOrderingIntegrationTests.Ordering_Coalesced_CountsTheMissingKeyAsTheDefaultAsync"]
+}
+[CollectiveApplyFor]
+public ICollectiveSpec<OrderModel> Activate(ActivationCollectiveEvent e) =>
+  new CollectiveSpec<OrderModel>(
+    Setters: s => s.SetProperty(o => o.ActiveOrdinal, e.Ordinal),
+    Where:   r => (r.Data.ActiveOrdinal ?? 0) < e.Ordinal);   // long? ActiveOrdinal
+```
+
+How the comparison is made, and why:
+
+- **A document member is compared as a number**, `(data->>'X')::numeric`. `->>` is text,
+  and text orders `'10'` before `'9'`.
+- **A temporal member is compared as its stored microsecond count** (the
+  [stored form](../perspectives/jsonb-containment.md) of every date, time and duration), so
+  the event's value is bound as the same count and the comparison is exact to the
+  microsecond. A key still holding an old rendering makes PostgreSQL refuse the statement
+  rather than answer it wrongly.
+- **A physical column is compared as itself**, the value bound as the scalar the column
+  stores (a `DateTimeOffset` at offset zero, which is all `timestamptz` accepts).
+- **A missing key, or a JSON `null`, compares as null**: the comparison is false, exactly as a
+  lifted C# comparison with a null operand is false. Under `!` it stays that way: the
+  compiler makes the comparison false before negating it
+  (`NOT (COALESCE(a < b, FALSE))`), so `!(r.Data.X < 5)` selects a row with a missing key in
+  SQL just as the in-memory replay does. Outside a `!` the plain comparison is emitted, so an
+  index over the expression can serve it.
+- **To have a missing key count as a value**, declare the member nullable and coalesce it:
+  `(r.Data.X ?? 0) < e.Y` compiles to `COALESCE((data->>'X')::numeric, @p) < @q`. That is
+  how a guard covers rows written before the member existed, with no pre-apply step to write
+  a zero into them.
+
+Refused, with the reason: ordering the row id (PostgreSQL orders a `uuid` by its bytes and
+.NET orders a `Guid` by its fields, so the SQL apply and the replay would disagree), a member
+that is neither numeric nor temporal, and a document temporal against a physical one (a
+microsecond count against a timestamp).
+
+The live apply and the in-memory replay select the same rows; both drivers are held to it by
+tests that apply live and replay against the same rows, including the text-ordering trap,
+a JSON null and a missing key with and without `!` and `??`.
+
 ### Cross-perspective cohorts (`ICollectiveQuery`)
 
 A `Where` over `row.Data` only sees the table being mutated. When the
@@ -534,8 +589,8 @@ into a **correlated `EXISTS`** in the same single `UPDATE`:
   and emits the same `EXISTS` SQL; `.Any` → `EXISTS`, `Contains` → `IN`.
 
 Supported inside the `.Any(...)`: an `Id`-correlation (`st.Id == r.Id`)
-plus equality / `Contains` leaf predicates over the sibling's
-`Data`/`Scope`. Richer shapes (non-equality, nested `EXISTS`) throw a
+plus equality, ordering and `Contains` leaf predicates over the sibling's
+`Data`/`Scope`. Richer shapes (disjunctions, nested `EXISTS`) throw a
 clear `NotSupportedException`. Handlers that don't need a sibling simply
 ignore the `ICollectiveQuery` parameter.
 
@@ -861,9 +916,10 @@ same keyset-batched apply shape. The shared compiler translates equality
 over a **scope** field (`row.Scope.Prop == value` → `scope->>'Prop'`)
 **or a data** field (`row.Data.Prop == value` → `data->>'Prop'`, or the
 column itself when `Prop` is a `[PhysicalField]`);
-`&&`-chains mixing both; `Contains` (→ `IN`); and
+`&&`-chains mixing both; `Contains` (→ `IN`); ordering comparisons over numeric and
+temporal members (see [Ordering comparisons](#ordering-comparisons)); and
 `q.Of<TOther>().Any(...)` cross-perspective cohorts (→ a correlated
-`EXISTS`). It throws for richer predicates (non-equality, disjunctions,
+`EXISTS`). It throws for richer predicates (disjunctions,
 arbitrary top-level columns, nested `EXISTS`).
 
 For SET clauses, both compilers support scalar top-level
