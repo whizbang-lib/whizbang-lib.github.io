@@ -78,9 +78,17 @@ jobs:
               fi
               exit 0
             fi
-            # Test-status only: take main's side (newer CI data) and complete the merge.
-            git checkout --theirs -- src/assets/data/test-status/
-            git add src/assets/data/test-status/
+            # Machine-generated data only: take main's side (newer CI data) and complete the
+            # merge. test-status/ alone was not enough — the library's CI also pushes
+            # code-tests-map.json and code-docs-map.json, so every sync after 2026-09-08 hit a
+            # non-test-status conflict, fell through to "leave it for a human", and #606 sat open
+            # for 18 days while develop drifted 234 commits behind.
+            git checkout --theirs -- src/assets/data/test-status/ \
+                                     src/assets/code-tests-map.json \
+                                     src/assets/code-docs-map.json
+            git add src/assets/data/test-status/ \
+                    src/assets/code-tests-map.json \
+                    src/assets/code-docs-map.json
             git commit --no-edit
             echo "Auto-resolved test-status conflicts with main's side."
           fi
