@@ -295,10 +295,10 @@ Guardrails for the "exactly once per receptor per message" contract. **Configure
 
 | Property | Type | Default | Environment variable | Purpose |
 |----------|------|---------|----------------------|---------|
-| `ReceptorInvocationTracking` | `ReceptorInvocationTracking` | `TrackAndEnforce` | — *code-only* | Whether invocations are recorded and duplicates blocked |
-| `OnDoubleFire` | `DoubleFireBehavior` | `Warn` | — *code-only* | On duplicate under enforcement: log + skip, or throw |
-| `PersistInvocations` | `InvocationPersistence` | `Envelope` | — *code-only* | Where records persist (`Envelope` = zero DB writes) |
-| `EnableChaosHooks` | `bool` | `false` | — *code-only* | Framework workers call `IChaosInjector` at named checkpoints |
+| `ReceptorInvocationTracking` | `ReceptorInvocationTracking` | `TrackAndEnforce` | `Whizbang__Guardrails__ReceptorInvocationTracking` | Whether invocations are recorded and duplicates blocked |
+| `OnDoubleFire` | `DoubleFireBehavior` | `Warn` | `Whizbang__Guardrails__OnDoubleFire` | On duplicate under enforcement: log + skip, or throw |
+| `PersistInvocations` | `InvocationPersistence` | `Envelope` | `Whizbang__Guardrails__PersistInvocations` | Where records persist (`Envelope` = zero DB writes) |
+| `EnableChaosHooks` | `bool` | `false` | `Whizbang__Guardrails__EnableChaosHooks` | Framework workers call `IChaosInjector` at named checkpoints |
 
 ### ServiceRegistrationOptions
 
@@ -489,10 +489,10 @@ Completion retry with exponential backoff. **Configure:** via the owning worker'
 
 | Property | Type | Default | Environment variable | Purpose |
 |----------|------|---------|----------------------|---------|
-| `RetryTimeoutSeconds` | `int` | `1` | — *code-only* | Base retry timeout; first retry after this duration |
-| `EnableExponentialBackoff` | `bool` | `true` | — *code-only* | Grow the timeout 1s→2s→4s→…→cap |
-| `BackoffMultiplier` | `double` | `2.0` | — *code-only* | `baseTimeout * multiplier^retryCount` |
-| `MaxBackoffSeconds` | `int` | `60` | — *code-only* | Cap on retry timeout; keep low — failing messages block streams |
+| `RetryTimeoutSeconds` | `int` | `1` | `Whizbang__Workers__Perspective__RetryOptions__RetryTimeoutSeconds` | Base retry timeout; first retry after this duration |
+| `EnableExponentialBackoff` | `bool` | `true` | `Whizbang__Workers__Perspective__RetryOptions__EnableExponentialBackoff` | Grow the timeout 1s→2s→4s→…→cap |
+| `BackoffMultiplier` | `double` | `2.0` | `Whizbang__Workers__Perspective__RetryOptions__BackoffMultiplier` | `baseTimeout * multiplier^retryCount` |
+| `MaxBackoffSeconds` | `int` | `60` | `Whizbang__Workers__Perspective__RetryOptions__MaxBackoffSeconds` | Cap on retry timeout; keep low — failing messages block streams |
 
 ## Outbox and Inbox Pipeline
 
@@ -574,17 +574,17 @@ The only source of `InboxWork`. **Configure:** bound automatically from `Whizban
 
 ### BatchFlusherOptions
 
-Shared tuning shape for the flush workers above. **Configure:** via the owning worker's `Flusher` property.
+Shared tuning shape for the flush workers above. **Configure:** bound as the owning worker's `Flusher`, so these keys work from configuration with no service code — `Whizbang__Workers__FailureFlush__Flusher__MaxBatchSize` and the equivalents for `InboxHandler`, `LeaseRenewal`, `OutboxCompletionFlush` and `PerspectiveCompletionFlush`. The defaults below are this shape's own; each worker overrides some of them, and the per-worker `Flusher` rows above state the effective values.
 
 | Property | Type | Default | Environment variable | Purpose |
 |----------|------|---------|----------------------|---------|
-| `ChannelCapacity` | `int` | `10000` | — *code-only* | Bounded channel capacity (back-pressure when full) |
-| `MaxBatchSize` | `int` | `500` | — *code-only* | Max items per flush call |
-| `CoalesceWindowMs` | `int` | `25` | — *code-only* | Max ms coalescing additional items after the first |
-| `ImmediateFlushThreshold` | `int` | `250` | — *code-only* | Flush immediately if the batch reaches this first |
-| `MaxFlushAttempts` | `int` | `5` | — *code-only* | Consecutive failed flushes of one batch before it is dropped |
-| `FlushRetryBackoffMs` | `int` | `250` | — *code-only* | Backoff before the first retry of a failed flush; doubles per attempt |
-| `FlushRetryMaxBackoffMs` | `int` | `5000` | — *code-only* | Cap on the retry backoff |
+| `ChannelCapacity` | `int` | `10000` | `Whizbang__Workers__<Worker>__Flusher__ChannelCapacity` | Bounded channel capacity (back-pressure when full) |
+| `MaxBatchSize` | `int` | `500` | `Whizbang__Workers__<Worker>__Flusher__MaxBatchSize` | Max items per flush call |
+| `CoalesceWindowMs` | `int` | `25` | `Whizbang__Workers__<Worker>__Flusher__CoalesceWindowMs` | Max ms coalescing additional items after the first |
+| `ImmediateFlushThreshold` | `int` | `250` | `Whizbang__Workers__<Worker>__Flusher__ImmediateFlushThreshold` | Flush immediately if the batch reaches this first |
+| `MaxFlushAttempts` | `int` | `5` | `Whizbang__Workers__<Worker>__Flusher__MaxFlushAttempts` | Consecutive failed flushes of one batch before it is dropped |
+| `FlushRetryBackoffMs` | `int` | `250` | `Whizbang__Workers__<Worker>__Flusher__FlushRetryBackoffMs` | Backoff before the first retry of a failed flush; doubles per attempt |
+| `FlushRetryMaxBackoffMs` | `int` | `5000` | `Whizbang__Workers__<Worker>__Flusher__FlushRetryMaxBackoffMs` | Cap on the retry backoff |
 
 A flush that throws is retried in place with the same batch (Warning, EventId 1: `BatchFlusher flush failed for batch of {Count} (attempt {Attempt} of {MaxAttempts}); retrying the same batch in {BackoffMs}ms`) rather than discarded. The items are completions, lease renewals and failures, so a dropped batch leaves its rows leased until their lease expires, after which they are re-claimed and redone; that consequence is named in the Error (EventId 3) logged when `MaxFlushAttempts` is exhausted, and the count is visible on the flusher's `ItemsDropped` counter beside `ItemsFlushed`. {verified: BatchFlusherRetryTests.FlushFailsOnce_RetriesTheSameBatchAndDeliversItAsync, BatchFlusherRetryTests.FlushAlwaysFails_DropsAfterMaxAttemptsAndNamesTheConsequenceAsync}
 
@@ -611,13 +611,13 @@ Transport-level batch collection before `process_work_batch`. **Configure:** the
 
 ### SlidingWindowBatcherOptions
 
-Shared batching shape (drain signals). **Configure:** via the owning worker's `Batcher`/`DrainBatcher` property.
+Shared batching shape (drain signals). **Configure:** bound as the owning worker's `Batcher` (`InboxDrain`, `OutboxDrain`) or `DrainBatcher` (`Perspective`), so these keys work from configuration with no service code — for example `Whizbang__Workers__InboxDrain__Batcher__MaxSize`.
 
 | Property | Type | Default | Environment variable | Purpose |
 |----------|------|---------|----------------------|---------|
-| `MaxSize` | `int` | `100` | — *code-only* | Max items in a batch; flushed as soon as reached |
-| `SlidingWindow` | `TimeSpan` | `00:00:00.050` | — *code-only* | Quiet period after the last arrival |
-| `MaxWait` | `TimeSpan` | `00:00:01` | — *code-only* | Hard cap on wait from the first arrival |
+| `MaxSize` | `int` | `100` | `Whizbang__Workers__<Worker>__Batcher__MaxSize` | Max items in a batch; flushed as soon as reached |
+| `SlidingWindow` | `TimeSpan` | `00:00:00.050` | `Whizbang__Workers__<Worker>__Batcher__SlidingWindow` | Quiet period after the last arrival |
+| `MaxWait` | `TimeSpan` | `00:00:01` | `Whizbang__Workers__<Worker>__Batcher__MaxWait` | Hard cap on wait from the first arrival |
 
 ### SlidingWindowInboxOptions / SlidingWindowOutboxOptions / SlidingWindowApplyOptions
 
