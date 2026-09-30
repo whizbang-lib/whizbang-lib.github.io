@@ -109,14 +109,14 @@ dotnet sln add InventoryService NotificationService
 **AppHost Project**:
 ```bash{title="Add Whizbang NuGet Packages" description="AppHost Project:" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Infrastructure", "Add", "Whizbang"]}
 cd MyDistributedApp.AppHost
-dotnet add package Whizbang.Hosting.Azure.ServiceBus
+dotnet add package SoftwareExtravaganza.Whizbang.Hosting.Azure.ServiceBus
 ```
 
 **Service Projects**:
 ```bash{title="Add Whizbang NuGet Packages (2)" description="Service Projects:" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Infrastructure", "Add", "Whizbang"]}
 cd ../InventoryService
-dotnet add package Whizbang.Core
-dotnet add package Whizbang.Transports.AzureServiceBus
+dotnet add package SoftwareExtravaganza.Whizbang.Core
+dotnet add package SoftwareExtravaganza.Whizbang.Transports.AzureServiceBus
 ```
 
 ### 3. Configure AppHost

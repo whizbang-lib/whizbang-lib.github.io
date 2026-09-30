@@ -29,7 +29,7 @@ lastMaintainedCommit: '01f07906'
 **Perspectives** are event-driven read models that maintain denormalized, query-optimized views of your domain. This guide covers schema design patterns, denormalization strategies, and PostgreSQL-specific features for building high-performance read models.
 
 :::updated{version="1.0.0"}
-**How shipped Whizbang perspectives store data:** you do NOT hand-write SQL for framework-managed perspectives. A perspective is a class of pure `Apply(currentData, @event)` functions implementing `IPerspectiveFor<TModel, TEvent...>`; the framework persists the model into an auto-generated `wh_per_*` table with the fixed `PerspectiveRow<TModel>` shape — `id` (UUID PK), `data` (JSONB), `metadata` (JSONB), `scope` (JSONB), `created_at`, `updated_at`, `version` — plus optional physical/vector columns declared with `[PhysicalField]` / `[VectorField]` on the model (`[PerspectiveStorage(FieldStorageMode...)]` controls the mode). GIN indexes on the JSONB columns are created automatically.
+**How shipped Whizbang perspectives store data:** you do NOT hand-write SQL for framework-managed perspectives. A perspective is a class of pure `Apply(currentData, @event)` functions implementing `IPerspectiveFor<TModel, TEvent...>`; the framework persists the model into an auto-generated `wh_per_*` table with the fixed `PerspectiveRow<TModel>` shape — `id` (UUID PK), `data` (JSONB), `metadata` (JSONB), `scope` (JSONB), `created_at`, `updated_at`, `version` — plus optional physical/vector columns declared with `[PhysicalField]` / `[VectorField]` on the model (`[PerspectiveStorage(FieldStorageMode...)]` controls the mode). GIN indexes on the `data` and `scope` columns are created automatically; the `data` index and an optional `metadata` index follow `[PerspectiveQueries]` on the model (see [Perspective Indexes](../fundamentals/perspectives/perspective-indexes.md)).
 
 The SQL patterns in the rest of this page are **design guidance for custom read-model tables you maintain yourself** (e.g., populated from a receptor, an external worker, or reporting jobs) — they are not what the framework generates.
 :::
@@ -141,7 +141,7 @@ CREATE TABLE order_summaries (
 public record OrderSummaryDto {
     public Guid OrderId { get; init; }
     public string Status { get; init; } = "";
-    [PhysicalField(Indexed = true)]
+    [PhysicalField] [Indexed]
     public Guid CustomerId { get; init; }         // Indexed physical column
     public string CustomerName { get; init; } = "";
     public string CustomerEmail { get; init; } = "";

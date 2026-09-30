@@ -31,8 +31,19 @@ See [notifications-and-pgbouncer](notifications-and-pgbouncer.md) for sizing mat
 | `Whizbang:WorkCoordinator:PollingIntervalMilliseconds` | int | 250 | Base poll cadence. |
 | `Whizbang:WorkCoordinator:PollingMaxIntervalMilliseconds` | int | 10000 | Adaptive backoff cap. Auto-clamped to ≤ `AbandonStaleInstanceThresholdSeconds × 1000 / 3` to preserve heartbeat freshness. |
 | `Whizbang:WorkCoordinator:MaxStreamsPerBatch` | int | 1000 | Max rows returned per `claim_work` call. |
+| `Whizbang:WorkCoordinator:MaxOutboxRowsPerBatch` | int | 1000 | Outbox acquisition row bound per claim, independent of the stream window. A claim that fills it claims again at once. `0` restores the stream window as the bound. |
+| `Whizbang:WorkCoordinator:OutboxRunLength` | int | 100 | Consecutive rows of one outbox stream a claim may lease (see [claim loop](claim-loop.md#outbox-streams-move-in-runs)). |
+| `Whizbang:WorkCoordinator:MaxOutstandingOutboxRows` | int | 10000 | Ceiling on outbox rows an instance holds; bounds the immediate re-claims after full outbox acquisitions. |
 | `Whizbang:WorkCoordinator:PartitionCount` | int | 10000 | Modulo partition count. |
 | `Whizbang:WorkCoordinator:LeaseSeconds` | int | 300 | Lease duration on claimed work. |
+
+## Outbox drain (`OutboxDrainWorkerOptions`)
+
+| Option | Type | Default | Notes |
+|---|---|---|---|
+| `MaxPerStream` | int | 100 | Rows drained per stream per fetch, and the page a continuation round leases. |
+| `ContinueStreamRuns` | bool | true | Continue a stream from the lease it holds once its rows publish, instead of waiting for the next claim cycle. A stream with a failed publish is never continued. |
+| `MaxContinuationRounds` | int | 10 | Continuation rounds per drain cycle before the claim cycle takes the streams on. |
 
 ## `Whizbang:Heartbeat` (heartbeat worker tuning — `HeartbeatWorkerOptions`)
 

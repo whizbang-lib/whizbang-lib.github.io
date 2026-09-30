@@ -170,7 +170,7 @@ public class CreateOrderReceptor : IReceptor<CreateOrder, (OrderResult, OrderCre
         CreateOrder message,
         CancellationToken ct = default) {
 
-        Guid orderId = TrackedGuid.NewMedo();
+        Guid orderId = TrackedGuid.New();
         var total = message.Items.Sum(i => i.Quantity * i.UnitPrice);
 
         return ValueTask.FromResult((
@@ -183,7 +183,7 @@ public class CreateOrderReceptor : IReceptor<CreateOrder, (OrderResult, OrderCre
 // After (clean sync pattern)
 public class CreateOrderReceptor : ISyncReceptor<CreateOrder, (OrderResult, OrderCreated)> {
     public (OrderResult, OrderCreated) Handle(CreateOrder message) {
-        Guid orderId = TrackedGuid.NewMedo();
+        Guid orderId = TrackedGuid.New();
         var total = message.Items.Sum(i => i.Quantity * i.UnitPrice);
 
         return (
@@ -286,7 +286,7 @@ public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
         }
 
         // Business logic
-        Guid orderId = TrackedGuid.NewMedo();
+        Guid orderId = TrackedGuid.New();
         var total = message.Items.Sum(i => i.Quantity * i.UnitPrice);
 
         _logger.LogInformation(
@@ -582,7 +582,7 @@ public class CreateOrderReceptor : IReceptor<CreateOrder, (OrderResult, OrderCre
         }
 
         // Business logic
-        Guid orderId = TrackedGuid.NewMedo();
+        Guid orderId = TrackedGuid.New();
         var total = message.Items.Sum(i => i.Quantity * i.UnitPrice);
 
         _logger.LogInformation(
@@ -898,10 +898,10 @@ public class CreateOrderReceptorTests {
         var receptor = new CreateOrderReceptor(logger);
 
         var command = new CreateOrder(
-            CustomerId: TrackedGuid.NewMedo(),
+            CustomerId: TrackedGuid.New(),
             Items: [
-                new OrderLineItem(TrackedGuid.NewMedo(), 2, 19.99m),
-                new OrderLineItem(TrackedGuid.NewMedo(), 1, 49.99m)
+                new OrderLineItem(TrackedGuid.New(), 2, 19.99m),
+                new OrderLineItem(TrackedGuid.New(), 1, 49.99m)
             ]
         );
 
@@ -922,7 +922,7 @@ public class CreateOrderReceptorTests {
         var receptor = new CreateOrderReceptor(logger);
 
         var command = new CreateOrder(
-            CustomerId: TrackedGuid.NewMedo(),
+            CustomerId: TrackedGuid.New(),
             Items: []  // Empty!
         );
 
@@ -968,7 +968,7 @@ public class CancelOrderReceptorTests {
         var receptor = new CancelOrderReceptor(mockDb, logger);
 
         var command = new CancelOrder(
-            OrderId: TrackedGuid.NewMedo(),  // Doesn't exist
+            OrderId: TrackedGuid.New(),  // Doesn't exist
             Reason: "Customer request"
         );
 
@@ -1175,7 +1175,7 @@ public class CompleteOrderReceptor : IReceptor<CompleteOrder, OrderCompleted> {
 - ✅ Log important decisions and errors
 - ✅ Test receptors in isolation
 - ✅ Extract complex validation into private methods
-- ✅ Use **TrackedGuid.NewMedo()** for IDs (time-ordered UUIDv7)
+- ✅ Use **TrackedGuid.New()** for IDs (time-ordered UUIDv7)
 
 ### DON'T ❌
 
@@ -1186,7 +1186,7 @@ public class CompleteOrderReceptor : IReceptor<CompleteOrder, OrderCompleted> {
 - ❌ Return null (throw exception or return error response)
 - ❌ Mix read and write logic (use separate receptors)
 - ❌ Ignore CancellationToken
-- ❌ Use Guid.NewGuid() (use TrackedGuid.NewMedo() for time-ordered UUIDv7 IDs)
+- ❌ Use Guid.NewGuid() (use TrackedGuid.New() for time-ordered UUIDv7 IDs)
 
 ---
 

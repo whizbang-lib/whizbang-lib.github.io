@@ -17,10 +17,12 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/011_CleanupStaleInstances.sql
   - src/Whizbang.Data.Postgres/Migrations/012_CalculateInstanceRank.sql
   - src/Whizbang.Data.Postgres/Migrations/029_ProcessWorkBatch.sql
+  - src/Whizbang.Data.Postgres/Migrations/148_ActiveStreamLeases.sql
   - src/Whizbang.Core/Workers/HeartbeatWorker.cs
   - src/Whizbang.Core/Workers/ClaimWorker.cs
 testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/ClaimWorkSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/ActiveStreamLeaseExpirySqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/ClaimOrphanedActiveStreamsPinningSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/ClaimOrphanedAttemptsIncrementSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/CleanupStaleInstancesDefinitiveDeathSqlTests.cs
@@ -43,6 +45,10 @@ Multi-instance coordination ensures reliable, ordered message processing across 
 ### 1. Cross-Instance Stream Ordering {#cross-instance-stream-ordering}
 
 **Rule**: A stream belongs to exactly one live instance at a time. When Instance A owns stream S (a live lease in `wh_active_streams`), Instance B cannot claim ANY messages from stream S — later messages included — until Instance A's ownership lapses.
+
+{verified: ActiveStreamLeaseExpirySqlTests.ClaimOrphanedInbox_Steal_NeverTakesAStreamALiveSiblingOwns_EvenWithNoRowLeasedAsync, ActiveStreamLeaseExpirySqlTests.RenewLeases_ExtendsTheStreamLease_ForTheOwnersStreamsAsync}
+
+The lease is what makes the rule hold between rows: the acquisition functions write `wh_active_streams.lease_expiry` with every claim and `renew_leases` extends it with the row leases, so a stream stays owned while its owner is mid-handler even when none of its rows happens to be leased at that instant. See [stream leases](../operations/workers/process-work-batch-lease-semantics.md#stream-leases).
 
 **Why This Matters**: Prevents out-of-order processing when messages from the same stream would otherwise be distributed across multiple instances.
 

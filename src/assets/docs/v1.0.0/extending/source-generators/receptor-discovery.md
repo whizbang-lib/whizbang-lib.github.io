@@ -674,7 +674,7 @@ public class GeneratedDispatcher : Dispatcher {
 **Solution**:
 ```xml{title="Problem: Generator Doesn't Run" description="Problem: Generator Doesn't Run" category="Internals" difficulty="ADVANCED" tags=["Extending", "Source-Generators", "Problem:", "Generator"]}
 <ItemGroup>
-  <PackageReference Include="Whizbang.Generators" OutputItemType="Analyzer" />
+  <PackageReference Include="SoftwareExtravaganza.Whizbang.Generators" OutputItemType="Analyzer" />
 </ItemGroup>
 ```
 

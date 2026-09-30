@@ -59,8 +59,8 @@ public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
         CreateOrder message,
         CancellationToken cancellationToken = default) {
         // Business logic
-        // TrackedGuid.NewMedo() produces a time-ordered UUIDv7 (implicitly converts to Guid)
-        return ValueTask.FromResult(new OrderCreated(TrackedGuid.NewMedo()));
+        // TrackedGuid.New() produces a time-ordered UUIDv7 (implicitly converts to Guid)
+        return ValueTask.FromResult(new OrderCreated(TrackedGuid.New()));
     }
 }
 ```
@@ -168,7 +168,7 @@ public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
         CreateOrder message,
         CancellationToken cancellationToken = default) {
 
-        Guid orderId = TrackedGuid.NewMedo();
+        Guid orderId = TrackedGuid.New();
         var orderCreated = new OrderCreated(orderId);
 
         // Publish cascading message (routed through the outbox automatically)
@@ -213,7 +213,7 @@ public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
         CreateOrder message,
         CancellationToken cancellationToken = default) {
 
-        Guid streamId = TrackedGuid.NewMedo();
+        Guid streamId = TrackedGuid.New();
         var @event = new OrderCreated(streamId);
 
         // The message overload creates (or retrieves) the envelope automatically,
@@ -322,7 +322,7 @@ public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
 - [ ] Add `CancellationToken` parameter
 - [ ] Convert method injection to constructor injection
 - [ ] Split multi-handler classes into separate receptors
-- [ ] Use `TrackedGuid.NewMedo()` (from `Whizbang.Core.ValueObjects`) for new IDs
+- [ ] Use `TrackedGuid.New()` (from `Whizbang.Core.ValueObjects`) for new IDs
 - [ ] Update namespace usings
 
 ## Automated Migration

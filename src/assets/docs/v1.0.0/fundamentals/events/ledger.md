@@ -163,7 +163,7 @@ await foreach (var envelope in eventStore.ReadPolymorphicAsync(streamId, fromEve
 public async Task Append_ShouldIncrementSequenceAsync() {
   // Arrange
   var store = new InMemoryEventStore();
-  var streamId = (Guid)TrackedGuid.NewMedo();
+  var streamId = (Guid)TrackedGuid.New();
 
   // Empty stream reports -1
   await Assert.That(await store.GetLastSequenceAsync(streamId)).IsEqualTo(-1);
@@ -187,7 +187,7 @@ public async Task Append_ShouldIncrementSequenceAsync() {
 
 - **Append-only** - no update or delete operations exist on the interface
 - **Per-stream ordering** - monotonic sequence numbers within each stream
-- **Time-ordered event IDs** - UUIDv7 (`TrackedGuid.NewMedo()`) makes event IDs sortable across streams
+- **Time-ordered event IDs** - UUIDv7 (`TrackedGuid.New()`) makes event IDs sortable across streams
 - **AOT-compatible** - generic append/read with source-generated JSON contexts; no reflection
 - **Thread-safe** - `InMemoryEventStore` uses concurrent collections; Postgres backends rely on transactional inserts with retry
 

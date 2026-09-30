@@ -487,9 +487,9 @@ public class CreateOrderReceptor(
     CreateOrder message,
     CancellationToken cancellationToken = default
   ) {
-    // 1. Create aggregate (TrackedGuid.NewMedo() = time-ordered UUIDv7)
+    // 1. Create aggregate (TrackedGuid.New() = time-ordered UUIDv7)
     var aggregate = OrderAggregate.Create(
-      orderId: TrackedGuid.NewMedo().Value,
+      orderId: TrackedGuid.New().Value,
       customerId: message.CustomerId,
       items: message.Items
     );

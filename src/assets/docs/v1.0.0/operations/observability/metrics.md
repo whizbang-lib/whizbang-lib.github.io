@@ -10,15 +10,19 @@ description: >-
   Complete reference for all built-in OpenTelemetry metrics emitted by Whizbang -
   counters, histograms, and gauges across dispatcher, lifecycle, transport,
   perspective, work coordinator, and lifecycle coordinator subsystems
-tags: 'metrics, opentelemetry, counters, histograms, monitoring, Prometheus, Grafana'
+tags: 'metrics, opentelemetry, counters, histograms, monitoring, Prometheus, Grafana, passive-counters, maintenance'
 codeReferences:
   - src/Whizbang.Core/Observability/WhizbangMetrics.cs
+  - src/Whizbang.Core/Observability/PassiveCounter.cs
+  - src/Whizbang.Core/Observability/MaintenanceMetrics.cs
   - src/Whizbang.Core/Observability/DispatcherMetrics.cs
   - src/Whizbang.Core/Observability/LifecycleMetrics.cs
   - src/Whizbang.Core/Observability/LifecycleCoordinatorMetrics.cs
   - src/Whizbang.Core/Observability/TransportMetrics.cs
   - src/Whizbang.Core/Observability/PerspectiveMetrics.cs
   - src/Whizbang.Core/Observability/WorkCoordinatorMetrics.cs
+  - src/Whizbang.Core/Observability/CompositeMetrics.cs
+  - src/Whizbang.Core/Workers/InboxHandlerWorker.cs
   - src/Whizbang.Core/Messaging/WorkCoordinatorGate.cs
   - src/Whizbang.Core/Observability/InboxMetrics.cs
   - src/Whizbang.Core/Observability/DeadLetterMetrics.cs
@@ -31,7 +35,14 @@ codeReferences:
   - src/Whizbang.Core/Routing/MessageDiscardPolicy.cs
   - src/Whizbang.Data.Postgres/Notifications/NotifyMetrics.cs
   - src/Whizbang.Sagas/Observability/SagaMetrics.cs
+  - src/Whizbang.Core/Observability/InstanceLivenessMetrics.cs
+  - src/Whizbang.Core/Observability/ProbeCadenceMetrics.cs
 testReferences:
+  - tests/Whizbang.Core.Tests/Observability/InstanceLivenessMetricsTests.cs
+  - tests/Whizbang.Core.Tests/Observability/ProbeCadenceMetricsTests.cs
+  - tests/Whizbang.Core.Tests/Observability/PassiveCounterTests.cs
+  - tests/Whizbang.Core.Tests/Observability/PassiveCounterDriftLockTests.cs
+  - tests/Whizbang.Core.Tests/Observability/MaintenanceMetricsTests.cs
   - tests/Whizbang.Core.Tests/Observability/DispatcherMetricsTests.cs
   - tests/Whizbang.Core.Tests/Observability/LifecycleMetricsTests.cs
   - tests/Whizbang.Core.Tests/Observability/LifecycleCoordinatorMetricsTests.cs
@@ -47,6 +58,10 @@ testReferences:
   - tests/Whizbang.Core.Tests/Observability/TypeRegistryMetricsTests.cs
   - tests/Whizbang.Core.Tests/Observability/StreamIntegrityMetricsTests.cs
   - tests/Whizbang.Sagas.Tests/SagaMetricsTests.cs
+  - tests/Whizbang.Core.Tests/Observability/CompositeMetricsTests.cs
+  - tests/Whizbang.Core.Tests/Workers/InboxDispatchWorkerCompositeCommitTests.cs
+  - tests/Whizbang.Core.Tests/Workers/InboxHandlerWorkerQueueDepthTests.cs
+  - tests/Whizbang.Core.Tests/Workers/PerspectiveWorkerCollectiveSinkTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -71,6 +86,7 @@ Additional subsystem meters:
 |-------|-------|-------|
 | `Whizbang.DeadLetters` | `DeadLetterMetrics` | Internal DLQ adds, recoveries, holds, generation replay, per-stack arrivals, canary campaign verdicts and trickle waves |
 | `Whizbang.TransportDeadLetterDrain` | `TransportDeadLetterDrainWorker` | Broker-side DLQ drain counts |
+| `Whizbang.Maintenance` | `MaintenanceMetrics` | Per-task maintenance outcomes (rows affected, duration) and row-retention adoption |
 | `Whizbang.EventCategories` | `EventCategoryMetrics` | Category-routed event dispatch and fanout |
 | `Whizbang.Workers.PinnedPool` | `PinnedPoolMetrics` | Pinned connection pool borrows, timeouts, recycles |
 | `Whizbang.TableStatistics` | `TableStatisticsMetrics` | Estimated queue depth and table size gauges |
@@ -80,6 +96,8 @@ Additional subsystem meters:
 | `Whizbang.Core.Routing.MessageDiscard` | `MessageDiscardPolicy` | Unsubscribed-message discards at the receive boundary |
 | `Whizbang.Postgres.Notifications` | `NotifyMetrics` | LISTEN/NOTIFY signal delivery and connection state |
 | `Whizbang.Sagas` | `SagaMetrics` | Saga initiation, completion, item and hook outcomes |
+| `Whizbang.Liveness` | `InstanceLivenessMetrics` | Heartbeat watchdog and slow beats, death announcements and retractions |
+| `Whizbang.Probes` | `ProbeCadenceMetrics` | Periodic probe ticks by worker and outcome (the idle footprint), suppressed duty attempts |
 
 ## Configuration {#configuration}
 
@@ -137,6 +155,57 @@ public sealed class WhizbangMetrics(IMeterFactory? meterFactory = null) {
   public IMeterFactory? MeterFactory { get; } = meterFactory;
 }
 ```
+
+## Counters are passive {#passive-counters}
+{verified: PassiveCounterTests.UntaggedSeries_ExistsAtZero_BeforeAnyAddAsync, PassiveCounterTests.Touch_DeclaresClosedDomainSeriesAtZeroAsync, PassiveCounterDriftLockTests.EveryCoreMetricsClass_ReportsEveryCounterAtTheFirstCollectionAsync}
+
+Every framework counter and up-down counter is a `PassiveCounter<T>`. The worker that does the work adds to a live count held in memory; nothing is pushed to the metrics pipeline. At every collection the meter reads the counts it holds and reports them, one measurement per tag set. On the meter the instrument is an observable counter (cumulative, monotonic) or an observable up-down counter, so exporters compute rates and deltas exactly as they do for a pushed counter, and dashboards see the same series names and tags. The tables on this page keep calling them counters and up-down counters; on the meter they are `ObservableCounter<T>` and `ObservableUpDownCounter<T>`. The add itself is an in-memory accumulate under a lock, so it costs the same with or without a listener.
+
+The consequence that matters to an operator: every series exists from the moment the counter is constructed, at zero. A quiet subsystem reads as zero, never as a missing meter. A dead-letter meter that shows `0` is a service with no dead letters. Before this change the same service showed nothing, and nothing is also what a mis-subscribed meter shows, so the two could not be told apart from the backend.
+
+Tag domains:
+
+- The untagged series always exists.
+- A closed tag domain (an enum, a fixed category set) is declared at construction with `Touch`, so each labeled series exists at zero before its first real count.
+- Open tag values (type names, origins, stream ids) appear on first use. Nothing is fabricated.
+
+Histograms keep the push model: a distribution has no meaningful value before its first sample.
+
+What "no series at all" means now: the meter is not subscribed. Check that `AddWhizbangInstrumentation()` (or `WhizbangMeters.All`) is in the metrics pipeline; see [Configuration](#configuration).
+
+A custom passive counter on a consumer meter:
+
+```csharp{
+title: "A passive counter on a consumer meter"
+description: "Creates a passive counter with CreatePassiveCounter, declares a closed tag domain with Touch so every kind reads as zero from the first collection, and adds tagged counts that the meter observes at collection."
+framework: "NET10"
+category: "Observability"
+difficulty: "INTERMEDIATE"
+tags: ["metrics", "passive-counter", "observable-counter", "tags", "meter"]
+tests: ["PassiveCounterTests.Touch_DeclaresClosedDomainSeriesAtZeroAsync", "PassiveCounterTests.Add_AccumulatesAndReportsTheCumulativeValueAtCollectionAsync"]
+}
+using System.Diagnostics.Metrics;
+using Whizbang.Core.Observability;
+
+public sealed class ImportMetrics {
+  private readonly PassiveCounter<long> _filesProcessed;
+
+  public ImportMetrics(IMeterFactory meterFactory) {
+    var meter = meterFactory.Create("MyApp.Import");
+    _filesProcessed = meter.CreatePassiveCounter<long>(
+      "myapp.import.files_processed",
+      description: "Files the importer has processed; tagged by kind");
+
+    // A closed domain: every kind reads as zero from the first collection.
+    _filesProcessed.Touch("kind", ["csv", "json"]);
+  }
+
+  public void RecordFile(string kind) =>
+    _filesProcessed.Add(1, new KeyValuePair<string, object?>("kind", kind));
+}
+```
+
+`CreatePassiveUpDownCounter<T>` is the up-down form. For test authors: a `MeterListener` only sees a passive counter when it calls `RecordObservableInstruments()`. The measurement callback fires at collection, not on `Add`, so a listener that waits for a pushed measurement never sees one.
 
 ## Whizbang.Dispatcher {#dispatcher}
 
@@ -355,6 +424,21 @@ Instruments for the perspective worker pipeline - batch processing, claim, event
 | `whizbang.perspective.streams_updated` | Counter\<long\> | Unique streams updated |
 | `whizbang.perspective.errors` | Counter\<long\> | Processing errors |
 | `whizbang.perspective.empty_batches` | Counter\<long\> | Polling cycles with no work |
+| `whizbang.perspective.read_failures` | Counter\<long\> | Rows a perspective could not read. Tags: `perspective_name`, `reason` (`stored_form_unreadable` for a stored form no reader takes) |
+
+### Stored-form fallbacks
+
+Counted on the same meter by the readers of a stored document, not by the worker. Each one says a
+row the stored-form rewrite did not reach was read anyway, in an older form; the readers announce the
+first of each kind once, at Warning. The rendering branch is removed once these read zero across a
+release cycle. See [dates, times and durations](../../fundamentals/perspectives/jsonb-containment.md#dates-times-and-durations).
+
+| Metric Name | Type | Description |
+|-------------|------|-------------|
+| `whizbang.perspective.temporal_form_fallbacks` | Counter\<long\> | A date, time or duration read from its rendering rather than the canonical number. Tag: `kind` |
+| `whizbang.perspective.identifier_form_fallbacks` | Counter\<long\> | A tracked identifier read from its scalar form rather than the object form. Tag: `type` |
+
+{verified: CanonicalTemporalReaderToleranceTests.ReadingARenderingIsCountedByKindAsync, CanonicalTemporalReaderToleranceTests.TheFirstRenderingOfEachKindIsAnnouncedOnceAsync, CanonicalTemporalReaderToleranceTests.ReadingAScalarIdentifierIsCountedAndAnnouncedAsync, PerspectiveReadFailureMetricsTests.ReadFailures_RecordsWithPerspectiveAndReasonAsync}
 
 ### Backlog & Rewind
 
@@ -412,6 +496,9 @@ Instruments for the core work coordination pipeline - the `process_work_batch` S
 | `whizbang.work_coordinator.process_batch.errors` | Counter\<long\> | SQL errors |
 | `whizbang.work_coordinator.flush.calls` | Counter\<long\> | Total FlushAsync calls |
 | `whizbang.work_coordinator.flush.empty_calls` | Counter\<long\> | Flushes with no queued work |
+| `whizbang.work_coordinator.outbox.emission_deduplicated` | Counter\<long\> | Outbox rows skipped because the same message id was already stored: the republishes a retry would have produced; tagged by `message_type`. Recorded by the EF Core coordinator (the Dapper coordinator deduplicates through the same primary key but does not count). Sustained non-zero points at the completion path, see [Emission identity](/v1.0.0/fundamentals/dispatcher/message-cascade#emission-identity) |
+
+{verified: WorkCoordinatorMetricsTests.WCMetrics_OutboxEmissionDeduplicated_CountsPerMessageTypeAsync, EFCoreOutboxEmissionDedupTests.StoreOutboxMessagesAsync_SameMessageStoredTwice_CountsTheSkippedRowByTypeAsync}
 
 ### Publisher Worker
 
@@ -438,6 +525,34 @@ Both instruments live on the `Whizbang.WorkCoordinator` meter (`InboxMetrics` de
 
 `whizbang.gate.hold_duration_ms` is a history. For a point-in-time view, `WorkCoordinatorGate.SnapshotHolders()` returns every held slot as `(Caller, HeldMs)`, and the gate's acquire-deadline Warning (EventId 1, `WorkCoordinatorGate.AcquireAsync timed out ...`) appends the same snapshot grouped by caller, `Holders: <Caller> xN (oldest S s), ...`, so a saturation warning names what is holding the gate. {verified: WorkCoordinatorGateHolderDiagnosticsTests.SnapshotHolders_NamesEveryCurrentHolder_AndForgetsReleasedOnesAsync, WorkCoordinatorGateHolderDiagnosticsTests.Deadline_NamesTheHoldersInTheWarningAsync}
 
+## Whizbang.Liveness {#liveness}
+
+Meter name: `Whizbang.Liveness` (`InstanceLivenessMetrics`)
+
+Passive counters for instance liveness: the heartbeat writer's out-of-cadence and slow beats, and the lifecycle monitor's death announcements and retractions. Every series exists at zero from construction, so a fleet that never had a false death shows the retraction counter at zero rather than as a missing meter. Design and operator guidance: [Instance liveness](/v1.0.0/fundamentals/workers/instance-liveness#observability).
+
+| Metric Name | Type | Description |
+|-------------|------|-------------|
+| `whizbang.liveness.watchdog_beats` | Counter\<long\> | Heartbeats forced ahead of cadence because the regular beat ran late enough to approach the stale threshold |
+| `whizbang.liveness.slow_beats` | Counter\<long\> | Heartbeats whose round trip took at least one fast interval |
+| `whizbang.liveness.deaths_announced` | Counter\<long\> | `InstanceDied` signals published by the lifecycle monitor |
+| `whizbang.liveness.deaths_retracted` | Counter\<long\> | Announced deaths retracted because the instance was alive again on a later tick; a beat was late, not absent |
+
+{verified: InstanceLivenessMetricsTests.Counters_ReportWhatWasAddedWhenPolledAsync, InstanceLivenessMetricsTests.Meter_IsNamedForTheLivenessDomainAsync, InstanceLivenessMetricsTests.WithoutAMeterFactory_StillConstructsAsync}
+
+## Whizbang.Probes {#probes}
+
+Meter name: `Whizbang.Probes` (`ProbeCadenceMetrics`)
+
+Passive counters for the periodic probes that make up a service's idle footprint on its database. The `idle` series are the footprint; on an empty queue they should grow slowly. Design: [Idle footprint](/v1.0.0/fundamentals/workers/idle-footprint).
+
+| Metric Name | Type | Description |
+|-------------|------|-------------|
+| `whizbang.probes.ticks` | Counter\<long\> | Probe ticks by worker and outcome; tags `probe` (`durable-signal-tail`, `instance-lifecycle`, `backlog-age`) and `outcome` (`work`, `idle`). Both series of every known probe are touched at zero from construction |
+| `whizbang.probes.suppressed_duty_attempts` | Counter\<long\> | Duty attempts answered from memory while a contention window was open, so no lock round trip was made; tagged by `duty` |
+
+{verified: ProbeCadenceMetricsTests.KnownProbes_HaveBothOutcomeSeriesAtZeroFromConstructionAsync, ProbeCadenceMetricsTests.RecordTick_IncrementsTheSeriesForTheOutcomeAsync, ProbeCadenceMetricsTests.SuppressedDutyAttempts_AreCountedPerDutyAsync, ProbeCadenceMetricsTests.Meter_IsNamedForTheProbeDomainAsync}
+
 ## Whizbang.DeadLetters {#dead-letters}
 
 Meter name: `Whizbang.DeadLetters` (`DeadLetterMetrics`)
@@ -458,6 +573,36 @@ Meter name: `Whizbang.DeadLetters` (`DeadLetterMetrics`)
 | `whizbang.dispatcher.re_emissions` | Counter\<long\> | Events published that this service also consumes — the re-emission cascade signature (#587), tagged by `type`. A spike during a bulk operation is amplification |
 | `whizbang.work_coordinator.commit_handler.fallbacks` | Counter\<long\> | Handler-commit batches that fell back from the bulk tier to per-handler savepoints (#573). Sustained non-zero: read the paired warning's SQLSTATE |
 
+### Handler commit queue {#handler-commit-queue}
+
+{verified: InboxHandlerWorkerQueueDepthTests.QueuedHandlerCommits_AreObservableAsAGauge_UntilTheyCommitAsync}
+
+| Metric Name | Type | Description |
+|-------------|------|-------------|
+| `whizbang.work_coordinator.handler_commits.queued` | Gauge\<long\> | Handler results dispatched but not yet committed: what waits in the commit channel plus what the flusher has taken up and is committing. This queue is the one place dispatched work waits in memory; under a bulk fan-out it once held whole composite expansions while the lease count stayed capped and nothing said where the memory was (#740). Composite expansions no longer pass through it |
+
+## Whizbang.Composites {#composites-and-collectives}
+
+Meter name: `Whizbang.Composites` (`CompositeMetrics`)
+
+A composite disappears once it is expanded (its row is completed and only its children remain), so these counters are the only place the amplification of a fan-out is visible. Read them as ratios: `expansions / received` should be one (above one is a composite being expanded more than once, the shape of a re-offer racing a queued commit); `children_created / expansions` is the fan-out width; `children_unsubscribed / (children_created + children_unsubscribed)` is the share of a composite this consumer never wanted.
+{verified: CompositeMetricsTests.Counters_ReportWhatWasAddedWhenPolledAsync, InboxDispatchWorkerCompositeCommitTests.Composite_Meters_CountReceivedExpansionsChildrenAndUnsubscribedDropsAsync}
+
+| Metric Name | Type | Description |
+|-------------|------|-------------|
+| `whizbang.composites.received` | Counter\<long\> | Composite inbox rows the dispatcher took up |
+| `whizbang.composites.expansions` | Counter\<long\> | Times a composite was expanded into children; above `received` means a composite was expanded more than once |
+| `whizbang.composites.children_created` | Counter\<long\> | Child inbox rows produced by expansions |
+| `whizbang.composites.children_unsubscribed` | Counter\<long\> | Children dropped at expansion because this consumer has no subscription for their type; they are never stored |
+| `whizbang.composites.children_refused` | Counter\<long\> | Children refused by the consumer's expansion budget (`MaxCompositeChildrenPerExpansion`) |
+| `whizbang.composites.dead_lettered` | Counter\<long\> | Composite rows moved to the dead-letter store instead of being expanded |
+| `whizbang.composites.commit_failures` | Counter\<long\> | Expansions whose synchronous commit failed; the row stays leased and is retried on re-offer |
+| `whizbang.collectives.received` | Counter\<long\> | Collective events the collective sink took up from a leased sink row |
+| `whizbang.collectives.applied` | Counter\<long\> | Collective events the sink applied through the collective dispatcher |
+| `whizbang.collectives.skipped` | Counter\<long\> | Leased sink rows completed without an apply because no collective event was behind them (the cursor had already passed, or a stale re-lease); a rising count is the re-lease loop showing itself |
+
+The collective counters are recorded at the sink, the one place an applied collective leaves no row behind to count. {verified: PerspectiveWorkerCollectiveSinkTests.CollectiveSink_Meters_CountAReceivedAndAppliedCollective_Async, PerspectiveWorkerCollectiveSinkTests.CollectiveSink_Meters_CountALeasedSinkRowWithNoEventAsSkipped_Async}
+
 ## Whizbang.TransportDeadLetterDrain {#transport-dlq}
 
 Meter name: `Whizbang.TransportDeadLetterDrain` (created by `TransportDeadLetterDrainWorker`)
@@ -465,6 +610,20 @@ Meter name: `Whizbang.TransportDeadLetterDrain` (created by `TransportDeadLetter
 | Metric Name | Type | Description |
 |-------------|------|-------------|
 | `whizbang.transport_dlq.drained` | Counter\<long\> | Messages re-submitted from a broker's dead-letter queue; tagged by `transport` |
+
+## Whizbang.Maintenance {#maintenance}
+
+Meter name: `Whizbang.Maintenance` (`MaintenanceMetrics`)
+
+`perform_maintenance` returns one result row per task (dedup sweep, ephemeral body reap, expired perspective-row reap, and so on). These instruments make those outcomes queryable and alertable across the fleet instead of only visible in per-pod logs. The primary consumer is perspective row retention: `rows_affected` tagged `task=reap_expired_perspective_rows` is the "is retention working" signal, and a sustained zero with expired rows accumulating means the maintenance cadence is losing to churn.
+
+| Metric Name | Unit / Type | Description |
+|-------------|-------------|-------------|
+| `whizbang.maintenance.rows_affected` | Counter\<long\> | Rows a maintenance task deleted or processed in one cycle; tagged by `task`. Records only when the count is above zero |
+| `whizbang.maintenance.task_duration` | ms | A task's per-cycle wall time; tagged by `task`. Records every cycle, the liveness half of the signal |
+| `whizbang.maintenance.retention_adopted` | Counter\<long\> | Rows past a declared retention window at the moment the maintenance cycle adopted it and opened the enrolled reap's gate; tagged by `perspective` (the model's CLR type name). A zero backlog still records, so the series marks the adoption. The value is the backlog the drain will remove, not a rate |
+
+`Whizbang.WorkCoordinator` also carries the `whizbang.maintenance.task.duration` and `whizbang.maintenance.task.rows_affected` histograms listed under its [Maintenance](#work-coordinator) heading; the per-task counter and the retention adoption signal live here.
 
 ## Whizbang.EventCategories {#event-categories}
 
@@ -618,6 +777,8 @@ Whizbang uses four OpenTelemetry instrument types:
 | `ObservableGauge` | Pull-based point-in-time values | `pending_events`, `queue.estimated_depth` |
 
 **Histograms** are ideal for latency percentiles (p50, p95, p99) and batch size distributions. **Counters** track cumulative totals - use `rate()` in Prometheus to derive per-second throughput. **UpDownCounters** represent current state and are useful for alerting on resource saturation.
+
+Counters and up-down counters are registered on the meter as observable instruments and exist at zero from construction; see [Counters are passive](#passive-counters). Histograms and observable gauges are unchanged.
 
 ## See Also
 

@@ -65,6 +65,14 @@ service never fails for want of logging. That fallback is a real risk in one dir
 registration factory that forgets to pass a logger produces a service that writes nothing, silently.
 [WHIZ500](../diagnostics/whiz500) catches exactly that at build time.
 
+## Every constructor dependency has a default
+
+Since the WHIZ501 sweep, no framework type declares an interface-typed constructor parameter as
+optional: each one is required and has a registered default, either a working implementation or a
+null default that reports `IsConfigured` false. The complete list, grouped by which kind of default
+each seam has, is maintained in [Replaceable Services](../../extending/extensibility/replaceable-services);
+this page keeps the narrative for the services an application most often replaces.
+
 ## Related
 
 - [Overriding Defaults](overriding-defaults)

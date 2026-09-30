@@ -77,6 +77,31 @@ What happens when each component fails, and how the system recovers.
 - All flush calls are idempotent (UPDATE WHERE processed_at IS NULL); already-processed rows ignored.
 - Items the flush would have completed are still claimable (or have a lease that will expire). Next claim re-delivers them; their handler runs again. Idempotency of handlers is required.
 
+## Concurrent drains and a deadlock (40P01)
+
+**What:** two sessions each wait on a row the other has locked, and PostgreSQL ends one of them with
+`40P01 deadlock detected`. With several instances draining one outbox, the sessions that write the
+same rows are an instance's claim, its drain's stream continuation, its completion and failure flush,
+and its lease renewal.
+
+**Behavior:**
+- Every statement that locks more than one outbox or stream-ledger row takes them in one order:
+  the outbox table before the stream ledger, outbox rows by `(stream_id, created_at, message_id)`,
+  ledger rows by `stream_id`. Two sessions that lock in the same order cannot wait on each other in
+  a cycle.
+- A write that does not have to happen now does not wait at all. The drain's stream continuation
+  skips a row another session holds (a run stops early; an activity timestamp is left to the session
+  already writing it), so the continuation never waits on a lock and cannot be part of a deadlock.
+- If a continuation still loses a deadlock or a serialization failure, the drain retries it at once
+  from the same stream cursors, up to three attempts. The failed statement changed nothing, so the
+  retry is exact.
+- Past the attempts, or for any other failure in a drain batch, the drain logs
+  `Outbox drain batch failed on a transient database failure` at Error and carries on. The rows are
+  still leased to this instance and the claim loop offers the streams again on its next poll.
+
+**Recovery:** automatic. Nothing is lost in any of these paths; the worst case is the latency of one
+claim poll for the streams in the failed batch.
+
 ## Pinned-connection drops (NOT applicable in current design)
 
 Whizbang's production design uses **only one** bypass-pool connection per pod (the LISTEN listener). Workers all use the pooled connection. So there's no "worker pinned connection" failure mode — workers ride the Npgsql pool's reconnect path.

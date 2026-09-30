@@ -20,7 +20,11 @@ event's commit and its stamp is a millisecond the read model lags the write.
 ## How stamping runs
 
 Every service instance hosts the stamper worker; a `pg_try_advisory_lock` elects one leader per
-database. The leader wakes from two sources:
+service schema. The lock key is derived from `AdvisoryLockKey` plus the schema, the same way the
+duty lock is, so services that share one database in separate schemas each elect their own
+stamper. (Before 0.2604.0 the key was fixed per database: only one of those services got a leader,
+and the others' events became visible only after the unstamped-row grace window, several seconds
+per event.) The leader wakes from two sources:
 
 - **`wh_committed` NOTIFY** — the event-store emit chains ring this channel at commit time,
   waking the leader sub-millisecond through the shared LISTEN connection.
@@ -30,6 +34,16 @@ database. The leader wakes from two sources:
 On each wake the leader calls `stamp_pending_commit_sequences`, which assigns `commit_sequence`
 values (in `xmin` order, `FOR UPDATE SKIP LOCKED`) to every unstamped row past the ordering
 fence.
+
+### Nothing unstamped, nothing runs
+
+The stamp's eligibility query sorts every unstamped row by transaction id before taking a batch. It
+used to run on every wake whether or not anything was unstamped, and on a backstop tick during a
+bulk load that was measured at roughly half a core per busy database. The leader now asks the
+partial index whether any row is unstamped first, a probe that costs nothing, and runs the stamp only
+when the answer is yes. A wake that finds nothing raises `OnStampSkipped` rather than a stamp of
+zero, so a healthy idle stamper is visible as such.
+{verified: PgCommitOrderStamperWorkerIntegrationTests.Worker_NothingUnstamped_SkipsTheStampOnPollingTicksAsync}
 
 ## The ordering fence is per-database
 

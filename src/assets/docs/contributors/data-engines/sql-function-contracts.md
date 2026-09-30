@@ -159,6 +159,17 @@ Each engine ships migrations that create the indexes used by the hot-path querie
 
 See the Postgres `031_ClaimingIndexes.sql` migration for the reference set.
 
+### Shared literals in migrations
+
+The Postgres migrations redefine a function whole when they change it, so a literal the function needs
+travels with every copy. The literals more than one migration or function shares (the empty stream id, the
+envelope's JSON field names, the work-category names, the instance application-name prefix) are defined
+once in `src/Whizbang.Data.Postgres/Migrations/constants.txt` and written in SQL as tokens
+(`__EMPTY_UUID__`, `elem->>__ENVELOPE_FIELD_MESSAGE_ID__`); the value is substituted at apply time on the
+same path as `__SCHEMA__`. An engine that ships its own migrations through the same provider gets the same
+substitution. Rule 12 of the migrations README, with the lint and the test that hold it, is described under
+[Constants](/v1.0.0/operations/infrastructure/migrations#constants).
+
 ## Related
 
 - [Implementing IWorkCoordinator](implementing-iworkcoordinator.md)

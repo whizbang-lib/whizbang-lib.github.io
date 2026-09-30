@@ -300,6 +300,14 @@ public record ProductPriceChanged : IEvent {
 }
 ```
 
+### Custom JSON Names
+
+A message property can carry `[JsonPropertyName("…")]` to change the name it is serialized under,
+for example to shorten a large payload or to match an external schema. Without the attribute the C#
+name is used. Changing a name that is already in stored events is a breaking change for that data.
+See [JSON Contexts](../../extending/source-generators/json-contexts#property-names) for the exact rules,
+including how `[JsonIgnore]` and its conditions are applied.
+
 ## Related Documentation
 
 - [Commands and Events](../../messaging/commands-events.md) - Detailed command/event patterns

@@ -19,6 +19,8 @@ codeReferences:
   - src/Whizbang.Transports.AzureServiceBus/AzureServiceBusDeadLetterDrainer.cs
   - src/Whizbang.Transports.RabbitMQ/RabbitMqDeadLetterDrainer.cs
 testReferences:
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/RecoveredBrokerDeadLetterDispatchIntegrationTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/BrokerDeadLetterImportSqlTests.cs
   - tests/Whizbang.Core.Tests/Workers/TransportDeadLetterDrainWorkerTests.cs
   - tests/Whizbang.Transports.AzureServiceBus.Tests/AzureServiceBusDeadLetterDrainerTests.cs
   - tests/Whizbang.Transports.RabbitMQ.Tests/RabbitMqDeadLetterDrainerTests.cs
@@ -137,6 +139,22 @@ services.AddSingleton<ITransportDeadLetterDrainer>(sp =>
 
 `TransportName` becomes `rmq:orders.dlq`.
 
+## Custody and the stored type
+
+A message the broker dead-letters (including one quarantined as poison at the receive boundary)
+and a message the transport edge cannot store in the inbox both get custody through the same entry,
+`IWorkCoordinator.ImportBrokerDeadLetterAsync`: a `wh_dead_letters` row with `source_table='broker'`
+and the raw wire body. The caller hands over the wire's envelope type name
+(`MessageEnvelope`1[[<payload>]]`); custody records the **payload** type it wraps, the same form a
+received inbox row stores. Recovery re-emits the row into the inbox under that name, so the inbox's
+no-consumer gate and its dispatch judge it as the payload it is.
+
+Rows taken into custody before this (whose `message_type` names the envelope) are still recovered:
+the no-consumer gates and the inbox drain unwrap an envelope-wrapped name to its payload type.
+
+Before this, every recovered broker dead letter was skipped by the inbox gate as `RegistryChanged`,
+because nothing consumes an envelope type.
+
 ## Failure handling
 
 Both implementations are best-effort:
@@ -148,6 +166,12 @@ Both implementations are best-effort:
 
 A single drainer failing doesn't stop the others — the worker continues
 through the remaining drainers on the current tick.
+
+The transport consumer uses the same custody entry for a message it receives but
+cannot store as an inbox row (a payload with no JSON metadata in the service, an
+offloaded body that cannot be rebuilt): it records the message with its body instead
+of letting the broker settle it. See
+[messages that cannot be stored](../../messaging/transports/transport-consumer#unstorable-messages).
 
 ## On-demand drain
 

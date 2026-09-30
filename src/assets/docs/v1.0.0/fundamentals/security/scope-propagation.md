@@ -67,6 +67,16 @@ await _dispatcher.AsSystem().KeepTenant().SendAsync(new ProcessPendingItemsComma
 // await _dispatcher.AsSystem().SendAsync(command);
 ```
 
+Background work often has to **read** in a tenant before it knows what to dispatch, for example a
+maintenance worker reading one tenant's records through a tenant-scoped lens. `RunAsync` runs any work
+under the same explicit context the dispatch verbs use, and restores the caller's context afterwards,
+whether the work completes or throws:
+
+```csharp{title="Running work in a tenant as the system" description="Reads through tenant-scoped lenses from a background worker with no ambient tenant" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "System", "Operations"] tests=["DispatcherSecurityBuilderRunTests.RunAsync_ForTenant_WorkSeesThatTenantAsTheSystemAsync", "DispatcherSecurityBuilderRunTests.RunAsync_WorkThrows_TheCallersContextIsStillRestoredAsync"]}
+var pending = await _dispatcher.AsSystem().ForTenant(tenantId)
+  .RunAsync(ct => _repository.CountPendingAsync(ct), cancellationToken);
+```
+
 ### Impersonation Operations
 
 Use `RunAs()` when an admin or service performs operations on behalf of another user:

@@ -53,10 +53,19 @@ function scanFile(filePath) {
 
     const docsUrl = docsMatch[1];
 
-    // Find the symbol name on the next line(s)
+    // Find the symbol name on the next line(s).
+    //
+    // The remaining XML documentation is skipped rather than counted against the search window.
+    // A <docs> tag is conventionally written near the top of the comment block, above <example>,
+    // and an example holding a dozen lines of sample code used to push the declaration out of a
+    // fixed five-line window. Every attribute documented that way was dropped with only a console
+    // warning, which is why PhysicalFieldAttribute and its neighbors were absent from the map.
     let symbolName = null;
-    for (let j = i + 1; j < Math.min(i + 5, lines.length); j++) {
+    for (let j = i + 1; j < Math.min(i + 100, lines.length); j++) {
       const nextLine = lines[j];
+
+      // Documentation comment, including the sample code inside <example>.
+      if (nextLine.trim().startsWith('///')) continue;
 
       // Match interface/class/struct/record/enum declarations
       const symbolMatch = nextLine.match(/(?:public|internal|private|protected)?\s*(?:interface|class|struct|record|enum)\s+(\w+)/);

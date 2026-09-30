@@ -56,10 +56,10 @@ public record ProductDto {
 
   public string Description { get; init; } = string.Empty;  // Stored in JSONB
 
-  [PhysicalField(Indexed = true)]   // Physical column for queries (Indexed defaults to false)
+  [PhysicalField] [Indexed]   // Physical column for queries (Indexed defaults to false)
   public string Status { get; init; } = "draft";
 
-  [PhysicalField(Indexed = true)]   // Physical column for filtering
+  [PhysicalField] [Indexed]   // Physical column for filtering
   public decimal Price { get; init; }
 
   [VectorField(1536)]    // Vector column for similarity search

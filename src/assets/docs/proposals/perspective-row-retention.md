@@ -2,7 +2,7 @@
 title: Perspective Row Retention (RowTtl)
 category: Architecture & Design
 order: 31
-tags: perspectives, retention, row-ttl, reaper, rebuild, rewind, resurrection, read-models, storage-economy
+tags: perspectives, retention, row-ttl, reaper, rebuild, rewind, resurrection, read-models, storage-economy, auto-adoption
 ---
 
 # Perspective Row Retention (`[RowTtl]`)
@@ -96,10 +96,11 @@ Ephemeral streams are explicitly excluded from this path: they keep today's sema
 
 New meters on the existing `Whizbang` perspective/maintenance sources, all tagged by `perspective_name`:
 
-Shipped (the `Whizbang.Maintenance` meter, in the turnkey export list; both tagged by `task`):
+Shipped (the `Whizbang.Maintenance` meter, in the turnkey export list):
 
-- `whizbang.maintenance.rows_affected` (counter) — rows a maintenance task deleted/processed per cycle. The row-retention signal rides `task=reap_expired_perspective_rows`; zero-row cycles add nothing.
-- `whizbang.maintenance.task_duration` (histogram, ms) — a task's per-cycle wall time; watches reap cost as tables scale. Duration records every cycle (the liveness half of the signal).
+- `whizbang.maintenance.rows_affected` (counter, tagged by `task`): rows a maintenance task deleted/processed per cycle. The row-retention signal rides `task=reap_expired_perspective_rows`; zero-row cycles add nothing.
+- `whizbang.maintenance.task_duration` (histogram, ms, tagged by `task`): a task's per-cycle wall time; watches reap cost as tables scale. Duration records every cycle (the liveness half of the signal).
+- `whizbang.maintenance.retention_adopted` (counter, tagged by `perspective`): rows past the declared window at the moment the maintenance cycle adopted a perspective's retention and opened the enrolled reap's gate (see [Adoption is automatic](#adoption-is-automatic)). A zero backlog still records, so the series marks the adoption itself. The value is the backlog the drain will remove, not a rate. {verified: MaintenanceWorkerRetentionAdoptionTests.Adoption_RecordsTheBacklogOnTheMaintenanceMeter_TaggedByPerspectiveAsync}
 
 Deferred follow-ons (the runner has no metrics seam today; resurrection is fully observable meanwhile via its `Information` log line and the rewind span family it joins):
 
@@ -112,18 +113,44 @@ Traces: the resurrection re-fold joins the existing rewind span family (it *is* 
 
 Declarative default with runtime override, on the uniform ladder:
 
-```csharp
+```csharp{
+title: "Perspective row retention options"
+description: "The runtime rung of the retention ladder: the kill switch, the automatic adoption gate, and per-model TTL overrides that win over the attribute without a redeploy."
+framework: "NET10"
+category: "Perspectives"
+difficulty: "INTERMEDIATE"
+tags: ["row-retention", "row-ttl", "perspectives", "configuration", "auto-adoption"]
+tests: ["MaintenanceWorkerRetentionAdoptionTests.AutoAcknowledge_DefaultsToOnAsync", "RetentionAutoAdoptionTests.MaintenanceCycle_WithAutoAcknowledgeOff_KeepsTheGateAsync"]
+}
 services.Configure<PerspectiveRowRetentionOptions>(o => {
   o.Enabled = true;                                   // global kill switch (one consult point: stamp + filter + probe)
+  o.AutoAcknowledge = true;                           // default: the maintenance cycle opens the adoption gate itself
   o.Overrides["MyApp.Chat.ConversationModel"] = 7_776_000;  // TTL override in seconds, no redeploy
   o.Overrides["MyApp.Feed.RecentActivityModel"] = null;     // null = disable retention for one model
 });
 ```
 
 - **`Enabled`** — an operational kill switch resolved at the ONE consult point (the TTL registry), so stamping, the lens expiry filter, and the resurrection probe all stand down together: rows that were hidden become visible again immediately — the behavior an operator wants mid-incident. Rows whose stamps predate the switch may still physically reap until those stamps drain; Sourced rows remain recoverable via resurrection once re-enabled.
+- **`AutoAcknowledge`** (`PerspectiveRowRetention:AutoAcknowledge`, default `true`): whether the maintenance cycle opens the enrolled reap's per-perspective gate itself. See [Adoption is automatic](#adoption-is-automatic). `false` keeps the manual gate: the backlog is reported and nothing is removed until `IWorkCoordinator.AcknowledgeRetentionEnforcementAsync` is called for the perspective.
 - **Per-model TTL overrides** — bridged from `IOptions`, they win over the attribute (config is the operator's rung of the ladder). Attribute remains the in-repo source of truth; overrides are for incident response and tenant-scale tuning.
 - **Snapshot retention on reap is unconditional** (keep the latest — the resurrection anchor), locked by a regression test rather than exposed as an option; an opt-out ships only if a concrete high-cardinality need appears.
 - Maintenance cadence reuses the existing `MaintenanceWorkerOptions.IntervalMinutes`; no new scheduler.
+
+### Adoption is automatic {#adoption-is-automatic}
+{verified: RetentionAutoAdoptionTests.MaintenanceCycle_DrainsADeclaredWindowWithoutAnAcknowledgeCallAsync, MaintenanceWorkerRetentionAdoptionTests.Adoption_RunsImmediatelyBeforeTheEnrolledReap_AndLogsEachPerspectiveAsync}
+
+Migration 104 gates the enrolled reap behind a per-perspective acknowledgment (`wh_perspective_registry.retention_enforcement_acknowledged`) so a deploy cannot silently drain a historical backlog: a newly enrolled perspective reports what it would remove and removes nothing until acknowledged. The gate exists for two reasons, surprise and load. Load is already bounded by the reap's batch size. Surprise needs a signal, not a human step, and until migration 144 the only thing that opened the gate was a coordinator call (`IWorkCoordinator.AcknowledgeRetentionEnforcementAsync`) no consumer had a reason to know about. A declared window therefore never started reaping: the reconciler enrolled the perspective at startup, the stamped-expiry sweep ran, and the enrolled reap skipped every unacknowledged row forever, while the framework's own backlog function reported thousands of rows past the window.
+
+Migration 144 adds `adopt_enrolled_perspective_retention()`. For every enrolled, unacknowledged perspective it reads the backlog through `count_perspective_retention_backlog`, opens the gate, and returns one row per perspective (registry key, backlog). Rows are taken `FOR UPDATE SKIP LOCKED`, so two instances adopting in the same window split the work instead of both reporting the same perspective. It is idempotent: an acknowledged perspective produces no row, and a second cycle reports nothing. Un-enrolling still clears the flag, so re-adopting goes through this stage again. {verified: RetentionAutoAdoptionTests.Adopt_SecondCycle_ReportsNothingAsync, RetentionAutoAdoptionTests.Adopt_NewlyEnrolled_ReportsTheBacklogAndOpensTheGateAsync}
+
+When `AutoAcknowledge` is on (the default), the maintenance worker calls it immediately before the enrolled reap on every cycle (`MaintenanceWorker._adoptDeclaredRetentionAsync`, ahead of `ReapEnrolledPerspectiveRowsAsync`) and, for each row returned:
+
+- logs one Information line (EventId 55): `Row retention adopted for {ClrTypeName}: {Backlog} rows past the declared window, draining at up to {BatchSize} per maintenance cycle`;
+- records `whizbang.maintenance.retention_adopted` on the `Whizbang.Maintenance` meter, tagged by `perspective` with the model's CLR type name, with the backlog as the value.
+
+A `[RowTtl]` or `[RowCap]` declaration is therefore retroactive and in force within one maintenance interval of the deploy, and its first day is visible without anyone acting. The reap's batch size (`MaintenanceWorkerOptions.RowReapBatchSize`, default 5000) paces the drain: a backlog larger than one batch clears across cycles rather than in one.
+
+`AutoAcknowledge: false` restores the manual gate exactly. The worker skips adoption, the enrolled reap keeps withholding unacknowledged perspectives, and the operator opens the gate with `IWorkCoordinator.AcknowledgeRetentionEnforcementAsync`. {verified: RetentionAutoAdoptionTests.MaintenanceCycle_WithAutoAcknowledgeOff_KeepsTheGateAsync, MaintenanceWorkerRetentionAdoptionTests.Adoption_Off_LeavesTheGateToTheOperatorAsync}
 
 ## AOT / zero-reflection statement
 

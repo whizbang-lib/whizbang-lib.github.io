@@ -293,6 +293,14 @@ public sealed record ServiceHeartbeat : IEvent {
 }
 ```
 
+#### What hooks receive
+
+`EventAudited` carries the whole body of the event it audits in `OriginalBody`, and `CommandAudited`
+carries `CommandBody` — both unbounded. The payload their `sys-audit` tag hands to hooks deliberately
+leaves those bodies out and carries what identifies the change instead. A hook that needs the body
+reads the stored audit record. See [Payload Size Thresholds](../messages/message-tags#payload-size-thresholds).
+{verified: AuditTagPayloadTests.EventAudited_TagPayload_LeavesTheOriginalBodyOutAsync, AuditTagPayloadTests.CommandAudited_TagPayload_LeavesTheCommandBodyOutAsync}
+
 ### CommandAudited
 
 Emitted when a command is processed by a receptor (when `EnableCommandAudit()` is configured).
@@ -387,7 +395,7 @@ Emitted when a scope context is established for a request/operation.
 ```csharp{title="ScopeContextEstablished" description="Emitted when a scope context is established for a request/operation." category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "ScopeContextEstablished"] unverified="security event record shape; only SecuritySystemEventTests would cover it and that class is absent from the tests map"}
 public sealed record ScopeContextEstablished : ISystemEvent {
   [StreamId]
-  public Guid Id { get; init; } = TrackedGuid.NewMedo();
+  public Guid Id { get; init; } = TrackedGuid.New();
 
   /// <summary>
   /// The established scope (TenantId, UserId, etc.).
@@ -429,7 +437,7 @@ Emitted when a user's permissions or roles change.
 ```csharp{title="PermissionChanged" description="Emitted when a user's permissions or roles change." category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Events", "PermissionChanged"] unverified="security event record shape; only SecuritySystemEventTests would cover it and that class is absent from the tests map"}
 public sealed record PermissionChanged : ISystemEvent {
   [StreamId]
-  public Guid Id { get; init; } = TrackedGuid.NewMedo();
+  public Guid Id { get; init; } = TrackedGuid.New();
 
   /// <summary>
   /// User whose permissions changed.
@@ -491,7 +499,7 @@ Emitted when access to a sensitive resource is granted.
 ```csharp{title="AccessGranted" description="Emitted when access to a sensitive resource is granted." category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "AccessGranted"] unverified="security event record shape; only SecuritySystemEventTests would cover it and that class is absent from the tests map"}
 public sealed record AccessGranted : ISystemEvent {
   [StreamId]
-  public Guid Id { get; init; } = TrackedGuid.NewMedo();
+  public Guid Id { get; init; } = TrackedGuid.New();
 
   /// <summary>
   /// Type of resource access was granted to.
@@ -539,7 +547,7 @@ Emitted when access to a resource is denied due to insufficient permissions.
 ```csharp{title="AccessDenied" description="Emitted when access to a resource is denied due to insufficient permissions." category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Events", "AccessDenied"] unverified="security event record shape; only SecuritySystemEventTests would cover it and that class is absent from the tests map"}
 public sealed record AccessDenied : ISystemEvent {
   [StreamId]
-  public Guid Id { get; init; } = TrackedGuid.NewMedo();
+  public Guid Id { get; init; } = TrackedGuid.New();
 
   /// <summary>
   /// Type of resource access was denied to.
@@ -655,7 +663,7 @@ public class MySecurityService {
 
     // Manually emit security system event
     await _emitter.EmitAsync(new AccessGranted {
-      Id = TrackedGuid.NewMedo(),
+      Id = TrackedGuid.New(),
       ResourceType = "SensitiveDocument",
       ResourceId = resourceId,
       UsedPermission = Permission.Read("documents"),  // "documents:read"
@@ -1147,7 +1155,7 @@ public class DocumentService {
     // Emit AccessGranted for high-sensitivity documents only
     if (doc.Sensitivity == Sensitivity.High) {
       await _emitter.EmitAsync(new AccessGranted {
-        Id = TrackedGuid.NewMedo(),
+        Id = TrackedGuid.New(),
         ResourceType = "Document",
         ResourceId = documentId.ToString(),
         UsedPermission = Permission.Read("documents"),
