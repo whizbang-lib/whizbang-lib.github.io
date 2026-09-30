@@ -56,6 +56,9 @@ jobs:
             # Dependabot → develop (configured in dependabot.yml)
             "dependabot/*:develop"
 
+            # Library CI publishes generated test-status data → develop
+            "test-status/*:develop"
+
             # Main → develop (sync after release)
             "main:develop"
 
@@ -177,29 +180,29 @@ jobs:
             if (head.startsWith('feature/') || head.startsWith('feat/') || head.startsWith('fix/')) {
               suggestion = `Feature and fix branches should target \`develop\`, not \`${base}\`.
 
-**To fix:** Change the base branch to \`develop\` using the "Edit" button above.`;
+            **To fix:** Change the base branch to \`develop\` using the "Edit" button above.`;
             } else if (head.startsWith('release/') && base === 'develop') {
               suggestion = `Release branches should target \`main\`, not \`develop\`.
 
-After merging to main, changes automatically sync back to develop.`;
+            After merging to main, changes automatically sync back to develop.`;
             } else if (head === 'develop' && base === 'main') {
               suggestion = `Don't merge \`develop\` directly to \`main\`.
 
-**Instead:** Use the [Start Release workflow](../../actions/workflows/start-release.yml) to create a proper release.`;
+            **Instead:** Use the [Start Release workflow](../../actions/workflows/start-release.yml) to create a proper release.`;
             } else {
               suggestion = `This branch direction doesn't match our Git Flow rules.`;
             }
 
             const body = `## ❌ Git Flow Branch Direction Error
 
-**\`${head}\` → \`${base}\`** is not an allowed branch direction.
+            **\`${head}\` → \`${base}\`** is not an allowed branch direction.
 
-${suggestion}
+            ${suggestion}
 
-📚 **[Read the full branching guide](.github/BRANCHING.md)**
+            📚 **[Read the full branching guide](.github/BRANCHING.md)**
 
----
-<sub>This check ensures we follow Git Flow for clean releases. If you believe this is incorrect, please contact a maintainer.</sub>`;
+            ---
+            <sub>This check ensures we follow Git Flow for clean releases. If you believe this is incorrect, please contact a maintainer.</sub>`;
 
             await github.rest.issues.createComment({
               owner: context.repo.owner,
