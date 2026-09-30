@@ -769,9 +769,9 @@
     "tags": "source-generators, json, serialization, polymorphic, inheritance, aot, native-aot, type-discriminator",
     "version": "v1.0.0",
     "pageType": "concept",
-    "readingTime": 9,
+    "readingTime": 10,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/extending/source-generators/polymorphic-serialization.md",
-    "wordCount": 1770
+    "wordCount": 1869
   },
   {
     "slug": "v1.0.0/extending/source-generators/receptor-discovery",
@@ -784,7 +784,7 @@
     "pageType": "concept",
     "readingTime": 15,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/extending/source-generators/receptor-discovery.md",
-    "wordCount": 2905
+    "wordCount": 2986
   },
   {
     "slug": "v1.0.0/extending/source-generators/topic-filter-discovery",
@@ -1848,9 +1848,9 @@
     "tags": "audit, compliance, logging, system-events, perspectives, security, gdpr, sox",
     "version": "v1.0.0",
     "pageType": "concept",
-    "readingTime": 14,
+    "readingTime": 16,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/security/audit-logging.md",
-    "wordCount": 2745
+    "wordCount": 3133
   },
   {
     "slug": "v1.0.0/fundamentals/security/http-security-headers",
@@ -2381,9 +2381,9 @@
     "tags": "transports, azure-service-bus, messaging, topics, subscriptions, correlation-filters, aspire, aot",
     "version": "v1.0.0",
     "pageType": "concept",
-    "readingTime": 28,
+    "readingTime": 31,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/messaging/transports/azure-service-bus.md",
-    "wordCount": 5521
+    "wordCount": 6072
   },
   {
     "slug": "v1.0.0/messaging/transports/in-memory",

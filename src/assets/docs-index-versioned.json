@@ -777,9 +777,9 @@
         "tags": "source-generators, json, serialization, polymorphic, inheritance, aot, native-aot, type-discriminator",
         "version": "v1.0.0",
         "pageType": "concept",
-        "readingTime": 9,
+        "readingTime": 10,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/extending/source-generators/polymorphic-serialization.md",
-        "wordCount": 1770
+        "wordCount": 1869
       },
       {
         "slug": "v1.0.0/extending/source-generators/receptor-discovery",
@@ -792,7 +792,7 @@
         "pageType": "concept",
         "readingTime": 15,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/extending/source-generators/receptor-discovery.md",
-        "wordCount": 2905
+        "wordCount": 2986
       },
       {
         "slug": "v1.0.0/extending/source-generators/topic-filter-discovery",
@@ -1856,9 +1856,9 @@
         "tags": "audit, compliance, logging, system-events, perspectives, security, gdpr, sox",
         "version": "v1.0.0",
         "pageType": "concept",
-        "readingTime": 14,
+        "readingTime": 16,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/security/audit-logging.md",
-        "wordCount": 2745
+        "wordCount": 3133
       },
       {
         "slug": "v1.0.0/fundamentals/security/http-security-headers",
@@ -2389,9 +2389,9 @@
         "tags": "transports, azure-service-bus, messaging, topics, subscriptions, correlation-filters, aspire, aot",
         "version": "v1.0.0",
         "pageType": "concept",
-        "readingTime": 28,
+        "readingTime": 31,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/messaging/transports/azure-service-bus.md",
-        "wordCount": 5521
+        "wordCount": 6072
       },
       {
         "slug": "v1.0.0/messaging/transports/in-memory",
@@ -3768,6 +3768,18 @@
         "wordCount": 626
       },
       {
+        "slug": "drafts/fundamentals/work-coordinator/commit-sequence",
+        "title": "Commit Sequence & the Order Stamper",
+        "category": "Fundamentals",
+        "order": 6,
+        "description": "",
+        "tags": [],
+        "version": "drafts",
+        "readingTime": 4,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/drafts/fundamentals/work-coordinator/commit-sequence.md",
+        "wordCount": 668
+      },
+      {
         "slug": "drafts/fundamentals/work-coordinator/configuration-reference",
         "title": "Configuration reference",
         "category": "Fundamentals",
@@ -4054,6 +4066,18 @@
         "wordCount": 3486
       },
       {
+        "slug": "proposals/broker-dlq-import",
+        "title": "Broker DLQ Import",
+        "category": "Architecture & Design",
+        "order": 39,
+        "description": "\n# Broker DLQ Import — one custody model for failed messages\n\nWhizbang has two custody models for failed messages, and only one of them is real. A message that\nfails **after** reaching the inbox lands in `wh_dead_letters`: queryable, retried under per-reason\npolicies, visible to operators, and auto-replayed when a new build generation deploys. A message\nthat fails **before** reaching the inbox — broker-side delivery-attempt exhaustion during a\nthrottling storm, a deserialization failure on an old build, session lock churn — lands in the\n**broker's** dead-letter queue: an opaque bucket with no policies, no replay, no attempt\naccounting, and no Whizbang-visible signal at all.\n\nThis proposal makes the broker DLQ a **source** that drains into `wh_dead_letters`, so the flow\nthat already works owns every failed message.\n\n:::planned\nUnreleased design proposal. Supersedes the resubmit-to-topic semantics of the (never-wired)\n`AzureServiceBusDeadLetterDrainer` / `RabbitMqDeadLetterDrainer` pair.\n:::\n\n## The incident that motivates this\n\nOn a consumer fleet, a bulk operation's entire event fan — thousands of composite bundles — was\ndead-lettered broker-side when a serializer gap made every delivery attempt throw\n(`MaxDeliveryAttemptsExceeded`). The messages sat invisibly for weeks: the drain worker that\nshould have recovered them iterates `GetServices<ITransportDeadLetterDrainer>()`, and **nothing\never registers one** — both drainer implementations are orphans with zero construction sites, and\nan empty drain pass exits without logging. Meanwhile `wh_dead_letters` on the same service\nprocessed and recovered 46,000+ internal failures flawlessly over the same period. The machinery\nthat works never saw the messages that mattered.\n\nTwo properties of the existing resubmit-to-topic drainer design would have made even a wired-up\nversion a poor fit:\n\n- **Re-broadcast**: re-sending to the *topic* fans the message out to every subscription again.\n  Draining N subscriptions of the same topic multiplies the burst by the subscriber count —\n  exactly the broker ops-rate pressure that caused the original throttling.\n- **The carousel**: a message that still fails (the serializer gap persisted across builds)\n  redelivers, re-exhausts, re-dead-letters — around forever, invisible at every revolution,\n  burning broker operations. Custody never transfers to something with attempt accounting.\n\n## Design\n\n### Drain action: import, not resubmit\n\n`TransportDeadLetterDrainWorker` keeps its shape — poll every `IntervalMinutes`, cap at\n`MaxPerTick`, fan across registered `ITransportDeadLetterDrainer`s (broker DLQs are pull-only; a\nworker must poll them). What changes is the drain **action**: each dead-lettered message is\n**imported as a `wh_dead_letters` row**, then completed at the broker. One hop, no re-broadcast,\ncustody transfers permanently.\n\nThe import is **raw-JSON custody — no deserialization, no reflection**:\n\n| `wh_dead_letters` column | Source (ASB) |\n|",
+        "tags": "dead-letter, dlq, recovery, transport, service-bus, rabbitmq, custody, aot",
+        "version": "proposals",
+        "readingTime": 7,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/proposals/broker-dlq-import.md",
+        "wordCount": 1217
+      },
+      {
         "slug": "proposals/carry-forward-tier2",
         "title": "Carry-forward / Tier-2 (Compaction)",
         "category": "Architecture & Design",
@@ -4246,6 +4270,18 @@
         "wordCount": 1283
       },
       {
+        "slug": "proposals/per-namespace-command-inboxes",
+        "title": "Per-Namespace Command Inboxes",
+        "category": "Architecture & Design",
+        "order": 38,
+        "description": "\n# Per-Namespace Command Inboxes\n\nToday every command in a deployment rides **one shared inbox topic** with one subscription per\nservice. Commands are point-to-point — exactly one service handles any given command type — but\nthe shared topic makes them broadcast at the broker: every service's subscription materializes,\nreceives, and completes (then discards) every command in the fleet. This proposal decomposes the\ninbox by **contract namespace**, mirroring the topology the event side already uses, on both the\nAzure Service Bus and RabbitMQ transports.\n\n:::planned\nUnreleased design proposal. Intended to ship **together with Transport Traffic Classes &\nMulti-Namespace Routing** (order 37) as one transport-topology arc for both Service Bus and\nRabbitMQ — the two proposals touch the same provisioning and routing surface, traffic classes\nsupply the namespace-level isolation, and per-namespace inboxes are the routable unit those\nclasses assign.\n:::\n\n## Motivation — a measured import\n\nDuring a bulk import on a Standard-tier Service Bus namespace (~1,000 credited operations/sec,\nnamespace-wide), a per-entity decomposition of the operation counters showed:\n\n| Share | Entity |\n|",
+        "tags": "transport, inbox, commands, routing, service-bus, rabbitmq, topics, sessions, decomposition",
+        "version": "proposals",
+        "readingTime": 12,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/proposals/per-namespace-command-inboxes.md",
+        "wordCount": 2353
+      },
+      {
         "slug": "proposals/periodic-task-scheduler",
         "title": "Periodic Task Scheduler",
         "category": "Architecture & Design",
@@ -4366,6 +4402,18 @@
         "wordCount": 7212
       },
       {
+        "slug": "proposals/tag-bound-coalescing",
+        "title": "Tag-Bound Policies & Message Coalescing",
+        "category": "Architecture & Design",
+        "order": 36,
+        "description": "\n# Tag-Bound Policies & Message Coalescing\n\nWhizbang's message tags (`MessageTagAttribute`) already give every message type a compile-time,\nAOT-discovered **semantic classification** — \"this is an audit record\", \"this is telemetry\".\nThis proposal makes tags the binding point for **operational policies**: behaviors configured\nper tag in the host, never declared as new attributes or fields on the message types themselves.\nThe first tag-bound policy is **coalescing** — a sliding-window batcher that folds tagged\noutbox singles into composite envelopes — and the framework's own audit stream becomes its\nfirst consumer.\n\n:::planned\nUnreleased design proposal, approved in principle. The audit building blocks (the `#507`\nunattributed-context fix, the `ScheduledFor` safety floor, the `AuditEventsComposite` carrier)\nland first; the generic tag-bound coalescer supersedes the audit-specific shipper before release.\n:::\n\n## Motivation\n\nA measured production incident: a 350-job bulk import published its ~17,500 domain events as\n~350 composite envelopes (efficient by design), but auditing emitted **17,677 individual\n`EventAudited` transport messages** — one per inner event. On Azure Service Bus Standard,\nwhere the whole namespace shares one per-second credit pool, that flood throttled every\nconsumer in the namespace: the import ran 3× slower than its historical baseline, and\ninteractive chat hops degraded from 0.4s to 10–21s. The audit records were then all\ndead-lettered at the consumer anyway (a separate attribution bug, #507).\n\nThe audit stream needed to be **durable, not real-time**. But bolting a delay/batch knob onto\n`EventAudited` — or introducing a dedicated `[Coalesce]` attribute — would continue a pattern\nworth breaking: every new operational behavior accreting more metadata onto event contracts\n(`[Ephemeral]`, `[RowTtl]`, `[StreamGroup]`, …). Events should declare **what they are** once;\n**how the runtime treats them** should bind externally and evolve freely.\n\n## Design\n\n### Tags classify; policies bind\n\n- A message type carries one or more tags (existing mechanism: subclass `MessageTagAttribute`,\n  discovered by the `MessageTagDiscoveryGenerator`, registered AOT-safe in the\n  `MessageTagRegistry`). Tags are semantic: `\"audit\"`, `\"telemetry\"`, `\"notification-digest\"`.\n- A **policy** is configured in the host against a tag string:\n\n```csharp{title=\"Binding a coalesce policy to a tag\" description=\"Coalescing is configured against a tag string in host options — no new attribute, no new fields on the event type\" category=\"Architecture\" difficulty=\"INTERMEDIATE\" tags=[\"Tags\",\"Coalescing\",\"Configuration\"] framework=\"NET10\"}\nservices.AddWhizbang(options => {\n  options.Tags.Coalesce(\"audit\", c => {\n    c.SlideSeconds = 15;        // quiet-timer: resets on each new pending single\n    c.MaxDelaySeconds = 120;    // hard freshness cap, oldest-first under continuous load\n    c.MaxBatchCount = 500;      // inners per composite envelope\n    c.Atomicity = FanoutAtomicity.Independent;  // one bad inner never dead-letters siblings\n  });\n});\n```\n\n- One vocabulary, many behaviors: future tag-bound policies (trace sampling, work-class\n  priority, retention hints) bind to the same tags without touching a single message type.\n\n### Reserved system tags and override precedence\n\n- **Framework-internal tags carry the `sys-` prefix** (`sys-audit`, `sys-telemetry`, …),\n  following the `$wb-system` / `wh_` naming family, and are exposed as constants\n  (`SystemTags.Audit == \"sys-audit\"`). The `sys-` prefix is **reserved**: startup validation\n  rejects application-declared tag attributes that mint new `sys-*` tags, so framework and\n  application tag namespaces can never collide.\n- **Built-in policies ship as defaults, never as locks.** Enabling a framework feature registers\n  its tag binding with documented defaults; a host-supplied binding for the same tag **replaces**\n  the built-in one entirely (last-registration-wins at the options layer, with the built-in\n  always registered first). Overriding is the same API as declaring:\n\n```csharp{title=\"Overriding the built-in audit coalesce binding\" description=\"EnableAudit ships the sys-audit binding with defaults; a host binding for the same tag replaces it\" category=\"Architecture\" difficulty=\"BEGINNER\" tags=[\"Tags\",\"Coalescing\",\"Audit\",\"Configuration\"] framework=\"NET10\"}\nservices.AddWhizbang(options => {\n  // Ships automatically with EnableAudit(): Coalesce(SystemTags.Audit) with\n  // SlideSeconds=15, MaxDelaySeconds=120, MaxBatchCount=500, Independent.\n  // Override by binding the same tag yourself:\n  options.Tags.Coalesce(SystemTags.Audit, c => {\n    c.SlideSeconds = 30;\n    c.MaxDelaySeconds = 300;   // audit freshness relaxed to 5 minutes\n  });\n});\n```\n\n### Coalescing mechanics\n\nMint time — when an outbox message's type carries a tag with a coalesce binding:\n\n1. The single is written to the outbox **in the same transaction as its cause** (durability is\n   unchanged and immediate), stamped with `ScheduledFor = now + MaxDelaySeconds`. The floor\n   makes it invisible to the normal claim pump until the deadline — **the safety net, not the\n   mechanism**: if the coalescer never runs, singles ship individually at the deadline.\n   Degraded is slower, never lost.\n\nShip time — a generic **coalesce worker** (one per service, all groups):\n\n2. Runs a true sliding window per tag group: a quiet timer of `SlideSeconds` that resets\n   whenever new pending singles arrive, firing on quiet — so a burst's entire tail coalesces\n   and ships at burst-end. The `MaxDelaySeconds` cap forces an oldest-first ship under\n   continuous arrivals.\n3. On fire, it claims all pending singles for the group (regardless of their floor), folds them\n   oldest-first into **raw-carry composite envelopes** (the AOT-safe idiom the redelivery pump\n   established — no per-group code generation), capped at `MaxBatchCount` inners, and **in one\n   transaction** writes the composite outbox row(s) and completes the folded singles. The\n   composite ships immediately; the consumer's existing composite fan-out delivers each inner\n   exactly as a single would have arrived.\n4. Crash-safety falls out of the transaction: a single is either still pending (floor intact)\n   or folded (composite exists) — never both, never neither.\n\n### Hot-path isolation\n\nCoalescing must be invisible — in cost, not just in results — to every message that does not\nparticipate. During a burst, thousands of coalesce-pending singles sit in `wh_outbox` for up to\n`MaxDelaySeconds`; the normal claim path must not evaluate, scan past, or be woken by them.\n\n- **A real column, not metadata.** `wh_outbox` gains a nullable `coalesce_group` column, stamped\n  at mint only for bound tags. Filtering must be index-served, so the group rides the row.\n- **The hot index excludes them by definition.** The outbox eligible-scan partial index gains\n  `AND coalesce_group IS NULL` in its predicate: coalesce-pending singles never *enter* the\n  index the claim path scans. Non-coalesced traffic pays zero per-row filtering — the exclusion\n  happens at index-membership time, and the claim SQL's shape is unchanged.\n- **The coalesce worker gets its own tiny index.** A partial index on\n  `(coalesce_group, created_at) WHERE coalesce_group IS NOT NULL AND processed_at IS NULL`\n  serves the group scan; only coalesce-pending rows ever live in it.\n- **No doorbell noise.** The empty→non-empty edge doorbell already counts only\n  *schedule-eligible* pending rows, and coalesce singles are minted with a future\n  `ScheduledFor` — so their arrival rings nothing and wakes no claim loop.\n- **Deadline-degrade is an explicit release, not a query union.** Because matured singles are\n  still outside the hot index, the safety floor works as a visible transition: the coalesce\n  worker on recovery — with a maintenance-task backstop — *releases* rows past their deadline\n  (`coalesce_group = NULL, ScheduledFor = NULL`), which moves them into the hot index and the\n  normal pump ships them individually. The degrade is counted (OTel), never silent, and the hot\n  index stays pure in both healthy and degraded states.\n- **Validated like every hot-path SQL change** — the copy-table `EXPLAIN ANALYZE` experiment\n  has already been run against a live dev database (120k-row outbox: 100k processed, 200\n  eligible, 20k coalesce-pending):\n\n  | Claim scan for 100 eligible rows | Today's index shape | Membership exclusion |\n  |",
+        "tags": "tags, coalescing, batching, audit, throughput, service-bus, policies, sliding-window",
+        "version": "proposals",
+        "readingTime": 9,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/proposals/tag-bound-coalescing.md",
+        "wordCount": 1629
+      },
+      {
         "slug": "proposals/temporal-engine",
         "title": "Temporal Engine",
         "category": "Architecture & Design",
@@ -4388,6 +4436,18 @@
         "readingTime": 10,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/proposals/testing-development-tools.md",
         "wordCount": 1825
+      },
+      {
+        "slug": "proposals/transport-traffic-classes",
+        "title": "Transport Traffic Classes & Multi-Namespace Routing",
+        "category": "Architecture & Design",
+        "order": 37,
+        "description": "",
+        "tags": "transport, service-bus, namespaces, traffic-classes, control-plane, ttl, throttling, tags, isolation",
+        "version": "proposals",
+        "readingTime": 6,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/proposals/transport-traffic-classes.md",
+        "wordCount": 1118
       },
       {
         "slug": "proposals/turnkey-configuration-binding",

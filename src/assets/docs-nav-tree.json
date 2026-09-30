@@ -1861,6 +1861,11 @@
               "order": 6
             },
             {
+              "slug": "drafts/fundamentals/work-coordinator/commit-sequence",
+              "title": "Commit Sequence & the Order Stamper",
+              "order": 6
+            },
+            {
               "slug": "drafts/fundamentals/work-coordinator/configuration-reference",
               "title": "Configuration reference",
               "order": 7
@@ -2161,6 +2166,26 @@
           "slug": "proposals/notify-on-the-true-edge",
           "title": "Notify on the True Edge (Store-Level Doorbell Semantics)",
           "order": 35
+        },
+        {
+          "slug": "proposals/tag-bound-coalescing",
+          "title": "Tag-Bound Policies & Message Coalescing",
+          "order": 36
+        },
+        {
+          "slug": "proposals/transport-traffic-classes",
+          "title": "Transport Traffic Classes & Multi-Namespace Routing",
+          "order": 37
+        },
+        {
+          "slug": "proposals/per-namespace-command-inboxes",
+          "title": "Per-Namespace Command Inboxes",
+          "order": 38
+        },
+        {
+          "slug": "proposals/broker-dlq-import",
+          "title": "Broker DLQ Import",
+          "order": 39
         }
       ],
       "children": []
