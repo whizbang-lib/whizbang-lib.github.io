@@ -1072,6 +1072,120 @@ public sealed class PerspectiveSyncOptions {
 
 ---
 
+## Events From Another Service {#cross-service}
+
+Everything above tracks events **this process** emitted. An event that arrives over the transport from
+another service was never tracked here, and neither was a collective event applied by the collective
+sink, so a wait for either one used to report `Synced` at once. A service that wanted to answer "has my
+read model applied the event that service A just published?" had no way to ask.
+
+`WaitForAppliedAsync` answers it. It waits until a local perspective has applied a given event, named by
+its event id or by its stream and position, whoever published it, including collective applies, and it
+gives up after a bounded timeout.
+
+```csharp{title="Waiting for an event another service published" description="Wait until a local perspective has applied an event that arrived from another service, then read the read model." category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Sync", "Cross-Service"]}
+public class OrderShippedNotificationHandler(
+    IPerspectiveSyncAwaiter syncAwaiter,
+    ILensQuery<OrderView> orders) : IReceptor<OrderShippedNotification> {
+
+  public async ValueTask HandleAsync(OrderShippedNotification notification, CancellationToken ct) {
+    // The event was published by the shipping service; this service projects it into OrderView.
+    var result = await syncAwaiter.WaitForAppliedAsync(
+        typeof(OrderViewPerspective), notification.ShippedEventId, TimeSpan.FromSeconds(5), ct);
+
+    if (result.Outcome == SyncOutcome.TimedOut) {
+      // Not applied yet: answer with what is known, or ask the caller to retry.
+    }
+
+    var order = await orders.GetByIdAsync(notification.OrderId, ct);
+  }
+}
+```
+
+The stream overload names the event by position instead of id:
+
+```csharp{title="Waiting by stream and position" description="Wait until a local perspective has applied the event at a position in a stream." category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Sync", "Cross-Service"]}
+var result = await syncAwaiter.WaitForAppliedAsync(
+    typeof(OrderViewPerspective), orderId, streamPosition: 3, TimeSpan.FromSeconds(5), ct);
+```
+
+The position is the event's position in **this service's** copy of the stream: the per-stream version the
+local event store assigned when the event was stored (1 for the first event). A service that received the
+stream from elsewhere numbers it itself, so a position is only meaningful in the service that assigned it.
+
+### Two shapes considered {#cross-service-design}
+
+**Track inbound events at inbox receipt**, as well as at local dispatch, so the existing in-memory tracker
+knows about them. Rejected, for three reasons:
+
+- The tracker lives in one process. With more than one instance, the instance that received the event, the
+  instance that applies it and the instance the caller waits on can all differ, and only the first knows.
+- It cannot cover an event that has not arrived yet, which is the case that prompted this: a notification
+  that another service's event completed can reach this service before the event does. An unknown id would
+  still read as "nothing to wait for".
+- The completion side is in-process as well, so a wait would still need a record that outlives the process
+  to be answered from anywhere else.
+
+**Record applied event ids when an apply commits**, and let the awaiter query that record. Chosen. The
+record is durable and shared by every instance, it answers for an event that has not arrived (there is
+nothing recorded yet, so the wait continues), and it needs no change on the publishing side.
+
+### The applied-event ledger {#applied-ledger}
+
+`wh_perspective_applied` holds one row per applied event and perspective: `(event_id, perspective_name)`
+as the key, with the stream id and the time it was recorded.
+
+A row is written by `process_perspective_event_completions`, the function that retires a perspective's
+work row once the worker has committed the apply, in the same statement that deletes (or, in debug mode,
+stamps) that work row. Nothing else writes it, so a row exists only for an apply that committed. The
+completion is flushed shortly after the model write commits, so the ledger can lag the apply by the flush
+interval. It is never early.
+
+A wait is settled when either:
+
+| State | Meaning | Outcome |
+|-------|---------|---------|
+| Applied | A ledger row exists for the event and the perspective, or for the event and the collective sink | `Synced` |
+| Not applicable | The event is in the local event store, has no ledger row, and has no outstanding work for the perspective or the collective sink. The perspective does not handle it, or its ledger row has been pruned | `NoPendingEvents` |
+
+It keeps waiting while the event has not reached the local event store (an inbound event is stored when
+its inbox row is claimed) or while work for it is outstanding.
+
+Ledger rows are pruned an hour after they are recorded, a bounded number at a time, by the same completion
+function. An event applied longer ago than that reads as "not applicable", which settles the wait just the
+same.
+
+### Collective applies {#cross-service-collective}
+
+A collective event is not applied per stream. The collective sink applies it to every model a
+`[CollectiveApplyFor]` handler targets, and records it once, under the sink's name, when that apply
+commits. A wait for any perspective on a collective event id is settled by the sink's row: the apply
+that updated every targeted model has committed. A perspective whose model the event does not target has
+nothing to wait for either way.
+
+### Waking the waiter {#cross-service-wake}
+
+- **In this process:** when the perspective worker commits an apply it marks the event applied for that
+  perspective (or for the collective sink) in the singleton tracker. A waiter registered for the event wakes
+  at once, without waiting for the ledger. A failed apply does not mark anything. The tracker also remembers
+  a bounded number of recently applied events, so a wait that starts just after a local apply returns at once.
+- **Elsewhere:** the awaiter re-reads the ledger on a backoff that starts at 50 ms and grows to one second,
+  until the wait settles or the timeout passes. This is what answers an apply committed by another instance.
+
+The waiter registers for the in-process signal before its first read, so an apply that lands between the
+two cannot be missed.
+
+### What changed for existing waits {#cross-service-existing}
+
+`[AwaitPerspectiveSync]` passes the incoming event's id to `WaitForStreamAsync`. When that event is tracked
+in this process, the wait is exactly what it was. When it is not (it arrived from another service, or it
+was a collective event), the wait now goes through the ledger instead of reporting `Synced` at once. A work
+coordinator that cannot read the ledger keeps the old behavior.
+
+Waits that name no event id, and every wait on events this process emitted, are unchanged.
+
+---
+
 ## Perspective-Based vs Event-Based Waiting {#comparison}
 
 Whizbang provides two distinct waiting semantics for different use cases:
@@ -1314,7 +1428,7 @@ The system uses CPU time sampling to detect when execution is frozen at a breakp
 |---------|-------------|
 | `Synced` | All matching events have been processed |
 | `TimedOut` | Timeout reached before synchronization |
-| `NoPendingEvents` | No events matched the filter |
+| `NoPendingEvents` | No events matched the filter, or (for [`WaitForAppliedAsync`](#cross-service)) the perspective has nothing to apply for the event |
 
 ---
 

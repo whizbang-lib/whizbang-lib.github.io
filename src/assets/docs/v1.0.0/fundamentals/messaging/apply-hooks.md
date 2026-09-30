@@ -103,9 +103,8 @@ services.AddSingleton(_ =>
     .Register<object>(new MyStamps(), WhizbangApplyHookKeys.TIMESTAMPS));  // override the default stamp
 ```
 
-**Per-event** — a process-wide static (mirroring
-`BaseUpsertStrategy.PathOnePersistenceOptionsProvider`), so the default applies everywhere with
-zero wiring. Register custom hooks at startup:
+**Per-event** — a process-wide static (mirroring the serialization registry,
+`JsonContextRegistry`), so the default applies everywhere with zero wiring. Register custom hooks at startup:
 
 ```csharp{title="Register per-event apply hooks" description="Replace the process-wide per-event registry with one seeded from the framework defaults plus a custom hook, at startup." category="Messaging" difficulty="INTERMEDIATE" tags=["Messaging", "Apply Hooks", "Per-Event", "Perspectives"] unverified="Consumer startup wiring that assigns the process-wide PerEventApplyHooks.Registry static using the illustrative hook StampLastTouchedByHook; the mapped PerEventApplyHooksTests deliberately use the explicit-registry Resolve overload and never assign the static."}
 PerEventApplyHooks.Registry = WhizbangApplyHooks.CreatePerEventWithDefaults()
