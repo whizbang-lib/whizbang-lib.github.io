@@ -196,6 +196,11 @@ through `wh_ensure_index`, which compares definitions first:
 It never drops or renames anything. A role that may not create temporary tables skips the comparison
 and creates the index as before, so the comparison can never fail a schema pass.
 
+The one index the schema pass does drop is a document index it built for a field that has since been
+promoted to a physical column. It drops only an index under the name it gave it, and only when that
+index is over the field's extraction, then builds the same kind of index on the column. See
+[Promoting a field that is already indexed](./physical-fields#promoting-an-existing-field).
+
 Trigram indexes (`IndexKinds.Substring` and `Search`) are the exception. They are created inside the
 optional-extension block that lets a server without `pg_trgm` skip them, so they keep plain
 `CREATE INDEX IF NOT EXISTS`.
