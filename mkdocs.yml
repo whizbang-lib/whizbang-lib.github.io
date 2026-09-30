@@ -1,5 +1,5 @@
 site_name: Whizbang Documentation
-site_url: https://whizbang.readthedocs.io/
+site_url: https://whizbang-docs.readthedocs.io/
 site_description: >-
   Documentation for Whizbang - a zero-reflection, AOT-compatible .NET library
   for building event-driven, CQRS, and event-sourced applications.
