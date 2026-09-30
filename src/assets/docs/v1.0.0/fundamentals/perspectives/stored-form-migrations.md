@@ -140,6 +140,8 @@ nothing, and a row a newer instance already wrote in the new form is not touched
 
 ### Type changes {#type-changes}
 
+{verified: StoredFormMigrationTests.NumberToString_ConvertsNumbersAndBooleans_LeavesStringsNullsAndMissingAsync, StoredFormMigrationTests.EnumNumberToName_UsesTheMemberName_OrTheNumbersTextAsync, StoredFormMigrationTests.StringToInteger_ConvertsNumericStrings_AndWholeNumbersWrittenWithAFractionAsync, StoredFormMigrationTests.StringToDecimal_ConvertsNumericStrings_LeavesNumbersAsync, StoredFormMigrationTests.NarrowingNumbers_BlockOutOfRange_AndWideningNeedsNoChangeAsync, StoredFormMigrationTests.EveryNumberKind_BlocksAValueOutsideItsRangeAsync, StoredFormMigrationTests.StringToEnum_NamesAndNumericStringsBecomeNumbers_UnknownNamesBlockAsync, StoredFormMigrationTests.StringToFlagsEnum_CombinedNamesBecomeTheirBitwiseOr_AnUnknownComponentBlocksAsync, StoredFormMigrationGenerationTests.EachTypeChange_BecomesAStepFromTheFormerTypeToTheCurrentAsync, StoredFormMigrationGenerationTests.ADeclarationItCannotGenerate_IsWHIZ830_AndEmitsNothingAsync}
+
 | From (`Previously`) | To (the property now) | Converted | Left alone | Blocks startup |
 |---|---|---|---|---|
 | any number, `bool` | `string` | a number or boolean becomes its text (`123` → `"123"`) | strings, nulls | never |
@@ -158,6 +160,8 @@ The build reports **WHIZ830**. Write a [custom migration](#custom) for it.
 
 ### Renames, removals and defaults {#paths}
 
+{verified: StoredFormMigrationTests.Rename_MovesTheValue_NestedToo_AndTheNewKeyWinsWhenBothExistAsync, StoredFormMigrationTests.Remove_DropsTheKeyWhereverItIs_AndNeverBlocksAsync, StoredFormMigrationTests.DefaultWhenMissing_FillsOnlyAMissingKey_UnderAnExistingParentAsync, StoredFormMigrationGenerationTests.RenamesDefaultsAndRemovals_AreGenerated_NestedPathsTooAsync}
+
 - **Rename** (`PreviousName`): a row that holds the old key gets its value moved to the new key, and
   the old key is removed. If a row somehow holds both keys, the new key's value wins and the old key
   is dropped. A `null` moves as `null`.
@@ -171,8 +175,10 @@ The build reports **WHIZ830**. Write a [custom migration](#custom) for it.
 ### Order within a table {#order}
 
 The migrations for one table run in this order: renames, type conversions, defaults, removals, then
-custom migrations in name order. So a property that is renamed and retyped in the same release gets
-both, rename first. The tables run in name order.
+custom migrations in the order of their class's full name. So a property that is renamed and
+retyped in the same release gets both, rename first. The tables run in name order.
+
+{verified: StoredFormMigrationGenerationTests.Migrations_RunRenamesThenConversionsThenDefaultsThenRemovals_ThenCustomByNameAsync, StoredFormMigrationGenerationTests.TheMigrations_RunInTheRewritePhaseBeforeTheTemporalRewrite_AndStatusIsExposedAsync}
 
 Stored-form migrations run **before** the canonical temporal rewrite. So a temporal value moved by a
 rename is converted to the canonical form in the same pass.
@@ -180,9 +186,10 @@ rename is converted to the canonical form in the same pass.
 ## Custom migrations (the escape hatch) {#custom}
 
 For anything the generator does not handle, implement `IStoredFormMigration<TModel>`. The generator
-finds the class at build time, the same way it finds perspectives. It needs a parameterless
-constructor, and `TModel` has to be the model of a perspective. A migration whose model no
-perspective uses is reported as **WHIZ831**.
+finds the class at build time, the same way it finds perspectives. It needs a public or internal
+parameterless constructor, and `TModel` has to be the model of a perspective. A migration that could
+never run (its model is no perspective's, or the generated code cannot create it) is reported as
+**WHIZ831**. An abstract class is a base for migrations, not one, and is passed over.
 
 ```csharp{title="A custom stored-form migration" description="Raw SQL for a change the generator does not cover: splitting one key into two. It runs once, journaled by its name, under the same lock and fence as the generated migrations." framework="NET10" category="Perspectives" difficulty="ADVANCED" tags=["perspectives", "stored-forms", "migrations", "sql"]}
 public sealed class SplitFullName : IStoredFormMigration<CustomerModel> {
@@ -199,6 +206,8 @@ public sealed class SplitFullName : IStoredFormMigration<CustomerModel> {
     """;
 }
 ```
+
+{verified: StoredFormMigrationTests.ACustomMigration_RunsOnce_EvenThoughItsSqlIsNotIdempotentAsync, StoredFormMigrationTests.ACustomMigration_CanBlockStartup_WithTheStoredFormStateAsync, StoredFormMigrationTests.ACustomMigrationWhoseSqlHoldsTheDelimiter_StillRunsAsync, StoredFormMigrationSqlTests.ForPhase_ADuplicateName_IsRefusedNamingItAsync, StoredFormMigrationTests.AMissingTable_Waits_AndIsNotJournaledAsApplied_ThenRunsOnceItExistsAsync}
 
 - **It runs once.** Once it succeeds it is journaled as settled and never runs again. Your SQL does
   not have to be idempotent, but idempotent SQL is still the safer habit.
@@ -239,6 +248,8 @@ A migration moves through three states:
 | **Applied** | applied, not settled | runs again |
 | **Settled** | `settled_at` set | skipped, with no scan |
 
+{verified: StoredFormMigrationTests.ASecondRun_ChangesNothing_AndSettles_AndAThirdSkipsWithoutAScanAsync, StoredFormMigrationTests.ACustomMigration_RunsOnce_EvenThoughItsSqlIsNotIdempotentAsync}
+
 A **custom** migration settles on its first successful run. A **generated** migration settles on the
 first pass that finds **nothing left to convert**. A pass that converts rows leaves it Applied, so the
 next start makes one more pass. That pass catches any row an instance of the previous release wrote in
@@ -254,11 +265,13 @@ stops with an error that names the migration, the table, the path in the documen
 and the values:
 
 ```text
-The stored-format rewrite could not convert every column, so startup is stopped. Stored-form
+The stored-format rewrite could not convert every stored value, so startup is stopped. Stored-form
 migration wh_per_order.Quantity:String->Int32 cannot convert public.wh_per_order at $.Quantity:
 "n/a", "twelve". Those values cannot be read as Int32. Correct or clear them, or declare a custom
 migration that does, then restart.
 ```
+
+{verified: StoredFormMigrationTests.StringToInteger_AValueItCannotConvert_BlocksNamingTheTablePathAndValue_ChangingNothingAsync, StoredFormMigrationTests.RetypeColumn_AValueThatIsNotANumber_BlocksNamingTheColumnAsync, StoredFormMigrationTests.ACustomMigration_CanBlockStartup_WithTheStoredFormStateAsync}
 
 The blocked migration changes nothing, because it is rolled back to its savepoint. Every other
 migration and rewrite in the pass still runs and commits first, and only then does startup stop.
@@ -280,6 +293,8 @@ against its work rows, and the retry is scheduled with backoff
 Once a migration has converted the document, the stream recovers on its **next scheduled retry**,
 with no operator step. The retry reads the converted document, applies the waiting events and
 completes the rows. The stream then drops out of the `perspective-stored-forms` health component.
+
+{verified: StoredFormScalarMismatchWorkerTests.NumberForAStringProperty_RecoversOnItsNextRetry_AfterTheStoredFormMigrationConvertsItAsync}
 
 Two limits:
 
@@ -321,8 +336,11 @@ Settled   wh_per_order.Status:Int32->String           wh_per_order      3  2026-
 Pending   2026-10-customer-split-full-name            wh_per_customer   0
 ```
 
+{verified: StoredFormMigrationTests.Status_MergesTheDeclaredMigrationsWithTheJournal_AndFormatsAReportAsync, StoredFormMigrationTests.Status_WithoutAJournalTable_ReportsEveryDeclaredMigrationAsPendingAsync, StoredFormMigrationGenerationTests.TheMigrations_RunInTheRewritePhaseBeforeTheTemporalRewrite_AndStatusIsExposedAsync}
+
 The CLI sees every migration some instance of the application has declared: the migrating instance
-records each declaration as Pending before it runs the migrations. A migration declared only in a
+records each declaration as Pending before it runs the migrations, in a statement of its own outside
+the phase's transaction, so declaring converts nothing and never makes the phase wait. A migration declared only in a
 build that has not started yet is not in the journal, so the CLI cannot list it. The in-application
 call can.
 
@@ -342,7 +360,9 @@ Stored-form migrations run inside the stored-format rewrite phase, so they share
 - **The superseded-row-version fence.** After a pass that converted anything, the phase waits until
   no snapshot older than its commit is left, up to the schema command timeout. So a plain
   `CREATE INDEX` cannot trip over a row version the migration replaced (the #949 fence). A pass that
-  converted nothing does not wait.
+  wrote nothing does not wait. The fence counts any write, and a migration writes its journal row on
+  the pass that converts and on the pass that settles, so each migration can make the phase wait at
+  most twice over its life. A settled migration writes nothing.
 - **Mixed fleets.** The migrator warns, as it does for the temporal rewrite, when other releases are
   alive. A generated migration settles only after a clean pass, so rows an older release writes
   during a rolling deploy are converted on the next start.
@@ -364,6 +384,8 @@ column has a type. A `[StoredForm]` declaration on such a property covers the co
 | `DefaultWhenMissing` | The schema pass adds the new column and backfills it from the document, which now holds the default | Default written, as above. Not supported on a Split model (WHIZ830): the value lives only in the column, so write a custom migration |
 | `[StoredFormRemoved]` | Left in place. The framework never drops a column; drop it yourself when nothing reads it | Key dropped |
 
+{verified: StoredFormMigrationTests.RetypeColumn_ToText_AndToANumber_BlockingWhatCannotConvertAsync, StoredFormMigrationTests.RetypeColumn_ToADecimal_KeepsTheFractionAsync, StoredFormMigrationTests.RenameColumn_RenamesOnlyWhenTheOldExistsAndTheNewDoesNotAsync, StoredFormMigrationTests.ColumnSteps_OnAMissingColumn_AreNoOpsAsync, StoredFormMigrationGenerationTests.APhysicalField_RetypesOrRenamesItsColumnWithItsDocumentAsync, StoredFormMigrationGenerationTests.ADefaultOnASplitPhysicalField_IsWHIZ830Async}
+
 A retype to an **enum** is left to the [enum column conversion](physical-fields.md#enum-text-columns),
 which already converts a text column of names to numbers. The stored-form migration converts the
 document only.
@@ -377,10 +399,12 @@ index in a [custom migration](#custom) of the same release
 
 ## Diagnostics {#diagnostics}
 
+{verified: StoredFormMigrationGenerationTests.ADeclarationItCannotGenerate_IsWHIZ830_AndEmitsNothingAsync, StoredFormMigrationGenerationTests.ADeclarationInsideACollectionElement_IsWHIZ832_AndAnOrphanMigrationWHIZ831Async, StoredFormMigrationGenerationTests.ADefaultOnASplitPhysicalField_IsWHIZ830Async}
+
 | Id | Severity | Reported when |
 |---|---|---|
 | WHIZ830 | Error | A declaration the generator cannot turn into SQL: an unsupported type pair, `Previously` equal to the current type, a `[Flags]` enum over `ulong` converted from a string, or a default on a Split physical field. Use a custom migration. |
-| WHIZ831 | Warning | An `IStoredFormMigration<TModel>` whose `TModel` is not the model of any perspective, so it would never run. |
+| WHIZ831 | Warning | An `IStoredFormMigration<TModel>` that would never run: its `TModel` is not the model of any perspective, or the generated code cannot create it (no public or internal parameterless constructor, a generic class, or a class it cannot see). |
 | WHIZ832 | Warning | A `[StoredForm]` or `[StoredFormRemoved]` inside an element of a collection, which is not generated. Use a custom migration. |
 
 ## See also
