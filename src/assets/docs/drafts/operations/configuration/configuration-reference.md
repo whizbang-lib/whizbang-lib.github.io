@@ -1,34 +1,24 @@
 ---
-title: Configuration Reference
+title: Configuration Reference (planned — fully bound)
 pageType: reference
-verifiedAgainstCommit: b21e129e9
-verifiedDate: 2026-09-30
-version: 1.0.0
+version: drafts
 category: Configuration
 order: 2
 description: >-
-  Every Whizbang configuration key on one page - which sections bind
-  automatically, which you bind yourself, defaults, environment-variable names,
-  and links to the detail pages
+  The configuration reference as it will read once every process-wide options
+  class binds from a section. Planned state, not what ships today.
 tags: >-
-  configuration, options, environment variables, appsettings, reference,
-  binding
-codeReferences:
-  - src/Whizbang.Core/ServiceCollectionExtensions.cs
-  - src/Whizbang.Data.Postgres/Notifications/PostgresNotificationsServiceCollectionExtensions.cs
-  - src/Whizbang.Offloads.AzureBlob/AzureBlobOffloadServiceCollectionExtensions.cs
-  - src/Whizbang.Core/Workers/PinnedPoolServiceCollectionExtensions.cs
-  - src/Whizbang.Core/Configuration/WhizbangCoreOptions.cs
-  - src/Whizbang.Core/Messaging/WorkCoordinatorGateOptions.cs
-  - src/Whizbang.Core/Workers/BatchFlusher.cs
-  - src/Whizbang.Core/Workers/PerspectiveStreamAffinityOptions.cs
-testReferences:
-  - tests/Whizbang.Core.Tests/Messaging/WorkCoordinatorGateInteractiveReserveTests.cs
-  - tests/Whizbang.Core.Tests/ServiceCollectionExtensionsTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/WorkCoordinatorGateRegistrationTests.cs
-  - tests/Whizbang.Core.Tests/Workers/BatchFlusherRetryTests.cs
-  - tests/Whizbang.Core.Tests/Workers/PerspectiveWorkerAffinityHoldWatchdogTests.cs
+  configuration, options, environment variables, appsettings, reference, binding, draft
 ---
+
+> **This is a planned state, not the shipped one.** The keys marked below as bound do not all work
+> yet. The released page at
+> [Configuration Reference](../../../v1.0.0/operations/configuration/configuration-reference)
+> describes what actually binds today, and is the one to follow when configuring a running service.
+>
+> Sections still marked `— *code-only*` here need a design decision before they can bind at all —
+> they exist per transport, per consumer or per breaker, so a single global section cannot express
+> them. Tracked in `plans/bind-remaining-options.md` and whizbang-lib/whizbang#1012.
 
 This page lists **every configuration surface Whizbang exposes**: the sections the library binds from `IConfiguration` automatically, the sections you can opt into binding with a helper, and the (much larger) set of options classes that are configured in code — plus the recipe for making any of them configuration-driven. Each options class lists its properties, types, defaults, and a link to the page that covers it in depth.
 
@@ -267,13 +257,13 @@ Entry point to subsystem configuration. **Configure:** `AddWhizbang(options => �
 
 | Property | Type | Default | Environment variable | Purpose |
 |----------|------|---------|----------------------|---------|
-| `AutoRegisterAspNetHosting` | `bool` | `true` | — *code-only* | Fold in `AddWhizbangAspNet()` automatically when the Hosting.AspNet assembly is loaded |
-| `EnableTagProcessing` | `bool` | `true` | — *code-only* | Master switch for message tag hooks |
-| `TagProcessingMode` | `TagProcessingMode` | `AfterReceptorCompletion` | — *code-only* | When tag hooks run |
-| `DefaultQueryScope` | `QueryScope` | `Tenant` | — *code-only* | Default scope filtering for `ILensQuery<TModel>.DefaultScope` |
-| `ShowBanner` | `bool` | `true` | — *code-only* | Print the ASCII banner on startup |
-| `ImmediateDetachedChainWarningThreshold` | `int` | `10` | — *code-only* | Warn when ImmediateDetached chain depth reaches a multiple of this |
-| `EmptyStreamIdPolicy` | `EmptyStreamIdPolicy` | `Reject` | — *code-only* | Handling of `Guid.Empty` stream ids (see [Empty Stream ID Policy](empty-stream-id-policy)) |
+| `AutoRegisterAspNetHosting` | `bool` | `true` | `Whizbang__Core__AutoRegisterAspNetHosting` | Fold in `AddWhizbangAspNet()` automatically when the Hosting.AspNet assembly is loaded |
+| `EnableTagProcessing` | `bool` | `true` | `Whizbang__Core__EnableTagProcessing` | Master switch for message tag hooks |
+| `TagProcessingMode` | `TagProcessingMode` | `AfterReceptorCompletion` | `Whizbang__Core__TagProcessingMode` | When tag hooks run |
+| `DefaultQueryScope` | `QueryScope` | `Tenant` | `Whizbang__Core__DefaultQueryScope` | Default scope filtering for `ILensQuery<TModel>.DefaultScope` |
+| `ShowBanner` | `bool` | `true` | `Whizbang__Core__ShowBanner` | Print the ASCII banner on startup |
+| `ImmediateDetachedChainWarningThreshold` | `int` | `10` | `Whizbang__Core__ImmediateDetachedChainWarningThreshold` | Warn when ImmediateDetached chain depth reaches a multiple of this |
+| `EmptyStreamIdPolicy` | `EmptyStreamIdPolicy` | `Reject` | `Whizbang__Core__EmptyStreamIdPolicy` | Handling of `Guid.Empty` stream ids (see [Empty Stream ID Policy](empty-stream-id-policy)) |
 
 Sub-option bags on this class: `Tags` ([TagOptions](#tagoptions)), `Tracing` ([TracingOptions](#whizbangtracing--tracingoptions)), `Services` ([ServiceRegistrationOptions](service-registration-options)).
 
@@ -295,10 +285,10 @@ Guardrails for the "exactly once per receptor per message" contract. **Configure
 
 | Property | Type | Default | Environment variable | Purpose |
 |----------|------|---------|----------------------|---------|
-| `ReceptorInvocationTracking` | `ReceptorInvocationTracking` | `TrackAndEnforce` | `Whizbang__Guardrails__ReceptorInvocationTracking` | Whether invocations are recorded and duplicates blocked |
-| `OnDoubleFire` | `DoubleFireBehavior` | `Warn` | `Whizbang__Guardrails__OnDoubleFire` | On duplicate under enforcement: log + skip, or throw |
-| `PersistInvocations` | `InvocationPersistence` | `Envelope` | `Whizbang__Guardrails__PersistInvocations` | Where records persist (`Envelope` = zero DB writes) |
-| `EnableChaosHooks` | `bool` | `false` | `Whizbang__Guardrails__EnableChaosHooks` | Framework workers call `IChaosInjector` at named checkpoints |
+| `ReceptorInvocationTracking` | `ReceptorInvocationTracking` | `TrackAndEnforce` | — *code-only* | Whether invocations are recorded and duplicates blocked |
+| `OnDoubleFire` | `DoubleFireBehavior` | `Warn` | — *code-only* | On duplicate under enforcement: log + skip, or throw |
+| `PersistInvocations` | `InvocationPersistence` | `Envelope` | — *code-only* | Where records persist (`Envelope` = zero DB writes) |
+| `EnableChaosHooks` | `bool` | `false` | — *code-only* | Framework workers call `IChaosInjector` at named checkpoints |
 
 ### ServiceRegistrationOptions
 
@@ -306,7 +296,7 @@ Guardrails for the "exactly once per receptor per message" contract. **Configure
 
 | Property | Type | Default | Environment variable | Purpose |
 |----------|------|---------|----------------------|---------|
-| `IncludeSelfRegistration` | `bool` | `true` | — *code-only* | Register concrete types as themselves in addition to their interfaces |
+| `IncludeSelfRegistration` | `bool` | `true` | `Whizbang__Core__Services__IncludeSelfRegistration` | Register concrete types as themselves in addition to their interfaces |
 
 ### SchemaInitializationOptions
 
@@ -332,8 +322,8 @@ Coordinated lifecycle state machine tunables. **Configure:** the run-control reg
 
 | Property | Type | Default | Environment variable | Purpose |
 |----------|------|---------|----------------------|---------|
-| `TransitionAckTimeout` | `TimeSpan` | `00:00:30` | — *code-only* | Per-resource acknowledgement budget per coordinated transition; exceeding faults the system |
-| `FaultRecordWindow` | `TimeSpan` | `00:00:05` | — *code-only* | How long the system stays Faulted (record/report) before Halted |
+| `TransitionAckTimeout` | `TimeSpan` | `00:00:30` | `Whizbang__Lifecycle__TransitionAckTimeout` | Per-resource acknowledgement budget per coordinated transition; exceeding faults the system |
+| `FaultRecordWindow` | `TimeSpan` | `00:00:05` | `Whizbang__Lifecycle__FaultRecordWindow` | How long the system stays Faulted (record/report) before Halted |
 
 ### StandbyWatcherOptions
 
@@ -341,9 +331,9 @@ Cadences for the rolling-upgrade standby handshake. **Configure:** `services.Con
 
 | Property | Type | Default | Environment variable | Purpose |
 |----------|------|---------|----------------------|---------|
-| `PollInterval` | `TimeSpan` | `00:00:05` | — *code-only* | How often the watcher checks for an active standby request |
-| `ObsolescenceInterval` | `TimeSpan` | `00:01:00` | — *code-only* | How often a serving instance re-assesses its verdict against the ledger |
-| `RequesterLivenessWindow` | `TimeSpan` | `00:00:30` | — *code-only* | How stale the requester's heartbeat may be before its request is void |
+| `PollInterval` | `TimeSpan` | `00:00:05` | `Whizbang__StandbyWatcher__PollInterval` | How often the watcher checks for an active standby request |
+| `ObsolescenceInterval` | `TimeSpan` | `00:01:00` | `Whizbang__StandbyWatcher__ObsolescenceInterval` | How often a serving instance re-assesses its verdict against the ledger |
+| `RequesterLivenessWindow` | `TimeSpan` | `00:00:30` | `Whizbang__StandbyWatcher__RequesterLivenessWindow` | How stale the requester's heartbeat may be before its request is void |
 
 ### WhizbangHealthOptions
 
@@ -351,7 +341,7 @@ Maps managed-resource states to health per component. **Configure:** the health 
 
 | Property | Type | Default | Environment variable | Purpose |
 |----------|------|---------|----------------------|---------|
-| `Default` | `HealthPolicy` | `Lenient` | — *code-only* | Policy applied to any component without an explicit override |
+| `Default` | `HealthPolicy` | `Lenient` | `Whizbang__Health__Default` | Policy applied to any component without an explicit override |
 
 ### SignalBusOptions
 
@@ -380,9 +370,9 @@ Hosted signal bus wire-route self-test and doorbell liveness. **Configure:** bou
 
 | Property | Type | Default | Environment variable | Purpose |
 |----------|------|---------|----------------------|---------|
-| `Mode` | `DebuggerDetectionMode` | `Auto` | — *code-only* | Detection mode for identifying paused states |
-| `SamplingInterval` | `TimeSpan` | `00:00:00.100` | — *code-only* | CPU sampling interval for `CpuTimeSampling` mode |
-| `FrozenThreshold` | `double` | `10.0` | — *code-only* | Wall/CPU time ratio above which execution counts as frozen |
+| `Mode` | `DebuggerDetectionMode` | `Auto` | `Whizbang__DebuggerAwareClock__Mode` | Detection mode for identifying paused states |
+| `SamplingInterval` | `TimeSpan` | `00:00:00.100` | `Whizbang__DebuggerAwareClock__SamplingInterval` | CPU sampling interval for `CpuTimeSampling` mode |
+| `FrozenThreshold` | `double` | `10.0` | `Whizbang__DebuggerAwareClock__FrozenThreshold` | Wall/CPU time ratio above which execution counts as frozen |
 
 ## Work Coordination, Claims, and Leases
 
@@ -489,10 +479,10 @@ Completion retry with exponential backoff. **Configure:** via the owning worker'
 
 | Property | Type | Default | Environment variable | Purpose |
 |----------|------|---------|----------------------|---------|
-| `RetryTimeoutSeconds` | `int` | `1` | `Whizbang__Workers__Perspective__RetryOptions__RetryTimeoutSeconds` | Base retry timeout; first retry after this duration |
-| `EnableExponentialBackoff` | `bool` | `true` | `Whizbang__Workers__Perspective__RetryOptions__EnableExponentialBackoff` | Grow the timeout 1s→2s→4s→…→cap |
-| `BackoffMultiplier` | `double` | `2.0` | `Whizbang__Workers__Perspective__RetryOptions__BackoffMultiplier` | `baseTimeout * multiplier^retryCount` |
-| `MaxBackoffSeconds` | `int` | `60` | `Whizbang__Workers__Perspective__RetryOptions__MaxBackoffSeconds` | Cap on retry timeout; keep low — failing messages block streams |
+| `RetryTimeoutSeconds` | `int` | `1` | — *code-only* | Base retry timeout; first retry after this duration |
+| `EnableExponentialBackoff` | `bool` | `true` | — *code-only* | Grow the timeout 1s→2s→4s→…→cap |
+| `BackoffMultiplier` | `double` | `2.0` | — *code-only* | `baseTimeout * multiplier^retryCount` |
+| `MaxBackoffSeconds` | `int` | `60` | — *code-only* | Cap on retry timeout; keep low — failing messages block streams |
 
 ## Outbox and Inbox Pipeline
 
@@ -574,17 +564,17 @@ The only source of `InboxWork`. **Configure:** bound automatically from `Whizban
 
 ### BatchFlusherOptions
 
-Shared tuning shape for the flush workers above. **Configure:** bound as the owning worker's `Flusher`, so these keys work from configuration with no service code — `Whizbang__Workers__FailureFlush__Flusher__MaxBatchSize` and the equivalents for `InboxHandler`, `LeaseRenewal`, `OutboxCompletionFlush` and `PerspectiveCompletionFlush`. The defaults below are this shape's own; each worker overrides some of them, and the per-worker `Flusher` rows above state the effective values.
+Shared tuning shape for the flush workers above. **Configure:** via the owning worker's `Flusher` property.
 
 | Property | Type | Default | Environment variable | Purpose |
 |----------|------|---------|----------------------|---------|
-| `ChannelCapacity` | `int` | `10000` | `Whizbang__Workers__<Worker>__Flusher__ChannelCapacity` | Bounded channel capacity (back-pressure when full) |
-| `MaxBatchSize` | `int` | `500` | `Whizbang__Workers__<Worker>__Flusher__MaxBatchSize` | Max items per flush call |
-| `CoalesceWindowMs` | `int` | `25` | `Whizbang__Workers__<Worker>__Flusher__CoalesceWindowMs` | Max ms coalescing additional items after the first |
-| `ImmediateFlushThreshold` | `int` | `250` | `Whizbang__Workers__<Worker>__Flusher__ImmediateFlushThreshold` | Flush immediately if the batch reaches this first |
-| `MaxFlushAttempts` | `int` | `5` | `Whizbang__Workers__<Worker>__Flusher__MaxFlushAttempts` | Consecutive failed flushes of one batch before it is dropped |
-| `FlushRetryBackoffMs` | `int` | `250` | `Whizbang__Workers__<Worker>__Flusher__FlushRetryBackoffMs` | Backoff before the first retry of a failed flush; doubles per attempt |
-| `FlushRetryMaxBackoffMs` | `int` | `5000` | `Whizbang__Workers__<Worker>__Flusher__FlushRetryMaxBackoffMs` | Cap on the retry backoff |
+| `ChannelCapacity` | `int` | `10000` | — *code-only* | Bounded channel capacity (back-pressure when full) |
+| `MaxBatchSize` | `int` | `500` | — *code-only* | Max items per flush call |
+| `CoalesceWindowMs` | `int` | `25` | — *code-only* | Max ms coalescing additional items after the first |
+| `ImmediateFlushThreshold` | `int` | `250` | — *code-only* | Flush immediately if the batch reaches this first |
+| `MaxFlushAttempts` | `int` | `5` | — *code-only* | Consecutive failed flushes of one batch before it is dropped |
+| `FlushRetryBackoffMs` | `int` | `250` | — *code-only* | Backoff before the first retry of a failed flush; doubles per attempt |
+| `FlushRetryMaxBackoffMs` | `int` | `5000` | — *code-only* | Cap on the retry backoff |
 
 A flush that throws is retried in place with the same batch (Warning, EventId 1: `BatchFlusher flush failed for batch of {Count} (attempt {Attempt} of {MaxAttempts}); retrying the same batch in {BackoffMs}ms`) rather than discarded. The items are completions, lease renewals and failures, so a dropped batch leaves its rows leased until their lease expires, after which they are re-claimed and redone; that consequence is named in the Error (EventId 3) logged when `MaxFlushAttempts` is exhausted, and the count is visible on the flusher's `ItemsDropped` counter beside `ItemsFlushed`. {verified: BatchFlusherRetryTests.FlushFailsOnce_RetriesTheSameBatchAndDeliversItAsync, BatchFlusherRetryTests.FlushAlwaysFails_DropsAfterMaxAttemptsAndNamesTheConsequenceAsync}
 
@@ -611,13 +601,13 @@ Transport-level batch collection before `process_work_batch`. **Configure:** the
 
 ### SlidingWindowBatcherOptions
 
-Shared batching shape (drain signals). **Configure:** bound as the owning worker's `Batcher` (`InboxDrain`, `OutboxDrain`) or `DrainBatcher` (`Perspective`), so these keys work from configuration with no service code — for example `Whizbang__Workers__InboxDrain__Batcher__MaxSize`.
+Shared batching shape (drain signals). **Configure:** via the owning worker's `Batcher`/`DrainBatcher` property.
 
 | Property | Type | Default | Environment variable | Purpose |
 |----------|------|---------|----------------------|---------|
-| `MaxSize` | `int` | `100` | `Whizbang__Workers__<Worker>__Batcher__MaxSize` | Max items in a batch; flushed as soon as reached |
-| `SlidingWindow` | `TimeSpan` | `00:00:00.050` | `Whizbang__Workers__<Worker>__Batcher__SlidingWindow` | Quiet period after the last arrival |
-| `MaxWait` | `TimeSpan` | `00:00:01` | `Whizbang__Workers__<Worker>__Batcher__MaxWait` | Hard cap on wait from the first arrival |
+| `MaxSize` | `int` | `100` | — *code-only* | Max items in a batch; flushed as soon as reached |
+| `SlidingWindow` | `TimeSpan` | `00:00:00.050` | — *code-only* | Quiet period after the last arrival |
+| `MaxWait` | `TimeSpan` | `00:00:01` | — *code-only* | Hard cap on wait from the first arrival |
 
 ### SlidingWindowInboxOptions / SlidingWindowOutboxOptions / SlidingWindowApplyOptions
 
@@ -637,10 +627,10 @@ Per-stream debounce strategies for the inbox, outbox, and perspective-apply boun
 
 | Property | Type | Default | Environment variable | Purpose |
 |----------|------|---------|----------------------|---------|
-| `StreamChannelCapacity` | `int` | `1000` | — *code-only* | Bounded per-stream channel capacity (backpressure) |
-| `DrainBatchWindow` | `TimeSpan` | `00:00:00.050` | — *code-only* | Drain accumulator window; `Zero` disables batching |
-| `IdleEvictionWindow` | `TimeSpan` | `00:00:30` | — *code-only* | Evict a stream's channel + worker after this idle duration |
-| `IdleSweepInterval` | `TimeSpan` | `00:00:10` | — *code-only* | Idle sweep cadence |
+| `StreamChannelCapacity` | `int` | `1000` | `Whizbang__PerStreamSerializer__StreamChannelCapacity` | Bounded per-stream channel capacity (backpressure) |
+| `DrainBatchWindow` | `TimeSpan` | `00:00:00.050` | `Whizbang__PerStreamSerializer__DrainBatchWindow` | Drain accumulator window; `Zero` disables batching |
+| `IdleEvictionWindow` | `TimeSpan` | `00:00:30` | `Whizbang__PerStreamSerializer__IdleEvictionWindow` | Evict a stream's channel + worker after this idle duration |
+| `IdleSweepInterval` | `TimeSpan` | `00:00:10` | `Whizbang__PerStreamSerializer__IdleSweepInterval` | Idle sweep cadence |
 
 ### OrderedStreamProcessorOptions
 
@@ -677,12 +667,12 @@ Re-delivery (repair) pump bounds. **Configure:** `services.Configure<RedeliveryP
 
 | Property | Type | Default | Environment variable | Purpose |
 |----------|------|---------|----------------------|---------|
-| `MaxInnerEventsPerComposite` | `int` | `500` | — *code-only* | Repair slices larger than this split into multiple composites |
-| `MaxEventsPerRequest` | `int` | `10000` | — *code-only* | Hard per-request event cap the origin enforces (clamps, never raises) |
-| `MaxBytesPerComposite` | `int` | `192000` | — *code-only* | Byte budget per composite over raw stored bodies |
-| `SelectPageSize` | `int` | `500` | — *code-only* | Origin-side selection page size |
-| `PublishRetryAttempts` | `int` | `5` | — *code-only* | Attempts per composite send before the serve surfaces failure |
-| `PublishRetryBaseDelayMs` | `int` | `2000` | — *code-only* | Base retry delay; attempt n waits base × 2^(n-1), capped at 30s |
+| `MaxInnerEventsPerComposite` | `int` | `500` | `Whizbang__Redelivery__MaxInnerEventsPerComposite` | Repair slices larger than this split into multiple composites |
+| `MaxEventsPerRequest` | `int` | `10000` | `Whizbang__Redelivery__MaxEventsPerRequest` | Hard per-request event cap the origin enforces (clamps, never raises) |
+| `MaxBytesPerComposite` | `int` | `192000` | `Whizbang__Redelivery__MaxBytesPerComposite` | Byte budget per composite over raw stored bodies |
+| `SelectPageSize` | `int` | `500` | `Whizbang__Redelivery__SelectPageSize` | Origin-side selection page size |
+| `PublishRetryAttempts` | `int` | `5` | `Whizbang__Redelivery__PublishRetryAttempts` | Attempts per composite send before the serve surfaces failure |
+| `PublishRetryBaseDelayMs` | `int` | `2000` | `Whizbang__Redelivery__PublishRetryBaseDelayMs` | Base retry delay; attempt n waits base × 2^(n-1), capped at 30s |
 
 ## Perspectives
 
@@ -727,13 +717,13 @@ Re-delivery (repair) pump bounds. **Configure:** `services.Configure<RedeliveryP
 
 | Property | Type | Default | Environment variable | Purpose |
 |----------|------|---------|----------------------|---------|
-| `SnapshotEveryNEvents` | `int` | `100` | — *code-only* | Create a snapshot every N events processed |
-| `MaxSnapshotsPerStream` | `int` | `5` | — *code-only* | Snapshots kept per (stream, perspective); oldest pruned |
-| `EphemeralSnapshotEveryNEvents` | `int` | `10` | — *code-only* | Snapshot cadence for EPHEMERAL perspectives |
-| `EphemeralMaxSnapshotsPerStream` | `int` | `1` | — *code-only* | Snapshots kept for EPHEMERAL perspectives — single slot |
-| `Enabled` | `bool` | `true` | — *code-only* | When false, rewinds replay from event zero |
-| `RewindSnapshotIntervalEvents` | `int` | `10` | — *code-only* | Extra snapshot every N events applied during a rewind replay |
-| `UpgradePolicy` | `SnapshotUpgradePolicy` | `RebuildFromEvents` | — *code-only* | Action when a stored snapshot's serialization version is stale |
+| `SnapshotEveryNEvents` | `int` | `100` | `Whizbang__Perspectives__Snapshots__SnapshotEveryNEvents` | Create a snapshot every N events processed |
+| `MaxSnapshotsPerStream` | `int` | `5` | `Whizbang__Perspectives__Snapshots__MaxSnapshotsPerStream` | Snapshots kept per (stream, perspective); oldest pruned |
+| `EphemeralSnapshotEveryNEvents` | `int` | `10` | `Whizbang__Perspectives__Snapshots__EphemeralSnapshotEveryNEvents` | Snapshot cadence for EPHEMERAL perspectives |
+| `EphemeralMaxSnapshotsPerStream` | `int` | `1` | `Whizbang__Perspectives__Snapshots__EphemeralMaxSnapshotsPerStream` | Snapshots kept for EPHEMERAL perspectives — single slot |
+| `Enabled` | `bool` | `true` | `Whizbang__Perspectives__Snapshots__Enabled` | When false, rewinds replay from event zero |
+| `RewindSnapshotIntervalEvents` | `int` | `10` | `Whizbang__Perspectives__Snapshots__RewindSnapshotIntervalEvents` | Extra snapshot every N events applied during a rewind replay |
+| `UpgradePolicy` | `SnapshotUpgradePolicy` | `RebuildFromEvents` | `Whizbang__Perspectives__Snapshots__UpgradePolicy` | Action when a stored snapshot's serialization version is stale |
 
 ### PerspectiveRewindOptions
 
@@ -741,12 +731,12 @@ Re-delivery (repair) pump bounds. **Configure:** `services.Configure<RedeliveryP
 
 | Property | Type | Default | Environment variable | Purpose |
 |----------|------|---------|----------------------|---------|
-| `Enabled` | `bool` | `true` | — *code-only* | Master switch; when off, out-of-order events are detected but not replayed |
-| `StartupScanEnabled` | `bool` | `true` | — *code-only* | Scan for `RewindRequired` cursors and repair on startup |
-| `StartupRewindMode` | `RewindStartupMode` | `Blocking` | — *code-only* | Startup rewinds block polling vs run in background |
-| `MaxConcurrentRewinds` | `int` | `3` | — *code-only* | Cap on concurrent rewind operations |
-| `DebounceWindow` | `TimeSpan` | `00:00:05` | — *code-only* | Sliding window before executing a rewind |
-| `MaxDebounceWindow` | `TimeSpan` | `00:00:30` | — *code-only* | Hard cap on debounce duration |
+| `Enabled` | `bool` | `true` | `Whizbang__Perspectives__Rewind__Enabled` | Master switch; when off, out-of-order events are detected but not replayed |
+| `StartupScanEnabled` | `bool` | `true` | `Whizbang__Perspectives__Rewind__StartupScanEnabled` | Scan for `RewindRequired` cursors and repair on startup |
+| `StartupRewindMode` | `RewindStartupMode` | `Blocking` | `Whizbang__Perspectives__Rewind__StartupRewindMode` | Startup rewinds block polling vs run in background |
+| `MaxConcurrentRewinds` | `int` | `3` | `Whizbang__Perspectives__Rewind__MaxConcurrentRewinds` | Cap on concurrent rewind operations |
+| `DebounceWindow` | `TimeSpan` | `00:00:05` | `Whizbang__Perspectives__Rewind__DebounceWindow` | Sliding window before executing a rewind |
+| `MaxDebounceWindow` | `TimeSpan` | `00:00:30` | `Whizbang__Perspectives__Rewind__MaxDebounceWindow` | Hard cap on debounce duration |
 
 ### PerspectiveStreamLockOptions
 
@@ -754,8 +744,8 @@ Re-delivery (repair) pump bounds. **Configure:** `services.Configure<RedeliveryP
 
 | Property | Type | Default | Environment variable | Purpose |
 |----------|------|---------|----------------------|---------|
-| `LockTimeout` | `TimeSpan` | `00:00:30` | — *code-only* | Lock validity; must exceed `KeepAliveInterval` |
-| `KeepAliveInterval` | `TimeSpan` | `00:00:10` | — *code-only* | Keepalive renewal cadence; must be < LockTimeout/2 |
+| `LockTimeout` | `TimeSpan` | `00:00:30` | `Whizbang__Perspectives__StreamLock__LockTimeout` | Lock validity; must exceed `KeepAliveInterval` |
+| `KeepAliveInterval` | `TimeSpan` | `00:00:10` | `Whizbang__Perspectives__StreamLock__KeepAliveInterval` | Keepalive renewal cadence; must be < LockTimeout/2 |
 
 ### PerspectiveStreamAffinityOptions
 
@@ -763,9 +753,9 @@ Intra-pod per-stream serialization gate. **Configure:** `services.Configure<Pers
 
 | Property | Type | Default | Environment variable | Purpose |
 |----------|------|---------|----------------------|---------|
-| `IdleEvictionWindow` | `TimeSpan` | `00:15:00` | — *code-only* | Idle duration before a stream's gate entry is evictable |
-| `SweepInterval` | `TimeSpan` | `00:01:00` | — *code-only* | Minimum time between sweeps |
-| `LongHoldWarning` | `TimeSpan` | `00:01:00` | — *code-only* | Age at which a held (stream, perspective) gate is named at Warning (EventId 64) by the affinity-hold watchdog; `00:00:00` turns the watchdog off |
+| `IdleEvictionWindow` | `TimeSpan` | `00:15:00` | `Whizbang__Workers__PerspectiveAffinity__IdleEvictionWindow` | Idle duration before a stream's gate entry is evictable |
+| `SweepInterval` | `TimeSpan` | `00:01:00` | `Whizbang__Workers__PerspectiveAffinity__SweepInterval` | Minimum time between sweeps |
+| `LongHoldWarning` | `TimeSpan` | `00:01:00` | `Whizbang__Workers__PerspectiveAffinity__LongHoldWarning` | Age at which a held (stream, perspective) gate is named at Warning (EventId 64) by the affinity-hold watchdog; `00:00:00` turns the watchdog off |
 
 The watchdog runs every `max(5 s, LongHoldWarning / 2)` and reports each hold once when it crosses the threshold and once per further threshold while it persists, naming the processing path and the step the holder is in. See [Perspective Worker](../workers/perspective-worker#affinity-hold-watchdog). {verified: PerspectiveWorkerAffinityHoldWatchdogTests.LongHold_IsNamedAtWarning_OncePerThresholdAsync, PerspectiveWorkerAffinityHoldWatchdogTests.WatchdogOff_ReportsNothingAsync}
 
@@ -899,10 +889,10 @@ In-memory retry budget for broker-side throttling. **Configure:** `services.Conf
 
 | Property | Type | Default | Environment variable | Purpose |
 |----------|------|---------|----------------------|---------|
-| `MaxAttempts` | `int` | `5` | — *code-only* | Max in-memory attempts on throttle, including the initial try |
-| `BaseDelay` | `TimeSpan` | `00:00:00.250` | — *code-only* | Base delay before the first retry |
-| `BackoffMultiplier` | `double` | `2.0` | — *code-only* | Multiplicative growth per retry |
-| `MaxDelay` | `TimeSpan` | `00:00:04` | — *code-only* | Upper bound on per-attempt delay (total budget ≈ 7.75s at defaults) |
+| `MaxAttempts` | `int` | `5` | `Whizbang__ThrottleRetry__MaxAttempts` | Max in-memory attempts on throttle, including the initial try |
+| `BaseDelay` | `TimeSpan` | `00:00:00.250` | `Whizbang__ThrottleRetry__BaseDelay` | Base delay before the first retry |
+| `BackoffMultiplier` | `double` | `2.0` | `Whizbang__ThrottleRetry__BackoffMultiplier` | Multiplicative growth per retry |
+| `MaxDelay` | `TimeSpan` | `00:00:04` | `Whizbang__ThrottleRetry__MaxDelay` | Upper bound on per-attempt delay (total budget ≈ 7.75s at defaults) |
 
 ## Transports
 
@@ -1072,11 +1062,11 @@ Message security context establishment. **Configure:** the security registration
 
 | Property | Type | Default | Environment variable | Purpose |
 |----------|------|---------|----------------------|---------|
-| `AllowAnonymous` | `bool` | `false` | — *code-only* | Allow messages without security context (least privilege by default) |
-| `EnableAuditLogging` | `bool` | `true` | — *code-only* | Log security context establishment |
-| `ValidateCredentials` | `bool` | `true` | — *code-only* | Extractors validate tokens/credentials |
-| `Timeout` | `TimeSpan` | `00:00:05` | — *code-only* | Max wait for security context establishment |
-| `PropagateToOutgoingMessages` | `bool` | `true` | — *code-only* | Propagate context to cascaded/outgoing messages |
+| `AllowAnonymous` | `bool` | `false` | `Whizbang__MessageSecurity__AllowAnonymous` | Allow messages without security context (least privilege by default) |
+| `EnableAuditLogging` | `bool` | `true` | `Whizbang__MessageSecurity__EnableAuditLogging` | Log security context establishment |
+| `ValidateCredentials` | `bool` | `true` | `Whizbang__MessageSecurity__ValidateCredentials` | Extractors validate tokens/credentials |
+| `Timeout` | `TimeSpan` | `00:00:05` | `Whizbang__MessageSecurity__Timeout` | Max wait for security context establishment |
+| `PropagateToOutgoingMessages` | `bool` | `true` | `Whizbang__MessageSecurity__PropagateToOutgoingMessages` | Propagate context to cascaded/outgoing messages |
 
 ### WhizbangScopeOptions
 
@@ -1084,17 +1074,17 @@ GraphQL scope-extraction middleware claim/header mappings. **Configure:** `servi
 
 | Property | Type | Default | Environment variable | Purpose |
 |----------|------|---------|----------------------|---------|
-| `TenantIdClaimTypes` | `List<string>` | `["tenant_id"]` | — *code-only* | Tenant-id claim types tried in order |
-| `TenantIdHeaderName` | `string` | `X-Tenant-Id` | — *code-only* | Header fallback for tenant id |
-| `UserIdClaimTypes` | `List<string>` | Azure AD `oid` variants, `sub`, `NameIdentifier` | — *code-only* | User-id claim types tried in order |
-| `UserIdHeaderName` | `string` | `X-User-Id` | — *code-only* | Header fallback for user id |
-| `OrganizationIdClaimTypes` | `List<string>` | `["org_id"]` | — *code-only* | Organization-id claim types |
-| `CustomerIdClaimTypes` | `List<string>` | `["customer_id"]` | — *code-only* | Customer-id claim types |
-| `CorrelationIdHeaderName` | `string` | `X-Correlation-ID` | — *code-only* | Inbound correlation-id header adopted as ambient correlation |
-| `RolesClaimType` | `string` | `ClaimTypes.Role` | — *code-only* | Claim type for roles |
-| `PermissionsClaimTypes` | `List<string>` | `["permissions"]` | — *code-only* | Permissions claim types (aggregation via `PermissionsAggregation`, default `FirstMatch`) |
-| `GroupsClaimTypes` | `List<string>` | `["groups"]` | — *code-only* | Groups claim types (aggregation via `GroupsAggregation`, default `FirstMatch`) |
-| `ExtensionClaimMappings` / `ExtensionHeaderMappings` | `Dictionary<string,string>` | `[]` | — *code-only* | Custom claim/header → extension key mappings |
+| `TenantIdClaimTypes` | `List<string>` | `["tenant_id"]` | `Whizbang__Scope__TenantIdClaimTypes` | Tenant-id claim types tried in order |
+| `TenantIdHeaderName` | `string` | `X-Tenant-Id` | `Whizbang__Scope__TenantIdHeaderName` | Header fallback for tenant id |
+| `UserIdClaimTypes` | `List<string>` | Azure AD `oid` variants, `sub`, `NameIdentifier` | `Whizbang__Scope__UserIdClaimTypes` | User-id claim types tried in order |
+| `UserIdHeaderName` | `string` | `X-User-Id` | `Whizbang__Scope__UserIdHeaderName` | Header fallback for user id |
+| `OrganizationIdClaimTypes` | `List<string>` | `["org_id"]` | `Whizbang__Scope__OrganizationIdClaimTypes` | Organization-id claim types |
+| `CustomerIdClaimTypes` | `List<string>` | `["customer_id"]` | `Whizbang__Scope__CustomerIdClaimTypes` | Customer-id claim types |
+| `CorrelationIdHeaderName` | `string` | `X-Correlation-ID` | `Whizbang__Scope__CorrelationIdHeaderName` | Inbound correlation-id header adopted as ambient correlation |
+| `RolesClaimType` | `string` | `ClaimTypes.Role` | `Whizbang__Scope__RolesClaimType` | Claim type for roles |
+| `PermissionsClaimTypes` | `List<string>` | `["permissions"]` | `Whizbang__Scope__PermissionsClaimTypes` | Permissions claim types (aggregation via `PermissionsAggregation`, default `FirstMatch`) |
+| `GroupsClaimTypes` | `List<string>` | `["groups"]` | `Whizbang__Scope__GroupsClaimTypes` | Groups claim types (aggregation via `GroupsAggregation`, default `FirstMatch`) |
+| `ExtensionClaimMappings` / `ExtensionHeaderMappings` | `Dictionary<string,string>` | `[]` | `Whizbang__Scope__ExtensionClaimMappings` / `ExtensionHeaderMappings` | Custom claim/header → extension key mappings |
 
 ## Tags and System Events
 
@@ -1125,13 +1115,13 @@ Which system events are enabled and how audit records ship. **Configure:** the s
 
 | Property | Type | Default | Environment variable | Purpose |
 |----------|------|---------|----------------------|---------|
-| `LocalOnly` | `bool` | `true` | — *code-only* | Store system events locally without publishing to the outbox |
-| `AuditMode` | `AuditMode` | `OptOut` | — *code-only* | Audit all events unless excluded, vs only explicitly marked |
-| `EventNameHumanizer` | `Func<string, string?>?` | `null` (built-in) | — *code-only* | Custom event-type → label mapping |
-| `EventDescriptionHumanizer` | `Func<string, string?>?` | `null` (built-in) | — *code-only* | Custom description generator |
-| `AuditShipSlideSeconds` | `int` | `15` | — *code-only* | Quiet window before audit singles fold into a composite; 0 bypasses |
-| `AuditShipMaxDelaySeconds` | `int` | `120` | — *code-only* | Safety floor and hard cap on continuous sliding |
-| `AuditShipMaxBatchCount` | `int` | `500` | — *code-only* | Max audit records per shipped composite |
+| `LocalOnly` | `bool` | `true` | `Whizbang__SystemEvents__LocalOnly` | Store system events locally without publishing to the outbox |
+| `AuditMode` | `AuditMode` | `OptOut` | `Whizbang__SystemEvents__AuditMode` | Audit all events unless excluded, vs only explicitly marked |
+| `EventNameHumanizer` | `Func<string, string?>?` | `null` (built-in) | `Whizbang__SystemEvents__EventNameHumanizer` | Custom event-type → label mapping |
+| `EventDescriptionHumanizer` | `Func<string, string?>?` | `null` (built-in) | `Whizbang__SystemEvents__EventDescriptionHumanizer` | Custom description generator |
+| `AuditShipSlideSeconds` | `int` | `15` | `Whizbang__SystemEvents__AuditShipSlideSeconds` | Quiet window before audit singles fold into a composite; 0 bypasses |
+| `AuditShipMaxDelaySeconds` | `int` | `120` | `Whizbang__SystemEvents__AuditShipMaxDelaySeconds` | Safety floor and hard cap on continuous sliding |
+| `AuditShipMaxBatchCount` | `int` | `500` | `Whizbang__SystemEvents__AuditShipMaxBatchCount` | Max audit records per shipped composite |
 
 ## Temporal Scheduling
 
@@ -1166,10 +1156,10 @@ The temporal engine's schedule worker. **Configure:** bound automatically from `
 
 | Property | Type | Default | Environment variable | Purpose |
 |----------|------|---------|----------------------|---------|
-| `MaxEventsPerWindow` | `int` | `50` | — *code-only* | Max events per stream within the window before throttling |
-| `WindowDuration` | `TimeSpan` | `00:01:00` | — *code-only* | Sliding window duration |
-| `CooldownDuration` | `TimeSpan` | `00:00:30` | — *code-only* | How long a throttled stream is paused |
-| `StaleEntryTimeout` | `TimeSpan` | `00:05:00` | — *code-only* | Idle duration before a stream's tracking entry is cleaned up |
+| `MaxEventsPerWindow` | `int` | `50` | `Whizbang__StreamRateLimiter__MaxEventsPerWindow` | Max events per stream within the window before throttling |
+| `WindowDuration` | `TimeSpan` | `00:01:00` | `Whizbang__StreamRateLimiter__WindowDuration` | Sliding window duration |
+| `CooldownDuration` | `TimeSpan` | `00:00:30` | `Whizbang__StreamRateLimiter__CooldownDuration` | How long a throttled stream is paused |
+| `StaleEntryTimeout` | `TimeSpan` | `00:05:00` | `Whizbang__StreamRateLimiter__StaleEntryTimeout` | Idle duration before a stream's tracking entry is cleaned up |
 
 ## HTTP Hosting (ASP.NET)
 
@@ -1179,9 +1169,9 @@ The schema-availability gate `AddWhizbangAspNet` injects automatically. **Config
 
 | Property | Type | Default | Environment variable | Purpose |
 |----------|------|---------|----------------------|---------|
-| `Enabled` | `bool` | `true` | — *code-only* | Whether the availability gate is injected |
-| `Mode` | `AvailabilityGateMode` | `MutationsOnly` | — *code-only* | Pre-readiness policy (default: serve reads, 503 writes) |
-| `ExemptPaths` | `IReadOnlyList<string>?` | `null` (`/alive`, `/health`, `/version`) | — *code-only* | Path prefixes that always pass through |
+| `Enabled` | `bool` | `true` | `Whizbang__AspNet__Availability__Enabled` | Whether the availability gate is injected |
+| `Mode` | `AvailabilityGateMode` | `MutationsOnly` | `Whizbang__AspNet__Availability__Mode` | Pre-readiness policy (default: serve reads, 503 writes) |
+| `ExemptPaths` | `IReadOnlyList<string>?` | `null` (`/alive`, `/health`, `/version`) | `Whizbang__AspNet__Availability__ExemptPaths` | Path prefixes that always pass through |
 
 ### WhizbangCorrelationOptions
 
@@ -1189,7 +1179,7 @@ The schema-availability gate `AddWhizbangAspNet` injects automatically. **Config
 
 | Property | Type | Default | Environment variable | Purpose |
 |----------|------|---------|----------------------|---------|
-| `HeaderNames` | `IList<string>` (get-only, mutable) | `["X-Correlation-ID"]` | — *code-only* | Request headers read for an inbound correlation id, in priority order |
+| `HeaderNames` | `IList<string>` (get-only, mutable) | `["X-Correlation-ID"]` | `Whizbang__AspNet__Correlation__HeaderNames` | Request headers read for an inbound correlation id, in priority order |
 
 ### WhizbangSecurityHeadersOptions
 
@@ -1197,14 +1187,14 @@ Hardened response headers; `null` suppresses a header. **Configure:** `UseWhizba
 
 | Property | Type | Default | Environment variable | Purpose |
 |----------|------|---------|----------------------|---------|
-| `Enabled` | `bool` | `true` | — *code-only* | Master switch; false makes the middleware a pass-through |
-| `StrictTransportSecurity` | `string?` | `max-age=31536000; includeSubDomains; preload` | — *code-only* | HSTS value (HTTPS/TLS-proxied requests only) |
-| `XContentTypeOptions` | `string?` | `nosniff` | — *code-only* | `X-Content-Type-Options` value |
-| `XFrameOptions` | `string?` | `DENY` | — *code-only* | `X-Frame-Options` value |
-| `ContentSecurityPolicy` | `string?` | `frame-ancestors 'none'` | — *code-only* | CSP value; HTML-serving services should replace with a full policy |
-| `ReferrerPolicy` | `string?` | `strict-origin-when-cross-origin` | — *code-only* | `Referrer-Policy` value |
-| `PermissionsPolicy` | `string?` | `camera=(), microphone=(), geolocation=()` | — *code-only* | `Permissions-Policy` value |
-| `AllowedMethods` | `IList<string>` (get-only, mutable) | `[]` (filtering off) | — *code-only* | HTTP methods accepted; others get 405 before routing |
+| `Enabled` | `bool` | `true` | `Whizbang__AspNet__SecurityHeaders__Enabled` | Master switch; false makes the middleware a pass-through |
+| `StrictTransportSecurity` | `string?` | `max-age=31536000; includeSubDomains; preload` | `Whizbang__AspNet__SecurityHeaders__StrictTransportSecurity` | HSTS value (HTTPS/TLS-proxied requests only) |
+| `XContentTypeOptions` | `string?` | `nosniff` | `Whizbang__AspNet__SecurityHeaders__XContentTypeOptions` | `X-Content-Type-Options` value |
+| `XFrameOptions` | `string?` | `DENY` | `Whizbang__AspNet__SecurityHeaders__XFrameOptions` | `X-Frame-Options` value |
+| `ContentSecurityPolicy` | `string?` | `frame-ancestors 'none'` | `Whizbang__AspNet__SecurityHeaders__ContentSecurityPolicy` | CSP value; HTML-serving services should replace with a full policy |
+| `ReferrerPolicy` | `string?` | `strict-origin-when-cross-origin` | `Whizbang__AspNet__SecurityHeaders__ReferrerPolicy` | `Referrer-Policy` value |
+| `PermissionsPolicy` | `string?` | `camera=(), microphone=(), geolocation=()` | `Whizbang__AspNet__SecurityHeaders__PermissionsPolicy` | `Permissions-Policy` value |
+| `AllowedMethods` | `IList<string>` (get-only, mutable) | `[]` (filtering off) | `Whizbang__AspNet__SecurityHeaders__AllowedMethods` | HTTP methods accepted; others get 405 before routing |
 
 ## GraphQL
 
@@ -1214,11 +1204,11 @@ System-wide GraphQL defaults, overridable per lens. **Configure:** the GraphQL r
 
 | Property | Type | Default | Environment variable | Purpose |
 |----------|------|---------|----------------------|---------|
-| `DefaultScope` | `GraphQLLensScopes` | `DataOnly` | — *code-only* | Scope when the lens attribute doesn't specify one |
-| `DefaultPageSize` | `int` | `10` | — *code-only* | Default cursor-paging page size |
-| `MaxPageSize` | `int` | `100` | — *code-only* | Max allowed page size |
-| `IncludeMetadataInFilters` | `bool` | `true` | — *code-only* | Include metadata fields in filter/sort types |
-| `IncludeScopeInFilters` | `bool` | `true` | — *code-only* | Include scope fields in filter/sort types |
+| `DefaultScope` | `GraphQLLensScopes` | `DataOnly` | `Whizbang__GraphQL__DefaultScope` | Scope when the lens attribute doesn't specify one |
+| `DefaultPageSize` | `int` | `10` | `Whizbang__GraphQL__DefaultPageSize` | Default cursor-paging page size |
+| `MaxPageSize` | `int` | `100` | `Whizbang__GraphQL__MaxPageSize` | Max allowed page size |
+| `IncludeMetadataInFilters` | `bool` | `true` | `Whizbang__GraphQL__IncludeMetadataInFilters` | Include metadata fields in filter/sort types |
+| `IncludeScopeInFilters` | `bool` | `true` | `Whizbang__GraphQL__IncludeScopeInFilters` | Include scope fields in filter/sort types |
 
 ### WhizbangStartupStatusGraphOptions
 
@@ -1226,7 +1216,7 @@ Settings for the GraphQL startup-status query field. **Configure:** supplied at 
 
 | Property | Type | Default | Environment variable | Purpose |
 |----------|------|---------|----------------------|---------|
-| `IncludeReasons` | `bool` | supplied at construction | — *code-only* | Include per-step `reason` strings and raw fleet failure text (opt-in — reasons originate in exception messages) |
+| `IncludeReasons` | `bool` | supplied at construction | `Whizbang__StartupStatusGraph__IncludeReasons` | Include per-step `reason` strings and raw fleet failure text (opt-in — reasons originate in exception messages) |
 
 ## Sagas
 
@@ -1236,12 +1226,12 @@ Settings for the GraphQL startup-status query field. **Configure:** supplied at 
 
 | Property | Type | Default | Environment variable | Purpose |
 |----------|------|---------|----------------------|---------|
-| `PerItemStreamNamespace` | `Guid` | `SagaItemStreams.DefaultNamespace` | — *code-only* | Namespace UUID deriving per-item stream ids; changing it later orphans existing projection rows |
-| `MinWatchdogDelay` | `TimeSpan` | `00:00:30` | — *code-only* | Floor for the watchdog's next-fire delay |
-| `MaxWatchdogDelay` | `TimeSpan` | `00:30:00` | — *code-only* | Ceiling, so a stalled saga is still re-checked |
-| `WatchdogSafetyMargin` | `TimeSpan` | `00:00:30` | — *code-only* | Slack added to the ETA-based next-tick delay |
-| `MaxConsecutiveStalls` | `int` | `4` | — *code-only* | Zero-progress ticks before the saga is abandoned |
-| `StallBackoffMultiplier` | `double` | `2.0` | — *code-only* | Exponential widening of the next-tick delay per stalled tick |
+| `PerItemStreamNamespace` | `Guid` | `SagaItemStreams.DefaultNamespace` | `Whizbang__Sagas__PerItemStreamNamespace` | Namespace UUID deriving per-item stream ids; changing it later orphans existing projection rows |
+| `MinWatchdogDelay` | `TimeSpan` | `00:00:30` | `Whizbang__Sagas__MinWatchdogDelay` | Floor for the watchdog's next-fire delay |
+| `MaxWatchdogDelay` | `TimeSpan` | `00:30:00` | `Whizbang__Sagas__MaxWatchdogDelay` | Ceiling, so a stalled saga is still re-checked |
+| `WatchdogSafetyMargin` | `TimeSpan` | `00:00:30` | `Whizbang__Sagas__WatchdogSafetyMargin` | Slack added to the ETA-based next-tick delay |
+| `MaxConsecutiveStalls` | `int` | `4` | `Whizbang__Sagas__MaxConsecutiveStalls` | Zero-progress ticks before the saga is abandoned |
+| `StallBackoffMultiplier` | `double` | `2.0` | `Whizbang__Sagas__StallBackoffMultiplier` | Exponential widening of the next-tick delay per stalled tick |
 
 ## Per-Call Options (Not Startup Configuration)
 
