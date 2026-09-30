@@ -56,6 +56,9 @@ jobs:
             # Dependabot → develop (configured in dependabot.yml)
             "dependabot/*:develop"
 
+            # Library CI publishes generated test-status data → develop
+            "test-status/*:develop"
+
             # Main → develop (sync after release)
             "main:develop"
 
