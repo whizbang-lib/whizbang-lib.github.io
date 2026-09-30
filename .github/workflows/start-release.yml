@@ -17,10 +17,21 @@ on:
         description: 'Manual version (only used when release_type is "manual", e.g., 1.2.3 or 1.2.3-beta.1)'
         required: false
         type: string
+      auto_merge:
+        description: 'Wait for Build, then merge the release PR automatically (used by library CI)'
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: write
   pull-requests: write
+
+# Two library runs can land within a minute of each other. Serialize the cut so
+# they cannot compute the same version or race for the same release branch.
+concurrency:
+  group: start-release
+  cancel-in-progress: false
 
 jobs:
   create-release-pr:
@@ -53,8 +64,13 @@ jobs:
             fi
             SEMVER="$MANUAL_VER"
           else
-            CURRENT=$(node -p "require('./package.json').version")
-            echo "Current version: $CURRENT"
+            # Derive from the highest released tag, not package.json. The version bump
+            # only returns to develop via the main->develop sync, so back-to-back
+            # releases would otherwise both compute the same number.
+            PKG=$(node -p "require('./package.json').version")
+            TAG=$(git tag --list 'v*' --sort=-v:refname | head -1 | sed 's/^v//')
+            CURRENT=$(printf '%s\n%s\n' "$PKG" "${TAG:-0.0.0}" | sort -V | tail -1)
+            echo "package.json: $PKG | highest tag: ${TAG:-none} | using: $CURRENT"
 
             IFS='.' read -r MAJOR MINOR PATCH <<< "${CURRENT%%-*}"
 
@@ -145,6 +161,39 @@ jobs:
           *This PR was automatically created by the Start Release workflow.*
           EOF
           )"
+
+      # main requires a PR, but with 0 approvals and no required status checks
+      # nothing actually blocks a merge. A release still must not land red, so
+      # wait for Build to conclude before merging rather than merging blind.
+      - name: Wait for Build, then merge
+        if: ${{ inputs.auto_merge }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BRANCH: ${{ steps.version.outputs.branch }}
+          VERSION: ${{ steps.version.outputs.semver }}
+        run: |
+          SHA=$(git rev-parse HEAD)
+          echo "Waiting for Build on $SHA"
+          for _ in $(seq 1 60); do
+            CONCLUSION=$(gh api "repos/$GITHUB_REPOSITORY/commits/$SHA/check-runs" \
+              --jq '[.check_runs[] | select(.name == "Build")] | .[0].conclusion // "pending"')
+            case "$CONCLUSION" in
+              success)
+                echo "Build passed - merging v$VERSION"
+                gh pr merge "$BRANCH" --merge && exit 0
+                echo "Merge failed, retrying"
+                ;;
+              pending|null|"")
+                ;;
+              *)
+                echo "::error::Build concluded '''$CONCLUSION''' - leaving the release PR open for inspection"
+                exit 1
+                ;;
+            esac
+            sleep 20
+          done
+          echo "::error::Timed out waiting for Build - leaving the release PR open"
+          exit 1
 
       - name: Summary
         env:
