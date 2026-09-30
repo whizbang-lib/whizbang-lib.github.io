@@ -16,6 +16,10 @@ codeReferences:
   - src/Whizbang.Sagas/SagaOptions.cs
   - src/Whizbang.Sagas/SagaCompletionWatchdogTickEvent.cs
   - src/Whizbang.Sagas/SagaCompletionAbandonedEvent.cs
+  - src/Whizbang.Sagas/SagaFrameworkEventStreamIds.cs
+  - src/Whizbang.Sagas/Helpers/SagaAbandonGuard.cs
+  - src/Whizbang.Sagas/Services/SagaClaimPruneStep.cs
+  - src/Whizbang.Core/Dispatch/IClaimedEmissionStore.cs
   - src/Whizbang.Sagas/Services/WatchdogTickOutcome.cs
   - src/Whizbang.Sagas/Services/ISagaWatchdogParticipant.cs
   - src/Whizbang.Sagas/Services/SagaWatchdogTickRouter.cs
@@ -41,6 +45,9 @@ testReferences:
   - tests/Whizbang.Sagas.Tests/Services/StrandedSagaSweepStepTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StreamsWithPendingMessagesSqlTests.cs
   - tests/Whizbang.Core.Tests/Dispatcher/DispatcherScheduledForLocalReceptorTests.cs
+  - tests/Whizbang.Sagas.Tests/SagaFrameworkEventStreamTests.cs
+  - tests/Whizbang.Sagas.Tests/SagaWatchdogTickDeliveryCountTests.cs
+  - tests/Whizbang.Core.Tests/Dispatcher/DispatcherLocalDispatchRecordTests.cs
 ---
 
 # Completion Orchestration & Adaptive Watchdog
@@ -191,6 +198,22 @@ services.AddWhizbangSagas(opts => {
 | `StrandedSagaIdleGuard` | 5 min | How long a saga with no tick coming must go without any change before the [stranded-saga sweep](#stranded-sagas) re-arms it. Covers a tick on the transport, which no table shows. |
 | `StrandedSagaRearmInterval` | 1 hour | How often the [stranded-saga sweep](#stranded-sagas) arms another tick for a saga that stays stranded, counted in whole intervals of stillness since its last change. Must be positive. |
 
+## Where a tick is received {#tick-delivery}
+
+{verified: SagaWatchdogTickDeliveryCountTests.ScheduledTick_ReceivedByItsOwnService_IsHandledOnceAsync, SagaWatchdogTickDeliveryCountTests.ImmediateTick_ReceivedByItsOwnService_IsHandledOnceAsync, SagaWatchdogTickDeliveryCountTests.Tick_EachReceivingHost_HandlesItOnceAsync}
+
+Both receivers, the `[Saga]`-generated `SagaCompletionWatchdogTickHandler` and the framework router
+for hand-written sagas, answer at `PreInboxInline`. That stage runs once for every inbox row whichever
+service published it, and it is on the receiving side, so a tick is never handled at the moment it is
+armed. A saga's service normally arms and receives its own ticks. The post-inbox stage skips a message
+this same service published, which is why a generated receiver there never saw its own scheduled
+ticks, and only the stranded-saga sweep's ticks reached it.
+
+Each host that receives a tick handles it once. Ticks share one topic, so two differently named
+services that both declare the same saga would each check it: run a saga in one service. Whether to
+claim each tick so it is handled once across services is an open question,
+[#1005](https://github.com/whizbang-lib/whizbang/issues/1005).
+
 ## Hand-written sagas {#hand-written-sagas}
 
 {verified: SagaWatchdogTickDeliveryIntegrationTests.HandWrittenSagaTick_DeliveredAtTheInboxStage_ReachesTheSagaAsync, SagaWatchdogTickDeliveryIntegrationTests.WithoutTheRouter_AHandWrittenSagaTick_ReachesNothingAsync, SagaWatchdogTickDeliveryIntegrationTests.HandWrittenSagaTick_AtTheSendingStage_DoesNotReachTheSagaAsync, SagaWatchdogTickDeliveryIntegrationTests.HandWrittenSagaTick_AfterTheInboxCommit_DoesNotReachTheSagaAgainAsync, SagaWatchdogTickDeliveryIntegrationTests.SagaAttributeTick_IsLeftToItsGeneratedReceiverAsync, SagaWatchdogTickSubscriptionIntegrationTests.AddSagaServiceOnly_SubscribesToTheTicksTopic_AndAPublishedTickReachesTheSagaAsync, SagaWatchdogTickSubscriptionIntegrationTests.WithoutWhizbangSagas_TheTicksTopicIsNotSubscribed_AndAPublishedTickIsNeverReceivedAsync, SagaWatchdogTickSubscriptionIntegrationTests.HostWithItsOwnTickReceptor_SubscribesOnce_AndEachTickIsRecoveredOnceAsync, SagaWatchdogTickSubscriptionIntegrationTests.AddSagaServiceOnly_TheTickSubscription_IsLoggedAndHealthyLikeAnyOtherAsync}
@@ -269,6 +292,15 @@ public class SagaCompletionAbandonedEvent : SagaEventBase, ISagaCompletionAbando
 
 This is the operator-triage signal. Subscribe a consumer-side receptor to it for alerting / paging. The framework does NOT automatically retry or re-initiate the saga — the assumption is that anything reaching abandon needs human inspection.
 
+The event is stored on the saga's own stream, so a saga perspective can apply it to the saga's row
+(`SagaApplyHelper.TrackAbandoned` records `SagaStatus.Abandoned`). It is published once per saga,
+under the saga's abandonment claim; see [Abandoned sagas](#abandoned-sagas).
+
+At the stall limit the watchdog abandons only as a last resort, in this order: it
+[resolves stranded items](#stranded-items), and if there were none it
+[completes a saga whose remaining items never started](#items-that-never-started); only a saga where
+neither applies is abandoned.
+
 ## Stranded items {#stranded-items}
 
 {verified: TryRecoverViaWatchdogTickAsyncTests.MaxConsecutiveStalls_WithAStrandedItem_FailsItAndReArmsInsteadOfAbandoningAsync, TryRecoverViaWatchdogTickAsyncTests.MaxConsecutiveStalls_ItemAlreadyTerminalInTheStore_IsNotFailedAgainAsync, TryRecoverViaWatchdogTickAsyncTests.MaxConsecutiveStalls_ConsumerRedrivesTheItem_ItIsNotFailedAsync, TryRecoverViaWatchdogTickAsyncTests.StrandedByALostWorker_EndsCompletedWithOneFailure_NotAbandonedAsync}
@@ -302,6 +334,41 @@ protected override async Task<bool> TryRedriveStrandedItemAsync(
 ```
 
 Only re-dispatch when the handler tolerates running twice: the lost worker may have got partway.
+
+## Items that never started {#items-that-never-started}
+
+{verified: TryRecoverViaWatchdogTickAsyncTests.MaxConsecutiveStalls_ItemsWithNoRow_AreFailedAndTheSagaCompletesAsync, TryRecoverViaWatchdogTickAsyncTests.MaxConsecutiveStalls_ExpectedItemsKnown_FailsEachItemThatNeverGotARowAsync, TryRecoverViaWatchdogTickAsyncTests.MaxConsecutiveStalls_ItemsWithNoRowAndARowBehindTheStore_CountsWhatTheStoreRecordsAsync, TryRecoverViaWatchdogTickAsyncTests.MaxConsecutiveStalls_NoItemRowAtAll_IsAbandonedUnlessTheExpectedItemsAreKnownAsync, TryRecoverViaWatchdogTickAsyncTests.MaxConsecutiveStalls_ItemsWithNoRowButNoKnownTotal_IsAbandonedAsync}
+
+A fan-out can stop partway: the worker dispatching a saga's items dies after starting 337 of 350.
+The 13 items it never reached have no item row at all. The reconciler counts terminal rows against the
+saga's total and can never reach it, and stranded-item resolution only reaches rows that exist, so
+such a saga used to be abandoned, discarding the 337 items that ran.
+
+The watchdog resolves it at the stall limit, in one of two ways.
+
+**When the service can say which items the saga was started with**, override
+`LoadExpectedItemIdentifiersAsync`. Each expected item with no row is then treated exactly like a
+stranded item: skipped if its per-item stream already records it as terminal, offered to
+`TryRedriveStrandedItemAsync`, and otherwise failed with a reason saying it never started. Every
+failure shows against the item that failed, and the saga completes once the failures land. This is
+the preferred answer, because it records which items did not run.
+
+```csharp{title="Naming the items a saga expects" description="Lets the watchdog fail, by name, each item the fan-out never started" category="Sagas" difficulty="INTERMEDIATE" tags=["Sagas", "Watchdog", "Recovery"] tests=["TryRecoverViaWatchdogTickAsyncTests.MaxConsecutiveStalls_ExpectedItemsKnown_FailsEachItemThatNeverGotARowAsync"]}
+protected override async Task<IReadOnlyList<string>?> LoadExpectedItemIdentifiersAsync(
+    SagaContext ctx, CancellationToken cancellationToken) {
+  var import = await _imports.GetAsync(ctx.EntityId, cancellationToken);
+  return import?.RowIds.Select(id => id.ToString()).ToList();   // null: cannot say
+}
+```
+
+**Otherwise the watchdog counts.** At the stall limit, with nothing left to resolve and every recorded
+row terminal (a row the store already records as terminal counts as the store records it), nothing
+else can move: the items with no row were never going to start. The saga completes as
+`CompletedWithFailures`, with failed = total − completed.
+
+Two cases are still abandoned: a saga that recorded **no item row at all** (there is no evidence to
+complete it on, unless `LoadExpectedItemIdentifiersAsync` names its items), and a saga whose total
+cannot be read (no projection loader, or a total of zero).
 
 ## Stranded sagas {#stranded-sagas}
 
@@ -344,9 +411,11 @@ sweep tick would also be its last. With it, a saga that is still stranded a whol
 is owed another tick, and gets one per interval until something changes. A saga with a tick still
 waiting is never re-armed, whatever the interval.
 
-A saga the tick abandons, with no stranded items to resolve, stays incomplete, so it is re-armed and
-abandoned again once per interval: a repeating operator signal. To stop it, leave abandoned sagas out
-of `LoadIncompleteSagasAsync`.
+The sweep finds a pending tick by the saga's stream, and the watchdog tick is stored on that stream,
+so a tick the sweep armed itself is seen as pending for as long as it waits.
+
+An abandoned saga is not re-armed: the sweep leaves out a saga whose perspective records
+`SagaStatus.Abandoned`, and any saga holding its abandonment claim. See [Abandoned sagas](#abandoned-sagas).
 
 The tick is published as the system, in the saga's tenant, so it is handled exactly as the tick the saga
 armed for itself was. That is why the sweep needs to know which sagas are incomplete **and which tenant
@@ -378,6 +447,61 @@ them; the override has to read across tenants on its own terms, as the example a
 warning naming the saga, its id and its tenant, and moves on to the next. Only the sweep's own
 cancellation stops it. Before this, a single saga whose reads failed ended the whole sweep for its saga
 service, every cycle, so every other stranded saga of that service stayed stranded behind it.
+
+## Abandoned sagas {#abandoned-sagas}
+
+{verified: StrandedSagaSweepTests.Sweep_AbandonedSaga_IsNotReArmedInLaterIntervalsAsync, StrandedSagaSweepTests.Sweep_ArmsARunningSaga_BesideOneHoldingItsAbandonmentClaimAsync, StrandedSagaSweepTests.Sweep_EmitterThatCannotReadClaims_ArmsAsBeforeAsync, StrandedSagaSweepTests.ReDrive_AbandonedSaga_ReleasesTheClaimAndArmsAFreshTickAsync, StrandedSagaSweepTests.ReDrive_SagaNotAbandoned_ArmsNothingAsync, TryRecoverViaWatchdogTickAsyncTests.MaxConsecutiveStalls_AbandonsUnderTheSagasAbandonmentClaimAsync, TryRecoverViaWatchdogTickAsyncTests.MaxConsecutiveStalls_AbandonmentAlreadyClaimed_PublishesNoSecondAbandonEventAsync}
+
+Abandoning a saga decides that it is not coming back on its own. The watchdog records that decision
+as a claim, `saga-abandoned:{sagaName}:{sagaId}`, taken through
+[`PublishOnceAsync`](../dispatcher/publish-once) when it publishes `SagaCompletionAbandonedEvent`.
+
+- **The stranded-saga sweep leaves a saga holding the claim alone**, however many intervals pass. It
+  reads the claims of its candidates in one query, before it asks about pending ticks.
+- **A second abandonment publishes nothing.** A tick from an older chain can still reach the stall
+  limit; the claim is already held, so no second event is published.
+
+The claim works for every consumer. A saga perspective that applies the abandon event also records
+`SagaStatus.Abandoned`, which the sweep honors too, but a consumer whose perspective does not apply it
+is covered by the claim alone. A claim store or emitter that cannot read claims back leaves the sweep
+arming as it did before the claim existed.
+
+### Re-driving an abandoned saga
+
+Once the cause is dealt with (a worker restored, an item re-dispatched), an operator puts the saga
+back under the watchdog:
+
+```csharp{title="Re-driving an abandoned saga" description="Releases the abandonment claim and arms a fresh watchdog chain with its whole stall budget" category="Sagas" difficulty="INTERMEDIATE" tags=["Sagas", "Watchdog", "Operations"] tests=["StrandedSagaSweepTests.ReDrive_AbandonedSaga_ReleasesTheClaimAndArmsAFreshTickAsync"]}
+var redriven = await importSaga.ReDriveAbandonedSagaAsync(
+    new SagaContext(sagaId, entityId), cancellationToken);
+// false: the saga held no abandonment claim, and nothing was armed
+```
+
+`ReDriveAbandonedSagaAsync` releases the claim and arms a fresh tick at once. The tick checks
+completion straight away, and a saga still not moving is abandoned again only after
+`MaxConsecutiveStalls` more stalls. For a saga holding no claim it does nothing, so it cannot start a
+second chain beside a live one.
+
+If the saga's perspective recorded `SagaStatus.Abandoned`, also move the saga back to running through
+the reset path: the sweep skips it on that status, and `TryComplete` records a completion only from
+running.
+
+## Claim retention {#claim-retention}
+
+{verified: SagaClaimPruneStepTests.Run_PrunesSweepCompletionAndContinuationClaimsPastTheRetention_AndKeepsAbandonmentsAsync, SagaClaimPruneStepTests.Run_WithTheMaintainerDutyAssigned_PrunesOnlyOnItsHolderAsync, SagaClaimPruneStepTests.Run_UsesTheConfiguredRetentionAsync}
+
+A saga takes claims as it runs: one per stranded-saga sweep tick, one for its completion, and one per
+continuation it requests. A maintenance step, `saga-claim-prune`, deletes them once they are older
+than `SagaOptions.ClaimRetention` (seven days). A sweep claim is dead once its interval has passed, and
+a completion or continuation claim exists only after the saga has completed.
+
+The **abandonment claim is kept**. It is the record that stops the sweep re-arming an abandoned saga,
+and it goes only when an operator [re-drives](#abandoned-sagas) the saga.
+
+Where role assignment manages the maintainer duty, only its holder prunes. Otherwise every instance
+does; the delete is by age and idempotent. Past the retention window, a completion claim no longer
+dedups a very late second completion attempt; the projection's completion flag still ends the
+watchdog's.
 
 ## Related
 
