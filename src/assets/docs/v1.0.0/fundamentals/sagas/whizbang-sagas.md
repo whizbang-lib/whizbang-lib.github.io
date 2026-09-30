@@ -77,6 +77,14 @@ resolves its stream. That holds even with a `[Saga<TBase>]` whose base marks a `
 a saga event belongs to its saga. A hand-written saga event can implement `ISagaStreamEvent` to be
 stored the same way.
 
+A `SagaId` must not be empty: a saga event with an empty stream id is rejected when it is published,
+as any event with an unpopulated `[StreamId]` is.
+
+**Migration note:** before this, generated saga events were stored each on a stream of its own
+message id. Where `SagaId` and `EntityId` are equal nothing else changes. Where they differ, a saga's
+new events land on its `SagaId` stream while its earlier events stay where they were, so review any
+perspective or query keyed on the entity's stream.
+
 **Without a project event base?** Use `[Saga("Name")]` (no generic argument). The generator inherits from the framework's default `SagaEventBase` (carries `MessageId`, `OccurredAt`, `CorrelationId`, `CausationId`, `OperationName`).
 
 **Consumer usage:**

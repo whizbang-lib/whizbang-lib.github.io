@@ -18,6 +18,7 @@ codeReferences:
   - src/Whizbang.Sagas/SagaCompletionAbandonedEvent.cs
   - src/Whizbang.Sagas/SagaFrameworkEventStreamIds.cs
   - src/Whizbang.Sagas/Helpers/SagaAbandonGuard.cs
+  - src/Whizbang.Sagas/Services/SagaClaimPruneStep.cs
   - src/Whizbang.Core/Dispatch/IClaimedEmissionStore.cs
   - src/Whizbang.Sagas/Services/WatchdogTickOutcome.cs
   - src/Whizbang.Sagas/Services/ISagaWatchdogParticipant.cs
@@ -209,7 +210,9 @@ this same service published, which is why a generated receiver there never saw i
 ticks, and only the stranded-saga sweep's ticks reached it.
 
 Each host that receives a tick handles it once. Ticks share one topic, so two differently named
-services that both declare the same saga would each check it: run a saga in one service.
+services that both declare the same saga would each check it: run a saga in one service. Whether to
+claim each tick so it is handled once across services is an open question,
+[#1005](https://github.com/whizbang-lib/whizbang/issues/1005).
 
 ## Hand-written sagas {#hand-written-sagas}
 
@@ -482,6 +485,23 @@ second chain beside a live one.
 If the saga's perspective recorded `SagaStatus.Abandoned`, also move the saga back to running through
 the reset path: the sweep skips it on that status, and `TryComplete` records a completion only from
 running.
+
+## Claim retention {#claim-retention}
+
+{verified: SagaClaimPruneStepTests.Run_PrunesSweepCompletionAndContinuationClaimsPastTheRetention_AndKeepsAbandonmentsAsync, SagaClaimPruneStepTests.Run_WithTheMaintainerDutyAssigned_PrunesOnlyOnItsHolderAsync, SagaClaimPruneStepTests.Run_UsesTheConfiguredRetentionAsync}
+
+A saga takes claims as it runs: one per stranded-saga sweep tick, one for its completion, and one per
+continuation it requests. A maintenance step, `saga-claim-prune`, deletes them once they are older
+than `SagaOptions.ClaimRetention` (seven days). A sweep claim is dead once its interval has passed, and
+a completion or continuation claim exists only after the saga has completed.
+
+The **abandonment claim is kept**. It is the record that stops the sweep re-arming an abandoned saga,
+and it goes only when an operator [re-drives](#abandoned-sagas) the saga.
+
+Where role assignment manages the maintainer duty, only its holder prunes. Otherwise every instance
+does; the delete is by age and idempotent. Past the retention window, a completion claim no longer
+dedups a very late second completion attempt; the projection's completion flag still ends the
+watchdog's.
 
 ## Related
 
