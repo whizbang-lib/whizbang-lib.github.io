@@ -6,23 +6,65 @@ verifiedDate: 2026-08-05
 version: 1.0.0
 category: Perspectives
 codeReferences:
+  - src/Whizbang.Data.Postgres/Migrations/169_Fold.sql
+  - src/Whizbang.Data.EFCore.Postgres/QueryTranslation/SearchContainsRewriter.cs
+  - src/Whizbang.Data.EFCore.Postgres/Functions/FoldedContainsTranslator.cs
+  - src/Whizbang.Data.EFCore.Postgres/Functions/WhizbangSearchDbFunctions.cs
+  - src/Whizbang.Generators.Shared/Models/PhysicalColumnSql.cs
   - src/Whizbang.Core/Perspectives/PhysicalFieldAttribute.cs
+  - src/Whizbang.Core/Perspectives/IndexedAttribute.cs
+  - src/Whizbang.Generators.Shared/Models/JsonIndexInfo.cs
+  - src/Whizbang.Generators.Shared/Models/JsonIndexDiscovery.cs
+  - src/Whizbang.Data.EFCore.Postgres/QueryTranslation/JsonIndexRegistry.cs
+  - src/Whizbang.Generators/Analyzers/JsonIndexDeclarationAnalyzer.cs
+  - src/Whizbang.Core/Perspectives/SuppressIndexAdvisoryAttribute.cs
+  - src/Whizbang.Generators/Analyzers/PerspectiveFilterIndexAnalyzer.cs
   - src/Whizbang.Core/Perspectives/PerspectiveStorageAttribute.cs
   - src/Whizbang.Core/Perspectives/FieldStorageMode.cs
+  - src/Whizbang.Core/Perspectives/PerspectivePhysicalFieldRegistry.cs
+  - src/Whizbang.Core/Perspectives/PerspectivePhysicalValues.cs
+  - src/Whizbang.Generators.Shared/Models/PhysicalFieldScalar.cs
   - src/Whizbang.Generators.Shared/Models/PhysicalFieldInfo.cs
   - src/Whizbang.Data.EFCore.Postgres/QueryTranslation/PhysicalFieldRegistry.cs
   - src/Whizbang.Data.EFCore.Postgres/QueryTranslation/PhysicalFieldExpressionVisitor.cs
   - src/Whizbang.Data.EFCore.Postgres/QueryTranslation/PhysicalFieldQueryInterceptor.cs
+  - src/Whizbang.Data.EFCore.Postgres/SplitModeChangeTrackerHydrator.cs
+  - src/Whizbang.Data.EFCore.Postgres.Generators/EFCoreServiceRegistrationGenerator.cs
   - >-
+  - src/Whizbang.Data.Postgres/OptionalExtensionBlocks.cs
     src/Whizbang.Data.EFCore.Postgres/QueryTranslation/WhizbangDbContextOptionsBuilderExtensions.cs
 testReferences:
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/QueryTranslation/SearchQueryIntegrationTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/QueryTranslation/SearchQueryShapeTests.cs
+  - tests/Whizbang.Generators.Tests/SearchIndexGenerationTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/FoldFunctionTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/PhysicalColumnBackfillIntegrationTests.cs
+  - tests/Whizbang.Generators.Tests/PhysicalColumnSqlTests.cs
+  - tests/Whizbang.Generators.Tests/Analyzers/JsonIndexStorageAnalyzerTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/QueryTranslation/PerspectiveIndexSetupTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/OptionalExtensionBlocksTests.cs
+  - tests/Whizbang.Generators.Tests/JsonIndexSqlScriptTests.cs
   - tests/Whizbang.Core.Tests/Perspectives/PhysicalFieldAttributeTests.cs
+  - tests/Whizbang.Core.Tests/Perspectives/IndexedAttributeTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/QueryTranslation/JsonIndexUsageTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/QueryTranslation/JsonIndexStandDownTests.cs
+  - tests/Whizbang.Generators.Tests/JsonIndexGenerationTests.cs
+  - tests/Whizbang.Generators.Tests/Analyzers/JsonIndexDeclarationAnalyzerTests.cs
+  - tests/Whizbang.Generators.Tests/Analyzers/PerspectiveFilterIndexAnalyzerTests.cs
   - tests/Whizbang.Core.Tests/Perspectives/PerspectiveStorageAttributeTests.cs
   - tests/Whizbang.Core.Tests/Perspectives/FieldStorageModeTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/PhysicalFieldIntegrationTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/PhysicalFieldUpsertStrategyTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/QueryTranslation/PhysicalFieldRegistryTests.cs
   - tests/Whizbang.Generators.Tests/Models/PhysicalFieldInfoTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Collective/CollectivePhysicalColumnIntegrationTests.cs
+  - tests/Whizbang.Generators.Tests/EnumPhysicalFieldGenerationTests.cs
+  - tests/Whizbang.Core.Tests/Perspectives/PerspectivePhysicalValuesTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/Collective/DapperCollectivePhysicalColumnIntegrationTests.cs
+  - tests/Whizbang.Generators.Tests/PhysicalFieldHydratorInitOnlyTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/InitOnlyPhysicalFieldHydrationTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/SplitHydratorHookedWriteTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/SplitClassSnapshotRewindTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -32,15 +74,281 @@ Physical fields allow you to store specific properties as dedicated database col
 
 ## Overview
 
-By default, Whizbang stores perspective model data in a single JSONB column. While flexible, JSONB queries can be slower for frequently filtered fields. Physical fields solve this by extracting selected properties to dedicated database columns that support native indexing.
+A perspective stores its model in a single JSONB column by default. There are three tiers of storage
+for a field, and the middle one is the newest and the cheapest thing most fields need.
 
-| Feature | JSONB Only | Physical Fields |
-|---------|------------|-----------------|
-| Storage | Single column | Multiple columns |
-| Indexing | GIN/JSONB path | B-tree, native types |
-| Query performance | Good | Excellent for indexed fields |
-| Schema flexibility | High | Moderate |
-| Storage overhead | Low | Depends on mode |
+| | Undeclared | `[Indexed]` | `[PhysicalField]` + `[Indexed]` |
+|---|---|---|---|
+| Where the value lives | the document | the document | its own column |
+| Equality | indexed, through containment | indexed, by btree | indexed |
+| Range, ordering, `IS NULL` | **scans** | **indexed** | indexed |
+| Substring matching | scans | indexed with `Substring` | scans unless trigram-indexed |
+| Unique constraints, foreign keys | no | no | yes |
+| Costs | nothing | an index | an index, a column, a hydration path |
+| Dates, times and durations | equality only | **indexed** | indexed |
+
+:::updated
+**One attribute asks for an index.** `[Indexed]` says what you mean, and it means the same thing
+wherever the field lives: this field is filtered, make it fast. Which index serves that follows from
+whether the field was promoted, and the framework already knows that.
+
+On a field held in the document it builds a btree over the extraction a query produces. On a field
+promoted by `[PhysicalField]` it indexes the column. On a `[VectorField]` it builds the vector index
+that field configures. Combine it with either promotion when you need a real column **and** an index
+on it.
+
+That is why `[PhysicalField]` has no `Indexed` flag and `[VectorField]` has none either. A promoted
+column is what you need for a constraint, a foreign key or uniqueness, and those stay where they
+belong; asking for an index is a separate question with one answer.
+
+**The date family is indexable now.** Not because the index rules changed but because the stored form
+did: a date is stored as a number, which casts through an immutable expression where the old text
+rendering did not. See [JSONB Containment Queries](jsonb-containment.md) for the stored forms.
+:::
+
+{verified: JsonIndexUsageTests.TheGeneratedIndexExpression_IsTheOneAQueryUsesAsync, JsonIndexStandDownTests.ABtreeIndexedField_IsNotCompiledToContainmentAsync, PerspectiveIndexSetupTests.ADeclaredIndexBuildsWithTheCastItAskedForAsync, PhysicalFieldAttributeTests.PromotionCarriesNoIndexFlagAsync}
+
+The reason the middle tier exists is that the GIN index every perspective table already carries answers
+containment and nothing else. That covers equality, which is why an equality filter on a JSON-only
+field is already a lookup. It cannot cover a range or an ordering for any type, whatever the field is
+stored as, because an inverted index returns a set and has no ordered answer space and no ordered
+scan. Those need a btree, and a btree over the extraction is one without a schema change.
+
+## Declaring an index on a JSON-only field {#json-indexed}
+
+```csharp{title="The three tiers side by side" description="An undeclared field, one with an index over its stored value, and one promoted to a real column." framework="NET10" category="Perspectives" difficulty="INTERMEDIATE" tags=["perspectives", "indexing", "jsonb", "physical-fields"] tests=["JsonIndexGenerationTests.ABtreeIndexIsCreatedOverTheExtractionAsync"]}
+public record OrderModel {
+  [StreamId]
+  public Guid OrderId { get; init; }
+
+  // A real column: needed here for the unique constraint.
+  [PhysicalField(Unique = true)]
+  public string OrderNumber { get; init; } = string.Empty;
+
+  // Filtered by range and sorted on. An index over the stored value answers both.
+  [Indexed]
+  public int Rank { get; init; }
+
+  // Filtered by range and searched by substring.
+  [Indexed(IndexKinds.Ordered | IndexKinds.Substring)]
+  public string Title { get; init; } = string.Empty;
+
+  // Never filtered. Pays for nothing.
+  public string Notes { get; init; } = string.Empty;
+}
+```
+
+The kinds combine because a field can be queried both ways, and the attribute may also be written more
+than once where that reads better than a combination. `Substring` requires `pg_trgm`. The schema pass
+creates the extension once per table, inside a block it can skip as a whole: where the server refuses
+the extension (a managed server that does not allow-list it, a role without the privilege, a build
+without it), the pass logs one warning naming the extension and the trigram indexes it skipped, and
+completes. Substring queries then scan, as they do wherever the index is absent, until an operator
+provides the extension; a declaration is never the reason a service fails to start.
+
+{verified: PerspectiveIndexSetupTests.ATrigramDeclarationBuildsAGinIndexAsync, PerspectiveIndexSetupTests.BothKindsBuildBothIndexesAsync}
+
+### Comparisons that ignore case {#case-insensitive}
+
+:::new
+An index is only used for the expression it was built over, and a comparison that folds case is a
+comparison over the *folded* value. An index over the stored value is not a candidate for it, however
+it is built. So case-insensitive search needs its own declaration:
+
+```csharp{title="A field searched with and without regard to case" description="Case folding changes the indexed expression, so a field compared both ways declares the attribute twice and carries one index for each." framework="NET10" category="Perspectives" difficulty="INTERMEDIATE" tags=["perspectives", "indexing", "case-insensitive", "search"] tests=["JsonIndexGenerationTests.AFieldComparedBothWaysGetsAnIndexForEachAsync", "PerspectiveIndexSetupTests.ACaseInsensitiveDeclarationBuildsOverTheFoldedValueAsync"]}
+public record CustomerModel {
+  [StreamId]
+  public Guid CustomerId { get; init; }
+
+  // Searched by name, case-insensitively, and also sorted on as entered.
+  [Indexed]
+  [Indexed(caseInsensitive: true)]
+  public string LastName { get; init; } = string.Empty;
+
+  // Only ever compared case-insensitively, so only that index is worth paying for.
+  [Indexed(caseInsensitive: true)]
+  public string Email { get; init; } = string.Empty;
+}
+```
+
+The two are different indexes and neither answers the other's query, which is why a field compared
+both ways declares both. It is a separate declaration rather than a default for the same reason: the
+folded index costs a write on every apply and can serve nothing that respects case.
+
+**Write the comparison as `ToLower()`, with no argument.** That is the one form that reaches the
+database, as its own `lower()`, and it is what the index is built over:
+
+```csharp{title="The query shape the folded index answers" description="The parameterless ToLower is the only form the query translation maps; the invariant and culture overloads have no translation at all." framework="NET10" category="Perspectives" difficulty="INTERMEDIATE" tags=["perspectives", "indexing", "case-insensitive", "linq"] tests=["JsonIndexUsageTests.AFoldedComparison_IsAnsweredByTheFoldedIndexOnlyAsync"]}
+// Answered from the folded index.
+var found = await rows
+  .Where(r => r.Data.Email.ToLower() == term.ToLower())
+  .ToListAsync(ct);
+
+// No translation at all: these fail rather than running slowly.
+//   r.Data.Email.ToLowerInvariant() == …
+//   r.Data.Email.ToLower(CultureInfo.InvariantCulture) == …
+//   string.Equals(r.Data.Email, term, StringComparison.OrdinalIgnoreCase)
+
+// Translates, to the upward fold, which no declaration indexes. WHIZ302 reports it.
+//   r.Data.Email.ToUpper() == …
+```
+
+The fold happens in the database under the column's collation, so there is no CLR culture in play and
+none can be expressed. Analyzers that ask for a culture or a `StringComparison` here (CA1304, CA1311,
+CA1862, RCS1155) are answering a question about in-process string handling, and the overloads they
+recommend are exactly the ones with no translation. Suppress them on the query.
+
+Asking for case folding on a field that is not text is reported by
+[WHIZ305](../../operations/diagnostics/whiz305.md) rather than dropped in silence.
+:::
+
+{verified: JsonIndexUsageTests.AFoldedComparison_IsAnsweredByTheFoldedIndexOnlyAsync, JsonIndexGenerationTests.AFieldComparedBothWaysGetsAnIndexForEachAsync, PerspectiveIndexSetupTests.AFieldComparedBothWaysGetsBothIndexesAsync}
+
+### Combining with a promotion
+
+```csharp{title="A promoted column, and a vector, asking for their indexes" description="The same attribute asks on either side of the promotion; the promotion attribute describes the column." framework="NET10" category="Perspectives" difficulty="INTERMEDIATE" tags=["perspectives", "indexing", "physical-fields", "vector"] tests=["JsonIndexGenerationTests.APromotedFieldIsIndexedByTheSameAttributeAsync"]}
+public record DocumentModel {
+  [StreamId]
+  public Guid DocumentId { get; init; }
+
+  // A real column, and indexed. Two attributes, two separate decisions.
+  [PhysicalField]
+  [Indexed]
+  public Guid TenantId { get; init; }
+
+  // A real column, not indexed: nothing filters it, so it pays for nothing.
+  [PhysicalField]
+  public string Title { get; init; } = string.Empty;
+
+  // A vector column with an index, built the way [VectorField] configures it.
+  [VectorField(1536, IndexType = VectorIndexType.HNSW)]
+  [Indexed]
+  public float[] Embedding { get; init; } = [];
+}
+```
+
+A vector is **not** indexed unless it asks. That changed with the universal attribute, and it follows
+the same opt-in principle as everything else here: an index is write amplification, so it is created
+because someone asked. A filtered vector with no index is reported by
+[WHIZ302](../../operations/diagnostics/whiz302.md) rather than left to be discovered in production.
+
+{verified: JsonIndexGenerationTests.APromotedFieldWithoutTheAttributeIsNotIndexedAsync, PerspectiveIndexSetupTests.APromotedColumnTakesAnOrdinaryIndexAsync}
+
+### Opting one field out of a blanket declaration
+
+`[IndexAllFields]` covers every eligible field on the model. A single field declines with
+`IndexKinds.None`, which is the only way to say "all of them but this one":
+
+```csharp{title="Indexing every field except one" description="A per-field declaration overrides the model's, so asking for no kind is how a field declines an index it would otherwise be given." framework="NET10" category="Perspectives" difficulty="INTERMEDIATE" tags=["perspectives", "indexing", "jsonb"] tests=["JsonIndexGenerationTests.AFieldCanOptOutOfABlanketDeclarationAsync"]}
+[IndexAllFields]
+public record ReportModel {
+  [StreamId]
+  public Guid ReportId { get; init; }
+
+  public int Counted { get; init; }
+  public string Label { get; init; } = string.Empty;
+
+  // Never filtered, and large. Declining keeps the blanket useful on the rest.
+  [Indexed(IndexKinds.None)]
+  public string Payload { get; init; } = string.Empty;
+}
+```
+
+Declining is not declaring, so it is not reported as a claim the framework cannot honor.
+
+{verified: JsonIndexGenerationTests.AFieldCanOptOutOfABlanketDeclarationAsync, JsonIndexDeclarationAnalyzerTests.OptingOutIsNotReportedAsync, JsonIndexStorageAnalyzerTests.AModelDeclaringOnlyAnOptOutIsNotReportedAsync}
+
+For a read model that really is queried every way, say it once on the model instead:
+
+```csharp{title="Indexing every eligible field" description="A perspective-level declaration, for a read model queried every way." framework="NET10" category="Perspectives" difficulty="INTERMEDIATE" tags=["perspectives", "indexing", "jsonb"] tests=["JsonIndexGenerationTests.IndexAllFieldsCoversTheEligibleFieldsOnlyAsync"]}
+[IndexAllFields]
+public record ReportRow {
+  [StreamId]
+  public Guid ReportId { get; init; }
+
+  public int Count { get; init; }
+  public string Label { get; init; } = string.Empty;
+}
+```
+
+A per-property declaration still wins where a field wants different kinds, so an exception stays local
+to the property it applies to. Be deliberate about this one: every index is write amplification on
+each apply and disk that has to stay warm, so a model with many fields that are never filtered is
+better served by naming the few that are. WHIZ302 names them for you, from what your queries actually
+do.
+
+### An equality filter on an indexed field stops using containment
+
+This is worth knowing because it looks like a regression in the generated SQL and is the opposite.
+
+```sql{title="What changes when a field is declared" description="An indexed field keeps the extraction form so its own index is the one used." category="Perspectives" difficulty="ADVANCED" tags=["jsonb", "indexing", "query-translation"]}
+-- Undeclared: containment, answered from the GIN index over the whole document
+WHERE data @> jsonb_build_object('Rank', 7)
+
+-- [Indexed]: the extraction, answered from the field's own btree
+WHERE (data ->> 'Rank')::integer = 7
+```
+
+If the equality were still rewritten, the planner would answer it from the document index and the
+index you just paid for would sit unused, which is the exact problem this whole area exists to fix. It
+is also the faster of the two: a single-column btree equality probe reads one index and goes to the
+heap, while containment reads the document index and then rechecks every candidate row, because the
+default operator class stores keys and values as separate tokens and cannot confirm on its own that a
+pair belongs together.
+
+A `Substring`-only declaration does **not** change equality, because a trigram index cannot answer one.
+
+{verified: JsonIndexStandDownTests.ABtreeIndexedField_IsNotCompiledToContainmentAsync, JsonIndexStandDownTests.ATrigramOnlyField_StillReachesContainmentForEqualityAsync}
+
+### Which types can carry one
+
+An index has to be built from an immutable expression, so its keys cannot go stale. Every type the
+framework stores as a scalar reaches one.
+
+| Type | Index expression |
+|------|------------------|
+| `string` | `(data ->> 'X')` |
+| `short`, `byte` | `((data ->> 'X')::smallint)` |
+| `int`, an enum over one | `((data ->> 'X')::integer)` |
+| `long`, an enum over an unsigned number | `((data ->> 'X')::bigint)` |
+| `decimal` | `((data ->> 'X')::numeric)` |
+| `float` | `((data ->> 'X')::real)` |
+| `double` | `((data ->> 'X')::double precision)` |
+| `bool` | `((data ->> 'X')::boolean)` |
+| `Guid` | `((data ->> 'X')::uuid)` |
+| `DateTime`, `DateTimeOffset` | `((data ->> 'X')::bigint)` over microseconds since the epoch |
+| `DateOnly` | `((data ->> 'X')::integer)` over days since the epoch |
+| `TimeOnly` | `((data ->> 'X')::bigint)` over microseconds since midnight |
+| `TimeSpan` | `((data ->> 'X')::bigint)` over the tick count |
+
+{verified: JsonIndexUsageTests.TheGeneratedIndexExpression_IsTheOneAQueryUsesAsync, ContainmentTypeEligibilityProbeTests.AnExtractionCanCarryABtreeIndexOnlyWhenItsCastIsImmutableAsync}
+
+The date family is on that list because its **stored form** is a number, not because anything about
+the index rules moved. Stored as a rendering it could not be indexed at all: the cast from text to a
+timestamp is `STABLE`, and PostgreSQL refuses a stable index expression because a key computed from a
+session setting could go stale. A number casts through `bigint`, which is immutable, so the same
+extraction became indexable. You write an ordinary `DateTime` property and see none of this; the
+stored document is what changed. See
+[JSONB Containment Queries](jsonb-containment.md) for the stored forms and what they cost.
+
+Declaring an index on a property with **no single scalar to extract** (a nested object, a collection,
+a `char`) is reported at build time as **WHIZ303** rather than skipped, because a declaration on a
+specific field is a claim about that field and silence would leave you believing it is indexed.
+
+A declaration on a model whose document is stored as one serialized value is reported as
+[**WHIZ304**](../../operations/diagnostics/whiz304.md), and the index is not created: a filter on a
+field inside such a document never compiles to an extraction, so the index could never be reached.
+
+Each cast mirrors what the query produces, which matters more than it looks: an index over a different
+expression than the query generates is simply a different index, and the planner ignores it while every
+query still returns correct rows. So the failure mode is a silent sequential scan, and that is why
+these are asserted per type against a real query and a real plan rather than by reading the SQL.
+
+A time-ordered identifier is worth a note. Its text form is fixed-width lowercase hexadecimal, so its
+text order, its `uuid` byte order and its creation order all agree, which makes cursor paging over a
+document-held identifier answerable from an index.
+
+{verified: ContainmentTypeEligibilityProbeTests.ATimeOrderedIdentifier_SortsTheSameAsTextAndAsBytesAsync}
 
 ## PhysicalFieldInfo {#PhysicalFieldInfo}
 
@@ -170,7 +478,7 @@ Physical columns are indexed copies; JSONB still contains the full model. Ideal 
 ```csharp{title="Extracted Mode" description="Physical columns are indexed copies; JSONB still contains the full model." category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Extracted", "Mode"] tests=["PerspectiveStorageAttributeTests.PerspectiveStorageAttribute_Constructor_SetsModeAsync", "PhysicalFieldAttributeTests.PhysicalFieldAttribute_Properties_CanBeSetAsync"]}
 [PerspectiveStorage(FieldStorageMode.Extracted)]
 public record ProductDto {
-    [PhysicalField(Indexed = true)]
+    [PhysicalField] [Indexed]
     public decimal Price { get; init; }      // In JSONB AND physical column
 
     public string Description { get; init; } // JSONB only
@@ -191,6 +499,29 @@ public record ProductSearchDto {
 }
 ```
 
+### Reading promoted fields back {#reading-promoted-fields-back}
+
+{verified: PhysicalFieldHydratorInitOnlyTests.Record_ChangeTrackerHydrator_CopiesTheColumnsWithAWithExpressionAsync, PhysicalFieldHydratorInitOnlyTests.Class_Hydrators_AssignTheSettablePropertiesAndSkipTheRestAsync, InitOnlyPhysicalFieldHydrationTests.SplitRecord_AQueryOnAHookedContext_CopiesTheInitOnlyColumnsIntoTheModelAsync, InitOnlyPhysicalFieldHydrationTests.ExtractedClass_AQueryOnAHookedContext_CopiesTheSettableColumnAndKeepsTheInitOnlyOneFromTheDocumentAsync, SplitHydratorHookedWriteTests.Add_OnAHookedContext_SavesTheSplitRowAsync, SplitHydratorHookedWriteTests.Update_OnAHookedContext_SavesTheChangeAsync, SplitClassSnapshotRewindTests.Rewind_FromASnapshotOfASplitClassModel_KeepsThePromotedColumnsAsync}
+
+When a lens query materializes a row, the generated EF Core code copies each promoted column into the
+model, so a Split field arrives with its value even though the document does not hold it. The copy
+works with the model shapes this page shows:
+
+- **A record** is copied with a `with` expression, so `init`-only properties work as well as settable
+  ones, in every storage mode.
+- **A class** is assigned in place. A class cannot set an `init`-only property on an instance it already
+  has, so the copy leaves that property as the document holds it. In `Extracted` mode the document holds
+  it too, so nothing is lost. A `Split` class model declares its promoted fields `{ get; set; }`.
+- **A computed property** (no setter) is never copied into.
+
+Only rows a query materializes are hydrated. An entity your code adds or attaches for an update on the
+same `DbContext` is left tracked, and `SaveChanges` writes it as usual.
+
+Snapshots hold the promoted fields as well. Before it writes a Split row, the runner clears the promoted
+fields so the document leaves them out. For a record it clears them on a copy. A class has no copy, so the
+runner takes the class's snapshot before the write, and a rewind from that snapshot keeps the columns'
+values.
+
 ## Defining Physical Fields
 
 Use the `[PhysicalField]` attribute to mark properties for physical column storage:
@@ -201,10 +532,10 @@ public record ProductDto {
     [StreamId]
     public Guid ProductId { get; init; }
 
-    [PhysicalField(Indexed = true)]
+    [PhysicalField] [Indexed]
     public Guid CategoryId { get; init; }
 
-    [PhysicalField(Indexed = true, MaxLength = 100)]
+    [PhysicalField(MaxLength = 100)] [Indexed]
     public string Sku { get; init; }
 
     [PhysicalField(Unique = true)]
@@ -223,6 +554,168 @@ public record ProductDto {
 | `Unique` | `bool` | `false` | Apply UNIQUE constraint |
 | `ColumnName` | `string?` | `null` | Custom column name (defaults to snake_case) |
 | `MaxLength` | `int` | `-1` | VARCHAR length for strings (-1 = TEXT) |
+
+## Search {#search}
+
+{verified: SearchQueryIntegrationTests.Search_IgnoresCaseAsync, SearchQueryIntegrationTests.Search_AStraightQuoteTerm_FindsACurlyQuoteTitle_AndDashesAlikeAsync, SearchQueryIntegrationTests.Search_AWildcardInTheTerm_MatchesLiterallyAsync, SearchQueryIntegrationTests.Search_IsAnsweredByTheFoldIndexAsync, SearchQueryShapeTests.Contains_OnASearchField_FoldsTheValueAndTheTermAsync, SearchQueryShapeTests.Contains_OnAPromotedSearchField_FoldsTheColumnAsync, SearchIndexGenerationTests.ASearchField_GetsATrigramIndexOverItsFoldedValueAsync}
+
+A search box needs more than `Contains`: it should ignore case, and a person typing a straight quote
+or a hyphen should still find a title stored with a curly quote or an en dash. Declare the field for
+search and write the query as an ordinary `Contains`:
+
+```csharp{title="A field declared for search" description="Declares two fields for folded substring search and queries them with plain Contains" category="Perspectives" difficulty="BEGINNER" tags=["Perspectives", "Search", "Indexes", "Trigram"] tests=["SearchQueryIntegrationTests.Search_AStraightQuoteTerm_FindsACurlyQuoteTitle_AndDashesAlikeAsync"]}
+public record JobModel {
+  [StreamId] public Guid Id { get; init; }
+
+  [Indexed(IndexKinds.Search)]
+  public string JobName { get; init; } = "";
+
+  [Indexed(IndexKinds.Search)]
+  public string? JobCode { get; init; }
+}
+
+// "o'brien - ops" finds "Chief O’Brien – Operations".
+var jobs = await lens.Query
+  .Where(r => r.Data.JobName.Contains(term) || r.Data.JobCode!.Contains(term))
+  .ToListAsync();
+```
+
+What happens underneath:
+
+- **One fold, both sides.** The framework's `wh_fold` lowercases and maps curly quotes, primes, dashes
+  and no-break spaces to plain ASCII. The field is indexed as `wh_fold(value)`, and the `Contains` is
+  translated to `wh_fold(value) LIKE wh_fold_pattern(term)`, so the stored value and the term are folded
+  by the same function and cannot drift apart. LIKE wildcards in the term match literally.
+- **A trigram index answers it.** The index is a GIN trigram index over the folded value, which serves a
+  match anywhere in the string. It needs the `pg_trgm` extension; where the server refuses it the index is
+  skipped with a warning and the search scans, still folded and still correct.
+- **Nothing extra is stored.** The index is built over the document (or over the column, for a promoted
+  field), so declaring search on a model that already has rows needs no data migration: building the index
+  covers them. The index is built by the startup schema pass on the release that declares it, and a
+  plain `CREATE INDEX` holds writes to the table while it builds: seconds for tens of thousands of rows, so
+  on a very large table ship the declaration in a quiet window.
+- **Both registration paths.** The rewrite is installed whether the context is registered with
+  `AddWhizbang().WithEFCore<TContext>()` or with the generated `Add{Context}` extension, including for a
+  model whose only special fields are search fields.
+- **Only where declared.** Folding changes what `Contains` means, so it applies to fields declared for
+  search and nowhere else. To search another field folded, call it explicitly:
+  `EF.Functions.FoldedContains(r.Data.Notes, term)`. That call scans, because nothing indexes that field.
+- **Text only.** Declaring search on anything else is reported (WHIZ305) and builds nothing.
+
+## Adding a physical field to an existing model {#adding-a-physical-field}
+
+{verified: PhysicalColumnBackfillIntegrationTests.Backfill_RestoresExactlyWhatTheWriterStored_ForEveryTypeAsync, PhysicalColumnBackfillIntegrationTests.Backfill_LeavesAColumnThatAlreadyHasAValueAloneAsync, PhysicalColumnBackfillIntegrationTests.AddColumn_OnATableThatPredatesIt_AddsTheColumn_AndIsIdempotentAsync, PhysicalColumnSqlTests.ExistingTable_GetsTheColumn_ThenTheBackfill_ThenTheIndexAsync, PhysicalColumnSqlTests.SplitStorage_AddsTheColumn_ButHasNoDocumentCopyToBackfillFromAsync, PerspectiveSchemaBackfillTests.Extracted_EachPhysicalColumn_IsBackfilledFromTheDocumentAsync, PostgresSchemaInitializerCoverageTests.InitializeSchemaAsync_ColumnCopyAddingPhysicalColumns_BackfillsExistingRowsAsync, DapperPerspectiveStorePhysicalFieldTests.Upsert_Insert_WritesEveryPhysicalColumnAsync}
+
+Promoting a field of a model that already has rows is safe. The schema pass, on the instance elected
+to migrate, does three things in order:
+
+1. **Adds the column** (`ADD COLUMN IF NOT EXISTS`) to the existing table.
+2. **Fills it from the document** for every row written before it existed: rows that have the value in
+   the document and not in the column. A column the writer has since filled is never overwritten, and
+   running it again finds nothing to do.
+3. **Builds the column's indexes and length constraints,** which need the column to exist.
+
+This matters because the query translator reads a promoted property from its column. Without the fill,
+every filter and sort on the field would read an empty column for the older rows, and return nothing
+for them without an error.
+
+The fill reproduces exactly what the writer stores, type by type: text, identifiers, integers, booleans,
+decimals and floating point, and dates and times. Dates and times are microsecond counts in the
+document, so they are rebuilt by exact arithmetic from the epoch rather than parsed.
+
+Some fields are added but not filled, because the document cannot reproduce them:
+
+- **Split storage.** The value lives only in the column, so older rows need a
+  [rebuild](./rebuild) to fill it.
+- **A column type you chose** (`[PhysicalField(ColumnType = "...")]`), an enumeration, or any other type
+  whose column encoding the framework cannot know.
+- **Vector fields.**
+
+Both drivers do this. With the Dapper driver, the schema generator places the same fill statements
+after the table, so the column-copy migration that adds the column runs them against the new table, and
+the Dapper store writes every physical column on insert and update, as the EF Core store does.
+
+The fill runs inside the startup schema pass, as one `UPDATE` per field. On a very large table, schedule
+the release that promotes the field for a quiet period, or promote it on an empty table first.
+
+## Enumeration columns {#enum-columns}
+
+{verified: EnumPhysicalFieldGenerationTests.SchemaGenerator_EnumColumn_IsTheUnderlyingIntegerTypeAsync, EnumPhysicalFieldGenerationTests.EFCoreModel_EnumShadowProperty_IsAnIntegerColumnWithANumberConversionAsync, EnumPhysicalFieldGenerationTests.ServiceRegistration_EnumColumn_IsAddedAsAnInteger_AndATextColumnIsFlaggedNotAlteredAsync, DapperCollectivePhysicalColumnIntegrationTests.Store_EnumPhysicalField_IsWrittenAsItsNumberAsync, PerspectivePhysicalValuesTests.ToColumnScalar_NarrowAndUnsignedEnums_WidenToASignedColumnTypeAsync}
+
+An enumeration marked `[PhysicalField]` is stored as its **underlying number**, in a column typed
+from that number. The per-event write (EF Core and Dapper), a collective and replay all bind the same
+scalar, so a `Where` on the column compares numbers and an index on it orders by them.
+
+| Underlying type | Column |
+|---|---|
+| `byte`, `sbyte`, `short` | `smallint` |
+| `ushort`, `int` (the default) | `integer` |
+| `uint`, `long` | `bigint` |
+| `ulong` | `numeric` |
+
+Postgres has no unsigned or single-byte integer, so those widen to the next signed type that holds
+every value. A declared `ColumnType` still wins: an enum declared `ColumnType = "text"` keeps the
+text form EF Core's own conversion gives it, and a collective refuses to set it.
+
+### Columns created as text before this {#enum-text-columns}
+
+{verified: EnumColumnRewriteTests.ATextColumnOfNames_IsConvertedToNumbers_KeepingEveryRowAsync, EnumColumnRewriteTests.RunningItAgain_IsANoOpAsync, EnumColumnRewriteTests.AValueThatIsNeitherANameNorANumber_StopsStartup_NamingTheColumnAsync, EnumColumnRewriteTests.AMissingColumn_IsANoOpAsync, EnumColumnRewriteTests.AFlagsColumn_CombinedNames_BecomeTheBitwiseOrOfTheirValuesAsync, EnumColumnRewriteTests.AFlagsColumn_AComponentThatIsNotAMember_StopsStartup_NamingTheValueAsync, EnumColumnRewriteTests.AFlagsColumn_RunningItAgain_ChangesNothingAsync, EnumPhysicalFieldGenerationTests.ServiceRegistration_EnumColumn_IsAddedAsAnInteger_AndATextColumnIsRewrittenByTheRewritePhaseAsync}
+
+Earlier releases typed an enum column as `text` and stored the enum's **name** in it. Such a column is
+converted automatically at startup, with no operator step. The generator writes one rewrite per enum
+column from the enum's own members, and the stored-format rewrite phase applies it. That phase is
+the one that converts temporal document keys: it runs once per schema, under the schema lock, before
+the indexes are built, and it waits out older snapshots before indexing.
+
+- **Idempotent.** It acts only while the column is still `text` (or `varchar`). A column that is
+  already numeric, or that the schema pass has not created yet, is left alone, so later starts do
+  nothing.
+- **Names become numbers, and numbers are kept.** Each member name maps to its underlying value.
+  Names match exactly, as both drivers wrote them. A value that is already a number is kept as it
+  is (for example an undefined value's `ToString()`, or a row a newer instance wrote), and a null
+  stays null. The column is then retyped in place with `ALTER TABLE … ALTER COLUMN … TYPE`.
+- **`[Flags]` combinations become their bitwise OR.** For an enum marked `[Flags]`, a value holding
+  combined names in the form .NET writes them (`"Read, Write"`) is converted to the bitwise OR of
+  the named members' values (`3`). Single names and numbers convert as above. Only enums marked
+  `[Flags]` get this decoding; the generator knows from the enum's declaration.
+- **Anything else stops startup.** A value that is neither a member name nor a number (a renamed or
+  removed member, different casing, or for a `[Flags]` enum a combination with a component that is
+  not a member) cannot be read, so the phase fails the schema pass with an error naming the table,
+  the column and up to ten of the offending values. Nothing is changed. Correct or clear those
+  values, then restart.
+
+**The conversion locks the table.** Retyping the column rewrites the whole table under an
+`ACCESS EXCLUSIVE` lock, so nothing can read or write that table until the conversion finishes. It
+happens once, on the first start of this release, and only for a table whose enum column is still
+text. On a large table that start takes correspondingly longer, and reads and writes against the
+table wait for it. This is the accepted cost of an automatic conversion: if that pause is not
+acceptable, convert the column yourself beforehand in a maintenance window, and the rewrite then
+finds a numeric column and does nothing.
+
+A property whose type changed to or from an enum, or between other scalars, is converted the same
+way when you declare it with `[StoredForm(Previously = ...)]`, in the document and in its column:
+see [Stored-form migrations](stored-form-migrations.md#physical-columns).
+
+### Enums inside the document {#enum-documents}
+
+{verified: DocumentEnumFormTests.PersistenceProfile_Enum_IsWrittenAsItsNumberAsync, DocumentEnumFormTests.PersistenceProfile_RegistersNoStringEnumConverterAsync}
+
+Inside `data`, an enumeration was already stored as its underlying number, on every path. The
+persistence serialization profile registers no string-enum converter. The generated JSON contexts
+build an enum's metadata from the built-in numeric converter, and ignore any converter registered on
+the options. EF Core's own `ToJson()` mapping stores enums as numbers by default too, and the collective
+`Where` compiler has always compared a document enum as its number. No document rewrite is needed.
+The wire format for messages is separate and still uses enum names.
+
+## Collective updates {#collective-updates}
+
+A [collective event](../messaging/collective-events.md#physical-columns) can set a physical field.
+The setter writes the column as a typed parameter in the collective's single `UPDATE`, and writes
+the document path as well unless the model is `Split`. A collective that sets only `Split` fields
+leaves `data` out of the statement entirely, so a bulk change to a hot column costs a column write
+rather than a new copy of every document. A collective's `Where` on a physical field filters on the
+column. Enumerations bind their number, a `[VectorField]` can be set (not compared), and a keyed
+array in a `jsonb` column is upserted in the column.
 
 ## Query Syntax
 
@@ -246,6 +739,56 @@ WHERE category_id = @p0
 ORDER BY sku;
 ```
 
+## Index Advisories {#index-advisories}
+
+Nothing about a JSON-only filter looks wrong. The results are correct, the tests pass, and the cost
+only appears once the table grows. Whizbang handles the common case for you and tells you about the
+rest at the point of writing.
+
+**Equality is handled automatically.** A filter such as `row.Data.TenantId == tenantId` compiles to a
+jsonb containment test that the GIN index on the data column answers, so it is a lookup rather than a
+scan even though the property has no physical column. See
+[JSONB Containment Queries](jsonb-containment.md) for exactly what is rewritten, what is deliberately
+left alone, and how to switch it off.
+
+What containment cannot serve still wants a physical column: ranges and inequalities, ordering,
+pattern matching, dates and times, enumerations, and comparisons under a negation. That is what the
+analyzer below is for.
+
+The [WHIZ302](../../operations/diagnostics/whiz302.md) analyzer warns when a lens query filters,
+orders, or counts on a property that has no physical column. It keys on `PerspectiveRow<TModel>.Data`,
+so both the scoped lens surface and the older direct one are covered, in method and in query syntax.
+It stays quiet on projections, which read a field out of rows already chosen, and on properties the
+generators would index anyway: `[StreamId]`, `[PhysicalField] [Indexed]`,
+`[PhysicalField(Unique = true)]`, and `[VectorField]`.
+
+A scan is sometimes the right answer. A perspective that holds one row per tenant, a lookup of
+enumeration values, a filter that runs once a day: promoting those fields buys write cost and
+returns nothing. Record the decision where the model is defined.
+
+```csharp{title="Declare that a field is deliberately unindexed" description="SuppressIndexAdvisory silences both the WHIZ302 build warning and the runtime index advisory; the reason is required." framework="NET10" category="Perspectives" difficulty="BEGINNER" tags=["perspectives", "physical-fields", "indexing", "suppression"] tests=["PerspectiveFilterIndexAnalyzerTests.Filter_WithSuppressionOnProperty_NoDiagnosticAsync", "PerspectiveFilterIndexAnalyzerTests.Filter_WithSuppressionOnModel_NoDiagnosticAsync"]}
+[SuppressIndexAdvisory("bounded at a few hundred rows by the retention cap")]
+public record FeatureFlagModel {
+  [StreamId]
+  public Guid FlagId { get; init; }
+
+  public string Name { get; init; } = string.Empty;
+}
+```
+
+The attribute goes on a property, a model, or an assembly. The reason is required, and a blank one
+does not suppress: the attribute's value is the stated rationale, so a placeholder would defeat it.
+The same attribute stands down the runtime index advisory raised by the maintenance cycle, which a
+`#pragma` would not, since a pragma silences only the compiler.
+{verified: PerspectiveFilterIndexAnalyzerTests.Filter_WithBlankSuppressionReason_StillReportsAsync}
+
+Teams upgrading an existing codebase with many such queries should lower the severity once in
+`.editorconfig` and work it back up as fields are promoted, rather than adding suppressions in bulk.
+The [WHIZ302 page](../../operations/diagnostics/whiz302.md) covers that migration, and covers the
+cases where an index is the wrong fix: unselective predicates, small tables, many columns filtered
+in varying combinations (which want single-column indexes and a bitmap scan, not composites), and
+correlated columns (which want extended statistics, not an index at all).
+
 ## Best Practices
 
 1. **Index selectively**: Only create indexes on frequently queried fields
@@ -256,6 +799,7 @@ ORDER BY sku;
 
 ## See Also
 
+- [JSONB Containment Queries](jsonb-containment.md) - How an equality filter reaches the GIN index
 - [Vector Fields](vector-fields.md) - Vector similarity search with pgvector
 - [Perspective Registry](registry.md) - Table tracking and renaming
 - [Polymorphic Discriminator](polymorphic-discriminator.md) - Efficient polymorphic queries

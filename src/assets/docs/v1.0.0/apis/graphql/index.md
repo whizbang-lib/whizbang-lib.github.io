@@ -40,7 +40,7 @@ The `Whizbang.Transports.HotChocolate` package integrates Whizbang Lenses with [
 ### 1. Install the Package
 
 ```bash{title="Install the Package" description="Install the Package" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Install", "Package"]}
-dotnet add package Whizbang.Transports.HotChocolate
+dotnet add package SoftwareExtravaganza.Whizbang.Transports.HotChocolate
 ```
 
 ### 2. Define Your Lens

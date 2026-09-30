@@ -49,7 +49,7 @@ This is an advanced topic for building extensible systems on top of Whizbang. Mo
 
 ## Whizbang's Built-In Extension Mechanism
 
-Before reaching for dynamic assembly loading, note how Whizbang itself composes "plugins": **module-initializer callbacks**. Source generators (ServiceRegistrationGenerator, ReceptorDiscoveryGenerator, etc.) emit `[ModuleInitializer]` methods in each consumer assembly that assign callbacks on the static `ServiceRegistrationCallbacks` class (`LensServices`, `PerspectiveServices`, `Dispatcher`, `RawReceptors`, `PinnedIdRegistry`, `MessageTypeCatalog`, `PerspectivePersistenceOptions`). `services.AddWhizbang()` then invokes every registered callback — zero reflection, fully AOT-compatible.
+Before reaching for dynamic assembly loading, note how Whizbang itself composes "plugins": **module-initializer callbacks**. Source generators (ServiceRegistrationGenerator, ReceptorDiscoveryGenerator, etc.) emit `[ModuleInitializer]` methods in each consumer assembly that assign callbacks on the static `ServiceRegistrationCallbacks` class (`LensServices`, `PerspectiveServices`, `Dispatcher`, `RawReceptors`, `PinnedIdRegistry`, `MessageTypeCatalog`). `services.AddWhizbang()` then invokes every registered callback — zero reflection, fully AOT-compatible.
 
 ```csharp{title="Module Initializer Callbacks" description="Whizbang's AOT-compatible assembly composition" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "ModuleInitializer", "Callbacks"] tests=["ServiceCollectionExtensionsTests.AddWhizbang_InvokesLensServicesCallback_WhenRegisteredAsync", "ServiceCollectionExtensionsTests.AddWhizbang_CallsAllCallbacksInOrder_Async"]}
 // Generated module initializer in a consumer/extension assembly:

@@ -13,6 +13,8 @@ description: >-
   rescues stranded sagas from cross-pod lost-updates.
 tags: 'sagas, workflows, event-sourcing, per-item-streams, exactly-once'
 codeReferences:
+  - src/Whizbang.Sagas.Contracts/Events/ISagaStreamEvent.cs
+  - src/Whizbang.Sagas/SagaFrameworkEventStreamIds.cs
   - src/Whizbang.Sagas/Services/BaseSagaService.cs
   - src/Whizbang.Sagas/Helpers/SagaCompletionGuard.cs
   - src/Whizbang.Sagas/Helpers/SagaItemCompletionReconciler.cs
@@ -58,8 +60,30 @@ That's it. The `[Saga<T>("Name")]` source generator emits, into a sibling `.g.cs
 - `SagaName` const
 - Nine sealed partial nested event classes (`InitiatedEvent`, `ItemsDispatchedEvent`, `ItemStartedEvent`, `ItemCompletedEvent`, `ItemFailedEvent`, `CompletedEvent`, `ResetEvent`, `HookStartedEvent`, `HookCompletedEvent`) — each inherits `AcmeEventBase` and implements the matching `Whizbang.Sagas.Contracts` interface
 - A typed `Service` class derived from `BaseSagaService<...>` with all factory methods filled in
-- Three recovery receptors (`SagaItemCompletedRecoveryHandler`, `SagaItemFailedRecoveryHandler`, `SagaCompletionWatchdogTickHandler`) that bridge per-item terminal events and the auto-armed watchdog tick to the framework's completion-recovery path
+- Three recovery receptors (`SagaItemCompletedRecoveryHandler`, `SagaItemFailedRecoveryHandler`, `SagaCompletionWatchdogTickHandler`) that bridge per-item terminal events and the auto-armed watchdog tick to the framework's completion-recovery path. The tick handler is received at `PreInboxInline`, so every tick reaches it once on the receiving side, including the scheduled ticks the saga's own service publishes
 - An `AddBulkOrderImportSaga()` DI extension method registering the `Service` as Scoped
+
+### One stream per saga: the saga id {#stream-key}
+
+{verified: SagaStreamKeyTests.EveryEventAGeneratedSagaEmits_IsStoredOnTheSagasStream_WhenTheEntityIdDiffersAsync, SagaStreamKeyTests.CustomBaseSagaEvent_IsStoredOnTheSagasStream_NotTheBasesAsync, SagaStreamKeyTests.GeneratedSagaEvents_CarryBothIdsAsync}
+
+`SagaContext` carries two ids. **`SagaId` is the saga's stream**: every event the saga emits is stored
+on it, the generated lifecycle, item and hook events as well as the watchdog tick, the abandonment and
+the continuation request. **`EntityId` is your domain identity**, carried on every event for filtering
+and routing; it never decides a stream. The two are often the same value, but need not be.
+
+Each generated event carries `SagaId` and implements `ISagaStreamEvent`, through which the framework
+resolves its stream. That holds even with a `[Saga<TBase>]` whose base marks a `[StreamId]` of its own:
+a saga event belongs to its saga. A hand-written saga event can implement `ISagaStreamEvent` to be
+stored the same way.
+
+A `SagaId` must not be empty: a saga event with an empty stream id is rejected when it is published,
+as any event with an unpopulated `[StreamId]` is.
+
+**Migration note:** before this, generated saga events were stored each on a stream of its own
+message id. Where `SagaId` and `EntityId` are equal nothing else changes. Where they differ, a saga's
+new events land on its `SagaId` stream while its earlier events stay where they were, so review any
+perspective or query keyed on the entity's stream.
 
 **Without a project event base?** Use `[Saga("Name")]` (no generic argument). The generator inherits from the framework's default `SagaEventBase` (carries `MessageId`, `OccurredAt`, `CorrelationId`, `CausationId`, `OperationName`).
 
@@ -85,6 +109,10 @@ public class BulkOrderImportReceptor(BulkOrderImportSaga.Service saga) : IRecept
 services.AddWhizbangSagas();
 services.AddBulkOrderImportSaga();
 ```
+
+A saga service written by hand — a `BaseSagaService` subclass without `[Saga]` — is registered with
+`services.AddSagaService<TService>()` rather than `AddScoped`, so its completion watchdog ticks have a
+receiver. See [Hand-written sagas](./completion-orchestration#hand-written-sagas).
 
 ## What you get under the covers
 

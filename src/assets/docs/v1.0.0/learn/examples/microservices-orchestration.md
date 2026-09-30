@@ -131,7 +131,7 @@ public class OrderCreatedSagaReceptor(
     CancellationToken cancellationToken = default
   ) {
     var state = new OrderSagaState {
-      SagaId = TrackedGuid.NewMedo().Value.ToString("N"),
+      SagaId = TrackedGuid.New().Value.ToString("N"),
       OrderId = message.OrderId,
       Status = SagaStatus.InProgress,
       CurrentStep = SagaStep.InventoryReserving,

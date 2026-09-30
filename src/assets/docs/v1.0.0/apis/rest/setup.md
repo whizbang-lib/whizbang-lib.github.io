@@ -39,7 +39,7 @@ The `Whizbang.Transports.FastEndpoints` package provides:
 ## Installation
 
 ```bash{title="Installation" description="Installation" category="API" difficulty="BEGINNER" tags=["Apis", "Rest", "Installation"]}
-dotnet add package Whizbang.Transports.FastEndpoints
+dotnet add package SoftwareExtravaganza.Whizbang.Transports.FastEndpoints
 dotnet add package FastEndpoints
 ```
 

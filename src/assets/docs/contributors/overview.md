@@ -30,11 +30,13 @@ Whizbang follows a **documentation-first** philosophy: features are documented b
 
 - **Documentation authoring**: see `DOCUMENTATION-STANDARDS.md` in the repo root — page types (Diátaxis taxonomy), frontmatter schema, C# example style (K&R braces), code-block metadata.
 - **Branch flow**: feature branch → PR → `develop`; `develop` promotes to `main` for deploy. Never push directly to either.
+- **SQL migrations**: the twelve rules in `src/Whizbang.Data.Postgres/Migrations/README.md` of the library repo. The ones that bite: a function is modified by redefining it whole (the previous definition plus the delta); every framework object is `__SCHEMA__`-qualified; and a literal more than one migration or function needs is written as its token from `Migrations/constants.txt`, never spelled again (see [Constants](/v1.0.0/operations/infrastructure/migrations#constants)). `scripts/Lint-MigrationSql.ps1` and `MigrationConstantsTests` enforce the last two.
 - **Validation gates**: `validate-frontmatter.mjs`, link validation, and the search/index generators run in CI — regenerate indexes in the same PR as any content move.
 
 ## Deep dives in this section
 
 - **[Implementing a Data Engine](data-engines/overview)** — the full guide to adding a new database engine: `IWorkCoordinator`, SQL function contracts, capabilities, notifications, testing, and worked examples (SQLite, SQL Server).
+- **[The Perspective Query Pipeline](perspective-query-pipeline)** — where a perspective filter is rewritten so an index can answer it, why Entity Framework and Dapper need different answers, which decision belongs at which stage, and the handful of things in this area that are not guessable.
 
 ## Tooling for contributors
 

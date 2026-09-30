@@ -370,8 +370,8 @@ public async Task Apply_OrderCreated_CreatesNewSummaryAsync() {
     // Arrange
     var perspective = new OrderSummaryPerspective();
     var @event = new OrderCreated(
-        TrackedGuid.NewMedo(),
-        CustomerId: TrackedGuid.NewMedo(),
+        TrackedGuid.New(),
+        CustomerId: TrackedGuid.New(),
         Items: new[] { new OrderItem("SKU1", 2, 29.99m) }
     );
 
@@ -388,7 +388,7 @@ public async Task Apply_OrderShipped_UpdatesStatusAsync() {
     // Arrange
     var perspective = new OrderSummaryPerspective();
     var current = new OrderSummary {
-        Id = TrackedGuid.NewMedo(),
+        Id = TrackedGuid.New(),
         Status = OrderStatus.Created
     };
     var @event = new OrderShipped(current.Id, DateTimeOffset.UtcNow);

@@ -138,7 +138,7 @@ See [WHIZ031 Diagnostic](../../operations/diagnostics/whiz031.md) for details.
 
 - Put `[StreamId]` on the **aggregate root identifier** (e.g. `OrderId`), not on related entity IDs or timestamps
 - Use the **same property name** across all events of one aggregate and on the matching model
-- Prefer time-ordered UUIDv7 values (`TrackedGuid.NewMedo()` or [GenerateStreamId](./generatestreamid)) for stream IDs
+- Prefer time-ordered UUIDv7 values (`TrackedGuid.New()` or [GenerateStreamId](./generatestreamid)) for stream IDs
 
 ## See Also
 

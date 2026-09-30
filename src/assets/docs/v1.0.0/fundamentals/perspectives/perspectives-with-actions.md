@@ -333,7 +333,7 @@ public class OrderPerspectiveTests {
         // Arrange
         var perspective = new OrderPerspective();
         var model = new OrderView {
-            OrderId = TrackedGuid.NewMedo(),
+            OrderId = TrackedGuid.New(),
             CustomerName = "Alice",
             Total = 99.99m
         };
@@ -355,7 +355,7 @@ public class OrderPerspectiveTests {
         // Arrange
         var perspective = new OrderPerspective();
         var model = new OrderView {
-            OrderId = TrackedGuid.NewMedo(),
+            OrderId = TrackedGuid.New(),
             CustomerName = "Bob",
             Total = 50.00m
         };
@@ -377,7 +377,7 @@ public class OrderPerspectiveTests {
 
         // Act - chain create, update, then delete
         var afterCreate = perspective.Apply(empty, new OrderCreatedEvent {
-            OrderId = TrackedGuid.NewMedo(),
+            OrderId = TrackedGuid.New(),
             CustomerName = "Carol",
             Total = 75.00m,
             CreatedAt = DateTime.UtcNow
@@ -405,7 +405,7 @@ public class OrderPerspectiveTests {
         // Arrange
         var perspective = new OrderPerspective();
         var original = new OrderView {
-            OrderId = TrackedGuid.NewMedo(),
+            OrderId = TrackedGuid.New(),
             CustomerName = "Dave",
             Total = 100.00m
         };

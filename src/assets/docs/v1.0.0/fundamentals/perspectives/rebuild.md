@@ -139,7 +139,7 @@ public sealed record PerspectiveStatusModel {
   [StreamId]
   public Guid Id { get; init; }
 
-  [PhysicalField(Indexed = true)]
+  [PhysicalField] [Indexed]
   public string PerspectiveName { get; init; } = "";
 
   [PhysicalField]

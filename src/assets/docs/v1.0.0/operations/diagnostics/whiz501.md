@@ -57,6 +57,27 @@ If no inert default is correct for your service, leave it required and register 
 then fails at startup naming the service, which is the right outcome for a capability whose absence
 has no correct behavior. See [Registration Validation](../dependency-injection/registration-validation).
 
+## What it does not report
+
+Two shapes look like the pattern and are not:
+
+- **Positional records.** `public sealed record ReceptorInfo(string Name, ICallerInfo? Caller = null)` is a
+  data carrier. Its parameters are values supplied at creation, there is no container to register a
+  default in, and making them required would only push a `null` literal to every construction site.
+- **BCL collection interfaces.** `IReadOnlyList<T>`, `IEnumerable<T>`, `IComparer<T>` and the rest of
+  `System.Collections` describe a value the caller shapes, not a collaborator the container resolves.
+
+Everything else that is an interface and optional is reported, including a nullable-but-required
+parameter's optional cousin: `IServiceProvider? services = null` is reported, `IServiceProvider? services`
+(required, nullable) is not, because the second forces every site to state its choice.
+
+## The registration side
+
+The fix above is only half of the contract. The other half - a default for every seam, null objects
+that report `IsConfigured` false where no real default exists, and the helper a subsystem uses to
+displace such a placeholder without displacing a host's own registration - is described in
+[Replaceable Services](../../extending/extensibility/replaceable-services).
+
 ## Why it is only informational
 
 The existing surface is large. A rule that turns an established codebase red on first build gets

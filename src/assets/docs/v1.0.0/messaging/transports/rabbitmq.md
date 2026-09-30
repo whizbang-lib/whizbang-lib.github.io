@@ -163,7 +163,7 @@ flowchart TD
 **NuGet Package**: `Whizbang.Transports.RabbitMQ` (when published)
 
 ```xml{title="Package Reference" description="NuGet Package: `Whizbang." category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Package", "Reference"]}
-<PackageReference Include="Whizbang.Transports.RabbitMQ" Version="0.1.0" />
+<PackageReference Include="SoftwareExtravaganza.Whizbang.Transports.RabbitMQ" Version="0.1.0" />
 ```
 
 ### Dependencies

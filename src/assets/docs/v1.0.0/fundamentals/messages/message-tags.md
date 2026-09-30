@@ -413,7 +413,7 @@ The payload is a flat JSON object built from two sources:
     ExtraJson = """{"source": "api", "version": 2}""")]
 public record OrderCreatedEvent(Guid OrderId, Guid CustomerId, decimal Total, string InternalNote);
 
-// When dispatched: new OrderCreatedEvent(TrackedGuid.NewMedo(), TrackedGuid.NewMedo(), 99.99m, "Internal note")
+// When dispatched: new OrderCreatedEvent(TrackedGuid.New(), TrackedGuid.New(), 99.99m, "Internal note")
 // Payload structure:
 // {
 //   "OrderId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
@@ -469,7 +469,59 @@ services.AddWhizbang(options => {
 
 Typical root cause when this fires: a tag attribute omitted `Properties`, so the generator extracted every public property on the event — including fields the hook does not need.
 
-> Verified: `src/Whizbang.Core/Tags/TagOptions.cs` (defaults `PayloadSizeWarningThresholdBytes = 8192`, `PayloadSizeErrorThresholdBytes = null`) and `src/Whizbang.Core/Tags/MessageTagProcessor.cs` (`_enforcePayloadSize` logs at the warning threshold and throws `InvalidOperationException` before dispatching hooks when over the error threshold).
+The size is the payload's **UTF-8 byte length**, the unit the thresholds are declared and logged in,
+read from the payload's own buffer so measuring it allocates nothing. The guard exists to catch an
+oversized payload, so it must not cost in proportion to one: it previously materialized the whole
+payload as a string on every check, per tag, which on a 22 MB payload allocated over 100 MB to report
+that the payload was large — and counted UTF-16 characters rather than bytes.
+{verified: MessageTagProcessorTests.PayloadByteLength_CountsUtf8Bytes_NotCharactersAsync, MessageTagProcessorTests.PayloadByteLength_DoesNotAllocateInProportionToThePayloadAsync}
+
+The framework's own audit tag is narrowed the same way. `EventAudited` and `CommandAudited` carry the
+full body of whatever they audit, which is unbounded; their tag declares `Properties` listing what
+identifies the audited change and leaves the body out. Hooks receive identifiers, type, stream,
+position, time, tenant and user — the stored audit record still carries the body.
+{verified: AuditTagPayloadTests.EventAudited_TagPayload_LeavesTheOriginalBodyOutAsync, AuditTagPayloadTests.EventAudited_TagPayload_StillIdentifiesTheAuditedChangeAsync, AuditTagPayloadTests.CommandAudited_TagPayload_LeavesTheCommandBodyOutAsync}
+
+#### Per-tag thresholds, and binding them from configuration
+
+Some payloads are wide by design: an embedding, a rendered document. Every one of them crossed the
+global line, one warning per hook per message, and nothing let an operator raise it. A tag can carry
+its own thresholds, in code or in configuration, and the processor resolves the tag's value first and
+the global one only for tags that declare none. An explicit `null` per tag disables that threshold
+for the tag alone.
+
+```csharp{title="Raising the line for one tag in code" description="A tag whose payloads are legitimately wide declares its own thresholds; the global ones keep catching the attribute that forgot to narrow its properties" category="Configuration" difficulty="BEGINNER" tags=["Tags", "Configuration", "Payload"] tests=["MessageTagProcessorTests.ProcessTagsAsync_PerTagWarningThreshold_WinsOverTheGlobalOneAsync", "MessageTagProcessorTests.ProcessTagsAsync_PerTagNullWarning_DisablesTheWarningForThatTagAsync", "MessageTagProcessorTests.ProcessTagsAsync_PerTagErrorThreshold_ThrowsWhenTheGlobalOneIsOffAsync"]}
+services.AddWhizbang(options => {
+  options.Tags.PayloadSizeWarningThresholdBytes = 8_192;
+  options.Tags.UsePayloadSizeThresholds("embeddings", warningBytes: 65_536, errorBytes: 262_144);
+});
+```
+
+The same values bind from configuration under `Whizbang:Tags`, read explicitly so they work without
+reflection. An empty value disables the threshold; a value that is not a whole number fails startup
+naming the key.
+
+```json{title="Binding payload-size thresholds from configuration" description="Global thresholds and per-tag overrides under the Whizbang:Tags section; an empty value disables a threshold" category="Configuration" difficulty="BEGINNER" tags=["Tags", "Configuration", "Payload"] tests=["TagPayloadSizeConfigurationBinderTests.Apply_ReadsTheGlobalThresholdsAsync", "TagPayloadSizeConfigurationBinderTests.Apply_ReadsPerTagOverridesAsync", "TagPayloadSizeConfigurationBinderTests.Apply_AnEmptyValueDisablesTheThresholdAsync"]}
+{
+  "Whizbang": {
+    "Tags": {
+      "PayloadSizeWarningThresholdBytes": "8192",
+      "PayloadSizeErrorThresholdBytes": "",
+      "PayloadSizeWarningThresholdBytesByTag": { "embeddings": "65536" },
+      "PayloadSizeErrorThresholdBytesByTag": { "embeddings": "262144" }
+    }
+  }
+}
+```
+
+| Key under `Whizbang:Tags` | Meaning |
+|---|---|
+| `PayloadSizeWarningThresholdBytes` | The global warning threshold; empty disables it. |
+| `PayloadSizeErrorThresholdBytes` | The global error threshold; empty disables it. |
+| `PayloadSizeWarningThresholdBytesByTag:{tag}` | The warning threshold for one tag; empty disables it for that tag. |
+| `PayloadSizeErrorThresholdBytesByTag:{tag}` | The error threshold for one tag; empty disables it for that tag. |
+
+> Verified: `src/Whizbang.Core/Tags/TagOptions.cs` (defaults `PayloadSizeWarningThresholdBytes = 8192`, `PayloadSizeErrorThresholdBytes = null`; `UsePayloadSizeThresholds`, `ResolvePayloadSizeWarningThreshold`, `ResolvePayloadSizeErrorThreshold`), `src/Whizbang.Core/Tags/TagPayloadSizeConfigurationBinder.cs` (the configuration keys above) and `src/Whizbang.Core/Tags/MessageTagProcessor.cs` (`_enforcePayloadSize` resolves the tag's thresholds first, logs at the warning threshold and throws `InvalidOperationException` before dispatching hooks when over the error threshold).
 
 ## Built-in Tag Attributes {#built-in-tags}
 

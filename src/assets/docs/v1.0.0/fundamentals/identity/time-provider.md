@@ -121,7 +121,7 @@ public class OrderService {
 
   public Order CreateOrder(CreateOrderRequest request) {
     return new Order {
-      Id = TrackedGuid.NewMedo(),  // Whizbang's UUIDv7 factory (implicitly converts to Guid)
+      Id = TrackedGuid.New(),  // Whizbang's UUIDv7 factory (implicitly converts to Guid)
       CustomerId = request.CustomerId,
       CreatedAt = _timeProvider.GetUtcNow(),  // Testable!
       Items = request.Items

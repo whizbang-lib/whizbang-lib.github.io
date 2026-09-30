@@ -26,6 +26,7 @@ testReferences:
   - tests/Whizbang.Data.Dapper.Postgres.Tests/Perspectives/DapperPerspectiveSnapshotStoreTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/EFCorePerspectiveSnapshotStoreTests.cs
   - tests/Whizbang.Data.Schema.Tests/Schemas/PerspectiveSnapshotsSchemaTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/SplitClassSnapshotRewindTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -81,6 +82,10 @@ The snapshot/rewind pattern follows this lifecycle:
 3. **Restore from snapshot**: The runner calls `GetLatestSnapshotBeforeAsync` with the late event's ID to find the nearest safe restore point.
 4. **Replay**: Events are replayed from the snapshot's position through the current cursor, including the late-arriving event in its correct chronological position.
 5. **Pruning**: Old snapshots beyond the retention limit are pruned to control storage.
+
+A snapshot is the model as it was applied, including the fields a `Split` model keeps only in their
+columns, so a rewind from it writes those columns back with their values. See
+[Reading promoted fields back](physical-fields.md#reading-promoted-fields-back).
 
 ## Methods
 

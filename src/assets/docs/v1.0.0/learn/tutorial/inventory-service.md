@@ -650,7 +650,7 @@ public async Task InventoryLevelsPerspective_Reserve_IncrementsReservedAsync() {
   // Arrange
   var perspective = new InventoryLevelsPerspective();
   var current = new InventoryLevelDto {
-    ProductId = TrackedGuid.NewMedo().Value, Quantity = 100, Reserved = 0, Available = 100, LastUpdated = DateTime.UtcNow
+    ProductId = TrackedGuid.New().Value, Quantity = 100, Reserved = 0, Available = 100, LastUpdated = DateTime.UtcNow
   };
   var @event = new InventoryReservedEvent {
     OrderId = "order-1", ProductId = current.ProductId, Quantity = 2, ReservedAt = DateTime.UtcNow

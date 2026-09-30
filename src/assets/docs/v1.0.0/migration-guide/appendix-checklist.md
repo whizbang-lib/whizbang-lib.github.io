@@ -122,7 +122,7 @@ For each projection:
 - [ ] Replace `IDocumentStore` with `IEventStore`
 - [ ] Replace `IDocumentSession` with direct `IEventStore` injection
 - [ ] Replace `session.Events.Append()` with `eventStore.AppendAsync(streamId, @event)` (envelopes are created automatically; pass a `MessageEnvelope<T>` only when you need explicit tracing control)
-- [ ] Use `TrackedGuid.NewMedo()` for new stream IDs (time-ordered UUIDv7)
+- [ ] Use `TrackedGuid.New()` for new stream IDs (time-ordered UUIDv7)
 - [ ] Remove `session.SaveChangesAsync()` calls
 - [ ] Update concurrency handling to sequence-based
 - [ ] Update event queries to use `IEventStore` methods

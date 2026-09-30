@@ -72,7 +72,7 @@ public class CreateOrderReceptor : IReceptor<CreateOrder, OrderCreated> {
         CreateOrder message,
         CancellationToken ct = default) {
 
-        Guid streamId = TrackedGuid.NewMedo();  // time-ordered UUIDv7
+        Guid streamId = TrackedGuid.New();  // time-ordered UUIDv7
         var @event = new OrderCreated(streamId, message.CustomerId, message.Items);
 
         // The message overload creates the envelope for you. If the message was
@@ -167,7 +167,7 @@ session.Events.Append(newStreamId, firstEvent);
 
 ```csharp{title="Starting a Stream (2)" description="Whizbang (explicit stream):" category="Reference" difficulty="BEGINNER" tags=["Migration-guide", "C#", "Starting", "Stream"] tests=["InMemoryEventStoreTests.AppendAsync_WithMessage_ShouldStoreEventAsync"]}
 // Whizbang also creates the stream on first append
-Guid streamId = TrackedGuid.NewMedo();  // UUIDv7 for time-ordering
+Guid streamId = TrackedGuid.New();  // UUIDv7 for time-ordering
 await _eventStore.AppendAsync(streamId, firstEvent, ct);
 ```
 
@@ -303,7 +303,7 @@ The envelope-taking overload `AppendAsync(streamId, envelope, ct)` exists for ad
 - [ ] Replace `IDocumentStore` with `IEventStore`
 - [ ] Replace `IDocumentSession` with direct `IEventStore` injection
 - [ ] Replace `session.Events.Append()` with `eventStore.AppendAsync<T>()` (message overload — envelopes are automatic)
-- [ ] Use `TrackedGuid.NewMedo()` for new stream IDs (time-ordered UUIDv7)
+- [ ] Use `TrackedGuid.New()` for new stream IDs (time-ordered UUIDv7)
 - [ ] Remove `session.SaveChangesAsync()` (each append commits; use `AppendBatchAsync` for bulk)
 - [ ] Remove `expectedVersion` arguments (sequences are assigned automatically)
 - [ ] Move cross-stream event queries to perspectives + lenses

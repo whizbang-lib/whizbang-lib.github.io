@@ -365,7 +365,7 @@ Every security context establishment is audited (when `EnableAuditLogging = true
 
 ```csharp{title="Audit Trail" description="Every security context establishment is audited (when EnableAuditLogging = true):" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "Audit", "Trail"] tests=["MessageSecurityContextProviderTests.EstablishContextAsync_EnableAuditLoggingTrue_EmitsAuditEventAsync"]}
 public sealed record ScopeContextEstablished : ISystemEvent {
-  public Guid Id { get; init; } = TrackedGuid.NewMedo();
+  public Guid Id { get; init; } = TrackedGuid.New();
   public required PerspectiveScope Scope { get; init; }
   public required IReadOnlySet<string> Roles { get; init; }
   public required IReadOnlySet<Permission> Permissions { get; init; }

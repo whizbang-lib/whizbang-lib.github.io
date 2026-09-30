@@ -7,6 +7,7 @@ order: 7
 codeReferences:
   - src/Whizbang.Core/Messaging/ICollectiveEvent.cs
   - src/Whizbang.Core/Messaging/CollectiveEventBase.cs
+  - src/Whizbang.Core/Messaging/CollectiveOrdering.cs
   - src/Whizbang.Core/Messaging/CollectiveScope.cs
   - src/Whizbang.Core/Messaging/TenantCollectiveScope.cs
   - src/Whizbang.Core/Messaging/EventFlags.cs
@@ -28,8 +29,15 @@ codeReferences:
   - src/Whizbang.Data.EFCore.Postgres/Collective/CollectiveSettersRewriter.cs
   - src/Whizbang.Data.EFCore.Postgres/CollectiveEventsEFCoreExtensions.cs
   - src/Whizbang.Data.Dapper.Postgres/Collective/DapperCollectiveSpecCompiler.cs
+  - src/Whizbang.Data.Postgres/Collective/CollectiveElementUpsertSql.cs
+  - src/Whizbang.Data.Postgres/Collective/CollectiveInMemoryEvaluator.cs
+  - src/Whizbang.Data.Postgres/Collective/CollectivePhysicalColumns.cs
+  - src/Whizbang.Core/Perspectives/PerspectivePhysicalFieldRegistry.cs
+  - src/Whizbang.Core/Perspectives/ICollectiveSetters.cs
   - src/Whizbang.Data.Dapper.Postgres/CollectiveEventsDapperExtensions.cs
   - src/Whizbang.Data.Postgres/Migrations/061_CollectiveEventRouting.sql
+  - src/Whizbang.Data.Postgres/Migrations/175_CollectiveSinkQueue.sql
+  - src/Whizbang.Data.Postgres/Collective/CollectiveApplyContention.cs
   - src/Whizbang.Data.EFCore.Postgres.Generators/EFCoreServiceRegistrationGenerator.cs
 testReferences:
   - tests/Whizbang.Core.Tests/Messaging/CollectiveEventContractTests.cs
@@ -38,10 +46,24 @@ testReferences:
   - tests/Whizbang.Core.Tests/Perspectives/TenantCollectiveScopeResolverTests.cs
   - tests/Whizbang.Core.Tests/Workers/PerspectiveWorkerCollectiveSinkTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Collective/CollectiveDispatcherEFCoreIntegrationTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Collective/CollectiveInMemoryUpsertElementTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Collective/CollectiveElementUpsertSqlTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/Collective/DapperCollectiveApplierIntegrationTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/CollectiveReplayRebuildIntegrationTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/EmitEventStoreChainCollectiveSqlTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/Collective/DapperCollectiveApplierIntegrationTests.cs
   - tests/Whizbang.Generators.Tests/EFCoreServiceRegistrationGeneratorTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Collective/CollectivePhysicalColumnIntegrationTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/Collective/DapperCollectivePhysicalColumnIntegrationTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/Collective/CollectivePhysicalColumnCompilerTests.cs
+  - tests/Whizbang.Core.Tests/Perspectives/PerspectivePhysicalFieldRegistryTests.cs
+  - tests/Whizbang.Core.Tests/Messaging/CollectiveOrderingKeyTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/CollectiveSinkQueueSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Collective/CollectiveReplayOrderingTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Collective/CollectiveOrderingIntegrationTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/Collective/DapperCollectiveOrderingIntegrationTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/Collective/CollectivePredicateOrderingTests.cs
+  - tests/Whizbang.Generators.Tests/PerspectiveRunnerPhysicalFieldRegistrationTests.cs
 ---
 
 # Collective events
@@ -159,6 +181,68 @@ Re-applying is idempotent — the SET values are constant — and the apply
 progresses by keyset cursor (`id > @cursor`), so a partial or resumed
 run never skips or double-applies a row.
 
+### Ordering between collectives: the ordering key {#ordering-key}
+
+The scope-level determinism above holds *given an order* of collectives. Without more, two
+collectives have none: each is its own stream, sink streams on different instances apply in
+parallel, and the per-scope advisory lock serializes two applies without ordering them. That
+is invisible to a collective whose setters commute, and wrong for one that expresses "latest
+wins" as a set-based flip (`IsActive = (Id == e.Chosen)` across a family of rows), or for two
+collectives that are the halves of one change (deactivate the old record, activate the new
+one): the earlier one can land last.
+
+Set an **ordering key** on those collectives:
+
+```csharp{
+title: "Order the collectives of one family"
+description: "Collectives sharing an ordering key in one scope apply one at a time, in commit order, live and on replay."
+framework: "NET10"
+category: "Messaging"
+difficulty: "INTERMEDIATE"
+tags: ["collective-events", "ordering-key", "ordering"]
+tests: ["CollectiveOrderingKeyTests.TwoEventTypes_SharingAKeyInOneScope_ShareAStreamAsync", "PerspectiveWorkerCollectiveSinkTests.CollectiveSink_OrderedQueue_AppliesInCommitOrder_WhenIdsRunBackwardAsync", "CollectiveReplayOrderingTests.Fold_TwoCollectivesSharingAKey_EndsAtTheLaterCommitsResultAsync"]
+}
+await dispatcher.PublishAsync(new DeactivateOrderCollectiveEvent {
+  Scope = new TenantCollectiveScope(tenantId),
+  OrderingKey = "activation:" + familyId,
+  OrderId = previous,
+});
+await dispatcher.PublishAsync(new ActivateOrderCollectiveEvent {
+  Scope = new TenantCollectiveScope(tenantId),
+  OrderingKey = "activation:" + familyId,
+  OrderId = next,
+});
+```
+
+What the key guarantees:
+
+- **Collectives sharing a key in one scope apply one at a time, in the order the database
+  committed them.** The event's stream id is derived from the scope and the key
+  (`CollectiveOrdering.StreamIdFor`), so every such collective, of any type, lands on one
+  stream and one `__collective__` sink stream. The sink applies that stream's queue
+  (`wh_collective_sink_queue`) in commit order: `commit_sequence`, an unstamped event last,
+  `event_id` breaking the tie.
+- **Commit order, not id order.** An event id is minted before commit, so two producers can
+  commit in the opposite order to their ids. The sink reads the queue by work row, not after
+  its cursor, so the later commit applies last even when its id is the smaller.
+- **A collective waiting its turn holds everything behind it.** The sink applies the leading
+  collectives it holds and stops at the first it does not (leased elsewhere, backing off after
+  a failure, or waiting for its apply lock). A failed collective is retried in its place,
+  never overtaken.
+- **Replay agrees with live.** A rebuild folds the collectives sharing a stream in the same
+  commit order, within the positions their ids gave them among the row's own events.
+- **Across services** the key's stream travels with the event, and the outbox publishes a
+  stream in order, so the consuming service commits them, and applies them, in the producer's
+  order. A transport that reorders a stream is outside what the key can repair: a collective
+  that arrives after a later one has applied is applied then, since an apply cannot be undone.
+
+Pick the key at the grain of the family (`"activation:" + familyId`): everything sharing a key
+is serialized, so a key wider than the family costs throughput for nothing. Collectives
+without a key are unchanged. `CollectiveEventBase` derives the stream for you; a hand-written
+`ICollectiveEvent` that returns a key must also return `CollectiveOrdering.StreamIdFor(Scope,
+OrderingKey)` from its `[StreamId]` property. The derivation is a compatibility contract:
+every producer and consumer must compute the same stream.
+
 ### What this requires of the developer
 
 The scope predicate and any handler cohort filter must be **a pure
@@ -179,8 +263,9 @@ seam. `ICollectiveReplayApplier` (default `CollectiveReplayApplier`)
 supplies it: during a rebuild it loads the tenant's persisted collective
 events for the model being rebuilt, folds them into each stream's event
 list, and lets the runner's existing `OrderByMessageId` place them
-chronologically among the per-stream events — exactly where they applied
-live. For each matching `[CollectiveApplyFor]` entry it invokes the
+chronologically among the per-stream events; collectives that share an
+[ordering key](#ordering-key) are then put in commit order among themselves,
+the order the live sink applied them in. For each matching `[CollectiveApplyFor]` entry it invokes the
 handler for the spec and hands it to the per-model, **driver-neutral**
 `CollectiveInMemoryExecutor<TModel>`, which evaluates the
 self-referential `Where` and applies the setters to the one in-memory
@@ -286,7 +371,7 @@ no reflection, AOT-clean by construction. The attribute is read on the
 
 ### What the SET surface can express
 
-`ICollectiveSetters<TModel>` exposes two `SetProperty` overloads:
+`ICollectiveSetters<TModel>` exposes two `SetProperty` overloads, plus `UpsertElement` for [keyed array elements](#keyed-array-elements):
 
 - **`SetProperty(selector, value)`** — assign a **constant** or
   event-supplied (captured) value. This is the primary shape and is
@@ -307,6 +392,121 @@ v1** — both the EF Core `CollectiveSettersRewriter` and the
 likewise throw. The `CollectiveSpecKind.RawSql` enum value is defined as
 the intended escape hatch, but **no concrete raw-SQL spec type ships in
 v1**, so these richer computed shapes have no working path yet.
+
+### Keyed array elements {#keyed-array-elements}
+
+{verified: CollectiveDispatcherEFCoreIntegrationTests.DispatchAsync_UpsertElement_ReplacesTheMatchingElement_KeepingOrderAsync, CollectiveDispatcherEFCoreIntegrationTests.DispatchAsync_UpsertElement_AppendsWhenNoElementHasTheKeyAsync, CollectiveDispatcherEFCoreIntegrationTests.DispatchAsync_UpsertElement_OnAMissingArray_WritesAOneElementArrayAsync, CollectiveDispatcherEFCoreIntegrationTests.DispatchAsync_UpsertElement_ComposesWithSetProperty_InOneUpdateAsync, DapperCollectiveApplierIntegrationTests.UpsertElement_ReplacesTheMatchingElement_KeepingOrder_WithinScopeAsync, CollectiveInMemoryUpsertElementTests.Upsert_ReplacesTheMatchingElement_KeepingOrderAsync}
+
+A read model often keeps a second, rendered copy of a field inside a keyed array: one element per
+field, keyed by a field id, carrying what a UI renders. `SetProperty` on the top-level field leaves
+that element alone, and every surface that reads the array (a preview panel, a read-only view, a
+snapshot captured into a published version) keeps showing the old value.
+
+`UpsertElement` writes the element too, in the same set-based UPDATE:
+
+```csharp{title="Updating a field and its rendered element together" description="Sets the top-level family fields and replaces the family cell in the Cells array for every job in the cohort, in one UPDATE" category="Messaging" difficulty="INTERMEDIATE" tags=["Collective Events", "Perspectives", "Keyed Arrays", "jsonb"] tests=["CollectiveDispatcherEFCoreIntegrationTests.DispatchAsync_UpsertElement_ComposesWithSetProperty_InOneUpdateAsync"]}
+[CollectiveApplyFor]
+public ICollectiveSpec<JobFieldsModel> ApplyFamily(FamilyAppliedToJobsCollectiveEvent e) {
+  var familyCell = FamilyField.RenderCell(e.FamilyId, e.FamilyName);
+  return new CollectiveSpec<JobFieldsModel>(
+    Setters: s => s
+      .SetProperty(m => m.FamilyId, (Guid?)e.FamilyId)
+      .SetProperty(m => m.FamilyName, (string?)e.FamilyName)
+      .UpsertElement(m => m.Cells, c => c.FieldId, familyCell),
+    Where: r => e.JobIds.Contains(r.Data.Id));
+}
+```
+
+- **Replace or append.** The element whose key equals the new element's key is replaced where it
+  stands; every other element keeps its value and its position. When none matches, the element is
+  appended. A missing or null array becomes a one-element array.
+- **Several upserts on one list compose, in call order.** Each upsert starts from the list as the
+  earlier setters in the same spec left it, so upserting a family cell and then a career cell into
+  `Cells` keeps both, and a second upsert of the same key wins. The same holds on the EF Core,
+  Dapper and in-memory replay paths.
+- **Serialized once, as the writer serializes it.** The element is built in C#, once per event, and
+  stored exactly as the model's own writer would store it, so the rendered copy cannot drift in
+  shape from one a normal apply produces.
+- **Keys compare as stored JSON,** so a string, number or identifier key works without a cast.
+- **In a jsonb column too.** When the array is a `[PhysicalField(ColumnType = "jsonb")]`, the element is
+  upserted in the column by the same rules (see [Physical columns](#physical-columns)).
+- **Direct members only.** The array must be a top-level property and the key a direct property of
+  the element; anything else throws `NotSupportedException`.
+- **Both drivers, and replay.** EF Core and Dapper share one SQL expression, and replay applies the
+  same rule in memory, so a rebuilt read model matches the live one.
+
+### Physical columns {#physical-columns}
+
+{verified: CollectivePhysicalColumnIntegrationTests.Apply_EnumSetter_WritesTheUnderlyingNumberToTheColumnAsync, CollectivePhysicalColumnIntegrationTests.Apply_WhereOnAnEnumPhysicalField_ComparesTheNumberAsync, CollectivePhysicalColumnIntegrationTests.Apply_VectorSetter_WritesTheVectorColumnAsync, CollectivePhysicalColumnIntegrationTests.Apply_UpsertElementOnAPhysicalJsonbArray_UpsertsInTheColumnAsync, CollectivePhysicalColumnIntegrationTests.Replay_MatchesLive_ForEnumVectorAndKeyedArrayAsync, DapperCollectivePhysicalColumnIntegrationTests.Apply_EnumSetterAndPredicate_UseTheUnderlyingNumberAsync, DapperCollectivePhysicalColumnIntegrationTests.Apply_VectorSetter_WritesTheVectorColumnAsync, DapperCollectivePhysicalColumnIntegrationTests.Apply_UpsertElementOnAPhysicalJsonbArray_UpsertsInTheColumnAsync, DapperCollectivePhysicalColumnIntegrationTests.Replay_MatchesLive_ForEnumVectorAndKeyedArrayAsync, CollectivePhysicalColumnIntegrationTests.Apply_PhysicalOnlySetter_UpdatesTheColumn_AndLeavesDataByteIdenticalAsync, CollectivePhysicalColumnIntegrationTests.Apply_SetterKeptInBothPlaces_UpdatesTheColumnAndTheDocumentAsync, CollectivePhysicalColumnIntegrationTests.Apply_MixedSetters_UpdateTheColumnAndTheDocument_InOneStatementAsync, CollectivePhysicalColumnIntegrationTests.Apply_WhereOnAPhysicalField_FiltersOnTheColumnAsync, CollectivePhysicalColumnIntegrationTests.Replay_MatchesLive_ForColumnAndDocumentAsync, DapperCollectivePhysicalColumnIntegrationTests.Apply_PhysicalOnlySetter_UpdatesTheColumn_AndLeavesDataByteIdenticalAsync, DapperCollectivePhysicalColumnIntegrationTests.Apply_MixedSetters_UpdateTheColumnAndTheDocument_InOneStatementAsync}
+
+A property marked [`[PhysicalField]`](../perspectives/physical-fields.md) is a real column. A
+collective setter that targets one writes the column, as a typed parameter, in the same `UPDATE` as
+every other setter. Whether the document is written too depends on the model's
+[storage mode](../perspectives/physical-fields.md#FieldStorageMode):
+
+| Storage mode | The column | The document path in `data` |
+|---|---|---|
+| `Extracted` (and `JsonOnly` with a `[PhysicalField]`) | written | written, with the same value |
+| `Split` | written | left alone: the field lives only in the column |
+
+A collective whose setters touch only physical-only (`Split`) fields does not assign `data` at all.
+Postgres writes a complete new copy of a jsonb value whenever it changes, including its TOAST
+storage and every index entry over the document, so on a table of large documents that copy is most
+of the cost of a bulk update. Leaving `data` out of the `SET` leaves the document, its TOAST and its
+GIN index untouched, and when no index covers the changed columns the update can be a HOT update.
+
+```csharp{title="A collective that changes only physical columns" description="Lane and Priority are physical-only columns on a Split model, so the collective writes two columns and never rewrites the jsonb document" category="Messaging" difficulty="INTERMEDIATE" tags=["Collective Events", "Perspectives", "Physical Fields", "Performance"] tests=["CollectivePhysicalColumnIntegrationTests.Apply_PhysicalOnlySetter_UpdatesTheColumn_AndLeavesDataByteIdenticalAsync"]}
+[PerspectiveStorage(FieldStorageMode.Split)]
+public sealed class TicketModel {
+  [PhysicalField] public string Lane { get; set; } = "";
+  [PhysicalField] public int Priority { get; set; }
+  public string Title { get; set; } = "";      // document only
+}
+
+[CollectiveApplyFor]
+public ICollectiveSpec<TicketModel> Reroute(TicketsReroutedCollectiveEvent e) =>
+  new CollectiveSpec<TicketModel>(
+    Setters: s => s
+      .SetProperty(t => t.Lane, e.ToLane)
+      .SetProperty(t => t.Priority, e.Priority),
+    Where: r => r.Data.Lane == e.FromLane);
+// UPDATE wh_per_ticket SET "lane" = @…, "priority" = @…, updated_at = @…, version = version + 1
+//  WHERE id = ANY(@ids)          -- no "data =" in the statement
+```
+
+- **Mixed setters are one statement.** A spec that sets a physical field and a document field writes
+  the column and the `jsonb_set` chain in the same `UPDATE`.
+- **The `Where` reads the column.** A condition on a physical property (`r.Data.Lane == value`,
+  `values.Contains(r.Data.Lane)`) compiles to the column, compared against a typed parameter, so an
+  index declared on the column serves it. Conditions on document fields keep compiling to
+  `data->>'X'`.
+- **Computed comparisons read the column too.** `SetProperty(t => t.IsUrgent, t => t.Lane == "hot")`
+  compares the `lane` column, null-safely (`IS NOT DISTINCT FROM`), so the result matches the C#
+  comparison the in-memory replay makes.
+- **Replay matches live.** Replay applies the same setters to the in-memory model, and the
+  perspective runner writes the model's physical fields to their columns (and, outside `Split`, to
+  the document) exactly as it does after any event. A rebuilt row has the same columns and the same
+  document as one the live `UPDATE` produced.
+- **No reflection.** Which properties are columns, their names, their storage mode, an enum's scalar
+  type and a declared column type come from the
+  perspective runner the source generator emits: it registers them at module load in
+  `PerspectivePhysicalFieldRegistry`, and both drivers read that. A model with no perspective has no
+  registration, and its setters stay document writes.
+- **Enumerations are stored as numbers.** An enum column holds the enum's underlying number, and a
+  setter, a `Where` condition and a computed comparison all bind that number, the same scalar the
+  per-event write stores (see [Physical Fields](../perspectives/physical-fields.md#enum-columns)).
+- **Vectors.** A setter on a `[VectorField]` writes the vector column in the same `UPDATE`, in the
+  form the per-event write uses (a pgvector parameter on EF Core, the vector's text form on
+  Dapper). A vector cannot be compared: a `Where` condition or computed comparison on one throws
+  `NotSupportedException`.
+- **Keyed arrays in a jsonb column.** `UpsertElement` on an array declared with
+  `[PhysicalField(ColumnType = "jsonb")]` upserts the element in the column, in the same statement
+  and with the same rules as a document array: replace where it stands or append, several upserts
+  on one list compose in call order, and the document array is upserted too outside `Split`. Any
+  other column type holds no keyed elements, so `UpsertElement` on it throws
+  `NotSupportedException`.
+- **An enumeration in a column whose type you declared** (`ColumnType = "text"`, say) throws
+  `NotSupportedException`: its stored form is then your choice, which a collective cannot know.
 
 ### Per-perspective projection (`Where`)
 
@@ -369,6 +569,61 @@ public ICollectiveSpec<OrderModel> ClearOverlay(OverlayClearedCollectiveEvent e)
     Where:   r => r.Data.OverlayId == e.OverlayId);
 ```
 
+### Ordering comparisons in `Where` {#ordering-comparisons}
+
+A `Where` can compare with `<`, `<=`, `>` and `>=` as well as `==`, `!=` and
+`Contains`, over a **numeric, enumeration or temporal** member (`DateTime`,
+`DateTimeOffset`, `DateOnly`, `TimeOnly`, `TimeSpan`), on a document path or on a
+[physical column](#physical-columns). The natural use is a monotonic guard that keeps a
+stale collective from overwriting a newer one:
+
+```csharp{
+title: "A monotonic guard in a collective Where"
+description: "Only rows whose recorded ordinal is older than the event's are flipped; a missing key counts as 0 through ??."
+framework: "NET10"
+category: "Messaging"
+difficulty: "INTERMEDIATE"
+tags: ["collective-events", "where", "ordering", "guard"]
+tests: ["DapperCollectiveOrderingIntegrationTests.Ordering_Coalesced_CountsTheMissingKeyAsTheDefaultAsync", "CollectiveOrderingIntegrationTests.Ordering_Coalesced_CountsTheMissingKeyAsTheDefaultAsync"]
+}
+[CollectiveApplyFor]
+public ICollectiveSpec<OrderModel> Activate(ActivationCollectiveEvent e) =>
+  new CollectiveSpec<OrderModel>(
+    Setters: s => s.SetProperty(o => o.ActiveOrdinal, e.Ordinal),
+    Where:   r => (r.Data.ActiveOrdinal ?? 0) < e.Ordinal);   // long? ActiveOrdinal
+```
+
+How the comparison is made, and why:
+
+- **A document member is compared as a number**, `(data->>'X')::numeric`. `->>` is text,
+  and text orders `'10'` before `'9'`.
+- **A temporal member is compared as its stored microsecond count** (the
+  [stored form](../perspectives/jsonb-containment.md) of every date, time and duration), so
+  the event's value is bound as the same count and the comparison is exact to the
+  microsecond. A key still holding an old rendering makes PostgreSQL refuse the statement
+  rather than answer it wrongly.
+- **A physical column is compared as itself**, the value bound as the scalar the column
+  stores (a `DateTimeOffset` at offset zero, which is all `timestamptz` accepts).
+- **A missing key, or a JSON `null`, compares as null**: the comparison is false, exactly as a
+  lifted C# comparison with a null operand is false. Under `!` it stays that way: the
+  compiler makes the comparison false before negating it
+  (`NOT (COALESCE(a < b, FALSE))`), so `!(r.Data.X < 5)` selects a row with a missing key in
+  SQL just as the in-memory replay does. Outside a `!` the plain comparison is emitted, so an
+  index over the expression can serve it.
+- **To have a missing key count as a value**, declare the member nullable and coalesce it:
+  `(r.Data.X ?? 0) < e.Y` compiles to `COALESCE((data->>'X')::numeric, @p) < @q`. That is
+  how a guard covers rows written before the member existed, with no pre-apply step to write
+  a zero into them.
+
+Refused, with the reason: ordering the row id (PostgreSQL orders a `uuid` by its bytes and
+.NET orders a `Guid` by its fields, so the SQL apply and the replay would disagree), a member
+that is neither numeric nor temporal, and a document temporal against a physical one (a
+microsecond count against a timestamp).
+
+The live apply and the in-memory replay select the same rows; both drivers are held to it by
+tests that apply live and replay against the same rows, including the text-ordering trap,
+a JSON null and a missing key with and without `!` and `??`.
+
 ### Cross-perspective cohorts (`ICollectiveQuery`)
 
 A `Where` over `row.Data` only sees the table being mutated. When the
@@ -406,8 +661,8 @@ into a **correlated `EXISTS`** in the same single `UPDATE`:
   and emits the same `EXISTS` SQL; `.Any` → `EXISTS`, `Contains` → `IN`.
 
 Supported inside the `.Any(...)`: an `Id`-correlation (`st.Id == r.Id`)
-plus equality / `Contains` leaf predicates over the sibling's
-`Data`/`Scope`. Richer shapes (non-equality, nested `EXISTS`) throw a
+plus equality, ordering and `Contains` leaf predicates over the sibling's
+`Data`/`Scope`. Richer shapes (disjunctions, nested `EXISTS`) throw a
 clear `NotSupportedException`. Handlers that don't need a sibling simply
 ignore the `ICollectiveQuery` parameter.
 
@@ -591,6 +846,33 @@ sequenceDiagram
   logged with a structured error class on `EventCategoryMetrics.Errors`,
   not a crash.
 
+### Rows that also receive per-stream events
+
+A collective's `UPDATE` and a per-stream apply can write the same row at
+the same time: an activation flip across a family
+(`IsActive = Id == activated`) runs while the activated member's own event
+is being applied to that member's row. The per-stream apply reads the
+whole row, folds its event in memory and writes the whole row back, so a
+collective that commits between that read and that write used to be
+**overwritten silently** by the stale copy, leaving the family with no
+active member.
+
+**The guarantee: a collective's committed change is never overwritten by a
+per-stream write computed before it.** The per-stream write lands only on
+the row version it read; when the collective moved the row in between, the
+write is refused, and the per-stream apply re-reads the row, re-applies its
+event onto the collective's result and writes again. The final row reflects
+both. Neither side has to be ordered or timed against the other, and a
+mirror perspective in another service is covered the same way.
+
+Nothing is required of the collective. The version is the PostgreSQL row's
+`xmin`, which every `UPDATE` moves on its own, so a collective whose apply
+hooks skip or override the `version` bump is still seen. The details, and
+what happens when a row keeps changing, are under
+[Concurrent writers](../perspectives/perspectives.md#concurrent-writers).
+The guard covers the EF Core PostgreSQL perspective store; the Dapper store
+does not check versions yet.
+
 ## Apply execution — scoped, bounded, indexed
 
 Each handler's apply is **one predicate `UPDATE` per projection table**,
@@ -619,9 +901,28 @@ hardened so a large cohort can never convoy locks or run away:
   `pg_advisory_xact_lock(hash(table, scope))` — DB-global, so it
   serializes same-scope collective applies **across pods** while
   disjoint scopes (e.g. different tenants) run concurrently.
+- **A bounded lock wait that keeps its lease.** A batch waits at most
+  `LockWaitSeconds` (default **30**) for the lock. When a wait ends without it,
+  the batch reports progress through the same callback the worker renews the work
+  lease from, and waits again, up to `LockWaitRenewals` more times (default **5**,
+  about three minutes in all; `0` gives up after one wait). The lease outlives the
+  wait, so the work is not leased again underneath it and its attempt count does
+  not rise. When every wait is used up the batch gives up with a
+  `CollectiveApplyLockBusyException` naming the table and the total wait.
+- **Busy is not failed.** The worker treats that exception as busy: it reports no
+  failure (the failure count is what drives dead-lettering) and completes nothing,
+  so the collective is applied later. `PerspectiveWorkerOptions.CollectiveLockBusyCountsAsFailure = true`
+  restores the older accounting, a busy lock reported like a failed apply.
+- **An advisory lock has no queue.** PostgreSQL wakes its waiters in no guaranteed
+  order, so a batch that waits has no place in line to keep: a later collective on the
+  same table and scope can take the lock first. Collectives whose order matters carry
+  an [ordering key](#ordering-key); those wait in their key's queue, which a busy lock
+  cannot reorder.
 - **Store-managed columns.** The `UPDATE` also stamps `updated_at` and
   bumps `version` (a collective `UPDATE` writing only `data` would leave
-  them stale and break change-detection).
+  them stale and break change-detection). The per-stream lost-update guard
+  does not depend on that bump (see
+  [Rows that also receive per-stream events](#rows-that-also-receive-per-stream-events)).
 
 The EF Core apply runs each batch as raw parameterized SQL via
 `ExecuteSqlRawAsync` — a hand-built
@@ -702,16 +1003,19 @@ Both drivers share **one** WHERE compiler
 (`CollectivePredicateSqlCompiler`, in `Whizbang.Data.Postgres`) and the
 same keyset-batched apply shape. The shared compiler translates equality
 over a **scope** field (`row.Scope.Prop == value` → `scope->>'Prop'`)
-**or a data** field (`row.Data.Prop == value` → `data->>'Prop'`);
-`&&`-chains mixing both; `Contains` (→ `IN`); and
+**or a data** field (`row.Data.Prop == value` → `data->>'Prop'`, or the
+column itself when `Prop` is a `[PhysicalField]`);
+`&&`-chains mixing both; `Contains` (→ `IN`); ordering comparisons over numeric and
+temporal members (see [Ordering comparisons](#ordering-comparisons)); and
 `q.Of<TOther>().Any(...)` cross-perspective cohorts (→ a correlated
-`EXISTS`). It throws for richer predicates (non-equality, disjunctions,
+`EXISTS`). It throws for richer predicates (disjunctions,
 arbitrary top-level columns, nested `EXISTS`).
 
 For SET clauses, both compilers support scalar top-level
 `SetProperty(j => j.Prop, constant)` with constant/captured-value
 sources, chained setters, and the property-vs-constant `==`/`!=` computed
-comparison. Arithmetic-computed setters and nested paths throw
+comparison. A setter or a condition on a `[PhysicalField]` property
+targets its column (see [Physical columns](#physical-columns)). Arithmetic-computed setters and nested paths throw
 `NotSupportedException` in both (see [What the SET surface can
 express](#what-the-set-surface-can-express)).
 

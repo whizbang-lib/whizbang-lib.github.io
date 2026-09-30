@@ -35,7 +35,7 @@ The `Whizbang.SignalR` package enables:
 ## Installation
 
 ```bash{title="Installation" description="Installation" category="API" difficulty="BEGINNER" tags=["Apis", "Signalr", "Installation"]}
-dotnet add package Whizbang.SignalR
+dotnet add package SoftwareExtravaganza.Whizbang.SignalR
 ```
 
 ## Quick Start

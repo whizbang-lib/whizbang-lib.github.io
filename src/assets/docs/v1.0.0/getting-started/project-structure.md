@@ -285,10 +285,10 @@ Use `Directory.Packages.props` for version consistency:
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageVersion Include="Whizbang.Core" Version="x.x.x" />
-    <PackageVersion Include="Whizbang.Generators" Version="x.x.x" />
-    <PackageVersion Include="Whizbang.Data.Dapper.Postgres" Version="x.x.x" />
-    <PackageVersion Include="Whizbang.Transports.AzureServiceBus" Version="x.x.x" />
+    <PackageVersion Include="SoftwareExtravaganza.Whizbang.Core" Version="x.x.x" />
+    <PackageVersion Include="SoftwareExtravaganza.Whizbang.Generators" Version="x.x.x" />
+    <PackageVersion Include="SoftwareExtravaganza.Whizbang.Data.Dapper.Postgres" Version="x.x.x" />
+    <PackageVersion Include="SoftwareExtravaganza.Whizbang.Transports.AzureServiceBus" Version="x.x.x" />
   </ItemGroup>
 </Project>
 ```
@@ -297,8 +297,8 @@ Then in project files:
 ```xml{title="Central Package Management (2)" description="Then in project files:" category="Configuration" difficulty="BEGINNER" tags=["Getting-started", "Xml", "Central", "Package", "Management"]}
 <!-- MyApp.API.csproj -->
 <ItemGroup>
-  <PackageReference Include="Whizbang.Core" />  <!-- Version comes from Directory.Packages.props -->
-  <PackageReference Include="Whizbang.Generators" />
+  <PackageReference Include="SoftwareExtravaganza.Whizbang.Core" />  <!-- Version comes from Directory.Packages.props -->
+  <PackageReference Include="SoftwareExtravaganza.Whizbang.Generators" />
 </ItemGroup>
 ```
 

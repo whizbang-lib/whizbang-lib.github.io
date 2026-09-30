@@ -39,7 +39,7 @@ lastMaintainedCommit: '01f07906'
 ## Installation
 
 ```bash{title="Installation" description="Installation" category="Implementation" difficulty="BEGINNER" tags=["Data", "Installation"]}
-dotnet add package Whizbang.Data.Dapper.Postgres
+dotnet add package SoftwareExtravaganza.Whizbang.Data.Dapper.Postgres
 ```
 
 **Includes**:

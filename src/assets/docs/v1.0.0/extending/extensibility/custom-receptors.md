@@ -224,7 +224,7 @@ public class CreateOrderReceptor : ReceptorBase<CreateOrder, OrderCreated> {
     CreateOrder message,
     CancellationToken ct
   ) {
-    Guid orderId = TrackedGuid.NewMedo();  // UUIDv7 - Guid.CreateVersion7() trips WHIZ056
+    Guid orderId = TrackedGuid.New();  // UUIDv7 - Guid.CreateVersion7() trips WHIZ056
     var total = message.Items.Sum(i => i.Quantity * i.UnitPrice);
 
     await using var conn = _db.CreateConnection();
@@ -349,7 +349,7 @@ public class TransferFundsReceptor : TransactionalReceptor<TransferFunds, FundsT
       cancellationToken: ct
     );
 
-    Guid transactionId = TrackedGuid.NewMedo();
+    Guid transactionId = TrackedGuid.New();
     return new FundsTransferred(transactionId, DateTimeOffset.UtcNow);
   }
 }
@@ -446,7 +446,7 @@ public class CreateProductReceptor : TenantReceptor<CreateProduct, ProductCreate
     CreateProduct message,
     CancellationToken ct
   ) {
-    Guid productId = TrackedGuid.NewMedo();
+    Guid productId = TrackedGuid.New();
 
     await using var conn = _db.CreateConnection();
     await conn.ExecuteAsync(

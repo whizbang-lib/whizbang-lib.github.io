@@ -66,7 +66,7 @@ public sealed record SyncInquiry {
     // Optional: Discover pending events from outbox
     public bool DiscoverPendingFromOutbox { get; init; }
 
-    // Auto-generated correlation ID (defaults to TrackedGuid.NewMedo())
+    // Auto-generated correlation ID (defaults to TrackedGuid.New())
     public Guid InquiryId { get; init; }
 }
 ```
@@ -226,7 +226,7 @@ This queries the outbox to find events that haven't been processed yet, enabling
 
 ```csharp{title="Read-Your-Writes Consistency" description="Read-Your-Writes Consistency" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Read-Your-Writes", "Consistency"] tests=["PerspectiveSyncAwaiterTests.WaitForStreamAsync_WithTrackedEvents_UsesEventDrivenWaitingAsync"]}
 public async Task<OrderDto?> CreateOrderAsync(CreateOrderRequest request) {
-    var orderId = TrackedGuid.NewMedo();
+    var orderId = TrackedGuid.New();
 
     // Dispatch command (Dispatcher tracks emitted events in the current scope)
     await _dispatcher.SendAsync(

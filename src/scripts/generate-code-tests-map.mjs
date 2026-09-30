@@ -206,6 +206,144 @@ function scanTestFileForConventions(filePath) {
 }
 
 /**
+ * Link health: a <tests> target can exist and still verify nothing. Three shapes are flagged, each with the
+ * live example that motivated it (issue 742):
+ *   - dormantContract: the target's declaring class is abstract and no class in the test tree inherits it, so
+ *     its tests never execute (a contract class whose live copies were hand-copied instead of inherited).
+ *   - selfContained: the target's file references no type declared under src/, so it exercises only its own
+ *     doubles (a file that tested a fake declared at the bottom of the same file).
+ *   - assertionFree: the target method's body contains no assertion, so it pins nothing.
+ * Every finding names the source tag that points at it, so the fix is one edit away from the report.
+ */
+function assessLinkHealth(sourceTagMappings, testFiles, sourceFiles) {
+  const findings = [];
+  const testFileByRelative = new Map(testFiles.map(f => [relative(LIBRARY_PATH, f).replace(/\\/g, '/'), f]));
+  const testContents = new Map();
+  const contentOf = (relPath) => {
+    if (!testContents.has(relPath)) {
+      const full = testFileByRelative.get(relPath) ?? resolve(LIBRARY_PATH, relPath);
+      testContents.set(relPath, existsSync(full) ? _codeOnly(readFileSync(full, 'utf-8')) : null);
+    }
+    return testContents.get(relPath);
+  };
+  // Every concrete type (class, struct, record, enum) and every static method declared under src/, for the
+  // self-contained check. Interfaces are left out on purpose: a file that only implements a src interface with
+  // its own fake is exactly the shape being flagged.
+  const sourceTypeNames = new Set();
+  const sourceStaticMethods = new Set();
+  for (const file of sourceFiles) {
+    const content = _codeOnly(readFileSync(file, 'utf-8'));
+    for (const m of content.matchAll(/(?:^|\s)(?:public|internal)\s+(?:static\s+|abstract\s+|sealed\s+|partial\s+|readonly\s+|ref\s+)*(?:class|struct|enum|record(?:\s+struct|\s+class)?)\s+(\w+)/g)) {
+      sourceTypeNames.add(m[1]);
+    }
+    for (const m of content.matchAll(/\bpublic\s+static\s+[\w<>\[\],.?\s]+?\s(\w+)\s*(?:<[^>]*>)?\s*\(/g)) {
+      sourceStaticMethods.add(m[1]);
+    }
+  }
+  // Every base a test-tree class inherits, for the dormant-contract check (string literals already stripped,
+  // so a generator test's embedded source does not count).
+  const inheritedBases = new Set();
+  for (const file of testFiles) {
+    const content = _codeOnly(readFileSync(file, 'utf-8'));
+    for (const m of content.matchAll(/\bclass\s+\w+\s*(?:<[^>]*>)?\s*:\s*([\w.]+)/g)) {
+      inheritedBases.add(m[1].split('.').pop());
+    }
+  }
+  const seen = new Set();
+  for (const mapping of sourceTagMappings) {
+    const key = `${mapping.testFile}:${mapping.testMethod}`;
+    const content = contentOf(mapping.testFile);
+    if (content === null) continue;   // the existence warning is reported where the tag is parsed
+    const tag = `${mapping.sourceFile}:${mapping.sourceLine}`;
+    // dormant contract: the declaring class of the method is abstract and nobody inherits it
+    const classDecl = _declaringClass(content, mapping.testMethod);
+    if (classDecl && classDecl.isAbstract && !inheritedBases.has(classDecl.name) && !seen.has(`dormant:${key}`)) {
+      seen.add(`dormant:${key}`);
+      findings.push({ kind: 'dormantContract', testFile: mapping.testFile, testMethod: mapping.testMethod, sourceTag: tag,
+        message: `${classDecl.name} is abstract and nothing inherits it, so ${mapping.testMethod} never runs` });
+    }
+    // self-contained: outside its own nested doubles, the file names no concrete src type and calls no src static method
+    if (!seen.has(`self:${mapping.testFile}`)) {
+      seen.add(`self:${mapping.testFile}`);
+      const outsideDoubles = _withoutNestedClasses(content);
+      const identifiers = new Set(outsideDoubles.match(/\b[A-Z]\w+\b/g) ?? []);
+      const called = new Set([...outsideDoubles.matchAll(/\.(\w+)\s*(?:<[^>]*>)?\s*\(/g)].map(m => m[1]));
+      // A <code-under-test> tag naming a file under src/ is the author's explicit claim (a SQL migration test
+      // drives production functions through raw SQL and names no C# type at all).
+      const declaresCodeUnderTest = /<code-under-test>\s*src\//.test(readFileSync(testFileByRelative.get(mapping.testFile) ?? resolve(LIBRARY_PATH, mapping.testFile), 'utf-8'));
+      const touches = declaresCodeUnderTest || [...identifiers].some(id => sourceTypeNames.has(id)) || [...called].some(id => sourceStaticMethods.has(id));
+      if (!touches) {
+        findings.push({ kind: 'selfContained', testFile: mapping.testFile, testMethod: mapping.testMethod, sourceTag: tag,
+          message: `${mapping.testFile} names no concrete type from src/ outside its own nested classes, so it verifies only its own doubles (a default interface member is the one shape this cannot tell apart; check by hand)` });
+      }
+    }
+    // assertion-free: the method body pins nothing
+    const body = _methodBody(content, mapping.testMethod);
+    if (body !== null && !/\bAssert\s*\.|\.Throws|\.ThrowsAsync|\bShould\w*\(|Assert\w*\(/.test(body) && !seen.has(`assert:${key}`)) {
+      seen.add(`assert:${key}`);
+      findings.push({ kind: 'assertionFree', testFile: mapping.testFile, testMethod: mapping.testMethod, sourceTag: tag,
+        message: `${mapping.testMethod} contains no assertion` });
+    }
+  }
+  return findings;
+}
+
+/** The file with comments and string literals removed, so embedded C# source and prose never count as code. */
+function _codeOnly(content) {
+  return content
+    .replace(/"""[\s\S]*?"""/g, '""')
+    .replace(/@"(?:[^"]|"")*"/g, '""')
+    .replace(/\$?"(?:[^"\\\n]|\\.)*"/g, '""')
+    .replace(/\/\/[^\n]*/g, '')
+    .replace(/\/\*[\s\S]*?\*\//g, '');
+}
+
+/** The code with every nested (private) class body removed: the test's own doubles are not the code under test. */
+function _withoutNestedClasses(code) {
+  let out = code;
+  const nested = /\n\s+(?:private|internal)\s+(?:sealed\s+|static\s+|abstract\s+)*(?:class|record)\s+\w+[^{\n]*\{/g;
+  let m;
+  while ((m = nested.exec(out)) !== null) {
+    const open = m.index + m[0].length - 1;
+    let depth = 0;
+    let close = -1;
+    for (let i = open; i < out.length; i++) {
+      if (out[i] === '{') depth++;
+      else if (out[i] === '}' && --depth === 0) { close = i; break; }
+    }
+    if (close < 0) break;
+    out = out.slice(0, m.index) + out.slice(close + 1);
+    nested.lastIndex = m.index;
+  }
+  return out;
+}
+
+/** The class that declares a test method: its name and whether it is abstract. */
+function _declaringClass(content, methodName) {
+  const at = content.search(new RegExp(`\\bTask\\s+${methodName}\\s*\\(`));
+  if (at < 0) return null;
+  const before = content.slice(0, at);
+  const decls = [...before.matchAll(/(?:public|internal|private|protected)?\s*((?:static\s+|abstract\s+|sealed\s+|partial\s+)*)class\s+(\w+)/g)];
+  if (decls.length === 0) return null;
+  const last = decls[decls.length - 1];
+  return { name: last[2], isAbstract: /\babstract\b/.test(last[1]) };
+}
+
+/** The braces-delimited body of a test method, or null when it cannot be found. */
+function _methodBody(content, methodName) {
+  const at = content.search(new RegExp(`\\bTask\\s+${methodName}\\s*\\(`));
+  if (at < 0) return null;
+  const open = content.indexOf('{', at);
+  if (open < 0) return null;
+  let depth = 0;
+  for (let i = open; i < content.length; i++) {
+    if (content[i] === '{') depth++;
+    else if (content[i] === '}' && --depth === 0) return content.slice(open + 1, i);
+  }
+  return null;
+}
+
+/**
  * Builds bidirectional mapping from code-to-tests and tests-to-code
  */
 function buildBidirectionalMapping(sourceTagMappings, testConventionMappings, sourceFiles) {
@@ -361,16 +499,24 @@ async function main() {
     sourceFiles
   );
 
+  // Step 3b: link health (issue 742): a target that exists but verifies nothing is reported, never silently counted.
+  const linkHealth = assessLinkHealth(sourceTagMappings, testFiles, sourceFiles);
+  for (const finding of linkHealth) {
+    console.warn(`Link health [${finding.kind}] ${finding.sourceTag} -> ${finding.testFile}:${finding.testMethod}: ${finding.message}`);
+  }
+
   const mapping = {
     codeToTests,
     testsToCode,
+    linkHealth,
     metadata: {
       generated: new Date().toISOString(),
       sourceFiles: sourceFiles.length,
       testFiles: testFiles.length,
       totalLinks: Object.keys(codeToTests).length + Object.keys(testsToCode).length,
       codeSymbols: Object.keys(codeToTests).length,
-      testMethods: Object.keys(testsToCode).length
+      testMethods: Object.keys(testsToCode).length,
+      linkHealthFindings: linkHealth.length
     }
   };
 
@@ -391,6 +537,10 @@ async function main() {
   console.log(`\nLink sources:`);
   console.log(`  - XML tags:    ${xmlTagCount}`);
   console.log(`  - Conventions: ${conventionCount}`);
+  console.log(`Link health findings: ${linkHealth.length}` + (linkHealth.length ? ' (see warnings above; the map carries them under linkHealth)' : ''));
+  if (process.argv.includes('--strict') && linkHealth.length > 0) {
+    process.exit(2);
+  }
 }
 
 main().catch(err => {

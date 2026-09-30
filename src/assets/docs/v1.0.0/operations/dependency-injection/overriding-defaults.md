@@ -70,6 +70,20 @@ does not decline to intervene, it asserts an invariant nobody established.
 For those, composition fails at startup naming the service. See
 [Registration Validation](registration-validation).
 
+## Null defaults and subsystems
+
+Some seams have no working default the core can ship - a dead-letter store needs a database, a
+signal bus needs a transport. For those the framework registers a *null default*: an implementation
+that reports `IsConfigured` (or `IsAvailable`) false, so the code depending on it takes the same skip
+path a missing registration used to, with no null check. Every such placeholder implements
+`INullDefault`.
+
+If you are the subsystem that supplies the real implementation, register it with
+`TryAddSingletonOverNullDefault<TService>(...)`. It removes the framework's placeholder and then adds
+with `TryAdd`, so your registration wins whether it runs before or after `AddWhizbang()`, and an
+application's own registration is still left alone. The full list of seams, their defaults and
+the flag each exposes is in [Replaceable Services](../../extending/extensibility/replaceable-services).
+
 ## Related
 
 - [Registration Validation](registration-validation) - what is checked, and when

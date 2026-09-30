@@ -29,7 +29,7 @@ This guide covers installation and configuration of Whizbang's HotChocolate Grap
 ## Installation
 
 ```bash{title="Installation" description="Installation" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Installation"]}
-dotnet add package Whizbang.Transports.HotChocolate
+dotnet add package SoftwareExtravaganza.Whizbang.Transports.HotChocolate
 ```
 
 ## Basic Configuration

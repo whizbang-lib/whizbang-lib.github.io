@@ -322,11 +322,11 @@ Duplicate prevention on the outbox side is application logic, so the framework t
 **1. Use Stable Message IDs**:
 ```csharp{title="Inbox Best Practices" description="Inbox Best Practices" category="Architecture" difficulty="BEGINNER" tags=["Messaging", "C#", "Inbox", "Best", "Practices"] unverified="user guidance — stable message-id reuse pattern with a don't-do-this counter-example, not a framework test"}
 // ✅ Good: Generate the ID once, reuse it for every retry of the same message
-var messageId = TrackedGuid.NewMedo();  // UUIDv7, time-ordered
+var messageId = TrackedGuid.New();  // UUIDv7, time-ordered
 await SendWithRetriesAsync(messageId, orderCreatedEvent);
 
 // ❌ Bad: Fresh ID per attempt (loses idempotency)
-await SendAsync(TrackedGuid.NewMedo(), orderCreatedEvent);  // Different every retry
+await SendAsync(TrackedGuid.New(), orderCreatedEvent);  // Different every retry
 ```
 
 **2. Include Correlation/Causation IDs**:
@@ -359,7 +359,7 @@ public class CreateOrderCommand {
 
 // Client generates ID
 var command = new CreateOrderCommand {
-    OrderId = TrackedGuid.NewMedo(),  // Generated once, by client
+    OrderId = TrackedGuid.New(),  // Generated once, by client
     // ...
 };
 

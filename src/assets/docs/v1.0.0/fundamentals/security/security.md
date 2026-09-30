@@ -778,7 +778,7 @@ Emitted when access is denied due to insufficient permissions.
 
 ```csharp{title="AccessDenied" description="Emitted when access is denied due to insufficient permissions." category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "AccessDenied"] unverified="Audit system-event record (SystemEvents.Security); no unit test in the security test suite"}
 public sealed record AccessDenied : ISystemEvent {
-  public Guid Id { get; init; } = TrackedGuid.NewMedo();
+  public Guid Id { get; init; } = TrackedGuid.New();
   public required string ResourceType { get; init; }
   public string? ResourceId { get; init; }
   public required Permission RequiredPermission { get; init; }
@@ -796,7 +796,7 @@ Emitted when access to a sensitive resource is granted (optional, for audit trai
 
 ```csharp{title="AccessGranted" description="Emitted when access to a sensitive resource is granted (optional, for audit trails)." category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "AccessGranted"] unverified="Audit system-event record (SystemEvents.Security); no unit test in the security test suite"}
 public sealed record AccessGranted : ISystemEvent {
-  public Guid Id { get; init; } = TrackedGuid.NewMedo();
+  public Guid Id { get; init; } = TrackedGuid.New();
   public required string ResourceType { get; init; }
   public string? ResourceId { get; init; }
   public required Permission UsedPermission { get; init; }

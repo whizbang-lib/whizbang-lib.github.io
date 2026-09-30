@@ -211,7 +211,7 @@ public record DocumentSearchDto {
 }
 ```
 
-In Split mode, EF Core materializes the `Data` model from JSONB only, so physical/vector column values are hydrated back into the model after materialization. The production hydration path is `SplitModeChangeTrackerHydrator` (hooked to the `ChangeTracker.Tracked` event); `PhysicalFieldMaterializationInterceptor` (an EF Core `IMaterializationInterceptor`) is kept as a fallback, since `InitializedInstance` fires before `ComplexProperty().ToJson()` populates `Data`.
+In Split mode, EF Core materializes the `Data` model from JSONB only, so physical/vector column values are hydrated back into the model after materialization. The production hydration path is `SplitModeChangeTrackerHydrator` (hooked to the `ChangeTracker.Tracked` event, and acting only on rows a query materialized, so an entity you add or update on the same context is saved as usual); `PhysicalFieldMaterializationInterceptor` (an EF Core `IMaterializationInterceptor`) is kept as a fallback, since `InitializedInstance` fires before `ComplexProperty().ToJson()` populates `Data`.
 
 ## Querying Vectors
 
