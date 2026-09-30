@@ -290,6 +290,11 @@ A database written by an earlier release holds older forms: renderings, and in t
 release a day count for a date and a tick count for a duration. Those rows are converted at startup,
 once, by a rewrite that is part of the migration path rather than of the schema files.
 
+The same phase runs the migrations an application declares for its own stored documents when a
+model changes shape (a property's type or name, a removal, a default): see
+[Stored-form migrations](../../fundamentals/perspectives/stored-form-migrations.md). They run first,
+journaled in `wh_stored_form_migrations`, under the same lock and fence.
+
 ### What it converts
 
 The rewrite is derived at runtime from the two things that read a document: the model Entity

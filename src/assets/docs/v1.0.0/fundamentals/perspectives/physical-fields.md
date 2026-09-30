@@ -663,6 +663,10 @@ table wait for it. This is the accepted cost of an automatic conversion: if that
 acceptable, convert the column yourself beforehand in a maintenance window, and the rewrite then
 finds a numeric column and does nothing.
 
+A property whose type changed to or from an enum, or between other scalars, is converted the same
+way when you declare it with `[StoredForm(Previously = ...)]`, in the document and in its column:
+see [Stored-form migrations](stored-form-migrations.md#physical-columns).
+
 ### Enums inside the document {#enum-documents}
 
 {verified: DocumentEnumFormTests.PersistenceProfile_Enum_IsWrittenAsItsNumberAsync, DocumentEnumFormTests.PersistenceProfile_RegistersNoStringEnumConverterAsync}
