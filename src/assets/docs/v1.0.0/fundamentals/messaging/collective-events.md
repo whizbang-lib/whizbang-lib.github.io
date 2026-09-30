@@ -7,6 +7,7 @@ order: 7
 codeReferences:
   - src/Whizbang.Core/Messaging/ICollectiveEvent.cs
   - src/Whizbang.Core/Messaging/CollectiveEventBase.cs
+  - src/Whizbang.Core/Messaging/CollectiveOrdering.cs
   - src/Whizbang.Core/Messaging/CollectiveScope.cs
   - src/Whizbang.Core/Messaging/TenantCollectiveScope.cs
   - src/Whizbang.Core/Messaging/EventFlags.cs
@@ -35,6 +36,8 @@ codeReferences:
   - src/Whizbang.Core/Perspectives/ICollectiveSetters.cs
   - src/Whizbang.Data.Dapper.Postgres/CollectiveEventsDapperExtensions.cs
   - src/Whizbang.Data.Postgres/Migrations/061_CollectiveEventRouting.sql
+  - src/Whizbang.Data.Postgres/Migrations/175_CollectiveSinkQueue.sql
+  - src/Whizbang.Data.Postgres/Collective/CollectiveApplyContention.cs
   - src/Whizbang.Data.EFCore.Postgres.Generators/EFCoreServiceRegistrationGenerator.cs
 testReferences:
   - tests/Whizbang.Core.Tests/Messaging/CollectiveEventContractTests.cs
@@ -54,6 +57,12 @@ testReferences:
   - tests/Whizbang.Data.Dapper.Postgres.Tests/Collective/DapperCollectivePhysicalColumnIntegrationTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/Collective/CollectivePhysicalColumnCompilerTests.cs
   - tests/Whizbang.Core.Tests/Perspectives/PerspectivePhysicalFieldRegistryTests.cs
+  - tests/Whizbang.Core.Tests/Messaging/CollectiveOrderingKeyTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/CollectiveSinkQueueSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Collective/CollectiveReplayOrderingTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Collective/CollectiveOrderingIntegrationTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/Collective/DapperCollectiveOrderingIntegrationTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/Collective/CollectivePredicateOrderingTests.cs
   - tests/Whizbang.Generators.Tests/PerspectiveRunnerPhysicalFieldRegistrationTests.cs
 ---
 
@@ -172,6 +181,68 @@ Re-applying is idempotent — the SET values are constant — and the apply
 progresses by keyset cursor (`id > @cursor`), so a partial or resumed
 run never skips or double-applies a row.
 
+### Ordering between collectives: the ordering key {#ordering-key}
+
+The scope-level determinism above holds *given an order* of collectives. Without more, two
+collectives have none: each is its own stream, sink streams on different instances apply in
+parallel, and the per-scope advisory lock serializes two applies without ordering them. That
+is invisible to a collective whose setters commute, and wrong for one that expresses "latest
+wins" as a set-based flip (`IsActive = (Id == e.Chosen)` across a family of rows), or for two
+collectives that are the halves of one change (deactivate the old record, activate the new
+one): the earlier one can land last.
+
+Set an **ordering key** on those collectives:
+
+```csharp{
+title: "Order the collectives of one family"
+description: "Collectives sharing an ordering key in one scope apply one at a time, in commit order, live and on replay."
+framework: "NET10"
+category: "Messaging"
+difficulty: "INTERMEDIATE"
+tags: ["collective-events", "ordering-key", "ordering"]
+tests: ["CollectiveOrderingKeyTests.TwoEventTypes_SharingAKeyInOneScope_ShareAStreamAsync", "PerspectiveWorkerCollectiveSinkTests.CollectiveSink_OrderedQueue_AppliesInCommitOrder_WhenIdsRunBackwardAsync", "CollectiveReplayOrderingTests.Fold_TwoCollectivesSharingAKey_EndsAtTheLaterCommitsResultAsync"]
+}
+await dispatcher.PublishAsync(new DeactivateOrderCollectiveEvent {
+  Scope = new TenantCollectiveScope(tenantId),
+  OrderingKey = "activation:" + familyId,
+  OrderId = previous,
+});
+await dispatcher.PublishAsync(new ActivateOrderCollectiveEvent {
+  Scope = new TenantCollectiveScope(tenantId),
+  OrderingKey = "activation:" + familyId,
+  OrderId = next,
+});
+```
+
+What the key guarantees:
+
+- **Collectives sharing a key in one scope apply one at a time, in the order the database
+  committed them.** The event's stream id is derived from the scope and the key
+  (`CollectiveOrdering.StreamIdFor`), so every such collective, of any type, lands on one
+  stream and one `__collective__` sink stream. The sink applies that stream's queue
+  (`wh_collective_sink_queue`) in commit order: `commit_sequence`, an unstamped event last,
+  `event_id` breaking the tie.
+- **Commit order, not id order.** An event id is minted before commit, so two producers can
+  commit in the opposite order to their ids. The sink reads the queue by work row, not after
+  its cursor, so the later commit applies last even when its id is the smaller.
+- **A collective waiting its turn holds everything behind it.** The sink applies the leading
+  collectives it holds and stops at the first it does not (leased elsewhere, backing off after
+  a failure, or waiting for its apply lock). A failed collective is retried in its place,
+  never overtaken.
+- **Replay agrees with live.** A rebuild folds the collectives sharing a stream in the same
+  commit order, within the positions their ids gave them among the row's own events.
+- **Across services** the key's stream travels with the event, and the outbox publishes a
+  stream in order, so the consuming service commits them, and applies them, in the producer's
+  order. A transport that reorders a stream is outside what the key can repair: a collective
+  that arrives after a later one has applied is applied then, since an apply cannot be undone.
+
+Pick the key at the grain of the family (`"activation:" + familyId`): everything sharing a key
+is serialized, so a key wider than the family costs throughput for nothing. Collectives
+without a key are unchanged. `CollectiveEventBase` derives the stream for you; a hand-written
+`ICollectiveEvent` that returns a key must also return `CollectiveOrdering.StreamIdFor(Scope,
+OrderingKey)` from its `[StreamId]` property. The derivation is a compatibility contract:
+every producer and consumer must compute the same stream.
+
 ### What this requires of the developer
 
 The scope predicate and any handler cohort filter must be **a pure
@@ -192,8 +263,9 @@ seam. `ICollectiveReplayApplier` (default `CollectiveReplayApplier`)
 supplies it: during a rebuild it loads the tenant's persisted collective
 events for the model being rebuilt, folds them into each stream's event
 list, and lets the runner's existing `OrderByMessageId` place them
-chronologically among the per-stream events — exactly where they applied
-live. For each matching `[CollectiveApplyFor]` entry it invokes the
+chronologically among the per-stream events; collectives that share an
+[ordering key](#ordering-key) are then put in commit order among themselves,
+the order the live sink applied them in. For each matching `[CollectiveApplyFor]` entry it invokes the
 handler for the spec and hands it to the per-model, **driver-neutral**
 `CollectiveInMemoryExecutor<TModel>`, which evaluates the
 self-referential `Where` and applies the setters to the one in-memory
@@ -497,6 +569,61 @@ public ICollectiveSpec<OrderModel> ClearOverlay(OverlayClearedCollectiveEvent e)
     Where:   r => r.Data.OverlayId == e.OverlayId);
 ```
 
+### Ordering comparisons in `Where` {#ordering-comparisons}
+
+A `Where` can compare with `<`, `<=`, `>` and `>=` as well as `==`, `!=` and
+`Contains`, over a **numeric, enumeration or temporal** member (`DateTime`,
+`DateTimeOffset`, `DateOnly`, `TimeOnly`, `TimeSpan`), on a document path or on a
+[physical column](#physical-columns). The natural use is a monotonic guard that keeps a
+stale collective from overwriting a newer one:
+
+```csharp{
+title: "A monotonic guard in a collective Where"
+description: "Only rows whose recorded ordinal is older than the event's are flipped; a missing key counts as 0 through ??."
+framework: "NET10"
+category: "Messaging"
+difficulty: "INTERMEDIATE"
+tags: ["collective-events", "where", "ordering", "guard"]
+tests: ["DapperCollectiveOrderingIntegrationTests.Ordering_Coalesced_CountsTheMissingKeyAsTheDefaultAsync", "CollectiveOrderingIntegrationTests.Ordering_Coalesced_CountsTheMissingKeyAsTheDefaultAsync"]
+}
+[CollectiveApplyFor]
+public ICollectiveSpec<OrderModel> Activate(ActivationCollectiveEvent e) =>
+  new CollectiveSpec<OrderModel>(
+    Setters: s => s.SetProperty(o => o.ActiveOrdinal, e.Ordinal),
+    Where:   r => (r.Data.ActiveOrdinal ?? 0) < e.Ordinal);   // long? ActiveOrdinal
+```
+
+How the comparison is made, and why:
+
+- **A document member is compared as a number**, `(data->>'X')::numeric`. `->>` is text,
+  and text orders `'10'` before `'9'`.
+- **A temporal member is compared as its stored microsecond count** (the
+  [stored form](../perspectives/jsonb-containment.md) of every date, time and duration), so
+  the event's value is bound as the same count and the comparison is exact to the
+  microsecond. A key still holding an old rendering makes PostgreSQL refuse the statement
+  rather than answer it wrongly.
+- **A physical column is compared as itself**, the value bound as the scalar the column
+  stores (a `DateTimeOffset` at offset zero, which is all `timestamptz` accepts).
+- **A missing key, or a JSON `null`, compares as null**: the comparison is false, exactly as a
+  lifted C# comparison with a null operand is false. Under `!` it stays that way: the
+  compiler makes the comparison false before negating it
+  (`NOT (COALESCE(a < b, FALSE))`), so `!(r.Data.X < 5)` selects a row with a missing key in
+  SQL just as the in-memory replay does. Outside a `!` the plain comparison is emitted, so an
+  index over the expression can serve it.
+- **To have a missing key count as a value**, declare the member nullable and coalesce it:
+  `(r.Data.X ?? 0) < e.Y` compiles to `COALESCE((data->>'X')::numeric, @p) < @q`. That is
+  how a guard covers rows written before the member existed, with no pre-apply step to write
+  a zero into them.
+
+Refused, with the reason: ordering the row id (PostgreSQL orders a `uuid` by its bytes and
+.NET orders a `Guid` by its fields, so the SQL apply and the replay would disagree), a member
+that is neither numeric nor temporal, and a document temporal against a physical one (a
+microsecond count against a timestamp).
+
+The live apply and the in-memory replay select the same rows; both drivers are held to it by
+tests that apply live and replay against the same rows, including the text-ordering trap,
+a JSON null and a missing key with and without `!` and `??`.
+
 ### Cross-perspective cohorts (`ICollectiveQuery`)
 
 A `Where` over `row.Data` only sees the table being mutated. When the
@@ -534,8 +661,8 @@ into a **correlated `EXISTS`** in the same single `UPDATE`:
   and emits the same `EXISTS` SQL; `.Any` → `EXISTS`, `Contains` → `IN`.
 
 Supported inside the `.Any(...)`: an `Id`-correlation (`st.Id == r.Id`)
-plus equality / `Contains` leaf predicates over the sibling's
-`Data`/`Scope`. Richer shapes (non-equality, nested `EXISTS`) throw a
+plus equality, ordering and `Contains` leaf predicates over the sibling's
+`Data`/`Scope`. Richer shapes (disjunctions, nested `EXISTS`) throw a
 clear `NotSupportedException`. Handlers that don't need a sibling simply
 ignore the `ICollectiveQuery` parameter.
 
@@ -774,6 +901,23 @@ hardened so a large cohort can never convoy locks or run away:
   `pg_advisory_xact_lock(hash(table, scope))` — DB-global, so it
   serializes same-scope collective applies **across pods** while
   disjoint scopes (e.g. different tenants) run concurrently.
+- **A bounded lock wait that keeps its lease.** A batch waits at most
+  `LockWaitSeconds` (default **30**) for the lock. When a wait ends without it,
+  the batch reports progress through the same callback the worker renews the work
+  lease from, and waits again, up to `LockWaitRenewals` more times (default **5**,
+  about three minutes in all; `0` gives up after one wait). The lease outlives the
+  wait, so the work is not leased again underneath it and its attempt count does
+  not rise. When every wait is used up the batch gives up with a
+  `CollectiveApplyLockBusyException` naming the table and the total wait.
+- **Busy is not failed.** The worker treats that exception as busy: it reports no
+  failure (the failure count is what drives dead-lettering) and completes nothing,
+  so the collective is applied later. `PerspectiveWorkerOptions.CollectiveLockBusyCountsAsFailure = true`
+  restores the older accounting, a busy lock reported like a failed apply.
+- **An advisory lock has no queue.** PostgreSQL wakes its waiters in no guaranteed
+  order, so a batch that waits has no place in line to keep: a later collective on the
+  same table and scope can take the lock first. Collectives whose order matters carry
+  an [ordering key](#ordering-key); those wait in their key's queue, which a busy lock
+  cannot reorder.
 - **Store-managed columns.** The `UPDATE` also stamps `updated_at` and
   bumps `version` (a collective `UPDATE` writing only `data` would leave
   them stale and break change-detection). The per-stream lost-update guard
@@ -861,9 +1005,10 @@ same keyset-batched apply shape. The shared compiler translates equality
 over a **scope** field (`row.Scope.Prop == value` → `scope->>'Prop'`)
 **or a data** field (`row.Data.Prop == value` → `data->>'Prop'`, or the
 column itself when `Prop` is a `[PhysicalField]`);
-`&&`-chains mixing both; `Contains` (→ `IN`); and
+`&&`-chains mixing both; `Contains` (→ `IN`); ordering comparisons over numeric and
+temporal members (see [Ordering comparisons](#ordering-comparisons)); and
 `q.Of<TOther>().Any(...)` cross-perspective cohorts (→ a correlated
-`EXISTS`). It throws for richer predicates (non-equality, disjunctions,
+`EXISTS`). It throws for richer predicates (disjunctions,
 arbitrary top-level columns, nested `EXISTS`).
 
 For SET clauses, both compilers support scalar top-level

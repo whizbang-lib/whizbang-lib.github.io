@@ -121,13 +121,32 @@ CREATE INDEX idx_wh_unique_emission_claims_expires
 
 - **`claim_key`** — your idempotency key, opaque to the framework.
 - **`claimed_by_event_id`** — audit only; the framework writes it but never reads it.
-- **`expires_at`** — defaults to 30 minutes; the same prune sweep that clears `wh_outbox` / `wh_inbox` removes expired claims. Tuning is a deliberate decision tied to the prune cadence.
+- **`expires_at`** — defaults to 30 minutes. Nothing prunes claims by it: a claim is held until its owner releases or prunes it, and `TryClaimAsync` conflicts on the key alone. The saga framework prunes its own spent claims by key prefix and age ([claim retention](../sagas/completion-orchestration#claim-retention)).
+
+### Reading and releasing claims
+
+Two more members of `IClaimedEmissionStore` serve callers that must respect a decision another caller
+already made:
+
+- **`FindClaimedAsync(keys)`** returns the held subset of `keys`. A key reads as held for exactly as long
+  as `TryClaimAsync` would lose on it, so it ignores `expires_at`. The stranded-saga sweep uses it to
+  leave [abandoned sagas](../sagas/completion-orchestration#abandoned-sagas) alone.
+- **`ReleaseAsync(key)`** deletes a held claim, so the gated side effect can happen once more. It is an
+  operator's act, used to re-drive an abandoned saga; releasing a claim another caller still relies on
+  lets its side effect happen twice.
+
+A third, **`PruneAsync(keyPrefix, claimedBefore)`**, deletes the claims under a literal key prefix
+taken before a cutoff, for the owner of a key convention that knows when its claims are spent.
+
+All three have defaults, so a store written before them still compiles: `FindClaimedAsync` returns `null`
+(cannot tell), `ReleaseAsync` returns `false` and `PruneAsync` returns 0. The Postgres store
+implements all three.
 
 ### Transaction semantics
 
 When the caller is inside an ambient transaction, the claim INSERT participates. **Invariant:** claim is taken iff the emission committed. A rollback of the outer scope releases the claim, so a downstream caller can re-attempt.
 
-When called outside a transaction, the claim commits independently. If the receptor crashes between claim and emission, the claim is "stranded" until `expires_at` releases it. The 30-minute default leaves time for ops to investigate before the next attempt is allowed.
+When called outside a transaction, the claim commits independently. If the receptor crashes between claim and emission, the claim is "stranded": nothing releases it by age, so an operator releases it with `ReleaseAsync`, or its owner prunes it.
 
 ## DI registration
 

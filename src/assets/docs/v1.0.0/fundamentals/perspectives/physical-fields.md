@@ -28,6 +28,8 @@ codeReferences:
   - src/Whizbang.Data.EFCore.Postgres/QueryTranslation/PhysicalFieldRegistry.cs
   - src/Whizbang.Data.EFCore.Postgres/QueryTranslation/PhysicalFieldExpressionVisitor.cs
   - src/Whizbang.Data.EFCore.Postgres/QueryTranslation/PhysicalFieldQueryInterceptor.cs
+  - src/Whizbang.Data.EFCore.Postgres/SplitModeChangeTrackerHydrator.cs
+  - src/Whizbang.Data.EFCore.Postgres.Generators/EFCoreServiceRegistrationGenerator.cs
   - >-
   - src/Whizbang.Data.Postgres/OptionalExtensionBlocks.cs
     src/Whizbang.Data.EFCore.Postgres/QueryTranslation/WhizbangDbContextOptionsBuilderExtensions.cs
@@ -59,6 +61,10 @@ testReferences:
   - tests/Whizbang.Generators.Tests/EnumPhysicalFieldGenerationTests.cs
   - tests/Whizbang.Core.Tests/Perspectives/PerspectivePhysicalValuesTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/Collective/DapperCollectivePhysicalColumnIntegrationTests.cs
+  - tests/Whizbang.Generators.Tests/PhysicalFieldHydratorInitOnlyTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/InitOnlyPhysicalFieldHydrationTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/SplitHydratorHookedWriteTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/SplitClassSnapshotRewindTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -493,6 +499,29 @@ public record ProductSearchDto {
 }
 ```
 
+### Reading promoted fields back {#reading-promoted-fields-back}
+
+{verified: PhysicalFieldHydratorInitOnlyTests.Record_ChangeTrackerHydrator_CopiesTheColumnsWithAWithExpressionAsync, PhysicalFieldHydratorInitOnlyTests.Class_Hydrators_AssignTheSettablePropertiesAndSkipTheRestAsync, InitOnlyPhysicalFieldHydrationTests.SplitRecord_AQueryOnAHookedContext_CopiesTheInitOnlyColumnsIntoTheModelAsync, InitOnlyPhysicalFieldHydrationTests.ExtractedClass_AQueryOnAHookedContext_CopiesTheSettableColumnAndKeepsTheInitOnlyOneFromTheDocumentAsync, SplitHydratorHookedWriteTests.Add_OnAHookedContext_SavesTheSplitRowAsync, SplitHydratorHookedWriteTests.Update_OnAHookedContext_SavesTheChangeAsync, SplitClassSnapshotRewindTests.Rewind_FromASnapshotOfASplitClassModel_KeepsThePromotedColumnsAsync}
+
+When a lens query materializes a row, the generated EF Core code copies each promoted column into the
+model, so a Split field arrives with its value even though the document does not hold it. The copy
+works with the model shapes this page shows:
+
+- **A record** is copied with a `with` expression, so `init`-only properties work as well as settable
+  ones, in every storage mode.
+- **A class** is assigned in place. A class cannot set an `init`-only property on an instance it already
+  has, so the copy leaves that property as the document holds it. In `Extracted` mode the document holds
+  it too, so nothing is lost. A `Split` class model declares its promoted fields `{ get; set; }`.
+- **A computed property** (no setter) is never copied into.
+
+Only rows a query materializes are hydrated. An entity your code adds or attaches for an update on the
+same `DbContext` is left tracked, and `SaveChanges` writes it as usual.
+
+Snapshots hold the promoted fields as well. Before it writes a Split row, the runner clears the promoted
+fields so the document leaves them out. For a record it clears them on a copy. A class has no copy, so the
+runner takes the class's snapshot before the write, and a rewind from that snapshot keeps the columns'
+values.
+
 ## Defining Physical Fields
 
 Use the `[PhysicalField]` attribute to mark properties for physical column storage:
@@ -662,6 +691,10 @@ text. On a large table that start takes correspondingly longer, and reads and wr
 table wait for it. This is the accepted cost of an automatic conversion: if that pause is not
 acceptable, convert the column yourself beforehand in a maintenance window, and the rewrite then
 finds a numeric column and does nothing.
+
+A property whose type changed to or from an enum, or between other scalars, is converted the same
+way when you declare it with `[StoredForm(Previously = ...)]`, in the document and in its column:
+see [Stored-form migrations](stored-form-migrations.md#physical-columns).
 
 ### Enums inside the document {#enum-documents}
 

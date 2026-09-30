@@ -15,6 +15,7 @@ tags: >-
   double fire, at-most-once
 codeReferences:
   - src/Whizbang.Core/Messaging/ReceptorInvoker.cs
+  - src/Whizbang.Core/Dispatcher.cs
   - src/Whizbang.Core/Messaging/IReceptorDedupStore.cs
   - src/Whizbang.Core/Messaging/EnvelopeReceptorDedupStore.cs
   - src/Whizbang.Core/Messaging/ReceptorIdempotentAttribute.cs
@@ -28,6 +29,7 @@ testReferences:
   - tests/Whizbang.Core.Tests/Messaging/EnvelopeReceptorDedupStoreTests.cs
   - tests/Whizbang.Core.Tests/Messaging/DuplicateReceptorFireExceptionTests.cs
   - tests/Whizbang.Core.Tests/Messaging/LifecycleStageTrackerTests.cs
+  - tests/Whizbang.Core.Tests/Dispatcher/DispatcherLocalDispatchRecordTests.cs
   - samples/ECommerce/tests/ECommerce.Lifecycle.Integration.Tests/PostAllPerspectivesTests.cs
   - samples/ECommerce/tests/ECommerce.RabbitMQ.Integration.Tests/Lifecycle/PerspectiveLifecycleTests.cs
 ---
@@ -110,6 +112,14 @@ public class DependentReadModelUpdater : IReceptor<OrderCreatedEvent> {
 ## How records flow
 
 `ReceptorInvocationRecord` is attached to `MessageEnvelope.ReceptorInvocations`, parallel to `Hops`. Like hops, records ride along with the message through every serialization boundary — outbox → transport → inbox → next dispatch. The record itself carries `ReceptorId`, `Stage`, `CompletedAt`, `Duration`, and `ServiceName`.
+
+**The local path of a publish records too.** `PublishAsync` runs an event's default-stage receptors
+directly, not through `ReceptorInvoker`, so before this it wrote no record, and a later stage that
+reached the same receptor for the same message in another host fired it again. The dispatcher now
+writes a record (stage `LocalImmediateInline`) for each receptor at the local default stage onto the
+envelope it stores for the outbox, before the envelope is serialized, because the outbox write runs
+beside the local path. A publish scheduled for later runs nothing locally and records nothing. With
+`ReceptorInvocationTracking = Off`, or no dedup store, nothing is recorded.
 
 **Important invariant**: `ReceptorInvocations` is **not consulted** by security, scope, source-service, or trace-context extraction. Those all walk `Hops` only. The two lists are intentionally parallel so the guardrail cannot accidentally leak into security-critical paths.
 
