@@ -197,6 +197,20 @@ services.AddWhizbangSagas(opts => {
 | `StrandedSagaIdleGuard` | 5 min | How long a saga with no tick coming must go without any change before the [stranded-saga sweep](#stranded-sagas) re-arms it. Covers a tick on the transport, which no table shows. |
 | `StrandedSagaRearmInterval` | 1 hour | How often the [stranded-saga sweep](#stranded-sagas) arms another tick for a saga that stays stranded, counted in whole intervals of stillness since its last change. Must be positive. |
 
+## Where a tick is received {#tick-delivery}
+
+{verified: SagaWatchdogTickDeliveryCountTests.ScheduledTick_ReceivedByItsOwnService_IsHandledOnceAsync, SagaWatchdogTickDeliveryCountTests.ImmediateTick_ReceivedByItsOwnService_IsHandledOnceAsync, SagaWatchdogTickDeliveryCountTests.Tick_EachReceivingHost_HandlesItOnceAsync}
+
+Both receivers, the `[Saga]`-generated `SagaCompletionWatchdogTickHandler` and the framework router
+for hand-written sagas, answer at `PreInboxInline`. That stage runs once for every inbox row whichever
+service published it, and it is on the receiving side, so a tick is never handled at the moment it is
+armed. A saga's service normally arms and receives its own ticks. The post-inbox stage skips a message
+this same service published, which is why a generated receiver there never saw its own scheduled
+ticks, and only the stranded-saga sweep's ticks reached it.
+
+Each host that receives a tick handles it once. Ticks share one topic, so two differently named
+services that both declare the same saga would each check it: run a saga in one service.
+
 ## Hand-written sagas {#hand-written-sagas}
 
 {verified: SagaWatchdogTickDeliveryIntegrationTests.HandWrittenSagaTick_DeliveredAtTheInboxStage_ReachesTheSagaAsync, SagaWatchdogTickDeliveryIntegrationTests.WithoutTheRouter_AHandWrittenSagaTick_ReachesNothingAsync, SagaWatchdogTickDeliveryIntegrationTests.HandWrittenSagaTick_AtTheSendingStage_DoesNotReachTheSagaAsync, SagaWatchdogTickDeliveryIntegrationTests.HandWrittenSagaTick_AfterTheInboxCommit_DoesNotReachTheSagaAgainAsync, SagaWatchdogTickDeliveryIntegrationTests.SagaAttributeTick_IsLeftToItsGeneratedReceiverAsync, SagaWatchdogTickSubscriptionIntegrationTests.AddSagaServiceOnly_SubscribesToTheTicksTopic_AndAPublishedTickReachesTheSagaAsync, SagaWatchdogTickSubscriptionIntegrationTests.WithoutWhizbangSagas_TheTicksTopicIsNotSubscribed_AndAPublishedTickIsNeverReceivedAsync, SagaWatchdogTickSubscriptionIntegrationTests.HostWithItsOwnTickReceptor_SubscribesOnce_AndEachTickIsRecoveredOnceAsync, SagaWatchdogTickSubscriptionIntegrationTests.AddSagaServiceOnly_TheTickSubscription_IsLoggedAndHealthyLikeAnyOtherAsync}

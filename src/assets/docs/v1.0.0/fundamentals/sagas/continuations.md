@@ -18,6 +18,7 @@ codeReferences:
   - src/Whizbang.Sagas/Helpers/SagaContinuationGuard.cs
   - src/Whizbang.Sagas/Services/BaseSagaService.cs
 testReferences:
+  - tests/Whizbang.Sagas.Tests/Generated/SagasJsonContextTests.cs
   - tests/Whizbang.Sagas.Tests/SagaContinuationTests.cs
   - tests/Whizbang.Sagas.Tests/Generators/SagaContinuationGeneratorTests.cs
 ---
@@ -130,6 +131,10 @@ public class EnrichmentChainReceptor(DerivedEnrichmentSaga.Service saga)
 what lets the receptor filter on a name it already knows. The parent is described by
 `ParentSagaName`, `ParentSagaId` and `ParentFinalStatus`. `EntityId` is the parent's, because a
 continuation acts on the same domain entity.
+
+The request is stored on the finished saga's stream and is registered with the framework's JSON
+context under its wire name, so a receptor in another service, reached through the outbox and a
+transport, receives it like any other event.
 
 ## Exactly once, and not lost
 
