@@ -621,15 +621,15 @@ Shared batching shape (drain signals). **Configure:** via the owning worker's `B
 
 ### SlidingWindowInboxOptions / SlidingWindowOutboxOptions / SlidingWindowApplyOptions
 
-Per-stream debounce strategies for the inbox, outbox, and perspective-apply boundaries. **Configure:** `services.Configure<T>(…)`. **Details:** no dedicated page yet.
+Per-stream debounce strategies for the inbox, outbox, and perspective-apply boundaries. **Configure:** the inbox and outbox shapes bind automatically from `Whizbang:Workers:InboxBatch` and `Whizbang:Workers:OutboxBatch` — no registration call needed, and `services.Configure<T>(…)` still applies and runs first. The apply shape (`SlidingWindowApplyOptions`) has no configuration section and is code-configured. **Details:** no dedicated page yet.
 
-| Property | Type | Inbox default | Outbox default | Apply default | Purpose |
-|----------|------|---------------|----------------|---------------|---------|
-| `SlidingWindow` | `TimeSpan` | 300ms | 50ms | 300ms | Per-stream debounce after the last signal |
-| `MaxWait` | `TimeSpan` | 3s | 1s | 3s | Hard cap from the first signal in a batch |
-| `MaxSize` | `int` | 1000 | 100 | 1000 | Max signals per stream batch |
-| `IdleEvictionWindow` | `TimeSpan` | 30s | 30s | 30s | Evict a stream's buffer after this idle duration |
-| `IdleSweepInterval` | `TimeSpan` | 10s | 10s | 10s | How often the idle sweep runs |
+| Property | Type | Inbox default | Outbox default | Apply default | Environment variable (inbox / outbox) | Purpose |
+|----------|------|---------------|----------------|---------------|----------------------------------------|---------|
+| `SlidingWindow` | `TimeSpan` | 300ms | 50ms | 300ms | `Whizbang__Workers__InboxBatch__SlidingWindow` / `Whizbang__Workers__OutboxBatch__SlidingWindow` | Per-stream debounce after the last signal |
+| `MaxWait` | `TimeSpan` | 3s | 1s | 3s | `Whizbang__Workers__InboxBatch__MaxWait` / `Whizbang__Workers__OutboxBatch__MaxWait` | Hard cap from the first signal in a batch |
+| `MaxSize` | `int` | 1000 | 100 | 1000 | `Whizbang__Workers__InboxBatch__MaxSize` / `Whizbang__Workers__OutboxBatch__MaxSize` | Max signals per stream batch |
+| `IdleEvictionWindow` | `TimeSpan` | 30s | 30s | 30s | `Whizbang__Workers__InboxBatch__IdleEvictionWindow` / `Whizbang__Workers__OutboxBatch__IdleEvictionWindow` | Evict a stream's buffer after this idle duration |
+| `IdleSweepInterval` | `TimeSpan` | 10s | 10s | 10s | `Whizbang__Workers__InboxBatch__IdleSweepInterval` / `Whizbang__Workers__OutboxBatch__IdleSweepInterval` | How often the idle sweep runs |
 
 ### PerStreamSerializerOptions
 
@@ -878,9 +878,10 @@ Self-healing continuity checking; the defaults are the recommended posture. **Co
 
 Arbitration tuning for the ranked housekeeping activities (dead-letter recovery, integrity, maintenance). **Configure:** bound by the framework from `Whizbang:Housekeeping` (`Whizbang__Housekeeping__MaxConsecutiveDeferrals=12` works with no service code); a host can also register its own `HousekeepingCoordinator` instance before the framework's TryAdd. **Details:** [Housekeeping Arbitration](../workers/housekeeping-arbitration).
 
-| Property | Type | Default | Purpose |
-|----------|------|---------|---------|
-| `MaxConsecutiveDeferrals` | `int` | `6` | Busy verdicts tolerated before one pass forces through (`ProceedDeferralLimit`) — the starvation floor for recovery and maintenance, counted per activity. At the 10-minute scan cadence, 6 means a never-idle service still recovers roughly hourly |
+| Property | Type | Default | Environment variable | Purpose |
+|----------|------|---------|----------------------|---------|
+| `MaxConsecutiveDeferrals` | `int` | `6` | `Whizbang__Housekeeping__MaxConsecutiveDeferrals` | Busy verdicts tolerated before one pass forces through (`ProceedDeferralLimit`) — the starvation floor for recovery and maintenance, counted per activity. At the 10-minute scan cadence, 6 means a never-idle service still recovers roughly hourly |
+| `SettledCooldown` | `TimeSpan` | `00:02:00` | `Whizbang__Housekeeping__SettledCooldown` | How long an activity that reported nothing to do is skipped before it is ranked again |
 
 ### TransportDeadLetterDrainWorkerOptions
 
