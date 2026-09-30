@@ -272,9 +272,19 @@ def build_nav(directory: Path, rel_path: str = "") -> list:
 
 
 def quote_if_needed(s: str) -> str:
-    """Quote a YAML string if it contains special characters."""
-    if any(c in s for c in ":#{}[]|>&*!%@`"):
-        return f"'{s}'"
+    """Quote a YAML string, doubling any single quote it contains.
+
+    A single-quoted YAML scalar ends at the next apostrophe unless that
+    apostrophe is doubled, so a title like "Declared Index Cannot Be Built For
+    This Field's Type" terminated the string early and left the rest of the line
+    as stray tokens. That makes the whole of mkdocs.yml unparseable, not just the
+    one entry, which failed every Read the Docs build until the project was
+    disabled for consecutive failures.
+    """
+    if not s:
+        return "''"
+    if any(c in s for c in ":#{}[]|>&*!%@`'\"") or s != s.strip():
+        return "'" + s.replace("'", "''") + "'"
     return s
 
 
