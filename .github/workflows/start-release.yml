@@ -92,6 +92,17 @@ jobs:
             SEMVER="${MAJOR}.${MINOR}.${PATCH}"
           fi
 
+          # A tag is only created after the release PR merges, so a dispatch inside that window
+          # would recompute the version that is already in flight and collide with its branch.
+          # Skip anything already taken by a tag or by an existing release branch.
+          git fetch --quiet --tags origin || true
+          while git rev-parse --verify --quiet "refs/tags/v$SEMVER" >/dev/null \
+             || git ls-remote --exit-code --heads origin "release/v$SEMVER" >/dev/null 2>&1; do
+            echo "v$SEMVER is already taken (tag or release branch) - bumping"
+            IFS='.' read -r MA MI PA <<< "${SEMVER%%-*}"
+            SEMVER="${MA}.${MI}.$((PA + 1))"
+          done
+
           echo "semver=$SEMVER" >> "$GITHUB_OUTPUT"
           echo "branch=release/v$SEMVER" >> "$GITHUB_OUTPUT"
           echo "Calculated version: $SEMVER"
@@ -180,7 +191,15 @@ jobs:
             case "$CONCLUSION" in
               success)
                 echo "Build passed - merging v$VERSION"
-                gh pr merge "$BRANCH" --merge && exit 0
+                if gh pr merge "$BRANCH" --merge; then
+                  # GITHUB_TOKEN pushes do not trigger further workflows, so merging here leaves
+                  # deploy.yml (push to main) and release.yml (PR closed) unrun: main moves and the
+                  # published site does not. Dispatch the deploy explicitly.
+                  echo "Merged - dispatching deploy for main"
+                  gh workflow run deploy.yml --ref main \
+                    || echo "::warning::Deploy dispatch failed - run it manually to publish v$VERSION"
+                  exit 0
+                fi
                 echo "Merge failed, retrying"
                 ;;
               pending|null|"")
