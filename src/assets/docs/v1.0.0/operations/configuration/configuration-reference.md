@@ -40,7 +40,7 @@ Whizbang follows the standard .NET configuration model ([Microsoft: Configuratio
 |-----------|---------------|------------|
 | **Bound automatically** | `AddWhizbang()` / the database driver registration reads these configuration sections with hand-rolled, AOT-safe binders. Setting a key in `appsettings.json` or as an environment variable just works. | **44 sections** — `Whizbang` itself, `Whizbang:Tracing`, `Whizbang:SchemaInitialization`, `Whizbang:WorkCoordinator`, every `Whizbang:Workers:*` worker, `Whizbang:StreamIntegrity`, `Whizbang:DeadLetterRecovery`, `Whizbang:Temporal`, `Whizbang:Tags` and the rest listed in the [Quick Map](#quick-map); plus `Whizbang:Database*` with the Postgres driver, `Whizbang:Transports:AzureServiceBus` with that transport, and `Whizbang:ServiceName`, `Whizbang:ShowBanner`, `ConnectionStrings:*`, `ConnectionPool:*` |
 | **Opt-in binding helper** | A one-line registration call reads the section for you. Without that call, the section is inert. | `Whizbang:BodyOffload` + `Whizbang:Offloads:AzureBlob:<name>` (via `AddWhizbangAzureBlobOffloadsFromConfiguration`) |
-| **Code-configured** | The options class is configured through an `Action<TOptions>` lambda (or `services.Configure<TOptions>(...)`). The library never reads a configuration section for it — **a configuration key for one of these does nothing unless your service binds it** (see [the binding recipe](#code-configured-options-the-binding-recipe)). | The classes with no configuration section in the [Quick Map](#quick-map): `WhizbangCoreOptions`, `ServiceRegistrationOptions`, `WhizbangLifecycleOptions`, `StandbyWatcherOptions`, `WhizbangHealthOptions`, `DebuggerAwareClockOptions`, `WorkerRetryOptions`, `BatchFlusherOptions`, `MessageProcessingOptions`, `TransportBatchOptions`, `SlidingWindowBatcherOptions` and the other shared shapes |
+| **Code-configured** | The options class is configured through an `Action<TOptions>` lambda (or `services.Configure<TOptions>(...)`). The library never reads a configuration section for it — **a configuration key for one of these does nothing unless your service binds it**. Every table below carries an environment-variable column; these read `— *code-only*`, so a blank is always deliberate rather than an omission (see [the binding recipe](#code-configured-options-the-binding-recipe)). | The classes with no configuration section in the [Quick Map](#quick-map): `WhizbangCoreOptions`, `ServiceRegistrationOptions`, `WhizbangLifecycleOptions`, `StandbyWatcherOptions`, `WhizbangHealthOptions`, `DebuggerAwareClockOptions`, `WorkerRetryOptions`, `BatchFlusherOptions`, `MessageProcessingOptions`, `TransportBatchOptions`, `SlidingWindowBatcherOptions` and the other shared shapes |
 
 > **The most common configuration mistake** is setting environment variables for a code-configured section — for example `Whizbang__StandbyWatcher__PollInterval` — and expecting them to take effect. Nothing in the library reads that section. Every class below states which mechanism applies to it.
 >
@@ -167,12 +167,12 @@ Whizbang resolves database connections through `ConnectionStrings:*` keys with t
 
 The generated DbContext registration reads a root-level `ConnectionPool` section (environment form `ConnectionPool__<Key>`) and applies the values to the Npgsql connection string:
 
-| Key | Type | Purpose |
-|-----|------|---------|
-| `ConnectionPool:MaxPoolSize` | `int` | Npgsql `Maximum Pool Size` |
-| `ConnectionPool:MinPoolSize` | `int` | Npgsql `Minimum Pool Size` |
-| `ConnectionPool:Timeout` | `int` (seconds) | Npgsql connection `Timeout` |
-| `ConnectionPool:CommandTimeout` | `int` (seconds) | Npgsql `Command Timeout` |
+| Key | Type | Environment variable | Purpose |
+|-----|------|----------------------|---------|
+| `ConnectionPool:MaxPoolSize` | `int` | — *code-only* | Npgsql `Maximum Pool Size` |
+| `ConnectionPool:MinPoolSize` | `int` | — *code-only* | Npgsql `Minimum Pool Size` |
+| `ConnectionPool:Timeout` | `int` (seconds) | — *code-only* | Npgsql connection `Timeout` |
+| `ConnectionPool:CommandTimeout` | `int` (seconds) | — *code-only* | Npgsql `Command Timeout` |
 
 ## Opt-In Binding: Message Body Offload
 
@@ -265,15 +265,15 @@ builder.Services.Configure<StreamIntegrityOptions>(options => {
 
 Entry point to subsystem configuration. **Configure:** `AddWhizbang(options => …)`. **Details:** [WhizbangCoreOptions](whizbang-options#properties).
 
-| Property | Type | Default | Purpose |
-|----------|------|---------|---------|
-| `AutoRegisterAspNetHosting` | `bool` | `true` | Fold in `AddWhizbangAspNet()` automatically when the Hosting.AspNet assembly is loaded |
-| `EnableTagProcessing` | `bool` | `true` | Master switch for message tag hooks |
-| `TagProcessingMode` | `TagProcessingMode` | `AfterReceptorCompletion` | When tag hooks run |
-| `DefaultQueryScope` | `QueryScope` | `Tenant` | Default scope filtering for `ILensQuery<TModel>.DefaultScope` |
-| `ShowBanner` | `bool` | `true` | Print the ASCII banner on startup |
-| `ImmediateDetachedChainWarningThreshold` | `int` | `10` | Warn when ImmediateDetached chain depth reaches a multiple of this |
-| `EmptyStreamIdPolicy` | `EmptyStreamIdPolicy` | `Reject` | Handling of `Guid.Empty` stream ids (see [Empty Stream ID Policy](empty-stream-id-policy)) |
+| Property | Type | Default | Environment variable | Purpose |
+|----------|------|---------|----------------------|---------|
+| `AutoRegisterAspNetHosting` | `bool` | `true` | — *code-only* | Fold in `AddWhizbangAspNet()` automatically when the Hosting.AspNet assembly is loaded |
+| `EnableTagProcessing` | `bool` | `true` | — *code-only* | Master switch for message tag hooks |
+| `TagProcessingMode` | `TagProcessingMode` | `AfterReceptorCompletion` | — *code-only* | When tag hooks run |
+| `DefaultQueryScope` | `QueryScope` | `Tenant` | — *code-only* | Default scope filtering for `ILensQuery<TModel>.DefaultScope` |
+| `ShowBanner` | `bool` | `true` | — *code-only* | Print the ASCII banner on startup |
+| `ImmediateDetachedChainWarningThreshold` | `int` | `10` | — *code-only* | Warn when ImmediateDetached chain depth reaches a multiple of this |
+| `EmptyStreamIdPolicy` | `EmptyStreamIdPolicy` | `Reject` | — *code-only* | Handling of `Guid.Empty` stream ids (see [Empty Stream ID Policy](empty-stream-id-policy)) |
 
 Sub-option bags on this class: `Tags` ([TagOptions](#tagoptions)), `Tracing` ([TracingOptions](#whizbangtracing--tracingoptions)), `Services` ([ServiceRegistrationOptions](service-registration-options)).
 
@@ -293,20 +293,20 @@ Runtime guid-tracking and guardrail behavior. **Configure:** bound automatically
 
 Guardrails for the "exactly once per receptor per message" contract. **Configure:** via `WhizbangOptions.Guardrails`. **Details:** no dedicated page yet.
 
-| Property | Type | Default | Purpose |
-|----------|------|---------|---------|
-| `ReceptorInvocationTracking` | `ReceptorInvocationTracking` | `TrackAndEnforce` | Whether invocations are recorded and duplicates blocked |
-| `OnDoubleFire` | `DoubleFireBehavior` | `Warn` | On duplicate under enforcement: log + skip, or throw |
-| `PersistInvocations` | `InvocationPersistence` | `Envelope` | Where records persist (`Envelope` = zero DB writes) |
-| `EnableChaosHooks` | `bool` | `false` | Framework workers call `IChaosInjector` at named checkpoints |
+| Property | Type | Default | Environment variable | Purpose |
+|----------|------|---------|----------------------|---------|
+| `ReceptorInvocationTracking` | `ReceptorInvocationTracking` | `TrackAndEnforce` | — *code-only* | Whether invocations are recorded and duplicates blocked |
+| `OnDoubleFire` | `DoubleFireBehavior` | `Warn` | — *code-only* | On duplicate under enforcement: log + skip, or throw |
+| `PersistInvocations` | `InvocationPersistence` | `Envelope` | — *code-only* | Where records persist (`Envelope` = zero DB writes) |
+| `EnableChaosHooks` | `bool` | `false` | — *code-only* | Framework workers call `IChaosInjector` at named checkpoints |
 
 ### ServiceRegistrationOptions
 
 **Configure:** `AddWhizbang(options => options.Services…)`. **Details:** [ServiceRegistrationOptions](service-registration-options#properties).
 
-| Property | Type | Default | Purpose |
-|----------|------|---------|---------|
-| `IncludeSelfRegistration` | `bool` | `true` | Register concrete types as themselves in addition to their interfaces |
+| Property | Type | Default | Environment variable | Purpose |
+|----------|------|---------|----------------------|---------|
+| `IncludeSelfRegistration` | `bool` | `true` | — *code-only* | Register concrete types as themselves in addition to their interfaces |
 
 ### SchemaInitializationOptions
 
@@ -330,28 +330,28 @@ Startup reconciliation of ephemeral-event settings drift. **Configure:** bound a
 
 Coordinated lifecycle state machine tunables. **Configure:** the run-control registration lambda. **Details:** [Managed Resource Run Control](../../resilience/managed-resource-run-control).
 
-| Property | Type | Default | Purpose |
-|----------|------|---------|---------|
-| `TransitionAckTimeout` | `TimeSpan` | `00:00:30` | Per-resource acknowledgement budget per coordinated transition; exceeding faults the system |
-| `FaultRecordWindow` | `TimeSpan` | `00:00:05` | How long the system stays Faulted (record/report) before Halted |
+| Property | Type | Default | Environment variable | Purpose |
+|----------|------|---------|----------------------|---------|
+| `TransitionAckTimeout` | `TimeSpan` | `00:00:30` | — *code-only* | Per-resource acknowledgement budget per coordinated transition; exceeding faults the system |
+| `FaultRecordWindow` | `TimeSpan` | `00:00:05` | — *code-only* | How long the system stays Faulted (record/report) before Halted |
 
 ### StandbyWatcherOptions
 
 Cadences for the rolling-upgrade standby handshake. **Configure:** `services.Configure<StandbyWatcherOptions>(…)`. **Details:** [Rolling Upgrades](../startup/rolling-upgrades#the-standby-handshake).
 
-| Property | Type | Default | Purpose |
-|----------|------|---------|---------|
-| `PollInterval` | `TimeSpan` | `00:00:05` | How often the watcher checks for an active standby request |
-| `ObsolescenceInterval` | `TimeSpan` | `00:01:00` | How often a serving instance re-assesses its verdict against the ledger |
-| `RequesterLivenessWindow` | `TimeSpan` | `00:00:30` | How stale the requester's heartbeat may be before its request is void |
+| Property | Type | Default | Environment variable | Purpose |
+|----------|------|---------|----------------------|---------|
+| `PollInterval` | `TimeSpan` | `00:00:05` | — *code-only* | How often the watcher checks for an active standby request |
+| `ObsolescenceInterval` | `TimeSpan` | `00:01:00` | — *code-only* | How often a serving instance re-assesses its verdict against the ledger |
+| `RequesterLivenessWindow` | `TimeSpan` | `00:00:30` | — *code-only* | How stale the requester's heartbeat may be before its request is void |
 
 ### WhizbangHealthOptions
 
 Maps managed-resource states to health per component. **Configure:** the health registration lambda; per-component overrides via the `Components` dictionary. **Details:** [Managed Resource Health](../../resilience/managed-resource-health).
 
-| Property | Type | Default | Purpose |
-|----------|------|---------|---------|
-| `Default` | `HealthPolicy` | `Lenient` | Policy applied to any component without an explicit override |
+| Property | Type | Default | Environment variable | Purpose |
+|----------|------|---------|----------------------|---------|
+| `Default` | `HealthPolicy` | `Lenient` | — *code-only* | Policy applied to any component without an explicit override |
 
 ### SignalBusOptions
 
@@ -378,11 +378,11 @@ Hosted signal bus wire-route self-test and doorbell liveness. **Configure:** bou
 
 **Configure:** `services.Configure<DebuggerAwareClockOptions>(…)`. **Details:** no dedicated page yet.
 
-| Property | Type | Default | Purpose |
-|----------|------|---------|---------|
-| `Mode` | `DebuggerDetectionMode` | `Auto` | Detection mode for identifying paused states |
-| `SamplingInterval` | `TimeSpan` | `00:00:00.100` | CPU sampling interval for `CpuTimeSampling` mode |
-| `FrozenThreshold` | `double` | `10.0` | Wall/CPU time ratio above which execution counts as frozen |
+| Property | Type | Default | Environment variable | Purpose |
+|----------|------|---------|----------------------|---------|
+| `Mode` | `DebuggerDetectionMode` | `Auto` | — *code-only* | Detection mode for identifying paused states |
+| `SamplingInterval` | `TimeSpan` | `00:00:00.100` | — *code-only* | CPU sampling interval for `CpuTimeSampling` mode |
+| `FrozenThreshold` | `double` | `10.0` | — *code-only* | Wall/CPU time ratio above which execution counts as frozen |
 
 ## Work Coordination, Claims, and Leases
 
@@ -487,12 +487,12 @@ Zero-idle-polling backup tick. **Configure:** bound automatically from `Whizbang
 
 Completion retry with exponential backoff. **Configure:** via the owning worker's options (e.g. `PerspectiveWorkerOptions.RetryOptions`). **Details:** [Policy Engine](../infrastructure/policy-engine#worker-retry-with-exponential-backoff).
 
-| Property | Type | Default | Purpose |
-|----------|------|---------|---------|
-| `RetryTimeoutSeconds` | `int` | `1` | Base retry timeout; first retry after this duration |
-| `EnableExponentialBackoff` | `bool` | `true` | Grow the timeout 1s→2s→4s→…→cap |
-| `BackoffMultiplier` | `double` | `2.0` | `baseTimeout * multiplier^retryCount` |
-| `MaxBackoffSeconds` | `int` | `60` | Cap on retry timeout; keep low — failing messages block streams |
+| Property | Type | Default | Environment variable | Purpose |
+|----------|------|---------|----------------------|---------|
+| `RetryTimeoutSeconds` | `int` | `1` | — *code-only* | Base retry timeout; first retry after this duration |
+| `EnableExponentialBackoff` | `bool` | `true` | — *code-only* | Grow the timeout 1s→2s→4s→…→cap |
+| `BackoffMultiplier` | `double` | `2.0` | — *code-only* | `baseTimeout * multiplier^retryCount` |
+| `MaxBackoffSeconds` | `int` | `60` | — *code-only* | Cap on retry timeout; keep low — failing messages block streams |
 
 ## Outbox and Inbox Pipeline
 
@@ -576,15 +576,15 @@ The only source of `InboxWork`. **Configure:** bound automatically from `Whizban
 
 Shared tuning shape for the flush workers above. **Configure:** via the owning worker's `Flusher` property.
 
-| Property | Type | Default | Purpose |
-|----------|------|---------|---------|
-| `ChannelCapacity` | `int` | `10000` | Bounded channel capacity (back-pressure when full) |
-| `MaxBatchSize` | `int` | `500` | Max items per flush call |
-| `CoalesceWindowMs` | `int` | `25` | Max ms coalescing additional items after the first |
-| `ImmediateFlushThreshold` | `int` | `250` | Flush immediately if the batch reaches this first |
-| `MaxFlushAttempts` | `int` | `5` | Consecutive failed flushes of one batch before it is dropped |
-| `FlushRetryBackoffMs` | `int` | `250` | Backoff before the first retry of a failed flush; doubles per attempt |
-| `FlushRetryMaxBackoffMs` | `int` | `5000` | Cap on the retry backoff |
+| Property | Type | Default | Environment variable | Purpose |
+|----------|------|---------|----------------------|---------|
+| `ChannelCapacity` | `int` | `10000` | — *code-only* | Bounded channel capacity (back-pressure when full) |
+| `MaxBatchSize` | `int` | `500` | — *code-only* | Max items per flush call |
+| `CoalesceWindowMs` | `int` | `25` | — *code-only* | Max ms coalescing additional items after the first |
+| `ImmediateFlushThreshold` | `int` | `250` | — *code-only* | Flush immediately if the batch reaches this first |
+| `MaxFlushAttempts` | `int` | `5` | — *code-only* | Consecutive failed flushes of one batch before it is dropped |
+| `FlushRetryBackoffMs` | `int` | `250` | — *code-only* | Backoff before the first retry of a failed flush; doubles per attempt |
+| `FlushRetryMaxBackoffMs` | `int` | `5000` | — *code-only* | Cap on the retry backoff |
 
 A flush that throws is retried in place with the same batch (Warning, EventId 1: `BatchFlusher flush failed for batch of {Count} (attempt {Attempt} of {MaxAttempts}); retrying the same batch in {BackoffMs}ms`) rather than discarded. The items are completions, lease renewals and failures, so a dropped batch leaves its rows leased until their lease expires, after which they are re-claimed and redone; that consequence is named in the Error (EventId 3) logged when `MaxFlushAttempts` is exhausted, and the count is visible on the flusher's `ItemsDropped` counter beside `ItemsFlushed`. {verified: BatchFlusherRetryTests.FlushFailsOnce_RetriesTheSameBatchAndDeliversItAsync, BatchFlusherRetryTests.FlushAlwaysFails_DropsAfterMaxAttemptsAndNamesTheConsequenceAsync}
 
@@ -592,55 +592,55 @@ A flush that throws is retried in place with the same batch (Warning, EventId 1:
 
 Transport consumer concurrency and inbox batching. **Configure:** `services.Configure<MessageProcessingOptions>(…)`. **Details:** no dedicated page yet.
 
-| Property | Type | Default | Purpose |
-|----------|------|---------|---------|
-| `MaxConcurrentMessages` | `int` | `40` | Max messages processed concurrently across all subscriptions; 0 disables |
-| `InboxBatchSize` | `int` | `100` | Inbox messages collected before flushing the dedup batch |
-| `InboxBatchSlideMs` | `int` | `50` | Sliding window; resets on each enqueue |
-| `InboxBatchMaxWaitMs` | `int` | `1000` | Hard max wait from the first message in a batch |
+| Property | Type | Default | Environment variable | Purpose |
+|----------|------|---------|----------------------|---------|
+| `MaxConcurrentMessages` | `int` | `40` | — *code-only* | Max messages processed concurrently across all subscriptions; 0 disables |
+| `InboxBatchSize` | `int` | `100` | — *code-only* | Inbox messages collected before flushing the dedup batch |
+| `InboxBatchSlideMs` | `int` | `50` | — *code-only* | Sliding window; resets on each enqueue |
+| `InboxBatchMaxWaitMs` | `int` | `1000` | — *code-only* | Hard max wait from the first message in a batch |
 
 ### TransportBatchOptions
 
 Transport-level batch collection before `process_work_batch`. **Configure:** the transport registration lambda. **Details:** [Transports](../../messaging/transports/transports#configuration).
 
-| Property | Type | Default | Purpose |
-|----------|------|---------|---------|
-| `BatchSize` | `int` | `200` | Messages collected before flushing immediately |
-| `SlideMs` | `int` | `20` | Sliding window; resets on each enqueue |
-| `MaxWaitMs` | `int` | `1000` | Hard max wait regardless of arrivals |
+| Property | Type | Default | Environment variable | Purpose |
+|----------|------|---------|----------------------|---------|
+| `BatchSize` | `int` | `200` | — *code-only* | Messages collected before flushing immediately |
+| `SlideMs` | `int` | `20` | — *code-only* | Sliding window; resets on each enqueue |
+| `MaxWaitMs` | `int` | `1000` | — *code-only* | Hard max wait regardless of arrivals |
 
 ### SlidingWindowBatcherOptions
 
 Shared batching shape (drain signals). **Configure:** via the owning worker's `Batcher`/`DrainBatcher` property.
 
-| Property | Type | Default | Purpose |
-|----------|------|---------|---------|
-| `MaxSize` | `int` | `100` | Max items in a batch; flushed as soon as reached |
-| `SlidingWindow` | `TimeSpan` | `00:00:00.050` | Quiet period after the last arrival |
-| `MaxWait` | `TimeSpan` | `00:00:01` | Hard cap on wait from the first arrival |
+| Property | Type | Default | Environment variable | Purpose |
+|----------|------|---------|----------------------|---------|
+| `MaxSize` | `int` | `100` | — *code-only* | Max items in a batch; flushed as soon as reached |
+| `SlidingWindow` | `TimeSpan` | `00:00:00.050` | — *code-only* | Quiet period after the last arrival |
+| `MaxWait` | `TimeSpan` | `00:00:01` | — *code-only* | Hard cap on wait from the first arrival |
 
 ### SlidingWindowInboxOptions / SlidingWindowOutboxOptions / SlidingWindowApplyOptions
 
-Per-stream debounce strategies for the inbox, outbox, and perspective-apply boundaries. **Configure:** `services.Configure<T>(…)`. **Details:** no dedicated page yet.
+Per-stream debounce strategies for the inbox, outbox, and perspective-apply boundaries. **Configure:** the inbox and outbox shapes bind automatically from `Whizbang:Workers:InboxBatch` and `Whizbang:Workers:OutboxBatch` — no registration call needed, and `services.Configure<T>(…)` still applies and runs first. The apply shape (`SlidingWindowApplyOptions`) has no configuration section and is code-configured. **Details:** no dedicated page yet.
 
-| Property | Type | Inbox default | Outbox default | Apply default | Purpose |
-|----------|------|---------------|----------------|---------------|---------|
-| `SlidingWindow` | `TimeSpan` | 300ms | 50ms | 300ms | Per-stream debounce after the last signal |
-| `MaxWait` | `TimeSpan` | 3s | 1s | 3s | Hard cap from the first signal in a batch |
-| `MaxSize` | `int` | 1000 | 100 | 1000 | Max signals per stream batch |
-| `IdleEvictionWindow` | `TimeSpan` | 30s | 30s | 30s | Evict a stream's buffer after this idle duration |
-| `IdleSweepInterval` | `TimeSpan` | 10s | 10s | 10s | How often the idle sweep runs |
+| Property | Type | Inbox default | Outbox default | Apply default | Environment variable (inbox / outbox) | Purpose |
+|----------|------|---------------|----------------|---------------|----------------------------------------|---------|
+| `SlidingWindow` | `TimeSpan` | 300ms | 50ms | 300ms | `Whizbang__Workers__InboxBatch__SlidingWindow` / `Whizbang__Workers__OutboxBatch__SlidingWindow` | Per-stream debounce after the last signal |
+| `MaxWait` | `TimeSpan` | 3s | 1s | 3s | `Whizbang__Workers__InboxBatch__MaxWait` / `Whizbang__Workers__OutboxBatch__MaxWait` | Hard cap from the first signal in a batch |
+| `MaxSize` | `int` | 1000 | 100 | 1000 | `Whizbang__Workers__InboxBatch__MaxSize` / `Whizbang__Workers__OutboxBatch__MaxSize` | Max signals per stream batch |
+| `IdleEvictionWindow` | `TimeSpan` | 30s | 30s | 30s | `Whizbang__Workers__InboxBatch__IdleEvictionWindow` / `Whizbang__Workers__OutboxBatch__IdleEvictionWindow` | Evict a stream's buffer after this idle duration |
+| `IdleSweepInterval` | `TimeSpan` | 10s | 10s | 10s | `Whizbang__Workers__InboxBatch__IdleSweepInterval` / `Whizbang__Workers__OutboxBatch__IdleSweepInterval` | How often the idle sweep runs |
 
 ### PerStreamSerializerOptions
 
 **Configure:** `services.Configure<PerStreamSerializerOptions>(…)`. **Details:** no dedicated page yet.
 
-| Property | Type | Default | Purpose |
-|----------|------|---------|---------|
-| `StreamChannelCapacity` | `int` | `1000` | Bounded per-stream channel capacity (backpressure) |
-| `DrainBatchWindow` | `TimeSpan` | `00:00:00.050` | Drain accumulator window; `Zero` disables batching |
-| `IdleEvictionWindow` | `TimeSpan` | `00:00:30` | Evict a stream's channel + worker after this idle duration |
-| `IdleSweepInterval` | `TimeSpan` | `00:00:10` | Idle sweep cadence |
+| Property | Type | Default | Environment variable | Purpose |
+|----------|------|---------|----------------------|---------|
+| `StreamChannelCapacity` | `int` | `1000` | — *code-only* | Bounded per-stream channel capacity (backpressure) |
+| `DrainBatchWindow` | `TimeSpan` | `00:00:00.050` | — *code-only* | Drain accumulator window; `Zero` disables batching |
+| `IdleEvictionWindow` | `TimeSpan` | `00:00:30` | — *code-only* | Evict a stream's channel + worker after this idle duration |
+| `IdleSweepInterval` | `TimeSpan` | `00:00:10` | — *code-only* | Idle sweep cadence |
 
 ### OrderedStreamProcessorOptions
 
@@ -675,14 +675,14 @@ Per-stream debounce strategies for the inbox, outbox, and perspective-apply boun
 
 Re-delivery (repair) pump bounds. **Configure:** `services.Configure<RedeliveryPumpOptions>(…)`. **Details:** [Stream Integrity](../../resilience/stream-integrity).
 
-| Property | Type | Default | Purpose |
-|----------|------|---------|---------|
-| `MaxInnerEventsPerComposite` | `int` | `500` | Repair slices larger than this split into multiple composites |
-| `MaxEventsPerRequest` | `int` | `10000` | Hard per-request event cap the origin enforces (clamps, never raises) |
-| `MaxBytesPerComposite` | `int` | `192000` | Byte budget per composite over raw stored bodies |
-| `SelectPageSize` | `int` | `500` | Origin-side selection page size |
-| `PublishRetryAttempts` | `int` | `5` | Attempts per composite send before the serve surfaces failure |
-| `PublishRetryBaseDelayMs` | `int` | `2000` | Base retry delay; attempt n waits base × 2^(n-1), capped at 30s |
+| Property | Type | Default | Environment variable | Purpose |
+|----------|------|---------|----------------------|---------|
+| `MaxInnerEventsPerComposite` | `int` | `500` | — *code-only* | Repair slices larger than this split into multiple composites |
+| `MaxEventsPerRequest` | `int` | `10000` | — *code-only* | Hard per-request event cap the origin enforces (clamps, never raises) |
+| `MaxBytesPerComposite` | `int` | `192000` | — *code-only* | Byte budget per composite over raw stored bodies |
+| `SelectPageSize` | `int` | `500` | — *code-only* | Origin-side selection page size |
+| `PublishRetryAttempts` | `int` | `5` | — *code-only* | Attempts per composite send before the serve surfaces failure |
+| `PublishRetryBaseDelayMs` | `int` | `2000` | — *code-only* | Base retry delay; attempt n waits base × 2^(n-1), capped at 30s |
 
 ## Perspectives
 
@@ -725,47 +725,47 @@ Re-delivery (repair) pump bounds. **Configure:** `services.Configure<RedeliveryP
 
 **Configure:** `services.Configure<PerspectiveSnapshotOptions>(…)`. **Details:** [Snapshots](../../fundamentals/perspectives/snapshots).
 
-| Property | Type | Default | Purpose |
-|----------|------|---------|---------|
-| `SnapshotEveryNEvents` | `int` | `100` | Create a snapshot every N events processed |
-| `MaxSnapshotsPerStream` | `int` | `5` | Snapshots kept per (stream, perspective); oldest pruned |
-| `EphemeralSnapshotEveryNEvents` | `int` | `10` | Snapshot cadence for EPHEMERAL perspectives |
-| `EphemeralMaxSnapshotsPerStream` | `int` | `1` | Snapshots kept for EPHEMERAL perspectives — single slot |
-| `Enabled` | `bool` | `true` | When false, rewinds replay from event zero |
-| `RewindSnapshotIntervalEvents` | `int` | `10` | Extra snapshot every N events applied during a rewind replay |
-| `UpgradePolicy` | `SnapshotUpgradePolicy` | `RebuildFromEvents` | Action when a stored snapshot's serialization version is stale |
+| Property | Type | Default | Environment variable | Purpose |
+|----------|------|---------|----------------------|---------|
+| `SnapshotEveryNEvents` | `int` | `100` | — *code-only* | Create a snapshot every N events processed |
+| `MaxSnapshotsPerStream` | `int` | `5` | — *code-only* | Snapshots kept per (stream, perspective); oldest pruned |
+| `EphemeralSnapshotEveryNEvents` | `int` | `10` | — *code-only* | Snapshot cadence for EPHEMERAL perspectives |
+| `EphemeralMaxSnapshotsPerStream` | `int` | `1` | — *code-only* | Snapshots kept for EPHEMERAL perspectives — single slot |
+| `Enabled` | `bool` | `true` | — *code-only* | When false, rewinds replay from event zero |
+| `RewindSnapshotIntervalEvents` | `int` | `10` | — *code-only* | Extra snapshot every N events applied during a rewind replay |
+| `UpgradePolicy` | `SnapshotUpgradePolicy` | `RebuildFromEvents` | — *code-only* | Action when a stored snapshot's serialization version is stale |
 
 ### PerspectiveRewindOptions
 
 **Configure:** `services.Configure<PerspectiveRewindOptions>(…)`. **Details:** no dedicated page yet.
 
-| Property | Type | Default | Purpose |
-|----------|------|---------|---------|
-| `Enabled` | `bool` | `true` | Master switch; when off, out-of-order events are detected but not replayed |
-| `StartupScanEnabled` | `bool` | `true` | Scan for `RewindRequired` cursors and repair on startup |
-| `StartupRewindMode` | `RewindStartupMode` | `Blocking` | Startup rewinds block polling vs run in background |
-| `MaxConcurrentRewinds` | `int` | `3` | Cap on concurrent rewind operations |
-| `DebounceWindow` | `TimeSpan` | `00:00:05` | Sliding window before executing a rewind |
-| `MaxDebounceWindow` | `TimeSpan` | `00:00:30` | Hard cap on debounce duration |
+| Property | Type | Default | Environment variable | Purpose |
+|----------|------|---------|----------------------|---------|
+| `Enabled` | `bool` | `true` | — *code-only* | Master switch; when off, out-of-order events are detected but not replayed |
+| `StartupScanEnabled` | `bool` | `true` | — *code-only* | Scan for `RewindRequired` cursors and repair on startup |
+| `StartupRewindMode` | `RewindStartupMode` | `Blocking` | — *code-only* | Startup rewinds block polling vs run in background |
+| `MaxConcurrentRewinds` | `int` | `3` | — *code-only* | Cap on concurrent rewind operations |
+| `DebounceWindow` | `TimeSpan` | `00:00:05` | — *code-only* | Sliding window before executing a rewind |
+| `MaxDebounceWindow` | `TimeSpan` | `00:00:30` | — *code-only* | Hard cap on debounce duration |
 
 ### PerspectiveStreamLockOptions
 
 **Configure:** `services.Configure<PerspectiveStreamLockOptions>(…)`. **Details:** no dedicated page yet.
 
-| Property | Type | Default | Purpose |
-|----------|------|---------|---------|
-| `LockTimeout` | `TimeSpan` | `00:00:30` | Lock validity; must exceed `KeepAliveInterval` |
-| `KeepAliveInterval` | `TimeSpan` | `00:00:10` | Keepalive renewal cadence; must be < LockTimeout/2 |
+| Property | Type | Default | Environment variable | Purpose |
+|----------|------|---------|----------------------|---------|
+| `LockTimeout` | `TimeSpan` | `00:00:30` | — *code-only* | Lock validity; must exceed `KeepAliveInterval` |
+| `KeepAliveInterval` | `TimeSpan` | `00:00:10` | — *code-only* | Keepalive renewal cadence; must be < LockTimeout/2 |
 
 ### PerspectiveStreamAffinityOptions
 
 Intra-pod per-stream serialization gate. **Configure:** `services.Configure<PerspectiveStreamAffinityOptions>(…)`. **Details:** no dedicated page yet.
 
-| Property | Type | Default | Purpose |
-|----------|------|---------|---------|
-| `IdleEvictionWindow` | `TimeSpan` | `00:15:00` | Idle duration before a stream's gate entry is evictable |
-| `SweepInterval` | `TimeSpan` | `00:01:00` | Minimum time between sweeps |
-| `LongHoldWarning` | `TimeSpan` | `00:01:00` | Age at which a held (stream, perspective) gate is named at Warning (EventId 64) by the affinity-hold watchdog; `00:00:00` turns the watchdog off |
+| Property | Type | Default | Environment variable | Purpose |
+|----------|------|---------|----------------------|---------|
+| `IdleEvictionWindow` | `TimeSpan` | `00:15:00` | — *code-only* | Idle duration before a stream's gate entry is evictable |
+| `SweepInterval` | `TimeSpan` | `00:01:00` | — *code-only* | Minimum time between sweeps |
+| `LongHoldWarning` | `TimeSpan` | `00:01:00` | — *code-only* | Age at which a held (stream, perspective) gate is named at Warning (EventId 64) by the affinity-hold watchdog; `00:00:00` turns the watchdog off |
 
 The watchdog runs every `max(5 s, LongHoldWarning / 2)` and reports each hold once when it crosses the threshold and once per further threshold while it persists, naming the processing path and the step the holder is in. See [Perspective Worker](../workers/perspective-worker#affinity-hold-watchdog). {verified: PerspectiveWorkerAffinityHoldWatchdogTests.LongHold_IsNamedAtWarning_OncePerThresholdAsync, PerspectiveWorkerAffinityHoldWatchdogTests.WatchdogOff_ReportsNothingAsync}
 
@@ -878,9 +878,10 @@ Self-healing continuity checking; the defaults are the recommended posture. **Co
 
 Arbitration tuning for the ranked housekeeping activities (dead-letter recovery, integrity, maintenance). **Configure:** bound by the framework from `Whizbang:Housekeeping` (`Whizbang__Housekeeping__MaxConsecutiveDeferrals=12` works with no service code); a host can also register its own `HousekeepingCoordinator` instance before the framework's TryAdd. **Details:** [Housekeeping Arbitration](../workers/housekeeping-arbitration).
 
-| Property | Type | Default | Purpose |
-|----------|------|---------|---------|
-| `MaxConsecutiveDeferrals` | `int` | `6` | Busy verdicts tolerated before one pass forces through (`ProceedDeferralLimit`) — the starvation floor for recovery and maintenance, counted per activity. At the 10-minute scan cadence, 6 means a never-idle service still recovers roughly hourly |
+| Property | Type | Default | Environment variable | Purpose |
+|----------|------|---------|----------------------|---------|
+| `MaxConsecutiveDeferrals` | `int` | `6` | `Whizbang__Housekeeping__MaxConsecutiveDeferrals` | Busy verdicts tolerated before one pass forces through (`ProceedDeferralLimit`) — the starvation floor for recovery and maintenance, counted per activity. At the 10-minute scan cadence, 6 means a never-idle service still recovers roughly hourly |
+| `SettledCooldown` | `TimeSpan` | `00:02:00` | `Whizbang__Housekeeping__SettledCooldown` | How long an activity that reported nothing to do is skipped before it is ranked again |
 
 ### TransportDeadLetterDrainWorkerOptions
 
@@ -896,12 +897,12 @@ Arbitration tuning for the ranked housekeeping activities (dead-letter recovery,
 
 In-memory retry budget for broker-side throttling. **Configure:** `services.Configure<ThrottleRetryOptions>(…)`. **Details:** no dedicated page yet (mentioned in [Policy Engine](../infrastructure/policy-engine#other-resilience-components)).
 
-| Property | Type | Default | Purpose |
-|----------|------|---------|---------|
-| `MaxAttempts` | `int` | `5` | Max in-memory attempts on throttle, including the initial try |
-| `BaseDelay` | `TimeSpan` | `00:00:00.250` | Base delay before the first retry |
-| `BackoffMultiplier` | `double` | `2.0` | Multiplicative growth per retry |
-| `MaxDelay` | `TimeSpan` | `00:00:04` | Upper bound on per-attempt delay (total budget ≈ 7.75s at defaults) |
+| Property | Type | Default | Environment variable | Purpose |
+|----------|------|---------|----------------------|---------|
+| `MaxAttempts` | `int` | `5` | — *code-only* | Max in-memory attempts on throttle, including the initial try |
+| `BaseDelay` | `TimeSpan` | `00:00:00.250` | — *code-only* | Base delay before the first retry |
+| `BackoffMultiplier` | `double` | `2.0` | — *code-only* | Multiplicative growth per retry |
+| `MaxDelay` | `TimeSpan` | `00:00:04` | — *code-only* | Upper bound on per-attempt delay (total budget ≈ 7.75s at defaults) |
 
 ## Transports
 
@@ -909,20 +910,20 @@ In-memory retry budget for broker-side throttling. **Configure:** `services.Conf
 
 Shared knobs every concrete transport inherits; settings are validated against declared transport capabilities at startup (unsupported settings warn and are ignored). **Configure:** the transport registration lambda. **Details:** [Transports](../../messaging/transports/transports#configuration).
 
-| Property | Type | Default | Purpose |
-|----------|------|---------|---------|
-| `ConcurrentMessageLimit` | `int` | `10` | Max messages processed concurrently by a single consumer |
-| `MessagePrefetchCount` | `int` | `0` (disabled) | Messages pre-fetched into a local buffer ahead of processing |
-| `FailedMessageRetryLimit` | `int` | `10` | Max deliveries before dead-lettering |
-| `AutoProvisionDeadLetterInfrastructure` | `bool` | `true` | Auto-create DLQ infrastructure |
-| `EnableOrderedDelivery` | `bool` | `true` | Enforce FIFO within a stream/partition |
-| `ConcurrentOrderedStreams` | `int` | `64` | Max ordered streams processed in parallel |
-| `AutoProvisionInfrastructure` | `bool` | `true` | Auto-create topics, subscriptions, queues |
-| `InitialConnectionRetryAttempts` | `int` | `5` | Startup connection retries before indefinite-retry mode |
-| `InitialConnectionRetryDelay` | `TimeSpan` | `00:00:01` | Delay before the first connection retry |
-| `MaxConnectionRetryDelay` | `TimeSpan` | `00:02:00` | Ceiling on connection retry backoff |
-| `ConnectionRetryBackoffMultiplier` | `double` | `2.0` | Backoff multiplier |
-| `RetryConnectionIndefinitely` | `bool` | `true` | Keep retrying the connection forever |
+| Property | Type | Default | Environment variable | Purpose |
+|----------|------|---------|----------------------|---------|
+| `ConcurrentMessageLimit` | `int` | `10` | — *code-only* | Max messages processed concurrently by a single consumer |
+| `MessagePrefetchCount` | `int` | `0` (disabled) | — *code-only* | Messages pre-fetched into a local buffer ahead of processing |
+| `FailedMessageRetryLimit` | `int` | `10` | — *code-only* | Max deliveries before dead-lettering |
+| `AutoProvisionDeadLetterInfrastructure` | `bool` | `true` | — *code-only* | Auto-create DLQ infrastructure |
+| `EnableOrderedDelivery` | `bool` | `true` | — *code-only* | Enforce FIFO within a stream/partition |
+| `ConcurrentOrderedStreams` | `int` | `64` | — *code-only* | Max ordered streams processed in parallel |
+| `AutoProvisionInfrastructure` | `bool` | `true` | — *code-only* | Auto-create topics, subscriptions, queues |
+| `InitialConnectionRetryAttempts` | `int` | `5` | — *code-only* | Startup connection retries before indefinite-retry mode |
+| `InitialConnectionRetryDelay` | `TimeSpan` | `00:00:01` | — *code-only* | Delay before the first connection retry |
+| `MaxConnectionRetryDelay` | `TimeSpan` | `00:02:00` | — *code-only* | Ceiling on connection retry backoff |
+| `ConnectionRetryBackoffMultiplier` | `double` | `2.0` | — *code-only* | Backoff multiplier |
+| `RetryConnectionIndefinitely` | `bool` | `true` | — *code-only* | Keep retrying the connection forever |
 
 ### AzureServiceBusOptions
 
@@ -955,61 +956,61 @@ Shared knobs every concrete transport inherits; settings are validated against d
 
 **Configure:** the RabbitMQ transport registration lambda. **Details:** [RabbitMQ](../../messaging/transports/rabbitmq#configuration-options).
 
-| Property | Type | Default | Purpose |
-|----------|------|---------|---------|
-| `MaxChannels` | `int` | `10` | Max pooled channels (one per concurrent publish) |
-| `MaxDeliveryAttempts` | `int` | `10` | Redeliveries (via `x-delivery-count`) before NACK to the dead-letter exchange |
-| `DefaultQueueName` | `string?` | `null` | Fallback queue name |
-| `PrefetchCount` | `ushort` | `200` | Broker push-ahead buffer; match to `TransportBatchOptions.BatchSize` |
-| `AutoDeclareDeadLetterExchange` | `bool` | `true` | Auto-declare the dead-letter exchange and queue |
-| `EnableSingleActiveConsumer` | `bool` | `false` | Declare queues with `x-single-active-consumer` for FIFO |
-| `InitialRetryAttempts` | `int` | `5` | Connection retries before indefinite-retry mode |
-| `InitialRetryDelay` | `TimeSpan` | `00:00:01` | Delay before the first connection retry |
-| `MaxRetryDelay` | `TimeSpan` | `00:02:00` | Cap on exponential backoff |
-| `BackoffMultiplier` | `double` | `2.0` | Backoff multiplier |
-| `RetryIndefinitely` | `bool` | `true` | Retry connection forever |
+| Property | Type | Default | Environment variable | Purpose |
+|----------|------|---------|----------------------|---------|
+| `MaxChannels` | `int` | `10` | — *code-only* | Max pooled channels (one per concurrent publish) |
+| `MaxDeliveryAttempts` | `int` | `10` | — *code-only* | Redeliveries (via `x-delivery-count`) before NACK to the dead-letter exchange |
+| `DefaultQueueName` | `string?` | `null` | — *code-only* | Fallback queue name |
+| `PrefetchCount` | `ushort` | `200` | — *code-only* | Broker push-ahead buffer; match to `TransportBatchOptions.BatchSize` |
+| `AutoDeclareDeadLetterExchange` | `bool` | `true` | — *code-only* | Auto-declare the dead-letter exchange and queue |
+| `EnableSingleActiveConsumer` | `bool` | `false` | — *code-only* | Declare queues with `x-single-active-consumer` for FIFO |
+| `InitialRetryAttempts` | `int` | `5` | — *code-only* | Connection retries before indefinite-retry mode |
+| `InitialRetryDelay` | `TimeSpan` | `00:00:01` | — *code-only* | Delay before the first connection retry |
+| `MaxRetryDelay` | `TimeSpan` | `00:02:00` | — *code-only* | Cap on exponential backoff |
+| `BackoffMultiplier` | `double` | `2.0` | — *code-only* | Backoff multiplier |
+| `RetryIndefinitely` | `bool` | `true` | — *code-only* | Retry connection forever |
 
 ### TransportConsumerOptions
 
 Which destinations to subscribe to. **Configure:** the transport consumer registration; destinations via the `Destinations` list. **Details:** [Transport Consumer](../../messaging/transports/transport-consumer#auto-configuration).
 
-| Property | Type | Default | Purpose |
-|----------|------|---------|---------|
-| `SubscriberName` | `string?` | `null` (generated) | Subscriber name used to generate queue names |
+| Property | Type | Default | Environment variable | Purpose |
+|----------|------|---------|----------------------|---------|
+| `SubscriberName` | `string?` | `null` (generated) | — *code-only* | Subscriber name used to generate queue names |
 
 ### ServiceBusConsumerOptions
 
 **Configure:** the consumer registration; subscriptions via the `Subscriptions` list. **Details:** no dedicated page yet.
 
-| Property | Type | Default | Purpose |
-|----------|------|---------|---------|
-| `Subscriptions` | `List<TopicSubscription>` | `[]` | Topic subscriptions to consume messages from |
+| Property | Type | Default | Environment variable | Purpose |
+|----------|------|---------|----------------------|---------|
+| `Subscriptions` | `List<TopicSubscription>` | `[]` | — *code-only* | Topic subscriptions to consume messages from |
 
 ### ServiceBusInfrastructureOptions
 
 Service Bus auto-discovery and provisioning. **Configure:** `services.Configure<ServiceBusInfrastructureOptions>(…)`. **Details:** [Azure Service Bus auto-provisioning](../../messaging/transports/azure-service-bus#auto-provisioning).
 
-| Property | Type | Default | Purpose |
-|----------|------|---------|---------|
-| `ServiceName` | `string` | `""` | Name used to generate unique subscription names |
-| `RequiredTopics` | `List<TopicRequirement>` | `[]` | Explicit topic requirements; empty auto-discovers |
-| `AutoCreateInProduction` | `bool` | `true` | Create topics/subscriptions in production via the Management API |
-| `GenerateAspireConfigInDev` | `bool` | `true` | In development, generate and log Aspire AppHost configuration |
-| `FailOnProvisioningError` | `bool` | `false` | Fail startup if provisioning fails in production |
+| Property | Type | Default | Environment variable | Purpose |
+|----------|------|---------|----------------------|---------|
+| `ServiceName` | `string` | `""` | — *code-only* | Name used to generate unique subscription names |
+| `RequiredTopics` | `List<TopicRequirement>` | `[]` | — *code-only* | Explicit topic requirements; empty auto-discovers |
+| `AutoCreateInProduction` | `bool` | `true` | — *code-only* | Create topics/subscriptions in production via the Management API |
+| `GenerateAspireConfigInDev` | `bool` | `true` | — *code-only* | In development, generate and log Aspire AppHost configuration |
+| `FailOnProvisioningError` | `bool` | `false` | — *code-only* | Fail startup if provisioning fails in production |
 
 ### SubscriptionResilienceOptions
 
 **Configure:** `services.Configure<SubscriptionResilienceOptions>(…)`. **Details:** no dedicated page yet.
 
-| Property | Type | Default | Purpose |
-|----------|------|---------|---------|
-| `InitialRetryAttempts` | `int` | `5` | Warning-logged retries before indefinite retry mode |
-| `InitialRetryDelay` | `TimeSpan` | `00:00:01` | Delay before the first retry |
-| `MaxRetryDelay` | `TimeSpan` | `00:02:00` | Cap on exponential backoff |
-| `BackoffMultiplier` | `double` | `2.0` | Backoff multiplier; 1.0 disables |
-| `RetryIndefinitely` | `bool` | `true` | Retry until success or cancellation |
-| `HealthCheckInterval` | `TimeSpan` | `00:01:00` | Sweep interval recovering failed subscriptions |
-| `AllowPartialSubscriptions` | `bool` | `true` | Start the worker even if some subscriptions fail |
+| Property | Type | Default | Environment variable | Purpose |
+|----------|------|---------|----------------------|---------|
+| `InitialRetryAttempts` | `int` | `5` | — *code-only* | Warning-logged retries before indefinite retry mode |
+| `InitialRetryDelay` | `TimeSpan` | `00:00:01` | — *code-only* | Delay before the first retry |
+| `MaxRetryDelay` | `TimeSpan` | `00:02:00` | — *code-only* | Cap on exponential backoff |
+| `BackoffMultiplier` | `double` | `2.0` | — *code-only* | Backoff multiplier; 1.0 disables |
+| `RetryIndefinitely` | `bool` | `true` | — *code-only* | Retry until success or cancellation |
+| `HealthCheckInterval` | `TimeSpan` | `00:01:00` | — *code-only* | Sweep interval recovering failed subscriptions |
+| `AllowPartialSubscriptions` | `bool` | `true` | — *code-only* | Start the worker even if some subscriptions fail |
 
 ## Message Body Offload (code-configured remainder)
 
@@ -1051,17 +1052,17 @@ Dedicated long-lived PostgreSQL connections for background workers, bypassing a 
 
 Connection retry, command timeout, and collective-apply bounds for the PostgreSQL driver. **Configure:** the Postgres driver registration lambda. **Details:** no dedicated page yet.
 
-| Property | Type | Default | Purpose |
-|----------|------|---------|---------|
-| `InitialRetryAttempts` | `int` | `5` | Connection retries before indefinite-retry mode |
-| `InitialRetryDelay` | `TimeSpan` | `00:00:01` | Delay before the first retry |
-| `MaxRetryDelay` | `TimeSpan` | `00:02:00` | Cap on exponential backoff |
-| `BackoffMultiplier` | `double` | `2.0` | Backoff multiplier |
-| `RetryIndefinitely` | `bool` | `true` | Retry forever until connect or cancellation |
-| `CommandTimeoutSeconds` | `int` | `120` | How long one SQL command (e.g. `process_work_batch`) may run; shorter than the worst commit batch loses completions |
-| `MaxInFlightCommands` | `int` | `50` | Cap on concurrent work-coordinator calls per process; post-configured into `WorkCoordinatorGateOptions.MaxConcurrent` (see [WorkCoordinatorGateOptions](#workcoordinatorgateoptions)), so it is the effective gate cap whenever a Postgres driver is registered; 0 disables the gate |
-| `CollectiveApplyBatchSize` | `int` | `1000` | Rows mutated per batched collective-apply UPDATE |
-| `CollectiveApplyStatementTimeoutSeconds` | `int?` | `null` | Server-side `statement_timeout` per collective-apply batch |
+| Property | Type | Default | Environment variable | Purpose |
+|----------|------|---------|----------------------|---------|
+| `InitialRetryAttempts` | `int` | `5` | — *code-only* | Connection retries before indefinite-retry mode |
+| `InitialRetryDelay` | `TimeSpan` | `00:00:01` | — *code-only* | Delay before the first retry |
+| `MaxRetryDelay` | `TimeSpan` | `00:02:00` | — *code-only* | Cap on exponential backoff |
+| `BackoffMultiplier` | `double` | `2.0` | — *code-only* | Backoff multiplier |
+| `RetryIndefinitely` | `bool` | `true` | — *code-only* | Retry forever until connect or cancellation |
+| `CommandTimeoutSeconds` | `int` | `120` | — *code-only* | How long one SQL command (e.g. `process_work_batch`) may run; shorter than the worst commit batch loses completions |
+| `MaxInFlightCommands` | `int` | `50` | — *code-only* | Cap on concurrent work-coordinator calls per process; post-configured into `WorkCoordinatorGateOptions.MaxConcurrent` (see [WorkCoordinatorGateOptions](#workcoordinatorgateoptions)), so it is the effective gate cap whenever a Postgres driver is registered; 0 disables the gate |
+| `CollectiveApplyBatchSize` | `int` | `1000` | — *code-only* | Rows mutated per batched collective-apply UPDATE |
+| `CollectiveApplyStatementTimeoutSeconds` | `int?` | `null` | — *code-only* | Server-side `statement_timeout` per collective-apply batch |
 
 ## Security and Scope
 
@@ -1069,31 +1070,31 @@ Connection retry, command timeout, and collective-apply bounds for the PostgreSQ
 
 Message security context establishment. **Configure:** the security registration lambda; exempt types via `ExemptMessageTypes`. **Details:** no dedicated page yet.
 
-| Property | Type | Default | Purpose |
-|----------|------|---------|---------|
-| `AllowAnonymous` | `bool` | `false` | Allow messages without security context (least privilege by default) |
-| `EnableAuditLogging` | `bool` | `true` | Log security context establishment |
-| `ValidateCredentials` | `bool` | `true` | Extractors validate tokens/credentials |
-| `Timeout` | `TimeSpan` | `00:00:05` | Max wait for security context establishment |
-| `PropagateToOutgoingMessages` | `bool` | `true` | Propagate context to cascaded/outgoing messages |
+| Property | Type | Default | Environment variable | Purpose |
+|----------|------|---------|----------------------|---------|
+| `AllowAnonymous` | `bool` | `false` | — *code-only* | Allow messages without security context (least privilege by default) |
+| `EnableAuditLogging` | `bool` | `true` | — *code-only* | Log security context establishment |
+| `ValidateCredentials` | `bool` | `true` | — *code-only* | Extractors validate tokens/credentials |
+| `Timeout` | `TimeSpan` | `00:00:05` | — *code-only* | Max wait for security context establishment |
+| `PropagateToOutgoingMessages` | `bool` | `true` | — *code-only* | Propagate context to cascaded/outgoing messages |
 
 ### WhizbangScopeOptions
 
 GraphQL scope-extraction middleware claim/header mappings. **Configure:** `services.Configure<WhizbangScopeOptions>(…)`. **Details:** no dedicated page yet. Highlights (see the class XML docs for the full claim-fallback lists):
 
-| Property | Type | Default | Purpose |
-|----------|------|---------|---------|
-| `TenantIdClaimTypes` | `List<string>` | `["tenant_id"]` | Tenant-id claim types tried in order |
-| `TenantIdHeaderName` | `string` | `X-Tenant-Id` | Header fallback for tenant id |
-| `UserIdClaimTypes` | `List<string>` | Azure AD `oid` variants, `sub`, `NameIdentifier` | User-id claim types tried in order |
-| `UserIdHeaderName` | `string` | `X-User-Id` | Header fallback for user id |
-| `OrganizationIdClaimTypes` | `List<string>` | `["org_id"]` | Organization-id claim types |
-| `CustomerIdClaimTypes` | `List<string>` | `["customer_id"]` | Customer-id claim types |
-| `CorrelationIdHeaderName` | `string` | `X-Correlation-ID` | Inbound correlation-id header adopted as ambient correlation |
-| `RolesClaimType` | `string` | `ClaimTypes.Role` | Claim type for roles |
-| `PermissionsClaimTypes` | `List<string>` | `["permissions"]` | Permissions claim types (aggregation via `PermissionsAggregation`, default `FirstMatch`) |
-| `GroupsClaimTypes` | `List<string>` | `["groups"]` | Groups claim types (aggregation via `GroupsAggregation`, default `FirstMatch`) |
-| `ExtensionClaimMappings` / `ExtensionHeaderMappings` | `Dictionary<string,string>` | `[]` | Custom claim/header → extension key mappings |
+| Property | Type | Default | Environment variable | Purpose |
+|----------|------|---------|----------------------|---------|
+| `TenantIdClaimTypes` | `List<string>` | `["tenant_id"]` | — *code-only* | Tenant-id claim types tried in order |
+| `TenantIdHeaderName` | `string` | `X-Tenant-Id` | — *code-only* | Header fallback for tenant id |
+| `UserIdClaimTypes` | `List<string>` | Azure AD `oid` variants, `sub`, `NameIdentifier` | — *code-only* | User-id claim types tried in order |
+| `UserIdHeaderName` | `string` | `X-User-Id` | — *code-only* | Header fallback for user id |
+| `OrganizationIdClaimTypes` | `List<string>` | `["org_id"]` | — *code-only* | Organization-id claim types |
+| `CustomerIdClaimTypes` | `List<string>` | `["customer_id"]` | — *code-only* | Customer-id claim types |
+| `CorrelationIdHeaderName` | `string` | `X-Correlation-ID` | — *code-only* | Inbound correlation-id header adopted as ambient correlation |
+| `RolesClaimType` | `string` | `ClaimTypes.Role` | — *code-only* | Claim type for roles |
+| `PermissionsClaimTypes` | `List<string>` | `["permissions"]` | — *code-only* | Permissions claim types (aggregation via `PermissionsAggregation`, default `FirstMatch`) |
+| `GroupsClaimTypes` | `List<string>` | `["groups"]` | — *code-only* | Groups claim types (aggregation via `GroupsAggregation`, default `FirstMatch`) |
+| `ExtensionClaimMappings` / `ExtensionHeaderMappings` | `Dictionary<string,string>` | `[]` | — *code-only* | Custom claim/header → extension key mappings |
 
 ## Tags and System Events
 
@@ -1110,27 +1111,27 @@ Payload-size guardrails for tag hooks; hooks themselves register fluently (`UseH
 
 Per-tag coalesce policy folding tagged singles into composites. **Configure:** registered per tag through the tag fluent API. **Details:** [Message Tags](../../fundamentals/messages/message-tags#configuration).
 
-| Property | Type | Default | Purpose |
-|----------|------|---------|---------|
-| `SlideSeconds` | `int` | `15` | Quiet window before pending singles fold; 0 ships individually |
-| `MaxDelaySeconds` | `int` | `120` | Hard freshness cap on continuous sliding |
-| `MaxBatchCount` | `int` | `500` | Max singles folded into one composite |
-| `Atomicity` | `FanoutAtomicity` | `Independent` | Per-child failure policy of the shipped composite |
-| `CompositeFactory` | `Func<CoalesceFoldBatch, CompositeEventBase>?` | `null` (generic composite) | Builds the composite |
+| Property | Type | Default | Environment variable | Purpose |
+|----------|------|---------|----------------------|---------|
+| `SlideSeconds` | `int` | `15` | — *code-only* | Quiet window before pending singles fold; 0 ships individually |
+| `MaxDelaySeconds` | `int` | `120` | — *code-only* | Hard freshness cap on continuous sliding |
+| `MaxBatchCount` | `int` | `500` | — *code-only* | Max singles folded into one composite |
+| `Atomicity` | `FanoutAtomicity` | `Independent` | — *code-only* | Per-child failure policy of the shipped composite |
+| `CompositeFactory` | `Func<CoalesceFoldBatch, CompositeEventBase>?` | `null` (generic composite) | — *code-only* | Builds the composite |
 
 ### SystemEventOptions
 
 Which system events are enabled and how audit records ship. **Configure:** the system-events registration lambda (audit toggles are fluent). **Details:** no dedicated page yet.
 
-| Property | Type | Default | Purpose |
-|----------|------|---------|---------|
-| `LocalOnly` | `bool` | `true` | Store system events locally without publishing to the outbox |
-| `AuditMode` | `AuditMode` | `OptOut` | Audit all events unless excluded, vs only explicitly marked |
-| `EventNameHumanizer` | `Func<string, string?>?` | `null` (built-in) | Custom event-type → label mapping |
-| `EventDescriptionHumanizer` | `Func<string, string?>?` | `null` (built-in) | Custom description generator |
-| `AuditShipSlideSeconds` | `int` | `15` | Quiet window before audit singles fold into a composite; 0 bypasses |
-| `AuditShipMaxDelaySeconds` | `int` | `120` | Safety floor and hard cap on continuous sliding |
-| `AuditShipMaxBatchCount` | `int` | `500` | Max audit records per shipped composite |
+| Property | Type | Default | Environment variable | Purpose |
+|----------|------|---------|----------------------|---------|
+| `LocalOnly` | `bool` | `true` | — *code-only* | Store system events locally without publishing to the outbox |
+| `AuditMode` | `AuditMode` | `OptOut` | — *code-only* | Audit all events unless excluded, vs only explicitly marked |
+| `EventNameHumanizer` | `Func<string, string?>?` | `null` (built-in) | — *code-only* | Custom event-type → label mapping |
+| `EventDescriptionHumanizer` | `Func<string, string?>?` | `null` (built-in) | — *code-only* | Custom description generator |
+| `AuditShipSlideSeconds` | `int` | `15` | — *code-only* | Quiet window before audit singles fold into a composite; 0 bypasses |
+| `AuditShipMaxDelaySeconds` | `int` | `120` | — *code-only* | Safety floor and hard cap on continuous sliding |
+| `AuditShipMaxBatchCount` | `int` | `500` | — *code-only* | Max audit records per shipped composite |
 
 ## Temporal Scheduling
 
@@ -1151,24 +1152,24 @@ The temporal engine's schedule worker. **Configure:** bound automatically from `
 
 **Configure:** passed to `CircuitBreaker<TResult>` construction. **Details:** [Policy Engine](../infrastructure/policy-engine).
 
-| Property | Type | Default | Purpose |
-|----------|------|---------|---------|
-| `FailureThreshold` | `int` | `5` | Consecutive failures before the circuit opens |
-| `InitialCooldownSeconds` | `int` | `3` | Initial cooldown on first open; then exponential |
-| `CooldownBackoffMultiplier` | `double` | `2.0` | Multiplier per consecutive open |
-| `MaxCooldownSeconds` | `int` | `300` | Cap on cooldown backoff |
-| `SuccessCacheDurationSeconds` | `int` | `5` | Seconds to cache a successful result; 0 disables |
+| Property | Type | Default | Environment variable | Purpose |
+|----------|------|---------|----------------------|---------|
+| `FailureThreshold` | `int` | `5` | — *code-only* | Consecutive failures before the circuit opens |
+| `InitialCooldownSeconds` | `int` | `3` | — *code-only* | Initial cooldown on first open; then exponential |
+| `CooldownBackoffMultiplier` | `double` | `2.0` | — *code-only* | Multiplier per consecutive open |
+| `MaxCooldownSeconds` | `int` | `300` | — *code-only* | Cap on cooldown backoff |
+| `SuccessCacheDurationSeconds` | `int` | `5` | — *code-only* | Seconds to cache a successful result; 0 disables |
 
 ### StreamRateLimiterOptions
 
 **Configure:** `services.Configure<StreamRateLimiterOptions>(…)`. **Details:** no dedicated page yet.
 
-| Property | Type | Default | Purpose |
-|----------|------|---------|---------|
-| `MaxEventsPerWindow` | `int` | `50` | Max events per stream within the window before throttling |
-| `WindowDuration` | `TimeSpan` | `00:01:00` | Sliding window duration |
-| `CooldownDuration` | `TimeSpan` | `00:00:30` | How long a throttled stream is paused |
-| `StaleEntryTimeout` | `TimeSpan` | `00:05:00` | Idle duration before a stream's tracking entry is cleaned up |
+| Property | Type | Default | Environment variable | Purpose |
+|----------|------|---------|----------------------|---------|
+| `MaxEventsPerWindow` | `int` | `50` | — *code-only* | Max events per stream within the window before throttling |
+| `WindowDuration` | `TimeSpan` | `00:01:00` | — *code-only* | Sliding window duration |
+| `CooldownDuration` | `TimeSpan` | `00:00:30` | — *code-only* | How long a throttled stream is paused |
+| `StaleEntryTimeout` | `TimeSpan` | `00:05:00` | — *code-only* | Idle duration before a stream's tracking entry is cleaned up |
 
 ## HTTP Hosting (ASP.NET)
 
@@ -1176,34 +1177,34 @@ The temporal engine's schedule worker. **Configure:** bound automatically from `
 
 The schema-availability gate `AddWhizbangAspNet` injects automatically. **Configure:** `services.Configure<WhizbangAvailabilityOptions>(…)`. **Details:** [Database Availability Middleware](../../resilience/database-availability-middleware).
 
-| Property | Type | Default | Purpose |
-|----------|------|---------|---------|
-| `Enabled` | `bool` | `true` | Whether the availability gate is injected |
-| `Mode` | `AvailabilityGateMode` | `MutationsOnly` | Pre-readiness policy (default: serve reads, 503 writes) |
-| `ExemptPaths` | `IReadOnlyList<string>?` | `null` (`/alive`, `/health`, `/version`) | Path prefixes that always pass through |
+| Property | Type | Default | Environment variable | Purpose |
+|----------|------|---------|----------------------|---------|
+| `Enabled` | `bool` | `true` | — *code-only* | Whether the availability gate is injected |
+| `Mode` | `AvailabilityGateMode` | `MutationsOnly` | — *code-only* | Pre-readiness policy (default: serve reads, 503 writes) |
+| `ExemptPaths` | `IReadOnlyList<string>?` | `null` (`/alive`, `/health`, `/version`) | — *code-only* | Path prefixes that always pass through |
 
 ### WhizbangCorrelationOptions
 
 **Configure:** `services.Configure<WhizbangCorrelationOptions>(…)`; populate the `HeaderNames` list in the callback. **Details:** no dedicated page yet.
 
-| Property | Type | Default | Purpose |
-|----------|------|---------|---------|
-| `HeaderNames` | `IList<string>` (get-only, mutable) | `["X-Correlation-ID"]` | Request headers read for an inbound correlation id, in priority order |
+| Property | Type | Default | Environment variable | Purpose |
+|----------|------|---------|----------------------|---------|
+| `HeaderNames` | `IList<string>` (get-only, mutable) | `["X-Correlation-ID"]` | — *code-only* | Request headers read for an inbound correlation id, in priority order |
 
 ### WhizbangSecurityHeadersOptions
 
 Hardened response headers; `null` suppresses a header. **Configure:** `UseWhizbangSecurityHeaders(options => …)`. **Details:** no dedicated page yet.
 
-| Property | Type | Default | Purpose |
-|----------|------|---------|---------|
-| `Enabled` | `bool` | `true` | Master switch; false makes the middleware a pass-through |
-| `StrictTransportSecurity` | `string?` | `max-age=31536000; includeSubDomains; preload` | HSTS value (HTTPS/TLS-proxied requests only) |
-| `XContentTypeOptions` | `string?` | `nosniff` | `X-Content-Type-Options` value |
-| `XFrameOptions` | `string?` | `DENY` | `X-Frame-Options` value |
-| `ContentSecurityPolicy` | `string?` | `frame-ancestors 'none'` | CSP value; HTML-serving services should replace with a full policy |
-| `ReferrerPolicy` | `string?` | `strict-origin-when-cross-origin` | `Referrer-Policy` value |
-| `PermissionsPolicy` | `string?` | `camera=(), microphone=(), geolocation=()` | `Permissions-Policy` value |
-| `AllowedMethods` | `IList<string>` (get-only, mutable) | `[]` (filtering off) | HTTP methods accepted; others get 405 before routing |
+| Property | Type | Default | Environment variable | Purpose |
+|----------|------|---------|----------------------|---------|
+| `Enabled` | `bool` | `true` | — *code-only* | Master switch; false makes the middleware a pass-through |
+| `StrictTransportSecurity` | `string?` | `max-age=31536000; includeSubDomains; preload` | — *code-only* | HSTS value (HTTPS/TLS-proxied requests only) |
+| `XContentTypeOptions` | `string?` | `nosniff` | — *code-only* | `X-Content-Type-Options` value |
+| `XFrameOptions` | `string?` | `DENY` | — *code-only* | `X-Frame-Options` value |
+| `ContentSecurityPolicy` | `string?` | `frame-ancestors 'none'` | — *code-only* | CSP value; HTML-serving services should replace with a full policy |
+| `ReferrerPolicy` | `string?` | `strict-origin-when-cross-origin` | — *code-only* | `Referrer-Policy` value |
+| `PermissionsPolicy` | `string?` | `camera=(), microphone=(), geolocation=()` | — *code-only* | `Permissions-Policy` value |
+| `AllowedMethods` | `IList<string>` (get-only, mutable) | `[]` (filtering off) | — *code-only* | HTTP methods accepted; others get 405 before routing |
 
 ## GraphQL
 
@@ -1211,21 +1212,21 @@ Hardened response headers; `null` suppresses a header. **Configure:** `UseWhizba
 
 System-wide GraphQL defaults, overridable per lens. **Configure:** the GraphQL registration lambda. **Details:** no dedicated page yet.
 
-| Property | Type | Default | Purpose |
-|----------|------|---------|---------|
-| `DefaultScope` | `GraphQLLensScopes` | `DataOnly` | Scope when the lens attribute doesn't specify one |
-| `DefaultPageSize` | `int` | `10` | Default cursor-paging page size |
-| `MaxPageSize` | `int` | `100` | Max allowed page size |
-| `IncludeMetadataInFilters` | `bool` | `true` | Include metadata fields in filter/sort types |
-| `IncludeScopeInFilters` | `bool` | `true` | Include scope fields in filter/sort types |
+| Property | Type | Default | Environment variable | Purpose |
+|----------|------|---------|----------------------|---------|
+| `DefaultScope` | `GraphQLLensScopes` | `DataOnly` | — *code-only* | Scope when the lens attribute doesn't specify one |
+| `DefaultPageSize` | `int` | `10` | — *code-only* | Default cursor-paging page size |
+| `MaxPageSize` | `int` | `100` | — *code-only* | Max allowed page size |
+| `IncludeMetadataInFilters` | `bool` | `true` | — *code-only* | Include metadata fields in filter/sort types |
+| `IncludeScopeInFilters` | `bool` | `true` | — *code-only* | Include scope fields in filter/sort types |
 
 ### WhizbangStartupStatusGraphOptions
 
 Settings for the GraphQL startup-status query field. **Configure:** supplied at registration (positional record). **Details:** no dedicated page yet.
 
-| Property | Type | Default | Purpose |
-|----------|------|---------|---------|
-| `IncludeReasons` | `bool` | supplied at construction | Include per-step `reason` strings and raw fleet failure text (opt-in — reasons originate in exception messages) |
+| Property | Type | Default | Environment variable | Purpose |
+|----------|------|---------|----------------------|---------|
+| `IncludeReasons` | `bool` | supplied at construction | — *code-only* | Include per-step `reason` strings and raw fleet failure text (opt-in — reasons originate in exception messages) |
 
 ## Sagas
 
@@ -1233,14 +1234,14 @@ Settings for the GraphQL startup-status query field. **Configure:** supplied at 
 
 **Configure:** `AddWhizbangSagas(opts => …)`. **Details:** no dedicated page yet.
 
-| Property | Type | Default | Purpose |
-|----------|------|---------|---------|
-| `PerItemStreamNamespace` | `Guid` | `SagaItemStreams.DefaultNamespace` | Namespace UUID deriving per-item stream ids; changing it later orphans existing projection rows |
-| `MinWatchdogDelay` | `TimeSpan` | `00:00:30` | Floor for the watchdog's next-fire delay |
-| `MaxWatchdogDelay` | `TimeSpan` | `00:30:00` | Ceiling, so a stalled saga is still re-checked |
-| `WatchdogSafetyMargin` | `TimeSpan` | `00:00:30` | Slack added to the ETA-based next-tick delay |
-| `MaxConsecutiveStalls` | `int` | `4` | Zero-progress ticks before the saga is abandoned |
-| `StallBackoffMultiplier` | `double` | `2.0` | Exponential widening of the next-tick delay per stalled tick |
+| Property | Type | Default | Environment variable | Purpose |
+|----------|------|---------|----------------------|---------|
+| `PerItemStreamNamespace` | `Guid` | `SagaItemStreams.DefaultNamespace` | — *code-only* | Namespace UUID deriving per-item stream ids; changing it later orphans existing projection rows |
+| `MinWatchdogDelay` | `TimeSpan` | `00:00:30` | — *code-only* | Floor for the watchdog's next-fire delay |
+| `MaxWatchdogDelay` | `TimeSpan` | `00:30:00` | — *code-only* | Ceiling, so a stalled saga is still re-checked |
+| `WatchdogSafetyMargin` | `TimeSpan` | `00:00:30` | — *code-only* | Slack added to the ETA-based next-tick delay |
+| `MaxConsecutiveStalls` | `int` | `4` | — *code-only* | Zero-progress ticks before the saga is abandoned |
+| `StallBackoffMultiplier` | `double` | `2.0` | — *code-only* | Exponential widening of the next-tick delay per stalled tick |
 
 ## Per-Call Options (Not Startup Configuration)
 
@@ -1265,10 +1266,10 @@ These classes have no settable properties; they are configured entirely through 
 
 Live-tunable without a redeploy; read by the SQL functions themselves.
 
-| key | default | purpose |
-|---|---|---|
-| `notify_debounce_seconds` | `7` | Doorbell debounce window (must stay below the C# `NotifyDrainLingerSeconds`, default 8). Non-positive disables |
-| `integrity_epoch_max_stall_seconds` | `3600` | Digest-epoch stall escape: a lane whose frontier has not advanced this long closes its first blocked epoch anyway (once per sweep). Non-positive disables |
+| key | default | Environment variable | purpose |
+|---|---|----------------------|---|
+| `notify_debounce_seconds` | `7` | — *code-only* | Doorbell debounce window (must stay below the C# `NotifyDrainLingerSeconds`, default 8). Non-positive disables |
+| `integrity_epoch_max_stall_seconds` | `3600` | — *code-only* | Digest-epoch stall escape: a lane whose frontier has not advanced this long closes its first blocked epoch anyway (once per sweep). Non-positive disables |
 
 ## Turnkey-bound options sections (complete sweep)
 
