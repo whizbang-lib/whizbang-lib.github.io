@@ -123,6 +123,21 @@ CREATE INDEX idx_wh_unique_emission_claims_expires
 - **`claimed_by_event_id`** — audit only; the framework writes it but never reads it.
 - **`expires_at`** — defaults to 30 minutes; the same prune sweep that clears `wh_outbox` / `wh_inbox` removes expired claims. Tuning is a deliberate decision tied to the prune cadence.
 
+### Reading and releasing claims
+
+Two more members of `IClaimedEmissionStore` serve callers that must respect a decision another caller
+already made:
+
+- **`FindClaimedAsync(keys)`** returns the held subset of `keys`. A key reads as held for exactly as long
+  as `TryClaimAsync` would lose on it, so it ignores `expires_at`. The stranded-saga sweep uses it to
+  leave [abandoned sagas](../sagas/completion-orchestration#abandoned-sagas) alone.
+- **`ReleaseAsync(key)`** deletes a held claim, so the gated side effect can happen once more. It is an
+  operator's act, used to re-drive an abandoned saga; releasing a claim another caller still relies on
+  lets its side effect happen twice.
+
+Both have defaults, so a store written before them still compiles: `FindClaimedAsync` returns `null`
+(cannot tell) and `ReleaseAsync` returns `false`. The Postgres store implements both.
+
 ### Transaction semantics
 
 When the caller is inside an ambient transaction, the claim INSERT participates. **Invariant:** claim is taken iff the emission committed. A rollback of the outer scope releases the claim, so a downstream caller can re-attempt.
