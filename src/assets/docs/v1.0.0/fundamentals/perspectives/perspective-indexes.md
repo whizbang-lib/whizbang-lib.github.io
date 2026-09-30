@@ -15,6 +15,9 @@ codeReferences:
   - src/Whizbang.Generators.Shared/Models/PerspectiveIndexSql.cs
   - src/Whizbang.Data.EFCore.Postgres.Generators/EFCoreServiceRegistrationGenerator.cs
   - src/Whizbang.Data.Postgres/Migrations/174_EnsureIndex.sql
+  - src/Whizbang.Data.Postgres/Migrations/178_IndexStatistics.sql
+  - src/Whizbang.Data.Postgres/IndexStatistics.cs
+  - src/Whizbang.Data.EFCore.Postgres/IndexStatisticsMaintenanceStep.cs
   - src/Whizbang.Generators/Analyzers/PerspectiveFilterIndexAnalyzer.cs
   - src/Whizbang.Generators/Analyzers/QueryExposureIndexAnalyzer.cs
   - src/Whizbang.Generators.Shared/Utilities/PostgresIdentifiers.cs
@@ -28,6 +31,8 @@ testReferences:
   - tests/Whizbang.Generators.Tests/Analyzers/QueryExposureDocumentMatchTests.cs
   - tests/Whizbang.Generators.Tests/PostgresIdentifiersTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/QueryTranslation/JsonIndexStandDownTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/IndexStatisticsInitializationTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/IndexStatisticsMaintenanceStepTests.cs
 ---
 
 # Perspective Indexes
@@ -252,6 +257,42 @@ ALTER INDEX "inventory".idx_wh_per_order_summary_scope_t RENAME TO idx_order_sum
 ```
 
 Once renamed, later starts find the index by name without running the comparison at all.
+
+## Statistics for a new index {#statistics-for-a-new-index}
+
+{verified: IndexStatisticsInitializationTests.AnIndexThePassCreates_HasStatisticsAndIsChosenForASelectivePredicateAsync, IndexStatisticsInitializationTests.ASecondStart_AnalyzesNothingAsync, IndexStatisticsMaintenanceStepTests.AnExpressionIndexWithoutStatistics_IsAnalyzedAsync, IndexStatisticsMaintenanceStepTests.ASecondRunInTheSameWindow_AnalyzesNothingAsync, IndexStatisticsMaintenanceStepTests.ARun_AnalyzesNoMoreThanItsLimitAsync, CanonicalTemporalRewritePhaseTests.ARewrittenTableIsAnalyzedAsync}
+
+PostgreSQL has no statistics for an index expression, such as `(data ->> 'LineageId')::uuid`, until
+the table is analyzed. Autovacuum analyzes a table only after about a tenth of its rows change. Until
+then the planner estimates a predicate on the expression with a fixed default. For `IS NOT NULL`, the
+default says nearly every row matches. So a selective query over a new index can be planned as a scan
+of the whole table and take seconds instead of milliseconds.
+
+Three things keep a new index's statistics current:
+
+- **The schema pass.** When the pass creates an index, it records the table. Once its transaction
+  commits, it runs `ANALYZE` on each recorded table, once. An index that already exists, or that the
+  pass skipped because an equivalent exists, records nothing. A later start that creates no index
+  analyzes nothing.
+- **The stored-format rewrite.** A table the rewrite changed is analyzed after the rewrite commits,
+  because a mass update leaves the statistics describing the rows as they were.
+- **The maintenance cycle.** The `index-statistics` maintenance step analyzes perspective tables that
+  have rows but whose expression indexes still have no statistics. That covers an index built outside
+  the schema pass, and a start that stopped before it could analyze. Each run analyzes at most five
+  tables. Only one instance runs it per hour: the one that wins the hour's claim, the same claim that
+  `PublishOnceAsync` uses.
+
+`ANALYZE` reads a sample of the table and blocks neither reads nor writes. To check whether an index's
+expression has statistics, look for the index's own name in `pg_stats`:
+
+```sql{title="Does an index expression have statistics?" description="An expression index's statistics are listed under the index's name." category="Perspectives" difficulty="ADVANCED" tags=["postgres", "indexing", "operations", "statistics"]}
+SELECT tablename, attname, null_frac
+FROM pg_stats
+WHERE schemaname = 'inventory' AND tablename = 'idx_order_summary_lineage_id';
+```
+
+No rows means the planner has no statistics for the expression yet. Running `ANALYZE` on the table
+fixes that at once.
 
 ## Related
 
