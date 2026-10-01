@@ -16,6 +16,7 @@ codeReferences:
   - src/Whizbang.Data.EFCore.Postgres/QueryTranslation/ProviderCapabilities.cs
   - src/Whizbang.Data.EFCore.Postgres/Configuration/PerspectiveQueryTranslationOptions.cs
   - src/Whizbang.Data.EFCore.Postgres/QueryTranslation/PhysicalFieldQueryInterceptor.cs
+  - src/Whizbang.Data.EFCore.Postgres/QueryTranslation/PhysicalJsonbContainmentRewriter.cs
   - src/Whizbang.Core/Perspectives/CanonicalTemporalFormat.cs
   - src/Whizbang.Core/Perspectives/CanonicalTemporalJsonConverters.cs
   - src/Whizbang.Core/Perspectives/CanonicalTemporalReaders.cs
@@ -117,6 +118,7 @@ query's results never change. Only its plan does.
 | A comparison in a `Select` or an `OrderBy` | Extraction | Not a filter; see below |
 | `Equals` with a case-insensitive or culture-aware comparison | Extraction | Containment is ordinal and must not claim otherwise |
 | A promoted `[PhysicalField]` property | Its own column | The physical-field pass claims it first |
+| A filter on a promoted jsonb `[PhysicalField]` (an object, a list or a dictionary) | Containment on that column | Its own GIN index answers it; see [jsonb columns](physical-fields.md#jsonb-filters) |
 
 {verified: JsonbContainmentSqlMatrixTests.CompiledSql_SendsTheFilterWhereExpectedAsync, GinContainmentIntegrationTests.MissingKey_IsWhereContainmentAndExtractionDisagreeAsync}
 
