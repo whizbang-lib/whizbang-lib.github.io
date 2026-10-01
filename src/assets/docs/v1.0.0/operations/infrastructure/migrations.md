@@ -274,6 +274,13 @@ region) has a different hash, so it runs in full once and records itself. The mi
 untouched by any of this; the bootstrap still claims nothing about migrations.
 {verified: SchemaBootstrapPhaseTests.ACurrentClosureIsNotAppliedAgainAsync, SchemaBootstrapPhaseTests.AChangedClosureIsAppliedAsync, SchemaBootstrapPhaseTests.TheBootstrapRecordsNothingInTheLedgerAsync}
 
+### Which instance migrates {#which-instance-migrates}
+
+The migrator is a duty, held by [role assignment](../startup/capabilities-and-duties#role-assignment-the-default) by default. Its vote is part of the bootstrap closure (migration `184_RoleAssignmentResilience.sql` is a bootstrap region), so the assignment table and its functions exist before the first migration runs. Every instance joins the registry, then votes; the winner migrates and releases the duty when it returns, however it returns.
+
+An instance that lost the vote waits for the result instead of queuing behind the schema lock. It watches the migrator itself: its assignment row and, for a migrator on a release that still held the duty by session lock, that lock (`MigratorWatch`). The migrator renews its assignment between phases and marks the backend running its DDL, so one long migration statement does not lose the duty; its lease is 30 seconds by default (`RoleAssignmentOptions.RoleLeases`). If the migrator dies, its assignment lapses and a waiter goes on to do the schema work itself, still under the schema lock, which keeps DDL to one instance at a time whatever the duty says.
+{verified: MigratorWatchTests.AMigratorHoldingTheRole_IsMigrating_UntilItReleasesItAsync, MigratorWatchTests.AMigratorOnAnOlderRelease_HoldingTheDutysSessionLock_IsMigratingAsync, SchemaMigratorDeferralGenerationTests.AWaiterWatchesTheMigratorAsync, SchemaMigratorDeferralGenerationTests.TheMigratorRenewsItsRole_AndMarksTheBackendRunningTheMigrationAsync}
+
 ### Table rewrites run post-ready, under the maintainer duty
 
 A migration cannot `VACUUM FULL` (both are forbidden inside its transaction), so a migration that leaves a table owing a rewrite — a `DROP COLUMN`, whose bytes Postgres keeps in every pre-existing row — **records** the request via `wh_request_table_rewrite`. The runtime bloat detector records through the same function when churn bloats a table past threshold.

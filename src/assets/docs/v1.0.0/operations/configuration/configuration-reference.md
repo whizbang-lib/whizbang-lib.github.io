@@ -68,6 +68,7 @@ Environment variables are added **after** `appsettings.json` and `appsettings.{E
 | `Whizbang:Tracing` | `TracingOptions` | Automatic |
 | `Whizbang:Database` | `WhizbangNotificationOptions` | Automatic (Postgres driver) |
 | `Whizbang:Database:Stamper` | `CommitOrderStamperOptions` | Automatic (Postgres driver) |
+| `Whizbang:Database:RoleAssignment` | `RoleAssignmentOptions` | Automatic (Postgres driver) |
 | `Whizbang:WorkCoordinatorGate` | `WorkCoordinatorGateOptions` | Automatic (worker pipeline); a Postgres driver's `MaxInFlightCommands` fills `MaxConcurrent` when the section leaves it unset |
 | `Whizbang:ServiceName` (falls back to `ServiceName`) | — (string) | Automatic |
 | `Whizbang:ShowBanner` | — (bool) | Automatic |
@@ -144,6 +145,23 @@ Bound alongside `Whizbang:Database`. Controls the per-database commit-order stam
 | `BatchSize` | `int` | `1000` | `Whizbang__Database__Stamper__BatchSize` | Max rows stamped per call |
 | `DisableStamper` | `bool` | `false` | `Whizbang__Database__Stamper__DisableStamper` | Killswitch — worker exits early, never acquires the lock |
 | `AdvisoryLockKey` | `long` | `0x57480001_5557_5048` | `Whizbang__Database__Stamper__AdvisoryLockKey` | Advisory lock key; must match across all instances sharing a database |
+
+With role assignment on (the default), the stamper's leader is the `commit-stamper` role rather than a session-lock holder: `LeaderElectionRetry` is how long a non-holder waits between votes when no release is announced, and `AdvisoryLockKey` names the lock an older stamper takes, which a bridged holder also holds and a vote looks for.
+
+### Whizbang:Database:RoleAssignment → RoleAssignmentOptions {#role-assignment-options}
+
+Bound by the Postgres driver, which holds duties (`maintainer`, `migrator`, and the stamper's `commit-stamper` role) as liveness-tied assignments with an epoch by default. **Details:** [Duty Role Assignment](/proposals/duty-role-assignment).
+
+| Key | Type | Default | Environment variable | Purpose |
+|-----|------|---------|----------------------|---------|
+| `Enabled` | `bool` | `true` | `Whizbang__Database__RoleAssignment__Enabled` | `false` hands every duty back to the session-lock elector |
+| `HoldLegacySessionLock` | `bool` | `false` | `Whizbang__Database__RoleAssignment__HoldLegacySessionLock` | The mixed-version bridge: a holder also holds the duty's session lock. Turn it on for a rolling deploy from a release that held duties by session lock |
+| `RenewInterval` | `TimeSpan` | `00:00:05` | `Whizbang__Database__RoleAssignment__RenewInterval` | How often a holder renews its lease from its own work loop |
+| `MissedRenewalsBeforeLapse` | `int` | `3` | `Whizbang__Database__RoleAssignment__MissedRenewalsBeforeLapse` | The default lease is this many renew intervals |
+| `CooldownAfterLapse` | `TimeSpan` | `00:00:15` | `Whizbang__Database__RoleAssignment__CooldownAfterLapse` | How long an instance whose own assignment lapsed must wait before it can win it back. A fleet-wide lapse (a database outage) carries none |
+| `OwedWorkRetryBase` | `TimeSpan` | `00:00:30` | `Whizbang__Database__RoleAssignment__OwedWorkRetryBase` | Backoff after owed duty work fails, doubled per failure, capped at one hour |
+
+Code-only (through `AddWhizbangRoleAssignment(o => ...)`): `Roles`, `RoleLeases` (a lease per duty; the migrator's default is 30 seconds) and `LegacyLockKeys`.
 
 ### Service Name and Banner
 

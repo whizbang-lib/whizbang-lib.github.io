@@ -16,6 +16,9 @@ tags: >-
 codeReferences:
   - src/Whizbang.Core/Startup/IDutyElector.cs
   - src/Whizbang.Data.Postgres/Notifications/PgDutyElector.cs
+  - src/Whizbang.Data.Postgres/Notifications/PgRoleElector.cs
+  - src/Whizbang.Data.Postgres/MigratorWatch.cs
+  - src/Whizbang.Data.Postgres/Migrations/184_RoleAssignmentResilience.sql
   - src/Whizbang.Data.Postgres/DutyLockKey.cs
   - src/Whizbang.Data.Postgres/Migrations/108_InstanceCapabilities.sql
 testReferences:
@@ -23,6 +26,7 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/TableRewriteJourneyE2ETests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/InstanceCapabilitiesSqlTests.cs
   - tests/Whizbang.Core.Tests/Startup/StartupPipelineRunnerDutyTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Chaos/RoleAssignmentChaosTests.cs
 ---
 
 # Capabilities and Duties
@@ -52,7 +56,7 @@ These are two different problems and they use two different mechanisms:
 
 | Concern | Mechanism | Why |
 |---|---|---|
-| **Election** — who performs a duty | Database primitive: a session advisory lock on a process-stable key | Linearizable against the authority every instance already depends on. Self-healing, no timeout to tune, no split-brain window |
+| **Election** — who performs a duty | Database primitive: by default a one-statement vote that assigns the duty as a row with an epoch and a lease ([role assignment](#role-assignment-the-default)); otherwise a session advisory lock on a process-stable key | Linearizable against the authority every instance already depends on, and decided entirely in the database |
 | **Membership** — who is alive, what they hold | Heartbeat plus the instance-alive session lock ([instance liveness](../../fundamentals/workers/instance-liveness)) | Drives re-attempt prompts, observability, and the reaping backstop |
 
 Liveness never decides an election. A holder that is alive but briefly slow would otherwise get declared dead by peers watching a timeout, a replacement elected, and two instances believing they hold the duty — for `migrator`, two instances running DDL at once. Heartbeats and `InstanceDiedSignal` only *prompt re-attempts*; the lock grants or refuses.
@@ -103,6 +107,19 @@ What this deliberately does *not* do is stop the host. The startup pipeline runs
 
 Staying up is also the more informative outcome, and fail-closed is what makes it safe: a pipeline that never completes leaves the availability filter refusing writes, so the instance is up, [reports unready](startup-status), and carries the reason in its logs. `NonHolderBehavior.Skip` keeps its single non-blocking attempt throughout — a transient failure reports the step skipped with the elector's error as the reason, rather than quietly promoting it into a waiter.
 
+## Role assignment (the default) {#role-assignment-the-default}
+
+With the Postgres driver, duties are held by **role assignment** unless `Whizbang:Database:RoleAssignment:Enabled` is `false`. The advisory lock decides only the vote, a single statement; from then on the duty is a row in `wh_role_assignments` with a holder, an **epoch** and a **lease** in database time. The holder's own work loop renews the lease through `VerifyStillHeldAsync`, so a holder that is stuck, paused or partitioned stops renewing and loses the duty after one lease, and exclusive work presents `(holder, epoch)` to the database (`wh_assert_role_epoch`), so a holder that lost the duty cannot write. The grant carries the epoch as `IDutyGrant.Epoch`.
+
+Held this way: `maintainer`, `migrator`, and the commit-order stamper's leadership (`commit-stamper`). Any other duty name stays on the session lock described below. A few behaviors to know:
+
+- **A newer release takes over cooperatively.** An instance on a newer library version asks an older holder to drain (`IDutyGrant.DrainRequested`); the holder finishes its current step and releases. A vacant duty goes to the newest version voting for it.
+- **One long statement does not lose the duty.** Each duty may declare its own lease, and a holder that marks the backend running its statement (`PgRoleElector.MarkDutyBackendAsync`) stays live while that statement runs.
+- **A database outage does not cool anyone down.** After an involuntary lapse an instance waits `CooldownAfterLapse` before winning the duty back, unless every holder lapsed together.
+- **Rolling deploy from a session-lock release.** Turn on `HoldLegacySessionLock` for that deploy, so old and new instances never both act; the default is off.
+
+Health reports the duties under the `roles` component and the meter `Whizbang.Roles` counts elections, hand-offs, drains and losses. The full design, the resilience requirements it meets and the chaos suite that tests them are in the [Duty Role Assignment](/proposals/duty-role-assignment) proposal; the options are in the [configuration reference](../configuration/configuration-reference#role-assignment-options).
+
 ## Takeover
 
 An instance never looks up whether it has been *assigned* a capability — it attempts acquisition. Takeover therefore needs no coordinator:
@@ -116,7 +133,9 @@ An instance never looks up whether it has been *assigned* a capability — it at
 
 The record is inconsistent only between steps 2 and 6 — the same heartbeat-lease window the system already reaps. A half-open session whose lock lingers (a pod killed for memory) is bounded by the stale-instance cleanup's definitive-dead cutoff, which is why heartbeat liveness is a **correctness backstop** here rather than a latency optimization: the lock handles every clean failure; the cutoff bounds the pathological one.
 
-For `Migrate` the failover is the fastest in the system and needs no detection machinery at all: waiters are already blocked on the advisory lock, and the server frees it the moment the holder's session ends. The duties that rely on signal-plus-poll re-attempt — `maintainer` among them — are precisely the ones for which tens of seconds is immaterial.
+The steps above are the session-lock model. Under role assignment, step 2 is the lease lapsing in database time (or a clean release, which hands over at once and announces it), and step 5 is the next vote, which voids the lapsed assignment and grants a new epoch.
+
+For `Migrate`, waiters watch the migrator directly: its assignment row, and the duty's session lock for a migrator on an older release. A migrator that stops cleanly releases its duty, so a waiter that finds the schema current exits at once; a migrator that dies is noticed when its lease lapses (30 seconds by default, held open while its migration statement runs), and the schema lock still guarantees that only one instance applies DDL at a time. The duties that rely on signal-plus-poll re-attempt — `maintainer` among them — are precisely the ones for which tens of seconds is immaterial.
 
 ## Related
 
