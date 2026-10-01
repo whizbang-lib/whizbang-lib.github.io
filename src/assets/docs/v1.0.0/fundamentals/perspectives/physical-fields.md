@@ -610,7 +610,7 @@ What happens underneath:
 
 ## Adding a physical field to an existing model {#adding-a-physical-field}
 
-{verified: PhysicalColumnBackfillIntegrationTests.Backfill_RestoresExactlyWhatTheWriterStored_ForEveryTypeAsync, PhysicalColumnBackfillIntegrationTests.Backfill_LeavesAColumnThatAlreadyHasAValueAloneAsync, PhysicalColumnBackfillIntegrationTests.AddColumn_OnATableThatPredatesIt_AddsTheColumn_AndIsIdempotentAsync, PhysicalColumnSqlTests.ExistingTable_GetsTheColumn_ThenTheBackfill_ThenTheIndexAsync, PhysicalColumnSqlTests.SplitStorage_AddsTheColumn_ButHasNoDocumentCopyToBackfillFromAsync, PerspectiveSchemaBackfillTests.Extracted_EachPhysicalColumn_IsBackfilledFromTheDocumentAsync, PostgresSchemaInitializerCoverageTests.InitializeSchemaAsync_ColumnCopyAddingPhysicalColumns_BackfillsExistingRowsAsync, DapperPerspectiveStorePhysicalFieldTests.Upsert_Insert_WritesEveryPhysicalColumnAsync}
+{verified: PhysicalColumnBackfillIntegrationTests.Backfill_RestoresExactlyWhatTheWriterStored_ForEveryTypeAsync, PhysicalColumnBackfillIntegrationTests.Backfill_LeavesAColumnThatAlreadyHasAValueAloneAsync, PhysicalColumnBackfillIntegrationTests.AddColumn_OnATableThatPredatesIt_AddsTheColumn_AndIsIdempotentAsync, PhysicalColumnSqlTests.ExistingTable_GetsTheColumn_ThenTheBackfill_ThenTheIndexAsync, PhysicalColumnSqlTests.SplitStorage_FillsTheColumnFromTheDocumentThePreviousReleaseWroteAsync, PhysicalColumnSqlTests.AColumnTypeTheAuthorChose_ForAString_IsBackfilledThroughACastAsync, PhysicalFieldMoveGenerationTests.AnArray_IsBuiltElementByElementInDocumentOrderAsync, PhysicalFieldMoveGenerationTests.AJsonbColumn_TakesTheDocumentValueAsItIsAsync, PhysicalFieldMoveGenerationTests.AnEnumeration_IsReadAsTheNumberItsColumnAndDocumentBothHoldAsync, PerspectiveSchemaBackfillTests.Extracted_EachPhysicalColumn_IsBackfilledFromTheDocumentAsync, PostgresSchemaInitializerCoverageTests.InitializeSchemaAsync_ColumnCopyAddingPhysicalColumns_BackfillsExistingRowsAsync, DapperPerspectiveStorePhysicalFieldTests.Upsert_Insert_WritesEveryPhysicalColumnAsync, SplitPromotionTests.ASplitPromotion_FillsTheColumnFromTheDocumentAsync, DapperPhysicalFieldMoveTests.AColumnCopyPromotion_ArmsAndFillsEachColumnAsync}
 
 Promoting a field of a model that already has rows is safe. The schema pass, on the instance elected
 to migrate, does three things in order:
@@ -625,21 +625,29 @@ This matters because the query translator reads a promoted property from its col
 every filter and sort on the field would read an empty column for the older rows, and return nothing
 for them without an error.
 
-The fill reproduces exactly what the writer stores, type by type: text, identifiers, integers, booleans,
-decimals and floating point, and dates and times. Dates and times are microsecond counts in the
-document, so they are rebuilt by exact arithmetic from the epoch rather than parsed.
+The fill reproduces exactly what the writer stores, type by type:
 
-Some fields are added but not filled, because the document cannot reproduce them:
+- **Scalars:** text, identifiers, integers, booleans, decimals and floating point.
+- **Dates and times,** which are microsecond counts in the document, so they are rebuilt by exact
+  arithmetic from the epoch rather than parsed.
+- **Enumerations,** whose column and document both hold the underlying number.
+- **A `jsonb` (or `json`) column you chose** with `ColumnType = "jsonb"`, which takes the document's value
+  as it is. A JSON null becomes a null column.
+- **A native array you chose** (`ColumnType = "uuid[]"`, `"text[]"`, `"integer[]"`, ...) over a collection of
+  the scalars above, built element by element in document order.
+- **Another column type you chose** for a scalar that is not a date or time (`citext`, `numeric(12,2)`, a
+  domain), cast to that type, which is how the server parses the value the writer sends.
+- **Split storage.** The previous release kept the field in the document, so the documents it wrote still
+  hold the value, and the column is filled from them.
 
-- **Split storage.** The value lives only in the column, so older rows need a
-  [rebuild](./rebuild) to fill it.
-- **A column type you chose** (`[PhysicalField(ColumnType = "...")]`), an enumeration, or any other type
-  whose column encoding the framework cannot know.
-- **Vector fields.**
+Only a vector, a date or time under a column type you chose, and a type the framework does not know have
+no document copy the column can be filled from. On a table that already has rows, that column is reported
+for a rebuild; see [When the document has no copy](#when-the-document-has-no-copy).
 
-Both drivers do this. With the Dapper driver, the schema generator places the same fill statements
-after the table, so the column-copy migration that adds the column runs them against the new table, and
-the Dapper store writes every physical column on insert and update, as the EF Core store does.
+Both drivers do this. With the Dapper driver, each promoted column is recorded and added before the
+table's column-copy migration runs, against the table the previous release left, and the fill runs after
+the swap against the new table. The Dapper store writes every physical column on insert and update, as the
+EF Core store does.
 
 The fill runs inside the startup schema pass, as one `UPDATE` per field. On a very large table, schedule
 the release that promotes the field for a quiet period, or promote it on an empty table first.
@@ -684,7 +692,7 @@ takes in that pass.
 
 ### Rows written during a rolling deploy {#rows-written-during-a-rolling-deploy}
 
-{verified: PhysicalColumnFillMaintenanceStepTests.ARowWrittenWithOnlyTheDocumentValue_IsFilledAndFoundByAColumnFilterAsync, PhysicalColumnFillMaintenanceStepTests.ASecondRun_ChangesNothingAsync, PhysicalColumnFillMaintenanceStepTests.AColumnStaysArmedUntilTheSettleWindowHasPassedAsync, PhysicalColumnFillMaintenanceStepTests.ABatchFillsNoMoreThanItsSizeAsync, PhysicalColumnFillMaintenanceStepTests.ASecondRunInTheSameWindow_FillsNothingAsync}
+{verified: DapperPhysicalFieldMoveTests.ARowThePreviousReleaseWrote_IsFilledByTheDapperStepAsync, DapperPhysicalFieldMoveTests.TheStep_RunsOnlyOnTheInstanceThatTakesTheClaimAsync, PhysicalColumnFillMaintenanceStepTests.ARowWrittenWithOnlyTheDocumentValue_IsFilledAndFoundByAColumnFilterAsync, PhysicalColumnFillMaintenanceStepTests.ASecondRun_ChangesNothingAsync, PhysicalColumnFillMaintenanceStepTests.AColumnStaysArmedUntilTheSettleWindowHasPassedAsync, PhysicalColumnFillMaintenanceStepTests.ABatchFillsNoMoreThanItsSizeAsync, PhysicalColumnFillMaintenanceStepTests.ASecondRunInTheSameWindow_FillsNothingAsync}
 
 The fill in the schema pass covers the rows that exist when the first instance of the new release starts.
 During a rolling deploy, instances still on the previous release keep writing, and they do not know the
@@ -702,12 +710,107 @@ watched, and the step then fills rows that have the value in the document and no
 - **Until it has settled.** A column stays watched for a day after the pass that added it, which is longer
   than a rollout takes. It is released once a run finds nothing left after that.
 
-The Postgres driver registers the step, so it runs wherever the maintenance worker does. A value the
-document holds that the column's type cannot take is reported as a warning, and the column stays watched.
+Both drivers register the step, so it runs wherever the maintenance worker does: the EF Core Postgres
+driver, and the Dapper driver, which claims the window through the registered claim store or, without one,
+directly in the same claims table. A value the document holds that the column's type cannot take is
+reported as a warning, and the column stays watched.
+
+A Split promotion is different: the new release reads the field from the column, so a row the previous
+release writes has to have its column right at once, not ten minutes later. Its writes are synced; see
+[Writes from both releases during the deploy](#rolling-deploy-moves) under Storage moves.
 
 Queries could instead read `COALESCE(column, document value)` for a promoted field, which is correct but
 is a different expression from the column. A filter on it cannot use the column's index, and that index
 is the reason to promote the field. Filling the column keeps every query on the indexed column.
+
+## Storage moves {#storage-moves}
+
+{verified: SplitPromotionTests.AWriteFromEitherRelease_KeepsTheColumnAndTheDocumentInAgreementAsync, SplitPromotionTests.ARowThePreviousReleaseWrote_IsReadWithItsValuesThroughTheStoreAsync, SplitPromotionTests.TheSyncTriggers_AreDroppedWhenTheMoveSettlesAsync, PhysicalFieldDemotionTests.ADemotedField_IsCopiedIntoTheDocumentForEveryRowAsync, PhysicalFieldDemotionTests.AWriteFromEitherRelease_KeepsTheColumnAndTheDocumentInAgreementAsync, PhysicalFieldDemotionTests.ASettledDemotion_DropsItsTriggersAndIsNeverCopiedAgainAsync, PhysicalColumnFormsTests.EachSupportedType_RoundTripsThroughTheDocumentAsync, DapperPhysicalFieldMoveTests.ASplitPromotion_FillsAndSyncsOnTheSwappedInTableAsync, DapperPhysicalFieldMoveTests.ADemotedColumn_IsCopiedIntoTheDocumentAndSyncedAsync}
+
+A field's storage can move between the document and a column in either direction, on either driver,
+without losing a value. The move happens on the first start of the release that changes the declaration,
+and every move is idempotent: a later start finds nothing to do.
+
+| Change | Safe to ship? | What happens to the data |
+|---|---|---|
+| Add `[PhysicalField]` to a field of an **Extracted** model | Yes | The column is added and filled from every document. Rows the previous release writes during the deploy are filled by the maintenance step. The document keeps its copy. |
+| Add `[PhysicalField]` to a field of a **Split** model | Yes | The column is added and filled from every document. Until the deploy settles, every write keeps the column and the document in agreement, so both releases read the right value. Afterwards the document copy is no longer kept. |
+| Promote to a `jsonb` column (`ColumnType = "jsonb"`) | Yes | The column takes the document's value as it is. Same rules as above for Extracted and Split. |
+| Promote to a native array or another column type you chose | Yes, for the types listed above | Filled element by element, or through a cast. Otherwise reported for a rebuild. |
+| Promote a vector, or a date or time under a type you chose | Only with a rebuild | The column is added but cannot be filled. The start reports the table for a rebuild. |
+| Remove `[PhysicalField]` from a field (demotion) | Yes | Every value in the column is copied into the document. Until the deploy settles, every write keeps them in agreement. The column is **left in place**; drop it yourself once the deploy has settled. |
+| Demote a field out of a `jsonb` column | Yes | The column's value becomes the document's value as it is. |
+| Demote a field whose column has a custom name (`ColumnName = "..."`) | No | The column is found only under the field's default name. Rename the column to the default name first, or rebuild. |
+| Demote a column whose type the document cannot hold (a vector, `point`, `interval`) | Only with a rebuild | Nothing is copied. The start reports the table for a rebuild. |
+| Change a model from Split to Extracted, or back | Not by this | Use a rebuild. |
+
+### Writes from both releases during the deploy {#rolling-deploy-moves}
+
+During a rolling deploy the two releases read a moving field from different places: after a Split
+promotion the new release reads the column and the previous one the document, and after a demotion it is
+the other way round. A background fill alone could not keep them right, because a row one release wrote
+could be read and written back by the other before the fill reached it.
+
+So for these moves the start that makes the move also adds two row triggers to the table:
+
+- **A write that sets the column** (the release that knows the column) copies it into the document.
+- **A write that leaves the column out** (the release that does not) has the column follow the document.
+
+Neither release can then read a value the other wrote in the place it does not look. A document value the
+column cannot take leaves the column as it was rather than failing the write. Once the move has been
+watched for a day, the maintenance step drops the triggers. An Extracted promotion needs none: both
+releases read the document, and the step fills the rows the previous release writes.
+
+## Demoting a field {#demoting-a-field}
+
+{verified: PhysicalFieldDemotionTests.ADemotedField_IsCopiedIntoTheDocumentForEveryRowAsync, PhysicalFieldDemotionTests.ASecondPass_CopiesNothingAsync, PhysicalFieldDemotionTests.ASettledDemotion_DropsItsTriggersAndIsNeverCopiedAgainAsync, PhysicalFieldDemotionTests.PromotingADemotedFieldAgain_RefreshesTheColumnFromTheDocumentAsync, PhysicalFieldMoveGenerationTests.Demote_NeverOffersAFrameworkColumnOrOneAPromotedFieldOwnsAsync, DapperPhysicalFieldMoveTests.ADemotedColumn_IsCopiedIntoTheDocumentAndSyncedAsync}
+
+Removing `[PhysicalField]` from a field keeps its values. The model no longer says the field was promoted,
+so on each start that changes the perspective's schema, every field the model keeps only in the document is
+checked for a column under the name its promotion would have used (`Score` → `score`). When the table has
+one:
+
+1. **The copy.** Every row whose column holds a value its document does not gets the value copied into
+   the document, in the form the document stores it (microseconds for dates and times, the number for an
+   enumeration, a JSON array for an array column, the value itself for a `jsonb` column).
+2. **The rollout.** The triggers described above keep the two in agreement until the move settles.
+3. **The record.** The move is recorded in `wh_physical_column_fills`. Once it has settled it is kept, so
+   a later start never copies the column, which by then is stale, over the document.
+
+A column every perspective table has, or one a field still promoted owns, is never a candidate.
+
+**The column is never dropped.** Once the move has settled (the maintenance step logs
+`... has been copied into the document and has settled; the column is no longer kept in step and can be dropped`),
+drop it in a maintenance window:
+
+```sql{title="Dropping a demoted column" description="Run once the demotion has settled; nothing reads the column any more." category="Operations" difficulty="BEGINNER" tags=["perspectives", "physical-fields", "operations"]}
+-- Confirm the move has settled.
+SELECT table_name, column_name, settled_at
+FROM wh_physical_column_fills
+WHERE direction = 'to_document';
+
+-- Then drop the column.
+ALTER TABLE wh_per_ticket DROP COLUMN score;
+```
+
+Promoting the field again later refreshes the column from the document for every row before arming it,
+so a column that sat stale while the field was demoted is never read.
+
+## When the document has no copy {#when-the-document-has-no-copy}
+
+{verified: PhysicalFieldMoveNoticeTests.AColumnTheDocumentCannotFill_IsReportedForARebuildAsync, PhysicalFieldMoveNoticeTests.AColumnTheDocumentCannotFill_OnAnEmptyOrMissingTable_IsNotReportedAsync, PhysicalFieldMoveNoticeTests.ADemotedColumnTheDocumentCannotHold_IsReportedForARebuildAsync}
+
+Some moves cannot be made from the stored data: a promoted vector, a promoted date or time under a column
+type you chose, or a demoted column of a type the document cannot hold. The values exist only in the
+perspective's events. On a table that has rows, the start records the column, and the maintenance step's
+first run logs it once, at Warning:
+
+```text
+public.wh_per_ticket.embedding cannot be moved for field Embedding: the document holds no copy the column can be filled from, or the column holds a type the document cannot. Rebuild the perspectives stored in public.wh_per_ticket by dispatching RebuildPerspectiveCommand with their names
+```
+
+Dispatch [`RebuildPerspectiveCommand`](./rebuild) for the perspectives stored in that table. A table with no
+rows has nothing to restore, and reports nothing.
 
 ## Enumeration columns {#enum-columns}
 
