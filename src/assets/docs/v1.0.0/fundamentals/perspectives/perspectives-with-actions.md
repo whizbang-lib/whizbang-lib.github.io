@@ -309,11 +309,21 @@ Shipped behavior: `ModelAction.Delete` does **not** automatically stamp `Deleted
 
 A purge used to leave nothing behind. The next event on the stream found no row, the runner applied it to an empty model, and an Apply written as create-or-update rebuilt a row with mostly default values. A delayed follow-up, such as a version bump from a save point that lands thirty seconds after the delete, then put an empty row back into grids and counts.
 
-The runner now remembers the purge:
+### What Apply receives when there is no row {#no-row-contract}
+
+The runner **never passes `Apply` a null model**. When a stream has no row (a new stream, or a purged one), it builds an empty model and passes that:
+
+- the `[StreamId]` property is set to the stream id (a `Guid`, `Guid?`, `string`, or a strongly-typed id with a static `From(Guid)` factory);
+- every `required` member is set to `default!`;
+- every other property keeps the value of the model's own initializer, or its default.
+
+The runner saves a row only when an `Apply` returns a model (or the row already existed); a batch of `ApplyResult.None()` on a new stream writes nothing. This has a consequence that surprises people: a guard written as `current ??= new OrderView { ... }` **never runs**, because `current` is never null. A create-or-update `Apply` therefore cannot tell "no row yet" from "a row with default values" by checking for null, and on a missing row it builds a row out of the empty model. Test for a missing row explicitly (for example, the stream key is set but a field every created row has, such as `CreatedAt`, is still its default) if an event must not create one, and rely on the purge marker below for a row that was purged.
+
+The runner now remembers the purge, and checks it **before** any `Apply` runs:
 
 - **The purge is recorded.** When an Apply returns `Purge`, the runner writes a purge marker for the stream and perspective (`wh_stream_purge_markers`) *before* it removes the row, so a crash between the two leaves a marker on a live row, never a missing row without one.
-- **Later events are skipped.** When the row is missing and the stream carries a marker, the batch is skipped: the checkpoint moves past each event, nothing is written, and the skip is logged and counted in `whizbang.perspective.purged_events_skipped` (tagged with `perspective_name`). An Apply that throws on a purged stream is a skip too, not a failure: the row it would change is gone.
-- **Resurrect is the only way back.** An Apply that returns `ApplyResult<TModel>.Resurrect(model)` recreates the row and clears the marker; events after it apply normally.
+- **Later events are skipped.** When the row is missing and the stream carries a marker, the batch is skipped before anything is applied to the stream's row: the checkpoint moves past each event, nothing is written, and the skip is logged and counted in `whizbang.perspective.purged_events_skipped` (tagged with `perspective_name`). An Apply that throws on a purged stream is a skip too, not a failure: the row it would change is gone.
+- **Resurrect is the only way back.** To find out whether an event opts back in, the runner still calls its `Apply` on a fresh empty model, and throws the result away unless it is `ApplyResult<TModel>.Resurrect(model)`, which recreates the row and clears the marker; events after it apply normally. Nothing a create-or-update `Apply` returns can recreate the row.
 - **New streams are never affected.** The marker is consulted only when the row is missing, and a marker exists only after a purge, so a new stream, or any stream that was never purged, never pays for or meets it.
 - **Live, rewind and rebuild agree.** A rebuild or a full rewind of a purged stream starts purged when the stream carries a marker, so replaying "created, deleted, bumped" leaves no row, exactly as the live drain did. A straggler written before the delete but delivered after it stays out too: the live drain finds the marker, and a rewind replays it in order before the purge.
 - **An operator purge marks every perspective.** [Purging streams](../../operations/infrastructure/purging-streams.md) removes a stream entirely and marks it for every perspective at once, so a later event cannot recreate any of its rows.
