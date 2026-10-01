@@ -524,7 +524,7 @@ public record ProductSearchDto {
 
 ### Reading promoted fields back {#reading-promoted-fields-back}
 
-{verified: PhysicalFieldHydratorInitOnlyTests.Record_ChangeTrackerHydrator_CopiesTheColumnsWithAWithExpressionAsync, PhysicalFieldHydratorInitOnlyTests.Class_Hydrators_AssignTheSettablePropertiesAndSkipTheRestAsync, InitOnlyPhysicalFieldHydrationTests.SplitRecord_AQueryOnAHookedContext_CopiesTheInitOnlyColumnsIntoTheModelAsync, InitOnlyPhysicalFieldHydrationTests.ExtractedClass_AQueryOnAHookedContext_CopiesTheSettableColumnAndKeepsTheInitOnlyOneFromTheDocumentAsync, SplitHydratorHookedWriteTests.Add_OnAHookedContext_SavesTheSplitRowAsync, SplitHydratorHookedWriteTests.Update_OnAHookedContext_SavesTheChangeAsync, SplitClassSnapshotRewindTests.Rewind_FromASnapshotOfASplitClassModel_KeepsThePromotedColumnsAsync}
+{verified: PerspectiveRunnerSplitInitOnlyTests.ASplitClassWithAnInitOnlyPromotedField_IsStrippedIntoACopyAsync, PerspectiveRunnerSplitInitOnlyTests.ASplitClassWithAnInitOnlyPromotedField_IsLoadedThroughACopyAsync, PerspectiveRunnerSplitInitOnlyTests.AnUncopyableSplitClass_IsWHIZ808Async, PhysicalFieldHydratorInitOnlyTests.SplitClass_WithAnInitOnlyPromotedField_IsHydratedThroughACopyAsync, InitOnlyPhysicalFieldHydrationTests.SplitClass_TheRunnerWritesAStrippedCopy_SnapshotsTheModelItApplied_AndAQueryCopiesTheColumnsBackAsync, PerspectiveRunnerSplitSnapshotTests.Runner_DecidesWhetherASnapshotIsDueBeforeTheWrite_AndSnapshotsOnThatDecisionAsync, SplitClassSnapshotRewindTests.ASplitClassModel_IsSnapshottedOnlyOnARunThatReachesTheCadence_WithItsPromotedFieldsAsync, PhysicalFieldHydratorInitOnlyTests.Record_ChangeTrackerHydrator_CopiesTheColumnsWithAWithExpressionAsync, PhysicalFieldHydratorInitOnlyTests.Class_Hydrators_AssignTheSettablePropertiesAndSkipTheRestAsync, InitOnlyPhysicalFieldHydrationTests.SplitRecord_AQueryOnAHookedContext_CopiesTheInitOnlyColumnsIntoTheModelAsync, InitOnlyPhysicalFieldHydrationTests.ExtractedClass_AQueryOnAHookedContext_CopiesTheSettableColumnAndKeepsTheInitOnlyOneFromTheDocumentAsync, SplitHydratorHookedWriteTests.Add_OnAHookedContext_SavesTheSplitRowAsync, SplitHydratorHookedWriteTests.Update_OnAHookedContext_SavesTheChangeAsync, SplitClassSnapshotRewindTests.Rewind_FromASnapshotOfASplitClassModel_KeepsThePromotedColumnsAsync}
 
 When a lens query materializes a row, the generated EF Core code copies each promoted column into the
 model, so a Split field arrives with its value even though the document does not hold it. The copy
@@ -534,16 +534,25 @@ works with the model shapes this page shows:
   ones, in every storage mode.
 - **A class** is assigned in place. A class cannot set an `init`-only property on an instance it already
   has, so the copy leaves that property as the document holds it. In `Extracted` mode the document holds
-  it too, so nothing is lost. A `Split` class model declares its promoted fields `{ get; set; }`.
+  it too, so nothing is lost.
+- **A `Split` class with an `init`-only promoted field** is copied: a new instance from its
+  parameterless constructor, with every public property that has a public or internal setter carried
+  over and the columns put in. The runner strips such a class the same way, into a copy, before the
+  write. A class that cannot be copied this way (no public or internal parameterless constructor, a
+  get-only property that stores a value, a private setter, or an abstract class) is reported as
+  [WHIZ808](../../operations/diagnostics/whiz808.md); make it a record, or make the promoted field
+  settable.
 - **A computed property** (no setter) is never copied into.
 
 Only rows a query materializes are hydrated. An entity your code adds or attaches for an update on the
 same `DbContext` is left tracked, and `SaveChanges` writes it as usual.
 
 Snapshots hold the promoted fields as well. Before it writes a Split row, the runner clears the promoted
-fields so the document leaves them out. For a record it clears them on a copy. A class has no copy, so the
-runner takes the class's snapshot before the write, and a rewind from that snapshot keeps the columns'
-values.
+fields so the document leaves them out. For a record, and for a class with an `init`-only promoted field,
+it clears them on a copy, and the snapshot after the write is the model it applied. Any other class is
+cleared in place, so on a run whose snapshot is due the runner serializes the class's snapshot before the
+write. Whether it is due is decided before the write, so a run that takes no snapshot serializes nothing
+extra. A rewind from either snapshot keeps the columns' values.
 
 ## Defining Physical Fields
 
