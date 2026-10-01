@@ -293,7 +293,10 @@ once, by a rewrite that is part of the migration path rather than of the schema 
 The same phase runs the migrations an application declares for its own stored documents when a
 model changes shape (a property's type or name, a removal, a default): see
 [Stored-form migrations](../../fundamentals/perspectives/stored-form-migrations.md). They run first,
-journaled in `wh_stored_form_migrations`, under the same lock and fence.
+journaled in `wh_stored_form_migrations`, under the same lock and fence. A migration that converts a
+table brings forward the retries of the streams parked on it, and an index that still casts a
+retyped key to its old type is dropped before the conversion and built again, concurrently, once the
+phase has committed.
 
 ### What it converts
 

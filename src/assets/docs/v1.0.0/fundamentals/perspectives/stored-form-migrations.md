@@ -20,6 +20,7 @@ codeReferences:
   - src/Whizbang.Data.Postgres/StoredFormMigrationSql.cs
   - src/Whizbang.Data.Postgres/StoredFormStep.cs
   - src/Whizbang.Data.Postgres/StoredFormMigrationJournal.cs
+  - src/Whizbang.Data.Postgres/StoredFormIndexRebuild.cs
   - src/Whizbang.Data.Postgres/Migrations/176_StoredFormMigrations.sql
   - src/Whizbang.Data.Postgres/CanonicalTemporalRewritePhase.cs
   - src/Whizbang.Generators.Shared/Models/StoredFormDiscovery.cs
@@ -31,6 +32,7 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/StoredFormMigrationTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/StoredFormMigrationSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StoredFormMigrationWorkerTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/StoredFormScalarMismatchWorkerTests.cs
   - tests/Whizbang.Generators.Tests/StoredFormMigrationGenerationTests.cs
 ---
 
@@ -175,10 +177,10 @@ The build reports **WHIZ830**. Write a [custom migration](#custom) for it.
 ### Order within a table {#order}
 
 The migrations for one table run in this order: renames, type conversions, defaults, removals, then
-custom migrations in the order of their class's full name. So a property that is renamed and
+[custom migrations](#custom) in the `Order` each states, lowest first. So a property that is renamed and
 retyped in the same release gets both, rename first. The tables run in name order.
 
-{verified: StoredFormMigrationGenerationTests.Migrations_RunRenamesThenConversionsThenDefaultsThenRemovals_ThenCustomByNameAsync, StoredFormMigrationGenerationTests.TheMigrations_RunInTheRewritePhaseBeforeTheTemporalRewrite_AndStatusIsExposedAsync}
+{verified: StoredFormMigrationGenerationTests.Migrations_RunRenamesThenConversionsThenDefaultsThenRemovals_ThenCustomByOrderAsync, StoredFormMigrationGenerationTests.CustomMigrations_RunByTheirOrder_ThenByClassNameAsync, StoredFormMigrationGenerationTests.TheMigrations_RunInTheRewritePhaseBeforeTheTemporalRewrite_AndStatusIsExposedAsync}
 
 Stored-form migrations run **before** the canonical temporal rewrite. So a temporal value moved by a
 rename is converted to the canonical form in the same pass.
@@ -195,6 +197,9 @@ never run (its model is no perspective's, or the generated code cannot create it
 public sealed class SplitFullName : IStoredFormMigration<CustomerModel> {
   // Stable forever: the journal records the migration under this name.
   public string Name => "2026-10-customer-split-full-name";
+
+  // Where it runs among this table's custom migrations: lower first.
+  public int Order => 10;
 
   public string BuildSql(StoredFormMigrationTarget target) => $"""
     UPDATE {target.QualifiedTable}
@@ -216,6 +221,7 @@ public sealed class SplitFullName : IStoredFormMigration<CustomerModel> {
   duplicate.
 - **It runs only once the table exists.** On a database where the table has not been created yet,
   the migration waits and runs on a later start.
+- **It runs in the `Order` you state.** See [Ordering custom migrations](#custom-order).
 - **To block startup**, raise the stored-form SQLSTATE with a message that names what is wrong:
   `RAISE EXCEPTION USING ERRCODE = 'WH980', MESSAGE = '...'`. The constant is
   `StoredFormMigrationTarget.BLOCKED_SQL_STATE`. Any other error is reported as a warning, and the
@@ -223,6 +229,27 @@ public sealed class SplitFullName : IStoredFormMigration<CustomerModel> {
 
 `target.Schema` and `target.Table` are the unquoted names. `target.QualifiedTable` is the quoted
 `"schema"."table"`.
+
+### Ordering custom migrations {#custom-order}
+
+{verified: StoredFormMigrationGenerationTests.CustomMigrations_RunByTheirOrder_ThenByClassNameAsync, StoredFormMigrationGenerationTests.TwoMigrationsOfOneTableSharingAnOrder_AreWHIZ833_OncePerSharedOrderAsync, StoredFormMigrationGenerationTests.AnOrderThatIsNotAConstant_IsWHIZ831_AndTheMigrationIsNotEmittedAsync}
+
+Every custom migration states an `Order`. The custom migrations of one table run after its generated
+migrations, lowest `Order` first. Leave gaps (10, 20, 30) so a later migration can go between two
+earlier ones.
+
+- **Two migrations with the same `Order`** run in the order of their classes' full names. The build
+  warns (**WHIZ833**), because that order comes from naming rather than from a decision: renaming a
+  class would change it. Migrations of different tables can share an `Order`.
+- **The build reads the `Order`**, so it must be a compile-time constant: a literal or a `const`,
+  returned from an expression body (`=> 10`), from a getter that only returns it, or set by an
+  initializer (`{ get; } = 10`). A migration whose `Order` the build cannot read is reported as
+  **WHIZ831** and does not run.
+
+An explicit number was chosen over naming the migrations each one depends on. A number is known at
+build time, so the build decides the order and checks it. A dependency list names other migrations by
+string, so it needs checks for a missing name and for a cycle, and an order between tables means
+nothing because tables run in name order anyway.
 
 ## The journal {#journal}
 
@@ -290,18 +317,28 @@ start tries again.
 A stream whose stored document could not be read is parked, not lost. The failure is recorded
 against its work rows, and the retry is scheduled with backoff
 ([When a row cannot be read](../../operations/infrastructure/migrations.md#when-a-row-cannot-be-read)).
-Once a migration has converted the document, the stream recovers on its **next scheduled retry**,
-with no operator step. The retry reads the converted document, applies the waiting events and
-completes the rows. The stream then drops out of the `perspective-stored-forms` health component.
+Once a migration has converted the document, the stream recovers **at once**, with no operator step.
+A pass that converts anything in a table, and every custom migration of it, brings forward the
+retries of the streams parked on an unreadable document in that table: their failed work rows fall
+due now instead of at the end of their backoff. The retry reads the converted document, applies the
+waiting events and completes the rows. The stream then drops out of the `perspective-stored-forms`
+health component.
 
-{verified: StoredFormScalarMismatchWorkerTests.NumberForAStringProperty_RecoversOnItsNextRetry_AfterTheStoredFormMigrationConvertsItAsync}
+{verified: StoredFormScalarMismatchWorkerTests.NumberForAStringProperty_RecoversAtOnce_AfterTheStoredFormMigrationConvertsItAsync, StoredFormMigrationTests.AConvertingPass_BringsForwardTheRetriesOfItsParkedStreams_AndNoOtherRowsAsync, StoredFormMigrationTests.ACustomMigration_BringsForwardTheRetriesOfItsParkedStreamsAsync}
 
-Two limits:
+The startup log says how many rows it brought forward:
 
-- A row that reached the dead-letter threshold before the migration ran is in the dead-letter
-  queue. [Replay it](../../operations/dead-letter-queue/perspective-events.md) once the migration has run.
-- Retries keep their scheduled backoff. The migration does not bring them forward, so a stream that
-  was parked long enough to back off to minutes recovers within those minutes.
+```text
+Stored-format rewrite: wh_per_order: stored-form migration wh_per_order.Status:Int32->String: brought forward the retries of 3 parked row(s)
+```
+
+Only a parked row is brought forward: one whose failure was an unreadable stored document, for a
+perspective that stores into the converted table, with no lease. Its failure count stays, so a stream
+the migration did not fix still reaches the dead-letter threshold. A pass that converts nothing brings
+nothing forward.
+
+One limit: a row that reached the dead-letter threshold before the migration ran is in the dead-letter
+queue. [Replay it](../../operations/dead-letter-queue/perspective-events.md) once the migration has run.
 
 ## Status {#status}
 
@@ -390,22 +427,50 @@ A retype to an **enum** is left to the [enum column conversion](physical-fields.
 which already converts a text column of names to numbers. The stored-form migration converts the
 document only.
 
-**Indexes you declared over the old type.** `[Indexed]` on a document key builds an index whose
-expression casts the key to its type, for example `((data ->> 'Quantity')::int4)`. The framework
-does not drop an index when a declaration changes, so after a type change an index that still casts
-to the old type stays in place. Writes of a value that index cannot cast then fail. Drop the old
-index in a [custom migration](#custom) of the same release
-(`DROP INDEX IF EXISTS "schema"."ix_..."`). The schema pass then builds the index for the new type.
+## Indexes over the old type {#indexes}
+
+{verified: StoredFormMigrationGenerationTests.ATypeChangeOnAnIndexedKey_ReplacesTheIndexesThatCastIt_BeforeConvertingAsync, StoredFormMigrationTests.AnIndexCastingToTheOldType_IsDroppedBeforeTheConversion_AndRebuiltForTheNewTypeAsync, StoredFormMigrationTests.ReplaceIndex_KeepsAnIndexOverTheNewType_AnIndexUnderAnotherName_AndOneUnderTheNameOverAnotherKeyAsync, StoredFormMigrationTests.Rebuild_ReplacesAnInvalidLeftoverUnderTheName_WithAValidIndexAsync, StoredFormMigrationTests.Rebuild_ThatFails_WarnsAndLeavesNoInvalidIndex_ForTheSchemaPassToBuildAsync}
+
+`[Indexed]` on a document key builds an index whose expression casts the key to its type, for example
+`((data ->> 'Quantity')::integer)`, and a [composite index](perspective-indexes.md) over the key does
+the same. After a type change, such an index would still cast to the old type: the conversion itself,
+and every later write of a value the old type cannot hold, would fail on it. And because the schema
+creates an index only when its name is free, the index for the new type would never be built.
+
+So a type change replaces those indexes in the same run:
+
+1. **Before converting**, the migration drops each index over the key that casts it to a type other
+   than the new one. A conversion from an enum's number to its name is then not refused by an index
+   that casts the key to `integer`.
+2. **After the pass commits**, each dropped index is built again for the new type with
+   `CREATE INDEX CONCURRENTLY`, so writes to the table go on while it builds:
+
+   ```text
+   Stored-format rewrite: wh_per_order: stored-form migration wh_per_order.Quantity:String->Int32: dropped index idx_order_quantity_json, which casts $.Quantity to another type; it is built again for the new type
+   Stored-form index rebuild: built idx_order_quantity_json on app.wh_per_order concurrently, for the type its key now holds
+   ```
+
+3. **If the concurrent build fails** (a unique index over duplicate values, or an older transaction
+   that outlasts the schema command timeout), it is logged as a warning and the invalid index the
+   failure leaves is dropped. The schema pass that follows builds the index in its own transaction,
+   which blocks writes to the table while it builds.
+
+Only an index the framework built is touched, found the way the schema finds its own: by the name the
+schema gave it, **and** by a definition over the key's extraction. An index you created under another
+name, an index under that name over anything else, and a constraint's index are never dropped,
+whatever they cast to. An index already over the new type is left alone. Replace an index of your own
+in a [custom migration](#custom) of the same release.
 
 ## Diagnostics {#diagnostics}
 
-{verified: StoredFormMigrationGenerationTests.ADeclarationItCannotGenerate_IsWHIZ830_AndEmitsNothingAsync, StoredFormMigrationGenerationTests.ADeclarationInsideACollectionElement_IsWHIZ832_AndAnOrphanMigrationWHIZ831Async, StoredFormMigrationGenerationTests.ADefaultOnASplitPhysicalField_IsWHIZ830Async}
+{verified: StoredFormMigrationGenerationTests.ADeclarationItCannotGenerate_IsWHIZ830_AndEmitsNothingAsync, StoredFormMigrationGenerationTests.ADeclarationInsideACollectionElement_IsWHIZ832_AndAnOrphanMigrationWHIZ831Async, StoredFormMigrationGenerationTests.ADefaultOnASplitPhysicalField_IsWHIZ830Async, StoredFormMigrationGenerationTests.AnOrderThatIsNotAConstant_IsWHIZ831_AndTheMigrationIsNotEmittedAsync, StoredFormMigrationGenerationTests.TwoMigrationsOfOneTableSharingAnOrder_AreWHIZ833_OncePerSharedOrderAsync}
 
 | Id | Severity | Reported when |
 |---|---|---|
 | WHIZ830 | Error | A declaration the generator cannot turn into SQL: an unsupported type pair, `Previously` equal to the current type, a `[Flags]` enum over `ulong` converted from a string, or a default on a Split physical field. Use a custom migration. |
-| WHIZ831 | Warning | An `IStoredFormMigration<TModel>` that would never run: its `TModel` is not the model of any perspective, or the generated code cannot create it (no public or internal parameterless constructor, a generic class, or a class it cannot see). |
+| WHIZ831 | Warning | An `IStoredFormMigration<TModel>` that would never run: its `TModel` is not the model of any perspective, the generated code cannot create it (no public or internal parameterless constructor, a generic class, or a class it cannot see), or its `Order` is not a compile-time constant. |
 | WHIZ832 | Warning | A `[StoredForm]` or `[StoredFormRemoved]` inside an element of a collection, which is not generated. Use a custom migration. |
+| WHIZ833 | Warning | Two custom migrations of one table state the same `Order`, so they run in class-name order. Give each its own `Order`. |
 
 ## See also
 
