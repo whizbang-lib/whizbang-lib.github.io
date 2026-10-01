@@ -506,7 +506,7 @@ bound has to be on **rows per statement** rather than on elapsed time.
 Wrap the statement in a batch region. The runner sends what is inside it repeatedly — each send its
 own command, with its own budget — until it reports that it handled no rows.
 
-```sql
+```sql{title="Marking a batched region" description="The runner sends what is inside the markers repeatedly, each send its own command, until it reports no rows left" category="Configuration" difficulty="ADVANCED" tags=["Operations", "Infrastructure", "Data-Migration"] tests=["MigrationBatchRegionsTests.AMarkedRegionBecomesABatchSegmentAsync", "MigrationBatchConvergenceTests.TheBackfillMovesOneBoundedSliceAtATimeAndThenStopsAsync"]}
 -- @whizbang:batch-begin size=5000
 SELECT __SCHEMA__.wh_backfill_something(@whizbang_batch_size);
 -- @whizbang:batch-end
@@ -539,7 +539,7 @@ reasons, both load-bearing:
 **The statement must exclude the rows it has already handled.** This is the whole contract, and it is
 a property of the SQL rather than of the marking:
 
-```sql
+```sql{title="Predicates that terminate, and one that does not" description="A batched region stops when its statement excludes the rows it already handled; ON CONFLICT DO NOTHING reports zero for rows already copied and stops early" category="Configuration" difficulty="ADVANCED" tags=["Operations", "Infrastructure", "Data-Migration"] tests=["MigrationBatchConvergenceTests.TheBackfillMovesOneBoundedSliceAtATimeAndThenStopsAsync", "MigrationBatchConvergenceTests.TheBackfillReportsNothingWhenThereIsNothingToDoAsync"]}
 -- terminates: the rows it fills stop matching
 WHERE normalized_message_type IS NULL
 
@@ -562,7 +562,7 @@ so a non-converging statement fails by name rather than leaving a service that n
 `LIMIT` inside a subquery is the usual bound. `UPDATE` has no `LIMIT` in PostgreSQL, so it goes in
 the row selection:
 
-```sql
+```sql{title="Bounding an UPDATE without a LIMIT clause" description="PostgreSQL has no UPDATE ... LIMIT, so the bound goes in the row selection" category="Configuration" difficulty="ADVANCED" tags=["Operations", "Infrastructure", "Data-Migration"] tests=["MigrationBatchConvergenceTests.TheBackfillMovesOneBoundedSliceAtATimeAndThenStopsAsync"]}
 UPDATE __SCHEMA__.wh_inbox
    SET source_commit_sequence = 0
  WHERE message_id IN (
