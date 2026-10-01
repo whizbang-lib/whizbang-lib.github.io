@@ -259,6 +259,17 @@ public interface IEventStore {
 }
 ```
 
+### Read order {#read-order}
+
+{verified: DapperPostgresEventStoreEdgeCaseTests.ReadPolymorphicAsync_IdsRunBackwardToCommits_ReadsInCommitOrderAsync}
+
+`ReadPolymorphicAsync` reads a stream in the order its events committed: `commit_sequence`
+ascending, an event not yet stamped last, `event_id` breaking ties. Both the EF Core and the
+Dapper stores read it that way, so a replay applies a stream in the order it happened live. An
+event id is minted before commit, so two producers can commit in the opposite order to their
+ids; reading by id would replay them backward. The typed `ReadAsync` and the between-checkpoint
+reads keep `event_id` order.
+
 ## Decorator Stack
 
 Whizbang applies decorators to enhance event store functionality:

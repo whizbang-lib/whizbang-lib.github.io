@@ -600,8 +600,9 @@ A composite disappears once it is expanded (its row is completed and only its ch
 | `whizbang.collectives.received` | Counter\<long\> | Collective events the collective sink took up from a leased sink row |
 | `whizbang.collectives.applied` | Counter\<long\> | Collective events the sink applied through the collective dispatcher |
 | `whizbang.collectives.skipped` | Counter\<long\> | Leased sink rows completed without an apply because no collective event was behind them (the cursor had already passed, or a stale re-lease); a rising count is the re-lease loop showing itself |
+| `whizbang.collectives.predecessor_timed_out` | Counter\<long\> | Collective events applied without their predecessor on the ordering key after waiting `CollectivePredecessorWaitSeconds` for it ([ordering across services](../../fundamentals/messaging/collective-events#ordering-across-services)); a rising count means links name collectives this receiver handles but never gets |
 
-The collective counters are recorded at the sink, the one place an applied collective leaves no row behind to count. {verified: PerspectiveWorkerCollectiveSinkTests.CollectiveSink_Meters_CountAReceivedAndAppliedCollective_Async, PerspectiveWorkerCollectiveSinkTests.CollectiveSink_Meters_CountALeasedSinkRowWithNoEventAsSkipped_Async}
+The collective counters are recorded at the sink, the one place an applied collective leaves no row behind to count. {verified: PerspectiveWorkerCollectiveSinkTests.CollectiveSink_Meters_CountAReceivedAndAppliedCollective_Async, PerspectiveWorkerCollectiveSinkTests.CollectiveSink_Meters_CountALeasedSinkRowWithNoEventAsSkipped_Async, PerspectiveWorkerCollectiveSinkTests.CollectiveSink_Predecessor_NeverArrives_AppliesWhenTheWaitRunsOutAsync}
 
 ## Whizbang.TransportDeadLetterDrain {#transport-dlq}
 
