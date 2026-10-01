@@ -200,7 +200,7 @@ services.AddWhizbangSagas(opts => {
 
 ## Where a tick is received {#tick-delivery}
 
-{verified: SagaWatchdogTickDeliveryCountTests.ScheduledTick_ReceivedByItsOwnService_IsHandledOnceAsync, SagaWatchdogTickDeliveryCountTests.ImmediateTick_ReceivedByItsOwnService_IsHandledOnceAsync, SagaWatchdogTickDeliveryCountTests.Tick_EachReceivingHost_HandlesItOnceAsync}
+{verified: SagaWatchdogTickDeliveryCountTests.ScheduledTick_ReceivedByItsOwnService_IsHandledOnceAsync, SagaWatchdogTickDeliveryCountTests.ImmediateTick_ReceivedByItsOwnService_IsHandledOnceAsync, SagaWatchdogTickDeliveryCountTests.Tick_EachReceivingHost_HandlesItOnceAsync, SagaWatchdogTickDeliveryCountTests.Tick_TwoServicesDeclaringTheSameSaga_EachChecksItsOwnStateAsync}
 
 Both receivers, the `[Saga]`-generated `SagaCompletionWatchdogTickHandler` and the framework router
 for hand-written sagas, answer at `PreInboxInline`. That stage runs once for every inbox row whichever
@@ -209,10 +209,12 @@ armed. A saga's service normally arms and receives its own ticks. The post-inbox
 this same service published, which is why a generated receiver there never saw its own scheduled
 ticks, and only the stranded-saga sweep's ticks reached it.
 
-Each host that receives a tick handles it once. Ticks share one topic, so two differently named
-services that both declare the same saga would each check it: run a saga in one service. Whether to
-claim each tick so it is handled once across services is an open question,
-[#1005](https://github.com/whizbang-lib/whizbang/issues/1005).
+Each host that receives a tick handles it once. **Each service handles its own saga's ticks.** Ticks
+share one topic, so two differently named services that both declare the same saga both receive every
+tick for it. Each keeps its own saga state, so each checks its own state on the tick: one whose saga has
+completed ends its watchdog chain, and one whose saga is still running re-arms it. There is no per-tick
+claim across services, the same rule as for any receptor shared by two services
+([once per service](../receptors/exactly-once-firing#once-per-service)).
 
 ## Hand-written sagas {#hand-written-sagas}
 
