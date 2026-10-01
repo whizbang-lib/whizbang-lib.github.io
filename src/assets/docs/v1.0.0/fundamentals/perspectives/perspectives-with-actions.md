@@ -11,16 +11,20 @@ description: >-
   ApplyResult, and ModelAction to control row lifecycle from pure Apply methods
 tags: >-
   perspectives, delete, purge, soft-delete, ApplyResult, ModelAction,
-  row-removal
+  row-removal, resurrect, purge-marker
 codeReferences:
   - src/Whizbang.Core/Perspectives/IPerspectiveWithActionsFor.cs
   - src/Whizbang.Core/Perspectives/ApplyResult.cs
   - src/Whizbang.Core/Perspectives/ModelAction.cs
   - src/Whizbang.Core/Perspectives/IPerspectiveStore.cs
+  - src/Whizbang.Core/Perspectives/IPerspectivePurgeMarkerStore.cs
+  - src/Whizbang.Data.Postgres/PostgresPerspectivePurgeMarkerStore.cs
 testReferences:
   - tests/Whizbang.Core.Tests/Perspectives/IPerspectiveWithActionsForTests.cs
   - tests/Whizbang.Core.Tests/Perspectives/ApplyResultTests.cs
   - tests/Whizbang.Core.Tests/Perspectives/ModelActionTests.cs
+  - tests/Whizbang.Core.Tests/Perspectives/PurgeStaysPurgedTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/PerspectivePurgeMarkerStoreTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -66,9 +70,9 @@ public interface IPerspectiveWithActionsFor<TModel, TEvent> : IPerspectiveWithAc
 
 ## ApplyResult Struct
 
-`ApplyResult<TModel>` is a readonly struct that pairs an optional model with a `ModelAction`. It provides four static factory methods and three implicit conversions for ergonomic usage.
+`ApplyResult<TModel>` is a readonly struct that pairs an optional model with a `ModelAction`. It provides five static factory methods and three implicit conversions for ergonomic usage.
 
-```csharp{title="ApplyResult Factory Methods" description="Static factory methods for creating ApplyResult instances" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "ApplyResult", "Factory"] tests=["ApplyResultTests.ApplyResult_None_ReturnsNullModelWithNoneActionAsync", "ApplyResultTests.ApplyResult_Delete_ReturnsNullModelWithDeleteActionAsync", "ApplyResultTests.ApplyResult_Purge_ReturnsNullModelWithPurgeActionAsync", "ApplyResultTests.ApplyResult_Update_ReturnsModelWithNoneActionAsync"]}
+```csharp{title="ApplyResult Factory Methods" description="Static factory methods for creating ApplyResult instances" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "ApplyResult", "Factory"] tests=["ApplyResultTests.ApplyResult_None_ReturnsNullModelWithNoneActionAsync", "ApplyResultTests.ApplyResult_Delete_ReturnsNullModelWithDeleteActionAsync", "ApplyResultTests.ApplyResult_Purge_ReturnsNullModelWithPurgeActionAsync", "ApplyResultTests.ApplyResult_Update_ReturnsModelWithNoneActionAsync", "ApplyResultTests.ApplyResult_Resurrect_ReturnsModelWithResurrectActionAsync"]}
 namespace Whizbang.Core.Perspectives;
 
 public readonly struct ApplyResult<TModel> where TModel : class {
@@ -80,6 +84,7 @@ public readonly struct ApplyResult<TModel> where TModel : class {
     public static ApplyResult<TModel> Delete();         // Soft delete (row preserved)
     public static ApplyResult<TModel> Purge();          // Hard delete (remove row)
     public static ApplyResult<TModel> Update(TModel model);  // Update model
+    public static ApplyResult<TModel> Resurrect(TModel model);  // Recreate a purged row
 
     // Implicit conversions
     public static implicit operator ApplyResult<TModel>(TModel model);              // Model -> Update
@@ -95,7 +100,8 @@ public readonly struct ApplyResult<TModel> where TModel : class {
 | `Update(model)` | The updated model | `None` | Upserts the model |
 | `None()` | `null` | `None` | Skips update |
 | `Delete()` | `null` | `Delete` | Soft delete (row preserved; see below) |
-| `Purge()` | `null` | `Purge` | Hard delete (removes row) |
+| `Purge()` | `null` | `Purge` | Hard delete (removes row); later events on the stream are skipped |
+| `Resurrect(model)` | The new model | `Resurrect` | Recreates a purged row and forgets the purge; an ordinary update otherwise |
 
 ### Implicit Conversions
 
@@ -125,13 +131,14 @@ public class OrderPerspective : IPerspectiveWithActionsFor<OrderView, OrderUpdat
 
 `ModelAction` specifies the lifecycle action for a perspective model after an Apply method executes.
 
-```csharp{title="ModelAction Enum" description="Enum controlling perspective model lifecycle: None, Delete (soft), Purge (hard)" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "ModelAction", "Enum"] tests=["ModelActionTests.ModelAction_None_HasValueZeroAsync", "ModelActionTests.ModelAction_Delete_HasValueOneAsync", "ModelActionTests.ModelAction_Purge_HasValueTwoAsync", "ModelActionTests.ModelAction_HasThreeValuesAsync"]}
+```csharp{title="ModelAction Enum" description="Enum controlling perspective model lifecycle: None, Delete (soft), Purge (hard)" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "ModelAction", "Enum"] tests=["ModelActionTests.ModelAction_None_HasValueZeroAsync", "ModelActionTests.ModelAction_Delete_HasValueOneAsync", "ModelActionTests.ModelAction_Purge_HasValueTwoAsync", "ModelActionTests.ModelAction_Resurrect_HasValueThreeAsync", "ModelActionTests.ModelAction_HasFourValuesAsync"]}
 namespace Whizbang.Core.Perspectives;
 
 public enum ModelAction {
-    None = 0,    // Keep the model as-is or use the returned model
-    Delete = 1,  // Soft delete: row remains (set DeletedAt on the model yourself)
-    Purge = 2    // Hard delete: remove the row entirely
+    None = 0,      // Keep the model as-is or use the returned model
+    Delete = 1,    // Soft delete: row remains (set DeletedAt on the model yourself)
+    Purge = 2,     // Hard delete: remove the row entirely; it stays removed
+    Resurrect = 3  // Recreate a purged row with the returned model
 }
 ```
 
@@ -143,7 +150,7 @@ public enum ModelAction {
 | **Audit queries** | Queryable via temporal lens | Gone forever |
 | **Model requirement** | Convention: a `DateTimeOffset? DeletedAt` property your `Apply` sets | No requirement |
 | **Use case** | Orders, users, anything needing history | Temporary data, GDPR right-to-erasure |
-| **Reversible** | Yes (replay without the delete event) | Yes (rebuild from event store) |
+| **Reversible** | Yes (replay without the delete event) | Only by an event whose Apply returns `Resurrect` (see [Purge stays purged](#purge-stays-purged)) |
 
 ---
 
@@ -290,9 +297,51 @@ Shipped behavior: `ModelAction.Delete` does **not** automatically stamp `Deleted
 
 2. **`ModelAction.Delete`** (soft delete): The runner keeps the model (the one returned with the action, or the prior model if none was returned) and upserts it at save time. The row remains in the database for audit and temporal queries. Setting `DeletedAt` is the perspective's responsibility.
 
-3. **`ModelAction.Purge`** (hard delete): The runner sets a `pendingPurge` flag and nulls the model. All remaining events in the batch still advance the checkpoint but skip Apply calls (the model is null). At save time, the runner calls `IPerspectiveStore.PurgeAsync()` to remove the row entirely.
+3. **`ModelAction.Purge`** (hard delete): The runner marks the stream purged for this perspective and nulls the model. Every later event on the stream, in this batch or any later one, advances the checkpoint and is skipped unless its Apply returns `Resurrect`. At save time, the runner records the purge and then calls `IPerspectiveStore.PurgeAsync()` to remove the row entirely.
 
-**Important**: Purge is terminal within a batch. Once a purge event is processed, subsequent events in the same batch advance the checkpoint but do not call Apply. If a new "created" event arrives in a later batch, the runner creates a fresh model.
+4. **`ModelAction.Resurrect`**: On a purged stream, the runner recreates the row with the returned model and forgets the purge; the events after it apply to the new row as usual. On a stream that is not purged, it is an ordinary update.
+
+**Important**: a purged row stays purged. See the next section.
+
+---
+
+## Purge Stays Purged {#purge-stays-purged}
+
+A purge used to leave nothing behind. The next event on the stream found no row, the runner applied it to an empty model, and an Apply written as create-or-update rebuilt a row with mostly default values. A delayed follow-up, such as a version bump from a save point that lands thirty seconds after the delete, then put an empty row back into grids and counts.
+
+The runner now remembers the purge:
+
+- **The purge is recorded.** When an Apply returns `Purge`, the runner writes a purge marker for the stream and perspective (`wh_stream_purge_markers`) *before* it removes the row, so a crash between the two leaves a marker on a live row, never a missing row without one.
+- **Later events are skipped.** When the row is missing and the stream carries a marker, the batch is skipped: the checkpoint moves past each event, nothing is written, and the skip is logged and counted in `whizbang.perspective.purged_events_skipped` (tagged with `perspective_name`). An Apply that throws on a purged stream is a skip too, not a failure: the row it would change is gone.
+- **Resurrect is the only way back.** An Apply that returns `ApplyResult<TModel>.Resurrect(model)` recreates the row and clears the marker; events after it apply normally.
+- **New streams are never affected.** The marker is consulted only when the row is missing, and a marker exists only after a purge, so a new stream, or any stream that was never purged, never pays for or meets it.
+- **Live, rewind and rebuild agree.** A rebuild or a full rewind of a purged stream starts purged when the stream carries a marker, so replaying "created, deleted, bumped" leaves no row, exactly as the live drain did. A straggler written before the delete but delivered after it stays out too: the live drain finds the marker, and a rewind replays it in order before the purge.
+- **An operator purge marks every perspective.** [Purging streams](../../operations/infrastructure/purging-streams.md) removes a stream entirely and marks it for every perspective at once, so a later event cannot recreate any of its rows.
+
+```csharp{title="Opting back in with Resurrect" description="A follow-up written as create-or-update stays out of a purged stream; only the reopen recreates the row" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "ApplyResult", "Purge", "Resurrect"] tests=["PurgeStaysPurgedTests.LaterBatch_AfterPurge_IsSkipped_AndNoRowIsRecreatedAsync", "PurgeStaysPurgedTests.Resurrect_OnPurgedStream_RecreatesRow_AndClearsMarkerAsync", "PurgeStaysPurgedTests.Rebuild_OfDeletedThenBumpedStream_LeavesNoRowAsync"]}
+using Whizbang.Core.Perspectives;
+
+public class OrderPerspective :
+    IPerspectiveFor<OrderView, OrderSaved>,
+    IPerspectiveWithActionsFor<OrderView, OrderDeleted>,
+    IPerspectiveWithActionsFor<OrderView, OrderReopened> {
+
+    // Create-or-update: on a purged stream this event is skipped, not applied to an empty model.
+    public OrderView Apply(OrderView current, OrderSaved @event) =>
+        current with { Version = current.Version + 1 };
+
+    public ApplyResult<OrderView> Apply(OrderView current, OrderDeleted @event) =>
+        ApplyResult<OrderView>.Purge();
+
+    // The explicit opt-in: this event starts the order over.
+    public ApplyResult<OrderView> Apply(OrderView current, OrderReopened @event) =>
+        ApplyResult<OrderView>.Resurrect(new OrderView { OrderId = @event.OrderId, Version = 1 });
+}
+```
+
+**Why a return value, not an attribute.** `Resurrect` sits beside `Purge` in the vocabulary Apply already uses for a row's lifecycle, so the decision lives in the same pure function as the purge and can depend on the event's content (reopen only when the reason allows it). Replay and rebuild fold the same results, so they reach the same answer with nothing else to consult. An Apply that returns a plain `TModel` cannot resurrect; return `ApplyResult<TModel>` from the events that should.
+
+The markers are written by both Postgres drivers. A store without them (a custom driver that registers no `IPerspectivePurgeMarkerStore`) still honors a purge within its batch, as before.
 
 ---
 
@@ -441,7 +490,8 @@ public class OrderPerspectiveTests {
 
 - Don't use `IPerspectiveWithActionsFor` for every event type when only one or two need deletion
 - Don't perform I/O in Apply methods (they remain pure functions)
-- Don't forget that `Purge` is terminal within a batch (subsequent events skip Apply)
+- Don't expect a later event to bring a purged row back: return `Resurrect` from the event that should
+- Don't write a create-or-update Apply as a way to undo a purge; it is skipped on a purged stream
 - Don't rely on `Purge` for soft-delete scenarios (use `Delete` to preserve the row)
 
 ---
