@@ -21,6 +21,9 @@ codeReferences:
   - src/Whizbang.Core/Workers/SubscriptionExpansionWorker.cs
   - src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs
   - src/Whizbang.Data.EFCore.Postgres/RedeliveryRequestReceptor.cs
+  - src/Whizbang.Core/Messaging/StreamRedeliveryRequester.cs
+  - src/Whizbang.Core/Messaging/RedeliveryRequestDispatch.cs
+  - src/Whizbang.Hosting.AspNet/StreamRedeliveryEndpoints.cs
   - src/Whizbang.Core/Messaging/IWorkCoordinator.cs
   - src/Whizbang.Data.Postgres/Migrations/087_StreamDigests.sql
   - src/Whizbang.Data.Postgres/Migrations/086_ConsumedTypeRegistry.sql
@@ -35,6 +38,8 @@ testReferences:
   - tests/Whizbang.Core.Tests/Messaging/IntegrityCheckpointWireSerializationTests.cs
   - tests/Whizbang.Core.Tests/Messaging/StreamIntegrityOptionsDefaultsTests.cs
   - tests/Whizbang.Core.Tests/Messaging/RedeliveryPumpTests.cs
+  - tests/Whizbang.Core.Tests/Messaging/StreamRedeliveryRequesterTests.cs
+  - tests/Whizbang.Hosting.AspNet.Tests/StreamRedeliveryEndpointsTests.cs
   - tests/Whizbang.Core.Tests/Messaging/RedeliveryCompositeWireSerializationTests.cs
   - tests/Whizbang.Core.Tests/Messaging/CompositeInboxFanoutTests.cs
   - tests/Whizbang.Core.Tests/MultiService/StreamIntegrityRedeliveryE2ETests.cs
@@ -685,6 +690,66 @@ reports. The consequence for operators is that healing needs the opt-in on both 
 `AutoRepairCapped` consumer asking a `ReportOnly` origin gets a declined request, logged at the
 origin and counted on `whizbang.stream_integrity.repair_traffic_discarded` (tag `role`:
 `origin_request`, `consumer_bundle`, `maintenance_sweep`; tag `table`: `inbox`, `outbox`).
+
+**Operator-requested redelivery is the exception.** Report-only opts a service out of *automatic* repair. A
+request an operator makes for named streams (see [operator redelivery](#operator-redelivery)) carries
+`OperatorRequested`, and so do the bundles that answer it: the origin serves it and the consumer applies them
+whatever either side's `RepairMode`. A parked operator bundle is still swept in maintenance like any other repair
+row on a report-only consumer; send the request again if one was.
+
+### Operator redelivery: repairing events lost in transport {#operator-redelivery}
+
+{verified: StreamRedeliveryRequesterTests.Request_SendsOneDirectedOperatorRequestPerChunkOfStreamsAsync, RedeliveryRequestReceptorTests.Receptor_UnderReportOnly_ServesAnOperatorRequest_AndMarksItsBundlesAsync, InboxDispatchWorkerTests.OperatorRequestedBundle_UnderReportOnly_FansOutAsync, StreamRedeliveryEndpointsTests.Post_SendsTheRequest_AndAnswersAcceptedWithTheReceiptAsync}
+
+The ledger drives redelivery only for what it tracked. Events lost before the ledger was enabled, and traffic
+that carries no `origin_service_id`, can be repaired without custom code in the origin by naming the streams:
+the receiving service asks the origin to republish their stored events, and then:
+
+- the origin's built-in receptor selects the streams' stored events, in version order, and publishes them back
+  as `RedeliveryComposite` bundles directed at the receiving service, with their **original event ids**;
+- the receiving service's inbox expands each bundle, **stores the events it lacks and skips the ones it already
+  has** by event id, and its perspectives apply what was missing, so the projection catches up and nothing is
+  applied twice.
+
+From code, on the receiving service:
+
+```csharp{title="Request origin redelivery for named streams" category="Operations" difficulty="INTERMEDIATE" tags=["Resilience", "Stream Integrity", "Redelivery"] tests=["StreamRedeliveryRequesterTests.Request_SendsOneDirectedOperatorRequestPerChunkOfStreamsAsync"]}
+var receipt = await requester.RequestAsync(new StreamRedeliveryRequest {
+  OriginService = "order-service",
+  StreamIds = lostStreamIds,
+  OriginRequestTopic = "order-service-requests", // omit when learned from the origin's checkpoints
+});
+```
+
+Over HTTP, after the host mounts the endpoint (behind its own authorization):
+
+```csharp{title="Mount the operator endpoint" category="Operations" difficulty="BEGINNER" tags=["Resilience", "Stream Integrity", "Redelivery"] tests=["StreamRedeliveryEndpointsTests.Post_SendsTheRequest_AndAnswersAcceptedWithTheReceiptAsync"]}
+app.MapWhizbangStreamRedeliveryEndpoints().RequireAuthorization("operators");
+// POST /whizbang/redelivery/streams
+// { "originService": "order-service", "streamIds": ["..."], "originRequestTopic": "order-service-requests" }
+```
+
+and from the command line, which posts to that endpoint:
+
+```bash
+whizbang redeliver --service https://receiver.internal --origin order-service \
+  --streams-file lost-streams.txt --origin-topic order-service-requests
+```
+
+`202 Accepted` returns what was sent: the origin, the request and reply topics, how many streams and how many
+requests. `400` means the request named no origin or no stream; `409` means this service cannot send it, with
+the reason (most often an origin request topic it has not learned).
+
+- **Topics.** The request goes on the origin's request topic: the one learned from its integrity checkpoints, or
+  the one named. The republished events come back on `StreamIntegrityOptions.RepairTopic`, else the service's
+  first consumer destination, or a reply topic named in the request.
+- **Filters.** `TenantScope` and `EventTypes` narrow the selection; `StateOnly` stores and projects the events
+  without running trigger receptors again, for a backfill rather than a missed delivery.
+- **Bounds.** Streams are sent 500 to a request. The origin still caps each request at its
+  `RedeliveryPumpOptions.MaxEventsPerRequest` and builds one request at a time, so a long list is served in turn.
+- **Repair mode.** An operator's request is served and applied whatever either side's `RepairMode`
+  ([report-only](#report-only-is-bilateral) opts out of automatic repair only), and is counted on
+  `whizbang.stream_integrity.repairs_requested` with `source` = `operator`.
 
 ### A feature that is off leaves nothing behind {#feature-off-leaves-nothing-behind}
 

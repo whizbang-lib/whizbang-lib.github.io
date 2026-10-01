@@ -508,6 +508,45 @@ public ICollectiveSpec<TicketModel> Reroute(TicketsReroutedCollectiveEvent e) =>
 - **An enumeration in a column whose type you declared** (`ColumnType = "text"`, say) throws
   `NotSupportedException`: its stored form is then your choice, which a collective cannot know.
 
+#### jsonb columns: one key, or the whole value {#jsonb-columns}
+
+{verified: CollectivePhysicalColumnIntegrationTests.Apply_KeyInsideAJsonbColumn_SetsThatKey_KeepsTheRest_AndLeavesTheDocumentAsync, CollectivePhysicalColumnIntegrationTests.Apply_WholeJsonbValues_BindAsJsonb_ForAnObjectADictionaryAndNullAsync, CollectivePhysicalColumnIntegrationTests.Replay_MatchesLive_ForJsonbKeysAndWholeValuesAsync, DapperCollectivePhysicalColumnIntegrationTests.Apply_KeyInsideAJsonbColumn_SetsThatKey_AndKeepsTheRestAsync, DapperCollectivePhysicalColumnIntegrationTests.Apply_WholeJsonbValues_ForAnObjectADictionaryAndNullAsync, DapperCollectivePhysicalColumnIntegrationTests.Replay_MatchesLive_ForJsonbKeysAndWholeValuesAsync}
+
+A property declared `[PhysicalField(ColumnType = "jsonb")]` holds an object (or a dictionary, or a keyed
+array) in a jsonb column. A collective can set **one key** of the stored object, keeping every other key, or
+replace **the whole value**, both in the same `UPDATE` as every other setter and on both drivers.
+
+```csharp{title="One key of a jsonb column, and a whole value" description="Theme is one key of the Settings object in its jsonb column; Counters is replaced whole" category="Messaging" difficulty="INTERMEDIATE" tags=["Collective Events", "Physical Fields", "jsonb"] tests=["CollectivePhysicalColumnIntegrationTests.Replay_MatchesLive_ForJsonbKeysAndWholeValuesAsync"]}
+[PerspectiveStorage(FieldStorageMode.Split)]
+public sealed class WorkspaceModel {
+  [PhysicalField(ColumnType = "jsonb")] public WorkspaceSettings? Settings { get; set; }
+  [PhysicalField(ColumnType = "jsonb")] public Dictionary<string, int>? Counters { get; set; }
+}
+
+[CollectiveApplyFor]
+public ICollectiveSpec<WorkspaceModel> Rebrand(WorkspacesRebrandedCollectiveEvent e) =>
+  new CollectiveSpec<WorkspaceModel>(
+    Setters: s => s
+      .SetProperty(w => w.Settings!.Theme, e.Theme)      // one key; the rest of Settings is kept
+      .SetProperty(w => w.Counters, e.Counters));        // the whole value
+// UPDATE … SET "settings" = jsonb_set(NULLIF("settings", 'null'::jsonb), '{Theme}', @p0::jsonb),
+//              "counters" = @p1::jsonb, …
+```
+
+- **One key** (`m => m.Settings.Theme`) compiles to `jsonb_set` over the column. Several keys of one column, or
+  a whole value followed by a key, compose in call order. Outside `Split` the same key is set in the document too.
+  The key is one level down, set to a value; a deeper path or a computed value throws `NotSupportedException`,
+  as does a key of anything but a jsonb physical column.
+- **A null object stays null.** A key of a column holding no object changes nothing, live and in the replay:
+  set the whole value first when the object may be missing.
+- **The whole value** is bound as its JSON and cast to `jsonb`, for an object, a dictionary or a list; `null`
+  clears the column, as the per-event write of a null property does. It used to be bound as a CLR value with no
+  type, which neither driver could send.
+- **Replay matches live.** The in-memory replay sets the same member of the model's object (or replaces the
+  value), and the runner writes the column from the model: a rebuilt row's column and document equal the live
+  ones. The Dapper per-event write now sends an object in a jsonb column as its JSON; it used to send the
+  type's name.
+
 ### Per-perspective projection (`Where`)
 
 The **same persisted collective event projects independently into every

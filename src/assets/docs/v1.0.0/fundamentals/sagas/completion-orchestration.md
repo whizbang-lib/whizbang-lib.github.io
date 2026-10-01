@@ -488,7 +488,7 @@ running.
 
 ## Claim retention {#claim-retention}
 
-{verified: SagaClaimPruneStepTests.Run_PrunesSweepCompletionAndContinuationClaimsPastTheRetention_AndKeepsAbandonmentsAsync, SagaClaimPruneStepTests.Run_WithTheMaintainerDutyAssigned_PrunesOnlyOnItsHolderAsync, SagaClaimPruneStepTests.Run_UsesTheConfiguredRetentionAsync}
+{verified: SagaClaimPruneStepTests.Run_PrunesSweepCompletionAndContinuationClaimsPastTheRetention_AndKeepsAbandonmentsAsync, SagaClaimPruneStepTests.Run_WithTheMaintainerDutyAssigned_PrunesOnlyOnItsHolderAsync, SagaClaimPruneStepTests.Run_UsesTheConfiguredRetentionAsync, SagaClaimPruneStepTests.AddWhizbangSagas_RetainsEverySagaPrefixFromTheGeneralPrune_OnceEachAsync}
 
 A saga takes claims as it runs: one per stranded-saga sweep tick, one for its completion, and one per
 continuation it requests. A maintenance step, `saga-claim-prune`, deletes them once they are older
@@ -497,6 +497,11 @@ a completion or continuation claim exists only after the saga has completed.
 
 The **abandonment claim is kept**. It is the record that stops the sweep re-arming an abandoned saga,
 and it goes only when an operator [re-drives](#abandoned-sagas) the saga.
+
+`AddWhizbangSagas` registers all four saga key prefixes as
+[retained](../dispatcher/publish-once#claim-expiry), so the framework's general expiry prune, which deletes
+other claims a day after they expire, leaves saga claims to this step: a completion claim lives out its
+retention, and an abandonment claim is never pruned.
 
 Where role assignment manages the maintainer duty, only its holder prunes. Otherwise every instance
 does; the delete is by age and idempotent. Past the retention window, a completion claim no longer
