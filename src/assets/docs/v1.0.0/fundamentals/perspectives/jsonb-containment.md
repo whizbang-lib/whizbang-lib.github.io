@@ -56,9 +56,9 @@ testReferences:
 # JSONB Containment Queries
 
 A perspective stores its read model as a JSON document in the `data` column, and a perspective
-table is created with a GIN index on that column unless its model declares
-`[PerspectiveQueries(MatchOnAnyField = false)]` (see [Perspective Indexes](perspective-indexes.md)).
-Until now nothing could use it.
+table gets a GIN index on that column when its model declares
+`[PerspectiveQueries(MatchOnAnyField = true)]` (see [Perspective Indexes](perspective-indexes.md)).
+Releases before 1.0 built it for every model, and for a long time nothing could use it.
 
 The reason is narrow. A GIN index with the default operator class answers containment and existence,
 `@>` and friends, and nothing else. A property comparison written in LINQ used to compile to a text
@@ -75,7 +75,9 @@ WHERE data @> jsonb_build_object('TenantId', @p)  -- Bitmap Index Scan
 ```
 
 Nothing about the query you write changes. There is no migration, no new column, no schema change
-and nothing to do on the write path. The indexes were already there and already being maintained.
+and nothing to do on the write path. On a model that declares `MatchOnAnyField = true`, the index is
+there and already being maintained. On one that doesn't, [WHIZ308](../../operations/diagnostics/whiz308.md)
+points at the filter, because nothing answers it.
 {verified: GinContainmentIntegrationTests.ContainmentUsesTheGinIndex_WhileExtractionScansAsync}
 
 ## What you write

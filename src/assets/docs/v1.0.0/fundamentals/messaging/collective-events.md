@@ -39,6 +39,7 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/175_CollectiveSinkQueue.sql
   - src/Whizbang.Data.Postgres/Collective/CollectiveApplyContention.cs
   - src/Whizbang.Data.EFCore.Postgres.Generators/EFCoreServiceRegistrationGenerator.cs
+  - src/Whizbang.Generators/Analyzers/CollectivePredicateIndexAnalyzer.cs
 testReferences:
   - tests/Whizbang.Core.Tests/Messaging/CollectiveEventContractTests.cs
   - tests/Whizbang.Core.Tests/Perspectives/CollectiveWhereComposerTests.cs
@@ -918,6 +919,13 @@ hardened so a large cohort can never convoy locks or run away:
   same table and scope can take the lock first. Collectives whose order matters carry
   an [ordering key](#ordering-key); those wait in their key's queue, which a busy lock
   cannot reorder.
+- **Index the fields the cohort filters.** Each `r.Data.X` in a handler's
+  `Where` is read as `data ->> 'X'` (or the promoted column), which only an
+  index over that field answers; the whole-document GIN index doesn't.
+  Nothing creates indexes in the apply path, so declare `[Indexed]` on each
+  field the cohort filters. [WHIZ309](../../operations/diagnostics/whiz309.md)
+  warns at a predicate on an unindexed field, and its code fix adds the
+  attribute.
 - **Store-managed columns.** The `UPDATE` also stamps `updated_at` and
   bumps `version` (a collective `UPDATE` writing only `data` would leave
   them stale and break change-detection). The per-stream lost-update guard
