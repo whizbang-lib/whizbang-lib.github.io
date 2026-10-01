@@ -2,7 +2,7 @@
 title: Configuration Reference
 pageType: reference
 verifiedAgainstCommit: b21e129e9
-verifiedDate: 2026-09-30
+verifiedDate: 2026-10-01
 version: 1.0.0
 category: Configuration
 order: 2
@@ -22,12 +22,27 @@ codeReferences:
   - src/Whizbang.Core/Messaging/WorkCoordinatorGateOptions.cs
   - src/Whizbang.Core/Workers/BatchFlusher.cs
   - src/Whizbang.Core/Workers/PerspectiveStreamAffinityOptions.cs
+  - src/Whizbang.Core/Resilience/CircuitBreakerOptionsPostConfigure.cs
+  - src/Whizbang.Core/Transports/TransportConfigurationSection.cs
+  - src/Whizbang.Core/Workers/TransportConsumerOptionsBinder.cs
+  - src/Whizbang.Core/Workers/ServiceBusConsumerOptionsConfiguration.cs
+  - src/Whizbang.Core/Tags/TagCoalesceConfigurationBinder.cs
+  - src/Whizbang.Core/Configuration/ConfigurationValueBinder.cs
+  - src/Whizbang.Transports.RabbitMQ/RabbitMQOptionsConfigurationBinder.cs
+  - src/Whizbang.Data.Postgres/PostgresOptionsConfiguration.cs
 testReferences:
   - tests/Whizbang.Core.Tests/Messaging/WorkCoordinatorGateInteractiveReserveTests.cs
   - tests/Whizbang.Core.Tests/ServiceCollectionExtensionsTests.cs
   - tests/Whizbang.Core.Tests/Messaging/WorkCoordinatorGateRegistrationTests.cs
   - tests/Whizbang.Core.Tests/Workers/BatchFlusherRetryTests.cs
   - tests/Whizbang.Core.Tests/Workers/PerspectiveWorkerAffinityHoldWatchdogTests.cs
+  - tests/Whizbang.Core.Tests/Resilience/CircuitBreakerOptionsConfigurationTests.cs
+  - tests/Whizbang.Core.Tests/Workers/TransportConsumerOptionsConfigurationTests.cs
+  - tests/Whizbang.Core.Tests/Workers/ServiceBusConsumerOptionsConfigurationTests.cs
+  - tests/Whizbang.Core.Tests/Tags/TagCoalesceConfigurationBinderTests.cs
+  - tests/Whizbang.Core.Tests/Configuration/ConfigurationValueBinderTests.cs
+  - tests/Whizbang.Transports.RabbitMQ.Tests/RabbitMQOptionsConfigurationTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/PostgresOptionsConfigurationTests.cs
 ---
 
 This page lists **every configuration surface Whizbang exposes**: the sections the library binds from `IConfiguration` automatically, the sections you can opt into binding with a helper, and the (much larger) set of options classes that are configured in code — plus the recipe for making any of them configuration-driven. Each options class lists its properties, types, defaults, and a link to the page that covers it in depth.
@@ -38,9 +53,9 @@ Whizbang follows the standard .NET configuration model ([Microsoft: Configuratio
 
 | Mechanism | What it means | Applies to |
 |-----------|---------------|------------|
-| **Bound automatically** | `AddWhizbang()` / the database driver registration reads these configuration sections with hand-rolled, AOT-safe binders. Setting a key in `appsettings.json` or as an environment variable just works. | **44 sections** — `Whizbang` itself, `Whizbang:Tracing`, `Whizbang:SchemaInitialization`, `Whizbang:WorkCoordinator`, every `Whizbang:Workers:*` worker, `Whizbang:StreamIntegrity`, `Whizbang:DeadLetterRecovery`, `Whizbang:Temporal`, `Whizbang:Tags` and the rest listed in the [Quick Map](#quick-map); plus `Whizbang:Database*` with the Postgres driver, `Whizbang:Transports:AzureServiceBus` with that transport, and `Whizbang:ServiceName`, `Whizbang:ShowBanner`, `ConnectionStrings:*`, `ConnectionPool:*` |
+| **Bound automatically** | `AddWhizbang()` / the database driver registration reads these configuration sections with hand-rolled, AOT-safe binders. Setting a key in `appsettings.json` or as an environment variable just works. | **44 sections** — `Whizbang` itself, `Whizbang:Tracing`, `Whizbang:SchemaInitialization`, `Whizbang:WorkCoordinator`, every `Whizbang:Workers:*` worker, `Whizbang:StreamIntegrity`, `Whizbang:DeadLetterRecovery`, `Whizbang:Temporal`, `Whizbang:Tags` and the rest listed in the [Quick Map](#quick-map); plus `Whizbang:Database*` with the Postgres driver, `Whizbang:Transports:AzureServiceBus` / `Whizbang:Transports:RabbitMQ` with those transports, the [per-instance sections](#per-instance-sections) keyed by breaker, transport, database and tag, and `Whizbang:ServiceName`, `Whizbang:ShowBanner`, `ConnectionStrings:*`, `ConnectionPool:*` |
 | **Opt-in binding helper** | A one-line registration call reads the section for you. Without that call, the section is inert. | `Whizbang:BodyOffload` + `Whizbang:Offloads:AzureBlob:<name>` (via `AddWhizbangAzureBlobOffloadsFromConfiguration`) |
-| **Code-configured** | The options class is configured through an `Action<TOptions>` lambda (or `services.Configure<TOptions>(...)`). The library never reads a configuration section for it — **a configuration key for one of these does nothing unless your service binds it**. Every table below carries an environment-variable column; these read `— *code-only*`, so a blank is always deliberate rather than an omission (see [the binding recipe](#code-configured-options-the-binding-recipe)). | The classes with no configuration section in the [Quick Map](#quick-map): `WhizbangCoreOptions`, `ServiceRegistrationOptions`, `WhizbangLifecycleOptions`, `StandbyWatcherOptions`, `WhizbangHealthOptions`, `DebuggerAwareClockOptions`, `WorkerRetryOptions`, `BatchFlusherOptions`, `MessageProcessingOptions`, `TransportBatchOptions`, `SlidingWindowBatcherOptions` and the other shared shapes |
+| **Code-configured** | The options class is configured through an `Action<TOptions>` lambda (or `services.Configure<TOptions>(...)`). The library never reads a configuration section for it — **a configuration key for one of these does nothing unless your service binds it**. Every table below carries an environment-variable column; these read `— *code-only*`, so a blank is always deliberate rather than an omission (see [the binding recipe](#code-configured-options-the-binding-recipe)). | The classes with no configuration section in the [Quick Map](#quick-map): `WhizbangCoreOptions`, `ServiceRegistrationOptions`, `WhizbangLifecycleOptions`, `StandbyWatcherOptions`, `WhizbangHealthOptions`, `DebuggerAwareClockOptions`, `WorkerRetryOptions`, `BatchFlusherOptions`, `SlidingWindowBatcherOptions` and the other shared shapes |
 
 > **The most common configuration mistake** is setting environment variables for a code-configured section — for example `Whizbang__StandbyWatcher__PollInterval` — and expecting them to take effect. Nothing in the library reads that section. Every class below states which mechanism applies to it.
 >
@@ -93,6 +108,12 @@ Environment variables are added **after** `appsettings.json` and `appsettings.{E
 | `Whizbang:Tags` | `TagOptions` | Automatic |
 | `Whizbang:Workers:*` (Claim, Heartbeat, LeaseHandle, LeaseRenewal, BackupTick, Maintenance, OutboxDrain, OutboxPublish, OutboxBatch, OutboxCompletionFlush, InboxDrain, InboxDispatch, InboxHandler, InboxBatch, InboxDeserializeCache, FailureFlush, Perspective, PerspectiveCompletionFlush, RecentlyProcessedEventCache, TransportDeadLetterDrain) | the matching `*WorkerOptions` | Automatic (worker pipeline) |
 | `Whizbang:Transports:AzureServiceBus` | `AzureServiceBusOptions` | Automatic (ASB transport) |
+| `Whizbang:Transports:RabbitMQ` | `RabbitMQOptions` | Automatic (RabbitMQ transport) |
+| `Whizbang:Transports:<transport>:MessageProcessing`, `:Batch`, `:SubscriptionResilience`, `:Consumer` | `MessageProcessingOptions`, `TransportBatchOptions`, `SubscriptionResilienceOptions`, `TransportConsumerOptions` | Automatic (transport consumer, for each registered transport) — see [Transport Sections](#transport-sections) |
+| `Whizbang:Transports:AzureServiceBus:Consumer:Subscriptions` | `ServiceBusConsumerOptions` | Automatic (ASB transport) |
+| `Whizbang:CircuitBreakers:<name>` | `CircuitBreakerOptions` | Automatic, per named breaker — see [Circuit Breakers](#circuit-breakers) |
+| `Whizbang:Postgres:<database>` | `PostgresOptions` | Automatic (EF Core Postgres driver), per database — see [Postgres Databases](#postgres-databases) |
+| `Whizbang:Tags:Coalesce:<tag>` | `CoalescePolicyOptions` | Automatic, per tag — see [Coalesce Bindings](#coalesce-bindings) |
 | `Whizbang:Routing`, `Whizbang:Routing:ControlClass`, `Whizbang:Routing:PoisonMessages` | `RoutingOptions`, `ControlClassOptions`, `PoisonMessageOptions` | Opt-in (`.WithRouting(…)`) |
 | *(any section you choose)* | the remaining shared shapes below | Code-configured / consumer-bound |
 
@@ -173,6 +194,113 @@ The generated DbContext registration reads a root-level `ConnectionPool` section
 | `ConnectionPool:MinPoolSize` | `int` | — *code-only* | Npgsql `Minimum Pool Size` |
 | `ConnectionPool:Timeout` | `int` (seconds) | — *code-only* | Npgsql connection `Timeout` |
 | `ConnectionPool:CommandTimeout` | `int` (seconds) | — *code-only* | Npgsql `Command Timeout` |
+
+## Per-Instance Sections
+
+Some options classes have more than one instance in a process — several circuit breakers, one consumer per transport, one set of options per database — so a single global section cannot express them. Each of these binds from a section **keyed by the instance's name**. The values set in code stay the defaults; configuration overrides them **per key and per name**, and an instance with no section keeps its code values. A key under another instance's name never leaks into this one.
+
+All of these read their keys by hand or through the configuration binder source generator, so none of them uses reflection (AOT-safe).
+
+### Circuit Breakers
+
+`Whizbang:CircuitBreakers:<name>` binds the `CircuitBreakerOptions` of the breaker named `<name>`. A breaker picks up its section by resolving its options **by name**:
+
+```csharp{
+title: "Bind a named circuit breaker"
+description: "Code values are the defaults; Whizbang:CircuitBreakers:payments overrides them per key."
+framework: "NET10"
+category: "Configuration"
+difficulty: "INTERMEDIATE"
+tags: ["configuration", "circuit-breaker", "named-options"]
+unverified: "illustration - binding locked by CircuitBreakerOptionsConfigurationTests"
+}
+// Code values are the defaults for this breaker...
+services.Configure<CircuitBreakerOptions>("payments", o => {
+  o.FailureThreshold = 10;
+});
+
+// ...and Whizbang__CircuitBreakers__payments__FailureThreshold=3 overrides them.
+var options = provider.GetRequiredService<IOptionsMonitor<CircuitBreakerOptions>>().Get("payments");
+var breaker = new CircuitBreaker<Quote>(options, logger);
+```
+
+The unnamed instance (`IOptions<CircuitBreakerOptions>`) has no section and keeps its code values. Keys: every property in [CircuitBreakerOptions](#circuitbreakeroptions). {verified: CircuitBreakerOptionsConfigurationTests.NamedBreaker_PicksUpItsOwnKeys_AndNotAnotherBreakersAsync, CircuitBreakerOptionsConfigurationTests.UnnamedInstance_KeepsDefaultsAsync}
+
+### Transport Sections
+
+`Whizbang:Transports:<transport>`, where `<transport>` is `AzureServiceBus` or `RabbitMQ`, is the section of a transport. A transport's section is read **only when that transport is registered** (`AddAzureServiceBusTransport`, `AddRabbitMQTransport`); a section for a transport the host does not run is inert.
+
+| Section | Options class | Read by |
+|---------|---------------|---------|
+| `Whizbang:Transports:AzureServiceBus` | [AzureServiceBusOptions](#azureservicebusoptions) | the Service Bus transport |
+| `Whizbang:Transports:RabbitMQ` | [RabbitMQOptions](#rabbitmqoptions) | the RabbitMQ transport |
+| `Whizbang:Transports:<transport>:MessageProcessing` | [MessageProcessingOptions](#messageprocessingoptions) | the transport consumer (`AddTransportConsumer`) |
+| `Whizbang:Transports:<transport>:Batch` | [TransportBatchOptions](#transportbatchoptions) | the transport consumer |
+| `Whizbang:Transports:<transport>:SubscriptionResilience` | [SubscriptionResilienceOptions](#subscriptionresilienceoptions) | the transport consumer |
+| `Whizbang:Transports:<transport>:Consumer:AdditionalDestinations:<n>` | [TransportConsumerOptions](#transportconsumeroptions) `Destinations` | the transport consumer |
+| `Whizbang:Transports:AzureServiceBus:Consumer:Subscriptions:<n>` | [ServiceBusConsumerOptions](#servicebusconsumeroptions) | `ServiceBusConsumerWorker`, when resolved from the container |
+
+The transport consumer is named by the transport it consumes: there is one per host, and its `MessageProcessing`, `Batch`, `SubscriptionResilience` and `Consumer` children live under that transport's section.
+
+```bash{
+title: "Per-transport consumer keys"
+description: "Each transport's section carries its own consumer, batch and resilience keys."
+framework: "NET10"
+category: "Configuration"
+difficulty: "INTERMEDIATE"
+tags: ["configuration", "transports", "environment-variables"]
+unverified: "illustration - binding locked by TransportConsumerOptionsConfigurationTests and RabbitMQOptionsConfigurationTests"
+}
+Whizbang__Transports__AzureServiceBus__MessageProcessing__MaxConcurrentMessages=20
+Whizbang__Transports__AzureServiceBus__SubscriptionResilience__HealthCheckInterval=00:00:30
+Whizbang__Transports__RabbitMQ__PrefetchCount=100
+Whizbang__Transports__RabbitMQ__Batch__BatchSize=100
+```
+
+**Code values.** `MessageProcessingOptions` and `TransportBatchOptions` registered as an instance or a factory **before** `AddTransportConsumer` are kept, and configuration is applied over them. A type registration (`AddSingleton<TransportBatchOptions>()`) is constructed by the container, so there is nothing to bind over and it is left as registered. `SubscriptionResilienceOptions` set in the `AddTransportConsumer(config => config.ResilienceOptions…)` callback, and `RabbitMQOptions` set in the `AddRabbitMQTransport` callback, are likewise the defaults that configuration overrides. {verified: TransportConsumerOptionsConfigurationTests.RegisteredTransport_BindsEachConsumerSection_AndIgnoresOtherTransportsAsync, TransportConsumerOptionsConfigurationTests.InstanceRegisteredInCode_KeepsItsValues_ConfigurationOverridesPerKeyAsync, RabbitMQOptionsConfigurationTests.CodeCallback_StaysTheDefault_ConfigurationOverridesPerKeyAsync}
+
+**Lists.** `Consumer:AdditionalDestinations` entries (`Address`, optional `RoutingKey`) are **added** to the destinations routing generates; an entry without an `Address`, or one the consumer already subscribes to, is skipped. `Consumer:Subscriptions` entries (`TopicName`, `SubscriptionName`, optional `DestinationFilter`) **replace** the code list when at least one entry has both names; a section with no complete entry leaves the code list alone.
+
+### Postgres Databases
+
+`Whizbang:Postgres:<database>` binds the [PostgresOptions](#postgresoptions) of one database, where `<database>` is the database's **connection-string name** — the same name `ConnectionStrings:<database>` uses. The EF Core Postgres driver (`.WithEFCore<TDbContext>().WithDriver.Postgres`) registers its DbContext's database: the name passed to `WithEFCore<T>("name")`, or the derived one (`OrdersDbContext` → `orders-db`).
+
+```bash{
+title: "Per-database Postgres keys"
+description: "Whizbang:Postgres:<database> keys are the database's connection-string name."
+framework: "NET10"
+category: "Configuration"
+difficulty: "INTERMEDIATE"
+tags: ["configuration", "postgres", "environment-variables"]
+unverified: "illustration - binding locked by PostgresOptionsConfigurationTests"
+}
+Whizbang__Postgres__orders-db__CommandTimeoutSeconds=60
+Whizbang__Postgres__orders-db__MaxInFlightCommands=20
+```
+
+Every registered database is reachable by name through `IOptionsMonitor<PostgresOptions>.Get("<database>")`. The unnamed instance, which the framework itself reads through `IOptions<PostgresOptions>` (the work-coordinator gate cap, collective apply), binds from the **first** database registered; with none registered it keeps its code values. `services.Configure<PostgresOptions>(…)` values are the defaults that configuration overrides. `AddWhizbangPostgresOptionsBinding("<database>")` registers a database by hand. {verified: PostgresOptionsConfigurationTests.NamedDatabase_PicksUpItsOwnKeys_AndNotAnotherDatabasesAsync, PostgresOptionsConfigurationTests.Driver_BindsTheDbContextsDatabase_IntoTheWorkCoordinatorGateAsync}
+
+The Dapper driver's `AddWhizbangPostgres(…, configureOptions)` uses its options at registration time, before configuration is available, so it stays code-configured.
+
+### Coalesce Bindings
+
+`Whizbang:Tags:Coalesce:<tag>` is the bindable map beside `TagOptions.CoalesceBindings`. Each child is a tag; its keys override that tag's code policy, and a configured tag with no code policy gets one built from the defaults. A tag with no section keeps its code policy.
+
+| Key | Type | Environment variable |
+|-----|------|----------------------|
+| `SlideSeconds` | `int` | `Whizbang__Tags__Coalesce__<tag>__SlideSeconds` |
+| `MaxDelaySeconds` | `int` | `Whizbang__Tags__Coalesce__<tag>__MaxDelaySeconds` |
+| `MaxBatchCount` | `int` | `Whizbang__Tags__Coalesce__<tag>__MaxBatchCount` |
+| `Atomicity` | `FanoutAtomicity` | `Whizbang__Tags__Coalesce__<tag>__Atomicity` |
+| `PriorityFold` | `CompositePriorityFold` | `Whizbang__Tags__Coalesce__<tag>__PriorityFold` |
+
+The delegates (`CompositeFactory`, `PriorityFor`) are code-only. Setting `SlideSeconds` to `0` turns a tag's coalescing off without a redeploy. Configured policies are validated at startup like code ones. {verified: TagCoalesceConfigurationBinderTests.ConfiguredTag_OverridesItsCodePolicyPerKey_KeepingCodeOnlyMembersAsync, TagCoalesceConfigurationBinderTests.Resolver_SeesConfigurationBoundCoalesceBindingsAsync}
+
+### What Stays Code-Only
+
+- **`TransportOptions`** is an abstract base class with no concrete transport deriving from it, so nothing would read its keys. It has no section.
+- **`ServiceBusInfrastructureOptions`** is not read by the framework, so it has no section.
+- **`TransportConsumerOptions.SubscriberName`** is not read by the consumer; only `Destinations` binds.
 
 ## Opt-In Binding: Message Body Offload
 
@@ -590,24 +718,24 @@ A flush that throws is retried in place with the same batch (Warning, EventId 1:
 
 ### MessageProcessingOptions
 
-Transport consumer concurrency and inbox batching. **Configure:** `services.Configure<MessageProcessingOptions>(…)`. **Details:** no dedicated page yet.
+Transport consumer concurrency and inbox batching. **Configure:** bound from `Whizbang:Transports:<transport>:MessageProcessing` when that transport is registered ([Transport Sections](#transport-sections)); an instance or factory registered before `AddTransportConsumer` supplies the code values configuration overrides. **Details:** no dedicated page yet.
 
 | Property | Type | Default | Environment variable | Purpose |
 |----------|------|---------|----------------------|---------|
-| `MaxConcurrentMessages` | `int` | `40` | — *code-only* | Max messages processed concurrently across all subscriptions; 0 disables |
-| `InboxBatchSize` | `int` | `100` | — *code-only* | Inbox messages collected before flushing the dedup batch |
-| `InboxBatchSlideMs` | `int` | `50` | — *code-only* | Sliding window; resets on each enqueue |
-| `InboxBatchMaxWaitMs` | `int` | `1000` | — *code-only* | Hard max wait from the first message in a batch |
+| `MaxConcurrentMessages` | `int` | `40` | `Whizbang__Transports__<transport>__MessageProcessing__MaxConcurrentMessages` | Max messages processed concurrently across all subscriptions; 0 disables |
+| `InboxBatchSize` | `int` | `100` | `Whizbang__Transports__<transport>__MessageProcessing__InboxBatchSize` | Inbox messages collected before flushing the dedup batch |
+| `InboxBatchSlideMs` | `int` | `50` | `Whizbang__Transports__<transport>__MessageProcessing__InboxBatchSlideMs` | Sliding window; resets on each enqueue |
+| `InboxBatchMaxWaitMs` | `int` | `1000` | `Whizbang__Transports__<transport>__MessageProcessing__InboxBatchMaxWaitMs` | Hard max wait from the first message in a batch |
 
 ### TransportBatchOptions
 
-Transport-level batch collection before `process_work_batch`. **Configure:** the transport registration lambda. **Details:** [Transports](../../messaging/transports/transports#configuration).
+Transport-level batch collection before `process_work_batch`. **Configure:** bound from `Whizbang:Transports:<transport>:Batch` when that transport is registered ([Transport Sections](#transport-sections)); an instance or factory registered before `AddTransportConsumer` supplies the code values configuration overrides. **Details:** [Transports](../../messaging/transports/transports#configuration).
 
 | Property | Type | Default | Environment variable | Purpose |
 |----------|------|---------|----------------------|---------|
-| `BatchSize` | `int` | `200` | — *code-only* | Messages collected before flushing immediately |
-| `SlideMs` | `int` | `20` | — *code-only* | Sliding window; resets on each enqueue |
-| `MaxWaitMs` | `int` | `1000` | — *code-only* | Hard max wait regardless of arrivals |
+| `BatchSize` | `int` | `200` | `Whizbang__Transports__<transport>__Batch__BatchSize` | Messages collected before flushing immediately |
+| `SlideMs` | `int` | `20` | `Whizbang__Transports__<transport>__Batch__SlideMs` | Sliding window; resets on each enqueue |
+| `MaxWaitMs` | `int` | `1000` | `Whizbang__Transports__<transport>__Batch__MaxWaitMs` | Hard max wait regardless of arrivals |
 
 ### SlidingWindowBatcherOptions
 
@@ -908,7 +1036,7 @@ In-memory retry budget for broker-side throttling. **Configure:** `services.Conf
 
 ### TransportOptions (base class)
 
-Shared knobs every concrete transport inherits; settings are validated against declared transport capabilities at startup (unsupported settings warn and are ignored). **Configure:** the transport registration lambda. **Details:** [Transports](../../messaging/transports/transports#configuration).
+Shared knobs every concrete transport inherits; settings are validated against declared transport capabilities at startup (unsupported settings warn and are ignored). **Configure:** no concrete transport derives from this class, so nothing reads it and it has no section ([What Stays Code-Only](#what-stays-code-only)). **Details:** [Transports](../../messaging/transports/transports#configuration).
 
 | Property | Type | Default | Environment variable | Purpose |
 |----------|------|---------|----------------------|---------|
@@ -954,25 +1082,25 @@ Shared knobs every concrete transport inherits; settings are validated against d
 
 ### RabbitMQOptions
 
-**Configure:** the RabbitMQ transport registration lambda. **Details:** [RabbitMQ](../../messaging/transports/rabbitmq#configuration-options).
+**Configure:** bound automatically from `Whizbang:Transports:RabbitMQ` when the transport is registered; the registration lambda still applies and runs first, so a configuration key overrides it. **Details:** [RabbitMQ](../../messaging/transports/rabbitmq#configuration-options).
 
 | Property | Type | Default | Environment variable | Purpose |
 |----------|------|---------|----------------------|---------|
-| `MaxChannels` | `int` | `10` | — *code-only* | Max pooled channels (one per concurrent publish) |
-| `MaxDeliveryAttempts` | `int` | `10` | — *code-only* | Redeliveries (via `x-delivery-count`) before NACK to the dead-letter exchange |
-| `DefaultQueueName` | `string?` | `null` | — *code-only* | Fallback queue name |
-| `PrefetchCount` | `ushort` | `200` | — *code-only* | Broker push-ahead buffer; match to `TransportBatchOptions.BatchSize` |
-| `AutoDeclareDeadLetterExchange` | `bool` | `true` | — *code-only* | Auto-declare the dead-letter exchange and queue |
-| `EnableSingleActiveConsumer` | `bool` | `false` | — *code-only* | Declare queues with `x-single-active-consumer` for FIFO |
-| `InitialRetryAttempts` | `int` | `5` | — *code-only* | Connection retries before indefinite-retry mode |
-| `InitialRetryDelay` | `TimeSpan` | `00:00:01` | — *code-only* | Delay before the first connection retry |
-| `MaxRetryDelay` | `TimeSpan` | `00:02:00` | — *code-only* | Cap on exponential backoff |
-| `BackoffMultiplier` | `double` | `2.0` | — *code-only* | Backoff multiplier |
-| `RetryIndefinitely` | `bool` | `true` | — *code-only* | Retry connection forever |
+| `MaxChannels` | `int` | `10` | `Whizbang__Transports__RabbitMQ__MaxChannels` | Max pooled channels (one per concurrent publish) |
+| `MaxDeliveryAttempts` | `int` | `10` | `Whizbang__Transports__RabbitMQ__MaxDeliveryAttempts` | Redeliveries (via `x-delivery-count`) before NACK to the dead-letter exchange |
+| `DefaultQueueName` | `string?` | `null` | `Whizbang__Transports__RabbitMQ__DefaultQueueName` | Fallback queue name |
+| `PrefetchCount` | `ushort` | `200` | `Whizbang__Transports__RabbitMQ__PrefetchCount` | Broker push-ahead buffer; match to `TransportBatchOptions.BatchSize` |
+| `AutoDeclareDeadLetterExchange` | `bool` | `true` | `Whizbang__Transports__RabbitMQ__AutoDeclareDeadLetterExchange` | Auto-declare the dead-letter exchange and queue |
+| `EnableSingleActiveConsumer` | `bool` | `false` | `Whizbang__Transports__RabbitMQ__EnableSingleActiveConsumer` | Declare queues with `x-single-active-consumer` for FIFO |
+| `InitialRetryAttempts` | `int` | `5` | `Whizbang__Transports__RabbitMQ__InitialRetryAttempts` | Connection retries before indefinite-retry mode |
+| `InitialRetryDelay` | `TimeSpan` | `00:00:01` | `Whizbang__Transports__RabbitMQ__InitialRetryDelay` | Delay before the first connection retry |
+| `MaxRetryDelay` | `TimeSpan` | `00:02:00` | `Whizbang__Transports__RabbitMQ__MaxRetryDelay` | Cap on exponential backoff |
+| `BackoffMultiplier` | `double` | `2.0` | `Whizbang__Transports__RabbitMQ__BackoffMultiplier` | Backoff multiplier |
+| `RetryIndefinitely` | `bool` | `true` | `Whizbang__Transports__RabbitMQ__RetryIndefinitely` | Retry connection forever |
 
 ### TransportConsumerOptions
 
-Which destinations to subscribe to. **Configure:** the transport consumer registration; destinations via the `Destinations` list. **Details:** [Transport Consumer](../../messaging/transports/transport-consumer#auto-configuration).
+Which destinations to subscribe to. **Configure:** the transport consumer registration; destinations come from routing, `AdditionalDestinations` in the `AddTransportConsumer` callback, and `Whizbang:Transports:<transport>:Consumer:AdditionalDestinations:<n>` (`Address`, optional `RoutingKey`), which adds entries ([Transport Sections](#transport-sections)). `SubscriberName` is not read by the consumer. **Details:** [Transport Consumer](../../messaging/transports/transport-consumer#auto-configuration).
 
 | Property | Type | Default | Environment variable | Purpose |
 |----------|------|---------|----------------------|---------|
@@ -980,15 +1108,15 @@ Which destinations to subscribe to. **Configure:** the transport consumer regist
 
 ### ServiceBusConsumerOptions
 
-**Configure:** the consumer registration; subscriptions via the `Subscriptions` list. **Details:** no dedicated page yet.
+**Configure:** registered by `AddAzureServiceBusTransport` and bound from `Whizbang:Transports:AzureServiceBus:Consumer:Subscriptions:<n>` (`TopicName`, `SubscriptionName`, optional `DestinationFilter`); a configured list replaces the code list ([Transport Sections](#transport-sections)). Read by `ServiceBusConsumerWorker` when it is resolved from the container. **Details:** no dedicated page yet.
 
 | Property | Type | Default | Environment variable | Purpose |
 |----------|------|---------|----------------------|---------|
-| `Subscriptions` | `List<TopicSubscription>` | `[]` | — *code-only* | Topic subscriptions to consume messages from |
+| `Subscriptions` | `List<TopicSubscription>` | `[]` | `Whizbang__Transports__AzureServiceBus__Consumer__Subscriptions` | Topic subscriptions to consume messages from |
 
 ### ServiceBusInfrastructureOptions
 
-Service Bus auto-discovery and provisioning. **Configure:** `services.Configure<ServiceBusInfrastructureOptions>(…)`. **Details:** [Azure Service Bus auto-provisioning](../../messaging/transports/azure-service-bus#auto-provisioning).
+Service Bus auto-discovery and provisioning. **Configure:** `services.Configure<ServiceBusInfrastructureOptions>(…)`; the framework does not read this class, so it has no section ([What Stays Code-Only](#what-stays-code-only)). **Details:** [Azure Service Bus auto-provisioning](../../messaging/transports/azure-service-bus#auto-provisioning).
 
 | Property | Type | Default | Environment variable | Purpose |
 |----------|------|---------|----------------------|---------|
@@ -1000,17 +1128,17 @@ Service Bus auto-discovery and provisioning. **Configure:** `services.Configure<
 
 ### SubscriptionResilienceOptions
 
-**Configure:** `services.Configure<SubscriptionResilienceOptions>(…)`. **Details:** no dedicated page yet.
+**Configure:** the `AddTransportConsumer(config => config.ResilienceOptions…)` callback, then bound from `Whizbang:Transports:<transport>:SubscriptionResilience` when that transport is registered (`Whizbang:Transports:AzureServiceBus:SubscriptionResilience` for Service Bus); configuration overrides the callback ([Transport Sections](#transport-sections)). **Details:** no dedicated page yet.
 
 | Property | Type | Default | Environment variable | Purpose |
 |----------|------|---------|----------------------|---------|
-| `InitialRetryAttempts` | `int` | `5` | — *code-only* | Warning-logged retries before indefinite retry mode |
-| `InitialRetryDelay` | `TimeSpan` | `00:00:01` | — *code-only* | Delay before the first retry |
-| `MaxRetryDelay` | `TimeSpan` | `00:02:00` | — *code-only* | Cap on exponential backoff |
-| `BackoffMultiplier` | `double` | `2.0` | — *code-only* | Backoff multiplier; 1.0 disables |
-| `RetryIndefinitely` | `bool` | `true` | — *code-only* | Retry until success or cancellation |
-| `HealthCheckInterval` | `TimeSpan` | `00:01:00` | — *code-only* | Sweep interval recovering failed subscriptions |
-| `AllowPartialSubscriptions` | `bool` | `true` | — *code-only* | Start the worker even if some subscriptions fail |
+| `InitialRetryAttempts` | `int` | `5` | `Whizbang__Transports__<transport>__SubscriptionResilience__InitialRetryAttempts` | Warning-logged retries before indefinite retry mode |
+| `InitialRetryDelay` | `TimeSpan` | `00:00:01` | `Whizbang__Transports__<transport>__SubscriptionResilience__InitialRetryDelay` | Delay before the first retry |
+| `MaxRetryDelay` | `TimeSpan` | `00:02:00` | `Whizbang__Transports__<transport>__SubscriptionResilience__MaxRetryDelay` | Cap on exponential backoff |
+| `BackoffMultiplier` | `double` | `2.0` | `Whizbang__Transports__<transport>__SubscriptionResilience__BackoffMultiplier` | Backoff multiplier; 1.0 disables |
+| `RetryIndefinitely` | `bool` | `true` | `Whizbang__Transports__<transport>__SubscriptionResilience__RetryIndefinitely` | Retry until success or cancellation |
+| `HealthCheckInterval` | `TimeSpan` | `00:01:00` | `Whizbang__Transports__<transport>__SubscriptionResilience__HealthCheckInterval` | Sweep interval recovering failed subscriptions |
+| `AllowPartialSubscriptions` | `bool` | `true` | `Whizbang__Transports__<transport>__SubscriptionResilience__AllowPartialSubscriptions` | Start the worker even if some subscriptions fail |
 
 ## Message Body Offload (code-configured remainder)
 
@@ -1050,19 +1178,19 @@ Dedicated long-lived PostgreSQL connections for background workers, bypassing a 
 
 ### PostgresOptions
 
-Connection retry, command timeout, and collective-apply bounds for the PostgreSQL driver. **Configure:** the Postgres driver registration lambda. **Details:** no dedicated page yet.
+Connection retry, command timeout, and collective-apply bounds for the PostgreSQL driver. **Configure:** `services.Configure<PostgresOptions>(…)`, then bound per database from `Whizbang:Postgres:<database>`, where `<database>` is the connection-string name the EF Core Postgres driver registers ([Postgres Databases](#postgres-databases)). The Dapper driver's registration lambda stays code-configured. **Details:** no dedicated page yet.
 
 | Property | Type | Default | Environment variable | Purpose |
 |----------|------|---------|----------------------|---------|
-| `InitialRetryAttempts` | `int` | `5` | — *code-only* | Connection retries before indefinite-retry mode |
-| `InitialRetryDelay` | `TimeSpan` | `00:00:01` | — *code-only* | Delay before the first retry |
-| `MaxRetryDelay` | `TimeSpan` | `00:02:00` | — *code-only* | Cap on exponential backoff |
-| `BackoffMultiplier` | `double` | `2.0` | — *code-only* | Backoff multiplier |
-| `RetryIndefinitely` | `bool` | `true` | — *code-only* | Retry forever until connect or cancellation |
-| `CommandTimeoutSeconds` | `int` | `120` | — *code-only* | How long one SQL command (e.g. `process_work_batch`) may run; shorter than the worst commit batch loses completions |
-| `MaxInFlightCommands` | `int` | `50` | — *code-only* | Cap on concurrent work-coordinator calls per process; post-configured into `WorkCoordinatorGateOptions.MaxConcurrent` (see [WorkCoordinatorGateOptions](#workcoordinatorgateoptions)), so it is the effective gate cap whenever a Postgres driver is registered; 0 disables the gate |
-| `CollectiveApplyBatchSize` | `int` | `1000` | — *code-only* | Rows mutated per batched collective-apply UPDATE |
-| `CollectiveApplyStatementTimeoutSeconds` | `int?` | `null` | — *code-only* | Server-side `statement_timeout` per collective-apply batch |
+| `InitialRetryAttempts` | `int` | `5` | `Whizbang__Postgres__<database>__InitialRetryAttempts` | Connection retries before indefinite-retry mode |
+| `InitialRetryDelay` | `TimeSpan` | `00:00:01` | `Whizbang__Postgres__<database>__InitialRetryDelay` | Delay before the first retry |
+| `MaxRetryDelay` | `TimeSpan` | `00:02:00` | `Whizbang__Postgres__<database>__MaxRetryDelay` | Cap on exponential backoff |
+| `BackoffMultiplier` | `double` | `2.0` | `Whizbang__Postgres__<database>__BackoffMultiplier` | Backoff multiplier |
+| `RetryIndefinitely` | `bool` | `true` | `Whizbang__Postgres__<database>__RetryIndefinitely` | Retry forever until connect or cancellation |
+| `CommandTimeoutSeconds` | `int` | `120` | `Whizbang__Postgres__<database>__CommandTimeoutSeconds` | How long one SQL command (e.g. `process_work_batch`) may run; shorter than the worst commit batch loses completions |
+| `MaxInFlightCommands` | `int` | `50` | `Whizbang__Postgres__<database>__MaxInFlightCommands` | Cap on concurrent work-coordinator calls per process; post-configured into `WorkCoordinatorGateOptions.MaxConcurrent` (see [WorkCoordinatorGateOptions](#workcoordinatorgateoptions)), so it is the effective gate cap whenever a Postgres driver is registered; 0 disables the gate |
+| `CollectiveApplyBatchSize` | `int` | `1000` | `Whizbang__Postgres__<database>__CollectiveApplyBatchSize` | Rows mutated per batched collective-apply UPDATE |
+| `CollectiveApplyStatementTimeoutSeconds` | `int?` | `null` | `Whizbang__Postgres__<database>__CollectiveApplyStatementTimeoutSeconds` | Server-side `statement_timeout` per collective-apply batch |
 
 ## Security and Scope
 
@@ -1109,15 +1237,16 @@ Payload-size guardrails for tag hooks; hooks themselves register fluently (`UseH
 
 ### CoalescePolicyOptions
 
-Per-tag coalesce policy folding tagged singles into composites. **Configure:** registered per tag through the tag fluent API. **Details:** [Message Tags](../../fundamentals/messages/message-tags#configuration).
+Per-tag coalesce policy folding tagged singles into composites. **Configure:** registered per tag through the tag fluent API, then bound per tag from `Whizbang:Tags:Coalesce:<tag>`, which overrides the code policy ([Coalesce Bindings](#coalesce-bindings)). The delegates are code-only. **Details:** [Message Tags](../../fundamentals/messages/message-tags#configuration).
 
 | Property | Type | Default | Environment variable | Purpose |
 |----------|------|---------|----------------------|---------|
-| `SlideSeconds` | `int` | `15` | — *code-only* | Quiet window before pending singles fold; 0 ships individually |
-| `MaxDelaySeconds` | `int` | `120` | — *code-only* | Hard freshness cap on continuous sliding |
-| `MaxBatchCount` | `int` | `500` | — *code-only* | Max singles folded into one composite |
-| `Atomicity` | `FanoutAtomicity` | `Independent` | — *code-only* | Per-child failure policy of the shipped composite |
+| `SlideSeconds` | `int` | `15` | `Whizbang__Tags__Coalesce__<tag>__SlideSeconds` | Quiet window before pending singles fold; 0 ships individually |
+| `MaxDelaySeconds` | `int` | `120` | `Whizbang__Tags__Coalesce__<tag>__MaxDelaySeconds` | Hard freshness cap on continuous sliding |
+| `MaxBatchCount` | `int` | `500` | `Whizbang__Tags__Coalesce__<tag>__MaxBatchCount` | Max singles folded into one composite |
+| `Atomicity` | `FanoutAtomicity` | `Independent` | `Whizbang__Tags__Coalesce__<tag>__Atomicity` | Per-child failure policy of the shipped composite |
 | `CompositeFactory` | `Func<CoalesceFoldBatch, CompositeEventBase>?` | `null` (generic composite) | — *code-only* | Builds the composite |
+| `PriorityFold` | `CompositePriorityFold` | `MostUrgent` | `Whizbang__Tags__Coalesce__<tag>__PriorityFold` | How the composite's priority folds from its children's |
 
 ### SystemEventOptions
 
@@ -1150,15 +1279,15 @@ The temporal engine's schedule worker. **Configure:** bound automatically from `
 
 ### CircuitBreakerOptions
 
-**Configure:** passed to `CircuitBreaker<TResult>` construction. **Details:** [Policy Engine](../infrastructure/policy-engine).
+**Configure:** passed to `CircuitBreaker<TResult>` construction; resolve it by name with `IOptionsMonitor<CircuitBreakerOptions>.Get("<name>")` to bind `Whizbang:CircuitBreakers:<name>` over `services.Configure<CircuitBreakerOptions>("<name>", …)` ([Circuit Breakers](#circuit-breakers)). **Details:** [Policy Engine](../infrastructure/policy-engine).
 
 | Property | Type | Default | Environment variable | Purpose |
 |----------|------|---------|----------------------|---------|
-| `FailureThreshold` | `int` | `5` | — *code-only* | Consecutive failures before the circuit opens |
-| `InitialCooldownSeconds` | `int` | `3` | — *code-only* | Initial cooldown on first open; then exponential |
-| `CooldownBackoffMultiplier` | `double` | `2.0` | — *code-only* | Multiplier per consecutive open |
-| `MaxCooldownSeconds` | `int` | `300` | — *code-only* | Cap on cooldown backoff |
-| `SuccessCacheDurationSeconds` | `int` | `5` | — *code-only* | Seconds to cache a successful result; 0 disables |
+| `FailureThreshold` | `int` | `5` | `Whizbang__CircuitBreakers__<name>__FailureThreshold` | Consecutive failures before the circuit opens |
+| `InitialCooldownSeconds` | `int` | `3` | `Whizbang__CircuitBreakers__<name>__InitialCooldownSeconds` | Initial cooldown on first open; then exponential |
+| `CooldownBackoffMultiplier` | `double` | `2.0` | `Whizbang__CircuitBreakers__<name>__CooldownBackoffMultiplier` | Multiplier per consecutive open |
+| `MaxCooldownSeconds` | `int` | `300` | `Whizbang__CircuitBreakers__<name>__MaxCooldownSeconds` | Cap on cooldown backoff |
+| `SuccessCacheDurationSeconds` | `int` | `5` | `Whizbang__CircuitBreakers__<name>__SuccessCacheDurationSeconds` | Seconds to cache a successful result; 0 disables |
 
 ### StreamRateLimiterOptions
 
