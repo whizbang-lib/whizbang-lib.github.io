@@ -489,6 +489,98 @@ The canonical example is `063_NormalizeClrTypeNamesV2.sql`, which normalizes sto
 
 Settings are seeded by migrations with `ON CONFLICT (setting_key) DO NOTHING` (so operator overrides survive re-runs). Keep C#-worker-coupled timing constants (retry backoff, work leases, liveness thresholds) *out* of this table — tuning them independently of the workers that assume them causes drift.
 
+## Bounded data migrations {#batched-regions}
+
+A migration file is sent to the database as **one command**, and that command carries one timeout. A
+statement that rewrites every row of a table therefore cannot finish once the table is large enough,
+and writing a loop inside the SQL does not help — a `DO` block is still one command, so the whole
+loop shares the single budget. The failure is not a clean error either: the statement is cut off, the
+migration's transaction rolls back, the retry starts from the beginning, and the ledger never moves.
+A service in that state never finishes starting.
+
+How large a consumer's event store or inbox gets is not knowable when a migration is written, so the
+bound has to be on **rows per statement** rather than on elapsed time.
+
+### Marking a region
+
+Wrap the statement in a batch region. The runner sends what is inside it repeatedly — each send its
+own command, with its own budget — until it reports that it handled no rows.
+
+```sql
+-- @whizbang:batch-begin size=5000
+SELECT __SCHEMA__.wh_backfill_something(@whizbang_batch_size);
+-- @whizbang:batch-end
+```
+
+`size=` is optional and defaults to 10,000. `@whizbang_batch_size` is replaced with that number
+before the statement is sent; it is not a bound parameter, because a migration is a script rather
+than a prepared statement.
+
+Markers sit next to the statement they bound, for the same reason the bootstrap markers do: a list
+kept in code goes stale the first time a migration changes, while a marker is edited by whoever edits
+the statement. Segments keep file order and are never grouped, so a backfill marked below the
+function it calls still runs after that function is created.
+
+### What the region has to be
+
+**A statement that returns the number of rows it handled**, normally `SELECT` of a function. Two
+reasons, both load-bearing:
+
+- A backfill usually needs a **guard** — on a ledger replay the column it rewrites may no longer
+  exist — and a guard needs a function body, which bare DML cannot carry. A guarded function returns
+  `0` and the runner stops after one call.
+- A function can run **several statements that see each other's effects**. A single statement's CTEs
+  cannot: every arm reads the same snapshot, so an `UPDATE` arm cannot see rows an `INSERT` arm just
+  wrote. A backfill that inserts a row then nulls the original only if the copy exists has to be two
+  statements, or it nulls nothing and never terminates.
+
+### What makes it terminate
+
+**The statement must exclude the rows it has already handled.** This is the whole contract, and it is
+a property of the SQL rather than of the marking:
+
+```sql
+-- terminates: the rows it fills stop matching
+WHERE normalized_message_type IS NULL
+
+-- terminates: the rows it rewrites stop differing
+WHERE aggregate_type IS DISTINCT FROM split_part(event_type, ',', 1)
+
+-- does NOT terminate: ON CONFLICT DO NOTHING reports zero for rows already copied,
+-- so a slice of already-seeded rows reads as "nothing left" and stops early
+INSERT INTO target SELECT ... FROM source ON CONFLICT DO NOTHING
+```
+
+For that last shape, exclude the copied rows explicitly with `NOT EXISTS` rather than relying on the
+conflict clause.
+
+A region that never reports zero is stopped after 10,000 passes with an error naming the migration,
+so a non-converging statement fails by name rather than leaving a service that never starts.
+
+### Bounding without a key
+
+`LIMIT` inside a subquery is the usual bound. `UPDATE` has no `LIMIT` in PostgreSQL, so it goes in
+the row selection:
+
+```sql
+UPDATE __SCHEMA__.wh_inbox
+   SET source_commit_sequence = 0
+ WHERE message_id IN (
+   SELECT message_id FROM __SCHEMA__.wh_inbox
+    WHERE source_commit_sequence IS NULL
+    LIMIT p_limit
+ );
+```
+
+Where the table has no key declared in SQL — some are created from code — `ctid` bounds a slice just
+as well.
+
+### Ordering around a backfill
+
+Segments run in file order, so a step that depends on a backfill having finished goes in plain SQL
+*after* the region. Adding a column, filling it, and then enforcing `NOT NULL` is three segments in
+that order; the constraint is only reached once the fill has reported nothing left.
+
 ## Constants {#constants}
 
 {verified: MigrationConstantsTests.TheConstantsFile_DefinesEveryTokenTheMigrationsWriteAsync, MigrationConstantsTests.TheMigrationsTheProviderHandsOut_CarryNoTokens_AndTheValuesAreInPlaceAsync, MigrationConstantsTests.UnknownTokens_NamesATypo_AndIgnoresTheSchemaPlaceholdersAsync, MigrationConstantsTests.Parse_RejectsTheShapesThatWouldMisfireAsync}
