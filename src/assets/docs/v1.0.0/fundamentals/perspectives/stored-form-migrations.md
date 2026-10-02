@@ -177,10 +177,10 @@ The build reports **WHIZ830**. Write a [custom migration](#custom) for it.
 ### Order within a table {#order}
 
 The migrations for one table run in this order: renames, type conversions, defaults, removals, then
-[custom migrations](#custom) in the `Order` each states, lowest first. So a property that is renamed and
+[custom migrations](#custom) in the `Order` each states, lowest first, then by class name. So a property that is renamed and
 retyped in the same release gets both, rename first. The tables run in name order.
 
-{verified: StoredFormMigrationGenerationTests.Migrations_RunRenamesThenConversionsThenDefaultsThenRemovals_ThenCustomByOrderAsync, StoredFormMigrationGenerationTests.CustomMigrations_RunByTheirOrder_ThenByClassNameAsync, StoredFormMigrationGenerationTests.TheMigrations_RunInTheRewritePhaseBeforeTheTemporalRewrite_AndStatusIsExposedAsync}
+{verified: StoredFormMigrationGenerationTests.Migrations_RunRenamesThenConversionsThenDefaultsThenRemovals_ThenCustomByNameWithoutAnOrderAsync, StoredFormMigrationGenerationTests.CustomMigrations_RunByTheirOrder_ThenByClassNameAsync, StoredFormMigrationGenerationTests.TheMigrations_RunInTheRewritePhaseBeforeTheTemporalRewrite_AndStatusIsExposedAsync}
 
 Stored-form migrations run **before** the canonical temporal rewrite. So a temporal value moved by a
 rename is converted to the canonical form in the same pass.
@@ -197,9 +197,6 @@ never run (its model is no perspective's, or the generated code cannot create it
 public sealed class SplitFullName : IStoredFormMigration<CustomerModel> {
   // Stable forever: the journal records the migration under this name.
   public string Name => "2026-10-customer-split-full-name";
-
-  // Where it runs among this table's custom migrations: lower first.
-  public int Order => 10;
 
   public string BuildSql(StoredFormMigrationTarget target) => $"""
     UPDATE {target.QualifiedTable}
@@ -221,7 +218,7 @@ public sealed class SplitFullName : IStoredFormMigration<CustomerModel> {
   duplicate.
 - **It runs only once the table exists.** On a database where the table has not been created yet,
   the migration waits and runs on a later start.
-- **It runs in the `Order` you state.** See [Ordering custom migrations](#custom-order).
+- **It runs in the `Order` you state, if you state one.** See [Ordering custom migrations](#custom-order).
 - **To block startup**, raise the stored-form SQLSTATE with a message that names what is wrong:
   `RAISE EXCEPTION USING ERRCODE = 'WH980', MESSAGE = '...'`. The constant is
   `StoredFormMigrationTarget.BLOCKED_SQL_STATE`. Any other error is reported as a warning, and the
@@ -234,14 +231,29 @@ public sealed class SplitFullName : IStoredFormMigration<CustomerModel> {
 
 {verified: StoredFormMigrationGenerationTests.CustomMigrations_RunByTheirOrder_ThenByClassNameAsync, StoredFormMigrationGenerationTests.TwoMigrationsOfOneTableSharingAnOrder_AreWHIZ833_OncePerSharedOrderAsync, StoredFormMigrationGenerationTests.AnOrderThatIsNotAConstant_IsWHIZ831_AndTheMigrationIsNotEmittedAsync}
 
-Every custom migration states an `Order`. The custom migrations of one table run after its generated
-migrations, lowest `Order` first. Leave gaps (10, 20, 30) so a later migration can go between two
-earlier ones.
+The custom migrations of one table run after its generated migrations, lowest `Order` first, and
+migrations with the same `Order` run in the order of their classes' full names. `Order` is optional:
+a migration that does not state one has `Order` 0, so migrations written without it keep running in
+class-name order. To place a migration, state it, and leave gaps (10, 20, 30) so a later migration can
+go between two earlier ones.
 
-- **Two migrations with the same `Order`** run in the order of their classes' full names. The build
-  warns (**WHIZ833**), because that order comes from naming rather than from a decision: renaming a
-  class would change it. Migrations of different tables can share an `Order`.
-- **The build reads the `Order`**, so it must be a compile-time constant: a literal or a `const`,
+```csharp{title="A custom migration with an explicit order" description="Order places a custom migration among the custom migrations of its table: lower runs first." framework="NET10" category="Perspectives" difficulty="ADVANCED" tags=["perspectives", "stored-forms", "migrations"]}
+public sealed class BackfillRegion : IStoredFormMigration<CustomerModel> {
+  public string Name => "2026-11-customer-backfill-region";
+
+  // Runs after SplitFullName (no Order, so 0), whatever the class names.
+  public int Order => 10;
+
+  public string BuildSql(StoredFormMigrationTarget target) =>
+    $"UPDATE {target.QualifiedTable} SET data = data || '{{\"Region\": \"unknown\"}}' WHERE NOT data ? 'Region'";
+}
+```
+
+- **Two migrations that state the same `Order`** run in the order of their classes' full names. The
+  build warns (**WHIZ833**), because that order comes from naming rather than from a decision:
+  renaming a class would change it. Two that state none are not reported. Migrations of different
+  tables can share an `Order`.
+- **The build reads a stated `Order`**, so it must be a compile-time constant: a literal or a `const`,
   returned from an expression body (`=> 10`), from a getter that only returns it, or set by an
   initializer (`{ get; } = 10`). A migration whose `Order` the build cannot read is reported as
   **WHIZ831** and does not run.
@@ -468,9 +480,9 @@ in a [custom migration](#custom) of the same release.
 | Id | Severity | Reported when |
 |---|---|---|
 | WHIZ830 | Error | A declaration the generator cannot turn into SQL: an unsupported type pair, `Previously` equal to the current type, a `[Flags]` enum over `ulong` converted from a string, or a default on a Split physical field. Use a custom migration. |
-| WHIZ831 | Warning | An `IStoredFormMigration<TModel>` that would never run: its `TModel` is not the model of any perspective, the generated code cannot create it (no public or internal parameterless constructor, a generic class, or a class it cannot see), or its `Order` is not a compile-time constant. |
+| WHIZ831 | Warning | An `IStoredFormMigration<TModel>` that would never run: its `TModel` is not the model of any perspective, the generated code cannot create it (no public or internal parameterless constructor, a generic class, or a class it cannot see), or the `Order` it states is not a compile-time constant. |
 | WHIZ832 | Warning | A `[StoredForm]` or `[StoredFormRemoved]` inside an element of a collection, which is not generated. Use a custom migration. |
-| WHIZ833 | Warning | Two custom migrations of one table state the same `Order`, so they run in class-name order. Give each its own `Order`. |
+| WHIZ833 | Warning | Two custom migrations of one table explicitly state the same `Order`, so they run in class-name order. Give each its own `Order`. Migrations that state no `Order` are not reported. |
 
 ## See also
 
