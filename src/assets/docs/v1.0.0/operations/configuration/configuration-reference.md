@@ -155,7 +155,7 @@ Bound by the Postgres driver, which holds duties (`maintainer`, `migrator`, and 
 | Key | Type | Default | Environment variable | Purpose |
 |-----|------|---------|----------------------|---------|
 | `Enabled` | `bool` | `true` | `Whizbang__Database__RoleAssignment__Enabled` | `false` hands every duty back to the session-lock elector |
-| `HoldLegacySessionLock` | `bool` | `false` | `Whizbang__Database__RoleAssignment__HoldLegacySessionLock` | The mixed-version bridge: a holder also holds the duty's session lock. Turn it on for a rolling deploy from a release that held duties by session lock |
+| `HoldLegacySessionLock` | `bool` | `true` | `Whizbang__Database__RoleAssignment__HoldLegacySessionLock` | The mixed-version bridge: a holder also holds the duty's session lock, so a rolling deploy from a release that held duties by session lock never has old and new both acting. On by default in this release and planned to default to off in a later one; set `Whizbang__Database__RoleAssignment__HoldLegacySessionLock=false` to turn it off early, once no older instance remains |
 | `RenewInterval` | `TimeSpan` | `00:00:05` | `Whizbang__Database__RoleAssignment__RenewInterval` | How often a holder renews its lease from its own work loop |
 | `MissedRenewalsBeforeLapse` | `int` | `3` | `Whizbang__Database__RoleAssignment__MissedRenewalsBeforeLapse` | The default lease is this many renew intervals |
 | `CooldownAfterLapse` | `TimeSpan` | `00:00:15` | `Whizbang__Database__RoleAssignment__CooldownAfterLapse` | How long an instance whose own assignment lapsed must wait before it can win it back. A fleet-wide lapse (a database outage) carries none |

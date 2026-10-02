@@ -111,6 +111,7 @@ Migration 184 is the last word on every role function, and is a bootstrap region
 | `wh_renew_role_lease(role, instance, epoch, legacy_lock_key)` | Renewal answering `renewed`, `drain` or `lost`; an unbridged holder passes the legacy key and steps aside for a session-lock holder it sees |
 | `wh_mark_role_duty_backend(role, instance, epoch, mark)` | Marks, or clears, the calling backend as the one running the duty's statement (the backstop) |
 | `wh_end_lapsed_bridge(role, legacy_lock_key)` | Ends a lapsed bridged holder's legacy-lock session, and only that one |
+| `wh_request_role_drain(role, instance, lease, version_key)` | A bridged caller that could not take the legacy lock records its candidacy and asks an older live holder to drain; assigns nothing |
 | `wh_elect_role`, `wh_renew_role` | The phase 1 entry points, kept as wrappers for an instance on the release before |
 
 The row gained the holder's version key, the drain request, the marked duty backend, the bridge session and whether the last involuntary vacancy was fleet-wide; `wh_role_candidates` records who is voting for each role, on which version.
@@ -146,21 +147,23 @@ During a rolling deploy, old instances hold duties with session locks and new in
 
 | Direction | Mechanism |
 |---|---|
-| **New defers to old** | Bridge on (`HoldLegacySessionLock = true`): a new instance first takes the legacy session lock (`DutyLockKey`, the same key the old elector uses; the stamper's leader lock for the `commit-stamper` role) and votes only if it won. If an old instance holds it, the attempt is `Contended` and no assignment is written. Bridge off (the default): the vote itself checks `pg_locks` for the legacy key held by another backend and answers `legacy_holder` |
+| **New defers to old** | Bridge on (`HoldLegacySessionLock = true`, the default in this release): a new instance first takes the legacy session lock (`DutyLockKey`, the same key the old elector uses; the stamper's leader lock for the `commit-stamper` role) and votes only if it won. If an old instance holds it, the attempt is `Contended` and no assignment is written. Bridge off: the vote itself checks `pg_locks` for the legacy key held by another backend and answers `legacy_holder` |
 | **Old defers to new** | Bridge on: the new holder keeps holding the legacy session lock for as long as it holds the role, so an old instance's `pg_try_advisory_lock` fails exactly as it would against an old holder. Bridge off: a holder's renewal also looks for the legacy lock, so an old instance that took it after the vote is seen within one renewal and the assignment steps aside (`last_vacated_reason = legacy_holder`) |
 
 While bridged, the holder checks its bridge session on every verify, not only when it renews: once that session dies, an old instance can take the session lock, so "still held" can no longer be answered from memory. The bridge lock is released explicitly before its connection is closed, because a pooled connection returns to the pool with its session, and its advisory locks, still alive.
 
-The bridge costs the pinned connection the new model exists to remove, so it is off by default and is turned on for the rolling deploy that moves a fleet off a release that held duties by session lock (`Whizbang:Database:RoleAssignment:HoldLegacySessionLock = true`), then off again. With the bridge off, the `pg_locks` check still refuses a vote while an old holder is visible, and a holder steps aside within one renewal once it sees one, but an old instance that takes the session lock *after* the vote acts alongside the new holder for up to that one renew interval. The chaos suite runs this deploy both ways.
+The bridge costs the pinned connection the new model exists to remove, so it is temporary. It is **on by default in this release**, because consumers upgrading from much older builds roll through it, and it will default to off in a later release. Turn it off early with `Whizbang__Database__RoleAssignment__HoldLegacySessionLock=false` once no instance older than role assignment remains. A bridged instance that loses the legacy lock still records its candidacy and can still ask an older holder to drain (`wh_request_role_drain`), so the bridge costs neither the drain nor the newest-version preference. With the bridge off, the `pg_locks` check still refuses a vote while an old holder is visible, and a holder steps aside within one renewal once it sees one, but an old instance that takes the session lock *after* the vote acts alongside the new holder for up to that one renew interval. The chaos suite runs this deploy both ways.
 
 While the bridge is on, a stuck new holder keeps its bridge session, so the session lock would block every other instance until that session died. Decision 4 of #968 removes that wait: once the assignment row says the holder has lapsed, the next would-be winner ends that holder's legacy-lock session, and only that one (section 11).
 
 ### Migration path from `PgDutyElector`
 
 1. **Phases 1 and 2.** Migration 173 is additive. `PgRoleElector` shipped beside `PgDutyElector`, opt-in through `AddWhizbangRoleAssignment()`, with the acquisition hook (section 7).
-2. **Phases 3 and 4, shipped together.** Role assignment is the Postgres driver's default registration, the bridge is off by default, and the migrator is held by assignment. The session-lock elector remains as the delegate for any duty that is not a role, and as the whole elector when `Enabled = false`.
+2. **Phases 3 and 4, shipped together.** Role assignment is the Postgres driver's default registration, still bridged, and the migrator is held by assignment. The session-lock elector remains as the delegate for any duty that is not a role, and as the whole elector when `Enabled = false`.
 
-**Upgrading.** A rolling deploy from a release that held duties by session lock turns the bridge on for that deploy. A deploy from a release that already had role assignment on needs nothing: the phase 1 entry points (`wh_elect_role`, `wh_renew_role`) keep working for the old instances, which count as the oldest version, so the role moves to the new release (section 11, decisions 2 and 3).
+3. **A later release.** The bridge defaults to off.
+
+**Upgrading.** A rolling deploy from a release that held duties by session lock needs nothing: the bridge is on by default. A deploy from a release that already had role assignment on needs nothing: the phase 1 entry points (`wh_elect_role`, `wh_renew_role`) keep working for the old instances, which count as the oldest version, so the role moves to the new release (section 11, decisions 2 and 3).
 
 **The migrator** moved in phase 4. Its vote is part of the schema bootstrap closure (migration 184 is a bootstrap region), so the assignment table and functions exist before the first migration. Migrator waiters watch the assignment row (`MigratorWatch`), and the duty's session lock too, for a migrator on an older release. The migrator holds its role for one migration and releases it, so the holder loop never holds it and the `roles` health component reports it only when it lapsed mid-run.
 
@@ -214,7 +217,7 @@ Each simulated instance is its own elector, owed-work store and holder loop over
 | **1** | Migration 173; vote, renew, release, fence and status SQL; `PgRoleElector` behind `IDutyElector` with epoch on the grant, renew-on-verify, release on dispose and on shutdown, and the legacy-lock bridge; opt-in registration |
 | **2** | Acquisition hook and pending-work rows; health component "role unassigned"; metrics; release NOTIFY so waiters retry at once |
 | **3** | Default registration, with the options bound from `Whizbang:Database:RoleAssignment`; the commit-order stamper's leader as the `commit-stamper` role, renewed by its stamping loop, every stamp fenced; per-duty leases and the duty-backend backstop for one long statement; the multi-role vote; cooperative drain and the newest-version preference |
-| **4** | The chaos suite; the bridge off by default, with the renewal-time legacy check; the migrator held by assignment, its vote in the bootstrap closure (migration 184), its waiters watching the row; ending a lapsed bridged holder's lock session; the fleet-wide lapse exempt from the cool-down |
+| **4** | The chaos suite; the bridge kept on by default for this release (off by default later), with a renewal-time legacy check for when it is turned off; the migrator held by assignment, its vote in the bootstrap closure (migration 184), its waiters watching the row; ending a lapsed bridged holder's lock session; the fleet-wide lapse exempt from the cool-down |
 
 ### The stamper's leader as a role
 

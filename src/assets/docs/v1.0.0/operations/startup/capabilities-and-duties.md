@@ -116,7 +116,7 @@ Held this way: `maintainer`, `migrator`, and the commit-order stamper's leadersh
 - **A newer release takes over cooperatively.** An instance on a newer library version asks an older holder to drain (`IDutyGrant.DrainRequested`); the holder finishes its current step and releases. A vacant duty goes to the newest version voting for it.
 - **One long statement does not lose the duty.** Each duty may declare its own lease, and a holder that marks the backend running its statement (`PgRoleElector.MarkDutyBackendAsync`) stays live while that statement runs.
 - **A database outage does not cool anyone down.** After an involuntary lapse an instance waits `CooldownAfterLapse` before winning the duty back, unless every holder lapsed together.
-- **Rolling deploy from a session-lock release.** Turn on `HoldLegacySessionLock` for that deploy, so old and new instances never both act; the default is off.
+- **Rolling deploy from a session-lock release.** The bridge (`HoldLegacySessionLock`) is on by default in this release, so old and new instances never both act. It will default to off in a later release; `Whizbang__Database__RoleAssignment__HoldLegacySessionLock=false` turns it off early.
 
 Health reports the duties under the `roles` component and the meter `Whizbang.Roles` counts elections, hand-offs, drains and losses. The full design, the resilience requirements it meets and the chaos suite that tests them are in the [Duty Role Assignment](/proposals/duty-role-assignment) proposal; the options are in the [configuration reference](../configuration/configuration-reference#role-assignment-options).
 
