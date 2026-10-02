@@ -627,7 +627,9 @@ diagnostic, and a dictionary was refused outright by a model whose document is m
   `ComplexProperty(e => e.Data).ToJson()`, so a dictionary is allowed and WHIZ810 no longer fires for
   it. The column is where the value is read from: the hydrators copy it into the model, and the store
   reads it back from the column for the model the next event is applied to, on an Extracted model as
-  well as a Split one, with either driver.
+  well as a Split one, with either driver. On an Extracted model the document still carries a copy
+  when the row is written by the atomic upsert (the usual path), but a write that falls back to the
+  change tracker leaves it out, so treat the column as the value and do not query the document's copy.
 - **A column added to an existing Extracted table is backfilled** from the document's member,
   `data -> 'GridFilter'`, which holds the same JSON.
 
