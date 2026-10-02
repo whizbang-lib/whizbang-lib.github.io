@@ -981,9 +981,10 @@ and every move is idempotent: a later start finds nothing to do.
 | Promote to a `jsonb` column (`ColumnType = "jsonb"`) | Yes | The column takes the document's value as it is. Same rules as above for Extracted and Split. |
 | Promote to a native array or another column type you chose | Yes, for the types listed above | Filled element by element, or through a cast. Otherwise reported for a rebuild. |
 | Promote a vector, or a date or time under a type you chose | Only with a rebuild | The column is added but cannot be filled. The start reports the table for a rebuild. |
-| Remove `[PhysicalField]` from a field (demotion) | Yes | Every value in the column is copied into the document. Until the deploy settles, every write keeps them in agreement. The column is **left in place**; drop it yourself once the deploy has settled. |
+| Remove `[PhysicalField]` from a field (demotion) | Yes | Every value in the column the framework recorded for it is copied into the document. Until the deploy settles, every write keeps them in agreement. The column is **left in place**; drop it yourself once the deploy has settled. |
 | Demote a field out of a `jsonb` column | Yes | The column's value becomes the document's value as it is. |
-| Demote a field whose column has a custom name (`ColumnName = "..."`) | No | The column is found only under the field's default name. Rename the column to the default name first, or rebuild. |
+| Demote a field whose column has a custom name (`ColumnName = "..."`) | Yes | The column is found by the field it was recorded under, whatever it is named. |
+| A column you added yourself under a field's name | Untouched | Only a column the framework recorded as a promoted field's is ever demoted. |
 | Demote a column whose type the document cannot hold (a vector, `point`, `interval`) | Only with a rebuild | Nothing is copied. The start reports the table for a rebuild. |
 | Change a model from Split to Extracted, or back | Not by this | Use a rebuild. |
 
@@ -1006,19 +1007,29 @@ releases read the document, and the step fills the rows the previous release wri
 
 ## Demoting a field {#demoting-a-field}
 
-{verified: PhysicalFieldDemotionTests.ADemotedField_IsCopiedIntoTheDocumentForEveryRowAsync, PhysicalFieldDemotionTests.ASecondPass_CopiesNothingAsync, PhysicalFieldDemotionTests.ASettledDemotion_DropsItsTriggersAndIsNeverCopiedAgainAsync, PhysicalFieldDemotionTests.PromotingADemotedFieldAgain_RefreshesTheColumnFromTheDocumentAsync, PhysicalFieldMoveGenerationTests.Demote_NeverOffersAFrameworkColumnOrOneAPromotedFieldOwnsAsync, DapperPhysicalFieldMoveTests.ADemotedColumn_IsCopiedIntoTheDocumentAndSyncedAsync}
+{verified: PhysicalFieldDemotionTests.ADemotedField_IsCopiedIntoTheDocumentForEveryRowAsync, PhysicalFieldDemotionTests.AColumnTheFrameworkDidNotRecord_IsNeverCopiedAsync, PhysicalFieldDemotionTests.AColumnTheRegistryLists_IsRecordedAndDemotedByItsNameAsync, PhysicalFieldDemotionTests.ARecordedColumnWithACustomName_IsDemotedByItsFieldAsync, DapperPhysicalFieldMoveTests.TheFirstStart_RecordsEachPromotedColumnUnderItsFieldAsync, PhysicalFieldDemotionTests.ASecondPass_CopiesNothingAsync, PhysicalFieldDemotionTests.ASettledDemotion_DropsItsTriggersAndIsNeverCopiedAgainAsync, PhysicalFieldDemotionTests.PromotingADemotedFieldAgain_RefreshesTheColumnFromTheDocumentAsync, PhysicalFieldMoveGenerationTests.Demote_NeverOffersAFrameworkColumnOrOneAPromotedFieldOwnsAsync, DapperPhysicalFieldMoveTests.ADemotedColumn_IsCopiedIntoTheDocumentAndSyncedAsync}
 
-Removing `[PhysicalField]` from a field keeps its values. The model no longer says the field was promoted,
-so on each start that changes the perspective's schema, every field the model keeps only in the document is
-checked for a column under the name its promotion would have used (`Score` → `score`). When the table has
-one:
+Removing `[PhysicalField]` from a field keeps its values. Every schema pass records each column it creates
+for a promoted field, with the field it holds, in `wh_physical_column_fills` (direction `recorded`). The
+columns earlier releases promoted are recorded too: on the EF Core driver from the perspective registry when
+this release first starts, and on both drivers by the first start of this release, which records every
+column the model still promotes. A demotion moves **only a recorded column**, so a column you added yourself,
+even one named like a field, is never copied over the document.
+
+On each start that changes the perspective's schema, every field the model keeps only in the document is
+checked against those records: a column recorded under the field is found whatever it is named (a custom
+`ColumnName` included), and one recorded from the registry, which names no field, under the name the field's
+promotion would have used by default (`Score` → `score`). When the table has one:
 
 1. **The copy.** Every row whose column holds a value its document does not gets the value copied into
    the document, in the form the document stores it (microseconds for dates and times, the number for an
    enumeration, a JSON array for an array column, the value itself for a `jsonb` column).
 2. **The rollout.** The triggers described above keep the two in agreement until the move settles.
-3. **The record.** The move is recorded in `wh_physical_column_fills`. Once it has settled it is kept, so
-   a later start never copies the column, which by then is stale, over the document.
+3. **The record.** The move is recorded as `to_document`. Once it has settled it is kept, so a later start
+   never copies the column, which by then is stale, over the document.
+
+On the Dapper driver, which keeps no registry, demote a field in a release after this one has started once,
+so its column has been recorded.
 
 A column every perspective table has, or one a field still promoted owns, is never a candidate.
 
