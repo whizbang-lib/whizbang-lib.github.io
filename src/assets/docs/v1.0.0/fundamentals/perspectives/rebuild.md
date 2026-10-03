@@ -15,12 +15,18 @@ tags: >-
 codeReferences:
   - src/Whizbang.Core/Perspectives/IPerspectiveRebuilder.cs
   - src/Whizbang.Core/Perspectives/PerspectiveRebuilder.cs
+  - src/Whizbang.Core/Perspectives/IPerspectiveTableSwapper.cs
+  - src/Whizbang.Core/Perspectives/PerspectiveTableRedirect.cs
+  - src/Whizbang.Data.Postgres/Perspectives/PostgresPerspectiveTableSwapper.cs
   - src/Whizbang.Core/Perspectives/System/PerspectiveStatusModel.cs
   - src/Whizbang.Core/Workers/PerspectiveMigrationWorker.cs
   - src/Whizbang.Core/Commands/System/SystemCommands.cs
   - src/Whizbang.Core/Events/System/SystemEvents.cs
 testReferences:
   - tests/Whizbang.Core.Tests/Perspectives/PerspectiveRebuilderTests.cs
+  - tests/Whizbang.Core.Tests/Perspectives/PerspectiveRebuilderBlueGreenTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/BlueGreenRebuildIntegrationTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/Perspectives/PostgresPerspectiveTableSwapperTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/PerspectiveRebuilderIntegrationTests.cs
   - tests/Whizbang.Core.Tests/Commands/System/SystemCommandsTests.cs
 lastMaintainedCommit: '01f07906'
@@ -43,17 +49,58 @@ public interface IPerspectiveRebuilder {
 
 ## Rebuild Modes
 
-### Blue-Green
+### Blue-Green {#blue-green}
 
-Create a new table, replay all events into it, then atomically swap with the old table. The old table is kept as a backup.
+{verified: PerspectiveRebuilderBlueGreenTests.BlueGreen_ReplaysIntoTheShadowTable_ThenSwapsItInAsync, PerspectiveRebuilderBlueGreenTests.BlueGreen_CatchesUpTheStreamsWrittenWhileItRan_AndTheLastOnesUnderTheWriteLockAsync, BlueGreenRebuildIntegrationTests.BlueGreen_ReadersSeeTheCompleteLiveTableThroughout_AndTheSwapInstallsTheRebuiltRowsAsync, PostgresPerspectiveTableSwapperTests.Swap_ReadersAreNotBlocked_AndAHeldWriterContinuesAgainstTheNewTableAsync}
 
-```csharp{title="Blue-Green" description="Create a new table, replay all events into it, then atomically swap with the old table." category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Blue-Green"] tests=["PerspectiveRebuilderTests.RebuildBlueGreenAsync_CompletesSuccessfullyAsync"]}
+Replays every stream into a **shadow table** while readers keep the live table, then swaps the shadow in
+atomically. Use it when a consumer re-projects to fill a new column and must keep serving consistent reads
+while it does: a reader sees the complete previous projection until the swap, and the complete rebuilt one
+after it, never anything in between.
+
+```csharp{title="Blue-Green" description="Replay into a shadow table, catch up, and swap it in atomically." category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Blue-Green"] tests=["PerspectiveRebuilderBlueGreenTests.BlueGreen_ReplaysIntoTheShadowTable_ThenSwapsItInAsync"]}
 var result = await rebuilder.RebuildBlueGreenAsync("OrderPerspective");
-// App continues serving reads from old table during rebuild
-// Swap is atomic — no downtime
+// Reads are served from the live table throughout; the swap is one transaction.
 ```
 
-**Best for**: Production deployments where zero-downtime is required.
+How it runs:
+
+1. **Shadow table.** `wh_per_order_bg` is created with the live table's columns, defaults, constraints and
+   indexes (a shadow left by a failed rebuild is replaced).
+2. **Replay.** Every stream is replayed into the shadow table. The perspective store of the rebuild's own flow
+   is redirected there (`PerspectiveTableRedirect`); every other flow, including the live perspective worker,
+   keeps reading and writing the live table.
+3. **Catch-up.** Writers keep writing the live table meanwhile, so the rebuild replays again the streams whose
+   events were committed after it read them, judged by commit sequence: up to `MaxCatchUpPasses` times with the
+   live table open. A collective event committed meanwhile can change any row, so it makes every stream count as
+   changed.
+4. **Swap.** One transaction closes the live table to writers (readers carry on), catches up the last streams,
+   then renames: the live table to `wh_per_order_bg_old` (or drops it), the shadow table to the live name, and
+   each index to the name it had on the live table, so the schema pass finds its indexes in place. A writer that
+   was held back continues against the new table once the swap commits. The rename waits for readers in flight
+   for at most `SwapLockTimeout`.
+
+A rebuild that fails, or a swap that cannot get its locks in time, drops the shadow table and leaves the live
+table exactly as it was.
+
+```csharp{title="Blue-green options" description="Keep or drop the previous table, catch-up passes, and the swap's lock timeout." category="Configuration" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Blue-Green"] unverified="Options registration — configuration, asserted through PerspectiveRebuilderBlueGreenTests.BlueGreen_WithNoCatchUpPasses_LeavesEveryChangeToTheSwapAsync"}
+services.Configure<BlueGreenRebuildOptions>(o => {
+  o.KeepPreviousTable = true;                       // default: keep wh_per_order_bg_old as the way back
+  o.MaxCatchUpPasses = 3;                           // default
+  o.SwapLockTimeout = TimeSpan.FromSeconds(10);     // default
+});
+```
+
+A kept previous table is replaced by the next blue-green rebuild of the same perspective; drop it yourself once
+the rebuilt table is confirmed.
+
+**Progress.** `GetRebuildStatusAsync` reports the phase (`Replaying`, `CatchingUp`, `Swapping`) and the streams
+processed out of the phase's total while the rebuild runs.
+
+**Drivers.** Both PostgreSQL drivers (EF Core and Dapper) register the swapper. A driver without one rebuilds
+blue-green in place, as every driver did before, and logs a warning that it did.
+
+**Best for**: Production re-projections where reads must stay consistent.
 
 ### In-Place
 
