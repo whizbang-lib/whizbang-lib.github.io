@@ -8,7 +8,8 @@ codeReferences:
   - src/Whizbang.Core/Messaging/ICollectiveEvent.cs
   - src/Whizbang.Core/Messaging/CollectiveEventBase.cs
   - src/Whizbang.Core/Messaging/CollectiveOrdering.cs
-  - src/Whizbang.Core/Messaging/CollectivePredecessorTracker.cs
+  - src/Whizbang.Core/Messaging/CollectivePredecessorLink.cs
+  - src/Whizbang.Data.Postgres/Migrations/190_CollectiveOrderingHeads.sql
   - src/Whizbang.Core/Workers/CollectivePredecessorHolds.cs
   - src/Whizbang.Core/Messaging/CollectiveScope.cs
   - src/Whizbang.Core/Messaging/TenantCollectiveScope.cs
@@ -247,7 +248,7 @@ every producer and consumer must compute the same stream.
 
 ### Ordering across services {#ordering-across-services}
 
-{verified: CollectivePredecessorTrackerTests.Stamp_SecondCollectiveOnAKey_CarriesTheFirstAsync, DispatcherKeyedCollectiveStreamTests.PublishAsync_SecondKeyedCollective_CarriesTheFirstAsItsPredecessorAsync, PerspectiveWorkerCollectiveSinkTests.CollectiveSink_Predecessor_LaterInTheRun_AppliesFirstAsync, PerspectiveWorkerCollectiveSinkTests.CollectiveSink_Predecessor_NothingToWaitFor_AppliesAtOnceAsync, PerspectiveWorkerCollectiveSinkTests.CollectiveSink_Predecessor_NotYetArrived_WaitsThenAppliesBothInOrderAsync, PerspectiveWorkerCollectiveSinkTests.CollectiveSink_Predecessor_NeverArrives_AppliesWhenTheWaitRunsOutAsync, CollectivePredecessorTrackerTests.Serialization_WithoutALink_WritesNoLinkAndReadsNoneAsync}
+{verified: CollectiveOrderingHeadSqlTests.Store_TwoPublisherInstancesAlternating_FormOneChainAsync, CollectiveOrderingHeadSqlTests.Store_ConcurrentPublishesOnOneKey_FormOneLinearChainAsync, CollectiveOrderingHeadSqlTests.Store_AfterARestart_TheChainContinuesAsync, CollectiveOrderingHeadSqlTests.Maintenance_PrunesOnlyHeadsIdlePastTheRetentionAsync, EFCoreCollectiveOrderingHeadTests.StoreOutboxMessagesAsync_TwoCoordinators_LinkTheSecondToTheFirstAsync, DispatcherKeyedCollectiveStreamTests.PublishAsync_KeyedCollective_MarksItsOutboxRowForALinkAsync, PerspectiveWorkerCollectiveSinkTests.CollectiveSink_Predecessor_LaterInTheRun_AppliesFirstAsync, PerspectiveWorkerCollectiveSinkTests.CollectiveSink_Predecessor_NothingToWaitFor_AppliesAtOnceAsync, PerspectiveWorkerCollectiveSinkTests.CollectiveSink_Predecessor_NotYetArrived_WaitsThenAppliesBothInOrderAsync, PerspectiveWorkerCollectiveSinkTests.CollectiveSink_Predecessor_NeverArrives_AppliesWhenTheWaitRunsOutAsync, CollectivePredecessorLinkTests.Serialization_TheLinkFields_HaveTheNamesTheStoreWritesAsync}
 
 A receiver applies a key's collectives in the order it committed them, which is the order they
 arrived, and a transport can deliver them in another order than they were sent. A receiver that
@@ -255,12 +256,22 @@ handles only some of the types on a key also sees gaps in the publisher's sequen
 origin sequence cannot say whether anything is missing. Instead, each keyed collective names the
 one sent before it:
 
-- **The publisher stamps a predecessor link.** When the dispatcher publishes a
-  `CollectiveEventBase` with an ordering key, it sets `PredecessorId` and `PredecessorType` to
-  the collective it published on that key just before, of any type. The first on a key carries
-  no link. The link is a hint kept in memory per process: after a restart, or once more than
-  `CollectivePredecessorTracker.DEFAULT_CAPACITY` keys are in play, the next collective on a key
-  goes unlinked and applies as it always did.
+- **The store links each collective, durably.** When a `CollectiveEventBase` with an ordering
+  key is stored in the outbox, the store (`store_outbox_messages`) looks up the key's head in
+  `wh_collective_ordering_heads`, writes its id and type into the new collective's payload as
+  `PredecessorId` and `PredecessorType`, and points the head at the new collective, all in the
+  transaction that stores it. The head row stays locked until that transaction commits, so every
+  instance of every publisher of a key takes its turn and the result is one linear chain, never
+  a fork. The head is in the database, so a restart does not break the chain. A head is kept
+  per collective stream, which is derived from the scope and the ordering key, so two tenants
+  using the same key never share one. The first collective on a key carries no link. A
+  collective the store has already stored (a retry's republish) is not linked again. There is no
+  per-process fallback: a host without the Postgres outbox store links nothing, and its
+  collectives apply as they always did.
+- **Idle keys are forgotten.** `perform_maintenance` prunes a key's head once the key has been
+  idle for `collective_ordering_head_retention_days` (a `wh_settings` value, default **7**). The
+  next collective on that key goes out unlinked and applies at once, which is right: its
+  predecessor applied days ago. Pruning by idleness bounds the table by the keys in use.
 - **The receiver applies at once** when the collective has no link, when it does not handle the
   predecessor's type (it would never receive it), or when it has already seen the predecessor:
   earlier in the same run, or in its event store and applied.
@@ -275,8 +286,8 @@ one sent before it:
   instance's only while their lease lasts.
 - **Wire-compatible both ways.** The link is two optional fields on the event, left out of the
   JSON when there is none, so an unlinked collective is written exactly as before. A collective
-  from a publisher that sends no link reads back with none and applies as today; an older
-  receiver ignores the fields.
+  from a publisher that sends no link (an older one, or a store without migration 190) reads
+  back with none and applies as today; an older receiver ignores the fields.
 
 A hand-written `ICollectiveEvent` carries no link; derive from `CollectiveEventBase` to get one.
 
