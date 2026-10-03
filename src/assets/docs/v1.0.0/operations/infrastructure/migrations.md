@@ -274,6 +274,13 @@ region) has a different hash, so it runs in full once and records itself. The mi
 untouched by any of this; the bootstrap still claims nothing about migrations.
 {verified: SchemaBootstrapPhaseTests.ACurrentClosureIsNotAppliedAgainAsync, SchemaBootstrapPhaseTests.AChangedClosureIsAppliedAsync, SchemaBootstrapPhaseTests.TheBootstrapRecordsNothingInTheLedgerAsync}
 
+### Which instance migrates {#which-instance-migrates}
+
+The migrator is a duty, held by [role assignment](../startup/capabilities-and-duties#role-assignment-the-default) by default. Its vote is part of the bootstrap closure (migration `184_RoleAssignmentResilience.sql` is a bootstrap region), so the assignment table and its functions exist before the first migration runs. Every instance joins the registry, then votes; the winner migrates and releases the duty when it returns, however it returns.
+
+An instance that lost the vote waits for the result instead of queuing behind the schema lock. It watches the migrator itself: its assignment row and, for a migrator on a release that still held the duty by session lock, that lock (`MigratorWatch`). The migrator renews its assignment between phases and marks the backend running its DDL, so one long migration statement does not lose the duty; its lease is 30 seconds by default (`RoleAssignmentOptions.RoleLeases`). If the migrator dies, its assignment lapses and a waiter goes on to do the schema work itself, still under the schema lock, which keeps DDL to one instance at a time whatever the duty says.
+{verified: MigratorWatchTests.AMigratorHoldingTheRole_IsMigrating_UntilItReleasesItAsync, MigratorWatchTests.AMigratorOnAnOlderRelease_HoldingTheDutysSessionLock_IsMigratingAsync, SchemaMigratorDeferralGenerationTests.AWaiterWatchesTheMigratorAsync, SchemaMigratorDeferralGenerationTests.TheMigratorRenewsItsRole_AndMarksTheBackendRunningTheMigrationAsync}
+
 ### Table rewrites run post-ready, under the maintainer duty
 
 A migration cannot `VACUUM FULL` (both are forbidden inside its transaction), so a migration that leaves a table owing a rewrite — a `DROP COLUMN`, whose bytes Postgres keeps in every pre-existing row — **records** the request via `wh_request_table_rewrite`. The runtime bloat detector records through the same function when churn bloats a table past threshold.
@@ -293,7 +300,10 @@ once, by a rewrite that is part of the migration path rather than of the schema 
 The same phase runs the migrations an application declares for its own stored documents when a
 model changes shape (a property's type or name, a removal, a default): see
 [Stored-form migrations](../../fundamentals/perspectives/stored-form-migrations.md). They run first,
-journaled in `wh_stored_form_migrations`, under the same lock and fence.
+journaled in `wh_stored_form_migrations`, under the same lock and fence. A migration that converts a
+table brings forward the retries of the streams parked on it, and an index that still casts a
+retyped key to its old type is dropped before the conversion and built again, concurrently, once the
+phase has committed.
 
 ### What it converts
 
@@ -485,7 +495,7 @@ The canonical example is `063_NormalizeClrTypeNamesV2.sql`, which normalizes sto
 `wh_settings` (a `setting_key` / `setting_value` / `value_type` / `description` key-value table) is the home for two kinds of SQL-side entries:
 
 - **Data-format version markers** — e.g. `clr_type_name_format_version` (above).
-- **Operational tuning knobs** read by SQL functions — e.g. `perform_maintenance` reads `debug_mode`, `dedup_retention_days`, `stuck_inbox_retention_days`, `abandoned_stream_hours` (the idle grace before an owner-less `wh_active_streams` row is purged), and `ephemeral_rewind_grace_seconds`. Later migrations redefine `perform_maintenance` in place, so the authoritative knob list is whatever the latest redefinition reads.
+- **Operational tuning knobs** read by SQL functions — e.g. `perform_maintenance` reads `debug_mode`, `dedup_retention_days`, `stuck_inbox_retention_days`, `abandoned_stream_hours` (the idle grace before an owner-less `wh_active_streams` row is purged), `ephemeral_rewind_grace_seconds`, and `collective_ordering_head_retention_days` (how long an idle collective ordering key keeps its predecessor head, default 7). Later migrations redefine `perform_maintenance` in place, so the authoritative knob list is whatever the latest redefinition reads.
 
 Settings are seeded by migrations with `ON CONFLICT (setting_key) DO NOTHING` (so operator overrides survive re-runs). Keep C#-worker-coupled timing constants (retry backoff, work leases, liveness thresholds) *out* of this table — tuning them independently of the workers that assume them causes drift.
 

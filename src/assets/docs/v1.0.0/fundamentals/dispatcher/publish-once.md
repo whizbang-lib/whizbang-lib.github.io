@@ -16,7 +16,10 @@ codeReferences:
   - src/Whizbang.Core/Dispatch/IClaimedEmissionStore.cs
   - src/Whizbang.Data.EFCore.Postgres/Dispatch/EFCoreClaimedEmissionStore.cs
   - src/Whizbang.Data.Postgres/Migrations/060_CreateUniqueEmissionClaims.sql
+  - src/Whizbang.Core/Workers/ClaimedEmissionPruneStep.cs
+  - src/Whizbang.Core/Dispatch/RetainedClaimKeyPrefix.cs
 testReferences:
+  - tests/Whizbang.Core.Tests/Workers/ClaimedEmissionPruneStepTests.cs
   - tests/Whizbang.Core.Tests/Dispatcher/DispatcherPublishOnceTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Dispatch/ClaimedEmissionStoreTests.cs
   - tests/Whizbang.Sagas.Tests/BaseSagaServiceTests.cs
@@ -121,7 +124,7 @@ CREATE INDEX idx_wh_unique_emission_claims_expires
 
 - **`claim_key`** — your idempotency key, opaque to the framework.
 - **`claimed_by_event_id`** — audit only; the framework writes it but never reads it.
-- **`expires_at`** — defaults to 30 minutes. Nothing prunes claims by it: a claim is held until its owner releases or prunes it, and `TryClaimAsync` conflicts on the key alone. The saga framework prunes its own spent claims by key prefix and age ([claim retention](../sagas/completion-orchestration#claim-retention)).
+- **`expires_at`** — defaults to 30 minutes after the claim is taken. A claim still holds its key until it is deleted, because `TryClaimAsync` conflicts on the key alone; the [expiry prune](#claim-expiry) deletes it one day after `expires_at`.
 
 ### Reading and releasing claims
 
@@ -142,11 +145,38 @@ All three have defaults, so a store written before them still compiles: `FindCla
 (cannot tell), `ReleaseAsync` returns `false` and `PruneAsync` returns 0. The Postgres store
 implements all three.
 
+### Claim expiry {#claim-expiry}
+
+{verified: ClaimedEmissionPruneStepTests.Run_PrunesClaimsADayPastTheirExpiry_InOneBoundedBatchAsync, ClaimedEmissionPruneStepTests.Run_KeepsEveryRegisteredPrefix_OnceEachAsync, ClaimedEmissionStoreTests.PruneExpired_RemovesExpiredClaims_AndKeepsRetainedPrefixesAndUnexpiredOnesAsync}
+
+A claim is deleted **one day after its `expires_at`**, by the `claimed-emission-prune` maintenance step,
+so a key passed to `PublishOnceAsync` stays once-only for at least a day and a day and a half at most.
+The table no longer grows by a row per key for good: the docs and migration 060 always said expired
+claims were pruned, and until this step nothing did.
+
+The step runs in the periodic maintenance cycle on the instance that holds the maintainer duty (on every
+instance where role assignment does not manage that duty, where the repeat is a no-op). It deletes the
+oldest expiries first, at most 5,000 claims per delete and ten deletes per cycle, so a table that grew for
+a long time drains over several cycles instead of in one long delete. The Postgres driver registers it with
+the store; another store takes part by implementing `PruneExpiredAsync`.
+
+**Retained prefixes.** A package that owns a key convention and prunes its claims on its own terms keeps
+them out of the expiry prune by registering the prefix:
+
+```csharp{title="Keep a key convention out of the expiry prune" category="DI" unverified="DI registration snippet — configuration, not asserted by a test"}
+services.AddRetainedClaimKeyPrefix("billing-period-close:");
+```
+
+The saga framework registers all four of its prefixes. It prunes its spent sweep, completion and
+continuation claims after its own [claim retention](../sagas/completion-orchestration#claim-retention),
+and never prunes its abandonment claims (`saga-abandoned:{name}:{id}`): those are the record that stops
+the stranded-saga sweep re-arming an abandoned saga.
+
 ### Transaction semantics
 
 When the caller is inside an ambient transaction, the claim INSERT participates. **Invariant:** claim is taken iff the emission committed. A rollback of the outer scope releases the claim, so a downstream caller can re-attempt.
 
-When called outside a transaction, the claim commits independently. If the receptor crashes between claim and emission, the claim is "stranded": nothing releases it by age, so an operator releases it with `ReleaseAsync`, or its owner prunes it.
+When called outside a transaction, the claim commits independently. If the receptor crashes between claim and emission, the claim is "stranded" until it is deleted: an operator releases it with `ReleaseAsync`, its owner prunes it, or the [expiry prune](#claim-expiry) deletes it a day after it expires.
 
 ## DI registration
 
