@@ -48,6 +48,8 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/QueryTranslation/PhysicalJsonbContainmentRewriterTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/QueryTranslation/PhysicalJsonbColumnBindingTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/QueryTranslation/PhysicalJsonbContainmentIntegrationTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/QueryTranslation/GraphQLJsonbContainmentIntegrationTests.cs
+  - tests/Whizbang.Generators.Tests/PerspectiveModelArrayAnalyzerTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/JsonbColumnStorageIntegrationTests.cs
   - tests/Whizbang.Generators.Tests/PhysicalJsonbColumnGenerationTests.cs
   - tests/Whizbang.Generators.Tests/ColumnStorageSqlTests.cs
@@ -627,18 +629,44 @@ diagnostic, and a dictionary was refused outright by a model whose document is m
   `ComplexProperty(e => e.Data).ToJson()`, so a dictionary is allowed and WHIZ810 no longer fires for
   it. The column is where the value is read from: the hydrators copy it into the model, and the store
   reads it back from the column for the model the next event is applied to, on an Extracted model as
-  well as a Split one, with either driver. On an Extracted model the document still carries a copy
-  when the row is written by the atomic upsert (the usual path), but a write that falls back to the
-  change tracker leaves it out, so treat the column as the value and do not query the document's copy.
+  well as a Split one, with either driver. On an Extracted model the document keeps its copy of the
+  value on both write paths: the atomic upsert serializes it with the model, and a write that falls
+  back to the change tracker restores it from the column in the same transaction, so both leave the
+  same row. A null value is absent from the document, as the persistence profile omits a null member.
 - **A column added to an existing Extracted table is backfilled** from the document's member,
   `data -> 'GridFilter'`, which holds the same JSON.
 
-{verified: PhysicalJsonbColumnGenerationTests.EFCoreModel_JsonbField_IsReadAndWrittenUnderThePersistenceProfileAsync, PhysicalJsonbColumnGenerationTests.EFCoreModel_JsonbField_IsLeftOutOfTheMappedDocumentAsync, PhysicalJsonbColumnGenerationTests.Runner_ExtractedModel_ReadsItsJsonbColumnsBackAsync, PhysicalJsonbContainmentIntegrationTests.SplitModel_RoundTripsThroughEitherWritePathAsync, DapperJsonbColumnTests.ExtractedModel_JsonbColumns_SurviveAnEventThatLeavesThemAloneAsync, DapperJsonbColumnTests.SplitModel_JsonbColumns_SurviveAnEventThatLeavesThemAloneAsync, PhysicalColumnSqlTests.Extraction_AJsonbColumn_IsCopiedFromTheMemberAsItIsAsync}
+{verified: PhysicalJsonbContainmentIntegrationTests.BothWritePaths_LeaveIdenticalRowsAsync, PhysicalJsonbColumnGenerationTests.EFCoreModel_JsonbField_IsReadAndWrittenUnderThePersistenceProfileAsync, PhysicalJsonbColumnGenerationTests.EFCoreModel_JsonbField_IsLeftOutOfTheMappedDocumentAsync, PhysicalJsonbColumnGenerationTests.Runner_ExtractedModel_ReadsItsJsonbColumnsBackAsync, PhysicalJsonbContainmentIntegrationTests.SplitModel_RoundTripsThroughEitherWritePathAsync, DapperJsonbColumnTests.ExtractedModel_JsonbColumns_SurviveAnEventThatLeavesThemAloneAsync, DapperJsonbColumnTests.SplitModel_JsonbColumns_SurviveAnEventThatLeavesThemAloneAsync, PhysicalColumnSqlTests.Extraction_AJsonbColumn_IsCopiedFromTheMemberAsItIsAsync}
 
-A column an earlier release created as `TEXT` for such a field is not retyped: it holds the type's
-name rather than a value, so there is nothing in it to convert. Drop it
-(`ALTER TABLE wh_per_order_grid DROP COLUMN grid_filter;`) and the next start adds it as `jsonb` and,
-on an Extracted model, fills it from the document.
+### Columns created as text before this {#jsonb-text-columns}
+
+A table an earlier release created holds a `TEXT` column for such a field, and that column holds the
+field's type name rather than its value, so there is nothing in it to convert. On the first start of
+this release the schema pass, with no step of yours:
+
+1. renames it to `<column>_text_legacy` (it is never dropped automatically),
+2. adds the `jsonb` column under the original name, with its indexes,
+3. on an Extracted model, fills it from the document's copy (`data -> 'GridFilter'`) and arms the
+   [physical-column fill](#rows-written-during-a-rolling-deploy) for rows an older instance writes
+   during the rollout.
+
+On a Split model the document holds no copy, so the column starts empty and the pass logs a warning
+naming it: rebuild the perspective to fill it. Every later start finds a `jsonb` column and does
+nothing. Once you are satisfied, drop the legacy column yourself:
+
+```sql{title="Dropping the retired text column" description="The schema pass never drops data; this is the operator's step once the jsonb column is filled." category="Perspectives" difficulty="INTERMEDIATE" tags=["perspectives", "physical-fields", "jsonb", "migrations"]}
+ALTER TABLE wh_per_order_grid DROP COLUMN grid_filter_text_legacy;
+```
+
+{verified: JsonbColumnStorageIntegrationTests.AnEarlierTextColumn_IsKeptAsLegacy_AndTheJsonbColumnFilledFromTheDocumentAsync, JsonbColumnStorageIntegrationTests.AnEarlierTextColumnOnASplitModel_IsKeptAsLegacy_AndLeftForARebuildAsync, PhysicalColumnSqlTests.ATextColumnForAJsonbField_IsRetiredBeforeTheColumnIsArmedAndAddedAsync}
+
+This applies to the Entity Framework schema pass, which adds columns to existing tables. The Dapper
+schema creates tables and does not alter existing ones.
+
+A promoted array is fine on a perspective model when its column is `jsonb`: WHIZ200, which asks for
+`List<T>` instead of an array, stays silent there because the column is read and written as one
+value rather than grown in place by the change tracker.
+{verified: PerspectiveModelArrayAnalyzerTests.Analyzer_ArrayPromotedToJsonb_IsSilent_OtherwiseFlaggedAsync}
 
 ### Filtering on a jsonb column {#jsonb-filters}
 
@@ -703,9 +731,10 @@ translation; a filter on a jsonb column has no other translation to fall back to
 {verified: PhysicalJsonbContainmentSqlTests.OffSwitch_DoesNotStopIt_BecauseNothingElseTranslatesTheShapeAsync}
 
 A GraphQL filter reaches the same compilation, because it is applied to the lens query as an
-expression tree. A list filter such as `labels: { some: { key: { eq: "team" } } }` arrives as
+expression tree, and is answered from the same GIN index. A list filter such as `labels: { some: { key: { eq: "team" } } }` arrives as
 `Labels.Any(l => l.Key == "team")` and compiles to containment. A dictionary has no GraphQL filter
 type, so dictionary shapes are written in LINQ.
+{verified: GraphQLJsonbContainmentIntegrationTests.AListFilterOnAJsonbColumn_RunsAsContainmentOnItsGinIndexAsync, GraphQLJsonbContainmentIntegrationTests.AScalarListFilter_RunsAsContainmentTooAsync}
 
 ### Indexing it
 
