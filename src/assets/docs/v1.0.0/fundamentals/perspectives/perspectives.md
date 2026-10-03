@@ -951,6 +951,10 @@ When a perspective schema changes destructively (column type changed or removed)
 
 For detailed rebuild operations, modes, system events, and status tracking, see the **[Perspective Rebuild guide](rebuild.md)**.
 
+### Purged rows stay purged {#purge-stays-purged}
+
+A row an Apply removed with `ApplyResult.Purge()` stays removed. The runner records the purge, and a later event on the stream (a delayed save point, a straggler written before the delete) is skipped, logged and counted in `whizbang.perspective.purged_events_skipped` instead of being applied to an empty model, which is how a create-or-update Apply used to bring back a row of defaults. Only an Apply that returns `ApplyResult.Resurrect(model)` recreates the row. A stream that was never purged is never affected, and a rebuild or rewind decides exactly as the live drain did. See **[Perspectives with Actions](perspectives-with-actions.md#purge-stays-purged)**, and [Purging streams](../../operations/infrastructure/purging-streams.md) for removing a whole stream as an operator.
+
 ---
 
 ## Error Handling
