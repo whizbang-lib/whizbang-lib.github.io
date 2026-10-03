@@ -30,6 +30,8 @@ codeReferences:
   - src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs
   - src/Whizbang.Core/Workers/TransportConsumerWorker.cs
   - src/Whizbang.Data.EFCore.Postgres/IntegrityCheckpointReceptorRegistrar.cs
+  - src/Whizbang.Core/Workers/ReceivedOriginStampMonitor.cs
+  - src/Whizbang.Generators/MessageJsonContextGenerator.cs
 testReferences:
   - tests/Whizbang.Core.Tests/Workers/IntegrityCheckpointWorkerTests.cs
   - tests/Whizbang.Core.Tests/Workers/IntegrityAuditWorkerTests.cs
@@ -43,6 +45,9 @@ testReferences:
   - tests/Whizbang.Core.Tests/Messaging/RedeliveryCompositeWireSerializationTests.cs
   - tests/Whizbang.Core.Tests/Messaging/CompositeInboxFanoutTests.cs
   - tests/Whizbang.Core.Tests/MultiService/StreamIntegrityRedeliveryE2ETests.cs
+  - tests/Whizbang.Core.Tests/Observability/EnvelopeOriginWireTests.cs
+  - tests/Whizbang.Core.Tests/Workers/ReceivedOriginStampMonitorTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/ReceivedEventOriginStampTests.cs
   - tests/Whizbang.Core.Tests/MultiService/DirectedMessageE2ETests.cs
   - tests/Whizbang.Core.Tests/Workers/TransportConsumerWorkerDirectedTargetTests.cs
   - tests/Whizbang.Core.Tests/Observability/StreamIntegrityMetricsTests.cs
@@ -1065,8 +1070,9 @@ each amendment callout marks where live validation refined the original sketch.
    consumer verifies windowed receipt counts with two-cycle confirmation, reports
    `IntegrityGapDetected`, and — at `AutoRepairCapped` — sends the scoped, directed, wire-only
    `RequestRedeliveryCommand` back to the origin, storm-capped per checkpoint (B2–B4). Checkpoints
-   and gap detection default ON; repair defaults to `AutoRepairCapped` (the revised self-healing
-   default above — `ReportOnly` is the opt-down).
+   and gap detection default ON; repair defaulted to `AutoRepairCapped` when this phase shipped. That
+   default was later reverted: repair is `ReportOnly` by default, with `AutoRepairCapped` the opt-in
+   (see **Default history** above).
    :::
 3. **S** — reconciler consumption-set diff + birth lineage + startup backfill orchestration.
 
@@ -1147,7 +1153,8 @@ each amendment callout marks where live validation refined the original sketch.
    **Phases A and L are built** (per the amendments above): computed two-lane XOR digests, the
    consumer-driven manifest exchange with per-bucket comparison and stream-scoped capped repair,
    and the local coverage audit with capped local rebuilds — all ON by default, daily, ladder at
-   `AutoRepairCapped` (the revised self-healing default — `ReportOnly` is the opt-down). With
+   `AutoRepairCapped` when these phases shipped (since reverted: `ReportOnly` is the default and
+   `AutoRepairCapped` the opt-in, see **Default history** above). With
    R0–R1, B, and S, **every phase of this proposal is implemented**; the
    `ReportOnly` reports double as the dry-run for `AutoRepairCapped`. Graduation of this proposal
    into the behavior/configuration reference rides this PR's merge.
@@ -1184,6 +1191,38 @@ each amendment callout marks where live validation refined the original sketch.
    ALL of a window must be provable, not assumed); and mutation sites refold inline rather than
    waiting for the sweep, so an origin never serves stale seals between a close and 3 AM.
    :::
+
+## The origin stamp {#origin-stamp}
+
+Every check on this page attributes a received event to the service that produced it. The producer's
+outbox stamps each wire envelope with its service id (`sid`) and commit sequence (`sseq`); the consumer
+copies both onto its inbox row, and the inbox emit chain writes them to the stored event as
+`wh_event_store.origin_service_id` / `origin_commit_sequence`. A row whose source is empty, or is the
+consumer's own id, is stored as **locally originated**: `origin_service_id` stays NULL, and checkpoints,
+gap detection and the audit cannot see that traffic at all.
+
+:::updated
+**Received events were never stamped.** The typed receive contract the JSON generator emits for
+`MessageEnvelope<T>` named only the id, payload, hops, target, state-only flag and priority. It did not
+name `sid` or `sseq`, so every ordinary delivery lost the producer's identity at deserialization. The
+consumer then stored the row under its own id and the event as locally originated. Only re-delivery
+bundles carried an origin, because they set it from their own payload. The contract now carries the
+origin pair, the causality pair (`cbid` / `cbseq`), the envelope version (`v`) and the dispatch
+context (`dc`). The storage-form conversion and envelope reconstruction keep them too.
+:::
+
+**Wire compatibility holds in both directions.** The origin fields were already on the wire, written by
+the outbox drain, so an older receiver skips them as unknown properties, exactly as it always has. A
+newer receiver reading an older sender's envelope binds the missing fields to their unstamped
+defaults (an empty `sid`, `sseq` 0, version 1, the v1 dispatch context). The row stays unstamped and
+`origin_service_id` stays NULL, as before.
+
+**The receive path watches for an unstamped stream.** When gap detection or the audit is enabled, the
+consumer counts the events it receives with and without an origin. Once per five-minute window in
+which any received event lacked one, it logs a warning naming how many. Control-plane traffic is
+excluded, since it never carries an origin. The count is two interlocked increments per received event
+and needs no query. The usual causes are a producer running a version from before the origin stamp, or
+one whose outbox never resolved its service id; the producer logs the second case at startup.
 
 ## Observability
 
