@@ -92,5 +92,5 @@ Pick the one that matches what the query needs:
 ## Related
 
 - [Perspective Indexes](../../fundamentals/perspectives/perspective-indexes.md)
-- [WHIZ308](whiz308.md): a match that relies on the transitional default
+- [WHIZ308](whiz308.md): the same match on a model that declares nothing, which has no index either
 - [WHIZ302](whiz302.md): filters no index can answer

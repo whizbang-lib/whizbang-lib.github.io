@@ -348,7 +348,8 @@ Compile-time errors and warnings from Whizbang's source generators and analyzers
 | WHIZ304 | Warning | [Declared Index Cannot Be Reached For This Model's Storage](whiz304.md) |
 | WHIZ305 | Warning | [Declared Index Capability Does Not Apply To This Field's Type](whiz305.md) |
 | WHIZ307 | Warning | [Whole-Document Match Has No Index](whiz307.md) |
-| WHIZ308 | Info | [Whole-Document Match Relies On The Default Index](whiz308.md) |
+| WHIZ308 | Warning | [Whole-Document Match Has No Index By Default](whiz308.md) |
+| WHIZ309 | Warning | [Collective Predicate Filters An Unindexed Field](whiz309.md) |
 | WHIZ400 | Error | [Invalid Type Argument for ILensQuery](whiz400.md) — the same ID is also a Warning ("[InheritScope] on a non-perspective type") in `Whizbang.Generators` |
 | WHIZ802 | Error | [VectorField Invalid Dimensions](whiz802.md) |
 | WHIZ807 | Info | [Physical Fields Discovered](whiz807.md) |
