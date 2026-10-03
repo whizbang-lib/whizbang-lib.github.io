@@ -118,7 +118,7 @@ Held this way: `maintainer`, `migrator`, and the commit-order stamper's leadersh
 - **A database outage does not cool anyone down.** After an involuntary lapse an instance waits `CooldownAfterLapse` before winning the duty back, unless every holder lapsed together.
 - **Rolling deploy from a session-lock release.** The bridge (`HoldLegacySessionLock`) is on by default in this release, so old and new instances never both act. It will default to off in a later release; `Whizbang__Database__RoleAssignment__HoldLegacySessionLock=false` turns it off early.
 
-Health reports the duties under the `roles` component and the meter `Whizbang.Roles` counts elections, hand-offs, drains and losses. The full design, the resilience requirements it meets and the chaos suite that tests them are in the [Duty Role Assignment](/proposals/duty-role-assignment) proposal; the options are in the [configuration reference](../configuration/configuration-reference#role-assignment-options).
+Health reports the duties under the `roles` component and the meter `Whizbang.Roles` counts elections, hand-offs, drains and losses. The full design, the resilience requirements it meets and the chaos suite that tests them are in the [Duty Role Assignment](../../../proposals/duty-role-assignment) proposal; the options are in the [configuration reference](../configuration/configuration-reference#role-assignment-options).
 
 ## Takeover
 

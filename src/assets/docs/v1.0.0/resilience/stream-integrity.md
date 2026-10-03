@@ -736,7 +736,7 @@ app.MapWhizbangStreamRedeliveryEndpoints().RequireAuthorization("operators");
 
 and from the command line, which posts to that endpoint:
 
-```bash
+```bash{title="Request a redelivery from the command line" description="Posts the stream list to the receiving service's redelivery endpoint." category="Operations" difficulty="BEGINNER" tags=["cli", "Resilience", "Stream Integrity", "Redelivery"]}
 whizbang redeliver --service https://receiver.internal --origin order-service \
   --streams-file lost-streams.txt --origin-topic order-service-requests
 ```

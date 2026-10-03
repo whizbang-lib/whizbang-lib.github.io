@@ -200,7 +200,7 @@ With role assignment on (the default), the stamper's leader is the `commit-stamp
 
 ### Whizbang:Database:RoleAssignment → RoleAssignmentOptions {#role-assignment-options}
 
-Bound by the Postgres driver, which holds duties (`maintainer`, `migrator`, and the stamper's `commit-stamper` role) as liveness-tied assignments with an epoch by default. **Details:** [Duty Role Assignment](/proposals/duty-role-assignment).
+Bound by the Postgres driver, which holds duties (`maintainer`, `migrator`, and the stamper's `commit-stamper` role) as liveness-tied assignments with an epoch by default. **Details:** [Duty Role Assignment](../../../proposals/duty-role-assignment).
 
 | Key | Type | Default | Environment variable | Purpose |
 |-----|------|---------|----------------------|---------|
