@@ -20,6 +20,7 @@ on:
 permissions:
   contents: write
   pull-requests: write
+  actions: write   # dispatches CI on the sync branch; see "Wait for the Build check"
 
 concurrency:
   group: sync-develop
@@ -106,9 +107,26 @@ jobs:
 
           # Wait for the Build check, then land with a MERGE COMMIT (squash would strip
           # main's ancestry and the next push to main would re-diverge forever).
-          if gh pr checks "$PR" --repo "$REPO" --watch --fail-fast; then
+          #
+          # This PR is opened by github-actions[bot] (GITHUB_TOKEN), and GitHub starts no workflow
+          # for it: its runs sit at "action_required" with no jobs, so `gh pr checks --watch` saw
+          # "no checks reported" and every sync was left open. A workflow_dispatch made with
+          # GITHUB_TOKEN does start a run, so dispatch CI on the branch and wait for its Build
+          # check on the branch head by commit.
+          SHA=$(git rev-parse HEAD)
+          if ! gh workflow run ci.yml --repo "$REPO" --ref "$BRANCH"; then
+            echo "::warning::Could not dispatch CI on $BRANCH; sync PR #$PR left open for a human."
+            exit 0
+          fi
+          RESULT=pending
+          for _ in $(seq 1 60); do
+            RESULT=$(gh api "repos/$REPO/commits/$SHA/check-runs" \
+              --jq '[.check_runs[] | select(.name == "Build")] | .[0].conclusion // "pending"')
+            case "$RESULT" in pending|null|"") sleep 20 ;; *) break ;; esac
+          done
+          if [ "$RESULT" = success ]; then
             gh pr merge "$PR" --repo "$REPO" --merge \
               || echo "::warning::Merge failed; sync PR #$PR left open for manual merge."
           else
-            echo "::warning::Checks failed on sync PR #$PR; left open for a human."
+            echo "::warning::Build on sync PR #$PR ended '$RESULT'; left open for a human."
           fi

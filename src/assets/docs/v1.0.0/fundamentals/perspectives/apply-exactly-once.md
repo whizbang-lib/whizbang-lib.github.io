@@ -1,8 +1,8 @@
 ---
 title: Apply Exactly-Once Contract
 pageType: concept
-verifiedAgainstCommit: 0bc6065b
-verifiedDate: 2026-08-05
+verifiedAgainstCommit: 74e1dea3
+verifiedDate: 2026-10-04
 version: 1.0.0
 category: Core Concepts
 order: 21
@@ -14,12 +14,14 @@ tags: >-
   perspectives, apply, dispatch, exactly-once, idempotency, drain-mode,
   perspective-runner, doubling
 codeReferences:
+  - src/Whizbang.Core/Perspectives/PerspectiveIdempotencyFilter.cs
   - src/Whizbang.Core/Workers/PerspectiveWorker.cs
   - src/Whizbang.Core/Workers/ProcessedEventCache.cs
   - src/Whizbang.Core/Perspectives/IPerspectiveRunner.cs
   - src/Whizbang.Core/Perspectives/IPerspectiveReplayReader.cs
   - src/Whizbang.Generators/Templates/PerspectiveRunnerTemplate.cs
 testReferences:
+  - tests/Whizbang.Core.Tests/Perspectives/PerspectiveIdempotencyFilterTests.cs
   - tests/Whizbang.Core.Integration.Tests/Perspectives/PerspectiveApplyExactlyOnceTests.cs
   - tests/Whizbang.Core.Tests/Workers/ProcessedEventCacheTests.cs
   - tests/Whizbang.Core.Tests/Workers/PerspectiveWorkerDedupTests.cs
@@ -79,6 +81,49 @@ If a stream appears in both `WorkBatch.PerspectiveStreamIds` (drain) and `WorkBa
 
 During a rewind, `IPerspectiveReplayReader.ReadReplayEventsAsync` annotates each replayed event with an `IsNew` flag (`ReplayEventEnvelope.IsNew` — `true` when the event still has a pending row in the perspective work queue). The runner applies every event in UUIDv7 order to reconstruct model state, but the lifecycle receptors only fire for `IsNew == true` — see [Exactly-Once Receptor Firing](../receptors/exactly-once-firing) for the receptor-side of this contract.
 
+### The idempotency filter: comparing the row's position {#idempotency-filter}
+
+A row records where it got to so that a re-delivered event is not folded in twice. Before `Apply`, the
+generated runner asks `PerspectiveIdempotencyFilter.IsAlreadyApplied` once per event, passing the row's
+recorded position and the event's own.
+
+The row's position comes in two forms, and only one of them is dependable:
+
+| Signal | Dependable? |
+|---|---|
+| `metadata.CommitSequence` — `wh_event_store.commit_sequence` of the last applied event | **Yes.** Stamped after commit, monotonic per database. |
+| `metadata.EventId` — the last applied event's id | Only when both ids are UUIDv7. A UUIDv7 encodes its timestamp in the leading bytes, so lexical order is commit order. |
+
+So the filter compares commit sequences whenever both sides have one. When they do not, the question
+changes from *which came first* to **can these two positions be compared at all** — and when the answer is
+no, the filter defers: it reports not-applied and lets `Apply` run.
+
+```text
+both sides stamped        → compare commit_sequence          (authoritative)
+one side stamped          → defer                            (not comparable)
+neither stamped,
+  both ids UUIDv7         → compare ids as text              (lexical order is commit order)
+  either id not UUIDv7    → defer                            (not comparable)
+```
+
+**Why deferring is the right direction.** The two errors are not symmetrical. Re-applying an event a
+second time is visible — a duplicate collection row, a counter that moved by two — and it is recoverable.
+Discarding an event that was never applied leaves the read model permanently wrong with nothing pending to
+repair it, because the work rows are deleted once the runner reports the batch complete. The filter exists
+to prevent doubling, so where it cannot establish ordering it does nothing and leaves the decision to
+`Apply`.
+
+**Where a non-UUIDv7 position comes from.** A row last written by an older version of this library carries
+`{"EventType":"Unknown","EventId":"<random v4 GUID>","CommitSequence":null}`. A v4 id encodes no timestamp:
+its leading nibble is random, so it sits at an arbitrary point in the same ordering — roughly 15 times in
+16 **above** every UUIDv7 generated this decade. Comparing against it does not give a less precise answer,
+it gives an unrelated one, and for most such rows the answer is "already applied" for every event that will
+ever arrive. Those rows record no position this filter can read, which is why they defer.
+
+The filter also defers when the stored id does not parse, and when the incoming id is `Guid.Empty` or
+otherwise not time-ordered. Both sort below a UUIDv7, so a text comparison would quietly report
+already-applied.
+
 ### Re-delivery guard: ProcessedEventCache
 
 Perspective completions are written back to the database in batches. Between Apply and the database acknowledging that completion, SQL polling can re-deliver the same `wh_perspective_events` rows. `PerspectiveWorker` guards this window with an in-memory two-phase TTL cache (`ProcessedEventCache`):
@@ -94,5 +139,6 @@ Before grouping standard-mode work, the worker filters out any work item whose `
 - [Perspectives overview](perspectives)
 - [Perspective Worker (drain mode)](../../operations/workers/perspective-worker)
 - [Rebuild](rebuild)
+- [Rewind (cursor inversion)](rewind)
 - [Lifecycle receptors](../receptors/lifecycle-receptors)
 - [Exactly-Once Receptor Firing](../receptors/exactly-once-firing)
