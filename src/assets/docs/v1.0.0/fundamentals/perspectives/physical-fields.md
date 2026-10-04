@@ -644,8 +644,12 @@ diagnostic, and a dictionary was refused outright by a model whose document is m
   same row. A null value is absent from the document, as the persistence profile omits a null member.
 - **A column added to an existing Extracted table is backfilled** from the document's member,
   `data -> 'GridFilter'`, which holds the same JSON.
+- **Your data source needs no dynamic JSON.** Because the Entity Framework model binds the column
+  through that converter, Npgsql only ever sees JSON text. A data source you build and register yourself,
+  without `NpgsqlDataSourceBuilder.EnableDynamicJson()`, reads and writes these columns, a Split model's lists
+  included. A column you map by hand with `HasColumnType("jsonb")` and no converter still needs it.
 
-{verified: PhysicalJsonbContainmentIntegrationTests.BothWritePaths_LeaveIdenticalRowsAsync, PhysicalJsonbColumnGenerationTests.EFCoreModel_JsonbField_IsReadAndWrittenUnderThePersistenceProfileAsync, PhysicalJsonbColumnGenerationTests.EFCoreModel_JsonbField_IsLeftOutOfTheMappedDocumentAsync, PhysicalJsonbColumnGenerationTests.Runner_ExtractedModel_ReadsItsJsonbColumnsBackAsync, PhysicalJsonbContainmentIntegrationTests.SplitModel_RoundTripsThroughEitherWritePathAsync, DapperJsonbColumnTests.ExtractedModel_JsonbColumns_SurviveAnEventThatLeavesThemAloneAsync, DapperJsonbColumnTests.SplitModel_JsonbColumns_SurviveAnEventThatLeavesThemAloneAsync, PhysicalColumnSqlTests.Extraction_AJsonbColumn_IsCopiedFromTheMemberAsItIsAsync}
+{verified: PhysicalJsonbContainmentIntegrationTests.BothWritePaths_LeaveIdenticalRowsAsync, PhysicalJsonbColumnGenerationTests.EFCoreModel_JsonbField_IsReadAndWrittenUnderThePersistenceProfileAsync, PhysicalJsonbColumnGenerationTests.EFCoreModel_JsonbField_IsLeftOutOfTheMappedDocumentAsync, PhysicalJsonbColumnGenerationTests.Runner_ExtractedModel_ReadsItsJsonbColumnsBackAsync, PhysicalJsonbContainmentIntegrationTests.SplitModel_RoundTripsThroughEitherWritePathAsync, PhysicalJsonbContainmentIntegrationTests.SplitModel_UnderADataSourceWithoutDynamicJson_RoundTripsAsync, DapperJsonbColumnTests.ExtractedModel_JsonbColumns_SurviveAnEventThatLeavesThemAloneAsync, DapperJsonbColumnTests.SplitModel_JsonbColumns_SurviveAnEventThatLeavesThemAloneAsync, PhysicalColumnSqlTests.Extraction_AJsonbColumn_IsCopiedFromTheMemberAsItIsAsync}
 
 ### Columns created as text before this {#jsonb-text-columns}
 
