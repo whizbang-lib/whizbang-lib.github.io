@@ -128,7 +128,8 @@ Environment variables are added **after** `appsettings.json` and `appsettings.{E
 | `Whizbang:CircuitBreakers:<name>` | `CircuitBreakerOptions` | Automatic, per named breaker — see [Circuit Breakers](#circuit-breakers) |
 | `Whizbang:Postgres:<database>` | `PostgresOptions` | Automatic (EF Core Postgres driver), per database — see [Postgres Databases](#postgres-databases) |
 | `Whizbang:Tags:Coalesce:<tag>` | `CoalescePolicyOptions` | Automatic, per tag — see [Coalesce Bindings](#coalesce-bindings) |
-| `Whizbang:Routing`, `Whizbang:Routing:ControlClass`, `Whizbang:Routing:PoisonMessages` | `RoutingOptions`, `ControlClassOptions`, `PoisonMessageOptions` | Opt-in (`.WithRouting(…)`) |
+| `Whizbang:Routing` | `RoutingOptions` | Opt-in (`.WithRouting(…)`) — see [Routing](#routing) |
+| `Whizbang:Routing:ControlClass`, `Whizbang:Routing:PoisonMessages` | `ControlClassOptions`, `PoisonMessageOptions` | Automatic — see [Routing](#routing) |
 | `Whizbang:Core` (and `Whizbang:ShowBanner`) | `WhizbangCoreOptions` (the run-time keys) | Automatic |
 | `Whizbang:Redelivery` | `RedeliveryPumpOptions` | Automatic (worker pipeline) |
 | `Whizbang:ThrottleRetry` | `ThrottleRetryOptions` | Automatic (worker pipeline; read by the Azure Service Bus and RabbitMQ publish strategies) |
@@ -195,6 +196,8 @@ Bound alongside `Whizbang:Database`. Controls the per-database commit-order stam
 | `BatchSize` | `int` | `1000` | `Whizbang__Database__Stamper__BatchSize` | Max rows stamped per call |
 | `DisableStamper` | `bool` | `false` | `Whizbang__Database__Stamper__DisableStamper` | Killswitch — worker exits early, never acquires the lock |
 | `AdvisoryLockKey` | `long` | `0x57480001_5557_5048` | `Whizbang__Database__Stamper__AdvisoryLockKey` | Advisory lock key; must match across all instances sharing a database |
+| `FencedRetryInterval` | `TimeSpan` | `00:00:00.250` | `Whizbang__Database__Stamper__FencedRetryInterval` | Re-stamp cadence while rows stay unstamped because an older same-database transaction still holds the ordering fence. Bounds how long a commit stays invisible to perspective fetches after the fence clears, instead of waiting for the next NOTIFY or backup tick |
+| `NotifyHealthyPollingInterval` | `TimeSpan?` | `00:00:30` | `Whizbang__Database__Stamper__NotifyHealthyPollingInterval` | Relaxed polling while LISTEN/NOTIFY is verified working; drops back to `PollingInterval` the moment it is not. Ignored unless greater than `PollingInterval`; `null` polls at `PollingInterval` always |
 
 With role assignment on (the default), the stamper's leader is the `commit-stamper` role rather than a session-lock holder: `LeaderElectionRetry` is how long a non-holder waits between votes when no release is announced, and `AdvisoryLockKey` names the lock an older stamper takes, which a bridged holder also holds and a vote looks for.
 
@@ -543,6 +546,8 @@ Hosted signal bus wire-route self-test and doorbell liveness. **Configure:** bou
 | `ProbeTimeoutMilliseconds` | `int` | `5000` | `Whizbang__SignalBus__ProbeTimeoutMilliseconds` | Max time for a transport's loopback probe before the wire route is marked failed |
 | `ReProbeIntervalMilliseconds` | `int` | `300000` (5m) | `Whizbang__SignalBus__ReProbeIntervalMilliseconds` | Runtime re-probe cadence |
 | `MissedDoorbellThreshold` | `int` | `3` | `Whizbang__SignalBus__MissedDoorbellThreshold` | Consecutive poll-discovered work batches with no doorbell before the bus reports Degraded |
+| `FirstProbeTimeoutMilliseconds` | `int?` | `null` (uses `ProbeTimeoutMilliseconds`) | `Whizbang__SignalBus__FirstProbeTimeoutMilliseconds` | Grace period for the first probe after startup, when many services starting against one database can make the first round trip slow |
+| `FailedProbeRetryDelaysMilliseconds` | `int[]?` | `null` (5000, 15000, 30000, 60000) | `Whizbang__SignalBus__FailedProbeRetryDelaysMilliseconds__0`, `__1`, … | Delays before each retry after a failed probe, before falling back to `ReProbeIntervalMilliseconds`. A transient failure clears in seconds instead of holding the bus Degraded for the whole re-probe interval; every failed probe is still logged. An empty array disables the backoff |
 
 ## Observability and Diagnostics
 
@@ -565,6 +570,16 @@ Hosted signal bus wire-route self-test and doorbell liveness. **Configure:** bou
 | `SamplingInterval` | `TimeSpan` | `00:00:00.100` | `Whizbang__DebuggerAwareClock__SamplingInterval` | CPU sampling interval for `CpuTimeSampling` mode |
 | `FrozenThreshold` | `double` | `10.0` | `Whizbang__DebuggerAwareClock__FrozenThreshold` | Wall/CPU time ratio above which execution counts as frozen |
 | `CpuTimeSource` | `Func<TimeSpan>?` | `null` | — *code-only* | Test seam for the CPU clock |
+
+### BacklogAgeOptions
+
+The backlog-age duty: how old the oldest waiting message on each broker entity is, as a gauge and a health signal. Depth alone cannot tell a backlog that is draining from one that is stuck; age can. **Configure:** bound automatically from `Whizbang:BacklogAge` — no registration call needed. The duty is registered unconditionally and stays inert until a transport supplies a backlog peek.
+
+| Property | Type | Default | Environment variable | Purpose |
+|----------|------|---------|----------------------|---------|
+| `Enabled` | `bool` | `true` | `Whizbang__BacklogAge__Enabled` | Run the duty; disabled means no peeks, no gauges, no health signal |
+| `Interval` | `TimeSpan` | `00:01:00` | `Whizbang__BacklogAge__Interval` | Peek cadence; one management operation per entity per tick |
+| `AgeThreshold` | `TimeSpan` | `00:15:00` | `Whizbang__BacklogAge__AgeThreshold` | Age of an entity's oldest waiting message at which health degrades. Deliberately far above a normal burst drain, so it means "not draining", not "busy" |
 
 ## Work Coordination, Claims, and Leases
 
@@ -623,6 +638,15 @@ The claim loop that distributes outbox/inbox/perspective work. **Configure:** bo
 | `PerspectiveOnly` | `bool` | `false` | `Whizbang__Workers__Claim__PerspectiveOnly` | Distribute only perspective work (set when the legacy publisher worker is registered) |
 | `PartitionCount` | `int` | `10000` | `Whizbang__Workers__Claim__PartitionCount` | Modulo partition count |
 | `LeaseSeconds` | `int` | `300` | `Whizbang__Workers__Claim__LeaseSeconds` | Lease duration applied to claimed work |
+| `AdaptiveClaimWindow` | `bool` | `true` | `Whizbang__Workers__Claim__AdaptiveClaimWindow` | Narrow the claim batch while claimed work is being re-claimed rather than finished. Each claim charges an attempt, so without this a backlog larger than one instance's throughput spends its own retry budget and dead-letters healthy messages. `false` pins the batch at `MaxStreamsPerBatch` |
+| `MinStreamsPerBatch` | `int` | `25` | `Whizbang__Workers__Claim__MinStreamsPerBatch` | Floor of the adaptive claim window, so a struggling instance still makes progress |
+| `ClaimWindowGrowthStep` | `int` | `25` | `Whizbang__Workers__Claim__ClaimWindowGrowthStep` | Streams added back per fully clean cycle. Additive on purpose: recovering multiplicatively re-enters the overload that caused the shrink |
+| `MinOutstandingInboxRows` | `int` | `100` | `Whizbang__Workers__Claim__MinOutstandingInboxRows` | Outstanding inbox rows always allowed, even when stalled; also the cold-start budget, since a restarting instance has no drain history |
+| `MaxOutstandingInboxRows` | `int` | `10000` | `Whizbang__Workers__Claim__MaxOutstandingInboxRows` | Hard ceiling on outstanding inbox rows, whatever the measured drain rate suggests |
+| `OutstandingBudgetSafetyFactor` | `double` | `0.5` | `Whizbang__Workers__Claim__OutstandingBudgetSafetyFactor` | Fraction of the lease window the outstanding budget plans against. Lease expiry is a cliff, so below `1.0` buys headroom; raise only if the drain rate is very stable (see [Claim backpressure](../workers/claim-backpressure)) |
+| `MaxOutboxRowsPerBatch` | `int` | `1000` | `Whizbang__Workers__Claim__MaxOutboxRowsPerBatch` | Row bound on outbox acquisition per claim, independent of the stream window. A claim that fills it is followed at once by another. `0` or less uses the stream window as the row cap, which drained a backlog on a few long streams one row per stream per cycle |
+| `MaxOutstandingOutboxRows` | `int` | `10000` | `Whizbang__Workers__Claim__MaxOutstandingOutboxRows` | Ceiling on outbox rows this instance may hold claimed and unpublished, so back-to-back full claims stop when the drain falls behind instead of leasing the whole backlog |
+| `OutboxRunLength` | `int` | `100` | `Whizbang__Workers__Claim__OutboxRunLength` | Consecutive rows of one outbox stream a claim may lease (matches the drain's `MaxPerStream`). Ordering holds because one instance leases the whole run and stops at the first row it may not take. `1` is the previous one-row-per-stream behavior |
 
 ### HeartbeatWorkerOptions
 
@@ -692,6 +716,9 @@ The active outbox publish path. **Configure:** bound automatically from `Whizban
 | `Batcher` | `SlidingWindowBatcherOptions` | MaxSize=100, SlidingWindow=50ms, MaxWait=1s | `Whizbang__Workers__OutboxDrain__Batcher` | Batching for drain signals |
 | `SecurityContextTimeoutSeconds` | `int` | `10` | `Whizbang__Workers__OutboxDrain__SecurityContextTimeoutSeconds` | Timeout for per-message security-context establishment |
 | `PublishTimeoutSeconds` | `int` | `60` | `Whizbang__Workers__OutboxDrain__PublishTimeoutSeconds` | Timeout for the transport publish call; 0 disables |
+| `MaxPublishBatchSize` | `int` | `25` | `Whizbang__Workers__OutboxDrain__MaxPublishBatchSize` | Largest publish batch assembled across streams (per-stream order is kept; per-stream batching is not required by it). `0` keeps the legacy one-stream-per-batch behavior |
+| `ContinueStreamRuns` | `bool` | `true` | `Whizbang__Workers__OutboxDrain__ContinueStreamRuns` | After a stream's rows publish, continue it from the lease it already holds instead of waiting for the next claim cycle. A stream with a failed publish is never continued |
+| `MaxContinuationRounds` | `int` | `10` | `Whizbang__Workers__OutboxDrain__MaxContinuationRounds` | Continuation rounds one drain cycle may run before handing back to the claim cycle, so a few long streams cannot hold the drain while others wait |
 
 ### OutboxPublishWorkerOptions
 
@@ -714,6 +741,11 @@ The only source of `InboxWork`. **Configure:** bound automatically from `Whizban
 | `MaxPerStream` | `int` | `100` | `Whizbang__Workers__InboxDrain__MaxPerStream` | Cap on leased inbox rows drained per stream per iteration |
 | `MaxBytesPerStream` | `long?` | `4194304` (4 MB) | `Whizbang__Workers__InboxDrain__MaxBytesPerStream` | Cap on payload bytes per fetch per stream |
 | `Batcher` | `SlidingWindowBatcherOptions` | MaxSize=100, SlidingWindow=50ms, MaxWait=1s | `Whizbang__Workers__InboxDrain__Batcher` | Batching for drain signals |
+| `AdaptivePerStreamEnabled` | `bool` | `true` | `Whizbang__Workers__InboxDrain__AdaptivePerStreamEnabled` | Let the per-stream page grow with observed stream depth, from `MaxPerStream` up to `MaxPerStreamCeiling`. `false` pins it at `MaxPerStream` |
+| `MaxPerStreamCeiling` | `int` | `1000` | `Whizbang__Workers__InboxDrain__MaxPerStreamCeiling` | Upper bound of the adaptive per-stream page. A fixed page walks a stream holding thousands one round trip at a time while other replicas idle |
+| `MaxRowsPerCycle` | `int` | `0` (derived) | `Whizbang__Workers__InboxDrain__MaxRowsPerCycle` | Rows one drain cycle may fetch across all streams. `0` derives it from stream count × `MaxPerStream`, the total the fixed cap implied, so an upgrade only redistributes it |
+| `MinRowsPerStream` | `int` | `100` | `Whizbang__Workers__InboxDrain__MinRowsPerStream` | Rows guaranteed to each admitted stream when the budget is divided. Keep it at or above the fetch floor: a smaller share would be rounded up and overspend, so the budget seats fewer streams instead and rotates the rest in next cycle |
+| `DepthHeadroomFactor` | `int` | `4` | `Whizbang__Workers__InboxDrain__DepthHeadroomFactor` | Multiplier on the derived budget so deep streams get more than the breadth guarantee. Ignored when `MaxRowsPerCycle` is set |
 
 ### InboxDispatchWorkerOptions
 
@@ -726,6 +758,8 @@ The only source of `InboxWork`. **Configure:** bound automatically from `Whizban
 | `PartitionCount` | `int` | `10000` | `Whizbang__Workers__InboxDispatch__PartitionCount` | Modulo partition count |
 | `MaxConcurrentDispatch` | `int` | `8` | `Whizbang__Workers__InboxDispatch__MaxConcurrentDispatch` | Parallel dispatch consumers; same-stream messages keep per-stream FIFO |
 | `SecurityContextTimeoutSeconds` | `int` | `10` | `Whizbang__Workers__InboxDispatch__SecurityContextTimeoutSeconds` | Timeout for per-message security-context establishment; 0 disables |
+| `MaxCompositeChildrenPerExpansion` | `int` | `5000` | `Whizbang__Workers__InboxDispatch__MaxCompositeChildrenPerExpansion` | Children one composite expansion may add to this consumer's inbox before it is reported. This is the consumer's bound, distinct from the composite's own declared cap. `0` disables the check |
+| `EnforceCompositeExpansionBudget` | `bool` | `false` | `Whizbang__Workers__InboxDispatch__EnforceCompositeExpansionBudget` | Dead-letter (recoverably) a composite that exceeds `MaxCompositeChildrenPerExpansion` instead of only reporting it. Off by default because enforcing changes delivery for workloads that work today |
 
 ### InboxHandlerWorkerOptions
 
@@ -767,6 +801,7 @@ Shared tuning shape for the flush workers above. **Configure:** bound as the own
 | `MaxFlushAttempts` | `int` | `5` | `Whizbang__Workers__<Worker>__Flusher__MaxFlushAttempts` | Consecutive failed flushes of one batch before it is dropped |
 | `FlushRetryBackoffMs` | `int` | `250` | `Whizbang__Workers__<Worker>__Flusher__FlushRetryBackoffMs` | Backoff before the first retry of a failed flush; doubles per attempt |
 | `FlushRetryMaxBackoffMs` | `int` | `5000` | `Whizbang__Workers__<Worker>__Flusher__FlushRetryMaxBackoffMs` | Cap on the retry backoff |
+| `DrainTimeoutMs` | `int` | `5000` | `Whizbang__Workers__<Worker>__Flusher__DrainTimeoutMs` | How long shutdown waits for queued items to flush before giving up; the remainder is dropped with a warning rather than blocking host shutdown |
 
 A flush that throws is retried in place with the same batch (Warning, EventId 1: `BatchFlusher flush failed for batch of {Count} (attempt {Attempt} of {MaxAttempts}); retrying the same batch in {BackoffMs}ms`) rather than discarded. The items are completions, lease renewals and failures, so a dropped batch leaves its rows leased until their lease expires, after which they are re-claimed and redone; that consequence is named in the Error (EventId 3) logged when `MaxFlushAttempts` is exhausted, and the count is visible on the flusher's `ItemsDropped` counter beside `ItemsFlushed`. {verified: BatchFlusherRetryTests.FlushFailsOnce_RetriesTheSameBatchAndDeliversItAsync, BatchFlusherRetryTests.FlushAlwaysFails_DropsAfterMaxAttemptsAndNamesTheConsequenceAsync}
 
@@ -958,6 +993,7 @@ Operator rung of the row-retention override ladder. **Configure:** bound automat
 | Property | Type | Default | Environment variable | Purpose |
 |----------|------|---------|--------------------|---------|
 | `Enabled` | `bool` | `true` | `Whizbang__PerspectiveRowRetention__Enabled` | Global kill switch; false resolves every model to no-TTL |
+| `AutoAcknowledge` | `bool` | `true` | `Whizbang__PerspectiveRowRetention__AutoAcknowledge` | Adopt a newly declared `[RowTtl]`/`[RowCap]` window automatically: the maintenance cycle acknowledges the perspective, logs the backlog it found and starts reaping at `RowReapBatchSize` per cycle. `false` keeps the gate: the backlog is reported and nothing is removed until `IWorkCoordinator.AcknowledgeRetentionEnforcementAsync` is called |
 
 ## Maintenance
 
@@ -1027,6 +1063,47 @@ Self-healing continuity checking; the defaults are the recommended posture. **Co
 | `MaxEpochClosuresPerMaintenanceCycle` | `int` | `64` | `Whizbang__StreamIntegrity__MaxEpochClosuresPerMaintenanceCycle` | Max epochs closed per maintenance cycle |
 | `PublishReportEvents` | `bool` | `false` | `Whizbang__StreamIntegrity__PublishReportEvents` | Publish divergence/gap detections as durable events. Off (the default): unpublished report events are swept from the outbox each maintenance cycle |
 
+## Routing
+
+### RoutingOptions
+
+Command and event routing. **Configure:** in code through `.WithRouting(options => …)`; when it is called, three keys under `Whizbang:Routing` are read on top of the code values, so the command-inbox migration can be moved or rolled back without a redeploy. **Details:** [Routing](../../fundamentals/dispatcher/routing).
+
+| Property | Type | Default | Environment variable | Purpose |
+|----------|------|---------|----------------------|---------|
+| `RouteAllCommandNamespacesToInbox` | `bool` | flipped (all namespaces) | `Whizbang__Routing__RouteAllCommandNamespacesToInbox` | Publish every command namespace to its own inbox entity. `false` rolls the whole flip back |
+| `CommandNamespacesToInbox` | `string[]` | empty | `Whizbang__Routing__CommandNamespacesToInbox__0`, `__1`, … | Flip namespaces one at a time; a `*` entry flips all. Naming any namespace replaces the all-namespaces default with exactly this list |
+| `RetireSharedInbox` | `bool` | retired | `Whizbang__Routing__RetireSharedInbox` | `false` keeps the legacy shared inbox subscribed (and provisioned) while publishers stay flipped: the dual-delivery rollback step |
+| `OwnedDomains` | `IReadOnlySet<string>` | empty | — *code-only* (`OwnDomains(…)`) | Command namespaces this service handles |
+| `SubscribedNamespaces` | `IReadOnlySet<string>` | empty | — *code-only* (`SubscribeTo(…)`) | Event namespaces subscribed in addition to the ones discovered from perspectives and receptors |
+| `AbsorbedNamespaces` | `IReadOnlySet<string>` | empty | — *code-only* (`AbsorbNamespaces(…)`) | Event namespaces stored locally even with no current consumer, so a later perspective can rebuild from them |
+
+### ControlClassOptions
+
+Delivery semantics for control-class messages (supersedable signals such as checkpoints): minted with a short time-to-live so a superseded message expires on the broker instead of queueing. **Configure:** bound automatically from `Whizbang:Routing:ControlClass`; `services.Configure<ControlClassOptions>(…)` also applies. The sessionless and non-durable settings are read live, so rolling them back is a configuration change.
+
+| Property | Type | Default | Environment variable | Purpose |
+|----------|------|---------|----------------------|---------|
+| `Enabled` | `bool` | `true` | `Whizbang__Routing__ControlClass__Enabled` | Stamp a time-to-live on control messages. `false` stamps none, so they keep the entity's default lifetime |
+| `CadenceMultiplier` | `int` | `2` | `Whizbang__Routing__ControlClass__CadenceMultiplier` | Lifetime as a multiple of the emitter's cadence. Below `1` falls back to `TimeToLiveFloor` |
+| `TimeToLiveFloor` | `TimeSpan` | `00:00:30` | `Whizbang__Routing__ControlClass__TimeToLiveFloor` | Shortest derived lifetime. Below about this, a broker round trip plus a consumer restart can outlive a message that was never superseded |
+| `TimeToLive` | `TimeSpan?` | `null` (derived) | `Whizbang__Routing__ControlClass__TimeToLive` | Fixed lifetime for every control message; bypasses both the derivation and the floor |
+| `SessionlessSubscriptions` | `bool` | `false` | `Whizbang__Routing__ControlClass__SessionlessSubscriptions` | Provision control subscriptions without sessions. Control traffic needs no ordering, and without sessions the broker's delivery-count dead-letter valve works again |
+| `NonDurableReceive` | `bool` | `false` | `Whizbang__Routing__ControlClass__NonDurableReceive` | Handle control messages at the receive boundary without an inbox row: receive, run the receptors inline, discard. A failure drops the message instead of dead-lettering it |
+
+### PoisonMessageOptions
+
+The poison-message detector. On session-enabled entities a lock lost to connection death does not increment the broker's delivery count, so its dead-letter valve can never fire; this detector closes that gap for both transports. **Configure:** bound automatically from `Whizbang:Routing:PoisonMessages`; `services.Configure<PoisonMessageOptions>(…)` also applies. **Details:** [Poison message detection](../../messaging/failure-handling#poison-messages).
+
+| Property | Type | Default | Environment variable | Purpose |
+|----------|------|---------|----------------------|---------|
+| `Enabled` | `bool` | `true` | `Whizbang__Routing__PoisonMessages__Enabled` | Master switch; `false` lets every message through every layer |
+| `AgeThreshold` | `TimeSpan?` | `null` (derived) | `Whizbang__Routing__PoisonMessages__AgeThreshold` | How long after it was first enqueued a message is quarantined when it is delivered again: the one signal that survives a session lock-loss storm. Derived from `LockRenewalDuration`, `MaxDeliveryAttempts` and `AgeThresholdFloor` unless set; set it only when the derivation is wrong for a workload |
+| `AgeThresholdFloor` | `TimeSpan` | `00:30:00` | `Whizbang__Routing__PoisonMessages__AgeThresholdFloor` | Lower bound on the derived threshold, so a short lock window cannot quarantine legitimately slow work |
+| `LockRenewalDuration` | `TimeSpan?` | from the transport (`00:05:00` if none) | `Whizbang__Routing__PoisonMessages__LockRenewalDuration` | The transport's lock-renewal window; Azure Service Bus supplies its `MaxAutoLockRenewalDuration`, so moving that moves the threshold |
+| `MaxDeliveryAttempts` | `int?` | from the transport (`10` if none) | `Whizbang__Routing__PoisonMessages__MaxDeliveryAttempts` | The transport's delivery-attempt cap, used by the derivation |
+| `MaxDurableObservations` | `int` | `10` | `Whizbang__Routing__PoisonMessages__MaxDurableObservations` | Recorded-then-unsettled redeliveries of one message id tolerated before quarantine: ten is a loop, not a retry |
+
 ## Dead Letters and Recovery
 
 ### DeadLetterRecoveryOptions
@@ -1038,6 +1115,10 @@ Self-healing continuity checking; the defaults are the recommended posture. **Co
 | `Enabled` | `bool` | `true` | `Whizbang__DeadLetterRecovery__Enabled` | Killswitch for the recovery worker |
 | `ScanIntervalMinutes` | `int` | `10` | `Whizbang__DeadLetterRecovery__ScanIntervalMinutes` | Backstop minutes between scans |
 | `ScanBatchSize` | `int` | `2000` | `Whizbang__DeadLetterRecovery__ScanBatchSize` | Max DLQ rows fetched per scan cycle |
+| `AdaptiveScanBatchEnabled` | `bool` | `true` | `Whizbang__DeadLetterRecovery__AdaptiveScanBatchEnabled` | Size the settled-path scan adaptively: start at `MinScanBatchSize`, grow by `ScanBatchIncreaseStep` per clean saturated scan up to `ScanBatchSize`, halve under pressure. `false` uses `ScanBatchSize` every scan (see [Adaptive scan batch](../dead-letter-queue/recovery#adaptive-scan-batch)) |
+| `MinScanBatchSize` | `int` | `50` | `Whizbang__DeadLetterRecovery__MinScanBatchSize` | Starting batch and the floor it backs off to |
+| `ScanBatchIncreaseStep` | `int` | `200` | `Whizbang__DeadLetterRecovery__ScanBatchIncreaseStep` | Rows added per clean, saturated scan |
+| `ScanBatchChurnThreshold` | `double` | `0.5` | `Whizbang__DeadLetterRecovery__ScanBatchChurnThreshold` | Re-claim/pressure ratio above which the batch halves; a pass forced through the settledness gate counts as full churn |
 | `LoopBreakerEnabled` | `bool` | `true` | `Whizbang__DeadLetterRecovery__LoopBreakerEnabled` | Suspend recovery when it is generating the dead letters it recovers |
 | `LoopBreakerFreshFraction` | `double` | `0.5` | `Whizbang__DeadLetterRecovery__LoopBreakerFreshFraction` | Share of a batch postdating the last scan that reads as self-inflicted |
 | `LoopBreakerConsecutiveCycles` | `int` | `3` | `Whizbang__DeadLetterRecovery__LoopBreakerConsecutiveCycles` | Consecutive self-inflicted cycles before recovery suspends |
@@ -1063,7 +1144,7 @@ Arbitration tuning for the ranked housekeeping activities (dead-letter recovery,
 | Property | Type | Default | Environment variable | Purpose |
 |----------|------|---------|----------------------|---------|
 | `MaxConsecutiveDeferrals` | `int` | `6` | `Whizbang__Housekeeping__MaxConsecutiveDeferrals` | Busy verdicts tolerated before one pass forces through (`ProceedDeferralLimit`) — the starvation floor for recovery and maintenance, counted per activity. At the 10-minute scan cadence, 6 means a never-idle service still recovers roughly hourly |
-| `SettledCooldown` | `TimeSpan` | `00:02:00` | `Whizbang__Housekeeping__SettledCooldown` | How long an activity that reported nothing to do is skipped before it is ranked again |
+| `SettledCooldown` | `TimeSpan` | `00:02:00` | `Whizbang__Housekeeping__SettledCooldown` | How long the service must read settled continuously before a sweep is admitted. A bulk load empties its work tables between bursts, so a single settled reading means only "nothing queued right now"; the dwell tells a lull from an ending. `00:00:00` admits on the first settled reading |
 
 ### TransportDeadLetterDrainWorkerOptions
 
@@ -1124,6 +1205,11 @@ Shared knobs every concrete transport inherits; settings are validated against d
 | `EnableSessions` | `bool` | `true` | `Whizbang__Transports__AzureServiceBus__EnableSessions` | Session-per-StreamId FIFO ordering; non-session subscriptions auto-migrate |
 | `MaxConcurrentSessions` | `int` | `200` | `Whizbang__Transports__AzureServiceBus__MaxConcurrentSessions` | Sessions (streams) processed in parallel per consumer |
 | `SessionIdleTimeout` | `TimeSpan` | `00:01:00` | `Whizbang__Transports__AzureServiceBus__SessionIdleTimeout` | Max wait for a new message before releasing the session |
+| `EnableAdaptiveAcceptors` | `bool` | `true` | `Whizbang__Transports__AzureServiceBus__EnableAdaptiveAcceptors` | Scale session acceptors with demand instead of holding `MaxConcurrentSessions` open: start at `AcceptorFloor`, double when sessions fill the pool (or hold ≥ 80% for an interval), halve after an interval under 25%. Applied to the running processor (see [Adaptive acceptors](../../messaging/transports/azure-service-bus#adaptive-acceptors)) |
+| `AcceptorFloor` | `int` | `4` | `Whizbang__Transports__AzureServiceBus__AcceptorFloor` | Minimum concurrent acceptors with adaptive acceptors on, so a quiet service still takes the first message of a burst at once. Clamped to `MaxConcurrentSessions` |
+| `AcceptorEvaluationInterval` | `TimeSpan` | `00:00:30` | `Whizbang__Transports__AzureServiceBus__AcceptorEvaluationInterval` | How long pressure or quiet must hold before the pool grows or decays, and the evaluation cadence. Shorter reacts faster but can thrash on noisy occupancy |
+| `EnableOpsRateSelfCheck` | `bool` | `true` | `Whizbang__Transports__AzureServiceBus__EnableOpsRateSelfCheck` | At each session-enabled subscription start, project the worst-case idle broker-operation rate (subscriptions × `MaxConcurrentSessions` / `SessionIdleTimeout`) and warn above the threshold (see [Idle ops-rate self-check](../../messaging/transports/azure-service-bus#ops-rate-self-check)) |
+| `OpsRateWarningThresholdPerSecond` | `double` | `100` | `Whizbang__Transports__AzureServiceBus__OpsRateWarningThresholdPerSecond` | Projected idle operations per second that triggers the warning. A Standard namespace's request quota is on the order of 1,000 ops/sec shared by everything in it |
 | `PrefetchCount` | `int` | `50` | `Whizbang__Transports__AzureServiceBus__PrefetchCount` | Messages buffered locally ahead of processing, per receiver |
 | `EnableReceiveLivenessWatchdog` | `bool` | `true` | `Whizbang__Transports__AzureServiceBus__EnableReceiveLivenessWatchdog` | Detect an "alive but deaf" receiver and trigger recovery |
 | `ReceiveLivenessProbeInterval` | `TimeSpan` | `00:01:00` | `Whizbang__Transports__AzureServiceBus__ReceiveLivenessProbeInterval` | Watchdog sweep cadence |
@@ -1296,6 +1382,12 @@ Payload-size guardrails for tag hooks; hooks themselves register fluently (`UseH
 |----------|------|---------|--------------------|---------|
 | `PayloadSizeWarningThresholdBytes` | `int?` | `8192` (8 KiB) | `Whizbang__Tags__PayloadSizeWarningThresholdBytes` | Log a warning for built payloads at/above this size; `null` disables |
 | `PayloadSizeErrorThresholdBytes` | `int?` | `null` (disabled) | `Whizbang__Tags__PayloadSizeErrorThresholdBytes` | Throw instead of dispatching above this size |
+| `PayloadSizeWarningThresholdBytesByTag` | map of tag → `int?` | empty | `Whizbang__Tags__PayloadSizeWarningThresholdBytesByTag__<tag>` | Warning threshold for one tag, overriding the global one; an empty value disables the warning for that tag alone. For payloads that are wide by design, such as an embedding |
+| `PayloadSizeErrorThresholdBytesByTag` | map of tag → `int?` | empty | `Whizbang__Tags__PayloadSizeErrorThresholdBytesByTag__<tag>` | Error threshold for one tag, resolved the same way |
+| `CoalesceBindings` | map of tag → `CoalescePolicyOptions` | empty | — *code-only*; configure per tag under `Whizbang:Tags:Coalesce:<tag>` ([CoalescePolicyOptions](#coalescepolicyoptions)) | Coalesce policies registered with `Coalesce(…)` |
+| `HookRegistrations` | list | empty | — *code-only* (`UseHook`, `UseUniversalHook`) | Registered tag hooks |
+| `PriorityDeclarations` | map of tag → `int` | empty | — *code-only* (`DeclarePriority(…)`) | Priority declared per tag |
+| `RouteNamespaceBindings` | map of tag → `string` | empty | — *code-only* (`RouteNamespace(…)`) | Transport namespace bound per tag |
 
 ### CoalescePolicyOptions
 

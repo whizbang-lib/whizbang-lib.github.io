@@ -26,6 +26,10 @@ updates:
       # 6.0.x until an Angular upgrade widens the supported range. Revisit when bumping Angular.
       - dependency-name: "typescript"
         versions: [">=6.1.0"]
+      # pnpm-workspace.yaml overrides sharp to a single 0.34.5 for the whole tree (an older
+      # transitive copy could not load on Node 24), so a bump to package.json alone installs
+      # nothing new. Upgrade sharp by moving the override, then the package.json spec with it.
+      - dependency-name: "sharp"
 
   # GitHub Actions
   - package-ecosystem: "github-actions"

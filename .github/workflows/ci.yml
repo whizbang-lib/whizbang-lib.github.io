@@ -50,6 +50,35 @@ jobs:
       - name: Build
         run: pnpm run build
 
+  # Read the Docs builds only after a merge to main, so a change that breaks its build (an
+  # unparseable mkdocs.yml, a dead link on the mirror) would otherwise merge green and surface
+  # days later on the Read the Docs dashboard (#762). This runs exactly what .readthedocs.yaml
+  # runs, on the same Python, in strict mode: rtd/build.py, then mkdocs build --strict, whose
+  # link checks are set in mkdocs.yml.
+  rtd:
+    name: Build Read the Docs site
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Python (as .readthedocs.yaml)
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: rtd/requirements.txt
+
+      - name: Install MkDocs
+        run: pip install -r rtd/requirements.txt
+
+      - name: Generate the Read the Docs source
+        run: python rtd/build.py
+
+      - name: Build with MkDocs (strict)
+        run: mkdocs build --strict --site-dir rtd/_site
+
   notify-success:
     name: Notify Success
     needs: [ build ]
