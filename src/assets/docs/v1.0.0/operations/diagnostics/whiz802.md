@@ -134,5 +134,5 @@ public float[]? TestEmbedding { get; init; }
 ## See Also
 
 - [Vector Search](../../extending/features/vector-search.md) - Complete vector search documentation
-- [VectorField Attribute](../../extending/features/vector-search.md#vectorfield-attribute) - Attribute usage
+- [VectorField Attribute](../../fundamentals/perspectives/vector-fields.md#defining-vector-fields) - Attribute usage
 - [Physical Fields](../../fundamentals/perspectives/physical-fields.md) - Physical field overview

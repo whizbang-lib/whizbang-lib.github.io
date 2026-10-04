@@ -176,5 +176,5 @@ Without this package, Npgsql cannot serialize or deserialize vector data, leadin
 ## See Also
 
 - [Vector Search](../../extending/features/vector-search.md) - Complete vector search documentation
-- [VectorField Attribute](../../extending/features/vector-search.md#vectorfield-attribute) - Using the VectorField attribute
+- [VectorField Attribute](../../fundamentals/perspectives/vector-fields.md#defining-vector-fields) - Using the VectorField attribute
 - [Turnkey Setup](../../extending/features/vector-search.md#turnkey-setup) - Automatic vector configuration

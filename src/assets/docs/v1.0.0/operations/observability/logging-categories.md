@@ -121,6 +121,31 @@ To temporarily re-enable a category for debugging, set it to `"Debug"`:
 |----------|-------------|---------------|
 | `Whizbang.Core.Tracing.Tracer` | Structured trace output — controlled separately via `TracingOptions`. See [Tracing](tracing) for configuration. | Information |
 
+## Receptor Firing Diagnostics {#receptor-firing-diagnostics}
+
+The receptor invoker logs each firing under `Whizbang.Core.Messaging.ReceptorInvoker`. See
+[Exactly-once firing](../../fundamentals/receptors/exactly-once-firing.md) for the guarantee the entries
+describe.
+
+| EventId | Name | Level | When |
+|---|---|---|---|
+| 16 | `ReceptorFiring` | Debug | Immediately before a receptor is dispatched. |
+| 17 | `ReceptorFired` | Debug | After it returns, from a `finally`, so a failure is still reported. |
+| 18 | `ReceptorAlreadyFiredSkip` | Warning | The double-fire guardrail caught a duplicate. A healthy system logs none. |
+
+Warnings reach the default `Information` level, so `ReceptorAlreadyFiredSkip` is visible without any change. To
+trace every firing while you investigate, lower just this category:
+
+```json{title="Tracing receptor firings" description="Lower only the receptor invoker's category to Debug" category="Configuration" difficulty="BEGINNER" tags=["Logging", "Receptors", "Diagnostics"]}
+{
+  "Logging": {
+    "LogLevel": {
+      "Whizbang.Core.Messaging.ReceptorInvoker": "Debug"
+    }
+  }
+}
+```
+
 ## Hierarchical Filtering {#hierarchy}
 
 .NET logging categories are hierarchical. Setting a parent category affects all children:

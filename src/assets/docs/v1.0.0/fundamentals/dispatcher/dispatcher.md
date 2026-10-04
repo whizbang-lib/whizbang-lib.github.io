@@ -304,7 +304,7 @@ var result = await dispatcher.LocalInvokeAndSyncAsync<CreateOrder, OrderCreated>
 );
 ```
 
-See [LocalInvokeAndSyncAsync](#localinvokeandsyncasync---invoke-with-perspective-sync) for details.
+See [LocalInvokeAndSyncAsync](dispatch-patterns.md#local-invoke-and-sync) for details.
 
 ### DispatchOptions Properties
 

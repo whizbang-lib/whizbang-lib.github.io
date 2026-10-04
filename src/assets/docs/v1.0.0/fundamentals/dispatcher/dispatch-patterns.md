@@ -390,7 +390,7 @@ Sync Receptor Flow:
 
 **Precedence**: If both `IReceptor` and `ISyncReceptor` exist for the same message type, the async `IReceptor` takes precedence to avoid breaking existing behavior.
 
-See [Receptors: ISyncReceptor Interface](../receptors/receptors.md#isyncreceptor-interface) for when to use sync vs async receptors.
+See [Receptors: ISyncReceptor Interface](../receptors/receptors.md#synchronous-receptors) for when to use sync vs async receptors.
 
 ### Performance Optimization
 
@@ -757,7 +757,7 @@ public class CreateOrderReceptor : IReceptor<CreateOrder, (OrderResult, OrderCre
 }
 ```
 
-The outbox write itself happens inside the framework: the dispatcher serializes the cascaded event to `wh_outbox` (via `IWorkCoordinator`), and the outbox workers publish it to the transport. See [Auto-Cascade to Outbox](#auto-cascade-to-outbox) and [Outbox Pattern](../../messaging/outbox-pattern.md).
+The outbox write itself happens inside the framework: the dispatcher serializes the cascaded event to `wh_outbox` (via `IWorkCoordinator`), and the outbox workers publish it to the transport. See [Auto-Cascade to Outbox](message-cascade.md#auto-cascade-to-outbox) and [Outbox Pattern](../../messaging/outbox-pattern.md).
 
 ---
 

@@ -642,6 +642,7 @@ batch, `RepairRequestBackoffSeconds` / `MaxRepairAttemptsPerBucket` per bucket a
 still bound every rung of `AutoRepairCapped`; they are why the opt-in is safe to take, not a reason to
 take it unasked. `ReportOnly` states exactly what auto-repair would have done, so it is also the dry
 run.
+:::
 
 :::warning
 **The confirmed-gap premise fails when a consumer is BEHIND.** The reasoning above rests on repair
@@ -783,7 +784,7 @@ with everything enabled it does nothing, and with the defaults it drops repair t
 and unpublished report events (publishing them is opt-in). Leased rows are skipped either way; the
 dispatch seams apply the same checks to the rows they reach.
 
-### The repair decision pipeline (as wired)
+### The repair decision pipeline (as wired) {#the-repair-decision-pipeline-as-wired}
 
 Every confirmed gap on the checkpoint path now passes through gates in strict order, cheapest
 first. The pipeline is implemented by `IntegrityCheckpointReceptor` consulting
@@ -878,7 +879,6 @@ wire activity), `backfills_requested` (Phase S), `redelivery_requests_received` 
 requests served as an origin — repair + backfill flows), and `digest_buckets_verified` +
 `digest_drift_healed` (the trust-but-verify sweep — any drift healed means an unaccounted write
 path touched audited rows and warrants investigation).
-:::
 
 ---
 

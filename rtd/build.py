@@ -168,8 +168,28 @@ def strip_anchor_ids(text: str) -> str:
     and broke every link to the custom id. Anywhere else the syntax is not an anchor and would
     render as text.
     """
-    return "\n".join(line if line.lstrip().startswith("#") else ANCHOR_ID_RE.sub("", line)
+    return "\n".join(_heading_anchors(line) if line.lstrip().startswith("#") else ANCHOR_ID_RE.sub("", line)
                      for line in text.split("\n"))
+
+
+HEADING_IDS_RE = re.compile(r'(\s*\{#[\w-]+\})+\s*$')
+
+
+def _heading_anchors(line: str) -> str:
+    """Keep every custom id a heading declares.
+
+    attr_list honors one attribute list per heading, so `## Title {#a} {#b}` kept only one id and
+    left links to the other dead. The heading keeps its first id; each further id becomes an
+    empty anchor element on the line before it.
+    """
+    match = HEADING_IDS_RE.search(line)
+    if match is None:
+        return line
+    ids = re.findall(r'\{#([\w-]+)\}', match.group(0))
+    if len(ids) < 2:
+        return line
+    extra = "".join(f'<a id="{i}"></a>' for i in ids[1:])
+    return f"{extra}\n\n{line[:match.start()]} {{#{ids[0]}}}"
 
 
 def strip_lastmaintained(text: str) -> str:

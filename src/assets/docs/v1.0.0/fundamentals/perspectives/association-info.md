@@ -549,5 +549,5 @@ public ProductModel ApplyEvent(ProductModel model, ProductCreatedEvent evt) {
 
 - [Perspectives](perspectives.md) - Overview of perspective system
 - [Typed Associations](typed-associations.md) - GetPerspectiveAssociations method details
-- [Message Associations](perspectives.md#message-associations) - String-based associations
+- [Message Associations](../messages/message-associations.md) - String-based associations
 - AOT Compatibility - Native AOT support

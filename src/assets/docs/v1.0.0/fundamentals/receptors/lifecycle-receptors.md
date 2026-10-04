@@ -1401,7 +1401,7 @@ return (result, Route.Both(@event));
 return (result, Route.None(@event));
 ```
 
-See [Automatic Message Cascade](../dispatcher/dispatcher.md#automatic-message-cascade) for complete routing patterns.
+See [Automatic Message Cascade](../dispatcher/message-cascade.md#automatic-message-cascade) for complete routing patterns.
 
 ---
 
