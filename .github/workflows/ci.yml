@@ -18,7 +18,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v6
@@ -38,7 +38,7 @@ jobs:
       # Living docs: samples tagged {testFile, testMethod} must match the
       # referenced library test body (warning mode until adoption grows).
       - name: Checkout library for sample-drift check
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           repository: whizbang-lib/whizbang
           ref: develop
@@ -61,7 +61,7 @@ jobs:
     timeout-minutes: 10
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Setup Python (as .readthedocs.yaml)
         uses: actions/setup-python@v6
