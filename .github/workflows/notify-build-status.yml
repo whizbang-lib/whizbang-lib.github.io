@@ -50,7 +50,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout (for action)
-        uses: actions/checkout@v6.0.2
+        uses: actions/checkout@v7
         with:
           sparse-checkout: .github/actions/notify-pushover
 
