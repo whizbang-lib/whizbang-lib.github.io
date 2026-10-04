@@ -1,7 +1,7 @@
 ---
 title: Apply Exactly-Once Contract
 pageType: concept
-verifiedAgainstCommit: 1b6c247c
+verifiedAgainstCommit: 74e1dea3
 verifiedDate: 2026-10-04
 version: 1.0.0
 category: Core Concepts
