@@ -26,6 +26,7 @@ on:
 permissions:
   contents: write
   pull-requests: write
+  actions: write   # dispatches CI, release, deploy and sync: see "Wait for Build, then merge"
 
 # Two library runs can land within a minute of each other. Serialize the cut so
 # they cannot compute the same version or race for the same release branch.
@@ -176,6 +177,17 @@ jobs:
       # main requires a PR, but with 0 approvals and no required status checks
       # nothing actually blocks a merge. A release still must not land red, so
       # wait for Build to conclude before merging rather than merging blind.
+      #
+      # Everything after the PR is DISPATCHED, never left to events. This job pushes, opens the
+      # PR and merges as github-actions[bot] (GITHUB_TOKEN), and GitHub does not start workflows
+      # for that: the PR's own runs sit at "action_required" with no jobs, so a Build check never
+      # appears, and the merge's push and close events start nothing. A workflow_dispatch made
+      # with GITHUB_TOKEN is the one event that does start a run, so this job dispatches:
+      #   - ci.yml on the release branch: the Build check this step waits for;
+      #   - release.yml with the version: the tag and the GitHub release;
+      #   - deploy.yml on main: the published site;
+      #   - sync-develop.yml on main: develop catches up with the version bump.
+      # Without this every automatic release timed out here and left its PR open.
       - name: Wait for Build, then merge
         if: ${{ inputs.auto_merge }}
         env:
@@ -184,7 +196,9 @@ jobs:
           VERSION: ${{ steps.version.outputs.semver }}
         run: |
           SHA=$(git rev-parse HEAD)
-          echo "Waiting for Build on $SHA"
+          gh workflow run ci.yml --ref "$BRANCH" \
+            || { echo "::error::Could not dispatch CI on $BRANCH - leaving the release PR open"; exit 1; }
+          echo "Dispatched CI on $BRANCH; waiting for Build on $SHA"
           for _ in $(seq 1 60); do
             CONCLUSION=$(gh api "repos/$GITHUB_REPOSITORY/commits/$SHA/check-runs" \
               --jq '[.check_runs[] | select(.name == "Build")] | .[0].conclusion // "pending"')
@@ -192,13 +206,18 @@ jobs:
               success)
                 echo "Build passed - merging v$VERSION"
                 if gh pr merge "$BRANCH" --merge; then
-                  # GITHUB_TOKEN pushes do not trigger further workflows, so merging here leaves
-                  # deploy.yml (push to main) and release.yml (PR closed) unrun: main moves and the
-                  # published site does not. Dispatch the deploy explicitly.
-                  echo "Merged - dispatching deploy for main"
+                  # The merge was made with GITHUB_TOKEN, so its push and close events start
+                  # nothing (see above). Dispatch each follow-up; a failed dispatch is reported
+                  # with the command that recovers it, since the merge itself already landed.
+                  echo "Merged - dispatching release, deploy and sync for v$VERSION"
+                  FAILED=0
+                  gh workflow run release.yml --ref main -f version="$VERSION" -f dry_run=false \
+                    || { FAILED=1; echo "::error::Release dispatch failed - run: gh workflow run release.yml --ref main -f version=$VERSION -f dry_run=false"; }
                   gh workflow run deploy.yml --ref main \
-                    || echo "::warning::Deploy dispatch failed - run it manually to publish v$VERSION"
-                  exit 0
+                    || { FAILED=1; echo "::error::Deploy dispatch failed - run: gh workflow run deploy.yml --ref main"; }
+                  gh workflow run sync-develop.yml --ref main \
+                    || { FAILED=1; echo "::error::Sync dispatch failed - run: gh workflow run sync-develop.yml --ref main"; }
+                  exit "$FAILED"
                 fi
                 echo "Merge failed, retrying"
                 ;;
