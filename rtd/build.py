@@ -7,6 +7,7 @@ section in mkdocs.yml.
 """
 
 import json
+import os
 import re
 import shutil
 from pathlib import Path
@@ -40,6 +41,10 @@ WB_VIDEO_SELF_RE = re.compile(r'<wb-video\s+id="([^"]+)"[^/]*/>')
 WB_EXAMPLE_RE = re.compile(r'<wb-example\s+id="([^"]+)"[^>]*>.*?</wb-example>', re.DOTALL)
 WB_EXAMPLE_SELF_RE = re.compile(r'<wb-example\s+id="([^"]+)"[^/]*/>')
 ANCHOR_ID_RE = re.compile(r'\s*\{#[\w-]+\}')
+# A markdown link or image target: ](target) or ](target "title").
+LINK_TARGET_RE = re.compile(r'(\]\()([^)\s]+)((?:\s+"[^"]*")?\))')
+DOCS_ROOT = REPO_ROOT / "src" / "assets" / "docs"
+SITE_DOCS_URL = "https://whizba.ng/docs/"
 
 
 def clean_and_copy():
@@ -156,8 +161,15 @@ def convert_custom_components(text: str) -> str:
 
 
 def strip_anchor_ids(text: str) -> str:
-    """Remove custom anchor IDs ({#some-id}) that MkDocs doesn't support."""
-    return ANCHOR_ID_RE.sub("", text)
+    """Remove custom anchor IDs ({#some-id}) everywhere except on headings.
+
+    On a heading, attr_list (enabled in mkdocs.yml) turns `## Title {#some-id}` into the anchor
+    other pages link to, so it is kept; stripping it made MkDocs fall back to a slug of the title
+    and broke every link to the custom id. Anywhere else the syntax is not an anchor and would
+    render as text.
+    """
+    return "\n".join(line if line.lstrip().startswith("#") else ANCHOR_ID_RE.sub("", line)
+                     for line in text.split("\n"))
 
 
 def strip_lastmaintained(text: str) -> str:
@@ -207,6 +219,56 @@ def inject_test_verification(text: str, filepath: Path, test_status: dict) -> st
     return text + admonition
 
 
+def resolve_doc_link(text: str, filepath: Path) -> str:
+    """Make every docs link resolve on Read the Docs the way it does on the main site.
+
+    The main site routes links without the .md extension ("json-contexts"), site-absolute links
+    ("/v1.0.0/fundamentals/..."), and links into sections Read the Docs does not build (drafts/,
+    contributors/). MkDocs resolves none of those, so on Read the Docs they were dead links:
+      - a target inside the v1.0.0 tree becomes a relative link to its .md page;
+      - a target in any other docs section becomes an absolute whizba.ng URL;
+      - anything else (external URLs, in-page anchors, assets) is left as is.
+    """
+    source = DOCS_SRC / filepath.relative_to(BUILD_DIR)
+
+    def _page(path: Path):
+        # A folder's own page is its _folder.md (the site's section overview), which the build
+        # drops, so a link to a folder resolves to the site rather than to nothing.
+        for candidate in (path, path.with_name(path.name + ".md"), path / "README.md",
+                          path / "_folder.md"):
+            if candidate.is_file() and candidate.suffix == ".md":
+                return candidate
+        return None
+
+    def _rewrite(m):
+        target = m.group(2)
+        if re.match(r"^[a-z][a-z0-9+.-]*:", target, re.I) or target.startswith("#"):
+            return m.group(0)
+        path, _, anchor = target.partition("#")
+        if not path:
+            return m.group(0)
+        if path.startswith("/"):
+            # Site-absolute: /v1.0.0/x, /docs/v1.0.0/x or /docs/drafts/x all name a docs page.
+            rooted = path.removeprefix("/docs").lstrip("/")
+            # Without a version or section, the site serves the current version (v1.0.0).
+            page = _page((DOCS_ROOT / rooted).resolve()) or _page((DOCS_SRC / rooted).resolve())
+        else:
+            page = _page((source.parent / path).resolve())
+        if page is None or not page.is_relative_to(DOCS_ROOT):
+            return m.group(0)
+        if page.is_relative_to(DOCS_SRC) and page.name != "_folder.md":
+            new = Path(os.path.relpath(page, source.parent)).as_posix()
+        else:
+            rel = page.relative_to(DOCS_ROOT)
+            rel = rel.parent if rel.name == "_folder.md" else rel.with_suffix("")
+            new = SITE_DOCS_URL + rel.as_posix()
+        if new == path:
+            return m.group(0)
+        return m.group(1) + new + ("#" + anchor if anchor else "") + m.group(3)
+
+    return LINK_TARGET_RE.sub(_rewrite, text)
+
+
 def transform_file(filepath: Path, test_status: dict = None):
     """Apply all transformations to a markdown file."""
     text = filepath.read_text(encoding="utf-8")
@@ -216,6 +278,8 @@ def transform_file(filepath: Path, test_status: dict = None):
     text = convert_custom_components(text)
     text = strip_code_metadata(text)
     text = strip_anchor_ids(text)
+    if filepath.relative_to(BUILD_DIR) != Path("index.md"):
+        text = resolve_doc_link(text, filepath)
     filepath.write_text(text, encoding="utf-8")
 
 
@@ -251,10 +315,15 @@ def build_nav(directory: Path, rel_path: str = "") -> list:
     # Collect files with order from frontmatter
     files = []
     for f in directory.glob("*.md"):
-        if f.name in ("_folder.md", "README.md"):
+        # The root README is replaced by rtd/index.md (clean_and_copy). A subfolder's README is
+        # that section's landing page: it is built, so it belongs in the nav, first.
+        if f.name == "_folder.md" or (f.name == "README.md" and not rel_path):
             continue
         fm = parse_frontmatter(f)
         file_rel = f"{rel_path}/{f.name}" if rel_path else f.name
+        if f.name == "README.md":
+            files.append((-1, fm.get("title", "Overview"), file_rel))
+            continue
         files.append((fm.get("order", 99), fm.get("title", f.stem.replace("-", " ").title()), file_rel))
     files.sort(key=lambda x: x[0])
 
