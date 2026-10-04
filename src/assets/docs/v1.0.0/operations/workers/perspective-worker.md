@@ -108,7 +108,7 @@ sequenceDiagram
 
 ---
 
-## Wake Semantics: NOTIFY + Safety-Net Polling
+## Wake Semantics: NOTIFY + Safety-Net Polling {#wake-semantics-notify--safety-net-polling}
 
 The consumer loop blocks on four wake sources simultaneously: the work channel, the drain channel, the perspective NOTIFY signal, and an idle timeout.
 

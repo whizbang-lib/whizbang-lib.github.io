@@ -348,7 +348,7 @@ public class GetProductReceptor : IReceptor<GetProduct, ProductDto> {
 - Commands - Command fundamentals
 - [Dispatcher](../fundamentals/dispatcher/dispatcher.md) - Message routing
 - [Receptors](../fundamentals/receptors/receptors.md) - Command handlers
-- [Auto-Cascade](../fundamentals/dispatcher/dispatcher.md#automatic-event-cascade) - Tuple return pattern
+- [Auto-Cascade](../fundamentals/dispatcher/message-cascade.md#automatic-message-cascade) - Tuple return pattern
 
 ---
 

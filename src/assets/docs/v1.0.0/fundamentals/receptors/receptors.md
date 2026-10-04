@@ -612,7 +612,7 @@ public class CreateOrderReceptor : IReceptor<CreateOrder, (OrderResult, OrderCre
 - **Safer**: Can't forget to publish events
 - **Type-safe**: Compiler enforces the return contract
 
-See [Dispatcher: Automatic Event Cascade](../dispatcher/dispatcher.md#automatic-event-cascade) for full details on supported return types.
+See [Dispatcher: Automatic Event Cascade](../dispatcher/message-cascade.md#automatic-message-cascade) for full details on supported return types.
 
 For RPC-style calls where the caller extracts a specific response type from the tuple, see [RPC Response Extraction](../dispatcher/rpc-extraction.md).
 

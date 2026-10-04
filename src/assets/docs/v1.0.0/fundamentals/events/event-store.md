@@ -153,7 +153,7 @@ Use `AppendAndWaitAsync` when:
 - Implementing request-response patterns over event sourcing
 - Building APIs that need immediate consistency with a particular read model
 
-For higher-level patterns that wait for ALL perspectives, see [LocalInvokeAndSyncAsync](../dispatcher/dispatcher.md#localinvokeandsyncasync---invoke-with-perspective-sync).
+For higher-level patterns that wait for ALL perspectives, see [LocalInvokeAndSyncAsync](../dispatcher/dispatch-patterns.md#local-invoke-and-sync).
 
 ## Security Context Propagation
 
@@ -307,7 +307,7 @@ The decorators are applied automatically by `DecorateEventStoreWithSyncTracking(
 
 ## Related Documentation
 
-- [Dispatcher](../dispatcher/dispatcher.md#localinvokeandsyncasync---invoke-with-perspective-sync) - LocalInvokeAndSyncAsync for request-response patterns
+- [Dispatcher](../dispatcher/dispatch-patterns.md#local-invoke-and-sync) - LocalInvokeAndSyncAsync for request-response patterns
 - [Perspectives](../perspectives/perspectives.md) - Read model projections
 - [Event Store Query](./event-store-query) - Querying events
 - [Message Security](../security/message-security.md) - Security context

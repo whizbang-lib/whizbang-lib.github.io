@@ -623,5 +623,5 @@ public void ProcessEvent<TModel, TMessage>(TModel model, TMessage message)
 
 - [PerspectiveAssociationInfo](association-info.md) - Association record with delegates
 - [Perspectives](perspectives.md) - Overview of perspective system
-- [Message Associations](perspectives.md#message-associations) - String-based discovery
+- [Message Associations](../messages/message-associations.md) - String-based discovery
 - AOT Compatibility - Native AOT support

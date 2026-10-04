@@ -119,7 +119,7 @@ public class DependentReadModelUpdater : IReceptor<OrderCreatedEvent> {
 }
 ```
 
-`[ReceptorIdempotent]` also controls replay/rebuild behavior via its `AlwaysFire` property — see the [Replay Safety](lifecycle-receptors#replay-safety) section of the lifecycle-receptors page. The double-fire guardrail treats any `[ReceptorIdempotent]` declaration as an opt-out, regardless of `AlwaysFire`.
+`[ReceptorIdempotent]` also controls replay/rebuild behavior via its `AlwaysFire` property — see the [ProcessingMode](lifecycle-receptors#processing-mode) section of the lifecycle-receptors page. The double-fire guardrail treats any `[ReceptorIdempotent]` declaration as an opt-out, regardless of `AlwaysFire`.
 
 ## Configuration
 
