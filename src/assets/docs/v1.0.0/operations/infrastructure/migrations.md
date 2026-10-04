@@ -499,6 +499,61 @@ The canonical example is `063_NormalizeClrTypeNamesV2.sql`, which normalizes sto
 
 Settings are seeded by migrations with `ON CONFLICT (setting_key) DO NOTHING` (so operator overrides survive re-runs). Keep C#-worker-coupled timing constants (retry backoff, work leases, liveness thresholds) *out* of this table — tuning them independently of the workers that assume them causes drift.
 
+## Normalizing type names {#normalizing-type-names}
+
+A stored CLR type name has one canonical form: `Namespace.Type, Assembly`, with every
+`, Version=…, Culture=…, PublicKeyToken=…` decoration removed at any depth. Whizbang computes it in C# with
+`EventTypeMatchingHelper.NormalizeTypeName` and in SQL with `wh_normalize_clr_type_name`. The two agree byte for
+byte, and a parity test holds them to it over plain, nested (`Ns.Outer+Inner`) and generic
+(`` Ns.Box`1[[Ns.Inner, Inner.Asm, Version=…]] ``) names. For a type with no type arguments the form is also what
+`TypeNameFormatter.Format` writes.
+
+| Function | Returns |
+|---|---|
+| `wh_normalize_clr_type_name(text)` | The canonical form of a stored name. |
+| `wh_normalize_assembly_name(text)` | The name's own assembly, the one outside any type arguments. |
+| `normalize_event_type(text)`, `normalize_assembly_name(text)` | Aliases of the two above, kept for existing callers. |
+
+These are contractual surface: call them from your own migrations rather than writing a second definition of the
+form. The stability contract is the `wh_settings` row `clr_type_name_format_version` (currently 3). If the canonical
+form ever changes, that number changes with it, so a migration of yours can guard on it the way `063` does.
+
+```sql{title="Normalizing a type name your own documents store" description="A consumer migration rewrites a field holding a type name to the canonical form" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Data-Migration", "Type-Names"] tests=["ClrTypeNameNormalizerParityTests.SqlNormalizer_AgreesWithTheCSharpHelperAsync", "ClrTypeNameNormalizerParityTests.SqlNormalizer_OfAVersionedName_IsTheFormattedKeyAsync"]}
+UPDATE my_schema.wh_per_order_workflow
+SET data = jsonb_set(data, '{HandlerType}',
+                     to_jsonb(my_schema.wh_normalize_clr_type_name(data ->> 'HandlerType')))
+WHERE data ->> 'HandlerType' LIKE '%Version=%';
+```
+
+The first SQL definition cut a name at its first `, Version=`. For a generic name that is inside the type arguments,
+and it left an unbalanced fragment. The canonical function strips the decoration carefully instead.
+
+### Finding qualified type names in your own data {#finding-qualified-type-names}
+
+Whizbang normalizes the columns it owns. Your type names live inside your own documents, under field names Whizbang
+has never seen, so finding them is the hard part. `wh_find_qualified_type_names()` reads every text and JSON column in
+the service's schema and reports, per column, the rows holding a versioned assembly-qualified name, how many distinct
+spellings there are, how many logical types those spellings name, and a sample:
+
+```sql{title="Finding the columns that hold versioned type names" description="More spellings than logical types is the defect" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Diagnostics", "Type-Names"] tests=["ClrTypeNameNormalizerParityTests.FindQualifiedTypeNames_ReportsSpellingsPerLogicalTypeAsync"]}
+SELECT table_name, column_name, rows, distinct_spellings, logical_types, sample
+FROM my_schema.wh_find_qualified_type_names()
+WHERE distinct_spellings > logical_types;
+```
+
+More spellings than logical types is the defect: the same type written under two versions, so two keys for one
+thing. It reads every candidate column, so run it deliberately, not on a schedule.
+
+**Perspective snapshots are normalized for you.** `wh_perspective_snapshots` is a Whizbang table holding documents
+shaped like yours, and it is the one place you are least likely to look. Without this, a consumer that normalizes its
+own perspectives gets the decorated form back the next time a projection restores from a snapshot. Migration 191
+strips complete version decorations from the names inside snapshots once, in bounded slices. It is gated by the
+`wh_settings` row `perspective_snapshot_type_name_version`. Only a full `Version`, `Culture`, `PublicKeyToken`
+decoration is removed, so prose that mentions a version is left alone. Your own tables are your data and are not
+rewritten.
+
+{verified: ClrTypeNameNormalizerParityTests.SqlAssemblyName_IsTheTypesOwnAssemblyAsync, ClrTypeNameNormalizerParityTests.SnapshotSweep_NormalizesQualifiedNamesInsideSnapshotsAsync, ClrTypeNameNormalizerParityTests.SnapshotSweep_AfterItRan_ReportsNothingToDoAsync}
+
 ## Bounded data migrations {#batched-regions}
 
 A migration file is sent to the database as **one command**, and that command carries one timeout. A

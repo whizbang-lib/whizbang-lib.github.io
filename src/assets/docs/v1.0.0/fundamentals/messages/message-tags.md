@@ -338,6 +338,7 @@ The `TagContext<TAttribute>` (a `sealed record`) provides hooks with all necessa
 | `Payload` | `JsonElement` | JSON payload with extracted properties and merged extra JSON |
 | `Scope` | `IScopeContext?` | Security scope context (tenant, user, roles, permissions) from the message envelope |
 | `Stage` | `LifecycleStage` | The lifecycle stage at which this hook is being invoked |
+| `Changes` | `MessageChanges` | Which fields the message changed: see [Changed properties](#changed-properties) |
 
 ### Reading Scope Data
 
@@ -392,6 +393,51 @@ public class SignalRNotificationHook : IMessageTagHook<SignalTagAttribute> {
 :::
 
 > Verified: `src/Whizbang.Core/Messaging/LifecycleStage.cs` — 28 stages + `AfterReceptorCompletion = -1` (the enum's own XML summary still reads "Defines the 24 lifecycle stages"; it predates the destruction stages). `fireAt` server-side filtering is exercised by `tests/Whizbang.Core.Tests/Tags/TagHookStageFilteringAndScopeTests.cs` (a hook registered at `PostAllPerspectivesDetached` does not fire at `AfterReceptorCompletion`, and does fire at its registered stage).
+
+### Changed properties {#changed-properties}
+
+A hook that turns events into change notifications needs to know *which fields changed*. `context.Changes`
+answers that the same way for every kind of message:
+
+| `Changes.Kind` | Where the answer comes from | Read it from |
+|---|---|---|
+| `Event` | A per-stream event: one event type is one set of fields, so the change is the whole event. | `EventProperties` |
+| `Collective` | A collective event: the properties its `[CollectiveApplyFor]` specs assigned, **per model type**. | `ByModel` |
+| `Composite` | A composite event: its inner events' changes, in the order it yields them. | `Inner` |
+
+For a collective event, no participant but the framework can list the fields. One event can be handled by several
+specs over several models, in assemblies and services other than the publisher's, and a newly added handler
+contributes fields nothing else declared. The framework reads each spec's `SetProperty(m => m.X, …)` and
+`UpsertElement(m => m.Items, …)` selectors from the expression tree as the spec applies, without executing anything.
+The properties are grouped by model, because two models can both have `OverlayId` and mean different things by it.
+
+```csharp{title="Notifying with the fields a collective apply changed" description="A tag hook reads the changed properties per model from context.Changes" category="Messaging" difficulty="INTERMEDIATE" tags=["Tags", "Collective", "Notifications"] tests=["MessageTagProcessorTests.ProcessTagsAsync_WithChanges_TheHookReadsThemAsync", "PerspectiveWorkerCollectiveSinkTests.CollectiveSink_SuccessfulDispatch_CarriesWhatTheSpecsChangedToThePostApplyStagesAsync", "CollectiveDispatcherTests.DispatchAsync_ReportsThePropertiesEachModelsSpecAssignedAsync"]}
+public sealed class ChangeNotificationHook(INotifier notifier) : IMessageTagHook<SignalTagAttribute> {
+  public async ValueTask<JsonElement?> OnTaggedMessageAsync(
+      TagContext<SignalTagAttribute> context, CancellationToken ct) {
+    var fields = context.Changes.Kind switch {
+      MessageChangeKind.Collective => context.Changes.ByModel
+        .GetValueOrDefault(typeof(JobModel)) ?? [],
+      MessageChangeKind.Event => context.Changes.EventProperties,
+      _ => [],
+    };
+    await notifier.NotifyAsync(context.Attribute.Tag, fields, ct);
+    return null;
+  }
+}
+```
+
+- **When it is filled.** A collective event's specs apply in the collective sink, so `ByModel` is filled at the
+  stages after the apply: `PostAllPerspectives*` and `PostLifecycle*`. Before that it is empty. A per-stream event's
+  `EventProperties` come from its serializer metadata and are there at every stage.
+- **Each service sees its own.** The changes are the ones this service's specs made; another service's specs report
+  to that service's hooks.
+- **Indirection is out of reach.** A setter that points a row at another record (a key to an overlay or a template)
+  reports the *key*. The fields a reader perceives as changed belong to the referenced record, which only the
+  consumer knows how to resolve.
+- **A composite's `Inner` enumerates its inner events again** when read.
+
+{verified: CollectiveChangedPropertiesTests.Of_ReadsEverySetterInWrittenOrder_EachOnceAsync, CollectiveChangedPropertiesTests.Of_NamesANestedMemberByItsPathAsync, MessageChangesTests.ForEvent_ReportsTheEventsOwnPropertiesAsync, MessageChangesTests.For_ACompositeEvent_ReportsEachInnerEventAsync, ReceptorInvokerTagProcessorScopeTests.InvokeAsync_PassesTheContextsChangesToTheTagProcessorAsync}
 
 ### Payload Structure
 
