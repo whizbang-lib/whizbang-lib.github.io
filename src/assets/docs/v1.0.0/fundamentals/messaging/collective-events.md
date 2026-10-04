@@ -1,8 +1,8 @@
 ---
 title: Collective Events
 pageType: concept
-verifiedAgainstCommit: 0bc6065b
-verifiedDate: 2026-08-05
+verifiedAgainstCommit: 883113615
+verifiedDate: 2026-10-03
 order: 7
 codeReferences:
   - src/Whizbang.Core/Messaging/ICollectiveEvent.cs
@@ -16,6 +16,7 @@ codeReferences:
   - src/Whizbang.Core/Messaging/EventFlags.cs
   - src/Whizbang.Core/Perspectives/ICollectiveApplyFor.cs
   - src/Whizbang.Core/Perspectives/ICollectiveSpec.cs
+  - src/Whizbang.Core/Perspectives/PerspectiveMemberDefaultRegistry.cs
   - src/Whizbang.Core/Perspectives/ICollectiveQuery.cs
   - src/Whizbang.Core/Perspectives/ICollectiveReplayApplier.cs
   - src/Whizbang.Core/Perspectives/CollectiveApplyForAttribute.cs
@@ -691,16 +692,37 @@ How the comparison is made, and why:
   rather than answer it wrongly.
 - **A physical column is compared as itself**, the value bound as the scalar the column
   stores (a `DateTimeOffset` at offset zero, which is all `timestamptz` accepts).
-- **A missing key, or a JSON `null`, compares as null**: the comparison is false, exactly as a
-  lifted C# comparison with a null operand is false. Under `!` it stays that way: the
-  compiler makes the comparison false before negating it
+- **A non-nullable member reads a missing key as its declared default**, so the comparison
+  answers what the replay answers: `long Ordinal` reads as `0`,
+  `string Status { get; init; } = "Draft"` reads as `"Draft"`, an enumeration as its zero
+  member. The emitted form is `COALESCE((data->>'Ordinal')::numeric, @p) < @q`. A document
+  has no key for a member whenever the member was **added to the model after those rows were
+  written**, so without this the rows that silently leave the cohort are the oldest ones.
+- **A nullable member's missing key, or a JSON `null`, compares as null**: the comparison is
+  false, exactly as a lifted C# comparison with a null operand is false. Under `!` it stays
+  that way: the compiler makes the comparison false before negating it
   (`NOT (COALESCE(a < b, FALSE))`), so `!(r.Data.X < 5)` selects a row with a missing key in
-  SQL just as the in-memory replay does. Outside a `!` the plain comparison is emitted, so an
-  index over the expression can serve it.
-- **To have a missing key count as a value**, declare the member nullable and coalesce it:
-  `(r.Data.X ?? 0) < e.Y` compiles to `COALESCE((data->>'X')::numeric, @p) < @q`. That is
-  how a guard covers rows written before the member existed, with no pre-apply step to write
-  a zero into them.
+  SQL just as the in-memory replay does.
+- **To have a nullable member's missing key count as a value**, coalesce it explicitly:
+  `(r.Data.X ?? 0) < e.Y` compiles to `COALESCE((data->>'X')::numeric, @p) < @q`. On a
+  nullable member that is the author's own statement of what the absence means, and it is
+  never wrapped twice.
+- **`== null` and `!= null` compile to `IS NULL` and `IS NOT NULL`.** Binding null as a
+  parameter would give `x = NULL`, which is `NULL` for every row, so the test could never
+  hold. A **missing key and an explicit JSON `null` are the same thing** here and
+  deliberately indistinguishable: `->>` reads both as SQL `NULL`, which is the collapse
+  deserialization makes, so separating them in SQL alone would put the apply and the replay
+  back out of step in the other direction.
+
+> **Index note.** `COALESCE(data->>'X', @p)` will not use a plain btree index on
+> `data->>'X'`. A collective predicate on a non-nullable member that needs an index wants an
+> expression index matching the emitted shape.
+
+The defaults are emitted by the perspective generator into `PerspectiveMemberDefaultRegistry`
+as a `[ModuleInitializer]`, the same turnkey path the physical columns take — nothing is
+discovered by reflection, and a generator is the only thing that *can* see `= "Draft"`, since
+`default(T)` at run time reports null for it. Only a literal initializer is read; a member
+initialized with an arbitrary expression is left alone rather than registered with a guess.
 
 Refused, with the reason: ordering the row id (PostgreSQL orders a `uuid` by its bytes and
 .NET orders a `Guid` by its fields, so the SQL apply and the replay would disagree), a member
