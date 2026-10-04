@@ -373,7 +373,7 @@ public class CreateOrderReceptor : IReceptor<CreateOrder, (OrderResult, Routed<O
 5. For `DispatchModes.EventStoreOnly`: Persists to event store only (no local dispatch, no transport)
 6. Generated dispatcher uses type-switch dispatch (zero reflection, AOT compatible)
 
-### DispatchModes Flags Enum
+### DispatchModes Flags Enum {#dispatch-mode}
 
 `DispatchModes` (note the plural — `Whizbang.Core.Dispatch.DispatchModes`) is a `[Flags]` enum composed from three base flags: `LocalDispatch` (1), `Outbox` (2), and `EventStore` (4). The named convenience values combine these flags:
 

@@ -566,7 +566,7 @@ PostLifecycle stages are the **final stages** in an event's lifecycle, managed b
 **Guarantees**:
 - **Fires exactly once per event** — managed by [Lifecycle Coordinator](lifecycle-coordinator.md)
 - Detached — does not delay the next batch
-- For `Route.Both()` events, fires only after ALL paths complete ([WhenAll pattern](lifecycle-coordinator.md#whenall))
+- For `Route.Both()` events, fires only after ALL paths complete ([WhenAll pattern](lifecycle-coordinator.md#whenall-pattern))
 - Fired by whichever worker is the **last to act** on the event:
 
 | Scenario | Who fires PostLifecycle |

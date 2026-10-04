@@ -150,7 +150,7 @@ Environment variables are added **after** `appsettings.json` and `appsettings.{E
 
 ## Sections the Library Binds Automatically
 
-### Whizbang:Tracing → TracingOptions
+### Whizbang:Tracing → TracingOptions {#whizbangtracing--tracingoptions}
 
 Bound by `AddWhizbang()` through an AOT-safe post-configure binder. Programmatic configuration (`options.Tracing` inside `AddWhizbang`) runs first; configuration keys override it. **Details:** [Tracing](../observability/tracing#tracingoptions-properties-reference).
 
@@ -379,7 +379,7 @@ Every child of `Whizbang:Offloads:AzureBlob` registers one named provider. The p
 | `DefaultAccessTier` | `AccessTier?` | `null` (account default) | `Whizbang__Offloads__AzureBlob__<name>__DefaultAccessTier` | Blob access tier for uploads (Hot/Cool/Cold/Archive) |
 | `MaxDownloadBytes` | `long?` | `null` (no cap) | `Whizbang__Offloads__AzureBlob__<name>__MaxDownloadBytes` | Defensive cap on download size; refuses claims reporting a larger body |
 
-### Whizbang:BodyOffload → MessageBodyOffloadOptions
+### Whizbang:BodyOffload → MessageBodyOffloadOptions {#whizbangbodyoffload--messagebodyoffloadoptions}
 
 The helper binds **four** keys from configuration; the rest of `MessageBodyOffloadOptions` is code-configured (see [its full table below](#messagebodyoffloadoptions)).
 
