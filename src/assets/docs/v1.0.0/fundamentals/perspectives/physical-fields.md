@@ -11,6 +11,13 @@ codeReferences:
   - src/Whizbang.Data.EFCore.Postgres/Functions/FoldedContainsTranslator.cs
   - src/Whizbang.Data.EFCore.Postgres/Functions/WhizbangSearchDbFunctions.cs
   - src/Whizbang.Generators.Shared/Models/PhysicalColumnSql.cs
+  - src/Whizbang.Generators.Shared/Models/ColumnStorageSql.cs
+  - src/Whizbang.Data.EFCore.Postgres/QueryTranslation/PhysicalJsonbContainmentRewriter.cs
+  - src/Whizbang.Data.EFCore.Postgres/QueryTranslation/JsonbDocument.cs
+  - src/Whizbang.Data.EFCore.Postgres/Perspectives/PerspectiveDocumentSerialization.cs
+  - src/Whizbang.Core/Perspectives/ColumnStorage.cs
+  - src/Whizbang.Core/Perspectives/ColumnCompression.cs
+  - src/Whizbang.Core/Perspectives/PerspectiveTableStorageAttribute.cs
   - src/Whizbang.Data.Postgres/Migrations/179_PhysicalFieldPromotion.sql
   - src/Whizbang.Data.Postgres/PhysicalColumnFill.cs
   - src/Whizbang.Data.EFCore.Postgres/PhysicalColumnFillMaintenanceStep.cs
@@ -37,6 +44,16 @@ codeReferences:
   - src/Whizbang.Data.Postgres/OptionalExtensionBlocks.cs
     src/Whizbang.Data.EFCore.Postgres/QueryTranslation/WhizbangDbContextOptionsBuilderExtensions.cs
 testReferences:
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/QueryTranslation/PhysicalJsonbContainmentSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/QueryTranslation/PhysicalJsonbContainmentRewriterTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/QueryTranslation/PhysicalJsonbColumnBindingTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/QueryTranslation/PhysicalJsonbContainmentIntegrationTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/QueryTranslation/GraphQLJsonbContainmentIntegrationTests.cs
+  - tests/Whizbang.Generators.Tests/PerspectiveModelArrayAnalyzerTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/JsonbColumnStorageIntegrationTests.cs
+  - tests/Whizbang.Generators.Tests/PhysicalJsonbColumnGenerationTests.cs
+  - tests/Whizbang.Generators.Tests/ColumnStorageSqlTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/Perspectives/DapperJsonbColumnTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/QueryTranslation/SearchQueryIntegrationTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/QueryTranslation/SearchQueryShapeTests.cs
   - tests/Whizbang.Generators.Tests/SearchIndexGenerationTests.cs
@@ -507,7 +524,7 @@ public record ProductSearchDto {
 
 ### Reading promoted fields back {#reading-promoted-fields-back}
 
-{verified: PhysicalFieldHydratorInitOnlyTests.Record_ChangeTrackerHydrator_CopiesTheColumnsWithAWithExpressionAsync, PhysicalFieldHydratorInitOnlyTests.Class_Hydrators_AssignTheSettablePropertiesAndSkipTheRestAsync, InitOnlyPhysicalFieldHydrationTests.SplitRecord_AQueryOnAHookedContext_CopiesTheInitOnlyColumnsIntoTheModelAsync, InitOnlyPhysicalFieldHydrationTests.ExtractedClass_AQueryOnAHookedContext_CopiesTheSettableColumnAndKeepsTheInitOnlyOneFromTheDocumentAsync, SplitHydratorHookedWriteTests.Add_OnAHookedContext_SavesTheSplitRowAsync, SplitHydratorHookedWriteTests.Update_OnAHookedContext_SavesTheChangeAsync, SplitClassSnapshotRewindTests.Rewind_FromASnapshotOfASplitClassModel_KeepsThePromotedColumnsAsync}
+{verified: PerspectiveRunnerSplitInitOnlyTests.ASplitClassWithAnInitOnlyPromotedField_IsStrippedIntoACopyAsync, PerspectiveRunnerSplitInitOnlyTests.ASplitClassWithAnInitOnlyPromotedField_IsLoadedThroughACopyAsync, PerspectiveRunnerSplitInitOnlyTests.AnUncopyableSplitClass_IsWHIZ808Async, PhysicalFieldHydratorInitOnlyTests.SplitClass_WithAnInitOnlyPromotedField_IsHydratedThroughACopyAsync, InitOnlyPhysicalFieldHydrationTests.SplitClass_TheRunnerWritesAStrippedCopy_SnapshotsTheModelItApplied_AndAQueryCopiesTheColumnsBackAsync, PerspectiveRunnerSplitSnapshotTests.Runner_DecidesWhetherASnapshotIsDueBeforeTheWrite_AndSnapshotsOnThatDecisionAsync, SplitClassSnapshotRewindTests.ASplitClassModel_IsSnapshottedOnlyOnARunThatReachesTheCadence_WithItsPromotedFieldsAsync, PhysicalFieldHydratorInitOnlyTests.Record_ChangeTrackerHydrator_CopiesTheColumnsWithAWithExpressionAsync, PhysicalFieldHydratorInitOnlyTests.Class_Hydrators_AssignTheSettablePropertiesAndSkipTheRestAsync, InitOnlyPhysicalFieldHydrationTests.SplitRecord_AQueryOnAHookedContext_CopiesTheInitOnlyColumnsIntoTheModelAsync, InitOnlyPhysicalFieldHydrationTests.ExtractedClass_AQueryOnAHookedContext_CopiesTheSettableColumnAndKeepsTheInitOnlyOneFromTheDocumentAsync, SplitHydratorHookedWriteTests.Add_OnAHookedContext_SavesTheSplitRowAsync, SplitHydratorHookedWriteTests.Update_OnAHookedContext_SavesTheChangeAsync, SplitClassSnapshotRewindTests.Rewind_FromASnapshotOfASplitClassModel_KeepsThePromotedColumnsAsync}
 
 When a lens query materializes a row, the generated EF Core code copies each promoted column into the
 model, so a Split field arrives with its value even though the document does not hold it. The copy
@@ -517,16 +534,25 @@ works with the model shapes this page shows:
   ones, in every storage mode.
 - **A class** is assigned in place. A class cannot set an `init`-only property on an instance it already
   has, so the copy leaves that property as the document holds it. In `Extracted` mode the document holds
-  it too, so nothing is lost. A `Split` class model declares its promoted fields `{ get; set; }`.
+  it too, so nothing is lost.
+- **A `Split` class with an `init`-only promoted field** is copied: a new instance from its
+  parameterless constructor, with every public property that has a public or internal setter carried
+  over and the columns put in. The runner strips such a class the same way, into a copy, before the
+  write. A class that cannot be copied this way (no public or internal parameterless constructor, a
+  get-only property that stores a value, a private setter, or an abstract class) is reported as
+  [WHIZ808](../../operations/diagnostics/whiz808.md); make it a record, or make the promoted field
+  settable.
 - **A computed property** (no setter) is never copied into.
 
 Only rows a query materializes are hydrated. An entity your code adds or attaches for an update on the
 same `DbContext` is left tracked, and `SaveChanges` writes it as usual.
 
 Snapshots hold the promoted fields as well. Before it writes a Split row, the runner clears the promoted
-fields so the document leaves them out. For a record it clears them on a copy. A class has no copy, so the
-runner takes the class's snapshot before the write, and a rewind from that snapshot keeps the columns'
-values.
+fields so the document leaves them out. For a record, and for a class with an `init`-only promoted field,
+it clears them on a copy, and the snapshot after the write is the model it applied. Any other class is
+cleared in place, so on a run whose snapshot is due the runner serializes the class's snapshot before the
+write. Whether it is due is decided before the write, so a run that takes no snapshot serializes nothing
+extra. A rewind from either snapshot keeps the columns' values.
 
 ## Defining Physical Fields
 
@@ -556,10 +582,227 @@ public record ProductDto {
 
 | Property | Type | Default | Description |
 |----------|------|---------|-------------|
-| `Indexed` | `bool` | `false` | Create a B-tree index on this column |
 | `Unique` | `bool` | `false` | Apply UNIQUE constraint |
 | `ColumnName` | `string?` | `null` | Custom column name (defaults to snake_case) |
-| `MaxLength` | `int` | `-1` | VARCHAR length for strings (-1 = TEXT) |
+| `MaxLength` | `int` | `-1` | Length limit for a string, as a check constraint (-1 = none) |
+| `ColumnType` | `string?` | `null` | The column's PostgreSQL type, overriding the derived one |
+| `Storage` | `ColumnStorage` | `Default` | `SET STORAGE` for the column; see [Keeping a filter column inline](#jsonb-storage) |
+| `Compression` | `ColumnCompression` | `Default` | `SET COMPRESSION` for the column |
+| `MaxBytes` | `int` | `-1` | Largest value the column accepts, by `pg_column_size` (-1 = none) |
+
+An index is asked for with `[Indexed]`, never with an argument here.
+
+A `DateTime` column is `timestamptz` in the table and in the Entity Framework model alike. The model
+used to describe it as `timestamp`, which made Npgsql refuse a UTC value on the change-tracker write.
+{verified: PhysicalJsonbColumnGenerationTests.EFCoreModel_DateTime_IsTheSameColumnTypeAsTheTableAsync, PhysicalJsonbContainmentIntegrationTests.ExtractedModel_RoundTripsThroughEitherWritePathAsync}
+
+## Objects, lists and dictionaries: jsonb columns {#jsonb-columns}
+
+A promoted property that holds an object, a record, a user struct, a list, an array or a dictionary
+is a `jsonb` column. Nothing has to be declared:
+
+```csharp{title="A second, small, indexed jsonb column for filtering" description="The read model keeps normalized filter values in a promoted jsonb column with a GIN index of its own." framework="NET10" category="Perspectives" difficulty="INTERMEDIATE" tags=["perspectives", "physical-fields", "jsonb", "gin"] tests=["PhysicalJsonbColumnGenerationTests.SchemaGenerator_NonScalarField_IsAJsonbColumnAsync", "PhysicalJsonbContainmentIntegrationTests.ExtractedModel_RoundTripsThroughEitherWritePathAsync"]}
+public sealed record Label(string Key, string Value);
+
+[PerspectiveStorage(FieldStorageMode.Extracted)]
+public class OrderGridModel {
+  [StreamId]
+  public Guid Id { get; set; }
+
+  public string Title { get; set; } = "";
+
+  // Normalized filter values: facet -> the values a row matches.
+  [PhysicalField] [Indexed(IndexKinds.Containment)]
+  public Dictionary<string, string[]> GridFilter { get; set; } = [];
+
+  [PhysicalField] [Indexed(IndexKinds.Containment)]
+  public List<Label> Labels { get; set; } = [];
+}
+```
+
+Before this, such a field with no `ColumnType` became a `TEXT` column holding the type's name, with no
+diagnostic, and a dictionary was refused outright by a model whose document is mapped as JSON
+(WHIZ810). Now:
+
+- **Both schema generators create the column as `jsonb`**, and the runner registers it as one. A
+  declared `ColumnType` still wins, so `[PhysicalField(ColumnType = "text")]` keeps a text column.
+  Scalars, enumerations, `Guid`, the date and time types, `TimeSpan`, `byte[]`, `float[]` and
+  `double[]` keep the column types they had.
+- **It is written and read under the persistence profile**, the options the document is written
+  with. The Entity Framework model binds the shadow property with
+  `PerspectiveDocumentSerialization.ColumnConverterFor<T>()`, the atomic upsert binds the value as jsonb
+  text through that same converter, and Dapper serializes it with the store's options. A list of
+  strings is no longer sent as a native `text[]` and a `Dictionary<string, string>` is no longer sent as
+  an `hstore`.
+- **It is kept out of the mapped document.** The generated configuration ignores the property inside
+  `ComplexProperty(e => e.Data).ToJson()`, so a dictionary is allowed and WHIZ810 no longer fires for
+  it. The column is where the value is read from: the hydrators copy it into the model, and the store
+  reads it back from the column for the model the next event is applied to, on an Extracted model as
+  well as a Split one, with either driver. On an Extracted model the document keeps its copy of the
+  value on both write paths: the atomic upsert serializes it with the model, and a write that falls
+  back to the change tracker restores it from the column in the same transaction, so both leave the
+  same row. A null value is absent from the document, as the persistence profile omits a null member.
+- **A column added to an existing Extracted table is backfilled** from the document's member,
+  `data -> 'GridFilter'`, which holds the same JSON.
+
+{verified: PhysicalJsonbContainmentIntegrationTests.BothWritePaths_LeaveIdenticalRowsAsync, PhysicalJsonbColumnGenerationTests.EFCoreModel_JsonbField_IsReadAndWrittenUnderThePersistenceProfileAsync, PhysicalJsonbColumnGenerationTests.EFCoreModel_JsonbField_IsLeftOutOfTheMappedDocumentAsync, PhysicalJsonbColumnGenerationTests.Runner_ExtractedModel_ReadsItsJsonbColumnsBackAsync, PhysicalJsonbContainmentIntegrationTests.SplitModel_RoundTripsThroughEitherWritePathAsync, DapperJsonbColumnTests.ExtractedModel_JsonbColumns_SurviveAnEventThatLeavesThemAloneAsync, DapperJsonbColumnTests.SplitModel_JsonbColumns_SurviveAnEventThatLeavesThemAloneAsync, PhysicalColumnSqlTests.Extraction_AJsonbColumn_IsCopiedFromTheMemberAsItIsAsync}
+
+### Columns created as text before this {#jsonb-text-columns}
+
+A table an earlier release created holds a `TEXT` column for such a field, and that column holds the
+field's type name rather than its value, so there is nothing in it to convert. On the first start of
+this release the schema pass, with no step of yours:
+
+1. renames it to `<column>_text_legacy` (it is never dropped automatically),
+2. adds the `jsonb` column under the original name, with its indexes,
+3. on an Extracted model, fills it from the document's copy (`data -> 'GridFilter'`) and arms the
+   [physical-column fill](#rows-written-during-a-rolling-deploy) for rows an older instance writes
+   during the rollout.
+
+On a Split model the document holds no copy, so the column starts empty and the pass logs a warning
+naming it: rebuild the perspective to fill it. Every later start finds a `jsonb` column and does
+nothing. Once you are satisfied, drop the legacy column yourself:
+
+```sql{title="Dropping the retired text column" description="The schema pass never drops data; this is the operator's step once the jsonb column is filled." category="Perspectives" difficulty="INTERMEDIATE" tags=["perspectives", "physical-fields", "jsonb", "migrations"]}
+ALTER TABLE wh_per_order_grid DROP COLUMN grid_filter_text_legacy;
+```
+
+{verified: JsonbColumnStorageIntegrationTests.AnEarlierTextColumn_IsKeptAsLegacy_AndTheJsonbColumnFilledFromTheDocumentAsync, JsonbColumnStorageIntegrationTests.AnEarlierTextColumnOnASplitModel_IsKeptAsLegacy_AndLeftForARebuildAsync, PhysicalColumnSqlTests.ATextColumnForAJsonbField_IsRetiredBeforeTheColumnIsArmedAndAddedAsync}
+
+This applies to the Entity Framework schema pass, which adds columns to existing tables. The Dapper
+schema creates tables and does not alter existing ones.
+
+A promoted array is fine on a perspective model when its column is `jsonb`: WHIZ200, which asks for
+`List<T>` instead of an array, stays silent there because the column is read and written as one
+value rather than grown in place by the change tracker.
+{verified: PerspectiveModelArrayAnalyzerTests.Analyzer_ArrayPromotedToJsonb_IsSilent_OtherwiseFlaggedAsync}
+
+### Filtering on a jsonb column {#jsonb-filters}
+
+A filter on a jsonb column compiles to a containment test, `column @> document`, with the document
+built in SQL from the query's own values. Containment is the one shape a GIN index on the column
+answers.
+
+```csharp{title="Filters that compile to containment" description="Each filter on the promoted jsonb columns becomes column @> document and is answered from the column's GIN index." framework="NET10" category="Perspectives" difficulty="INTERMEDIATE" tags=["perspectives", "physical-fields", "jsonb", "gin", "query-translation"] tests=["PhysicalJsonbContainmentSqlTests.DictionaryKeyContains_Param_CompilesToContainmentOfAKeyedArrayAsync", "PhysicalJsonbContainmentIntegrationTests.SupportedShapes_ReturnTheRowsTheInMemoryFilterReturnsAsync", "PhysicalJsonbContainmentIntegrationTests.Explain_ContainmentFilters_UseTheColumnsGinIndexesAsync"]}
+var rows = await lens.DefaultScope.Query
+    .Where(r => r.Data.GridFilter["region"].Contains(region))
+    .Where(r => r.Data.Labels.Any(l => l.Key == "team" && l.Value == team))
+    .ToListAsync();
+```
+
+```sql{title="What it compiles to" description="Two containment tests, each answered by its column's GIN index." category="Perspectives" difficulty="INTERMEDIATE" tags=["jsonb", "gin", "query-translation"]}
+WHERE w.grid_filter @> jsonb_build_object('region', jsonb_build_array(to_jsonb(@region)))
+  AND w.labels @> jsonb_build_array(jsonb_build_object('Key', to_jsonb('team'::text))
+                                     || jsonb_build_object('Value', to_jsonb(@team)))
+```
+
+These are the shapes that are compiled, exactly. `col` is the promoted property, written as
+`r.Data.Property` on the row:
+
+| LINQ, inside a filter | Column type | Compiles to |
+|-----------------------|-------------|-------------|
+| `col[key].Contains(v)` | dictionary of collections | `col @> {key: [v]}` |
+| `col[key].Any(e => e == v)` | dictionary of collections | `col @> {key: [v]}` |
+| `col[key] == v` | dictionary of scalars | `col @> {key: v}` |
+| `col.Contains(v)`, `Enumerable.Contains(col, v)` | list or array of scalars | `col @> [v]` |
+| `col.Any(e => e == v)` | list or array of scalars | `col @> [v]` |
+| `col.Any(e => e.A == v && e.B.C == w)` | list or array of objects | `col @> [{A: v, B: {C: w}}]`, one element matching every condition |
+| `col.A.B == v` | object | `col @> {A: {B: v}}` |
+| `!` around any of the above | any | `NOT (col @> …)` |
+
+- **Inside a filter** means the predicate of `Where`, `Any`, `All`, `Count`, `First`, `Single`,
+  `Last` and their `OrDefault` and asynchronous forms. In a `Select` or an `OrderBy` the shape is left
+  alone, and Entity Framework evaluates it on the client if it is the final projection.
+- **Values** may be constants or captured variables of type `string`, `Guid`, `bool`, `byte`,
+  `short`, `int`, `long` or `decimal`, nullable or not. Dates and times, enumerations, `double` and
+  `float` are not compiled, because their stored text and `to_jsonb`'s are not guaranteed to agree. A
+  key must be a `string`.
+- **Member names are the stored names**, taken from the serializer's metadata, so a
+  `[JsonPropertyName]` is honored. A dictionary key is used as written.
+- **Equality is `==`.** `Equals(...)` in its various spellings is not compiled here.
+- **Two conditions under one top-level member** inside `Any` (`e.A.X == v && e.A.Y == w`) are not
+  compiled: the element is built by merging one object per condition, and the merge is shallow.
+  Write them as two `Any` calls if separate elements may satisfy them, or keep the member flat.
+- **A literal `null`** in an equality is not compiled. A captured variable that turns out null is
+  compiled, and matches only a stored JSON `null`. The persistence profile omits null members, so on
+  an object it matches nothing; inside a list (`col.Contains(null)`) it matches a stored null element,
+  which is what the in-memory filter does.
+- **A missing dictionary key** does not match, where `dictionary[key]` in memory would throw.
+- **A row whose column is SQL NULL** matches neither a filter nor its negation.
+- **Anything else** (ranges, `ContainsKey`, `Count()`, ordering, a value read from the row) is left
+  exactly as written, which Entity Framework cannot translate over a jsonb column.
+
+{verified: PhysicalJsonbContainmentSqlTests.DictionaryKeyEquals_ScalarValue_CompilesToContainmentOfTheKeyAsync, PhysicalJsonbContainmentSqlTests.ScalarListContains_CompilesToContainmentOfAnArrayAsync, PhysicalJsonbContainmentSqlTests.ObjectListAny_ConjunctionOfMembers_CompilesToOneElementAsync, PhysicalJsonbContainmentSqlTests.ObjectMemberEquals_Nested_CompilesToNestedContainmentAsync, PhysicalJsonbContainmentSqlTests.Negated_IsTheNegatedContainmentTestAsync, PhysicalJsonbContainmentRewriterTests.UnsupportedShapes_AreLeftAsWrittenAsync, PhysicalJsonbContainmentRewriterTests.TheShapeAGraphQLListFilterBuilds_IsClaimedAsync}
+
+This compilation is not affected by the [containment switch](jsonb-containment.md#turning-it-off).
+That switch chooses between two ways of compiling a filter on the document, which already has a working
+translation; a filter on a jsonb column has no other translation to fall back to.
+{verified: PhysicalJsonbContainmentSqlTests.OffSwitch_DoesNotStopIt_BecauseNothingElseTranslatesTheShapeAsync}
+
+A GraphQL filter reaches the same compilation, because it is applied to the lens query as an
+expression tree, and is answered from the same GIN index. A list filter such as `labels: { some: { key: { eq: "team" } } }` arrives as
+`Labels.Any(l => l.Key == "team")` and compiles to containment. A dictionary has no GraphQL filter
+type, so dictionary shapes are written in LINQ.
+{verified: GraphQLJsonbContainmentIntegrationTests.AListFilterOnAJsonbColumn_RunsAsContainmentOnItsGinIndexAsync, GraphQLJsonbContainmentIntegrationTests.AScalarListFilter_RunsAsContainmentTooAsync}
+
+### Indexing it
+
+`[Indexed(IndexKinds.Containment)]` builds the index the compiled filter needs, on both drivers:
+
+```sql{title="The containment index" description="GIN with jsonb_path_ops over the promoted jsonb column." category="Perspectives" difficulty="INTERMEDIATE" tags=["jsonb", "gin", "indexing"]}
+CREATE INDEX IF NOT EXISTS idx_order_grid_grid_filter_gin
+  ON wh_per_order_grid USING gin (grid_filter jsonb_path_ops);
+```
+
+`jsonb_path_ops` answers `@>` and nothing else, which is everything a compiled filter asks, and is
+smaller and faster to maintain than the default operator class. The kind applies only to a promoted
+jsonb column; elsewhere it builds nothing. The same index can be spelled out with
+`[PerspectiveIndex(nameof(GridFilter), Method = PerspectiveIndexMethod.Gin, OperatorClass = "jsonb_path_ops")]`,
+which the Entity Framework schema builds.
+{verified: PhysicalJsonbContainmentIntegrationTests.ContainmentDeclaration_BuildsAGinJsonbPathOpsIndexAsync, PhysicalJsonbContainmentIntegrationTests.Explain_ContainmentFilters_UseTheColumnsGinIndexesAsync}
+
+## Keeping a filter column inline {#jsonb-storage}
+
+PostgreSQL keeps a row in its page until the row grows past about 2 KB (`toast_tuple_target`). Past
+that it compresses the row's largest values and then moves them out of line into the table's TOAST
+table. A small filter column stays cheap only while it stays in the row: once it is moved out, every
+row a filter reads costs a second lookup, and a GIN index still says which rows match but the recheck
+reads the value. A large document in the same row is what usually pushes the row over the threshold.
+
+The schema pass can set three things, and each is applied only where the table differs, so a restart
+issues no `ALTER TABLE` and takes no lock:
+
+```csharp{title="Storage options for a filter column and its document" description="Keep the filter column in the row, compress the document with lz4, and declare a size budget." framework="NET10" category="Perspectives" difficulty="ADVANCED" tags=["perspectives", "physical-fields", "jsonb", "toast", "storage"] tests=["ColumnStorageSqlTests.ServiceRegistration_EmitsTheTableAndColumnOptionsAsync", "JsonbColumnStorageIntegrationTests.DeclaredOptions_AreAppliedToTheTableAsync"]}
+[PerspectiveStorage(FieldStorageMode.Extracted)]
+[PerspectiveTableStorage(DataCompression = ColumnCompression.Lz4, ToastTupleTarget = 512)]
+public class OrderGridModel {
+  [PhysicalField(Storage = ColumnStorage.Main, MaxBytes = 1024)]
+  [Indexed(IndexKinds.Containment)]
+  public Dictionary<string, string[]> GridFilter { get; set; } = [];
+}
+```
+
+| Option | Applied as | What it does |
+|--------|------------|--------------|
+| `Storage = ColumnStorage.Main` | `ALTER COLUMN … SET STORAGE MAIN` | Keeps the column in the row, compressed if it must be, out of line only as a last resort |
+| `Compression = ColumnCompression.Lz4` | `ALTER COLUMN … SET COMPRESSION lz4` | Compresses the column's values with LZ4 |
+| `DataCompression = ColumnCompression.Lz4` | the same, on `data` | LZ4 for the document: faster to compress and to read than pglz, at a similar ratio |
+| `ToastTupleTarget = n` | `ALTER TABLE … SET (toast_tuple_target = n)` | The row size, 128 to 8160 bytes, past which values are compressed and moved out |
+| `MaxBytes = n` | `CHECK (pg_column_size(col) <= n) NOT VALID` | Refuses a value larger than the budget |
+
+The trade-off, in short: `MAIN` on the filter column and LZ4 on the document keep the filter in the
+row while the document is compressed and moved out first. A lower `ToastTupleTarget` moves a large
+document out sooner, keeping the rows a scan walks small; a higher one keeps more rows entirely inline
+at the cost of fewer rows per page. `MaxBytes` makes the budget visible: a write whose value has
+outgrown it fails with a check violation naming `ck_<table>_<column>_size`, rather than silently
+pushing the row out of line. Changing the declared budget replaces the constraint on the next start.
+
+None of these rewrite rows already stored. Storage and compression apply to values written from then
+on, and the size constraint is added `NOT VALID`, so existing rows are not scanned. `VACUUM FULL` or a
+rewrite of the rows applies the new layout to them. LZ4 needs a server built with it; on one that is
+not, the pass logs a warning and leaves the column as it was. Both options need PostgreSQL 14 or later.
+
+{verified: JsonbColumnStorageIntegrationTests.DeclaredOptions_AreAppliedToTheTableAsync, JsonbColumnStorageIntegrationTests.TheStatements_RunAgain_AlterNothingAsync, JsonbColumnStorageIntegrationTests.AChangedBudget_ReplacesTheConstraintAsync, JsonbColumnStorageIntegrationTests.AValueOverItsBudget_IsRefusedOnWriteAsync, ColumnStorageSqlTests.SchemaGenerator_EmitsTheSameOptionsAsync}
 
 ## Search {#search}
 
@@ -610,7 +853,7 @@ What happens underneath:
 
 ## Adding a physical field to an existing model {#adding-a-physical-field}
 
-{verified: PhysicalColumnBackfillIntegrationTests.Backfill_RestoresExactlyWhatTheWriterStored_ForEveryTypeAsync, PhysicalColumnBackfillIntegrationTests.Backfill_LeavesAColumnThatAlreadyHasAValueAloneAsync, PhysicalColumnBackfillIntegrationTests.AddColumn_OnATableThatPredatesIt_AddsTheColumn_AndIsIdempotentAsync, PhysicalColumnSqlTests.ExistingTable_GetsTheColumn_ThenTheBackfill_ThenTheIndexAsync, PhysicalColumnSqlTests.SplitStorage_AddsTheColumn_ButHasNoDocumentCopyToBackfillFromAsync, PerspectiveSchemaBackfillTests.Extracted_EachPhysicalColumn_IsBackfilledFromTheDocumentAsync, PostgresSchemaInitializerCoverageTests.InitializeSchemaAsync_ColumnCopyAddingPhysicalColumns_BackfillsExistingRowsAsync, DapperPerspectiveStorePhysicalFieldTests.Upsert_Insert_WritesEveryPhysicalColumnAsync}
+{verified: PhysicalColumnBackfillIntegrationTests.Backfill_RestoresExactlyWhatTheWriterStored_ForEveryTypeAsync, PhysicalColumnBackfillIntegrationTests.Backfill_LeavesAColumnThatAlreadyHasAValueAloneAsync, PhysicalColumnBackfillIntegrationTests.AddColumn_OnATableThatPredatesIt_AddsTheColumn_AndIsIdempotentAsync, PhysicalColumnSqlTests.ExistingTable_GetsTheColumn_ThenTheBackfill_ThenTheIndexAsync, PhysicalColumnSqlTests.SplitStorage_FillsTheColumnFromTheDocumentThePreviousReleaseWroteAsync, PhysicalColumnSqlTests.AColumnTypeTheAuthorChose_ForAString_IsBackfilledThroughACastAsync, PhysicalFieldMoveGenerationTests.AnArray_IsBuiltElementByElementInDocumentOrderAsync, PhysicalFieldMoveGenerationTests.AJsonbColumn_TakesTheDocumentValueAsItIsAsync, PhysicalFieldMoveGenerationTests.AnEnumeration_IsReadAsTheNumberItsColumnAndDocumentBothHoldAsync, PerspectiveSchemaBackfillTests.Extracted_EachPhysicalColumn_IsBackfilledFromTheDocumentAsync, PostgresSchemaInitializerCoverageTests.InitializeSchemaAsync_ColumnCopyAddingPhysicalColumns_BackfillsExistingRowsAsync, DapperPerspectiveStorePhysicalFieldTests.Upsert_Insert_WritesEveryPhysicalColumnAsync, SplitPromotionTests.ASplitPromotion_FillsTheColumnFromTheDocumentAsync, DapperPhysicalFieldMoveTests.AColumnCopyPromotion_ArmsAndFillsEachColumnAsync}
 
 Promoting a field of a model that already has rows is safe. The schema pass, on the instance elected
 to migrate, does three things in order:
@@ -625,21 +868,29 @@ This matters because the query translator reads a promoted property from its col
 every filter and sort on the field would read an empty column for the older rows, and return nothing
 for them without an error.
 
-The fill reproduces exactly what the writer stores, type by type: text, identifiers, integers, booleans,
-decimals and floating point, and dates and times. Dates and times are microsecond counts in the
-document, so they are rebuilt by exact arithmetic from the epoch rather than parsed.
+The fill reproduces exactly what the writer stores, type by type:
 
-Some fields are added but not filled, because the document cannot reproduce them:
+- **Scalars:** text, identifiers, integers, booleans, decimals and floating point.
+- **Dates and times,** which are microsecond counts in the document, so they are rebuilt by exact
+  arithmetic from the epoch rather than parsed.
+- **Enumerations,** whose column and document both hold the underlying number.
+- **A `jsonb` (or `json`) column you chose** with `ColumnType = "jsonb"`, which takes the document's value
+  as it is. A JSON null becomes a null column.
+- **A native array you chose** (`ColumnType = "uuid[]"`, `"text[]"`, `"integer[]"`, ...) over a collection of
+  the scalars above, built element by element in document order.
+- **Another column type you chose** for a scalar that is not a date or time (`citext`, `numeric(12,2)`, a
+  domain), cast to that type, which is how the server parses the value the writer sends.
+- **Split storage.** The previous release kept the field in the document, so the documents it wrote still
+  hold the value, and the column is filled from them.
 
-- **Split storage.** The value lives only in the column, so older rows need a
-  [rebuild](./rebuild) to fill it.
-- **A column type you chose** (`[PhysicalField(ColumnType = "...")]`), an enumeration, or any other type
-  whose column encoding the framework cannot know.
-- **Vector fields.**
+Only a vector, a date or time under a column type you chose, and a type the framework does not know have
+no document copy the column can be filled from. On a table that already has rows, that column is reported
+for a rebuild; see [When the document has no copy](#when-the-document-has-no-copy).
 
-Both drivers do this. With the Dapper driver, the schema generator places the same fill statements
-after the table, so the column-copy migration that adds the column runs them against the new table, and
-the Dapper store writes every physical column on insert and update, as the EF Core store does.
+Both drivers do this. With the Dapper driver, each promoted column is recorded and added before the
+table's column-copy migration runs, against the table the previous release left, and the fill runs after
+the swap against the new table. The Dapper store writes every physical column on insert and update, as the
+EF Core store does.
 
 The fill runs inside the startup schema pass, as one `UPDATE` per field. On a very large table, schedule
 the release that promotes the field for a quiet period, or promote it on an empty table first.
@@ -684,7 +935,7 @@ takes in that pass.
 
 ### Rows written during a rolling deploy {#rows-written-during-a-rolling-deploy}
 
-{verified: PhysicalColumnFillMaintenanceStepTests.ARowWrittenWithOnlyTheDocumentValue_IsFilledAndFoundByAColumnFilterAsync, PhysicalColumnFillMaintenanceStepTests.ASecondRun_ChangesNothingAsync, PhysicalColumnFillMaintenanceStepTests.AColumnStaysArmedUntilTheSettleWindowHasPassedAsync, PhysicalColumnFillMaintenanceStepTests.ABatchFillsNoMoreThanItsSizeAsync, PhysicalColumnFillMaintenanceStepTests.ASecondRunInTheSameWindow_FillsNothingAsync}
+{verified: DapperPhysicalFieldMoveTests.ARowThePreviousReleaseWrote_IsFilledByTheDapperStepAsync, DapperPhysicalFieldMoveTests.TheStep_RunsOnlyOnTheInstanceThatTakesTheClaimAsync, PhysicalColumnFillMaintenanceStepTests.ARowWrittenWithOnlyTheDocumentValue_IsFilledAndFoundByAColumnFilterAsync, PhysicalColumnFillMaintenanceStepTests.ASecondRun_ChangesNothingAsync, PhysicalColumnFillMaintenanceStepTests.AColumnStaysArmedUntilTheSettleWindowHasPassedAsync, PhysicalColumnFillMaintenanceStepTests.ABatchFillsNoMoreThanItsSizeAsync, PhysicalColumnFillMaintenanceStepTests.ASecondRunInTheSameWindow_FillsNothingAsync}
 
 The fill in the schema pass covers the rows that exist when the first instance of the new release starts.
 During a rolling deploy, instances still on the previous release keep writing, and they do not know the
@@ -702,12 +953,118 @@ watched, and the step then fills rows that have the value in the document and no
 - **Until it has settled.** A column stays watched for a day after the pass that added it, which is longer
   than a rollout takes. It is released once a run finds nothing left after that.
 
-The Postgres driver registers the step, so it runs wherever the maintenance worker does. A value the
-document holds that the column's type cannot take is reported as a warning, and the column stays watched.
+Both drivers register the step, so it runs wherever the maintenance worker does: the EF Core Postgres
+driver, and the Dapper driver, which claims the window through the registered claim store or, without one,
+directly in the same claims table. A value the document holds that the column's type cannot take is
+reported as a warning, and the column stays watched.
+
+A Split promotion is different: the new release reads the field from the column, so a row the previous
+release writes has to have its column right at once, not ten minutes later. Its writes are synced; see
+[Writes from both releases during the deploy](#rolling-deploy-moves) under Storage moves.
 
 Queries could instead read `COALESCE(column, document value)` for a promoted field, which is correct but
 is a different expression from the column. A filter on it cannot use the column's index, and that index
 is the reason to promote the field. Filling the column keeps every query on the indexed column.
+
+## Storage moves {#storage-moves}
+
+{verified: SplitPromotionTests.AWriteFromEitherRelease_KeepsTheColumnAndTheDocumentInAgreementAsync, SplitPromotionTests.ARowThePreviousReleaseWrote_IsReadWithItsValuesThroughTheStoreAsync, SplitPromotionTests.TheSyncTriggers_AreDroppedWhenTheMoveSettlesAsync, PhysicalFieldDemotionTests.ADemotedField_IsCopiedIntoTheDocumentForEveryRowAsync, PhysicalFieldDemotionTests.AWriteFromEitherRelease_KeepsTheColumnAndTheDocumentInAgreementAsync, PhysicalFieldDemotionTests.ASettledDemotion_DropsItsTriggersAndIsNeverCopiedAgainAsync, PhysicalColumnFormsTests.EachSupportedType_RoundTripsThroughTheDocumentAsync, DapperPhysicalFieldMoveTests.ASplitPromotion_FillsAndSyncsOnTheSwappedInTableAsync, DapperPhysicalFieldMoveTests.ADemotedColumn_IsCopiedIntoTheDocumentAndSyncedAsync}
+
+A field's storage can move between the document and a column in either direction, on either driver,
+without losing a value. The move happens on the first start of the release that changes the declaration,
+and every move is idempotent: a later start finds nothing to do.
+
+| Change | Safe to ship? | What happens to the data |
+|---|---|---|
+| Add `[PhysicalField]` to a field of an **Extracted** model | Yes | The column is added and filled from every document. Rows the previous release writes during the deploy are filled by the maintenance step. The document keeps its copy. |
+| Add `[PhysicalField]` to a field of a **Split** model | Yes | The column is added and filled from every document. Until the deploy settles, every write keeps the column and the document in agreement, so both releases read the right value. Afterwards the document copy is no longer kept. |
+| Promote to a `jsonb` column (`ColumnType = "jsonb"`) | Yes | The column takes the document's value as it is. Same rules as above for Extracted and Split. |
+| Promote to a native array or another column type you chose | Yes, for the types listed above | Filled element by element, or through a cast. Otherwise reported for a rebuild. |
+| Promote a vector, or a date or time under a type you chose | Only with a rebuild | The column is added but cannot be filled. The start reports the table for a rebuild. |
+| Remove `[PhysicalField]` from a field (demotion) | Yes | Every value in the column the framework recorded for it is copied into the document. Until the deploy settles, every write keeps them in agreement. The column is **left in place**; drop it yourself once the deploy has settled. |
+| Demote a field out of a `jsonb` column | Yes | The column's value becomes the document's value as it is. |
+| Demote a field whose column has a custom name (`ColumnName = "..."`) | Yes | The column is found by the field it was recorded under, whatever it is named. |
+| A column you added yourself under a field's name | Untouched | Only a column the framework recorded as a promoted field's is ever demoted. |
+| Demote a column whose type the document cannot hold (a vector, `point`, `interval`) | Only with a rebuild | Nothing is copied. The start reports the table for a rebuild. |
+| Change a model from Split to Extracted, or back | Not by this | Use a rebuild. |
+
+### Writes from both releases during the deploy {#rolling-deploy-moves}
+
+During a rolling deploy the two releases read a moving field from different places: after a Split
+promotion the new release reads the column and the previous one the document, and after a demotion it is
+the other way round. A background fill alone could not keep them right, because a row one release wrote
+could be read and written back by the other before the fill reached it.
+
+So for these moves the start that makes the move also adds two row triggers to the table:
+
+- **A write that sets the column** (the release that knows the column) copies it into the document.
+- **A write that leaves the column out** (the release that does not) has the column follow the document.
+
+Neither release can then read a value the other wrote in the place it does not look. A document value the
+column cannot take leaves the column as it was rather than failing the write. Once the move has been
+watched for a day, the maintenance step drops the triggers. An Extracted promotion needs none: both
+releases read the document, and the step fills the rows the previous release writes.
+
+## Demoting a field {#demoting-a-field}
+
+{verified: PhysicalFieldDemotionTests.ADemotedField_IsCopiedIntoTheDocumentForEveryRowAsync, PhysicalFieldDemotionTests.AColumnTheFrameworkDidNotRecord_IsNeverCopiedAsync, PhysicalFieldDemotionTests.AColumnTheRegistryLists_IsRecordedAndDemotedByItsNameAsync, PhysicalFieldDemotionTests.ARecordedColumnWithACustomName_IsDemotedByItsFieldAsync, DapperPhysicalFieldMoveTests.TheFirstStart_RecordsEachPromotedColumnUnderItsFieldAsync, PhysicalFieldDemotionTests.ASecondPass_CopiesNothingAsync, PhysicalFieldDemotionTests.ASettledDemotion_DropsItsTriggersAndIsNeverCopiedAgainAsync, PhysicalFieldDemotionTests.PromotingADemotedFieldAgain_RefreshesTheColumnFromTheDocumentAsync, PhysicalFieldMoveGenerationTests.Demote_NeverOffersAFrameworkColumnOrOneAPromotedFieldOwnsAsync, DapperPhysicalFieldMoveTests.ADemotedColumn_IsCopiedIntoTheDocumentAndSyncedAsync}
+
+Removing `[PhysicalField]` from a field keeps its values. Every schema pass records each column it creates
+for a promoted field, with the field it holds, in `wh_physical_column_fills` (direction `recorded`). The
+columns earlier releases promoted are recorded too: on the EF Core driver from the perspective registry when
+this release first starts, and on both drivers by the first start of this release, which records every
+column the model still promotes. A demotion moves **only a recorded column**, so a column you added yourself,
+even one named like a field, is never copied over the document.
+
+On each start that changes the perspective's schema, every field the model keeps only in the document is
+checked against those records: a column recorded under the field is found whatever it is named (a custom
+`ColumnName` included), and one recorded from the registry, which names no field, under the name the field's
+promotion would have used by default (`Score` → `score`). When the table has one:
+
+1. **The copy.** Every row whose column holds a value its document does not gets the value copied into
+   the document, in the form the document stores it (microseconds for dates and times, the number for an
+   enumeration, a JSON array for an array column, the value itself for a `jsonb` column).
+2. **The rollout.** The triggers described above keep the two in agreement until the move settles.
+3. **The record.** The move is recorded as `to_document`. Once it has settled it is kept, so a later start
+   never copies the column, which by then is stale, over the document.
+
+On the Dapper driver, which keeps no registry, demote a field in a release after this one has started once,
+so its column has been recorded.
+
+A column every perspective table has, or one a field still promoted owns, is never a candidate.
+
+**The column is never dropped.** Once the move has settled (the maintenance step logs
+`... has been copied into the document and has settled; the column is no longer kept in step and can be dropped`),
+drop it in a maintenance window:
+
+```sql{title="Dropping a demoted column" description="Run once the demotion has settled; nothing reads the column any more." category="Operations" difficulty="BEGINNER" tags=["perspectives", "physical-fields", "operations"]}
+-- Confirm the move has settled.
+SELECT table_name, column_name, settled_at
+FROM wh_physical_column_fills
+WHERE direction = 'to_document';
+
+-- Then drop the column.
+ALTER TABLE wh_per_ticket DROP COLUMN score;
+```
+
+Promoting the field again later refreshes the column from the document for every row before arming it,
+so a column that sat stale while the field was demoted is never read.
+
+## When the document has no copy {#when-the-document-has-no-copy}
+
+{verified: PhysicalFieldMoveNoticeTests.AColumnTheDocumentCannotFill_IsReportedForARebuildAsync, PhysicalFieldMoveNoticeTests.AColumnTheDocumentCannotFill_OnAnEmptyOrMissingTable_IsNotReportedAsync, PhysicalFieldMoveNoticeTests.ADemotedColumnTheDocumentCannotHold_IsReportedForARebuildAsync}
+
+Some moves cannot be made from the stored data: a promoted vector, a promoted date or time under a column
+type you chose, or a demoted column of a type the document cannot hold. The values exist only in the
+perspective's events. On a table that has rows, the start records the column, and the maintenance step's
+first run logs it once, at Warning:
+
+```text
+public.wh_per_ticket.embedding cannot be moved for field Embedding: the document holds no copy the column can be filled from, or the column holds a type the document cannot. Rebuild the perspectives stored in public.wh_per_ticket by dispatching RebuildPerspectiveCommand with their names
+```
+
+Dispatch [`RebuildPerspectiveCommand`](./rebuild) for the perspectives stored in that table. A table with no
+rows has nothing to restore, and reports nothing.
 
 ## Enumeration columns {#enum-columns}
 
@@ -863,6 +1220,8 @@ correlated columns (which want extended statistics, not an index at all).
 ## Best Practices
 
 1. **Index selectively**: Only create indexes on frequently queried fields
+1. **Filter on a small jsonb column, not the document**: keep normalized filter values in a promoted
+   jsonb column with `[Indexed(IndexKinds.Containment)]`, and keep it inline with `Storage = ColumnStorage.Main`
 2. **Use Extracted mode** when you need both indexed queries and full JSONB flexibility
 3. **Use Split mode** for large fields (vectors, blobs) to avoid duplication
 4. **String lengths**: Set `MaxLength` for strings that need constraints

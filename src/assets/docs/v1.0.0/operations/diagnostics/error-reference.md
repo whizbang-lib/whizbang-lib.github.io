@@ -348,12 +348,14 @@ Compile-time errors and warnings from Whizbang's source generators and analyzers
 | WHIZ304 | Warning | [Declared Index Cannot Be Reached For This Model's Storage](whiz304.md) |
 | WHIZ305 | Warning | [Declared Index Capability Does Not Apply To This Field's Type](whiz305.md) |
 | WHIZ307 | Warning | [Whole-Document Match Has No Index](whiz307.md) |
-| WHIZ308 | Info | [Whole-Document Match Relies On The Default Index](whiz308.md) |
+| WHIZ308 | Warning | [Whole-Document Match Has No Index By Default](whiz308.md) |
+| WHIZ309 | Warning | [Collective Predicate Filters An Unindexed Field](whiz309.md) |
 | WHIZ400 | Error | [Invalid Type Argument for ILensQuery](whiz400.md) — the same ID is also a Warning ("[InheritScope] on a non-perspective type") in `Whizbang.Generators` |
 | WHIZ802 | Error | [VectorField Invalid Dimensions](whiz802.md) |
 | WHIZ807 | Info | [Physical Fields Discovered](whiz807.md) |
+| WHIZ808 | Error | [Split Class Model Cannot Be Copied](whiz808.md) |
 
-Many more diagnostics ship without dedicated pages — discovery/registration notices (WHIZ001–WHIZ028), StreamId and WhizbangId validation (WHIZ005/WHIZ006/WHIZ009/WHIZ013/WHIZ021/WHIZ024), service registration (WHIZ040–WHIZ042), test linking (WHIZ050–WHIZ054), Guid usage warnings (WHIZ055–WHIZ057), perspective purity and model checks (WHIZ100–WHIZ106, WHIZ200), pinned identity (WHIZ110–WHIZ112), InheritScope usage (WHIZ400/WHIZ401 in `Whizbang.Generators`), EF Core generation (WHIZ401/WHIZ402, WHIZ701–WHIZ703, WHIZ810–WHIZ822), physical/vector fields (WHIZ801–WHIZ807), and receptor safety (WHIZ900). Their build-output messages are self-describing; browse the Diagnostics section index for pages as they are added.
+Many more diagnostics ship without dedicated pages — discovery/registration notices (WHIZ001–WHIZ028), StreamId and WhizbangId validation (WHIZ005/WHIZ006/WHIZ009/WHIZ013/WHIZ021/WHIZ024), service registration (WHIZ040–WHIZ042), test linking (WHIZ050–WHIZ054), Guid usage warnings (WHIZ055–WHIZ057), perspective purity and model checks (WHIZ100–WHIZ106, WHIZ200), pinned identity (WHIZ110–WHIZ112), InheritScope usage (WHIZ400/WHIZ401 in `Whizbang.Generators`), EF Core generation (WHIZ401/WHIZ402, WHIZ701–WHIZ703, WHIZ810–WHIZ822), physical/vector fields (WHIZ801–WHIZ807), stored-form migrations (WHIZ830–WHIZ833, see [Stored-Form Migrations](../../fundamentals/perspectives/stored-form-migrations.md#diagnostics)), and receptor safety (WHIZ900). Their build-output messages are self-describing; browse the Diagnostics section index for pages as they are added.
 
 ---
 

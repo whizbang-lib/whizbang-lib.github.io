@@ -12,13 +12,14 @@ description: >-
   enforces it and the opt-out for legitimate multi-fire scenarios
 tags: >-
   receptors, firing contract, idempotency, guardrail, dedup, ReceptorIdempotent,
-  double fire, at-most-once
+  double fire, at-most-once, once per service, ReceptorOnceAcrossServices
 codeReferences:
   - src/Whizbang.Core/Messaging/ReceptorInvoker.cs
   - src/Whizbang.Core/Dispatcher.cs
   - src/Whizbang.Core/Messaging/IReceptorDedupStore.cs
   - src/Whizbang.Core/Messaging/EnvelopeReceptorDedupStore.cs
   - src/Whizbang.Core/Messaging/ReceptorIdempotentAttribute.cs
+  - src/Whizbang.Core/Messaging/ReceptorOnceAcrossServicesAttribute.cs
   - src/Whizbang.Core/Messaging/LifecycleStageTracker.cs
   - src/Whizbang.Core/Observability/ReceptorInvocationRecord.cs
   - src/Whizbang.Core/Observability/MessageEnvelope.cs
@@ -30,13 +31,14 @@ testReferences:
   - tests/Whizbang.Core.Tests/Messaging/DuplicateReceptorFireExceptionTests.cs
   - tests/Whizbang.Core.Tests/Messaging/LifecycleStageTrackerTests.cs
   - tests/Whizbang.Core.Tests/Dispatcher/DispatcherLocalDispatchRecordTests.cs
+  - tests/Whizbang.Generators.Tests/ReceptorDiscoveryGeneratorCoverageTests.cs
   - samples/ECommerce/tests/ECommerce.Lifecycle.Integration.Tests/PostAllPerspectivesTests.cs
   - samples/ECommerce/tests/ECommerce.RabbitMQ.Integration.Tests/Lifecycle/PerspectiveLifecycleTests.cs
 ---
 
 # Exactly-Once Receptor Firing
 
-Whizbang's firing contract is straightforward: **a receptor fires exactly once in the lifetime of a message**, unless the receptor explicitly declares itself idempotent via `[ReceptorIdempotent]`. This page documents how that contract is tracked and enforced.
+Whizbang's firing contract is straightforward: **a receptor fires exactly once for a message in each service that registers it**, unless the receptor explicitly declares itself idempotent via `[ReceptorIdempotent]`. A receptor marked `[ReceptorOnceAcrossServices]` fires once for the message across every service. This page documents how that contract is tracked and enforced.
 
 ## The contract
 
@@ -71,6 +73,36 @@ Every successful receptor invocation is recorded on the envelope itself via a `L
 The check is **per-receptor, not per-stage**. That's intentional: a filter bug that allowed the same receptor to fire at both `LocalImmediateInline` *and* `PreOutboxInline` for one message would slip past a per-stage guard. Per-receptor catches it.
 
 The check is **skipped** for perspective-scoped stages (listed above) so that N-per-perspective fan-out doesn't trip the guardrail. The framework's lifecycle stage tracker (`LifecycleStageTracker`) also scopes its cross-worker dedup by `perspectiveType` when called from one of those stages.
+
+## Once per service {#once-per-service}
+
+{verified: DispatcherLocalDispatchRecordTests.SharedReceptor_InTwoServices_RunsInBothAsync, DispatcherLocalDispatchRecordTests.OnceAcrossServicesReceptor_InTwoServices_RunsOnceAsync, ReceptorInvocationTrackingTests.FiredInAnotherService_RunsHereAsync, ReceptorInvocationTrackingTests.FiredInThisService_IsSkippedAsync, ReceptorInvocationTrackingTests.OnceAcrossServices_FiredInAnotherService_IsSkippedAsync, EnvelopeReceptorDedupStoreTests.TryGetPriorInvocationForService_RecordFromAnotherService_ReturnsNullAsync, EnvelopeReceptorDedupStoreTests.TryGetPriorInvocationForService_RecordNamingNoService_CountsForEveryServiceAsync}
+
+The records a message carries travel with it from service to service, and each names the service
+that wrote it. A record stops a receptor **only in the service that wrote it**. Receptor code is
+often shared: the same receptor class registered in two services, each writing to its own store.
+When the first service publishes the event and runs that receptor on its local path, the second
+service still has to run it when the event reaches its inbox, or its store never sees the event.
+
+Service names compare without regard to case. A record that names no service, and a host that does
+not know its own name, keep the earlier rule: any record stops the receptor.
+
+Some receptors cause an effect outside every service: they send an email, call a webhook, charge a
+card. Those must run once for the message, not once per service. Mark them
+`[ReceptorOnceAcrossServices]`, and a record from any service stops them:
+
+```csharp{title="Once Across Services" description="An external side effect runs once for a message, whichever services handle it" category="Architecture" difficulty="INTERMEDIATE" tags=["Receptors", "Idempotency"] tests=["DispatcherLocalDispatchRecordTests.OnceAcrossServicesReceptor_InTwoServices_RunsOnceAsync"]}
+[ReceptorOnceAcrossServices]
+public class OrderConfirmationEmail : IReceptor<OrderPlaced> {
+  public ValueTask HandleAsync(OrderPlaced message, CancellationToken ct) {
+    // Sends one email, though two services handle OrderPlaced.
+    return ValueTask.CompletedTask;
+  }
+}
+```
+
+The source generator reads the attribute and sets `ReceptorInfo.IsOnceAcrossServices`; the
+invoker then asks the dedup store for a prior invocation from any service rather than from its own.
 
 ## Opting out: `[ReceptorIdempotent]`
 
@@ -115,10 +147,12 @@ public class DependentReadModelUpdater : IReceptor<OrderCreatedEvent> {
 
 **The local path of a publish records too.** `PublishAsync` runs an event's default-stage receptors
 directly, not through `ReceptorInvoker`, so before this it wrote no record, and a later stage that
-reached the same receptor for the same message in another host fired it again. The dispatcher now
-writes a record (stage `LocalImmediateInline`) for each receptor at the local default stage onto the
-envelope it stores for the outbox, before the envelope is serialized, because the outbox write runs
-beside the local path. A publish scheduled for later runs nothing locally and records nothing. With
+reached the same receptor for the same message in another host of the same service fired it again.
+The dispatcher now writes a record (stage `LocalImmediateInline`, naming the publishing service) for
+each receptor at the local default stage onto the envelope it stores for the outbox, before the
+envelope is serialized, because the outbox write runs beside the local path. That record stops the
+receptor in the publishing service only; [another service](#once-per-service) that registers the same
+receptor still runs it. A publish scheduled for later runs nothing locally and records nothing. With
 `ReceptorInvocationTracking = Off`, or no dedup store, nothing is recorded.
 
 **Important invariant**: `ReceptorInvocations` is **not consulted** by security, scope, source-service, or trace-context extraction. Those all walk `Hops` only. The two lists are intentionally parallel so the guardrail cannot accidentally leak into security-critical paths.
@@ -128,6 +162,11 @@ beside the local path. A publish scheduled for later runs nothing locally and re
 Records become durable when the envelope next hits a durable write (outbox row, inbox row, event-store append). A record written in-memory during a purely-local flow that crashes before the first durable write is lost — an explicit tradeoff of the "no hot-path DB writes" design. For flows that cross the outbox / transport / inbox, the record is preserved across process restarts.
 
 ## Pluggable store: `IReceptorDedupStore`
+
+The store answers two questions: whether a receptor fired for a message in a given service
+(`TryGetPriorInvocationAsync(envelope, receptorId, serviceName, ct)`), which the invoker asks for an
+ordinary receptor, and whether it fired anywhere (`serviceName: null`, or the overload without it),
+which it asks for a `[ReceptorOnceAcrossServices]` receptor.
 
 The default implementation is `EnvelopeReceptorDedupStore` (registered via `TryAddSingleton` in `AddWhizbangReceptorRegistry`). A consumer can replace it with a custom implementation — e.g., a database-backed store that writes to a `wh_receptor_invocations(message_id, receptor_id)` composite-PK table for stronger cross-process guarantees. Register a replacement before calling `AddWhizbang()` and the default registration is skipped.
 

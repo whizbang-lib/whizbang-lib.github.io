@@ -8,6 +8,9 @@ codeReferences:
   - src/Whizbang.Core/Messaging/ICollectiveEvent.cs
   - src/Whizbang.Core/Messaging/CollectiveEventBase.cs
   - src/Whizbang.Core/Messaging/CollectiveOrdering.cs
+  - src/Whizbang.Core/Messaging/CollectivePredecessorLink.cs
+  - src/Whizbang.Data.Postgres/Migrations/190_CollectiveOrderingHeads.sql
+  - src/Whizbang.Core/Workers/CollectivePredecessorHolds.cs
   - src/Whizbang.Core/Messaging/CollectiveScope.cs
   - src/Whizbang.Core/Messaging/TenantCollectiveScope.cs
   - src/Whizbang.Core/Messaging/EventFlags.cs
@@ -39,6 +42,7 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/175_CollectiveSinkQueue.sql
   - src/Whizbang.Data.Postgres/Collective/CollectiveApplyContention.cs
   - src/Whizbang.Data.EFCore.Postgres.Generators/EFCoreServiceRegistrationGenerator.cs
+  - src/Whizbang.Generators/Analyzers/CollectivePredicateIndexAnalyzer.cs
 testReferences:
   - tests/Whizbang.Core.Tests/Messaging/CollectiveEventContractTests.cs
   - tests/Whizbang.Core.Tests/Perspectives/CollectiveWhereComposerTests.cs
@@ -231,10 +235,9 @@ What the key guarantees:
   never overtaken.
 - **Replay agrees with live.** A rebuild folds the collectives sharing a stream in the same
   commit order, within the positions their ids gave them among the row's own events.
-- **Across services** the key's stream travels with the event, and the outbox publishes a
-  stream in order, so the consuming service commits them, and applies them, in the producer's
-  order. A transport that reorders a stream is outside what the key can repair: a collective
-  that arrives after a later one has applied is applied then, since an apply cannot be undone.
+- **Across services** the key's stream travels with the event, and each collective carries a
+  link to the one its publisher sent before it on the key, so a receiver that gets them out of
+  order puts them back. See [Ordering across services](#ordering-across-services).
 
 Pick the key at the grain of the family (`"activation:" + familyId`): everything sharing a key
 is serialized, so a key wider than the family costs throughput for nothing. Collectives
@@ -242,6 +245,51 @@ without a key are unchanged. `CollectiveEventBase` derives the stream for you; a
 `ICollectiveEvent` that returns a key must also return `CollectiveOrdering.StreamIdFor(Scope,
 OrderingKey)` from its `[StreamId]` property. The derivation is a compatibility contract:
 every producer and consumer must compute the same stream.
+
+### Ordering across services {#ordering-across-services}
+
+{verified: CollectiveOrderingHeadSqlTests.Store_TwoPublisherInstancesAlternating_FormOneChainAsync, CollectiveOrderingHeadSqlTests.Store_ConcurrentPublishesOnOneKey_FormOneLinearChainAsync, CollectiveOrderingHeadSqlTests.Store_AfterARestart_TheChainContinuesAsync, CollectiveOrderingHeadSqlTests.Maintenance_PrunesOnlyHeadsIdlePastTheRetentionAsync, EFCoreCollectiveOrderingHeadTests.StoreOutboxMessagesAsync_TwoCoordinators_LinkTheSecondToTheFirstAsync, DispatcherKeyedCollectiveStreamTests.PublishAsync_KeyedCollective_MarksItsOutboxRowForALinkAsync, PerspectiveWorkerCollectiveSinkTests.CollectiveSink_Predecessor_LaterInTheRun_AppliesFirstAsync, PerspectiveWorkerCollectiveSinkTests.CollectiveSink_Predecessor_NothingToWaitFor_AppliesAtOnceAsync, PerspectiveWorkerCollectiveSinkTests.CollectiveSink_Predecessor_NotYetArrived_WaitsThenAppliesBothInOrderAsync, PerspectiveWorkerCollectiveSinkTests.CollectiveSink_Predecessor_NeverArrives_AppliesWhenTheWaitRunsOutAsync, CollectivePredecessorLinkTests.Serialization_TheLinkFields_HaveTheNamesTheStoreWritesAsync}
+
+A receiver applies a key's collectives in the order it committed them, which is the order they
+arrived, and a transport can deliver them in another order than they were sent. A receiver that
+handles only some of the types on a key also sees gaps in the publisher's sequence, so the raw
+origin sequence cannot say whether anything is missing. Instead, each keyed collective names the
+one sent before it:
+
+- **The store links each collective, durably.** When a `CollectiveEventBase` with an ordering
+  key is stored in the outbox, the store (`store_outbox_messages`) looks up the key's head in
+  `wh_collective_ordering_heads`, writes its id and type into the new collective's payload as
+  `PredecessorId` and `PredecessorType`, and points the head at the new collective, all in the
+  transaction that stores it. The head row stays locked until that transaction commits, so every
+  instance of every publisher of a key takes its turn and the result is one linear chain, never
+  a fork. The head is in the database, so a restart does not break the chain. A head is kept
+  per collective stream, which is derived from the scope and the ordering key, so two tenants
+  using the same key never share one. The first collective on a key carries no link. A
+  collective the store has already stored (a retry's republish) is not linked again. There is no
+  per-process fallback: a host without the Postgres outbox store links nothing, and its
+  collectives apply as they always did.
+- **Idle keys are forgotten.** `perform_maintenance` prunes a key's head once the key has been
+  idle for `collective_ordering_head_retention_days` (a `wh_settings` value, default **7**). The
+  next collective on that key goes out unlinked and applies at once, which is right: its
+  predecessor applied days ago. Pruning by idleness bounds the table by the keys in use.
+- **The receiver applies at once** when the collective has no link, when it does not handle the
+  predecessor's type (it would never receive it), or when it has already seen the predecessor:
+  earlier in the same run, or in its event store and applied.
+- **Otherwise it waits.** The collective, and everything behind it on the key, is held, and the
+  collectives ahead of it in the run are completed. When the predecessor arrives, the two apply
+  in the order they were sent, whichever was committed first here.
+- **The wait is bounded.** `PerspectiveWorkerOptions.CollectivePredecessorWaitSeconds` (default
+  **30**; zero or less turns waiting off) caps it, counted from the first run that found the
+  predecessor missing. When it runs out the receiver logs a warning (EventId 74), counts it on
+  `whizbang.collectives.predecessor_timed_out`, and applies the collective without its
+  predecessor. Keep the wait well under the lease, since a held collective's rows are this
+  instance's only while their lease lasts.
+- **Wire-compatible both ways.** The link is two optional fields on the event, left out of the
+  JSON when there is none, so an unlinked collective is written exactly as before. A collective
+  from a publisher that sends no link (an older one, or a store without migration 190) reads
+  back with none and applies as today; an older receiver ignores the fields.
+
+A hand-written `ICollectiveEvent` carries no link; derive from `CollectiveEventBase` to get one.
 
 ### What this requires of the developer
 
@@ -507,6 +555,45 @@ public ICollectiveSpec<TicketModel> Reroute(TicketsReroutedCollectiveEvent e) =>
   `NotSupportedException`.
 - **An enumeration in a column whose type you declared** (`ColumnType = "text"`, say) throws
   `NotSupportedException`: its stored form is then your choice, which a collective cannot know.
+
+#### jsonb columns: one key, or the whole value {#jsonb-columns}
+
+{verified: CollectivePhysicalColumnIntegrationTests.Apply_KeyInsideAJsonbColumn_SetsThatKey_KeepsTheRest_AndLeavesTheDocumentAsync, CollectivePhysicalColumnIntegrationTests.Apply_WholeJsonbValues_BindAsJsonb_ForAnObjectADictionaryAndNullAsync, CollectivePhysicalColumnIntegrationTests.Replay_MatchesLive_ForJsonbKeysAndWholeValuesAsync, DapperCollectivePhysicalColumnIntegrationTests.Apply_KeyInsideAJsonbColumn_SetsThatKey_AndKeepsTheRestAsync, DapperCollectivePhysicalColumnIntegrationTests.Apply_WholeJsonbValues_ForAnObjectADictionaryAndNullAsync, DapperCollectivePhysicalColumnIntegrationTests.Replay_MatchesLive_ForJsonbKeysAndWholeValuesAsync}
+
+A property declared `[PhysicalField(ColumnType = "jsonb")]` holds an object (or a dictionary, or a keyed
+array) in a jsonb column. A collective can set **one key** of the stored object, keeping every other key, or
+replace **the whole value**, both in the same `UPDATE` as every other setter and on both drivers.
+
+```csharp{title="One key of a jsonb column, and a whole value" description="Theme is one key of the Settings object in its jsonb column; Counters is replaced whole" category="Messaging" difficulty="INTERMEDIATE" tags=["Collective Events", "Physical Fields", "jsonb"] tests=["CollectivePhysicalColumnIntegrationTests.Replay_MatchesLive_ForJsonbKeysAndWholeValuesAsync"]}
+[PerspectiveStorage(FieldStorageMode.Split)]
+public sealed class WorkspaceModel {
+  [PhysicalField(ColumnType = "jsonb")] public WorkspaceSettings? Settings { get; set; }
+  [PhysicalField(ColumnType = "jsonb")] public Dictionary<string, int>? Counters { get; set; }
+}
+
+[CollectiveApplyFor]
+public ICollectiveSpec<WorkspaceModel> Rebrand(WorkspacesRebrandedCollectiveEvent e) =>
+  new CollectiveSpec<WorkspaceModel>(
+    Setters: s => s
+      .SetProperty(w => w.Settings!.Theme, e.Theme)      // one key; the rest of Settings is kept
+      .SetProperty(w => w.Counters, e.Counters));        // the whole value
+// UPDATE … SET "settings" = jsonb_set(NULLIF("settings", 'null'::jsonb), '{Theme}', @p0::jsonb),
+//              "counters" = @p1::jsonb, …
+```
+
+- **One key** (`m => m.Settings.Theme`) compiles to `jsonb_set` over the column. Several keys of one column, or
+  a whole value followed by a key, compose in call order. Outside `Split` the same key is set in the document too.
+  The key is one level down, set to a value; a deeper path or a computed value throws `NotSupportedException`,
+  as does a key of anything but a jsonb physical column.
+- **A null object stays null.** A key of a column holding no object changes nothing, live and in the replay:
+  set the whole value first when the object may be missing.
+- **The whole value** is bound as its JSON and cast to `jsonb`, for an object, a dictionary or a list; `null`
+  clears the column, as the per-event write of a null property does. It used to be bound as a CLR value with no
+  type, which neither driver could send.
+- **Replay matches live.** The in-memory replay sets the same member of the model's object (or replaces the
+  value), and the runner writes the column from the model: a rebuilt row's column and document equal the live
+  ones. The Dapper per-event write now sends an object in a jsonb column as its JSON; it used to send the
+  type's name.
 
 ### Per-perspective projection (`Where`)
 
@@ -910,14 +997,28 @@ hardened so a large cohort can never convoy locks or run away:
   not rise. When every wait is used up the batch gives up with a
   `CollectiveApplyLockBusyException` naming the table and the total wait.
 - **Busy is not failed.** The worker treats that exception as busy: it reports no
-  failure (the failure count is what drives dead-lettering) and completes nothing,
-  so the collective is applied later. `PerspectiveWorkerOptions.CollectiveLockBusyCountsAsFailure = true`
+  failure (the failure count is what drives dead-lettering) and does not complete the
+  busy collective, so it is applied later, in full, even if some of its batches had
+  committed. `PerspectiveWorkerOptions.CollectiveLockBusyCountsAsFailure = true`
   restores the older accounting, a busy lock reported like a failed apply.
+- **What applied is complete.** A collective is complete as soon as every one of its
+  batches has committed in a run. When a later collective in the same run finds its lock
+  busy, or fails, the ones applied before it are completed (their rows, the cursor, and
+  their post-apply receptors), so the retry starts at the one that did not apply rather
+  than applying the others again.
+  {verified: PerspectiveWorkerCollectiveSinkTests.CollectiveSink_BusyApplyLock_CollectivesAppliedBeforeIt_AreCompleteAndNotReappliedAsync, PerspectiveWorkerCollectiveSinkTests.CollectiveSink_Failure_CollectivesAppliedBeforeIt_AreCompleteAsync, PerspectiveWorkerCollectiveSinkTests.CollectiveSink_BusyApplyLock_WithoutAQueue_MovesTheCursorPastTheAppliedOnesAsync}
 - **An advisory lock has no queue.** PostgreSQL wakes its waiters in no guaranteed
   order, so a batch that waits has no place in line to keep: a later collective on the
   same table and scope can take the lock first. Collectives whose order matters carry
   an [ordering key](#ordering-key); those wait in their key's queue, which a busy lock
   cannot reorder.
+- **Index the fields the cohort filters.** Each `r.Data.X` in a handler's
+  `Where` is read as `data ->> 'X'` (or the promoted column), which only an
+  index over that field answers; the whole-document GIN index doesn't.
+  Nothing creates indexes in the apply path, so declare `[Indexed]` on each
+  field the cohort filters. [WHIZ309](../../operations/diagnostics/whiz309.md)
+  warns at a predicate on an unindexed field, and its code fix adds the
+  attribute.
 - **Store-managed columns.** The `UPDATE` also stamps `updated_at` and
   bumps `version` (a collective `UPDATE` writing only `data` would leave
   them stale and break change-detection). The per-stream lost-update guard

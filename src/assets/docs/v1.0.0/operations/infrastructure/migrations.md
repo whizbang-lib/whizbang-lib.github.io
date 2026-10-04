@@ -274,6 +274,13 @@ region) has a different hash, so it runs in full once and records itself. The mi
 untouched by any of this; the bootstrap still claims nothing about migrations.
 {verified: SchemaBootstrapPhaseTests.ACurrentClosureIsNotAppliedAgainAsync, SchemaBootstrapPhaseTests.AChangedClosureIsAppliedAsync, SchemaBootstrapPhaseTests.TheBootstrapRecordsNothingInTheLedgerAsync}
 
+### Which instance migrates {#which-instance-migrates}
+
+The migrator is a duty, held by [role assignment](../startup/capabilities-and-duties#role-assignment-the-default) by default. Its vote is part of the bootstrap closure (migration `184_RoleAssignmentResilience.sql` is a bootstrap region), so the assignment table and its functions exist before the first migration runs. Every instance joins the registry, then votes; the winner migrates and releases the duty when it returns, however it returns.
+
+An instance that lost the vote waits for the result instead of queuing behind the schema lock. It watches the migrator itself: its assignment row and, for a migrator on a release that still held the duty by session lock, that lock (`MigratorWatch`). The migrator renews its assignment between phases and marks the backend running its DDL, so one long migration statement does not lose the duty; its lease is 30 seconds by default (`RoleAssignmentOptions.RoleLeases`). If the migrator dies, its assignment lapses and a waiter goes on to do the schema work itself, still under the schema lock, which keeps DDL to one instance at a time whatever the duty says.
+{verified: MigratorWatchTests.AMigratorHoldingTheRole_IsMigrating_UntilItReleasesItAsync, MigratorWatchTests.AMigratorOnAnOlderRelease_HoldingTheDutysSessionLock_IsMigratingAsync, SchemaMigratorDeferralGenerationTests.AWaiterWatchesTheMigratorAsync, SchemaMigratorDeferralGenerationTests.TheMigratorRenewsItsRole_AndMarksTheBackendRunningTheMigrationAsync}
+
 ### Table rewrites run post-ready, under the maintainer duty
 
 A migration cannot `VACUUM FULL` (both are forbidden inside its transaction), so a migration that leaves a table owing a rewrite — a `DROP COLUMN`, whose bytes Postgres keeps in every pre-existing row — **records** the request via `wh_request_table_rewrite`. The runtime bloat detector records through the same function when churn bloats a table past threshold.
@@ -293,7 +300,10 @@ once, by a rewrite that is part of the migration path rather than of the schema 
 The same phase runs the migrations an application declares for its own stored documents when a
 model changes shape (a property's type or name, a removal, a default): see
 [Stored-form migrations](../../fundamentals/perspectives/stored-form-migrations.md). They run first,
-journaled in `wh_stored_form_migrations`, under the same lock and fence.
+journaled in `wh_stored_form_migrations`, under the same lock and fence. A migration that converts a
+table brings forward the retries of the streams parked on it, and an index that still casts a
+retyped key to its old type is dropped before the conversion and built again, concurrently, once the
+phase has committed.
 
 ### What it converts
 
@@ -485,9 +495,101 @@ The canonical example is `063_NormalizeClrTypeNamesV2.sql`, which normalizes sto
 `wh_settings` (a `setting_key` / `setting_value` / `value_type` / `description` key-value table) is the home for two kinds of SQL-side entries:
 
 - **Data-format version markers** — e.g. `clr_type_name_format_version` (above).
-- **Operational tuning knobs** read by SQL functions — e.g. `perform_maintenance` reads `debug_mode`, `dedup_retention_days`, `stuck_inbox_retention_days`, `abandoned_stream_hours` (the idle grace before an owner-less `wh_active_streams` row is purged), and `ephemeral_rewind_grace_seconds`. Later migrations redefine `perform_maintenance` in place, so the authoritative knob list is whatever the latest redefinition reads.
+- **Operational tuning knobs** read by SQL functions — e.g. `perform_maintenance` reads `debug_mode`, `dedup_retention_days`, `stuck_inbox_retention_days`, `abandoned_stream_hours` (the idle grace before an owner-less `wh_active_streams` row is purged), `ephemeral_rewind_grace_seconds`, and `collective_ordering_head_retention_days` (how long an idle collective ordering key keeps its predecessor head, default 7). Later migrations redefine `perform_maintenance` in place, so the authoritative knob list is whatever the latest redefinition reads.
 
 Settings are seeded by migrations with `ON CONFLICT (setting_key) DO NOTHING` (so operator overrides survive re-runs). Keep C#-worker-coupled timing constants (retry backoff, work leases, liveness thresholds) *out* of this table — tuning them independently of the workers that assume them causes drift.
+
+## Bounded data migrations {#batched-regions}
+
+A migration file is sent to the database as **one command**, and that command carries one timeout. A
+statement that rewrites every row of a table therefore cannot finish once the table is large enough,
+and writing a loop inside the SQL does not help — a `DO` block is still one command, so the whole
+loop shares the single budget. The failure is not a clean error either: the statement is cut off, the
+migration's transaction rolls back, the retry starts from the beginning, and the ledger never moves.
+A service in that state never finishes starting.
+
+How large a consumer's event store or inbox gets is not knowable when a migration is written, so the
+bound has to be on **rows per statement** rather than on elapsed time.
+
+### Marking a region
+
+Wrap the statement in a batch region. The runner sends what is inside it repeatedly — each send its
+own command, with its own budget — until it reports that it handled no rows.
+
+```sql{title="Marking a batched region" description="The runner sends what is inside the markers repeatedly, each send its own command, until it reports no rows left" category="Configuration" difficulty="ADVANCED" tags=["Operations", "Infrastructure", "Data-Migration"] tests=["MigrationBatchRegionsTests.AMarkedRegionBecomesABatchSegmentAsync", "MigrationBatchConvergenceTests.TheBackfillMovesOneBoundedSliceAtATimeAndThenStopsAsync"]}
+-- @whizbang:batch-begin size=5000
+SELECT __SCHEMA__.wh_backfill_something(@whizbang_batch_size);
+-- @whizbang:batch-end
+```
+
+`size=` is optional and defaults to 10,000. `@whizbang_batch_size` is replaced with that number
+before the statement is sent; it is not a bound parameter, because a migration is a script rather
+than a prepared statement.
+
+Markers sit next to the statement they bound, for the same reason the bootstrap markers do: a list
+kept in code goes stale the first time a migration changes, while a marker is edited by whoever edits
+the statement. Segments keep file order and are never grouped, so a backfill marked below the
+function it calls still runs after that function is created.
+
+### What the region has to be
+
+**A statement that returns the number of rows it handled**, normally `SELECT` of a function. Two
+reasons, both load-bearing:
+
+- A backfill usually needs a **guard** — on a ledger replay the column it rewrites may no longer
+  exist — and a guard needs a function body, which bare DML cannot carry. A guarded function returns
+  `0` and the runner stops after one call.
+- A function can run **several statements that see each other's effects**. A single statement's CTEs
+  cannot: every arm reads the same snapshot, so an `UPDATE` arm cannot see rows an `INSERT` arm just
+  wrote. A backfill that inserts a row then nulls the original only if the copy exists has to be two
+  statements, or it nulls nothing and never terminates.
+
+### What makes it terminate
+
+**The statement must exclude the rows it has already handled.** This is the whole contract, and it is
+a property of the SQL rather than of the marking:
+
+```sql{title="Predicates that terminate, and one that does not" description="A batched region stops when its statement excludes the rows it already handled; ON CONFLICT DO NOTHING reports zero for rows already copied and stops early" category="Configuration" difficulty="ADVANCED" tags=["Operations", "Infrastructure", "Data-Migration"] tests=["MigrationBatchConvergenceTests.TheBackfillMovesOneBoundedSliceAtATimeAndThenStopsAsync", "MigrationBatchConvergenceTests.TheBackfillReportsNothingWhenThereIsNothingToDoAsync"]}
+-- terminates: the rows it fills stop matching
+WHERE normalized_message_type IS NULL
+
+-- terminates: the rows it rewrites stop differing
+WHERE aggregate_type IS DISTINCT FROM split_part(event_type, ',', 1)
+
+-- does NOT terminate: ON CONFLICT DO NOTHING reports zero for rows already copied,
+-- so a slice of already-seeded rows reads as "nothing left" and stops early
+INSERT INTO target SELECT ... FROM source ON CONFLICT DO NOTHING
+```
+
+For that last shape, exclude the copied rows explicitly with `NOT EXISTS` rather than relying on the
+conflict clause.
+
+A region that never reports zero is stopped after 10,000 passes with an error naming the migration,
+so a non-converging statement fails by name rather than leaving a service that never starts.
+
+### Bounding without a key
+
+`LIMIT` inside a subquery is the usual bound. `UPDATE` has no `LIMIT` in PostgreSQL, so it goes in
+the row selection:
+
+```sql{title="Bounding an UPDATE without a LIMIT clause" description="PostgreSQL has no UPDATE ... LIMIT, so the bound goes in the row selection" category="Configuration" difficulty="ADVANCED" tags=["Operations", "Infrastructure", "Data-Migration"] tests=["MigrationBatchConvergenceTests.TheBackfillMovesOneBoundedSliceAtATimeAndThenStopsAsync"]}
+UPDATE __SCHEMA__.wh_inbox
+   SET source_commit_sequence = 0
+ WHERE message_id IN (
+   SELECT message_id FROM __SCHEMA__.wh_inbox
+    WHERE source_commit_sequence IS NULL
+    LIMIT p_limit
+ );
+```
+
+Where the table has no key declared in SQL — some are created from code — `ctid` bounds a slice just
+as well.
+
+### Ordering around a backfill
+
+Segments run in file order, so a step that depends on a backfill having finished goes in plain SQL
+*after* the region. Adding a column, filling it, and then enforcing `NOT NULL` is three segments in
+that order; the constraint is only reached once the fill has reported nothing left.
 
 ## Constants {#constants}
 

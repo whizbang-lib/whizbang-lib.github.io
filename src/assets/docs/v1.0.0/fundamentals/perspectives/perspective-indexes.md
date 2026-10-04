@@ -2,9 +2,9 @@
 title: Perspective Indexes
 pageType: concept
 description: >-
-  Which indexes a perspective table gets, how to say whether your queries match on any field or
-  on metadata, why an index is never dropped on upgrade, and how duplicate indexes are avoided and
-  cleaned up.
+  Which indexes a perspective table gets, how to opt in to matching on any field or on metadata
+  (both off by default in 1.0), why an index is never dropped on upgrade, and how duplicate indexes
+  are avoided and cleaned up.
 version: 1.0.0
 category: Perspectives
 order: 34
@@ -14,6 +14,9 @@ codeReferences:
   - src/Whizbang.Generators.Shared/Models/PerspectiveQueriesDiscovery.cs
   - src/Whizbang.Generators.Shared/Models/PerspectiveIndexSql.cs
   - src/Whizbang.Data.EFCore.Postgres.Generators/EFCoreServiceRegistrationGenerator.cs
+  - src/Whizbang.Data.EFCore.Postgres.Generators/EFCorePerspectiveConfigurationGenerator.cs
+  - src/Whizbang.Generators/PerspectiveSchemaGenerator.cs
+  - src/Whizbang.Generators/Analyzers/CollectivePredicateIndexAnalyzer.cs
   - src/Whizbang.Data.Postgres/Migrations/174_EnsureIndex.sql
   - src/Whizbang.Data.Postgres/Migrations/178_IndexStatistics.sql
   - src/Whizbang.Data.Postgres/IndexStatistics.cs
@@ -24,6 +27,9 @@ codeReferences:
   - src/Whizbang.Data.EFCore.Postgres/QueryTranslation/JsonbContainmentRewriter.cs
 testReferences:
   - tests/Whizbang.Generators.Tests/PerspectiveDocumentIndexGenerationTests.cs
+  - tests/Whizbang.Generators.Tests/EFCorePerspectiveConfigurationGeneratorCoverageTests.cs
+  - tests/Whizbang.Generators.Tests/PerspectiveSchemaGeneratorTests.cs
+  - tests/Whizbang.Generators.Tests/Analyzers/CollectivePredicateIndexAnalyzerTests.cs
   - tests/Whizbang.Generators.Tests/PerspectiveIndexSqlTests.cs
   - tests/Whizbang.Generators.Tests/Analyzers/DocumentMatchIndexAnalyzerTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/EnsureIndexFunctionTests.cs
@@ -54,8 +60,8 @@ see [JSONB Containment Queries](jsonb-containment.md).
 | `idx_<table>_updated_at` | `updated_at` | The retention sweep's `updated_at < now() - interval` |
 | `idx_<table>_scope_gin` | the `scope` document | Scope matching |
 | `idx_<table>_scope_tenant` | `scope ->> 't'` | The tenant filter every tenant-scoped read and every collective apply adds |
-| `idx_<table>_data_gin` | the `data` document | **Only when your queries match on any field** (below) |
-| `idx_<table>_metadata_gin` | the `metadata` document | **Only when your queries match on metadata** (below) |
+| `idx_<table>_data_gin` | the `data` document | **Only when you declare that your queries match on any field** (below) |
+| `idx_<table>_metadata_gin` | the `metadata` document | **Only when you declare that your queries match on metadata** (below) |
 
 `<table>` is the table name without its `wh_per_` prefix. Every field index you declare comes on top.
 
@@ -74,7 +80,7 @@ So the model says which lookups its queries make, in terms of what they do rathe
 gets built:
 
 ```csharp{title="Declaring what a perspective's queries do" description="MatchOnAnyField keeps or removes the whole-document index; MatchOnMetadata adds the metadata index." framework="NET10" category="Perspectives" difficulty="INTERMEDIATE" tags=["perspectives", "indexing", "attributes"] tests=["PerspectiveDocumentIndexGenerationTests.MatchOnAnyFieldFalse_OmitsTheDocumentIndexAsync", "PerspectiveDocumentIndexGenerationTests.MatchOnMetadataTrue_BuildsTheMetadataIndexAsync"]}
-// Every filter uses a declared field index, so the whole-document index is not built.
+// Every filter uses a declared field index, and the model says the whole-document index isn't wanted.
 [PerspectiveQueries(MatchOnAnyField = false)]
 public record OrderSummary {
   [Indexed]
@@ -94,7 +100,7 @@ public record AuditTrail {
 
 | Property | `true` | `false` | Not written |
 |---|---|---|---|
-| `MatchOnAnyField` | whole-document index built | not built | **built** (transitional default, see below) |
+| `MatchOnAnyField` | whole-document index built | not built | **not built** (see [Upgrading to 1.0](#upgrading-to-1-0)) |
 | `MatchOnMetadata` | metadata index built | not built | not built |
 
 The attribute goes on the model, like `[PerspectiveStorage]` and `[PerspectiveIndex]`, and a model
@@ -112,35 +118,68 @@ inherits it from its base. The nearest declaration wins as a whole.
   Nothing in the framework matches on metadata. It reads a row's metadata by key, one row at a
   time, so leave this off unless your own queries need it.
 
-### The transitional default, and why it exists
+### What the build tells you
 
-Leaving `MatchOnAnyField` out still builds the whole-document index. Every perspective had it before
-the attribute existed, and a query that depends on it can live in any assembly that references the
-model, including ones this build never sees. A default that silently removed it would turn some
-production lookups into full table scans on the next deployment.
-
-The build tells you where you stand:
-
-- [WHIZ308](../../operations/diagnostics/whiz308.md) (Info) marks each filter that relies on the
-  index while the model declares nothing. That is the list to check before writing `false`.
+- [WHIZ308](../../operations/diagnostics/whiz308.md) (Warning) fires on each filter that compiles to a
+  whole-document match on a model that declares nothing, so the index isn't built. It names the
+  opt-in. That is the list to check after upgrading.
 - [WHIZ307](../../operations/diagnostics/whiz307.md) (Warning) fires on a filter that compiles to a
   whole-document match the declaration leaves without an index: `MatchOnAnyField = false` with an
   equality or set filter on an unindexed field, or any metadata match without
-  `MatchOnMetadata = true`. It also fires on a lens or resolver that lets the **request** compose
-  filters (for example `[UseFiltering]`, or a lens marked `[ComposesQueryFromRequest]`) over a model
-  that opted out while some of its fields still have no index, because no source shows those
-  filters.
+  `MatchOnMetadata = true`.
+- Both also fire on a lens or resolver that lets the **request** compose filters (for example
+  `[UseFiltering]`, or a lens marked `[ComposesQueryFromRequest]`) over a model with fields that still
+  have no index, because no source shows those filters.
+- [WHIZ309](../../operations/diagnostics/whiz309.md) (Warning) fires on a collective predicate that
+  filters a field with no index of its own. The whole-document index doesn't answer collective
+  predicates at all, so the fix there is always `[Indexed]`.
 
-The analyzer sees only the queries in the projects it builds. Before you declare
-`MatchOnAnyField = false` on a model other services query, check those services too, and check the
-index's scan count in production (below).
+The analyzer sees only the queries in the projects it builds. A model other services query needs
+those services checked too, and the index's scan count in production (below).
+
+### Every driver follows the same declaration
+
+| Driver | Whole-document index | Metadata index |
+|---|---|---|
+| EF Core, schema pass | `idx_<table>_data_gin`, only for `MatchOnAnyField = true` | `idx_<table>_metadata_gin`, only for `MatchOnMetadata = true` |
+| EF Core, polymorphic model | `HasIndex(e => e.Data).HasMethod("gin")` in the model, only for `MatchOnAnyField = true` | not declared in the model |
+| Dapper schema generator | none (Dapper doesn't compile equality to a whole-document match) | `ix_<table>_metadata_gin`, only for `MatchOnMetadata = true` |
+
+{verified: PerspectiveDocumentIndexGenerationTests.Undeclared_BuildsNoDocumentIndexInEitherScriptAsync, EFCorePerspectiveConfigurationGeneratorCoverageTests.Generator_PolymorphicModelWithoutTheOptIn_DeclaresNoDocumentIndexAsync, PerspectiveSchemaGeneratorTests.Generator_WithoutTheMetadataOptIn_BuildsNoMetadataIndexAsync}
+
+## Upgrading to 1.0: the whole-document index is opt-in {#upgrading-to-1-0}
+
+Releases before 1.0 built `idx_<table>_data_gin` for every model that didn't declare
+`MatchOnAnyField = false`. From 1.0, a model that declares nothing doesn't get it:
+
+- **A new database** doesn't get the index for an undeclared model. Equality and set filters on its
+  unindexed fields read every row there.
+- **An existing database keeps the index.** Nothing drops it, so queries that use it keep using it.
+  The schema pass simply stops creating it.
+
+Before deploying 1.0 to a new environment:
+
+1. **Build, and read WHIZ308.** Each warning is a filter that needed the index. For each model it
+   names, declare `[PerspectiveQueries(MatchOnAnyField = true)]` to keep the index, or mark the
+   filtered fields `[Indexed]`. The Dapper and EF Core drivers follow the same declaration.
+2. **Read WHIZ309.** Each warning is a collective predicate whose field has no index. Declare
+   `[Indexed]` on it (the code fix does this). An index an earlier release created at apply time
+   isn't created on a new database either (see
+   [below](#indexes-an-earlier-release-created-at-apply-time)).
+3. **Check the services you don't build.** A model other services query can be filtered in code the
+   analyzer never sees. Check the index's scan count where the model's queries run.
+
+On an existing database, the index stays until you decide. If a model now declares
+`MatchOnAnyField = false`, or declares nothing and you have confirmed that nothing reads the index,
+drop it as an operator step (below). If you keep it on purpose, declare `MatchOnAnyField = true` so a
+new environment gets it too.
 
 ## Upgrading: nothing is dropped for you
 
 The schema pass only ever **creates** indexes. When a release stops declaring an index, such as the
-metadata index now that it is off by default, or the whole-document index after you declare
-`MatchOnAnyField = false`, the index already in your database **stays**. New databases don't get
-it. Existing ones keep it until an operator removes it.
+metadata index or the whole-document index now that both are off by default, or the whole-document
+index after you declare `MatchOnAnyField = false`, the index already in your database **stays**. New
+databases don't get it. Existing ones keep it until an operator removes it.
 
 That is deliberate. Keeping an unused index costs write time. Removing one a production query relies
 on turns that query into a full table scan. Only the first is safe to do by default.
@@ -161,11 +200,13 @@ WHERE s.relname LIKE 'wh\_per\_%'
 ORDER BY pg_relation_size(s.indexrelid) DESC;
 ```
 
-Then drop it without blocking writes. `CONCURRENTLY` can't run inside a transaction, so run each
-statement on its own:
+A `data_gin` or `metadata_gin` index with no scans over a full traffic cycle, on a model that doesn't
+declare the matching lookup, is one 1.0 no longer builds. Drop it without blocking writes.
+`CONCURRENTLY` can't run inside a transaction, so run each statement on its own:
 
 ```sql{title="Dropping a document index a release no longer declares" description="Run per index, outside a transaction, after confirming it has no scans." category="Perspectives" difficulty="INTERMEDIATE" tags=["postgres", "indexing", "operations"]}
 DROP INDEX CONCURRENTLY IF EXISTS "inventory".idx_order_summary_metadata_gin;
+DROP INDEX CONCURRENTLY IF EXISTS "inventory".idx_order_summary_data_gin;
 ```
 
 If you later change your mind, the next schema change for that perspective creates the index again
@@ -212,9 +253,11 @@ Nothing creates a perspective index at runtime any more. The `idx_wh_per_<table>
 in databases that have them, and they keep working. **They are not created on a new database.** If a
 query or a collective predicate depends on one of the `data_<field>` indexes, for example a
 predicate `OverlayId == x`, declare `[Indexed]` on that field in the same release you deploy to a
-new environment. On a database that already has the old index, the declaration doesn't build a
-second one: `wh_ensure_index` finds the old index by its definition and leaves it in place. The
-tenant index needs nothing, because every table declares `idx_<table>_scope_tenant`.
+new environment. [WHIZ309](../../operations/diagnostics/whiz309.md) points at each collective
+predicate that needs one, and its code fix adds the attribute. On a database that already has the old
+index, the declaration doesn't build a second one: `wh_ensure_index` finds the old index by its
+definition and leaves it in place. The tenant index needs nothing, because every table declares
+`idx_<table>_scope_tenant`.
 
 ### Long names
 
@@ -304,4 +347,5 @@ fixes that at once.
 - [Physical Fields](physical-fields.md): `[Indexed]`, `[PhysicalField]` and `[PerspectiveIndex]`
 - [JSONB Containment Queries](jsonb-containment.md): what compiles to a whole-document match
 - [WHIZ302](../../operations/diagnostics/whiz302.md): filters no index can answer
-- [WHIZ307](../../operations/diagnostics/whiz307.md) and [WHIZ308](../../operations/diagnostics/whiz308.md)
+- [WHIZ307](../../operations/diagnostics/whiz307.md) and [WHIZ308](../../operations/diagnostics/whiz308.md): whole-document matches without an index
+- [WHIZ309](../../operations/diagnostics/whiz309.md): collective predicates on unindexed fields

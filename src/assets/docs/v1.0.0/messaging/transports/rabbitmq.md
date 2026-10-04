@@ -534,6 +534,8 @@ app.Run();
 
 ### Configuration Options
 
+Every option below also binds from `Whizbang:Transports:RabbitMQ` (for example `Whizbang__Transports__RabbitMQ__PrefetchCount=100`). The registration callback's values are the defaults, and a configuration key overrides them. The same section's `MessageProcessing`, `Batch`, `SubscriptionResilience` and `Consumer` children configure the transport consumer; see [Transport Sections](../../operations/configuration/configuration-reference#transport-sections).
+
 | Property | Default | Description |
 |----------|---------|-------------|
 | `MaxChannels` | 10 | Maximum pooled channels for publishing |

@@ -1,13 +1,13 @@
 {
   "run": {
-    "runId": "36728665568",
-    "sha": "790e5889bcd1890e291e5f2d89d9b7af6a69473d",
+    "runId": "37157462699",
+    "sha": "12e0cbd6494a8350be1ba85cb7ca807dea8bf535",
     "branch": "develop",
-    "libraryVersion": "0.2606.0-alpha.35",
-    "completedAt": "2026-09-30T14:43:58.620Z"
+    "libraryVersion": "0.2608.0-alpha.27",
+    "completedAt": "2026-10-03T22:32:47.732Z"
   },
   "total": {
-    "passed": 26855,
+    "passed": 27250,
     "failed": 0,
     "skipped": 9
   },
@@ -23,12 +23,12 @@
       "skipped": 0
     },
     "postgres-dapper": {
-      "passed": 772,
+      "passed": 875,
       "failed": 0,
       "skipped": 0
     },
     "postgres-efcore-": {
-      "passed": 6256,
+      "passed": 6372,
       "failed": 0,
       "skipped": 0
     },
@@ -48,7 +48,7 @@
       "skipped": 1
     },
     "unit": {
-      "passed": 19511,
+      "passed": 19687,
       "failed": 0,
       "skipped": 8
     }
@@ -116,19 +116,19 @@
     },
     "Whizbang.Core.Tests": {
       "file": "Whizbang.Core.Tests.json",
-      "passed": 12618,
+      "passed": 12701,
       "failed": 0,
       "skipped": 0
     },
     "Whizbang.Data.Dapper.Postgres.Tests": {
       "file": "Whizbang.Data.Dapper.Postgres.Tests.json",
-      "passed": 772,
+      "passed": 875,
       "failed": 0,
       "skipped": 0
     },
     "Whizbang.Data.EFCore.Postgres.Tests": {
       "file": "Whizbang.Data.EFCore.Postgres.Tests.json",
-      "passed": 6256,
+      "passed": 6372,
       "failed": 0,
       "skipped": 0
     },
@@ -158,7 +158,7 @@
     },
     "Whizbang.Generators.Tests": {
       "file": "Whizbang.Generators.Tests.json",
-      "passed": 2612,
+      "passed": 2657,
       "failed": 0,
       "skipped": 0
     },
@@ -224,7 +224,7 @@
     },
     "Whizbang.Sagas.Tests": {
       "file": "Whizbang.Sagas.Tests.json",
-      "passed": 309,
+      "passed": 355,
       "failed": 0,
       "skipped": 0
     },
@@ -242,7 +242,7 @@
     },
     "Whizbang.Testing.Tests": {
       "file": "Whizbang.Testing.Tests.json",
-      "passed": 267,
+      "passed": 269,
       "failed": 0,
       "skipped": 0
     },
