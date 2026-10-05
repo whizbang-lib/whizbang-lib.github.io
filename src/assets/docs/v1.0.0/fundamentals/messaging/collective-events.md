@@ -19,6 +19,8 @@ codeReferences:
   - src/Whizbang.Core/Perspectives/PerspectiveMemberDefaultRegistry.cs
   - src/Whizbang.Core/Perspectives/ICollectiveQuery.cs
   - src/Whizbang.Core/Perspectives/ICollectiveReplayApplier.cs
+  - src/Whizbang.Core/Perspectives/IPerspectiveRebuilder.cs
+  - src/Whizbang.Core/Perspectives/PerspectiveRebuilder.cs
   - src/Whizbang.Core/Perspectives/CollectiveApplyForAttribute.cs
   - src/Whizbang.Core/Perspectives/CollectiveWhereComposer.cs
   - src/Whizbang.Core/Perspectives/CollectiveApplyOptions.cs
@@ -301,10 +303,10 @@ discipline event sourcing requires of a regular `Apply`. If you need a
 moment-in-time threshold, capture it on the event payload at write time
 (e.g. `e.OlderThan = clock.GetUtcNow()`), not at apply time.
 
-### Surviving a full rebuild
+### Surviving a rebuild
 
 Log replay — re-evaluating the predicate at the event's log position —
-is one path; a **full perspective rebuild** is the other, and it takes a
+is one path; a **perspective rebuild** is the other, and it takes a
 different route. The rebuilder replays each perspective's own `Apply()`
 events per stream and **never runs the set-based collective SQL path**,
 so a collective mutation would be lost on rebuild without a dedicated
@@ -322,6 +324,31 @@ row. (The `ICollectiveQuery` it passes throws on use — replay-safe specs
 never reach for a sibling, enforced by `WHIZ106`.) Tenant scoping is
 essential: a collective for a global template G in tenant A must never
 fold into tenant B's row for the same G.
+
+**This holds for every rebuild scope, including a rebuild narrowed to
+specific streams.** The seam sits inside the single per-stream replay
+path that every mode goes through, and the collective events are found
+by tenant and model rather than by being present in the rebuild's stream
+set. So a rebuild of one stream folds in the collectives that cross it
+exactly as a rebuild of the whole perspective does, and a caller does
+**not** have to discover and include the collective events' own streams
+in the request. Reading the rebuilder alone suggests the opposite —
+it replays the physical streams it was given, and a collective event
+lives on its own stream — so this is worth stating plainly: the
+interleave, not the stream set, is what makes a collective survive.
+
+The order is a guarantee, not an accident of iteration. Within a row's
+replay, `OrderByMessageId` places each collective chronologically among
+that stream's own events, and collectives that share a stream through an
+ordering key are then placed in commit order among themselves — the
+order the live sink applied them in. The order in which *rows* are
+rebuilt is unspecified and does not matter, because each row's replay
+carries the cross-stream events it needs.
+
+For an operator this is the property that makes a targeted repair safe:
+replaying a known-stale row through its perspective reproduces the
+collective mutations that row received, so a repair scoped to a handful
+of streams does not quietly drop them.
 
 Both drivers register this seam automatically:
 `AddCollectiveEventsEFCore` / `AddCollectiveEventsDapper` register the
