@@ -14,6 +14,8 @@ tags: >-
   read-models, operational
 codeReferences:
   - src/Whizbang.Core/Perspectives/IPerspectiveRebuilder.cs
+  - src/Whizbang.Core/Perspectives/IPerspectiveRowDigest.cs
+  - src/Whizbang.Data.EFCore.Postgres/Perspectives/EFCorePostgresPerspectiveRowDigest.cs
   - src/Whizbang.Core/Perspectives/PerspectiveRebuilder.cs
   - src/Whizbang.Core/Perspectives/IPerspectiveTableSwapper.cs
   - src/Whizbang.Core/Perspectives/PerspectiveTableRedirect.cs
@@ -24,6 +26,8 @@ codeReferences:
   - src/Whizbang.Core/Events/System/SystemEvents.cs
 testReferences:
   - tests/Whizbang.Core.Tests/Perspectives/PerspectiveRebuilderTests.cs
+  - tests/Whizbang.Core.Tests/Perspectives/RebuildProvenanceTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/PerspectiveRowDigestIntegrationTests.cs
   - tests/Whizbang.Core.Tests/Perspectives/PerspectiveRebuilderBlueGreenTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/BlueGreenRebuildIntegrationTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/Perspectives/PostgresPerspectiveTableSwapperTests.cs
@@ -44,6 +48,12 @@ public interface IPerspectiveRebuilder {
   Task<RebuildResult> RebuildInPlaceAsync(string perspectiveName, CancellationToken ct = default);
   Task<RebuildResult> RebuildStreamsAsync(string perspectiveName, IEnumerable<Guid> streamIds, CancellationToken ct = default);
   Task<RebuildStatus?> GetRebuildStatusAsync(string perspectiveName, CancellationToken ct = default);
+
+  // Same three, recording who asked. Default implementations forward to the above, so an existing
+  // implementation keeps compiling and simply records no origin.
+  Task<RebuildResult> RebuildBlueGreenAsync(string perspectiveName, RebuildOrigin origin, CancellationToken ct = default);
+  Task<RebuildResult> RebuildInPlaceAsync(string perspectiveName, RebuildOrigin origin, CancellationToken ct = default);
+  Task<RebuildResult> RebuildStreamsAsync(string perspectiveName, IEnumerable<Guid> streamIds, RebuildOrigin origin, CancellationToken ct = default);
 }
 ```
 
@@ -158,18 +168,71 @@ await dispatcher.SendAsync(new RebuildPerspectiveCommand(
 await dispatcher.SendAsync(new CancelPerspectiveRebuildCommand("OrderPerspective"));
 ```
 
-## System Events
+## System Events {#rebuild-events}
 
-The rebuild system emits events for observability:
+Every rebuild leaves a durable record. These are ordinary events, so they are queryable long after the
+run, which matters because a rebuild is usually an operational action someone checks on later:
 
 | Event | When |
 |-------|------|
-| `PerspectiveRebuildStarted` | Rebuild begins |
-| `PerspectiveRebuildProgress` | Periodically during rebuild |
-| `PerspectiveRebuildCompleted` | Rebuild finishes successfully |
-| `PerspectiveRebuildFailed` | Rebuild fails |
+| `PerspectiveRebuildStarted` | Once the stream set is final, carrying `TotalStreams` |
+| `PerspectiveRebuildProgress` | Every hundredth stream, and once when the last one is done |
+| `PerspectiveRebuildCompleted` | Success, carrying `StreamsProcessed`, `EventsReplayed` and `Duration` |
+| `PerspectiveRebuildFailed` | Failure, carrying the error and how far it got |
 
-Subscribe via standard receptors for logging, alerting, or dashboards.
+All four share one **rebuild stream id** per run, so a reader can group a single rebuild's events, and a
+failure that happened before any work publishes `Failed` without a `Started` — a rebuild that never ran
+cannot be mistaken for one that did. Subscribe via standard receptors for logging, alerting, or dashboards.
+
+### Knowing whether your rebuild ran {#rebuild-provenance}
+
+`RebuildPerspectiveCommand` is **broadcast to every service**, and each one rebuilds only the perspectives
+it hosts: a requested name it does not host is skipped, which is normal and correct. The consequence is
+that the acknowledgement cannot tell you whether *any* service owned the name you asked for. A name that
+no service hosts is accepted and nothing happens.
+
+Supply a `RequestId` and that becomes answerable. It is stamped onto every event the rebuild emits, so:
+
+```csharp{title="Knowing whether your rebuild ran" description="Stamp a RequestId onto a broadcast rebuild so its events can be found afterwards; no PerspectiveRebuildStarted carrying that id means nothing ran." category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Rebuild", "Observability"] tests=["PerspectiveRebuilderIntegrationTests.RebuildStreamsAsync_PublishesStartedAndCompleted_CarryingTheOriginAsync", "RebuildProvenanceTests.RebuildStarted_CarriesTheOriginItWasGivenAsync"]}
+var requestId = Guid.CreateVersion7();
+await dispatcher.SendAsync(new RebuildPerspectiveCommand(
+    PerspectiveNames: ["OrderPerspective"],
+    IncludeStreamIds: [orderId1, orderId2],
+    RequestId: requestId,
+    RequestedBy: "ops: incident 1234"));
+
+// Afterwards: no PerspectiveRebuildStarted carrying this id means nothing ran, anywhere.
+```
+
+`RebuildOrigin` also carries a `RebuildTrigger`, which separates an operator's repair from the framework's
+own background work (`Requested`, `Migration`, `StartupScan`). `Unknown` is the zero value, so an event
+stored before provenance existed does not claim somebody asked for it.
+
+### Did it change anything? {#rebuild-row-digest}
+
+Those events tell you a rebuild **ran**. They do not tell you whether anything **changed** — and a rebuild
+that replays and writes back identical rows is indistinguishable, from the outside, from one that correctly
+found nothing to do. For a rebuild of **named streams**, `IPerspectiveRowDigest` records the targeted rows
+before and after, onto `PerspectiveRebuildCompleted.RowDigestBefore` / `RowDigestAfter`:
+
+| Outcome | Record | Digest |
+|---------|--------|--------|
+| Never ran | absent | — |
+| Ran, changed nothing | present | equal |
+| Ran, changed rows | present | differs |
+
+Scoped to selected streams deliberately: the targeted set is known and small, so the digest costs in
+proportion to the repair. A whole-perspective rebuild would have to hash the table it is about to replace.
+
+Two things worth knowing about what it measures. It digests the projected **content** and excludes the
+per-write bookkeeping, so a moved digest means the data moved — whether the row was written at all is
+already answered by its cursor. And on Postgres it leans on `jsonb` being stored normalized, so the same
+content digests identically however the serializer happened to write it; nothing defines a canonical form
+of its own. An empty targeted set yields no digest rather than a digest of nothing, which would otherwise
+compare equal to another empty one and read as "changed nothing".
+
+A digest is evidence about a rebuild, not part of it: if it cannot be computed the rebuild still succeeds
+and the fields are simply absent, which reads as "not known".
 
 ## Migration-Triggered Rebuilds
 
