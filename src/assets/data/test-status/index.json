@@ -1,13 +1,13 @@
 {
   "run": {
-    "runId": "37328228103",
-    "sha": "f5a221b24278f10adbe4ba3b4743e3e2875121cc",
+    "runId": "37346231411",
+    "sha": "3c57934f0b34c833988e04b1d8be37fc730f21b2",
     "branch": "develop",
-    "libraryVersion": "0.2611.0-alpha.7",
-    "completedAt": "2026-10-05T15:39:36.186Z"
+    "libraryVersion": "0.2611.0-alpha.9",
+    "completedAt": "2026-10-05T17:33:45.831Z"
   },
   "total": {
-    "passed": 27971,
+    "passed": 27973,
     "failed": 0,
     "skipped": 9
   },
@@ -28,7 +28,7 @@
       "skipped": 0
     },
     "postgres-efcore-": {
-      "passed": 6604,
+      "passed": 6606,
       "failed": 0,
       "skipped": 0
     },
@@ -128,7 +128,7 @@
     },
     "Whizbang.Data.EFCore.Postgres.Tests": {
       "file": "Whizbang.Data.EFCore.Postgres.Tests.json",
-      "passed": 6604,
+      "passed": 6606,
       "failed": 0,
       "skipped": 0
     },
