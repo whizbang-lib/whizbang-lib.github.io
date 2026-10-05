@@ -949,6 +949,10 @@ await dispatcher.SendAsync(new CancelPerspectiveRebuildCommand("OrderPerspective
 
 When a perspective schema changes destructively (column type changed or removed), the [migration tracking system](../../operations/infrastructure/migrations.md) automatically queues a background rebuild. The `PerspectiveMigrationWorker` processes these on startup.
 
+Every rebuild leaves a durable record of what it did, and a `RequestId` on the command makes a broadcast
+rebuild answerable: see **[System Events](rebuild.md#rebuild-events)** and
+**[Knowing whether your rebuild ran](rebuild.md#rebuild-provenance)**.
+
 For detailed rebuild operations, modes, system events, and status tracking, see the **[Perspective Rebuild guide](rebuild.md)**.
 
 ### Purged rows stay purged {#purge-stays-purged}
