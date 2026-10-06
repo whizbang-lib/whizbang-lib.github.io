@@ -1,13 +1,13 @@
 {
   "run": {
-    "runId": "37396414364",
-    "sha": "6963e1fc626fee7a52fe8c1e896e7ea1990da85a",
+    "runId": "37408135675",
+    "sha": "4bfa64dbdafb36f574a58bcb9d8123b67e8347df",
     "branch": "develop",
-    "libraryVersion": "0.2612.0-alpha.15",
-    "completedAt": "2026-10-06T01:17:10.328Z"
+    "libraryVersion": "0.2612.0-alpha.35",
+    "completedAt": "2026-10-06T03:37:43.205Z"
   },
   "total": {
-    "passed": 27973,
+    "passed": 28020,
     "failed": 0,
     "skipped": 9
   },
@@ -48,7 +48,7 @@
       "skipped": 1
     },
     "unit": {
-      "passed": 20106,
+      "passed": 20153,
       "failed": 0,
       "skipped": 8
     }
@@ -116,7 +116,7 @@
     },
     "Whizbang.Core.Tests": {
       "file": "Whizbang.Core.Tests.json",
-      "passed": 12945,
+      "passed": 12985,
       "failed": 0,
       "skipped": 0
     },
@@ -134,7 +134,7 @@
     },
     "Whizbang.Data.Schema.Tests": {
       "file": "Whizbang.Data.Schema.Tests.json",
-      "passed": 348,
+      "passed": 349,
       "failed": 0,
       "skipped": 0
     },
@@ -164,7 +164,7 @@
     },
     "Whizbang.Hosting.AspNet.Tests": {
       "file": "Whizbang.Hosting.AspNet.Tests.json",
-      "passed": 148,
+      "passed": 152,
       "failed": 0,
       "skipped": 0
     },
@@ -188,7 +188,7 @@
     },
     "Whizbang.Observability.Tests": {
       "file": "Whizbang.Observability.Tests.json",
-      "passed": 313,
+      "passed": 314,
       "failed": 0,
       "skipped": 0
     },
@@ -224,7 +224,7 @@
     },
     "Whizbang.Sagas.Tests": {
       "file": "Whizbang.Sagas.Tests.json",
-      "passed": 361,
+      "passed": 362,
       "failed": 0,
       "skipped": 0
     },
