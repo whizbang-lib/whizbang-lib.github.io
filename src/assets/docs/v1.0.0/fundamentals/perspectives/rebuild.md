@@ -133,17 +133,60 @@ var result = await rebuilder.RebuildStreamsAsync("OrderPerspective", corruptedSt
 
 **Best for**: Targeted fixes for specific aggregates.
 
-## RebuildResult
+## RebuildResult {#reading-the-result}
 
-```csharp{title="RebuildResult" description="RebuildResult" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "RebuildResult"] tests=["PerspectiveRebuilderTests.RebuildInPlaceAsync_WithRegisteredPerspective_ProcessesAllStreamsAsync", "PerspectiveRebuilderTests.RebuildInPlaceAsync_WithUnknownPerspective_ReturnsFailureAsync"]}
+```csharp{title="RebuildResult" description="What a rebuild did: streams requested, refused, rebuilt and purged" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "RebuildResult"] tests=["PerspectiveRebuilderTests.RebuildInPlaceAsync_WithRegisteredPerspective_ProcessesAllStreamsAsync", "PerspectiveRebuilderTests.RebuildStreamsAsync_WhenEveryNamedStreamIsRefused_ReportsTheRefusalsAsAFailureAsync", "PerspectiveRebuilderIntegrationTests.RebuildStreamsAsync_ReportsHowManyRequestedStreamsItActuallyFoundAsync"]}
 public record RebuildResult(
     string PerspectiveName,
     int StreamsProcessed,
     int EventsReplayed,
     TimeSpan Duration,
     bool Success,
-    string? Error);
+    string? Error) {
+  public int StreamsRequested { get; init; }
+  public int StreamsRefused { get; init; }
+  public int StreamsPurged { get; init; }
+}
 ```
+
+| Property | Meaning |
+|---|---|
+| `StreamsRequested` | How many stream ids you named, for a rebuild of selected streams. Zero for a whole-perspective rebuild. |
+| `StreamsRefused` | Streams left alone because they are state-based (ephemeral or compacted), so not a rebuildable source of truth. |
+| `StreamsProcessed` | Streams where events for this perspective were found and replayed. A named stream with no events does not count. |
+| `StreamsPurged` | Rebuilt rows that ended purged. See [terminal purges](#terminal-purges). |
+
+**Naming streams and rebuilding none of them is a failure.** A rebuild of selected streams that refuses every one,
+or finds no events for any, returns `Success = false` with an `Error` that says which. Read as a success, it hid 32
+unrepaired rows behind a run that looked clean (#1162).
+
+### Streams that end in a purge {#terminal-purges}
+
+When a stream's last event always purges the row, the rebuild deletes the row without folding the events before it:
+whatever they fold, the last apply throws away. One perspective carried 1,206 such streams and 126,947 events; none of
+them is folded now. A rewind does the same for a batch that ends in one.
+
+"Always purges" is decided at build time, and conservatively. Only an `Apply` whose whole body is the purge counts:
+
+```csharp{title="An Apply that always purges" description="Only an unconditional purge lets a rebuild skip the fold" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Rebuild", "Purge"] tests=["PerspectiveRunnerTerminalPurgeTests.AnApplyThatCanOnlyPurge_IsATerminalPurgeAsync", "PerspectiveRunnerTerminalPurgeTests.AnApplyThatMightNotPurge_IsReplayedAsync"]}
+// Always purges: a stream that ends here is deleted without folding.
+public ApplyResult<Account> Apply(Account current, AccountClosed e) => ApplyResult<Account>.Purge();
+
+// Purges only sometimes: replayed in full, because skipping it could delete a row that should survive.
+public ApplyResult<Account> Apply(Account current, AccountRetired e) =>
+  e.Hard ? ApplyResult<Account>.Purge() : ApplyResult<Account>.Update(current);
+```
+
+`ModelAction.Purge` and `(null, ModelAction.Purge)` count too. A body with any other statement, or a condition, is
+replayed as before.
+
+"Last" means last for the row. The list a rebuild replays already has the row's collective events interleaved and its
+re-keyed events gathered in, so a collective that lands after the purge, or any event that does, means the purge is not
+the last word and the stream is replayed. Each purged row is logged with the event that ended it
+(`Rebuild of perspective {Perspective} left stream {StreamId} purged: terminal event {PurgedBy}`), and the cursor
+completion carries it as `PurgedBy`.
+
+{verified: PerspectiveRebuilderIntegrationTests.RebuildStreamsAsync_WhenTheLastEventAlwaysPurges_DeletesTheRowWithoutFoldingTheStreamAsync, PerspectiveRebuilderIntegrationTests.RebuildStreamsAsync_WhenAnEventFollowsThePurge_ReplaysTheStreamAsync, PerspectiveRebuilderIntegrationTests.RebuildStreamsAsync_WhenItFindsNoneOfTheRequestedStreams_DoesNotReportSuccessAsync}
 
 ## System Commands
 
