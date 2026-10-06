@@ -155,6 +155,29 @@ internal static class MessageRegistry {
 
 ---
 
+## Documentation and test maps {#documentation-and-test-maps}
+
+The `docsUrl` and `tests` fields come from `code-docs-map.json` and `code-tests-map.json` in a checkout of the
+documentation repository. The generator finds that checkout from its build inputs alone, so the registry it writes is
+the same on every machine for the same inputs:
+
+1. The `WhizbangDocsPath` MSBuild property, when it names a directory that exists. It defaults from the
+   `WHIZBANG_DOCS_PATH` environment variable, so setting the variable still works, as a build input.
+2. Otherwise, a `whizbang-lib.github.io` directory beside the git root above the project (`ProjectDir`).
+3. Otherwise none, and the fields stay empty.
+
+```xml{title="Pointing the registry at a documentation checkout" description="Set the WhizbangDocsPath property in the project or Directory.Build.props" category="Configuration" difficulty="BEGINNER" tags=["Generators", "MessageRegistry", "VSCode"] tests=["MessageRegistryDocsPathTests.Registry_WithTheDocsPathProperty_ReadsThatCheckoutsMapAsync", "PathResolverTests.FindDocsRepositoryPath_WithAMissingConfiguredPath_FallsBackToSiblingDiscoveryAsync"]}
+<PropertyGroup>
+  <WhizbangDocsPath>$(MSBuildThisFileDirectory)../whizbang-lib.github.io</WhizbangDocsPath>
+</PropertyGroup>
+```
+
+:::updated
+The generator used to read `WHIZBANG_DOCS_PATH` from the process environment and walk up from the process's current
+directory while it ran, so its output depended on the machine and on whatever else ran in the same process. It now
+reads only the `WhizbangDocsPath` and `ProjectDir` build properties.
+:::
+
 ## Discovery Patterns
 
 ### Pattern 1: Message Discovery
