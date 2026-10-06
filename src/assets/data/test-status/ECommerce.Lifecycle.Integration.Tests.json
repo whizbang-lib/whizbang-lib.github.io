@@ -1,1 +1,1 @@
-{"PostAllPerspectivesTests.PostAllPerspectivesDetached_WithManyPerspectivesAndEvents_FiresExactlyOncePerEventAsync":{"o":"passed","d":6637,"s":"rabbitmq"}}
+{"PostAllPerspectivesTests.PostAllPerspectivesDetached_WithManyPerspectivesAndEvents_FiresExactlyOncePerEventAsync":{"o":"passed","d":6821,"s":"rabbitmq"}}
