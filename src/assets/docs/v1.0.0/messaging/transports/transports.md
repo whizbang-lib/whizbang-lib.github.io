@@ -284,6 +284,13 @@ Task<IReadOnlyList<BulkPublishItemResult>> PublishBatchAsync(
 
 Each `BulkPublishItem` carries the envelope, its type name, a `MessageId`, an optional per-item `RoutingKey` (overriding the destination's), an optional `StreamId` for FIFO ordering, optional `PreSerializedBytes`, and optional `PerItemMetadata` (per-item keys override shared destination metadata).
 
+Each `BulkPublishItemResult` reports `Success`, an `Error` text, and a `Reason`: the transport's classification of the
+exception that failed the item, from `TransportFailureClassifier.Classify`. When every item in a batch comes back
+`Reason = Throttled` (Service Bus `ServiceBusy`, RabbitMQ flow control), the outbox retries the whole batch in memory
+with backoff, exactly as it does when the batch call itself throws a throttle. A batch with some items throttled and
+others not is a per-message condition and is not retried, and an empty result list is never treated as a throttle. A
+custom transport that fills in `Reason` gets the same retry.
+
 ### Configuration
 
 ```csharp{title="Bulk Publish Options" category="Configuration" difficulty="BEGINNER" tags=["Transports", "BulkPublish", "Options"] unverified="options configuration; no behavioral assertion"}
