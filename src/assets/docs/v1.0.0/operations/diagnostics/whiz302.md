@@ -121,6 +121,34 @@ twins.
 
 {verified: PerspectiveFilterIndexAnalyzerTests.OrderBy_OnJsonOnlyField_ReportsAsync, PerspectiveFilterIndexAnalyzerTests.AsyncOperator_OnJsonOnlyField_ReportsAsync, PerspectiveFilterIndexAnalyzerTests.QuerySyntaxWhere_OnJsonOnlyField_ReportsAsync, PerspectiveFilterIndexAnalyzerTests.Projection_OfJsonOnlyField_NoDiagnosticAsync, PerspectiveFilterIndexAnalyzerTests.Filter_OnRowKey_NoDiagnosticAsync}
 
+### Correlated lookups and joins {#correlated-lookups}
+
+An equality is a lookup only when its other side is a value: a literal, a captured local, a method
+parameter, or a row held in a variable. When the other side reads a row, whether another row in a
+correlated lookup, the other side of a join, or another field of the same row, the comparison is a
+join key. The lens leaves it as an extraction, which no document index answers, so it is reported
+like any other filter that scans.
+
+```csharp{title="A correlated lookup keyed on a JSON-only field" description="Each outer row looks up the inner table by a field that has no index, so every lookup reads the whole inner table." category="Diagnostics" difficulty="INTERMEDIATE" tags=["diagnostics", "perspectives", "indexing", "joins"]}
+var rows = from customer in customers
+           let lastOrder = orders
+               .Where(o => o.Data.CustomerId == customer.Id)   // WHIZ302: CustomerId
+               .OrderByDescending(o => o.Data.PlacedAt)
+               .Select(o => o.Data.Total)
+               .FirstOrDefault()
+           select new { customer.Id, lastOrder };
+```
+
+This shape costs the most of any the analyzer reports: the inner table is read once for every outer
+row. `[Indexed]` on the referencing field (`CustomerId` here) makes each lookup an index probe.
+
+Only the side that decides which rows are read is reported. In the example, `customer.Id` is the
+value each lookup is made with, and it is not a filter on `customers`. The same holds for a member of
+the outer row's document (`customer.Data.Region`), so declaring the index on the inner side is the
+whole fix. In a join, both rows of the pair are the predicate's own, so either side can be reported.
+
+{verified: PerspectiveFilterIndexAnalyzerTests.CorrelatedKey_OnJsonOnlyField_IsReportedAsync, PerspectiveFilterIndexAnalyzerTests.ComparisonWithinTheSameRow_IsReportedAsync, PerspectiveFilterIndexAnalyzerTests.CorrelatedKey_OnIndexedField_WithOuterDocumentValue_IsNotReportedAsync, PerspectiveFilterIndexAnalyzerTests.EqualityAgainstACapturedValue_InsideACorrelatedQuery_IsNotReportedAsync, PerspectiveFilterIndexAnalyzerTests.MemberOfARowHeldInAVariable_IsAValueAsync, PerspectiveFilterIndexAnalyzerTests.JoinedPair_RowsAreThePredicatesOwnAsync}
+
 ## What counts as already indexed
 
 A property is taken as index-backed when the generators would give it one, mirroring
