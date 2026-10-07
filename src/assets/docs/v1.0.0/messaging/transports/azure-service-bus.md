@@ -218,7 +218,7 @@ app.Run();
 | `MaxAutoLockRenewalDuration` | 5 minutes | Maximum duration for automatic lock renewal |
 | `MaxDeliveryAttempts` | 10 | Retry limit before dead-lettering |
 | `DefaultSubscriptionName` | "default" | Fallback subscription name if not specified |
-| `AutoProvisionInfrastructure` | `true` | Auto-create topics and subscriptions when subscribing (**code-only** — see binding note below) |
+| `AutoProvisionInfrastructure` | `true` | Auto-create topics and subscriptions when subscribing (read at registration time — see binding note below) |
 | `EnableSessions` | `true` | Session-based FIFO ordering (sets SessionId from StreamId) |
 | `MaxConcurrentSessions` | 200 | Ceiling on concurrent sessions per processor (only when EnableSessions is true). With adaptive acceptors (the default) the pool starts at `AcceptorFloor` and grows toward this only under demand, see [Adaptive Acceptors](#adaptive-acceptors) |
 | `SessionIdleTimeout` | 60 seconds | How long a session processor waits for the next message before releasing the session — see [Session Idle Timeout](#session-idle-timeout) |
@@ -240,9 +240,12 @@ section (appsettings.json or environment variables in the
 compiled-in one — operators can correct any runtime knob without a redeploy. The binder is
 hand-rolled and AOT-safe (no reflection-based options binder).
 
-The one exception is `AutoProvisionInfrastructure`: it decides at registration time whether the
-admin client is added to the container, and configuration cannot re-shape a container that is
-already built. Set it in code only.
+`AutoProvisionInfrastructure` binds too, but at a different moment: it decides whether the admin
+client is added to the container, so it is read when `AddAzureServiceBusTransport` runs, from the
+configuration the host has already registered. The generic host registers its configuration that
+way, so `Whizbang__Transports__AzureServiceBus__AutoProvisionInfrastructure=false` works as for any
+other key. Configuration supplied only through a factory cannot be read that early, and the code
+value then stands. {verified: ServiceCollectionExtensionsTests.AddAzureServiceBusTransport_AutoProvisionInfrastructureFromConfiguration_ShapesTheRegistrationAsync, ServiceCollectionExtensionsTests.AddAzureServiceBusTransport_AutoProvisionInfrastructureFromConfiguration_OverridesTheCodeValueAsync, ServiceCollectionExtensionsTests.AddAzureServiceBusTransport_ConfigurationOnlyFromAFactory_RegistrationFollowsTheCodeValueAsync}
 
 ```json{title="Operator override via appsettings.json" description="Configuration wins over the code callback for every runtime knob." category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Configuration", "Binding"] unverified="configuration illustration — binding is covered by ServiceCollectionExtensionsTests"}
 {

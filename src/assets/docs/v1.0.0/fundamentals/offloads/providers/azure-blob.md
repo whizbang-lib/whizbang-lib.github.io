@@ -175,14 +175,14 @@ Behavior is identical against either backend — same upload/download/delete sem
 | `DefaultAccessTier` | `null` (account default) | `Hot` / `Cool` / `Cold` / `Archive`. Archive bodies are NOT downloadable without an out-of-band rehydration — only set for cold-storage use cases that don't need receive-time rehydrate. |
 | `MaxDownloadBytes` | `null` (no cap) | Defensive cap. When non-null and a claim reports a larger body, the provider refuses to download. Protects receivers from tampered claim tickets that would otherwise pull a multi-GB blob. |
 
-**Selector — `MessageBodyOffloadOptions`** (`Whizbang:BodyOffload`):
+**Selector — `MessageBodyOffloadOptions`** (`Whizbang:BodyOffload`; every key binds, including the passive-sweep keys in the [configuration reference](../../../operations/configuration/configuration-reference#whizbangbodyoffload--messagebodyoffloadoptions)):
 
 | Key | Default | Notes |
 |---|---|---|
 | `ProviderName` | `null` | The active send-side provider. `null` ⇒ offload disabled (publish inline). |
 | `SizeThresholdBytes` | `65536` (64 KB) | Bodies at/above this offload. Set below the transport ceiling to leave envelope headroom. |
 | `ActiveCleanup` | `false` | `false` ⇒ rely on a blob lifecycle rule to delete old bodies (recommended). `true` ⇒ the consumer worker deletes the body (fire-and-forget) after the inbox row commits. |
-| `DownloadTimeout` | `100s` (`TimeSpan.FromSeconds(100)`) | Bounds a single receive-side body-store download during rehydration; exceeding it aborts and surfaces a **retryable** failure (the transport redelivers) rather than stalling the consumer on a hung blob call. **Code-only** — set it in code via `services.Configure<MessageBodyOffloadOptions>`; the config-driven convention does **not** bind it from `Whizbang:BodyOffload`. |
+| `DownloadTimeout` | `100s` (`TimeSpan.FromSeconds(100)`) | Bounds a single receive-side body-store download during rehydration; exceeding it aborts and surfaces a **retryable** failure (the transport redelivers) rather than stalling the consumer on a hung blob call. Binds from `Whizbang:BodyOffload:DownloadTimeout`, like every other key in the section. |
 
 ## Behavior
 

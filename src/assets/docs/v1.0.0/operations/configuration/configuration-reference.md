@@ -89,6 +89,13 @@ Whizbang follows the standard .NET configuration model ([Microsoft: Configuratio
 
 Environment variables are added **after** `appsettings.json` and `appsettings.{Environment}.json` in the default host builder, so they override both; command-line arguments override everything ([Microsoft: default configuration sources and precedence](https://learn.microsoft.com/en-us/aspnet/core/fundamentals/configuration/#default-application-configuration-sources)). `TimeSpan` values use the standard `d.hh:mm:ss` string form (`00:00:30` = 30 seconds); enums parse case-insensitively by name.
 
+## Every key on this page is one the library reads {#keys-are-verified}
+
+The keys here are checked in both directions, so this page cannot drift from the code:
+
+- **The library locks the keys it reads.** A test registers every Whizbang package the way a host does and records each configuration key the library asks for. It fails whenever that set differs from the library's `docs/configuration-keys.txt`, so a binder added, renamed or removed cannot ship without the list changing. {verified: ConfigurationKeyManifestTests.TheLibraryReadsExactlyTheManifestedKeysAsync}
+- **The docs build checks every key it documents against that list.** An environment variable, a colon path or an `appsettings.json` key the library does not read fails the build, naming the page and line.
+
 ## Quick Map
 
 | Configuration section | Options class | Binding |
@@ -102,7 +109,7 @@ Environment variables are added **after** `appsettings.json` and `appsettings.{E
 | `Whizbang:ShowBanner` | — (bool) | Automatic |
 | `ConnectionStrings:*` | — (strings, naming conventions below) | Automatic |
 | `ConnectionPool:*` | — (generated DbContext registration) | Automatic |
-| `Whizbang:BodyOffload` | `MessageBodyOffloadOptions` (4 of 9 keys) | Opt-in helper |
+| `Whizbang:BodyOffload` | `MessageBodyOffloadOptions` (every key) | Automatic (`AddWhizbangBodyOffload()`, which every provider helper calls) |
 | `Whizbang:BodyOffload:Cipher` | the built-in body cipher (`AesGcmEnvelopeCipher`) | Opt-in helper |
 | `Whizbang:Offloads:AzureBlob:<name>` | `AzureBlobOffloadOptions` | Opt-in helper |
 | `Whizbang:Workers:PinnedPool` | `WhizbangPinnedPoolOptions` | Automatic (`AddWhizbangPinnedPool()`) |
@@ -126,7 +133,7 @@ Environment variables are added **after** `appsettings.json` and `appsettings.{E
 | `Whizbang:Transports:<transport>:MessageProcessing`, `:Batch`, `:SubscriptionResilience`, `:Consumer` | `MessageProcessingOptions`, `TransportBatchOptions`, `SubscriptionResilienceOptions`, `TransportConsumerOptions` | Automatic (transport consumer, for each registered transport) — see [Transport Sections](#transport-sections) |
 | `Whizbang:Transports:AzureServiceBus:Consumer:Subscriptions` | `ServiceBusConsumerOptions` | Automatic (ASB transport) |
 | `Whizbang:CircuitBreakers:<name>` | `CircuitBreakerOptions` | Automatic, per named breaker — see [Circuit Breakers](#circuit-breakers) |
-| `Whizbang:Postgres:<database>` | `PostgresOptions` | Automatic (EF Core Postgres driver), per database — see [Postgres Databases](#postgres-databases) |
+| `Whizbang:Postgres` and `Whizbang:Postgres:<database>` | `PostgresOptions` | Automatic (EF Core Postgres driver): a default for every database, then per database — see [Postgres Databases](#postgres-databases) |
 | `Whizbang:Tags:Coalesce:<tag>` | `CoalescePolicyOptions` | Automatic, per tag — see [Coalesce Bindings](#coalesce-bindings) |
 | `Whizbang:Routing` | `RoutingOptions` | Opt-in (`.WithRouting(…)`) — see [Routing](#routing) |
 | `Whizbang:Routing:ControlClass`, `Whizbang:Routing:PoisonMessages` | `ControlClassOptions`, `PoisonMessageOptions` | Automatic — see [Routing](#routing) |
@@ -187,7 +194,7 @@ Code-only (not read from configuration): `SearchPath` (default: EF model schema)
 
 ### Whizbang:Database:Stamper → CommitOrderStamperOptions
 
-Bound alongside `Whizbang:Database`. Controls the per-database commit-order stamper singleton. **Details:** no dedicated page yet.
+Bound alongside `Whizbang:Database`. Controls the per-database commit-order stamper singleton. **Details:** no dedicated page yet. {verified: ConfigureCommitOrderStamperOptionsFromConfigurationTests.FencedRetryInterval_ParsesUnderInvariantCultureAsync, ConfigureCommitOrderStamperOptionsFromConfigurationTests.NotifyHealthyPollingInterval_ParsesUnderInvariantCultureAsync}
 
 | Key | Type | Default | Environment variable | Purpose |
 |-----|------|---------|----------------------|---------|
@@ -313,18 +320,21 @@ Whizbang__Transports__RabbitMQ__Batch__BatchSize=100
 
 ### Postgres Databases
 
-`Whizbang:Postgres:<database>` binds the [PostgresOptions](#postgresoptions) of one database, where `<database>` is the database's **connection-string name** — the same name `ConnectionStrings:<database>` uses. The EF Core Postgres driver (`.WithEFCore<TDbContext>().WithDriver.Postgres`) registers its DbContext's database: the name passed to `WithEFCore<T>("name")`, or the derived one (`OrdersDbContext` → `orders-db`).
+[PostgresOptions](#postgresoptions) bind in two layers. A key directly under `Whizbang:Postgres` is the default for **every** database, so a service with one database sets `Whizbang__Postgres__CommandTimeoutSeconds` without repeating its name. A key under `Whizbang:Postgres:<database>` overrides that default for one database, where `<database>` is the database's **connection-string name** — the same name `ConnectionStrings:<database>` uses. {verified: PostgresOptionsConfigurationTests.SectionLevelKey_IsTheDefaultForEveryDatabaseAsync, PostgresOptionsConfigurationTests.DatabaseKey_OverridesTheSectionLevelDefaultAsync} The EF Core Postgres driver (`.WithEFCore<TDbContext>().WithDriver.Postgres`) registers its DbContext's database: the name passed to `WithEFCore<T>("name")`, or the derived one (`OrdersDbContext` → `orders-db`).
 
 ```bash{
 title: "Per-database Postgres keys"
-description: "Whizbang:Postgres:<database> keys are the database's connection-string name."
+description: "A key under Whizbang:Postgres applies to every database; a key under the database's connection-string name overrides it for that database."
 framework: "NET10"
 category: "Configuration"
 difficulty: "INTERMEDIATE"
 tags: ["configuration", "postgres", "environment-variables"]
 unverified: "illustration - binding locked by PostgresOptionsConfigurationTests"
 }
-Whizbang__Postgres__orders-db__CommandTimeoutSeconds=60
+# Every database this service uses
+Whizbang__Postgres__CommandTimeoutSeconds=60
+# Only orders-db, overriding the default above
+Whizbang__Postgres__orders-db__CommandTimeoutSeconds=30
 Whizbang__Postgres__orders-db__MaxInFlightCommands=20
 ```
 
@@ -381,7 +391,7 @@ Every child of `Whizbang:Offloads:AzureBlob` registers one named provider. The p
 
 ### Whizbang:BodyOffload → MessageBodyOffloadOptions {#whizbangbodyoffload--messagebodyoffloadoptions}
 
-The helper binds **four** keys from configuration; the rest of `MessageBodyOffloadOptions` is code-configured (see [its full table below](#messagebodyoffloadoptions)).
+Every key binds whenever body offload is registered: `AddWhizbangBodyOffload()`, which the provider helpers above call, reads this section after any code configuration, so a setting here overrides a value set in code. {verified: MessageBodyOffloadOptionsBindingTests.EveryDocumentedKey_BindsAsync, MessageBodyOffloadOptionsBindingTests.UnreadableValues_KeepTheDefaultsAsync}
 
 | Key | Type | Default | Environment variable | Purpose |
 |-----|------|---------|----------------------|---------|
@@ -389,6 +399,11 @@ The helper binds **four** keys from configuration; the rest of `MessageBodyOfflo
 | `SizeThresholdBytes` | `long` | `65536` (64 KB) | `Whizbang__BodyOffload__SizeThresholdBytes` | Body size at/above which offload kicks in |
 | `ActiveCleanup` | `bool` | `false` | `Whizbang__BodyOffload__ActiveCleanup` | Delete the body explicitly after the inbox row is acked |
 | `CipherName` | `string?` | `null` (bodies stored as serialized) | `Whizbang__BodyOffload__CipherName` | Names the cipher every offloaded body is sealed with; the cipher itself is registered from the `Cipher` subsection below |
+| `PassiveExpiry` | `TimeSpan?` | `30.00:00:00` (30 days) | `Whizbang__BodyOffload__PassiveExpiry` | Age past which the passive sweep deletes blob + ledger row; must exceed DLQ retention |
+| `PassiveSweepClaimWindow` | `TimeSpan` | `01:00:00` | `Whizbang__BodyOffload__PassiveSweepClaimWindow` | Minimum interval between passive sweeps service-wide |
+| `PassiveSweepBatchSize` | `int` | `500` | `Whizbang__BodyOffload__PassiveSweepBatchSize` | Ledger rows fetched per sweep batch |
+| `PassiveSweepMaxBatchesPerCycle` | `int` | `10` | `Whizbang__BodyOffload__PassiveSweepMaxBatchesPerCycle` | Upper bound on batches per maintenance cycle |
+| `DownloadTimeout` | `TimeSpan` | `00:01:40` (100s) | `Whizbang__BodyOffload__DownloadTimeout` | Bounded timeout for receive-side body download |
 
 ### Whizbang:BodyOffload:Cipher → the built-in AES-256-GCM cipher
 
@@ -647,6 +662,7 @@ The claim loop that distributes outbox/inbox/perspective work. **Configure:** bo
 | `MaxOutboxRowsPerBatch` | `int` | `1000` | `Whizbang__Workers__Claim__MaxOutboxRowsPerBatch` | Row bound on outbox acquisition per claim, independent of the stream window. A claim that fills it is followed at once by another. `0` or less uses the stream window as the row cap, which drained a backlog on a few long streams one row per stream per cycle |
 | `MaxOutstandingOutboxRows` | `int` | `10000` | `Whizbang__Workers__Claim__MaxOutstandingOutboxRows` | Ceiling on outbox rows this instance may hold claimed and unpublished, so back-to-back full claims stop when the drain falls behind instead of leasing the whole backlog |
 | `OutboxRunLength` | `int` | `100` | `Whizbang__Workers__Claim__OutboxRunLength` | Consecutive rows of one outbox stream a claim may lease (matches the drain's `MaxPerStream`). Ordering holds because one instance leases the whole run and stops at the first row it may not take. `1` is the previous one-row-per-stream behavior |
+| `NotifyDrainLingerSeconds` | `int` | `8` | `Whizbang__Workers__Claim__NotifyDrainLingerSeconds` | Drain linger (doorbell debounce, C# half): after a claim finds fresh work, empty polls keep a tight ~500 ms cadence for this many seconds before the elevated idle cadence resumes. MUST stay above the SQL `notify_debounce_seconds` setting (default 7) so suppression self-expires while the drainer still polls. `0` disables the linger |
 
 ### HeartbeatWorkerOptions
 
@@ -914,8 +930,12 @@ Re-delivery (repair) pump bounds. **Configure:** bound automatically from `Whizb
 | `MaxPerspectiveEventAttempts` | `int?` | `10` | `Whizbang__Workers__Perspective__MaxPerspectiveEventAttempts` | Apply failures (`failures` column) before moving to `wh_dead_letters`; `attempts` counts leases and is diagnostic only |
 | `LeaseSeconds` | `int` | `300` | `Whizbang__Workers__Perspective__LeaseSeconds` | Lease duration for claimed perspective cursors |
 | `AbandonStaleInstanceThresholdSeconds` | `int` | `30` | `Whizbang__Workers__Perspective__AbandonStaleInstanceThresholdSeconds` | Grace period before a non-heartbeating instance is abandoned |
-| `InstanceMetadata` | `Dictionary<string, JsonElement>?` | `null` | `Whizbang__Workers__Perspective__InstanceMetadata` | Optional metadata attached to this service instance |
 | `DebugMode` | `bool` | `false` | `Whizbang__Workers__Perspective__DebugMode` | Keep completed checkpoints for debugging |
+| `CollectiveLockBusyCountsAsFailure` | `bool` | `false` | `Whizbang__Workers__Perspective__CollectiveLockBusyCountsAsFailure` | Count a collective that waited out its apply lock as a failed apply (moves the count that drives dead-lettering); off, a busy lock is not a failure and its rows wait to be applied |
+| `CollectivePredecessorWaitSeconds` | `int` | `30` | `Whizbang__Workers__Perspective__CollectivePredecessorWaitSeconds` | How long a keyed collective waits for its predecessor before applying without it; `0` or less applies every collective at once. Keep well under `LeaseSeconds` |
+| `DrainBatcher:SlidingWindow` | `TimeSpan` | `00:00:00.300` | `Whizbang__Workers__Perspective__DrainBatcher__SlidingWindow` | Debounce window that coalesces perspective signals into one apply pass |
+| `DrainBatcher:MaxWait` | `TimeSpan` | `00:00:03` | `Whizbang__Workers__Perspective__DrainBatcher__MaxWait` | Hard cap on how long signals are held before a pass runs |
+| `DrainBatcher:MaxSize` | `int` | `1000` | `Whizbang__Workers__Perspective__DrainBatcher__MaxSize` | Signal count that runs a pass at once |
 | `PartitionCount` | `int` | `10000` | `Whizbang__Workers__Perspective__PartitionCount` | Partitions for work distribution |
 | `IdleThresholdPolls` | `int` | `2` | `Whizbang__Workers__Perspective__IdleThresholdPolls` | Consecutive empty polls before `OnWorkProcessingIdle` |
 | `PerspectiveBatchSize` | `int` | `100` | `Whizbang__Workers__Perspective__PerspectiveBatchSize` | Events processed per batch before saving model + checkpoint |
@@ -1133,9 +1153,8 @@ The poison-message detector. On session-enabled entities a lock lost to connecti
 | `StackHistoryRetentionDays` | `int` | `90` | `Whizbang__DeadLetterRecovery__StackHistoryRetentionDays` | Rolling retention for the stack-history log (`wh_stack_daily`): the recovery worker prunes daily rows older than this on its idle-gated scan. A non-positive value disables the rolling cleanup — the log is kept forever |
 | `PressuredScanBatchSize` | `int` | `20` | `Whizbang__DeadLetterRecovery__PressuredScanBatchSize` | Recovery scan batch when the pass was FORCED through the settledness gate by the bounded-deferral escape — a trickle under load, never a flood (#669) |
 | `GenerationReplayStaggerMinutes` | `int` | `30` | `Whizbang__DeadLetterRecovery__GenerationReplayStaggerMinutes` | Window over which a new build's generation replay spreads its re-offers; `0` restores schedule-all-now (#669) |
-| `Workers:Claim:NotifyDrainLingerSeconds` | `int` | `8` | `Whizbang__DeadLetterRecovery__Workers__Claim__NotifyDrainLingerSeconds` | Drain linger (doorbell debounce, C# half): after a claim finds fresh work, empty polls keep a tight ~500 ms cadence for this many seconds before the elevated idle cadence resumes. MUST stay above the SQL `notify_debounce_seconds` setting (default 7) so suppression self-expires while the drainer still polls. `0` disables the linger |
 | `EnableGenerationReplay` | `bool` | `true` | `Whizbang__DeadLetterRecovery__EnableGenerationReplay` | Startup scan auto-replaying rows not yet retried on this build generation |
-| `PolicyByReason` | `Dictionary<MessageFailureReason, RecoveryPolicy>` | populated map | `Whizbang__DeadLetterRecovery__PolicyByReason` | Per-failure-reason recovery rules (see the recovery page for the default map) |
+| `PolicyByReason` | `Dictionary<MessageFailureReason, RecoveryPolicy>` | populated map | `Whizbang__DeadLetterRecovery__PolicyByReason__<Reason>__<Field>` | Per-failure-reason recovery rules (see the recovery page for the default map). `<Reason>` is a `MessageFailureReason` name, matched ignoring case; `<Field>` is `Name`, `MaxRecoveryAttempts`, `Cooldown` or `HoldForReviewAfterExhaustion`. A setting overrides only the field it names on that reason's policy; an unknown reason or an unreadable value changes nothing. {verified: DeadLetterRecoveryPolicyBindingTests.APartialEntry_KeepsTheFieldsItDoesNotNameAsync, DeadLetterRecoveryPolicyBindingTests.AnUnknownReason_ChangesNothingAsync} |
 
 ### HousekeepingCoordinator.Settings
 
@@ -1181,7 +1200,7 @@ Shared knobs every concrete transport inherits; settings are validated against d
 | `AutoProvisionDeadLetterInfrastructure` | `bool` | `true` | — *code-only* | Auto-create DLQ infrastructure |
 | `EnableOrderedDelivery` | `bool` | `true` | — *code-only* | Enforce FIFO within a stream/partition |
 | `ConcurrentOrderedStreams` | `int` | `64` | — *code-only* | Max ordered streams processed in parallel |
-| `AutoProvisionInfrastructure` | `bool` | `true` | — *code-only* | Auto-create topics, subscriptions, queues |
+| `AutoProvisionInfrastructure` | `bool` | `true` | `Whizbang__Transports__AzureServiceBus__AutoProvisionInfrastructure` | Auto-create topics/subscriptions on subscribe. It decides whether the admin client is registered, so it is read when the transport is registered, from configuration the host registered as an instance (the generic host does); configuration supplied only through a factory leaves the code value. {verified: ServiceCollectionExtensionsTests.AddAzureServiceBusTransport_AutoProvisionInfrastructureFromConfiguration_ShapesTheRegistrationAsync, ServiceCollectionExtensionsTests.AddAzureServiceBusTransport_ConfigurationOnlyFromAFactory_RegistrationFollowsTheCodeValueAsync} |
 | `InitialConnectionRetryAttempts` | `int` | `5` | — *code-only* | Startup connection retries before indefinite-retry mode |
 | `InitialConnectionRetryDelay` | `TimeSpan` | `00:00:01` | — *code-only* | Delay before the first connection retry |
 | `MaxConnectionRetryDelay` | `TimeSpan` | `00:02:00` | — *code-only* | Ceiling on connection retry backoff |
@@ -1280,23 +1299,6 @@ Service Bus auto-discovery and provisioning. **Configure:** `services.Configure<
 | `HealthCheckInterval` | `TimeSpan` | `00:01:00` | `Whizbang__Transports__<transport>__SubscriptionResilience__HealthCheckInterval` | Sweep interval recovering failed subscriptions |
 | `AllowPartialSubscriptions` | `bool` | `true` | `Whizbang__Transports__<transport>__SubscriptionResilience__AllowPartialSubscriptions` | Start the worker even if some subscriptions fail |
 
-## Message Body Offload (code-configured remainder)
-
-### MessageBodyOffloadOptions
-
-Send-side claim-check strategy. Four keys bind from `Whizbang:BodyOffload` [when the opt-in helper is called](#whizbangbodyoffload--messagebodyoffloadoptions); the rest are code-configured. **Details:** [Message Body Store](../../fundamentals/offloads/message-body-store#end-to-end-di).
-
-| Property | Type | Default | Environment variable | Purpose |
-|----------|------|---------|--------------------|---------|
-| `ProviderName` | `string?` | `null` (disabled) | `Whizbang__BodyOffload__ProviderName` | Must match a registered `IMessageBodyStore` (config-bindable) |
-| `SizeThresholdBytes` | `long` | `65536` (64 KB) | `Whizbang__BodyOffload__SizeThresholdBytes` | Offload threshold; keep below transport max message size (config-bindable) |
-| `ActiveCleanup` | `bool` | `false` | `Whizbang__BodyOffload__ActiveCleanup` | Delete the body after the inbox row is acked (config-bindable) |
-| `PassiveExpiry` | `TimeSpan?` | `30.00:00:00` (30 days) | `Whizbang__BodyOffload__PassiveExpiry` | Age past which the passive sweep deletes blob + ledger row; must exceed DLQ retention |
-| `PassiveSweepClaimWindow` | `TimeSpan` | `01:00:00` | `Whizbang__BodyOffload__PassiveSweepClaimWindow` | Minimum interval between passive sweeps service-wide |
-| `PassiveSweepBatchSize` | `int` | `500` | `Whizbang__BodyOffload__PassiveSweepBatchSize` | Ledger rows fetched per sweep batch |
-| `PassiveSweepMaxBatchesPerCycle` | `int` | `10` | `Whizbang__BodyOffload__PassiveSweepMaxBatchesPerCycle` | Upper bound on batches per maintenance cycle |
-| `DownloadTimeout` | `TimeSpan` | `00:01:40` (100s) | `Whizbang__BodyOffload__DownloadTimeout` | Bounded timeout for receive-side body download |
-
 ## Pinned Connection Pool
 
 ### WhizbangPinnedPoolOptions
@@ -1318,7 +1320,7 @@ Dedicated long-lived PostgreSQL connections for background workers, bypassing a 
 
 ### PostgresOptions
 
-Connection retry, command timeout, and collective-apply bounds for the PostgreSQL driver. **Configure:** `services.Configure<PostgresOptions>(…)`, then bound per database from `Whizbang:Postgres:<database>`, where `<database>` is the connection-string name the EF Core Postgres driver registers ([Postgres Databases](#postgres-databases)). The Dapper driver's registration lambda stays code-configured. **Details:** no dedicated page yet.
+Connection retry, command timeout, and collective-apply bounds for the PostgreSQL driver. **Configure:** `services.Configure<PostgresOptions>(…)`, then bound from `Whizbang:Postgres` (every database) and `Whizbang:Postgres:<database>` (one database, overriding it), where `<database>` is the connection-string name the EF Core Postgres driver registers ([Postgres Databases](#postgres-databases)). The Dapper driver's registration lambda stays code-configured. **Details:** no dedicated page yet.
 
 | Property | Type | Default | Environment variable | Purpose |
 |----------|------|---------|----------------------|---------|
