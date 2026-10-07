@@ -14,6 +14,7 @@ tags: >-
   perspectives, stored-forms, migrations, jsonb, schema-evolution, rewrite,
   physical-fields, journal, startup
 codeReferences:
+  - src/Whizbang.Data.EFCore.Postgres.Generators/DiagnosticDescriptors.cs
   - src/Whizbang.Core/Perspectives/StoredFormAttribute.cs
   - src/Whizbang.Core/Perspectives/StoredFormRemovedAttribute.cs
   - src/Whizbang.Core/Perspectives/IStoredFormMigration.cs
@@ -28,6 +29,7 @@ codeReferences:
   - src/Whizbang.Data.EFCore.Postgres.Generators/Templates/DbContextSchemaExtensionTemplate.cs
   - tools/Whizbang.CLI/Program.cs
 testReferences:
+  - tests/Whizbang.Generators.Tests/DeclaredJsonConverterIgnoredTests.cs
   - tests/Whizbang.Core.Tests/Perspectives/StoredFormAttributeTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/StoredFormMigrationTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/StoredFormMigrationSqlTests.cs
@@ -184,6 +186,43 @@ retyped in the same release gets both, rename first. The tables run in name orde
 
 Stored-form migrations run **before** the canonical temporal rewrite. So a temporal value moved by a
 rename is converted to the canonical form in the same pass.
+
+## A JSON converter will not do it {#json-converter}
+
+{verified: DeclaredJsonConverterIgnoredTests.ADeclaredConverterIsReportedAsync, DeclaredJsonConverterIgnoredTests.AModelWithNoConverterIsNotReportedAsync, DeclaredJsonConverterIgnoredTests.ItIsAWarningNotAnErrorAsync}
+
+The obvious reflex, when a stored value changes shape, is to teach the serializer to read both:
+
+```csharp
+// Does not work for a stored document.
+[JsonConverter(typeof(LegacyNumberOrStringConverter))]
+public string? Revision { get; set; }
+```
+
+It compiles, it runs, and it has no effect. A perspective's document is stored with
+`ComplexProperty().ToJson()` and read back by Entity Framework's own JSON materializer, which reads
+each scalar straight off the reader. `JsonConverterAttribute` is a serializer concept, and the
+serializer is not on that path. The converter is never consulted, and the row stays unreadable:
+loading it throws, the read model drops into drain mode, and it retries.
+
+The build reports this as **WHIZ811**, naming the property, the converter, and this page. It is a
+warning rather than an error, because the model is otherwise fine and new rows are written correctly
+— it is only the old rows the converter was meant to rescue that it cannot reach.
+
+Declare the change instead. A declaration converts the stored documents themselves, which also
+repairs them for anything reading the column directly: a jsonpath extraction, an index, or an
+external reader such as a mirrored table. A converter, even if it worked, would leave all of those
+seeing the old shape.
+
+### When the conversion is not the one you want {#json-converter-semantics}
+
+A declared type change converts a number to its text, so `0` becomes `"0"`. That is right for most
+fields and wrong for some: a stored `0` can mean "never set", which a nullable field spells as null
+rather than as the digit zero. Surfacing it as `"0"` invents a value the record never had, sitting
+alongside genuine ones.
+
+Where the generated conversion has the wrong meaning, write a [custom migration](#custom). It is
+journaled and blocking in exactly the same way; only the SQL is yours.
 
 ## Custom migrations (the escape hatch) {#custom}
 
@@ -475,10 +514,11 @@ in a [custom migration](#custom) of the same release.
 
 ## Diagnostics {#diagnostics}
 
-{verified: StoredFormMigrationGenerationTests.ADeclarationItCannotGenerate_IsWHIZ830_AndEmitsNothingAsync, StoredFormMigrationGenerationTests.ADeclarationInsideACollectionElement_IsWHIZ832_AndAnOrphanMigrationWHIZ831Async, StoredFormMigrationGenerationTests.ADefaultOnASplitPhysicalField_IsWHIZ830Async, StoredFormMigrationGenerationTests.AnOrderThatIsNotAConstant_IsWHIZ831_AndTheMigrationIsNotEmittedAsync, StoredFormMigrationGenerationTests.TwoMigrationsOfOneTableSharingAnOrder_AreWHIZ833_OncePerSharedOrderAsync}
+{verified: DeclaredJsonConverterIgnoredTests.ADeclaredConverterIsReportedAsync, DeclaredJsonConverterIgnoredTests.ItIsAWarningNotAnErrorAsync, StoredFormMigrationGenerationTests.ADeclarationItCannotGenerate_IsWHIZ830_AndEmitsNothingAsync, StoredFormMigrationGenerationTests.ADeclarationInsideACollectionElement_IsWHIZ832_AndAnOrphanMigrationWHIZ831Async, StoredFormMigrationGenerationTests.ADefaultOnASplitPhysicalField_IsWHIZ830Async, StoredFormMigrationGenerationTests.AnOrderThatIsNotAConstant_IsWHIZ831_AndTheMigrationIsNotEmittedAsync, StoredFormMigrationGenerationTests.TwoMigrationsOfOneTableSharingAnOrder_AreWHIZ833_OncePerSharedOrderAsync}
 
 | Id | Severity | Reported when |
 |---|---|---|
+| WHIZ811 | Warning | A perspective model declares `[JsonConverter]` on a property. A stored document never consults it — see [A JSON converter will not do it](#json-converter). Declare the change instead, or write a custom migration. |
 | WHIZ830 | Error | A declaration the generator cannot turn into SQL: an unsupported type pair, `Previously` equal to the current type, a `[Flags]` enum over `ulong` converted from a string, or a default on a Split physical field. Use a custom migration. |
 | WHIZ831 | Warning | An `IStoredFormMigration<TModel>` that would never run: its `TModel` is not the model of any perspective, the generated code cannot create it (no public or internal parameterless constructor, a generic class, or a class it cannot see), or the `Order` it states is not a compile-time constant. |
 | WHIZ832 | Warning | A `[StoredForm]` or `[StoredFormRemoved]` inside an element of a collection, which is not generated. Use a custom migration. |
