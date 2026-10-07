@@ -1,15 +1,15 @@
 {
   "run": {
-    "runId": "37551992547",
-    "sha": "c8ca1ab13bf8299bef3e2bf8e172b89001473151",
+    "runId": "37554857441",
+    "sha": "3494ccca3d347e08d639bde93429c62aaa14c0d2",
     "branch": "develop",
-    "libraryVersion": "0.2613.0-alpha.65",
-    "completedAt": "2026-10-07T00:43:27.945Z"
+    "libraryVersion": "0.2613.0-alpha.67",
+    "completedAt": "2026-10-07T01:26:11.678Z"
   },
   "total": {
-    "passed": 29234,
+    "passed": 29445,
     "failed": 0,
-    "skipped": 9
+    "skipped": 12
   },
   "suites": {
     "azureblob": {
@@ -21,6 +21,11 @@
       "passed": 3,
       "failed": 0,
       "skipped": 0
+    },
+    "integration": {
+      "passed": 482,
+      "failed": 0,
+      "skipped": 3
     },
     "postgres-dapper": {
       "passed": 985,
@@ -48,7 +53,7 @@
       "skipped": 1
     },
     "unit": {
-      "passed": 20957,
+      "passed": 20959,
       "failed": 0,
       "skipped": 8
     }
@@ -75,6 +80,12 @@
     "ECommerce.Integration.Tests": {
       "file": "ECommerce.Integration.Tests.json",
       "passed": 82,
+      "failed": 0,
+      "skipped": 0
+    },
+    "ECommerce.IntegrationTests.OrderServiceIntegrationTests.Tests": {
+      "file": "ECommerce.IntegrationTests.OrderServiceIntegrationTests.Tests.json",
+      "passed": 2,
       "failed": 0,
       "skipped": 0
     },
@@ -119,6 +130,12 @@
       "passed": 2,
       "failed": 0,
       "skipped": 0
+    },
+    "Whizbang.Core.Integration.Tests": {
+      "file": "Whizbang.Core.Integration.Tests.json",
+      "passed": 150,
+      "failed": 0,
+      "skipped": 3
     },
     "Whizbang.Core.Tests": {
       "file": "Whizbang.Core.Tests.json",
@@ -183,6 +200,12 @@
     "Whizbang.Hosting.RabbitMQ.Tests": {
       "file": "Whizbang.Hosting.RabbitMQ.Tests.json",
       "passed": 6,
+      "failed": 0,
+      "skipped": 0
+    },
+    "Whizbang.Migrate.Integration.Tests": {
+      "file": "Whizbang.Migrate.Integration.Tests.json",
+      "passed": 21,
       "failed": 0,
       "skipped": 0
     },
@@ -264,9 +287,21 @@
       "failed": 0,
       "skipped": 0
     },
+    "Whizbang.Transports.FastEndpoints.Integration.Tests": {
+      "file": "Whizbang.Transports.FastEndpoints.Integration.Tests.json",
+      "passed": 8,
+      "failed": 0,
+      "skipped": 0
+    },
     "Whizbang.Transports.FastEndpoints.Tests": {
       "file": "Whizbang.Transports.FastEndpoints.Tests.json",
       "passed": 91,
+      "failed": 0,
+      "skipped": 0
+    },
+    "Whizbang.Transports.HotChocolate.Integration.Tests": {
+      "file": "Whizbang.Transports.HotChocolate.Integration.Tests.json",
+      "passed": 30,
       "failed": 0,
       "skipped": 0
     },
