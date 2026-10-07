@@ -16,11 +16,16 @@ codeReferences:
   - src/Whizbang.Transports.FastEndpoints/Endpoints/LensEndpointBase.cs
   - src/Whizbang.Transports.FastEndpoints/Attributes/RestLensAttribute.cs
   - src/Whizbang.Transports.FastEndpoints.Generators/RestLensEndpointGenerator.cs
+  - src/Whizbang.Transports.FastEndpoints/Endpoints/LensQueryShaping.cs
+  - src/Whizbang.Transports.FastEndpoints/Endpoints/InvalidLensRequestException.cs
 testReferences:
   - tests/Whizbang.Transports.FastEndpoints.Tests/Unit/LensRequestTests.cs
   - tests/Whizbang.Transports.FastEndpoints.Tests/Unit/LensResponseTests.cs
   - tests/Whizbang.Transports.FastEndpoints.Tests/Unit/LensEndpointBaseTests.cs
   - tests/Whizbang.Transports.FastEndpoints.Tests/Unit/RestLensAttributeTests.cs
+  - tests/Whizbang.Transports.FastEndpoints.Tests/Unit/LensQueryShapingTests.cs
+  - tests/Whizbang.Transports.FastEndpoints.Integration.Tests/RestLens/GeneratedRestLensEndpointTests.cs
+  - tests/Whizbang.Generators.Tests/RestLensEndpointGeneratorTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -38,7 +43,9 @@ REST filtering provides:
 - **Extensible Hooks** - `LensEndpointBase<TModel>` hooks and parsing helpers for custom endpoints
 
 :::updated
-Shipped behavior at this commit: generated lens endpoints bind `page`, `pageSize`, `sort`, and `filter[...]` parameters into `LensRequest` and fully implement **paging** (with a default `OrderBy(x => x.Id)` for stable pagination). Applying `Filter` and `Sort` to the query inside *generated* endpoints is not yet wired up — use the `LensRequest` values with the `ParseSortExpression`/`CalculatePaging` helpers in a custom endpoint to apply them today.
+Generated lens endpoints apply all three: `filter[...]` narrows the rows, `sort` orders them, and
+`page`/`pageSize` page them. `EnableFiltering`, `EnableSorting` and `EnablePaging` on `[RestLens]`
+switch each one off. Earlier releases bound the parameters but applied only paging.
 :::
 
 ## LensRequest Model
@@ -67,6 +74,10 @@ GET /api/orders?page=2&pageSize=25
 | `page` | 1 | Current page number (1-based) |
 | `pageSize` | Endpoint default | Items per page |
 
+`pageSize` is capped at the lens's `MaxPageSize`.
+
+{verified: GeneratedRestLensEndpointTests.Paging_ReturnsTheRequestedPageWithinTheMaximumAsync}
+
 ### Sorting
 
 ```
@@ -80,7 +91,11 @@ GET /api/orders?sort=-priority,createdAt
 | `-` | Descending |
 | `+` or none | Ascending |
 
-Multiple fields are comma-separated and applied in order.
+Multiple fields are comma-separated and applied in order. After the requested keys the rows are
+ordered by `Id`, so rows the requested keys leave tied still page in a stable order. Without a
+`sort`, the order is `Id` alone.
+
+{verified: GeneratedRestLensEndpointTests.Sort_OrdersByEachKeyInTurnAsync, GeneratedRestLensEndpointTests.Sort_BreaksRemainingTiesByIdAsync, GeneratedRestLensEndpointTests.NoParameters_ReturnsTheFirstPageInIdOrderAsync, LensQueryShapingTests.ParseSort_ReadsDirectionAndOrderAsync}
 
 ### Filtering
 
@@ -90,7 +105,43 @@ GET /api/orders?filter[status]=active&filter[priority]=high
 GET /api/orders?filter[customerName]=Acme
 ```
 
-Filters are key-value pairs using bracket notation.
+Filters are key-value pairs using bracket notation. Each is an equality, and several are AND'd.
+
+{verified: GeneratedRestLensEndpointTests.Filter_NarrowsToMatchingRowsAsync, GeneratedRestLensEndpointTests.Filters_AreAndedTogetherAsync}
+
+### Which fields
+
+A field is any public, readable, instance property of the model, its base classes' included, whose
+value is one of the types below. Names match ignoring case, so `filter[customerName]` and `sort=CustomerName`
+both name `CustomerName`. Collections and nested objects have no single value to compare or order by,
+so they are not offered.
+
+| Property type | A filter value is read as |
+|---|---|
+| `string` | The text given |
+| An enum | A member name, ignoring case, or its number; it must be a defined member |
+| `bool`, the integer types, `float`, `double`, `decimal` | The type, in the invariant culture (`1.5`, not `1,5`) |
+| `Guid`, `DateTime`, `DateTimeOffset`, `DateOnly`, `TimeOnly`, `TimeSpan` | The type, in the invariant culture |
+| A nullable form of any of these | Its underlying type |
+
+The endpoint generator writes the comparison for each field at build time, so nothing is looked up by
+name when a request arrives, and the endpoint is trimming- and AOT-safe.
+
+{verified: RestLensEndpointGeneratorTests.Generator_FiltersEachScalarPropertyByItsTypeAsync, RestLensEndpointGeneratorTests.Generator_LeavesOutWhatNeitherFiltersNorSortsAsync, LensQueryShapingTests.Parse_ReadsInTheInvariantCultureAsync, LensQueryShapingTests.ParseEnum_ReadsANameOrNumberAsync}
+
+### Invalid requests {#invalid-requests}
+
+A request the endpoint cannot honor is answered with **400** and a message naming the problem, rather
+than with results the caller did not ask for:
+
+| Request | Message |
+|---|---|
+| `filter[colour]=red` on a model with no `Colour` | `'colour' is not a field this endpoint can filter by.` |
+| `sort=colour` | `'colour' is not a field this endpoint can sort by.` |
+| `filter[amount]=lots` on a `decimal` | `'lots' is not a valid value for filter[amount].` |
+| `filter[status]=Pending` where `Pending` is not a member | `'Pending' is not a valid value for filter[status].` |
+
+{verified: GeneratedRestLensEndpointTests.Filter_TheEndpointCannotHonor_IsABadRequestAsync, GeneratedRestLensEndpointTests.Sort_OnAFieldTheEndpointDoesNotOffer_IsABadRequestAsync, LensQueryShapingTests.UnknownField_NamesTheParameterAndFieldAsync, LensQueryShapingTests.InvalidValue_NamesTheValueAndFieldAsync}
 
 ## Complete URL Examples
 
@@ -152,11 +203,18 @@ public interface IStatusLens : ILensQuery<StatusReadModel> { }
 | Property | Type | Default | Description |
 |----------|------|---------|-------------|
 | `Route` | `string?` | Model-based | REST route pattern |
-| `EnableFiltering` | `bool` | `true` | Accept filter parameters |
-| `EnableSorting` | `bool` | `true` | Accept sort parameters |
-| `EnablePaging` | `bool` | `true` | Accept page/pageSize |
+| `EnableFiltering` | `bool` | `true` | Apply `filter[...]`. Off, filter parameters are ignored |
+| `EnableSorting` | `bool` | `true` | Apply `sort`. Off, rows are ordered by `Id` and `sort` is ignored |
+| `EnablePaging` | `bool` | `true` | Apply `page`/`pageSize`. Off, every matching row is returned as one page (`Page` 1, `PageSize` the row count) |
 | `DefaultPageSize` | `int` | `10` | Default items per page |
 | `MaxPageSize` | `int` | `100` | Maximum allowed page size |
+
+{verified: RestLensEndpointGeneratorTests.Generator_WithFilteringDisabled_IgnoresFilterParametersAsync, RestLensEndpointGeneratorTests.Generator_WithSortingDisabled_OrdersByIdOnlyAsync, RestLensEndpointGeneratorTests.Generator_WithPagingDisabled_ReturnsEveryRowAsync, GeneratedRestLensEndpointTests.EverythingDisabled_IgnoresFilterSortAndPageAsync}
+
+A generated endpoint reads through the lens's `DefaultScope`, so it returns only the rows the caller's
+scope allows.
+
+{verified: RestLensEndpointGeneratorTests.Generator_ReadsThroughTheLensDefaultScopeAsync}
 
 ## Response Format
 

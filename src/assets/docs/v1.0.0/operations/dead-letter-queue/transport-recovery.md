@@ -17,12 +17,15 @@ codeReferences:
   - src/Whizbang.Core/Transports/ITransportDeadLetterDrainer.cs
   - src/Whizbang.Core/Workers/TransportDeadLetterDrainWorker.cs
   - src/Whizbang.Transports.AzureServiceBus/AzureServiceBusDeadLetterDrainer.cs
+  - src/Whizbang.Transports.AzureServiceBus/AzureServiceBusFleetDeadLetterDrainer.cs
+  - src/Whizbang.Transports.AzureServiceBus/AzureServiceBusNamespacesDeadLetterDrainer.cs
   - src/Whizbang.Transports.RabbitMQ/RabbitMqDeadLetterDrainer.cs
 testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/RecoveredBrokerDeadLetterDispatchIntegrationTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/BrokerDeadLetterImportSqlTests.cs
   - tests/Whizbang.Core.Tests/Workers/TransportDeadLetterDrainWorkerTests.cs
   - tests/Whizbang.Transports.AzureServiceBus.Tests/AzureServiceBusDeadLetterDrainerTests.cs
+  - tests/Whizbang.Transports.AzureServiceBus.Tests/AsbNamespacesDeadLetterDrainerTests.cs
   - tests/Whizbang.Transports.RabbitMQ.Tests/RabbitMqDeadLetterDrainerTests.cs
 ---
 
@@ -108,6 +111,25 @@ services.AddSingleton<ITransportDeadLetterDrainer>(sp =>
 
 `TransportName` becomes `asb:orders/inventory-svc` — used as the
 `transport` dimension on the `whizbang.transport_dlq.drained` counter.
+
+### Every subscription in every namespace {#multiple-namespaces}
+
+`AddAzureServiceBusTransport` registers one drainer for you, so the manual registration above is
+only for a subscription the transport does not manage. On every pass it drains each subscription
+the transport has opened, including ones opened after startup.
+
+A host given more than one Service Bus namespace (a `TransportNamespace` connection beside the
+default) resolves its transport as a router with one Service Bus transport per namespace. The drainer
+covers each of them, and reads each namespace's dead-letter queues through that namespace's own
+client: the default namespace's client cannot read another namespace's queues, and two namespaces
+may use the same topic and subscription names.
+
+| Behavior | |
+|---|---|
+| Every namespace behind the router is drained | {verified: AsbNamespacesDeadLetterDrainerTests.ServiceBusTransportsOf_ANamespaceRouter_IsEveryNamespacesTransportAsync} |
+| The same topic and subscription in two namespaces are two queues, both drained | {verified: AsbNamespacesDeadLetterDrainerTests.DrainDeadLetterQueueAsync_TwoNamespacesWithTheSameSubscription_DrainsBothAsync} |
+| The worker's per-pass limit is one total across namespaces, not per namespace, so it still paces broker operations | {verified: AsbNamespacesDeadLetterDrainerTests.DrainDeadLetterQueueAsync_BudgetIsOneTotalAcrossNamespacesAsync} |
+| A transport behind the router that is not Service Bus is left to its own drainer | {verified: AsbNamespacesDeadLetterDrainerTests.ServiceBusTransportsOf_ARouterWithAnotherKindOfTransport_SkipsItAsync} |
 
 ## RabbitMQ
 
