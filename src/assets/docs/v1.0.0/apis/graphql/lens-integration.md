@@ -62,6 +62,25 @@ When you query a lens-backed GraphQL field, the results are wrapped in `Perspect
 
 The `data` field contains your actual business model that the perspective projects. For example, if your perspective projects to `ProductReadModel`, the `data` field will expose `ProductReadModel`'s properties.
 
+### What a lens exposes
+
+Each lens gets its own GraphQL types, named after its query: a lens with `QueryName = "orders"` produces `OrdersRow`, and, when filtering and sorting are enabled, `OrdersRowFilterInput` and `OrdersRowSortInput`. Each type contains only the parts of the row the lens's scope declares:
+
+| Scope flag | Fields on the row type |
+|---|---|
+| `Data` | `data` |
+| `Metadata` | `metadata` |
+| `Scope` | `scope` |
+| `SystemFields` | `id`, `createdAt`, `updatedAt`, `version` |
+
+The filter and sort inputs follow the same scope, so a client cannot filter or sort on a part the lens does not expose. `WhizbangGraphQLOptions.IncludeMetadataInFilters` and `IncludeScopeInFilters` can narrow them further, removing `metadata` or `scope` from the inputs even when the row exposes them.
+
+How the scope is resolved:
+
+- A lens that leaves `Scope` at `None` uses `WhizbangGraphQLOptions.DefaultScope`, which is `DataOnly` unless you change it.
+- If the result is `None`, or contains a value that is not a defined flag, the lens exposes `data` only. A lens never exposes more than it declares.
+- Two lenses over the same model each get their own types, so each keeps its own field set.
+
 ### Scope Control
 
 Control which parts of `PerspectiveRow<T>` are exposed:
@@ -223,13 +242,13 @@ public record OrderReadModel {
 }
 ```
 
-The generated GraphQL schema includes:
+The lens leaves `Scope` at `None`, so it uses the default scope (`DataOnly`). The generated GraphQL schema includes:
 
 ```graphql{title="type Query" description="type Query" category="Apis" difficulty="BEGINNER" tags=["Apis", "Graphql", "GRAPHQL"]}
 type Query {
   orders(
-    where: OrderFilterInput
-    order: [OrderSortInput!]
+    where: OrdersRowFilterInput
+    order: [OrdersRowSortInput!]
     first: Int
     after: String
     last: Int
@@ -238,37 +257,32 @@ type Query {
 }
 
 type OrdersConnection {
-  nodes: [Order!]
-  edges: [OrderEdge!]
+  nodes: [OrdersRow!]
+  edges: [OrdersEdge!]
   pageInfo: PageInfo!
   # totalCount is only added when the resolver uses
   # [UsePaging(IncludeTotalCount = true)] - not enabled by the generated resolvers
 }
 
-type Order {
-  id: UUID!
-  version: Int!
-  data: OrderData!
-  metadata: PerspectiveMetadata
-  scope: PerspectiveScope
-  createdAt: DateTime!
-  updatedAt: DateTime!
+# Only the parts the lens's scope declares. With DataOnly, that is data.
+type OrdersRow {
+  data: OrderReadModel!
 }
 
-type OrderData {
+type OrderReadModel {
   customerName: String!
   status: String!
   totalAmount: Decimal!
 }
 
-input OrderFilterInput {
-  and: [OrderFilterInput!]
-  or: [OrderFilterInput!]
-  data: OrderDataFilterInput
-  id: UuidOperationFilterInput
-  version: IntOperationFilterInput
+input OrdersRowFilterInput {
+  and: [OrdersRowFilterInput!]
+  or: [OrdersRowFilterInput!]
+  data: OrderReadModelFilterInput
 }
 ```
+
+With `Scope = GraphQLLensScopes.All`, `OrdersRow` (and its filter and sort inputs, subject to `IncludeMetadataInFilters` and `IncludeScopeInFilters`) would also carry `metadata`, `scope`, `id`, `createdAt`, `updatedAt` and `version`.
 
 ## Multiple Lenses for Same Model
 
@@ -290,6 +304,8 @@ public interface IAdminOrderLens : ILensQuery<OrderReadModel> { }
     EnableFiltering = false)]
 public interface IOrderAuditLens : ILensQuery<OrderReadModel> { }
 ```
+
+Each lens gets its own types (`OrdersRow`, `AdminOrdersRow`, `OrderAuditRow`), so the public API exposes only `data` while the admin and audit lenses expose what they declare.
 
 ## Next Steps
 
