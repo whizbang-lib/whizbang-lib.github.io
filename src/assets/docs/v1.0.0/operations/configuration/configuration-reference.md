@@ -84,7 +84,7 @@ Whizbang follows the standard .NET configuration model ([Microsoft: Configuratio
 | `Whizbang:Database:SignalingMode` | `Whizbang__Database__SignalingMode` |
 | `Whizbang:WorkCoordinatorGate:MaxConcurrent` | `Whizbang__WorkCoordinatorGate__MaxConcurrent` |
 | `Whizbang:Offloads:AzureBlob:my-provider:ContainerName` | `Whizbang__Offloads__AzureBlob__my-provider__ContainerName` |
-| `ConnectionStrings:myservice-db` | `ConnectionStrings__myservice-db` |
+| `ConnectionStrings:db` | `ConnectionStrings__db` |
 | `ConnectionPool:MaxPoolSize` | `ConnectionPool__MaxPoolSize` |
 
 Environment variables are added **after** `appsettings.json` and `appsettings.{Environment}.json` in the default host builder, so they override both; command-line arguments override everything ([Microsoft: default configuration sources and precedence](https://learn.microsoft.com/en-us/aspnet/core/fundamentals/configuration/#default-application-configuration-sources)). `TimeSpan` values use the standard `d.hh:mm:ss` string form (`00:00:30` = 30 seconds); enums parse case-insensitively by name.
@@ -232,14 +232,33 @@ Code-only (through `AddWhizbangRoleAssignment(o => ...)`): `Roles`, `RoleLeases`
 
 ### ConnectionStrings Conventions
 
-Whizbang resolves database connections through `ConnectionStrings:*` keys with these conventions (environment form `ConnectionStrings__<key>` — note there is **no** `Whizbang` prefix):
+Whizbang resolves database connections through `ConnectionStrings:*` keys (environment form `ConnectionStrings__<key>` — note there is **no** `Whizbang` prefix). The name is **`db`** unless the `DbContext` names another: every service has its own configuration, so the name does not say which service it is. {verified: EFCoreServiceRegistrationGeneratorCoverageTests.Generator_WithoutConnectionStringName_DefaultsToDbAsync, PostgresDriverExtensions_TurnkeyResolverWiringTests.WithEFCore_WithoutAName_ReadsTheDbConnectionStringAsync}
 
-| Key pattern | Purpose |
-|-------------|---------|
-| `ConnectionStrings:{key}` | The pooled (e.g. pgbouncer) connection for a DbContext or notification listener |
-| `ConnectionStrings:{key}-direct` | Preferred over `{key}` for connections that must bypass a transaction pooler: LISTEN/NOTIFY listeners, the commit-order stamper, and the pinned worker pool. Falls back to `{key}` when absent |
-| `ConnectionStrings:{dbContextKey}` | Generated DbContext registration reads the key named for your DbContext registration |
-| `ConnectionStrings:{dbContextKey}-init` | Optional higher-privilege connection used only for schema initialization/migrations |
+| Key | Purpose |
+|-----|---------|
+| `ConnectionStrings:db` | The pooled (e.g. pgbouncer) connection: the application's queries and the work coordinator |
+| `ConnectionStrings:db-direct` | Preferred over `db` for connections that must bypass a transaction pooler: LISTEN/NOTIFY listeners, the commit-order stamper, and the pinned worker pool. Falls back to `db` when absent |
+| `ConnectionStrings:db-init` | Optional direct, higher-privilege connection used only for schema initialization and migrations |
+
+Contexts in one service that share a database share `db`. Only a second, separate database needs a name of its own: `[WhizbangDbContext(ConnectionStringName = "reporting")]` or `WithEFCore<ReportingDbContext>("reporting")`, which then reads `reporting`, `reporting-direct` and `reporting-init`.
+
+:::updated
+Earlier releases derived the name from the `DbContext` class (`OrderServiceDbContext` → `orderservice-db`). A context that relied on that now reads `db`: rename the keys, or set `ConnectionStringName` to the old name to keep them.
+:::
+
+#### Command timeouts {#command-timeouts}
+
+A timeout belongs to the connection it applies to, set as `Command Timeout` in that connection string:
+
+| Work | Connection | Timeout |
+|------|------------|---------|
+| Application queries | `db` | The string's `Command Timeout`, or `ConnectionPool:CommandTimeout` (below) |
+| Work coordinator (claims, commit batches) | `db` | Fixed at 180 s by the EF Core driver, whatever the string says, so a short application timeout cannot cancel a commit batch |
+| LISTEN/NOTIFY, commit-order stamper | `db-direct` | The string's `Command Timeout` |
+| Schema initialization and migrations | `db-init` | The string's `Command Timeout` when it sets one; otherwise 600 s. Without a `db-init` string, always 600 s: a table rewrite legitimately runs for minutes {verified: SchemaCommandTimeoutTests.AnInitStringThatSetsATimeout_DecidesItAsync, SchemaCommandTimeoutTests.OtherwiseTheSchemaKeepsItsOwnTenMinutesAsync, EFCoreServiceRegistrationGeneratorCoverageTests.Generator_SchemaCommands_UseTheInitConnectionStringsTimeoutAsync} |
+| Collective apply | `db` | Server-side `statement_timeout`: `CollectiveApplyStatementTimeoutSeconds` under [Postgres Databases](#postgres-databases), the one timeout a connection string cannot carry through a transaction pooler |
+
+`Whizbang:Postgres:CommandTimeoutSeconds` is retired: no command ever read it. Startup logs a warning naming the key when it is set. {verified: PostgresOptionsConfigurationTests.RetiredCommandTimeoutSeconds_IsReportedAtStartupAsync}
 
 ### ConnectionPool (root section)
 
@@ -247,10 +266,12 @@ The generated DbContext registration reads a root-level `ConnectionPool` section
 
 | Key | Type | Environment variable | Purpose |
 |-----|------|----------------------|---------|
-| `ConnectionPool:MaxPoolSize` | `int` | — *code-only* | Npgsql `Maximum Pool Size` |
-| `ConnectionPool:MinPoolSize` | `int` | — *code-only* | Npgsql `Minimum Pool Size` |
-| `ConnectionPool:Timeout` | `int` (seconds) | — *code-only* | Npgsql connection `Timeout` |
-| `ConnectionPool:CommandTimeout` | `int` (seconds) | — *code-only* | Npgsql `Command Timeout` |
+| `ConnectionPool:MaxPoolSize` | `int` | `ConnectionPool__MaxPoolSize` | Npgsql `Maximum Pool Size` |
+| `ConnectionPool:MinPoolSize` | `int` | `ConnectionPool__MinPoolSize` | Npgsql `Minimum Pool Size` |
+| `ConnectionPool:Timeout` | `int` (seconds) | `ConnectionPool__Timeout` | Npgsql connection `Timeout` |
+| `ConnectionPool:CommandTimeout` | `int` (seconds) | `ConnectionPool__CommandTimeout` | Npgsql `Command Timeout` |
+
+These apply to the pooled `db` connection only; `db-direct` and `db-init` carry their own values in their strings.
 
 ## Per-Instance Sections
 
@@ -320,7 +341,7 @@ Whizbang__Transports__RabbitMQ__Batch__BatchSize=100
 
 ### Postgres Databases
 
-[PostgresOptions](#postgresoptions) bind in two layers. A key directly under `Whizbang:Postgres` is the default for **every** database, so a service with one database sets `Whizbang__Postgres__CommandTimeoutSeconds` without repeating its name. A key under `Whizbang:Postgres:<database>` overrides that default for one database, where `<database>` is the database's **connection-string name** — the same name `ConnectionStrings:<database>` uses. {verified: PostgresOptionsConfigurationTests.SectionLevelKey_IsTheDefaultForEveryDatabaseAsync, PostgresOptionsConfigurationTests.DatabaseKey_OverridesTheSectionLevelDefaultAsync} The EF Core Postgres driver (`.WithEFCore<TDbContext>().WithDriver.Postgres`) registers its DbContext's database: the name passed to `WithEFCore<T>("name")`, or the derived one (`OrdersDbContext` → `orders-db`).
+[PostgresOptions](#postgresoptions) bind in two layers. A key directly under `Whizbang:Postgres` is the default for **every** database, so a service with one database sets `Whizbang__Postgres__MaxInFlightCommands` without repeating its name. A key under `Whizbang:Postgres:<database>` overrides that default for one database, where `<database>` is the database's **connection-string name** — the same name `ConnectionStrings:<database>` uses. {verified: PostgresOptionsConfigurationTests.SectionLevelKey_IsTheDefaultForEveryDatabaseAsync, PostgresOptionsConfigurationTests.DatabaseKey_OverridesTheSectionLevelDefaultAsync} The EF Core Postgres driver (`.WithEFCore<TDbContext>().WithDriver.Postgres`) registers its DbContext's database: the name passed to `WithEFCore<T>("name")`, or `db`.
 
 ```bash{
 title: "Per-database Postgres keys"
@@ -332,10 +353,9 @@ tags: ["configuration", "postgres", "environment-variables"]
 unverified: "illustration - binding locked by PostgresOptionsConfigurationTests"
 }
 # Every database this service uses
-Whizbang__Postgres__CommandTimeoutSeconds=60
-# Only orders-db, overriding the default above
-Whizbang__Postgres__orders-db__CommandTimeoutSeconds=30
-Whizbang__Postgres__orders-db__MaxInFlightCommands=20
+Whizbang__Postgres__MaxInFlightCommands=40
+# Only the separate reporting database, overriding the default above
+Whizbang__Postgres__reporting__MaxInFlightCommands=10
 ```
 
 Every registered database is reachable by name through `IOptionsMonitor<PostgresOptions>.Get("<database>")`. The unnamed instance, which the framework itself reads through `IOptions<PostgresOptions>` (the work-coordinator gate cap, collective apply), binds from the **first** database registered; with none registered it keeps its code values. `services.Configure<PostgresOptions>(…)` values are the defaults that configuration overrides. `AddWhizbangPostgresOptionsBinding("<database>")` registers a database by hand. {verified: PostgresOptionsConfigurationTests.NamedDatabase_PicksUpItsOwnKeys_AndNotAnotherDatabasesAsync, PostgresOptionsConfigurationTests.Driver_BindsTheDbContextsDatabase_IntoTheWorkCoordinatorGateAsync}
@@ -1329,7 +1349,6 @@ Connection retry, command timeout, and collective-apply bounds for the PostgreSQ
 | `MaxRetryDelay` | `TimeSpan` | `00:02:00` | `Whizbang__Postgres__<database>__MaxRetryDelay` | Cap on exponential backoff |
 | `BackoffMultiplier` | `double` | `2.0` | `Whizbang__Postgres__<database>__BackoffMultiplier` | Backoff multiplier |
 | `RetryIndefinitely` | `bool` | `true` | `Whizbang__Postgres__<database>__RetryIndefinitely` | Retry forever until connect or cancellation |
-| `CommandTimeoutSeconds` | `int` | `120` | `Whizbang__Postgres__<database>__CommandTimeoutSeconds` | How long one SQL command (e.g. `process_work_batch`) may run; shorter than the worst commit batch loses completions |
 | `MaxInFlightCommands` | `int` | `50` | `Whizbang__Postgres__<database>__MaxInFlightCommands` | Cap on concurrent work-coordinator calls per process; post-configured into `WorkCoordinatorGateOptions.MaxConcurrent` (see [WorkCoordinatorGateOptions](#workcoordinatorgateoptions)), so it is the effective gate cap whenever a Postgres driver is registered; 0 disables the gate |
 | `CollectiveApplyBatchSize` | `int` | `1000` | `Whizbang__Postgres__<database>__CollectiveApplyBatchSize` | Rows mutated per batched collective-apply UPDATE |
 | `CollectiveApplyStatementTimeoutSeconds` | `int?` | `null` | `Whizbang__Postgres__<database>__CollectiveApplyStatementTimeoutSeconds` | Server-side `statement_timeout` per collective-apply batch |

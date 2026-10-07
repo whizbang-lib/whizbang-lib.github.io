@@ -103,13 +103,12 @@ public sealed class EFCoreDriverSelector : IDriverOptions {
 `WithEFCore<TDbContext>()` has two overloads:
 
 ```csharp{title="WithEFCore Overloads" description="WithEFCore Overloads" category="Implementation" difficulty="BEGINNER" tags=["Data", "C#", "WithEFCore"] tests=["EFCoreExtensionsTests.WithEFCore_WithValidBuilder_ReturnsEFCoreDriverSelectorAsync", "EFCoreExtensionsTests.WithEFCore_CanChainToWithDriverAsync"]}
-// Connection string name comes from the [WhizbangDbContext] attribute
-// or is derived from the DbContext class name
-// (e.g. AppServiceDbContext -> "appservice-db")
+// Connection string name comes from the [WhizbangDbContext] attribute,
+// else "db" (ConnectionStrings:db, db-direct, db-init)
 services.AddWhizbang().WithEFCore<MyDbContext>().WithDriver.Postgres;
 
-// Explicit connection string name from IConfiguration
-services.AddWhizbang().WithEFCore<MyDbContext>("my-database").WithDriver.Postgres;
+// Explicit connection string name, for a second, separate database
+services.AddWhizbang().WithEFCore<ReportingDbContext>("reporting").WithDriver.Postgres;
 ```
 
 Both `WhizbangBuilder` (from `AddWhizbang()`) and `WhizbangPerspectiveBuilder` (from the source-generated `AddWhizbangPerspectives()`) support `.WithEFCore<TDbContext>()`.
