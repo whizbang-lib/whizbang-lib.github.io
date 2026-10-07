@@ -18,6 +18,7 @@ codeReferences:
   - src/Whizbang.Core/Workers/ClaimWorker.cs
   - src/Whizbang.Core/Workers/InboxDrainWorker.cs
   - src/Whizbang.Core/Workers/OutboxDrainWorker.cs
+  - src/Whizbang.Data.Postgres/PostgresDeadlockRetry.cs
 testReferences:
   - tests/Whizbang.Core.Tests/Workers/TransientDatabaseFailureTests.cs
   - tests/Whizbang.Core.Tests/Workers/WorkerLoopRecoveryTests.cs
@@ -26,6 +27,8 @@ testReferences:
   - tests/Whizbang.Core.Tests/Workers/InboxDrainWorkerCoverageTests.cs
   - tests/Whizbang.Core.Tests/Workers/OutboxDrainWorkerCoverageTests.cs
   - tests/Whizbang.Core.Tests/Signals/PollSignalSourceTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/PostgresDeadlockRetryTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/PostgresDeadlockRetryCoverageTests.cs
 ---
 
 # Transient database failures in worker loops
@@ -177,6 +180,28 @@ about what had failed, and the line after it was the host stopping.
 | `OutboxDrainWorker` | Reports (event id 53 transient, 54 otherwise); the streams re-offer through the claim backstop | {verified: OutboxDrainWorkerCoverageTests.DrainBatch_TransientDatabaseFailure_IsNamedAsSuchAndTheLoopTakesTheNextBatchAsync} |
 | Poll signal sources | Hand the failed tick to `OnTickError`, log at Warning, and keep the timer's schedule | {verified: PollSignalSourceTests.Tick_TransientDatabaseFailure_IsHandedToOnTickErrorAndTheScheduleSurvivesAsync} |
 | Flush workers | Retry inside `BatchFlusher`, then drop the batch with a line rather than fault | |
+
+## Retrying one operation {#deadlock-retry}
+
+The loops above recover a whole batch. A single database operation that may lose a lock race, such
+as a write two instances can make at once, can instead retry itself with `PostgresDeadlockRetry`.
+
+```csharp{title="Retrying a write that can deadlock" description="The action runs again after a deadlock or serialization failure, up to the attempt limit." category="Fundamentals" difficulty="INTERMEDIATE" tags=["workers", "resilience", "deadlock"]}
+await PostgresDeadlockRetry.ExecuteAsync(
+  () => connection.ExecuteAsync(sql, parameters),
+  maxAttempts: 3,
+  logger,
+  cancellationToken);
+```
+
+| Behavior | Detail | |
+|---|---|---|
+| What is retried | A deadlock (`40P01`) or a serialization failure (`40001`). PostgreSQL has already rolled the losing transaction back, so running it again is safe | {verified: PostgresDeadlockRetryTests.ExecuteAsync_DeadlockOnFirstAttempt_RetriesAndSucceedsAsync, PostgresDeadlockRetryTests.ExecuteAsync_SerializationFailure_RetriesAndSucceedsAsync} |
+| What is not | Any other error, from PostgreSQL or not, propagates on the first attempt | {verified: PostgresDeadlockRetryTests.ExecuteAsync_NonDeadlockException_DoesNotRetryAsync, PostgresDeadlockRetryTests.ExecuteAsync_NonPostgresException_DoesNotRetryAsync} |
+| The wait | About 50 ms before the second attempt, doubling each time, with ±25% jitter so two losers do not collide again | |
+| Giving up | After `maxAttempts` (default 3) the last error is rethrown unchanged | {verified: PostgresDeadlockRetryTests.ExecuteAsync_DeadlockExhaustsAttempts_ThrowsOriginalExceptionAsync} |
+| `maxAttempts` below one | Rejected with `ArgumentOutOfRangeException` before the action runs. It asks for no attempt at all, so the alternatives were to ignore the setting or to report a write as done when it never ran | {verified: PostgresDeadlockRetryCoverageTests.ExecuteAsync_WithNonPositiveMaxAttempts_ThrowsWithoutRunningTheActionAsync, PostgresDeadlockRetryCoverageTests.ExecuteAsyncOfT_WithNonPositiveMaxAttempts_ThrowsWithoutRunningTheActionAsync} |
+| Cancellation | Honored during the wait between attempts | {verified: PostgresDeadlockRetryTests.ExecuteAsync_CancellationToken_HonoredBetweenRetriesAsync} |
 
 ## For operators
 

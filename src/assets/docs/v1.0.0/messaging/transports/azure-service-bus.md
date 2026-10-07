@@ -438,6 +438,7 @@ builder.Services.AddAzureServiceBusTransport(
 - **Indefinite Phase**: After initial attempts, continues retrying (logged less frequently)
 - **Capped Backoff**: Delay never exceeds `MaxRetryDelay` (default 120s)
 - **Graceful Shutdown**: Responds to cancellation token for clean shutdown
+- **No Leaked Clients**: An attempt constructs its client before it knows whether the namespace answers. When the check fails, that client is closed before the attempt retries, gives up or is canceled, so a namespace that refuses for minutes at startup does not leave one open client per attempt. {verified: AzureServiceBusConnectionRetryCoverageTests.CreateClientWithRetryAsync_WhenAnAttemptFails_ClosesThatAttemptsClientAsync, AzureServiceBusConnectionRetryCoverageTests.CreateClientWithRetryAsync_WhenAttemptsAreExhausted_ClosesEveryClientItMadeAsync}
 
 **Use Cases**:
 - **Emulator Startup**: Azure Service Bus emulator may take 45-60 seconds to become ready
@@ -893,6 +894,23 @@ var envelope = JsonSerializer.Deserialize(json, typeInfo) as IMessageEnvelope;
 - Full Native AOT support
 
 ---
+
+### Metadata as Application Properties {#metadata-application-properties}
+
+Destination and per-message metadata travels as Service Bus application properties, which hold only
+primitive values. Each JSON value is sent as the closest primitive that holds it exactly:
+
+| JSON value | Sent as | |
+|---|---|---|
+| A string | `string` | |
+| A whole number within 64 bits | `long` | |
+| Any other number a `double` holds | `double` | {verified: AzureServiceBusTransportThrottleAndAdaptiveTests.PublishAsync_MetadataFractionalNumber_SendsDoubleAsync} |
+| A number beyond the `double` range, such as `1e400` | The original JSON text, never infinity | {verified: AzureServiceBusTransportThrottleAndAdaptiveTests.PublishAsync_MetadataNumberBeyondDoubleRange_SendsOriginalTextAsync} |
+| `true` / `false` / `null` | `bool` / `bool` / no value | |
+| An array or object | Its JSON text | |
+
+.NET parses a number beyond the `double` range to infinity and reports success, so a finite result is
+what decides that the number is sent as a `double`.
 
 ## Emulator Support
 

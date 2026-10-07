@@ -1,13 +1,13 @@
 {
   "run": {
-    "runId": "37594831232",
-    "sha": "b9e74ae4ce6b7140fe4e76dd6acb1392f35b0a75",
+    "runId": "37603472569",
+    "sha": "d0725849cae981a6d0a87f1071108d6350c92561",
     "branch": "develop",
-    "libraryVersion": "0.2613.0-alpha.140",
-    "completedAt": "2026-10-07T09:01:27.201Z"
+    "libraryVersion": "0.2614.0-alpha.9",
+    "completedAt": "2026-10-07T10:17:07.466Z"
   },
   "total": {
-    "passed": 29642,
+    "passed": 29709,
     "failed": 0,
     "skipped": 12
   },
@@ -23,12 +23,12 @@
       "skipped": 0
     },
     "integration": {
-      "passed": 497,
+      "passed": 512,
       "failed": 0,
       "skipped": 3
     },
     "postgres-dapper": {
-      "passed": 986,
+      "passed": 990,
       "failed": 0,
       "skipped": 0
     },
@@ -53,7 +53,7 @@
       "skipped": 1
     },
     "unit": {
-      "passed": 21107,
+      "passed": 21155,
       "failed": 0,
       "skipped": 8
     }
@@ -145,7 +145,7 @@
     },
     "Whizbang.Data.Dapper.Postgres.Tests": {
       "file": "Whizbang.Data.Dapper.Postgres.Tests.json",
-      "passed": 986,
+      "passed": 990,
       "failed": 0,
       "skipped": 0
     },
@@ -181,7 +181,7 @@
     },
     "Whizbang.Generators.Tests": {
       "file": "Whizbang.Generators.Tests.json",
-      "passed": 3053,
+      "passed": 3062,
       "failed": 0,
       "skipped": 0
     },
@@ -283,19 +283,19 @@
     },
     "Whizbang.Transports.AzureServiceBus.Tests": {
       "file": "Whizbang.Transports.AzureServiceBus.Tests.json",
-      "passed": 668,
+      "passed": 685,
       "failed": 0,
       "skipped": 0
     },
     "Whizbang.Transports.FastEndpoints.Integration.Tests": {
       "file": "Whizbang.Transports.FastEndpoints.Integration.Tests.json",
-      "passed": 8,
+      "passed": 23,
       "failed": 0,
       "skipped": 0
     },
     "Whizbang.Transports.FastEndpoints.Tests": {
       "file": "Whizbang.Transports.FastEndpoints.Tests.json",
-      "passed": 91,
+      "passed": 113,
       "failed": 0,
       "skipped": 0
     },
