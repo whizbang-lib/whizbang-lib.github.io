@@ -1,13 +1,13 @@
 {
   "run": {
-    "runId": "37554857441",
-    "sha": "3494ccca3d347e08d639bde93429c62aaa14c0d2",
+    "runId": "37561260398",
+    "sha": "40a6cadc8f4ae0d050a041eda06ac076f9a22036",
     "branch": "develop",
-    "libraryVersion": "0.2613.0-alpha.67",
-    "completedAt": "2026-10-07T01:26:11.678Z"
+    "libraryVersion": "0.2613.0-alpha.71",
+    "completedAt": "2026-10-07T02:46:39.327Z"
   },
   "total": {
-    "passed": 29445,
+    "passed": 29476,
     "failed": 0,
     "skipped": 12
   },
@@ -23,7 +23,7 @@
       "skipped": 0
     },
     "integration": {
-      "passed": 482,
+      "passed": 496,
       "failed": 0,
       "skipped": 3
     },
@@ -53,7 +53,7 @@
       "skipped": 1
     },
     "unit": {
-      "passed": 20959,
+      "passed": 20990,
       "failed": 0,
       "skipped": 8
     }
@@ -181,7 +181,7 @@
     },
     "Whizbang.Generators.Tests": {
       "file": "Whizbang.Generators.Tests.json",
-      "passed": 2976,
+      "passed": 2993,
       "failed": 0,
       "skipped": 0
     },
@@ -307,7 +307,7 @@
     },
     "Whizbang.Transports.HotChocolate.Tests": {
       "file": "Whizbang.Transports.HotChocolate.Tests.json",
-      "passed": 273,
+      "passed": 287,
       "failed": 0,
       "skipped": 0
     },
