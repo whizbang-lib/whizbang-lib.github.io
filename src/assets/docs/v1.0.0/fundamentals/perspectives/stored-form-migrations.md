@@ -193,7 +193,7 @@ rename is converted to the canonical form in the same pass.
 
 The obvious reflex, when a stored value changes shape, is to teach the serializer to read both:
 
-```csharp
+```csharp{title="What does not work" description="A converter declared on a perspective model property. It compiles and runs, and a stored document never consults it: Entity Framework reads the document with its own materializer rather than with the serializer. The build reports WHIZ811 for it." framework="NET10" category="Perspectives" difficulty="INTERMEDIATE" tags=["perspectives", "stored-forms", "migrations", "diagnostics"]}
 // Does not work for a stored document.
 [JsonConverter(typeof(LegacyNumberOrStringConverter))]
 public string? Revision { get; set; }
