@@ -47,8 +47,8 @@ Whizbang provides a **turnkey experience** for pgvector. When your perspective m
 // - CREATE EXTENSION vector pre-created at data-source build (if missing)
 builder.Services.AddMyAppDbContext();
 
-// Or override the configuration key to read the connection string from:
-builder.Services.AddMyAppDbContext(connectionStringName: "my-service-db");
+// Reads ConnectionStrings:db by default; name a second, separate database explicitly:
+builder.Services.AddMyAppDbContext(connectionStringName: "reporting");
 ```
 
 The `DbContextRegistrationRegistry` tracks which DbContexts have vector fields and ensures proper initialization order with all required pgvector setup.
@@ -133,7 +133,7 @@ public static IServiceCollection AddMyAppDbContext(
     this IServiceCollection services,
     string? connectionStringName = null) {
 
-  var connectionStringKey = connectionStringName ?? "DefaultConnection";
+  var connectionStringKey = connectionStringName ?? "db";
 
   // NpgsqlDataSource singleton - IConfiguration resolved at provider-build time
   services.RemoveAll<NpgsqlDataSource>();
@@ -185,11 +185,11 @@ If you forget these packages, compiler diagnostics will guide you:
 
 ### Connection String Name
 
-The generated extension reads the connection string from configuration. The default key comes from `[WhizbangDbContext(ConnectionStringName = "...")]`; override it per call:
+The generated extension reads the connection string from configuration: `ConnectionStrings:db` unless `[WhizbangDbContext(ConnectionStringName = "...")]` names another. Override it per call:
 
 ```csharp{title="Connection String Name" description="Override the configuration key used to resolve the connection string." category="Extensibility" difficulty="BEGINNER" tags=["Extending", "Features", "Configure", "Data"] unverified="Consumer usage of the generated AddMyAppDbContext(connectionStringName:) overload; covered only by VectorSearchIntegrationTests, which is absent from the test map."}
-// Reads ConnectionStrings:chat-service-db from configuration
-builder.Services.AddMyAppDbContext(connectionStringName: "chat-service-db");
+// Reads ConnectionStrings:reporting from configuration
+builder.Services.AddMyAppDbContext(connectionStringName: "reporting");
 ```
 
 ### Connection Pool Settings

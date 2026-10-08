@@ -43,7 +43,7 @@ var builder = WebApplication.CreateBuilder(args);
 // Core Whizbang setup (storage; connection string resolved from configuration)
 builder.Services
     .AddWhizbang()
-    .WithEFCore<AppDbContext>("postgres")
+    .WithEFCore<AppDbContext>()  // reads ConnectionStrings:db
     .WithDriver.Postgres;
 
 // Transport switching based on configuration
@@ -80,7 +80,7 @@ if (useRabbitMQ) {
 {
   "UseRabbitMQ": true,
   "ConnectionStrings": {
-    "postgres": "Host=localhost;Database=myapp;Username=postgres;Password=postgres",
+    "db": "Host=localhost;Database=myapp;Username=postgres;Password=postgres",
     "rabbitmq": "amqp://guest:guest@localhost:5672"
   }
 }
@@ -92,7 +92,7 @@ if (useRabbitMQ) {
 {
   "UseRabbitMQ": false,
   "ConnectionStrings": {
-    "postgres": "Host=myapp.postgres.database.azure.com;Database=myapp;...",
+    "db": "Host=myapp.postgres.database.azure.com;Database=myapp;...",
     "servicebus": "Endpoint=sb://myapp.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=..."
   }
 }

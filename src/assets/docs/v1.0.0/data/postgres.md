@@ -58,7 +58,7 @@ services.AddWhizbang()
 
 ### Connection String
 
-The connection string is read from `IConfiguration` under `ConnectionStrings:{name}`, where the name is derived from the DbContext class name by convention (e.g., `AppServiceDbContext` → `appservice-db`). Override the name explicitly with `WithEFCore<MyDbContext>("my-database")`.
+The connection string is read from `IConfiguration` under `ConnectionStrings:db` (with `db-direct` and `db-init`, see [ConnectionStrings Conventions](../operations/configuration/configuration-reference#connectionstrings-conventions)). Name a second, separate database explicitly with `WithEFCore<ReportingDbContext>("reporting")`.
 
 ```
 Host=localhost;Port=5432;Database=myapp;Username=postgres;Password=secret
@@ -93,7 +93,6 @@ services.AddWhizbangPostgres(
 | `MaxRetryDelay` | 120 seconds | Maximum delay (caps exponential backoff) |
 | `BackoffMultiplier` | 2.0 | Multiplier for exponential backoff |
 | `RetryIndefinitely` | `true` | Continue retrying after initial attempts |
-| `CommandTimeoutSeconds` | 120 | Command timeout for coordinator SQL calls (Dapper driver); see [Command Timeout](#command-timeout) |
 | `MaxInFlightCommands` | 50 | Cap on concurrent work-coordinator calls per process; feeds the `WorkCoordinatorGate`, see [In-Flight Command Cap](#max-in-flight-commands) |
 
 ### Command Timeout {#command-timeout}
@@ -103,11 +102,16 @@ fan-outs) has been observed at 13 to 30 seconds under a bulk-import backlog; a t
 worst batch cancels the commit and loses its completions, the rows re-claim as lease expiries, and the
 poison admission gate throttles the drain to one row per cycle.
 
-- **Dapper driver:** `CommandTimeoutSeconds` (default 120) applies to every coordinator command.
 - **EF Core driver:** every command the coordinator creates carries a fixed 180 second budget, the same
   value its `DbContext` uses, regardless of the `Command Timeout` in the consumer's connection string.
   Deliberate exceptions (vacuum, maintenance) set their own. A consumer connection string can therefore
   no longer cancel a commit batch.
+- **Dapper driver:** coordinator commands use the connection string's `Command Timeout` (Npgsql's
+  default is 30 seconds); maintenance and purge commands set 30 seconds.
+
+`PostgresOptions.CommandTimeoutSeconds` is retired: no command ever read it. Each connection has its own
+timeout key instead, named like its connection string (`Whizbang__Postgres__db__CommandTimeoutSeconds`,
+`…__db-direct__…`, `…__db-init__…`); see [Command timeouts](../operations/configuration/configuration-reference#command-timeouts).
 
 ### In-Flight Command Cap {#max-in-flight-commands}
 

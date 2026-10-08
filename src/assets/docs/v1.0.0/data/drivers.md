@@ -103,13 +103,12 @@ public sealed class EFCoreDriverSelector : IDriverOptions {
 `WithEFCore<TDbContext>()` has two overloads:
 
 ```csharp{title="WithEFCore Overloads" description="WithEFCore Overloads" category="Implementation" difficulty="BEGINNER" tags=["Data", "C#", "WithEFCore"] tests=["EFCoreExtensionsTests.WithEFCore_WithValidBuilder_ReturnsEFCoreDriverSelectorAsync", "EFCoreExtensionsTests.WithEFCore_CanChainToWithDriverAsync"]}
-// Connection string name comes from the [WhizbangDbContext] attribute
-// or is derived from the DbContext class name
-// (e.g. AppServiceDbContext -> "appservice-db")
+// Connection string name comes from the [WhizbangDbContext] attribute,
+// else "db" (ConnectionStrings:db, db-direct, db-init)
 services.AddWhizbang().WithEFCore<MyDbContext>().WithDriver.Postgres;
 
-// Explicit connection string name from IConfiguration
-services.AddWhizbang().WithEFCore<MyDbContext>("my-database").WithDriver.Postgres;
+// Explicit connection string name, for a second, separate database
+services.AddWhizbang().WithEFCore<ReportingDbContext>("reporting").WithDriver.Postgres;
 ```
 
 Both `WhizbangBuilder` (from `AddWhizbang()`) and `WhizbangPerspectiveBuilder` (from the source-generated `AddWhizbangPerspectives()`) support `.WithEFCore<TDbContext>()`.
@@ -178,7 +177,7 @@ For services that prefer raw-SQL persistence, the `Whizbang.Data.Dapper.Postgres
 1. **Depend on abstractions** - inject `ILensQuery<T>` / `IPerspectiveStore<T>`, never a concrete store
 2. **Select the driver once** - at composition root, per service
 3. **Use InMemory in tests** - same abstractions, no database required
-4. **Prefer the connection string convention** - let the `DbContext` name derive the connection string name; override with `WithEFCore<T>("name")` only when needed
+4. **Prefer the connection string convention** - name the database's connection string `db` (with `db-direct` and `db-init`); name another only for a second, separate database with `WithEFCore<T>("name")`
 
 ## Related Documentation
 

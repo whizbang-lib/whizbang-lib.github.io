@@ -35,7 +35,7 @@ Decision guide for the work coordinator's performance knobs. Defaults are tuned 
    SELECT calls, mean_exec_time, total_exec_time FROM pg_stat_statements
    WHERE query LIKE '%claim_work%' ORDER BY total_exec_time DESC;
    ```
-3. Increase `Whizbang:WorkCoordinator:PollingMaxIntervalMilliseconds` if your stale-threshold budget allows (cap is `AbandonStaleInstanceThresholdSeconds × 1000 / 3` — auto-clamped).
+3. Increase `Whizbang:Workers:Claim:PollingMaxIntervalMilliseconds` if your stale-threshold budget allows (cap is `AbandonStaleInstanceThresholdSeconds × 1000 / 3` — auto-clamped).
 
 ## Burst latency is too high
 
@@ -50,7 +50,7 @@ Decision guide for the work coordinator's performance knobs. Defaults are tuned 
    # do something that should commit handler results, watch for output
    ```
 2. Confirm the receiving service's `IsHealthy = true`.
-3. Lower `Whizbang:Notifications:PollingFallbackInterval` if you can't tolerate 30 s gaps when the listener is briefly down. 10 s is a reasonable lower bound; below that, idle CPU starts climbing.
+3. Lower `Whizbang:Database:PollingFallbackInterval` if you can't tolerate 30 s gaps when the listener is briefly down. 10 s is a reasonable lower bound; below that, idle CPU starts climbing.
 
 ## Inbox handler throughput is too low
 
@@ -59,9 +59,9 @@ Decision guide for the work coordinator's performance knobs. Defaults are tuned 
 **Diagnosis:** `InboxHandlerWorker` is committing one handler at a time instead of batching, OR `commit_handler_batch` is falling back to all-or-nothing semantics.
 
 **Fix:**
-1. Verify `Whizbang:Flushers:InboxHandler:Flusher:CoalesceWindowMs` is non-zero (default 25). Setting to 0 forces single-handler-per-call.
+1. Verify `Whizbang:Workers:InboxHandler:Flusher:CoalesceWindowMs` is non-zero (default 25). Setting to 0 forces single-handler-per-call.
 2. Verify `IWorkCoordinatorCapabilities.SupportsSavepoints = true` (Postgres always does; future engines may not).
-3. Increase `Whizbang:Flushers:InboxHandler:Flusher:MaxBatchSize` if individual handlers complete fast. Defaults assume 100 max — raising to 500-1000 helps at very high throughput.
+3. Increase `Whizbang:Workers:InboxHandler:Flusher:MaxBatchSize` if individual handlers complete fast. Defaults assume 100 max — raising to 500-1000 helps at very high throughput.
 
 ## Outbox publish throughput is too low
 

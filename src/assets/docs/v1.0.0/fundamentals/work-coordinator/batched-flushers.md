@@ -61,7 +61,7 @@ Each flusher has `BatchFlusherOptions`:
 | `CoalesceWindowMs` | Max wait coalescing additional items after the first. |
 | `ImmediateFlushThreshold` | Flush early when batch reaches this size. |
 
-Override via `Whizbang:Flushers:<Worker>:Flusher:<Knob>`.
+Override via `Whizbang:Workers:<Worker>:Flusher:<Knob>`.
 
 ## Why this pattern wins
 

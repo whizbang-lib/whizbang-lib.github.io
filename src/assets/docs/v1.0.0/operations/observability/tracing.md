@@ -113,6 +113,8 @@ services.AddWhizbang(options => {
 | `TracedHandlers` | `Dictionary<string, TraceVerbosity>` | Empty | Handler patterns to always trace |
 | `TracedMessages` | `Dictionary<string, TraceVerbosity>` | Empty | Message patterns to always trace |
 
+Every property above binds from `Whizbang:Tracing`, the two span switches included. {verified: ServiceCollectionExtensionsTests.AddWhizbang_TracingSpanSwitches_BoundFromIConfigurationAsync}
+
 ## Tracer {#tracer}
 
 The `Tracer` class implements `ITracer` and emits traces via OpenTelemetry ActivitySource and structured logging.

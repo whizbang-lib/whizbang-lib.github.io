@@ -29,8 +29,11 @@ Whizbang reuses the connection string of your registered DbContext — **no dupl
 
 | Key | Required | Purpose | Env var |
 |---|---|---|---|
-| `ConnectionStrings:<dbname>` | yes (already exists for the DbContext) | Pooled connection. | `ConnectionStrings__<dbname>` |
-| `ConnectionStrings:<dbname>-direct` | no | Direct connection (bypasses pgbouncer). LISTEN-only, **1 connection per pod**. If unset → polling-only mode. | `ConnectionStrings__<dbname>-direct` |
+| `ConnectionStrings:db` | yes (already exists for the DbContext) | Pooled connection. | `ConnectionStrings__db` |
+| `ConnectionStrings:db-direct` | no | Direct connection (bypasses pgbouncer). LISTEN-only, **1 connection per pod**. If unset → polling-only mode. | `ConnectionStrings__db-direct` |
+| `ConnectionStrings:db-init` | no | Direct connection for schema initialization and migrations. | `ConnectionStrings__db-init` |
+
+`db` is the name when the `DbContext` names none; a context that names one (`[WhizbangDbContext(ConnectionStringName = "reporting")]`) reads `reporting`, `reporting-direct` and `reporting-init`. Each connection has its own command timeout, `Whizbang:Postgres:<connection>:CommandTimeoutSeconds` (`db`, `db-direct`, `db-init`); see [ConnectionStrings Conventions](../../operations/configuration/configuration-reference#connectionstrings-conventions) and [Command timeouts](../../operations/configuration/configuration-reference#command-timeouts).
 
 Recommended pgbouncer-aware Npgsql connection-string params on the pooled string:
 ```
@@ -40,16 +43,16 @@ Max Auto Prepare=0; No Reset On Close=true; Server Compatibility Mode=PgBouncer;
 
 See [notifications-and-pgbouncer](notifications-and-pgbouncer.md) for sizing math.
 
-## `Whizbang:WorkCoordinator` (claim worker tuning — `ClaimWorkerOptions`)
+## `Whizbang:Workers:Claim` and `Whizbang:WorkCoordinator` (claim worker tuning — `ClaimWorkerOptions`, `WorkCoordinatorOptions`)
 
 | Key | Type | Default | Notes |
 |---|---|---|---|
-| `Whizbang:WorkCoordinator:PollingIntervalMilliseconds` | int | 250 | Base poll cadence. |
-| `Whizbang:WorkCoordinator:PollingMaxIntervalMilliseconds` | int | 10000 | Adaptive backoff cap. Auto-clamped to ≤ `AbandonStaleInstanceThresholdSeconds × 1000 / 3` to preserve heartbeat freshness. |
-| `Whizbang:WorkCoordinator:MaxStreamsPerBatch` | int | 1000 | Max rows returned per `claim_work` call. |
-| `Whizbang:WorkCoordinator:MaxOutboxRowsPerBatch` | int | 1000 | Outbox acquisition row bound per claim, independent of the stream window. A claim that fills it claims again at once. `0` restores the stream window as the bound. |
-| `Whizbang:WorkCoordinator:OutboxRunLength` | int | 100 | Consecutive rows of one outbox stream a claim may lease (see [claim loop](claim-loop.md#outbox-streams-move-in-runs)). |
-| `Whizbang:WorkCoordinator:MaxOutstandingOutboxRows` | int | 10000 | Ceiling on outbox rows an instance holds; bounds the immediate re-claims after full outbox acquisitions. |
+| `Whizbang:Workers:Claim:PollingIntervalMilliseconds` | int | 250 | Base poll cadence. |
+| `Whizbang:Workers:Claim:PollingMaxIntervalMilliseconds` | int | 10000 | Adaptive backoff cap. Auto-clamped to ≤ `AbandonStaleInstanceThresholdSeconds × 1000 / 3` to preserve heartbeat freshness. |
+| `Whizbang:Workers:Claim:MaxStreamsPerBatch` | int | 1000 | Max rows returned per `claim_work` call. |
+| `Whizbang:Workers:Claim:MaxOutboxRowsPerBatch` | int | 1000 | Outbox acquisition row bound per claim, independent of the stream window. A claim that fills it claims again at once. `0` restores the stream window as the bound. |
+| `Whizbang:Workers:Claim:OutboxRunLength` | int | 100 | Consecutive rows of one outbox stream a claim may lease (see [claim loop](claim-loop.md#outbox-streams-move-in-runs)). |
+| `Whizbang:Workers:Claim:MaxOutstandingOutboxRows` | int | 10000 | Ceiling on outbox rows an instance holds; bounds the immediate re-claims after full outbox acquisitions. |
 | `Whizbang:WorkCoordinator:PartitionCount` | int | 10000 | Modulo partition count. |
 | `Whizbang:WorkCoordinator:LeaseSeconds` | int | 300 | Lease duration on claimed work. |
 
@@ -61,15 +64,15 @@ See [notifications-and-pgbouncer](notifications-and-pgbouncer.md) for sizing mat
 | `ContinueStreamRuns` | bool | true | Continue a stream from the lease it holds once its rows publish, instead of waiting for the next claim cycle. A stream with a failed publish is never continued. |
 | `MaxContinuationRounds` | int | 10 | Continuation rounds per drain cycle before the claim cycle takes the streams on. |
 
-## `Whizbang:Heartbeat` (heartbeat worker tuning — `HeartbeatWorkerOptions`)
+## `Whizbang:Workers:Heartbeat` (heartbeat worker tuning — `HeartbeatWorkerOptions`)
 
 | Key | Type | Default |
 |---|---|---|
-| `Whizbang:Heartbeat:IntervalSeconds` | int | 5 |
+| `Whizbang:Workers:Heartbeat:IntervalSeconds` | int | 5 |
 
 Cadence must satisfy `IntervalSeconds < AbandonStaleInstanceThresholdSeconds / 3` to keep peers from falsely flagging this instance stale.
 
-## `Whizbang:Flushers` (per-flusher Nagle tuning)
+## `Whizbang:Workers:<Worker>:Flusher` (per-flusher Nagle tuning)
 
 Each flusher has the same option shape: `BatchFlusherOptions { ChannelCapacity, MaxBatchSize, CoalesceWindowMs, ImmediateFlushThreshold }`.
 
@@ -83,22 +86,22 @@ Each flusher has the same option shape: `BatchFlusherOptions { ChannelCapacity, 
 
 Override individual values:
 ```
-Whizbang:Flushers:OutboxCompletion:Flusher:CoalesceWindowMs=10
-Whizbang:Flushers:OutboxCompletion:Flusher:MaxBatchSize=500
+Whizbang:Workers:OutboxCompletionFlush:Flusher:CoalesceWindowMs=10
+Whizbang:Workers:OutboxCompletionFlush:Flusher:MaxBatchSize=500
 ```
 
 `LeaseRenewal` also has `LeaseSeconds` (default 300).
 
-## `Whizbang:Notifications` (`WhizbangNotificationOptions`)
+## `Whizbang:Database` (`WhizbangNotificationOptions`)
 
 | Key | Type | Default | Notes |
 |---|---|---|---|
-| `Whizbang:Notifications:DisableNotifications` | bool | false | Kill switch; forces polling-only. |
-| `Whizbang:Notifications:PollingFallbackInterval` | TimeSpan | `00:00:30` | Safety-net polling cadence when listener healthy. |
-| `Whizbang:Notifications:ListenKeepaliveInterval` | TimeSpan | `00:00:30` | `SELECT 1` keepalive on listener connection. |
-| `Whizbang:Notifications:ListenReconnectInitialDelay` | TimeSpan | `00:00:01` | First reconnect attempt delay. |
-| `Whizbang:Notifications:ListenReconnectMaxDelay` | TimeSpan | `00:00:30` | Reconnect backoff cap. |
-| `Whizbang:Notifications:ListenReconnectBackoffMultiplier` | double | 2.0 | Exponential growth factor. |
+| `Whizbang:Database:DisableNotifications` | bool | false | Kill switch; forces polling-only. |
+| `Whizbang:Database:PollingFallbackInterval` | TimeSpan | `00:00:30` | Safety-net polling cadence when listener healthy. |
+| `Whizbang:Database:ListenKeepaliveInterval` | TimeSpan | `00:00:30` | `SELECT 1` keepalive on listener connection. |
+| `Whizbang:Database:ListenReconnectInitialDelay` | TimeSpan | `00:00:01` | First reconnect attempt delay. |
+| `Whizbang:Database:ListenReconnectMaxDelay` | TimeSpan | `00:00:30` | Reconnect backoff cap. |
+| `Whizbang:Database:ListenReconnectBackoffMultiplier` | double | 2.0 | Exponential growth factor. |
 
 ## Env-var equivalents
 
@@ -107,20 +110,20 @@ Standard .NET `__` separator:
 ConnectionStrings__appservice-db=Host=postgres-pgbouncer:6432;...
 ConnectionStrings__appservice-db-direct=Host=postgres-primary:5432;...
 
-Whizbang__WorkCoordinator__PollingIntervalMilliseconds=250
-Whizbang__WorkCoordinator__PollingMaxIntervalMilliseconds=10000
-Whizbang__Heartbeat__IntervalSeconds=5
+Whizbang__Workers__Claim__PollingIntervalMilliseconds=250
+Whizbang__Workers__Claim__PollingMaxIntervalMilliseconds=10000
+Whizbang__Workers__Heartbeat__IntervalSeconds=5
 
-Whizbang__Notifications__PollingFallbackInterval=00:00:30
-Whizbang__Notifications__ListenReconnectMaxDelay=00:00:30
+Whizbang__Database__PollingFallbackInterval=00:00:30
+Whizbang__Database__ListenReconnectMaxDelay=00:00:30
 
-Whizbang__Flushers__OutboxCompletion__Flusher__CoalesceWindowMs=10
-Whizbang__Flushers__OutboxCompletion__Flusher__MaxBatchSize=500
+Whizbang__Workers__OutboxCompletionFlush__Flusher__CoalesceWindowMs=10
+Whizbang__Workers__OutboxCompletionFlush__Flusher__MaxBatchSize=500
 ```
 
 ## What devops needs to provision per service per environment
 
-1. **One new connection string per service**: `ConnectionStrings:<dbname>-direct` — same DB target as the existing pooled string, **bypasses pgbouncer** (typically port 5432 vs 6432). Same vault path as the existing pooled string with `-direct` suffix.
+1. **One new connection string per service**: `ConnectionStrings:db-direct` — same DB target as the pooled `ConnectionStrings:db`, **bypasses pgbouncer** (typically port 5432 vs 6432). Same vault path as the pooled string with `-direct` suffix.
 2. **(Optional) ConfigMap for the `Whizbang:*` tuning knobs** — defaults are sane.
 3. **Network policy**: pods need outbound to **both** the pgbouncer port and postgres-direct port for each service DB. Same DB host, different ports — typically already permitted; just confirm.
 4. **(Recommended) Health probe**: expose `IWorkNotificationListener.IsHealthy` per pod via `/health/notifications`.

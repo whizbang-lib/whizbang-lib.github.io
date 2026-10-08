@@ -14,7 +14,8 @@
     "postinstall": "pnpm exec ng analytics off || true",
     "migrate-docs": "node src/scripts/migrate-docs-version.mjs",
     "validate-links": "node src/scripts/validate-links.mjs",
-    "validate-frontmatter": "node src/scripts/validate-frontmatter.mjs"
+    "validate-frontmatter": "node src/scripts/validate-frontmatter.mjs",
+    "validate-config-keys": "node src/scripts/validate-config-keys.mjs"
   },
   "private": true,
   "packageManager": "pnpm@11.10.0",

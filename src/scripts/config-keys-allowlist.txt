@@ -1,0 +1,9 @@
+# Configuration keys the docs mention on purpose although the Whizbang library does not read them.
+# One key (or section) per line; everything after '#' is the reason. validate-config-keys.mjs fails on
+# any other documented key the library's Baselines/configuration-keys.txt does not hold.
+
+Whizbang:Core:ShowBanner                # configuration-reference says this key does NOT exist and names Whizbang:ShowBanner
+Whizbang:PerStreamSerializer            # configuration-reference's "most common mistake" example of a key nothing reads
+Whizbang:X                              # configuration-reference's naming-convention illustration
+Whizbang:PerspectiveQueryTranslation    # bound by the consumer's own code, as jsonb-containment shows; the library takes the options object
+Whizbang:Persistence                    # persistence.md discloses the section is not bound: the persistence modes have no runtime component yet

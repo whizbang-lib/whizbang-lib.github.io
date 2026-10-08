@@ -97,7 +97,7 @@ using Whizbang.Data.EFCore.Postgres;
 var builder = WebApplication.CreateBuilder(args);
 
 // EF Core DbContext (provides Inbox/Outbox/EventStore via [WhizbangDbContext])
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")!;
+var connectionString = builder.Configuration.GetConnectionString("db")!;
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(connectionString));
 
@@ -458,23 +458,23 @@ var serviceBus = builder.AddAzureServiceBus("servicebus")
 
 // Services (each references its own database + the shared transport)
 var orderService = builder.AddProject<Projects.ECommerce_OrderService_API>("orderservice")
-    .WithReference(ordersDb)
+    .WithReference(ordersDb, "db")
     .WithReference(serviceBus);
 
 var inventoryWorker = builder.AddProject<Projects.ECommerce_InventoryWorker>("inventoryworker")
-    .WithReference(inventoryDb)
+    .WithReference(inventoryDb, "db")
     .WithReference(serviceBus);
 
 var paymentWorker = builder.AddProject<Projects.ECommerce_PaymentWorker>("paymentworker")
-    .WithReference(paymentDb)
+    .WithReference(paymentDb, "db")
     .WithReference(serviceBus);
 
 var shippingWorker = builder.AddProject<Projects.ECommerce_ShippingWorker>("shippingworker")
-    .WithReference(shippingDb)
+    .WithReference(shippingDb, "db")
     .WithReference(serviceBus);
 
 var notificationWorker = builder.AddProject<Projects.ECommerce_NotificationWorker>("notificationworker")
-    .WithReference(notificationDb)
+    .WithReference(notificationDb, "db")
     .WithReference(serviceBus);
 
 var ui = builder.AddNpmApp("ui", "../ECommerce.UI", "start")
@@ -482,7 +482,7 @@ var ui = builder.AddNpmApp("ui", "../ECommerce.UI", "start")
     .WithExternalHttpEndpoints();
 
 var bff = builder.AddProject<Projects.ECommerce_BFF_API>("bff")
-    .WithReference(bffDb)
+    .WithReference(bffDb, "db")
     .WithReference(serviceBus)
     .WithReference(ui)  // BFF discovers the Angular URL for CORS
     .WithExternalHttpEndpoints();
@@ -529,7 +529,7 @@ builder.Build().Run();
     }
   },
   "ConnectionStrings": {
-    "DefaultConnection": "Host=localhost;Database=myapp;Username=postgres;Password=dev_password"
+    "db": "Host=localhost;Database=myapp;Username=postgres;Password=dev_password"
   },
   "WorkCoordinatorPublisher": {
     "PollingIntervalMilliseconds": 1000,
@@ -553,7 +553,7 @@ builder.Build().Run();
     }
   },
   "ConnectionStrings": {
-    "DefaultConnection": "${DATABASE_URL}"  // Injected from environment
+    "db": "${DATABASE_URL}"  // Injected from environment
   },
   "WorkCoordinatorPublisher": {
     "PollingIntervalMilliseconds": 5000,

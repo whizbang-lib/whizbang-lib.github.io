@@ -170,7 +170,7 @@ Configure aggressive connection pooling:
 ```json{title="Connection Pooling" description="**appsettings." category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Connection", "Pooling"]}
 {
   "ConnectionStrings": {
-    "OrdersDb": "Host=localhost;Database=orders;Username=postgres;Password=postgres;Pooling=true;MinPoolSize=10;MaxPoolSize=100;ConnectionIdleLifetime=300"
+    "db": "Host=localhost;Database=orders;Username=postgres;Password=postgres;Pooling=true;MinPoolSize=10;MaxPoolSize=100;ConnectionIdleLifetime=300"
   }
 }
 ```
