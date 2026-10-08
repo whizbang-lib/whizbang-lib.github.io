@@ -473,12 +473,74 @@ name, an index under that name over anything else, and a constraint's index are 
 whatever they cast to. An index already over the new type is left alone. Replace an index of your own
 in a [custom migration](#custom) of the same release.
 
+## A JSON converter is not a migration {#json-converter}
+
+A `[JsonConverter]` on a perspective model property **has no effect on the stored document**. It is
+not consulted, it reports nothing, and a value whose stored shape changed stays unreadable.
+
+The reason is the read path. A perspective's document is stored with `ComplexProperty().ToJson()` and
+read back by Entity Framework's own JSON materializer, which never consults
+`System.Text.Json.Serialization.JsonConverterAttribute`. The serializer that *would* honour the
+converter is not in that path at all.
+
+This is worth stating plainly because it has already cost an outage. A consumer whose stored
+`Version` had changed from a number to a string declared a converter to keep the pre-upgrade rows
+readable, documented the converter as the fix, and shipped it. It had never run. The rows stayed
+unreadable, the perspective dead-lettered every event on those streams and dropped into drain mode,
+and the failure was invisible because nothing reports a converter that is skipped — the declaration
+looks like a fix in the diff and in review.
+
+```csharp{
+title: "A declared converter that never runs"
+description: "The attribute compiles, reviews well and is silently ignored on the stored-document read path — the shape change stays unconverted."
+framework: "NET10"
+category: "Perspectives"
+difficulty: "INTERMEDIATE"
+tags: ["stored-forms", "json-converter", "anti-pattern", "whiz811"]
+unverified: "counter-example - this is the shape to avoid, not a working sample"
+}
+public class JobExportModel {
+  // Does nothing. EF's JSON materializer reads this document, and it does not
+  // consult JsonConverterAttribute. Rows storing a number stay unreadable.
+  [JsonConverter(typeof(NumberOrStringToStringConverter))]
+  public string? Version { get; set; }
+}
+```
+
+Declare the change instead. A changed stored shape is what `[StoredForm]` is for, and it rewrites the
+documents in place at startup, journaled — which also repairs the form for anything reading the
+column directly, including a mirror or a downstream copy that a converter could never have reached.
+
+```csharp{
+title: "The same change, declared"
+description: "Rewrites every stored document whose Version is still a number, once, at startup, recorded in the journal."
+framework: "NET10"
+category: "Perspectives"
+difficulty: "INTERMEDIATE"
+tags: ["stored-forms", "declaration", "type-change", "startup"]
+unverified: "declaration shape - the generated rewrite is covered by the cases above"
+}
+public class JobExportModel {
+  [StoredForm(Previously = typeof(int))]
+  public string? Version { get; set; }
+}
+```
+
+When the ordinary declaration cannot express the conversion — for example when a stored number means
+"never set" and the model spells that as `null` rather than as the string `"0"`, so surfacing `"0"`
+would invent a value the record never had — use a [custom migration](#custom). It is recorded the
+same way.
+
+Declaring a converter on a perspective model is reported at build time as
+[WHIZ811](#diagnostics), so this cannot be shipped silently again.
+
 ## Diagnostics {#diagnostics}
 
 {verified: StoredFormMigrationGenerationTests.ADeclarationItCannotGenerate_IsWHIZ830_AndEmitsNothingAsync, StoredFormMigrationGenerationTests.ADeclarationInsideACollectionElement_IsWHIZ832_AndAnOrphanMigrationWHIZ831Async, StoredFormMigrationGenerationTests.ADefaultOnASplitPhysicalField_IsWHIZ830Async, StoredFormMigrationGenerationTests.AnOrderThatIsNotAConstant_IsWHIZ831_AndTheMigrationIsNotEmittedAsync, StoredFormMigrationGenerationTests.TwoMigrationsOfOneTableSharingAnOrder_AreWHIZ833_OncePerSharedOrderAsync}
 
 | Id | Severity | Reported when |
 |---|---|---|
+| WHIZ811 | Warning | A perspective model property declares a `[JsonConverter]`, which the stored-document read path never consults: the document is read by Entity Framework's JSON materializer, not by the serializer. Declare the shape change with `[StoredForm]`, or use a custom migration for a conversion it does not cover. See [A JSON converter is not a migration](#json-converter). |
 | WHIZ830 | Error | A declaration the generator cannot turn into SQL: an unsupported type pair, `Previously` equal to the current type, a `[Flags]` enum over `ulong` converted from a string, or a default on a Split physical field. Use a custom migration. |
 | WHIZ831 | Warning | An `IStoredFormMigration<TModel>` that would never run: its `TModel` is not the model of any perspective, the generated code cannot create it (no public or internal parameterless constructor, a generic class, or a class it cannot see), or the `Order` it states is not a compile-time constant. |
 | WHIZ832 | Warning | A `[StoredForm]` or `[StoredFormRemoved]` inside an element of a collection, which is not generated. Use a custom migration. |

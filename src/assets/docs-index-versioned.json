@@ -1810,9 +1810,9 @@
         "tags": "perspectives, stored-forms, migrations, jsonb, schema-evolution, rewrite, physical-fields, journal, startup",
         "version": "v1.0.0",
         "pageType": "concept",
-        "readingTime": 22,
+        "readingTime": 24,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/perspectives/stored-form-migrations.md",
-        "wordCount": 4277
+        "wordCount": 4783
       },
       {
         "slug": "v1.0.0/fundamentals/perspectives/stream-locking",
@@ -2073,6 +2073,21 @@
         "readingTime": 12,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/security/scoping.md",
         "wordCount": 2237
+      },
+      {
+        "slug": "v1.0.0/fundamentals/security/security-advisories",
+        "title": "Security Advisories",
+        "category": "Security",
+        "order": 90,
+        "description": "Published security advisories for the Whizbang packages, generated from the OSV database, with the affected and fixed version of each package.",
+        "tags": "security, advisories, cve, ghsa, osv, vulnerabilities",
+        "version": "v1.0.0",
+        "status": "current",
+        "pageType": "reference",
+        "audience": "consumer",
+        "readingTime": 2,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/security/security-advisories.md",
+        "wordCount": 259
       },
       {
         "slug": "v1.0.0/fundamentals/security/security-context-propagation",
@@ -4240,6 +4255,23 @@
         "wordCount": 12536
       },
       {
+        "slug": "v1.0.0/tools/cli-audit",
+        "title": "Auditing Whizbang Packages",
+        "category": "Tools",
+        "order": 10,
+        "description": "Check the Whizbang package versions a project actually resolves against published security advisories with `whizbang audit`, and fail a CI build on an affected version.",
+        "tags": "security, advisories, audit, cve, ghsa, osv, cli, ci, github actions, vulnerabilities",
+        "version": "v1.0.0",
+        "status": "current",
+        "pageType": "guide",
+        "audience": [
+          "consumer"
+        ],
+        "readingTime": 7,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/tools/cli-audit.md",
+        "wordCount": 1265
+      },
+      {
         "slug": "v1.0.0/tools/mcp-server",
         "title": "MCP Documentation Server",
         "category": "tools",
@@ -4618,7 +4650,7 @@
         "title": "Destruction Hooks & TTL",
         "category": "Architecture & Design",
         "order": 23,
-        "description": "\n# Destruction Hooks & TTL\n\n[Ephemeral Events](ephemeral-events) (E1) gave events a self-destruct lifecycle: an `[Ephemeral]` event is a transient trigger, consumption-gated for deletion, with its body reaped once every perspective has consumed it. **E2 makes self-destruct *interceptable and time-driven*.** Two additions:\n\n- **Destruction hooks** — run your own logic *before* and *after* an ephemeral event / stream / perspective row is destroyed: compact it, snapshot it, archive it, crypto-shred it, cancel it, or defer it. The pre-hook is an awaited receptor on the reaper's critical path.\n- **`Destruction.AfterTtl`** — a second self-destruct trigger: a logical `expires_at`, reaped in two phases, driven by the [Temporal Engine](temporal-engine). This is where a [`TransientStorage.TtlRow`](ephemeral-events#transient-storage-where-the-read-model-lives-developer-picks) perspective row finally gets its expiry.\n\n:::planned\nE2 is a proposed capability (unreleased, not yet started). It builds directly on E1 (the consumption-gated reaper, `Destruction`/`TransientStorage`, homogeneous streams) and F2 (the temporal engine, which grows an `expires_at` \"death\" transition here). Archival (A1), carry-forward compaction (E3), and GDPR crypto-shred (G1) are later phases — but their handlers *plug into the destruction hook this proposal defines*, so E2 is the extension point they all share.\n:::\n\n## Why hooks — self-destruct is a decision point, not just a delete\n\nE1's reaper is a blunt `DELETE`: once consumed + aged, the body is gone. That's right for presence pings, but the moment a stream carries anything worth summarizing before it evaporates — a chat thread you want to keep the last state of, a draft you want to snapshot, a subject whose key you must shred — deletion needs a **hook the reaper awaits**. The industry precedent is uniform: EventStoreDB scavenge is destructive-and-final, Kafka compaction writes a tombstone, Marten's `CompactStreamAsync` writes a carry-forward event *before* dropping detail. Whizbang already has the machinery to do this well — [lifecycle stages + receptors + the coordinator](../fundamentals/lifecycle/lifecycle-stages) — so destruction becomes just another lifecycle stage, not a bespoke callback.\n\n## The lifecycle stages: `PreDestruction` / `PostDestruction`\n\nE2 adds four members to `LifecycleStage`, following the existing **Inline / Detached** pairing (`Pre*Inline` blocks the unit of work; `*Detached` is fire-and-forget in its own scope):\n\n```csharp{title=\"New destruction lifecycle stages\" description=\"Pre/PostDestruction in both Inline and Detached forms, matching the existing LifecycleStage convention\" category=\"Core Concepts\" difficulty=\"ADVANCED\" tags=[\"destruction\",\"lifecycle-stages\",\"ephemeral\"] framework=\"NET10\"}\npublic enum LifecycleStage {\n  // … existing stages (PreOutbox, PostInbox, PostPerspective, PostLifecycle, …) …\n\n  /// <summary>Detached: fire-and-forget, runs in its own scope. Does not block the reaper.</summary>\n  PreDestructionDetached,\n  /// <summary>Inline: AWAITED on the reaper's critical path. Its side-effects must durably commit\n  /// before the physical delete. This is where compact / snapshot / archive / shred runs.</summary>\n  PreDestructionInline,\n\n  /// <summary>Detached: notify / metrics / cascade after the delete has committed.</summary>\n  PostDestructionDetached,\n  /// <summary>Inline: awaited post-delete confirmation (rare; most post-work is Detached).</summary>\n  PostDestructionInline\n}\n```\n\nDestruction fires at three **granularities**, resolved by the reaper against what it is about to remove:\n\n| Granularity | Fires when | Context carries |\n|",
+        "description": "\n# Destruction Hooks & TTL\n\n[Ephemeral Events](ephemeral-events) (E1) gave events a self-destruct lifecycle: an `[Ephemeral]` event is a transient trigger, consumption-gated for deletion, with its body reaped once every perspective has consumed it. **E2 makes self-destruct *interceptable and time-driven*.** Two additions:\n\n- **Destruction hooks** — run your own logic *before* and *after* an ephemeral event / stream / perspective row is destroyed: compact it, snapshot it, archive it, crypto-shred it, cancel it, or defer it. The pre-hook is an awaited receptor on the reaper's critical path.\n- **`Destruction.AfterTtl`** — a second self-destruct trigger: a logical `expires_at`, reaped in two phases, driven by the [Temporal Engine](temporal-engine). This is where a [`TransientStorage.TtlRow`](ephemeral-events#transient-storage-where-the-read-model-lives-developer-picks) perspective row finally gets its expiry.\n\n:::planned\nE2 is a proposed capability (unreleased, not yet started). It builds directly on E1 (the consumption-gated reaper, `Destruction`/`TransientStorage`, homogeneous streams) and F2 (the temporal engine, which grows an `expires_at` \"death\" transition here). Archival (A1), carry-forward compaction (E3), and GDPR crypto-shred (G1) are later phases — but their handlers *plug into the destruction hook this proposal defines*, so E2 is the extension point they all share.\n:::\n\n## Why hooks — self-destruct is a decision point, not just a delete\n\nE1's reaper is a blunt `DELETE`: once consumed + aged, the body is gone. That's right for presence pings, but the moment a stream carries anything worth summarizing before it evaporates — a chat thread you want to keep the last state of, a draft you want to snapshot, a subject whose key you must shred — deletion needs a **hook the reaper awaits**. The industry precedent is uniform: EventStoreDB scavenge is destructive-and-final, Kafka compaction writes a tombstone, Marten's `CompactStreamAsync` writes a carry-forward event *before* dropping detail. Whizbang already has the machinery to do this well — [lifecycle stages + receptors + the coordinator](/v1.0.0/fundamentals/lifecycle/lifecycle-stages) — so destruction becomes just another lifecycle stage, not a bespoke callback.\n\n## The lifecycle stages: `PreDestruction` / `PostDestruction`\n\nE2 adds four members to `LifecycleStage`, following the existing **Inline / Detached** pairing (`Pre*Inline` blocks the unit of work; `*Detached` is fire-and-forget in its own scope):\n\n```csharp{title=\"New destruction lifecycle stages\" description=\"Pre/PostDestruction in both Inline and Detached forms, matching the existing LifecycleStage convention\" category=\"Core Concepts\" difficulty=\"ADVANCED\" tags=[\"destruction\",\"lifecycle-stages\",\"ephemeral\"] framework=\"NET10\"}\npublic enum LifecycleStage {\n  // … existing stages (PreOutbox, PostInbox, PostPerspective, PostLifecycle, …) …\n\n  /// <summary>Detached: fire-and-forget, runs in its own scope. Does not block the reaper.</summary>\n  PreDestructionDetached,\n  /// <summary>Inline: AWAITED on the reaper's critical path. Its side-effects must durably commit\n  /// before the physical delete. This is where compact / snapshot / archive / shred runs.</summary>\n  PreDestructionInline,\n\n  /// <summary>Detached: notify / metrics / cascade after the delete has committed.</summary>\n  PostDestructionDetached,\n  /// <summary>Inline: awaited post-delete confirmation (rare; most post-work is Detached).</summary>\n  PostDestructionInline\n}\n```\n\nDestruction fires at three **granularities**, resolved by the reaper against what it is about to remove:\n\n| Granularity | Fires when | Context carries |\n|",
         "tags": "ephemeral, destruction, ttl, retention, lifecycle-hooks, reaper, disposition, snapshot-on-purge, failure-policy",
         "version": "proposals",
         "readingTime": 11,
@@ -4954,7 +4986,7 @@
         "title": "Temporal Engine",
         "category": "Architecture & Design",
         "order": 21,
-        "description": "\n# Temporal Engine\n\nWhizbang already fires *delayed* work — a failed message re-dispatches at `scheduled_for`, and a saga arms a watchdog that wakes it later. The **Temporal Engine** promotes that into one first-class mechanism: **scheduled events** (fire at a specific time), **recurring events** (cron or interval), and **saga/deadline timeouts** — all as time-triggered transitions on a single durable schedule table, dispatched over the [System Signal Bus](../fundamentals/signal-bus/signal-bus).\n\n:::planned\nThe Temporal Engine is a proposed capability (unreleased, not yet started). It **generalizes the existing `scheduled_for` delayed-retry mechanism** and the sagas watchdog rather than replacing them — both become consumers of the same engine.\n:::\n\n## Motivation\n\nTime-based behavior is currently spread across three bespoke mechanisms:\n\n- **Delayed retry** — `wh_outbox`/`wh_inbox.scheduled_for` set by the failure-backoff procs; the claim gate skips rows until `scheduled_for <= NOW()`; a low-cadence backup tick emits `notify_scheduled_retry_due()` to wake the owning instance.\n- **Saga deadlines** — `BaseSagaService` re-emits an `ISagaCompletionWatchdogTickEvent` into the outbox with `scheduled_for = now + budget` on every tick, re-arming until the saga completes or is abandoned.\n- **Nothing first-class** for \"run this at 09:00 every weekday\" or \"fire this once next Tuesday.\"\n\nThe Temporal Engine unifies these under **one engine, four time-triggered transitions**:\n\n| Transition | Trigger | Meaning |\n|",
+        "description": "\n# Temporal Engine\n\nWhizbang already fires *delayed* work — a failed message re-dispatches at `scheduled_for`, and a saga arms a watchdog that wakes it later. The **Temporal Engine** promotes that into one first-class mechanism: **scheduled events** (fire at a specific time), **recurring events** (cron or interval), and **saga/deadline timeouts** — all as time-triggered transitions on a single durable schedule table, dispatched over the [System Signal Bus](/v1.0.0/fundamentals/signal-bus/signal-bus).\n\n:::planned\nThe Temporal Engine is a proposed capability (unreleased, not yet started). It **generalizes the existing `scheduled_for` delayed-retry mechanism** and the sagas watchdog rather than replacing them — both become consumers of the same engine.\n:::\n\n## Motivation\n\nTime-based behavior is currently spread across three bespoke mechanisms:\n\n- **Delayed retry** — `wh_outbox`/`wh_inbox.scheduled_for` set by the failure-backoff procs; the claim gate skips rows until `scheduled_for <= NOW()`; a low-cadence backup tick emits `notify_scheduled_retry_due()` to wake the owning instance.\n- **Saga deadlines** — `BaseSagaService` re-emits an `ISagaCompletionWatchdogTickEvent` into the outbox with `scheduled_for = now + budget` on every tick, re-arming until the saga completes or is abandoned.\n- **Nothing first-class** for \"run this at 09:00 every weekday\" or \"fire this once next Tuesday.\"\n\nThe Temporal Engine unifies these under **one engine, four time-triggered transitions**:\n\n| Transition | Trigger | Meaning |\n|",
         "tags": "temporal, scheduling, recurring, cron, saga-deadlines, signal-bus, wh_schedules",
         "version": "proposals",
         "readingTime": 10,
