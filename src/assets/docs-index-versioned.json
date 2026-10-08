@@ -55,9 +55,9 @@
         "tags": "graphql, lens, graphql-lens-attribute, scope, query-generation, hotchocolate",
         "version": "v1.0.0",
         "pageType": "concept",
-        "readingTime": 6,
+        "readingTime": 7,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/apis/graphql/lens-integration.md",
-        "wordCount": 1088
+        "wordCount": 1345
       },
       {
         "slug": "v1.0.0/apis/graphql/polymorphic-types",
@@ -159,9 +159,9 @@
         "tags": "rest, filtering, sorting, paging, query-parameters, lensrequest",
         "version": "v1.0.0",
         "pageType": "concept",
-        "readingTime": 7,
+        "readingTime": 9,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/apis/rest/filtering.md",
-        "wordCount": 1241
+        "wordCount": 1617
       },
       {
         "slug": "v1.0.0/apis/rest/mutations",
@@ -250,9 +250,9 @@
         "tags": "drivers, storage, postgres, in-memory, efcore, abstraction",
         "version": "v1.0.0",
         "pageType": "concept",
-        "readingTime": 5,
+        "readingTime": 6,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/data/drivers.md",
-        "wordCount": 855
+        "wordCount": 1123
       },
       {
         "slug": "v1.0.0/data/efcore-complex-types",
@@ -317,7 +317,7 @@
         "pageType": "guide",
         "readingTime": 16,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/data/perspectives-storage.md",
-        "wordCount": 3175
+        "wordCount": 3192
       },
       {
         "slug": "v1.0.0/data/postgres",
@@ -328,9 +328,9 @@
         "tags": "data, postgres, postgresql, database",
         "version": "v1.0.0",
         "pageType": "concept",
-        "readingTime": 5,
+        "readingTime": 6,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/data/postgres.md",
-        "wordCount": 807
+        "wordCount": 1075
       },
       {
         "slug": "v1.0.0/data/schema-generation-pattern",
@@ -356,7 +356,7 @@
         "pageType": "concept",
         "readingTime": 8,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/data/schema-migration.md",
-        "wordCount": 1550
+        "wordCount": 1549
       },
       {
         "slug": "v1.0.0/data/turnkey-initialization",
@@ -367,9 +367,9 @@
         "tags": "turnkey-initialization, database-setup, startup, ef-core, postgresql, schema-creation",
         "version": "v1.0.0",
         "pageType": "guide",
-        "readingTime": 6,
+        "readingTime": 7,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/data/turnkey-initialization.md",
-        "wordCount": 1076
+        "wordCount": 1259
       },
       {
         "slug": "v1.0.0/data/work-coordinator-strategies",
@@ -409,6 +409,38 @@
         "readingTime": 5,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/extending/attributes/generatestreamid.md",
         "wordCount": 910
+      },
+      {
+        "slug": "v1.0.0/extending/attributes/must-exist",
+        "title": "MustExist Attribute",
+        "category": "Attributes",
+        "order": 6,
+        "description": "Marks a perspective Apply method as requiring the model to already exist",
+        "tags": [
+          "attributes",
+          "mustexist",
+          "perspectives",
+          "validation",
+          "source-generator"
+        ],
+        "version": "v1.0.0",
+        "pageType": "reference",
+        "readingTime": 7,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/extending/attributes/must-exist.md",
+        "wordCount": 1389
+      },
+      {
+        "slug": "v1.0.0/extending/attributes/pinned-id",
+        "title": "PinnedId Attribute",
+        "category": "Attributes",
+        "order": 20,
+        "description": "Declares a stable, namespace-proof identifier for a concrete message or perspective type so stored events survive namespace restructuring.",
+        "tags": "attributes, pinned-id, stable-identity, namespaces, event-sourcing, source-generator, aot",
+        "version": "v1.0.0",
+        "pageType": "reference",
+        "readingTime": 4,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/extending/attributes/pinned-id.md",
+        "wordCount": 640
       },
       {
         "slug": "v1.0.0/extending/attributes/streamid",
@@ -610,7 +642,20 @@
         "pageType": "concept",
         "readingTime": 5,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/extending/extensibility/plugin-architecture.md",
-        "wordCount": 851
+        "wordCount": 850
+      },
+      {
+        "slug": "v1.0.0/extending/extensibility/replaceable-services",
+        "title": "Replaceable Services",
+        "category": "Extensibility",
+        "order": 13,
+        "description": "Every interface a framework type takes by constructor has a registered default and can be replaced by registering your own - the contract, the full list, and how a subsystem supplies one",
+        "tags": "extensibility, dependency-injection, tryadd, null-object, defaults, overrides",
+        "version": "v1.0.0",
+        "pageType": "guide",
+        "readingTime": 7,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/extending/extensibility/replaceable-services.md",
+        "wordCount": 1364
       },
       {
         "slug": "v1.0.0/extending/features/debugger-aware-clock",
@@ -647,9 +692,9 @@
         "tags": "architecture, ordering, sliding-window, cursor-inversion, perspective-apply, event-sourcing, uuidv7",
         "version": "v1.0.0",
         "pageType": "concept",
-        "readingTime": 11,
+        "readingTime": 12,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/extending/internals/event-ordering-invariant.md",
-        "wordCount": 2060
+        "wordCount": 2233
       },
       {
         "slug": "v1.0.0/extending/internals/json-serialization-customizations",
@@ -738,9 +783,9 @@
         "tags": "source-generators, json, serialization, aot, native-aot, system-text-json, zero-reflection",
         "version": "v1.0.0",
         "pageType": "concept",
-        "readingTime": 13,
+        "readingTime": 15,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/extending/source-generators/json-contexts.md",
-        "wordCount": 2526
+        "wordCount": 2923
       },
       {
         "slug": "v1.0.0/extending/source-generators/message-registry",
@@ -751,9 +796,9 @@
         "tags": "source-generators, vscode, tooling, message-registry, code-navigation, ide-integration",
         "version": "v1.0.0",
         "pageType": "concept",
-        "readingTime": 14,
+        "readingTime": 15,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/extending/source-generators/message-registry.md",
-        "wordCount": 2750
+        "wordCount": 2924
       },
       {
         "slug": "v1.0.0/extending/source-generators/perspective-discovery",
@@ -851,13 +896,13 @@
         "title": "Automatic Message Cascade",
         "category": "Core Concepts",
         "order": 3,
-        "description": "How receptor return values cascade automatically — MessageExtractor, route wrappers, outbox auto-cascade, event-store-only mode, and the deferred event channel",
-        "tags": "dispatcher, cascade, outbox, routing, message-extractor",
+        "description": "How receptor return values cascade automatically: MessageExtractor, route wrappers, outbox auto-cascade, event-store-only mode, the deferred event channel, and the deterministic identity of emitted events (a retry is not a republish)",
+        "tags": "dispatcher, cascade, outbox, routing, message-extractor, emission-identity, idempotency",
         "version": "v1.0.0",
         "pageType": "concept",
-        "readingTime": 14,
+        "readingTime": 23,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/dispatcher/message-cascade.md",
-        "wordCount": 2761
+        "wordCount": 4449
       },
       {
         "slug": "v1.0.0/fundamentals/dispatcher/publish-once",
@@ -868,9 +913,9 @@
         "tags": "dispatcher, events, idempotency, exactly-once, sagas, race-conditions",
         "version": "v1.0.0",
         "pageType": "concept",
-        "readingTime": 5,
+        "readingTime": 8,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/dispatcher/publish-once.md",
-        "wordCount": 994
+        "wordCount": 1422
       },
       {
         "slug": "v1.0.0/fundamentals/dispatcher/routing",
@@ -881,9 +926,9 @@
         "tags": "routing, namespace-routing, message-routing, inbox, topics, pub-sub, owned-domains, echo-suppression",
         "version": "v1.0.0",
         "pageType": "concept",
-        "readingTime": 34,
+        "readingTime": 38,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/dispatcher/routing.md",
-        "wordCount": 6777
+        "wordCount": 7490
       },
       {
         "slug": "v1.0.0/fundamentals/dispatcher/rpc-extraction",
@@ -933,9 +978,9 @@
         "tags": "event-store, event-sourcing, append-only, streams, IEventStore, persistence",
         "version": "v1.0.0",
         "pageType": "concept",
-        "readingTime": 7,
+        "readingTime": 8,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/events/event-store.md",
-        "wordCount": 1392
+        "wordCount": 1479
       },
       {
         "slug": "v1.0.0/fundamentals/events/event-streams",
@@ -946,9 +991,9 @@
         "tags": "event-streams, stream-id, event-sourcing, aggregates",
         "version": "v1.0.0",
         "pageType": "concept",
-        "readingTime": 6,
+        "readingTime": 7,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/events/event-streams.md",
-        "wordCount": 1198
+        "wordCount": 1201
       },
       {
         "slug": "v1.0.0/fundamentals/events/event-upcasting",
@@ -974,7 +1019,7 @@
         "pageType": "overview",
         "readingTime": 9,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/events/events.md",
-        "wordCount": 1711
+        "wordCount": 1714
       },
       {
         "slug": "v1.0.0/fundamentals/events/ledger",
@@ -1013,7 +1058,7 @@
         "pageType": "concept",
         "readingTime": 30,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/events/system-events.md",
-        "wordCount": 5820
+        "wordCount": 5881
       },
       {
         "slug": "v1.0.0/fundamentals/identity/assembly-registry",
@@ -1040,6 +1085,19 @@
         "readingTime": 12,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/identity/fuzzy-matching.md",
         "wordCount": 2229
+      },
+      {
+        "slug": "v1.0.0/fundamentals/identity/pinned-identity",
+        "title": "Pinned Identity",
+        "category": "Core Concepts",
+        "order": 30,
+        "description": "Stable, namespace-proof identity for stored messages and perspectives via [PinnedId] + a universal type registry.",
+        "tags": "core-concepts, pinned-identity, stable-identity, namespaces, event-sourcing, migrations, aot",
+        "version": "v1.0.0",
+        "pageType": "concept",
+        "readingTime": 5,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/identity/pinned-identity.md",
+        "wordCount": 807
       },
       {
         "slug": "v1.0.0/fundamentals/identity/pinned-type-ledger",
@@ -1115,9 +1173,9 @@
         "tags": "whizbang-ids, identity, uuidv7, tracked-guid, type-safety, value-objects",
         "version": "v1.0.0",
         "pageType": "concept",
-        "readingTime": 29,
+        "readingTime": 31,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/identity/whizbang-ids.md",
-        "wordCount": 5655
+        "wordCount": 6021
       },
       {
         "slug": "v1.0.0/fundamentals/lenses/lens-query-factory",
@@ -1362,9 +1420,9 @@
         "tags": "tags, attributes, hooks, notifications, telemetry, metrics, cross-cutting",
         "version": "v1.0.0",
         "pageType": "concept",
-        "readingTime": 35,
+        "readingTime": 39,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/messages/message-tags.md",
-        "wordCount": 6918
+        "wordCount": 7772
       },
       {
         "slug": "v1.0.0/fundamentals/messages/messages",
@@ -1375,9 +1433,22 @@
         "tags": "messages, commands, events, queries, marker-interface",
         "version": "v1.0.0",
         "pageType": "overview",
-        "readingTime": 7,
+        "readingTime": 8,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/messages/messages.md",
-        "wordCount": 1372
+        "wordCount": 1442
+      },
+      {
+        "slug": "v1.0.0/fundamentals/messages/payload-size-limit",
+        "title": "Payload Size Limit",
+        "category": "Core Concepts",
+        "order": 12,
+        "description": "Whizbang refuses a message whose serialized payload is over a configurable limit (5 MiB by default) before it is stored or sent, with an exception carrying an error code, both sizes and guidance, and hooks for end-user feedback and validation.",
+        "tags": "payload, size, limit, MaxPayloadSize, MessagePayloadTooLargeException, WHIZ-PAYLOAD-TOO-LARGE, hooks, fan-out, fan-in",
+        "version": "v1.0.0",
+        "pageType": "concept",
+        "readingTime": 5,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/messages/payload-size-limit.md",
+        "wordCount": 836
       },
       {
         "slug": "v1.0.0/fundamentals/messaging/apply-hooks",
@@ -1390,7 +1461,7 @@
         "pageType": "concept",
         "readingTime": 5,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/messaging/apply-hooks.md",
-        "wordCount": 899
+        "wordCount": 902
       },
       {
         "slug": "v1.0.0/fundamentals/messaging/collective-events",
@@ -1401,9 +1472,9 @@
         "tags": [],
         "version": "v1.0.0",
         "pageType": "concept",
-        "readingTime": 25,
+        "readingTime": 46,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/messaging/collective-events.md",
-        "wordCount": 4894
+        "wordCount": 9197
       },
       {
         "slug": "v1.0.0/fundamentals/messaging/composite-events",
@@ -1414,9 +1485,22 @@
         "tags": "composite-events, fan-out, bulk, inner-events, no-rebroadcast, dispatch-seam",
         "version": "v1.0.0",
         "pageType": "concept",
-        "readingTime": 16,
+        "readingTime": 23,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/messaging/composite-events.md",
-        "wordCount": 3175
+        "wordCount": 4574
+      },
+      {
+        "slug": "v1.0.0/fundamentals/messaging/message-priority",
+        "title": "Message Priority",
+        "category": "Fundamentals",
+        "order": 8,
+        "description": "One integer on every message and three scheduling buckets. The producer declares from context, the consumer classifies at its receive boundary, a child inherits its parent's effective number, every seam that copies an envelope or a row carries the number across, a minted composite folds its members' numbers, and three hooks (producer, receive, batch) make every default replaceable.",
+        "tags": "priority, work-class, interactive, background, hooks, inheritance, scheduling, composites, wire",
+        "version": "v1.0.0",
+        "pageType": "concept",
+        "readingTime": 27,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/messaging/message-priority.md",
+        "wordCount": 5285
       },
       {
         "slug": "v1.0.0/fundamentals/offloads/message-body-store",
@@ -1424,12 +1508,12 @@
         "category": "Fundamentals",
         "order": 1,
         "description": "Transparent claim-check pattern for messages that exceed transport wire-size ceilings — upload the body to a registered IMessageBodyStore, send a small claim envelope on the wire, rehydrate on receive.",
-        "tags": "offload, claim-check, messaging, transports, body-size",
+        "tags": "offload, claim-check, messaging, transports, body-size, encryption, envelope-encryption",
         "version": "v1.0.0",
         "pageType": "concept",
-        "readingTime": 7,
+        "readingTime": 18,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/offloads/message-body-store.md",
-        "wordCount": 1339
+        "wordCount": 3428
       },
       {
         "slug": "v1.0.0/fundamentals/offloads/providers/azure-blob",
@@ -1505,9 +1589,9 @@
         "tags": "perspectives, apply, dispatch, exactly-once, idempotency, drain-mode, perspective-runner, doubling",
         "version": "v1.0.0",
         "pageType": "concept",
-        "readingTime": 4,
+        "readingTime": 7,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/perspectives/apply-exactly-once.md",
-        "wordCount": 773
+        "wordCount": 1207
       },
       {
         "slug": "v1.0.0/fundamentals/perspectives/association-info",
@@ -1549,6 +1633,19 @@
         "wordCount": 1979
       },
       {
+        "slug": "v1.0.0/fundamentals/perspectives/jsonb-containment",
+        "title": "JSONB Containment Queries",
+        "category": "Perspectives",
+        "order": 33,
+        "description": "How a perspective equality filter is compiled into a jsonb containment test so the GIN index on the data column can answer it, what the rewrite deliberately leaves alone, and how to turn it off.",
+        "tags": "perspectives, jsonb, gin, indexing, query-translation, performance, configuration",
+        "version": "v1.0.0",
+        "pageType": "concept",
+        "readingTime": 24,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/perspectives/jsonb-containment.md",
+        "wordCount": 4619
+      },
+      {
         "slug": "v1.0.0/fundamentals/perspectives/multi-stream",
         "title": "Multi-Stream Perspectives",
         "category": "Core Concepts",
@@ -1562,6 +1659,19 @@
         "wordCount": 2574
       },
       {
+        "slug": "v1.0.0/fundamentals/perspectives/perspective-indexes",
+        "title": "Perspective Indexes",
+        "category": "Perspectives",
+        "order": 34,
+        "description": "Which indexes a perspective table gets, how to opt in to matching on any field or on metadata (both off by default in 1.0), why an index is never dropped on upgrade, and how duplicate indexes are avoided and cleaned up.",
+        "tags": "perspectives, indexing, postgres, jsonb, gin, schema, operations, performance",
+        "version": "v1.0.0",
+        "pageType": "concept",
+        "readingTime": 15,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/perspectives/perspective-indexes.md",
+        "wordCount": 2829
+      },
+      {
         "slug": "v1.0.0/fundamentals/perspectives/perspective-sync",
         "title": "Perspective Synchronization",
         "category": "Core Concepts",
@@ -1570,9 +1680,9 @@
         "tags": "perspectives, synchronization, read-your-writes, consistency, lenses, sync, awaiter, debugger-aware",
         "version": "v1.0.0",
         "pageType": "concept",
-        "readingTime": 30,
+        "readingTime": 35,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/perspectives/perspective-sync.md",
-        "wordCount": 5906
+        "wordCount": 6983
       },
       {
         "slug": "v1.0.0/fundamentals/perspectives/perspectives-with-actions",
@@ -1580,12 +1690,12 @@
         "category": "Core Concepts",
         "order": 5,
         "description": "Soft-delete and purge support for perspectives using IPerspectiveWithActionsFor, ApplyResult, and ModelAction to control row lifecycle from pure Apply methods",
-        "tags": "perspectives, delete, purge, soft-delete, ApplyResult, ModelAction, row-removal",
+        "tags": "perspectives, delete, purge, soft-delete, ApplyResult, ModelAction, row-removal, resurrect, purge-marker",
         "version": "v1.0.0",
         "pageType": "concept",
-        "readingTime": 12,
+        "readingTime": 17,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/perspectives/perspectives-with-actions.md",
-        "wordCount": 2242
+        "wordCount": 3202
       },
       {
         "slug": "v1.0.0/fundamentals/perspectives/perspectives",
@@ -1596,22 +1706,22 @@
         "tags": "perspectives, read-models, cqrs, eventual-consistency, event-driven, pure-functions, streamid",
         "version": "v1.0.0",
         "pageType": "overview",
-        "readingTime": 25,
+        "readingTime": 29,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/perspectives/perspectives.md",
-        "wordCount": 4955
+        "wordCount": 5653
       },
       {
         "slug": "v1.0.0/fundamentals/perspectives/physical-fields",
         "title": "Physical Fields",
         "category": "Perspectives",
         "order": 999,
-        "description": "\n# Physical Fields\n\nPhysical fields allow you to store specific properties as dedicated database columns alongside or instead of JSONB storage. This enables native database indexing, type constraints, and optimized query performance for frequently accessed or filtered data.\n\n## Overview\n\nBy default, Whizbang stores perspective model data in a single JSONB column. While flexible, JSONB queries can be slower for frequently filtered fields. Physical fields solve this by extracting selected properties to dedicated database columns that support native indexing.\n\n| Feature | JSONB Only | Physical Fields |\n|",
+        "description": "\n# Physical Fields\n\nPhysical fields allow you to store specific properties as dedicated database columns alongside or instead of JSONB storage. This enables native database indexing, type constraints, and optimized query performance for frequently accessed or filtered data.\n\n## Overview\n\nA perspective stores its model in a single JSONB column by default. There are three tiers of storage\nfor a field, and the middle one is the newest and the cheapest thing most fields need.\n\n| | Undeclared | `[Indexed]` | `[PhysicalField]` + `[Indexed]` |\n|",
         "tags": [],
         "version": "v1.0.0",
         "pageType": "concept",
-        "readingTime": 8,
+        "readingTime": 53,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/perspectives/physical-fields.md",
-        "wordCount": 1531
+        "wordCount": 10593
       },
       {
         "slug": "v1.0.0/fundamentals/perspectives/polymorphic-discriminator",
@@ -1624,7 +1734,7 @@
         "pageType": "concept",
         "readingTime": 5,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/perspectives/polymorphic-discriminator.md",
-        "wordCount": 892
+        "wordCount": 891
       },
       {
         "slug": "v1.0.0/fundamentals/perspectives/polymorphic-types",
@@ -1648,9 +1758,9 @@
         "tags": "perspectives, rebuild, blue-green, event-replay, migration, read-models, operational",
         "version": "v1.0.0",
         "pageType": "concept",
-        "readingTime": 4,
+        "readingTime": 11,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/perspectives/rebuild.md",
-        "wordCount": 671
+        "wordCount": 2101
       },
       {
         "slug": "v1.0.0/fundamentals/perspectives/registry",
@@ -1663,7 +1773,7 @@
         "pageType": "concept",
         "readingTime": 7,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/perspectives/registry.md",
-        "wordCount": 1318
+        "wordCount": 1317
       },
       {
         "slug": "v1.0.0/fundamentals/perspectives/rewind",
@@ -1689,7 +1799,20 @@
         "pageType": "concept",
         "readingTime": 9,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/perspectives/snapshots.md",
-        "wordCount": 1602
+        "wordCount": 1641
+      },
+      {
+        "slug": "v1.0.0/fundamentals/perspectives/stored-form-migrations",
+        "title": "Stored-Form Migrations",
+        "category": "Perspectives",
+        "order": 11,
+        "description": "Declare how existing perspective documents change when a model changes shape: a property's type, name, removal or default. The generator turns each declaration into an idempotent in-place rewrite that runs at startup in the stored-format rewrite phase, journaled, blocking only on values it cannot convert.",
+        "tags": "perspectives, stored-forms, migrations, jsonb, schema-evolution, rewrite, physical-fields, journal, startup",
+        "version": "v1.0.0",
+        "pageType": "concept",
+        "readingTime": 22,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/perspectives/stored-form-migrations.md",
+        "wordCount": 4277
       },
       {
         "slug": "v1.0.0/fundamentals/perspectives/stream-locking",
@@ -1767,7 +1890,7 @@
         "pageType": "concept",
         "readingTime": 9,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/perspectives/vector-fields.md",
-        "wordCount": 1631
+        "wordCount": 1654
       },
       {
         "slug": "v1.0.0/fundamentals/perspectives/versioned-apply",
@@ -1788,12 +1911,12 @@
         "category": "Core Concepts",
         "order": 11,
         "description": "The firing contract for Whizbang receptors — exactly once per receptor per message, unless explicitly declared idempotent — plus the guardrail that enforces it and the opt-out for legitimate multi-fire scenarios",
-        "tags": "receptors, firing contract, idempotency, guardrail, dedup, ReceptorIdempotent, double fire, at-most-once",
+        "tags": "receptors, firing contract, idempotency, guardrail, dedup, ReceptorIdempotent, double fire, at-most-once, once per service, ReceptorOnceAcrossServices",
         "version": "v1.0.0",
         "pageType": "concept",
-        "readingTime": 6,
+        "readingTime": 9,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/receptors/exactly-once-firing.md",
-        "wordCount": 1188
+        "wordCount": 1642
       },
       {
         "slug": "v1.0.0/fundamentals/receptors/lifecycle-receptors",
@@ -1817,9 +1940,9 @@
         "tags": "receptors, message-handlers, business-logic, validation",
         "version": "v1.0.0",
         "pageType": "overview",
-        "readingTime": 21,
+        "readingTime": 23,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/receptors/receptors.md",
-        "wordCount": 4005
+        "wordCount": 4478
       },
       {
         "slug": "v1.0.0/fundamentals/sagas/completion-orchestration",
@@ -1830,9 +1953,22 @@
         "tags": "sagas, completion, watchdog, scheduling, abandon, stall-detection",
         "version": "v1.0.0",
         "pageType": "concept",
-        "readingTime": 7,
+        "readingTime": 23,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/sagas/completion-orchestration.md",
-        "wordCount": 1285
+        "wordCount": 4488
+      },
+      {
+        "slug": "v1.0.0/fundamentals/sagas/continuations",
+        "title": "Saga Continuations",
+        "category": "Application Blocks",
+        "order": 3,
+        "description": "Running one saga after another finishes, so two workloads belonging to the same operation stop competing for claim capacity. Why priority cannot express this, and why the continuation carries its own claim key.",
+        "tags": "sagas, continuations, chaining, sequencing, priority, claim-capacity",
+        "version": "v1.0.0",
+        "pageType": "concept",
+        "readingTime": 7,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/sagas/continuations.md",
+        "wordCount": 1341
       },
       {
         "slug": "v1.0.0/fundamentals/sagas/whizbang-sagas",
@@ -1843,9 +1979,9 @@
         "tags": "sagas, workflows, event-sourcing, per-item-streams, exactly-once",
         "version": "v1.0.0",
         "pageType": "concept",
-        "readingTime": 10,
+        "readingTime": 11,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/sagas/whizbang-sagas.md",
-        "wordCount": 1906
+        "wordCount": 2181
       },
       {
         "slug": "v1.0.0/fundamentals/security/audit-logging",
@@ -1892,12 +2028,12 @@
         "category": "Core Concepts",
         "order": 10,
         "description": "Automatic security context establishment for incoming messages in distributed systems. Covers security extractors, scope context population, transport metadata, and audit event emission for compliance.",
-        "tags": "message-security, security-context, extractors, distributed-security, scope-context, transport-metadata, audit",
+        "tags": "message-security, security-context, extractors, distributed-security, scope-context, transport-metadata, audit, scope-markers",
         "version": "v1.0.0",
         "pageType": "concept",
-        "readingTime": 24,
+        "readingTime": 27,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/security/message-security.md",
-        "wordCount": 4637
+        "wordCount": 5282
       },
       {
         "slug": "v1.0.0/fundamentals/security/multi-tenancy",
@@ -1923,7 +2059,7 @@
         "pageType": "concept",
         "readingTime": 6,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/security/scope-propagation.md",
-        "wordCount": 1030
+        "wordCount": 1121
       },
       {
         "slug": "v1.0.0/fundamentals/security/scoping",
@@ -1965,17 +2101,186 @@
         "wordCount": 3927
       },
       {
+        "slug": "v1.0.0/fundamentals/signal-bus/signal-bus",
+        "title": "System Signal Bus",
+        "category": "Architecture & Design",
+        "order": 20,
+        "description": "The in-process signal bus the framework's own components use to wake each other, and the targets a signal can be addressed to.",
+        "tags": "signal-bus, notifications, listen-notify, control-plane, rebalance, instance-lifecycle, reliability",
+        "version": "v1.0.0",
+        "pageType": "concept",
+        "readingTime": 16,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/signal-bus/signal-bus.md",
+        "wordCount": 3170
+      },
+      {
+        "slug": "v1.0.0/fundamentals/work-coordinator/app-signals",
+        "title": "App signals",
+        "category": "Fundamentals",
+        "order": 7,
+        "description": "Application-defined signals carried over the same notification channel the coordinator uses, for waking your own work without a second listener.",
+        "tags": "work-coordinator, app-signals, listen-notify, channels, notifications",
+        "version": "v1.0.0",
+        "pageType": "concept",
+        "readingTime": 4,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/work-coordinator/app-signals.md",
+        "wordCount": 713
+      },
+      {
+        "slug": "v1.0.0/fundamentals/work-coordinator/batched-flushers",
+        "title": "Batched flushers",
+        "category": "Fundamentals",
+        "order": 5,
+        "description": "The shared batch flusher behind completion, failure and lease-renewal writes: how work is coalesced and what happens when a flush fails.",
+        "tags": "work-coordinator, flushers, batching, completions, lease-renewal, backpressure",
+        "version": "v1.0.0",
+        "pageType": "concept",
+        "readingTime": 3,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/work-coordinator/batched-flushers.md",
+        "wordCount": 554
+      },
+      {
+        "slug": "v1.0.0/fundamentals/work-coordinator/claim-loop",
+        "title": "Claim loop",
+        "category": "Fundamentals",
+        "order": 2,
+        "description": "How ClaimWorker polls claim_work: wake sources, adaptive backoff, the command lane, row-bounded acquisition, breadth-first head probing, claim-latency feedback on the adaptive window, work stealing, the per-category outstanding budget with the perspective drain cap, the release of unstarted leases by a stuck instance, and outbox stream runs with the immediate re-claim after a full outbox acquisition.",
+        "tags": "work-coordinator, claim-loop, claim-work, acquisition, backpressure, work-stealing, command-lane",
+        "version": "v1.0.0",
+        "pageType": "concept",
+        "readingTime": 27,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/work-coordinator/claim-loop.md",
+        "wordCount": 5289
+      },
+      {
+        "slug": "v1.0.0/fundamentals/work-coordinator/commit-sequence",
+        "title": "Commit Sequence & the Order Stamper",
+        "category": "Fundamentals",
+        "order": 4,
+        "description": "The commit-order stamper: how a total order is stamped over rows whose insertion order and transaction order disagree, and what that order promises.",
+        "tags": "work-coordinator, commit-sequence, ordering, stamper, leader-election",
+        "version": "v1.0.0",
+        "pageType": "concept",
+        "readingTime": 5,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/work-coordinator/commit-sequence.md",
+        "wordCount": 880
+      },
+      {
+        "slug": "v1.0.0/fundamentals/work-coordinator/configuration-reference",
+        "title": "Configuration reference",
+        "category": "Fundamentals",
+        "order": 8,
+        "description": "Every option the work coordinator and its workers read, with the section each one binds from and what changing it costs.",
+        "tags": "work-coordinator, configuration, options, workers, tuning, reference",
+        "version": "v1.0.0",
+        "pageType": "reference",
+        "readingTime": 5,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/work-coordinator/configuration-reference.md",
+        "wordCount": 831
+      },
+      {
+        "slug": "v1.0.0/fundamentals/work-coordinator/failure-and-recovery",
+        "title": "Failure and recovery",
+        "category": "Fundamentals",
+        "order": 10,
+        "description": "What the coordinator does when work fails: retries, lease expiry, the poison gate and how a stalled drain recovers.",
+        "tags": "work-coordinator, failure, recovery, retries, lease-expiry, poison-gate, dead-letter",
+        "version": "v1.0.0",
+        "pageType": "concept",
+        "readingTime": 6,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/work-coordinator/failure-and-recovery.md",
+        "wordCount": 1030
+      },
+      {
+        "slug": "v1.0.0/fundamentals/work-coordinator/handler-commit",
+        "title": "Handler commit",
+        "category": "Fundamentals",
+        "order": 3,
+        "description": "How a batch of handler results is committed in one round trip, and why a cancelled commit costs more than a slow one.",
+        "tags": "work-coordinator, handler-commit, batching, savepoints, exactly-once, inbox",
+        "version": "v1.0.0",
+        "pageType": "concept",
+        "readingTime": 4,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/work-coordinator/handler-commit.md",
+        "wordCount": 725
+      },
+      {
+        "slug": "v1.0.0/fundamentals/work-coordinator/notifications-and-pgbouncer",
+        "title": "Notifications and pgbouncer",
+        "category": "Fundamentals",
+        "order": 5,
+        "description": "How LISTEN/NOTIFY wakes idle workers through one shared direct connection per pod, the signaling gate, the doorbell debounce, why doorbells queue inside the hot transaction and ring in their own commit, and how to operate it.",
+        "tags": "work-coordinator, notifications, listen-notify, pgbouncer, doorbell, debounce",
+        "version": "v1.0.0",
+        "pageType": "concept",
+        "readingTime": 24,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/work-coordinator/notifications-and-pgbouncer.md",
+        "wordCount": 4787
+      },
+      {
+        "slug": "v1.0.0/fundamentals/work-coordinator/overview",
+        "title": "Overview",
+        "category": "Fundamentals",
+        "order": 1,
+        "description": "How the work coordinator pumps messages through the outbox, inbox and perspective pipeline, and which worker owns each step.",
+        "tags": "work-coordinator, workers, outbox, inbox, perspectives, claim, pipeline",
+        "version": "v1.0.0",
+        "pageType": "overview",
+        "readingTime": 4,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/work-coordinator/overview.md",
+        "wordCount": 644
+      },
+      {
+        "slug": "v1.0.0/fundamentals/work-coordinator/performance-tuning",
+        "title": "Performance tuning",
+        "category": "Fundamentals",
+        "order": 9,
+        "description": "Where coordinator throughput actually goes, and which knobs move it: the outstanding budget, batch sizes and the notification cadence.",
+        "tags": "work-coordinator, performance, tuning, throughput, backpressure, batching",
+        "version": "v1.0.0",
+        "pageType": "guide",
+        "readingTime": 4,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/work-coordinator/performance-tuning.md",
+        "wordCount": 746
+      },
+      {
+        "slug": "v1.0.0/fundamentals/workers/idle-footprint",
+        "title": "Idle Footprint",
+        "category": "Fundamentals",
+        "order": 10,
+        "description": "How an idle service stays quiet on its database: adaptive probe cadence for the durable signal tail, the backlog-age duty and the lifecycle monitor, contention damping in duty election, and the two passive meters that show the footprint.",
+        "tags": "workers, idle, polling, backoff, duty-election, probes, metrics",
+        "version": "v1.0.0",
+        "pageType": "concept",
+        "readingTime": 8,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/workers/idle-footprint.md",
+        "wordCount": 1514
+      },
+      {
         "slug": "v1.0.0/fundamentals/workers/instance-liveness",
         "title": "Instance Liveness — Advisory Lock + Heartbeat Fallback",
         "category": "Fundamentals",
         "order": 8,
-        "description": "Dual-signal liveness scheme — session-level advisory lock on the direct LISTEN conn (primary) plus the heartbeat-table fallback (legacy). Adaptive HeartbeatWorker cadence preserves the 30 s recovery guarantee.",
-        "tags": "liveness, heartbeat, advisory-lock, recovery, workers",
+        "description": "Dual-signal liveness scheme: a session-level advisory lock on the direct LISTEN connection (primary) plus the heartbeat-table fallback. The stale threshold is derived from the heartbeat cadence and shared by the writer, the lifecycle monitor and the SQL reap; the writer carries a watchdog and death announcements are reversible.",
+        "tags": "liveness, heartbeat, advisory-lock, recovery, workers, watchdog, lifecycle-monitor",
         "version": "v1.0.0",
         "pageType": "concept",
-        "readingTime": 9,
+        "readingTime": 19,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/workers/instance-liveness.md",
-        "wordCount": 1682
+        "wordCount": 3703
+      },
+      {
+        "slug": "v1.0.0/fundamentals/workers/maintenance-steps",
+        "title": "Maintenance Steps",
+        "category": "Fundamentals",
+        "order": 11,
+        "description": "How a package adds work to the periodic maintenance cycle, and why work that reads or repairs stored state belongs there rather than on a timer of its own.",
+        "tags": "workers, maintenance, housekeeping, settledness, extension",
+        "version": "v1.0.0",
+        "pageType": "concept",
+        "readingTime": 2,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/workers/maintenance-steps.md",
+        "wordCount": 380
       },
       {
         "slug": "v1.0.0/fundamentals/workers/perspective-worker-notify",
@@ -1986,9 +2291,9 @@
         "tags": "workers, notify, perspective, polling, signals",
         "version": "v1.0.0",
         "pageType": "concept",
-        "readingTime": 3,
+        "readingTime": 5,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/workers/perspective-worker-notify.md",
-        "wordCount": 462
+        "wordCount": 878
       },
       {
         "slug": "v1.0.0/fundamentals/workers/pinned-connection-pool",
@@ -1999,9 +2304,22 @@
         "tags": "workers, connections, pgbouncer, performance, throughput",
         "version": "v1.0.0",
         "pageType": "concept",
-        "readingTime": 10,
+        "readingTime": 11,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/workers/pinned-connection-pool.md",
-        "wordCount": 1865
+        "wordCount": 2154
+      },
+      {
+        "slug": "v1.0.0/fundamentals/workers/transient-database-failures",
+        "title": "Transient Database Failures in Worker Loops",
+        "category": "Fundamentals",
+        "order": 11,
+        "description": "Why no database failure inside one batch may end a background worker, how Whizbang classifies a deadlock, a serialization failure, a canceled statement or a lost connection, what the loops log when one happens, and how to give a worker of your own the same treatment.",
+        "tags": "workers, resilience, deadlock, backoff, background-service, logging, leases",
+        "version": "v1.0.0",
+        "pageType": "concept",
+        "readingTime": 10,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/workers/transient-database-failures.md",
+        "wordCount": 1883
       },
       {
         "slug": "v1.0.0/fundamentals/workers/worker-classification",
@@ -2027,7 +2345,7 @@
         "pageType": "reference",
         "readingTime": 5,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/getting-started/glossary.md",
-        "wordCount": 867
+        "wordCount": 908
       },
       {
         "slug": "v1.0.0/getting-started/installation",
@@ -2324,9 +2642,9 @@
         "tags": "inbox, exactly-once, deduplication, idempotency, message-processing",
         "version": "v1.0.0",
         "pageType": "concept",
-        "readingTime": 13,
+        "readingTime": 14,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/messaging/inbox-pattern.md",
-        "wordCount": 2582
+        "wordCount": 2659
       },
       {
         "slug": "v1.0.0/messaging/message-envelopes",
@@ -2352,7 +2670,7 @@
         "pageType": "concept",
         "readingTime": 21,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/messaging/multi-instance-coordination.md",
-        "wordCount": 4141
+        "wordCount": 4200
       },
       {
         "slug": "v1.0.0/messaging/outbox-pattern",
@@ -2386,12 +2704,12 @@
         "category": "Transports",
         "order": 1,
         "description": "Reliable cross-service messaging with Azure Service Bus topics and subscriptions - AOT-compatible with correlation filters",
-        "tags": "transports, azure-service-bus, messaging, topics, subscriptions, correlation-filters, aspire, aot",
+        "tags": "transports, azure-service-bus, messaging, topics, subscriptions, correlation-filters, aspire, aot, sessions, adaptive-acceptors",
         "version": "v1.0.0",
         "pageType": "concept",
-        "readingTime": 31,
+        "readingTime": 36,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/messaging/transports/azure-service-bus.md",
-        "wordCount": 6072
+        "wordCount": 7134
       },
       {
         "slug": "v1.0.0/messaging/transports/in-memory",
@@ -2428,9 +2746,9 @@
         "tags": "transports, rabbitmq, messaging, topic-exchange, dead-letter-queue, channel-pool, aot, testcontainers",
         "version": "v1.0.0",
         "pageType": "concept",
-        "readingTime": 26,
+        "readingTime": 27,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/messaging/transports/rabbitmq.md",
-        "wordCount": 5183
+        "wordCount": 5222
       },
       {
         "slug": "v1.0.0/messaging/transports/transport-consumer",
@@ -2441,9 +2759,9 @@
         "tags": "transport, consumer, subscriptions, resilience, messaging",
         "version": "v1.0.0",
         "pageType": "concept",
-        "readingTime": 7,
+        "readingTime": 10,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/messaging/transports/transport-consumer.md",
-        "wordCount": 1297
+        "wordCount": 1951
       },
       {
         "slug": "v1.0.0/messaging/transports/transports",
@@ -2454,9 +2772,9 @@
         "tags": "transports, messaging, in-process, communication, bulk-publish, batch-subscribe",
         "version": "v1.0.0",
         "pageType": "overview",
-        "readingTime": 9,
+        "readingTime": 10,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/messaging/transports/transports.md",
-        "wordCount": 1787
+        "wordCount": 1887
       },
       {
         "slug": "v1.0.0/messaging/work-coordination",
@@ -2480,9 +2798,9 @@
         "tags": "work-coordinator, atomic-operations, batch-processing, distributed-coordination, lease-management, claim-work",
         "version": "v1.0.0",
         "pageType": "concept",
-        "readingTime": 14,
+        "readingTime": 16,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/messaging/work-coordinator.md",
-        "wordCount": 2747
+        "wordCount": 3087
       },
       {
         "slug": "v1.0.0/migration-guide/01-concept-mapping",
@@ -2614,6 +2932,19 @@
         "wordCount": 1185
       },
       {
+        "slug": "v1.0.0/migration-guide/cli-wizard",
+        "title": "CLI Migration Wizard",
+        "category": "migration-guide",
+        "order": 11,
+        "description": "Interactive wizard for migrating from Marten/Wolverine to Whizbang",
+        "tags": "migration, cli, wizard, whizbang-migrate, tooling, marten, wolverine",
+        "version": "v1.0.0",
+        "pageType": "guide",
+        "readingTime": 13,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/migration-guide/cli-wizard.md",
+        "wordCount": 2559
+      },
+      {
         "slug": "v1.0.0/operations/configuration/all-services",
         "title": "AddAllWhizbangServices",
         "category": "DI",
@@ -2624,7 +2955,7 @@
         "pageType": "reference",
         "readingTime": 3,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/operations/configuration/all-services.md",
-        "wordCount": 543
+        "wordCount": 567
       },
       {
         "slug": "v1.0.0/operations/configuration/configuration-reference",
@@ -2635,9 +2966,9 @@
         "tags": "configuration, options, environment variables, appsettings, reference, binding",
         "version": "v1.0.0",
         "pageType": "reference",
-        "readingTime": 49,
+        "readingTime": 95,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/operations/configuration/configuration-reference.md",
-        "wordCount": 9755
+        "wordCount": 18849
       },
       {
         "slug": "v1.0.0/operations/configuration/empty-stream-id-policy",
@@ -2715,7 +3046,20 @@
         "pageType": "reference",
         "readingTime": 7,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/operations/configuration/whizbang-options.md",
-        "wordCount": 1203
+        "wordCount": 1278
+      },
+      {
+        "slug": "v1.0.0/operations/dead-letter-queue/canary-recovery",
+        "title": "Canary Recovery — Held Cohorts, Probes, and Verdicts",
+        "category": "Dead Letter Queue",
+        "order": 6,
+        "description": "How a mass of held dead letters comes back after a fix: an operator sets one flag and restarts, the campaign probes a stratified sample of each fingerprint cohort, and a cohort releases only when its probes recover — staggered eligibility drained by the normal paced scans, with Mixed verdicts reported for operator review instead of auto-released.",
+        "tags": "dead-letter, canary, cohort, fingerprint, probes, verdict, held, retry-on-startup, release, stagger, campaign",
+        "version": "v1.0.0",
+        "pageType": "concept",
+        "readingTime": 7,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/operations/dead-letter-queue/canary-recovery.md",
+        "wordCount": 1215
       },
       {
         "slug": "v1.0.0/operations/dead-letter-queue/internal-dlq",
@@ -2728,7 +3072,7 @@
         "pageType": "concept",
         "readingTime": 6,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/operations/dead-letter-queue/internal-dlq.md",
-        "wordCount": 1081
+        "wordCount": 1090
       },
       {
         "slug": "v1.0.0/operations/dead-letter-queue/operator-api",
@@ -2752,9 +3096,9 @@
         "tags": "dead-letter-queue, PerspectiveWorker, MaxPerspectiveEventAttempts, FilterDeadLetteredAsync, perspective-events",
         "version": "v1.0.0",
         "pageType": "concept",
-        "readingTime": 4,
+        "readingTime": 5,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/operations/dead-letter-queue/perspective-events.md",
-        "wordCount": 755
+        "wordCount": 871
       },
       {
         "slug": "v1.0.0/operations/dead-letter-queue/recovery",
@@ -2765,9 +3109,9 @@
         "tags": "dead-letter-queue, recovery, IDeadLetterRecoveryPolicy, RecoveryPolicy, MessageFailureReason, generation-replay",
         "version": "v1.0.0",
         "pageType": "reference",
-        "readingTime": 6,
+        "readingTime": 11,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/operations/dead-letter-queue/recovery.md",
-        "wordCount": 1051
+        "wordCount": 2111
       },
       {
         "slug": "v1.0.0/operations/dead-letter-queue/transport-recovery",
@@ -2778,9 +3122,61 @@
         "tags": "dead-letter-queue, transport-recovery, ITransportDeadLetterDrainer, TransportDeadLetterDrainWorker, ASB, RabbitMQ, broker-DLQ",
         "version": "v1.0.0",
         "pageType": "concept",
-        "readingTime": 5,
+        "readingTime": 7,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/operations/dead-letter-queue/transport-recovery.md",
-        "wordCount": 844
+        "wordCount": 1247
+      },
+      {
+        "slug": "v1.0.0/operations/dependency-injection/extending",
+        "title": "Extending and Customizing",
+        "category": "DI",
+        "order": 4,
+        "description": "Worked examples for replacing a shipped service, and the pattern to follow when adding an injectable service of your own",
+        "tags": "di, dependency-injection, extending, customizing, hooks",
+        "version": "v1.0.0",
+        "pageType": "guide",
+        "readingTime": 5,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/operations/dependency-injection/extending.md",
+        "wordCount": 930
+      },
+      {
+        "slug": "v1.0.0/operations/dependency-injection/injectable-services",
+        "title": "Injectable Services",
+        "category": "DI",
+        "order": 3,
+        "description": "Every service Whizbang injects, the default it ships, and whether replacing it is a common thing to do",
+        "tags": "di, dependency-injection, services, defaults, reference",
+        "version": "v1.0.0",
+        "pageType": "reference",
+        "readingTime": 3,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/operations/dependency-injection/injectable-services.md",
+        "wordCount": 527
+      },
+      {
+        "slug": "v1.0.0/operations/dependency-injection/overriding-defaults",
+        "title": "Overriding Defaults",
+        "category": "DI",
+        "order": 1,
+        "description": "How Whizbang ships a working default for every injectable service and how to replace one with your own implementation",
+        "tags": "di, dependency-injection, defaults, tryadd, overriding",
+        "version": "v1.0.0",
+        "pageType": "guide",
+        "readingTime": 4,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/operations/dependency-injection/overriding-defaults.md",
+        "wordCount": 643
+      },
+      {
+        "slug": "v1.0.0/operations/dependency-injection/registration-validation",
+        "title": "Registration Validation",
+        "category": "DI",
+        "order": 2,
+        "description": "Whizbang checks at startup that every registered service can have its constructor satisfied, and fails naming what is missing",
+        "tags": "di, dependency-injection, validation, startup, diagnostics",
+        "version": "v1.0.0",
+        "pageType": "guide",
+        "readingTime": 3,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/operations/dependency-injection/registration-validation.md",
+        "wordCount": 507
       },
       {
         "slug": "v1.0.0/operations/deployment/deployment-strategies",
@@ -2871,7 +3267,7 @@
         "pageType": "troubleshooting",
         "readingTime": 14,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/operations/deployment/troubleshooting.md",
-        "wordCount": 2680
+        "wordCount": 2800
       },
       {
         "slug": "v1.0.0/operations/diagnostics/error-reference",
@@ -2882,9 +3278,9 @@
         "tags": "errors, error-reference, troubleshooting, runtime, logs, dead-letter-queue, transport, perspectives, rebuild, serialization",
         "version": "v1.0.0",
         "pageType": "reference",
-        "readingTime": 12,
+        "readingTime": 13,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/operations/diagnostics/error-reference.md",
-        "wordCount": 2324
+        "wordCount": 2436
       },
       {
         "slug": "v1.0.0/operations/diagnostics/serializable-property-analyzer",
@@ -3115,6 +3511,86 @@
         "wordCount": 363
       },
       {
+        "slug": "v1.0.0/operations/diagnostics/whiz160",
+        "title": "WHIZ160: Type Name Composed By Hand",
+        "category": "Diagnostics",
+        "order": 999,
+        "description": "Warning diagnostic when an expression composes a type name by string concatenation or interpolation with the CLR nested separator '+' or the wire assembly separator ', ' instead of rendering the form through TypeNameFormatter (runtime) or TypeNameUtilities (generators).",
+        "tags": [
+          "diagnostics",
+          "type-naming",
+          "analyzer",
+          "clr-type-name",
+          "wire-type-name",
+          "type-name-formatter"
+        ],
+        "version": "v1.0.0",
+        "pageType": "troubleshooting",
+        "readingTime": 6,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/operations/diagnostics/whiz160.md",
+        "wordCount": 1071
+      },
+      {
+        "slug": "v1.0.0/operations/diagnostics/whiz161",
+        "title": "WHIZ161: Type Name Dissected By Hand",
+        "category": "Diagnostics",
+        "order": 999,
+        "description": "Warning diagnostic when Split, Substring, IndexOf('+'), or Replace(\"global::\", ...) is applied to a type-name value instead of parsing it through TypeNameFormatter (runtime) or TypeNameUtilities (generators); hand parsing misses version decoration, nested '+' and generic arity.",
+        "tags": [
+          "diagnostics",
+          "type-naming",
+          "analyzer",
+          "clr-type-name",
+          "wire-type-name",
+          "parsing"
+        ],
+        "version": "v1.0.0",
+        "pageType": "troubleshooting",
+        "readingTime": 5,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/operations/diagnostics/whiz161.md",
+        "wordCount": 861
+      },
+      {
+        "slug": "v1.0.0/operations/diagnostics/whiz162",
+        "title": "WHIZ162: Type Names Compared Without The Matching Helper",
+        "category": "Diagnostics",
+        "order": 999,
+        "description": "Warning diagnostic when two type-name strings are compared with ==, !=, or string.Equals instead of through EventTypeMatchingHelper, so a version-decorated persisted name never matches its bare registered form.",
+        "tags": [
+          "diagnostics",
+          "type-naming",
+          "analyzer",
+          "event-type",
+          "type-matching",
+          "event-type-matching-helper"
+        ],
+        "version": "v1.0.0",
+        "pageType": "troubleshooting",
+        "readingTime": 4,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/operations/diagnostics/whiz162.md",
+        "wordCount": 798
+      },
+      {
+        "slug": "v1.0.0/operations/diagnostics/whiz163",
+        "title": "WHIZ163: Type-Name Key Assigned From A Hand-Built String",
+        "category": "Diagnostics",
+        "order": 999,
+        "description": "Warning diagnostic when a type-name key (a member, parameter, or local named *ClrTypeName*, *TypeName*, *EventType*, or *EnvelopeType*) is assigned from an interpolated or concatenated string instead of a TypeNameFormatter or TypeNameUtilities result.",
+        "tags": [
+          "diagnostics",
+          "type-naming",
+          "analyzer",
+          "clr-type-name",
+          "registry-key",
+          "type-name-formatter"
+        ],
+        "version": "v1.0.0",
+        "pageType": "troubleshooting",
+        "readingTime": 5,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/operations/diagnostics/whiz163.md",
+        "wordCount": 899
+      },
+      {
         "slug": "v1.0.0/operations/diagnostics/whiz300",
         "title": "WHIZ300: Inconsistent Perspective Model Types",
         "category": "Diagnostics",
@@ -3134,6 +3610,110 @@
         "wordCount": 882
       },
       {
+        "slug": "v1.0.0/operations/diagnostics/whiz302",
+        "title": "WHIZ302: Filtered Perspective Field Has No Index",
+        "category": "Diagnostics",
+        "order": 302,
+        "description": "Warning diagnostic when a lens query filters, orders, or counts on a perspective field that lives only in the model's JSON and therefore cannot use an index.",
+        "tags": "diagnostics, perspectives, physical-fields, indexing, performance, analyzer",
+        "version": "v1.0.0",
+        "pageType": "troubleshooting",
+        "readingTime": 19,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/operations/diagnostics/whiz302.md",
+        "wordCount": 3687
+      },
+      {
+        "slug": "v1.0.0/operations/diagnostics/whiz303",
+        "title": "WHIZ303: Declared Index Cannot Be Built For This Field's Type",
+        "category": "Diagnostics",
+        "order": 303,
+        "description": "Warning diagnostic when a perspective field declares [Indexed] but its stored form has no single scalar an immutable cast can reach, so PostgreSQL will not build the index.",
+        "tags": "diagnostics, perspectives, indexing, jsonb, analyzer, physical-fields",
+        "version": "v1.0.0",
+        "pageType": "troubleshooting",
+        "readingTime": 4,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/operations/diagnostics/whiz303.md",
+        "wordCount": 800
+      },
+      {
+        "slug": "v1.0.0/operations/diagnostics/whiz304",
+        "title": "WHIZ304: Declared Index Cannot Be Reached For This Model's Storage",
+        "category": "Diagnostics",
+        "order": 304,
+        "description": "Warning diagnostic when a perspective model declares a JSON index but holds a polymorphic member, so its document is stored as one serialized value and no query against it reaches the index.",
+        "tags": "diagnostics, perspectives, indexing, jsonb, polymorphic, analyzer",
+        "version": "v1.0.0",
+        "pageType": "troubleshooting",
+        "readingTime": 5,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/operations/diagnostics/whiz304.md",
+        "wordCount": 963
+      },
+      {
+        "slug": "v1.0.0/operations/diagnostics/whiz305",
+        "title": "WHIZ305: Declared Index Capability Does Not Apply To This Field's Type",
+        "category": "Diagnostics",
+        "order": 305,
+        "description": "Warning diagnostic when a perspective field asks for substring matching or case folding, both of which only apply to text, on a field of some other type.",
+        "tags": "diagnostics, perspectives, indexing, jsonb, analyzer, case-insensitive",
+        "version": "v1.0.0",
+        "pageType": "troubleshooting",
+        "readingTime": 4,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/operations/diagnostics/whiz305.md",
+        "wordCount": 760
+      },
+      {
+        "slug": "v1.0.0/operations/diagnostics/whiz306",
+        "title": "WHIZ306: Fields reachable by request-time sorting have no index",
+        "category": "Diagnostics",
+        "order": 306,
+        "description": "Warning diagnostic when a perspective model is exposed to sorting or filtering composed from the request while its fields carry no index and no recorded decision.",
+        "tags": "diagnostics, perspectives, indexing, graphql, sorting, analyzer",
+        "version": "v1.0.0",
+        "pageType": "troubleshooting",
+        "readingTime": 8,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/operations/diagnostics/whiz306.md",
+        "wordCount": 1544
+      },
+      {
+        "slug": "v1.0.0/operations/diagnostics/whiz307",
+        "title": "WHIZ307: Whole-document match has no index",
+        "category": "Diagnostics",
+        "order": 307,
+        "description": "Warning diagnostic when a perspective filter compiles to a whole-document match that the model's [PerspectiveQueries] declaration leaves without an index.",
+        "tags": "diagnostics, perspectives, indexing, analyzer, jsonb",
+        "version": "v1.0.0",
+        "pageType": "troubleshooting",
+        "readingTime": 3,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/operations/diagnostics/whiz307.md",
+        "wordCount": 590
+      },
+      {
+        "slug": "v1.0.0/operations/diagnostics/whiz308",
+        "title": "WHIZ308: Whole-document match has no index by default",
+        "category": "Diagnostics",
+        "order": 308,
+        "description": "Warning diagnostic when a perspective filter compiles to a whole-document match on a model that doesn't declare [PerspectiveQueries(MatchOnAnyField = ...)], so the index that answers it isn't built. Says how to opt in.",
+        "tags": "diagnostics, perspectives, indexing, analyzer, jsonb, upgrade",
+        "version": "v1.0.0",
+        "pageType": "troubleshooting",
+        "readingTime": 3,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/operations/diagnostics/whiz308.md",
+        "wordCount": 546
+      },
+      {
+        "slug": "v1.0.0/operations/diagnostics/whiz309",
+        "title": "WHIZ309: Collective predicate filters an unindexed field",
+        "category": "Diagnostics",
+        "order": 309,
+        "description": "Warning diagnostic when a collective handler's Where filters a perspective field that has no index of its own, so every collective apply reads every row of the table. Turned off per project with an MSBuild property, or per perspective with [SuppressIndexAdvisory].",
+        "tags": "diagnostics, perspectives, indexing, analyzer, collective-events, code-fix",
+        "version": "v1.0.0",
+        "pageType": "troubleshooting",
+        "readingTime": 5,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/operations/diagnostics/whiz309.md",
+        "wordCount": 847
+      },
+      {
         "slug": "v1.0.0/operations/diagnostics/whiz400",
         "title": "WHIZ400: Invalid Type Argument for ILensQuery",
         "category": "Diagnostics",
@@ -3151,6 +3731,40 @@
         "readingTime": 4,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/operations/diagnostics/whiz400.md",
         "wordCount": 721
+      },
+      {
+        "slug": "v1.0.0/operations/diagnostics/whiz500",
+        "title": "WHIZ500: Hand-Constructed Service Omits a Dependency",
+        "category": "Diagnostics",
+        "order": 999,
+        "description": "A service built with new inside a DI factory omits an injectable parameter, which will be null at run time",
+        "tags": [
+          "diagnostics",
+          "dependency-injection",
+          "analyzer"
+        ],
+        "version": "v1.0.0",
+        "pageType": "troubleshooting",
+        "readingTime": 2,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/operations/diagnostics/whiz500.md",
+        "wordCount": 397
+      },
+      {
+        "slug": "v1.0.0/operations/diagnostics/whiz501",
+        "title": "WHIZ501: Optional Injected Dependency",
+        "category": "Diagnostics",
+        "order": 999,
+        "description": "A constructor declares an optional interface-typed parameter, which will be null wherever it is not passed",
+        "tags": [
+          "diagnostics",
+          "dependency-injection",
+          "analyzer"
+        ],
+        "version": "v1.0.0",
+        "pageType": "troubleshooting",
+        "readingTime": 3,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/operations/diagnostics/whiz501.md",
+        "wordCount": 568
       },
       {
         "slug": "v1.0.0/operations/diagnostics/whiz802",
@@ -3188,7 +3802,26 @@
         "pageType": "troubleshooting",
         "readingTime": 4,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/operations/diagnostics/whiz807.md",
-        "wordCount": 753
+        "wordCount": 751
+      },
+      {
+        "slug": "v1.0.0/operations/diagnostics/whiz808",
+        "title": "WHIZ808: Split Class Model Cannot Be Copied",
+        "category": "Diagnostics",
+        "order": 999,
+        "description": "Error when a Split class model has an init-only promoted field and cannot be copied, which the runner needs to strip and load that field",
+        "tags": [
+          "diagnostics",
+          "physical-field",
+          "split-mode",
+          "perspectives",
+          "source-generator"
+        ],
+        "version": "v1.0.0",
+        "pageType": "troubleshooting",
+        "readingTime": 3,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/operations/diagnostics/whiz808.md",
+        "wordCount": 563
       },
       {
         "slug": "v1.0.0/operations/infrastructure/aspire-integration",
@@ -3238,9 +3871,9 @@
         "tags": "migrations, schema, hash-tracking, blue-green, rollback, preview, database, ddl, perspective-tracking, data-migration, wh-settings",
         "version": "v1.0.0",
         "pageType": "concept",
-        "readingTime": 9,
+        "readingTime": 33,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/operations/infrastructure/migrations.md",
-        "wordCount": 1744
+        "wordCount": 6410
       },
       {
         "slug": "v1.0.0/operations/infrastructure/policies",
@@ -3282,6 +3915,19 @@
         "wordCount": 2010
       },
       {
+        "slug": "v1.0.0/operations/infrastructure/purging-streams",
+        "title": "Purging Streams",
+        "category": "Infrastructure",
+        "order": 9,
+        "description": "Remove durable streams that should never have existed from one service's store: events, perspective rows and bookkeeping, in audited batches, with a dry run first, and keep them purged",
+        "tags": "operations, purge, streams, cleanup, orphaned streams, audit, dry run, cli, IStreamPurger",
+        "version": "v1.0.0",
+        "pageType": "guide",
+        "readingTime": 5,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/operations/infrastructure/purging-streams.md",
+        "wordCount": 997
+      },
+      {
         "slug": "v1.0.0/operations/observability/diagnostics",
         "title": "Diagnostics",
         "category": "Observability",
@@ -3303,9 +3949,9 @@
         "tags": "logging, log levels, categories, appsettings, observability, configuration, ILogger",
         "version": "v1.0.0",
         "pageType": "reference",
-        "readingTime": 5,
+        "readingTime": 6,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/operations/observability/logging-categories.md",
-        "wordCount": 932
+        "wordCount": 1068
       },
       {
         "slug": "v1.0.0/operations/observability/metrics",
@@ -3313,12 +3959,12 @@
         "category": "Observability",
         "order": 6,
         "description": "Complete reference for all built-in OpenTelemetry metrics emitted by Whizbang - counters, histograms, and gauges across dispatcher, lifecycle, transport, perspective, work coordinator, and lifecycle coordinator subsystems",
-        "tags": "metrics, opentelemetry, counters, histograms, monitoring, Prometheus, Grafana",
+        "tags": "metrics, opentelemetry, counters, histograms, monitoring, Prometheus, Grafana, passive-counters, maintenance",
         "version": "v1.0.0",
         "pageType": "reference",
-        "readingTime": 18,
+        "readingTime": 29,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/operations/observability/metrics.md",
-        "wordCount": 3413
+        "wordCount": 5657
       },
       {
         "slug": "v1.0.0/operations/observability/opentelemetry-integration",
@@ -3344,7 +3990,7 @@
         "pageType": "concept",
         "readingTime": 7,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/operations/observability/stuck-row-sentinel.md",
-        "wordCount": 1290
+        "wordCount": 1339
       },
       {
         "slug": "v1.0.0/operations/observability/tracing",
@@ -3381,9 +4027,9 @@
         "tags": "capabilities, duties, election, advisory-lock, migrator, maintainer, takeover, fencing, multi-instance",
         "version": "v1.0.0",
         "pageType": "concept",
-        "readingTime": 7,
+        "readingTime": 10,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/operations/startup/capabilities-and-duties.md",
-        "wordCount": 1235
+        "wordCount": 1983
       },
       {
         "slug": "v1.0.0/operations/startup/rolling-upgrades",
@@ -3394,9 +4040,9 @@
         "tags": "rolling-upgrades, assess, standby, handshake, eviction, semver, versioning, migrations, multi-instance, deployment",
         "version": "v1.0.0",
         "pageType": "concept",
-        "readingTime": 7,
+        "readingTime": 8,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/operations/startup/rolling-upgrades.md",
-        "wordCount": 1274
+        "wordCount": 1444
       },
       {
         "slug": "v1.0.0/operations/startup/startup-pipeline",
@@ -3451,6 +4097,32 @@
         "wordCount": 2452
       },
       {
+        "slug": "v1.0.0/operations/testing/work-pump-smoke-test",
+        "title": "Work-pump decomposition smoke test",
+        "category": "Operations & Configuration",
+        "order": 4,
+        "description": "A runbook for confirming a multi-service deployment is getting the decomposed work pump: what to look for in the claim loop, the drain and the order stamper.",
+        "tags": "operations, smoke-test, work-coordinator, verification, deployment, runbook",
+        "version": "v1.0.0",
+        "pageType": "guide",
+        "readingTime": 5,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/operations/testing/work-pump-smoke-test.md",
+        "wordCount": 847
+      },
+      {
+        "slug": "v1.0.0/operations/workers/claim-backpressure",
+        "title": "Claim Backpressure — Bounding Outstanding Work",
+        "category": "Workers",
+        "order": 5,
+        "description": "Why bounding the size of each claim does not bound how much work an instance holds, and how the outstanding-row budget prevents a backlog from consuming its own retry budget. Covers AdaptiveOutstandingBudget, the rows-versus-streams distinction, cold-start behavior, stall handling, and the tuning knobs.",
+        "tags": "claim-work, backpressure, leases, attempts, max-attempts-exceeded, outstanding-work, adaptive-claim-window, dead-letter, admission-control",
+        "version": "v1.0.0",
+        "pageType": "concept",
+        "readingTime": 11,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/operations/workers/claim-backpressure.md",
+        "wordCount": 2004
+      },
+      {
         "slug": "v1.0.0/operations/workers/database-readiness",
         "title": "Database Readiness",
         "category": "Workers",
@@ -3477,6 +4149,19 @@
         "wordCount": 3374
       },
       {
+        "slug": "v1.0.0/operations/workers/housekeeping-arbitration",
+        "title": "Housekeeping Arbitration — Ranks, Idle Gating, and the Starvation Floor",
+        "category": "Workers",
+        "order": 6,
+        "description": "How dead-letter recovery, integrity work, and maintenance sweeps share one service without racing each other or degrading live traffic: the rank order, the settledness gate and what counts as busy, the bounded-deferral escape that prevents permanent starvation, and the decisions/running/items metrics that make every verdict a dashboard fact.",
+        "tags": "housekeeping, arbitration, dead-letter-recovery, maintenance, integrity, idle, settledness, deferral, wait-for-idle, starvation, observability",
+        "version": "v1.0.0",
+        "pageType": "concept",
+        "readingTime": 5,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/operations/workers/housekeeping-arbitration.md",
+        "wordCount": 816
+      },
+      {
         "slug": "v1.0.0/operations/workers/perspective-worker",
         "title": "Perspective Worker",
         "category": "Workers",
@@ -3485,9 +4170,9 @@
         "tags": "perspective-worker, cursors, background-worker, lease-based-coordination, deduplication, error-tracking",
         "version": "v1.0.0",
         "pageType": "concept",
-        "readingTime": 26,
+        "readingTime": 30,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/operations/workers/perspective-worker.md",
-        "wordCount": 5018
+        "wordCount": 5824
       },
       {
         "slug": "v1.0.0/operations/workers/process-work-batch-lease-semantics",
@@ -3498,9 +4183,9 @@
         "tags": "work-coordinator, claim-work, renew-leases, record-heartbeat, lease-renewal, heartbeat, polling, backoff, wal, orphan-claim",
         "version": "v1.0.0",
         "pageType": "concept",
-        "readingTime": 9,
+        "readingTime": 12,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/operations/workers/process-work-batch-lease-semantics.md",
-        "wordCount": 1627
+        "wordCount": 2247
       },
       {
         "slug": "v1.0.0/resilience/database-availability-middleware",
@@ -3524,9 +4209,9 @@
         "tags": "health, liveness, readiness, migration, resilience, kubernetes",
         "version": "v1.0.0",
         "pageType": "guide",
-        "readingTime": 5,
+        "readingTime": 6,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/resilience/managed-resource-health.md",
-        "wordCount": 942
+        "wordCount": 1027
       },
       {
         "slug": "v1.0.0/resilience/managed-resource-run-control",
@@ -3546,13 +4231,13 @@
         "title": "Stream Integrity",
         "category": "Resilience",
         "order": 4,
-        "description": "Cross-service anti-entropy — continuity checkpoints, digest audits, and idempotent re-delivery repair, self-healing by default",
+        "description": "Cross-service anti-entropy — continuity checkpoints, digest audits, and idempotent re-delivery repair; report-only by default, self-healing as the opt-in",
         "tags": "stream-integrity, anti-entropy, re-delivery, backfill, digest, manifest, continuity, checkpoint, repair, cross-service, bootstrap",
         "version": "v1.0.0",
         "pageType": "guide",
-        "readingTime": 50,
+        "readingTime": 63,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/resilience/stream-integrity.md",
-        "wordCount": 9941
+        "wordCount": 12536
       },
       {
         "slug": "v1.0.0/tools/mcp-server",
@@ -3569,7 +4254,7 @@
         ],
         "readingTime": 3,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/tools/mcp-server.md",
-        "wordCount": 543
+        "wordCount": 571
       }
     ]
   },
@@ -3594,36 +4279,6 @@
         "wordCount": 1883
       },
       {
-        "slug": "drafts/attributes/must-exist",
-        "title": "MustExist Attribute",
-        "category": "Attributes",
-        "order": 999,
-        "description": "Marks a perspective Apply method as requiring the model to already exist",
-        "tags": [
-          "attributes",
-          "mustexist",
-          "perspectives",
-          "validation",
-          "source-generator"
-        ],
-        "version": "drafts",
-        "readingTime": 5,
-        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/drafts/attributes/must-exist.md",
-        "wordCount": 959
-      },
-      {
-        "slug": "drafts/attributes/pinned-id",
-        "title": "PinnedId Attribute",
-        "category": "Attributes",
-        "order": 20,
-        "description": "Declares a stable, namespace-proof identifier for a concrete message or perspective type so stored events survive namespace restructuring.",
-        "tags": "attributes, pinned-id, stable-identity, namespaces, event-sourcing, source-generator, aot",
-        "version": "drafts",
-        "readingTime": 3,
-        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/drafts/attributes/pinned-id.md",
-        "wordCount": 490
-      },
-      {
         "slug": "drafts/core-concepts/cascade-context",
         "title": "Cascade Context",
         "category": "Core Concepts",
@@ -3646,18 +4301,6 @@
         "readingTime": 9,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/drafts/core-concepts/model-action.md",
         "wordCount": 1715
-      },
-      {
-        "slug": "drafts/core-concepts/pinned-identity",
-        "title": "Pinned Identity",
-        "category": "Core Concepts",
-        "order": 30,
-        "description": "Stable, namespace-proof identity for stored messages and perspectives via [PinnedId] + a universal type registry.",
-        "tags": "core-concepts, pinned-identity, stable-identity, namespaces, event-sourcing, migrations, aot",
-        "version": "drafts",
-        "readingTime": 4,
-        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/drafts/core-concepts/pinned-identity.md",
-        "wordCount": 728
       },
       {
         "slug": "drafts/decisions/work-pump-decomposition/dual-connection-notifications",
@@ -3720,138 +4363,6 @@
         "wordCount": 577
       },
       {
-        "slug": "drafts/fundamentals/signal-bus/signal-bus",
-        "title": "System Signal Bus",
-        "category": "Architecture & Design",
-        "order": 20,
-        "description": "\n# System Signal Bus\n\nWhizbang's control plane — waking the work pump, arming scheduled timers, reacting to rebalances and instance failures — is coordinated by lightweight **signals** delivered over PostgreSQL `LISTEN`/`NOTIFY` with a polling fallback. The **System Signal Bus** unifies these into one typed, multicast, developer-extensible abstraction (`ISignalBus`) built on a **doorbell-not-data** discipline and a **hybrid reliability** model: best-effort signals for low latency, a durable log for the few signals that must not be missed, and periodic reconciliation as the correctness backstop.\n\n:::planned\nThe System Signal Bus is a foundational capability. **The core (F1) is implemented (unreleased):** the\ntransport-agnostic bus, the cross-assembly signal-type registry + generator (with `[WireName]`), the\nPostgres push transport (broadcast **and** targeted) plus polling pull-sources, the durable `wh_signals`\nlog, the instance-lifecycle signals, and the work-pump migration onto the bus are all in place. It\n**generalizes the existing `Whizbang.Core/Notifications` subsystem** rather than replacing it — current\nbehavior is preserved (the existing notification regression suite stays green throughout). Signals that\nbelong to later phases (scheduling, destruction, rebalance, commit-order) are noted as *planned* below.\n:::\n\n## Motivation\n\nToday the control plane uses `LISTEN`/`NOTIFY` in several *bespoke, per-use* wirings: an instance-routed work-availability channel (`wh_work_i_<id>`), a commit-order channel (`wh_committed`), and an app-facing pub/sub channel family (`wh_app_<topic>`). Each has its own producer, subscriber, and fallback logic. Cluster events — a partition **rebalance**, an instance **joining**, an instance **dying** — are handled implicitly inside individual workers rather than surfaced as first-class events that *any* subsystem (or the application developer) can react to.\n\nThe Signal Bus makes that control plane **one typed, multicast bus**:\n\n- **Typed & multicast** — publish a `TSignal`; any number of internal or developer subscribers receive it.\n- **Foundational** — the work pump, the temporal engine (scheduled/recurring events), and the ephemeral reaper all become *consumers* of the same bus.\n- **Extensible** — developers subscribe to system signals (\"on rebalance, warm my cache\") and publish their own.\n\n## What exists today\n\nThe bus builds directly on the mature `Whizbang.Core/Notifications` subsystem:\n\n| Existing abstraction | Role | Becomes |\n|",
-        "tags": "signal-bus, notifications, listen-notify, control-plane, rebalance, instance-lifecycle, reliability",
-        "version": "drafts",
-        "readingTime": 14,
-        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/drafts/fundamentals/signal-bus/signal-bus.md",
-        "wordCount": 2775
-      },
-      {
-        "slug": "drafts/fundamentals/work-coordinator/app-signals",
-        "title": "App signals",
-        "category": "Fundamentals",
-        "order": 6,
-        "description": "\n# App signals\n\nWhizbang exposes its NOTIFY/LISTEN infrastructure to application code via `IAppSignalChannel`. Use it for ad-hoc cross-pod pub/sub: cache invalidations, feature-flag refresh hints, custom workflow signals — anything where you'd otherwise reach for a separate message bus or polling loop for a low-volume signal.\n\n## API\n\n```csharp\npublic interface IAppSignalChannel {\n  Task PublishAsync(string topic, string payload, CancellationToken ct = default);\n  IDisposable Subscribe(string topic, Func<string, CancellationToken, Task> handler);\n}\n```\n\n`topic` is your application's identifier. `payload` is an arbitrary string (often JSON).\n\n## Topic naming rules\n\nTopics must match `^[a-z][a-z0-9_]{0,62}$`. The `wh_` prefix is reserved for Whizbang internal signals — `AppSignalTopicValidator` rejects topics starting with `wh_` at publish/subscribe time:\n\n```csharp\nawait channel.PublishAsync(\"user_signed_up\", json);   // OK\nawait channel.PublishAsync(\"wh_internal\", json);      // throws ArgumentException\nawait channel.PublishAsync(\"UserSignedUp\", json);     // throws (uppercase not allowed)\nawait channel.PublishAsync(\"1signup\", json);          // throws (must start with letter)\n```\n\n## Isolation from internal signals\n\nApp topics live on dedicated postgres channels named `wh_app_<topic>`. Whizbang's internal listeners (`PgWorkNotificationListener`) only listen on `wh_work` and ignore everything else. App subscribers get only the `wh_app_*` channels they subscribed to.\n\nThis means:\n\n- App code **cannot** publish to or subscribe to internal `wh_work` signals.\n- Internal listeners **cannot** see app traffic.\n- Reserved-prefix validation is enforced in C#; you cannot bypass it.\n\n## Usage example\n\n```csharp\n// In your service:\npublic class FeatureFlagRefreshSubscriber : BackgroundService {\n  public FeatureFlagRefreshSubscriber(IAppSignalChannel signals, IFeatureFlagCache cache) {\n    _subscription = signals.Subscribe(\"feature_flag_refresh\", async (payload, ct) => {\n      await cache.RefreshAsync(ct);\n    });\n  }\n  // ... dispose _subscription on shutdown\n}\n\n// Anywhere that wants to broadcast a refresh:\nawait appSignalChannel.PublishAsync(\"feature_flag_refresh\", \"\");\n```\n\n## Transactional publish\n\n`PublishAsync` issues `SELECT pg_notify(...)` on a postgres connection. Notifications queue and deliver at COMMIT — so if you call `PublishAsync` inside a transaction (via your DbContext or a shared connection), the signal is naturally tied to the transaction. Rollback → no signal. Commit → signal delivered.\n\nFor ad-hoc fire-and-forget without a transaction context, `PublishAsync` opens a short-lived connection, executes, returns. The notification commits with that short-lived transaction.\n\n## Limitations\n\n- **At-most-once with bounded latency**: notifications are best-effort. If the listener is disconnected when the notify fires, the signal is lost. Use this for \"wake up and check\" semantics, not for durable pub/sub.\n- **No payload size enforcement** beyond postgres's 8 KB notify limit. Large payloads are an anti-pattern — pass an id and let subscribers fetch.\n- **Single LISTEN connection per pod** (shared with internal listener). High-throughput app pub/sub may saturate this connection; for that, prefer a dedicated message bus (Service Bus, RabbitMQ).\n\n## NoOp mode\n\nWhen `WhizbangNotificationOptions.DirectConnectionString` is unset, `IAppSignalChannel` is bound to `NoOpAppSignalChannel`. Publish is a no-op (after topic validation); subscribers never fire.\n\nThis means app code that uses `IAppSignalChannel` works without modification in environments without notifications configured — it just becomes silent.\n\n## When to use, when not to\n\n| Use IAppSignalChannel | Don't use IAppSignalChannel |\n|",
-        "tags": [],
-        "version": "drafts",
-        "readingTime": 3,
-        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/drafts/fundamentals/work-coordinator/app-signals.md",
-        "wordCount": 534
-      },
-      {
-        "slug": "drafts/fundamentals/work-coordinator/batched-flushers",
-        "title": "Batched flushers",
-        "category": "Fundamentals",
-        "order": 4,
-        "description": "\n# Batched flushers\n\nFour batched flush workers turn high-frequency completion writes into coalesced batches with one fsync per batch. All built on the same `BatchFlusher<T>` primitive (Nagle pattern over a bounded channel).\n\n## The pattern\n\n```\nProducer enqueues item     ─┐\n                            ├──►  BatchFlusher<T> (bounded channel)\nProducer enqueues item     ─┤      ─ wait for first item\nProducer enqueues item     ─┘      ─ then coalesce additional items for CoalesceWindowMs\n                                   ─ OR until MaxBatchSize OR ImmediateFlushThreshold\n                                                  │\n                                                  ▼\n                                          await FlushAsync(IReadOnlyList<T>, ct)\n                                                  │\n                                                  ▼\n                                          IWorkCoordinator.<MethodPerCategory>(batch)\n```\n\n## The four batched flush workers\n\n| Worker | Channel item | SQL function | Default tuning |\n|",
-        "tags": [],
-        "version": "drafts",
-        "readingTime": 3,
-        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/drafts/fundamentals/work-coordinator/batched-flushers.md",
-        "wordCount": 502
-      },
-      {
-        "slug": "drafts/fundamentals/work-coordinator/claim-loop",
-        "title": "Claim loop",
-        "category": "Fundamentals",
-        "order": 2,
-        "description": "\n# Claim loop\n\n`ClaimWorker` is the only worker that polls the database. Every other worker is producer/consumer-driven (channel reads, bounded buffers, on-demand). This page describes the claim loop's design and tunables.\n\n## What it does\n\n```\nloop:\n  await wake (semaphore released by NOTIFY signal | local channel produce | adaptive timeout)\n  workBatch = await coordinator.ClaimWorkAsync(req, ct)\n  if workBatch.OutboxWork ∪ InboxWork ∪ PerspectiveStreamIds is non-empty:\n    consecutiveEmptyPolls = 0\n    OnBatchClaimed(workBatch)         ← downstream wiring (channels)\n  else:\n    consecutiveEmptyPolls++\n  await semaphore.WaitAsync(adaptivePollWaitMs)\n```\n\nThree things make this efficient:\n\n1. **Empty-call short-circuit in `claim_work` SQL** — when no work exists, the function returns in ≤ 1 ms (vs the legacy 17 ms floor).\n2. **Adaptive backoff** — empty polls double the wait until `PollingMaxIntervalMilliseconds` (10 s default).\n3. **Wake semaphore** — `RequestImmediatePoll()` releases the wait so notifications and local producers wake the worker immediately.\n\n## Adaptive backoff\n\n```\nempty-poll #0 → wait base (250 ms)\nempty-poll #1 → wait 250 ms     (no backoff yet — first non-empty resets)\nempty-poll #2 → wait 500 ms\nempty-poll #3 → wait 1000 ms\nempty-poll #4 → wait 2000 ms\nempty-poll #5 → wait 4000 ms\nempty-poll #6+ → wait 10 000 ms (cap)\n\nANY non-empty result → reset to base (250 ms)\n```\n\nThe adaptive cap is auto-clamped at startup to `AbandonStaleInstanceThresholdSeconds × 1000 / 3` so the heartbeat budget stays satisfied.\n\n## Wake signals\n\nThree sources can release the wake semaphore:\n\n| Source | When |\n|",
-        "tags": [],
-        "version": "drafts",
-        "readingTime": 4,
-        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/drafts/fundamentals/work-coordinator/claim-loop.md",
-        "wordCount": 626
-      },
-      {
-        "slug": "drafts/fundamentals/work-coordinator/commit-sequence",
-        "title": "Commit Sequence & the Order Stamper",
-        "category": "Fundamentals",
-        "order": 6,
-        "description": "",
-        "tags": [],
-        "version": "drafts",
-        "readingTime": 4,
-        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/drafts/fundamentals/work-coordinator/commit-sequence.md",
-        "wordCount": 668
-      },
-      {
-        "slug": "drafts/fundamentals/work-coordinator/configuration-reference",
-        "title": "Configuration reference",
-        "category": "Fundamentals",
-        "order": 7,
-        "description": "\n# Configuration reference\n\nEvery option that affects the work coordinator. All bind via standard `IConfiguration` (appsettings.json, env vars, k8s ConfigMap, vault, etc.).\n\n## Connection strings\n\nWhizbang reuses the connection string of your registered DbContext — **no duplicate Whizbang connection key**.\n\n| Key | Required | Purpose | Env var |\n|",
-        "tags": [],
-        "version": "drafts",
-        "readingTime": 4,
-        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/drafts/fundamentals/work-coordinator/configuration-reference.md",
-        "wordCount": 606
-      },
-      {
-        "slug": "drafts/fundamentals/work-coordinator/failure-and-recovery",
-        "title": "Failure and recovery",
-        "category": "Fundamentals",
-        "order": 9,
-        "description": "",
-        "tags": [],
-        "version": "drafts",
-        "readingTime": 4,
-        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/drafts/fundamentals/work-coordinator/failure-and-recovery.md",
-        "wordCount": 702
-      },
-      {
-        "slug": "drafts/fundamentals/work-coordinator/handler-commit",
-        "title": "Handler commit",
-        "category": "Fundamentals",
-        "order": 3,
-        "description": "\n# Handler commit\n\nThe handler commit is the only true transactional unit in Whizbang. When an inbox handler runs successfully and emits new outbox messages, those writes must commit together with the inbox completion — otherwise crashes between the two produce duplicates or lost messages.\n\n## The atomic bundle\n\n`commit_handler_result` (and its batched cousin `commit_handler_batch`) carry the full handler result:\n\n```\nAtomic transaction:\n  ┌──────────────────────────────────────────┐\n  │  Mark inbox row M as processed           │  ← inbox completion\n  │  INSERT outbox rows [O1, O2, ...]        │  ← messages handler emitted\n  │  INSERT inbox rows [I1, I2, ...] (rare)  │  ← inbox messages handler emitted\n  │  INSERT event_store rows for new events  │  ← (auto, downstream of outbox storage)\n  │  INSERT perspective_event rows           │  ← (auto, from message_associations)\n  │  pg_notify('wh_work', 'outbox')          │  ← if any outbox rows inserted\n  │  pg_notify('wh_work', 'inbox')           │  ← if any inbox rows inserted\n  │  pg_notify('wh_work', 'perspective')     │  ← if any perspective rows created\n  └──────────────────────────────────────────┘\n```\n\nIf any step fails, the whole bundle rolls back. The inbox row stays unprocessed; the next claim re-delivers it.\n\n## Why atomic matters\n\nWithout atomicity, two failure scenarios produce silent corruption:\n\n1. **Crash after outbox stored, before inbox completion**: next claim re-runs handler M, emits O1', O2' duplicates of O1, O2. Downstream consumers see duplicates.\n2. **Crash after inbox completion, before outbox stored**: handler effects (the emitted O1, O2) are lost. Downstream never sees them.\n\nBoth are eliminated when the bundle commits in one transaction.\n\n## Single-handler vs batched\n\n| Method | Use when |\n|",
-        "tags": [],
-        "version": "drafts",
-        "readingTime": 3,
-        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/drafts/fundamentals/work-coordinator/handler-commit.md",
-        "wordCount": 592
-      },
-      {
-        "slug": "drafts/fundamentals/work-coordinator/notifications-and-pgbouncer",
-        "title": "Notifications and pgbouncer",
-        "category": "Fundamentals",
-        "order": 5,
-        "description": "\n# Notifications and pgbouncer\n\nWhizbang's work coordinator uses postgres `NOTIFY` / `LISTEN` to wake idle workers immediately when new work appears, dropping idle SQL traffic toward zero. This page explains how the shared-connection design works, why it's necessary with pgbouncer, how the signaling gate decides whether to use NOTIFY at all, and how to operate the system.\n\n## The problem with pgbouncer + LISTEN\n\nPostgreSQL's `LISTEN` registration is **session-scoped**: a session declares \"I want notifications on channel X\" and the server delivers them on that session. pgbouncer in transaction-pooling mode (the most common Azure / RDS setup) returns a connection to the pool after each transaction, breaking session affinity. So `LISTEN wh_work` issued through pgbouncer in transaction mode loses its registration almost immediately — the next time pgbouncer hands the same client a different backend connection, the LISTEN is gone.\n\n## Solution: one shared direct connection per pod\n\nEach pod opens **exactly one** direct connection (bypasses pgbouncer) and multiplexes every per-channel subscription onto it. Everything else — claim, commit, flush, heartbeat — goes through pgbouncer normally.\n\n```\n┌─────────────────────────────────────────────────────────────────────────┐\n│                          POD (per service replica)                      │\n│                                                                         │\n│   ┌────────────────────────────┐   ┌─────────────────────────────────┐  │\n│   │  Whizbang workers          │   │  PgSharedNotifyConnection       │  │\n│   │  (claim/flush/heartbeat)   │   │   • implements                  │  │\n│   │                            │   │     INotifySignalingGate        │  │\n│   │  uses Npgsql connection    │   │     (IsAvailable killswitch)    │  │\n│   │  pool                      │   │   • implements                  │  │\n│   └────────────┬───────────────┘   │     ISharedNotifyConnection     │  │\n│                │                   │     (subscription registry)     │  │\n│                │                   │   • runs self-test probe        │  │\n│                │                   │   • dispatches to subscribers   │  │\n│                │                   │     by channel name             │  │\n│                │                   │                                 │  │\n│                │                   │  uses ONE Npgsql connection     │  │\n│                │                   │  ┌───────────────────────────┐  │  │\n│                │                   │  │ Subscribers:              │  │  │\n│                │                   │  │   PgWorkNotificationListener  │\n│                │                   │  │   PgCommitOrderStamperWorker  │\n│                │                   │  │   PgAppSignalChannel      │  │  │\n│                │                   │  └───────────────────────────┘  │  │\n│                │                   └─────────────────┬───────────────┘  │\n│                │                                     │                  │\n└────────────────┼─────────────────────────────────────┼──────────────────┘\n                 │                                     │\n           via pgbouncer (port 6432)             direct (port 5432)\n                 │                                     │\n                 ▼                                     ▼\n           ┌──────────────────────────────────────────────────┐\n           │                  PostgreSQL                      │\n           └──────────────────────────────────────────────────┘\n```\n\n**Total bypass-pool connections per pod: 1.** Multiple subscribers (work signals, commit-order stamping, app signals, future channels) all share that single direct conn. Pre-slice-33 design opened one direct connection per listener type (3 per pod). With horizontal scaling — many pods × many services × many environments — that adds up fast on the Postgres `max_connections` budget.\n\n## The signaling gate\n\n`INotifySignalingGate` is the **single source of truth** for \"is NOTIFY actually working in this process right now?\". Every consumer that depends on NOTIFY consults the gate instead of making its own decision.\n\n```csharp\npublic interface INotifySignalingGate {\n  bool IsAvailable { get; }\n  DateTimeOffset? LastVerifiedAt { get; }\n  DateTimeOffset? LastFailureAt { get; }\n  string? LastFailureReason { get; }\n  event Action<bool>? OnAvailabilityChanged;\n  Task<bool> ProbeNowAsync(CancellationToken cancellationToken = default);\n}\n```\n\n`IsAvailable = true` only when the most recent **self-test probe** round-tripped successfully AND the shared connection is currently usable. The probe catches configurations that \"is the connection string set?\" would miss — pgbouncer in transaction-pooling mode, broken producer-side `pg_notify` SQL functions, firewall rules that allow SQL but drop NOTIFY traffic, etc.\n\n### Probe mechanics\n\nOn startup (and periodically thereafter via `PeriodicReprobeInterval`, default 5 min, while unavailable):\n\n1. Open the shared direct connection.\n2. `LISTEN` on `wh_selftest_{instanceId}_{nonce}` (single-use channel, fresh UUIDv7 nonce per probe).\n3. Open a second ephemeral connection. `SELECT pg_notify('wh_selftest_{instanceId}_{nonce}', 'ping')`. Close it. This second connection exists because Postgres's LISTENing backend doesn't observe its own pre-commit `NOTIFY` on the same backend.\n4. Wait up to `SelfTestTimeout` (default 2 s) for the notification to arrive on the shared connection.\n5. On success → `IsAvailable = true`, drop the self-test channel.\n6. On timeout → `IsAvailable = false`, schedule the next periodic re-probe.\n\n`ProbeNowAsync()` is the ops escape hatch — forces an immediate re-probe without waiting for the periodic schedule.\n\n## How signals flow\n\n1. Some service commits new work via `commit_handler_result`. Inside the SQL function:\n   ```sql\n   IF v_outbox_inserted_count > 0 THEN PERFORM pg_notify('wh_work_i_{owner}', 'outbox'); END IF;\n   IF v_inbox_inserted_count > 0  THEN PERFORM pg_notify('wh_work_i_{owner}', 'inbox');  END IF;\n   ```\n2. Postgres queues notifications. **Dedup at COMMIT**: 10 000 inserts that all `pg_notify('wh_work_i_{owner}', 'outbox')` collapse to **one** delivered notification per `(channel, payload)` tuple — postgres handles this automatically.\n3. On COMMIT, the owning instance's `PgSharedNotifyConnection` is in `WaitAsync` on its direct connection. The notification fires its handler. The handler looks up the channel name in the subscription registry and invokes each subscriber's `OnNotification(payload)` callback synchronously.\n4. `PgWorkNotificationListener` (a thin subscriber) parses the payload and fires `OnSignal(WorkSignalCategory.Outbox)`.\n5. `ClaimWorker` is subscribed to `OnSignal`; it calls `RequestImmediatePoll()` which releases the wake semaphore.\n6. The claim worker's loop returns from its sleep early and immediately polls `claim_work`.\n\nEnd-to-end latency from \"transport delivers a message\" to \"another service starts handling it\" is now governed by network + listener-connection wait + `claim_work` execution — measured in tens of milliseconds even at idle.\n\n## Health monitoring + auto-fallback\n\nWhen the shared connection fails:\n- The gate flips `IsAvailable = false`. `OnAvailabilityChanged` fires; subscribers (notably `ClaimWorker`) react.\n- Reconnect with exponential backoff (1 s → 2 s → 4 s → ... → 30 s cap).\n- After `FailuresBeforeFallback` consecutive failures (default 5), the backoff stretches to `PeriodicReprobeInterval` (default 5 min) — stops hammering a broken connection while still re-probing periodically so the system heals when the underlying problem is fixed out-of-band.\n- When the connection comes back AND the probe succeeds: `OnAvailabilityChanged(true)` fires; `ClaimWorker.RequestImmediatePoll()` runs so any work that accumulated during the unavailable window doesn't wait out the next adaptive-backoff tick.\n\n`ClaimWorker`'s adaptive polling cadence reacts to the gate:\n- When gate `IsAvailable = true`: empty-poll streaks let the wait grow up to `PollingMaxIntervalMilliseconds` (10 s default). The NOTIFY wakes the worker when work arrives, so longer waits are fine.\n- When gate `IsAvailable = false`: the adaptive backoff is clamped to `PollingIntervalMilliseconds` (250 ms default). NOTIFY won't wake us, so we MUST keep polling tight.\n\nPolling stays first-class. Notifications are an accelerator; correctness never depends on them.\n\n## Configuration\n\nEach service has two connection strings:\n\n```json\n{\n  \"ConnectionStrings\": {\n    \"appservice-db\":         \"Host=postgres-pgbouncer:6432;Database=appservice-db;...\",\n    \"appservice-db-direct\":  \"Host=postgres-primary:5432;Database=appservice-db;...\"\n  }\n}\n```\n\nThe `-direct` suffix is convention. Same DB, different port, no pooler.\n\nWhen `<dbname>-direct` is unset, the gate reports `IsAvailable = false` and the system runs polling-only. The system stays correct — polling fallback at the configured base interval (250 ms default) catches any work that would otherwise be discovered by NOTIFY.\n\n### `WhizbangNotificationOptions`\n\nBound from the `Whizbang:Database` section in `IConfiguration`:\n\n| Option | Default | Description |\n|",
-        "tags": [],
-        "version": "drafts",
-        "readingTime": 13,
-        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/drafts/fundamentals/work-coordinator/notifications-and-pgbouncer.md",
-        "wordCount": 2571
-      },
-      {
-        "slug": "drafts/fundamentals/work-coordinator/overview",
-        "title": "Overview",
-        "category": "Fundamentals",
-        "order": 1,
-        "description": "\n# Work coordinator overview\n\nThe work coordinator pumps messages through three queues — outbox (transport publishes), inbox (handler dispatch), and perspective_events (projection processing). It's built around a focused-function architecture: one SQL function per concern, one C# method per SQL function, one worker per active loop.\n\n## High-level flow\n\n```\n                    ┌──────────────────────────────────────────────┐\n                    │                                              │\n   ┌──────────┐     │     ┌───────────┐    ┌────────────────┐      │\n   │ External │─────┼────►│  inbox    │───►│ Inbox handler  │      │\n   │ transport│     │     │  table    │    │ (your code)    │      │\n   └──────────┘     │     └───────────┘    └───────┬────────┘      │\n                    │                              │                │\n                    │     ┌───────────┐            │ emits          │\n                    │     │  outbox   │◄───────────┘ outbox msgs    │\n                    │     │  table    │                             │\n                    │     └─────┬─────┘                             │\n                    │           │                                   │\n   ┌────────────┐   │           ▼                                   │\n   │  Transport │◄──┼────  OutboxPublishWorker                      │\n   │  (publish) │   │                                               │\n   └────────────┘   │     ┌───────────┐   ┌────────────────┐        │\n                    │     │perspective│──►│ Perspective    │        │\n                    │     │  _events  │   │ projection     │        │\n                    │     │   table   │   │ (your code)    │        │\n                    │     └───────────┘   └────────────────┘        │\n                    │                                               │\n                    │   ClaimWorker (the only poller, calls         │\n                    │   claim_work) distributes work to channels    │\n                    │                                               │\n                    └───────────────────────────────────────────────┘\n```\n\n## The 8 workers\n\n| Worker | Role |\n|",
-        "tags": [],
-        "version": "drafts",
-        "readingTime": 3,
-        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/drafts/fundamentals/work-coordinator/overview.md",
-        "wordCount": 591
-      },
-      {
-        "slug": "drafts/fundamentals/work-coordinator/performance-tuning",
-        "title": "Performance tuning",
-        "category": "Fundamentals",
-        "order": 8,
-        "description": "",
-        "tags": [],
-        "version": "drafts",
-        "readingTime": 4,
-        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/drafts/fundamentals/work-coordinator/performance-tuning.md",
-        "wordCount": 663
-      },
-      {
         "slug": "drafts/metrics/components",
         "title": "Metric Components",
         "category": "Observability",
@@ -3900,28 +4411,17 @@
         "wordCount": 1003
       },
       {
-        "slug": "drafts/migration-guide/cli-wizard",
-        "title": "CLI Migration Wizard",
-        "category": "migration-guide",
-        "order": 999,
-        "description": "Interactive wizard for migrating from Marten/Wolverine to Whizbang",
-        "tags": [],
+        "slug": "drafts/operations/configuration/configuration-reference",
+        "title": "Configuration Reference (planned — fully bound)",
+        "category": "Configuration",
+        "order": 2,
+        "description": "The configuration reference as it will read once every process-wide options class binds from a section. Planned state, not what ships today.",
+        "tags": "configuration, options, environment variables, appsettings, reference, binding, draft",
         "version": "drafts",
-        "readingTime": 11,
-        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/drafts/migration-guide/cli-wizard.md",
-        "wordCount": 2190
-      },
-      {
-        "slug": "drafts/operations/work-pump-smoke-test",
-        "title": "Work-pump decomposition smoke test",
-        "category": "Operations & Configuration",
-        "order": 90,
-        "description": "\n# Work-pump decomposition smoke test (Phase F)\n\nRunbook for verifying that a multi-service deployment is benefiting from the work-pump\ndecomposition (Phases A-E). Run this after upgrading services to a Whizbang version that\nincludes the new SQL function family + worker pipeline.\n\n## Prerequisites\n\n1. **All services upgraded** to the Whizbang version that ships the new SQL functions:\n   `claim_work`, `commit_handler_result`, `commit_handler_batch`, `complete_outbox_published`,\n   `record_heartbeat`, `complete_perspective`, `report_failures`, `renew_leases`,\n   `flush_completions`, `resolve_sync_inquiries`, plus `_emit_event_store_chain`.\n2. **Migrations applied** to each service database. Check by running `\\df claim_work` in psql.\n3. **`AddWhizbang()` called** in each service's `Program.cs` — the worker pipeline\n   (HeartbeatWorker, ClaimWorker, BatchFlusher-based flushers, etc.) registers automatically\n   via `AddWhizbangWorkers()` invoked from `AddWhizbang()`.\n\n## Connection-string provisioning\n\nEach service needs **one new connection string** named `<dbname>-direct` for the LISTEN\nconnection that bypasses pgbouncer. Existing pooled connection strings stay unchanged.\n\n| Service | Existing (no change) | New (provision per environment) |\n|",
-        "tags": [],
-        "version": "drafts",
-        "readingTime": 4,
-        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/drafts/operations/work-pump-smoke-test.md",
-        "wordCount": 622
+        "pageType": "reference",
+        "readingTime": 70,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/drafts/operations/configuration/configuration-reference.md",
+        "wordCount": 13840
       },
       {
         "slug": "drafts/test-error-display",
@@ -4138,6 +4638,18 @@
         "wordCount": 1403
       },
       {
+        "slug": "proposals/duty-role-assignment",
+        "title": "Duty Role Assignment (Liveness-Tied Election)",
+        "category": "Architecture & Design",
+        "order": 36,
+        "description": "\n# Duty Role Assignment\n\n**The advisory lock decides only the vote. The role is a row: a liveness-tied assignment with an epoch that exclusive work presents as a fencing token.**\n\n:::new\n**Implemented, on by default** (library migrations `173_RoleAssignments.sql` and `184_RoleAssignmentResilience.sql`, `PgRoleElector`, `DutyHolderWorker`). Tracks GitHub issue #966; the design questions are decided on #968 (section 11). The Postgres driver holds the `maintainer` and `migrator` duties and the commit-order stamper's leadership as role assignments. `Whizbang:Database:RoleAssignment:Enabled = false` returns every duty to the session-lock model described on [Capabilities and Duties](/v1.0.0/operations/startup/capabilities-and-duties). Section 10 lists the phases and what each one delivered.\n:::\n\n## 1. Why the session lock is not enough\n\nToday a duty (`migrator`, `maintainer`) is a **session advisory lock** held on a dedicated connection for the holder's entire tenure. The capability row written by `record_capability` only reports who holds it: *the lock decides, the row reports*. That model is simple and has no timeout to tune, and it has three standing costs:\n\n1. **One pinned direct connection per held duty.** A session lock does not survive a transaction-pooling front end, so every holder needs a connection that bypasses the pooler, and keeps it for as long as it holds the duty.\n2. **No way to take a duty away from a holder that is alive but unhealthy.** The lock is released when the session ends. A holder whose event loop is blocked, or whose work connection is wedged, keeps its session and therefore keeps the duty. The same is true of a half-open TCP session after a hard kill, which holds the lock until the operating system's keepalive notices, by default two hours.\n3. **A duty is consulted only when something asks for it.** A startup step with `RequiredCapability = maintainer` and `NonHolderBehavior.Skip` asks once, at that instance's startup. In a rolling deploy the old-version pod still holds the duty while every new pod starts, so each new pod is told \"held elsewhere\" and skips. When the old pod finally stops, nobody is asking any more, and the step never runs.\n\n## 2. The model in one screen\n\n```mermaid\nsequenceDiagram\n    autonumber\n    participant A as Instance A\n    participant B as Instance B\n    participant DB as Postgres\n\n    A->>DB: wh_elect_role('maintainer', A)\n    Note over DB: xact advisory lock (vote only)<br/>row vacant → holder=A, epoch=7,<br/>lease_expires_at = now() + lease\n    DB-->>A: granted, epoch 7\n    B->>DB: wh_elect_role('maintainer', B)\n    Note over DB: read-only fast path:<br/>A holds a live lease\n    DB-->>B: contended (holder A, epoch 7)\n    loop duty work loop\n        A->>DB: wh_renew_role('maintainer', A, 7)\n        A->>DB: exclusive write + wh_assert_role_epoch('maintainer', A, 7)\n    end\n    Note over A: SIGTERM\n    A->>DB: wh_release_role('maintainer', A, 7)\n    B->>DB: wh_elect_role('maintainer', B)\n    DB-->>B: granted, epoch 8 (previous holder A, released)\n```\n\nFive pieces:\n\n1. **The vote.** A single SQL function, `wh_elect_role`, run as one statement. It takes a *transaction-scoped* advisory lock keyed on the role, re-reads the assignment, voids it if it has lapsed, and assigns the caller if the role is free. The lock is released when the statement commits. Because the whole vote is one statement, a client that stalls cannot hold the vote lock: the server runs the statement to completion without a round trip to the client.\n2. **The assignment.** `wh_role_assignments` has one row per role: holder instance id, epoch, `assigned_at`, `renewed_at`, `lease_expires_at`, the lease length, the election count, and the last vacancy (who, when, why). **That row is the authority from then on.** It is a virtual lock that needs no session and no pinned connection, and it survives a database restart.\n3. **Liveness.** The assignment is valid while its lease is unexpired **and** the holder is registered in `wh_service_instances` **and** is not tombstoned in `wh_instance_evictions`. The lease is extended only by the holder's own work loop (`VerifyStillHeldAsync` renews it), never by a separate timer. Reaping, eviction and a lapsed lease all void the assignment at the next vote.\n4. **Fencing.** Every assignment carries an **epoch**, incremented on each new assignment and never reused. Exclusive work presents `(holder, epoch)` to `wh_assert_role_epoch` in the same transaction as its writes. A stale epoch raises SQLSTATE `WHF01` and the transaction's writes roll back. The check runs in SQL, where no paused process can argue with it.\n5. **Release.** A graceful shutdown releases the role (`wh_release_role`) so the next vote hands it off at once rather than after the lease lapses.\n\n### What the advisory lock still does, and what it no longer does\n\n| Question | Session-lock model (released) | Role-assignment model (this proposal) |\n|",
+        "tags": "duties, capabilities, election, role-assignment, advisory-lock, fencing, epoch, lease, heartbeat, liveness, failover, rolling-deploy, maintainer, migrator, split-brain, drain, chaos, commit-stamper",
+        "version": "proposals",
+        "readingTime": 26,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/proposals/duty-role-assignment.md",
+        "wordCount": 5040
+      },
+      {
         "slug": "proposals/ephemeral-events",
         "title": "Ephemeral Events",
         "category": "Architecture & Design",
@@ -4196,6 +4708,18 @@
         "readingTime": 17,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/proposals/managed-resource-health.md",
         "wordCount": 3326
+      },
+      {
+        "slug": "proposals/message-priority-and-work-classes",
+        "title": "Message Priority and Work Classes",
+        "category": "Architecture & Design",
+        "order": 38,
+        "description": "\n# Message Priority and Work Classes\n\n**A message carries the priority its producer declared; each consumer decides the priority it processes at; a stream is scheduled by the fold of its pending rows; the claim, the drain, the gate, and the transport honor the bucket that priority falls in; every one of those decisions is a hook a developer can replace.**\n\n:::planned\n**Proposal.** Nothing here is implemented. It composes with three accepted designs: the true-edge doorbell (idle latency), transport traffic classes (broker isolation), and tag-bound coalescing (supersedable traffic). This proposal covers the piece all three left out: contention latency, an interactive hop queued behind bulk work that is actively draining.\n:::\n\n## 1. The problem, measured\n\nThe framework drains every inbox in arrival order. A conversational service that also subscribes to a domain's events receives a user's command into the same inbox that a bulk ingest elsewhere in the system is filling with tens of thousands of fan-in events. The command is stored promptly and then waits its turn:\n\n| observation | value |\n|",
+        "tags": "priority, work-classes, quality-of-service, fairness, starvation, interactive-workloads, bulk-import, claim-worker, lanes, bulkheads, traffic-classes, hooks",
+        "version": "proposals",
+        "readingTime": 24,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/proposals/message-priority-and-work-classes.md",
+        "wordCount": 4684
       },
       {
         "slug": "proposals/migration-ledger-redefinition-closure",
@@ -4298,12 +4822,12 @@
         "title": "Perspective Row Retention (RowTtl)",
         "category": "Architecture & Design",
         "order": 31,
-        "description": "\n# Perspective Row Retention (`[RowTtl]`)\n\n[Ephemeral Events](ephemeral-events) gave the **event log** a retention policy, and its `TransientStorage.TtlRow` mode gave *ephemeral* perspectives a row expiry. This proposal generalizes the row half: **any perspective — including one fed entirely by durable Sourced events — can declare that its rows age out after a period of inactivity**, disappear from reads immediately at expiry, and are physically reaped by maintenance.\n\nThe motivating shape is high-cardinality UI read models: conversations, sessions/tabs, activity feeds. Their streams are minted constantly, their content stops being relevant after weeks, yet their rows accumulate forever unless the domain explicitly deletes each one. Event-driven deletion (a lifecycle event folded into an explicit delete action) remains the right tool when deletion is a *business fact*; `[RowTtl]` is the declarative, time-based backstop for everything that merely goes stale.\n\n:::planned\nProposed capability — **implementation landed on `develop` via whizbang PR #469** (all six build\nincrements; ships with the next alpha). Docs promote to v1.0.0 on release. It reuses the shipped TtlRow substrate — the `expires_at` shadow column, the lens logical-expiry filter, and the maintenance row reaper — and adds three things: a per-perspective declaration, a replay-safe expiry anchor, and a resurrection path that makes reaping *sourced* rows correct.\n:::\n\n## Why the existing TtlRow cannot simply be opened to Sourced perspectives\n\nTwo structural reasons, one superficial and one fundamental:\n\n1. **Declaration surface.** Today the row TTL is derived *virally* from `[Ephemeral(TtlSeconds)]` on the events a perspective applies. A Sourced perspective has no ephemeral events, so it can never register a TTL. This is fixable with a new attribute — but fixing only this would ship a footgun, because of reason 2.\n\n2. **The expiry anchor is apply-time.** The upsert stamps `expires_at = now + TTL` — a *wall-clock sliding window from the moment of application*. For ephemeral streams that is sound, because rebuild-from-zero is refused for them: no code path ever re-applies old history, so \"apply time\" and \"event time\" never diverge by more than the rewind grace window. For a Sourced stream the same stamp is incoherent: **any rebuild re-applies years of history *now*, re-stamping every dead row with a fresh full window.** Thousands of expired rows would resurrect on every rebuild and linger for another TTL. Row retention that a rebuild silently undoes is not retention.\n\nThe framework deliberately gates TtlRow behind `[Ephemeral]` today *because* of that anchor. This proposal removes the gate by fixing the anchor.\n\n## Design\n\n### 1. `[RowTtl]` — a per-perspective declaration\n\n```csharp\n[RowTtl(Days = 60)]\npublic class Projection : IPerspectiveFor<ConversationModel,\n    UserMessageReceivedEvent, AssistantMessageSentEvent> { … }\n```\n\nRow lifecycle is a property of the **read model**, not of the events that feed it — so the declaration moves to the perspective class. The perspective-runner generator resolves it at compile time and emits a `[ModuleInitializer]` registration into the same `PerspectiveTtlRegistry` the ephemeral-derived path uses (AOT-safe, zero reflection — identical mechanism to the existing TtlRow and `[FullHistory]` registrations). The lens expiry filter and the maintenance row reaper key off registry membership and the `expires_at` column; **they require no changes**.\n\nPrecedence when both sources exist follows the uniform override ladder: framework default (no TTL) → derived from `[Ephemeral(TtlSeconds)]` events → explicit `[RowTtl]` on the perspective → runtime configuration override (§ Configuration). Most-specific wins.\n\n### 2. Event-time anchoring — the replay-safety fix\n\nThe upsert stamp changes from wall-clock apply time to **event time**:\n\n```\nexpires_at = created_at of the LAST event applied in this batch + TTL\n```\n\n`created_at` is the DB-authoritative emit timestamp already carried on every stored event — the same anchor the event-layer TTL was corrected to (`AfterTtl` expiry is `created_at + ttl`, never the app clock). One anchoring rule now holds at both layers.\n\nConsequences:\n\n- **Live behavior is unchanged.** For real-time applies, the last event's `created_at` is milliseconds from *now*; the sliding-window semantics (\"active rows never expire\") are preserved exactly.\n- **Rebuild becomes deterministic.** Replaying an idle stream reproduces the same `expires_at` it had before: a conversation idle since March rebuilds with `expires_at = March + 60d` — *born expired*, invisible to every lens read from the first moment, physically reaped on the next maintenance pass. Rebuild converges to the same visible state instead of resurrecting zombies.\n- **Rewind is deterministic** for the same reason: re-applying the same events reproduces the same anchor.\n- **The ephemeral TtlRow path is retrofitted to the same anchor.** It is strictly better there too (a rewind inside the grace window no longer extends the row's life as a side effect), and it removes the special case.\n\nPlumbing: the apply pipeline already materializes each batch's events (with `created_at`) before invoking the runner; the runner passes the batch's max `created_at` through to the upsert strategy alongside the model. This is a threaded parameter on an internal seam — no schema change, no reflection.\n\n### 3. Resurrection-on-wake — what makes reaping *sourced* rows safe\n\nThe hole that must be closed: a row is physically reaped, and later the stream **wakes up** — a user reopens a conversation after 61 idle days. A Sourced row is the fold of *all* its events; applying the new event to a null model would silently build a corrupt partial row.\n\nThe event-sourced answer is that the row was never the authority — the log was, and the log is still there. So the writer path gains one detection and one response:\n\n- **Detection:** the perspective's cursor shows history for this `(stream, perspective)` but `GetByStreamIdAsync` finds no row. (Cheap: both facts are already in hand on the apply path; the check only triggers on the row-miss branch.)\n- **Response:** re-fold the stream **before** applying the incoming event — latest snapshot + tail replay, reusing the existing rewind machinery (`RewindAndRunAsync`), then apply the new event on the reconstructed model. The freshly-applied event re-stamps `expires_at` (event-time anchored), so the resurrected row starts a new honest window.\n\nTo make resurrection cheap, **the row reaper keeps the latest snapshot when it deletes a row** (older slots prune as usual). A reaped stream's residue is: its event log, one snapshot, its pointer rows — no `wh_per_*` row. Resurrection is snapshot-plus-tail, not replay-from-zero.\n\nEphemeral streams are explicitly excluded from this path: they keep today's semantics (rebuild refused; the snapshot floor governs; an out-of-grace straggler on a reaped ephemeral stream skips, accepting the reorder loss). The resurrection branch consults the stream's classification and only fires for Sourced streams — where it is always correct, because the bodies are durable.\n\n### 4. What does NOT change\n\n- **Two-phase expiry** stands: lens reads filter at the expiry instant (logical); maintenance deletes on its cycle (physical). The writer/replay path deliberately still loads expired-but-unreaped rows so late applies continue on real state.\n- **Event-driven delete actions** (`IPerspectiveWithActionsFor` delete on a lifecycle event) remain the first-class path for business deletions and compose freely with `[RowTtl]`.\n- **`debug_mode`** retains rows exactly as it retains everything else — the row reaper already skips under it.\n- **The event log** is untouched. `[RowTtl]` governs read-model storage only; log retention remains the ephemeral/[archival](archival-compaction) axis.\n\n## Rebuild, rewind, replay — the contract, stated plainly\n\n| Operation | Behavior with `[RowTtl]` on a Sourced perspective |\n|",
-        "tags": "perspectives, retention, row-ttl, reaper, rebuild, rewind, resurrection, read-models, storage-economy",
+        "description": "\n# Perspective Row Retention (`[RowTtl]`)\n\n[Ephemeral Events](ephemeral-events) gave the **event log** a retention policy, and its `TransientStorage.TtlRow` mode gave *ephemeral* perspectives a row expiry. This proposal generalizes the row half: **any perspective — including one fed entirely by durable Sourced events — can declare that its rows age out after a period of inactivity**, disappear from reads immediately at expiry, and are physically reaped by maintenance.\n\nThe motivating shape is high-cardinality UI read models: conversations, sessions/tabs, activity feeds. Their streams are minted constantly, their content stops being relevant after weeks, yet their rows accumulate forever unless the domain explicitly deletes each one. Event-driven deletion (a lifecycle event folded into an explicit delete action) remains the right tool when deletion is a *business fact*; `[RowTtl]` is the declarative, time-based backstop for everything that merely goes stale.\n\n:::planned\nProposed capability — **implementation landed on `develop` via whizbang PR #469** (all six build\nincrements; ships with the next alpha). Docs promote to v1.0.0 on release. It reuses the shipped TtlRow substrate — the `expires_at` shadow column, the lens logical-expiry filter, and the maintenance row reaper — and adds three things: a per-perspective declaration, a replay-safe expiry anchor, and a resurrection path that makes reaping *sourced* rows correct.\n:::\n\n## Why the existing TtlRow cannot simply be opened to Sourced perspectives\n\nTwo structural reasons, one superficial and one fundamental:\n\n1. **Declaration surface.** Today the row TTL is derived *virally* from `[Ephemeral(TtlSeconds)]` on the events a perspective applies. A Sourced perspective has no ephemeral events, so it can never register a TTL. This is fixable with a new attribute — but fixing only this would ship a footgun, because of reason 2.\n\n2. **The expiry anchor is apply-time.** The upsert stamps `expires_at = now + TTL` — a *wall-clock sliding window from the moment of application*. For ephemeral streams that is sound, because rebuild-from-zero is refused for them: no code path ever re-applies old history, so \"apply time\" and \"event time\" never diverge by more than the rewind grace window. For a Sourced stream the same stamp is incoherent: **any rebuild re-applies years of history *now*, re-stamping every dead row with a fresh full window.** Thousands of expired rows would resurrect on every rebuild and linger for another TTL. Row retention that a rebuild silently undoes is not retention.\n\nThe framework deliberately gates TtlRow behind `[Ephemeral]` today *because* of that anchor. This proposal removes the gate by fixing the anchor.\n\n## Design\n\n### 1. `[RowTtl]` — a per-perspective declaration\n\n```csharp\n[RowTtl(Days = 60)]\npublic class Projection : IPerspectiveFor<ConversationModel,\n    UserMessageReceivedEvent, AssistantMessageSentEvent> { … }\n```\n\nRow lifecycle is a property of the **read model**, not of the events that feed it — so the declaration moves to the perspective class. The perspective-runner generator resolves it at compile time and emits a `[ModuleInitializer]` registration into the same `PerspectiveTtlRegistry` the ephemeral-derived path uses (AOT-safe, zero reflection — identical mechanism to the existing TtlRow and `[FullHistory]` registrations). The lens expiry filter and the maintenance row reaper key off registry membership and the `expires_at` column; **they require no changes**.\n\nPrecedence when both sources exist follows the uniform override ladder: framework default (no TTL) → derived from `[Ephemeral(TtlSeconds)]` events → explicit `[RowTtl]` on the perspective → runtime configuration override (§ Configuration). Most-specific wins.\n\n### 2. Event-time anchoring — the replay-safety fix\n\nThe upsert stamp changes from wall-clock apply time to **event time**:\n\n```\nexpires_at = created_at of the LAST event applied in this batch + TTL\n```\n\n`created_at` is the DB-authoritative emit timestamp already carried on every stored event — the same anchor the event-layer TTL was corrected to (`AfterTtl` expiry is `created_at + ttl`, never the app clock). One anchoring rule now holds at both layers.\n\nConsequences:\n\n- **Live behavior is unchanged.** For real-time applies, the last event's `created_at` is milliseconds from *now*; the sliding-window semantics (\"active rows never expire\") are preserved exactly.\n- **Rebuild becomes deterministic.** Replaying an idle stream reproduces the same `expires_at` it had before: a conversation idle since March rebuilds with `expires_at = March + 60d` — *born expired*, invisible to every lens read from the first moment, physically reaped on the next maintenance pass. Rebuild converges to the same visible state instead of resurrecting zombies.\n- **Rewind is deterministic** for the same reason: re-applying the same events reproduces the same anchor.\n- **The ephemeral TtlRow path is retrofitted to the same anchor.** It is strictly better there too (a rewind inside the grace window no longer extends the row's life as a side effect), and it removes the special case.\n\nPlumbing: the apply pipeline already materializes each batch's events (with `created_at`) before invoking the runner; the runner passes the batch's max `created_at` through to the upsert strategy alongside the model. This is a threaded parameter on an internal seam — no schema change, no reflection.\n\n### 3. Resurrection-on-wake — what makes reaping *sourced* rows safe\n\nThe hole that must be closed: a row is physically reaped, and later the stream **wakes up** — a user reopens a conversation after 61 idle days. A Sourced row is the fold of *all* its events; applying the new event to a null model would silently build a corrupt partial row.\n\nThe event-sourced answer is that the row was never the authority — the log was, and the log is still there. So the writer path gains one detection and one response:\n\n- **Detection:** `GetByStreamIdAsync` finds no row, and the event store holds an earlier event **of a type this perspective folds** (`IEventStore.HasStreamEventsBeforeAsync(streamId, beforeEventId, handledEventTypes)`). The check only triggers on the row-miss branch, and it is perspective-aware on purpose: a physical stream shared by several contracts holds history the perspective never folded, and \"any earlier event\" read that as a reaped row on every first contact, re-folding with a full replay, a warning, and two system events written into the stream for its lifetime. The generated runner passes the same event-type list its `Apply` overloads use; the drivers match the stored `event_type` values through `EventTypeMatchingHelper`, never by a hand-built string. {verified: ResurrectionProbeIsPerspectiveAwareTests.FirstContact_OnStreamWithUnhandledHistory_CreatesRow_DoesNotRewindAsync, ResurrectionProbeIsPerspectiveAwareTests.ReapedRow_OnStreamWithHandledHistory_StillResurrectsAsync, EventStoreHistoryProbeSqlTests.TypedProbe_OlderEventsOfOtherTypesOnly_ReturnsFalseAsync, EventStoreHistoryProbeSqlTests.TypedProbe_MatchesStoredEventTypeFormat_NestedAndAssemblyQualifiedAsync, DapperEventStoreHistoryProbeTests.TypedProbe_OlderEventOfHandledType_ReturnsTrueAsync}\n- **Response:** re-fold the stream **before** applying the incoming event — latest snapshot + tail replay, reusing the existing rewind machinery (`RewindAndRunAsync`), then apply the new event on the reconstructed model. The freshly-applied event re-stamps `expires_at` (event-time anchored), so the resurrected row starts a new honest window.\n\nThe declaration reaches the database by one key: `wh_perspective_registry.clr_type_name` holds the model's **CLR type name** (`Outer+Model` for a nested model class), written by the generator through `TypeNameUtilities.BuildClrTypeName` and looked up at startup through `TypeNameFormatter.FormatClrTypeName`. The two helpers are mirrors, pinned to each other by a contract test; a registry written under any other rendering matches nothing, and the sync warns (`RetentionDeclarationMatchedNoRegistryRow`) instead of discarding the zero-row result. Registries written under the earlier display-string form are adopted in place by `reconcile_perspective_registry` (reported as `renamed_key`), keyed on the table the service registered for the model. {verified: PerspectiveRegistryKeyTests.NestedModel_RegistryRowIsKeyedByTheClrFormAsync, PerspectiveRegistryKeyTests.DeclaredTtl_OnNestedModel_ReachesTheRegistryAsync, PerspectiveRegistryKeyTests.Sync_DeclarationMatchingNoRegistryRow_LogsAWarningNamingTheTypeAsync, ReconcilePerspectiveRegistryKeyAdoptionSqlTests.Reconcile_ExistingDisplayStringKey_IsAdoptedNotDuplicatedAsync, TypeNameMirrorContractTests.ClrTypeName_GeneratorAndRuntimeHelpers_AgreeOnEveryShapeAsync}\n\nTo make resurrection cheap, **the row reaper keeps the latest snapshot when it deletes a row** (older slots prune as usual). A reaped stream's residue is: its event log, one snapshot, its pointer rows — no `wh_per_*` row. Resurrection is snapshot-plus-tail, not replay-from-zero.\n\nEphemeral streams are explicitly excluded from this path: they keep today's semantics (rebuild refused; the snapshot floor governs; an out-of-grace straggler on a reaped ephemeral stream skips, accepting the reorder loss). The resurrection branch consults the stream's classification and only fires for Sourced streams — where it is always correct, because the bodies are durable.\n\n### 4. What does NOT change\n\n- **Two-phase expiry** stands: lens reads filter at the expiry instant (logical); maintenance deletes on its cycle (physical). The writer/replay path deliberately still loads expired-but-unreaped rows so late applies continue on real state.\n- **Event-driven delete actions** (`IPerspectiveWithActionsFor` delete on a lifecycle event) remain the first-class path for business deletions and compose freely with `[RowTtl]`.\n- **`debug_mode`** retains rows exactly as it retains everything else — the row reaper already skips under it.\n- **The event log** is untouched. `[RowTtl]` governs read-model storage only; log retention remains the ephemeral/[archival](archival-compaction) axis.\n\n## Rebuild, rewind, replay — the contract, stated plainly\n\n| Operation | Behavior with `[RowTtl]` on a Sourced perspective |\n|",
+        "tags": "perspectives, retention, row-ttl, reaper, rebuild, rewind, resurrection, read-models, storage-economy, auto-adoption",
         "version": "proposals",
-        "readingTime": 10,
+        "readingTime": 14,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/proposals/perspective-row-retention.md",
-        "wordCount": 1953
+        "wordCount": 2659
       },
       {
         "slug": "proposals/perspective-ttl-backfill",
@@ -4400,6 +4924,18 @@
         "readingTime": 37,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/proposals/subject-data-protection.md",
         "wordCount": 7212
+      },
+      {
+        "slug": "proposals/system-management-surface",
+        "title": "System Management Surface",
+        "category": "General",
+        "order": 999,
+        "description": "# Proposal: The System Management Surface\n\n**Status: DRAFT — for review**\n\n## The problem\n\nOperating a Whizbang fleet day to day means answering questions and taking actions that today\nrequire direct database access, per-service HTTP wiring, or kubectl: *\"how many dead letters\nare held, and in which cohorts?\"* — *\"release that cohort\"* — *\"is any service's frontier\nstalled?\"* — *\"which failure shapes are trending this week?\"* Every real incident in recent\noperational history was worked at the psql prompt. The framework has the data and the\nmachinery; it lacks a first-class, turnkey management surface.\n\nThis proposal defines that surface end to end: **what data**, **what actions**, **how a\nsingle service exposes them**, **how a BFF composes them across the fleet**, and **how each\nhost flavor turns them on**.\n\n## Design principles\n\n1. **Host-agnostic core.** Every query and action lives on a plain service interface\n   (per-service, DI-resolved). HTTP/GraphQL/FastEndpoints are thin adapters over it.\n2. **Actions are system commands** (the `RebuildPerspectiveCommand` precedent): PinnedId'd\n   control-plane messages on the `whizbang.system.commands` namespace, handled by\n   driver-shipped receptors. Any authorized service — including an admin BFF — triggers an\n   action with a dispatch, not bespoke HTTP.\n3. **Fleet composition is scatter-gather over the fabric**, not N HTTP calls: a broadcast\n   query request, per-service responses correlated back to the asker.\n4. **Opt-in and authorized.** Nothing is exposed unless the host turns it on, and turning it\n   on requires naming an authorization policy. Management surfaces must never ship open.\n5. **Read models are stable records** shared by every adapter, so the GraphQL type, the JSON\n   endpoint, and the fleet-composed view are the same shape.\n\n## Layer 1 — Per-service data (the queries)\n\nOne interface family, grouped by domain. Phase-1 shapes shown; each returns a versioned record.\n\n| Domain | Query | Answers |\n|",
+        "tags": [],
+        "version": "proposals",
+        "readingTime": 7,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/proposals/system-management-surface.md",
+        "wordCount": 1235
       },
       {
         "slug": "proposals/tag-bound-coalescing",
@@ -4502,6 +5038,23 @@
     },
     "docs": [
       {
+        "slug": "contributors/ai-agent-guide",
+        "title": "Working on Whizbang with an AI Agent",
+        "category": "General",
+        "order": 4,
+        "description": "What an AI agent needs to know before changing Whizbang's tests — how tests here pass without testing anything, how to measure coverage truthfully, and what to verify before believing a result",
+        "tags": "ai-agents, testing, coverage, flaky-tests, verification",
+        "version": "contributors",
+        "status": "current",
+        "pageType": "guide",
+        "audience": [
+          "contributor"
+        ],
+        "readingTime": 9,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/contributors/ai-agent-guide.md",
+        "wordCount": 1754
+      },
+      {
         "slug": "contributors/data-engines/implementing-icapabilities",
         "title": "Implementing IWorkCoordinatorCapabilities",
         "category": "data-engines",
@@ -4557,9 +5110,9 @@
         "description": "\n# SQL function contracts\n\nEach engine implements 11 SQL functions that Whizbang's C# layer calls. These are the contract — the test suite validates conformance.\n\n## Function summary\n\n| Function | Hot path? | Atomicity | Purpose |\n|",
         "tags": [],
         "version": "contributors",
-        "readingTime": 5,
+        "readingTime": 6,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/contributors/data-engines/sql-function-contracts.md",
-        "wordCount": 957
+        "wordCount": 1068
       },
       {
         "slug": "contributors/data-engines/testing-a-new-engine",
@@ -4598,6 +5151,23 @@
         "wordCount": 1006
       },
       {
+        "slug": "contributors/new-code-coverage",
+        "title": "Keeping New Code at 100% Coverage and Zero Sonar Findings",
+        "category": "General",
+        "order": 4,
+        "description": "The standard for every pull request, every line a PR adds to the library is executed by a test and no Sonar finding stays open on it, and the repository recipe that saves one report of the checks, the findings and the uncovered lines, for people and for an AI assistant alike",
+        "tags": "contributing, coverage, tdd, ci, sonarcloud, pull-requests, ai-assistant",
+        "version": "contributors",
+        "status": "current",
+        "pageType": "guide",
+        "audience": [
+          "contributor"
+        ],
+        "readingTime": 6,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/contributors/new-code-coverage.md",
+        "wordCount": 1142
+      },
+      {
         "slug": "contributors/overview",
         "title": "Contributing to Whizbang",
         "category": "General",
@@ -4610,9 +5180,26 @@
         "audience": [
           "contributor"
         ],
-        "readingTime": 2,
+        "readingTime": 3,
         "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/contributors/overview.md",
-        "wordCount": 375
+        "wordCount": 483
+      },
+      {
+        "slug": "contributors/perspective-query-pipeline",
+        "title": "The Perspective Query Pipeline",
+        "category": "General",
+        "order": 5,
+        "description": "Where a perspective filter is rewritten so an index can answer it, why Entity Framework and Dapper need different answers, and which decision belongs at which stage",
+        "tags": "perspectives, query-translation, jsonb, indexing, efcore, dapper, internals",
+        "version": "contributors",
+        "status": "current",
+        "pageType": "guide",
+        "audience": [
+          "contributor"
+        ],
+        "readingTime": 10,
+        "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/contributors/perspective-query-pipeline.md",
+        "wordCount": 1854
       },
       {
         "slug": "contributors/test-status-pipeline",

@@ -98,4 +98,4 @@ tags: ["MCP", "Contributing"]
 DOCS_PATH=/path/to/whizbang-lib.github.io/src/assets/docs npx @whizbang/docs-mcp-server
 ```
 
-See the [contributor documentation](/docs/contributors/overview) for the full development workflow, and `mcp-docs-server/README.md` in the repo for all environment variables.
+See the [contributor documentation](/contributors/overview) for the full development workflow, and `mcp-docs-server/README.md` in the repo for all environment variables.

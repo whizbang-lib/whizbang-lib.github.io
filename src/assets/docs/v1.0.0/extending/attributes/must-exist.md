@@ -1,8 +1,16 @@
 ---
 title: "MustExist Attribute"
+pageType: reference
 description: "Marks a perspective Apply method as requiring the model to already exist"
 category: "Attributes"
 tags: ["attributes", "mustexist", "perspectives", "validation", "source-generator"]
+order: 6
+version: 1.0.0
+codeReferences:
+  - src/Whizbang.Core/Perspectives/MustExistAttribute.cs
+  - src/Whizbang.Core/Perspectives/IPerspectiveFor.cs
+testReferences:
+  - tests/Whizbang.Core.Tests/Perspectives/MustExistAttributeTests.cs
 ---
 
 # MustExist Attribute
@@ -11,13 +19,29 @@ The `[MustExist]` attribute marks a perspective Apply method as requiring the mo
 
 ## Namespace
 
-```csharp
+```csharp{
+title: "Import the perspectives namespace"
+description: "[MustExist] lives in Whizbang.Core.Perspectives alongside the perspective interfaces."
+framework: "NET10"
+category: "Attributes"
+difficulty: "BEGINNER"
+tags: ["must-exist", "namespace", "perspectives"]
+unverified: "namespace import, not a behaviour"
+}
 using Whizbang.Core.Perspectives;
 ```
 
 ## Syntax
 
-```csharp
+```csharp{
+title: "Where [MustExist] is applied"
+description: "The attribute goes on an Apply method, which is the only target it allows."
+framework: "NET10"
+category: "Attributes"
+difficulty: "BEGINNER"
+tags: ["must-exist", "syntax", "apply", "perspectives"]
+tests: ["MustExistAttributeTests.MustExistAttribute_TargetsMethodsOnlyAsync"]
+}
 [MustExist]
 public TModel Apply(TModel current, TEvent @event) { ... }
 ```
@@ -37,7 +61,15 @@ The `[MustExist]` attribute serves two purposes:
 
 When the generator encounters a method with `[MustExist]`, it produces:
 
-```csharp
+```csharp{
+title: "The null check the generator emits"
+description: "Generated dispatch code throws when the model is absent, so the Apply method never sees a null current model."
+framework: "NET10"
+category: "Attributes"
+difficulty: "ADVANCED"
+tags: ["must-exist", "source-generator", "generated-code", "null-check"]
+unverified: "generated code - shown to explain the emitted check"
+}
 case OrderShippedEvent typedEvent:
   if (currentModel == null)
     throw new InvalidOperationException(
@@ -47,7 +79,14 @@ case OrderShippedEvent typedEvent:
 
 ## Basic Example
 
-```csharp
+```csharp{
+title: "A perspective that creates then requires its model"
+description: "OrderCreated builds the view with a nullable parameter; OrderShipped declares [MustExist] and takes it non-nullable."
+framework: "NET10"
+category: "Attributes"
+difficulty: "INTERMEDIATE"
+tags: ["must-exist", "perspectives", "apply", "order-lifecycle"]
+}
 public class OrderPerspective :
     IPerspectiveFor<OrderView, OrderCreated>,
     IPerspectiveFor<OrderView, OrderShipped> {
@@ -85,7 +124,14 @@ Use the nullable annotation to signal intent alongside `[MustExist]`:
 
 When using `[MustExist]`, the parameter should be non-nullable to match the semantic meaning:
 
-```csharp
+```csharp{
+title: "Non-nullable parameter with [MustExist]"
+description: "The recommended pairing: the attribute guarantees the model exists, so the parameter can be declared non-nullable."
+framework: "NET10"
+category: "Attributes"
+difficulty: "BEGINNER"
+tags: ["must-exist", "nullability", "apply", "conventions"]
+}
 // Correct: Non-nullable parameter signals "model must exist"
 [MustExist]
 public OrderView Apply(OrderView current, OrderShipped @event) {
@@ -97,7 +143,14 @@ public OrderView Apply(OrderView current, OrderShipped @event) {
 
 Without `[MustExist]`, the parameter should be nullable since the model may not exist yet:
 
-```csharp
+```csharp{
+title: "Nullable parameter without [MustExist]"
+description: "An Apply method that may legitimately run with no model yet keeps the nullable parameter and no attribute."
+framework: "NET10"
+category: "Attributes"
+difficulty: "BEGINNER"
+tags: ["must-exist", "nullability", "apply", "conventions"]
+}
 // Correct: Nullable parameter signals "model may or may not exist"
 public OrderView Apply(OrderView? current, OrderCreated @event) {
   return new OrderView { OrderId = @event.OrderId };
@@ -108,7 +161,14 @@ public OrderView Apply(OrderView? current, OrderCreated @event) {
 
 Apply `[MustExist]` to each update event that requires an existing model:
 
-```csharp
+```csharp{
+title: "Mixed lifecycle across several events"
+description: "One perspective where the opening event creates the model and the later events require it."
+framework: "NET10"
+category: "Attributes"
+difficulty: "INTERMEDIATE"
+tags: ["must-exist", "perspectives", "multi-event", "account-lifecycle"]
+}
 public class AccountPerspective :
     IPerspectiveFor<AccountView, AccountOpened>,
     IPerspectiveFor<AccountView, FundsDeposited>,
@@ -168,7 +228,14 @@ This detailed message helps developers quickly identify where the issue occurred
 
 ### Examples Where [MustExist] Is Appropriate
 
-```csharp
+```csharp{
+title: "Events that cannot be first"
+description: "Shipping, cancelling and similar events presuppose the model, which is exactly where the attribute belongs."
+framework: "NET10"
+category: "Attributes"
+difficulty: "BEGINNER"
+tags: ["must-exist", "guidance", "apply", "perspectives"]
+}
 // OrderShipped requires an order to already exist
 [MustExist]
 public OrderView Apply(OrderView current, OrderShipped @event) { ... }
@@ -192,7 +259,15 @@ public UserProfileView Apply(UserProfileView current, UserProfileUpdated @event)
 
 ### Without [MustExist] (Manual Null Check)
 
-```csharp
+```csharp{
+title: "The manual null check [MustExist] replaces"
+description: "The same guarantee written by hand in every Apply method, which is what the attribute removes."
+framework: "NET10"
+category: "Attributes"
+difficulty: "BEGINNER"
+tags: ["must-exist", "boilerplate", "null-check", "contrast"]
+unverified: "contrast case - the manual check the attribute replaces"
+}
 public OrderView Apply(OrderView? current, OrderShipped @event) {
   if (current is null)
     throw new InvalidOperationException("Order must exist");
@@ -203,7 +278,14 @@ public OrderView Apply(OrderView? current, OrderShipped @event) {
 
 ### With [MustExist] (Generated Null Check)
 
-```csharp
+```csharp{
+title: "The same method with [MustExist]"
+description: "The attribute carries the precondition, so the body is only the state transition."
+framework: "NET10"
+category: "Attributes"
+difficulty: "BEGINNER"
+tags: ["must-exist", "apply", "state-transition", "perspectives"]
+}
 [MustExist]
 public OrderView Apply(OrderView current, OrderShipped @event) {
   return current with { Status = "Shipped" };
@@ -220,7 +302,15 @@ Benefits of using `[MustExist]`:
 
 The `[MustExist]` attribute is processed at compile time by the source generator:
 
-```csharp
+```csharp{
+title: "Generated dispatch uses no reflection"
+description: "The emitted check is a plain type switch and null test, so the attribute costs nothing at run time and stays AOT-safe."
+framework: "NET10"
+category: "Attributes"
+difficulty: "ADVANCED"
+tags: ["must-exist", "aot", "source-generator", "performance"]
+unverified: "generated code - illustrates the emitted check"
+}
 // Generated code - no runtime reflection
 case OrderShippedEvent typedEvent:
   if (currentModel == null)
@@ -244,6 +334,6 @@ See Automated Migration for details.
 
 ## See Also
 
-- [Perspectives](../../v1.0.0/fundamentals/perspectives/perspectives.md) - Understanding perspectives and Apply methods
-- [StreamKey Attribute](../../v1.0.0/extending/attributes/streamkey.md) - Identifying stream keys for event ordering
+- [Perspectives](../../fundamentals/perspectives/perspectives.md) - Understanding perspectives and Apply methods
+- [StreamKey Attribute](streamkey.md) - Identifying stream keys for event ordering
 - Automated Migration - Migrating from Marten/Wolverine

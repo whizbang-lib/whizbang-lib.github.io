@@ -1,5 +1,6 @@
 ---
 title: Notifications and pgbouncer
+pageType: concept
 order: 5
 description: >-
   How LISTEN/NOTIFY wakes idle workers through one shared direct connection per
@@ -68,7 +69,15 @@ Each pod opens **exactly one** direct connection (bypasses pgbouncer) and multip
 
 `INotifySignalingGate` is the **single source of truth** for "is NOTIFY actually working in this process right now?". Every consumer that depends on NOTIFY consults the gate instead of making its own decision.
 
-```csharp
+```csharp{
+title: "The INotifySignalingGate contract"
+description: "The gate the coordinator asks before relying on NOTIFY: whether LISTEN is currently usable and when that was last verified."
+framework: "NET10"
+category: "Workers"
+difficulty: "ADVANCED"
+tags: ["notifications", "signaling-gate", "listen-notify", "pgbouncer"]
+unverified: "library interface declaration - the behaviour is verified on the implementation"
+}
 public interface INotifySignalingGate {
   bool IsAvailable { get; }
   DateTimeOffset? LastVerifiedAt { get; }
@@ -194,7 +203,13 @@ Polling stays first-class. Notifications are an accelerator; correctness never d
 
 Each service has two connection strings:
 
-```json
+```json{
+title: "Pooled and direct connection strings side by side"
+description: "The pooled string carries ordinary traffic through pgbouncer while the '-direct' string gives LISTEN a session that keeps its registration."
+category: "Configuration"
+difficulty: "INTERMEDIATE"
+tags: ["notifications", "pgbouncer", "connection-strings", "listen-notify"]
+}
 {
   "ConnectionStrings": {
     "appservice-db":         "Host=postgres-pgbouncer:6432;Database=appservice-db;...",
@@ -251,7 +266,14 @@ See [App signals](app-signals.md) for usage.
 
 Ops scenario: the direct connection string was misconfigured; the gate reported unavailable; ops corrected the config but the next periodic re-probe is up to 5 min away. To trigger an immediate re-test:
 
-```csharp
+```csharp{
+title: "Force a gate re-probe after fixing a misconfiguration"
+description: "ProbeNowAsync re-tests LISTEN immediately so a corrected connection string takes effect without waiting for the next scheduled probe."
+framework: "NET10"
+category: "Workers"
+difficulty: "INTERMEDIATE"
+tags: ["notifications", "signaling-gate", "operations", "probe"]
+}
 // Inside an ops endpoint or admin shell:
 var gate = serviceProvider.GetRequiredService<INotifySignalingGate>();
 var nowHealthy = await gate.ProbeNowAsync();
@@ -268,7 +290,15 @@ var nowHealthy = await gate.ProbeNowAsync();
 
 Log them on an ops endpoint:
 
-```csharp
+```csharp{
+title: "Expose the gate's state from a diagnostics endpoint"
+description: "Returns what the gate currently believes, so an operator can tell an unavailable gate from a healthy one that simply has no work."
+framework: "NET10"
+category: "Diagnostics"
+difficulty: "BEGINNER"
+tags: ["notifications", "diagnostics", "signaling-gate", "observability"]
+unverified: "diagnostic response shape, not framework behaviour"
+}
 return Ok(new {
   IsAvailable = gate.IsAvailable,
   LastVerifiedAt = gate.LastVerifiedAt,
@@ -279,7 +309,13 @@ return Ok(new {
 
 ### Verifying connection-count budget in production
 
-```sql
+```sql{
+title: "Count LISTEN backends per database"
+description: "Confirms the shared-connection design is holding: roughly one listening backend per pod, with a transient extra during a probe."
+category: "Diagnostics"
+difficulty: "INTERMEDIATE"
+tags: ["notifications", "connection-budget", "postgres", "operations"]
+}
 -- Distinct backend sessions LISTENing on Whizbang channels for this database.
 -- After slice 33 there should be ~1 per pod (transient +1 during a probe).
 SELECT count(DISTINCT pid)
@@ -312,7 +348,7 @@ For 50 pods × 11 services in production (illustrative numbers — scale to your
 - [Configuration reference](configuration-reference.md)
 - [Failure and recovery](failure-and-recovery.md)
 - [App signals](app-signals.md)
-- [Contributor: implementing notifications](../../contributing/data-engines/implementing-notifications.md)
+- [Contributor: implementing notifications](../../../contributors/data-engines/implementing-notifications.md)
 
 ## When the doorbell rings: the empty→non-empty edge
 

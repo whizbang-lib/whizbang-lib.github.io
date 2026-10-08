@@ -154,16 +154,26 @@ function validateMarkdownLinks() {
 
       checkedCount++;
 
-      // Resolve relative to the file's directory
-      const resolvedPath = path.resolve(dir, targetWithoutAnchor);
+      // A target beginning with "/" is a site route, not a filesystem path. path.resolve would
+      // send it to the real filesystem root, so EVERY root-absolute link read as broken even when
+      // the page existed — 34 of them, which buried the handful that are genuinely wrong. Route
+      // links resolve against the docs root instead. Note this deliberately leaves a stale "/docs/..."
+      // prefix broken: the site serves "/v1.0.0/...", so "/docs/x" is not a route and should be fixed.
+      const base = targetWithoutAnchor.startsWith('/') ? DOCS_ROOT : dir;
+      const relTarget = targetWithoutAnchor.startsWith('/')
+        ? targetWithoutAnchor.slice(1)
+        : targetWithoutAnchor;
+
+      // Resolve relative to the file's directory, or to the docs root for a route link
+      const resolvedPath = path.resolve(base, relTarget);
 
       // Also try with .md extension, or as a directory with _folder.md / same-name .md
-      const withMd = targetWithoutAnchor.endsWith('.md')
+      const withMd = relTarget.endsWith('.md')
         ? null
-        : path.resolve(dir, `${targetWithoutAnchor}.md`);
-      const asDir = path.resolve(dir, targetWithoutAnchor);
+        : path.resolve(base, `${relTarget}.md`);
+      const asDir = path.resolve(base, relTarget);
       const asDirFolder = path.join(asDir, '_folder.md');
-      const asDirSameName = path.join(asDir, `${path.basename(targetWithoutAnchor)}.md`);
+      const asDirSameName = path.join(asDir, `${path.basename(relTarget)}.md`);
 
       const exists =
         fs.existsSync(resolvedPath) ||

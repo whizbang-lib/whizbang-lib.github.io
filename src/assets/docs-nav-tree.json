@@ -268,6 +268,11 @@
               "order": 10
             },
             {
+              "slug": "v1.0.0/fundamentals/messages/payload-size-limit",
+              "title": "Payload Size Limit",
+              "order": 12
+            },
+            {
               "slug": "v1.0.0/fundamentals/messages/delivery-receipts",
               "title": "Delivery Receipts",
               "order": 20
@@ -308,6 +313,11 @@
             {
               "slug": "v1.0.0/fundamentals/messaging/apply-hooks",
               "title": "Apply Hooks",
+              "order": 8
+            },
+            {
+              "slug": "v1.0.0/fundamentals/messaging/message-priority",
+              "title": "Message Priority",
               "order": 8
             }
           ],
@@ -407,6 +417,11 @@
               "order": 11
             },
             {
+              "slug": "v1.0.0/fundamentals/perspectives/stored-form-migrations",
+              "title": "Stored-Form Migrations",
+              "order": 11
+            },
+            {
               "slug": "v1.0.0/fundamentals/perspectives/stream-locking",
               "title": "Perspective Stream Locking",
               "order": 12
@@ -420,6 +435,16 @@
               "slug": "v1.0.0/fundamentals/perspectives/apply-exactly-once",
               "title": "Apply Exactly-Once Contract",
               "order": 21
+            },
+            {
+              "slug": "v1.0.0/fundamentals/perspectives/jsonb-containment",
+              "title": "JSONB Containment Queries",
+              "order": 33
+            },
+            {
+              "slug": "v1.0.0/fundamentals/perspectives/perspective-indexes",
+              "title": "Perspective Indexes",
+              "order": 34
             },
             {
               "slug": "v1.0.0/fundamentals/perspectives/association-info",
@@ -468,6 +493,11 @@
               "slug": "v1.0.0/fundamentals/sagas/completion-orchestration",
               "title": "Completion Orchestration & Adaptive Watchdog",
               "order": 2
+            },
+            {
+              "slug": "v1.0.0/fundamentals/sagas/continuations",
+              "title": "Saga Continuations",
+              "order": 3
             }
           ],
           "children": []
@@ -577,6 +607,11 @@
               "slug": "v1.0.0/fundamentals/identity/type-qualification",
               "title": "TypeQualifications: Type Name Formatting Control",
               "order": 29
+            },
+            {
+              "slug": "v1.0.0/fundamentals/identity/pinned-identity",
+              "title": "Pinned Identity",
+              "order": 30
             },
             {
               "slug": "v1.0.0/fundamentals/identity/time-provider",
@@ -700,6 +735,21 @@
               "slug": "v1.0.0/fundamentals/workers/worker-classification",
               "title": "Worker Classification — A through F",
               "order": 9
+            },
+            {
+              "slug": "v1.0.0/fundamentals/workers/idle-footprint",
+              "title": "Idle Footprint",
+              "order": 10
+            },
+            {
+              "slug": "v1.0.0/fundamentals/workers/maintenance-steps",
+              "title": "Maintenance Steps",
+              "order": 11
+            },
+            {
+              "slug": "v1.0.0/fundamentals/workers/transient-database-failures",
+              "title": "Transient Database Failures in Worker Loops",
+              "order": 11
             }
           ],
           "children": []
@@ -723,6 +773,77 @@
               "slug": "v1.0.0/fundamentals/persistence",
               "title": "Persistence",
               "order": 12
+            }
+          ],
+          "children": []
+        },
+        {
+          "name": "work-coordinator",
+          "title": "Work coordinator",
+          "order": 11,
+          "pages": [
+            {
+              "slug": "v1.0.0/fundamentals/work-coordinator/overview",
+              "title": "Overview",
+              "order": 1
+            },
+            {
+              "slug": "v1.0.0/fundamentals/work-coordinator/claim-loop",
+              "title": "Claim loop",
+              "order": 2
+            },
+            {
+              "slug": "v1.0.0/fundamentals/work-coordinator/handler-commit",
+              "title": "Handler commit",
+              "order": 3
+            },
+            {
+              "slug": "v1.0.0/fundamentals/work-coordinator/commit-sequence",
+              "title": "Commit Sequence & the Order Stamper",
+              "order": 4
+            },
+            {
+              "slug": "v1.0.0/fundamentals/work-coordinator/batched-flushers",
+              "title": "Batched flushers",
+              "order": 5
+            },
+            {
+              "slug": "v1.0.0/fundamentals/work-coordinator/notifications-and-pgbouncer",
+              "title": "Notifications and pgbouncer",
+              "order": 5
+            },
+            {
+              "slug": "v1.0.0/fundamentals/work-coordinator/app-signals",
+              "title": "App signals",
+              "order": 7
+            },
+            {
+              "slug": "v1.0.0/fundamentals/work-coordinator/configuration-reference",
+              "title": "Configuration reference",
+              "order": 8
+            },
+            {
+              "slug": "v1.0.0/fundamentals/work-coordinator/performance-tuning",
+              "title": "Performance tuning",
+              "order": 9
+            },
+            {
+              "slug": "v1.0.0/fundamentals/work-coordinator/failure-and-recovery",
+              "title": "Failure and recovery",
+              "order": 10
+            }
+          ],
+          "children": []
+        },
+        {
+          "name": "signal-bus",
+          "title": "Signal Bus",
+          "order": 12,
+          "pages": [
+            {
+              "slug": "v1.0.0/fundamentals/signal-bus",
+              "title": "System Signal Bus",
+              "order": 20
             }
           ],
           "children": []
@@ -1155,6 +1276,11 @@
               "slug": "v1.0.0/operations/infrastructure/database-limits",
               "title": "Database Identifier Limits",
               "order": 7
+            },
+            {
+              "slug": "v1.0.0/operations/infrastructure/purging-streams",
+              "title": "Purging Streams",
+              "order": 9
             }
           ],
           "children": []
@@ -1188,6 +1314,39 @@
               "slug": "v1.0.0/operations/dead-letter-queue/perspective-events",
               "title": "Perspective-event Dead-lettering",
               "order": 5
+            },
+            {
+              "slug": "v1.0.0/operations/dead-letter-queue/canary-recovery",
+              "title": "Canary Recovery — Held Cohorts, Probes, and Verdicts",
+              "order": 6
+            }
+          ],
+          "children": []
+        },
+        {
+          "name": "dependency-injection",
+          "title": "Dependency Injection",
+          "order": 4,
+          "pages": [
+            {
+              "slug": "v1.0.0/operations/dependency-injection/overriding-defaults",
+              "title": "Overriding Defaults",
+              "order": 1
+            },
+            {
+              "slug": "v1.0.0/operations/dependency-injection/registration-validation",
+              "title": "Registration Validation",
+              "order": 2
+            },
+            {
+              "slug": "v1.0.0/operations/dependency-injection/injectable-services",
+              "title": "Injectable Services",
+              "order": 3
+            },
+            {
+              "slug": "v1.0.0/operations/dependency-injection/extending",
+              "title": "Extending and Customizing",
+              "order": 4
             }
           ],
           "children": []
@@ -1216,6 +1375,16 @@
               "slug": "v1.0.0/operations/workers/process-work-batch-lease-semantics",
               "title": "Work Pump — Lease & Heartbeat Semantics",
               "order": 4
+            },
+            {
+              "slug": "v1.0.0/operations/workers/claim-backpressure",
+              "title": "Claim Backpressure — Bounding Outstanding Work",
+              "order": 5
+            },
+            {
+              "slug": "v1.0.0/operations/workers/housekeeping-arbitration",
+              "title": "Housekeeping Arbitration — Ranks, Idle Gating, and the Starvation Floor",
+              "order": 6
             }
           ],
           "children": []
@@ -1234,6 +1403,11 @@
               "slug": "v1.0.0/operations/testing/lifecycle-synchronization",
               "title": "Lifecycle Synchronization",
               "order": 3
+            },
+            {
+              "slug": "v1.0.0/operations/testing/work-pump-smoke-test",
+              "title": "Work-pump decomposition smoke test",
+              "order": 4
             }
           ],
           "children": []
@@ -1247,6 +1421,46 @@
               "slug": "v1.0.0/operations/diagnostics/error-reference",
               "title": "Runtime Error Reference",
               "order": 1
+            },
+            {
+              "slug": "v1.0.0/operations/diagnostics/whiz302",
+              "title": "WHIZ302: Filtered Perspective Field Has No Index",
+              "order": 302
+            },
+            {
+              "slug": "v1.0.0/operations/diagnostics/whiz303",
+              "title": "WHIZ303: Declared Index Cannot Be Built For This Field's Type",
+              "order": 303
+            },
+            {
+              "slug": "v1.0.0/operations/diagnostics/whiz304",
+              "title": "WHIZ304: Declared Index Cannot Be Reached For This Model's Storage",
+              "order": 304
+            },
+            {
+              "slug": "v1.0.0/operations/diagnostics/whiz305",
+              "title": "WHIZ305: Declared Index Capability Does Not Apply To This Field's Type",
+              "order": 305
+            },
+            {
+              "slug": "v1.0.0/operations/diagnostics/whiz306",
+              "title": "WHIZ306: Fields reachable by request-time sorting have no index",
+              "order": 306
+            },
+            {
+              "slug": "v1.0.0/operations/diagnostics/whiz307",
+              "title": "WHIZ307: Whole-document match has no index",
+              "order": 307
+            },
+            {
+              "slug": "v1.0.0/operations/diagnostics/whiz308",
+              "title": "WHIZ308: Whole-document match has no index by default",
+              "order": 308
+            },
+            {
+              "slug": "v1.0.0/operations/diagnostics/whiz309",
+              "title": "WHIZ309: Collective predicate filters an unindexed field",
+              "order": 309
             },
             {
               "slug": "v1.0.0/operations/diagnostics/serializable-property-analyzer",
@@ -1309,6 +1523,26 @@
               "order": 999
             },
             {
+              "slug": "v1.0.0/operations/diagnostics/whiz160",
+              "title": "WHIZ160: Type Name Composed By Hand",
+              "order": 999
+            },
+            {
+              "slug": "v1.0.0/operations/diagnostics/whiz161",
+              "title": "WHIZ161: Type Name Dissected By Hand",
+              "order": 999
+            },
+            {
+              "slug": "v1.0.0/operations/diagnostics/whiz162",
+              "title": "WHIZ162: Type Names Compared Without The Matching Helper",
+              "order": 999
+            },
+            {
+              "slug": "v1.0.0/operations/diagnostics/whiz163",
+              "title": "WHIZ163: Type-Name Key Assigned From A Hand-Built String",
+              "order": 999
+            },
+            {
               "slug": "v1.0.0/operations/diagnostics/whiz300",
               "title": "WHIZ300: Inconsistent Perspective Model Types",
               "order": 999
@@ -1319,6 +1553,16 @@
               "order": 999
             },
             {
+              "slug": "v1.0.0/operations/diagnostics/whiz500",
+              "title": "WHIZ500: Hand-Constructed Service Omits a Dependency",
+              "order": 999
+            },
+            {
+              "slug": "v1.0.0/operations/diagnostics/whiz501",
+              "title": "WHIZ501: Optional Injected Dependency",
+              "order": 999
+            },
+            {
               "slug": "v1.0.0/operations/diagnostics/whiz802",
               "title": "WHIZ802: VectorField Invalid Dimensions",
               "order": 999
@@ -1326,6 +1570,11 @@
             {
               "slug": "v1.0.0/operations/diagnostics/whiz807",
               "title": "WHIZ807: Physical Fields Discovered",
+              "order": 999
+            },
+            {
+              "slug": "v1.0.0/operations/diagnostics/whiz808",
+              "title": "WHIZ808: Split Class Model Cannot Be Copied",
               "order": 999
             }
           ],
@@ -1479,6 +1728,11 @@
               "slug": "v1.0.0/extending/extensibility/plugin-architecture",
               "title": "Plugin Architecture",
               "order": 12
+            },
+            {
+              "slug": "v1.0.0/extending/extensibility/replaceable-services",
+              "title": "Replaceable Services",
+              "order": 13
             }
           ],
           "children": []
@@ -1502,6 +1756,16 @@
               "slug": "v1.0.0/extending/attributes/auto-populate",
               "title": "Auto-Populate Attributes",
               "order": 5
+            },
+            {
+              "slug": "v1.0.0/extending/attributes/must-exist",
+              "title": "MustExist Attribute",
+              "order": 6
+            },
+            {
+              "slug": "v1.0.0/extending/attributes/pinned-id",
+              "title": "PinnedId Attribute",
+              "order": 20
             },
             {
               "slug": "v1.0.0/extending/attributes/streamkey",
@@ -1671,6 +1935,11 @@
           "slug": "v1.0.0/migration-guide/appendix-checklist",
           "title": "Migration Checklist",
           "order": 10
+        },
+        {
+          "slug": "v1.0.0/migration-guide/cli-wizard",
+          "title": "CLI Migration Wizard",
+          "order": 11
         }
       ],
       "children": []
@@ -1741,16 +2010,6 @@
           "slug": "drafts/attributes/auto-populate",
           "title": "Auto-Populate Attributes",
           "order": 10
-        },
-        {
-          "slug": "drafts/attributes/pinned-id",
-          "title": "PinnedId Attribute",
-          "order": 20
-        },
-        {
-          "slug": "drafts/attributes/must-exist",
-          "title": "MustExist Attribute",
-          "order": 999
         }
       ],
       "children": []
@@ -1769,11 +2028,6 @@
           "slug": "drafts/core-concepts/cascade-context",
           "title": "Cascade Context",
           "order": 6
-        },
-        {
-          "slug": "drafts/core-concepts/pinned-identity",
-          "title": "Pinned Identity",
-          "order": 30
         }
       ],
       "children": []
@@ -1820,85 +2074,6 @@
       ]
     },
     {
-      "name": "fundamentals",
-      "title": "Fundamentals",
-      "order": 999,
-      "pages": [],
-      "children": [
-        {
-          "name": "work-coordinator",
-          "title": "Work coordinator",
-          "order": 5,
-          "pages": [
-            {
-              "slug": "drafts/fundamentals/work-coordinator/overview",
-              "title": "Overview",
-              "order": 1
-            },
-            {
-              "slug": "drafts/fundamentals/work-coordinator/claim-loop",
-              "title": "Claim loop",
-              "order": 2
-            },
-            {
-              "slug": "drafts/fundamentals/work-coordinator/handler-commit",
-              "title": "Handler commit",
-              "order": 3
-            },
-            {
-              "slug": "drafts/fundamentals/work-coordinator/batched-flushers",
-              "title": "Batched flushers",
-              "order": 4
-            },
-            {
-              "slug": "drafts/fundamentals/work-coordinator/notifications-and-pgbouncer",
-              "title": "Notifications and pgbouncer",
-              "order": 5
-            },
-            {
-              "slug": "drafts/fundamentals/work-coordinator/app-signals",
-              "title": "App signals",
-              "order": 6
-            },
-            {
-              "slug": "drafts/fundamentals/work-coordinator/commit-sequence",
-              "title": "Commit Sequence & the Order Stamper",
-              "order": 6
-            },
-            {
-              "slug": "drafts/fundamentals/work-coordinator/configuration-reference",
-              "title": "Configuration reference",
-              "order": 7
-            },
-            {
-              "slug": "drafts/fundamentals/work-coordinator/performance-tuning",
-              "title": "Performance tuning",
-              "order": 8
-            },
-            {
-              "slug": "drafts/fundamentals/work-coordinator/failure-and-recovery",
-              "title": "Failure and recovery",
-              "order": 9
-            }
-          ],
-          "children": []
-        },
-        {
-          "name": "signal-bus",
-          "title": "Signal Bus",
-          "order": 999,
-          "pages": [
-            {
-              "slug": "drafts/fundamentals/signal-bus",
-              "title": "System Signal Bus",
-              "order": 20
-            }
-          ],
-          "children": []
-        }
-      ]
-    },
-    {
       "name": "metrics",
       "title": "Metrics",
       "order": 999,
@@ -1927,30 +2102,25 @@
       "children": []
     },
     {
-      "name": "migration-guide",
-      "title": "Migration Guide",
-      "order": 999,
-      "pages": [
-        {
-          "slug": "drafts/migration-guide/cli-wizard",
-          "title": "CLI Migration Wizard",
-          "order": 999
-        }
-      ],
-      "children": []
-    },
-    {
       "name": "operations",
       "title": "Operations & Configuration",
       "order": 999,
-      "pages": [
+      "pages": [],
+      "children": [
         {
-          "slug": "drafts/operations/work-pump-smoke-test",
-          "title": "Work-pump decomposition smoke test",
-          "order": 90
+          "name": "configuration",
+          "title": "Configuration",
+          "order": 999,
+          "pages": [
+            {
+              "slug": "drafts/operations/configuration/configuration-reference",
+              "title": "Configuration Reference (planned — fully bound)",
+              "order": 2
+            }
+          ],
+          "children": []
         }
-      ],
-      "children": []
+      ]
     },
     {
       "name": "tracing",
@@ -2168,6 +2338,11 @@
           "order": 35
         },
         {
+          "slug": "proposals/duty-role-assignment",
+          "title": "Duty Role Assignment (Liveness-Tied Election)",
+          "order": 36
+        },
+        {
           "slug": "proposals/tag-bound-coalescing",
           "title": "Tag-Bound Policies & Message Coalescing",
           "order": 36
@@ -2178,6 +2353,11 @@
           "order": 37
         },
         {
+          "slug": "proposals/message-priority-and-work-classes",
+          "title": "Message Priority and Work Classes",
+          "order": 38
+        },
+        {
           "slug": "proposals/per-namespace-command-inboxes",
           "title": "Per-Namespace Command Inboxes",
           "order": 38
@@ -2186,6 +2366,11 @@
           "slug": "proposals/broker-dlq-import",
           "title": "Broker DLQ Import",
           "order": 39
+        },
+        {
+          "slug": "proposals/system-management-surface",
+          "title": "System Management Surface",
+          "order": 999
         }
       ],
       "children": []
@@ -2208,6 +2393,21 @@
           "slug": "contributors/test-status-pipeline",
           "title": "Live Test-Status Pipeline",
           "order": 3
+        },
+        {
+          "slug": "contributors/ai-agent-guide",
+          "title": "Working on Whizbang with an AI Agent",
+          "order": 4
+        },
+        {
+          "slug": "contributors/new-code-coverage",
+          "title": "Keeping New Code at 100% Coverage and Zero Sonar Findings",
+          "order": 4
+        },
+        {
+          "slug": "contributors/perspective-query-pipeline",
+          "title": "The Perspective Query Pipeline",
+          "order": 5
         }
       ],
       "children": []

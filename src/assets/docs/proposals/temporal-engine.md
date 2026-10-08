@@ -7,7 +7,7 @@ tags: temporal, scheduling, recurring, cron, saga-deadlines, signal-bus, wh_sche
 
 # Temporal Engine
 
-Whizbang already fires *delayed* work — a failed message re-dispatches at `scheduled_for`, and a saga arms a watchdog that wakes it later. The **Temporal Engine** promotes that into one first-class mechanism: **scheduled events** (fire at a specific time), **recurring events** (cron or interval), and **saga/deadline timeouts** — all as time-triggered transitions on a single durable schedule table, dispatched over the [System Signal Bus](../fundamentals/signal-bus/signal-bus).
+Whizbang already fires *delayed* work — a failed message re-dispatches at `scheduled_for`, and a saga arms a watchdog that wakes it later. The **Temporal Engine** promotes that into one first-class mechanism: **scheduled events** (fire at a specific time), **recurring events** (cron or interval), and **saga/deadline timeouts** — all as time-triggered transitions on a single durable schedule table, dispatched over the [System Signal Bus](/v1.0.0/fundamentals/signal-bus/signal-bus).
 
 :::planned
 The Temporal Engine is a proposed capability (unreleased, not yet started). It **generalizes the existing `scheduled_for` delayed-retry mechanism** and the sagas watchdog rather than replacing them — both become consumers of the same engine.

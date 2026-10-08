@@ -31,7 +31,7 @@ testReferences:
 
 # Azure Blob Body Store
 
-`Whizbang.Offloads.AzureBlob` is the production body-store provider for [body offload](/docs/fundamentals/offloads/message-body-store). Wraps `Azure.Storage.Blobs`. Behaves identically against the Azurite emulator and live Azure Blob — the connection string distinguishes them via standard Azure SDK conventions.
+`Whizbang.Offloads.AzureBlob` is the production body-store provider for [body offload](/v1.0.0/fundamentals/offloads/message-body-store). Wraps `Azure.Storage.Blobs`. Behaves identically against the Azurite emulator and live Azure Blob — the connection string distinguishes them via standard Azure SDK conventions.
 
 There are two ways to wire it: the **config-driven** one-call convention (recommended — the same code ships to every environment and a deployment turns offload on by supplying config), and **manual** DI for a single provider or non-config scenarios.
 
@@ -190,7 +190,7 @@ Behavior is identical against either backend — same upload/download/delete sem
 - **Download**: pulls the blob via `BlobClient.DownloadContentAsync`. 404 → `InvalidOperationException` with a TTL-removal hint. Honors `MessageBodyDownloadOptions.MaxBytes` (per-call, takes precedence) and the provider's own `MaxDownloadBytes` cap; a claim reporting a larger body is refused before download.
 - **Delete**: `BlobClient.DeleteIfExistsAsync` with snapshot inclusion. Default `IgnoreMissing = true` makes double-deletes silent (fan-out safe); strict mode throws on missing blobs.
 
-> At the rehydrator level (shared by every provider), a download failure — a transient store/network error, this store's 404 `InvalidOperationException`, or a breach of the receive-side `DownloadTimeout` — is wrapped in `BodyClaimDownloadException` and **retried via transport redelivery**, not dead-lettered. Only after the transport's max-delivery count is exhausted does the message hit the DLQ. Terminal failures (content-hash mismatch, unknown provider, deserialization error) dead-letter immediately. See [Body Offload (Claim-Check Pattern)](/docs/fundamentals/offloads/message-body-store) for the full failure-semantics table.
+> At the rehydrator level (shared by every provider), a download failure — a transient store/network error, this store's 404 `InvalidOperationException`, or a breach of the receive-side `DownloadTimeout` — is wrapped in `BodyClaimDownloadException` and **retried via transport redelivery**, not dead-lettered. Only after the transport's max-delivery count is exhausted does the message hit the DLQ. Terminal failures (content-hash mismatch, unknown provider, deserialization error) dead-letter immediately. See [Body Offload (Claim-Check Pattern)](/v1.0.0/fundamentals/offloads/message-body-store) for the full failure-semantics table.
 
 ## Lifecycle / cleanup
 
@@ -236,7 +236,7 @@ Configure a blob lifecycle policy in Azure Storage for the `whizbang-offload-bod
 - **Missing connection string** — resolving the store with no `ConnectionString` throws `InvalidOperationException: AzureBlobOffloadOptions.ConnectionString is required for provider '<name>'` on first resolution (i.e. on the first offload), followed by a `services.Configure<AzureBlobOffloadOptions>(...)` remediation hint.
 - **Receiver missing the provider** — a claim whose `whizbang.body-store` provider isn't registered on the receiver dead-letters with `MessageFailureReason.BodyClaimProviderUnknown` and a message pointing at `AddWhizbang*Offload(name)`.
 
-See [Body Offload (Claim-Check Pattern)](/docs/fundamentals/offloads/message-body-store) for the full send/receive pipeline, wire headers, and failure semantics that apply to every provider.
+See [Body Offload (Claim-Check Pattern)](/v1.0.0/fundamentals/offloads/message-body-store) for the full send/receive pipeline, wire headers, and failure semantics that apply to every provider.
 
 ## Integration tests
 

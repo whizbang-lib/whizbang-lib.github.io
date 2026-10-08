@@ -139,4 +139,4 @@ If your engine doesn't have native pub/sub, skip the listener. Set `SupportsServ
 
 - [Overview](overview.md)
 - [Implementing IWorkCoordinatorCapabilities](implementing-icapabilities.md)
-- [Fundamentals: notifications and pgbouncer](../../fundamentals/work-coordinator/notifications-and-pgbouncer.md)
+- [Fundamentals: notifications and pgbouncer](../../v1.0.0/fundamentals/work-coordinator/notifications-and-pgbouncer.md)

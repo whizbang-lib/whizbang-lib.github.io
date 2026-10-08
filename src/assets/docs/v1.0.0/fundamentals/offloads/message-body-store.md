@@ -328,4 +328,4 @@ Custom providers implement `IMessageBodyStore` and register via `AddWhizbangMess
 
 ## Composite events + body offload
 
-The body-offload pattern pairs particularly well with [composite events](/docs/fundamentals/messaging/composite-events): a 5,000-inner-event composite easily exceeds the 256 KB Azure Service Bus Standard ceiling. With body offload configured, the composite envelope's serialized form auto-uploads to blob storage and a small claim envelope flows on the wire. The receiver rehydrates, expands the composite into N inner events, and proceeds normally — fan-out + claim-check working transparently together.
+The body-offload pattern pairs particularly well with [composite events](/v1.0.0/fundamentals/messaging/composite-events): a 5,000-inner-event composite easily exceeds the 256 KB Azure Service Bus Standard ceiling. With body offload configured, the composite envelope's serialized form auto-uploads to blob storage and a small claim envelope flows on the wire. The receiver rehydrates, expands the composite into N inner events, and proceeds normally — fan-out + claim-check working transparently together.
