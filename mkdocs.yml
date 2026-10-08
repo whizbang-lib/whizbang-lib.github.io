@@ -192,6 +192,7 @@ nav:
         - Implementing Multi-Tenancy: fundamentals/security/implementing-multi-tenancy.md
         - Message Security Context Propagation: fundamentals/security/message-security.md
         - 'HTTP Security Headers & Method Filtering': fundamentals/security/http-security-headers.md
+        - Security Advisories: fundamentals/security/security-advisories.md
         - Scoping: fundamentals/security/scoping.md
     - Workers:
         - Pinned Worker Connection Pool: fundamentals/workers/pinned-connection-pool.md

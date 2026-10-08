@@ -35,6 +35,11 @@ jobs:
       - name: Validate front-matter (released docs)
         run: pnpm run validate-frontmatter
 
+      # Generator tests: the security-advisories page must stay unauthenticated (no drafts),
+      # keep the committed data on a failed fetch, and never claim "no advisories" unchecked.
+      - name: Test build scripts
+        run: pnpm run test:scripts
+
       # Living docs: samples tagged {testFile, testMethod} must match the
       # referenced library test body (warning mode until adoption grows).
       - name: Checkout library for sample-drift check
