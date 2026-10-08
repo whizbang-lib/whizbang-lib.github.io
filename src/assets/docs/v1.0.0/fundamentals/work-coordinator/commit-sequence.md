@@ -1,6 +1,17 @@
 ---
 title: Commit Sequence & the Order Stamper
-order: 6
+pageType: concept
+order: 4
+version: 1.0.0
+description: >-
+  The commit-order stamper: how a total order is stamped over rows whose insertion order and
+  transaction order disagree, and what that order promises.
+tags: 'work-coordinator, commit-sequence, ordering, stamper, leader-election'
+codeReferences:
+  - src/Whizbang.Core/Notifications/CommitOrderStamperOptions.cs
+  - src/Whizbang.Data.Postgres/Notifications/PgCommitOrderStamperWorker.cs
+testReferences:
+  - tests/Whizbang.Core.Tests/Notifications/PgNotificationStackStartupGateTests.cs
 ---
 
 # Commit Sequence & the Order Stamper

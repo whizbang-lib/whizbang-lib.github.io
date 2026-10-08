@@ -1,5 +1,6 @@
 ---
 title: "Pinned Identity"
+pageType: concept
 version: 1.0.0
 category: Core Concepts
 order: 30
@@ -11,8 +12,12 @@ codeReferences:
   - src/Whizbang.Core/Attributes/PinnedIdAttribute.cs
   - src/Whizbang.Core/IPinnedIdRegistry.cs
   - src/Whizbang.Generators/PinnedIdRegistryGenerator.cs
+  - src/Whizbang.Core/IEventTypeRenameTool.cs
   - src/Whizbang.Data.Schema/Schemas/MessageTypeRegistrySchema.cs
-  - src/Whizbang.Core/Migrations/IEventTypeRenameTool.cs
+testReferences:
+  - tests/Whizbang.Core.Tests/Attributes/PinnedIdAttributeTests.cs
+  - tests/Whizbang.Generators.Tests/PinnedIdRegistryGeneratorTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperEventTypeRenameToolTests.cs
 ---
 
 # Pinned Identity
@@ -51,7 +56,15 @@ A **partial unique index** on `pinned_id WHERE pinned_id IS NOT NULL` enforces t
 
 `PinnedIdRegistryGenerator` discovers `[PinnedId]` attributes at compile time and emits a zero-reflection, AOT-safe `IPinnedIdRegistry` implementation. No runtime reflection is required.
 
-```csharp
+```csharp{
+title: "A pinned type and what the generator sees"
+description: "The attribute on the declaration is the input the registry generator reads at build time."
+framework: "NET10"
+category: "Identity"
+difficulty: "BEGINNER"
+tags: ["pinned-id", "identity", "source-generator", "events"]
+tests: ["PinnedIdAttributeTests.PinnedIdAttribute_CanBeAppliedToClassAsync"]
+}
 // Your code
 [PinnedId("a1b2c3d4-e5f6-7890-abcd-1234567890ab")]
 public sealed record OrderPlacedEvent(Guid OrderId) : IEvent;
@@ -68,7 +81,14 @@ public sealed class GeneratedPinnedIdRegistry : IPinnedIdRegistry {
 
 Register with:
 
-```csharp
+```csharp{
+title: "Register the generated registry"
+description: "Adds the build-time registry so pinned identities resolve without scanning assemblies at start-up."
+framework: "NET10"
+category: "Identity"
+difficulty: "BEGINNER"
+tags: ["pinned-id", "registry", "dependency-injection", "aot"]
+}
 services.AddPinnedIdRegistry();
 ```
 
@@ -110,4 +130,4 @@ Six tables store CLR type names and participate in the rename workflow:
 
 ## See Also
 
-- [PinnedId Attribute](../attributes/pinned-id.md)
+- [PinnedId Attribute](../../extending/attributes/pinned-id.md)

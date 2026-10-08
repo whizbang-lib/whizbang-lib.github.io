@@ -1,8 +1,22 @@
 ---
 title: System Signal Bus
+pageType: concept
 category: Architecture & Design
 order: 20
 tags: signal-bus, notifications, listen-notify, control-plane, rebalance, instance-lifecycle, reliability
+version: 1.0.0
+description: >-
+  The in-process signal bus the framework's own components use to wake each other, and the targets
+  a signal can be addressed to.
+codeReferences:
+  - src/Whizbang.Core/Signals/ISignalBus.cs
+  - src/Whizbang.Core/Signals/SignalBus.cs
+  - src/Whizbang.Core/Signals/SignalBusOptions.cs
+  - src/Whizbang.Core/Signals/SignalTarget.cs
+  - src/Whizbang.Core/Signals/InstanceLifecycleSignals.cs
+  - src/Whizbang.Core/Signals/WorkAvailableSignals.cs
+testReferences:
+  - tests/Whizbang.Core.Tests/Signals/SignalBusProbeBackoffTests.cs
 ---
 
 # System Signal Bus

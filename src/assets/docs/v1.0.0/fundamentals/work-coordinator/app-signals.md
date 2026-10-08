@@ -1,6 +1,20 @@
 ---
 title: App signals
-order: 6
+pageType: concept
+order: 7
+version: 1.0.0
+description: >-
+  Application-defined signals carried over the same notification channel the coordinator uses, for
+  waking your own work without a second listener.
+tags: 'work-coordinator, app-signals, listen-notify, channels, notifications'
+codeReferences:
+  - src/Whizbang.Core/Notifications/AppSignals/IAppSignalChannel.cs
+  - src/Whizbang.Core/Notifications/WhizbangNotificationOptions.cs
+  - src/Whizbang.Data.Postgres/Notifications/PgWorkNotificationListener.cs
+testReferences:
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/PgAppSignalChannelIntegrationTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/PgAppSignalChannelCoverageTests.cs
+  - tests/Whizbang.Core.Tests/Notifications/AppSignalTopicValidatorTests.cs
 ---
 
 # App signals
@@ -9,7 +23,15 @@ Whizbang exposes its NOTIFY/LISTEN infrastructure to application code via `IAppS
 
 ## API
 
-```csharp
+```csharp{
+title: "The IAppSignalChannel contract"
+description: "Publish a payload on a topic, or subscribe to one, over the notification connection the coordinator already holds."
+framework: "NET10"
+category: "Workers"
+difficulty: "BEGINNER"
+tags: ["app-signals", "pub-sub", "listen-notify", "channels"]
+unverified: "library interface declaration - the behaviour is verified on the implementation"
+}
 public interface IAppSignalChannel {
   Task PublishAsync(string topic, string payload, CancellationToken ct = default);
   IDisposable Subscribe(string topic, Func<string, CancellationToken, Task> handler);
@@ -22,7 +44,15 @@ public interface IAppSignalChannel {
 
 Topics must match `^[a-z][a-z0-9_]{0,62}$`. The `wh_` prefix is reserved for Whizbang internal signals — `AppSignalTopicValidator` rejects topics starting with `wh_` at publish/subscribe time:
 
-```csharp
+```csharp{
+title: "Which topic names are accepted"
+description: "Lower-case application topics are accepted; the framework's own wh_ prefix and any upper-case name are rejected."
+framework: "NET10"
+category: "Workers"
+difficulty: "BEGINNER"
+tags: ["app-signals", "topics", "validation", "naming"]
+unverified: "topic-rule demonstration - two of the three calls intentionally throw"
+}
 await channel.PublishAsync("user_signed_up", json);   // OK
 await channel.PublishAsync("wh_internal", json);      // throws ArgumentException
 await channel.PublishAsync("UserSignedUp", json);     // throws (uppercase not allowed)
@@ -41,7 +71,14 @@ This means:
 
 ## Usage example
 
-```csharp
+```csharp{
+title: "Refresh a cache from an app signal"
+description: "A background service subscribes to a topic and invalidates its cache on each delivery, instead of polling for changes."
+framework: "NET10"
+category: "Workers"
+difficulty: "INTERMEDIATE"
+tags: ["app-signals", "cache-invalidation", "background-service", "pub-sub"]
+}
 // In your service:
 public class FeatureFlagRefreshSubscriber : BackgroundService {
   public FeatureFlagRefreshSubscriber(IAppSignalChannel signals, IFeatureFlagCache cache) {

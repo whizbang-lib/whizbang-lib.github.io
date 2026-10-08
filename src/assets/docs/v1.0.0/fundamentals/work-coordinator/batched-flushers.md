@@ -1,6 +1,22 @@
 ---
 title: Batched flushers
-order: 4
+pageType: concept
+order: 5
+version: 1.0.0
+description: >-
+  The shared batch flusher behind completion, failure and lease-renewal writes: how work is
+  coalesced and what happens when a flush fails.
+tags: 'work-coordinator, flushers, batching, completions, lease-renewal, backpressure'
+codeReferences:
+  - src/Whizbang.Core/Workers/BatchFlusher.cs
+  - src/Whizbang.Core/Workers/FailureFlushWorker.cs
+  - src/Whizbang.Core/Workers/PerspectiveCompletionFlushWorker.cs
+  - src/Whizbang.Core/Workers/OutboxCompletionFlushWorker.cs
+  - src/Whizbang.Core/Workers/LeaseRenewalWorker.cs
+testReferences:
+  - tests/Whizbang.Core.Tests/Workers/BatchFlusherRetryTests.cs
+  - tests/Whizbang.Core.Tests/Workers/OutboxCompletionFlushWorkerTests.cs
+  - tests/Whizbang.Core.Tests/Workers/LeaseRenewalWorkerCoverageTests.cs
 ---
 
 # Batched flushers

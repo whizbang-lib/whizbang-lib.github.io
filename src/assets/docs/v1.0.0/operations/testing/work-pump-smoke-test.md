@@ -1,6 +1,19 @@
 ---
 title: Work-pump decomposition smoke test
-order: 90
+pageType: guide
+order: 4
+version: 1.0.0
+description: >-
+  A runbook for confirming a multi-service deployment is getting the decomposed work pump: what to
+  look for in the claim loop, the drain and the order stamper.
+tags: 'operations, smoke-test, work-coordinator, verification, deployment, runbook'
+codeReferences:
+  - src/Whizbang.Core/Workers/ClaimWorker.cs
+  - src/Whizbang.Core/Workers/OutboxDrainWorker.cs
+  - src/Whizbang.Data.Postgres/Notifications/PgCommitOrderStamperWorker.cs
+testReferences:
+  - tests/Whizbang.Core.Tests/Workers/ClaimWorkerGateCadenceTests.cs
+  - tests/Whizbang.Core.Tests/Workers/OutboxDrainWorkerStreamRunTests.cs
 ---
 
 # Work-pump decomposition smoke test (Phase F)
@@ -42,7 +55,13 @@ The direct string targets the **same database** as the pooled string, but on the
 
 ### 1. Capture baseline (before deploying the new release)
 
-```bash
+```bash{
+title: "Snapshot statement counters before the upgrade"
+description: "Captures per-database pg_stat_statements so the post-deploy numbers have something to be compared against."
+category: "Diagnostics"
+difficulty: "INTERMEDIATE"
+tags: ["smoke-test", "baseline", "pg-stat-statements", "operations"]
+}
 # Snapshot pg_stat_statements per service DB.
 docker exec postgres psql -U postgres -d appservice-db -c "
   SELECT calls, total_exec_time, mean_exec_time, query
@@ -59,7 +78,13 @@ Expect (legacy): ~22 calls/sec/service of `process_work_batch`, ~17 ms mean, ~45
 
 ### 2. Deploy new release with direct connection strings
 
-```bash
+```bash{
+title: "Deploy with direct connection strings in place"
+description: "Applies migrations and restarts the services, with the '-direct' strings the notification path needs."
+category: "Diagnostics"
+difficulty: "INTERMEDIATE"
+tags: ["smoke-test", "deployment", "migrations", "connection-strings"]
+}
 # Pull, apply migrations, restart all services.
 git pull
 dotnet ef database update  # per service, or via your migration runner
@@ -68,14 +93,26 @@ docker compose restart  # or your orchestration equivalent
 
 ### 3. Reset pg_stat_statements + wait 5 minutes idle
 
-```bash
+```bash{
+title: "Reset the counters and let the system idle"
+description: "Five idle minutes after a reset is what makes idle SQL traffic visible rather than buried in start-up noise."
+category: "Diagnostics"
+difficulty: "BEGINNER"
+tags: ["smoke-test", "idle", "pg-stat-statements", "measurement"]
+}
 docker exec postgres psql -U postgres -c "SELECT pg_stat_statements_reset();"
 sleep 300
 ```
 
 ### 4. Capture post-deploy metrics
 
-```bash
+```bash{
+title: "Capture the post-deploy numbers"
+description: "The same query as the baseline, so the two can be compared directly."
+category: "Diagnostics"
+difficulty: "BEGINNER"
+tags: ["smoke-test", "measurement", "pg-stat-statements", "comparison"]
+}
 docker exec postgres psql -U postgres -d appservice-db -c "
   SELECT calls, total_exec_time, mean_exec_time, query
   FROM pg_stat_statements
@@ -98,7 +135,13 @@ docker stats postgres --no-stream
 
 ### 6. Burst-latency check (optional)
 
-```bash
+```bash{
+title: "Time a single message end to end"
+description: "Emits one message through the normal write path to check a burst is picked up promptly rather than at the next poll."
+category: "Diagnostics"
+difficulty: "INTERMEDIATE"
+tags: ["smoke-test", "latency", "burst", "notifications"]
+}
 # Emit an outbox message via your usual API path.
 curl -X POST https://localhost/api/some-write-endpoint -d '{"...": "..."}'
 
