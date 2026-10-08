@@ -212,15 +212,15 @@ tags: ["notifications", "pgbouncer", "connection-strings", "listen-notify"]
 }
 {
   "ConnectionStrings": {
-    "appservice-db":         "Host=postgres-pgbouncer:6432;Database=appservice-db;...",
-    "appservice-db-direct":  "Host=postgres-primary:5432;Database=appservice-db;..."
+    "db":         "Host=postgres-pgbouncer:6432;Database=appservice;...",
+    "db-direct":  "Host=postgres-primary:5432;Database=appservice;..."
   }
 }
 ```
 
 The `-direct` suffix is convention. Same DB, different port, no pooler.
 
-When `<dbname>-direct` is unset, the gate reports `IsAvailable = false` and the system runs polling-only. The system stays correct — polling fallback at the configured base interval (250 ms default) catches any work that would otherwise be discovered by NOTIFY.
+When `db-direct` (or `<name>-direct` for a named connection) is unset, the gate reports `IsAvailable = false` and the system runs polling-only. The system stays correct — polling fallback at the configured base interval (250 ms default) catches any work that would otherwise be discovered by NOTIFY.
 
 ### `WhizbangNotificationOptions`
 
