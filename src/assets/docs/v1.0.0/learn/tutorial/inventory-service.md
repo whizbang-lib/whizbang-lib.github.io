@@ -482,7 +482,7 @@ inboxTopic.AddServiceBusSubscription("sub-inbox-inventory").WithDestinationFilte
 
 // Inventory Worker (NEW)
 var inventoryWorker = builder.AddProject("inventoryworker", "../ECommerce.InventoryWorker/ECommerce.InventoryWorker.csproj")
-    .WithReference(inventoryDb)
+    .WithReference(inventoryDb, "db")
     .WithReference(messagingInfra)
     .WaitFor(inventoryDb)
     .WaitFor(messagingInfra);

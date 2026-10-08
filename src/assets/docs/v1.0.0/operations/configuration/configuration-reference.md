@@ -243,7 +243,7 @@ Whizbang resolves database connections through `ConnectionStrings:*` keys (envir
 Contexts in one service that share a database share `db`. Only a second, separate database needs a name of its own: `[WhizbangDbContext(ConnectionStringName = "reporting")]` or `WithEFCore<ReportingDbContext>("reporting")`, which then reads `reporting`, `reporting-direct` and `reporting-init`.
 
 :::updated
-Earlier releases derived the name from the `DbContext` class (`OrderServiceDbContext` → `orderservice-db`). A context that relied on that now reads `db`: rename the keys, or set `ConnectionStringName` to the old name to keep them.
+Earlier releases derived the name from the `DbContext` class (`OrderServiceDbContext` → `orderservice-db`). A context that relied on that now reads `db`. Until its keys are renamed, it keeps working: when nothing is configured under `db`, `db-direct` or `db-init` but something is under the derived name, the derived name is used and startup logs a warning to rename the keys. The fallback applies to the connection pool, the `-direct` and `-init` connections and the `Whizbang:Postgres:<name>` section, and is removed in a later release. Rename the keys, or set `ConnectionStringName` to the old name to keep it. {verified: ConnectionStringNameFallbackTests.OnlyTheLegacyName_IsUsedAndReportedAsync, PostgresDriverExtensions_TurnkeyResolverWiringTests.WithEFCore_WithoutAName_FallsBackToTheLegacyNameWhenDbIsAbsentAsync, PostgresOptionsConfigurationTests.Driver_WithOnlyTheLegacyName_BindsTheLegacySectionAsync}
 :::
 
 #### Command timeouts {#command-timeouts}

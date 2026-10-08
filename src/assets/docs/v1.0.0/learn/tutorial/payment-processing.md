@@ -366,7 +366,7 @@ ordersTopic.AddServiceBusSubscription("sub-payment-orders");
 inboxTopic.AddServiceBusSubscription("sub-inbox-payment").WithDestinationFilter("payment-service");
 
 var paymentWorker = builder.AddProject("paymentworker", "../ECommerce.PaymentWorker/ECommerce.PaymentWorker.csproj")
-    .WithReference(paymentDb)
+    .WithReference(paymentDb, "db")
     .WithReference(messagingInfra)
     .WaitFor(paymentDb)
     .WaitFor(messagingInfra);

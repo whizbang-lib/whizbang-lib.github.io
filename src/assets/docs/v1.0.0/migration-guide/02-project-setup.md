@@ -104,7 +104,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Register your EF Core DbContext (marked with [WhizbangDbContext])
 builder.Services.AddDbContext<OrderDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("postgres")!));
+    options.UseNpgsql(builder.Configuration.GetConnectionString("db")!));
 
 // Whizbang configuration — fluent builder selects the storage provider + driver
 builder.Services
@@ -148,7 +148,7 @@ var app = builder.Build();
 {
   "UseRabbitMQ": true,
   "ConnectionStrings": {
-    "postgres": "Host=localhost;Database=myapp;Username=postgres;Password=postgres",
+    "db": "Host=localhost;Database=myapp;Username=postgres;Password=postgres",
     "rabbitmq": "amqp://guest:guest@localhost:5672"
   }
 }
@@ -160,7 +160,7 @@ var app = builder.Build();
 {
   "UseRabbitMQ": false,
   "ConnectionStrings": {
-    "postgres": "Host=myapp.postgres.database.azure.com;Database=myapp;...",
+    "db": "Host=myapp.postgres.database.azure.com;Database=myapp;...",
     "servicebus": "Endpoint=sb://myapp.servicebus.windows.net/;..."
   }
 }

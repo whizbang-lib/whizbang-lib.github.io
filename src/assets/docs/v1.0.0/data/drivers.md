@@ -177,7 +177,7 @@ For services that prefer raw-SQL persistence, the `Whizbang.Data.Dapper.Postgres
 1. **Depend on abstractions** - inject `ILensQuery<T>` / `IPerspectiveStore<T>`, never a concrete store
 2. **Select the driver once** - at composition root, per service
 3. **Use InMemory in tests** - same abstractions, no database required
-4. **Prefer the connection string convention** - let the `DbContext` name derive the connection string name; override with `WithEFCore<T>("name")` only when needed
+4. **Prefer the connection string convention** - name the database's connection string `db` (with `db-direct` and `db-init`); name another only for a second, separate database with `WithEFCore<T>("name")`
 
 ## Related Documentation
 

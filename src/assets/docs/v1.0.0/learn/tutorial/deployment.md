@@ -179,7 +179,7 @@ spec:
         env:
         - name: ASPNETCORE_ENVIRONMENT
           value: "Production"
-        - name: ConnectionStrings__OrdersDb
+        - name: ConnectionStrings__db
           valueFrom:
             secretKeyRef:
               name: database-secrets
@@ -665,7 +665,7 @@ spec:
         image: ecommerceacr.azurecr.io/order-service:latest
         command: ["dotnet", "ECommerce.OrderService.API.dll", "migrate"]
         env:
-        - name: ConnectionStrings__OrdersDb
+        - name: ConnectionStrings__db
           valueFrom:
             secretKeyRef:
               name: database-secrets
