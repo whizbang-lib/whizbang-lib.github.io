@@ -53,7 +53,7 @@ jobs:
         run: WHIZBANG_LIB_PATH="$GITHUB_WORKSPACE/.whizbang-lib" node src/scripts/verify-sample-drift.mjs
 
       # Every configuration key the docs document must be one the library reads: the library locks
-      # the keys it reads in docs/configuration-keys.txt, and this fails on any documented key it
+      # the keys it reads in tests/Whizbang.Documentation.Tests/Baselines/configuration-keys.txt, and this fails on any documented key it
       # does not hold, so no page can tell an operator to set a key nothing reads.
       - name: Validate configuration keys
         run: WHIZBANG_LIB_PATH="$GITHUB_WORKSPACE/.whizbang-lib" node src/scripts/validate-config-keys.mjs

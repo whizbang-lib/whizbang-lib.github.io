@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Every configuration key the docs tell a reader to set must be one the library reads.
 //
-// The library records the keys it reads in docs/configuration-keys.txt, and a library test fails
+// The library records the keys it reads in tests/Whizbang.Documentation.Tests/Baselines/configuration-keys.txt, and a library test fails
 // whenever its binding changes without that file. This script closes the other half: it finds every
 // key written in the docs and fails on any the manifest does not hold, so a documented key can never
 // again be inert (a reader sets it, nothing reads it, nothing says so).
@@ -28,7 +28,7 @@ import { join, resolve, relative } from 'path';
 const rootArg = process.argv.indexOf('--root');
 const ROOT = rootArg !== -1 ? process.argv[rootArg + 1] : 'src/assets/docs/v1.0.0';
 const LIB = process.env.WHIZBANG_LIB_PATH || resolve('..', 'whizbang');
-const MANIFEST = join(LIB, 'docs', 'configuration-keys.txt');
+const MANIFEST = join(LIB, 'tests', 'Whizbang.Documentation.Tests', 'Baselines', 'configuration-keys.txt');
 const ALLOWLIST = 'src/scripts/config-keys-allowlist.txt';
 const ROOTS = ['Whizbang', 'ConnectionStrings', 'ConnectionPool'];
 
@@ -171,6 +171,6 @@ console.error(`✗ ${unique.size} documented configuration key(s) the library do
 for (const [key, where] of [...unique].sort(([a], [b]) => a.localeCompare(b))) {
   console.error(`  ${key}\n      ${where.slice(0, 4).join('\n      ')}${where.length > 4 ? `\n      (+${where.length - 4} more)` : ''}`);
 }
-console.error('\nFix the key, or make the library read it (and regenerate its docs/configuration-keys.txt).');
+console.error('\nFix the key, or make the library read it (and regenerate its tests/Whizbang.Documentation.Tests/Baselines/configuration-keys.txt).');
 console.error(`A key documented on purpose although the library does not read it goes in ${ALLOWLIST} with its reason.`);
 process.exit(1);
