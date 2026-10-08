@@ -248,17 +248,22 @@ Earlier releases derived the name from the `DbContext` class (`OrderServiceDbCon
 
 #### Command timeouts {#command-timeouts}
 
-A timeout belongs to the connection it applies to, set as `Command Timeout` in that connection string:
+Each connection has its own command timeout, keyed by the connection's name exactly as its connection string is: `Whizbang:Postgres:<connection>:CommandTimeoutSeconds`. {verified: PostgresCommandTimeoutsTests.EachConnection_ReadsItsOwnKeyAsync}
 
-| Work | Connection | Timeout |
-|------|------------|---------|
-| Application queries | `db` | The string's `Command Timeout`, or `ConnectionPool:CommandTimeout` (below) |
-| Work coordinator (claims, commit batches) | `db` | Fixed at 180 s by the EF Core driver, whatever the string says, so a short application timeout cannot cancel a commit batch |
-| LISTEN/NOTIFY, commit-order stamper | `db-direct` | The string's `Command Timeout` |
-| Schema initialization and migrations | `db-init` | The string's `Command Timeout` when it sets one; otherwise 600 s. Without a `db-init` string, always 600 s: a table rewrite legitimately runs for minutes {verified: SchemaCommandTimeoutTests.AnInitStringThatSetsATimeout_DecidesItAsync, SchemaCommandTimeoutTests.OtherwiseTheSchemaKeepsItsOwnTenMinutesAsync, EFCoreServiceRegistrationGeneratorCoverageTests.Generator_SchemaCommands_UseTheInitConnectionStringsTimeoutAsync} |
-| Collective apply | `db` | Server-side `statement_timeout`: `CollectiveApplyStatementTimeoutSeconds` under [Postgres Databases](#postgres-databases), the one timeout a connection string cannot carry through a transaction pooler |
+| Connection | Used by | Timeout key | When the key is not set |
+|------------|---------|-------------|-------------------------|
+| `db` | Application queries | `Whizbang__Postgres__db__CommandTimeoutSeconds` | `ConnectionPool:CommandTimeout` (below), else the string's `Command Timeout`, else 30 s |
+| `db-direct` | LISTEN/NOTIFY, commit-order stamper, pinned worker pool | `Whizbang__Postgres__db-direct__CommandTimeoutSeconds` | The string's `Command Timeout`, else 30 s |
+| `db-init` | Schema initialization and migrations | `Whizbang__Postgres__db-init__CommandTimeoutSeconds` | The `db-init` string's `Command Timeout`, else 600 s: a table rewrite legitimately runs for minutes. Applies even without a `db-init` string |
 
-`Whizbang:Postgres:CommandTimeoutSeconds` is retired: no command ever read it. Startup logs a warning naming the key when it is set. {verified: PostgresOptionsConfigurationTests.RetiredCommandTimeoutSeconds_IsReportedAtStartupAsync}
+A named database follows the same pattern: `Whizbang__Postgres__reporting__CommandTimeoutSeconds`, `…__reporting-direct__…`, `…__reporting-init__…`. The key wins over a `Command Timeout` written in the string. {verified: PostgresCommandTimeoutsTests.Apply_TheKeyWinsOverTheStringAsync, NotificationDataSourceAutoDiscoveryTests.NotificationConnection_TakesItsConnectionsTimeoutKeyAsync, PinnedPoolRegistrationTests.Register_ConnectionStringName_TakesThatConnectionsTimeoutKeyAsync, EFCoreServiceRegistrationGeneratorCoverageTests.Generator_EachConnection_TakesItsOwnTimeoutKeyAsync}
+
+Two timeouts are not per connection:
+
+- **Work coordinator** (claims, commit batches): fixed at 180 s by the EF Core driver on the `db` connection, so a short application timeout cannot cancel a commit batch.
+- **Collective apply**: a server-side `statement_timeout`, `CollectiveApplyStatementTimeoutSeconds` under [Postgres Databases](#postgres-databases), the one timeout a connection string cannot carry through a transaction pooler.
+
+`Whizbang:Postgres:CommandTimeoutSeconds` directly under the section is retired: it never reached a command, and one value for every connection would put a query timeout on schema initialization. Startup logs a warning naming the per-connection keys when it is set. {verified: PostgresOptionsConfigurationTests.RetiredCommandTimeoutSeconds_IsReportedAtStartupAsync}
 
 ### ConnectionPool (root section)
 

@@ -109,8 +109,9 @@ poison admission gate throttles the drain to one row per cycle.
 - **Dapper driver:** coordinator commands use the connection string's `Command Timeout` (Npgsql's
   default is 30 seconds); maintenance and purge commands set 30 seconds.
 
-`PostgresOptions.CommandTimeoutSeconds` is retired: no command ever read it. Every other timeout is set
-on the connection it applies to; see [Command timeouts](../operations/configuration/configuration-reference#command-timeouts).
+`PostgresOptions.CommandTimeoutSeconds` is retired: no command ever read it. Each connection has its own
+timeout key instead, named like its connection string (`Whizbang__Postgres__db__CommandTimeoutSeconds`,
+`…__db-direct__…`, `…__db-init__…`); see [Command timeouts](../operations/configuration/configuration-reference#command-timeouts).
 
 ### In-Flight Command Cap {#max-in-flight-commands}
 
