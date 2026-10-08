@@ -187,7 +187,21 @@ export function renderPage(data) {
     for (const a of withdrawn) out.push(`- [${a.id}](${a.url}), withdrawn ${a.withdrawn.slice(0, 10)}: ${esc(a.summary)}`);
     out.push('');
   }
-  out.push('## Reporting a vulnerability');
+  out.push('## How you are warned');
+  out.push('');
+  out.push('You do not need to check this page. When an advisory is published, the .NET SDK warns at restore: '
+    + '[NuGet Audit](https://learn.microsoft.com/en-us/nuget/concepts/auditing-packages) compares every package '
+    + 'version a project resolves with the GitHub Advisory Database and reports NU1901 to NU1904 (low to critical). '
+    + 'Dependabot and other scanners read the same records.');
+  out.push('');
+  out.push('To make sure an affected Whizbang package cannot go unnoticed:');
+  out.push('');
+  out.push('- Keep NuGet Audit on (the default) and audit transitive packages too, with `<NuGetAuditMode>all</NuGetAuditMode>` '
+    + 'in `Directory.Build.props`. A Whizbang package is often referenced through another one.');
+  out.push('- To fail the build rather than warn, add `NU1903;NU1904` (high and critical) to `<WarningsAsErrors>`.');
+  out.push('- Never add a `<NuGetAuditSuppress>` for a Whizbang advisory as a way to stay on an affected version; upgrade instead.');
+  out.push('');
+  out.push("## Reporting a vulnerability");
   out.push('');
   out.push('Report a vulnerability privately, as described in the repository\'s '
     + '[security policy](https://github.com/whizbang-lib/whizbang/blob/main/SECURITY.md). Do not open a public issue.');
