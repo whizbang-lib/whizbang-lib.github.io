@@ -149,3 +149,11 @@ test('the rendered page satisfies the docs front-matter gate', () => {
   }
   assert.ok(!/^```/m.test(page), 'no fenced code blocks, so no code-block metadata is owed');
 });
+
+test('the page tells consumers how NuGet Audit warns them, including transitive packages', () => {
+  const page = renderPage({ fetchedAt: '2026-10-10T00:00:00Z', packages: ['a'], advisories: [] });
+  assert.match(page, /## How you are warned/);
+  assert.match(page, /NuGet Audit/);
+  assert.match(page, /<NuGetAuditMode>all<\/NuGetAuditMode>/);
+  assert.match(page, /NU1903;NU1904/);
+});
