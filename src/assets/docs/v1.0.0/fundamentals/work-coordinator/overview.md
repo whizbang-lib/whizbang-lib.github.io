@@ -1,6 +1,23 @@
 ---
 title: Overview
+pageType: overview
 order: 1
+version: 1.0.0
+description: >-
+  How the work coordinator pumps messages through the outbox, inbox and perspective pipeline, and
+  which worker owns each step.
+tags: 'work-coordinator, workers, outbox, inbox, perspectives, claim, pipeline'
+codeReferences:
+  - src/Whizbang.Core/Messaging/IWorkCoordinator.cs
+  - src/Whizbang.Core/Workers/ClaimWorker.cs
+  - src/Whizbang.Core/Workers/InboxHandlerWorker.cs
+  - src/Whizbang.Core/Workers/OutboxPublishWorker.cs
+  - src/Whizbang.Core/Workers/OutboxCompletionFlushWorker.cs
+  - src/Whizbang.Core/Workers/HeartbeatWorker.cs
+testReferences:
+  - tests/Whizbang.Core.Tests/Workers/InboxHandlerWorkerTests.cs
+  - tests/Whizbang.Core.Tests/Workers/OutboxPublishWorkerCoverageTests.cs
+  - tests/Whizbang.Core.Tests/Workers/OutboxCompletionFlushWorkerTests.cs
 ---
 
 # Work coordinator overview
@@ -90,4 +107,4 @@ Target metrics (per the [original baseline](https://...)):
 - [Claim loop](claim-loop.md)
 - [Handler commit](handler-commit.md)
 - [Notifications and pgbouncer](notifications-and-pgbouncer.md)
-- [Contributor: implementing IWorkCoordinator](../../contributing/data-engines/implementing-iworkcoordinator.md)
+- [Contributor: implementing IWorkCoordinator](../../../contributors/data-engines/implementing-iworkcoordinator.md)

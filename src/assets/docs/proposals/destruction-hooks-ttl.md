@@ -18,7 +18,7 @@ E2 is a proposed capability (unreleased, not yet started). It builds directly on
 
 ## Why hooks — self-destruct is a decision point, not just a delete
 
-E1's reaper is a blunt `DELETE`: once consumed + aged, the body is gone. That's right for presence pings, but the moment a stream carries anything worth summarizing before it evaporates — a chat thread you want to keep the last state of, a draft you want to snapshot, a subject whose key you must shred — deletion needs a **hook the reaper awaits**. The industry precedent is uniform: EventStoreDB scavenge is destructive-and-final, Kafka compaction writes a tombstone, Marten's `CompactStreamAsync` writes a carry-forward event *before* dropping detail. Whizbang already has the machinery to do this well — [lifecycle stages + receptors + the coordinator](../fundamentals/lifecycle/lifecycle-stages) — so destruction becomes just another lifecycle stage, not a bespoke callback.
+E1's reaper is a blunt `DELETE`: once consumed + aged, the body is gone. That's right for presence pings, but the moment a stream carries anything worth summarizing before it evaporates — a chat thread you want to keep the last state of, a draft you want to snapshot, a subject whose key you must shred — deletion needs a **hook the reaper awaits**. The industry precedent is uniform: EventStoreDB scavenge is destructive-and-final, Kafka compaction writes a tombstone, Marten's `CompactStreamAsync` writes a carry-forward event *before* dropping detail. Whizbang already has the machinery to do this well — [lifecycle stages + receptors + the coordinator](/v1.0.0/fundamentals/lifecycle/lifecycle-stages) — so destruction becomes just another lifecycle stage, not a bespoke callback.
 
 ## The lifecycle stages: `PreDestruction` / `PostDestruction`
 
@@ -49,7 +49,7 @@ Destruction fires at three **granularities**, resolved by the reaper against wha
 | **Stream** | a whole ephemeral stream is being purged / compacted | the stream id + its perspectives' current models |
 | **Perspective row** | a `TtlRow` perspective row is expiring | the `(stream, perspective)` + the row |
 
-Receptors bind to these stages exactly like any other lifecycle receptor — the [`ILifecycleCoordinator`](../fundamentals/lifecycle/lifecycle-coordinator) fires them; no new subscription mechanism.
+Receptors bind to these stages exactly like any other lifecycle receptor — the [`ILifecycleCoordinator`](/v1.0.0/fundamentals/lifecycle/lifecycle-coordinator) fires them; no new subscription mechanism.
 
 ## The hook contract: `DestructionContext` → `DestructionResult`
 

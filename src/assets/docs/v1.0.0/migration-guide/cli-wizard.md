@@ -1,6 +1,19 @@
 ---
 title: CLI Migration Wizard
+pageType: guide
 description: Interactive wizard for migrating from Marten/Wolverine to Whizbang
+order: 11
+version: 1.0.0
+tags: 'migration, cli, wizard, whizbang-migrate, tooling, marten, wolverine'
+codeReferences:
+  - tools/Whizbang.Migrate/Wizard/WizardRunner.cs
+  - tools/Whizbang.Migrate/Wizard/MigrationStateDetector.cs
+  - tools/Whizbang.Migrate/Wizard/ConsoleRenderer.cs
+  - tools/Whizbang.Migrate/Program.cs
+testReferences:
+  - tests/Whizbang.Migrate.Tests/Wizard/WizardRunnerTests.cs
+  - tests/Whizbang.Migrate.Tests/Wizard/MigrationStateDetectorTests.cs
+  - tests/Whizbang.Migrate.Tests/ProgramCliTests.cs
 ---
 
 # CLI Migration Wizard
@@ -9,7 +22,13 @@ The `whizbang migrate` command provides an interactive wizard for migrating from
 
 ## Quick Start
 
-```bash
+```bash{
+title: "Launch the migration wizard"
+description: "Run with no arguments and the wizard detects how far a migration has already got before offering the next step."
+category: "Core Concepts"
+difficulty: "BEGINNER"
+tags: ["migration", "cli", "wizard", "getting-started"]
+}
 # Launch the wizard (auto-detects migration state)
 whizbang migrate
 
@@ -355,7 +374,13 @@ This location is **outside your repository**, making it safe from:
 
 ### Custom Location
 
-```bash
+```bash{
+title: "Keep the decision file outside the repository"
+description: "Points --decision-file at a path of your choosing when the answers should not be committed with the project."
+category: "Configuration"
+difficulty: "INTERMEDIATE"
+tags: ["migration", "cli", "decision-file", "options"]
+}
 # Store in custom location
 whizbang migrate apply ./src --interactive --decision-file ~/myproject-decisions.json
 
@@ -365,7 +390,13 @@ whizbang migrate apply ./src --decision-file ~/myproject-decisions.json
 
 ### Decision File Format
 
-```json
+```json{
+title: "What a decision file records"
+description: "The answers the wizard captured, keyed by project path, so a later run or another developer applies the same choices."
+category: "Configuration"
+difficulty: "INTERMEDIATE"
+tags: ["migration", "decision-file", "json", "reproducibility"]
+}
 {
   "version": "1.0",
   "project_path": "/src/MyProject",
@@ -457,14 +488,26 @@ The `routing` section captures:
 
 ### Generate for Manual Editing
 
-```bash
+```bash{
+title: "Generate a decision file to edit by hand"
+description: "Writes the defaults without applying anything, so the choices can be reviewed in a diff first."
+category: "Core Concepts"
+difficulty: "INTERMEDIATE"
+tags: ["migration", "cli", "decision-file", "review"]
+}
 # Generate decision file with defaults for manual editing
 whizbang migrate apply ./src --generate-decisions myproject-decisions.json
 ```
 
 Edit the JSON file in your text editor, then replay:
 
-```bash
+```bash{
+title: "Apply an edited decision file"
+description: "Runs the migration non-interactively against answers that were prepared in advance."
+category: "Core Concepts"
+difficulty: "INTERMEDIATE"
+tags: ["migration", "cli", "decision-file", "non-interactive"]
+}
 whizbang migrate apply ./src --decision-file myproject-decisions.json
 ```
 
@@ -472,7 +515,13 @@ whizbang migrate apply ./src --decision-file myproject-decisions.json
 
 If something goes wrong, you can revert all migration changes:
 
-```bash
+```bash{
+title: "Revert an applied migration"
+description: "Undoes what the last apply changed, using the journal the wizard wrote."
+category: "Core Concepts"
+difficulty: "INTERMEDIATE"
+tags: ["migration", "cli", "revert", "journal"]
+}
 whizbang migrate revert
 ```
 
@@ -507,7 +556,13 @@ This will:
 
 View detailed migration status:
 
-```bash
+```bash{
+title: "Check migration state"
+description: "Reports which steps have been applied, which is what the wizard itself reads on launch."
+category: "Core Concepts"
+difficulty: "BEGINNER"
+tags: ["migration", "cli", "status", "state-detection"]
+}
 whizbang migrate status
 ```
 
@@ -545,7 +600,13 @@ Git commit (before): abc123def456
 
 ### Team Migration
 
-```bash
+```bash{
+title: "Share one set of answers across a team"
+description: "One developer answers interactively and commits the decision file; everyone else applies it unchanged."
+category: "Core Concepts"
+difficulty: "INTERMEDIATE"
+tags: ["migration", "cli", "team", "decision-file"]
+}
 # Lead developer: Create decisions interactively
 whizbang migrate apply ./src --interactive --decision-file team-decisions.json
 
@@ -557,7 +618,13 @@ whizbang migrate apply ./src --decision-file team-decisions.json
 
 ### Incremental Migration
 
-```bash
+```bash{
+title: "Migrate in stages across several days"
+description: "The wizard resumes where the previous run stopped, so a large migration can be taken a layer at a time."
+category: "Core Concepts"
+difficulty: "INTERMEDIATE"
+tags: ["migration", "cli", "incremental", "resume"]
+}
 # Day 1: Migrate handlers
 whizbang migrate apply ./src --interactive
 # Answer prompts for handlers only, exit
@@ -569,7 +636,13 @@ whizbang migrate
 
 ### Safe Exploration
 
-```bash
+```bash{
+title: "Analyze without changing anything"
+description: "Reports what a migration would touch, before any file is written."
+category: "Core Concepts"
+difficulty: "BEGINNER"
+tags: ["migration", "cli", "analyze", "dry-run"]
+}
 # Analyze without changes
 whizbang migrate analyze ./src
 

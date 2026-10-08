@@ -89,6 +89,6 @@ If your engine can't deliver every required feature, it can't host Whizbang. Doc
 
 ## Related
 
-- [Fundamentals: claim loop](../../fundamentals/work-coordinator/claim-loop.md)
-- [Fundamentals: handler commit](../../fundamentals/work-coordinator/handler-commit.md)
-- [Fundamentals: notifications and pgbouncer](../../fundamentals/work-coordinator/notifications-and-pgbouncer.md)
+- [Fundamentals: claim loop](../../v1.0.0/fundamentals/work-coordinator/claim-loop.md)
+- [Fundamentals: handler commit](../../v1.0.0/fundamentals/work-coordinator/handler-commit.md)
+- [Fundamentals: notifications and pgbouncer](../../v1.0.0/fundamentals/work-coordinator/notifications-and-pgbouncer.md)

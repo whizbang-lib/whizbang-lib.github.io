@@ -1,6 +1,22 @@
 ---
 title: Configuration reference
-order: 7
+pageType: reference
+order: 8
+version: 1.0.0
+description: >-
+  Every option the work coordinator and its workers read, with the section each one binds from and
+  what changing it costs.
+tags: 'work-coordinator, configuration, options, workers, tuning, reference'
+codeReferences:
+  - src/Whizbang.Core/Workers/ClaimWorker.cs
+  - src/Whizbang.Core/Workers/OutboxDrainWorker.cs
+  - src/Whizbang.Core/Workers/HeartbeatWorker.cs
+  - src/Whizbang.Core/Notifications/WhizbangNotificationOptions.cs
+  - src/Whizbang.Core/Workers/PerspectiveWorker.cs
+testReferences:
+  - tests/Whizbang.Core.Tests/Workers/ClaimWorkerGateCadenceTests.cs
+  - tests/Whizbang.Core.Tests/Workers/ClaimWorkerAcquisitionBoundsTests.cs
+  - tests/Whizbang.Core.Tests/Workers/OutboxDrainWorkerStreamRunTests.cs
 ---
 
 # Configuration reference

@@ -90,7 +90,7 @@ Environment variables are added **after** `appsettings.json` and `appsettings.{E
 
 ### Whizbang:Tracing → TracingOptions
 
-Bound by `AddWhizbang()` through an AOT-safe post-configure binder. Programmatic configuration (`options.Tracing` inside `AddWhizbang`) runs first; configuration keys override it. **Details:** [Tracing](../observability/tracing#tracingoptions-properties-reference).
+Bound by `AddWhizbang()` through an AOT-safe post-configure binder. Programmatic configuration (`options.Tracing` inside `AddWhizbang`) runs first; configuration keys override it. **Details:** [Tracing](/v1.0.0/operations/observability/tracing#tracingoptions-properties-reference).
 
 | Key | Type | Default | Environment variable | Purpose |
 |-----|------|---------|----------------------|---------|
@@ -105,7 +105,7 @@ Code-only (not read from configuration): `EnableWorkerBatchSpans` (default `fals
 
 ### Whizbang:Database → WhizbangNotificationOptions
 
-Bound during Postgres driver registration with a hand-rolled binder. Controls the LISTEN/NOTIFY work-signal listener. **Details:** no dedicated page yet; the wake semantics are covered in [Perspective Worker](../workers/perspective-worker#wake-semantics-notify--safety-net-polling).
+Bound during Postgres driver registration with a hand-rolled binder. Controls the LISTEN/NOTIFY work-signal listener. **Details:** no dedicated page yet; the wake semantics are covered in [Perspective Worker](/v1.0.0/operations/workers/perspective-worker#wake-semantics-notify--safety-net-polling).
 
 | Key | Type | Default | Environment variable | Purpose |
 |-----|------|---------|----------------------|---------|
@@ -180,7 +180,7 @@ unverified: "wiring illustration - covered by the offload provider integration t
 builder.Services.AddWhizbangAzureBlobOffloadsFromConfiguration(builder.Configuration);
 ```
 
-Every child of `Whizbang:Offloads:AzureBlob` registers one named provider. The provider whose name matches `Whizbang:BodyOffload:ProviderName` becomes the active offload target. **Details:** [Message Body Store](../../fundamentals/offloads/message-body-store#end-to-end-di), [Azure Blob provider](../../fundamentals/offloads/providers/azure-blob).
+Every child of `Whizbang:Offloads:AzureBlob` registers one named provider. The provider whose name matches `Whizbang:BodyOffload:ProviderName` becomes the active offload target. **Details:** [Message Body Store](/v1.0.0/fundamentals/offloads/message-body-store#end-to-end-di), [Azure Blob provider](/v1.0.0/fundamentals/offloads/providers/azure-blob).
 
 ### Whizbang:Offloads:AzureBlob:&lt;name&gt; → AzureBlobOffloadOptions
 
@@ -204,7 +204,7 @@ The helper binds **four** keys from configuration; the rest of `MessageBodyOfflo
 
 ### Whizbang:BodyOffload:Cipher → the built-in AES-256-GCM cipher
 
-Read by the same helper (through `AddWhizbangBodyCipherFromConfiguration`) whenever `Whizbang:BodyOffload:CipherName` is set. A name without a valid key, or a half-configured rotation window, fails at startup naming the setting. **Details, key generation, rotation and the operations checklist:** [Message Body Store](../../fundamentals/offloads/message-body-store#cipher-from-settings). {verified: BodyCipherFromConfigurationTests.WithANameAndAKey_RegistersTheAesGcmCipherByName_AndNamesItOnTheOptionsAsync, BodyCipherFromConfigurationTests.WithANameButNoKey_ThrowsAtStartup_NamingTheSettingAsync, AzureBlobOffloadFromConfigurationTests.FromConfiguration_WithACipherInSettings_BindsTheCipherName_AndRegistersTheCipherAsync}
+Read by the same helper (through `AddWhizbangBodyCipherFromConfiguration`) whenever `Whizbang:BodyOffload:CipherName` is set. A name without a valid key, or a half-configured rotation window, fails at startup naming the setting. **Details, key generation, rotation and the operations checklist:** [Message Body Store](/v1.0.0/fundamentals/offloads/message-body-store#cipher-from-settings). {verified: BodyCipherFromConfigurationTests.WithANameAndAKey_RegistersTheAesGcmCipherByName_AndNamesItOnTheOptionsAsync, BodyCipherFromConfigurationTests.WithANameButNoKey_ThrowsAtStartup_NamingTheSettingAsync, AzureBlobOffloadFromConfigurationTests.FromConfiguration_WithACipherInSettings_BindsTheCipherName_AndRegistersTheCipherAsync}
 
 | Key | Type | Default | Environment variable | Purpose |
 |-----|------|---------|----------------------|---------|
@@ -253,7 +253,7 @@ builder.Services.Configure<StreamIntegrityOptions>(options => {
 
 ### WhizbangCoreOptions
 
-Entry point to subsystem configuration. **Configure:** `AddWhizbang(options => …)`. **Details:** [WhizbangCoreOptions](whizbang-options#properties).
+Entry point to subsystem configuration. **Configure:** `AddWhizbang(options => …)`. **Details:** [WhizbangCoreOptions](/v1.0.0/operations/configuration/whizbang-options#properties).
 
 | Property | Type | Default | Environment variable | Purpose |
 |----------|------|---------|----------------------|---------|
@@ -263,9 +263,9 @@ Entry point to subsystem configuration. **Configure:** `AddWhizbang(options => �
 | `DefaultQueryScope` | `QueryScope` | `Tenant` | `Whizbang__Core__DefaultQueryScope` | Default scope filtering for `ILensQuery<TModel>.DefaultScope` |
 | `ShowBanner` | `bool` | `true` | `Whizbang__Core__ShowBanner` | Print the ASCII banner on startup |
 | `ImmediateDetachedChainWarningThreshold` | `int` | `10` | `Whizbang__Core__ImmediateDetachedChainWarningThreshold` | Warn when ImmediateDetached chain depth reaches a multiple of this |
-| `EmptyStreamIdPolicy` | `EmptyStreamIdPolicy` | `Reject` | `Whizbang__Core__EmptyStreamIdPolicy` | Handling of `Guid.Empty` stream ids (see [Empty Stream ID Policy](empty-stream-id-policy)) |
+| `EmptyStreamIdPolicy` | `EmptyStreamIdPolicy` | `Reject` | `Whizbang__Core__EmptyStreamIdPolicy` | Handling of `Guid.Empty` stream ids (see [Empty Stream ID Policy](/v1.0.0/operations/configuration/empty-stream-id-policy)) |
 
-Sub-option bags on this class: `Tags` ([TagOptions](#tagoptions)), `Tracing` ([TracingOptions](#whizbangtracing--tracingoptions)), `Services` ([ServiceRegistrationOptions](service-registration-options)).
+Sub-option bags on this class: `Tags` ([TagOptions](#tagoptions)), `Tracing` ([TracingOptions](#whizbangtracing--tracingoptions)), `Services` ([ServiceRegistrationOptions](/v1.0.0/operations/configuration/service-registration-options)).
 
 ### WhizbangOptions
 
@@ -292,7 +292,7 @@ Guardrails for the "exactly once per receptor per message" contract. **Configure
 
 ### ServiceRegistrationOptions
 
-**Configure:** `AddWhizbang(options => options.Services…)`. **Details:** [ServiceRegistrationOptions](service-registration-options#properties).
+**Configure:** `AddWhizbang(options => options.Services…)`. **Details:** [ServiceRegistrationOptions](/v1.0.0/operations/configuration/service-registration-options#properties).
 
 | Property | Type | Default | Environment variable | Purpose |
 |----------|------|---------|----------------------|---------|
@@ -300,7 +300,7 @@ Guardrails for the "exactly once per receptor per message" contract. **Configure
 
 ### SchemaInitializationOptions
 
-How the schema initializer runs at startup. **Configure:** bound automatically from `Whizbang:SchemaInitialization` — no registration call needed. `services.Configure<SchemaInitializationOptions>(…)` still applies and runs before configuration, so a configuration key overrides it. **Details:** [Database Readiness](../workers/database-readiness#who-marks-the-gate-ready), [Turnkey Initialization](../../data/turnkey-initialization#how-it-works).
+How the schema initializer runs at startup. **Configure:** bound automatically from `Whizbang:SchemaInitialization` — no registration call needed. `services.Configure<SchemaInitializationOptions>(…)` still applies and runs before configuration, so a configuration key overrides it. **Details:** [Database Readiness](/v1.0.0/operations/workers/database-readiness#who-marks-the-gate-ready), [Turnkey Initialization](/v1.0.0/data/turnkey-initialization#how-it-works).
 
 | Property | Type | Default | Environment variable | Purpose |
 |----------|------|---------|--------------------|---------|
@@ -318,7 +318,7 @@ Startup reconciliation of ephemeral-event settings drift. **Configure:** bound a
 
 ### WhizbangLifecycleOptions
 
-Coordinated lifecycle state machine tunables. **Configure:** the run-control registration lambda. **Details:** [Managed Resource Run Control](../../resilience/managed-resource-run-control).
+Coordinated lifecycle state machine tunables. **Configure:** the run-control registration lambda. **Details:** [Managed Resource Run Control](/v1.0.0/resilience/managed-resource-run-control).
 
 | Property | Type | Default | Environment variable | Purpose |
 |----------|------|---------|----------------------|---------|
@@ -327,7 +327,7 @@ Coordinated lifecycle state machine tunables. **Configure:** the run-control reg
 
 ### StandbyWatcherOptions
 
-Cadences for the rolling-upgrade standby handshake. **Configure:** `services.Configure<StandbyWatcherOptions>(…)`. **Details:** [Rolling Upgrades](../startup/rolling-upgrades#the-standby-handshake).
+Cadences for the rolling-upgrade standby handshake. **Configure:** `services.Configure<StandbyWatcherOptions>(…)`. **Details:** [Rolling Upgrades](/v1.0.0/operations/startup/rolling-upgrades#the-standby-handshake).
 
 | Property | Type | Default | Environment variable | Purpose |
 |----------|------|---------|----------------------|---------|
@@ -337,7 +337,7 @@ Cadences for the rolling-upgrade standby handshake. **Configure:** `services.Con
 
 ### WhizbangHealthOptions
 
-Maps managed-resource states to health per component. **Configure:** the health registration lambda; per-component overrides via the `Components` dictionary. **Details:** [Managed Resource Health](../../resilience/managed-resource-health).
+Maps managed-resource states to health per component. **Configure:** the health registration lambda; per-component overrides via the `Components` dictionary. **Details:** [Managed Resource Health](/v1.0.0/resilience/managed-resource-health).
 
 | Property | Type | Default | Environment variable | Purpose |
 |----------|------|---------|----------------------|---------|
@@ -378,7 +378,7 @@ Hosted signal bus wire-route self-test and doorbell liveness. **Configure:** bou
 
 ### WorkCoordinatorOptions
 
-Flush strategy and lease behavior for work coordinator strategies. **Configure:** bound automatically from `Whizbang:WorkCoordinator` — no registration call needed. `services.Configure<WorkCoordinatorOptions>(…)` still applies and runs before configuration, so a configuration key overrides it. **Details:** [Work Coordinator Strategies](../../data/work-coordinator-strategies#workcoordinatoroptions-properties).
+Flush strategy and lease behavior for work coordinator strategies. **Configure:** bound automatically from `Whizbang:WorkCoordinator` — no registration call needed. `services.Configure<WorkCoordinatorOptions>(…)` still applies and runs before configuration, so a configuration key overrides it. **Details:** [Work Coordinator Strategies](/v1.0.0/data/work-coordinator-strategies#workcoordinatoroptions-properties).
 
 | Property | Type | Default | Environment variable | Purpose |
 |----------|------|---------|--------------------|---------|
@@ -396,13 +396,13 @@ Flush strategy and lease behavior for work coordinator strategies. **Configure:*
 
 {verified: WorkCoordinatorGateRegistrationTests.AddWhizbangWorkers_BindsTheGateFromConfigurationAsync, WorkCoordinatorGateRegistrationTests.AGateRegisteredBeforeThePipeline_IsKeptAsync}
 
-The process-wide `WorkCoordinatorGate`: a cap on concurrent `IWorkCoordinator` calls and the deadline a caller waits for a slot. **Configure:** bound automatically by `AddWhizbang()` (through `AddWhizbangWorkers()`) from `Whizbang:WorkCoordinatorGate` (`Whizbang__WorkCoordinatorGate__MaxConcurrent`, `Whizbang__WorkCoordinatorGate__AcquireTimeoutMilliseconds`). **Details:** [Pinned Connection Pool](../../fundamentals/workers/pinned-connection-pool#coordinator-gate-exemption) for the callers that bypass the gate; [Perspective Worker](../workers/perspective-worker#drain-width-and-the-coordinator-gate) for how the perspective drain budgets against it.
+The process-wide `WorkCoordinatorGate`: a cap on concurrent `IWorkCoordinator` calls and the deadline a caller waits for a slot. **Configure:** bound automatically by `AddWhizbang()` (through `AddWhizbangWorkers()`) from `Whizbang:WorkCoordinatorGate` (`Whizbang__WorkCoordinatorGate__MaxConcurrent`, `Whizbang__WorkCoordinatorGate__AcquireTimeoutMilliseconds`). **Details:** [Pinned Connection Pool](/v1.0.0/fundamentals/workers/pinned-connection-pool#coordinator-gate-exemption) for the callers that bypass the gate; [Perspective Worker](/v1.0.0/operations/workers/perspective-worker#drain-width-and-the-coordinator-gate) for how the perspective drain budgets against it.
 
 | Property | Type | Default | Environment variable | Purpose |
 |----------|------|---------|--------------------|---------|
 | `MaxConcurrent` | `int?` | unset (50 when nothing sets it) | `Whizbang__WorkCoordinatorGate__MaxConcurrent` | Cap on concurrent coordinator calls per process. Each slot holds at most one pooled connection, so the effective ceiling is `min(MaxConcurrent, Maximum Pool Size)`; 0 or less disables the gate |
 | `AcquireTimeoutMilliseconds` | `int` | `30000` | `Whizbang__WorkCoordinatorGate__AcquireTimeoutMilliseconds` | How long a caller waits for a slot. On expiry the gate logs a Warning that names the current holders and lets the call through without a slot rather than hanging it; 0 or less waits without a deadline |
-| `InteractiveReserve` | `int?` | one tenth of `MaxConcurrent`, rounded down (nothing under ten permits), never the whole gate | `Whizbang__WorkCoordinatorGate__InteractiveReserve` | Permits held back for callers running inside an interactive handling (the ambient parent is in the interactive bucket); everyone else can never take the last reserved permits. See [bulkheads](../../fundamentals/messaging/message-priority.md#bulkheads). 0 disables it. {verified: WorkCoordinatorGateInteractiveReserveTests.Reserve_DefaultsToOneTenthOfThePermits_AndNeverTheWholeGateAsync, WorkCoordinatorGateRegistrationTests.AddWhizbangWorkers_BindsTheInteractiveReserveFromConfigurationAsync, WorkCoordinatorGateRegistrationTests.AddWhizbangWorkers_WithInteractiveReserveZero_DisablesTheReserveAsync} |
+| `InteractiveReserve` | `int?` | one tenth of `MaxConcurrent`, rounded down (nothing under ten permits), never the whole gate | `Whizbang__WorkCoordinatorGate__InteractiveReserve` | Permits held back for callers running inside an interactive handling (the ambient parent is in the interactive bucket); everyone else can never take the last reserved permits. See [bulkheads](/v1.0.0/fundamentals/messaging/message-priority#bulkheads). 0 disables it. {verified: WorkCoordinatorGateInteractiveReserveTests.Reserve_DefaultsToOneTenthOfThePermits_AndNeverTheWholeGateAsync, WorkCoordinatorGateRegistrationTests.AddWhizbangWorkers_BindsTheInteractiveReserveFromConfigurationAsync, WorkCoordinatorGateRegistrationTests.AddWhizbangWorkers_WithInteractiveReserveZero_DisablesTheReserveAsync} |
 
 Precedence for `MaxConcurrent`, lowest to highest:
 
@@ -425,7 +425,7 @@ The claim loop that distributes outbox/inbox/perspective work. **Configure:** bo
 | `PollingMaxIntervalMilliseconds` | `int` | `10000` | `Whizbang__Workers__Claim__PollingMaxIntervalMilliseconds` | Adaptive backoff cap (constrained by `AbandonStaleInstanceThresholdSeconds`) |
 | `NotifyHealthyPollingIntervalMilliseconds` | `int?` | `5000` | `Whizbang__Workers__Claim__NotifyHealthyPollingIntervalMilliseconds` | Relaxed base wait while the NOTIFY gate is healthy |
 | `MaxStreamsPerBatch` | `int` | `1000` | `Whizbang__Workers__Claim__MaxStreamsPerBatch` | Cap on rows returned per `claim_work` call |
-| `AdaptiveOutstandingBudget` | `bool` | `true` | `Whizbang__Workers__Claim__AdaptiveOutstandingBudget` | Bounds total claimed-but-unprocessed inbox rows. On by default now that it is per work category (reads inbox rows only) and row-bound (its headroom is passed to the store as `MaxAcquireRows`); set `false` to fall back to the churn-based claim window alone (see [Claim backpressure](../workers/claim-backpressure)) |
+| `AdaptiveOutstandingBudget` | `bool` | `true` | `Whizbang__Workers__Claim__AdaptiveOutstandingBudget` | Bounds total claimed-but-unprocessed inbox rows. On by default now that it is per work category (reads inbox rows only) and row-bound (its headroom is passed to the store as `MaxAcquireRows`); set `false` to fall back to the churn-based claim window alone (see [Claim backpressure](/v1.0.0/operations/workers/claim-backpressure)) |
 | `MaxPerspectiveDrainBacklog` | `int` | `2000` | `Whizbang__Workers__Claim__MaxPerspectiveDrainBacklog` | Perspective drain channel backlog (stream ids queued and not yet drained) above which the claim loop stops leasing new perspective work; re-emission of held work continues. `0` disables the cap |
 | `FreshWorkShare` | `double` | `0.5` | `Whizbang__Workers__Claim__FreshWorkShare` | Share of each inbox batch reserved for fresh-head streams (head row never attempted). Weighted-fair and work-conserving: an empty class hands its share to the other. Raise toward `1.0` where interactive latency outranks backlog drain — strict oldest-first let a 28k-row retry backlog starve every new arrival |
 | `PerspectiveOnly` | `bool` | `false` | `Whizbang__Workers__Claim__PerspectiveOnly` | Distribute only perspective work (set when the legacy publisher worker is registered) |
@@ -434,7 +434,7 @@ The claim loop that distributes outbox/inbox/perspective work. **Configure:** bo
 
 ### HeartbeatWorkerOptions
 
-**Configure:** bound automatically from `Whizbang:Workers:Heartbeat` — no registration call needed. `services.Configure<HeartbeatWorkerOptions>(…)` still applies and runs before configuration, so a configuration key overrides it. **Details:** [Instance Liveness](../../fundamentals/workers/instance-liveness).
+**Configure:** bound automatically from `Whizbang:Workers:Heartbeat` — no registration call needed. `services.Configure<HeartbeatWorkerOptions>(…)` still applies and runs before configuration, so a configuration key overrides it. **Details:** [Instance Liveness](/v1.0.0/fundamentals/workers/instance-liveness).
 
 | Property | Type | Default | Environment variable | Purpose |
 |----------|------|---------|--------------------|---------|
@@ -475,7 +475,7 @@ Zero-idle-polling backup tick. **Configure:** bound automatically from `Whizbang
 
 ### WorkerRetryOptions
 
-Completion retry with exponential backoff. **Configure:** via the owning worker's options (e.g. `PerspectiveWorkerOptions.RetryOptions`). **Details:** [Policy Engine](../infrastructure/policy-engine#worker-retry-with-exponential-backoff).
+Completion retry with exponential backoff. **Configure:** via the owning worker's options (e.g. `PerspectiveWorkerOptions.RetryOptions`). **Details:** [Policy Engine](/v1.0.0/operations/infrastructure/policy-engine#worker-retry-with-exponential-backoff).
 
 | Property | Type | Default | Environment variable | Purpose |
 |----------|------|---------|----------------------|---------|
@@ -488,7 +488,7 @@ Completion retry with exponential backoff. **Configure:** via the owning worker'
 
 ### OutboxDrainWorkerOptions
 
-The active outbox publish path. **Configure:** bound automatically from `Whizbang:Workers:OutboxDrain` — no registration call needed. `services.Configure<OutboxDrainWorkerOptions>(…)` still applies and runs before configuration, so a configuration key overrides it. **Details:** [Internal DLQ defaults](../dead-letter-queue/internal-dlq#defaults).
+The active outbox publish path. **Configure:** bound automatically from `Whizbang:Workers:OutboxDrain` — no registration call needed. `services.Configure<OutboxDrainWorkerOptions>(…)` still applies and runs before configuration, so a configuration key overrides it. **Details:** [Internal DLQ defaults](/v1.0.0/operations/dead-letter-queue/internal-dlq#defaults).
 
 | Property | Type | Default | Environment variable | Purpose |
 |----------|------|---------|--------------------|---------|
@@ -503,7 +503,7 @@ The active outbox publish path. **Configure:** bound automatically from `Whizban
 
 ### OutboxPublishWorkerOptions
 
-Legacy publish path (rollback escape hatch). **Configure:** bound automatically from `Whizbang:Workers:OutboxPublish` — no registration call needed. `services.Configure<OutboxPublishWorkerOptions>(…)` still applies and runs before configuration, so a configuration key overrides it. **Details:** [Internal DLQ defaults](../dead-letter-queue/internal-dlq#defaults).
+Legacy publish path (rollback escape hatch). **Configure:** bound automatically from `Whizbang:Workers:OutboxPublish` — no registration call needed. `services.Configure<OutboxPublishWorkerOptions>(…)` still applies and runs before configuration, so a configuration key overrides it. **Details:** [Internal DLQ defaults](/v1.0.0/operations/dead-letter-queue/internal-dlq#defaults).
 
 | Property | Type | Default | Environment variable | Purpose |
 |----------|------|---------|--------------------|---------|
@@ -525,7 +525,7 @@ The only source of `InboxWork`. **Configure:** bound automatically from `Whizban
 
 ### InboxDispatchWorkerOptions
 
-**Configure:** bound automatically from `Whizbang:Workers:InboxDispatch` — no registration call needed. `services.Configure<InboxDispatchWorkerOptions>(…)` still applies and runs before configuration, so a configuration key overrides it. **Details:** [Internal DLQ defaults](../dead-letter-queue/internal-dlq#defaults).
+**Configure:** bound automatically from `Whizbang:Workers:InboxDispatch` — no registration call needed. `services.Configure<InboxDispatchWorkerOptions>(…)` still applies and runs before configuration, so a configuration key overrides it. **Details:** [Internal DLQ defaults](/v1.0.0/operations/dead-letter-queue/internal-dlq#defaults).
 
 | Property | Type | Default | Environment variable | Purpose |
 |----------|------|---------|--------------------|---------|
@@ -591,7 +591,7 @@ Transport consumer concurrency and inbox batching. **Configure:** `services.Conf
 
 ### TransportBatchOptions
 
-Transport-level batch collection before `process_work_batch`. **Configure:** the transport registration lambda. **Details:** [Transports](../../messaging/transports/transports#configuration).
+Transport-level batch collection before `process_work_batch`. **Configure:** the transport registration lambda. **Details:** [Transports](/v1.0.0/messaging/transports/transports#configuration).
 
 | Property | Type | Default | Environment variable | Purpose |
 |----------|------|---------|----------------------|---------|
@@ -663,7 +663,7 @@ Per-stream debounce strategies for the inbox, outbox, and perspective-apply boun
 
 ### RedeliveryPumpOptions
 
-Re-delivery (repair) pump bounds. **Configure:** `services.Configure<RedeliveryPumpOptions>(…)`. **Details:** [Stream Integrity](../../resilience/stream-integrity).
+Re-delivery (repair) pump bounds. **Configure:** `services.Configure<RedeliveryPumpOptions>(…)`. **Details:** [Stream Integrity](/v1.0.0/resilience/stream-integrity).
 
 | Property | Type | Default | Environment variable | Purpose |
 |----------|------|---------|----------------------|---------|
@@ -678,7 +678,7 @@ Re-delivery (repair) pump bounds. **Configure:** `services.Configure<RedeliveryP
 
 ### PerspectiveWorkerOptions
 
-**Configure:** bound automatically from `Whizbang:Workers:Perspective` — no registration call needed. `services.Configure<PerspectiveWorkerOptions>(…)` still applies and runs before configuration, so a configuration key overrides it. **Details:** [Perspective Worker](../workers/perspective-worker#configuration).
+**Configure:** bound automatically from `Whizbang:Workers:Perspective` — no registration call needed. `services.Configure<PerspectiveWorkerOptions>(…)` still applies and runs before configuration, so a configuration key overrides it. **Details:** [Perspective Worker](/v1.0.0/operations/workers/perspective-worker#configuration).
 
 | Property | Type | Default | Environment variable | Purpose |
 |----------|------|---------|--------------------|---------|
@@ -700,7 +700,7 @@ Re-delivery (repair) pump bounds. **Configure:** `services.Configure<RedeliveryP
 | `DrainBatcher` | `SlidingWindowBatcherOptions` | SlidingWindow=300ms, MaxWait=3s, MaxSize=1000 | `Whizbang__Workers__Perspective__DrainBatcher` | The perspective apply-batching window |
 | `RetryOptions` | `WorkerRetryOptions` | `new()` | `Whizbang__Workers__Perspective__RetryOptions` | Completion-acknowledgement retry |
 
-`PerspectiveWorker` clamps its per-consumer drain width to `max(1, min(requested, MaxConcurrent / 2 / MaxConcurrentDrainConsumers))`, so the drain can never hold every gate slot while the completion flusher and lease renewal wait for one. With the defaults (4 consumers against a 50-slot gate) each consumer runs at most 6 (stream, perspective) groups at a time, so raising `MaxConcurrentPerspectives` alone changes nothing until the gate cap (`MaxConcurrent`, or `MaxInFlightCommands` with a Postgres driver) is raised with it. A disabled gate (`MaxConcurrent` of 0 or less) leaves the width as requested. The clamp is logged once at Warning (EventId 61). See [Perspective Worker](../workers/perspective-worker#drain-width-and-the-coordinator-gate). {verified: PerspectiveWorkerParallelismTests.ClampWidthToGate_LeavesHalfTheGateForEverythingElseAsync, PerspectiveWorkerParallelismTests.ClampWidthToGate_NeverBelowOne_AndIgnoresADisabledGateAsync}
+`PerspectiveWorker` clamps its per-consumer drain width to `max(1, min(requested, MaxConcurrent / 2 / MaxConcurrentDrainConsumers))`, so the drain can never hold every gate slot while the completion flusher and lease renewal wait for one. With the defaults (4 consumers against a 50-slot gate) each consumer runs at most 6 (stream, perspective) groups at a time, so raising `MaxConcurrentPerspectives` alone changes nothing until the gate cap (`MaxConcurrent`, or `MaxInFlightCommands` with a Postgres driver) is raised with it. A disabled gate (`MaxConcurrent` of 0 or less) leaves the width as requested. The clamp is logged once at Warning (EventId 61). See [Perspective Worker](/v1.0.0/operations/workers/perspective-worker#drain-width-and-the-coordinator-gate). {verified: PerspectiveWorkerParallelismTests.ClampWidthToGate_LeavesHalfTheGateForEverythingElseAsync, PerspectiveWorkerParallelismTests.ClampWidthToGate_NeverBelowOne_AndIgnoresADisabledGateAsync}
 
 ### PerspectiveCompletionFlushWorkerOptions
 
@@ -713,7 +713,7 @@ Re-delivery (repair) pump bounds. **Configure:** `services.Configure<RedeliveryP
 
 ### PerspectiveSnapshotOptions
 
-**Configure:** `services.Configure<PerspectiveSnapshotOptions>(…)`. **Details:** [Snapshots](../../fundamentals/perspectives/snapshots).
+**Configure:** `services.Configure<PerspectiveSnapshotOptions>(…)`. **Details:** [Snapshots](/v1.0.0/fundamentals/perspectives/snapshots).
 
 | Property | Type | Default | Environment variable | Purpose |
 |----------|------|---------|----------------------|---------|
@@ -757,7 +757,7 @@ Intra-pod per-stream serialization gate. **Configure:** `services.Configure<Pers
 | `SweepInterval` | `TimeSpan` | `00:01:00` | `Whizbang__Workers__PerspectiveAffinity__SweepInterval` | Minimum time between sweeps |
 | `LongHoldWarning` | `TimeSpan` | `00:01:00` | `Whizbang__Workers__PerspectiveAffinity__LongHoldWarning` | Age at which a held (stream, perspective) gate is named at Warning (EventId 64) by the affinity-hold watchdog; `00:00:00` turns the watchdog off |
 
-The watchdog runs every `max(5 s, LongHoldWarning / 2)` and reports each hold once when it crosses the threshold and once per further threshold while it persists, naming the processing path and the step the holder is in. See [Perspective Worker](../workers/perspective-worker#affinity-hold-watchdog). {verified: PerspectiveWorkerAffinityHoldWatchdogTests.LongHold_IsNamedAtWarning_OncePerThresholdAsync, PerspectiveWorkerAffinityHoldWatchdogTests.WatchdogOff_ReportsNothingAsync}
+The watchdog runs every `max(5 s, LongHoldWarning / 2)` and reports each hold once when it crosses the threshold and once per further threshold while it persists, naming the processing path and the step the holder is in. See [Perspective Worker](/v1.0.0/operations/workers/perspective-worker#affinity-hold-watchdog). {verified: PerspectiveWorkerAffinityHoldWatchdogTests.LongHold_IsNamedAtWarning_OncePerThresholdAsync, PerspectiveWorkerAffinityHoldWatchdogTests.WatchdogOff_ReportsNothingAsync}
 
 ### PerspectiveRowRetentionOptions
 
@@ -771,7 +771,7 @@ Operator rung of the row-retention override ladder. **Configure:** bound automat
 
 ### MaintenanceWorkerOptions
 
-**Configure:** bound automatically from `Whizbang:Workers:Maintenance` — no registration call needed. `services.Configure<MaintenanceWorkerOptions>(…)` still applies and runs before configuration, so a configuration key overrides it. **Details:** [Stuck Row Sentinel](../observability/stuck-row-sentinel#configuration).
+**Configure:** bound automatically from `Whizbang:Workers:Maintenance` — no registration call needed. `services.Configure<MaintenanceWorkerOptions>(…)` still applies and runs before configuration, so a configuration key overrides it. **Details:** [Stuck Row Sentinel](/v1.0.0/operations/observability/stuck-row-sentinel#configuration).
 
 | Property | Type | Default | Environment variable | Purpose |
 |----------|------|---------|--------------------|---------|
@@ -797,7 +797,7 @@ Operator rung of the row-retention override ladder. **Configure:** bound automat
 
 ### StreamIntegrityOptions
 
-Self-healing continuity checking; the defaults are the recommended posture. **Configure:** bound automatically from `Whizbang:StreamIntegrity` — no registration call needed. `services.Configure<StreamIntegrityOptions>(…)` still applies and runs before configuration, so a configuration key overrides it. **Details:** [Stream Integrity](../../resilience/stream-integrity#how-the-phases-unfold-from-a-cold-start).
+Self-healing continuity checking; the defaults are the recommended posture. **Configure:** bound automatically from `Whizbang:StreamIntegrity` — no registration call needed. `services.Configure<StreamIntegrityOptions>(…)` still applies and runs before configuration, so a configuration key overrides it. **Details:** [Stream Integrity](/v1.0.0/resilience/stream-integrity#how-the-phases-unfold-from-a-cold-start).
 
 | Property | Type | Default | Environment variable | Purpose |
 |----------|------|---------|--------------------|---------|
@@ -839,7 +839,7 @@ Self-healing continuity checking; the defaults are the recommended posture. **Co
 
 ### DeadLetterRecoveryOptions
 
-**Configure:** bound by the framework from `Whizbang:DeadLetterRecovery` (`Whizbang__DeadLetterRecovery__Enabled=false` works with no service code); override in code via `services.Configure<DeadLetterRecoveryOptions>(…)`. Per-reason policies via the `PolicyByReason` dictionary. **Details:** [DLQ Recovery](../dead-letter-queue/recovery#custom-policy).
+**Configure:** bound by the framework from `Whizbang:DeadLetterRecovery` (`Whizbang__DeadLetterRecovery__Enabled=false` works with no service code); override in code via `services.Configure<DeadLetterRecoveryOptions>(…)`. Per-reason policies via the `PolicyByReason` dictionary. **Details:** [DLQ Recovery](/v1.0.0/operations/dead-letter-queue/recovery#custom-policy).
 
 | Property | Type | Default | Environment variable | Purpose |
 |----------|------|---------|--------------------|---------|
@@ -851,7 +851,7 @@ Self-healing continuity checking; the defaults are the recommended posture. **Co
 | `LoopBreakerConsecutiveCycles` | `int` | `3` | `Whizbang__DeadLetterRecovery__LoopBreakerConsecutiveCycles` | Consecutive self-inflicted cycles before recovery suspends |
 | `LoopBreakerCooldownMinutes` | `int` | `60` | `Whizbang__DeadLetterRecovery__LoopBreakerCooldownMinutes` | Minutes suspended before retrying; `0` stays open until restart |
 | `WaitForIdle` | `bool` | `true` | `Whizbang__DeadLetterRecovery__WaitForIdle` | Recovery re-drives only when the service is settled, via housekeeping arbitration at the highest rank; `false` re-drives on the scan cadence regardless of load |
-| `RetryHeldOnStartup` | `RetryHeldOnStartupMode` | `Off` | `Whizbang__DeadLetterRecovery__RetryHeldOnStartup` | Startup campaign over HELD rows: `Canary` probes each fingerprint cohort and releases on all-probes-recover; `Full` releases everything staggered without probing. See [Canary Recovery](../dead-letter-queue/canary-recovery) |
+| `RetryHeldOnStartup` | `RetryHeldOnStartupMode` | `Off` | `Whizbang__DeadLetterRecovery__RetryHeldOnStartup` | Startup campaign over HELD rows: `Canary` probes each fingerprint cohort and releases on all-probes-recover; `Full` releases everything staggered without probing. See [Canary Recovery](/v1.0.0/operations/dead-letter-queue/canary-recovery) |
 | `CanaryProbeSize` | `int` | `10` | `Whizbang__DeadLetterRecovery__CanaryProbeSize` | Probe rows per cohort in Canary mode, stratified across message types |
 | `ReleaseStaggerMinutes` | `int` | `30` | `Whizbang__DeadLetterRecovery__ReleaseStaggerMinutes` | Window a cohort release is staggered across — release is eligibility for the paced scans, never a firehose |
 | `AutoCanaryOnNewGeneration` | `bool` | `true` | `Whizbang__DeadLetterRecovery__AutoCanaryOnNewGeneration` | A new build generation auto-canaries held cohorts (deploys that fix bugs self-heal their cohorts at probe cost); an explicit `RetryHeldOnStartup` mode always wins |
@@ -866,7 +866,7 @@ Self-healing continuity checking; the defaults are the recommended posture. **Co
 
 ### HousekeepingCoordinator.Settings
 
-Arbitration tuning for the ranked housekeeping activities (dead-letter recovery, integrity, maintenance). **Configure:** bound by the framework from `Whizbang:Housekeeping` (`Whizbang__Housekeeping__MaxConsecutiveDeferrals=12` works with no service code); a host can also register its own `HousekeepingCoordinator` instance before the framework's TryAdd. **Details:** [Housekeeping Arbitration](../workers/housekeeping-arbitration).
+Arbitration tuning for the ranked housekeeping activities (dead-letter recovery, integrity, maintenance). **Configure:** bound by the framework from `Whizbang:Housekeeping` (`Whizbang__Housekeeping__MaxConsecutiveDeferrals=12` works with no service code); a host can also register its own `HousekeepingCoordinator` instance before the framework's TryAdd. **Details:** [Housekeeping Arbitration](/v1.0.0/operations/workers/housekeeping-arbitration).
 
 | Property | Type | Default | Environment variable | Purpose |
 |----------|------|---------|----------------------|---------|
@@ -875,7 +875,7 @@ Arbitration tuning for the ranked housekeeping activities (dead-letter recovery,
 
 ### TransportDeadLetterDrainWorkerOptions
 
-**Configure:** bound by the framework from `Whizbang:Workers:TransportDeadLetterDrain`; override in code via `services.Configure<TransportDeadLetterDrainWorkerOptions>(…)`. **Details:** [Transport DLQ Recovery](../dead-letter-queue/transport-recovery#defaults).
+**Configure:** bound by the framework from `Whizbang:Workers:TransportDeadLetterDrain`; override in code via `services.Configure<TransportDeadLetterDrainWorkerOptions>(…)`. **Details:** [Transport DLQ Recovery](/v1.0.0/operations/dead-letter-queue/transport-recovery#defaults).
 
 | Property | Type | Default | Environment variable | Purpose |
 |----------|------|---------|--------------------|---------|
@@ -885,7 +885,7 @@ Arbitration tuning for the ranked housekeeping activities (dead-letter recovery,
 
 ### ThrottleRetryOptions
 
-In-memory retry budget for broker-side throttling. **Configure:** `services.Configure<ThrottleRetryOptions>(…)`. **Details:** no dedicated page yet (mentioned in [Policy Engine](../infrastructure/policy-engine#other-resilience-components)).
+In-memory retry budget for broker-side throttling. **Configure:** `services.Configure<ThrottleRetryOptions>(…)`. **Details:** no dedicated page yet (mentioned in [Policy Engine](/v1.0.0/operations/infrastructure/policy-engine#other-resilience-components)).
 
 | Property | Type | Default | Environment variable | Purpose |
 |----------|------|---------|----------------------|---------|
@@ -898,7 +898,7 @@ In-memory retry budget for broker-side throttling. **Configure:** `services.Conf
 
 ### TransportOptions (base class)
 
-Shared knobs every concrete transport inherits; settings are validated against declared transport capabilities at startup (unsupported settings warn and are ignored). **Configure:** the transport registration lambda. **Details:** [Transports](../../messaging/transports/transports#configuration).
+Shared knobs every concrete transport inherits; settings are validated against declared transport capabilities at startup (unsupported settings warn and are ignored). **Configure:** the transport registration lambda. **Details:** [Transports](/v1.0.0/messaging/transports/transports#configuration).
 
 | Property | Type | Default | Environment variable | Purpose |
 |----------|------|---------|----------------------|---------|
@@ -917,7 +917,7 @@ Shared knobs every concrete transport inherits; settings are validated against d
 
 ### AzureServiceBusOptions
 
-**Configure:** bound automatically from `Whizbang:Transports:AzureServiceBus` when the transport is registered; the registration lambda still applies and runs first. **Details:** [Azure Service Bus](../../messaging/transports/azure-service-bus#configuration-options).
+**Configure:** bound automatically from `Whizbang:Transports:AzureServiceBus` when the transport is registered; the registration lambda still applies and runs first. **Details:** [Azure Service Bus](/v1.0.0/messaging/transports/azure-service-bus#configuration-options).
 
 | Property | Type | Default | Environment variable | Purpose |
 |----------|------|---------|--------------------|---------|
@@ -944,7 +944,7 @@ Shared knobs every concrete transport inherits; settings are validated against d
 
 ### RabbitMQOptions
 
-**Configure:** the RabbitMQ transport registration lambda. **Details:** [RabbitMQ](../../messaging/transports/rabbitmq#configuration-options).
+**Configure:** the RabbitMQ transport registration lambda. **Details:** [RabbitMQ](/v1.0.0/messaging/transports/rabbitmq#configuration-options).
 
 | Property | Type | Default | Environment variable | Purpose |
 |----------|------|---------|----------------------|---------|
@@ -962,7 +962,7 @@ Shared knobs every concrete transport inherits; settings are validated against d
 
 ### TransportConsumerOptions
 
-Which destinations to subscribe to. **Configure:** the transport consumer registration; destinations via the `Destinations` list. **Details:** [Transport Consumer](../../messaging/transports/transport-consumer#auto-configuration).
+Which destinations to subscribe to. **Configure:** the transport consumer registration; destinations via the `Destinations` list. **Details:** [Transport Consumer](/v1.0.0/messaging/transports/transport-consumer#auto-configuration).
 
 | Property | Type | Default | Environment variable | Purpose |
 |----------|------|---------|----------------------|---------|
@@ -978,7 +978,7 @@ Which destinations to subscribe to. **Configure:** the transport consumer regist
 
 ### ServiceBusInfrastructureOptions
 
-Service Bus auto-discovery and provisioning. **Configure:** `services.Configure<ServiceBusInfrastructureOptions>(…)`. **Details:** [Azure Service Bus auto-provisioning](../../messaging/transports/azure-service-bus#auto-provisioning).
+Service Bus auto-discovery and provisioning. **Configure:** `services.Configure<ServiceBusInfrastructureOptions>(…)`. **Details:** [Azure Service Bus auto-provisioning](/v1.0.0/messaging/transports/azure-service-bus#auto-provisioning).
 
 | Property | Type | Default | Environment variable | Purpose |
 |----------|------|---------|----------------------|---------|
@@ -1006,7 +1006,7 @@ Service Bus auto-discovery and provisioning. **Configure:** `services.Configure<
 
 ### MessageBodyOffloadOptions
 
-Send-side claim-check strategy. Four keys bind from `Whizbang:BodyOffload` [when the opt-in helper is called](#whizbangbodyoffload--messagebodyoffloadoptions); the rest are code-configured. **Details:** [Message Body Store](../../fundamentals/offloads/message-body-store#end-to-end-di).
+Send-side claim-check strategy. Four keys bind from `Whizbang:BodyOffload` [when the opt-in helper is called](#whizbangbodyoffload--messagebodyoffloadoptions); the rest are code-configured. **Details:** [Message Body Store](/v1.0.0/fundamentals/offloads/message-body-store#end-to-end-di).
 
 | Property | Type | Default | Environment variable | Purpose |
 |----------|------|---------|--------------------|---------|
@@ -1023,7 +1023,7 @@ Send-side claim-check strategy. Four keys bind from `Whizbang:BodyOffload` [when
 
 ### WhizbangPinnedPoolOptions
 
-Dedicated long-lived PostgreSQL connections for background workers, bypassing a transaction pooler. **Configure:** bound automatically from `Whizbang:Workers:PinnedPool` by `AddWhizbangPinnedPool()`; `AddWhizbangPinnedWorkerPool(opts => …)` — the library does **not** bind this section itself; the recommended section is `Whizbang:Workers:PinnedPool` (`Whizbang__Workers__PinnedPool__Enabled`), bound inside your configure callback. **Details:** [Pinned Connection Pool](../../fundamentals/workers/pinned-connection-pool#configuration).
+Dedicated long-lived PostgreSQL connections for background workers, bypassing a transaction pooler. **Configure:** bound automatically from `Whizbang:Workers:PinnedPool` by `AddWhizbangPinnedPool()`; `AddWhizbangPinnedWorkerPool(opts => …)` — the library does **not** bind this section itself; the recommended section is `Whizbang:Workers:PinnedPool` (`Whizbang__Workers__PinnedPool__Enabled`), bound inside your configure callback. **Details:** [Pinned Connection Pool](/v1.0.0/fundamentals/workers/pinned-connection-pool#configuration).
 
 | Property | Type | Default | Environment variable | Purpose |
 |----------|------|---------|--------------------|---------|
@@ -1090,7 +1090,7 @@ GraphQL scope-extraction middleware claim/header mappings. **Configure:** `servi
 
 ### TagOptions
 
-Payload-size guardrails for tag hooks; hooks themselves register fluently (`UseHook`, `UseUniversalHook`). **Configure:** the size guardrails bind automatically from `Whizbang:Tags`; `AddWhizbang(options => options.Tags…)`. **Details:** [WhizbangCoreOptions — TagOptions](whizbang-options#tagoptions), [Message Tags](../../fundamentals/messages/message-tags#configuration).
+Payload-size guardrails for tag hooks; hooks themselves register fluently (`UseHook`, `UseUniversalHook`). **Configure:** the size guardrails bind automatically from `Whizbang:Tags`; `AddWhizbang(options => options.Tags…)`. **Details:** [WhizbangCoreOptions — TagOptions](/v1.0.0/operations/configuration/whizbang-options#tagoptions), [Message Tags](/v1.0.0/fundamentals/messages/message-tags#configuration).
 
 | Property | Type | Default | Environment variable | Purpose |
 |----------|------|---------|--------------------|---------|
@@ -1099,7 +1099,7 @@ Payload-size guardrails for tag hooks; hooks themselves register fluently (`UseH
 
 ### CoalescePolicyOptions
 
-Per-tag coalesce policy folding tagged singles into composites. **Configure:** registered per tag through the tag fluent API. **Details:** [Message Tags](../../fundamentals/messages/message-tags#configuration).
+Per-tag coalesce policy folding tagged singles into composites. **Configure:** registered per tag through the tag fluent API. **Details:** [Message Tags](/v1.0.0/fundamentals/messages/message-tags#configuration).
 
 | Property | Type | Default | Environment variable | Purpose |
 |----------|------|---------|----------------------|---------|
@@ -1140,7 +1140,7 @@ The temporal engine's schedule worker. **Configure:** bound automatically from `
 
 ### CircuitBreakerOptions
 
-**Configure:** passed to `CircuitBreaker<TResult>` construction. **Details:** [Policy Engine](../infrastructure/policy-engine).
+**Configure:** passed to `CircuitBreaker<TResult>` construction. **Details:** [Policy Engine](/v1.0.0/operations/infrastructure/policy-engine).
 
 | Property | Type | Default | Environment variable | Purpose |
 |----------|------|---------|----------------------|---------|
@@ -1165,7 +1165,7 @@ The temporal engine's schedule worker. **Configure:** bound automatically from `
 
 ### WhizbangAvailabilityOptions
 
-The schema-availability gate `AddWhizbangAspNet` injects automatically. **Configure:** `services.Configure<WhizbangAvailabilityOptions>(…)`. **Details:** [Database Availability Middleware](../../resilience/database-availability-middleware).
+The schema-availability gate `AddWhizbangAspNet` injects automatically. **Configure:** `services.Configure<WhizbangAvailabilityOptions>(…)`. **Details:** [Database Availability Middleware](/v1.0.0/resilience/database-availability-middleware).
 
 | Property | Type | Default | Environment variable | Purpose |
 |----------|------|---------|----------------------|---------|

@@ -1,5 +1,6 @@
 ---
 title: "PinnedId Attribute"
+pageType: reference
 version: 1.0.0
 category: Attributes
 order: 20
@@ -11,6 +12,10 @@ codeReferences:
   - src/Whizbang.Core/Attributes/PinnedIdAttribute.cs
   - src/Whizbang.Core/IPinnedIdRegistry.cs
   - src/Whizbang.Generators/PinnedIdRegistryGenerator.cs
+testReferences:
+  - tests/Whizbang.Core.Tests/Attributes/PinnedIdAttributeTests.cs
+  - tests/Whizbang.Generators.Tests/PinnedIdRegistryGeneratorTests.cs
+  - tests/Whizbang.Generators.Tests/Analyzers/PinnedIdAnalyzerTests.cs
 ---
 
 # PinnedId Attribute
@@ -19,13 +24,29 @@ The `[PinnedId]` attribute declares a stable, GUID-based identity for a concrete
 
 ## Namespace
 
-```csharp
+```csharp{
+title: "Import the attributes namespace"
+description: "[PinnedId] lives in Whizbang.Core.Attributes."
+framework: "NET10"
+category: "Attributes"
+difficulty: "BEGINNER"
+tags: ["pinned-id", "namespace", "identity"]
+unverified: "namespace import, not a behaviour"
+}
 using Whizbang.Core.Attributes;
 ```
 
 ## Syntax
 
-```csharp
+```csharp{
+title: "Pin an event type's identity"
+description: "The attribute fixes the stored identity of a type so renaming or moving it does not change how its rows are read back."
+framework: "NET10"
+category: "Attributes"
+difficulty: "BEGINNER"
+tags: ["pinned-id", "identity", "events", "stable-identity"]
+tests: ["PinnedIdAttributeTests.PinnedIdAttribute_CanBeAppliedToClassAsync"]
+}
 [PinnedId("a1b2c3d4-e5f6-7890-abcd-1234567890ab")]
 public sealed record OrderPlacedEvent(Guid OrderId) : IEvent;
 ```
@@ -58,13 +79,27 @@ The companion code-fix inserts `[PinnedId("<new-guid>")]` with a freshly generat
 
 Register in your DI container with the generated extension method:
 
-```csharp
+```csharp{
+title: "Register the generated pinned-id registry"
+description: "One call wires the registry the source generator emitted for every pinned type in the assembly."
+framework: "NET10"
+category: "Attributes"
+difficulty: "BEGINNER"
+tags: ["pinned-id", "registry", "dependency-injection", "source-generator"]
+}
 services.AddPinnedIdRegistry();
 ```
 
 Consume via `IPinnedIdRegistry`:
 
-```csharp
+```csharp{
+title: "Look a pinned id up at run time"
+description: "Inject IPinnedIdRegistry to resolve the pinned identity of a message type without reflection."
+framework: "NET10"
+category: "Attributes"
+difficulty: "INTERMEDIATE"
+tags: ["pinned-id", "registry", "lookup", "aot"]
+}
 public sealed class SomeService(IPinnedIdRegistry pinnedIds) {
   public string? LookupPinnedId(Type messageType) => pinnedIds.GetPinnedId(messageType);
 }
@@ -87,4 +122,4 @@ Without the rename tool, stored rows using the old CLR name are unresolvable —
 
 ## See Also
 
-- [Pinned Identity core concept](../core-concepts/pinned-identity.md)
+- [Pinned Identity core concept](../../fundamentals/identity/pinned-identity.md)

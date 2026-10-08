@@ -1,6 +1,21 @@
 ---
 title: Handler commit
+pageType: concept
 order: 3
+version: 1.0.0
+description: >-
+  How a batch of handler results is committed in one round trip, and why a cancelled commit costs
+  more than a slow one.
+tags: 'work-coordinator, handler-commit, batching, savepoints, exactly-once, inbox'
+codeReferences:
+  - src/Whizbang.Core/Workers/InboxHandlerWorker.cs
+  - src/Whizbang.Core/Workers/FailureFlushWorker.cs
+  - src/Whizbang.Core/Workers/BatchFlusher.cs
+  - src/Whizbang.Core/Messaging/IWorkCoordinator.cs
+testReferences:
+  - tests/Whizbang.Core.Tests/Workers/InboxHandlerWorkerTests.cs
+  - tests/Whizbang.Core.Tests/Workers/BatchFlusherRetryTests.cs
+  - tests/Whizbang.Core.Tests/Workers/FailureFlushWorkerTests.cs
 ---
 
 # Handler commit
@@ -49,7 +64,13 @@ The C# `InboxHandlerWorker` defaults to the batched form via Nagle coalescing (d
 
 `commit_handler_batch` uses PL/pgSQL `BEGIN..EXCEPTION` blocks to wrap each handler's bundle in an implicit subtransaction (savepoint):
 
-```sql
+```sql{
+title: "Per-handler SAVEPOINT inside the commit batch"
+description: "The commit function wraps each handler result in its own SAVEPOINT, so one failing handler rolls back alone instead of losing the whole batch."
+category: "Workers"
+difficulty: "ADVANCED"
+tags: ["handler-commit", "savepoint", "batching", "plpgsql"]
+}
 FOR r IN SELECT elem FROM jsonb_array_elements(p_results) AS elem
 LOOP
   BEGIN
@@ -74,7 +95,14 @@ Batched (Option B with savepoints): coalesce ~50 handlers in 25 ms, single fsync
 
 The C# layer must read per-handler results and route failures individually:
 
-```csharp
+```csharp{
+title: "Read per-handler outcomes back from a commit batch"
+description: "CommitHandlerBatchAsync returns one result per handler, so the caller can tell which handlers failed without re-running the batch."
+framework: "NET10"
+category: "Workers"
+difficulty: "INTERMEDIATE"
+tags: ["handler-commit", "batching", "error-reporting"]
+}
 var results = await coordinator.CommitHandlerBatchAsync(batch, ct);
 foreach (var result in results) {
   if (!result.Success) {

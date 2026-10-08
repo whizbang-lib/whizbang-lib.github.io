@@ -1,5 +1,6 @@
 ---
 title: Claim loop
+pageType: concept
 order: 2
 description: >-
   How ClaimWorker polls claim_work: wake sources, adaptive backoff, the command

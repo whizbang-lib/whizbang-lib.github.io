@@ -351,7 +351,7 @@ public class DocumentCreated {
 
 > **Correlation shortcut.** For the correlation id specifically, prefer
 > `[PopulateFromIdentifier(IdentifierKind.CorrelationId)]`. The framework captures an inbound `X-Correlation-ID`
-> onto the message context automatically (see [Message Context](../../fundamentals/messages/message-context.md)),
+> onto the message context automatically (see [Message Context](/v1.0.0/fundamentals/messages/message-context)),
 > and it then flows to every message in the workflow. Reach for `[PopulateFromHttpHeader]` for other,
 > non-correlation headers.
 

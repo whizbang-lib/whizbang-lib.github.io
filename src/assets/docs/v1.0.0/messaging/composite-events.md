@@ -44,7 +44,7 @@ Composites pay off when the per-message overhead (network round-trip, broker dis
 - A migration tool that updates N records in a single transactional unit.
 - A batch operation that emits one event per affected row.
 
-Use the [body offload feature](/docs/fundamentals/offloads/message-body-store) alongside composites for high inner-event counts — a 5,000-inner-event composite easily exceeds the Azure Service Bus Standard 256 KB ceiling, and the offload path moves the body to blob storage transparently.
+Use the [body offload feature](/v1.0.0/fundamentals/offloads/message-body-store) alongside composites for high inner-event counts — a 5,000-inner-event composite easily exceeds the Azure Service Bus Standard 256 KB ceiling, and the offload path moves the body to blob storage transparently.
 
 ## The contract
 

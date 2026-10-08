@@ -1,6 +1,21 @@
 ---
 title: Failure and recovery
-order: 9
+pageType: concept
+order: 10
+version: 1.0.0
+description: >-
+  What the coordinator does when work fails: retries, lease expiry, the poison gate and how a
+  stalled drain recovers.
+tags: 'work-coordinator, failure, recovery, retries, lease-expiry, poison-gate, dead-letter'
+codeReferences:
+  - src/Whizbang.Core/Workers/WorkerRetryOptions.cs
+  - src/Whizbang.Core/Workers/FailureFlushWorker.cs
+  - src/Whizbang.Core/Messaging/IWorkCoordinator.cs
+  - src/Whizbang.Core/Workers/InboxHandlerWorker.cs
+testReferences:
+  - tests/Whizbang.Core.Tests/Workers/FailureFlushWorkerTests.cs
+  - tests/Whizbang.Core.Tests/Workers/InboxHandlerWorkerCoverageTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/PoisonOutboxLoopSqlTests.cs
 ---
 
 # Failure and recovery

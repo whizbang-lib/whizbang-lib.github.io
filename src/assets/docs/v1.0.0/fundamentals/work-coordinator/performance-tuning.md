@@ -1,6 +1,21 @@
 ---
 title: Performance tuning
-order: 8
+pageType: guide
+order: 9
+version: 1.0.0
+description: >-
+  Where coordinator throughput actually goes, and which knobs move it: the outstanding budget,
+  batch sizes and the notification cadence.
+tags: 'work-coordinator, performance, tuning, throughput, backpressure, batching'
+codeReferences:
+  - src/Whizbang.Core/Workers/InboxHandlerWorker.cs
+  - src/Whizbang.Core/Workers/AdaptiveOutstandingBudget.cs
+  - src/Whizbang.Core/Workers/BatchFlusher.cs
+  - src/Whizbang.Core/Notifications/IWorkNotificationListener.cs
+testReferences:
+  - tests/Whizbang.Core.Tests/Workers/AdaptiveOutstandingBudgetTests.cs
+  - tests/Whizbang.Core.Tests/Workers/AdaptiveOutstandingBudgetLeaseAwarenessTests.cs
+  - tests/Whizbang.Core.Tests/Workers/InboxHandlerWorkerQueueDepthTests.cs
 ---
 
 # Performance tuning
@@ -95,7 +110,13 @@ Decision guide for the work coordinator's performance knobs. Defaults are tuned 
 
 Before tuning, capture a baseline:
 
-```bash
+```bash{
+title: "Find the coordinator's most expensive statements"
+description: "Ranks coordinator SQL by mean and total execution time from pg_stat_statements, which is where tuning should start."
+category: "Diagnostics"
+difficulty: "INTERMEDIATE"
+tags: ["performance", "pg-stat-statements", "tuning", "measurement"]
+}
 # pg_stat_statements
 SELECT calls, round(mean_exec_time::numeric, 2) AS mean_ms,
        round(total_exec_time::numeric, 0) AS tot_ms, rows
