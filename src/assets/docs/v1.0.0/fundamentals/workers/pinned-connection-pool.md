@@ -133,7 +133,7 @@ The options class is `WhizbangPinnedPoolOptions`. The registration helper takes 
 
 | Property | Type | Default | Description |
 |---|---|---|---|
-| `ConnectionStringName` | string? | `null` | **Preferred.** Name of a key under standard `ConnectionStrings:*` configuration to resolve the direct conn string from (e.g. `"appservice-db-direct"`). Wins over `ConnectionString` when both are set. |
+| `ConnectionStringName` | string? | `null` | **Preferred.** Name of a key under standard `ConnectionStrings:*` configuration to resolve the direct conn string from (e.g. `"db-direct"`). Wins over `ConnectionString` when both are set. |
 | `ConnectionString` | string? | `null` | Inline direct (non-pgbouncer) PG conn string. Fallback when `ConnectionStringName` is unset or unresolved. At least one of the two sources must resolve for the pool to take effect. |
 | `Enabled` | bool | `false` | Master switch. `false` → workers stay on pgbouncer. |
 | `Size` | int | `1` | Number of pinned connections held open. |
@@ -162,14 +162,14 @@ tags: ["pinned-pool", "connection-string", "pgbouncer", "appsettings", "configur
 // appsettings.json
 {
   "ConnectionStrings": {
-    "appservice-db":        "Host=…;Port=6432;…", // pgbouncer (existing)
-    "appservice-db-direct": "Host=…;Port=5432;…"  // direct (new)
+    "db":        "Host=…;Port=6432;…", // pgbouncer (existing)
+    "db-direct": "Host=…;Port=5432;…"  // direct (new)
   },
   "Whizbang": {
     "Workers": {
       "PinnedPool": {
         "Enabled": true,
-        "ConnectionStringName": "appservice-db-direct"
+        "ConnectionStringName": "db-direct"
       }
     }
   }

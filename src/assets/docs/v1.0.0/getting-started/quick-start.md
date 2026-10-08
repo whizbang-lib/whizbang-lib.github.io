@@ -74,7 +74,7 @@ Add connection strings to **appsettings.Development.json**:
 ```json{title="Step 2: Connection Strings" description="Configure connection strings" category="Configuration" difficulty="BEGINNER" tags=["Getting-started", "Json", "Step", "Connection", "Strings"]}
 {
   "ConnectionStrings": {
-    "postgres": "Host=localhost;Database=quickstart;Username=postgres;Password=dev_password",
+    "db": "Host=localhost;Database=quickstart;Username=postgres;Password=dev_password",
     "rabbitmq": "amqp://guest:guest@localhost:5672"
   }
 }
@@ -217,7 +217,7 @@ using Whizbang.Transports.RabbitMQ;
 
 var builder = WebApplication.CreateBuilder(args);
 
-var postgresConnection = builder.Configuration.GetConnectionString("postgres")!;
+var postgresConnection = builder.Configuration.GetConnectionString("db")!;
 var rabbitMqConnection = builder.Configuration.GetConnectionString("rabbitmq")!;
 
 // Transport (RabbitMQ for local development)

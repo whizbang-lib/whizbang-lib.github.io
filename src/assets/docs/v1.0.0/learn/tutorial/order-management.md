@@ -366,8 +366,8 @@ builder.Services.AddFastEndpoints();
 builder.Services.SwaggerDocument();
 
 // Connection strings resolved by Aspire
-var postgresConnection = builder.Configuration.GetConnectionString("ordersdb")
-    ?? throw new InvalidOperationException("PostgreSQL connection string 'ordersdb' not found");
+var postgresConnection = builder.Configuration.GetConnectionString("db")
+    ?? throw new InvalidOperationException("PostgreSQL connection string 'db' not found");
 var serviceBusConnection = builder.Configuration.GetConnectionString("servicebus")
     ?? throw new InvalidOperationException("Azure Service Bus connection string 'servicebus' not found");
 
@@ -446,7 +446,7 @@ ordersTopic.AddServiceBusSubscription("sub-payment-orders");
 
 // Order Service
 var orderService = builder.AddProject("orderservice", "../ECommerce.OrderService.API/ECommerce.OrderService.API.csproj")
-    .WithReference(ordersDb)
+    .WithReference(ordersDb, "db")
     .WithReference(messagingInfra)
     .WaitFor(ordersDb)
     .WaitFor(messagingInfra)

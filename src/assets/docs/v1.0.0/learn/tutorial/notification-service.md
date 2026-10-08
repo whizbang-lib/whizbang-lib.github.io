@@ -353,7 +353,7 @@ ordersTopic.AddServiceBusSubscription("sub-notification-orders");
 inboxTopic.AddServiceBusSubscription("sub-inbox-notification").WithDestinationFilter("notification-service");
 
 var notificationWorker = builder.AddProject("notificationworker", "../ECommerce.NotificationWorker/ECommerce.NotificationWorker.csproj")
-    .WithReference(notificationDb)
+    .WithReference(notificationDb, "db")
     .WithReference(messagingInfra)
     .WaitFor(notificationDb)
     .WaitFor(messagingInfra);

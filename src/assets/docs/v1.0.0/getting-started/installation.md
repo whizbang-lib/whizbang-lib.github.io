@@ -279,7 +279,7 @@ var postgres = builder.AddPostgres("postgres")
     .AddDatabase("whizbangdb");
 
 var api = builder.AddProject<Projects.MyWhizbangApp_API>("api")
-    .WithReference(postgres);
+    .WithReference(postgres, "db");
 
 builder.Build().Run();
 ```
@@ -290,7 +290,7 @@ builder.Build().Run();
 ```json{title="Connection String Configuration" description="**appsettings." category="Configuration" difficulty="BEGINNER" tags=["Getting-started", "Json", "Connection", "String", "Configuration"]}
 {
   "ConnectionStrings": {
-    "DefaultConnection": "Host=localhost;Database=whizbang;Username=whizbang;Password=your_password"
+    "db": "Host=localhost;Database=whizbang;Username=whizbang;Password=your_password"
   }
 }
 ```
