@@ -315,7 +315,7 @@ Translating a **declared behavior** into structured envelope metadata so it trav
 
 ## Scope: what E1 does (and does not) cover
 
-**E1 delivers:** the `[Ephemeral]` attribute + mode on `MessageTypeCatalog`; the runtime `IEphemeralModeResolver`; viral perspective-mode derivation; the analyzer + runtime guards; the **event-store split** (`wh_event` pointer + uniform `wh_event_body`) + migration; **`Destruction.WhenConsumed`** consumption-gated body reaping (the two-tier maintenance); in-memory / TTL-row transient storage. It proves the model on the presence/UI case and consumes the [Signal Bus](../fundamentals/signal-bus/signal-bus).
+**E1 delivers:** the `[Ephemeral]` attribute + mode on `MessageTypeCatalog`; the runtime `IEphemeralModeResolver`; viral perspective-mode derivation; the analyzer + runtime guards; the **event-store split** (`wh_event` pointer + uniform `wh_event_body`) + migration; **`Destruction.WhenConsumed`** consumption-gated body reaping (the two-tier maintenance); in-memory / TTL-row transient storage. It proves the model on the presence/UI case and consumes the [Signal Bus](/v1.0.0/fundamentals/signal-bus/signal-bus).
 
 **Deliberately deferred to later phases** (each its own proposal):
 

@@ -59,4 +59,4 @@ Multiple in-memory providers can coexist under distinct names — useful for tes
 - Local development scenarios where the producer and consumer run in the same process (e.g., `LocalInvokeAsync` paths or sample apps with all services hosted in one process).
 - Fixture/data-seeding code that produces a large composite event and immediately consumes it.
 
-For multi-process / multi-service scenarios use [Whizbang.Offloads.AzureBlob](/docs/fundamentals/offloads/providers/azure-blob) with Azurite locally.
+For multi-process / multi-service scenarios use [Whizbang.Offloads.AzureBlob](/v1.0.0/fundamentals/offloads/providers/azure-blob) with Azurite locally.

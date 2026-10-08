@@ -95,7 +95,7 @@ processing cost. Canonical cases:
 - A migration tool that emits one event per affected record as a single unit.
 - Any batch operation that yields many domain events from one action.
 
-Composites sit **next to** [collective events](/docs/fundamentals/messaging/collective-events) —
+Composites sit **next to** [collective events](/v1.0.0/fundamentals/messaging/collective-events) —
 a composite is a hand-crafted batch of inner events (all landing on the
 composite's one stream); a collective event is a scope-wide uniform mutation
 applied as one SQL UPDATE. They share no inheritance and run on separate code
@@ -103,7 +103,7 @@ paths; both can appear in the same workflow (a bulk import emits a composite; a
 tenant cleanup emits a collective event).
 
 For high inner-event counts, pair composites with the
-[message-body offload](/docs/fundamentals/offloads/message-body-store): a
+[message-body offload](/v1.0.0/fundamentals/offloads/message-body-store): a
 5,000-inner-event composite easily exceeds the Azure Service Bus Standard 256 KB
 ceiling, so the offload path moves the body to blob storage transparently and
 substitutes a small claim envelope on the wire.
