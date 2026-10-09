@@ -34,7 +34,7 @@ testReferences:
   - tests/Whizbang.Partitioning.Tests/HashPartitionRouterTests.cs
   - tests/Whizbang.Policies.Tests/PolicyContextTests.cs
   - tests/Whizbang.Transports.Tests/TransportManagerSubscriptionTests.cs
-  - tests/Whizbang.Transports.AzureServiceBus.Tests/AzureServiceBusTransportUnitTests.cs
+  - tests/Whizbang.Transports.AzureServiceBus.Component.Tests/AzureServiceBusTransportUnitTests.cs
   - tests/Whizbang.Observability.Tests/MessageTracingTests.cs
 ---
 
@@ -233,7 +233,7 @@ uniform mechanism:
   only advertises the `Ordered` capability when sessions are enabled.
   > Verified: `src/Whizbang.Transports.AzureServiceBus/AzureServiceBusTransport.cs`
   > (SessionId-from-StreamId at the publish path; per-`StreamId` batch grouping) and
-  > `tests/Whizbang.Transports.AzureServiceBus.Tests/AzureServiceBusTransportUnitTests.cs:Capabilities_WithEnableSessions_IncludesOrderedAsync`,
+  > `tests/Whizbang.Transports.AzureServiceBus.Component.Tests/AzureServiceBusTransportUnitTests.cs:Capabilities_WithEnableSessions_IncludesOrderedAsync`,
   > `Capabilities_WithoutEnableSessions_ExcludesOrderedAsync`. See also
   > [Azure Service Bus Transport](./azure-service-bus.md).
 
