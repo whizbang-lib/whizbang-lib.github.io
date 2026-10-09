@@ -17,7 +17,7 @@ codeReferences:
   - src/Whizbang.Core/Security/ScopeContextAccessor.cs
 testReferences:
   - tests/Whizbang.Transports.HotChocolate.Tests/Unit/WhizbangScopeMiddlewareTests.cs
-  - tests/Whizbang.Transports.HotChocolate.Tests/Unit/ScopeMiddlewareExtensionsTests.cs
+  - tests/Whizbang.Transports.HotChocolate.Component.Tests/Unit/ScopeMiddlewareExtensionsTests.cs
   - tests/Whizbang.Transports.HotChocolate.Tests/Unit/WhizbangScopeOptionsSymmetryTests.cs
   - tests/Whizbang.Transports.HotChocolate.Integration.Tests/ScopedQueryTests.cs
 lastMaintainedCommit: '01f07906'
