@@ -1,13 +1,13 @@
 {
   "run": {
-    "runId": "37948588615",
-    "sha": "4a86eec84d63e2dce24e0946cc20784a91b9d5f8",
+    "runId": "37954197859",
+    "sha": "24d7c739a7c0baaf67ee5439436fbcdcd3bab18e",
     "branch": "develop",
-    "libraryVersion": "0.2618.0-alpha.7",
-    "completedAt": "2026-10-09T15:20:52.361Z"
+    "libraryVersion": "0.2618.0-alpha.15",
+    "completedAt": "2026-10-09T16:07:30.496Z"
   },
   "total": {
-    "passed": 30161,
+    "passed": 30452,
     "failed": 0,
     "skipped": 12
   },
@@ -33,7 +33,7 @@
       "skipped": 0
     },
     "postgres-efcore-": {
-      "passed": 7156,
+      "passed": 7159,
       "failed": 0,
       "skipped": 0
     },
@@ -59,6 +59,12 @@
     }
   },
   "assemblies": {
+    "ECommerce.AzureServiceBus.Integration.Tests": {
+      "file": "ECommerce.AzureServiceBus.Integration.Tests.json",
+      "passed": 82,
+      "failed": 0,
+      "skipped": 0
+    },
     "ECommerce.BFF.API.Tests": {
       "file": "ECommerce.BFF.API.Tests.json",
       "passed": 50,
@@ -77,14 +83,8 @@
       "failed": 0,
       "skipped": 0
     },
-    "ECommerce.Integration.Tests": {
-      "file": "ECommerce.Integration.Tests.json",
-      "passed": 82,
-      "failed": 0,
-      "skipped": 0
-    },
-    "ECommerce.IntegrationTests.OrderServiceIntegrationTests.Tests": {
-      "file": "ECommerce.IntegrationTests.OrderServiceIntegrationTests.Tests.json",
+    "ECommerce.IntegrationTests": {
+      "file": "ECommerce.IntegrationTests.json",
       "passed": 2,
       "failed": 0,
       "skipped": 0
@@ -157,7 +157,7 @@
     },
     "Whizbang.Data.EFCore.Postgres.Tests": {
       "file": "Whizbang.Data.EFCore.Postgres.Tests.json",
-      "passed": 7156,
+      "passed": 7159,
       "failed": 0,
       "skipped": 0
     },
@@ -307,7 +307,7 @@
     },
     "Whizbang.Transports.HotChocolate.Integration.Tests": {
       "file": "Whizbang.Transports.HotChocolate.Integration.Tests.json",
-      "passed": 30,
+      "passed": 318,
       "failed": 0,
       "skipped": 0
     },
