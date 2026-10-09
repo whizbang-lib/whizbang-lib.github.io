@@ -33,7 +33,7 @@ testReferences:
   - tests/Whizbang.Policies.Tests/PolicyConfigurationTransportTests.cs
   - tests/Whizbang.Partitioning.Tests/HashPartitionRouterTests.cs
   - tests/Whizbang.Policies.Tests/PolicyContextTests.cs
-  - tests/Whizbang.Transports.Tests/TransportManagerSubscriptionTests.cs
+  - tests/Whizbang.Transports.Component.Tests/TransportManagerSubscriptionTests.cs
   - tests/Whizbang.Transports.AzureServiceBus.Tests/AzureServiceBusTransportUnitTests.cs
   - tests/Whizbang.Observability.Tests/MessageTracingTests.cs
 ---
@@ -296,7 +296,7 @@ Bus), `QueueName`/`RoutingKey` (RabbitMQ).
 > `PolicyConfiguration_PublishToRabbitMQ_ShouldAddPublishTargetAsync`,
 > `PolicyConfiguration_SubscribeFromServiceBus_WithFilter_ShouldStoreSqlFilterAsync`;
 > and the metadata survives into the transport layer -
-> `tests/Whizbang.Transports.Tests/TransportManagerSubscriptionTests.cs:SubscribeFromTargetsAsync_WithKafkaConsumerGroup_ShouldIncludeInMetadataAsync`.
+> `tests/Whizbang.Transports.Component.Tests/TransportManagerSubscriptionTests.cs:SubscribeFromTargetsAsync_WithKafkaConsumerGroup_ShouldIncludeInMetadataAsync`.
 
 > Note: the `*Kafka` helpers compile and store targets, but there is no Kafka
 > driver to consume them (see the support matrix above).

@@ -103,8 +103,8 @@ testReferences:
   - tests/Whizbang.Core.Tests/Messaging/RedeliveryPumpPriorityTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityReceptorsPriorityTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityManifestReceptorTests.cs
-  - tests/Whizbang.Transports.Tests/DispatcherTransportBridgePriorityTests.cs
-  - tests/Whizbang.Transports.Tests/TransportManagerPriorityTests.cs
+  - tests/Whizbang.Transports.Component.Tests/DispatcherTransportBridgePriorityTests.cs
+  - tests/Whizbang.Transports.Component.Tests/TransportManagerPriorityTests.cs
   - tests/Whizbang.Core.Tests/Messaging/SecurityContextEventStoreDecoratorPriorityTests.cs
   - tests/Whizbang.Core.Tests/Messaging/InMemoryEventStorePriorityTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/EventEnvelopeJsonbAdapterPriorityTests.cs
