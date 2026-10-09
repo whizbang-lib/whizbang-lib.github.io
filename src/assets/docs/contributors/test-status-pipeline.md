@@ -50,6 +50,8 @@ Per-assembly shard (`Whizbang.Core.Tests.json`) — keys use the **code-tests-ma
 { "DispatcherTests.Dispatch_SendsMessageToCorrectReceptorAsync": { "o": "passed", "d": 12, "s": "unit" } }
 ```
 
+A test's shard is the assembly the TRX says it ran from, not its namespace, so a test file moved to another test project is reported under its new project even when it keeps its old namespace. A new test project needs no registration: its shard and index entry appear from its TRX. Each publish replaces the whole folder, so a project with no results left has no shard.
+
 ## Rendering
 
 - **Angular**: `TestStatusService` loads `index.json` (graceful null when absent) and lazy-loads shards; `wb-test-references` renders per-class badges at the bottom of any page with `testReferences`, with a staleness warning when results are older than 7 days (which also signals a dead token).

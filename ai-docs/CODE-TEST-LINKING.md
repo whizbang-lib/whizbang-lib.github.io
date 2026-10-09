@@ -1147,8 +1147,8 @@ Current performance:
 #### Script Errors
 
 **Handled**:
-- Missing library directory → Uses environment variable `WHIZBANG_LIB_PATH`
-- No test files found → Continues, creates empty mapping
+- Library path missing (the default `../whizbang` sibling is wrong from a git worktree or another clone location), no C# files under its `src/`, or no `<tests>` tag found → exits 1 and writes nothing, so the committed map is never replaced with an empty one. Pass `WHIZBANG_LIB_PATH` explicitly. `generate-code-docs-map.mjs` does the same for `<docs>` tags.
+- A `<tests>` tag naming a test file that does not exist (for example, a test file moved to another project without relinking its tags) → Logs warning
 - Invalid `<tests>` tag format → Logs warning, skips
 - Cannot extract symbol name → Logs warning, skips
 
@@ -1302,7 +1302,7 @@ const result4 = await mcp__whizbang-docs__validate-test-links();
 
 **Error**:
 ```
-Error: ENOENT: no such file or directory, open '...whizbang/src'
+Error: Library path .../whizbang does not exist; the map was not written. Set WHIZBANG_LIB_PATH to a whizbang library checkout.
 ```
 
 **Solution**:

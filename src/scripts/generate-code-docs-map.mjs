@@ -20,7 +20,8 @@
 
 import { readFileSync, writeFileSync } from 'fs';
 import { join, relative, dirname, resolve } from 'path';
-import { fileURLToPath } from 'url';
+import { fileURLToPath, pathToFileURL } from 'url';
+import { requireLibrary, requireFound } from './whizbang-library.mjs';
 // Node >=22 ships glob in fs/promises — avoids an undeclared 'glob' package dependency.
 import { glob as fsGlob } from 'fs/promises';
 async function glob(pattern, opts = {}) {
@@ -32,9 +33,9 @@ async function glob(pattern, opts = {}) {
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// Configurable via environment variable, defaults to sibling directory
-const LIBRARY_PATH = process.env.WHIZBANG_LIB_PATH || resolve(__dirname, '../../../whizbang');
-const OUTPUT_PATH = resolve(__dirname, '../assets/code-docs-map.json');
+// Configurable via environment variable, defaults to sibling directory. main() can override both.
+let LIBRARY_PATH = process.env.WHIZBANG_LIB_PATH || resolve(__dirname, '../../../whizbang');
+let OUTPUT_PATH = resolve(__dirname, '../assets/code-docs-map.json');
 
 /**
  * Scans a C# file for <docs> tags and extracts code-docs mapping
@@ -101,9 +102,12 @@ function scanFile(filePath) {
 /**
  * Main execution
  */
-async function main() {
+export async function main({ libraryPath = LIBRARY_PATH, outputPath = OUTPUT_PATH } = {}) {
+  LIBRARY_PATH = libraryPath;
+  OUTPUT_PATH = outputPath;
   console.log('Scanning Whizbang library for <docs> tags...');
   console.log(`Library path: ${LIBRARY_PATH}`);
+  requireLibrary(LIBRARY_PATH);
 
   // Find all C# source files (excluding Generated, obj, bin)
   const pattern = join(LIBRARY_PATH, 'src/**/*.cs');
@@ -120,6 +124,7 @@ async function main() {
   });
 
   console.log(`Found ${files.length} C# files to scan`);
+  requireFound(files.length, 'no C# source files in src/', LIBRARY_PATH);
 
   // Scan all files
   const allMappings = [];
@@ -129,6 +134,7 @@ async function main() {
   }
 
   console.log(`Extracted ${allMappings.length} code-docs mappings`);
+  requireFound(allMappings.length, 'no <docs> tag in src/', LIBRARY_PATH);
 
   // Convert to dictionary keyed by symbol name
   const mappingDict = {};
@@ -155,9 +161,12 @@ async function main() {
   console.log(`\nUnique documentation URLs: ${docUrls.length}`);
   console.log('Documentation URLs:');
   docUrls.sort().forEach(url => console.log(`  - ${url}`));
+  return mappingDict;
 }
 
-main().catch(err => {
-  console.error('Error:', err);
-  process.exit(1);
-});
+if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
+  main().catch(err => {
+    console.error('Error:', err);
+    process.exit(1);
+  });
+}
