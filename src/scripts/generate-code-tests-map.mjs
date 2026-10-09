@@ -31,7 +31,8 @@
 
 import { existsSync, readFileSync, writeFileSync } from 'fs';
 import { join, relative, dirname, resolve, basename } from 'path';
-import { fileURLToPath } from 'url';
+import { fileURLToPath, pathToFileURL } from 'url';
+import { requireLibrary, requireFound } from './whizbang-library.mjs';
 // Node >=22 ships glob in fs/promises — avoids an undeclared 'glob' package dependency.
 import { glob as fsGlob } from 'fs/promises';
 async function glob(pattern, opts = {}) {
@@ -43,9 +44,9 @@ async function glob(pattern, opts = {}) {
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// Configurable via environment variable, defaults to sibling directory
-const LIBRARY_PATH = process.env.WHIZBANG_LIB_PATH || resolve(__dirname, '../../../whizbang');
-const OUTPUT_PATH = resolve(__dirname, '../assets/code-tests-map.json');
+// Configurable via environment variable, defaults to sibling directory. main() can override both.
+let LIBRARY_PATH = process.env.WHIZBANG_LIB_PATH || resolve(__dirname, '../../../whizbang');
+let OUTPUT_PATH = resolve(__dirname, '../assets/code-tests-map.json');
 
 /**
  * Scans a C# source file for <tests> tags and extracts manual code-tests mappings
@@ -71,6 +72,10 @@ function scanSourceFileForTestTags(filePath) {
     let targets;
     if (parts.length === 2) {
       targets = [{ testFile: parts[0], testMethod: parts[1] }];
+      // A test file moved without relinking its tags leaves the tag naming a path that is gone.
+      if (!existsSync(resolve(LIBRARY_PATH, parts[0]))) {
+        console.warn(`Warning: <tests> tag at ${filePath}:${i + 1} names ${parts[0]}, which does not exist`);
+      }
     } else if (parts.length === 1 && testsPath.endsWith('.cs')) {
       targets = testMethodsInFile(testsPath);
       if (targets.length === 0) {
@@ -441,9 +446,12 @@ function buildBidirectionalMapping(sourceTagMappings, testConventionMappings, so
 /**
  * Main execution
  */
-async function main() {
+export async function main({ libraryPath = LIBRARY_PATH, outputPath = OUTPUT_PATH } = {}) {
+  LIBRARY_PATH = libraryPath;
+  OUTPUT_PATH = outputPath;
   console.log('Generating code-tests mapping for Whizbang library...');
   console.log(`Library path: ${LIBRARY_PATH}\n`);
+  requireLibrary(LIBRARY_PATH);
 
   // Step 1: Find all C# source files (excluding Generated, obj, bin, tests)
   console.log('Step 1: Scanning source files for <tests> tags...');
@@ -460,6 +468,7 @@ async function main() {
     ]
   });
   console.log(`Found ${sourceFiles.length} source files`);
+  requireFound(sourceFiles.length, 'no C# source files in src/', LIBRARY_PATH);
 
   // Extract mappings from <tests> tags
   const sourceTagMappings = [];
@@ -468,6 +477,7 @@ async function main() {
     sourceTagMappings.push(...mappings);
   }
   console.log(`Extracted ${sourceTagMappings.length} <tests> tag mappings\n`);
+  requireFound(sourceTagMappings.length, 'no <tests> tag in src/', LIBRARY_PATH);
 
   // Step 2: Find all test files
   console.log('Step 2: Scanning test files for naming conventions...');
@@ -538,12 +548,16 @@ async function main() {
   console.log(`  - XML tags:    ${xmlTagCount}`);
   console.log(`  - Conventions: ${conventionCount}`);
   console.log(`Link health findings: ${linkHealth.length}` + (linkHealth.length ? ' (see warnings above; the map carries them under linkHealth)' : ''));
-  if (process.argv.includes('--strict') && linkHealth.length > 0) {
-    process.exit(2);
-  }
+  return mapping;
 }
 
-main().catch(err => {
-  console.error('Error:', err);
-  process.exit(1);
-});
+if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
+  main().then(mapping => {
+    if (process.argv.includes('--strict') && mapping.linkHealth.length > 0) {
+      process.exit(2);
+    }
+  }).catch(err => {
+    console.error('Error:', err);
+    process.exit(1);
+  });
+}
