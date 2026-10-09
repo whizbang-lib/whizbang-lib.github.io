@@ -108,7 +108,7 @@ query instead of adding to it, so a claim with the assignment costs no more than
 | `AssignmentLease` | 90 s | How long an assignment holds without renewal. Must exceed 60 s, the slow heartbeat cadence. |
 | `RepublishInterval` | 5 min | The backstop: republish at least this often. |
 
-```csharp
+```csharp{title="Tune the partition assigner" description="Shorten the backstop republish interval" category="Configuration" difficulty="INTERMEDIATE" tags=["Work coordinator", "Partition assignment", "Options"] tests=["PartitionAssignerTests.Validate_TheDefaults_PassAsync"]}
 services.Configure<PartitionAssignerOptions>(options => {
   options.RepublishInterval = TimeSpan.FromMinutes(2);
 });
