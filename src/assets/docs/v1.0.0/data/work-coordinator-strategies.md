@@ -23,7 +23,7 @@ testReferences:
   - tests/Whizbang.Core.Tests/Messaging/BatchWorkCoordinatorStrategyTests.cs
   - tests/Whizbang.Core.Tests/Messaging/WorkCoordinatorStrategyRegistrationTests.cs
   - tests/Whizbang.Core.Tests/Messaging/WorkFlusherTests.cs
-  - tests/Whizbang.Hosting.AspNet.Tests/WhizbangFlushMiddlewareTests.cs
+  - tests/Whizbang.Hosting.AspNet.Component.Tests/WhizbangFlushMiddlewareTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 

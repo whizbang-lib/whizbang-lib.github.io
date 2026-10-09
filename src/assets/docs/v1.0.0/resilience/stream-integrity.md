@@ -41,7 +41,7 @@ testReferences:
   - tests/Whizbang.Core.Tests/Messaging/StreamIntegrityOptionsDefaultsTests.cs
   - tests/Whizbang.Core.Tests/Messaging/RedeliveryPumpTests.cs
   - tests/Whizbang.Core.Tests/Messaging/StreamRedeliveryRequesterTests.cs
-  - tests/Whizbang.Hosting.AspNet.Tests/StreamRedeliveryEndpointsTests.cs
+  - tests/Whizbang.Hosting.AspNet.Component.Tests/StreamRedeliveryEndpointsTests.cs
   - tests/Whizbang.Core.Tests/Messaging/RedeliveryCompositeWireSerializationTests.cs
   - tests/Whizbang.Core.Tests/Messaging/CompositeInboxFanoutTests.cs
   - tests/Whizbang.Core.Tests/MultiService/StreamIntegrityRedeliveryE2ETests.cs
