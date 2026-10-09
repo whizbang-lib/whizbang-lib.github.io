@@ -1,10 +1,10 @@
 {
   "run": {
-    "runId": "37973848356",
-    "sha": "90b7756e7c7f3481e34723860b1dc3d2cc9a1da2",
+    "runId": "37974743163",
+    "sha": "50b129610b81d3f21635680885c1a59c1888953a",
     "branch": "develop",
-    "libraryVersion": "0.2619.0-alpha.16",
-    "completedAt": "2026-10-09T18:33:29.687Z"
+    "libraryVersion": "0.2619.0-alpha.18",
+    "completedAt": "2026-10-09T19:05:31.043Z"
   },
   "total": {
     "passed": 30547,
@@ -18,7 +18,7 @@
       "skipped": 0
     },
     "component": {
-      "passed": 1,
+      "passed": 234,
       "failed": 0,
       "skipped": 0
     },
@@ -58,7 +58,7 @@
       "skipped": 1
     },
     "unit": {
-      "passed": 21558,
+      "passed": 21325,
       "failed": 0,
       "skipped": 8
     }
@@ -340,6 +340,12 @@
       "failed": 0,
       "skipped": 0
     },
+    "Whizbang.Transports.RabbitMQ.Component.Tests": {
+      "file": "Whizbang.Transports.RabbitMQ.Component.Tests.json",
+      "passed": 233,
+      "failed": 0,
+      "skipped": 0
+    },
     "Whizbang.Transports.RabbitMQ.Integration.Tests": {
       "file": "Whizbang.Transports.RabbitMQ.Integration.Tests.json",
       "passed": 49,
@@ -348,7 +354,7 @@
     },
     "Whizbang.Transports.RabbitMQ.Tests": {
       "file": "Whizbang.Transports.RabbitMQ.Tests.json",
-      "passed": 397,
+      "passed": 164,
       "failed": 0,
       "skipped": 0
     },
