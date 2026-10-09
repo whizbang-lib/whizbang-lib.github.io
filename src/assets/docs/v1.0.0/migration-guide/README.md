@@ -15,12 +15,12 @@ codeReferences:
   - src/Whizbang.Core/Perspectives/IPerspectiveFor.cs
   - src/Whizbang.Core/IDispatcher.cs
 testReferences:
-  - tests/Whizbang.Migrate.Tests/Commands/AnalyzeCommandTests.cs
-  - tests/Whizbang.Migrate.Tests/Commands/ApplyCommandTests.cs
-  - tests/Whizbang.Migrate.Tests/Commands/StatusCommandTests.cs
-  - tests/Whizbang.Migrate.Tests/Commands/RevertCommandTests.cs
-  - tests/Whizbang.Migrate.Tests/Analysis/WolverineAnalyzerTests.cs
-  - tests/Whizbang.Migrate.Tests/Analysis/MartenAnalyzerTests.cs
+  - tests/Whizbang.Migrate.Component.Tests/Commands/AnalyzeCommandTests.cs
+  - tests/Whizbang.Migrate.Component.Tests/Commands/ApplyCommandTests.cs
+  - tests/Whizbang.Migrate.Component.Tests/Commands/StatusCommandTests.cs
+  - tests/Whizbang.Migrate.Integration.Tests/Commands/RevertCommandTests.cs
+  - tests/Whizbang.Migrate.Component.Tests/Analysis/WolverineAnalyzerTests.cs
+  - tests/Whizbang.Migrate.Component.Tests/Analysis/MartenAnalyzerTests.cs
   - tests/Whizbang.Core.Tests/Receptors/ReceptorTests.cs
   - tests/Whizbang.Core.Tests/Perspectives/IPerspectiveForTests.cs
   - tests/Whizbang.Core.Tests/Dispatcher/DispatcherTests.cs
