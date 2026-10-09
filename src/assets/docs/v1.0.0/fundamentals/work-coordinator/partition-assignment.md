@@ -17,8 +17,8 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Notifications/PgPartitionAssignmentStore.cs
   - src/Whizbang.Data.Postgres/Migrations/203_PartitionAssigner.sql
 testReferences:
-  - tests/Whizbang.Core.Tests/Workers/PartitionAssignerTests.cs
-  - tests/Whizbang.Core.Tests/Workers/PartitionAssignmentCacheTests.cs
+  - tests/Whizbang.Partitioning.Tests/PartitionAssignerTests.cs
+  - tests/Whizbang.Partitioning.Tests/PartitionAssignmentCacheTests.cs
   - tests/Whizbang.Core.Component.Tests/PartitionAssignerWorkerLoopTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/PartitionAssignmentSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/PartitionAssignerWorkerPostgresTests.cs
