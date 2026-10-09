@@ -5,6 +5,18 @@ version: 1.0.0
 category: Perspectives
 description: Whizbang keeps a ledger of every database object it creates for perspectives, creates what a model declares, drops what it created and no longer declares, and never touches what it did not create or what is pinned.
 tags: [perspectives, schema, indexes, ledger, operations, dba]
+codeReferences:
+  - src/Whizbang.Data.Postgres/Schema/ManagedSchemaPlanner.cs
+  - src/Whizbang.Data.Postgres/Schema/ManagedSchemaReconciler.cs
+  - src/Whizbang.Data.Postgres/Schema/ManagedSchemaSettings.cs
+  - src/Whizbang.Data.Postgres/Schema/ManagedSchemaLedger.cs
+  - src/Whizbang.Data.Postgres/Migrations/200_ManagedObjects.sql
+  - src/Whizbang.Core/Perspectives/KeepSchemaObjectAttribute.cs
+  - src/Whizbang.Data.EFCore.Postgres/ManagedSchemaReconcileStep.cs
+testReferences:
+  - tests/Whizbang.Core.Tests/Schema/ManagedSchemaPlannerTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/ManagedSchemaReconcilerTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/DocumentIndexInitializationTests.cs
 ---
 
 # Managed Schema Objects
@@ -82,19 +94,19 @@ public record JobModel {
 
 You can also set code pins from configuration, as globs over `table:object`:
 
-```bash
+```bash{title="Pin from configuration" description="Code pins as globs over table:object" category="Configuration" difficulty="BEGINNER" tags=["Perspectives", "Schema", "Operations"]}
 Whizbang__Schema__Reconcile__Pins__0=wh_per_job:idx_*_legacy
 ```
 
 ### Setting a database pin
 
-```sql
+```sql{title="Pin in the database" description="Set a database pin with SQL or a comment" category="Operations" difficulty="BEGINNER" tags=["Perspectives", "Schema", "Operations"]}
 SELECT wh_pin_object('wh_per_job', 'idx_job_legacy_code', 'the reporting job reads it');
 -- or, recorded at the next start:
 COMMENT ON INDEX idx_job_legacy_code IS 'whizbang:pin the reporting job reads it';
 ```
 
-```bash
+```bash{title="Pin from the CLI" description="Set a database pin from the command line" category="Operations" difficulty="BEGINNER" tags=["Perspectives", "Schema", "Operations"]}
 whizbang schema pin wh_per_job idx_job_legacy_code --reason "the reporting job reads it"
 ```
 
@@ -102,11 +114,11 @@ A pin recorded from a comment stays in the ledger even if the comment is removed
 
 ### Unpinning
 
-```sql
+```sql{title="Unpin in the database" description="Release the database pin with SQL" category="Operations" difficulty="BEGINNER" tags=["Perspectives", "Schema", "Operations"]}
 SELECT wh_unpin_object('wh_per_job', 'idx_job_legacy_code');
 ```
 
-```bash
+```bash{title="Unpin from the CLI" description="Release the database pin from the command line" category="Operations" difficulty="BEGINNER" tags=["Perspectives", "Schema", "Operations"]}
 whizbang schema unpin wh_per_job idx_job_legacy_code
 ```
 
@@ -123,7 +135,7 @@ An unpin releases the **database pin** only. When C# also pins the object, the r
 
 A value that isn't one of these fails the start and names the key, so a mistyped setting can't quietly let a drop through.
 
-```bash
+```bash{title="Reconcile settings" description="Switch dropping off or keep one kind" category="Configuration" difficulty="BEGINNER" tags=["Perspectives", "Schema", "Operations"]}
 Whizbang__Schema__Reconcile__Mode=ReportOnly
 Whizbang__Schema__Reconcile__Drop__Index=false
 ```
@@ -143,7 +155,7 @@ From the CLI:
 - `whizbang schema status` lists the ledger: every object, its kind, owner, status and pins.
 - `whizbang schema plan` lists what the next start drops: Whizbang's objects pending retirement that neither pin holds. A running instance that still declares one can still keep it.
 
-```bash
+```bash{title="Ledger from the CLI" description="List the ledger and what the next start drops" category="Operations" difficulty="BEGINNER" tags=["Perspectives", "Schema", "Operations"]}
 whizbang schema status -c "Host=...;Database=...;Username=..." -s public
 whizbang schema plan -c "Host=...;Database=...;Username=..."
 ```
