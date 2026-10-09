@@ -138,6 +138,17 @@ test('the suite comes from the artifact folder, not from a directory above the T
   assert.deepEqual(Object.keys(written.suites), ['component']);
 });
 
+test('a republished artifact (trx-queue/trx-component/…) keeps the suite of the folder that holds the TRX', () => {
+  const trxDir = mkdtempSync(join(tmpdir(), 'test-status-queue-'));
+  mkdirSync(join(trxDir, 'trx-queue', 'trx-component'), { recursive: true });
+  writeFileSync(join(trxDir, 'trx-queue', 'trx-component', '_ci.trx'), trx([STAYS]));
+  const outDir = join(mkdtempSync(join(tmpdir(), 'test-status-out-')), 'test-status');
+
+  const written = buildTestStatus({ trxDir, outDir, log: silent });
+
+  assert.deepEqual(Object.keys(written.suites), ['component']);
+});
+
 test('without a codeBase the project is still inferred from the namespace', () => {
   const trxDir = trxTree({
     'trx-unit': [{ assembly: 'unused', codeBase: null, className: 'Whizbang.Core.Tests.Async.WakeSignalTests', method: MOVED_METHOD }],

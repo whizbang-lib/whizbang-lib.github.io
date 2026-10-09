@@ -104,9 +104,10 @@ export function buildTestStatus({ trxDir, outDir, run = {}, log = console }) {
 
   for (const file of trxFiles) {
     // Suite from artifact folder or filename prefix (e.g. trx-unit/…, unit-*.trx), read below
-    // trxDir only, so a directory above it can never name the suite.
+    // trxDir only, so a directory above it can never name the suite. The innermost trx-* folder
+    // wins: a republished artifact nests the original ones (trx-queue/trx-unit/…).
     const suite =
-      (relative(trxDir, file).match(/trx-([a-z-]+)/i) || [])[1] ||
+      (relative(trxDir, file).split(/[\\/]/).slice(0, -1).reverse().join('/').match(/trx-([a-z-]+)/i) || [])[1] ||
       (basename(file).match(/^([a-z]+)[-_.]/i) || [])[1] ||
       'tests';
     suites[suite] ??= { passed: 0, failed: 0, skipped: 0 };
