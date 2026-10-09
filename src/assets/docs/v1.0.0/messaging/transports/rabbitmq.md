@@ -23,13 +23,13 @@ codeReferences:
   - src/Whizbang.Transports.RabbitMQ/RabbitMQHealthCheck.cs
   - src/Whizbang.Transports.RabbitMQ/RabbitMQReadinessCheck.cs
 testReferences:
-  - tests/Whizbang.Transports.RabbitMQ.Tests/RabbitMQTransportTests.cs
-  - tests/Whizbang.Transports.RabbitMQ.Tests/RabbitMQChannelPoolTests.cs
+  - tests/Whizbang.Transports.RabbitMQ.Component.Tests/RabbitMQTransportTests.cs
+  - tests/Whizbang.Transports.RabbitMQ.Component.Tests/RabbitMQChannelPoolTests.cs
   - tests/Whizbang.Transports.RabbitMQ.Tests/RabbitMQConnectionRetryTests.cs
   - tests/Whizbang.Transports.RabbitMQ.Tests/RabbitMQBatchSubscribeTests.cs
-  - tests/Whizbang.Transports.RabbitMQ.Tests/RabbitMQTransportBatchPathTests.cs
-  - tests/Whizbang.Transports.RabbitMQ.Tests/RabbitMQTransportFailurePathTests.cs
-  - tests/Whizbang.Transports.RabbitMQ.Tests/RabbitMQSubscriptionTests.cs
+  - tests/Whizbang.Transports.RabbitMQ.Component.Tests/RabbitMQTransportBatchPathTests.cs
+  - tests/Whizbang.Transports.RabbitMQ.Component.Tests/RabbitMQTransportFailurePathTests.cs
+  - tests/Whizbang.Transports.RabbitMQ.Component.Tests/RabbitMQSubscriptionTests.cs
   - tests/Whizbang.Transports.RabbitMQ.Tests/RabbitMQHealthCheckTests.cs
   - tests/Whizbang.Transports.RabbitMQ.Tests/ServiceCollectionExtensionsTests.cs
   - tests/Whizbang.Transports.RabbitMQ.Integration.Tests/RabbitMQFifoIntegrationTests.cs
@@ -1290,8 +1290,8 @@ rabbitmqadmin list queues name messages
 - [`RabbitMQSubscription.cs`](https://github.com/whizbang-lib/whizbang/blob/main/src/Whizbang.Transports.RabbitMQ/RabbitMQSubscription.cs) - Subscription lifecycle
 
 ### Tests
-- [`RabbitMQTransportTests.cs`](https://github.com/whizbang-lib/whizbang/blob/main/tests/Whizbang.Transports.RabbitMQ.Tests/RabbitMQTransportTests.cs) - Unit tests
-- [`RabbitMQChannelPoolTests.cs`](https://github.com/whizbang-lib/whizbang/blob/main/tests/Whizbang.Transports.RabbitMQ.Tests/RabbitMQChannelPoolTests.cs) - Channel pool tests
+- [`RabbitMQTransportTests.cs`](https://github.com/whizbang-lib/whizbang/blob/main/tests/Whizbang.Transports.RabbitMQ.Component.Tests/RabbitMQTransportTests.cs) - Component tests
+- [`RabbitMQChannelPoolTests.cs`](https://github.com/whizbang-lib/whizbang/blob/main/tests/Whizbang.Transports.RabbitMQ.Component.Tests/RabbitMQChannelPoolTests.cs) - Channel pool tests
 - [Integration Tests](https://github.com/whizbang-lib/whizbang/tree/main/samples/ECommerce/tests/ECommerce.RabbitMQ.Integration.Tests) - TestContainers-based end-to-end tests
 
 ---
