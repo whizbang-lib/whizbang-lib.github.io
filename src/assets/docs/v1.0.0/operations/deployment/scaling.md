@@ -18,8 +18,8 @@ codeReferences:
   - src/Whizbang.Core/Workers/TransportConsumerWorker.cs
   - src/Whizbang.Core/Workers/PerspectiveWorker.cs
 testReferences:
-  - tests/Whizbang.Core.Tests/Workers/ClaimWorkerTests.cs
-  - tests/Whizbang.Core.Tests/Workers/OutboxDrainWorkerGapTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/ClaimWorkerTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/OutboxDrainWorkerGapTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 

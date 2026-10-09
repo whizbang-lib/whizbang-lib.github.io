@@ -37,7 +37,7 @@ testReferences:
   - tests/Whizbang.Core.Tests/Offloads/BodyClaimWireHelperTests.cs
   - tests/Whizbang.Core.Tests/Offloads/MessageBodyStoreContractTests.cs
   - tests/Whizbang.Core.Tests/Offloads/AddWhizbangMessageBodyStoreTests.cs
-  - tests/Whizbang.Core.Tests/Workers/TransportConsumerWorkerBodyOffloadTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/TransportConsumerWorkerBodyOffloadTests.cs
   - tests/Whizbang.Core.Tests/Offloads/BodyOffloadCipherTests.cs
   - tests/Whizbang.Core.Tests/Offloads/AesGcmEnvelopeCipherTests.cs
   - tests/Whizbang.Core.Tests/Offloads/BodyCipherFromConfigurationTests.cs

@@ -50,7 +50,7 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StoredFormScalarMismatchWorkerTests.cs
   - tests/Whizbang.Generators.Tests/CanonicalTemporalRewriteWiringTests.cs
   - tests/Whizbang.Core.Tests/Perspectives/StoredFormUnreadableTests.cs
-  - tests/Whizbang.Core.Tests/Workers/PerspectiveWorkerDeepPathDrainTests.StoredForm.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerDeepPathDrainTests.StoredForm.cs
   - tests/Whizbang.Core.Tests/Health/StoredFormHealthSourceTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/PostgresSchemaInitializerBranchTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/MigrationFunctionBodiesTests.cs

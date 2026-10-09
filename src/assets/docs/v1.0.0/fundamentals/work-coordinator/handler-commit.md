@@ -13,9 +13,9 @@ codeReferences:
   - src/Whizbang.Core/Workers/BatchFlusher.cs
   - src/Whizbang.Core/Messaging/IWorkCoordinator.cs
 testReferences:
-  - tests/Whizbang.Core.Tests/Workers/InboxHandlerWorkerTests.cs
-  - tests/Whizbang.Core.Tests/Workers/BatchFlusherRetryTests.cs
-  - tests/Whizbang.Core.Tests/Workers/FailureFlushWorkerTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/InboxHandlerWorkerTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/BatchFlusherRetryTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/FailureFlushWorkerTests.cs
 ---
 
 # Handler commit

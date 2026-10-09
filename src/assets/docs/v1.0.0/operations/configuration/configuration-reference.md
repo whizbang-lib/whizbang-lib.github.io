@@ -35,11 +35,11 @@ codeReferences:
   - src/Whizbang.Transports.RabbitMQ/RabbitMQOptionsConfigurationBinder.cs
   - src/Whizbang.Data.Postgres/PostgresOptionsConfiguration.cs
 testReferences:
-  - tests/Whizbang.Core.Tests/Messaging/WorkCoordinatorGateInteractiveReserveTests.cs
+  - tests/Whizbang.Core.Component.Tests/Messaging/WorkCoordinatorGateInteractiveReserveTests.cs
   - tests/Whizbang.Core.Tests/ServiceCollectionExtensionsTests.cs
   - tests/Whizbang.Core.Tests/Messaging/WorkCoordinatorGateRegistrationTests.cs
-  - tests/Whizbang.Core.Tests/Workers/BatchFlusherRetryTests.cs
-  - tests/Whizbang.Core.Tests/Workers/PerspectiveWorkerAffinityHoldWatchdogTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/BatchFlusherRetryTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerAffinityHoldWatchdogTests.cs
   - tests/Whizbang.Core.Tests/Configuration/ProcessWideOptionsBindingTests.cs
   - tests/Whizbang.Hosting.AspNet.Tests/AspNetOptionsConfigurationBindingTests.cs
   - tests/Whizbang.Sagas.Tests/SagaOptionsConfigurationBindingTests.cs
@@ -47,7 +47,7 @@ testReferences:
   - tests/Whizbang.Core.Tests/Resilience/CircuitBreakerOptionsConfigurationTests.cs
   - tests/Whizbang.Core.Tests/Workers/TransportConsumerOptionsConfigurationTests.cs
   - tests/Whizbang.Core.Tests/Workers/ServiceBusConsumerOptionsConfigurationTests.cs
-  - tests/Whizbang.Core.Tests/Tags/TagCoalesceConfigurationBinderTests.cs
+  - tests/Whizbang.Core.Component.Tests/Tags/TagCoalesceConfigurationBinderTests.cs
   - tests/Whizbang.Core.Tests/Configuration/ConfigurationValueBinderTests.cs
   - tests/Whizbang.Transports.RabbitMQ.Tests/RabbitMQOptionsConfigurationTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/PostgresOptionsConfigurationTests.cs

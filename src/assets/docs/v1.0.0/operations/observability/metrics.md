@@ -40,7 +40,7 @@ codeReferences:
 testReferences:
   - tests/Whizbang.Core.Tests/Observability/InstanceLivenessMetricsTests.cs
   - tests/Whizbang.Core.Tests/Observability/ProbeCadenceMetricsTests.cs
-  - tests/Whizbang.Core.Tests/Observability/PassiveCounterTests.cs
+  - tests/Whizbang.Core.Component.Tests/Observability/PassiveCounterTests.cs
   - tests/Whizbang.Core.Tests/Observability/PassiveCounterDriftLockTests.cs
   - tests/Whizbang.Core.Tests/Observability/MaintenanceMetricsTests.cs
   - tests/Whizbang.Core.Tests/Observability/DispatcherMetricsTests.cs
@@ -59,9 +59,9 @@ testReferences:
   - tests/Whizbang.Core.Tests/Observability/StreamIntegrityMetricsTests.cs
   - tests/Whizbang.Sagas.Tests/SagaMetricsTests.cs
   - tests/Whizbang.Core.Tests/Observability/CompositeMetricsTests.cs
-  - tests/Whizbang.Core.Tests/Workers/InboxDispatchWorkerCompositeCommitTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/InboxDispatchWorkerCompositeCommitTests.cs
   - tests/Whizbang.Core.Tests/Workers/InboxHandlerWorkerQueueDepthTests.cs
-  - tests/Whizbang.Core.Tests/Workers/PerspectiveWorkerCollectiveSinkTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerCollectiveSinkTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 

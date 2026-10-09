@@ -24,8 +24,8 @@ testReferences:
   - tests/Whizbang.Core.Tests/Perspectives/PerspectiveIdempotencyFilterTests.cs
   - tests/Whizbang.Core.Integration.Tests/Perspectives/PerspectiveApplyExactlyOnceTests.cs
   - tests/Whizbang.Core.Tests/Workers/ProcessedEventCacheTests.cs
-  - tests/Whizbang.Core.Tests/Workers/PerspectiveWorkerDedupTests.cs
-  - tests/Whizbang.Core.Tests/Workers/PerspectiveWorkerDrainModeTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerDedupTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerDrainModeTests.cs
 ---
 
 # Apply Exactly-Once Contract

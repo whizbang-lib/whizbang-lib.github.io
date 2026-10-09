@@ -32,7 +32,7 @@ testReferences:
   - tests/Whizbang.Transports.Tests/SubscribeBatchTests.cs
   - tests/Whizbang.Core.Tests/Workers/TransportPublishStrategyTests.cs
   - tests/Whizbang.Core.Tests/Workers/MessagePublishStrategyTests.cs
-  - tests/Whizbang.Core.Tests/Workers/OutboxPublishWorkerTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/OutboxPublishWorkerTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 

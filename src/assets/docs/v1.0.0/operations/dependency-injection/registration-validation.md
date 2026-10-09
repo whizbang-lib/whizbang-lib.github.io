@@ -14,7 +14,7 @@ codeReferences:
   - src/Whizbang.Generators/ServiceRequirementsGenerator.cs
 testReferences:
   - tests/Whizbang.Core.Tests/DependencyInjection/RegistrationValidationTests.cs
-  - tests/Whizbang.Core.Tests/DependencyInjection/RegistrationValidationStartupTests.cs
+  - tests/Whizbang.Core.Component.Tests/DependencyInjection/RegistrationValidationStartupTests.cs
 ---
 
 # Registration Validation

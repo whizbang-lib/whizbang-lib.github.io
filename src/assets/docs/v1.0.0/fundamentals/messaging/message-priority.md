@@ -70,26 +70,26 @@ codeReferences:
   - src/Whizbang.Data.Dapper.Sqlite/DapperSqliteEventStore.cs
 testReferences:
   - tests/Whizbang.Core.Tests/Priority/WorkPriorityTests.cs
-  - tests/Whizbang.Core.Tests/Priority/PriorityHooksTests.cs
+  - tests/Whizbang.Core.Component.Tests/Priority/PriorityHooksTests.cs
   - tests/Whizbang.Core.Tests/Priority/DispatcherPriorityStampingTests.cs
-  - tests/Whizbang.Core.Tests/Priority/ConsumerPriorityClassificationTests.cs
-  - tests/Whizbang.Core.Tests/Priority/InboxDispatchWorkerPriorityContextTests.cs
+  - tests/Whizbang.Core.Component.Tests/Priority/ConsumerPriorityClassificationTests.cs
+  - tests/Whizbang.Core.Component.Tests/Priority/InboxDispatchWorkerPriorityContextTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/MessagePrioritySqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/BucketAwareClaimSqlTests.cs
   - tests/Whizbang.Data.Schema.Tests/Schemas/PriorityColumnTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/WorkCoordinatorGateInteractiveReserveTests.cs
+  - tests/Whizbang.Core.Component.Tests/Messaging/WorkCoordinatorGateInteractiveReserveTests.cs
   - tests/Whizbang.Core.Tests/Messaging/WorkCoordinatorGateRegistrationTests.cs
   - tests/Whizbang.Core.Tests/Priority/PriorityTagSurfaceTests.cs
-  - tests/Whizbang.Core.Tests/Priority/ClaimWorkerPriorityBatchHookTests.cs
+  - tests/Whizbang.Core.Component.Tests/Priority/ClaimWorkerPriorityBatchHookTests.cs
   - tests/Whizbang.Core.Tests/Messaging/EnvelopeSerializerTests.cs
   - tests/Whizbang.Core.Tests/Observability/MessageEnvelopeExtensionsTests.cs
   - tests/Whizbang.Core.Tests/Offloads/BodyOffloadPostSerializeHookTests.cs
   - tests/Whizbang.Core.Tests/Messaging/CompositeInboxFanoutTests.cs
   - tests/Whizbang.Core.Tests/JsonContextRegistryTests.cs
   - tests/Whizbang.Generators.Tests/MessageJsonContextGeneratorTests.cs
-  - tests/Whizbang.Core.Tests/Workers/OutboxDrainWorkerGapTests.cs
-  - tests/Whizbang.Core.Tests/Workers/InboxDrainWorkerTests.cs
-  - tests/Whizbang.Core.Tests/Workers/CoalesceShipWorkerTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/OutboxDrainWorkerGapTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/InboxDrainWorkerTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/CoalesceShipWorkerTests.cs
   - tests/Whizbang.Core.Tests/SystemEvents/AuditOutboxMessageBuilderCoverageTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/PriorityOnTheWireSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/ClaimedInboxStreamFolderTests.cs
@@ -110,7 +110,7 @@ testReferences:
   - tests/Whizbang.Data.Dapper.Postgres.Tests/EventEnvelopeJsonbAdapterPriorityTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperPostgresEventStorePriorityTests.cs
   - tests/Whizbang.Data.Tests/DapperSqliteEventStorePriorityTests.cs
-  - tests/Whizbang.Core.Tests/Priority/PriorityOnTheWireEndToEndTests.cs
+  - tests/Whizbang.Core.Component.Tests/Priority/PriorityOnTheWireEndToEndTests.cs
 ---
 
 # Message Priority

@@ -34,7 +34,7 @@ codeReferences:
 testReferences:
   - tests/Whizbang.Core.Tests/ValueObjects/TrackedGuidTests.cs
   - tests/Whizbang.Core.Tests/ValueObjects/TrackedGuidJsonConverterTests.cs
-  - tests/Whizbang.Core.Tests/ValueObjects/TrackedGuidMonotonicityTests.cs
+  - tests/Whizbang.Core.Component.Tests/ValueObjects/TrackedGuidMonotonicityTests.cs
   - tests/Whizbang.Core.Tests/ValueObjects/GuidMetadataTests.cs
   - tests/Whizbang.Core.Tests/ValueObjects/WhizbangIdTests.cs
   - tests/Whizbang.Core.Tests/ValueObjects/WhizbangIdProviderTests.cs

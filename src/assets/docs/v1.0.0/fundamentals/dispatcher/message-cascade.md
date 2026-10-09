@@ -24,13 +24,13 @@ codeReferences:
 testReferences:
   - tests/Whizbang.Core.Tests/Dispatcher/DispatcherCascadeTests.cs
   - tests/Whizbang.Core.Tests/Dispatcher/DispatcherRoutedCascadeTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/DeferredOutboxChannelTests.cs
+  - tests/Whizbang.Core.Component.Tests/Messaging/DeferredOutboxChannelTests.cs
   - tests/Whizbang.Core.Tests/Messaging/EmissionIdentityTests.cs
   - tests/Whizbang.Core.Tests/Dispatcher/DispatcherEmissionIdentityTests.cs
   - tests/Whizbang.Core.Tests/Observability/MessageEnvelopeHandlerNameTests.cs
   - tests/Whizbang.Core.Tests/Observability/WorkCoordinatorMetricsTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/EFCoreOutboxEmissionDedupTests.cs
-  - tests/Whizbang.Core.Tests/Workers/OutboxDrainWorkerTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/OutboxDrainWorkerTests.cs
 ---
 
 # Automatic Message Cascade {#automatic-message-cascade}

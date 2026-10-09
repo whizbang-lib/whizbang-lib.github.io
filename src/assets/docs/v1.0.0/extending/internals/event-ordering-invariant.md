@@ -32,9 +32,9 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/042_FetchPendingPerspectiveEvents.sql
   - src/Whizbang.Data.Postgres/Migrations/043_FetchEventsByIds.sql
 testReferences:
-  - tests/Whizbang.Core.Tests/Workers/SlidingWindowOutboxBatchStrategyTests.cs
-  - tests/Whizbang.Core.Tests/Workers/SlidingWindowInboxBatchStrategyTests.cs
-  - tests/Whizbang.Core.Tests/Workers/SlidingWindowApplyBatchStrategyTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/SlidingWindowOutboxBatchStrategyTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/SlidingWindowInboxBatchStrategyTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/SlidingWindowApplyBatchStrategyTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/GetStreamEventsClaimSlice25Tests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/BaseUpsertStrategyInPlaceUpdateTests.cs
 ---

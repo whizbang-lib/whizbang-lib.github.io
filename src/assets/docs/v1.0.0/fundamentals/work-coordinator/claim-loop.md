@@ -25,14 +25,14 @@ codeReferences:
   - src/Whizbang.Core/Signals/BasePollSignalSource.cs
   - src/Whizbang.Core/Signals/PollIdleBackoff.cs
 testReferences:
-  - tests/Whizbang.Core.Tests/Workers/ClaimWorkerAcquisitionBoundsTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/ClaimWorkerAcquisitionBoundsTests.cs
   - tests/Whizbang.Core.Tests/Workers/AdaptiveClaimWindowLatencyTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/BoundedAcquisitionRewriteSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/ClaimWorkPlanShapeTests.cs
-  - tests/Whizbang.Core.Tests/Signals/PollSignalSourceIdleBackoffTests.cs
+  - tests/Whizbang.Core.Component.Tests/Signals/PollSignalSourceIdleBackoffTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/OutboxStreamRunSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/OutboxStreamRunDrainMeasurementTests.cs
-  - tests/Whizbang.Core.Tests/Workers/OutboxDrainWorkerStreamRunTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/OutboxDrainWorkerStreamRunTests.cs
 ---
 
 # Claim loop

@@ -25,7 +25,7 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/DutyElectionE2ETests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/TableRewriteJourneyE2ETests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/InstanceCapabilitiesSqlTests.cs
-  - tests/Whizbang.Core.Tests/Startup/StartupPipelineRunnerDutyTests.cs
+  - tests/Whizbang.Core.Component.Tests/Startup/StartupPipelineRunnerDutyTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Chaos/RoleAssignmentChaosTests.cs
 ---
 

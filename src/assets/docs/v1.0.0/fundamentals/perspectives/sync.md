@@ -14,10 +14,10 @@ codeReferences:
   - src/Whizbang.Core/Messaging/IWorkCoordinator.cs
 testReferences:
   - tests/Whizbang.Core.Tests/Perspectives/Sync/SyncInquiryTests.cs
-  - tests/Whizbang.Core.Tests/Perspectives/Sync/PerspectiveSyncAwaiterTests.cs
+  - tests/Whizbang.Core.Component.Tests/Perspectives/Sync/PerspectiveSyncAwaiterTests.cs
   - tests/Whizbang.Core.Tests/Perspectives/Sync/PerspectiveSyncAwaiterStreamTests.cs
-  - tests/Whizbang.Core.Tests/Perspectives/Sync/WaitForStreamAsyncIntegrationTests.cs
-  - tests/Whizbang.Core.Tests/Perspectives/Sync/ScopedEventTrackerTests.cs
+  - tests/Whizbang.Core.Component.Tests/Perspectives/Sync/WaitForStreamAsyncIntegrationTests.cs
+  - tests/Whizbang.Core.Component.Tests/Perspectives/Sync/ScopedEventTrackerTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 

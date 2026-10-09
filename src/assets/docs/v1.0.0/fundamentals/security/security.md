@@ -40,7 +40,7 @@ testReferences:
   - tests/Whizbang.Core.Tests/Security/SecurityPrincipalIdTests.cs
   - tests/Whizbang.Core.Tests/Security/SecurityPrincipalIdJsonConverterTests.cs
   - tests/Whizbang.Core.Tests/Security/ScopeContextTests.cs
-  - tests/Whizbang.Core.Tests/Security/ScopeContextAccessorTests.cs
+  - tests/Whizbang.Core.Component.Tests/Security/ScopeContextAccessorTests.cs
   - tests/Whizbang.Core.Tests/Security/PermissionExtractorTests.cs
   - tests/Whizbang.Core.Tests/Security/AccessDeniedExceptionTests.cs
   - tests/Whizbang.Core.Tests/Security/SecurityAttributeTests.cs

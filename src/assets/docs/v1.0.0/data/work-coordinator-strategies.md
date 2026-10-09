@@ -20,7 +20,7 @@ codeReferences:
   - src/Whizbang.Core/Messaging/WorkCoordinatorFlushHelper.cs
 testReferences:
   - tests/Whizbang.Core.Tests/Messaging/FlushApiTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/BatchWorkCoordinatorStrategyTests.cs
+  - tests/Whizbang.Core.Component.Tests/Messaging/BatchWorkCoordinatorStrategyTests.cs
   - tests/Whizbang.Core.Tests/Messaging/WorkCoordinatorStrategyRegistrationTests.cs
   - tests/Whizbang.Core.Tests/Messaging/WorkFlusherTests.cs
   - tests/Whizbang.Hosting.AspNet.Tests/WhizbangFlushMiddlewareTests.cs

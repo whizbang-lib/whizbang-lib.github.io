@@ -29,7 +29,7 @@ testReferences:
   - tests/Whizbang.Core.Tests/Messaging/LifecycleStageExtensionsTests.cs
   - tests/Whizbang.Core.Tests/Messaging/LocalImmediateLifecycleStageTests.cs
   - tests/Whizbang.Core.Tests/Messaging/ReceptorInvokerTests.cs
-  - tests/Whizbang.Core.Tests/Lifecycle/LifecycleCoordinatorTests.cs
+  - tests/Whizbang.Core.Component.Tests/Lifecycle/LifecycleCoordinatorTests.cs
   - tests/Whizbang.Core.Tests/Workers/PerspectiveWorkerPostLifecycleTests.cs
   - tests/Whizbang.Core.Tests/Workers/TransportConsumerWorkerPostLifecycleTests.cs
   - tests/Whizbang.Core.Tests/Workers/MaintenanceWorkerDestructionHookTests.cs

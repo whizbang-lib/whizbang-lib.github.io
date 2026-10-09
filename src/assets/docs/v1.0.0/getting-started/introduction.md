@@ -16,7 +16,7 @@ codeReferences:
   - src/Whizbang.Core/Perspectives/IPerspectiveFor.cs
   - README.md
 testReferences:
-  - tests/Whizbang.Core.Tests/Dispatcher/DispatcherTests.cs
+  - tests/Whizbang.Core.Component.Tests/Dispatcher/DispatcherTests.cs
   - tests/Whizbang.Core.Tests/Receptors/ReceptorTests.cs
   - tests/Whizbang.Core.Tests/Perspectives/IPerspectiveForTests.cs
 lastMaintainedCommit: '01f07906'

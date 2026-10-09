@@ -51,7 +51,7 @@ testReferences:
   - tests/Whizbang.Core.Tests/Perspectives/CollectiveWhereComposerTests.cs
   - tests/Whizbang.Core.Tests/Perspectives/CollectiveSpecContractTests.cs
   - tests/Whizbang.Core.Tests/Perspectives/TenantCollectiveScopeResolverTests.cs
-  - tests/Whizbang.Core.Tests/Workers/PerspectiveWorkerCollectiveSinkTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerCollectiveSinkTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Collective/CollectiveDispatcherEFCoreIntegrationTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Collective/CollectiveInMemoryUpsertElementTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Collective/CollectiveElementUpsertSqlTests.cs

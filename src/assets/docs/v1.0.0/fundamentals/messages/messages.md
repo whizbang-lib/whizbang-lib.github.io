@@ -20,7 +20,7 @@ testReferences:
   - tests/Whizbang.Generators.Tests/MessageRegistryGeneratorTests.cs
   - tests/Whizbang.Generators.Tests/StreamIdGeneratorTests.cs
   - tests/Whizbang.Core.Tests/Receptors/ReceptorTests.cs
-  - tests/Whizbang.Core.Tests/Dispatcher/DispatcherTests.cs
+  - tests/Whizbang.Core.Component.Tests/Dispatcher/DispatcherTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 

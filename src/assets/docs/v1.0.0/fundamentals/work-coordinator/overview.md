@@ -15,9 +15,9 @@ codeReferences:
   - src/Whizbang.Core/Workers/OutboxCompletionFlushWorker.cs
   - src/Whizbang.Core/Workers/HeartbeatWorker.cs
 testReferences:
-  - tests/Whizbang.Core.Tests/Workers/InboxHandlerWorkerTests.cs
-  - tests/Whizbang.Core.Tests/Workers/OutboxPublishWorkerCoverageTests.cs
-  - tests/Whizbang.Core.Tests/Workers/OutboxCompletionFlushWorkerTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/InboxHandlerWorkerTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/OutboxPublishWorkerCoverageTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/OutboxCompletionFlushWorkerTests.cs
 ---
 
 # Work coordinator overview

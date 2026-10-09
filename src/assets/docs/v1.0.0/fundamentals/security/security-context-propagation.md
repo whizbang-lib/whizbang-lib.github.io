@@ -31,7 +31,7 @@ testReferences:
   - tests/Whizbang.Core.Tests/Security/MessageSecurityOptionsTests.cs
   - tests/Whizbang.Core.Tests/Security/MessageSecurityServiceCollectionExtensionsTests.cs
   - tests/Whizbang.Core.Tests/Security/ImmutableScopeContextTests.cs
-  - tests/Whizbang.Core.Tests/Security/ScopeContextAccessorTests.cs
+  - tests/Whizbang.Core.Component.Tests/Security/ScopeContextAccessorTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 

@@ -36,7 +36,7 @@ testReferences:
   - tests/Whizbang.Core.Tests/Security/MessageSecurityServiceCollectionExtensionsTests.cs
   - tests/Whizbang.Core.Tests/Security/MessageHopSecurityExtractorTests.cs
   - tests/Whizbang.Core.Tests/Security/ImmutableScopeContextTests.cs
-  - tests/Whizbang.Core.Tests/Security/MessageContextAccessorTests.cs
+  - tests/Whizbang.Core.Component.Tests/Security/MessageContextAccessorTests.cs
   - tests/Whizbang.Core.Tests/Security/SecurityContextHelperTests.cs
   - tests/Whizbang.Core.Tests/Dispatch/DispatcherSecurityBuilderTests.cs
   - tests/Whizbang.Core.Tests/Dispatch/SystemDispatcherBuilderTests.cs

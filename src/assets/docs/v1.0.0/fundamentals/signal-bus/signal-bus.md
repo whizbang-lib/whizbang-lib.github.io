@@ -16,7 +16,7 @@ codeReferences:
   - src/Whizbang.Core/Signals/InstanceLifecycleSignals.cs
   - src/Whizbang.Core/Signals/WorkAvailableSignals.cs
 testReferences:
-  - tests/Whizbang.Core.Tests/Signals/SignalBusProbeBackoffTests.cs
+  - tests/Whizbang.Core.Component.Tests/Signals/SignalBusProbeBackoffTests.cs
 ---
 
 # System Signal Bus

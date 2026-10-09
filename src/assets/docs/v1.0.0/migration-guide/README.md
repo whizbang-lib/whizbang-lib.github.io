@@ -23,7 +23,7 @@ testReferences:
   - tests/Whizbang.Migrate.Tests/Analysis/MartenAnalyzerTests.cs
   - tests/Whizbang.Core.Tests/Receptors/ReceptorTests.cs
   - tests/Whizbang.Core.Tests/Perspectives/IPerspectiveForTests.cs
-  - tests/Whizbang.Core.Tests/Dispatcher/DispatcherTests.cs
+  - tests/Whizbang.Core.Component.Tests/Dispatcher/DispatcherTests.cs
 verifiedAgainstCommit: a64ba9a0
 verifiedDate: 2026-08-04
 ---

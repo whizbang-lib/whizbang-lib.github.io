@@ -31,7 +31,7 @@ testReferences:
   - tests/Whizbang.Core.Tests/Messaging/ReceptorInvokerTests.cs
   - tests/Whizbang.Core.Tests/Messaging/ReceptorRegistryRuntimeRegistrationTests.cs
   - tests/Whizbang.Core.Tests/Messaging/ReceptorIdempotentAttributeTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/ProcessingModeTests.cs
+  - tests/Whizbang.Core.Component.Tests/Messaging/ProcessingModeTests.cs
   - tests/Whizbang.Generators.Tests/ReceptorDiscoveryGeneratorTests.cs
 lastMaintainedCommit: '01f07906'
 ---
