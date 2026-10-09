@@ -25,7 +25,7 @@ codeReferences:
 testReferences:
   - tests/Whizbang.Transports.RabbitMQ.Tests/RabbitMQTransportTests.cs
   - tests/Whizbang.Transports.RabbitMQ.Tests/RabbitMQChannelPoolTests.cs
-  - tests/Whizbang.Transports.RabbitMQ.Tests/RabbitMQConnectionRetryTests.cs
+  - tests/Whizbang.Transports.RabbitMQ.Integration.Tests/RabbitMQConnectionRetryTests.cs
   - tests/Whizbang.Transports.RabbitMQ.Tests/RabbitMQBatchSubscribeTests.cs
   - tests/Whizbang.Transports.RabbitMQ.Tests/RabbitMQTransportBatchPathTests.cs
   - tests/Whizbang.Transports.RabbitMQ.Tests/RabbitMQTransportFailurePathTests.cs
