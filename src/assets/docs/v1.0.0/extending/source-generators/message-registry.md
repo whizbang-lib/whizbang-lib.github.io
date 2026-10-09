@@ -19,7 +19,7 @@ codeReferences:
   - src/Whizbang.Generators/build/SoftwareExtravaganza.Whizbang.Generators.targets
 testReferences:
   - tests/Whizbang.Generators.Tests/MessageRegistryGeneratorTests.cs
-  - tests/Whizbang.Generators.Tests/MessageRegistryGeneratorCoverageTests.cs
+  - tests/Whizbang.Generators.Component.Tests/MessageRegistryGeneratorCoverageTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
