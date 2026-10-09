@@ -31,7 +31,7 @@ codeReferences:
 testReferences:
   - tests/Whizbang.Policies.Tests/PolicyConfigurationExtensionsTests.cs
   - tests/Whizbang.Policies.Tests/PolicyConfigurationTransportTests.cs
-  - tests/Whizbang.Partitioning.Tests/HashPartitionRouterTests.cs
+  - tests/Whizbang.Partitioning.Component.Tests/HashPartitionRouterTests.cs
   - tests/Whizbang.Policies.Tests/PolicyContextTests.cs
   - tests/Whizbang.Transports.Tests/TransportManagerSubscriptionTests.cs
   - tests/Whizbang.Transports.AzureServiceBus.Tests/AzureServiceBusTransportUnitTests.cs
@@ -124,7 +124,7 @@ using **consistent hashing**:
 
 > Verified: deterministic same-key routing, even distribution across partitions,
 > and the single-partition edge case -
-> `tests/Whizbang.Partitioning.Tests/HashPartitionRouterTests.cs:HashAlgorithm_SameKey_AlwaysProducesSamePartitionAsync`,
+> `tests/Whizbang.Partitioning.Component.Tests/HashPartitionRouterTests.cs:HashAlgorithm_SameKey_AlwaysProducesSamePartitionAsync`,
 > `Distribution_10kStreams_DistributesEvenlyAsync`,
 > `EdgeCase_SinglePartition_AlwaysReturnsZeroAsync`.
 
