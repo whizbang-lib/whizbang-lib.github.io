@@ -69,7 +69,7 @@ Host=localhost;Port=5432;Database=myapp;Username=postgres;Password=secret
 Two retry layers exist depending on the driver:
 
 - **EF Core driver (turnkey)** — the generated `UseNpgsql` registration enables `EnableRetryOnFailure(maxRetryCount: 3, maxRetryDelay: 5s)` for transient command failures.
-- **Dapper driver** — `AddWhizbangPostgres(...)` waits for the database at startup using `PostgresConnectionRetry` with exponential backoff, configured via `PostgresOptions`:
+- **Dapper driver** — with `initializeSchema: true`, the schema initializer waits for the database at host start (never at registration) using `PostgresConnectionRetry` with exponential backoff, configured via `PostgresOptions`. A failure after that wait is retried by the initializer itself every `SchemaInitializationOptions.InitRetryDelay`, as on the EF Core driver ([Turnkey Initialization](turnkey-initialization.md#both-drivers)):
 
 ```csharp{title="With Connection Retry" description="Dapper driver startup connection retry with exponential backoff via PostgresOptions" category="Implementation" difficulty="BEGINNER" tags=["Data", "Connection", "Retry", "Connection-retry"] tests=["PostgresConnectionRetryTests.PostgresOptions_DefaultValues_AreCorrectAsync", "PostgresConnectionRetryTests.WaitForConnectionAsync_WithInvalidConnection_RetriesAndThrowsAsync"]}
 services.AddWhizbangPostgres(
