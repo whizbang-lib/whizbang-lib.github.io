@@ -1214,7 +1214,7 @@ Checked sample entries in `code-tests-map.json`:
 ```json
 "InMemorySequenceProvider": [
   {
-    "testFile": "tests/Whizbang.Sequencing.Tests/InMemorySequenceProviderTests.cs",
+    "testFile": "tests/Whizbang.Sequencing.Component.Tests/InMemorySequenceProviderTests.cs",
     "testMethod": "ConcurrentAccess_VariousTaskCounts_ShouldMaintainConsistencyAsync",
     "testLine": 24,
     "testClass": "InMemorySequenceProviderTests",
