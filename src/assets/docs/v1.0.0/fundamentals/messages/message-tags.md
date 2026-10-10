@@ -106,7 +106,7 @@ Message tags provide a **declarative way** to apply cross-cutting concerns to me
 
 ```csharp{title="Tag Processing Pipeline" description="Understanding the message tag processing flow from decoration to hook invocation" category="Messaging" difficulty="INTERMEDIATE" tags=["Tags", "Architecture", "Pipeline"] tests=["MessageTagProcessorTests.ProcessTagsAsync_WithMatchingTag_InvokesHookAsync", "MessageTagProcessorTests.ProcessTagsAsync_InvokesHooksInPriorityOrderAsync"]}
 // 1. Decorate messages with tag attributes
-[SignalTag(Tag = "order-created", Properties = ["OrderId", "CustomerId"])]
+[SignalTag(Tag = "order-created", Properties = ["OrderId", "CustomerId"], Group = "customer-{CustomerId}")]
 [TelemetryTag(Tag = "order-telemetry", SpanName = "CreateOrder")]
 public record OrderCreatedEvent(Guid OrderId, Guid CustomerId, decimal Total) : IEvent;
 
@@ -192,7 +192,7 @@ public record PaymentProcessedEvent(Guid PaymentId, decimal Amount) : IEvent;
 public record OrderCountEvent(Guid OrderId, string TenantId, string Region) : IEvent;
 
 // Multiple tags on one message
-[SignalTag(Tag = "payment-completed", Properties = ["PaymentId", "Amount"])]
+[SignalTag(Tag = "payment-completed", Properties = ["PaymentId", "Amount"], Group = "tenant-{TenantId}")]
 [TelemetryTag(Tag = "payment-trace", SpanName = "CompletePayment")]
 [MetricTag(Tag = "payment-amount", MetricName = "payments.total", Type = MetricType.Histogram, ValueProperty = "Amount")]
 public record PaymentCompletedEvent(Guid PaymentId, decimal Amount) : IEvent;
@@ -614,7 +614,7 @@ public record OrderShippedEvent(
 | Property | Type | Default | Description |
 |----------|------|---------|-------------|
 | `Tag` | `string` | (required) | Unique identifier for the notification |
-| `Group` | `string?` | `null` | Target group/channel, supports `{PropertyName}` placeholders |
+| `Group` | `string?` | `null` | Target group/channel, supports `{PropertyName}` placeholders. The built-in hook sends nothing without one; `"all"` broadcasts |
 | `Priority` | `SignalPriority` | `Normal` | Notification priority level |
 | `Properties` | `string[]?` | `null` | Properties to extract from message (see Payload Structure for null vs `[]` semantics) |
 | `ExtraJson` | `string?` | `null` | Additional JSON to merge |
@@ -630,6 +630,15 @@ The `Group` property supports dynamic resolution using property placeholders:
 [SignalTag(Tag = "system-alert", Group = "all")]                    // Broadcast to all
 [SignalTag(Tag = "order-event", Group = "tenant-{TenantId}-orders")] // Multiple segments
 ```
+
+How the built-in `SignalRNotificationHook` resolves a group:
+
+- **`{TenantId}` comes from the message's scope only**, never from the event, so a message cannot route a notification to another tenant. Use it in every group that should stay inside a tenant.
+- **Other placeholders come from the event**, and `{UserId}`, `{OrganizationId}` and `{CustomerId}` fall back to the scope when the event has no such property. Routing to the customer an order belongs to, or to an assigned user, is an event value.
+- **`"all"` is the only broadcast.** It reaches every connected client of every tenant.
+- **A tag with no `Group`, or a group with a placeholder that has no value, is not sent.** The hook logs a warning naming the tag, rather than broadcasting or sending to a literal group name.
+
+Group membership is the application's: your hub decides which groups a connection joins, so join a connection only to groups built from its own authenticated identity.
 
 #### SignalPriority {#signal-priority}
 

@@ -34,7 +34,7 @@ Notification hooks integrate Whizbang's message tag system with SignalR to:
 - **Push Automatically** - Tagged messages trigger SignalR notifications after successful handling
 - **Route to Groups** - Dynamic group routing with placeholder substitution
 - **Include Metadata** - Notifications contain tag, priority, type, and payload
-- **Support Broadcast** - Send to all clients when no group specified
+- **Support Broadcast** - Send to every connected client, of every tenant, with the explicit `Group = "all"`
 
 ## Installation
 
@@ -60,12 +60,12 @@ builder.Services.AddWhizbangSignalR();
 
 ### Basic Notification
 
-```csharp{title="Basic Notification" description="Basic Notification" category="API" difficulty="BEGINNER" tags=["Apis", "Signalr", "Basic", "Notification"] tests=["SignalRNotificationHookTests.OnTaggedMessage_SendsToAllClients_WhenNoGroupSpecifiedAsync"]}
-[SignalTag(Tag = "system-announcement", Properties = ["Message"])]
+```csharp{title="Basic Notification" description="Basic Notification" category="API" difficulty="BEGINNER" tags=["Apis", "Signalr", "Basic", "Notification"] tests=["SignalRNotificationHookTests.AllGroup_BroadcastsToEveryClientAsync", "SignalRNotificationHookTests.NoGroupTemplate_SendsNothingAsync"]}
+[SignalTag(Tag = "system-announcement", Properties = ["Message"], Group = "all")]
 public record SystemAnnouncementEvent(string Message) : IEvent;
 ```
 
-This sends a broadcast notification to all connected clients (no `Group` specified).
+`Group = "all"` sends a broadcast to every connected client, of every tenant. It is the only way to broadcast: a tag with no `Group` is not sent (the hook logs a warning naming the tag).
 
 ### Group-Targeted Notification
 
@@ -83,15 +83,22 @@ public record OrderShippedEvent(
 
 The `{CustomerId}` placeholder is replaced with the actual value from the notification payload.
 
+How a group is resolved:
+
+- **`{TenantId}` comes from the message's scope only**, never from the event, so a message cannot route a notification to another tenant. Use it in every group that should stay inside a tenant.
+- **Other placeholders come from the event**; `{UserId}`, `{OrganizationId}` and `{CustomerId}` fall back to the scope when the event has no such property.
+- **A placeholder with no value means the notification is not sent**, with a warning, rather than going to a literal group name such as `tenant-{TenantId}`.
+- **Group membership is your hub's.** Join a connection only to groups built from its own authenticated identity.
+
 ### Priority Levels
 
 `SignalPriority` has four values: `Low = 0`, `Normal = 1` (default), `High = 2`, `Critical = 3`.
 
 ```csharp{title="Priority Levels" description="Priority Levels" category="API" difficulty="BEGINNER" tags=["Apis", "Signalr", "Priority", "Levels"] tests=["SignalRNotificationHookTests.OnTaggedMessage_IncludesCorrectPriority_InNotificationAsync"]}
-[SignalTag(Tag = "new-message", Properties = ["ConversationId", "Preview"], Priority = SignalPriority.Normal)]
+[SignalTag(Tag = "new-message", Properties = ["ConversationId", "Preview"], Group = "conversation-{ConversationId}", Priority = SignalPriority.Normal)]
 public record NewMessageEvent(Guid ConversationId, string Preview) : IEvent;
 
-[SignalTag(Tag = "payment-failed", Properties = ["OrderId", "Reason"], Priority = SignalPriority.Critical)]
+[SignalTag(Tag = "payment-failed", Properties = ["OrderId", "Reason"], Group = "tenant-{TenantId}", Priority = SignalPriority.Critical)]
 public record PaymentFailedEvent(Guid OrderId, string Reason) : IEvent;
 ```
 
@@ -102,7 +109,7 @@ public record PaymentFailedEvent(Guid OrderId, string Reason) : IEvent;
 | `Tag` | `string` (required) | Notification identifier sent to clients |
 | `Properties` | `string[]?` | Message property names extracted into the notification payload |
 | `ExtraJson` | `string?` | Arbitrary JSON merged into the payload (supports `{PropertyName}` templates) |
-| `Group` | `string?` | SignalR group name (supports placeholders); null/empty broadcasts to all clients |
+| `Group` | `string?` | SignalR group name (supports placeholders). Required: null/empty is not sent; `"all"` broadcasts to every client |
 | `Priority` | `SignalPriority` | Signal priority level (default: `SignalPriority.Normal`) |
 
 `Tag`, `Properties`, and `ExtraJson` are inherited from the `MessageTagAttribute` base class. The notification payload is built from the extracted `Properties` values merged with `ExtraJson` - it is not the whole event.
