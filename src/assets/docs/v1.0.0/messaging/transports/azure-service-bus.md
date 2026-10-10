@@ -26,7 +26,7 @@ codeReferences:
   - src/Whizbang.Hosting.Azure.ServiceBus/ServiceBusSubscriptionExtensions.cs
 testReferences:
   - >-
-    tests/Whizbang.Transports.AzureServiceBus.Tests/ReceiveLivenessWatchdogTests.cs
+    tests/Whizbang.Transports.AzureServiceBus.Component.Tests/ReceiveLivenessWatchdogTests.cs
   - >-
     tests/Whizbang.Transports.AzureServiceBus.Tests/AzureServiceBusTransportLivenessWiringTests.cs
   - >-
@@ -38,7 +38,7 @@ testReferences:
   - >-
     tests/Whizbang.Transports.AzureServiceBus.Tests/ServiceBusInfrastructureProvisionerTests.cs
   - >-
-    tests/Whizbang.Transports.AzureServiceBus.Tests/AzureServiceBusTransportUnitTests.cs
+    tests/Whizbang.Transports.AzureServiceBus.Component.Tests/AzureServiceBusTransportUnitTests.cs
   - >-
     tests/Whizbang.Transports.AzureServiceBus.Tests/SqlFilterPatternMatchingTests.cs
   - >-
@@ -50,7 +50,7 @@ testReferences:
   - >-
     tests/Whizbang.Transports.AzureServiceBus.Tests/AsbAcceptorGovernorTests.cs
   - >-
-    tests/Whizbang.Transports.AzureServiceBus.Tests/AsbAcceptorAdaptiveWiringTests.cs
+    tests/Whizbang.Transports.AzureServiceBus.Component.Tests/AsbAcceptorAdaptiveWiringTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
