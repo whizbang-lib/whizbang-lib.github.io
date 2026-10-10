@@ -302,6 +302,10 @@ Variables:
 }
 ```
 
+## Protected Fields
+
+A model property marked `[FieldPermission]` is left out of the filter and sort input types, since filtering or sorting by it would reveal the value it protects. See [Column-Level Security](../../fundamentals/security/security.md#column-level-security).
+
 ## Performance Considerations
 
 1. **Index your filter columns** - Ensure database indexes exist for commonly filtered fields

@@ -124,13 +124,14 @@ Tag the domain events you want streamed to dashboards. `Properties` narrows the 
 [SignalTag(
   Tag = "order-created",
   Properties = ["OrderId", "TotalAmount"],
+  Group = "tenant-{TenantId}",
   Priority = SignalPriority.Normal)]
 public sealed record OrderCreated(Guid OrderId, Guid CustomerId, decimal TotalAmount) : IEvent;
 
 [SignalTag(
   Tag = "payment-processed",
   Properties = ["OrderId", "Amount"],
-  Group = "tenant-{TenantId}")]  // resolved from payload/scope at runtime
+  Group = "tenant-{TenantId}")]  // {TenantId} always comes from the message's scope
 public sealed record PaymentProcessed(Guid OrderId, decimal Amount) : IEvent;
 ```
 

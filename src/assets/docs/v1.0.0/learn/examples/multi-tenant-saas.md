@@ -40,7 +40,7 @@ Tenancy is **first-class in Whizbang**: every `IMessageContext` carries a `Tenan
 ```mermaid{caption="One database-per-tenant deployment architecture routing each request to its tenant DB"}
 flowchart TD
     subgraph MTSA["Multi-Tenant SaaS Architecture"]
-        Request["HTTP Request<br/>X-Tenant-Id: tenant-a"]
+        Request["Authenticated HTTP Request<br/>token claim tenant_id: tenant-a"]
         Middleware["Tenant Identification<br/>Middleware"]
         Dispatcher["Tenant-Aware Dispatcher<br/>(Routes to tenant DB)"]
         TenantA["Tenant A<br/>DB"]
@@ -116,30 +116,18 @@ public class TenantIdentificationMiddleware {
   }
 
   public async Task InvokeAsync(HttpContext context) {
-    // 1. Extract tenant ID from header
-    var tenantId = context.Request.Headers["X-Tenant-Id"].FirstOrDefault();
+    // The tenant comes from the authenticated user's token, never from anything the caller wrote:
+    // a header or a host name alone would let any caller name another tenant.
+    var tenantId = context.User.FindFirst("tenant_id")?.Value;
 
-    // 2. Fallback: Extract from subdomain (e.g., tenant-a.example.com)
-    if (string.IsNullOrWhiteSpace(tenantId)) {
-      var host = context.Request.Host.Host;
-      var parts = host.Split('.');
-      if (parts.Length > 2) {
-        tenantId = parts[0];
-      }
-    }
-
-    // 3. Fallback: Extract from JWT claim
-    if (string.IsNullOrWhiteSpace(tenantId)) {
-      tenantId = context.User.FindFirst("tenant_id")?.Value;
-    }
-
-    if (string.IsNullOrWhiteSpace(tenantId)) {
-      context.Response.StatusCode = 400;
-      await context.Response.WriteAsJsonAsync(new {
-        error = "Tenant ID is required"
-      });
+    if (string.IsNullOrEmpty(tenantId)) {
+      context.Response.StatusCode = context.User.Identity?.IsAuthenticated == true ? 403 : 401;
+      await context.Response.WriteAsJsonAsync(new { error = "No tenant in the caller's token" });
       return;
     }
+
+    // If you also route by subdomain (acme.myapp.com), compare it with the tenant from the token
+    // and reject a mismatch with 403; never let the host name choose the tenant on its own.
 
     // 4. Set tenant context
     TenantContext.Set(tenantId);

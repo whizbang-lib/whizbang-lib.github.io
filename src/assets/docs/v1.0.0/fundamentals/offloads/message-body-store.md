@@ -132,12 +132,14 @@ When the offload hook substitutes the body, it stamps three headers on the desti
 `BodyClaimRehydrator.MaybeRehydrateAsync` is the receive-side counterpart. The `TransportConsumerWorker` calls it inline before serializing to inbox:
 
 1. If `envelope.Payload is not BodyClaimEnvelopePayload`, pass through unchanged (the common case — cost is one type-check).
-2. Otherwise: resolve the matching `IMessageBodyStore` by claim provider name. Unknown provider → terminal failure with `MessageFailureReason.BodyClaimProviderUnknown`.
+2. Otherwise: resolve the matching `IMessageBodyStore` by claim provider name. Unknown provider → terminal failure with `MessageFailureReason.BodyClaimProviderUnknown`. A claim with no `Cipher` descriptor at a receiver that [requires sealed bodies](#require-sealed) → terminal failure with `MessageFailureReason.BodyClaimUnsealed`, before anything is downloaded.
 3. Download the bytes, bounded by `MessageBodyOffloadOptions.DownloadTimeout` (default 100 s). A transient download failure or timeout throws `BodyClaimDownloadException` — a **retryable** failure: the transport redelivers, and only after the max-delivery count is exhausted does the message dead-letter.
 4. Compute SHA-256; compare against `claim.ContentHash`. Mismatch → terminal failure with `MessageFailureReason.BodyClaimIntegrityFailure`.
 5. If the claim carries a `Cipher` descriptor, resolve the `IMessageBodyCipher` registered under the descriptor's cipher name and open the verified bytes. No cipher under that name → terminal failure with `MessageFailureReason.BodyClaimCipherUnknown`. The bytes do not authenticate under the described key → terminal failure with `MessageFailureReason.BodyClaimIntegrityFailure` (the stored bytes matched the hash, so the key or the descriptor is wrong, not the storage). See [Sealing bodies before they reach the store](#sealing-bodies).
 6. Deserialize the downloaded (and, if sealed, opened) bytes as the original envelope type from `claim.OriginalTypeName`. The rehydrator reads with the host's options completed by the registry: every registered context answers first, then the host's own resolver. This is the same chain the transport uses to read an inline body, so an offloaded body is readable exactly when its inline form is. That includes a polymorphic member, such as a collective event's `TenantCollectiveScope`, whose metadata lives in a contracts assembly's context that the host's own options do not chain. {verified: BodyClaimRehydratorCrossContextTests.MaybeRehydrateAsync_CollectiveEventWithTenantScope_HostOptionsWithoutContractContext_RehydratesAsync, BodyClaimRehydratorCrossContextTests.OffloadedAndInline_SamePayload_StoreAndDispatchIdenticallyAsync} No JsonTypeInfo → terminal failure with `MessageFailureReason.SerializationError`.
 7. Return the rehydrated envelope. The worker treats it as if no claim ever existed.
+
+The Azure Blob provider stops reading at the size the claim declares, so a stored body larger than its claim is refused before it is held in memory in full; the claim's size is also what `MaxDownloadBytes` is compared with. {verified: AzureBlobStoreDownloadDeleteTests.DownloadAsync_BlobLargerThanItsClaim_StopsReadingAtTheClaimedSizeAsync, AzureBlobStoreDownloadDeleteTests.DownloadAsync_BlobOfExactlyItsClaimedSize_ReturnsEveryByteAsync}
 
 Terminal rehydrate failures (steps 2, 4, 5, 6) are logged with their `MessageFailureReason` and the message is **discarded**: the worker ACKs it without inserting an inbox row, so at this commit it is not redelivered and not written to `wh_dead_letters`.
 
@@ -272,6 +274,25 @@ The key id is bound into every sealed body, so a body sealed under one label ope
 2. Wait until no body sealed under the old label remains: the passive expiry (`PassiveExpiry`, 30 days by default) is the upper bound, and active cleanup shortens it.
 3. Remove the two previous-key settings and roll again. A body sealed under the retired label now fails to open and dead-letters as an integrity failure, which is the intended outcome for anything that outlived the window.
 
+#### Requiring sealed bodies {#require-sealed}
+{verified: BodyOffloadCipherTests.Rehydrate_UnsealedClaim_WhenTheReceiverRequiresSealing_DeadLettersWithoutDownloadingAsync, BodyOffloadCipherTests.Rehydrate_SealedClaim_WhenTheReceiverRequiresSealing_OpensAsync, BodyOffloadCipherTests.Rehydrate_UnsealedClaim_ByDefault_StillRehydratesAsync}
+
+A receiver reads a claim that carries no cipher descriptor as a body stored in the clear. That is what lets senders be moved to sealing one at a time, and it also means that whoever can write the store and send a claim can hand an encrypting receiver a body in the clear: the hash in the claim is the sender's, so it proves nothing about who wrote the bytes. Once every sender a receiver hears from seals, set `RequireSealedBodies` on that receiver. A claim with no descriptor is then refused as `BodyClaimUnsealed`, before the body is fetched.
+
+```json{
+title: "Refusing unsealed bodies"
+description: "Set on a receiver once every sender it hears from seals."
+category: "Offloads"
+difficulty: "BEGINNER"
+tags: ["body-offload", "encryption", "configuration"]
+}
+{
+  "Whizbang__BodyOffload__RequireSealedBodies": "true"
+}
+```
+
+It is off by default. Bodies are stored as serialized unless `CipherName` is set, so a deployment that offloads personal or regulated data sets both.
+
 #### Operations checklist {#cipher-operations}
 
 For the team that owns secrets and deployments. Nothing here requires a code change on the consumer.
@@ -280,7 +301,8 @@ For the team that owns secrets and deployments. Nothing here requires a code cha
 2. Provide the three settings to every service that sends or receives offloaded bodies, using the same value of each on all of them. A service without the key, or with a different one, dead-letters the claim instead of reading it; a service with a different cipher name dead-letters it as `BodyClaimCipherUnknown`.
 3. Keep the two labels stable. They are recorded on every claim; changing a label without changing the key is a rotation with no new key and breaks bodies already sealed.
 4. Plan the rotation window above before the first rotation, and keep the previous key available until the window has drained.
-5. The blob container needs nothing new. The store keeps receiving bytes; they are ciphertext now. An operator with read access to the container, a snapshot, or the account key sees ciphertext and a wrapped key they cannot unwrap.
+5. Once every sender seals, set `RequireSealedBodies` on each receiver ([above](#require-sealed)).
+6. The blob container needs nothing new. The store keeps receiving bytes; they are ciphertext now. An operator with read access to the container, a snapshot, or the account key sees ciphertext and a wrapped key they cannot unwrap.
 
 ```json{
 title: "The five cipher settings, as environment variables"

@@ -114,7 +114,8 @@ Filters are key-value pairs using bracket notation. Each is an equality, and sev
 A field is any public, readable, instance property of the model, its base classes' included, whose
 value is one of the types below. Names match ignoring case, so `filter[customerName]` and `sort=CustomerName`
 both name `CustomerName`. Collections and nested objects have no single value to compare or order by,
-so they are not offered.
+so they are not offered. A `[FieldPermission]` property is not offered either, since filtering or
+sorting by it would reveal the value it protects (see [Column-Level Security](../../fundamentals/security/security.md#column-level-security)).
 
 | Property type | A filter value is read as |
 |---|---|

@@ -13,7 +13,6 @@ tags: 'multi-tenancy, saas, database-per-tenant, row-level-security, isolation'
 codeReferences:
   - src/Whizbang.Core/Lenses/TenantConstants.cs
   - src/Whizbang.Core/Security/ScopeContext.cs
-  - src/Whizbang.Core/Security/Attributes/ScopedAttribute.cs
   - src/Whizbang.Core/IReceptor.cs
   - src/Whizbang.Core/ICommand.cs
 testReferences:
@@ -102,25 +101,18 @@ public class TenantIdentificationMiddleware {
   }
 
   public async Task InvokeAsync(HttpContext context) {
-    // Option 1: Custom header
-    var tenantId = context.Request.Headers["X-Tenant-Id"].FirstOrDefault();
-
-    // Option 2: Subdomain (e.g., acme.myapp.com -> acme)
-    if (string.IsNullOrEmpty(tenantId)) {
-      var host = context.Request.Host.Host;
-      tenantId = host.Split('.').FirstOrDefault();
-    }
-
-    // Option 3: JWT claim
-    if (string.IsNullOrEmpty(tenantId)) {
-      tenantId = context.User.FindFirst("tenant_id")?.Value;
-    }
+    // The tenant comes from the authenticated user's token, never from anything the caller wrote:
+    // a header or a host name alone would let any caller name another tenant.
+    var tenantId = context.User.FindFirst("tenant_id")?.Value;
 
     if (string.IsNullOrEmpty(tenantId)) {
-      context.Response.StatusCode = 400;
-      await context.Response.WriteAsync("Missing tenant identification");
+      context.Response.StatusCode = context.User.Identity?.IsAuthenticated == true ? 403 : 401;
+      await context.Response.WriteAsync("No tenant in the caller's token");
       return;
     }
+
+    // If you also route by subdomain (acme.myapp.com), compare it with the tenant from the token
+    // and reject a mismatch with 403; never let the host name choose the tenant on its own.
 
     // Set tenant context
     TenantContext.CurrentTenantId = tenantId;

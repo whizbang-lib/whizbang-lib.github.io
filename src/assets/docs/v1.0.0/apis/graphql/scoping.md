@@ -29,11 +29,11 @@ Whizbang's scope middleware provides automatic multi-tenancy and security filter
 
 ## Overview
 
-The `WhizbangScopeMiddleware` extracts scope information from HTTP requests (JWT claims and headers) and makes it available to lens queries for automatic filtering.
+The `WhizbangScopeMiddleware` extracts scope information from the authenticated principal (the access token's claims) and makes it available to lens queries for automatic filtering. A request header is never read as an identity unless you opt in, which is safe only behind a trusted gateway (see [Trusted gateway headers](#trusted-gateway-headers)).
 
 ```mermaid{caption="HTTP request reaches WhizbangScopeMiddleware, which extracts scope values into an IScopeContext, sets IScopeContextAccessor.Current, and propagates it into lens query filtering" tests=["WhizbangScopeMiddlewareTests.InvokeAsync_ShouldSetScopeContextOnAccessorAsync", "WhizbangScopeMiddlewareTests.InvokeAsync_ImmutableScopeContext_ShouldPropagateAsync"]}
 flowchart TD
-    Request["HTTP Request<br/>- JWT Claims (tenant_id, sub, groups, ...)<br/>- Headers (X-Tenant-Id, X-User-Id, ...)"]
+    Request["Authenticated HTTP Request<br/>- JWT Claims (tenant_id, sub, groups, ...)"]
     Middleware["WhizbangScopeMiddleware<br/>- Extracts scope values<br/>- Creates IScopeContext"]
     Accessor["IScopeContextAccessor.Current"]
     Lens["Lens Query (automatic filtering)"]
@@ -59,18 +59,19 @@ app.MapGraphQL();
 
 ## Configuration
 
-### Default Claim/Header Mappings
+### Default Claim Mappings
 
-| Scope Value | Claim Type(s), tried in order | Header Name |
-|-------------|-------------------------------|-------------|
-| TenantId | `tenant_id` | `X-Tenant-Id` |
-| UserId | Azure AD `objectidentifier` claim, `objectid`, `oid`, `sub`, `ClaimTypes.NameIdentifier` | `X-User-Id` |
-| OrganizationId | `org_id` | `X-Organization-Id` |
-| CustomerId | `customer_id` | `X-Customer-Id` |
-| Roles | `ClaimTypes.Role` | - |
-| Groups | `groups` | - |
-| Permissions | `permissions` | - |
-| CorrelationId | - | `X-Correlation-ID` |
+| Scope Value | Claim Type(s), tried in order |
+|-------------|-------------------------------|
+| TenantId | `tenant_id` |
+| UserId | Azure AD `objectidentifier` claim, `objectid`, `oid`, `sub`, `ClaimTypes.NameIdentifier` |
+| OrganizationId | `org_id` |
+| CustomerId | `customer_id` |
+| Roles | `ClaimTypes.Role` |
+| Groups | `groups` |
+| Permissions | `permissions` |
+
+Every identity value comes from the authenticated principal. If the token has no matching claim, the value is empty: it is never filled from a request header unless you opt in below. The one header read by default is `X-Correlation-ID`, a tracing token that grants nothing.
 
 ### Custom Configuration
 
@@ -81,28 +82,37 @@ builder.Services.AddWhizbangScope(options => {
     options.UserIdClaimType = "sub";
     options.GroupsClaimType = "https://myapp.com/groups";
 
-    // Custom header names
-    options.TenantIdHeaderName = "X-My-Tenant";
-
     // Extension mappings
     options.ExtensionClaimMappings["region"] = "Region";
     options.ExtensionClaimMappings["department"] = "Department";
 });
 ```
 
+### Trusted gateway headers
+
+A request header is written by the caller, so reading one as a tenant or user lets the caller choose its own identity. Name a header only when every request reaches the application through a gateway that authenticates the caller, sets the header itself, and strips any copy the caller sent:
+
+```csharp{title="Trusted Gateway Headers" description="Opt in to a gateway-set header when the token has no matching claim" category="API" difficulty="ADVANCED" tags=["Apis", "Graphql", "Scope", "Security"] tests=["WhizbangScopeMiddlewareTests.InvokeAsync_WithTenantIdHeaderOptedIn_ShouldExtractTenantIdAsync", "WhizbangScopeMiddlewareTests.InvokeAsync_HeaderOptedIn_ClaimsStillHavePriorityAsync", "ScopeMiddlewareExtensionsTests.UseWhizbangScope_HeaderOptedIn_ReadsThatHeaderAsync"]}
+// Only behind a trusted gateway: a claim still wins when the token has one
+builder.Services.AddWhizbangScope(options => {
+    options.TenantIdHeaderName = "X-Gateway-Tenant";
+});
+```
+
+`TenantIdHeaderName`, `UserIdHeaderName`, `OrganizationIdHeaderName` and `CustomerIdHeaderName` default to `null` (no header read). `ExtensionHeaderMappings` is empty by default and follows the same rule.
+
 ## How Scoping Works
 
 ### 1. Scope Extraction
 
-The middleware extracts scope from the request:
+The middleware extracts scope from the authenticated principal:
 
-```csharp{title="Scope Extraction" description="The middleware extracts scope from the request:" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Scope", "Extraction"] tests=["WhizbangScopeMiddlewareTests.InvokeAsync_ClaimsHavePriorityOverHeaders_ForSameFieldAsync"]}
-// Conceptually (simplified): each configured claim type is tried in order,
-// and JWT claims take priority over headers
+```csharp{title="Scope Extraction" description="The middleware extracts scope from the authenticated principal:" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Scope", "Extraction"] tests=["WhizbangScopeMiddlewareTests.InvokeAsync_DefaultOptions_TokenWithoutTheClaim_DoesNotTakeTheHeaderAsync", "WhizbangScopeMiddlewareTests.InvokeAsync_DefaultOptions_AnonymousRequest_IgnoresEveryIdentityHeaderAsync"]}
+// Conceptually (simplified): each configured claim type is tried in order.
+// A header is consulted only if the application named one (TenantIdHeaderName).
 var tenantId = options.TenantIdClaimTypes
         .Select(claimType => context.User?.FindFirst(claimType)?.Value)
-        .FirstOrDefault(value => !string.IsNullOrEmpty(value))
-    ?? context.Request.Headers["X-Tenant-Id"];
+        .FirstOrDefault(value => !string.IsNullOrEmpty(value));
 ```
 
 ### 2. Context Population

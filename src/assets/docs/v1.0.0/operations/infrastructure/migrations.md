@@ -274,6 +274,46 @@ region) has a different hash, so it runs in full once and records itself. The mi
 untouched by any of this; the bootstrap still claims nothing about migrations.
 {verified: SchemaBootstrapPhaseTests.ACurrentClosureIsNotAppliedAgainAsync, SchemaBootstrapPhaseTests.AChangedClosureIsAppliedAsync, SchemaBootstrapPhaseTests.TheBootstrapRecordsNothingInTheLedgerAsync}
 
+### Database roles {#database-roles}
+{verified: SchemaInitConnectionTests.FromConfiguration_ReadsTheInitSuffixOfTheContextsNameAsync, IndexStatisticsMaintenanceStepTests.WithAnInitConnection_AnalyzesThroughItAsync, ManagedSchemaReconcileStepTests.UnderADataOnlyApplicationRole_TheInitConnectionDoesTheSchemaWorkAsync}
+
+The application can run with a role that reads and writes data and cannot change schema. Give the schema rights to a second role and put it behind the `-init` connection string (`ConnectionStrings:db-init`, or `<name>-init` for a named database). Everything that changes schema uses it:
+
+- startup migrations and the perspective schema pass;
+- the managed-object reconcile the maintenance worker runs between starts;
+- the shadow-table swap of a [blue-green rebuild](../../fundamentals/perspectives/rebuild#blue-green);
+- the `ANALYZE` of perspective tables whose new expression indexes have no statistics, which needs the table owner's rights.
+
+Without an `-init` string, all of it runs on the application's connection, which then needs the same rights.
+
+One exception: the opt-in table rewrite (`immediate` rewrite policy, off by default) runs `VACUUM FULL` on the application's connection and needs the table owner's rights. Leave the policy off under a data-only role.
+
+```sql{
+title: "Two roles: one owns the schema, one uses it"
+description: "The init role creates and owns every object; the application role gets data rights on them, including objects created later."
+category: "Operations"
+difficulty: "INTERMEDIATE"
+tags: ["postgres", "security", "roles", "migrations"]
+}
+-- The role behind ConnectionStrings:db-init: owns the schema and everything in it.
+CREATE ROLE orders_owner LOGIN PASSWORD '...';
+CREATE SCHEMA orders AUTHORIZATION orders_owner;
+
+-- The role behind ConnectionStrings:db: data only.
+CREATE ROLE orders_app LOGIN PASSWORD '...';
+GRANT USAGE ON SCHEMA orders TO orders_app;
+
+-- Objects the owner creates from now on, at every start and in every rebuild.
+ALTER DEFAULT PRIVILEGES FOR ROLE orders_owner IN SCHEMA orders
+  GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO orders_app;
+ALTER DEFAULT PRIVILEGES FOR ROLE orders_owner IN SCHEMA orders
+  GRANT USAGE, SELECT, UPDATE ON SEQUENCES TO orders_app;
+ALTER DEFAULT PRIVILEGES FOR ROLE orders_owner IN SCHEMA orders
+  GRANT EXECUTE ON FUNCTIONS TO orders_app;
+```
+
+Run the default-privilege statements before the first start, so every object the owner creates carries the grants. A database that already has objects also needs the same three `GRANT ... ON ALL ... IN SCHEMA orders` statements once.
+
 ### Which instance migrates {#which-instance-migrates}
 
 The migrator is a duty, held by [role assignment](../startup/capabilities-and-duties#role-assignment-the-default) by default. Its vote is part of the bootstrap closure (migration `184_RoleAssignmentResilience.sql` is a bootstrap region), so the assignment table and its functions exist before the first migration runs. Every instance joins the registry, then votes; the winner migrates and releases the duty when it returns, however it returns.
