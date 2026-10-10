@@ -622,7 +622,7 @@ matches that test's body verbatim (whitespace/comments normalized) via
 ````markdown
 ```csharp{
 title: "SendAsync returns a delivery receipt"
-testFile: "tests/Whizbang.Core.Tests/Dispatcher/DispatcherTests.cs"
+testFile: "tests/Whizbang.Core.Component.Tests/Dispatcher/DispatcherTests.cs"
 testMethod: "Send_WithValidMessage_ShouldReturnDeliveryReceiptAsync"
 }
 var receipt = await dispatcher.SendAsync(command);

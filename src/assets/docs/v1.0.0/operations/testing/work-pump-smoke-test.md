@@ -12,8 +12,8 @@ codeReferences:
   - src/Whizbang.Core/Workers/OutboxDrainWorker.cs
   - src/Whizbang.Data.Postgres/Notifications/PgCommitOrderStamperWorker.cs
 testReferences:
-  - tests/Whizbang.Core.Tests/Workers/ClaimWorkerGateCadenceTests.cs
-  - tests/Whizbang.Core.Tests/Workers/OutboxDrainWorkerStreamRunTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/ClaimWorkerGateCadenceTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/OutboxDrainWorkerStreamRunTests.cs
 ---
 
 # Work-pump decomposition smoke test (Phase F)

@@ -26,9 +26,9 @@ codeReferences:
   - src/Whizbang.Data.Dapper.Postgres/DapperWorkCoordinator.cs
   - src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs
 testReferences:
-  - tests/Whizbang.Core.Tests/Messaging/OrderedStreamProcessorTests.cs
+  - tests/Whizbang.Core.Component.Tests/Messaging/OrderedStreamProcessorTests.cs
   - tests/Whizbang.Core.Tests/Messaging/ScopedWorkCoordinatorStrategyTests.cs
-  - tests/Whizbang.Core.Tests/Messaging/IntervalWorkCoordinatorStrategyTests.cs
+  - tests/Whizbang.Core.Component.Tests/Messaging/IntervalWorkCoordinatorStrategyTests.cs
   - tests/Whizbang.Core.Tests/Messaging/ImmediateWorkCoordinatorStrategyTests.cs
 lastMaintainedCommit: '01f07906'
 ---

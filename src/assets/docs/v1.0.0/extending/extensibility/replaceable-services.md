@@ -19,7 +19,7 @@ codeReferences:
   - src/Whizbang.Core/Messaging/IDeadLetterStore.cs
   - src/Whizbang.Core/Notifications/INotifySignalingGate.cs
 testReferences:
-  - tests/Whizbang.Core.Tests/Documentation/InjectedExtensibilityPointsAreDocumentedTests.cs
+  - tests/Whizbang.Core.Component.Tests/Documentation/InjectedExtensibilityPointsAreDocumentedTests.cs
   - tests/Whizbang.Generators.Tests/Analyzers/OptionalInjectedParameterAnalyzerTests.cs
 ---
 

@@ -28,11 +28,11 @@ codeReferences:
   - src/Whizbang.Core/Perspectives/Sync/EventCompletionAwaiter.cs
   - src/Whizbang.Core/Lenses/ISyncAwareLensQuery.cs
 testReferences:
-  - tests/Whizbang.Core.Tests/Perspectives/Sync/PerspectiveSyncAwaiterTests.cs
-  - tests/Whizbang.Core.Tests/Perspectives/Sync/SyncEventTrackerTests.cs
+  - tests/Whizbang.Core.Component.Tests/Perspectives/Sync/PerspectiveSyncAwaiterTests.cs
+  - tests/Whizbang.Core.Component.Tests/Perspectives/Sync/SyncEventTrackerTests.cs
   - tests/Whizbang.Core.Tests/Perspectives/Sync/SyncFilterBuilderTests.cs
-  - tests/Whizbang.Core.Tests/Perspectives/Sync/EventCompletionAwaiterTests.cs
-  - tests/Whizbang.Core.Tests/Perspectives/Sync/ScopedEventTrackerTests.cs
+  - tests/Whizbang.Core.Component.Tests/Perspectives/Sync/EventCompletionAwaiterTests.cs
+  - tests/Whizbang.Core.Component.Tests/Perspectives/Sync/ScopedEventTrackerTests.cs
   - tests/Whizbang.Core.Tests/Perspectives/Sync/SyncInquiryTests.cs
   - tests/Whizbang.Core.Tests/Perspectives/Sync/SyncContextTests.cs
   - tests/Whizbang.Core.Tests/Perspectives/Sync/TrackedEventTypeRegistryTests.cs

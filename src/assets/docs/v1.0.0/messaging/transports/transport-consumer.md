@@ -19,9 +19,9 @@ codeReferences:
 testReferences:
   - tests/Whizbang.Core.Tests/Workers/TransportConsumerBuilderExtensionsTests.cs
   - tests/Whizbang.Core.Tests/Workers/TransportConsumerBuilderExtensionsServiceNameTests.cs
-  - tests/Whizbang.Core.Tests/Workers/TransportConsumerWorkerResilienceTests.cs
-  - tests/Whizbang.Core.Tests/Workers/TransportConsumerWorkerConnectionRecoveryTests.cs
-  - tests/Whizbang.Core.Tests/Resilience/SubscriptionRetryHelperTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/TransportConsumerWorkerResilienceTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/TransportConsumerWorkerConnectionRecoveryTests.cs
+  - tests/Whizbang.Core.Component.Tests/Resilience/SubscriptionRetryHelperTests.cs
   - tests/Whizbang.Core.Tests/HealthChecks/SubscriptionHealthCheckTests.cs
   - tests/Whizbang.Core.Tests/Observability/ServiceInstanceProviderTests.cs
 lastMaintainedCommit: '01f07906'

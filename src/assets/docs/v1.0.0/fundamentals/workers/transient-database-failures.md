@@ -21,12 +21,12 @@ codeReferences:
   - src/Whizbang.Data.Postgres/PostgresDeadlockRetry.cs
 testReferences:
   - tests/Whizbang.Core.Tests/Workers/TransientDatabaseFailureTests.cs
-  - tests/Whizbang.Core.Tests/Workers/WorkerLoopRecoveryTests.cs
-  - tests/Whizbang.Core.Tests/Workers/PerspectiveWorkerDeepPathDrainTests.cs
-  - tests/Whizbang.Core.Tests/Workers/PerspectiveWorkerDeepPathChannelTests.cs
-  - tests/Whizbang.Core.Tests/Workers/InboxDrainWorkerCoverageTests.cs
-  - tests/Whizbang.Core.Tests/Workers/OutboxDrainWorkerCoverageTests.cs
-  - tests/Whizbang.Core.Tests/Signals/PollSignalSourceTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/WorkerLoopRecoveryTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerDeepPathDrainTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerDeepPathChannelTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/InboxDrainWorkerCoverageTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/OutboxDrainWorkerCoverageTests.cs
+  - tests/Whizbang.Core.Component.Tests/Signals/PollSignalSourceTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/PostgresDeadlockRetryTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/PostgresDeadlockRetryCoverageTests.cs
 ---

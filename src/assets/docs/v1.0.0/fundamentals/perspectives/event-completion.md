@@ -20,8 +20,8 @@ codeReferences:
   - src/Whizbang.Core/Dispatch/DispatchOptions.cs
   - src/Whizbang.Core/Dispatcher.cs
 testReferences:
-  - tests/Whizbang.Core.Tests/Perspectives/Sync/EventCompletionAwaiterTests.cs
-  - tests/Whizbang.Core.Tests/Perspectives/Sync/SyncEventTrackerTests.cs
+  - tests/Whizbang.Core.Component.Tests/Perspectives/Sync/EventCompletionAwaiterTests.cs
+  - tests/Whizbang.Core.Component.Tests/Perspectives/Sync/SyncEventTrackerTests.cs
   - tests/Whizbang.Core.Tests/Dispatch/DispatchOptionsTests.cs
   - tests/Whizbang.Core.Tests/Dispatcher/DispatcherPerspectiveSyncCoverageTests.cs
 lastMaintainedCommit: '01f07906'

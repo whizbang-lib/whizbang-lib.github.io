@@ -35,21 +35,21 @@ testReferences:
   - tests/Whizbang.Core.Tests/Messaging/CompositeInboxFanoutTests.cs
   - tests/Whizbang.Core.Tests/Messaging/CompositeInboxFanoutIdentityAndSubscriptionTests.cs
   - tests/Whizbang.Core.Tests/Messaging/CompositeChildIdentityTests.cs
-  - tests/Whizbang.Core.Tests/Workers/InboxDispatchWorkerCompositeCommitTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/InboxDispatchWorkerCompositeCommitTests.cs
   - tests/Whizbang.Core.Tests/Observability/CompositeMetricsTests.cs
   - tests/Whizbang.Core.Tests/Messaging/DispatchOutboxCollectorTests.cs
   - tests/Whizbang.Core.Tests/Messaging/DispatchFanoutControlTests.cs
   - tests/Whizbang.Core.Tests/Messaging/NoRebroadcastGuardTests.cs
   - tests/Whizbang.Core.Tests/Messaging/EventFlagsTests.cs
   - tests/Whizbang.Core.Tests/Messaging/EventFlagsTransportTests.cs
-  - tests/Whizbang.Core.Tests/Workers/InboxDispatchWorkerTests.cs
-  - tests/Whizbang.Core.Tests/Workers/TransportConsumerWorkerCompositeNoExpandTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/InboxDispatchWorkerTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/TransportConsumerWorkerCompositeNoExpandTests.cs
   - tests/Whizbang.Core.Tests/Dispatcher/DispatcherCompositePublishFanoutTests.cs
   - tests/Whizbang.Core.Tests/Dispatcher/DispatcherNoRebroadcastGuardTests.cs
   - tests/Whizbang.Generators.Tests/ReceptorRegistryQueryGeneratorTests.cs
   - tests/Whizbang.Generators.Tests/MessageJsonContextReferencedCompositeTests.cs
   - tests/Whizbang.Core.Tests/Messaging/CompositeUnresolvedInnerMessageTests.cs
-  - tests/Whizbang.Core.Tests/Workers/TransportConsumerWorkerUnstorableMessageTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/TransportConsumerWorkerUnstorableMessageTests.cs
 ---
 
 # Composite events

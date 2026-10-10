@@ -16,11 +16,11 @@ codeReferences:
   - src/Whizbang.Core/Async/WakeSignal.cs
   - src/Whizbang.Core/Workers/DeadLetterRecoveryWorker.cs
 testReferences:
-  - tests/Whizbang.Core.Tests/Workers/PerspectiveWorkerStartupAndMaintenanceTests.cs
-  - tests/Whizbang.Core.Tests/Workers/PerspectiveWorkerDeepPathChannelTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerStartupAndMaintenanceTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerDeepPathChannelTests.cs
   - tests/Whizbang.Core.Tests/Workers/V502DefaultsTests.cs
   - tests/Whizbang.Core.Tests/Async/WakeSignalTests.cs
-  - tests/Whizbang.Core.Tests/Workers/DeadLetterRecoveryWorkerTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/DeadLetterRecoveryWorkerTests.cs
 ---
 
 # PerspectiveWorker NOTIFY wake

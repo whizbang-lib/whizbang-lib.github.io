@@ -13,8 +13,8 @@ codeReferences:
   - src/Whizbang.Core/Messaging/IWorkCoordinator.cs
   - src/Whizbang.Core/Workers/InboxHandlerWorker.cs
 testReferences:
-  - tests/Whizbang.Core.Tests/Workers/FailureFlushWorkerTests.cs
-  - tests/Whizbang.Core.Tests/Workers/InboxHandlerWorkerCoverageTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/FailureFlushWorkerTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/InboxHandlerWorkerCoverageTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/PoisonOutboxLoopSqlTests.cs
 ---
 

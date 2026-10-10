@@ -20,8 +20,8 @@ codeReferences:
   - src/Whizbang.Core/Workers/TransportBatchOptions.cs
   - src/Whizbang.Core/Workers/TransportBatchCollector.cs
 testReferences:
-  - tests/Whizbang.Transports.Tests/InProcessTransportTests.cs
-  - tests/Whizbang.Transports.Tests/SubscribeBatchTests.cs
+  - tests/Whizbang.Transports.Component.Tests/InProcessTransportTests.cs
+  - tests/Whizbang.Transports.Component.Tests/SubscribeBatchTests.cs
   - tests/Whizbang.Transports.Tests/TransportCapabilitiesTests.cs
   - tests/Whizbang.Transports.Tests/TransportDestinationTests.cs
 lastMaintainedCommit: '01f07906'

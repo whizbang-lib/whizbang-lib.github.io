@@ -16,7 +16,7 @@ codeReferences:
   - src/Whizbang.Core/IDeliveryReceipt.cs
   - src/Whizbang.Core/Dispatch/InvokeResult.cs
 testReferences:
-  - tests/Whizbang.Core.Tests/Dispatcher/DispatcherTests.cs
+  - tests/Whizbang.Core.Component.Tests/Dispatcher/DispatcherTests.cs
   - tests/Whizbang.Core.Tests/Dispatcher/DispatcherInvokeWithReceiptTests.cs
   - tests/Whizbang.Core.Tests/DeliveryReceiptTests.cs
   - tests/Whizbang.Core.Tests/Dispatcher/DispatcherOutboxTests.cs
@@ -82,7 +82,7 @@ description: "Verbatim from DispatcherTests; drift-checked against the library b
 category: "Architecture"
 difficulty: "BEGINNER"
 tags: ["Fundamentals", "Dispatcher", "SendAsync", "Verified"]
-testFile: "tests/Whizbang.Core.Tests/Dispatcher/DispatcherTests.cs"
+testFile: "tests/Whizbang.Core.Component.Tests/Dispatcher/DispatcherTests.cs"
 testMethod: "Send_WithValidMessage_ShouldReturnDeliveryReceiptAsync"
 tests: ["DispatcherTests.Send_WithValidMessage_ShouldReturnDeliveryReceiptAsync"]
 }

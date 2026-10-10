@@ -25,9 +25,9 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/ColdBootJourneyE2ETests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/TableRewriteJourneyE2ETests.cs
   - tests/Whizbang.Core.Tests/Startup/StartupPipelineRunnerTests.cs
-  - tests/Whizbang.Core.Tests/Startup/StartupPipelineHooksTests.cs
-  - tests/Whizbang.Core.Tests/Startup/StartupPipelineRunnerDutyTests.cs
-  - tests/Whizbang.Core.Tests/Startup/StartupReadyCompositeTests.cs
+  - tests/Whizbang.Core.Component.Tests/Startup/StartupPipelineHooksTests.cs
+  - tests/Whizbang.Core.Component.Tests/Startup/StartupPipelineRunnerDutyTests.cs
+  - tests/Whizbang.Core.Component.Tests/Startup/StartupReadyCompositeTests.cs
   - tests/Whizbang.Core.Tests/Startup/StartupStepOrderResolverTests.cs
   - tests/Whizbang.Core.Tests/Health/StartupPipelineHealthSourceTests.cs
 ---

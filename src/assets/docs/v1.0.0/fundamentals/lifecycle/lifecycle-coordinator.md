@@ -22,10 +22,10 @@ codeReferences:
   - src/Whizbang.Core/Lifecycle/StageRecord.cs
   - src/Whizbang.Core/Observability/LifecycleCoordinatorMetrics.cs
 testReferences:
-  - tests/Whizbang.Core.Tests/Lifecycle/LifecycleCoordinatorTests.cs
+  - tests/Whizbang.Core.Component.Tests/Lifecycle/LifecycleCoordinatorTests.cs
   - tests/Whizbang.Core.Tests/Lifecycle/LifecycleCoordinatorSituationTests.cs
   - tests/Whizbang.Core.Tests/Lifecycle/PostLifecyclePipelineTests.cs
-  - tests/Whizbang.Core.Tests/Lifecycle/DebugAwareStopwatchTests.cs
+  - tests/Whizbang.Core.Component.Tests/Lifecycle/DebugAwareStopwatchTests.cs
   - tests/Whizbang.Core.Tests/Workers/PerspectiveWorkerPostLifecycleTests.cs
   - tests/Whizbang.Core.Tests/Workers/TransportConsumerWorkerPostLifecycleTests.cs
 lastMaintainedCommit: '01f07906'

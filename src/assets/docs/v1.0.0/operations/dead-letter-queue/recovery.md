@@ -21,7 +21,7 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/051_DeadLetterRecovery.sql
   - src/Whizbang.Data.Postgres/Migrations/056_DeadLetterReadyNotify.sql
 testReferences:
-  - tests/Whizbang.Core.Tests/Workers/DeadLetterRecoveryWorkerTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/DeadLetterRecoveryWorkerTests.cs
   - tests/Whizbang.Core.Tests/Messaging/DefaultDeadLetterRecoveryPolicyTests.cs
   - tests/Whizbang.Core.Tests/Messaging/DeadLetterRecoveryPolicyTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/EFCoreDeadLetterRecoveryServiceTests.cs

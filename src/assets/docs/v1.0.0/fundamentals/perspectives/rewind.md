@@ -23,9 +23,9 @@ codeReferences:
 testReferences:
   - tests/Whizbang.Core.Tests/Perspectives/PerspectiveRewindOptionsTests.cs
   - tests/Whizbang.Core.Tests/Perspectives/PerspectiveSnapshotAndRewindTests.cs
-  - tests/Whizbang.Core.Tests/Perspectives/PerspectiveRewindCompletionGapTests.cs
+  - tests/Whizbang.Core.Component.Tests/Perspectives/PerspectiveRewindCompletionGapTests.cs
   - tests/Whizbang.Core.Tests/Observability/PerspectiveRewindMetricsTests.cs
-  - tests/Whizbang.Core.Tests/Workers/PerspectiveWorkerRewindTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerRewindTests.cs
   - tests/Whizbang.Core.Tests/Events/System/StreamRewindEventTests.cs
 ---
 

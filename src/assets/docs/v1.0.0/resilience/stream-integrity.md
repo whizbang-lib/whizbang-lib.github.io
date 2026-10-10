@@ -33,23 +33,23 @@ codeReferences:
   - src/Whizbang.Core/Workers/ReceivedOriginStampMonitor.cs
   - src/Whizbang.Generators/MessageJsonContextGenerator.cs
 testReferences:
-  - tests/Whizbang.Core.Tests/Workers/IntegrityCheckpointWorkerTests.cs
-  - tests/Whizbang.Core.Tests/Workers/IntegrityAuditWorkerTests.cs
-  - tests/Whizbang.Core.Tests/Workers/SubscriptionExpansionWorkerTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/IntegrityCheckpointWorkerTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/IntegrityAuditWorkerTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/SubscriptionExpansionWorkerTests.cs
   - tests/Whizbang.Core.Tests/Messaging/IntegrityGapTrackerTests.cs
   - tests/Whizbang.Core.Tests/Messaging/IntegrityCheckpointWireSerializationTests.cs
   - tests/Whizbang.Core.Tests/Messaging/StreamIntegrityOptionsDefaultsTests.cs
   - tests/Whizbang.Core.Tests/Messaging/RedeliveryPumpTests.cs
   - tests/Whizbang.Core.Tests/Messaging/StreamRedeliveryRequesterTests.cs
-  - tests/Whizbang.Hosting.AspNet.Tests/StreamRedeliveryEndpointsTests.cs
+  - tests/Whizbang.Hosting.AspNet.Component.Tests/StreamRedeliveryEndpointsTests.cs
   - tests/Whizbang.Core.Tests/Messaging/RedeliveryCompositeWireSerializationTests.cs
   - tests/Whizbang.Core.Tests/Messaging/CompositeInboxFanoutTests.cs
-  - tests/Whizbang.Core.Tests/MultiService/StreamIntegrityRedeliveryE2ETests.cs
+  - tests/Whizbang.Core.Component.Tests/MultiService/StreamIntegrityRedeliveryE2ETests.cs
   - tests/Whizbang.Core.Tests/Observability/EnvelopeOriginWireTests.cs
   - tests/Whizbang.Core.Tests/Workers/ReceivedOriginStampMonitorTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/ReceivedEventOriginStampTests.cs
-  - tests/Whizbang.Core.Tests/MultiService/DirectedMessageE2ETests.cs
-  - tests/Whizbang.Core.Tests/Workers/TransportConsumerWorkerDirectedTargetTests.cs
+  - tests/Whizbang.Core.Component.Tests/MultiService/DirectedMessageE2ETests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/TransportConsumerWorkerDirectedTargetTests.cs
   - tests/Whizbang.Core.Tests/Observability/StreamIntegrityMetricsTests.cs
   - tests/Whizbang.Core.Tests/Security/ControlPlaneSecurityExemptionTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityCheckpointAdvanceTests.cs

@@ -26,7 +26,7 @@ testReferences:
   - tests/Whizbang.Core.Tests/Messaging/CompositeInboxFanoutTests.cs
   - tests/Whizbang.Core.Tests/Messaging/EventStoreAppendBatchTests.cs
   - tests/Whizbang.Core.Tests/Messaging/NoRebroadcastGuardTests.cs
-  - tests/Whizbang.Core.Tests/Workers/TransportConsumerWorkerCompositeNoExpandTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/TransportConsumerWorkerCompositeNoExpandTests.cs
   - tests/Whizbang.Core.Tests/Dispatcher/DispatcherCompositePublishFanoutTests.cs
 ---
 

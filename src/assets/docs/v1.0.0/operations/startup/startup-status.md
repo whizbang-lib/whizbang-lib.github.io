@@ -21,7 +21,7 @@ codeReferences:
   - src/Whizbang.Transports.FastEndpoints/Endpoints/WhizbangStartupStatusEndpointBase.cs
   - src/Whizbang.Transports.HotChocolate/Extensions/HotChocolateStartupStatusExtensions.cs
 testReferences:
-  - tests/Whizbang.Hosting.AspNet.Tests/StartupStatusEndpointsTests.cs
+  - tests/Whizbang.Hosting.AspNet.Component.Tests/StartupStatusEndpointsTests.cs
   - tests/Whizbang.Transports.FastEndpoints.Tests/Unit/WhizbangStartupStatusEndpointBaseTests.cs
   - tests/Whizbang.Transports.HotChocolate.Tests/Unit/StartupStatusQueryTests.cs
 ---

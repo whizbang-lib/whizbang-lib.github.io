@@ -16,7 +16,7 @@ codeReferences:
   - src/Whizbang.Core/Diagnostics/DebuggerDetectionMode.cs
   - src/Whizbang.Core/ServiceCollectionExtensions.cs
 testReferences:
-  - tests/Whizbang.Core.Tests/Diagnostics/DebuggerAwareClockTests.cs
+  - tests/Whizbang.Core.Component.Tests/Diagnostics/DebuggerAwareClockTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 

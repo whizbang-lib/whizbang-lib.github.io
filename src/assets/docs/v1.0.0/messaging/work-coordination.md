@@ -23,9 +23,9 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/ClaimWorkSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/EFCoreClaimWorkTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/EFCoreRecordHeartbeatTests.cs
-  - tests/Whizbang.Core.Tests/Workers/ClaimWorkerTests.cs
-  - tests/Whizbang.Core.Tests/Workers/HeartbeatWorkerTests.cs
-  - tests/Whizbang.Core.Tests/Workers/LeaseRenewalWorkerCapTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/ClaimWorkerTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/HeartbeatWorkerTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/LeaseRenewalWorkerCapTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 

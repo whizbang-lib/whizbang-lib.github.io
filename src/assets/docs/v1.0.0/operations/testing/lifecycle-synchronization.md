@@ -23,7 +23,7 @@ codeReferences:
   - src/Whizbang.Testing/Lifecycle/LifecycleStageAwaiter.cs
   - src/Whizbang.Testing/Lifecycle/PerspectiveCompletionWaiter.cs
 testReferences:
-  - tests/Whizbang.Testing.Tests/Lifecycle/LifecycleStageAwaiterTests.cs
+  - tests/Whizbang.Testing.Component.Tests/Lifecycle/LifecycleStageAwaiterTests.cs
   - tests/Whizbang.Testing.Tests/Lifecycle/PerspectiveCompletionWaiterTests.cs
   - tests/Whizbang.Core.Tests/Messaging/ReceptorRegistryRuntimeRegistrationTests.cs
 lastMaintainedCommit: '01f07906'

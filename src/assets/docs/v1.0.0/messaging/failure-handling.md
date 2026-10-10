@@ -27,9 +27,9 @@ testReferences:
   - tests/Whizbang.Core.Tests/Messaging/MessageFailureReasonTests.cs
   - tests/Whizbang.Core.Tests/Messaging/MessageProcessingStatusTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/PostgresFunctionTests.cs
-  - tests/Whizbang.Core.Tests/Workers/OutboxPublishWorkerDlqPromotionTests.cs
-  - tests/Whizbang.Core.Tests/Workers/InboxDispatchWorkerTests.cs
-  - tests/Whizbang.Core.Tests/Workers/PerspectiveWorkerDeadLetterFilterTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/OutboxPublishWorkerDlqPromotionTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/InboxDispatchWorkerTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerDeadLetterFilterTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -559,5 +559,5 @@ public record MessageFailure {
 
 - `tests/Whizbang.Data.Dapper.Postgres.Tests/PostgresFunctionTests.cs` — `ProcessOutboxFailures_SetsFailureFlagsAndSchedulesRetryAsync` and related SQL-function tests
 - `tests/Whizbang.Core.Tests/Messaging/MessageFailureTests.cs` — failure record + reason classification
-- `tests/Whizbang.Core.Tests/Workers/OutboxPublishWorkerDlqPromotionTests.cs` — outbox max-attempts dead-letter promotion
-- `tests/Whizbang.Core.Tests/Workers/PerspectiveWorkerDeadLetterFilterTests.cs` — perspective pre-apply dead-letter filter
+- `tests/Whizbang.Core.Component.Tests/Workers/OutboxPublishWorkerDlqPromotionTests.cs` — outbox max-attempts dead-letter promotion
+- `tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerDeadLetterFilterTests.cs` — perspective pre-apply dead-letter filter

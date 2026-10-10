@@ -20,7 +20,7 @@ codeReferences:
   - src/Whizbang.Data.Schema/Schemas/PerspectiveCursorsSchema.cs
 testReferences:
   - tests/Whizbang.Data.Dapper.Postgres.Tests/Perspectives/DapperPerspectiveStreamLockerTests.cs
-  - tests/Whizbang.Core.Tests/Workers/PerspectiveWorkerRewindTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerRewindTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 

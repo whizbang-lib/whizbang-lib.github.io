@@ -27,15 +27,15 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/037_CompletePerspectiveEvents.sql
   - src/Whizbang.Data.Postgres/Migrations/005_CreateCompletePerspectiveCheckpointFunction.sql
 testReferences:
-  - tests/Whizbang.Core.Tests/Workers/PerspectiveWorkerChannelModeTests.cs
-  - tests/Whizbang.Core.Tests/Workers/PerspectiveWorkerDedupTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerChannelModeTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerDedupTests.cs
   - tests/Whizbang.Core.Tests/Workers/ProcessedEventCacheTests.cs
-  - tests/Whizbang.Core.Tests/Workers/PerspectiveWorkerStrategyTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerStrategyTests.cs
   - tests/Whizbang.Core.Tests/Workers/PerspectiveCompletionStrategyTests.cs
-  - tests/Whizbang.Core.Tests/Workers/PerspectiveWorkerSecurityContextTests.cs
-  - tests/Whizbang.Core.Tests/Workers/PerspectiveWorkerDrainModeTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerSecurityContextTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerDrainModeTests.cs
   - tests/Whizbang.Core.Tests/Workers/PerspectiveWorkerParallelismTests.cs
-  - tests/Whizbang.Core.Tests/Workers/PerspectiveWorkerAffinityHoldWatchdogTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerAffinityHoldWatchdogTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 

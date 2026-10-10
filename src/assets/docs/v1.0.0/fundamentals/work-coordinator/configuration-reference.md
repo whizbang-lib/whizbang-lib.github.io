@@ -14,9 +14,9 @@ codeReferences:
   - src/Whizbang.Core/Notifications/WhizbangNotificationOptions.cs
   - src/Whizbang.Core/Workers/PerspectiveWorker.cs
 testReferences:
-  - tests/Whizbang.Core.Tests/Workers/ClaimWorkerGateCadenceTests.cs
-  - tests/Whizbang.Core.Tests/Workers/ClaimWorkerAcquisitionBoundsTests.cs
-  - tests/Whizbang.Core.Tests/Workers/OutboxDrainWorkerStreamRunTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/ClaimWorkerGateCadenceTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/ClaimWorkerAcquisitionBoundsTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/OutboxDrainWorkerStreamRunTests.cs
 ---
 
 # Configuration reference

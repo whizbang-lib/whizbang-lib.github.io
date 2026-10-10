@@ -31,10 +31,10 @@ codeReferences:
 testReferences:
   - tests/Whizbang.Policies.Tests/PolicyConfigurationExtensionsTests.cs
   - tests/Whizbang.Policies.Tests/PolicyConfigurationTransportTests.cs
-  - tests/Whizbang.Partitioning.Tests/HashPartitionRouterTests.cs
+  - tests/Whizbang.Partitioning.Component.Tests/HashPartitionRouterTests.cs
   - tests/Whizbang.Policies.Tests/PolicyContextTests.cs
-  - tests/Whizbang.Transports.Tests/TransportManagerSubscriptionTests.cs
-  - tests/Whizbang.Transports.AzureServiceBus.Tests/AzureServiceBusTransportUnitTests.cs
+  - tests/Whizbang.Transports.Component.Tests/TransportManagerSubscriptionTests.cs
+  - tests/Whizbang.Transports.AzureServiceBus.Component.Tests/AzureServiceBusTransportUnitTests.cs
   - tests/Whizbang.Observability.Tests/MessageTracingTests.cs
 ---
 
@@ -124,7 +124,7 @@ using **consistent hashing**:
 
 > Verified: deterministic same-key routing, even distribution across partitions,
 > and the single-partition edge case -
-> `tests/Whizbang.Partitioning.Tests/HashPartitionRouterTests.cs:HashAlgorithm_SameKey_AlwaysProducesSamePartitionAsync`,
+> `tests/Whizbang.Partitioning.Component.Tests/HashPartitionRouterTests.cs:HashAlgorithm_SameKey_AlwaysProducesSamePartitionAsync`,
 > `Distribution_10kStreams_DistributesEvenlyAsync`,
 > `EdgeCase_SinglePartition_AlwaysReturnsZeroAsync`.
 
@@ -233,7 +233,7 @@ uniform mechanism:
   only advertises the `Ordered` capability when sessions are enabled.
   > Verified: `src/Whizbang.Transports.AzureServiceBus/AzureServiceBusTransport.cs`
   > (SessionId-from-StreamId at the publish path; per-`StreamId` batch grouping) and
-  > `tests/Whizbang.Transports.AzureServiceBus.Tests/AzureServiceBusTransportUnitTests.cs:Capabilities_WithEnableSessions_IncludesOrderedAsync`,
+  > `tests/Whizbang.Transports.AzureServiceBus.Component.Tests/AzureServiceBusTransportUnitTests.cs:Capabilities_WithEnableSessions_IncludesOrderedAsync`,
   > `Capabilities_WithoutEnableSessions_ExcludesOrderedAsync`. See also
   > [Azure Service Bus Transport](./azure-service-bus.md).
 
@@ -296,7 +296,7 @@ Bus), `QueueName`/`RoutingKey` (RabbitMQ).
 > `PolicyConfiguration_PublishToRabbitMQ_ShouldAddPublishTargetAsync`,
 > `PolicyConfiguration_SubscribeFromServiceBus_WithFilter_ShouldStoreSqlFilterAsync`;
 > and the metadata survives into the transport layer -
-> `tests/Whizbang.Transports.Tests/TransportManagerSubscriptionTests.cs:SubscribeFromTargetsAsync_WithKafkaConsumerGroup_ShouldIncludeInMetadataAsync`.
+> `tests/Whizbang.Transports.Component.Tests/TransportManagerSubscriptionTests.cs:SubscribeFromTargetsAsync_WithKafkaConsumerGroup_ShouldIncludeInMetadataAsync`.
 
 > Note: the `*Kafka` helpers compile and store targets, but there is no Kafka
 > driver to consume them (see the support matrix above).
