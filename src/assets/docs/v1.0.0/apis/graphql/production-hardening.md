@@ -7,10 +7,10 @@ version: 1.0.0
 category: API
 order: 8
 description: >-
-  One-call production defaults for HotChocolate GraphQL services — disable
-  introspection and strip exception details outside development, while keeping
-  the full developer experience locally.
-tags: 'graphql, security, introspection, hardening, production, errors'
+  One-call defaults for HotChocolate GraphQL services: a query depth limit in
+  every environment, and outside development no introspection and no exception
+  details in errors.
+tags: 'graphql, security, introspection, hardening, production, errors, depth'
 codeReferences:
   - src/Whizbang.Transports.HotChocolate/Extensions/HotChocolateSecurityExtensions.cs
 testReferences:
@@ -31,12 +31,25 @@ builder.Services
 
 ## What it does
 
-When `isProduction` is `true`:
+In every environment:
+
+- **Query depth is limited** to 15 levels by default. Each level multiplies resolver work, and HotChocolate bounds cost and execution time by default but not depth. The limit is the same in development, so a query development accepts is never one production refuses. Introspection fields are not counted, so tooling keeps working. Set another limit with `maxExecutionDepth`. {verified: HotChocolateSecurityExtensionsTests.AQueryDeeperThanTheLimit_IsRejectedBeforeItRunsAsync, HotChocolateSecurityExtensionsTests.AQueryAtTheLimit_RunsAsync, HotChocolateSecurityExtensionsTests.TheDepthLimit_CanBeSetByTheHostAsync, HotChocolateSecurityExtensionsTests.Introspection_IsNotCountedAgainstTheDepthLimitInDevelopmentAsync}
+
+```csharp{title="Setting the depth limit" description="A host whose lenses nest deeper than the default raises the limit" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Security"] tests=["HotChocolateSecurityExtensionsTests.TheDepthLimit_CanBeSetByTheHostAsync"]}
+builder.Services
+    .AddGraphQLServer()
+    .AddWhizbangLenses()
+    .AddWhizbangGraphQLSecurityDefaults(isProduction: !builder.Environment.IsDevelopment(), maxExecutionDepth: 20);
+```
+
+HotChocolate's own defaults already enforce cost limits and a 30 second execution timeout; the call leaves them as they are.
+
+When `isProduction` is `true`, also:
 
 - **Introspection is disabled** — `__schema` / `__type` queries are rejected, so the schema is not enumerable by anonymous callers.
 - **Exception details are stripped** — errors carry no stack traces or exception messages (`IncludeExceptionDetails = false`), preventing internal implementation details from leaking through the `errors` payload.
 
-When `isProduction` is `false` the call is a **no-op**: local development keeps introspection (Banana Cake Pop, IDE tooling) and full exception details.
+When `isProduction` is `false`, local development keeps introspection (Banana Cake Pop, IDE tooling) and full exception details; only the depth limit applies.
 
 ## Field suggestions
 

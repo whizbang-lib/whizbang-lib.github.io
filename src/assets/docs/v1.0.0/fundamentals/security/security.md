@@ -21,8 +21,10 @@ codeReferences:
   - src/Whizbang.Core/Security/SecurityPrincipalId.cs
   - src/Whizbang.Core/Security/SecurityOptions.cs
   - src/Whizbang.Core/Security/IPermissionExtractor.cs
-  - src/Whizbang.Core/Security/Attributes/ScopedAttribute.cs
   - src/Whizbang.Core/Security/Attributes/FieldPermissionAttribute.cs
+  - src/Whizbang.Core/Security/Attributes/FieldPermissionMasking.cs
+  - src/Whizbang.Transports.HotChocolate/Security/FieldPermissionTypeInterceptor.cs
+  - src/Whizbang.Transports.FastEndpoints/Security/FieldPermissionJson.cs
   - src/Whizbang.Core/Security/Exceptions/AccessDeniedException.cs
   - src/Whizbang.Core/Lenses/IScopedLensFactory.cs
   - src/Whizbang.Core/Lenses/ScopeFilter.cs
@@ -44,6 +46,10 @@ testReferences:
   - tests/Whizbang.Core.Tests/Security/PermissionExtractorTests.cs
   - tests/Whizbang.Core.Tests/Security/AccessDeniedExceptionTests.cs
   - tests/Whizbang.Core.Tests/Security/SecurityAttributeTests.cs
+  - tests/Whizbang.Core.Tests/Security/FieldPermissionMaskingTests.cs
+  - tests/Whizbang.Transports.HotChocolate.Tests/Unit/FieldPermissionTypeInterceptorTests.cs
+  - tests/Whizbang.Transports.FastEndpoints.Tests/Unit/FieldPermissionJsonTests.cs
+  - tests/Whizbang.Transports.FastEndpoints.Integration.Tests/RestLens/FieldPermissionRestLensTests.cs
   - tests/Whizbang.Core.Tests/Lenses/ScopedLensFactoryTests.cs
   - tests/Whizbang.Core.Tests/Lenses/ScopeFilterTests.cs
 lastMaintainedCommit: '01f07906'
@@ -544,6 +550,13 @@ public class OrderRepository {
 
 Row-level security restricts which rows a user can access based on their identity, roles, or group memberships.
 
+Which rows a lens returns is decided by two things, neither of them an attribute on the model:
+
+- **The row's stored scope.** Every perspective row carries a `PerspectiveScope` (tenant, user, organization, customer, and `AllowedPrincipals`), stamped when the perspective persists the model.
+- **The lens's `QueryScope`.** `lens.Scope(QueryScope.Tenant)` (or `Organization`, `Customer`, `User`, `Principal`, `Global`) compares the row's scope with the caller's scope. `lens.DefaultScope` is `QueryScope.Tenant`, and it is what the generated GraphQL and REST lenses read through; a caller with no tenant gets an error rather than every tenant's rows.
+
+`IScopedLensFactory` and `ScopeFilters` compose the same comparisons when you resolve a lens yourself.
+
 ### Row-Level Security via AllowedPrincipals
 
 Records can specify which security principals have access:
@@ -617,132 +630,80 @@ var scope = new PerspectiveScope {
 
 ## Column-Level Security {#column-level-security}
 
-Column-level security restricts which fields a user can view based on their permissions.
+Column-level security hides individual fields from callers who lack a permission. Mark a read model property with `[FieldPermission]`: a caller whose scope holds the permission sees the stored value, and every other caller sees the masked value its `MaskingStrategy` defines. A caller with no scope holds no permissions, so it always sees the masked value.
 
-### Customer Example
-
-A complete example showing column-level security for customer data:
-
-```csharp{title="Customer Example" description="A complete example showing column-level security for customer data:" category="Best-Practices" difficulty="ADVANCED" tags=["Fundamentals", "Security", "Customer", "Example"] unverified="Consumer domain example (Customer and CustomerService); not exercised by Core security unit tests"}
+```csharp{title="Protecting Fields" description="FieldPermission declares the permission a field requires and how it is masked otherwise." category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Column-Level", "Masking"] tests=["FieldPermissionTypeInterceptorTests.CallerWithoutThePermission_SeesEachStrategysMaskAsync", "FieldPermissionRestLensTests.CallerWithoutThePermission_SeesEachStrategysMaskAsync"]}
 public class Customer {
   public required string CustomerId { get; init; }
-  public required string TenantId { get; init; }
   public required string Name { get; init; }
-  public required string Email { get; init; }
 
-  // Sensitive fields - require specific permissions to view
-  public string? PhoneNumber { get; init; }
+  // Hidden entirely when denied (the default strategy)
+  [FieldPermission("customers:read-pii")]
+  public string? Email { get; init; }
+
+  // "****6789" when denied
+  [FieldPermission("customers:read-pii", MaskingStrategy.Partial)]
   public string? SocialSecurityNumber { get; init; }
-  public string? CreditCardLast4 { get; init; }
-  public decimal? CreditLimit { get; init; }
-}
 
-public class CustomerDto {
-  public required string CustomerId { get; init; }
-  public required string Name { get; init; }
-  public required string Email { get; init; }
+  // "[REDACTED]" when denied
+  [FieldPermission("customers:read-pii", MaskingStrategy.Redact)]
+  public string? Notes { get; init; }
 
-  // Only populated if user has customers:read-pii permission
-  public string? PhoneNumber { get; init; }
-  public string? SocialSecurityNumber { get; init; }
-  public string? CreditCardLast4 { get; init; }
+  // Not a string, so hidden when denied whatever the strategy
+  [FieldPermission("customers:read-financial")]
+  public decimal CreditLimit { get; init; }
 
-  // Only populated if user has customers:read-financial permission
-  public decimal? CreditLimit { get; init; }
-}
-
-public class CustomerService {
-  private readonly IScopedLensFactory _lensFactory;
-  private readonly IScopeContextAccessor _scopeAccessor;
-
-  public CustomerService(IScopedLensFactory lensFactory, IScopeContextAccessor scopeAccessor) {
-    _lensFactory = lensFactory;
-    _scopeAccessor = scopeAccessor;
-  }
-
-  public async Task<CustomerDto?> GetCustomerAsync(string customerId) {
-    var lens = _lensFactory.GetLens<ICustomerLens>(
-      ScopeFilters.Tenant,
-      Permission.Read("customers")
-    );
-
-    var row = await lens.Query
-      .Where(r => r.Data.CustomerId == customerId)
-      .FirstOrDefaultAsync();
-
-    if (row is null) {
-      return null;
-    }
-
-    var customer = row.Data;
-    var context = _scopeAccessor.Current!;
-    var canReadPii = context.HasPermission(new Permission("customers:read-pii"));
-    var canReadFinancial = context.HasPermission(new Permission("customers:read-financial"));
-
-    return new CustomerDto {
-      CustomerId = customer.CustomerId,
-      Name = customer.Name,
-      Email = customer.Email,
-      // Column-level security: only include sensitive fields if permitted
-      PhoneNumber = canReadPii ? customer.PhoneNumber : null,
-      SocialSecurityNumber = canReadPii ? customer.SocialSecurityNumber : null,
-      CreditCardLast4 = canReadPii ? customer.CreditCardLast4 : null,
-      CreditLimit = canReadFinancial ? customer.CreditLimit : null
-    };
-  }
+  // Nested types are covered too
+  public Address? BillingAddress { get; init; }
 }
 ```
+
+Put the attribute on the class's property. An attribute on an interface property is not inherited by the implementing class, so it protects nothing.
+
+### Where it is enforced
+
+**GraphQL.** `AddWhizbangLenses()` registers `FieldPermissionTypeInterceptor`, which applies to every object type field backed by a `[FieldPermission]` property: the `data` field of each generated `<QueryName>Row` type, every model type nested inside it, and any other object type in the schema. A schema built without `AddWhizbangLenses()` registers it with `builder.TryAddTypeInterceptor<FieldPermissionTypeInterceptor>()`. Protected fields are nullable in the schema, because a hidden value is returned as `null`. The caller's scope is read from `IScopeContextAccessor.Current`, which the scope middleware sets.
+
+{verified: FieldPermissionTypeInterceptorTests.CallerWithoutThePermission_SeesEachStrategysMaskAsync, FieldPermissionTypeInterceptorTests.LensRowDataField_IsMaskedAsync, FieldPermissionTypeInterceptorTests.ProtectedFields_AreNullable_UnprotectedFieldsAreUnchangedAsync, GraphQLLensScopeSchemaTests.ProtectedModelField_IsMaskableAndLeftOutOfTheLensFilterAndSortInputsAsync}
+
+**REST.** The REST lens generator registers the protected properties of each lens's model and of the types nested inside it, and `AddWhizbangLenses()` (from `Whizbang.Transports.FastEndpoints`) adds the masking to the host's JSON options, which FastEndpoints writes responses with. A generated endpoint whose model has protected members checks that the masking is in place before it reads anything, and fails the request otherwise, so it never sends them unmasked. If you replace the serializer's `TypeInfoResolver` after `AddWhizbangLenses()`, call `AddWhizbangFieldPermissions()` on the options again. Registration is generated and members are matched by their JSON name (including `[JsonPropertyName]`), so it works with source-generated serializer contexts and under trimming.
+
+{verified: FieldPermissionRestLensTests.CallerWithoutThePermission_SeesEachStrategysMaskAsync, FieldPermissionRestLensTests.SerializerWithoutTheMasking_RefusesToRespondAsync, FieldPermissionJsonTests.AddWhizbangFieldPermissions_KeepsTheExistingResolverAsync}
+
+**Your own code.** Masking applies to what the transports send. Code that reads a lens directly gets the stored values; use `FieldPermissionMasking` when you return a model yourself:
+
+```csharp{title="Masking in Your Own Code" description="FieldPermissionMasking applies the same rules the transports use." category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Masking"] tests=["FieldPermissionMaskingTests.IsPermitted_ScopeLacksThePermission_IsFalseAsync", "FieldPermissionMaskingTests.MaskString_ReplacesTheValueWithItsPlaceholderAsync"]}
+var attribute = new FieldPermissionAttribute("customers:read-pii", MaskingStrategy.Partial);
+var ssn = FieldPermissionMasking.IsPermitted(scopeAccessor.Current, attribute)
+  ? customer.SocialSecurityNumber
+  : FieldPermissionMasking.MaskString(customer.SocialSecurityNumber, attribute.Masking); // "****6789"
+```
+
+### Protected fields cannot be filtered or sorted
+
+A protected field is not offered for filtering or sorting, because a filter compares the value and an ordering ranks it.
+
+- **GraphQL:** protected fields are left out of the generated filter (`where`) and sort (`order`) input types. A query that names one fails validation.
+- **REST:** protected members are not filter or sort fields. `filter[ssn]=...` or `sort=ssn` is answered with **400**, like any field the endpoint does not offer.
+
+Unprotected fields of the same model filter and sort as usual.
+
+{verified: FieldPermissionTypeInterceptorTests.FilterInput_LeavesOutProtectedFieldsAsync, FieldPermissionTypeInterceptorTests.SortInput_LeavesOutProtectedFieldsAsync, FieldPermissionTypeInterceptorTests.FilteringByAProtectedField_IsRejectedAsync, FieldPermissionRestLensTests.FilterByAProtectedMember_IsABadRequestAsync, FieldPermissionRestLensTests.SortByAProtectedMember_IsABadRequestAsync}
 
 ## Data Masking {#masking-strategies}
 
-The `MaskingStrategy` enum (paired with the `[FieldPermission]` attribute) defines strategies for masking sensitive fields when the caller lacks the required permission.
+`MaskingStrategy` sets what a caller without the permission sees. The placeholders apply to **string** members; a member of any other type (a number, a date, a nested object, a list) is hidden under every strategy, because a placeholder string cannot stand in for its value.
 
-```csharp{title="Data Masking" description="MaskingStrategy and the FieldPermission attribute define how sensitive fields are masked." category="Best-Practices" difficulty="ADVANCED" tags=["Fundamentals", "Security", "Data", "Masking"] unverified="MaskingStrategy and FieldPermissionAttribute are covered only by SecurityAttributeTests, which is absent from the test map"}
-public enum MaskingStrategy {
-  /// <summary>Completely hide the value (return null/default)</summary>
-  Hide = 0,
+| Strategy | String member | Any other member |
+|---|---|---|
+| `Hide` (default) | Hidden | Hidden |
+| `Mask` | `"****"` | Hidden |
+| `Partial` | `"****"` plus the last four characters (`"****6789"`); a value of four characters or fewer is `"****"` | Hidden |
+| `Redact` | `"[REDACTED]"` | Hidden |
 
-  /// <summary>Return "****" placeholder</summary>
-  Mask = 1,
+A hidden value is `null` in GraphQL. In a REST response it is written as `null`, or left out when the member's type cannot hold null (an `int`, a `decimal`, a struct). Under `Mask`, `Partial` and `Redact` a null string still gets the placeholder, so whether a value exists is not shown either. A strategy value the framework does not define hides the value.
 
-  /// <summary>Return partial value like "****1234" (last 4 characters visible)</summary>
-  Partial = 2,
-
-  /// <summary>Return "[REDACTED]" placeholder</summary>
-  Redact = 3
-}
-
-// Declare the permission a field requires and how to mask it when denied
-[AttributeUsage(AttributeTargets.Property, AllowMultiple = false)]
-public sealed class FieldPermissionAttribute(
-    string permission,
-    MaskingStrategy masking = MaskingStrategy.Hide) : Attribute {
-  public Permission Permission { get; }
-  public MaskingStrategy Masking { get; }
-}
-```
-
-### Using Masking with Column Security
-
-```csharp{title="Using Masking with Column Security" description="Using Masking with Column Security" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "C#", "Using", "Masking"] unverified="Consumer domain example using the FieldPermission attribute; covered only by SecurityAttributeTests, which is absent from the test map"}
-public class Customer {
-  public required string CustomerId { get; init; }
-  public required string Name { get; init; }
-  public required string Email { get; init; }
-
-  // Requires customers:read-pii; hidden entirely when denied
-  [FieldPermission("customers:read-pii", MaskingStrategy.Hide)]
-  public string? SocialSecurityNumber { get; init; }
-
-  // Requires customers:read-pii; partially masked when denied ("****1234")
-  [FieldPermission("customers:read-pii", MaskingStrategy.Partial)]
-  public string? PhoneNumber { get; init; }
-
-  // Requires customers:read-financial; placeholder when denied
-  [FieldPermission("customers:read-financial", MaskingStrategy.Redact)]
-  public string? CreditCardLast4 { get; init; }
-}
-```
+{verified: FieldPermissionMaskingTests.MaskString_ReplacesTheValueWithItsPlaceholderAsync, FieldPermissionMaskingTests.MaskValue_NonStringMember_IsHiddenUnderEveryStrategyAsync, FieldPermissionMaskingTests.MaskString_UndefinedStrategy_HidesTheValueAsync, FieldPermissionJsonTests.CallerWithoutThePermission_GetsPlaceholdersAndWithheldMembersAsync}
 
 ## Perspective Scope
 
