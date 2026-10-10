@@ -20,7 +20,7 @@ codeReferences:
   - src/Whizbang.Hosting.AspNet/ServiceCollectionExtensions.cs
 testReferences:
   - tests/Whizbang.Hosting.AspNet.Tests/WhizbangSecurityHeadersMiddlewareTests.cs
-  - tests/Whizbang.Hosting.AspNet.Tests/WhizbangSecurityHeadersStartupFilterTests.cs
+  - tests/Whizbang.Hosting.AspNet.Component.Tests/WhizbangSecurityHeadersStartupFilterTests.cs
   - tests/Whizbang.Hosting.AspNet.Tests/WhizbangKestrelExtensionsTests.cs
   - tests/Whizbang.Hosting.AspNet.Tests/ServiceCollectionExtensionsTests.cs
 ---
