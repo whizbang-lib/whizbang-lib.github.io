@@ -280,13 +280,21 @@ Work distribution across instances is lease-based, but leases live on the **ephe
 
 {verified: PerspectiveWorkerAffinityHoldWatchdogTests.HeldGate_IsListedWithItsPhase_AndAgesAgainstTheGivenClockAsync, PerspectiveWorkerAffinityHoldWatchdogTests.LongHold_IsNamedAtWarning_OncePerThresholdAsync, PerspectiveWorkerAffinityHoldWatchdogTests.WatchdogOff_ReportsNothingAsync}
 
-A drain consumer stuck inside an apply used to be invisible: the process looked idle while the rows it had leased kept lapsing and being re-offered. Every held intra-pod affinity gate now records which processing path holds it (`standard` or `drain`), the step it is in (`resolve`, `pre-lifecycle`, `apply`, `load-processed`, `completion`, `report`, `post-lifecycle`, `collective`), and when it was taken. A periodic watchdog (interval `max(5 s, threshold / 2)`) names every hold older than `PerspectiveStreamAffinityOptions.LongHoldWarning` (default 60 seconds) at Warning, EventId 64:
+A drain consumer stuck inside an apply used to be invisible: the process looked idle while the rows it had leased kept lapsing and being re-offered. Every held intra-pod affinity gate now records which processing path holds it (`standard`, `drain`, or `drain-abandoned`, below), the step it is in (`resolve`, `pre-lifecycle`, `apply`, `load-processed`, `completion`, `report`, `post-lifecycle`, `collective`), and when it was taken. A periodic watchdog (interval `max(5 s, threshold / 2)`) names every hold older than `PerspectiveStreamAffinityOptions.LongHoldWarning` (default 60 seconds) at Warning, EventId 64:
 
 ```
 Perspective {PerspectiveName} on stream {StreamId} has held its affinity gate for {HeldSeconds} s in phase {Phase} ({Path} path)
 ```
 
 Each hold is reported once when it crosses the threshold and once per further threshold while it persists, so a hung apply produces a steady, attributable signal rather than a flood or silence. Set `LongHoldWarning` to `TimeSpan.Zero` to turn the watchdog off.
+
+### Abandoned Applies Keep Their Gate {#abandoned-applies}
+
+{verified: PerspectiveApplyExactlyOnceTests.DrainMode_ApplyOutlivesItsLease_GateStaysHeldUntilTheAbandonedApplyReturns_AppliesOnceAsync, PerspectiveWorkerDeepPathDrainTests.DrainMode_ApplyOutlivesItsLease_HoldsTheGateUntilTheApplyEnds_AndTheNextDrainSkipsItAsync, PerspectiveWorkerDeepPathDrainTests.Stop_WhileAnAbandonedApplyStillRuns_WaitsForItToEndAndReleaseItsGateAsync}
+
+A drain apply runs under its lease. When the lease runs out, or the worker is stopping, the drain consumer stops waiting for the apply and moves on, so a handler that ignores its cancellation token cannot stall the consumer loop. The apply itself keeps running, and until it ends it has not marked its events processed.
+
+The affinity gate belongs to the apply, not to the consumer: it stays held until the abandoned apply ends (completes, fails or is canceled). A second consumer for the same stream and perspective waits for it and then finds the events already processed, so an event is never applied twice. While it waits, the hold reads as path `drain-abandoned`, and the watchdog above names a hung one. Stopping the worker waits for every abandoned apply to end, so a stopped worker holds no gate. A gate that is held is also never removed when the cursor cache evicts its stream.
 
 ---
 
@@ -659,6 +667,8 @@ The worker exposes first-class events for production monitoring and deterministi
 | `OnWorkProcessingIdle` | Active → idle transition, after `IdleThresholdPolls` consecutive empty polls (default 2) |
 | `OnBatchCycleComplete` | Once per worker tick after ALL phases (drain processing, `PostAllPerspectives`, `PostLifecycle`, metrics) — fires whether or not work was found |
 | `OnPerspectiveEventProcessed` | Synchronously after a perspective successfully processes events for a stream |
+| `OnStreamAffinityGateContended` | When an applier finds the (stream, perspective) [affinity gate](#lease-based-coordination) held and must wait for it |
+| `OnStreamAffinityGateReleased` | When an affinity gate is released, with an `AffinityGateRelease(StreamId, PerspectiveName, Abandoned)`; `Abandoned` is true when the apply had been [abandoned](#abandoned-applies) by its consumer. Releases of one gate are raised in the order they happen, before the next applier takes it, so keep handlers short |
 | `ConsecutiveEmptyPolls` (property) | Count of consecutive empty polls; resets when work is found |
 | `IsIdle` (property) | Whether the worker is currently idle |
 | `RequestImmediatePoll()` | Wakes the worker immediately (see [Immediate Poll](#immediate-poll)) |
@@ -669,6 +679,13 @@ var worker = serviceProvider.GetRequiredService<PerspectiveWorker>();
 
 worker.OnWorkProcessingIdle += () => {
   Console.WriteLine("All perspective work processed!");
+};
+
+// Count applies that outlived their lease, per perspective.
+worker.OnStreamAffinityGateReleased += release => {
+  if (release.Abandoned) {
+    abandonedApplies.Add(1, new KeyValuePair<string, object?>("perspective", release.PerspectiveName));
+  }
 };
 ```
 
