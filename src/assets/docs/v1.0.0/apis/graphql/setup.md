@@ -110,20 +110,15 @@ builder.Services.AddWhizbangScope(options => {
     options.OrganizationIdClaimType = "org_id";
     options.CustomerIdClaimType = "customer_id";
 
-    // Header names (fallback if claim not present)
-    options.TenantIdHeaderName = "X-Tenant-Id";
-    options.UserIdHeaderName = "X-User-Id";
-
     // Custom extensions
     options.ExtensionClaimMappings["region"] = "Region";
-    options.ExtensionHeaderMappings["X-Region"] = "Region";
 });
 ```
 
 | Option | Default | Description |
 |--------|---------|-------------|
 | `TenantIdClaimTypes` | `["tenant_id"]` | JWT claim types for tenant ID, tried in order |
-| `TenantIdHeaderName` | `"X-Tenant-Id"` | HTTP header for tenant ID |
+| `TenantIdHeaderName`, `UserIdHeaderName`, `OrganizationIdHeaderName`, `CustomerIdHeaderName` | `null` (no header read) | Opt-in request header used when the token lacks the claim. Safe only behind a trusted gateway that sets it; see [Trusted gateway headers](scoping#trusted-gateway-headers) |
 | `UserIdClaimTypes` | Azure AD `objectidentifier`, `objectid`, `oid`, `sub`, `ClaimTypes.NameIdentifier` | JWT claim types for user ID, tried in order |
 | `RolesClaimType` | `ClaimTypes.Role` | JWT claim for roles |
 | `GroupsClaimTypes` | `["groups"]` | JWT claim types for group memberships |
