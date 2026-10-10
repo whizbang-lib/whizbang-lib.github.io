@@ -14,13 +14,23 @@ tags: 'turnkey-initialization, database-setup, startup, ef-core, postgresql, sch
 codeReferences:
   - src/Whizbang.Data.EFCore.Postgres/DbContextInitializationRegistry.cs
   - src/Whizbang.Data.EFCore.Postgres/WhizbangHostExtensions.cs
-  - src/Whizbang.Data.EFCore.Postgres/WhizbangDatabaseInitializerService.cs
+  - src/Whizbang.Data.Postgres/WhizbangDatabaseInitializerService.cs
+  - src/Whizbang.Data.Postgres/ISchemaInitializationRunner.cs
+  - src/Whizbang.Data.Postgres/SchemaInitializationRegistration.cs
+  - src/Whizbang.Data.Postgres/SchemaInitializationLock.cs
+  - src/Whizbang.Data.Postgres/ISchemaInitializationObserver.cs
+  - src/Whizbang.Data.Postgres/SchemaInitializationObservers.cs
+  - src/Whizbang.Data.EFCore.Postgres/DbContextSchemaInitializationRunner.cs
+  - src/Whizbang.Data.Dapper.Postgres/DapperSchemaInitializationRunner.cs
   - src/Whizbang.Data.EFCore.Postgres/SchemaInitializationLog.cs
   - src/Whizbang.Data.EFCore.Postgres.Generators/Templates/DbContextSchemaExtensionTemplate.cs
 testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/DbContextInitializationRegistryTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/SchemaInitializationTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/SchemaInitializationConcurrencyTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/StartupParity/StartupParityTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperSchemaStartupTests.cs
+  - tests/Whizbang.Core.Component.Tests/Schema/SchemaInitializationRunnersTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -85,7 +95,7 @@ The source generator automatically registers each `[WhizbangDbContext]`-annotate
 
 This is AOT-compatible with no reflection - all registration happens via source-generated module initializers.
 
-In addition, `.WithDriver.Postgres` registers a `WhizbangDatabaseInitializerService` hosted service that runs the same initialization and then signals `ISchemaReadyGate`. Whizbang workers await this gate before issuing any SQL, so even if you forget the explicit `EnsureWhizbangInitializedAsync()` call, workers cannot race an uninitialized schema. The explicit call remains useful when your own startup code (seeding, health probes) needs the schema ready before `app.RunAsync()`.
+In addition, `.WithDriver.Postgres` registers the `WhizbangDatabaseInitializerService` hosted service, which runs the same initialization and then signals `ISchemaReadyGate`. The Dapper driver registers the same service (see [Both drivers](#both-drivers)). Whizbang workers await this gate before issuing any SQL, so even if you forget the explicit `EnsureWhizbangInitializedAsync()` call, workers cannot race an uninitialized schema. The explicit call remains useful when your own startup code (seeding, health probes) needs the schema ready before `app.RunAsync()`.
 
 :::updated
 Non-blocking initialization is now the **turnkey default** (`SchemaInitializationOptions.NonBlockingSchemaInit = true`): the hosted service's `StartAsync` returns immediately and initialization runs in the **background**, so the host binds and answers liveness probes while migrations run. `ISchemaReadyGate` stays closed until initialization succeeds (fail-closed on failure), and the availability layer keeps the instance out of traffic in the meantime — `SchemaReadyHealthCheck` reports not-ready and `DatabaseAvailabilityMiddleware` returns 503 with a `Retry-After` header until the gate opens. Set `NonBlockingSchemaInit = false` to opt back into blocking inline initialization (host startup does not complete — no HTTP port, no workers — until migrations finish, and a migration failure aborts startup). An optional `MigrationTimeout` (default: none) caps a single background attempt so a hung migration fails the rollout instead of wedging forever.
@@ -166,7 +176,88 @@ This means even if two pods manage to overlap (e.g., the first pod crashes mid-i
 
 The advisory lock is transaction-scoped (`pg_try_advisory_xact_lock`), so it can never dangle — it dies with its transaction. The rollback path that releases the pinned connection during backoff always uses `CancellationToken.None`, so a cancelled pod still frees its pooled connection instead of leaving it stranded.
 
+## Both drivers {#both-drivers}
+
+{verified: StartupParityTests.TheGate_OpensOnceTheSchemaIsMigrated_AndNotBeforeAsync, DapperSchemaStartupTests.Registration_DoesNotTouchTheDatabaseAsync}
+
+The EF Core and Dapper drivers start the same way. Registration only records what to initialize; one hosted
+service, `WhizbangDatabaseInitializerService`, does the work at host start for every driver the host registered,
+then opens `ISchemaReadyGate`. Each driver contributes an `ISchemaInitializationRunner` for its share, and
+`AddWhizbangSchemaInitialization()` (called by both drivers) registers the service once, however many drivers
+call it. `SchemaInitializationOptions` (blocking or not, `MigrationTimeout`, `InitRetryDelay`) apply to both.
+
+| Stage | EF Core | Dapper |
+|---|---|---|
+| When | Hosted service at host start | Hosted service at host start |
+| Blocking | `NonBlockingSchemaInit`, background by default | The same option |
+| Wait for the database | The initializer's retry loop | `PostgresOptions` connection retry, then the initializer's retry loop |
+| Lock | `pg_try_advisory_xact_lock` on the schema key, around one DDL transaction | The same key, held transaction-scoped on a connection of its own while each migration file runs in its own transaction |
+| Register the instance | At start, before migrating | At start, before the lock is released |
+| Managed-object cleanup | This instance's id, `Whizbang:Schema:Reconcile`, the host's logger; never fatal | The same |
+| Schema-ready gate | Opened after the last runner | The same |
+| Periodic cleanup re-run | A maintenance step, for every context including one you registered yourself | A maintenance step |
+| Once-per-fleet claim | The claim store when registered, the claim table otherwise | The same |
+
+The drivers still migrate with two engines: the EF Core driver generates its pass from the model, and the
+Dapper driver runs `PostgresSchemaInitializer`. They share the lock key, so instances of either driver starting
+together migrate one after the other.
+
+:::breaking
+**Upgrading a Dapper host.** The schema is no longer migrated when `AddWhizbangPostgres(..., initializeSchema: true)`
+returns, and registration no longer connects to the database. Initialization runs at host start. Code that read
+or wrote Whizbang tables between registration and host start must instead wait on the gate:
+
+```csharp{title="Wait for the schema on Dapper" description="Code that needs the schema waits on ISchemaReadyGate instead of assuming registration migrated it" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Dapper", "Startup", "Upgrade"] tests=["DapperSchemaStartupTests.HostStart_MigratesTheSchema_ThenOpensTheGateAsync"]}
+builder.Services.AddWhizbangPostgres(connectionString, jsonOptions, initializeSchema: true, perspectiveEntries);
+
+var app = builder.Build();
+await app.StartAsync();
+
+// The initializer runs in the background by default; wait for the schema before using it.
+var gate = app.Services.GetRequiredService<ISchemaReadyGate>();
+await gate.WaitForReadyAsync(CancellationToken.None);
+```
+
+A Dapper host without `initializeSchema` gets an open gate at start, since its schema was provisioned out of band.
+:::
+
+## Concurrent starts {#concurrent-starts}
+
+{verified: StartupParityTests.ConcurrentStarts_AreSerializedByTheSchemaLockAsync, DapperSchemaStartupTests.HostStart_WaitsForTheSchemaLock_WhileAnotherSessionHoldsItAsync}
+
+Instances starting together, on either driver, take the same schema initialization lock (the advisory key
+`SchemaInitializationLockKey` derives from the schema name), so one migrates while the others wait. A start that
+finds the lock held tells the registered observers, then waits for the holder to commit, roll back or die.
+
+## Watching initialization {#watching-initialization}
+
+{verified: StartupParityTests.ADatabaseThatComesUpLate_IsWaitedFor_ThenTheGateOpensAsync, SchemaInitializationObserversTests.LockContended_TellsEveryRegisteredObserverAsync}
+
+Register an `ISchemaInitializationObserver` to see what initialization is waiting on. Every method has a default
+that does nothing, so implement only what you watch:
+
+```csharp{title="Watching initialization" description="An observer that logs a held lock and a failed attempt" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Startup", "Observability"] tests=["StartupParityTests.ConcurrentStarts_AreSerializedByTheSchemaLockAsync", "StartupParityTests.ADatabaseThatComesUpLate_IsWaitedFor_ThenTheGateOpensAsync"]}
+public sealed class StartupWatcher(ILogger<StartupWatcher> logger) : ISchemaInitializationObserver {
+  public ValueTask OnSchemaLockContendedAsync(string schema, CancellationToken cancellationToken) {
+    logger.LogInformation("Another instance is migrating {Schema}; waiting", schema);
+    return ValueTask.CompletedTask;
+  }
+
+  public ValueTask OnAttemptFailedAsync(int attempt, Exception exception, CancellationToken cancellationToken) {
+    logger.LogWarning(exception, "Schema initialization attempt {Attempt} failed; retrying", attempt);
+    return ValueTask.CompletedTask;
+  }
+}
+
+builder.Services.AddSingleton<ISchemaInitializationObserver, StartupWatcher>();
+```
+
+The initializer awaits each call before it carries on, so an observer that blocks holds startup; return promptly.
+`OnAttemptFailedAsync` fires in the non-blocking mode, before the `InitRetryDelay` wait.
+
 ## See Also
 
 - [EF Core JSON Configuration](./efcore-json-configuration.md)
 - [Schema Migration](./schema-migration.md)
+- [Managed Schema Objects](../fundamentals/perspectives/managed-schema-objects.md)
+- [Database Readiness](../operations/workers/database-readiness.md)
