@@ -246,7 +246,7 @@ public class CreateOrderReceptor(IDispatcher dispatcher, ILogger<CreateOrderRece
 }
 ```
 
-The security context captured at the edge (e.g., from the JWT) travels **with the message** across the outbox, transport, and inbox - receptors on other services see the same principal. Row-level scoping (`[Scoped]`) and column-level masking (`[FieldPermission]`) build on the same context; see the Security fundamentals page for the full model.
+The security context captured at the edge (e.g., from the JWT) travels **with the message** across the outbox, transport, and inbox - receptors on other services see the same principal. Row-level filtering (the row's stored scope compared with the lens's `QueryScope`) and column-level masking (`[FieldPermission]`) build on the same context; see the Security fundamentals page for the full model.
 
 ---
 
