@@ -8,12 +8,16 @@ category: Fundamentals
 order: 8
 description: >-
   Dual-signal liveness scheme: a session-level advisory lock on the direct
-  LISTEN connection (primary) plus the heartbeat-table fallback. The stale
-  threshold is derived from the heartbeat cadence and shared by the writer,
-  the lifecycle monitor and the SQL reap; the writer carries a watchdog and
-  death announcements are reversible.
-tags: 'liveness, heartbeat, advisory-lock, recovery, workers, watchdog, lifecycle-monitor'
+  LISTEN connection (primary) plus the heartbeat-table fallback. One rule for
+  every reader: alive by a heartbeat within the reader's window, or, for a
+  direct instance, by its held alive-lock. The stale threshold is derived from
+  the heartbeat cadence and shared by the writer, the lifecycle monitor and
+  the SQL reap; the writer carries a watchdog and death announcements are
+  reversible.
+tags: 'liveness, heartbeat, advisory-lock, recovery, workers, watchdog, lifecycle-monitor, connection-mode'
 codeReferences:
+  - src/Whizbang.Data.Postgres/Migrations/204_DirectInstancesAreLiveByTheirAliveLock.sql
+  - src/Whizbang.Data.Postgres/Notifications/PostgresNotificationsServiceCollectionExtensions.cs
   - src/Whizbang.Data.Postgres/Migrations/055_InstanceAliveAdvisoryLock.sql
   - src/Whizbang.Data.Postgres/Migrations/011_CleanupStaleInstances.sql
   - src/Whizbang.Data.Postgres/Migrations/147_HeartbeatRegistryBackfill.sql
@@ -24,6 +28,10 @@ codeReferences:
   - src/Whizbang.Core/Workers/HeartbeatLivenessThreshold.cs
   - src/Whizbang.Core/Observability/InstanceLivenessMetrics.cs
 testReferences:
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/AliveLockLivenessSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/AliveLockSourcePostgresTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/AliveLockSourceRegistrationTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Performance/AliveLockRankCostScenarioTests.cs
   - tests/Whizbang.Core.Tests/Workers/HeartbeatWorkerAdaptiveCadenceTests.cs
   - tests/Whizbang.Core.Tests/Workers/HeartbeatLivenessThresholdTests.cs
   - tests/Whizbang.Core.Tests/Workers/HeartbeatWorkerTickPlanTests.cs
@@ -42,7 +50,7 @@ Whizbang has two independent signals for "this instance is alive," wired in slic
 
 | Signal | Source | Latency | When used |
 |---|---|---|---|
-| **Advisory lock** (primary) | Session-level lock claimed by `PgSharedNotifyConnection` on its direct (non-pgbouncer) LISTEN conn at open. Released by PostgreSQL when the session ends — TCP close, pod death, network reset. | Sub-second (TCP keepalive timeout, typically 10–30 s) | Available when the direct conn is wired. |
+| **Advisory lock** (primary) | Session-level lock claimed by `PgSharedNotifyConnection` on its direct (non-pgbouncer) LISTEN conn at open. Released by PostgreSQL when the session ends — TCP close, pod death, network reset. | Sub-second (TCP keepalive timeout, typically 10–30 s) | Direct instances only: reported held only while the LISTEN connection is one of the instance's own. See [the liveness rule](#liveness-rule). |
 | **Heartbeat table** (fallback) | `wh_service_instances.last_heartbeat_at` updated by `HeartbeatWorker` on its cadence. Stale rows removed by `cleanup_stale_instances` after `p_stale_cutoff`. | ~30–60 s (heartbeat cadence 30 s + stale cutoff) | Always available — the table write is the universal fallback. |
 
 The new SQL function `is_instance_alive(instance_id, threshold_seconds)` returns TRUE if EITHER signal indicates alive:
@@ -58,13 +66,99 @@ tags: ["liveness", "advisory-lock", "heartbeat", "postgres", "migration-055"]
 SELECT is_instance_alive('11111111-...'::uuid, 30);
 ```
 
+## One liveness rule, by connection mode {#liveness-rule}
+{verified: AliveLockLivenessSqlTests.Rank_ADirectPeerOnTheSlowCadenceHoldingItsLock_IsCountedAsync, AliveLockLivenessSqlTests.Rank_ADirectPeerWhoseLockIsReleased_IsCountedOutAtOnceAsync, AliveLockLivenessSqlTests.Rank_APooledPeerPastTheCutoff_IsCountedOutWhateverLockItsSessionHoldsAsync, AliveLockLivenessSqlTests.Rank_APooledPeerWithAFreshHeartbeat_IsCountedAsync, AliveLockLivenessSqlTests.Rank_ARowWithNoRecordedMode_IsJudgedAsPooledAsync}
+
+Each instance records at registration how it reaches the database, in `wh_service_instances.connection_mode` (migration 203, see [Partition assignment](/v1.0.0/fundamentals/work-coordinator/partition-assignment)):
+
+- `direct`: the instance has a dedicated connection of its own, which holds its session alive-lock.
+- `pooled`: the instance reaches the database only through pooled connections. Its session cannot be attributed to it through a pooler, so no lock of its can be seen.
+
+Every reader that judges a peer by its heartbeat applies the same rule:
+
+> An instance is **alive** if its heartbeat is within the reader's own window, **or** it is direct and holds its alive-lock.
+
+| Instance | What decides | Heartbeat cadence |
+|---|---|---|
+| Direct, alive-lock held | The lock. The instance is alive whatever the age of its heartbeat. | Slow (`SlowIntervalSeconds`, 60 s) |
+| Direct, alive-lock not held | The heartbeat, at once, exactly as for a pooled instance. | Fast (`IntervalSeconds`, 30 s) |
+| Pooled, or no mode recorded | The heartbeat alone. Its lock is never consulted. | Fast (`IntervalSeconds`, 30 s) |
+
+Pooled instances are judged exactly as before this rule existed.
+
+### Where the lock state comes from {#alive-lock-source}
+{verified: AliveLockSourceRegistrationTests.AddWhizbangPostgresNotifications_RegistersTheSharedConnectionAsTheAliveLockSourceAsync, AliveLockSourceRegistrationTests.AddWhizbangPostgresNotifications_DisplacesTheNullDefault_InEitherOrderAsync, AliveLockSourceRegistrationTests.AHostsOwnAliveLockSource_IsLeftInPlaceAsync, AliveLockSourceRegistrationTests.WithoutTheNotifications_TheNullDefaultHoldsNoLockAsync, AliveLockSourcePostgresTests.OnADirectConnection_TheLockIsHeld_AndReportedAsync, AliveLockSourcePostgresTests.BehindThePooledFallback_NoLockIsReported_WhateverTheSessionTookAsync}
+
+`AddWhizbangPostgresNotifications` registers `PgSharedNotifyConnection` as the instance's `IInstanceAliveLockSource`. It replaces the core's `NullInstanceAliveLockSource` default whichever of the two is registered first, and a source the host registered itself is left in place.
+
+`PgSharedNotifyConnection.IsAliveLockHeld` is true only when the connection holds the alive-lock **and** is a dedicated connection of its own. Behind the pooled fallback it reports no lock, even if that session took one: its peers could not attribute the lock to the instance, so reporting it would put a pooled instance on the slow cadence and let its peers count it out between beats. A host without the Postgres notifications keeps the null default, holds no lock and beats on the fast cadence.
+
+:::updated
+Earlier releases took the alive-lock but never registered the shared connection as the lock source, so every instance beat on the fast cadence and the slow cadence below was dormant. Registering it is what puts direct instances on the slow cadence, and the rule above is what makes that safe: without it, a reader comparing heartbeat age against its own window would take a direct instance for dead between two slow beats.
+:::
+
+### The lock check: `wh_direct_alive_lock_holders` {#wh-direct-alive-lock-holders}
+{verified: AliveLockLivenessSqlTests.Holders_ADirectInstanceHoldingItsLock_IsListedAsync, AliveLockLivenessSqlTests.Holders_APooledInstanceHoldingALock_IsNotListedAsync, AliveLockLivenessSqlTests.Holders_ADirectInstanceWhoseLockIsReleased_IsNotListedAsync}
+
+Migration 204 adds `wh_direct_alive_lock_holders()`, the one SQL definition of "this direct instance holds its alive-lock". It returns the ids of instances recorded as `direct` whose alive-lock (the migration 055 key) is granted in `pg_locks`. Pooled instances are never listed, whatever locks their sessions hold. The SQL readers below consult the lock through it.
+
+```sql{
+title: "List the direct instances whose alive-lock is held"
+description: "Calls the migration-204 wh_direct_alive_lock_holders function: one row per instance recorded as direct whose session alive-lock is held right now. Pooled instances never appear."
+category: "Workers"
+difficulty: "INTERMEDIATE"
+tags: ["liveness", "advisory-lock", "connection-mode", "postgres", "migration-204"]
+tests: ["AliveLockLivenessSqlTests.Holders_ADirectInstanceHoldingItsLock_IsListedAsync", "AliveLockLivenessSqlTests.Holders_APooledInstanceHoldingALock_IsNotListedAsync", "AliveLockLivenessSqlTests.Holders_ADirectInstanceWhoseLockIsReleased_IsNotListedAsync"]
+}
+-- migration 204
+SELECT instance_id FROM wh_direct_alive_lock_holders();
+```
+
+### Who applies the rule {#liveness-readers}
+
+| Reader | How it applies the rule |
+|---|---|
+| `claim_work`, its rank | A peer is ranked live with a heartbeat inside the 30 s cutoff, or as a direct instance holding its alive-lock. The lock is read only for a direct row past the cutoff, once per claim. See [Claim loop](/v1.0.0/fundamentals/work-coordinator/claim-loop#ranking-who-counts-as-alive). |
+| `claim_work`, its re-register notice | The caller passes `p_alive_lock_held`. A direct caller holding its lock is not asked to re-register between its slow beats. |
+| The partition assigner's candidates | `wh_partition_assignment_candidates` reports `alive_lock_held` through `wh_direct_alive_lock_holders`, and the assigner applies its per-mode windows. See [Partition assignment](/v1.0.0/fundamentals/work-coordinator/partition-assignment). |
+| The standby handshake and `StandbyWatcher` | A peer or requester holding its alive-lock counts as live whatever its heartbeat's age. See [The standby handshake](#the-standby-handshake). |
+| The stale-peer reap (`cleanup_stale_instances`) | Unchanged: it already spared any row whose alive-lock is held (055, v0.687). |
+| `is_instance_alive` and the lifecycle monitor | Unchanged: the predicate already answers with either signal. |
+| `claim_orphaned_*`, a stream's owner | Unchanged: an owner is live with a fresh heartbeat or with its direct connection's application name in `pg_stat_activity`, the same session that holds the lock. |
+| Role votes and bridge expiry | Unchanged: they read the registration, which only the reap removes. |
+
+### When a direct instance loses its lock {#lock-loss}
+{verified: AliveLockLivenessSqlTests.Rank_ADirectPeerWhoseLockIsReleased_IsCountedOutAtOnceAsync, AliveLockLivenessSqlTests.Reap_ADirectPeerHoldingItsLock_IsNeverReapedAsync, AliveLockLivenessSqlTests.Reap_ADirectPeerWhoseLockIsReleased_IsReapedOnTheNextPeerBeatAsync, AliveLockLivenessSqlTests.Vote_ARoleHeldByADirectInstanceHoldingItsLock_IsNotVotedAwayAsync, AliveLockLivenessSqlTests.Vote_ARoleHeldByADirectInstanceWhoseLockIsReleased_IsVotedAwayOnTheNextPeerBeatAsync}
+
+The lock goes with the session: a network reset, a dropped connection or a dead process ends it, and PostgreSQL releases the lock. From then on the instance is judged by its heartbeat at once, with no grace period for having been direct:
+
+1. **Ranked out at once.** The next claim of any peer ranks it by its heartbeat. A heartbeat older than the 30 s cutoff (likely, since it was on the slow cadence) counts it out, and the partition shares re-spread on that claim.
+2. **Reaped or voted away on the next peer heartbeat.** Once its heartbeat is past the reap threshold, the next heartbeat of any peer reaps and tombstones it, and the roles it held are voted away.
+3. **A live instance recovers on its own.** If the process is still running, `HeartbeatWorker` sees the lock gone on its next tick and returns to the fast cadence. A beat that lands before the reap ranks it back in.
+
+```mermaid{caption="A direct instance on the slow cadence is live by its alive-lock. When the lock is released it is judged by its heartbeat at once: ranked out by the next claim, then reaped on the next peer heartbeat." tests=["AliveLockLivenessSqlTests.Rank_ADirectPeerOnTheSlowCadenceHoldingItsLock_IsCountedAsync", "AliveLockLivenessSqlTests.Rank_ADirectPeerWhoseLockIsReleased_IsCountedOutAtOnceAsync", "AliveLockLivenessSqlTests.Reap_ADirectPeerWhoseLockIsReleased_IsReapedOnTheNextPeerBeatAsync"]}
+sequenceDiagram
+    autonumber
+    participant D as Direct instance D
+    participant DB as PostgreSQL
+    participant P as Peer instance P
+    D->>DB: holds alive-lock, beats every 60 s
+    P->>DB: claim_work (D's heartbeat is 45 s old)
+    DB-->>P: D ranked live: direct, lock held
+    Note over D,DB: D's session ends, the lock is released
+    P->>DB: claim_work
+    DB-->>P: D ranked out: heartbeat past the 30 s cutoff
+    P->>DB: record_heartbeat
+    Note over DB: D past the reap threshold: reaped and tombstoned
+```
+
 ## Adaptive HeartbeatWorker cadence
 
 `HeartbeatWorkerOptions.LivenessSourceMode` controls the cadence decision:
 
 | Mode | Behaviour |
 |---|---|
-| `AdvisoryLockWhenAvailable` (default) | Use `SlowIntervalSeconds` (60 s) when the lock is held; fall back to `IntervalSeconds` (30 s) when not. |
+| `AdvisoryLockWhenAvailable` (default) | Use `SlowIntervalSeconds` (60 s) when the lock is held; fall back to `IntervalSeconds` (30 s) when not. Only a direct instance ever reports the lock held, so pooled instances always beat on the fast cadence. |
 | `HeartbeatTableOnly` | Always use `IntervalSeconds`. Legacy / opt-out for environments that don't trust the adaptive behaviour. |
 
 Per-tick resolution means:
@@ -252,11 +346,13 @@ Holdings are **recorded but never consulted to decide**: *the lock decides, the 
 
 The eviction fence reaches acquisition: `record_capability` refuses a tombstoned instance, and the elector releases the lock it just won and stands down — a zombie can win a race but cannot hold a duty. Long-tenure holders fence themselves with `IDutyGrant.VerifyStillHeldAsync`: a grant whose session died (the OOMKill half-open-TCP shape) reports lost before the next unit of exclusive work, because another instance may already hold it.
 
-## The Standby Handshake
+## The Standby Handshake {#the-standby-handshake}
 
 A breaking migration is a **planned outage** — the honest description of what a breaking schema change is — and the framework converts an outage that would otherwise be silent and corrupting into one that is bounded, announced and observable.
 
-The migrating instance records **one fleet-wide standby request** (`wh_standby_requests` — single-row by table shape: one handshake at a time, which is what the migrator duty already guarantees). Live older peers' `StandbyWatcher` sees a binding request — from a *newer* version, requester *alive* — and drains: the lifecycle advances to `StandingBy`, pausing every run-control participant and posting `StandingBy` on the instance row for the migrator to observe. The migrator waits for every **live** older peer's recorded acknowledgment — an instance that stops heartbeating stops counting, so the wait is bounded by lease expiry, never by the goodwill of a process that may already be dead.
+The migrating instance records **one fleet-wide standby request** (`wh_standby_requests` — single-row by table shape: one handshake at a time, which is what the migrator duty already guarantees). Live older peers' `StandbyWatcher` sees a binding request — from a *newer* version, requester *alive* — and drains: the lifecycle advances to `StandingBy`, pausing every run-control participant and posting `StandingBy` on the instance row for the migrator to observe. The migrator waits for every **live** older peer's recorded acknowledgment — an instance that stops heartbeating stops counting, so the wait is bounded by lease expiry, never by the goodwill of a process that may already be dead. Live follows [the liveness rule](#liveness-rule): a peer holding its alive-lock is live whatever its heartbeat's age, so a direct peer between two slow beats is still waited for, and a requester holding its lock still binds its peers. {verified: StandbyHandshakeCoverageTests.AwaitPeersStandingByAsync_AnOlderPeerHoldingItsAliveLock_StillCountsAsync, StandbyWatcherTests.ARequesterHoldingItsAliveLock_BindsUs_BetweenItsSlowBeatsAsync, StandbyWatcherTests.ARequesterPastTheWindowWithoutItsLock_IsVoidAsync, AliveLockLivenessSqlTests.FleetSource_ReportsWhetherAPeersAliveLockIsHeldAsync, AliveLockLivenessSqlTests.StandbyRequest_ReportsWhetherTheRequestersAliveLockIsHeldAsync}
+
+The handshake reads the lock through `is_instance_alive(id, 0)` (migration 055, a zero heartbeat threshold answers the lock alone) rather than `wh_direct_alive_lock_holders`, because it runs before the new release's migrations have been applied.
 
 Every path out of standby is bounded:
 
@@ -276,12 +372,14 @@ The verdict is also **not a startup-only fact**: the watcher re-assesses on a sl
 | **106** (new) | `wh_instance_evictions` tombstone table; `cleanup_stale_instances` tombstones what it reaps; `record_heartbeat` returns `BOOLEAN` and refuses evicted instances |
 | **107** (modified) | `perform_maintenance` Task 10 purges tombstones past `instance_eviction_retention_hours` (default 24) |
 | **147** (new) | `record_heartbeat` gains `p_lifecycle_phase`, `p_library_version` (registry backfill, non-null wins) and `p_stale_threshold_seconds` (the caller's derived threshold for the opportunistic peer reap; definitive-dead cutoff never below twice it). Previous overload dropped; exactly one remains |
+| **204** (new) | `wh_direct_alive_lock_holders()`: the direct instances whose alive-lock is held. `claim_work` ranks peers by [the liveness rule](#liveness-rule) and takes `p_alive_lock_held`; `wh_partition_assignment_candidates` reads the lock through the new function |
 
 ## Operator notes
 
 - The lock acquisition is non-fatal: if it returns `false` (duplicate-startup race) or throws (migration 055 not yet applied), the heartbeat-table fallback continues to work.
-- `IsAliveLockHeld` is observable on `IInstanceAliveLockSource` (implemented by `PgSharedNotifyConnection`). The HeartbeatWorker reads it every tick — no eventing/cache invalidation needed.
-- DI: HeartbeatWorker takes `IInstanceAliveLockSource?` as an optional ctor param. When not registered, the worker behaves bit-for-bit like pre-v0.681.
+- `IsAliveLockHeld` is observable on `IInstanceAliveLockSource` (implemented by `PgSharedNotifyConnection`, registered by `AddWhizbangPostgresNotifications`). The HeartbeatWorker reads it every tick, and `ClaimWorker` passes it to every claim as `ClaimWorkRequest.AliveLockHeld`; no eventing or cache invalidation is needed.
+- DI: a host without the Postgres notifications keeps `NullInstanceAliveLockSource`, holds no lock and beats on the fast cadence. A host that registers its own `IInstanceAliveLockSource` keeps it.
+- To see which instances are live by their lock right now, `SELECT * FROM wh_direct_alive_lock_holders();`. A direct instance missing from that list is judged by its heartbeat alone.
 - An instance logging `has been evicted … heartbeat refused` is not broken and needs no intervention — it was reaped as stale while paused, its work was redistributed, and it is correctly refusing to rejoin. Restart the pod (a new process gets a new instance id) if it should return to service.
 - A Warning `is alive again after being announced dead; retracting with InstanceJoinedSignal` means a heartbeat landed late, not that the monitor is wrong. The fleet has already healed; look for what stalled the beat (a long-running commit on the writer's connection, a saturated pool). `whizbang.liveness.deaths_retracted` counts these.
 - Watchdog Warnings (EventId 9) mean the regular beat ran late enough to approach the threshold and the writer forced one. Occasional watchdog beats under load are the mechanism working; a steady stream points at a starved heartbeat writer.

@@ -421,7 +421,7 @@ Higher partition counts enable finer-grained distribution:
 ### Work Not Redistributing
 
 **Check:**
-- Instance is actually stale (heartbeat past the 30-second cutoff, no live LISTEN connection)
+- Instance is actually stale (heartbeat past the 30-second cutoff, no live LISTEN connection, and, for a direct instance, no held alive-lock: `SELECT * FROM wh_direct_alive_lock_holders();`). See [the liveness rule](/v1.0.0/fundamentals/workers/instance-liveness#liveness-rule)
 - Active instance count in `wh_service_instances` (algorithmic redistribution)
 - Modulo distribution formula: `partition_number % active_instance_count = instance_rank`
 

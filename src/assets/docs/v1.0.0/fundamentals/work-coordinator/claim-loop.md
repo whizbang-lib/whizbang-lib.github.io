@@ -7,8 +7,8 @@ description: >-
   lane, row-bounded acquisition, breadth-first head probing, claim-latency
   feedback on the adaptive window, work stealing, the per-category outstanding
   budget with the perspective drain cap, the release of unstarted leases by a
-  stuck instance, and outbox stream runs with the immediate re-claim after a full
-  outbox acquisition.
+  stuck instance, outbox stream runs with the immediate re-claim after a full
+  outbox acquisition, and how a claim ranks its peers by the liveness rule.
 tags: 'work-coordinator, claim-loop, claim-work, acquisition, backpressure, work-stealing, command-lane'
 codeReferences:
   - src/Whizbang.Core/Workers/ClaimWorker.cs
@@ -21,6 +21,7 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/150_BucketAwareClaim.sql
   - src/Whizbang.Data.Postgres/Migrations/157_ClaimAcquisitionBounded.sql
   - src/Whizbang.Data.Postgres/Migrations/171_OutboxStreamRuns.sql
+  - src/Whizbang.Data.Postgres/Migrations/204_DirectInstancesAreLiveByTheirAliveLock.sql
   - src/Whizbang.Core/Workers/OutboxDrainWorker.cs
   - src/Whizbang.Core/Signals/BasePollSignalSource.cs
   - src/Whizbang.Core/Signals/PollIdleBackoff.cs
@@ -33,6 +34,9 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/OutboxStreamRunSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/OutboxStreamRunDrainMeasurementTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/OutboxDrainWorkerStreamRunTests.cs
+  - tests/Whizbang.Core.Component.Tests/ClaimWorkerAliveLockTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/AliveLockLivenessSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Performance/AliveLockRankCostScenarioTests.cs
 ---
 
 # Claim loop
@@ -403,6 +407,27 @@ The store side is `release_unstarted_leases(p_instance_id, p_inbox_stream_ids, p
 - **The instance calls it on itself.** Nothing is ever taken from a heartbeating instance by anyone else; the function only touches rows whose `instance_id` is the caller's, so a sibling's leases are never affected.
 - **A store without the function is not an error.** The default `IWorkCoordinator` implementation throws `NotImplementedException`; the worker logs that the rows stay leased to this instance until they lapse (the previous behavior) and keeps claiming.
 
+## Ranking: who counts as alive {#ranking-who-counts-as-alive}
+{verified: AliveLockLivenessSqlTests.Rank_ADirectPeerOnTheSlowCadenceHoldingItsLock_IsCountedAsync, AliveLockLivenessSqlTests.Rank_ADirectPeerWhoseLockIsReleased_IsCountedOutAtOnceAsync, AliveLockLivenessSqlTests.Rank_APooledPeerPastTheCutoff_IsCountedOutWhateverLockItsSessionHoldsAsync, AliveLockLivenessSqlTests.Rank_APooledPeerWithAFreshHeartbeat_IsCountedAsync, AliveLockLivenessSqlTests.Rank_ARowWithNoRecordedMode_IsJudgedAsPooledAsync}
+
+Unowned work is claimed by rank: `partition_number % active_instance_count = rank`. A claim that presents the partition assigner's current assignment takes its rank from it (see [Partition assignment](partition-assignment.md)). Otherwise `claim_work` ranks itself among the instances it counts as alive, and since migration 204 it counts them by the [liveness rule](/v1.0.0/fundamentals/workers/instance-liveness#liveness-rule) every reader shares:
+
+- a peer whose heartbeat is inside the 30 s cutoff is alive;
+- a peer recorded as `direct` whose alive-lock is held is alive whatever the age of its heartbeat, so a direct instance beating on the 60 s slow cadence is never counted out between beats;
+- a pooled peer, or one with no mode recorded, is judged by its heartbeat alone;
+- the calling instance always counts itself: it is running the claim.
+
+When a direct instance loses its lock, the next claim of any peer judges it by its heartbeat, so it is ranked out at once and the shares re-spread on that claim.
+
+**Cost.** The lock is read through `wh_direct_alive_lock_holders()` only for a direct row whose heartbeat is past the cutoff, and then once per claim as a hashed subplan. A claim whose peers all have fresh heartbeats, or are pooled, never reads `pg_locks`. With half of a direct fleet on the slow cadence, the measured cost is one pass over the registration table: 1 buffer at 20 instances, 6 at 400. {verified: AliveLockRankCostScenarioTests.SelfRankedClaim_WithHalfTheFleetOnTheSlowCadence_ReadsTheLocksOnce_ReportAsync}
+
+### The re-register notice and `p_alive_lock_held` {#re-register-notice}
+{verified: AliveLockLivenessSqlTests.Notice_ADirectCallerHoldingItsLock_IsNotAskedToRegisterBetweenSlowBeatsAsync, AliveLockLivenessSqlTests.Notice_ADirectCallerWithoutItsLock_IsAskedToRegisterAsync, AliveLockLivenessSqlTests.Notice_APooledCallerPastTheCutoff_IsStillAskedToRegisterAsync, AliveLockLivenessSqlTests.Notice_AMissingRegistration_IsReportedWhateverTheLockAsync, ClaimWorkerAliveLockTests.AClaim_WhileTheAliveLockIsHeld_SaysSoAsync, ClaimWorkerAliveLockTests.AClaim_WithoutTheAliveLock_SaysSoAsync, ClaimWorkerAliveLockTests.AClaim_WithNoAliveLockSourceRegistered_HoldsNoLockAsync}
+
+The claim reads its caller's registration and never writes it. When the row is missing or older than the cutoff, it raises `NOTICE 'whizbang.instance_registration_stale=true'` (`WorkBatch.InstanceRegistrationStale`) and the caller registers in a statement of its own.
+
+A direct instance holding its lock beats every 60 s, so its row is past the 30 s cutoff for half of every beat. To keep that from reading as stale, `ClaimWorker` resolves `IInstanceAliveLockSource` from the claim's scope and passes its answer as `ClaimWorkRequest.AliveLockHeld`. Both coordinators (EF Core and Dapper) send it as `claim_work`'s `p_alive_lock_held` parameter (default `FALSE`). A direct caller that holds its lock is not asked to re-register; a pooled caller past the cutoff still is; and a missing registration is reported whatever the lock says. A host without a lock source registered passes `false`, as before. {verified: AliveLockLivenessSqlTests.Coordinator_PassesTheCallersAliveLock_SoADirectCallerHoldingItIsNotReportedStaleAsync, DapperWorkCoordinatorBroadTests.ClaimWorkAsync_ADirectInstanceBetweenSlowBeats_IsReportedStaleOnlyWithoutItsLockAsync}
+
 ## Configuration
 
 | Knob | Default | Effect |
@@ -436,6 +461,7 @@ The notification listener exposes `IsHealthy` + `OnHealthChanged`; expose via `/
 ## Related
 
 - [Notifications and pgbouncer](notifications-and-pgbouncer.md)
+- [Partition assignment](partition-assignment.md): the elected assignment a claim ranks by when it has one.
 - [Configuration reference](configuration-reference.md)
 - [Failure and recovery](failure-and-recovery.md)
 - [Handler commit](handler-commit.md)
