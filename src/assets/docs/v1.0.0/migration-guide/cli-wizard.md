@@ -11,9 +11,9 @@ codeReferences:
   - tools/Whizbang.Migrate/Wizard/ConsoleRenderer.cs
   - tools/Whizbang.Migrate/Program.cs
 testReferences:
-  - tests/Whizbang.Migrate.Tests/Wizard/WizardRunnerTests.cs
-  - tests/Whizbang.Migrate.Tests/Wizard/MigrationStateDetectorTests.cs
-  - tests/Whizbang.Migrate.Tests/ProgramCliTests.cs
+  - tests/Whizbang.Migrate.Component.Tests/Wizard/WizardRunnerTests.cs
+  - tests/Whizbang.Migrate.Integration.Tests/Wizard/MigrationStateDetectorTests.cs
+  - tests/Whizbang.Migrate.Component.Tests/ProgramCliTests.cs
 ---
 
 # CLI Migration Wizard

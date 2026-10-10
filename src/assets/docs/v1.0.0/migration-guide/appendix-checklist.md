@@ -15,7 +15,7 @@ codeReferences:
 testReferences:
   - tests/Whizbang.Core.Tests/Receptors/ReceptorTests.cs
   - tests/Whizbang.Core.Component.Tests/Dispatcher/DispatcherTests.cs
-  - tests/Whizbang.Migrate.Tests/Commands/AnalyzeCommandTests.cs
+  - tests/Whizbang.Migrate.Component.Tests/Commands/AnalyzeCommandTests.cs
   - tests/Whizbang.Migrate.Tests/Transformers/HandlerToReceptorTransformerTests.cs
 lastMaintainedCommit: '01f07906'
 ---
