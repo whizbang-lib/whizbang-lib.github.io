@@ -79,21 +79,20 @@ flowchart TD
 
 ### Step 1: HTTP Request Establishes Context
 
-The `WhizbangScopeMiddleware` (shipped in `Whizbang.Transports.HotChocolate`) extracts security context from HTTP headers and JWT claims. Register with `AddWhizbangScope()` / `UseWhizbangScope()` and configure via `WhizbangScopeOptions`:
+The `WhizbangScopeMiddleware` (shipped in `Whizbang.Transports.HotChocolate`) extracts security context from the authenticated principal's JWT claims. Register with `AddWhizbangScope()` / `UseWhizbangScope()` and configure via `WhizbangScopeOptions`:
 
 ```csharp{title="Step 1: HTTP Request Establishes Context" description="The WhizbangScopeMiddleware extracts security context from HTTP requests:" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Step", "HTTP"] unverified="AddWhizbangScope / WhizbangScopeMiddleware registration lives in the HotChocolate transport, outside these Core security tests"}
 // Program.cs
 builder.Services.AddWhizbangScope(options => {
   options.TenantIdClaimTypes = ["tenant_id"];        // JWT claim(s) for tenant
   options.UserIdClaimTypes = ["sub", "oid"];         // JWT claim(s) for user
-  options.TenantIdHeaderName = "X-Tenant-Id";        // header fallback
 });
 
 app.UseWhizbangScope();
 ```
 
 This middleware:
-- Extracts claims from JWT bearer tokens (and header fallbacks)
+- Extracts claims from JWT bearer tokens; a request header is read only where you opt in behind a trusted gateway (see [Trusted gateway headers](../../apis/graphql/scoping#trusted-gateway-headers))
 - Maps claims to `IScopeContext` properties
 - Populates `IScopeContextAccessor.Current`
 - Makes context available to downstream code
