@@ -23,13 +23,13 @@ codeReferences:
   - src/Whizbang.Core/Workers/TransportPublishStrategy.cs
   - src/Whizbang.Core/Workers/OutboxPublishWorker.cs
 testReferences:
-  - tests/Whizbang.Transports.Tests/ITransportTests.cs
+  - tests/Whizbang.Transports.Component.Tests/ITransportTests.cs
   - tests/Whizbang.Transports.Tests/TransportCapabilitiesTests.cs
   - tests/Whizbang.Transports.Tests/TransportDestinationTests.cs
-  - tests/Whizbang.Transports.Tests/InProcessTransportTests.cs
+  - tests/Whizbang.Transports.Component.Tests/InProcessTransportTests.cs
   - tests/Whizbang.Transports.Tests/ISubscriptionTests.cs
   - tests/Whizbang.Transports.Tests/BulkPublishTests.cs
-  - tests/Whizbang.Transports.Tests/SubscribeBatchTests.cs
+  - tests/Whizbang.Transports.Component.Tests/SubscribeBatchTests.cs
   - tests/Whizbang.Core.Tests/Workers/TransportPublishStrategyTests.cs
   - tests/Whizbang.Core.Tests/Workers/MessagePublishStrategyTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/OutboxPublishWorkerTests.cs
