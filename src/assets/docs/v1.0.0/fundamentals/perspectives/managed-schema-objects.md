@@ -13,10 +13,16 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/200_ManagedObjects.sql
   - src/Whizbang.Core/Perspectives/KeepSchemaObjectAttribute.cs
   - src/Whizbang.Data.EFCore.Postgres/ManagedSchemaReconcileStep.cs
+  - src/Whizbang.Data.Dapper.Postgres/DapperManagedSchemaReconcileStep.cs
+  - src/Whizbang.Data.Postgres/Schema/ManagedSchemaHostPass.cs
+  - src/Whizbang.Data.Postgres/FleetClaim.cs
 testReferences:
   - tests/Whizbang.Core.Tests/Schema/ManagedSchemaPlannerTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/ManagedSchemaReconcilerTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/DocumentIndexInitializationTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/ManagedSchemaReconcileStepTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/StartupParity/StartupParityTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperManagedObjectsStartupTests.cs
 ---
 
 # Managed Schema Objects
@@ -56,6 +62,22 @@ A restart with unchanged code changes nothing.
 During a rolling update the previous release keeps running, and keeps querying its indexes, until the new one is ready. Each instance records what it declares, and an object is dropped only once **no running instance still declares it**. If a running instance has recorded nothing, because it predates the ledger, **nothing** is dropped until it's gone.
 
 A drop held back this way isn't left for the next deploy. A maintenance step re-runs the reconcile on one instance of the fleet every 15 minutes, so the drop happens once the previous release has stopped.
+
+{verified: StartupParityTests.WithSeveralInstancesRunning_ARetiredObjectIsDroppedAsync, StartupParityTests.TheFleetGate_HoldsTheDropWhileALivePeerDeclaresIt_AndThePeriodicReRunDropsItOnceThePeerStopsAsync, StartupParityTests.ThePeriodicReRun_IsRegisteredAsync}
+
+Both drivers behave the same way here. Each instance registers itself in `wh_service_instances` at start and records
+its declarations under its own instance id, with the configured settings and the host's logger, so several
+instances of one release see one another as reported and drop what none of them declares. The re-run is registered
+on both drivers, and on the EF Core driver for every context, including one you registered with your own
+`AddDbContext`. The re-run claims its window through the claim store when one is registered and through the claim
+table otherwise, so it runs on one instance either way.
+
+:::updated
+Earlier releases ran the Dapper driver's reconcile inside `AddWhizbangPostgres`, before the host existed, with no
+instance id, no settings and no logger. A Dapper fleet of more than one instance then held every drop
+indefinitely, and `DropAfterFleetConverged=false` did nothing. The Dapper driver now reconciles at host start like
+the EF Core driver, and its maintenance step re-runs it.
+:::
 
 ## Object kinds
 
@@ -133,7 +155,7 @@ An unpin releases the **database pin** only. When C# also pins the object, the r
 | `Whizbang:Schema:Reconcile:DropAfterFleetConverged` | `false` drops without waiting for running instances that still declare an object | `true` |
 | `Whizbang:Schema:Reconcile:Pins:<n>` | code pins as globs over `table:object`, for example `wh_per_job:idx_*_legacy` | none |
 
-A value that isn't one of these fails the start and names the key, so a mistyped setting can't quietly let a drop through.
+A value that isn't one of these fails the start and names the key, on either driver, before the instance registers or migrates, so a mistyped setting can't quietly let a drop through.
 
 ```bash{title="Reconcile settings" description="Switch dropping off or keep one kind" category="Configuration" difficulty="BEGINNER" tags=["Perspectives", "Schema", "Operations"]}
 Whizbang__Schema__Reconcile__Mode=ReportOnly

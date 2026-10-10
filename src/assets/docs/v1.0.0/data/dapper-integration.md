@@ -14,8 +14,10 @@ codeReferences:
   - src/Whizbang.Core/Data/IDbConnectionFactory.cs
   - src/Whizbang.Data.Dapper.Postgres/PostgresConnectionFactory.cs
   - src/Whizbang.Data.Dapper.Postgres/ServiceCollectionExtensions.cs
+  - src/Whizbang.Data.Dapper.Postgres/DapperSchemaInitializationRunner.cs
 testReferences:
   - tests/Whizbang.Data.Dapper.Postgres.Tests/ServiceCollectionExtensionsTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperSchemaStartupTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -93,7 +95,7 @@ public class PostgresConnectionFactory : IDbConnectionFactory {
 
 ### Registration
 
-```csharp{title="Registration" description="Registration" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Registration"] tests=["ServiceCollectionExtensionsTests.AddWhizbangPostgres_InitializeSchemaFalse_DoesNotInitializeAsync", "ServiceCollectionExtensionsTests.AddWhizbangPostgres_InitializeSchemaTrue_NoPerspective_InitializesInfraOnlyAsync"]}
+```csharp{title="Registration" description="Registration" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Registration"] tests=["ServiceCollectionExtensionsTests.AddWhizbangPostgres_InitializeSchemaFalse_DoesNotInitializeAsync", "ServiceCollectionExtensionsTests.AddWhizbangPostgres_InitializeSchemaTrue_NoPerspective_InitializesInfraOnlyAsync", "DapperSchemaStartupTests.HostStart_MigratesTheSchema_ThenOpensTheGateAsync"]}
 // appsettings.json
 {
   "ConnectionStrings": {
@@ -107,11 +109,26 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
 // Registers the connection factory plus all Whizbang PostgreSQL stores
 builder.Services.AddWhizbangPostgres(connectionString, jsonOptions);
 
+// Or let Whizbang create and migrate its schema at host start
+builder.Services.AddWhizbangPostgres(connectionString, jsonOptions, initializeSchema: true);
+
 // OR register just the factory manually:
 builder.Services.AddSingleton<IDbConnectionFactory>(
     new PostgresConnectionFactory(connectionString)
 );
 ```
+
+### Schema initialization at host start {#schema-initialization}
+
+{verified: DapperSchemaStartupTests.Registration_DoesNotTouchTheDatabaseAsync, DapperSchemaStartupTests.HostStart_MigratesTheSchema_ThenOpensTheGateAsync, DapperSchemaStartupTests.HostStart_RegistersThisInstanceAsync}
+
+`AddWhizbangPostgres` never connects to the database. With `initializeSchema: true` it records what to initialize,
+and the shared schema initializer does it when the host starts, exactly as on the EF Core driver: it waits for the
+database with the `PostgresOptions` retry settings, migrates under the schema lock, registers this instance,
+runs the managed-object cleanup, and opens `ISchemaReadyGate`. The workers wait on that gate, and so should any
+code of yours that needs the schema. See [Turnkey Initialization](turnkey-initialization.md#both-drivers) for the
+stage-by-stage comparison and the upgrade note: before this release the schema was migrated inside
+`AddWhizbangPostgres`, and the gate never opened on a Dapper host.
 
 ---
 

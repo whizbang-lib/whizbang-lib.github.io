@@ -16,7 +16,8 @@ tags: >-
 codeReferences:
   - src/Whizbang.Core/Workers/ISchemaReadyGate.cs
   - src/Whizbang.Core/Workers/SchemaInitializationOptions.cs
-  - src/Whizbang.Data.EFCore.Postgres/WhizbangDatabaseInitializerService.cs
+  - src/Whizbang.Data.Postgres/WhizbangDatabaseInitializerService.cs
+  - src/Whizbang.Data.Postgres/SchemaInitializationRegistration.cs
   - src/Whizbang.Hosting.AspNet/DatabaseAvailabilityMiddleware.cs
   - src/Whizbang.Hosting.AspNet/AvailabilityGateMode.cs
   - src/Whizbang.Core/Workers/ClaimWorker.cs
@@ -27,6 +28,7 @@ testReferences:
   - tests/Whizbang.Core.Component.Tests/Workers/HeartbeatWorkerTests.cs
   - tests/Whizbang.Core.Tests/Workers/SchemaInitializationOptionsTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/WhizbangDatabaseInitializerServiceTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/StartupParity/StartupParityTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -97,7 +99,7 @@ The default implementation, `SchemaReadyGate`, is a single `TaskCompletionSource
 
 ## Who Marks the Gate Ready
 
-The EFCore Postgres driver registers **`WhizbangDatabaseInitializerService`** — a plain `IHostedService` (not a `BackgroundService`). How its `StartAsync` behaves depends on `SchemaInitializationOptions.NonBlockingSchemaInit`:
+Both Postgres drivers register **`WhizbangDatabaseInitializerService`** — a plain `IHostedService` (not a `BackgroundService`) — through `AddWhizbangSchemaInitialization()`. It runs every driver's `ISchemaInitializationRunner` in registration order, then opens the gate. On the Dapper driver this is new: before, the Dapper driver migrated inside `AddWhizbangPostgres` and nothing ever opened the gate, so a Dapper host with the background workers waited forever. A Dapper host that provisions its schema out of band (`initializeSchema: false`) gets an open gate at start. How its `StartAsync` behaves depends on `SchemaInitializationOptions.NonBlockingSchemaInit`:
 
 - **Non-blocking (`NonBlockingSchemaInit = true`, the turnkey default)**: `StartAsync` returns immediately and initialization runs in the background. The host binds its port and can answer liveness probes while the gate stays closed until migrations succeed. An optional `SchemaInitializationOptions.MigrationTimeout` (default: none) treats a hung migration as failed so the pod doesn't sit alive-but-wedged forever.
 - **Blocking (`NonBlockingSchemaInit = false`, opt-out)**: initialization runs inline in `StartAsync`, so the host does not finish starting (no HTTP port, no workers) until it completes.
@@ -106,8 +108,8 @@ Either way, the same initialization sequence runs:
 
 ```csharp{title="WhizbangDatabaseInitializerService initialization sequence" description="Migrations first, then best-effort partition recompute, then MarkReady" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Initializer", "Startup"] tests=["WhizbangDatabaseInitializerServiceTests.Blocking_StartAsync_WaitsForInit_ThenMarksReadyAsync", "WhizbangDatabaseInitializerServiceTests.NonBlocking_StartAsync_ReturnsBeforeInit_ThenMarksReadyWhenDoneAsync"]}
 private async Task _runInitializationAsync(CancellationToken cancellationToken) {
-  // ISchemaInitializationRunner.RunAsync — delegates to
-  // DbContextInitializationRegistry.InitializeAllAsync (with MigrationTimeout as a ceiling, if set)
+  // Every registered ISchemaInitializationRunner, in order (EF Core: DbContextInitializationRegistry;
+  // Dapper: PostgresSchemaInitializer), with MigrationTimeout as a ceiling, if set
   await _runMigrationsAsync(cancellationToken);
 
   // Best-effort: recompute partition_number columns that may have drifted across a
@@ -121,7 +123,7 @@ private async Task _runInitializationAsync(CancellationToken cancellationToken) 
 
 **Ordering guarantees**:
 
-1. **Migrations run first** (`ISchemaInitializationRunner.RunAsync`, which delegates to `DbContextInitializationRegistry.InitializeAllAsync`)
+1. **Migrations run first** (every registered `ISchemaInitializationRunner.RunAsync`: the EF Core driver's delegates to `DbContextInitializationRegistry.InitializeAllAsync`, the Dapper driver's to `PostgresSchemaInitializer`)
 2. **Partition recompute is best-effort** — a failure logs a warning but does not block readiness
 3. **`MarkReady` is called last** — only after the schema is provisioned
 
