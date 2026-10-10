@@ -238,7 +238,7 @@ Whizbang resolves database connections through `ConnectionStrings:*` keys (envir
 |-----|---------|
 | `ConnectionStrings:db` | The pooled (e.g. pgbouncer) connection: the application's queries and the work coordinator |
 | `ConnectionStrings:db-direct` | Preferred over `db` for connections that must bypass a transaction pooler: LISTEN/NOTIFY listeners, the commit-order stamper, and the pinned worker pool. Falls back to `db` when absent |
-| `ConnectionStrings:db-init` | Optional direct, higher-privilege connection used only for schema initialization and migrations |
+| `ConnectionStrings:db-init` | Optional direct, higher-privilege connection for schema work: startup migrations, and after startup the managed-object reconcile, the blue-green table swap and `ANALYZE`. See [Database roles](../infrastructure/migrations#database-roles) |
 
 Contexts in one service that share a database share `db`. Only a second, separate database needs a name of its own: `[WhizbangDbContext(ConnectionStringName = "reporting")]` or `WithEFCore<ReportingDbContext>("reporting")`, which then reads `reporting`, `reporting-direct` and `reporting-init`.
 
@@ -412,7 +412,7 @@ Every child of `Whizbang:Offloads:AzureBlob` registers one named provider. The p
 | `ConnectionString` | `string?` | `null` | `Whizbang__Offloads__AzureBlob__<name>__ConnectionString` | Azure Storage connection string (emulator or live) |
 | `ContainerName` | `string` | `whizbang-offload-bodies` | `Whizbang__Offloads__AzureBlob__<name>__ContainerName` | Container holding offloaded bodies; lazily created on first upload |
 | `DefaultAccessTier` | `AccessTier?` | `null` (account default) | `Whizbang__Offloads__AzureBlob__<name>__DefaultAccessTier` | Blob access tier for uploads (Hot/Cool/Cold/Archive) |
-| `MaxDownloadBytes` | `long?` | `null` (no cap) | `Whizbang__Offloads__AzureBlob__<name>__MaxDownloadBytes` | Defensive cap on download size; refuses claims reporting a larger body |
+| `MaxDownloadBytes` | `long?` | `null` (no cap) | `Whizbang__Offloads__AzureBlob__<name>__MaxDownloadBytes` | Defensive cap on download size; refuses claims reporting a larger body. The read itself always stops at the size the claim declares |
 
 ### Whizbang:BodyOffload → MessageBodyOffloadOptions {#whizbangbodyoffload--messagebodyoffloadoptions}
 
@@ -424,6 +424,7 @@ Every key binds whenever body offload is registered: `AddWhizbangBodyOffload()`,
 | `SizeThresholdBytes` | `long` | `65536` (64 KB) | `Whizbang__BodyOffload__SizeThresholdBytes` | Body size at/above which offload kicks in |
 | `ActiveCleanup` | `bool` | `false` | `Whizbang__BodyOffload__ActiveCleanup` | Delete the body explicitly after the inbox row is acked |
 | `CipherName` | `string?` | `null` (bodies stored as serialized) | `Whizbang__BodyOffload__CipherName` | Names the cipher every offloaded body is sealed with; the cipher itself is registered from the `Cipher` subsection below |
+| `RequireSealedBodies` | `bool` | `false` | `Whizbang__BodyOffload__RequireSealedBodies` | A receiver refuses a claim with no cipher descriptor (`BodyClaimUnsealed`) without fetching the body. See [Requiring sealed bodies](../../fundamentals/offloads/message-body-store#require-sealed) |
 | `PassiveExpiry` | `TimeSpan?` | `30.00:00:00` (30 days) | `Whizbang__BodyOffload__PassiveExpiry` | Age past which the passive sweep deletes blob + ledger row; must exceed DLQ retention |
 | `PassiveSweepClaimWindow` | `TimeSpan` | `01:00:00` | `Whizbang__BodyOffload__PassiveSweepClaimWindow` | Minimum interval between passive sweeps service-wide |
 | `PassiveSweepBatchSize` | `int` | `500` | `Whizbang__BodyOffload__PassiveSweepBatchSize` | Ledger rows fetched per sweep batch |
