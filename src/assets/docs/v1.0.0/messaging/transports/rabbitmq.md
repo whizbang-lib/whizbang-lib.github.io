@@ -24,7 +24,7 @@ codeReferences:
   - src/Whizbang.Transports.RabbitMQ/RabbitMQReadinessCheck.cs
 testReferences:
   - tests/Whizbang.Transports.RabbitMQ.Component.Tests/RabbitMQTransportTests.cs
-  - tests/Whizbang.Transports.RabbitMQ.Component.Tests/RabbitMQChannelPoolTests.cs
+  - tests/Whizbang.Transports.RabbitMQ.Tests/RabbitMQChannelPoolTests.cs
   - tests/Whizbang.Transports.RabbitMQ.Integration.Tests/RabbitMQConnectionRetryTests.cs
   - tests/Whizbang.Transports.RabbitMQ.Tests/RabbitMQBatchSubscribeTests.cs
   - tests/Whizbang.Transports.RabbitMQ.Component.Tests/RabbitMQTransportBatchPathTests.cs
@@ -1291,7 +1291,7 @@ rabbitmqadmin list queues name messages
 
 ### Tests
 - [`RabbitMQTransportTests.cs`](https://github.com/whizbang-lib/whizbang/blob/main/tests/Whizbang.Transports.RabbitMQ.Component.Tests/RabbitMQTransportTests.cs) - Component tests
-- [`RabbitMQChannelPoolTests.cs`](https://github.com/whizbang-lib/whizbang/blob/main/tests/Whizbang.Transports.RabbitMQ.Component.Tests/RabbitMQChannelPoolTests.cs) - Channel pool tests
+- [`RabbitMQChannelPoolTests.cs`](https://github.com/whizbang-lib/whizbang/blob/main/tests/Whizbang.Transports.RabbitMQ.Tests/RabbitMQChannelPoolTests.cs) - Channel pool tests
 - [Integration Tests](https://github.com/whizbang-lib/whizbang/tree/main/samples/ECommerce/tests/ECommerce.RabbitMQ.Integration.Tests) - TestContainers-based end-to-end tests
 
 ---
