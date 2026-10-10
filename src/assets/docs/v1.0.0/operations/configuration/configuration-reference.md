@@ -1382,13 +1382,13 @@ Each claim type has a plural list and a singular convenience key. **The singular
 | Property | Type | Default | Environment variable | Purpose |
 |----------|------|---------|----------------------|---------|
 | `TenantIdClaimType` / `TenantIdClaimTypes` | `string` / `List<string>` | `["tenant_id"]` | `Whizbang__Scope__TenantIdClaimType`, `Whizbang__Scope__TenantIdClaimTypes__<n>` | Tenant-id claim types tried in order |
-| `TenantIdHeaderName` | `string` | `X-Tenant-Id` | `Whizbang__Scope__TenantIdHeaderName` | Header fallback for tenant id |
+| `TenantIdHeaderName` | `string?` | `null` (no header read) | `Whizbang__Scope__TenantIdHeaderName` | Opt-in header for tenant id when the token lacks the claim; only behind a trusted gateway that sets it |
 | `UserIdClaimType` / `UserIdClaimTypes` | `string` / `List<string>` | Azure AD `oid` variants, `sub`, `NameIdentifier` | `Whizbang__Scope__UserIdClaimType`, `Whizbang__Scope__UserIdClaimTypes__<n>` | User-id claim types tried in order |
-| `UserIdHeaderName` | `string` | `X-User-Id` | `Whizbang__Scope__UserIdHeaderName` | Header fallback for user id |
+| `UserIdHeaderName` | `string?` | `null` (no header read) | `Whizbang__Scope__UserIdHeaderName` | Opt-in header for user id when the token lacks the claim; only behind a trusted gateway that sets it |
 | `OrganizationIdClaimType` / `OrganizationIdClaimTypes` | `string` / `List<string>` | `["org_id"]` | `Whizbang__Scope__OrganizationIdClaimType`, `Whizbang__Scope__OrganizationIdClaimTypes__<n>` | Organization-id claim types |
-| `OrganizationIdHeaderName` | `string` | `X-Organization-Id` | `Whizbang__Scope__OrganizationIdHeaderName` | Header fallback for organization id |
+| `OrganizationIdHeaderName` | `string?` | `null` (no header read) | `Whizbang__Scope__OrganizationIdHeaderName` | Opt-in header for organization id when the token lacks the claim; only behind a trusted gateway that sets it |
 | `CustomerIdClaimType` / `CustomerIdClaimTypes` | `string` / `List<string>` | `["customer_id"]` | `Whizbang__Scope__CustomerIdClaimType`, `Whizbang__Scope__CustomerIdClaimTypes__<n>` | Customer-id claim types |
-| `CustomerIdHeaderName` | `string` | `X-Customer-Id` | `Whizbang__Scope__CustomerIdHeaderName` | Header fallback for customer id |
+| `CustomerIdHeaderName` | `string?` | `null` (no header read) | `Whizbang__Scope__CustomerIdHeaderName` | Opt-in header for customer id when the token lacks the claim; only behind a trusted gateway that sets it |
 | `CorrelationIdHeaderName` | `string` | `X-Correlation-ID` | `Whizbang__Scope__CorrelationIdHeaderName` | Inbound correlation-id header adopted as ambient correlation |
 | `RolesClaimType` | `string` | `ClaimTypes.Role` | `Whizbang__Scope__RolesClaimType` | Claim type for roles |
 | `PermissionsClaimType` / `PermissionsClaimTypes` | `string` / `List<string>` | `["permissions"]` | `Whizbang__Scope__PermissionsClaimType`, `Whizbang__Scope__PermissionsClaimTypes__<n>` | Permissions claim types |
