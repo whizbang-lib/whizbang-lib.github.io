@@ -565,7 +565,7 @@ Cadences for the rolling-upgrade standby handshake. **Configure:** bound automat
 |----------|------|---------|----------------------|---------|
 | `PollInterval` | `TimeSpan` | `00:00:05` | `Whizbang__StandbyWatcher__PollInterval` | How often the watcher checks for an active standby request |
 | `ObsolescenceInterval` | `TimeSpan` | `00:01:00` | `Whizbang__StandbyWatcher__ObsolescenceInterval` | How often a serving instance re-assesses its verdict against the ledger |
-| `RequesterLivenessWindow` | `TimeSpan` | `00:00:30` | `Whizbang__StandbyWatcher__RequesterLivenessWindow` | How stale the requester's heartbeat may be before its request is void |
+| `RequesterLivenessWindow` | `TimeSpan` | `00:00:30` | `Whizbang__StandbyWatcher__RequesterLivenessWindow` | How stale the requester's heartbeat may be before its request is void. A requester holding its alive-lock is alive whatever its heartbeat's age |
 
 ### WhizbangHealthOptions
 
@@ -697,7 +697,7 @@ The claim loop that distributes outbox/inbox/perspective work. **Configure:** bo
 |----------|------|---------|--------------------|---------|
 | `Enabled` | `bool` | `true` | `Whizbang__Workers__Heartbeat__Enabled` | Killswitch; without heartbeats peers eventually flag this instance stale |
 | `IntervalSeconds` | `int` | `30` | `Whizbang__Workers__Heartbeat__IntervalSeconds` | Heartbeat cadence |
-| `SlowIntervalSeconds` | `int` | `60` | `Whizbang__Workers__Heartbeat__SlowIntervalSeconds` | Relaxed cadence when the session-level alive-lock is held |
+| `SlowIntervalSeconds` | `int` | `60` | `Whizbang__Workers__Heartbeat__SlowIntervalSeconds` | Relaxed cadence when the session-level alive-lock is held (direct instances only; see [the liveness rule](../../fundamentals/workers/instance-liveness#liveness-rule)) |
 | `LivenessSourceMode` | `HeartbeatLivenessSourceMode` | `AdvisoryLockWhenAvailable` | `Whizbang__Workers__Heartbeat__LivenessSourceMode` | Adaptive (lock-aware) vs table-only cadence |
 
 ### LeaseHandleOptions

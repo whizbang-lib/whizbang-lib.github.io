@@ -17,6 +17,8 @@ codeReferences:
   - src/Whizbang.Core/Startup/AssessStartupStep.cs
   - src/Whizbang.Core/Startup/StandbyWatcher.cs
   - src/Whizbang.Core/Startup/StandbyHandshake.cs
+  - src/Whizbang.Core/Startup/StartupFleetStatus.cs
+  - src/Whizbang.Core/Messaging/StandbyRequest.cs
   - src/Whizbang.Data.EFCore.Postgres/EFCorePostgresStartupAssessor.cs
   - src/Whizbang.Data.Postgres/Migrations/110_StandbyHandshake.sql
 testReferences:
@@ -25,6 +27,9 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StartupAssessorTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StandbyHandshakeE2ETests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StandbyHandshakeSqlTests.cs
+  - tests/Whizbang.Core.Tests/Startup/StandbyHandshakeCoverageTests.cs
+  - tests/Whizbang.Core.Component.Tests/Startup/StandbyWatcherTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/AliveLockLivenessSqlTests.cs
 ---
 
 # Rolling Upgrades
@@ -97,9 +102,11 @@ graph TB
 Four properties keep the handshake from becoming its own outage — each carried by a dedicated [end-to-end test](#verification):
 
 - **Standby is not termination.** A standing-by instance stays alive and keeps passing liveness (`LifecyclePhase.StandingBy` is a settled phase); it simply stops serving. The orchestrator is never asked to retire anything, so the handshake completes without needing the very readiness it is blocking on.
-- **Only live peers must acknowledge.** An instance that stops heartbeating stops counting, so the wait is bounded by lease expiry rather than by the goodwill of a process that may already be dead. Evicted and stale peers are skipped; peers already on the same or newer version have nothing to stand by for.
-- **A standing-by instance watches the migrator.** If the migrator dies rather than failing cleanly, its instance record goes stale, the wait ends and revival begins. Every path out of standby is bounded — success, clean failure, or a dead migrator.
+- **Only live peers must acknowledge.** An instance that stops heartbeating stops counting, so the wait is bounded by lease expiry rather than by the goodwill of a process that may already be dead. Evicted and stale peers are skipped; peers already on the same or newer version have nothing to stand by for. Live follows the [liveness rule](../../fundamentals/workers/instance-liveness#liveness-rule): a peer holding its alive-lock counts whatever its heartbeat's age, so a direct peer between two of its slow beats is still waited for (`FleetInstanceStatus.AliveLockHeld`). {verified: StandbyHandshakeCoverageTests.AwaitPeersStandingByAsync_AnOlderPeerHoldingItsAliveLock_StillCountsAsync, AliveLockLivenessSqlTests.FleetSource_ReportsWhetherAPeersAliveLockIsHeldAsync}
+- **A standing-by instance watches the migrator.** If the migrator dies rather than failing cleanly, its instance record goes stale, the wait ends and revival begins. Every path out of standby is bounded — success, clean failure, or a dead migrator. A requester holding its alive-lock is alive whatever its heartbeat's age (`StandbyRequest.RequesterAliveLockHeld`); without the lock, a heartbeat older than `RequesterLivenessWindow` voids its request. {verified: StandbyWatcherTests.ARequesterHoldingItsAliveLock_BindsUs_BetweenItsSlowBeatsAsync, StandbyWatcherTests.ARequesterPastTheWindowWithoutItsLock_IsVoidAsync, AliveLockLivenessSqlTests.StandbyRequest_ReportsWhetherTheRequestersAliveLockIsHeldAsync}
 - **Revival is not a second pipeline.** The migration is one transaction: a rollback leaves the ledger exactly as the standing-by instances last read it. Coming out of standby is **re-entering the pipeline at `Assess`** — the verdict comes back *same as me*, `Migrate` finds matching hashes and no-ops, capabilities are re-acquired, the data plane reopens. The [pipeline runner](startup-pipeline) is re-entrant for exactly this reason.
+
+Both the migrator's wait and the watcher read the alive-lock through `is_instance_alive(id, 0)` from migration 055 (a zero heartbeat threshold answers the lock alone), not through `wh_direct_alive_lock_holders` from migration 204, because the handshake runs before the new release's migrations are applied.
 
 ## Eviction: the fence behind the handshake
 

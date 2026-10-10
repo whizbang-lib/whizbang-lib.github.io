@@ -585,7 +585,7 @@ The stale cutoff is fixed at **30 seconds** in the SQL functions — it is safe 
 |---|---|---|
 | `last_heartbeat_at` | `HeartbeatWorker` timer (30 s default) | The primary signal |
 | LISTEN connection | `pg_stat_activity` (`wh_live_instances` view) | TCP-fresh regardless of heartbeat cadence |
-| Advisory alive-lock | Session-level lock (migration 055) | Enables the relaxed 60 s heartbeat cadence |
+| Advisory alive-lock | Session-level lock (migration 055) | Direct instances only. Enables the relaxed 60 s heartbeat cadence; a direct instance holding it is ranked live by `claim_work` whatever its heartbeat's age (migration 204, [the liveness rule](/v1.0.0/fundamentals/workers/instance-liveness#liveness-rule)) |
 | Definitive-dead cutoff | 5 minutes without heartbeat | Bypasses the alive-lock guard (half-open TCP) |
 
 **Rule of Thumb**: You generally don't tune staleness — tune `HeartbeatWorkerOptions.IntervalSeconds` only if your environment demands it, keeping it below the abandon threshold divided by three.
