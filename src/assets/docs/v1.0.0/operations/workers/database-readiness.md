@@ -24,7 +24,7 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/ColdBootJourneyE2ETests.cs
   - tests/Whizbang.Hosting.AspNet.Tests/DatabaseAvailabilityMiddlewareTests.cs
   - tests/Whizbang.Hosting.AspNet.Tests/DatabaseAvailabilityMiddlewareExtensionsTests.cs
-  - tests/Whizbang.Core.Tests/Workers/HeartbeatWorkerTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/HeartbeatWorkerTests.cs
   - tests/Whizbang.Core.Tests/Workers/SchemaInitializationOptionsTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/WhizbangDatabaseInitializerServiceTests.cs
 lastMaintainedCommit: '01f07906'

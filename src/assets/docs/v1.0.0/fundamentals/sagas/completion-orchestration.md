@@ -38,9 +38,9 @@ testReferences:
   - tests/Whizbang.Sagas.Tests/Services/TryRecoverViaWatchdogTickAsyncTests.cs
   - tests/Whizbang.Sagas.Tests/Services/TryRecoverViaWatchdogAsyncTests.cs
   - tests/Whizbang.Sagas.Tests/CompletionOrchestrationGapTests.cs
-  - tests/Whizbang.Sagas.Tests/Services/SagaWatchdogTickRoutingTests.cs
-  - tests/Whizbang.Sagas.Tests/SagaWatchdogTickDeliveryIntegrationTests.cs
-  - tests/Whizbang.Sagas.Tests/SagaWatchdogTickSubscriptionIntegrationTests.cs
+  - tests/Whizbang.Sagas.Component.Tests/Services/SagaWatchdogTickRoutingTests.cs
+  - tests/Whizbang.Sagas.Component.Tests/SagaWatchdogTickDeliveryIntegrationTests.cs
+  - tests/Whizbang.Sagas.Component.Tests/SagaWatchdogTickSubscriptionIntegrationTests.cs
   - tests/Whizbang.Sagas.Tests/Services/StrandedSagaSweepTests.cs
   - tests/Whizbang.Sagas.Tests/Services/StrandedSagaSweepStepTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StreamsWithPendingMessagesSqlTests.cs

@@ -24,10 +24,10 @@ codeReferences:
 testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/MoveToDeadLettersSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/EFCoreDeadLetterStoreTests.cs
-  - tests/Whizbang.Core.Tests/Workers/InboxDispatchWorkerTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/InboxDispatchWorkerTests.cs
   - tests/Whizbang.Core.Tests/Workers/InboxDispatchWorkerDeadLetterTests.cs
-  - tests/Whizbang.Core.Tests/Workers/OutboxPublishWorkerDlqPromotionTests.cs
-  - tests/Whizbang.Core.Tests/Workers/PerspectiveWorkerDeadLetterFilterTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/OutboxPublishWorkerDlqPromotionTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerDeadLetterFilterTests.cs
   - tests/Whizbang.Core.Tests/Workers/V502DefaultsTests.cs
 ---
 

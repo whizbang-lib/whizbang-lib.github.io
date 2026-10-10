@@ -17,7 +17,7 @@ codeReferences:
   - src/Whizbang.Core/HealthChecks/SubscriptionHealthCheck.cs
 testReferences:
   - tests/Whizbang.Core.Tests/HealthChecks/SubscriptionHealthCheckTests.cs
-  - tests/Whizbang.Core.Tests/Workers/PerspectiveMigrationWorkerTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveMigrationWorkerTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 

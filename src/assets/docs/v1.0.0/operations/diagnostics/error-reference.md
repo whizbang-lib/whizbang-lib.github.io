@@ -20,7 +20,7 @@ codeReferences:
   - src/Whizbang.Data.EFCore.Postgres/RebuildPerspectiveCommandReceptor.cs
   - src/Whizbang.Offloads.AzureBlob/AzureBlobMessageBodyStore.cs
 testReferences:
-  - tests/Whizbang.Core.Tests/Dispatcher/DispatcherTests.cs
+  - tests/Whizbang.Core.Component.Tests/Dispatcher/DispatcherTests.cs
   - tests/Whizbang.Offloads.AzureBlob.Tests/AzureBlobMessageBodyStoreValidationTests.cs
 ---
 

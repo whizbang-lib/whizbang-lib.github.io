@@ -26,11 +26,11 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/148_ActiveStreamLeases.sql
 testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/ActiveStreamLeaseExpirySqlTests.cs
-  - tests/Whizbang.Core.Tests/Workers/ClaimWorkerTests.cs
-  - tests/Whizbang.Core.Tests/Workers/ClaimWorkerGateCadenceTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/ClaimWorkerTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/ClaimWorkerGateCadenceTests.cs
   - tests/Whizbang.Core.Tests/Workers/HeartbeatWorkerAdaptiveCadenceTests.cs
-  - tests/Whizbang.Core.Tests/Workers/LeaseRenewalWorkerCapTests.cs
-  - tests/Whizbang.Core.Tests/Workers/BatchFlusherRetryTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/LeaseRenewalWorkerCapTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/BatchFlusherRetryTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/ClaimWorkSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/RenewLeasesSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/RecordHeartbeatSqlTests.cs

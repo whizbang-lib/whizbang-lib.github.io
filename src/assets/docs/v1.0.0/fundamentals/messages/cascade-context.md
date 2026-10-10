@@ -29,8 +29,8 @@ testReferences:
   - tests/Whizbang.Observability.Tests/CascadeContextFactoryTests.cs
   - tests/Whizbang.Observability.Tests/SecurityContextTests.cs
   - tests/Whizbang.Core.Tests/MessageContextTests.cs
-  - tests/Whizbang.Core.Tests/Security/ScopeContextAccessorTests.cs
-  - tests/Whizbang.Core.Tests/Security/ScopeContextAccessorInitiatingContextTests.cs
+  - tests/Whizbang.Core.Component.Tests/Security/ScopeContextAccessorTests.cs
+  - tests/Whizbang.Core.Component.Tests/Security/ScopeContextAccessorInitiatingContextTests.cs
   - tests/Whizbang.Core.Tests/Security/ScopedMessageContextTests.cs
   - tests/Whizbang.Core.Tests/Security/SecurityContextHelperTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/OutboxCascadeIdentityPersistenceIntegrationTests.cs

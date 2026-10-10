@@ -18,7 +18,7 @@ codeReferences:
 testReferences:
   - tests/Whizbang.Transports.HotChocolate.Tests/Unit/ServiceRegistrationTests.cs
   - tests/Whizbang.Transports.HotChocolate.Tests/Unit/WhizbangGraphQLOptionsTests.cs
-  - tests/Whizbang.Transports.HotChocolate.Tests/Unit/ScopeMiddlewareExtensionsTests.cs
+  - tests/Whizbang.Transports.HotChocolate.Component.Tests/Unit/ScopeMiddlewareExtensionsTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 

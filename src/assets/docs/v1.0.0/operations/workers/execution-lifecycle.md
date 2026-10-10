@@ -18,8 +18,8 @@ codeReferences:
   - src/Whizbang.Core/Workers/PerspectiveWorker.cs
   - src/Whizbang.Core/Workers/ISchemaReadyGate.cs
 testReferences:
-  - tests/Whizbang.Execution.Tests/ExecutionStrategyContractTests.cs
-  - tests/Whizbang.Execution.Tests/SerialExecutorTests.cs
+  - tests/Whizbang.Execution.Component.Tests/ExecutionStrategyContractTests.cs
+  - tests/Whizbang.Execution.Component.Tests/SerialExecutorTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 

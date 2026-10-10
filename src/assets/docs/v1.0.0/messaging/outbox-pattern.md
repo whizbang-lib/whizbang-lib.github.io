@@ -22,8 +22,8 @@ codeReferences:
 testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/FetchOutboxBatchSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/CompleteOutboxPublishedSqlTests.cs
-  - tests/Whizbang.Core.Tests/Workers/OutboxDrainWorkerTests.cs
-  - tests/Whizbang.Core.Tests/Workers/OutboxPublishWorkerTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/OutboxDrainWorkerTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/OutboxPublishWorkerTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 

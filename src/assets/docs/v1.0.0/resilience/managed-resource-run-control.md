@@ -22,12 +22,12 @@ codeReferences:
   - src/Whizbang.Core/RunControl/WhizbangRunControlServiceCollectionExtensions.cs
 testReferences:
   - tests/Whizbang.Core.Tests/RunControl/LifecyclePhaseTests.cs
-  - tests/Whizbang.Core.Tests/RunControl/WhizbangLifecycleCoordinatorTests.cs
+  - tests/Whizbang.Core.Component.Tests/RunControl/WhizbangLifecycleCoordinatorTests.cs
   - tests/Whizbang.Core.Tests/RunControl/WhizbangLifecycleStateTests.cs
   - tests/Whizbang.Core.Tests/RunControl/WhizbangRunPermitTests.cs
   - tests/Whizbang.Core.Tests/RunControl/WhizbangKillswitchTests.cs
   - tests/Whizbang.Core.Tests/RunControl/WhizbangRunControlDiTests.cs
-  - tests/Whizbang.Core.Tests/RunControl/LifecyclePhaseWorkerTests.cs
+  - tests/Whizbang.Core.Component.Tests/RunControl/LifecyclePhaseWorkerTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/WhizbangDatabaseInitializerServiceTests.cs
 verifiedAgainstCommit: a64ba9a0
 verifiedDate: 2026-08-04

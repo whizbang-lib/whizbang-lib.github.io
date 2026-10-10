@@ -18,7 +18,7 @@ codeReferences:
   - src/Whizbang.Core/Messaging/DeadLetterRecoveryTypes.cs
   - src/Whizbang.Data.Postgres/Migrations/051_DeadLetterRecovery.sql
 testReferences:
-  - tests/Whizbang.Hosting.AspNet.Tests/DeadLetterOperatorEndpointsTests.cs
+  - tests/Whizbang.Hosting.AspNet.Component.Tests/DeadLetterOperatorEndpointsTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/EFCoreDeadLetterRecoveryServiceTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/DeadLetterRecoverySqlTests.cs
 ---

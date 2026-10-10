@@ -14,7 +14,7 @@ codeReferences:
   - src/Whizbang.Core/Registry/StreamIdExtractorRegistry.cs
   - src/Whizbang.Core/Serialization/JsonContextRegistry.cs
 testReferences:
-  - tests/Whizbang.Core.Tests/Registry/AssemblyRegistryTests.cs
+  - tests/Whizbang.Core.Component.Tests/Registry/AssemblyRegistryTests.cs
   - tests/Whizbang.Core.Tests/Registry/StreamIdExtractorRegistryTests.cs
 lastMaintainedCommit: '01f07906'
 ---

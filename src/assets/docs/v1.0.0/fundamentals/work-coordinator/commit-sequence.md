@@ -11,7 +11,7 @@ codeReferences:
   - src/Whizbang.Core/Notifications/CommitOrderStamperOptions.cs
   - src/Whizbang.Data.Postgres/Notifications/PgCommitOrderStamperWorker.cs
 testReferences:
-  - tests/Whizbang.Core.Tests/Notifications/PgNotificationStackStartupGateTests.cs
+  - tests/Whizbang.Core.Component.Tests/Notifications/PgNotificationStackStartupGateTests.cs
 ---
 
 # Commit Sequence & the Order Stamper

@@ -22,8 +22,8 @@ codeReferences:
 testReferences:
   - tests/Whizbang.Policies.Tests/PolicyEngineTests.cs
   - tests/Whizbang.Core.Tests/Resilience/CircuitBreakerTests.cs
-  - tests/Whizbang.Core.Tests/Resilience/StreamRateLimiterTests.cs
-  - tests/Whizbang.Core.Tests/Resilience/SubscriptionRetryHelperTests.cs
+  - tests/Whizbang.Core.Component.Tests/Resilience/StreamRateLimiterTests.cs
+  - tests/Whizbang.Core.Component.Tests/Resilience/SubscriptionRetryHelperTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 

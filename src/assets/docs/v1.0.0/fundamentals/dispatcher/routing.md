@@ -25,7 +25,7 @@ codeReferences:
   - src/Whizbang.Core/Dispatch/Route.cs
 testReferences:
   - tests/Whizbang.Core.Tests/Dispatcher/DispatcherOwnedDomainTests.cs
-  - tests/Whizbang.Core.Tests/Workers/TransportConsumerWorkerOwnedEventDiscardTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/TransportConsumerWorkerOwnedEventDiscardTests.cs
   - tests/Whizbang.Core.Tests/Routing/RoutingOptionsTests.cs
   - tests/Whizbang.Core.Tests/Routing/RoutingBuilderExtensionsTests.cs
   - tests/Whizbang.Core.Tests/Routing/InboxRoutingStrategyTests.cs

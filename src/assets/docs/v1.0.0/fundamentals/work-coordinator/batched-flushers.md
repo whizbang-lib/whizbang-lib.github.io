@@ -14,9 +14,9 @@ codeReferences:
   - src/Whizbang.Core/Workers/OutboxCompletionFlushWorker.cs
   - src/Whizbang.Core/Workers/LeaseRenewalWorker.cs
 testReferences:
-  - tests/Whizbang.Core.Tests/Workers/BatchFlusherRetryTests.cs
-  - tests/Whizbang.Core.Tests/Workers/OutboxCompletionFlushWorkerTests.cs
-  - tests/Whizbang.Core.Tests/Workers/LeaseRenewalWorkerCoverageTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/BatchFlusherRetryTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/OutboxCompletionFlushWorkerTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/LeaseRenewalWorkerCoverageTests.cs
 ---
 
 # Batched flushers

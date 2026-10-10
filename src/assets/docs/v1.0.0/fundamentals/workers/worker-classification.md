@@ -24,15 +24,15 @@ codeReferences:
   - src/Whizbang.Core/Workers/MaintenanceWorker.cs
   - src/Whizbang.Core/Workers/FailureFlushWorker.cs
 testReferences:
-  - tests/Whizbang.Core.Tests/Workers/ClaimWorkerTests.cs
-  - tests/Whizbang.Core.Tests/Workers/ClaimWorkerGateCadenceTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/ClaimWorkerTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/ClaimWorkerGateCadenceTests.cs
   - tests/Whizbang.Core.Tests/Workers/HeartbeatWorkerAdaptiveCadenceTests.cs
-  - tests/Whizbang.Core.Tests/Workers/DeadLetterRecoveryWorkerTests.cs
-  - tests/Whizbang.Core.Tests/Workers/TransportDeadLetterDrainWorkerTests.cs
-  - tests/Whizbang.Core.Tests/Workers/MaintenanceWorkerTests.cs
-  - tests/Whizbang.Core.Tests/Workers/IntegrityCheckpointWorkerTests.cs
-  - tests/Whizbang.Core.Tests/Workers/IntegrityAuditWorkerTests.cs
-  - tests/Whizbang.Core.Tests/Workers/SubscriptionExpansionWorkerTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/DeadLetterRecoveryWorkerTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/TransportDeadLetterDrainWorkerTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/MaintenanceWorkerTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/IntegrityCheckpointWorkerTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/IntegrityAuditWorkerTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/SubscriptionExpansionWorkerTests.cs
   - tests/Whizbang.Core.Tests/Workers/BackupTickCoordinatorTests.cs
 ---
 

@@ -21,10 +21,10 @@ codeReferences:
   - tools/Whizbang.CLI/Audit/AuditReportFormatter.cs
   - tools/Whizbang.CLI/Program.cs
 testReferences:
-  - tests/Whizbang.CLI.Tests/Audit/AuditCommandTests.cs
-  - tests/Whizbang.CLI.Tests/Audit/ProjectAssetsReaderTests.cs
+  - tests/Whizbang.CLI.Component.Tests/Audit/AuditCommandTests.cs
+  - tests/Whizbang.CLI.Component.Tests/Audit/ProjectAssetsReaderTests.cs
   - tests/Whizbang.CLI.Tests/Audit/OsvClientTests.cs
-  - tests/Whizbang.CLI.Tests/Audit/AuditReportTests.cs
+  - tests/Whizbang.CLI.Component.Tests/Audit/AuditReportTests.cs
   - tests/Whizbang.CLI.Tests/Audit/AuditReportFormatterTests.cs
 ---
 

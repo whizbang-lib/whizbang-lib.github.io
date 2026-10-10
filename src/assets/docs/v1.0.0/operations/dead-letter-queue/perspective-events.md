@@ -20,7 +20,7 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/078_DropInlineBodyColumns.sql
   - src/Whizbang.Data.Postgres/Migrations/050_WhDeadLetters.sql
 testReferences:
-  - tests/Whizbang.Core.Tests/Workers/PerspectiveWorkerDeadLetterFilterTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerDeadLetterFilterTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/MoveToDeadLettersSqlTests.cs
   - tests/Whizbang.Core.Tests/Workers/V502DefaultsTests.cs
 ---

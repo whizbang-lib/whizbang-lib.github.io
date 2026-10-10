@@ -19,11 +19,11 @@ codeReferences:
   - src/Whizbang.Core/Dispatch/Route.cs
   - src/Whizbang.Core/Dispatch/InvokeResult.cs
 testReferences:
-  - tests/Whizbang.Core.Tests/Dispatcher/DispatcherTests.cs
+  - tests/Whizbang.Core.Component.Tests/Dispatcher/DispatcherTests.cs
   - tests/Whizbang.Core.Tests/Dispatcher/DispatcherOutboxTests.cs
   - tests/Whizbang.Core.Tests/Dispatcher/DispatcherInvokeWithReceiptTests.cs
   - tests/Whizbang.Core.Tests/Dispatcher/DispatcherSyncModeContractTests.cs
-  - tests/Whizbang.Core.Tests/Dispatcher/DispatcherLocalInvokeAndSyncTimingTests.cs
+  - tests/Whizbang.Core.Component.Tests/Dispatcher/DispatcherLocalInvokeAndSyncTimingTests.cs
   - tests/Whizbang.Core.Tests/Dispatcher/DispatcherCascadeTests.cs
   - tests/Whizbang.Core.Tests/Dispatcher/DispatcherRoutedCascadeTests.cs
   - tests/Whizbang.Core.Tests/Dispatch/DispatchOptionsTests.cs
