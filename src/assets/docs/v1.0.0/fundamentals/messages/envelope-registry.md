@@ -13,7 +13,7 @@ codeReferences:
   - src/Whizbang.Core/Observability/IEnvelopeRegistry.cs
   - src/Whizbang.Core/Observability/EnvelopeRegistry.cs
 testReferences:
-  - tests/Whizbang.Observability.Tests/EnvelopeRegistryTests.cs
+  - tests/Whizbang.Observability.Component.Tests/EnvelopeRegistryTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
