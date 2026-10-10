@@ -16,19 +16,22 @@ codeReferences:
   - src/Whizbang.Core/Workers/IInstanceConnectionModeSource.cs
   - src/Whizbang.Data.Postgres/Notifications/PgPartitionAssignmentStore.cs
   - src/Whizbang.Data.Postgres/Migrations/203_PartitionAssigner.sql
+  - src/Whizbang.Data.Postgres/Migrations/204_DirectInstancesAreLiveByTheirAliveLock.sql
 testReferences:
   - tests/Whizbang.Partitioning.Tests/PartitionAssignerTests.cs
   - tests/Whizbang.Partitioning.Tests/PartitionAssignmentCacheTests.cs
   - tests/Whizbang.Core.Component.Tests/PartitionAssignerWorkerLoopTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/PartitionAssignmentSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/PartitionAssignerWorkerPostgresTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/AliveLockLivenessSqlTests.cs
 ---
 
 # Partition assignment
 
 Unowned work is spread across instances by partition: an instance of rank `r` among `n` takes the
 partitions where `partition_number % n = r`. Something has to decide `r` and `n`. Without an
-assigner, every claim ranks the instances it believes are alive (a fresh heartbeat row). When that
+assigner, every claim ranks the instances it believes are alive (a fresh heartbeat row, or a direct
+instance holding its alive-lock; see [Claim loop](claim-loop.md#ranking-who-counts-as-alive)). When that
 belief is wrong, the shares overlap. Two situations make it wrong for everyone at once:
 
 - a database pause lets every heartbeat go stale together;
@@ -68,6 +71,14 @@ role. The holder leads; the others vote again each renewal interval.
   `DirectHeartbeatWindow` (default 180 s, three of the slow beats a lock holder makes).
 - `pooled`: pooled connections only, so no lock or application name can be seen. The heartbeat
   decides, over `PooledHeartbeatWindow` (default 90 s).
+
+This is the assigner's form of the [liveness rule](/v1.0.0/fundamentals/workers/instance-liveness#liveness-rule)
+every reader applies. The assigner reads its candidates from `wh_partition_assignment_candidates()`, which
+reports, for every registered instance that is not evicted, its connection mode, whether its alive-lock is
+held and the age of its heartbeat. Since migration 204 the lock column comes from
+`wh_direct_alive_lock_holders()`, the same definition `claim_work` ranks by, so it is only ever true for a
+direct instance: a pooled instance's lock is never consulted. A direct instance whose lock is released is
+judged by its heartbeat on the assigner's next tick. {verified: PartitionAssignmentSqlTests.Candidates_ADirectInstanceHoldingItsAliveLock_ReportsTheLockAsync, PartitionAssignmentSqlTests.Candidates_APooledInstance_IsNeverJudgedByALockAsync, PartitionAssignmentSqlTests.Candidates_AnEvictedInstance_IsLeftOutAsync, AliveLockLivenessSqlTests.Candidates_ADirectInstanceWhoseLockIsReleased_ReportsNoLockAsync}
 
 **Publishing.** Each tick of its tenure (one per role renewal interval) the assigner judges the
 registered instances and publishes when the live set changes: an alive-lock gained or lost, a
@@ -124,5 +135,6 @@ Every transition has a public event, for diagnostics and for tests that wait on 
 ## Related
 
 - [Claim loop](claim-loop.md)
+- [Instance liveness](/v1.0.0/fundamentals/workers/instance-liveness#liveness-rule): the liveness rule and `wh_direct_alive_lock_holders`.
 - [Notifications and pgbouncer](notifications-and-pgbouncer.md)
 - [Commit sequence](commit-sequence.md): the commit-order stamper is elected the same way.
