@@ -118,6 +118,16 @@ jobs:
           BRANCH="${{ steps.version.outputs.branch }}"
           git checkout -b "$BRANCH"
 
+          # Bring main in BEFORE the version bump. Releases fire back to back, and the previous
+          # release's bump reaches develop only when sync-develop runs. A branch cut in that window
+          # changes the same "version" line main just changed, the release PR conflicts, and the
+          # merge below can never succeed. Merged first, main's version arrives cleanly (develop
+          # left that line alone), and the bump then edits it on top: no conflict.
+          if ! git merge --no-edit origin/main; then
+            echo "::error::origin/main does not merge cleanly into develop (conflicts: $(git diff --name-only --diff-filter=U | tr '\n' ' ')). Sync main into develop first."
+            exit 1
+          fi
+
       - name: Update Version in package.json
         env:
           VERSION: ${{ steps.version.outputs.semver }}
@@ -218,6 +228,11 @@ jobs:
                   gh workflow run sync-develop.yml --ref main \
                     || { FAILED=1; echo "::error::Sync dispatch failed - run: gh workflow run sync-develop.yml --ref main"; }
                   exit "$FAILED"
+                fi
+                # A conflict does not clear by waiting; say so now rather than at the timeout.
+                if [ "$(gh pr view "$BRANCH" --json mergeable --jq .mergeable)" = "CONFLICTING" ]; then
+                  echo "::error::Release PR for v$VERSION conflicts with main - leaving it open for inspection"
+                  exit 1
                 fi
                 echo "Merge failed, retrying"
                 ;;
