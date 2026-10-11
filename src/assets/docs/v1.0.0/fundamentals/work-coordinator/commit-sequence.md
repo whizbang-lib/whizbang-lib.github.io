@@ -5,13 +5,16 @@ order: 4
 version: 1.0.0
 description: >-
   The commit-order stamper: how a total order is stamped over rows whose insertion order and
-  transaction order disagree, and what that order promises.
+  transaction order disagree, and what that order promises. Stream order takes precedence; across
+  streams, order follows when the writing transactions began.
 tags: 'work-coordinator, commit-sequence, ordering, stamper, leader-election'
 codeReferences:
   - src/Whizbang.Core/Notifications/CommitOrderStamperOptions.cs
   - src/Whizbang.Data.Postgres/Notifications/PgCommitOrderStamperWorker.cs
 testReferences:
   - tests/Whizbang.Core.Component.Tests/Notifications/PgNotificationStackStartupGateTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/CommitSequenceStreamOrderSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Performance/RoleVoteBehindAHeldBackStampScenarioTests.cs
 ---
 
 # Commit Sequence & the Order Stamper
@@ -28,6 +31,42 @@ Until a row is stamped, `get_stream_events` treats it as not-yet-visible (the un
 **Stamping latency is therefore perspective-visibility latency**: every millisecond between an
 event's commit and its stamp is a millisecond the read model lags the write.
 
+## What the order promises {#ordering}
+
+Whizbang's ordering is built around the stream. **Stream order takes precedence over every other
+order**: the framework gives up a global order across streams before it lets one stream's events
+be seen out of version order. In tiers, from strongest to weakest:
+
+1. **Within a stream, `commit_sequence` follows the versions. Always.** Version 2 is numbered
+   above version 1 however the two were written: in one transaction in any order, in two
+   transactions that started in either order, or across two stamp calls. When an earlier version
+   is not yet stampable, the later versions of that stream wait for it.
+   {verified: CommitSequenceStreamOrderSqlTests.Stamp_ALowerIdTransactionAppendsAfterAHigherOne_TheStreamKeepsItsVersionOrderAsync}
+   {verified: CommitSequenceStreamOrderSqlTests.Stamp_TheEarlierVersionIsNotYetEligible_TheLaterOneWaitsForItAsync}
+   {verified: CommitSequenceStreamOrderSqlTests.Stamp_OneTransactionInsertsAStreamOutOfVersionOrder_TheSequenceStillFollowsTheVersionsAsync}
+2. **Across streams, order follows when the writing transactions began, not a global insertion or
+   commit order.** When events for several streams are written concurrently, the stamper takes the
+   events whose transactions began writing first. Events it numbers in the same pass are numbered
+   in the order they were inserted. Two events in different streams can therefore be numbered in
+   either order relative to when they were inserted or committed; nothing reads across streams
+   expecting more than this.
+   {verified: CommitSequenceStreamOrderSqlTests.Stamp_StreamsInDifferentBatches_FollowTheOrderTheirTransactionsBeganInAsync}
+   {verified: CommitSequenceStreamOrderSqlTests.Stamp_StreamsEligibleTogether_AreNumberedInInsertionOrderAsync}
+3. **Every number is higher than every number assigned before it.** A row is stamped only once no
+   older transaction in the database can still commit a row behind it, so a consumer that has read
+   up to a given `commit_sequence` never later finds a lower one. This is what makes a cursor safe.
+
+If two events in different streams must be seen in a particular order, they belong in the same
+stream, or the second should carry the first as its cause. Do not rely on `commit_sequence` to
+order them.
+
+Stream order wins because every reader of the order is a stream reader. Perspective fetches,
+collective replay and the outbox publish order all walk a stream in `commit_sequence` order, and a
+stream read out of order corrupts the state built from it. A strict order across streams would
+cost more than it buys: the stamper could not find its next batch through an index, and an
+import's open transactions would stall it (see [A held-back stamp reads nothing it cannot
+stamp](#held-back)).
+
 ## How stamping runs
 
 Every service instance hosts the stamper worker; a `pg_try_advisory_lock` elects one leader per
@@ -43,13 +82,14 @@ per event.) The leader wakes from two sources:
   slow cadence while the signaling gate reports NOTIFY healthy.
 
 On each wake the leader calls `stamp_pending_commit_sequences`, which assigns `commit_sequence`
-values (in `xmin` order, `FOR UPDATE SKIP LOCKED`) to every unstamped row past the ordering
-fence.
+values to a batch of unstamped rows past the ordering fence, in the order described in
+[What the order promises](#ordering), taking each row `FOR UPDATE SKIP LOCKED` so two callers never
+stamp the same row.
 
 ### Nothing unstamped, nothing runs
 
-The stamp's eligibility query sorts every unstamped row by transaction id before taking a batch. It
-used to run on every wake whether or not anything was unstamped, and on a backstop tick during a
+The stamp's eligibility query once sorted every unstamped row by transaction id before taking a
+batch, and it ran on every wake whether or not anything was unstamped, and on a backstop tick during a
 bulk load that was measured at roughly half a core per busy database. The leader now asks the
 partial index whether any row is unstamped first, a probe that costs nothing, and runs the stamp only
 when the answer is yes. A wake that finds nothing raises `OnStampSkipped` rather than a stamp of
@@ -87,6 +127,28 @@ probes for remaining unstamped rows (a partial-index `EXISTS`), and while any ex
 re-stamping on `CommitOrderStamperOptions.FencedRetryInterval` (default 250 ms) instead of
 sleeping on the wake sources. A full batch likewise triggers an immediate follow-up call until
 the pending set drains. Idle means **no pending work** — never merely "no recent doorbell."
+
+## A held-back stamp reads nothing it cannot stamp {#held-back}
+
+A bulk import keeps the fence low for as long as it runs: its oldest open transaction holds the
+fence while the rest of the import commits behind it, so the stamper retries on
+`FencedRetryInterval` with rows pending that it may not stamp yet. Each of those calls runs under the
+stamper's role fence, and the role holder's own renewal vote waits for it to commit.
+
+A call therefore has to find its batch without reading the rows it cannot stamp. The stamper records
+the id of the transaction that wrote each event, and finds eligible events through an index on it,
+earliest transaction first; rows behind the fence are never read. A call costs what it stamps,
+whatever is waiting behind the fence.
+{verified: CommitSequenceStreamOrderSqlTests.Stamp_RowsBehindAnOpenTransaction_AreNotReadToFindNothingEligibleAsync}
+{verified: CommitSequenceStreamOrderSqlTests.Stamp_ABacklog_CostsWhatTheBatchStampsNotWhatTheBacklogHoldsAsync}
+
+:::updated
+Earlier versions walked unstamped rows in insertion order and checked each against the fence. With
+nothing eligible the walk never reached its batch, so every fenced retry read every row an import
+held back, stamped none, and held the role row while it did. Under bulk imports the role holder's
+renewal vote waited a median of 14.5 s, and up to 30 s, behind those calls. Batches are now chosen
+earliest writing transaction first, which is the cross-stream order described above.
+:::
 
 ## Configuration
 
