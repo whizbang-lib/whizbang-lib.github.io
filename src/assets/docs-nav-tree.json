@@ -704,6 +704,11 @@
               "order": 10
             },
             {
+              "slug": "v1.0.0/fundamentals/security/security-advisories",
+              "title": "Security Advisories",
+              "order": 90
+            },
+            {
               "slug": "v1.0.0/fundamentals/security/scoping",
               "title": "Scoping",
               "order": 999
@@ -1981,6 +1986,11 @@
           "slug": "v1.0.0/tools/mcp-server",
           "title": "MCP Documentation Server",
           "order": 1
+        },
+        {
+          "slug": "v1.0.0/tools/cli-audit",
+          "title": "Auditing Whizbang Packages",
+          "order": 10
         }
       ],
       "children": [],
