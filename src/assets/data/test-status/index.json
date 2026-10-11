@@ -1,13 +1,13 @@
 {
   "run": {
-    "runId": "38147316498",
-    "sha": "522dc7e264c2a79ca5961a0457b29da1f2f1e048",
+    "runId": "38149406786",
+    "sha": "adbbfb858f50c530568deda866e73563f2166f72",
     "branch": "develop",
-    "libraryVersion": "0.2619.0-alpha.213",
-    "completedAt": "2026-10-11T14:49:46.833Z"
+    "libraryVersion": "0.2619.0-alpha.215",
+    "completedAt": "2026-10-11T15:26:36.201Z"
   },
   "total": {
-    "passed": 31123,
+    "passed": 31125,
     "failed": 0,
     "skipped": 12
   },
@@ -58,7 +58,7 @@
       "skipped": 1
     },
     "unit": {
-      "passed": 17719,
+      "passed": 17721,
       "failed": 0,
       "skipped": 8
     }
@@ -318,7 +318,7 @@
     },
     "Whizbang.Partitioning.Tests": {
       "file": "Whizbang.Partitioning.Tests.json",
-      "passed": 63,
+      "passed": 65,
       "failed": 0,
       "skipped": 0
     },
