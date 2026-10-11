@@ -148,6 +148,8 @@ Terminal rehydrate failures (steps 2, 4, 5, 6) are logged with their `MessageFai
 
 The body store is pluggable, provider-backed, and long-lived, and it is frequently a different trust domain from the broker. The bodies that reach it are by definition the largest messages a system produces. With a cipher configured (`MessageBodyOffloadOptions.CipherName`), the upload call receives sealed bytes. The store cannot receive plaintext, because sealing happens inside the offload path before the upload is made, not in a hook slot that ordering may or may not place first. A sender that names a `CipherName` with no cipher registered under it fails loudly before any upload.
 
+Sealing is opt-in. Without a `CipherName`, bodies are stored as they were serialized, and anyone who can read the store can read those messages. A host that registers body offload with a store but no cipher logs one warning at start, naming the store, so the choice is visible rather than inherited. The warning never blocks startup. {verified: UnsealedOffloadStartupWarningTests.AStoreWithNoCipher_WarnsOnceAtStartAsync, UnsealedOffloadStartupWarningTests.AStoreWithACipher_IsQuietAsync}
+
 ### Two checks, in the safe order
 
 `MessageBodyClaim.ContentHash` stays a hash of the **stored** bytes. The receiver verifies the download against the hash first, and only then hands the bytes to the cipher, so nothing unverified reaches the cipher. The authenticated cipher then covers the plaintext. A tampered blob dead-letters on the hash before the cipher runs, and the existing dead-letter path is unchanged. {verified: BodyOffloadCipherTests.Rehydrate_TamperedStoredBytes_DeadLettersOnTheHash_BeforeTheCipherRunsAsync}
