@@ -1802,9 +1802,9 @@
     "tags": "perspectives, stored-forms, migrations, jsonb, schema-evolution, rewrite, physical-fields, journal, startup",
     "version": "v1.0.0",
     "pageType": "concept",
-    "readingTime": 22,
+    "readingTime": 24,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/perspectives/stored-form-migrations.md",
-    "wordCount": 4277
+    "wordCount": 4783
   },
   {
     "slug": "v1.0.0/fundamentals/perspectives/stream-locking",
@@ -2065,6 +2065,21 @@
     "readingTime": 12,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/security/scoping.md",
     "wordCount": 2237
+  },
+  {
+    "slug": "v1.0.0/fundamentals/security/security-advisories",
+    "title": "Security Advisories",
+    "category": "Security",
+    "order": 90,
+    "description": "Published security advisories for the Whizbang packages, generated from the OSV database, with the affected and fixed version of each package.",
+    "tags": "security, advisories, cve, ghsa, osv, vulnerabilities",
+    "version": "v1.0.0",
+    "status": "current",
+    "pageType": "reference",
+    "audience": "consumer",
+    "readingTime": 2,
+    "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/security/security-advisories.md",
+    "wordCount": 259
   },
   {
     "slug": "v1.0.0/fundamentals/security/security-context-propagation",
@@ -4230,6 +4245,23 @@
     "readingTime": 63,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/resilience/stream-integrity.md",
     "wordCount": 12536
+  },
+  {
+    "slug": "v1.0.0/tools/cli-audit",
+    "title": "Auditing Whizbang Packages",
+    "category": "Tools",
+    "order": 10,
+    "description": "Check the Whizbang package versions a project actually resolves against published security advisories with `whizbang audit`, and fail a CI build on an affected version.",
+    "tags": "security, advisories, audit, cve, ghsa, osv, cli, ci, github actions, vulnerabilities",
+    "version": "v1.0.0",
+    "status": "current",
+    "pageType": "guide",
+    "audience": [
+      "consumer"
+    ],
+    "readingTime": 7,
+    "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/tools/cli-audit.md",
+    "wordCount": 1265
   },
   {
     "slug": "v1.0.0/tools/mcp-server",
