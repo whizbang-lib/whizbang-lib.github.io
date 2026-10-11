@@ -15,6 +15,8 @@ testReferences:
   - tests/Whizbang.Core.Component.Tests/Notifications/PgNotificationStackStartupGateTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/CommitSequenceStreamOrderSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Performance/RoleVoteBehindAHeldBackStampScenarioTests.cs
+  - tests/Whizbang.Core.Tests/Notifications/CommitOrderStampBatchTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/PgCommitOrderStamperWorkerIntegrationTests.cs
 ---
 
 # Commit Sequence & the Order Stamper
@@ -128,6 +130,30 @@ re-stamping on `CommitOrderStamperOptions.FencedRetryInterval` (default 250 ms) 
 sleeping on the wake sources. A full batch likewise triggers an immediate follow-up call until
 the pending set drains. Idle means **no pending work** — never merely "no recent doorbell."
 
+## Batch size grows while draining and backs off on a timeout {#batch-size}
+
+A call has a fixed cost of its own, so while calls keep filling their batch the leader doubles the
+next one, up to `DrainBatchSize`, and returns to `BatchSize` once a call comes back short (the
+backlog is drained to the fence).
+{verified: CommitOrderStampBatchTests.Next_ClimbsFromTheConfiguredSizeToTheCeilingInAFewCallsAsync}
+{verified: CommitOrderStampBatchTests.Next_AShortBatch_ReturnsToTheConfiguredSizeAsync}
+
+A call that runs past the command timeout (or a server statement timeout) is canceled and rolls
+back everything it did, so the same size can never succeed. The leader halves the batch, down to a
+single row, and retries at once without giving up the stamper role. Until the backlog drains, the
+batch does not grow back past the size that completed, so a drain does not climb back into the
+timeout.
+{verified: CommitOrderStampBatchTests.AfterTimeout_FallsBelowTheConfiguredSizeAndStopsAtOneAsync}
+{verified: CommitOrderStampBatchTests.Next_AfterATimeout_DoesNotGrowBackToTheSizeThatTimedOutAsync}
+{verified: PgCommitOrderStamperWorkerIntegrationTests.Worker_AStampTimesOut_HalvesTheBatchAndKeepsStampingAsLeaderAsync}
+
+:::updated
+The batch used to be resized only after a call that returned. After a bulk import had grown it, a
+call that could not finish in time was canceled, the leader came back with the same size, and the
+stamper repeated the same timeout every 30 seconds until the service restarted. Nothing was stamped
+in that time, so none of the service's read models moved.
+:::
+
 ## A held-back stamp reads nothing it cannot stamp {#held-back}
 
 A bulk import keeps the fence low for as long as it runs: its oldest open transaction holds the
@@ -156,7 +182,8 @@ earliest writing transaction first, which is the cross-stream order described ab
 services.Configure<CommitOrderStamperOptions>(o => {
   o.PollingInterval = TimeSpan.FromMilliseconds(250);   // backstop floor when NOTIFY is unavailable
   o.FencedRetryInterval = TimeSpan.FromMilliseconds(250); // re-stamp cadence while the fence is held
-  o.BatchSize = 1000;                                   // rows per stamp call
+  o.BatchSize = 1000;                                   // rows per stamp call once drained
+  o.DrainBatchSize = 25_000;                            // largest batch while a backlog drains
   o.LeaderElectionRetry = TimeSpan.FromMilliseconds(1500);
 });
 ```
