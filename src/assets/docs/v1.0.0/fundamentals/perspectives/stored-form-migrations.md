@@ -14,6 +14,7 @@ tags: >-
   perspectives, stored-forms, migrations, jsonb, schema-evolution, rewrite,
   physical-fields, journal, startup
 codeReferences:
+  - src/Whizbang.Data.EFCore.Postgres.Generators/DiagnosticDescriptors.cs
   - src/Whizbang.Core/Perspectives/StoredFormAttribute.cs
   - src/Whizbang.Core/Perspectives/StoredFormRemovedAttribute.cs
   - src/Whizbang.Core/Perspectives/IStoredFormMigration.cs
@@ -28,6 +29,7 @@ codeReferences:
   - src/Whizbang.Data.EFCore.Postgres.Generators/Templates/DbContextSchemaExtensionTemplate.cs
   - tools/Whizbang.CLI/Program.cs
 testReferences:
+  - tests/Whizbang.Generators.Tests/DeclaredJsonConverterIgnoredTests.cs
   - tests/Whizbang.Core.Tests/Perspectives/StoredFormAttributeTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/StoredFormMigrationTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/StoredFormMigrationSqlTests.cs
@@ -474,6 +476,8 @@ whatever they cast to. An index already over the new type is left alone. Replace
 in a [custom migration](#custom) of the same release.
 
 ## A JSON converter is not a migration {#json-converter}
+
+{verified: DeclaredJsonConverterIgnoredTests.ADeclaredConverterIsReportedAsync, DeclaredJsonConverterIgnoredTests.AModelWithNoConverterIsNotReportedAsync, DeclaredJsonConverterIgnoredTests.ItIsAWarningNotAnErrorAsync}
 
 A `[JsonConverter]` on a perspective model property **has no effect on the stored document**. It is
 not consulted, it reports nothing, and a value whose stored shape changed stays unreadable.
