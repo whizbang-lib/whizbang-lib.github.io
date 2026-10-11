@@ -10,6 +10,10 @@ updates:
       time: "17:00"
       timezone: "America/New_York"
     open-pull-requests-limit: 10
+    # One PR per week for every minor and patch bump; majors still arrive one at a time.
+    groups:
+      npm-minor-and-patch:
+        update-types: ["minor", "patch"]
     assignees:
       - "philcarbone"
     labels:
@@ -41,6 +45,9 @@ updates:
       time: "17:00"
       timezone: "America/New_York"
     open-pull-requests-limit: 5
+    groups:
+      github-actions:
+        patterns: ["*"]
     assignees:
       - "philcarbone"
     labels:
