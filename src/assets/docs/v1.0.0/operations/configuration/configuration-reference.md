@@ -194,13 +194,14 @@ Code-only (not read from configuration): `SearchPath` (default: EF model schema)
 
 ### Whizbang:Database:Stamper → CommitOrderStamperOptions
 
-Bound alongside `Whizbang:Database`. Controls the per-database commit-order stamper singleton. **Details:** no dedicated page yet. {verified: ConfigureCommitOrderStamperOptionsFromConfigurationTests.FencedRetryInterval_ParsesUnderInvariantCultureAsync, ConfigureCommitOrderStamperOptionsFromConfigurationTests.NotifyHealthyPollingInterval_ParsesUnderInvariantCultureAsync}
+Bound alongside `Whizbang:Database`. Controls the per-database commit-order stamper singleton. **Details:** no dedicated page yet. {verified: ConfigureCommitOrderStamperOptionsFromConfigurationTests.FencedRetryInterval_ParsesUnderInvariantCultureAsync, ConfigureCommitOrderStamperOptionsFromConfigurationTests.NotifyHealthyPollingInterval_ParsesUnderInvariantCultureAsync, ConfigureCommitOrderStamperOptionsFromConfigurationTests.DrainBatchSize_ParsesIntAsync}
 
 | Key | Type | Default | Environment variable | Purpose |
 |-----|------|---------|----------------------|---------|
 | `PollingInterval` | `TimeSpan` | `00:00:00.250` | `Whizbang__Database__Stamper__PollingInterval` | How often the lock-holder stamps pending commit sequences absent a NOTIFY |
 | `LeaderElectionRetry` | `TimeSpan` | `00:00:01.500` | `Whizbang__Database__Stamper__LeaderElectionRetry` | How long a non-holder waits before retrying advisory-lock acquisition |
-| `BatchSize` | `int` | `1000` | `Whizbang__Database__Stamper__BatchSize` | Max rows stamped per call |
+| `BatchSize` | `int` | `1000` | `Whizbang__Database__Stamper__BatchSize` | Rows stamped per call once the backlog is drained |
+| `DrainBatchSize` | `int` | `25000` | `Whizbang__Database__Stamper__DrainBatchSize` | Largest batch while a backlog drains: a call that fills its batch doubles the next, up to this. Must be a size the database can stamp inside the command timeout; a call that times out halves the batch, and the drain does not grow back past the size that completed. At or below `BatchSize`, growth is off |
 | `DisableStamper` | `bool` | `false` | `Whizbang__Database__Stamper__DisableStamper` | Killswitch — worker exits early, never acquires the lock |
 | `AdvisoryLockKey` | `long` | `0x57480001_5557_5048` | `Whizbang__Database__Stamper__AdvisoryLockKey` | Advisory lock key; must match across all instances sharing a database |
 | `FencedRetryInterval` | `TimeSpan` | `00:00:00.250` | `Whizbang__Database__Stamper__FencedRetryInterval` | Re-stamp cadence while rows stay unstamped because an older same-database transaction still holds the ordering fence. Bounds how long a commit stays invisible to perspective fetches after the fence clears, instead of waiting for the next NOTIFY or backup tick |
