@@ -176,10 +176,30 @@ sequenceDiagram
 `DoorbellRinger.RingAsync(connection, qualifiedFunctionName, logger, cancellationToken)` is the one helper every driver uses, placed immediately after every hot call: the inbox and outbox stores, the handler commits, the perspective completions, the schedule claim and the schedule manager's writes, the commit-order stamper, the signal transport. Three properties are worth knowing:
 
 - **A ring never fails the caller.** The work the doorbell points at is already committed. A ring that does not happen costs latency until the next ring from any instance or the claim poll, so a failure is logged at Warning naming the function and swallowed (the call returns -1). Cancellation at shutdown is treated the same way: the queued doorbells are rung by the next ring from any instance.
-- **Any instance may ring what any other queued**, and two ringers never wait on each other (`SKIP LOCKED`). A ring left in the queue by a driver that died between its commit and its ring is picked up by the next ring from anywhere.
-- **The ring is bounded**: a five-second command timeout on a statement that touches a handful of rows in an unlogged table.
+- **Any instance may ring what any other queued**, and ringers never wait on each other: one rings at a time and the rest return at once (see [One ringer at a time](#one-ringer-at-a-time) below). A ring left in the queue by a driver that died between its commit and its ring is picked up by the next ring from anywhere.
+- **Each call is bounded**: a five-second command timeout on a statement that rings at most one batch from an unlogged table. The drain is not bounded by the batch: the ringer calls again while a call rang anything.
 
 **Ambient transactions.** When a store runs inside an ambient transaction (an EF Core `Database.CurrentTransaction` is open, for example a handler commit writing through the same DbContext), the queued rows commit with that transaction and would not be visible to a ring issued before it. The drivers skip the ring in that case rather than ring nothing, and **the next hot call on the connection rings them** along with its own. Latency inside that window is bounded by the next hot call or the claim poll; nothing is lost.
+
+### One ringer at a time
+
+{verified: DoorbellsRingAfterCommitSqlTests.RingDoorbells_WhileAnotherRingerHasTheTurn_ReturnsAtOnceAndLeavesTheQueueToItAsync, DoorbellsRingAfterCommitSqlTests.RingDoorbells_TheHolderRingsWhatABusyRingerLeft_OnItsNextPassAsync, DoorbellsRingAfterCommitSqlTests.RingDoorbells_OnAnEmptyQueue_DoesNotTakeTheTurnAsync, DoorbellsRingAfterCommitSqlTests.RingDoorbells_InsideATransactionThatHasWritten_DoesNotTakeTheTurnAsync, DoorbellRingerTests.RingAsync_MoreQueuedThanOneBatch_KeepsRingingUntilTheQueueIsEmptyAsync}
+
+Moving the ring out of the hot transaction moved the NOTIFY lock contention to the rings themselves. Every hot call is followed by a ring, and every ring that notified still committed on the database-wide lock, so under a bulk import the rings queued behind each other one commit at a time, and each hot caller waited for its ring. Measured across 13 service databases over 20 minutes of imports: 3,111 waits, median 371 ms, p95 1,028 ms, longest 2.3 s, the blocker another `ring_doorbells()` in nearly every sample.
+
+Since migration 206, `ring_doorbells()` does three things in order:
+
+1. **Nothing queued: return 0** without taking the turn.
+2. **Take the turn or return 0.** The turn is a transaction-scoped advisory lock keyed to the schema's queue table (`pg_try_advisory_xact_lock`). When another ringer has it, the call returns at once and leaves the queue to that ringer. Transaction-scoped on purpose: a session lock is not safe on a pooled connection behind pgbouncer.
+3. **Ring one batch**, as before.
+
+`DoorbellRinger.RingAsync` calls again while a call rang anything. The batch bounds one commit (nothing is delivered until a batch commits), not the drain: the ringer that has the turn keeps going until a call rings nothing.
+
+**No doorbell is left behind.** A caller queues its doorbell and commits before it rings. If it then finds the turn taken, the holder is mid-pass and the doorbell is already committed. The holder stops only on a call whose first step found the queue empty, and that call starts after the holder's previous commit, so after the busy caller's doorbell committed: it sees the doorbell and rings it. A holder that itself finds the turn taken hands the same duty to the ringer that has it. Checking the queue before taking the turn is what makes this hold: a ringer that took the turn first could hold it through a pass that started before the doorbell committed, and stop.
+
+**A ring inside a caller's own transaction never takes the turn.** The library rings after its own commits, but a caller can run a coordinator call inside a transaction of its own. A ring there would keep the turn until that caller commits and would not pass again afterwards, so when the transaction has already written (every hot call writes before it rings) the ring skips step 2 and rings its batch as before 206.
+
+**Unchanged:** which doorbells are queued and which the debounce suppresses ([Doorbell debounce and drain linger](#doorbell-debounce-and-drain-linger)); the coalescing of identical `(channel, payload)` pairs within a batch; the claim worker's drain linger. The handoff adds at most one batch of delivery delay, far inside the linger's one-second margin over the debounce window. The turn is per schema because the queue is: services sharing one database each keep one ringer.
 
 Three properties carry over from the previous design: a doorbell queued by a transaction that **rolls back** is rolled back with it, so there is no spurious ring for work that never committed; the claim poll remains the safety net beneath all of it; and the queue is **unlogged on purpose**, because a crash loses only a doorbell, never the work it pointed at. `cleanup_stale_instances` still notifies directly: it runs on the maintenance path, never inside a hot transaction, and its eviction broadcast is rare by nature.
 
