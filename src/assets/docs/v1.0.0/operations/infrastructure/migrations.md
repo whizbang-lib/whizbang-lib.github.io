@@ -275,18 +275,17 @@ untouched by any of this; the bootstrap still claims nothing about migrations.
 {verified: SchemaBootstrapPhaseTests.ACurrentClosureIsNotAppliedAgainAsync, SchemaBootstrapPhaseTests.AChangedClosureIsAppliedAsync, SchemaBootstrapPhaseTests.TheBootstrapRecordsNothingInTheLedgerAsync}
 
 ### Database roles {#database-roles}
-{verified: SchemaInitConnectionTests.FromConfiguration_ReadsTheInitSuffixOfTheContextsNameAsync, IndexStatisticsMaintenanceStepTests.WithAnInitConnection_AnalyzesThroughItAsync, ManagedSchemaReconcileStepTests.UnderADataOnlyApplicationRole_TheInitConnectionDoesTheSchemaWorkAsync}
+{verified: SchemaInitConnectionTests.FromConfiguration_ReadsTheInitSuffixOfTheContextsNameAsync, IndexStatisticsMaintenanceStepTests.WithAnInitConnection_AnalyzesThroughItAsync, ManagedSchemaReconcileStepTests.UnderADataOnlyApplicationRole_TheInitConnectionDoesTheSchemaWorkAsync, TableRewriteUnderDataOnlyRoleTests.UnderADataOnlyApplicationRole_TheInitConnectionDoesTheRewriteAsync, DataOnlyRoleE2ETests.UnderADataOnlyRole_WithTheOwnerAsInit_TheServiceStartsAndMaintainsItselfAsync}
 
 The application can run with a role that reads and writes data and cannot change schema. Give the schema rights to a second role and put it behind the `-init` connection string (`ConnectionStrings:db-init`, or `<name>-init` for a named database). Everything that changes schema uses it:
 
 - startup migrations and the perspective schema pass;
 - the managed-object reconcile the maintenance worker runs between starts;
 - the shadow-table swap of a [blue-green rebuild](../../fundamentals/perspectives/rebuild#blue-green);
-- the `ANALYZE` of perspective tables whose new expression indexes have no statistics, which needs the table owner's rights.
+- the `ANALYZE` of perspective tables whose new expression indexes have no statistics, which needs the table owner's rights;
+- the opt-in table rewrite (`immediate` rewrite policy, off by default), whose `VACUUM FULL` also needs the table owner's rights.
 
-Without an `-init` string, all of it runs on the application's connection, which then needs the same rights.
-
-One exception: the opt-in table rewrite (`immediate` rewrite policy, off by default) runs `VACUUM FULL` on the application's connection and needs the table owner's rights. Leave the policy off under a data-only role.
+Without an `-init` string, all of it runs on the application's connection, which then needs the same rights. Postgres does not refuse a `VACUUM FULL` from a role that does not own the table: it skips the table with a warning. The rewrite step measures the table again afterwards, so a skipped rewrite is reported as ineffective and stays queued for the next start.
 
 ```sql{
 title: "Two roles: one owns the schema, one uses it"
