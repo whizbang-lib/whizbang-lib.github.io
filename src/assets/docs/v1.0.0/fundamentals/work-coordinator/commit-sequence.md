@@ -130,13 +130,27 @@ re-stamping on `CommitOrderStamperOptions.FencedRetryInterval` (default 250 ms) 
 sleeping on the wake sources. A full batch likewise triggers an immediate follow-up call until
 the pending set drains. Idle means **no pending work** — never merely "no recent doorbell."
 
-## Batch size grows while draining and backs off on a timeout {#batch-size}
+## Batch size grows while draining, within a time budget, and backs off on a timeout {#batch-size}
 
 A call has a fixed cost of its own, so while calls keep filling their batch the leader doubles the
 next one, up to `DrainBatchSize`, and returns to `BatchSize` once a call comes back short (the
 backlog is drained to the fence).
 {verified: CommitOrderStampBatchTests.Next_ClimbsFromTheConfiguredSizeToTheCeilingInAFewCallsAsync}
 {verified: CommitOrderStampBatchTests.Next_AShortBatch_ReturnsToTheConfiguredSizeAsync}
+
+Rows alone cannot bound a call, so the batch also answers to how long the last call took. The call
+budget is half the stamper role's renewal interval (2.5 s by default). A full call that ran past the
+budget halves the next one, down to a single row, and the batch does not grow back past that size
+until the backlog drains. A full call that took more than half the budget keeps its size, because
+doubling it would take about twice as long. Only a call well inside the budget grows. A slow call
+logs a warning naming the call, the budget and the next size, and raises `OnStampRanLong`.
+{verified: CommitOrderStampBatchTests.Next_AFullBatchThatRanPastTheBudget_HalvesAsync}
+{verified: CommitOrderStampBatchTests.Next_AFullBatchPastHalfTheBudget_HoldsItsSizeAsync}
+{verified: PgCommitOrderStamperWorkerIntegrationTests.Worker_AFullStampRunsPastTheCallBudget_HalvesTheBatchAndStillDrainsAsLeaderAsync}
+
+The budget exists because of the role. The holder renews its lease only between calls, and a call
+holds the role row for as long as it runs, so every other instance's vote waits behind it. A call
+kept within half the renewal interval keeps each gap between renewals well inside the lease.
 
 A call that runs past the command timeout (or a server statement timeout) is canceled and rolls
 back everything it did, so the same size can never succeed. The leader halves the batch, down to a
@@ -148,7 +162,11 @@ timeout.
 {verified: PgCommitOrderStamperWorkerIntegrationTests.Worker_AStampTimesOut_HalvesTheBatchAndKeepsStampingAsLeaderAsync}
 
 :::updated
-The batch used to be resized only after a call that returned. After a bulk import had grown it, a
+The batch used to grow with the row count alone. On a store where a few thousand rows took longer
+than the 15-second role lease, a draining stamper's calls outlasted the lease, and the holder lost
+the role to its own lapse between calls, even when no other instance could take it.
+
+The batch also used to be resized only after a call that returned. After a bulk import had grown it, a
 call that could not finish in time was canceled, the leader came back with the same size, and the
 stamper repeated the same timeout every 30 seconds until the service restarted. Nothing was stamped
 in that time, so none of the service's read models moved.
