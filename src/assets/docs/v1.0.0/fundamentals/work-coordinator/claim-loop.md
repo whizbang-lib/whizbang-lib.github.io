@@ -256,8 +256,11 @@ Before it acquires anything, `claim_work` calls `wh_refresh_stale_queue_statisti
   on it for `deadlock_timeout`.
 - **It never stops a claim.** Everything runs under a five second lock timeout. A claimant that cannot
   analyze in time logs a warning and claims on the statistics it has.
-- **Only tables the role can analyze.** A table the connecting role does not own is never treated as
-  stale, so it cannot be retried on every poll.
+- **It runs as the schema's owner.** Only a table's owner may analyze it, and a service can run as a
+  role with data rights only, with the owner on the `-init` connection. The refresh does not borrow
+  that connection, which stays schema-only: it is `SECURITY DEFINER`, created by the role that migrates
+  the schema, with its `search_path` pinned. If even that role cannot analyze a stale table (the tables
+  were reassigned), every poll logs a warning saying so.
 
 The test reproduces the state a deployed table was in when it stalled: statistics taken at one page
 and no rows (a table that never had a page does not reproduce it, because the planner then sizes it
