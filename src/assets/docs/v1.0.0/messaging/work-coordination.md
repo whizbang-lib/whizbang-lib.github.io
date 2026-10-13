@@ -52,11 +52,11 @@ Messages are claimed using time-limited leases to prevent duplicate processing a
 
 ### Virtual Partition Distribution
 
-Work is distributed across instances using consistent hashing on UUIDv7 identifiers - **no partition assignments table required**.
+Work is distributed across instances by consistent hashing of stream ids into partitions. One elected instance publishes which live instance owns which partition (`wh_published_partition_assignment`, see [Partition assignment](../fundamentals/work-coordinator/partition-assignment.md)); claimers read it, and fall back to ranking the live instances themselves when it is missing or stale.
 
 **How It Works:**
 1. Each message's `stream_id` is hashed to determine its partition number (0-9999 by default): `abs(hashtext(stream_id::TEXT)) % partition_count` (the `compute_partition` function)
-2. Each live instance gets a rank among active instances (`calculate_instance_rank`: `ROW_NUMBER()` over live `wh_service_instances` rows)
+2. Each live instance gets a rank: its position in the published assignment's member list, or, without a current assignment, its position among the live `wh_service_instances` rows ordered by id
 3. Unowned or orphaned work is claimable when `partition_number % active_instance_count = instance_rank`
 4. Streams pin to the instance that first stores work for them (`wh_active_streams.assigned_instance_id`, first-write-wins); ownership is reassigned only when the owning instance dies
 
