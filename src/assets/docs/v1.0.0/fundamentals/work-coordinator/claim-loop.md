@@ -8,7 +8,8 @@ description: >-
   feedback on the adaptive window, work stealing, the per-category outstanding
   budget with the perspective drain cap, the release of unstarted leases by a
   stuck instance, outbox stream runs with the immediate re-claim after a full
-  outbox acquisition, and how a claim ranks its peers by the liveness rule.
+  outbox acquisition, how a claim keeps the queue tables' planner statistics
+  true, and how a claim ranks its peers by the liveness rule.
 tags: 'work-coordinator, claim-loop, claim-work, acquisition, backpressure, work-stealing, command-lane'
 codeReferences:
   - src/Whizbang.Core/Workers/ClaimWorker.cs
@@ -22,6 +23,7 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/157_ClaimAcquisitionBounded.sql
   - src/Whizbang.Data.Postgres/Migrations/171_OutboxStreamRuns.sql
   - src/Whizbang.Data.Postgres/Migrations/204_DirectInstancesAreLiveByTheirAliveLock.sql
+  - src/Whizbang.Data.Postgres/Migrations/207_ClaimRefreshesStaleQueueStatistics.sql
   - src/Whizbang.Core/Workers/OutboxDrainWorker.cs
   - src/Whizbang.Core/Signals/BasePollSignalSource.cs
   - src/Whizbang.Core/Signals/PollIdleBackoff.cs
@@ -30,6 +32,7 @@ testReferences:
   - tests/Whizbang.Core.Tests/Workers/AdaptiveClaimWindowLatencyTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/BoundedAcquisitionRewriteSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/ClaimWorkPlanShapeTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/ClaimWorkStaleStatisticsTests.cs
   - tests/Whizbang.Core.Component.Tests/Signals/PollSignalSourceIdleBackoffTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/OutboxStreamRunSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/OutboxStreamRunDrainMeasurementTests.cs
@@ -227,6 +230,43 @@ The test reproduces both shapes: it polls empty tables enough times for the sess
 plans it will keep, fills every queue table with wide rows, polls again on the same session, and reads
 from `pg_stat_user_tables` how many tuples each table gave up for that one call. A bounded poll reads
 a few batches; one bounded by the backlog reads all of it.
+
+## The statistics follow the tables too
+{verified: ClaimWorkStaleStatisticsTests.ClaimWork_StatisticsFromBeforeTheLoad_AcquiringIsStillPricedByTheBatchAsync, ClaimWorkStaleStatisticsTests.RefreshStaleQueueStatistics_FreshStatistics_AnalyzesNothingAsync, ClaimWorkStaleStatisticsTests.RefreshStaleQueueStatistics_WhileAPeerRefreshesTheTable_WaitsAndDoesNotAnalyzeAgainAsync, ClaimWorkStaleStatisticsTests.RefreshStaleQueueStatistics_WhileAnotherSessionHoldsTheTable_GivesUpWithinTheLockTimeoutAsync}
+
+Every bound on this page is a property of a plan, and the planner chooses a plan from the table's
+statistics. Custom plans fix a plan kept from an empty table; they do not fix statistics taken from
+one. Autovacuum analyzes the queue tables while they are empty between loads, and under a load its one
+worker per table can wait indefinitely in a vacuum that needs a cleanup lock the claim scans keep
+pinned, so the next analyze never comes. On statistics that say one page and no rows, the planner
+believes every scan returns nothing: a claim captured each chosen stream by walking the whole pending
+set once per stream, ran past the command timeout, was canceled, and claimed nothing, and every later
+claim met the same backlog. The service stopped draining and did not recover on its own.
+
+Before it acquires anything, `claim_work` calls `wh_refresh_stale_queue_statistics` (migration 207):
+
+- **Stale means far past autovacuum.** A queue table is analyzed when it has changed by more than
+  1,000 rows and more than four times what the planner believes it holds since its last analyze.
+  Autovacuum analyzes at 50 rows plus a tenth of the table, so on a healthy database it always gets
+  there first and the check is a catalog read per table.
+- **One claimant per table.** A transaction-scoped advisory lock per table; a claimant that waited
+  reads the counters again and analyzes nothing a peer already did.
+- **It ends a stuck autovacuum rather than waiting it out.** `ANALYZE` needs no cleanup lock, and
+  Postgres cancels an autovacuum that is not preventing wraparound once another session has waited
+  on it for `deadlock_timeout`.
+- **It never stops a claim.** Everything runs under a five second lock timeout. A claimant that cannot
+  analyze in time logs a warning and claims on the statistics it has.
+- **It runs as the schema's owner.** Only a table's owner may analyze it, and a service can run as a
+  role with data rights only, with the owner on the `-init` connection. The refresh does not borrow
+  that connection, which stays schema-only: it is `SECURITY DEFINER`, created by the role that migrates
+  the schema, with its `search_path` pinned. If even that role cannot analyze a stale table (the tables
+  were reassigned), every poll logs a warning saying so.
+
+The test reproduces the state a deployed table was in when it stalled: statistics taken at one page
+and no rows (a table that never had a page does not reproduce it, because the planner then sizes it
+from its pages), autovacuum off the table, then 180,000 pending rows. One claim ran past a 60 second
+command timeout before the change; after it, the claim reads a few batches and leaves the statistics
+describing the table.
 
 ## The re-offer is bounded by the batch too
 {verified: ClaimWorkPlanShapeTests.ClaimWork_ReofferingWhatItHolds_IsPricedByTheBatchNotTheHoldingsAsync}
@@ -456,6 +496,7 @@ The notification listener exposes `IsHealthy` + `OnHealthChanged`; expose via `/
 |---|---|
 | `ClaimWorkAsync` throws | Log warn, increment empty-poll counter (back off), retry on next tick. |
 | Pooled connection unreachable | Existing `WorkerRetryOptions` exponential backoff. |
+| Queue table statistics stale (autovacuum behind or stuck) | The claim analyzes the table first (see [The statistics follow the tables too](#the-statistics-follow-the-tables-too)); if it cannot within five seconds it logs a warning and claims anyway. |
 | Notification listener unhealthy | `OnHealthChanged(false)` fires; claim worker can flip to fast polling cadence (current implementation: subscribers can wire this; the default ClaimWorker doesn't yet). |
 
 ## Related
