@@ -261,14 +261,22 @@ public interface IEventStore {
 
 ### Read order {#read-order}
 
-{verified: DapperPostgresEventStoreEdgeCaseTests.ReadPolymorphicAsync_IdsRunBackwardToCommits_ReadsInCommitOrderAsync}
+{verified: DapperPostgresEventStoreEdgeCaseTests.ReadPolymorphicAsync_IdsAndCommitsRunBackwardToVersions_ReadsInStreamOrderAsync, EventStoreReadPolymorphicTests.ReadPolymorphicAsync_WhenCommitSequencesRunBackward_ReturnsEventsInStreamOrderAsync, EventStoreReadPolymorphicTests.ReadPolymorphicAsync_CarriesEachEventsStreamVersionAsync, InMemoryEventStoreReplayOrderTests.ReadPolymorphicAsync_IdsRunBackwardToAppends_ReturnsTheStreamInAppendOrderAsync}
 
-`ReadPolymorphicAsync` reads a stream in the order its events committed: `commit_sequence`
-ascending, an event not yet stamped last, `event_id` breaking ties. Both the EF Core and the
-Dapper stores read it that way, so a replay applies a stream in the order it happened live. An
-event id is minted before commit, so two producers can commit in the opposite order to their
-ids; reading by id would replay them backward. The typed `ReadAsync` and the between-checkpoint
-reads keep `event_id` order.
+`ReadPolymorphicAsync` reads a stream in its own order: the `version` each event was appended at, `event_id`
+breaking ties, and each envelope carries that version as `MessageEnvelope.LocalStreamVersion` (read-time, not
+serialized). The EF Core, Dapper Postgres and in-memory stores all read it that way, so a replay applies a stream
+in the order it was written.
+
+Neither of the other two orders will do:
+
+- **Event id.** An id is minted before the event is stored, so two producers can append in the opposite order to
+  their ids, and reading by id would replay them backward.
+- **Commit sequence.** It records when the stamper reached a row, not where the row sits in its stream. Rows
+  stamped as they were written follow their versions, but rows stamped after the fact can run backward against
+  them, and a replay in that order folded a stream's last write first.
+
+The typed `ReadAsync` and the between-checkpoint reads keep `event_id` order.
 
 ## Decorator Stack
 

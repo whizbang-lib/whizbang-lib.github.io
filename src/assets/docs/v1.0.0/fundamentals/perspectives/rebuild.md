@@ -133,6 +133,14 @@ var result = await rebuilder.RebuildStreamsAsync("OrderPerspective", corruptedSt
 
 **Best for**: Targeted fixes for specific aggregates.
 
+### Fold order and the recorded position {#fold-order}
+
+{verified: PerspectiveRebuilderIntegrationTests.RebuildStreamsAsync_WhenCommitSequencesRunBackwardAgainstVersions_FoldsInVersionOrderAndWritesItAsync, PerspectiveRebuilderIntegrationTests.RebuildStreamsAsync_StampsRunBackward_EveryFieldEndsOnItsLastVersionAsync, PerspectiveRebuilderIntegrationTests.RebuildStreamsAsync_StampsRunBackward_RebuildingTwiceLeavesTheSameRowAsync, PerspectiveRebuilderIntegrationTests.RebuildStreamsAsync_StampsRunBackwardAndNoRowExists_CreatesTheVersionOrderRowAsync}
+
+A rebuild folds each stream in the order it was written: its versions, as the [rewind](rewind) does. Folding by commit sequence was wrong for streams whose rows were stamped after the fact, because their sequences can run backward against their versions. Such a rebuild applied the last write first and left every field that a later event overwrote holding an older value, not only the field the rebuild was run to repair.
+
+The rebuilt row records the **highest commit sequence among the events it folded** as its position, as the rewind's frontier does, not the sequence of the last event it applied. In stream order the last event can carry the lowest sequence on the stream. The perspective store refuses a write whose position sits below the stored one, so recording that sequence would fold the right value and then fail to write it, which matters most when repairing a row a commit-order rebuild left behind.
+
 ## RebuildResult {#reading-the-result}
 
 ```csharp{title="RebuildResult" description="What a rebuild did: streams requested, refused, rebuilt and purged" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "RebuildResult"] tests=["PerspectiveRebuilderTests.RebuildInPlaceAsync_WithRegisteredPerspective_ProcessesAllStreamsAsync", "PerspectiveRebuilderTests.RebuildStreamsAsync_WhenEveryNamedStreamIsRefused_ReportsTheRefusalsAsAFailureAsync", "PerspectiveRebuilderIntegrationTests.RebuildStreamsAsync_ReportsHowManyRequestedStreamsItActuallyFoundAsync"]}
