@@ -150,10 +150,25 @@ This is the fix for an earlier defect: the original implementation read the even
 Each apply pass sorts its batch with **one comparator, chosen by what the batch can prove**:
 
 1. **Origin order** — when every event in the batch carries the *same, non-empty* `SourceServiceId` and a positive `SourceCommitSequence` (a single-origin stream, the normal cross-service shape). A reconciled straggler keeps its original origin slot but lands with an arrival-fresh **local** sequence — a local-order replay would apply it *last*, which is exactly the arrival-order failure the rewind exists to correct. Origin order slots the backfilled event at its intended position, so the final model equals what a never-missed history would have produced.
-2. **Local commit order** — otherwise, when every event carries its local `commit_sequence` stamp. The inversion detector is commit-sequence-authoritative (same-millisecond UUIDv7 ids can disagree with commit order), and an id-ordered replay would silently undo newer writes.
-3. **Event-id order** — the fallback when any event is unstamped (stamper lag); a partial mix of comparators would interleave two orderings.
+2. **Stream order** — otherwise, when every event carries the version its stream appended it at (`LocalStreamVersion`, set by the replay read). This is the order the stream was written in and the order the live apply folded it in. A local `commit_sequence` only records when the stamper reached a row: rows stamped after the fact can carry sequences that run backward against their versions, and a replay in that order applied a stream's last write first and left the row holding an older value.
+3. **Local commit order** — otherwise, when every event carries its local `commit_sequence` stamp (a store whose read does not carry the version). An id-ordered replay would silently undo newer writes, because same-millisecond UUIDv7 ids can disagree with the order events were stored in.
+4. **Event-id order** — the fallback when any event is unstamped (stamper lag); a partial mix of comparators would interleave two orderings.
+
+{verified: ReplayEventOrderTests.Order_WhenCommitSequencesRunBackwardAgainstVersions_FollowsTheStreamsVersionsAsync, ReplayEventOrderTests.Order_WhenOneOriginStampsEveryEvent_FollowsOriginOrderOverVersionOrderAsync, PerspectiveApplyIdempotencyTests.RewindAndRun_StampsRunBackwardAgainstTheStream_FoldsInStreamOrderAsync}
 
 Cross-origin events on one stream have **no defined total order** (concurrent writers, per-origin sequence spaces — the numbers collide by design), so mixed-origin batches deliberately fall to rule 2/3 rather than invent one. Origin sequences are only ever compared *within* one origin.
+
+### Below the row's position: the runner rewinds too {#below-position}
+
+{verified: PerspectiveApplyIdempotencyTests.RunWithEvents_EventBelowTheRowsPositionNeverFolded_IsRewoundIntoTheRowAsync, PerspectiveApplyIdempotencyTests.RunWithEvents_TheRowsOwnLastEventRedelivered_IsDroppedWithoutARewindAsync, PerspectiveApplyIdempotencyTests.RunWithEvents_AnOlderFoldedEventRedelivered_RewindsAndLeavesTheRowAsItWasAsync, NeverAppliedEventsAreNotDroppedTests.NoCursorRow_RowAheadOfTheBatch_AnEventTheFilterDiscardsWasAnsweredByDetectionAsync}
+
+The worker detects a late event against the stream's **cursor**. The generated runner's [idempotency filter](apply-exactly-once#idempotency-filter) compares against the **row's own recorded position**. A stream with no cursor row, or with a cursor behind the row, gives the worker nothing to compare, and the filter used to drop every event below the row's position as already applied, including events the row had never folded.
+
+So the runner checks first. When a batch holds an event **strictly below** the row's recorded commit sequence, it rewinds from the earliest such event instead of filtering the batch, and logs `[diag.filter.rewind-below-position]`. Together with the worker's check, detection anchors on the **later of the cursor and the row's position**.
+
+- **The row's own event, redelivered at its position,** is still dropped. That is the common, benign redelivery.
+- **An older event the row did fold** cannot be told apart from one it never folded, so it is rewound too. The re-fold leaves the row exactly as it was. The cost of the conservative answer is a re-fold, never a changed row.
+- **An unstamped event** is not compared by sequence; the filter defers on it and applies it, as before.
 
 ### Frontier checkpoint
 
