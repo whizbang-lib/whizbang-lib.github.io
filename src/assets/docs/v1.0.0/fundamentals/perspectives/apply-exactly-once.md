@@ -92,7 +92,7 @@ The row's position comes in two forms, and only one of them is dependable:
 | Signal | Dependable? |
 |---|---|
 | `metadata.CommitSequence` — `wh_event_store.commit_sequence` of the last applied event | **Yes.** Stamped after commit, monotonic per database. |
-| `metadata.EventId` — the last applied event's id | Only when both ids are UUIDv7. A UUIDv7 encodes its timestamp in the leading bytes, so lexical order is commit order. |
+| `metadata.EventId` — the last applied event's id | **For equality only.** An id equal to the row's is the row's own event. An id orders by when and where it was minted, which is not the order a stream fed by several services stores events in, so the filter never compares ids for order. |
 
 So the filter compares commit sequences whenever both sides have one. When they do not, the question
 changes from *which came first* to **can these two positions be compared at all** — and when the answer is
@@ -101,10 +101,16 @@ no, the filter defers: it reports not-applied and lets `Apply` run.
 ```text
 both sides stamped        → compare commit_sequence          (authoritative)
 one side stamped          → defer                            (not comparable)
-neither stamped,
-  both ids UUIDv7         → compare ids as text              (lexical order is commit order)
-  either id not UUIDv7    → defer                            (not comparable)
+neither stamped           → applied only if the ids are equal (the row's own event)
 ```
+
+**Below the row's position, the runner rewinds instead of dropping.** A lower commit sequence is not proof that
+the row folded the event: a later batch can have moved the row past it first. Before the filter drops anything,
+the runner asks `PerspectiveIdempotencyFilter.FindRewindAnchor` for the earliest event strictly below the row's
+position, and if there is one it re-folds the stream from there. Only the row's own event, redelivered at its
+position, is dropped. See [Rewind: below the row's position](rewind#below-position).
+
+{verified: PerspectiveIdempotencyFilterTests.FindRewindAnchor_EventsBelowTheRowsPosition_AnchorsOnTheEarliestCommittedAsync, PerspectiveIdempotencyFilterTests.FindRewindAnchor_TheRowsOwnEventRedelivered_KeepsTheFilterAsync}
 
 **Why deferring is the right direction.** The two errors are not symmetrical. Re-applying an event a
 second time is visible — a duplicate collection row, a counter that moved by two — and it is recoverable.
