@@ -170,6 +170,14 @@ So the runner checks first. When a batch holds an event **strictly below** the r
 - **An older event the row did fold** cannot be told apart from one it never folded, so it is rewound too. The re-fold leaves the row exactly as it was. The cost of the conservative answer is a re-fold, never a changed row.
 - **An unstamped event** is not compared by sequence; the filter defers on it and applies it, as before.
 
+### A rewind covers what it replayed {#a-rewind-covers-what-it-replayed}
+
+{verified: PerspectiveWorkerDeepPathDrainTests.DrainMode_EventsTheRewindAlreadyReplayed_DoNotRewindAgainAsync, PerspectiveCursorCacheReplayedThroughTests}
+
+The rows that triggered a rewind stay pending until the completion flush deletes them, and the same events can be delivered again under new work rows. The cooldown cache recognizes a row only by its work id, so a redelivered row used to read as fresh, sit behind the cursor, and trigger another full replay on every lap of the drain loop.
+
+The worker now remembers which events a completed rewind was run for, per stream and perspective. When any of them comes back, it is taken out of the batch before the inversion check: its rows are completed and its lifecycle signaled with nothing applied, and the worker logs that the events were already replayed. Only those events are covered. An event the rewind was not run for keeps its own inversion check, even when it sorts below where the rewind left the stream. The memory is bounded per stream and perspective, and forgotten with the stream's other cached state.
+
 ### Frontier checkpoint
 
 The replay checkpoints at the **frontier** — the *maximum* event id and *maximum* local `commit_sequence` applied — not the origin-order-last event's stamp. The idempotency floor's meaning is "everything at or below this is applied", and under origin-order replay the final event applied can carry a *lower* local stamp than a backfilled straggler it slotted. A below-floor checkpoint would also be refused by the perspective store's cross-pod lost-update guard, silently discarding the very correction the rewind computed. The catch-up anchor advances the same way (max id of the read window), so a refetch never re-serves the window's tail. Pinned by `ReconcileRewindScenarioTests` (`RewindReplay_BackfilledStraggler_SlotsIntoOriginOrder_NewerWriterWinsAsync`, `Reconcile_OlderConflictingWriterBackfilled_DeclaredRewindRestoresIntendedOrderAsync`, `Reconcile_LateInitializer_DeclaredRewindMergesBothWritersInOriginOrderAsync`) and `ReconcileRewindDeclarationSqlTests`.
