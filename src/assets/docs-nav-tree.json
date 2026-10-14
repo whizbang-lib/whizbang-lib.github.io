@@ -230,6 +230,11 @@
               "order": 5
             },
             {
+              "slug": "v1.0.0/fundamentals/dispatcher/multi-stream-commands",
+              "title": "Multi-Stream Commands",
+              "order": 6
+            },
+            {
               "slug": "v1.0.0/fundamentals/dispatcher/rpc-extraction",
               "title": "RPC Response Extraction",
               "order": 18
@@ -449,6 +454,11 @@
             {
               "slug": "v1.0.0/fundamentals/perspectives/association-info",
               "title": "PerspectiveAssociationInfo",
+              "order": 999
+            },
+            {
+              "slug": "v1.0.0/fundamentals/perspectives/managed-schema-objects",
+              "title": "Managed Schema Objects",
               "order": 999
             },
             {
@@ -815,6 +825,11 @@
             {
               "slug": "v1.0.0/fundamentals/work-coordinator/notifications-and-pgbouncer",
               "title": "Notifications and pgbouncer",
+              "order": 5
+            },
+            {
+              "slug": "v1.0.0/fundamentals/work-coordinator/partition-assignment",
+              "title": "Partition assignment",
               "order": 5
             },
             {
