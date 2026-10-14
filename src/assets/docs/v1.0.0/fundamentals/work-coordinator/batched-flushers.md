@@ -86,7 +86,14 @@ The position comes from the completion as well as from the processed `wh_perspec
 
 To see how far cursors are behind on a database that ran an affected release, count cursors whose stream has newer events, and streams with events and no cursor at all:
 
-```sql
+```sql{
+title: "Measure how far perspective cursors are behind"
+description: "Read-only queries: cursors whose stream has newer events, per perspective, and streams with events but no cursor."
+framework: "NET10"
+category: "Operations"
+difficulty: "INTERMEDIATE"
+tags: ["perspective-cursors", "runbook", "postgres", "diagnostics"]
+}
 -- Cursors behind their stream's head, per perspective
 SELECT c.perspective_name, count(*) AS cursors_behind_head
 FROM wh_perspective_cursors c

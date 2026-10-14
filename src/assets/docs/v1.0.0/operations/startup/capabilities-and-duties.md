@@ -166,12 +166,19 @@ Schema initialization no longer purges or vacuums. It runs on every instance at 
 
 Every vacuum runs with the table owner's rights. Postgres does not refuse a non-owner's `VACUUM`: it warns, skips the table, and reports success. So the vacuum runs on the schema-initialization connection (`ConnectionStrings:{name}-init`) when one is configured. Without one, it runs on the application connection only for a table that role owns, and every other table is logged as a warning that names the table and the role, rather than passing for done. The post-ready table rewrite follows the same rule.
 
-```json title="appsettings.json"
+```json{
+title: "Turn off the vacuum on a maintainer hand-off"
+description: "MaintainOnReassignment controls whether an instance that takes the maintainer duty over from another instance vacuums the work tables."
+framework: "NET10"
+category: "Configuration"
+difficulty: "BEGINNER"
+tags: ["maintenance", "vacuum", "maintainer-duty", "configuration"]
+}
 {
   "Whizbang": {
     "Workers": {
       "Maintenance": {
-        "MaintainOnReassignment": true
+        "MaintainOnReassignment": false
       }
     }
   }
