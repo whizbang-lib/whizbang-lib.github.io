@@ -84,33 +84,46 @@ A perspective completion carries the last event the run applied (`LastEventId`),
 
 The position comes from the completion as well as from the processed `wh_perspective_events` rows: in production those rows are deleted as they complete, before the cursor is written, and only debug mode keeps them. Until #1363, the cursor was derived from those rows, so a missing cursor was never created and an existing one never advanced; only its status changed.
 
-To see how far cursors are behind on a database that ran an affected release, count cursors whose stream has newer events, and streams with events and no cursor at all:
+To see whether a perspective's cursors are behind on a database that ran an affected release, compare each cursor with the events committed after it, **in commit order** and **only for the event types that perspective handles**:
+
+- **Commit order, not stream version.** A cursor can point at an event in another stream: a collective event updates many records at once and lives in a stream of its own, where it may be version 1. Comparing versions across streams reads every record a collective event touched as "behind".
+- **Only handled event types.** A stream carries events for many perspectives. An event the perspective ignores never moves its cursor, so counting it reads a healthy cursor as "behind". Without the list, the count is an upper bound, not a measurement.
 
 ```sql{
-title: "Measure how far perspective cursors are behind"
-description: "Read-only queries: cursors whose stream has newer events, per perspective, and streams with events but no cursor."
+title: "Measure how far one perspective's cursors are behind"
+description: "Read-only: cursors with a later-committed event of a type the perspective handles, and streams with that perspective's events but no cursor."
 framework: "NET10"
 category: "Operations"
 difficulty: "INTERMEDIATE"
 tags: ["perspective-cursors", "runbook", "postgres", "diagnostics"]
 }
--- Cursors behind their stream's head, per perspective
-SELECT c.perspective_name, count(*) AS cursors_behind_head
+-- Set these two first: the perspective's registered name, and the event types it handles
+-- (the type name before the comma in wh_event_store.event_type, e.g. 'My.Contracts+OrderPlacedEvent').
+\set perspective 'My.Service.Orders.OrderSummary+Projection'
+\set handled '{My.Contracts+OrderPlacedEvent,My.Contracts+OrderShippedEvent}'
+
+-- Cursors with a handled event committed after the one they point at
+SELECT count(*) AS cursors_behind
 FROM wh_perspective_cursors c
 JOIN wh_event_store at_cursor ON at_cursor.event_id = c.last_event_id
-WHERE EXISTS (
-  SELECT 1 FROM wh_event_store e
-  WHERE e.stream_id = c.stream_id AND e.version > at_cursor.version)
-GROUP BY c.perspective_name
-ORDER BY cursors_behind_head DESC;
+WHERE c.perspective_name = :'perspective'
+  AND EXISTS (
+    SELECT 1 FROM wh_event_store e
+    WHERE e.stream_id = c.stream_id
+      AND e.commit_sequence > at_cursor.commit_sequence
+      AND split_part(e.event_type, ',', 1) = ANY (:'handled'::text[]));
 
--- Streams with events and no cursor for any perspective
+-- Streams with a handled event and no cursor for this perspective
 SELECT count(DISTINCT e.stream_id) AS streams_without_a_cursor
 FROM wh_event_store e
-WHERE NOT EXISTS (SELECT 1 FROM wh_perspective_cursors c WHERE c.stream_id = e.stream_id);
+WHERE split_part(e.event_type, ',', 1) = ANY (:'handled'::text[])
+  AND NOT EXISTS (SELECT 1 FROM wh_perspective_cursors c
+                  WHERE c.stream_id = e.stream_id AND c.perspective_name = :'perspective');
 ```
 
 Both counts fall as the fixed release completes new work: each completion creates or advances its stream's cursor. A stream that receives no new events keeps its old cursor until it is next processed or rebuilt.
+
+**To repair rather than measure**, rebuild the affected records (`RebuildMode.SelectedStreams` with their stream ids). The rebuild replays each record on the instance that owns it and writes the cursor from what it applied, so it is exact where these queries can only estimate. Do not move cursors with SQL: a cursor set past an event the perspective has not applied makes that event look like a late arrival and triggers a replay, and SQL cannot tell which events were applied.
 
 ## Composite flush
 
