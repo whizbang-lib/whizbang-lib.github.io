@@ -2701,19 +2701,19 @@
   },
   "MultiStreamCommandRegistration": {
     "file": "src/Whizbang.Data.Postgres/MultiStream/MultiStreamCommandRegistration.cs",
-    "line": 20,
+    "line": 24,
     "symbol": "MultiStreamCommandRegistration",
     "docs": "fundamentals/dispatcher/multi-stream-commands#registration"
   },
   "MultiStreamCommandSubscriber": {
     "file": "src/Whizbang.Data.Postgres/MultiStream/MultiStreamCommandRegistration.cs",
-    "line": 37,
+    "line": 69,
     "symbol": "MultiStreamCommandSubscriber",
     "docs": "fundamentals/dispatcher/multi-stream-commands#worker"
   },
   "ConfigureMultiStreamCommandOptionsFromConfiguration": {
     "file": "src/Whizbang.Data.Postgres/MultiStream/MultiStreamCommandRegistration.cs",
-    "line": 56,
+    "line": 88,
     "symbol": "ConfigureMultiStreamCommandOptionsFromConfiguration",
     "docs": "fundamentals/dispatcher/multi-stream-commands#configuration"
   },
@@ -3223,7 +3223,7 @@
   },
   "defaultSchema": {
     "file": "src/Whizbang.Data.EFCore.Postgres/PostgresDriverExtensions.cs",
-    "line": 270,
+    "line": 273,
     "symbol": "defaultSchema",
     "docs": "operations/infrastructure/purging-streams"
   },
@@ -3245,6 +3245,18 @@
     "symbol": "PrincipalFilterExtensions",
     "docs": "fundamentals/security/security#principal-filtering"
   },
+  "RebuildBackgroundQueue": {
+    "file": "src/Whizbang.Data.EFCore.Postgres/RebuildBackgroundQueue.cs",
+    "line": 18,
+    "symbol": "RebuildBackgroundQueue",
+    "docs": "fundamentals/perspectives/perspectives#rebuild"
+  },
+  "RebuildBackgroundWorker": {
+    "file": "src/Whizbang.Data.EFCore.Postgres/RebuildBackgroundQueue.cs",
+    "line": 39,
+    "symbol": "RebuildBackgroundWorker",
+    "docs": "fundamentals/perspectives/perspectives#rebuild"
+  },
   "RebuildCommandReceptorRegistrar": {
     "file": "src/Whizbang.Data.EFCore.Postgres/RebuildCommandReceptorRegistrar.cs",
     "line": 35,
@@ -3253,7 +3265,7 @@
   },
   "RebuildPerspectiveCommandReceptor": {
     "file": "src/Whizbang.Data.EFCore.Postgres/RebuildPerspectiveCommandReceptor.cs",
-    "line": 38,
+    "line": 40,
     "symbol": "RebuildPerspectiveCommandReceptor",
     "docs": "fundamentals/perspectives/rebuild"
   },
@@ -3739,19 +3751,19 @@
   },
   "AddWhizbangPostgres": {
     "file": "src/Whizbang.Data.Dapper.Postgres/ServiceCollectionExtensions.cs",
-    "line": 100,
+    "line": 101,
     "symbol": "AddWhizbangPostgres",
     "docs": "fundamentals/perspectives/managed-schema-objects"
   },
   "_addSchemaInitialization": {
     "file": "src/Whizbang.Data.Dapper.Postgres/ServiceCollectionExtensions.cs",
-    "line": 406,
+    "line": 413,
     "symbol": "_addSchemaInitialization",
     "docs": "data/turnkey-initialization"
   },
   "AddStreamPurge": {
     "file": "src/Whizbang.Data.Dapper.Postgres/ServiceCollectionExtensions.cs",
-    "line": 429,
+    "line": 436,
     "symbol": "AddStreamPurge",
     "docs": "operations/infrastructure/purging-streams"
   },
@@ -4888,6 +4900,12 @@
     "line": 22,
     "symbol": "NoOpPinnedConnectionPool",
     "docs": "fundamentals/workers/pinned-connection-pool"
+  },
+  "NullPartitionAssignmentSource": {
+    "file": "src/Whizbang.Core/Workers/NullPartitionAssignmentSource.cs",
+    "line": 11,
+    "symbol": "NullPartitionAssignmentSource",
+    "docs": "fundamentals/work-coordinator/partition-assignment"
   },
   "OutboxCompletionFlushWorker": {
     "file": "src/Whizbang.Core/Workers/OutboxCompletionFlushWorker.cs",
@@ -8315,33 +8333,39 @@
     "symbol": "IPerspectiveRebuilder",
     "docs": "fundamentals/perspectives/perspectives#rebuild"
   },
+  "RebuildResult": {
+    "file": "src/Whizbang.Core/Perspectives/IPerspectiveRebuilder.cs",
+    "line": 81,
+    "symbol": "RebuildResult",
+    "docs": "fundamentals/perspectives/perspectives#rebuild"
+  },
   "StreamsRequested": {
     "file": "src/Whizbang.Core/Perspectives/IPerspectiveRebuilder.cs",
-    "line": 92,
+    "line": 106,
     "symbol": "StreamsRequested",
     "docs": "fundamentals/perspectives/rebuild#reading-the-result"
   },
   "StreamsRefused": {
     "file": "src/Whizbang.Core/Perspectives/IPerspectiveRebuilder.cs",
-    "line": 100,
+    "line": 114,
     "symbol": "StreamsRefused",
     "docs": "fundamentals/perspectives/rebuild#reading-the-result"
   },
   "StreamsPurged": {
     "file": "src/Whizbang.Core/Perspectives/IPerspectiveRebuilder.cs",
-    "line": 108,
+    "line": 122,
     "symbol": "StreamsPurged",
     "docs": "fundamentals/perspectives/rebuild#terminal-purges"
   },
   "RebuildOrigin": {
     "file": "src/Whizbang.Core/Perspectives/IPerspectiveRebuilder.cs",
-    "line": 155,
+    "line": 169,
     "symbol": "RebuildOrigin",
     "docs": "fundamentals/perspectives/perspectives#rebuild-events"
   },
   "RebuildTrigger": {
     "file": "src/Whizbang.Core/Perspectives/IPerspectiveRebuilder.cs",
-    "line": 165,
+    "line": 179,
     "symbol": "RebuildTrigger",
     "docs": "fundamentals/perspectives/perspectives#rebuild-events"
   },
@@ -8704,6 +8728,12 @@
     "line": 57,
     "symbol": "QueryExposureRegistry",
     "docs": "operations/diagnostics/whiz306"
+  },
+  "RebuildPerspectiveStreamsHandler": {
+    "file": "src/Whizbang.Core/Perspectives/RebuildPerspectiveStreamsHandler.cs",
+    "line": 16,
+    "symbol": "RebuildPerspectiveStreamsHandler",
+    "docs": "fundamentals/perspectives/perspectives#rebuild"
   },
   "ReplayEventOrder": {
     "file": "src/Whizbang.Core/Perspectives/ReplayEventOrder.cs",
@@ -9943,7 +9973,7 @@
   },
   "NullMultiStreamCommandStore": {
     "file": "src/Whizbang.Core/MultiStream/IMultiStreamCommandStore.cs",
-    "line": 66,
+    "line": 69,
     "symbol": "NullMultiStreamCommandStore",
     "docs": "fundamentals/dispatcher/multi-stream-commands#storage"
   },
@@ -10009,19 +10039,19 @@
   },
   "MultiStreamOutcome": {
     "file": "src/Whizbang.Core/MultiStream/MultiStreamWork.cs",
-    "line": 33,
+    "line": 34,
     "symbol": "MultiStreamOutcome",
     "docs": "fundamentals/dispatcher/multi-stream-commands#outcomes"
   },
   "MultiStreamRunCompletion": {
     "file": "src/Whizbang.Core/MultiStream/MultiStreamWork.cs",
-    "line": 43,
+    "line": 58,
     "symbol": "MultiStreamRunCompletion",
     "docs": "fundamentals/dispatcher/multi-stream-commands#outcomes"
   },
   "MultiStreamRunStatus": {
     "file": "src/Whizbang.Core/MultiStream/MultiStreamWork.cs",
-    "line": 56,
+    "line": 71,
     "symbol": "MultiStreamRunStatus",
     "docs": "fundamentals/dispatcher/multi-stream-commands#outcomes"
   },
@@ -12778,6 +12808,12 @@
     "line": 59,
     "symbol": "WhizbangGuardrailsOptions",
     "docs": "fundamentals/receptors/exactly-once-firing"
+  },
+  "RebuildPerspectiveStreamsCommand": {
+    "file": "src/Whizbang.Core/Commands/System/RebuildPerspectiveStreamsCommand.cs",
+    "line": 20,
+    "symbol": "RebuildPerspectiveStreamsCommand",
+    "docs": "fundamentals/perspectives/perspectives#rebuild"
   },
   "RebuildPerspectiveCommand": {
     "file": "src/Whizbang.Core/Commands/System/SystemCommands.cs",

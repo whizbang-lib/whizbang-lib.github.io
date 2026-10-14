@@ -30660,29 +30660,8 @@
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/MultiStream/MultiStreamCommandRegistrationTests.cs",
-        "testMethod": "Registrar_StartAsync_RegistersTheIntakeAtTheDefaultReceptorStagesAsync",
-        "testLine": 122,
-        "testClass": "MultiStreamCommandRegistrationTests",
-        "linkSource": "Convention"
-      },
-      {
-        "testFile": "tests/Whizbang.Core.Tests/MultiStream/MultiStreamCommandRegistrationTests.cs",
         "testMethod": "RegisterIntake_WithNoLoggerRegistered_StillRegistersTheIntakeAsync",
-        "testLine": 138,
-        "testClass": "MultiStreamCommandRegistrationTests",
-        "linkSource": "Convention"
-      },
-      {
-        "testFile": "tests/Whizbang.Core.Tests/MultiStream/MultiStreamCommandRegistrationTests.cs",
-        "testMethod": "Registrar_StartAsync_WithTheNullRegistry_RegistersNothingAndStartsAsync",
-        "testLine": 151,
-        "testClass": "MultiStreamCommandRegistrationTests",
-        "linkSource": "Convention"
-      },
-      {
-        "testFile": "tests/Whizbang.Core.Tests/MultiStream/MultiStreamCommandRegistrationTests.cs",
-        "testMethod": "Registrar_StartAsync_WithNoRegistry_RegistersNothingAndStartsAsync",
-        "testLine": 160,
+        "testLine": 122,
         "testClass": "MultiStreamCommandRegistrationTests",
         "linkSource": "Convention"
       }
@@ -38563,6 +38542,25 @@
       {
         "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/PrincipalFilterExtensionsTests.cs",
         "testMethod": "FilterByPrincipals_LargePrincipalSet_MatchingGroupPrincipal_ReturnsRowAsync",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "RebuildBackgroundQueue": [
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/MultiStream/RebuildCommandRoutingTests.cs",
+        "testMethod": "BlueGreen_WithAQueue_IsQueuedAndTheHandlerDoesNotRunItAsync",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "RebuildBackgroundWorker": [
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/MultiStream/RebuildBackgroundWorkerTests.cs",
+        "testMethod": "AQueuedRebuild_IsRunByTheWorkerAndReportedAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/MultiStream/RebuildBackgroundWorkerTests.cs",
+        "testMethod": "ARebuildThatThrows_IsReportedAndTheNextQueuedRebuildStillRunsAsync",
         "linkSource": "XmlTag"
       }
     ],
@@ -51944,6 +51942,18 @@
       {
         "testFile": "tests/Whizbang.Core.Tests/Workers/PinnedConnectionPoolPrimitivesTests.cs",
         "testMethod": "NoOp_TryPin_CanceledToken_ThrowsOperationCanceledAsync",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "NullPartitionAssignmentSource": [
+      {
+        "testFile": "tests/Whizbang.Core.Tests/MultiStream/NullPartitionAssignmentSourceTests.cs",
+        "testMethod": "ForClaimAsync_NeverHasAnAssignmentAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/MultiStream/NullPartitionAssignmentSourceTests.cs",
+        "testMethod": "MarkStaleAndSubscribing_ChangeNothingAsync",
         "linkSource": "XmlTag"
       }
     ],
@@ -75020,6 +75030,18 @@
         "linkSource": "XmlTag"
       }
     ],
+    "ResolveStreamIdsAsync": [
+      {
+        "testFile": "tests/Whizbang.Core.Tests/MultiStream/RebuildPerspectiveStreamsHandlerTests.cs",
+        "testMethod": "ResolveStreamIdsAsync_ARebuilderThatCannotList_SaysNothingAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/PerspectiveRebuilderIntegrationTests.cs",
+        "testMethod": "ResolveStreamIdsAsync_ListsTheStreamsCarryingThisPerspectivesEventsAsync",
+        "linkSource": "XmlTag"
+      }
+    ],
     "StreamsRequested": [
       {
         "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/PerspectiveRebuilderIntegrationTests.cs",
@@ -76843,6 +76865,37 @@
         "testFile": "tests/Whizbang.Core.Tests/Perspectives/QueryExposureRegistryTests.cs",
         "testMethod": "ANullTypeIsRejectedAsync",
         "linkSource": "XmlTag"
+      }
+    ],
+    "RebuildPerspectiveStreamsHandler": [
+      {
+        "testFile": "tests/Whizbang.Core.Tests/MultiStream/RebuildPerspectiveStreamsHandlerTests.cs",
+        "testMethod": "HandleStreamAsync_RebuildsThatOneStreamUnderTheRebuildsOriginAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/MultiStream/RebuildPerspectiveStreamsHandlerTests.cs",
+        "testMethod": "HandleStreamAsync_ARebuildThatDidNotSucceed_ThrowsWithItsErrorAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/PerspectiveRebuilderIntegrationTests.cs",
+        "testMethod": "RebuildCommand_NamingAStream_IsRebuiltByTheStreamsOwnerThroughARunAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/MultiStream/RebuildPerspectiveStreamsHandlerTests.cs",
+        "testMethod": "Constructor_NoRebuilder_ThrowsAsync",
+        "testLine": 45,
+        "testClass": "RebuildPerspectiveStreamsHandlerTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/MultiStream/RebuildPerspectiveStreamsHandlerTests.cs",
+        "testMethod": "ResolveStreamIdsAsync_ARebuilderThatCannotList_SaysNothingAsync",
+        "testLine": 50,
+        "testClass": "RebuildPerspectiveStreamsHandlerTests",
+        "linkSource": "Convention"
       }
     ],
     "ReplayEventOrder": [
@@ -93210,8 +93263,8 @@
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Core.Tests/MultiStream/MultiStreamCommandRegistrationTests.cs",
-        "testMethod": "Registrar_StartAsync_RegistersTheIntakeAtTheDefaultReceptorStagesAsync",
+        "testFile": "tests/Whizbang.Core.Component.Tests/MultiStream/MultiStreamCommandReceptorRegistrarTests.cs",
+        "testMethod": "StartAsync_RegistersTheIntakeAtTheDefaultReceptorStagesAsync",
         "linkSource": "XmlTag"
       }
     ],
@@ -93325,14 +93378,21 @@
     ],
     "MultiStreamCommandReceptorRegistrar": [
       {
-        "testFile": "tests/Whizbang.Core.Tests/MultiStream/MultiStreamCommandRegistrationTests.cs",
-        "testMethod": "Registrar_StartAsync_RegistersTheIntakeAtTheDefaultReceptorStagesAsync",
+        "testFile": "tests/Whizbang.Core.Component.Tests/MultiStream/MultiStreamCommandReceptorRegistrarTests.cs",
+        "testMethod": "StartAsync_RegistersTheIntakeAtTheDefaultReceptorStagesAsync",
         "linkSource": "XmlTag"
       },
       {
-        "testFile": "tests/Whizbang.Core.Tests/MultiStream/MultiStreamCommandRegistrationTests.cs",
-        "testMethod": "Registrar_StartAsync_WithTheNullRegistry_RegistersNothingAndStartsAsync",
+        "testFile": "tests/Whizbang.Core.Component.Tests/MultiStream/MultiStreamCommandReceptorRegistrarTests.cs",
+        "testMethod": "StartAsync_WithTheNullRegistry_RegistersNothingAndStartsAsync",
         "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Component.Tests/MultiStream/MultiStreamCommandReceptorRegistrarTests.cs",
+        "testMethod": "StartAsync_WithNoRegistry_RegistersNothingAndStartsAsync",
+        "testLine": 57,
+        "testClass": "MultiStreamCommandReceptorRegistrarTests",
+        "linkSource": "Convention"
       }
     ],
     "MultiStreamCommandServiceCollectionExtensions": [
@@ -93371,112 +93431,119 @@
       {
         "testFile": "tests/Whizbang.Core.Tests/MultiStream/MultiStreamCommandWorkerTests.cs",
         "testMethod": "RunOnceAsync_ClaimsAsThisInstanceWithTheConfiguredBatchAndLeaseAsync",
-        "testLine": 88,
+        "testLine": 90,
         "testClass": "MultiStreamCommandWorkerTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/MultiStream/MultiStreamCommandWorkerTests.cs",
         "testMethod": "RunOnceAsync_ClaimsUnderTheCachedPartitionAssignmentAsync",
-        "testLine": 100,
+        "testLine": 102,
         "testClass": "MultiStreamCommandWorkerTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/MultiStream/MultiStreamCommandWorkerTests.cs",
         "testMethod": "RunOnceAsync_NothingToClaim_RecordsNothingAsync",
-        "testLine": 112,
+        "testLine": 114,
         "testClass": "MultiStreamCommandWorkerTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/MultiStream/MultiStreamCommandWorkerTests.cs",
         "testMethod": "RunOnceAsync_AHandlerTimingOutOnItsOwn_IsAFailureNotAShutdownAsync",
-        "testLine": 136,
+        "testLine": 138,
         "testClass": "MultiStreamCommandWorkerTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/MultiStream/MultiStreamCommandWorkerTests.cs",
-        "testMethod": "RunOnceAsync_ACommandThisInstanceHasNoHandlerFor_RecordsAFailureNamingItAsync",
-        "testLine": 149,
+        "testMethod": "RunOnceAsync_ACommandThisInstanceHasNoHandlerFor_IsReleasedWithoutCountingAnAttemptAsync",
+        "testLine": 151,
         "testClass": "MultiStreamCommandWorkerTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/MultiStream/MultiStreamCommandWorkerTests.cs",
         "testMethod": "RunOnceAsync_RunsTheHandlerUnderTheRunsScopeAndPutsTheAmbientScopeBackAsync",
-        "testLine": 163,
+        "testLine": 168,
         "testClass": "MultiStreamCommandWorkerTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/MultiStream/MultiStreamCommandWorkerTests.cs",
         "testMethod": "RunOnceAsync_ARunWithNoScope_RunsTheHandlerWithNoScopeAsync",
-        "testLine": 185,
+        "testLine": 190,
         "testClass": "MultiStreamCommandWorkerTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/MultiStream/MultiStreamCommandWorkerTests.cs",
         "testMethod": "RunOnceAsync_ARunThatCompleted_IsPublishedAndAnnouncedAsync",
-        "testLine": 198,
+        "testLine": 203,
+        "testClass": "MultiStreamCommandWorkerTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/MultiStream/MultiStreamCommandWorkerTests.cs",
+        "testMethod": "RunOnceAsync_ARunThatCompleted_WithNobodyListening_IsStillPublishedAsync",
+        "testLine": 225,
         "testClass": "MultiStreamCommandWorkerTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/MultiStream/MultiStreamCommandWorkerTests.cs",
         "testMethod": "RunOnceAsync_ACompletionThatCannotBePublished_IsStillAnnouncedAsync",
-        "testLine": 220,
+        "testLine": 238,
         "testClass": "MultiStreamCommandWorkerTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/MultiStream/MultiStreamCommandWorkerTests.cs",
         "testMethod": "RunOnceAsync_WithNoDispatcher_StillAnnouncesTheCompletionAsync",
-        "testLine": 234,
+        "testLine": 252,
         "testClass": "MultiStreamCommandWorkerTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/MultiStream/MultiStreamCommandWorkerTests.cs",
         "testMethod": "RunOnceAsync_CanceledBeforeAnyStreamFinished_RecordsNothingAsync",
-        "testLine": 261,
+        "testLine": 279,
         "testClass": "MultiStreamCommandWorkerTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/MultiStream/MultiStreamCommandWorkerTests.cs",
         "testMethod": "PurgeIfDueAsync_PurgesRunsOlderThanTheRetentionOncePerIntervalAsync",
-        "testLine": 274,
-        "testClass": "MultiStreamCommandWorkerTests",
-        "linkSource": "Convention"
-      },
-      {
-        "testFile": "tests/Whizbang.Core.Tests/MultiStream/MultiStreamCommandWorkerTests.cs",
-        "testMethod": "RequestImmediateRun_WhenAWakeIsAlreadyPending_IsHarmlessAsync",
         "testLine": 292,
         "testClass": "MultiStreamCommandWorkerTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/MultiStream/MultiStreamCommandWorkerTests.cs",
+        "testMethod": "RequestImmediateRun_WhenAWakeIsAlreadyPending_IsHarmlessAsync",
+        "testLine": 310,
+        "testClass": "MultiStreamCommandWorkerTests",
+        "linkSource": "Convention"
+      },
+      {
+        "testFile": "tests/Whizbang.Core.Tests/MultiStream/MultiStreamCommandWorkerTests.cs",
         "testMethod": "Constructor_NullDependencies_ThrowAsync",
-        "testLine": 303,
+        "testLine": 321,
         "testClass": "MultiStreamCommandWorkerTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/MultiStream/MultiStreamCommandWorkerTests.cs",
         "testMethod": "Options_Validate_RefusesANonPositiveSettingAsync",
-        "testLine": 320,
+        "testLine": 342,
         "testClass": "MultiStreamCommandWorkerTests",
         "linkSource": "Convention"
       },
       {
         "testFile": "tests/Whizbang.Core.Tests/MultiStream/MultiStreamCommandWorkerTests.cs",
         "testMethod": "Options_Validate_AcceptsTheDefaultsAsync",
-        "testLine": 340,
+        "testLine": 365,
         "testClass": "MultiStreamCommandWorkerTests",
         "linkSource": "Convention"
       }
@@ -93548,6 +93615,11 @@
       {
         "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/MultiStream/MultiStreamCommandStoreSqlTests.cs",
         "testMethod": "CompleteAsync_AFailureAtTheAttemptLimit_RecordsTheStreamFailedWithItsErrorAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/MultiStream/MultiStreamCommandStoreSqlTests.cs",
+        "testMethod": "CompleteAsync_AReleasedStream_IsOfferedAgainAfterTheDelayWithoutCountingAnAttemptAsync",
         "linkSource": "XmlTag"
       }
     ],
@@ -118166,6 +118238,18 @@
       {
         "testFile": "tests/Whizbang.Core.Tests/Messaging/ChaosInjectorInvokerTests.cs",
         "testMethod": "IsActive_FlagOn_WithInjector_TrueAsync",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "RebuildPerspectiveStreamsCommand": [
+      {
+        "testFile": "tests/Whizbang.Core.Tests/MultiStream/RebuildPerspectiveStreamsHandlerTests.cs",
+        "testMethod": "HandleStreamAsync_RebuildsThatOneStreamUnderTheRebuildsOriginAsync",
+        "linkSource": "XmlTag"
+      },
+      {
+        "testFile": "tests/Whizbang.Data.EFCore.Postgres.Tests/MultiStream/RebuildCommandRoutingTests.cs",
+        "testMethod": "NamedStreams_WithAStore_AreRecordedAsARunAndRebuiltNothingHereAsync",
         "linkSource": "XmlTag"
       }
     ],
@@ -162417,14 +162501,14 @@
       },
       {
         "sourceFile": "src/Whizbang.Data.Dapper.Postgres/ServiceCollectionExtensions.cs",
-        "sourceLine": 26,
+        "sourceLine": 27,
         "sourceSymbol": "ServiceCollectionExtensions",
         "sourceType": "Class",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Data.Dapper.Postgres/ServiceCollectionExtensions.cs",
-        "sourceLine": 40,
+        "sourceLine": 41,
         "sourceSymbol": "AddWhizbangPostgres",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -162446,14 +162530,14 @@
       },
       {
         "sourceFile": "src/Whizbang.Data.Dapper.Postgres/ServiceCollectionExtensions.cs",
-        "sourceLine": 27,
+        "sourceLine": 28,
         "sourceSymbol": "ServiceCollectionExtensions",
         "sourceType": "Class",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Data.Dapper.Postgres/ServiceCollectionExtensions.cs",
-        "sourceLine": 41,
+        "sourceLine": 42,
         "sourceSymbol": "AddWhizbangPostgres",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -162475,14 +162559,14 @@
       },
       {
         "sourceFile": "src/Whizbang.Data.Dapper.Postgres/ServiceCollectionExtensions.cs",
-        "sourceLine": 28,
+        "sourceLine": 29,
         "sourceSymbol": "ServiceCollectionExtensions",
         "sourceType": "Class",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Data.Dapper.Postgres/ServiceCollectionExtensions.cs",
-        "sourceLine": 42,
+        "sourceLine": 43,
         "sourceSymbol": "AddWhizbangPostgres",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -189024,7 +189108,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Data.Dapper.Postgres/ServiceCollectionExtensions.cs",
-        "sourceLine": 407,
+        "sourceLine": 414,
         "sourceSymbol": "_addSchemaInitialization",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -191255,7 +191339,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Data.Dapper.Postgres/ServiceCollectionExtensions.cs",
-        "sourceLine": 430,
+        "sourceLine": 437,
         "sourceSymbol": "AddStreamPurge",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -195946,7 +196030,7 @@
     "MultiStreamCommandPostgresRegistrationTests.AddWhizbangPostgresNotifications_WiresTheStoreAndTheWorkerAsync": [
       {
         "sourceFile": "src/Whizbang.Data.Postgres/MultiStream/MultiStreamCommandRegistration.cs",
-        "sourceLine": 21,
+        "sourceLine": 25,
         "sourceSymbol": "MultiStreamCommandRegistration",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -195955,7 +196039,7 @@
     "MultiStreamCommandPostgresRegistrationTests.AHandlerRegisteredBeforeTheDriver_StillGetsThePostgresStoreAsync": [
       {
         "sourceFile": "src/Whizbang.Data.Postgres/MultiStream/MultiStreamCommandRegistration.cs",
-        "sourceLine": 22,
+        "sourceLine": 26,
         "sourceSymbol": "MultiStreamCommandRegistration",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -195964,7 +196048,7 @@
     "MultiStreamCommandPostgresRegistrationTests.Subscriber_SubscribesTheWorkerToNewRunNoticesUntilStoppedAsync": [
       {
         "sourceFile": "src/Whizbang.Data.Postgres/MultiStream/MultiStreamCommandRegistration.cs",
-        "sourceLine": 38,
+        "sourceLine": 70,
         "sourceSymbol": "MultiStreamCommandSubscriber",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -195973,7 +196057,7 @@
     "MultiStreamCommandPostgresRegistrationTests.Options_BindFromTheirSectionAsync": [
       {
         "sourceFile": "src/Whizbang.Data.Postgres/MultiStream/MultiStreamCommandRegistration.cs",
-        "sourceLine": 57,
+        "sourceLine": 89,
         "sourceSymbol": "ConfigureMultiStreamCommandOptionsFromConfiguration",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -195982,7 +196066,7 @@
     "MultiStreamCommandPostgresRegistrationTests.Options_AValueThatDoesNotParse_KeepsItsDefaultAsync": [
       {
         "sourceFile": "src/Whizbang.Data.Postgres/MultiStream/MultiStreamCommandRegistration.cs",
-        "sourceLine": 58,
+        "sourceLine": 90,
         "sourceSymbol": "ConfigureMultiStreamCommandOptionsFromConfiguration",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -195998,7 +196082,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/MultiStream/MultiStreamWork.cs",
-        "sourceLine": 57,
+        "sourceLine": 72,
         "sourceSymbol": "MultiStreamRunStatus",
         "sourceType": "Record",
         "linkSource": "XmlTag"
@@ -196030,7 +196114,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Core/MultiStream/MultiStreamWork.cs",
-        "sourceLine": 44,
+        "sourceLine": 59,
         "sourceSymbol": "MultiStreamRunCompletion",
         "sourceType": "Record",
         "linkSource": "XmlTag"
@@ -208468,10 +208552,37 @@
         "linkSource": "XmlTag"
       }
     ],
+    "RebuildCommandRoutingTests.BlueGreen_WithAQueue_IsQueuedAndTheHandlerDoesNotRunItAsync": [
+      {
+        "sourceFile": "src/Whizbang.Data.EFCore.Postgres/RebuildBackgroundQueue.cs",
+        "sourceLine": 19,
+        "sourceSymbol": "RebuildBackgroundQueue",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "RebuildBackgroundWorkerTests.AQueuedRebuild_IsRunByTheWorkerAndReportedAsync": [
+      {
+        "sourceFile": "src/Whizbang.Data.EFCore.Postgres/RebuildBackgroundQueue.cs",
+        "sourceLine": 40,
+        "sourceSymbol": "RebuildBackgroundWorker",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "RebuildBackgroundWorkerTests.ARebuildThatThrows_IsReportedAndTheNextQueuedRebuildStillRunsAsync": [
+      {
+        "sourceFile": "src/Whizbang.Data.EFCore.Postgres/RebuildBackgroundQueue.cs",
+        "sourceLine": 41,
+        "sourceSymbol": "RebuildBackgroundWorker",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
     "PerspectiveRebuilderIntegrationTests.RebuildPerspectiveCommand_WithNamedPerspective_UpdatesCursorAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/RebuildPerspectiveCommandReceptor.cs",
-        "sourceLine": 39,
+        "sourceLine": 41,
         "sourceSymbol": "RebuildPerspectiveCommandReceptor",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -208480,7 +208591,7 @@
     "PerspectiveRebuilderIntegrationTests.RebuildPerspectiveCommand_WithIncludeStreamIds_UpdatesOnlyTargetedCursorsAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/RebuildPerspectiveCommandReceptor.cs",
-        "sourceLine": 40,
+        "sourceLine": 42,
         "sourceSymbol": "RebuildPerspectiveCommandReceptor",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -208489,7 +208600,7 @@
     "PerspectiveRebuilderIntegrationTests.RebuildPerspectiveCommand_WithNullPerspectiveNames_FansOutToAllRegisteredAsync": [
       {
         "sourceFile": "src/Whizbang.Data.EFCore.Postgres/RebuildPerspectiveCommandReceptor.cs",
-        "sourceLine": 41,
+        "sourceLine": 43,
         "sourceSymbol": "RebuildPerspectiveCommandReceptor",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -216915,7 +217026,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Data.Dapper.Postgres/ServiceCollectionExtensions.cs",
-        "sourceLine": 407,
+        "sourceLine": 414,
         "sourceSymbol": "_addSchemaInitialization",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -216931,7 +217042,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Data.Dapper.Postgres/ServiceCollectionExtensions.cs",
-        "sourceLine": 407,
+        "sourceLine": 414,
         "sourceSymbol": "_addSchemaInitialization",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -216947,7 +217058,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Data.Dapper.Postgres/ServiceCollectionExtensions.cs",
-        "sourceLine": 407,
+        "sourceLine": 414,
         "sourceSymbol": "_addSchemaInitialization",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -216963,7 +217074,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Data.Dapper.Postgres/ServiceCollectionExtensions.cs",
-        "sourceLine": 407,
+        "sourceLine": 414,
         "sourceSymbol": "_addSchemaInitialization",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -216979,7 +217090,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Data.Dapper.Postgres/ServiceCollectionExtensions.cs",
-        "sourceLine": 407,
+        "sourceLine": 414,
         "sourceSymbol": "_addSchemaInitialization",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -216995,7 +217106,7 @@
       },
       {
         "sourceFile": "src/Whizbang.Data.Dapper.Postgres/ServiceCollectionExtensions.cs",
-        "sourceLine": 407,
+        "sourceLine": 414,
         "sourceSymbol": "_addSchemaInitialization",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -217277,36 +217388,20 @@
     "DapperGateWiringTests.MaxInFlightCommands_ReachesTheWorkCoordinatorGateAsync": [
       {
         "sourceFile": "src/Whizbang.Data.Dapper.Postgres/ServiceCollectionExtensions.cs",
-        "sourceLine": 74,
+        "sourceLine": 75,
         "sourceSymbol": "AddWhizbangPostgres",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       },
       {
         "sourceFile": "src/Whizbang.Data.Dapper.Postgres/ServiceCollectionExtensions.cs",
-        "sourceLine": 262,
+        "sourceLine": 266,
         "sourceSymbol": "AddWhizbangPostgres",
         "sourceType": "Method",
         "linkSource": "XmlTag"
       }
     ],
     "DapperGateWiringTests.MaxInFlightCommands_ReachesTheGate_ThroughTheSchemaSqlOverloadAsync": [
-      {
-        "sourceFile": "src/Whizbang.Data.Dapper.Postgres/ServiceCollectionExtensions.cs",
-        "sourceLine": 74,
-        "sourceSymbol": "AddWhizbangPostgres",
-        "sourceType": "Method",
-        "linkSource": "XmlTag"
-      },
-      {
-        "sourceFile": "src/Whizbang.Data.Dapper.Postgres/ServiceCollectionExtensions.cs",
-        "sourceLine": 262,
-        "sourceSymbol": "AddWhizbangPostgres",
-        "sourceType": "Method",
-        "linkSource": "XmlTag"
-      }
-    ],
-    "DapperGatePrecedenceTests.ASectionValue_WinsOverMaxInFlightCommandsAsync": [
       {
         "sourceFile": "src/Whizbang.Data.Dapper.Postgres/ServiceCollectionExtensions.cs",
         "sourceLine": 75,
@@ -217316,7 +217411,23 @@
       },
       {
         "sourceFile": "src/Whizbang.Data.Dapper.Postgres/ServiceCollectionExtensions.cs",
-        "sourceLine": 263,
+        "sourceLine": 266,
+        "sourceSymbol": "AddWhizbangPostgres",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "DapperGatePrecedenceTests.ASectionValue_WinsOverMaxInFlightCommandsAsync": [
+      {
+        "sourceFile": "src/Whizbang.Data.Dapper.Postgres/ServiceCollectionExtensions.cs",
+        "sourceLine": 76,
+        "sourceSymbol": "AddWhizbangPostgres",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Data.Dapper.Postgres/ServiceCollectionExtensions.cs",
+        "sourceLine": 267,
         "sourceSymbol": "AddWhizbangPostgres",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -217325,7 +217436,7 @@
     "DapperManagedObjectsTests.AnIndexNoLongerDeclared_IsDroppedOnTheStartAfterItIsSeen_AndAForeignOneIsKeptAsync": [
       {
         "sourceFile": "src/Whizbang.Data.Dapper.Postgres/ServiceCollectionExtensions.cs",
-        "sourceLine": 101,
+        "sourceLine": 102,
         "sourceSymbol": "AddWhizbangPostgres",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -217334,7 +217445,7 @@
     "DapperManagedObjectsTests.WithoutADeclaration_NothingIsReconciledAsync": [
       {
         "sourceFile": "src/Whizbang.Data.Dapper.Postgres/ServiceCollectionExtensions.cs",
-        "sourceLine": 101,
+        "sourceLine": 102,
         "sourceSymbol": "AddWhizbangPostgres",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -217343,7 +217454,7 @@
     "DapperManagedObjectsTests.AReconcileThatFails_IsLoggedAndDoesNotFailTheStartAsync": [
       {
         "sourceFile": "src/Whizbang.Data.Dapper.Postgres/ServiceCollectionExtensions.cs",
-        "sourceLine": 101,
+        "sourceLine": 102,
         "sourceSymbol": "AddWhizbangPostgres",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -217352,7 +217463,7 @@
     "DapperManagedObjectsTests.AReconcileThatFails_WithNoLogger_StillDoesNotFailTheStartAsync": [
       {
         "sourceFile": "src/Whizbang.Data.Dapper.Postgres/ServiceCollectionExtensions.cs",
-        "sourceLine": 101,
+        "sourceLine": 102,
         "sourceSymbol": "AddWhizbangPostgres",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -217361,7 +217472,7 @@
     "DapperManagedObjectsTests.TheRegistration_WithDeclaredObjects_ReconcilesAtStartAsync": [
       {
         "sourceFile": "src/Whizbang.Data.Dapper.Postgres/ServiceCollectionExtensions.cs",
-        "sourceLine": 101,
+        "sourceLine": 102,
         "sourceSymbol": "AddWhizbangPostgres",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -217370,7 +217481,7 @@
     "DapperManagedObjectsTests.TheRegistration_WithoutADeclaration_ReconcilesNothingAsync": [
       {
         "sourceFile": "src/Whizbang.Data.Dapper.Postgres/ServiceCollectionExtensions.cs",
-        "sourceLine": 101,
+        "sourceLine": 102,
         "sourceSymbol": "AddWhizbangPostgres",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -217379,7 +217490,7 @@
     "ServiceCollectionExtensionsTests.AddWhizbangPostgresHealthChecks_RegistersHealthCheckAsync": [
       {
         "sourceFile": "src/Whizbang.Data.Dapper.Postgres/ServiceCollectionExtensions.cs",
-        "sourceLine": 453,
+        "sourceLine": 460,
         "sourceSymbol": "AddWhizbangPostgresHealthChecks",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -217394,7 +217505,7 @@
     "ServiceCollectionExtensions_DeadLetterRegistrationTests.AddDeadLetterStore_RegistersDeadLetterStoreAsSingletonAsync": [
       {
         "sourceFile": "src/Whizbang.Data.Dapper.Postgres/ServiceCollectionExtensions.cs",
-        "sourceLine": 481,
+        "sourceLine": 488,
         "sourceSymbol": "_addDeadLetterStore",
         "sourceType": "Method",
         "linkSource": "XmlTag"
@@ -231126,6 +231237,24 @@
         "sourceFile": "src/Whizbang.Core/Workers/NoOpPinnedConnectionPool.cs",
         "sourceLine": 25,
         "sourceSymbol": "NoOpPinnedConnectionPool",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "NullPartitionAssignmentSourceTests.ForClaimAsync_NeverHasAnAssignmentAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Workers/NullPartitionAssignmentSource.cs",
+        "sourceLine": 12,
+        "sourceSymbol": "NullPartitionAssignmentSource",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "NullPartitionAssignmentSourceTests.MarkStaleAndSubscribing_ChangeNothingAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Workers/NullPartitionAssignmentSource.cs",
+        "sourceLine": 13,
+        "sourceSymbol": "NullPartitionAssignmentSource",
         "sourceType": "Class",
         "linkSource": "XmlTag"
       }
@@ -264425,10 +264554,34 @@
         "linkSource": "XmlTag"
       }
     ],
+    "RebuildPerspectiveStreamsHandlerTests.ResolveStreamIdsAsync_ARebuilderThatCannotList_SaysNothingAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Perspectives/IPerspectiveRebuilder.cs",
+        "sourceLine": 82,
+        "sourceSymbol": "ResolveStreamIdsAsync",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Perspectives/RebuildPerspectiveStreamsHandler.cs",
+        "sourceSymbol": "RebuildPerspectiveStreamsHandler",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "PerspectiveRebuilderIntegrationTests.ResolveStreamIdsAsync_ListsTheStreamsCarryingThisPerspectivesEventsAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Perspectives/IPerspectiveRebuilder.cs",
+        "sourceLine": 83,
+        "sourceSymbol": "ResolveStreamIdsAsync",
+        "sourceType": "Method",
+        "linkSource": "XmlTag"
+      }
+    ],
     "PerspectiveRebuilderIntegrationTests.RebuildStreamsAsync_ReportsHowManyRequestedStreamsItActuallyFoundAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Perspectives/IPerspectiveRebuilder.cs",
-        "sourceLine": 93,
+        "sourceLine": 107,
         "sourceSymbol": "StreamsRequested",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -264437,7 +264590,7 @@
     "PerspectiveRebuilderTests.RebuildStreamsAsync_WhenEveryNamedStreamIsRefused_ReportsTheRefusalsAsAFailureAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Perspectives/IPerspectiveRebuilder.cs",
-        "sourceLine": 101,
+        "sourceLine": 115,
         "sourceSymbol": "StreamsRefused",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -264446,7 +264599,7 @@
     "PerspectiveRebuilderIntegrationTests.RebuildStreamsAsync_WhenTheLastEventAlwaysPurges_DeletesTheRowWithoutFoldingTheStreamAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Perspectives/IPerspectiveRebuilder.cs",
-        "sourceLine": 109,
+        "sourceLine": 123,
         "sourceSymbol": "StreamsPurged",
         "sourceType": "Property",
         "linkSource": "XmlTag"
@@ -267646,6 +267799,40 @@
         "sourceFile": "src/Whizbang.Core/Perspectives/QueryExposureRegistry.cs",
         "sourceLine": 58,
         "sourceSymbol": "QueryExposureRegistry",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "RebuildPerspectiveStreamsHandlerTests.HandleStreamAsync_RebuildsThatOneStreamUnderTheRebuildsOriginAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Perspectives/RebuildPerspectiveStreamsHandler.cs",
+        "sourceLine": 17,
+        "sourceSymbol": "RebuildPerspectiveStreamsHandler",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      },
+      {
+        "sourceFile": "src/Whizbang.Core/Commands/System/RebuildPerspectiveStreamsCommand.cs",
+        "sourceLine": 21,
+        "sourceSymbol": "RebuildPerspectiveStreamsCommand",
+        "sourceType": "Record",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "RebuildPerspectiveStreamsHandlerTests.HandleStreamAsync_ARebuildThatDidNotSucceed_ThrowsWithItsErrorAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Perspectives/RebuildPerspectiveStreamsHandler.cs",
+        "sourceLine": 18,
+        "sourceSymbol": "RebuildPerspectiveStreamsHandler",
+        "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "PerspectiveRebuilderIntegrationTests.RebuildCommand_NamingAStream_IsRebuiltByTheStreamsOwnerThroughARunAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Perspectives/RebuildPerspectiveStreamsHandler.cs",
+        "sourceLine": 19,
+        "sourceSymbol": "RebuildPerspectiveStreamsHandler",
         "sourceType": "Class",
         "linkSource": "XmlTag"
       }
@@ -293388,7 +293575,7 @@
     "MultiStreamCommandRegistrationTests.AddMultiStreamCommandHandler_WithNoStore_LeavesTheNullDefaultForADriverToReplaceAsync": [
       {
         "sourceFile": "src/Whizbang.Core/MultiStream/IMultiStreamCommandStore.cs",
-        "sourceLine": 67,
+        "sourceLine": 70,
         "sourceSymbol": "NullMultiStreamCommandStore",
         "sourceType": "Class",
         "linkSource": "XmlTag"
@@ -293415,7 +293602,7 @@
         "linkSource": "Convention"
       }
     ],
-    "MultiStreamCommandRegistrationTests.Registrar_StartAsync_RegistersTheIntakeAtTheDefaultReceptorStagesAsync": [
+    "MultiStreamCommandReceptorRegistrarTests.StartAsync_RegistersTheIntakeAtTheDefaultReceptorStagesAsync": [
       {
         "sourceFile": "src/Whizbang.Core/MultiStream/MultiStreamCommandBinding.cs",
         "sourceLine": 16,
@@ -293429,12 +293616,6 @@
         "sourceSymbol": "MultiStreamCommandReceptorRegistrar",
         "sourceType": "Class",
         "linkSource": "XmlTag"
-      },
-      {
-        "sourceFile": "src/Whizbang.Data.Postgres/MultiStream/MultiStreamCommandRegistration.cs",
-        "sourceSymbol": "MultiStreamCommandRegistration",
-        "sourceType": "Class",
-        "linkSource": "Convention"
       }
     ],
     "MultiStreamCommandIntakeTests.HandleAsync_AnEmptyStreamList_IsRefusedAndRecordsNothingAsync": [
@@ -293476,19 +293657,13 @@
         "linkSource": "Convention"
       }
     ],
-    "MultiStreamCommandRegistrationTests.Registrar_StartAsync_WithTheNullRegistry_RegistersNothingAndStartsAsync": [
+    "MultiStreamCommandReceptorRegistrarTests.StartAsync_WithTheNullRegistry_RegistersNothingAndStartsAsync": [
       {
         "sourceFile": "src/Whizbang.Core/MultiStream/MultiStreamCommandReceptorRegistrar.cs",
         "sourceLine": 16,
         "sourceSymbol": "MultiStreamCommandReceptorRegistrar",
         "sourceType": "Class",
         "linkSource": "XmlTag"
-      },
-      {
-        "sourceFile": "src/Whizbang.Data.Postgres/MultiStream/MultiStreamCommandRegistration.cs",
-        "sourceSymbol": "MultiStreamCommandRegistration",
-        "sourceType": "Class",
-        "linkSource": "Convention"
       }
     ],
     "MultiStreamCommandRegistrationTests.AddMultiStreamCommandHandler_ASecondHandlerForTheSameCommand_IsRefusedAsync": [
@@ -293569,7 +293744,16 @@
     "MultiStreamCommandStoreSqlTests.CompleteAsync_AFailureAtTheAttemptLimit_RecordsTheStreamFailedWithItsErrorAsync": [
       {
         "sourceFile": "src/Whizbang.Core/MultiStream/MultiStreamWork.cs",
-        "sourceLine": 34,
+        "sourceLine": 35,
+        "sourceSymbol": "MultiStreamOutcome",
+        "sourceType": "Record",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "MultiStreamCommandStoreSqlTests.CompleteAsync_AReleasedStream_IsOfferedAgainAfterTheDelayWithoutCountingAnAttemptAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/MultiStream/MultiStreamWork.cs",
+        "sourceLine": 36,
         "sourceSymbol": "MultiStreamOutcome",
         "sourceType": "Record",
         "linkSource": "XmlTag"
@@ -324732,6 +324916,15 @@
         "sourceLine": 60,
         "sourceSymbol": "WhizbangGuardrailsOptions",
         "sourceType": "Class",
+        "linkSource": "XmlTag"
+      }
+    ],
+    "RebuildCommandRoutingTests.NamedStreams_WithAStore_AreRecordedAsARunAndRebuiltNothingHereAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Commands/System/RebuildPerspectiveStreamsCommand.cs",
+        "sourceLine": 22,
+        "sourceSymbol": "RebuildPerspectiveStreamsCommand",
+        "sourceType": "Record",
         "linkSource": "XmlTag"
       }
     ],
@@ -358121,14 +358314,6 @@
         "linkSource": "Convention"
       }
     ],
-    "MultiStreamCommandRegistrationTests.Registrar_StartAsync_WithNoRegistry_RegistersNothingAndStartsAsync": [
-      {
-        "sourceFile": "src/Whizbang.Data.Postgres/MultiStream/MultiStreamCommandRegistration.cs",
-        "sourceSymbol": "MultiStreamCommandRegistration",
-        "sourceType": "Class",
-        "linkSource": "Convention"
-      }
-    ],
     "MultiStreamCommandWorkerTests.RunOnceAsync_ClaimsAsThisInstanceWithTheConfiguredBatchAndLeaseAsync": [
       {
         "sourceFile": "src/Whizbang.Core/MultiStream/MultiStreamCommandWorker.cs",
@@ -358161,7 +358346,7 @@
         "linkSource": "Convention"
       }
     ],
-    "MultiStreamCommandWorkerTests.RunOnceAsync_ACommandThisInstanceHasNoHandlerFor_RecordsAFailureNamingItAsync": [
+    "MultiStreamCommandWorkerTests.RunOnceAsync_ACommandThisInstanceHasNoHandlerFor_IsReleasedWithoutCountingAnAttemptAsync": [
       {
         "sourceFile": "src/Whizbang.Core/MultiStream/MultiStreamCommandWorker.cs",
         "sourceSymbol": "MultiStreamCommandWorker",
@@ -358178,6 +358363,14 @@
       }
     ],
     "MultiStreamCommandWorkerTests.RunOnceAsync_ARunWithNoScope_RunsTheHandlerWithNoScopeAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/MultiStream/MultiStreamCommandWorker.cs",
+        "sourceSymbol": "MultiStreamCommandWorker",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "MultiStreamCommandWorkerTests.RunOnceAsync_ARunThatCompleted_WithNobodyListening_IsStillPublishedAsync": [
       {
         "sourceFile": "src/Whizbang.Core/MultiStream/MultiStreamCommandWorker.cs",
         "sourceSymbol": "MultiStreamCommandWorker",
@@ -358269,6 +358462,14 @@
       {
         "sourceFile": "src/Whizbang.Core/MultiStream/MultiStreamScope.cs",
         "sourceSymbol": "MultiStreamScope",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
+    "RebuildPerspectiveStreamsHandlerTests.Constructor_NoRebuilder_ThrowsAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/Perspectives/RebuildPerspectiveStreamsHandler.cs",
+        "sourceSymbol": "RebuildPerspectiveStreamsHandler",
         "sourceType": "Class",
         "linkSource": "Convention"
       }
@@ -365185,6 +365386,14 @@
         "linkSource": "Convention"
       }
     ],
+    "MultiStreamCommandReceptorRegistrarTests.StartAsync_WithNoRegistry_RegistersNothingAndStartsAsync": [
+      {
+        "sourceFile": "src/Whizbang.Core/MultiStream/MultiStreamCommandReceptorRegistrar.cs",
+        "sourceSymbol": "MultiStreamCommandReceptorRegistrar",
+        "sourceType": "Class",
+        "linkSource": "Convention"
+      }
+    ],
     "BatchWorkCoordinatorStrategyTests.QueueInboxMessage_CountsTowardBatchSizeAsync": [
       {
         "sourceFile": "src/Whizbang.Core/Messaging/BatchWorkCoordinatorStrategy.cs",
@@ -366551,12 +366760,12 @@
     }
   ],
   "metadata": {
-    "generated": "2026-10-13T23:14:38.430Z",
-    "sourceFiles": 1924,
-    "testFiles": 8513,
-    "totalLinks": 18518,
-    "codeSymbols": 2412,
-    "testMethods": 16106,
+    "generated": "2026-10-14T03:58:02.515Z",
+    "sourceFiles": 1953,
+    "testFiles": 8541,
+    "totalLinks": 18538,
+    "codeSymbols": 2418,
+    "testMethods": 16120,
     "linkHealthFindings": 54
   }
 }

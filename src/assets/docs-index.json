@@ -905,9 +905,9 @@
     "tags": "multi-stream-commands, stream-ownership, partition-assignment, bulk-operations, repair, rebuild, commands",
     "version": "v1.0.0",
     "pageType": "concept",
-    "readingTime": 8,
+    "readingTime": 9,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/dispatcher/multi-stream-commands.md",
-    "wordCount": 1505
+    "wordCount": 1709
   },
   {
     "slug": "v1.0.0/fundamentals/dispatcher/publish-once",
@@ -1733,7 +1733,7 @@
     "pageType": "overview",
     "readingTime": 29,
     "editUrl": "https://github.com/whizbang-lib/whizbang-lib.github.io/edit/develop/src/assets/docs/v1.0.0/fundamentals/perspectives/perspectives.md",
-    "wordCount": 5653
+    "wordCount": 5731
   },
   {
     "slug": "v1.0.0/fundamentals/perspectives/physical-fields",

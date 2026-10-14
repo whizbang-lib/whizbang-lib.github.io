@@ -22,6 +22,11 @@ codeReferences:
   - src/Whizbang.Data.Postgres/MultiStream/PgMultiStreamCommandStore.cs
   - src/Whizbang.Data.Postgres/MultiStream/MultiStreamCommandRegistration.cs
   - src/Whizbang.Data.Postgres/Migrations/208_MultiStreamCommands.sql
+  - src/Whizbang.Core/Commands/System/RebuildPerspectiveStreamsCommand.cs
+  - src/Whizbang.Core/Perspectives/RebuildPerspectiveStreamsHandler.cs
+  - src/Whizbang.Data.EFCore.Postgres/RebuildPerspectiveCommandReceptor.cs
+  - src/Whizbang.Data.EFCore.Postgres/RebuildBackgroundQueue.cs
+  - src/Whizbang.Core/Workers/NullPartitionAssignmentSource.cs
 testReferences:
   - tests/Whizbang.Core.Tests/MultiStream/MultiStreamCommandIntakeTests.cs
   - tests/Whizbang.Core.Tests/MultiStream/MultiStreamCommandRegistrationTests.cs
@@ -31,6 +36,10 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/MultiStream/MultiStreamCommandStoreSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/MultiStream/MultiStreamCommandPostgresRegistrationTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/MultiStream/MultiStreamCommandEndToEndTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/MultiStream/RebuildCommandRoutingTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/MultiStream/RebuildBackgroundWorkerTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/MultiStream/DapperMultiStreamCommandTests.cs
+  - tests/Whizbang.Core.Tests/MultiStream/RebuildPerspectiveStreamsHandlerTests.cs
 lastMaintainedCommit: '78370069'
 ---
 
@@ -86,8 +95,14 @@ The registration is generic over the command type at compile time, so nothing is
 AOT-safe. It registers the command's **intake**, a receptor at the stages a receptor without `[FireAt]` runs at, so the
 command is recorded whether it is dispatched within the service or arrives from the transport.
 
-The **Postgres driver** supplies the store and the worker (`AddWhizbangPostgresNotifications`, which the EF Core
-turnkey registration calls). Without a store, the intake refuses the command rather than accept one nothing would run.
+Both Postgres drivers supply the store and the worker:
+
+- **EF Core** (`AddWhizbangPostgresNotifications`, which the turnkey registration calls). New runs are announced on
+  the shared notification connection, and claims rank by the published partition assignment.
+- **Dapper** (`AddWhizbangPostgres`). With no notification connection, the worker finds new runs by polling every
+  `PollInterval`. With no elected assigner, the live instances rank themselves, as Dapper's work claim does.
+
+Without a store, the intake refuses the command rather than accept one nothing would run.
 
 ## Sending one {#sending}
 
@@ -151,7 +166,7 @@ order. An unowned stream's live work goes to its partition owner, the same insta
 | Throws, at `MaxAttempts` | Failed, with the exception's type and message. Final. |
 | Its own cancellation (a timeout inside the handler) | A failed attempt, retried like any failure |
 | The host stops | Nothing: streams already finished in the pass are recorded; the unfinished one is offered again |
-| No handler for the command on this instance (a rolling update) | A failed attempt naming the command, retried |
+| No handler for the command on this instance (a rolling update) | Released without counting an attempt, logged, and offered again after `NoHandlerRetryDelay` |
 
 An outcome counts only from the instance holding the stream, so a worker whose claim lapsed cannot record over the
 instance that took it over.
@@ -196,6 +211,7 @@ interval stops the worker at start.
       "BatchSize": 50,
       "Lease": "00:05:00",
       "MaxAttempts": 3,
+      "NoHandlerRetryDelay": "00:01:00",
       "PollInterval": "00:00:30",
       "CompletedRunRetention": "7.00:00:00",
       "PurgeInterval": "01:00:00"
@@ -206,6 +222,19 @@ interval stops the worker at start.
 
 The partition count is the work claim's (`ClaimWorkerOptions.PartitionCount`), so a stream's partition here is the
 one its live work is claimed by.
+
+## Rebuilds use it {#rebuilds}
+
+A `RebuildPerspectiveCommand` is a multi-stream command under the hood.
+
+- **Named streams, or an in-place rebuild.** The instance that receives the command records one run per perspective,
+  and each stream is rebuilt by its owner, serialized with that stream's live work.
+  - An in-place rebuild's streams are those carrying the perspective's events.
+  - A rebuild with a request id makes the same run however often the command is delivered.
+  - An empty stream list records nothing.
+- **A whole-perspective blue-green rebuild** builds and swaps one table, so it stays one job. It is queued to a
+  background worker on the receiving instance, off the message handler's time budget. It swaps nothing until it
+  completes, so an interrupted or failed one leaves the live table as it was.
 
 ## Related
 

@@ -924,7 +924,11 @@ var result = await rebuilder.RebuildStreamsAsync("OrderPerspective", [orderId1, 
 
 #### RebuildPerspectiveCommand
 
-Trigger rebuilds across distributed services via system commands:
+Trigger rebuilds across distributed services via system commands.
+
+Where the work runs (Postgres drivers):
+- **Named streams, or an in-place rebuild,** is recorded as a [multi-stream run](../dispatcher/multi-stream-commands.md#rebuilds). Each stream is rebuilt by the instance that owns it, serialized with that stream's live work, and every stream has its own outcome in the run.
+- **A whole-perspective blue-green rebuild** is queued to a background worker on the receiving instance. It runs off the message handler's time budget, so its size is not capped by a message lease.
 
 ```csharp{title="RebuildPerspectiveCommand" description="Trigger rebuilds across distributed services via system commands:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "RebuildPerspectiveCommand"] unverified="RebuildPerspectiveCommand dispatch — verified in the Perspective Rebuild guide"}
 // Rebuild specific perspectives with blue-green swap
