@@ -13,10 +13,12 @@ codeReferences:
   - src/Whizbang.Core/Workers/PerspectiveCompletionFlushWorker.cs
   - src/Whizbang.Core/Workers/OutboxCompletionFlushWorker.cs
   - src/Whizbang.Core/Workers/LeaseRenewalWorker.cs
+  - src/Whizbang.Data.Postgres/Migrations/016_UpdatePerspectiveCheckpoints.sql
 testReferences:
   - tests/Whizbang.Core.Component.Tests/Workers/BatchFlusherRetryTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/OutboxCompletionFlushWorkerTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/LeaseRenewalWorkerCoverageTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Cursors/PerspectiveCursorAdvanceSqlTests.cs
 ---
 
 # Batched flushers
@@ -68,6 +70,47 @@ Override via `Whizbang:Workers:<Worker>:Flusher:<Knob>`.
 Each flush call costs: round-trip + fsync (typically 3-10 ms). Doing one round-trip per completion at 1000 completions/sec = 1000 fsyncs/sec; postgres can't keep up.
 
 With Nagle (25 ms window, 1000 max): 1000 completions/sec coalesces into 40 calls/sec; 25× fewer round-trips, 25× fewer fsyncs. Latency for any individual completion rises from ~3-10 ms to ~25-35 ms — acceptable for fire-and-forget completion semantics.
+
+## Perspective cursors {#perspective-cursors}
+
+A perspective completion carries the last event the run applied (`LastEventId`), and `complete_perspective` persists the stream's cursor from it through `update_perspective_cursors`:
+
+- A missing cursor is created at that event.
+- An existing cursor advances when the event sorts later in its stream (by stream version), and is never moved back by an earlier one.
+- It never passes the first event still unprocessed for that perspective, so an event behind the cursor is never skipped.
+- Two completions for the same stream and perspective in one batch keep the later event.
+- A completion with no event (a run that applied nothing) records no position, and an event the store does not hold is skipped without failing the rest of the batch.
+- The status becomes completed for every reported stream with nothing left unprocessed, whether or not its position moved.
+
+The position comes from the completion as well as from the processed `wh_perspective_events` rows: in production those rows are deleted as they complete, before the cursor is written, and only debug mode keeps them. Until #1363, the cursor was derived from those rows, so a missing cursor was never created and an existing one never advanced; only its status changed.
+
+To see how far cursors are behind on a database that ran an affected release, count cursors whose stream has newer events, and streams with events and no cursor at all:
+
+```sql{
+title: "Measure how far perspective cursors are behind"
+description: "Read-only queries: cursors whose stream has newer events, per perspective, and streams with events but no cursor."
+framework: "NET10"
+category: "Operations"
+difficulty: "INTERMEDIATE"
+tags: ["perspective-cursors", "runbook", "postgres", "diagnostics"]
+}
+-- Cursors behind their stream's head, per perspective
+SELECT c.perspective_name, count(*) AS cursors_behind_head
+FROM wh_perspective_cursors c
+JOIN wh_event_store at_cursor ON at_cursor.event_id = c.last_event_id
+WHERE EXISTS (
+  SELECT 1 FROM wh_event_store e
+  WHERE e.stream_id = c.stream_id AND e.version > at_cursor.version)
+GROUP BY c.perspective_name
+ORDER BY cursors_behind_head DESC;
+
+-- Streams with events and no cursor for any perspective
+SELECT count(DISTINCT e.stream_id) AS streams_without_a_cursor
+FROM wh_event_store e
+WHERE NOT EXISTS (SELECT 1 FROM wh_perspective_cursors c WHERE c.stream_id = e.stream_id);
+```
+
+Both counts fall as the fixed release completes new work: each completion creates or advances its stream's cursor. A stream that receives no new events keeps its old cursor until it is next processed or rebuilt.
 
 ## Composite flush
 
