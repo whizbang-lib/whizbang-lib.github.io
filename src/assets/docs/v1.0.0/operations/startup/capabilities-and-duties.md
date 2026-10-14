@@ -21,12 +21,18 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/184_RoleAssignmentResilience.sql
   - src/Whizbang.Data.Postgres/DutyLockKey.cs
   - src/Whizbang.Data.Postgres/Migrations/108_InstanceCapabilities.sql
+  - src/Whizbang.Core/Startup/IDutyAcquisitionHandler.cs
+  - src/Whizbang.Core/Startup/DutyHolderWorker.cs
+  - src/Whizbang.Core/Workers/WorkTableVacuumOnAcquisition.cs
 testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/DutyElectionE2ETests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/TableRewriteJourneyE2ETests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/InstanceCapabilitiesSqlTests.cs
   - tests/Whizbang.Core.Component.Tests/Startup/StartupPipelineRunnerDutyTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Chaos/RoleAssignmentChaosTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Chaos/MaintainerAcquisitionVacuumTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/WorkTableVacuumTests.cs
+  - tests/Whizbang.Core.Tests/Workers/WorkTableVacuumOnAcquisitionTests.cs
 ---
 
 # Capabilities and Duties
@@ -136,6 +142,50 @@ The record is inconsistent only between steps 2 and 6 — the same heartbeat-lea
 The steps above are the session-lock model. Under role assignment, step 2 is the lease lapsing in database time (or a clean release, which hands over at once and announces it), and step 5 is the next vote, which voids the lapsed assignment and grants a new epoch.
 
 For `Migrate`, waiters watch the migrator directly: its assignment row, and the duty's session lock for a migrator on an older release. A migrator that stops cleanly releases its duty, so a waiter that finds the schema current exits at once; a migrator that dies is noticed when its lease lapses (30 seconds by default, held open while its migration statement runs), and the schema lock still guarantees that only one instance applies DDL at a time. The duties that rely on signal-plus-poll re-attempt — `maintainer` among them — are precisely the ones for which tens of seconds is immaterial.
+
+## Acquiring a duty {#acquiring-a-duty}
+
+Some work belongs to *winning* a duty rather than to holding it. An `IDutyAcquisitionHandler` names a role and runs on the holder loop's pass that wins that role, before the role's owed work. It does not run again on the passes that merely keep the role, and it runs again each time the role is lost and won back. An instance that never wins the role never runs it.
+
+The grant tells the handler where the role came from. `IDutyGrant.PreviousHolderInstanceId` is the instance that held the role before, when this grant took it over (a hand-off or a takeover after a lapse), and `null` for a first assignment. It is the last holder the role recorded, so after the whole fleet stops, the next cold start counts as a takeover from the last instance that held it.
+
+A handler runs on the holder loop, so it is bounded the same way owed work is: one that hangs stops the loop and the role lapses to another instance. A failure is logged with the handler and the role, and the role is kept. Handlers need role assignment; without it nothing holds a duty from the loop, and no handler runs.
+
+### Vacuum on acquiring the maintainer duty {#vacuum-on-acquiring-the-maintainer-duty}
+
+The work tables (`wh_outbox`, `wh_inbox`, `wh_perspective_events`, `wh_message_deduplication`) are vacuumed by the instance that acquires the `maintainer` duty, never merely by an instance that started:
+
+| The duty | Vacuum |
+|---|---|
+| First assigned in the fleet | Always, once per process |
+| Handed off, or taken over after the holder lapsed | Yes, unless `MaintainOnReassignment` is off |
+| Kept by its holder, or regained by the same instance | No |
+| Not acquired (an instance joining a fleet with a live holder) | Never |
+
+Schema initialization no longer purges or vacuums. It runs on every instance at every start, and a service that scales out on its backlog starts instances at the peak of a load, so every new instance vacuumed the work tables at the worst moment. The purge runs in the maintenance cycle behind its busy check; between acquisitions, autovacuum and that cycle carry the tables.
+
+Every vacuum runs with the table owner's rights. Postgres does not refuse a non-owner's `VACUUM`: it warns, skips the table, and reports success. So the vacuum runs on the schema-initialization connection (`ConnectionStrings:{name}-init`) when one is configured. Without one, it runs on the application connection only for a table that role owns, and every other table is logged as a warning that names the table and the role, rather than passing for done. The post-ready table rewrite follows the same rule.
+
+```json{
+title: "Turn off the vacuum on a maintainer hand-off"
+description: "MaintainOnReassignment controls whether an instance that takes the maintainer duty over from another instance vacuums the work tables."
+framework: "NET10"
+category: "Configuration"
+difficulty: "BEGINNER"
+tags: ["maintenance", "vacuum", "maintainer-duty", "configuration"]
+}
+{
+  "Whizbang": {
+    "Workers": {
+      "Maintenance": {
+        "MaintainOnReassignment": false
+      }
+    }
+  }
+}
+```
+
+Turn `MaintainOnReassignment` off when hand-offs are frequent and the maintenance cycle is enough between them.
 
 ## Related
 
