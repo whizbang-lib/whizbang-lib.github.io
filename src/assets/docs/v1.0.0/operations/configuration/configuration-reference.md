@@ -1052,6 +1052,7 @@ Operator rung of the row-retention override ladder. **Configure:** bound automat
 |----------|------|---------|--------------------|---------|
 | `Enabled` | `bool` | `true` | `Whizbang__Workers__Maintenance__Enabled` | Killswitch |
 | `AllowTableRewrite` | `bool` | `false` | `Whizbang__Workers__Maintenance__AllowTableRewrite` | Whether maintenance may rewrite a table to reclaim space; false = report only |
+| `MaintainOnReassignment` | `bool` | `true` | `Whizbang__Workers__Maintenance__MaintainOnReassignment` | Whether an instance that takes the maintainer duty over from another instance vacuums the work tables, as a first assignment always does ([details](../startup/capabilities-and-duties#vacuum-on-acquiring-the-maintainer-duty)) |
 | `IntervalMinutes` | `int` | `10` | `Whizbang__Workers__Maintenance__IntervalMinutes` | Minutes between maintenance runs |
 | `StuckRowSentinelEnabled` | `bool` | `true` | `Whizbang__Workers__Maintenance__StuckRowSentinelEnabled` | Emit a Warning per stuck outbox/inbox row once per cycle |
 | `StuckRowSentinelMaxAttempts` | `int` | `10` | `Whizbang__Workers__Maintenance__StuckRowSentinelMaxAttempts` | Stuck = `attempts > this` and unprocessed |
