@@ -25,6 +25,7 @@ codeReferences:
   - src/Whizbang.Core/Dispatch/Route.cs
 testReferences:
   - tests/Whizbang.Core.Tests/Dispatcher/DispatcherOwnedDomainTests.cs
+  - tests/Whizbang.Core.Tests/Dispatcher/DispatcherCoverageSweepRoutedCascadeTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/TransportConsumerWorkerOwnedEventDiscardTests.cs
   - tests/Whizbang.Core.Tests/Routing/RoutingOptionsTests.cs
   - tests/Whizbang.Core.Tests/Routing/RoutingBuilderExtensionsTests.cs
@@ -94,6 +95,27 @@ The `SharedTopicInboxStrategy` builds routing patterns from these namespaces:
 ```
 
 **Note**: All services automatically subscribe to system commands (`whizbang.core.commands.system.#`) for framework-level operations.
+
+### Sending a Command the Service Owns {#owned-domain-routing}
+
+A command in one of the service's owned namespaces is handled in-process. `SendAsync` and `SendManyAsync` invoke the local receptor directly, whatever its shape: async or sync, with or without a result. The command never goes to the outbox, so it does not take a round trip through the broker to reach its own service.
+
+If no local receptor exists for an owned command, `SendAsync` throws `ReceptorNotFoundException`. The owning service is expected to handle its own commands, so a missing receptor is a wiring error and is reported to the caller rather than returned as an `Accepted` receipt for a command nobody will process.
+
+```csharp{title="Sending an Owned Command" description="An owned command runs its local receptor in-process, and fails loudly when there is none" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Command", "Owned Domains"] tests=["DispatcherCoverageSweepRoutedCascadeTests.SendAsync_VoidReceptor_InvokesLocallyWithoutOutboxAsync", "DispatcherCoverageSweepRoutedCascadeTests.SendAsync_OwnedChildNamespaceCommand_NoReceptor_ThrowsReceptorNotFoundAsync", "DispatcherOwnedDomainTests.SendAsync_OwnedCommand_NoLocalReceptor_ThrowsAndSkipsOutboxAsync"]}
+services.Configure<RoutingOptions>(opts => opts.OwnDomains("myapp.users.commands"));
+
+// A void receptor in the owning service
+public class CreateUserHandler : IReceptor<CreateUserCommand> {
+  public ValueTask HandleAsync(CreateUserCommand command, CancellationToken ct = default) { /* ... */ }
+}
+
+// Invokes CreateUserHandler in-process and returns a Delivered receipt.
+// Without a local receptor for CreateUserCommand, this throws ReceptorNotFoundException.
+await dispatcher.SendAsync(new CreateUserCommand(...));
+```
+
+A command outside the owned namespaces with no local receptor goes to the outbox for the owning service to receive.
 
 ### Wildcard Namespaces
 
