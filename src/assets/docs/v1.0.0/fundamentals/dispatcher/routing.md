@@ -26,6 +26,8 @@ codeReferences:
 testReferences:
   - tests/Whizbang.Core.Tests/Dispatcher/DispatcherOwnedDomainTests.cs
   - tests/Whizbang.Core.Tests/Dispatcher/DispatcherCoverageSweepRoutedCascadeTests.cs
+  - tests/Whizbang.Core.Integration.Tests/SendReceptorShapeIntegrationTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/LifecycleStageOwnedCommandSendIntegrationTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/TransportConsumerWorkerOwnedEventDiscardTests.cs
   - tests/Whizbang.Core.Tests/Routing/RoutingOptionsTests.cs
   - tests/Whizbang.Core.Tests/Routing/RoutingBuilderExtensionsTests.cs
@@ -102,7 +104,7 @@ A command in one of the service's owned namespaces is handled in-process. `SendA
 
 If no local receptor exists for an owned command, `SendAsync` throws `ReceptorNotFoundException`. The owning service is expected to handle its own commands, so a missing receptor is a wiring error and is reported to the caller rather than returned as an `Accepted` receipt for a command nobody will process.
 
-```csharp{title="Sending an Owned Command" description="An owned command runs its local receptor in-process, and fails loudly when there is none" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Command", "Owned Domains"] tests=["DispatcherCoverageSweepRoutedCascadeTests.SendAsync_VoidReceptor_InvokesLocallyWithoutOutboxAsync", "DispatcherCoverageSweepRoutedCascadeTests.SendAsync_OwnedChildNamespaceCommand_NoReceptor_ThrowsReceptorNotFoundAsync", "DispatcherOwnedDomainTests.SendAsync_OwnedCommand_NoLocalReceptor_ThrowsAndSkipsOutboxAsync"]}
+```csharp{title="Sending an Owned Command" description="An owned command runs its local receptor in-process, and fails loudly when there is none" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Command", "Owned Domains"] tests=["DispatcherCoverageSweepRoutedCascadeTests.SendAsync_VoidReceptor_InvokesLocallyWithoutOutboxAsync", "DispatcherCoverageSweepRoutedCascadeTests.SendAsync_OwnedChildNamespaceCommand_NoReceptor_ThrowsReceptorNotFoundAsync", "DispatcherOwnedDomainTests.SendAsync_OwnedCommand_NoLocalReceptor_ThrowsAndSkipsOutboxAsync", "SendReceptorShapeIntegrationTests.SendAsync_OwnedVoidReceptor_RunsOnceInProcessAsync", "LifecycleStageOwnedCommandSendIntegrationTests.ReceptorAtStage_SendsOwnedVoidCommand_HandledOnceAndNeverInTheOutboxAsync"]}
 services.Configure<RoutingOptions>(opts => opts.OwnDomains("myapp.users.commands"));
 
 // A void receptor in the owning service
@@ -116,6 +118,10 @@ await dispatcher.SendAsync(new CreateUserCommand(...));
 ```
 
 A command outside the owned namespaces with no local receptor goes to the outbox for the owning service to receive.
+
+`SendManyAsync` follows the same rule for each message in the batch. An owned command it handles locally is not also published, since its only subscriber is the service that just handled it. An owned command with no local receptor throws `ReceptorNotFoundException`, and the whole batch is checked before any message in it runs.
+
+A receptor marked `[FireAt(...)]` is a lifecycle hook, not the command's handler. A send never runs it in place of the handler: a command whose only receptor in this service is a hook (for example, one that observes the command leaving through the outbox) is routed to its owner as usual, and the hook fires at its declared stage.
 
 ### Wildcard Namespaces
 
