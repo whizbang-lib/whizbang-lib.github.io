@@ -83,6 +83,41 @@ graph LR
 
 **Distributed dispatch** persists to outbox, publishes via transport (RabbitMQ, Service Bus), and processes in inbox on receiver side.
 
+## Stage Semantics {#stage-semantics}
+
+Every stage name answers two questions: what triggers the stage, and whether anything waits for it. A receptor only ever describes what happens in the service that declares it. Another service handles the same message with its own receptors.
+
+**Immediate** stages are tied to handling the message, not to a step in the pipeline:
+- They fire in the process that handles the message, at the moment it is handled.
+- There is no durable hop in between: no outbox, transport or inbox between the trigger and the receptor.
+- If the process dies, an immediate stage that had not run is lost. Nothing retries it.
+
+**Non-immediate** stages are tied to a step in the durable pipeline as the message passes through this service: written to the outbox, published, received, projected, lifecycle complete.
+- They fire when the message reaches that step in this service.
+- They are tied to a stored record, so they are retried if the process fails.
+
+**Inline**:
+- Whoever fires the stage waits for it: the caller on local dispatch, or the worker on a pipeline stage.
+- It runs in the same scope and unit of work.
+- An exception fails that unit: the caller sees it, or the message is retried.
+- It finishes before the next stage starts.
+
+**Detached**:
+- Nobody waits for it, and it runs in its own scope.
+- An exception is logged or reported and never fails the message.
+- It is not ordered against the next stage, and the caller may get control back first.
+
+| Stage | What to expect |
+|-------|----------------|
+| `LocalImmediateInline` | The handler runs in the caller's process. The caller waits and gets the result or the exception. |
+| `LocalImmediateDetached` | Runs in the caller's process in its own scope. The caller does not wait, and errors never reach the caller. |
+| `ImmediateDetached` | Runs once in each service that handles the message, right after the handler, whether it was handled locally or on receipt. Nobody waits for it, and its errors never affect the message. For timing, metrics and activity tracking. |
+| Pipeline stages (`PreOutbox*`, `PostInbox*`, `*Perspective*`, `PostLifecycle*`, and the rest) | Fire when the message reaches that step in this service, durably and with retries, with the Inline or Detached behavior above. |
+
+:::planned
+Two stages do not meet this contract yet. A receptor with no `[FireAt]` is registered at `LocalImmediateDetached`, but the caller waits for it as if it were Inline ([#1392](https://github.com/whizbang-lib/whizbang/issues/1392)). `ImmediateDetached` is awaited on local dispatch, and on a receiving service that has no `PostInboxDetached` receptor ([#1393](https://github.com/whizbang-lib/whizbang/issues/1393)).
+:::
+
 ---
 
 ## Two Mutually Exclusive Paths
@@ -174,7 +209,11 @@ The `LifecycleStage` enum contains 29 values total: 28 true lifecycle stages plu
 **Guarantees**:
 - Fires exactly once per message per handling service, for every `SendAsync` and `LocalInvokeAsync` overload, with or without the [Lifecycle Coordinator](lifecycle-coordinator.md)
 - Never re-fired after a later stage, and never fired on a service that only forwards the message (the outbox stages) or projects it (the perspective stages)
-- Errors are logged, not propagated
+- Detached: nobody waits for it, and its errors never fail the message (see [Stage Semantics](#stage-semantics))
+
+:::planned
+Today the dispatcher awaits `ImmediateDetached` before local dispatch returns, and a receiving service with no `PostInboxDetached` receptor runs it inline after `PostInboxInline` ([#1393](https://github.com/whizbang-lib/whizbang/issues/1393)).
+:::
 
 :::updated
 In earlier releases `ImmediateDetached` also re-fired after each lifecycle stage: after each PostLifecycle stage on local dispatch, after every stage the coordinator advanced, and after each worker stage. A receptor declared `[ReceptorIdempotent]`, which bypasses the double-fire guard, ran up to three times for one `LocalInvokeAsync`.
@@ -211,10 +250,14 @@ LocalImmediate stages are new in v1.0.0 and enable in-memory mediator-style mess
 - Fire-and-forget side effects on local dispatch
 
 **Guarantees**:
-- **Detached** - fire-and-forget, runs in its own scope; does not block dispatch return
+- **Detached**: runs in its own scope and the caller does not wait for it (see [Stage Semantics](#stage-semantics))
 - **NO persistence** - message never hits outbox/inbox
 - **Default stage** for receptors WITHOUT `[FireAt]` on the local path
-- Errors logged but don't affect caller
+- Errors never reach the caller
+
+:::planned
+Today local dispatch awaits a receptor registered here, including the default handler, and returns its result or exception to the caller, which is the Inline behavior ([#1392](https://github.com/whizbang-lib/whizbang/issues/1392)).
+:::
 
 **Example**:
 ```csharp{title="`LocalImmediateDetached` ⭐ **Default Stage for Local Path**" description="LocalImmediateDetached" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lifecycle", "LocalImmediateDetached", "**Default"] tests=["ReceptorDiscoveryGeneratorTests.Generator_ReceptorWithoutFireAt_RegisteredAtDefaultStagesAsync", "LifecycleStageTests.LifecycleStage_LocalImmediateDetached_IsDefinedAsync"]}
@@ -809,10 +852,12 @@ sequenceDiagram
 
 Most lifecycle stages come in pairs:
 
-| Stage Type | Timing | Blocks Next Step | Use Case |
-|------------|--------|------------------|----------|
-| `*Inline` | Before/After | ✅ Yes | Critical operations, test sync |
-| `*Detached` | Fire-and-forget, own scope | ❌ No | Metrics, logging, non-critical |
+| Stage Type | Who waits | Scope | An exception | Ordered before the next stage |
+|------------|-----------|-------|--------------|-------------------------------|
+| `*Inline` | The caller or worker that fires it | Same scope and unit of work | Fails that unit | ✅ Yes |
+| `*Detached` | Nobody | Its own | Is logged or reported, never fails the message | ❌ No |
+
+The full definitions are in [Stage Semantics](#stage-semantics).
 
 **Guidelines**:
 - **Use Inline** for: Test synchronization, validation, critical operations
