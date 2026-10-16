@@ -105,6 +105,46 @@ Receptors **without** `[FireAt]` are registered at `LocalImmediateDetached` + `P
 - Default receptors (no `[FireAt]`) fire ONCE per path
 - `[FireAt]` attributes opt into specific stages and OUT of default behavior
 
+## When Each Stage Fires {#when-each-stage-fires}
+
+Which stages a message reaches depends on its direction relative to the service you are looking at:
+
+- **Internal**: this service dispatches the message and handles it in-process (`LocalInvokeAsync`, or a `SendAsync`/`PublishAsync` with a local receptor).
+- **Egress**: this service writes the message to its outbox for other services.
+- **Ingress**: the message arrives from another service through the transport and inbox.
+
+| Stage | Internal | Egress (sender) | Ingress (receiver) |
+|-------|----------|-----------------|--------------------|
+| `LocalImmediateDetached` / `LocalImmediateInline` | ✅ the local handler | — | — |
+| `ImmediateDetached` | ✅ once, after the local receptor | — | ✅ once, after PostInbox |
+| `PreDistribute*` / `DistributeDetached` / `PostDistribute*` | — | ✅ | — |
+| `PreOutbox*` / `PostOutbox*` | — | ✅ (see the skips below) | — |
+| `PreInbox*` / `PostInbox*` | — | — | ✅ |
+| `PrePerspective*` / `PostPerspective*` / `PostAllPerspectives*` | events with perspectives, on the service that stores them | — | events with perspectives |
+| `PostLifecycle*` | ✅ (`LocalInvokeAsync`) | — | ✅ |
+
+**Where a receptor is registered**:
+
+| Receptor | Registered at |
+|----------|---------------|
+| Generated, no `[FireAt]` | `LocalImmediateDetached` and `PostInboxDetached`. Never at an outbox stage, so a plain receptor does not run on the sender when a message only passes through its outbox. |
+| Generated, `[FireAt(X)]` | stage `X` only |
+| Runtime (`IReceptorRegistry.Register`) | the stage it names. A runtime registration at `LocalImmediateInline` or `LocalImmediateDetached` is the message's local handler for `SendAsync`, `SendManyAsync` and every `LocalInvokeAsync` overload when no generated receptor exists; a generated receptor always wins. |
+
+**When the outbox stages are skipped**. `PreOutbox*` and `PostOutbox*` run only for a message that is in the outbox, and the invoker skips some of those:
+
+| Message | Outbox stages |
+|---------|---------------|
+| A command `SendAsync` handles locally | never written to the outbox, so none |
+| An owned command (`RoutingOptions.OwnDomains`) | never written; with no local handler `SendAsync` throws `ReceptorNotFoundException` |
+| An event-store-only message (no destination) | none |
+| An event `PublishAsync` sends, owned or not | ✅ |
+| A [system command](../dispatcher/routing.md#system-commands) | ✅ always, even when handled locally |
+| A copy flagged as locally dispatched (`DispatchModes.LocalDispatch`), from a system-command send or `SendManyAsync` | PreOutbox skips a runtime receptor that is also registered at a local stage in every host, and skips every receptor when owned domains are configured |
+| With owned domains configured: an owned command, or an event another service owns | PreOutbox skips it |
+
+On ingress, `PostInbox*` skips a message this same service published: its handler already ran when it was dispatched.
+
 At each stage, **lifecycle receptors** can execute to:
 - Track metrics and telemetry
 - Log diagnostic information
@@ -124,7 +164,7 @@ The `LifecycleStage` enum contains 29 values total: 28 true lifecycle stages plu
 
 #### `ImmediateDetached`
 
-**Timing**: Immediately after the business receptor completes in the `Dispatcher`, fire-and-forget.
+**Timing**: Once per message on each service that handles it, right after its handler: after the business receptor on local dispatch, after the PostInbox stage on a service receiving the message from the transport.
 
 **Use Cases**:
 - Log command execution timing
@@ -132,12 +172,16 @@ The `LifecycleStage` enum contains 29 values total: 28 true lifecycle stages plu
 - Record metrics without blocking dispatch
 
 **Guarantees**:
-- Detached: fire-and-forget, runs in its own scope
-- Does not block message flow — errors are logged, not propagated
-- With the [Lifecycle Coordinator](lifecycle-coordinator.md), fires automatically after each stage transition
+- Fires exactly once per message per handling service, for every `SendAsync` and `LocalInvokeAsync` overload, with or without the [Lifecycle Coordinator](lifecycle-coordinator.md)
+- Never re-fired after a later stage, and never fired on a service that only forwards the message (the outbox stages) or projects it (the perspective stages)
+- Errors are logged, not propagated
+
+:::updated
+In earlier releases `ImmediateDetached` also re-fired after each lifecycle stage: after each PostLifecycle stage on local dispatch, after every stage the coordinator advanced, and after each worker stage. A receptor declared `[ReceptorIdempotent]`, which bypasses the double-fire guard, ran up to three times for one `LocalInvokeAsync`.
+:::
 
 **Example**:
-```csharp{title="`ImmediateDetached`" description="ImmediateDetached" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lifecycle", "ImmediateDetached"] tests=["ReceptorDiscoveryGeneratorTests.Generator_ReceptorWithFireAt_RegisteredOnlyAtSpecifiedStageAsync", "LifecycleCoordinatorTests.AdvanceTo_FiresImmediateDetached_AfterEachStageAsync", "LifecycleStageTests.LifecycleStage_ImmediateDetached_IsDefinedAsync"]}
+```csharp{title="`ImmediateDetached`" description="ImmediateDetached" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lifecycle", "ImmediateDetached"] tests=["ReceptorDiscoveryGeneratorTests.Generator_ReceptorWithFireAt_RegisteredOnlyAtSpecifiedStageAsync", "LifecycleCoordinatorTests.AdvanceTo_DoesNotFireImmediateDetached_AfterTheStageAsync", "ImmediateDetachedOncePerDispatchComponentTests.OneLocalDispatch_FiresImmediateDetachedExactlyOnceAsync", "LifecycleStageTests.LifecycleStage_ImmediateDetached_IsDefinedAsync"]}
 [FireAt(LifecycleStage.ImmediateDetached)]
 public class CommandMetricsReceptor : IReceptor<ICommand> {
     private readonly IMetricsCollector _metrics;

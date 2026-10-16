@@ -102,7 +102,7 @@ The `SharedTopicInboxStrategy` builds routing patterns from these namespaces:
 
 A command in one of the service's owned namespaces is handled in-process. `SendAsync` and `SendManyAsync` invoke the local receptor directly, whatever its shape: async or sync, with or without a result. The command never goes to the outbox, so it does not take a round trip through the broker to reach its own service.
 
-If no local receptor exists for an owned command, `SendAsync` throws `ReceptorNotFoundException`. The owning service is expected to handle its own commands, so a missing receptor is a wiring error and is reported to the caller rather than returned as an `Accepted` receipt for a command nobody will process.
+If no local receptor exists for an owned command, `SendAsync` throws `ReceptorNotFoundException`, on every overload, with or without `DispatchOptions`. The owning service is expected to handle its own commands, so a missing receptor is a wiring error and is reported to the caller rather than returned as an `Accepted` receipt for a command nobody will process.
 
 ```csharp{title="Sending an Owned Command" description="An owned command runs its local receptor in-process, and fails loudly when there is none" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Command", "Owned Domains"] tests=["DispatcherCoverageSweepRoutedCascadeTests.SendAsync_VoidReceptor_InvokesLocallyWithoutOutboxAsync", "DispatcherCoverageSweepRoutedCascadeTests.SendAsync_OwnedChildNamespaceCommand_NoReceptor_ThrowsReceptorNotFoundAsync", "DispatcherOwnedDomainTests.SendAsync_OwnedCommand_NoLocalReceptor_ThrowsAndSkipsOutboxAsync", "SendReceptorShapeIntegrationTests.SendAsync_OwnedVoidReceptor_RunsOnceInProcessAsync", "LifecycleStageOwnedCommandSendIntegrationTests.ReceptorAtStage_SendsOwnedVoidCommand_HandledOnceAndNeverInTheOutboxAsync"]}
 services.Configure<RoutingOptions>(opts => opts.OwnDomains("myapp.users.commands"));
@@ -225,9 +225,17 @@ discovery would otherwise discard it silently. See
 [Owned and subscribed namespaces](#owned-and-subscribed) for the rule and the two remedies.
 :::
 
-## System Commands
+## System Commands {#system-commands}
 
 All services automatically subscribe to system commands (`whizbang.core.commands.system.#`) for framework-level operations. These include commands for pausing/resuming processing, rebuilding perspectives, clearing caches, and collecting diagnostics.
+
+A system command is any type in the `Whizbang.Core.Commands.System` namespace, and `SendAsync` always broadcasts it. Unlike an ordinary command, a local handler does not keep it in-process:
+
+- When the sending service has a handler, generated or [runtime-registered](#runtime-registered-receptors), the send runs it in-process before it returns, then writes the command to the outbox. The outbox copy is flagged as locally dispatched (`DispatchModes.LocalDispatch`), so the sender's PreOutbox stage does not run that handler again.
+- When the sending service has no handler, the command goes to the outbox unflagged, and a receptor the sender registered at PreOutbox runs there.
+- Every other service handles the command at PostInbox. The sender's own copy coming back through the transport is skipped, because PostInbox ignores messages from the same service.
+
+Each service, the sender included, handles a system command exactly once. `SendManyAsync` behaves the same, and `LocalSendManyAsync` never broadcasts.
 
 For the full list of system commands with signatures, parameters, and usage examples, see [Lifecycle Management](../lifecycle/lifecycle.md).
 
@@ -250,6 +258,16 @@ await dispatcher.SendAsync(new PauseProcessingCommand(
     Reason: "Scheduled maintenance"
 ));
 ```
+
+## Runtime-Registered Receptors {#runtime-registered-receptors}
+
+The source generator only sees the consuming assembly's own code, so the framework registers receptors for its own message types (perspective rebuilds, redelivery requests, scheduled stream closes, integrity checks, multi-stream command intake) into `IReceptorRegistry` at startup. A runtime registration at `LifecycleStage.LocalImmediateInline` or `LifecycleStage.LocalImmediateDetached` is the message's local handler, exactly like a generated receptor without `[FireAt]`. It answers `SendAsync`, `SendManyAsync`, `LocalSendManyAsync` and every `LocalInvokeAsync` overload, including the typed ones, where its return value is the result.
+
+The dispatcher consults runtime registrations only after every generated lookup misses, so a generated receptor always wins. Framework receptors are also registered at `PreOutboxInline`, for outbox rows nothing dispatched locally, and at `PostInboxInline`, for copies arriving from other services. A runtime receptor that already ran during local dispatch is skipped at PreOutbox on the flagged outbox copy. See [When Each Stage Fires](../lifecycle/lifecycle-stages.md#when-each-stage-fires).
+
+:::updated
+Earlier releases consulted only the generated lookups on the local paths. A command whose only handler was registered at runtime was never handled in-process: `LocalInvokeAsync` threw `ReceptorNotFoundException`, an owned command's `SendAsync` threw, and an unowned one went to the outbox.
+:::
 
 ## Configuration
 
