@@ -48,7 +48,7 @@ If a receptor fires twice for the same message — whether at the same stage or 
 
 ### Exception: perspective-scoped stages fire once per perspective
 
-Not every stage is per-message. The perspective-scoped stages (`PrePerspectiveInline`, `PrePerspectiveDetached`, `PostPerspectiveInline`, `PostPerspectiveDetached`, and `ImmediateDetached` when invoked under a perspective context) are fan-out points: an event processed by N perspectives produces N invocations at each of those stages — one per perspective. A receptor registered at `PostPerspectiveInline` that needs to observe per-perspective outcomes (test synchronization counters, per-perspective derived projections, metrics) is *expected* to fire N times per message, not once.
+Not every stage is per-message. The perspective-scoped stages (`PrePerspectiveInline`, `PrePerspectiveDetached`, `PostPerspectiveInline`, `PostPerspectiveDetached`) are fan-out points: an event processed by N perspectives produces N invocations at each of those stages — one per perspective. A receptor registered at `PostPerspectiveInline` that needs to observe per-perspective outcomes (test synchronization counters, per-perspective derived projections, metrics) is *expected* to fire N times per message, not once.
 
 The guardrail recognizes these stages and does not raise a double-fire warning for them. Dedup key for perspective-scoped stages is effectively `(messageId, receptorId, perspectiveType)` rather than `(messageId, receptorId)`.
 
@@ -62,7 +62,7 @@ The guardrail recognizes these stages and does not raise a double-fire warning f
 | `PreDistributeInline`, `PostDistributeInline`, their `Detached` siblings, and `DistributeDetached` | 1 | `(messageId, receptorId)` |
 | `PrePerspectiveInline`, `PrePerspectiveDetached` | **N** (one per perspective) | `(messageId, receptorId, perspectiveType)` |
 | `PostPerspectiveInline`, `PostPerspectiveDetached` | **N** (one per perspective) | `(messageId, receptorId, perspectiveType)` |
-| `ImmediateDetached` under a perspective context | **N** (one per perspective) | `(messageId, receptorId, perspectiveType)` |
+| `ImmediateDetached` | 1 per handling service (after the local receptor, or after PostInbox) | `(messageId, receptorId)` |
 | `PostAllPerspectivesInline`, `PostAllPerspectivesDetached` | 1 (WhenAll gate) | `(messageId, receptorId)` |
 | `PostLifecycleInline`, `PostLifecycleDetached` | 1 | `(messageId, receptorId)` |
 
