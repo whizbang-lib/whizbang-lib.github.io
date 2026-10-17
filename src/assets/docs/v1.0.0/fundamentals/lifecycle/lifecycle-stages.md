@@ -173,7 +173,7 @@ Which stages a message reaches depends on its direction relative to the service 
 | An event-store-only message (no destination) | none |
 | An event `PublishAsync` sends, owned or not | ✅ |
 | A [system command](../dispatcher/routing.md#system-commands) | ✅ always, even when handled locally |
-| A copy marked as handled here (`DispatchModes.LocalDispatch`): any send, publish, batch or cascade this service also handled | PreOutbox skips a runtime receptor that is also registered at a local stage in every host, and skips every receptor when owned domains are configured |
+| A copy marked as handled here (`DispatchModes.LocalDispatch`): any send, publish, batch or cascade this service also handled | PreOutbox skips only a receptor that already ran locally: a runtime registration also registered at a local stage, or a generated receptor whose double-fire guard already recorded it. A receptor registered only at PreOutbox, which observes the outbox, still runs |
 | With owned domains configured: an owned command, or an event another service owns | PreOutbox skips it |
 
 On ingress, `PostInbox*` skips a message this same service published: its handler already ran when it was dispatched. A scheduled copy whose local handling was deferred (`LocalDeferred`) is the exception: this service handles it when it comes back.
