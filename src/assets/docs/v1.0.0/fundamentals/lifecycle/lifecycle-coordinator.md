@@ -74,7 +74,8 @@ When a worker calls `tracking.AdvanceToAsync(stage)`, the coordinator:
 2. Resolves `IReceptorInvoker` from the scoped service provider
 3. Invokes all receptors registered at that stage — Detached stages fire-and-forget in their own scope; Inline stages are awaited before returning
 4. Processes all message tags (tags fire at **every** stage as lifecycle observers)
-5. Fires `ImmediateDetached` after the stage completes
+
+It does not fire `ImmediateDetached`: that stage runs once per message, after the handler, never after a lifecycle stage. See [`ImmediateDetached`](lifecycle-stages.md#immediatedetached).
 
 Because stage transitions go through a single code path, there is no way for a stage to fire twice for the same event.
 
@@ -293,7 +294,7 @@ public interface ILifecycleTracking {
   LifecycleStage CurrentStage { get; }
   bool IsComplete { get; }
 
-  // Advance to the next stage — invokes receptors, tags, then ImmediateDetached
+  // Advance to the next stage — invokes receptors, then tags
   ValueTask AdvanceToAsync(LifecycleStage stage, IServiceProvider scopedProvider, CancellationToken ct);
 
   // Wait for in-flight detached tasks (graceful shutdown / testing)
