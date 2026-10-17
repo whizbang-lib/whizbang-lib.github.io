@@ -37,7 +37,7 @@ Every way of dispatching a message (`SendAsync`, `PublishAsync`, `LocalInvokeAsy
 A dispatch runs this service's local handlers when it has any, and also goes to the outbox, **unless it is a local call or its parameters keep it in**.
 
 - **Local calls** (`LocalInvokeAsync`, `LocalSendManyAsync`) never leave the service.
-- **An owned command** (in one of the service's [owned namespaces](routing.md#owned-domains)) never leaves the service, on any call and any route, `Route.Outbox` included. With no handler here it is refused.
+- **An owned command** (in one of the service's [owned namespaces](routing.md#owned-domain-routing)) never leaves the service, on any call and any route, `Route.Outbox` included. With no handler here it is refused.
 - **An owned event** with no handler here still goes to the outbox: other services subscribe to it.
 - **A framework system command** reaches every service, the sender included, exactly once.
 - **A route** (`Route.Local`, `Route.Outbox`, `Route.EventStoreOnly`, ...) decides, on a send, a publish or a cascade. A command routed to the event store only is refused: commands are not stored.
