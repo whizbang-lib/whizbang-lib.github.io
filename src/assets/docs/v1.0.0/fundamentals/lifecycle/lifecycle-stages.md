@@ -47,7 +47,7 @@ The [Lifecycle Coordinator](lifecycle-coordinator.md) now manages all stage tran
 
 ## Core Concept
 
-Messages flow through **two mutually exclusive paths**:
+Messages flow through **two paths**, and one dispatch can take both: local stages fire whenever this service handles the message in-process, and the distributed stages fire for its outbox copy. The [dispatch policy](../dispatcher/dispatch-policy.md) decides which a call takes:
 
 ### Local Path (Mediator Pattern)
 
@@ -120,24 +120,22 @@ Two stages do not meet this contract yet. A receptor with no `[FireAt]` is regis
 
 ---
 
-## Two Mutually Exclusive Paths
-
-:::new
-Understanding the two dispatch paths is critical for using lifecycle stages correctly.
-:::
-
-| Path | Description | Default Stages | Persistence |
-|------|-------------|---------------|-------------|
-| **Local** | `LocalInvokeAsync(msg)` / `LocalSendManyAsync(msgs)` | `LocalImmediateDetached` | ❌ None (mediator) |
-| **Distributed** | `SendAsync(msg)` / `PublishAsync(evt)` via transport | `PostInboxDetached` (receiver) | ✅ Outbox/Inbox |
+## Local and Distributed Paths
 
 :::updated
-Receptors **without** `[FireAt]` are registered at `LocalImmediateDetached` + `PostInboxDetached` (locked by generator tests). `LocalImmediateDetached` fires for messages dispatched by **this** service; `PostInboxDetached` fires for messages arriving from **other** services via transport. Source-service filtering in `ReceptorInvoker` prevents double-fire. There is no default sender-side outbox stage.
+A dispatch is not either/or. Local stages fire whenever this service handles a message in-process, whether or not the message also goes to the outbox; the distributed stages fire for the outbox copy. The [dispatch policy](../dispatcher/dispatch-policy.md#decision-table) decides, per call, whether a message runs here, goes out, or both.
 :::
 
+| Path | When | Default Stages | Persistence |
+|------|------|---------------|-------------|
+| **Local** | this service handles the message in-process (`LocalInvokeAsync`, or a `SendAsync`/`PublishAsync`/cascade it has a handler for) | `LocalImmediateDetached` | ❌ None (in-process) |
+| **Distributed** | the message is written to the outbox and delivered through the transport | `PostInboxDetached` (receiver) | ✅ Outbox/Inbox |
+
+Receptors **without** `[FireAt]` are registered at `LocalImmediateDetached` + `PostInboxDetached` (locked by generator tests). A receptor declared `[FireAt(LocalImmediateInline)]` or `[FireAt(LocalImmediateDetached)]` runs whenever this service handles the message in-process, like a default one. There is no default sender-side outbox stage.
+
 **Key Points**:
-- A message goes through ONE path, not both
-- Default receptors (no `[FireAt]`) fire ONCE per path
+- A message this service handles **and** sends out takes both paths; its outbox copy is marked as handled here, so this service does not run it again when its own copy comes back
+- Default receptors (no `[FireAt]`) fire once per service that handles the message
 - `[FireAt]` attributes opt into specific stages and OUT of default behavior
 
 ## When Each Stage Fires {#when-each-stage-fires}
@@ -170,15 +168,15 @@ Which stages a message reaches depends on its direction relative to the service 
 
 | Message | Outbox stages |
 |---------|---------------|
-| A command `SendAsync` handles locally | never written to the outbox, so none |
+| An unowned command `SendAsync` handles locally | ✅ written as a copy marked as handled here (`DispatchModes.Both`) |
 | An owned command (`RoutingOptions.OwnDomains`) | never written; with no local handler `SendAsync` throws `ReceptorNotFoundException` |
 | An event-store-only message (no destination) | none |
 | An event `PublishAsync` sends, owned or not | ✅ |
 | A [system command](../dispatcher/routing.md#system-commands) | ✅ always, even when handled locally |
-| A copy flagged as locally dispatched (`DispatchModes.LocalDispatch`), from a system-command send or `SendManyAsync` | PreOutbox skips a runtime receptor that is also registered at a local stage in every host, and skips every receptor when owned domains are configured |
+| A copy marked as handled here (`DispatchModes.LocalDispatch`): any send, publish, batch or cascade this service also handled | PreOutbox skips a runtime receptor that is also registered at a local stage in every host, and skips every receptor when owned domains are configured |
 | With owned domains configured: an owned command, or an event another service owns | PreOutbox skips it |
 
-On ingress, `PostInbox*` skips a message this same service published: its handler already ran when it was dispatched.
+On ingress, `PostInbox*` skips a message this same service published: its handler already ran when it was dispatched. A scheduled copy whose local handling was deferred (`LocalDeferred`) is the exception: this service handles it when it comes back.
 
 At each stage, **lifecycle receptors** can execute to:
 - Track metrics and telemetry
@@ -242,7 +240,7 @@ LocalImmediate stages are new in v1.0.0 and enable in-memory mediator-style mess
 
 #### `LocalImmediateDetached` ⭐ **Default Stage for Local Path**
 
-**Timing**: During local dispatch (`LocalInvokeAsync` / `LocalSendManyAsync`) when no transport is involved, fire-and-forget.
+**Timing**: Whenever this service handles the message in-process, whether or not it also goes to the outbox.
 
 **Use Cases**:
 - **Default receptors** (receptors WITHOUT `[FireAt]` fire here for locally-dispatched messages)
@@ -960,7 +958,7 @@ See [Lifecycle Receptors](../receptors/lifecycle-receptors.md) for API details.
 ## Summary
 
 - **28 lifecycle stages** across 9 phases (Immediate, LocalImmediate, Distribute, Outbox, Inbox, Perspective, PostAllPerspectives, PostLifecycle, Destruction) plus 1 special value (`AfterReceptorCompletion`)
-- **Two mutually exclusive paths**: Local (mediator) and Distributed (outbox/inbox)
+- **Two paths, one dispatch can take both**: local (this service handles it in-process) and distributed (its outbox copy); the [dispatch policy](../dispatcher/dispatch-policy.md) decides
 - **Default stages** for receptors without `[FireAt]`:
   - **Local path**: `LocalImmediateDetached`
   - **Distributed path**: `PostInboxDetached` (receiver) — source-service filtering prevents double-fire

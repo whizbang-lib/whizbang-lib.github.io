@@ -117,7 +117,7 @@ public class CreateUserHandler : IReceptor<CreateUserCommand> {
 await dispatcher.SendAsync(new CreateUserCommand(...));
 ```
 
-A command outside the owned namespaces with no local receptor goes to the outbox for the owning service to receive.
+A command outside the owned namespaces goes to the outbox for the owning service to receive. When this service also has a local receptor for it, the receptor runs here first and the outbox copy is marked as handled here, so this service does not run it again (#1396). The full set of cases is the [dispatch policy decision table](dispatch-policy.md#decision-table).
 
 `SendManyAsync` follows the same rule for each message in the batch. An owned command it handles locally is not also published, since its only subscriber is the service that just handled it. An owned command with no local receptor throws `ReceptorNotFoundException`, and the whole batch is checked before any message in it runs.
 

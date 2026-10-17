@@ -237,7 +237,7 @@ public class CreateProductReceptor : IReceptor<CreateProductCommand, ProductCrea
 ```
 
 **Why these defaults?**
-- **Paths are mutually exclusive** - source-service filtering means a message fires local defaults OR inbox defaults, never both
+- **Once per service** - a service fires its local defaults when it handles the message in-process and its inbox defaults only for a copy it did not already handle, never both
 - **Default receptors "just work"** regardless of how message is dispatched
 - **Adding `[FireAt]` opts OUT of defaults** - you control exactly when receptor fires:
 
@@ -1422,7 +1422,7 @@ See [Automatic Message Cascade](../dispatcher/message-cascade.md#automatic-messa
 - **Multiple attributes supported** - Fire at multiple stages
 - **Default stages**: `LocalImmediateDetached`, `PostInboxDetached` (source-service filtering prevents double-fire)
 - **Adding `[FireAt]` replaces defaults** - Receptor fires ONLY at specified stages
-- **Two mutually exclusive paths**: Local (mediator) vs Distributed (outbox/inbox)
+- **Two paths, one dispatch can take both**: local and distributed; see the [dispatch policy](../dispatcher/dispatch-policy.md)
 - **Optional `ILifecycleContext` injection** - Access metadata when needed
 - **Scoped dependency support** - Receptors can inject `DbContext`, `IOrchestratorAgent`, etc.
 - **Compile-time registration** - Source generators wire automatically via `IReceptorRegistry`
