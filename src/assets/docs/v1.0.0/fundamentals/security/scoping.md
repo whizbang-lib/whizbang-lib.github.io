@@ -482,7 +482,7 @@ A perspective row's scope is written by the perspective runner from the scope of
 | `Always = ...` | The `OnCreate` and `Always` fields | The `Always` fields follow the latest writer; the rest stay |
 | `OnCreate = None, Always = None` | No scope at all (reported as [WHIZ171](../../operations/diagnostics/whiz171)) | Unchanged |
 
-```mermaid
+```mermaid{caption="How the perspective runner decides a row's scope for each write: a scope event replaces it, a new row takes the OnCreate and Always fields, and an existing row changes only its Always fields." tests=["ScopeInheritanceTests.Resolve_ScopeEvent_ForcesTheEventsScopeAsBeforeAsync", "ScopeInheritanceTests.Resolve_NewRow_CarriesTheCreateAndAlwaysFieldsAsync", "ScopeInheritanceTests.Resolve_ExistingRow_WithNoAlwaysFields_LeavesTheStoredScopeAloneAsync", "ScopeInheritanceTests.Resolve_ExistingRow_WithAlwaysFields_UpdatesOnlyThoseFieldsAsync"]}
 flowchart TD
   A[Message applied to a perspective row] --> B{IScopeEvent?}
   B -- yes --> C[Row scope replaced by the event's scope]
