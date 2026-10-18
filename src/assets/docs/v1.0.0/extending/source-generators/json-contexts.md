@@ -576,7 +576,7 @@ Reported for every discovered message, nested type, collection/array/dictionary 
 
 ---
 
-### WHIZ071: Polymorphic Base Type Discovered
+### WHIZ072: Polymorphic Base Type Discovered
 
 **Severity**: Info
 
