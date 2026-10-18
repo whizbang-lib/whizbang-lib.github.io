@@ -1,0 +1,41 @@
+name: Linked change
+
+# Every docs pull request into develop or main names the library change it documents
+# (whizbang-lib/whizbang#N) or closes an issue in this repository. The script reads the
+# pull request from the API, so editing the description and re-running this job is enough.
+on:
+  pull_request:
+    types: [opened, edited, reopened, synchronize]
+    branches: [develop, main]
+
+permissions:
+  contents: read
+  pull-requests: read
+  issues: read
+
+concurrency:
+  group: linked-change-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  linked-change:
+    name: Gate · Linked change
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: ".nvmrc"
+
+      - name: Check the description names the library change
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: node src/scripts/check-linked-change.mjs
