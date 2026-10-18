@@ -1,13 +1,13 @@
 {
   "run": {
-    "runId": "39107807342",
-    "sha": "b2f6aed2607aa1e58408344e4959c0903f2500b5",
+    "runId": "39110465282",
+    "sha": "efc844bf287fbc80fbc7f81c587815d855bce291",
     "branch": "develop",
-    "libraryVersion": "0.2622.0-alpha.32",
-    "completedAt": "2026-10-18T07:56:05.331Z"
+    "libraryVersion": "0.2622.0-alpha.63",
+    "completedAt": "2026-10-18T08:34:40.291Z"
   },
   "total": {
-    "passed": 32067,
+    "passed": 32783,
     "failed": 0,
     "skipped": 12
   },
@@ -18,7 +18,7 @@
       "skipped": 0
     },
     "component": {
-      "passed": 4310,
+      "passed": 4915,
       "failed": 0,
       "skipped": 0
     },
@@ -38,12 +38,12 @@
       "skipped": 0
     },
     "postgres-efcore-": {
-      "passed": 7519,
+      "passed": 7598,
       "failed": 0,
       "skipped": 0
     },
     "rabbitmq": {
-      "passed": 137,
+      "passed": 140,
       "failed": 0,
       "skipped": 0
     },
@@ -53,12 +53,12 @@
       "skipped": 0
     },
     "servicebus-whizbang": {
-      "passed": 103,
+      "passed": 106,
       "failed": 0,
       "skipped": 1
     },
     "unit": {
-      "passed": 18209,
+      "passed": 18235,
       "failed": 0,
       "skipped": 8
     }
@@ -150,7 +150,7 @@
     },
     "Whizbang.Core.Component.Tests": {
       "file": "Whizbang.Core.Component.Tests.json",
-      "passed": 3080,
+      "passed": 3685,
       "failed": 0,
       "skipped": 0
     },
@@ -162,7 +162,7 @@
     },
     "Whizbang.Core.Tests": {
       "file": "Whizbang.Core.Tests.json",
-      "passed": 11348,
+      "passed": 11368,
       "failed": 0,
       "skipped": 0
     },
@@ -174,7 +174,7 @@
     },
     "Whizbang.Data.EFCore.Postgres.Tests": {
       "file": "Whizbang.Data.EFCore.Postgres.Tests.json",
-      "passed": 7519,
+      "passed": 7598,
       "failed": 0,
       "skipped": 0
     },
@@ -222,7 +222,7 @@
     },
     "Whizbang.Generators.Tests": {
       "file": "Whizbang.Generators.Tests.json",
-      "passed": 3143,
+      "passed": 3149,
       "failed": 0,
       "skipped": 0
     },
@@ -378,7 +378,7 @@
     },
     "Whizbang.Transports.AzureServiceBus.Integration.Tests": {
       "file": "Whizbang.Transports.AzureServiceBus.Integration.Tests.json",
-      "passed": 103,
+      "passed": 106,
       "failed": 0,
       "skipped": 1
     },
@@ -438,7 +438,7 @@
     },
     "Whizbang.Transports.RabbitMQ.Integration.Tests": {
       "file": "Whizbang.Transports.RabbitMQ.Integration.Tests.json",
-      "passed": 74,
+      "passed": 77,
       "failed": 0,
       "skipped": 0
     },
