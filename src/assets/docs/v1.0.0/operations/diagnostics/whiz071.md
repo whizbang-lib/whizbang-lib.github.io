@@ -40,10 +40,6 @@ The check fires when a non-abstract class implements `IPerspectiveFor<TModel, TE
 Perspective model uses [VectorField] but Pgvector package is not referenced. Add <PackageReference Include="Pgvector" /> to your project.
 ```
 
-:::updated
-The diagnostic ID `WHIZ071` is also used by `Whizbang.Generators` for an unrelated **Info** diagnostic, "Polymorphic Base Type Discovered" (see [Polymorphic Serialization](../../extending/source-generators/polymorphic-serialization.md)). If you see WHIZ071 as an informational build message rather than an error, it is that diagnostic, not this one.
-:::
-
 ## Common Causes
 
 1. **Forgot to add package reference** - Added `[VectorField]` attribute but didn't install the required NuGet package

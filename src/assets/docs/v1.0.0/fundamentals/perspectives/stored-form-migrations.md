@@ -500,7 +500,7 @@ description: "The attribute compiles, reviews well and is silently ignored on th
 framework: "NET10"
 category: "Perspectives"
 difficulty: "INTERMEDIATE"
-tags: ["stored-forms", "json-converter", "anti-pattern", "whiz811"]
+tags: ["stored-forms", "json-converter", "anti-pattern", "whiz812"]
 unverified: "counter-example - this is the shape to avoid, not a working sample"
 }
 public class JobExportModel {
@@ -536,7 +536,7 @@ would invent a value the record never had — use a [custom migration](#custom).
 same way.
 
 Declaring a converter on a perspective model is reported at build time as
-[WHIZ811](#diagnostics), so this cannot be shipped silently again.
+[WHIZ812](#diagnostics), so this cannot be shipped silently again.
 
 ## Diagnostics {#diagnostics}
 
@@ -544,7 +544,7 @@ Declaring a converter on a perspective model is reported at build time as
 
 | Id | Severity | Reported when |
 |---|---|---|
-| WHIZ811 | Warning | A perspective model property declares a `[JsonConverter]`, which the stored-document read path never consults: the document is read by Entity Framework's JSON materializer, not by the serializer. Declare the shape change with `[StoredForm]`, or use a custom migration for a conversion it does not cover. See [A JSON converter is not a migration](#json-converter). |
+| WHIZ812 | Warning | A perspective model property declares a `[JsonConverter]`, which the stored-document read path never consults: the document is read by Entity Framework's JSON materializer, not by the serializer. Declare the shape change with `[StoredForm]`, or use a custom migration for a conversion it does not cover. See [A JSON converter is not a migration](#json-converter). |
 | WHIZ830 | Error | A declaration the generator cannot turn into SQL: an unsupported type pair, `Previously` equal to the current type, a `[Flags]` enum over `ulong` converted from a string, or a default on a Split physical field. Use a custom migration. |
 | WHIZ831 | Warning | An `IStoredFormMigration<TModel>` that would never run: its `TModel` is not the model of any perspective, the generated code cannot create it (no public or internal parameterless constructor, a generic class, or a class it cannot see), or the `Order` it states is not a compile-time constant. |
 | WHIZ832 | Warning | A `[StoredForm]` or `[StoredFormRemoved]` inside an element of a collection, which is not generated. Use a custom migration. |
