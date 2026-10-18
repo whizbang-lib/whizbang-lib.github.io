@@ -1,11 +1,29 @@
-# CODEOWNERS - Require approval for all changes
+# The pipeline, its gates and the build inputs belong to the build-admins team (docs#1237), as in the
+# library repository. With code-owner review required by the develop and main ruleset, a change to any of
+# these merges only with a build admin's approval; maintainers included. Everything else needs no
+# particular owner.
 # https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
 
-# Default owner for everything
-* @philcarbone
+# Workflows, composite actions, Dependabot, this file
+/.github/                   @whizbang-lib/build-admins
 
-# Critical files - require explicit approval
-.github/ @philcarbone
-angular.json @philcarbone
-package.json @philcarbone
-bun.lock @philcarbone
+# Build and gate scripts (check-linked-change.mjs is the "Gate · Linked change" decision)
+/src/scripts/               @whizbang-lib/build-admins
+/build-search-index.sh      @whizbang-lib/build-admins
+
+# Dependencies and toolchain
+/package.json               @whizbang-lib/build-admins
+/pnpm-lock.yaml             @whizbang-lib/build-admins
+/pnpm-workspace.yaml        @whizbang-lib/build-admins
+/.nvmrc                     @whizbang-lib/build-admins
+
+# Site build configuration and the custom domain
+/angular.json               @whizbang-lib/build-admins
+/tsconfig.json              @whizbang-lib/build-admins
+/tsconfig.app.json          @whizbang-lib/build-admins
+/CNAME                      @whizbang-lib/build-admins
+
+# Read the Docs build
+/.readthedocs.yaml          @whizbang-lib/build-admins
+/mkdocs.yml                 @whizbang-lib/build-admins
+/rtd/                       @whizbang-lib/build-admins
