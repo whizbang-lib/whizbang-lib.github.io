@@ -327,38 +327,126 @@ services.Configure<AzureBlobOffloadOptions>("azure-blob", opts => {
 
 ## Build-time diagnostics (WHIZ###)
 
-Compile-time errors and warnings from Whizbang's source generators and analyzers use `WHIZ###` IDs and surface in build output and the IDE, not at runtime. The IDs with dedicated pages in this section:
+Compile-time errors, warnings and notices from Whizbang's source generators and analyzers use `WHIZ###` IDs and surface in build output and the IDE, not at runtime. Every ID has its own page; each ID means one thing. WHIZ060 to WHIZ063 are also covered together on the [Serializable Property Analyzer](serializable-property-analyzer.md) page.
 
 | ID | Severity | Page |
 |---|---|---|
+| WHIZ001 | Info | [Receptor Discovered](whiz001.md) |
+| WHIZ002 | Info | [No Message Handlers Found](whiz002.md) |
+| WHIZ003 | Error | [Invalid Receptor Implementation](whiz003.md) (declared, not currently reported) |
+| WHIZ004 | Info | [Command Stream ID Discovered](whiz004.md) |
+| WHIZ005 | Error | [Stream ID Must Be Guid](whiz005.md) (declared, not currently reported) |
+| WHIZ006 | Warning | [Multiple Stream ID Attributes](whiz006.md) (declared, not currently reported) |
+| WHIZ007 | Info | [Perspective Discovered](whiz007.md) |
+| WHIZ008 | Warning | [Perspective Model Size Warning](whiz008.md) |
+| WHIZ009 | Warning | [Missing StreamId Attribute](whiz009.md) |
+| WHIZ010 | Info | [StreamId Discovered](whiz010.md) |
+| WHIZ011 | Info | [JSON Serializable Type Discovered](whiz011.md) |
+| WHIZ012 | Info | [Perspective Invoker Routing Generated](whiz012.md) |
+| WHIZ013 | Error | [GenerateStreamId requires a settable StreamId](whiz013.md) |
+| WHIZ014 | Warning | [Receptor May Not Be Constructible by Dependency Injection](whiz014.md) |
+| WHIZ020 | Info | [WhizbangId Discovered](whiz020.md) (declared, not currently reported) |
+| WHIZ021 | Warning | [WhizbangId Must Be Partial](whiz021.md) |
+| WHIZ022 | Info | [Topic Filter Discovered](whiz022.md) |
+| WHIZ023 | Info | [Enum Filter No Description](whiz023.md) (declared, not currently reported) |
+| WHIZ024 | Warning | [Duplicate WhizbangId Type Name](whiz024.md) |
+| WHIZ025 | Warning | [TopicFilter On Non-Command](whiz025.md) (declared, not currently reported) |
+| WHIZ026 | Info | [No Topic Filters Found](whiz026.md) |
+| WHIZ027 | Info | [Perspective Runner Generated](whiz027.md) |
+| WHIZ028 | Info | [Perspective Runner Registry Generated](whiz028.md) |
 | WHIZ030 | Error | [Perspective Event Missing StreamId](whiz030.md) |
 | WHIZ031 | Error | [Multiple StreamId Attributes](whiz031.md) |
+| WHIZ032 | Error | [Perspective Name Collision](whiz032.md) |
+| WHIZ033 | Warning | [Perspective Model Missing StreamId](whiz033.md) |
+| WHIZ040 | Info | [User Service Discovered](whiz040.md) |
+| WHIZ041 | Info | [Abstract Class Skipped](whiz041.md) |
+| WHIZ042 | Info | [No User Services Found](whiz042.md) (declared, not currently reported) |
+| WHIZ050 | Warning | [Public API Missing Tests](whiz050.md) (declared, not currently reported) |
+| WHIZ051 | Warning | [Invalid Test Reference](whiz051.md) (declared, not currently reported) |
+| WHIZ052 | Info | [Test Link Discovered](whiz052.md) (declared, not currently reported) |
+| WHIZ053 | Info | [Failed to Load Documentation Map](whiz053.md) |
+| WHIZ054 | Info | [Failed to Load Tests Map](whiz054.md) |
+| WHIZ055 | Warning | [Guid.NewGuid() Usage](whiz055.md) |
+| WHIZ056 | Warning | [Guid.CreateVersion7() Usage](whiz056.md) |
+| WHIZ057 | Warning | [Raw Guid Parameter](whiz057.md) (declared, not currently reported) |
 | WHIZ058 | Info | [GUID Call Intercepted](whiz058.md) |
 | WHIZ059 | Info | [GUID Interception Suppressed](whiz059.md) |
-| WHIZ060–WHIZ063 | Error | [Serializable Property Analyzer](serializable-property-analyzer.md) (WHIZ062 also has [its own page](whiz062.md)) |
+| WHIZ060 | Error | [Property uses non-serializable type 'object'](whiz060.md) |
+| WHIZ061 | Error | [Property uses non-serializable type 'dynamic'](whiz061.md) |
+| WHIZ062 | Error | [Property Uses Non-Serializable Interface Type](whiz062.md) |
+| WHIZ063 | Error | [Nested type contains non-serializable property](whiz063.md) |
 | WHIZ070 | Error | [Missing Pgvector.EntityFrameworkCore Package](whiz070.md) |
 | WHIZ071 | Error | [Missing Pgvector Package](whiz071.md) |
-| WHIZ080 | Warning (disabled by default) | [Multiple Handlers for RPC Message](whiz080.md) |
+| WHIZ072 | Info | [Polymorphic Base Type Discovered](whiz072.md) |
+| WHIZ080 | Warning | [Multiple Handlers for RPC Message](whiz080.md) |
 | WHIZ090 | Error | [MessageTag Parameter Naming](whiz090.md) |
+| WHIZ099 | Info | [MessageJsonContextGenerator Running](whiz099.md) |
+| WHIZ100 | Error | [Apply method must be synchronous](whiz100.md) |
+| WHIZ101 | Error | [Apply method cannot use async/await](whiz101.md) |
+| WHIZ102 | Error | [Apply method cannot call database I/O](whiz102.md) |
+| WHIZ103 | Error | [Apply method cannot call HTTP/network operations](whiz103.md) |
+| WHIZ104 | Warning | [Apply method should use event timestamps instead of DateTime.UtcNow](whiz104.md) |
+| WHIZ105 | Warning | [Perspective injects non-pure service](whiz105.md) |
+| WHIZ106 | Error | [Collective apply must not query other perspectives at apply time](whiz106.md) |
+| WHIZ110 | Warning | [Message Missing [PinnedId]](whiz110.md) |
+| WHIZ111 | Warning | [Perspective Missing [PinnedId]](whiz111.md) |
+| WHIZ112 | Error | [Invalid [PinnedId] GUID](whiz112.md) |
 | WHIZ120 | Error | [Pinned Type Renamed Without Ledger Acknowledgment](whiz120.md) |
 | WHIZ121 | Warning | [Pinned-Type Ledger Entry Has No Living Type](whiz121.md) |
+| WHIZ122 | Warning | [Pinned-Type Ledger Could Not Be Parsed](whiz122.md) |
+| WHIZ130 | Warning | [Perspective mixes ephemeral and Sourced Apply methods](whiz130.md) |
+| WHIZ134 | Error | [Ambiguous ephemeral composition](whiz134.md) |
+| WHIZ140 | Warning | [Perspective shares stream event types with a group but joins none](whiz140.md) |
+| WHIZ141 | Warning | [Stream group has no announcing member with a row evictor](whiz141.md) |
+| WHIZ142 | Warning | [Bridge on a sole stream-group membership](whiz142.md) |
+| WHIZ150 | Warning | [Minted composite constructed outside the mint](whiz150.md) |
+| WHIZ151 | Error | [Command type has more than one inbox receptor](whiz151.md) |
+| WHIZ160 | Warning | [Type Name Composed By Hand](whiz160.md) |
+| WHIZ161 | Warning | [Type Name Dissected By Hand](whiz161.md) |
+| WHIZ162 | Warning | [Type Names Compared Without The Matching Helper](whiz162.md) |
+| WHIZ163 | Warning | [Type-Name Key Assigned From A Hand-Built String](whiz163.md) |
+| WHIZ170 | Warning | [[InheritScope] on a Non-Perspective Type Has No Effect](whiz170.md) |
+| WHIZ171 | Info | [[InheritScope] with All-None Flags Is Redundant](whiz171.md) |
+| WHIZ200 | Warning | [Perspective model should use List<T> instead of array](whiz200.md) |
 | WHIZ300 | Error | [Inconsistent Perspective Model Types](whiz300.md) |
 | WHIZ302 | Warning | [Filtered Perspective Field Has No Index](whiz302.md) |
-| WHIZ303 | Warning | [Declared Index Cannot Be Built For This Field's Type](whiz303.md) |
-| WHIZ304 | Warning | [Declared Index Cannot Be Reached For This Model's Storage](whiz304.md) |
-| WHIZ305 | Warning | [Declared Index Capability Does Not Apply To This Field's Type](whiz305.md) |
-| WHIZ307 | Warning | [Whole-Document Match Has No Index](whiz307.md) |
-| WHIZ308 | Warning | [Whole-Document Match Has No Index By Default](whiz308.md) |
-| WHIZ309 | Warning | [Collective Predicate Filters An Unindexed Field](whiz309.md) |
+| WHIZ303 | Warning | [Declared Index Cannot Be Built For This Field''s Type](whiz303.md) |
+| WHIZ304 | Warning | [Declared Index Cannot Be Reached For This Model''s Storage](whiz304.md) |
+| WHIZ305 | Warning | [Declared Index Capability Does Not Apply To This Field''s Type](whiz305.md) |
+| WHIZ306 | Warning | [Fields reachable by request-time sorting have no index](whiz306.md) |
+| WHIZ307 | Warning | [Whole-document match has no index](whiz307.md) |
+| WHIZ308 | Warning | [Whole-document match has no index by default](whiz308.md) |
+| WHIZ309 | Warning | [Collective predicate filters an unindexed field](whiz309.md) |
 | WHIZ400 | Error | [Invalid Type Argument for ILensQuery](whiz400.md) |
-| WHIZ802 | Error | [VectorField Invalid Dimensions](whiz802.md) |
+| WHIZ401 | Warning | [Multi-Model ILensQuery References Unknown Perspective Model](whiz401.md) |
+| WHIZ402 | Info | [Multi-Model ILensQuery Auto-Detected](whiz402.md) |
+| WHIZ500 | Warning | [Hand-Constructed Service Omits a Dependency](whiz500.md) |
+| WHIZ501 | Info | [Optional Injected Dependency](whiz501.md) |
+| WHIZ701 | Info | [EF Core Perspective Discovery](whiz701.md) |
+| WHIZ702 | Info | [EF Core Migration Files Discovery](whiz702.md) |
+| WHIZ703 | Info | [No DbContext Found](whiz703.md) |
+| WHIZ801 | Error | [VectorField Invalid Type](whiz801.md) (declared, not currently reported) |
+| WHIZ802 | Error | [VectorField Invalid Dimensions](whiz802.md) (declared, not currently reported) |
+| WHIZ803 | Warning | [PhysicalField Complex Type](whiz803.md) (declared, not currently reported) |
+| WHIZ805 | Warning | [Split Mode No Physical Fields](whiz805.md) (declared, not currently reported) |
 | WHIZ807 | Info | [Physical Fields Discovered](whiz807.md) |
 | WHIZ808 | Error | [Split Class Model Cannot Be Copied](whiz808.md) |
-
-Many more diagnostics ship without dedicated pages — discovery/registration notices (WHIZ001–WHIZ028), StreamId and WhizbangId validation (WHIZ005/WHIZ006/WHIZ009/WHIZ013/WHIZ021/WHIZ024), service registration (WHIZ040–WHIZ042), test linking (WHIZ050–WHIZ054), Guid usage warnings (WHIZ055–WHIZ057), perspective purity and model checks (WHIZ100–WHIZ106, WHIZ200), pinned identity (WHIZ110–WHIZ112), InheritScope usage (WHIZ400/WHIZ401 in `Whizbang.Generators`), EF Core generation (WHIZ401/WHIZ402, WHIZ701–WHIZ703, WHIZ810–WHIZ822), physical/vector fields (WHIZ801–WHIZ807), stored-form migrations (WHIZ830–WHIZ833, see [Stored-Form Migrations](../../fundamentals/perspectives/stored-form-migrations.md#diagnostics)), and receptor safety (WHIZ900). Their build-output messages are self-describing; browse the Diagnostics section index for pages as they are added.
+| WHIZ810 | Warning | [Perspective Model Contains Dictionary Property](whiz810.md) |
+| WHIZ811 | Info | [Perspective Model Contains Polymorphic Type](whiz811.md) |
+| WHIZ812 | Warning | [Perspective Model Declares a JSON Converter That Is Never Consulted](whiz812.md) |
+| WHIZ820 | Error | [Table Name Exceeds Database Limit](whiz820.md) |
+| WHIZ821 | Error | [Column Name Exceeds Database Limit](whiz821.md) |
+| WHIZ822 | Error | [Index Name Exceeds Database Limit](whiz822.md) |
+| WHIZ830 | Error | [Stored-Form Migration Cannot Be Generated](whiz830.md) |
+| WHIZ831 | Warning | [Stored-Form Migration Never Runs](whiz831.md) |
+| WHIZ832 | Warning | [Stored-Form Declaration Inside a Collection Element](whiz832.md) |
+| WHIZ833 | Warning | [Stored-Form Migrations Share an Order](whiz833.md) |
+| WHIZ900 | Error | [Perspective Sync in Inline Receptor](whiz900.md) |
 
 ---
 
 ## Contributing an entry
 
 When you add a new user-facing error to the library, add it here in the same commit (documentation-first). Each entry needs: the exact message template in a `text` block, the source component, the trigger condition, what the framework does next (retry, DLQ, fallback, no-op), and the remedy.
+
+A new build diagnostic gets an unused `WHIZ###` ID (the "Test · Pipeline scripts" job fails when one ID has two meanings), its own `whizNNN` page in this section, and a row in the table above, in the docs pull request that accompanies the library change.
