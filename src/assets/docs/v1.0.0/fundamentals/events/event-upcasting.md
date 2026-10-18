@@ -156,8 +156,8 @@ stack, so every outer decorator and consumer observes upcasted events:
 graph TB
     A["IEventStore"]
     B["AppendAndWaitEventStoreDecorator (Layer 3, outermost)"]
-    C["SyncTrackingEventStoreDecorator (Layer 2)"]
-    D["SecurityContextEventStoreDecorator (Layer 1)"]
+    C["SecurityContextEventStoreDecorator (Layer 2)"]
+    D["SyncTrackingEventStoreDecorator (Layer 1)"]
     E["UpcastingEventStoreDecorator (Layer 0 — transforms on read)"]
     F["Base IEventStore (e.g. EFCoreEventStore)"]
 

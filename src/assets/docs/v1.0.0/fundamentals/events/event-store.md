@@ -20,6 +20,7 @@ testReferences:
   - tests/Whizbang.Core.Tests/Messaging/AppendAndWaitEventStoreDecoratorTests.cs
   - tests/Whizbang.Core.Tests/Messaging/SecurityContextEventStoreDecoratorTests.cs
   - tests/Whizbang.Core.Tests/Messaging/SyncTrackingEventStoreDecoratorTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/EventStoreSyncTrackingIntegrationTests.cs
   - tests/Whizbang.Core.Tests/Messaging/InMemoryEventStoreTests.cs
   - tests/Whizbang.Core.Tests/Messaging/EventStoreAppendBatchTests.cs
 lastMaintainedCommit: '01f07906'
@@ -282,12 +283,12 @@ The typed `ReadAsync` and the between-checkpoint reads keep `event_id` order.
 
 Whizbang applies decorators to enhance event store functionality:
 
-```mermaid{caption="Event store decorator stack — your IEventStore call passes through AppendAndWait, SyncTracking, SecurityContext, and Upcasting decorators before reaching the base store."}
+```mermaid{caption="Event store decorator stack — your IEventStore call passes through AppendAndWait, SecurityContext, SyncTracking, and Upcasting decorators before reaching the base store."}
 graph TB
     A["IEventStore (your code calls this)"]
     B["AppendAndWaitEventStoreDecorator (enables AppendAndWaitAsync)"]
-    C["SyncTrackingEventStoreDecorator (tracks events for sync)"]
-    D["SecurityContextEventStoreDecorator (propagates security context)"]
+    C["SecurityContextEventStoreDecorator (turns a message into an envelope with the security context)"]
+    D["SyncTrackingEventStoreDecorator (tracks the id of the envelope the store writes)"]
     E["UpcastingEventStoreDecorator (transforms stored events on read)"]
     F["Base IEventStore (e.g., EFCoreEventStore, DapperEventStore)"]
 
@@ -298,6 +299,8 @@ graph TB
 ```
 
 The upcasting layer only participates when upcasters are registered — see [Event Upcasting](event-upcasting.md).
+
+Sync tracking sits inside the security-context layer on purpose. Appending a bare message, the security-context layer builds the envelope the store writes, and the tracker records that envelope's id, so a perspective sync waits on the id that was actually stored.
 
 These decorators are automatically applied when using `DecorateEventStoreWithSyncTracking()`, which is called by data providers.
 

@@ -14,6 +14,7 @@ codeReferences:
   - src/Whizbang.Core/Observability/EnvelopeRegistry.cs
 testReferences:
   - tests/Whizbang.Observability.Component.Tests/EnvelopeRegistryTests.cs
+  - tests/Whizbang.Core.Component.Tests/Dispatcher/DispatchTangentialParityComponentTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -108,6 +109,12 @@ var notFound = registry.TryGetEnvelope(copy);  // ❌ Returns null
 ```
 
 This is intentional - it ensures the exact message being processed is matched.
+
+### The id a local handler sees
+
+When a dispatch runs a message in this service and also stores a copy of it (a send another service owns, a publish, a cascade, or a batch of either), the envelope registered for the handlers carries the **id of the stored copy**. So a receptor that keys something on `TryGetEnvelope(message).MessageId` (an idempotency record, an audit link) uses the same id a receiver of the copy sees. A dispatch that stores nothing registers an envelope with an id of its own.
+
+The component test `DispatchTangentialParityComponentTests.EveryEntryThatRunsHereAndWritesACopy_RegistersTheCopysIdForTheHandlersAsync` checks this on every such entry.
 
 ### Scoped Lifetime
 
