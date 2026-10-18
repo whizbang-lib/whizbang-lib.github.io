@@ -336,12 +336,28 @@ Fixes #123
 5. **Breaking Changes**: If applicable
 6. **Migration**: Steps for users to upgrade
 
+### Name the Library Change It Documents
+
+Every pull request into `develop` or `main` names the library change it documents, with a line like:
+
+```text
+Docs for whizbang-lib/whizbang#N
+```
+
+where `N` is the library pull request or issue. GitHub then shows the link on the library pull request, and the library's review checks find the docs through it. A full URL to the library issue or pull request works too. A docs change with no library counterpart can instead close an issue in this repository with `Fixes #N`.
+
+The check **Gate · Linked change** enforces this. It looks each reference up, so a number that does not exist does not count, and text inside inline code or a code block does not count either, because GitHub does not link it. The check reads the description when it runs: after editing the description, re-run the check.
+
+Exempt: pull requests opened by a bot (the main-to-develop sync and the published test-status data), and the release pull request from a `release/*` branch into `main`.
+
 ### Example PR Description
 
 ```markdown
 ## Add Projection Support
 
 Implements projection support for creating read models from event streams.
+
+Docs for whizbang-lib/whizbang#123
 
 ### What Changed
 - Added `Projection` base class
