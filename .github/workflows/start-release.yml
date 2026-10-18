@@ -219,7 +219,9 @@ jobs:
             case "$CONCLUSION" in
               success)
                 echo "Build passed - merging v$VERSION"
-                if gh pr merge "$BRANCH" --merge; then
+                # --admin uses the app's ruleset bypass: a release carries develop's reviewed changes,
+                # including files code owners already approved there, which the app cannot approve again.
+                if gh pr merge "$BRANCH" --merge --admin; then
                   echo "Merged v$VERSION; release, deploy and sync start from the merge."
                   exit 0
                 fi
