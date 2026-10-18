@@ -337,7 +337,7 @@ Compile-time errors and warnings from Whizbang's source generators and analyzers
 | WHIZ059 | Info | [GUID Interception Suppressed](whiz059.md) |
 | WHIZ060–WHIZ063 | Error | [Serializable Property Analyzer](serializable-property-analyzer.md) (WHIZ062 also has [its own page](whiz062.md)) |
 | WHIZ070 | Error | [Missing Pgvector.EntityFrameworkCore Package](whiz070.md) |
-| WHIZ071 | Error | [Missing Pgvector Package](whiz071.md) — the same ID is also an Info diagnostic ("Polymorphic Base Type Discovered") in `Whizbang.Generators` |
+| WHIZ071 | Error | [Missing Pgvector Package](whiz071.md) |
 | WHIZ080 | Warning (disabled by default) | [Multiple Handlers for RPC Message](whiz080.md) |
 | WHIZ090 | Error | [MessageTag Parameter Naming](whiz090.md) |
 | WHIZ120 | Error | [Pinned Type Renamed Without Ledger Acknowledgment](whiz120.md) |
@@ -350,7 +350,7 @@ Compile-time errors and warnings from Whizbang's source generators and analyzers
 | WHIZ307 | Warning | [Whole-Document Match Has No Index](whiz307.md) |
 | WHIZ308 | Warning | [Whole-Document Match Has No Index By Default](whiz308.md) |
 | WHIZ309 | Warning | [Collective Predicate Filters An Unindexed Field](whiz309.md) |
-| WHIZ400 | Error | [Invalid Type Argument for ILensQuery](whiz400.md) — the same ID is also a Warning ("[InheritScope] on a non-perspective type") in `Whizbang.Generators` |
+| WHIZ400 | Error | [Invalid Type Argument for ILensQuery](whiz400.md) |
 | WHIZ802 | Error | [VectorField Invalid Dimensions](whiz802.md) |
 | WHIZ807 | Info | [Physical Fields Discovered](whiz807.md) |
 | WHIZ808 | Error | [Split Class Model Cannot Be Copied](whiz808.md) |

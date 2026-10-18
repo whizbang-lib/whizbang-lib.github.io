@@ -311,12 +311,12 @@ The generator reports discovered polymorphic types:
 
 | Diagnostic | Level | Description |
 |------------|-------|-------------|
-| WHIZ071 | Info | `Discovered polymorphic base type '{0}' with {1} derived type(s) for automatic JSON serialization` |
+| WHIZ072 | Info | `Discovered polymorphic base type '{0}' with {1} derived type(s) for automatic JSON serialization` |
 
 Example:
 ```
-info WHIZ071: Discovered polymorphic base type 'BaseEvent' with 3 derived type(s) for automatic JSON serialization
-info WHIZ071: Discovered polymorphic base type 'IEvent' with 15 derived type(s) for automatic JSON serialization
+info WHIZ072: Discovered polymorphic base type 'BaseEvent' with 3 derived type(s) for automatic JSON serialization
+info WHIZ072: Discovered polymorphic base type 'IEvent' with 15 derived type(s) for automatic JSON serialization
 ```
 
 ---
