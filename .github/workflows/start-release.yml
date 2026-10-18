@@ -23,10 +23,9 @@ on:
         default: false
         type: boolean
 
+# Every write goes through the release app, so nothing here needs more than read.
 permissions:
-  contents: write
-  pull-requests: write
-  actions: write   # dispatches CI, release, deploy and sync: see "Wait for Build, then merge"
+  contents: read
 
 # Two library runs can land within a minute of each other. Serialize the cut so
 # they cannot compute the same version or race for the same release branch.
@@ -38,14 +37,30 @@ jobs:
   create-release-pr:
     name: Create Release PR
     runs-on: ubuntu-latest
+    # The release app's secrets live in this environment (develop, main and release/v* only). Not
+    # release-cut: the library's CI starts this unattended after each test-status publish.
+    environment: release-app
 
     steps:
+      # The release app publishes the branch, opens the PR and merges it, so the PR runs its checks and
+      # the merge starts release.yml, deploy.yml and sync-develop.yml on its own: GitHub starts no
+      # workflow for a push, PR or merge made with GITHUB_TOKEN.
+      - name: Mint the release app token
+        id: app-token
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          client-id: ${{ secrets.RELEASE_APP_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+          permission-contents: write
+          permission-pull-requests: write
+          permission-workflows: write
+
       - name: Checkout develop
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: develop
           fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
+          persist-credentials: false
 
       - name: Calculate Version
         id: version
@@ -142,18 +157,21 @@ jobs:
           echo "Updated package.json version:"
           node -p "require('./package.json').version"
 
-      - name: Commit and Push
+      # Not git push: develop and main require signed commits. The script recreates the main merge and the
+      # bump through the API, which GitHub signs as the app, and creates the branch.
+      - name: Commit and publish signed
         env:
           VERSION: ${{ steps.version.outputs.semver }}
           BRANCH: ${{ steps.version.outputs.branch }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
           git add package.json
           git commit -m "chore(release): bump version to $VERSION"
-          git push origin "$BRANCH"
+          pwsh .github/scripts/Publish-SignedCommit.ps1 -Repository "$GITHUB_REPOSITORY" -Branch "$BRANCH"
 
       - name: Create Pull Request
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
           VERSION: ${{ steps.version.outputs.semver }}
           BRANCH: ${{ steps.version.outputs.branch }}
         run: |
@@ -184,50 +202,28 @@ jobs:
           EOF
           )"
 
-      # main requires a PR, but with 0 approvals and no required status checks
-      # nothing actually blocks a merge. A release still must not land red, so
-      # wait for Build to conclude before merging rather than merging blind.
-      #
-      # Everything after the PR is DISPATCHED, never left to events. This job pushes, opens the
-      # PR and merges as github-actions[bot] (GITHUB_TOKEN), and GitHub does not start workflows
-      # for that: the PR's own runs sit at "action_required" with no jobs, so a Build check never
-      # appears, and the merge's push and close events start nothing. A workflow_dispatch made
-      # with GITHUB_TOKEN is the one event that does start a run, so this job dispatches:
-      #   - ci.yml on the release branch: the Build check this step waits for;
-      #   - release.yml with the version: the tag and the GitHub release;
-      #   - deploy.yml on main: the published site;
-      #   - sync-develop.yml on main: develop catches up with the version bump.
-      # Without this every automatic release timed out here and left its PR open.
+      # Wait for the PR's own Build (the app opened it, so it ran), then merge as the app. The merge's
+      # push and close events start release.yml (tag and GitHub release), deploy.yml and sync-develop.yml.
       - name: Wait for Build, then merge
         if: ${{ inputs.auto_merge }}
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
           BRANCH: ${{ steps.version.outputs.branch }}
           VERSION: ${{ steps.version.outputs.semver }}
         run: |
           SHA=$(git rev-parse HEAD)
-          gh workflow run ci.yml --ref "$BRANCH" \
-            || { echo "::error::Could not dispatch CI on $BRANCH - leaving the release PR open"; exit 1; }
-          echo "Dispatched CI on $BRANCH; waiting for Build on $SHA"
+          echo "Waiting for Build on $SHA"
           for _ in $(seq 1 60); do
             CONCLUSION=$(gh api "repos/$GITHUB_REPOSITORY/commits/$SHA/check-runs" \
               --jq '[.check_runs[] | select(.name == "Build")] | .[0].conclusion // "pending"')
             case "$CONCLUSION" in
               success)
                 echo "Build passed - merging v$VERSION"
-                if gh pr merge "$BRANCH" --merge; then
-                  # The merge was made with GITHUB_TOKEN, so its push and close events start
-                  # nothing (see above). Dispatch each follow-up; a failed dispatch is reported
-                  # with the command that recovers it, since the merge itself already landed.
-                  echo "Merged - dispatching release, deploy and sync for v$VERSION"
-                  FAILED=0
-                  gh workflow run release.yml --ref main -f version="$VERSION" -f dry_run=false \
-                    || { FAILED=1; echo "::error::Release dispatch failed - run: gh workflow run release.yml --ref main -f version=$VERSION -f dry_run=false"; }
-                  gh workflow run deploy.yml --ref main \
-                    || { FAILED=1; echo "::error::Deploy dispatch failed - run: gh workflow run deploy.yml --ref main"; }
-                  gh workflow run sync-develop.yml --ref main \
-                    || { FAILED=1; echo "::error::Sync dispatch failed - run: gh workflow run sync-develop.yml --ref main"; }
-                  exit "$FAILED"
+                # --admin uses the app's ruleset bypass: a release carries develop's reviewed changes,
+                # including files code owners already approved there, which the app cannot approve again.
+                if gh pr merge "$BRANCH" --merge --admin; then
+                  echo "Merged v$VERSION; release, deploy and sync start from the merge."
+                  exit 0
                 fi
                 # A conflict does not clear by waiting; say so now rather than at the timeout.
                 if [ "$(gh pr view "$BRANCH" --json mergeable --jq .mergeable)" = "CONFLICTING" ]; then

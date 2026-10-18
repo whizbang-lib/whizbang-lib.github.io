@@ -36,6 +36,8 @@ jobs:
   check-release:
     name: Check Release Conditions
     runs-on: ubuntu-latest
+    permissions:
+      actions: write   # a merged release PR hands off to a run of this workflow on main
     outputs:
       should_release: ${{ steps.check.outputs.should_release }}
       version: ${{ steps.check.outputs.version }}
@@ -62,9 +64,12 @@ jobs:
           elif [ "$PR_MERGED" == "true" ]; then
             if [[ "$PR_TITLE" =~ ^chore\(release\):\ v([0-9]+\.[0-9]+\.[0-9]+.*) ]]; then
               VERSION="${BASH_REMATCH[1]}"
-              echo "Release PR merged - version: $VERSION"
-              echo "should_release=true" >> "$GITHUB_OUTPUT"
-              echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+              # This run's ref is refs/pull/N/merge, which the release-app environment (and so the tag
+              # job) refuses. Hand off to a run on main, whoever merged the PR; that run tags and releases.
+              echo "Release PR merged - version: $VERSION; releasing from a run on main"
+              echo "should_release=false" >> "$GITHUB_OUTPUT"
+              echo "version=" >> "$GITHUB_OUTPUT"
+              echo "handoff=$VERSION" >> "$GITHUB_OUTPUT"
             else
               echo "PR merged but not a release PR"
               echo "should_release=false" >> "$GITHUB_OUTPUT"
@@ -75,6 +80,14 @@ jobs:
             echo "should_release=false" >> "$GITHUB_OUTPUT"
             echo "version=" >> "$GITHUB_OUTPUT"
           fi
+
+      # A workflow_dispatch made with GITHUB_TOKEN is the one event it makes that starts a run.
+      - name: Hand off the release to a run on main
+        if: steps.check.outputs.handoff != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.check.outputs.handoff }}
+        run: gh workflow run release.yml --repo "$GITHUB_REPOSITORY" --ref main -f version="$VERSION" -f dry_run=false
 
   # ============================================================================
   # Version Display (dry run only)
@@ -90,7 +103,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Read Current Version
         id: current
@@ -126,7 +139,7 @@ jobs:
     continue-on-error: true
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           sparse-checkout: .github/actions/notify-pushover
 
@@ -170,15 +183,29 @@ jobs:
     name: Create Release
     needs: [check-release, approve]
     runs-on: ubuntu-latest
+    # The release app's secrets live in this environment (develop, main and release/v* only).
+    environment: release-app
     permissions:
-      contents: write
+      contents: write   # the GitHub release; the tag is pushed by the app
 
     steps:
+      # The release app pushes the tag, so the tag ruleset can let only that app create a v* tag (GitHub
+      # Actions cannot be a ruleset bypass actor). Workflows: GitHub refuses an app a ref whose commit
+      # changes .github/workflows without it.
+      - name: Mint the release app token
+        id: app-token
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          client-id: ${{ secrets.RELEASE_APP_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+          permission-contents: write
+          permission-workflows: write
+
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ steps.app-token.outputs.token }}
 
       - name: Configure Git
         run: |
@@ -210,7 +237,7 @@ jobs:
           git push origin "$TAG"
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v3
+        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
           tag_name: v${{ needs.check-release.outputs.version }}
           name: Release v${{ needs.check-release.outputs.version }}
@@ -241,7 +268,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           sparse-checkout: .github/actions/notify-pushover
 
@@ -277,7 +304,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           sparse-checkout: .github/actions/notify-pushover
 
