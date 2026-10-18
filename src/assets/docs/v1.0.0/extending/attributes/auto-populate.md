@@ -42,6 +42,7 @@ testReferences:
   - tests/Whizbang.Core.Tests/AutoPopulate/MessageEnvelopeAutoPopulateExtensionsTests.cs
   - tests/Whizbang.Core.Tests/AutoPopulate/JsonAutoPopulateHelperTests.cs
   - tests/Whizbang.Generators.Tests/AutoPopulateDiscoveryGeneratorTests.cs
+  - tests/Whizbang.Core.Component.Tests/Dispatcher/DispatchTangentialParityComponentTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -237,6 +238,14 @@ Population happens at three distinct points in the message lifecycle:
 // Phase 3: Delivered -- when message arrives from transport
 // Populates: TimestampKind.DeliveredAt
 ```
+
+#### The Sent phase runs once per dispatch
+
+A dispatch stamps the Sent phase once, before anything reads the message. When the dispatch stores a copy (to the outbox, or only to the event store), the copy stamps it. When it stores nothing, as with a local-only cascade or a local invoke, the in-process run stamps it. This holds for every entry: send, publish, cascade, a receptor's returned messages, and each message of a batch.
+
+So a receptor in the sending service reads the same `SentAt`, correlation and identifiers that the stored and transported copy carries. A value a receptor derives from them, such as a key that recognizes a redelivered message, comes out the same when the copy is delivered again.
+
+The component test `DispatchTangentialParityComponentTests.EveryEntryThatRunsHereAndWritesACopy_HandsTheHandlersTheMessageAsStoredAsync` checks this on every entry that runs a message here and writes its copy, and `EveryLocalRunWithNoCopy_StampsTheMessageItselfAsync` checks the case with no copy.
 
 ### 3. Immutability Preservation
 
