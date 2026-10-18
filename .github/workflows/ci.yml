@@ -40,6 +40,17 @@ jobs:
       - name: Test build scripts
         run: pnpm run test:scripts
 
+      # The release and sync workflows publish their commits with .github/scripts/Publish-SignedCommit.ps1
+      # (signed by GitHub as the release app); its Pester tests run here so a broken copy cannot merge.
+      - name: Test pipeline scripts
+        shell: pwsh
+        run: |
+          $c = New-PesterConfiguration
+          $c.Run.Path = '.github/scripts/tests'
+          $c.Run.Exit = $true
+          $c.Output.Verbosity = 'Detailed'
+          Invoke-Pester -Configuration $c
+
       # Living docs: samples tagged {testFile, testMethod} must match the
       # referenced library test body (warning mode until adoption grows).
       - name: Checkout library for sample-drift check
