@@ -1,11 +1,11 @@
 ---
-title: 'WHIZ171: [InheritScope] with All-None Flags Is Redundant'
+title: 'WHIZ171: [InheritScope] With All-None Flags Gives Rows No Scope'
 pageType: troubleshooting
 verifiedAgainstCommit: 9a416b5b
 verifiedDate: 2026-10-17
 description: >-
-  Info diagnostic when [InheritScope] sets both OnCreate and Always to ScopeFields.None, a declaration that asks to
-  inherit nothing and is easy to misread.
+  Info diagnostic when [InheritScope(OnCreate = None, Always = None)] is declared. Rows are written with an empty scope,
+  not even a tenant, so lenses filtered by tenant or user do not return them.
 version: 1.0.0
 category: Diagnostics
 severity: Info
@@ -17,146 +17,80 @@ tags:
   - analyzer
 codeReferences:
   - src/Whizbang.Generators/InheritScopeAnalyzer.cs
-  - src/Whizbang.Generators/PerspectiveRunnerGenerator.cs
   - src/Whizbang.Core/Lenses/InheritScopeAttribute.cs
+  - src/Whizbang.Core/Lenses/ScopeInheritance.cs
 testReferences:
   - tests/Whizbang.Generators.Tests/InheritScopeAnalyzerTests.cs
-  - tests/Whizbang.Generators.Tests/InheritScopeAnalyzerCoverageTests.cs
 lastMaintainedCommit: '9a416b5b'
 ---
 
-# WHIZ171: [InheritScope] with All-None Flags Is Redundant
+# WHIZ171: [InheritScope] With All-None Flags Gives Rows No Scope
 
 **Severity**: Info
 **Category**: Security / Scope Inheritance
 
 ## Description
 
-`[InheritScope]` has two flag properties: `OnCreate` (scope fields copied from the creating message when a row is
-inserted, default `ScopeFields.Tenant`) and `Always` (fields copied on every apply, default `ScopeFields.None`). The
-`InheritScopeAnalyzer` reports WHIZ171 when both resolve to `None`, which happens only when `OnCreate = ScopeFields.None`
-is written explicitly, because `OnCreate` defaults to `Tenant`. A bare `[InheritScope]` is never reported.
+With both `OnCreate` and `Always` set to `ScopeFields.None`, the perspective runner writes the model's rows with an empty
+scope: no tenant, no user, no principals. A lens filtered by tenant or user does not return them. That is right for
+rows that are meant to be unscoped, and a mistake almost everywhere else.
 
-A declaration that inherits nothing is legal, but it reads like a mistake: a reviewer cannot tell whether "no scope at
-all" was intended. The diagnostic asks you to either say so or pick the fields you meant.
-
-The check runs on any class that carries `[InheritScope]`, whether or not it implements `IPerspectiveFor<...>`, so on
-a class that is not a perspective it can appear together with [WHIZ170](whiz170).
-
-:::updated
-**Omitting the attribute does not give tenant-only inheritance in this release.** The descriptor's description says
-the framework default without the attribute is tenant-only. The perspective runner generator, however, treats a model
-with no `[InheritScope]` as "copy every scope field on insert" (the legacy behavior), and a bare `[InheritScope]` as
-`OnCreate = Tenant`. So if you meant tenant-only, write `[InheritScope]` with no arguments rather than removing it.
-The runner reads only `OnCreate`, from the perspective model; see the placement note on [WHIZ170](whiz170).
-:::
+It is not the same as leaving the attribute off. Without the attribute, a new row copies every scope field from the
+message that created it (see [Scope Inheritance](../../fundamentals/security/scoping#scope-inheritance)).
 
 ## Diagnostic Message
 
 ```
-[InheritScope(OnCreate = None, Always = None)] on '{ClassName}' is equivalent to declaring no inheritance at all. Either omit the attribute or specify at least one inherited field.
+[InheritScope(OnCreate = None, Always = None)] on '{Model}' gives its rows no scope, not even a tenant, so a lens filtered by tenant or user does not return them. Name the fields the rows should carry, or keep this if the rows are meant to be unscoped.
 ```
-
-## Common Causes
-
-1. **`OnCreate = ScopeFields.None` written to "turn off" inheritance**, without a comment explaining why the row
-   should carry no scope.
-2. **A leftover from editing flags**, where every field was removed from `OnCreate` and `Always` was already `None`.
-3. **Copying a template** that spelled out both properties as `None`.
 
 ## How to Fix
 
-- **You meant tenant-only inheritance**: use `[InheritScope]` with no arguments (`OnCreate = Tenant`, `Always = None`).
-- **You meant specific fields**: list them, for example `[InheritScope(OnCreate = ScopeFields.Tenant | ScopeFields.User)]`.
-- **You really mean "inherit nothing"**: keep the declaration, add a comment saying why, and suppress WHIZ171 for that
-  class.
+Name the fields the rows should carry, or remove the attribute to record every field at creation. Keep it only if the
+rows are deliberately unscoped.
 
 ### Before (causes WHIZ171)
 
 ```csharp{
-title: "[InheritScope] with every flag set to None"
-description: "Both OnCreate and Always are ScopeFields.None; the analyzer reports WHIZ171 at Info severity naming the class."
+title: "All-None scope inheritance"
+description: "Rows of FooModel are written with no scope."
 framework: "NET10"
 category: "Diagnostics"
 difficulty: "BEGINNER"
-tags: ["whiz171", "inherit-scope", "analyzer", "counter-example"]
+tags: ["whiz171", "inherit-scope", "analyzer"]
 testFile: "tests/Whizbang.Generators.Tests/InheritScopeAnalyzerTests.cs"
-testMethod: "Analyzer_InheritScopeAllNone_ReportsAuth011Async"
+testMethod: "Analyzer_InheritScopeAllNone_ReportsWhiz171SayingRowsGetNoScopeAsync"
 githubUrl: "https://github.com/whizbang-lib/whizbang/blob/develop/tests/Whizbang.Generators.Tests/InheritScopeAnalyzerTests.cs"
-tests: ["InheritScopeAnalyzerTests.Analyzer_InheritScopeAllNone_ReportsAuth011Async"]
+tests: ["InheritScopeAnalyzerTests.Analyzer_InheritScopeAllNone_ReportsWhiz171SayingRowsGetNoScopeAsync"]
 }
-public class FooModel { public System.Guid Id { get; set; } }
-public class FooEvent { public System.Guid StreamId { get; set; } }
-
 [InheritScope(OnCreate = ScopeFields.None, Always = ScopeFields.None)]
-public class FooProjection : IPerspectiveFor<FooModel, FooEvent> {
-  public FooModel Apply(FooModel current, FooEvent e) => new();
-}
+public class FooModel { public Guid Id { get; set; } }
 ```
 
 ### After (no WHIZ171)
 
 ```csharp{
-title: "Bare [InheritScope]: tenant on create"
-description: "The default form sets OnCreate to Tenant, so the all-None check does not fire."
+title: "Tenant-only scope inheritance"
+description: "Rows record their tenant; the analyzer reports nothing."
 framework: "NET10"
 category: "Diagnostics"
 difficulty: "BEGINNER"
-tags: ["whiz171", "inherit-scope", "analyzer", "tenant"]
+tags: ["whiz171", "inherit-scope", "analyzer"]
 testFile: "tests/Whizbang.Generators.Tests/InheritScopeAnalyzerTests.cs"
-testMethod: "Analyzer_InheritScopeDefaultTenantOnly_NoAuth011Async"
+testMethod: "Analyzer_InheritScopeWithDefaults_IsNotReportedAsWhiz171Async"
 githubUrl: "https://github.com/whizbang-lib/whizbang/blob/develop/tests/Whizbang.Generators.Tests/InheritScopeAnalyzerTests.cs"
-tests: ["InheritScopeAnalyzerTests.Analyzer_InheritScopeDefaultTenantOnly_NoAuth011Async"]
+tests: ["InheritScopeAnalyzerTests.Analyzer_InheritScopeWithDefaults_IsNotReportedAsWhiz171Async"]
 }
-public class FooModel { public System.Guid Id { get; set; } }
-public class FooEvent { public System.Guid StreamId { get; set; } }
-
-[InheritScope]
-public class FooProjection : IPerspectiveFor<FooModel, FooEvent> {
-  public FooModel Apply(FooModel current, FooEvent e) => new();
-}
+[InheritScope(OnCreate = ScopeFields.Tenant)]
+public class FooModel { public Guid Id { get; set; } }
 ```
 
 ## Suppressing
 
-Suppress WHIZ171 only when "inherit nothing" is the intent, and say so in a comment. The diagnostic is reported on
-the class declaration, so a `#pragma` around the class works:
-
-```csharp{
-title: "Suppress WHIZ171 where zero inheritance is intended"
-description: "Documents why the row carries no scope and silences the notice for that class only."
-framework: "NET10"
-category: "Diagnostics"
-difficulty: "BEGINNER"
-tags: ["whiz171", "suppression", "pragma"]
-unverified: "suppression syntax, not exercised by a test"
-}
-// Rows of this model are deliberately unscoped: they are shared reference data.
-#pragma warning disable WHIZ171
-[InheritScope(OnCreate = ScopeFields.None, Always = ScopeFields.None)]
-public class ReferenceDataModel {
-  [StreamId]
-  public Guid Id { get; set; }
-}
-#pragma warning restore WHIZ171
-```
-
-Or for a project or folder, in `.editorconfig`:
-
-```ini{
-title: "Disable WHIZ171 in .editorconfig"
-description: "Sets the WHIZ171 severity to none for the files the section matches."
-category: "Diagnostics"
-difficulty: "BEGINNER"
-tags: ["whiz171", "suppression", "editorconfig"]
-unverified: "suppression/config, not exercised by a test"
-}
-[*.cs]
-dotnet_diagnostic.WHIZ171.severity = none
-```
+When the rows are deliberately unscoped, suppress it on the model with `#pragma warning disable WHIZ171`, or project-wide
+with `dotnet_diagnostic.WHIZ171.severity = none` in `.editorconfig`.
 
 ## Related
 
-- [WHIZ170: [InheritScope] on a non-perspective type has no effect](whiz170)
-- [Implementing Multi-Tenancy](../../fundamentals/security/implementing-multi-tenancy)
-- [Scoping](../../fundamentals/security/scoping)
+- [Scope Inheritance](../../fundamentals/security/scoping#scope-inheritance)
+- [WHIZ170: [InheritScope] on a Perspective Class Has No Effect](whiz170)
