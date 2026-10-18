@@ -11,6 +11,8 @@ codeReferences:
   - src/Whizbang.Core/Lenses/ScopeFilter.cs
   - src/Whizbang.Core/Lenses/ScopeFilterBuilder.cs
   - src/Whizbang.Core/Lenses/PerspectiveScope.cs
+  - src/Whizbang.Core/Lenses/InheritScopeAttribute.cs
+  - src/Whizbang.Core/Lenses/ScopeInheritance.cs
   - src/Whizbang.Core/Lenses/IScopedLensFactory.cs
   - src/Whizbang.Core/Lenses/ScopedLensFactory.cs
   - src/Whizbang.Core/Security/SecurityPrincipalId.cs
@@ -19,6 +21,8 @@ testReferences:
   - tests/Whizbang.Core.Tests/Scoping/PerspectiveScopeTests.cs
   - tests/Whizbang.Core.Tests/Scoping/MarkerInterfaceTests.cs
   - tests/Whizbang.Core.Tests/Scoping/PerspectiveScopeFilterByFieldsTests.cs
+  - tests/Whizbang.Core.Tests/Scoping/InheritScopeAttributeTests.cs
+  - tests/Whizbang.Core.Tests/Scoping/ScopeInheritanceTests.cs
   - tests/Whizbang.Core.Tests/Lenses/ScopeFilterTests.cs
   - tests/Whizbang.Core.Tests/Lenses/ScopeFilterBuilderTests.cs
   - tests/Whizbang.Core.Tests/Lenses/ScopedLensFactoryTests.cs
@@ -462,6 +466,53 @@ var westOrders = await query
 - **Extensions**: Custom scope properties
 
 See the [PerspectiveScope](#perspective-scope) section at the top of this document for complete details and examples.
+
+## Scope Inheritance {#scope-inheritance}
+
+A perspective row's scope is written by the perspective runner from the scope of the messages applied to it. You do not set it in `Apply`. `[InheritScope]` on the perspective's **model** type decides which fields a row takes, and when.
+
+**Creation records ownership.** With no attribute, a new row copies every scope field from the message that created it: tenant, user, customer, organization, allowed principals and extensions. Who created a row matters for audit and for security. Whether a read cares is the lens's decision, through how it filters (by tenant, by user, by principal), not the row's.
+
+**Scope is set once.** After creation the row keeps the scope it was created with, unless the model names fields in `Always` or an `IScopeEvent` replaces the scope.
+
+| Setting | When the row is created | When a later message is applied |
+|---|---|---|
+| No attribute, or `[InheritScope]` | Every field | Unchanged |
+| `OnCreate = ...` | Only the named fields | Unchanged |
+| `Always = ...` | The `OnCreate` and `Always` fields | The `Always` fields follow the latest writer; the rest stay |
+| `OnCreate = None, Always = None` | No scope at all (reported as [WHIZ171](../../operations/diagnostics/whiz171)) | Unchanged |
+
+```mermaid
+flowchart TD
+  A[Message applied to a perspective row] --> B{IScopeEvent?}
+  B -- yes --> C[Row scope replaced by the event's scope]
+  B -- no --> D{Row exists?}
+  D -- no --> E[New row: OnCreate and Always fields from the message]
+  D -- yes --> F{Always fields named?}
+  F -- no --> G[Row scope unchanged]
+  F -- yes --> H[Always fields taken from the message; every other field kept]
+```
+
+A message that does not carry a field leaves the row's value in place, so a system write with no user does not erase who last wrote the row.
+
+```csharp{title="Scope inheritance on perspective models" description="Ownership at creation by default; last-modified-by with Always; tenant-only for a shared resource." category="Security" difficulty="INTERMEDIATE" tags=["Scoping", "InheritScope", "Perspectives"] tests=["InheritScopeAttributeTests.InheritScope_Defaults_AreEveryFieldOnCreate_AndNoneAlwaysAsync", "ScopeInheritanceTests.Resolve_ExistingRow_WithAlwaysFields_UpdatesOnlyThoseFieldsAsync", "ScopeInheritanceTests.Resolve_NewRow_CarriesTheCreateAndAlwaysFieldsAsync"]}
+// No attribute: every field at creation, set once. The row records who created it.
+public class WorkflowModel { /* ... */ }
+
+// Last-modified-by: every field at creation, and the user follows the latest writer.
+[InheritScope(Always = ScopeFields.User)]
+public class CollaborativeDocModel { /* ... */ }
+
+// A shared resource that records only its tenant, never who created it.
+[InheritScope(OnCreate = ScopeFields.Tenant)]
+public class CatalogItemModel { /* ... */ }
+```
+
+**Put the attribute on the model.** The runner reads it from the `TModel` of `IPerspectiveFor<TModel, ...>`. On a perspective class over another model it has no effect, and the build reports [WHIZ170](../../operations/diagnostics/whiz170).
+
+**Changing scope later.** Publish an event that implements `IScopeEvent` to replace a row's scope, for example to share it with groups through `AllowedPrincipals`. A perspective that implements `IPerspectiveScopeFor<TModel>` decides how a proposed scope is merged, and takes precedence over both `[InheritScope]` and `IScopeEvent`.
+
+**Rewinds.** A rewind that recreates a row writes its scope as at creation. A rewind over an existing row leaves the stored scope alone; `Always` fields catch up on the next live apply.
 
 ## Related Documentation
 

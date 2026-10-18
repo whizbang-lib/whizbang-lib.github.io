@@ -405,8 +405,8 @@ Compile-time errors, warnings and notices from Whizbang's source generators and 
 | WHIZ161 | Warning | [Type Name Dissected By Hand](whiz161.md) |
 | WHIZ162 | Warning | [Type Names Compared Without The Matching Helper](whiz162.md) |
 | WHIZ163 | Warning | [Type-Name Key Assigned From A Hand-Built String](whiz163.md) |
-| WHIZ170 | Warning | [[InheritScope] on a Non-Perspective Type Has No Effect](whiz170.md) |
-| WHIZ171 | Info | [[InheritScope] with All-None Flags Is Redundant](whiz171.md) |
+| WHIZ170 | Warning | [[InheritScope] on a Perspective Class Has No Effect](whiz170.md) |
+| WHIZ171 | Info | [[InheritScope] With All-None Flags Gives Rows No Scope](whiz171.md) |
 | WHIZ200 | Warning | [Perspective model should use List<T> instead of array](whiz200.md) |
 | WHIZ300 | Error | [Inconsistent Perspective Model Types](whiz300.md) |
 | WHIZ302 | Warning | [Filtered Perspective Field Has No Index](whiz302.md) |

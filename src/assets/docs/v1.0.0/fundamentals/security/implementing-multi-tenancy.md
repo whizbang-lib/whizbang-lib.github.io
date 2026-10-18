@@ -269,7 +269,7 @@ public class OrdersController : ControllerBase {
 
 Perspectives implement a pure `Apply` — the perspective runner persists rows and writes the `scope` column automatically from the message's propagated scope. Declare **which** scope fields a row inherits with `[InheritScope]` on the perspective **model**:
 
-```csharp{title="Step 6: Store Data with Scope" description="Declare scope inheritance on the perspective model; the runner persists scope automatically." category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Step", "Store"] tests=["InheritScopeAttributeTests.InheritScope_OnCreate_AcceptsCustomFlagsAsync", "InheritScopeAttributeTests.InheritScope_Defaults_AreTenantOnCreate_AndNoneAlwaysAsync"]}
+```csharp{title="Step 6: Store Data with Scope" description="Declare scope inheritance on the perspective model; the runner persists scope automatically." category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Step", "Store"] tests=["InheritScopeAttributeTests.InheritScope_OnCreate_AcceptsCustomFlagsAsync", "InheritScopeAttributeTests.InheritScope_Defaults_AreEveryFieldOnCreate_AndNoneAlwaysAsync"]}
 // Owner-style rows: tenant + creating user pinned at INSERT, never mutated after.
 [InheritScope(OnCreate = ScopeFields.Tenant | ScopeFields.User)]
 public class Order {
@@ -288,8 +288,9 @@ public class OrderPerspective : IPerspectiveFor<Order, OrderCreatedEvent> {
 
 Scope inheritance rules at this release:
 
-- **Attribute absent** = `[InheritScope]` defaults: `OnCreate = ScopeFields.Tenant`, `Always = ScopeFields.None`. Only the tenant is copied onto new rows — copying actor identity automatically would conflate audit with access control.
-- **`Always = ScopeFields.User`** gives last-writer semantics (the user field tracks the latest writer).
+- **Attribute absent** = `[InheritScope]` defaults: `OnCreate = ScopeFields.All`, `Always = ScopeFields.None`. A new row records its owner: every scope field of the creating message, including the user. Each lens decides what matters through how it filters (by tenant, by user, by principal).
+- **`OnCreate = ScopeFields.Tenant`** records only the tenant, for shared resources that should not carry who created them.
+- **`Always = ScopeFields.User`** gives last-writer semantics: the user field follows the latest writer, and the other fields stay as created.
 - **Scope is set-once on INSERT** and preserved across updates. To change a row's scope afterwards (e.g. share with groups via `AllowedPrincipals`), publish an event implementing **`IScopeEvent`**, which carries a proposed `PerspectiveScope`.
 - A perspective can implement **`IPerspectiveScopeFor<TModel>`** to merge, override, or reject proposed scope changes — it takes precedence over both `[InheritScope]` and `IScopeEvent`.
 
