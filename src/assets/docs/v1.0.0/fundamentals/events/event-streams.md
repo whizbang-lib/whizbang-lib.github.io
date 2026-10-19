@@ -14,9 +14,13 @@ codeReferences:
   - src/Whizbang.Core/Messaging/IEventStore.cs
   - src/Whizbang.Core/IHasStreamId.cs
   - src/Whizbang.Core/StreamIdAttribute.cs
+  - src/Whizbang.Core/Messaging/IWorkCoordinator.cs
+  - src/Whizbang.Data.Postgres/Migrations/212_CloseStreamReanchorsCursorsAndSnapshots.sql
 testReferences:
   - tests/Whizbang.Core.Tests/Messaging/InMemoryEventStoreTests.cs
   - tests/Whizbang.Core.Tests/ValueObjects/IdentityValueObjectTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/StreamCloseSqlTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperStreamCloseCompanionTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -293,6 +297,42 @@ public record TenantOrderCreated : IEvent {
 - Streams can grow indefinitely (event sourcing principle)
 - Consider snapshots for very long streams
 - Perspectives handle read model optimization
+
+## Closing a Stream's History {#closing-a-stream}
+
+A long-lived stream (an account, a ledger, a running balance) can "close the books" at a period boundary: the domain appends its closing event, then calls `IWorkCoordinator.CloseStreamAsync(streamId, throughVersion, archive)` to truncate the detail at or below `throughVersion`. With `archive: true` the detail is copied to cold storage first, in the same transaction, and stays readable through `GetArchivedEventsAsync`.
+
+```csharp
+// The domain has already emitted its closing event (for example PeriodClosed) through its receptor;
+// that event is the carry-forward that survives above the close point.
+var result = await coordinator.CloseStreamAsync(accountId, throughVersion: closedThrough, archive: true);
+if (result.Status != "closed") {
+  // not an error: retry later, or act on the reason below
+}
+```
+
+The close is all or nothing. It returns one of these statuses:
+
+| Status | Meaning | What to do |
+|---|---|---|
+| `closed` | The detail was truncated; `EventsTruncated` says how many events. | Nothing. |
+| `blocked` | A perspective still has unprocessed work at or below the close point. | Retry after the perspectives catch up. |
+| `no_carry_forward` | No event survives above the close point, so nothing would carry the state forward. | Append the closing event first. |
+| `held` | An active destruction hold covers an event in the range. | Release or let the hold lapse; holds are deliberate decisions to keep data. |
+| `cursor_behind` | A perspective's cursor sits inside the range and that perspective has not yet applied the first surviving event. | Retry after it applies that event. |
+| `debug_skipped` | Debug mode is on; nothing is destroyed in debug mode. | Turn debug mode off outside local development. |
+| `unsupported` | The storage engine has no close primitive. | Use a Postgres-backed store. |
+
+### What a close does to the rest of the stream's state
+
+- **Perspective cursors** that point at a truncated event move onto the boundary event, the first event that survives above the close point. Nothing is skipped: the consumption check already proved every event at or below the close point was processed, and reads resume strictly after the cursor. If the perspective still owes work for the boundary event itself, moving the cursor would skip that event forever, so the close returns `cursor_behind` instead.
+- **Snapshots** that a rewind could no longer replay from are removed: any snapshot at or below the close point, unless it is the current state of a perspective whose cursor was just moved (that snapshot is kept, so a later rewind of a perspective that ignores the closing event does not restart from an empty model). Snapshots above the close point are untouched.
+- **Processed perspective work rows** for the truncated events are removed.
+- **Lapsed destruction holds** on truncated events are removed with them; active ones refuse the close (`held`).
+- **Deduplication entries** are kept on purpose. They are what turns away a redelivered copy of a truncated event, and they expire under their own retention.
+- **Stream integrity digests** subtract the truncated events in the same transaction, and the origin generation is bumped so consumers treat the change as deliberate. See [Stream Integrity](../../resilience/stream-integrity.md).
+
+The Dapper and EF Core schemas behave the same way.
 
 ## Related Documentation
 
