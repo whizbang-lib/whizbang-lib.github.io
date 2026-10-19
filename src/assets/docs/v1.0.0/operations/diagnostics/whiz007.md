@@ -35,17 +35,16 @@ lastMaintainedCommit: '9a416b5b'
 WHIZ007 is a discovery notice, not a problem. It confirms that a perspective was found and will be registered with
 dependency injection. It has no source location.
 
-Two generators report it, so a build that contains perspectives shows two forms of the message:
+It is reported once per perspective interface by `PerspectiveDiscoveryGenerator`. For each non-abstract class
+implementing `IPerspectiveFor<TModel, TEvent...>` or `IPerspectiveWithActionsFor<TModel, TEvent...>`, it reports the
+class's simple name and the events it listens to, comma-separated. A class that implements two such interfaces is
+reported twice, once per interface. Array event types keep their brackets (`OrderEvent[]`).
 
-- **One per perspective interface** (`PerspectiveDiscoveryGenerator`). For each non-abstract class implementing
-  `IPerspectiveFor<TModel, TEvent...>` or `IPerspectiveWithActionsFor<TModel, TEvent...>`, it reports the class's
-  simple name and the events it listens to, comma-separated. A class that implements two such interfaces is reported
-  twice, once per interface. Array event types keep their brackets (`OrderEvent[]`).
-- **One summary per compilation** (`PerspectiveSchemaGenerator`), after it generates the perspective table schemas.
-  This one reuses the same message text but fills it with the **number** of perspectives and the list of their class
-  names, so it reads, for example, `Found perspective '2' listening to OrderPerspective, CustomerPerspective`.
+The perspective schema generator used to report a per-compilation summary under this ID as well, which formatted as
+`Found perspective '2' listening to OrderPerspective, CustomerPerspective`. It no longer does
+(whizbang-lib/whizbang#1428).
 
-Abstract classes produce neither form. Discovery does not depend on the events being valid: an event with a
+Abstract classes are not reported. Discovery does not depend on the events being valid: an event with a
 missing or duplicate `[StreamId]` still lets the perspective be reported here, and is reported separately as
 [WHIZ030](whiz030) or [WHIZ031](whiz031).
 
@@ -54,9 +53,6 @@ missing or duplicate `[StreamId]` still lets the perspective be reported here, a
 ```text
 Found perspective '{PerspectiveName}' listening to {EventTypes}
 ```
-
-In the schema generator's summary, `{PerspectiveName}` is the perspective count and `{EventTypes}` is the list of
-perspective class names.
 
 ## Common Causes
 
