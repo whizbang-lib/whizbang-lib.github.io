@@ -34,6 +34,7 @@ codeReferences:
   - src/Whizbang.Core/Workers/TransportDeadLetterDrainWorker.cs
   - src/Whizbang.Core/Routing/MessageDiscardPolicy.cs
   - src/Whizbang.Data.Postgres/Notifications/NotifyMetrics.cs
+  - src/Whizbang.Core/Capabilities/CapabilityMetrics.cs
   - src/Whizbang.Sagas/Observability/SagaMetrics.cs
   - src/Whizbang.Core/Observability/InstanceLivenessMetrics.cs
   - src/Whizbang.Core/Observability/ProbeCadenceMetrics.cs
@@ -57,6 +58,7 @@ testReferences:
   - tests/Whizbang.Core.Tests/Observability/TableStatisticsMetricsTests.cs
   - tests/Whizbang.Core.Tests/Observability/TypeRegistryMetricsTests.cs
   - tests/Whizbang.Core.Tests/Observability/StreamIntegrityMetricsTests.cs
+  - tests/Whizbang.Core.Tests/Capabilities/CapabilityMetricsTests.cs
   - tests/Whizbang.Sagas.Tests/SagaMetricsTests.cs
   - tests/Whizbang.Core.Tests/Observability/CompositeMetricsTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/InboxDispatchWorkerCompositeCommitTests.cs
@@ -95,6 +97,7 @@ Additional subsystem meters:
 | `Whizbang.Housekeeping` | `HousekeepingCoordinator` | Arbitration verdicts, the running activity, per-activity volume rollup, and idle seconds-since-activity |
 | `Whizbang.Core.Routing.MessageDiscard` | `MessageDiscardPolicy` | Unsubscribed-message discards at the receive boundary |
 | `Whizbang.Postgres.Notifications` | `NotifyMetrics` | LISTEN/NOTIFY signal delivery and connection state |
+| `Whizbang.Capabilities` | `CapabilityMetrics` | Which external capabilities (Postgres extensions first) each scope can use, by state |
 | `Whizbang.Sagas` | `SagaMetrics` | Saga initiation, completion, item and hook outcomes |
 | `Whizbang.Liveness` | `InstanceLivenessMetrics` | Heartbeat watchdog and slow beats, death announcements and retractions |
 | `Whizbang.Probes` | `ProbeCadenceMetrics` | Periodic probe ticks by worker and outcome (the idle footprint), suppressed duty attempts |
@@ -685,6 +688,21 @@ Meter name: `Whizbang.StreamIntegrity` (`StreamIntegrityMetrics`)
 | `whizbang.stream_integrity.digest_buckets_verified` | Counter\<long\> | Settled digest buckets checked by the trust-but-verify sweep |
 | `whizbang.stream_integrity.digest_drift_healed` | Counter\<long\> | Digest buckets the sweep healed; tagged by `kind` (updated \| removed \| added) |
 | `whizbang.stream_integrity.redelivery_requests_received` | Counter\<long\> | Re-delivery requests served as an origin (repair + backfill flows) |
+
+## Whizbang.Capabilities {#capabilities}
+{verified: CapabilityMetricsTests.Gauge_ReportsOneSeriesPerCapabilityAndScope_WithEveryTagAsync, CapabilityMetricsTests.Gauge_ReadsTheLatestAnswerAtEachCollectionAsync, CapabilityMetricsTests.Gauge_IsNamedOnTheWhizbangCapabilitiesMeter_InTheTurnkeyListAsync}
+
+Meter name: `Whizbang.Capabilities` (`CapabilityMetrics`), created with the capability registry and
+included in `WhizbangMeters.All`.
+
+| Metric Name | Type | Description |
+|-------------|------|-------------|
+| `whizbang.capability.state` | ObservableGauge\<int\> | One series per capability and scope, value 1, tagged `provider` (for example `postgres`), `capability` (for example `pg_squeeze`), `scope` (for Postgres, the database) and `state` (`Ready`, `Provisionable`, `NotPermitted`, `NeedsServerChange`, `NoPrivilege`, `Missing`, `Unknown`). Every series reads `Unknown` until the startup probe has run, and wherever the provider could not probe |
+
+Value 1 on a state tag lets a dashboard count or alert by state without decoding a number, for example
+"any capability `NotPermitted` anywhere". What each state means is on
+[Capabilities](../infrastructure/capabilities.md#states); the Postgres provider's states are on
+[Postgres Extensions](../infrastructure/postgres-extensions.md#states).
 
 ## Other Meters {#other-meters}
 
