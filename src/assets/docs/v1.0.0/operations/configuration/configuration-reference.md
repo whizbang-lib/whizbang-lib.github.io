@@ -104,6 +104,7 @@ The keys here are checked in both directions, so this page cannot drift from the
 | `Whizbang:Database` | `WhizbangNotificationOptions` | Automatic (Postgres driver) |
 | `Whizbang:Database:Stamper` | `CommitOrderStamperOptions` | Automatic (Postgres driver) |
 | `Whizbang:Database:RoleAssignment` | `RoleAssignmentOptions` | Automatic (Postgres driver) |
+| `Whizbang:PostgresExtensions` | `PostgresExtensionsOptions` | Automatic (both Postgres drivers); see [Postgres Extensions](#postgres-extensions-options) |
 | `Whizbang:WorkCoordinatorGate` | `WorkCoordinatorGateOptions` | Automatic (worker pipeline); a Postgres driver's `MaxInFlightCommands` fills `MaxConcurrent` when the section leaves it unset |
 | `Whizbang:ServiceName` (falls back to `ServiceName`) | — (string) | Automatic |
 | `Whizbang:ShowBanner` | — (bool) | Automatic |
@@ -223,6 +224,16 @@ Bound by the Postgres driver, which holds duties (`maintainer`, `migrator`, and 
 | `OwedWorkRetryBase` | `TimeSpan` | `00:00:30` | `Whizbang__Database__RoleAssignment__OwedWorkRetryBase` | Backoff after owed duty work fails, doubled per failure, capped at one hour |
 
 Code-only (through `AddWhizbangRoleAssignment(o => ...)`): `Roles`, `RoleLeases` (a lease per duty; the migrator's default is 30 seconds) and `LegacyLockKeys`.
+
+### Whizbang:PostgresExtensions → PostgresExtensionsOptions {#postgres-extensions-options}
+
+Bound by both Postgres drivers, which probe each database at startup for the extensions Whizbang can use. **Details:** [Postgres Extensions](../infrastructure/postgres-extensions.md#configuration). {verified: PostgresExtensionServiceCollectionExtensionsTests.ProbeOnStartup_DefaultsToTrueAsync, PostgresExtensionServiceCollectionExtensionsTests.ProbeOnStartup_BindsFromConfigurationAsync}
+
+| Key | Type | Default | Environment variable | Purpose |
+|-----|------|---------|----------------------|---------|
+| `ProbeOnStartup` | `bool` | `true` | `Whizbang__PostgresExtensions__ProbeOnStartup` | `false` skips the startup probe; every extension then reads `Unknown` |
+
+Not under `Whizbang:Postgres`, whose children are database names.
 
 ### Service Name and Banner
 
