@@ -54,7 +54,7 @@ one of those builders. A lambda passed some other way, for example as a method a
 ## Diagnostic Message
 
 ```
-'{CompositeTypeName}' is a minted composite — construct it inside a composite-factory builder (CompositeMintRequest<T>.BuildComposite via IEventMint.Composites, or a coalesce binding's CompositeFactory) so the mint enforces grouping, count caps, and byte budgets
+'{CompositeTypeName}' is a minted composite: construct it inside a composite-factory builder (CompositeMintRequest<T>.BuildComposite via IEventMint.Composites, or a coalesce binding's CompositeFactory) so the mint enforces grouping, count caps, and byte budgets
 ```
 
 ## Common Causes

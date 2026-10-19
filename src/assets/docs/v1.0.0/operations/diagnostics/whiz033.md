@@ -47,7 +47,7 @@ Details of the check:
 - A model that is not a named type (for example `string[]`) has no properties of its own and always triggers WHIZ033.
 - Abstract perspective classes and classes with no event types are not checked.
 
-The warning is reported at the perspective class declaration.
+The warning is reported at the perspective class's name.
 
 ## Diagnostic Message
 
@@ -136,8 +136,28 @@ Suppressing WHIZ033 does not make the perspective work; it only hides the fact t
 instead. The only case where suppressing is reasonable is a class that implements a perspective interface but is
 deliberately never meant to run.
 
-Although the warning points at the perspective's file and line, it is not attached to the compiled syntax tree, so a
-`#pragma warning disable WHIZ033` region does not reach it. Use a global analyzer config file:
+The warning is reported at the perspective class's name, inside the compiled syntax tree, so a `#pragma` region
+around that one class silences it without affecting any other perspective:
+
+```csharp{
+title: "Silence WHIZ033 for one perspective"
+description: "A pragma region around a perspective that is deliberately never meant to run"
+category: "Troubleshooting"
+difficulty: "BEGINNER"
+tags: ["Operations", "Diagnostics", "Suppressing"]
+unverified: "suppression/config, not exercised by a test"
+}
+#pragma warning disable WHIZ033
+public class OrderPerspective : IPerspectiveFor<OrderReadModel, OrderCreatedEvent> {
+  public OrderReadModel Apply(OrderReadModel currentData, OrderCreatedEvent @event) {
+    return currentData with { Status = "Created" };
+  }
+}
+#pragma warning restore WHIZ033
+```
+
+A `[*.cs]` section in `.editorconfig` with `dotnet_diagnostic.WHIZ033.severity = none` also applies, to every file the
+section matches. To turn it off for the whole project, use a global analyzer config file:
 
 ```ini{
 title: "Silence WHIZ033"

@@ -40,7 +40,8 @@ column name, it can be too long even when each part is within the limit on its o
 The check runs for a field that is indexed (`[Indexed]`) or unique
 (`[PhysicalField(Unique = true)]`). A `[PolymorphicDiscriminator]` column is always indexed, so it is always
 checked. The check counts UTF-8 bytes and fails when the count is **greater than** the limit. When it fails,
-the generator reports WHIZ822 and leaves the whole perspective out of the generated model configuration.
+the generator reports WHIZ822 and leaves the whole perspective out of the generated model configuration. It is
+reported at the model type's declaration.
 
 ## Diagnostic Message
 

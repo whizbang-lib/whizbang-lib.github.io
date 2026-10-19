@@ -33,19 +33,18 @@ lastMaintainedCommit: '9a416b5b'
 ## Description
 
 WHIZ007 is a discovery notice, not a problem. It confirms that a perspective was found and will be registered with
-dependency injection. It has no source location.
+dependency injection. It is reported at the perspective class's name.
 
-Two generators report it, so a build that contains perspectives shows two forms of the message:
+It is reported once per perspective interface by `PerspectiveDiscoveryGenerator`. For each non-abstract class
+implementing `IPerspectiveFor<TModel, TEvent...>` or `IPerspectiveWithActionsFor<TModel, TEvent...>`, it reports the
+class's simple name and the events it listens to, comma-separated. A class that implements two such interfaces is
+reported twice, once per interface. Array event types keep their brackets (`OrderEvent[]`).
 
-- **One per perspective interface** (`PerspectiveDiscoveryGenerator`). For each non-abstract class implementing
-  `IPerspectiveFor<TModel, TEvent...>` or `IPerspectiveWithActionsFor<TModel, TEvent...>`, it reports the class's
-  simple name and the events it listens to, comma-separated. A class that implements two such interfaces is reported
-  twice, once per interface. Array event types keep their brackets (`OrderEvent[]`).
-- **One summary per compilation** (`PerspectiveSchemaGenerator`), after it generates the perspective table schemas.
-  This one reuses the same message text but fills it with the **number** of perspectives and the list of their class
-  names, so it reads, for example, `Found perspective '2' listening to OrderPerspective, CustomerPerspective`.
+The perspective schema generator used to report a per-compilation summary under this ID as well, which formatted as
+`Found perspective '2' listening to OrderPerspective, CustomerPerspective`. It no longer does
+(whizbang-lib/whizbang#1428).
 
-Abstract classes produce neither form. Discovery does not depend on the events being valid: an event with a
+Abstract classes are not reported. Discovery does not depend on the events being valid: an event with a
 missing or duplicate `[StreamId]` still lets the perspective be reported here, and is reported separately as
 [WHIZ030](whiz030) or [WHIZ031](whiz031).
 
@@ -54,9 +53,6 @@ missing or duplicate `[StreamId]` still lets the perspective be reported here, a
 ```text
 Found perspective '{PerspectiveName}' listening to {EventTypes}
 ```
-
-In the schema generator's summary, `{PerspectiveName}` is the perspective count and `{EventTypes}` is the list of
-perspective class names.
 
 ## Common Causes
 
@@ -94,8 +90,21 @@ namespace TestNamespace {
 
 ## Suppressing
 
-WHIZ007 has no source location, so `#pragma warning disable WHIZ007` cannot reach it. Set its severity in a global
-analyzer config file; this hides both forms:
+WHIZ007 is reported at the perspective class's name, so you can silence it for one perspective by wrapping the class
+in a `#pragma` region:
+
+```csharp{title="Silence WHIZ007 for one perspective" description="A pragma region around the perspective class hides its discovery notice." category="Diagnostics" difficulty="BEGINNER" tags=["Diagnostics", "WHIZ007", "Suppression", "pragma"] unverified="suppression/config, not exercised by a test"}
+#pragma warning disable WHIZ007
+public class OrderPerspective : IPerspectiveFor<OrderModel, OrderCreatedEvent> {
+  public OrderModel Apply(OrderModel currentData, OrderCreatedEvent @event) {
+    return currentData;
+  }
+}
+#pragma warning restore WHIZ007
+```
+
+A `[*.cs]` section in `.editorconfig` with `dotnet_diagnostic.WHIZ007.severity = none` also applies. To hide both forms
+for the whole project, set its severity in a global analyzer config file:
 
 ```ini{title="Silence WHIZ007 project-wide" description="Global analyzer config entry that hides the perspective discovery notices." category="Diagnostics" difficulty="BEGINNER" tags=["Diagnostics", "WHIZ007", "Suppression", "globalconfig"] unverified="suppression/config, not exercised by a test"}
 # .globalconfig

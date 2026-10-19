@@ -48,6 +48,10 @@ The classification is a name heuristic on the called method. A call is reported 
 - the method name ends with `Async` and contains `Save`, `Insert`, `Update`, `Delete`, `Upsert`, `Query`, `Get` or
   `Find` (on any type).
 
+Calls on a type whose full name contains `HttpClient` or `HttpMessageInvoker` are never classified as database I/O,
+even when the method name matches the second rule. Those calls are HTTP calls and are reported once, as
+[WHIZ103](whiz103).
+
 A synchronous `Save()` or an `...Async` method with none of those words (for example `RenderAsync`) is not
 reported. A call through a function pointer is not classified at all.
 
@@ -61,9 +65,9 @@ Apply method '{MethodName}' calls '{ContainingType}.{CalledMethod}' which perfor
 
 1. **Reading the current row again** through a perspective store or lens instead of using the `current` parameter.
 2. **Looking up related data** (another aggregate, a reference table) to denormalize it into the model.
-3. **A false positive from the name rule.** Any `...Async` method whose name contains `Get` or `Find`, on any type,
-   matches. For example, `HttpClient.GetStringAsync` matches this rule as well as the HTTP rule of
-   [WHIZ103](whiz103).
+3. **A false positive from the name rule.** Any `...Async` method whose name contains `Get` or `Find` matches, on any
+   type other than `HttpClient` and `HttpMessageInvoker`. For example, a `GetPriceAsync` call on your own HTTP-named
+   gateway matches this rule as well as the HTTP rule of [WHIZ103](whiz103).
 
 ## How to Fix
 

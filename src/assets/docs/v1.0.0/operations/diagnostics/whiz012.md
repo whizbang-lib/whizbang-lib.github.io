@@ -31,7 +31,8 @@ lastMaintainedCommit: '9a416b5b'
 
 This is a discovery notice, not a problem. The `PerspectiveInvokerGenerator` builds the routing that sends each
 event to the perspectives that handle it, without reflection. It reports WHIZ012 once for every perspective it
-includes in that routing, naming the perspective and the events routed to it.
+includes in that routing, naming the perspective and the events routed to it. The notice is reported at the
+perspective class's name.
 
 A class is included when it:
 
@@ -96,9 +97,20 @@ public class OrderPurgePerspective : IPerspectiveWithActionsFor<OrderModel, Dele
 
 ## Suppressing
 
-WHIZ012 is reported with no source location, so a `#pragma warning disable WHIZ012` region cannot reach it, and a
-file-scoped `.editorconfig` section (`[*.cs]`) does not apply to it either. Set the severity in a global analyzer
-config file instead:
+WHIZ012 is reported at the perspective class's name, so you can silence it for one perspective by wrapping the class
+in a `#pragma` region:
+
+```csharp{title="Silence WHIZ012 for one perspective" description="A pragma region around the perspective class hides its routing notice." category="Diagnostics" difficulty="BEGINNER" tags=["diagnostics", "suppression", "pragma"] unverified="suppression/config, not exercised by a test"}
+#pragma warning disable WHIZ012
+public class OrderPurgePerspective : IPerspectiveWithActionsFor<OrderModel, DeletedEvent> {
+  public ApplyResult<OrderModel> Apply(OrderModel current, DeletedEvent @event)
+    => ApplyResult<OrderModel>.Purge();
+}
+#pragma warning restore WHIZ012
+```
+
+A `[*.cs]` section in `.editorconfig` with `dotnet_diagnostic.WHIZ012.severity = none` also applies. To turn it off
+for the whole project, set the severity in a global analyzer config file:
 
 ```ini{title="Silence WHIZ012 project-wide" description="A global analyzer config that turns off the WHIZ012 routing notice." category="Diagnostics" difficulty="BEGINNER" tags=["diagnostics", "suppression", "globalconfig"] unverified="suppression/config, not exercised by a test"}
 # .globalconfig

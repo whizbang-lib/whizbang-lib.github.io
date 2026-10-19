@@ -49,12 +49,18 @@ the method name. Methods with any other name on a perspective class are not chec
 ## Diagnostic Message
 
 ```text
-Apply method '{MethodName}' returns Task but must be synchronous for purity. Change return type from 'Task<{ModelType}>' to '{ModelType}'.
+Apply method '{MethodName}' returns '{ReturnType}' but must be synchronous for purity. Change the return type to '{ModelType}'.
 ```
 
-`{ModelType}` is the first type argument of the returned task. For a non-generic `Task` or `ValueTask` there is
-none, and the message uses the placeholder `TModel`. The message says `Task<...>` even when the method returns
-`ValueTask<...>`.
+`{ReturnType}` is the method's actual return type, so `Task<Order>`, `ValueTask<Order>`, `Task` and `ValueTask` are
+each named as written. `{ModelType}` is the type argument of the returned task. For a non-generic `Task` or
+`ValueTask` there is none, and the message uses the placeholder `TModel`.
+
+For example, an Apply method that returns `ValueTask<Order>` reads:
+
+```text
+Apply method 'Apply' returns 'ValueTask<Order>' but must be synchronous for purity. Change the return type to 'Order'.
+```
 
 ## Common Causes
 

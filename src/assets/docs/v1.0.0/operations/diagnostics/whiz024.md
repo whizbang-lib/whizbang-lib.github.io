@@ -123,9 +123,21 @@ as well as on properties.
 Prefer `SuppressDuplicateWarning = true` on the attribute: it documents at the declaration that the duplicate name is
 deliberate, and it silences only that pair.
 
-WHIZ024 is reported with no source location, so a `#pragma warning disable WHIZ024` region cannot reach it, and a
-file-scoped `.editorconfig` section (`[*.cs]`) does not apply to it either. To turn it off for a whole project, use a
-global analyzer config file:
+WHIZ024 is reported at the `[WhizbangId]` attribute of the id in `{SecondNamespace}`, the second namespace the message
+names, so a `#pragma` region
+around that declaration also silences it. Wrap the declaration the warning points at:
+
+```csharp{title="Silence WHIZ024 at the declaration" description="A pragma region around the WhizbangId declaration the warning points at hides the duplicate-name warning." category="Diagnostics" difficulty="BEGINNER" tags=["diagnostics", "suppression", "pragma"] unverified="suppression/config, not exercised by a test"}
+public class CreateProductCommand {
+#pragma warning disable WHIZ024
+  [WhizbangId(Namespace = "MyApp.Commands")]
+  public ProductId Id { get; set; }
+#pragma warning restore WHIZ024
+}
+```
+
+A `[*.cs]` section in `.editorconfig` with `dotnet_diagnostic.WHIZ024.severity = none` also applies. To turn it off for
+a whole project, use a global analyzer config file:
 
 ```ini{title="Silence WHIZ024 project-wide" description="A global analyzer config that turns off the WHIZ024 duplicate-name warning." category="Diagnostics" difficulty="BEGINNER" tags=["diagnostics", "suppression", "globalconfig"] unverified="suppression/config, not exercised by a test"}
 # .globalconfig

@@ -52,7 +52,7 @@ The perspective is not flagged when all of its events are ephemeral, when all ar
 ## Diagnostic Message
 
 ```
-Perspective '{PerspectiveName}' applies both ephemeral event(s) ({EphemeralEvents}) and Sourced event(s) ({SourcedEvents}). A perspective cannot be both authoritative state (ephemeral) and a rebuildable cache (Sourced) — split it, or make the stream homogeneous.
+Perspective '{PerspectiveName}' applies both ephemeral event(s) ({EphemeralEvents}) and Sourced event(s) ({SourcedEvents}). A perspective cannot be both authoritative state (ephemeral) and a rebuildable cache (Sourced): split it, or make the stream homogeneous.
 ```
 
 ## Common Causes

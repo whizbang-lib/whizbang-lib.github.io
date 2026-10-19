@@ -39,7 +39,7 @@ whose own base list includes your interface extending `ILensQuery<T>` or a persp
 This is the expected outcome for a shared abstract base class. It is worth a look only when the class was meant to be
 concrete.
 
-The diagnostic has no source location.
+The diagnostic is reported at the abstract class's name.
 
 ## Diagnostic Message
 
@@ -83,8 +83,27 @@ public abstract class AbstractOrderLens : IOrderLens {
 
 ## Suppressing
 
-WHIZ041 has no source location, so a `#pragma warning disable WHIZ041` region cannot reach it. Turn it off in a
-global analyzer config file:
+WHIZ041 is reported at the abstract class's name, so you can silence it for one base class by wrapping it in a
+`#pragma` region:
+
+```csharp{
+title: "Silence WHIZ041 for one base class"
+description: "A pragma region around an abstract base class that is meant to stay abstract"
+category: "Troubleshooting"
+difficulty: "BEGINNER"
+tags: ["Operations", "Diagnostics", "Suppressing"]
+unverified: "suppression/config, not exercised by a test"
+}
+#pragma warning disable WHIZ041
+public abstract class AbstractOrderLens : IOrderLens {
+  public abstract IQueryable<PerspectiveRow<Order>> Query { get; }
+  public abstract Task<Order?> GetByIdAsync(Guid id, CancellationToken ct = default);
+}
+#pragma warning restore WHIZ041
+```
+
+A `[*.cs]` section in `.editorconfig` with `dotnet_diagnostic.WHIZ041.severity = none` also applies. To turn it off
+for the whole project, use a global analyzer config file:
 
 ```ini{
 title: "Silence WHIZ041"

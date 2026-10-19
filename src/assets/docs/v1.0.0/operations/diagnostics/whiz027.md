@@ -41,7 +41,7 @@ WHIZ027 is a confirmation, not a problem. It is useful when you want to check th
 perspective that is missing from the list was skipped: an abstract class, a class with no event types, or a model
 with no `[StreamId]` property (which is reported as [WHIZ033](whiz033)).
 
-The diagnostic has no source location.
+The diagnostic is reported at the perspective class's name.
 
 ## Diagnostic Message
 
@@ -95,8 +95,28 @@ The build reports `Generated perspective runner 'OrderPerspectiveRunner' for per
 
 ## Suppressing
 
-WHIZ027 has no source location, so a `#pragma warning disable WHIZ027` region cannot reach it. Turn it off in a
-global analyzer config file:
+WHIZ027 is reported at the perspective class's name, so you can silence it for one perspective by wrapping the class
+in a `#pragma` region:
+
+```csharp{
+title: "Silence WHIZ027 for one perspective"
+description: "A pragma region around the perspective class hides its runner notice"
+category: "Troubleshooting"
+difficulty: "BEGINNER"
+tags: ["Operations", "Diagnostics", "Suppressing"]
+unverified: "suppression/config, not exercised by a test"
+}
+#pragma warning disable WHIZ027
+public class OrderPerspective : IPerspectiveFor<OrderReadModel, OrderEvent> {
+  public OrderReadModel Apply(OrderReadModel currentData, OrderEvent @event) {
+    return currentData;
+  }
+}
+#pragma warning restore WHIZ027
+```
+
+A `[*.cs]` section in `.editorconfig` with `dotnet_diagnostic.WHIZ027.severity = none` also applies. To turn it off
+for the whole project, use a global analyzer config file:
 
 ```ini{
 title: "Silence WHIZ027"

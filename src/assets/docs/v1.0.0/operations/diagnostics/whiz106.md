@@ -55,7 +55,7 @@ methods.
 ## Diagnostic Message
 
 ```text
-Collective apply method '{MethodName}' calls ICollectiveQuery.Of<>() — an apply-time cross-perspective query. This makes the spec non-replayable: it can't be re-evaluated per-row during a single-stream replay/rebuild. Resolve the cross-query BEFORE event creation and bake the result into the event as static payload, so the apply depends only on the row's own state and the event.
+Collective apply method '{MethodName}' calls ICollectiveQuery.Of<>(), an apply-time cross-perspective query. This makes the spec non-replayable: it can't be re-evaluated per-row during a single-stream replay/rebuild. Resolve the cross-query BEFORE event creation and bake the result into the event as static payload, so the apply depends only on the row's own state and the event.
 ```
 
 ## Common Causes

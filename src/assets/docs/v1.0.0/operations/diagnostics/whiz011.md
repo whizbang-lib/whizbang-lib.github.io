@@ -48,15 +48,15 @@ not be in the generated context. That is the main use of this message: confirmin
 ## Diagnostic Message
 
 ```
-Found {Kind} type '{TypeName}' - adding to JsonSerializerContext for AOT-compatible serialization
+Found {Kind} '{TypeName}' - adding to JsonSerializerContext for AOT-compatible serialization
 ```
 
 `{Kind}` is one of `command`, `event`, `serializable type`, `nested type`, `collection type`,
 `collection interface type`, `array type`, `dictionary type` or `enum type`. `{TypeName}` is the simple type name, or
 a readable form such as `List<OrderItem>` for collections.
 
-Because the format already ends the kind with the word `type`, kinds that themselves end in `type` read with the word
-twice, for example `Found nested type type 'OrderItem' ...`.
+The kind is written once, so a command reads as `Found command 'CreateOrder' ...` and a nested type as
+`Found nested type 'Address' ...`.
 
 ## Common Causes
 
@@ -82,15 +82,24 @@ using Whizbang.Core;
 
 namespace MyApp.Commands;
 
-// Reported as: Found command type 'CreateOrder' - adding to JsonSerializerContext ...
+// Reported as: Found command 'CreateOrder' - adding to JsonSerializerContext ...
 public record CreateOrder(string OrderId) : ICommand;
 ```
 
 ## Suppressing
 
-WHIZ011 is reported with no source location, so a `#pragma warning disable WHIZ011` region cannot reach it, and a
-file-scoped `.editorconfig` section (`[*.cs]`) does not apply to it either. Set the severity in a global analyzer
-config file instead:
+WHIZ011 is reported at the name of the message or nested type it describes, so you can silence it for one type by
+wrapping the declaration in a `#pragma` region:
+
+```csharp{title="Silence WHIZ011 for one type" description="A pragma region around a message declaration hides its discovery notice." category="Diagnostics" difficulty="BEGINNER" tags=["diagnostics", "suppression", "pragma"] unverified="suppression/config, not exercised by a test"}
+#pragma warning disable WHIZ011
+public record CreateOrder(string OrderId) : ICommand;
+#pragma warning restore WHIZ011
+```
+
+A `[*.cs]` section in `.editorconfig` with `dotnet_diagnostic.WHIZ011.severity = none` also applies. A type that comes
+from a referenced assembly still has no source location, so neither of those reaches its notice. To turn WHIZ011 off
+for the whole project, including those types, set the severity in a global analyzer config file:
 
 ```ini{title="Silence WHIZ011 project-wide" description="A global analyzer config that turns off the WHIZ011 discovery notice." category="Diagnostics" difficulty="BEGINNER" tags=["diagnostics", "suppression", "globalconfig"] unverified="suppression/config, not exercised by a test"}
 # .globalconfig
