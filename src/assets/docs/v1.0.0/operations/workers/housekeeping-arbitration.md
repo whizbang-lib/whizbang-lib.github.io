@@ -17,9 +17,14 @@ tags: >-
   idle, settledness, deferral, wait-for-idle, starvation, observability
 codeReferences:
   - src/Whizbang.Core/Workers/HousekeepingCoordinator.cs
+  - src/Whizbang.Core/Workers/HousekeepingSettingsValidator.cs
   - src/Whizbang.Core/Workers/DeadLetterRecoveryWorker.cs
   - src/Whizbang.Core/Workers/MaintenanceWorker.cs
   - src/Whizbang.Core/Observability/HousekeepingMetrics.cs
+testReferences:
+  - tests/Whizbang.Core.Tests/Workers/HousekeepingCoordinatorTests.cs
+  - tests/Whizbang.Core.Tests/Workers/HousekeepingCooldownTests.cs
+  - tests/Whizbang.Core.Tests/Workers/HousekeepingDeferralCeilingTests.cs
 ---
 
 # Housekeeping Arbitration
@@ -70,13 +75,40 @@ fires. Without a floor, its dead letters defer forever — observed in productio
 rows behind a rule working exactly as written, on a service whose backlog never once touched
 zero.
 
-Both gated activities therefore carry a **bounded-deferral escape**: after
-`MaxConsecutiveDeferrals` consecutive busy verdicts (default 6 — roughly an hour at the
-10-minute scan cadence), one pass forces through anyway. The forced pass is reported as
-`ProceedDeferralLimit`, distinct from `Proceed`, so a dashboard can tell "ran because idle"
-from "ran because it was never idle once all hour". The budget re-arms when the forced pass
-completes, making the escape a bounded trickle under sustained load, never an open gate. The
-counters are per-activity: recovery's spent deferrals cannot open maintenance's escape.
+Both gated activities therefore carry a **bounded-deferral escape**: once `MaxDeferral` (default
+one hour) has passed since an activity's first deferral, its next request forces one pass through
+anyway. The ceiling is a time, not a count of ticks, so it stays put when an operator shortens or
+lengthens a scan interval. The forced pass is reported as `ProceedDeferralLimit`, distinct from
+`Proceed`, so a dashboard can tell "ran because idle" from "ran because it was never idle once all
+hour". The window re-arms when a pass completes, making the escape a bounded trickle under
+sustained load, never an open gate. The windows are per activity: recovery's deferrals cannot open
+maintenance's escape, and each measures from its own first deferral.
+
+### Tick, idle gate, and forced ceiling
+
+Three settings decide when maintenance runs, and they answer different questions:
+
+| setting | default | question it answers |
+|---------|---------|---------------------|
+| `Whizbang:Workers:Maintenance:IntervalMinutes` (the tick) | `10` | How often the sweep asks to run |
+| `Whizbang:Housekeeping:SettledCooldown` (the idle gate) | `00:02:00` | How long the service must read settled, without a break, before an ask is granted |
+| `Whizbang:Housekeeping:MaxDeferral` (the forced ceiling) | `01:00:00` | The longest asks can keep being refused before one is granted anyway |
+
+The forced pass lands on the first tick at or after the ceiling, so the actual wait is at most
+`MaxDeferral` plus one tick. Dead-letter recovery asks on its own tick
+(`Whizbang:DeadLetterRecovery:ScanIntervalMinutes`) and shares the same idle gate and ceiling.
+
+### Precedence over the legacy count
+
+Before `MaxDeferral`, the ceiling was `MaxConsecutiveDeferrals` (default 6) deferred asks, which made
+the real limit the count times the tick. The count still works, with this precedence:
+
+1. `MaxDeferral` is configured: the time governs, and the count is ignored.
+2. Only `MaxConsecutiveDeferrals` is configured: the legacy count governs, unchanged.
+3. Neither is configured: the default one-hour time ceiling governs.
+
+At the default 10-minute tick, the default hour forces the same seventh ask the default count did,
+so a host that configured neither sees no change until it changes the tick.
 
 ## Recovery's own opt-down
 
@@ -93,7 +125,9 @@ defaults):
 
 | section | key | default | meaning |
 |---------|-----|---------|---------|
-| `Whizbang:Housekeeping` | `MaxConsecutiveDeferrals` | `6` | Busy verdicts tolerated before a forced pass; the starvation floor for recovery and maintenance alike |
+| `Whizbang:Housekeeping` | `MaxDeferral` | `01:00:00` | Longest time an activity can be deferred before a forced pass; the starvation floor for recovery and maintenance alike. Must be positive |
+| `Whizbang:Housekeeping` | `SettledCooldown` | `00:02:00` | How long the service must read settled continuously before a pass is admitted |
+| `Whizbang:Housekeeping` | `MaxConsecutiveDeferrals` | `6` | Legacy fallback, used only when set and `MaxDeferral` is not: busy verdicts tolerated before a forced pass |
 | `Whizbang:DeadLetterRecovery` | `WaitForIdle` | `true` | Enrolls recovery in the arbitration at the highest rank |
 
 ## Observability
@@ -108,6 +142,7 @@ Everything above is a dashboard fact on the `Whizbang.Housekeeping` meter:
 | `whizbang.idle.seconds_since_activity` | `last_source` | The idle signal the gate ultimately protects |
 
 A healthy service under load shows `ServiceBusy` deferrals punctuated by `Proceed` grants in
-idle windows; a permanently busy one shows the periodic `ProceedDeferralLimit` heartbeat. A
+idle windows; a permanently busy one shows the periodic `ProceedDeferralLimit` heartbeat, one per `MaxDeferral` after
+the first deferral. A
 `decisions` stream that is entirely absent means the coordinator is not the metered one — a
 wiring defect, not quiet.

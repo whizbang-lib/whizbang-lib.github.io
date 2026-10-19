@@ -34,6 +34,8 @@ codeReferences:
   - src/Whizbang.Core/Configuration/ConfigurationValueBinder.cs
   - src/Whizbang.Transports.RabbitMQ/RabbitMQOptionsConfigurationBinder.cs
   - src/Whizbang.Data.Postgres/PostgresOptionsConfiguration.cs
+  - src/Whizbang.Core/Observability/TableStatisticsOptions.cs
+  - src/Whizbang.Core/Observability/TableStatisticsServiceCollectionExtensions.cs
   - src/Whizbang.Core/Workers/RetentionSettingsBridge.cs
   - src/Whizbang.Core/Workers/MaintenanceRetentionOptions.cs
   - src/Whizbang.Core/Configuration/EphemeralPointerPruneOptions.cs
@@ -60,6 +62,7 @@ testReferences:
   - tests/Whizbang.Core.Tests/Configuration/ConfigurationValueBinderTests.cs
   - tests/Whizbang.Transports.RabbitMQ.Tests/RabbitMQOptionsConfigurationTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/PostgresOptionsConfigurationTests.cs
+  - tests/Whizbang.Core.Tests/Observability/TableStatisticsRegistrationTests.cs
 ---
 
 This page lists **every configuration surface Whizbang exposes**: the sections the library binds from `IConfiguration` automatically, the sections you can opt into binding with a helper, and the (much larger) set of options classes that are configured in code — plus the recipe for making any of them configuration-driven. Each options class lists its properties, types, defaults, and a link to the page that covers it in depth.
@@ -70,7 +73,7 @@ Whizbang follows the standard .NET configuration model ([Microsoft: Configuratio
 
 | Mechanism | What it means | Applies to |
 |-----------|---------------|------------|
-| **Bound automatically** | `AddWhizbang()` / the database driver registration reads these configuration sections with hand-rolled, AOT-safe binders. Setting a key in `appsettings.json` or as an environment variable just works. | **64 sections** — `Whizbang` itself, `Whizbang:Core`, `Whizbang:Tracing`, `Whizbang:SchemaInitialization`, `Whizbang:WorkCoordinator`, every `Whizbang:Workers:*` worker, `Whizbang:StreamIntegrity`, `Whizbang:DeadLetterRecovery`, `Whizbang:Redelivery`, `Whizbang:Perspectives:*`, `Whizbang:Temporal`, `Whizbang:Tags` and the rest listed in the [Quick Map](#quick-map); plus `Whizbang:AspNet:*` with ASP.NET hosting, `Whizbang:Sagas` with sagas, `Whizbang:Scope` and `Whizbang:StartupStatusGraph` with GraphQL, `Whizbang:Database*` with the Postgres driver, `Whizbang:Transports:AzureServiceBus` / `Whizbang:Transports:RabbitMQ` with those transports, the [per-instance sections](#per-instance-sections) keyed by breaker, transport, database and tag, and `Whizbang:ServiceName`, `Whizbang:ShowBanner`, `ConnectionStrings:*`, `ConnectionPool:*` |
+| **Bound automatically** | `AddWhizbang()` / the database driver registration reads these configuration sections with hand-rolled, AOT-safe binders. Setting a key in `appsettings.json` or as an environment variable just works. | **65 sections**: `Whizbang` itself, `Whizbang:Core`, `Whizbang:Tracing`, `Whizbang:SchemaInitialization`, `Whizbang:WorkCoordinator`, every `Whizbang:Workers:*` worker, `Whizbang:StreamIntegrity`, `Whizbang:DeadLetterRecovery`, `Whizbang:Redelivery`, `Whizbang:Perspectives:*`, `Whizbang:Temporal`, `Whizbang:Tags` and the rest listed in the [Quick Map](#quick-map); plus `Whizbang:AspNet:*` with ASP.NET hosting, `Whizbang:Sagas` with sagas, `Whizbang:Scope` and `Whizbang:StartupStatusGraph` with GraphQL, `Whizbang:Database*` with the Postgres driver, `Whizbang:Transports:AzureServiceBus` / `Whizbang:Transports:RabbitMQ` with those transports, the [per-instance sections](#per-instance-sections) keyed by breaker, transport, database and tag, and `Whizbang:ServiceName`, `Whizbang:ShowBanner`, `ConnectionStrings:*`, `ConnectionPool:*` |
 | **Opt-in binding helper** | A one-line registration call reads the section for you. Without that call, the section is inert. | `Whizbang:BodyOffload` + `Whizbang:Offloads:AzureBlob:<name>` (via `AddWhizbangAzureBlobOffloadsFromConfiguration`) |
 | **Code-configured** | The options class is configured through an `Action<TOptions>` lambda (or `services.Configure<TOptions>(...)`). The library never reads a configuration section for it — **a configuration key for one of these does nothing unless your service binds it**. Every table below carries an environment-variable column; these read `— *code-only*`, so a blank is always deliberate rather than an omission (see [the binding recipe](#code-configured-options-the-binding-recipe)). | The classes with no configuration section in the [Quick Map](#quick-map): `ServiceRegistrationOptions`, `PerStreamSerializerOptions`, `WhizbangGraphQLOptions`, and the keys a bound class marks *code-only* |
 
@@ -113,6 +116,7 @@ The keys here are checked in both directions, so this page cannot drift from the
 | `Whizbang:Database` | `WhizbangNotificationOptions` | Automatic (Postgres driver) |
 | `Whizbang:Database:Stamper` | `CommitOrderStamperOptions` | Automatic (Postgres driver) |
 | `Whizbang:Database:RoleAssignment` | `RoleAssignmentOptions` | Automatic (Postgres driver) |
+| `Whizbang:Capabilities` | `CapabilityOptions` | Automatic (registered by every capability provider, both Postgres drivers among them); see [Capabilities](#capabilities-options) |
 | `Whizbang:WorkCoordinatorGate` | `WorkCoordinatorGateOptions` | Automatic (worker pipeline); a Postgres driver's `MaxInFlightCommands` fills `MaxConcurrent` when the section leaves it unset |
 | `Whizbang:ServiceName` (falls back to `ServiceName`) | — (string) | Automatic |
 | `Whizbang:ShowBanner` | — (bool) | Automatic |
@@ -130,6 +134,7 @@ The keys here are checked in both directions, so this page cannot drift from the
 | `Whizbang:WorkCoordinator` | `WorkCoordinatorOptions` | Automatic |
 | `Whizbang:Housekeeping` | `HousekeepingCoordinator.Settings` | Automatic |
 | `Whizbang:BacklogAge` | `BacklogAgeOptions` | Automatic |
+| `Whizbang:TableStatistics` | `TableStatisticsOptions` | Automatic (PostgreSQL driver, EF Core or Dapper) |
 | `Whizbang:StreamIntegrity` | `StreamIntegrityOptions` | Automatic |
 | `Whizbang:DeadLetterRecovery` | `DeadLetterRecoveryOptions` | Automatic |
 | `Whizbang:OrderedStreamProcessor` | `OrderedStreamProcessorOptions` | Automatic |
@@ -232,6 +237,14 @@ Bound by the Postgres driver, which holds duties (`maintainer`, `migrator`, and 
 | `OwedWorkRetryBase` | `TimeSpan` | `00:00:30` | `Whizbang__Database__RoleAssignment__OwedWorkRetryBase` | Backoff after owed duty work fails, doubled per failure, capped at one hour |
 
 Code-only (through `AddWhizbangRoleAssignment(o => ...)`): `Roles`, `RoleLeases` (a lease per duty; the migrator's default is 30 seconds) and `LegacyLockKeys`.
+
+### Whizbang:Capabilities → CapabilityOptions {#capabilities-options}
+
+Bound when any capability provider registers (both Postgres drivers do), so the library probes the external capabilities it can use at startup. **Details:** [Capabilities](../infrastructure/capabilities.md#configuration). {verified: CapabilityServiceCollectionExtensionsTests.ProbeOnStartup_DefaultsToTrue_WithoutConfigurationAsync, CapabilityServiceCollectionExtensionsTests.ProbeOnStartup_BindsFromConfigurationAsync}
+
+| Key | Type | Default | Environment variable | Purpose |
+|-----|------|---------|----------------------|---------|
+| `ProbeOnStartup` | `bool` | `true` | `Whizbang__Capabilities__ProbeOnStartup` | `false` skips the startup probe; every capability then reads `Unknown` |
 
 ### Service Name and Banner
 
@@ -635,6 +648,16 @@ The backlog-age duty: how old the oldest waiting message on each broker entity i
 | `Enabled` | `bool` | `true` | `Whizbang__BacklogAge__Enabled` | Run the duty; disabled means no peeks, no gauges, no health signal |
 | `Interval` | `TimeSpan` | `00:01:00` | `Whizbang__BacklogAge__Interval` | Peek cadence; one management operation per entity per tick |
 | `AgeThreshold` | `TimeSpan` | `00:15:00` | `Whizbang__BacklogAge__AgeThreshold` | Age of an entity's oldest waiting message at which health degrades. Deliberately far above a normal burst drain, so it means "not draining", not "busy" |
+
+### TableStatisticsOptions {#tablestatisticsoptions}
+
+How many tables the [`Whizbang.TableStatistics` meter](../observability/metrics#table-statistics) reports by name. Every `wh_` table in the service's schema is reported, perspective tables included, so the cap is what keeps the number of series from growing with the schema. **Configure:** bound automatically from `Whizbang:TableStatistics` by the PostgreSQL driver registration (EF Core or Dapper); no other call is needed. **Details:** [Table statistics cardinality](../observability/metrics#table-statistics-cardinality).
+
+| Property | Type | Default | Environment variable | Purpose |
+|----------|------|---------|----------------------|---------|
+| `MaxTrackedTables` | `int` | `500` | `Whizbang__TableStatistics__MaxTrackedTables` | The most tables reported by name. Past it, the smallest tables are summed under `table_name="other"`, so totals stay right. At least 1; a smaller value fails the statistics refresh, which logs the error each cycle |
+
+{verified: TableStatisticsRegistrationTests.MaxTrackedTables_BindsFromTheTableStatisticsSectionAsync, TableStatisticsRegistrationTests.WithoutConfiguration_TheCapIsFiveHundredAsync, PostgresTableStatisticsProviderTests.GetTableStorageAsync_PastTheCap_SumsTheSmallestUnderOtherAsync, PostgresTableStatisticsProviderTests.Constructor_RefusesACapBelowOneAsync}
 
 ## Work Coordination, Claims, and Leases
 
@@ -1209,11 +1232,12 @@ The poison-message detector. On session-enabled entities a lock lost to connecti
 
 ### HousekeepingCoordinator.Settings
 
-Arbitration tuning for the ranked housekeeping activities (dead-letter recovery, integrity, maintenance). **Configure:** bound by the framework from `Whizbang:Housekeeping` (`Whizbang__Housekeeping__MaxConsecutiveDeferrals=12` works with no service code); a host can also register its own `HousekeepingCoordinator` instance before the framework's TryAdd. **Details:** [Housekeeping Arbitration](../workers/housekeeping-arbitration).
+Arbitration tuning for the ranked housekeeping activities (dead-letter recovery, integrity, maintenance). **Configure:** bound by the framework from `Whizbang:Housekeeping` (`Whizbang__Housekeeping__MaxDeferral=02:00:00` works with no service code); a host can also register its own `HousekeepingCoordinator` instance before the framework's TryAdd. **Details:** [Housekeeping Arbitration](../workers/housekeeping-arbitration).
 
 | Property | Type | Default | Environment variable | Purpose |
 |----------|------|---------|----------------------|---------|
-| `MaxConsecutiveDeferrals` | `int` | `6` | `Whizbang__Housekeeping__MaxConsecutiveDeferrals` | Busy verdicts tolerated before one pass forces through (`ProceedDeferralLimit`) — the starvation floor for recovery and maintenance, counted per activity. At the 10-minute scan cadence, 6 means a never-idle service still recovers roughly hourly |
+| `MaxDeferral` | `TimeSpan` | `01:00:00` | `Whizbang__Housekeeping__MaxDeferral` | The longest an activity can be held back by the idle gate: once this much time has passed since its first deferral, the next request forces one pass through (`ProceedDeferralLimit`). Measured per activity and re-armed when a pass completes, so it no longer moves when a tick interval changes. Takes precedence over `MaxConsecutiveDeferrals`; must be positive (a zero or negative value fails options validation at startup). {verified: HousekeepingDeferralCeilingTests.AShortTick_DoesNotForceTheSweepBeforeMaxDeferralAsync, HousekeepingDeferralCeilingTests.ANonPositiveMaxDeferral_IsRejectedByNameAsync} |
+| `MaxConsecutiveDeferrals` | `int` | `6` | `Whizbang__Housekeeping__MaxConsecutiveDeferrals` | Legacy fallback. Used only when it is set and `MaxDeferral` is not: busy verdicts tolerated before one pass forces through (`ProceedDeferralLimit`), counted per activity, so the real ceiling is this count times the activity's tick. Prefer `MaxDeferral` |
 | `SettledCooldown` | `TimeSpan` | `00:02:00` | `Whizbang__Housekeeping__SettledCooldown` | How long the service must read settled continuously before a sweep is admitted. A bulk load empties its work tables between bursts, so a single settled reading means only "nothing queued right now"; the dwell tells a lull from an ending. `00:00:00` admits on the first settled reading |
 
 ### TransportDeadLetterDrainWorkerOptions
