@@ -7,6 +7,10 @@ tags: perspectives, retention, row-ttl, reaper, rebuild, rewind, resurrection, r
 
 # Perspective Row Retention (`[RowTtl]`)
 
+:::updated
+Published as [Perspective Row Retention](../v1.0.0/fundamentals/perspectives/row-retention). Where this proposal and that page disagree, the page is current. In particular, an eviction now removes the evicted row's cursors along with all but its latest snapshot, and an evicted row is rebuilt for every perspective whose rows can be evicted (a TTL, a cap or a stream group), ephemeral ones included when a snapshot survives. See [What an eviction removes](../v1.0.0/fundamentals/perspectives/row-retention#what-an-eviction-removes).
+:::
+
 [Ephemeral Events](ephemeral-events) gave the **event log** a retention policy, and its `TransientStorage.TtlRow` mode gave *ephemeral* perspectives a row expiry. This proposal generalizes the row half: **any perspective — including one fed entirely by durable Sourced events — can declare that its rows age out after a period of inactivity**, disappear from reads immediately at expiry, and are physically reaped by maintenance.
 
 The motivating shape is high-cardinality UI read models: conversations, sessions/tabs, activity feeds. Their streams are minted constantly, their content stops being relevant after weeks, yet their rows accumulate forever unless the domain explicitly deletes each one. Event-driven deletion (a lifecycle event folded into an explicit delete action) remains the right tool when deletion is a *business fact*; `[RowTtl]` is the declarative, time-based backstop for everything that merely goes stale.
@@ -89,7 +93,7 @@ Ephemeral streams are explicitly excluded from this path: they keep today's sema
 | Rebuild (any mode) | Deterministic: active rows rebuild live; idle-past-TTL rows rebuild **born-expired** (never visible), reaped next cycle |
 | Rewind / inversion | Deterministic: same events → same anchors → same expiry |
 | Row expired (logical) | Invisible to all lens/GraphQL reads; writer path still sees it; any new event revives it (apply re-stamps) |
-| Row reaped (physical) | Gone from `wh_per_*`; latest snapshot retained; cursor untouched |
+| Row reaped (physical) | Gone from `wh_per_*`; latest snapshot retained; cursor removed (see the published page) |
 | New event after reap | **Resurrection**: snapshot + tail re-fold, then apply — row returns complete and correct |
 
 ## Observability (OTel)
