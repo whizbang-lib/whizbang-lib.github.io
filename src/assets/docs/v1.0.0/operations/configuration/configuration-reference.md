@@ -1186,11 +1186,12 @@ The poison-message detector. On session-enabled entities a lock lost to connecti
 
 ### HousekeepingCoordinator.Settings
 
-Arbitration tuning for the ranked housekeeping activities (dead-letter recovery, integrity, maintenance). **Configure:** bound by the framework from `Whizbang:Housekeeping` (`Whizbang__Housekeeping__MaxConsecutiveDeferrals=12` works with no service code); a host can also register its own `HousekeepingCoordinator` instance before the framework's TryAdd. **Details:** [Housekeeping Arbitration](../workers/housekeeping-arbitration).
+Arbitration tuning for the ranked housekeeping activities (dead-letter recovery, integrity, maintenance). **Configure:** bound by the framework from `Whizbang:Housekeeping` (`Whizbang__Housekeeping__MaxDeferral=02:00:00` works with no service code); a host can also register its own `HousekeepingCoordinator` instance before the framework's TryAdd. **Details:** [Housekeeping Arbitration](../workers/housekeeping-arbitration).
 
 | Property | Type | Default | Environment variable | Purpose |
 |----------|------|---------|----------------------|---------|
-| `MaxConsecutiveDeferrals` | `int` | `6` | `Whizbang__Housekeeping__MaxConsecutiveDeferrals` | Busy verdicts tolerated before one pass forces through (`ProceedDeferralLimit`) — the starvation floor for recovery and maintenance, counted per activity. At the 10-minute scan cadence, 6 means a never-idle service still recovers roughly hourly |
+| `MaxDeferral` | `TimeSpan` | `01:00:00` | `Whizbang__Housekeeping__MaxDeferral` | The longest an activity can be held back by the idle gate: once this much time has passed since its first deferral, the next request forces one pass through (`ProceedDeferralLimit`). Measured per activity and re-armed when a pass completes, so it no longer moves when a tick interval changes. Takes precedence over `MaxConsecutiveDeferrals`; must be positive (a zero or negative value fails options validation at startup). {verified: HousekeepingDeferralCeilingTests.AShortTick_DoesNotForceTheSweepBeforeMaxDeferralAsync, HousekeepingDeferralCeilingTests.ANonPositiveMaxDeferral_IsRejectedByNameAsync} |
+| `MaxConsecutiveDeferrals` | `int` | `6` | `Whizbang__Housekeeping__MaxConsecutiveDeferrals` | Legacy fallback. Used only when it is set and `MaxDeferral` is not: busy verdicts tolerated before one pass forces through (`ProceedDeferralLimit`), counted per activity, so the real ceiling is this count times the activity's tick. Prefer `MaxDeferral` |
 | `SettledCooldown` | `TimeSpan` | `00:02:00` | `Whizbang__Housekeeping__SettledCooldown` | How long the service must read settled continuously before a sweep is admitted. A bulk load empties its work tables between bursts, so a single settled reading means only "nothing queued right now"; the dwell tells a lull from an ending. `00:00:00` admits on the first settled reading |
 
 ### TransportDeadLetterDrainWorkerOptions
