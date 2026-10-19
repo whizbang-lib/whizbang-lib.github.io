@@ -20,10 +20,7 @@ codeReferences:
   - src/Whizbang.Core/Perspectives/PerspectiveRowCapRegistry.cs
   - src/Whizbang.Core/Workers/MaintenanceWorker.cs
   - src/Whizbang.Generators/Templates/PerspectiveRunnerTemplate.cs
-  - src/Whizbang.Data.Postgres/Migrations/112_StreamGroupCascadeAndApplyPathFold.sql
-  - src/Whizbang.Data.Postgres/Migrations/113_CapSweepSafetyAndFoldWatermarks.sql
-  - src/Whizbang.Data.Postgres/Migrations/142_ReconcileAdoptsDottedRegistryKey.sql
-  - src/Whizbang.Data.Postgres/Migrations/209_SnapshotsCarryTheirStreamVersion.sql
+  - src/Whizbang.Data.Postgres/Migrations/211_EvictionRemovesItsCompanions.sql
 testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/EvictionCompanionCleanupSqlTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperEvictionCompanionCleanupTests.cs
@@ -133,7 +130,7 @@ It leaves alone:
 
 The SQL learns which perspectives fold a model from the perspective registry: at startup,
 `reconcile_perspective_registry` records each model's perspectives (their CLR type names, the form
-cursors and snapshots are keyed by) in `wh_perspective_registry.perspective_names`. A registry row
+cursors and snapshots are keyed by) in `wh_perspective_registry.perspective_names` (migration 211). A registry row
 written before the names were recorded has none, and an eviction from it removes only the row until
 the next startup records them. {verified: EvictionCompanionCleanupSqlTests.TtlReap_RemovesTheEvictedRowsCursors_KeepsItsLatestSnapshot_LeavesTheRestAsync, EvictionCompanionCleanupSqlTests.CapReap_RemovesTheEvictedRowsCursors_KeepsItsLatestSnapshot_LeavesTheRestAsync, EvictionCompanionCleanupSqlTests.Cascade_RemovesTheEvictedRowsCursors_KeepsItsLatestSnapshot_LeavesTheRestAsync, EvictionCompanionCleanupSqlTests.StampedExpiryReap_RemovesTheEvictedRowsCursors_KeepsItsLatestSnapshot_LeavesTheRestAsync, EvictionCompanionCleanupSqlTests.Eviction_KeepsTheSnapshotARewindCanPlace_NotANewerVersionlessOneAsync, EvictionCompanionCleanupSqlTests.Eviction_ModelWithNoKnownPerspectives_RemovesOnlyTheRowAsync, EvictionCompanionCleanupSqlTests.Reconcile_RecordsEveryPerspectiveOfTheModelAsync, DapperEvictionCompanionCleanupTests.Cascade_OnADapperMigratedDatabase_RemovesCursor_KeepsLatestSnapshotAsync}
 
@@ -214,7 +211,7 @@ On the `Whizbang.Maintenance` meter:
 - `whizbang.maintenance.retention_adopted` (counter, tagged by `perspective`): the backlog at the moment
   a perspective's retention was adopted.
 
-A rebuild after eviction logs at Information ("is missing but the stream has history") and runs as a
+A rebuild after eviction logs at Information ("is missing but the stream has history: resurrecting via re-fold") and runs as a
 rewind, so it appears in the rewind span family and the rewind system events. A row that starts fresh
 because its ephemeral history is gone logs a Warning.
 
