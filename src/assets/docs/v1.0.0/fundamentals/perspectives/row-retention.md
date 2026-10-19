@@ -126,7 +126,7 @@ It leaves alone:
 - **Other perspectives' cursors and snapshots on the same stream.** A stream can feed several models;
   evicting one model's row says nothing about the others.
 - **The events.** The event log is the authority the row is rebuilt from. Event retention is a
-  separate axis (see [Ephemeral Events](../events/ephemeral-events)).
+  separate axis (see [ephemeral event retention](../../operations/configuration/configuration-reference.md#ephemeraloptions)).
 
 The SQL learns which perspectives fold a model from the perspective registry: at startup,
 `reconcile_perspective_registry` records each model's perspectives (their CLR type names, the form
@@ -227,4 +227,4 @@ binds through standard options. Nothing inspects attributes or scans types at ru
 - [Perspective Snapshots](snapshots): the floor an evicted row is rebuilt from.
 - [Perspective Rewind](rewind): the machinery the rebuild runs on.
 - [Perspective Registry](registry): where the model, its table and its perspectives are recorded.
-- [Ephemeral Events](../events/ephemeral-events): retention for the event log, the other axis.
+- [ephemeral event retention](../../operations/configuration/configuration-reference.md#ephemeraloptions): retention for the event log, the other axis.
