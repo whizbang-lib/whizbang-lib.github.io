@@ -79,6 +79,12 @@ public sealed class ReindexOrdersHandler(IOrderIndex index) : IMultiStreamComman
 The handler works **one stream** per call. It is resolved from a fresh scope for each stream, on the instance that owns
 that stream.
 
+> **Use the `streamId` parameter, never the command's `StreamIds`.** The handler is given the stream it works. The
+> command it receives carries an **empty** `StreamIds`: the streams are recorded one per row of the run, and storing
+> them in the payload every stream reads made a run's cost grow with the square of its stream count (a 127,288-stream
+> rebuild parsed about 630 GB and ran its host out of memory). A run's payload is read back once and the same command
+> is handed to each of its streams, so treat the command as read-only.
+
 > **Make the handler idempotent.** A stream can be worked more than once: the instance working it can stop before its
 > outcome is recorded, and during a rebalance two instances can briefly disagree about who owns it. Doing a stream's
 > work twice must leave the same result as doing it once.
@@ -128,8 +134,19 @@ The intake validates the command and records the run. It runs no stream itself.
 
 ### Storage {#storage}
 
-The run and its streams are kept by the storage driver's `IMultiStreamCommandStore` (Postgres: migration 208). The
-command is stored as written, as text, so a polymorphic type discriminator keeps its place.
+The run and its streams are kept by the storage driver's `IMultiStreamCommandStore` (Postgres: migrations 208 and 212).
+The command is stored as text, so a polymorphic type discriminator keeps its place, **with its stream list emptied**:
+the streams are rows of the run, so the payload's size does not depend on how many streams the run names. A claim
+sends each run's payload once, on the run's first claimed row (212), and the claimed rows of a run share that one
+copy. A run recorded by an earlier release, with its stream ids still in the payload, still works each of its streams.
+
+```csharp{title="The stored payload does not grow with the run" description="A run's payload carries no stream ids, is sent once per claim and read once per run" category="Internals" difficulty="ADVANCED" tags=["Fundamentals", "Dispatcher", "Multi-Stream Commands"] tests=["MultiStreamCommandIntakeTests.HandleAsync_StoresAPayloadWhoseSizeDoesNotDependOnTheStreamCountAsync", "MultiStreamCommandIntakeTests.HandleAsync_ThePayloadWithoutItsStreams_ReadsBackIntoTheCommandAsync", "MultiStreamCommandRegistrationTests.InvokeAsync_TheStreamsOfOneRun_ReadItsPayloadOnceAsync", "MultiStreamCommandRegistrationTests.InvokeAsync_APayloadThatStillListsItsStreams_WorksEachOfThemAsync", "MultiStreamCommandStoreSqlTests.ClaimAsync_TheRowsOfOneRun_ShareItsPayloadOnceAsync", "MultiStreamCommandStoreSqlTests.TheClaimFunction_SendsEachRunsPayloadOnceAsync"]}
+// Recorded over 10,000 streams: the payload is the same size as for one stream
+await dispatcher.SendAsync(new ReindexOrders(runId, tenThousandStreams, "schema change"));
+
+// Each stream's handler gets its own stream id; command.StreamIds is empty
+public ValueTask HandleStreamAsync(ReindexOrders command, Guid streamId, CancellationToken ct) => _reindex(streamId, command.Reason, ct);
+```
 
 ## Security scope {#security-scope}
 
@@ -230,6 +247,11 @@ A `RebuildPerspectiveCommand` is a multi-stream command under the hood.
 - **Named streams, or an in-place rebuild.** The instance that receives the command records one run per perspective,
   and each stream is rebuilt by its owner, serialized with that stream's live work.
   - An in-place rebuild's streams are those carrying the perspective's events.
+  - A rebuild that excludes streams takes each perspective's own streams less the excluded ones, not every stream in
+    the event store.
+  - Each stream is rebuilt quietly, as part of the run: it publishes no rebuild events and computes no row digest of
+    its own, and its stream-group presence reconcile checks only that stream. The run announces its completion once,
+    with `MultiStreamCommandCompleted`; read a run's progress with the store's run status.
   - A rebuild with a request id makes the same run however often the command is delivered.
   - An empty stream list records nothing.
 - **A whole-perspective blue-green rebuild** builds and swaps one table, so it stays one job. It is queued to a
