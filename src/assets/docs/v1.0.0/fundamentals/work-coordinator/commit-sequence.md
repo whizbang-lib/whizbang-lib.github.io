@@ -17,6 +17,7 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Performance/RoleVoteBehindAHeldBackStampScenarioTests.cs
   - tests/Whizbang.Core.Tests/Notifications/CommitOrderStampBatchTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/PgCommitOrderStamperWorkerIntegrationTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/EventStoreUpdateChurnSqlTests.cs
 ---
 
 # Commit Sequence & the Order Stamper
@@ -193,6 +194,32 @@ held back, stamped none, and held the role row while it did. Under bulk imports 
 renewal vote waited a median of 14.5 s, and up to 30 s, behind those calls. Batches are now chosen
 earliest writing transaction first, which is the cross-stream order described above.
 :::
+
+## The stamp is the only update an event row takes {#one-update-per-event}
+
+The event store is append-only apart from the stamp. The emit chains insert each event with
+`ON CONFLICT DO NOTHING` and never update it, and a stamp sets `commit_sequence` once, only on rows
+where it is still empty, so every event row is updated exactly once after it is inserted. Startup
+reclassification of a type that became ephemeral sets a flag once per affected event and skips
+rows already flagged, so a later boot rewrites nothing.
+{verified: EventStoreUpdateChurnSqlTests.Stamp_EventsWrittenThroughTheEmitChain_AreEachUpdatedExactlyOnceAsync}
+{verified: EventStoreUpdateChurnSqlTests.Reclassify_RunTwice_RewritesNoRowTheFirstRunAlreadyFlaggedAsync}
+
+The stamp is never a heap-only (HOT) update. Postgres can skip writing index entries for an update
+only when no column any index references changes, and `commit_sequence` is referenced by six
+indexes on `wh_event_store`: it is the key of the committed-order index, the predicate of the four
+partial indexes the stamp uses to find unstamped rows, and an included column of the ephemeral reap
+index. Each stamp therefore adds one entry to every index that covers the row. A `fillfactor` does
+not change that, because free space on the page matters only to an update that could be HOT.
+{verified: EventStoreUpdateChurnSqlTests.Stamp_InsideATransactionThatCommits_IsOneNonHotUpdatePerEventAsync}
+
+**Reading `pg_stat_user_tables`.** Expect `n_tup_upd` close to `n_tup_ins` and `n_tup_hot_upd` close
+to zero for `wh_event_store`. A ratio well above one update per insert does not mean a second writer:
+`n_tup_upd` also counts updates made by transactions that rolled back, and a stamp that is canceled
+leaves its rows unstamped, so the next call updates them again. A stamp canceled after it had
+written its batch counts that batch once per attempt, and leaves dead row versions and index entries
+behind until vacuum; this is why the batch [backs off on a timeout](#batch-size) instead of retrying
+the same size. One-time backfills run by migrations count once per row they touched.
 
 ## Configuration
 
