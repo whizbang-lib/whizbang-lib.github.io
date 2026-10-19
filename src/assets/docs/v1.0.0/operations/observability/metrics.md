@@ -29,6 +29,11 @@ codeReferences:
   - src/Whizbang.Core/Observability/EventCategoryMetrics.cs
   - src/Whizbang.Core/Observability/PinnedPoolMetrics.cs
   - src/Whizbang.Core/Observability/TableStatisticsMetrics.cs
+  - src/Whizbang.Core/Observability/TableStatisticsCollector.cs
+  - src/Whizbang.Core/Observability/TableStatisticsOptions.cs
+  - src/Whizbang.Core/Observability/TableStatisticsServiceCollectionExtensions.cs
+  - src/Whizbang.Core/Observability/ITableStatisticsProvider.cs
+  - src/Whizbang.Data.Postgres/Observability/PostgresTableStatisticsProvider.cs
   - src/Whizbang.Core/Observability/TypeRegistryMetrics.cs
   - src/Whizbang.Core/Observability/StreamIntegrityMetrics.cs
   - src/Whizbang.Core/Workers/TransportDeadLetterDrainWorker.cs
@@ -55,6 +60,12 @@ testReferences:
   - tests/Whizbang.Core.Tests/Observability/DeadLetterMetricsTests.cs
   - tests/Whizbang.Core.Tests/Observability/EventCategoryMetricsTests.cs
   - tests/Whizbang.Core.Tests/Observability/TableStatisticsMetricsTests.cs
+  - tests/Whizbang.Core.Tests/Observability/TableStatisticsMetricsStorageTests.cs
+  - tests/Whizbang.Core.Tests/Observability/TableStatisticsRegistrationTests.cs
+  - tests/Whizbang.Core.Component.Tests/Observability/TableStatisticsCollectorTests.cs
+  - tests/Whizbang.Core.Component.Tests/Observability/TableStatisticsCollectorStorageTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/PostgresTableStatisticsProviderTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperTableStatisticsTests.cs
   - tests/Whizbang.Core.Tests/Observability/TypeRegistryMetricsTests.cs
   - tests/Whizbang.Core.Tests/Observability/StreamIntegrityMetricsTests.cs
   - tests/Whizbang.Sagas.Tests/SagaMetricsTests.cs
@@ -89,7 +100,7 @@ Additional subsystem meters:
 | `Whizbang.Maintenance` | `MaintenanceMetrics` | Per-task maintenance outcomes (rows affected, duration) and row-retention adoption |
 | `Whizbang.EventCategories` | `EventCategoryMetrics` | Category-routed event dispatch and fanout |
 | `Whizbang.Workers.PinnedPool` | `PinnedPoolMetrics` | Pinned connection pool borrows, timeouts, recycles |
-| `Whizbang.TableStatistics` | `TableStatisticsMetrics` | Estimated queue depth and table size gauges |
+| `Whizbang.TableStatistics` | `TableStatisticsMetrics` | Queue depths, and every table's size, size split, rows and bloat |
 | `Whizbang.TypeRegistry` | `TypeRegistryMetrics` | Message type registry renames and drift |
 | `Whizbang.StreamIntegrity` | `StreamIntegrityMetrics` | Continuity checkpoints, gap/divergence detection, repair and manifest flows |
 | `Whizbang.Housekeeping` | `HousekeepingCoordinator` | Arbitration verdicts, the running activity, per-activity volume rollup, and idle seconds-since-activity |
@@ -651,10 +662,50 @@ Meter name: `Whizbang.Workers.PinnedPool` (`PinnedPoolMetrics`)
 
 Meter name: `Whizbang.TableStatistics` (`TableStatisticsMetrics`)
 
-| Metric Name | Type | Description |
-|-------------|------|-------------|
-| `whizbang.queue.estimated_depth` | ObservableGauge | Unprocessed message count per queue. `queue_name` values: `inbox`, `outbox`, `dead_letters_held` (HoldForReview quarantine), `dead_letters_pending` (recovery backlog), `dead_letters_failed` (PermanentlyFailed). The dead-letter slices are emitted even at zero — standing inventory is a positively-reported value, not an absent series |
-| `whizbang.table.estimated_bytes` | ObservableGauge | Estimated disk size per table from the database catalog |
+How big every table is, what the size is made of, how many rows it holds, and how deep the queues are. Both PostgreSQL drivers report it: the EF Core driver and the Dapper driver register the same provider (`PostgresTableStatisticsProvider`), the meter and the collector with no extra call. {verified: DapperTableStatisticsTests.ADapperHost_ReportsTableStatisticsAsync, TableStatisticsRegistrationTests.RegisteringTwice_RunsOneCollectorAsync}
+
+| Metric Name | Type | Tags | Description |
+|-------------|------|------|-------------|
+| `whizbang.table.estimated_bytes` | ObservableGauge (bytes) | `table_name` | The table's whole size on disk: heap, TOAST and indexes together |
+| `whizbang.table.component_bytes` | ObservableGauge (bytes) | `table_name`, `component` | The same size split three ways. `component` is `heap` (the rows stored inline, with the free space and visibility maps), `toast` (values too large to store inline, such as large JSON documents, with the TOAST index) or `indexes` (every index on the table). The three add up exactly to `estimated_bytes` |
+| `whizbang.table.live_rows` | ObservableGauge (rows) | `table_name` | The planner's row count, which `ANALYZE` and `VACUUM` (and so autovacuum) refresh. A table never analyzed reports the server's running count of live rows instead |
+| `whizbang.table.bloat_ratio` | ObservableGauge (ratio) | `table_name` | Heap bytes per live row divided by the width those rows should need. Around 1.0 is lean; a sustained large multiple is space the table holds but cannot use: dead tuples awaiting vacuum, or the bytes of a dropped column, which stay in every row written before the drop until the table is rewritten. Reported only for tables with more than 1,000 live rows, where the per-row average measures the rows rather than page overhead |
+| `whizbang.queue.estimated_depth` | ObservableGauge (messages) | `queue_name` | Unprocessed message count per queue. `queue_name` values: `inbox`, `outbox`, `dead_letters_held` (HoldForReview quarantine), `dead_letters_pending` (recovery backlog), `dead_letters_failed` (PermanentlyFailed). The dead-letter slices are emitted even at zero: standing inventory is a positively-reported value, not an absent series |
+
+{verified: TableStatisticsMetricsStorageTests.ComponentBytes_ReportsHeapToastAndIndexesPerTableAsync, TableStatisticsMetricsStorageTests.LiveRows_ReportsTheRowCountPerTableAsync, PostgresTableStatisticsProviderTests.GetTableStorageAsync_SplitsEachTableIntoHeapToastAndIndexesAsync, PostgresTableStatisticsProviderTests.GetTableStorageAsync_ReportsLiveRowsAsync, PostgresTableStatisticsProviderTests.GetTableStorageAsync_ATableNeverAnalyzed_ReportsItsCountedRowsAsync, PostgresTableStatisticsProviderTests.GetTableBloatRatiosAsync_SmallTables_AreNotReportedAsBloatedAsync, PostgresTableStatisticsProviderTests.GetTableBloatRatiosAsync_TablePastTheThreshold_IsMeasuredAsync, PostgresTableStatisticsProviderTests.GetQueueDepthsAsync_CountsDeadLettersByStatusAsync}
+
+`estimated_bytes` divided by `live_rows` is bytes per row, and either gauge over time is growth (for example `deriv()` or `delta()` in PromQL), so neither needs an instrument of its own.
+
+### Which tables are reported {#table-statistics-tables}
+
+Every table in the service's schema whose name starts with `wh_`: the framework's own tables (the event store and its bodies, the inbox and outbox, deduplication, dead letters, lifecycle completions and the rest) and every perspective table (`wh_per_*`). The tables are found in the database catalog on every refresh rather than listed, so a perspective added in a release is reported from its first start. {verified: PostgresTableStatisticsProviderTests.GetEstimatedTableSizesAsync_ReportsEveryFrameworkAndPerspectiveTableAsync}
+
+- **Schema.** The EF Core driver reads the model's default schema; the Dapper driver reads the connection's current schema, which is where its search path puts its tables. A table in another schema belongs to another service and is not reported, and neither is a table, view or other object whose name does not start with `wh_`. {verified: PostgresTableStatisticsProviderTests.GetTableStorageAsync_LeavesOutOtherTablesAndOtherSchemasAsync, PostgresTableStatisticsProviderTests.WithoutASchema_TheConnectionsCurrentSchemaIsReadAsync}
+- **Partitioned tables** are reported once, under the partitioned table's name, with their partitions' bytes and rows summed. They report no bloat ratio. {verified: PostgresTableStatisticsProviderTests.GetTableStorageAsync_APartitionedTable_IsReportedOnceWithItsPartitionsSummedAsync}
+- **A table missing from a refresh** (dropped, or folded into `other` below) stops reporting at once rather than keeping its last value, so no table is counted twice in a sum. {verified: TableStatisticsMetricsStorageTests.ATableMissingFromTheNextReading_StopsReportingAsync}
+
+### Cardinality {#table-statistics-cardinality}
+
+A service can declare any number of perspectives, so the number of `table_name` values is capped by [`Whizbang:TableStatistics:MaxTrackedTables`](../configuration/configuration-reference#tablestatisticsoptions) (default 500). Past the cap the smallest tables are summed under `table_name="other"`: bytes, components and rows are added, so every total stays right, and the bloat ratio, which cannot be added, is not reported for them. {verified: PostgresTableStatisticsProviderTests.GetTableStorageAsync_PastTheCap_SumsTheSmallestUnderOtherAsync, TableStatisticsRegistrationTests.MaxTrackedTables_BindsFromTheTableStatisticsSectionAsync}
+
+With the cap at N, the meter reports at most N + 1 series of `estimated_bytes` and `live_rows`, 3 x (N + 1) of `component_bytes`, N of `bloat_ratio`, and 5 of `queue.estimated_depth`.
+
+### How the values are refreshed {#table-statistics-refresh}
+
+`TableStatisticsCollector` refreshes the gauges every 30 seconds on every instance, once the schema is ready. Each refresh runs one catalog statement for all the tables (sizes, split, rows and bloat together) and one for the queue depths. Nothing reads a table's rows, so the cost depends on how many tables and indexes the schema has and not on how much they hold: tens of milliseconds for 500 tables. {verified: TableStatisticsCollectorStorageTests.AStorageReading_FeedsEveryTableGauge_FromOneReadAsync}
+
+```mermaid{caption="One table statistics refresh: one catalog read for every table, one for the queues, then the gauges and the CycleCompleted event." tests=["TableStatisticsCollectorStorageTests.AStorageReading_FeedsEveryTableGauge_FromOneReadAsync", "DapperTableStatisticsTests.ADapperHost_ReportsTableStatisticsAsync"]}
+flowchart LR
+  C[TableStatisticsCollector<br/>every 30 s] -->|one statement| S[GetTableStorageAsync<br/>every wh_ table: heap, toast,<br/>indexes, rows, bloat]
+  C -->|one statement| Q[GetQueueDepthsAsync]
+  S --> M[TableStatisticsMetrics<br/>estimated_bytes, component_bytes,<br/>live_rows, bloat_ratio]
+  Q --> M
+  M --> E[CycleCompleted]
+```
+
+`TableStatisticsCollector.CycleCompleted` is raised after every refresh has written all the gauges, and not for a refresh that failed (which is logged and retried on the next cycle). A health check or a test that needs current statistics waits on it rather than on time. {verified: TableStatisticsCollectorTests.Collector_PublishesTableBloatRatioAsync}
+
+A custom `ITableStatisticsProvider` that predates the combined reading keeps working: when `GetTableStorageAsync` answers empty, the collector asks `GetEstimatedTableSizesAsync` and `GetTableBloatRatiosAsync` instead, and the split and row gauges report nothing for it.
 
 ## Whizbang.TypeRegistry {#type-registry}
 
