@@ -34,6 +34,8 @@ codeReferences:
   - src/Whizbang.Core/Configuration/ConfigurationValueBinder.cs
   - src/Whizbang.Transports.RabbitMQ/RabbitMQOptionsConfigurationBinder.cs
   - src/Whizbang.Data.Postgres/PostgresOptionsConfiguration.cs
+  - src/Whizbang.Core/Observability/TableStatisticsOptions.cs
+  - src/Whizbang.Core/Observability/TableStatisticsServiceCollectionExtensions.cs
   - src/Whizbang.Core/Workers/RetentionSettingsBridge.cs
   - src/Whizbang.Core/Workers/MaintenanceRetentionOptions.cs
   - src/Whizbang.Core/Configuration/EphemeralPointerPruneOptions.cs
@@ -60,6 +62,7 @@ testReferences:
   - tests/Whizbang.Core.Tests/Configuration/ConfigurationValueBinderTests.cs
   - tests/Whizbang.Transports.RabbitMQ.Tests/RabbitMQOptionsConfigurationTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/PostgresOptionsConfigurationTests.cs
+  - tests/Whizbang.Core.Tests/Observability/TableStatisticsRegistrationTests.cs
 ---
 
 This page lists **every configuration surface Whizbang exposes**: the sections the library binds from `IConfiguration` automatically, the sections you can opt into binding with a helper, and the (much larger) set of options classes that are configured in code — plus the recipe for making any of them configuration-driven. Each options class lists its properties, types, defaults, and a link to the page that covers it in depth.
@@ -70,7 +73,7 @@ Whizbang follows the standard .NET configuration model ([Microsoft: Configuratio
 
 | Mechanism | What it means | Applies to |
 |-----------|---------------|------------|
-| **Bound automatically** | `AddWhizbang()` / the database driver registration reads these configuration sections with hand-rolled, AOT-safe binders. Setting a key in `appsettings.json` or as an environment variable just works. | **64 sections** — `Whizbang` itself, `Whizbang:Core`, `Whizbang:Tracing`, `Whizbang:SchemaInitialization`, `Whizbang:WorkCoordinator`, every `Whizbang:Workers:*` worker, `Whizbang:StreamIntegrity`, `Whizbang:DeadLetterRecovery`, `Whizbang:Redelivery`, `Whizbang:Perspectives:*`, `Whizbang:Temporal`, `Whizbang:Tags` and the rest listed in the [Quick Map](#quick-map); plus `Whizbang:AspNet:*` with ASP.NET hosting, `Whizbang:Sagas` with sagas, `Whizbang:Scope` and `Whizbang:StartupStatusGraph` with GraphQL, `Whizbang:Database*` with the Postgres driver, `Whizbang:Transports:AzureServiceBus` / `Whizbang:Transports:RabbitMQ` with those transports, the [per-instance sections](#per-instance-sections) keyed by breaker, transport, database and tag, and `Whizbang:ServiceName`, `Whizbang:ShowBanner`, `ConnectionStrings:*`, `ConnectionPool:*` |
+| **Bound automatically** | `AddWhizbang()` / the database driver registration reads these configuration sections with hand-rolled, AOT-safe binders. Setting a key in `appsettings.json` or as an environment variable just works. | **65 sections**: `Whizbang` itself, `Whizbang:Core`, `Whizbang:Tracing`, `Whizbang:SchemaInitialization`, `Whizbang:WorkCoordinator`, every `Whizbang:Workers:*` worker, `Whizbang:StreamIntegrity`, `Whizbang:DeadLetterRecovery`, `Whizbang:Redelivery`, `Whizbang:Perspectives:*`, `Whizbang:Temporal`, `Whizbang:Tags` and the rest listed in the [Quick Map](#quick-map); plus `Whizbang:AspNet:*` with ASP.NET hosting, `Whizbang:Sagas` with sagas, `Whizbang:Scope` and `Whizbang:StartupStatusGraph` with GraphQL, `Whizbang:Database*` with the Postgres driver, `Whizbang:Transports:AzureServiceBus` / `Whizbang:Transports:RabbitMQ` with those transports, the [per-instance sections](#per-instance-sections) keyed by breaker, transport, database and tag, and `Whizbang:ServiceName`, `Whizbang:ShowBanner`, `ConnectionStrings:*`, `ConnectionPool:*` |
 | **Opt-in binding helper** | A one-line registration call reads the section for you. Without that call, the section is inert. | `Whizbang:BodyOffload` + `Whizbang:Offloads:AzureBlob:<name>` (via `AddWhizbangAzureBlobOffloadsFromConfiguration`) |
 | **Code-configured** | The options class is configured through an `Action<TOptions>` lambda (or `services.Configure<TOptions>(...)`). The library never reads a configuration section for it — **a configuration key for one of these does nothing unless your service binds it**. Every table below carries an environment-variable column; these read `— *code-only*`, so a blank is always deliberate rather than an omission (see [the binding recipe](#code-configured-options-the-binding-recipe)). | The classes with no configuration section in the [Quick Map](#quick-map): `ServiceRegistrationOptions`, `PerStreamSerializerOptions`, `WhizbangGraphQLOptions`, and the keys a bound class marks *code-only* |
 
@@ -131,6 +134,7 @@ The keys here are checked in both directions, so this page cannot drift from the
 | `Whizbang:WorkCoordinator` | `WorkCoordinatorOptions` | Automatic |
 | `Whizbang:Housekeeping` | `HousekeepingCoordinator.Settings` | Automatic |
 | `Whizbang:BacklogAge` | `BacklogAgeOptions` | Automatic |
+| `Whizbang:TableStatistics` | `TableStatisticsOptions` | Automatic (PostgreSQL driver, EF Core or Dapper) |
 | `Whizbang:StreamIntegrity` | `StreamIntegrityOptions` | Automatic |
 | `Whizbang:DeadLetterRecovery` | `DeadLetterRecoveryOptions` | Automatic |
 | `Whizbang:OrderedStreamProcessor` | `OrderedStreamProcessorOptions` | Automatic |
@@ -644,6 +648,16 @@ The backlog-age duty: how old the oldest waiting message on each broker entity i
 | `Enabled` | `bool` | `true` | `Whizbang__BacklogAge__Enabled` | Run the duty; disabled means no peeks, no gauges, no health signal |
 | `Interval` | `TimeSpan` | `00:01:00` | `Whizbang__BacklogAge__Interval` | Peek cadence; one management operation per entity per tick |
 | `AgeThreshold` | `TimeSpan` | `00:15:00` | `Whizbang__BacklogAge__AgeThreshold` | Age of an entity's oldest waiting message at which health degrades. Deliberately far above a normal burst drain, so it means "not draining", not "busy" |
+
+### TableStatisticsOptions {#tablestatisticsoptions}
+
+How many tables the [`Whizbang.TableStatistics` meter](../observability/metrics#table-statistics) reports by name. Every `wh_` table in the service's schema is reported, perspective tables included, so the cap is what keeps the number of series from growing with the schema. **Configure:** bound automatically from `Whizbang:TableStatistics` by the PostgreSQL driver registration (EF Core or Dapper); no other call is needed. **Details:** [Table statistics cardinality](../observability/metrics#table-statistics-cardinality).
+
+| Property | Type | Default | Environment variable | Purpose |
+|----------|------|---------|----------------------|---------|
+| `MaxTrackedTables` | `int` | `500` | `Whizbang__TableStatistics__MaxTrackedTables` | The most tables reported by name. Past it, the smallest tables are summed under `table_name="other"`, so totals stay right. At least 1; a smaller value fails the statistics refresh, which logs the error each cycle |
+
+{verified: TableStatisticsRegistrationTests.MaxTrackedTables_BindsFromTheTableStatisticsSectionAsync, TableStatisticsRegistrationTests.WithoutConfiguration_TheCapIsFiveHundredAsync, PostgresTableStatisticsProviderTests.GetTableStorageAsync_PastTheCap_SumsTheSmallestUnderOtherAsync, PostgresTableStatisticsProviderTests.Constructor_RefusesACapBelowOneAsync}
 
 ## Work Coordination, Claims, and Leases
 
