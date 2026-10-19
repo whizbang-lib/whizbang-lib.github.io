@@ -52,13 +52,18 @@ The extensions Whizbang knows about, what each enables, whether Whizbang may run
 for it, and what the server needs beyond the extension's files. Every entry also needs a managed
 server's allowlist to name it, when the server has one.
 
+The split of work is the same for every extension the library may create: the operator enables it at
+the server level (the allowlist, and `shared_preload_libraries` where it needs preloading), and the
+library creates, updates and manages it from there. This release detects and reports; creating,
+updating and managing the extensions arrive in later releases.
+
 | Extension | Enables | Whizbang may create it | Extra prerequisites |
 |---|---|---|---|
 | `vector` | vector fields and their similarity indexes | yes | none |
 | `pg_trgm` | substring (trigram) indexes | yes | none |
-| `pg_squeeze` | online table rewrite without a long exclusive lock | yes | `shared_preload_libraries`, `wal_level = logical` |
-| `pg_repack` | online table rewrite run by its own client program | no | the `pg_repack` client, run outside the process |
-| `pg_partman` | partition management (a built-in fallback exists) | yes | none (its background worker is optional) |
+| `pg_squeeze` | online table rewrite without a long exclusive lock, driven by the library's table rewriter | yes | `shared_preload_libraries`, `wal_level = logical` |
+| `pg_repack` | online table rewrite through the `pg_repack` client, run in process or as an external job | yes | the `pg_repack` client program |
+| `pg_partman` | ledger partition management: `create_parent`, then `run_maintenance` from the library's maintenance worker (a built-in fallback exists) | yes | none (its background worker is optional) |
 | `pgstattuple` | exact table bloat measurement (otherwise estimated) | yes | none |
 | `pg_stat_statements` | query statistics | yes | `shared_preload_libraries` |
 | `pg_cron` | in-database scheduling | no (it lives in one database) | `shared_preload_libraries` |
