@@ -272,7 +272,9 @@ one sent before it:
   per-process fallback: a host without the Postgres outbox store links nothing, and its
   collectives apply as they always did.
 - **Idle keys are forgotten.** `perform_maintenance` prunes a key's head once the key has been
-  idle for `collective_ordering_head_retention_days` (a `wh_settings` value, default **7**). The
+  idle for `collective_ordering_head_retention_days` (a `wh_settings` value, default **7**, set from
+  `Whizbang__Workers__Maintenance__Retention__CollectiveOrderingHeadDays`; see
+  [database-side settings](../../operations/configuration/configuration-reference#database-side-settings)). The
   next collective on that key goes out unlinked and applies at once, which is right: its
   predecessor applied days ago. Pruning by idleness bounds the table by the keys in use.
 - **The receiver applies at once** when the collective has no link, when it does not handle the
