@@ -42,9 +42,8 @@ The warning is reported on the type declaration (so it shows as a squiggle in th
 - no property in the type or its base classes has `[StreamId]`,
 - no constructor parameter has `[StreamId]`.
 
-Only events are checked. Although the message and descriptor mention `ICommand`, a command without `[StreamId]` does
-not produce WHIZ009. Abstract event types are not exempt: a public abstract base event without `[StreamId]` is
-reported too.
+Only events are checked. A command without `[StreamId]` does not produce WHIZ009. Abstract event types are not
+exempt: a public abstract base event without `[StreamId]` is reported too.
 
 If the event is also used by a perspective, the missing `[StreamId]` is additionally a build error,
 [WHIZ030](whiz030).
@@ -52,12 +51,10 @@ If the event is also used by a perspective, the missing `[StreamId]` is addition
 ## Diagnostic Message
 
 ```text
-Type '{TypeName}' implements {Interface} but has no property or parameter marked with [StreamId]. Stream ID resolution will fail at runtime.
+Event '{EventName}' has no property or parameter marked with [StreamId]. Stream ID resolution will fail at runtime.
 ```
 
-In this release the generator supplies only the type name, not the interface name, when it reports WHIZ009. Because
-the message has two placeholders and receives one argument, the build output may show the message text with its
-placeholders unfilled.
+`{EventName}` is the event type's name.
 
 ## Common Causes
 

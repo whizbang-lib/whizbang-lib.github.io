@@ -73,7 +73,7 @@ You can also add the attribute by hand with any GUID string that `Guid.TryParse`
 
 ### Before (causes WHIZ110)
 
-```csharp{title="Event without a pinned id" description="A concrete IEvent record with no [PinnedId] attribute reports WHIZ110." framework="NET10" category="Diagnostics" difficulty="BEGINNER" tags=["pinned-id", "identity", "events", "WHIZ110"] testFile="PinnedIdAnalyzerTests.cs" testMethod="Analyzer_ConcreteEventWithoutPinnedId_ReportsWhiz100Async" githubUrl="https://github.com/whizbang-lib/whizbang/blob/develop/tests/Whizbang.Generators.Tests/Analyzers/PinnedIdAnalyzerTests.cs" tests=["PinnedIdAnalyzerTests.Analyzer_ConcreteEventWithoutPinnedId_ReportsWhiz100Async"]}
+```csharp{title="Event without a pinned id" description="A concrete IEvent record with no [PinnedId] attribute reports WHIZ110." framework="NET10" category="Diagnostics" difficulty="BEGINNER" tags=["pinned-id", "identity", "events", "WHIZ110"] testFile="PinnedIdAnalyzerTests.cs" testMethod="Analyzer_ConcreteEventWithoutPinnedId_ReportsWhiz110Async" githubUrl="https://github.com/whizbang-lib/whizbang/blob/develop/tests/Whizbang.Generators.Tests/Analyzers/PinnedIdAnalyzerTests.cs" tests=["PinnedIdAnalyzerTests.Analyzer_ConcreteEventWithoutPinnedId_ReportsWhiz110Async"]}
 using Whizbang.Core;
 
 namespace TestApp;

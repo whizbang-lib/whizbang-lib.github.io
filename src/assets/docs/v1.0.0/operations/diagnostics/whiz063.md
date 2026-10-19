@@ -66,13 +66,15 @@ reports WHIZ063 when one of them has a property the analyzer would have flagged 
 ## Diagnostic Message
 
 ```text{title="WHIZ063 message format" description="The descriptor's message format, with placeholders named" category="Diagnostics" difficulty="BEGINNER" tags=["WHIZ063", "Serialization", "Diagnostics"] unverified="message format read from the descriptor"}
-Nested type '{NestedType}' (used by '{MessageType}.{ReferencingProperty}') contains non-serializable property '{PropertyName}' of type '{PropertyType}'
+Nested type '{NestedType}' (used by '{PropertyPath}') contains non-serializable property '{PropertyName}' of type '{PropertyType}'
 ```
 
-- `{ReferencingProperty}` is the property that leads **directly** to the nested type. When the nested type sits more
-  than one level down, that property is on an intermediate type, not on `{MessageType}`.
+- `{PropertyPath}` is the full path from the message type to the nested type, at any depth. For an event
+  `OrderPlaced` whose `ShipTo` property holds a type whose `Location` property holds the offending nested type, the
+  path reads `OrderPlaced.ShipTo.Location`. For the example below it reads `CreateOrderCommand.Item`.
 - `{PropertyType}` is `object`, `dynamic`, or the interface's full name.
-- The error is placed on `{ReferencingProperty}`, not on the offending property inside the nested type.
+- The error is placed on the last property in the path (the one that leads directly to the nested type), not on the
+  offending property inside the nested type.
 
 ## Common Causes
 

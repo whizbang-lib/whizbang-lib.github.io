@@ -85,9 +85,6 @@ attribute that neither the marker nor the built-in list reaches, name it in an a
 <PropertyGroup>
   <WhizbangQueryComposingAttributes>Vendor.QueryableAttribute,Vendor.SortableAttribute</WhizbangQueryComposingAttributes>
 </PropertyGroup>
-<ItemGroup>
-  <CompilerVisibleProperty Include="WhizbangQueryComposingAttributes" />
-</ItemGroup>
 ```
 
 Naming is last of the three because it is the only one that can go stale without saying so. Marking

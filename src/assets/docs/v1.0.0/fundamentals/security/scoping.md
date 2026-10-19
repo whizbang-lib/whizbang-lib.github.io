@@ -482,10 +482,10 @@ A perspective row's scope is written by the perspective runner from the scope of
 | `Always = ...` | The `OnCreate` and `Always` fields | The `Always` fields follow the latest writer; the rest stay |
 | `OnCreate = None, Always = None` | No scope at all (reported as [WHIZ171](../../operations/diagnostics/whiz171)) | Unchanged |
 
-```mermaid{caption="How the perspective runner decides a row's scope for each write: a scope event replaces it, a new row takes the OnCreate and Always fields, and an existing row changes only its Always fields." tests=["ScopeInheritanceTests.Resolve_ScopeEvent_ForcesTheEventsScopeAsBeforeAsync", "ScopeInheritanceTests.Resolve_NewRow_CarriesTheCreateAndAlwaysFieldsAsync", "ScopeInheritanceTests.Resolve_ExistingRow_WithNoAlwaysFields_LeavesTheStoredScopeAloneAsync", "ScopeInheritanceTests.Resolve_ExistingRow_WithAlwaysFields_UpdatesOnlyThoseFieldsAsync"]}
+```mermaid{caption="How the perspective runner decides a row's scope for each write: a scope event replaces it with the scope it set, unfiltered, a new row takes the OnCreate and Always fields, and an existing row changes only its Always fields." tests=["ScopeInheritanceTests.Resolve_ScopeEvent_ForcesTheEventsScopeAsBeforeAsync", "ScopeInheritanceTests.Resolve_NewRow_CarriesTheCreateAndAlwaysFieldsAsync", "ScopeInheritanceTests.Resolve_ExistingRow_WithNoAlwaysFields_LeavesTheStoredScopeAloneAsync", "ScopeInheritanceTests.Resolve_ExistingRow_WithAlwaysFields_UpdatesOnlyThoseFieldsAsync"]}
 flowchart TD
   A[Message applied to a perspective row] --> B{IScopeEvent?}
-  B -- yes --> C[Row scope replaced by the event's scope]
+  B -- yes --> C[Row scope replaced by the event's scope, unfiltered]
   B -- no --> D{Row exists?}
   D -- no --> E[New row: OnCreate and Always fields from the message]
   D -- yes --> F{Always fields named?}
@@ -511,6 +511,13 @@ public class CatalogItemModel { /* ... */ }
 **Put the attribute on the model.** The runner reads it from the `TModel` of `IPerspectiveFor<TModel, ...>`. On a perspective class over another model it has no effect, and the build reports [WHIZ170](../../operations/diagnostics/whiz170).
 
 **Changing scope later.** Publish an event that implements `IScopeEvent` to replace a row's scope, for example to share it with groups through `AllowedPrincipals`. A perspective that implements `IPerspectiveScopeFor<TModel>` decides how a proposed scope is merged, and takes precedence over both `[InheritScope]` and `IScopeEvent`.
+
+The scope a scope event sets is the scope the row is written with {verified: ScopeEventRunnerTests.ALaterMessageInTheBatch_DoesNotOverwriteTheScopeEventsScopeAsync}:
+
+- **Whole.** `[InheritScope]` decides what a row takes from the messages it applies, not what a scope event sets, so an `OnCreate = ScopeFields.Tenant` model keeps the `AllowedPrincipals` an event shared it with {verified: ScopeEventRunnerTests.TheModelsCreateTimeFilter_DoesNotNarrowTheScopeEventsScopeAsync}.
+- **Last.** A later message in the same batch does not replace it with that message's own scope.
+- **Always.** It is written even when the messages in the batch carry no scope of their own {verified: ScopeEventRunnerTests.AScopeEventInABatchWithNoEnvelopeScope_IsStillWrittenAsync}.
+- **Against the stored scope.** `IPerspectiveScopeFor<TModel>.ApplyScope` is given the row's stored scope as the current one (or the scope an earlier scope event in the batch set), never the scope of the message that carried the event {verified: ScopeEventRunnerTests.APerspectiveThatDecidesTheScope_IsGivenTheRowsStoredScopeAsync}.
 
 **Rewinds.** A rewind that recreates a row writes its scope as at creation. A rewind over an existing row leaves the stored scope alone; `Always` fields catch up on the next live apply.
 

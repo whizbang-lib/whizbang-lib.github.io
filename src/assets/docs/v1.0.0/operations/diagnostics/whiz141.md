@@ -51,7 +51,7 @@ The check looks for the presence of `[RowTtl]` or `[RowCap]`; it does not inspec
 ## Diagnostic Message
 
 ```
-Stream group '{GroupKey}' has no announcing member with [RowTtl] or [RowCap] — nothing ever triggers its cascade. Give at least one announcing member a real evictor.
+Stream group '{GroupKey}' has no announcing member with [RowTtl] or [RowCap], so nothing ever triggers its cascade. Give at least one announcing member a real evictor.
 ```
 
 ## Common Causes

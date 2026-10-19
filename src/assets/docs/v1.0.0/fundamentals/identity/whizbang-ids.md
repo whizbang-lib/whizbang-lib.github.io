@@ -483,7 +483,7 @@ Configuration options:
 
 Whizbang includes a Roslyn analyzer (`GuidUsageAnalyzer`) that detects problematic GUID generation patterns at compile-time:
 
-```csharp{title="GuidUsageAnalyzer: Roslyn Analyzer (WHIZ055-WHIZ056)" description="Whizbang includes a Roslyn analyzer (GuidUsageAnalyzer) that detects problematic GUID generation patterns at" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "GuidUsageAnalyzer:", "Roslyn"] tests=["GuidUsageAnalyzerTests.Analyzer_GuidNewGuid_ReportsWHIZ055ErrorAsync", "GuidUsageAnalyzerTests.Analyzer_GuidCreateVersion7_ReportsWHIZ056ErrorAsync"]}
+```csharp{title="GuidUsageAnalyzer: Roslyn Analyzer (WHIZ055-WHIZ056)" description="Whizbang includes a Roslyn analyzer (GuidUsageAnalyzer) that detects problematic GUID generation patterns at" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "GuidUsageAnalyzer:", "Roslyn"] tests=["GuidUsageAnalyzerTests.Analyzer_GuidNewGuid_ReportsWHIZ055WarningAsync", "GuidUsageAnalyzerTests.Analyzer_GuidCreateVersion7_ReportsWHIZ056WarningAsync"]}
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public class GuidUsageAnalyzer : DiagnosticAnalyzer {
   // Detects: Guid.NewGuid() (WHIZ055) and Guid.CreateVersion7() (WHIZ056)
@@ -496,7 +496,7 @@ The analyzer runs during compilation and provides **instant feedback in your IDE
 
 **Severity**: Warning
 
-```csharp{title="WHIZ055: Guid.NewGuid() Usage" description="Severity: Warning" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "WHIZ055:", "Guid.NewGuid"] tests=["GuidUsageAnalyzerTests.Analyzer_GuidNewGuid_ReportsWHIZ055ErrorAsync", "GuidUsageAnalyzerTests.Analyzer_TrackedGuidNew_NoErrorAsync", "GuidUsageAnalyzerTests.Analyzer_WhizbangIdNew_NoErrorAsync"]}
+```csharp{title="WHIZ055: Guid.NewGuid() Usage" description="Severity: Warning" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "WHIZ055:", "Guid.NewGuid"] tests=["GuidUsageAnalyzerTests.Analyzer_GuidNewGuid_ReportsWHIZ055WarningAsync", "GuidUsageAnalyzerTests.Analyzer_TrackedGuidNew_NoErrorAsync", "GuidUsageAnalyzerTests.Analyzer_WhizbangIdNew_NoErrorAsync"]}
 // ⚠️ Warning: Use TrackedGuid.New() or a [WhizbangId] type instead
 var id = Guid.NewGuid();  // WHIZ055: Detected at compile-time
                           // IDE shows squiggle and warning
@@ -519,7 +519,7 @@ var orderId = OrderId.New();
 
 **Severity**: Warning
 
-```csharp{title="WHIZ056: Guid.CreateVersion7() Usage" description="Severity: Warning" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "WHIZ056:", "Guid.CreateVersion7"] tests=["GuidUsageAnalyzerTests.Analyzer_GuidCreateVersion7_ReportsWHIZ056ErrorAsync", "GuidUsageAnalyzerTests.Analyzer_TrackedGuidNew_NoErrorAsync"]}
+```csharp{title="WHIZ056: Guid.CreateVersion7() Usage" description="Severity: Warning" category="Implementation" difficulty="BEGINNER" tags=["Fundamentals", "Identity", "WHIZ056:", "Guid.CreateVersion7"] tests=["GuidUsageAnalyzerTests.Analyzer_GuidCreateVersion7_ReportsWHIZ056WarningAsync", "GuidUsageAnalyzerTests.Analyzer_TrackedGuidNew_NoErrorAsync"]}
 // ⚠️ Warning: Use TrackedGuid.New() for sub-millisecond precision
 var id = Guid.CreateVersion7();  // WHIZ056: Detected at compile-time
 
@@ -584,7 +584,7 @@ public class LegacyGuidService {
 
 The `GuidUsageAnalyzer` uses **syntax node analysis** to detect problematic patterns:
 
-```csharp{title="How the Analyzer Works" description="The GuidUsageAnalyzer uses syntax node analysis to detect problematic patterns:" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Analyzer", "Works"] tests=["GuidUsageAnalyzerTests.Analyzer_GuidNewGuid_ReportsWHIZ055ErrorAsync", "GuidUsageAnalyzerTests.Analyzer_GuidCreateVersion7_ReportsWHIZ056ErrorAsync"]}
+```csharp{title="How the Analyzer Works" description="The GuidUsageAnalyzer uses syntax node analysis to detect problematic patterns:" category="Implementation" difficulty="INTERMEDIATE" tags=["Fundamentals", "Identity", "Analyzer", "Works"] tests=["GuidUsageAnalyzerTests.Analyzer_GuidNewGuid_ReportsWHIZ055WarningAsync", "GuidUsageAnalyzerTests.Analyzer_GuidCreateVersion7_ReportsWHIZ056WarningAsync"]}
 public override void Initialize(AnalysisContext context) {
   context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);
   context.EnableConcurrentExecution();

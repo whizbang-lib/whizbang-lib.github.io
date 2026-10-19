@@ -1,5 +1,5 @@
 ---
-title: 'WHIZ104: Apply method should use event timestamps instead of DateTime.UtcNow'
+title: 'WHIZ104: Apply method should use event timestamps instead of reading the clock'
 pageType: troubleshooting
 verifiedAgainstCommit: 9a416b5b
 verifiedDate: 2026-10-17
@@ -25,7 +25,7 @@ testReferences:
 lastMaintainedCommit: '9a416b5b'
 ---
 
-# WHIZ104: Apply method should use event timestamps instead of DateTime.UtcNow
+# WHIZ104: Apply method should use event timestamps instead of reading the clock
 
 **Severity**: Warning
 **Category**: Perspective Purity (`Whizbang.Purity`)
@@ -36,22 +36,23 @@ lastMaintainedCommit: '9a416b5b'
 perspective is rebuilt, a field set from `DateTime.UtcNow` gets the time of the rebuild, not the time of the event.
 A timestamp carried on the event gives the same value on every replay.
 
-WHIZ104 is reported for each member access written as `DateTime.Now`, `DateTime.UtcNow`, `DateTimeOffset.Now` or
+WHIZ104 is reported for each read of `DateTime.Now`, `DateTime.UtcNow`, `DateTimeOffset.Now` or
 `DateTimeOffset.UtcNow` inside a method named `Apply` on a perspective class (`IPerspectiveFor`,
 `IPerspectiveWithActionsFor`, `IPerspectiveBase`, `IGlobalPerspectiveFor`) or inside any method marked
 `[CollectiveApplyFor]`. Other members of those types, such as `DateTime.MaxValue` or `DateTimeOffset.MinValue`,
 are constants and are not reported.
 
-The match is on the expression as written: the receiver must be spelled `DateTime` or `DateTimeOffset`. It is a
-warning, not an error.
+A read is found by the property it binds to, not by how it is spelled, so `System.DateTime.UtcNow` and
+`global::System.DateTimeOffset.Now` are reported as well. It is a warning, not an error.
 
 ## Diagnostic Message
 
 ```text
-Apply method '{MethodName}' uses DateTime.UtcNow which is non-deterministic. Use event timestamps instead for purity.
+Apply method '{MethodName}' uses {ClockRead} which is non-deterministic. Use event timestamps instead for purity.
 ```
 
-The message names `DateTime.UtcNow` whichever of the four clock reads was found.
+`{ClockRead}` names the read that was found: `DateTime.Now`, `DateTime.UtcNow`, `DateTimeOffset.Now` or
+`DateTimeOffset.UtcNow`. For example, `uses DateTimeOffset.Now`.
 
 ## Common Causes
 

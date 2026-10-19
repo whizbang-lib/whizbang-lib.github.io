@@ -58,8 +58,8 @@ Apply method '{MethodName}' calls '{ContainingType}.{CalledMethod}' which perfor
 1. **Validating or enriching the event against a remote API** inside `Apply`.
 2. **An injected gateway or client wrapper** whose type name contains `Http`.
 
-A call such as `HttpClient.GetStringAsync` is also an `...Async` method containing `Get`, so it raises
-[WHIZ102](whiz102) at the same call site.
+A call on `HttpClient` or `HttpMessageInvoker`, such as `HttpClient.GetStringAsync`, raises only WHIZ103: one
+diagnostic per call. [WHIZ102](whiz102) skips those types even though the method name matches its `...Async` rule.
 
 ## How to Fix
 

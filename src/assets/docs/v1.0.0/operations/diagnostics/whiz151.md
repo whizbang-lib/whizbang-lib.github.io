@@ -62,7 +62,7 @@ A receptor with no `[FireAt]`, or with any stage outside that list, counts as an
 ## Diagnostic Message
 
 ```
-Command '{CommandType}' has inbox receptors in multiple classes ({ReceptorClasses}) — one service owns a command type; move the command's handling into a single receptor (lifecycle observers should use [FireAt(...)] stages instead)
+Command '{CommandType}' has inbox receptors in multiple classes ({ReceptorClasses}); one service owns a command type; move the command's handling into a single receptor (lifecycle observers should use [FireAt(...)] stages instead)
 ```
 
 ## Common Causes

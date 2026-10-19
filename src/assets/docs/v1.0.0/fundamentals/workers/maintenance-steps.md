@@ -11,8 +11,10 @@ tags: 'workers, maintenance, housekeeping, settledness, extension'
 codeReferences:
   - src/Whizbang.Core/Workers/IMaintenanceStep.cs
   - src/Whizbang.Core/Workers/MaintenanceWorker.cs
+  - src/Whizbang.Core/Workers/RetentionSettingsBridge.cs
 testReferences:
   - tests/Whizbang.Core.Tests/Workers/MaintenanceWorkerStepTests.cs
+  - tests/Whizbang.Core.Tests/Workers/MaintenanceWorkerRetentionSyncTests.cs
 ---
 
 # Maintenance steps {#maintenance-steps}
@@ -62,3 +64,21 @@ How steps run:
 - **Register with `TryAddEnumerable`** so a registration method called twice does not run the step twice.
 
 The saga package's [stranded-saga sweep](../sagas/completion-orchestration#stranded-sagas) is a step.
+
+## Settings published before the sweep {#settings-published-before-the-sweep}
+
+{verified: MaintenanceWorkerRetentionSyncTests.TheWrite_HappensBeforeTheSweepReadsItAsync, MaintenanceWorkerRetentionSyncTests.EachCycle_PublishesTheConfiguredValuesInOneWriteAsync, MaintenanceWorkerRetentionSyncTests.AFailedWrite_IsLoggedWithTheKeysAndTheCycleContinuesAsync, MaintenanceWorkerRetentionSyncTests.ACanceledWrite_PropagatesAsync}
+
+The sweep runs in SQL and reads its retention windows from `wh_settings`, not from the host's options. So the
+first thing each cycle does, before any sweep, is publish the host's database-side settings in one write:
+`debug_mode` always, and every retention option that is set under `Whizbang:Workers:Maintenance:Retention` and
+`Whizbang:Ephemeral`. An option left unset is not written, so a value stored in SQL stands.
+
+- **Every cycle, not once at startup,** so a configuration change takes effect on the next cycle and a stale value
+  cannot outlive the option that set it.
+- **Best-effort.** A failed write is logged as a warning naming the keys it was publishing, and the cycle goes on;
+  the sweep uses the values already stored.
+- **Cancellation is shutdown** and propagates, as for any step.
+
+The options, their environment-variable forms and the key each one publishes are listed under
+[Database-side settings](../../operations/configuration/configuration-reference#database-side-settings).

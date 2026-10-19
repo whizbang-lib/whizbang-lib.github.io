@@ -71,7 +71,7 @@ Replace the call with `TrackedGuid.New()`, or with `New()` on a `[WhizbangId]` t
 
 ### Before (causes WHIZ055)
 
-```csharp{title="Before (causes WHIZ055)" description="A Guid.NewGuid() call that the analyzer reports" category="Diagnostics" difficulty="BEGINNER" tags=["WHIZ055", "Guid", "Analyzer"] testFile="GuidUsageAnalyzerTests.cs" testMethod="Analyzer_GuidNewGuid_ReportsWHIZ055ErrorAsync" githubUrl="https://github.com/whizbang-lib/whizbang/blob/develop/tests/Whizbang.Generators.Tests/GuidUsageAnalyzerTests.cs" tests=["GuidUsageAnalyzerTests.Analyzer_GuidNewGuid_ReportsWHIZ055ErrorAsync"]}
+```csharp{title="Before (causes WHIZ055)" description="A Guid.NewGuid() call that the analyzer reports" category="Diagnostics" difficulty="BEGINNER" tags=["WHIZ055", "Guid", "Analyzer"] testFile="GuidUsageAnalyzerTests.cs" testMethod="Analyzer_GuidNewGuid_ReportsWHIZ055WarningAsync" githubUrl="https://github.com/whizbang-lib/whizbang/blob/develop/tests/Whizbang.Generators.Tests/GuidUsageAnalyzerTests.cs" tests=["GuidUsageAnalyzerTests.Analyzer_GuidNewGuid_ReportsWHIZ055WarningAsync"]}
 using System;
 
 namespace TestApp;

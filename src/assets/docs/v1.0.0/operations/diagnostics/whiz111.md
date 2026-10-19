@@ -63,7 +63,7 @@ from then on.
 
 ### Before (causes WHIZ111)
 
-```csharp{title="Perspective without a pinned id" description="A concrete IPerspectiveFor implementation with no [PinnedId] reports WHIZ111." framework="NET10" category="Diagnostics" difficulty="BEGINNER" tags=["pinned-id", "identity", "perspectives", "WHIZ111"] testFile="PinnedIdAnalyzerTests.cs" testMethod="Analyzer_PerspectiveWithoutPinnedId_ReportsWhiz101Async" githubUrl="https://github.com/whizbang-lib/whizbang/blob/develop/tests/Whizbang.Generators.Tests/Analyzers/PinnedIdAnalyzerTests.cs" tests=["PinnedIdAnalyzerTests.Analyzer_PerspectiveWithoutPinnedId_ReportsWhiz101Async"]}
+```csharp{title="Perspective without a pinned id" description="A concrete IPerspectiveFor implementation with no [PinnedId] reports WHIZ111." framework="NET10" category="Diagnostics" difficulty="BEGINNER" tags=["pinned-id", "identity", "perspectives", "WHIZ111"] testFile="PinnedIdAnalyzerTests.cs" testMethod="Analyzer_PerspectiveWithoutPinnedId_ReportsWhiz111Async" githubUrl="https://github.com/whizbang-lib/whizbang/blob/develop/tests/Whizbang.Generators.Tests/Analyzers/PinnedIdAnalyzerTests.cs" tests=["PinnedIdAnalyzerTests.Analyzer_PerspectiveWithoutPinnedId_ReportsWhiz111Async"]}
 using Whizbang.Core;
 using Whizbang.Core.Perspectives;
 
