@@ -44,7 +44,8 @@ This error means one declaration describes something the generator has no conver
 generated for that declaration**, so without this error the stored documents would silently stay in the old
 form. It is an error rather than a warning for that reason.
 
-It is reported once per declaration, however many `DbContext`s include the model.
+It is reported once per declaration, however many `DbContext`s include the model. It is reported at the property
+carrying `[StoredForm]`, or at the `[StoredFormRemoved]` attribute for a removal.
 
 ## Diagnostic Message
 

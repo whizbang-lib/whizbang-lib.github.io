@@ -120,11 +120,23 @@ public sealed class A_Last : IStoredFormMigration<OModel> {
 
 ## Suppressing
 
-The warning is reported by a source generator with no source location, so a `#pragma warning disable` region
-cannot reach it, and neither can a file-scoped `.editorconfig` section. Set the severity in a global analyzer
-config, or add the ID to `<NoWarn>` in the project:
+The warning is reported at the first class, in class-name order, of the migrations named in the message. A
+`#pragma` region around that class silences it for that shared value:
 
-```ini{title="Suppress WHIZ833 project-wide" description="A global analyzer config applies to diagnostics with no source location."}
+```csharp{title="Suppress WHIZ833 for one shared Order" description="A pragma region around the first migration, by class name, of those that share an Order." category="Diagnostics" difficulty="BEGINNER" tags=["diagnostics", "stored-forms", "suppression", "whiz833"] unverified="suppression/config, not exercised by a test"}
+#pragma warning disable WHIZ833
+public sealed class C_Tied : IStoredFormMigration<OModel> {
+  public string Name => "c";
+  int IStoredFormMigration.Order => 20;
+  public string BuildSql(StoredFormMigrationTarget target) => "SELECT 1";
+}
+#pragma warning restore WHIZ833
+```
+
+A `[*.cs]` section in `.editorconfig` with `dotnet_diagnostic.WHIZ833.severity = none` also applies. To turn it off
+for the whole project, set the severity in a global analyzer config, or add the ID to `<NoWarn>` in the project:
+
+```ini{title="Suppress WHIZ833 project-wide" description="A global analyzer config turns the warning off for the whole project."}
 # .globalconfig
 is_global = true
 dotnet_diagnostic.WHIZ833.severity = none

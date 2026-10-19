@@ -24,6 +24,7 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/PerspectiveModelPolymorphicAnalyzerCoverageTests.cs
   - tests/Whizbang.Generators.Tests/Analyzers/PerspectiveModelDictionaryAnalyzerBranchTests.cs
   - tests/Whizbang.Generators.Tests/Analyzers/SystemTypeWalkTests.cs
+  - tests/Whizbang.Generators.Tests/DiagnosticMessageWordingTests.cs
 lastMaintainedCommit: '9a416b5b'
 ---
 
@@ -55,20 +56,21 @@ It does **not** report:
 - a property that is not public, or is static, an indexer, write-only, `[NotMapped]` or `[JsonIgnore]`
   (so a record's compiler-generated `EqualityContract` is never reported),
 - members of non-collection `System` types,
-- a class that is not a perspective's model.
+- a class that is not a perspective's model,
+- a property on a type that already declares a `[PolymorphicDiscriminator]` property. Adding the discriminator
+  the notice suggests silences it.
 
-Adding a `[PolymorphicDiscriminator]` property does **not** silence the notice: the abstract property is still
-reported (the discriminator property itself never is). Each property is reported once, however many
-perspective interfaces share the model.
+Each property is reported once, however many perspective interfaces share the model.
 
 ## Diagnostic Message
 
 ```
-Property '{PropertyName}' on perspective model '{DeclaringType}' is abstract type '{PolymorphicType}'. Consider using [PolymorphicDiscriminator] on a discriminator property for efficient type-based queries.
+Property '{PropertyName}' on perspective model '{DeclaringType}' is polymorphic type '{PolymorphicType}'. Consider adding a [PolymorphicDiscriminator] property to '{DeclaringType}' for efficient type-based queries.
 ```
 
-`{DeclaringType}` is the type that declares the property (a nested type when the property sits inside one).
-The text says "abstract type" for a `[JsonPolymorphic]` class or interface as well.
+`{DeclaringType}` is the type that declares the property (a nested type when the property sits inside one), and
+the type the message asks you to add the discriminator to. "Polymorphic type" covers both an abstract class and a
+class or interface marked `[JsonPolymorphic]`.
 
 ## Common Causes
 
@@ -79,7 +81,7 @@ The text says "abstract type" for a `[JsonPolymorphic]` class or interface as we
 
 ## What Produces It
 
-{verified: PerspectiveModelPolymorphicAnalyzerTests.PerspectiveModel_WithAbstractClassProperty_ReportsWHIZ811Async, PerspectiveModelPolymorphicAnalyzerTests.PerspectiveModel_WithDiscriminatorAndAbstractProperty_StillReportsWHIZ811ForAbstractPropertyOnlyAsync}
+{verified: PerspectiveModelPolymorphicAnalyzerTests.PerspectiveModel_WithAbstractClassProperty_ReportsWHIZ811Async, DiagnosticMessageWordingTests.Whiz811_AModelWithADiscriminator_IsNotReportedAsync}
 
 ```csharp{title="An abstract property on a perspective model" description="Payment is typed as the abstract PaymentMethod, so WHIZ811 (Info) is reported for it." framework="NET10" category="Diagnostics" difficulty="BEGINNER" tags=["diagnostics", "perspectives", "polymorphism", "whiz811"] testFile="PerspectiveModelPolymorphicAnalyzerTests.cs" testMethod="PerspectiveModel_WithAbstractClassProperty_ReportsWHIZ811Async" githubUrl="https://github.com/whizbang-lib/whizbang/blob/develop/tests/Whizbang.Data.EFCore.Postgres.Tests/PerspectiveModelPolymorphicAnalyzerTests.cs" tests=["PerspectiveModelPolymorphicAnalyzerTests.PerspectiveModel_WithAbstractClassProperty_ReportsWHIZ811Async"]}
 public abstract class PaymentMethod {
@@ -102,8 +104,8 @@ public class TestPerspective : IPerspectiveFor<TestModel, TestEvent> {
 
 - **If you query by derived type**, add a string property marked `[PolymorphicDiscriminator]` and set it to
   the type name when you apply events. See
-  [Polymorphic Discriminator](../../fundamentals/perspectives/polymorphic-discriminator). The notice stays,
-  so silence it once you have decided.
+  [Polymorphic Discriminator](../../fundamentals/perspectives/polymorphic-discriminator). Once the model
+  declares that property, the notice is no longer reported.
 - **If you never query by type**, there is nothing to change. Silence the notice.
 
 ## Suppressing
