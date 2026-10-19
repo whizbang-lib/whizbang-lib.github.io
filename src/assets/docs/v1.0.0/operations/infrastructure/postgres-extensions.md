@@ -1,36 +1,27 @@
 ---
 title: Postgres Extensions
 pageType: reference
-verifiedAgainstCommit: 4af1150a
+verifiedAgainstCommit: ddb69a39
 verifiedDate: 2026-10-19
 version: 1.0.0
 category: Infrastructure
-order: 10
+order: 11
 description: >-
-  Which Postgres extensions Whizbang can use, how it probes each database for
-  them at startup, what each state means and what to do about it, and the
-  configuration key that turns the probe off
+  The Postgres extensions capability provider: which extensions Whizbang can
+  use, how it probes each database at startup, each Postgres state and the
+  generic capability state it maps onto, and what to do about each
 tags: >-
-  postgres, extensions, pgvector, pg_trgm, pg_squeeze, pg_stat_statements,
-  allowlist, shared_preload_libraries, startup, capabilities
+  postgres, extensions, pgvector, pg_trgm, pg_squeeze, pg_repack, pg_partman,
+  pg_stat_statements, allowlist, shared_preload_libraries, capabilities
 codeReferences:
   - src/Whizbang.Data.Postgres/PostgresExtensionCatalog.cs
   - src/Whizbang.Data.Postgres/PostgresExtensionState.cs
   - src/Whizbang.Data.Postgres/PostgresCapabilityProbe.cs
-  - src/Whizbang.Data.Postgres/IPostgresCapabilities.cs
-  - src/Whizbang.Data.Postgres/PostgresExtensionReport.cs
-  - src/Whizbang.Data.Postgres/PostgresExtensionsStartupStep.cs
-  - src/Whizbang.Data.Postgres/PostgresExtensionsOptions.cs
-  - src/Whizbang.Data.Postgres/PostgresExtensionServiceCollectionExtensions.cs
-  - src/Whizbang.Data.Postgres/PostgresExtensionMetrics.cs
+  - src/Whizbang.Data.Postgres/PostgresCapabilityProvider.cs
 testReferences:
   - tests/Whizbang.Core.Tests/PostgresExtensions/PostgresExtensionCatalogTests.cs
   - tests/Whizbang.Core.Tests/PostgresExtensions/PostgresCapabilityProbeTests.cs
-  - tests/Whizbang.Core.Tests/PostgresExtensions/PostgresCapabilitiesTests.cs
-  - tests/Whizbang.Core.Tests/PostgresExtensions/PostgresExtensionReportTests.cs
-  - tests/Whizbang.Core.Tests/PostgresExtensions/PostgresExtensionsStartupStepTests.cs
-  - >-
-    tests/Whizbang.Core.Tests/PostgresExtensions/PostgresExtensionServiceCollectionExtensionsTests.cs
+  - tests/Whizbang.Core.Tests/PostgresExtensions/PostgresCapabilityProviderTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/PostgresCapabilityProbeIntegrationTests.cs
 ---
 
@@ -42,8 +33,11 @@ used depends on the server, and on a managed server the answer is often "install
 Whizbang answers the question once per database at startup and tells you, in one log block, which
 extensions it can use and what each one gives you.
 
-Both Postgres drivers (EF Core and Dapper) do this with no setup. Nothing here creates an extension
-or changes the schema: the probe is a read of the server's catalogs.
+Postgres extensions are the first provider of the library's [capability](capabilities.md) pattern:
+each extension is the capability `postgres/<name>`, the scope is the database, and the states, the
+startup verdict, the gauge and the configuration are the ones every provider shares. Both Postgres
+drivers (EF Core and Dapper) register the provider with no setup. Nothing here creates an extension or
+changes the schema: the probe is a read of the server's catalogs.
 
 ## Catalog {#catalog}
 {verified: PostgresExtensionCatalogTests.BuiltIn_NamesExactlyTheEightKnownExtensionsAsync, PostgresExtensionCatalogTests.LibraryMayCreate_MatchesTheDesignAsync, PostgresExtensionCatalogTests.NeedsPreload_FollowsThePrerequisitesAsync}
@@ -70,8 +64,9 @@ updating and managing the extensions arrive in later releases.
 
 ## How the probe works {#probe}
 
-At startup, after the schema is ready, the `PostgresExtensions` step of the
-[startup pipeline](../startup/startup-pipeline.md) runs one query per registered database. Extensions
+At startup, after the schema is ready, the `Capabilities` step of the
+[startup pipeline](../startup/startup-pipeline.md) asks the provider to probe each registered database,
+with one query each. Extensions
 are per database, while the allowlist and the preload list are per server, so each database gets its
 own answer. The query reads:
 
@@ -87,7 +82,7 @@ own answer. The query reads:
 
 The step does not block readiness, and it cannot stop the host. A database the probe cannot read
 (unreachable, refused, timed out) reads **Unknown** for every extension, and one warning names the
-database and the reason.
+provider, the database and the reason.
 
 ```mermaid{caption="How one extension's state is decided, in order." tests=["PostgresCapabilityProbeTests.Installed_WhenPresentInTheDatabaseAsync","PostgresCapabilityProbeTests.Missing_TakesPrecedenceOverTheAllowlistAsync","PostgresCapabilityProbeTests.NotAllowlisted_WhenAnAllowlistExistsAndDoesNotNameItAsync","PostgresCapabilityProbeTests.NeedsPreload_WhenAllowlistedButItsLibraryIsNotPreloadedAsync","PostgresCapabilityProbeTests.NoPrivilege_WhenTheRoleLacksCreateOnTheDatabaseAsync","PostgresCapabilityProbeTests.Available_WhenCreatableAsync","PostgresCapabilityProbeTests.Unknown_WhenInstalledButThePreloadListCannotBeReadAsync"]}
 flowchart TD
@@ -108,19 +103,21 @@ flowchart TD
 ```
 
 ## States, and what to do about each {#states}
-{verified: PostgresCapabilityProbeTests.Installed_WhenPresentInTheDatabaseAsync, PostgresCapabilityProbeTests.Unknown_WhenCreatableButThePreloadListCannotBeReadAsync, PostgresCapabilityProbeTests.Available_WhenCreatableAsync, PostgresCapabilityProbeTests.NotAllowlisted_WhenAnAllowlistExistsAndDoesNotNameItAsync, PostgresCapabilityProbeTests.NeedsPreload_WhenInstalledButItsLibraryIsNotPreloadedAsync, PostgresCapabilityProbeTests.NoPrivilege_WhenTheRoleLacksCreateOnTheDatabaseAsync, PostgresCapabilityProbeTests.Missing_WhenTheServerHasNoControlFilesAsync, PostgresCapabilityProbeTests.ProbeAsync_ConnectionFails_EveryExtensionIsUnknownAsync}
+{verified: PostgresCapabilityProbeTests.Installed_WhenPresentInTheDatabaseAsync, PostgresCapabilityProbeTests.Unknown_WhenCreatableButThePreloadListCannotBeReadAsync, PostgresCapabilityProbeTests.Available_WhenCreatableAsync, PostgresCapabilityProbeTests.NotAllowlisted_WhenAnAllowlistExistsAndDoesNotNameItAsync, PostgresCapabilityProbeTests.NeedsPreload_WhenInstalledButItsLibraryIsNotPreloadedAsync, PostgresCapabilityProbeTests.NoPrivilege_WhenTheRoleLacksCreateOnTheDatabaseAsync, PostgresCapabilityProbeTests.Missing_WhenTheServerHasNoControlFilesAsync, PostgresCapabilityProviderTests.EachPostgresState_MapsOntoOneGenericStateAsync}
 
-`Installed` and `Available` are usable. Every other state names the one thing in the way.
+Each Postgres state maps onto one [generic capability state](capabilities.md#states); the Postgres
+state stays in the status as its detail. `Installed` and `Available` are usable. Every other state names
+the one thing in the way.
 
-| State | Meaning | What to do |
-|---|---|---|
-| `Installed` | Present in the database, and preloaded when it must be. | Nothing. |
-| `Available` | Creatable here: files present, allowlisted (or no allowlist exists), preloaded if needed, and this role may create it. | Nothing. Whizbang creates it when a feature needs it, for the extensions it may create. |
-| `NotAllowlisted` | The server has the files, but its allowlist exists and does not name it. | Add the extension's name to the server's allowlist (for example `azure.extensions` on Azure Database for PostgreSQL). If it also needs preloading, add it to `shared_preload_libraries` and restart the server. |
-| `NeedsPreload` | Installed or creatable, but its library is not in `shared_preload_libraries`. | Add it to `shared_preload_libraries` and restart the server. |
-| `NoPrivilege` | Some role could create it, this one cannot: it is not a superuser and either lacks `CREATE` on the database, or the extension is not trusted and no managed-server allowlist grants it. | Run `CREATE EXTENSION <name>` once as a role that may (a superuser, or the server's administrator role), or grant this role `CREATE` on the database. |
-| `Missing` | The server has no files for it. | Install the extension's package on the server, or use a server image that includes it. |
-| `Unknown` | The probe could not decide: the database was unreachable or refused the query, the probe is turned off or has not run yet, or the extension needs preloading and this role cannot read `shared_preload_libraries`. | Read the warning that names the database, and check that it is reachable and this role can connect. For an extension that needs preloading, grant this role `pg_read_all_settings`. |
+| Postgres state | Capability state | Meaning | What to do |
+|---|---|---|---|
+| `Installed` | `Ready` | Present in the database, and preloaded when it must be. | Nothing. |
+| `Available` | `Provisionable` | Creatable here: files present, allowlisted (or no allowlist exists), preloaded if needed, and this role may create it. | Nothing. Whizbang creates it when a feature needs it, for the extensions it may create. |
+| `NotAllowlisted` | `NotPermitted` | The server has the files, but its allowlist exists and does not name it. | Add the extension's name to the server's allowlist (for example `azure.extensions` on Azure Database for PostgreSQL). If it also needs preloading, add it to `shared_preload_libraries` and restart the server. |
+| `NeedsPreload` | `NeedsServerChange` | Installed or creatable, but its library is not in `shared_preload_libraries`. | Add it to `shared_preload_libraries` and restart the server. |
+| `NoPrivilege` | `NoPrivilege` | Some role could create it, this one cannot: it is not a superuser and either lacks `CREATE` on the database, or the extension is not trusted and no managed-server allowlist grants it. | Run `CREATE EXTENSION <name>` once as a role that may (a superuser, or the server's administrator role), or grant this role `CREATE` on the database. |
+| `Missing` | `Missing` | The server has no files for it. | Install the extension's package on the server, or use a server image that includes it. |
+| `Unknown` | `Unknown` | The probe could not decide: the database was unreachable or refused the query, the probe is turned off or has not run yet, or the extension needs preloading and this role cannot read `shared_preload_libraries`. | Read the warning that names the database, and check that it is reachable and this role can connect. For an extension that needs preloading, grant this role `pg_read_all_settings`. |
 
 ### Managed servers and the allowlist {#allowlist}
 
@@ -134,64 +131,50 @@ Extensions that also need `shared_preload_libraries` (here `pg_squeeze`, `pg_sta
 `pg_cron`) need both changes, and the preload change takes effect only after the server restarts.
 `pg_squeeze` additionally needs `wal_level = logical`, which is also a restart-time parameter.
 
-## Startup report {#startup-report}
-{verified: PostgresExtensionReportTests.FormatUsable_ListsExactlyTheUsableExtensionsWithTheirPurposeAsync, PostgresExtensionReportTests.Log_WritesOneInformationBlockAndOneDebugBlockAsync, PostgresExtensionsStartupStepTests.ProbeOn_ProbesOnceAndReportsEachDatabaseAsync}
+## Startup verdict {#startup-report}
+{verified: CapabilityReportTests.Log_WritesOneBlockPairPerProviderAndScopeAsync, PostgresCapabilityProbeIntegrationTests.TheDapperDriver_RegistersItsDatabaseAsAPostgresScopeAsync}
 
-Each probed database writes one Information block listing exactly the usable extensions and what
-each enables:
-
-```text
-Postgres extensions on database 'orders-db': 4 usable of 8 known
-  vector 0.8.0 (Installed): vector fields and their similarity indexes
-  pg_trgm (Available): substring (trigram) indexes
-  pg_stat_statements (Available): query statistics
-  pg_cron (Available): in-database scheduling
-```
-
-The extensions that are not usable are listed at **Debug**, with their state and the fix:
+Each probed database writes the [capability verdict](capabilities.md#verdict): one Information block
+listing exactly the usable extensions and what each enables, with the Postgres state as the detail:
 
 ```text
-Postgres extensions on database 'orders-db' that are not usable here
-  pg_squeeze (NotAllowlisted): online table rewrite without a long exclusive lock. Fix: add PG_SQUEEZE to ...
+Capabilities of postgres on 'orders-db': 4 usable of 8
+  postgres/vector (Ready, 0.8.0; Installed): vector fields and their similarity indexes
+  postgres/pg_trgm (Provisionable; Available): substring (trigram) indexes
+  postgres/pg_stat_statements (Provisionable; Available): query statistics
+  postgres/pg_cron (Provisionable; Available): in-database scheduling
 ```
 
-The same answer is available to code through `IPostgresCapabilities`, a singleton both drivers
-register, and to dashboards through the `whizbang.postgres.extension.state` gauge on the
-[`Whizbang.Postgres` meter](../observability/metrics.md#postgres).
+and the rest at **Debug**, each with the fix:
 
-```csharp{title="Ask whether an extension is usable on a database" description="IPostgresCapabilities answers one state per extension and database; Unknown before the probe runs or when the database could not be read." framework="NET10" category="Configuration" difficulty="INTERMEDIATE" tags=["postgres", "extensions", "capabilities", "startup"] tests=["PostgresCapabilitiesTests.GetState_UnknownDatabase_IsUnknownAsync", "PostgresCapabilityProbeIntegrationTests.TheDapperDriver_RegistersItsDatabaseForTheProbeAsync"]}
-public sealed class SearchFeature(IPostgresCapabilities capabilities) {
+```text
+Capabilities of postgres on 'orders-db' that are not usable
+  postgres/pg_squeeze (NotPermitted; NotAllowlisted): online table rewrite without a long exclusive lock. Fix: add PG_SQUEEZE to ...
+```
+
+Code reads the same answer through `ICapabilityRegistry`, and dashboards through the
+`whizbang.capability.state` gauge on the [`Whizbang.Capabilities` meter](../observability/metrics.md#capabilities):
+
+```csharp{title="Ask whether an extension is usable on a database" description="The capability registry answers one state per extension and database; Unknown before the probe runs or when the database could not be read." framework="NET10" category="Configuration" difficulty="INTERMEDIATE" tags=["postgres", "extensions", "capabilities", "startup"] tests=["PostgresCapabilityProbeIntegrationTests.TheDapperDriver_RegistersItsDatabaseAsAPostgresScopeAsync", "CapabilityRegistryTests.GetState_ComparesProviderAndNameWithoutRegardToCaseAsync"]}
+public sealed class SearchFeature(ICapabilityRegistry capabilities) {
   public bool CanUseSubstringIndexes(string database) =>
-    capabilities.GetState(database, "pg_trgm") is PostgresExtensionState.Installed or PostgresExtensionState.Available;
+    capabilities.GetState(new CapabilityId(PostgresExtensionCatalog.PROVIDER, "pg_trgm"), database)
+      is CapabilityState.Ready or CapabilityState.Provisionable;
 }
 ```
 
-The database name is the driver's name for it: the connection-string name for the EF Core driver
-(`db` unless you named the context's connection), and the database named in the connection string
-for the Dapper driver.
+The scope is the driver's name for the database: the connection-string name for the EF Core driver
+(`db` unless you named the context's connection), and the database named in the connection string for
+the Dapper driver.
 
 ## Configuration {#configuration}
-{verified: PostgresExtensionServiceCollectionExtensionsTests.ProbeOnStartup_DefaultsToTrueAsync, PostgresExtensionServiceCollectionExtensionsTests.ProbeOnStartup_BindsFromConfigurationAsync, PostgresExtensionsStartupStepTests.ProbeTurnedOff_IsSkippedWithoutProbingAsync}
 
-| Key | Environment variable | Default | Meaning |
-|---|---|---|---|
-| `Whizbang:PostgresExtensions:ProbeOnStartup` | `Whizbang__PostgresExtensions__ProbeOnStartup` | `true` | `false` skips the startup probe; every extension then reads `Unknown`. |
-
-The section is `Whizbang:PostgresExtensions`, not `Whizbang:Postgres`, whose children are database
-names. A key present in configuration overrides a value set in code; an absent key leaves it.
-
-```json{title="Turn the startup probe off" description="Skips the extension probe at startup; every extension then reads Unknown." category="Configuration" difficulty="BEGINNER" tags=["postgres", "extensions", "configuration", "startup"] tests=["PostgresExtensionServiceCollectionExtensionsTests.ProbeOnStartup_BindsFromConfigurationAsync"]}
-{
-  "Whizbang": {
-    "PostgresExtensions": {
-      "ProbeOnStartup": false
-    }
-  }
-}
-```
+The probe is turned off with the capability key every provider shares,
+`Whizbang:Capabilities:ProbeOnStartup`; see [Capabilities: configuration](capabilities.md#configuration).
 
 ## See also
 
+- [Capabilities](capabilities.md), the pattern this provider follows
 - [Startup pipeline](../startup/startup-pipeline.md)
-- [Metrics reference: Whizbang.Postgres](../observability/metrics.md#postgres)
+- [Metrics reference: Whizbang.Capabilities](../observability/metrics.md#capabilities)
 - [Configuration reference](../configuration/configuration-reference.md)

@@ -104,7 +104,7 @@ The keys here are checked in both directions, so this page cannot drift from the
 | `Whizbang:Database` | `WhizbangNotificationOptions` | Automatic (Postgres driver) |
 | `Whizbang:Database:Stamper` | `CommitOrderStamperOptions` | Automatic (Postgres driver) |
 | `Whizbang:Database:RoleAssignment` | `RoleAssignmentOptions` | Automatic (Postgres driver) |
-| `Whizbang:PostgresExtensions` | `PostgresExtensionsOptions` | Automatic (both Postgres drivers); see [Postgres Extensions](#postgres-extensions-options) |
+| `Whizbang:Capabilities` | `CapabilityOptions` | Automatic (registered by every capability provider, both Postgres drivers among them); see [Capabilities](#capabilities-options) |
 | `Whizbang:WorkCoordinatorGate` | `WorkCoordinatorGateOptions` | Automatic (worker pipeline); a Postgres driver's `MaxInFlightCommands` fills `MaxConcurrent` when the section leaves it unset |
 | `Whizbang:ServiceName` (falls back to `ServiceName`) | — (string) | Automatic |
 | `Whizbang:ShowBanner` | — (bool) | Automatic |
@@ -225,15 +225,13 @@ Bound by the Postgres driver, which holds duties (`maintainer`, `migrator`, and 
 
 Code-only (through `AddWhizbangRoleAssignment(o => ...)`): `Roles`, `RoleLeases` (a lease per duty; the migrator's default is 30 seconds) and `LegacyLockKeys`.
 
-### Whizbang:PostgresExtensions → PostgresExtensionsOptions {#postgres-extensions-options}
+### Whizbang:Capabilities → CapabilityOptions {#capabilities-options}
 
-Bound by both Postgres drivers, which probe each database at startup for the extensions Whizbang can use. **Details:** [Postgres Extensions](../infrastructure/postgres-extensions.md#configuration). {verified: PostgresExtensionServiceCollectionExtensionsTests.ProbeOnStartup_DefaultsToTrueAsync, PostgresExtensionServiceCollectionExtensionsTests.ProbeOnStartup_BindsFromConfigurationAsync}
+Bound when any capability provider registers (both Postgres drivers do), so the library probes the external capabilities it can use at startup. **Details:** [Capabilities](../infrastructure/capabilities.md#configuration). {verified: CapabilityServiceCollectionExtensionsTests.ProbeOnStartup_DefaultsToTrue_WithoutConfigurationAsync, CapabilityServiceCollectionExtensionsTests.ProbeOnStartup_BindsFromConfigurationAsync}
 
 | Key | Type | Default | Environment variable | Purpose |
 |-----|------|---------|----------------------|---------|
-| `ProbeOnStartup` | `bool` | `true` | `Whizbang__PostgresExtensions__ProbeOnStartup` | `false` skips the startup probe; every extension then reads `Unknown` |
-
-Not under `Whizbang:Postgres`, whose children are database names.
+| `ProbeOnStartup` | `bool` | `true` | `Whizbang__Capabilities__ProbeOnStartup` | `false` skips the startup probe; every capability then reads `Unknown` |
 
 ### Service Name and Banner
 
