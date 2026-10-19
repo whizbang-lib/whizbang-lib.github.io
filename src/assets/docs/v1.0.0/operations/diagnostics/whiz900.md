@@ -125,11 +125,12 @@ public class DetachedReceptor : IReceptor<MyEvent> {
 
 ## Note on Receptors Without `[FireAt]`
 
-The analyzer assumes a receptor with no `[FireAt]` fires at Inline stages and reports it, naming
-`LocalImmediateInline` and suggesting `LocalImmediateDetached`. The receptor generator registers such a receptor at
-`LocalImmediateDetached` and `PostInboxDetached`, but a local caller currently waits for a default receptor as if it
-were Inline (see [Lifecycle Stages](../../fundamentals/lifecycle/lifecycle-stages)). Declaring an explicit Detached
-`[FireAt]` both clears the diagnostic and states the intended behavior.
+The analyzer treats a receptor with no `[FireAt]` as Inline and reports it, naming `LocalImmediateInline` and
+suggesting `LocalImmediateDetached`. That matches the generator, which registers such a receptor at
+`LocalImmediateInline` and `PostInboxDetached`, and a local caller waits for it. Moving the wait to
+`[FireAt(LocalImmediateDetached)]` makes the receptor a background hook that runs after the message's handler, so it
+no longer is the handler: give the message another handler, or move the wait out of the handler with event
+enrichment (see [Lifecycle Stages](../../fundamentals/lifecycle/lifecycle-stages#localimmediatedetached)).
 
 ## Related
 

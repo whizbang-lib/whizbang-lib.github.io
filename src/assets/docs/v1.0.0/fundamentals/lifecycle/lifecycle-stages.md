@@ -131,10 +131,10 @@ A dispatch is not either/or. Local stages fire whenever this service handles a m
 
 | Path | When | Default Stages | Persistence |
 |------|------|---------------|-------------|
-| **Local** | this service handles the message in-process (`LocalInvokeAsync`, or a `SendAsync`/`PublishAsync`/cascade it has a handler for) | `LocalImmediateDetached` | ❌ None (in-process) |
+| **Local** | this service handles the message in-process (`LocalInvokeAsync`, or a `SendAsync`/`PublishAsync`/cascade it has a handler for) | `LocalImmediateInline` | ❌ None (in-process) |
 | **Distributed** | the message is written to the outbox and delivered through the transport | `PostInboxDetached` (receiver) | ✅ Outbox/Inbox |
 
-Receptors **without** `[FireAt]` are registered at `LocalImmediateDetached` + `PostInboxDetached` (locked by generator tests). A receptor declared `[FireAt(LocalImmediateInline)]` or `[FireAt(LocalImmediateDetached)]` runs whenever this service handles the message in-process, like a default one. There is no default sender-side outbox stage.
+Receptors **without** `[FireAt]` are registered at `LocalImmediateInline` + `PostInboxDetached` (locked by generator tests). A receptor declared `[FireAt(LocalImmediateInline)]` is a local handler, like a default one. A receptor declared `[FireAt(LocalImmediateDetached)]` is a hook that starts in the background after the handler whenever this service handles the message in-process. There is no default sender-side outbox stage.
 
 **Key Points**:
 - A message this service handles **and** sends out takes both paths; its outbox copy is marked as handled here, so this service does not run it again when its own copy comes back
@@ -151,21 +151,22 @@ Which stages a message reaches depends on its direction relative to the service 
 
 | Stage | Internal | Egress (sender) | Ingress (receiver) |
 |-------|----------|-----------------|--------------------|
-| `LocalImmediateDetached` / `LocalImmediateInline` | ✅ the local handler | — | — |
+| `LocalImmediateInline` | ✅ the local handler | — | — |
+| `LocalImmediateDetached` | ✅ hooks, after the local handler, not waited for | — | — |
 | `ImmediateDetached` | ✅ once, after the local receptor | — | ✅ once, after PostInbox |
 | `PreDistribute*` / `DistributeDetached` / `PostDistribute*` | — | ✅ | — |
 | `PreOutbox*` / `PostOutbox*` | — | ✅ (see the skips below) | — |
 | `PreInbox*` / `PostInbox*` | — | — | ✅ |
 | `PrePerspective*` / `PostPerspective*` / `PostAllPerspectives*` | events with perspectives, on the service that stores them | — | events with perspectives |
-| `PostLifecycle*` | ✅ (`LocalInvokeAsync`) | — | ✅ |
+| `PostLifecycle*` | ✅ every local run, once per handling service | — | ✅ |
 
 **Where a receptor is registered**:
 
 | Receptor | Registered at |
 |----------|---------------|
-| Generated, no `[FireAt]` | `LocalImmediateDetached` and `PostInboxDetached`. Never at an outbox stage, so a plain receptor does not run on the sender when a message only passes through its outbox. |
+| Generated, no `[FireAt]` | `LocalImmediateInline` and `PostInboxDetached`. Never at an outbox stage, so a plain receptor does not run on the sender when a message only passes through its outbox. |
 | Generated, `[FireAt(X)]` | stage `X` only |
-| Runtime (`IReceptorRegistry.Register`) | the stage it names. A runtime registration at `LocalImmediateInline` or `LocalImmediateDetached` is the message's local handler for `SendAsync`, `SendManyAsync` and every `LocalInvokeAsync` overload when no generated receptor exists; a generated receptor always wins. |
+| Runtime (`IReceptorRegistry.Register`) | the stage it names. A runtime registration at `LocalImmediateInline` is the message's local handler for `SendAsync`, `SendManyAsync` and every `LocalInvokeAsync` overload when no generated receptor exists; a generated receptor always wins. One at `LocalImmediateDetached` is a hook started after the handler. |
 
 **When the outbox stages are skipped**. `PreOutbox*` and `PostOutbox*` run only for a message that is in the outbox, and the invoker skips some of those:
 
@@ -212,8 +213,8 @@ The `LifecycleStage` enum contains 29 values total: 28 true lifecycle stages plu
 - Never re-fired after a later stage, and never fired on a service that only forwards the message (the outbox stages) or projects it (the perspective stages)
 - Detached: nobody waits for it, and its errors never fail the message (see [Stage Semantics](#stage-semantics))
 
-:::planned
-Today the dispatcher awaits `ImmediateDetached` before local dispatch returns, and a receiving service with no `PostInboxDetached` receptor runs it inline after `PostInboxInline` ([#1393](https://github.com/whizbang-lib/whizbang/issues/1393)).
+:::updated
+Before 1.0 the dispatcher awaited `ImmediateDetached` before local dispatch returned, so a receptor's exception reached the caller, and a receiving service with no `PostInboxDetached` receptor ran it inline in the inbox unit of work ([#1393](https://github.com/whizbang-lib/whizbang/issues/1393)). A test that counts its invocations waits for a signal from the receptor, not for the dispatch to return.
 :::
 
 :::updated
@@ -221,7 +222,7 @@ In earlier releases `ImmediateDetached` also re-fired after each lifecycle stage
 :::
 
 **Example**:
-```csharp{title="`ImmediateDetached`" description="ImmediateDetached" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lifecycle", "ImmediateDetached"] tests=["ReceptorDiscoveryGeneratorTests.Generator_ReceptorWithFireAt_RegisteredOnlyAtSpecifiedStageAsync", "LifecycleCoordinatorTests.AdvanceTo_DoesNotFireImmediateDetached_AfterTheStageAsync", "ImmediateDetachedOncePerDispatchComponentTests.OneLocalDispatch_FiresImmediateDetachedExactlyOnceAsync", "LifecycleStageTests.LifecycleStage_ImmediateDetached_IsDefinedAsync"]}
+```csharp{title="`ImmediateDetached`" description="ImmediateDetached" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lifecycle", "ImmediateDetached"] tests=["ReceptorDiscoveryGeneratorTests.Generator_ReceptorWithFireAt_RegisteredOnlyAtSpecifiedStageAsync", "LifecycleCoordinatorTests.AdvanceTo_DoesNotFireImmediateDetached_AfterTheStageAsync", "ImmediateDetachedOncePerDispatchComponentTests.OneLocalDispatch_FiresImmediateDetachedExactlyOnceAsync", "ImmediateDetachedOncePerDispatchComponentTests.ALocalDispatch_ReturnsWithoutWaitingForImmediateDetachedAsync", "ImmediateDetachedOncePerDispatchComponentTests.AnImmediateDetachedFailure_NeverReachesTheCallerAsync", "InboxDispatchWorkerBranchCoverageTests.ImmediateDetached_WithOnlyAnInlineHandler_RunsOutsideTheUnitOfWorkAndNeverFailsTheMessageAsync", "LifecycleStageTests.LifecycleStage_ImmediateDetached_IsDefinedAsync"]}
 [FireAt(LifecycleStage.ImmediateDetached)]
 public class CommandMetricsReceptor : IReceptor<ICommand> {
     private readonly IMetricsCollector _metrics;
@@ -241,28 +242,26 @@ public class CommandMetricsReceptor : IReceptor<ICommand> {
 LocalImmediate stages are new in v1.0.0 and enable in-memory mediator-style message handling.
 :::
 
-#### `LocalImmediateDetached` ⭐ **Default Stage for Local Path**
+#### `LocalImmediateDetached`
 
-**Timing**: Whenever this service handles the message in-process, whether or not it also goes to the outbox.
+**Timing**: After the local handler, whenever this service handles the message in-process (a send, publish, local invoke, batch or cascade it has a handler for), whether or not the message also goes to the outbox.
 
 **Use Cases**:
-- **Default receptors** (receptors WITHOUT `[FireAt]` fire here for locally-dispatched messages)
-- In-memory mediator workflows
-- Fire-and-forget side effects on local dispatch
+- Fire-and-forget side effects of handling a message here: metrics, notifications, cache warming
+- Work the caller should not wait for
 
 **Guarantees**:
-- **Detached**: runs in its own scope and the caller does not wait for it (see [Stage Semantics](#stage-semantics))
-- **NO persistence** - message never hits outbox/inbox
-- **Default stage** for receptors WITHOUT `[FireAt]` on the local path
-- Errors never reach the caller
+- **Detached**: runs in its own scope after the handler, and the caller does not wait for it (see [Stage Semantics](#stage-semantics))
+- **A hook, not a handler**: a message whose only local receptor is declared here has no local handler, so the hook does not run for it
+- Errors are logged and never reach the caller
 
-:::planned
-Today local dispatch awaits a receptor registered here, including the default handler, and returns its result or exception to the caller, which is the Inline behavior ([#1392](https://github.com/whizbang-lib/whizbang/issues/1392)).
+:::updated
+Before 1.0 a receptor without `[FireAt]` was registered here and the caller waited for it, which is the Inline behavior, so an explicit `[FireAt(LocalImmediateDetached)]` receptor was awaited as a second handler ([#1392](https://github.com/whizbang-lib/whizbang/issues/1392)). Default receptors are now registered at `LocalImmediateInline`, and a receptor that used `LocalImmediateDetached` as its message's only handler should drop the attribute or declare `LocalImmediateInline`.
 :::
 
 **Example**:
-```csharp{title="`LocalImmediateDetached` ⭐ **Default Stage for Local Path**" description="LocalImmediateDetached" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lifecycle", "LocalImmediateDetached", "**Default"] tests=["ReceptorDiscoveryGeneratorTests.Generator_ReceptorWithoutFireAt_RegisteredAtDefaultStagesAsync", "LifecycleStageTests.LifecycleStage_LocalImmediateDetached_IsDefinedAsync"]}
-// Receptor WITHOUT [FireAt] fires at LocalImmediateDetached when dispatched locally!
+```csharp{title="`LocalImmediateDetached`" description="A hook that runs in the background after the local handler" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lifecycle", "LocalImmediateDetached"] tests=["LocalImmediateDetachedHookComponentTests.ALocalDispatch_ReturnsWithoutWaitingForALocalImmediateDetachedHookAsync", "LocalImmediateDetachedHookComponentTests.ALocalImmediateDetachedHookFailure_NeverReachesTheCallerAsync", "ReceptorDiscoveryGeneratorTests.Generator_LocalImmediateDetachedReceptor_IsRegisteredAtItsStage_AndNeverAwaitedAsAHandlerAsync", "LifecycleStageTests.LifecycleStage_LocalImmediateDetached_IsDefinedAsync"]}
+// The handler: no [FireAt], so LocalImmediateInline. The caller waits for it.
 public class CreateTenantCommandHandler : IReceptor<CreateTenantCommand, TenantCreatedEvent> {
     public async ValueTask<TenantCreatedEvent> HandleAsync(CreateTenantCommand cmd, CancellationToken ct = default) {
         var tenant = new Tenant(cmd.Name);
@@ -271,33 +270,38 @@ public class CreateTenantCommandHandler : IReceptor<CreateTenantCommand, TenantC
     }
 }
 
-// Use local dispatch for in-process handling
-await dispatcher.LocalInvokeAsync(new CreateTenantCommand("Acme"));
-```
-
-#### `LocalImmediateInline`
-
-**Timing**: During local dispatch (`LocalInvokeAsync` / `LocalSendManyAsync`), blocking.
-
-**Use Cases**:
-- Synchronous local handling that must complete before dispatch returns
-- Validation
-- Test synchronization for local dispatch
-
-**Guarantees**:
-- **Blocking** - dispatch waits for completion
-- **NO persistence** - message never hits outbox/inbox
-- Errors propagate to caller
-
-**Example**:
-```csharp{title="`LocalImmediateInline`" description="LocalImmediateInline" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lifecycle", "LocalImmediateInline"] unverified="verified by LocalImmediateLifecycleStageTests, which is outside the current coverage map"}
-[FireAt(LifecycleStage.LocalImmediateInline)]
-public class LocalDispatchLogger : IReceptor<ICommand> {
-    public ValueTask HandleAsync(ICommand cmd, CancellationToken ct = default) {
-        Console.WriteLine($"Local dispatch completed for {cmd.GetType().Name}");
-        return ValueTask.CompletedTask;
+// A hook: starts after the handler, in its own scope. Nobody waits for it.
+[FireAt(LifecycleStage.LocalImmediateDetached)]
+public class WarmTenantCache : IReceptor<CreateTenantCommand> {
+    public async ValueTask HandleAsync(CreateTenantCommand cmd, CancellationToken ct = default) {
+        await _cache.WarmAsync(cmd.Name, ct);
     }
 }
+```
+
+#### `LocalImmediateInline` ⭐ **Default Stage for Local Path**
+
+**Timing**: Whenever this service handles the message in-process. The caller waits for it.
+
+**Use Cases**:
+- **Default receptors** (receptors WITHOUT `[FireAt]` are registered here for locally-dispatched messages)
+- In-memory mediator workflows: the handler's result is returned to `LocalInvokeAsync`
+- Validation that must complete before dispatch returns
+
+**Guarantees**:
+- **Blocking**: the dispatch waits for completion
+- **NO persistence** of its own: the stage does not write to the outbox or inbox
+- Errors propagate to the caller
+
+**Example**:
+```csharp{title="`LocalImmediateInline`" description="LocalImmediateInline" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Lifecycle", "LocalImmediateInline"] tests=["ReceptorDiscoveryGeneratorTests.Generator_ReceptorWithoutFireAt_RegisteredAtDefaultStagesAsync", "LocalImmediateDetachedHookComponentTests.ALocalInvokeForAResult_ReturnsTheHandlersResult_NotTheHooksAsync"]}
+// Receptor WITHOUT [FireAt] is registered at LocalImmediateInline: the caller waits and gets its result
+public class GetTenantHandler : IReceptor<GetTenant, TenantView> {
+    public ValueTask<TenantView> HandleAsync(GetTenant query, CancellationToken ct = default) =>
+        ValueTask.FromResult(_views.Find(query.TenantId));
+}
+
+var view = await dispatcher.LocalInvokeAsync<GetTenant, TenantView>(new GetTenant(tenantId));
 ```
 
 ---
@@ -763,8 +767,8 @@ graph LR
     subgraph DIS["Dispatcher"]
         direction TB
         DIS0["ENTRY: dispatch"]
-        DIS1["LocalImmediateDetached"]
-        DIS2["LocalImmediateInline"]
+        DIS1["LocalImmediateInline"]
+        DIS2["LocalImmediateDetached (not waited for)"]
         DIS3["PostLifecycleDetached †"]
         DIS4["PostLifecycleInline †"]
         DIS5["EXIT: done / WhenAll"]
@@ -991,7 +995,7 @@ See [Lifecycle Receptors](../receptors/lifecycle-receptors.md) for API details.
 - **28 lifecycle stages** across 9 phases (Immediate, LocalImmediate, Distribute, Outbox, Inbox, Perspective, PostAllPerspectives, PostLifecycle, Destruction) plus 1 special value (`AfterReceptorCompletion`)
 - **Two paths, one dispatch can take both**: local (this service handles it in-process) and distributed (its outbox copy); the [dispatch policy](../dispatcher/dispatch-policy.md) decides
 - **Default stages** for receptors without `[FireAt]`:
-  - **Local path**: `LocalImmediateDetached`
+  - **Local path**: `LocalImmediateInline`
   - **Distributed path**: `PostInboxDetached` (receiver) — source-service filtering prevents double-fire
 - **PostLifecycle** fires exactly once per event at the end of whichever worker is last to act
 - **Lifecycle Coordinator** guarantees each stage fires once per event — no duplicate firings
