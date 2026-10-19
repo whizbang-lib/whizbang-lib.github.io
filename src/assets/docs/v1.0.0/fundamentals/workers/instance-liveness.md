@@ -336,7 +336,7 @@ Migration **106** closes that:
 
 The fence is per **process**, not per pod: instance ids are generated per process, so a restarted pod draws a fresh id and is unaffected — correct, because a restart means fresh state — while the zombie keeps its id and stays fenced.
 
-Tombstones are bounded: `perform_maintenance` purges rows older than `instance_eviction_retention_hours` (`wh_settings`, default 24). The tombstone only needs to outlive a realistic pause-and-resume window, and since ids are per-process, anything calling with that id after a day is not the process that was reaped.
+Tombstones are bounded: `perform_maintenance` purges rows older than `instance_eviction_retention_hours` (`wh_settings`, default 24; set from `Whizbang__Workers__Maintenance__Retention__InstanceEvictionTombstoneHours`, see [database-side settings](../../operations/configuration/configuration-reference#database-side-settings)). The tombstone only needs to outlive a realistic pause-and-resume window, and since ids are per-process, anything calling with that id after a day is not the process that was reaped.
 
 ## Capabilities: won, recorded, and fenced
 
