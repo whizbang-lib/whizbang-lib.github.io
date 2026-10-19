@@ -302,7 +302,7 @@ public record TenantOrderCreated : IEvent {
 
 A long-lived stream (an account, a ledger, a running balance) can "close the books" at a period boundary: the domain appends its closing event, then calls `IWorkCoordinator.CloseStreamAsync(streamId, throughVersion, archive)` to truncate the detail at or below `throughVersion`. With `archive: true` the detail is copied to cold storage first, in the same transaction, and stays readable through `GetArchivedEventsAsync`.
 
-```csharp
+```csharp{title="Closing a Stream" description="Truncate a stream's detail after its closing event" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Streams", "Retention"] tests=["StreamCloseSqlTests.CloseStream_ConsumptionGate_BlocksThenTruncatesAsync"]}
 // The domain has already emitted its closing event (for example PeriodClosed) through its receptor;
 // that event is the carry-forward that survives above the close point.
 var result = await coordinator.CloseStreamAsync(accountId, throughVersion: closedThrough, archive: true);
