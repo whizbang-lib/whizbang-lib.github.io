@@ -47,13 +47,15 @@ protected type), and one of the interfaces in its own base list is either:
 The generated code registers each class against its interface with `AddTransient` and, unless
 `IncludeSelfRegistration` is turned off in the options, also registers the class itself.
 
-WHIZ040 is a confirmation. It is reported at the lens or perspective class's name.
+WHIZ040 is a confirmation. It has no source location.
 
 ## Diagnostic Message
 
 ```text
-Registered {Category} '{ClassName}' as transient service implementing '{InterfaceName}'
+Registered {Category} '{ClassName}' as scoped service implementing '{InterfaceName}'
 ```
+
+The message says "scoped", but the generated registrations use `AddTransient`.
 
 ## Common Causes
 
@@ -87,31 +89,12 @@ public class OrderLens : IOrderLens {
 }
 ```
 
-The build reports `Registered Lens 'OrderLens' as transient service implementing 'global::TestApp.IOrderLens'`.
+The build reports `Registered Lens 'OrderLens' as scoped service implementing 'global::TestApp.IOrderLens'`.
 
 ## Suppressing
 
-WHIZ040 is reported at the lens or perspective class's name, so you can silence it for one class by wrapping it in a
-`#pragma` region:
-
-```csharp{
-title: "Silence WHIZ040 for one class"
-description: "A pragma region around the lens class hides its registration notice"
-category: "Troubleshooting"
-difficulty: "BEGINNER"
-tags: ["Operations", "Diagnostics", "Suppressing"]
-unverified: "suppression/config, not exercised by a test"
-}
-#pragma warning disable WHIZ040
-public class OrderLens : IOrderLens {
-  public IQueryable<PerspectiveRow<Order>> Query => throw new NotImplementedException();
-  public Task<Order?> GetByIdAsync(Guid id, CancellationToken ct = default) => Task.FromResult<Order?>(null);
-}
-#pragma warning restore WHIZ040
-```
-
-A `[*.cs]` section in `.editorconfig` with `dotnet_diagnostic.WHIZ040.severity = none` also applies. To turn it off
-for the whole project, use a global analyzer config file:
+WHIZ040 has no source location, so a `#pragma warning disable WHIZ040` region cannot reach it. Turn it off in a
+global analyzer config file:
 
 ```ini{
 title: "Silence WHIZ040"
