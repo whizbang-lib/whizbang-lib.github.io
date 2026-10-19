@@ -39,7 +39,8 @@ configuration generator checks every such column name at build time.
 
 The check covers each property marked `[PhysicalField]`, `[VectorField]` or `[PolymorphicDiscriminator]`. It
 counts UTF-8 bytes and fails when the count is **greater than** the limit. When it fails, the generator
-reports WHIZ821 and leaves the whole perspective out of the generated model configuration.
+reports WHIZ821 and leaves the whole perspective out of the generated model configuration. It is reported at the
+model type's declaration.
 
 ## Diagnostic Message
 

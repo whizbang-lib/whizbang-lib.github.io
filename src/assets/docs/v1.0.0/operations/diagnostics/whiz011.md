@@ -48,15 +48,15 @@ not be in the generated context. That is the main use of this message: confirmin
 ## Diagnostic Message
 
 ```
-Found {Kind} type '{TypeName}' - adding to JsonSerializerContext for AOT-compatible serialization
+Found {Kind} '{TypeName}' - adding to JsonSerializerContext for AOT-compatible serialization
 ```
 
 `{Kind}` is one of `command`, `event`, `serializable type`, `nested type`, `collection type`,
 `collection interface type`, `array type`, `dictionary type` or `enum type`. `{TypeName}` is the simple type name, or
 a readable form such as `List<OrderItem>` for collections.
 
-Because the format already ends the kind with the word `type`, kinds that themselves end in `type` read with the word
-twice, for example `Found nested type type 'OrderItem' ...`.
+The kind is written once, so a command reads as `Found command 'CreateOrder' ...` and a nested type as
+`Found nested type 'Address' ...`.
 
 ## Common Causes
 
@@ -82,7 +82,7 @@ using Whizbang.Core;
 
 namespace MyApp.Commands;
 
-// Reported as: Found command type 'CreateOrder' - adding to JsonSerializerContext ...
+// Reported as: Found command 'CreateOrder' - adding to JsonSerializerContext ...
 public record CreateOrder(string OrderId) : ICommand;
 ```
 

@@ -63,12 +63,12 @@ A perspective that implements several interfaces over the same model reports eac
 ## Diagnostic Message
 
 ```
-Property '{PropertyName}' on perspective model '{DeclaringType}' uses Dictionary<{KeyType}, {ValueType}> which is not supported by EF Core's ComplexProperty().ToJson(). Use List<{SuggestedElementType}> with Key/Value properties instead.
+Property '{PropertyName}' on perspective model '{DeclaringType}' uses Dictionary<{KeyType}, {ValueType}> which is not supported by EF Core's ComplexProperty().ToJson(). Use a List of a class with Key ({KeyType}) and Value ({ValueType}) properties instead.
 ```
 
 `{DeclaringType}` is the type that declares the property, which is the nested type (not the model) when
-the dictionary sits inside a nested object. `{SuggestedElementType}` is rendered as
-`KeyValuePair<{KeyType}, {ValueType}>`. The text says `Dictionary` for `IDictionary` and
+the dictionary sits inside a nested object. The suggested replacement is a list of your own class with `Key` and
+`Value` properties, as shown under How to Fix. The text says `Dictionary` for `IDictionary` and
 `IReadOnlyDictionary` properties too.
 
 ## Common Causes

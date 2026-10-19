@@ -54,9 +54,9 @@ directory, otherwise a `whizbang-lib.github.io` directory beside the git root ab
 | File is the JSON literal `null`, or an object without a `CodeToTests` table | No diagnostic, no tests |
 | File cannot be read or is not valid JSON of the expected shape | **WHIZ054**, no tests |
 
-The loader binds JSON property names case-sensitively: it reads a top-level `CodeToTests` table whose entries carry
-`TestFile`, `TestMethod`, `TestLine` and `TestClass`. A map that spells the table `codeToTests` parses without error,
-so it does not raise WHIZ054, but it contributes no tests.
+The loader reads JSON property names case-insensitively, so the camelCase shape the documentation site writes (a
+top-level `codeToTests` table whose entries carry `testFile`, `testMethod`, `testLine` and `testClass`) binds as
+expected and contributes its tests. WHIZ054 fires only when the file truly fails to load.
 
 ## Diagnostic Message
 

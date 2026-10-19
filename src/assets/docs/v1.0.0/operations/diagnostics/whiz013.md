@@ -50,14 +50,15 @@ The `StreamIdGenerator` reports it when all of these are true:
 A mutable `get; set;` property never triggers it. Positional record parameters produce `init`-only properties, so they
 are reported as well.
 
+WHIZ013 is reported at the `init`-only `[StreamId]` property.
+
 ## Diagnostic Message
 
 ```
 Type '{TypeName}' has [GenerateStreamId] on the init-only property '{PropertyName}'. The framework mints the id at dispatch and writes it back through a generated setter, which cannot target an init-only property, so the id would silently stay empty and dispatch would fail at the outbox. Change '{PropertyName}' to a mutable 'get; set;' property.
 ```
 
-The compiler output uses a dash where this page shows a comma after "init-only property". A get-only property is
-reported with the same "init-only" wording.
+A get-only property is reported with the same "init-only" wording.
 
 ## Common Causes
 
