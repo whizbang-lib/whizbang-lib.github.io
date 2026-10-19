@@ -134,10 +134,10 @@ The intake validates the command and records the run. It runs no stream itself.
 
 ### Storage {#storage}
 
-The run and its streams are kept by the storage driver's `IMultiStreamCommandStore` (Postgres: migrations 208 and 212).
+The run and its streams are kept by the storage driver's `IMultiStreamCommandStore` (Postgres: migrations 208 and 213).
 The command is stored as text, so a polymorphic type discriminator keeps its place, **with its stream list emptied**:
 the streams are rows of the run, so the payload's size does not depend on how many streams the run names. A claim
-sends each run's payload once, on the run's first claimed row (212), and the claimed rows of a run share that one
+sends each run's payload once, on the run's first claimed row (213), and the claimed rows of a run share that one
 copy. A run recorded by an earlier release, with its stream ids still in the payload, still works each of its streams.
 
 ```csharp{title="The stored payload does not grow with the run" description="A run's payload carries no stream ids, is sent once per claim and read once per run" category="Internals" difficulty="ADVANCED" tags=["Fundamentals", "Dispatcher", "Multi-Stream Commands"] tests=["MultiStreamCommandIntakeTests.HandleAsync_StoresAPayloadWhoseSizeDoesNotDependOnTheStreamCountAsync", "MultiStreamCommandIntakeTests.HandleAsync_ThePayloadWithoutItsStreams_ReadsBackIntoTheCommandAsync", "MultiStreamCommandRegistrationTests.InvokeAsync_TheStreamsOfOneRun_ReadItsPayloadOnceAsync", "MultiStreamCommandRegistrationTests.InvokeAsync_APayloadThatStillListsItsStreams_WorksEachOfThemAsync", "MultiStreamCommandStoreSqlTests.ClaimAsync_TheRowsOfOneRun_ShareItsPayloadOnceAsync", "MultiStreamCommandStoreSqlTests.TheClaimFunction_SendsEachRunsPayloadOnceAsync"]}
