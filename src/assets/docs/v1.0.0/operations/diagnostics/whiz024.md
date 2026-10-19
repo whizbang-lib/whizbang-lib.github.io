@@ -140,4 +140,4 @@ in your codebase; otherwise it hides accidental duplicates.
 
 - [WhizbangIds: Strongly-Typed Identity Values](../../fundamentals/identity/whizbang-ids)
 - [WHIZ021: WhizbangId Must Be Partial](whiz021)
-- [WHIZ020: WhizbangId Discovered](whiz020)
+- [WHIZ020: WhizbangId Discovered (retired)](whiz020)

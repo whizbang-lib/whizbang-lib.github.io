@@ -24,6 +24,7 @@ codeReferences:
   - src/Whizbang.Generators/Templates/PerspectiveRunnerTemplate.cs
   - src/Whizbang.Core/Workers/PerspectiveWorker.cs
   - src/Whizbang.Core/Workers/MaintenanceWorker.cs
+  - src/Whizbang.Core/Lifecycle/DestructionStageReceptors.cs
 testReferences:
   - tests/Whizbang.Core.Tests/Messaging/LifecycleStageTests.cs
   - tests/Whizbang.Core.Tests/Messaging/LifecycleStageExtensionsTests.cs
@@ -33,6 +34,8 @@ testReferences:
   - tests/Whizbang.Core.Tests/Workers/PerspectiveWorkerPostLifecycleTests.cs
   - tests/Whizbang.Core.Tests/Workers/TransportConsumerWorkerPostLifecycleTests.cs
   - tests/Whizbang.Core.Tests/Workers/MaintenanceWorkerDestructionHookTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/DestructionStageReceptorComponentTests.cs
+  - tests/Whizbang.Core.Component.Tests/Dispatcher/PostLifecycleOncePerHandlingServiceComponentTests.cs
   - tests/Whizbang.Generators.Tests/ReceptorDiscoveryGeneratorTests.cs
 lastMaintainedCommit: '01f07906'
 ---
@@ -632,7 +635,7 @@ public class CrossPerspectiveAggregator : IReceptor<OrderPlacedEvent> {
 
 ---
 
-### PostLifecycle Stages (2 stages)
+### PostLifecycle Stages (2 stages) {#post-lifecycle}
 
 :::new
 PostLifecycle stages are the **final stages** in an event's lifecycle, managed by the [Lifecycle Coordinator](lifecycle-coordinator.md).
@@ -649,7 +652,8 @@ PostLifecycle stages are the **final stages** in an event's lifecycle, managed b
 - Cleanup operations
 
 **Guarantees**:
-- **Fires exactly once per event** — managed by [Lifecycle Coordinator](lifecycle-coordinator.md)
+- **Fires exactly once per event in each service that handles it**, managed by [Lifecycle Coordinator](lifecycle-coordinator.md)
+- **Fires on every local run, whichever call handled it**: `SendAsync`, `SendManyAsync`, `PublishAsync`, `PublishManyAsync`, `LocalInvokeAsync`, `LocalSendManyAsync` and a cascade's local run. Before 1.0 only `LocalInvokeAsync` fired it.
 - Detached — does not delay the next batch
 - For `Route.Both()` events, fires only after ALL paths complete ([WhenAll pattern](lifecycle-coordinator.md#whenall-pattern))
 - Fired by whichever worker is the **last to act** on the event:
@@ -657,12 +661,13 @@ PostLifecycle stages are the **final stages** in an event's lifecycle, managed b
 | Scenario | Who fires PostLifecycle |
 |----------|----------------------|
 | Local dispatch | Dispatcher |
+| Local dispatch of a stored event a perspective on this service applies | PerspectiveWorker, after the apply (the local run leaves it to the worker, so it fires once) |
 | Distributed, no perspectives | TransportConsumer |
 | Distributed, with perspectives | PerspectiveWorker |
 | `Route.Both()` | Last path to complete (WhenAll) |
 
 **Example**:
-```csharp{title="`PostLifecycleDetached`" description="Final notification after all processing completes" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lifecycle", "PostLifecycleDetached"] tests=["LifecycleCoordinatorTests.WhenAll_BothComplete_FiresPostLifecycleOnceAsync", "LifecycleCoordinatorTests.SignalSegmentComplete_NoWhenAll_FiresPostLifecycleImmediatelyAsync", "LifecycleCoordinatorTests.WhenAll_LocalAlone_DoesNotFirePostLifecycleDetachedAsync", "LifecycleStageTests.LifecycleStage_PostLifecycleDetached_IsDefinedAsync"]}
+```csharp{title="`PostLifecycleDetached`" description="Final notification after all processing completes" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lifecycle", "PostLifecycleDetached"] tests=["LifecycleCoordinatorTests.WhenAll_BothComplete_FiresPostLifecycleOnceAsync", "LifecycleCoordinatorTests.SignalSegmentComplete_NoWhenAll_FiresPostLifecycleImmediatelyAsync", "LifecycleCoordinatorTests.WhenAll_LocalAlone_DoesNotFirePostLifecycleDetachedAsync", "LifecycleStageTests.LifecycleStage_PostLifecycleDetached_IsDefinedAsync", "PostLifecycleOncePerHandlingServiceComponentTests.EveryLocalRun_FiresPostLifecycleExactlyOnceAsync", "PostLifecycleOncePerHandlingServiceComponentTests.AnEventAPerspectiveHereApplies_LeavesPostLifecycleToThePerspectiveWorkerOnlyWhenStoredAsync"]}
 [FireAt(LifecycleStage.PostLifecycleDetached)]
 public class OrderNotificationReceptor : IReceptor<OrderPlacedEvent> {
   private readonly INotificationService _notifications;
@@ -691,35 +696,61 @@ public class OrderNotificationReceptor : IReceptor<OrderPlacedEvent> {
 
 ---
 
-### Destruction Stages (4 stages)
+### Destruction Stages (4 stages) {#destruction}
 
-:::new
-Destruction stages (E2) hook the destruction of ephemeral data — fired by the `MaintenanceWorker` reaper around the physical delete of consumed, aged-past-grace ephemeral event bodies. Unlike the other stages, they fire through a registered `IDestructionHook` (batched once per maintenance cycle for the whole about-to-reap set), not through `[FireAt]` receptors. Without a registered hook they are inert.
+:::updated
+Destruction stages hook the destruction of ephemeral data. The `MaintenanceWorker` reaper fires them around the physical delete of consumed, aged-past-grace ephemeral event bodies, once per maintenance cycle for the whole about-to-reap batch. They reach two kinds of handler:
+
+- **`[FireAt]` receptors** declared at a destruction stage, typed by the event they handle, like any other lifecycle receptor.
+- **A registered `IDestructionHook`**, called once with the whole batch, which can also Cancel or Defer it.
+
+With neither, the stages are inert and nothing extra is read.
 :::
+
+The reap deletes the stored events, so the events that have a destruction-stage receptor are **loaded before the delete**. The Pre stages get them before the delete; the Post stages get the same envelopes after it, when the stored data is already gone. Only events whose type has a destruction-stage receptor are loaded.
+
+```csharp{title="Archiving an ephemeral event before it is reaped" description="A PreDestructionInline receptor runs before the reap deletes the event; a PostDestructionDetached receptor runs after" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lifecycle", "Destruction", "Ephemeral"] tests=["DestructionStageReceptorComponentTests.TheReap_RunsThePreStagesBeforeTheDeleteAndThePostStagesAfterItAsync", "DestructionStageReceptorComponentTests.AFailingPreInlineReceptor_HoldsTheBatchAndNoPostStageRunsAsync", "DestructionStageReceptorComponentTests.AnEventWithNoDestructionReceptor_IsNotLoadedOrHandedToAnyStageAsync"]}
+[FireAt(LifecycleStage.PreDestructionInline)]
+public class ArchiveTelemetry : IReceptor<TelemetryRecorded> {
+  public async ValueTask HandleAsync(TelemetryRecorded evt, CancellationToken ct = default) {
+    // Awaited before the delete: commit the archive copy now, or throw to hold the batch
+    await _archive.WriteAsync(evt, ct);
+  }
+}
+
+[FireAt(LifecycleStage.PostDestructionDetached)]
+public class CountReapedTelemetry : IReceptor<TelemetryRecorded> {
+  public ValueTask HandleAsync(TelemetryRecorded evt, CancellationToken ct = default) {
+    // The stored event is gone; the envelope was loaded before the delete
+    _metrics.Reaped.Add(1);
+    return ValueTask.CompletedTask;
+  }
+}
+```
 
 #### `PreDestructionDetached`
 
-**Timing**: Just before an ephemeral event / stream / perspective row is destroyed (consumption-complete, TTL expiry, stream purge, or erasure). Fire-and-forget, own scope.
+**Timing**: Just before the batch is deleted. Runs in the background, in its own scope.
 
-**Guarantees**: Detached — does not block the reaper. Best for destruction notifications / metrics that need not gate the delete.
+**Guarantees**: Detached: does not block the reaper. Best for destruction notifications / metrics that need not gate the delete.
 
 #### `PreDestructionInline`
 
-**Timing**: Just before destruction, **awaited on the reaper's critical path** — side effects must durably commit BEFORE the physical delete.
+**Timing**: Just before the delete, **awaited on the reaper's critical path**, so side effects must durably commit BEFORE the physical delete.
 
-**Use Cases**: Compact / snapshot / archive / crypto-shred. The hook may return **Cancel** or **Defer** (or a chosen disposition): the whole batch is then held (Cancel = far-future, Defer = until the given instant) and nothing is reaped this cycle — PostDestruction does not fire.
+**Use Cases**: Compact / snapshot / archive / crypto-shred. An `IDestructionHook` may return **Cancel** or **Defer** (or a chosen disposition): the whole batch is then held (Cancel = far-future, Defer = until the given instant) and nothing is reaped this cycle, and PostDestruction does not fire.
 
-**Guarantees**: Blocking for this unit of destruction. A throwing hook does NOT fail open — the batch is held with backoff and re-offered up to `MaxDestructionRetries`, after which the `OnDestroyFailure` policy decides (forced delete or keep).
+**Guarantees**: Blocking for this batch. A throwing receptor or hook does NOT fail open: the batch is held with backoff and re-offered up to `MaxDestructionRetries`, after which the `OnDestroyFailure` policy decides (forced delete or keep). No Post stage runs for a held batch.
 
 #### `PostDestructionDetached`
 
-**Timing**: After the physical delete has committed. Fire-and-forget, own scope.
+**Timing**: After the physical delete has committed. Runs in the background, in its own scope.
 
 **Use Cases**: Notify / metrics / cascade.
 
 #### `PostDestructionInline`
 
-**Timing**: After the physical delete, blocking the reaper for this unit until completion. Rare — most post-destruction work is Detached.
+**Timing**: After the physical delete, awaited by the reaper. Rare: most post-destruction work is Detached.
 
 ---
 

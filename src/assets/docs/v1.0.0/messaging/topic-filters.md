@@ -345,13 +345,9 @@ Info WHIZ022: Found topic filter 'orders.created' on command 'CreateOrderCommand
 
 Generated for every discovered topic filter. Useful for verifying generation.
 
-### WHIZ023: Enum Filter No Description (Info)
+### WHIZ023: Enum Filter No Description (retired)
 
-```
-Info WHIZ023: Enum value 'Topics.OrdersCreated' has no [Description] attribute. Using enum symbol name 'OrdersCreated' as filter.
-```
-
-Declared but not currently reported: when an enum value lacks a `[Description]` attribute, the generator uses the symbol name as the filter without a message. See [WHIZ023](../operations/diagnostics/whiz023).
+Retired: never reported, no longer in the generator package, and never reused. When an enum value lacks a `[Description]` attribute, the generator uses the symbol name as the filter without a message; the WHIZ022 notice shows the string it used. See [WHIZ023](../operations/diagnostics/whiz023).
 
 ### WHIZ025: TopicFilter On Non-Command (Warning)
 
@@ -359,7 +355,7 @@ Declared but not currently reported: when an enum value lacks a `[Description]` 
 Warning WHIZ025: [TopicFilter] on type 'MyClass' which does not implement ICommand. Filter will be ignored.
 ```
 
-Declared but not currently reported: `[TopicFilter]` on a type that doesn't implement `ICommand` is ignored without a message. See [WHIZ025](../operations/diagnostics/whiz025).
+`[TopicFilter]` on a type that doesn't implement `ICommand` is ignored by the generator, and WHIZ025 is reported at the attribute. See [WHIZ025](../operations/diagnostics/whiz025).
 
 ### WHIZ026: No Topic Filters Found (Info)
 

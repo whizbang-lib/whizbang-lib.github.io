@@ -130,7 +130,7 @@ and `NoWarn` only change the warning; they do not stop interception. To skip int
 ## Related
 
 - [WHIZ056: Guid.CreateVersion7() Usage](whiz056)
-- [WHIZ057: Raw Guid Parameter](whiz057)
+- [WHIZ057: Raw Guid Parameter (retired)](whiz057)
 - [WHIZ058: GUID Call Intercepted](whiz058)
 - [WHIZ059: GUID Interception Suppressed](whiz059)
 - [WhizbangIds and TrackedGuid](../../fundamentals/identity/whizbang-ids)

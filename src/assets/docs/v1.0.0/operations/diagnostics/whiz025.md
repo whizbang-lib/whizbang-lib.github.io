@@ -1,11 +1,11 @@
 ---
 title: 'WHIZ025: TopicFilter On Non-Command'
 pageType: troubleshooting
-verifiedAgainstCommit: 9a416b5b
-verifiedDate: 2026-10-17
+verifiedAgainstCommit: 7e3d0a73
+verifiedDate: 2026-10-19
 description: >-
-  Warning descriptor for a [TopicFilter] on a type that does not implement ICommand. It is defined but not reported by
-  the current generator: such filters are ignored silently.
+  Warning reported on a [TopicFilter] attribute placed on a type that does not implement ICommand. Topic filters route
+  commands only, so the generator ignores the filter.
 version: 1.0.0
 category: Diagnostics
 severity: Warning
@@ -14,12 +14,16 @@ tags:
   - topic-filters
   - commands
   - source-generator
+  - analyzer
 codeReferences:
   - src/Whizbang.Generators/DiagnosticDescriptors.cs
+  - src/Whizbang.Generators/Analyzers/TopicFilterTargetAnalyzer.cs
   - src/Whizbang.Generators/TopicFilterGenerator.cs
   - src/Whizbang.Core/TopicFilterAttribute.cs
-testReferences: []
-lastMaintainedCommit: '9a416b5b'
+testReferences:
+  - tests/Whizbang.Generators.Tests/Analyzers/TopicFilterTargetAnalyzerTests.cs
+  - tests/Whizbang.Generators.Tests/TopicFilterGeneratorTests.cs
+lastMaintainedCommit: '7e3d0a73'
 ---
 
 # WHIZ025: TopicFilter On Non-Command
@@ -31,18 +35,20 @@ lastMaintainedCommit: '9a416b5b'
 
 Topic filters route **commands**. The `TopicFilterGenerator` only reads `[TopicFilter]` attributes on classes and
 records that implement `ICommand`; on any other type the attribute has no effect, and the type is left out of the
-generated `TopicFilterRegistry`. WHIZ025 is defined to warn you that the filter will be ignored.
+generated `TopicFilterRegistry`. The attribute itself is allowed on any class (`AttributeTargets.Class`), so the
+compiler does not catch the mistake.
 
-**Current behavior**: the generator does not report WHIZ025. It checks for `ICommand` first and skips any other type
-before looking at its attributes, so the filter is ignored **silently**: no warning and no error. The tested behavior
-is exactly that: the registry does not mention the type and no error is reported. If that type held the only filters
-in the project, the generator reports WHIZ026 (no topic filters found) and does not generate the registry.
+WHIZ025 reports it. An analyzer checks every type that carries `[TopicFilter]`, in either form (`[TopicFilter("...")]`
+or `[TopicFilter<TEnum>(...)]`), and warns when the type does not implement `ICommand`, directly or through a base
+type or interface. The warning sits on the attribute. A type with several filters gets one warning, on the first.
 
-The attribute itself is allowed on any class (`AttributeTargets.Class`), so the compiler does not catch this either.
+The generator's behavior is unchanged: the type is skipped and no error is reported. If that type held the only filters
+in the project, the generator also reports [WHIZ026](whiz026) (no topic filters found) and does not generate the
+registry.
 
 ## Diagnostic Message
 
-```
+```text
 [TopicFilter] on type '{TypeName}' which does not implement ICommand. Filter will be ignored.
 ```
 
@@ -53,50 +59,41 @@ The attribute itself is allowed on any class (`AttributeTargets.Class`), so the 
 
 ## How to Fix
 
-Implement `ICommand` on the type if it is a command, or remove the `[TopicFilter]` if it is not. Because nothing
-reports the problem today, check the [WHIZ022](whiz022) notices: a filter that does not appear there was not registered.
+Implement `ICommand` on the type if it is a command, or remove the `[TopicFilter]` if it is not.
 
-### Before (filter silently ignored)
+### Before (reports WHIZ025)
 
-```csharp{title="TopicFilter on a type that is not a command" description="The record does not implement ICommand, so the generator skips it and the filter never reaches the registry." framework="NET10" category="Diagnostics" difficulty="BEGINNER" tags=["diagnostics", "topic-filters", "commands"] unverified="WHIZ025 is never reported; the silent skip is checked by TopicFilterGeneratorTests.Generator_WithFilterOnNonCommand_ReportsErrorAsync"}
+```csharp{title="TopicFilter on an event" description="The record is an event, not a command, so the filter is ignored and WHIZ025 is reported on the attribute." framework="NET10" category="Diagnostics" difficulty="BEGINNER" tags=["diagnostics", "topic-filters", "commands", "WHIZ025"] tests=["TopicFilterTargetAnalyzerTests.ATopicFilterOnAnEvent_ReportsWhiz025Async", "TopicFilterGeneratorTests.Generator_WithFilterOnNonCommand_EmitsNoMappingForItAsync"]}
 using Whizbang.Core;
 
-namespace TestNamespace;
-
-[TopicFilter("should.fail")]
-public record NotACommand {  // Missing ICommand: filter is ignored
-}
+[TopicFilter("orders")]           // WHIZ025: OrderPlaced is not a command
+public record OrderPlaced : IEvent;
 ```
 
 ### After (filter registered)
 
-```csharp{title="TopicFilter on a command" description="Implementing ICommand makes the generator add the filter to TopicFilterRegistry." framework="NET10" category="Diagnostics" difficulty="BEGINNER" tags=["diagnostics", "topic-filters", "commands"] unverified="WHIZ025 is never reported; registration for this shape is checked by TopicFilterGeneratorTests.Generator_WithStringFilter_GeneratesRegistryAsync"}
+```csharp{title="TopicFilter on a command" description="The type implements ICommand, so no warning is reported and the generator adds the filter to TopicFilterRegistry." framework="NET10" category="Diagnostics" difficulty="BEGINNER" tags=["diagnostics", "topic-filters", "commands", "WHIZ025"] tests=["TopicFilterTargetAnalyzerTests.ATopicFilterOnACommand_IsNotReportedAsync"]}
 using Whizbang.Core;
 
-namespace TestNamespace;
-
-[TopicFilter("orders.create")]
-public record CreateOrderCommand : ICommand {
-}
+[TopicFilter("orders")]
+public record PlaceOrder : ICommand;
 ```
 
 ## Suppressing
 
-There is nothing to suppress while the generator does not report it. If a future version starts reporting it, the
-usual severity settings would apply (`#pragma warning disable WHIZ025` if it is reported on the type, or
-`dotnet_diagnostic.WHIZ025.severity = none` in `.editorconfig` or a `.globalconfig`):
+The warning is reported at the attribute, so `#pragma warning disable WHIZ025` around the type or
+`dotnet_diagnostic.WHIZ025.severity = none` in `.editorconfig` silences it:
 
-```ini{title="Silence WHIZ025" description="An analyzer config entry that would turn off the WHIZ025 warning." category="Diagnostics" difficulty="BEGINNER" tags=["diagnostics", "suppression", "editorconfig"] unverified="suppression/config, not exercised by a test"}
+```ini{title="Silence WHIZ025" description="An analyzer config entry that turns off the WHIZ025 warning." category="Diagnostics" difficulty="BEGINNER" tags=["diagnostics", "suppression", "editorconfig"] unverified="suppression/config, not exercised by a test"}
 [*.cs]
 dotnet_diagnostic.WHIZ025.severity = none
 ```
 
-Suppressing it would rarely be appropriate: a filter on a non-command never does anything, so the attribute should be
-removed instead.
+Suppressing it is rarely appropriate: a filter on a non-command never does anything, so remove the attribute instead.
 
 ## Related
 
 - [Topic Filters](../../messaging/topic-filters)
 - [Topic Filter Discovery](../../extending/source-generators/topic-filter-discovery)
 - [WHIZ022: Topic Filter Discovered](whiz022)
-- [WHIZ023: Enum Filter No Description](whiz023)
+- [WHIZ026: No Topic Filters Found](whiz026)

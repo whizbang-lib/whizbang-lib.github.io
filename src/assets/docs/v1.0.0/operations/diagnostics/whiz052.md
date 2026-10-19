@@ -1,11 +1,11 @@
 ---
-title: 'WHIZ052: Test Link Discovered'
+title: 'WHIZ052: Test Link Discovered (retired)'
 pageType: troubleshooting
-verifiedAgainstCommit: 9a416b5b
-verifiedDate: 2026-10-17
+verifiedAgainstCommit: 7e3d0a73
+verifiedDate: 2026-10-19
 description: >-
-  Informational descriptor for a discovered link between code and a test. The descriptor is defined, but no
-  Whizbang analyzer or generator reports it in this version.
+  Retired. WHIZ052 (Test Link Discovered) was declared but never reported. It is removed from the generator package
+  and the ID is never reused.
 version: 1.0.0
 category: Diagnostics
 severity: Info
@@ -14,60 +14,50 @@ tags:
   - test-linking
   - discovery
   - info
+  - retired
 codeReferences:
   - src/Whizbang.Generators/DiagnosticDescriptors.cs
-testReferences: []
-lastMaintainedCommit: '9a416b5b'
+testReferences:
+  - tests/Whizbang.Generators.Tests/DiagnosticDescriptorsTests.cs
+lastMaintainedCommit: '7e3d0a73'
 ---
 
-# WHIZ052: Test Link Discovered
+# WHIZ052: Test Link Discovered (retired)
 
-**Severity**: Info
-**Category**: Test Linking
+**Status**: Retired. Never reported.
+**Former severity**: Info
 
-## Description
+## Retired
 
-WHIZ052 is an informational discovery notice. It describes a link found between a code symbol and a test, whether the
-link came from a naming convention, from semantic analysis, or from a `<tests>` XML documentation tag.
+WHIZ052 is **retired**. No generator or analyzer ever reported it, and its descriptor has been removed from the
+generator package. The ID is **never reused**: it will not be given a new meaning, so a search or a suppression for
+it can never match a different diagnostic. A test keeps every retired ID from being declared again
+(`DiagnosticDescriptorsTests.RetiredDiagnosticIds_AreNeverDeclaredAgainAsync`).
 
-In this version the descriptor is **declared but never reported**: no analyzer or source generator in the Whizbang
-packages creates a WHIZ052 diagnostic. Nothing appears in build output for it.
+## What It Described
 
-## Diagnostic Message
+WHIZ052 was one of three test-linking descriptors (WHIZ050 to WHIZ052). It was an informational notice for a link
+found between a code symbol and a test. No analyzer or generator ever reported it.
 
-```text{title="WHIZ052 message format" description="The descriptor's message format, with placeholders named" category="Diagnostics" difficulty="BEGINNER" tags=["WHIZ052", "Diagnostics", "Test Linking"] unverified="message format read from the descriptor; no code reports it"}
-Found test link: {TypeName}.{MemberName} ← {TestReference} (via {LinkSource})
+The message it would have shown:
+
+```text
+Found test link: {Type}.{Member} <- {Test} (via {Source})
 ```
 
-`{LinkSource}` is the way the link was found: convention, semantic analysis, or an XML tag, as the descriptor's
-description lists them.
+## Why There Is No Rule
 
-## Common Causes
+Code-to-test links are discovered by the documentation tooling that builds the code-tests map, outside the
+compiler, so there is no build-time event to report.
 
-1. **None in this version.** Nothing reports WHIZ052.
+## If You Suppress It
 
-## How to Fix
-
-Nothing to fix. WHIZ052 is informational, and it is not produced.
-
-## Suppressing
-
-Suppression has no effect today. If you want to silence it in advance, set its severity to `none`.
-
-```csharp{title="Suppress WHIZ052 with a pragma" description="Standard pragma suppression for an informational ID" category="Diagnostics" difficulty="BEGINNER" tags=["WHIZ052", "Suppression", "Pragma"] unverified="suppression syntax; WHIZ052 is never reported, so there is nothing to suppress"}
-#pragma warning disable WHIZ052
-public class OrderService {
-}
-#pragma warning restore WHIZ052
-```
-
-```ini{title="Suppress WHIZ052 in .editorconfig" description="Project-wide severity override" category="Diagnostics" difficulty="BEGINNER" tags=["WHIZ052", "Suppression", "EditorConfig"] unverified="suppression/config; not exercised by a test"}
-[*.cs]
-dotnet_diagnostic.WHIZ052.severity = none
-```
+A suppression of WHIZ052 has never had any effect. Delete it: remove any `#pragma warning disable WHIZ052` /
+`#pragma warning restore WHIZ052` lines, any `dotnet_diagnostic.WHIZ052.severity` entry in `.editorconfig` or a
+`.globalconfig`, and WHIZ052 from any `<NoWarn>` list.
 
 ## Related
 
-- [WHIZ050: Public API Missing Tests](whiz050)
-- [WHIZ051: Invalid Test Reference](whiz051)
+- [WHIZ050: Public API Missing Tests (retired)](whiz050)
+- [WHIZ051: Invalid Test Reference (retired)](whiz051)
 - [WHIZ054: Failed to Load Tests Map](whiz054)

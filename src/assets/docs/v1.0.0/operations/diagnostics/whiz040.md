@@ -115,7 +115,7 @@ generated either way.
 ## Related
 
 - [WHIZ041: Abstract Class Skipped](whiz041)
-- [WHIZ042: No User Services Found](whiz042)
+- [WHIZ042: No User Services Found (retired)](whiz042)
 - [Service Registration](../configuration/service-registration)
 - [Lens Services](../configuration/lens-services)
 - [Perspective Services](../configuration/perspective-services)
