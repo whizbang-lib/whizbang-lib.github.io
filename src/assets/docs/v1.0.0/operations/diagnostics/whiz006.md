@@ -1,7 +1,7 @@
 ---
 title: 'WHIZ006: Multiple Stream ID Attributes'
 pageType: troubleshooting
-verifiedAgainstCommit: 7e3d0a73
+verifiedAgainstCommit: bf2051c5
 verifiedDate: 2026-10-20
 description: >-
   Warning reported on each extra [StreamId] attribute when a type marks more than one property or primary-constructor
@@ -22,7 +22,7 @@ codeReferences:
 testReferences:
   - tests/Whizbang.Generators.Tests/Analyzers/StreamIdAttributeAnalyzerTests.cs
   - tests/Whizbang.Generators.Tests/DiagnosticDescriptorsTests.cs
-lastMaintainedCommit: '7e3d0a73'
+lastMaintainedCommit: 'b0bc0d9e'
 ---
 
 # WHIZ006: Multiple Stream ID Attributes
