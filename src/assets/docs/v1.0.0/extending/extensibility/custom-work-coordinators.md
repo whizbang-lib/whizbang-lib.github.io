@@ -115,7 +115,7 @@ public interface IWorkCoordinator {
 ```
 
 :::updated
-The legacy `ProcessWorkBatchAsync(ProcessWorkBatchRequest, CancellationToken)` member has been **removed from the interface entirely** (along with the `ProcessWorkBatchRequest` type), and the legacy orchestrator SQL function `process_work_batch` has been dropped. Work coordination is now decomposed into `ClaimWorkAsync`, `StoreOutboxMessagesAsync` / `StoreInboxMessagesAsync`, the per-completion/per-failure flushers, and `CommitHandlerBatchAsync`.
+The legacy single batch member (and its request type) has been **removed from the interface entirely**, and the legacy orchestrator SQL function it called has been removed (migration 029 drops it). Work coordination is now decomposed into `ClaimWorkAsync`, `StoreOutboxMessagesAsync` / `StoreInboxMessagesAsync`, the per-completion/per-failure flushers, and `CommitHandlerBatchAsync`.
 :::
 
 ### Claim/drain split

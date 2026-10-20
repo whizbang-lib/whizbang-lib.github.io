@@ -696,7 +696,7 @@ Higher counts enable finer-grained distribution:
 
 The coordination logic lives in focused SQL functions:
 
-- `claim_work` + `record_heartbeat` + `renew_leases` — `029_ProcessWorkBatch.sql` (also drops the legacy `process_work_batch` orchestrator)
+- `claim_work` + `record_heartbeat` + `renew_leases` — first defined in `029_ProcessWorkBatch.sql` (which also removes the legacy single orchestrator function) and redefined by later migrations; the latest definition is the one in effect
 - `claim_orphaned_outbox` / `claim_orphaned_inbox` — `024_ClaimOrphanedOutbox.sql` / `025_ClaimOrphanedInbox.sql` (owner path, modulo path, scheduled-retry ordering gate)
 - `cleanup_stale_instances` — `011_CleanupStaleInstances.sql` (liveness-corroborated removal + lease release)
 - `calculate_instance_rank` — `012_CalculateInstanceRank.sql`

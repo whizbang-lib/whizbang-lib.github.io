@@ -138,7 +138,7 @@ else {
 }
 ```
 
-Inquiries are resolved through the dedicated `IWorkCoordinator.ResolveSyncInquiriesAsync` batch call (the legacy `ProcessWorkBatchAsync` piggyback request no longer exists). When a coordinator answers inquiries as part of a work batch, the results surface on `WorkBatch.SyncInquiryResults`.
+Inquiries are resolved through the dedicated, read-only `IWorkCoordinator.ResolveSyncInquiriesAsync` call (the `resolve_sync_inquiries` SQL function); they are no longer carried on a work-claim request. `WorkBatch.SyncInquiryResults` still exists, but the built-in coordinators never fill it, because `claim_work` answers no inquiries.
 
 ## IsFullySynced Logic
 

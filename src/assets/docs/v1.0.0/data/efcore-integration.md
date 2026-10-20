@@ -857,7 +857,7 @@ When you build your application, the **EF Core source generator** runs automatic
 
 2. **Discovers Perspective Tables** - Finds every discovered perspective model and generates one `wh_per_*` table DDL at build time
 
-3. **Bundles Migration Scripts** - Embeds all PostgreSQL functions and migration SQL (e.g., `process_work_batch`) as string constants
+3. **Bundles Migration Scripts** - Embeds all PostgreSQL functions and migration SQL (e.g., `claim_work` and `store_outbox_messages`) as string constants
 
 4. **Generates Extension Methods** - Creates `EnsureWhizbangDatabaseInitializedAsync()` for each `[WhizbangDbContext]`-attributed DbContext, using only raw SQL execution (AOT-safe), with per-object hash tracking and an advisory lock so concurrent startups are safe
 
@@ -927,7 +927,7 @@ public static partial class OrderDbContextSchemaExtensions {
         //      CREATE TABLE IF NOT EXISTS wh_outbox (...);
         //      CREATE TABLE IF NOT EXISTS wh_event_store (...);
         //      -- ... remaining wh_* tables
-        //   2. PostgreSQL migrations/functions (process_work_batch, etc.)
+        //   2. PostgreSQL migrations/functions (claim_work, store_outbox_messages, etc.)
         //   3. Perspective tables - one per discovered model:
         //      CREATE TABLE IF NOT EXISTS wh_per_order_summary (
         //          id UUID NOT NULL PRIMARY KEY,

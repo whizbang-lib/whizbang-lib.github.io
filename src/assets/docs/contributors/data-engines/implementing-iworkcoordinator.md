@@ -21,7 +21,8 @@ order: 2
 | `RecordHeartbeatAsync` | `record_heartbeat` | Decoupled timer. |
 | `FlushCompletionsAsync` | `flush_completions` | Composite multi-category. |
 | `ResolveSyncInquiriesAsync` | `resolve_sync_inquiries` | Read-only. |
-| `ProcessWorkBatchAsync` | `process_work_batch` (legacy) | Kept until callers migrate; can be left throwing once unreferenced. |
+| `StoreOutboxMessagesAsync` | `store_outbox_messages` | Inserts outbox rows; event rows continue into the event store through `_emit_event_store_chain` in the same call. |
+| `FetchOutboxBatchAsync` / `FetchInboxBatchAsync` | `fetch_outbox_batch` / `fetch_inbox_batch` | Payload fetch for streams the claim already leased. |
 
 Plus a few existing operations carried over: `DeregisterInstanceAsync`, `GatherStatisticsAsync`, `StoreInboxMessagesAsync`, `RecomputePartitionNumbersAsync`, `ReportPerspectiveCompletionAsync`, `ReportPerspectiveFailureAsync`, `GetPerspectiveCursorAsync`, `GetPerspectiveCursorsBatchAsync`, `RecordLifecycleCompletionAsync`. These wrap pre-existing SQL functions and don't change in the decomposition.
 

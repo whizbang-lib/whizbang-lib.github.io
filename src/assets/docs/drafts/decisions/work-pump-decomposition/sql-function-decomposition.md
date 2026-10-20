@@ -1,7 +1,7 @@
 # Decomposing `process_work_batch` into focused SQL functions
 
 ## Status
-Accepted (2026-04-25 → 2026-04-26)
+Accepted (2026-04-25 → 2026-04-26). Implemented: `process_work_batch` no longer exists. Migration 029 drops it (`DROP FUNCTION IF EXISTS ... process_work_batch CASCADE`) and nothing calls it. This record is kept as history.
 
 ## Context
 
@@ -37,6 +37,8 @@ Split into 10 focused functions, each with a single transactional responsibility
 | `resolve_sync_inquiries` | Read-only path for `PerspectiveSyncAwaiter` | n/a |
 
 Legacy `process_work_batch` stays in place during migration; new functions live alongside it. Pre-v1.0 mutable-migration policy means once C# callers migrate, the legacy function is deleted in the same migration file (no new migration version needed).
+
+**Outcome:** the C# callers did migrate and the legacy function was deleted. Storage also moved to focused functions outside this table: dispatcher flushes call `store_outbox_messages` and `store_inbox_messages`, and `store_outbox_messages` copies event rows into `wh_event_store` (with `event_id` equal to the outbox `message_id`) and creates their perspective work through `_emit_event_store_chain` in the same transaction. Inbox events reach the event store through `_emit_event_store_chain_for_inbox`, which `claim_work` runs. Outbox payloads for leased streams are read with `fetch_outbox_batch`.
 
 ## Consequences
 

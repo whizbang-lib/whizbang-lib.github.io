@@ -2,7 +2,7 @@
 title: 'WHIZ006: Multiple Stream ID Attributes'
 pageType: troubleshooting
 verifiedAgainstCommit: 7e3d0a73
-verifiedDate: 2026-10-19
+verifiedDate: 2026-10-20
 description: >-
   Warning reported on each extra [StreamId] attribute when a type marks more than one property or primary-constructor
   parameter with [StreamId]. Only the first is used; the others are ignored.
@@ -37,8 +37,26 @@ A message has one stream ID. When the stream ID generator builds an extractor fo
 attribute can no longer pass the build while doing nothing.
 
 The analyzer looks at the `[StreamId]` attributes the type declares itself, on properties and on primary-constructor
-parameters. The first one in declaration order is the one used; the warning is reported on every later attribute, at
-the attribute itself, and names the property that is used.
+parameters, and at the `[StreamId]` properties it inherits. It decides which one is used the way the generator does:
+
+1. a `[StreamId]` property the type declares, the first in declaration order;
+2. otherwise the nearest inherited `[StreamId]` property, searching each base type in turn;
+3. otherwise the first `[StreamId]` constructor parameter.
+
+The warning is reported on every attribute the type declares that is not the one used, at the attribute itself, and
+names the property that is used.
+
+Inheritance makes two cases easy to miss
+{verified: StreamIdAttributeAnalyzerTests.ADerivedStreamIdOverAnInheritedOne_ReportsWhiz006NamingTheDerivedOneAsync, StreamIdAttributeAnalyzerTests.ADerivedParameterStreamIdUnderAnInheritedProperty_ReportsWhiz006NamingTheInheritedOneAsync}:
+
+- **A derived property hides an inherited one.** The derived type's `[StreamId]` property is used and the base's is
+  ignored, so the warning is reported on the derived attribute.
+- **An inherited property beats a derived record's parameter.** A `[StreamId]` property anywhere in the base chain is
+  found before a constructor parameter, so the derived record's `[StreamId]` parameter is the one ignored, and the
+  warning names the inherited property.
+
+An override that redeclares the inherited property with the same name is the same stream ID, not a second one, and is
+not reported {verified: StreamIdAttributeAnalyzerTests.AnOverrideThatRedeclaresTheInheritedStreamId_IsNotReportedAsync}.
 
 A record parameter written `[property: StreamId]` puts the attribute on the generated property. The parameter and its
 property have the same name, so they count once and do not trigger the warning.
@@ -60,6 +78,7 @@ Type {TypeName} has multiple [StreamId] attributes. Only the first property '{Pr
 1. **A related ID was marked as well**, for example a customer ID on an order event, because it "is also an ID".
 2. **A property was copied** from another message with its attribute.
 3. **The stream ID was changed** to another property and the old attribute was left behind.
+4. **A base type already declares the stream ID**, and a derived event declares its own as well.
 
 ## How to Fix
 
@@ -86,6 +105,18 @@ public record OrderPlaced : IEvent {
   public System.Guid CustomerId { get; init; }              // related ID, not a stream ID
 }
 ```
+
+### Before (a derived record's parameter under an inherited stream ID)
+
+```csharp{title="An inherited [StreamId] and a derived one" description="The base's [StreamId] property is found before the derived record's [StreamId] parameter, so the parameter is ignored and WHIZ006 names OrderId." framework="NET10" category="Diagnostics" difficulty="INTERMEDIATE" tags=["Diagnostics", "WHIZ006", "StreamId", "Inheritance"] tests=["StreamIdAttributeAnalyzerTests.ADerivedParameterStreamIdUnderAnInheritedProperty_ReportsWhiz006NamingTheInheritedOneAsync"]}
+using Whizbang.Core;
+
+public abstract record OrderEventBase : IEvent { [StreamId] public System.Guid OrderId { get; init; } }
+public record LineAdded([StreamId] System.Guid LineId) : OrderEventBase;   // WHIZ006: OrderId is used
+```
+
+Decide which one identifies the stream. If every event in the family streams by order, remove `[StreamId]` from the
+derived record. If this event belongs to a different stream, it should not derive its stream ID from the base.
 
 ## Suppressing
 

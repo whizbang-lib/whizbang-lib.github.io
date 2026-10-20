@@ -23,6 +23,15 @@ codeReferences:
   - src/Whizbang.Core/Dispatcher.cs
   - src/Whizbang.Core/Workers/TransportConsumerWorker.cs
   - src/Whizbang.Core/Dispatch/Route.cs
+  - src/Whizbang.Core/Routing/NamespaceInboxStrategy.cs
+  - src/Whizbang.Core/Routing/NamespaceOutboxStrategy.cs
+  - src/Whizbang.Core/Routing/CommandInboxNaming.cs
+  - src/Whizbang.Core/Routing/TopologyDriftState.cs
+  - src/Whizbang.Core/Health/TopologyDriftHealthSource.cs
+  - src/Whizbang.Transports.AzureServiceBus/IServiceBusAdminClient.cs
+  - src/Whizbang.Transports.AzureServiceBus/ServiceBusInfrastructureProvisioner.cs
+  - src/Whizbang.Transports.RabbitMQ/RabbitMQInfrastructureProvisioner.cs
+  - src/Whizbang.Generators/Analyzers/CommandOwnershipAnalyzer.cs
 testReferences:
   - tests/Whizbang.Core.Tests/Dispatcher/DispatcherOwnedDomainTests.cs
   - tests/Whizbang.Core.Tests/Dispatcher/DispatcherCoverageSweepRoutedCascadeTests.cs
@@ -37,7 +46,16 @@ testReferences:
   - tests/Whizbang.Core.Tests/Routing/RuntimeEventSubscriptionTests.cs
   - tests/Whizbang.Core.Tests/Routing/TransportSubscriptionBuilderTests.cs
   - tests/Whizbang.Core.Tests/Routing/MessageKindDetectorTests.cs
-lastMaintainedCommit: '01f07906'
+  - tests/Whizbang.Core.Tests/Routing/NamespaceInboxStrategyTests.cs
+  - tests/Whizbang.Core.Tests/Routing/NamespaceOutboxStrategyTests.cs
+  - tests/Whizbang.Core.Tests/Routing/CommandInboxNamingTests.cs
+  - tests/Whizbang.Core.Tests/Routing/DefaultNamespaceTopologyTests.cs
+  - tests/Whizbang.Core.Tests/Routing/SharedInboxRetirementTests.cs
+  - tests/Whizbang.Core.Tests/Routing/TopologyDriftStateTests.cs
+  - tests/Whizbang.Transports.AzureServiceBus.Tests/ServiceBusInfrastructureProvisionerManifestTests.cs
+  - tests/Whizbang.Transports.RabbitMQ.Tests/RabbitMQInfrastructureProvisionerManifestTests.cs
+  - tests/Whizbang.Generators.Tests/Analyzers/CommandOwnershipAnalyzerTests.cs
+lastMaintainedCommit: '62abd3a45'
 ---
 
 # Namespace-Based Routing
@@ -48,7 +66,7 @@ Whizbang uses namespace-based routing to determine where messages flow. Commands
 
 Routing in Whizbang is built on two key principles:
 
-1. **Commands → Shared Inbox**: All commands route to a single shared "inbox" topic. Services filter by owned namespaces using routing key patterns.
+1. **Commands → Per-Namespace Inboxes**: By default each command is published to the inbox entity of its contract namespace, `inbox.<contract-namespace>`, and the service that handles commands from that namespace subscribes to that entity. The single shared "inbox" topic, filtered by owned namespaces, is the legacy topology and is still available (see [Per-Namespace Command Inboxes](#namespace-inbox)).
 2. **Events → Namespace Topics**: Events publish to namespace-specific topics. Services subscribe directly to namespaces they care about.
 
 This separation provides:
@@ -58,27 +76,79 @@ This separation provides:
 
 ## Command Flow {#inbox-routing}
 
-Commands follow a point-to-point pattern with namespace-based filtering:
+Commands follow a point-to-point pattern. With the default per-namespace inboxes, the broker
+entity itself carries one namespace, so no other service sees the command:
 
 ```
 BFF sends CreateTenantCommand (namespace: MyApp.Users.Commands)
     ↓
-BFF Outbox → Broker "inbox" topic
+BFF Outbox → Broker "inbox.myapp.users.commands" entity
     ↓
     RoutingKey: "myapp.users.commands.createtenantcommand"
     ↓
-ALL services subscribed to "inbox" (single shared topic)
-    ↓
-Each service filters by owned namespaces:
-    - User Service owns "myapp.users.commands" → RECEIVES
-    - Workflow Service owns "myapp.workflow.commands" → FILTERED OUT
+Only User Service is subscribed (it handles commands from MyApp.Users.Commands)
     ↓
 User Service processes command
 ```
 
+With the legacy shared inbox (`Inbox.UseSharedTopic(...)` and `Outbox.UseSharedTopic(...)`), every
+command goes to the single "inbox" topic, every service subscribes to it, and each service filters by
+the namespaces it owns.
+
+### Per-Namespace Command Inboxes {#namespace-inbox}
+
+`new RoutingOptions()`, and therefore a service that configures routing without naming a strategy,
+uses `NamespaceInboxStrategy` on the inbox side and `NamespaceOutboxStrategy` on the outbox side.
+{verified: RoutingOptionsTests.Inbox_DefaultStrategy_IsPerNamespaceInboxesAsync, RoutingOptionsTests.Outbox_DefaultStrategy_IsNamespaceRoutingAsync, DefaultNamespaceTopologyTests.ConfigFreeConsumer_ResolvesNamespaceStrategies_FullyFlippedAndRetiredAsync}
+
+**Entity names.** A command's inbox entity is `inbox.` followed by its contract namespace in
+lowercase, for example `inbox.myapp.users.commands`. Publisher and subscriber derive the name through
+the same helper, `CommandInboxNaming.TopicFor`, so they cannot disagree on casing.
+{verified: CommandInboxNamingTests.TopicFor_PrefixesAndLowercasesTheContractNamespaceAsync, CommandInboxNamingTests.TopicFor_MatchesNamespaceInboxStrategySubscriptionNamingExactlyAsync, NamespaceOutboxStrategyTests.Command_FlippedAddress_MatchesNamespaceInboxSubscriptionExactlyAsync}
+
+**What a service subscribes to.** `NamespaceInboxStrategy` gives a service:
+
+- one inbox per distinct contract namespace it handles commands from, taken from its receptors,
+  lowercased and deduplicated;
+- the system broadcast inbox, `inbox.whizbang`, which carries system commands, control-plane
+  messages and minted composites (the whole `whizbang.core` namespace subtree is reserved for it and
+  never gets a per-namespace inbox);
+- the legacy shared "inbox" subscription, only while the shared inbox is not retired.
+
+{verified: NamespaceInboxStrategyTests.GetSubscriptions_HandledCommandNamespaces_OnePerDistinctNamespaceAsync, NamespaceInboxStrategyTests.GetSubscriptions_DuplicateCommandNamespace_DeduplicatesAsync, NamespaceInboxStrategyTests.GetSubscriptions_MixedCaseNamespace_LowercasesTopicAsync, NamespaceInboxStrategyTests.GetSubscriptions_AlwaysIncludesSystemBroadcastInboxAsync, NamespaceInboxStrategyTests.GetSubscriptions_FrameworkReservedCommandNamespaces_NeverGetPerNamespaceInboxesAsync, DefaultNamespaceTopologyTests.ConfigFreeConsumer_SubscriptionSet_HasNoLegacyCatchAllAsync}
+
+**What a service publishes to.** `NamespaceOutboxStrategy` sends a command to its namespace's inbox
+entity, keeping the `{namespace}.{typename}` routing key. Every command namespace is routed this way
+by default; `RouteCommandNamespaceToInbox(ns)` narrows that to the namespaces you name, and
+`RouteNoCommandNamespacesToInbox()` sends every command back to the legacy shared inbox. Events are
+routed exactly as `DomainTopicOutboxStrategy` routes them, and system commands go to
+`inbox.whizbang`.
+{verified: NamespaceOutboxStrategyTests.FlipSet_Defaults_EveryNamespaceFlippedWithNoExplicitEntriesAsync, NamespaceOutboxStrategyTests.Command_FlippedNamespace_RoutesToPerNamespaceInboxAsync, NamespaceOutboxStrategyTests.Command_UnflippedNamespace_ByteIdenticalToSharedTopicStrategyAsync, NamespaceOutboxStrategyTests.Event_ByteIdenticalToDomainTopicStrategy_FlippedOrNotAsync, NamespaceOutboxStrategyTests.SystemKind_RoutesToBroadcastInboxUnconditionallyAsync}
+
+**The shared inbox is retired by default.** A service with the default options neither subscribes to
+nor publishes to the shared "inbox" entity, and the transports do not provision it. To keep it
+alongside the per-namespace inboxes while other services migrate, call `KeepSharedInbox()` or set
+`Whizbang:Routing:RetireSharedInbox` to `false`; `RetireSharedInbox()` turns retirement back on.
+Retiring the shared inbox while some command namespace still publishes to it fails at startup, since
+those commands would otherwise be lost.
+{verified: SharedInboxRetirementTests.RetireSharedInbox_DefaultsOn_AndBothFluentSwitchesChainAsync, DefaultNamespaceTopologyTests.ConfigFreeConsumer_Manifest_ContainsNoLegacyInboxEntityAsync, DefaultNamespaceTopologyTests.Configuration_RetireSharedInboxFalse_KeepsTheTransitionalSubscriptionAsync, SharedInboxRetirementTests.WithRouting_RetirementWithoutFullFlip_ThrowsClearStartupErrorAsync}
+
+**Going back to the legacy topology.** Selecting `Inbox.UseSharedTopic(...)` or
+`Outbox.UseSharedTopic(...)` (or a domain-topic or custom strategy) restores the pre-migration
+settings: no command namespace is routed to its own inbox, and the shared inbox is kept. Explicit
+`RouteAllCommandNamespacesToInbox()` or `RetireSharedInbox()` calls still win.
+`Inbox.UseNamespaceInboxes(sharedInboxTopic)` reselects the default inbox strategy, optionally naming
+a non-standard shared topic for the transitional subscription.
+{verified: DefaultNamespaceTopologyTests.ExplicitLegacyStrategies_AreByteIdenticalToTodaysSharedTopologyAsync, DefaultNamespaceTopologyTests.ExplicitLegacyInboxAlone_ClearsFlipAndRetirementAsync, DefaultNamespaceTopologyTests.UseDomainTopics_EitherSide_ClearsFlipAndRetirementAsync, DefaultNamespaceTopologyTests.UseCustom_EitherSide_ClearsFlipAndRetirementAsync, DefaultNamespaceTopologyTests.ExplicitFlipCalls_WinOverTheLegacyStrategyClearingAsync, NamespaceInboxStrategyTests.Inbox_UseNamespaceInboxes_SetsNamespaceStrategyAsync}
+
+Because each per-namespace inbox belongs to one service, a second service subscribing to it would
+receive every command twice. See [Command Ownership and Ownership Drift](#ownership-drift).
+
 ### How Command Filtering Works {#own-namespace-of}
 
-When a service starts, it declares which command namespaces it owns:
+When a service starts, it declares which command namespaces it owns. Ownership drives
+[owned-domain routing](#owned-domain-routing) under every topology, and under the legacy shared
+inbox it also decides which commands the service receives:
 
 ```csharp{title="How Command Filtering Works" description="When a service starts, it declares which command namespaces it owns:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Command", "Filtering"] tests=["RoutingOptionsTests.OwnDomains_WithMultipleDomains_AddsAllDomainsAsync", "RoutingOptionsTests.OwnDomains_WithSingleDomain_AddsDomainAsync"]}
 services.Configure<RoutingOptions>(opts => {
@@ -87,7 +157,7 @@ services.Configure<RoutingOptions>(opts => {
 });
 ```
 
-The `SharedTopicInboxStrategy` builds routing patterns from these namespaces:
+Under the legacy shared inbox, the `SharedTopicInboxStrategy` builds routing patterns from these namespaces:
 
 ```csharp{title="How Command Filtering Works (2)" description="The SharedTopicInboxStrategy builds routing patterns from these namespaces:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Command", "Filtering"] unverified="generated routing-pattern output (illustrative)"}
 // Generated routing patterns:
@@ -104,7 +174,7 @@ A command in one of the service's owned namespaces is handled in-process. `SendA
 
 If no local receptor exists for an owned command, `SendAsync` throws `ReceptorNotFoundException`, on every overload, with or without `DispatchOptions`. The owning service is expected to handle its own commands, so a missing receptor is a wiring error and is reported to the caller rather than returned as an `Accepted` receipt for a command nobody will process.
 
-```csharp{title="Sending an Owned Command" description="An owned command runs its local receptor in-process, and fails loudly when there is none" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Command", "Owned Domains"] tests=["DispatcherCoverageSweepRoutedCascadeTests.SendAsync_VoidReceptor_InvokesLocallyWithoutOutboxAsync", "DispatcherCoverageSweepRoutedCascadeTests.SendAsync_OwnedChildNamespaceCommand_NoReceptor_ThrowsReceptorNotFoundAsync", "DispatcherOwnedDomainTests.SendAsync_OwnedCommand_NoLocalReceptor_ThrowsAndSkipsOutboxAsync", "SendReceptorShapeIntegrationTests.SendAsync_OwnedVoidReceptor_RunsOnceInProcessAsync", "LifecycleStageOwnedCommandSendIntegrationTests.ReceptorAtStage_SendsOwnedVoidCommand_HandledOnceAndNeverInTheOutboxAsync"]}
+```csharp{title="Sending an Owned Command" description="An owned command runs its local receptor in-process, and fails loudly when there is none" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Command", "Owned Domains"] tests=["DispatcherCoverageSweepRoutedCascadeTests.SendAsync_VoidReceptor_InvokesLocally_AndSendsOnUnlessOwnedAsync", "DispatcherCoverageSweepRoutedCascadeTests.SendAsync_OwnedChildNamespaceCommand_NoReceptor_ThrowsReceptorNotFoundAsync", "DispatcherOwnedDomainTests.SendAsync_OwnedCommand_NoLocalReceptor_ThrowsAndSkipsOutboxAsync", "SendReceptorShapeIntegrationTests.SendAsync_OwnedVoidReceptor_RunsOnceInProcessAsync", "LifecycleStageOwnedCommandSendIntegrationTests.ReceptorAtStage_SendsOwnedVoidCommand_HandledOnceAndNeverInTheOutboxAsync"]}
 services.Configure<RoutingOptions>(opts => opts.OwnDomains("myapp.users.commands"));
 
 // A void receptor in the owning service
@@ -357,15 +427,29 @@ services.Configure<RoutingOptions>(opts => {
 
 ### Inbox Strategies {#inbox-subscription}
 
-Two inbox routing strategies are available:
+Three inbox routing strategies are available:
 
-#### SharedTopicInboxStrategy (Default) {#shared-topic-inbox}
+#### NamespaceInboxStrategy (Default)
 
-All commands go to a single "inbox" topic with namespace-based filtering:
+One inbox entity per handled command namespace, plus the system broadcast inbox; see
+[Per-Namespace Command Inboxes](#namespace-inbox). Selected by `new RoutingOptions()`; call
+`UseNamespaceInboxes` only to reselect it after a legacy call or to name a non-standard transitional
+shared topic:
 
-```csharp{title="SharedTopicInboxStrategy (Default)" description="All commands go to a single 'inbox' topic with namespace-based filtering:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "SharedTopicInboxStrategy", "Default"] tests=["RoutingOptionsTests.Inbox_UseSharedTopic_SetsSharedTopicStrategyAsync", "RoutingOptionsTests.Inbox_DefaultStrategy_IsSharedTopicAsync"]}
+```csharp{title="NamespaceInboxStrategy (Default)" description="Reselects the default per-namespace command inboxes." category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "NamespaceInboxStrategy", "Default"] tests=["NamespaceInboxStrategyTests.Inbox_UseNamespaceInboxes_SetsNamespaceStrategyAsync", "RoutingOptionsTests.Inbox_DefaultStrategy_IsPerNamespaceInboxesAsync"]}
 services.Configure<RoutingOptions>(opts => {
-  opts.Inbox.UseSharedTopic("inbox");  // Default strategy; no-arg default topic is "whizbang.inbox"
+  opts.Inbox.UseNamespaceInboxes();  // Default strategy
+});
+```
+
+#### SharedTopicInboxStrategy (Legacy) {#shared-topic-inbox}
+
+All commands go to a single "inbox" topic with namespace-based filtering. Selecting it restores the
+legacy topology (see [Per-Namespace Command Inboxes](#namespace-inbox)):
+
+```csharp{title="SharedTopicInboxStrategy (Legacy)" description="All commands go to a single 'inbox' topic with namespace-based filtering:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "SharedTopicInboxStrategy", "Legacy"] tests=["RoutingOptionsTests.Inbox_UseSharedTopic_SetsSharedTopicStrategyAsync", "RoutingOptionsTests.Inbox_UseSharedTopic_DefaultTopic_IsInboxMatchingStrategyDefaultAsync"]}
+services.Configure<RoutingOptions>(opts => {
+  opts.Inbox.UseSharedTopic("inbox");  // No-arg default topic is also "inbox"
 });
 ```
 
@@ -522,7 +606,7 @@ The `SharedTopicInboxStrategy` routes all commands to a single shared "inbox" to
 ```csharp{title="Configuration" description="Configuration" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Configuration"] tests=["RoutingOptionsTests.OwnDomains_WithSingleDomain_AddsDomainAsync", "RoutingOptionsTests.Inbox_UseSharedTopic_SetsSharedTopicStrategyAsync"]}
 services.Configure<RoutingOptions>(opts => {
     opts.OwnDomains("myapp.users.commands");
-    opts.Inbox.UseSharedTopic("inbox");  // Default strategy; no-arg default topic is "whizbang.inbox"
+    opts.Inbox.UseSharedTopic("inbox");  // Legacy shared inbox; no-arg default topic is also "inbox"
 });
 ```
 
@@ -648,7 +732,7 @@ services.Configure<RoutingOptions>(opts => {
 
 ## Domain Topic Outbox {#domain-topic-outbox}
 
-The `DomainTopicOutboxStrategy` (the **default** outbox strategy) publishes every message — commands and events alike — to its namespace-derived topic. The topic is the message type's lowercased namespace; the routing key is the lowercased type name.
+The `DomainTopicOutboxStrategy` publishes every message, commands and events alike, to its namespace-derived topic. The topic is the message type's lowercased namespace; the routing key is the lowercased type name.
 
 ### How It Works
 
@@ -662,9 +746,9 @@ The `DomainTopicOutboxStrategy` (the **default** outbox strategy) publishes ever
 
 ### Configuration
 
-```csharp{title="Configuration (4)" description="Configuration" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Configuration"] tests=["RoutingOptionsTests.Outbox_UseDomainTopics_SetsDomainTopicStrategyAsync", "RoutingOptionsTests.Outbox_DefaultStrategy_IsDomainTopicAsync", "DomainTopicOutboxStrategyTests.DefaultConstructor_UsesNamespaceRoutingStrategyAsync"]}
+```csharp{title="Configuration (4)" description="Configuration" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Configuration"] tests=["RoutingOptionsTests.Outbox_UseDomainTopics_SetsDomainTopicStrategyAsync", "DomainTopicOutboxStrategyTests.DefaultConstructor_UsesNamespaceRoutingStrategyAsync"]}
 services.Configure<RoutingOptions>(opts => {
-    opts.Outbox.UseDomainTopics();  // Default; namespace-derived topics for all messages
+    opts.Outbox.UseDomainTopics();  // Namespace-derived topics for all messages, commands included
 });
 
 // Custom topic resolution via ITopicRoutingStrategy
@@ -906,12 +990,15 @@ var destination = builder.BuildInboxDestination();
 
 ## Outbox Routing {#outbox-routing}
 
-Outbox routing determines where events are published after being saved to the outbox table. Whizbang supports two strategies:
+Outbox routing determines where messages are published after being saved to the outbox table. The default is `NamespaceOutboxStrategy` (see [Per-Namespace Command Inboxes](#namespace-inbox)):
 
 ### Strategy Selection
 
-```csharp{title="Strategy Selection" description="Strategy Selection" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Strategy", "Selection"] tests=["RoutingOptionsTests.Outbox_UseDomainTopics_SetsDomainTopicStrategyAsync", "RoutingOptionsTests.Outbox_UseSharedTopic_SetsSharedTopicStrategyAsync", "RoutingOptionsTests.Outbox_UseCustomStrategy_SetsCustomStrategyAsync"]}
-// Namespace-derived topics for all messages (default)
+```csharp{title="Strategy Selection" description="Strategy Selection" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Strategy", "Selection"] tests=["NamespaceOutboxStrategyTests.Outbox_UseNamespaceRouting_SetsNamespaceStrategyAsync", "RoutingOptionsTests.Outbox_DefaultStrategy_IsNamespaceRoutingAsync", "RoutingOptionsTests.Outbox_UseDomainTopics_SetsDomainTopicStrategyAsync", "RoutingOptionsTests.Outbox_UseSharedTopic_SetsSharedTopicStrategyAsync", "RoutingOptionsTests.Outbox_UseCustomStrategy_SetsCustomStrategyAsync"]}
+// Commands → per-namespace inboxes; events → namespace topics (default)
+opts.Outbox.UseNamespaceRouting();
+
+// Namespace-derived topics for all messages
 opts.Outbox.UseDomainTopics();
 
 // Commands → shared inbox topic; events → namespace topics
@@ -985,12 +1072,15 @@ var dest = strategy.GetDestination(
 
 ## Inbox Routing {#inbox-routing}
 
-Inbox routing determines where commands are received. Whizbang supports two strategies:
+Inbox routing determines where commands are received. The default is `NamespaceInboxStrategy` (see [Per-Namespace Command Inboxes](#namespace-inbox)):
 
 ### Strategy Selection
 
-```csharp{title="Strategy Selection (2)" description="Strategy Selection" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Strategy", "Selection"] tests=["RoutingOptionsTests.Inbox_UseSharedTopic_SetsSharedTopicStrategyAsync", "RoutingOptionsTests.Inbox_UseDomainTopics_SetsDomainTopicStrategyAsync"]}
-// Shared inbox topic with filtering (default)
+```csharp{title="Strategy Selection (2)" description="Strategy Selection" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Dispatcher", "Strategy", "Selection"] tests=["NamespaceInboxStrategyTests.Inbox_UseNamespaceInboxes_SetsNamespaceStrategyAsync", "RoutingOptionsTests.Inbox_DefaultStrategy_IsPerNamespaceInboxesAsync", "RoutingOptionsTests.Inbox_UseSharedTopic_SetsSharedTopicStrategyAsync", "RoutingOptionsTests.Inbox_UseDomainTopics_SetsDomainTopicStrategyAsync"]}
+// One inbox per handled command namespace (default)
+opts.Inbox.UseNamespaceInboxes();
+
+// Shared inbox topic with filtering (legacy)
 opts.Inbox.UseSharedTopic("inbox");
 
 // Domain-specific inbox topics
@@ -1553,14 +1643,88 @@ transport — you do **not** need `Route.Outbox(...)`/`Route.Both(...)` to force
   / `_isSelfEcho` / `_isKnownEventType` (`src/Whizbang.Core/Workers/TransportConsumerWorker.cs`).
 - Tests: `DispatcherOwnedDomainTests`, `TransportConsumerWorkerOwnedEventDiscardTests`.
 
+## Command Ownership and Ownership Drift {#ownership-drift}
+
+A command type has one owner. Events fan out to every interested service, but a command is handled
+by exactly one. With per-namespace command inboxes (`NamespaceInboxStrategy`, which is what
+`new RoutingOptions()` uses and what `Inbox.UseNamespaceInboxes()` selects), a service gets one inbox
+entity per command contract namespace it handles, named `inbox.<contract-namespace>` in lowercase,
+and subscribes to it. If a second service also subscribes to that entity, every command on it is
+delivered to both services and handled twice.
+{verified: RoutingOptionsTests.Inbox_DefaultStrategy_IsPerNamespaceInboxesAsync, NamespaceInboxStrategyTests.GetSubscriptions_HandledCommandNamespaces_OnePerDistinctNamespaceAsync, NamespaceInboxStrategyTests.GetSubscriptions_MixedCaseNamespace_LowercasesTopicAsync, NamespaceInboxStrategyTests.GetSubscriptions_PerNamespaceSubscriptions_CarryOwnedCommandInboxMarkerAsync}
+
+Whizbang checks this rule twice: at build time for receptors compiled together, and at startup for
+services built separately.
+
+### At build time: WHIZ151
+
+Analyzer [WHIZ151](../../operations/diagnostics/whiz151) reports an **error** when two or more
+different concrete classes in one compilation are inbox receptors (`IReceptor<TCommand>`, with or
+without a response, or `ISyncReceptor<TCommand>`) for the same command type. It is reported on every
+claiming class. Receptors for events, queries and framework system commands are not claims, nor are
+abstract classes, one class implementing both the async and sync surface, and lifecycle receptors
+whose `[FireAt(...)]` stages are all inbox, perspective or lifecycle-completion stages. The analyzer
+cannot see another service's code, so a duplicate owner in a separately built service is left to the
+startup check below.
+{verified: CommandOwnershipAnalyzerTests.TwoReceptorClasses_SameCommand_ReportsWhiz151OnEachAsync, CommandOwnershipAnalyzerTests.SyncAndAsyncReceptors_DifferentClasses_SameCommand_ReportsAsync, CommandOwnershipAnalyzerTests.TwoReceptorClasses_SameEvent_IsSilentAsync, CommandOwnershipAnalyzerTests.LifecycleOnlyReceptors_SameCommand_AreSilentAsync, CommandOwnershipAnalyzerTests.OneClass_BothReceptorSurfaces_SameCommand_IsSilentAsync, CommandOwnershipAnalyzerTests.FrameworkSystemCommands_Duplicates_AreSilentAsync, CommandOwnershipAnalyzerTests.AbstractReceptorBase_PlusOneConcrete_IsSilentAsync}
+
+### At startup: the topology drift check
+
+When the transport provisions the inbox subscriptions for a service, it inspects each **owned
+command inbox** (the per-namespace entities above) before claiming it. The shared `inbox` entity and
+the system broadcast inbox `inbox.whizbang` carry every service's subscription by design and are never
+checked.
+
+**Azure Service Bus.** The provisioner lists every subscription on the command inbox topic with
+`IServiceBusAdminClient.GetSubscriptionsAsync(topicName)`. Any subscription other than this service's
+own is drift. A subscription this service created on an earlier boot is not.
+{verified: ServiceBusInfrastructureProvisionerManifestTests.ProvisionManifest_OwnedCommandInbox_ForeignSubscription_RecordsDriftAsync, ServiceBusInfrastructureProvisionerManifestTests.ProvisionManifest_OwnedCommandInbox_OwnSubscriptionOnly_NoDriftAsync, ServiceBusInfrastructureProvisionerManifestTests.ProvisionManifest_SharedEntities_NeverDriftCheckedAsync}
+
+`GetSubscriptionsAsync` has a default interface implementation that returns no subscriptions, so a
+custom `IServiceBusAdminClient` that does not override it compiles but turns the check off. The
+built-in `ServiceBusAdminClientWrapper` overrides it with the real listing.
+
+**RabbitMQ.** AMQP cannot list the queues bound to an exchange, so the check is indirect: if the
+command inbox exchange already exists but this service's own queue for it does not, another service
+is taken to have claimed the entity. An exchange and queue that both exist are this service's earlier
+boot, and entities that do not exist yet are a first boot; neither is drift. An operator who recreates
+a queue with this service's name can hide a real claim.
+{verified: RabbitMQInfrastructureProvisionerManifestTests.ProvisionManifest_OwnedInboxExchangeExistsWithoutOurQueue_RecordsDriftAsync, RabbitMQInfrastructureProvisionerManifestTests.ProvisionManifest_OwnedInboxExchangeAndOurQueueExist_NoDriftAsync, RabbitMQInfrastructureProvisionerManifestTests.ProvisionManifest_FreshEntities_NoDriftAsync, RabbitMQInfrastructureProvisionerManifestTests.ProvisionManifest_SharedEntities_NeverDriftProbedAsync}
+
+**What a finding does.** Each foreign claim is logged at `Error` level and recorded in the singleton
+`TopologyDriftState` as a `TopologyDriftFinding(Entity, ObservedSubscription, Detail)`: the topic or
+exchange, the foreign subscription (on RabbitMQ, a placeholder naming the missing queue), and a short
+diagnosis. The check never blocks startup: the service still creates its own subscription and runs. If
+listing the subscriptions fails, the check is skipped for that entity with a `Debug` log line and
+provisioning continues.
+{verified: ServiceBusInfrastructureProvisionerManifestTests.ProvisionManifest_OwnedCommandInbox_ForeignSubscription_RecordsDriftAsync, ServiceBusInfrastructureProvisionerManifestTests.ProvisionManifest_OwnershipDriftCheck_EnumerationFails_LogsAndContinuesAsync, TopologyDriftStateTests.State_Findings_SnapshotsInRecordOrderAsync}
+
+**Health.** Both transports register `TopologyDriftHealthSource`, an `IWhizbangHealthSource` for the
+component named `topology` (see [Managed-Resource Health](../../resilience/managed-resource-health)).
+It reports `Operational` while no finding exists, and `Degraded`, never faulted, once any finding is
+recorded, with a detail that names each command inbox and the foreign subscription on it. Findings
+are kept for the life of the process, so the drift stays visible after the startup log has scrolled
+away.
+{verified: TopologyDriftStateTests.HealthSource_NoFindings_ReportsOperationalAsync, TopologyDriftStateTests.HealthSource_WithFinding_ReportsDegradedWithDetailAsync, TopologyDriftStateTests.HealthSource_Component_IsTopologyAsync}
+
+To clear drift, make one service the owner of the command namespace: remove the other service's
+receptor for the command (or turn it into a lifecycle observer with `[FireAt(...)]`), then delete its
+subscription or queue on the command inbox entity. The health component returns to `Operational` on
+the next start once nothing foreign is found.
+
 ## Broker Integration
 
 ### RabbitMQ
 
-- **Commands**: Single "inbox" exchange with routing key pattern matching
+- **Commands (default)**: One exchange per command namespace, `inbox.<contract-namespace>`, bound to the handling service's queue `<service>-inbox.<contract-namespace>`
+- **Commands (legacy shared inbox)**: Single "inbox" exchange with routing key pattern matching
 - **Events**: One exchange per namespace with topic routing
 
 ```
+Exchange: inbox.myapp.users.commands
+  → queue: user-service-inbox.myapp.users.commands
+
+Legacy shared inbox:
 Exchange: inbox
   Binding: myapp.users.commands.# → queue: user-service-inbox
   Binding: myapp.inventory.commands.# → queue: inventory-service-inbox
@@ -1572,10 +1736,15 @@ Exchange: myapp.orders.events
 
 ### Azure Service Bus
 
-- **Commands**: Single "inbox" topic with CorrelationFilter on routing key
+- **Commands (default)**: One topic per command namespace, `inbox.<contract-namespace>`, with the handling service's subscription on it
+- **Commands (legacy shared inbox)**: Single "inbox" topic with CorrelationFilter on routing key
 - **Events**: One topic per namespace with subscriptions
 
 ```
+Topic: inbox.myapp.users.commands
+  Subscription: user-service-inbox.myapp.users.commands
+
+Legacy shared inbox:
 Topic: inbox
   Subscription: user-service (filter: RoutingKey LIKE 'myapp.users.commands.%')
   Subscription: inventory-service (filter: RoutingKey LIKE 'myapp.inventory.commands.%')

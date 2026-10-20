@@ -21,7 +21,7 @@ codeReferences:
 testReferences:
   - tests/Whizbang.Policies.Tests/PolicyContextPoolTests.cs
   - tests/Whizbang.Core.Tests/Workers/PerspectiveCompletionStrategyTests.cs
-lastMaintainedCommit: '01f07906'
+lastMaintainedCommit: '62abd3a45'
 ---
 
 # Performance Tuning
@@ -123,9 +123,9 @@ try {
 
 ### 1. Database Batching (Built In)
 
-You don't write outbox SQL yourself - Whizbang funnels **all** outbox inserts, inbox writes, completions, and failures through a single `process_work_batch` database call per flush. Instead of every message handler making its own DB round-trip, the inbox batch strategy collects messages inside a sliding window and flushes them together. Tune the window via `MessageProcessingOptions`:
+You don't write outbox SQL yourself - Whizbang batches every database write: a flush stores its queued rows with one `store_outbox_messages` / `store_inbox_messages` call, a transport receive batch is stored with one `store_inbox_messages` call, and completions, failures and handler results are coalesced by flush workers into batched `complete_outbox_published`, `report_failures` and `commit_handler_batch` calls. Instead of every message handler making its own DB round-trip, the inbox batch strategy collects messages inside a sliding window and flushes them together. Tune the window via `MessageProcessingOptions`:
 
-```csharp{title="Database Batching" description="MessageProcessingOptions controls process_work_batch batching" category="Configuration" difficulty="ADVANCED" tags=["Operations", "Deployment", "Database", "Batching"] unverified="MessageProcessingOptions tuning knobs; configuration values, no behavior asserted by a mapped test"}
+```csharp{title="Database Batching" description="MessageProcessingOptions controls inbox batching" category="Configuration" difficulty="ADVANCED" tags=["Operations", "Deployment", "Database", "Batching"] unverified="MessageProcessingOptions tuning knobs; configuration values, no behavior asserted by a mapped test"}
 // Override defaults before AddTransportConsumer():
 services.AddSingleton(new MessageProcessingOptions {
   MaxConcurrentMessages = 80,   // default 40 - caps concurrent handlers (each holds a DB connection)
@@ -135,7 +135,7 @@ services.AddSingleton(new MessageProcessingOptions {
 });
 ```
 
-`process_work_batch` is the hot path on large datasets - watch `whizbang.work_coordinator.process_batch.duration` and `whizbang.work_coordinator.batch.*` metrics when tuning these values.
+On large datasets the hot path is `claim_work` together with the store and commit functions - compare their call counts and mean times in `pg_stat_statements` before and after changing these values, alongside `whizbang.work_coordinator.flush.calls`.
 
 **Performance**: batching turns ~100 DB round-trips into 1 per flush window.
 
@@ -382,7 +382,7 @@ Whizbang's I/O parallelism is controlled by **explicit config knobs** - the libr
 | Knob | Default | Controls |
 |------|---------|----------|
 | `MessageProcessingOptions.MaxConcurrentMessages` | 40 | Concurrent message handlers across all subscriptions (each holds a DB connection) |
-| `MessageProcessingOptions.InboxBatchSize` / `InboxBatchSlideMs` / `InboxBatchMaxWaitMs` | 100 / 50 / 1000 | Inbox `process_work_batch` flush triggers |
+| `MessageProcessingOptions.InboxBatchSize` / `InboxBatchSlideMs` / `InboxBatchMaxWaitMs` | 100 / 50 / 1000 | Inbox batch flush triggers |
 | `TransportBatchOptions.BatchSize` / `SlideMs` / `MaxWaitMs` | 200 / 20 / 1000 | Transport receive batch flush triggers |
 | `SlidingWindowOutboxOptions.MaxSize` / `SlidingWindow` / `MaxWait` | 100 / 50ms / 1s | Outbox drain batching |
 
@@ -435,7 +435,7 @@ public async Task ProcessAsync() {
 
 ✅ **Zero Allocations** - Source-generated dispatch, no reflection
 ✅ **Object Pooling** - Built-in `PolicyContextPool`, `ArrayPool<T>` for buffers
-✅ **Batching Built In** - `process_work_batch` + sliding-window transport batching, tuned via options
+✅ **Batching Built In** - batched store, commit and completion calls + sliding-window transport batching, tuned via options
 ✅ **Explicit Parallelism Knobs** - `MaxConcurrentMessages` and batch windows are config; no auto-tuning shipped
 ✅ **Indexes** - Optimize your app tables; Whizbang manages its own `wh_*` indexes
 ✅ **Profiling** - BenchmarkDotNet, dotnet-trace, Application Insights, `whizbang.*` meters

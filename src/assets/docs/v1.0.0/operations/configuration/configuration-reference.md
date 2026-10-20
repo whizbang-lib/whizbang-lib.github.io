@@ -897,7 +897,7 @@ Transport consumer concurrency and inbox batching. **Configure:** bound from `Wh
 
 ### TransportBatchOptions
 
-Transport-level batch collection before `process_work_batch`. **Configure:** bound from `Whizbang:Transports:<transport>:Batch` when that transport is registered ([Transport Sections](#transport-sections)); an instance or factory registered before `AddTransportConsumer` supplies the code values configuration overrides. **Details:** [Transports](../../messaging/transports/transports#configuration).
+Transport-level batch collection before the batch is stored in the inbox with one `store_inbox_messages` call. **Configure:** bound from `Whizbang:Transports:<transport>:Batch` when that transport is registered ([Transport Sections](#transport-sections)); an instance or factory registered before `AddTransportConsumer` supplies the code values configuration overrides. **Details:** [Transports](../../messaging/transports/transports#configuration).
 
 | Property | Type | Default | Environment variable | Purpose |
 |----------|------|---------|----------------------|---------|

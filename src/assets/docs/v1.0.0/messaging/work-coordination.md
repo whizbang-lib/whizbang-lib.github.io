@@ -159,7 +159,7 @@ sequenceDiagram
 ### PostgreSQL Functions
 
 :::updated
-The legacy `process_work_batch` orchestrator was decomposed into focused work-pump functions and dropped (migration `029_ProcessWorkBatch.sql` removes it). Each concern now has its own function called by a dedicated C# worker.
+The legacy single orchestrator function was decomposed into focused work-pump functions and removed (migration `029_ProcessWorkBatch.sql` drops it). Each concern now has its own function called by a dedicated C# worker.
 :::
 
 | Function | Called By | Purpose |
@@ -363,7 +363,7 @@ For the full API surface, see [Work Coordinator](work-coordinator.md).
 
 ### PostgreSQL Implementation
 
-See: `029_ProcessWorkBatch.sql` (hosts `claim_work`, `record_heartbeat`, `renew_leases`, `commit_handler_result`/`batch`, `complete_outbox_published`, `complete_perspective`, `report_failures`, `flush_completions`) plus the storage/claiming migrations it depends on (020-027, 040).
+See: `029_ProcessWorkBatch.sql` (first defines `claim_work`, `record_heartbeat`, `renew_leases`, `commit_handler_result`/`batch`, `complete_outbox_published`, `complete_perspective`, `report_failures`, `flush_completions`) plus the storage/claiming migrations it depends on (020-027, 040). Later migrations redefine several of these (for example `claim_work`, `record_heartbeat`, `renew_leases`); the latest definition is the one in effect.
 
 The PostgreSQL functions are the authoritative implementation of all coordination logic.
 

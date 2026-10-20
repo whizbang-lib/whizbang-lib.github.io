@@ -525,7 +525,7 @@ builder.Services.AddOpenTelemetry()
   });
 ```
 
-Size `MaxPoolSize` against `MessageProcessingOptions.MaxConcurrentMessages` - each concurrent Whizbang message handler holds a pooled connection during its `process_work_batch` flush, and the default of 40 assumes a 100-connection pool with headroom.
+Size `MaxPoolSize` against `MessageProcessingOptions.MaxConcurrentMessages` - each concurrent Whizbang message handler holds a pooled connection while its work is stored and committed, and the default of 40 assumes a 100-connection pool with headroom.
 
 ---
 

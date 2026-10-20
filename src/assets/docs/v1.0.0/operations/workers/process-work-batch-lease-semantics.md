@@ -39,7 +39,7 @@ testReferences:
 # Work Pump — Lease & Heartbeat Semantics
 
 :::updated
-The monolithic `process_work_batch` orchestrator has been **dropped** (migration `029_ProcessWorkBatch.sql` removes it at the top of the file) and decomposed into focused SQL functions, each paired with a dedicated C# worker:
+The monolithic orchestrator SQL function the work pump used to call has been **dropped** (migration `029_ProcessWorkBatch.sql` removes it at the top of the file) and decomposed into focused SQL functions, each paired with a dedicated C# worker:
 
 | Concern | SQL function | C# worker |
 |---------|--------------|-----------|

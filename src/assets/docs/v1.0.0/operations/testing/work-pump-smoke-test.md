@@ -66,15 +66,15 @@ tags: ["smoke-test", "baseline", "pg-stat-statements", "operations"]
 docker exec postgres psql -U postgres -d appservice-db -c "
   SELECT calls, total_exec_time, mean_exec_time, query
   FROM pg_stat_statements
-  WHERE query LIKE '%process_work_batch%'
-  ORDER BY total_exec_time DESC LIMIT 5;
+  WHERE query !~ 'pg_stat'
+  ORDER BY total_exec_time DESC LIMIT 20;
 "
 
 # Container CPU.
 docker stats postgres --no-stream
 ```
 
-Expect (legacy): ~22 calls/sec/service of `process_work_batch`, ~17 ms mean, ~45% postgres CPU.
+Expect (pre-decomposition release): the single orchestrator function at the top, ~22 calls/sec/service, ~17 ms mean, ~45% postgres CPU.
 
 ### 2. Deploy new release with direct connection strings
 
@@ -129,7 +129,7 @@ docker stats postgres --no-stream
 | `claim_work` calls/sec/svc | ≤ 0.5 | Empty-call short-circuit + adaptive backoff. |
 | `claim_work` mean exec time | ≤ 1 ms | 4 partial-index `EXISTS LIMIT 1` lookups; sub-ms when buffer-cached. |
 | `record_heartbeat` calls/sec/svc | ~0.2 (every 5 s) | Decoupled from polling. |
-| `process_work_batch` calls/sec | 0 | Legacy path no longer invoked. |
+| Legacy orchestrator function | absent from the top statements | Migration 029 drops it; nothing calls it. |
 | Postgres container CPU (idle) | ≤ 2% | Was ~45% on legacy idle stack. |
 | Total backend connections per pod | ≤ 51 | 50 pooled + 1 LISTEN direct. |
 
@@ -151,8 +151,9 @@ curl -X POST https://localhost/api/some-write-endpoint -d '{"...": "..."}'
 
 ## Rollback
 
-If metrics don't improve or workers crash-loop, the legacy `process_work_batch` SQL function
-is still present. To revert C#:
+If metrics don't improve or workers crash-loop, revert by pinning the previous release. The
+new release's migrations remove the legacy orchestrator function (migration 029 drops it), so
+it is not available to fall back to inside the new release. To revert C#:
 
 1. Pin Whizbang to the previous version in `Directory.Packages.props`.
 2. Restart services.

@@ -86,7 +86,7 @@ A TTL bounds how old rows get; a cap bounds how many there are. The cap ranks ro
 (`updated_at`), newest first, so "keep the newest N" means the N most recently active, and a rebuild
 ranks them the same way. A cap is a complete policy on its own and needs no TTL.
 
-### Stream groups: evicting related rows together
+### Stream groups: evicting related rows together {#stream-groups}
 
 A perspective that joins a `[StreamGroup]` has its rows evicted when an announcing member of the
 group evicts the row for the same stream, in the same maintenance cycle. A member can declare no

@@ -11,12 +11,18 @@ description: >-
   never event-stored; only the expanded inner events persist.
 tags: 'composite-events, fan-out, bulk, inner-events, no-rebroadcast, dispatch-seam'
 codeReferences:
-  - src/Whizbang.Core/Messaging/ICompositeEvent.cs
-  - src/Whizbang.Core/Messaging/CompositeEventBase.cs
+  - src/Whizbang.Core/Minting/ICompositeEvent.cs
+  - src/Whizbang.Core/Minting/CompositeEventBase.cs
+  - src/Whizbang.Core/Minting/ICompositeFactory.cs
+  - src/Whizbang.Core/Minting/CompositeFactory.cs
+  - src/Whizbang.Core/Minting/CompositeMintRequest.cs
+  - src/Whizbang.Core/Minting/IEventMint.cs
+  - src/Whizbang.Core/Minting/EventMint.cs
+  - src/Whizbang.Generators/Analyzers/MintedCompositeConstructionAnalyzer.cs
   - src/Whizbang.Core/Messaging/CompositeInboxFanout.cs
   - src/Whizbang.Core/Messaging/CompositeChildIdentity.cs
   - src/Whizbang.Core/Observability/CompositeMetrics.cs
-  - src/Whizbang.Core/Messaging/FanoutControl.cs
+  - src/Whizbang.Core/Minting/FanoutControl.cs
   - src/Whizbang.Core/Messaging/DispatchOutboxCollector.cs
   - src/Whizbang.Core/Messaging/NoRebroadcastGuard.cs
   - src/Whizbang.Core/Messaging/EventFlags.cs
@@ -50,6 +56,10 @@ testReferences:
   - tests/Whizbang.Generators.Tests/MessageJsonContextReferencedCompositeTests.cs
   - tests/Whizbang.Core.Tests/Messaging/CompositeUnresolvedInnerMessageTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/TransportConsumerWorkerUnstorableMessageTests.cs
+  - tests/Whizbang.Core.Tests/Minting/CompositeFactoryTests.cs
+  - tests/Whizbang.Core.Tests/Minting/EventMintTests.cs
+  - tests/Whizbang.Generators.Tests/Analyzers/MintedCompositeConstructionAnalyzerTests.cs
+lastMaintainedCommit: '62abd3a45'
 ---
 
 # Composite events
@@ -200,35 +210,53 @@ composite as an inbox row and the **dispatch worker** recognizes the typed
 
 ## Authoring
 
-Derive from `CompositeEventBase` — one line for the common case:
+Derive from `CompositeEventBase` (one line for the common case), and build
+instances through the event mint, `IEventMint.Composites`, so the composite
+factory splits the inner events into composites that respect the count cap:
 
 ```csharp{
-title: "Author and publish a composite with CompositeEventBase"
-description: "The turnkey base carries the shared StreamId, the concrete List<IMessage> Inner, the cap, and EnsureWithinCap for producer-side fail-fast before publishing."
+title: "Author a composite and mint it through the composite factory"
+description: "Declares a composite on CompositeEventBase, then lets IEventMint.Composites split the inner events into composites of at most 10,000 and builds each one in BuildComposite before publishing."
 framework: "NET10"
 category: "Messaging"
 difficulty: "INTERMEDIATE"
-tags: ["composite-events", "composite-event-base", "authoring", "stream-id", "publish"]
-tests: ["CompositeEventBaseTests.StampsStreamId_AndYieldsInnerInProducerOrderAsync", "CompositeEventBaseTests.EnsureWithinCap_ThrowsWhenInnerCountExceedsCapAsync", "CompositeEventBaseTests.EnsureWithinCap_PassesWhenWithinCapAsync"]
+tags: ["composite-events", "composite-event-base", "authoring", "minting", "publish"]
+unverified: "illustrative producer; the base-class behavior and the factory's splitting are verified by the CompositeEventBaseTests and CompositeFactoryTests markers on this page, and construction inside BuildComposite by MintedCompositeConstructionAnalyzerTests"
 }
 public sealed class OrderBulkImportComposite : CompositeEventBase;
 
-// producer:
-var composite = new OrderBulkImportComposite {
-  StreamId = orderStreamId,    // every inner event inherits this stream at the receiver
-  Inner    = orderFieldEvents, // List<IMessage>, in producer-yielded order
-};
-composite.EnsureWithinCap();   // producer-side fail-fast before publishing
-await dispatcher.PublishAsync(composite, ct);
+// producer (mint is an injected IEventMint):
+var plans = mint.Composites.Create(new CompositeMintRequest<IMessage> {
+  Constituents = orderFieldEvents,                             // in producer-yielded order
+  GroupKey = CompositeGroupKey.FromKey<IMessage>(_ => "order-import"), // all go to one destination
+  MaxConstituentsPerComposite = 10_000,                        // the receiver's default cap
+  BuildComposite = batch => new OrderBulkImportComposite {
+    StreamId = orderStreamId,                  // every inner event inherits this stream at the receiver
+    Inner = [.. batch.Constituents],           // List<IMessage>, in producer-yielded order
+  },
+});
+
+foreach (var plan in plans) {
+  await dispatcher.PublishAsync((OrderBulkImportComposite)plan.Composite, ct);
+}
 ```
 
 The base carries the shared `[StreamId]`, the `List<IMessage> Inner` (typed
 concretely so each element serializes with its polymorphic `$type`
-discriminator — an interface-typed collection loses that on the source-gen
+discriminator; an interface-typed collection loses that on the source-gen
 path), an `init` `MaxInnerEventsAllowed` (default 10,000), and
 `EnsureWithinCap()` (throws `InvalidOperationException` when the inner count
 exceeds the cap). `InnerEvents` is a `[JsonIgnore]` computed view over `Inner`;
 inner events share the composite's stream.
+{verified: CompositeEventBaseTests.StampsStreamId_AndYieldsInnerInProducerOrderAsync, CompositeEventBaseTests.MaxInnerEventsAllowed_DefaultsTo10K_AndIsOverridableAsync, CompositeEventBaseTests.EnsureWithinCap_ThrowsWhenInnerCountExceedsCapAsync, CompositeEventBaseTests.EnsureWithinCap_PassesWhenWithinCapAsync}
+
+The factory's count cap keeps every planned composite within the receiver's
+cap, and the factory splits a larger batch into several composites in order.
+Creating the composite inside `BuildComposite` is what keeps analyzer
+[WHIZ150](../../operations/diagnostics/whiz150) quiet; constructing a
+`CompositeEventBase` subclass with `new` anywhere else in application code is
+reported as a warning. See [Minting composites](#minting) for the full request.
+{verified: CompositeFactoryTests.Create_GroupLargerThanCountCap_SplitsIntoChunksPreservingOrderAsync, MintedCompositeConstructionAnalyzerTests.Construction_InsideMintRequestBuilder_IsSilentAsync, MintedCompositeConstructionAnalyzerTests.ConsumerCompositeSubclass_ConstructedDirectly_ReportsWhiz150Async}
 
 ### Consumers that handle only the inner events {#consumers-of-inner-events}
 
@@ -265,6 +293,111 @@ line says its JSON metadata is missing.
 The tolerance applies only to an element nested inside a message the consumer does
 resolve. An envelope whose top-level payload discriminator is unknown still fails.
 {verified: CompositeUnresolvedInnerMessageTests.Deserialize_InnerDiscriminatorUnresolvable_KeepsResolvableInnerEventsAsync, CompositeUnresolvedInnerMessageTests.TryExpand_AtomicCompositeWithUnresolvedInner_ExpandsResolvableChildrenAsync, CompositeUnresolvedInnerMessageTests.Deserialize_TopLevelMessageWithUnknownDiscriminator_StillRefusedAsync, TransportConsumerWorkerUnstorableMessageTests.OffloadedComposite_ConsumerHandlesOnlyInnerEvent_RehydratedStoredAndFansOutAsync}
+
+## Minting composites {#minting}
+
+A composite is published to exactly one destination, so every inner event in it
+must belong on that destination. It also has to stay small enough for the
+sender to serialize and for the broker to accept. The **composite factory**
+(`ICompositeFactory`, default `CompositeFactory`) is the one place that splits a
+set of constituents into composites that respect those rules. The framework's own
+producers use it: the redelivery pump and the coalesce ship worker both hand their
+constituents to the factory rather than splitting them by hand.
+
+The factory is reached through the event mint, `IEventMint.Composites`, or can be
+injected directly. Both are registered by `AddWhizbang()` with no extra wiring,
+and both resolve to the same instance.
+{verified: EventMintTests.AddWhizbang_RegistersTheMintTurnkeyAsync, EventMintTests.EventMint_ExposesTheConstructedFamilies_UnchangedAsync}
+
+### The request
+
+`ICompositeFactory.Create` takes a `CompositeMintRequest<TConstituent>`. The
+constituent type is yours (outbox rows, stored events, typed events); the factory
+only looks at it through the selectors you supply.
+
+| Member | Required | Meaning |
+|---|---|---|
+| `Constituents` | Yes | The items to bundle, in the order the composites must preserve. |
+| `GroupKey` | Yes | Which constituents may share a composite. Built with `CompositeGroupKey.FromStrategy` or `CompositeGroupKey.FromKey` (below). |
+| `BuildComposite` | Yes | Builds one composite from one chunk. Called once per planned composite with a `CompositeConstituentBatch<TConstituent>` (the chunk's group key and its constituents). |
+| `MaxConstituentsPerComposite` | No | Count cap per composite. `null` means no cap. Must be positive when set. |
+| `MaxBytesPerComposite` | No | Byte budget per composite. `null` means no byte accounting. Must be positive when set, and requires `ConstituentSizeBytes`. |
+| `ConstituentSizeBytes` | With a byte budget | Measures one constituent for the byte budget. |
+
+The two group-key sources:
+
+- `CompositeGroupKey.FromStrategy(strategy, ownedDomains, kind, constituentType)`
+  keys each constituent by the outbox routing strategy's composite group key for
+  its message type, so constituents whose types route to the same destination
+  share a composite and different destinations split.
+  {verified: CompositeFactoryTests.Create_FromStrategy_GroupKeyIsTheStrategysCompositeGroupKeyAsync}
+- `CompositeGroupKey.FromKey(selector)` takes your own key, for constituents whose
+  destination is already known (an outbox row carries its `Destination`) or that
+  need a finer split on top of routing. The key must still be a projection of the
+  destination: two constituents with the same key end up in the same composite.
+
+```csharp{title="Minting composites through the factory" description="Bundle outgoing events into composites, one destination per composite, at most 500 per composite and about 256 KB of body each." framework="NET10" category="Messaging" difficulty="ADVANCED" tags=["composite-events", "minting", "composite-factory", "byte-budget"] unverified="illustrative request shape; the grouping, count-cap and byte-budget rules it relies on are verified by the CompositeFactoryTests markers in this section"}
+public sealed class OrderBulkImportComposite : CompositeEventBase;
+
+var plans = mint.Composites.Create(new CompositeMintRequest<PendingEvent> {
+  Constituents = pending,
+  GroupKey = CompositeGroupKey.FromKey<PendingEvent>(e => e.Destination),
+  MaxConstituentsPerComposite = 500,
+  MaxBytesPerComposite = 256 * 1024,
+  ConstituentSizeBytes = e => e.Body.Length,
+  BuildComposite = batch => new OrderBulkImportComposite {
+    Inner = [.. batch.Constituents.Select(e => e.Message)],
+  },
+});
+
+foreach (var plan in plans) {
+  // plan.GroupKey, plan.Constituents, plan.Composite: publish plan.Composite to the
+  // destination its constituents share.
+}
+```
+
+### How the factory splits
+
+- **One composite per group key.** Constituents are grouped by key; groups come
+  out in the order their first constituent appears, and constituents keep their
+  input order inside each group.
+  {verified: CompositeFactoryTests.Create_MixedGroupKeys_OneCompositePerGroupKeyAsync}
+- **Count cap.** A group larger than `MaxConstituentsPerComposite` is cut into
+  chunks in order: five constituents at a cap of two become 2 + 2 + 1.
+  {verified: CompositeFactoryTests.Create_GroupLargerThanCountCap_SplitsIntoChunksPreservingOrderAsync}
+- **Byte budget.** A chunk closes as soon as its accumulated size reaches the
+  budget, even below the count cap. A chunk can therefore exceed the budget by the
+  one constituent that crossed it, and a single constituent larger than the whole
+  budget still gets a composite of its own; nothing is dropped.
+  {verified: CompositeFactoryTests.Create_ByteBudgetCrossed_FlushesBelowTheCountCapAsync, CompositeFactoryTests.Create_SingleConstituentLargerThanBudget_StillPlansAloneAsync}
+- **The builder sees each chunk.** `BuildComposite` receives the chunk's group key
+  and constituents; each returned `CompositeEnvelopePlan<TConstituent>` pairs the
+  chunk with the composite built from it. What happens next (publish, or complete
+  a transactional fold) is up to the caller.
+  {verified: CompositeFactoryTests.Create_BuilderReceivesTheChunkAndItsKey_PlanCarriesTheBuiltCompositeAsync}
+- **Producer mistakes fail loudly.** A byte budget without `ConstituentSizeBytes`
+  throws `InvalidOperationException` (the budget would otherwise never flush), as
+  does a builder that returns `null`. A non-positive count cap throws
+  `ArgumentOutOfRangeException`. An empty constituent list returns no plans.
+  {verified: CompositeFactoryTests.Create_ByteBudgetWithoutSizeSelector_ThrowsAsync, CompositeFactoryTests.Create_NullBuiltComposite_ThrowsAsync, CompositeFactoryTests.Create_NonPositiveCountCap_ThrowsAsync, CompositeFactoryTests.Create_EmptyConstituents_ReturnsEmptyAsync}
+
+These bounds protect the **sender** (serialization memory, the broker's message
+size limit). The receiver's own guard, `MaxInnerEventsAllowed`, is separate and
+still applies when the composite arrives.
+
+### Where composites may be constructed (WHIZ150)
+
+`BuildComposite` is the sanctioned place to create a composite. Analyzer
+[WHIZ150](../../operations/diagnostics/whiz150) reports a **warning** for any
+`new` of a `CompositeEventBase` subclass (the built-in `RedeliveryComposite`,
+`CoalescedEventsComposite` and `AuditEventsComposite`, or your own) unless it is
+inside a lambda assigned to `CompositeMintRequest<T>.BuildComposite`, inside a
+lambda assigned to a coalesce binding's `CoalescePolicyOptions.CompositeFactory`,
+in the `Whizbang.Core.Minting` namespace, or in the `Whizbang.Core` assembly. A
+composite built anywhere else skips the grouping, count cap and byte budget, so it
+can mix destinations or exceed the broker's size limit. Test projects that build
+composites directly on purpose can suppress the id.
+{verified: MintedCompositeConstructionAnalyzerTests.ConsumerCompositeSubclass_ConstructedDirectly_ReportsWhiz150Async, MintedCompositeConstructionAnalyzerTests.BuiltInComposite_ConstructedDirectly_ReportsWhiz150Async, MintedCompositeConstructionAnalyzerTests.Construction_InsideMintRequestBuilder_IsSilentAsync, MintedCompositeConstructionAnalyzerTests.Construction_InsideCoalesceBindingFactory_IsSilentAsync, MintedCompositeConstructionAnalyzerTests.Construction_InsideMintingNamespace_IsSilentAsync}
 
 ## Dispatch lifecycle
 
@@ -626,6 +759,8 @@ with its consumer.
 | Concern | Code | Tests |
 |---|---|---|
 | Composite marker / authoring | `ICompositeEvent`, `CompositeEventBase` | `Messaging/CompositeEventBaseTests.cs` |
+| Minting (grouping, count cap, byte budget) | `ICompositeFactory`, `CompositeFactory`, `CompositeMintRequest<T>`, `IEventMint` | `Minting/CompositeFactoryTests.cs`, `Minting/EventMintTests.cs` |
+| Construction outside the mint (WHIZ150) | `MintedCompositeConstructionAnalyzer` | `Generators.Tests/Analyzers/MintedCompositeConstructionAnalyzerTests.cs` |
 | Dispatch recognition (drop-gate) | `ReceptorRegistryQueryGenerator` (`_extractCompositeEntry` → `AnyConsumerTypes`) | `Generators.Tests/ReceptorRegistryQueryGeneratorTests.cs` (`Generator_WithCompositeEvent_HasAnyConsumerReturnsTrueAsync`) |
 | Dispatch-time fan-out | `CompositeInboxFanout`, `InboxDispatchWorker` | `Messaging/CompositeInboxFanoutTests.cs`, `Workers/InboxDispatchWorkerTests.cs` (`CompositeMessage_FansOut*`, `CompositeOverCap_DeadLetters*`) |
 | Transactional expansion, commit failure retry | `InboxDispatchWorker._fanoutCompositeAsync`, `IWorkCoordinator.CommitHandlerResultAsync` | `Workers/InboxDispatchWorkerCompositeCommitTests.cs` |

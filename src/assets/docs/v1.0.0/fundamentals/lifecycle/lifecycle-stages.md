@@ -847,7 +847,7 @@ sequenceDiagram
 
     Note over UOW,Coordinator: Distribute Phase
     Note right of UOW: PreDistributeInline
-    UOW->>Coordinator: ProcessWorkBatchAsync()
+    UOW->>Coordinator: StoreOutboxMessagesAsync() / StoreInboxMessagesAsync()
     Note right of UOW: PostDistributeInline
 
     Note over Worker,Perspective: Outbox Phase
