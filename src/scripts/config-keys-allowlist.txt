@@ -7,3 +7,5 @@ Whizbang:PerStreamSerializer            # configuration-reference's "most common
 Whizbang:X                              # configuration-reference's naming-convention illustration
 Whizbang:PerspectiveQueryTranslation    # bound by the consumer's own code, as jsonb-containment shows; the library takes the options object
 Whizbang:Persistence                    # persistence.md discloses the section is not bound: the persistence modes have no runtime component yet
+Whizbang:WorkCoordinator:MaintenanceInterval  # configuration-reference#unknown-keys lists it as a removed key the startup check names a replacement for
+Whizbang:PostgresExtensions                   # configuration-reference#unknown-keys lists Whizbang:PostgresExtensions:ProbeOnStartup as a removed key
