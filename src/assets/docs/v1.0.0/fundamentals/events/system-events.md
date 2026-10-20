@@ -40,6 +40,8 @@ testReferences:
   - tests/Whizbang.Core.Tests/SystemEvents/SystemEventSelfAuditPreventionTests.cs
   - tests/Whizbang.Core.Tests/SystemEvents/EventAuditedTests.cs
   - tests/Whizbang.Core.Tests/SystemEvents/Security/SecuritySystemEventTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/AuditRecordStreamPositionSqlTests.cs
+  - tests/Whizbang.Core.Tests/SystemEvents/AuditDecisionHookCallSiteTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -292,6 +294,19 @@ public sealed record ServiceHeartbeat : IEvent {
   public required DateTimeOffset Timestamp { get; init; }
 }
 ```
+
+#### What every record carries {#what-every-record-carries}
+
+{verified: AuditRecordStreamPositionSqlTests.Store_EventAndItsAuditTogether_RecordCarriesTheEventsVersionAsync, AuditRecordStreamPositionSqlTests.Store_AuditAfterItsEventInALaterWrite_RecordCarriesTheEventsVersionAsync, AuditDecisionHookCallSiteTests.Scoped_VetoingHook_SuppressesTheAuditRecordAsync}
+
+All three writers of `EventAudited` (the work coordinator's outbox path, the event store decorator, and the `SystemEventEmitter`) fill in the same fields:
+
+- `OriginalEventId` is the id the event was actually stored under.
+- `CausationId` is the message that caused the event.
+- `AuditReason` and `AuditLevel` come from `[AuditEvent]` on the event type.
+- `OriginalStreamPosition` is the event's stored version. On the outbox path the database fills it in when it stores the record. A record stored in an earlier write than its event, which the stream-affinity batcher can produce, keeps `0`.
+
+Every writer applies the same eligibility rule, including `AuditMode.OptIn`, and asks the registered `IAuditDecisionHook` before it writes (see [Audit Logging](../security/audit-logging.md#audit-decision-hook)). Records from the outbox path and the decorator are transport-only: they reach the audit perspective but are not appended to the origin's event store.
 
 #### What hooks receive
 
