@@ -14,6 +14,9 @@ tags: >-
   configuration, options, environment variables, appsettings, reference,
   binding
 codeReferences:
+  - src/Whizbang.Core/Configuration/UnknownConfigurationKeyCheck.cs
+  - src/Whizbang.Core/Configuration/UnknownConfigurationKeyStartupValidator.cs
+  - src/Whizbang.Core/Configuration/RemovedConfigurationKeys.cs
   - src/Whizbang.Core/ServiceCollectionExtensions.cs
   - src/Whizbang.Data.Postgres/Notifications/PostgresNotificationsServiceCollectionExtensions.cs
   - src/Whizbang.Offloads.AzureBlob/AzureBlobOffloadServiceCollectionExtensions.cs
@@ -41,6 +44,8 @@ codeReferences:
   - src/Whizbang.Core/Configuration/EphemeralPointerPruneOptions.cs
   - src/Whizbang.Data.Postgres/RetentionSettingsWriter.cs
 testReferences:
+  - tests/Whizbang.Core.Tests/Configuration/UnknownConfigurationKeyCheckTests.cs
+  - tests/Whizbang.Core.Component.Tests/Configuration/UnknownConfigurationKeyStartupValidatorTests.cs
   - tests/Whizbang.Core.Component.Tests/Messaging/WorkCoordinatorGateInteractiveReserveTests.cs
   - tests/Whizbang.Core.Tests/ServiceCollectionExtensionsTests.cs
   - tests/Whizbang.Core.Tests/Messaging/WorkCoordinatorGateRegistrationTests.cs
@@ -107,6 +112,28 @@ The keys here are checked in both directions, so this page cannot drift from the
 
 - **The library locks the keys it reads.** A test registers every Whizbang package the way a host does and records each configuration key the library asks for. It fails whenever that set differs from the library's `docs/configuration-keys.txt`, so a binder added, renamed or removed cannot ship without the list changing. {verified: ConfigurationKeyManifestTests.TheLibraryReadsExactlyTheManifestedKeysAsync}
 - **The docs build checks every key it documents against that list.** An environment variable, a colon path or an `appsettings.json` key the library does not read fails the build, naming the page and line.
+
+## Keys nothing reads are reported at startup {#unknown-keys}
+
+.NET configuration binding ignores a key that no options property matches, so a misspelled or removed key looks set while doing nothing. At startup Whizbang compares every `Whizbang:*` key that carries a value against the keys the library reads (the same `configuration-keys.txt` list the [verified keys](#keys-are-verified) come from, embedded in the library) and logs one warning per key nothing reads. Entries under a section whose names you choose, such as a perspective name under `Overrides`, count as known; a misspelled key under a known section does not.
+
+| Key | Type | Default | Environment variable | Purpose |
+|-----|------|---------|----------------------|---------|
+| `Whizbang:Configuration:UnknownKeys` | `Warn` \| `Throw` \| `Ignore` | `Warn` | `Whizbang__Configuration__UnknownKeys` | `Warn` logs one warning per unknown key, once per start. `Throw` logs the same warnings, then fails host start naming every unknown key. `Ignore` skips the check |
+
+The two warnings (logger category `Whizbang.Core.Configuration.UnknownConfigurationKeyStartupValidator`):
+
+| Event id | Message |
+|---|---|
+| 1 | `Whizbang configuration key '<key>' is not read by Whizbang and has no effect. Check its spelling against the configuration reference, or remove it` |
+| 2 | `Whizbang configuration key '<key>' was removed and has no effect. Set its replacement instead: <replacement>` |
+
+Removed keys the check names a replacement for:
+
+| Removed key | Set instead |
+|---|---|
+| `Whizbang:WorkCoordinator:MaintenanceInterval` | `Whizbang:Workers:Maintenance:IntervalMinutes`, `Whizbang:Housekeeping:SettledCooldown` and `Whizbang:Housekeeping:MaxDeferral`; maintenance now runs when the service is idle, with a time ceiling. See [Housekeeping arbitration](../workers/housekeeping-arbitration.md) |
+| `Whizbang:PostgresExtensions:ProbeOnStartup` | `Whizbang:Capabilities:ProbeOnStartup`. See [Capabilities](#capabilities-options) |
 
 ## Quick Map
 
