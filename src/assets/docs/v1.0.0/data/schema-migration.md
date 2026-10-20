@@ -179,7 +179,7 @@ Migrations/
 ├── 000_MigrationTracking.sql
 ├── 001_CreateComputePartitionFunction.sql
 ├── ...
-├── 029_ProcessWorkBatch.sql          (hosts claim_work + focused work-pump functions)
+├── 029_ProcessWorkBatch.sql          (first defines claim_work + focused work-pump functions)
 ├── 030_ReconcilePerspectiveRegistry.sql
 ├── 033_RenamePerspectiveCheckpointsToCursors.sql
 ├── ...

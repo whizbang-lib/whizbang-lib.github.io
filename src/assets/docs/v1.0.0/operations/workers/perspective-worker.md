@@ -144,7 +144,7 @@ At the top of `ExecuteAsync` the worker:
 4. **Scans and repairs interrupted rewinds**
 5. **Spawns** `MaxConcurrentDrainConsumers` (default 4) parallel channel-consumer loops
 
-The channel dependencies (`IPerspectiveChannelWriter`, `IPerspectiveCompletionChannel`, `IFailureChannel`) are **required at runtime** — they are wired automatically by `AddWhizbang()` (which invokes `AddWhizbangWorkers()`). If they are missing, `ExecuteAsync` throws `InvalidOperationException`; the legacy `ProcessWorkBatchAsync` poll path has been removed.
+The channel dependencies (`IPerspectiveChannelWriter`, `IPerspectiveCompletionChannel`, `IFailureChannel`) are **required at runtime** — they are wired automatically by `AddWhizbang()` (which invokes `AddWhizbangWorkers()`). If they are missing, `ExecuteAsync` throws `InvalidOperationException`; the worker has no polling path of its own, because `ClaimWorker` claims perspective work and hands it over on these channels.
 
 Database readiness is handled upstream: `ClaimWorker` and the flush workers await [`ISchemaReadyGate`](database-readiness.md) before their first SQL, so perspective work only starts flowing after migrations complete.
 

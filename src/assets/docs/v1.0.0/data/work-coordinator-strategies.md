@@ -10,7 +10,7 @@ description: >-
   Strategy pattern for controlling message flush behavior from in-memory queues
   to the database. Covers Immediate, Scoped, Interval, and Batch strategies
   with trade-offs between latency, throughput, and database load.
-tags: 'work-coordinator, flush-strategy, batch, scoped, interval, process-work-batch'
+tags: 'work-coordinator, flush-strategy, batch, scoped, interval, store-outbox-messages'
 codeReferences:
   - src/Whizbang.Core/Messaging/IWorkCoordinatorStrategy.cs
   - src/Whizbang.Core/Messaging/BatchWorkCoordinatorStrategy.cs
@@ -32,7 +32,7 @@ lastMaintainedCommit: '01f07906'
 The work coordinator uses a **strategy pattern** to control when and how messages are flushed from in-memory queues to the database via the `store_outbox_messages` / `store_inbox_messages` SQL functions. Each strategy makes different trade-offs between latency, throughput, and database load.
 
 :::updated{version="1.0.0"}
-Earlier pre-v1.0 builds flushed through a single `process_work_batch` orchestrator function. That function has been dropped: flushes now insert rows via `store_outbox_messages` / `store_inbox_messages`, completions and failures flow through dedicated channel flushers, and work claiming is owned exclusively by the `ClaimWorker` via the `claim_work` SQL function.
+Earlier pre-v1.0 builds flushed through a single orchestrator SQL function. That function has been removed (migration 029 drops it): flushes now insert rows via `store_outbox_messages` / `store_inbox_messages`, completions and failures flow through dedicated channel flushers, and work claiming is owned exclusively by the `ClaimWorker` via the `claim_work` SQL function.
 :::
 
 ## Strategy Overview

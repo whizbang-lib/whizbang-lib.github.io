@@ -30,7 +30,7 @@ testReferences:
   - tests/Whizbang.Core.Tests/Messaging/ScopedWorkCoordinatorStrategyTests.cs
   - tests/Whizbang.Core.Component.Tests/Messaging/IntervalWorkCoordinatorStrategyTests.cs
   - tests/Whizbang.Core.Tests/Messaging/ImmediateWorkCoordinatorStrategyTests.cs
-lastMaintainedCommit: '01f07906'
+lastMaintainedCommit: '62abd3a45'
 ---
 
 # Message Lifecycle & Architecture
@@ -61,7 +61,7 @@ graph TB
     end
 
     subgraph "Persistence Layer"
-        WC[Work Coordinator<br/>process_work_batch]
+        WC[Work Coordinator<br/>focused SQL functions]
         ES[Event Store]
         OUTBOX[(Outbox Table)]
         INBOX[(Inbox Table)]
@@ -86,17 +86,17 @@ graph TB
     WC -->|6. Store| ES
     DISP -->|7. PublishAsync| PERSP
 
-    PUB -->|Poll| WC
-    WC -->|Claim Work| PUB
+    PUB -->|claim_work| WC
+    WC -->|Leased streams| PUB
     PUB -->|Stream Order| OSP
     OSP -->|Publish| SB
     OSP -->|Report Complete| WC
 
     SB -->|Receive| CONS
     CONS -->|Queue Inbox| STRAT
-    STRAT -->|Dedup Insert| WC
-    WC -->|Check Duplicate| INBOX
-    WC -->|If New| CONS
+    CONS -->|store_inbox_messages| WC
+    WC -->|Dedup Insert| INBOX
+    WC -->|claim_work| CONS
     CONS -->|Stream Order| OSP
     OSP -->|Invoke| PERSP
     OSP -->|Report Complete| WC
@@ -121,7 +121,7 @@ sequenceDiagram
     participant Dispatcher
     participant Receptor
     participant WorkStrategy as Work Coordinator<br/>Strategy (Scoped)
-    participant WorkCoord as Work Coordinator<br/>process_work_batch
+    participant WorkCoord as Work Coordinator<br/>store_outbox_messages
     participant EventStore
     participant Outbox
     participant Perspectives
@@ -144,18 +144,18 @@ sequenceDiagram
 
     Dispatcher->>WorkStrategy: FlushAsync()
 
-    WorkStrategy->>WorkCoord: ProcessWorkBatchAsync(<br/>  newOutboxMessages: [event],<br/>  flags: None<br/>)
+    WorkStrategy->>WorkCoord: StoreOutboxMessagesAsync([event])
 
-    Note over WorkCoord: Single atomic transaction:
+    Note over WorkCoord: store_outbox_messages,<br/>one atomic transaction:
 
     WorkCoord->>Outbox: INSERT INTO wh_outbox
     Note over Outbox: Stream-based partitioning<br/>partition_number = hash(stream_id) % 10000
 
-    WorkCoord->>EventStore: INSERT INTO wh_event_store<br/>(if is_event=true AND stream_id IS NOT NULL)
+    WorkCoord->>EventStore: _emit_event_store_chain:<br/>INSERT INTO wh_event_store (event_id = message_id)<br/>+ perspective work (event rows with a stream_id)
     Note over EventStore: Auto-increment version per stream<br/>Global sequence for ordering
 
-    WorkCoord-->>WorkStrategy: WorkBatch(claimedOutboxMessages, ...)
-    WorkStrategy-->>Dispatcher: WorkBatch
+    WorkCoord-->>WorkStrategy: stored (a flush claims nothing;<br/>ClaimWorker claims the new rows)
+    WorkStrategy-->>Dispatcher: flush complete
 
     Dispatcher->>Perspectives: PublishAsync(OrderCreated)
 
@@ -195,7 +195,7 @@ sequenceDiagram
     participant Dispatcher
     participant Receptor
     participant WorkStrategy as Work Coordinator<br/>Strategy (Scoped)
-    participant WorkCoord as Work Coordinator<br/>process_work_batch
+    participant WorkCoord as Work Coordinator<br/>store_outbox_messages
     participant Outbox
 
     Client->>Controller: POST /orders/async
@@ -209,11 +209,11 @@ sequenceDiagram
     Dispatcher->>WorkStrategy: QueueOutboxMessage(event, isEvent=true)
     Dispatcher->>WorkStrategy: FlushAsync()
 
-    WorkStrategy->>WorkCoord: ProcessWorkBatchAsync(<br/>  newOutboxMessages: [event]<br/>)
+    WorkStrategy->>WorkCoord: StoreOutboxMessagesAsync([event])
 
     WorkCoord->>Outbox: INSERT INTO wh_outbox
-    WorkCoord-->>WorkStrategy: WorkBatch
-    WorkStrategy-->>Dispatcher: WorkBatch
+    WorkCoord-->>WorkStrategy: stored
+    WorkStrategy-->>Dispatcher: flush complete
 
     Dispatcher-->>Controller: DeliveryReceipt(MessageId, CorrelationId, Timestamp)
     Controller-->>Client: 202 Accepted + tracking URL
@@ -231,63 +231,52 @@ sequenceDiagram
 
 ## Event Flow (Publishing from Outbox)
 
-### Background Workers: ClaimWorker + OutboxPublishWorker
+### Background Workers: ClaimWorker + OutboxDrainWorker
 
 :::updated
-The legacy `WorkCoordinatorPublisherWorker` has been decomposed into a work-pump pipeline (Phase C): `ClaimWorker` is the **only** place that calls `IWorkCoordinator.ClaimWorkAsync` (adaptive backoff on empty polls, with a wake semaphore driven by Postgres NOTIFY / local channel writes); claimed work flows through in-process channels to `OutboxPublishWorker`, which publishes to transport via `IMessagePublishStrategy`; completions and failures are flushed back to the database by dedicated flush workers (`OutboxCompletionFlushWorker`, `FailureFlushWorker`). The sequence below shows the logical flow — claim, ordered publish, completion reporting — which is unchanged.
+The legacy `WorkCoordinatorPublisherWorker` has been decomposed into a work-pump pipeline: `ClaimWorker` is the **only** place that calls `IWorkCoordinator.ClaimWorkAsync` (the `claim_work` SQL function; adaptive backoff on empty polls, with a wake semaphore driven by Postgres NOTIFY / local channel writes). `claim_work` leases work and returns the stream ids the instance holds; `ClaimWorker` writes the outbox stream ids to the outbox drain channel, and `OutboxDrainWorker` fetches each stream's leased rows with `fetch_outbox_batch` and publishes them in stream order through `IMessagePublishStrategy`. Completions and failures are flushed back to the database by dedicated flush workers (`OutboxCompletionFlushWorker` calls `complete_outbox_published`, `FailureFlushWorker` calls `report_failures`).
 :::
 
-```mermaid{caption="Outbox publishing flow: lease-based claim, ordered per-stream publish to transport via the Ordered Stream Processor, then atomic completion reporting"}
+```mermaid{caption="Outbox publishing flow: lease-based claim, per-stream fetch and ordered publish to transport, then batched completion and failure reporting"}
 sequenceDiagram
-    participant Timer
-    participant PublisherWorker as ClaimWorker +<br/>OutboxPublishWorker
-    participant WorkStrategy as Work Coordinator<br/>Strategy (Interval)
-    participant WorkCoord as Work Coordinator<br/>process_work_batch
+    participant Claim as ClaimWorker
+    participant Drain as OutboxDrainWorker
+    participant Flush as OutboxCompletionFlushWorker<br/>+ FailureFlushWorker
+    participant WorkCoord as Work Coordinator<br/>(SQL functions)
     participant Outbox
-    participant OSP as Ordered Stream<br/>Processor
     participant Transport as Azure Service Bus
 
     loop Adaptive poll (default 250ms base, backoff to 10s on empty polls; NOTIFY wakes immediately)
-        Timer->>PublisherWorker: Tick
+        Claim->>WorkCoord: ClaimWorkAsync (claim_work)
 
-        PublisherWorker->>WorkStrategy: FlushAsync()
+        Note over WorkCoord: Lease-based claiming:<br/>unowned or lease-expired rows<br/>get instance_id + lease_expiry
 
-        WorkStrategy->>WorkCoord: ProcessWorkBatchAsync(<br/>  InstanceId: worker-guid,<br/>  ServiceName: "OrderService",<br/>  PartitionCount: 10000,<br/>  LeaseSeconds: 300,<br/>  MaxStreamsPerBatch: 1000<br/>)
+        WorkCoord->>Outbox: lease claimable rows
+        WorkCoord-->>Claim: WorkBatch (outbox stream ids, ...)
 
-        Note over WorkCoord: Atomic lease-based claiming:
+        alt Has outbox streams
+            Claim->>Drain: outbox drain channel (stream ids)
 
-        WorkCoord->>Outbox: SELECT * FROM wh_outbox<br/>WHERE partition_number IN (assigned_partitions)<br/>  AND (instance_id IS NULL OR lease_expiry < NOW())<br/>  AND (status & 4) != 4 AND (status & 32768) = 0<br/>FOR UPDATE SKIP LOCKED
+            loop For each stream (parallel across streams)
+                Drain->>WorkCoord: FetchOutboxBatchAsync (fetch_outbox_batch)
+                WorkCoord-->>Drain: leased rows in stream order
 
-        WorkCoord->>Outbox: UPDATE wh_outbox SET<br/>  instance_id = @InstanceId,<br/>  lease_expiry = NOW() + @LeaseSeconds<br/>WHERE message_id IN (...)
-
-        WorkCoord-->>WorkStrategy: WorkBatch(claimedOutboxMessages: [...])
-
-        WorkStrategy-->>PublisherWorker: WorkBatch
-
-        alt Has claimed messages
-            PublisherWorker->>OSP: ProcessOutboxWorkAsync(messages)
-
-            Note over OSP: Group by stream_id<br/>Sort by sequence_order per stream<br/>Process sequentially per stream
-
-            loop For each stream (parallel)
                 loop For each message in stream (sequential)
-                    OSP->>Transport: PublishAsync(topic, messageId, payload)
+                    Drain->>Transport: publish via IMessagePublishStrategy
 
                     alt Success
-                        OSP->>WorkStrategy: QueueOutboxCompletion(messageId, Published)
+                        Drain->>Flush: completion channel (messageId)
                     else Failure
-                        OSP->>WorkStrategy: QueueOutboxFailure(messageId, Failed, error)
+                        Drain->>Flush: failure channel (messageId, error)
                     end
                 end
             end
 
-            PublisherWorker->>WorkStrategy: FlushAsync()
+            Flush->>WorkCoord: CompleteOutboxPublishedAsync (complete_outbox_published)
+            WorkCoord->>Outbox: remove published rows<br/>(retained with processed_at in debug mode)
 
-            WorkStrategy->>WorkCoord: ProcessWorkBatchAsync(<br/>  outboxCompletions: [...],<br/>  outboxFailures: [...]<br/>)
-
-            WorkCoord->>Outbox: DELETE FROM wh_outbox<br/>WHERE message_id IN (completions)
-
-            WorkCoord->>Outbox: UPDATE wh_outbox SET<br/>  status = status | 32768 (Failed),<br/>  error = ...,<br/>  failure_reason = ...,<br/>  scheduled_for = backoff<br/>WHERE message_id IN (failures)
+            Flush->>WorkCoord: ReportFailuresAsync (report_failures)
+            WorkCoord->>Outbox: UPDATE failed rows<br/>(failure bit, error, backoff)
         end
     end
 ```
@@ -296,100 +285,61 @@ sequenceDiagram
 1. **Adaptive polling**: ClaimWorker backs off on consecutive empty polls; NOTIFY signals wake it immediately
 2. **Partition-based distribution**: Each worker claims a subset of partitions
 3. **Lease-based coordination**: Prevents duplicate processing across workers
-4. **Stream ordering via OrderedStreamProcessor**: Events from same stream processed sequentially
+4. **Stream ordering**: `OutboxDrainWorker` publishes one stream's rows sequentially, in stream order
 5. **Parallel streams**: Different streams can process concurrently
-6. **Atomic completion reporting**: Deletes completed, updates failed
+6. **Batched completion reporting**: Completions and failures are coalesced by the flush workers
 
 ---
 
 ## Event Flow (Consuming from Inbox)
 
-### Background Worker: ServiceBusConsumerWorker
+### Background Workers: Consumer, ClaimWorker, InboxDrainWorker, InboxHandlerWorker
 
-```mermaid{caption="Inbox consuming flow: atomic dedup insert, ordered per-stream perspective invocation via the Ordered Stream Processor, then completion reporting and Service Bus completion"}
+```mermaid{caption="Inbox consuming flow: deduplicating store, lease-based claim, per-stream fetch and handler dispatch, then batched handler commit"}
 sequenceDiagram
     participant ServiceBus as Azure Service Bus
-    participant ConsumerWorker as ServiceBus<br/>ConsumerWorker
-    participant WorkStrategy as Work Coordinator<br/>Strategy (Scoped)
-    participant WorkCoord as Work Coordinator<br/>process_work_batch
+    participant ConsumerWorker as Transport<br/>ConsumerWorker
+    participant WorkCoord as Work Coordinator<br/>(SQL functions)
     participant Inbox
-    participant OSP as Ordered Stream<br/>Processor
-    participant Perspectives
+    participant Claim as ClaimWorker
+    participant Drain as InboxDrainWorker +<br/>InboxDispatchWorker
+    participant Commit as InboxHandlerWorker
 
-    ServiceBus->>ConsumerWorker: Receive message
+    ServiceBus->>ConsumerWorker: Receive message(s)
 
-    Note over ConsumerWorker: Create scoped DI container<br/>(per message)
+    ConsumerWorker->>ConsumerWorker: Deserialize MessageEnvelope(s)
 
-    ConsumerWorker->>ConsumerWorker: Deserialize MessageEnvelope
-
-    ConsumerWorker->>WorkStrategy: QueueInboxMessage(envelope)
-
-    ConsumerWorker->>WorkStrategy: FlushAsync()
-
-    WorkStrategy->>WorkCoord: ProcessWorkBatchAsync(<br/>  newInboxMessages: [envelope]<br/>)
+    ConsumerWorker->>WorkCoord: StoreInboxMessagesAsync (store_inbox_messages)
 
     Note over WorkCoord: Atomic deduplication:
 
-    WorkCoord->>Inbox: INSERT INTO wh_inbox<br/>ON CONFLICT (message_id) DO NOTHING<br/>RETURNING *
+    WorkCoord->>Inbox: record in wh_message_deduplication,<br/>INSERT INTO wh_inbox ON CONFLICT DO NOTHING
 
-    alt Message is duplicate
-        WorkCoord-->>WorkStrategy: WorkBatch(claimedInboxMessages: [])
-        WorkStrategy-->>ConsumerWorker: WorkBatch (empty)
+    ConsumerWorker->>ServiceBus: Complete message(s)<br/>(after the insert commits)
 
-        Note over ConsumerWorker: Duplicate detected,<br/>skip processing
+    Claim->>WorkCoord: ClaimWorkAsync (claim_work)
+    Note over WorkCoord: Leases new inbox rows and copies inbox events<br/>into wh_event_store with their perspective work<br/>(_emit_event_store_chain_for_inbox)
+    WorkCoord-->>Claim: WorkBatch (inbox stream ids, ...)
 
-        ConsumerWorker->>ServiceBus: Complete message
-    else Message is new
-        WorkCoord-->>WorkStrategy: WorkBatch(claimedInboxMessages: [envelope])
-        WorkStrategy-->>ConsumerWorker: WorkBatch
+    Claim->>Drain: inbox drain channel (stream ids)
+    Drain->>WorkCoord: FetchInboxBatchAsync (fetch_inbox_batch)
+    WorkCoord-->>Drain: leased rows in stream order
 
-        ConsumerWorker->>OSP: ProcessInboxWorkAsync(messages)
-
-        Note over OSP: Group by stream_id<br/>Sort by sequence_order per stream<br/>Process sequentially per stream
-
-        loop For each stream (parallel)
-            loop For each message in stream (sequential)
-                OSP->>OSP: Deserialize event payload
-
-                OSP->>Perspectives: InvokePerspectivesAsync(event)
-
-                Note over Perspectives: Find all perspectives<br/>registered for this event type
-
-                par Update Read Models
-                    Perspectives->>Perspectives: OrderSummaryPerspective.Apply()
-                    Perspectives->>Perspectives: InventoryPerspective.Apply()
-                    Perspectives->>Perspectives: AnalyticsPerspective.Apply()
-                end
-
-                alt All perspectives succeeded
-                    OSP->>WorkStrategy: QueueInboxCompletion(messageId, Completed)
-                else Any perspective failed
-                    OSP->>WorkStrategy: QueueInboxFailure(messageId, Failed, error)
-                end
-            end
-        end
-
-        ConsumerWorker->>WorkStrategy: FlushAsync()
-
-        WorkStrategy->>WorkCoord: ProcessWorkBatchAsync(<br/>  inboxCompletions: [...],<br/>  inboxFailures: [...]<br/>)
-
-        WorkCoord->>Inbox: DELETE FROM wh_inbox<br/>WHERE message_id IN (completions)
-
-        WorkCoord->>Inbox: UPDATE wh_inbox SET<br/>  status = status | 32768 (Failed),<br/>  error = ...,<br/>  scheduled_for = backoff<br/>WHERE message_id IN (failures)
-
-        ConsumerWorker->>ServiceBus: Complete message
+    loop For each message in stream (sequential)
+        Drain->>Drain: run inbox lifecycle stages (receptors)
+        Drain->>Commit: HandlerCommitRequest
     end
 
-    Note over WorkStrategy: Scope disposed<br/>(end of message processing)
+    Commit->>WorkCoord: CommitHandlerBatchAsync (commit_handler_batch)
+    Note over WorkCoord: Per-handler SAVEPOINT isolation:<br/>marks the inbox row processed and stores<br/>any emitted outbox messages in one commit
 ```
 
 **Key Points**:
-1. **Scoped strategy**: One scope per message
-2. **Atomic deduplication**: INSERT ... ON CONFLICT ensures exactly-once semantics
-3. **Stream ordering**: OrderedStreamProcessor ensures events from same stream process sequentially
-4. **Perspective invocation**: All registered perspectives updated in parallel
-5. **Completion reporting**: Atomic delete (success) or update (failure)
-6. **Service Bus completion**: Only after database commit
+1. **Store first, acknowledge after**: the transport message is completed only after the inbox insert commits
+2. **Atomic deduplication**: `store_inbox_messages` inserts with ON CONFLICT, so a redelivered message is not processed twice
+3. **Stream ordering**: rows of one stream are fetched and dispatched sequentially
+4. **Perspectives run separately**: inbox events become event-store rows and perspective work during `claim_work`, and the perspective worker applies them
+5. **Batched commit**: `commit_handler_batch` commits many handler results in one round-trip with per-handler failure isolation
 
 ---
 
@@ -559,7 +509,8 @@ var result = await dispatcher.LocalInvokeAsync<CreateOrder, OrderCreated>(comman
 
 // Scope disposal triggers:
 // 1. WorkCoordinatorStrategy.FlushAsync()
-// 2. process_work_batch (commit transaction)
+// 2. store_outbox_messages (commit transaction; event rows reach
+//    wh_event_store through _emit_event_store_chain)
 // 3. DbContext.SaveChangesAsync() (if using EF Core)
 ```
 
@@ -634,79 +585,22 @@ public class IntervalWorkCoordinatorStrategy : IWorkCoordinatorStrategy {
 
 ## Work Coordinator: Atomic Operations
 
-All operations in `process_work_batch` are **atomic** (single transaction):
+Each coordinator call is its own transaction in a focused SQL function. There is no single function that stores, completes and claims in one call; the orchestrator function earlier builds used was removed (migration 029 drops it). The transactional boundaries that matter:
 
-```sql{title="Work Coordinator: Atomic Operations" description="All operations in process_work_batch are atomic (single transaction):" category="Internals" difficulty="ADVANCED" tags=["Extending", "Internals", "Work", "Coordinator:"]}
-CREATE OR REPLACE FUNCTION process_work_batch(...)
-RETURNS TABLE (...) AS $$
-BEGIN
-    -- 1. Delete completed outbox messages
-    DELETE FROM wh_outbox
-    WHERE message_id IN (SELECT message_id FROM jsonb_array_elements(p_outbox_completions));
-
-    -- 2. Update failed outbox messages (process_outbox_failures)
-    UPDATE wh_outbox SET
-        status = status | 32768,  -- Failed bit
-        error = ...,
-        failure_reason = ...,
-        scheduled_for = ...  -- exponential backoff
-    WHERE message_id IN (...);
-
-    -- 3. Insert new outbox messages (with partition assignment)
-    INSERT INTO wh_outbox (message_id, stream_id, partition_number, ...)
-    SELECT
-        (elem->>'message_id')::UUID,
-        (elem->>'stream_id')::UUID,
-        abs(hashtext((elem->>'stream_id')::TEXT)) % p_partition_count,  -- Partition
-        ...
-    FROM jsonb_array_elements(p_new_outbox_messages) AS elem;
-
-    -- 4. Copy newly-inserted events to the event store
-    -- (store_outbox_messages calls _emit_event_store_chain for rows with
-    --  is_event = true AND stream_id IS NOT NULL)
-    INSERT INTO wh_event_store (event_id, stream_id, event_type, version, ...)
-    SELECT
-        (elem->>'message_id')::UUID,
-        (elem->>'stream_id')::UUID,
-        (elem->>'message_type')::TEXT,
-        COALESCE(
-            (SELECT MAX(version) + 1 FROM wh_event_store WHERE stream_id = (elem->>'stream_id')::UUID),
-            1
-        ),
-        ...
-    FROM jsonb_array_elements(p_new_outbox_messages) AS elem
-    WHERE (elem->>'is_event')::BOOLEAN = TRUE
-      AND (elem->>'stream_id') IS NOT NULL;
-
-    -- 5-8. Similar atomic operations for inbox
-    -- ...
-
-    -- 9. Claim new outbox work (lease-based)
-    UPDATE wh_outbox
-    SET
-        instance_id = p_instance_id,
-        lease_expiry = NOW() + (p_lease_seconds || ' seconds')::INTERVAL
-    WHERE message_id IN (
-        SELECT message_id FROM wh_outbox
-        WHERE partition_number IN (SELECT * FROM assigned_partitions)
-          AND (instance_id IS NULL OR lease_expiry < NOW())
-          AND (status & 4) != 4       -- not yet Published
-          AND (status & 32768) = 0    -- not Failed
-        ORDER BY created_at
-        FOR UPDATE SKIP LOCKED  -- Non-blocking claim
-    )
-    RETURNING *;
-
-    -- COMMIT (all operations succeed or fail together)
-END;
-$$ LANGUAGE plpgsql;
-```
+| Call | SQL function | What commits together |
+|---|---|---|
+| `StoreOutboxMessagesAsync` | `store_outbox_messages` | The outbox rows (with partition assignment) and, for event rows with a stream id, the `wh_event_store` rows (`event_id` = the outbox `message_id`, next version per stream) and their perspective work, written by `_emit_event_store_chain` in the same transaction |
+| `StoreInboxMessagesAsync` | `store_inbox_messages` | Deduplication record and inbox row (the inbox insert is `ON CONFLICT DO NOTHING`) |
+| `ClaimWorkAsync` | `claim_work` | Leases on unowned or lease-expired outbox, inbox, perspective and receptor work; inbox events copied into the event store by `_emit_event_store_chain_for_inbox` |
+| `CommitHandlerBatchAsync` | `commit_handler_batch` | Each handler's inbox completion plus the messages it emitted, isolated per handler by a SAVEPOINT |
+| `CompleteOutboxPublishedAsync` | `complete_outbox_published` | Removal of published outbox rows (kept with `processed_at` in debug mode) |
+| `ReportFailuresAsync` | `report_failures` | Failure status, error and retry schedule per category |
 
 **Guarantees**:
-1. ✅ **Atomicity**: All operations succeed together or fail together
+1. ✅ **Atomicity**: An event's outbox row and its event-store row commit together or not at all
 2. ✅ **No race conditions**: Lease-based claiming prevents duplicate work
 3. ✅ **Stream ordering**: Partition assignment ensures same stream → same worker
-4. ✅ **Event Store consistency**: Event version conflicts detected automatically
+4. ✅ **Event Store consistency**: Per-stream advisory locks serialize version assignment; a conflicting row is skipped and retried rather than duplicated
 5. ✅ **Deduplication**: INSERT ... ON CONFLICT prevents duplicate inbox processing
 
 ---

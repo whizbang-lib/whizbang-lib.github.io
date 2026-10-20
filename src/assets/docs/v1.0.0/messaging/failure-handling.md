@@ -30,7 +30,7 @@ testReferences:
   - tests/Whizbang.Core.Component.Tests/Workers/OutboxPublishWorkerDlqPromotionTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/InboxDispatchWorkerTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerDeadLetterFilterTests.cs
-lastMaintainedCommit: '01f07906'
+lastMaintainedCommit: '62abd3a45'
 ---
 
 # Failure Handling
@@ -179,72 +179,61 @@ When message M1 in stream S fails, what happens to messages M2, M3, M4 that come
 **Whizbang's Approach**: Cascade release with explicit control
 
 :::updated
-The work-pump decomposition (which removed the legacy `ProcessWorkBatchAsync` / `ProcessWorkBatchRequest` API) changed this area in two ways:
+The work-pump decomposition removed the legacy single batch API through which a caller could release rows by completing them with `Status = 0`. This area changed in two ways:
 
-1. The `Status = 0` release branch still exists in SQL (`process_outbox_completions`, migration `013`), but no public coordinator API issues a `Status = 0` completion anymore — outbox completions now flow through `CompleteOutboxPublishedAsync`, which deletes the row.
+1. The `Status = 0` release branch still exists in SQL (`process_outbox_completions`, migration `013`), but nothing in the current release calls that function: outbox completions flow through `CompleteOutboxPublishedAsync`, which deletes the row. Releasing the rows behind a failure is now automatic, done by the failure report itself (below).
 2. `claim_orphaned_outbox` enforces a stream-ordering check: a later message cannot be claimed while an **earlier** unprocessed message in the same stream has `scheduled_for` in the future. Releasing downstream leases therefore does not let the stream skip past a scheduled failed message; downstream messages become claimable only once the failed message's `scheduled_for` elapses or its row is removed.
 
-The built-in mechanism that actually unblocks a stream today is dead-letter promotion (below), which deletes the failed row from the work table. The material in the rest of this section describes the legacy cascade-release flow and is retained for the SQL-level semantics.
+The built-in mechanism that actually unblocks a stream today is dead-letter promotion (below), which deletes the failed row from the work table. The rest of this section describes the release the failure report performs.
 :::
 
-### Status=0 Release Pattern
+### Automatic Release on Failure
 
-**Mechanism**: Completing a message with `Status = 0` clears its lease without changing status flags, allowing it to be reprocessed.
+**Mechanism**: `OutboxDrainWorker` publishes a stream's leased rows in order and stops the stream at its first failure: the rows behind the failed one stay leased and unpublished. The failure goes onto the failure channel, and `FailureFlushWorker` reports it with `ReportFailuresAsync` (`report_failures`, which dispatches outbox failures to `process_outbox_failures`). For each failed row, `process_outbox_failures`:
 
-```csharp{title="Status=0 Release Pattern" description="Mechanism: Completing a message with Status = 0 clears its lease without changing status flags, allowing it to be" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "C#", "Status=0", "Release", "Pattern"] unverified="legacy pre-work-pump API shown for illustration; ProcessWorkBatchAsync/ProcessWorkBatchRequest no longer exist — the Status=0 branch survives only in the process_outbox_completions SQL function (migration 013)"}
-// LEGACY API (removed): release messages M2, M3 (let them be retried)
-await coordinator.ProcessWorkBatchAsync(new ProcessWorkBatchRequest {
-    // ... instance identity fields + other required arrays (empty) elided ...
-    OutboxCompletions = [
-        new MessageCompletion { MessageId = message2Id, Status = MessageProcessingStatus.None },  // Release
-        new MessageCompletion { MessageId = message3Id, Status = MessageProcessingStatus.None }   // Release
-    ],
-    OutboxFailures = [
-        new MessageFailure {
-            MessageId = message1Id,
-            CompletedStatus = MessageProcessingStatus.Stored,
-            Error = "Processing failed",
-            Reason = MessageFailureReason.TransportException
-        }
-    ]
-});
-```
+- Sets the Failed flag, records the error and reason, schedules the retry with exponential backoff (30 s × 2^attempts, capped at 5 minutes), and clears the row's lease.
+- Releases the rest of the run (migration 171): the later rows of the same stream that the same instance still leases have their lease cleared and the attempt their claim charged refunded, since none of them was attempted.
 
 **Effect**:
 - M1: Marked as failed, scheduled for retry
-- M2, M3: Leases cleared (`instance_id = NULL`, `lease_expiry = NULL`)
+- M2, M3: Leases cleared (`instance_id = NULL`, `lease_expiry = NULL`), attempt refunded
 - M2, M3: Status unchanged (still `Stored`)
-- M2, M3: Can be reclaimed by any instance
+- M2, M3: Unowned, but the claim's ordering rule keeps them behind M1 until M1's `scheduled_for` elapses or M1 leaves the work table (for example by dead-letter promotion)
 
 ### Cascade Release Sequence Diagram
 
-```mermaid{caption="Cascade release (legacy flow — see the callout above; at HEAD no public API issues Status=0 completions, and the stream-ordering check keeps M2/M3 unclaimable until M1's scheduled_for elapses)."}
+```mermaid{caption="Release on failure: the failure report retries the failed row with backoff and releases the rows behind it, which the claim's ordering rule then holds until the retry is due."}
 sequenceDiagram
-    participant I as Instance
+    participant D as OutboxDrainWorker
+    participant F as FailureFlushWorker
+    participant C as ClaimWorker
     participant DB as PostgreSQL
 
-    Note over DB: Stream S has messages M1, M2, M3<br/>(all claimed by Instance)
+    Note over DB: Stream S has messages M1, M2, M3<br/>(all leased by this instance)
 
-    I->>I: Process M1 → ❌ Fails
-    I->>I: Cannot process M2, M3<br/>(depend on M1 success)
+    D->>D: Publish M1 → ❌ Fails
+    D->>D: Hold M2, M3<br/>(a stream stops at its first failure)
+    D->>F: failure channel (M1)
 
-    I->>DB: ProcessWorkBatchAsync(<br/>failures: [M1],<br/>completions: [M2: Status=0, M3: Status=0])
+    F->>DB: ReportFailuresAsync<br/>(report_failures → process_outbox_failures)
 
-    DB->>DB: UPDATE wh_outbox<br/>SET status = status | Failed,<br/>scheduled_for = now + 1 min,<br/>instance_id = NULL, lease_expiry = NULL<br/>WHERE message_id = M1
+    DB->>DB: UPDATE wh_outbox<br/>SET status = status | Failed,<br/>scheduled_for = now + backoff,<br/>instance_id = NULL, lease_expiry = NULL<br/>WHERE message_id = M1
 
-    DB->>DB: UPDATE wh_outbox<br/>SET instance_id = NULL,<br/>lease_expiry = NULL<br/>WHERE message_id IN (M2, M3)<br/>-- Status unchanged (Status | 0 = Status)
+    DB->>DB: UPDATE wh_outbox<br/>SET instance_id = NULL, lease_expiry = NULL,<br/>attempts = attempts - 1<br/>WHERE stream = S, after M1, same holder<br/>-- M2, M3: status unchanged
 
-    Note over DB: M1: Failed, scheduled for retry<br/>M2, M3: Released, can be reclaimed
+    Note over DB: M1: Failed, scheduled for retry<br/>M2, M3: Released, held behind M1
 
-    Note over I: Later (next ProcessWorkBatch call)
+    C->>DB: ClaimWorkAsync (claim_work)
+    DB->>DB: M1: scheduled_for > now (not claimable)<br/>M2, M3: an earlier row is deferred (blocked)
 
-    I->>DB: ProcessWorkBatchAsync()
-    DB->>DB: Find claimable messages:<br/>M1: scheduled_for > now (blocked)<br/>M2: No earlier messages with active lease ✅<br/>M3: M2 earlier, but no lease ✅
-    DB-->>I: WorkBatch: [M2, M3]
+    Note over C,DB: Once M1's scheduled_for elapses
 
-    I->>I: Process M2, M3 successfully
-    I->>DB: ProcessWorkBatchAsync(<br/>completions: [M2: Published, M3: Published])
-    Note over DB: ✅ M2, M3 completed<br/>M1 still scheduled for retry
+    C->>DB: ClaimWorkAsync (claim_work)
+    DB-->>C: Stream S claimable again, leased to an instance
+    C->>D: outbox drain channel (S)
+    D->>DB: FetchOutboxBatchAsync (fetch_outbox_batch)
+    D->>D: Publish M1, M2, M3 in order
+    Note over DB: Completions reach complete_outbox_published<br/>through OutboxCompletionFlushWorker
 ```
 
 ### Cascade Decision Matrix
@@ -252,7 +241,7 @@ sequenceDiagram
 | M1 State | M2 Lease Cleared? | M2 Claimable? | Ordering Impact |
 |---|---|---|---|
 | Failed, scheduled | No | ❌ Blocked | M2 waits for M1 retry |
-| Failed, scheduled | Yes (Status=0) | ❌ Blocked | Stream-ordering check in `claim_orphaned_outbox` blocks M2 until M1's `scheduled_for` elapses |
+| Failed, scheduled | Yes (released by the failure report) | ❌ Blocked | Stream-ordering check in `claim_orphaned_outbox` blocks M2 until M1's `scheduled_for` elapses |
 | Failed, not scheduled | Yes | ✅ Can claim | Stream continues (M1 poisoned?) |
 | Processing (active lease) | N/A | ❌ Blocked | Normal stream ordering |
 | Completed | N/A | ✅ Can claim | Normal progression |
@@ -535,7 +524,7 @@ WHERE attempts >= 10
 
 ### PostgreSQL Functions
 
-The retry/failure machinery is split across per-concern migration functions, reached through the focused work-pump functions in migration `029_ProcessWorkBatch.sql` (`report_failures` dispatches to the failure functions; `claim_work` calls the claim functions; the legacy `process_work_batch` orchestrator was dropped by that migration):
+The retry/failure machinery is split across per-concern migration functions, reached through the focused work-pump functions in migration `029_ProcessWorkBatch.sql` (`report_failures` dispatches to the failure functions; `claim_work` calls the claim functions; the legacy single orchestrator function was removed by that migration; later migrations redefine several of these functions, and the latest definition is the one in effect):
 
 - `017_ProcessOutboxFailures.sql` — `process_outbox_failures`: Failed flag, error text, failure_reason, exponential backoff
 - `018_ProcessInboxFailures.sql` — `process_inbox_failures`: inbox-side equivalent

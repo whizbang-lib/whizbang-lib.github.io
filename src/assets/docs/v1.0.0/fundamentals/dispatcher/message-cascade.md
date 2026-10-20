@@ -381,7 +381,7 @@ public class AuditReceptor : IReceptor<ProcessOrder, (OrderResult, Routed<AuditE
 
 **How It Works**:
 1. Event is written to `wh_outbox` with `destination=null`
-2. `process_work_batch` stores event in `wh_event_store` and creates perspective events
+2. `store_outbox_messages` copies the event into `wh_event_store` (`event_id` = the outbox `message_id`) and creates its perspective events through `_emit_event_store_chain`, in the same transaction as the outbox insert
 3. `TransportPublishStrategy` skips transport (null destination = bypass)
 4. Event is marked as published (completed)
 

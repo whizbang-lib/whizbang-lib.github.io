@@ -24,7 +24,7 @@ Decision guide for the work coordinator's performance knobs. Defaults are tuned 
 
 ## Idle CPU is too high
 
-**Symptom:** Postgres `pg_stat_statements` shows high call rate of `claim_work` (or legacy `process_work_batch`) on a quiet stack.
+**Symptom:** Postgres `pg_stat_statements` shows high call rate of `claim_work` on a quiet stack.
 
 **Diagnosis:** Polling cadence too aggressive, or notification listener unhealthy (forcing fast polling), or `claim_work` empty-call short-circuit not engaging.
 
