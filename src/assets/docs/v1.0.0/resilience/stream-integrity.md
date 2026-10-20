@@ -7,6 +7,7 @@ order: 4
 description: Cross-service anti-entropy — continuity checkpoints, digest audits, and idempotent re-delivery repair; report-only by default, self-healing as the opt-in
 tags: 'stream-integrity, anti-entropy, re-delivery, backfill, digest, manifest, continuity, checkpoint, repair, cross-service, bootstrap'
 codeReferences:
+  - src/Whizbang.Data.Postgres/Migrations/214_AtMostOnceEventsCarryAFlag.sql
   - src/Whizbang.Core/Messaging/IntegrityCheckpoint.cs
   - src/Whizbang.Core/Messaging/IntegrityAudit.cs
   - src/Whizbang.Core/Messaging/IntegrityGapTracker.cs
@@ -33,6 +34,7 @@ codeReferences:
   - src/Whizbang.Core/Workers/ReceivedOriginStampMonitor.cs
   - src/Whizbang.Generators/MessageJsonContextGenerator.cs
 testReferences:
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/AtMostOnceOccurrenceIntegrityTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/IntegrityCheckpointWorkerTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/IntegrityAuditWorkerTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/SubscriptionExpansionWorkerTests.cs
@@ -166,8 +168,10 @@ and re-delivery repairs them. Refinements:
   re-delivery idempotent by contract, and a recently dropped occurrence is a job the consumer was
   supposed to run and still should.
 - **At-most-once occurrences are detect-and-report only** — re-delivery would violate the exact
-  guarantee they were declared for. The re-delivery selection filters on the occurrence's
-  `deliveryGuarantee` metadata.
+  guarantee they were declared for. An at-most-once occurrence carries the `EventFlags.AtMostOnce`
+  bit (`flags & 32`) on its stored row, set when the occurrence is spawned, and every exclusion
+  (re-delivery selection, digest and epoch folds, verify-and-heal, checkpoint counts, close and
+  purge) tests that bit. See [How at-most-once events are excluded](#at-most-once-exclusion).
 - **Old occurrence gaps are report-only past a window** *(design intent — the config knob for
   this window is not yet built as of a64ba9a; the intended default is the checkpoint confirmation
   horizon)*: whether a *late* fire is wanted is per-schedule taste already expressed by the
@@ -499,6 +503,23 @@ the stream head and that the perspective's birth does not postdate history it sh
 "find only the broken streams and replay just those" shape proven by prior consumer-side repairs.
 
 ---
+
+### How at-most-once events are excluded {#at-most-once-exclusion}
+
+The delivery guarantee of a schedule occurrence lives on the outbox row's metadata, and the outbox
+row is deleted once processed, so the integrity queries cannot read it there. Instead the occurrence
+is flagged when it is spawned: `_wh_spawn_occurrence` sets `EventFlags.AtMostOnce` (bit 32) on the
+outbox row, and the emit chain copies `flags` to `wh_event_store`. Every place that must leave
+at-most-once events out tests `flags & 32` on the event-store row, exactly as ephemeral events are
+tested with `flags & 8`. The bit costs no stored bytes, and the digest, checkpoint and verify
+queries no longer join the event body at all.
+
+Before migration 214 the exclusions read a metadata key that the event store never stored, so no
+occurrence was ever excluded. Migration 214 backfills the bit on past occurrences (found through
+`wh_schedule_runs`, taking the guarantee from the surviving outbox row or else the schedule's current
+setting), removes them from the stream digests, refolds the sealed epochs that held them, and bumps
+the origin generation (see [Origin generation](#origin-generation)) once. Consumers therefore see one deliberate history change and
+reset their seals instead of reporting drift.
 
 ## Scheduling, startup, and the repair policy ladder
 
@@ -913,7 +934,7 @@ Three deliberate design points:
   **old** origin sequence, and a settled-max frontier alone would seal over it.
 - **One canonical fold.** Close, refold (repair), and verify all read the same SQL function
   (`_wh_epoch_buckets`), so the fold predicates — ephemeral (`flags & 8`) and at-most-once
-  excluded, mirroring the emit-chain digest fold — cannot drift apart across consumers.
+  (`flags & 32`) excluded, mirroring the emit-chain digest fold — cannot drift apart across consumers.
 
 ### Answers come from seals, not scans
 
@@ -972,7 +993,7 @@ bucket-for-bucket, refolded on drift. Non-zero drift means an unaccounted write 
 sealed history — logged as the alarm it is. Epochs holding an unsettled arrival are skipped
 whole, exactly like closure.
 
-### Origin generation — seals survive legitimate mutation
+### Origin generation — seals survive legitimate mutation {#origin-generation}
 
 A close-the-books truncation or a reclassification **legitimately changes** what a fold over
 sealed history computes. The two mutation sites (migration 093) now refold the affected sealed

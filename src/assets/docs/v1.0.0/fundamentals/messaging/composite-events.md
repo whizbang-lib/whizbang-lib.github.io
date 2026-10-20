@@ -591,8 +591,10 @@ kinds of bit:
 - **Category** — what the event *is*: `Composite` (`1 << 1`), `Collective`
   (`1 << 0`).
 - **Treatment** — tell the framework to *bypass or alter* some functionality for
-  this event: `NoRebroadcast` (`1 << 2`) today; future candidates like
-  `SuppressNotifications` or `SkipPerspectives`.
+  this event: `NoRebroadcast` (`1 << 2`), and `AtMostOnce` (`1 << 5`), set on an
+  at-most-once schedule occurrence so the [integrity checks](../../resilience/stream-integrity.md#at-most-once-exclusion)
+  and re-delivery leave it out; future candidates like `SuppressNotifications` or
+  `SkipPerspectives`.
 
 Treatment flags are **not composite-specific** — *any* event can carry one. An
 event opts in by a **marker interface** (the builders already derive
