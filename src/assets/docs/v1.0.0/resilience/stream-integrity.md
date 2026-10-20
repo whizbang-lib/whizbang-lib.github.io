@@ -33,6 +33,7 @@ codeReferences:
   - src/Whizbang.Data.EFCore.Postgres/IntegrityCheckpointReceptorRegistrar.cs
   - src/Whizbang.Core/Workers/ReceivedOriginStampMonitor.cs
   - src/Whizbang.Generators/MessageJsonContextGenerator.cs
+  - src/Whizbang.Core/SystemEvents/DigestExemptTypes.cs
 testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/AtMostOnceOccurrenceIntegrityTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/IntegrityCheckpointWorkerTests.cs
@@ -63,6 +64,7 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StreamDigestTableSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/ConsumedTypeRegistryTests.cs
   - tests/Whizbang.Transports.AzureServiceBus.Integration.Tests/ControlPlaneSessionIntegrationTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/AuditDigestLaneSqlTests.cs
 verifiedAgainstCommit: a64ba9a0
 verifiedDate: 2026-08-04
 ---
@@ -520,6 +522,14 @@ occurrence was ever excluded. Migration 214 backfills the bit on past occurrence
 setting), removes them from the stream digests, refolds the sealed epochs that held them, and bumps
 the origin generation (see [Origin generation](#origin-generation)) once. Consumers therefore see one deliberate history change and
 reset their seals instead of reporting drift.
+
+### Audit records are not digested {#audit-records-not-digested}
+
+{verified: AuditDigestLaneSqlTests.InboxStoredAuditRecord_LeavesTheOriginsDigestLaneUntouched_WhileADomainEventFoldsAsync, AuditDigestLaneSqlTests.Reconciliation_AuditTraffic_OriginAndSubscriberAnswerTheSameAsync, AuditDigestLaneSqlTests.VerifyDigestTable_RemovesAnAuditBucketInsteadOfHealingItAsync}
+
+`EventAudited` and `CommandAudited` are left out of every integrity fold: both emit chains, epoch seals, the type-level and windowed answers, the stream recomputes and the verification sweep. They are matched on the type-name part of `event_type` against `DigestExemptTypes.TypeNames` (the SQL constant `__DIGEST_EXEMPT_TYPES__`).
+
+Audit records are a function of the origin's events and scope, and the origin does not store most of them, so folding them made the two sides disagree: a subscriber that stored fanned-out audit records counted them in the origin's lane, where the origin had nothing to match. Migration 216 removes the audit buckets and sealed epochs already stored, once.
 
 ## Scheduling, startup, and the repair policy ladder
 
