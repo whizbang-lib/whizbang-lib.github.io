@@ -23,6 +23,7 @@ codeReferences:
   - src/Whizbang.Core/Audit/AuditLogEntry.cs
   - src/Whizbang.Core/Audit/AuditLevel.cs
   - src/Whizbang.Core/Attributes/AuditEventAttribute.cs
+  - src/Whizbang.Core/SystemEvents/AuditLedger.cs
 testReferences:
   - tests/Whizbang.Core.Tests/SystemEvents/EventAuditedTests.cs
   - tests/Whizbang.Core.Tests/SystemEvents/CommandAuditTests.cs
@@ -34,6 +35,9 @@ testReferences:
   - tests/Whizbang.Core.Tests/Audit/AuditEventAttributeTests.cs
   - tests/Whizbang.Core.Tests/Audit/AuditLevelTests.cs
   - tests/Whizbang.Core.Tests/Audit/AuditLogEntryTests.cs
+  - tests/Whizbang.Core.Tests/SystemEvents/AuditLedgerTests.cs
+  - tests/Whizbang.Core.Tests/SystemEvents/AuditDecisionHookCallSiteTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/AuditRecordStreamPositionSqlTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -261,6 +265,22 @@ public static class SystemEventStreams {
   public static Guid StreamId { get; } = new("00000000-0000-0000-0000-000000000001");
 }
 ```
+
+`SystemEventStreams` is where the `SystemEventEmitter` appends. Audit records produced by the work coordinator's outbox path do not use it: they travel on the tenant's audit ledger, below.
+
+### The per-tenant audit ledger {#audit-ledger}
+
+{verified: AuditLedgerTests.For_SameTenant_IsTheSameStreamAsync, AuditLedgerTests.For_DifferentTenants_AreDifferentStreamsAsync, AuditLedgerTests.For_NoTenant_IsTheEmptyTenantLedgerAsync, AuditRecordStreamPositionSqlTests.Store_RecordOnTheTenantLedger_IsStoredOnTheLedgerStreamAsync}
+
+Each tenant's audit records share one stream, `AuditLedger.StreamFor(tenantId)`. It is a name-based (version 5) UUID of the tenant id under the namespace `UUIDv5(nil, "sys-audit")`, so every service derives the same id without coordination; records with no tenant share the empty-tenant ledger. Publishing on one stream per tenant keeps a tenant's audit trail ordered and owned by one instance at a time.
+
+A coalesced bundle of audit records rides the ledger stream. Each record fanned out of it keeps its own id as its stream, so the audit perspective still holds one row per record rather than folding a tenant's whole trail into one row.
+
+### The audit decision hook applies on every path {#audit-decision-hook}
+
+{verified: AuditDecisionHookCallSiteTests.Scoped_VetoingHook_SuppressesTheAuditRecordAsync, AuditDecisionHookCallSiteTests.Immediate_VetoingHook_SuppressesTheAuditRecordAsync, AuditDecisionHookCallSiteTests.StreamAffinity_VetoingHook_SuppressesTheAuditRecordAsync, AuditDecisionHookCallSiteTests.Factory_Scoped_PassesTheRegisteredHookAsync}
+
+The registered `IAuditDecisionHook` can veto or name an audit record wherever one is produced: the scoped, immediate and stream-affinity work coordinator strategies, the event store decorator, and the system event emitter. Before this release the outbox path skipped it. The default registration is `NoOpinionAuditDecisionHook`, which leaves the `[AuditEvent]` decision as it is; register your own to override it.
 
 ---
 
