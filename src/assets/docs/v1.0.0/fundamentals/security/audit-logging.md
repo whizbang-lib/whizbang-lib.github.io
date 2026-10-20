@@ -171,8 +171,11 @@ with defaults — a **sliding window with a hard freshness cap**:
   the stream goes quiet — a bulk operation's entire audit trail coalesces and ships at burst-end.
 - `MaxDelaySeconds` (default 120) bounds staleness: a continuous stream still ships at least
   every max-delay interval, oldest-first.
-- Matured records ship as **`AuditEventsComposite` batch envelopes** (wire-only, size-capped,
-  `MaxBatchCount` default 500), fanning out to per-record inbox rows at the consumer. A bulk
+- Matured records ship as **`AuditEventsComposite` batch envelopes** (wire-only, capped at
+  `MaxBatchCount` records, default 500, and `MaxBatchBytes` of payload, default 192,000), fanning out to
+  per-record inbox rows at the consumer. An audit record carries the original message's body, so a batch
+  of large records splits by size before it reaches the record count. Before 0.2623.1 only the count was
+  capped, and 500 large records could become one message no broker accepts. A bulk
   import that produces thousands of audit records crosses the wire as a handful of envelopes
   instead of thousands of individual messages.
 - **Failure degrades to slower, never to loss**: every audit row is minted with the
