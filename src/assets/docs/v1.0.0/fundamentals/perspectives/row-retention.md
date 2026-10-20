@@ -147,11 +147,12 @@ from an evicted row:
 | Earlier events, durable history | Restores the latest snapshot, replays the events after it (the incoming one included), and writes the whole row |
 | Earlier events, ephemeral history, a snapshot survives | The same: the snapshot is the floor, and the events after it are still readable |
 | Earlier events, ephemeral history, no snapshot | Nothing can rebuild the row: it starts from the incoming event, and the runner logs a warning that the row is starting fresh |
+| Earlier events, ephemeral history, the surviving snapshot is in an older format | The same as no snapshot: the snapshot cannot be read and the history is reaped, so the row starts from the incoming event, the batch is applied and the cursor advances. The warning names the unreadable snapshot's event id and the event the row restarts from |
 
 The probe runs only for perspectives whose rows can be evicted, so a perspective that declares no
 retention and joins no group pays nothing on first contact. It is perspective-aware: a stream shared
 by several contracts holds history this perspective never folded, and that history is not a sign of
-an evicted row. {verified: EvictedRowRebuildTests.CappedPerspective_EvictedRow_NextEventRebuildsTheWholeRowFromHistoryAsync, EvictedRowRebuildTests.CappedPerspective_EvictedRowWithSnapshot_RestoresTheSnapshotAndReplaysTheTailAsync, EvictedRowRebuildTests.CascadedGroupMember_EvictedRow_NextEventRebuildsTheWholeRowFromHistoryAsync, EvictedRowRebuildTests.EphemeralPerspective_EvictedRowWithSnapshot_RestoresTheSnapshotAndReplaysTheTailAsync, EvictedRowRebuildTests.EphemeralPerspective_EvictedRowWithoutSnapshot_StartsFreshAndWarnsAsync, EvictedRowRebuildTests.UnretainedPerspective_MissingRow_NeverProbesTheLogAsync, ResurrectionProbeIsPerspectiveAwareTests.FirstContact_OnStreamWithUnhandledHistory_CreatesRow_DoesNotRewindAsync}
+an evicted row. {verified: EvictedRowRebuildTests.CappedPerspective_EvictedRow_NextEventRebuildsTheWholeRowFromHistoryAsync, EvictedRowRebuildTests.CappedPerspective_EvictedRowWithSnapshot_RestoresTheSnapshotAndReplaysTheTailAsync, EvictedRowRebuildTests.CascadedGroupMember_EvictedRow_NextEventRebuildsTheWholeRowFromHistoryAsync, EvictedRowRebuildTests.EphemeralPerspective_EvictedRowWithSnapshot_RestoresTheSnapshotAndReplaysTheTailAsync, EvictedRowRebuildTests.EphemeralPerspective_EvictedRowWithoutSnapshot_StartsFreshAndWarnsAsync, EvictedRowRebuildTests.EphemeralPerspective_EvictedRowWithStaleSnapshot_StartsFreshFromTheIncomingBatchAndWarnsAsync, EvictedRowRebuildTests.UnretainedPerspective_MissingRow_NeverProbesTheLogAsync, ResurrectionProbeIsPerspectiveAwareTests.FirstContact_OnStreamWithUnhandledHistory_CreatesRow_DoesNotRewindAsync}
 
 ## Rebuild, rewind and replay
 
