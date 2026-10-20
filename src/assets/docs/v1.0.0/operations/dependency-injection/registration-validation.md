@@ -11,10 +11,13 @@ tags: 'di, dependency-injection, validation, startup, diagnostics'
 codeReferences:
   - src/Whizbang.Core/DependencyInjection/RegistrationValidation.cs
   - src/Whizbang.Core/DependencyInjection/RegistrationValidationStartup.cs
+  - src/Whizbang.Core/DependencyInjection/ServiceRequirement.cs
   - src/Whizbang.Generators/ServiceRequirementsGenerator.cs
 testReferences:
   - tests/Whizbang.Core.Tests/DependencyInjection/RegistrationValidationTests.cs
   - tests/Whizbang.Core.Component.Tests/DependencyInjection/RegistrationValidationStartupTests.cs
+  - tests/Whizbang.Core.Tests/DependencyInjection/RealCompositionValidationTests.cs
+  - tests/Whizbang.Generators.Tests/ServiceRequirementsGeneratorTests.cs
 ---
 
 # Registration Validation
@@ -51,6 +54,28 @@ services.AddWhizbang()          // core services registered here
 Checking at the end of `AddWhizbang` would report every driver-supplied service as missing. A guard
 that fails on correct compositions gets switched off, and takes the real failures with it.
 
+## Which requirements are checked
+
+The generated list of requirements covers every registration call in the compiled source, including
+calls that a given composition never makes. Validation therefore checks a requirement only when its
+implementation type is registered in the service collection being validated. A composition that
+calls `AddWhizbang()` and a storage driver but not `AddTransportConsumer()` does not register
+`TransportConsumerWorker`, so the `ITransport` that worker requires is not checked. A composition
+that calls `AddTransportConsumer()` without a transport still fails with
+`ITransport (required by TransportConsumerWorker)`.
+
+An implementation type counts as registered when a service descriptor, keyed or not, names it as its
+service type, as its implementation type, or through the type of its instance.
+
+A factory registration, such as `AddSingleton<IWorker, Worker>(sp => new Worker(...))` or
+`AddHostedService<Worker>(sp => ...)`, produces a descriptor that carries only its service type and
+does not name the type the factory builds. The source generator records the service types under
+which an implementation is registered through a factory in `ServiceRequirement.FactoryServiceTypes`;
+for `AddHostedService<T>` that service type is `IHostedService`. A factory descriptor whose service
+type appears in that list counts as registering the implementation, so a type registered only
+through a factory is still checked. A factory registration whose service type is the requirement's
+own type needs no entry, because the requirement is already named after that service type.
+
 ## What it costs
 
 Nothing measurable, and nothing observable. It compares `Type` handles against the registered
@@ -72,8 +97,8 @@ one worker in isolation. Leave it on for anything that runs as an application.
 ## What it does not catch
 
 A dependency that is registered but wrong, and a registration that is present but never used.
-Validation answers one question only: can every registered type's constructor be satisfied by
-something in this collection.
+Validation answers one question only: can the constructor of every type registered in this collection
+be satisfied by something in this collection.
 
 ## Related
 
