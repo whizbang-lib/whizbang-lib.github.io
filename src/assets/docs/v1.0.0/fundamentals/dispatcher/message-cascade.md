@@ -231,6 +231,43 @@ public class ProcessOrderReceptor : IReceptor<ProcessOrder, (OrderResult, OrderP
 // Result: SendInvoice command dispatched to invoice receptor
 ```
 
+### A Returned Value Nothing Handles by Its Own Type {#mediator-lookup}
+
+A receptor can return an `IMessage` that is neither a command nor an event, such as a reply or a
+notification type. When no receptor handles that value's exact type, the dispatcher looks further, the way a
+mediator does: it runs the receptors declared for **any interface or base type the value implements**. It
+looks in this assembly, in other assemblies, and among receptors registered at runtime.
+
+When nothing handles the value by any of its types, the call fails with `ReceptorNotFoundException`. A value
+that silently goes nowhere is almost always a missing receptor. To skip it with a warning instead, turn the
+check off:
+
+```csharp{title="A returned value finds the receptor of its interface" description="The returned value has no receptor of its own type; the receptor for its interface handles it" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Dispatcher", "Cascade", "Mediator"] tests=["MediatorResultLookupComponentTests.AReturnedValueWithNoReceptorOfItsOwn_ReachesAnotherAssemblysReceptorOfItsInterfaceAsync", "MediatorResultLookupComponentTests.AReturnedValueWithNoReceptorOfItsOwn_ReachesARuntimeReceptorOfItsInterfaceAsync", "MediatorResultLookupComponentTests.AReturnedValueNothingHandles_FailsTheCallByDefaultAsync", "MediatorResultLookupComponentTests.AReturnedValueNothingHandles_IsSkippedWhenNotRequiredAsync", "ReceptorPriorityAndMediatorEmissionTests.PolymorphicReceptorMessageTypes_ListTheInterfacesLocalReceptorsAreDeclaredForAsync"]}
+public interface IShipmentNotice : IMessage {
+  Guid OrderId { get; }
+}
+
+public record CarrierAssigned(Guid OrderId, string Carrier) : IShipmentNotice;
+
+public class AssignCarrier : IReceptor<AssignCarrierCommand, CarrierAssigned> {
+  public ValueTask<CarrierAssigned> HandleAsync(AssignCarrierCommand cmd, CancellationToken ct = default) =>
+    ValueTask.FromResult(new CarrierAssigned(cmd.OrderId, "ground"));
+}
+
+// No receptor for CarrierAssigned itself: this one, declared for its interface, handles it
+public class NotifyShipment : IReceptor<IShipmentNotice> {
+  public ValueTask HandleAsync(IShipmentNotice notice, CancellationToken ct = default) { /* ... */ }
+}
+
+// With nothing handling the value at all, the call throws ReceptorNotFoundException unless:
+services.AddWhizbang(options => options.RequireReceptorForReturnedResult = false);
+```
+
+| `WhizbangCoreOptions.RequireReceptorForReturnedResult` | A returned value nothing handles |
+|---|---|
+| `true` (default) | The call throws `ReceptorNotFoundException` |
+| `false` | The value is skipped with a warning; the call succeeds |
+
 ### Best Practices
 
 **DO**: Return messages (events and commands) alongside business results in tuples

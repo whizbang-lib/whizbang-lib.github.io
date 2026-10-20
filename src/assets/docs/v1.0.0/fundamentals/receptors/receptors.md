@@ -69,7 +69,7 @@ public interface IReceptor<in TMessage> {
 
 **Key Characteristics**:
 - **Stateless**: No instance fields, all data via parameters
-- **Single Responsibility**: One receptor per message type
+- **Single Responsibility**: Each receptor does one job. A message can have several receptors; every one runs, in [priority order](receptor-priority)
 - **Async**: Returns `ValueTask<T>` or `ValueTask` for optimal performance
 - **Type Safe**: Compile-time enforcement of message → response mapping
 
@@ -1194,6 +1194,7 @@ public class CompleteOrderReceptor : IReceptor<CompleteOrder, OrderCompleted> {
 
 **Core Concepts**:
 - [Dispatcher](../dispatcher/dispatcher.md) - How to invoke receptors
+- [Receptor Priority](receptor-priority.md) - Several receptors for one message, and their order
 - [RPC Response Extraction](../dispatcher/rpc-extraction.md) - Extract specific types from tuple returns
 - [Perspectives](../perspectives/perspectives.md) - Event listeners for read models
 - [Message Context](../messages/message-context.md) - Correlation and causation tracking

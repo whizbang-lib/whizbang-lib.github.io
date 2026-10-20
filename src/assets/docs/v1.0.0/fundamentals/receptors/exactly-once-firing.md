@@ -42,7 +42,7 @@ Whizbang's firing contract is straightforward: **a receptor fires exactly once f
 
 ## The contract
 
-A receptor registered at one or more lifecycle stages (explicit `[FireAt]` or the default stages `LocalImmediateDetached` + `PostInboxDetached`) is only expected to produce **one invocation per message**. The stage-level filters in [`ReceptorInvoker`](lifecycle-receptors) (source-service filtering at `PostInbox`, owned-domain filtering and the local-dispatch flag at `PreOutbox`) are designed so that exactly one of a receptor's registered stages fires per message lifetime — the other stages short-circuit.
+A receptor registered at one or more lifecycle stages (explicit `[FireAt]` or the default stages `LocalImmediateInline` + `PostInboxDetached`) is only expected to produce **one invocation per message**. The stage-level filters in [`ReceptorInvoker`](lifecycle-receptors) (source-service filtering at `PostInbox`, owned-domain filtering and the local-dispatch flag at `PreOutbox`) are designed so that exactly one of a receptor's registered stages fires per message lifetime — the other stages short-circuit.
 
 If a receptor fires twice for the same message — whether at the same stage or across two different stages — that is a bug. The guardrail described below catches it.
 

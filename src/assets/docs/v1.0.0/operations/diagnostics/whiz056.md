@@ -121,7 +121,7 @@ dotnet_diagnostic.WHIZ056.severity = none
 ## Related
 
 - [WHIZ055: Guid.NewGuid() Usage](whiz055)
-- [WHIZ057: Raw Guid Parameter](whiz057)
+- [WHIZ057: Raw Guid Parameter (retired)](whiz057)
 - [WHIZ058: GUID Call Intercepted](whiz058)
 - [WhizbangIds and TrackedGuid](../../fundamentals/identity/whizbang-ids)
 - [GuidUsageAnalyzer](../../fundamentals/identity/whizbang-ids#analyzer)

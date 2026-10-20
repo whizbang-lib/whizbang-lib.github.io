@@ -188,8 +188,8 @@ var aggregateId = context.GetAggregateId();
 | ID | Severity | Message |
 |----|----------|---------|
 | **WHIZ004** | Info | `Found [StreamId] on command {0}.{1}` |
-| **WHIZ005** | Error | `[StreamId] on {0}.{1} must be of type Guid, Guid?, or a type with a .Value property returning Guid` |
-| **WHIZ006** | Warning | `Type {0} has multiple [StreamId] attributes. Only the first property '{1}' will be used.` |
+| **WHIZ005** | Retired | Never reported and no longer in the generator package: any property type may be a stream ID. See [WHIZ005](../../operations/diagnostics/whiz005). |
+| **WHIZ006** | Warning | `Type {0} has multiple [StreamId] attributes. Only the first property '{1}' will be used.` Reported on each ignored attribute. |
 | **WHIZ009** | Warning | `Type '{0}' implements {1} but has no property or parameter marked with [StreamId]. Stream ID resolution will fail at runtime.` |
 | **WHIZ010** | Info | `Found [StreamId] on {0}.{1}` |
 | **WHIZ013** | Error | `[GenerateStreamId]` on an **init-only** `[StreamId]` property — the generated `SetStreamId` writer cannot target `init`, so the minted ID would silently never be written. Change the property to `get; set;`. |
@@ -254,7 +254,6 @@ public record OrderCancelled(string Reason) : OrderEventBase;
 ### DON'T ❌
 
 - ❌ Mark multiple properties (WHIZ006 — only the first is used)
-- ❌ Use non-Guid-compatible types (WHIZ005 error)
 - ❌ Leave events without `[StreamId]` (WHIZ009 — runtime resolution will fail)
 - ❌ Combine `[GenerateStreamId]` with an init-only property (WHIZ013 error)
 

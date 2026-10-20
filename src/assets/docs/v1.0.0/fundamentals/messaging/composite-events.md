@@ -546,6 +546,42 @@ cascades **exactly as if they had been published individually**, at every
 service that consumes the domain — the composite is purely a transport/packaging
 optimization, not a change in downstream semantics.
 
+### Every entry, and where the wire copy goes {#composite-routing}
+
+The local fan-out runs on **every** entry that writes an owned composite: a single `PublishAsync`, a
+`PublishManyAsync`, and a composite a receptor returns, which cascades like any returned event. A composite
+counts as an event to every dispatch policy, even though it implements `IMessage` and not `IEvent`, so a
+returned composite is never refused as an owned command nothing handles.
+
+The wire copy goes to the **topic its inner events share**, where the services subscribed to those events
+listen, wherever the composite type itself is declared. When its inner events would go to different topics,
+the composite's own type decides. Release 0.2623.0 routed a composite to its owner's command destination
+instead, so only the publishing service received it and discarded it as its own echo; 0.2623.1 fixes that.
+
+```csharp{title="A composite travels where its events do" description="Every way an owned composite is written expands it here and sends one copy to its events' topic" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "Composite events", "Routing"] tests=["OwnedCompositePublishComponentTests.PublishingAnOwnedComposite_StoresAndHandlesEveryInnerEvent_AndSendsTheCompositeAsync", "OwnedCompositePublishComponentTests.EveryWayAnOwnedCompositeIsWritten_SendsItToTheEventTopicAsync", "OwnedCompositePublishComponentTests.EveryWayAnOwnedCompositeIsWritten_StoresAndHandlesItsInnerEventsHereOnceAsync", "OwnedCompositePublishComponentTests.ACompositeDeclaredInAnotherNamespace_GoesToItsEventsTopicAsync"]}
+await dispatcher.PublishAsync(composite);                       // expands here, one copy to the events' topic
+await dispatcher.PublishManyAsync<OrderBurst>([composite]);     // the same, per composite
+
+public class StartOrder : IReceptor<StartOrderCommand, OrderBurst> {
+  public ValueTask<OrderBurst> HandleAsync(StartOrderCommand cmd, CancellationToken ct = default) =>
+    ValueTask.FromResult(new OrderBurst { StreamId = cmd.OrderId, Inner = [/* events */] });   // the same, by cascade
+}
+```
+
+**Scheduled.** A composite published with a future `ScheduledFor` is not expanded at publish. Its copy is
+marked as deferred to its delivery, and when it arrives back the publishing service expands it then; the
+transport consumer lets a deferred copy through rather than discarding it as an echo.
+
+**Store-only.** A composite is never stored itself, only its inner events. A composite, or any other message that
+is not an event, routed to the event store only (`Route.EventStoreOnly(...)`) is refused with
+`DispatchRejectedException` (`NotAnEventCannotBeStoreOnly`); before 0.2623.1 its row went nowhere without a word.
+Routed `Local`, it keeps its local run, which stores its inner events.
+
+```csharp{title="Scheduled and store-only composites" description="A scheduled composite expands at delivery; a store-only composite is refused" category="Architecture" difficulty="INTERMEDIATE" tags=["Messaging", "Composite events", "Scheduling"] tests=["OwnedCompositePublishComponentTests.AScheduledOwnedComposite_IsNotExpandedBeforeItsTimeAsync", "OwnedCompositePublishComponentTests.ANonEventRoutedToTheEventStoreOnly_IsRefusedNotDroppedAsync", "TransportConsumerWorkerOwnedEventDiscardTests.OwnedEvent_ThisServiceDeferredToItsDelivery_IsNotDiscardedAsync"]}
+await dispatcher.PublishAsync(composite, new DispatchOptions { ScheduledFor = tomorrow }); // expands tomorrow
+await dispatcher.PublishAsync(Route.EventStoreOnly(composite));                          // DispatchRejectedException
+```
+
 ## Treatment flags (extending `EventFlags`)
 
 The no-rebroadcast guard generalizes into a small convention. `EventFlags` (the

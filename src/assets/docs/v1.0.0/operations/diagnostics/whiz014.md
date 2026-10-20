@@ -1,8 +1,8 @@
 ---
 title: 'WHIZ014: Receptor May Not Be Constructible by Dependency Injection'
 pageType: troubleshooting
-verifiedAgainstCommit: 9a416b5b
-verifiedDate: 2026-10-17
+verifiedAgainstCommit: 7e3d0a73
+verifiedDate: 2026-10-19
 description: >-
   Warning when a receptor that will be registered in dependency injection takes a constructor parameter the container
   is unlikely to supply (a delegate or a bare primitive), which would abort the whole service provider under validation.
@@ -22,7 +22,7 @@ codeReferences:
 testReferences:
   - tests/Whizbang.Generators.Tests/ReceptorInjectabilityDiagnosticTests.cs
   - tests/Whizbang.Generators.Tests/ReceptorRegistrationSuppressionTests.cs
-lastMaintainedCommit: '9a416b5b'
+lastMaintainedCommit: '7e3d0a73'
 ---
 
 # WHIZ014: Receptor May Not Be Constructible by Dependency Injection
@@ -145,9 +145,10 @@ checked {verified: ReceptorInjectabilityDiagnosticTests.TheWidestConstructorIsTh
 The supported way to silence WHIZ014 is `[SuppressReceptorRegistration]`, because for a hand-built receptor it is also
 the fix.
 
-WHIZ014 is reported with no source location, so a `#pragma warning disable WHIZ014` region around the receptor cannot
-reach it, and a file-scoped `.editorconfig` section (`[*.cs]`) does not apply to it either. To turn it off for a whole
-project, use a global analyzer config file:
+WHIZ014 is reported at the constructor parameter that dependency injection is unlikely to supply
+{verified: ReceptorRegistrationSuppressionTests.UndeclaredHandBuiltReceptor_IsWarnedAboutAtTheParameterDiCannotSupplyAsync},
+so `#pragma warning disable WHIZ014` around that constructor, or an `.editorconfig` section matching the file, silences
+it for that receptor. To turn it off for a whole project, use a global analyzer config file:
 
 ```ini{title="Silence WHIZ014 project-wide" description="A global analyzer config that turns off the WHIZ014 receptor-injectability warning." category="Diagnostics" difficulty="BEGINNER" tags=["diagnostics", "suppression", "globalconfig"] unverified="suppression/config, not exercised by a test"}
 # .globalconfig

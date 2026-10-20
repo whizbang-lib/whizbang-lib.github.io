@@ -327,16 +327,16 @@ services.Configure<AzureBlobOffloadOptions>("azure-blob", opts => {
 
 ## Build-time diagnostics (WHIZ###)
 
-Compile-time errors, warnings and notices from Whizbang's source generators and analyzers use `WHIZ###` IDs and surface in build output and the IDE, not at runtime. Every ID has its own page; each ID means one thing. WHIZ060 to WHIZ063 are also covered together on the [Serializable Property Analyzer](serializable-property-analyzer.md) page.
+Compile-time errors, warnings and notices from Whizbang's source generators and analyzers use `WHIZ###` IDs and surface in build output and the IDE, not at runtime. Every ID has its own page; each ID means one thing. WHIZ060 to WHIZ063 are also covered together on the [Serializable Property Analyzer](serializable-property-analyzer.md) page. Ten IDs are **retired** (WHIZ003, WHIZ005, WHIZ020, WHIZ023, WHIZ042, WHIZ050, WHIZ051, WHIZ052, WHIZ057 and WHIZ803): they were declared but never reported, are no longer in the generator package, and are never reused. Their pages explain what each described; delete any suppression of them.
 
 | ID | Severity | Page |
 |---|---|---|
 | WHIZ001 | Info | [Receptor Discovered](whiz001.md) |
 | WHIZ002 | Info | [No Message Handlers Found](whiz002.md) |
-| WHIZ003 | Error | [Invalid Receptor Implementation](whiz003.md) (declared, not currently reported) |
+| WHIZ003 | Retired | [Invalid Receptor Implementation](whiz003.md) (retired: never reported, ID never reused) |
 | WHIZ004 | Info | [Command Stream ID Discovered](whiz004.md) |
-| WHIZ005 | Error | [Stream ID Must Be Guid](whiz005.md) (declared, not currently reported) |
-| WHIZ006 | Warning | [Multiple Stream ID Attributes](whiz006.md) (declared, not currently reported) |
+| WHIZ005 | Retired | [Stream ID Must Be Guid](whiz005.md) (retired: never reported, ID never reused) |
+| WHIZ006 | Warning | [Multiple Stream ID Attributes](whiz006.md) |
 | WHIZ007 | Info | [Perspective Discovered](whiz007.md) |
 | WHIZ008 | Warning | [Perspective Model Size Warning](whiz008.md) |
 | WHIZ009 | Warning | [Missing StreamId Attribute](whiz009.md) |
@@ -346,12 +346,12 @@ Compile-time errors, warnings and notices from Whizbang's source generators and 
 | WHIZ013 | Error | [GenerateStreamId requires a settable StreamId](whiz013.md) |
 | WHIZ014 | Warning | [Receptor May Not Be Constructible by Dependency Injection](whiz014.md) |
 | WHIZ015 | Warning | [Generic Message Types Are Not Supported](whiz015.md) |
-| WHIZ020 | Info | [WhizbangId Discovered](whiz020.md) (declared, not currently reported) |
+| WHIZ020 | Retired | [WhizbangId Discovered](whiz020.md) (retired: never reported, ID never reused) |
 | WHIZ021 | Warning | [WhizbangId Must Be Partial](whiz021.md) |
 | WHIZ022 | Info | [Topic Filter Discovered](whiz022.md) |
-| WHIZ023 | Info | [Enum Filter No Description](whiz023.md) (declared, not currently reported) |
+| WHIZ023 | Retired | [Enum Filter No Description](whiz023.md) (retired: never reported, ID never reused) |
 | WHIZ024 | Warning | [Duplicate WhizbangId Type Name](whiz024.md) |
-| WHIZ025 | Warning | [TopicFilter On Non-Command](whiz025.md) (declared, not currently reported) |
+| WHIZ025 | Warning | [TopicFilter On Non-Command](whiz025.md) |
 | WHIZ026 | Info | [No Topic Filters Found](whiz026.md) |
 | WHIZ027 | Info | [Perspective Runner Generated](whiz027.md) |
 | WHIZ028 | Info | [Perspective Runner Registry Generated](whiz028.md) |
@@ -361,15 +361,15 @@ Compile-time errors, warnings and notices from Whizbang's source generators and 
 | WHIZ033 | Warning | [Perspective Model Missing StreamId](whiz033.md) |
 | WHIZ040 | Info | [User Service Discovered](whiz040.md) |
 | WHIZ041 | Info | [Abstract Class Skipped](whiz041.md) |
-| WHIZ042 | Info | [No User Services Found](whiz042.md) (declared, not currently reported) |
-| WHIZ050 | Warning | [Public API Missing Tests](whiz050.md) (declared, not currently reported) |
-| WHIZ051 | Warning | [Invalid Test Reference](whiz051.md) (declared, not currently reported) |
-| WHIZ052 | Info | [Test Link Discovered](whiz052.md) (declared, not currently reported) |
+| WHIZ042 | Retired | [No User Services Found](whiz042.md) (retired: never reported, ID never reused) |
+| WHIZ050 | Retired | [Public API Missing Tests](whiz050.md) (retired: never reported, ID never reused) |
+| WHIZ051 | Retired | [Invalid Test Reference](whiz051.md) (retired: never reported, ID never reused) |
+| WHIZ052 | Retired | [Test Link Discovered](whiz052.md) (retired: never reported, ID never reused) |
 | WHIZ053 | Info | [Failed to Load Documentation Map](whiz053.md) |
 | WHIZ054 | Info | [Failed to Load Tests Map](whiz054.md) |
 | WHIZ055 | Warning | [Guid.NewGuid() Usage](whiz055.md) |
 | WHIZ056 | Warning | [Guid.CreateVersion7() Usage](whiz056.md) |
-| WHIZ057 | Warning | [Raw Guid Parameter](whiz057.md) (declared, not currently reported) |
+| WHIZ057 | Retired | [Raw Guid Parameter](whiz057.md) (retired: never reported, ID never reused) |
 | WHIZ058 | Info | [GUID Call Intercepted](whiz058.md) |
 | WHIZ059 | Info | [GUID Interception Suppressed](whiz059.md) |
 | WHIZ060 | Error | [Property uses non-serializable type 'object'](whiz060.md) |
@@ -426,10 +426,10 @@ Compile-time errors, warnings and notices from Whizbang's source generators and 
 | WHIZ701 | Info | [EF Core Perspective Discovery](whiz701.md) |
 | WHIZ702 | Info | [EF Core Migration Files Discovery](whiz702.md) |
 | WHIZ703 | Info | [No DbContext Found](whiz703.md) |
-| WHIZ801 | Error | [VectorField Invalid Type](whiz801.md) (declared, not currently reported) |
-| WHIZ802 | Error | [VectorField Invalid Dimensions](whiz802.md) (declared, not currently reported) |
-| WHIZ803 | Warning | [PhysicalField Complex Type](whiz803.md) (declared, not currently reported) |
-| WHIZ805 | Warning | [Split Mode No Physical Fields](whiz805.md) (declared, not currently reported) |
+| WHIZ801 | Error | [VectorField Invalid Type](whiz801.md) |
+| WHIZ802 | Error | [VectorField Invalid Dimensions](whiz802.md) |
+| WHIZ803 | Retired | [PhysicalField Complex Type](whiz803.md) (retired: never reported, ID never reused) |
+| WHIZ805 | Warning | [Split Mode No Physical Fields](whiz805.md) |
 | WHIZ807 | Info | [Physical Fields Discovered](whiz807.md) |
 | WHIZ808 | Error | [Split Class Model Cannot Be Copied](whiz808.md) |
 | WHIZ810 | Warning | [Perspective Model Contains Dictionary Property](whiz810.md) |

@@ -1,11 +1,11 @@
 ---
-title: 'WHIZ057: Raw Guid Parameter'
+title: 'WHIZ057: Raw Guid Parameter (retired)'
 pageType: troubleshooting
-verifiedAgainstCommit: 9a416b5b
-verifiedDate: 2026-10-17
+verifiedAgainstCommit: 7e3d0a73
+verifiedDate: 2026-10-19
 description: >-
-  Warning descriptor for a raw Guid parameter where a strongly typed id would carry precision and ordering
-  metadata. The GuidUsageAnalyzer declares it, but nothing reports it in this version.
+  Retired. WHIZ057 (Raw Guid Parameter) was declared but never reported. It is removed from the generator package and
+  the ID is never reused.
 version: 1.0.0
 category: Diagnostics
 severity: Warning
@@ -15,63 +15,50 @@ tags:
   - whizbang-id
   - strongly-typed-id
   - analyzer
+  - retired
 codeReferences:
   - src/Whizbang.Generators/DiagnosticDescriptors.cs
-  - src/Whizbang.Generators/GuidUsageAnalyzer.cs
-testReferences: []
-lastMaintainedCommit: '9a416b5b'
+testReferences:
+  - tests/Whizbang.Generators.Tests/DiagnosticDescriptorsTests.cs
+lastMaintainedCommit: '7e3d0a73'
 ---
 
-# WHIZ057: Raw Guid Parameter
+# WHIZ057: Raw Guid Parameter (retired)
 
-**Severity**: Warning
-**Category**: Guid Usage
+**Status**: Retired. Never reported.
+**Former severity**: Warning
 
-## Description
+## Retired
 
-WHIZ057 describes a method parameter typed as a raw `Guid` where a strongly typed id (an `IWhizbangId`, or a type
-generated with `[WhizbangId]`) would fit. A raw `Guid` loses the metadata that `TrackedGuid` and `[WhizbangId]` types
-keep: which version it is, where it came from, and whether it is time-ordered.
+WHIZ057 is **retired**. No generator or analyzer ever reported it, and its descriptor has been removed from the
+generator package. The ID is **never reused**: it will not be given a new meaning, so a search or a suppression for
+it can never match a different diagnostic. A test keeps every retired ID from being declared again
+(`DiagnosticDescriptorsTests.RetiredDiagnosticIds_AreNeverDeclaredAgainAsync`).
 
-The `GuidUsageAnalyzer` lists WHIZ057 among its supported diagnostics, but in this version **it never reports it**.
-The analyzer only inspects `Guid.NewGuid()` and `Guid.CreateVersion7()` calls ([WHIZ055](whiz055) and
-[WHIZ056](whiz056)); it does not look at parameters. You will not see WHIZ057 in a build.
+## What It Described
 
-## Diagnostic Message
+WHIZ057 described a method parameter typed as a raw `Guid` where a strongly typed ID (an `IWhizbangId`, or a type
+generated with `[WhizbangId]`) would fit. The `GuidUsageAnalyzer` listed it among its supported diagnostics but never
+reported it, and it no longer lists it.
 
-```text{title="WHIZ057 message format" description="The descriptor's message format, with the placeholder named" category="Diagnostics" difficulty="BEGINNER" tags=["WHIZ057", "Guid", "Diagnostics"] unverified="message format read from the descriptor; no code reports it"}
-Consider using a strongly-typed ID instead of raw Guid for parameter '{ParameterName}'. Raw Guid loses metadata about precision and ordering.
+The message it would have shown:
+
+```text
+Consider using a strongly-typed ID instead of raw Guid for parameter '{Parameter}'. Raw Guid loses metadata about precision and ordering.
 ```
 
-## Common Causes
+## Why There Is No Rule
 
-1. **None in this version.** Nothing reports WHIZ057, so no code you write can cause it.
+A `Guid` parameter is often correct (an external API, a database key, a framework callback), and the analyzer has
+no way to tell those apart from one that should be a strongly typed ID, so a rule would mostly warn on legitimate code.
+The analyzer checks `Guid` creation instead: `Guid.NewGuid()` ([WHIZ055](whiz055)) and `Guid.CreateVersion7()`
+([WHIZ056](whiz056)).
 
-## How to Fix
+## If You Suppress It
 
-No action is needed for the build. The descriptor's advice still applies as a design choice: prefer a strongly typed
-id for parameters that carry an entity's identity. See
-[WhizbangIds](../../fundamentals/identity/whizbang-ids) for defining one with `[WhizbangId]`.
-
-There is no Before or After sample on this page: no code triggers WHIZ057, and a sample would claim behavior the
-analyzer does not have.
-
-## Suppressing
-
-Suppression has no effect today, because nothing reports the ID. The standard mechanisms apply if you want to
-silence it in advance.
-
-```csharp{title="Suppress WHIZ057 with a pragma" description="Standard pragma suppression for a warning ID" category="Diagnostics" difficulty="BEGINNER" tags=["WHIZ057", "Suppression", "Pragma"] unverified="suppression syntax; WHIZ057 is never reported, so there is nothing to suppress"}
-#pragma warning disable WHIZ057
-public void Load(Guid externalId) {
-}
-#pragma warning restore WHIZ057
-```
-
-```ini{title="Suppress WHIZ057 in .editorconfig" description="Project-wide severity override" category="Diagnostics" difficulty="BEGINNER" tags=["WHIZ057", "Suppression", "EditorConfig"] unverified="suppression/config; not exercised by a test"}
-[*.cs]
-dotnet_diagnostic.WHIZ057.severity = none
-```
+A suppression of WHIZ057 has never had any effect. Delete it: remove any `#pragma warning disable WHIZ057` /
+`#pragma warning restore WHIZ057` lines, any `dotnet_diagnostic.WHIZ057.severity` entry in `.editorconfig` or a
+`.globalconfig`, and WHIZ057 from any `<NoWarn>` list.
 
 ## Related
 

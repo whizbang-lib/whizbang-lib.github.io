@@ -1,11 +1,11 @@
 ---
-title: 'WHIZ042: No User Services Found'
+title: 'WHIZ042: No User Services Found (retired)'
 pageType: troubleshooting
-verifiedAgainstCommit: 9a416b5b
-verifiedDate: 2026-10-17
+verifiedAgainstCommit: 7e3d0a73
+verifiedDate: 2026-10-19
 description: >-
-  Info diagnostic defined for the case where the service registration generator finds no lens or perspective
-  services. In this version no generator reports it.
+  Retired. WHIZ042 (No User Services Found) was declared but never reported. It is removed from the generator package
+  and the ID is never reused.
 version: 1.0.0
 category: Diagnostics
 severity: Info
@@ -14,67 +14,51 @@ tags:
   - service-registration
   - dependency-injection
   - source-generator
+  - retired
 codeReferences:
   - src/Whizbang.Generators/DiagnosticDescriptors.cs
-  - src/Whizbang.Generators/ServiceRegistrationGenerator.cs
-testReferences: []
-lastMaintainedCommit: '9a416b5b'
+testReferences:
+  - tests/Whizbang.Generators.Tests/DiagnosticDescriptorsTests.cs
+lastMaintainedCommit: '7e3d0a73'
 ---
 
-# WHIZ042: No User Services Found
+# WHIZ042: No User Services Found (retired)
 
-**Severity**: Info
-**Category**: Whizbang.SourceGeneration
+**Status**: Retired. Never reported.
+**Former severity**: Info
 
-## Description
+## Retired
 
-WHIZ042 is declared for the situation where the service registration generator finds no lens or perspective class to
-register. **In this version it is never reported.** When the generator finds no services it does not emit a
-diagnostic; it still writes `ServiceRegistrations.g.cs`, and `AddLensServices()` and `AddPerspectiveServices()` are
-generated with no registrations in them.
+WHIZ042 is **retired**. No generator or analyzer ever reported it, and its descriptor has been removed from the
+generator package. The ID is **never reused**: it will not be given a new meaning, so a search or a suppression for
+it can never match a different diagnostic. A test keeps every retired ID from being declared again
+(`DiagnosticDescriptorsTests.RetiredDiagnosticIds_AreNeverDeclaredAgainAsync`).
 
-If you see a build message with this ID, it comes from a different version of the generators than the one this page
-describes.
+## What It Described
 
-## Diagnostic Message
+WHIZ042 was declared as an informational notice for a project in which the service registration generator finds
+no lens or perspective class to register. The generator never reported it.
+
+The message it would have shown:
 
 ```text
 No user-defined lens or perspective services were found for service registration
 ```
 
-## Common Causes
+## Why There Is No Rule
 
-The situation the descriptor describes arises when:
+A project with no lenses or perspectives of its own is a valid state, not a problem. The generator still writes
+`ServiceRegistrations.g.cs`, with `AddLensServices()` and `AddPerspectiveServices()` generated empty, so calling them
+is safe.
 
-1. **The project has no lenses or perspectives** of its own.
-2. **Every candidate class is abstract** (each is reported as [WHIZ041](whiz041)).
-3. **Every candidate class is private or nested inside a private or protected type**, which the generator skips.
-4. **The lens or perspective interface is not in the class's own base list**, or is an open generic such as
-   `ILensQuery<TModel>`.
+If a class you expected is not registered, look for its [WHIZ040](whiz040) line in the build output (each registered
+class produces one) and check whether it was skipped as abstract ([WHIZ041](whiz041)).
 
-## How to Fix
+## If You Suppress It
 
-Nothing is reported, so nothing needs fixing. If calling `AddLensServices()` or `AddPerspectiveServices()` does not
-register a class you expected, check the points above, and look for [WHIZ040](whiz040) in the build output: each
-registered class produces one.
-
-## Suppressing
-
-There is nothing to suppress in this version. If an older or newer generator reports it and you want it silenced,
-use a global analyzer config file (the diagnostic has no source location, so `#pragma` cannot reach it):
-
-```ini{
-title: "Silence WHIZ042"
-description: "Project-wide suppression through a global analyzer config"
-category: "Troubleshooting"
-difficulty: "BEGINNER"
-tags: ["Operations", "Diagnostics", "Suppressing"]
-unverified: "suppression/config, not exercised by a test"
-}
-# .globalconfig
-is_global = true
-dotnet_diagnostic.WHIZ042.severity = none
-```
+A suppression of WHIZ042 has never had any effect. Delete it: remove any `#pragma warning disable WHIZ042` /
+`#pragma warning restore WHIZ042` lines, any `dotnet_diagnostic.WHIZ042.severity` entry in `.editorconfig` or a
+`.globalconfig`, and WHIZ042 from any `<NoWarn>` list.
 
 ## Related
 
