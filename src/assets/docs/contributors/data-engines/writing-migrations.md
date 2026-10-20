@@ -93,20 +93,36 @@ catalog guard.
 Each of the forbidden forms makes a guard read "not there yet" for a service whose EF Core context has a schema of
 its own. On an empty database that answer is true, so every first run passes, and every test that migrates into
 `public` passes as well. The failure appears when a migration runs again over a database that already holds what
-its earlier text created, which happens on upgrade whenever the file has changed. The guarded DDL then fails, for
-example with `42701: column "source_service_id" of relation "wh_inbox" already exists`, or a repair silently does
-nothing. A run-time function that asks `current_schema()` looks for its tables in `public`.
+its earlier text created. The ledger re-runs a file whose content hash changed, so this happens on upgrade
+whenever a shipped file differs between the two releases. The guarded DDL then fails, for example with
+`42701: column "source_service_id" of relation "wh_inbox" already exists`, or a repair silently does nothing. A
+run-time function that asks `current_schema()` looks for its tables in `public`.
 
-Setting `search_path` on the connection does not fix this. The migrations treat `search_path` as defense in depth,
-not as the contract, and the run-time lookups execute on pooled connections that a migration-scoped setting never
-reaches.
+## Shipped migrations, new migrations and run-time functions
+
+A migration that has shipped is not edited; a change goes in the next-numbered file. The rule above is therefore
+applied in three ways:
+
+- **Shipped migrations.** Several shipped guards compare `table_schema = current_schema()`. The EF Core runner
+  makes them correct without editing them: it runs each migration, and the bootstrap regions, with `search_path`
+  set to the migrated schema for that migration only (`MigrationSearchPath`, transaction-local and restored
+  afterwards). Inside a migration, `current_schema()` is then the schema the migration alters. The Dapper driver
+  needs no setting, because it takes its schema from `current_schema()`.
+- **New migrations.** A file written after the last shipped one names its schema in every catalog lookup, as
+  shown above, and does not rely on the runner's `search_path`.
+- **Run-time functions.** A function runs later, on a pooled connection that the runner's setting never reaches.
+  When the latest definition of a function asks the caller's schema, the function is redefined whole in a new
+  migration that names its schema. Migration 213 did this for the seven functions that needed it.
 
 ## Enforcement
 
-- `MigrationSchemaQualificationTests` fails the build if any migration calls `current_schema()` in code, compares
-  `'__SCHEMA__'` as text, or looks up `information_schema` or `pg_indexes` without naming the schema.
+- `MigrationSchemaQualificationTests` fails the build if a new migration calls `current_schema()` in code,
+  compares `'__SCHEMA__'` as text, or looks up `information_schema` or `pg_indexes` without naming the schema, and
+  if the latest definition of any function asks the caller's schema.
 - `NamedSchemaMigrationReplayTests` applies every migration into a named schema with the default `search_path`,
-  runs each migration again over the result, and checks that the maintenance functions reap the named schema's
-  own tables.
+  runs each migration again over the result (including the upgrade that re-runs a changed 046), and checks that
+  the run-time functions work on the named schema's own tables.
+- `MigrationSearchPathTests` and `MigrationSearchPathGenerationTests` check that the runner sets the migrated
+  schema as `current_schema()` for each migration and restores the previous setting afterwards.
 - `MigrationSchemaQualifierTests` covers each case of the qualification: literals, escape strings, doubled quotes,
   quoted identifiers, comments, dollar quotes and positional parameters.

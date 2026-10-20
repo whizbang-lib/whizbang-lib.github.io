@@ -19,6 +19,8 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/000_MigrationTracking.sql
   - src/Whizbang.Data.EFCore.Postgres.Generators/Templates/DbContextSchemaExtensionTemplate.cs
   - src/Whizbang.Data.Postgres/MigrationSchemaQualifier.cs
+  - src/Whizbang.Data.Postgres/MigrationSearchPath.cs
+  - src/Whizbang.Data.Postgres/Migrations/213_FunctionsNameTheirOwnSchema.sql
   - src/Whizbang.Data.Postgres/Migrations/063_NormalizeClrTypeNamesV2.sql
   - src/Whizbang.Data.Postgres/Migrations/032_PerformMaintenance.sql
   - src/Whizbang.Data.Postgres/MigrationFunctionBodies.cs
@@ -60,6 +62,7 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/NamedSchemaMigrationReplayTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/MigrationSchemaQualificationTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/MigrationSchemaQualifierTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/MigrationSearchPathTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -733,16 +736,20 @@ that schema as the placeholder `__SCHEMA__`. The Dapper driver substitutes the b
 substitutes the quoted identifier (`"api"`) and also qualifies a fixed list of framework table names that the
 oldest migrations wrote without the placeholder.
 
-Two rules keep a migration correct on such a context:
+Three mechanisms keep migrations correct on such a context:
 
 - **Literals and comments are not qualified.** The EF Core driver qualifies a framework name only where SQL names
   an object. A string literal, an escape string, a quoted identifier and a comment are left exactly as written.
   The body of a dollar-quoted string is code, so its table references are qualified, while the literals and
   comments inside it are not.
-- **A catalog lookup names its own schema.** A guard or a run-time function that asks `information_schema` or a
-  `pg_*` catalog about a framework table writes the schema as `replace('__SCHEMA__', '"', '')`. It never uses
-  `current_schema()`, which returns the caller's `search_path` (`public` on the EF Core driver's connection and on a
-  pooled connection), and never compares `'__SCHEMA__'` as text, which on that driver is the quoted form.
+- **Each migration runs in its own schema.** The EF Core runner sets `search_path` to the context's schema for
+  each migration, and for the bootstrap regions, and restores it afterwards. A shipped guard that compares
+  `table_schema = current_schema()` therefore asks about the schema it alters. The Dapper driver takes its schema
+  from `current_schema()`, so it needs no setting.
+- **A catalog lookup names its own schema.** A new migration, and every run-time function, writes the schema as
+  `replace('__SCHEMA__', '"', '')`. It never uses `current_schema()`, which returns the caller's `search_path`
+  (`public` on a pooled connection), and never compares `'__SCHEMA__'` as text, which on the EF Core driver is the
+  quoted form.
 
 ```sql{
 title: "A guard that names its own schema"
@@ -776,15 +783,18 @@ Failed to execute migration 046_CommitSequenceSchema.sql
 Other guarded repairs silently did nothing, and maintenance functions that found perspective tables through
 `current_schema()` looked for them in `public`.
 
-From the release that contains the fix, the corrected migrations have new content hashes. On a context with a named
-schema, every migration whose text contains a framework name inside a literal or a comment also has a new hash.
-Each of these runs once more on the first startup after the upgrade (status 2, Updated), and each is safe to run
-again over the existing schema. No manual step is required. A second startup skips them all. A Dapper host, and an
-EF Core host whose schema is `public`, see only the hash changes of the edited files.
+From the release that contains the fix, no shipped migration is changed. The EF Core runner sets `search_path`
+for each migration, so a re-run of 046 finds the columns it added. Migration 213 redefines the seven run-time
+functions that found their tables through `current_schema()`: the row reaps, `perform_maintenance`, the
+retention preview, the reap-target collection and the table-rewrite scan. On a context with a named schema, every
+migration whose text contains a framework name inside a literal or a comment has a new hash, because the
+qualification no longer rewrites it. Each of these runs once more on the first startup after the upgrade (status 2,
+Updated), and each is safe to run again over the existing schema. No manual step is required, and a second startup
+skips them all. A Dapper host, and an EF Core host whose schema is `public`, run only migration 213.
 
-Setting `search_path` on the connection is not a substitute. The migrations treat `search_path` as defense in depth,
-and the run-time lookups execute on pooled connections that a migration-scoped setting never reaches. The rules for
-authors are in [Writing SQL migrations](../../../contributors/data-engines/writing-migrations.md).
+The fix does not depend on the application's connection settings: the migrations run under the runner's own
+`search_path`, and the run-time functions name their schema, so both work whatever `search_path` the calling
+connection has. The rules for authors are in [Writing SQL migrations](../../../contributors/data-engines/writing-migrations.md).
 
 ## Pre-v1.0 Note
 
