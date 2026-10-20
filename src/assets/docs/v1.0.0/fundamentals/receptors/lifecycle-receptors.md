@@ -49,7 +49,7 @@ Lifecycle receptors are **regular receptors** that execute at specific stages in
 public class CreateTenantHandler : IReceptor<CreateTenantCommand, TenantCreatedEvent> {
   public ValueTask<TenantCreatedEvent> HandleAsync(CreateTenantCommand cmd, CancellationToken ct) {
     // Business logic fires at:
-    // - LocalImmediateDetached (messages dispatched by this service)
+    // - LocalImmediateInline (messages dispatched by this service; the caller waits)
     // - PostInboxDetached (messages arriving from other services via transport)
     return ValueTask.FromResult(new TenantCreatedEvent(TrackedGuid.New()));
   }
@@ -69,7 +69,7 @@ public class ProductMetricsReceptor : IReceptor<ProductCreatedEvent> {
 **Key Design**:
 - Reuse existing `IReceptor<TMessage>` interface
 - `[FireAt]` attribute controls when receptor executes
-- Receptors without `[FireAt]` fire at **default stages** (LocalImmediateDetached, PostInboxDetached)
+- Receptors without `[FireAt]` fire at **default stages** (LocalImmediateInline, PostInboxDetached)
 - Adding `[FireAt]` **replaces** defaults - receptor fires ONLY at specified stages
 - Can apply multiple `[FireAt]` attributes to fire at multiple stages
 - Optional `ILifecycleContext` injection for metadata access
@@ -208,14 +208,14 @@ public class OutboxMonitoringReceptor : IReceptor<IEvent> {
 ### Default Behavior (No Attribute)
 
 :::updated
-Shipped behavior: receptors without `[FireAt]` are registered at `LocalImmediateDetached` and `PostInboxDetached` by the receptor discovery generator. Source-service filtering prevents double-fire: `LocalImmediateDetached` only fires for messages originating from this service, `PostInboxDetached` only for messages arriving from other services via transport.
+Shipped behavior: receptors without `[FireAt]` are registered at `LocalImmediateInline` and `PostInboxDetached` by the receptor discovery generator (before 1.0 the local stage was `LocalImmediateDetached`, though the caller always waited for it, #1392). Source-service filtering prevents double-fire: `LocalImmediateInline` only fires for messages originating from this service, `PostInboxDetached` only for messages arriving from other services via transport.
 :::
 
 Receptors **without `[FireAt]` fire at default stages** based on where the message came from:
 
 | Path | Default Stage | When |
 |------|--------------|------|
-| **Local** | `LocalImmediateDetached` | Message dispatched by this service |
+| **Local** | `LocalImmediateInline` | Message dispatched by this service; the caller waits for it |
 | **Distributed (Receiver)** | `PostInboxDetached` | Message received from another service via transport |
 
 ```csharp{title="Default Behavior (No Attribute)" description="Default Behavior (No Attribute)" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Receptors", "Default", "Behavior"] tests=["ReceptorDiscoveryGeneratorTests.Generator_ReceptorWithoutFireAt_RegisteredAtDefaultStagesAsync"]}
@@ -226,7 +226,7 @@ public class CreateProductReceptor : IReceptor<CreateProductCommand, ProductCrea
       CancellationToken ct) {
 
     // This executes at:
-    // - LocalImmediateDetached (command dispatched by this service)
+    // - LocalImmediateInline (command dispatched by this service; the caller waits)
     // - PostInboxDetached (command arriving from another service via transport)
     var product = new Product(cmd.Name, cmd.Price);
     await _dbContext.Products.AddAsync(product, ct);
@@ -1420,7 +1420,7 @@ See [Automatic Message Cascade](../dispatcher/message-cascade.md#automatic-messa
 - **Reuse `IReceptor<TMessage>` interface** - No new interfaces to learn
 - **`[FireAt]` controls timing** - Declarative lifecycle stage selection
 - **Multiple attributes supported** - Fire at multiple stages
-- **Default stages**: `LocalImmediateDetached`, `PostInboxDetached` (source-service filtering prevents double-fire)
+- **Default stages**: `LocalImmediateInline`, `PostInboxDetached` (source-service filtering prevents double-fire)
 - **Adding `[FireAt]` replaces defaults** - Receptor fires ONLY at specified stages
 - **Two paths, one dispatch can take both**: local and distributed; see the [dispatch policy](../dispatcher/dispatch-policy.md)
 - **Optional `ILifecycleContext` injection** - Access metadata when needed

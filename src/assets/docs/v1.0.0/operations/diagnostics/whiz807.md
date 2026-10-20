@@ -142,10 +142,10 @@ Or per-file:
 
 ## Related Diagnostics
 
-- WHIZ801 - VectorField on invalid type
+- [WHIZ801](whiz801.md) - VectorField on invalid type
 - [WHIZ802](whiz802.md) - VectorField invalid dimensions
-- WHIZ803 - PhysicalField on complex type (may not benefit)
-- WHIZ805 - Split mode with no physical fields
+- [WHIZ803](whiz803.md) - PhysicalField on complex type (retired, never reported)
+- [WHIZ805](whiz805.md) - Split mode with no physical fields
 
 ## See Also
 

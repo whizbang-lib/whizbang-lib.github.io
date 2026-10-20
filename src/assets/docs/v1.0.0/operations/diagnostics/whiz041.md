@@ -105,7 +105,7 @@ uses abstract base classes on purpose. It does not change what is registered.
 ## Related
 
 - [WHIZ040: User Service Discovered](whiz040)
-- [WHIZ042: No User Services Found](whiz042)
+- [WHIZ042: No User Services Found (retired)](whiz042)
 - [Service Registration](../configuration/service-registration)
 - [Lens Services](../configuration/lens-services)
 - [Perspective Services](../configuration/perspective-services)

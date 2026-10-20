@@ -87,4 +87,4 @@ public class TicketModel {
 ## Related Diagnostics
 
 - [WHIZ807](whiz807.md) - Physical fields discovered
-- WHIZ805 - Split mode with no physical fields
+- [WHIZ805](whiz805.md) - Split mode with no physical fields

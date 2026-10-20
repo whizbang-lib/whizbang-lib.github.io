@@ -411,17 +411,11 @@ info WHIZ022: Found topic filter 'orders.created' on command 'CreateOrderCommand
 
 ---
 
-### WHIZ023: Enum Filter No Description
+### WHIZ023: Enum Filter No Description (retired)
 
-**Severity**: Info
+**Status**: Retired. It was never reported, is no longer in the generator package, and the ID is never reused. See [WHIZ023](../../operations/diagnostics/whiz023).
 
-**Message**: `Enum value '{0}.{1}' has no [Description] attribute. Using enum symbol name '{1}' as filter.`
-
-:::updated
-**Shipped behavior (verified at commit `1b31f58d`)**: the WHIZ023 descriptor is defined in `DiagnosticDescriptors.cs`, but `TopicFilterGenerator` does not currently emit it — the fallback to the enum symbol name happens **silently**. The fallback behavior itself is implemented and locked by `Generator_WithEnumFilterNoDescription_UsesSymbolNameAsync`.
-:::
-
-**When**: An enum-based topic filter lacks a `[Description]` attribute. The enum symbol name is used as fallback.
+**Behavior**: when an enum-based topic filter's member has no `[Description]` attribute, the enum symbol name is used as the filter string, without a notice. The fallback is locked by `Generator_WithEnumFilterNoDescription_UsesSymbolNameAsync`, and the resulting string appears in the WHIZ022 notice for that filter.
 
 **Fix** (if Description is desired):
 ```csharp{title="WHIZ023: Enum Filter No Description" description="Fix (if Description is desired):" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "WHIZ023:", "Enum"] tests=["TopicFilterGeneratorTests.Generator_WithEnumFilter_ExtractsDescriptionAsync"]}
@@ -444,14 +438,10 @@ public enum Topics {
 warning WHIZ025: [TopicFilter] on type 'MyClass' which does not implement ICommand. Filter will be ignored.
 ```
 
-:::updated
-**Shipped behavior (verified at commit `1b31f58d`)**: the WHIZ025 descriptor is defined in `DiagnosticDescriptors.cs`, but `TopicFilterGenerator` does not currently emit it — types with `[TopicFilter]` that do not implement `ICommand` are **silently skipped** (the extraction returns early before attribute processing). The filter is still ignored, exactly as the message describes; you just won't see a build warning.
-:::
-
-**When**: `[TopicFilter]` is placed on a type that doesn't implement `ICommand`.
+**When**: `[TopicFilter]` is placed on a type that doesn't implement `ICommand`. The generator skips such types, so the filter never reaches the registry; an analyzer (`TopicFilterTargetAnalyzer`) reports WHIZ025 at the attribute. See [WHIZ025](../../operations/diagnostics/whiz025).
 
 **Fix**:
-```csharp{title="WHIZ025: TopicFilter On Non-Command" description="WHIZ025: TopicFilter On Non-Command" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "WHIZ025:", "TopicFilter"] tests=["TopicFilterGeneratorTests.Generator_WithStringFilter_GeneratesRegistryAsync", "TopicFilterGeneratorTests.Generator_WithFilterOnNonCommand_ReportsErrorAsync"]}
+```csharp{title="WHIZ025: TopicFilter On Non-Command" description="WHIZ025: TopicFilter On Non-Command" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "WHIZ025:", "TopicFilter"] tests=["TopicFilterGeneratorTests.Generator_WithStringFilter_GeneratesRegistryAsync", "TopicFilterGeneratorTests.Generator_WithFilterOnNonCommand_EmitsNoMappingForItAsync", "TopicFilterTargetAnalyzerTests.ATopicFilterOnAnEvent_ReportsWhiz025Async"]}
 // ✅ CORRECT: Implement ICommand
 [TopicFilter("orders.created")]
 public record CreateOrderCommand : ICommand { }

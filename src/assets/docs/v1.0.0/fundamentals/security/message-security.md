@@ -157,8 +157,43 @@ public sealed class MessageSecurityOptions {
   // When true, propagates security context to cascaded events.
   // DEFAULT: TRUE
   public bool PropagateToOutgoingMessages { get; set; } = true;
+
+  // When true, an in-process dispatch whose caller has no context is refused up front.
+  // DEFAULT: FALSE (see "Local Dispatch" below)
+  public bool RequireContextForLocalDispatch { get; set; }
 }
 ```
+
+## Local Dispatch {#local-dispatch}
+
+`AllowAnonymous = false` refuses a message that **arrives from a transport** without a security context. A
+dispatch **handled in this process** (a send, publish, local invoke, batch, or a cascade's local run) is
+trusted by default, like a mediator call: it runs whether or not the caller has a context, and the lifecycle
+stages after its handler do not refuse it either. A refusal after the handler has run would protect nothing.
+
+To require a context for in-process dispatch too, set `RequireContextForLocalDispatch`. The dispatch is
+then refused with `SecurityContextRequiredException` **up front**, before any handler runs and before
+anything is written to the outbox or event store.
+
+```csharp{title="Requiring a caller context for local dispatch" description="With RequireContextForLocalDispatch, a context-less local dispatch is refused before anything runs" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Local Dispatch"] tests=["LocalDispatchSecurityComponentTests.EveryLocalEntry_WithoutACallerContext_RunsByDefaultAsync", "LocalDispatchSecurityComponentTests.EveryLocalEntry_WithoutACallerContext_IsRefusedUpFrontWhenRequiredAsync", "LocalDispatchSecurityComponentTests.EveryLocalEntry_WithACallerContext_RunsWhenRequiredAsync", "LocalDispatchSecurityComponentTests.AnExemptMessage_WithoutACallerContext_RunsEvenWhenRequiredAsync"]}
+services.AddWhizbangMessageSecurity(options => {
+  options.RequireContextForLocalDispatch = true;
+  options.ExemptMessageTypes.Add(typeof(WarmCache)); // still runs without a context
+});
+
+await dispatcher.SendAsync(new ShipOrder(orderId));
+// throws SecurityContextRequiredException: no handler ran, nothing was written
+
+await dispatcher.AsSystem().ForTenant(tenantId).SendAsync(new ShipOrder(orderId));
+// runs: the caller has a context
+```
+
+| Message | Default | `RequireContextForLocalDispatch = true` |
+|---|---|---|
+| Caller has a context | Runs | Runs |
+| No context | Runs | Refused up front |
+| No context, type in `ExemptMessageTypes` | Runs | Runs |
+| No context, framework control-plane message or system event | Runs | Runs |
 
 ## Why an Event Has No Scope {#scope-markers}
 

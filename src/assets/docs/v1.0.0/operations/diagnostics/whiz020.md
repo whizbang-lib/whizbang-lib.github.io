@@ -1,11 +1,11 @@
 ---
-title: 'WHIZ020: WhizbangId Discovered'
+title: 'WHIZ020: WhizbangId Discovered (retired)'
 pageType: troubleshooting
-verifiedAgainstCommit: 9a416b5b
-verifiedDate: 2026-10-17
+verifiedAgainstCommit: 7e3d0a73
+verifiedDate: 2026-10-19
 description: >-
-  Informational descriptor for a discovered [WhizbangId] strongly-typed id. It is defined but not reported by the
-  current generator, so you will not see it in build output.
+  Retired. WHIZ020 (WhizbangId Discovered) was declared but never reported. It is removed from the generator package
+  and the ID is never reused.
 version: 1.0.0
 category: Diagnostics
 severity: Info
@@ -15,65 +15,48 @@ tags:
   - strongly-typed-ids
   - source-generator
   - discovery
+  - retired
 codeReferences:
   - src/Whizbang.Generators/DiagnosticDescriptors.cs
-  - src/Whizbang.Generators/WhizbangIdGenerator.cs
-testReferences: []
-lastMaintainedCommit: '9a416b5b'
+testReferences:
+  - tests/Whizbang.Generators.Tests/DiagnosticDescriptorsTests.cs
+lastMaintainedCommit: '7e3d0a73'
 ---
 
-# WHIZ020: WhizbangId Discovered
+# WHIZ020: WhizbangId Discovered (retired)
 
-**Severity**: Info
-**Category**: Source Generation / Identity
+**Status**: Retired. Never reported.
+**Former severity**: Info
 
-## Description
+## Retired
 
-WHIZ020 is defined as an informational notice meaning "a `[WhizbangId]` strongly-typed id was found and its value
-object will be generated". The descriptor's description says the id "will be generated with UUIDv7 support".
+WHIZ020 is **retired**. No generator or analyzer ever reported it, and its descriptor has been removed from the
+generator package. The ID is **never reused**: it will not be given a new meaning, so a search or a suppression for
+it can never match a different diagnostic. A test keeps every retired ID from being declared again
+(`DiagnosticDescriptorsTests.RetiredDiagnosticIds_AreNeverDeclaredAgainAsync`).
 
-**Current behavior**: the `WhizbangIdGenerator` does not report WHIZ020. It generates the id types silently and reports
-only [WHIZ021](whiz021) (struct not `partial`) and [WHIZ024](whiz024) (same id name in two namespaces). You will not
-see WHIZ020 in build output, and no test asserts it.
+## What It Described
 
-## Diagnostic Message
+WHIZ020 was declared as an informational notice meaning "a `[WhizbangId]` strongly typed ID was found and its value
+object will be generated". The `WhizbangIdGenerator` never reported it.
 
-```
+The message it would have shown:
+
+```text
 Found [WhizbangId] on {TypeName} in namespace {Namespace}
 ```
 
-## Common Causes
+## Why There Is No Rule
 
-The descriptor describes this situation, which today produces generated code but no notice:
+A notice adds nothing the build does not already show: the generated source for each ID (for example
+`ProductId.g.cs`) is the evidence that it was generated. The problems worth reporting already have their own codes,
+[WHIZ021](whiz021) for a struct that is not `partial` and [WHIZ024](whiz024) for the same ID name in two namespaces.
 
-1. **A struct is marked `[WhizbangId]`**, for example `public readonly partial struct ProductId;`.
-2. **A property or constructor parameter is marked `[WhizbangId]`**, which asks the generator to create an id type named
-   after the property or parameter type.
+## If You Suppress It
 
-## How to Fix
-
-Nothing to fix. To confirm an id was generated, look for its generated source (for example `ProductId.g.cs`) under the
-project's generated files, rather than for a WHIZ020 notice.
-
-```csharp{title="A WhizbangId declaration" description="A partial struct marked [WhizbangId]; the generator produces the value object for it without reporting WHIZ020." framework="NET10" category="Diagnostics" difficulty="BEGINNER" tags=["diagnostics", "whizbang-id", "strongly-typed-ids"] unverified="WHIZ020 is never reported; generation for this shape is checked by WhizbangIdGeneratorTests.Generator_WithExplicitTypeDeclaration_GeneratesValueObjectAsync"}
-using Whizbang.Core;
-
-namespace MyApp.Domain;
-
-[WhizbangId]
-public readonly partial struct ProductId;
-```
-
-## Suppressing
-
-There is nothing to suppress while the generator does not report it. If a future version starts reporting it, the
-usual severity setting would apply:
-
-```ini{title="Silence WHIZ020 project-wide" description="A global analyzer config that would turn off the WHIZ020 discovery notice." category="Diagnostics" difficulty="BEGINNER" tags=["diagnostics", "suppression", "globalconfig"] unverified="suppression/config, not exercised by a test"}
-# .globalconfig
-is_global = true
-dotnet_diagnostic.WHIZ020.severity = none
-```
+A suppression of WHIZ020 has never had any effect. Delete it: remove any `#pragma warning disable WHIZ020` /
+`#pragma warning restore WHIZ020` lines, any `dotnet_diagnostic.WHIZ020.severity` entry in `.editorconfig` or a
+`.globalconfig`, and WHIZ020 from any `<NoWarn>` list.
 
 ## Related
 

@@ -1,8 +1,8 @@
 ---
 title: 'WHIZ022: Topic Filter Discovered'
 pageType: troubleshooting
-verifiedAgainstCommit: 9a416b5b
-verifiedDate: 2026-10-17
+verifiedAgainstCommit: 7e3d0a73
+verifiedDate: 2026-10-19
 description: >-
   Informational notice that the topic filter generator found a [TopicFilter] on a command and added it to the
   generated TopicFilterRegistry. No action is needed.
@@ -19,8 +19,9 @@ codeReferences:
   - src/Whizbang.Generators/DiagnosticDescriptors.cs
   - src/Whizbang.Generators/TopicFilterGenerator.cs
   - src/Whizbang.Core/TopicFilterAttribute.cs
-testReferences: []
-lastMaintainedCommit: '9a416b5b'
+testReferences:
+  - tests/Whizbang.Generators.Tests/TopicFilterGeneratorTests.cs
+lastMaintainedCommit: '7e3d0a73'
 ---
 
 # WHIZ022: Topic Filter Discovered
@@ -41,10 +42,10 @@ A filter is discovered when:
   `TopicFilterAttribute`.
 
 For enum-based filters, the filter string in the message is the value of the enum member's `[Description]`, or the
-member name when it has none (see [WHIZ023](whiz023)).
+member name when it has none, without a separate notice (the retired [WHIZ023](whiz023) once described one).
 
-A `[TopicFilter]` on a type that does not implement `ICommand` is skipped and produces no WHIZ022 (see
-[WHIZ025](whiz025)). When no filter is found in the project at all, the generator reports WHIZ026 instead and does not
+A `[TopicFilter]` on a type that does not implement `ICommand` is skipped and produces no WHIZ022; the
+[WHIZ025](whiz025) warning is reported on that attribute instead. When no filter is found in the project at all, the generator reports WHIZ026 instead and does not
 generate the registry.
 
 ## Diagnostic Message
@@ -67,10 +68,9 @@ for enum-based filters whose string comes from `[Description]`. See [Topic Filte
 
 ## What Produces It
 
-No test asserts the WHIZ022 ID itself. The shape below is the one the generator tests use to check that the filter
-reaches the registry.
+Each notice is reported at the `[TopicFilter]` attribute it describes, so an IDE shows it on that line.
 
-```csharp{title="A command with a topic filter" description="A string topic filter on a command; the generator adds it to TopicFilterRegistry and reports WHIZ022." framework="NET10" category="Diagnostics" difficulty="BEGINNER" tags=["diagnostics", "topic-filters", "commands"] unverified="no test asserts the WHIZ022 ID; registry output for this shape is checked by TopicFilterGeneratorTests.Generator_WithStringFilter_GeneratesRegistryAsync"}
+```csharp{title="A command with a topic filter" description="A string topic filter on a command; the generator adds it to TopicFilterRegistry and reports WHIZ022." framework="NET10" category="Diagnostics" difficulty="BEGINNER" tags=["diagnostics", "topic-filters", "commands"] tests=["TopicFilterGeneratorTests.Generator_ReportsEachDiscoveredFilterAtItsAttributeAsync", "TopicFilterGeneratorTests.Generator_WithStringFilter_GeneratesRegistryAsync"]}
 using Whizbang.Core;
 
 namespace TestNamespace;
@@ -83,9 +83,9 @@ public record CreateOrderCommand : ICommand {
 
 ## Suppressing
 
-WHIZ022 is reported with no source location, so a `#pragma warning disable WHIZ022` region cannot reach it, and a
-file-scoped `.editorconfig` section (`[*.cs]`) does not apply to it either. Set the severity in a global analyzer
-config file instead:
+WHIZ022 is reported at the `[TopicFilter]` attribute, so `#pragma warning disable WHIZ022` around the command or a
+`dotnet_diagnostic.WHIZ022.severity = none` entry in an `.editorconfig` section that matches the file silences it. To
+turn it off for a whole project, a global analyzer config file works too:
 
 ```ini{title="Silence WHIZ022 project-wide" description="A global analyzer config that turns off the WHIZ022 discovery notice." category="Diagnostics" difficulty="BEGINNER" tags=["diagnostics", "suppression", "globalconfig"] unverified="suppression/config, not exercised by a test"}
 # .globalconfig
@@ -99,5 +99,5 @@ Silencing it is safe; it only reports what was generated.
 
 - [Topic Filters](../../messaging/topic-filters)
 - [Topic Filter Discovery](../../extending/source-generators/topic-filter-discovery)
-- [WHIZ023: Enum Filter No Description](whiz023)
+- [WHIZ023: Enum Filter No Description (retired)](whiz023)
 - [WHIZ025: TopicFilter On Non-Command](whiz025)

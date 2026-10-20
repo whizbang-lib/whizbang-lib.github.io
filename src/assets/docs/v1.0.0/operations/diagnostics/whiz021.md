@@ -103,4 +103,4 @@ hides why the id is missing. If you do not want a generated id, remove `[Whizban
 
 - [WhizbangIds: Defining a WhizbangId](../../fundamentals/identity/whizbang-ids#defining-a-whizbangid)
 - [WHIZ024: Duplicate WhizbangId Type Name](whiz024)
-- [WHIZ020: WhizbangId Discovered](whiz020)
+- [WHIZ020: WhizbangId Discovered (retired)](whiz020)
