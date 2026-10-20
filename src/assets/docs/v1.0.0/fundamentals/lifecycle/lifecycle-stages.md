@@ -19,6 +19,7 @@ codeReferences:
   - src/Whizbang.Core/Lifecycle/ILifecycleTracking.cs
   - src/Whizbang.Core/Dispatcher.cs
   - src/Whizbang.Core/Workers/OutboxPublishWorker.cs
+  - src/Whizbang.Core/Messaging/WorkCoordinatorFlushHelper.cs
   - src/Whizbang.Core/Workers/InboxDispatchWorker.cs
   - src/Whizbang.Core/Workers/TransportConsumerWorker.cs
   - src/Whizbang.Generators/Templates/PerspectiveRunnerTemplate.cs
@@ -37,6 +38,8 @@ testReferences:
   - tests/Whizbang.Core.Component.Tests/Workers/DestructionStageReceptorComponentTests.cs
   - tests/Whizbang.Core.Component.Tests/Dispatcher/PostLifecycleOncePerHandlingServiceComponentTests.cs
   - tests/Whizbang.Generators.Tests/ReceptorDiscoveryGeneratorTests.cs
+  - tests/Whizbang.Core.Component.Tests/Messaging/DistributeStageOwnedCommandSendComponentTests.cs
+  - tests/Whizbang.Core.Component.Tests/Messaging/LifecycleInvocationHelperTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -117,9 +120,6 @@ Every stage name answers two questions: what triggers the stage, and whether any
 | `ImmediateDetached` | Runs once in each service that handles the message, right after the handler, whether it was handled locally or on receipt. Nobody waits for it, and its errors never affect the message. For timing, metrics and activity tracking. |
 | Pipeline stages (`PreOutbox*`, `PostInbox*`, `*Perspective*`, `PostLifecycle*`, and the rest) | Fire when the message reaches that step in this service, durably and with retries, with the Inline or Detached behavior above. |
 
-:::planned
-Two stages do not meet this contract yet. A receptor with no `[FireAt]` is registered at `LocalImmediateDetached`, but the caller waits for it as if it were Inline ([#1392](https://github.com/whizbang-lib/whizbang/issues/1392)). `ImmediateDetached` is awaited on local dispatch, and on a receiving service that has no `PostInboxDetached` receptor ([#1393](https://github.com/whizbang-lib/whizbang/issues/1393)).
-:::
 
 ---
 
@@ -308,13 +308,11 @@ var view = await dispatcher.LocalInvokeAsync<GetTenant, TenantView>(new GetTenan
 
 ### Distribute Stages (5 stages)
 
-:::planned
-All five Distribute stages (`PreDistributeDetached`, `PreDistributeInline`, `DistributeDetached`, `PostDistributeDetached`, `PostDistributeInline`) are planned for coordinator-managed execution. The enum values exist in `LifecycleStage` but are not yet wired into the pipeline. They will fire for both outbox (publishing) and inbox (consuming) paths — use `MessageSource` to distinguish.
-:::
+The five Distribute stages fire on every work-coordinator flush, around the flush's store calls: `PreDistributeDetached` and `PreDistributeInline` before the outbox and inbox rows are stored, `DistributeDetached` alongside the store, and `PostDistributeDetached` and `PostDistributeInline` after it. They fire for both the outbox (publishing) and inbox (consuming) messages in the flush; use `MessageSource` to tell them apart. A flush that skips lifecycle (the framework's own internal flushes) fires none of them.
 
 #### `PreDistributeDetached`
 
-**Timing**: Before `process_work_batch` call (fire-and-forget, own scope).
+**Timing**: Before the flush's store calls (fire-and-forget, own scope).
 
 **Use Cases**:
 - Non-critical logging before batch distribution
@@ -328,7 +326,7 @@ All five Distribute stages (`PreDistributeDetached`, `PreDistributeInline`, `Dis
 
 #### `PreDistributeInline`
 
-**Timing**: Before `process_work_batch` call.
+**Timing**: Before the flush's store calls.
 
 **Use Cases**:
 - Pre-processing before batch distribution
@@ -340,7 +338,7 @@ All five Distribute stages (`PreDistributeDetached`, `PreDistributeInline`, `Dis
 
 #### `DistributeDetached`
 
-**Timing**: In parallel with `process_work_batch` call (fire-and-forget).
+**Timing**: In parallel with the flush's store calls (fire-and-forget).
 
 **Use Cases**:
 - Side effects that don't need to block (notifications, caching)
@@ -354,7 +352,7 @@ All five Distribute stages (`PreDistributeDetached`, `PreDistributeInline`, `Dis
 
 #### `PostDistributeDetached`
 
-**Timing**: After `process_work_batch` returns (fire-and-forget, own scope).
+**Timing**: After the flush's store calls return (fire-and-forget, own scope).
 
 **Use Cases**:
 - Post-distribution metrics
@@ -368,7 +366,7 @@ All five Distribute stages (`PreDistributeDetached`, `PreDistributeInline`, `Dis
 
 #### `PostDistributeInline`
 
-**Timing**: After `process_work_batch` returns (blocking).
+**Timing**: After the flush's store calls return (blocking).
 
 **Use Cases**:
 - Synchronization points in tests
@@ -968,7 +966,7 @@ See [Lifecycle Receptors](../receptors/lifecycle-receptors.md) for API details.
 | Stage | File | Method/Location |
 |-------|------|-----------------|
 | `ImmediateDetached` | `Dispatcher.cs` | After business receptor completes |
-| `PreDistribute*` / `DistributeDetached` / `PostDistribute*` | — | Planned — enum values exist but are not yet wired into the pipeline |
+| `PreDistribute*` / `DistributeDetached` / `PostDistribute*` | `WorkCoordinatorFlushHelper.cs` | Around the flush's outbox and inbox store calls |
 | `PreOutbox*` / `PostOutbox*` | `OutboxPublishWorker.cs` | Around transport publish |
 | `PreInbox*` / `PostInbox*` | `InboxDispatchWorker.cs` | Around receptor dispatch (`PostInbox` fires after event storage) |
 | `PrePerspective*` | `PerspectiveRunnerTemplate.cs` | Before event processing loop (once per batch) |
