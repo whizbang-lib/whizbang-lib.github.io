@@ -48,6 +48,8 @@ generated model configuration; the other perspectives are still generated.
 Every uppercase letter becomes its own snake_case segment, so acronyms grow the name: `APIUsage` becomes
 `a_p_i_usage`.
 
+WHIZ820 is reported at the model type's declaration.
+
 ## Diagnostic Message
 
 ```
@@ -107,16 +109,13 @@ public record ProductCreated : IEvent;
 
 ### Overriding the limit
 
-The generator reads `build_property.WhizbangMaxIdentifierLength` (a positive integer; anything else is
-ignored). At this commit no Whizbang package registers it as a compiler-visible property, so declare that too:
+Set `WhizbangMaxIdentifierLength` in the project (a positive integer; anything else is ignored). The generator
+packages declare it a compiler-visible property, so the setting reaches the generator:
 
 ```xml{title="Override the identifier limit" description="For a PostgreSQL server built with a different NAMEDATALEN only." tests=["EFCorePerspectiveConfigurationGeneratorCoverageTests.Generator_WithSmallMaxIdentifierOverride_ReportsWHIZ820AgainstOverrideAsync", "EFCorePerspectiveConfigurationGeneratorCoverageTests.Generator_WithLargeMaxIdentifierOverride_AllowsLongTableNameAsync"]}
 <PropertyGroup>
   <WhizbangMaxIdentifierLength>128</WhizbangMaxIdentifierLength>
 </PropertyGroup>
-<ItemGroup>
-  <CompilerVisibleProperty Include="WhizbangMaxIdentifierLength" />
-</ItemGroup>
 ```
 
 The override applies to table, column and index names alike. Raising it above what your server accepts brings

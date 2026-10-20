@@ -52,10 +52,8 @@ WHIZ040 is a confirmation. It has no source location.
 ## Diagnostic Message
 
 ```text
-Registered {Category} '{ClassName}' as scoped service implementing '{InterfaceName}'
+Registered {Category} '{ClassName}' as transient service implementing '{InterfaceName}'
 ```
-
-The message says "scoped", but the generated registrations use `AddTransient`.
 
 ## Common Causes
 
@@ -89,7 +87,7 @@ public class OrderLens : IOrderLens {
 }
 ```
 
-The build reports `Registered Lens 'OrderLens' as scoped service implementing 'global::TestApp.IOrderLens'`.
+The build reports `Registered Lens 'OrderLens' as transient service implementing 'global::TestApp.IOrderLens'`.
 
 ## Suppressing
 

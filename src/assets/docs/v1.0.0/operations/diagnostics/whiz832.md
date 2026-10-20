@@ -104,11 +104,22 @@ public sealed class OrderLineSkuToText : IStoredFormMigration<OrderModel> {
 
 ## Suppressing
 
-The warning is reported by a source generator with no source location, so a `#pragma warning disable` region
-cannot reach it, and neither can a file-scoped `.editorconfig` section. Set the severity in a global analyzer
-config, or add the ID to `<NoWarn>` in the project:
+The warning is reported at the property carrying `[StoredForm]` (or at the `[StoredFormRemoved]` attribute, for a
+removal), so a `#pragma` region around that declaration silences it for that declaration only:
 
-```ini{title="Suppress WHIZ832 project-wide" description="A global analyzer config applies to diagnostics with no source location."}
+```csharp{title="Suppress WHIZ832 for one declaration" description="A pragma region around a stored-form declaration kept as a note." category="Diagnostics" difficulty="BEGINNER" tags=["diagnostics", "stored-forms", "suppression", "whiz832"] unverified="suppression/config, not exercised by a test"}
+public record OrderLine {
+#pragma warning disable WHIZ832
+  [StoredForm(Previously = typeof(int))]
+  public string Sku { get; init; } = "";
+#pragma warning restore WHIZ832
+}
+```
+
+A `[*.cs]` section in `.editorconfig` with `dotnet_diagnostic.WHIZ832.severity = none` also applies. To turn it off
+for the whole project, set the severity in a global analyzer config, or add the ID to `<NoWarn>` in the project:
+
+```ini{title="Suppress WHIZ832 project-wide" description="A global analyzer config turns the warning off for the whole project."}
 # .globalconfig
 is_global = true
 dotnet_diagnostic.WHIZ832.severity = none

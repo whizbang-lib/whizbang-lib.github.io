@@ -21,6 +21,8 @@ codeReferences:
   - src/Whizbang.Data.EFCore.Postgres/EFCorePerspectiveSnapshotStore.cs
   - src/Whizbang.Data.Schema/Schemas/PerspectiveSnapshotsSchema.cs
 testReferences:
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/EvictionCompanionCleanupSqlTests.cs
+  - tests/Whizbang.Core.Tests/Perspectives/EvictedRowRebuildTests.cs
   - tests/Whizbang.Core.Tests/Perspectives/PerspectiveSnapshotAndRewindTests.cs
   - tests/Whizbang.Core.Tests/Perspectives/SnapshotEnvelopeTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/Perspectives/DapperPerspectiveSnapshotStoreTests.cs
@@ -236,6 +238,17 @@ If no qualifying snapshot exists, the rewind replays from event zero. This is wh
 ### Bootstrap
 
 When the `PerspectiveWorker` encounters an existing stream that has processed events but has no snapshots (e.g., after enabling snapshots on an existing deployment), it performs a one-time **bootstrap**. The runner serializes the current model state into an initial snapshot, which subsequent rewinds can restore from.
+
+### Snapshots of an evicted row
+
+When [row retention](row-retention) evicts a perspective row (a row TTL, a row cap or a stream-group
+cascade), the row's snapshots are not all discarded with it. For each perspective that folds the
+model, the eviction keeps the **latest** snapshot of that stream (the one a rewind would restore: the
+highest stream version) and deletes the older ones, and it deletes the perspective's cursor for the
+stream. The next event on the stream then rebuilds the whole row by restoring that snapshot and
+replaying the events after it. Snapshots of other perspectives on the same stream are untouched. See
+[What an eviction removes](row-retention#what-an-eviction-removes).
+{verified: EvictionCompanionCleanupSqlTests.Cascade_RemovesTheEvictedRowsCursors_KeepsItsLatestSnapshot_LeavesTheRestAsync, EvictionCompanionCleanupSqlTests.Eviction_KeepsTheSnapshotARewindCanPlace_NotANewerVersionlessOneAsync, EvictedRowRebuildTests.CappedPerspective_EvictedRowWithSnapshot_RestoresTheSnapshotAndReplaysTheTailAsync}
 
 ## Implementation
 

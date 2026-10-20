@@ -106,11 +106,24 @@ public record ExportModel {
 
 ## Suppressing
 
-The warning is reported by a source generator with no source location, so a `#pragma warning disable` region
-cannot reach it, and neither can a file-scoped `.editorconfig` section. Set the severity in a global analyzer
-config, or add the ID to `<NoWarn>` in the project:
+The warning is reported at the model property that declares `[JsonConverter]`, so a `#pragma` region around
+that property silences it for that converter only:
 
-```ini{title="Suppress WHIZ812 project-wide" description="A global analyzer config applies to diagnostics with no source location."}
+```csharp{title="Suppress WHIZ812 for one property" description="A pragma region around the property that declares the converter." category="Diagnostics" difficulty="BEGINNER" tags=["diagnostics", "json-converter", "suppression", "whiz812"] unverified="suppression/config, not exercised by a test"}
+public record ExportModel {
+  public string Id { get; init; } = "";
+
+#pragma warning disable WHIZ812
+  [JsonConverter(typeof(LegacyVersionConverter))]
+  public string? Version { get; init; }
+#pragma warning restore WHIZ812
+}
+```
+
+A `[*.cs]` section in `.editorconfig` with `dotnet_diagnostic.WHIZ812.severity = none` also applies. To turn it off
+for the whole project, set the severity in a global analyzer config, or add the ID to `<NoWarn>` in the project:
+
+```ini{title="Suppress WHIZ812 project-wide" description="A global analyzer config turns the warning off for the whole project."}
 # .globalconfig
 is_global = true
 dotnet_diagnostic.WHIZ812.severity = none

@@ -34,10 +34,21 @@ codeReferences:
   - src/Whizbang.Core/Configuration/ConfigurationValueBinder.cs
   - src/Whizbang.Transports.RabbitMQ/RabbitMQOptionsConfigurationBinder.cs
   - src/Whizbang.Data.Postgres/PostgresOptionsConfiguration.cs
+  - src/Whizbang.Core/Observability/TableStatisticsOptions.cs
+  - src/Whizbang.Core/Observability/TableStatisticsServiceCollectionExtensions.cs
+  - src/Whizbang.Core/Workers/RetentionSettingsBridge.cs
+  - src/Whizbang.Core/Workers/MaintenanceRetentionOptions.cs
+  - src/Whizbang.Core/Configuration/EphemeralPointerPruneOptions.cs
+  - src/Whizbang.Data.Postgres/RetentionSettingsWriter.cs
 testReferences:
   - tests/Whizbang.Core.Component.Tests/Messaging/WorkCoordinatorGateInteractiveReserveTests.cs
   - tests/Whizbang.Core.Tests/ServiceCollectionExtensionsTests.cs
   - tests/Whizbang.Core.Tests/Messaging/WorkCoordinatorGateRegistrationTests.cs
+  - tests/Whizbang.Core.Tests/Workers/RetentionSettingsBridgeTests.cs
+  - tests/Whizbang.Core.Tests/Workers/RetentionSettingsBindingTests.cs
+  - tests/Whizbang.Core.Tests/Workers/RetentionSettingsValidationTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/RetentionSettingsSyncSqlTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperRetentionSettingsSyncTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/BatchFlusherRetryTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerAffinityHoldWatchdogTests.cs
   - tests/Whizbang.Core.Tests/Configuration/ProcessWideOptionsBindingTests.cs
@@ -51,6 +62,7 @@ testReferences:
   - tests/Whizbang.Core.Tests/Configuration/ConfigurationValueBinderTests.cs
   - tests/Whizbang.Transports.RabbitMQ.Tests/RabbitMQOptionsConfigurationTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/PostgresOptionsConfigurationTests.cs
+  - tests/Whizbang.Core.Tests/Observability/TableStatisticsRegistrationTests.cs
 ---
 
 This page lists **every configuration surface Whizbang exposes**: the sections the library binds from `IConfiguration` automatically, the sections you can opt into binding with a helper, and the (much larger) set of options classes that are configured in code — plus the recipe for making any of them configuration-driven. Each options class lists its properties, types, defaults, and a link to the page that covers it in depth.
@@ -61,7 +73,7 @@ Whizbang follows the standard .NET configuration model ([Microsoft: Configuratio
 
 | Mechanism | What it means | Applies to |
 |-----------|---------------|------------|
-| **Bound automatically** | `AddWhizbang()` / the database driver registration reads these configuration sections with hand-rolled, AOT-safe binders. Setting a key in `appsettings.json` or as an environment variable just works. | **64 sections** — `Whizbang` itself, `Whizbang:Core`, `Whizbang:Tracing`, `Whizbang:SchemaInitialization`, `Whizbang:WorkCoordinator`, every `Whizbang:Workers:*` worker, `Whizbang:StreamIntegrity`, `Whizbang:DeadLetterRecovery`, `Whizbang:Redelivery`, `Whizbang:Perspectives:*`, `Whizbang:Temporal`, `Whizbang:Tags` and the rest listed in the [Quick Map](#quick-map); plus `Whizbang:AspNet:*` with ASP.NET hosting, `Whizbang:Sagas` with sagas, `Whizbang:Scope` and `Whizbang:StartupStatusGraph` with GraphQL, `Whizbang:Database*` with the Postgres driver, `Whizbang:Transports:AzureServiceBus` / `Whizbang:Transports:RabbitMQ` with those transports, the [per-instance sections](#per-instance-sections) keyed by breaker, transport, database and tag, and `Whizbang:ServiceName`, `Whizbang:ShowBanner`, `ConnectionStrings:*`, `ConnectionPool:*` |
+| **Bound automatically** | `AddWhizbang()` / the database driver registration reads these configuration sections with hand-rolled, AOT-safe binders. Setting a key in `appsettings.json` or as an environment variable just works. | **65 sections**: `Whizbang` itself, `Whizbang:Core`, `Whizbang:Tracing`, `Whizbang:SchemaInitialization`, `Whizbang:WorkCoordinator`, every `Whizbang:Workers:*` worker, `Whizbang:StreamIntegrity`, `Whizbang:DeadLetterRecovery`, `Whizbang:Redelivery`, `Whizbang:Perspectives:*`, `Whizbang:Temporal`, `Whizbang:Tags` and the rest listed in the [Quick Map](#quick-map); plus `Whizbang:AspNet:*` with ASP.NET hosting, `Whizbang:Sagas` with sagas, `Whizbang:Scope` and `Whizbang:StartupStatusGraph` with GraphQL, `Whizbang:Database*` with the Postgres driver, `Whizbang:Transports:AzureServiceBus` / `Whizbang:Transports:RabbitMQ` with those transports, the [per-instance sections](#per-instance-sections) keyed by breaker, transport, database and tag, and `Whizbang:ServiceName`, `Whizbang:ShowBanner`, `ConnectionStrings:*`, `ConnectionPool:*` |
 | **Opt-in binding helper** | A one-line registration call reads the section for you. Without that call, the section is inert. | `Whizbang:BodyOffload` + `Whizbang:Offloads:AzureBlob:<name>` (via `AddWhizbangAzureBlobOffloadsFromConfiguration`) |
 | **Code-configured** | The options class is configured through an `Action<TOptions>` lambda (or `services.Configure<TOptions>(...)`). The library never reads a configuration section for it — **a configuration key for one of these does nothing unless your service binds it**. Every table below carries an environment-variable column; these read `— *code-only*`, so a blank is always deliberate rather than an omission (see [the binding recipe](#code-configured-options-the-binding-recipe)). | The classes with no configuration section in the [Quick Map](#quick-map): `ServiceRegistrationOptions`, `PerStreamSerializerOptions`, `WhizbangGraphQLOptions`, and the keys a bound class marks *code-only* |
 
@@ -104,6 +116,7 @@ The keys here are checked in both directions, so this page cannot drift from the
 | `Whizbang:Database` | `WhizbangNotificationOptions` | Automatic (Postgres driver) |
 | `Whizbang:Database:Stamper` | `CommitOrderStamperOptions` | Automatic (Postgres driver) |
 | `Whizbang:Database:RoleAssignment` | `RoleAssignmentOptions` | Automatic (Postgres driver) |
+| `Whizbang:Capabilities` | `CapabilityOptions` | Automatic (registered by every capability provider, both Postgres drivers among them); see [Capabilities](#capabilities-options) |
 | `Whizbang:WorkCoordinatorGate` | `WorkCoordinatorGateOptions` | Automatic (worker pipeline); a Postgres driver's `MaxInFlightCommands` fills `MaxConcurrent` when the section leaves it unset |
 | `Whizbang:ServiceName` (falls back to `ServiceName`) | — (string) | Automatic |
 | `Whizbang:ShowBanner` | — (bool) | Automatic |
@@ -121,6 +134,7 @@ The keys here are checked in both directions, so this page cannot drift from the
 | `Whizbang:WorkCoordinator` | `WorkCoordinatorOptions` | Automatic |
 | `Whizbang:Housekeeping` | `HousekeepingCoordinator.Settings` | Automatic |
 | `Whizbang:BacklogAge` | `BacklogAgeOptions` | Automatic |
+| `Whizbang:TableStatistics` | `TableStatisticsOptions` | Automatic (PostgreSQL driver, EF Core or Dapper) |
 | `Whizbang:StreamIntegrity` | `StreamIntegrityOptions` | Automatic |
 | `Whizbang:DeadLetterRecovery` | `DeadLetterRecoveryOptions` | Automatic |
 | `Whizbang:OrderedStreamProcessor` | `OrderedStreamProcessorOptions` | Automatic |
@@ -223,6 +237,14 @@ Bound by the Postgres driver, which holds duties (`maintainer`, `migrator`, and 
 | `OwedWorkRetryBase` | `TimeSpan` | `00:00:30` | `Whizbang__Database__RoleAssignment__OwedWorkRetryBase` | Backoff after owed duty work fails, doubled per failure, capped at one hour |
 
 Code-only (through `AddWhizbangRoleAssignment(o => ...)`): `Roles`, `RoleLeases` (a lease per duty; the migrator's default is 30 seconds) and `LegacyLockKeys`.
+
+### Whizbang:Capabilities → CapabilityOptions {#capabilities-options}
+
+Bound when any capability provider registers (both Postgres drivers do), so the library probes the external capabilities it can use at startup. **Details:** [Capabilities](../infrastructure/capabilities.md#configuration). {verified: CapabilityServiceCollectionExtensionsTests.ProbeOnStartup_DefaultsToTrue_WithoutConfigurationAsync, CapabilityServiceCollectionExtensionsTests.ProbeOnStartup_BindsFromConfigurationAsync}
+
+| Key | Type | Default | Environment variable | Purpose |
+|-----|------|---------|----------------------|---------|
+| `ProbeOnStartup` | `bool` | `true` | `Whizbang__Capabilities__ProbeOnStartup` | `false` skips the startup probe; every capability then reads `Unknown` |
 
 ### Service Name and Banner
 
@@ -549,6 +571,10 @@ Startup reconciliation of ephemeral-event settings drift. **Configure:** bound a
 | Property | Type | Default | Environment variable | Purpose |
 |----------|------|---------|--------------------|---------|
 | `ReconcileHistoricalOnStartup` | `bool` | `false` | `Whizbang__Ephemeral__ReconcileHistoricalOnStartup` | Act on settings drift (reclassify, stamp, offload) instead of detect/report only |
+| `RewindGraceSeconds` | `int?` | unset (database: `300`) | `Whizbang__Ephemeral__RewindGraceSeconds` | Seconds a consumed ephemeral body is kept for an out-of-order rewind before the sweep deletes it. Publishes `ephemeral_rewind_grace_seconds` ([database-side settings](#database-side-settings)) |
+| `PointerPrune.Enabled` | `bool?` | unset (database: `false`) | `Whizbang__Ephemeral__PointerPrune__Enabled` | Turn on the prune of ancient ephemeral pointers. Publishes `ephemeral_deep_maintenance_enabled` |
+| `PointerPrune.RetentionDays` | `int?` | unset (database: `90`) | `Whizbang__Ephemeral__PointerPrune__RetentionDays` | Days a reaped pointer is kept before it may be pruned; never shorter than the deduplication window. Publishes `ephemeral_pointer_retention_days` |
+| `PointerPrune.IntervalDays` | `int?` | unset (database: `30`) | `Whizbang__Ephemeral__PointerPrune__IntervalDays` | Days between prunes. Publishes `ephemeral_pointer_prune_interval_days` |
 
 ### WhizbangLifecycleOptions
 
@@ -622,6 +648,16 @@ The backlog-age duty: how old the oldest waiting message on each broker entity i
 | `Enabled` | `bool` | `true` | `Whizbang__BacklogAge__Enabled` | Run the duty; disabled means no peeks, no gauges, no health signal |
 | `Interval` | `TimeSpan` | `00:01:00` | `Whizbang__BacklogAge__Interval` | Peek cadence; one management operation per entity per tick |
 | `AgeThreshold` | `TimeSpan` | `00:15:00` | `Whizbang__BacklogAge__AgeThreshold` | Age of an entity's oldest waiting message at which health degrades. Deliberately far above a normal burst drain, so it means "not draining", not "busy" |
+
+### TableStatisticsOptions {#tablestatisticsoptions}
+
+How many tables the [`Whizbang.TableStatistics` meter](../observability/metrics#table-statistics) reports by name. Every `wh_` table in the service's schema is reported, perspective tables included, so the cap is what keeps the number of series from growing with the schema. **Configure:** bound automatically from `Whizbang:TableStatistics` by the PostgreSQL driver registration (EF Core or Dapper); no other call is needed. **Details:** [Table statistics cardinality](../observability/metrics#table-statistics-cardinality).
+
+| Property | Type | Default | Environment variable | Purpose |
+|----------|------|---------|----------------------|---------|
+| `MaxTrackedTables` | `int` | `500` | `Whizbang__TableStatistics__MaxTrackedTables` | The most tables reported by name. Past it, the smallest tables are summed under `table_name="other"`, so totals stay right. At least 1; a smaller value fails the statistics refresh, which logs the error each cycle |
+
+{verified: TableStatisticsRegistrationTests.MaxTrackedTables_BindsFromTheTableStatisticsSectionAsync, TableStatisticsRegistrationTests.WithoutConfiguration_TheCapIsFiveHundredAsync, PostgresTableStatisticsProviderTests.GetTableStorageAsync_PastTheCap_SumsTheSmallestUnderOtherAsync, PostgresTableStatisticsProviderTests.Constructor_RefusesACapBelowOneAsync}
 
 ## Work Coordination, Claims, and Leases
 
@@ -1068,6 +1104,16 @@ Operator rung of the row-retention override ladder. **Configure:** bound automat
 | `SettledFoldIdleDays` | `int` | `90` | `Whizbang__Workers__Maintenance__SettledFoldIdleDays` | Idle days before a stream counts as settled |
 | `SettledFoldBatchSize` | `int` | `1000` | `Whizbang__Workers__Maintenance__SettledFoldBatchSize` | Streams folded per settled-fold sweep |
 | `SettledFoldClaimWindowHours` | `int` | `24` | `Whizbang__Workers__Maintenance__SettledFoldClaimWindowHours` | Minimum hours between settled folds service-wide |
+| `Retention.DeduplicationDays` | `int?` | unset (database: `30`) | `Whizbang__Workers__Maintenance__Retention__DeduplicationDays` | Days a message id stays in the deduplication ledger. Publishes `dedup_retention_days` ([database-side settings](#database-side-settings)) |
+| `Retention.StuckInboxDays` | `int?` | unset (database: `7`) | `Whizbang__Workers__Maintenance__Retention__StuckInboxDays` | Days an inbox message that was never processed is kept. Publishes `stuck_inbox_retention_days` |
+| `Retention.RecoveredDeadLetterDays` | `int?` | unset (database: `7`) | `Whizbang__Workers__Maintenance__Retention__RecoveredDeadLetterDays` | Days a recovered dead letter is kept after recovery. Publishes `dead_letter_retention_days` |
+| `Retention.AbandonedStreamHours` | `int?` | unset (database: `1`) | `Whizbang__Workers__Maintenance__Retention__AbandonedStreamHours` | Hours an owner-less active-stream row sits idle before it is purged. Publishes `abandoned_stream_hours` |
+| `Retention.InstanceEvictionTombstoneHours` | `int?` | unset (database: `24`) | `Whizbang__Workers__Maintenance__Retention__InstanceEvictionTombstoneHours` | Hours an instance-eviction tombstone is kept. Publishes `instance_eviction_retention_hours` |
+| `Retention.OrphanPerspectiveEventGraceHours` | `int?` | unset (database: `1`) | `Whizbang__Workers__Maintenance__Retention__OrphanPerspectiveEventGraceHours` | Hours an unprocessed perspective event whose source event is missing is kept. Publishes `orphan_perspective_grace_hours` |
+| `Retention.CollectiveOrderingHeadDays` | `int?` | unset (database: `7`) | `Whizbang__Workers__Maintenance__Retention__CollectiveOrderingHeadDays` | Days an idle collective-ordering head is kept. Publishes `collective_ordering_head_retention_days` |
+
+The `Retention` windows are database-side settings: each cycle publishes the ones you set to `wh_settings` before
+the sweep reads them, and leaves the ones you do not set alone. See [Database-side settings](#database-side-settings).
 
 ## Stream Integrity
 
@@ -1186,11 +1232,12 @@ The poison-message detector. On session-enabled entities a lock lost to connecti
 
 ### HousekeepingCoordinator.Settings
 
-Arbitration tuning for the ranked housekeeping activities (dead-letter recovery, integrity, maintenance). **Configure:** bound by the framework from `Whizbang:Housekeeping` (`Whizbang__Housekeeping__MaxConsecutiveDeferrals=12` works with no service code); a host can also register its own `HousekeepingCoordinator` instance before the framework's TryAdd. **Details:** [Housekeeping Arbitration](../workers/housekeeping-arbitration).
+Arbitration tuning for the ranked housekeeping activities (dead-letter recovery, integrity, maintenance). **Configure:** bound by the framework from `Whizbang:Housekeeping` (`Whizbang__Housekeeping__MaxDeferral=02:00:00` works with no service code); a host can also register its own `HousekeepingCoordinator` instance before the framework's TryAdd. **Details:** [Housekeeping Arbitration](../workers/housekeeping-arbitration).
 
 | Property | Type | Default | Environment variable | Purpose |
 |----------|------|---------|----------------------|---------|
-| `MaxConsecutiveDeferrals` | `int` | `6` | `Whizbang__Housekeeping__MaxConsecutiveDeferrals` | Busy verdicts tolerated before one pass forces through (`ProceedDeferralLimit`) — the starvation floor for recovery and maintenance, counted per activity. At the 10-minute scan cadence, 6 means a never-idle service still recovers roughly hourly |
+| `MaxDeferral` | `TimeSpan` | `01:00:00` | `Whizbang__Housekeeping__MaxDeferral` | The longest an activity can be held back by the idle gate: once this much time has passed since its first deferral, the next request forces one pass through (`ProceedDeferralLimit`). Measured per activity and re-armed when a pass completes, so it no longer moves when a tick interval changes. Takes precedence over `MaxConsecutiveDeferrals`; must be positive (a zero or negative value fails options validation at startup). {verified: HousekeepingDeferralCeilingTests.AShortTick_DoesNotForceTheSweepBeforeMaxDeferralAsync, HousekeepingDeferralCeilingTests.ANonPositiveMaxDeferral_IsRejectedByNameAsync} |
+| `MaxConsecutiveDeferrals` | `int` | `6` | `Whizbang__Housekeeping__MaxConsecutiveDeferrals` | Legacy fallback. Used only when it is set and `MaxDeferral` is not: busy verdicts tolerated before one pass forces through (`ProceedDeferralLimit`), counted per activity, so the real ceiling is this count times the activity's tick. Prefer `MaxDeferral` |
 | `SettledCooldown` | `TimeSpan` | `00:02:00` | `Whizbang__Housekeeping__SettledCooldown` | How long the service must read settled continuously before a sweep is admitted. A bulk load empties its work tables between bursts, so a single settled reading means only "nothing queued right now"; the dwell tells a lull from an ending. `00:00:00` admits on the first settled reading |
 
 ### TransportDeadLetterDrainWorkerOptions
@@ -1580,9 +1627,73 @@ These classes have no settable properties; they are configured entirely through 
 - `LensOptions` — named lens scopes via `DefineScope(name, configure)`
 - `SecurityOptions` — RBAC/ABAC roles and permission extractors via fluent registration
 
-## Database-side settings (`wh_settings`)
+## Database-side settings (`wh_settings`) {#database-side-settings}
 
-Live-tunable without a redeploy; read by the SQL functions themselves.
+{verified: RetentionSettingsBridgeTests.UnsetOptions_AreNotWritten_SoAValueSetInSqlStandsAsync, MaintenanceWorkerRetentionSyncTests.EachCycle_PublishesTheConfiguredValuesInOneWriteAsync, RetentionSettingsSyncSqlTests.AConfiguredWindow_IsTheOneTheSweepAppliesAsync, DapperRetentionSettingsSyncTests.AConfiguredWindow_IsTheOneTheSweepAppliesAsync}
+
+The maintenance sweep runs in SQL, so it reads its retention windows from `wh_settings`, one row per setting in
+each service database, rather than from the host's options. Each setting below is published from an option:
+
+- **Each maintenance cycle publishes every option you set, in one write, before the sweep reads it.** A change
+  takes effect on the next cycle, without a restart. A value changed in SQL behind a configured option is put
+  back on the next cycle, so configuration is the authority for every option it sets.
+- **An option you leave unset is never written.** The stored value stands: the database default, or a value an
+  operator set in SQL. So adopting this release changes nothing until you set an option.
+- **`debug_mode` is always published,** in both directions, from `Whizbang:WorkCoordinator:DebugMode`. A stale
+  `true` would switch the purge off for good.
+- **A negative value is rejected at startup,** naming the key. A negative window would put the sweep's cutoff in
+  the future and make every row of the table eligible at once. `0` is allowed.
+- **A failed write never fails the cycle.** It is logged as a warning naming the keys it was publishing, and the
+  sweep keeps the values already stored.
+- **Both the EF Core and the Dapper engines publish them,** with the same statement. Rows the framework wrote
+  have `updated_by = 'whizbang'` and an `updated_at` of the last cycle.
+
+| Option | Environment variable | Database default | `wh_settings` key |
+|---|---|---|---|
+| `WorkCoordinatorOptions.DebugMode` | `Whizbang__WorkCoordinator__DebugMode` | `false` | `debug_mode` (always published) |
+| `MaintenanceWorkerOptions.Retention.DeduplicationDays` | `Whizbang__Workers__Maintenance__Retention__DeduplicationDays` | `30` | `dedup_retention_days` |
+| `MaintenanceWorkerOptions.Retention.StuckInboxDays` | `Whizbang__Workers__Maintenance__Retention__StuckInboxDays` | `7` | `stuck_inbox_retention_days` |
+| `MaintenanceWorkerOptions.Retention.RecoveredDeadLetterDays` | `Whizbang__Workers__Maintenance__Retention__RecoveredDeadLetterDays` | `7` | `dead_letter_retention_days` |
+| `MaintenanceWorkerOptions.Retention.AbandonedStreamHours` | `Whizbang__Workers__Maintenance__Retention__AbandonedStreamHours` | `1` | `abandoned_stream_hours` |
+| `MaintenanceWorkerOptions.Retention.InstanceEvictionTombstoneHours` | `Whizbang__Workers__Maintenance__Retention__InstanceEvictionTombstoneHours` | `24` | `instance_eviction_retention_hours` |
+| `MaintenanceWorkerOptions.Retention.OrphanPerspectiveEventGraceHours` | `Whizbang__Workers__Maintenance__Retention__OrphanPerspectiveEventGraceHours` | `1` | `orphan_perspective_grace_hours` |
+| `MaintenanceWorkerOptions.Retention.CollectiveOrderingHeadDays` | `Whizbang__Workers__Maintenance__Retention__CollectiveOrderingHeadDays` | `7` | `collective_ordering_head_retention_days` |
+| `EphemeralOptions.RewindGraceSeconds` | `Whizbang__Ephemeral__RewindGraceSeconds` | `300` | `ephemeral_rewind_grace_seconds` |
+| `EphemeralOptions.PointerPrune.Enabled` | `Whizbang__Ephemeral__PointerPrune__Enabled` | `false` | `ephemeral_deep_maintenance_enabled` |
+| `EphemeralOptions.PointerPrune.RetentionDays` | `Whizbang__Ephemeral__PointerPrune__RetentionDays` | `90` | `ephemeral_pointer_retention_days` |
+| `EphemeralOptions.PointerPrune.IntervalDays` | `Whizbang__Ephemeral__PointerPrune__IntervalDays` | `30` | `ephemeral_pointer_prune_interval_days` |
+
+The same settings in `appsettings.json`:
+
+```json{
+title: "Retention windows set from configuration"
+description: "Publishes a 14-day deduplication window, a 3-day recovered dead-letter window and the ephemeral pointer prune to wh_settings on the next maintenance cycle."
+category: "Configuration"
+difficulty: "BEGINNER"
+tags: ["retention", "maintenance", "wh_settings", "appsettings"]
+tests: ["RetentionSettingsBindingTests.MaintenanceRetention_BindsFromItsEnvironmentVariablesAsync", "RetentionSettingsBindingTests.EphemeralRetention_BindsFromItsEnvironmentVariablesAsync"]
+}
+{
+  "Whizbang": {
+    "Workers": {
+      "Maintenance": {
+        "Retention": {
+          "DeduplicationDays": 14,
+          "RecoveredDeadLetterDays": 3
+        }
+      }
+    },
+    "Ephemeral": {
+      "PointerPrune": {
+        "Enabled": true,
+        "RetentionDays": 120
+      }
+    }
+  }
+}
+```
+
+These settings have no option yet and are set in SQL only:
 
 | key | default | Environment variable | purpose |
 |---|---|----------------------|---|

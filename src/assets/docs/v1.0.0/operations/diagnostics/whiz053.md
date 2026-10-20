@@ -58,8 +58,9 @@ The generator locates the documentation checkout from build properties only
 | File contains the JSON literal `null` | No diagnostic, no enrichment |
 | File cannot be read or is not valid JSON of the expected shape | **WHIZ053**, no enrichment |
 
-The loader binds JSON property names case-sensitively to `File`, `Symbol` and `Docs`. A map whose entries use other
-casing (for example `docs`) parses without error, so it does not raise WHIZ053, but every `docsUrl` comes out empty.
+The loader reads JSON property names case-insensitively, so the camelCase entries the documentation site writes
+(`file`, `symbol`, `docs`) bind as expected and fill each entry's `docsUrl`. WHIZ053 fires only when the file truly
+fails to load.
 
 ## Diagnostic Message
 

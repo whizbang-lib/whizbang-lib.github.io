@@ -59,7 +59,7 @@ type's permanent identity.
 
 ### Before (causes WHIZ112)
 
-```csharp{title="Pinned id that is not a GUID" description="A [PinnedId] value that Guid.TryParse rejects reports WHIZ112 as an error." framework="NET10" category="Diagnostics" difficulty="BEGINNER" tags=["pinned-id", "guid", "identity", "WHIZ112"] testFile="PinnedIdAnalyzerTests.cs" testMethod="Analyzer_PinnedIdValueNotAGuid_ReportsWhiz102Async" githubUrl="https://github.com/whizbang-lib/whizbang/blob/develop/tests/Whizbang.Generators.Tests/Analyzers/PinnedIdAnalyzerTests.cs" tests=["PinnedIdAnalyzerTests.Analyzer_PinnedIdValueNotAGuid_ReportsWhiz102Async"]}
+```csharp{title="Pinned id that is not a GUID" description="A [PinnedId] value that Guid.TryParse rejects reports WHIZ112 as an error." framework="NET10" category="Diagnostics" difficulty="BEGINNER" tags=["pinned-id", "guid", "identity", "WHIZ112"] testFile="PinnedIdAnalyzerTests.cs" testMethod="Analyzer_PinnedIdValueNotAGuid_ReportsWhiz112Async" githubUrl="https://github.com/whizbang-lib/whizbang/blob/develop/tests/Whizbang.Generators.Tests/Analyzers/PinnedIdAnalyzerTests.cs" tests=["PinnedIdAnalyzerTests.Analyzer_PinnedIdValueNotAGuid_ReportsWhiz112Async"]}
 using Whizbang.Core;
 using Whizbang.Core.Attributes;
 

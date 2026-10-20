@@ -4,8 +4,8 @@ pageType: troubleshooting
 verifiedAgainstCommit: 9a416b5b
 verifiedDate: 2026-10-17
 description: >-
-  Error diagnostic when a receptor that fires at an Inline lifecycle stage calls WaitForStreamAsync or WaitAsync on
-  the perspective sync awaiter. Waiting for perspectives from an Inline stage deadlocks the work coordinator.
+  Error diagnostic when a receptor that fires at an Inline lifecycle stage calls WaitForStreamAsync, WaitAsync or
+  WaitForAppliedAsync on the perspective sync awaiter. Waiting for perspectives from an Inline stage deadlocks the work coordinator.
 version: 1.0.0
 category: Diagnostics
 severity: Error
@@ -40,17 +40,18 @@ holding up the pipeline.
 
 The `PerspectiveSyncInReceptorAnalyzer` reports WHIZ900 at each call site that matches all of these:
 
-- the called method is named `WaitForStreamAsync` or `WaitAsync`, and its containing type's name contains
-  `PerspectiveSyncAwaiter` (so both `IPerspectiveSyncAwaiter` and a concrete awaiter class match; `SemaphoreSlim.WaitAsync`
-  does not);
+- the called method is named `WaitForStreamAsync`, `WaitAsync` or `WaitForAppliedAsync`, and its containing type's
+  name contains `PerspectiveSyncAwaiter` (so both `IPerspectiveSyncAwaiter` and a concrete awaiter class match;
+  `SemaphoreSlim.WaitAsync` does not);
 - the call is inside a class that implements `IReceptor<...>` or `ISyncReceptor<...>` (any member of the class);
 - the class fires at an Inline stage:
-  - with one or more `[FireAt]` attributes, at least one of them names an Inline stage. The first Inline stage
-    found is the one reported;
+  - with one or more `[FireAt]` attributes, at least one of them names an Inline stage. A stage is Inline when its
+    name ends in `Inline`, so every Inline `LifecycleStage` member counts, including `PreDestructionInline` and
+    `PostDestructionInline`. The first Inline stage found is the one reported;
   - with no `[FireAt]` attribute, the analyzer treats the receptor as Inline and reports `LocalImmediateInline`.
 
 A receptor whose `[FireAt]` attributes are all Detached stages is not reported. A struct, or a class that is not a
-receptor, is not reported. Other awaiter methods (`WaitForAppliedAsync`, `IsCaughtUpAsync`) are not checked.
+receptor, is not reported. `IsCaughtUpAsync` does not wait, so it is not reported.
 
 The suggested stage in the message is the reported stage with `Inline` replaced by `Detached`, for example
 `PostInboxInline` becomes `PostInboxDetached`.

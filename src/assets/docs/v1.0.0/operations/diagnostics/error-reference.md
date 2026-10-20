@@ -345,6 +345,7 @@ Compile-time errors, warnings and notices from Whizbang's source generators and 
 | WHIZ012 | Info | [Perspective Invoker Routing Generated](whiz012.md) |
 | WHIZ013 | Error | [GenerateStreamId requires a settable StreamId](whiz013.md) |
 | WHIZ014 | Warning | [Receptor May Not Be Constructible by Dependency Injection](whiz014.md) |
+| WHIZ015 | Warning | [Generic Message Types Are Not Supported](whiz015.md) |
 | WHIZ020 | Retired | [WhizbangId Discovered](whiz020.md) (retired: never reported, ID never reused) |
 | WHIZ021 | Warning | [WhizbangId Must Be Partial](whiz021.md) |
 | WHIZ022 | Info | [Topic Filter Discovered](whiz022.md) |
@@ -385,7 +386,7 @@ Compile-time errors, warnings and notices from Whizbang's source generators and 
 | WHIZ101 | Error | [Apply method cannot use async/await](whiz101.md) |
 | WHIZ102 | Error | [Apply method cannot call database I/O](whiz102.md) |
 | WHIZ103 | Error | [Apply method cannot call HTTP/network operations](whiz103.md) |
-| WHIZ104 | Warning | [Apply method should use event timestamps instead of DateTime.UtcNow](whiz104.md) |
+| WHIZ104 | Warning | [Apply method should use event timestamps instead of reading the clock](whiz104.md) |
 | WHIZ105 | Warning | [Perspective injects non-pure service](whiz105.md) |
 | WHIZ106 | Error | [Collective apply must not query other perspectives at apply time](whiz106.md) |
 | WHIZ110 | Warning | [Message Missing [PinnedId]](whiz110.md) |

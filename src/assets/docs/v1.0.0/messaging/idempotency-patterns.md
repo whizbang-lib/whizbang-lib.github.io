@@ -163,7 +163,7 @@ END IF;
 
 **Mitigation Strategies**:
 - Use UUIDv7 for time-ordered IDs (better index performance)
-- Tune retention via the `dedup_retention_days` key in `wh_settings` (default 30 days)
+- Tune retention with `Whizbang__Workers__Maintenance__Retention__DeduplicationDays`, which publishes the `dedup_retention_days` key in `wh_settings` (default 30 days; see [database-side settings](../operations/configuration/configuration-reference#database-side-settings))
 - Monitor table size (`perform_maintenance` reports purge counts per run)
 
 ## Outbox Idempotency {#outbox-idempotency}
@@ -340,7 +340,7 @@ SELECT COUNT(*) FROM wh_message_deduplication;
 SELECT pg_total_relation_size('wh_message_deduplication');
 ```
 
-**4. Tune the Retention Window** (optional):
+**4. Tune the Retention Window** (optional): set `Whizbang:Workers:Maintenance:Retention:DeduplicationDays` in configuration, and each maintenance cycle publishes it ([database-side settings](../operations/configuration/configuration-reference#database-side-settings)). Setting the row in SQL directly still works while that option is unset:
 ```sql{title="Inbox Best Practices (3)" description="Inbox Best Practices" category="Architecture" difficulty="BEGINNER" tags=["Messaging", "Sql", "Inbox", "Best", "Practices"]}
 -- perform_maintenance purges entries older than dedup_retention_days (default 30)
 INSERT INTO wh_settings (setting_key, setting_value, value_type, description)

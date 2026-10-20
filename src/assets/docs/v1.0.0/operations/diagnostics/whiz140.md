@@ -66,7 +66,7 @@ flowchart LR
 ## Diagnostic Message
 
 ```
-Perspective '{PerspectiveName}' applies event type(s) also feeding stream-group member(s) ({GroupedMembers}), but joins no group — its rows will linger after siblings evict. Join the group, or mark [StreamGroupIsolated] to state the exclusion is deliberate.
+Perspective '{PerspectiveName}' applies event type(s) also feeding stream-group member(s) ({GroupedMembers}), but joins no group, so its rows will linger after siblings evict. Join the group, or mark [StreamGroupIsolated] to state the exclusion is deliberate.
 ```
 
 ## Common Causes
