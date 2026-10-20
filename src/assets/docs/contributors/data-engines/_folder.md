@@ -22,3 +22,4 @@ This section is the contributor reference for adding a new engine, a new ORM int
 - [Testing a new engine](testing-a-new-engine.md)
 - [Worked example: SQL Server](worked-example-sqlserver.md)
 - [Worked example: SQLite (polling-only)](worked-example-sqlite.md)
+- [Writing SQL migrations](writing-migrations.md)
