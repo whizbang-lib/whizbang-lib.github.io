@@ -16,11 +16,15 @@ codeReferences:
   - src/Whizbang.Data.EFCore.Postgres/EFCoreExtensions.cs
   - src/Whizbang.Data.EFCore.Postgres/InMemoryDriverExtensions.cs
   - src/Whizbang.Data.EFCore.Postgres/PostgresDriverExtensions.cs
+  - src/Whizbang.Data.Dapper.Postgres/DapperWorkCoordinator.cs
+  - src/Whizbang.Data.Dapper.Postgres/DapperCoordinatorSchema.cs
 testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/EFCoreDriverSelectorTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/EFCoreExtensionsTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/InMemoryDriverExtensionsTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/PostgresDriverExtensionsTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperWorkCoordinatorNamedSchemaTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperCoordinatorSchemaTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -163,6 +167,22 @@ The InMemory driver rides on the **EF Core InMemory provider** - it is not a sta
 ## Dapper-Based Alternative
 
 For services that prefer raw-SQL persistence, the `Whizbang.Data.Dapper.Postgres` package registers Whizbang's PostgreSQL stores (event store, work coordinator, request/response store, sequence provider) via `AddWhizbangPostgres(...)` instead of the EF Core chain. See [Dapper Integration](dapper-integration.md).
+
+### Which schema the Dapper work coordinator uses {#dapper-coordinator-schema}
+
+{verified: DapperWorkCoordinatorNamedSchemaTests.WithNoSchemaGiven_TheConnectionStringsSearchPathConfiguresItAsync, DapperWorkCoordinatorNamedSchemaTests.WithNothingConfigured_TheServersDefaultIsAskedOnceAndKeptAsync, DapperWorkCoordinatorNamedSchemaTests.ASessionThatResolvesNoSchema_IsTakenAsPublicAsync, DapperCoordinatorSchemaTests.TheFirstSchemaTheSearchPathNames_IsTheSchemaAsync}
+
+`DapperWorkCoordinator` qualifies every statement it sends with one schema, `public` included, so it never depends on the session's `search_path`. That matters behind a transaction-pooling PgBouncer, where a `SET search_path` from one session does not follow the next statement. It settles the schema once, in this order:
+
+1. The `schema` constructor argument, when one is given.
+2. The first schema the connection string's `Search Path` names. A quoted name is kept exactly; an unquoted name is lower-cased, as Postgres folds it; `$user` is skipped.
+3. Otherwise the server's answer to `current_schema()` on first use, which honors a default set with `ALTER DATABASE ... SET search_path` or `ALTER ROLE ... SET search_path`. A session that resolves no schema at all is taken as `public`.
+
+The answer is kept for the coordinator's lifetime, so the lookup costs one round trip at most.
+
+:::warning
+Before this release the coordinator called its functions unqualified and named `public` outright in its maintenance, orphan-inbox purge, pending-message discard and pending-stream statements. A Whizbang schema installed anywhere but the session's `search_path` failed with `42883` (function does not exist) or `42P01` (relation does not exist).
+:::
 
 ## Choosing a Driver
 
