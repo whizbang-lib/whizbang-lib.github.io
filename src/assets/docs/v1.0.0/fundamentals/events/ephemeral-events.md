@@ -378,7 +378,7 @@ again, up to `MaxDestructionRetries` times. What happens after that is the `OnDe
 maintenance worker options: `RetryThenForcedDelete` (the default) deletes anyway, so a broken hook
 cannot leak storage; `RetryThenKeep` keeps the data; `ForceDeleteImmediately` deletes on the first
 failure. See [MaintenanceWorkerOptions](../../operations/configuration/configuration-reference#maintenanceworkeroptions)
-and the [destruction lifecycle stages](../lifecycle/lifecycle-stages#destruction-stages-4-stages).
+and the [destruction lifecycle stages](../lifecycle/lifecycle-stages#destruction).
 {verified: MaintenanceWorkerDestructionHookTests.RunMaintenanceOnce_HookThrows_RecordsFailureForRetry_NoPostDestructionAsync, EphemeralDestructionHoldSqlTests.RecordDestructionFailure_HoldsForRetry_ThenForcedDeletePastCapAsync, EphemeralDestructionHoldSqlTests.RecordDestructionFailure_RetryThenKeep_KeepsPastCapAsync, EphemeralDestructionHoldSqlTests.RecordDestructionFailure_ForceDeleteImmediately_ReapsOnFirstFailureAsync}
 
 A hook can preserve data or emit ephemeral events, but it cannot turn an ephemeral event back into a
@@ -442,5 +442,5 @@ nothing.
 - [Perspective Row Retention](../perspectives/row-retention)
 - [Perspective Snapshots](../perspectives/snapshots)
 - [Event Streams: closing a stream's history](event-streams#closing-a-stream)
-- [Lifecycle Stages: destruction stages](../lifecycle/lifecycle-stages#destruction-stages-4-stages)
+- [Lifecycle Stages: destruction stages](../lifecycle/lifecycle-stages#destruction)
 - [Configuration reference: EphemeralOptions](../../operations/configuration/configuration-reference#ephemeraloptions)
