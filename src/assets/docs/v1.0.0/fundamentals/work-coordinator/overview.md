@@ -86,7 +86,7 @@ The work coordinator pumps messages through three queues — outbox (transport p
 
 ## Why decomposed
 
-The legacy `process_work_batch` was a 1409-line PL/pgSQL function with 25 parameters. Calling it cost ~17 ms even on empty queues because every call ran heartbeat + 4 orphan-claim scans + 5 result CTEs. With every service polling it ~22 times/sec, postgres CPU sat at 45% just doing no-op polling.
+The work coordinator used to be a single 1409-line PL/pgSQL orchestrator function with 25 parameters; it was removed (migration 029 drops it) once every caller moved to the focused functions above. Calling it cost ~17 ms even on empty queues because every call ran heartbeat + 4 orphan-claim scans + 5 result CTEs. With every service polling it ~22 times/sec, postgres CPU sat at 45% just doing no-op polling.
 
 The new shape:
 

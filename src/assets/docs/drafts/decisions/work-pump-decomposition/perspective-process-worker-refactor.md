@@ -1,7 +1,7 @@
 # PerspectiveProcessWorker — refactor plan
 
 ## Status
-Designed (2026-04-26). Implementation deferred to a dedicated session.
+Designed (2026-04-26). Since landed: `PerspectiveWorker` now receives perspective work from `ClaimWorker` through the perspective channels, `ProcessWorkBatchAsync` has been removed from `IWorkCoordinator`, and the `process_work_batch` SQL function was removed (migration 029 drops it). The rest of this record is kept as history.
 
 ## Context
 

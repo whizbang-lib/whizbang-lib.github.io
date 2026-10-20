@@ -591,7 +591,7 @@ Transport consumer concurrency and inbox batching. **Configure:** `services.Conf
 
 ### TransportBatchOptions
 
-Transport-level batch collection before `process_work_batch`. **Configure:** the transport registration lambda. **Details:** [Transports](/v1.0.0/messaging/transports/transports#configuration).
+Transport-level batch collection before the batch is stored in the inbox with one `store_inbox_messages` call. **Configure:** the transport registration lambda. **Details:** [Transports](/v1.0.0/messaging/transports/transports#configuration).
 
 | Property | Type | Default | Environment variable | Purpose |
 |----------|------|---------|----------------------|---------|
@@ -1050,7 +1050,7 @@ Connection retry, command timeout, and collective-apply bounds for the PostgreSQ
 | `MaxRetryDelay` | `TimeSpan` | `00:02:00` | — *code-only* | Cap on exponential backoff |
 | `BackoffMultiplier` | `double` | `2.0` | — *code-only* | Backoff multiplier |
 | `RetryIndefinitely` | `bool` | `true` | — *code-only* | Retry forever until connect or cancellation |
-| `CommandTimeoutSeconds` | `int` | `120` | — *code-only* | How long one SQL command (e.g. `process_work_batch`) may run; shorter than the worst commit batch loses completions |
+| `CommandTimeoutSeconds` | `int` | `120` | — *code-only* | How long one SQL command (e.g. `claim_work` or `commit_handler_batch`) may run; shorter than the worst commit batch loses completions |
 | `MaxInFlightCommands` | `int` | `50` | — *code-only* | Cap on concurrent work-coordinator calls per process; post-configured into `WorkCoordinatorGateOptions.MaxConcurrent` (see [WorkCoordinatorGateOptions](#workcoordinatorgateoptions)), so it is the effective gate cap whenever a Postgres driver is registered; 0 disables the gate |
 | `CollectiveApplyBatchSize` | `int` | `1000` | — *code-only* | Rows mutated per batched collective-apply UPDATE |
 | `CollectiveApplyStatementTimeoutSeconds` | `int?` | `null` | — *code-only* | Server-side `statement_timeout` per collective-apply batch |

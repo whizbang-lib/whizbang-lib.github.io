@@ -5,7 +5,7 @@ Accepted (2026-04-25)
 
 ## Context
 
-Inbox handlers complete one message at a time today. Each handler invokes `process_work_batch` (now `commit_handler_result`) to atomically: mark the inbox message processed, store any emitted outbox messages, write to the event store, and auto-create perspective events.
+Inbox handlers complete one message at a time today. Each handler invoked `process_work_batch` (replaced by `commit_handler_result`; `process_work_batch` itself was later removed, migration 029 drops it) to atomically: mark the inbox message processed, store any emitted outbox messages, write to the event store, and auto-create perspective events.
 
 That's an fsync per handler. Under load the per-handler fsync floor caps single-instance throughput at ~200 handler/s on commodity hardware. The dispatch loop is otherwise trivial — fsync is the bottleneck.
 

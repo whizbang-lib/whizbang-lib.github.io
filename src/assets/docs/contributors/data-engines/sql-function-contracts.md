@@ -57,7 +57,7 @@ claim_work(
 
 **Required behavior:**
 
-- **Empty-call short-circuit**: if no rows have `processed_at IS NULL` (or `completed_at IS NULL` for receptors) in any of the work tables, return immediately without invoking orphan-claim sub-functions or running result CTEs. This is the load-bearing performance contract — the legacy `process_work_batch` had a ~17 ms floor on empty calls; conformant `claim_work` should be ≤ 1 ms.
+- **Empty-call short-circuit**: if no rows have `processed_at IS NULL` (or `completed_at IS NULL` for receptors) in any of the work tables, return immediately without invoking orphan-claim sub-functions or running result CTEs. This is the load-bearing performance contract — the single orchestrator function that claiming was split out of (removed by migration 029) had a ~17 ms floor on empty calls; conformant `claim_work` should be ≤ 1 ms.
 - **Per-stream order**: outbox/inbox return must preserve ordering within a stream (oldest first).
 - **Cap respected**: `LIMIT p_max_streams` on returned rows.
 - **Lock to caller**: claimed rows have `instance_id = p_instance_id` and `lease_expiry > NOW()` after the call.

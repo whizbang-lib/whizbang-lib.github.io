@@ -43,6 +43,7 @@ codeReferences:
   - src/Whizbang.Data.Dapper.Postgres/CollectiveEventsDapperExtensions.cs
   - src/Whizbang.Data.Postgres/Migrations/061_CollectiveEventRouting.sql
   - src/Whizbang.Data.Postgres/Migrations/175_CollectiveSinkQueue.sql
+  - src/Whizbang.Data.Postgres/Migrations/215_CollectiveSinkQueueReadsOnlyItsHead.sql
   - src/Whizbang.Data.Postgres/Collective/CollectiveApplyContention.cs
   - src/Whizbang.Data.EFCore.Postgres.Generators/EFCoreServiceRegistrationGenerator.cs
   - src/Whizbang.Generators/Analyzers/CollectivePredicateIndexAnalyzer.cs
@@ -66,6 +67,8 @@ testReferences:
   - tests/Whizbang.Core.Tests/Perspectives/PerspectivePhysicalFieldRegistryTests.cs
   - tests/Whizbang.Core.Tests/Messaging/CollectiveOrderingKeyTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/CollectiveSinkQueueSqlTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerCollectiveSinkQueueHeadTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/Collective/DapperCollectiveSinkQueueTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Collective/CollectiveReplayOrderingTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Collective/CollectiveOrderingIntegrationTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/Collective/DapperCollectiveOrderingIntegrationTests.cs
@@ -226,9 +229,10 @@ What the key guarantees:
 - **Collectives sharing a key in one scope apply one at a time, in the order the database
   committed them.** The event's stream id is derived from the scope and the key
   (`CollectiveOrdering.StreamIdFor`), so every such collective, of any type, lands on one
-  stream and one `__collective__` sink stream. The sink applies that stream's queue
-  (`wh_collective_sink_queue`) in commit order: `commit_sequence`, an unstamped event last,
-  `event_id` breaking the tie.
+  stream and one `__collective__` sink stream. The sink applies that stream's queue in commit
+  order. Within one stream that is the order of the stream's versions: a stream's versions are
+  taken under its lock, and `commit_sequence` is stamped in version order, so an event not yet
+  stamped takes its place by version too, the place a later replay gives it.
 - **Commit order, not id order.** An event id is minted before commit, so two producers can
   commit in the opposite order to their ids. The sink reads the queue by work row, not after
   its cursor, so the later commit applies last even when its id is the smaller.
@@ -236,6 +240,15 @@ What the key guarantees:
   collectives it holds and stops at the first it does not (leased elsewhere, backing off after
   a failure, or waiting for its apply lock). A failed collective is retried in its place,
   never overtaken.
+- **A run reads the head of its queue, not the queue.** Each sink run reads the queue from its
+  start through the rows it holds and one row more, on an index in apply order
+  (`wh_collective_sink_queue_head`), and asks separately which of its held rows, and which of
+  its collectives' predecessors, are still queued (`wh_collective_sink_queue_members`). A busy
+  key with a long backlog therefore costs each run its own rows, not the backlog
+  {verified: CollectiveSinkQueueSqlTests.SinkQueueHead_StopsAtTheFirstRowTheCallerDoesNotNameAsync, CollectiveSinkQueueSqlTests.SinkQueueHead_ReadsOnlyTheHead_NotTheWholeQueueAsync, CollectiveSinkQueueSqlTests.SinkQueueMembers_AnswersForNamedRowsAndEventsOnlyAsync, PerspectiveWorkerCollectiveSinkQueueHeadTests.CollectiveSink_QueueHead_NeverReadsTheWholeQueueAsync}.
+  A queue cut short by a `LIMIT` would not do: a held row the queue no longer contains has
+  already been applied and is completed, so a row merely hidden by the cut would be completed
+  without being applied.
 - **Replay agrees with live.** A rebuild folds the collectives sharing a stream in the same
   commit order, within the positions their ids gave them among the row's own events.
 - **Across services** the key's stream travels with the event, and each collective carries a

@@ -39,7 +39,7 @@ The **Work Coordinator** (`IWorkCoordinator`) is Whizbang's database coordinatio
 > **This page is the API reference.** For conceptual architecture (lease-based coordination, virtual partition distribution, stream ordering guarantees), see [Work Coordination](work-coordination.md).
 
 :::updated
-The legacy `ProcessWorkBatchAsync` mega-call was decomposed into the focused methods below; the `process_work_batch` SQL orchestrator was dropped (migration `029_ProcessWorkBatch.sql`). `ProcessWorkBatchAsync` no longer exists on `IWorkCoordinator` — the work pump is fully decomposed (`ClaimWorkAsync`, `ReportFailuresAsync`, `CompleteOutboxPublishedAsync`, `CommitHandlerResultAsync`/`CommitHandlerBatchAsync`, `FlushCompletionsAsync`, …).
+The legacy single batch mega-call was decomposed into the focused methods below; the SQL orchestrator function behind it was removed (migration `029_ProcessWorkBatch.sql` drops it). The batch method no longer exists on `IWorkCoordinator` — the work pump is fully decomposed (`ClaimWorkAsync`, `ReportFailuresAsync`, `CompleteOutboxPublishedAsync`, `CommitHandlerResultAsync`/`CommitHandlerBatchAsync`, `FlushCompletionsAsync`, …).
 :::
 
 ## Overview
@@ -438,7 +438,7 @@ var renewed = await coordinator.RenewLeasesAsync(
 
 ## PostgreSQL Implementation
 
-Each coordinator method maps to a focused **PostgreSQL function** (hosted primarily in migration `029_ProcessWorkBatch.sql`, which also drops the legacy `process_work_batch` orchestrator).
+Each coordinator method maps to a focused **PostgreSQL function** (most were first defined in migration `029_ProcessWorkBatch.sql`, which also drops the legacy orchestrator function; several, such as `claim_work`, are redefined by later migrations, and the latest definition is the one in effect).
 
 ### Function Map
 

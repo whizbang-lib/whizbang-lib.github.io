@@ -106,7 +106,7 @@ Perspective sync uses **database queries** to check if events have been processe
 - Load-balanced environments
 - Blue-green deployments
 
-The sync inquiry is batched with regular work coordination calls via `process_work_batch`, making it efficient with no additional round-trips.
+Each check is one read-only call, `IWorkCoordinator.ResolveSyncInquiriesAsync` (the `resolve_sync_inquiries` SQL function). It takes the tracked events grouped by stream and returns, per stream, how many are still pending versus processed for the perspective, so a check costs one round-trip no matter how many events are tracked.
 
 ### ISyncEventTracker {#event-tracking}
 
@@ -715,7 +715,7 @@ flowchart TD
 
 Track EventIds explicitly and send them to the database:
 
-```csharp{title="The Solution" description="Track EventIds explicitly and send them to the database:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Solution"] unverified="conceptual four-step walkthrough with a pseudo _processWorkBatch delegate, not a library-API assertion"}
+```csharp{title="The Solution" description="Track EventIds explicitly and send them to the database:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Solution"] unverified="conceptual four-step walkthrough, not a library-API assertion"}
 // 1. Capture EventId when emitted
 _scopedTracker.TrackEmittedEvent(streamId, typeof(OrderCreatedEvent), eventId);
 
@@ -728,7 +728,8 @@ var inquiry = new SyncInquiry {
 };
 
 // 3. Database checks if EventId is in ProcessedEventIds
-var result = await _processWorkBatch(inquiry);
+var results = await _workCoordinator.ResolveSyncInquiriesAsync([inquiry], ct);
+var result = results[0];
 
 // 4. IsFullySynced only true when EventId appears in ProcessedEventIds
 return result.ProcessedEventIds.Contains(eventId);

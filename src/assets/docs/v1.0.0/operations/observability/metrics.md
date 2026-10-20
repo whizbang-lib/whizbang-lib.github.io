@@ -75,7 +75,7 @@ testReferences:
   - tests/Whizbang.Core.Component.Tests/Workers/InboxDispatchWorkerCompositeCommitTests.cs
   - tests/Whizbang.Core.Tests/Workers/InboxHandlerWorkerQueueDepthTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerCollectiveSinkTests.cs
-lastMaintainedCommit: '01f07906'
+lastMaintainedCommit: '62abd3a45'
 ---
 
 # Metrics Reference
@@ -91,7 +91,7 @@ The six core meters cover the main request lifecycle:
 | `Whizbang.LifecycleCoordinator` | `LifecycleCoordinatorMetrics` | Coordinator state, WhenAll tracking, stage firing |
 | `Whizbang.Transport` | `TransportMetrics` | Inbox receive, outbox publish, event store, subscriptions, body offloads |
 | `Whizbang.Perspectives` | `PerspectiveMetrics` | Perspective worker batches, checkpoints, event loading, rewinds |
-| `Whizbang.WorkCoordinator` | `WorkCoordinatorMetrics` (+ `InboxMetrics`) | process_work_batch SQL, flush, publisher worker, maintenance, gate holds, inbox dispatch |
+| `Whizbang.WorkCoordinator` | `WorkCoordinatorMetrics` (+ `InboxMetrics`) | Strategy flushes, publisher worker, maintenance, gate holds, inbox dispatch |
 
 Additional subsystem meters:
 
@@ -423,8 +423,8 @@ Instruments for the perspective worker pipeline - batch processing, claim, event
 
 | Metric Name | Unit | Description |
 |-------------|------|-------------|
-| `whizbang.perspective.batch.duration` | ms | Full _processWorkBatchAsync cycle |
-| `whizbang.perspective.claim.duration` | ms | ProcessWorkBatchAsync to claim perspective work |
+| `whizbang.perspective.batch.duration` | ms | One perspective worker drain cycle, from picking up work to its post-lifecycle stages |
+| `whizbang.perspective.claim.duration` | ms | Not recorded: perspective work is now claimed by `ClaimWorker` (`claim_work`), not by the perspective worker, and nothing records this instrument |
 | `whizbang.perspective.event_load.duration` | ms | GetEventsBetweenPolymorphicAsync query |
 | `whizbang.perspective.runner.duration` | ms | IPerspectiveRunner execution per stream |
 | `whizbang.perspective.checkpoint.duration` | ms | GetPerspectiveCursorAsync |
@@ -476,20 +476,24 @@ release cycle. See [dates, times and durations](../../fundamentals/perspectives/
 
 Meter name: `Whizbang.WorkCoordinator`
 
-Instruments for the core work coordination pipeline - the `process_work_batch` SQL call, flush orchestration, publisher worker, and maintenance tasks.
+Instruments for the core work coordination pipeline - flush orchestration, publisher worker, and maintenance tasks.
+
+:::updated
+The `process_batch.*`, `batch.*` and `returned.*` instruments below, and `flush.duration` and `flush.empty_calls`, were written for the single orchestrator SQL call that earlier builds made on every flush. That function was removed (migration 029 drops it): a flush now stores rows with `store_outbox_messages` / `store_inbox_messages`, and `claim_work` runs separately in `ClaimWorker`. The instruments are still declared on the meter, but nothing in the current release records them, so they report no data. Use `pg_stat_statements` for per-function SQL timing.
+:::
 
 ### Timing Histograms
 
 | Metric Name | Unit | Description |
 |-------------|------|-------------|
-| `whizbang.work_coordinator.process_batch.duration` | ms | Time executing process_work_batch SQL |
+| `whizbang.work_coordinator.process_batch.duration` | ms | Not recorded (see the note above) |
 | `whizbang.work_coordinator.flush.duration` | ms | Total FlushAsync time including lifecycle |
 
 ### Batch Composition (Input)
 
 | Metric Name | Type | Description |
 |-------------|------|-------------|
-| `whizbang.work_coordinator.batch.outbox_messages` | Histogram\<int\> | Outbox messages sent to process_work_batch |
+| `whizbang.work_coordinator.batch.outbox_messages` | Histogram\<int\> | Not recorded (see the note above) |
 | `whizbang.work_coordinator.batch.inbox_messages` | Histogram\<int\> | Inbox messages sent |
 | `whizbang.work_coordinator.batch.completions` | Histogram\<int\> | Completions sent |
 | `whizbang.work_coordinator.batch.failures` | Histogram\<int\> | Failures sent |
@@ -506,7 +510,7 @@ Instruments for the core work coordination pipeline - the `process_work_batch` S
 
 | Metric Name | Type | Description |
 |-------------|------|-------------|
-| `whizbang.work_coordinator.process_batch.calls` | Counter\<long\> | Total process_work_batch calls |
+| `whizbang.work_coordinator.process_batch.calls` | Counter\<long\> | Not recorded (see the note above) |
 | `whizbang.work_coordinator.process_batch.errors` | Counter\<long\> | SQL errors |
 | `whizbang.work_coordinator.flush.calls` | Counter\<long\> | Total FlushAsync calls |
 | `whizbang.work_coordinator.flush.empty_calls` | Counter\<long\> | Flushes with no queued work |
@@ -814,8 +818,8 @@ whizbang_lifecycle_coordinator_active_tracked_events
 # Perspective lag (empty batches indicate worker is caught up)
 rate(whizbang_perspective_empty_batches_total[5m])
 
-# process_work_batch SQL p95 latency
-histogram_quantile(0.95, rate(whizbang_work_coordinator_process_batch_duration_bucket[5m]))
+# Strategy flush rate
+rate(whizbang_work_coordinator_flush_calls_total[5m])
 ```
 
 ### Aspire Dashboard
