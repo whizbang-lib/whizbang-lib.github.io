@@ -991,9 +991,9 @@ Each sweep also runs the **seal backstop** (`verify_digest_epochs`, bounded by
 `MaxEpochVerificationsPerSweep`): every closed epoch recomputed from the store, compared
 bucket-for-bucket, refolded on drift. Non-zero drift means an unaccounted write path touched
 sealed history — logged as the alarm it is. Epochs holding an unsettled arrival are skipped
-whole, exactly like closure. {#origin-generation}
+whole, exactly like closure.
 
-### Origin generation — seals survive legitimate mutation
+### Origin generation — seals survive legitimate mutation {#origin-generation}
 
 A close-the-books truncation or a reclassification **legitimately changes** what a fold over
 sealed history computes. The two mutation sites (migration 093) now refold the affected sealed
