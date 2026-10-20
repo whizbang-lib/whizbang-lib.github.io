@@ -1,8 +1,8 @@
 ---
 title: 'WHIZ134: Ambiguous ephemeral composition'
 pageType: troubleshooting
-verifiedAgainstCommit: 9a416b5b
-verifiedDate: 2026-10-17
+verifiedAgainstCommit: 03c5bb93
+verifiedDate: 2026-10-20
 description: >-
   Error diagnostic when a type inherits [Ephemeral] from two or more unrelated profile interfaces whose settings
   disagree, with no attribute on the type or a base class to settle which one applies.
@@ -52,14 +52,14 @@ The check applies to every class and struct, not only events.
 ```mermaid{caption="A type implementing two sibling profiles that disagree is ambiguous; a refined profile that extends another is not." tests=["EphemeralAnalyzerTests.TwoConflictingProfiles_ReportsWHIZ134ErrorAsync", "EphemeralAnalyzerTests.RefinedProfileInheritance_NoWHIZ134Async"]}
 flowchart LR
   subgraph Ambiguous["WHIZ134"]
-    P1["IPresenceProfile<br/>WhenConsumed, InMemory"]
+    P1["IPresenceProfile<br/>WhenConsumed, TtlRow"]
     P2["ISessionProfile<br/>AfterTtl, TtlRow"]
     A["record Ambiguous"]
     A --> P1
     A --> P2
   end
   subgraph Refined["No diagnostic"]
-    B1["IBaseProfile<br/>WhenConsumed, InMemory"]
+    B1["IBaseProfile<br/>WhenConsumed, TtlRow"]
     B2["IRefinedProfile<br/>AfterTtl, TtlRow"]
     R["record Refined"]
     R --> B2
@@ -97,7 +97,7 @@ using Whizbang.Core.Attributes;
 
 namespace TestApp;
 
-[Ephemeral(Destruction = Destruction.WhenConsumed, Storage = TransientStorage.InMemory)]
+[Ephemeral(Destruction = Destruction.WhenConsumed, Storage = TransientStorage.TtlRow)]
 public interface IPresenceProfile : IEvent { }
 
 [Ephemeral(Destruction = Destruction.AfterTtl, Storage = TransientStorage.TtlRow)]
@@ -109,7 +109,7 @@ public record Ambiguous : IPresenceProfile, ISessionProfile;  // WHIZ134
 ### After (no diagnostic)
 
 ```csharp{title="Explicit [Ephemeral] settles the tie" description="The type's own attribute is the most specific declaration, so the conflicting profiles no longer matter." framework="NET10" category="Diagnostics" difficulty="ADVANCED" tags=["ephemeral", "composition", "profiles", "WHIZ134"] testFile="EphemeralAnalyzerTests.cs" testMethod="ConflictingProfilesWithOwnOverride_NoWHIZ134Async" githubUrl="https://github.com/whizbang-lib/whizbang/blob/develop/tests/Whizbang.Generators.Tests/EphemeralAnalyzerTests.cs" tests=["EphemeralAnalyzerTests.ConflictingProfilesWithOwnOverride_NoWHIZ134Async"]}
-[Ephemeral(Destruction = Destruction.WhenConsumed, Storage = TransientStorage.InMemory)]
+[Ephemeral(Destruction = Destruction.WhenConsumed, Storage = TransientStorage.TtlRow)]
 public record Resolved : IPresenceProfile, ISessionProfile;
 ```
 
