@@ -21,9 +21,12 @@ codeReferences:
   - src/Whizbang.Core/Workers/MaintenanceWorker.cs
   - src/Whizbang.Generators/Templates/PerspectiveRunnerTemplate.cs
   - src/Whizbang.Data.Postgres/Migrations/211_EvictionRemovesItsCompanions.sql
+  - src/Whizbang.Data.Postgres/PerspectiveRowRetentionSql.cs
+  - src/Whizbang.Data.Dapper.Postgres/DapperWorkCoordinator.RowRetention.cs
 testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/EvictionCompanionCleanupSqlTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperEvictionCompanionCleanupTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperRowRetentionTests.cs
   - tests/Whizbang.Core.Tests/Perspectives/EvictedRowRebuildTests.cs
   - tests/Whizbang.Core.Tests/Perspectives/PerspectiveRowEvictionTests.cs
   - tests/Whizbang.Core.Tests/Perspectives/ResurrectionProbeIsPerspectiveAwareTests.cs
@@ -108,6 +111,18 @@ Every path honors pre-destruction holds: a row a registered guard deferred or ca
 offered again when the hold lapses. The TTL and cap sweeps are batched, so a large backlog drains
 across cycles, and they are gated on adoption so a new declaration reports before it removes (see
 [Adoption is automatic](#adoption-is-automatic)). Under `debug_mode` nothing is evicted.
+
+### On the Dapper driver {#dapper-driver}
+
+{verified: DapperRowRetentionTests.TheMaintenanceCycle_AdoptsTheDeclaredWindow_SweepsExpiredRows_AndCascadesToTheGroupAsync, DapperRowRetentionTests.TheMaintenanceCycle_OffersExpiringRowsToTheGuard_AndADeferHoldsThemAsync, DapperRowRetentionTests.TheCapSweep_IsClaimedOncePerWindow_AndEvictsTheOverflowAsync, DapperRowRetentionTests.TheAdoptionGate_CountsTheBacklog_AndAcknowledgingOpensItAsync, DapperRowRetentionTests.ADeclarationWithNoRegistryRow_IsReportedAsync}
+
+The Dapper work coordinator runs the same sweeps, guard seam, stream-group cascade and presence reconcile as the EF Core driver, from the same SQL, in the schema the coordinator is configured for (see [Which schema the Dapper work coordinator uses](../../data/drivers.md#dapper-coordinator-schema)). Before this release every retention member on Dapper fell back to a no-op, so declared retention removed nothing.
+
+Both sweeps act only on acknowledged perspectives, on either driver; with automatic adoption on, each cycle acknowledges eligible perspectives just before the TTL sweep. The cap sweep runs at most once per claim window across the whole service (the `row_cap_sweep_last_run` setting records the claim).
+
+:::warning
+Enrollment matches each declaration against `wh_perspective_registry`, and today only the EF Core driver's generated schema extension fills that table. On a Dapper host each declared perspective is therefore reported as matching no registry row and stays un-enrolled, so nothing is evicted yet. Tracked in whizbang-lib/whizbang#1548.
+:::
 
 ## What an eviction removes {#what-an-eviction-removes}
 
