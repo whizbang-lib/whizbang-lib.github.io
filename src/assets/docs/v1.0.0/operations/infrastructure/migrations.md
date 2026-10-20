@@ -18,6 +18,9 @@ codeReferences:
   - src/Whizbang.Core/Data/IMigrationProvider.cs
   - src/Whizbang.Data.Postgres/Migrations/000_MigrationTracking.sql
   - src/Whizbang.Data.EFCore.Postgres.Generators/Templates/DbContextSchemaExtensionTemplate.cs
+  - src/Whizbang.Data.Postgres/MigrationSchemaQualifier.cs
+  - src/Whizbang.Data.Postgres/MigrationSearchPath.cs
+  - src/Whizbang.Data.Postgres/Migrations/213_FunctionsNameTheirOwnSchema.sql
   - src/Whizbang.Data.Postgres/Migrations/063_NormalizeClrTypeNamesV2.sql
   - src/Whizbang.Data.Postgres/Migrations/032_PerformMaintenance.sql
   - src/Whizbang.Data.Postgres/MigrationFunctionBodies.cs
@@ -56,6 +59,10 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/MigrationFunctionBodiesTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/StaleFunctionDefinitionSweepTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/SchemaCommandBoundaryTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/NamedSchemaMigrationReplayTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/MigrationSchemaQualificationTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/MigrationSchemaQualifierTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/MigrationSearchPathTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -721,6 +728,73 @@ Two checks hold the rule. `scripts/Lint-MigrationSql.ps1` fails a migration numb
 writes one of the values raw, or writes a token the file does not define. `MigrationConstantsTests` fails the
 build if any migration, whatever its number, writes a token nothing defines, and proves the provider hands
 out migrations with every token replaced.
+
+## Named schemas on the EF Core driver {#named-schemas}
+
+An EF Core context can keep the framework tables in a schema of its own, for example `api`. The migrations write
+that schema as the placeholder `__SCHEMA__`. The Dapper driver substitutes the bare name (`api`); the EF Core driver
+substitutes the quoted identifier (`"api"`) and also qualifies a fixed list of framework table names that the
+oldest migrations wrote without the placeholder.
+
+Three mechanisms keep migrations correct on such a context:
+
+- **Literals and comments are not qualified.** The EF Core driver qualifies a framework name only where SQL names
+  an object. A string literal, an escape string, a quoted identifier and a comment are left exactly as written.
+  The body of a dollar-quoted string is code, so its table references are qualified, while the literals and
+  comments inside it are not.
+- **Each migration runs in its own schema.** The EF Core runner sets `search_path` to the context's schema for
+  each migration, and for the bootstrap regions, and restores it afterwards. A shipped guard that compares
+  `table_schema = current_schema()` therefore asks about the schema it alters. The Dapper driver takes its schema
+  from `current_schema()`, so it needs no setting.
+- **A catalog lookup names its own schema.** A new migration, and every run-time function, writes the schema as
+  `replace('__SCHEMA__', '"', '')`. It never uses `current_schema()`, which returns the caller's `search_path`
+  (`public` on a pooled connection), and never compares `'__SCHEMA__'` as text, which on the EF Core driver is the
+  quoted form.
+
+```sql{
+title: "A guard that names its own schema"
+description: "The catalog guard compares against the substituted schema, so it finds the existing column when the migration runs again in a named schema."
+category: "Configuration"
+difficulty: "INTERMEDIATE"
+tags: ["migrations", "schema", "guards", "ef-core"]
+}
+IF NOT EXISTS (
+  SELECT 1 FROM information_schema.columns
+  WHERE table_schema = replace('__SCHEMA__', '"', '')
+    AND table_name = 'wh_inbox'
+    AND column_name = 'source_service_id') THEN
+  ALTER TABLE __SCHEMA__.wh_inbox ADD COLUMN source_service_id UUID;
+END IF;
+```
+
+### Upgrading an existing database
+
+Before these rules, the EF Core driver also qualified names inside literals, so a guard written
+`table_name = 'wh_inbox'` compared against `'"api".wh_inbox'`, and several guards compared against
+`current_schema()`. On a context with a named schema and the default `search_path`, those guards could not see what
+an earlier run had created. A first run on an empty database succeeded, but an upgrade that ran a changed migration
+again failed at startup:
+
+```text
+Failed to execute migration 046_CommitSequenceSchema.sql
+42701: column "source_service_id" of relation "wh_inbox" already exists
+```
+
+Other guarded repairs silently did nothing, and maintenance functions that found perspective tables through
+`current_schema()` looked for them in `public`.
+
+From the release that contains the fix, no shipped migration is changed. The EF Core runner sets `search_path`
+for each migration, so a re-run of 046 finds the columns it added. Migration 213 redefines the seven run-time
+functions that found their tables through `current_schema()`: the row reaps, `perform_maintenance`, the
+retention preview, the reap-target collection and the table-rewrite scan. On a context with a named schema, every
+migration whose text contains a framework name inside a literal or a comment has a new hash, because the
+qualification no longer rewrites it. Each of these runs once more on the first startup after the upgrade (status 2,
+Updated), and each is safe to run again over the existing schema. No manual step is required, and a second startup
+skips them all. A Dapper host, and an EF Core host whose schema is `public`, run only migration 213.
+
+The fix does not depend on the application's connection settings: the migrations run under the runner's own
+`search_path`, and the run-time functions name their schema, so both work whatever `search_path` the calling
+connection has. The rules for authors are in [Writing SQL migrations](../../../contributors/data-engines/writing-migrations.md).
 
 ## Pre-v1.0 Note
 
