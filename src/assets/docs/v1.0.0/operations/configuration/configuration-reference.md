@@ -39,6 +39,7 @@ codeReferences:
   - src/Whizbang.Data.Postgres/PostgresOptionsConfiguration.cs
   - src/Whizbang.Core/Observability/TableStatisticsOptions.cs
   - src/Whizbang.Core/Observability/TableStatisticsServiceCollectionExtensions.cs
+  - src/Whizbang.Core/Observability/TableStatisticsOptionsValidator.cs
   - src/Whizbang.Core/Workers/RetentionSettingsBridge.cs
   - src/Whizbang.Core/Workers/MaintenanceRetentionOptions.cs
   - src/Whizbang.Core/Configuration/EphemeralPointerPruneOptions.cs
@@ -227,6 +228,7 @@ Bound during Postgres driver registration with a hand-rolled binder. Controls th
 | `DirectConnectionString` | `string?` | `null` | `Whizbang__Database__DirectConnectionString` | Explicit direct connection string; overrides key-based lookup |
 | `DisableNotifications` | `bool` | `false` | `Whizbang__Database__DisableNotifications` | Kill switch forcing polling-only mode |
 | `PollingFallbackInterval` | `TimeSpan` | `00:00:30` | `Whizbang__Database__PollingFallbackInterval` | Safety-net polling cadence while the listener is healthy |
+| `SignalRetention` | `TimeSpan` | `7.00:00:00` | `Whizbang__Database__SignalRetention` | How long a durable signal is kept before the retention sweep may delete it; never past a signal an instance has not delivered. Zero or less is rejected at startup ([retention](../../fundamentals/signal-bus/signal-bus#retention)) |
 | `ListenKeepaliveInterval` | `TimeSpan` | `00:00:30` | `Whizbang__Database__ListenKeepaliveInterval` | Cadence of `SELECT 1` keepalive on the listener connection |
 | `ListenReconnectInitialDelay` | `TimeSpan` | `00:00:01` | `Whizbang__Database__ListenReconnectInitialDelay` | First reconnect attempt delay after a disconnect |
 | `ListenReconnectMaxDelay` | `TimeSpan` | `00:00:30` | `Whizbang__Database__ListenReconnectMaxDelay` | Cap on reconnect backoff |
@@ -681,11 +683,16 @@ The backlog-age duty: how old the oldest waiting message on each broker entity i
 
 ### TableStatisticsOptions {#tablestatisticsoptions}
 
-How many tables the [`Whizbang.TableStatistics` meter](../observability/metrics#table-statistics) reports by name. Every `wh_` table in the service's schema is reported, perspective tables included, so the cap is what keeps the number of series from growing with the schema. **Configure:** bound automatically from `Whizbang:TableStatistics` by the PostgreSQL driver registration (EF Core or Dapper); no other call is needed. **Details:** [Table statistics cardinality](../observability/metrics#table-statistics-cardinality).
+How many tables the [`Whizbang.TableStatistics` meter](../observability/metrics#table-statistics) reports by name, and how the event store is sampled by event type. Every `wh_` table in the service's schema is reported, perspective tables included, so the cap is what keeps the number of series from growing with the schema. **Configure:** bound automatically from `Whizbang:TableStatistics` by the PostgreSQL driver registration (EF Core or Dapper); no other call is needed. **Details:** [Table statistics cardinality](../observability/metrics#table-statistics-cardinality).
 
 | Property | Type | Default | Environment variable | Purpose |
 |----------|------|---------|----------------------|---------|
-| `MaxTrackedTables` | `int` | `500` | `Whizbang__TableStatistics__MaxTrackedTables` | The most tables reported by name. Past it, the smallest tables are summed under `table_name="other"`, so totals stay right. At least 1; a smaller value fails the statistics refresh, which logs the error each cycle |
+| `MaxTrackedTables` | `int` | `500` | `Whizbang__TableStatistics__MaxTrackedTables` | The most tables reported by name. Past it, the smallest tables are summed under `table_name="other"`, so totals stay right. At least 1 |
+| `EventTypeSampleInterval` | `TimeSpan` | `00:15:00` | `Whizbang__TableStatistics__EventTypeSampleInterval` | How often one instance samples the event store by event type. `00:00:00` turns the sample off; negative is refused. See [Bytes per event type](../observability/metrics#event-type-bytes) |
+| `EventTypeSamplePercent` | `double` | `1` | `Whizbang__TableStatistics__EventTypeSamplePercent` | The share of the event body table's pages one sample reads, greater than 0 and at most 100. Cost and accuracy for rare types both grow with it |
+| `MaxEventTypes` | `int` | `50` | `Whizbang__TableStatistics__MaxEventTypes` | The most event types reported by name, the largest by bytes; the rest are summed under `event_type="other"`. At least 1 |
+
+A value outside these ranges fails host start with an error naming the key. {verified: TableStatisticsRegistrationTests.AValueNoReadingCouldHonor_IsRefusedNamingItsKeyAsync, TableStatisticsRegistrationTests.TheEventTypeSample_BindsFromTheTableStatisticsSectionAsync, TableStatisticsRegistrationTests.WithoutConfiguration_OnePercentEveryFifteenMinutes_FiftyTypesAsync, TableStatisticsRegistrationTests.AZeroInterval_IsAcceptedAsTheWayToTurnTheSampleOffAsync}
 
 {verified: TableStatisticsRegistrationTests.MaxTrackedTables_BindsFromTheTableStatisticsSectionAsync, TableStatisticsRegistrationTests.WithoutConfiguration_TheCapIsFiveHundredAsync, PostgresTableStatisticsProviderTests.GetTableStorageAsync_PastTheCap_SumsTheSmallestUnderOtherAsync, PostgresTableStatisticsProviderTests.Constructor_RefusesACapBelowOneAsync}
 
@@ -1517,6 +1524,7 @@ Which system events are enabled and how audit records ship. **Configure:** the s
 |----------|------|---------|----------------------|---------|
 | `LocalOnly` | `bool` | `true` | `Whizbang__SystemEvents__LocalOnly` | Store system events locally without publishing to the outbox |
 | `AuditMode` | `AuditMode` | `OptOut` | `Whizbang__SystemEvents__AuditMode` | Audit all events unless excluded, vs only explicitly marked |
+| `AuditBodyDefault` | `AuditBodyDefault` | `Omit` | `Whizbang__SystemEvents__AuditBodyDefault` | Whether audit records copy the audited event's body; `Omit` records a pointer and scope ([Audit body](../../fundamentals/events/system-events#audit-body)) |
 | `AuditShipSlideSeconds` | `int` | `15` | `Whizbang__SystemEvents__AuditShipSlideSeconds` | Quiet window before audit singles fold into a composite; 0 bypasses |
 | `AuditShipMaxDelaySeconds` | `int` | `120` | `Whizbang__SystemEvents__AuditShipMaxDelaySeconds` | Safety floor and hard cap on continuous sliding |
 | `AuditShipMaxBatchCount` | `int` | `500` | `Whizbang__SystemEvents__AuditShipMaxBatchCount` | Max audit records per shipped composite |

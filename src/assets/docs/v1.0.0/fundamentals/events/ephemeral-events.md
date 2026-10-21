@@ -10,17 +10,18 @@ description: >-
   Declare an event ephemeral with [Ephemeral]: it is stored and routed like any event, but its body is
   deleted once every perspective has consumed it (or once its TTL passes), and the read model it feeds
   becomes the source of truth. Covers the attribute and its composition, what happens to the event and
-  the read model, the WHIZ130 and WHIZ134 build rules, the runtime guards, compaction and scheduled
-  stream closes.
+  the read model, the WHIZ130, WHIZ131, WHIZ132 and WHIZ134 build rules, the runtime guards, compaction
+  and scheduled stream closes.
 tags: >-
   events, ephemeral, destruction, transient-storage, ttl, rewind-grace, reaper, snapshots, composition,
-  profiles, WHIZ130, WHIZ134, compaction, stream-close, full-history
+  profiles, WHIZ130, WHIZ131, WHIZ132, WHIZ134, compaction, stream-close, full-history
 codeReferences:
   - src/Whizbang.Core/Attributes/EphemeralAttribute.cs
   - src/Whizbang.Core/Attributes/Destruction.cs
   - src/Whizbang.Core/Attributes/TransientStorage.cs
   - src/Whizbang.Core/Attributes/EphemeralInfo.cs
   - src/Whizbang.Core/Attributes/DangerouslyAllowMixedEphemeralAndSourcedEventsAttribute.cs
+  - src/Whizbang.Core/Attributes/DangerouslyAllowSourcedEventsFromEphemeralInputAttribute.cs
   - src/Whizbang.Core/Attributes/FullHistoryAttribute.cs
   - src/Whizbang.Core/IEphemeralEvent.cs
   - src/Whizbang.Core/ICompactedEvent.cs
@@ -311,7 +312,8 @@ reaped history anyway). Sourced perspectives keep the standard cadence. See
 
 ## Build-time rules
 
-The `EphemeralAnalyzer` checks the two rules that can be decided from type symbols alone.
+The `EphemeralAnalyzer` checks the rules that can be decided at build time: two from type symbols alone, one at
+the call sites that name a perspective, and one on receptors.
 
 ### WHIZ130: a perspective mixing ephemeral and Sourced events {#whiz130}
 
@@ -344,12 +346,39 @@ A type that inherits `[Ephemeral]` from two or more sibling profile interfaces w
 [WHIZ134](../../operations/diagnostics/whiz134). Profiles that agree, or a profile that extends the
 other, are fine. Declaring `[Ephemeral(...)]` on the type resolves it.
 
-:::planned
-Three more build rules are planned: one for a rebuild or rewind of a perspective that applies only
-ephemeral events, one for a receptor that copies an ephemeral event into a Sourced event, and one for a
-stream that receives both kinds. Until they ship, the runtime guards below are the backstop.
-:::
 {verified: EphemeralAnalyzerTests.TwoConflictingProfiles_ReportsWHIZ134ErrorAsync, EphemeralAnalyzerTests.TwoAgreeingProfiles_NoWHIZ134Async, EphemeralAnalyzerTests.RefinedProfileInheritance_NoWHIZ134Async, EphemeralAnalyzerTests.ConflictingProfilesWithOwnOverride_NoWHIZ134Async}
+
+### WHIZ131: a rebuild or rewind of an ephemeral-only perspective {#whiz131}
+
+Constructing a `RebuildPerspectiveCommand`, calling an `IPerspectiveRebuilder` rebuild, or calling
+`IPerspectiveRunner.RewindAndRunAsync` for a perspective whose every event is ephemeral is an **error**,
+[WHIZ131](../../operations/diagnostics/whiz131). There is nothing to replay, so the call can never do
+anything. The analyzer resolves the perspective when it is named by a constant string (its CLR type name),
+`typeof(T).FullName` or `TypeNameFormatter.FormatClrTypeName(typeof(T))`; a name known only at run time is
+left to the runtime guard. A perspective that mixes modes is WHIZ130's to report.
+{verified: EphemeralRebuildAnalyzerTests.RebuildCommand_NamingAnEphemeralOnlyPerspective_ReportsWHIZ131ErrorAsync, EphemeralRebuildAnalyzerTests.RebuilderCalls_NamingAnEphemeralOnlyPerspective_ReportWHIZ131Async, EphemeralRebuildAnalyzerTests.RewindRequest_AgainstAnEphemeralOnlyPerspective_ReportsWHIZ131Async, EphemeralRebuildAnalyzerTests.MixedAndSourcedPerspectives_NoWHIZ131Async}
+
+### WHIZ132: a receptor turning an ephemeral message into a Sourced event {#whiz132}
+
+A receptor whose input is ephemeral and whose response returns or cascades a Sourced event gets a
+**warning**, [WHIZ132](../../operations/diagnostics/whiz132). The ephemeral message self-destructs, but what
+it carried is now a durable fact in the event store. Any Sourced event in the response counts, whether or not
+it copies the input. When it is deliberate, mark the receptor with
+`[DangerouslyAllowSourcedEventsFromEphemeralInput]`, which works like the WHIZ130 opt-in.
+{verified: EphemeralLaunderingAnalyzerTests.EphemeralInput_ReturningASourcedEvent_ReportsWHIZ132WarningAsync, EphemeralLaunderingAnalyzerTests.CascadedShapes_TupleArrayListAndRouted_ReportOnlyTheSourcedEventsAsync, EphemeralLaunderingAnalyzerTests.DeliberateReceptor_WithTheOptIn_NoWHIZ132Async}
+
+```csharp{title="Opting in to a receptor that keeps a durable fact" description="The attribute silences WHIZ132 on a receptor that deliberately produces a Sourced event from an ephemeral message." framework="NET10" category="Core Concepts" difficulty="ADVANCED" tags=["ephemeral", "WHIZ132", "receptors", "opt-in"] testFile="EphemeralLaunderingAnalyzerTests.cs" testMethod="DeliberateReceptor_WithTheOptIn_NoWHIZ132Async" githubUrl="https://github.com/whizbang-lib/whizbang/blob/develop/tests/Whizbang.Generators.Tests/EphemeralLaunderingAnalyzerTests.cs" tests=["EphemeralLaunderingAnalyzerTests.DeliberateReceptor_WithTheOptIn_NoWHIZ132Async"]}
+[DangerouslyAllowSourcedEventsFromEphemeralInput]
+public class PresenceToOrder : ISyncReceptor<PresencePing, OrderPlaced> {
+  public OrderPlaced Handle(PresencePing message) => new();
+}
+```
+
+:::planned
+A stream that receives both ephemeral and Sourced events cannot be detected at build time, because which
+events reach a stream is only known when they are appended. That check is planned as a runtime guard at
+append time; WHIZ133 is reserved for it. Until it ships, the runtime guards below are the backstop.
+:::
 
 ## Runtime guards
 
@@ -475,6 +504,8 @@ nothing.
 ## Related
 
 - [WHIZ130: Perspective mixes ephemeral and Sourced Apply methods](../../operations/diagnostics/whiz130)
+- [WHIZ131: Rebuild or rewind of an ephemeral-only perspective](../../operations/diagnostics/whiz131)
+- [WHIZ132: Receptor turns an ephemeral message into a Sourced event](../../operations/diagnostics/whiz132)
 - [WHIZ134: Ambiguous ephemeral composition](../../operations/diagnostics/whiz134)
 - [Perspective Row Retention](../perspectives/row-retention)
 - [Perspective Snapshots](../perspectives/snapshots)
