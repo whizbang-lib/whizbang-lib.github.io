@@ -454,6 +454,23 @@ no reflection, AOT-clean by construction. The attribute is read on the
 **method**, not the type, so one perspective class can declare several
 `[CollectiveApplyFor]` handlers for different events.
 
+### Handler shapes {#handler-shapes}
+
+The generator binds a handler by its shape, not by an interface, and accepts two:
+
+| Shape | Use when |
+|---|---|
+| `ICollectiveSpec<TModel> Name(TEvent e)` | the handler does not need the query context (most handlers) |
+| `ICollectiveSpec<TModel> Name(TEvent e, ICollectiveQuery query)` | the handler scopes by a sibling perspective through `query` |
+
+`TModel` comes from the return type and `TEvent` from the first parameter. A method with the attribute but another
+shape is not bound and its event is not registered.
+
+**Unused-parameter rules.** Declare `ICollectiveQuery` only when the handler reads it; leave it out otherwise, so no
+unused-parameter rule flags it. The event parameter is required even when the handler ignores the event (a constant
+setter, say), because it names the event. The analyzer package suppresses IDE0060, CA1801, Roslynator RCS1163 and
+Sonar S1172 on exactly that parameter; see [Convention-bound parameters](../../operations/diagnostics/convention-bound-parameters.md).
+
 > `CollectiveSpec<TModel>` is a small **consumer-owned** record —
 > Whizbang ships the `ICollectiveSpec<TModel>` interface but no concrete
 > implementation. Give it a `Setters` member and a nullable `Where`
