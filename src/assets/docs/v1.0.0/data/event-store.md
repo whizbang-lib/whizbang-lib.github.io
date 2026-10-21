@@ -254,9 +254,9 @@ public interface IEventStore {
 
 You never pass an expected version. Sequencing and conflict handling are built in:
 
-- Each append assigns the next `version` for the stream (via the store's sequence provider)
-- The **unique index on `(stream_id, version)`** rejects concurrent writers that race to the same slot
-- The **Dapper Postgres** backend **retries with backoff** on unique-violation conflicts until the append lands (or max retries is exceeded under extreme contention); the **EF Core Postgres** backend surfaces the conflict as an `InvalidOperationException` ("Concurrent modification detected") for the caller to handle. In normal operation, events emitted through the work coordinator flow through `_emit_event_store_chain`, which takes per-stream advisory locks so version races cannot occur.
+- Each append gets the next `version` for the stream from the database: on PostgreSQL both drivers call `wh_append_event`, which takes the stream's advisory lock (the lock `_emit_event_store_chain` takes for the same stream) and then inserts at the next version
+- Concurrent writers to one stream therefore wait their turn and get consecutive versions; neither driver fails with a version conflict or retries. A duplicate event id fails at once with an `InvalidOperationException` saying the event is already stored
+- The **unique index on `(stream_id, version)`** remains as the backstop. See [Appending and concurrency](../fundamentals/events/event-store#appending-and-concurrency) for the details, including transaction behavior
 - Use `GetLastSequenceAsync(streamId)` if you need the current stream position (for example, to detect concurrent modification at the application level)
 
 ---

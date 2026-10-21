@@ -11,6 +11,7 @@ description: >-
   capture who changed what, when, and why
 tags: 'audit, compliance, logging, system-events, perspectives, security, gdpr, sox'
 codeReferences:
+  - src/Whizbang.Core/Audit/IBoundedCommandAudit.cs
   - src/Whizbang.Core/SystemEvents/ISystemEvent.cs
   - src/Whizbang.Core/SystemEvents/EventAudited.cs
   - src/Whizbang.Core/SystemEvents/CommandAudited.cs
@@ -25,6 +26,7 @@ codeReferences:
   - src/Whizbang.Core/Attributes/AuditEventAttribute.cs
   - src/Whizbang.Core/SystemEvents/AuditLedger.cs
 testReferences:
+  - tests/Whizbang.Core.Tests/SystemEvents/CommandAuditListLengthsTests.cs
   - tests/Whizbang.Core.Tests/SystemEvents/EventAuditedTests.cs
   - tests/Whizbang.Core.Tests/SystemEvents/CommandAuditTests.cs
   - tests/Whizbang.Core.Tests/SystemEvents/SystemEventOptionsTests.cs
@@ -47,12 +49,12 @@ Whizbang provides audit logging through **System Events** - internal events emit
 
 ## Core Concept
 
-```mermaid{caption="System-audit emit path — a domain event is audited to the $wb-system stream only when audit is enabled; nothing is emitted when it is off." tests=["SystemEventEmitterTests.EmitEventAuditedAsync_WithEnabledAudit_EmitsEventAuditedToSystemStreamAsync", "SystemEventEmitterTests.EmitEventAuditedAsync_WhenEventAuditDisabled_DoesNotEmitAsync"]}
+```mermaid{caption="System-audit emit path: a domain event is audited to its tenant's audit ledger only when audit is enabled; nothing is emitted when it is off." tests=["SystemEventEmitterTests.EmitEventAuditedAsync_WithEnabledAudit_EmitsEventAuditedToTheAuditLedgerAsync", "SystemEventStreamRoutingTests.EmitEventAudited_AppendsToTheTenantsAuditLedgerAsync", "SystemEventEmitterTests.EmitEventAuditedAsync_WhenEventAuditDisabled_DoesNotEmitAsync"]}
 flowchart TD
     Appended["Domain Event Appended<br/>(OrderCreated, PaymentProcessed, ...)"]
     Enabled{"System Audit Enabled?"}
     Nothing["(nothing emitted)"]
-    Emit["Emit EventAudited to $wb-system stream"]
+    Emit["Emit EventAudited to the tenant's audit ledger"]
     Perspective["AuditPerspective : IPerspectiveFor&lt;AuditLogEntry, EventAudited&gt;"]
     Table["Perspective store (queryable via ILensQuery&lt;AuditLogEntry&gt;)"]
 
@@ -69,7 +71,7 @@ flowchart TD
 - **Opt-in per host**: Enable audit in BFF, skip in background workers
 - **Same infrastructure**: Events, perspectives, and lenses work identically
 - **Exclude by exception**: All events audited by default, opt-out specific types
-- **Dedicated stream**: System events isolated in `$wb-system` stream
+- **Dedicated streams**: audit records on one ledger stream per tenant, the global system events on `$wb-system`
 
 ---
 
@@ -205,7 +207,7 @@ Set `SlideSeconds = 0` on the binding to restore immediate per-record shipping.
 
 ## System Events
 
-System events are internal Whizbang events stored in a dedicated `$wb-system` stream.
+System events are internal Whizbang events stored apart from domain events: audit records on their tenant's [audit ledger](#audit-ledger), the global kinds (security and advisory) on the dedicated `$wb-system` stream.
 
 ### ISystemEvent Interface
 
@@ -261,12 +263,12 @@ public static class SystemEventStreams {
   /// <summary>Stream prefix for system events.</summary>
   public static string Prefix => "$wb-";
 
-  /// <summary>Well-known stream ID all system events are appended to.</summary>
+  /// <summary>Well-known stream ID the global system events are appended to.</summary>
   public static Guid StreamId { get; } = new("00000000-0000-0000-0000-000000000001");
 }
 ```
 
-`SystemEventStreams` is where the `SystemEventEmitter` appends. Audit records produced by the work coordinator's outbox path do not use it: they travel on the tenant's audit ledger, below.
+`SystemEventStreams.StreamId` holds only the global kinds: security records and advisories. Audit records never use it, whichever path produced them: the work coordinator's outbox path and the `SystemEventEmitter` (`EmitEventAuditedAsync`, `EmitCommandAuditedAsync`, or an audit record given to `EmitAsync`) all write them on the tenant's audit ledger, below. `SystemEventStreams.StreamFor(systemEvent)` is the one place that decides. Earlier versions of the emitter wrote its audit records on `$wb-system`; a reader that looked for them there reads the ledger instead.
 
 ### The per-tenant audit ledger {#audit-ledger}
 
@@ -356,6 +358,35 @@ public sealed record CommandAudited : ISystemEvent {
 
   // Full scope key/value pairs from the originating envelope
   public IReadOnlyDictionary<string, string?>? Scope { get; init; }
+}
+```
+
+### Commands that carry id lists {#bounded-command-audit}
+
+`CommandBody` is the command as serialized, except for lists a command declares as id lists of unbounded
+length. A command implementing `IBoundedCommandAudit` names those properties in `ListsAuditedAsLengths()`,
+and its audit record keeps each one's **length** (a JSON number) in place of the list. A null list stays
+null, and every other property is kept as it is. Names are compared without regard to case, so a camel-case
+naming policy does not matter.
+
+The framework's own commands that carry stream lists use it: `RebuildPerspectiveCommand` (`IncludeStreamIds`,
+`ExcludeStreamIds`) and `RequestRedeliveryCommand` (`StreamIds`). A rebuild of 100,000 streams is audited with
+`"IncludeStreamIds": 100000`, not 4 MB of ids per receiving service.
+{verified: CommandAuditListLengthsTests.ARebuildNamingStreams_IsAuditedWithTheListLengths_AndKeepsTheRestOfTheCommandAsync, CommandAuditListLengthsTests.ARedeliveryRequest_IsAuditedWithItsStreamCountAsync, CommandAuditListLengthsTests.ListLengths_MatchesNamesWithoutRegardToCase_AndKeepsANamedValueThatIsNotAListAsync}
+
+```csharp{
+title: "Auditing a command's id list by its length"
+description: "A command that can name any number of customers declares that list, so its audit record keeps how many were named instead of every id."
+framework: "NET10"
+category: "Best-Practices"
+difficulty: "INTERMEDIATE"
+tags: ["audit", "command-audit", "id-lists", "message-size"]
+tests: ["CommandAuditListLengthsTests.ARebuildNamingStreams_IsAuditedWithTheListLengths_AndKeepsTheRestOfTheCommandAsync"]
+}
+public sealed record NotifyCustomersCommand(Guid[] CustomerIds, string Template) : ICommand, IBoundedCommandAudit {
+  private static readonly string[] _idLists = [nameof(CustomerIds)];
+
+  public IReadOnlyCollection<string> ListsAuditedAsLengths() => _idLists;
 }
 ```
 
