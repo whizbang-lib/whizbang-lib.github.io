@@ -30,7 +30,13 @@ This guide covers installation and configuration of Whizbang's HotChocolate Grap
 
 ```bash{title="Installation" description="Installation" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Installation"]}
 dotnet add package SoftwareExtravaganza.Whizbang.Transports.HotChocolate
+dotnet add package HotChocolate.AspNetCore
 ```
+
+The integration needs only HotChocolate's execution engine. To serve GraphQL over HTTP (`AddGraphQLServer`,
+`MapGraphQL`), the application references `HotChocolate.AspNetCore` itself. The Whizbang package doesn't bring it,
+because that package also includes the Nitro IDE, which is under the ChilliCream License rather than an open-source
+one.
 
 ## Basic Configuration
 

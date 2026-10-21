@@ -34,6 +34,7 @@ The `PolymorphicTypeExtensions` class enables:
 
 ```bash{title="Installation" description="Installation" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Installation"]}
 dotnet add package SoftwareExtravaganza.Whizbang.Transports.HotChocolate
+dotnet add package HotChocolate.AspNetCore
 ```
 
 ## Defining Polymorphic Types
