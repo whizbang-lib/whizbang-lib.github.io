@@ -66,6 +66,7 @@ testReferences:
   - tests/Whizbang.Core.Tests/Workers/MaintenanceWorkerDestructionHookTests.cs
   - tests/Whizbang.Core.Tests/Workers/MaintenanceWorkerReapDrivenSnapshotTests.cs
   - tests/Whizbang.Core.Tests/Fingerprint/TypeDefinitionReconcilerBranchCoverageTests.cs
+  - tests/Whizbang.Core.Tests/Fingerprint/TypeDefinitionReconcilerCoverageTests.cs
   - tests/Whizbang.Generators.Tests/EphemeralAnalyzerTests.cs
   - tests/Whizbang.Generators.Tests/EphemeralAnalyzerOptInNameTests.cs
   - tests/Whizbang.Generators.Tests/EphemeralResolverCoverageTests.cs
@@ -94,6 +95,23 @@ The trade is explicit. Once an ephemeral event's body is deleted it cannot be re
 model it fed is no longer a cache that can be rebuilt from the log. **The read model becomes the
 source of truth**, and Whizbang protects it as such: at build time, at rebuild and rewind, and in the
 reaper itself.
+
+## Which events should be ephemeral {#which-events}
+
+Make an event ephemeral when its value is in the present, not in the history. An event is a good candidate when
+all of these hold:
+
+- **It is presence, progress, a heartbeat or a derived signal.** Examples: a user opened a tab, a job reached 40%,
+  an instance is alive, a recommendation was recomputed.
+- **It is superseded within minutes.** The next event of the same kind carries the current truth, so the older one
+  tells no one anything.
+- **No perspective rebuild needs it.** Replaying the stream from the start would not need this event to reach the
+  right state, because the state it sets is overwritten or expires.
+- **No one audits it.** Compliance and support questions are answered from durable events, not from this one.
+
+Keep an event durable (Sourced) when it records a decision, a change of ownership, money, permissions, or anything a
+rebuild or an audit has to replay. A stream holds either kind but not both: a perspective that folds ephemeral and
+Sourced events together is refused at build time ([WHIZ130](#whiz130)).
 
 ## Declaring an ephemeral event
 
@@ -359,10 +377,12 @@ earlier history is gone.
 {verified: EvictedRowRebuildTests.EphemeralPerspective_EvictedRowWithSnapshot_RestoresTheSnapshotAndReplaysTheTailAsync, EvictedRowRebuildTests.EphemeralPerspective_EvictedRowWithoutSnapshot_StartsFreshAndWarnsAsync}
 
 **Making an existing type ephemeral.** Events stored before a type gained `[Ephemeral]` are still
-Sourced. At startup the type-definition reconciler detects this and logs it. Set
-`Whizbang:Ephemeral:ReconcileHistoricalOnStartup` to `true` to have it reclassify that history as
-ephemeral, which makes it reapable; by default it only reports.
-{verified: TypeDefinitionReconcilerTests.Reconcile_SettingsDriftToEphemeral_ActEnabled_ReclassifiesAndRecordsLineageAsync, TypeDefinitionReconcilerTests.Reconcile_SettingsDrift_DetectOnly_RecordsLineageButDoesNotReclassifyAsync}
+Sourced. At startup the type-definition reconciler detects the change and logs it. Set
+`Whizbang:Ephemeral:ReconcileHistoricalOnStartup` to `true` and start the service once: on every boot with the
+flag on, the reconciler reclassifies the stored history of each ephemeral event type as ephemeral, which makes it
+reapable, whenever the type changed. The reclassification is idempotent, so the flag can be turned on in any later
+deploy and turned off again after. By default it only reports.
+{verified: TypeDefinitionReconcilerTests.Reconcile_SettingsDriftToEphemeral_ActEnabled_ReclassifiesAndRecordsLineageAsync, TypeDefinitionReconcilerTests.Reconcile_SettingsDrift_DetectOnly_RecordsLineageButDoesNotReclassifyAsync, TypeDefinitionReconcilerCoverageTests.Reconcile_FlagOn_TypeAlreadyEphemeralOnAnEarlierBoot_ReclassifiesItsHistoryAsync}
 
 ## Destruction hooks {#destruction-hooks}
 
