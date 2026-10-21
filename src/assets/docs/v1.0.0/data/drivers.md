@@ -18,6 +18,7 @@ codeReferences:
   - src/Whizbang.Data.EFCore.Postgres/PostgresDriverExtensions.cs
   - src/Whizbang.Data.Dapper.Postgres/DapperWorkCoordinator.cs
   - src/Whizbang.Data.Dapper.Postgres/DapperCoordinatorSchema.cs
+  - src/Whizbang.Data.Dapper.Postgres/PostgresSchemaInitializer.cs
 testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/EFCoreDriverSelectorTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/EFCoreExtensionsTests.cs
@@ -25,6 +26,7 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/PostgresDriverExtensionsTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperWorkCoordinatorNamedSchemaTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperCoordinatorSchemaTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperNamedSchemaRegistrationTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -182,6 +184,29 @@ The answer is kept for the coordinator's lifetime, so the lookup costs one round
 
 :::warning
 Before this release the coordinator called its functions unqualified and named `public` outright in its maintenance, orphan-inbox purge, pending-message discard and pending-stream statements. A Whizbang schema installed anywhere but the session's `search_path` failed with `42883` (function does not exist) or `42P01` (relation does not exist).
+:::
+
+### Installing into a named schema with the Dapper driver {#dapper-named-schema}
+
+{verified: DapperNamedSchemaRegistrationTests.Registration_SearchPathNamesASchema_InstallsTablesAndFunctionsThereAsync, DapperNamedSchemaRegistrationTests.Registration_SearchPathNamesASchema_TheCoordinatorWorksAgainstItAsync}
+
+`AddWhizbangPostgres` installs Whizbang into the schema the connection string names, by the same rule the coordinator uses:
+
+1. The first schema the connection string's `Search Path` names. Startup creates it if it does not exist.
+2. Otherwise the session's `current_schema()`.
+
+The tables, the migrated functions, the startup readiness check and the coordinator all use that schema, so a host whose connection string carries `Search Path=orders` gets everything in `orders` and nothing in `public`.
+
+```csharp{title="Dapper Driver in a Named Schema" description="Install Whizbang into the schema the connection string names" category="Configuration" difficulty="INTERMEDIATE" tags=["Data", "C#", "Dapper", "Schema"] tests=["DapperNamedSchemaRegistrationTests.Registration_SearchPathNamesASchema_InstallsTablesAndFunctionsThereAsync"]}
+var connectionString = new NpgsqlConnectionStringBuilder(baseConnectionString) {
+  SearchPath = "orders"
+}.ConnectionString;
+
+services.AddWhizbangPostgres(connectionString, jsonOptions, initializeSchema: true, PerspectiveSchemas.Entries);
+```
+
+:::warning
+Before this release the registration rendered the migrations for `public` while the tables went wherever the session's search path pointed, and the readiness check looked only in `public`. A named schema ended up with functions in one schema and tables in another, or a startup that never became ready.
 :::
 
 ## Choosing a Driver
