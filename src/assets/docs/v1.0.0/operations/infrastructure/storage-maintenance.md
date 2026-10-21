@@ -5,15 +5,17 @@ version: 1.0.0
 category: Infrastructure
 order: 10
 description: >-
-  How Whizbang keeps its own tables from bloating: autovacuum settings on the framework tables, and what an operator
-  still has to do for a table that has already grown
+  How Whizbang keeps its own tables from bloating: autovacuum and fillfactor settings on the framework tables, and
+  what an operator still has to do for a table that has already grown
 tags: >-
-  operations, storage, autovacuum, vacuum, bloat, toast, postgres, maintenance
+  operations, storage, autovacuum, fillfactor, hot, vacuum, bloat, toast, postgres, maintenance
 codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/088_ChurnTableAutovacuum.sql
   - src/Whizbang.Data.Postgres/Migrations/222_FrameworkTableAutovacuum.sql
+  - src/Whizbang.Data.Postgres/Migrations/223_PerspectiveCursorFillFactor.sql
 testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/FrameworkTableAutovacuumTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/PerspectiveCursorFillFactorTests.cs
 ---
 
 # Storage Maintenance
@@ -44,6 +46,29 @@ To see them on a table:
 SELECT c.relname, c.reloptions, t.reloptions AS toast_reloptions
 FROM pg_class c LEFT JOIN pg_class t ON t.oid = c.reltoastrelid
 WHERE c.relname IN ('wh_event_store', 'wh_event_body', 'wh_perspective_cursors');
+```
+
+## Free space for updates {#fillfactor}
+
+{verified: PerspectiveCursorFillFactorTests.TheCursorTable_KeepsTenPercentOfEachPageFreeAsync, PerspectiveCursorFillFactorTests.ATableHoldingRows_IsQueuedForARewriteAsync, PerspectiveCursorFillFactorTests.ApplyingTheMigrationAgain_ChangesNothing_AndQueuesNothingAsync}
+
+An update whose new row version fits on the same page, and that changes no indexed column, is a heap-only (HOT)
+update: it writes no index entries, and the old version is pruned inside the page without vacuum. A page packed full
+leaves no room, so the new version lands on another page and every index gains an entry. `wh_perspective_cursors` is
+rewritten on every batch a perspective applies, so migration 223 sets its `fillfactor` to 90, keeping 10% of each page
+free for those updates.
+
+A new fillfactor applies only to pages written from then on. When the migration changes it on a table that already
+holds rows, it also queues the table in the `pending_table_rewrites` setting (through `wh_request_table_rewrite`), and
+the maintenance worker rewrites it under the operator's rewrite policy. A perspective table that declares
+`[PerspectiveTableStorage(FillFactor = …)]` is queued the same way when its schema pass changes the value (see
+[Physical Fields: free space for updates](../../fundamentals/perspectives/physical-fields#perspective-fillfactor)).
+The worker re-measures every queued table and rewrites only one whose size has crossed the bloat threshold, so a
+queued request on a compact table is left until it is worth a rewrite.
+
+```sql{title="Read the fillfactor and the queued rewrites" category="Operations" difficulty="BEGINNER"}
+SELECT relname, reloptions FROM pg_class WHERE relname = 'wh_perspective_cursors';
+SELECT setting_value FROM wh_settings WHERE setting_key = 'pending_table_rewrites';
 ```
 
 ## A table that has already grown {#already-grown}
