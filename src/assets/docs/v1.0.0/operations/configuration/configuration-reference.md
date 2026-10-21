@@ -1138,6 +1138,10 @@ Operator rung of the row-retention override ladder. **Configure:** bound automat
 | `Retention.InstanceEvictionTombstoneHours` | `int?` | unset (database: `24`) | `Whizbang__Workers__Maintenance__Retention__InstanceEvictionTombstoneHours` | Hours an instance-eviction tombstone is kept. Publishes `instance_eviction_retention_hours` |
 | `Retention.OrphanPerspectiveEventGraceHours` | `int?` | unset (database: `1`) | `Whizbang__Workers__Maintenance__Retention__OrphanPerspectiveEventGraceHours` | Hours an unprocessed perspective event whose source event is missing is kept. Publishes `orphan_perspective_grace_hours` |
 | `Retention.CollectiveOrderingHeadDays` | `int?` | unset (database: `7`) | `Whizbang__Workers__Maintenance__Retention__CollectiveOrderingHeadDays` | Days an idle collective-ordering head is kept. Publishes `collective_ordering_head_retention_days` |
+| `Retention.LogDays` | `int?` | unset (database: `14`) | `Whizbang__Workers__Maintenance__Retention__LogDays` | Days a framework log entry (`wh_log`) is kept. Publishes `log_retention_days` |
+| `Retention.ScheduleRunDays` | `int?` | unset (database: `30`) | `Whizbang__Workers__Maintenance__Retention__ScheduleRunDays` | Days a schedule run is kept; each schedule's newest run is always kept. Publishes `schedule_run_retention_days` |
+| `Retention.StreamPurgeAuditDays` | `int?` | unset (database: `0`) | `Whizbang__Workers__Maintenance__Retention__StreamPurgeAuditDays` | Days a stream-purge audit entry is kept; `0` keeps the audit forever. Publishes `stream_purge_audit_retention_days` |
+| `Retention.IntegrityLedgerMaxEntries` | `int?` | unset (database: `100000`) | `Whizbang__Workers__Maintenance__Retention__IntegrityLedgerMaxEntries` | The most entries the integrity ledger keeps, most recently touched first. Publishes `integrity_ledger_max_entries` |
 
 The `Retention` windows are database-side settings: each cycle publishes the ones you set to `wh_settings` before
 the sweep reads them, and leaves the ones you do not set alone. See [Database-side settings](#database-side-settings).
@@ -1685,6 +1689,10 @@ each service database, rather than from the host's options. Each setting below i
 | `MaintenanceWorkerOptions.Retention.InstanceEvictionTombstoneHours` | `Whizbang__Workers__Maintenance__Retention__InstanceEvictionTombstoneHours` | `24` | `instance_eviction_retention_hours` |
 | `MaintenanceWorkerOptions.Retention.OrphanPerspectiveEventGraceHours` | `Whizbang__Workers__Maintenance__Retention__OrphanPerspectiveEventGraceHours` | `1` | `orphan_perspective_grace_hours` |
 | `MaintenanceWorkerOptions.Retention.CollectiveOrderingHeadDays` | `Whizbang__Workers__Maintenance__Retention__CollectiveOrderingHeadDays` | `7` | `collective_ordering_head_retention_days` |
+| `MaintenanceWorkerOptions.Retention.LogDays` | `Whizbang__Workers__Maintenance__Retention__LogDays` | `14` | `log_retention_days` |
+| `MaintenanceWorkerOptions.Retention.ScheduleRunDays` | `Whizbang__Workers__Maintenance__Retention__ScheduleRunDays` | `30` | `schedule_run_retention_days` |
+| `MaintenanceWorkerOptions.Retention.StreamPurgeAuditDays` | `Whizbang__Workers__Maintenance__Retention__StreamPurgeAuditDays` | `0` | `stream_purge_audit_retention_days` |
+| `MaintenanceWorkerOptions.Retention.IntegrityLedgerMaxEntries` | `Whizbang__Workers__Maintenance__Retention__IntegrityLedgerMaxEntries` | `100000` | `integrity_ledger_max_entries` |
 | `EphemeralOptions.RewindGraceSeconds` | `Whizbang__Ephemeral__RewindGraceSeconds` | `300` | `ephemeral_rewind_grace_seconds` |
 | `EphemeralOptions.PointerPrune.Enabled` | `Whizbang__Ephemeral__PointerPrune__Enabled` | `false` | `ephemeral_deep_maintenance_enabled` |
 | `EphemeralOptions.PointerPrune.RetentionDays` | `Whizbang__Ephemeral__PointerPrune__RetentionDays` | `90` | `ephemeral_pointer_retention_days` |
