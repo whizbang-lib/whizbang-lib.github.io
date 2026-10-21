@@ -1,7 +1,7 @@
 ---
 title: Ephemeral Events
 pageType: concept
-verifiedAgainstCommit: 62abd3a45
+verifiedAgainstCommit: 03c5bb93
 verifiedDate: 2026-10-20
 version: 1.0.0
 category: Core Concepts
@@ -216,7 +216,7 @@ flowchart LR
 Setting the per-type grace window:
 
 ```csharp{title="A per-type rewind grace window" description="Keep consumed bodies of a bursty event for 120 seconds instead of the global window." framework="NET10" category="Core Concepts" difficulty="INTERMEDIATE" tags=["ephemeral", "rewind-grace", "events"] tests=["MessageTypeCatalogEphemeralTests.RewindGrace_Override_StampedOnEphemeralInfoAsync"]}
-[Ephemeral(Destruction = Destruction.WhenConsumed, Storage = TransientStorage.InMemory, RewindGraceSeconds = 120)]
+[Ephemeral(Destruction = Destruction.WhenConsumed, RewindGraceSeconds = 120)]
 public record BurstyPing : IEvent;
 ```
 
@@ -230,13 +230,13 @@ per-type overrides are written to the database at startup.
 |---|---|
 | `WhenConsumed` | The default. The body is deleted once consumed and past the gates above. There is no age limit. |
 | `AfterTtl` | The type's `TtlSeconds` is stamped onto the event at dispatch and turned into an absolute expiry, `created_at + TtlSeconds`, using the database's clock and the event's stored creation time. The body is kept until that expiry has passed, **in addition to** the other gates: consumption does not release it early. |
-| `OnCompaction` | Declared for events whose detail is folded into a compacted summary. Compaction itself is started explicitly; see [Compacting a stream](#compaction). |
-| `Archived` | Declared for detail that moves to cold storage. Archiving happens through a stream close with `archive: true`; see [Closing a stream on a schedule](#scheduled-close). |
+| `OnCompaction` | **Planned.** Declared for events whose detail is folded into a compacted summary; nothing acts on the mode yet, so the body is reaped like a `WhenConsumed` event. Compaction itself is started explicitly; see [Compacting a stream](#compaction). The mode is planned with the storage work on archive policies and closing the books. |
+| `Archived` | **Planned.** Declared for detail that moves to cold storage; nothing acts on the mode yet, so the body is reaped like a `WhenConsumed` event. Archiving happens through a stream close with `archive: true`; see [Closing a stream on a schedule](#scheduled-close). The mode is planned with the storage work on archive policies. |
 
 {verified: EphemeralAttributeTests.Destruction_HasTheFourStrategiesAsync, EphemeralTtlDeriverTests.Derive_AfterTtl_ReturnsTtlSecondsAsync, EphemeralTtlDeriverTests.Derive_WhenConsumed_NoTtl_IsNullAsync, EphemeralBodyReaperSqlTests.Reap_AfterTtl_StampedExpiry_HeldUntilPast_ThenReapedAsync, EphemeralBodyReaperSqlTests.Reap_ExpiryKeyIsTheDiscriminator_AfterTtlHeldWhileWhenConsumedReapsAsync}
 
 The expiry is derived from `TtlSeconds`, so give `AfterTtl` events a `TtlSeconds`; without one they
-reap like `WhenConsumed` events. Declaring `OnCompaction` or `Archived` does not by itself compact or
+reap like `WhenConsumed` events, as soon as they are consumed. That is deliberate, not a missing check. Declaring `OnCompaction` or `Archived` does not by itself compact or
 archive anything. On the receive side the TTL is resolved from the message's wire type name, so an
 `AfterTtl` event keeps its expiry when it crosses to another service.
 
@@ -254,7 +254,10 @@ itself is stored or delivered.
 |---|---|
 | `PersistedRow` | The default. A normal persisted perspective row with no expiry; it survives restarts and rebalancing and is queryable through lenses like any perspective. |
 | `TtlRow` | A persisted row that expires. The generator registers a row TTL for every perspective that applies a `TtlRow` event: the longest `TtlSeconds` among those events (a `TtlRow` event with no `TtlSeconds` contributes none). Expiry and the maintenance sweep then work exactly as in [Perspective Row Retention](../perspectives/row-retention); an explicit `[RowTtl]` on the perspective outranks the derived TTL. |
-| `InMemory` | Accepted and carried in the catalog, but nothing acts on it yet: the read model is stored as a persisted row, the same as `PersistedRow`. |
+
+An earlier `InMemory` option was removed: nothing acted on it, and a read model held in one instance's
+memory would be lost whenever its stream moved to another instance. Whether an ephemeral event can stay
+local and in memory, never persisted, is an open design question.
 
 {verified: PerspectiveRunnerGeneratorTests.PerspectiveRunnerGenerator_TtlRowPerspective_RegistersRowTtlAsync, PerspectiveRunnerGeneratorTests.PerspectiveRunnerGenerator_NonTtlRowPerspective_DoesNotRegisterRowTtlAsync, MessageTypeCatalogEphemeralTests.ViaShippedMarker_ResolvesToDefaultsAsync}
 
@@ -321,6 +324,12 @@ A type that inherits `[Ephemeral]` from two or more sibling profile interfaces w
 `Storage` differ, with no attribute on the type or a base class to settle it, is an **error**,
 [WHIZ134](../../operations/diagnostics/whiz134). Profiles that agree, or a profile that extends the
 other, are fine. Declaring `[Ephemeral(...)]` on the type resolves it.
+
+:::planned
+Three more build rules are planned: one for a rebuild or rewind of a perspective that applies only
+ephemeral events, one for a receptor that copies an ephemeral event into a Sourced event, and one for a
+stream that receives both kinds. Until they ship, the runtime guards below are the backstop.
+:::
 {verified: EphemeralAnalyzerTests.TwoConflictingProfiles_ReportsWHIZ134ErrorAsync, EphemeralAnalyzerTests.TwoAgreeingProfiles_NoWHIZ134Async, EphemeralAnalyzerTests.RefinedProfileInheritance_NoWHIZ134Async, EphemeralAnalyzerTests.ConflictingProfilesWithOwnOverride_NoWHIZ134Async}
 
 ## Runtime guards
