@@ -38,8 +38,8 @@ testReferences:
   - tests/Whizbang.Generators.Tests/AuditEventRegistryGeneratorTests.cs
   - tests/Whizbang.Core.Tests/SystemEvents/SystemEventEmitterTests.cs
   - tests/Whizbang.Core.Tests/SystemEvents/SystemEventStreamRoutingTests.cs
-  - tests/Whizbang.Core.Tests/SystemEvents/SystemEventFireAndForgetTests.cs
-  - tests/Whizbang.Core.Tests/Lenses/ScopedLensFactoryEmitFailureTests.cs
+  - tests/Whizbang.Core.Component.Tests/SystemEvents/SystemEventFireAndForgetTests.cs
+  - tests/Whizbang.Core.Component.Tests/Lenses/ScopedLensFactoryEmitFailureTests.cs
   - tests/Whizbang.Core.Tests/SystemEvents/SystemEventTransportFilterTests.cs
   - tests/Whizbang.Core.Tests/SystemEvents/SystemEventOptionsTests.cs
   - tests/Whizbang.Core.Tests/SystemEvents/AuditingEventStoreDecoratorTests.cs
