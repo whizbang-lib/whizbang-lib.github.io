@@ -33,6 +33,7 @@ testReferences:
   - tests/Whizbang.Data.Dapper.Postgres.Tests/Perspectives/PostgresPerspectiveTableSwapperTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/PerspectiveRebuilderIntegrationTests.cs
   - tests/Whizbang.Core.Tests/Commands/System/SystemCommandsTests.cs
+  - tests/Whizbang.Core.Tests/Commands/System/RebuildPerspectiveCommandSplitTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -218,6 +219,54 @@ await dispatcher.SendAsync(new RebuildPerspectiveCommand(
 // Cancel an in-progress rebuild
 await dispatcher.SendAsync(new CancelPerspectiveRebuildCommand("OrderPerspective"));
 ```
+
+### Large stream selections {#large-stream-selections}
+
+`IncludeStreamIds` travels with the command, whole, to every hop: the outbox row, the broadcast transport
+message, each receiving service's inbox, and (when [command auditing](../security/audit-logging#command-auditing)
+is on) its audit record. Each id is about 39 bytes of JSON, so 100,000 ids is about 4 MB per hop, and on Azure
+Service Bus Standard a list of more than about 6,500 ids exceeds the 256 KB message limit unless large-message
+offloading is configured.
+
+Keep one command to **500 streams or fewer**, the same bound an operator's stream redelivery request uses
+(`RebuildPerspectiveCommand.DEFAULT_STREAMS_PER_COMMAND`, about 20 KB of ids). `SplitByStreams` turns a larger
+selection into several such commands:
+
+```csharp{
+title: "Rebuilding a large stream selection in bounded commands"
+description: "Splits one rebuild of many named streams into commands of at most 500 streams each, every one with its own request id derived from the caller's, and sends them."
+framework: "NET10"
+category: "Perspectives"
+difficulty: "INTERMEDIATE"
+tags: ["rebuild", "system-commands", "stream-selection", "message-size"]
+tests: ["RebuildPerspectiveCommandSplitTests.SplitByStreams_ALargeSelection_BecomesCommandsOfAtMostTheChunkSize_InOrderAsync", "RebuildPerspectiveCommandSplitTests.SplitByStreams_DerivesEachRequestIdFromTheCallersAndTheChunkIndexAsync", "RebuildPerspectiveCommandSplitTests.SplitByStreams_ByDefault_NamesAtMostTheRedeliveryBoundPerCommandAsync"]
+}
+var requestId = Guid.CreateVersion7();
+var rebuild = new RebuildPerspectiveCommand(
+    PerspectiveNames: ["OrderPerspective"],
+    Mode: RebuildMode.SelectedStreams,
+    IncludeStreamIds: affectedOrderIds,   // 100,000 ids
+    RequestId: requestId,
+    RequestedBy: "ops: incident 1234");
+
+foreach (var command in rebuild.SplitByStreams()) {
+  // command.RequestId == RebuildPerspectiveCommand.ChunkRequestId(requestId, chunkIndex)
+  await dispatcher.SendAsync(command);
+}
+```
+
+- Each command names at most the chunk size (default 500; pass another to `SplitByStreams`) of the streams,
+  in the order given; a stream named twice is rebuilt once.
+- Each command's `RequestId` is `ChunkRequestId(requestId, chunkIndex)`: a name-based id of the chunk index
+  within your request id, so it is the same every time the same request is split. Each chunk is its own run,
+  and a chunk delivered twice finds its own run already recorded. Look for the rebuild events of every chunk id;
+  a command with no `RequestId` splits into commands with none.
+- `ExcludeStreamIds` is dropped from the chunks: a command that names streams ignores its exclusions anyway.
+- A command that names no streams (a whole-perspective rebuild, or an empty list) is returned unchanged.
+{verified: RebuildPerspectiveCommandSplitTests.SplitByStreams_AStreamNamedTwice_IsRebuiltOnceAsync, RebuildPerspectiveCommandSplitTests.ChunkRequestId_IsTheNameBasedIdOfTheChunkIndexWithinTheRequestAsync, RebuildPerspectiveCommandSplitTests.SplitByStreams_WithoutARequestId_LeavesEachChunkWithoutOneAsync, RebuildPerspectiveCommandSplitTests.SplitByStreams_KeepsEveryOtherField_AndDropsTheExclusionsTheIncludeListOverridesAsync, RebuildPerspectiveCommandSplitTests.SplitByStreams_NoStreamSelection_ReturnsTheCommandUnchangedAsync}
+
+Command auditing records the **length** of `IncludeStreamIds` and `ExcludeStreamIds`, never the ids, so the
+audit record stays small whatever the selection.
 
 ## System Events {#rebuild-events}
 

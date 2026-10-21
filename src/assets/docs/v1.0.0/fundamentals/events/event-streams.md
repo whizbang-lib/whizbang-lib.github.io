@@ -311,6 +311,8 @@ if (result.Status != "closed") {
 }
 ```
 
+Calling the coordinator truncates and nothing more. `IStreamCloser.CloseAsync(streamId, throughVersion, archive)` (registered by `AddWhizbangWorkers()`) wraps the same close in the destruction hook and the [destruction lifecycle stages](../lifecycle/lifecycle-stages#destruction), so receptors that preserve or announce the truncated events run around it; see [Closing a stream on a schedule](ephemeral-events#scheduled-close).
+
 The close is all or nothing. It returns one of these statuses:
 
 | Status | Meaning | What to do |

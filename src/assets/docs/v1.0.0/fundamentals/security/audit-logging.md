@@ -11,6 +11,7 @@ description: >-
   capture who changed what, when, and why
 tags: 'audit, compliance, logging, system-events, perspectives, security, gdpr, sox'
 codeReferences:
+  - src/Whizbang.Core/Audit/IBoundedCommandAudit.cs
   - src/Whizbang.Core/SystemEvents/ISystemEvent.cs
   - src/Whizbang.Core/SystemEvents/EventAudited.cs
   - src/Whizbang.Core/SystemEvents/CommandAudited.cs
@@ -25,6 +26,7 @@ codeReferences:
   - src/Whizbang.Core/Attributes/AuditEventAttribute.cs
   - src/Whizbang.Core/SystemEvents/AuditLedger.cs
 testReferences:
+  - tests/Whizbang.Core.Tests/SystemEvents/CommandAuditListLengthsTests.cs
   - tests/Whizbang.Core.Tests/SystemEvents/EventAuditedTests.cs
   - tests/Whizbang.Core.Tests/SystemEvents/CommandAuditTests.cs
   - tests/Whizbang.Core.Tests/SystemEvents/SystemEventOptionsTests.cs
@@ -356,6 +358,35 @@ public sealed record CommandAudited : ISystemEvent {
 
   // Full scope key/value pairs from the originating envelope
   public IReadOnlyDictionary<string, string?>? Scope { get; init; }
+}
+```
+
+### Commands that carry id lists {#bounded-command-audit}
+
+`CommandBody` is the command as serialized, except for lists a command declares as id lists of unbounded
+length. A command implementing `IBoundedCommandAudit` names those properties in `ListsAuditedAsLengths()`,
+and its audit record keeps each one's **length** (a JSON number) in place of the list. A null list stays
+null, and every other property is kept as it is. Names are compared without regard to case, so a camel-case
+naming policy does not matter.
+
+The framework's own commands that carry stream lists use it: `RebuildPerspectiveCommand` (`IncludeStreamIds`,
+`ExcludeStreamIds`) and `RequestRedeliveryCommand` (`StreamIds`). A rebuild of 100,000 streams is audited with
+`"IncludeStreamIds": 100000`, not 4 MB of ids per receiving service.
+{verified: CommandAuditListLengthsTests.ARebuildNamingStreams_IsAuditedWithTheListLengths_AndKeepsTheRestOfTheCommandAsync, CommandAuditListLengthsTests.ARedeliveryRequest_IsAuditedWithItsStreamCountAsync, CommandAuditListLengthsTests.ListLengths_MatchesNamesWithoutRegardToCase_AndKeepsANamedValueThatIsNotAListAsync}
+
+```csharp{
+title: "Auditing a command's id list by its length"
+description: "A command that can name any number of customers declares that list, so its audit record keeps how many were named instead of every id."
+framework: "NET10"
+category: "Best-Practices"
+difficulty: "INTERMEDIATE"
+tags: ["audit", "command-audit", "id-lists", "message-size"]
+tests: ["CommandAuditListLengthsTests.ARebuildNamingStreams_IsAuditedWithTheListLengths_AndKeepsTheRestOfTheCommandAsync"]
+}
+public sealed record NotifyCustomersCommand(Guid[] CustomerIds, string Template) : ICommand, IBoundedCommandAudit {
+  private static readonly string[] _idLists = [nameof(CustomerIds)];
+
+  public IReadOnlyCollection<string> ListsAuditedAsLengths() => _idLists;
 }
 ```
 
