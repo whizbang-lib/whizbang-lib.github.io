@@ -11,10 +11,13 @@ tags: 'workers, maintenance, housekeeping, settledness, extension'
 codeReferences:
   - src/Whizbang.Core/Workers/IMaintenanceStep.cs
   - src/Whizbang.Core/Workers/MaintenanceWorker.cs
+  - src/Whizbang.Data.Postgres/Migrations/221_LedgerRetention.sql
   - src/Whizbang.Core/Workers/RetentionSettingsBridge.cs
 testReferences:
   - tests/Whizbang.Core.Tests/Workers/MaintenanceWorkerStepTests.cs
   - tests/Whizbang.Core.Tests/Workers/MaintenanceWorkerRetentionSyncTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/LedgerRetentionSqlTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperLedgerRetentionSqlTests.cs
 ---
 
 # Maintenance steps {#maintenance-steps}
@@ -64,6 +67,21 @@ How steps run:
 - **Register with `TryAddEnumerable`** so a registration method called twice does not run the step twice.
 
 The saga package's [stranded-saga sweep](../sagas/completion-orchestration#stranded-sagas) is a step.
+
+## Ledger retention {#ledger-retention}
+
+{verified: LedgerRetentionSqlTests.Log_OlderThanTheWindow_IsRemoved_YoungerIsKeptAsync, LedgerRetentionSqlTests.ScheduleRuns_OlderThanTheWindow_AreRemoved_ButTheNewestRunOfEachScheduleIsKeptAsync, LedgerRetentionSqlTests.StreamPurgeAudit_IsKeptForeverByDefault_AndBoundedWhenConfiguredAsync, LedgerRetentionSqlTests.IntegrityLedger_IsTrimmedToTheConfiguredCount_NewestKeptAsync, LedgerRetentionSqlTests.DebugMode_KeepsEveryLedgerRowAsync, DapperLedgerRetentionSqlTests.Maintenance_BoundsTheLogAndScheduleRuns_KeepingEachSchedulesNewestRunAsync}
+
+The last task of the maintenance sweep bounds the framework ledgers that nothing else deletes from. Each task deletes in batches, so a large backlog is never one long delete, and each is skipped while `debug_mode` is on.
+
+| Ledger | Task | Kept | Window setting (default) |
+|---|---|---|---|
+| `wh_log` | `purge_old_log_entries` | entries younger than the window | `LogDays` (14 days) |
+| `wh_schedule_runs` | `purge_old_schedule_runs` | runs younger than the window, and **each schedule's newest run** whatever its age, so a dormant schedule keeps its last outcome | `ScheduleRunDays` (30 days) |
+| `wh_stream_purge_audit` | `purge_old_stream_purge_audit` | everything by default, because the audit records what a purge destroyed; set a window to bound it | `StreamPurgeAuditDays` (0, keep forever) |
+| `wh_integrity_ledger` | `trim_integrity_ledger` | the most recently touched entries, up to the cap | `IntegrityLedgerMaxEntries` (100000) |
+
+Each setting lives under `Whizbang:Workers:Maintenance:Retention` and is published to `wh_settings` before the sweep reads it (next section); the keys are listed under [Database-side settings](../../operations/configuration/configuration-reference#database-side-settings).
 
 ## Settings published before the sweep {#settings-published-before-the-sweep}
 
