@@ -1517,6 +1517,7 @@ Which system events are enabled and how audit records ship. **Configure:** the s
 |----------|------|---------|----------------------|---------|
 | `LocalOnly` | `bool` | `true` | `Whizbang__SystemEvents__LocalOnly` | Store system events locally without publishing to the outbox |
 | `AuditMode` | `AuditMode` | `OptOut` | `Whizbang__SystemEvents__AuditMode` | Audit all events unless excluded, vs only explicitly marked |
+| `AuditBodyDefault` | `AuditBodyDefault` | `Omit` | `Whizbang__SystemEvents__AuditBodyDefault` | Whether audit records copy the audited event's body; `Omit` records a pointer and scope ([Audit body](../../fundamentals/events/system-events#audit-body)) |
 | `AuditShipSlideSeconds` | `int` | `15` | `Whizbang__SystemEvents__AuditShipSlideSeconds` | Quiet window before audit singles fold into a composite; 0 bypasses |
 | `AuditShipMaxDelaySeconds` | `int` | `120` | `Whizbang__SystemEvents__AuditShipMaxDelaySeconds` | Safety floor and hard cap on continuous sliding |
 | `AuditShipMaxBatchCount` | `int` | `500` | `Whizbang__SystemEvents__AuditShipMaxBatchCount` | Max audit records per shipped composite |
