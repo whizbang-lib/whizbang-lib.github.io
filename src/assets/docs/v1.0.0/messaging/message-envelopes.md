@@ -25,6 +25,7 @@ testReferences:
   - tests/Whizbang.Core.Tests/Observability/CascadeEnvelopeWrapperCausationTests.cs
   - tests/Whizbang.Observability.Tests/MessageTracingTests.cs
   - tests/Whizbang.Transports.AzureServiceBus.Tests/AzureServiceBusTransportPublishPathTests.cs
+  - tests/Whizbang.Core.Tests/Observability/EnvelopeMetadataSlimFormTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -402,6 +403,39 @@ var json = JsonSerializer.Serialize(envelope);  // Not AOT-compatible
 ```
 
 The compact JSON property names (`v`, `id`, `p`, `h`, per-hop `ty`/`si`/`ts`/...) keep hop overhead small on the wire.
+
+### Stored form {#stored-form}
+
+A stored event keeps its envelope metadata (`EnvelopeMetadata`) beside the payload. In full, that is every hop
+with its service instance, topic, trace parent, caller information and policy trail: about 600 bytes per event,
+most of which matters only while the message is delivered. The outbox and inbox rows keep the full hops for
+delivery either way.
+
+`EnvelopeMetadata.ToSlim()` returns the slim form, which keeps only what a reader takes from a stored event:
+
+| Kept | Taken from |
+|------|------------|
+| Message id | the metadata |
+| Ephemeral TTL | the metadata |
+| Message timestamp, correlation id, causation id, stream id | the first hop, where `GetMessageTimestamp`, `GetCorrelationId` and `GetCausationId` read them |
+| Scope | folded over every Current hop into one delta, so the scope read back is the same as from the full hops |
+
+Everything else is dropped: the dispatch context, receptor invocations, causation hops, and each hop's service
+instance, topic, partition, sequence, execution strategy, duration, trail, caller information, trace parent and
+metadata dictionary. The single hop's service instance is `ServiceInstanceInfo.Unknown`, which the hop writer
+leaves out; a hop read without `si` comes back as `Unknown`. A document without a message id still fails to
+read.
+
+```csharp{title="The slim stored form reads back the same scope and correlation" description="Slim a stored event's metadata and read scope, correlation and causation from it." framework="NET10" category="Messaging" difficulty="ADVANCED" tags=["envelopes", "metadata", "storage"] tests=["EnvelopeMetadataSlimFormTests.ToSlim_KeepsWhatReadersTakeFromAStoredEventAsync", "EnvelopeMetadataSlimFormTests.SlimDocument_RoundTripsThroughTheGeneratedContextAsync"]}
+var slim = metadata.ToSlim();
+
+var scope = EnvelopeContextExtractor.ExtractScope(slim.Hops);   // same as from metadata.Hops
+var correlation = slim.Hops[0].CorrelationId;                    // the first hop's, as GetCorrelationId reads it
+```
+
+Nothing stores the slim form yet: readers accept it first, and a later release adds the setting that writes it.
+
+{verified: EnvelopeMetadataSlimFormTests.ToSlim_KeepsWhatReadersTakeFromAStoredEventAsync, EnvelopeMetadataSlimFormTests.ToSlim_DropsEverythingElseAsync, EnvelopeMetadataSlimFormTests.SlimDocument_RoundTripsThroughTheGeneratedContextAsync, EnvelopeMetadataSlimFormTests.ADocumentWithoutAMessageId_StillFailsAsync, MessageHopCoverageTests.Read_MissingServiceInstance_ReadsAsUnknownAsync}
 
 ---
 
