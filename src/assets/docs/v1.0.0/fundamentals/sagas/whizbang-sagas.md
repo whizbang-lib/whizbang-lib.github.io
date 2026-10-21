@@ -20,6 +20,7 @@ codeReferences:
   - src/Whizbang.Sagas/Helpers/SagaItemCompletionReconciler.cs
   - src/Whizbang.Sagas/SagaItemStreams.cs
   - src/Whizbang.Sagas.Generators/SagaGenerator.cs
+  - src/Whizbang.Sagas.Contracts/SignalsOutcomeAttribute.cs
 testReferences:
   - tests/Whizbang.Sagas.Tests/BaseSagaServiceTests.cs
   - tests/Whizbang.Sagas.Tests/SagaCompletionGuardTests.cs
@@ -249,7 +250,9 @@ No framework-level child concept is required. Each level uses the same `BaseSaga
 
 ### Compensation
 
-Whizbang.Sagas ships an `ISagaCompensatingEvent` marker interface but does NOT automatically execute compensation — the right ordering is irreducibly domain-specific (refund before un-archive, or vice versa, depends on the workflow). Mark your compensation events with the interface so visualization and audit tooling can group them, then wire your own `IReceptor<MyCompensatingEvent>` chain:
+Whizbang.Sagas does NOT automatically execute compensation. The right ordering is irreducibly domain-specific: refund before un-archive, or the reverse, depending on the workflow. What it does provide is the decision. A saga that declares `[SignalsOutcome]` is committed or rolled back exactly once, whichever way it ends, and your receptors on `SagaRolledBackEvent` run the compensation. See [Saga Commit and Rollback](./commit-rollback.md) for the signal and the stage-then-apply design that keeps compensation cheap.
+
+Mark your compensation events with the `ISagaCompensatingEvent` marker interface so visualization and audit tooling can group them apart from forward-path work:
 
 ```csharp{
 title: "Mark a saga compensation event"
@@ -287,11 +290,12 @@ Whizbang.Sagas is built on Whizbang.Core's purity contract:
 
 - **Apply stays pure.** Every helper takes the caller's timestamp; no `DateTimeOffset.UtcNow` leakage. Replay reconstructs exact original state.
 - **Receptors do side effects.** `BaseSagaService` lifecycle methods (`InitiateSagaAsync`, `UpdateItemAsync`, etc.) are explicitly receptor-time operations — they call `ISagaEventEmitter.PublishAsync`. Apply methods just project.
-- **Exactly-once emission lives at the dispatcher.** `CompleteSagaAsync` is the only method that uses `PublishOnceAsync` — and only because the saga-completion race is the precise scenario the dispatcher's claim primitive was designed for.
+- **Exactly-once emission lives at the dispatcher.** `PublishOnceAsync` is used only for emissions that racing terminal callers must collapse to one: the completion, the abandonment, each continuation request and the commit-or-rollback signal, each under its own claim key. Every other lifecycle event is a plain publish.
 
 ## Related
 
 - [Completion Orchestration & Adaptive Watchdog](./completion-orchestration) — how a saga actually closes: per-item event-driven completion path + the progress-rate-based watchdog safety net.
+- [Saga Commit and Rollback](./commit-rollback) — the exactly-once outcome signal a saga's compensation runs from.
 - [PublishOnceAsync](../dispatcher/publish-once) — the dispatcher-level exactly-once primitive `SagaCompletionGuard` wraps.
 - [Dispatcher Deep Dive](../dispatcher/dispatcher) — the broader `IDispatcher` API surface.
 - [Collective Events](../messaging/collective-events) — for the orthogonal "one event mutates a set of streams" pattern.
