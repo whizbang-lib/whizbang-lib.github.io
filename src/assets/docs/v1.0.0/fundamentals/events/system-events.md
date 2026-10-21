@@ -147,7 +147,7 @@ public sealed class AuditPerspective : IPerspectiveFor<AuditLogEntry, EventAudit
       Timestamp = @event.Timestamp,
       TenantId = @event.TenantId,
       UserId = @event.UserId,
-      Body = @event.OriginalBody
+      Body = @event.OriginalBody   // null unless the body is kept, see "What an audit record stores"
     };
   }
 }
@@ -233,9 +233,9 @@ public sealed record EventAudited : ISystemEvent {
   public required long OriginalStreamPosition { get; init; }
 
   /// <summary>
-  /// Full body of the original event as JSON.
+  /// Body of the original event as JSON, when kept (see "What an audit record stores"); otherwise null.
   /// </summary>
-  public required JsonElement OriginalBody { get; init; }
+  public JsonElement? OriginalBody { get; init; }
 
   /// <summary>
   /// When the original event was recorded.
@@ -310,10 +310,36 @@ All three writers of `EventAudited` (the work coordinator's outbox path, the eve
 
 Every writer applies the same eligibility rule, including `AuditMode.OptIn`, and asks the registered `IAuditDecisionHook` before it writes (see [Audit Logging](../security/audit-logging.md#audit-decision-hook)). Records from the outbox path and the decorator are transport-only: they reach the audit perspective but are not appended to the origin's event store.
 
+#### What an audit record stores {#audit-body}
+
+An `EventAudited` record points at the event it audits: `OriginalEventId`, `OriginalEventType`,
+`OriginalStreamId`, `OriginalStreamPosition`, the time, the tenant and user, correlation and causation, and the
+scope. That is everything the built-in audit view stores, and the event itself is in the origin's event store.
+By default the record does **not** copy the event's body, so `OriginalBody` is null and absent from the stored
+record. Copying it doubled the storage of every audited event, and for events that carry large payloads
+(embeddings, snapshots) it was most of the record.
+
+Keep the body where the audit must show the data as it was, independent of the event store:
+
+```csharp{title="Keep the body for one event type" description="IncludeBody on the audit attribute copies this type's body into its audit records." framework="NET10" category="System Events" difficulty="INTERMEDIATE" tags=["audit", "system-events"] tests=["AuditingEventStoreDecoratorTests.AppendAsync_ATypeThatAsksForItsBody_IsRecordedWithItAsync", "AuditOutboxMessageBuilderTests.TryBuildAuditMessage_ATypeThatAsksForItsBody_KeepsItAsync"]}
+[AuditEvent(IncludeBody = true, Reason = "Payment terms must be shown as agreed")]
+public record PaymentTermsAccepted([property: StreamId] Guid ContractId, decimal Rate) : IEvent;
+```
+
+Or keep every body with `Whizbang:SystemEvents:AuditBodyDefault` set to `Include`
+(`Whizbang__SystemEvents__AuditBodyDefault`, or `options.AuditBodyDefault = AuditBodyDefault.Include`). The
+default is `Omit`. When a body is not kept, the writer does not serialize it at all. All three writers (the
+event store decorator, the outbox path and the emitter) apply the same rule.
+
+Upgrading: a consumer that reads `OriginalBody` sets `Include` or marks the types it needs, or reads the original
+event by `OriginalEventId`.
+
+{verified: AuditingEventStoreDecoratorTests.AppendAsync_ByDefault_TheAuditRecordPointsAtTheEventWithoutItsBodyAsync, AuditingEventStoreDecoratorTests.AppendAsync_ATypeThatAsksForItsBody_IsRecordedWithItAsync, AuditingEventStoreDecoratorTests.AppendAsync_TheDefaultSetToInclude_RecordsEveryBodyAsync, AuditOutboxMessageBuilderTests.TryBuildAuditMessage_ByDefault_LeavesTheBodyOutAsync, SystemEventEmitterTests.EmitEventAuditedAsync_ByDefault_RecordsNoBodyAsync, AuditEventRegistryGeneratorTests.Generator_IncludeBody_IsRegisteredAsync}
+
 #### What hooks receive
 
-`EventAudited` carries the whole body of the event it audits in `OriginalBody`, and `CommandAudited`
-carries `CommandBody` — both unbounded. The payload their `sys-audit` tag hands to hooks deliberately
+`EventAudited` can carry the body of the event it audits in `OriginalBody` (see above), and `CommandAudited`
+carries `CommandBody`, both unbounded. The payload their `sys-audit` tag hands to hooks deliberately
 leaves those bodies out and carries what identifies the change instead. A hook that needs the body
 reads the stored audit record. See [Payload Size Thresholds](../messages/message-tags#payload-size-thresholds).
 {verified: AuditTagPayloadTests.EventAudited_TagPayload_LeavesTheOriginalBodyOutAsync, AuditTagPayloadTests.CommandAudited_TagPayload_LeavesTheCommandBodyOutAsync}
