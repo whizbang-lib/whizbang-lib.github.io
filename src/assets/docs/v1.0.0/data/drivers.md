@@ -197,7 +197,7 @@ Before this release the coordinator called its functions unqualified and named `
 
 The tables, the migrated functions, the startup readiness check and the coordinator all use that schema, so a host whose connection string carries `Search Path=orders` gets everything in `orders` and nothing in `public`.
 
-```csharp
+```csharp{title="Dapper Driver in a Named Schema" description="Install Whizbang into the schema the connection string names" category="Configuration" difficulty="INTERMEDIATE" tags=["Data", "C#", "Dapper", "Schema"] tests=["DapperNamedSchemaRegistrationTests.Registration_SearchPathNamesASchema_InstallsTablesAndFunctionsThereAsync"]}
 var connectionString = new NpgsqlConnectionStringBuilder(baseConnectionString) {
   SearchPath = "orders"
 }.ConnectionString;
