@@ -808,6 +808,52 @@ not, the pass logs a warning and leaves the column as it was. Both options need 
 
 {verified: JsonbColumnStorageIntegrationTests.DeclaredOptions_AreAppliedToTheTableAsync, JsonbColumnStorageIntegrationTests.TheStatements_RunAgain_AlterNothingAsync, JsonbColumnStorageIntegrationTests.AChangedBudget_ReplacesTheConstraintAsync, JsonbColumnStorageIntegrationTests.AValueOverItsBudget_IsRefusedOnWriteAsync, ColumnStorageSqlTests.SchemaGenerator_EmitsTheSameOptionsAsync}
 
+### When autovacuum runs {#perspective-autovacuum}
+
+An update or delete leaves the old row version behind as a dead row, and autovacuum reclaims it. By
+default the server vacuums a table once a fraction of it is dead (the scale factor, usually 0.05 to
+0.2) plus a small fixed threshold. On a table of a few thousand rows that is prompt. On a table of five
+million rows it means waiting for hundreds of thousands of dead rows, and the table and its indexes
+grow to hold them and stay that size. A perspective whose rows are updated on most events, or that
+row retention deletes from, is that kind of table.
+
+`[PerspectiveTableStorage]` sets the table's own trigger. A scale factor of 0 with a fixed threshold
+vacuums the table after the same number of changes at any size:
+
+```csharp{title="Vacuum a busy perspective after a fixed number of changes" description="Scale factor 0 with a fixed threshold, for the table and for the TOAST relation holding large documents." framework="NET10" category="Perspectives" difficulty="ADVANCED" tags=["perspectives", "autovacuum", "storage", "bloat"] tests=["ColumnStorageSqlTests.AutovacuumSettings_ReachBothSchemaGeneratorsAsync", "JsonbColumnStorageIntegrationTests.DeclaredOptions_AreAppliedToTheTableAsync"]}
+[PerspectiveTableStorage(
+  AutovacuumVacuumScaleFactor = 0,
+  AutovacuumVacuumThreshold = 10000,
+  ToastAutovacuumVacuumScaleFactor = 0,
+  ToastAutovacuumVacuumThreshold = 10000)]
+public class ActiveSessionModel {
+  [StreamId]
+  public Guid Id { get; set; }
+}
+```
+
+| Property | Storage parameter | Range |
+|----------|-------------------|-------|
+| `AutovacuumVacuumThreshold` | `autovacuum_vacuum_threshold` | 0 or more |
+| `AutovacuumVacuumScaleFactor` | `autovacuum_vacuum_scale_factor` | 0 to 100 |
+| `AutovacuumInsertThreshold` | `autovacuum_vacuum_insert_threshold` | 0 or more |
+| `AutovacuumInsertScaleFactor` | `autovacuum_vacuum_insert_scale_factor` | 0 to 100 |
+| `ToastAutovacuumVacuumThreshold` | `toast.autovacuum_vacuum_threshold` | 0 or more |
+| `ToastAutovacuumVacuumScaleFactor` | `toast.autovacuum_vacuum_scale_factor` | 0 to 100 |
+
+Each property is negative by default, which keeps the server's setting. The insert settings start a
+vacuum after inserts alone; on a table that is mostly appended to, that keeps the visibility map
+current so index-only scans stay index-only. The `Toast` settings apply to the TOAST relation, which
+holds documents too large for the row and is vacuumed on its own schedule.
+
+Like the options above, each parameter is set only where the catalog holds a different value, so a
+restart takes no lock. A `toast.` parameter is compared against the TOAST relation, where PostgreSQL
+keeps it. Removing a property from the attribute does not reset the parameter; reset it by hand with
+`ALTER TABLE … RESET (…)`. A value outside the range fails the schema pass with PostgreSQL's own error
+naming the parameter.
+
+{verified: ColumnStorageSqlTests.AutovacuumSettings_ReachBothSchemaGeneratorsAsync, ColumnStorageSqlTests.NegativeAutovacuumSettings_KeepTheServerDefaultsAsync, ColumnStorageSqlTests.StorageParameter_ComparesTheTableOrItsToastRelationAsync, JsonbColumnStorageIntegrationTests.DeclaredOptions_AreAppliedToTheTableAsync, JsonbColumnStorageIntegrationTests.TheStatements_RunAgain_AlterNothingAsync}
+
 ## Search {#search}
 
 {verified: SearchQueryIntegrationTests.Search_IgnoresCaseAsync, SearchQueryIntegrationTests.Search_AStraightQuoteTerm_FindsACurlyQuoteTitle_AndDashesAlikeAsync, SearchQueryIntegrationTests.Search_AWildcardInTheTerm_MatchesLiterallyAsync, SearchQueryIntegrationTests.Search_IsAnsweredByTheFoldIndexAsync, SearchQueryShapeTests.Contains_OnASearchField_FoldsTheValueAndTheTermAsync, SearchQueryShapeTests.Contains_OnAPromotedSearchField_FoldsTheColumnAsync, SearchIndexGenerationTests.ASearchField_GetsATrigramIndexOverItsFoldedValueAsync}
