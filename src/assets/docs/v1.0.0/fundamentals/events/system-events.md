@@ -31,6 +31,8 @@ codeReferences:
   - src/Whizbang.Core/Attributes/AuditEventAttribute.cs
   - src/Whizbang.Core/Events/System/SystemEvents.cs
 testReferences:
+  - tests/Whizbang.Core.Tests/SystemEvents/AuditEventRegistryTests.cs
+  - tests/Whizbang.Generators.Tests/AuditEventRegistryGeneratorTests.cs
   - tests/Whizbang.Core.Tests/SystemEvents/SystemEventEmitterTests.cs
   - tests/Whizbang.Core.Tests/SystemEvents/SystemEventTransportFilterTests.cs
   - tests/Whizbang.Core.Tests/SystemEvents/SystemEventOptionsTests.cs
@@ -849,6 +851,24 @@ This ensures:
 ---
 
 <a id="event-auditing"></a>
+## Audit decisions {#audit-decisions}
+
+{verified: AuditEventRegistryTests.AttributeOf_ATypeTheGeneratorRegistered_ReturnsItsDeclaredValuesAsync, AuditEventRegistryTests.AttributeOf_ATypeInheritingTheAttribute_ReturnsTheBasesValuesAsync, AuditEventRegistryGeneratorTests.Generator_ADerivedType_IsRegisteredWithItsBasesAttributeAsync}
+
+Every audit writer (the event-store decorator, the outbox path and the system event emitter) asks one place whether an
+occurrence is audited, and under what name:
+
+1. Audit records themselves (`EventAudited`, `CommandAudited`) are never audited.
+2. The type's `[AuditEvent]` settles eligibility by mode: `OptOut` audits everything not marked `Exclude = true`;
+   `OptIn` audits only what is marked without `Exclude`.
+3. A registered `IAuditDecisionHook` may then record, skip or rename the occurrence; a hook with no opinion leaves the
+   attribute's answer.
+
+The attribute's values are read from `AuditEventRegistry`, which a generator fills when the assembly loads, not by
+reflection. A type that carries `[AuditEvent]` through a base class is registered with the base's values, as the
+attribute is inherited. A private or protected nested type cannot be registered by generated code, and is reported
+with [WHIZ180](../../operations/diagnostics/whiz180).
+
 ## Event Auditing Decorator
 
 The `AuditingEventStoreDecorator` wraps your `IEventStore` implementation. On each append it builds an `EventAudited` envelope and queues it to the **deferred outbox channel** with the dedicated audit topic destination `"whizbang.core.auditevents"` — it deliberately does NOT depend on `IEventStore` or `ISystemEventEmitter` itself, which avoids circular DI:
