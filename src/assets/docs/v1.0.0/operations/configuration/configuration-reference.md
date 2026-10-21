@@ -227,6 +227,7 @@ Bound during Postgres driver registration with a hand-rolled binder. Controls th
 | `DirectConnectionString` | `string?` | `null` | `Whizbang__Database__DirectConnectionString` | Explicit direct connection string; overrides key-based lookup |
 | `DisableNotifications` | `bool` | `false` | `Whizbang__Database__DisableNotifications` | Kill switch forcing polling-only mode |
 | `PollingFallbackInterval` | `TimeSpan` | `00:00:30` | `Whizbang__Database__PollingFallbackInterval` | Safety-net polling cadence while the listener is healthy |
+| `SignalRetention` | `TimeSpan` | `7.00:00:00` | `Whizbang__Database__SignalRetention` | How long a durable signal is kept before the retention sweep may delete it; never past a signal an instance has not delivered. Zero or less is rejected at startup ([retention](../../fundamentals/signal-bus/signal-bus#retention)) |
 | `ListenKeepaliveInterval` | `TimeSpan` | `00:00:30` | `Whizbang__Database__ListenKeepaliveInterval` | Cadence of `SELECT 1` keepalive on the listener connection |
 | `ListenReconnectInitialDelay` | `TimeSpan` | `00:00:01` | `Whizbang__Database__ListenReconnectInitialDelay` | First reconnect attempt delay after a disconnect |
 | `ListenReconnectMaxDelay` | `TimeSpan` | `00:00:30` | `Whizbang__Database__ListenReconnectMaxDelay` | Cap on reconnect backoff |
