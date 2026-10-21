@@ -17,6 +17,7 @@ codeReferences:
   - src/Whizbang.Core/Observability/ServiceInstanceInfo.cs
   - src/Whizbang.Core/Observability/ITraceStore.cs
   - src/Whizbang.Core/Observability/InMemoryTraceStore.cs
+  - src/Whizbang.Core/Observability/TraceStoreRegistration.cs
   - src/Whizbang.Core/Policies/PolicyDecisionTrail.cs
   - src/Whizbang.Core/Policies/PolicyConfiguration.cs
 testReferences:
@@ -24,6 +25,9 @@ testReferences:
   - tests/Whizbang.Observability.Tests/MessageHopTests.cs
   - tests/Whizbang.Observability.Tests/TraceStore/TraceStoreContractTests.cs
   - tests/Whizbang.Observability.Tests/TraceStore/InMemoryTraceStoreTests.cs
+  - tests/Whizbang.Observability.Tests/TraceStore/InMemoryTraceStoreCapacityTests.cs
+  - tests/Whizbang.Observability.Tests/DependencyInjection/TraceStoreRegistrationTests.cs
+  - tests/Whizbang.Core.Component.Tests/Dispatcher/TraceStoreOptInComponentTests.cs
   - tests/Whizbang.Observability.Tests/PolicyDecisionTrailTests.cs
 ---
 
@@ -261,7 +265,7 @@ foreach (var hop in slowest) {
 
 ## Querying traces: `ITraceStore`
 
-Envelopes are captured into an `ITraceStore` so you can query the message history after the fact. The dispatcher **automatically stores each envelope** as it dispatches — you don't call `StoreAsync` yourself in application code; you query.
+When a host registers an `ITraceStore`, envelopes are captured into it so you can query the message history after the fact. The dispatcher **automatically stores each envelope** as it dispatches; you don't call `StoreAsync` yourself in application code, you query. No store is registered by default (see [trace store registration](#trace-store-registration)).
 
 ```csharp{title="ITraceStore query surface" description="The store the dispatcher writes envelopes to: fetch by message id, by correlation id, by causal chain, or by time range." category="Observability" difficulty="INTERMEDIATE" tags=["trace-store","query","correlation","causal-chain"] tests=["TraceStoreContractTests.TraceStore_StoreAndRetrieve_ShouldStoreAndRetrieveEnvelopeAsync", "TraceStoreContractTests.TraceStore_GetByMessageId_ShouldReturnNullForNonExistentTraceAsync", "TraceStoreContractTests.TraceStore_GetByCorrelation_ShouldReturnAllMessagesWithSameCorrelationIdAsync", "TraceStoreContractTests.TraceStore_GetCausalChain_ShouldReturnMessageAndParentsAsync", "TraceStoreContractTests.TraceStore_GetByTimeRange_ShouldReturnMessagesInRangeAsync"]}
 public interface ITraceStore {
@@ -281,20 +285,39 @@ Behavior guarantees (verified by the contract tests):
 - **`GetCausalChainAsync`** returns the message *plus all ancestors* (walked via causation id) *and all descendants* (children, multi-generation), ordered chronologically, and is **protected against circular references**. It returns an empty list when the message id is unknown.
 - **`GetByTimeRangeAsync`** filters and orders by the message's first `Current` hop timestamp.
 
-### Registration & the in-memory store
+### Trace store registration
 
-`AddWhizbang(...)` registers `ITraceStore` as a singleton **`InMemoryTraceStore`** by default. That implementation is thread-safe (backed by a `ConcurrentDictionary` keyed by `MessageId`) and is intended for **testing and development — it is not durable and is bounded by memory**. A couple of concrete behaviors worth knowing:
+`AddWhizbang(...)` registers **no** `ITraceStore`. With no store, the dispatcher does no trace work at all: it builds no envelope just for tracing and calls no `StoreAsync`. A host that wants the query surface opts in explicitly:
 
-- `StoreAsync` throws `ArgumentNullException` on a null envelope and **de-dupes on `MessageId`** — the first write for a given id wins (`ConcurrentDictionary.TryAdd`).
+```csharp{title="Opt in to the in-memory trace store" description="Registers the bounded in-memory trace store, keeping the most recent 10,000 envelopes or the capacity given." category="Observability" difficulty="BEGINNER" tags=["trace-store","registration","capacity"] tests=["TraceStoreRegistrationTests.AddWhizbang_Default_RegistersNoTraceStoreAsync", "TraceStoreRegistrationTests.AddWhizbangInMemoryTraceStore_RegistersOneSingletonWithTheDefaultCapacityAsync", "TraceStoreRegistrationTests.AddWhizbangInMemoryTraceStore_WithCapacity_UsesItAsync"]}
+builder.Services.AddWhizbang();
+
+// Keep the most recent 10,000 envelopes (InMemoryTraceStore.DEFAULT_CAPACITY)
+builder.Services.AddWhizbangInMemoryTraceStore();
+
+// Or choose the capacity
+builder.Services.AddWhizbangInMemoryTraceStore(capacity: 50_000);
+```
+
+`AddWhizbangInMemoryTraceStore` leaves exactly one `ITraceStore` registration (a later call replaces an earlier one) and rejects a capacity that is not positive. Registering your own implementation with `services.AddSingleton<ITraceStore, MyTraceStore>()` works the same way: the dispatcher uses whichever store is registered.
+
+`InMemoryTraceStore` is thread-safe and intended for **testing, development and short-lived diagnostics**. It is not durable, and it is **bounded**:
+
+- It keeps the most recent `Capacity` envelopes (default **10,000**). Past that, the **oldest envelope is evicted first**, and every query (`GetByMessageIdAsync`, `GetByCorrelationAsync`, `GetCausalChainAsync`, `GetByTimeRangeAsync`) stops returning it. A causal-chain walk stops at an evicted ancestor.
+- `StoreAsync` throws `ArgumentNullException` on a null envelope and **de-dupes on `MessageId`**: the first write for a given id wins, and a repeat write evicts nothing.
 - Queries degrade gracefully: an unknown id yields `null`/empty, and an envelope with no `Current` hop sorts as `DateTimeOffset.MinValue` rather than throwing.
 
-For production, register a persistent `ITraceStore` implementation.
+:::note
+Before this change, `AddWhizbang` registered an unbounded `InMemoryTraceStore` by default, so every service kept every dispatched envelope for the life of the process. A host that queried `ITraceStore` must now opt in as shown above.
+:::
+
+A persistent trace store for production is planned. Until then, register your own `ITraceStore` implementation when traces must survive a restart.
 
 ---
 
 ## Time-travel debugging scenarios
 
-All examples resolve `ITraceStore` from DI.
+All examples resolve `ITraceStore` from DI, so they assume a host that [registered one](#trace-store-registration).
 
 ### "Why did this message route to the wrong topic?"
 
