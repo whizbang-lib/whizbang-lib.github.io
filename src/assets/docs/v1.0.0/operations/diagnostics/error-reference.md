@@ -398,6 +398,7 @@ Compile-time errors, warnings and notices from Whizbang's source generators and 
 | WHIZ130 | Warning | [Perspective mixes ephemeral and Sourced Apply methods](whiz130.md) |
 | WHIZ131 | Error | [Rebuild or rewind of an ephemeral-only perspective](whiz131.md) |
 | WHIZ132 | Warning | [Receptor turns an ephemeral message into a Sourced event](whiz132.md) |
+| WHIZ133 | Error (runtime) | [Stream mixes ephemeral and Sourced events](whiz133.md) |
 | WHIZ134 | Error | [Ambiguous ephemeral composition](whiz134.md) |
 | WHIZ140 | Warning | [Perspective shares stream event types with a group but joins none](whiz140.md) |
 | WHIZ141 | Warning | [Stream group has no announcing member with a row evictor](whiz141.md) |

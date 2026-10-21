@@ -57,6 +57,7 @@ signal is wired — migration 056 adds an `AFTER INSERT` trigger on
 | `SerializationError` | HoldForReview | 0 | — | HoldForReview |
 | `TransportNotReady` | MediumRetry | 3 | 30 min | PermanentlyFailed |
 | `Unknown` | OneShotThenHold | 1 | 1 h | HoldForReview |
+| `MixedStreamRefused` ([WHIZ133](../diagnostics/whiz133)) | HoldForReview | 0 | none | HoldForReview |
 
 "After exhaustion" is driven by `RecoveryPolicy.HoldForReviewAfterExhaustion`:
 once `recovery_attempts` reaches the policy's `MaxRecoveryAttempts`, the
