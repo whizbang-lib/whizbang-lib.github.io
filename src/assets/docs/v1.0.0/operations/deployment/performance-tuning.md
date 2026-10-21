@@ -1,8 +1,8 @@
 ---
 title: Performance Tuning
 pageType: guide
-verifiedAgainstCommit: 0bc6065b
-verifiedDate: 2026-08-05
+verifiedAgainstCommit: 5bad79ca
+verifiedDate: 2026-10-20
 version: 1.0.0
 category: Advanced Topics
 order: 1
@@ -139,7 +139,7 @@ services.AddSingleton(new MessageProcessingOptions {
 });
 ```
 
-On large datasets the hot path is `claim_work` together with the store and commit functions - compare their call counts and mean times in `pg_stat_statements` before and after changing these values, alongside `whizbang.work_coordinator.flush.calls`.
+On large datasets the hot path is `claim_work` together with the store and commit functions - compare their call counts and mean times in `pg_stat_statements` before and after changing these values, alongside `whizbang.perspective.claim.duration` (each claim's time) and `whizbang.work_coordinator.flush.duration`.
 
 **Performance**: batching turns ~100 DB round-trips into 1 per flush window.
 
