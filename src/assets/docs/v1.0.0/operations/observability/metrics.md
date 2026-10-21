@@ -30,6 +30,7 @@ codeReferences:
   - src/Whizbang.Core/Observability/PinnedPoolMetrics.cs
   - src/Whizbang.Core/Observability/TableStatisticsMetrics.cs
   - src/Whizbang.Core/Observability/TableStatisticsCollector.cs
+  - src/Whizbang.Core/Observability/EventTypeBytesSampler.cs
   - src/Whizbang.Core/Observability/TableStatisticsOptions.cs
   - src/Whizbang.Core/Observability/TableStatisticsServiceCollectionExtensions.cs
   - src/Whizbang.Core/Observability/ITableStatisticsProvider.cs
@@ -62,6 +63,8 @@ testReferences:
   - tests/Whizbang.Core.Tests/Observability/EventCategoryMetricsTests.cs
   - tests/Whizbang.Core.Tests/Observability/TableStatisticsMetricsTests.cs
   - tests/Whizbang.Core.Tests/Observability/TableStatisticsMetricsStorageTests.cs
+  - tests/Whizbang.Core.Tests/Observability/TableStatisticsMetricsEventTypeTests.cs
+  - tests/Whizbang.Core.Component.Tests/Observability/EventTypeBytesSamplerTests.cs
   - tests/Whizbang.Core.Tests/Observability/TableStatisticsRegistrationTests.cs
   - tests/Whizbang.Core.Component.Tests/Observability/TableStatisticsCollectorTests.cs
   - tests/Whizbang.Core.Component.Tests/Observability/TableStatisticsCollectorStorageTests.cs
@@ -699,6 +702,25 @@ flowchart LR
 `TableStatisticsCollector.CycleCompleted` is raised after every refresh has written all the gauges, and not for a refresh that failed (which is logged and retried on the next cycle). A health check or a test that needs current statistics waits on it rather than on time. {verified: TableStatisticsCollectorTests.Collector_PublishesTableBloatRatioAsync}
 
 A custom `ITableStatisticsProvider` that predates the combined reading keeps working: when `GetTableStorageAsync` answers empty, the collector asks `GetEstimatedTableSizesAsync` and `GetTableBloatRatiosAsync` instead, and the split and row gauges report nothing for it.
+
+### Bytes per event type {#event-type-bytes}
+
+The table sizes say how large the event store is; these say which event types the bytes belong to, and how much of each event is payload and how much is metadata. That is the reading behind the storage decisions an operator makes per type: exclude it from audit, mark it ephemeral, or slim its metadata.
+
+| Metric Name | Type | Tags | Description |
+|-------------|------|------|-------------|
+| `whizbang.event_store.sampled_bytes_per_event` | ObservableGauge (bytes) | `event_type`, `part` | The mean stored size of one event of the type, after compression. `part` is `data` (the payload) or `metadata` (the envelope metadata, mostly hops) |
+| `whizbang.event_store.estimated_type_bytes` | ObservableGauge (bytes) | `event_type` | The payload and metadata bytes of every event of the type, extrapolated from the share sampled |
+
+{verified: TableStatisticsMetricsEventTypeTests.ASample_ReportsMeanBytesPerPartAndTheEstimatedTotalPerTypeAsync, PostgresTableStatisticsProviderTests.SampleEventTypeBytesAsync_AtAFullSample_ReportsEachTypesBytesAsync}
+
+- **A sample, not a scan.** `EventTypeBytesSampler` reads `EventTypeSamplePercent` of the event body table's pages (`TABLESAMPLE SYSTEM`, default 1%) every `EventTypeSampleInterval` (default 15 minutes), so the cost is a small fraction of the table, never all of it. The total is the sampled bytes divided by that share; a type rare enough to miss the sample is not reported in that window. {verified: TableStatisticsMetricsEventTypeTests.Extrapolate_ScalesTheSampledBytesByTheShareReadAsync}
+- **One instance per window.** The window starts on a multiple of the interval, so every instance names it the same way; the instance that claims it in `wh_unique_emission_claims` samples, and every other instance clears its reading. One instance reports at a time, so a sum across instances does not count the store twice; `max()` by `event_type` reads the same value. {verified: EventTypeBytesSamplerTests.TheInstanceThatTakesTheWindow_ReportsItsSample_UnderTheWindowsClaimAsync, EventTypeBytesSamplerTests.AnInstanceThatDoesNotTakeTheNextWindow_ClearsItsReadingAsync, PostgresTableStatisticsProviderTests.SampleEventTypeBytesAsync_ASecondClaimOfTheWindow_ReadsNothingAsync}
+- **Type names.** `event_type` is the stored wire form (`Namespace.Type, Assembly`), with any assembly version removed, so one type written by producers of different versions is one series. {verified: PostgresTableStatisticsProviderTests.SampleEventTypeBytesAsync_AtAFullSample_ReportsEachTypesBytesAsync}
+- **Cardinality.** The largest `MaxEventTypes` types by bytes (default 50) are reported by name; the rest are summed under `event_type="other"`, so totals stay right. At most 2 x (N + 1) series of `sampled_bytes_per_event` and N + 1 of `estimated_type_bytes`. {verified: PostgresTableStatisticsProviderTests.SampleEventTypeBytesAsync_PastTheCap_SumsTheSmallestUnderOtherAsync}
+- **Failures and shutdown.** A failed sample is logged as a warning and costs that window only. An interval of `00:00:00` turns the sampler off. {verified: EventTypeBytesSamplerTests.AFailedSample_IsLogged_AndTheNextWindowIsStillSampledAsync, EventTypeBytesSamplerTests.AZeroInterval_NeverAsksTheProviderAsync}
+
+`EventTypeBytesSampler.SampleCompleted` is raised after each sample with whether this instance took the window, for a test or a health check that needs to wait on it rather than on time.
 
 ## Whizbang.TypeRegistry {#type-registry}
 
