@@ -8,7 +8,8 @@ category: Core Concepts
 order: 8
 description: >-
   Internal events emitted by Whizbang for observability, auditing, and
-  diagnostics - isolated from domain events in dedicated system stream
+  diagnostics - isolated from domain events: audit records on the tenant's
+  audit ledger, the global kinds on the dedicated system stream
 tags: 'system-events, audit, monitoring, observability, diagnostics, security, compliance'
 codeReferences:
   - src/Whizbang.Core/SystemEvents/ISystemEvent.cs
@@ -19,6 +20,8 @@ codeReferences:
   - src/Whizbang.Core/SystemEvents/SystemEventTransportFilter.cs
   - src/Whizbang.Core/SystemEvents/ITransportPublishFilter.cs
   - src/Whizbang.Core/SystemEvents/SystemEventStream.cs
+  - src/Whizbang.Core/SystemEvents/SystemEventFireAndForget.cs
+  - src/Whizbang.Core/SystemEvents/AuditLedger.cs
   - src/Whizbang.Core/SystemEvents/EventAudited.cs
   - src/Whizbang.Core/SystemEvents/CommandAudited.cs
   - src/Whizbang.Core/SystemEvents/CommandAuditPipelineBehavior.cs
@@ -34,6 +37,9 @@ testReferences:
   - tests/Whizbang.Core.Tests/SystemEvents/AuditEventRegistryTests.cs
   - tests/Whizbang.Generators.Tests/AuditEventRegistryGeneratorTests.cs
   - tests/Whizbang.Core.Tests/SystemEvents/SystemEventEmitterTests.cs
+  - tests/Whizbang.Core.Tests/SystemEvents/SystemEventStreamRoutingTests.cs
+  - tests/Whizbang.Core.Tests/SystemEvents/SystemEventFireAndForgetTests.cs
+  - tests/Whizbang.Core.Tests/Lenses/ScopedLensFactoryEmitFailureTests.cs
   - tests/Whizbang.Core.Tests/SystemEvents/SystemEventTransportFilterTests.cs
   - tests/Whizbang.Core.Tests/SystemEvents/SystemEventOptionsTests.cs
   - tests/Whizbang.Core.Tests/SystemEvents/AuditingEventStoreDecoratorTests.cs
@@ -53,7 +59,7 @@ System events are **internal events emitted by Whizbang** for observability, aud
 
 ## Core Concept
 
-```mermaid{caption="System-event flow — domain infrastructure raises audit and security events through the emitter into the dedicated $wb-system stream, where perspectives consume them (LocalOnly by default)." tests=["SystemEventEmitterTests.EmitAsync_WithEventAudited_WhenAuditEnabled_AppendsToSystemStreamAsync", "SystemEventEmitterTests.EmitCommandAuditedAsync_WithEnabledAudit_EmitsCommandAuditedToSystemStreamAsync"]}
+```mermaid{caption="System-event flow: domain infrastructure raises audit and security events through the emitter; audit records land on their tenant's audit ledger, the global kinds on $wb-system, and perspectives consume both (LocalOnly by default)." tests=["SystemEventStreamRoutingTests.EmitEventAudited_AppendsToTheTenantsAuditLedgerAsync", "SystemEventStreamRoutingTests.EmitCommandAudited_AppendsToTheTenantsAuditLedgerAsync", "SystemEventStreamRoutingTests.EmitAsync_AnAdvisory_StaysOnTheGlobalSystemStreamAsync"]}
 graph TB
     DI["Domain Infrastructure (Events, Commands, Perspectives)"]
     EM["System Event Emitter"]
@@ -62,6 +68,7 @@ graph TB
     E3["ScopeContextEstablished (security context set)"]
     E4["AccessGranted/AccessDenied (authorization)"]
     E5["PermissionChanged (role/permission changes)"]
+    L1["Stored on the tenant's audit ledger"]
     S1["Stored in dedicated $wb-system stream"]
     S2["Consumed by perspectives (same as domain events)"]
     S3["LocalOnly by default (no network traffic)"]
@@ -72,11 +79,12 @@ graph TB
     EM --> E3
     EM --> E4
     EM --> E5
-    E1 --> S1
-    E2 --> S1
+    E1 --> L1
+    E2 --> L1
     E3 --> S1
     E4 --> S1
     E5 --> S1
+    L1 --> S2
     S1 --> S2 --> S3
 
     style DI fill:#d4edda,stroke:#28a745
@@ -87,11 +95,12 @@ graph TB
     style E4 fill:#fff3cd,stroke:#ffc107
     style E5 fill:#fff3cd,stroke:#ffc107
     style S1 fill:#fff3cd,stroke:#ffc107
+    style L1 fill:#fff3cd,stroke:#ffc107
     style S2 fill:#cce5ff,stroke:#004085
 ```
 
 **Key principles**:
-- **Isolated stream**: System events stored in `$wb-system` stream (separate from domain events)
+- **Isolated streams**: audit records on their tenant's [audit ledger](#stream), the global kinds (security and advisory) on `$wb-system`, both separate from domain events
 - **Opt-in per host**: Enable only the system events you need per service
 - **Same infrastructure**: System events use events, perspectives, and lenses
 - **LocalOnly by default**: No transport publishing to avoid duplicate auditing
@@ -644,9 +653,9 @@ public sealed record AccessDenied : ISystemEvent {
 <a id="emitter"></a>
 ## System Event Emitter
 
-The `ISystemEventEmitter` is responsible for emitting system events to the dedicated `$wb-system` stream.
+The `ISystemEventEmitter` is responsible for emitting system events: an audit record to its tenant's audit ledger, every other kind to the dedicated `$wb-system` stream (see [System Event Stream](#stream)).
 
-```csharp{title="System Event Emitter" description="The ISystemEventEmitter is responsible for emitting system events to the dedicated $wb-system stream." category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "System", "Event"] tests=["SystemEventEmitterTests.EmitEventAuditedAsync_WithEnabledAudit_EmitsEventAuditedToSystemStreamAsync", "SystemEventEmitterTests.EmitCommandAuditedAsync_WithEnabledAudit_EmitsCommandAuditedToSystemStreamAsync", "SystemEventEmitterTests.EmitAsync_WithEventAudited_WhenAuditEnabled_AppendsToSystemStreamAsync", "SystemEventEmitterTests.ShouldExcludeFromAudit_WithExcludedAttribute_ReturnsTrueAsync"]}
+```csharp{title="System Event Emitter" description="The ISystemEventEmitter emits audit records to the tenant's audit ledger and the global system events to the $wb-system stream." category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "System", "Event"] tests=["SystemEventEmitterTests.EmitEventAuditedAsync_WithEnabledAudit_EmitsEventAuditedToTheAuditLedgerAsync", "SystemEventEmitterTests.EmitCommandAuditedAsync_WithEnabledAudit_EmitsCommandAuditedToTheAuditLedgerAsync", "SystemEventEmitterTests.EmitAsync_WithEventAudited_WhenAuditEnabled_AppendsToTheNoTenantAuditLedgerAsync", "SystemEventEmitterTests.ShouldExcludeFromAudit_WithExcludedAttribute_ReturnsTrueAsync"]}
 public interface ISystemEventEmitter {
   /// <summary>
   /// Emits an EventAudited system event for a domain event.
@@ -668,7 +677,8 @@ public interface ISystemEventEmitter {
       CancellationToken cancellationToken = default) where TCommand : notnull;
 
   /// <summary>
-  /// Emits a generic system event to the system stream.
+  /// Emits a generic system event: an audit record to its tenant's audit ledger,
+  /// any other kind to the global system stream.
   /// </summary>
   Task EmitAsync<TSystemEvent>(
       TSystemEvent systemEvent,
@@ -1018,9 +1028,17 @@ services.TryAddSingleton(
 <a id="stream"></a>
 ## System Event Stream
 
-System events are stored in a dedicated stream with a fixed identifier:
+System events are stored apart from domain events, on one of two kinds of stream:
 
-```csharp{title="System Event Stream" description="System events are stored in a dedicated stream with a fixed identifier:" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "System", "Event"] unverified="SystemEventStreams constants; emitter tests route to this stream but none assert the literal name, prefix, or fixed GUID"}
+| Kind | Types | Stored on | Verified |
+|---|---|---|---|
+| Audit | `EventAudited`, `CommandAudited` | the tenant's audit ledger, `AuditLedger.StreamFor(tenantId)`; a record with no tenant on the no-tenant ledger | {verified: SystemEventStreamRoutingTests.EmitEventAudited_AppendsToTheTenantsAuditLedgerAsync, SystemEventStreamRoutingTests.EmitCommandAudited_WithoutATenant_AppendsToTheNoTenantLedgerAsync} |
+| Security | `AccessDenied`, `AccessGranted`, `PermissionChanged`, `ScopeContextEstablished` | `$wb-system`, even when the record carries a tenant | {verified: SystemEventStreamRoutingTests.StreamFor_NamesTheLedgerForAuditKindsAndTheGlobalStreamForTheRestAsync} |
+| Advisory | `PerspectiveIndexAdvised`, `PerspectiveScanAdvised` | `$wb-system` | {verified: SystemEventStreamRoutingTests.EmitAsync_AnAdvisory_StaysOnTheGlobalSystemStreamAsync} |
+
+An audit record is a ledger entry about a domain event, so it lives with the rest of its tenant's audit trail. It goes to the same ledger stream whichever path produced it: the outbox path (the [auditing decorator](#event-auditing)), the command-audit pipeline behavior, or an `EventAudited` or `CommandAudited` handed to `EmitAsync` directly. The [per-tenant audit ledger](../security/audit-logging#audit-ledger) explains how the stream id is derived. Security facts and advisories are facts about the system as a whole and share the one global stream. `SystemEventStreams.StreamFor` is the single place that decides, and the emitter builds the same envelope (priority band, hop, scope) for both, so only the stream id differs.
+
+```csharp{title="System Event Stream" description="The global $wb-system stream constants and StreamFor, which chooses the ledger for audit records and the global stream for every other kind." category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "System", "Audit-Ledger"] tests=["ISystemEventTests.SystemEventStreamName_IsConstant_ForDedicatedStreamAsync", "SystemEventStreamRoutingTests.StreamFor_NamesTheLedgerForAuditKindsAndTheGlobalStreamForTheRestAsync"]}
 public static class SystemEventStreams {
   /// <summary>
   /// The name of the dedicated system event stream.
@@ -1034,18 +1052,51 @@ public static class SystemEventStreams {
   public static string Prefix => "$wb-";
 
   /// <summary>
-  /// Well-known GUID for the system event stream.
+  /// Well-known GUID for the global system event stream.
   /// Fixed: 00000000-0000-0000-0000-000000000001
   /// </summary>
   public static Guid StreamId { get; } = new Guid("00000000-0000-0000-0000-000000000001");
+
+  /// <summary>
+  /// Where a system event is stored: the tenant's audit ledger for an audit record,
+  /// the global stream for every other kind.
+  /// </summary>
+  public static Guid StreamFor(ISystemEvent systemEvent) => systemEvent switch {
+    EventAudited audited => AuditLedger.StreamFor(audited.TenantId),
+    CommandAudited audited => AuditLedger.StreamFor(audited.TenantId),
+    _ => StreamId,
+  };
 }
 ```
 
-**Why a dedicated stream?**
+**Why dedicated streams?**
 - **Isolation**: System events separate from domain events
+- **Ordering**: A tenant's audit records form one ordered ledger, and a tenant export or deletion reaches them through the ledger
 - **Performance**: Query system events without scanning domain streams
-- **Clarity**: Clear separation of concerns
 - **Convention**: Follows EventStoreDB's `$` prefix for system streams
+
+Many writers append to `$wb-system` at once (every instance, and every scope in an instance). The event store assigns each append's version in the database under the stream's lock, so concurrent writers wait their turn instead of failing; see [Appending and concurrency](./event-store#appending-and-concurrency).
+
+<a id="fire-and-forget-emits"></a>
+### Fire-and-forget security emits
+
+{verified: SystemEventFireAndForgetTests.AFailedEmit_IsLoggedWithWhatWasLost_AndCountedAsync, SystemEventFireAndForgetTests.TheCaller_IsNotBlockedWhileTheEmitIsStillRunningAsync, ScopedLensFactoryEmitFailureTests.ADeniedRead_WhoseRecordFailsToStore_StillDenies_AndTheLossIsLoggedAndCountedAsync}
+
+A security record is emitted fire-and-forget: a denied lens read throws its `AccessDeniedException` at once and never waits for the `AccessDenied` record to be stored. Every such emit goes through `SystemEventFireAndForget.Emit`, which observes the emit's outcome instead of discarding it. When the store refuses the record, the record is lost, but never silently:
+
+- a warning is logged naming the event type, the tenant and the stream the record was meant for, with the exception;
+- the `whizbang.system_events.emit_failures` counter on the `Whizbang.EventCategories` meter is incremented, tagged `event_type` with the system event's type name.
+
+The caller is neither blocked nor faulted: a failed task and a synchronous throw from the emitter are handled the same way.
+
+```csharp{title="Emit a security record without waiting for it" description="Starts an AccessDenied emit and returns at once; a failure is logged with the tenant and stream and counted on whizbang.system_events.emit_failures." framework="NET10" category="Observability" difficulty="ADVANCED" tags=["system-events", "security", "fire-and-forget", "metrics"] tests=["SystemEventFireAndForgetTests.AFailedEmit_IsLoggedWithWhatWasLost_AndCountedAsync", "SystemEventFireAndForgetTests.ASynchronousThrow_DoesNotReachTheCaller_AndIsStillLoggedAsync"]}
+SystemEventFireAndForget.Emit(
+    emitter,
+    new AccessDenied { /* ... */ Scope = scope },
+    tenantId: scope.TenantId,
+    logger,
+    eventCategoryMetrics);   // null counts nothing; the log still names the loss
+```
 
 ---
 
@@ -1280,7 +1331,7 @@ public class AuditService {
 
 System events provide **observability, auditing, and diagnostics** for Whizbang infrastructure:
 
-- **Isolated in `$wb-system` stream** - separate from domain events
+- **Isolated streams** - audit records on the tenant's audit ledger, the global kinds on `$wb-system`, separate from domain events
 - **Opt-in per host** - enable only what you need per service
 - **LocalOnly by default** - no transport publishing, no duplication
 - **Same infrastructure** - consumed via perspectives and lenses
