@@ -18,6 +18,7 @@ codeReferences:
   - src/Whizbang.Core/Perspectives/ColumnStorage.cs
   - src/Whizbang.Core/Perspectives/ColumnCompression.cs
   - src/Whizbang.Core/Perspectives/PerspectiveTableStorageAttribute.cs
+  - src/Whizbang.Generators.Shared/Models/TableStorageRange.cs
   - src/Whizbang.Data.Postgres/Migrations/179_PhysicalFieldPromotion.sql
   - src/Whizbang.Data.Postgres/PhysicalColumnFill.cs
   - src/Whizbang.Data.EFCore.Postgres/PhysicalColumnFillMaintenanceStep.cs
@@ -849,10 +850,50 @@ holds documents too large for the row and is vacuumed on its own schedule.
 Like the options above, each parameter is set only where the catalog holds a different value, so a
 restart takes no lock. A `toast.` parameter is compared against the TOAST relation, where PostgreSQL
 keeps it. Removing a property from the attribute does not reset the parameter; reset it by hand with
-`ALTER TABLE … RESET (…)`. A value outside the range fails the schema pass with PostgreSQL's own error
-naming the parameter.
+`ALTER TABLE … RESET (…)`. A value outside the range is reported at build time as
+[WHIZ804](../../operations/diagnostics/whiz804) and left out of the schema pass, which would otherwise fail
+on PostgreSQL's own error.
 
 {verified: ColumnStorageSqlTests.AutovacuumSettings_ReachBothSchemaGeneratorsAsync, ColumnStorageSqlTests.NegativeAutovacuumSettings_KeepTheServerDefaultsAsync, ColumnStorageSqlTests.StorageParameter_ComparesTheTableOrItsToastRelationAsync, JsonbColumnStorageIntegrationTests.DeclaredOptions_AreAppliedToTheTableAsync, JsonbColumnStorageIntegrationTests.TheStatements_RunAgain_AlterNothingAsync}
+
+### Free space for updates {#perspective-fillfactor}
+
+An update writes a new version of the row. When the new version fits on the same 8 KB page and no
+indexed column changed (including a column in a partial index's predicate), PostgreSQL writes no index
+entries and prunes the old version inside the page without waiting for vacuum: a heap-only (HOT)
+update. When the page is full, the new version goes to another page and every index on the table gains
+an entry, which grows the indexes, the WAL and the vacuum work.
+
+A table's `fillfactor` (100 by default) is the share of each page an insert fills. Setting it lower
+leaves room on every page for the updated versions of its rows. 70 to 90 suits a perspective whose rows
+are updated on most events:
+
+```csharp{title="Reserve page space for in-place updates" description="Each page is filled to 90%, leaving room for HOT updates of the rows on it." framework="NET10" category="Perspectives" difficulty="ADVANCED" tags=["perspectives", "fillfactor", "hot-updates", "storage", "bloat"] tests=["ColumnStorageSqlTests.FillFactor_ReachesBothSchemaGenerators_WithARewriteRequestAsync", "JsonbColumnStorageIntegrationTests.DeclaredOptions_AreAppliedToTheTableAsync"]}
+[PerspectiveTableStorage(FillFactor = 90)]
+public class ActiveSessionModel {
+  [StreamId]
+  public Guid Id { get; set; }
+
+  public DateTimeOffset LastSeen { get; set; }
+}
+```
+
+`FillFactor` accepts 10 to 100; a value outside that is reported as
+[WHIZ804](../../operations/diagnostics/whiz804). It is -1 by default, which keeps the server's value.
+Like the settings above, it is set only where the catalog holds a different value.
+
+A changed fillfactor applies only to the pages written from then on: the rows already stored stay on
+pages packed to the old value. So when the schema pass changes it on a table that already holds rows, it
+also queues a rewrite request for the table, which the maintenance worker performs under the operator's
+rewrite policy (see [Storage Maintenance](../../operations/infrastructure/storage-maintenance#fillfactor)).
+A table created empty queues nothing, and neither does a restart that finds the value already in place.
+
+Fillfactor cannot help an update that changes an indexed column, which is never HOT, and a large
+document stored out of line in TOAST is written to new TOAST chunks whenever it changes. A lower
+fillfactor also means fewer rows per page, so a scan reads more pages; keep it at 100 for a table whose
+rows are inserted and never updated.
+
+{verified: ColumnStorageSqlTests.FillFactor_ReachesBothSchemaGenerators_WithARewriteRequestAsync, ColumnStorageSqlTests.SetFillFactor_QueuesARewriteOnlyWhenTheValueChangesOnATableWithPagesAsync, ColumnStorageSqlTests.FillFactor_NotDeclared_EmitsNothingAsync, JsonbColumnStorageIntegrationTests.DeclaredOptions_AreAppliedToTheTableAsync, JsonbColumnStorageIntegrationTests.AChangedFillFactor_OnATableWithRows_QueuesOneRewriteAsync}
 
 ## Search {#search}
 
