@@ -23,10 +23,17 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/211_EvictionRemovesItsCompanions.sql
   - src/Whizbang.Data.Postgres/PerspectiveRowRetentionSql.cs
   - src/Whizbang.Data.Dapper.Postgres/DapperWorkCoordinator.RowRetention.cs
+  - src/Whizbang.Core/Perspectives/PerspectiveRegistryPayloads.cs
+  - src/Whizbang.Generators.Shared/Utilities/PerspectiveRegistryPayload.cs
+  - src/Whizbang.Generators/PerspectiveSchemaGenerator.cs
+  - src/Whizbang.Data.Dapper.Postgres/PostgresSchemaInitializer.cs
 testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/EvictionCompanionCleanupSqlTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperEvictionCompanionCleanupTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperRowRetentionTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperPerspectiveRegistryReconcileTests.cs
+  - tests/Whizbang.Generators.Tests/PerspectiveSchemaGeneratorRegistryTests.cs
+  - tests/Whizbang.Core.Tests/Perspectives/PerspectiveRegistryPayloadsTests.cs
   - tests/Whizbang.Core.Tests/Perspectives/EvictedRowRebuildTests.cs
   - tests/Whizbang.Core.Tests/Perspectives/PerspectiveRowEvictionTests.cs
   - tests/Whizbang.Core.Tests/Perspectives/ResurrectionProbeIsPerspectiveAwareTests.cs
@@ -114,15 +121,15 @@ across cycles, and they are gated on adoption so a new declaration reports befor
 
 ### On the Dapper driver {#dapper-driver}
 
-{verified: DapperRowRetentionTests.TheMaintenanceCycle_AdoptsTheDeclaredWindow_SweepsExpiredRows_AndCascadesToTheGroupAsync, DapperRowRetentionTests.TheMaintenanceCycle_OffersExpiringRowsToTheGuard_AndADeferHoldsThemAsync, DapperRowRetentionTests.TheCapSweep_IsClaimedOncePerWindow_AndEvictsTheOverflowAsync, DapperRowRetentionTests.TheAdoptionGate_CountsTheBacklog_AndAcknowledgingOpensItAsync, DapperRowRetentionTests.ADeclarationWithNoRegistryRow_IsReportedAsync}
+{verified: DapperRowRetentionTests.TheMaintenanceCycle_AdoptsTheDeclaredWindow_SweepsExpiredRows_AndCascadesToTheGroupAsync, DapperRowRetentionTests.TheMaintenanceCycle_OffersExpiringRowsToTheGuard_AndADeferHoldsThemAsync, DapperRowRetentionTests.TheCapSweep_IsClaimedOncePerWindow_AndEvictsTheOverflowAsync, DapperRowRetentionTests.TheAdoptionGate_CountsTheBacklog_AndAcknowledgingOpensItAsync, DapperRowRetentionTests.ADeclarationWithNoRegistryRow_IsReportedAsync, DapperPerspectiveRegistryReconcileTests.Initializer_WithARegistryPayload_RecordsEachPerspectiveOfTheModelAsync, DapperPerspectiveRegistryReconcileTests.Host_StartedWithAddWhizbangPostgres_EnrollsADeclaredRetentionWindowAsync, PerspectiveSchemaGeneratorRegistryTests.Generator_RegistersThePayloadAtModuleLoadAsync}
 
 The Dapper work coordinator runs the same sweeps, guard seam, stream-group cascade and presence reconcile as the EF Core driver, from the same SQL, in the schema the coordinator is configured for (see [Which schema the Dapper work coordinator uses](../../data/drivers.md#dapper-coordinator-schema)). Before this release every retention member on Dapper fell back to a no-op, so declared retention removed nothing.
 
 Both sweeps act only on acknowledged perspectives, on either driver; with automatic adoption on, each cycle acknowledges eligible perspectives just before the TTL sweep. The cap sweep runs at most once per claim window across the whole service (the `row_cap_sweep_last_run` setting records the claim).
 
-:::warning
-Enrollment matches each declaration against `wh_perspective_registry`, and today only the EF Core driver's generated schema extension fills that table. On a Dapper host each declared perspective is therefore reported as matching no registry row and stays un-enrolled, so nothing is evicted yet. Tracked in whizbang-lib/whizbang#1548.
-:::
+Enrollment matches each declaration against `wh_perspective_registry`, keyed by the model's CLR type name. The Dapper driver fills that table at startup, after it builds the perspective tables: each assembly that declares perspectives registers its registry payload when it loads (the generated `PerspectiveSchemas.RegistryJson`), and `AddWhizbangPostgres` reconciles every registered payload. The payload is built the same way as the EF Core driver's, so each row records the model, its table, the owning service and the perspectives that fold it, which the [eviction cleanup](#what-an-eviction-removes) reads.
+
+A declaration that still matches no row is reported with a warning and stays un-enrolled: either the row is keyed in another form, or the assembly that declares the perspective registered no payload.
 
 ## What an eviction removes {#what-an-eviction-removes}
 
