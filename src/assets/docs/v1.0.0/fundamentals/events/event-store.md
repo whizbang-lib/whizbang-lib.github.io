@@ -16,6 +16,9 @@ codeReferences:
   - src/Whizbang.Core/Messaging/AppendAndWaitEventStoreDecorator.cs
   - src/Whizbang.Core/Messaging/SecurityContextEventStoreDecorator.cs
   - src/Whizbang.Core/Messaging/SyncTrackingEventStoreDecorator.cs
+  - src/Whizbang.Data.EFCore.Postgres/EFCoreEventStore.cs
+  - src/Whizbang.Data.Dapper.Postgres/DapperPostgresEventStore.cs
+  - src/Whizbang.Data.Postgres/Migrations/224_DirectAppendTakesTheStreamLock.sql
 testReferences:
   - tests/Whizbang.Core.Tests/Messaging/AppendAndWaitEventStoreDecoratorTests.cs
   - tests/Whizbang.Core.Tests/Messaging/SecurityContextEventStoreDecoratorTests.cs
@@ -23,6 +26,9 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/EventStoreSyncTrackingIntegrationTests.cs
   - tests/Whizbang.Core.Tests/Messaging/InMemoryEventStoreTests.cs
   - tests/Whizbang.Core.Tests/Messaging/EventStoreAppendBatchTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/EventStoreConcurrentAppendTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/BranchCoverage/EFCore/EventStoreAppendFailureTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperPostgresEventStore.RetryTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -72,6 +78,24 @@ await foreach (var envelope in _eventStore.ReadAsync<OrderEvent>(orderId, fromEv
   // Process events after the checkpoint
 }
 ```
+
+## Appending and concurrency {#appending-and-concurrency}
+
+{verified: EventStoreConcurrentAppendTests.ParallelAppendsToOneStream_AllSucceed_WithVersionsZeroToNMinusOneAsync, EventStoreConcurrentAppendTests.ADirectAppend_WaitsForTheEmitChainsStreamLockAsync, DapperPostgresEventStoreRetryTests.AppendAsync_ParallelAppendsToOneStream_AllSucceedWithVersionsZeroToNMinusOneAsync}
+
+On PostgreSQL, both drivers append through one database function, `wh_append_event`. It takes the stream's advisory lock (the same lock the outbox and inbox emit paths take for that stream) and only then reads the stream's last version and inserts the next one. The version is assigned by the database, so any number of writers can append to one stream at the same moment: they wait their turn and get consecutive versions. None fails with a version conflict, and none retries. A stream written by many instances at once, such as the global system-event stream, needs nothing special.
+
+| Situation | What happens | Verified |
+|---|---|---|
+| Many writers append to one stream at once | Each waits for the stream's lock; versions are 0, 1, 2, ... with no gap or duplicate | {verified: EventStoreConcurrentAppendTests.ParallelAppendsToOneStream_AllSucceed_WithVersionsZeroToNMinusOneAsync, DapperPostgresEventStoreRetryTests.AppendAsync_ParallelAppendsToOneStream_AllSucceedWithVersionsZeroToNMinusOneAsync} |
+| An outbox or inbox emit holds the same stream | The direct append waits, then numbers after the emitted events | {verified: EventStoreConcurrentAppendTests.ADirectAppend_WaitsForTheEmitChainsStreamLockAsync} |
+| The caller has an open transaction (EF Core) | The append runs in it and the lock is held until it ends; a rollback removes the event | {verified: EventStoreConcurrentAppendTests.TheAppend_JoinsTheCallersTransactionAsync} |
+| The context has other pending changes (EF Core) | They are saved first, as an append always did | {verified: EventStoreConcurrentAppendTests.PendingTrackedChanges_AreStillSavedByTheAppendAsync} |
+| The same event id is appended twice | Fails at once with `InvalidOperationException` saying an event with this id is already stored; not retried | {verified: EventStoreAppendFailureTests.Append_RealDuplicateEventId_IsReportedAsADuplicateEvent_NotARaceAsync, DapperPostgresEventStoreRetryTests.AppendAsync_DuplicateEventId_FailsClearly_WithoutRetryingAsync} |
+
+The lock and the insert are separate statements inside the function on purpose: under PostgreSQL's default `READ COMMITTED` isolation each statement sees what was committed before it started, so the insert sees every append that committed while this one waited. Appending inside a `REPEATABLE READ` or `SERIALIZABLE` transaction keeps the snapshot from before the wait and can still fail on the stream's unique version; use the default isolation for transactions that append.
+
+A stream appended directly numbers its events from 0. A stream whose events arrive through the outbox numbers them from 1.
 
 ## AppendAndWaitAsync {#append-and-wait}
 
