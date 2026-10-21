@@ -1,8 +1,8 @@
 ---
 title: Performance Tuning
 pageType: guide
-verifiedAgainstCommit: 0bc6065b
-verifiedDate: 2026-08-05
+verifiedAgainstCommit: 5bad79ca
+verifiedDate: 2026-10-20
 version: 1.0.0
 category: Advanced Topics
 order: 1
@@ -123,19 +123,23 @@ try {
 
 ### 1. Database Batching (Built In)
 
-You don't write outbox SQL yourself - Whizbang batches every database write: a flush stores its queued rows with one `store_outbox_messages` / `store_inbox_messages` call, a transport receive batch is stored with one `store_inbox_messages` call, and completions, failures and handler results are coalesced by flush workers into batched `complete_outbox_published`, `report_failures` and `commit_handler_batch` calls. Instead of every message handler making its own DB round-trip, the inbox batch strategy collects messages inside a sliding window and flushes them together. Tune the window via `MessageProcessingOptions`:
+You don't write outbox SQL yourself - Whizbang batches every database write: a flush stores its queued rows with one `store_outbox_messages` / `store_inbox_messages` call, a transport receive batch is stored with one `store_inbox_messages` call, and completions, failures and handler results are coalesced by flush workers into batched `complete_outbox_published`, `report_failures` and `commit_handler_batch` calls. Instead of every message handler making its own DB round-trip, the inbox batch strategy collects messages inside a sliding window and flushes them together. Tune the window via `SlidingWindowInboxOptions` (`Whizbang:Workers:InboxBatch`), and the handler concurrency via `MessageProcessingOptions`:
 
-```csharp{title="Database Batching" description="MessageProcessingOptions controls inbox batching" category="Configuration" difficulty="ADVANCED" tags=["Operations", "Deployment", "Database", "Batching"] unverified="MessageProcessingOptions tuning knobs; configuration values, no behavior asserted by a mapped test"}
-// Override defaults before AddTransportConsumer():
+```csharp{title="Database Batching" description="SlidingWindowInboxOptions controls inbox batching; MessageProcessingOptions caps concurrent handlers" category="Configuration" difficulty="ADVANCED" tags=["Operations", "Deployment", "Database", "Batching"] unverified="Inbox batching and concurrency tuning knobs; configuration values, no behavior asserted by a mapped test"}
+// Inbox batching (or Whizbang:Workers:InboxBatch in configuration):
+services.Configure<SlidingWindowInboxOptions>(options => {
+  options.MaxSize = 500;                                  // default 1000 - flush when this many messages collected
+  options.SlidingWindow = TimeSpan.FromMilliseconds(100); // default 300ms - flush after this much quiet time
+  options.MaxWait = TimeSpan.FromSeconds(2);              // default 3s - hard flush deadline
+});
+
+// Handler concurrency, before AddTransportConsumer():
 services.AddSingleton(new MessageProcessingOptions {
-  MaxConcurrentMessages = 80,   // default 40 - caps concurrent handlers (each holds a DB connection)
-  InboxBatchSize = 50,          // default 100 - flush when this many messages collected
-  InboxBatchSlideMs = 100,      // default 50 - flush after this much quiet time
-  InboxBatchMaxWaitMs = 2000    // default 1000 - hard flush deadline
+  MaxConcurrentMessages = 80   // default 40 - caps concurrent handlers (each holds a DB connection)
 });
 ```
 
-On large datasets the hot path is `claim_work` together with the store and commit functions - compare their call counts and mean times in `pg_stat_statements` before and after changing these values, alongside `whizbang.work_coordinator.flush.calls`.
+On large datasets the hot path is `claim_work` together with the store and commit functions - compare their call counts and mean times in `pg_stat_statements` before and after changing these values, alongside `whizbang.perspective.claim.duration` (each claim's time) and `whizbang.work_coordinator.flush.duration`.
 
 **Performance**: batching turns ~100 DB round-trips into 1 per flush window.
 
@@ -382,7 +386,7 @@ Whizbang's I/O parallelism is controlled by **explicit config knobs** - the libr
 | Knob | Default | Controls |
 |------|---------|----------|
 | `MessageProcessingOptions.MaxConcurrentMessages` | 40 | Concurrent message handlers across all subscriptions (each holds a DB connection) |
-| `MessageProcessingOptions.InboxBatchSize` / `InboxBatchSlideMs` / `InboxBatchMaxWaitMs` | 100 / 50 / 1000 | Inbox batch flush triggers |
+| `SlidingWindowInboxOptions.MaxSize` / `SlidingWindow` / `MaxWait` | 1000 / 300ms / 3s | Inbox batch flush triggers |
 | `TransportBatchOptions.BatchSize` / `SlideMs` / `MaxWaitMs` | 200 / 20 / 1000 | Transport receive batch flush triggers |
 | `SlidingWindowOutboxOptions.MaxSize` / `SlidingWindow` / `MaxWait` | 100 / 50ms / 1s | Outbox drain batching |
 

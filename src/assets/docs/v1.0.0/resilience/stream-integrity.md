@@ -525,11 +525,13 @@ reset their seals instead of reporting drift.
 
 ### Audit records are not digested {#audit-records-not-digested}
 
-{verified: AuditDigestLaneSqlTests.InboxStoredAuditRecord_LeavesTheOriginsDigestLaneUntouched_WhileADomainEventFoldsAsync, AuditDigestLaneSqlTests.Reconciliation_AuditTraffic_OriginAndSubscriberAnswerTheSameAsync, AuditDigestLaneSqlTests.VerifyDigestTable_RemovesAnAuditBucketInsteadOfHealingItAsync}
+{verified: AuditDigestLaneSqlTests.InboxStoredAuditRecord_LeavesTheOriginsDigestLaneUntouched_WhileADomainEventFoldsAsync, AuditDigestLaneSqlTests.Reconciliation_AuditTraffic_OriginAndSubscriberAnswerTheSameAsync, AuditDigestLaneSqlTests.VerifyDigestTable_RemovesAnAuditBucketInsteadOfHealingItAsync, IntegrityCheckpointAdvanceTests.CheckpointCounts_LeaveAuditRecordsOut_OnBothSidesAsync}
 
 `EventAudited` and `CommandAudited` are left out of every integrity fold: both emit chains, epoch seals, the type-level and windowed answers, the stream recomputes and the verification sweep. They are matched on the type-name part of `event_type` against `DigestExemptTypes.TypeNames` (the SQL constant `__DIGEST_EXEMPT_TYPES__`).
 
 Audit records are a function of the origin's events and scope, and the origin does not store most of them, so folding them made the two sides disagree: a subscriber that stored fanned-out audit records counted them in the origin's lane, where the origin had nothing to match. Migration 216 removes the audit buckets and sealed epochs already stored, once.
+
+The continuity checkpoints apply the same exclusion. The origin's checkpoint window and a subscriber's count of what it received from that origin both leave the audit types out, so audit traffic never reads as a count the origin did not declare.
 
 ## Scheduling, startup, and the repair policy ladder
 

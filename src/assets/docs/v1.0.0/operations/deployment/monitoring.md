@@ -1,8 +1,8 @@
 ---
 title: Monitoring & Observability
 pageType: guide
-verifiedAgainstCommit: 1b31f58d
-verifiedDate: 2026-07-16
+verifiedAgainstCommit: 5bad79ca
+verifiedDate: 2026-10-20
 version: 1.0.0
 category: Advanced Topics
 order: 6
@@ -188,7 +188,7 @@ builder.Services.AddOpenTelemetry()
 app.MapPrometheusScrapingEndpoint();  // /metrics endpoint
 ```
 
-The `Whizbang.*` wildcard picks up the library's meters, including `Whizbang.Dispatcher`, `Whizbang.WorkCoordinator`, `Whizbang.Perspectives`, `Whizbang.Transport`, `Whizbang.Lifecycle`, `Whizbang.DeadLetters`, and `Whizbang.TableStatistics` (queue depth / table size gauges). Instrument names follow the `whizbang.<component>.<measurement>` convention, e.g. `whizbang.dispatcher.send.duration`, `whizbang.work_coordinator.process_batch.duration`, `whizbang.queue.estimated_depth`. Add your own app meters explicitly (e.g. `.AddMeter("ECommerce.OrderService")`).
+The `Whizbang.*` wildcard picks up the library's meters, including `Whizbang.Dispatcher`, `Whizbang.WorkCoordinator`, `Whizbang.Perspectives`, `Whizbang.Transport`, `Whizbang.Lifecycle`, `Whizbang.DeadLetters`, and `Whizbang.TableStatistics` (queue depth / table size gauges). Instrument names follow the `whizbang.<component>.<measurement>` convention, e.g. `whizbang.dispatcher.send.duration`, `whizbang.work_coordinator.flush.duration`, `whizbang.queue.estimated_depth`. Add your own app meters explicitly (e.g. `.AddMeter("ECommerce.OrderService")`).
 
 ### Custom Metrics
 

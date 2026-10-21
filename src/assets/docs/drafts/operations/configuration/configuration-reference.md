@@ -580,14 +580,11 @@ A flush that throws is retried in place with the same batch (Warning, EventId 1:
 
 ### MessageProcessingOptions
 
-Transport consumer concurrency and inbox batching. **Configure:** `services.Configure<MessageProcessingOptions>(…)`. **Details:** no dedicated page yet.
+Transport consumer concurrency. Inbox batching is configured on `SlidingWindowInboxOptions`. **Configure:** `services.Configure<MessageProcessingOptions>(…)`. **Details:** no dedicated page yet.
 
 | Property | Type | Default | Environment variable | Purpose |
 |----------|------|---------|----------------------|---------|
 | `MaxConcurrentMessages` | `int` | `40` | — *code-only* | Max messages processed concurrently across all subscriptions; 0 disables |
-| `InboxBatchSize` | `int` | `100` | — *code-only* | Inbox messages collected before flushing the dedup batch |
-| `InboxBatchSlideMs` | `int` | `50` | — *code-only* | Sliding window; resets on each enqueue |
-| `InboxBatchMaxWaitMs` | `int` | `1000` | — *code-only* | Hard max wait from the first message in a batch |
 
 ### TransportBatchOptions
 

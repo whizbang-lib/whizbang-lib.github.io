@@ -134,6 +134,9 @@ Removed keys the check names a replacement for:
 |---|---|
 | `Whizbang:WorkCoordinator:MaintenanceInterval` | `Whizbang:Workers:Maintenance:IntervalMinutes`, `Whizbang:Housekeeping:SettledCooldown` and `Whizbang:Housekeeping:MaxDeferral`; maintenance now runs when the service is idle, with a time ceiling. See [Housekeeping arbitration](../workers/housekeeping-arbitration.md) |
 | `Whizbang:PostgresExtensions:ProbeOnStartup` | `Whizbang:Capabilities:ProbeOnStartup`. See [Capabilities](#capabilities-options) |
+| `Whizbang:Transports:<transport>:MessageProcessing:InboxBatchSize` | `Whizbang:Workers:InboxBatch:MaxSize`. See [sliding window options](#sliding-window-options) |
+| `Whizbang:Transports:<transport>:MessageProcessing:InboxBatchSlideMs` | `Whizbang:Workers:InboxBatch:SlidingWindow` |
+| `Whizbang:Transports:<transport>:MessageProcessing:InboxBatchMaxWaitMs` | `Whizbang:Workers:InboxBatch:MaxWait` |
 
 ## Quick Map
 
@@ -913,14 +916,11 @@ A flush that throws is retried in place with the same batch (Warning, EventId 1:
 
 ### MessageProcessingOptions
 
-Transport consumer concurrency and inbox batching. **Configure:** bound from `Whizbang:Transports:<transport>:MessageProcessing` when that transport is registered ([Transport Sections](#transport-sections)); an instance or factory registered before `AddTransportConsumer` supplies the code values configuration overrides. **Details:** no dedicated page yet.
+Transport consumer concurrency. Inbox batching is configured on [SlidingWindowInboxOptions](#sliding-window-options), not here: `InboxBatchSize`, `InboxBatchSlideMs` and `InboxBatchMaxWaitMs` were never read and are removed, and the [startup check](#unknown-keys) names their replacements for a deployment that still sets them. **Configure:** bound from `Whizbang:Transports:<transport>:MessageProcessing` when that transport is registered ([Transport Sections](#transport-sections)); an instance or factory registered before `AddTransportConsumer` supplies the code values configuration overrides. **Details:** no dedicated page yet.
 
 | Property | Type | Default | Environment variable | Purpose |
 |----------|------|---------|----------------------|---------|
 | `MaxConcurrentMessages` | `int` | `40` | `Whizbang__Transports__<transport>__MessageProcessing__MaxConcurrentMessages` | Max messages processed concurrently across all subscriptions; 0 disables |
-| `InboxBatchSize` | `int` | `100` | `Whizbang__Transports__<transport>__MessageProcessing__InboxBatchSize` | Inbox messages collected before flushing the dedup batch |
-| `InboxBatchSlideMs` | `int` | `50` | `Whizbang__Transports__<transport>__MessageProcessing__InboxBatchSlideMs` | Sliding window; resets on each enqueue |
-| `InboxBatchMaxWaitMs` | `int` | `1000` | `Whizbang__Transports__<transport>__MessageProcessing__InboxBatchMaxWaitMs` | Hard max wait from the first message in a batch |
 
 ### TransportBatchOptions
 
@@ -942,7 +942,7 @@ Shared batching shape (drain signals). **Configure:** bound as the owning worker
 | `SlidingWindow` | `TimeSpan` | `00:00:00.050` | `Whizbang__Workers__<Worker>__Batcher__SlidingWindow` | Quiet period after the last arrival |
 | `MaxWait` | `TimeSpan` | `00:00:01` | `Whizbang__Workers__<Worker>__Batcher__MaxWait` | Hard cap on wait from the first arrival |
 
-### SlidingWindowInboxOptions / SlidingWindowOutboxOptions / SlidingWindowApplyOptions
+### SlidingWindowInboxOptions / SlidingWindowOutboxOptions / SlidingWindowApplyOptions {#sliding-window-options}
 
 Per-stream debounce strategies for the inbox, outbox, and perspective-apply boundaries. **Configure:** the inbox and outbox shapes bind automatically from `Whizbang:Workers:InboxBatch` and `Whizbang:Workers:OutboxBatch` — no registration call needed, and `services.Configure<T>(…)` still applies and runs first. The apply shape (`SlidingWindowApplyOptions`) has no configuration section and is code-configured. **Details:** no dedicated page yet.
 

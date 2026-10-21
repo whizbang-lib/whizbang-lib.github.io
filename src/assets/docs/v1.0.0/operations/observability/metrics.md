@@ -1,8 +1,8 @@
 ---
 title: Metrics Reference
 pageType: reference
-verifiedAgainstCommit: 0bc6065b
-verifiedDate: 2026-08-05
+verifiedAgainstCommit: 5bad79ca
+verifiedDate: 2026-10-20
 version: 1.0.0
 category: Observability
 order: 6
@@ -424,10 +424,12 @@ Instruments for the perspective worker pipeline - batch processing, claim, event
 | Metric Name | Unit | Description |
 |-------------|------|-------------|
 | `whizbang.perspective.batch.duration` | ms | One perspective worker drain cycle, from picking up work to its post-lifecycle stages |
-| `whizbang.perspective.claim.duration` | ms | Not recorded: perspective work is now claimed by `ClaimWorker` (`claim_work`), not by the perspective worker, and nothing records this instrument |
+| `whizbang.perspective.claim.duration` | ms | Time of each `ClaimWorker` claim (`claim_work`), the call that hands out perspective work along with outbox and inbox work. |
 | `whizbang.perspective.event_load.duration` | ms | GetEventsBetweenPolymorphicAsync query |
 | `whizbang.perspective.runner.duration` | ms | IPerspectiveRunner execution per stream |
 | `whizbang.perspective.checkpoint.duration` | ms | GetPerspectiveCursorAsync |
+
+{verified: ClaimWorkerMetricsTests.AClaim_RecordsItsDurationAsync}
 
 ### Throughput Counters
 
@@ -478,42 +480,26 @@ Meter name: `Whizbang.WorkCoordinator`
 
 Instruments for the core work coordination pipeline - flush orchestration, publisher worker, and maintenance tasks.
 
+A flush stores rows with `store_outbox_messages` / `store_inbox_messages`, and `claim_work` runs separately in `ClaimWorker`. The `flush.*` instruments below are recorded by every flush, whichever strategy runs it; the claim's time is `whizbang.perspective.claim.duration` on the [Perspectives meter](#perspectives).
+
 :::updated
-The `process_batch.*`, `batch.*` and `returned.*` instruments below, and `flush.duration` and `flush.empty_calls`, were written for the single orchestrator SQL call that earlier builds made on every flush. That function was removed (migration 029 drops it): a flush now stores rows with `store_outbox_messages` / `store_inbox_messages`, and `claim_work` runs separately in `ClaimWorker`. The instruments are still declared on the meter, but nothing in the current release records them, so they report no data. Use `pg_stat_statements` for per-function SQL timing.
+The `process_batch.*` (`duration`, `calls`, `errors`), `batch.*` (`outbox_messages`, `inbox_messages`, `completions`, `failures`) and `returned.*` (`outbox_work`, `inbox_work`, `perspective_work`) instruments are retired. They timed, counted and sized a single orchestrator SQL call that a flush used to make, which was removed (migration 029 drops it). Nothing had recorded them since, so they reported no data. A dashboard or alert on them should move to `flush.duration` for flush time, `whizbang.perspective.claim.duration` for claim time, and `pg_stat_statements` for per-function SQL timing.
 :::
 
 ### Timing Histograms
 
 | Metric Name | Unit | Description |
 |-------------|------|-------------|
-| `whizbang.work_coordinator.process_batch.duration` | ms | Not recorded (see the note above) |
-| `whizbang.work_coordinator.flush.duration` | ms | Total FlushAsync time including lifecycle |
+| `whizbang.work_coordinator.flush.duration` | ms | Time to store a flush's rows and hand off its completions and failures, including the distribute lifecycle stages; tagged by `strategy`. An empty flush records nothing here and counts as `flush.empty_calls` |
 
-### Batch Composition (Input)
-
-| Metric Name | Type | Description |
-|-------------|------|-------------|
-| `whizbang.work_coordinator.batch.outbox_messages` | Histogram\<int\> | Not recorded (see the note above) |
-| `whizbang.work_coordinator.batch.inbox_messages` | Histogram\<int\> | Inbox messages sent |
-| `whizbang.work_coordinator.batch.completions` | Histogram\<int\> | Completions sent |
-| `whizbang.work_coordinator.batch.failures` | Histogram\<int\> | Failures sent |
-
-### Work Returned (Output)
-
-| Metric Name | Type | Description |
-|-------------|------|-------------|
-| `whizbang.work_coordinator.returned.outbox_work` | Histogram\<int\> | Outbox work items returned |
-| `whizbang.work_coordinator.returned.inbox_work` | Histogram\<int\> | Inbox work items returned |
-| `whizbang.work_coordinator.returned.perspective_work` | Histogram\<int\> | Perspective work items returned |
+{verified: WorkCoordinatorFlushHelperTests.AFlush_RecordsItsDurationTaggedWithTheStrategyAsync, WorkCoordinatorFlushHelperTests.AnEmptyFlush_RecordsNoDurationAsync}
 
 ### Counters
 
 | Metric Name | Type | Description |
 |-------------|------|-------------|
-| `whizbang.work_coordinator.process_batch.calls` | Counter\<long\> | Not recorded (see the note above) |
-| `whizbang.work_coordinator.process_batch.errors` | Counter\<long\> | SQL errors |
 | `whizbang.work_coordinator.flush.calls` | Counter\<long\> | Total FlushAsync calls |
-| `whizbang.work_coordinator.flush.empty_calls` | Counter\<long\> | Flushes with no queued work |
+| `whizbang.work_coordinator.flush.empty_calls` | Counter\<long\> | Flushes with no queued work; tagged by `strategy` |
 | `whizbang.work_coordinator.outbox.emission_deduplicated` | Counter\<long\> | Outbox rows skipped because the same message id was already stored: the republishes a retry would have produced; tagged by `message_type`. Recorded by the EF Core coordinator (the Dapper coordinator deduplicates through the same primary key but does not count). Sustained non-zero points at the completion path, see [Emission identity](/v1.0.0/fundamentals/dispatcher/message-cascade#emission-identity) |
 
 {verified: WorkCoordinatorMetricsTests.WCMetrics_OutboxEmissionDeduplicated_CountsPerMessageTypeAsync, EFCoreOutboxEmissionDedupTests.StoreOutboxMessagesAsync_SameMessageStoredTwice_CountsTheSkippedRowByTypeAsync}

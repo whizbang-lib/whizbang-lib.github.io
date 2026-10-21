@@ -41,7 +41,13 @@ The `Whizbang.Transports.HotChocolate` package integrates Whizbang Lenses with [
 
 ```bash{title="Install the Package" description="Install the Package" category="API" difficulty="BEGINNER" tags=["Apis", "Graphql", "Install", "Package"]}
 dotnet add package SoftwareExtravaganza.Whizbang.Transports.HotChocolate
+dotnet add package HotChocolate.AspNetCore
 ```
+
+The integration needs only HotChocolate's execution engine. To serve GraphQL over HTTP (`AddGraphQLServer`,
+`MapGraphQL`), the application references `HotChocolate.AspNetCore` itself. The Whizbang package doesn't bring it,
+because that package also includes the Nitro IDE, which is under the ChilliCream License rather than an open-source
+one.
 
 ### 2. Define Your Lens
 
