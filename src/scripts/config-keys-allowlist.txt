@@ -9,3 +9,6 @@ Whizbang:PerspectiveQueryTranslation    # bound by the consumer's own code, as j
 Whizbang:Persistence                    # persistence.md discloses the section is not bound: the persistence modes have no runtime component yet
 Whizbang:WorkCoordinator:MaintenanceInterval  # configuration-reference#unknown-keys lists it as a removed key the startup check names a replacement for
 Whizbang:PostgresExtensions                   # configuration-reference#unknown-keys lists Whizbang:PostgresExtensions:ProbeOnStartup as a removed key
+Whizbang:Transports:<transport>:MessageProcessing:InboxBatchSize      # configuration-reference#unknown-keys lists it as a removed key (#1536); the startup check names Whizbang:Workers:InboxBatch:MaxSize
+Whizbang:Transports:<transport>:MessageProcessing:InboxBatchSlideMs   # configuration-reference#unknown-keys lists it as a removed key (#1536); the startup check names Whizbang:Workers:InboxBatch:SlidingWindow
+Whizbang:Transports:<transport>:MessageProcessing:InboxBatchMaxWaitMs # configuration-reference#unknown-keys lists it as a removed key (#1536); the startup check names Whizbang:Workers:InboxBatch:MaxWait
