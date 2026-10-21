@@ -17,6 +17,7 @@ codeReferences:
   - src/Whizbang.Core/Signals/WorkAvailableSignals.cs
 testReferences:
   - tests/Whizbang.Core.Component.Tests/Signals/SignalBusProbeBackoffTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/PgDurableSignalRetentionWindowTests.cs
 ---
 
 # System Signal Bus
@@ -241,6 +242,18 @@ the typed signal bus is the control-plane path.)
 ## Reliability & the durable log (`wh_signals`)
 
 Durable-class signals (e.g. `InstanceDiedSignal`) are appended to **`wh_signals` (`wire_name`, `target_instance_id`) before the NOTIFY is emitted**, so the signal survives connection loss: each instance **tails the log from a persisted cursor** and re-delivers anything the fast-path NOTIFY dropped. Best-effort signals stay purely in-memory-fast (no row written). A **retention-sweep worker** trims the log once every instance's tail cursor has advanced past a row. Reconciliation reads the DB directly, so even a total NOTIFY outage degrades only to bounded-latency polling, never to lost work.
+
+### Retention {#retention}
+
+{verified: PgDurableSignalRetentionWindowTests.Sweep_UsesTheConfiguredWindowAsync, PgDurableSignalRetentionWindowTests.Sweep_DeletesInBatches_UntilNothingIsLeftAsync, PgDurableSignalRetentionWindowTests.Sweep_NeverPassesTheSlowestCursorAsync}
+
+The retention sweep runs hourly and deletes a signal when it is older than `SignalRetention` **and** every instance's cursor has passed it. A signal some instance has not yet delivered is kept whatever its age, and nothing is deleted while no instance has a cursor. Deletes run in batches until a batch comes back short, so a large backlog is cleared in one cycle without one long delete.
+
+| Setting | Default | Environment variable |
+|---|---|---|
+| `Whizbang:Database:SignalRetention` | `7.00:00:00` | `Whizbang__Database__SignalRetention` |
+
+A window of zero or less is rejected at startup, naming the key.
 
 ## Hot-path constraints
 
