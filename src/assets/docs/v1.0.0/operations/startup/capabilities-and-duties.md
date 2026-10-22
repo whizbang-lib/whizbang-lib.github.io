@@ -1,8 +1,8 @@
 ---
 title: Capabilities and Duties
 pageType: concept
-verifiedAgainstCommit: f1ff5bcf
-verifiedDate: 2026-08-16
+verifiedAgainstCommit: 924d20f7
+verifiedDate: 2026-10-22
 version: 1.0.0
 category: Startup
 order: 2
@@ -18,6 +18,7 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Notifications/PgDutyElector.cs
   - src/Whizbang.Data.Postgres/Notifications/PgRoleElector.cs
   - src/Whizbang.Data.Postgres/MigratorWatch.cs
+  - src/Whizbang.Data.Postgres/SchemaBootstrapPhase.cs
   - src/Whizbang.Data.Postgres/Migrations/184_RoleAssignmentResilience.sql
   - src/Whizbang.Data.Postgres/DutyLockKey.cs
   - src/Whizbang.Data.Postgres/Migrations/108_InstanceCapabilities.sql
@@ -25,6 +26,7 @@ codeReferences:
   - src/Whizbang.Core/Startup/DutyHolderWorker.cs
   - src/Whizbang.Core/Workers/WorkTableVacuumOnAcquisition.cs
 testReferences:
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/WorkEligibilitySqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/DutyElectionE2ETests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/TableRewriteJourneyE2ETests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/InstanceCapabilitiesSqlTests.cs
@@ -66,6 +68,15 @@ These are two different problems and they use two different mechanisms:
 | **Membership** — who is alive, what they hold | Heartbeat plus the instance-alive session lock ([instance liveness](../../fundamentals/workers/instance-liveness)) | Drives re-attempt prompts, observability, and the reaping backstop |
 
 Liveness never decides an election. A holder that is alive but briefly slow would otherwise get declared dead by peers watching a timeout, a replacement elected, and two instances believing they hold the duty — for `migrator`, two instances running DDL at once. Heartbeats and `InstanceDiedSignal` only *prompt re-attempts*; the lock grants or refuses.
+
+### The bootstrap registration records `Migrating` {#bootstrap-registration-records-migrating}
+{verified: WorkEligibilitySqlTests.BootstrapRegistration_RecordsTheInstanceAsMigrating_SoItIsNotACandidateAsync}
+
+An instance has to be registered before it can vote for a duty, so the schema bootstrap registers it during the migrator election, before its migration pass. That registration also records the instance's lifecycle phase as `Migrating`.
+
+The phase matters because only an instance whose recorded phase is `AcceptingCommands` or `Running` is [eligible for work](../../fundamentals/workers/instance-liveness#alive-versus-eligible), while a row that records no phase reads as an older build, which is eligible whenever it is alive. In earlier releases the bootstrap row had no phase, so a starting instance looked like an older build and was handed a share of the partitions for its whole migration, a share nobody worked until it was ready. The lifecycle's own `Migrating` write runs before the row exists and finds nothing to update, which is why the registration writes the phase itself.
+
+On an empty database the bootstrap registers before the migration that adds the phase-recording function exists, so it records no phase there. With no older instance in the fleet, there is no peer to hand a share to anyway.
 
 ## Winning a duty
 

@@ -4,10 +4,10 @@ pageType: concept
 order: 5
 version: 1.0.0
 description: >-
-  The elected partition assigner: one instance decides which instances are live and publishes the
-  partition assignment every claimer uses, fenced by the role epoch, leased by the assigner's own
-  liveness, and cached by claimers at no cost per claim.
-tags: 'work-coordinator, partition-assignment, claim-work, role-election, liveness, fencing'
+  The elected partition assigner: one instance decides which instances are live and eligible for
+  work and publishes the partition assignment every claimer uses, fenced by the role epoch, leased
+  by the assigner's own liveness, and cached by claimers at no cost per claim.
+tags: 'work-coordinator, partition-assignment, claim-work, role-election, liveness, eligibility, fencing'
 codeReferences:
   - src/Whizbang.Core/Workers/PartitionAssignment.cs
   - src/Whizbang.Core/Workers/PartitionAssigner.cs
@@ -17,6 +17,7 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Notifications/PgPartitionAssignmentStore.cs
   - src/Whizbang.Data.Postgres/Migrations/203_PartitionAssigner.sql
   - src/Whizbang.Data.Postgres/Migrations/204_DirectInstancesAreLiveByTheirAliveLock.sql
+  - src/Whizbang.Data.Postgres/Migrations/229_OnlyReadyInstancesAreEligibleForWork.sql
 testReferences:
   - tests/Whizbang.Partitioning.Tests/PartitionAssignerTests.cs
   - tests/Whizbang.Partitioning.Tests/PartitionAssignmentCacheTests.cs
@@ -24,6 +25,8 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/PartitionAssignmentSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/PartitionAssignerWorkerPostgresTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/AliveLockLivenessSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/WorkEligibilitySqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/AliveVersusEligibleE2ETests.cs
 ---
 
 # Partition assignment
@@ -31,7 +34,7 @@ testReferences:
 Unowned work is spread across instances by partition: an instance of rank `r` among `n` takes the
 partitions where `partition_number % n = r`. Something has to decide `r` and `n`. Without an
 assigner, every claim ranks the instances it believes are alive (a fresh heartbeat row, or a direct
-instance holding its alive-lock; see [Claim loop](claim-loop.md#ranking-who-counts-as-alive)). When that
+instance holding its alive-lock) and eligible for work (see [Claim loop](claim-loop.md#ranking-who-counts-as-alive)). When that
 belief is wrong, the shares overlap. Two situations make it wrong for everyone at once:
 
 - a database pause lets every heartbeat go stale together;
@@ -42,13 +45,13 @@ processing (stream leases and row locks give each stream one owner), but it wast
 it is the condition under which concurrent claims contend for the same stream-ledger rows.
 
 The **partition assigner** removes the guess. One instance, elected through the role election,
-decides liveness once for everyone and publishes the assignment. Claimers read it.
+decides liveness and eligibility once for everyone and publishes the assignment. Claimers read it.
 
 ## The assignment
 
 | Field | Meaning |
 |---|---|
-| `Members` | The live instances, in rank order. Partition `p` belongs to `Members[p % Members.Count]`. |
+| `Members` | The live instances that are eligible for work, in rank order. Partition `p` belongs to `Members[p % Members.Count]`. Empty when no instance is eligible. |
 | `Epoch` | The role election's epoch for the assigner's tenure. |
 | `Revision` | The publish count within that tenure, from 1. |
 | `AssignerInstanceId` | The instance that published it. |
@@ -80,6 +83,30 @@ held and the age of its heartbeat. Since migration 204 the lock column comes fro
 direct instance: a pooled instance's lock is never consulted. A direct instance whose lock is released is
 judged by its heartbeat on the assigner's next tick. {verified: PartitionAssignmentSqlTests.Candidates_ADirectInstanceHoldingItsAliveLock_ReportsTheLockAsync, PartitionAssignmentSqlTests.Candidates_APooledInstance_IsNeverJudgedByALockAsync, PartitionAssignmentSqlTests.Candidates_AnEvictedInstance_IsLeftOutAsync, AliveLockLivenessSqlTests.Candidates_ADirectInstanceWhoseLockIsReleased_ReportsNoLockAsync}
 
+**Candidates are only instances eligible for work.** Alive is not the same as ready. Since migration
+229, `wh_partition_assignment_candidates()` lists an instance only when it is
+[eligible for work](/v1.0.0/fundamentals/workers/instance-liveness#alive-versus-eligible): its recorded
+lifecycle phase is `AcceptingCommands` or `Running`, or it records no phase at all (an older build).
+A starting instance (still connecting or migrating), a paused one, one standing by and a draining one
+are alive but are not candidates, so the assigner never gives them a share. Their partitions go to
+the eligible instances on the next publish. The assigner applies its liveness windows only to the
+candidates, so a member is both alive and eligible. {verified: WorkEligibilitySqlTests.Candidates_ALiveInstanceInMigrating_IsLeftOutAsync, WorkEligibilitySqlTests.Candidates_AnInstanceThatReachesAcceptingCommands_BecomesACandidateAsync, WorkEligibilitySqlTests.Candidates_ADrainingInstanceWithAFreshHeartbeat_IsLeftOutAtOnceAsync, WorkEligibilitySqlTests.Candidates_AnOlderInstanceThatRecordsNoPhase_IsStillACandidateAsync, AliveVersusEligibleE2ETests.AnInstanceHeldInStartup_IsAliveButNeverACandidateNorRanked_WhileAReadyPeerTakesAllWorkAsync}
+
+The decision lives in the database, in one function every reader shares, so an assigner on an older
+build that reads the candidates during a rolling upgrade leaves out the same instances a newer one
+does.
+
+**The assigner is a member only when it is a candidate.** The assigner is running the evaluation, so
+when it is a candidate it is a member whatever the age of its own heartbeat. When it is not a
+candidate (it won the role while still migrating, or it is draining) it leaves itself out, exactly as
+it leaves out any other instance that cannot claim a share. An instance that wins the assigner role
+during its own startup therefore does not hand itself partitions it cannot yet work. {verified: PartitionAssignerTests.LiveMembers_TheAssignerAmongTheCandidates_IsAMemberWhateverItsHeartbeatAsync, PartitionAssignerTests.LiveMembers_TheAssignerNotAmongTheCandidates_IsNotAMemberAsync, AliveVersusEligibleE2ETests.TheStall_AnAssignerHeldInStartup_StrandsNoWork_AndTheReadyPeerDrainsTheBacklogAsync}
+
+**Nobody eligible: an empty assignment.** When no instance is a candidate, the assigner publishes an
+assignment with no members. A claimer that presents it finds itself absent and
+[ranks itself](claim-loop.md#ranking-who-counts-as-alive) among the eligible peers, counting itself, so
+claiming never stops for want of a member. {verified: PartitionAssignerTests.LiveMembers_WithNoCandidateAtAll_IsEmptyAsync, PartitionAssignmentSqlTests.ClaimWork_WhenNotAMemberOfTheCurrentAssignment_RanksItselfWithoutANoticeAsync}
+
 **Publishing.** Each tick of its tenure (one per role renewal interval) the assigner judges the
 registered instances and publishes when the live set changes: an alive-lock gained or lost, a
 heartbeat gone stale or fresh. It also publishes when its tenure has not published yet, and on a
@@ -98,6 +125,22 @@ one timeout, not two.
 
 **Missing or stale assignment.** A claimer keeps using its last assignment until it expires, then
 ranks itself as before. A claim never stops for want of an assignment.
+
+## Draining {#draining}
+
+When an instance starts to drain (its lifecycle enters `Stopping`), it stops being eligible for work
+at once, while its heartbeat is still fresh. Two kinds of work are affected differently:
+
+- **Its unclaimed share moves at once.** The next publish leaves it out of `Members`, and peers that
+  rank themselves stop counting it on their next claim, so the partitions it would have claimed go to
+  its peers without waiting for its heartbeat to lapse.
+- **Streams it has already claimed stay with it.** A claim decides which instance owns a stream, not
+  who gets a share, and ownership is left alone: the draining instance keeps the streams it holds
+  until it finishes them or their leases lapse. Handing a stream that is mid-flight to a peer would
+  let two instances work it at once, out of order and twice. A starting instance owns no streams to
+  begin with, because an instance id is new for each process.
+
+{verified: WorkEligibilitySqlTests.Candidates_ADrainingInstanceWithAFreshHeartbeat_IsLeftOutAtOnceAsync, WorkEligibilitySqlTests.Rank_ADrainingPeer_ItsShareMovesToTheCallerAtOnceAsync, AliveVersusEligibleE2ETests.ADrainingInstance_StopsBeingEligible_AndItsShareGoesToItsPeerAsync}
 
 ## Cost
 
@@ -136,5 +179,6 @@ Every transition has a public event, for diagnostics and for tests that wait on 
 
 - [Claim loop](claim-loop.md)
 - [Instance liveness](/v1.0.0/fundamentals/workers/instance-liveness#liveness-rule): the liveness rule and `wh_direct_alive_lock_holders`.
+- [Alive versus eligible for work](/v1.0.0/fundamentals/workers/instance-liveness#alive-versus-eligible): the two tests side by side.
 - [Notifications and pgbouncer](notifications-and-pgbouncer.md)
 - [Commit sequence](commit-sequence.md): the commit-order stamper is elected the same way.
