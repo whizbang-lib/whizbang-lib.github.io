@@ -225,7 +225,7 @@ builder.Services.AddRabbitMQTransport(rabbitMqConnection);
 builder.Services.AddRabbitMQHealthChecks();
 
 // Observability + worker prerequisites (mirrors samples/ECommerce)
-builder.Services.AddSingleton<ITraceStore, InMemoryTraceStore>();
+builder.Services.AddWhizbangInMemoryTraceStore();
 builder.Services.AddSingleton<IServiceInstanceProvider, ServiceInstanceProvider>();
 builder.Services.AddSingleton<OrderedStreamProcessor>();
 
