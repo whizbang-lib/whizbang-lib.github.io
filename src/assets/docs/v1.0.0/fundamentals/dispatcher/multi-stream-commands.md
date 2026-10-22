@@ -22,6 +22,7 @@ codeReferences:
   - src/Whizbang.Data.Postgres/MultiStream/PgMultiStreamCommandStore.cs
   - src/Whizbang.Data.Postgres/MultiStream/MultiStreamCommandRegistration.cs
   - src/Whizbang.Data.Postgres/Migrations/208_MultiStreamCommands.sql
+  - src/Whizbang.Data.Postgres/Migrations/229_OnlyReadyInstancesAreEligibleForWork.sql
   - src/Whizbang.Core/Commands/System/RebuildPerspectiveStreamsCommand.cs
   - src/Whizbang.Core/Perspectives/RebuildPerspectiveStreamsHandler.cs
   - src/Whizbang.Data.EFCore.Postgres/RebuildPerspectiveCommandReceptor.cs
@@ -162,11 +163,20 @@ An instance claims a run's stream when it owns the stream, by the rule the work 
    instance works it here too.
 2. **Otherwise, unless a live sibling holds the stream's lease, its partition decides.** A stream hashes to one of
    10,000 partitions, and the [published partition assignment](../work-coordinator/partition-assignment.md) gives each
-   partition to one live instance. Without a current assignment, the live instances rank themselves by id, exactly as
-   the work claim's fallback does.
+   partition to one live instance that is eligible for work. Without a current assignment, the live instances that are
+   eligible for work rank themselves by id, exactly as the work claim's fallback does, and the claiming instance always
+   counts itself.
 
 An expired lease, or a lease held by an instance with no heartbeat, is not ownership: the partition decides. The
 partition hash stays in the database, so the rule has one implementation.
+
+**Eligible for work decides shares; alive decides ownership.** Since migration 229 a peer that is still starting, or is
+draining, is alive but not [eligible for work](../workers/instance-liveness.md#alive-versus-eligible): it is left out of
+the ranking, so its partitions' streams go to the instances that can work them. A sibling that holds a stream's lease
+keeps it while it is alive, eligible or not. A draining instance therefore finishes the streams it already holds, and
+only its unclaimed share moves; taking a held stream from it could run that stream out of order and twice (see
+[Draining](../work-coordinator/partition-assignment.md#draining)).
+{verified: MultiStreamCommandStoreSqlTests.ClaimAsync_WithNoAssignment_APeerNotYetReady_IsNotRankedAsync, MultiStreamCommandStoreSqlTests.ClaimAsync_WithNoAssignment_RanksTheLiveInstancesAsync, MultiStreamCommandStoreSqlTests.ClaimAsync_AStreamLeasedToThisInstance_IsClaimedWhateverItsPartitionAsync}
 
 A claimed stream is **leased** to the claiming instance (`Lease`, 5 minutes by default). An instance that stops
 mid-stream lets the lease lapse, and the stream is offered again, to its owner at that time, as the next attempt.
