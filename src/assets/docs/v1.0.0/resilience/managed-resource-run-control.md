@@ -24,13 +24,14 @@ testReferences:
   - tests/Whizbang.Core.Tests/RunControl/LifecyclePhaseTests.cs
   - tests/Whizbang.Core.Component.Tests/RunControl/WhizbangLifecycleCoordinatorTests.cs
   - tests/Whizbang.Core.Tests/RunControl/WhizbangLifecycleStateTests.cs
+  - tests/Whizbang.Core.Tests/Workers/HeartbeatWorkerRequestFieldsTests.cs
   - tests/Whizbang.Core.Tests/RunControl/WhizbangRunPermitTests.cs
   - tests/Whizbang.Core.Tests/RunControl/WhizbangKillswitchTests.cs
   - tests/Whizbang.Core.Tests/RunControl/WhizbangRunControlDiTests.cs
   - tests/Whizbang.Core.Component.Tests/RunControl/LifecyclePhaseWorkerTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/WhizbangDatabaseInitializerServiceTests.cs
-verifiedAgainstCommit: a64ba9a0
-verifiedDate: 2026-08-04
+verifiedAgainstCommit: 924d20f7
+verifiedDate: 2026-10-22
 ---
 
 # Managed-Resource Run-Control
@@ -120,6 +121,25 @@ record, then reaches terminal `Halted`.
 // A participant that throws on a transition => Faulted (record window) => Halted.
 // AdvanceToAsync does not rethrow — the fault is handled by the machine.
 ```
+
+## The announced phase {#announced-phase}
+{verified: WhizbangLifecycleStateTests.AnnouncedPhase_BeforeAnyTransition_IsStartingAsync, WhizbangLifecycleStateTests.AnnouncedPhase_DuringATransition_IsThePhaseBeingEnteredAsync, WhizbangLifecycleStateTests.AnnouncedPhase_OnTheFaultPath_FollowsThePhaseAsync, WhizbangLifecycleStateTests.AnnouncedPhase_OfAStateThatDoesNotTrackIt_IsItsPhaseAsync, HeartbeatWorkerRequestFieldsTests.BuildRequest_DuringATransition_CarriesThePhaseBeingEnteredAsync}
+
+`IWhizbangLifecycleState` exposes two phases:
+
+| Property | Value |
+|---|---|
+| `Phase` | The settled phase: it changes only after every resource has acknowledged the transition. |
+| `AnnouncedPhase` | The phase this instance announces: the one being entered while a transition is in flight, otherwise `Phase`. |
+
+`AdvanceToAsync` sets `AnnouncedPhase` before it broadcasts the change, and `Phase` after the acks. On the fault path both follow `Faulted` and then `Halted`. An implementation that does not track a separate announced phase gets the default, which returns `Phase`.
+
+The instance's registration row records the announced phase, and that is what decides whether the instance is [eligible for work](/v1.0.0/fundamentals/workers/instance-liveness#alive-versus-eligible). The instance-state participant writes the new phase during the transition, before `Phase` changes, so every other writer of the row reads `AnnouncedPhase` too:
+
+- the heartbeat, so a beat built while a transition's acks are awaited does not write the phase before it back over the one the transition just recorded;
+- the claim loop, which sends it with every claim and with its registrations, so a row that records another phase is found stale and corrected (see [Claim loop](/v1.0.0/fundamentals/work-coordinator/claim-loop#lifecycle-phase)).
+
+Entering `AcceptingCommands` is therefore the moment an instance becomes eligible for work, and entering `Stopping` is the moment it stops being eligible, while its heartbeat is still fresh.
 
 ## Turnkey — you get this by default
 

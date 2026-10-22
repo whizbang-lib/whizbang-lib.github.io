@@ -1,8 +1,8 @@
 ---
 title: Instance Liveness — Advisory Lock + Heartbeat Fallback
 pageType: concept
-verifiedAgainstCommit: 0bc6065b
-verifiedDate: 2026-08-05
+verifiedAgainstCommit: 924d20f7
+verifiedDate: 2026-10-22
 version: 1.0.0
 category: Fundamentals
 order: 8
@@ -13,10 +13,12 @@ description: >-
   direct instance, by its held alive-lock. The stale threshold is derived from
   the heartbeat cadence and shared by the writer, the lifecycle monitor and
   the SQL reap; the writer carries a watchdog and death announcements are
-  reversible.
-tags: 'liveness, heartbeat, advisory-lock, recovery, workers, watchdog, lifecycle-monitor, connection-mode'
+  reversible. Alive is a separate test from eligible for work: only a live
+  instance whose recorded lifecycle phase is ready is given work.
+tags: 'liveness, eligibility, heartbeat, advisory-lock, recovery, workers, watchdog, lifecycle-monitor, connection-mode'
 codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/204_DirectInstancesAreLiveByTheirAliveLock.sql
+  - src/Whizbang.Data.Postgres/Migrations/229_OnlyReadyInstancesAreEligibleForWork.sql
   - src/Whizbang.Data.Postgres/Notifications/PostgresNotificationsServiceCollectionExtensions.cs
   - src/Whizbang.Data.Postgres/Migrations/055_InstanceAliveAdvisoryLock.sql
   - src/Whizbang.Data.Postgres/Migrations/011_CleanupStaleInstances.sql
@@ -29,6 +31,8 @@ codeReferences:
   - src/Whizbang.Core/Observability/InstanceLivenessMetrics.cs
 testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/AliveLockLivenessSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/WorkEligibilitySqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/AliveVersusEligibleE2ETests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/AliveLockSourcePostgresTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/AliveLockSourceRegistrationTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Performance/AliveLockRankCostScenarioTests.cs
@@ -118,9 +122,9 @@ SELECT instance_id FROM wh_direct_alive_lock_holders();
 
 | Reader | How it applies the rule |
 |---|---|
-| `claim_work`, its rank | A peer is ranked live with a heartbeat inside the 30 s cutoff, or as a direct instance holding its alive-lock. The lock is read only for a direct row past the cutoff, once per claim. See [Claim loop](/v1.0.0/fundamentals/work-coordinator/claim-loop#ranking-who-counts-as-alive). |
+| `claim_work`, its rank | A peer is ranked live with a heartbeat inside the 30 s cutoff, or as a direct instance holding its alive-lock. The lock is read only for a direct row past the cutoff, once per claim. Since 229 a live peer is ranked only when it is also [eligible for work](#alive-versus-eligible). See [Claim loop](/v1.0.0/fundamentals/work-coordinator/claim-loop#ranking-who-counts-as-alive). |
 | `claim_work`, its re-register notice | The caller passes `p_alive_lock_held`. A direct caller holding its lock is not asked to re-register between its slow beats. |
-| The partition assigner's candidates | `wh_partition_assignment_candidates` reports `alive_lock_held` through `wh_direct_alive_lock_holders`, and the assigner applies its per-mode windows. See [Partition assignment](/v1.0.0/fundamentals/work-coordinator/partition-assignment). |
+| The partition assigner's candidates | `wh_partition_assignment_candidates` reports `alive_lock_held` through `wh_direct_alive_lock_holders`, and the assigner applies its per-mode windows. Since 229 it lists only instances [eligible for work](#alive-versus-eligible). See [Partition assignment](/v1.0.0/fundamentals/work-coordinator/partition-assignment). |
 | The standby handshake and `StandbyWatcher` | A peer or requester holding its alive-lock counts as live whatever its heartbeat's age. See [The standby handshake](#the-standby-handshake). |
 | The stale-peer reap (`cleanup_stale_instances`) | Unchanged: it already spared any row whose alive-lock is held (055, v0.687). |
 | `is_instance_alive` and the lifecycle monitor | Unchanged: the predicate already answers with either signal. |
@@ -151,6 +155,49 @@ sequenceDiagram
     P->>DB: record_heartbeat
     Note over DB: D past the reap threshold: reaped and tombstoned
 ```
+
+## Alive versus eligible for work {#alive-versus-eligible}
+{verified: WorkEligibilitySqlTests.Eligible_EachRecordedPhase_IsEligibleOnlyWhenReadyAsync, WorkEligibilitySqlTests.Eligible_ARowThatRecordsNoPhase_IsEligibleAsync, AliveVersusEligibleE2ETests.AnInstanceHeldInStartup_IsAliveButNeverACandidateNorRanked_WhileAReadyPeerTakesAllWorkAsync, AliveVersusEligibleE2ETests.AHeldInstance_BecomesEligibleExactlyWhenItRecordsAcceptingCommandsAsync}
+
+Liveness says a process exists. It does not say the process is ready to do anything. An instance registers during the migrator election, before its migration pass, and a direct instance holds its alive-lock from host start, so a starting instance is alive long before it can claim work. A draining instance stays alive until it exits. Since migration 229 the framework asks two separate questions:
+
+| Test | An instance passes when | Who reads it |
+|---|---|---|
+| **Alive** | It is registered, it is not evicted, and its heartbeat is inside the reader's window or (direct mode) it holds its alive-lock. See [the liveness rule](#liveness-rule). | The stale-peer reap and eviction, role votes, the standby handshake, the notify targets, and the lifecycle monitor. |
+| **Eligible for work** | It is alive, **and** its recorded lifecycle phase is `AcceptingCommands` or `Running`. | The partition assigner's candidates, `claim_work`'s peer ranking and the multi-stream claim's ranking. |
+
+A row that records no phase at all (`lifecycle_phase` is `NULL`) comes from an older build that never writes one. It is eligible whenever it is alive, exactly as before, so a rolling upgrade never strands an older peer's share.
+
+Every other phase is alive but not eligible: `Starting`, `Connecting`, `Migrating`, `Pausing`, `Paused`, `StandingBy`, `Resuming`, `Stopping`, `Stopped`, `Faulted` and `Halted`. Such an instance's share goes to its peers at once, with no wait for a heartbeat to lapse.
+
+The eligibility half lives in one SQL function, `wh_instance_is_eligible_for_work(row)`, which takes the instance's whole registration row. Liveness is not part of it, because every reader already judges that by its own window. The planner inlines it into the scan that reads the row, so it adds no table, call or lock.
+
+```sql{
+title: "List the live instances and whether each is eligible for work"
+description: "Calls the migration-229 wh_instance_is_eligible_for_work function over each registered instance's row, beside the phase that instance records and the age of its heartbeat."
+category: "Workers"
+difficulty: "INTERMEDIATE"
+tags: ["liveness", "eligibility", "lifecycle-phase", "postgres", "migration-229"]
+tests: ["WorkEligibilitySqlTests.Eligible_EachRecordedPhase_IsEligibleOnlyWhenReadyAsync", "WorkEligibilitySqlTests.Eligible_ARowThatRecordsNoPhase_IsEligibleAsync"]
+}
+-- migration 229
+SELECT si.instance_id,
+       si.lifecycle_phase,
+       clock_timestamp() - si.last_heartbeat_at AS heartbeat_age,
+       wh_instance_is_eligible_for_work(si) AS eligible_for_work
+FROM wh_service_instances si
+ORDER BY si.instance_id;
+```
+
+**Liveness consumers are unchanged.** The reap, eviction, role votes, the standby handshake and the notify targets still read alive. An instance that is alive but not eligible is never reaped or evicted for being unready, including a direct instance whose heartbeat is old but which holds its alive-lock. {verified: AliveVersusEligibleE2ETests.AnAliveButIneligibleInstance_IsNeverReapedNorEvictedAsync}
+
+**Stream ownership is unchanged too.** The orphan claims, and the multi-stream claim's test of whether a live sibling holds a stream's lease, decide which instance owns a stream, not who gets a share, so they read alive. A starting instance owns no streams, because its instance id is new for the process. A draining instance keeps the streams it holds until it finishes them or their leases lapse; see [Draining](/v1.0.0/fundamentals/work-coordinator/partition-assignment#draining).
+
+**Keeping the recorded phase right.** Eligibility is only as good as the phase the row records, so every writer of the row writes the phase the instance is entering:
+
+- the bootstrap registration made during the migrator election records `Migrating` (see [Capabilities and duties](/v1.0.0/operations/startup/capabilities-and-duties#bootstrap-registration-records-migrating));
+- the heartbeat and the claim loop's registrations carry `IWhizbangLifecycleState.AnnouncedPhase`, the phase being entered while a transition is in flight (see [run-control](/v1.0.0/resilience/managed-resource-run-control#announced-phase)), so a heartbeat built mid-transition cannot write the old phase back;
+- a claim whose row records a different phase than the caller announces reports the registration stale, and the claim loop rewrites it (see [Claim loop](/v1.0.0/fundamentals/work-coordinator/claim-loop#lifecycle-phase)).
 
 ## Adaptive HeartbeatWorker cadence
 
@@ -373,6 +420,7 @@ The verdict is also **not a startup-only fact**: the watcher re-assesses on a sl
 | **107** (modified) | `perform_maintenance` Task 10 purges tombstones past `instance_eviction_retention_hours` (default 24) |
 | **147** (new) | `record_heartbeat` gains `p_lifecycle_phase`, `p_library_version` (registry backfill, non-null wins) and `p_stale_threshold_seconds` (the caller's derived threshold for the opportunistic peer reap; definitive-dead cutoff never below twice it). Previous overload dropped; exactly one remains |
 | **204** (new) | `wh_direct_alive_lock_holders()`: the direct instances whose alive-lock is held. `claim_work` ranks peers by [the liveness rule](#liveness-rule) and takes `p_alive_lock_held`; `wh_partition_assignment_candidates` reads the lock through the new function |
+| **229** (new) | `wh_instance_is_eligible_for_work(row)`: the one definition of [eligible for work](#alive-versus-eligible). `wh_partition_assignment_candidates`, `claim_work`'s ranking and `wh_claim_multi_stream_work`'s ranking count only eligible instances; `claim_work` takes `p_lifecycle_phase` and reports a row recording another phase as stale |
 
 ## Operator notes
 
@@ -380,6 +428,7 @@ The verdict is also **not a startup-only fact**: the watcher re-assesses on a sl
 - `IsAliveLockHeld` is observable on `IInstanceAliveLockSource` (implemented by `PgSharedNotifyConnection`, registered by `AddWhizbangPostgresNotifications`). The HeartbeatWorker reads it every tick, and `ClaimWorker` passes it to every claim as `ClaimWorkRequest.AliveLockHeld`; no eventing or cache invalidation is needed.
 - DI: a host without the Postgres notifications keeps `NullInstanceAliveLockSource`, holds no lock and beats on the fast cadence. A host that registers its own `IInstanceAliveLockSource` keeps it.
 - To see which instances are live by their lock right now, `SELECT * FROM wh_direct_alive_lock_holders();`. A direct instance missing from that list is judged by its heartbeat alone.
+- An instance that is up but receives no work is usually alive and not eligible: check the `lifecycle_phase` its row records (see [Alive versus eligible for work](#alive-versus-eligible)). A row stuck in `Migrating` or `Connecting` means its startup has not reached `AcceptingCommands`; a row in `Stopping` is draining.
 - An instance logging `has been evicted … heartbeat refused` is not broken and needs no intervention — it was reaped as stale while paused, its work was redistributed, and it is correctly refusing to rejoin. Restart the pod (a new process gets a new instance id) if it should return to service.
 - A Warning `is alive again after being announced dead; retracting with InstanceJoinedSignal` means a heartbeat landed late, not that the monitor is wrong. The fleet has already healed; look for what stalled the beat (a long-running commit on the writer's connection, a saturated pool). `whizbang.liveness.deaths_retracted` counts these.
 - Watchdog Warnings (EventId 9) mean the regular beat ran late enough to approach the threshold and the writer forced one. Occasional watchdog beats under load are the mechanism working; a steady stream points at a starved heartbeat writer.
