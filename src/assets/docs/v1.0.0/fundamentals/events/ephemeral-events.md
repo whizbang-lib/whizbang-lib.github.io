@@ -10,11 +10,12 @@ description: >-
   Declare an event ephemeral with [Ephemeral]: it is stored and routed like any event, but its body is
   deleted once every perspective has consumed it (or once its TTL passes), and the read model it feeds
   becomes the source of truth. Covers the attribute and its composition, what happens to the event and
-  the read model, the WHIZ130, WHIZ131, WHIZ132 and WHIZ134 build rules, the runtime guards, compaction
+  the read model, the WHIZ130, WHIZ131, WHIZ132 and WHIZ134 build rules, the WHIZ133 mixed-stream refusal and the
+  other runtime guards, compaction
   and scheduled stream closes.
 tags: >-
   events, ephemeral, destruction, transient-storage, ttl, rewind-grace, reaper, snapshots, composition,
-  profiles, WHIZ130, WHIZ131, WHIZ132, WHIZ134, compaction, stream-close, full-history
+  profiles, WHIZ130, WHIZ131, WHIZ132, WHIZ133, WHIZ134, compaction, stream-close, full-history
 codeReferences:
   - src/Whizbang.Core/Attributes/EphemeralAttribute.cs
   - src/Whizbang.Core/Attributes/Destruction.cs
@@ -29,6 +30,7 @@ codeReferences:
   - src/Whizbang.Core/Messaging/EphemeralFlagDeriver.cs
   - src/Whizbang.Core/Messaging/EphemeralTtlDeriver.cs
   - src/Whizbang.Core/Messaging/EventFlags.cs
+  - src/Whizbang.Core/Messaging/MixedStreamEventException.cs
   - src/Whizbang.Core/Messaging/IWorkCoordinator.cs
   - src/Whizbang.Core/Observability/EnvelopeMetadata.cs
   - src/Whizbang.Core/Lifecycle/Destruction.cs
@@ -81,6 +83,7 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/EphemeralEventStoreReadTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/EphemeralSnapshotTargetSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/EphemeralStreamGuardSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/MixedStreamGuardSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/ScheduledStreamCloseReceptorTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/TypeDefinitionReconcilerTests.cs
 lastMaintainedCommit: '62abd3a45'
@@ -112,8 +115,9 @@ all of these hold:
 - **No one audits it.** Compliance and support questions are answered from durable events, not from this one.
 
 Keep an event durable (Sourced) when it records a decision, a change of ownership, money, permissions, or anything a
-rebuild or an audit has to replay. A stream holds either kind but not both: a perspective that folds ephemeral and
-Sourced events together is refused at build time ([WHIZ130](#whiz130)).
+rebuild or an audit has to replay. A stream holds either kind but not both: storing an event of the other kind on a
+stream is refused at run time ([WHIZ133](../../operations/diagnostics/whiz133)), and a perspective that folds ephemeral and Sourced events
+together is reported at build time ([WHIZ130](#whiz130)). Put ephemeral signals on a stream of their own.
 
 ## Declaring an ephemeral event
 
@@ -374,16 +378,22 @@ public class PresenceToOrder : ISyncReceptor<PresencePing, OrderPlaced> {
 }
 ```
 
-:::planned
-A stream that receives both ephemeral and Sourced events cannot be detected at build time, because which
-events reach a stream is only known when they are appended. That check is planned as a runtime guard at
-append time; WHIZ133 is reserved for it. Until it ships, the runtime guards below are the backstop.
-:::
-
 ## Runtime guards
 
-Some misuses only show up at run time: a rebuild that names a stream by id, or an event that arrives
-after its predecessors' bodies are gone. These guards cover them.
+Some misuses only show up at run time: a stream receiving both kinds of event, a rebuild that names a stream
+by id, or an event that arrives after its predecessors' bodies are gone. These guards cover them.
+
+**A stream never mixes ephemeral and Sourced events (WHIZ133).** Which events reach a stream is
+only known when they are stored, so this is checked where outbox and inbox events are copied into the event
+store and on every direct `IEventStore.AppendAsync`, not by the build. An event whose kind differs from the kind its stream already holds is refused, in
+either order, and there is no opt-in: one ephemeral event would mark the whole stream state-based and hide its
+Sourced history from every rebuild and rewind. A stream with nothing stored takes the kind of its first event.
+A compaction origin is neither kind, so a compacted stream keeps receiving the kind it held. A write its caller
+awaits (a direct append, and the immediate and scoped strategies' flush, which the dispatcher awaits when publishing) fails with `MixedStreamEventException`
+and keeps nothing of the write; every other write (batch flushes, handler commits, the inbox) dead-letters
+only the refused event, held for review, and stores the rest. Put ephemeral signals on a stream of their own.
+See [WHIZ133](../../operations/diagnostics/whiz133).
+{verified: MixedStreamGuardSqlTests.Store_SourcedEventOnAnEphemeralStream_DeadLettersTheSourcedEventAsync, MixedStreamGuardSqlTests.Store_EphemeralEventOnASourcedStream_DeadLettersTheEphemeralEventAsync, MixedStreamGuardSqlTests.Store_SourcedEventOnACompactedStream_IsStoredAsync, MixedStreamGuardSqlTests.Store_DirectCommitOfASourcedEventOnAnEphemeralStream_ThrowsMixedStreamEventExceptionAsync, MixedStreamGuardSqlTests.InboxChain_SourcedEventOnAnEphemeralStream_DeadLettersTheRowAndStoresTheRestAsync, DirectAppendMixedStreamGuardTests.DirectAppend_SourcedEventOnAnEphemeralStream_ThrowsAndStoresNothingAsync, DirectAppendMixedStreamGuardTests.DirectAppend_CompactionOriginOnAnEphemeralStream_IsStored_AndTheStreamStaysEphemeralAsync}
 
 **Rebuilds refuse state-based streams.** A stream holding any ephemeral or compacted event is
 *state-based*: its current state, not its log, is the truth. `RebuildStreamsAsync` filters such
