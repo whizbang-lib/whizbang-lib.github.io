@@ -1,7 +1,7 @@
 ---
 title: 'WHIZ133: Stream mixes ephemeral and Sourced events'
 pageType: troubleshooting
-verifiedAgainstCommit: a7c4e090
+verifiedAgainstCommit: 74c69a02
 verifiedDate: 2026-10-22
 description: >-
   Runtime refusal when storing an event would make one stream hold both ephemeral and Sourced events. A write its
@@ -28,7 +28,7 @@ codeReferences:
   - src/Whizbang.Data.Postgres/DirectAppendKind.cs
   - src/Whizbang.Data.EFCore.Postgres/EFCoreEventStore.cs
   - src/Whizbang.Data.Dapper.Postgres/DapperPostgresEventStore.cs
-  - src/Whizbang.Data.Postgres/Migrations/226_StreamsNeverMixEphemeralAndSourcedEvents.sql
+  - src/Whizbang.Data.Postgres/Migrations/228_StreamsNeverMixEphemeralAndSourcedEvents.sql
 testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/MixedStreamGuardSqlTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperMixedStreamGuardTests.cs
