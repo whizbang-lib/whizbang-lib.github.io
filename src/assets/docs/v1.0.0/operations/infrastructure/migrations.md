@@ -52,6 +52,7 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/MappedDocumentReadFailureTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StoredFormScalarMismatchWorkerTests.cs
   - tests/Whizbang.Generators.Tests/CanonicalTemporalRewriteWiringTests.cs
+  - tests/Whizbang.Generators.Tests/MigrationUtf8LiteralGenerationTests.cs
   - tests/Whizbang.Core.Tests/Perspectives/StoredFormUnreadableTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerDeepPathDrainTests.StoredForm.cs
   - tests/Whizbang.Core.Tests/Health/StoredFormHealthSourceTests.cs
@@ -91,6 +92,14 @@ wh_schema_migrations
   029_ProcessWorkBatch         | e5f6a7b8...      | 1      | First apply
   perspective:OrderModel       | c9d0e1f2...      | 1      | First apply
 ```
+
+### How the migrations ship in your assembly {#how-migrations-ship}
+
+On the EF Core driver, the generator embeds the SQL of every migration into each assembly that declares a `[WhizbangDbContext]`, so the migrations travel with your application and need no files at run time. The text is stored as UTF-8 data, not as C# string literals, and is decoded once on first use.
+
+This matters because a .NET assembly can hold at most about 16 MB of string literals in total; past that the build fails with `CS8103` ("Combined length of user strings used by the program exceeds allowed limit"). The migrations alone are several megabytes and grow with every release, so storing them as literals would eventually push a large application over that limit with no warning. As UTF-8 data they do not count toward it. Several DbContexts in one assembly share a single copy.
+
+The decoded text is exactly what earlier versions embedded, so every recorded content hash still matches and an upgrade re-applies nothing because of this change.
 
 ## Migration Statuses
 
