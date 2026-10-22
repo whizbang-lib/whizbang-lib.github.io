@@ -19,7 +19,9 @@ codeReferences:
   - src/Whizbang.Data.EFCore.Postgres/EFCoreEventStore.cs
   - src/Whizbang.Data.Dapper.Postgres/DapperPostgresEventStore.cs
   - src/Whizbang.Data.Postgres/Migrations/224_DirectAppendTakesTheStreamLock.sql
+  - src/Whizbang.Data.Postgres/Migrations/230_ReceivedStreamsKeepTheProducersOrder.sql
 testReferences:
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/ReceivedStreamOrderSqlTests.cs
   - tests/Whizbang.Core.Tests/Messaging/AppendAndWaitEventStoreDecoratorTests.cs
   - tests/Whizbang.Core.Tests/Messaging/SecurityContextEventStoreDecoratorTests.cs
   - tests/Whizbang.Core.Tests/Messaging/SyncTrackingEventStoreDecoratorTests.cs
@@ -96,6 +98,48 @@ On PostgreSQL, both drivers append through one database function, `wh_append_eve
 The lock and the insert are separate statements inside the function on purpose: under PostgreSQL's default `READ COMMITTED` isolation each statement sees what was committed before it started, so the insert sees every append that committed while this one waited. Appending inside a `REPEATABLE READ` or `SERIALIZABLE` transaction keeps the snapshot from before the wait and can still fail on the stream's unique version; use the default isolation for transactions that append.
 
 A stream appended directly numbers its events from 0. A stream whose events arrive through the outbox numbers them from 1.
+
+## Received streams keep the producer's order {#received-stream-order}
+
+{verified: ReceivedStreamOrderSqlTests.TwoClaimsOfOneStream_TheHeadsClaimCommitsLast_VersionsFollowTheProducerOrderAsync, ReceivedStreamOrderSqlTests.TwoInstancesShareAStream_TheTailWaitsForThePeersHead_ThenFollowsItAsync, ReceivedStreamOrderSqlTests.RowsBeforeTheFirstUnheldRow_AreStored_AndOnlyTheRowsAfterItWaitAsync, ReceivedStreamOrderSqlTests.AnEarlierCommand_OrAnEarlierEventAlreadyStored_DoesNotHoldTheStreamAsync, ReceivedStreamOrderSqlTests.AWaitingEvent_IsNotFetched_UntilItIsStoredAsync}
+
+A service that receives another service's events stores them through its inbox. Its inbox can split one source stream across several claims at once. That happens when two batches overlap, or when two instances each lease part of a stream. A claim that started later can skip the rows an earlier claim holds and reach the store first.
+
+The receiver still stores the stream in the producer's order, whichever claim commits first:
+
+- **The head is stored first.** For each stream in its batch, a claim finds the first pending event it does not hold itself. That event may be leased by a peer, held by another claim that has not committed, unleased, or under an expired lease. The claim stores its rows that come before that event and **holds back** the rows after it.
+- **Held-back rows follow the head.** They stay leased but are not stored, and a later claim stores them once the head is in the store. A stream's head never waits.
+- **An event is only handed to receptors once it is stored.** An event waiting behind its head is not dispatched. Dispatch completes an inbox row and removes it, so dispatching a waiting event would lose it from the store. Commands, and rows that have no stream, are not held.
+
+Order means message id, which is also what versions are numbered by. An event that fans out of a composite gets an id built from the composite's id and its position, so the children sort in the producer's order even though they carry no origin commit sequence.
+
+| Situation | What happens | Verified |
+|---|---|---|
+| Two claims split one stream, and the claim with the head commits last | The later events wait; the stream is stored in the producer's order | {verified: ReceivedStreamOrderSqlTests.TwoClaimsOfOneStream_TheHeadsClaimCommitsLast_VersionsFollowTheProducerOrderAsync} |
+| Another instance holds the stream's head | The tail waits for the peer to store the head, then follows it | {verified: ReceivedStreamOrderSqlTests.TwoInstancesShareAStream_TheTailWaitsForThePeersHead_ThenFollowsItAsync} |
+| A claim holds rows on both sides of an event it does not hold | The rows before it are stored now; only the rows after it wait | {verified: ReceivedStreamOrderSqlTests.RowsBeforeTheFirstUnheldRow_AreStored_AndOnlyTheRowsAfterItWaitAsync} |
+| The earlier row is a command, or an event already stored | Nothing waits | {verified: ReceivedStreamOrderSqlTests.AnEarlierCommand_OrAnEarlierEventAlreadyStored_DoesNotHoldTheStreamAsync} |
+| An event is waiting behind its head | It is not fetched for dispatch until it is stored | {verified: ReceivedStreamOrderSqlTests.AWaitingEvent_IsNotFetched_UntilItIsStoredAsync} |
+
+**What it does not cover:**
+
+- **An event that has not reached the inbox yet.** If the transport reorders separate deliveries, the receiver can store later events before an earlier one arrives, because there is no row to wait for. Waiting out that gap needs the producer's stream position on the wire ([#1627](https://github.com/whizbang-lib/whizbang/issues/1627)).
+- **Ids minted out of commit order.** When a producer has two transactions on one stream whose ids were minted in the opposite order to their commits, message-id order can differ from the producer's version order.
+
+**Cost of waiting.** A row that waits longer than its lease (300 seconds by default) is claimed again, which spends an attempt ([#1630](https://github.com/whizbang-lib/whizbang/issues/1630)).
+
+### Repairing a stream stored before the fix {#received-stream-repair}
+
+Before this, a receiver could store a stream with a later event ahead of an earlier one, for example a record's creation after its field changes. A rebuild does not repair such a stream: replay follows the stored version, and origin order is only used when every event has an origin commit sequence, which fanned-out events do not.
+
+Re-delivering the events does not help either. The receiver skips an event id it already has.
+
+The producer's order can be recovered from the event ids. For a stream the producer wrote in one transaction, event-id order is the producer's order. To repair such a stream:
+
+1. Under the stream's lock, renumber its versions by event id. Do it in two steps, first negative versions and then `ROW_NUMBER() OVER (ORDER BY event_id)`, because `(stream_id, version)` is unique.
+2. Rebuild or rewind the stream's perspectives.
+
+This is only sound for a stream with a single origin. Whether W! ships it as a tool is an open question ([#1629](https://github.com/whizbang-lib/whizbang/issues/1629)).
 
 ## AppendAndWaitAsync {#append-and-wait}
 
