@@ -721,12 +721,13 @@ public sealed class SystemEventEmitter : ISystemEventEmitter {
 
 Whether a store exists is decided when the emitter is first resolved, after every registration has run, so it does not matter whether the driver registers its store before or after `AddWhizbang()`.
 
-The default emitter is a singleton that appends each record through an event store resolved in a scope of its own, created for that record and disposed once it is appended. That makes it correct for both store lifetimes:
+The default emitter is a singleton that takes each record's event store and [audit decision hook](#audit-decisions) from a scope of its own, created for that record and disposed once it is appended or dropped. That makes it correct whatever their lifetimes:
 
-{verified: SystemEventEmitterRegistrationTests.AddWhizbang_WithAScopedEventStoreRegisteredAfterIt_NeverCapturesTheStoreAsync, SystemEventEmitterRegistrationTests.AddWhizbang_TheDefaultEmitter_OutlivesTheScopeItWasResolvedInAsync}
+{verified: SystemEventEmitterRegistrationTests.AddWhizbang_WithAScopedEventStoreRegisteredAfterIt_NeverCapturesTheStoreAsync, SystemEventEmitterRegistrationTests.AddWhizbang_TheDefaultEmitter_OutlivesTheScopeItWasResolvedInAsync, SystemEventEmitterRegistrationTests.AddWhizbang_AScopedHostHook_IsHonoredWithoutBeingCapturedAsync, SystemEventEmitterRegistrationTests.AddWhizbang_AScopedHostHookThatNamesTheOccurrence_NamesTheStoredRecordAsync}
 
 - A **scoped** store (the EF Core driver's, which holds a `DbContext`) is never captured by the singleton, and a [fire-and-forget](#fire-and-forget-emits) record never shares the caller's `DbContext` or depends on the caller's scope still being open.
 - A **singleton** store works the same way.
+- A host's **scoped** audit decision hook is resolved per record and its decision honored, never captured.
 - A record commits on its own, not in the caller's unit of work: a denial is still recorded when the work that was denied rolls back.
 
 Storing a system event never raises another one. Every built-in system event is excluded from audit, and even when an [audit decision hook](#audit-decisions) chooses to audit one, the resulting `EventAudited` is never audited itself, so the chain stops at one record.
