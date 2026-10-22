@@ -81,6 +81,12 @@ The last task of the maintenance sweep bounds the framework ledgers that nothing
 | `wh_stream_purge_audit` | `purge_old_stream_purge_audit` | everything by default, because the audit records what a purge destroyed; set a window to bound it | `StreamPurgeAuditDays` (0, keep forever) |
 | `wh_integrity_ledger` | `trim_integrity_ledger` | the most recently touched entries, up to the cap | `IntegrityLedgerMaxEntries` (100000) |
 
+Once `wh_log` is [partitioned](../../operations/infrastructure/partitioned-ledgers) and partition maintenance is
+enabled, `purge_old_log_entries` reports `skipped (partitioned: expired partitions are dropped)` and deletes nothing:
+the partition manager drops whole weeks past the same `LogDays` window instead. With partitioning switched off the row
+delete applies again, partitioned or not.
+{verified: LogPartitionConversionTests.OnceConverted_RetentionDropsPartitions_InsteadOfDeletingRowsAsync, LogPartitionConversionTests.AConvertedLog_WithPartitioningSwitchedOff_IsStillBoundedByTheRowDeleteAsync}
+
 Each setting lives under `Whizbang:Workers:Maintenance:Retention` and is published to `wh_settings` before the sweep reads it (next section); the keys are listed under [Database-side settings](../../operations/configuration/configuration-reference#database-side-settings).
 
 ## Settings published before the sweep {#settings-published-before-the-sweep}
