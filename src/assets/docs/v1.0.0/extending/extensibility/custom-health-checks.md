@@ -13,6 +13,7 @@ tags: 'health-checks, monitoring, kubernetes, readiness, liveness'
 codeReferences:
   - src/Whizbang.Core/Transports/ITransportReadinessCheck.cs
   - src/Whizbang.Core/Workers/DefaultTransportReadinessCheck.cs
+  - src/Whizbang.Core/Workers/OutboxDrainWorker.cs
   - src/Whizbang.Core/HealthChecks/SubscriptionHealthCheck.cs
 testReferences:
   - tests/Whizbang.Core.Tests/Transports/TransportReadinessCheckTests.cs
@@ -79,7 +80,14 @@ public interface IHealthCheck {
 
 ## Whizbang Extension Point: ITransportReadinessCheck
 
-Separate from HTTP health endpoints, Whizbang has its own **transport readiness** hook. The outbox publisher worker consults `ITransportReadinessCheck` to decide whether to publish messages or keep them in the outbox (with renewed leases) until the transport becomes available:
+Separate from HTTP health endpoints, Whizbang has its own **transport readiness** hook. The default outbox publisher, `OutboxDrainWorker`, consults `ITransportReadinessCheck`, through the publish strategy, before each publish pass:
+
+- **Ready**: the claimed rows are published as usual.
+- **Not ready**: nothing is published. The rows this instance holds stay in the outbox, their leases are renewed, and no attempt is charged, because a held row is neither a failed publish nor a lapsed lease. The next claim poll offers the streams again, and they publish once the check reports ready.
+
+`OutboxDrainWorker.OnOutboxPublishHeld` fires after each held pass with the streams and the message ids it kept, for monitoring or for a test that waits on the hold.
+
+The interface:
 
 ```csharp{title="ITransportReadinessCheck Interface" description="Whizbang transport readiness extension point" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Extensibility", "Readiness", "Transports"] tests=["DefaultTransportReadinessCheckTests.IsReadyAsync_Always_ReturnsTrueAsync", "DefaultTransportReadinessCheckTests.IsReadyAsync_Cancellation_ThrowsOperationCanceledExceptionAsync", "TransportReadinessCheckTests.ConfigurableCheck_ReturnsConfiguredValue_WhenCalledAsync", "TransportReadinessCheckTests.ConfigurableCheck_RespectsCancellationToken_WhenCancelledAsync"]}
 namespace Whizbang.Core.Transports;
