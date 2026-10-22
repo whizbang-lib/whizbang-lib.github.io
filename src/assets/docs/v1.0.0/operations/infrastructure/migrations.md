@@ -38,6 +38,7 @@ codeReferences:
   - src/Whizbang.Core/Health/StoredFormHealthSource.cs
   - src/Whizbang.Core/Workers/PerspectiveWorker.cs
   - src/Whizbang.Data.EFCore.Postgres/Perspectives/MappedDocumentReadFailure.cs
+  - src/Whizbang.Data.Postgres/Migrations/226_PartitionManager.sql
 testReferences:
   - tests/Whizbang.Data.Dapper.Postgres.Tests/MigrationConstantsTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/NormalizeClrTypeNamesMigrationTests.cs
@@ -64,6 +65,7 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/MigrationSchemaQualificationTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/MigrationSchemaQualifierTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/MigrationSearchPathTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Partitioning/LogPartitionConversionTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -553,6 +555,25 @@ The canonical example is `063_NormalizeClrTypeNamesV2.sql`, which normalizes sto
 - **Operational tuning knobs** read by SQL functions — e.g. `perform_maintenance` reads `debug_mode`, `dedup_retention_days`, `stuck_inbox_retention_days`, `abandoned_stream_hours` (the idle grace before an owner-less `wh_active_streams` row is purged), `ephemeral_rewind_grace_seconds`, and `collective_ordering_head_retention_days` (how long an idle collective ordering key keeps its predecessor head, default 7). Later migrations redefine `perform_maintenance` in place, so the authoritative knob list is whatever the latest redefinition reads.
 
 Settings are seeded by migrations with `ON CONFLICT (setting_key) DO NOTHING` (so operator overrides survive re-runs). Keep C#-worker-coupled timing constants (retry backoff, work leases, liveness thresholds) *out* of this table — tuning them independently of the workers that assume them causes drift.
+
+### Conversion markers {#conversion-markers}
+
+{verified: LogPartitionConversionTests.TheMarker_StopsTheConversionRunningAgainAsync, LogPartitionConversionTests.Conversion_InterruptedPartway_LeavesTheTableAsItWas_AndTheNextCycleCompletesItAsync, LogPartitionConversionTests.AnAlreadyPartitionedTable_IsMarkedWithoutChangeAsync}
+
+Converting a table to time partitions is a data migration too, but it does not run from a migration file: it runs
+from the maintenance cycle, and only once the partition manager is enabled
+([partitioned ledgers](partitioned-ledgers#converting-an-existing-table)). It is gated the same way, on a marker in
+`wh_settings`:
+
+| Marker | Value | Written by |
+|---|---|---|
+| `wh_log_partition_version` | `1` once `wh_log` is partitioned by `logged_at` | `wh_partition_convert` (migration 226) |
+
+The rules are the ones above: the marker, not the table's shape, decides whether the conversion runs, so a marker
+present means it never runs again. The conversion is one transaction and writes the marker in it, so an interrupted
+conversion leaves neither a half-converted table nor a marker, and the next cycle starts again. A table found already
+partitioned without a marker gets the marker and is left as it is. Deleting the marker on a converted table is
+harmless for the same reason. The general name is `<table>_partition_version`, for the tables that follow.
 
 ## Normalizing type names {#normalizing-type-names}
 

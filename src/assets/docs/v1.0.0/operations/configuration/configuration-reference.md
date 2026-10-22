@@ -42,6 +42,7 @@ codeReferences:
   - src/Whizbang.Core/Observability/TableStatisticsOptionsValidator.cs
   - src/Whizbang.Core/Workers/RetentionSettingsBridge.cs
   - src/Whizbang.Core/Workers/MaintenanceRetentionOptions.cs
+  - src/Whizbang.Core/Workers/MaintenancePartitioningOptions.cs
   - src/Whizbang.Core/Configuration/EphemeralPointerPruneOptions.cs
   - src/Whizbang.Data.Postgres/RetentionSettingsWriter.cs
 testReferences:
@@ -1149,6 +1150,8 @@ Operator rung of the row-retention override ladder. **Configure:** bound automat
 | `Retention.ScheduleRunDays` | `int?` | unset (database: `30`) | `Whizbang__Workers__Maintenance__Retention__ScheduleRunDays` | Days a schedule run is kept; each schedule's newest run is always kept. Publishes `schedule_run_retention_days` |
 | `Retention.StreamPurgeAuditDays` | `int?` | unset (database: `0`) | `Whizbang__Workers__Maintenance__Retention__StreamPurgeAuditDays` | Days a stream-purge audit entry is kept; `0` keeps the audit forever. Publishes `stream_purge_audit_retention_days` |
 | `Retention.IntegrityLedgerMaxEntries` | `int?` | unset (database: `100000`) | `Whizbang__Workers__Maintenance__Retention__IntegrityLedgerMaxEntries` | The most entries the integrity ledger keeps, most recently touched first. Publishes `integrity_ledger_max_entries` |
+| `Partitioning.Enabled` | `bool` | `false` | `Whizbang__Workers__Maintenance__Partitioning__Enabled` | Convert the framework's time-ordered tables (`wh_log`) to time partitions and keep them: create ahead, drop past the window ([partitioned ledgers](../infrastructure/partitioned-ledgers#enabling-it)). Publishes `partition_maintenance_enabled` |
+| `Partitioning.CreateAhead` | `int` | `3` | `Whizbang__Workers__Maintenance__Partitioning__CreateAhead` | Partition intervals past the current one each cycle makes sure exist; at least `1` |
 
 The `Retention` windows are database-side settings: each cycle publishes the ones you set to `wh_settings` before
 the sweep reads them, and leaves the ones you do not set alone. See [Database-side settings](#database-side-settings).
@@ -1705,6 +1708,7 @@ each service database, rather than from the host's options. Each setting below i
 | `MaintenanceWorkerOptions.Retention.ScheduleRunDays` | `Whizbang__Workers__Maintenance__Retention__ScheduleRunDays` | `30` | `schedule_run_retention_days` |
 | `MaintenanceWorkerOptions.Retention.StreamPurgeAuditDays` | `Whizbang__Workers__Maintenance__Retention__StreamPurgeAuditDays` | `0` | `stream_purge_audit_retention_days` |
 | `MaintenanceWorkerOptions.Retention.IntegrityLedgerMaxEntries` | `Whizbang__Workers__Maintenance__Retention__IntegrityLedgerMaxEntries` | `100000` | `integrity_ledger_max_entries` |
+| `MaintenanceWorkerOptions.Partitioning.Enabled` | `Whizbang__Workers__Maintenance__Partitioning__Enabled` | `false` | `partition_maintenance_enabled` (always published) |
 | `EphemeralOptions.RewindGraceSeconds` | `Whizbang__Ephemeral__RewindGraceSeconds` | `300` | `ephemeral_rewind_grace_seconds` |
 | `EphemeralOptions.PointerPrune.Enabled` | `Whizbang__Ephemeral__PointerPrune__Enabled` | `false` | `ephemeral_deep_maintenance_enabled` |
 | `EphemeralOptions.PointerPrune.RetentionDays` | `Whizbang__Ephemeral__PointerPrune__RetentionDays` | `90` | `ephemeral_pointer_retention_days` |
