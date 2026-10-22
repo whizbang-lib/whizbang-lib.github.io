@@ -384,15 +384,15 @@ by id, or an event that arrives after its predecessors' bodies are gone. These g
 
 **A stream never mixes ephemeral and Sourced events (WHIZ133).** Which events reach a stream is
 only known when they are stored, so this is checked where outbox and inbox events are copied into the event
-store, not by the build. An event whose kind differs from the kind its stream already holds is refused, in
+store and on every direct `IEventStore.AppendAsync`, not by the build. An event whose kind differs from the kind its stream already holds is refused, in
 either order, and there is no opt-in: one ephemeral event would mark the whole stream state-based and hide its
 Sourced history from every rebuild and rewind. A stream with nothing stored takes the kind of its first event.
-A compacted stream is Sourced and keeps receiving Sourced events. A write its caller awaits (the immediate and
-scoped strategies' flush, which the dispatcher awaits when publishing) fails with `MixedStreamEventException`
+A compaction origin is neither kind, so a compacted stream keeps receiving the kind it held. A write its caller
+awaits (a direct append, and the immediate and scoped strategies' flush, which the dispatcher awaits when publishing) fails with `MixedStreamEventException`
 and keeps nothing of the write; every other write (batch flushes, handler commits, the inbox) dead-letters
 only the refused event, held for review, and stores the rest. Put ephemeral signals on a stream of their own.
 See [WHIZ133](../../operations/diagnostics/whiz133).
-{verified: MixedStreamGuardSqlTests.Store_SourcedEventOnAnEphemeralStream_DeadLettersTheSourcedEventAsync, MixedStreamGuardSqlTests.Store_EphemeralEventOnASourcedStream_DeadLettersTheEphemeralEventAsync, MixedStreamGuardSqlTests.Store_SourcedEventOnACompactedStream_IsStoredAsync, MixedStreamGuardSqlTests.Store_DirectCommitOfASourcedEventOnAnEphemeralStream_ThrowsMixedStreamEventExceptionAsync, MixedStreamGuardSqlTests.InboxChain_SourcedEventOnAnEphemeralStream_DeadLettersTheRowAndStoresTheRestAsync}
+{verified: MixedStreamGuardSqlTests.Store_SourcedEventOnAnEphemeralStream_DeadLettersTheSourcedEventAsync, MixedStreamGuardSqlTests.Store_EphemeralEventOnASourcedStream_DeadLettersTheEphemeralEventAsync, MixedStreamGuardSqlTests.Store_SourcedEventOnACompactedStream_IsStoredAsync, MixedStreamGuardSqlTests.Store_DirectCommitOfASourcedEventOnAnEphemeralStream_ThrowsMixedStreamEventExceptionAsync, MixedStreamGuardSqlTests.InboxChain_SourcedEventOnAnEphemeralStream_DeadLettersTheRowAndStoresTheRestAsync, DirectAppendMixedStreamGuardTests.DirectAppend_SourcedEventOnAnEphemeralStream_ThrowsAndStoresNothingAsync, DirectAppendMixedStreamGuardTests.DirectAppend_CompactionOriginOnAnEphemeralStream_IsStored_AndTheStreamStaysEphemeralAsync}
 
 **Rebuilds refuse state-based streams.** A stream holding any ephemeral or compacted event is
 *state-based*: its current state, not its log, is the truth. `RebuildStreamsAsync` filters such

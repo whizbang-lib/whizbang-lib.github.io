@@ -1,8 +1,8 @@
 ---
 title: 'WHIZ133: Stream mixes ephemeral and Sourced events'
 pageType: troubleshooting
-verifiedAgainstCommit: cbe0f948
-verifiedDate: 2026-10-21
+verifiedAgainstCommit: a7c4e090
+verifiedDate: 2026-10-22
 description: >-
   Runtime refusal when storing an event would make one stream hold both ephemeral and Sourced events. A write its
   caller awaits fails with MixedStreamEventException; any other write dead-letters the refused event and stores the
@@ -25,14 +25,18 @@ codeReferences:
   - src/Whizbang.Core/Messaging/DeadLetterRecoveryTypes.cs
   - src/Whizbang.Core/Attributes/EphemeralAttribute.cs
   - src/Whizbang.Data.Postgres/MixedStreamRefusal.cs
-  - src/Whizbang.Data.Postgres/Migrations/225_StreamsNeverMixEphemeralAndSourcedEvents.sql
+  - src/Whizbang.Data.Postgres/DirectAppendKind.cs
+  - src/Whizbang.Data.EFCore.Postgres/EFCoreEventStore.cs
+  - src/Whizbang.Data.Dapper.Postgres/DapperPostgresEventStore.cs
+  - src/Whizbang.Data.Postgres/Migrations/226_StreamsNeverMixEphemeralAndSourcedEvents.sql
 testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/MixedStreamGuardSqlTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperMixedStreamGuardTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/DirectAppendMixedStreamGuardTests.cs
   - tests/Whizbang.Core.Tests/Messaging/MixedStreamRefusalTests.cs
   - tests/Whizbang.Core.Tests/Messaging/WorkCoordinatorFlushHelperTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/WorkTablesAreLockedInOneOrderTests.CallGraph.cs
-lastMaintainedCommit: 'cbe0f948'
+lastMaintainedCommit: 'a7c4e090'
 ---
 
 # WHIZ133: Stream mixes ephemeral and Sourced events
@@ -50,15 +54,18 @@ truth. Every rebuild and rewind then skips the stream, so a Sourced event on it 
 replay, and an ephemeral event on a Sourced stream would hide that stream's whole history from rebuilds. A stream
 therefore never mixes the two kinds. The rule holds in either order and there is no opt-in.
 
-Which events reach a stream is only known when they are stored, so this is checked at run time, not by the build. The
-step that copies outbox and inbox events into the event store compares the event's kind with the kind its stream
-already holds, read from the stream's newest stored event. A stream with nothing stored yet takes the kind of its
+Which events reach a stream is only known when they are stored, so this is checked at run time, not by the build, on
+every path that stores an event: the step that copies outbox and inbox events into the event store, and a direct
+`IEventStore.AppendAsync` on either driver. Each compares the event's kind with the kind its stream already holds,
+read from the stream's newest stored event. A stream with nothing stored yet takes the kind of its
 first event in the write, so a first write that mixes both kinds keeps the first event's kind and refuses the others.
 {verified: MixedStreamGuardSqlTests.Store_SourcedEventOnAnEphemeralStream_DeadLettersTheSourcedEventAsync, MixedStreamGuardSqlTests.Store_EphemeralEventOnASourcedStream_DeadLettersTheEphemeralEventAsync, MixedStreamGuardSqlTests.Store_FirstWriteMixesBothKinds_KeepsTheFirstKindAndDeadLettersTheOtherAsync}
 
-Only the ephemeral flag is compared. A compacted stream is a Sourced stream with a carry-forward head, so it keeps
-receiving Sourced events.
-{verified: MixedStreamGuardSqlTests.Store_SourcedEventOnACompactedStream_IsStoredAsync}
+Only the ephemeral flag decides the kind. A compaction origin (the `Compacted` event a stream compaction writes at the
+head of a stream) is neither kind: it is never refused and never decides the stream's kind, so a compacted stream
+keeps taking the kind of the events around it. A Sourced stream with a carry-forward head keeps receiving Sourced
+events, and an ephemeral stream that was compacted keeps receiving ephemeral events.
+{verified: MixedStreamGuardSqlTests.Store_SourcedEventOnACompactedStream_IsStoredAsync, DirectAppendMixedStreamGuardTests.DirectAppend_CompactionOriginOnAnEphemeralStream_IsStored_AndTheStreamStaysEphemeralAsync}
 
 ## What happens to the refused event
 
@@ -66,6 +73,7 @@ What "refused" means depends on whether anyone is waiting for the write:
 
 | Write | Result | Verified |
 |-------|--------|----------|
+| A direct append: `IEventStore.AppendAsync` on the EF Core and Dapper drivers | Throws `MixedStreamEventException` and stores nothing. The appended event's kind is stored with it, as the other paths store it, including `[Ephemeral]` declared on a type. | {verified: DirectAppendMixedStreamGuardTests.DirectAppend_SourcedEventOnAnEphemeralStream_ThrowsAndStoresNothingAsync, DirectAppendMixedStreamGuardTests.DirectAppend_EphemeralEventOnASourcedStream_ThrowsAsync, DirectAppendMixedStreamGuardTests.DirectAppend_EventTheResolverDeclaresEphemeral_IsRefusedOnASourcedStreamAsync, DapperMixedStreamGuardTests.AppendAsync_SourcedEventOnAnEphemeralStream_ThrowsAndStoresNothingAsync, DapperMixedStreamGuardTests.AppendAsync_EphemeralEventOnASourcedStream_ThrowsAndStoresNothingAsync} |
 | A flush its caller awaits: the immediate and scoped strategies' `FlushAsync`, which the dispatcher awaits when publishing | Throws `MixedStreamEventException`. The whole write rolls back and nothing of it is kept, including events on other streams, and the strategy does not offer it to a later flush. | {verified: MixedStreamGuardSqlTests.Store_DirectCommitOfASourcedEventOnAnEphemeralStream_ThrowsMixedStreamEventExceptionAsync, MixedStreamGuardSqlTests.Store_DirectCommitOfAnEphemeralEventOnASourcedStream_ThrowsMixedStreamEventExceptionAsync, ImmediateWorkCoordinatorStrategyTests.FlushAsync_RefusedForMixingAStream_TheNextFlushDoesNotWriteTheRefusedWorkAsync, ScopedWorkCoordinatorStrategyTests.FlushAsync_RefusedForMixingAStream_DisposalDoesNotWriteTheRefusedWorkAsync} |
 | Every other write: the interval and batch strategies, the scoped strategy's disposal safety net, handler commits and the inbox claim | Dead-letters only the refused row and stores the rest of the write. A refused outbox row is moved to the dead-letter table, so it is never published. A refused inbox row is recorded in the dead-letter table and completed where it stands, so it is never applied or offered again; it leaves the inbox with the other completed rows at the next maintenance pass, and a redelivery of it is deduplicated. | {verified: MixedStreamGuardSqlTests.Store_RefusedEventInABatch_LeavesTheOtherStreamsStoredAsync, MixedStreamGuardSqlTests.CommitHandlerResult_HandlerEmitsASourcedEventOnAnEphemeralStream_CommitsAndDeadLettersTheEventAsync, MixedStreamGuardSqlTests.InboxChain_SourcedEventOnAnEphemeralStream_DeadLettersTheRowAndStoresTheRestAsync, MixedStreamGuardSqlTests.InboxChain_RefusedMessageRedelivered_IsNotRefusedAgainAsync, MixedStreamGuardSqlTests.InboxChain_RefusedRow_IsRemovedByTheCompletedInboxPurgeAsync, ScopedWorkCoordinatorStrategyTests.DisposeAsync_SafetyNetFlush_LeavesARefusalToBeDeadLetteredAsync} |
 
