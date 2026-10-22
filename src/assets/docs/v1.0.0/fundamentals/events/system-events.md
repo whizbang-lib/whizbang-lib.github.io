@@ -48,6 +48,7 @@ testReferences:
   - tests/Whizbang.Core.Tests/SystemEvents/SystemEventSelfAuditPreventionTests.cs
   - tests/Whizbang.Core.Tests/SystemEvents/EventAuditedTests.cs
   - tests/Whizbang.Core.Tests/SystemEvents/Security/SecuritySystemEventTests.cs
+  - tests/Whizbang.Core.Tests/SystemEvents/Security/SecuritySystemEventStorageTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/AuditRecordStreamPositionSqlTests.cs
   - tests/Whizbang.Core.Tests/SystemEvents/AuditDecisionHookCallSiteTests.cs
 lastMaintainedCommit: '01f07906'
@@ -840,6 +841,31 @@ With `LocalOnly = true`:
 1. Users service audits `UserCreated` locally (stays local)
 2. BFF receives `UserCreated` and audits it locally (stays local)
 3. No duplicate audit events!
+
+---
+
+### Which security events are stored {#security-events}
+
+The emitter stores a security event only when its type is enabled, and each of the four types has its own switch. Denials and permission changes are rare and are the records an auditor asks for, so they are stored by default. Grants and scope establishments happen on every allowed read and every request, so storing them is a deployment's choice.
+
+| Event | Switch | Default | Configuration key | Verified |
+|---|---|---|---|---|
+| `AccessDenied` | `AccessDeniedEnabled` | stored | `Whizbang:SystemEvents:AccessDeniedEnabled` | {verified: SecuritySystemEventStorageTests.Defaults_StoreDenialsAndPermissionChanges_NotGrantsOrScopeEstablishmentsAsync, SecuritySystemEventStorageTests.AccessDeniedEnabled_Off_StopsStoringDenialsOnlyAsync} |
+| `PermissionChanged` | `PermissionChangedEnabled` | stored | `Whizbang:SystemEvents:PermissionChangedEnabled` | {verified: SecuritySystemEventStorageTests.PermissionChangedEnabled_Off_StopsStoringPermissionChangesOnlyAsync} |
+| `AccessGranted` | `AccessGrantedEnabled` | not stored | `Whizbang:SystemEvents:AccessGrantedEnabled` | {verified: SecuritySystemEventStorageTests.AccessGrantedEnabled_On_StoresGrantsOnlyAsync} |
+| `ScopeContextEstablished` | `ScopeContextEstablishedEnabled` | not stored | `Whizbang:SystemEvents:ScopeContextEstablishedEnabled` | {verified: SecuritySystemEventStorageTests.ScopeContextEstablishedEnabled_On_StoresScopeEstablishmentsOnlyAsync} |
+
+Stored security events go to the global [`$wb-system` stream](#stream). A disabled type is dropped by the emitter before anything is written. The switches apply to the `SystemEventEmitter`; the default registration is the no-op emitter, so a service stores security events once it registers `SystemEventEmitter` as its `ISystemEventEmitter`.
+
+```csharp{title="Security event switches" description="Turn off stored denials and opt in to stored grants, in code or from configuration." category="Configuration" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Security", "Configuration"] tests=["SecuritySystemEventStorageTests.EmitAsync_WithEverySwitchFlipped_StoresGrantsAndScopeEstablishmentsOnlyAsync", "ProcessWideOptionsBindingTests.SystemEventOptions_EveryKeyBinds_ThroughAddSystemEventsAsync"]}
+services.AddSystemEvents(options => {
+  options.AccessGrantedEnabled = true;   // store every grant as well
+  options.AccessDeniedEnabled = false;   // stop storing denials
+});
+
+// or, in appsettings.json:
+// "Whizbang": { "SystemEvents": { "AccessGrantedEnabled": true, "AccessDeniedEnabled": false } }
+```
 
 ---
 
