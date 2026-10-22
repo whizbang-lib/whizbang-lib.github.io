@@ -19,7 +19,7 @@ codeReferences:
   - src/Whizbang.Data.EFCore.Postgres/EFCoreEventStore.cs
   - src/Whizbang.Data.Dapper.Postgres/DapperPostgresEventStore.cs
   - src/Whizbang.Data.Postgres/Migrations/224_DirectAppendTakesTheStreamLock.sql
-  - src/Whizbang.Data.Postgres/Migrations/227_ReceivedStreamsKeepTheProducersOrder.sql
+  - src/Whizbang.Data.Postgres/Migrations/230_ReceivedStreamsKeepTheProducersOrder.sql
 testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/ReceivedStreamOrderSqlTests.cs
   - tests/Whizbang.Core.Tests/Messaging/AppendAndWaitEventStoreDecoratorTests.cs
