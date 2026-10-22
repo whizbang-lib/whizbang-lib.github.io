@@ -114,8 +114,8 @@ Each maintenance cycle runs these, all in SQL so the Dapper and EF Core drivers 
 | Row cap | `reap_perspective_row_caps` | Rows ranked beyond the cap in their scope |
 | Stream-group cascade | `cascade_delete_perspective_rows` | Rows of group members for the streams the sweeps evicted |
 
-Every path honors pre-destruction holds: a row a registered guard deferred or canceled is skipped and
-offered again when the hold lapses. The TTL and cap sweeps are batched, so a large backlog drains
+Every path honors [pre-destruction holds](pre-destruction-holds): a row a registered guard deferred or
+canceled is skipped and offered again when the hold lapses. The TTL and cap sweeps are batched, so a large backlog drains
 across cycles, and they are gated on adoption so a new declaration reports before it removes (see
 [Adoption is automatic](#adoption-is-automatic)). Under `debug_mode` nothing is evicted.
 
@@ -247,6 +247,7 @@ binds through standard options. Nothing inspects attributes or scans types at ru
 
 ## Related
 
+- [Pre-Destruction Holds](pre-destruction-holds): guard rows that reference external resources before they are evicted.
 - [Perspective Snapshots](snapshots): the floor an evicted row is rebuilt from.
 - [Perspective Rewind](rewind): the machinery the rebuild runs on.
 - [Perspective Registry](registry): where the model, its table and its perspectives are recorded.

@@ -432,6 +432,7 @@ Compile-time errors, warnings and notices from Whizbang's source generators and 
 | WHIZ801 | Error | [VectorField Invalid Type](whiz801.md) |
 | WHIZ802 | Error | [VectorField Invalid Dimensions](whiz802.md) |
 | WHIZ803 | Retired | [PhysicalField Complex Type](whiz803.md) (retired: never reported, ID never reused) |
+| WHIZ804 | Error | [Table Storage Value Out Of Range](whiz804.md) |
 | WHIZ805 | Warning | [Split Mode No Physical Fields](whiz805.md) |
 | WHIZ807 | Info | [Physical Fields Discovered](whiz807.md) |
 | WHIZ808 | Error | [Split Class Model Cannot Be Copied](whiz808.md) |

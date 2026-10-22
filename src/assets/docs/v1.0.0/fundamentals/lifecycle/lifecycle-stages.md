@@ -26,6 +26,7 @@ codeReferences:
   - src/Whizbang.Core/Workers/PerspectiveWorker.cs
   - src/Whizbang.Core/Workers/MaintenanceWorker.cs
   - src/Whizbang.Core/Lifecycle/DestructionStageReceptors.cs
+  - src/Whizbang.Core/Lifecycle/StreamCloser.cs
 testReferences:
   - tests/Whizbang.Core.Tests/Messaging/LifecycleStageTests.cs
   - tests/Whizbang.Core.Tests/Messaging/LifecycleStageExtensionsTests.cs
@@ -36,6 +37,7 @@ testReferences:
   - tests/Whizbang.Core.Tests/Workers/TransportConsumerWorkerPostLifecycleTests.cs
   - tests/Whizbang.Core.Tests/Workers/MaintenanceWorkerDestructionHookTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/DestructionStageReceptorComponentTests.cs
+  - tests/Whizbang.Core.Component.Tests/Lifecycle/StreamCloserDestructionStageComponentTests.cs
   - tests/Whizbang.Core.Component.Tests/Dispatcher/PostLifecycleOncePerHandlingServiceComponentTests.cs
   - tests/Whizbang.Generators.Tests/ReceptorDiscoveryGeneratorTests.cs
   - tests/Whizbang.Core.Component.Tests/Messaging/DistributeStageOwnedCommandSendComponentTests.cs
@@ -701,15 +703,33 @@ public class OrderNotificationReceptor : IReceptor<OrderPlacedEvent> {
 ### Destruction Stages (4 stages) {#destruction}
 
 :::updated
-Destruction stages hook the destruction of ephemeral data. The `MaintenanceWorker` reaper fires them around the physical delete of consumed, aged-past-grace ephemeral event bodies, once per maintenance cycle for the whole about-to-reap batch. They reach two kinds of handler:
+Destruction stages hook the destruction of stored events. Two operations destroy events, and both fire the stages around their delete:
+
+- **The ephemeral reap.** The `MaintenanceWorker` reaper fires them around the physical delete of consumed, aged-past-grace ephemeral event bodies, once per maintenance cycle for the whole about-to-reap batch.
+- **A period close.** `IStreamCloser.CloseAsync` fires them around the truncate of a stream's detail through the close version, for the events in that range (see [Closing a Stream's History](../events/event-streams#closing-a-stream)).
+
+They reach two kinds of handler:
 
 - **`[FireAt]` receptors** declared at a destruction stage, typed by the event they handle, like any other lifecycle receptor.
-- **A registered `IDestructionHook`**, called once with the whole batch, which can also Cancel or Defer it.
+- **A registered `IDestructionHook`**, called once with the whole batch (the reap) or the whole stream (a close), which can also Cancel or Defer it.
 
 With neither, the stages are inert and nothing extra is read.
 :::
 
-The reap deletes the stored events, so the events that have a destruction-stage receptor are **loaded before the delete**. The Pre stages get them before the delete; the Post stages get the same envelopes after it, when the stored data is already gone. Only events whose type has a destruction-stage receptor are loaded.
+Both operations delete the stored events, so the events that have a destruction-stage receptor are **loaded before the delete**. The Pre stages get them before the delete; the Post stages get the same envelopes after it, when the stored data is already gone. Only events whose type has a destruction-stage receptor are loaded, and with no destruction-stage receptor registered at all, a close does not even list the events in its range.
+{verified: DestructionStageReceptorComponentTests.TheReap_RunsThePreStagesBeforeTheDeleteAndThePostStagesAfterItAsync, StreamCloserDestructionStageComponentTests.Close_RunsThePreStagesBeforeTheTruncateAndThePostStagesAfterItAsync, StreamCloserDestructionStageComponentTests.AnEventWithNoDestructionReceptor_IsNotLoadedOrHandedToAnyStageAsync, StreamCloserDestructionStageComponentTests.WithNoDestructionReceptorAnywhere_TheRangeIsNeverListedAsync}
+
+The two operations differ only in what a failure does, because they destroy different kinds of data:
+
+| | The ephemeral reap | A period close |
+|---|---|---|
+| Events offered | The bodies this cycle reaps | Every event of the stream at or below the close version |
+| A throwing Pre Inline receptor | Holds the batch for retry, then the `OnDestroyFailure` policy decides | Aborts the close: the exception reaches the caller and nothing is truncated, as with a throwing hook |
+| The hook cancels or defers | The batch is held; no stage runs | The close returns `canceled` or `deferred`; no stage runs |
+| Post stages run when | The batch was deleted | The close returned `closed`; a `blocked`, `held` or other outcome runs no Post stage |
+| A throwing Post Inline receptor | Logged; the reap stands | Logged; the close stands |
+
+{verified: StreamCloserDestructionStageComponentTests.AThrowingPreInlineReceptor_VetoesTheCloseAsync, StreamCloserDestructionStageComponentTests.AHookThatCancels_RunsNoDestructionStageAsync, StreamCloserDestructionStageComponentTests.ACloseThatTruncatesNothing_RunsNoPostStageAsync, StreamCloserDestructionStageComponentTests.AThrowingPostInlineReceptor_IsLoggedAndTheCloseStandsAsync}
 
 ```csharp{title="Archiving an ephemeral event before it is reaped" description="A PreDestructionInline receptor runs before the reap deletes the event; a PostDestructionDetached receptor runs after" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lifecycle", "Destruction", "Ephemeral"] tests=["DestructionStageReceptorComponentTests.TheReap_RunsThePreStagesBeforeTheDeleteAndThePostStagesAfterItAsync", "DestructionStageReceptorComponentTests.AFailingPreInlineReceptor_HoldsTheBatchAndNoPostStageRunsAsync", "DestructionStageReceptorComponentTests.AnEventWithNoDestructionReceptor_IsNotLoadedOrHandedToAnyStageAsync"]}
 [FireAt(LifecycleStage.PreDestructionInline)]
@@ -732,27 +752,27 @@ public class CountReapedTelemetry : IReceptor<TelemetryRecorded> {
 
 #### `PreDestructionDetached`
 
-**Timing**: Just before the batch is deleted. Runs in the background, in its own scope.
+**Timing**: Just before the batch is deleted or the stream is truncated. Runs in the background, in its own scope.
 
-**Guarantees**: Detached: does not block the reaper. Best for destruction notifications / metrics that need not gate the delete.
+**Guarantees**: Detached: does not block the reaper or the close. Best for destruction notifications / metrics that need not gate the delete.
 
 #### `PreDestructionInline`
 
-**Timing**: Just before the delete, **awaited on the reaper's critical path**, so side effects must durably commit BEFORE the physical delete.
+**Timing**: Just before the delete, **awaited on the reaper's or the closer's critical path**, so side effects must durably commit BEFORE the physical delete.
 
 **Use Cases**: Compact / snapshot / archive / crypto-shred. An `IDestructionHook` may return **Cancel** or **Defer** (or a chosen disposition): the whole batch is then held (Cancel = far-future, Defer = until the given instant) and nothing is reaped this cycle, and PostDestruction does not fire.
 
-**Guarantees**: Blocking for this batch. A throwing receptor or hook does NOT fail open: the batch is held with backoff and re-offered up to `MaxDestructionRetries`, after which the `OnDestroyFailure` policy decides (forced delete or keep). No Post stage runs for a held batch.
+**Guarantees**: Blocking for this batch or close. A throwing receptor or hook does NOT fail open. In the reap the batch is held with backoff and re-offered up to `MaxDestructionRetries`, after which the `OnDestroyFailure` policy decides (forced delete or keep); no Post stage runs for a held batch. In a period close the close is aborted and the exception reaches the caller; nothing is truncated.
 
 #### `PostDestructionDetached`
 
-**Timing**: After the physical delete has committed. Runs in the background, in its own scope.
+**Timing**: After the physical delete or the truncate has committed. Runs in the background, in its own scope.
 
 **Use Cases**: Notify / metrics / cascade.
 
 #### `PostDestructionInline`
 
-**Timing**: After the physical delete, awaited by the reaper. Rare: most post-destruction work is Detached.
+**Timing**: After the physical delete, awaited by the reaper or the closer. Rare: most post-destruction work is Detached. A throwing receptor is logged; the delete already committed and stands.
 
 ---
 
@@ -974,7 +994,7 @@ See [Lifecycle Receptors](../receptors/lifecycle-receptors.md) for API details.
 | `PostPerspectiveInline` | `PerspectiveWorker.cs` | After checkpoint commit (data + checkpoint durable) |
 | `PostAllPerspectives*` | `PerspectiveWorker.cs` | After ALL perspectives complete (WhenAll) — managed by [Lifecycle Coordinator](lifecycle-coordinator.md) |
 | `PostLifecycle*` | `PerspectiveWorker.cs`, `TransportConsumerWorker.cs`, `Dispatcher.cs` | After all processing completes — managed by [Lifecycle Coordinator](lifecycle-coordinator.md) |
-| `PreDestruction*` / `PostDestruction*` | `MaintenanceWorker.cs` | Around the ephemeral reap, via registered `IDestructionHook` (batched once per cycle) |
+| `PreDestruction*` / `PostDestruction*` | `MaintenanceWorker.cs`, `StreamCloser.cs` | Around the ephemeral reap (batched once per cycle) and around a period close's truncate, for `[FireAt]` receptors and a registered `IDestructionHook` |
 
 ---
 

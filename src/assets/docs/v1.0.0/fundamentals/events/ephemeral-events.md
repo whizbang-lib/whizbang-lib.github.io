@@ -64,6 +64,7 @@ testReferences:
   - tests/Whizbang.Core.Tests/Perspectives/StreamCompactorTests.cs
   - tests/Whizbang.Core.Tests/Perspectives/FullHistoryPerspectiveRegistryTests.cs
   - tests/Whizbang.Core.Tests/Lifecycle/StreamCloserTests.cs
+  - tests/Whizbang.Core.Component.Tests/Lifecycle/StreamCloserDestructionStageComponentTests.cs
   - tests/Whizbang.Core.Tests/Lifecycle/DestructionContractTests.cs
   - tests/Whizbang.Core.Tests/Archival/StreamCloseScheduleTests.cs
   - tests/Whizbang.Core.Tests/Workers/MaintenanceWorkerDestructionHookTests.cs
@@ -475,6 +476,13 @@ Closing a stream truncates its history below a point and keeps a carry-forward e
 close in the same destruction hook the reaper uses, with reason `PeriodClose`. A hook that cancels or
 defers vetoes the close, and a hook that throws aborts it without truncating anything.
 {verified: StreamCloserTests.Close_HookProceeds_FiresBeforeThenCloseThenAfterAsync, StreamCloserTests.Close_HookCancels_DoesNotTruncateAsync, StreamCloserTests.Close_HookDefers_DoesNotTruncateAsync, StreamCloserTests.Close_PreHookThrows_AbortsWithoutTruncatingAsync}
+
+The close also runs the [destruction lifecycle stages](../lifecycle/lifecycle-stages#destruction) for the
+events it truncates, as the reaper does for the bodies it deletes: the events at or below the close
+point whose type has a destruction-stage receptor are loaded first, the Pre stages run before the
+truncate (a throwing `PreDestructionInline` receptor aborts the close, as a throwing hook does), and the
+Post stages run with the same envelopes after a close that truncated.
+{verified: StreamCloserDestructionStageComponentTests.Close_RunsThePreStagesBeforeTheTruncateAndThePostStagesAfterItAsync, StreamCloserDestructionStageComponentTests.AThrowingPreInlineReceptor_VetoesTheCloseAsync, StreamCloserDestructionStageComponentTests.ACloseThatTruncatesNothing_RunsNoPostStageAsync}
 
 Mark a perspective `[FullHistory]` when it needs every event and cannot resume from a carry-forward
 (a list of every transaction, as opposed to a balance). A **discarding** close of a stream that such a

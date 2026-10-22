@@ -1529,6 +1529,10 @@ Which system events are enabled and how audit records ship. **Configure:** the s
 | `AuditShipMaxDelaySeconds` | `int` | `120` | `Whizbang__SystemEvents__AuditShipMaxDelaySeconds` | Safety floor and hard cap on continuous sliding |
 | `AuditShipMaxBatchCount` | `int` | `500` | `Whizbang__SystemEvents__AuditShipMaxBatchCount` | Max audit records per shipped composite |
 | `AuditPriority` | `int` | `450` (`WorkPriority.IDLE`) | `Whizbang__SystemEvents__AuditPriority` | Work-priority band audit records ship at |
+| `AccessDeniedEnabled` | `bool` | `true` | `Whizbang__SystemEvents__AccessDeniedEnabled` | Store `AccessDenied` on `$wb-system` ([Security events](../../fundamentals/events/system-events#security-events)) |
+| `PermissionChangedEnabled` | `bool` | `true` | `Whizbang__SystemEvents__PermissionChangedEnabled` | Store `PermissionChanged` on `$wb-system` |
+| `AccessGrantedEnabled` | `bool` | `false` | `Whizbang__SystemEvents__AccessGrantedEnabled` | Store `AccessGranted` on `$wb-system`; one per allowed read, so opt-in |
+| `ScopeContextEstablishedEnabled` | `bool` | `false` | `Whizbang__SystemEvents__ScopeContextEstablishedEnabled` | Store `ScopeContextEstablished` on `$wb-system`; one per request, so opt-in |
 | `EventNameHumanizer` | `Func<string, string?>?` | `null` (built-in) | — *code-only* | Custom event-type → label mapping |
 | `EventDescriptionHumanizer` | `Func<string, string?>?` | `null` (built-in) | — *code-only* | Custom description generator |
 

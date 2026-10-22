@@ -97,7 +97,7 @@ public record PaymentProcessed(
 | Value | Description | When Populated |
 |---|---|---|
 | `SentAt` | When `dispatcher.SendAsync()` or `PublishAsync()` is called | At dispatch time |
-| `QueuedAt` | After the message is written to the outbox and committed | By the outbox publisher worker |
+| `QueuedAt` | When the dispatcher writes the message to the outbox | As the outbox copy is built, from the registered `TimeProvider`; the stored and transported copy carries it |
 | `DeliveredAt` | When the message arrives at the destination inbox | By the transport consumer worker |
 
 `QueuedAt` and `DeliveredAt` only fire for distributed messages. Local-only dispatch skips those lifecycle stages.
