@@ -1,7 +1,7 @@
 ---
 title: 'WHIZ133: Stream mixes ephemeral and Sourced events'
 pageType: troubleshooting
-verifiedAgainstCommit: 54d30101
+verifiedAgainstCommit: cbe0f948
 verifiedDate: 2026-10-21
 description: >-
   Runtime refusal when storing an event would make one stream hold both ephemeral and Sourced events. A write its
@@ -25,13 +25,14 @@ codeReferences:
   - src/Whizbang.Core/Messaging/DeadLetterRecoveryTypes.cs
   - src/Whizbang.Core/Attributes/EphemeralAttribute.cs
   - src/Whizbang.Data.Postgres/MixedStreamRefusal.cs
-  - src/Whizbang.Data.Postgres/Migrations/223_StreamsNeverMixEphemeralAndSourcedEvents.sql
+  - src/Whizbang.Data.Postgres/Migrations/225_StreamsNeverMixEphemeralAndSourcedEvents.sql
 testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/MixedStreamGuardSqlTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperMixedStreamGuardTests.cs
   - tests/Whizbang.Core.Tests/Messaging/MixedStreamRefusalTests.cs
   - tests/Whizbang.Core.Tests/Messaging/WorkCoordinatorFlushHelperTests.cs
-lastMaintainedCommit: '54d30101'
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/WorkTablesAreLockedInOneOrderTests.CallGraph.cs
+lastMaintainedCommit: 'cbe0f948'
 ---
 
 # WHIZ133: Stream mixes ephemeral and Sourced events
@@ -66,7 +67,7 @@ What "refused" means depends on whether anyone is waiting for the write:
 | Write | Result | Verified |
 |-------|--------|----------|
 | A flush its caller awaits: the immediate and scoped strategies' `FlushAsync`, which the dispatcher awaits when publishing | Throws `MixedStreamEventException`. The whole write rolls back and nothing of it is kept, including events on other streams, and the strategy does not offer it to a later flush. | {verified: MixedStreamGuardSqlTests.Store_DirectCommitOfASourcedEventOnAnEphemeralStream_ThrowsMixedStreamEventExceptionAsync, MixedStreamGuardSqlTests.Store_DirectCommitOfAnEphemeralEventOnASourcedStream_ThrowsMixedStreamEventExceptionAsync, ImmediateWorkCoordinatorStrategyTests.FlushAsync_RefusedForMixingAStream_TheNextFlushDoesNotWriteTheRefusedWorkAsync, ScopedWorkCoordinatorStrategyTests.FlushAsync_RefusedForMixingAStream_DisposalDoesNotWriteTheRefusedWorkAsync} |
-| Every other write: the interval and batch strategies, the scoped strategy's disposal safety net, handler commits and the inbox claim | Dead-letters only the refused row and stores the rest of the write. The row leaves the outbox or inbox, so it is neither published nor redelivered. | {verified: MixedStreamGuardSqlTests.Store_RefusedEventInABatch_LeavesTheOtherStreamsStoredAsync, MixedStreamGuardSqlTests.CommitHandlerResult_HandlerEmitsASourcedEventOnAnEphemeralStream_CommitsAndDeadLettersTheEventAsync, MixedStreamGuardSqlTests.InboxChain_SourcedEventOnAnEphemeralStream_DeadLettersTheRowAndStoresTheRestAsync, ScopedWorkCoordinatorStrategyTests.DisposeAsync_SafetyNetFlush_LeavesARefusalToBeDeadLetteredAsync} |
+| Every other write: the interval and batch strategies, the scoped strategy's disposal safety net, handler commits and the inbox claim | Dead-letters only the refused row and stores the rest of the write. A refused outbox row is moved to the dead-letter table, so it is never published. A refused inbox row is recorded in the dead-letter table and completed where it stands, so it is never applied or offered again; it leaves the inbox with the other completed rows at the next maintenance pass, and a redelivery of it is deduplicated. | {verified: MixedStreamGuardSqlTests.Store_RefusedEventInABatch_LeavesTheOtherStreamsStoredAsync, MixedStreamGuardSqlTests.CommitHandlerResult_HandlerEmitsASourcedEventOnAnEphemeralStream_CommitsAndDeadLettersTheEventAsync, MixedStreamGuardSqlTests.InboxChain_SourcedEventOnAnEphemeralStream_DeadLettersTheRowAndStoresTheRestAsync, MixedStreamGuardSqlTests.InboxChain_RefusedMessageRedelivered_IsNotRefusedAgainAsync, MixedStreamGuardSqlTests.InboxChain_RefusedRow_IsRemovedByTheCompletedInboxPurgeAsync, ScopedWorkCoordinatorStrategyTests.DisposeAsync_SafetyNetFlush_LeavesARefusalToBeDeadLetteredAsync} |
 
 A dead-lettered refusal is recorded in `wh_dead_letters` with the reason `MixedStreamRefused` (22) and an error text
 starting with `WHIZ133`. The default recovery policy holds it for review instead of retrying it: the same event on
