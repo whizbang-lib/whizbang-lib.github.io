@@ -285,7 +285,7 @@ Behavior guarantees (verified by the contract tests):
 - **`GetCausalChainAsync`** returns the message *plus all ancestors* (walked via causation id) *and all descendants* (children, multi-generation), ordered chronologically, and is **protected against circular references**. It returns an empty list when the message id is unknown.
 - **`GetByTimeRangeAsync`** filters and orders by the message's first `Current` hop timestamp.
 
-### Trace store registration
+### Trace store registration {#trace-store-registration}
 
 `AddWhizbang(...)` registers **no** `ITraceStore`. With no store, the dispatcher does no trace work at all: it builds no envelope just for tracing and calls no `StoreAsync`. A host that wants the query surface opts in explicitly:
 
