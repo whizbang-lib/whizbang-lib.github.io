@@ -376,7 +376,7 @@ builder.Services.AddAzureServiceBusTransport(serviceBusConnection);
 builder.Services.AddAzureServiceBusHealthChecks();
 
 // Observability + worker infrastructure
-builder.Services.AddSingleton<ITraceStore, InMemoryTraceStore>();
+builder.Services.AddWhizbangInMemoryTraceStore();
 builder.Services.AddSingleton<IServiceInstanceProvider, ServiceInstanceProvider>();
 builder.Services.AddSingleton<OrderedStreamProcessor>();
 
