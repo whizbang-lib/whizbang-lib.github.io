@@ -65,6 +65,7 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/ConsumedTypeRegistryTests.cs
   - tests/Whizbang.Transports.AzureServiceBus.Integration.Tests/ControlPlaneSessionIntegrationTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/AuditDigestLaneSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/DirectAppendStreamDigestTests.cs
 verifiedAgainstCommit: a64ba9a0
 verifiedDate: 2026-08-04
 ---
@@ -532,6 +533,14 @@ reset their seals instead of reporting drift.
 Audit records are a function of the origin's events and scope, and the origin does not store most of them, so folding them made the two sides disagree: a subscriber that stored fanned-out audit records counted them in the origin's lane, where the origin had nothing to match. Migration 216 removes the audit buckets and sealed epochs already stored, once.
 
 The continuity checkpoints apply the same exclusion. The origin's checkpoint window and a subscriber's count of what it received from that origin both leave the audit types out, so audit traffic never reads as a count the origin did not declare.
+
+### Direct appends are digested like emitted events {#direct-appends-digested}
+
+{verified: DirectAppendStreamDigestTests.MixedPathStream_TableDigestEqualsARecomputationOverAllItsEventsAsync, DirectAppendStreamDigestTests.DirectAppend_FoldsByTenantIntoTheLocalBucketAsync, DirectAppendStreamDigestTests.DirectAppend_OfADigestExemptType_IsNotFoldedAsync, DirectAppendStreamDigestTests.CloseStream_AfterDirectAppends_TableStillMatchesTheRecomputeAsync}
+
+An event stored with `IEventStore.AppendAsync` (either driver, through `wh_append_event`) is folded into `wh_stream_digests` in the same call and under the same per-stream lock as the store itself, with the emit chain's bucket and rules: the local origin, the scope's tenant, the stored event type, and the same two hash lanes. Ephemeral and at-most-once rows and the digest-exempt types are left out exactly as the chain leaves them out, so an audit record appended directly is never folded.
+
+The stream recompute the verification sweep trusts has always counted directly-appended events in the local lane. Before migration 225 the incremental table did not, so a stream written by both paths (the global `$wb-system` stream, or any stream an application appends to directly) had a table digest that missed some of its events, and closing such a stream subtracted events that had never been added. Rows appended before migration 225 are not refolded by the migration; the verification sweep heals any bucket that still differs from the recompute.
 
 ## Scheduling, startup, and the repair policy ladder
 
