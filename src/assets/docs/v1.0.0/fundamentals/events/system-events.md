@@ -16,6 +16,8 @@ codeReferences:
   - src/Whizbang.Core/SystemEvents/SystemEventEmitter.cs
   - src/Whizbang.Core/SystemEvents/ISystemEventEmitter.cs
   - src/Whizbang.Core/SystemEvents/NullSystemEventEmitter.cs
+  - src/Whizbang.Core/SystemEvents/DefaultSystemEventEmitter.cs
+  - src/Whizbang.Core/SystemEvents/SystemEventSinks.cs
   - src/Whizbang.Core/SystemEvents/SystemEventOptions.cs
   - src/Whizbang.Core/SystemEvents/SystemEventTransportFilter.cs
   - src/Whizbang.Core/SystemEvents/ITransportPublishFilter.cs
@@ -37,6 +39,7 @@ testReferences:
   - tests/Whizbang.Core.Tests/SystemEvents/AuditEventRegistryTests.cs
   - tests/Whizbang.Generators.Tests/AuditEventRegistryGeneratorTests.cs
   - tests/Whizbang.Core.Tests/SystemEvents/SystemEventEmitterTests.cs
+  - tests/Whizbang.Core.Tests/SystemEvents/SystemEventEmitterRegistrationTests.cs
   - tests/Whizbang.Core.Tests/SystemEvents/SystemEventStreamRoutingTests.cs
   - tests/Whizbang.Core.Component.Tests/SystemEvents/SystemEventFireAndForgetTests.cs
   - tests/Whizbang.Core.Component.Tests/Lenses/ScopedLensFactoryEmitFailureTests.cs
@@ -695,16 +698,59 @@ public interface ISystemEventEmitter {
 **Implementations**: `SystemEventEmitter` (real) and `NullSystemEventEmitter` (no-op)
 
 ```csharp{title="System Event Emitter - SystemEventEmitter" description="SystemEventEmitter implementation sketch" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Events", "System", "Event"] tests=["SystemEventEmitterTests.EmitAsync_WhenSystemEventTypeDisabled_DoesNotEmitAsync", "SystemEventEmitterTests.ShouldExcludeFromAudit_WithExcludedAttribute_ReturnsTrueAsync", "SystemEventEmitterTests.EmitEventAuditedAsync_SerializesPayloadToJsonElementAsync"]}
-public sealed class SystemEventEmitter(
-    IOptions<SystemEventOptions> options,
-    IEventStore systemEventStore) : ISystemEventEmitter {
+public sealed class SystemEventEmitter : ISystemEventEmitter {
+  public SystemEventEmitter(
+      IOptions<SystemEventOptions> options,
+      IEventStore systemEventStore,
+      IServiceInstanceProvider instanceProvider,
+      ILogger<SystemEventEmitter> logger,
+      IAuditDecisionHook? auditDecisionHook) { /* ... */ }
+
   // Emits system events only when enabled via options
   // Respects [AuditEvent(Exclude = true)] to prevent infinite loops
   // Serializes payloads in AOT-compatible way (JsonContextRegistry)
 }
 ```
 
-`AddWhizbang()` registers `NullSystemEventEmitter` as the default `ISystemEventEmitter` (every emit is a no-op) so injecting the emitter is always safe. Note that the built-in **event** audit path does not go through the emitter at all — it uses the [auditing decorator](#event-auditing) and the deferred outbox channel. The emitter is used by the command-audit pipeline behavior and for manual emission.
+<a id="emitter-registration"></a>
+### Registered by default
+
+{verified: SystemEventEmitterRegistrationTests.AddWhizbang_WithASingletonEventStore_StoresTheKindsTheOptionsEnableAsync, SystemEventEmitterRegistrationTests.AddWhizbang_WithNoEventStore_KeepsTheNullEmitterAsync}
+
+`AddWhizbang()` registers the real `SystemEventEmitter` as `ISystemEventEmitter` wherever an event store is registered, so a service stores system events without wiring anything: the [`SystemEventOptions`](#configuration) defaults decide what is stored. Out of the box that is denials and permission changes on `$wb-system` ([which security events are stored](#security-events)), and audit records once audit is enabled. `AddSystemEvents()` registers the same default, so calling both still leaves one emitter. Where no event store is registered there is nowhere to store a record, and the default stays the no-op `NullSystemEventEmitter`, so injecting the emitter is always safe.
+
+Whether a store exists is decided when the emitter is first resolved, after every registration has run, so it does not matter whether the driver registers its store before or after `AddWhizbang()`.
+
+The default emitter is a singleton that takes each record's event store and [audit decision hook](#audit-decisions) from a scope of its own, created for that record and disposed once it is appended or dropped. That makes it correct whatever their lifetimes:
+
+{verified: SystemEventEmitterRegistrationTests.AddWhizbang_WithAScopedEventStoreRegisteredAfterIt_NeverCapturesTheStoreAsync, SystemEventEmitterRegistrationTests.AddWhizbang_TheDefaultEmitter_OutlivesTheScopeItWasResolvedInAsync, SystemEventEmitterRegistrationTests.AddWhizbang_AScopedHostHook_IsHonoredWithoutBeingCapturedAsync, SystemEventEmitterRegistrationTests.AddWhizbang_AScopedHostHookThatNamesTheOccurrence_NamesTheStoredRecordAsync}
+
+- A **scoped** store (the EF Core driver's, which holds a `DbContext`) is never captured by the singleton, and a [fire-and-forget](#fire-and-forget-emits) record never shares the caller's `DbContext` or depends on the caller's scope still being open.
+- A **singleton** store works the same way.
+- A host's **scoped** audit decision hook is resolved per record and its decision honored, never captured.
+- A record commits on its own, not in the caller's unit of work: a denial is still recorded when the work that was denied rolls back.
+
+Storing a system event never raises another one. Every built-in system event is excluded from audit, and even when an [audit decision hook](#audit-decisions) chooses to audit one, the resulting `EventAudited` is never audited itself, so the chain stops at one record.
+
+{verified: SystemEventEmitterRegistrationTests.AddWhizbang_ARecordStoredThroughAnAuditedStore_IsNotItselfAuditedAsync, SystemEventEmitterRegistrationTests.AddWhizbang_AHookThatAuditsASystemEvent_RaisesOneAuditRecordAndNoMoreAsync}
+
+<a id="emitter-override"></a>
+### Replacing the default emitter
+
+The default is registered with `TryAdd`, so a host's own `ISystemEventEmitter` wins. Registered before `AddWhizbang()`, it is the only emitter registered; registered after, it is the one resolved.
+
+{verified: SystemEventEmitterRegistrationTests.AddWhizbang_AHostEmitterRegisteredBefore_WinsAndIsTheOnlyRegistrationAsync, SystemEventEmitterRegistrationTests.AddWhizbang_AHostEmitterRegisteredAfter_WinsAsync, SystemEventEmitterRegistrationTests.AddWhizbang_AHostThatRegistersSystemEventEmitterItself_GetsNoSecondEmitterAsync}
+
+```csharp{title="Replace the default system event emitter" description="A host registers its own ISystemEventEmitter before AddWhizbang; the framework's TryAdd default then adds nothing." framework="NET10" category="Architecture" difficulty="INTERMEDIATE" tags=["system-events", "dependency-injection", "emitter", "registration"] tests=["SystemEventEmitterRegistrationTests.AddWhizbang_AHostEmitterRegisteredBefore_WinsAndIsTheOnlyRegistrationAsync", "SystemEventEmitterRegistrationTests.AddWhizbang_AHostThatRegistersSystemEventEmitterItself_GetsNoSecondEmitterAsync"]}
+// Store no system events at all, even with an event store registered
+services.AddSingleton<ISystemEventEmitter, NullSystemEventEmitter>();
+
+services.AddWhizbang();
+```
+
+To keep the default emitter but store fewer kinds, turn the kinds off in [`SystemEventOptions`](#configuration) instead. A host that builds `SystemEventEmitter` itself hands it one `IEventStore`, which the emitter holds, so it registers the emitter with the store's lifetime or shorter (scoped for the EF Core store).
+
+Note that the built-in **event** audit path does not go through the emitter at all: it uses the [auditing decorator](#event-auditing) and the deferred outbox channel. The emitter is used by the command-audit pipeline behavior and for manual emission.
 
 **Manual emission** (advanced scenarios):
 
@@ -1140,8 +1186,7 @@ services.AddSystemEvents(options => {
 This registers:
 - `ITransportPublishFilter` (→ `SystemEventTransportFilter`) for transport filtering
 - The `AuditingEventStoreDecorator` around an already-registered `IEventStore`, when `EnableEventAudit()` is set
-
-(`ISystemEventEmitter` itself is registered by `AddWhizbang()`, defaulting to the no-op `NullSystemEventEmitter`.)
+- The default `ISystemEventEmitter` (the same one `AddWhizbang()` registers; see [Registered by default](#emitter-registration)), unless one is already registered
 
 ### Full Auditing Registration
 
