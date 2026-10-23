@@ -19,6 +19,7 @@ codeReferences:
 testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/VersionedApplyTargetTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/CrossPodStaleReadRegressionRaceTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/PerspectiveLateEventApplyTests.cs
 ---
 
 # Versioned Apply — Strict Cross-Pod Ordering
@@ -31,11 +32,11 @@ This race produced a real production per-item saga strand that survived even the
 
 The default storage contract is **deliberately permissive** for this case — see [`CrossPodStaleReadRegressionRaceTests`](https://github.com/whizbang-lib/whizbang/blob/develop/tests/Whizbang.Data.EFCore.Postgres.Tests/CrossPodStaleReadRegressionRaceTests.cs). Whizbang's chosen v0.740 solution was upstream: `PerspectiveWorker`'s `(streamId, perspectiveName)` affinity gate plus `wh_active_streams` cross-pod ownership. Together they pin a stream to one pod at a time. But the gate has narrow windows where the strand can still form (lease handoff during pod restarts, the gap between `wh_active_streams` row expiry and the next pod's claim, etc.).
 
-`IVersionedApplyTarget` is the **opt-in** marker that closes those windows for models that can't tolerate them. It adds a strict-greater UUIDv7 EventId check to the UPSERT `WHERE` clause: a stale write whose `metadata.EventId` is lexicographically older than what's already on the row is silently dropped.
+`IVersionedApplyTarget` is the **opt-in** marker that closes those windows for models that can't tolerate them. It adds a UUIDv7 EventId check to the UPSERT `WHERE` clause: a write whose `metadata.EventId` is lexicographically older than what's already on the row is dropped.
 
 ## How it works
 
-```csharp{title="Opt in" tests=["VersionedApplyTargetTests.StaleEventWrite_OnVersionedTarget_DoesNotRegressTerminalRowAsync", "VersionedApplyTargetTests.NewerEventWrite_OnVersionedTarget_AdvancesRowAsync", "VersionedApplyTargetTests.IdempotentReapply_OnVersionedTarget_DoesNotBumpVersionAsync"]}
+```csharp{title="Opt in" tests=["VersionedApplyTargetTests.StaleEventWrite_OnVersionedTarget_DoesNotRegressTerminalRowAsync", "VersionedApplyTargetTests.NewerEventWrite_OnVersionedTarget_AdvancesRowAsync", "VersionedApplyTargetTests.WriteAtTheStoredEventId_OnVersionedTarget_LandsAsync"]}
 using Whizbang.Core.Perspectives;
 
 public class SagaItemModel : ISagaItem, IVersionedApplyTarget {
@@ -47,7 +48,7 @@ The Postgres atomic UPSERT path detects the marker at compile-time-pinned runtim
 
 ```sql{
 title: "Default CommitSequence guard vs the IVersionedApplyTarget EventId WHERE clause"
-description: "Compares the permissive last-writer-wins CommitSequence UPSERT predicate against the opt-in strict-greater UUIDv7 EventId predicate that drops stale cross-pod writes and makes redelivered events idempotent."
+description: "Compares the permissive last-writer-wins CommitSequence UPSERT predicate against the opt-in UUIDv7 EventId predicate that drops writes older than the row's newest event."
 category: "Perspectives"
 difficulty: "ADVANCED"
 tags: ["versioned-apply", "cross-pod", "upsert", "uuidv7", "strand-prevention"]
@@ -60,10 +61,14 @@ WHERE wh_per_X.metadata->>'CommitSequence' IS NULL
 
 -- IVersionedApplyTarget opt-in
 WHERE wh_per_X.metadata->>'EventId' IS NULL
-   OR EXCLUDED.metadata->>'EventId' > wh_per_X.metadata->>'EventId'
+   OR EXCLUDED.metadata->>'EventId' >= wh_per_X.metadata->>'EventId'
 ```
 
-UUIDv7 from `TrackedGuid.New()` orders lexicographically by emission time. "Newer event wins" is the simple, total ordering rule. **Same EventId** (a transport redelivery, a consumer retry) is a strict-greater fail → the redundant UPDATE is skipped → `version` stays at the previous value → the Apply is idempotent.
+UUIDv7 from `TrackedGuid.New()` orders lexicographically by emission time, so "never go back to an older event" is a simple, total ordering rule.
+
+**A write at the stored EventId lands.** When a stream's later event reaches the row first, the runner folds the earlier event onto the row by rewinding the stream, and the corrected row records the stream's frontier, which is the EventId the row already holds. A strictly-greater check refused that correction, so the earlier event was reported applied and never reached the row ([#1608](https://github.com/whizbang-lib/whizbang/issues/1608)). Admitting the stored EventId lets the correction land. A live write the guard does refuse is re-folded from the batch's earliest event rather than reported applied.
+
+A redelivered event (a transport redelivery, a consumer retry) is still applied once: the runner's idempotency filter drops an event the row already carries before it reaches the store. A stale cross-pod read is still refused by the row-version check.
 
 ## Behavior summary
 
@@ -71,7 +76,8 @@ UUIDv7 from `TrackedGuid.New()` orders lexicographically by emission time. "Newe
 |---|---|---|
 | Newer event applied later | Wins | Wins |
 | Stale event applied later (older EventId) | **Wins (overwrites the row)** | **Skipped** |
-| Same EventId re-applied | Wins (bumps `version`) | Skipped (`version` unchanged) |
+| Write at the row's own EventId (a rewind's correction) | Wins | Wins |
+| Same event redelivered | Dropped by the runner's idempotency filter | Dropped by the runner's idempotency filter |
 | Null `metadata.CommitSequence` on both sides | Last-writer-wins (current contract) | Falls back to EventId comparison |
 | Null `metadata.EventId` on existing row | Initial write proceeds | Initial write proceeds |
 

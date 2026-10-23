@@ -2,7 +2,7 @@
 title: Migration Tracking
 pageType: concept
 verifiedAgainstCommit: e7ae79b00
-verifiedDate: 2026-10-22
+verifiedDate: 2026-10-23
 version: 1.0.0
 category: Infrastructure
 order: 5
@@ -28,6 +28,9 @@ codeReferences:
   - src/Whizbang.Data.Postgres/SchemaCommandBoundary.cs
   - src/Whizbang.Data.Postgres/Migrations/constants.txt
   - scripts/Lint-MigrationSql.ps1
+  - src/Whizbang.Data.Postgres/MigrationSqlNormalizer.cs
+  - src/Whizbang.Data.Postgres/MigrationHashUpgrade.cs
+  - src/Whizbang.Data.Postgres/SchemaBootstrapPhase.cs
   - src/Whizbang.Data.EFCore.Postgres/SchemaStepRunner.cs
   - src/Whizbang.Data.Postgres/SchemaPassLedger.cs
   - src/Whizbang.Data.EFCore.Postgres/SchemaInitializationLog.cs
@@ -86,7 +89,7 @@ On each application startup, Whizbang:
 
 1. **Creates tracking tables** (`wh_schema_versions`, `wh_schema_migrations`) if they don't exist
 2. **Records the library version** and application version in `wh_schema_versions`
-3. **Hash-checks each migration**: computes SHA-256, compares to stored hash
+3. **Hash-checks each migration**: computes SHA-256 of its normalized SQL and compares it to the stored hash ([what counts as a change](#what-counts-as-a-change))
 4. **Skips unchanged migrations** (status 3) or **re-executes changed ones** (status 2)
 5. **Tracks each perspective individually** with `perspective:<Name>` keys
 6. **Applies each step in a transaction of its own** on the EF Core driver, so a failure costs only that step and the retry resumes there ([one transaction per step](#one-transaction-per-step))
@@ -110,6 +113,40 @@ On the EF Core driver, the generator embeds the SQL of every migration into each
 This matters because a .NET assembly can hold at most about 16 MB of string literals in total; past that the build fails with `CS8103` ("Combined length of user strings used by the program exceeds allowed limit"). The migrations alone are several megabytes and grow with every release, so storing them as literals would eventually push a large application over that limit with no warning. As UTF-8 data they do not count toward it. Several DbContexts in one assembly share a single copy.
 
 The decoded text is exactly what earlier versions embedded, so every recorded content hash still matches and an upgrade re-applies nothing because of this change.
+
+### What counts as a change {#what-counts-as-a-change}
+
+A migration's hash covers what PostgreSQL executes, not how the file is laid out. Before hashing, both
+drivers and the bootstrap closure normalize the SQL:
+
+- Comments are removed: `--` to the end of the line, and `/* */` blocks, nested the way PostgreSQL
+  nests them. A block comment between two tokens reads as one space.
+- Whitespace at the start and end of each line, blank lines, and the line-ending convention (CRLF,
+  CR or LF) are removed or made uniform.
+- A run of spaces and tabs between tokens counts as one space.
+- String literals, `E'...'` strings, quoted identifiers and dollar-quoted bodies such as a function's
+  `$$ ... $$` are hashed exactly as written. A comment inside a function body is part of the function
+  PostgreSQL stores, so editing it is still a change.
+
+So a comment, a license header, or a whitespace edit to a shipped migration changes nothing: every
+database skips it, and the review checks do not flag it as an edited migration. An edit to any
+executable SQL still changes the hash, is applied again (status 2), and is flagged.
+{verified: MigrationSqlNormalizerTests.ContentHash_OfACommentOnlyEdit_IsUnchangedAsync, MigrationSqlNormalizerTests.ContentHash_OfAnExecutableEdit_ChangesAsync, MigrationSqlNormalizerTests.Literals_KeepCommentMarkersAndWhitespaceVerbatimAsync, NormalizedMigrationHashTests.Initialize_ACommentOnlyEditIsSkipped_AnExecutableEditIsAppliedAsync}
+
+#### Upgrading a database whose hashes predate normalization {#normalized-hash-upgrade}
+
+Earlier releases hashed the raw file text. The first start on this release rewrites those hashes
+before it decides what to run, under the same lock the migrations run under:
+
+- A row whose hash is the raw-text hash of its file as shipped is rewritten to the normalized hash,
+  so nothing is applied again.
+- A row that matches neither form belongs to a file that really changed, and it is applied as before.
+- The normalized bootstrap closure hash is recorded beside the old one, so an instance of the earlier
+  release still running alongside does not apply the bootstrap again.
+
+The rewrite is idempotent: later starts find nothing to rewrite, and two instances starting together
+rewrite each row once. No action is needed when upgrading.
+{verified: NormalizedMigrationHashTests.Upgrade_TheShippedMigrations_AppliesNothingAgainAsync, NormalizedMigrationHashTests.Upgrade_FromLegacyHashes_RewritesUnchangedFilesAndAppliesChangedOnesAsync, NormalizedMigrationHashUpgradeTests.Upgrade_FromLegacyHashes_RewritesThemAndAppliesNothingAsync, NormalizedMigrationHashUpgradeTests.Upgrade_TwoInstancesStartingTogether_RewriteOnceAsync, SchemaBootstrapPhaseTests.AClosureRecordedUnderItsLegacyHashIsCurrentAndRecordedAgainAsync}
 
 ## Migration Statuses
 
@@ -471,7 +508,7 @@ instances were writing, and deadlocked against the maintenance sweep and the wor
 sources within two seconds of starting.
 
 The closure is now recorded. When it applies, the transaction that applied it also writes a hash of
-the scripts it ran to `wh_bootstrap_closure`, a table the closure itself creates. An instance
+the [normalized](#what-counts-as-a-change) scripts it ran to `wh_bootstrap_closure`, a table the closure itself creates. An instance
 starting later hashes the closure it carries, finds the hash recorded, and applies nothing: no
 statement, no lock, no wait. A closure that changed (a new release with a different bootstrap
 region) has a different hash, so it runs in full once and records itself. The migration ledger is
