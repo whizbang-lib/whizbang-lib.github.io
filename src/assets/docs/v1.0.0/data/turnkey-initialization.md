@@ -1,8 +1,8 @@
 ---
 title: Turnkey Database Initialization
 pageType: guide
-verifiedAgainstCommit: 0bc6065b
-verifiedDate: 2026-08-05
+verifiedAgainstCommit: e7ae79b00
+verifiedDate: 2026-10-22
 version: 1.0.0
 category: Data Access
 order: 5
@@ -23,6 +23,7 @@ codeReferences:
   - src/Whizbang.Data.EFCore.Postgres/DbContextSchemaInitializationRunner.cs
   - src/Whizbang.Data.Dapper.Postgres/DapperSchemaInitializationRunner.cs
   - src/Whizbang.Data.EFCore.Postgres/SchemaInitializationLog.cs
+  - src/Whizbang.Data.EFCore.Postgres/SchemaStepRunner.cs
   - src/Whizbang.Data.EFCore.Postgres.Generators/Templates/DbContextSchemaExtensionTemplate.cs
 testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/DbContextInitializationRegistryTests.cs
@@ -31,6 +32,8 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StartupParity/StartupParityTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperSchemaStartupTests.cs
   - tests/Whizbang.Core.Component.Tests/Schema/SchemaInitializationRunnersTests.cs
+  - tests/Whizbang.Core.Tests/Schema/SchemaInitializationObserversTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/MigrationStepTransactionTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -157,8 +160,8 @@ When deploying multiple instances (pods) of the same service, Whizbang coordinat
 1. **Fast path (no lock)** — Each pod first compares stored schema hashes (in `wh_schema_migrations`) against the compile-time hashes. If nothing changed, initialization is skipped entirely — no lock is taken.
 2. **Advisory lock acquisition** — On hash mismatch (or first run), the pod attempts a non-blocking, transaction-level advisory lock (`pg_try_advisory_xact_lock`) derived from the schema name. Transaction-level locks are PgBouncer-safe: the backend connection stays pinned for the transaction, and the lock auto-releases on commit or rollback. Only one pod can hold the lock at a time.
 3. **Randomized exponential backoff** — If the lock is held by another pod, the waiting pod rolls back its transaction (freeing the pooled connection) and retries with exponential backoff (100ms → 200ms → 400ms → ... capped at 20 seconds) plus random jitter. This prevents a thundering herd when many pods start simultaneously.
-4. **Schema initialization** — The pod that holds the lock re-checks hashes inside the lock (another pod may have just finished), then runs only the changed phases: CoreInfrastructure, Migrations, PerspectiveTables, Constraints, Associations, Registry, MessageTypeRegistry.
-5. **Lock release** — The lock is transaction-scoped, so it is released automatically when the initialization transaction commits (or rolls back on failure), letting the next pod proceed.
+4. **Schema initialization**: the pod that holds the lock re-checks hashes inside the lock (another pod may have just finished), records what the pass owes, then runs only the owed steps: the core tables, each changed migration file, each changed perspective table, the constraints, the associations and the registries.
+5. **One transaction per step**: on the EF Core driver each step is a transaction of its own that takes the lock at its start, re-checks its own ledger row under it, and commits with that row, so a failure costs only that step and the retry resumes there. The lock is released by each step's commit or rollback; a pod waiting on it defers per step, and stops as soon as the schema is current. See [one transaction per step](../operations/infrastructure/migrations#one-transaction-per-step).
 6. **Retry indefinitely** — Pods retry forever until the lock is acquired. Only `CancellationToken` cancellation stops the retry loop.
 
 ### Idempotency Guarantees
@@ -191,7 +194,7 @@ call it. `SchemaInitializationOptions` (blocking or not, `MigrationTimeout`, `In
 | When | Hosted service at host start | Hosted service at host start |
 | Blocking | `NonBlockingSchemaInit`, background by default | The same option |
 | Wait for the database | The initializer's retry loop | `PostgresOptions` connection retry, then the initializer's retry loop |
-| Lock | `pg_try_advisory_xact_lock` on the schema key, around one DDL transaction | The same key, held transaction-scoped on a connection of its own while each migration file runs in its own transaction |
+| Lock | `pg_try_advisory_xact_lock` on the schema key, taken at the start of each step's own transaction | The same key, held transaction-scoped on a connection of its own while each migration file runs in its own transaction |
 | Register the instance | At start, before migrating | At start, before the lock is released |
 | Managed-object cleanup | This instance's id, `Whizbang:Schema:Reconcile`, the host's logger; never fatal | The same |
 | Schema-ready gate | Opened after the last runner | The same |
@@ -254,6 +257,34 @@ builder.Services.AddSingleton<ISchemaInitializationObserver, StartupWatcher>();
 
 The initializer awaits each call before it carries on, so an observer that blocks holds startup; return promptly.
 `OnAttemptFailedAsync` fires in the non-blocking mode, before the `InitRetryDelay` wait.
+
+### Each committed step {#step-committed}
+
+{verified: SchemaInitializationObserversTests.StepCommitted_TellsEveryRegisteredObserverWhichStepAsync, SchemaInitializationObserversTests.StepCommitted_IsANoOpForAnObserverThatDoesNotWatchItAsync, MigrationStepTransactionTests.ASecondInstance_FinishesAPassPartWayThrough_AndNothingIsAppliedTwiceAsync}
+
+The EF Core driver applies its schema pass [one step at a time](../operations/infrastructure/migrations#one-transaction-per-step),
+and `OnSchemaStepCommittedAsync` is called once for each step that committed: a migration file (by its file name), a
+perspective table (by its `perspective:<table>` ledger key), or one of the `core-infrastructure`, `constraints`,
+`associations` and `registries` steps. Like the other methods it defaults to doing nothing.
+
+```csharp{title="Counting committed schema steps" description="An observer that records each step of the schema pass as it commits, for a progress metric or a startup trace" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Startup", "Observability", "Migrations"] tests=["SchemaInitializationObserversTests.StepCommitted_TellsEveryRegisteredObserverWhichStepAsync"]}
+public sealed class StepProgress(ILogger<StepProgress> logger) : ISchemaInitializationObserver {
+  private int _committed;
+
+  public ValueTask OnSchemaStepCommittedAsync(string schema, string stepName, CancellationToken cancellationToken) {
+    var count = Interlocked.Increment(ref _committed);
+    logger.LogDebug("Schema {Schema}: step {Step} committed ({Count} so far)", schema, stepName, count);
+    return ValueTask.CompletedTask;
+  }
+}
+
+builder.Services.AddSingleton<ISchemaInitializationObserver, StepProgress>();
+```
+
+The call comes after the step's commit and before the next step takes the schema lock, so nothing is held while it
+runs. It fires for every step that took the lock and committed, including one whose ledger row turned out to be
+current already; it does not fire for a step the pass did not owe, or once another instance has finished the schema.
+The [step lines](../operations/infrastructure/migrations#step-log-lines) in the log say which steps actually applied.
 
 ## See Also
 

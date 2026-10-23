@@ -1,8 +1,8 @@
 ---
 title: Migration Tracking
 pageType: concept
-verifiedAgainstCommit: 0bc6065b
-verifiedDate: 2026-08-05
+verifiedAgainstCommit: e7ae79b00
+verifiedDate: 2026-10-22
 version: 1.0.0
 category: Infrastructure
 order: 5
@@ -28,6 +28,9 @@ codeReferences:
   - src/Whizbang.Data.Postgres/SchemaCommandBoundary.cs
   - src/Whizbang.Data.Postgres/Migrations/constants.txt
   - scripts/Lint-MigrationSql.ps1
+  - src/Whizbang.Data.EFCore.Postgres/SchemaStepRunner.cs
+  - src/Whizbang.Data.Postgres/SchemaPassLedger.cs
+  - src/Whizbang.Data.EFCore.Postgres/SchemaInitializationLog.cs
   - src/Whizbang.Data.Postgres/Migrations/153_PerspectiveForms.sql
   - src/Whizbang.Data.Postgres/Migrations/154_PerspectiveFailureElementNames.sql
   - src/Whizbang.Data.EFCore.Postgres/Perspectives/CanonicalTemporalRewrite.cs
@@ -40,6 +43,10 @@ codeReferences:
   - src/Whizbang.Data.EFCore.Postgres/Perspectives/MappedDocumentReadFailure.cs
   - src/Whizbang.Data.Postgres/Migrations/226_PartitionManager.sql
 testReferences:
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/MigrationStepTransactionTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/SchemaStepRunnerTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/SchemaPassLedgerTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/StartupParity/StartupMigrationStepsTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/MigrationConstantsTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/NormalizeClrTypeNamesMigrationTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/PostgresSchemaInitializerTests.cs
@@ -82,6 +89,7 @@ On each application startup, Whizbang:
 3. **Hash-checks each migration**: computes SHA-256, compares to stored hash
 4. **Skips unchanged migrations** (status 3) or **re-executes changed ones** (status 2)
 5. **Tracks each perspective individually** with `perspective:<Name>` keys
+6. **Applies each step in a transaction of its own** on the EF Core driver, so a failure costs only that step and the retry resumes there ([one transaction per step](#one-transaction-per-step))
 
 ```
 wh_schema_versions
@@ -111,7 +119,8 @@ The decoded text is exactly what earlier versions embedded, so every recorded co
 | 2 | Updated | Migration SQL changed, re-executed |
 | 3 | Skipped | Hash unchanged, execution skipped |
 | 4 | MigratingInBackground | Destructive change detected, background rebuild queued |
-| -1 | Failed | Migration threw an exception |
+| 0 | Pending | A [step row](#step-ledger-rows) the current pass still owes |
+| -1 | Failed | The step threw; it is still owed and runs again on the next attempt ([failure record](#failure-record)) |
 
 ## Per-Perspective Tracking
 
@@ -166,6 +175,183 @@ caller holds the initialization lock.
 
 Both halves are proven against a real database, including that removing the marker brings the failure
 back, so the boundary cannot quietly become a comment that means nothing.
+
+## One transaction per step {#one-transaction-per-step}
+{verified: MigrationStepTransactionTests.AFailureInOneFile_KeepsTheFilesBeforeIt_AndTheRetryAppliesOnlyFromItOnAsync, StartupMigrationStepsTests.AFailedStep_KeepsWhatCommitted_RecordsItsError_AndTheRetryResumesThereAsync}
+
+The EF Core driver applies its schema pass as a sequence of **steps**, and each step is a transaction of its own
+that commits together with its ledger row:
+
+- the core tables (`core-infrastructure`);
+- each migration file, with that file's `wh_schema_migrations` row;
+- each perspective table, with its `perspective:<table>` row;
+- the constraints, the associations, and the registries (the perspective registry and the message type registry).
+
+A failure costs only the step that failed. Every step before it stays committed, the failed step's transaction rolls
+back on its own, and the next attempt (a retry by the same instance or a start of another one) resumes at that step
+instead of starting from the beginning. A deadlock (`40P01`) in one file on a fresh database no longer throws away the
+files that applied before it, and a retry no longer takes every lock again and holds them all until a final commit.
+
+Earlier versions ran the whole pass in one transaction, so a failure anywhere rolled back everything, ledger rows
+included, and every retry logged `re-running because the database's definition of ... (missing)` for files that had
+in fact already run once. The Dapper driver has always run each migration file in a transaction of its own.
+
+### How the steps stay serialized {#step-serialization}
+{verified: SchemaStepRunnerTests.TheLockIsHeldWhileTheStepRuns_AndReleasedWhenItCommitsAsync, SchemaStepRunnerTests.AStepThatIsCurrentUnderTheLock_RunsNothingAsync, SchemaStepRunnerTests.WhenAnotherInstanceFinishesTheSchema_ThePassStopsAsync, SchemaStepRunnerTests.WhenTheHolderLetsGoWithWorkOutstanding_TheStepIsTakenAsync, MigrationStepTransactionTests.ASecondInstance_FinishesAPassPartWayThrough_AndNothingIsAppliedTwiceAsync, MigrationStepTransactionTests.TwoInstancesOnAnEmptyDatabase_ConvergeAsync}
+
+Instances still apply DDL one at a time, without any lock that outlives a transaction:
+
+1. **Each step takes the schema lock at its start.** The lock is the same transaction-scoped advisory lock as before
+   (`pg_try_advisory_xact_lock` on the schema key), taken as the first statement of the step's transaction and
+   released by its commit or rollback. Nothing is held between steps and nothing session-scoped exists, so nothing can
+   leak through a transaction-pooling front end.
+2. **Each step re-checks its own ledger row under the lock** and does nothing when the row says it is already current.
+   That is what makes it safe for two instances to take turns through one pass: whatever the other instance committed
+   is seen and skipped.
+3. **The plan is written down before any step runs.** A first step re-checks the hashes under the lock, exactly as
+   the single transaction did, and when anything is owed it records what the pass owes (see the next section). An
+   instance that took over part way through reads that record rather than a plan of its own made before it held the
+   lock.
+4. **An instance that loses a step's lock waits per step**, the same way an instance that lost the old single lock
+   did. It rolls back (giving its pooled connection up), tells the
+   [observers](../../data/turnkey-initialization#watching-initialization) the lock is contended, and watches:
+   - the schema becomes current: the other instance finished the whole pass, so this one stops and applies nothing;
+   - the lock is free while work is still owed: the holder failed, died, or is simply between two of its steps, so
+     this one backs off (100 ms doubling to a 20 second cap, with jitter) and contends for the step again.
+
+Each step is applied once, whichever instance applies it.
+
+### What the ledger records for a pass {#step-ledger-rows}
+{verified: SchemaPassLedgerTests.AFreshLedger_MarksAndRunsWhatThePassNeedsAsync, SchemaPassLedgerTests.APassOfThisBuildPartWayThrough_IsContinued_AndNothingIsMarkedAgainAsync, SchemaPassLedgerTests.AnotherBuildsUnfinishedPass_StartsAfresh_AndKeepsWhatItOwedAsync, SchemaPassLedgerTests.ThePendingHashIsNoFilesHashAsync}
+
+A migration file and a perspective table have always had a ledger row whose hash says whether they are current. The
+other steps now get one too, so a retry can tell what already committed:
+
+```text{title="Step rows in wh_schema_migrations" description="One row per step with no row of its own, keyed by the DbContext and the step, owned by 'step', carrying the build's fingerprint as its hash." tests=["SchemaPassLedgerTests.AStepKeyNamesTheContextAndTheStepAsync", "SchemaPassLedgerTests.PendingAndFailedAreOutstanding_AppliedIsNotAsync"]}
+file_name                                    | owner | content_hash     | status | status_description
+step:OrderDbContext:core-infrastructure      | step  | 3f9a1c...        | 1      | Applied
+step:OrderDbContext:constraints              | step  | 3f9a1c...        | 1      | Applied
+step:OrderDbContext:associations             | step  | 3f9a1c...        | 0      | Pending
+step:OrderDbContext:registries               | step  | 3f9a1c...        | 0      | Pending
+```
+
+- **Key**: `step:<context>:<step>`, where `<context>` is the DbContext and `<step>` is `core-infrastructure`,
+  `constraints`, `associations` or `registries` (or `perspective-tables` for a context with no perspectives).
+  The owner is `step`.
+- **Status**: `0` while the step is owed, `1` once it committed (written in the step's own transaction), `-1` after it
+  failed (still owed).
+- **Hash**: the build's fingerprint, a hash over everything the build applies. While any step row carrying this
+  build's fingerprint is outstanding, a pass of this build is part way through, and the next instance to take the lock
+  continues it from its rows instead of marking them again. A pass another build left unfinished starts afresh and
+  keeps every step that pass still owed.
+
+**Files that must run again with an unchanged hash.** The [redefinition closure](#how-it-works) and the two sweeps
+([duplicate overloads](#stale-duplicate-overloads-are-swept-automatically) and
+[stale function definitions](#stale-function-definitions-are-re-applied-automatically)) re-run files whose own hash
+is current. When the pass begins, each such file's `content_hash` is set to `pending-rerun`, a value that is never a
+real SHA-256, so the file reads as changed until it has run. Without that, a failure after an earlier definition had
+committed would leave the later one with a current hash, and nothing would ever re-run it. When the file applies, its
+description reads `Re-applied (<reason>)` and its real hash is restored.
+
+### The failure record {#failure-record}
+{verified: SchemaStepRunnerTests.AFailedStep_RollsBack_AndItsFailureRecordSurvivesAsync, SchemaStepRunnerTests.ARecordThatCannotBeWritten_IsLogged_AndTheStepsOwnFailurePropagatesAsync, SchemaStepRunnerTests.ACanceledStep_RecordsNoFailureAsync, PostgresSchemaInitializerBranchTests.InitializeSchemaAsync_AMigrationThatFailed_RunsAgainOnTheNextStartAsync}
+
+A failed step's row is written **after** its transaction rolls back, on the same connection with no transaction
+open, so the record is not lost with the work:
+
+| Column | Value |
+|---|---|
+| `status` | `-1` |
+| `status_description` | `Failed: <SQLSTATE> <message>`, for example `Failed: 40P01 deadlock detected` (a failure that is not the server's is named by its exception type) |
+| `content_hash` | **never** the file's real hash: a row inserted for a file that never applied gets `pending-rerun`, and an existing row keeps the hash it had |
+
+Keeping the real hash out is what guarantees a failure cannot make a step look current: the next start compares
+hashes, finds the file changed, and runs it. A canceled start is not a failed step and records nothing. If the record
+itself cannot be written (the connection is gone, say), that is logged as a warning and the step's own error is the
+one raised.
+
+**Fixed in the Dapper driver alongside this change.** The Dapper `PostgresSchemaInitializer` wrote the file's own hash
+into its `-1` record, so a file that failed for a reason outside its text (a deadlock, a lock timeout, a dropped
+connection) read as current and was **skipped on every later start**. It now follows the same rule and the failed file
+runs again on the next start. Its description stays `Failed: <message>`.
+
+### Statements that handle their own errors run under a savepoint {#step-savepoints}
+{verified: MigrationStepTransactionTests.AFailureInOneFile_KeepsTheFilesBeforeIt_AndTheRetryAppliesOnlyFromItOnAsync}
+
+Some statements in the pass are expected to fail now and then and are handled rather than raised: the compatibility
+renames, the constraints, the two registry reconciles, a perspective table or function that already exists (`42P07`,
+`42723`), and creating the tracking table. In PostgreSQL any failed statement aborts the transaction it runs in, so a
+handled failure would leave the step's transaction aborted and its commit would silently roll the whole step back.
+Each of these now runs under a savepoint, so a handled failure is undone on its own and the step commits as intended.
+
+### Reading the step lines {#step-log-lines}
+{verified: StartupMigrationStepsTests.AFreshDatabase_LogsEveryStepStartedAndSucceeded_ThenTheSummaryAsync, StartupMigrationStepsTests.ARestartOnACurrentDatabase_RunsNoStep_AndNoDdlAsync, SchemaStepRunnerTests.APass_LogsEveryStepAgainstItsTotal_AndOneSummaryAsync, SchemaStepRunnerTests.AFailureAtStepN_IsLoggedWithItsSqlState_AndThePassStopsThereAsync, SchemaStepRunnerTests.ARetryableFailure_SaysItWillRetry_AndWhenAsync}
+
+Every step of a pass logs one fixed form, counted against the whole pass:
+
+| Line | Level | Meaning |
+|---|---|---|
+| `Migration X of Y - Started : <name>` | Information | The step holds the lock and is running |
+| `Migration X of Y - Succeeded : <name> (<duration>)` | Information | It applied and committed; the duration is seconds to the millisecond, as in `1.234s` |
+| `Migration X of Y - Skipped : <name> (already current)` | Information | Nothing to do: either the plan did not owe it (no `Started` line before it) or its row read current under the lock (after a `Started` line) |
+| `Migration X of Y - Failed : <name> : <SQLSTATE> <error>` | Error | It failed and rolled back; when the initializer will retry, the line ends `; retrying in <delay> at <time>` |
+| `Migration complete: Y of Y succeeded (N applied, M skipped) in <duration>` | Information | The pass finished |
+| `Migration stopped at X of Y: <name> : <error>` | Error | The pass stopped at that step; nothing after it ran in this attempt |
+
+**What Y counts.** Y is every step of the pass, including the ones it skips: each migration file the build carries,
+each perspective table (or one `perspective-tables` step for a context with none), plus four for the core tables, the
+constraints, the associations and the registries. A context with 218 migration files and 3 perspectives counts
+`Y = 218 + 3 + 4 = 225`. The first step, which re-checks the hashes and records the plan, is not counted and logs no
+line. The order is the core tables, the migration files in order, the perspective tables, then the constraints, the
+associations and the registries.
+
+A restart against a database that is already current takes the fast path: it runs no step, logs no step line, and
+issues no DDL at all.
+
+Here is a pass that failed at a migration file and the retry that finished it:
+
+```text{title="A failed step and the retry that resumes at it" description="The first attempt stops at step 110 with a deadlock; every step before it stays committed. The retry skips them and starts again at step 110." tests=["StartupMigrationStepsTests.AFailedStep_KeepsWhatCommitted_RecordsItsError_AndTheRetryResumesThereAsync"]}
+info:  Migration 1 of 225 - Started : core-infrastructure
+info:  Migration 1 of 225 - Succeeded : core-infrastructure (0.412s)
+info:  Migration 2 of 225 - Started : 000_MigrationTracking.sql
+info:  Migration 2 of 225 - Succeeded : 000_MigrationTracking.sql (0.031s)
+...
+info:  Migration 110 of 225 - Started : 110_StandbyHandshake.sql
+fail:  Migration 110 of 225 - Failed : 110_StandbyHandshake.sql : 40P01 deadlock detected; retrying in 4.000s at 2026-10-22T14:03:07.5120000+00:00
+fail:  Migration stopped at 110 of 225: 110_StandbyHandshake.sql : 40P01 deadlock detected
+
+info:  Migration 1 of 225 - Skipped : core-infrastructure (already current)
+info:  Migration 2 of 225 - Skipped : 000_MigrationTracking.sql (already current)
+...
+info:  Migration 110 of 225 - Started : 110_StandbyHandshake.sql
+info:  Migration 110 of 225 - Succeeded : 110_StandbyHandshake.sql (0.087s)
+...
+info:  Migration 225 of 225 - Started : registries
+info:  Migration 225 of 225 - Succeeded : registries (0.054s)
+info:  Migration complete: 225 of 225 succeeded (116 applied, 109 skipped) in 9.871s
+```
+
+How to read it:
+
+- **Where did it stop, and why?** The `Failed` line and the `Migration stopped at` line name the step, its position,
+  the SQLSTATE and the server's message. `wh_schema_migrations` carries the same text on that row
+  (`status = -1`, `Failed: 40P01 deadlock detected`).
+- **What survived?** Every step before X committed. The retry skips them (`Skipped ... (already current)` with no
+  `Started` line) and its first `Started` line is the step that failed.
+- **Is it retrying?** A failed line ending `retrying in ... at ...` says when the initializer's next attempt begins.
+  A failure without that suffix is not one the initializer treats as transient, so it ends the attempt; in the
+  default background mode the next attempt starts after `InitRetryDelay`.
+- **Is anything stuck?** A pass that logs the same `Failed` step on every retry is failing on that file itself, not on
+  anything before it; the error text says what to fix.
+
+### What is not covered yet {#step-transactions-not-covered}
+
+- **A single file can still deadlock on its own.** Per-step commits stop a deadlock from discarding the steps before
+  it, and the retry resumes at the file; they do not change the order in which that file takes its locks relative to
+  the rest of a starting instance. A file that alters a table other sessions are using at startup can still meet a
+  `40P01` and need a retry.
+- **Startup stage ordering is tracked separately.** Ordering the startup stages so the schema pass does not contend
+  with the instance's own startup work, together with a numbered line per startup stage, is planned as its own change.
 
 ## Strategy Detection
 
