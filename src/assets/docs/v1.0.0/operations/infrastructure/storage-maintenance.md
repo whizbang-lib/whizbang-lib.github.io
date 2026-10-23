@@ -13,9 +13,13 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/088_ChurnTableAutovacuum.sql
   - src/Whizbang.Data.Postgres/Migrations/222_FrameworkTableAutovacuum.sql
   - src/Whizbang.Data.Postgres/Migrations/223_PerspectiveCursorFillFactor.sql
+  - src/Whizbang.Data.Postgres/Migrations/232_PerspectiveAppliedAutovacuum.sql
+  - src/Whizbang.Data.Postgres/Migrations/233_RetireTableRewritePolicySetting.sql
 testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/FrameworkTableAutovacuumTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/PerspectiveCursorFillFactorTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/PerspectiveAppliedAutovacuumTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/TableRewritePolicyRetiredTests.cs
 ---
 
 # Storage Maintenance
@@ -26,7 +30,7 @@ size or grow to cover every burst.
 
 ## Autovacuum on the framework tables {#autovacuum}
 
-{verified: FrameworkTableAutovacuumTests.UpdateAndDeleteTables_VacuumAfterAFixedCountAsync, FrameworkTableAutovacuumTests.TheEventStore_VacuumsAfterAFixedNumberOfInsertsAsync, FrameworkTableAutovacuumTests.TheEventBodyToastTable_VacuumsAfterAFixedCountAsync}
+{verified: FrameworkTableAutovacuumTests.UpdateAndDeleteTables_VacuumAfterAFixedCountAsync, FrameworkTableAutovacuumTests.TheEventStore_VacuumsAfterAFixedNumberOfInsertsAsync, FrameworkTableAutovacuumTests.TheEventBodyToastTable_VacuumsAfterAFixedCountAsync, PerspectiveAppliedAutovacuumTests.TheLedger_VacuumsAfterAFixedNumberOfDeadRowsAsync, PerspectiveAppliedAutovacuumTests.TheLedger_VacuumsAfterAFixedNumberOfInsertsAsync}
 
 By default PostgreSQL vacuums a table once a fraction of it is dead: 20% (5% on some managed servers). That fraction
 grows with the table, so a table of ten million rows waits for hundreds of thousands of dead ones. Whizbang's
@@ -38,6 +42,7 @@ migrations set per-table storage parameters instead, so the server settings need
 | `wh_perspective_cursors`, `wh_lifecycle_completions`, `wh_stream_digests`, `wh_message_deduplication` | vacuum after 10,000 dead rows, whatever the size (migration 222) | updated or deleted continuously, and they grow with the data |
 | `wh_event_store` | vacuum after 10,000 inserts (migration 222) | append-heavy: vacuum keeps its visibility map current, so index-only scans do not fall back to the table |
 | `wh_event_body`'s TOAST table | vacuum after 10,000 dead chunks (migration 222) | large bodies live in TOAST, and the ephemeral reaper leaves their dead chunks there |
+| `wh_perspective_applied` | vacuum after 10,000 dead rows and after 10,000 inserts (migration 232) | the [applied-event ledger](../../fundamentals/perspectives/perspective-sync#applied-ledger) is a sliding window: every completed apply inserts a row and the rows an hour old are pruned, so it inserts and deletes at the same rate |
 
 The settings are applied by migration on every database, with either driver, and re-applying them changes nothing.
 To see them on a table:
@@ -45,7 +50,7 @@ To see them on a table:
 ```sql{title="Read a table's autovacuum settings" category="Operations" difficulty="BEGINNER"}
 SELECT c.relname, c.reloptions, t.reloptions AS toast_reloptions
 FROM pg_class c LEFT JOIN pg_class t ON t.oid = c.reltoastrelid
-WHERE c.relname IN ('wh_event_store', 'wh_event_body', 'wh_perspective_cursors');
+WHERE c.relname IN ('wh_event_store', 'wh_event_body', 'wh_perspective_cursors', 'wh_perspective_applied');
 ```
 
 ## Free space for updates {#fillfactor}
@@ -60,7 +65,8 @@ free for those updates.
 
 A new fillfactor applies only to pages written from then on. When the migration changes it on a table that already
 holds rows, it also queues the table in the `pending_table_rewrites` setting (through `wh_request_table_rewrite`), and
-the maintenance worker rewrites it under the operator's rewrite policy. A perspective table that declares
+the table is rewritten after startup when `AllowTableRewrite` is on (see
+[Table rewrites run post-ready](./migrations#table-rewrites-run-post-ready-under-the-maintainer-duty)). A perspective table that declares
 `[PerspectiveTableStorage(FillFactor = …)]` is queued the same way when its schema pass changes the value (see
 [Physical Fields: free space for updates](../../fundamentals/perspectives/physical-fields#perspective-fillfactor)).
 The worker re-measures every queued table and rewrites only one whose size has crossed the bloat threshold, so a

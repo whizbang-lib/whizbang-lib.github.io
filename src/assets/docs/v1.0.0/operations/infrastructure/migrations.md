@@ -23,6 +23,7 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/213_FunctionsNameTheirOwnSchema.sql
   - src/Whizbang.Data.Postgres/Migrations/063_NormalizeClrTypeNamesV2.sql
   - src/Whizbang.Data.Postgres/Migrations/032_PerformMaintenance.sql
+  - src/Whizbang.Data.Postgres/Migrations/233_RetireTableRewritePolicySetting.sql
   - src/Whizbang.Data.Postgres/MigrationFunctionBodies.cs
   - src/Whizbang.Data.Postgres/MigrationConstants.cs
   - src/Whizbang.Data.Postgres/SchemaCommandBoundary.cs
@@ -47,6 +48,7 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/226_PartitionManager.sql
 testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/MigrationStepTransactionTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/TableRewritePolicyRetiredTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/SchemaStepRunnerTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/SchemaPassLedgerTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StartupParity/StartupMigrationStepsTests.cs
@@ -572,6 +574,14 @@ A migration cannot `VACUUM FULL` (both are forbidden inside its transaction), so
 The recorded rewrites are performed by the startup pipeline's **`Rewrite` step**: post-ready (`Blocking = false` — deliberately unbounded work never gates readiness), fleet-exclusive under the `maintainer` duty (one instance rewrites; non-holders skip, because nobody blocks on a `VACUUM FULL`). Execution stays behind `MaintenanceWorkerOptions.AllowTableRewrite` — the framework cannot know how large a consumer's table is, and taking an ACCESS EXCLUSIVE lock unattended must be opted into. A request is cleared only after the bloat ratio is confirmed to have dropped; an ineffective rewrite stays queued for the next boot.
 
 The runtime maintenance cycle **no longer executes rewrites** — an ACCESS EXCLUSIVE lock mid-traffic was always the wrong window. It detects, reports the bloat gauge, and records.
+
+{verified: TableRewritePolicyRetiredTests.TheUnreadPolicyKey_IsGoneAfterMigrationAsync, TableRewritePolicyRetiredTests.TheSettingsTheDetectorReads_StayAsync}
+
+`AllowTableRewrite` is the only switch. Migration 089 also seeded a `table_rewrite_policy` row in `wh_settings`
+(`off` or `immediate`) that nothing ever read, so changing it did nothing. Migration 233 deletes the row; behavior is
+the same whatever it held. The detector's own settings stay: `table_rewrite_bloat_threshold` (the ratio above which a
+table is offered), `table_rewrite_min_rows` (tables smaller than this are ignored) and `pending_table_rewrites` (the
+queued requests).
 
 ## The stored-form rewrite
 
