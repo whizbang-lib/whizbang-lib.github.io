@@ -21,6 +21,10 @@ codeReferences:
   - src/Whizbang.Hosting.AspNet/WhizbangManagedHealthCheckExtensions.cs
   - src/Whizbang.Core/Transports/ITransport.cs
   - src/Whizbang.Core/Offloads/IMessageBodyStore.cs
+  - src/Whizbang.Core/Observability/BacklogAgeWorker.cs
+  - src/Whizbang.Core/Health/BacklogAgeHealthSource.cs
+  - src/Whizbang.Core/Transports/IBacklogPeek.cs
+  - src/Whizbang.Transports.AzureServiceBus/AzureServiceBusTransport.cs
 testReferences:
   - tests/Whizbang.Core.Tests/Health/WhizbangHealthAggregatorTests.cs
   - tests/Whizbang.Core.Tests/Health/SchemaHealthSourceTests.cs
@@ -133,6 +137,23 @@ deployments back regardless of policy.
 Liveness never fails for an intentional state under any policy — an intentional or dependency-fault
 state must never restart the pod. A genuine `Faulted` (transport dropped while `Ready`, offload
 unreachable) still fails readiness — the policy never masks a real fault.
+
+## Backlog age {#backlog-age}
+
+The `backlog` component comes from the backlog-age duty (`BacklogAgeWorker`), which peeks each broker entity
+this instance consumes from for its depth and the age of its oldest waiting message. It reports `Degraded`, never
+`Faulted`, while any entity's oldest message is older than `BacklogAgeOptions.AgeThreshold` (15 minutes by
+default), with the entity named in the detail: a backlog that old is a consumer that is not draining, which depth
+alone cannot tell apart from a burst. An entity whose age cannot be read reports its depth with no age and does
+not degrade health. See [`BacklogAgeOptions`](../operations/configuration/configuration-reference#backlogageoptions)
+for the settings.
+{verified: BacklogAgeDutyTests.PeekOnce_AgedBacklog_DegradesHealthNamingTheEntityAsync, BacklogAgeDutyTests.PeekOnce_FreshBacklog_StaysOperationalAsync, BacklogAgeDutyTests.PeekOnce_UnknownAge_DoesNotDegradeButIsReportedAsCapabilityGapAsync}
+
+On Azure Service Bus the age comes from a peek at each subscription's oldest message. When that peek fails (a
+missing permission, a deleted entity, a broker error), the failure is logged at Warning with the entity, the
+exception type and its message, at most once every five minutes per entity, and the entity's depth is still
+reported. Before, a failed peek looked the same as an empty entity.
+{verified: AsbBacklogPeekFailureLoggingTests.PeekBacklogsAsync_HeadPeekThrows_LogsWarningWithEntityAndExceptionAsync, AsbBacklogPeekFailureLoggingTests.PeekBacklogsAsync_RepeatedFailures_LogOncePerIntervalAsync, AsbBacklogPeekFailureLoggingTests.PeekBacklogsAsync_FailuresOnTwoEntities_EachEntityLogsAsync, AsbBacklogPeekFailureLoggingTests.PeekBacklogsAsync_EmptyEntityHead_LogsNoWarningAsync}
 
 ## Configuring / overriding
 

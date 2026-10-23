@@ -14,6 +14,8 @@ codeReferences:
   - src/Whizbang.Core/Messaging/CollectiveScope.cs
   - src/Whizbang.Core/Messaging/TenantCollectiveScope.cs
   - src/Whizbang.Core/Messaging/EventFlags.cs
+  - src/Whizbang.Core/Messaging/EventFlagsNumberJsonConverter.cs
+  - src/Whizbang.Data.Postgres/Migrations/232_EventFlagsNamesKeepEveryBit.sql
   - src/Whizbang.Core/Perspectives/ICollectiveApplyFor.cs
   - src/Whizbang.Core/Perspectives/ICollectiveSpec.cs
   - src/Whizbang.Core/Perspectives/PerspectiveMemberDefaultRegistry.cs
@@ -49,6 +51,8 @@ codeReferences:
   - src/Whizbang.Generators/Analyzers/CollectivePredicateIndexAnalyzer.cs
 testReferences:
   - tests/Whizbang.Core.Tests/Messaging/CollectiveEventContractTests.cs
+  - tests/Whizbang.Core.Tests/Messaging/EventFlagsWireFormTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/StringEventFlagsStoreTests.cs
   - tests/Whizbang.Core.Tests/Perspectives/CollectiveWhereComposerTests.cs
   - tests/Whizbang.Core.Tests/Perspectives/CollectiveSpecContractTests.cs
   - tests/Whizbang.Core.Tests/Perspectives/TenantCollectiveScopeResolverTests.cs
@@ -927,6 +931,25 @@ The producer stamps `EventFlags.Collective` (`flags & 1`) on the
 outbox/inbox row; the pipeline branches on it to route to the collective
 apply path. New event categories ship by adding a flag value — no
 boolean column per category, no migration tax.
+
+### Flags on the wire {#event-flags-wire-form}
+
+`OutboxMessage.Flags` and `InboxMessage.Flags` carry `EventFlagsNumberJsonConverter`, a
+property-level converter that outranks the serializer options, so the flags always travel as the
+number. A host whose JSON options carry `JsonStringEnumConverter` (added to its own options or
+registered with `JsonContextRegistry`) still hands the store every bit; before this, such a host had
+every bit except `Collective` dropped when the event was stored, so an ephemeral event was stored
+as Sourced. The converter also reads the comma-separated name list that `JsonStringEnumConverter`
+writes, so a message written in that form still reads.
+{verified: EventFlagsWireFormTests.OutboxMessage_OptionsWithAStringEnumConverter_WritesFlagsAsTheNumberAsync, EventFlagsWireFormTests.InboxMessage_OptionsWithAStringEnumConverter_WritesFlagsAsTheNumberAsync, EventFlagsWireFormTests.Converter_ReadsANameListAsync}
+
+The outbox and inbox store functions (migration 232) read a name list too, for any writer that
+still sends one: each `EventFlags` name sets its bit, matched without regard to case, spaces,
+underscores or hyphens (so every `JsonNamingPolicy` reads the same), and a number among the names is
+read as its bits. A name `EventFlags` does not define is refused with SQLSTATE `22P02` naming the
+token, and nothing is stored, rather than storing an event whose kind cannot be read. Events stored
+with lost bits before this change are not repaired.
+{verified: StringEventFlagsStoreTests.StoreOutbox_FlagsWrittenAsNames_KeepsEveryBitAsync, StringEventFlagsStoreTests.StoreOutbox_FlagsNamedUnderANamingPolicy_KeepsEveryBitAsync, StringEventFlagsStoreTests.StoreOutbox_FlagsWrittenAsNamesAndANumber_KeepsEveryBitAsync, StringEventFlagsStoreTests.StoreOutbox_FlagsNameNoEventFlagsValueHas_RaisesAndStoresNothingAsync}
 
 ### Schema additions
 
