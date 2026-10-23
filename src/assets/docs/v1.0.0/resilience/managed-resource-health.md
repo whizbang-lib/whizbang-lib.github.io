@@ -25,6 +25,7 @@ codeReferences:
   - src/Whizbang.Core/Health/BacklogAgeHealthSource.cs
   - src/Whizbang.Core/Transports/IBacklogPeek.cs
   - src/Whizbang.Transports.AzureServiceBus/AzureServiceBusTransport.cs
+  - src/Whizbang.Core/Health/StartupPipelineHealthSource.cs
 testReferences:
   - tests/Whizbang.Core.Tests/Health/WhizbangHealthAggregatorTests.cs
   - tests/Whizbang.Core.Tests/Health/SchemaHealthSourceTests.cs
@@ -154,6 +155,33 @@ missing permission, a deleted entity, a broker error), the failure is logged at 
 exception type and its message, at most once every five minutes per entity, and the entity's depth is still
 reported. Before, a failed peek looked the same as an empty entity.
 {verified: AsbBacklogPeekFailureLoggingTests.PeekBacklogsAsync_HeadPeekThrows_LogsWarningWithEntityAndExceptionAsync, AsbBacklogPeekFailureLoggingTests.PeekBacklogsAsync_RepeatedFailures_LogOncePerIntervalAsync, AsbBacklogPeekFailureLoggingTests.PeekBacklogsAsync_FailuresOnTwoEntities_EachEntityLogsAsync, AsbBacklogPeekFailureLoggingTests.PeekBacklogsAsync_EmptyEntityHead_LogsNoWarningAsync}
+
+## Startup stage {#startup-stage}
+
+Once the instance has entered a [startup stage](../operations/startup/startup-status#startup-stages), the `startup`
+component's detail leads with the stage's line, the same text the instance logs, followed by the startup
+pipeline's own detail:
+
+```text{title="The startup component's detail" description="The startup health component leads with the current startup stage line" category="Operations" difficulty="BEGINNER" tags=["Resilience","Health","Startup"] tests=["StartupPipelineHealthSourceTests.WithAStageEntered_TheDetailLeadsWithTheStagesLineAsync","StartupStageHostTests.AFreshDatabase_EntersEveryStageInOrder_LogsEach_AndRecordsEachTheRowCanHoldAsync"]}
+Stage 7 of 7: Running - reads and writes are served; <pipeline detail>
+```
+
+The component's state is the pipeline's, unchanged; the stage only adds the line. Before any stage is entered, the
+detail is the pipeline's alone.
+{verified: StartupPipelineHealthSourceTests.WithAStageEntered_BeforeThePipelineStarts_TheDetailStillLeadsWithItAsync, StartupPipelineHealthSourceTests.WithAReporterButNoStageYet_TheDetailIsThePipelinesAloneAsync}
+
+Every evaluation also carries the stage on `AggregatedHealth.Stage` (a `StartupStageSnapshot` with the stage, its
+name, message, whether it was skipped and when it was entered), or `null` when no stage reporter is registered or no
+stage has been entered yet. The ASP.NET liveness and readiness checks add it to their result's data:
+
+| Data key | Value |
+|---|---|
+| `startup_stage` | The stage number, for example `70` |
+| `startup_stage_name` | The stage name, for example `Running` |
+| `startup_stage_message` | What the stage is doing, for example `reads and writes are served` |
+
+The keys are absent while there is no stage.
+{verified: WhizbangHealthAggregatorTests.Evaluate_CarriesTheStartupStage_ForEveryProbeAsync, WhizbangHealthAggregatorTests.Evaluate_WithoutAStageReporter_CarriesNoStageAsync, WhizbangManagedHealthCheckTests.Result_CarriesTheStartupStagesNumberNameAndMessageAsync, WhizbangManagedHealthCheckTests.Result_WithNoStage_CarriesNoStageKeysAsync}
 
 ## Configuring / overriding
 

@@ -164,7 +164,7 @@ Liveness says a process exists. It does not say the process is ready to do anyth
 | Test | An instance passes when | Who reads it |
 |---|---|---|
 | **Alive** | It is registered, it is not evicted, and its heartbeat is inside the reader's window or (direct mode) it holds its alive-lock. See [the liveness rule](#liveness-rule). | The stale-peer reap and eviction, role votes, the standby handshake, the notify targets, and the lifecycle monitor. |
-| **Eligible for work** | It is alive, **and** its recorded lifecycle phase is `AcceptingCommands` or `Running`. | The partition assigner's candidates, `claim_work`'s peer ranking and the multi-stream claim's ranking. |
+| **Eligible for work** | It is alive, **and** its recorded lifecycle phase is `AcceptingCommands` or `Running`, **and** (since migration 231) its recorded [startup stage](/v1.0.0/operations/startup/startup-status#startup-stages), when it records one, is 60 or 70. | The partition assigner's candidates, `claim_work`'s peer ranking and the multi-stream claim's ranking. |
 
 A row that records no phase at all (`lifecycle_phase` is `NULL`) comes from an older build that never writes one. It is eligible whenever it is alive, exactly as before, so a rolling upgrade never strands an older peer's share.
 
