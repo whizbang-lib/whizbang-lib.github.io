@@ -68,6 +68,9 @@ testReferences:
   - tests/Whizbang.Core.Tests/Observability/TableStatisticsRegistrationTests.cs
   - tests/Whizbang.Core.Component.Tests/Observability/TableStatisticsCollectorTests.cs
   - tests/Whizbang.Core.Component.Tests/Observability/TableStatisticsCollectorStorageTests.cs
+  - tests/Whizbang.Core.Component.Tests/Observability/TableStatisticsCollectorIntervalTests.cs
+  - tests/Whizbang.Core.Component.Tests/Observability/TableStatisticsCollectorUnusedIndexTests.cs
+  - tests/Whizbang.Core.Tests/Observability/TableStatisticsMetricsUnusedIndexTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/PostgresTableStatisticsProviderTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperTableStatisticsTests.cs
   - tests/Whizbang.Core.Tests/Observability/TypeRegistryMetricsTests.cs
@@ -666,6 +669,7 @@ How big every table is, what the size is made of, how many rows it holds, and ho
 | `whizbang.table.component_bytes` | ObservableGauge (bytes) | `table_name`, `component` | The same size split three ways. `component` is `heap` (the rows stored inline, with the free space and visibility maps), `toast` (values too large to store inline, such as large JSON documents, with the TOAST index) or `indexes` (every index on the table). The three add up exactly to `estimated_bytes` |
 | `whizbang.table.live_rows` | ObservableGauge (rows) | `table_name` | The planner's row count, which `ANALYZE` and `VACUUM` (and so autovacuum) refresh. A table never analyzed reports the server's running count of live rows instead |
 | `whizbang.table.bloat_ratio` | ObservableGauge (ratio) | `table_name` | Heap bytes per live row divided by the width those rows should need. Around 1.0 is lean; a sustained large multiple is space the table holds but cannot use: dead tuples awaiting vacuum, or the bytes of a dropped column, which stay in every row written before the drop until the table is rewritten. Reported only for tables with more than 1,000 live rows, where the per-row average measures the rows rather than page overhead |
+| `whizbang.table.unused_index_bytes` | ObservableGauge (bytes) | `table_name`, `index_name` | The size of each index on a `wh_` table that no query has scanned since the statistics were last reset. See [Unused indexes](#unused-indexes) |
 | `whizbang.queue.estimated_depth` | ObservableGauge (messages) | `queue_name` | Unprocessed message count per queue. `queue_name` values: `inbox`, `outbox`, `dead_letters_held` (HoldForReview quarantine), `dead_letters_pending` (recovery backlog), `dead_letters_failed` (PermanentlyFailed). The dead-letter slices are emitted even at zero: standing inventory is a positively-reported value, not an absent series |
 
 {verified: TableStatisticsMetricsStorageTests.ComponentBytes_ReportsHeapToastAndIndexesPerTableAsync, TableStatisticsMetricsStorageTests.LiveRows_ReportsTheRowCountPerTableAsync, PostgresTableStatisticsProviderTests.GetTableStorageAsync_SplitsEachTableIntoHeapToastAndIndexesAsync, PostgresTableStatisticsProviderTests.GetTableStorageAsync_ReportsLiveRowsAsync, PostgresTableStatisticsProviderTests.GetTableStorageAsync_ATableNeverAnalyzed_ReportsItsCountedRowsAsync, PostgresTableStatisticsProviderTests.GetTableBloatRatiosAsync_SmallTables_AreNotReportedAsBloatedAsync, PostgresTableStatisticsProviderTests.GetTableBloatRatiosAsync_TablePastTheThreshold_IsMeasuredAsync, PostgresTableStatisticsProviderTests.GetQueueDepthsAsync_CountsDeadLettersByStatusAsync}
@@ -684,24 +688,54 @@ Every table in the service's schema whose name starts with `wh_`: the framework'
 
 A service can declare any number of perspectives, so the number of `table_name` values is capped by [`Whizbang:TableStatistics:MaxTrackedTables`](../configuration/configuration-reference#tablestatisticsoptions) (default 500). Past the cap the smallest tables are summed under `table_name="other"`: bytes, components and rows are added, so every total stays right, and the bloat ratio, which cannot be added, is not reported for them. {verified: PostgresTableStatisticsProviderTests.GetTableStorageAsync_PastTheCap_SumsTheSmallestUnderOtherAsync, TableStatisticsRegistrationTests.MaxTrackedTables_BindsFromTheTableStatisticsSectionAsync}
 
-With the cap at N, the meter reports at most N + 1 series of `estimated_bytes` and `live_rows`, 3 x (N + 1) of `component_bytes`, N of `bloat_ratio`, and 5 of `queue.estimated_depth`.
+With the cap at N, the meter reports at most N + 1 series of `estimated_bytes` and `live_rows`, 3 x (N + 1) of `component_bytes`, N of `bloat_ratio`, N + 1 of `unused_index_bytes`, and 5 of `queue.estimated_depth`.
 
 ### How the values are refreshed {#table-statistics-refresh}
 
-`TableStatisticsCollector` refreshes the gauges every 30 seconds on every instance, once the schema is ready. Each refresh runs one catalog statement for all the tables (sizes, split, rows and bloat together) and one for the queue depths. Nothing reads a table's rows, so the cost depends on how many tables and indexes the schema has and not on how much they hold: tens of milliseconds for 500 tables. {verified: TableStatisticsCollectorStorageTests.AStorageReading_FeedsEveryTableGauge_FromOneReadAsync}
+`TableStatisticsCollector` refreshes the gauges every [`Whizbang:TableStatistics:CollectionInterval`](../configuration/configuration-reference#tablestatisticsoptions) (default 30 seconds) on every instance, once the schema is ready. Each refresh runs one catalog statement for all the tables (sizes, split, rows and bloat together), one for the unused indexes and one for the queue depths. Nothing reads a table's rows, so the cost depends on how many tables and indexes the schema has and not on how much they hold: tens of milliseconds for 500 tables. {verified: TableStatisticsCollectorStorageTests.AStorageReading_FeedsEveryTableGauge_FromOneReadAsync}
 
-```mermaid{caption="One table statistics refresh: one catalog read for every table, one for the queues, then the gauges and the CycleCompleted event." tests=["TableStatisticsCollectorStorageTests.AStorageReading_FeedsEveryTableGauge_FromOneReadAsync", "DapperTableStatisticsTests.ADapperHost_ReportsTableStatisticsAsync"]}
+```mermaid{caption="One table statistics refresh: one catalog read for every table, one for the queues, then the gauges and the CycleCompleted event." tests=["TableStatisticsCollectorStorageTests.AStorageReading_FeedsEveryTableGauge_FromOneReadAsync", "DapperTableStatisticsTests.ADapperHost_ReportsTableStatisticsAsync", "TableStatisticsCollectorIntervalTests.TheConfiguredInterval_IsTheWaitBetweenCyclesAsync"]}
 flowchart LR
-  C[TableStatisticsCollector<br/>every 30 s] -->|one statement| S[GetTableStorageAsync<br/>every wh_ table: heap, toast,<br/>indexes, rows, bloat]
+  C[TableStatisticsCollector<br/>every CollectionInterval] -->|one statement| S[GetTableStorageAsync<br/>every wh_ table: heap, toast,<br/>indexes, rows, bloat]
+  C -->|one statement| U[GetUnusedIndexesAsync]
   C -->|one statement| Q[GetQueueDepthsAsync]
-  S --> M[TableStatisticsMetrics<br/>estimated_bytes, component_bytes,<br/>live_rows, bloat_ratio]
+  S --> M[TableStatisticsMetrics<br/>estimated_bytes, component_bytes,<br/>live_rows, bloat_ratio,<br/>unused_index_bytes]
+  U --> M
   Q --> M
   M --> E[CycleCompleted]
 ```
 
-`TableStatisticsCollector.CycleCompleted` is raised after every refresh has written all the gauges, and not for a refresh that failed (which is logged and retried on the next cycle). A health check or a test that needs current statistics waits on it rather than on time. {verified: TableStatisticsCollectorTests.Collector_PublishesTableBloatRatioAsync}
+`TableStatisticsCollector.CycleCompleted` is raised after every refresh has written all the gauges, and not for a refresh that failed (which is logged and retried on the next cycle). A health check or a test that needs current statistics waits on it rather than on time. {verified: TableStatisticsCollectorTests.Collector_PublishesTableBloatRatioAsync, TableStatisticsCollectorIntervalTests.TheConfiguredInterval_IsTheWaitBetweenCyclesAsync, TableStatisticsCollectorIntervalTests.WithoutSettings_TheWaitIsThirtySecondsAsync}
 
 A custom `ITableStatisticsProvider` that predates the combined reading keeps working: when `GetTableStorageAsync` answers empty, the collector asks `GetEstimatedTableSizesAsync` and `GetTableBloatRatiosAsync` instead, and the split and row gauges report nothing for it.
+
+### Unused indexes {#unused-indexes}
+
+{verified: PostgresTableStatisticsProviderTests.GetUnusedIndexesAsync_ReportsTheIndexesNothingScanned_WithTheirSizeAsync, TableStatisticsMetricsUnusedIndexTests.EachUnusedIndex_ReportsItsBytes_UnderItsTableAndNameAsync, TableStatisticsCollectorUnusedIndexTests.AnUnusedIndex_IsOnTheGauge_AndInTheLogAsync}
+
+Every index costs on every write to its table and holds space on disk, so one that nothing reads is worth knowing
+about. Each refresh reads PostgreSQL's index scan counters (`pg_stat_user_indexes`) and reports every index on a `wh_`
+table that has not been scanned since the statistics were last reset, with its size, on
+`whizbang.table.unused_index_bytes`. The same set is written to the log at Information level when it changes, naming
+each index, its table and its size, so an operator is told once rather than on every refresh.
+
+**Nothing is ever dropped.** An index with no scans may serve a rare path: a monthly report, a recovery query, the
+first read after a deployment. Whether to drop one is the operator's decision, made with the knowledge of what the
+service runs.
+
+- **Constraints are not reported.** A unique, primary-key or exclusion index enforces a rule whether or not a query
+  reads it, so it is never listed as unused. {verified: PostgresTableStatisticsProviderTests.GetUnusedIndexesAsync_ReportsTheIndexesNothingScanned_WithTheirSizeAsync}
+- **Partitioned tables.** An index on a partitioned table is reported once, under its own name and the partitioned
+  table's, with its partitions' scans and bytes summed, so the series do not grow with the partitions. {verified: PostgresTableStatisticsProviderTests.GetUnusedIndexesAsync_APartitionedTablesIndex_IsReportedOnceWithItsPartitionsSummedAsync}
+- **Cardinality.** At most `MaxTrackedTables` indexes are reported by name, the largest first; the rest are summed
+  under `index_name="other"` and `table_name="other"`. {verified: PostgresTableStatisticsProviderTests.GetUnusedIndexesAsync_PastTheCap_SumsTheSmallestUnderOtherAsync}
+- **Read it after a representative period.** The counters start at zero when the database starts, after
+  `pg_stat_reset()`, and when an index is created, so just after any of those every index reads as unused. An index
+  that a query has since scanned stops reporting on the next refresh. {verified: TableStatisticsMetricsUnusedIndexTests.AnIndexMissingFromTheNextReading_StopsReportingAsync, TableStatisticsCollectorUnusedIndexTests.TheSameSetAgain_IsNotLoggedAgain_ButAChangedSetIsAsync, TableStatisticsCollectorUnusedIndexTests.NoUnusedIndexes_IsNotLogged_AndASetThatReturnsIsLoggedAgainAsync}
+
+```sql{title="When the index statistics were last reset" description="Reads when the scan counters behind the unused-index report last started from zero" category="Observability" difficulty="BEGINNER" tags=["indexes", "statistics", "postgres"]}
+SELECT stats_reset FROM pg_stat_database WHERE datname = current_database();
+```
 
 ### Bytes per event type {#event-type-bytes}
 
