@@ -259,7 +259,7 @@ Instances still apply DDL one at a time, without any lock that outlives a transa
 Each step is applied once, whichever instance applies it.
 
 ### What the ledger records for a pass {#step-ledger-rows}
-{verified: SchemaPassLedgerTests.AFreshLedger_MarksAndRunsWhatThePassNeedsAsync, SchemaPassLedgerTests.APassOfThisBuildPartWayThrough_IsContinued_AndNothingIsMarkedAgainAsync, SchemaPassLedgerTests.AnotherBuildsUnfinishedPass_StartsAfresh_AndKeepsWhatItOwedAsync, SchemaPassLedgerTests.ThePendingHashIsNoFilesHashAsync}
+{verified: SchemaPassLedgerTests.AFreshLedger_MarksAndRunsWhatThePassNeedsAsync, SchemaPassLedgerTests.APassOfThisBuildPartWayThrough_IsContinued_AndNothingIsMarkedAgainAsync, SchemaPassLedgerTests.AnotherBuildsUnfinishedPass_StartsAfresh_AndKeepsWhatItOwedAsync, SchemaPassLedgerTests.ThePendingHashIsNoFilesHashAsync, MigrationStepTransactionTests.AnInstanceContinuingAPass_KeepsTheFilesTheFirstAppliedRecordedAsAppliedAsync}
 
 A migration file and a perspective table have always had a ledger row whose hash says whether they are current. The
 other steps now get one too, so a retry can tell what already committed:
@@ -281,6 +281,10 @@ step:OrderDbContext:registries               | step  | 3f9a1c...        | 0     
   build's fingerprint is outstanding, a pass of this build is part way through, and the next instance to take the lock
   continues it from its rows instead of marking them again. A pass another build left unfinished starts afresh and
   keeps every step that pass still owed.
+- **Skipped files**: a migration file or perspective table whose hash is unchanged is recorded as `3`
+  (`Skipped (hash unchanged)`) only when a pass begins. An instance that continues a pass part way through, or a
+  retry after a failed step, records no skips: the files it will not run are the ones the earlier part of the pass
+  applied, and their `1` (`First apply`) or `2` rows stay as they were.
 
 **Files that must run again with an unchanged hash.** The [redefinition closure](#how-it-works) and the two sweeps
 ([duplicate overloads](#stale-duplicate-overloads-are-swept-automatically) and
