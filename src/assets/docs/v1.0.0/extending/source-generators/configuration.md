@@ -79,6 +79,8 @@ public void Initialize(IncrementalGeneratorInitializationContext context) {
 | `WhizbangTableNameSuffixesToStrip` | string | `ReadModel,Model,Projection,Dto,View` | Comma-separated list of suffixes |
 | `WhizbangMaxIdentifierLength` | int | provider default (63 for PostgreSQL) | Optional override for maximum database identifier length; read via `ConfigurationUtilities.GetMaxIdentifierLengthOverride` / `SelectMaxIdentifierLengthOverride` |
 
+An empty or whitespace value counts as unset, so the default applies. The generator packages declare these properties compiler-visible, which hands the generator an empty value for any property a project leaves unset; that empty value never turns a default off. A set value is trimmed before it is read, so `<WhizbangStripTableNameSuffixes> true </WhizbangStripTableNameSuffixes>` strips. Only an explicit `false` keeps the suffix.
+
 ### Configuration in .csproj
 
 ```xml{title="Configuration in .csproj" description="Configuration in .csproj" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Configuration", ".csproj"]}
