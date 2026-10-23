@@ -36,7 +36,12 @@ Measured on a sample service build of about 20 seconds:
 | Analyzers | Report `WHIZ` diagnostics as you type and build | about 3 ms |
 | Source generators | Emit the dispatcher, receptor registry, JSON context, perspective code and message registry | about 0.3 s |
 
-Your numbers depend on the size of your project, so measure them yourself.
+Your numbers depend on the size of your project, so measure them yourself. A small sample hides any
+cost that grows with the amount of code: until
+[whizbang#1655](https://github.com/whizbang-lib/whizbang/pull/1655), the GUID interceptor generator asked the compiler to resolve every `x.Method(...)` call in the project, interception on or off. That
+was negligible on the sample and took over three minutes of a large solution's unit-test rebuild. It
+now resolves only calls named like a GUID factory (`NewGuid`, `CreateVersion7`, `NewDatabaseFriendly`,
+`NewSequential`, `NewUuid7`).
 
 ## Measuring it yourself
 
@@ -97,6 +102,7 @@ generating output when nothing changed.
 | Guard | What fails it | Where it runs |
 |-------|---------------|---------------|
 | Generator caching test | Any generator producing new or changed output after a comment, an unrelated method body or a receptor body edit | Every test run of the generators project |
+| GUID candidate filter test | The GUID interceptor's syntax filter admitting an ordinary method call, so the compiler resolves calls the generator never intercepts | Every test run of the generators project |
 | No-op rebuild check | A second build with nothing changed running `CoreCompile` or the generator merge step in any project | CI job "Build · No-op rebuild does no work" |
 
 The generator caching test, [`GeneratorCachingTests`](https://github.com/whizbang-lib/whizbang/blob/develop/tests/Whizbang.Generators.Tests/BuildCost/GeneratorCachingTests.cs),
