@@ -177,6 +177,53 @@ the no-consumer gates and the inbox drain unwrap an envelope-wrapped name to its
 Before this, every recovered broker dead letter was skipped by the inbox gate as `RegistryChanged`,
 because nothing consumes an envelope type.
 
+## Re-entry through the arrival path {#reentry}
+
+Recovery re-enters an inbox or broker dead letter through the inbox's own arrival path. The row is built
+exactly as a delivery of the stored envelope is built (event classification, stream, flags, scope,
+priority and producer) and stored with `store_inbox_messages`. It differs from a delivery in three ways
+only:
+
+- it claims its dead letter (**Recovering**) in the same transaction;
+- it is stored even though its message id was already seen (the observation is still counted);
+- `wh_inbox_state.recovered_from_dead_letter_id` names the dead letter.
+
+The dead letter reads **Recovering** until the message completes. It becomes **Recovered** once the
+message is processed: an event once it is in the event store, a command once its dispatch completes. It
+becomes **HoldForReview**, with the outcome in `operator_notes`, when an inbox gate completes it
+unprocessed, or when the inbox dead-letters it again (the note names the new dead letter, which now holds
+custody). A dead letter whose offloaded body cannot be rebuilt is held for review instead of re-entered.
+
+`recover_dead_letter` handles only outbox and perspective rows.
+
+Before this, recovery wrote the inbox row itself with `is_event = false` and, for a broker import without
+a session, no stream. The inbox copy into the event store skipped the row, so a recovered event was
+dispatched and deleted without being appended, while its dead letter already read Recovered.
+
+### Re-entering events lost before the fix {#repair}
+
+Events recovered by an older version are not restored automatically. After deploying the fix, reset
+their dead letters so the recovery worker re-enters them. Restrict the reset to event types: a recovered
+command has already run its handler.
+
+```sql
+UPDATE <schema>.wh_dead_letters dl
+SET recovery_status = 0, recovered_at = NULL, recovery_attempts = 0, next_recovery_at = NOW(),
+    operator_notes = COALESCE(operator_notes || E'\n', '') || 'reset for re-entry'
+WHERE dl.source_table IN ('broker', 'wh_inbox')
+  AND dl.recovery_status = 3
+  AND dl.operator_disposition NOT IN (2, 3)
+  AND COALESCE(dl.operator_notes, '') NOT LIKE '%auto-discarded%'
+  AND NOT EXISTS (SELECT 1 FROM <schema>.wh_event_store es WHERE es.event_id = dl.source_id)
+  AND NOT EXISTS (SELECT 1 FROM <schema>.wh_inbox i WHERE i.message_id = dl.source_id)
+  AND <schema>.normalize_event_type(dl.message_type) IN (
+    SELECT normalized_message_type FROM <schema>.wh_message_associations
+    WHERE association_type = 'perspective');
+```
+
+A re-entered event is appended after its stream's current tail, and the perspective cursor is rewound so
+perspectives re-apply in event-id order.
+
 ## Failure handling
 
 Both implementations are best-effort:

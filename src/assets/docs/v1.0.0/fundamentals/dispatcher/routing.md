@@ -1819,6 +1819,28 @@ logger.LogInformation(
 );
 ```
 
+## Poison messages {#poison-messages}
+
+The receive gate accepts a message until it is stored. It never quarantines a message because of its
+age: a backlog ages every message in it, so age alone is not a failure. A message first enqueued longer
+ago than the age threshold (`Whizbang:Routing:PoisonMessages:AgeThreshold`; by default lock renewal ×
+delivery attempts, at least 30 minutes) is stored like any other, counted on the
+`whizbang.message.aged_on_receive` counter (tagged `gate`, `transport` and the topic/subscription or
+queue) and logged as a warning.
+
+Redelivery loops are bounded after storage. Every redelivery of a stored message raises its durable
+observation count before any handler runs, including a Service Bus session lock-loss storm where the
+broker's delivery count stays at 1. Once the count reaches `MaxDurableObservations` (default 10) and the
+message has been claimed at least once, the inbox gate dead-letters it with `PoisonRedeliveryLoop`. A
+message that was never claimed is not quarantined, so broadcast fan-out is not mistaken for a loop.
+
+Without a trustworthy first-enqueue timestamp (for example a RabbitMQ message from a foreign publisher),
+aged messages are not reported, and the poison-detection health component shows the surface degraded.
+
+A custom `IPoisonMessageDetector` can still return `MessageAgeExceeded`; the default detector no longer
+does. `IPoisonMessageDetector.RecordAgedOnReceive` has a no-op default, so existing detectors compile
+unchanged.
+
 ## Related Documentation
 
 - [Transport Consumer](../../messaging/transports/transport-consumer.md) - Auto-generated transport subscriptions
