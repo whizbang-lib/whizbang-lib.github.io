@@ -104,6 +104,9 @@ generating output when nothing changed.
 | Generator caching test | Any generator producing new or changed output after a comment, an unrelated method body or a receptor body edit | Every test run of the generators project |
 | GUID candidate filter test | The GUID interceptor's syntax filter admitting an ordinary method call, so the compiler resolves calls the generator never intercepts | Every test run of the generators project |
 | No-op rebuild check | A second build with nothing changed running `CoreCompile` or the generator merge step in any project | CI job "Build · No-op rebuild does no work" |
+| Syntax predicate guard | A generator's syntax predicate that is not a public `Is...Candidate` method, or one that admits ordinary code | Every test run of the generators component tests |
+| Generated JSON files check | The pinned-type ledger or opt-in message registry not written, not updated after a change, or rewritten on a build that did not recompile, with generated files off | CI job "Build · No-op rebuild does no work" |
+| Generator and analyzer timing | A generator or analyzer, or the total of either, slower than its threshold over a large generated consumer | CI job "Build · Generator and analyzer timing" (advisory) |
 
 The generator caching test, [`GeneratorCachingTests`](https://github.com/whizbang-lib/whizbang/blob/develop/tests/Whizbang.Generators.Tests/BuildCost/GeneratorCachingTests.cs),
 runs every generator in the package together over a consumer-like project, applies one edit, and fails
@@ -114,31 +117,52 @@ The no-op rebuild check, `scripts/build-cost/Test-NoOpRebuild.ps1` in the librar
 a sample service twice and fails if the second build did work, naming the project and the input that
 was newer than its output. You can run it against your own project with `-Project`.
 
+The syntax predicate guard, [`SyntaxCandidateGuardTests`](https://github.com/whizbang-lib/whizbang/blob/develop/tests/Whizbang.Generators.Component.Tests/BuildCost/SyntaxCandidateGuardTests.cs),
+covers the cost a generator adds to code that is not Whizbang's. A syntax predicate runs on every node
+of every changed file, and each node it admits goes to a transform that binds symbols, so a broad
+predicate costs a share of your whole build however little of Whizbang you use. The guard requires
+every predicate in every generator package to be a public static `Is...Candidate` method, then runs
+each one over a corpus of ordinary code and fails naming any predicate that admits a node. A predicate
+that cannot be narrowed without changing output needs an explicit exemption with a reason.
+{verified: SyntaxCandidateGuardTests.EveryCandidateMethod_AdmitsNoOrdinaryCodeAsync}
+
+The generated JSON files check, `scripts/build-cost/Test-GeneratedJsonFiles.ps1`, builds a small
+consumer with `EmitCompilerGeneratedFiles` off. It fails unless the default build writes the ledger
+and no registry or generated source, a build with `WhizbangEmitMessageRegistry=true` writes the
+registry too, a new `[PinnedId]` message reaches both files, and a build with nothing changed
+compiles nothing and runs neither extraction step.
+
+The timing job builds a large generated consumer (1,000 features and 3,000 files of ordinary code),
+times each generator and analyzer as the median of five runs, and compares the times with
+`benchmarks/Whizbang.BuildCost.Benchmarks/build-cost-thresholds.json`. The report is the job summary
+and an artifact. Timing varies from run to run, so the job is advisory: it does not block a merge
+until its numbers are stable, and the thresholds are tightened from its results.
+
 ## Keeping your own build fast
 
-**Generated files on disk.** The generators package sets `EmitCompilerGeneratedFiles` to `true` and
-writes generated files to `.whizbang/cache/`, unless your project sets it. Whizbang extracts the
-[message registry](../../extending/source-generators/message-registry) and the
-[pinned-type ledger](../../fundamentals/identity/pinned-type-ledger) from those files after each
-build. Writing them costs a little disk time on every build. In a project where you do not need either
-artifact, turn both off and the files are no longer written:
+**Generated files on disk.** The generators package does not write generated files to disk. The
+[pinned-type ledger](../../fundamentals/identity/pinned-type-ledger) is on by default and is read
+from the built assembly after each compile, so it stays current without any generated files. The
+[message registry](../../extending/source-generators/message-registry) is IDE tooling for the VS Code
+extension and is off by default. Both extraction steps are skipped on a build that did not recompile.
+If you use the VS Code extension, turn the registry on in the project:
 
 ```xml{
-title: "Stop writing generated files to disk"
-description: "Turns off the message registry extraction and the on-disk copy of generated files in a project that needs neither."
+title: "Turn on the message registry for the VS Code extension"
+description: "Embeds the message registry in the assembly and writes .whizbang/cache/message-registry.json after each build that recompiles."
 category: "Performance"
-difficulty: "INTERMEDIATE"
-tags: ["build", "source-generators", "EmitCompilerGeneratedFiles", "msbuild"]
+difficulty: "BEGINNER"
+tags: ["build", "source-generators", "WhizbangEmitMessageRegistry", "msbuild"]
 }
 <PropertyGroup>
-  <WhizbangEmitMessageRegistry>false</WhizbangEmitMessageRegistry>
-  <EmitCompilerGeneratedFiles>false</EmitCompilerGeneratedFiles>
+  <WhizbangEmitMessageRegistry>true</WhizbangEmitMessageRegistry>
 </PropertyGroup>
 ```
 
-Setting `EmitCompilerGeneratedFiles` to `false` alone, while the message registry is on, means the
-registry and the ledger are no longer updated after a build. Turn it back on when you want to inspect
-the generated code.
+To inspect the generated code, set `EmitCompilerGeneratedFiles` to `true`. The files go to
+`.whizbang/cache/` unless your project sets `CompilerGeneratedFilesOutputPath`. Writing them costs a
+little disk time on every build, so leave it off when you are not reading them. Neither the ledger
+nor the registry depends on it.
 
 **Check `ReportAnalyzer` output now and then.** If a Whizbang analyzer or generator shows up near the
 top of your build's analyzer list, or its time grows out of proportion to your project, report it with

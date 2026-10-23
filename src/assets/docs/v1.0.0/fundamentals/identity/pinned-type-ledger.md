@@ -47,7 +47,7 @@ rename `OrderCreatedEvent` to `OrderPlacedEvent` and do nothing else, every alre
 becomes **unreadable** — the resolver returns `null` and deserialization throws.
 
 The **pinned-type ledger** makes renames safe and governed. It is a committed lockfile — `.whizbang/pinned-type-ledger.json`,
-committed at the `.whizbang/` root (the regenerable `message-registry.json` lives separately in the git-ignored
+committed at the `.whizbang/` root (the regenerable `message-registry.json`, written only when the message registry is turned on, lives separately in the git-ignored
 `.whizbang/cache/` subfolder) — that records, per pinned id, the type's current CLR name and every
 **former** name it has had:
 
@@ -80,7 +80,9 @@ components read and maintain it — all AOT-safe, all opt-in.
 
 `PinnedTypeLedgerGenerator` discovers every `[PinnedId]` message and perspective type in the assembly, **merges**
 it with the committed ledger, and emits the merged JSON as a C# constant (`PinnedTypeLedger.g.cs`). An MSBuild
-target extracts that constant to `.whizbang/pinned-type-ledger.json` after each build.
+target reads that constant from the built assembly and writes it to `.whizbang/pinned-type-ledger.json` after each
+build that recompiles; a build that did not recompile skips the step. It needs no generated files on disk, so it works
+with `EmitCompilerGeneratedFiles` off, which is the default.
 
 The merge is a **monotonic lockfile update**:
 
@@ -164,7 +166,8 @@ Information, drift at Warning).
 ## Wiring & opt-out
 
 The Whizbang generators package auto-includes the ledger as an `AdditionalFile` and registers the extraction target.
-Nothing else is required. To opt a project out, set:
+Nothing else is required. The ledger is on by default and does not depend on the message registry switch
+(`WhizbangEmitMessageRegistry`, off by default) or on `EmitCompilerGeneratedFiles`. To opt a project out, set:
 
 ```xml{
 title: "Opt a project out of the pinned-type ledger"

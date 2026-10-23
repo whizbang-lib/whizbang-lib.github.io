@@ -365,18 +365,18 @@ public string[] GetTopicFilters_CreateOrder() {
 
 ### View Generated Files
 
-Generated file is written to:
-```
-obj/Debug/net10.0/generated/Whizbang.Generators/TopicFilterGenerator/
-└── TopicFilterRegistry.g.cs
-```
+Generated files are not written to disk by default. Writing them is optional and only for inspecting generated code:
 
-Or optionally configured output folder:
-```xml{title="View Generated Files" description="Or optionally configured output folder:" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "View", "Generated"]}
+```xml{title="View Generated Files" description="Optional: write generated files to disk to inspect them" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "View", "Generated"]}
 <PropertyGroup>
   <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
-  <CompilerGeneratedFilesOutputPath>.whizbang/cache</CompilerGeneratedFilesOutputPath>
 </PropertyGroup>
+```
+
+With the package's default output path, they land under `.whizbang/cache/`:
+```
+.whizbang/cache/Whizbang.Generators/Whizbang.Generators.TopicFilterGenerator/
+└── TopicFilterRegistry.g.cs
 ```
 
 ### Build Diagnostics

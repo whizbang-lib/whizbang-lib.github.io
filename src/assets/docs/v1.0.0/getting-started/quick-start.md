@@ -642,11 +642,10 @@ GET /api/orders/{id} → ILensQuery<OrderSummary> → wh_per_* table → Return 
 
 **Solution**:
 1. Ensure the `Whizbang.Generators` package is referenced (and `Whizbang.Data.EFCore.Postgres` for the DbContext extension)
-2. To inspect generated sources on disk, add MSBuild properties in `.csproj`:
+2. Generated sources are not written to disk by default, and Whizbang does not need them there. To inspect them (optional), add this to the `.csproj`; the files go to `.whizbang/cache/`:
    ```xml
    <PropertyGroup>
      <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
-     <CompilerGeneratedFilesOutputPath>$(MSBuildProjectDirectory)/.whizbang/cache</CompilerGeneratedFilesOutputPath>
    </PropertyGroup>
    ```
 3. Rebuild:

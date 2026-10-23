@@ -340,21 +340,21 @@ transform: static (ctx, ct) => ExtractReceptorInfo(ctx, ct)
 
 ### View Generated Files
 
-Generated files are written to:
+Generated files are not written to disk by default. Writing them is optional and only for inspecting generated code:
+
+```xml{title="View Generated Files" description="Optional: write generated files to disk to inspect them" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "View", "Generated"]}
+<PropertyGroup>
+  <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
+</PropertyGroup>
 ```
-obj/Debug/net10.0/generated/Whizbang.Generators/ReceptorDiscoveryGenerator/
+
+With the package's default output path, they land under `.whizbang/cache/`:
+```
+.whizbang/cache/Whizbang.Generators/Whizbang.Generators.ReceptorDiscoveryGenerator/
 ├── DispatcherRegistrations.g.cs
 ├── Dispatcher.g.cs
 ├── ReceptorRegistry.g.cs
 └── ReceptorDiscoveryDiagnostics.g.cs
-```
-
-Or optionally configured output folder:
-```xml{title="View Generated Files" description="Or optionally configured output folder:" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "View", "Generated"]}
-<PropertyGroup>
-  <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
-  <CompilerGeneratedFilesOutputPath>.whizbang/cache</CompilerGeneratedFilesOutputPath>
-</PropertyGroup>
 ```
 
 ### Build Diagnostics
