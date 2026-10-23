@@ -267,8 +267,8 @@ After updating packages and configuration:
    dotnet build
    ```
 
-2. **Check for source generator output**:
-   Look for generated files in `obj/Debug/net10.0/generated/`
+2. **Check for source generator output** (optional):
+   Generated files are not written to disk by default. To inspect them, set `<EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>` in the project; they are written to `.whizbang/cache/`
 
 3. **Run the app once** — schema initialization happens on startup (the generated `EnsureWhizbangDatabaseInitializedAsync()` call, or the Dapper `initializeSchema: true` hosted service). Hash-based tracking makes re-runs cheap no-ops.
 

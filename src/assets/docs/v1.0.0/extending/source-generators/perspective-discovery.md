@@ -327,19 +327,19 @@ The `PerspectiveAssociationInfo<TModel, TEvent>.ApplyDelegate` gives strongly-ty
 
 ### View Generated File
 
-With the shipped defaults (`WhizbangEmitMessageRegistry=true` sets `EmitCompilerGeneratedFiles` and points output at the ignored cache folder):
+Generated files are not written to disk by default. Writing them is optional and only for inspecting generated code:
+
+```xml{title="View Generated File" description="Optional: write generated files to disk to inspect them" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "View", "Generated"]}
+<PropertyGroup>
+  <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
+</PropertyGroup>
+```
+
+With the package's default output path, the file lands in the ignored cache folder:
 
 ```
 .whizbang/cache/Whizbang.Generators/Whizbang.Generators.PerspectiveDiscoveryGenerator/
 └── PerspectiveRegistrations.g.cs
-```
-
-Or configure explicitly:
-```xml{title="View Generated File" description="Explicit generated-files output" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "View", "Generated"]}
-<PropertyGroup>
-  <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
-  <CompilerGeneratedFilesOutputPath>.whizbang/cache</CompilerGeneratedFilesOutputPath>
-</PropertyGroup>
 ```
 
 ---

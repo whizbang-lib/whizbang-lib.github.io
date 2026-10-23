@@ -318,12 +318,13 @@ Use `Directory.Build.props` for consistent settings:
   </PropertyGroup>
 
   <PropertyGroup>
-    <!-- Source Generator Settings -->
+    <!-- Optional, only for inspecting generated code: writes generated sources to .whizbang/cache/ -->
     <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
-    <CompilerGeneratedFilesOutputPath>$(MSBuildProjectDirectory)/.whizbang/cache</CompilerGeneratedFilesOutputPath>
   </PropertyGroup>
 </Project>
 ```
+
+The `EmitCompilerGeneratedFiles` group is optional. Whizbang needs no generated files on disk; set it only when you want to read the generated code, and leave it out otherwise to save disk time on every build.
 
 ### Pros and Cons
 

@@ -25,7 +25,7 @@ lastMaintainedCommit: '01f07906'
 
 # Message Registry
 
-The **MessageRegistryGenerator** discovers all messages, dispatchers, receptors, and perspectives at compile-time and generates a JSON registry file for the **Whizbang VSCode Extension**. This enables rich IDE features like CodeLens annotations, hover tooltips, and "Go to Handler" navigation.
+The **MessageRegistryGenerator** discovers all messages, dispatchers, receptors, and perspectives at compile-time and generates a JSON registry file for the **Whizbang VSCode Extension**. The registry is off by default; set `WhizbangEmitMessageRegistry` to `true` to turn it on (see [Build Integration](#build-integration)). This enables rich IDE features like CodeLens annotations, hover tooltips, and "Go to Handler" navigation.
 
 ## VSCode Extension Integration
 
@@ -465,26 +465,28 @@ CreateOrder
 
 The `SoftwareExtravaganza.Whizbang.Generators` NuGet package ships `.props`/`.targets` files that automate the whole flow — you do **not** write your own target or extraction script:
 
-- **`SoftwareExtravaganza.Whizbang.Generators.props`** defaults `WhizbangEmitMessageRegistry` to `true`, enables `EmitCompilerGeneratedFiles`, and points `CompilerGeneratedFilesOutputPath` at `$(MSBuildProjectDirectory)/.whizbang/cache` (unless you've set these yourself).
-- **`SoftwareExtravaganza.Whizbang.Generators.targets`** defines the `WhizbangExtractMessageRegistry` target (`AfterTargets="Build"`), which extracts the embedded JSON from `MessageRegistry.g.cs` and writes it to **`.whizbang/cache/message-registry.json`** — skipping the write when the content hash is unchanged, to avoid file-watcher churn.
+- **`SoftwareExtravaganza.Whizbang.Generators.props`** defaults `WhizbangEmitMessageRegistry` to `false`, because the registry is IDE tooling that only the VS Code extension reads. The props no longer turn `EmitCompilerGeneratedFiles` on; they only point `CompilerGeneratedFilesOutputPath` at `$(MSBuildProjectDirectory)/.whizbang/cache` (unless you've set it yourself), for when you turn generated files on to inspect them.
+- **`SoftwareExtravaganza.Whizbang.Generators.targets`** defines the `WhizbangExtractMessageRegistry` target (`AfterTargets="Build"`), which reads the registry JSON the generator embedded in the **built assembly** and writes it to **`.whizbang/cache/message-registry.json`**, skipping the write when the content is unchanged, to avoid file-watcher churn. It needs no generated files on disk, and it is skipped on a build that did not recompile.
 
-```xml{title="Opting Out" description="Consumers can opt out per project" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "MSBuild", "Target"]}
-<!-- MyApp.csproj — only needed to OPT OUT -->
+With the switch off, the generator embeds no registry JSON in the assembly and the build writes no `message-registry.json`.
+
+```xml{title="Opting In" description="Turn on the message registry for the VS Code extension, per project" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "MSBuild", "Target"]}
+<!-- MyApp.csproj: turns on the registry for the VS Code extension -->
 <PropertyGroup>
-  <WhizbangEmitMessageRegistry>false</WhizbangEmitMessageRegistry>
+  <WhizbangEmitMessageRegistry>true</WhizbangEmitMessageRegistry>
 </PropertyGroup>
 ```
 
 **Run a build**:
 ```bash{title="Build Writes the Registry" description="Run after build:" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "Extract", "JSON"]}
 dotnet build
-# Writes .whizbang/cache/message-registry.json automatically
+# With WhizbangEmitMessageRegistry=true, writes .whizbang/cache/message-registry.json
 ```
 
 ### The .whizbang/ Folder Convention
 
-- **`.whizbang/cache/`** — regenerable artifacts (generated `.cs`, `message-registry.json`); add `**/.whizbang/cache/` to `.gitignore`
-- **`.whizbang/` root** — committed files (e.g., `pinned-type-ledger.json`, the folder README); commit these
+- **`.whizbang/cache/`**: regenerable artifacts (`message-registry.json` when `WhizbangEmitMessageRegistry=true`, generated `.cs` when `EmitCompilerGeneratedFiles=true`); add `**/.whizbang/cache/` to `.gitignore`
+- **`.whizbang/` root**: committed files (e.g., `pinned-type-ledger.json`, the folder README); commit these
 
 ---
 
@@ -608,23 +610,25 @@ public class CustomerStatsPerspective : IPerspectiveFor<CustomerStats, CustomerC
 
 ### View Generated File
 
-```
-obj/Debug/net10.0/generated/Whizbang.Generators/MessageRegistryGenerator/
-└── MessageRegistry.g.cs
+The registry is read from the built assembly, so `MessageRegistry.g.cs` is not written to disk by default. To inspect it, turn on both the registry and generated files. With the package's default output path, the file lands under `.whizbang/cache/`:
+
+```xml{title="View Generated File" description="Turn on the registry and the on-disk copy of generated files to inspect MessageRegistry.g.cs" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "View", "Generated"]}
+<PropertyGroup>
+  <WhizbangEmitMessageRegistry>true</WhizbangEmitMessageRegistry>
+  <!-- Optional, only for inspecting generated code -->
+  <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
+</PropertyGroup>
 ```
 
-Or configured output:
-```xml{title="View Generated File" description="Or configured output:" category="Internals" difficulty="BEGINNER" tags=["Extending", "Source-Generators", "View", "Generated"]}
-<PropertyGroup>
-  <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
-  <CompilerGeneratedFilesOutputPath>.whizbang/cache</CompilerGeneratedFilesOutputPath>
-</PropertyGroup>
+```
+.whizbang/cache/Whizbang.Generators/Whizbang.Generators.MessageRegistryGenerator/
+└── MessageRegistry.g.cs
 ```
 
 ### Validate JSON
 
 ```bash{title="Validate JSON" description="Validate JSON" category="Internals" difficulty="INTERMEDIATE" tags=["Extending", "Source-Generators", "Validate", "JSON"]}
-# The registry JSON is extracted automatically by the shipped MSBuild target
+# With WhizbangEmitMessageRegistry=true, the shipped MSBuild target extracts the registry JSON
 dotnet build
 
 # Validate JSON
