@@ -206,7 +206,7 @@ Events recovered by an older version are not restored automatically. After deplo
 their dead letters so the recovery worker re-enters them. Restrict the reset to event types: a recovered
 command has already run its handler.
 
-```sql
+```sql{title="Reset lost recovered events for re-entry" description="Resets Recovered inbox and broker dead letters of event types whose event never reached the event store, so the recovery worker re-enters them" category="Diagnostics" difficulty="ADVANCED" tags=["Operations", "Dead-Letter-Queue", "Recovery", "Repair"]}
 UPDATE <schema>.wh_dead_letters dl
 SET recovery_status = 0, recovered_at = NULL, recovery_attempts = 0, next_recovery_at = NOW(),
     operator_notes = COALESCE(operator_notes || E'\n', '') || 'reset for re-entry'
