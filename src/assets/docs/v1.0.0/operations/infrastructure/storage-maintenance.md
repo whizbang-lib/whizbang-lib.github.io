@@ -13,8 +13,8 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/088_ChurnTableAutovacuum.sql
   - src/Whizbang.Data.Postgres/Migrations/222_FrameworkTableAutovacuum.sql
   - src/Whizbang.Data.Postgres/Migrations/223_PerspectiveCursorFillFactor.sql
-  - src/Whizbang.Data.Postgres/Migrations/232_PerspectiveAppliedAutovacuum.sql
-  - src/Whizbang.Data.Postgres/Migrations/233_RetireTableRewritePolicySetting.sql
+  - src/Whizbang.Data.Postgres/Migrations/234_PerspectiveAppliedAutovacuum.sql
+  - src/Whizbang.Data.Postgres/Migrations/235_RetireTableRewritePolicySetting.sql
 testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/FrameworkTableAutovacuumTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/PerspectiveCursorFillFactorTests.cs
@@ -42,7 +42,7 @@ migrations set per-table storage parameters instead, so the server settings need
 | `wh_perspective_cursors`, `wh_lifecycle_completions`, `wh_stream_digests`, `wh_message_deduplication` | vacuum after 10,000 dead rows, whatever the size (migration 222) | updated or deleted continuously, and they grow with the data |
 | `wh_event_store` | vacuum after 10,000 inserts (migration 222) | append-heavy: vacuum keeps its visibility map current, so index-only scans do not fall back to the table |
 | `wh_event_body`'s TOAST table | vacuum after 10,000 dead chunks (migration 222) | large bodies live in TOAST, and the ephemeral reaper leaves their dead chunks there |
-| `wh_perspective_applied` | vacuum after 10,000 dead rows and after 10,000 inserts (migration 232) | the [applied-event ledger](../../fundamentals/perspectives/perspective-sync#applied-ledger) is a sliding window: every completed apply inserts a row and the rows an hour old are pruned, so it inserts and deletes at the same rate |
+| `wh_perspective_applied` | vacuum after 10,000 dead rows and after 10,000 inserts (migration 234) | the [applied-event ledger](../../fundamentals/perspectives/perspective-sync#applied-ledger) is a sliding window: every completed apply inserts a row and the rows an hour old are pruned, so it inserts and deletes at the same rate |
 
 The settings are applied by migration on every database, with either driver, and re-applying them changes nothing.
 To see them on a table:

@@ -13,7 +13,7 @@ tags: >-
   postgres, storage, vacuum, maintainer duty
 codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/226_PartitionManager.sql
-  - src/Whizbang.Data.Postgres/Migrations/231_PartitionSignalsAndLifecycleCompletions.sql
+  - src/Whizbang.Data.Postgres/Migrations/233_PartitionSignalsAndLifecycleCompletions.sql
   - src/Whizbang.Data.Postgres/PartitionedTable.cs
   - src/Whizbang.Data.Postgres/PartitionMaintenance.cs
   - src/Whizbang.Data.EFCore.Postgres/PartitionMaintenanceStep.cs

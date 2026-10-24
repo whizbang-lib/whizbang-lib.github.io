@@ -23,7 +23,7 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/213_FunctionsNameTheirOwnSchema.sql
   - src/Whizbang.Data.Postgres/Migrations/063_NormalizeClrTypeNamesV2.sql
   - src/Whizbang.Data.Postgres/Migrations/032_PerformMaintenance.sql
-  - src/Whizbang.Data.Postgres/Migrations/233_RetireTableRewritePolicySetting.sql
+  - src/Whizbang.Data.Postgres/Migrations/235_RetireTableRewritePolicySetting.sql
   - src/Whizbang.Data.Postgres/MigrationFunctionBodies.cs
   - src/Whizbang.Data.Postgres/MigrationConstants.cs
   - src/Whizbang.Data.Postgres/SchemaCommandBoundary.cs
@@ -578,7 +578,7 @@ The runtime maintenance cycle **no longer executes rewrites** — an ACCESS EXCL
 {verified: TableRewritePolicyRetiredTests.TheUnreadPolicyKey_IsGoneAfterMigrationAsync, TableRewritePolicyRetiredTests.TheSettingsTheDetectorReads_StayAsync}
 
 `AllowTableRewrite` is the only switch. Migration 089 also seeded a `table_rewrite_policy` row in `wh_settings`
-(`off` or `immediate`) that nothing ever read, so changing it did nothing. Migration 233 deletes the row; behavior is
+(`off` or `immediate`) that nothing ever read, so changing it did nothing. Migration 235 deletes the row; behavior is
 the same whatever it held. The detector's own settings stay: `table_rewrite_bloat_threshold` (the ratio above which a
 table is offered), `table_rewrite_min_rows` (tables smaller than this are ignored) and `pending_table_rewrites` (the
 queued requests).
