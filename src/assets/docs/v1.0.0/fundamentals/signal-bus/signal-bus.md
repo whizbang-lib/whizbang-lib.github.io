@@ -255,6 +255,11 @@ The retention sweep runs hourly and deletes a signal when it is older than `Sign
 
 A window of zero or less is rejected at startup, naming the key.
 
+With [partition maintenance](../../operations/infrastructure/partitioned-ledgers#row-sweeps) enabled, `wh_signals` is
+partitioned daily by `created_at` and a day is dropped whole once it ends more than `SignalRetention` ago. The sweep
+then clears only the default partition. The drop goes by age alone, so the cursor guard above no longer holds a
+signal past the window: keep `SignalRetention` longer than any outage an instance should resume from.
+
 ## Hot-path constraints
 
 Dispatch runs subscriber callbacks **synchronously on the shared notify connection's receive loop** (`PgSharedNotifyConnection`). One slow subscriber would block *every* channel on the pod. The bus preserves the existing discipline:
