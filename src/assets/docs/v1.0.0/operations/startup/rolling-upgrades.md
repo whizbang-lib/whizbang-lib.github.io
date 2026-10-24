@@ -30,6 +30,7 @@ testReferences:
   - tests/Whizbang.Core.Tests/Startup/StandbyHandshakeCoverageTests.cs
   - tests/Whizbang.Core.Component.Tests/Startup/StandbyWatcherTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/AliveLockLivenessSqlTests.cs
+  - tests/Whizbang.Core.Component.Tests/Startup/StartupWiringAuditTests.cs
 ---
 
 # Rolling Upgrades
@@ -107,6 +108,18 @@ Four properties keep the handshake from becoming its own outage — each carried
 - **Revival is not a second pipeline.** The migration is one transaction: a rollback leaves the ledger exactly as the standing-by instances last read it. Coming out of standby is **re-entering the pipeline at `Assess`** — the verdict comes back *same as me*, `Migrate` finds matching hashes and no-ops, capabilities are re-acquired, the data plane reopens. The [pipeline runner](startup-pipeline) is re-entrant for exactly this reason.
 
 Both the migrator's wait and the watcher read the alive-lock through `is_instance_alive(id, 0)` from migration 055 (a zero heartbeat threshold answers the lock alone), not through `wh_direct_alive_lock_holders` from migration 204, because the handshake runs before the new release's migrations are applied.
+
+### The watcher's clock {#the-watchers-clock}
+
+`StandbyWatcher` takes a `TimeProvider`, as a required constructor parameter, and reads no other clock. It governs:
+
+| Cadence or bound | Option (default) | Verified |
+|---|---|---|
+| How often the watcher checks for a standby request | `PollInterval` (5 seconds) | {verified: StandbyWatcherTests.ExecuteAsync_ATickThatThrows_DoesNotKillTheWatcherAsync, StartupWiringAuditTests.TheReadyServiceAndTheStandbyWatcher_RunOnTheHostsRegisteredClockAsync} |
+| How recent a requester's heartbeat must be, when it does not hold its alive-lock | `RequesterLivenessWindow` (30 seconds) | {verified: StandbyWatcherTests.ARequesterPastTheWindowWithoutItsLock_IsVoidAsync, StandbyWatcherTests.ADeadRequestersRequest_IsVoidAsync} |
+| How often a serving instance re-assesses its own verdict | `ObsolescenceInterval` (60 seconds) | {verified: StandbyWatcherTests.TheObsolescenceCheckIsRateLimitedAsync} |
+
+A host gets the clock registered in its container. The worker pipeline registers `TimeProvider.System` with `TryAdd`, so a host that registers its own `TimeProvider` first, a fake clock in a test included, runs the watcher on that clock. Code that constructs the watcher directly passes a clock explicitly. The liveness window compares the requester's last heartbeat, a database timestamp, with this clock, so a host clock that drifts from the database's moves the window by the drift.
 
 ## Eviction: the fence behind the handshake
 

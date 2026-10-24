@@ -28,6 +28,8 @@ testReferences:
   - tests/Whizbang.Core.Component.Tests/Startup/StartupPipelineHooksTests.cs
   - tests/Whizbang.Core.Component.Tests/Startup/StartupPipelineRunnerDutyTests.cs
   - tests/Whizbang.Core.Component.Tests/Startup/StartupReadyCompositeTests.cs
+  - tests/Whizbang.Core.Component.Tests/Startup/StartupReadinessCoverageTests.cs
+  - tests/Whizbang.Core.Component.Tests/Startup/StartupWiringAuditTests.cs
   - tests/Whizbang.Core.Tests/Startup/StartupStepOrderResolverTests.cs
   - tests/Whizbang.Core.Tests/Health/StartupPipelineHealthSourceTests.cs
 ---
@@ -157,6 +159,8 @@ public interface IStartupPipelineState {
 `Ready` is the terminal signal — *startup finished*, a different fact from *the schema is ready*. It rides the `IHostedLifecycleService.StartedAsync` seam (after every hosted service's `StartAsync` has returned) and composes blocking-step completion with `IStartupReadinessContributor`s — transport consumers contribute their subscription readiness, so "ready" includes "subscribed". The sticky `IStartupReadySignal` then flips, `ComponentState.Ready` lands in health, and the [status surface](startup-status) reports the pipeline complete.
 
 The composite is **fail-closed but never silent**: while `StartedAsync` is blocked it names what it is still waiting on — the pending blocking steps with their statuses, the readiness contributor by name, or *"no run has started yet"* — as a Warning on a backoff. A boot that cannot finish is a boot that says why, not a hang with no output.
+
+The narration runs on the `TimeProvider` that `StartupReadyService` is given, a required constructor parameter. Through the worker pipeline that is the host's registered clock: the pipeline registers `TimeProvider.System` with `TryAdd`, so a host that registers its own `TimeProvider` first, a fake clock in a test included, drives the narration with it. The service probes its wait every 5 seconds and narrates on the 3rd, 10th and 30th probe and then every 60 probes, so the first narration comes 15 seconds into a blocked boot. The elapsed time it reports comes from the same clock. {verified: StartupReadyCompositeTests.ReadyService_NarratesWhichBlockingStepIsHoldingItUpAsync, StartupReadyCompositeTests.StartedAsync_WhileBlockedOnAContributor_NarratesWhatItIsWaitingOnAsync, StartupWiringAuditTests.TheReadyServiceAndTheStandbyWatcher_RunOnTheHostsRegisteredClockAsync}
 
 See [Database Readiness](../workers/database-readiness#ready-is-more-than-the-gate) for the composite's roster and the health-policy rows.
 
