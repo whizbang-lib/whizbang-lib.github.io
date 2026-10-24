@@ -8,6 +8,8 @@ tags: [perspectives, schema, indexes, ledger, operations, dba]
 codeReferences:
   - src/Whizbang.Data.Postgres/Schema/ManagedSchemaPlanner.cs
   - src/Whizbang.Data.Postgres/Schema/ManagedSchemaReconciler.cs
+  - src/Whizbang.Data.Postgres/Schema/ReconcileBackend.cs
+  - src/Whizbang.Data.Postgres/AdvisoryLockRelease.cs
   - src/Whizbang.Data.Postgres/Schema/ManagedSchemaSettings.cs
   - src/Whizbang.Data.Postgres/Schema/ManagedSchemaLedger.cs
   - src/Whizbang.Data.Postgres/Migrations/200_ManagedObjects.sql
@@ -19,6 +21,7 @@ codeReferences:
 testReferences:
   - tests/Whizbang.Core.Tests/Schema/ManagedSchemaPlannerTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/ManagedSchemaReconcilerTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/ManagedSchemaReconcilerPoolerTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/DocumentIndexInitializationTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/ManagedSchemaReconcileStepTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StartupParity/StartupParityTests.cs
@@ -33,7 +36,7 @@ To do that safely, Whizbang keeps a **ledger** of what it manages, in each schem
 
 ## What happens at startup
 
-The reconcile runs at every start, after schema initialization commits, on a connection of its own and under the schema lock. A restart where the schema didn't change runs it too, so an object removed by a release, or dropped by hand, is noticed either way. It never fails a start: a reconcile that can't finish logs a warning, leaves everything in place, and tries again next time.
+The reconcile runs at every start, after schema initialization commits, on a connection of its own and under the schema lock. The lock is transaction-scoped: the plan and its ledger rows commit in one transaction, and each drop runs in a transaction of its own that takes the lock again, so a commit or rollback always releases the lock on the backend that took it, even behind a transaction-pooling pooler. A restart where the schema didn't change runs it too, so an object removed by a release, or dropped by hand, is noticed either way. It never fails a start: a reconcile that can't finish logs a warning, leaves everything in place, and tries again next time.
 
 ### The first time an object is seen
 
@@ -56,6 +59,11 @@ So the first deploy of a release with the ledger drops nothing, and neither does
 | — | has a **pinned** object | leaves it alone, always |
 
 A restart with unchanged code changes nothing.
+
+### Index drops need a direct connection {#index-drops-need-a-direct-connection}
+
+`DROP INDEX CONCURRENTLY` cannot run inside a transaction, so for an index drop the reconcile holds the session-level schema lock for the drop and its ledger row only, and only on a connection that reaches one backend (the server's `pg_backend_pid()` matches the process id the connection was given). Behind a pooler the check fails, and the index drops stay pending in the ledger with a Warning naming them and asking for a direct initialization connection. Configure [`ConnectionStrings:db-init`](../../operations/configuration/configuration-reference#connectionstrings-conventions) to a direct (non-pooled) connection and the next run drops them. Constraint drops are unaffected. A drop that finds another instance's initialization holding the lock stays pending for the next run too.
+{verified: ManagedSchemaReconcilerPoolerTests.ThroughATransactionPooler_NoLockIsLeftOnTheSchemaKey_AndTheNextInitializationTakesItAsync, ManagedSchemaReconcilerPoolerTests.ThroughATransactionPooler_IndexDropsWaitForADirectConnection_AndSayWhyAsync, ManagedSchemaReconcilerPoolerTests.WhenAnotherSessionTakesTheSchemaLockAfterThePlan_EveryDropStaysPendingAsync}
 
 ### Rolling deploys
 

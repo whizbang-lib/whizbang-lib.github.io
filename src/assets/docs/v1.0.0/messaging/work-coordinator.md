@@ -306,6 +306,7 @@ public record OutboxMessage {
     public required string EnvelopeType { get; init; }
     public Guid? StreamId { get; init; }
     public bool IsEvent { get; init; }
+    [JsonConverter(typeof(EventFlagsNumberJsonConverter))]  // always written as the number
     public EventFlags Flags { get; init; }
     public PerspectiveScope? Scope { get; init; }
     public required string MessageType { get; init; }
@@ -320,6 +321,7 @@ public record InboxMessage {
     public required string MessageType { get; init; }
     public Guid? StreamId { get; init; }
     public bool IsEvent { get; init; }
+    [JsonConverter(typeof(EventFlagsNumberJsonConverter))]  // always written as the number
     public EventFlags Flags { get; init; }
     public PerspectiveScope? Scope { get; init; }
     public EnvelopeMetadata? Metadata { get; init; }
@@ -328,7 +330,7 @@ public record InboxMessage {
 }
 ```
 
-**Usage**: Store new events in outbox (for publishing) or inbox (for deduplication + handler invocation). Correlation/causation and hop history travel inside the envelope's `EnvelopeMetadata`, not as top-level fields.
+**Usage**: Store new events in outbox (for publishing) or inbox (for deduplication + handler invocation). Correlation/causation and hop history travel inside the envelope's `EnvelopeMetadata`, not as top-level fields. `Flags` carries `EventFlagsNumberJsonConverter`, so it is written as the number even when the host's JSON options write enums as names; see [flags on the wire](../fundamentals/messaging/collective-events#event-flags-wire-form).
 
 ---
 
