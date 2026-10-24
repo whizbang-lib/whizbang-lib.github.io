@@ -14,8 +14,10 @@ codeReferences:
   - src/Whizbang.Core/Commands/System/SystemCommands.cs
   - src/Whizbang.Core/IReceptor.cs
   - src/Whizbang.Core/Lenses/ILensQuery.cs
+  - src/Whizbang.Core/Observability/MessageParseDiagnostics.cs
 testReferences:
   - tests/Whizbang.Core.Tests/Commands/System/SystemCommandsTests.cs
+  - tests/Whizbang.Core.Tests/Observability/MessageParseDiagnosticsTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -414,6 +416,53 @@ public class ResourceMetricsCollector {
   }
 }
 ```
+
+## Message Parse Diagnostics {#message-parse-diagnostics}
+
+`MessageParseDiagnostics` is a process-wide seam through which the framework reports each time it deserializes a
+message's envelope or payload. It exists to measure how many times one message is parsed on its way through a
+process (once per perspective, once per lifecycle stage, once per stream of a multi-stream run) and to pin those
+counts in regression tests, so a change that adds a parse is seen. It is diagnostics only: nothing in the framework
+reads it to make a decision.
+
+Each recorded parse is a `MessageParse` carrying:
+
+| Field | Meaning |
+|---|---|
+| `MessageId` | The message whose envelope or payload was parsed |
+| `Source` | Where the message came from (`MessageParseSource`): `TransportReceive`, `OffloadRehydration`, `OutboxRead`, `InboxRead`, `EventStoreRead`, `LifecycleStage`, `ReceptorDispatch`, `MultiStreamRun` or `Redelivery` |
+| `Kind` | What the parse produced (`MessageParseKind`): `Envelope`, `Payload`, `Metadata` or `Scope` |
+| `Member`, `FilePath`, `Line` | The call site that parsed it; `Site` renders it as `File.cs:line` |
+
+{verified: MessageParseDiagnosticsTests.Record_WithARecorder_CapturesIdSourceKindAndCallSiteAsync, MessageParseDiagnosticsTests.MessageParse_Site_WithAWindowsPath_IsTheFileNameAndLineAsync}
+
+When nothing subscribes, a parse site costs one volatile read and nothing else: the call-site arguments are
+compile-time constants, so reporting does not allocate. Leaving the seam in place costs nothing measurable.
+{verified: MessageParseDiagnosticsTests.Record_WithNoObserver_IsNotEnabledAndReportsNothingAsync}
+
+### Counting the parses of chosen messages
+
+`MessageParseRecorder` subscribes on construction and unsubscribes on dispose. Give it the message ids to count,
+or none to record every message; filtering by id is what lets concurrent tests, or a diagnostic session in a busy
+process, each count only their own messages. `Track` adds a message after construction.
+
+```csharp{title="Count the parses of one message" description="Record the parses of chosen messages with MessageParseRecorder and read the count and per-site summary" category="Usage" difficulty="INTERMEDIATE" tags=["Diagnostics", "Observability", "Testing"] tests=["MessageParseDiagnosticsTests.Recorder_WithAFilter_KeepsOnlyTheMessagesItWasGivenAsync", "MessageParseDiagnosticsTests.Recorder_Track_AddsAMessageToTheFilterAfterConstructionAsync", "MessageParseDiagnosticsTests.Recorder_Summarize_GroupsByKindSourceAndSiteAsync", "MessageParseDiagnosticsTests.Dispose_Unsubscribes_AndLaterParsesAreNotSeenAsync"]}
+using var recorder = new MessageParseRecorder(messageId);
+
+// ... send the message and wait for it to finish processing ...
+
+var payloadParses = recorder.CountFor(messageId, MessageParseKind.Payload);
+var everyParse = recorder.CountFor(messageId);
+
+foreach (var line in recorder.Summarize(messageId)) {
+  Console.WriteLine($"{line.Kind} {line.Source} {line.Site} x{line.Count}");
+}
+```
+
+`Summarize` groups a message's parses by kind, source and site, so a regression test can assert both how many
+parses happened and where. An observer of your own implements `IMessageParseObserver` and subscribes with
+`MessageParseDiagnostics.Subscribe`; it is called on the parsing thread inside the parse path, so it must be fast
+and must not throw.
 
 ## Best Practices
 
