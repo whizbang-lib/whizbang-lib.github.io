@@ -413,7 +413,7 @@ by a rule a host has to remember:
 | the integrity receptors | manifest answers, drill-down and follow-up requests, repair and backfill requests |
 | the repair drain and the subscription expansion worker | redelivery requests |
 | the redelivery pump | every bundle it ships |
-| `recover_dead_letter` (migration 151) | every row it re-creates: outbox, inbox, perspective, and a broker import re-entering through the inbox door |
+| `recover_dead_letter` (migration 151) | every row it re-creates: outbox and perspective. A recovered inbox or broker row re-enters through the inbox's arrival path and takes a delivery's priority |
 
 The negative case is tested at each site as well: an audit record of an interactive event, or one built
 while an interactive handling is in progress, does not inherit interactive. A worker's ambient background

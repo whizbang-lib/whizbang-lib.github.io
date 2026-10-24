@@ -35,9 +35,12 @@ testReferences:
 backstop cadence (default 10 min, `ScanIntervalMinutes`) it scans for due
 rows (up to `ScanBatchSize`, default 2000 — see Adaptive scan batch below, per cycle), consults the
 configured `IDeadLetterRecoveryPolicy` for each, and either re-emits the row
-onto its source work table (via the atomic `recover_dead_letter` SQL
-function, which re-inserts with `attempts=0`), holds it for review, or marks
-it permanently failed. Besides the backstop poll, the worker also wakes
+onto its source work table, holds it for review, or marks
+it permanently failed. Inbox and broker rows re-enter through the inbox's
+arrival path (`store_inbox_messages`) and read Recovered only once processed
+(see [re-entry](./transport-recovery#reentry)); outbox and perspective rows
+are re-inserted by the atomic `recover_dead_letter` SQL function with
+`attempts=0`. Besides the backstop poll, the worker also wakes
 within milliseconds of a new DLQ row when the `DeadLetterReady` NOTIFY
 signal is wired — migration 056 adds an `AFTER INSERT` trigger on
 `wh_dead_letters` that fires it.
@@ -275,7 +278,7 @@ The worker also exposes in-process counters for tests and health endpoints:
 ## Bounding the recovery cycle
 
 Recovery re-delivers a message by writing it back into `wh_inbox`. That is a real
-delivery and is counted like any other: `recover_dead_letter` increments
+delivery and is counted like any other: storing it increments
 `wh_message_deduplication.observation_count` for the message, which is the same
 counter `store_inbox_messages` maintains for normal arrivals and the one
 `PoisonMessageDetector` reads. A message that keeps returning through recovery
