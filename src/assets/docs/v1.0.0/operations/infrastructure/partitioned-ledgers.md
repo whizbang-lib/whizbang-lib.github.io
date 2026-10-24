@@ -44,7 +44,7 @@ dropped. That is a catalog change, with no dead tuples, no index bloat and almos
 
 The built-in partition manager does this for the framework's own time-ordered tables. It is off by default.
 
-```mermaid
+```mermaid{caption="A partitioned ledger: writers insert into the parent, maintenance creates partitions ahead and drops those wholly past the window, and the row sweep clears only the default partition while the table is managed." tests=["PartitionMaintainSqlTests.ACycle_CreatesTheCurrentAndAheadPartitions_AndASecondCreatesNothingAsync", "PartitionMaintainSqlTests.APartitionWhollyPastTheWindow_IsDropped_OneStraddlingItIsKeptAsync", "SignalPartitionConversionTests.OnceManaged_TheSweepLeavesPartitionsToTheDrop_AndClearsOnlyTheDefaultAsync"]}
 flowchart LR
   W[Writer] -->|INSERT| P[(Parent table)]
   P --> L[legacy: everything before the conversion]
