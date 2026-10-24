@@ -139,6 +139,36 @@ Composite: takes ids+failures across categories, issues all per-category sub-fun
 
 Read-only LEFT JOIN of event store ↔ perspective_events. Returns pending/processed counts per inquiry, optionally with the event-id arrays.
 
+## Prefix truncate: `wh_truncate_stream_prefix` {#truncate-stream-prefix}
+
+Not one of the 11 hot-path functions, but an engine that supports stream truncation provides it, because
+`IWorkCoordinator.TruncateStreamPrefixAsync` calls it. An engine without it leaves the coordinator's default in place,
+which answers `unsupported`.
+
+```sql{title="wh_truncate_stream_prefix signature" description="The gated prefix truncate the coordinator calls, and the row it returns" category="Design" difficulty="ADVANCED" tags=["sql-contracts", "streams", "truncation", "retention"] tests=["StreamCloseSqlTests.CloseStream_ConsumptionGate_BlocksThenTruncatesAsync"]}
+wh_truncate_stream_prefix(
+  p_stream_id       UUID,
+  p_through_version BIGINT,
+  p_archive         BOOLEAN DEFAULT FALSE
+) RETURNS TABLE(
+  truncate_status   TEXT,    -- 'truncated' | 'blocked' | 'no_carry_forward' | 'held' | 'cursor_behind' | 'debug_skipped'
+  events_truncated  BIGINT   -- 0 unless 'truncated'
+)
+```
+
+**Required behavior**: remove the stream's events at or below `p_through_version` only when no perspective work for
+them is unprocessed, an event survives above that version, and no active destruction hold covers the range; move every
+perspective cursor inside the range onto the first surviving event (or refuse with `cursor_behind` when that
+perspective still owes it); remove the snapshots a rewind could no longer replay from; with `p_archive`, copy the
+detail to the archive in the same transaction first. The [event streams page](/v1.0.0/fundamentals/events/event-streams#truncating-a-stream-prefix)
+describes each outcome.
+
+{verified: StreamCloseSqlTests.CloseStream_ConsumptionGate_BlocksThenTruncatesAsync, StreamCloseSqlTests.CloseStream_NoCarryForward_RefusesTotalTruncationAsync, StreamCloseSqlTests.CloseStream_CursorBehindABoundaryEventItsPerspectiveStillOwes_IsRefusedAsync, StreamCloseSqlTests.TruncateStreamPrefix_AfterMigration_IsTheOnlyNameTheTruncateGoesByAsync, DapperStreamCloseCompanionTests.TruncateStreamPrefix_OnADapperMigratedDatabase_ReplacesCloseStreamAsync}
+
+The Postgres function was `close_stream` (result column `close_status`, success status `closed`) until migration 240
+renamed it (#1731). "Close" is reserved for closing the books, which seals a stream and opens its successor; an
+engine should not reuse the old name.
+
 ## NOTIFY emission contract
 
 If your engine supports server-side notifications, emit `pg_notify('wh_work', '<category>')` (or your engine's equivalent) after successful inserts in `commit_handler_result` and `complete_perspective`. The category is one of: `outbox`, `inbox`, `perspective`.
