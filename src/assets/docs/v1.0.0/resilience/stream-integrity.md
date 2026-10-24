@@ -396,7 +396,7 @@ worker itself.)
   deep audit as the "pending backfill" surface is not yet done as of a64ba9a.
 :::
 
-### Phase A — digest manifests (the scheduled deep audit)
+### Phase A: digest manifests (the scheduled deep audit) {#phase-a-digest-manifests}
 
 **Both halves of the exchange are storm-bounded.** Audit traffic is inherently bursty — after a
 deploy, every consumer audits on a similar cadence and every origin answers at once. An origin
@@ -515,11 +515,11 @@ the stream head and that the perspective's birth does not postdate history it sh
 
 A digest covers the durable events a service stores in `wh_event_store`, and only their identities. Each bucket is
 one (origin, tenant, event type, stream), and its value is the order-independent fold of each event's id hash, kept
-in `wh_stream_digests` and sealed into epochs as described in [Phase A](#phase-a--digest-manifests-the-scheduled-deep-audit).
+in `wh_stream_digests` and sealed into epochs as described in [Phase A](#phase-a-digest-manifests).
 
 | Event | Digested | Where it is explained |
 |---|---|---|
-| A durable event stored through the emit chain, from the service's own outbox or received through its inbox | Yes, in its origin's lane | [Phase A](#phase-a--digest-manifests-the-scheduled-deep-audit) |
+| A durable event stored through the emit chain, from the service's own outbox or received through its inbox | Yes, in its origin's lane | [Phase A](#phase-a-digest-manifests) |
 | A durable event stored with `IEventStore.AppendAsync` | Yes, in the local lane, under the same per-stream lock as the store | [Direct appends are digested like emitted events](#direct-appends-digested) |
 | An ephemeral event (`flags & 8`) | No: the checkpoints match its window instead | [Ephemeral and temporal traffic](#ephemeral-and-temporal-traffic-wire-covered-window-matched) |
 | An at-most-once schedule occurrence (`flags & 32`) | No | [How at-most-once events are excluded](#at-most-once-exclusion) |
