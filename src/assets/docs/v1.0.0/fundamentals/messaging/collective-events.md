@@ -30,6 +30,7 @@ codeReferences:
   - src/Whizbang.Core/Perspectives/CollectiveRouting.cs
   - src/Whizbang.Core/Perspectives/TenantCollectiveScopeResolver.cs
   - src/Whizbang.Core/Workers/PerspectiveWorker.cs
+  - src/Whizbang.Core/Workers/ReceivedEventPostPerspectiveStages.cs
   - src/Whizbang.Data.Postgres/Collective/CollectivePredicateSqlCompiler.cs
   - src/Whizbang.Data.Postgres/Collective/CollectiveReplayApplier.cs
   - src/Whizbang.Data.Postgres/Collective/CollectiveInMemoryExecutor.cs
@@ -57,6 +58,9 @@ testReferences:
   - tests/Whizbang.Core.Tests/Perspectives/CollectiveSpecContractTests.cs
   - tests/Whizbang.Core.Tests/Perspectives/TenantCollectiveScopeResolverTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerCollectiveSinkTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerCollectiveSinkTests.LifecycleOnce.cs
+  - tests/Whizbang.Core.Tests/Workers/InboxDispatchWorkerCollectiveLifecycleTests.cs
+  - tests/Whizbang.Core.Tests/Workers/ReceivedEventPostPerspectiveStagesTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Collective/CollectiveDispatcherEFCoreIntegrationTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Collective/CollectiveInMemoryUpsertElementTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Collective/CollectiveElementUpsertSqlTests.cs
@@ -1248,6 +1252,29 @@ committed and its sink rows are completed, so a throwing completion
 receptor must neither crash the sink nor undo the apply. A **failed**
 apply returns before this step, so a completion signal is never emitted
 for an apply that did not happen.
+
+### Once per event, after the apply commits {#post-perspective-stages-once}
+
+In a service that runs the collective sink, the `PostAllPerspectives`
+and `PostLifecycle` stages of a collective event fire **once per event,
+after the collective apply commits**, not when the event is received.
+That holds however many collective handlers apply the event and however
+many batches the sink's run spans. The receive paths (the inbox and the
+Service Bus consumer) see that the service registers the collective
+sink and leave those stages to it.
+
+A service that receives a collective event but does not run the sink
+never applies it, so there the receive path fires both stages on
+receipt, once, as it does for any event no perspective folds.
+
+{verified: PerspectiveWorkerCollectiveSinkTests.CollectiveEvent_ReceivedThenApplied_FiresEachPostPerspectiveStageOnceInTheServiceAsync, PerspectiveWorkerCollectiveSinkTests.CollectiveEvent_AppliedByTwoCollectiveHandlers_FiresEachPostPerspectiveStageOnceAsync, PerspectiveWorkerCollectiveSinkTests.CollectiveEvents_InTwoBatchesOfOneRun_FireEachPostPerspectiveStageOncePerEventAsync, InboxDispatchWorkerCollectiveLifecycleTests.CollectiveEvent_InAServiceRunningTheCollectiveSink_LeavesThePostPerspectiveStagesToTheSinkAsync, InboxDispatchWorkerCollectiveLifecycleTests.CollectiveEvent_InAServiceWithoutTheCollectiveSink_StillFiresThePostPerspectiveStagesOnceAsync, ReceivedEventPostPerspectiveStagesTests.CollectiveEvent_WithTheCollectiveSinkRegistered_IsLeftToTheSinkAsync, ReceivedEventPostPerspectiveStagesTests.CollectiveEvent_WithoutTheCollectiveSink_IsFiredOnReceiptAsync}
+
+Earlier versions fired those stages on receipt as well as after the
+apply, so a hook at either stage (a `PostAllPerspectivesDetached`
+notification hook, for example) ran twice for every collective event
+received from another service, the first time before the apply had
+committed. A hook that compensated for the duplicate can drop that
+logic.
 
 ## Sample project
 

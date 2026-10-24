@@ -19,12 +19,16 @@ codeReferences:
   - src/Whizbang.Core/Perspectives/IPerspectiveStore.cs
   - src/Whizbang.Core/Perspectives/IPerspectivePurgeMarkerStore.cs
   - src/Whizbang.Data.Postgres/PostgresPerspectivePurgeMarkerStore.cs
+  - src/Whizbang.Core/Perspectives/PerspectiveRowWriteGuard.cs
 testReferences:
   - tests/Whizbang.Core.Tests/Perspectives/IPerspectiveWithActionsForTests.cs
   - tests/Whizbang.Core.Tests/Perspectives/ApplyResultTests.cs
   - tests/Whizbang.Core.Tests/Perspectives/ModelActionTests.cs
   - tests/Whizbang.Core.Tests/Perspectives/PurgeStaysPurgedTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/PerspectivePurgeMarkerStoreTests.cs
+  - tests/Whizbang.Core.Tests/Perspectives/DeclinedStreamLeavesNoRowTests.cs
+  - tests/Whizbang.Core.Tests/Perspectives/PerspectiveRowWriteGuardTests.cs
+  - tests/Whizbang.Generators.Tests/PerspectiveRunnerTemplateInvariantTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -99,7 +103,7 @@ public readonly struct ApplyResult<TModel> where TModel : class {
 |---|---|---|---|
 | `Update(model)` | The updated model | `None` | Upserts the model |
 | `None()` | `null` | `None` | Skips update |
-| `Delete()` | `null` | `Delete` | Soft delete (row preserved; see below) |
+| `Delete()` | `null` | `Delete` | Soft delete (row preserved; see below). On a stream with no row it is a no-op |
 | `Purge()` | `null` | `Purge` | Hard delete (removes row); later events on the stream are skipped |
 | `Resurrect(model)` | The new model | `Resurrect` | Recreates a purged row and forgets the purge; an ordinary update otherwise |
 
@@ -295,7 +299,7 @@ Shipped behavior: `ModelAction.Delete` does **not** automatically stamp `Deleted
 
 1. **`ModelAction.None`** (update): The runner keeps the returned model and continues applying events. At the end of the batch, it upserts the final model and saves the checkpoint atomically.
 
-2. **`ModelAction.Delete`** (soft delete): The runner keeps the model (the one returned with the action, or the prior model if none was returned) and upserts it at save time. The row remains in the database for audit and temporal queries. Setting `DeletedAt` is the perspective's responsibility.
+2. **`ModelAction.Delete`** (soft delete): The runner keeps the model (the one returned with the action, or the prior model if none was returned) and upserts it at save time. The row remains in the database for audit and temporal queries. Setting `DeletedAt` is the perspective's responsibility. A `Delete()` that returns no model on a stream with no row is a no-op: there is nothing to mark, so no row is created (see [A declined stream gets no row](#declined-stream-no-row)).
 
 3. **`ModelAction.Purge`** (hard delete): The runner marks the stream purged for this perspective and nulls the model. Every later event on the stream, in this batch or any later one, advances the checkpoint and is skipped unless its Apply returns `Resurrect`. At save time, the runner records the purge and then calls `IPerspectiveStore.PurgeAsync()` to remove the row entirely.
 
@@ -318,6 +322,28 @@ The runner **never passes `Apply` a null model**. When a stream has no row (a ne
 - every other property keeps the value of the model's own initializer, or its default.
 
 The runner saves a row only when an `Apply` returns a model (or the row already existed); a batch of `ApplyResult.None()` on a new stream writes nothing. This has a consequence that surprises people: a guard written as `current ??= new OrderView { ... }` **never runs**, because `current` is never null. A create-or-update `Apply` therefore cannot tell "no row yet" from "a row with default values" by checking for null, and on a missing row it builds a row out of the empty model. Test for a missing row explicitly (for example, the stream key is set but a field every created row has, such as `CreatedAt`, is still its default) if an event must not create one, and rely on the purge marker below for a row that was purged.
+
+### A declined stream gets no row {#declined-stream-no-row}
+
+A perspective can decline a stream: every `Apply` for the stream's events returns `ApplyResult<TModel>.None()`, for example because the events belong to a different workflow that shares the event types. Such a stream **gets no row**, however its events reach the runner. The live drain writes nothing, and so does a rewind, whether it comes from a late event behind the cursor, events of one stream split across concurrent claims, a startup rewind or a resurrection. A rewind writes, and snapshots, only a model an `Apply` produced or a snapshot it restored; the empty model the runner builds as `Apply` input is never stored. The cursor still moves past the declined events, so they are not claimed again.
+
+{verified: DeclinedStreamLeavesNoRowTests.LiveBatch_FirstEventDeclined_AndALaterEventDeclined_LeavesNoRowAsync, DeclinedStreamLeavesNoRowTests.Rewind_OfAStreamWhoseEventsAreAllDeclined_LeavesNoRowAsync, DeclinedStreamLeavesNoRowTests.ConcurrentClaims_TheLaterEventFirst_ThenTheEarlierOneRewound_LeavesNoRowAsync, DeclinedStreamLeavesNoRowTests.Rewind_WithSnapshotsOn_OfAStreamWhoseEventsAreAllDeclined_SnapshotsNothingAsync, DeclinedStreamLeavesNoRowTests.Rewind_OfAStreamWithAnAcceptedEvent_WritesTheRowItFoldsAsync, DeclinedStreamLeavesNoRowTests.Rewind_FromASnapshot_WithEveryLaterEventDeclined_KeepsWritingTheSnapshotsModelAsync, DeclinedStreamLeavesNoRowTests.Rewind_WhereADeclinedEventPrecedesAnAcceptedOne_WritesOnlyWhatTheAcceptedOneFoldsAsync}
+
+The same holds for a soft delete with no model. `ApplyResult<TModel>.Delete()` on a stream with no row is a no-op, live or in a rewind. On a stream an `Apply` already produced a model for, it keeps that model, as described above.
+
+{verified: DeclinedStreamLeavesNoRowTests.LiveBatch_ASoftDeleteWithNoModel_OnAStreamWithNoRow_LeavesNoRowAsync, DeclinedStreamLeavesNoRowTests.Rewind_ASoftDeleteWithNoModel_OnAStreamWithNoRow_LeavesNoRowAsync, DeclinedStreamLeavesNoRowTests.LiveBatch_ASoftDeleteWithNoModel_OnALiveRow_KeepsTheRowAsync}
+
+Earlier versions stored the empty model on a rewind of a declined stream, which left a row of defaults (empty strings, zero counts, the earliest timestamps) that read as a real one. Rows already written that way stay in place: the fix stops new ones, it does not remove old ones.
+
+**The write guard.** Every row write in the generated runner passes through `PerspectiveRowWriteGuard.AllowsWrite` first. The runner tells it whether the model came from an `Apply`, a stored row or a snapshot; when it did not, the guard refuses the write and logs a warning:
+
+```text
+[diag.write.unproduced] {PerspectiveName} stream {StreamId}: refused to write a row no Apply produced; ...
+```
+
+Every write path in the runner already declines such a batch before it reaches the write, so this warning should never appear. If you see it, nothing was lost and no blank row was stored, but it means a write path is missing the check: report it as a defect on the [Whizbang issue tracker](https://github.com/whizbang-lib/whizbang/issues), with the perspective name, the stream id and the surrounding log lines.
+
+{verified: PerspectiveRowWriteGuardTests.AllowsWrite_AModelAnApplyProduced_IsWrittenAndNothingIsLoggedAsync, PerspectiveRowWriteGuardTests.AllowsWrite_AModelNoApplyProduced_IsRefusedWithAWarningNamingTheRowAsync, PerspectiveRunnerTemplateInvariantTests.SaveModelAndCheckpoint_AsksTheWriteGuardBeforeItWritesAsync}
 
 The runner now remembers the purge, and checks it **before** any `Apply` runs:
 
