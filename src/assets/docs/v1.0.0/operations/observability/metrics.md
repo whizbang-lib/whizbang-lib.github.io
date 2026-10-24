@@ -787,14 +787,14 @@ Meter name: `Whizbang.StreamIntegrity` (`StreamIntegrityMetrics`)
 | `whizbang.stream_integrity.redelivery_requests_received` | Counter\<long\> | Re-delivery requests served as an origin (repair + backfill flows) |
 
 ## Whizbang.Capabilities {#capabilities}
-{verified: CapabilityMetricsTests.Gauge_ReportsOneSeriesPerCapabilityAndScope_WithEveryTagAsync, CapabilityMetricsTests.Gauge_ReadsTheLatestAnswerAtEachCollectionAsync, CapabilityMetricsTests.Gauge_IsNamedOnTheWhizbangCapabilitiesMeter_InTheTurnkeyListAsync}
+{verified: CapabilityMetricsTests.Gauge_ReportsOneSeriesPerCapabilityAndScope_WithEveryTagAsync, CapabilityMetricsTests.Gauge_TagsEachSeriesWithHowTheVerdictRequiresItAsync, CapabilityMetricsTests.Gauge_ReadsTheLatestAnswerAtEachCollectionAsync, CapabilityMetricsTests.Gauge_IsNamedOnTheWhizbangCapabilitiesMeter_InTheTurnkeyListAsync}
 
 Meter name: `Whizbang.Capabilities` (`CapabilityMetrics`), created with the capability registry and
 included in `WhizbangMeters.All`.
 
 | Metric Name | Type | Description |
 |-------------|------|-------------|
-| `whizbang.capability.state` | ObservableGauge\<int\> | One series per capability and scope, value 1, tagged `provider` (for example `postgres`), `capability` (for example `pg_squeeze`), `scope` (for Postgres, the database) and `state` (`Ready`, `Provisionable`, `NotPermitted`, `NeedsServerChange`, `NoPrivilege`, `Missing`, `Unknown`). Every series reads `Unknown` until the startup probe has run, and wherever the provider could not probe |
+| `whizbang.capability.state` | ObservableGauge\<int\> | One series per capability and scope, value 1, tagged `provider` (for example `postgres`), `capability` (for example `pg_squeeze`), `scope` (for Postgres, the database) `state` (`Ready`, `Provisionable`, `NotPermitted`, `NeedsServerChange`, `NoPrivilege`, `Missing`, `Unknown`) and `required` (`explicit` when an operator-set feature requires it, `implicit` when only a default does, otherwise `none`, from the latest [verdict](../infrastructure/capabilities.md#validation)). Every series reads `Unknown` until the startup probe has run, and wherever the provider could not probe |
 
 Value 1 on a state tag lets a dashboard count or alert by state without decoding a number, for example
 "any capability `NotPermitted` anywhere". What each state means is on
