@@ -236,6 +236,12 @@ public class ServiceBusReadinessCheck : ITransportReadinessCheck {
 
 ---
 
+### Capabilities
+
+`AddWhizbangCapabilities()`, which every Postgres driver calls, registers `whizbang_capabilities`: unhealthy while
+an explicitly configured feature lacks the capability it requires, degraded while a required capability warns
+or degrades. See [Capabilities: Health](capabilities.md#health).
+
 ## Registration Patterns
 
 ### Basic Registration

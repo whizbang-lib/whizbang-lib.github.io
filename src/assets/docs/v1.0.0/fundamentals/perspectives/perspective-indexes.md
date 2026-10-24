@@ -25,6 +25,8 @@ codeReferences:
   - src/Whizbang.Generators/Analyzers/QueryExposureIndexAnalyzer.cs
   - src/Whizbang.Generators.Shared/Utilities/PostgresIdentifiers.cs
   - src/Whizbang.Data.EFCore.Postgres/QueryTranslation/JsonbContainmentRewriter.cs
+  - src/Whizbang.Data.Postgres/OptionalExtensionBlocks.cs
+  - src/Whizbang.Data.Postgres/PostgresSchemaRequirements.cs
 testReferences:
   - tests/Whizbang.Generators.Tests/PerspectiveDocumentIndexGenerationTests.cs
   - tests/Whizbang.Generators.Tests/EFCorePerspectiveConfigurationGeneratorCoverageTests.cs
@@ -39,6 +41,8 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/QueryTranslation/JsonIndexStandDownTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/IndexStatisticsInitializationTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/IndexStatisticsMaintenanceStepTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/OptionalExtensionBlocksTests.cs
+  - tests/Whizbang.Core.Tests/PostgresExtensions/PostgresSchemaRequirementsTests.cs
 ---
 
 # Perspective Indexes
@@ -245,6 +249,29 @@ index is over the field's extraction, then builds the same kind of index on the 
 Trigram indexes (`IndexKinds.Substring` and `Search`) are the exception. They are created inside the
 optional-extension block that lets a server without `pg_trgm` skip them, so they keep plain
 `CREATE INDEX IF NOT EXISTS`.
+
+### When pg_trgm is not available {#trigram-extension}
+{verified: OptionalExtensionBlocksTests.AnExtensionTheServerLacks_IsSkippedWithoutTrying_NamingItsStateAndTheFixAsync, OptionalExtensionBlocksTests.ARoleThatCannotCreateIt_IsSkippedWithoutTrying_NamingTheFixAsync, OptionalExtensionBlocksTests.AnInstalledExtension_AppliesItsBlockWithoutCreatingItAsync, OptionalExtensionBlocksTests.ARefusalOnlyCreateRevealsIsStillCaughtAsync, PostgresSchemaRequirementsTests.EachPerspectiveWithAnOptionalExtensionBlock_RequiresItsExtensionImplicitlyAsync}
+
+Before it creates `pg_trgm`, the schema pass reads the extension's
+[capability](../../operations/infrastructure/postgres-extensions.md) with the startup probe's own query:
+
+| pg_trgm on the server | What the schema pass does |
+|---|---|
+| installed | builds the trigram indexes, without creating anything, even for a role that could not |
+| available | creates it, then builds the indexes |
+| not allowlisted, needs preloading, no privilege, missing | skips the block **without trying**, with one warning naming the state, the skipped indexes and the fix |
+| refused only at `CREATE EXTENSION` | skips the block with one warning carrying the server's answer (`0A000`, `42501` or `58P01`) |
+
+The service starts either way: a substring query against a table without its trigram index scans, as it does
+wherever the index is absent. Each perspective with a trigram index is also an **implicit**
+[capability requirement](../../operations/infrastructure/capabilities.md#requirement-sources) on
+`postgres/pg_trgm`, so the [startup verdict](../../operations/infrastructure/capabilities.md#validation) names
+it once more, as a warning, and the `whizbang_capabilities` health entry reads Degraded:
+
+```text
+capability postgres/pg_trgm on 'db': NotPermitted; NotAllowlisted. Fix: add PG_TRGM to the server's extension allowlist (azure.extensions on Azure Database for PostgreSQL). Required by: Substring indexes on perspective fields (wh_per_product, default)
+```
 
 ### Indexes an earlier release created at apply time
 

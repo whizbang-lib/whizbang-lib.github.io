@@ -7,13 +7,16 @@ order: 11
 description: >-
   The built-in partition manager: which framework tables are partitioned by time or by time-ordered id, how
   partitions are created ahead and dropped past the retention window, the maintainer-duty gate, how to enable it,
-  how an existing table is converted once, and what the row sweeps still do
+  how an existing table is converted once, the autovacuum settings each partition carries, and what the row sweeps
+  still do
 tags: >-
   operations, partitioning, partitions, retention, wh_log, wh_signals, wh_lifecycle_completions, uuidv7, maintenance,
   postgres, storage, vacuum, maintainer duty
 codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/226_PartitionManager.sql
   - src/Whizbang.Data.Postgres/Migrations/233_PartitionSignalsAndLifecycleCompletions.sql
+  - src/Whizbang.Data.Postgres/Migrations/237_PartitionsCarryTheLedgersAutovacuumSettings.sql
+  - src/Whizbang.Data.Postgres/Migrations/238_LogSweepClearsTheDefaultPartition.sql
   - src/Whizbang.Data.Postgres/PartitionedTable.cs
   - src/Whizbang.Data.Postgres/PartitionMaintenance.cs
   - src/Whizbang.Data.EFCore.Postgres/PartitionMaintenanceStep.cs
@@ -44,7 +47,7 @@ dropped. That is a catalog change, with no dead tuples, no index bloat and almos
 
 The built-in partition manager does this for the framework's own time-ordered tables. It is off by default.
 
-```mermaid{caption="A partitioned ledger: writers insert into the parent, maintenance creates partitions ahead and drops those wholly past the window, and the row sweep clears only the default partition while the table is managed." tests=["PartitionMaintainSqlTests.ACycle_CreatesTheCurrentAndAheadPartitions_AndASecondCreatesNothingAsync", "PartitionMaintainSqlTests.APartitionWhollyPastTheWindow_IsDropped_OneStraddlingItIsKeptAsync", "SignalPartitionConversionTests.OnceManaged_TheSweepLeavesPartitionsToTheDrop_AndClearsOnlyTheDefaultAsync"]}
+```mermaid{caption="A partitioned ledger: writers insert into the parent, maintenance creates partitions ahead and drops those wholly past the window, and the row sweep clears only the default partition while the table is managed." tests=["PartitionMaintainSqlTests.ACycle_CreatesTheCurrentAndAheadPartitions_AndASecondCreatesNothingAsync", "PartitionMaintainSqlTests.APartitionWhollyPastTheWindow_IsDropped_OneStraddlingItIsKeptAsync", "SignalPartitionConversionTests.OnceManaged_TheSweepLeavesPartitionsToTheDrop_AndClearsOnlyTheDefaultAsync", "LogPartitionConversionTests.OnceManaged_TheRowDeleteSweepsOnlyTheDefaultPartition_AndLeavesPartitionsToTheDropAsync"]}
 flowchart LR
   W[Writer] -->|INSERT| P[(Parent table)]
   P --> L[legacy: everything before the conversion]
@@ -129,8 +132,30 @@ For each registered table it calls two SQL functions:
      kept whole, so rows are kept at least as long as the window and at most one interval longer;
    - under `debug_mode`, keeps every partition, as the row sweeps keep every row.
 
-It returns one row per change: `created`, `dropped`, `emptied`, `deferred`, `kept` or `skipped`, and the step logs
-each one.
+It returns one row per change: `created`, `tuned`, `dropped`, `emptied`, `deferred`, `kept` or `skipped`, and the
+step logs each one.
+
+### Autovacuum settings {#autovacuum-settings}
+
+{verified: LifecycleCompletionPartitionConversionTests.PartitionsTheManagerCreates_CarryTheLedgersAutovacuumSettingsAsync, LifecycleCompletionPartitionConversionTests.TheConversionsDefaultPartition_GetsTheSettingsOnTheNextCycleAsync, LifecycleCompletionPartitionConversionTests.APartitionAnOperatorTuned_KeepsItsOwnSettingsAsync, LifecycleCompletionPartitionConversionTests.APartitionInUse_IsTunedOnALaterCycle_WithoutWaitingAsync, DapperPartitionManagerSqlTests.TheLifecycleCompletionsPartitions_CarryTheLedgersAutovacuumSettingsAsync}
+
+Autovacuum runs per partition, and a partitioned parent cannot hold autovacuum settings of its own. So a table's
+settings have to be on each partition, or a new partition vacuums at the server's defaults (a share of the table,
+20% unless the server is tuned).
+
+The manager declares the settings each table's partitions carry, and writes them into every partition it creates,
+the default partition included:
+
+| Table | Partition settings |
+|---|---|
+| `wh_lifecycle_completions` | `autovacuum_vacuum_scale_factor = 0`, `autovacuum_vacuum_threshold = 10000`: vacuum after a fixed 10,000 dead rows, the values the plain table had |
+| `wh_log`, `wh_signals` | none; the server's defaults |
+
+A partition made without them, such as the default partition a conversion adds, gets them on the next cycle, which
+reports it as `tuned`. A partition that already sets any of the declared keys is left as it is, so a value an
+operator set on one partition by hand stands. Changing a partition's settings waits on a running vacuum of that
+partition, so the manager takes that lock only if it is free and otherwise reports the partition `deferred` and tries
+again next cycle. The legacy partition keeps the settings the plain table had.
 
 ### Intervals and names {#intervals-and-names}
 
@@ -233,19 +258,21 @@ marker present the conversion never runs again
 
 ## Row sweeps {#row-sweeps}
 
-{verified: LogPartitionConversionTests.OnceConverted_RetentionDropsPartitions_InsteadOfDeletingRowsAsync, SignalPartitionConversionTests.OnceManaged_TheSweepLeavesPartitionsToTheDrop_AndClearsOnlyTheDefaultAsync, SignalPartitionConversionTests.AConvertedTable_WithPartitioningSwitchedOff_IsStillSweptByRowAsync, EFCoreWorkCoordinatorLifecycleAndJanitorTests.CleanupLifecycleCompletionsAsync_OncePartitionedAndManaged_SweepsOnlyTheDefaultPartitionAsync, EFCoreWorkCoordinatorLifecycleAndJanitorTests.CleanupLifecycleCompletionsAsync_PartitionedWithMaintenanceSwitchedOff_SweepsByRowAsync, LifecycleCompletionPartitionConversionTests.TheSweepRelation_IsTheTable_UntilItIsPartitionedAndManaged_ThenItsDefaultPartitionAsync}
+{verified: LogPartitionConversionTests.OnceConverted_RetentionDropsPartitions_InsteadOfDeletingRowsAsync, LogPartitionConversionTests.OnceManaged_TheRowDeleteSweepsOnlyTheDefaultPartition_AndLeavesPartitionsToTheDropAsync, LogPartitionConversionTests.OnceManaged_WithoutADefaultPartition_TheRowDeleteSkipsAsync, DapperPartitionManagerSqlTests.TheLog_OnceManaged_IsSweptInItsDefaultPartitionOnlyAsync, SignalPartitionConversionTests.OnceManaged_TheSweepLeavesPartitionsToTheDrop_AndClearsOnlyTheDefaultAsync, SignalPartitionConversionTests.AConvertedTable_WithPartitioningSwitchedOff_IsStillSweptByRowAsync, EFCoreWorkCoordinatorLifecycleAndJanitorTests.CleanupLifecycleCompletionsAsync_OncePartitionedAndManaged_SweepsOnlyTheDefaultPartitionAsync, EFCoreWorkCoordinatorLifecycleAndJanitorTests.CleanupLifecycleCompletionsAsync_PartitionedWithMaintenanceSwitchedOff_SweepsByRowAsync, LifecycleCompletionPartitionConversionTests.TheSweepRelation_IsTheTable_UntilItIsPartitionedAndManaged_ThenItsDefaultPartitionAsync}
 
 Each table keeps its row sweep, and the sweep decides each run what it may delete from:
 
 | Table state | `wh_log` sweep | `wh_signals` sweep | `wh_lifecycle_completions` sweep |
 |---|---|---|---|
 | Plain, or partitioned with `Partitioning:Enabled` off | every row past the window | every row past the window that every instance has delivered | every row whose `completed_at` is past the window |
-| Partitioned and maintained | skipped | the default partition only | the default partition only |
+| Partitioned and maintained | the default partition only | the default partition only | the default partition only |
 
 Once the manager keeps a table, its expired partitions are dropped whole, so a row delete there would only leave dead
 tuples in the partition that straddles the window. The default partition is the exception: it holds rows no
 partition covers (a version-4 event id, or a row written while maintenance had fallen behind), and no drop ever
-reaches it, so the `wh_signals` and `wh_lifecycle_completions` sweeps keep clearing it with their usual predicate.
+reaches it, so each sweep keeps clearing it with its usual predicate (for `wh_log`, `logged_at` past
+`log_retention_days`). The `wh_log` sweep reports its status as `ok (partitioned: the default partition only; expired
+partitions are dropped)`, or `skipped (partitioned: no default partition)` when the partition is missing.
 `wh_partition_sweep_relation(table)` answers which relation that is: the table, its default partition, or nothing.
 
 Two differences from the row sweep follow from dropping by range:
