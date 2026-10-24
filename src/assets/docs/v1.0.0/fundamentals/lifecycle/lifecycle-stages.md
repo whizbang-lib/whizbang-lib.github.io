@@ -184,6 +184,8 @@ Which stages a message reaches depends on its direction relative to the service 
 
 On ingress, `PostInbox*` skips a message this same service published: its handler already ran when it was dispatched. A scheduled copy whose local handling was deferred (`LocalDeferred`) is the exception: this service handles it when it comes back.
 
+On ingress, an event no perspective in this service folds runs through `PostAllPerspectives*` and `PostLifecycle*` on receipt. A [collective event](../messaging/collective-events.md#post-perspective-stages-once) received by a service that runs the collective sink is the exception: the sink fires those stages once per event, after its apply commits, and the receive path leaves them to it.
+
 At each stage, **lifecycle receptors** can execute to:
 - Track metrics and telemetry
 - Log diagnostic information
