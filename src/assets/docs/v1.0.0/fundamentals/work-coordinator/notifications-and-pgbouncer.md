@@ -10,10 +10,16 @@ tags: 'work-coordinator, notifications, listen-notify, pgbouncer, doorbell, debo
 codeReferences:
   - src/Whizbang.Data.Postgres/Notifications/PgSharedNotifyConnection.cs
   - src/Whizbang.Data.Postgres/DoorbellRinger.cs
+  - src/Whizbang.Data.Postgres/AdvisoryLockRelease.cs
+  - src/Whizbang.Data.Postgres/Notifications/NotificationConnectionPlan.cs
+  - src/Whizbang.Data.Postgres/Notifications/PgRoleElector.cs
   - src/Whizbang.Data.Postgres/Migrations/143_NotifyStateNeverWaits.sql
   - src/Whizbang.Data.Postgres/Migrations/146_DoorbellsRingAfterCommit.sql
 testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/DoorbellsRingAfterCommitSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/AdvisoryLockReleaseTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/PgDutyElectorLockReleaseTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/PgRoleElectorBridgeLockTests.cs
 ---
 
 # Notifications and pgbouncer
@@ -64,6 +70,21 @@ Each pod opens **exactly one** direct connection (bypasses pgbouncer) and multip
 ```
 
 **Total bypass-pool connections per pod: 1.** Multiple subscribers (work signals, commit-order stamping, app signals, future channels) all share that single direct conn. Pre-slice-33 design opened one direct connection per listener type (3 per pod). With horizontal scaling — many pods × many services × many environments — that adds up fast on the Postgres `max_connections` budget.
+
+### Session locks also need the direct connection {#session-locks}
+
+Three leaders hold a session-level advisory lock for as long as they lead: the duty elector, the role elector's
+bridge (the legacy session lock it holds while a role is bridged) and the commit-order stamper's leader lock. A
+transaction pooler does not keep a session lock on one backend, so they run on the same direct connection as
+`LISTEN`. When that connection resolves through the pooled connection-string key instead, each logs a Warning
+asking for the `-direct` connection; the role elector's bridge now warns the same way the duty elector and the
+stamper already did.
+
+Every release of a session-level advisory lock checks its result. `pg_advisory_unlock` returns false when the
+session running it does not hold the lock, which behind a pooler means the release ran on a different backend
+and the lock is still held where it was taken. That case is logged at Warning naming the lock and its key, so a
+leaked lock is visible instead of silently blocking the next holder.
+{verified: PgRoleElectorBridgeLockTests.ABridgeResolvedThroughAPooledKey_WarnsBeforeTakingTheSessionLockAsync, AdvisoryLockReleaseTests.ReleasingALockAnotherSessionHolds_ReturnsFalse_AndWarnsNamingTheLockAndKeyAsync, PgDutyElectorLockReleaseTests.AGrantWhoseLockWasGoneBeforeItsRelease_SaysSoAsync}
 
 ## The signaling gate
 
