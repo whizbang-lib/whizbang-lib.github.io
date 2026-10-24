@@ -70,6 +70,7 @@ testReferences:
   - tests/Whizbang.Transports.RabbitMQ.Tests/RabbitMQOptionsConfigurationTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/PostgresOptionsConfigurationTests.cs
   - tests/Whizbang.Core.Tests/Observability/TableStatisticsRegistrationTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperTableStatisticsDatabaseTests.cs
 ---
 
 This page lists **every configuration surface Whizbang exposes**: the sections the library binds from `IConfiguration` automatically, the sections you can opt into binding with a helper, and the (much larger) set of options classes that are configured in code — plus the recipe for making any of them configuration-driven. Each options class lists its properties, types, defaults, and a link to the page that covers it in depth.
@@ -696,7 +697,7 @@ How often the [`Whizbang.TableStatistics` meter](../observability/metrics#table-
 
 A value outside these ranges fails host start with an error naming the key. {verified: TableStatisticsRegistrationTests.AValueNoReadingCouldHonor_IsRefusedNamingItsKeyAsync, TableStatisticsRegistrationTests.TheEventTypeSample_BindsFromTheTableStatisticsSectionAsync, TableStatisticsRegistrationTests.WithoutConfiguration_OnePercentEveryFifteenMinutes_FiftyTypesAsync, TableStatisticsRegistrationTests.AZeroInterval_IsAcceptedAsTheWayToTurnTheSampleOffAsync, TableStatisticsRegistrationTests.TheCollectionInterval_BindsFromTheTableStatisticsSectionAsync, TableStatisticsRegistrationTests.WithoutConfiguration_TheTablesAreReadEveryThirtySecondsAsync}
 
-{verified: TableStatisticsRegistrationTests.MaxTrackedTables_BindsFromTheTableStatisticsSectionAsync, TableStatisticsRegistrationTests.WithoutConfiguration_TheCapIsFiveHundredAsync, PostgresTableStatisticsProviderTests.GetTableStorageAsync_PastTheCap_SumsTheSmallestUnderOtherAsync, PostgresTableStatisticsProviderTests.Constructor_RefusesACapBelowOneAsync}
+{verified: TableStatisticsRegistrationTests.MaxTrackedTables_BindsFromTheTableStatisticsSectionAsync, TableStatisticsRegistrationTests.WithoutConfiguration_TheCapIsFiveHundredAsync, PostgresTableStatisticsProviderTests.GetTableStorageAsync_PastTheCap_SumsTheSmallestUnderOtherAsync, PostgresTableStatisticsProviderTests.Constructor_RefusesACapBelowOneAsync, DapperTableStatisticsDatabaseTests.TheConfiguredCap_FoldsTheSmallestTablesUnderOtherAsync}
 
 ## Work Coordination, Claims, and Leases
 

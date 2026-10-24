@@ -73,6 +73,9 @@ testReferences:
   - tests/Whizbang.Core.Tests/Observability/TableStatisticsMetricsUnusedIndexTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/PostgresTableStatisticsProviderTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperTableStatisticsTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperTableStatisticsDatabaseTests.cs
+  - tests/Whizbang.Core.Tests/Observability/TableStatisticsMetricsDatabaseTests.cs
+  - tests/Whizbang.Core.Component.Tests/Observability/TableStatisticsCollectorDatabaseTests.cs
   - tests/Whizbang.Core.Tests/Observability/TypeRegistryMetricsTests.cs
   - tests/Whizbang.Core.Tests/Observability/StreamIntegrityMetricsTests.cs
   - tests/Whizbang.Core.Tests/Capabilities/CapabilityMetricsTests.cs
@@ -663,6 +666,8 @@ Meter name: `Whizbang.TableStatistics` (`TableStatisticsMetrics`)
 
 How big every table is, what the size is made of, how many rows it holds, and how deep the queues are. Both PostgreSQL drivers report it: the EF Core driver and the Dapper driver register the same provider (`PostgresTableStatisticsProvider`), the meter and the collector with no extra call. {verified: DapperTableStatisticsTests.ADapperHost_ReportsTableStatisticsAsync, TableStatisticsRegistrationTests.RegisteringTwice_RunsOneCollectorAsync}
 
+Every gauge on this meter also carries a `database` tag, the name of the database it was read from, alongside the tags listed below. See [One series per database](#table-statistics-database).
+
 | Metric Name | Type | Tags | Description |
 |-------------|------|------|-------------|
 | `whizbang.table.estimated_bytes` | ObservableGauge (bytes) | `table_name` | The table's whole size on disk: heap, TOAST and indexes together |
@@ -686,9 +691,25 @@ Every table in the service's schema whose name starts with `wh_`: the framework'
 
 ### Cardinality {#table-statistics-cardinality}
 
-A service can declare any number of perspectives, so the number of `table_name` values is capped by [`Whizbang:TableStatistics:MaxTrackedTables`](../configuration/configuration-reference#tablestatisticsoptions) (default 500). Past the cap the smallest tables are summed under `table_name="other"`: bytes, components and rows are added, so every total stays right, and the bloat ratio, which cannot be added, is not reported for them. {verified: PostgresTableStatisticsProviderTests.GetTableStorageAsync_PastTheCap_SumsTheSmallestUnderOtherAsync, TableStatisticsRegistrationTests.MaxTrackedTables_BindsFromTheTableStatisticsSectionAsync}
+A service can declare any number of perspectives, so the number of `table_name` values is capped by [`Whizbang:TableStatistics:MaxTrackedTables`](../configuration/configuration-reference#tablestatisticsoptions) (default 500). Past the cap the smallest tables are summed under `table_name="other"`: bytes, components and rows are added, so every total stays right, and the bloat ratio, which cannot be added, is not reported for them. {verified: PostgresTableStatisticsProviderTests.GetTableStorageAsync_PastTheCap_SumsTheSmallestUnderOtherAsync, TableStatisticsRegistrationTests.MaxTrackedTables_BindsFromTheTableStatisticsSectionAsync, DapperTableStatisticsDatabaseTests.TheConfiguredCap_FoldsTheSmallestTablesUnderOtherAsync}
 
 With the cap at N, the meter reports at most N + 1 series of `estimated_bytes` and `live_rows`, 3 x (N + 1) of `component_bytes`, N of `bloat_ratio`, N + 1 of `unused_index_bytes`, and 5 of `queue.estimated_depth`.
+
+### One series per database {#table-statistics-database}
+
+Every gauge on the `Whizbang.TableStatistics` meter (the table gauges, the queue depths and the event-type bytes) carries `database`: the name of the database the provider reads, as PostgreSQL reports it (`current_database()`). Services on different databases report the same `wh_` tables, so without it, two services' `wh_outbox` would be one series that each overwrites. With it, each database is its own series, and a sum by `database` is one database's total. {verified: DapperTableStatisticsDatabaseTests.TwoDatabases_ReportSeparateSeriesForTheSameTableAsync, TableStatisticsMetricsDatabaseTests.OnceTheDatabaseIsKnown_EveryGaugeCarriesItAsync}
+
+```mermaid{caption="Two services on two databases report the same table as two series, told apart by the database tag." tests=["DapperTableStatisticsDatabaseTests.TwoDatabases_ReportSeparateSeriesForTheSameTableAsync", "TableStatisticsCollectorDatabaseTests.TheProvidersDatabase_TagsTheGauges_AndIsAskedForOnceAsync"]}
+flowchart LR
+  A[Service A] -->|reads| DA[(orders)]
+  B[Service B] -->|reads| DB[(billing)]
+  DA --> SA["estimated_bytes<br/>table_name=wh_outbox<br/>database=orders"]
+  DB --> SB["estimated_bytes<br/>table_name=wh_outbox<br/>database=billing"]
+```
+
+- **Read once.** The collector asks the provider for the name until it has one, then keeps it, since a provider's database does not change. {verified: TableStatisticsCollectorDatabaseTests.TheProvidersDatabase_TagsTheGauges_AndIsAskedForOnceAsync, PostgresTableStatisticsProviderTests.GetDatabaseNameAsync_IsTheDatabaseTheConnectionReadsAsync}
+- **Cardinality.** The caps above are per database: each database reports at most the series listed under [Cardinality](#table-statistics-cardinality).
+- **Custom providers.** `ITableStatisticsProvider.GetDatabaseNameAsync` answers null by default. A provider that does not override it reports its gauges without the tag, exactly as before. {verified: TableStatisticsContractTests.AProviderThatCannotNameItsDatabase_AnswersNullAsync, TableStatisticsCollectorDatabaseTests.AProviderThatCannotNameItsDatabase_ReportsUntaggedGaugesAsync}
 
 ### How the values are refreshed {#table-statistics-refresh}
 
@@ -787,14 +808,14 @@ Meter name: `Whizbang.StreamIntegrity` (`StreamIntegrityMetrics`)
 | `whizbang.stream_integrity.redelivery_requests_received` | Counter\<long\> | Re-delivery requests served as an origin (repair + backfill flows) |
 
 ## Whizbang.Capabilities {#capabilities}
-{verified: CapabilityMetricsTests.Gauge_ReportsOneSeriesPerCapabilityAndScope_WithEveryTagAsync, CapabilityMetricsTests.Gauge_ReadsTheLatestAnswerAtEachCollectionAsync, CapabilityMetricsTests.Gauge_IsNamedOnTheWhizbangCapabilitiesMeter_InTheTurnkeyListAsync}
+{verified: CapabilityMetricsTests.Gauge_ReportsOneSeriesPerCapabilityAndScope_WithEveryTagAsync, CapabilityMetricsTests.Gauge_TagsEachSeriesWithHowTheVerdictRequiresItAsync, CapabilityMetricsTests.Gauge_ReadsTheLatestAnswerAtEachCollectionAsync, CapabilityMetricsTests.Gauge_IsNamedOnTheWhizbangCapabilitiesMeter_InTheTurnkeyListAsync}
 
 Meter name: `Whizbang.Capabilities` (`CapabilityMetrics`), created with the capability registry and
 included in `WhizbangMeters.All`.
 
 | Metric Name | Type | Description |
 |-------------|------|-------------|
-| `whizbang.capability.state` | ObservableGauge\<int\> | One series per capability and scope, value 1, tagged `provider` (for example `postgres`), `capability` (for example `pg_squeeze`), `scope` (for Postgres, the database) and `state` (`Ready`, `Provisionable`, `NotPermitted`, `NeedsServerChange`, `NoPrivilege`, `Missing`, `Unknown`). Every series reads `Unknown` until the startup probe has run, and wherever the provider could not probe |
+| `whizbang.capability.state` | ObservableGauge\<int\> | One series per capability and scope, value 1, tagged `provider` (for example `postgres`), `capability` (for example `pg_squeeze`), `scope` (for Postgres, the database) `state` (`Ready`, `Provisionable`, `NotPermitted`, `NeedsServerChange`, `NoPrivilege`, `Missing`, `Unknown`) and `required` (`explicit` when an operator-set feature requires it, `implicit` when only a default does, otherwise `none`, from the latest [verdict](../infrastructure/capabilities.md#validation)). Every series reads `Unknown` until the startup probe has run, and wherever the provider could not probe |
 
 Value 1 on a state tag lets a dashboard count or alert by state without decoding a number, for example
 "any capability `NotPermitted` anywhere". What each state means is on

@@ -35,6 +35,7 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Chaos/MaintainerAcquisitionVacuumTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/WorkTableVacuumTests.cs
   - tests/Whizbang.Core.Tests/Workers/WorkTableVacuumOnAcquisitionTests.cs
+  - tests/Whizbang.Core.Component.Tests/Startup/DutyHolderWorkerTests.cs
 ---
 
 # Capabilities and Duties
@@ -160,7 +161,7 @@ Some work belongs to *winning* a duty rather than to holding it. An `IDutyAcquis
 
 The grant tells the handler where the role came from. `IDutyGrant.PreviousHolderInstanceId` is the instance that held the role before, when this grant took it over (a hand-off or a takeover after a lapse), and `null` for a first assignment. It is the last holder the role recorded, so after the whole fleet stops, the next cold start counts as a takeover from the last instance that held it.
 
-A handler runs on the holder loop, so it is bounded the same way owed work is: one that hangs stops the loop and the role lapses to another instance. A failure is logged with the handler and the role, and the role is kept. Handlers need role assignment; without it nothing holds a duty from the loop, and no handler runs.
+A handler runs on the holder loop, so it is bounded the same way owed work is: one that hangs stops the loop and the role lapses to another instance. A failure is logged with the handler and the role, and the role is kept. Handlers need role assignment; without it nothing holds a duty from the loop, and no handler runs. A role held only for its acquisition work is still woken at once when its holder releases it, like any other role (see [what starts a pass](#what-starts-a-pass)).
 
 ### Vacuum on acquiring the maintainer duty {#vacuum-on-acquiring-the-maintainer-duty}
 
@@ -197,6 +198,69 @@ tags: ["maintenance", "vacuum", "maintainer-duty", "configuration"]
 ```
 
 Turn `MaintainOnReassignment` off when hand-offs are frequent and the maintenance cycle is enough between them.
+
+## The holder loop {#the-holder-loop}
+
+Under role assignment, `DutyHolderWorker` holds every duty this instance has work for: owed duty work (an `IDutyWorkHandler`), or [work that runs on acquiring the duty](#acquiring-a-duty). Each pass keeps every duty it holds by verifying it, which renews the lease, and votes in one call for every duty it does not hold. Then, for each duty it holds, it runs the acquisition work if this pass won the duty, then the owed work that is due, then a drain if a newer release asked for one.
+
+```mermaid{caption="One pass of the holder loop: keep what is held, vote for the rest, then run each held duty's work. A pass starts on the renew interval or at once on a release." tests=["DutyHolderWorkerTests.TheHostedLoop_PassesOnItsInterval_WakesOnARelease_AndReleasesOnStopAsync","DutyHolderWorkerTests.APass_VotesForEveryRoleItDoesNotHold_InOneCallAsync","DutyHolderWorkerTests.WinningTheRole_RunsTheAcquisitionHandlerOnce_WithTheGrantThatWonItAsync"]}
+graph TB
+    Wait["Wait<br/>RenewInterval, or a wake"]
+    Keep["Keep each held duty<br/>verify, which renews the lease"]
+    Vote["Vote for every duty not held<br/>one call"]
+    Won["Won a duty<br/>OnBecameHolder"]
+    Acq["Acquisition work<br/>only on the pass that won it"]
+    Owed["Owed work that is due"]
+    Drain["Drain if a newer release asked"]
+
+    Wait --> Keep --> Vote
+    Vote -->|"granted"| Won --> Acq --> Owed
+    Vote -->|"already held"| Owed
+    Owed --> Drain --> Wait
+
+    style Won fill:#d4edda,stroke:#28a745,stroke-width:2px
+    style Wait fill:#cce5ff,stroke:#0d6efd,stroke-width:2px
+```
+
+### What starts a pass {#what-starts-a-pass}
+
+| Trigger | Effect | Verified |
+|---|---|---|
+| `RoleAssignmentOptions.RenewInterval` elapses (5 seconds by default) | The next pass runs | {verified: DutyHolderWorkerTests.TheHostedLoop_PassesOnItsInterval_WakesOnARelease_AndReleasesOnStopAsync} |
+| A release announced on `wh_role_released` for a duty this instance holds or votes for | A pass runs at once, so a graceful hand-off does not wait for the interval | {verified: DutyHolderWorkerTests.TheHostedLoop_PassesOnItsInterval_WakesOnARelease_AndReleasesOnStopAsync} |
+| The same release, for a duty held only for its acquisition work | A pass runs at once, as for any other duty | {verified: DutyHolderWorkerTests.TheHostedLoop_ARelease_OfARoleHeldOnlyForItsAcquisitionWork_WakesAPassAsync} |
+| A release of a duty this instance has no work for | Nothing; the duty is not this instance's to take | {verified: DutyHolderWorkerTests.TheHostedLoop_PassesOnItsInterval_WakesOnARelease_AndReleasesOnStopAsync} |
+| `DutyHolderWorker.Wake()` | A pass runs at once | {verified: DutyHolderWorkerTests.TheHostedLoop_PassesOnItsInterval_WakesOnARelease_AndReleasesOnStopAsync} |
+| The host stops | Every held duty is released, which announces it to the rest of the fleet | {verified: DutyHolderWorkerTests.TheHostedLoop_PassesOnItsInterval_WakesOnARelease_AndReleasesOnStopAsync} |
+
+A duty can be held only because work runs on acquiring it, such as the [maintainer's vacuum](#vacuum-on-acquiring-the-maintainer-duty) on an instance that has no owed maintainer work. Earlier releases woke the loop only for duties with owed work, so a hand-off of such a duty waited up to one renew interval. A release of it now wakes the loop like any other.
+
+### Watching the loop {#watching-the-holder-loop}
+
+`DutyHolderWorker` raises two events. Both must not block: one runs on the loop, and the other on whichever thread announced the release.
+
+| Event | Raised | Verified |
+|---|---|---|
+| `OnBecameHolder` (`Action<string>`, the duty) | Once this instance wins a duty and records it as held, so `Holds(duty)` already returns true. It is raised on the pass that won the duty, before the duty's acquisition and owed work run. | {verified: DutyHolderWorkerTests.TheHostedLoop_PassesOnItsInterval_WakesOnARelease_AndReleasesOnStopAsync} |
+| `OnWakeRequested` (`Action`) | On the caller's thread, each time the next pass is asked to run at once: a release of a duty this instance holds or votes for, or a call to `Wake()`. A release of any other duty does not raise it. | {verified: DutyHolderWorkerTests.TheHostedLoop_PassesOnItsInterval_WakesOnARelease_AndReleasesOnStopAsync, DutyHolderWorkerTests.TheHostedLoop_ARelease_OfARoleHeldOnlyForItsAcquisitionWork_WakesAPassAsync} |
+
+```csharp{
+title: "Log and count the duty holder's transitions"
+description: "Subscribes to the duty holder loop's events: one line when this instance wins a duty, and a counter of passes woken early by a release."
+framework: "NET10"
+category: "Observability"
+difficulty: "INTERMEDIATE"
+tags: ["duties", "role-assignment", "holder-loop", "events", "observability"]
+tests: ["DutyHolderWorkerTests.TheHostedLoop_PassesOnItsInterval_WakesOnARelease_AndReleasesOnStopAsync"]
+}
+// Null when this host has no duty work to hold, or role assignment is off.
+if (app.Services.GetService<DutyHolderWorker>() is { } holder) {
+  holder.OnBecameHolder += duty => logger.LogInformation("This instance now holds {Duty}", duty);
+  holder.OnWakeRequested += () => earlyPasses.Add(1);
+}
+```
+
+Because `OnWakeRequested` is raised before the notification call returns, whether a release woke the loop is known at once. That makes it the signal to wait on in a test, where waiting for a pass to happen, or not, would be a race.
 
 ## Related
 

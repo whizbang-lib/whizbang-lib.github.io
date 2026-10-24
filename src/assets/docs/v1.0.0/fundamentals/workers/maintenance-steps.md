@@ -12,11 +12,13 @@ codeReferences:
   - src/Whizbang.Core/Workers/IMaintenanceStep.cs
   - src/Whizbang.Core/Workers/MaintenanceWorker.cs
   - src/Whizbang.Data.Postgres/Migrations/221_LedgerRetention.sql
+  - src/Whizbang.Data.Postgres/Migrations/238_LogSweepClearsTheDefaultPartition.sql
   - src/Whizbang.Core/Workers/RetentionSettingsBridge.cs
 testReferences:
   - tests/Whizbang.Core.Tests/Workers/MaintenanceWorkerStepTests.cs
   - tests/Whizbang.Core.Tests/Workers/MaintenanceWorkerRetentionSyncTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/LedgerRetentionSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Partitioning/LogPartitionConversionTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperLedgerRetentionSqlTests.cs
 ---
 
@@ -82,10 +84,12 @@ The last task of the maintenance sweep bounds the framework ledgers that nothing
 | `wh_integrity_ledger` | `trim_integrity_ledger` | the most recently touched entries, up to the cap | `IntegrityLedgerMaxEntries` (100000) |
 
 Once `wh_log` is [partitioned](../../operations/infrastructure/partitioned-ledgers) and partition maintenance is
-enabled, `purge_old_log_entries` reports `skipped (partitioned: expired partitions are dropped)` and deletes nothing:
-the partition manager drops whole weeks past the same `LogDays` window instead. With partitioning switched off the row
-delete applies again, partitioned or not.
-{verified: LogPartitionConversionTests.OnceConverted_RetentionDropsPartitions_InsteadOfDeletingRowsAsync, LogPartitionConversionTests.AConvertedLog_WithPartitioningSwitchedOff_IsStillBoundedByTheRowDeleteAsync}
+enabled, the partition manager drops whole weeks past the same `LogDays` window, and `purge_old_log_entries` deletes
+only from `wh_log`'s default partition, which holds the entries no weekly partition covers and which no drop reaches
+([row sweeps](../../operations/infrastructure/partitioned-ledgers#row-sweeps)). It then reports `ok (partitioned: the
+default partition only; expired partitions are dropped)`, or `skipped (partitioned: no default partition)` when that
+partition is missing. With partitioning switched off the row delete covers the whole table again, partitioned or not.
+{verified: LogPartitionConversionTests.OnceConverted_RetentionDropsPartitions_InsteadOfDeletingRowsAsync, LogPartitionConversionTests.OnceManaged_TheRowDeleteSweepsOnlyTheDefaultPartition_AndLeavesPartitionsToTheDropAsync, LogPartitionConversionTests.OnceManaged_WithoutADefaultPartition_TheRowDeleteSkipsAsync, LogPartitionConversionTests.AConvertedLog_WithPartitioningSwitchedOff_IsStillBoundedByTheRowDeleteAsync}
 
 Each setting lives under `Whizbang:Workers:Maintenance:Retention` and is published to `wh_settings` before the sweep reads it (next section); the keys are listed under [Database-side settings](../../operations/configuration/configuration-reference#database-side-settings).
 

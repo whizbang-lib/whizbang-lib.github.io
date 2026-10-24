@@ -46,6 +46,9 @@ codeReferences:
   - src/Whizbang.Core/Workers/PerspectiveWorker.cs
   - src/Whizbang.Data.EFCore.Postgres/Perspectives/MappedDocumentReadFailure.cs
   - src/Whizbang.Data.Postgres/Migrations/226_PartitionManager.sql
+  - src/Whizbang.Core/Startup/TableRewriteStartupStep.cs
+  - src/Whizbang.Core/Workers/ITableRewriter.cs
+  - src/Whizbang.Core/Workers/VacuumFullTableRewriter.cs
 testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/MigrationStepTransactionTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/TableRewritePolicyRetiredTests.cs
@@ -75,6 +78,9 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/SchemaCommandBoundaryTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/NamedSchemaMigrationReplayTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/MigrationSchemaQualificationTests.cs
+  - tests/Whizbang.Core.Tests/Startup/TableRewriteStartupStepTests.cs
+  - tests/Whizbang.Core.Tests/Workers/VacuumFullTableRewriterTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/TableRewriteJourneyE2ETests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/MigrationSchemaQualifierTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/MigrationSearchPathTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Partitioning/LogPartitionConversionTests.cs
@@ -571,7 +577,18 @@ An instance that lost the vote waits for the result instead of queuing behind th
 
 A migration cannot `VACUUM FULL` (both are forbidden inside its transaction), so a migration that leaves a table owing a rewrite — a `DROP COLUMN`, whose bytes Postgres keeps in every pre-existing row — **records** the request via `wh_request_table_rewrite`. The runtime bloat detector records through the same function when churn bloats a table past threshold.
 
-The recorded rewrites are performed by the startup pipeline's **`Rewrite` step**: post-ready (`Blocking = false` — deliberately unbounded work never gates readiness), fleet-exclusive under the `maintainer` duty (one instance rewrites; non-holders skip, because nobody blocks on a `VACUUM FULL`). Execution stays behind `MaintenanceWorkerOptions.AllowTableRewrite` — the framework cannot know how large a consumer's table is, and taking an ACCESS EXCLUSIVE lock unattended must be opted into. A request is cleared only after the bloat ratio is confirmed to have dropped; an ineffective rewrite stays queued for the next boot.
+The recorded rewrites are performed by the startup pipeline's **`Rewrite` step**: post-ready (`Blocking = false`, because deliberately unbounded work never gates readiness), fleet-exclusive under the `maintainer` duty (one instance rewrites; non-holders skip, because nobody blocks on a `VACUUM FULL`). A request is cleared only after the bloat ratio is confirmed to have dropped; an ineffective rewrite stays queued for the next boot.
+
+The step does not rewrite a table itself. It hands each owed table to the `ITableRewriter` of the selected strategy, and the rewriter returns the table's bloat ratio measured afterwards. The framework registers one strategy, `VacuumFull` (`VacuumFullTableRewriter`): a `VACUUM FULL` followed by `ANALYZE`, under an ACCESS EXCLUSIVE lock for the table's duration. It runs only when `MaintenanceWorkerOptions.AllowTableRewrite` is true, because the framework cannot know how large a consumer's table is, and taking that lock unattended must be opted into.
+
+| The step finds | It reports |
+|---|---|
+| no rewriter registered for the selected strategy | Skipped: `no table rewriter registered for strategy '<name>'` |
+| a rewriter that cannot run (`VacuumFull` without `AllowTableRewrite`) | Skipped, with the rewriter's reason: `table rewrites not permitted (MaintenanceWorkerOptions.AllowTableRewrite)` |
+| no table owing a rewrite | Skipped: `no rewrites owed` |
+| tables rewritten | Completed: `rewrote N table(s)`, plus how many were ineffective and left queued |
+
+{verified: TableRewriteStartupStepTests.ResolvesTheRewriterByStrategyNameAsync, TableRewriteStartupStepTests.NoRewriterForTheStrategy_SkipsNamingTheStrategyAsync, TableRewriteStartupStepTests.WithoutOperatorPermission_SkipsWithTheStatedReasonAsync, TableRewriteStartupStepTests.WithPermission_RewritesAndClearsOnlyConfirmedRequestsAsync, TableRewriteStartupStepTests.IneffectiveRewrite_LeavesTheRequestQueuedForTheNextBootAsync, VacuumFullTableRewriterTests.AddWhizbangWorkers_TheRewriteStepRunsTheVacuumFullStrategyAsync}
 
 The runtime maintenance cycle **no longer executes rewrites** — an ACCESS EXCLUSIVE lock mid-traffic was always the wrong window. It detects, reports the bloat gauge, and records.
 
