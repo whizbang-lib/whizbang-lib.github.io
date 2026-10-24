@@ -21,6 +21,11 @@ codeReferences:
   - src/Whizbang.Core/Capabilities/CapabilityMetrics.cs
   - src/Whizbang.Core/Capabilities/CapabilitiesStartupStep.cs
   - src/Whizbang.Core/Capabilities/CapabilityServiceCollectionExtensions.cs
+  - src/Whizbang.Core/Capabilities/RequiresCapabilityAttribute.cs
+  - src/Whizbang.Core/Capabilities/CapabilityRequirement.cs
+  - src/Whizbang.Core/Configuration/ConfigurationManifest.cs
+  - src/Whizbang.Core/Configuration/ConfigurationManifestRegistry.cs
+  - src/Whizbang.Generators/ConfigurationManifestGenerator.cs
 testReferences:
   - tests/Whizbang.Core.Tests/Capabilities/CapabilityDescriptorTests.cs
   - tests/Whizbang.Core.Tests/Capabilities/CapabilityRegistryTests.cs
@@ -28,6 +33,10 @@ testReferences:
   - tests/Whizbang.Core.Tests/Capabilities/CapabilityMetricsTests.cs
   - tests/Whizbang.Core.Tests/Capabilities/CapabilitiesStartupStepTests.cs
   - tests/Whizbang.Core.Tests/Capabilities/CapabilityServiceCollectionExtensionsTests.cs
+  - tests/Whizbang.Core.Tests/Capabilities/RequiresCapabilityAttributeTests.cs
+  - tests/Whizbang.Core.Tests/Configuration/ConfigurationManifestRegistryTests.cs
+  - tests/Whizbang.Generators.Tests/ConfigurationManifestGeneratorTests.cs
+  - tests/Whizbang.Generators.Tests/ConfigurationManifestGeneratorCoverageTests.cs
 ---
 
 # Capabilities
@@ -37,9 +46,10 @@ a broker plugin, a feature of a managed service. Each of these is a **capability
 follows the same pattern, whichever package provides it. You read the same states, the same startup
 verdict and the same gauge for a Postgres extension as for anything a third-party package adds.
 
-This release **detects and reports**. Provisioning (creating and upgrading what the library may manage),
-requirements declared on features, and stopping startup when an explicitly configured feature cannot have
-what it needs arrive in later releases; the types are shaped for them.
+This release **detects and reports**, and lets a feature [declare the capability it
+requires](#declaring-a-requirement) on the setting that turns it on. Naming those features in the verdict,
+provisioning (creating and upgrading what the library may manage), and stopping startup when an explicitly
+configured feature cannot have what it needs arrive in later releases; the types are shaped for them.
 
 ## The pattern {#pattern}
 
@@ -189,6 +199,108 @@ public sealed class BrokerPluginProvider(IBrokerAdmin admin) : ICapabilityProvid
 services.AddSingleton<ICapabilityProvider, BrokerPluginProvider>();
 services.AddWhizbangCapabilities();
 ```
+
+## Declaring a requirement {#declaring-a-requirement}
+{verified: ConfigurationManifestGeneratorTests.AttributedProperty_IsRequiredUnderItsKeyAsync, ConfigurationManifestGeneratorTests.AttributedEnumMember_IsRequiredWhenTheKeySelectsItAsync, ConfigurationManifestRegistryTests.AttributedSetting_InThisAssembly_IsRegisteredAtLoadAsync}
+
+A feature that needs a capability says so on the setting that turns it on. Put the attribute on the options
+property, or on the enum member that selects the feature:
+
+| Attribute | Declares |
+|---|---|
+| `[RequiresCapability("provider", "name")]` | any provider's capability, for example `("broker", "delayed_exchange")` |
+| `[RequiresPostgresExtension("name")]` | a Postgres extension; shorthand for `[RequiresCapability("postgres", "name")]` |
+
+- **On a property**, the feature needs the capability whenever the setting is set.
+- **On an enum member**, it needs the capability when the setting is set to that member. Every property of
+  that enum type, in every options type the package binds, carries the requirement.
+- **`Feature`** names the feature as the verdict will show it. Without it, the requirement is named after the
+  property or member that declares it.
+
+```csharp{title="Declare what a package's settings require" description="An enum member that needs a Postgres extension and a property that needs a broker plugin, bound from a literal section so the generator records both." framework="NET10" category="Configuration" difficulty="INTERMEDIATE" tags=["capabilities", "requirements", "configuration", "source-generators", "postgres"] tests=["ConfigurationManifestGeneratorTests.AttributedEnumMember_IsRequiredWhenTheKeySelectsItAsync", "ConfigurationManifestGeneratorTests.AttributedProperty_IsRequiredUnderItsKeyAsync", "ConfigurationManifestGeneratorTests.SecondAssembly_ReadsTheFirstAssemblysAttributesAndRegistersItsOwnManifestAsync"]}
+public enum RewriteMode {
+  Off,
+  [RequiresPostgresExtension("pg_squeeze", Feature = "Online table rewrite")]
+  Squeeze,
+}
+
+public sealed class ArchiveOptions {
+  public RewriteMode Rewrite { get; set; }
+
+  [RequiresCapability("broker", "delayed_exchange", Feature = "Delayed archiving")]
+  public bool DelayArchiving { get; set; }
+}
+
+public static class ArchiveRegistration {
+  public static IServiceCollection AddArchive(this IServiceCollection services, IConfiguration configuration) =>
+    services.Configure<ArchiveOptions>(configuration.GetSection("Archive"));
+}
+```
+
+This records two requirements: `postgres/pg_squeeze` for "Online table rewrite" when `Archive:Rewrite` is
+`Squeeze`, and `broker/delayed_exchange` for "Delayed archiving" when `Archive:DelayArchiving` is set.
+
+### How requirements are collected {#how-requirements-are-collected}
+{verified: ConfigurationManifestGeneratorTests.NestedSection_KeysAndRequirementsCarryTheFullPathAsync, ConfigurationManifestGeneratorTests.DictionaryAndList_EntriesAreAWildcardSegmentAsync, ConfigurationManifestGeneratorTests.PrivateOptionsType_IsSkippedAsync, ConfigurationManifestGeneratorCoverageTests.BindingsWithoutAKnownPathOrBoundType_ProduceNoManifestAsync}
+
+```mermaid{caption="The generator reads each literal binding at compile time; the assembly registers what it found when it loads." tests=["ConfigurationManifestGeneratorTests.SecondAssembly_ReadsTheFirstAssemblysAttributesAndRegistersItsOwnManifestAsync","ConfigurationManifestRegistryTests.WhizbangCore_RegistersItsOwnManifestAtLoadAsync","ConfigurationManifestRegistryTests.AttributedSetting_InThisAssembly_IsRegisteredAtLoadAsync"]}
+flowchart LR
+  B[A literal GetSection<br/>bound to ArchiveOptions] --> G[Configuration manifest<br/>generator, at build]
+  A[RequiresCapability on a<br/>property or enum member] --> G
+  G --> M[One manifest per assembly:<br/>sections, keys, requirements]
+  M -->|module load| R[ConfigurationManifestRegistry]
+  R --> V[Capability verdict]
+```
+
+Nothing reads the attributes at run time, so there is no reflection: the configuration manifest generator in
+the `Whizbang.Generators` package reads them at build time, in every project that references it, and writes
+one manifest per assembly. The assembly registers its manifest into `ConfigurationManifestRegistry` when it
+loads. A third-party package declares its requirements exactly as Whizbang does.
+
+The generator records a binding when the section is reached by `GetSection` calls whose keys are all
+compile-time constants (`GetSection("Archive")`, `GetSection("Whizbang").GetSection("Archive")`, or a
+`const string`), and the section is bound by one of:
+
+| Call | Binds |
+|---|---|
+| `section.Bind(options)` or `ConfigurationBinder.Bind(section, options)` | the instance's type |
+| `section.Get<TOptions>()` | `TOptions` |
+| `services.Configure<TOptions>(section)` | `TOptions` |
+| `services.AddOptions<TOptions>().Bind(section)` | `TOptions` |
+
+From the bound type it records every key the binder reads under the section, in declaration order:
+
+- a nested options object is a nested section (`Archive:Retention:Age`);
+- `[ConfigurationKeyName("...")]` renames the key;
+- a dictionary entry or list item is a `*` segment (`Archive:Databases:*:Vectors`), as in the
+  [configuration key manifest](../configuration/configuration-reference.md#unknown-keys);
+- a value the binder converts from one string (`TimeSpan`, `Guid`, `Uri`, an enum, and similar) is one key;
+- static, indexer, read-only scalar and non-public properties are not bound and are not recorded.
+
+It skips a binding whose path it cannot know for certain, and so can never record a wrong key: a key that is
+not a constant, a section reached from a section passed in from elsewhere, `Bind(section, "key", options)`,
+and a call that binds no named type. It also skips an options type that generated code cannot name, such as
+a private nested class. Bind such a type from a section with a literal key in the same assembly, or make it
+internal, to have its requirements recorded.
+
+### Reading the requirements {#reading-the-requirements}
+{verified: ConfigurationManifestRegistryTests.Requirements_AreEveryBindingsRequirementsOnceAcrossManifestsAsync, ConfigurationManifestRegistryTests.Manifests_AreOrderedByAssemblyNameAsync, RequiresCapabilityAttributeTests.Requirement_ReadsAsItsCapabilityKeyAndValueAsync}
+
+`ConfigurationManifestRegistry.Requirements` lists every loaded assembly's requirements once each, in a
+stable order. Each `CapabilityRequirement` carries the capability, the feature, the full key and, for an enum
+member, the value that turns the feature on (`null` for a property). The capability verdict reads it; code can
+too:
+
+```csharp{title="List the features that need a capability" description="Reads every loaded assembly's declared requirements from the registry the generated manifests fill at load." framework="NET10" category="Configuration" difficulty="INTERMEDIATE" tags=["capabilities", "requirements", "configuration", "registry"] tests=["ConfigurationManifestRegistryTests.Requirements_AreEveryBindingsRequirementsOnceAcrossManifestsAsync", "RequiresCapabilityAttributeTests.Requirement_ReadsAsItsCapabilityKeyAndValueAsync"]}
+foreach (var requirement in ConfigurationManifestRegistry.Requirements
+    .Where(r => r.Capability == new CapabilityId("postgres", "pg_squeeze"))) {
+  // postgres/pg_squeeze: Online table rewrite (Archive:Rewrite = Squeeze)
+  Console.WriteLine(requirement);
+}
+```
+
+`ConfigurationManifestRegistry.Manifests` holds the rest of each manifest: per assembly, every section it
+binds, the options type, and the keys under it.
 
 ## See also
 
