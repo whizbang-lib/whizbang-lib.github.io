@@ -7,8 +7,8 @@ order: 11
 description: >-
   The built-in partition manager: which framework tables are partitioned by time or by time-ordered id, how
   partitions are created ahead and dropped past the retention window, the maintainer-duty gate, how to enable it,
-  how an existing table is converted once, the autovacuum settings each partition carries, and what the row sweeps
-  still do
+  how an existing table is converted once, the autovacuum settings each partition carries, how unconsumed signals are
+  carried past a drop, and what the row sweeps still do
 tags: >-
   operations, partitioning, partitions, retention, wh_log, wh_signals, wh_lifecycle_completions, uuidv7, maintenance,
   postgres, storage, vacuum, maintainer duty
@@ -17,6 +17,7 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/233_PartitionSignalsAndLifecycleCompletions.sql
   - src/Whizbang.Data.Postgres/Migrations/237_PartitionsCarryTheLedgersAutovacuumSettings.sql
   - src/Whizbang.Data.Postgres/Migrations/238_LogSweepClearsTheDefaultPartition.sql
+  - src/Whizbang.Data.Postgres/Migrations/239_PartitionDropsCarryUnconsumedSignals.sql
   - src/Whizbang.Data.Postgres/PartitionedTable.cs
   - src/Whizbang.Data.Postgres/PartitionMaintenance.cs
   - src/Whizbang.Data.EFCore.Postgres/PartitionMaintenanceStep.cs
@@ -29,6 +30,7 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Partitioning/LogPartitionConversionTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Partitioning/UuidPartitionSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Partitioning/SignalPartitionConversionTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Partitioning/SignalPartitionCarryForwardTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Partitioning/LifecycleCompletionPartitionConversionTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/EFCoreWorkCoordinatorLifecycleAndJanitorTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Partitioning/PartitionMaintenanceStepTests.cs
@@ -129,11 +131,14 @@ For each registered table it calls two SQL functions:
      already covers, so a second cycle creates nothing. Rows the default partition caught for a new range move into
      it;
    - drops every partition whose range ended at or before `now - keep`. A partition that straddles that moment is
-     kept whole, so rows are kept at least as long as the window and at most one interval longer;
+     kept whole, so rows are kept at least as long as the window and at most one interval longer. Before it drops
+     one, it carries the rows the table still needs into the current partition; only `wh_signals` has such rows
+     ([signals](#signals));
    - under `debug_mode`, keeps every partition, as the row sweeps keep every row.
 
-It returns one row per change: `created`, `tuned`, `dropped`, `emptied`, `deferred`, `kept` or `skipped`, and the
-step logs each one.
+It returns one row per change: `created`, `tuned`, `carried`, `dropped`, `emptied`, `deferred`, `kept` or `skipped`,
+and the step logs each one. `carried` comes before the `dropped` or `emptied` row of the same partition, and only when
+rows moved.
 
 ### Autovacuum settings {#autovacuum-settings}
 
@@ -181,7 +186,9 @@ row lands in, nothing more.
   change of milliseconds.
 - **When a writer is on the table,** that lock is not free, so the manager does not wait for it. It **empties** the
   expired partition instead (`TRUNCATE`), which locks that partition alone, and detaches the empty partition on a
-  later cycle. The data is gone on schedule either way.
+  later cycle. The data is gone on schedule either way, except the rows carried forward first
+  ([signals](#signals)); carrying writes through the parent and takes it in `ROW EXCLUSIVE` mode, which a writer does
+  not conflict with, and only if that lock is free at once.
 - **When a reader is on the expired partition itself,** or a writer is on the default partition while a new partition
   needs creating, that step is **deferred** to the next cycle.
 
@@ -256,6 +263,37 @@ again. When it commits, it records the table's **conversion marker** (`wh_log_pa
 marker present the conversion never runs again
 ([conversion markers](migrations#conversion-markers)).
 
+## Signals: carried past a drop {#signals}
+
+{verified: SignalPartitionCarryForwardTests.ALiveInstanceBehindTheWindow_KeepsEveryUnconsumedSignalAcrossTheDrop_AndReceivesThemInOrderAsync, SignalPartitionCarryForwardTests.ADeadInstancesCursor_CarriesNothing_AndThePartitionIsDroppedAsync, SignalPartitionCarryForwardTests.WithNoLag_NothingIsCarried_AndThePartitionIsDroppedAsync, SignalPartitionCarryForwardTests.ALiveInstanceBehind_KeepsItsSignals_WhenTheTableIsInUseAndThePartitionIsOnlyEmptiedAsync}
+
+Each instance tails `wh_signals` from its own cursor and delivers every signal with an id past it, in id order. The row
+sweep never deletes past the slowest cursor, but a partition drop removes a whole day by age. So before the manager
+drops (or empties) a `wh_signals` partition, it moves the signals a **live** instance has not consumed into the
+current partition, then drops the old one:
+
+- **What moves:** the rows of the expiring partition whose `id` is past the slowest live instance's cursor.
+- **Who counts as live:** an instance registered in `wh_service_instances`. The stale-instance reap removes a dead
+  instance's registration, after which its cursor holds nothing back, so one dead instance never keeps the table
+  growing.
+- **How:** `UPDATE ... SET created_at = now` through the parent, where `now` is the cycle's moment. PostgreSQL moves
+  each row into the partition for that moment (or the default partition, if that day's partition does not exist yet).
+  The `id` is unchanged, so the tail's `id > cursor ORDER BY id` still delivers the carried signals in order. The
+  dead tuples the move leaves in the old partition go away with the drop.
+- **Cost:** normally nothing. With no live cursor, or no instance behind, no row moves and the partition is dropped
+  as before. The move runs in the same step and under the same locks as the drop.
+- **Trade-off:** a carried signal starts a fresh `SignalRetention` window, so an instance that stays registered but
+  never advances keeps its undelivered signals one day at a time.
+
+```mermaid{caption="A wh_signals partition past the window: the signals past the slowest live cursor move to the current partition with their ids unchanged, then the old partition is dropped; a dead instance's cursor is not counted." tests=["SignalPartitionCarryForwardTests.ALiveInstanceBehindTheWindow_KeepsEveryUnconsumedSignalAcrossTheDrop_AndReceivesThemInOrderAsync", "SignalPartitionCarryForwardTests.ADeadInstancesCursor_CarriesNothing_AndThePartitionIsDroppedAsync", "SignalPartitionCarryForwardTests.WithNoLag_NothingIsCarried_AndThePartitionIsDroppedAsync"]}
+flowchart LR
+  OLD["Expired partition: ids 101, 102, 103"] -->|"id past the slowest live cursor (101)"| CUR["Current partition: 102, 103, created_at = now"]
+  OLD -->|"then dropped"| GONE["Dropped: 101 and the dead tuples"]
+  LIVE["Live instance, cursor 101"] -.->|"counts"| OLD
+  DEAD["Unregistered instance, cursor 50"] -.->|"ignored"| OLD
+  CUR -->|"tail: id > 101 ORDER BY id"| LIVE
+```
+
 ## Row sweeps {#row-sweeps}
 
 {verified: LogPartitionConversionTests.OnceConverted_RetentionDropsPartitions_InsteadOfDeletingRowsAsync, LogPartitionConversionTests.OnceManaged_TheRowDeleteSweepsOnlyTheDefaultPartition_AndLeavesPartitionsToTheDropAsync, LogPartitionConversionTests.OnceManaged_WithoutADefaultPartition_TheRowDeleteSkipsAsync, DapperPartitionManagerSqlTests.TheLog_OnceManaged_IsSweptInItsDefaultPartitionOnlyAsync, SignalPartitionConversionTests.OnceManaged_TheSweepLeavesPartitionsToTheDrop_AndClearsOnlyTheDefaultAsync, SignalPartitionConversionTests.AConvertedTable_WithPartitioningSwitchedOff_IsStillSweptByRowAsync, EFCoreWorkCoordinatorLifecycleAndJanitorTests.CleanupLifecycleCompletionsAsync_OncePartitionedAndManaged_SweepsOnlyTheDefaultPartitionAsync, EFCoreWorkCoordinatorLifecycleAndJanitorTests.CleanupLifecycleCompletionsAsync_PartitionedWithMaintenanceSwitchedOff_SweepsByRowAsync, LifecycleCompletionPartitionConversionTests.TheSweepRelation_IsTheTable_UntilItIsPartitionedAndManaged_ThenItsDefaultPartitionAsync}
@@ -277,10 +315,9 @@ partitions are dropped)`, or `skipped (partitioned: no default partition)` when 
 
 Two differences from the row sweep follow from dropping by range:
 
-- **Signals.** The signal sweep never deletes past the slowest instance's cursor. A partition drop is by age only, so
-  a signal older than `SignalRetention` goes with its partition even if an instance has not delivered it. An
-  instance that far behind is not tailing; keep `SignalRetention` longer than any outage you expect an instance to
-  resume from.
+- **Signals.** The signal sweep never deletes past the slowest instance's cursor, whether or not that instance is
+  still registered. A partition drop goes by age, and carries forward only what a live instance still needs
+  ([signals](#signals)), so a dead instance's cursor holds back the sweep but not the drop.
 - **Lifecycle completions.** The row sweep goes by `completed_at`; the partition drop goes by the time in the event
   id, which is never later. A completion is only looked up for events of the last 30 minutes, far inside the window,
   so dropping by the event's time loses nothing the reconcile reads.
