@@ -13,6 +13,8 @@ codeReferences:
   - src/Whizbang.Data.EFCore.Postgres/PhysicalFieldMaterializationInterceptor.cs
   - src/Whizbang.Data.EFCore.Postgres/SplitModeChangeTrackerHydrator.cs
   - src/Whizbang.Data.EFCore.Postgres.Generators/EFCoreServiceRegistrationGenerator.cs
+  - src/Whizbang.Data.Postgres/PostgresRequiredExtension.cs
+  - src/Whizbang.Data.Postgres/PostgresSchemaRequirements.cs
 testReferences:
   - tests/Whizbang.Core.Tests/Perspectives/VectorFieldAttributeTests.cs
   - tests/Whizbang.Core.Tests/Perspectives/VectorDistanceMetricTests.cs
@@ -20,6 +22,9 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/VectorSearchExtensionsTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/VectorSearchIntegrationTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/SplitModeProductionTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Capabilities/RequiredVectorExtensionTests.cs
+  - tests/Whizbang.Generators.Tests/VectorRequiredExtensionGenerationTests.cs
+  - tests/Whizbang.Core.Tests/PostgresExtensions/PostgresSchemaRequirementsTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -274,15 +279,32 @@ Using `[VectorField]` requires the `Pgvector.EntityFrameworkCore` package -- the
 5. **Use Cosine** for text embeddings unless you have specific requirements
 6. **Normalize vectors** before storage if using InnerProduct
 
-## Prerequisites
+## Prerequisites: the pgvector extension {#pgvector-extension}
+{verified: RequiredVectorExtensionTests.AvailableButNotInstalled_StartSucceeds_BecauseTheProbeFindsWhatTheDataSourceCreatedAsync, RequiredVectorExtensionTests.RefusedByTheServer_StartFails_NamingTheFeatureTheColumnAndTheFixAsync, RequiredVectorExtensionTests.AlreadyInstalled_IsLeftAlone_EvenForARoleThatCouldNotCreateItAsync, VectorRequiredExtensionGenerationTests.VectorFields_CreatePgvectorThroughTheHelperAtEverySite_AndNeverInlineAsync}
 
-Vector fields require the pgvector extension in PostgreSQL:
+A vector column cannot exist without pgvector, so every vector column is an **explicit**
+[capability requirement](../../operations/infrastructure/capabilities.md#requirement-sources) on
+`postgres/vector`, whatever configuration says.
 
-```sql{title="Prerequisites" description="Vector fields require the pgvector extension in PostgreSQL:" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Prerequisites"]}
-CREATE EXTENSION IF NOT EXISTS vector;
+Whizbang creates the extension itself, before the data source is built, wherever the server allows:
+
+| pgvector on the server | What happens at start |
+|---|---|
+| installed | left alone, even when the service's role could not create it |
+| available, not installed | created; the [startup verdict](../../operations/infrastructure/capabilities.md#verdict) finds it Ready |
+| refused (not allowlisted, no privilege, not installed on the server) | **start fails** with the verdict line, naming every vector column and the fix |
+
+```text
+capability postgres/vector on 'db': NotPermitted; NotAllowlisted. Fix: add VECTOR to the server's extension allowlist (azure.extensions on Azure Database for PostgreSQL). Required by: Vector fields on perspectives (wh_per_product.embedding, explicit)
 ```
 
-Whizbang automatically creates this extension during database initialization if you have the necessary permissions.
+The extension is created before anything probes it, because the capability probe opens its connections through
+the same data source, so a server that only offers pgvector never fails start. To create it yourself instead (for
+example with an administrator role during provisioning), run:
+
+```sql{title="Create pgvector ahead of time" description="An operator with the right to create it runs this once; Whizbang then leaves the installed extension alone." category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Prerequisites", "pgvector"]}
+CREATE EXTENSION IF NOT EXISTS vector;
+```
 
 ## See Also
 
