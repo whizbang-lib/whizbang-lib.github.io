@@ -396,6 +396,12 @@ registered by `AddWhizbangCapabilities()`. A package that finds requirements at 
 declares vector columns, say) implements the interface and registers it with `TryAddEnumerable`; its
 requirements are judged exactly as declared ones are.
 
+A source may scope its requirements to one database: `ScopedCapabilityRequirementSource` applies another
+source's requirements to one scope only, and the verdict judges a scoped requirement only on that scope's status
+(Unknown, with the reason, where no provider probes it). The EF Core driver does this for every context, so a
+context's schema requires pgvector or pg_trgm on the database it uses, never on another database the host also
+probes.
+
 ## See also
 
 - [Postgres extensions](postgres-extensions.md), the first provider

@@ -284,7 +284,8 @@ Using `[VectorField]` requires the `Pgvector.EntityFrameworkCore` package -- the
 
 A vector column cannot exist without pgvector, so every vector column is an **explicit**
 [capability requirement](../../operations/infrastructure/capabilities.md#requirement-sources) on
-`postgres/vector`, whatever configuration says.
+`postgres/vector`, whatever configuration says, judged on that context's own database only: a second database
+the host probes, without vector columns, is never asked for pgvector.
 
 Whizbang creates the extension itself, before the data source is built, wherever the server allows:
 
