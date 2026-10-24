@@ -20,10 +20,21 @@ codeReferences:
   - src/Whizbang.Core/Startup/StartupFleetStatus.cs
   - src/Whizbang.Transports.FastEndpoints/Endpoints/WhizbangStartupStatusEndpointBase.cs
   - src/Whizbang.Transports.HotChocolate/Extensions/HotChocolateStartupStatusExtensions.cs
+  - src/Whizbang.Core/Startup/StartupStage.cs
+  - src/Whizbang.Core/Startup/IStartupStageReporter.cs
+  - src/Whizbang.Core/Startup/StartupStageReporter.cs
+  - src/Whizbang.Core/Startup/StartupStageHostLifecycle.cs
+  - src/Whizbang.Data.Postgres/SchemaInitializationStages.cs
+  - src/Whizbang.Data.Postgres/Migrations/231_StartupStageRecord.sql
 testReferences:
   - tests/Whizbang.Hosting.AspNet.Component.Tests/StartupStatusEndpointsTests.cs
   - tests/Whizbang.Transports.FastEndpoints.Tests/Unit/WhizbangStartupStatusEndpointBaseTests.cs
   - tests/Whizbang.Transports.HotChocolate.Tests/Unit/StartupStatusQueryTests.cs
+  - tests/Whizbang.Core.Tests/Startup/StartupStagesTests.cs
+  - tests/Whizbang.Core.Tests/Startup/StartupStageReporterTests.cs
+  - tests/Whizbang.Core.Tests/Schema/SchemaInitializationStagesTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/StartupStageSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/StartupStageHostTests.cs
 ---
 
 # The Startup Status Surface
@@ -76,6 +87,91 @@ app.MapWhizbangStartupStatus(includeReasons: true)
 Fleet failure text rides the same opt-in.
 
 One route is ruled out on purpose: **`/.well-known/` is the wrong home** for an access-controlled diagnostic. That prefix is routinely allowlisted past authentication at CDNs and ingress controllers for ACME challenges, it is a registry rather than a free namespace, and it is the first place scanners enumerate. The default lives under `/whizbang/` instead.
+
+## Startup stages {#startup-stages}
+
+Every instance records and logs which startup stage it is in. One owner, `IStartupStageReporter`, holds the
+current stage; `IStartupStageObserver` receives every change. Each stage (`StartupStage`) has a fixed number with
+gaps, never a list position, so a stored value means the same thing in every release and a query can compare it
+(`startup_stage >= 60`):
+
+| Number | Stage | Logged as | `lifecycle_phase` written | Entered by |
+|---|---|---|---|---|
+| 10 | Preflight | `Stage 1 of 7` | `Connecting` | the host lifecycle, as the host starts |
+| 20 | Elect | `Stage 2 of 7` | `Migrating` | schema initialization: the vote for the migrator, then its result |
+| 30 | Migrate | `Stage 3 of 7` | `Migrating` | schema initialization: the schema pass, or skipped when the schema is current |
+| 40 | Converge | `Stage 4 of 7` | `Migrating` | schema initialization: index statistics and the managed-object reconcile |
+| 50 | Coordinate | `Stage 5 of 7` | `Migrating` | the shared initializer, before the schema-ready gate opens |
+| 60 | Accept commands | `Stage 6 of 7` | `AcceptingCommands` | the lifecycle's AcceptingCommands transition |
+| 70 | Running | `Stage 7 of 7` | `Running` | the lifecycle's Running transition |
+| 80 | Draining | `Shutdown stage` | `Stopping` | the host lifecycle, before any worker stops |
+| 90 | Stopped | `Shutdown stage` | `Stopped` | the host lifecycle, once the host has stopped |
+
+{verified: StartupStagesTests.Values_AreTheFixedNumbersOnTheRow_WithGapsAsync, StartupStagesTests.Startup_IsTheSevenStartupStagesInOrderAsync, StartupStagesTests.EachStage_KeepsTheLifecyclePhaseItMapsToAsync, StartupStageReporterTests.Enter_EveryStartupStageInOrder_LogsEachLine_AndObservesEachOnceAsync}
+
+### The log lines
+
+Entering a stage logs one line at Information:
+
+```text{title="Startup stage log lines" description="The line an instance logs as it enters each startup stage and each shutdown stage" category="Operations" difficulty="BEGINNER" tags=["Startup","Logging"] tests=["StartupStageReporterTests.Enter_AStartupStage_LogsStageXOfSeven_AtInformationAsync","StartupStageReporterTests.Enter_AShutdownStage_LogsAShutdownStageLineAsync","StartupStageHostTests.AFreshDatabase_EntersEveryStageInOrder_LogsEach_AndRecordsEachTheRowCanHoldAsync","StartupStageHostTests.AGracefulStop_RecordsDraining_ThenStoppedAsync"]}
+Stage 1 of 7: Preflight - host starting
+Stage 2 of 7: Elect - joining the registry and voting for the migrator duty
+Stage 2 of 7: Elect - this instance migrates the schema
+Stage 4 of 7: Converge - analyzing new indexes and reconciling managed objects
+Stage 5 of 7: Coordinate - recomputing partitions before the schema-ready gate opens
+Stage 6 of 7: Accept commands - the schema is ready; commands are accepted while the read models catch up
+Stage 7 of 7: Running - reads and writes are served
+Shutdown stage: Draining - host stopping, finishing in-flight work
+Shutdown stage: Stopped - host stopped
+```
+
+The pattern is `Stage X of 7: <name> - <message>` for a startup stage and `Shutdown stage: <name> - <message>` for
+Draining and Stopped. Stages only move forward: entering an earlier stage changes nothing. A new message within the
+current stage is progress: it logs the line again and keeps the stage's entry time. A skipped stage logs
+`skipped: <reason>` as its message.
+
+### The instance row
+
+Each transition writes three columns on the instance's `wh_service_instances` row (migration 231), with
+`lifecycle_phase` set from the stage as in the table above:
+
+| Column | Type | Meaning |
+|---|---|---|
+| `startup_stage` | `SMALLINT` | The stage number; `NULL` for an older build or before the first write |
+| `startup_stage_message` | `TEXT` | What the stage is doing, or why it was skipped; updated on progress |
+| `startup_stage_entered_at` | `TIMESTAMPTZ` | When the stage was entered, by the database's clock; progress keeps it |
+
+A stage entered before the instance's row exists is held and written when the instance registers. A write that
+fails or does not answer within 5 seconds is held until the next accepted heartbeat; it is never thrown into
+startup. Writing a stage is not a heartbeat.
+{verified: StartupStageSqlTests.Record_ARegisteredInstance_WritesTheStageMessageTimeAndPhaseAsync, StartupStageSqlTests.Record_ProgressWithinAStage_KeepsWhenItWasEntered_AndANewStageStartsItsOwnAsync, StartupStageReporterTests.Enter_BeforeTheInstanceRegisters_HoldsTheStage_AndWritesNothingAsync, StartupStageReporterTests.AWriteThatFails_IsHeld_AndWrittenOnTheNextRegistrationSignalAsync, StartupStageReporterTests.AWriteThatDoesNotAnswer_IsAbandonedAfterItsBudget_AndHeldAsync}
+
+### Seeing every instance's stage
+
+`wh_instance_startup_stages()` lists every registered instance, ordered by service, with its stage, the stage's
+name and `X of 7` position (`NULL` for a shutdown stage), message, entry time, time in stage, lifecycle phase and
+whether it is [eligible for work](../../fundamentals/work-coordinator/partition-assignment):
+
+```sql{title="Every instance's startup stage" description="The operator query over the recorded startup stages" category="Operations" difficulty="BEGINNER" tags=["Startup","SQL"] tests=["StartupStageSqlTests.Stages_ListEveryInstance_WithItsPositionMessageAndTimeInStageAsync"]}
+SELECT service_name, host_name, stage_name, stage_position, stage_count,
+       startup_stage_message, time_in_stage, eligible_for_work
+FROM wh_instance_startup_stages();
+```
+
+### What a fresh database and a restart record
+
+- **A fresh database:** Preflight, Elect and Migrate appear only in the log. The stage columns arrive with
+  migration 231 during Migrate, so the row's first recorded stage is Converge (40).
+- **A restart on a current schema:** Elect is held until the election registers the row and is then written with
+  the election's result. Migrate is recorded as skipped (`Stage 3 of 7: Migrate - skipped: the schema is already
+  current`), and every stage after it is recorded as it is entered.
+
+{verified: StartupStageHostTests.AFreshDatabase_EntersEveryStageInOrder_LogsEach_AndRecordsEachTheRowCanHoldAsync, StartupStageHostTests.ARestartOnACurrentDatabase_SkipsMigrate_AndRecordsFromRegistrationAsync}
+
+Elect, Migrate and Converge are reported by the EF Core driver's schema pass. A host on the Dapper driver logs
+Preflight, Coordinate, Accept commands, Running and the shutdown stages, without writing them to the row. The
+[managed-resource health](../../resilience/managed-resource-health#startup-stage) `startup` component reports the same
+stage line.
 
 ## Related
 

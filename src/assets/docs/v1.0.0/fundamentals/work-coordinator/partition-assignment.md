@@ -18,6 +18,7 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/203_PartitionAssigner.sql
   - src/Whizbang.Data.Postgres/Migrations/204_DirectInstancesAreLiveByTheirAliveLock.sql
   - src/Whizbang.Data.Postgres/Migrations/229_OnlyReadyInstancesAreEligibleForWork.sql
+  - src/Whizbang.Data.Postgres/Migrations/231_StartupStageRecord.sql
 testReferences:
   - tests/Whizbang.Partitioning.Tests/PartitionAssignerTests.cs
   - tests/Whizbang.Partitioning.Tests/PartitionAssignmentCacheTests.cs
@@ -27,6 +28,7 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/AliveLockLivenessSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/WorkEligibilitySqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/AliveVersusEligibleE2ETests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/StartupStageSqlTests.cs
 ---
 
 # Partition assignment
@@ -91,6 +93,14 @@ A starting instance (still connecting or migrating), a paused one, one standing 
 are alive but are not candidates, so the assigner never gives them a share. Their partitions go to
 the eligible instances on the next publish. The assigner applies its liveness windows only to the
 candidates, so a member is both alive and eligible. {verified: WorkEligibilitySqlTests.Candidates_ALiveInstanceInMigrating_IsLeftOutAsync, WorkEligibilitySqlTests.Candidates_AnInstanceThatReachesAcceptingCommands_BecomesACandidateAsync, WorkEligibilitySqlTests.Candidates_ADrainingInstanceWithAFreshHeartbeat_IsLeftOutAtOnceAsync, WorkEligibilitySqlTests.Candidates_AnOlderInstanceThatRecordsNoPhase_IsStillACandidateAsync, AliveVersusEligibleE2ETests.AnInstanceHeldInStartup_IsAliveButNeverACandidateNorRanked_WhileAReadyPeerTakesAllWorkAsync}
+
+**Since migration 231 the recorded startup stage decides too.** An instance that records a
+[startup stage](/v1.0.0/operations/startup/startup-status#startup-stages) is eligible only at stage 60
+(Accept commands) or 70 (Running), and its lifecycle phase must still allow work, so a paused or
+standing-by instance stays out even while its stage is Running. A row with no stage (an older build,
+or one written before the instance's first stage write) is judged by its phase alone, as above. A
+starting instance becomes a candidate exactly when its move into Accept commands is written, and a
+draining one drops out the moment Draining is written. {verified: StartupStageSqlTests.Eligible_EachRecordedStage_IsEligibleOnlyInAcceptCommandsOrRunningAsync, StartupStageSqlTests.Eligible_ARowThatRecordsNoStage_IsJudgedByItsPhaseAsync, StartupStageSqlTests.Eligible_ARunningInstanceThatIsPaused_IsNotEligibleAsync, StartupStageSqlTests.Candidates_FollowTheRecordedStageAsync}
 
 The decision lives in the database, in one function every reader shares, so an assigner on an older
 build that reads the candidates during a rolling upgrade leaves out the same instances a newer one
