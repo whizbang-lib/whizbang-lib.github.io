@@ -82,7 +82,11 @@ components read and maintain it — all AOT-safe, all opt-in.
 it with the committed ledger, and emits the merged JSON as a C# constant (`PinnedTypeLedger.g.cs`). An MSBuild
 target reads that constant from the built assembly and writes it to `.whizbang/pinned-type-ledger.json` after each
 build that recompiles; a build that did not recompile skips the step. It needs no generated files on disk, so it works
-with `EmitCompilerGeneratedFiles` off, which is the default.
+with `EmitCompilerGeneratedFiles` off, which is the default. The file is written with LF line endings on every
+operating system, and the target leaves an existing file alone when it differs from the new JSON only in line endings.
+A checkout that holds the ledger as CRLF, or as LF on Windows, is therefore never rewritten as a change with no
+content; that matters beyond `git status`, because the ledger is a compiler input and a rewrite would recompile the
+project on the next build.
 
 The merge is a **monotonic lockfile update**:
 
