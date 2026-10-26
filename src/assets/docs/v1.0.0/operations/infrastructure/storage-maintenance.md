@@ -9,7 +9,7 @@ description: >-
   a table that has already grown is rewritten, as the table rewrite strategy and AllowTableRewrite decide
 tags: >-
   operations, storage, autovacuum, fillfactor, hot, vacuum, bloat, toast, postgres, maintenance, table rewrite,
-  pg_squeeze
+  pg_squeeze, pg_repack
 codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/088_ChurnTableAutovacuum.sql
   - src/Whizbang.Data.Postgres/Migrations/222_FrameworkTableAutovacuum.sql
@@ -18,6 +18,12 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/235_RetireTableRewritePolicySetting.sql
   - src/Whizbang.Core/Workers/TableRewriteStrategy.cs
   - src/Whizbang.Core/Startup/TableRewriteStartupStep.cs
+  - src/Whizbang.Core/Workers/PgRepackTableRewriter.cs
+  - src/Whizbang.Core/Workers/PgRepackClient.cs
+  - src/Whizbang.Core/Workers/PgRepackOptions.cs
+  - src/Whizbang.Core/Processes/ExternalProcessRunner.cs
+  - src/Whizbang.Core/Messaging/TableRewriteTarget.cs
+  - src/Whizbang.Data.Postgres/LibpqEnvironment.cs
 testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/FrameworkTableAutovacuumTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/PerspectiveCursorFillFactorTests.cs
@@ -25,6 +31,11 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/TableRewritePolicyRetiredTests.cs
   - tests/Whizbang.Core.Tests/Workers/TableRewriteStrategyTests.cs
   - tests/Whizbang.Core.Tests/Startup/TableRewriteStartupStepTests.cs
+  - tests/Whizbang.Core.Tests/Workers/PgRepackTests.cs
+  - tests/Whizbang.Core.Tests/Processes/ExternalProcessRequestTests.cs
+  - tests/Whizbang.Core.Tests/PostgresExtensions/LibpqEnvironmentTests.cs
+  - tests/Whizbang.Core.Integration.Tests/Processes/ExternalProcessRunnerTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/ExternalTableRewriteTests.cs
 ---
 
 # Storage Maintenance
@@ -103,12 +114,14 @@ the operator's permission for a blocking rewrite at boot:
 | `Auto` | no | `VACUUM FULL` at boot | detect and report only |
 | `PgSqueeze` | yes | online rewrite through pg_squeeze | online rewrite through pg_squeeze |
 | `PgSqueeze` | no | start fails with the capability verdict (it warns when the probe cannot tell) | start fails with the capability verdict (it warns when the probe cannot tell) |
+| `PgRepack` | either | online rewrite through pg_repack, [in process or by an external job](#pg-repack) | online rewrite through pg_repack, [in process or by an external job](#pg-repack) |
 | `VacuumFull` | either | `VACUUM FULL` at boot | detect and report only |
 | `None` | either | nothing is rewritten | nothing is rewritten |
 
-```mermaid{caption="How the Rewrite step resolves the table rewrite strategy against AllowTableRewrite; Auto never starts an online rewrite." tests=["TableRewriteStrategyTests.Resolve_EachCellOfTheMatrixAsync","TableRewriteStrategyTests.ExplicitPgSqueeze_OnAServerThatDoesNotAllowlistIt_FailsStartWithTheFixAsync","TableRewriteStartupStepTests.PgSqueeze_HasNoRewriterInThisVersion_AndSaysSoAsync"]}
+```mermaid{caption="How the Rewrite step resolves the table rewrite strategy against AllowTableRewrite; Auto never starts an online rewrite." tests=["TableRewriteStrategyTests.Resolve_EachCellOfTheMatrixAsync","PgRepackTests.Resolve_PgRepack_IsTheExplicitChoice_WhateverElseHoldsAsync","TableRewriteStrategyTests.ExplicitPgSqueeze_OnAServerThatDoesNotAllowlistIt_FailsStartWithTheFixAsync","TableRewriteStartupStepTests.PgSqueeze_HasNoRewriterInThisVersion_AndSaysSoAsync"]}
 flowchart TD
   S{TableRewriteStrategy} -->|None| N[Nothing rewritten]
+  S -->|PgRepack| P[Online rewrite<br/>through pg_repack]
   S -->|PgSqueeze| Q{pg_squeeze usable?}
   Q -->|no| F[Capability verdict<br/>stops start]
   Q -->|yes| O[Online rewrite<br/>through pg_squeeze]
@@ -148,6 +161,90 @@ On a server that does not allowlist pg_squeeze, start then stops with:
 ```text
 capability postgres/pg_squeeze on 'orders': NotPermitted; NotAllowlisted. Fix: add PG_SQUEEZE to the server's extension allowlist (azure.extensions on Azure Database for PostgreSQL) and pg_squeeze to shared_preload_libraries, then restart the server. Required by: Online table rewrite (Whizbang:Workers:Maintenance:TableRewriteStrategy = PgSqueeze, explicit)
 ```
+
+## pg_repack {#pg-repack}
+{verified: PgRepackTests.InProcess_WithNoClient_FailsAnExplicitRequirementAsync, PgRepackTests.InProcess_WithNoClient_DegradesAnImplicitRequirement_AndTheRewriterHoldsBackAsync, PgRepackTests.External_NeverStartsAProcess_NotToProbe_NotToRewriteAsync, PgRepackTests.InProcess_Rewrite_PassesTheConnectionThroughTheEnvironmentOnlyAsync}
+
+`TableRewriteStrategy = PgRepack` rewrites requested tables online with [pg_repack](https://reorg.github.io/pg_repack/),
+which holds an ACCESS EXCLUSIVE lock only briefly at the start and the end of each table. It needs two things: the
+`pg_repack` extension on the server (the capability `postgres/pg_repack`, provisioned like any other
+[capability](./capabilities#provisioning)), and its client program, which does the work from outside the server. Prefer
+it over pg_squeeze where the server cannot preload pg_squeeze or use logical decoding; prefer pg_squeeze where nothing
+outside the server may run.
+
+`Whizbang:Workers:Maintenance:TableRewrite:PgRepack:Mode` decides who runs the client:
+
+| Mode | Who runs the client | The client program | Whizbang starts a process |
+|---|---|---|---|
+| `InProcess` (default) | the instance holding the maintainer duty, in the post-ready `Rewrite` step, once per requested table | a probed prerequisite, `program/pg_repack`, found on `PATH` or at `ClientPath` | yes: `pg_repack --version` at startup, and one run per table |
+| `External` | a job you run (a container or a scheduled task) against the tables `wh_tables_needing_rewrite()` lists | not needed on the Whizbang host | never |
+
+```mermaid{caption="Who runs pg_repack in each mode; in External mode Whizbang starts no process." tests=["PgRepackTests.External_NeverStartsAProcess_NotToProbe_NotToRewriteAsync","PgRepackTests.InProcess_WithNoClient_FailsAnExplicitRequirementAsync","PgRepackTests.InProcess_WithNoClient_DegradesAnImplicitRequirement_AndTheRewriterHoldsBackAsync"]}
+flowchart TD
+  M{PgRepack Mode} -->|External| E[Rewrite step skips<br/>tables stay queued<br/>your job runs pg_repack]
+  M -->|InProcess| P{pg_repack --version<br/>at startup}
+  P -->|answers| R[Ready: the Rewrite step runs<br/>pg_repack per requested table]
+  P -->|missing, Mode set explicitly| F[Capability verdict<br/>stops start]
+  P -->|missing, Mode left at default| D[Warning; tables stay queued]
+```
+
+- **In process, the client is a prerequisite.** At startup Whizbang runs `pg_repack --version`. When the client is
+  missing and `Mode` was set to `InProcess` explicitly, the [capability verdict](./capabilities#validation) stops the
+  host with the fix; when `Mode` was left at its default, the verdict warns, the `Rewrite` step skips, and the tables
+  stay queued. Install the client at the same version as the extension: pg_repack refuses to run against a different
+  one.
+- **External mode never starts a process,** not even to read the client's version. The `Rewrite` step reports
+  `pg_repack runs as an external job (...Mode = External): Whizbang does not start it, and requested tables stay
+  queued for that job` and the maintenance cycle keeps recording which tables need it.
+- **Credentials never appear on the command line.** Process arguments are visible to every user on the host (`ps`,
+  `/proc/<pid>/cmdline`), so the client is started with only its options and the table
+  (`--no-superuser-check --no-kill-backend --table=<schema>.<table>`). The connection reaches it as the libpq
+  environment variables `PGHOST`, `PGPORT`, `PGDATABASE`, `PGUSER`, `PGPASSWORD` and, when set, the TLS and password
+  file variables, which only the client's own user and an administrator can read, and which are never written to
+  disk. The connection is the [schema-initialization connection](./migrations#database-roles) when one is configured,
+  because pg_repack must run as the table's owner; without one, a table the application role does not own is reported
+  and not attempted. A context configured with a data source has no password to hand over: libpq then reads the host's
+  password file (`PGPASSFILE`, `~/.pgpass`) or service file.
+- **`--no-superuser-check`** lets the table's owner repack it, which managed servers require, and
+  **`--no-kill-backend`** makes pg_repack give up on a table it cannot lock in time rather than end the application's
+  own sessions. A run that fails is logged with its exit code and error, and the table stays queued for the next boot.
+- **The request is cleared only after the re-measure improves,** as for every strategy: after the client exits,
+  Whizbang analyzes the table and measures it again.
+
+```json{title="Rewrite tables online with pg_repack, run in process" description="Selects pg_repack and requires its client on the host; start fails with the fix when it is missing." category="Configuration" difficulty="INTERMEDIATE" tags=["storage", "table-rewrite", "pg_repack", "maintenance", "configuration"] tests=["PgRepackTests.Options_BindFromConfigurationThroughAddWhizbangWorkersAsync", "PgRepackTests.InProcess_WithNoClient_FailsAnExplicitRequirementAsync"]}
+{
+  "Whizbang": {
+    "Workers": {
+      "Maintenance": {
+        "TableRewriteStrategy": "PgRepack",
+        "TableRewrite": {
+          "PgRepack": {
+            "Mode": "InProcess",
+            "ClientPath": "/usr/lib/postgresql/16/bin/pg_repack"
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+On a host without the client, start then stops with:
+
+```text
+capability program/pg_repack on '/usr/lib/postgresql/16/bin/pg_repack': Missing: An error occurred trying to start process '/usr/lib/postgresql/16/bin/pg_repack' with working directory '/app'. No such file or directory. Fix: install the pg_repack client program, the same version as the pg_repack extension, on this host's PATH or set Whizbang:Workers:Maintenance:TableRewrite:PgRepack:ClientPath to it; or set Whizbang:Workers:Maintenance:TableRewrite:PgRepack:Mode = External and run it as a job. Required by: Online table rewrite, in process (pg_repack client) (Whizbang:Workers:Maintenance:TableRewrite:PgRepack:Mode = InProcess, explicit)
+```
+
+In `External` mode, a job lists the queue and runs the client the same way, with the connection in its environment:
+
+```bash{title="An external pg_repack job" description="Runs pg_repack against each table Whizbang has queued, with the connection in the environment." category="Operations" difficulty="ADVANCED" tags=["pg_repack", "table-rewrite", "external-job", "maintenance"] tests=["PgRepackTests.External_NeverStartsAProcess_NotToProbe_NotToRewriteAsync"]}
+export PGHOST=db.internal PGDATABASE=orders PGUSER=orders_owner PGPASSFILE=/run/secrets/pgpass
+for table in $(psql -Atc "SELECT table_name FROM wh_tables_needing_rewrite()"); do
+  pg_repack --no-superuser-check --no-kill-backend --table="public.$table"
+done
+```
+
+The next boot's `Rewrite` step re-measures, and a request whose table is lean again is no longer offered.
 
 ## Related
 

@@ -16,7 +16,9 @@ tags: >-
 codeReferences:
   - src/Whizbang.Core/Configuration/UnknownConfigurationKeyCheck.cs
   - src/Whizbang.Core/Configuration/UnknownConfigurationKeyStartupValidator.cs
-  - src/Whizbang.Core/Configuration/RemovedConfigurationKeys.cs
+  - src/Whizbang.Core/Configuration/RemovedConfigurationKeyAttribute.cs
+  - src/Whizbang.Core/Configuration/ConfigurationManifestRegistry.cs
+  - src/Whizbang.Generators/ConfigurationManifestGenerator.cs
   - src/Whizbang.Core/ServiceCollectionExtensions.cs
   - src/Whizbang.Data.Postgres/Notifications/PostgresNotificationsServiceCollectionExtensions.cs
   - src/Whizbang.Offloads.AzureBlob/AzureBlobOffloadServiceCollectionExtensions.cs
@@ -136,8 +138,30 @@ The two warnings (logger category `Whizbang.Core.Configuration.UnknownConfigurat
 |---|---|
 | 1 | `Whizbang configuration key '<key>' is not read by Whizbang and has no effect. Check its spelling against the configuration reference, or remove it` |
 | 2 | `Whizbang configuration key '<key>' was removed and has no effect. Set its replacement instead: <replacement>` |
+| 3 | `Whizbang configuration key '<key>' was removed and has no effect, and nothing replaces it. Remove it` |
 
-Removed keys the check names a replacement for:
+### Removed keys {#removed-keys}
+{verified: UnknownConfigurationKeyCheckTests.Removed_WhizbangCoreDeclaresEveryFormerTableEntry_ThroughTheAttributeAsync, UnknownConfigurationKeyCheckTests.Removed_EveryReplacementIsAKeyTheLibraryReads_AndNoRemovedKeyIsAsync, ConfigurationManifestRemovedKeyGeneratorTests.TypeAttributes_EveryReplacementInOrder_OrNoneAsync}
+
+A removed key is declared in code with `[RemovedConfigurationKey]`, on the options type of its replacement or on the
+assembly. The configuration manifest generator records each declaration in the assembly's generated manifest, and the
+startup check reads it from there, so nothing keeps a separate list and a package built on Whizbang declares its own
+removed keys the same way. A test holds the library's declarations to the key list: no removed key may be one the
+library reads, and every replacement must be one it does.
+
+```csharp{title="Declare a removed configuration key" description="Names the keys that replaced a removed one, so a deployment that still sets it is told what to set instead." framework="NET10" category="Configuration" difficulty="INTERMEDIATE" tags=["configuration", "removed-keys", "startup-check", "source-generator"] tests=["ConfigurationManifestRemovedKeyGeneratorTests.TypeAttributes_EveryReplacementInOrder_OrNoneAsync", "UnknownConfigurationKeyCheckTests.Run_Warn_LogsOneWarningPerUnknownKeyAsync"]}
+using Whizbang.Core.Configuration;
+
+[RemovedConfigurationKey("MyPackage:Polling:IntervalMs", "MyPackage:Polling:Interval")]
+public sealed class PollingOptions {
+  public TimeSpan Interval { get; set; } = TimeSpan.FromSeconds(5);
+}
+```
+
+A key removed with nothing in its place takes no replacement (`[RemovedConfigurationKey("MyPackage:Legacy")]`), and
+its warning is event 3.
+
+Removed keys the library declares:
 
 | Removed key | Set instead |
 |---|---|
@@ -1134,7 +1158,9 @@ Operator rung of the row-retention override ladder. **Configure:** bound automat
 |----------|------|---------|--------------------|---------|
 | `Enabled` | `bool` | `true` | `Whizbang__Workers__Maintenance__Enabled` | Killswitch |
 | `AllowTableRewrite` | `bool` | `false` | `Whizbang__Workers__Maintenance__AllowTableRewrite` | Whether the post-ready `Rewrite` step may rewrite a table with `VACUUM FULL` (an ACCESS EXCLUSIVE lock) to reclaim space; false = report only. Read with `TableRewriteStrategy` |
-| `TableRewriteStrategy` | `TableRewriteStrategy` | `Auto` | `Whizbang__Workers__Maintenance__TableRewriteStrategy` | How recorded rewrites run: `Auto` (`VACUUM FULL` at boot when `AllowTableRewrite`, otherwise detect and report; never an online rewrite), `PgSqueeze` (online, through pg_squeeze; requires the extension, so start fails without it; no rewriter in this version yet), `VacuumFull` (only when `AllowTableRewrite`) or `None`. [Resolution matrix](../infrastructure/storage-maintenance#table-rewrite-strategy) {verified: TableRewriteStrategyTests.Resolve_EachCellOfTheMatrixAsync, TableRewriteStrategyTests.TheSetting_DefaultsToAuto_AndBindsFromConfigurationAsync} |
+| `TableRewriteStrategy` | `TableRewriteStrategy` | `Auto` | `Whizbang__Workers__Maintenance__TableRewriteStrategy` | How recorded rewrites run: `Auto` (`VACUUM FULL` at boot when `AllowTableRewrite`, otherwise detect and report; never an online rewrite), `PgSqueeze` (online, through pg_squeeze; requires the extension, so start fails without it; no rewriter in this version yet), `PgRepack` (online, through pg_repack; requires the extension, and in process its client program), `VacuumFull` (only when `AllowTableRewrite`) or `None`. [Resolution matrix](../infrastructure/storage-maintenance#table-rewrite-strategy) {verified: TableRewriteStrategyTests.Resolve_EachCellOfTheMatrixAsync, TableRewriteStrategyTests.TheSetting_DefaultsToAuto_AndBindsFromConfigurationAsync} |
+| `TableRewrite:PgRepack:Mode` | `PgRepackMode` | `InProcess` | `Whizbang__Workers__Maintenance__TableRewrite__PgRepack__Mode` | Who runs the pg_repack client when `TableRewriteStrategy` is `PgRepack`: `InProcess` (the maintainer-duty instance runs it; set explicitly, a host without the client fails start, left at the default it degrades) or `External` (Whizbang starts no process; an operator's job runs it against the queue). [pg_repack](../infrastructure/storage-maintenance#pg-repack) {verified: PgRepackTests.InProcess_WithNoClient_FailsAnExplicitRequirementAsync, PgRepackTests.External_NeverStartsAProcess_NotToProbe_NotToRewriteAsync} |
+| `TableRewrite:PgRepack:ClientPath` | `string` | `pg_repack` | `Whizbang__Workers__Maintenance__TableRewrite__PgRepack__ClientPath` | The pg_repack client for `InProcess`: a path, or a name looked up on `PATH`; the same version as the extension {verified: PgRepackTests.Options_BindFromConfigurationThroughAddWhizbangWorkersAsync} |
 | `MaintainOnReassignment` | `bool` | `true` | `Whizbang__Workers__Maintenance__MaintainOnReassignment` | Whether an instance that takes the maintainer duty over from another instance vacuums the work tables, as a first assignment always does ([details](../startup/capabilities-and-duties#vacuum-on-acquiring-the-maintainer-duty)) |
 | `IntervalMinutes` | `int` | `10` | `Whizbang__Workers__Maintenance__IntervalMinutes` | Minutes between maintenance runs |
 | `StuckRowSentinelEnabled` | `bool` | `true` | `Whizbang__Workers__Maintenance__StuckRowSentinelEnabled` | Emit a Warning per stuck outbox/inbox row once per cycle |
