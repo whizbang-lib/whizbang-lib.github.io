@@ -31,6 +31,10 @@ codeReferences:
   - src/Whizbang.Core/Capabilities/CapabilityVerdict.cs
   - src/Whizbang.Core/Capabilities/CapabilityVerdictEnforcer.cs
   - src/Whizbang.Core/Capabilities/CapabilityHealthCheck.cs
+  - src/Whizbang.Core/Capabilities/CapabilityProvisioning.cs
+  - src/Whizbang.Core/Capabilities/CapabilityAutoProvision.cs
+  - src/Whizbang.Core/Capabilities/CapabilityVersion.cs
+  - src/Whizbang.Data.Postgres/PostgresCapabilityProvisioner.cs
 testReferences:
   - tests/Whizbang.Core.Tests/Capabilities/CapabilityDescriptorTests.cs
   - tests/Whizbang.Core.Tests/Capabilities/CapabilityRegistryTests.cs
@@ -47,6 +51,10 @@ testReferences:
   - tests/Whizbang.Core.Tests/Capabilities/CapabilityVerdictTests.cs
   - tests/Whizbang.Core.Tests/Capabilities/CapabilityHealthCheckTests.cs
   - tests/Whizbang.Core.Component.Tests/Capabilities/CapabilityVerdictEnforcerTests.cs
+  - tests/Whizbang.Core.Tests/Capabilities/CapabilityProvisioningTests.cs
+  - tests/Whizbang.Core.Tests/Capabilities/CapabilityAutoProvisionTests.cs
+  - tests/Whizbang.Core.Tests/Capabilities/CapabilityVersionTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/PostgresCapabilityProvisioningIntegrationTests.cs
 ---
 
 # Capabilities
@@ -59,8 +67,9 @@ verdict and the same gauge for a Postgres extension as for anything a third-part
 A feature [declares the capability it requires](#declaring-a-requirement) on the setting that turns it on.
 At startup every capability is probed, and every requirement in force is [judged](#validation): a feature the
 operator explicitly configured whose capability is not ready stops the host, and a feature a default turned on
-degrades with a warning. Provisioning (creating and upgrading what the library may manage) arrives in a later
-release; the types are shaped for it.
+degrades with a warning. Before the verdict, the library [provisions](#provisioning) what a requirement in force
+needs and it may manage: it creates a capability that is absent and upgrades one with a newer version available,
+unless the operator switched that off.
 
 ## The pattern {#pattern}
 
@@ -103,19 +112,21 @@ Each provider keeps its own finer state as the status's detail (for Postgres, `N
 {verified: CapabilityVerdictTests.Explicit_Ready_ProceedsAsync, CapabilityVerdictTests.Explicit_KnownAndNotReady_FailsStartWithTheFixAsync, CapabilitiesStartupStepTests.ExplicitRequirement_OnACapabilityNotReady_IsAnErrorLine_AndTheVerdictIsPublishedAsync, CapabilityReportTests.Log_WritesOneBlockPairPerProviderAndScopeAsync}
 
 After the schema is ready, the `Capabilities` step of the [startup pipeline](../startup/startup-pipeline.md)
-probes every provider, decides which [requirements are in force](#activation), and judges them. It runs on
-every instance and never blocks readiness.
+probes every provider, decides which [requirements are in force](#activation), [provisions](#provisioning) what
+they need, and judges them. It runs on every instance and never blocks readiness.
 
 Each **required** capability gets one line per scope, naming every feature that requires it, the setting that
 turned the feature on, and whether the operator set it (`explicit`) or a default did (`default`). It is written
 at Information when the capability is Ready, Warning when it warns or degrades, and Error when it fails start:
 
 ```text
-capability postgres/pg_squeeze on 'orders': Ready, 1.7.0. Required by: Online table rewrite (Whizbang:Workers:Maintenance:TableRewriteStrategy = PgSqueeze, explicit)
+capability postgres/pg_squeeze on 'orders': Ready, created 1.7.0. Required by: Online table rewrite (Whizbang:Workers:Maintenance:TableRewriteStrategy = PgSqueeze, explicit)
+capability postgres/pg_trgm on 'orders': Ready, already present 1.6. Required by: Substring indexes on perspective fields (OrderSearch, default)
 capability postgres/pg_partman on 'orders': NotPermitted; NotAllowlisted. Fix: add PG_PARTMAN to azure.extensions. Required by: Partition management (Whizbang:Workers:Maintenance:Partitioning:Strategy = Auto, default)
 ```
 
-A capability no registered provider describes reads `Unknown` with no scope, for example
+A Ready capability says what [provisioning](#provisioning) did before its version: `created`, `already present`
+or `upgraded`. A capability no registered provider describes reads `Unknown` with no scope, for example
 `capability broker/delayed_exchange: Unknown: no registered provider describes it. ...`.
 
 For capabilities nothing requires, it writes per provider and scope one Information block listing exactly the
@@ -150,8 +161,9 @@ public sealed class SearchFeature(ICapabilityRegistry capabilities) {
 ## Validation {#validation}
 {verified: CapabilityVerdictTests.Explicit_Ready_ProceedsAsync, CapabilityVerdictTests.Explicit_KnownAndNotReady_FailsStartWithTheFixAsync, CapabilityVerdictTests.Explicit_Unknown_WarnsAsync, CapabilityVerdictTests.Implicit_Ready_UsesItAsync, CapabilityVerdictTests.Implicit_NotReady_DegradesAsync, CapabilityVerdictEnforcerTests.AFailingVerdict_StopsTheHostWithExitCodeOne_NamingTheLineAsync}
 
-A capability satisfies a requirement only when it is `Ready`. `Provisionable` is not enough: the feature cannot
-use it until something provisions it.
+A capability satisfies a requirement only when it is `Ready`. `Provisionable` is not enough on its own, but the
+step [provisions](#provisioning) a required capability before it judges it, so one the library may create reads
+`Ready` here unless provisioning is switched off or the server refuses it.
 
 | Requirement | Capability | Outcome |
 |---|---|---|
@@ -168,6 +180,119 @@ after the schema is migrated. Fix the capability, or remove the setting that tur
 
 With `Whizbang:Capabilities:ProbeOnStartup` set to `false`, the verdict is still judged with every capability
 `Unknown`, so an explicit requirement warns rather than passing unseen.
+
+## Provisioning {#provisioning}
+{verified: CapabilityProvisioningTests.AnExplicitRequirementOnAProvisionableCapability_IsCreated_AndPassesTheVerdictAsync, CapabilityProvisioningTests.AnUpgrade_IsRecordedWithTheNewVersionAsync, CapabilityProvisioningTests.ProvisioningOff_AnOperatorCreatedCapabilityIsStillDetected_AndReadsAlreadyPresentAsync, CapabilityProvisioningTests.ACapabilityNothingRequires_IsNeverProvisionedAsync}
+
+Between the probe and the verdict, one runner looks at every capability a requirement in force names, in each
+scope it applies to:
+
+| Probed state | Runner | Recorded as |
+|---|---|---|
+| `Provisionable` | creates it through the provider | `created` |
+| `Ready`, a newer version available | upgrades it through the provider | `upgraded` |
+| `Ready`, nothing newer | nothing | `already present` |
+| anything else | nothing; the verdict reports the state and its fix | (none) |
+
+```mermaid{caption="Provisioning runs between the probe and the verdict, so a capability the library creates is judged Ready." tests=["CapabilityProvisioningTests.AnExplicitRequirementOnAProvisionableCapability_IsCreated_AndPassesTheVerdictAsync","CapabilityProvisioningTests.PerCapabilityFalse_OverridesGlobalTrue_AndTheVerdictNamesTheSettingAsync","CapabilityProvisioningTests.NoPrivilege_OnAnImplicitRequirement_IsReportedNeverThrown_AndNothingIsAttemptedAsync"]}
+flowchart LR
+  P[Probe every scope] --> R{Required by a<br/>requirement in force?}
+  R -->|no| D[Detected only]
+  R -->|yes| S{AutoProvision on,<br/>provider may provision?}
+  S -->|no| K[Kept as probed,<br/>with the reason]
+  S -->|yes| A[Create or upgrade<br/>through the provider]
+  A --> V[Verdict]
+  K --> V
+  D --> V
+```
+
+- **Only what is required.** A capability nothing requires is only detected, however usable.
+- **Detection never depends on the switch.** With provisioning off, a capability an operator created reads
+  `Ready, already present` and satisfies its requirements as before.
+- **Nothing is thrown.** A capability the server refuses (`NoPrivilege`, `NotPermitted`) is reported by its
+  verdict line: an implicit requirement degrades with a warning, an explicit one stops the host as any other
+  unmet explicit requirement does. A provider that fails unexpectedly is logged with the exception, and the
+  capability keeps the state the probe read, with the failure as its reason.
+- **A held-back upgrade keeps working.** An upgrade that is switched off, refused or fails leaves the
+  capability `Ready, already present` at its installed version, with the available version and the reason.
+- **Nothing on a guess.** With `ProbeOnStartup` off every capability is `Unknown`, and nothing is provisioned.
+- **Versions** are compared segment by segment, numerically where both segments are numbers (`1.10` is newer
+  than `1.9`).
+
+### Switching provisioning off {#switching-provisioning-off}
+{verified: CapabilityAutoProvisionTests.Capability_OverridesProviderAndGlobalAsync, CapabilityAutoProvisionTests.Provider_OverridesGlobalAsync, CapabilityAutoProvisionTests.AValueThatIsNotABoolean_DefersToTheNextLevelAsync, CapabilityProvisioningTests.PerProviderFalse_OverridesGlobalTrue_AndPerCapabilityTrue_OverridesThatAsync}
+
+`AutoProvision` has three levels. The most specific level that is set wins, and a value that is not `true` or
+`false` counts as not set:
+
+| Level | Key | Default |
+|---|---|---|
+| per capability | `Whizbang:Capabilities:<provider>:<name>:AutoProvision` | inherits |
+| per provider | `Whizbang:Capabilities:<provider>:AutoProvision` | inherits |
+| global | `Whizbang:Capabilities:AutoProvision` | `true` |
+
+A capability the switch holds back names the deciding key in its verdict line:
+
+```text
+capability postgres/pg_squeeze on 'orders': Provisionable, 1.7.0; Available: provisioning is turned off (Whizbang:Capabilities:postgres:pg_squeeze:AutoProvision = false). Fix: ...
+```
+
+```json{title="Provision everything but one extension" description="Leaves provisioning on globally and for Postgres, and turns it off for pg_squeeze only; an operator-created pg_squeeze is still detected and used." category="Configuration" difficulty="BEGINNER" tags=["capabilities", "provisioning", "configuration", "postgres"] tests=["CapabilityProvisioningTests.PerCapabilityFalse_OverridesGlobalTrue_AndTheVerdictNamesTheSettingAsync", "CapabilityProvisioningTests.ProvisioningOff_AnOperatorCreatedCapabilityIsStillDetected_AndReadsAlreadyPresentAsync"]}
+{
+  "Whizbang": {
+    "Capabilities": {
+      "AutoProvision": true,
+      "postgres": {
+        "pg_squeeze": {
+          "AutoProvision": false
+        }
+      }
+    }
+  }
+}
+```
+
+### Postgres {#provisioning-postgres}
+{verified: PostgresCapabilityProvisioningIntegrationTests.Create_AnAvailableExtension_IsCreated_AndReadsCreatedAtItsVersionAsync, PostgresCapabilityProvisioningIntegrationTests.Upgrade_AnOlderInstalledVersion_IsRecordedAsUpgradedAsync, PostgresCapabilityProvisioningIntegrationTests.Create_WaitsForTheSchemaLock_ThenCreatesAsync, PostgresCapabilityProvisioningIntegrationTests.Upgrade_RefusedToARoleThatDoesNotOwnIt_StaysReadyAndPresent_WithTheRefusalAsync, PostgresCapabilityProvisioningIntegrationTests.Create_RefusedByTheServer_ReturnsTheStateTheRefusalReveals_WithoutThrowingAsync}
+
+The Postgres provider creates with `CREATE EXTENSION IF NOT EXISTS` and upgrades with `ALTER EXTENSION ... UPDATE`,
+each in one transaction on its own connection that first takes the schema lock (the advisory lock schema
+initialization takes, for the schema the extension is created in) with `pg_advisory_xact_lock`. A migration pass,
+or another instance provisioning the same schema, runs before or after it and never alongside, and the lock ends
+with the transaction, so it cannot be left behind by a pooler. While another session holds the lock it logs
+`Provisioning postgres/<name> on '<database>' waits for the schema lock of '<schema>', which another session holds`
+at Information, and waits without a client timeout.
+
+Under the lock it reads the extension again: one another session created or upgraded meanwhile is recorded as
+`already present`. The upgrade target is the server's default version (`pg_available_extensions.default_version`).
+An extension that only a privileged role can create still needs that role once; see the fixes on
+[Postgres extensions](postgres-extensions.md).
+
+### A provider's provisioner {#adding-a-provisioner}
+{verified: CapabilityServiceCollectionExtensionsTests.TheStep_RunsEveryRegisteredProvisionerAsync, CapabilityProvisioningTests.AProviderWithNoProvisioner_IsReportedAsSuchAsync, CapabilityProvisioningTests.ACapabilityTheLibraryNeverProvisions_IsLeftForTheOperatorAsync}
+
+A provider that can create or upgrade its capabilities registers an `ICapabilityProvisioner` next to its
+`ICapabilityProvider`, with the same `Provider` name. The runner decides when (a requirement in force, the switch
+on, a descriptor with `Provisionable: true`); the provisioner decides how, and answers with the status after the
+action, its `Provisioning` set to what it did. Return a refusal as the state it reveals, with the platform's words
+as the reason; throw only for the unexpected. A provider without a provisioner is only detected, and its
+capabilities name that as the reason they were not provisioned.
+
+```csharp{title="A provisioner for a broker plugin" description="Enables the plugin when the runner asks it to create the capability, and answers with the state read back afterwards." framework="NET10" category="Configuration" difficulty="ADVANCED" tags=["capabilities", "provisioning", "providers", "extensibility"] tests=["CapabilityServiceCollectionExtensionsTests.TheStep_RunsEveryRegisteredProvisionerAsync", "CapabilityProvisioningTests.AnExplicitRequirementOnAProvisionableCapability_IsCreated_AndPassesTheVerdictAsync"]}
+public sealed class BrokerPluginProvisioner(IBrokerAdmin admin) : ICapabilityProvisioner {
+  public string Provider => "broker";
+
+  public async Task<CapabilityStatus> ProvisionAsync(
+      CapabilityStatus status, CapabilityProvisionAction action, CancellationToken cancellationToken) {
+    if (!await admin.TryEnablePluginAsync(status.Descriptor.Id.Name, status.Scope, cancellationToken)) {
+      return status with { State = CapabilityState.NoPrivilege, Reason = "the broker refused to enable the plugin" };
+    }
+    return status with { State = CapabilityState.Ready, Provisioning = CapabilityProvisioningOutcome.Created };
+  }
+}
+
+services.TryAddEnumerable(ServiceDescriptor.Singleton<ICapabilityProvisioner, BrokerPluginProvisioner>());
+```
 
 ## Health {#health}
 {verified: CapabilityHealthCheckTests.AnExplicitRequirementFailing_IsUnhealthy_WithItsLineAsync, CapabilityHealthCheckTests.AnImplicitRequirementDegrading_IsDegradedAsync, CapabilityHealthCheckTests.EveryRequirementSatisfied_IsHealthyAsync, CapabilityServiceCollectionExtensionsTests.Registers_TheManifestSource_TheEnforcer_AndOneHealthEntry_HoweverOftenCalledAsync}
@@ -191,11 +316,14 @@ from the latest verdict). See the
 [metrics reference](../observability/metrics.md#capabilities).
 
 ## Configuration {#configuration}
-{verified: CapabilityServiceCollectionExtensionsTests.ProbeOnStartup_DefaultsToTrue_WithoutConfigurationAsync, CapabilityServiceCollectionExtensionsTests.ProbeOnStartup_BindsFromConfigurationAsync, CapabilitiesStartupStepTests.ProbeTurnedOff_IsSkippedWithoutProbingAsync}
+{verified: CapabilityServiceCollectionExtensionsTests.ProbeOnStartup_DefaultsToTrue_WithoutConfigurationAsync, CapabilityServiceCollectionExtensionsTests.ProbeOnStartup_BindsFromConfigurationAsync, CapabilitiesStartupStepTests.ProbeTurnedOff_IsSkippedWithoutProbingAsync, CapabilityServiceCollectionExtensionsTests.AutoProvision_DefaultsToTrue_AndBindsFromConfigurationAsync}
 
 | Key | Environment variable | Default | Meaning |
 |---|---|---|---|
-| `Whizbang:Capabilities:ProbeOnStartup` | `Whizbang__Capabilities__ProbeOnStartup` | `true` | `false` skips the startup probe; every capability then reads `Unknown`. |
+| `Whizbang:Capabilities:ProbeOnStartup` | `Whizbang__Capabilities__ProbeOnStartup` | `true` | `false` skips the startup probe; every capability then reads `Unknown`, and nothing is provisioned. |
+| `Whizbang:Capabilities:AutoProvision` | `Whizbang__Capabilities__AutoProvision` | `true` | `false` stops the library creating or upgrading any capability; detection is unchanged. See [provisioning](#switching-provisioning-off). |
+| `Whizbang:Capabilities:<provider>:AutoProvision` | `Whizbang__Capabilities__postgres__AutoProvision` | inherits | Overrides the global switch for one provider. |
+| `Whizbang:Capabilities:<provider>:<name>:AutoProvision` | `Whizbang__Capabilities__postgres__pg_squeeze__AutoProvision` | inherits | Overrides both for one capability. |
 
 A key present in configuration overrides a value set in code; an absent key leaves it.
 
@@ -405,6 +533,7 @@ probes.
 ## See also
 
 - [Postgres extensions](postgres-extensions.md), the first provider
+- [Storage maintenance: table rewrite strategy](storage-maintenance.md#table-rewrite-strategy), the first setting that requires a capability
 - [Startup pipeline](../startup/startup-pipeline.md)
 - [Metrics reference: Whizbang.Capabilities](../observability/metrics.md#capabilities)
 - [Configuration reference](../configuration/configuration-reference.md#capabilities-options)
