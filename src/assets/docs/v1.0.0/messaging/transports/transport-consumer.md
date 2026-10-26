@@ -20,7 +20,7 @@ codeReferences:
   - src/Whizbang.Core/Transports/ITransportWithRecovery.cs
   - src/Whizbang.Core/Messaging/InboxReceiveDiscard.cs
   - src/Whizbang.Core/Transports/ReceivedEnvelopeReader.cs
-  - src/Whizbang.Data.Postgres/Migrations/240_SkippedArrivalsAreStoredSettled.sql
+  - src/Whizbang.Data.Postgres/Migrations/242_SkippedArrivalsAreStoredSettled.sql
 testReferences:
   - tests/Whizbang.Core.Tests/Workers/TransportConsumerBuilderExtensionsTests.cs
   - tests/Whizbang.Core.Tests/Workers/TransportConsumerBuilderExtensionsServiceNameTests.cs
@@ -222,7 +222,7 @@ stores them already settled, with the reason in `InboxMessage.DiscardedOnReceive
 
 `store_inbox_messages` stores a skipped message like every arrival (deduplication is counted and both rows
 are written) but settled: processed at arrival, with status Stored and Published, and
-`discarded on receive: <reason>` in `wh_inbox_state.error` (migration 240). A settled row is never
+`discarded on receive: <reason>` in `wh_inbox_state.error` (migration 242). A settled row is never
 claimed, copied into the event store or dispatched, so it rings no doorbell, pins no stream and is never
 returned as new work. It stays readable until maintenance purges completed inbox rows, or, in debug mode,
 until an operator removes it. Each skip is counted by `whizbang.transport.inbox.messages_discarded`,

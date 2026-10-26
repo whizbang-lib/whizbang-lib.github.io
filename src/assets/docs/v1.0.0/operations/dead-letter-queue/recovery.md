@@ -20,7 +20,7 @@ codeReferences:
   - src/Whizbang.Core/Observability/DeadLetterMetrics.cs
   - src/Whizbang.Data.Postgres/Migrations/051_DeadLetterRecovery.sql
   - src/Whizbang.Data.Postgres/Migrations/056_DeadLetterReadyNotify.sql
-  - src/Whizbang.Data.Postgres/Migrations/239_RecoveredWorkReentersThroughItsStore.sql
+  - src/Whizbang.Data.Postgres/Migrations/241_RecoveredWorkReentersThroughItsStore.sql
   - src/Whizbang.Data.EFCore.Postgres/EFCoreDeadLetterRecoveryService.cs
 testReferences:
   - tests/Whizbang.Core.Component.Tests/Workers/DeadLetterRecoveryWorkerTests.cs
@@ -88,7 +88,7 @@ When the message id is still in the outbox, the store keeps the existing row and
 
 Recovered work runs at the priority it was stored with (see
 [message priority](../../fundamentals/messaging/message-priority#recovered-dead-letters)). A dead letter
-captured before migration 239 kept no priority and re-enters as background, as recovery used to store it.
+captured before migration 241 kept no priority and re-enters as background, as recovery used to store it.
 It also kept no envelope type: it re-enters under the envelope type its message type names, and an outbox
 message whose event is in the event store re-enters as that event, with its flags and scope.
 {verified: RecoveredWorkReentrySqlTests.ARecoveredOutboxMessage_IsStoredInTheShapeItWasStoredInAsync, RecoveredWorkReentrySqlTests.AnOutboxEventRefusedBeforeItWasAppended_IsAppendedWhenRecovered_WithItsScopeAndFlagsAsync, RecoveredWorkReentrySqlTests.ARecoveredPerspectiveWorkRow_IsStoredInTheShapeTheEventStoreChainStoresItInAsync, RecoveredWorkReentrySqlTests.ARecoveredPerspectiveEvent_BehindItsCursor_FlagsTheCursorForRewindAsync, RecoveredWorkReentrySqlTests.ARecoveredOutboxMessage_DeadLetteredAgain_IsHeldForReview_NamingTheNewDeadLetterAsync, RecoveredWorkReentrySqlTests.ARecoveredPerspectiveWorkRow_DeadLetteredAgain_IsHeldForReview_NamingTheNewDeadLetterAsync, RecoveredWorkReentrySqlTests.ARecoveredPerspectiveEvent_NoLongerInTheEventStore_IsHeldForReview_AndNotReEnteredAsync, RecoveredWorkReentrySqlTests.ARecovery_OfAnOutboxMessageStillInTheOutbox_LeavesItsDeadLetterDueAsync, RecoveredWorkReentrySqlTests.ASecondRecovery_OfAnOutboxDeadLetterAlreadyRecovering_StoresNothingAsync, RecoveredOutboxDeadLetterPublishTests.ARecoveredOutboxEvent_IsPublishedAsTheEventItWasStoredAs_AndReadsRecoveredOncePublishedAsync, RecoveredOutboxDeadLetterPublishTests.AnOutboxDeadLetterCapturedBeforeItKeptTheEnvelopeType_IsPublishedUnderTheNameItsStoreWritesAsync, RecoveredPerspectiveDeadLetterApplyTests.ARecoveredPerspectiveWorkRow_IsApplied_AndReadsRecoveredOnceAppliedAsync}
@@ -103,7 +103,7 @@ message whose event is in the event store re-enters as that event, with its flag
 Both decline an inbox or broker dead letter (those re-enter through `store_inbox_messages` from the
 recovery worker) and a dead letter that is already Recovering, held for review or settled, leaving it as it was.
 
-:::note[Before migration 239]
+:::note[Before migration 241]
 `recover_dead_letter` re-inserted outbox and perspective rows with column lists of its own and marked the
 dead letter Recovered in the same call, before anything ran. The outbox copy carried the envelope type
 `recovered`, which the drain sends as the wire's envelope type header, so a receiving service could not

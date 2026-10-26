@@ -103,7 +103,7 @@ services.AddWhizbang(options => {
 
 `DeadLetter` is designed to preserve every offending row in `wh_dead_letters` with `failure_reason = MessageFailureReason.EmptyStreamId` (value `11`) — a forensic trail of producer bugs plus the option to replay rows after the producer is fixed. **Not yet wired at drain time** — see the shipped-behavior callout above; today this value behaves like `FallbackToMessageId`.
 
-Recovery is self-healing: `recover_dead_letter` (migration 051; since migration 239, `wh_recover_dead_letter`) normalizes `Guid.Empty` → `NULL` before the row re-enters its source table through its store, so a recovered row doesn't immediately re-stick. This normalization is implemented and applies to any `wh_dead_letters` row with an Empty `stream_id`, however it got there.
+Recovery is self-healing: `recover_dead_letter` (migration 051; since migration 241, `wh_recover_dead_letter`) normalizes `Guid.Empty` → `NULL` before the row re-enters its source table through its store, so a recovered row doesn't immediately re-stick. This normalization is implemented and applies to any `wh_dead_letters` row with an Empty `stream_id`, however it got there.
 
 ## Hard Purge: Purge
 

@@ -426,7 +426,7 @@ the priority it was stored with. The dead-letter capture keeps the row's priorit
 the row through the same store a new arrival goes through: an outbox dead letter through
 `store_outbox_messages`, a perspective dead letter through `store_perspective_events`, and an inbox or
 broker dead letter through `store_inbox_messages`, where it takes a delivery's priority. Before migration
-239, `recover_dead_letter` re-created outbox and perspective rows as background.
+241, `recover_dead_letter` re-created outbox and perspective rows as background.
 {verified: PriorityOnTheWireSqlTests.RecoverDeadLetter_OutboxRow_ReentersWithThePriorityItWasStoredWithAsync, PriorityOnTheWireSqlTests.RecoverDeadLetter_PerspectiveRow_ReentersWithThePriorityItWasStoredWithAsync}
 
 ## Producer boundaries outside the dispatcher {#producer-boundaries}
