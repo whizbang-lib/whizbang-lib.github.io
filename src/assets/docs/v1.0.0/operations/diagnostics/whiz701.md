@@ -39,7 +39,8 @@ to confirm the generator saw the perspectives you expect.
 - The count is taken **before** perspectives that share a model type are collapsed, so two perspectives over the same
   model count as two.
 - Perspectives rejected because a generated table, column or index name is too long for the database
-  ([WHIZ820, WHIZ821, WHIZ822](error-reference)) are not counted.
+  ([WHIZ820, WHIZ821, WHIZ822](error-reference)), or whose `[PerspectiveTable]` name is invalid
+  ([WHIZ824](whiz824)), are not counted.
 - The diagnostic has no source location.
 
 The descriptor is declared inline in the generator, not in the shared descriptor list.
@@ -77,7 +78,7 @@ public class OrderPerspective : IPerspectiveFor<OrderModel, OrderCreatedEvent> {
 ```
 
 If the count is lower than you expect, check that each perspective class implements `IPerspectiveFor<...>` and look
-for WHIZ820 to WHIZ822 errors in the same build.
+for WHIZ820 to WHIZ822 and WHIZ824 errors in the same build.
 
 ## Suppressing
 

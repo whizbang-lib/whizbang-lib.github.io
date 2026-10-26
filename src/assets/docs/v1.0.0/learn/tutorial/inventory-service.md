@@ -160,7 +160,7 @@ Note the `[StreamId]` on `ProductId`: inventory events are streamed **per produc
 ## Step 2: Persistence (Framework-Managed)
 
 :::updated
-Earlier drafts hand-wrote `inventory`, `inventory_reservations`, and `inbox` tables with raw SQL. Whizbang provisions its own tables — `wh_inbox` (exactly-once dedup), `wh_outbox`, `wh_event_store`, and one table per perspective model (e.g., `inventory_levels` for `InventoryLevelDto`) — from the `[WhizbangDbContext]` attribute and perspective discovery. No migration SQL is required for the messaging infrastructure.
+Earlier drafts hand-wrote `inventory`, `inventory_reservations`, and `inbox` tables with raw SQL. Whizbang provisions its own tables from the `[WhizbangDbContext]` attribute and perspective discovery: `wh_inbox` (exactly-once dedup), `wh_outbox`, `wh_event_store`, and one table per perspective model (e.g., `wh_per_inventory_level` for `InventoryLevelDto`; see [Perspective Table Naming](../../fundamentals/perspectives/table-naming)). No migration SQL is required for the messaging infrastructure.
 :::
 
 **ECommerce.InventoryWorker/InventoryDbContext.cs** follows the same pattern as the Order Service:

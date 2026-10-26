@@ -185,12 +185,10 @@ public class PerspectiveSchemaGenerator : IIncrementalGenerator {
         TableNameConfig config) {
 
         foreach (var perspective in perspectives) {
-            // Apply table name configuration
+            // The model's table name by the rule every driver shares (PerspectiveTableNaming.From(modelType)):
+            // its [PerspectiveTable] name as written, or the generated one under the suffix settings,
             // e.g., "OrderProjection" -> "wh_per_order" with default config
-            var tableName = NamingConventionUtilities.GenerateTableName(
-                perspective.TableBaseName,
-                config
-            );
+            var tableName = perspective.TableSource.TableName(config);
 
             // Generate schema with configured table name...
         }

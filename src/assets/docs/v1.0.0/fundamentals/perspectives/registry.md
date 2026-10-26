@@ -14,6 +14,7 @@ tags: 'perspective-registry, schema-management, drift-detection, table-mapping, 
 codeReferences:
   - src/Whizbang.Data.Schema/Schemas/PerspectiveRegistrySchema.cs
   - src/Whizbang.Data.Postgres/Migrations/030_ReconcilePerspectiveRegistry.sql
+  - src/Whizbang.Data.Postgres/Migrations/243_PerspectiveTablesFollowTheirModelBeforeCreate.sql
   - src/Whizbang.Data.EFCore.Postgres.Generators/Templates/DbContextSchemaExtensionTemplate.cs
   - src/Whizbang.Data.EFCore.Postgres.Generators/EFCoreServiceRegistrationGenerator.cs
   - src/Whizbang.Generators.Shared/Utilities/SchemaHashUtilities.cs
@@ -21,6 +22,8 @@ testReferences:
   - tests/Whizbang.Generators.Tests/Utilities/SchemaHashUtilitiesTests.cs
   - tests/Whizbang.Generators.Tests/Utilities/NamingConventionUtilitiesTests.cs
   - tests/Whizbang.Generators.Tests/EFCoreServiceRegistrationGeneratorCoverageTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperPerspectiveTableRenameTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/PerspectiveTableRenameTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -113,7 +116,7 @@ There is no configuration knob for drift behavior at this commit -- the warning 
 
 ## Automatic Table Renaming
 
-Table names are generated from the perspective **model** type name (see [Table Naming](table-naming.md)). When the generated table name changes -- for example, after changing suffix-stripping configuration -- the registry automatically handles the rename:
+Table names are generated from the perspective **model** type name, on both drivers (see [Table Naming](table-naming.md)). When a model's table name changes -- for example, after changing suffix-stripping configuration or adding `[PerspectiveTable]` -- the table the registry records for the model is renamed in place at the next start:
 
 ### Before
 
@@ -134,14 +137,17 @@ public class CustomerPerspective : IPerspectiveFor<CustomerData, CustomerCreated
 ```
 
 ### What Happens
+{verified: DapperPerspectiveTableRenameTests.Initializer_WhenTheModelsTableNameChanges_RenamesTheExistingTableInPlaceAndKeepsItsRowsAsync, PerspectiveTableRenameTests.Initialize_WhenTheModelsTableNameChanged_RenamesTheTableInPlaceAndKeepsItsRowsAsync, DapperPerspectiveTableRenameTests.Initializer_WhenBothTablesExist_LeavesBothAndWarnsAsync}
 
-1. Application starts and calls `reconcile_perspective_registry()`
-2. Registry finds existing entry for the model type `MyApp.Contracts.CustomerData`
-3. Detects table name changed from `wh_per_customer_data` to `wh_per_customer`
-4. Executes: `ALTER TABLE IF EXISTS wh_per_customer_data RENAME TO wh_per_customer`
-5. Updates registry with new table name
+1. Before the perspective tables are created, the driver calls `wh_follow_perspective_table_renames()` (migration 243) with the registry payload
+2. It finds the registry row for the model type `MyApp.Contracts.CustomerData`, naming `wh_per_customer_data`
+3. `wh_per_customer` does not exist yet, so it renames the table, and the indexes named after it: `ALTER TABLE wh_per_customer_data RENAME TO wh_per_customer`
+4. The perspective pass finds `wh_per_customer` already there, with its rows
+5. After the pass, `reconcile_perspective_registry()` records the new table name
 
-This happens automatically - no manual migration required. If the rename fails (e.g., the old table no longer exists), the registry entry is still updated and the action is reported as `updated`.
+This happens automatically - no manual migration required. If both tables already exist, nothing is dropped or merged: both are left in place and a warning names the model and the two tables. See [Renaming perspectives](table-naming.md#renaming-perspectives) for the full rules, including how a Dapper service upgrading from the perspective-class names is followed without a registry row.
+
+Earlier releases attempted this rename only inside `reconcile_perspective_registry()`, after the perspective pass had already created the new name as an empty table, so the rename failed and the rows stayed under the old name. The reconcile still renames when it can, but the rename before the pass now does the work.
 
 Note that renaming the **model type itself** changes the registry key (`clr_type_name`), so the reconciler treats it as a brand-new perspective (`inserted`) rather than a rename -- the old table is left in place.
 

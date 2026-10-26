@@ -203,7 +203,7 @@ builder.Services.AddWhizbangPostgres(
 |--------------|----------------|-------|
 | `mt_events` | `wh_event_store` | Event storage (stream_id + version per row) |
 | `mt_streams` | `wh_active_streams` | Active stream ownership/lease metadata |
-| `mt_doc_*` | `wh_per_*` | Read model storage (one table per perspective) |
+| `mt_doc_*` | `wh_per_*` | Read model storage (one table per perspective model) |
 | `mt_event_progression` | `wh_perspective_cursors` | Perspective (projection) progress |
 | `wolverine_incoming_envelopes` | `wh_inbox` | Inbox messages |
 | `wolverine_outgoing_envelopes` | `wh_outbox` | Outbox messages |
