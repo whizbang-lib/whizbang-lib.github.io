@@ -115,7 +115,7 @@ Additional subsystem meters:
 | `Whizbang.TypeRegistry` | `TypeRegistryMetrics` | Message type registry renames and drift |
 | `Whizbang.StreamIntegrity` | `StreamIntegrityMetrics` | Continuity checkpoints, gap/divergence detection, repair and manifest flows |
 | `Whizbang.Housekeeping` | `HousekeepingCoordinator` | Arbitration verdicts, the running activity, per-activity volume rollup, and idle seconds-since-activity |
-| `Whizbang.Core.Routing.MessageDiscard` | `MessageDiscardPolicy` | Unsubscribed-message discards at the receive boundary |
+| `Whizbang.Core.Routing.MessageDiscard` | `MessageDiscardPolicy` | Unsubscribed-message skips at the inbox and outbox gates |
 | `Whizbang.Postgres.Notifications` | `NotifyMetrics` | LISTEN/NOTIFY signal delivery and connection state |
 | `Whizbang.Capabilities` | `CapabilityMetrics` | Which external capabilities (Postgres extensions first) each scope can use, by state |
 | `Whizbang.Sagas` | `SagaMetrics` | Saga initiation, completion, item and hook outcomes |
@@ -376,11 +376,19 @@ Instruments covering the inbox receive pipeline, outbox publish pipeline, transp
 | `whizbang.transport.inbox.messages_received` | Counter\<long\> | Messages received from transport |
 | `whizbang.transport.inbox.messages_processed` | Counter\<long\> | Successfully processed |
 | `whizbang.transport.inbox.messages_deduplicated` | Counter\<long\> | Rejected as duplicates |
+| `whizbang.transport.inbox.messages_discarded` | Counter\<long\> | Stored and settled without processing on receive, tagged `reason` (`no_local_consumer`, `foreign_target`, `owned_echo`, `self_echo`, `unknown_event_type`) and `message_type`. See [skipped messages](../../messaging/transports/transport-consumer#skipped-messages) |
 | `whizbang.transport.inbox.messages_failed` | Counter\<long\> | Processing failures |
 | `whizbang.transport.inbox.subscription_retries` | Counter\<long\> | Transport subscription retry attempts |
 | `whizbang.transport.inbox.batch.flushes` | Counter\<long\> | Total inbox batch flushes |
 | `whizbang.transport.inbox.batch.size` | Histogram\<double\> | Messages per inbox batch flush |
 | `whizbang.transport.inbox.concurrent_messages` | UpDownCounter\<int\> | Current concurrent message handlers |
+
+Until the store-before-settling change, a message the consumer skipped on receive (no local consumer,
+directed at another service, an echo, an unknown event) was dropped before the store and counted in
+`messages_deduplicated`. It is now stored settled and counted in `messages_discarded` under its `reason`,
+so `messages_deduplicated` counts duplicates only. A dashboard or alert that read
+`messages_deduplicated` as "skipped" should move to `messages_discarded`.
+{verified: TransportConsumerWorkerStoresBeforeSkippingTests.ASkip_IsCountedUnderItsReason_NotAsADuplicateAsync}
 
 ### Outbox Timing
 
@@ -826,7 +834,7 @@ Value 1 on a state tag lets a dashboard count or alert by state without decoding
 
 | Meter | Metric Name | Type | Description |
 |-------|-------------|------|-------------|
-| `Whizbang.Core.Routing.MessageDiscard` | `whizbang.message.skipped` | Counter\<long\> | Messages intentionally skipped at a discard gate (receive \| inbox \| outbox) |
+| `Whizbang.Core.Routing.MessageDiscard` | `whizbang.message.skipped` | Counter\<long\> | Messages intentionally skipped at a discard gate (`inbox` \| `outbox`). The built-in transports no longer skip at receive: a message the consumer skips there is stored settled and counted by `whizbang.transport.inbox.messages_discarded` |
 | `Whizbang.Postgres.Notifications` | `whizbang.postgres.notifications.signals_received` | Counter\<long\> | NOTIFY signals delivered to subscribers; tagged by category (outbox/inbox/perspective/unknown) |
 | `Whizbang.Postgres.Notifications` | `whizbang.postgres.notifications.connection_state` | UpDownCounter\<int\> | +1 when LISTEN/NOTIFY is healthy, -1 on disconnect; sum = number of connected pods |
 | `Whizbang.Postgres.Notifications` | `whizbang.postgres.notifications.signaling_mode` | Counter\<long\> | Mode-decision events (startup + runtime transitions); tagged by mode and reason |

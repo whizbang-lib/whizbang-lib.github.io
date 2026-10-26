@@ -194,7 +194,8 @@ becomes **HoldForReview**, with the outcome in `operator_notes`, when an inbox g
 unprocessed, or when the inbox dead-letters it again (the note names the new dead letter, which now holds
 custody). A dead letter whose offloaded body cannot be rebuilt is held for review instead of re-entered.
 
-`recover_dead_letter` handles only outbox and perspective rows.
+Outbox and perspective dead letters re-enter the same way, through their own stores (see
+[outbox and perspective re-entry](./recovery#outbox-perspective-reentry)).
 
 Before this, recovery wrote the inbox row itself with `is_event = false` and, for a broker import without
 a session, no stream. The inbox copy into the event store skipped the row, so a recovered event was
@@ -241,6 +242,12 @@ cannot store as an inbox row (a payload with no JSON metadata in the service, an
 offloaded body that cannot be rebuilt): it records the message with its body instead
 of letting the broker settle it. See
 [messages that cannot be stored](../../messaging/transports/transport-consumer#unstorable-messages).
+
+A received body that is not a readable envelope at all is the one message the receive path refuses
+before storage. Azure Service Bus and RabbitMQ dead-letter it at the broker, never ack and drop it, so
+this drain gives it custody on its next sweep. Every other received message, including one this service
+cannot read as its type, is stored before the broker is settled (see
+[stored before settling](../../messaging/transports/transport-consumer#batch-handler)).
 
 ## On-demand drain
 

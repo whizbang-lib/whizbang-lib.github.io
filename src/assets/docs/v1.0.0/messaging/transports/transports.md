@@ -127,6 +127,8 @@ Two members ship as **default interface implementations**, so custom transports 
 - `CheckConnectivityAsync` — a health probe consumed by the managed-resource health model (`ConnectivityHealthSource`). The default returns `IsInitialized`; RabbitMQ and Azure Service Bus override it to detect connections that dropped *after* initialization.
 - `SubscribeToDeadLetterAsync` — a push subscription on the broker's dead-letter queue/subqueue, intended to eliminate the polling latency of the `TransportDeadLetterDrainWorker`. The default throws `NotSupportedException`, which keeps the worker on its polling fallback (`TransportDeadLetterDrainWorkerOptions.IntervalMinutes`). No shipped transport overrides it yet — today all three rely on the polling drain worker.
 
+### TransportMessage {#transport-message}
+
 `TransportMessage` is a lightweight value type pairing a deserialized `IMessageEnvelope` with its assembly-qualified envelope type name:
 
 ```csharp{title="TransportMessage" description="A deserialized transport message ready for batch processing" category="Configuration" difficulty="BEGINNER" tags=["Messaging", "Transports", "Batching"] unverified="verified by SubscribeBatchTests, which is outside the current coverage map"}
@@ -135,6 +137,15 @@ public readonly record struct TransportMessage(
     string? EnvelopeType
 );
 ```
+
+A transport hands the batch handler every message whose body is a valid envelope, and settles the message
+with the broker only after the handler returns, because the handler is what stores it. When the transport
+cannot read the body as its typed envelope (no JSON context in this service describes the type, or the
+typed read rejects the body), it reads it as received with `ReceivedEnvelopeReader`: a
+`MessageEnvelope<JsonElement>` carrying the type the producer named, so the message is still stored. Only a
+body that is not a readable envelope is refused, by dead-lettering it at the broker. See
+[stored before settling](./transport-consumer#batch-handler).
+{verified: ReceivedEnvelopeReaderTests.TryRead_AValidEnvelope_ReturnsItAsReceivedAsync, ReceivedEnvelopeReaderTests.TryRead_OptionsThatDescribeNoEnvelope_ReadsWithTheFrameworksOwnAsync, ReceivedEnvelopeReaderTests.TryRead_ABodyThatIsNotAnEnvelope_ReturnsNullAsync, ReceivedEnvelopeReaderTests.TryRead_AnEnvelopeWhoseIdIsNotAMessageId_ReturnsNullAsync}
 
 ### Transport Capabilities
 

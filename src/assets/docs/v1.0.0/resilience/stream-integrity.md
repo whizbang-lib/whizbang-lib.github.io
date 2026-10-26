@@ -261,9 +261,10 @@ a dropped repair re-alarms at the next checkpoint instead of silently "completin
 are computed per (consumer, origin) pair, so repair traffic is inherently addressed to one
 service; rather than a repair-branded header, Whizbang gains a first-class **`target`** address —
 the *logical service identity* that names the target's subscription (never an instance id) —
-carried as portable envelope metadata (wire key `tgt`). As built, non-target consumers discard at
-the receive seam before deserialization or fan-out (the same boundary discipline as
-unsubscribed-message discard, one property compare) — exactly the R0 build record below. Mapping
+carried as portable envelope metadata (wire key `tgt`). As built, non-target consumers skip it at
+the receive seam before fan-out (one property compare), storing it settled with the reason
+`foreign_target` so it is never claimed or dispatched, the same treatment as an unsubscribed
+message (see [skipped messages](../messaging/transports/transport-consumer#skipped-messages)). Mapping
 `target` to the transport's **native `To`/`ReplyTo`** properties where they exist (AMQP
 bare-message `to`; Service Bus `To` with SQL-filterable rules) and broker-side filtering
 (`target IS NULL OR target = @me`, wired through the infrastructure-provisioner seam and

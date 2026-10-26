@@ -440,8 +440,8 @@ released so the retry is not filtered out.
 
 - **Recognition** — the source generator (`ReceptorRegistryQueryGenerator`)
   discovers every **concrete** `ICompositeEvent` type and lists it in
-  `AnyConsumerTypes`, so the receive-boundary drop-gate keeps a composite alive
-  long enough to reach the dispatch seam (a composite has no receptor /
+  `AnyConsumerTypes`, so the receive-boundary skip gate processes a composite
+  instead of storing it settled, and it reaches the dispatch seam (a composite has no receptor /
   perspective / tag of its own). The abstract `CompositeEventBase` is skipped —
   it is never dispatched.
 - **Fan-out is AOT-clean** — `CompositeInboxFanout` builds each child as a

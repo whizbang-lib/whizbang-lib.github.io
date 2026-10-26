@@ -147,7 +147,7 @@ if (causationId != null) {
 
 The receive side is handled by `TransportConsumerWorker`:
 
-1. **Header check first**: the `EnvelopeType` application property is read *before* deserialization; messages no receptor, perspective, or tag attribute subscribes to are **discarded at the receive boundary** — no inbox row, no deserialization
+1. **Header check first**: the `EnvelopeType` application property is read *before* deserialization to decide whether any receptor, perspective, or tag attribute on this service subscribes to the message. A message nothing here subscribes to is still stored, but **settled on receive** (`DiscardedOnReceive`): its inbox row is never claimed or dispatched. See [skipped messages](transports/transport-consumer#skipped-messages)
 2. **AOT-safe deserialization**: the envelope is deserialized via the registered `JsonTypeInfo` for its envelope type — hops restored intact
 3. **Store**: `StoreInboxMessagesAsync` → `store_inbox_messages` persists the row with its `EnvelopeMetadata` (MessageId + Hops); the dedup table rejects duplicates atomically
 4. **Process**: handlers receive the full envelope — hop history, scope, and correlation identity intact

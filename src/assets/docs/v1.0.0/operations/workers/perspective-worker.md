@@ -660,7 +660,9 @@ them:
     letter whose *entire* source stream is absent from `wh_event_store` is unrecoverable
     (recovery would re-drive into an empty join, and generation replay excludes held rows), so
     it is marked Recovered with a note and retention ages it out. A stream with any surviving
-    event is a genuine apply failure and is left held for review.
+    event is a genuine apply failure and is left held for review. Recovery itself never re-drives
+    a perspective dead letter whose event is gone: it holds it for review with the reason (see
+    [outbox and perspective re-entry](../dead-letter-queue/recovery#outbox-perspective-reentry)).
 
 Deleting is correct for both: the event is gone, so there is nothing to project and the
 cursor never advanced past the row.

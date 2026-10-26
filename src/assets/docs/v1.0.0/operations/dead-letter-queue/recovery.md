@@ -20,12 +20,17 @@ codeReferences:
   - src/Whizbang.Core/Observability/DeadLetterMetrics.cs
   - src/Whizbang.Data.Postgres/Migrations/051_DeadLetterRecovery.sql
   - src/Whizbang.Data.Postgres/Migrations/056_DeadLetterReadyNotify.sql
+  - src/Whizbang.Data.Postgres/Migrations/239_RecoveredWorkReentersThroughItsStore.sql
+  - src/Whizbang.Data.EFCore.Postgres/EFCoreDeadLetterRecoveryService.cs
 testReferences:
   - tests/Whizbang.Core.Component.Tests/Workers/DeadLetterRecoveryWorkerTests.cs
   - tests/Whizbang.Core.Tests/Messaging/DefaultDeadLetterRecoveryPolicyTests.cs
   - tests/Whizbang.Core.Tests/Messaging/DeadLetterRecoveryPolicyTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/EFCoreDeadLetterRecoveryServiceTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/DeadLetterRecoverySqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/RecoveredWorkReentrySqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/RecoveredOutboxDeadLetterPublishTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/RecoveredPerspectiveDeadLetterApplyTests.cs
   - tests/Whizbang.Core.Tests/Observability/DeadLetterMetricsTests.cs
 ---
 
@@ -36,14 +41,75 @@ backstop cadence (default 10 min, `ScanIntervalMinutes`) it scans for due
 rows (up to `ScanBatchSize`, default 2000 — see Adaptive scan batch below, per cycle), consults the
 configured `IDeadLetterRecoveryPolicy` for each, and either re-emits the row
 onto its source work table, holds it for review, or marks
-it permanently failed. Inbox and broker rows re-enter through the inbox's
-arrival path (`store_inbox_messages`) and read Recovered only once processed
-(see [re-entry](./transport-recovery#reentry)); outbox and perspective rows
-are re-inserted by the atomic `recover_dead_letter` SQL function with
-`attempts=0`. Besides the backstop poll, the worker also wakes
+it permanently failed. Every recovered row re-enters through the store a new
+arrival of the same work goes through, and its dead letter reads Recovered only
+once the work has run: inbox and broker rows through the inbox's arrival path
+(`store_inbox_messages`, see [re-entry](./transport-recovery#reentry)), outbox
+and perspective rows through `store_outbox_messages` and
+`store_perspective_events` (see [outbox and perspective
+re-entry](#outbox-perspective-reentry)). Besides the backstop poll, the worker also wakes
 within milliseconds of a new DLQ row when the `DeadLetterReady` NOTIFY
 signal is wired — migration 056 adds an `AFTER INSERT` trigger on
 `wh_dead_letters` that fires it.
+
+## Outbox and perspective re-entry {#outbox-perspective-reentry}
+
+An outbox dead letter re-enters through `store_outbox_messages` and a perspective dead letter through
+`store_perspective_events`, the stores a new message or a new event's perspective work goes through. The
+recovered row is stored in the same shape as the original: its envelope type, event flag, flags, scope,
+priority, schedule and coalesce group for an outbox message, and its priority for perspective work, all kept
+by the dead-letter capture. It runs every step the store runs for a new row, so a recovered outbox event is
+appended to the event store and published under its own envelope type, and a recovered perspective event
+behind its cursor rewinds the perspective. The row differs from a new one in two ways only:
+
+- the store claims its dead letter (**Recovering**) in the same transaction;
+- the row names the dead letter it came from (`recovered_from_dead_letter_id`).
+
+```mermaid{caption="Outbox and perspective dead-letter recovery: the store claims the dead letter, the completion settles it, and a second failure holds it for review." tests=["RecoveredOutboxDeadLetterPublishTests.ARecoveredOutboxEvent_IsPublishedAsTheEventItWasStoredAs_AndReadsRecoveredOncePublishedAsync", "RecoveredWorkReentrySqlTests.ARecoveredOutboxMessage_DeadLetteredAgain_IsHeldForReview_NamingTheNewDeadLetterAsync", "RecoveredWorkReentrySqlTests.ARecoveredPerspectiveEvent_NoLongerInTheEventStore_IsHeldForReview_AndNotReEnteredAsync"]}
+flowchart LR
+    DL["Dead letter<br/>(Pending)"] -->|"wh_recover_dead_letter"| ST["store_outbox_messages /<br/>store_perspective_events<br/>dead letter: Recovering"]
+    ST -->|"published / applied"| OK["Dead letter: Recovered"]
+    ST -->|"dead-lettered again"| HR["Dead letter: HoldForReview<br/>(note names the new dead letter)"]
+    DL -->|"perspective event purged"| HP["Dead letter: HoldForReview<br/>(note gives the reason)"]
+
+    class DL,ST layer-core
+    class OK layer-command
+    class HR,HP layer-event
+```
+
+The dead letter reads **Recovering** until the work has run, then **Recovered**: an outbox message once
+`complete_outbox_published` records it published, perspective work once
+`process_perspective_event_completions` records the event applied. When the recovered row is dead-lettered
+again, the dead letter it came from becomes **HoldForReview** under an operator hold, and its
+`operator_notes` name the new dead letter, which now holds custody. Recovered is never written for a
+recovery that did not complete. A perspective dead letter whose event is no longer in the event store (its
+stream was purged) can apply nothing, so it is held for review with that reason instead of being re-entered.
+When the message id is still in the outbox, the store keeps the existing row and the dead letter stays due.
+
+Recovered work runs at the priority it was stored with (see
+[message priority](../../fundamentals/messaging/message-priority#recovered-dead-letters)). A dead letter
+captured before migration 239 kept no priority and re-enters as background, as recovery used to store it.
+It also kept no envelope type: it re-enters under the envelope type its message type names, and an outbox
+message whose event is in the event store re-enters as that event, with its flags and scope.
+{verified: RecoveredWorkReentrySqlTests.ARecoveredOutboxMessage_IsStoredInTheShapeItWasStoredInAsync, RecoveredWorkReentrySqlTests.AnOutboxEventRefusedBeforeItWasAppended_IsAppendedWhenRecovered_WithItsScopeAndFlagsAsync, RecoveredWorkReentrySqlTests.ARecoveredPerspectiveWorkRow_IsStoredInTheShapeTheEventStoreChainStoresItInAsync, RecoveredWorkReentrySqlTests.ARecoveredPerspectiveEvent_BehindItsCursor_FlagsTheCursorForRewindAsync, RecoveredWorkReentrySqlTests.ARecoveredOutboxMessage_DeadLetteredAgain_IsHeldForReview_NamingTheNewDeadLetterAsync, RecoveredWorkReentrySqlTests.ARecoveredPerspectiveWorkRow_DeadLetteredAgain_IsHeldForReview_NamingTheNewDeadLetterAsync, RecoveredWorkReentrySqlTests.ARecoveredPerspectiveEvent_NoLongerInTheEventStore_IsHeldForReview_AndNotReEnteredAsync, RecoveredWorkReentrySqlTests.ARecovery_OfAnOutboxMessageStillInTheOutbox_LeavesItsDeadLetterDueAsync, RecoveredWorkReentrySqlTests.ASecondRecovery_OfAnOutboxDeadLetterAlreadyRecovering_StoresNothingAsync, RecoveredOutboxDeadLetterPublishTests.ARecoveredOutboxEvent_IsPublishedAsTheEventItWasStoredAs_AndReadsRecoveredOncePublishedAsync, RecoveredOutboxDeadLetterPublishTests.AnOutboxDeadLetterCapturedBeforeItKeptTheEnvelopeType_IsPublishedUnderTheNameItsStoreWritesAsync, RecoveredPerspectiveDeadLetterApplyTests.ARecoveredPerspectiveWorkRow_IsApplied_AndReadsRecoveredOnceAppliedAsync}
+
+### The SQL entry points {#recovery-sql}
+
+| Function | Use |
+|---|---|
+| `wh_recover_dead_letter(dead_letter_id uuid, partition_count integer)` | Re-enters an outbox or perspective dead letter, storing the row with the partition count every arrival is stored with. Returns whether the row re-entered. `EFCoreDeadLetterRecoveryService` calls it with `ClaimWorkerOptions.PartitionCount`. |
+| `recover_dead_letter(dead_letter_id uuid)` | Unchanged signature: calls `wh_recover_dead_letter` at the claim's default partition count (10000). Kept so scripts and older migrations replay. |
+
+Both decline an inbox or broker dead letter (those re-enter through `store_inbox_messages` from the
+recovery worker) and a dead letter that is already Recovering, held for review or settled, leaving it as it was.
+
+:::note[Before migration 239]
+`recover_dead_letter` re-inserted outbox and perspective rows with column lists of its own and marked the
+dead letter Recovered in the same call, before anything ran. The outbox copy carried the envelope type
+`recovered`, which the drain sends as the wire's envelope type header, so a receiving service could not
+resolve the message: Azure Service Bus completed and dropped it, and RabbitMQ dead-lettered it. Both copies
+were stored as background work on partition 0.
+:::
 
 ## Default policy by failure reason
 
@@ -270,6 +336,11 @@ The worker reports through `DeadLetterMetrics` (meter `Whizbang.DeadLetters`):
 | `whizbang.dead_letters.permanently_failed` | counter | `policy_name`, `reason` |
 | `whizbang.dead_letters.recovery_attempts` | counter | `reason` |
 | `whizbang.dead_letters.generation_replay_scheduled` | counter | `generation` |
+
+`whizbang.dead_letters.recovered` counts re-entries: the row it counts reads Recovering at that moment and
+reads Recovered once the work has run. A hold for review that the database makes (a recovery dead-lettered
+again, or perspective work whose event was purged) is recorded in `operator_notes` and is not counted by
+`whizbang.dead_letters.held`, which counts the worker's own transitions.
 
 The worker also exposes in-process counters for tests and health endpoints:
 `TotalScans`, `TotalRecovered`, `TotalHeld`, `TotalPermanentlyFailed`,

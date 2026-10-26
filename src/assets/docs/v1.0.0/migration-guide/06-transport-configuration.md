@@ -273,7 +273,7 @@ builder.Services
     .AddTransportConsumer(); // Auto-generates transport subscriptions from routing config
 ```
 
-Per-message-type topic overrides and SQL-style subscription filters are not part of the routing API — topics come from namespaces, and receive-side filtering happens automatically (messages with no local receptor or perspective are discarded at the receive boundary).
+Per-message-type topic overrides and SQL-style subscription filters are not part of the routing API: topics come from namespaces, and receive-side filtering happens automatically (a message with no local receptor or perspective is stored already settled and never dispatched; see [skipped messages](../messaging/transports/transport-consumer#skipped-messages)).
 
 ## Testing Configuration
 
