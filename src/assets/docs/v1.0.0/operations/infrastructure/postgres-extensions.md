@@ -112,7 +112,7 @@ the one thing in the way.
 | Postgres state | Capability state | Meaning | What to do |
 |---|---|---|---|
 | `Installed` | `Ready` | Present in the database, and preloaded when it must be. | Nothing. |
-| `Available` | `Provisionable` | Creatable here: files present, allowlisted (or no allowlist exists), preloaded if needed, and this role may create it. | Nothing. Whizbang creates it when a feature needs it, for the extensions it may create. |
+| `Available` | `Provisionable` | Creatable here: files present, allowlisted (or no allowlist exists), preloaded if needed, and this role may create it. | Nothing. When a feature in force requires it, Whizbang [creates it](capabilities.md#provisioning-postgres) before the verdict, for the extensions it may create, unless `AutoProvision` is off. |
 | `NotAllowlisted` | `NotPermitted` | The server has the files, but its allowlist exists and does not name it. | Add the extension's name to the server's allowlist (for example `azure.extensions` on Azure Database for PostgreSQL). If it also needs preloading, add it to `shared_preload_libraries` and restart the server. |
 | `NeedsPreload` | `NeedsServerChange` | Installed or creatable, but its library is not in `shared_preload_libraries`. | Add it to `shared_preload_libraries` and restart the server. |
 | `NoPrivilege` | `NoPrivilege` | Some role could create it, this one cannot: it is not a superuser and either lacks `CREATE` on the database, or the extension is not trusted and no managed-server allowlist grants it. | Run `CREATE EXTENSION <name>` once as a role that may (a superuser, or the server's administrator role), or grant this role `CREATE` on the database. |

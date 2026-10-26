@@ -18,6 +18,7 @@ codeReferences:
 testReferences:
   - tests/Whizbang.Core.Component.Tests/Signals/SignalBusProbeBackoffTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/PgDurableSignalRetentionWindowTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Partitioning/SignalPartitionCarryForwardTests.cs
 ---
 
 # System Signal Bus
@@ -245,7 +246,7 @@ Durable-class signals (e.g. `InstanceDiedSignal`) are appended to **`wh_signals`
 
 ### Retention {#retention}
 
-{verified: PgDurableSignalRetentionWindowTests.Sweep_UsesTheConfiguredWindowAsync, PgDurableSignalRetentionWindowTests.Sweep_DeletesInBatches_UntilNothingIsLeftAsync, PgDurableSignalRetentionWindowTests.Sweep_NeverPassesTheSlowestCursorAsync}
+{verified: PgDurableSignalRetentionWindowTests.Sweep_UsesTheConfiguredWindowAsync, PgDurableSignalRetentionWindowTests.Sweep_DeletesInBatches_UntilNothingIsLeftAsync, PgDurableSignalRetentionWindowTests.Sweep_NeverPassesTheSlowestCursorAsync, SignalPartitionCarryForwardTests.ALiveInstanceBehindTheWindow_KeepsEveryUnconsumedSignalAcrossTheDrop_AndReceivesThemInOrderAsync, SignalPartitionCarryForwardTests.ADeadInstancesCursor_CarriesNothing_AndThePartitionIsDroppedAsync}
 
 The retention sweep runs hourly and deletes a signal when it is older than `SignalRetention` **and** every instance's cursor has passed it. A signal some instance has not yet delivered is kept whatever its age, and nothing is deleted while no instance has a cursor. Deletes run in batches until a batch comes back short, so a large backlog is cleared in one cycle without one long delete.
 
@@ -255,10 +256,12 @@ The retention sweep runs hourly and deletes a signal when it is older than `Sign
 
 A window of zero or less is rejected at startup, naming the key.
 
-With [partition maintenance](../../operations/infrastructure/partitioned-ledgers#row-sweeps) enabled, `wh_signals` is
+With [partition maintenance](../../operations/infrastructure/partitioned-ledgers#signals) enabled, `wh_signals` is
 partitioned daily by `created_at` and a day is dropped whole once it ends more than `SignalRetention` ago. The sweep
-then clears only the default partition. The drop goes by age alone, so the cursor guard above no longer holds a
-signal past the window: keep `SignalRetention` longer than any outage an instance should resume from.
+then clears only the default partition. Before a day is dropped, the signals a **live** instance has not consumed
+(an id past the slowest live instance's cursor) move into the current day, keeping their ids, so that instance's tail
+still delivers them, in order. An instance is live while it is registered; once the stale-instance reap removes a
+dead instance, its cursor holds nothing back. A moved signal starts a fresh `SignalRetention` window.
 
 ## Hot-path constraints
 

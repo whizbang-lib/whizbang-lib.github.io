@@ -18,6 +18,8 @@ codeReferences:
   - src/Whizbang.Core/Messaging/IEventTypeProvider.cs
   - src/Whizbang.Core/Messaging/IDeadLetterStore.cs
   - src/Whizbang.Core/Notifications/INotifySignalingGate.cs
+  - src/Whizbang.Core/Messaging/DetachedLifecycleWork.cs
+  - src/Whizbang.Core/Workers/BatchStrategyShutdownFlush.cs
 testReferences:
   - tests/Whizbang.Core.Component.Tests/Documentation/InjectedExtensibilityPointsAreDocumentedTests.cs
   - tests/Whizbang.Generators.Tests/Analyzers/OptionalInjectedParameterAnalyzerTests.cs
@@ -116,6 +118,8 @@ Plain `TryAddSingleton` would lose to the placeholder when your extension runs a
 | `IConcurrencyGovernor` (keyed per worker) | adaptive governor from the worker's options | Concurrency for the outbox drain and perspective workers |
 | `IConfiguration` | an empty root | Lets `Whizbang:*` keys be read in a host without configuration |
 | `IServiceInstanceProvider` | from configuration and the entry assembly | The instance's identity |
+
+`TryAddWhizbangDefaults()` also registers two concrete services that are not seams: `DetachedLifecycleWork`, the one record per container of the background work a stopping host waits for, and the stop-time flush `BatchStrategyShutdownFlush` as an `IHostedService`. Every entry point registers them, so a host without the worker pipeline also waits for its detached work before it disposes the service provider. See [Detached Work When the Host Stops](../../fundamentals/lifecycle/lifecycle-stages.md#host-stop).
 
 ### Null default: `IsConfigured` (or `IsAvailable`) is false until a subsystem supplies one
 

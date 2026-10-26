@@ -17,6 +17,7 @@ codeReferences:
   - src/Whizbang.Core/Execution/SerialExecutor.cs
   - src/Whizbang.Core/Workers/PerspectiveWorker.cs
   - src/Whizbang.Core/Workers/ISchemaReadyGate.cs
+  - src/Whizbang.Core/Workers/BatchStrategyShutdownFlush.cs
 testReferences:
   - tests/Whizbang.Execution.Component.Tests/ExecutionStrategyContractTests.cs
   - tests/Whizbang.Execution.Component.Tests/SerialExecutorTests.cs
@@ -808,6 +809,7 @@ try {
 1. `DrainAsync()` has no timeout
 2. Background worker stuck in infinite loop
 3. Deadlock in work processing
+4. A detached lifecycle receptor or tag handler is still running: the host waits for it before disposing the service provider, up to `HostOptions.ShutdownTimeout`. Look for the Information log `Waiting for {Count} detached lifecycle invocation(s) to finish before the service provider is disposed`, and see [Detached Work When the Host Stops](../../fundamentals/lifecycle/lifecycle-stages.md#host-stop).
 
 **Solution**: Add timeout to drain:
 ```csharp{title="Problem: Shutdown Hangs Indefinitely" description="Solution: Add timeout to drain:" category="Implementation" difficulty="BEGINNER" tags=["Operations", "Workers", "Problem:", "Shutdown"] unverified="illustrative drain-timeout pattern — _worker.WaitAsync is pseudocode, not the SerialExecutor API"}

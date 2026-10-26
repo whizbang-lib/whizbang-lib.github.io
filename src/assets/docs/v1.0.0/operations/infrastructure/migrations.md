@@ -49,6 +49,7 @@ codeReferences:
   - src/Whizbang.Core/Startup/TableRewriteStartupStep.cs
   - src/Whizbang.Core/Workers/ITableRewriter.cs
   - src/Whizbang.Core/Workers/VacuumFullTableRewriter.cs
+  - src/Whizbang.Core/Workers/TableRewriteStrategy.cs
 testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/MigrationStepTransactionTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/TableRewritePolicyRetiredTests.cs
@@ -80,6 +81,7 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/MigrationSchemaQualificationTests.cs
   - tests/Whizbang.Core.Tests/Startup/TableRewriteStartupStepTests.cs
   - tests/Whizbang.Core.Tests/Workers/VacuumFullTableRewriterTests.cs
+  - tests/Whizbang.Core.Tests/Workers/TableRewriteStrategyTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/TableRewriteJourneyE2ETests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/MigrationSchemaQualifierTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/MigrationSearchPathTests.cs
@@ -579,22 +581,23 @@ A migration cannot `VACUUM FULL` (both are forbidden inside its transaction), so
 
 The recorded rewrites are performed by the startup pipeline's **`Rewrite` step**: post-ready (`Blocking = false`, because deliberately unbounded work never gates readiness), fleet-exclusive under the `maintainer` duty (one instance rewrites; non-holders skip, because nobody blocks on a `VACUUM FULL`). A request is cleared only after the bloat ratio is confirmed to have dropped; an ineffective rewrite stays queued for the next boot.
 
-The step does not rewrite a table itself. It hands each owed table to the `ITableRewriter` of the selected strategy, and the rewriter returns the table's bloat ratio measured afterwards. The framework registers one strategy, `VacuumFull` (`VacuumFullTableRewriter`): a `VACUUM FULL` followed by `ANALYZE`, under an ACCESS EXCLUSIVE lock for the table's duration. It runs only when `MaintenanceWorkerOptions.AllowTableRewrite` is true, because the framework cannot know how large a consumer's table is, and taking that lock unattended must be opted into.
+The step does not rewrite a table itself. It resolves `Whizbang:Workers:Maintenance:TableRewriteStrategy` (default `Auto`) against `AllowTableRewrite` (see [Storage maintenance: table rewrite strategy](./storage-maintenance#table-rewrite-strategy)), hands each owed table to the `ITableRewriter` of the strategy that resolves, and the rewriter returns the table's bloat ratio measured afterwards. The framework registers one rewriter, `VacuumFull` (`VacuumFullTableRewriter`): a `VACUUM FULL` followed by `ANALYZE`, under an ACCESS EXCLUSIVE lock for the table's duration. It runs only when `MaintenanceWorkerOptions.AllowTableRewrite` is true, because the framework cannot know how large a consumer's table is, and taking that lock unattended must be opted into. `Auto` resolves to it when permitted and otherwise only detects and reports; it never starts an online rewrite. Where a capability registry is registered (both Postgres drivers register one), the step runs after the `Capabilities` step, so it knows whether pg_squeeze is usable.
 
 | The step finds | It reports |
 |---|---|
-| no rewriter registered for the selected strategy | Skipped: `no table rewriter registered for strategy '<name>'` |
-| a rewriter that cannot run (`VacuumFull` without `AllowTableRewrite`) | Skipped, with the rewriter's reason: `table rewrites not permitted (MaintenanceWorkerOptions.AllowTableRewrite)` |
+| a strategy that rewrites nothing (`Auto` or `VacuumFull` without `AllowTableRewrite`, or `None`) | Skipped, with the resolution: for example `Auto detects and reports only: VACUUM FULL is not permitted (Whizbang:Workers:Maintenance:AllowTableRewrite = false)` |
+| a strategy with no registered rewriter (`PgSqueeze` in this version) | Skipped: `PgSqueeze: online rewrite through pg_squeeze; no table rewriter is registered for it, so requested tables stay queued` |
+| a rewriter that cannot run | Skipped, with the rewriter's reason |
 | no table owing a rewrite | Skipped: `no rewrites owed` |
 | tables rewritten | Completed: `rewrote N table(s)`, plus how many were ineffective and left queued |
 
-{verified: TableRewriteStartupStepTests.ResolvesTheRewriterByStrategyNameAsync, TableRewriteStartupStepTests.NoRewriterForTheStrategy_SkipsNamingTheStrategyAsync, TableRewriteStartupStepTests.WithoutOperatorPermission_SkipsWithTheStatedReasonAsync, TableRewriteStartupStepTests.WithPermission_RewritesAndClearsOnlyConfirmedRequestsAsync, TableRewriteStartupStepTests.IneffectiveRewrite_LeavesTheRequestQueuedForTheNextBootAsync, VacuumFullTableRewriterTests.AddWhizbangWorkers_TheRewriteStepRunsTheVacuumFullStrategyAsync}
+{verified: TableRewriteStartupStepTests.ResolvesTheRewriterByStrategyNameAsync, TableRewriteStartupStepTests.PgSqueeze_HasNoRewriterInThisVersion_AndSaysSoAsync, TableRewriteStartupStepTests.WithoutOperatorPermission_SkipsWithTheStatedReasonAsync, TableRewriteStartupStepTests.WithPermission_RewritesAndClearsOnlyConfirmedRequestsAsync, TableRewriteStartupStepTests.IneffectiveRewrite_LeavesTheRequestQueuedForTheNextBootAsync, TableRewriteStartupStepTests.Auto_WithPgSqueezeUsable_NamesTheOptIn_AndStartsNoOnlineRewriteAsync, VacuumFullTableRewriterTests.AddWhizbangWorkers_TheRewriteStepRunsTheVacuumFullStrategyAsync}
 
 The runtime maintenance cycle **no longer executes rewrites** — an ACCESS EXCLUSIVE lock mid-traffic was always the wrong window. It detects, reports the bloat gauge, and records.
 
 {verified: TableRewritePolicyRetiredTests.TheUnreadPolicyKey_IsGoneAfterMigrationAsync, TableRewritePolicyRetiredTests.TheSettingsTheDetectorReads_StayAsync}
 
-`AllowTableRewrite` is the only switch. Migration 089 also seeded a `table_rewrite_policy` row in `wh_settings`
+`TableRewriteStrategy` and `AllowTableRewrite` are the only switches. Migration 089 also seeded a `table_rewrite_policy` row in `wh_settings`
 (`off` or `immediate`) that nothing ever read, so changing it did nothing. Migration 235 deletes the row; behavior is
 the same whatever it held. The detector's own settings stay: `table_rewrite_bloat_threshold` (the ratio above which a
 table is offered), `table_rewrite_min_rows` (tables smaller than this are ignored) and `pending_table_rewrites` (the

@@ -16,11 +16,14 @@ codeReferences:
   - src/Whizbang.Core/StreamIdAttribute.cs
   - src/Whizbang.Core/Messaging/IWorkCoordinator.cs
   - src/Whizbang.Data.Postgres/Migrations/212_CloseStreamReanchorsCursorsAndSnapshots.sql
+  - src/Whizbang.Data.Postgres/Migrations/240_TruncateStreamPrefix.sql
+  - src/Whizbang.Core/Lifecycle/StreamPrefixTruncator.cs
 testReferences:
   - tests/Whizbang.Core.Tests/Messaging/InMemoryEventStoreTests.cs
   - tests/Whizbang.Core.Tests/ValueObjects/IdentityValueObjectTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StreamCloseSqlTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperStreamCloseCompanionTests.cs
+  - tests/Whizbang.Core.Tests/Messaging/WorkCoordinatorDefaultsTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -298,39 +301,47 @@ public record TenantOrderCreated : IEvent {
 - Consider snapshots for very long streams
 - Perspectives handle read model optimization
 
-## Closing a Stream's History {#closing-a-stream}
+## Truncating a Stream's Prefix {#truncating-a-stream-prefix}
 
-A long-lived stream (an account, a ledger, a running balance) can "close the books" at a period boundary: the domain appends its closing event, then calls `IWorkCoordinator.CloseStreamAsync(streamId, throughVersion, archive)` to truncate the detail at or below `throughVersion`. With `archive: true` the detail is copied to cold storage first, in the same transaction, and stays readable through `GetArchivedEventsAsync`.
+A long-lived stream (an account, a ledger, a running balance) can drop its old detail once a later event carries the state forward: the domain appends that carry-forward event, then calls `IWorkCoordinator.TruncateStreamPrefixAsync(streamId, throughVersion, archive)` to remove the detail at or below `throughVersion`. With `archive: true` the detail is copied to cold storage first, in the same transaction, and stays readable through `GetArchivedEventsAsync`. The SQL function underneath is `wh_truncate_stream_prefix`.
 
-```csharp{title="Closing a Stream" description="Truncate a stream's detail after its closing event" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Streams", "Retention"] tests=["StreamCloseSqlTests.CloseStream_ConsumptionGate_BlocksThenTruncatesAsync"]}
-// The domain has already emitted its closing event (for example PeriodClosed) through its receptor;
-// that event is the carry-forward that survives above the close point.
-var result = await coordinator.CloseStreamAsync(accountId, throughVersion: closedThrough, archive: true);
-if (result.Status != "closed") {
+```csharp{title="Truncating a Stream's Prefix" description="Remove a stream's detail at or below a version once a carry-forward event survives above it" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Events", "Streams", "Retention"] tests=["StreamCloseSqlTests.CloseStream_ConsumptionGate_BlocksThenTruncatesAsync"]}
+// The domain has already emitted its carry-forward event (for example PeriodSummarized) through its receptor;
+// that event survives above the truncate point and carries the state forward.
+var result = await coordinator.TruncateStreamPrefixAsync(accountId, throughVersion: summarizedThrough, archive: true);
+if (result.Status != "truncated") {
   // not an error: retry later, or act on the reason below
 }
 ```
 
-Calling the coordinator truncates and nothing more. `IStreamCloser.CloseAsync(streamId, throughVersion, archive)` (registered by `AddWhizbangWorkers()`) wraps the same close in the destruction hook and the [destruction lifecycle stages](../lifecycle/lifecycle-stages#destruction), so receptors that preserve or announce the truncated events run around it; see [Closing a stream on a schedule](ephemeral-events#scheduled-close).
+Calling the coordinator truncates and nothing more. `IStreamPrefixTruncator.TruncateAsync(streamId, throughVersion, archive)` (registered by `AddWhizbangWorkers()`) wraps the same truncate in the destruction hook and the [destruction lifecycle stages](../lifecycle/lifecycle-stages#destruction), so receptors that preserve or announce the truncated events run around it; see [Truncating a stream on a schedule](ephemeral-events#scheduled-close).
 
-The close is all or nothing. It returns one of these statuses:
+The truncate is all or nothing. It returns one of these statuses:
 
 | Status | Meaning | What to do |
 |---|---|---|
-| `closed` | The detail was truncated; `EventsTruncated` says how many events. | Nothing. |
-| `blocked` | A perspective still has unprocessed work at or below the close point. | Retry after the perspectives catch up. |
-| `no_carry_forward` | No event survives above the close point, so nothing would carry the state forward. | Append the closing event first. |
+| `truncated` | The detail was removed; `EventsTruncated` says how many events. | Nothing. |
+| `blocked` | A perspective still has unprocessed work at or below the truncate point. | Retry after the perspectives catch up. |
+| `no_carry_forward` | No event survives above the truncate point, so nothing would carry the state forward. | Append the carry-forward event first. |
 | `held` | An active destruction hold covers an event in the range. | Release or let the hold lapse; holds are deliberate decisions to keep data. |
 | `cursor_behind` | A perspective's cursor sits inside the range and that perspective has not yet applied the first surviving event. | Retry after it applies that event. |
 | `debug_skipped` | Debug mode is on; nothing is destroyed in debug mode. | Turn debug mode off outside local development. |
-| `unsupported` | The storage engine has no close primitive. | Use a Postgres-backed store. |
+| `unsupported` | The storage engine has no truncate primitive. | Use a Postgres-backed store. |
 
-### What a close does to the rest of the stream's state
+{verified: StreamCloseSqlTests.CloseStream_ConsumptionGate_BlocksThenTruncatesAsync, StreamCloseSqlTests.CloseStream_NoCarryForward_RefusesTotalTruncationAsync, StreamCloseSqlTests.CloseStream_ActiveDestructionHoldInsideTheRange_IsRefused_ALapsedOneIsRemovedAsync, StreamCloseSqlTests.CloseStream_CursorBehindABoundaryEventItsPerspectiveStillOwes_IsRefusedAsync, StreamCloseSqlTests.CloseStream_DebugMode_SkippedAsync, WorkCoordinatorDefaultsTests.TruncateStreamPrefixAsync_WithoutProviderSupport_UsesInheritedDefaultAsync}
 
-- **Perspective cursors** that point at a truncated event move onto the boundary event, the first event that survives above the close point. Nothing is skipped: the consumption check already proved every event at or below the close point was processed, and reads resume strictly after the cursor. If the perspective still owes work for the boundary event itself, moving the cursor would skip that event forever, so the close returns `cursor_behind` instead.
-- **Snapshots** that a rewind could no longer replay from are removed: any snapshot at or below the close point, unless it is the current state of a perspective whose cursor was just moved (that snapshot is kept, so a later rewind of a perspective that ignores the closing event does not restart from an empty model). Snapshots above the close point are untouched.
+:::new{type="breaking"}
+Until #1731 this operation was named `close_stream` / `CloseStreamAsync` (with `IStreamCloser`, `StreamCloseResult` and a `closed` status). It was renamed because it truncates; "close" now belongs to closing the books, a separate operation that seals a stream and opens its successor. Migration 240 drops `close_stream`, so SQL that called it by name has to move to `wh_truncate_stream_prefix`.
+:::
+
+{verified: StreamCloseSqlTests.TruncateStreamPrefix_AfterMigration_IsTheOnlyNameTheTruncateGoesByAsync, DapperStreamCloseCompanionTests.TruncateStreamPrefix_OnADapperMigratedDatabase_ReplacesCloseStreamAsync}
+
+### What a prefix truncate does to the rest of the stream's state {#truncate-effects}
+
+- **Perspective cursors** that point at a truncated event move onto the boundary event, the first event that survives above the truncate point. Nothing is skipped: the consumption check already proved every event at or below the truncate point was processed, and reads resume strictly after the cursor. If the perspective still owes work for the boundary event itself, moving the cursor would skip that event forever, so the truncate returns `cursor_behind` instead.
+- **Snapshots** that a rewind could no longer replay from are removed: any snapshot at or below the truncate point, unless it is the current state of a perspective whose cursor was just moved (that snapshot is kept, so a later rewind of a perspective that ignores the carry-forward event does not restart from an empty model). Snapshots above the truncate point are untouched.
 - **Processed perspective work rows** for the truncated events are removed.
-- **Lapsed destruction holds** on truncated events are removed with them; active ones refuse the close (`held`).
+- **Lapsed destruction holds** on truncated events are removed with them; active ones refuse the truncate (`held`).
 - **Deduplication entries** are kept on purpose. They are what turns away a redelivered copy of a truncated event, and they expire under their own retention.
 - **Stream integrity digests** subtract the truncated events in the same transaction, and the origin generation is bumped so consumers treat the change as deliberate. See [Stream Integrity](../../resilience/stream-integrity.md).
 

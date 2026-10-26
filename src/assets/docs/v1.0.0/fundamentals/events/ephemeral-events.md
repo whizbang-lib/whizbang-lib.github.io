@@ -36,7 +36,7 @@ codeReferences:
   - src/Whizbang.Core/Lifecycle/Destruction.cs
   - src/Whizbang.Core/Lifecycle/OnDestroyFailure.cs
   - src/Whizbang.Core/Lifecycle/IDestructionHook.cs
-  - src/Whizbang.Core/Lifecycle/StreamCloser.cs
+  - src/Whizbang.Core/Lifecycle/StreamPrefixTruncator.cs
   - src/Whizbang.Core/Perspectives/Compacted.cs
   - src/Whizbang.Core/Perspectives/StreamCompactor.cs
   - src/Whizbang.Core/Perspectives/PerspectiveRebuilder.cs
@@ -63,8 +63,8 @@ testReferences:
   - tests/Whizbang.Core.Tests/Perspectives/EvictedRowRebuildTests.cs
   - tests/Whizbang.Core.Tests/Perspectives/StreamCompactorTests.cs
   - tests/Whizbang.Core.Tests/Perspectives/FullHistoryPerspectiveRegistryTests.cs
-  - tests/Whizbang.Core.Tests/Lifecycle/StreamCloserTests.cs
-  - tests/Whizbang.Core.Component.Tests/Lifecycle/StreamCloserDestructionStageComponentTests.cs
+  - tests/Whizbang.Core.Tests/Lifecycle/StreamPrefixTruncatorTests.cs
+  - tests/Whizbang.Core.Component.Tests/Lifecycle/StreamPrefixTruncatorDestructionStageComponentTests.cs
   - tests/Whizbang.Core.Tests/Lifecycle/DestructionContractTests.cs
   - tests/Whizbang.Core.Tests/Archival/StreamCloseScheduleTests.cs
   - tests/Whizbang.Core.Tests/Workers/MaintenanceWorkerDestructionHookTests.cs
@@ -467,28 +467,28 @@ nothing is appended; if the truncate is refused, its status is returned.
 the stream, but the reaper never deletes it: it is the permanent origin the stream now replays from.
 {verified: EphemeralFlagDeriverTests.Derive_RealCompactedEvent_IsCompactedAsync, EphemeralStreamGuardSqlTests.StateBased_IncludesCompacted_ButReaperDoesNotReapItAsync}
 
-`AddWhizbangWorkers()` registers `IStreamCompactor` and `IStreamCloser`; both run only when called.
+`AddWhizbangWorkers()` registers `IStreamCompactor` and `IStreamPrefixTruncator`; both run only when called.
 
-## Closing a stream on a schedule {#scheduled-close}
+## Truncating a stream on a schedule {#scheduled-close}
 
-Closing a stream truncates its history below a point and keeps a carry-forward event above it (see
-[Closing a Stream's History](event-streams#closing-a-stream)). `IStreamCloser.CloseAsync` wraps that
-close in the same destruction hook the reaper uses, with reason `PeriodClose`. A hook that cancels or
-defers vetoes the close, and a hook that throws aborts it without truncating anything.
-{verified: StreamCloserTests.Close_HookProceeds_FiresBeforeThenCloseThenAfterAsync, StreamCloserTests.Close_HookCancels_DoesNotTruncateAsync, StreamCloserTests.Close_HookDefers_DoesNotTruncateAsync, StreamCloserTests.Close_PreHookThrows_AbortsWithoutTruncatingAsync}
+A prefix truncate removes a stream's history below a point and keeps a carry-forward event above it (see
+[Truncating a Stream's Prefix](event-streams#truncating-a-stream-prefix)). `IStreamPrefixTruncator.TruncateAsync` wraps that
+truncate in the same destruction hook the reaper uses, with reason `PeriodClose`. A hook that cancels or
+defers vetoes the truncate, and a hook that throws aborts it without truncating anything.
+{verified: StreamPrefixTruncatorTests.Truncate_HookProceeds_FiresBeforeThenCloseThenAfterAsync, StreamPrefixTruncatorTests.Truncate_HookCancels_DoesNotTruncateAsync, StreamPrefixTruncatorTests.Truncate_HookDefers_DoesNotTruncateAsync, StreamPrefixTruncatorTests.Truncate_PreHookThrows_AbortsWithoutTruncatingAsync}
 
-The close also runs the [destruction lifecycle stages](../lifecycle/lifecycle-stages#destruction) for the
-events it truncates, as the reaper does for the bodies it deletes: the events at or below the close
+The truncate also runs the [destruction lifecycle stages](../lifecycle/lifecycle-stages#destruction) for the
+events it truncates, as the reaper does for the bodies it deletes: the events at or below the truncate
 point whose type has a destruction-stage receptor are loaded first, the Pre stages run before the
-truncate (a throwing `PreDestructionInline` receptor aborts the close, as a throwing hook does), and the
-Post stages run with the same envelopes after a close that truncated.
-{verified: StreamCloserDestructionStageComponentTests.Close_RunsThePreStagesBeforeTheTruncateAndThePostStagesAfterItAsync, StreamCloserDestructionStageComponentTests.AThrowingPreInlineReceptor_VetoesTheCloseAsync, StreamCloserDestructionStageComponentTests.ACloseThatTruncatesNothing_RunsNoPostStageAsync}
+truncate (a throwing `PreDestructionInline` receptor aborts the truncate, as a throwing hook does), and the
+Post stages run with the same envelopes after a truncate that removed events.
+{verified: StreamPrefixTruncatorDestructionStageComponentTests.Truncate_RunsThePreStagesBeforeTheTruncateAndThePostStagesAfterItAsync, StreamPrefixTruncatorDestructionStageComponentTests.AThrowingPreInlineReceptor_VetoesTheCloseAsync, StreamPrefixTruncatorDestructionStageComponentTests.ACloseThatTruncatesNothing_RunsNoPostStageAsync}
 
 Mark a perspective `[FullHistory]` when it needs every event and cannot resume from a carry-forward
-(a list of every transaction, as opposed to a balance). A **discarding** close of a stream that such a
-perspective consumes is refused with status `full_history_blocked`; an archiving close is allowed,
+(a list of every transaction, as opposed to a balance). A **discarding** truncate of a stream that such a
+perspective consumes is refused with status `full_history_blocked`; an archiving truncate is allowed,
 because the detail stays retrievable.
-{verified: StreamCloserTests.Close_DiscardWithFullHistoryConsumer_IsRefusedAsync, StreamCloserTests.Close_ArchiveWithFullHistoryConsumer_IsAllowedAsync, StreamCloserTests.Close_DiscardWithResumableConsumerOnly_ProceedsAsync}
+{verified: StreamPrefixTruncatorTests.Truncate_DiscardWithFullHistoryConsumer_IsRefusedAsync, StreamPrefixTruncatorTests.Truncate_ArchiveWithFullHistoryConsumer_IsAllowedAsync, StreamPrefixTruncatorTests.Truncate_DiscardWithResumableConsumerOnly_ProceedsAsync}
 
 To close on a schedule ("close the month"), build a recurring schedule whose occurrences are
 `ScheduledStreamClose(StreamId, ThroughVersion, Archive)` commands. `StreamCloseSchedule.Recurring`
@@ -505,11 +505,11 @@ var def = StreamCloseSchedule.RecurringCron(
 ```
 
 On the Postgres EF Core driver a built-in receptor handles each `ScheduledStreamClose` by calling
-`IStreamCloser.CloseAsync` with its values. It is registered at startup at the `LocalImmediateInline`,
+`IStreamPrefixTruncator.TruncateAsync` with its values. It is registered at startup at the `LocalImmediateInline`,
 `PreOutboxInline` and `PostInboxInline` stages, so it runs whether the occurrence fires in this
-process or arrives from another service. With no `IStreamCloser` registered it logs a warning and does
+process or arrives from another service. With no `IStreamPrefixTruncator` registered it logs a warning and does
 nothing.
-{verified: ScheduledStreamCloseReceptorTests.Receptor_FiredOccurrence_CallsStreamCloserWithPayloadAsync, ScheduledStreamCloseReceptorTests.Registrar_RegistersReceptorAtThreeDefaultStagesAsync, ScheduledStreamCloseReceptorTests.Receptor_NoStreamCloserRegistered_IsInertAsync}
+{verified: ScheduledStreamCloseReceptorTests.Receptor_FiredOccurrence_CallsStreamPrefixTruncatorWithPayloadAsync, ScheduledStreamCloseReceptorTests.Registrar_RegistersReceptorAtThreeDefaultStagesAsync, ScheduledStreamCloseReceptorTests.Receptor_NoStreamPrefixTruncatorRegistered_IsInertAsync}
 
 ## Related
 
@@ -519,6 +519,6 @@ nothing.
 - [WHIZ134: Ambiguous ephemeral composition](../../operations/diagnostics/whiz134)
 - [Perspective Row Retention](../perspectives/row-retention)
 - [Perspective Snapshots](../perspectives/snapshots)
-- [Event Streams: closing a stream's history](event-streams#closing-a-stream)
+- [Event Streams: closing a stream's history](event-streams#truncating-a-stream-prefix)
 - [Lifecycle Stages: destruction stages](../lifecycle/lifecycle-stages#destruction)
 - [Configuration reference: EphemeralOptions](../../operations/configuration/configuration-reference#ephemeraloptions)

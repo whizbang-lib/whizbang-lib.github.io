@@ -14,6 +14,11 @@ tags: 'work-coordinator, flush-strategy, batch, scoped, interval, store-outbox-m
 codeReferences:
   - src/Whizbang.Core/Messaging/IWorkCoordinatorStrategy.cs
   - src/Whizbang.Core/Messaging/BatchWorkCoordinatorStrategy.cs
+  - src/Whizbang.Core/Messaging/IntervalWorkCoordinatorStrategy.cs
+  - src/Whizbang.Core/Messaging/ScopedWorkCoordinatorStrategy.cs
+  - src/Whizbang.Core/Messaging/ImmediateWorkCoordinatorStrategy.cs
+  - src/Whizbang.Core/Messaging/DetachedLifecycleWork.cs
+  - src/Whizbang.Core/Workers/BatchStrategyShutdownFlush.cs
   - src/Whizbang.Core/Messaging/WorkCoordinatorStrategyFactory.cs
   - src/Whizbang.Core/Messaging/IWorkFlusher.cs
   - src/Whizbang.Hosting.AspNet/WhizbangFlushMiddleware.cs
@@ -24,6 +29,8 @@ testReferences:
   - tests/Whizbang.Core.Tests/Messaging/WorkCoordinatorStrategyRegistrationTests.cs
   - tests/Whizbang.Core.Tests/Messaging/WorkFlusherTests.cs
   - tests/Whizbang.Hosting.AspNet.Component.Tests/WhizbangFlushMiddlewareTests.cs
+  - tests/Whizbang.Core.Component.Tests/Shutdown/StrategyFlushShutdownTests.cs
+  - tests/Whizbang.Core.Component.Tests/Shutdown/DetachedStagesShutdownTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -120,6 +127,7 @@ services.Configure<WorkCoordinatorOptions>(o => {
 - **Latency**: Higher (up to `IntervalMilliseconds` delay)
 - **Database load**: Lowest (predictable, periodic flushes)
 - **Use when**: Background workers with steady message throughput
+- **At host stop**: the timer is stopped, a timer flush still running is waited for, and what is queued is flushed before the service provider is disposed (see [Stopping the Host](#host-stop))
 
 ### Batch
 
@@ -139,8 +147,36 @@ services.Configure<WorkCoordinatorOptions>(o => {
 - **Latency**: Adaptive (immediate at high volume, debounced at low volume)
 - **Database load**: Low (large batches during bursts, timely flushes during quiet periods)
 - **Use when**: Bulk imports, seeding, high-volume background processing where operations arrive in bursts
+- **At host stop**: the debounce timer is stopped, a batch-size or debounce flush still running is waited for, and what is queued is flushed before the service provider is disposed (see [Stopping the Host](#host-stop))
 
 **Debounce behavior**: Each new `QueueOutboxMessage` or `QueueInboxMessage` call resets the debounce countdown. The timer only fires after messages stop arriving for the full `IntervalMilliseconds` window. This means continuous message flow keeps batching until `BatchSize` is hit, while gaps in the flow trigger timely partial flushes.
+
+## Flush Events {#flush-events}
+
+The Batch strategy raises `OnBatchFlushed` after each flush it completes, with a `WorkBatchFlushedArgs` carrying the `WorkBatch` the flush returned and the `FlushTrigger` that started it:
+
+| `FlushTrigger` | Raised after |
+|---|---|
+| `BatchSize` | A flush started because the queue reached `BatchSize` |
+| `Debounce` | A flush started by the debounce timer after a quiet period |
+| `Manual` | A flush forced through `FlushAndGetBatchAsync` or `IWorkFlusher`, or the final flush at host stop or disposal |
+
+{verified: BatchWorkCoordinatorStrategyTests.OnBatchFlushed_BatchSizeTrigger_TriggerIsBatchSizeAsync, BatchWorkCoordinatorStrategyTests.OnBatchFlushed_ManualFlush_TriggerIsManualAsync}
+
+Subscribe to it to observe flushes without polling, in monitoring or in a test that waits for a batch to be stored. A flush that finds another one running returns an empty batch at once and raises no event; only the final flush at host stop or disposal waits for the running one.
+
+```csharp{title="Waiting for a batch flush in a test" description="Subscribes to OnBatchFlushed and completes when the strategy flushes because the batch size was reached." category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Batch", "Flush Events", "Testing"] tests=["BatchWorkCoordinatorStrategyTests.OnBatchFlushed_BatchSizeTrigger_TriggerIsBatchSizeAsync"]}
+var flushed = new TaskCompletionSource<WorkBatchFlushedArgs>(TaskCreationOptions.RunContinuationsAsynchronously);
+strategy.OnBatchFlushed += args => {
+  if (args.Trigger == FlushTrigger.BatchSize) {
+    flushed.TrySetResult(args);
+  }
+};
+
+// ... queue BatchSize messages ...
+
+var result = await flushed.Task;
+```
 
 ## Decision Matrix
 
@@ -160,6 +196,24 @@ The source generator automatically registers strategies based on `WorkCoordinato
 Singleton strategies (Interval, Batch) require `IWorkChannelWriter` so a flush can signal the `ClaimWorker`. After a flush stores rows via `store_outbox_messages` / `store_inbox_messages`, the strategy calls `SignalNewWorkAvailable()` (and `SignalNewInboxWorkAvailable()` for inbox rows) so the `ClaimWorker` polls `claim_work` immediately instead of waiting for its next timer tick. The generated registration template automatically resolves all dependencies — including `IWorkChannelWriter`, `WorkCoordinatorMetrics`, and `LifecycleMetrics` — from the DI container.
 
 The `WorkCoordinatorStrategyFactory` provides AOT-safe strategy creation using direct `new` calls (no reflection).
+
+Every strategy takes the container's `DetachedLifecycleWork` as a required constructor argument. The factory and the generated registration resolve it, and `TryAddWhizbangDefaults()` (called by `AddWhizbang()`) registers it. The strategy records there the detached Distribute stages its flushes start, and the Interval and Batch strategies register their stop there.
+
+:::updated{version="1.0.0" type="breaking"}
+**Constructor changed:** `ImmediateWorkCoordinatorStrategy`, `ScopedWorkCoordinatorStrategy`, `IntervalWorkCoordinatorStrategy` and `BatchWorkCoordinatorStrategy` take a required `DetachedLifecycleWork detachedWork` parameter ([#1721](https://github.com/whizbang-lib/whizbang/issues/1721)). Code that constructs a strategy directly, such as a test, must pass one: resolve it from a container that ran `TryAddWhizbangDefaults()`, or pass `new DetachedLifecycleWork()` where nothing stops a host. Registrations through `AddWhizbang()`, the factory or the generated code need no change.
+:::
+
+## Stopping the Host {#host-stop}
+
+A stopping host does not dispose the service provider while a strategy still has work in flight ([#1721](https://github.com/whizbang-lib/whizbang/issues/1721)):
+
+- **Every strategy** records the detached Distribute stages (`PreDistributeDetached`, `DistributeDetached`, `PostDistributeDetached`) its flushes start, and the host waits for them.
+- **The Interval and Batch strategies** are stopped by the host's stop-time flush (`BatchStrategyShutdownFlush`, registered by `TryAddWhizbangDefaults()`), once every hosted service has stopped: each stops its timer, waits for a flush still running, and flushes everything queued, including what was queued after that flush took its snapshot. This final flush stores the messages and does not run the Distribute stages, the same as the flush at disposal.
+- **Disposal** does the same stop and flush for whatever was queued since, and waits for a running flush instead of returning at once.
+
+{verified: StrategyFlushShutdownTests.AnIntervalTimerFlush_InFlight_HostStopWaitsAndStoresWhatWasQueuedAfterItAsync, StrategyFlushShutdownTests.AnIntervalDisposal_WithATimerFlushInFlight_WaitsForItThenFlushesTheRestAsync, StrategyFlushShutdownTests.ABatchSizeFlush_InFlight_HostStopWaitsAndStoresWhatWasQueuedAfterItAsync, StrategyFlushShutdownTests.ADebounceFlush_InFlight_HostStopWaitsAndStoresWhatWasQueuedAfterItAsync, DetachedStagesShutdownTests.AStrategyFlush_DetachedStageInFlight_HostStopWaitsForItAsync}
+
+All of it runs within the host's shutdown timeout. See [Detached Work When the Host Stops](../fundamentals/lifecycle/lifecycle-stages.md#host-stop) for the whole stop sequence.
 
 ## Two Flush Methods
 

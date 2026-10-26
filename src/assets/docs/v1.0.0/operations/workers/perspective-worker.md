@@ -36,6 +36,8 @@ testReferences:
   - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerDrainModeTests.cs
   - tests/Whizbang.Core.Tests/Workers/PerspectiveWorkerParallelismTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerAffinityHoldWatchdogTests.cs
+  - tests/Whizbang.Core.Tests/Workers/DrainRowsOutsideCooldownTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Diagnostics/MessageParseCountFlowTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -131,6 +133,22 @@ await Task.WhenAny(workWait, drainWait, idleTimeout, perspectiveSignal);
 ### Sliding-Window Drain Batching
 
 After the first drain signal arrives, the worker waits up to `DrainBatcher.SlidingWindow` (default **300 ms**, resetting on each new arrival) for more stream ids, bounded by `MaxWait` (default **3 s**) and `MaxSize` (default **1000**). Bursts of events for the same stream — e.g. a bulk import writing dozens of events milliseconds apart — coalesce into **one** apply cycle with events fetched in monotonic order. The work channel is *not* batched this way; its dedup semantics depend on per-cycle processing.
+
+### A Second Session Skips Applied Rows {#cooled-rows-are-not-parsed}
+
+{verified: MessageParseCountFlowTests.LocalPublish_ASecondDrainSession_ParsesNothingForRowsInCooldownAsync, DrainRowsOutsideCooldownTests.RowsInTheCache_AreNotParsed_AndTheRestAreAsync, PerspectiveWorkerDeepPathDrainTests.DrainMode_AllEventsCooled_SkipsApplyButSignalsLifecycleCompletionAsync}
+
+`ClaimWorker` re-sends every stream it still holds a lease on, on every poll, by design (an earlier filter of streams
+already in flight once left streams stuck for good), and the worker runs several drain consumers. So a second drain
+session can fetch a stream while the first is still applying it, or before the completion flush has deleted the rows
+it applied. The stream-affinity gate and the cooldown cache already keep those rows from being applied twice.
+
+The session also skips them **before parsing**: a fetched row whose work id is in the cooldown cache is not
+deserialized, so it costs no payload, metadata or scope parse. Only the rows still to apply are parsed. A perspective
+whose own row is cooled still sees it as cooled, so an event one perspective applied and another has not is parsed
+once, from the second perspective's row. A skipped row's perspective completion is still signaled to the lifecycle
+coordinator, from the row's event id and perspective name, so the PostAllPerspectives gate counts it as it did. When
+every fetched row is cooled, the session ends without parsing anything. Claiming and leasing are unchanged.
 
 ---
 

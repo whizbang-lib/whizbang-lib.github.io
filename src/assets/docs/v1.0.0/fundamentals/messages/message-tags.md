@@ -317,6 +317,11 @@ services.AddWhizbang(options => {
 
 > Verified: `WhizbangCoreOptions.TagProcessingMode` defaults to `TagProcessingMode.AfterReceptorCompletion`; `TagProcessingMode` has exactly two members: `AfterReceptorCompletion`, `AsLifecycleStage` — `src/Whizbang.Core/Configuration/WhizbangCoreOptions.cs`.
 
+### Tag Hooks When the Host Stops
+
+At a lifecycle stage the receptor invoker does not wait for tag processing that does not complete at once: it lets the hooks finish in the background and logs their failures. A stopping host does wait for them, so a hook still running at shutdown finishes before the service provider it resolves from is disposed, up to the host's shutdown timeout ([#1721](https://github.com/whizbang-lib/whizbang/issues/1721)). See [Detached Work When the Host Stops](../lifecycle/lifecycle-stages.md#host-stop).
+{verified: DetachedStagesShutdownTests.ATagHandler_InFlight_HostStopWaitsForItAsync}
+
 ### When Tag Processing Is Skipped
 
 At the `AfterReceptorCompletion` call site, tag processing is skipped when:
