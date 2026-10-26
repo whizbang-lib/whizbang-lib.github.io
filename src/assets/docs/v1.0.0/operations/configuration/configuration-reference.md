@@ -43,9 +43,13 @@ codeReferences:
   - src/Whizbang.Core/Workers/RetentionSettingsBridge.cs
   - src/Whizbang.Core/Workers/MaintenanceRetentionOptions.cs
   - src/Whizbang.Core/Workers/MaintenancePartitioningOptions.cs
+  - src/Whizbang.Core/Workers/TableRewriteStrategy.cs
+  - src/Whizbang.Core/Capabilities/CapabilityAutoProvision.cs
   - src/Whizbang.Core/Configuration/EphemeralPointerPruneOptions.cs
   - src/Whizbang.Data.Postgres/RetentionSettingsWriter.cs
 testReferences:
+  - tests/Whizbang.Core.Tests/Workers/TableRewriteStrategyTests.cs
+  - tests/Whizbang.Core.Tests/Capabilities/CapabilityAutoProvisionTests.cs
   - tests/Whizbang.Core.Tests/Configuration/UnknownConfigurationKeyCheckTests.cs
   - tests/Whizbang.Core.Component.Tests/Configuration/UnknownConfigurationKeyStartupValidatorTests.cs
   - tests/Whizbang.Core.Component.Tests/Messaging/WorkCoordinatorGateInteractiveReserveTests.cs
@@ -274,11 +278,14 @@ Code-only (through `AddWhizbangRoleAssignment(o => ...)`): `Roles`, `RoleLeases`
 
 ### Whizbang:Capabilities → CapabilityOptions {#capabilities-options}
 
-Bound when any capability provider registers (both Postgres drivers do), so the library probes the external capabilities it can use at startup. **Details:** [Capabilities](../infrastructure/capabilities.md#configuration). {verified: CapabilityServiceCollectionExtensionsTests.ProbeOnStartup_DefaultsToTrue_WithoutConfigurationAsync, CapabilityServiceCollectionExtensionsTests.ProbeOnStartup_BindsFromConfigurationAsync}
+Bound when any capability provider registers (both Postgres drivers do), so the library probes the external capabilities it can use at startup and provisions the ones a feature in force requires. **Details:** [Capabilities](../infrastructure/capabilities.md#configuration). {verified: CapabilityServiceCollectionExtensionsTests.ProbeOnStartup_DefaultsToTrue_WithoutConfigurationAsync, CapabilityServiceCollectionExtensionsTests.ProbeOnStartup_BindsFromConfigurationAsync, CapabilityServiceCollectionExtensionsTests.AutoProvision_DefaultsToTrue_AndBindsFromConfigurationAsync, CapabilityAutoProvisionTests.Capability_OverridesProviderAndGlobalAsync}
 
 | Key | Type | Default | Environment variable | Purpose |
 |-----|------|---------|----------------------|---------|
-| `ProbeOnStartup` | `bool` | `true` | `Whizbang__Capabilities__ProbeOnStartup` | `false` skips the startup probe; every capability then reads `Unknown` |
+| `ProbeOnStartup` | `bool` | `true` | `Whizbang__Capabilities__ProbeOnStartup` | `false` skips the startup probe; every capability then reads `Unknown` and nothing is provisioned |
+| `AutoProvision` | `bool` | `true` | `Whizbang__Capabilities__AutoProvision` | Global switch for creating a required capability that is absent and upgrading one with a newer version available; `false` leaves detection unchanged ([provisioning](../infrastructure/capabilities.md#provisioning)) |
+| `<provider>:AutoProvision` | `bool` | inherits | `Whizbang__Capabilities__postgres__AutoProvision` | Overrides the global switch for one provider. Read when the `Capabilities` step runs; a value that is not `true` or `false` counts as not set |
+| `<provider>:<name>:AutoProvision` | `bool` | inherits | `Whizbang__Capabilities__postgres__pg_squeeze__AutoProvision` | Overrides both for one capability; the most specific level that is set wins |
 
 ### Service Name and Banner
 
@@ -1124,7 +1131,8 @@ Operator rung of the row-retention override ladder. **Configure:** bound automat
 | Property | Type | Default | Environment variable | Purpose |
 |----------|------|---------|--------------------|---------|
 | `Enabled` | `bool` | `true` | `Whizbang__Workers__Maintenance__Enabled` | Killswitch |
-| `AllowTableRewrite` | `bool` | `false` | `Whizbang__Workers__Maintenance__AllowTableRewrite` | Whether maintenance may rewrite a table to reclaim space; false = report only |
+| `AllowTableRewrite` | `bool` | `false` | `Whizbang__Workers__Maintenance__AllowTableRewrite` | Whether the post-ready `Rewrite` step may rewrite a table with `VACUUM FULL` (an ACCESS EXCLUSIVE lock) to reclaim space; false = report only. Read with `TableRewriteStrategy` |
+| `TableRewriteStrategy` | `TableRewriteStrategy` | `Auto` | `Whizbang__Workers__Maintenance__TableRewriteStrategy` | How recorded rewrites run: `Auto` (`VACUUM FULL` at boot when `AllowTableRewrite`, otherwise detect and report; never an online rewrite), `PgSqueeze` (online, through pg_squeeze; requires the extension, so start fails without it; no rewriter in this version yet), `VacuumFull` (only when `AllowTableRewrite`) or `None`. [Resolution matrix](../infrastructure/storage-maintenance#table-rewrite-strategy) {verified: TableRewriteStrategyTests.Resolve_EachCellOfTheMatrixAsync, TableRewriteStrategyTests.TheSetting_DefaultsToAuto_AndBindsFromConfigurationAsync} |
 | `MaintainOnReassignment` | `bool` | `true` | `Whizbang__Workers__Maintenance__MaintainOnReassignment` | Whether an instance that takes the maintainer duty over from another instance vacuums the work tables, as a first assignment always does ([details](../startup/capabilities-and-duties#vacuum-on-acquiring-the-maintainer-duty)) |
 | `IntervalMinutes` | `int` | `10` | `Whizbang__Workers__Maintenance__IntervalMinutes` | Minutes between maintenance runs |
 | `StuckRowSentinelEnabled` | `bool` | `true` | `Whizbang__Workers__Maintenance__StuckRowSentinelEnabled` | Emit a Warning per stuck outbox/inbox row once per cycle |

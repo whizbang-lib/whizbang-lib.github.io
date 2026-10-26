@@ -22,14 +22,14 @@ codeReferences:
   - src/Whizbang.Transports.FastEndpoints/Endpoints/WhizbangApplyStackEndpointBase.cs
   - src/Whizbang.Transports.HotChocolate/Extensions/HotChocolateApplyStackExtensions.cs
   - src/Whizbang.Core/Messaging/IWorkCoordinator.cs
-  - src/Whizbang.Core/Lifecycle/StreamCloser.cs
+  - src/Whizbang.Core/Lifecycle/StreamPrefixTruncator.cs
   - src/Whizbang.Data.Postgres/Migrations/112_StreamGroupCascadeAndApplyPathFold.sql
 testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/ApplyStackQuerySqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/ApplyPathFoldSqlTests.cs
   - tests/Whizbang.Core.Tests/Lineage/ApplyStackFlowViewTests.cs
   - tests/Whizbang.Core.Tests/Lineage/ApplyStackReporterTests.cs
-  - tests/Whizbang.Core.Tests/Lifecycle/StreamCloserFoldOrderTests.cs
+  - tests/Whizbang.Core.Tests/Lifecycle/StreamPrefixTruncatorFoldOrderTests.cs
   - tests/Whizbang.Hosting.AspNet.Component.Tests/ApplyStackEndpointsTests.cs
   - tests/Whizbang.Transports.FastEndpoints.Tests/Unit/WhizbangApplyStackEndpointBaseTests.cs
   - tests/Whizbang.Transports.HotChocolate.Tests/Unit/ApplyStackQueryTests.cs
@@ -212,14 +212,14 @@ like an answer. Cancellation is not swallowed.
 Retention and period closes destroy event-store pointers, and with them the paths. So a path is
 **folded** into a persisted signature table, `wh_apply_paths`, before its stream's pointers can go:
 
-- **On a period close.** `IStreamCloser.CloseAsync` folds the stream's path before it truncates. The
+- **On a period close.** `IStreamPrefixTruncator.TruncateAsync` folds the stream's path before it truncates. The
   stream's detail goes; its shape stays counted.
 - **When a stream settles.** Each maintenance cycle may fold streams that have been idle for
   `SettledFoldIdleDays`, once each (a watermark records what was folded).
 
 The unfiltered view (no `PerspectiveName`, no `ScopeJson`) adds the folded counts to the live ones.
 Folded signatures carry no perspective or scope, so a filtered query reads live streams only.
-{verified: ApplyPathFoldSqlTests.Fold_TheStreamDies_ItsShapeSurvives_AndTheUnfilteredViewUnionsItAsync, ApplyPathFoldSqlTests.Fold_IsWatermarked_RefoldingTheSameStreamCountsNothingAsync, ApplyPathFoldSqlTests.SettledFold_FoldsIdleStreamsOnly_AndOnlyOnceAsync, StreamCloserFoldOrderTests.Close_FoldsTheApplyPath_BeforeTheTruncateAsync}
+{verified: ApplyPathFoldSqlTests.Fold_TheStreamDies_ItsShapeSurvives_AndTheUnfilteredViewUnionsItAsync, ApplyPathFoldSqlTests.Fold_IsWatermarked_RefoldingTheSameStreamCountsNothingAsync, ApplyPathFoldSqlTests.SettledFold_FoldsIdleStreamsOnly_AndOnlyOnceAsync, StreamPrefixTruncatorFoldOrderTests.Truncate_FoldsTheApplyPath_BeforeTheTruncateAsync}
 
 The settled fold runs at most once per claim window across the whole service. Its settings sit on
 `MaintenanceWorkerOptions`, bound from `Whizbang:Workers:Maintenance`:
@@ -240,5 +240,5 @@ The query and the fold are Postgres SQL in the EF Core driver. With another driv
 ## Related
 
 - [Perspective Row Retention](../../fundamentals/perspectives/row-retention): the sweeps that remove read-model rows.
-- [Closing a Stream's History](../../fundamentals/events/event-streams#closing-a-stream): the truncate a fold precedes.
+- [Truncating a Stream's Prefix](../../fundamentals/events/event-streams#truncating-a-stream-prefix): the truncate a fold precedes.
 - [The Startup Status Surface](../startup/startup-status): the same opt-in serving pattern.

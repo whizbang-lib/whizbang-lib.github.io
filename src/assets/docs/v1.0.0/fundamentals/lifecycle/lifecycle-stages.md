@@ -26,7 +26,7 @@ codeReferences:
   - src/Whizbang.Core/Workers/PerspectiveWorker.cs
   - src/Whizbang.Core/Workers/MaintenanceWorker.cs
   - src/Whizbang.Core/Lifecycle/DestructionStageReceptors.cs
-  - src/Whizbang.Core/Lifecycle/StreamCloser.cs
+  - src/Whizbang.Core/Lifecycle/StreamPrefixTruncator.cs
 testReferences:
   - tests/Whizbang.Core.Tests/Messaging/LifecycleStageTests.cs
   - tests/Whizbang.Core.Tests/Messaging/LifecycleStageExtensionsTests.cs
@@ -37,7 +37,7 @@ testReferences:
   - tests/Whizbang.Core.Tests/Workers/TransportConsumerWorkerPostLifecycleTests.cs
   - tests/Whizbang.Core.Tests/Workers/MaintenanceWorkerDestructionHookTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/DestructionStageReceptorComponentTests.cs
-  - tests/Whizbang.Core.Component.Tests/Lifecycle/StreamCloserDestructionStageComponentTests.cs
+  - tests/Whizbang.Core.Component.Tests/Lifecycle/StreamPrefixTruncatorDestructionStageComponentTests.cs
   - tests/Whizbang.Core.Component.Tests/Dispatcher/PostLifecycleOncePerHandlingServiceComponentTests.cs
   - tests/Whizbang.Generators.Tests/ReceptorDiscoveryGeneratorTests.cs
   - tests/Whizbang.Core.Component.Tests/Messaging/DistributeStageOwnedCommandSendComponentTests.cs
@@ -708,7 +708,7 @@ public class OrderNotificationReceptor : IReceptor<OrderPlacedEvent> {
 Destruction stages hook the destruction of stored events. Two operations destroy events, and both fire the stages around their delete:
 
 - **The ephemeral reap.** The `MaintenanceWorker` reaper fires them around the physical delete of consumed, aged-past-grace ephemeral event bodies, once per maintenance cycle for the whole about-to-reap batch.
-- **A period close.** `IStreamCloser.CloseAsync` fires them around the truncate of a stream's detail through the close version, for the events in that range (see [Closing a Stream's History](../events/event-streams#closing-a-stream)).
+- **A period close.** `IStreamPrefixTruncator.TruncateAsync` fires them around the truncate of a stream's detail through the close version, for the events in that range (see [Truncating a Stream's Prefix](../events/event-streams#truncating-a-stream-prefix)).
 
 They reach two kinds of handler:
 
@@ -719,7 +719,7 @@ With neither, the stages are inert and nothing extra is read.
 :::
 
 Both operations delete the stored events, so the events that have a destruction-stage receptor are **loaded before the delete**. The Pre stages get them before the delete; the Post stages get the same envelopes after it, when the stored data is already gone. Only events whose type has a destruction-stage receptor are loaded, and with no destruction-stage receptor registered at all, a close does not even list the events in its range.
-{verified: DestructionStageReceptorComponentTests.TheReap_RunsThePreStagesBeforeTheDeleteAndThePostStagesAfterItAsync, StreamCloserDestructionStageComponentTests.Close_RunsThePreStagesBeforeTheTruncateAndThePostStagesAfterItAsync, StreamCloserDestructionStageComponentTests.AnEventWithNoDestructionReceptor_IsNotLoadedOrHandedToAnyStageAsync, StreamCloserDestructionStageComponentTests.WithNoDestructionReceptorAnywhere_TheRangeIsNeverListedAsync}
+{verified: DestructionStageReceptorComponentTests.TheReap_RunsThePreStagesBeforeTheDeleteAndThePostStagesAfterItAsync, StreamPrefixTruncatorDestructionStageComponentTests.Truncate_RunsThePreStagesBeforeTheTruncateAndThePostStagesAfterItAsync, StreamPrefixTruncatorDestructionStageComponentTests.AnEventWithNoDestructionReceptor_IsNotLoadedOrHandedToAnyStageAsync, StreamPrefixTruncatorDestructionStageComponentTests.WithNoDestructionReceptorAnywhere_TheRangeIsNeverListedAsync}
 
 The two operations differ only in what a failure does, because they destroy different kinds of data:
 
@@ -728,10 +728,10 @@ The two operations differ only in what a failure does, because they destroy diff
 | Events offered | The bodies this cycle reaps | Every event of the stream at or below the close version |
 | A throwing Pre Inline receptor | Holds the batch for retry, then the `OnDestroyFailure` policy decides | Aborts the close: the exception reaches the caller and nothing is truncated, as with a throwing hook |
 | The hook cancels or defers | The batch is held; no stage runs | The close returns `canceled` or `deferred`; no stage runs |
-| Post stages run when | The batch was deleted | The close returned `closed`; a `blocked`, `held` or other outcome runs no Post stage |
+| Post stages run when | The batch was deleted | The truncate returned `truncated`; a `blocked`, `held` or other outcome runs no Post stage |
 | A throwing Post Inline receptor | Logged; the reap stands | Logged; the close stands |
 
-{verified: StreamCloserDestructionStageComponentTests.AThrowingPreInlineReceptor_VetoesTheCloseAsync, StreamCloserDestructionStageComponentTests.AHookThatCancels_RunsNoDestructionStageAsync, StreamCloserDestructionStageComponentTests.ACloseThatTruncatesNothing_RunsNoPostStageAsync, StreamCloserDestructionStageComponentTests.AThrowingPostInlineReceptor_IsLoggedAndTheCloseStandsAsync}
+{verified: StreamPrefixTruncatorDestructionStageComponentTests.AThrowingPreInlineReceptor_VetoesTheCloseAsync, StreamPrefixTruncatorDestructionStageComponentTests.AHookThatCancels_RunsNoDestructionStageAsync, StreamPrefixTruncatorDestructionStageComponentTests.ACloseThatTruncatesNothing_RunsNoPostStageAsync, StreamPrefixTruncatorDestructionStageComponentTests.AThrowingPostInlineReceptor_IsLoggedAndTheCloseStandsAsync}
 
 ```csharp{title="Archiving an ephemeral event before it is reaped" description="A PreDestructionInline receptor runs before the reap deletes the event; a PostDestructionDetached receptor runs after" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Lifecycle", "Destruction", "Ephemeral"] tests=["DestructionStageReceptorComponentTests.TheReap_RunsThePreStagesBeforeTheDeleteAndThePostStagesAfterItAsync", "DestructionStageReceptorComponentTests.AFailingPreInlineReceptor_HoldsTheBatchAndNoPostStageRunsAsync", "DestructionStageReceptorComponentTests.AnEventWithNoDestructionReceptor_IsNotLoadedOrHandedToAnyStageAsync"]}
 [FireAt(LifecycleStage.PreDestructionInline)]
@@ -996,7 +996,7 @@ See [Lifecycle Receptors](../receptors/lifecycle-receptors.md) for API details.
 | `PostPerspectiveInline` | `PerspectiveWorker.cs` | After checkpoint commit (data + checkpoint durable) |
 | `PostAllPerspectives*` | `PerspectiveWorker.cs` | After ALL perspectives complete (WhenAll) — managed by [Lifecycle Coordinator](lifecycle-coordinator.md) |
 | `PostLifecycle*` | `PerspectiveWorker.cs`, `TransportConsumerWorker.cs`, `Dispatcher.cs` | After all processing completes — managed by [Lifecycle Coordinator](lifecycle-coordinator.md) |
-| `PreDestruction*` / `PostDestruction*` | `MaintenanceWorker.cs`, `StreamCloser.cs` | Around the ephemeral reap (batched once per cycle) and around a period close's truncate, for `[FireAt]` receptors and a registered `IDestructionHook` |
+| `PreDestruction*` / `PostDestruction*` | `MaintenanceWorker.cs`, `StreamPrefixTruncator.cs` | Around the ephemeral reap (batched once per cycle) and around a period close's truncate, for `[FireAt]` receptors and a registered `IDestructionHook` |
 
 ---
 

@@ -442,7 +442,7 @@ re-bounds):
 bucket's events. Properties that fit Whizbang's real lifecycle:
 
 - **O(1) add** on append and — critically — **O(1) remove** on deletion: the ephemeral reaper,
-  `close_stream` truncation, and pointer pruning subtract the same hashes in the same transaction.
+  `wh_truncate_stream_prefix` truncation, and pointer pruning subtract the same hashes in the same transaction.
   (A forward-only chain hash fails here: it cannot unhash a removed element and it breaks on
   out-of-order arrival, forcing recomputes exactly where Whizbang reorders and deletes by design.)
 - **Arrival-order independence** — consumers fold in receive order, origins in commit order, same
@@ -527,7 +527,7 @@ in `wh_stream_digests` and sealed into epochs as described in [Phase A](#phase-a
 
 The same rules hold in every place that folds: both emit chains, direct appends, epoch seals, the type-level and
 windowed answers, the stream recomputes, and the verification sweep that heals the table from a recompute. A row the
-store removes (the ephemeral reaper, `close_stream` truncation, pointer pruning) is subtracted in the same transaction,
+store removes (the ephemeral reaper, `wh_truncate_stream_prefix` truncation, pointer pruning) is subtracted in the same transaction,
 so a deletion never reads as a loss. Payloads, metadata and the order of arrival play no part, which is why a
 crypto-shredded or re-serialized event digests the same.
 
@@ -1187,7 +1187,7 @@ each amendment callout marks where live validation refined the original sketch.
      those four columns; the zero-uuid origin is this service's own lane, a non-zero origin is
      the local copy of events received FROM that origin. Maintained by the write paths
      themselves: both emit-chain functions gain a `digest_folds` CTE (joined to the stored-events
-     CTE so idempotent re-stores never double-fold); `close_stream` and
+     CTE so idempotent re-stores never double-fold); `wh_truncate_stream_prefix` and
      `reclassify_events_ephemeral` XOR the rows they remove back out — and these two are provably
      the ONLY deletion paths touching audited buckets, because the reaper and pointer-prune act
      exclusively on ephemeral rows, which the mode exclusion keeps out of digests entirely. An
