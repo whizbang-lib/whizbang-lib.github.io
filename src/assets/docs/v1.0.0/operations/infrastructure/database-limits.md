@@ -17,11 +17,14 @@ codeReferences:
   - src/Whizbang.Generators.Shared/Utilities/IdentifierValidation.cs
   - src/Whizbang.Data.EFCore.Postgres.Generators/Limits/PostgresLimits.cs
   - src/Whizbang.Data.EFCore.Postgres.Generators/DiagnosticDescriptors.cs
+  - src/Whizbang.Generators.Shared/Utilities/PerspectiveTableNaming.cs
+  - src/Whizbang.Core/Perspectives/PerspectiveTableAttribute.cs
 testReferences:
   - tests/Whizbang.Generators.Tests/Utilities/IdentifierValidationTests.cs
   - tests/Whizbang.Generators.Tests/Limits/PostgresLimitsTests.cs
   - >-
     tests/Whizbang.Generators.Tests/EFCorePerspectiveConfigurationGeneratorDiagnosticsTests.cs
+  - tests/Whizbang.Generators.Tests/PerspectiveTableNamingDiagnosticsTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -146,18 +149,21 @@ bool indexOk = IdentifierValidation.IsIndexNameValid("ix_orders_id", limits); //
 
 ### Source Generator Integration
 
-Whizbang's EF Core source generators call `IdentifierValidation` during code generation. When a generated identifier exceeds the provider limit, the generator emits a compile-time error diagnostic:
+Whizbang's source generators call `IdentifierValidation` during code generation. When a generated identifier exceeds the provider limit, the generator emits a compile-time error diagnostic. Perspective table names are checked by both the EF Core generator and the schema generator that writes the Dapper driver's DDL:
 
 | Diagnostic | Meaning |
 |-----------|---------|
-| `WHIZ820` | Table name exceeds database limit |
-| `WHIZ821` | Column name exceeds database limit |
-| `WHIZ822` | Index name exceeds database limit (pattern `ix_{table}_{column}`) |
+| [`WHIZ820`](../diagnostics/whiz820) | Table name exceeds database limit (EF Core generator) |
+| [`WHIZ821`](../diagnostics/whiz821) | Column name exceeds database limit |
+| [`WHIZ822`](../diagnostics/whiz822) | Index name exceeds database limit (pattern `ix_{table}_{column}`) |
+| [`WHIZ823`](../diagnostics/whiz823) | Perspective table name exceeds database limit (schema generator, Dapper DDL) |
+| [`WHIZ824`](../diagnostics/whiz824) | `[PerspectiveTable]` name is not `wh_per_` plus lowercase letters, digits and underscores |
+| [`WHIZ825`](../diagnostics/whiz825) | Two perspective models resolve to one table |
 
 ```
 error WHIZ820: Perspective model 'CustomerOrderFulfillmentStatusHistoryProjectionView' generates
 table name 'wh_per_customer_order_fulfillment_status_history_projection_view' (64 bytes) which
-exceeds PostgreSQL limit of 63 bytes. Shorten the model name or configure suffix stripping.
+exceeds PostgreSQL limit of 63 bytes. Shorten the model name, configure suffix stripping, or name the table with [PerspectiveTable].
 ```
 
 This means you see the error in your IDE immediately, not when running migrations.
@@ -168,7 +174,7 @@ This means you see the error in your IDE immediately, not when running migration
 
 ### Long Perspective Table Names
 
-Perspective table names are derived from the model type name. Long model names can exceed limits:
+Perspective table names are derived from the model type name, on both drivers (see [Perspective Table Naming](../../fundamentals/perspectives/table-naming)). Long model names can exceed limits:
 
 ```csharp{title="Long Perspective Table Names" description="Long model type names may produce table names exceeding limits" category="Troubleshooting" difficulty="INTERMEDIATE" tags=["Operations", "Infrastructure", "Perspectives", "Table"]}
 // Model type name is long
@@ -200,7 +206,7 @@ Composite index names combine table and column names, which can easily exceed li
 When you encounter a limit violation, you have several options:
 
 1. **Shorten the model type name** - Use a more concise name for your perspective model
-2. **Use a custom table name** - Override the generated table name via EF Core configuration
+2. **Name the table yourself** - Put `[PerspectiveTable("wh_per_...")]` on the model; every driver uses the name exactly as written (see [Explicit table names](../../fundamentals/perspectives/table-naming#explicit-table-names))
 3. **Abbreviate columns** - Use shorter property names on the model
 
 ---

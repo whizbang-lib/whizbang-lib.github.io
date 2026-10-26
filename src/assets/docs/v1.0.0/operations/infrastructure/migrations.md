@@ -1,8 +1,8 @@
 ---
 title: Migration Tracking
 pageType: concept
-verifiedAgainstCommit: e7ae79b00
-verifiedDate: 2026-10-23
+verifiedAgainstCommit: 3f239747
+verifiedDate: 2026-10-26
 version: 1.0.0
 category: Infrastructure
 order: 5
@@ -229,6 +229,8 @@ that commits together with its ledger row:
 
 - the core tables (`core-infrastructure`);
 - each migration file, with that file's `wh_schema_migrations` row;
+- the perspective table renames (`perspective-renames`), which rename a table whose model now maps to a new name before
+  that name is created ([Renaming perspectives](../../fundamentals/perspectives/table-naming#renaming-perspectives));
 - each perspective table, with its `perspective:<table>` row;
 - the constraints, the associations, and the registries (the perspective registry and the message type registry).
 
@@ -281,7 +283,8 @@ step:OrderDbContext:registries               | step  | 3f9a1c...        | 0     
 ```
 
 - **Key**: `step:<context>:<step>`, where `<context>` is the DbContext and `<step>` is `core-infrastructure`,
-  `constraints`, `associations` or `registries` (or `perspective-tables` for a context with no perspectives).
+  `perspective-renames`, `constraints`, `associations` or `registries` (or `perspective-tables` for a context with no
+  perspectives).
   The owner is `step`.
 - **Status**: `0` while the step is owed, `1` once it committed (written in the step's own transaction), `-1` after it
   failed (still owed).
@@ -348,11 +351,12 @@ Every step of a pass logs one fixed form, counted against the whole pass:
 | `Migration stopped at X of Y: <name> : <error>` | Error | The pass stopped at that step; nothing after it ran in this attempt |
 
 **What Y counts.** Y is every step of the pass, including the ones it skips: each migration file the build carries,
-each perspective table (or one `perspective-tables` step for a context with none), plus four for the core tables, the
-constraints, the associations and the registries. A context with 218 migration files and 3 perspectives counts
-`Y = 218 + 3 + 4 = 225`. The first step, which re-checks the hashes and records the plan, is not counted and logs no
-line. The order is the core tables, the migration files in order, the perspective tables, then the constraints, the
-associations and the registries.
+each perspective table (or one `perspective-tables` step for a context with none), plus five for the core tables, the
+perspective renames, the constraints, the associations and the registries. A context with 218 migration files and 3
+perspectives counts `Y = 218 + 3 + 5 = 226`. The first step, which re-checks the hashes and records the plan, is not
+counted and logs no line. The order is the core tables, the migration files in order, the perspective renames
+(`PerspectiveRenames` in the phase timings), the perspective tables, then the constraints, the associations and the
+registries. Releases before the perspective-renames step counted four, not five.
 
 A restart against a database that is already current takes the fast path: it runs no step, logs no step line, and
 issues no DDL at all.
@@ -360,24 +364,24 @@ issues no DDL at all.
 Here is a pass that failed at a migration file and the retry that finished it:
 
 ```text{title="A failed step and the retry that resumes at it" description="The first attempt stops at step 110 with a deadlock; every step before it stays committed. The retry skips them and starts again at step 110." tests=["StartupMigrationStepsTests.AFailedStep_KeepsWhatCommitted_RecordsItsError_AndTheRetryResumesThereAsync"]}
-info:  Migration 1 of 225 - Started : core-infrastructure
-info:  Migration 1 of 225 - Succeeded : core-infrastructure (0.412s)
-info:  Migration 2 of 225 - Started : 000_MigrationTracking.sql
-info:  Migration 2 of 225 - Succeeded : 000_MigrationTracking.sql (0.031s)
+info:  Migration 1 of 226 - Started : core-infrastructure
+info:  Migration 1 of 226 - Succeeded : core-infrastructure (0.412s)
+info:  Migration 2 of 226 - Started : 000_MigrationTracking.sql
+info:  Migration 2 of 226 - Succeeded : 000_MigrationTracking.sql (0.031s)
 ...
-info:  Migration 110 of 225 - Started : 110_StandbyHandshake.sql
-fail:  Migration 110 of 225 - Failed : 110_StandbyHandshake.sql : 40P01 deadlock detected; retrying in 4.000s at 2026-10-22T14:03:07.5120000+00:00
-fail:  Migration stopped at 110 of 225: 110_StandbyHandshake.sql : 40P01 deadlock detected
+info:  Migration 110 of 226 - Started : 110_StandbyHandshake.sql
+fail:  Migration 110 of 226 - Failed : 110_StandbyHandshake.sql : 40P01 deadlock detected; retrying in 4.000s at 2026-10-22T14:03:07.5120000+00:00
+fail:  Migration stopped at 110 of 226: 110_StandbyHandshake.sql : 40P01 deadlock detected
 
-info:  Migration 1 of 225 - Skipped : core-infrastructure (already current)
-info:  Migration 2 of 225 - Skipped : 000_MigrationTracking.sql (already current)
+info:  Migration 1 of 226 - Skipped : core-infrastructure (already current)
+info:  Migration 2 of 226 - Skipped : 000_MigrationTracking.sql (already current)
 ...
-info:  Migration 110 of 225 - Started : 110_StandbyHandshake.sql
-info:  Migration 110 of 225 - Succeeded : 110_StandbyHandshake.sql (0.087s)
+info:  Migration 110 of 226 - Started : 110_StandbyHandshake.sql
+info:  Migration 110 of 226 - Succeeded : 110_StandbyHandshake.sql (0.087s)
 ...
-info:  Migration 225 of 225 - Started : registries
-info:  Migration 225 of 225 - Succeeded : registries (0.054s)
-info:  Migration complete: 225 of 225 succeeded (116 applied, 109 skipped) in 9.871s
+info:  Migration 226 of 226 - Started : registries
+info:  Migration 226 of 226 - Succeeded : registries (0.054s)
+info:  Migration complete: 226 of 226 succeeded (117 applied, 109 skipped) in 9.871s
 ```
 
 How to read it:
