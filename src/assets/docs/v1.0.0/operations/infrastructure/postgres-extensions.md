@@ -59,7 +59,7 @@ updating and managing the extensions arrive in later releases.
 | `pg_repack` | online table rewrite through the `pg_repack` client, run in process or as an external job | yes | the `pg_repack` client program |
 | `pg_partman` | ledger partition management: `create_parent`, then `run_maintenance` from the library's maintenance worker (a built-in fallback exists) | yes | none (its background worker is optional) |
 | `pgstattuple` | exact table bloat measurement (otherwise estimated) | yes | none |
-| `pg_stat_statements` | query statistics | yes | `shared_preload_libraries` |
+| `pg_stat_statements` | query statistics, read by the expensive-predicate advice only while `Ready` ([readers](capabilities.md#readers)) | yes | `shared_preload_libraries` |
 | `pg_cron` | in-database scheduling | no (it lives in one database) | `shared_preload_libraries` |
 
 ## How the probe works {#probe}

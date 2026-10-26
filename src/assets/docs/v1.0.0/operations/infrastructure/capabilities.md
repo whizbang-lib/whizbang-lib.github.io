@@ -35,6 +35,7 @@ codeReferences:
   - src/Whizbang.Core/Capabilities/CapabilityAutoProvision.cs
   - src/Whizbang.Core/Capabilities/CapabilityVersion.cs
   - src/Whizbang.Data.Postgres/PostgresCapabilityProvisioner.cs
+  - src/Whizbang.Data.Postgres/Observability/PostgresTableStatisticsProvider.cs
 testReferences:
   - tests/Whizbang.Core.Tests/Capabilities/CapabilityDescriptorTests.cs
   - tests/Whizbang.Core.Tests/Capabilities/CapabilityRegistryTests.cs
@@ -55,6 +56,8 @@ testReferences:
   - tests/Whizbang.Core.Tests/Capabilities/CapabilityAutoProvisionTests.cs
   - tests/Whizbang.Core.Tests/Capabilities/CapabilityVersionTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/PostgresCapabilityProvisioningIntegrationTests.cs
+  - tests/Whizbang.Core.Tests/Observability/StatementStatisticsCapabilityTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/TableStatisticsProviderTests.cs
 ---
 
 # Capabilities
@@ -336,6 +339,34 @@ A key present in configuration overrides a value set in code; an absent key leav
   }
 }
 ```
+
+## Features that read a capability {#readers}
+{verified: StatementStatisticsCapabilityTests.NotReady_AnswersEmpty_WithoutOpeningAConnectionAsync, StatementStatisticsCapabilityTests.Ready_ReadsTheStatementStatisticsAsync, StatementStatisticsCapabilityTests.WithoutARegistry_AnswersEmpty_WithoutOpeningAConnectionAsync, StatementStatisticsCapabilityTests.ADapperHost_AsksAboutItsOwnDatabaseAsync, PostgresDriverExtensionsTests.Postgres_TableStatistics_ConsultTheStatementStatisticsCapability_OfItsOwnDatabaseAsync, TableStatisticsProviderTests.ATaggedStatementIsReadBackFromTheStatisticsAsync, TableStatisticsProviderTests.StatementStatisticsAreEmptyRatherThanFatalWhenNotCollectedAsync}
+
+A feature that only gets better with a capability, rather than requiring it, reads the state the probe recorded
+instead of trying and catching the server's refusal. It asks `ICapabilityRegistry.GetState` for its capability in its
+own scope, uses the capability only when the answer is `Ready`, and otherwise does without it, without a round trip
+to the server.
+
+| Feature | Capability | When it is `Ready` | Otherwise |
+|---|---|---|---|
+| Expensive-predicate advice (`GetExpensivePredicatesAsync` on the Postgres table statistics) | `postgres/pg_stat_statements` | reads the recorded statements that filter a perspective table and names the filter | answers empty without opening a connection; the advice still names the table |
+
+```mermaid{caption="A feature that reads a capability: the state the probe recorded decides whether the server is asked at all." tests=["StatementStatisticsCapabilityTests.NotReady_AnswersEmpty_WithoutOpeningAConnectionAsync", "StatementStatisticsCapabilityTests.Ready_ReadsTheStatementStatisticsAsync"]}
+flowchart LR
+  A[Advice asks for statement statistics] --> B{pg_stat_statements Ready<br/>in this database's scope?}
+  B -- yes --> C[Read pg_stat_statements]
+  B -- "no, or no registry" --> D[Answer empty, no connection]
+```
+
+Both Postgres drivers hand their table statistics the registry and the name their database is probed under (the
+connection string's name for EF Core, the database name for Dapper). A provider constructed directly takes them as
+the `capabilities` and `capabilityScope` arguments, and without them reads no statement statistics.
+
+The state is the one recorded at startup, or at the registry's last `RefreshAsync`. With
+`Whizbang:Capabilities:ProbeOnStartup` set to `false`, every capability reads `Unknown`, so these features do without.
+A read that fails while the capability reads `Ready`, for example because the extension was dropped after the probe,
+is a fault and reaches the caller.
 
 ## Providers {#providers}
 
