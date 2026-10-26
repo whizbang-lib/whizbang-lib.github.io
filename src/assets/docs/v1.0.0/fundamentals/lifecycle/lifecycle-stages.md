@@ -27,6 +27,9 @@ codeReferences:
   - src/Whizbang.Core/Workers/MaintenanceWorker.cs
   - src/Whizbang.Core/Lifecycle/DestructionStageReceptors.cs
   - src/Whizbang.Core/Lifecycle/StreamPrefixTruncator.cs
+  - src/Whizbang.Core/Messaging/DetachedLifecycleWork.cs
+  - src/Whizbang.Core/Workers/BatchStrategyShutdownFlush.cs
+  - src/Whizbang.Core/WhizbangDefaultsServiceCollectionExtensions.cs
 testReferences:
   - tests/Whizbang.Core.Tests/Messaging/LifecycleStageTests.cs
   - tests/Whizbang.Core.Tests/Messaging/LifecycleStageExtensionsTests.cs
@@ -42,6 +45,11 @@ testReferences:
   - tests/Whizbang.Generators.Tests/ReceptorDiscoveryGeneratorTests.cs
   - tests/Whizbang.Core.Component.Tests/Messaging/DistributeStageOwnedCommandSendComponentTests.cs
   - tests/Whizbang.Core.Component.Tests/Messaging/LifecycleInvocationHelperTests.cs
+  - tests/Whizbang.Core.Component.Tests/Messaging/DetachedLifecycleWorkTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/BatchStrategyShutdownFlushTests.cs
+  - tests/Whizbang.Core.Component.Tests/Shutdown/DetachedStagesShutdownTests.cs
+  - tests/Whizbang.Core.Component.Tests/Shutdown/DispatchWorkerShutdownTests.cs
+  - tests/Whizbang.Core.Component.Tests/Shutdown/StrategyFlushShutdownTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -237,6 +245,11 @@ public class CommandMetricsReceptor : IReceptor<ICommand> {
     }
 }
 ```
+
+##### When the host stops {#immediate-async}
+
+The dispatch returns without waiting for `ImmediateDetached`, and so do the `LocalImmediateDetached` hooks it starts with it, but a stopping host does wait for them. The dispatcher records each one it starts with the host, and the host does not dispose the service provider until they have finished or the shutdown timeout has passed. A receptor still running at shutdown therefore finishes against live services instead of failing with `ObjectDisposedException`. See [Detached Work When the Host Stops](#host-stop).
+{verified: DetachedStagesShutdownTests.ADispatch_ImmediateDetachedInFlight_HostStopWaitsForItAsync}
 
 ---
 
@@ -918,6 +931,112 @@ The full definitions are in [Stage Semantics](#stage-semantics).
 
 ---
 
+## Detached Work When the Host Stops {#host-stop}
+
+Nothing in the message pipeline waits for a detached stage, but the host does. A detached receptor resolves its services from a scope of the host's service provider, so one still running when the host disposes that provider would fail with `ObjectDisposedException`, or lose the work or failure record it was writing. A stopping host therefore waits for every detached invocation the framework started before it disposes the provider.
+
+### What the host waits for
+
+The framework records its background work in `DetachedLifecycleWork`, one instance per container, registered by `TryAddWhizbangDefaults()`. `AddWhizbang()` calls it, and so does every extension that can be composed on its own, so a host without the worker pipeline waits too. The same call registers the stop-time flush, `BatchStrategyShutdownFlush`, as an `IHostedService`.
+
+| Started by | Background work | Recorded in |
+|---|---|---|
+| A work coordinator strategy's flush (Immediate, Scoped, Interval and Batch) | `PreDistributeDetached`, `DistributeDetached`, `PostDistributeDetached` | The host's `DetachedLifecycleWork` |
+| The dispatcher, after a local handler | `LocalImmediateDetached`, `ImmediateDetached` | The host's `DetachedLifecycleWork` |
+| The receptor invoker | Message tag handlers started at a stage | The host's `DetachedLifecycleWork` |
+| The ephemeral reap and a period close | `PreDestructionDetached`, `PostDestructionDetached` | The host's `DetachedLifecycleWork` |
+| The Interval and Batch strategies | Their timer, batch-size and debounce flushes, and what is still queued | Registered as producers on the host's `DetachedLifecycleWork` |
+| The inbox dispatch, outbox drain, perspective, Service Bus consumer and transport consumer workers | The detached stages each starts (the transport consumer: its active body cleanups) | The worker's own record, waited for by its `StopAsync` |
+| The sliding-window batchers, the per-stream serializer and the transport batch collector | Idle sweeps and in-flight flushes | The component's own record, waited for by its stop or disposal |
+
+{verified: DetachedStagesShutdownTests.AStrategyFlush_DetachedStageInFlight_HostStopWaitsForItAsync, DetachedStagesShutdownTests.ADispatch_ImmediateDetachedInFlight_HostStopWaitsForItAsync, DetachedStagesShutdownTests.ATagHandler_InFlight_HostStopWaitsForItAsync, DetachedStagesShutdownTests.ADestructionStage_DetachedInFlight_HostStopWaitsForItAsync, DispatchWorkerShutdownTests.AnInboxDetachedStage_InFlight_HostStopWaitsForItAsync, DispatchWorkerShutdownTests.AnInboxImmediateDetachedStage_InFlight_HostStopWaitsForItAsync, DispatchWorkerShutdownTests.AnOutboxDetachedStage_InFlight_HostStopWaitsForItAsync, BatcherShutdownTests.AnOutboxIdleSweep_EvictingAStreamMidFlush_HostStopWaitsForTheFlushAsync, BatcherShutdownTests.ATransportBatchCollectorFlush_InFlight_DisposalWaitsForItAsync}
+
+A container that never ran `TryAddWhizbangDefaults()` has no host record. The dispatcher and the destruction stages still start their detached stages there; nothing waits for them.
+{verified: DetachedStagesShutdownTests.ADestructionStage_WithoutTheHostsRecord_StillRunsAsync}
+
+### The order of a stop
+
+```mermaid{caption="Host stop: each worker waits for its own detached stages in its StopAsync; once every hosted service has stopped, the stop-time flush flushes the batchers, stops the Interval and Batch strategies, and waits for the remaining detached work before the host disposes the service provider." tests=["DispatchWorkerShutdownTests.AnInboxDetachedStage_InFlight_HostStopWaitsForItAsync", "BatchStrategyShutdownFlushTests.OnceTheHostHasStopped_BothBatchersAreFlushed_InboxFirstAsync", "StrategyFlushShutdownTests.AnIntervalTimerFlush_InFlight_HostStopWaitsAndStoresWhatWasQueuedAfterItAsync", "BatchStrategyShutdownFlushTests.DetachedLifecycleWorkStillRunning_IsWaitedFor_BeforeTheHostFinishesStoppingAsync"]}
+sequenceDiagram
+    participant Host
+    participant Workers as Hosted workers
+    participant Flush as BatchStrategyShutdownFlush
+    participant Work as DetachedLifecycleWork
+    Host->>Workers: StopAsync (reverse registration order)
+    Workers->>Workers: stop the loop, then wait for their own detached stages
+    Host->>Flush: StoppedAsync
+    Flush->>Flush: flush the inbox batcher, then the outbox batcher
+    Flush->>Work: StopProducersAsync
+    Work->>Work: Interval and Batch strategies stop their timers, wait for running flushes, flush what is queued
+    Flush->>Work: DrainAsync
+    Work-->>Flush: every recorded invocation has finished
+    Host->>Host: dispose the service provider
+```
+
+1. **Each worker stops itself.** The host stops hosted services in the reverse of their registration order. A worker stops its loop and then waits for the detached stages it started, so they finish, and report a failure, before the failure flush registered ahead of it stops.
+2. **The batchers flush.** Once every hosted service has stopped, `BatchStrategyShutdownFlush` flushes the inbox batcher and then the outbox batcher. A failed flush is logged and does not keep the other from flushing.
+3. **The strategies stop.** The Interval and Batch strategies stop their timers, wait for the timer, batch-size or debounce flush still running, and flush everything queued, including what was queued after a running flush took its snapshot. This last flush stores the messages durably and, like the flush at disposal, does not run the Distribute stages: they would start after the wait below began.
+4. **The detached work drains.** The stop-time flush waits for every invocation recorded so far, including any started while it waits, and logs `Waiting for {Count} detached lifecycle invocation(s) to finish before the service provider is disposed` at Information level when there are any.
+5. **The host disposes the service provider.**
+
+{verified: BatchStrategyShutdownFlushTests.OnceTheHostHasStopped_BothBatchersAreFlushed_InboxFirstAsync, BatchStrategyShutdownFlushTests.AFailedInboxFlush_IsLogged_AndTheOutboxIsStillFlushedAsync, StrategyFlushShutdownTests.ABatchSizeFlush_InFlight_HostStopWaitsAndStoresWhatWasQueuedAfterItAsync, StrategyFlushShutdownTests.ADebounceFlush_InFlight_HostStopWaitsAndStoresWhatWasQueuedAfterItAsync, BatchStrategyShutdownFlushTests.DetachedLifecycleWorkStillRunning_IsWaitedFor_BeforeTheHostFinishesStoppingAsync}
+
+### How long a stop can take
+
+A stop now lasts as long as the slowest detached receptor or tag handler still running, within the host's shutdown timeout (`HostOptions.ShutdownTimeout`). Every wait above runs under that deadline. When it passes, the host stops waiting and disposes the provider, and an invocation still running then can still fail against it. Keep detached receptors short. If one legitimately takes longer, raise the shutdown timeout, and keep your orchestrator's grace period (Kubernetes `terminationGracePeriodSeconds`, for example) longer than it.
+{verified: DetachedLifecycleWorkTests.ACanceledDrain_StopsWaiting_AndLeavesTheWorkTrackedAsync, BatchStrategyShutdownFlushTests.ACanceledFlush_IsNotSwallowedAsync}
+
+:::updated
+Before this change only the outbox batcher's detached stages were waited for, and only a host running the worker pipeline registered that wait. The strategies' Distribute stages, the dispatcher's `ImmediateDetached`, tag handlers, the destruction stages and the workers' own detached stages all ran on after the provider was disposed. The Interval and Batch strategies' timer flushes were not awaited either, and their disposal returned at once while a flush was running, dropping what had been queued after its snapshot ([#1721](https://github.com/whizbang-lib/whizbang/issues/1721)).
+:::
+
+### `DetachedLifecycleWork` {#detached-lifecycle-work}
+
+A component that starts background work the host must outlive can record it in the host's instance, resolved from the container.
+
+| Member | What it does |
+|---|---|
+| `Track(Task)` | Records a background invocation until it finishes |
+| `InFlightCount` | The number of recorded invocations not yet finished |
+| `DrainAsync(CancellationToken)` | Completes once every recorded invocation has finished, including any recorded while it waits. An invocation's own failure or cancellation is not raised here. Canceling stops the wait and leaves the work running and recorded. |
+| `Waiting` | Raised once per drain, with the number still running, when the drain starts waiting |
+| `RegisterProducer(Func<CancellationToken, Task>)` | Registers something that starts more background work on its own, such as a timer, to be stopped before the drain. The callback must stop the producer and flush what it holds. Disposing the returned registration removes it. |
+| `StopProducersAsync(CancellationToken)` | Stops every registered producer, one after the other. Each is stopped even when an earlier one fails; the failures are raised together as an `AggregateException` once all have been stopped. A cancellation ends the stop at once. |
+
+{verified: DetachedLifecycleWorkTests.Drain_WaitsForEveryTrackedInvocation_AndForgetsThemOnceFinishedAsync, DetachedLifecycleWorkTests.WorkTrackedWhileDraining_IsWaitedFor_TooAsync, DetachedLifecycleWorkTests.AnInvocationThatFailedOrWasCanceled_DoesNotFailTheDrainAsync, DetachedLifecycleWorkTests.ADrain_AnnouncesOnceThatItIsWaiting_WithHowManyAreInFlightAsync, DetachedLifecycleWorkTests.StopProducers_StopsEachRegisteredProducer_WithTheHostsTokenAsync, DetachedLifecycleWorkTests.AProducerThatUnregistered_IsNotStoppedAsync, DetachedLifecycleWorkTests.AProducerThatFailsToStop_DoesNotKeepTheOthersFromStopping_AndIsRaisedAsync, DetachedLifecycleWorkTests.AProducerCanceledByTheDeadline_EndsTheStop_WithTheCancellationAsync, DetachedLifecycleWorkTests.RegisterProducer_WithoutAStop_IsRefusedAsync}
+
+```csharp{title="Recording a component's background work with the host" description="A timer-driven exporter records each export it starts and registers its own stop, so a stopping host stops the timer, flushes, and waits for the exports before disposing the service provider." category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Lifecycle", "Shutdown", "DetachedLifecycleWork"] tests=["DetachedLifecycleWorkTests.StopProducers_StopsEachRegisteredProducer_WithTheHostsTokenAsync", "DetachedLifecycleWorkTests.AProducerThatUnregistered_IsNotStoppedAsync", "DetachedLifecycleWorkTests.Drain_WaitsForEveryTrackedInvocation_AndForgetsThemOnceFinishedAsync"]}
+public sealed class MetricsExporter : IAsyncDisposable {
+  private readonly DetachedLifecycleWork _work;
+  private readonly IDisposable _registration;
+  private readonly Timer _timer;
+
+  public MetricsExporter(DetachedLifecycleWork work) {
+    _work = work;
+    _timer = new Timer(_ => _work.Track(ExportAsync()), null, 1000, 1000);
+    // The host calls this while it stops, before it waits for the tracked exports
+    _registration = work.RegisterProducer(StopAndFlushAsync);
+  }
+
+  private async Task StopAndFlushAsync(CancellationToken ct) {
+    await _timer.DisposeAsync();
+    await ExportAsync();
+  }
+
+  public async ValueTask DisposeAsync() {
+    // Disposed on its own: the host must not stop it again
+    _registration.Dispose();
+    await StopAndFlushAsync(CancellationToken.None);
+  }
+
+  private Task ExportAsync() => Task.CompletedTask; // export what has been collected
+}
+```
+
+A component that owns its own stop, such as a hosted worker, can instead hold a private `DetachedLifecycleWork`, track its own work there, and drain it from its `StopAsync`, which is what the framework's workers do.
+
+---
+
 ## Registering Lifecycle Receptors
 
 ### Compile-Time (Production)
@@ -1021,7 +1140,7 @@ See [Lifecycle Receptors](../receptors/lifecycle-receptors.md) for API details.
 - **Lifecycle Coordinator** guarantees each stage fires once per event — no duplicate firings
 - **Tags fire at ALL stages** as lifecycle observers
 - **Inline stages** block next step - use for critical operations
-- **Detached stages** are fire-and-forget in their own scope - use for metrics and logging
+- **Detached stages** are fire-and-forget in their own scope - use for metrics and logging; a stopping host still [waits for them](#host-stop) before it disposes the service provider
 - **`PostPerspectiveInline`** is critical for test synchronization
 - **Compile-time registration** via `[FireAt]` attribute
 - **Runtime registration** via `IReceptorRegistry.Register<TMessage>()` for tests

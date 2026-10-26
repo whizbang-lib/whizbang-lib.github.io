@@ -17,6 +17,7 @@ codeReferences:
   - src/Whizbang.Transports.AzureServiceBus/ServiceCollectionExtensions.cs
   - src/Whizbang.Transports.AzureServiceBus/AzureServiceBusOptions.cs
   - src/Whizbang.Transports.AzureServiceBus/AsbAcceptorGovernor.cs
+  - src/Whizbang.Transports.AzureServiceBus/AsbThrottleBackoffPolicy.cs
   - src/Whizbang.Transports.AzureServiceBus/ReceiveLivenessWatchdog.cs
   - src/Whizbang.Transports.AzureServiceBus/AzureServiceBusConnectionRetry.cs
   - src/Whizbang.Transports.AzureServiceBus/ServiceBusSubscriptionNameHelper.cs
@@ -51,6 +52,8 @@ testReferences:
     tests/Whizbang.Transports.AzureServiceBus.Tests/AsbAcceptorGovernorTests.cs
   - >-
     tests/Whizbang.Transports.AzureServiceBus.Component.Tests/AsbAcceptorAdaptiveWiringTests.cs
+  - >-
+    tests/Whizbang.Transports.AzureServiceBus.Component.Tests/AzureServiceBusTransportThrottleAndAdaptiveTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -983,6 +986,14 @@ try {
 - Message abandoned → returns to subscription queue
 - Service Bus applies exponential backoff
 - After 10 attempts (default) → dead-lettered
+
+### Namespace Throttling {#namespace-throttling}
+
+When the broker reports that the namespace is being throttled (`ServiceBusFailureReason.ServiceBusy`, error 50009), every receive slot that keeps retrying adds to the pressure. The transport answers with a single pause instead: it stops the processor that reported the throttle, waits, and starts it again. The first pause lasts 2 seconds and each consecutive throttle doubles it, up to 60 seconds; a throttle after 5 minutes without one starts again at 2 seconds. While a pause is in progress, further throttle reports start no other pause.
+{verified: AzureServiceBusTransportThrottleAndAdaptiveTests.NamespaceThrottle_ServiceBusy_PausesThenResumesTheSessionProcessorAsync, AzureServiceBusTransportThrottleAndAdaptiveTests.NamespaceThrottle_ResumeFails_StillEndsPauseSoALaterThrottleIsHandledAsync}
+
+Disposing the transport ends a pause still waiting, and disposal waits for it: the processor stays stopped, and the transport logs `Throttle pause for {TopicName}/{SubscriptionName} ended by transport disposal; the processor stays stopped` at Information level. Before [#1721](https://github.com/whizbang-lib/whizbang/issues/1721), the pause ran on after disposal and restarted the processor of a disposed transport once it ran out, after the host had disposed the service provider.
+{verified: AzureServiceBusTransportThrottleAndAdaptiveTests.NamespaceThrottle_TransportDisposedDuringThePause_EndsThePauseWithoutRestartingAsync}
 
 ### Dead Letter Queue Monitoring
 

@@ -16,6 +16,7 @@ codeReferences:
   - src/Whizbang.Core/Messaging/IWorkCoordinator.cs
   - src/Whizbang.Core/Workers/OutboxPublishWorker.cs
   - src/Whizbang.Core/Workers/OutboxDrainWorker.cs
+  - src/Whizbang.Core/Workers/BatchStrategyShutdownFlush.cs
   - src/Whizbang.Data.Postgres/Migrations/020_StoreOutboxMessages.sql
   - >-
     samples/ECommerce/ECommerce.OrderService.API/Receptors/CreateOrderReceptor.cs
@@ -24,6 +25,8 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/CompleteOutboxPublishedSqlTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/OutboxDrainWorkerTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/OutboxPublishWorkerTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/BatchStrategyShutdownFlushTests.cs
+  - tests/Whizbang.Core.Component.Tests/Shutdown/DispatchWorkerShutdownTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -215,6 +218,17 @@ sequenceDiagram
 2. **Drain**: `OutboxDrainWorker` fetches leased bodies per stream and publishes in stream-FIFO order via `IMessagePublishStrategy`; `OutboxPublishWorker` fires Pre/Post Outbox lifecycle stages
 3. **Report**: completions batch through `OutboxCompletionFlushWorker` → `complete_outbox_published`; failures batch through `FailureFlushWorker` → `report_failures`
 4. **Retry**: failed messages stay in the outbox (lease released, attempts incremented) until they succeed or exceed `MaxOutboxAttempts` (default 10, then dead-lettered to `wh_dead_letters`)
+
+### When the Host Stops {#host-stop}
+
+Stopping does not lose what the outbox side is still holding ([#1721](https://github.com/whizbang-lib/whizbang/issues/1721)):
+
+- The `OutboxDrainWorker` stops its loop and then waits for the detached Outbox stages it started, so they finish, and a failure they report is still recorded, before the failure flush stops.
+- Once every hosted service has stopped, `BatchStrategyShutdownFlush` (registered by `AddWhizbang()` through `TryAddWhizbangDefaults()`) flushes the inbox batcher and then the outbox batcher, so received messages are stored before the outbox's last batch. It then stops the Interval and Batch work coordinator strategies, flushing what they hold, and waits for the detached lifecycle stages still running before the host disposes the service provider.
+
+{verified: DispatchWorkerShutdownTests.AnOutboxDetachedStage_InFlight_HostStopWaitsForItAsync, BatchStrategyShutdownFlushTests.OnceTheHostHasStopped_BothBatchersAreFlushed_InboxFirstAsync, BatchStrategyShutdownFlushTests.DetachedLifecycleWorkStillRunning_IsWaitedFor_BeforeTheHostFinishesStoppingAsync}
+
+The whole sequence, and how long it can take, is in [Detached Work When the Host Stops](../fundamentals/lifecycle/lifecycle-stages.md#host-stop).
 
 ---
 
