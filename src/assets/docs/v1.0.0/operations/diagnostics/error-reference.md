@@ -442,6 +442,9 @@ Compile-time errors, warnings and notices from Whizbang's source generators and 
 | WHIZ820 | Error | [Table Name Exceeds Database Limit](whiz820.md) |
 | WHIZ821 | Error | [Column Name Exceeds Database Limit](whiz821.md) |
 | WHIZ822 | Error | [Index Name Exceeds Database Limit](whiz822.md) |
+| WHIZ823 | Error | [Perspective Table Name Exceeds the Database Limit](whiz823.md) |
+| WHIZ824 | Error | [Invalid Perspective Table Name](whiz824.md) |
+| WHIZ825 | Error | [Two Perspective Models Share One Table Name](whiz825.md) |
 | WHIZ830 | Error | [Stored-Form Migration Cannot Be Generated](whiz830.md) |
 | WHIZ831 | Warning | [Stored-Form Migration Never Runs](whiz831.md) |
 | WHIZ832 | Warning | [Stored-Form Declaration Inside a Collection Element](whiz832.md) |
