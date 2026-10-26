@@ -12,6 +12,8 @@ tags: 'transport, consumer, subscriptions, resilience, messaging'
 codeReferences:
   - src/Whizbang.Core/Workers/TransportConsumerBuilderExtensions.cs
   - src/Whizbang.Core/Workers/TransportConsumerWorker.cs
+  - src/Whizbang.Core/Workers/TransportBatchCollector.cs
+  - src/Whizbang.Core/Workers/TransportBatchOptions.cs
   - src/Whizbang.Core/Resilience/SubscriptionResilienceOptions.cs
   - src/Whizbang.Core/Resilience/SubscriptionState.cs
   - src/Whizbang.Core/Resilience/SubscriptionRetryHelper.cs
@@ -24,6 +26,9 @@ testReferences:
   - tests/Whizbang.Core.Component.Tests/Resilience/SubscriptionRetryHelperTests.cs
   - tests/Whizbang.Core.Tests/HealthChecks/SubscriptionHealthCheckTests.cs
   - tests/Whizbang.Core.Tests/Observability/ServiceInstanceProviderTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/TransportBatchCollectorTests.cs
+  - tests/Whizbang.Core.Component.Tests/Shutdown/BatcherShutdownTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/TransportConsumerWorkerBodyOffloadTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -135,6 +140,24 @@ The consumer configuration is transport-agnostic. The same `WithRouting()` and `
 - **In-Memory** (testing) - Direct message routing
 
 Transport-specific behavior is handled by the transport implementation registered separately.
+
+## Batch Collector {#batch-collector}
+
+Transports deliver received messages to the consumer in batches. A transport's batch subscription buffers each message it receives in a `TransportBatchCollector<T>` and hands the collected batch to the consumer's handler when the first of three triggers fires, configured by `TransportBatchOptions`:
+
+| Trigger | Option | Default | Flushes |
+|---|---|---|---|
+| Batch size | `BatchSize` | 200 | At once, when that many messages are buffered |
+| Sliding window | `SlideMs` | 20 | A partial batch, once no message has arrived for that long |
+| Hard maximum | `MaxWaitMs` | 1000 | Whatever is buffered, that long after the first message of the batch, even while messages keep arriving |
+
+{verified: TransportBatchCollectorTests.Enqueue_FlushesImmediatelyWhenBatchSizeReachedAsync, TransportBatchCollectorTests.Enqueue_FlushesOnSlidingWindowTimeoutAsync, TransportBatchCollectorTests.Enqueue_SlidingWindowResetsOnNewMessageAsync, TransportBatchCollectorTests.Enqueue_FlushesOnHardMaxTimeoutAsync}
+
+`Enqueue` never blocks: the flushes run in the background, and `OnBatchFlushed` reports the size of each batch handed over. Disposing the collector stops its timers, waits for the flushes still running, and then flushes what is left, so no batch is handed to the handler after disposal returns ([#1721](https://github.com/whizbang-lib/whizbang/issues/1721)).
+{verified: TransportBatchCollectorTests.DisposeAsync_FlushesRemainingMessagesAsync, BatcherShutdownTests.ATransportBatchCollectorFlush_InFlight_DisposalWaitsForItAsync}
+
+The `TransportConsumerWorker` also waits, in its `StopAsync`, for the [active body cleanups](../../fundamentals/offloads/message-body-store.md#active-cleanup) it started in the background, so they finish before the host disposes the service provider. See [Detached Work When the Host Stops](../../fundamentals/lifecycle/lifecycle-stages.md#host-stop).
+{verified: TransportConsumerWorkerBodyOffloadTests.BatchHandler_ActiveCleanupInFlight_WorkerStopWaitsForItBeforeTheContainerIsDisposedAsync}
 
 ## Error Handling
 

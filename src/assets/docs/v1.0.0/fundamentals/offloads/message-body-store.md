@@ -328,7 +328,8 @@ What is tested and working: the built-in AES-256-GCM cipher (seal, open, tamper 
 
 By default (`ActiveCleanup = false`), Whizbang relies on the provider's storage-level TTL (e.g., Azure blob lifecycle rules) to remove offloaded bodies. Simplest, safest in fan-out subscriber topologies.
 
-When `ActiveCleanup = true`, the consumer worker fires `IMessageBodyStore.DeleteAsync(claim)` **after the inbox row commits**, in a fresh DI scope, fire-and-forget. A failed inbox INSERT never deletes a body that's still needed for redelivery. The provider's `MessageBodyDeleteOptions.IgnoreMissing` (default `true`) absorbs fan-out double-delete races; provider TTL is the backstop on transient delete failures.
+When `ActiveCleanup = true`, the consumer worker fires `IMessageBodyStore.DeleteAsync(claim)` **after the inbox row commits**, in a fresh DI scope, in the background: the receive path does not wait for it, but the worker's stop does, so a delete still running at shutdown finishes before the host disposes the service provider ([#1721](https://github.com/whizbang-lib/whizbang/issues/1721)). A failed inbox INSERT never deletes a body that's still needed for redelivery. The provider's `MessageBodyDeleteOptions.IgnoreMissing` (default `true`) absorbs fan-out double-delete races; provider TTL is the backstop on transient delete failures.
+{verified: TransportConsumerWorkerBodyOffloadTests.BatchHandler_ActiveCleanupInFlight_WorkerStopWaitsForItBeforeTheContainerIsDisposedAsync}
 
 ## Built-in providers
 

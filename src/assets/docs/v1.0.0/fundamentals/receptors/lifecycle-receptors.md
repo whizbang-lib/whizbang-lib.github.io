@@ -1218,6 +1218,8 @@ public class DetachedMetricsReceptor : IReceptor<IEvent> {
 }
 ```
 
+A detached receptor still running when the host stops also delays the stop: the host waits for it before disposing the service provider, up to its shutdown timeout. See [Detached Work When the Host Stops](../lifecycle/lifecycle-stages.md#host-stop).
+
 ### Exception Handling
 
 **Lifecycle receptor errors are logged but don't fail message processing**:
