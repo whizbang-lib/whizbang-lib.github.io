@@ -26,6 +26,7 @@ codeReferences:
   - src/Whizbang.Core/Startup/StartupStageHostLifecycle.cs
   - src/Whizbang.Data.Postgres/SchemaInitializationStages.cs
   - src/Whizbang.Data.Postgres/Migrations/231_StartupStageRecord.sql
+  - src/Whizbang.Data.Postgres/Migrations/244_HeartbeatNeverRollsThePhaseBack.sql
 testReferences:
   - tests/Whizbang.Hosting.AspNet.Component.Tests/StartupStatusEndpointsTests.cs
   - tests/Whizbang.Transports.FastEndpoints.Tests/Unit/WhizbangStartupStatusEndpointBaseTests.cs
@@ -35,6 +36,7 @@ testReferences:
   - tests/Whizbang.Core.Tests/Schema/SchemaInitializationStagesTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StartupStageSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StartupStageHostTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/HeartbeatPhaseOrderSqlTests.cs
 ---
 
 # The Startup Status Surface
@@ -145,6 +147,22 @@ A stage entered before the instance's row exists is held and written when the in
 fails or does not answer within 5 seconds is held until the next accepted heartbeat; it is never thrown into
 startup. Writing a stage is not a heartbeat.
 {verified: StartupStageSqlTests.Record_ARegisteredInstance_WritesTheStageMessageTimeAndPhaseAsync, StartupStageSqlTests.Record_ProgressWithinAStage_KeepsWhenItWasEntered_AndANewStageStartsItsOwnAsync, StartupStageReporterTests.Enter_BeforeTheInstanceRegisters_HoldsTheStage_AndWritesNothingAsync, StartupStageReporterTests.AWriteThatFails_IsHeld_AndWrittenOnTheNextRegistrationSignalAsync, StartupStageReporterTests.AWriteThatDoesNotAnswer_IsAbandonedAfterItsBudget_AndHeldAsync}
+
+The heartbeat also carries the instance's phase, read when the beat is built. A beat that lands after a stage or
+transition was recorded can carry the phase from before it, so `record_heartbeat` (migration 244) never moves a
+phase backwards along the startup and shutdown ladder (Starting, Connecting, Migrating, AcceptingCommands,
+Running, Stopping, Stopped): a beat from the same process (host name and process id) whose phase is lower on the
+ladder than the row's keeps the recorded phase and still refreshes liveness. A beat ahead of the row still moves
+it forward, which repairs a lost transition. Phases off the ladder (pausing, stand-by, resuming, faulted, halted)
+are taken from the beat either way, and a new process under an instance id an old one left behind (a different
+host or process id) records its own, earlier phase.
+{verified: HeartbeatPhaseOrderSqlTests.AStaleBeat_AfterAcceptCommandsIsRecorded_KeepsThePhase_AndTheInstanceEligibleAsync, HeartbeatPhaseOrderSqlTests.ABeatAheadOfTheRow_MovesThePhaseForward_RepairingALostTransitionAsync, HeartbeatPhaseOrderSqlTests.ARestartUnderANewInstanceId_RecordsItsOwnPhase_WhateverTheOldRowSaysAsync}
+
+:::note
+With a fixed instance id, a process that restarts on the same host with the same process id (pid 1 in a
+container) before its old row is reaped cannot be told from the old process: its lower phase is held out until its
+own stage or transition write. Default instance ids are new for every process.
+:::
 
 ### Seeing every instance's stage
 
