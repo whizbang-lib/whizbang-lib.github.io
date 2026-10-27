@@ -19,6 +19,7 @@ codeReferences:
   - src/Whizbang.Core/StreamIdAttribute.cs
 testReferences:
   - tests/Whizbang.Generators.Tests/PerspectiveDiscoveryGeneratorTests.cs
+  - tests/Whizbang.Generators.Tests/StreamIdOverrideGeneratorTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -31,7 +32,7 @@ lastMaintainedCommit: '01f07906'
 
 This error occurs when an event type used in a perspective has more than one property marked with the `[StreamId]` attribute. Each event can only have **exactly one** stream ID property because it uniquely identifies which stream (aggregate) the event belongs to.
 
-The check searches the event type's full inheritance hierarchy — a `[StreamId]` on a base type plus another on the derived type also triggers this error.
+The check searches the event type's full inheritance hierarchy: a `[StreamId]` on a base type plus another on the derived type also triggers this error, unless the derived one is marked `[StreamId(Override = true)]`. An override replaces the inherited stream ID on purpose, so the event has one stream ID and the perspective runner keys it by the override {verified: StreamIdOverrideGeneratorTests.APerspectiveEventWithAnOverride_IsNotReportedAsMultipleStreamIdsAsync, StreamIdOverrideGeneratorTests.APerspectiveRunner_ExtractsTheOverrideParameterAsync}. See [StreamId Attribute](../../extending/attributes/streamid#overriding-an-inherited-stream-id).
 
 ## Error Message
 
