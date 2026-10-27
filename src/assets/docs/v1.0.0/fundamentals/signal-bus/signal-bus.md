@@ -18,6 +18,7 @@ codeReferences:
 testReferences:
   - tests/Whizbang.Core.Component.Tests/Signals/SignalBusProbeBackoffTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/PgDurableSignalRetentionWindowTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/PgDurableSignalRetentionIntegrationTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Partitioning/SignalPartitionCarryForwardTests.cs
 ---
 
@@ -246,9 +247,11 @@ Durable-class signals (e.g. `InstanceDiedSignal`) are appended to **`wh_signals`
 
 ### Retention {#retention}
 
-{verified: PgDurableSignalRetentionWindowTests.Sweep_UsesTheConfiguredWindowAsync, PgDurableSignalRetentionWindowTests.Sweep_DeletesInBatches_UntilNothingIsLeftAsync, PgDurableSignalRetentionWindowTests.Sweep_NeverPassesTheSlowestCursorAsync, SignalPartitionCarryForwardTests.ALiveInstanceBehindTheWindow_KeepsEveryUnconsumedSignalAcrossTheDrop_AndReceivesThemInOrderAsync, SignalPartitionCarryForwardTests.ADeadInstancesCursor_CarriesNothing_AndThePartitionIsDroppedAsync}
+{verified: PgDurableSignalRetentionWindowTests.Sweep_UsesTheConfiguredWindowAsync, PgDurableSignalRetentionWindowTests.Sweep_DeletesInBatches_UntilNothingIsLeftAsync, PgDurableSignalRetentionWindowTests.Sweep_NeverPassesTheSlowestCursorAsync, PgDurableSignalRetentionIntegrationTests.Sweep_ACursorWhoseInstanceIsNoLongerRegistered_DoesNotHoldBackTheSweepAsync, PgDurableSignalRetentionIntegrationTests.Sweep_ARegisteredInstancesCursor_StillHoldsBackTheSweepAsync, PgDurableSignalRetentionIntegrationTests.Sweep_WithOnlyCursorsOfUnregisteredInstances_DeletesNothingAsync, SignalPartitionCarryForwardTests.ALiveInstanceBehindTheWindow_KeepsEveryUnconsumedSignalAcrossTheDrop_AndReceivesThemInOrderAsync, SignalPartitionCarryForwardTests.ADeadInstancesCursor_CarriesNothing_AndThePartitionIsDroppedAsync}
 
-The retention sweep runs hourly and deletes a signal when it is older than `SignalRetention` **and** every instance's cursor has passed it. A signal some instance has not yet delivered is kept whatever its age, and nothing is deleted while no instance has a cursor. Deletes run in batches until a batch comes back short, so a large backlog is cleared in one cycle without one long delete.
+The retention sweep runs hourly and deletes a signal when it is older than `SignalRetention` **and** every **live** instance's cursor has passed it. A signal some live instance has not yet delivered is kept whatever its age, and nothing is deleted while no live instance has a cursor. Deletes run in batches until a batch comes back short, so a large backlog is cleared in one cycle without one long delete.
+
+An instance is live while it is registered in `wh_service_instances`, the same rule the partition carry below uses. An instance that stopped without being reaped leaves its cursor behind; that cursor no longer holds the sweep back, so the log does not grow while the instance waits for the stale-instance reap.
 
 | Setting | Default | Environment variable |
 |---|---|---|

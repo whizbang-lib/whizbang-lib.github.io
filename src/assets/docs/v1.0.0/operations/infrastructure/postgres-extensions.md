@@ -23,6 +23,7 @@ testReferences:
   - tests/Whizbang.Core.Tests/PostgresExtensions/PostgresCapabilityProbeTests.cs
   - tests/Whizbang.Core.Tests/PostgresExtensions/PostgresCapabilityProviderTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/PostgresCapabilityProbeIntegrationTests.cs
+  - tests/Whizbang.Core.Tests/Workers/TableRewriteStrategyTests.cs
 ---
 
 # Postgres Extensions
@@ -57,9 +58,9 @@ updating and managing the extensions arrive in later releases.
 | `pg_trgm` | substring (trigram) indexes | yes | none |
 | `pg_squeeze` | online table rewrite without a long exclusive lock, driven by the library's table rewriter | yes | `shared_preload_libraries`, `wal_level = logical` |
 | `pg_repack` | online table rewrite through the `pg_repack` client, run in process or as an external job | yes | the `pg_repack` client program |
-| `pg_partman` | ledger partition management: `create_parent`, then `run_maintenance` from the library's maintenance worker (a built-in fallback exists) | yes | none (its background worker is optional) |
+| `pg_partman` | ledger partition creation under `Partitioning:Strategy` ([pg_partman](partitioned-ledgers#pg-partman)): `create_parent` once per table, then `run_maintenance` from the library's maintenance worker each cycle; the built-in manager is the fallback and always drops | yes | none (its background worker is not used) |
 | `pgstattuple` | exact table bloat measurement (otherwise estimated) | yes | none |
-| `pg_stat_statements` | query statistics | yes | `shared_preload_libraries` |
+| `pg_stat_statements` | query statistics, read by the expensive-predicate advice only while `Ready` ([readers](capabilities.md#readers)) | yes | `shared_preload_libraries` |
 | `pg_cron` | in-database scheduling | no (it lives in one database) | `shared_preload_libraries` |
 
 ## How the probe works {#probe}
@@ -78,16 +79,20 @@ own answer. The query reads:
 - `shared_preload_libraries` (from `pg_settings`): what the server loaded at start. A role without
   `pg_read_all_settings` cannot see it; then only the extensions that need preloading read `Unknown`,
   and the rest of the answer stands;
-- the role's superuser flag and its `CREATE` privilege on the database.
+- the role's superuser flag and its `CREATE` privilege on the database;
+- `wal_level` and `server_version_num`, for an extension that decodes changes from the WAL (`pg_squeeze`): below
+  Postgres 19 it needs `wal_level = logical`. Every role can read both.
 
 The step does not block readiness, and it cannot stop the host. A database the probe cannot read
 (unreachable, refused, timed out) reads **Unknown** for every extension, and one warning names the
 provider, the database and the reason.
 
-```mermaid{caption="How one extension's state is decided, in order." tests=["PostgresCapabilityProbeTests.Installed_WhenPresentInTheDatabaseAsync","PostgresCapabilityProbeTests.Missing_TakesPrecedenceOverTheAllowlistAsync","PostgresCapabilityProbeTests.NotAllowlisted_WhenAnAllowlistExistsAndDoesNotNameItAsync","PostgresCapabilityProbeTests.NeedsPreload_WhenAllowlistedButItsLibraryIsNotPreloadedAsync","PostgresCapabilityProbeTests.NoPrivilege_WhenTheRoleLacksCreateOnTheDatabaseAsync","PostgresCapabilityProbeTests.Available_WhenCreatableAsync","PostgresCapabilityProbeTests.Unknown_WhenInstalledButThePreloadListCannotBeReadAsync"]}
+```mermaid{caption="How one extension's state is decided, in order." tests=["PostgresCapabilityProbeTests.Installed_WhenPresentInTheDatabaseAsync","PostgresCapabilityProbeTests.Missing_TakesPrecedenceOverTheAllowlistAsync","PostgresCapabilityProbeTests.NotAllowlisted_WhenAnAllowlistExistsAndDoesNotNameItAsync","PostgresCapabilityProbeTests.NeedsPreload_WhenAllowlistedButItsLibraryIsNotPreloadedAsync","PostgresCapabilityProbeTests.NoPrivilege_WhenTheRoleLacksCreateOnTheDatabaseAsync","PostgresCapabilityProbeTests.Available_WhenCreatableAsync","PostgresCapabilityProbeTests.Unknown_WhenInstalledButThePreloadListCannotBeReadAsync","PostgresCapabilityProbeTests.NeedsLogicalWalLevel_WhenPreloadedButTheWalLevelIsReplicaAsync","PostgresCapabilityProbeTests.MissingPreload_IsReportedBeforeTheWalLevelAsync"]}
 flowchart TD
   A[In pg_extension?] -->|yes| B{Preloaded, or needs no preload?}
-  B -->|yes| Installed
+  B -->|yes| W{Logical WAL, or<br/>needs none?}
+  W -->|yes| Installed
+  W -->|no| NeedsLogicalWalLevel
   B -->|no| NeedsPreload
   B -->|list unreadable| Unknown
   A -->|no| C{Files on the server?}
@@ -97,13 +102,15 @@ flowchart TD
   D -->|no| E{Preloaded, or needs no preload?}
   E -->|no| NeedsPreload
   E -->|list unreadable| Unknown
-  E -->|yes| F{This role may create it?}
+  E -->|yes| G{Logical WAL, or<br/>needs none?}
+  G -->|no| NeedsLogicalWalLevel
+  G -->|yes| F{This role may create it?}
   F -->|no| NoPrivilege
   F -->|yes| Available
 ```
 
 ## States, and what to do about each {#states}
-{verified: PostgresCapabilityProbeTests.Installed_WhenPresentInTheDatabaseAsync, PostgresCapabilityProbeTests.Unknown_WhenCreatableButThePreloadListCannotBeReadAsync, PostgresCapabilityProbeTests.Available_WhenCreatableAsync, PostgresCapabilityProbeTests.NotAllowlisted_WhenAnAllowlistExistsAndDoesNotNameItAsync, PostgresCapabilityProbeTests.NeedsPreload_WhenInstalledButItsLibraryIsNotPreloadedAsync, PostgresCapabilityProbeTests.NoPrivilege_WhenTheRoleLacksCreateOnTheDatabaseAsync, PostgresCapabilityProbeTests.Missing_WhenTheServerHasNoControlFilesAsync, PostgresCapabilityProviderTests.EachPostgresState_MapsOntoOneGenericStateAsync}
+{verified: PostgresCapabilityProbeTests.Installed_WhenPresentInTheDatabaseAsync, PostgresCapabilityProbeTests.Unknown_WhenCreatableButThePreloadListCannotBeReadAsync, PostgresCapabilityProbeTests.Available_WhenCreatableAsync, PostgresCapabilityProbeTests.NotAllowlisted_WhenAnAllowlistExistsAndDoesNotNameItAsync, PostgresCapabilityProbeTests.NeedsPreload_WhenInstalledButItsLibraryIsNotPreloadedAsync, PostgresCapabilityProbeTests.NoPrivilege_WhenTheRoleLacksCreateOnTheDatabaseAsync, PostgresCapabilityProbeTests.Missing_WhenTheServerHasNoControlFilesAsync, PostgresCapabilityProviderTests.EachPostgresState_MapsOntoOneGenericStateAsync, PostgresCapabilityProbeTests.NeedsLogicalWalLevel_IsAServerChangeAsync, PostgresExtensionCatalogTests.Describe_AnExtensionThatNeedsLogicalWal_CarriesTheWalLevelFixForThatDetailAsync}
 
 Each Postgres state maps onto one [generic capability state](capabilities.md#states); the Postgres
 state stays in the status as its detail. `Installed` and `Available` are usable. Every other state names
@@ -115,6 +122,7 @@ the one thing in the way.
 | `Available` | `Provisionable` | Creatable here: files present, allowlisted (or no allowlist exists), preloaded if needed, and this role may create it. | Nothing. When a feature in force requires it, Whizbang [creates it](capabilities.md#provisioning-postgres) before the verdict, for the extensions it may create, unless `AutoProvision` is off. |
 | `NotAllowlisted` | `NotPermitted` | The server has the files, but its allowlist exists and does not name it. | Add the extension's name to the server's allowlist (for example `azure.extensions` on Azure Database for PostgreSQL). If it also needs preloading, add it to `shared_preload_libraries` and restart the server. |
 | `NeedsPreload` | `NeedsServerChange` | Installed or creatable, but its library is not in `shared_preload_libraries`. | Add it to `shared_preload_libraries` and restart the server. |
+| `NeedsLogicalWalLevel` | `NeedsServerChange` | Installed or creatable and preloaded, but it decodes changes from the WAL and `wal_level` is not `logical` (below Postgres 19). Checked after the preload, so an extension missing both reads `NeedsPreload` first. | Set `wal_level = logical` and give `max_replication_slots` room for one more slot, then restart the server. The verdict line gives this fix, not the preload one: a provider can give a fix per detail as well as per state. |
 | `NoPrivilege` | `NoPrivilege` | Some role could create it, this one cannot: it is not a superuser and either lacks `CREATE` on the database, or the extension is not trusted and no managed-server allowlist grants it. | Run `CREATE EXTENSION <name>` once as a role that may (a superuser, or the server's administrator role), or grant this role `CREATE` on the database. |
 | `Missing` | `Missing` | The server has no files for it. | Install the extension's package on the server, or use a server image that includes it. |
 | `Unknown` | `Unknown` | The probe could not decide: the database was unreachable or refused the query, the probe is turned off or has not run yet, or the extension needs preloading and this role cannot read `shared_preload_libraries`. | Read the warning that names the database, and check that it is reachable and this role can connect. For an extension that needs preloading, grant this role `pg_read_all_settings`. |
@@ -129,7 +137,9 @@ can be written either way. An allowlist that exists but is empty allows nothing.
 
 Extensions that also need `shared_preload_libraries` (here `pg_squeeze`, `pg_stat_statements` and
 `pg_cron`) need both changes, and the preload change takes effect only after the server restarts.
-`pg_squeeze` additionally needs `wal_level = logical`, which is also a restart-time parameter.
+`pg_squeeze` additionally needs `wal_level = logical` below Postgres 19, which is also a restart-time parameter, and
+the probe reports it as `NeedsLogicalWalLevel` until it is set. What the role that runs a pg_squeeze rewrite needs is
+on [Storage maintenance: privileges on a managed server](storage-maintenance.md#online-rewrite-privileges).
 
 ## Startup verdict {#startup-report}
 {verified: CapabilityReportTests.Log_WritesOneBlockPairPerProviderAndScopeAsync, PostgresCapabilityProbeIntegrationTests.TheDapperDriver_RegistersItsDatabaseAsAPostgresScopeAsync}
