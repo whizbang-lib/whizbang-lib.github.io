@@ -129,6 +129,14 @@ Both counts fall as the fixed release completes new work: each completion create
 
 When the C# layer has multiple categories buffered, `flush_completions` SQL function combines them into one round-trip (covered by a single fsync at the outer commit). Used by future work that wires multiple flushers to a shared connection; today the per-worker flushers commit independently.
 
+Because one call can complete some outbox rows and fail others in the same transaction, `flush_completions`
+locks every outbox row it will write before it writes any (migration 245): the completed rows, the failed
+rows, and the rest of each failed row's run that the failure releases, in one pass in the canonical
+`(stream_id, created_at, message_id)` order. Two separate ordered passes in one transaction are not one order,
+and could deadlock against another instance completing the same rows. Its steps then run in the canonical
+table order: outbox completions and failures, inbox failures, then perspective completions and failures.
+{verified: OutboxStreamRunDeadlockSqlTests.FlushCompletions_FailingARowAnotherTransactionCompletesFirst_NeverDeadlocksAsync, OutboxStreamRunDeadlockSqlTests.FlushCompletions_ReleasingARunAnotherTransactionCompletesFirst_NeverDeadlocksAsync}
+
 ## Failure handling
 
 If a flush throws:
