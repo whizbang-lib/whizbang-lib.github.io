@@ -1,0 +1,95 @@
+name: Library review re-check
+
+# A library pull request's "Gate · Review checks" fails (rule pr.docs-link) until a docs pull request here
+# names it ("Docs for whizbang-lib/whizbang#N"). The library pull request usually comes first, so that check
+# almost always runs before the docs pull request exists (whizbang-lib/whizbang#1806). When a docs pull
+# request is opened or reopened, or its description edited, this asks the library to re-check each library
+# pull request it names: a docs-pr-changed repository_dispatch carrying only the number. The library's
+# pr-intake.yml validates the number and that the pull request is open, and re-runs the review check (and
+# its CI result) only when it failed before the docs pull request last changed.
+#
+# pull_request_target, so a fork's pull request is handled too, and safely:
+#   - the workflow and the script are this base branch's, never the pull request's: the checkout below is
+#     the base branch (the pull_request_target default), and nothing from the pull request is checked out;
+#   - the description is read from the event file by a script (never interpolated into a shell), and only
+#     positive whole numbers come out of it;
+#   - the job that reads the description holds no secret; the job that holds the release app token runs no
+#     repository code at all, only the pinned token action and gh, with the numbers checked again in shell.
+# The token is minted for the library repository alone with contents: write (a repository dispatch is a
+# contents write) and is revoked when the job ends. The release app's secrets are in this repository's
+# release-app environment (develop, main and release/v* only); a pull_request_target job's ref is the base
+# branch, so the environment admits pull requests into develop and main.
+
+on:
+  pull_request_target:
+    types: [opened, edited, reopened]
+    branches: [develop, main]
+
+permissions: {}
+
+# No concurrency group: a later event (a title edit, say) must not cancel an earlier one that had something
+# to send. A second dispatch for the same pull request is harmless; the library finds nothing stale.
+
+jobs:
+  refs:
+    name: Read the library pull requests it names
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      numbers: ${{ steps.read.outputs.numbers }}
+    steps:
+      - name: Checkout the base branch's scripts
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: |
+            src/scripts
+            .nvmrc
+          sparse-checkout-cone-mode: false
+
+      - name: Setup Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: ".nvmrc"
+
+      - name: Read the description
+        id: read
+        run: node src/scripts/library-review-recheck.mjs
+
+  dispatch:
+    name: Ask the library to re-check them
+    needs: refs
+    if: needs.refs.outputs.numbers != '' && needs.refs.outputs.numbers != '[]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    # The release app's secrets live in this environment (develop, main and release/v* only).
+    environment: release-app
+    permissions: {}
+    steps:
+      - name: Mint the release app token for the library
+        id: app-token
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          client-id: ${{ secrets.RELEASE_APP_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: whizbang
+          permission-contents: write
+
+      - name: Send docs-pr-changed for each
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          NUMBERS: ${{ needs.refs.outputs.numbers }}
+          LIBRARY: ${{ github.repository_owner }}/whizbang
+        run: |
+          set -euo pipefail
+          for n in $(jq -r '.[]' <<< "$NUMBERS"); do
+            if ! [[ "$n" =~ ^[1-9][0-9]{0,8}$ ]]; then
+              echo "::warning::Skipped '$n': not a pull request number."
+              continue
+            fi
+            gh api --method POST "repos/$LIBRARY/dispatches" -f event_type=docs-pr-changed -F "client_payload[pull_request]=$n" >/dev/null
+            echo "Asked $LIBRARY to re-check #$n."
+          done
