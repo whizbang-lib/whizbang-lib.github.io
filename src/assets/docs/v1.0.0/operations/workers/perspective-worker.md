@@ -18,6 +18,7 @@ codeReferences:
   - src/Whizbang.Core/Workers/PerspectiveStreamAffinityOptions.cs
   - src/Whizbang.Core/Workers/ClaimWorker.cs
   - src/Whizbang.Core/Workers/ProcessedEventCache.cs
+  - src/Whizbang.Core/Workers/RecentlyProcessedEventCache.cs
   - src/Whizbang.Core/Workers/IProcessedEventCacheObserver.cs
   - src/Whizbang.Core/Workers/IPerspectiveCompletionStrategy.cs
   - src/Whizbang.Core/Workers/PerspectiveCompletionFlushWorker.cs
@@ -30,6 +31,8 @@ testReferences:
   - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerChannelModeTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerDedupTests.cs
   - tests/Whizbang.Core.Tests/Workers/ProcessedEventCacheTests.cs
+  - tests/Whizbang.Core.Tests/Workers/RecentlyProcessedEventCacheTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/ProcessedEventCacheCoverageTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerStrategyTests.cs
   - tests/Whizbang.Core.Tests/Workers/PerspectiveCompletionStrategyTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerSecurityContextTests.cs
@@ -151,6 +154,24 @@ coordinator, from the row's event id and perspective name, so the PostAllPerspec
 every fetched row is cooled, the session ends without parsing anything. Claiming and leasing are unchanged.
 
 ---
+
+### Cooldown Cache Capacity {#cooldown-cache-capacity}
+
+The cooldown cache holds each applied work id for `TtlMinutes` (default 5) and at most `MaxEntries` ids (default
+100,000), both under `Whizbang:Workers:RecentlyProcessedEventCache`. An insert that takes it past the cap raises
+`RecentlyProcessedEventCache.OnCapacityExceeded` with the resident count, then evicts the oldest tenth. Those entries
+are still inside their TTL, so a row they covered can be fetched and parsed again before its completion is flushed.
+A steady stream of raises means `MaxEntries` is too small for the drain; occasional ones during a burst are expected.
+Below the cap the event costs nothing.
+
+```csharp{title="Watch the cooldown cache cap" description="Log when the cooldown cache goes over MaxEntries" category="Operations" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Perspectives"] tests=["RecentlyProcessedEventCacheTests.MarkProcessed_OverCap_RaisesOnCapacityExceededWithResidentCountAsync", "ProcessedEventCacheCoverageTests.MarkProcessed_OverflowEvictedWhileInsertWaitsForLock_EvictsNothingAsync"]}
+var cache = app.Services.GetRequiredService<RecentlyProcessedEventCache>();
+cache.OnCapacityExceeded += resident =>
+  logger.LogWarning("Cooldown cache over its cap ({Resident} entries); consider raising MaxEntries", resident);
+```
+
+A handler runs on the inserting drain thread: keep it short, and do not throw from it, because the exception
+surfaces from that insert.
 
 ## Startup Sequence
 
