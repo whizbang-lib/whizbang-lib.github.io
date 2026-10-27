@@ -14,6 +14,7 @@ tags: >-
   correlation-filters, aspire, aot, sessions, adaptive-acceptors
 codeReferences:
   - src/Whizbang.Transports.AzureServiceBus/AzureServiceBusTransport.cs
+  - src/Whizbang.Transports.AzureServiceBus/AsbReceiveDecisionMaker.cs
   - src/Whizbang.Transports.AzureServiceBus/ServiceCollectionExtensions.cs
   - src/Whizbang.Transports.AzureServiceBus/AzureServiceBusOptions.cs
   - src/Whizbang.Transports.AzureServiceBus/AsbAcceptorGovernor.cs
@@ -26,6 +27,8 @@ codeReferences:
   - src/Whizbang.Transports.AzureServiceBus/ServiceBusInfrastructureProvisioner.cs
   - src/Whizbang.Hosting.Azure.ServiceBus/ServiceBusSubscriptionExtensions.cs
 testReferences:
+  - >-
+    tests/Whizbang.Transports.AzureServiceBus.Tests/AsbReceiveStoresBeforeSettlingTests.cs
   - >-
     tests/Whizbang.Transports.AzureServiceBus.Component.Tests/ReceiveLivenessWatchdogTests.cs
   - >-
@@ -797,8 +800,8 @@ var destination = new TransportDestination(
 
 ISubscription subscription = await transport.SubscribeBatchAsync(
   batchHandler: async (messages, ct) => {
-    // TransportConsumerWorker: filter by EnvelopeType header, deserialize,
-    // store via StoreInboxMessagesAsync — handlers fire from the inbox pipeline
+    // TransportConsumerWorker: store every message via StoreInboxMessagesAsync
+    // (a skipped one is stored settled); handlers fire from the inbox pipeline
     foreach (var message in messages) {
       await ProcessTransportMessageAsync(message, ct);
     }
@@ -952,6 +955,36 @@ await transport.InitializeAsync();  // Skips admin verification for emulator
 ```
 
 ---
+
+## Receiving: stored before settling {#stored-before-settling}
+
+The transport completes a message only after the consumer's handler has stored it. Every body that is a
+valid envelope is handed to the handler: as its typed envelope when this service can read it, otherwise
+as received (an envelope of `JsonElement` with the type the producer named). That covers a type no JSON
+context here describes, a body the typed read rejects, a payload no local receptor or perspective
+consumes, and a valid envelope with no `EnvelopeType` application property. A raw receptor registered for
+the type runs once the message is stored. Whether to process it is the consumer's decision, made with the
+row: a message it skips is stored settled with the reason (see
+[skipped messages](./transport-consumer#skipped-messages)).
+
+Only a body that is not a readable envelope (or one whose message id is not a UUIDv7) is refused. It is
+dead-lettered at the broker, never completed and dropped, and the
+[transport dead-letter drain](../../operations/dead-letter-queue/transport-recovery) gives it custody. A
+message the poison detector quarantines is dead-lettered at the broker as before.
+
+Operators see fewer ack-drop warnings and more inbox rows: messages that used to be completed and dropped
+at receive now leave settled rows, purged by maintenance with other completed inbox rows.
+
+:::updated
+Before this release the transport completed and dropped a message whose type no context described, one
+the typed read rejected and one no local consumer took (logged as `MissingJsonTypeInfo`,
+`DeserializationFailed` or `NoLocalConsumer`), handled a raw receptor match with no inbox row, and
+dead-lettered a valid envelope that lacked the `EnvelopeType` property. The `receptorRegistry`,
+`perspectiveRegistry`, `discardPolicy` and `absorbedNamespaces` constructor parameters of
+`AzureServiceBusTransport` fed that filter. They are kept for compatibility and are no longer consulted on
+receive.
+:::
+{verified: AsbReceiveStoresBeforeSettlingTests.Decide_AValidEnvelopeOfATypeThisServiceDoesNotKnow_IsHandedOnAsReceivedAsync, AsbReceiveStoresBeforeSettlingTests.Decide_AValidEnvelopeTheTypedReadRejects_IsHandedOnAsReceivedAsync, AsbReceiveStoresBeforeSettlingTests.Decide_AnEnvelopeNoLocalConsumerTakes_IsHandedOnToBeStoredAsync, AsbReceiveStoresBeforeSettlingTests.Decide_AnEnvelopeARawReceptorTakes_IsHandedOnToBeStored_WithTheReceptorAsync, AsbReceiveStoresBeforeSettlingTests.Decide_AValidEnvelopeWithNoEnvelopeTypeProperty_IsHandedOnAsReceivedAsync, AsbReceiveStoresBeforeSettlingTests.Decide_AnEnvelopeWhoseIdIsNotAMessageId_IsDeadLetteredAsync, AsbReceiveStoresBeforeSettlingTests.Decide_ABodyThatIsNotAnEnvelope_IsDeadLetteredAsync}
 
 ## Retry and Error Handling
 

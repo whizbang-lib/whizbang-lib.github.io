@@ -399,7 +399,7 @@ records. With `LeastUrgent`, an audit composite stays idle whatever joins it.
 
 ## Background work {#background-work}
 
-{verified: AuditingEventStoreDecoratorPriorityTests.AppendAsync_WithEnvelope_QueuesTheAuditRecordAsBackground_OnTheRowAndTheEnvelopeAsync, AuditingEventStoreDecoratorPriorityTests.AppendAsync_TheAuditedEventsInteractiveNumber_DoesNotReachTheAuditRecordAsync, SystemEventEmitterPriorityTests.EmitEventAudited_TheAuditEnvelopeIsBackgroundAsync, SystemEventEmitterPriorityTests.EmitCommandAudited_TheAuditEnvelopeIsBackgroundAsync, IntegrityCheckpointWorkerPriorityTests.RunCheckpointOnce_WithTransport_EveryTopicCopyIsBackgroundAsync, IntegrityAuditWorkerPriorityTests.LocalGaps_TheReportAndTheRebuild_AreDispatchedInsideABackgroundHandlingAsync, IntegrityReceptorsPriorityTests.ManifestRequestReceptor_EveryManifestChunkIsBackgroundAsync, IntegrityManifestReceptorTests.ManifestReceptor_Divergence_TheRepairRequestIsBackgroundAsync, IntegrityManifestReceptorTests.ManifestReceptor_TypeLevelMismatch_TheDrillDownRequestIsBackgroundAsync, IntegrityManifestReceptorTests.ManifestReceptor_TypeLevelBulkDeficit_TheBackfillRequestIsBackgroundAsync, RepairDrainWorkerPriorityTests.DrainTick_EveryRepairRequestIsBackgroundAsync, SubscriptionExpansionWorkerPriorityTests.Expansion_TheBackfillRequestIsBackgroundAsync, RedeliveryPumpPriorityTests.Publish_EveryBundleOnTheWireIsBackgroundAsync, PriorityOnTheWireSqlTests.RecoverDeadLetter_OutboxRow_ReentersAsBackgroundAsync, PriorityOnTheWireSqlTests.RecoverDeadLetter_PerspectiveRow_ReentersAsBackgroundAsync}
+{verified: AuditingEventStoreDecoratorPriorityTests.AppendAsync_WithEnvelope_QueuesTheAuditRecordAsBackground_OnTheRowAndTheEnvelopeAsync, AuditingEventStoreDecoratorPriorityTests.AppendAsync_TheAuditedEventsInteractiveNumber_DoesNotReachTheAuditRecordAsync, SystemEventEmitterPriorityTests.EmitEventAudited_TheAuditEnvelopeIsBackgroundAsync, SystemEventEmitterPriorityTests.EmitCommandAudited_TheAuditEnvelopeIsBackgroundAsync, IntegrityCheckpointWorkerPriorityTests.RunCheckpointOnce_WithTransport_EveryTopicCopyIsBackgroundAsync, IntegrityAuditWorkerPriorityTests.LocalGaps_TheReportAndTheRebuild_AreDispatchedInsideABackgroundHandlingAsync, IntegrityReceptorsPriorityTests.ManifestRequestReceptor_EveryManifestChunkIsBackgroundAsync, IntegrityManifestReceptorTests.ManifestReceptor_Divergence_TheRepairRequestIsBackgroundAsync, IntegrityManifestReceptorTests.ManifestReceptor_TypeLevelMismatch_TheDrillDownRequestIsBackgroundAsync, IntegrityManifestReceptorTests.ManifestReceptor_TypeLevelBulkDeficit_TheBackfillRequestIsBackgroundAsync, RepairDrainWorkerPriorityTests.DrainTick_EveryRepairRequestIsBackgroundAsync, SubscriptionExpansionWorkerPriorityTests.Expansion_TheBackfillRequestIsBackgroundAsync, RedeliveryPumpPriorityTests.Publish_EveryBundleOnTheWireIsBackgroundAsync}
 
 Work the framework creates for itself is declared **background by construction**, on the envelope and on
 the row, whatever the handling that caused it: nobody is waiting on it, and a flood of it at the standard
@@ -413,12 +413,21 @@ by a rule a host has to remember:
 | the integrity receptors | manifest answers, drill-down and follow-up requests, repair and backfill requests |
 | the repair drain and the subscription expansion worker | redelivery requests |
 | the redelivery pump | every bundle it ships |
-| `recover_dead_letter` (migration 151) | every row it re-creates: outbox and perspective. A recovered inbox or broker row re-enters through the inbox's arrival path and takes a delivery's priority |
 
 The negative case is tested at each site as well: an audit record of an interactive event, or one built
 while an interactive handling is in progress, does not inherit interactive. A worker's ambient background
 handling ends with the cycle, so nothing that runs after it inherits background by accident.
 {verified: AuditingEventStoreDecoratorPriorityTests.AppendAsync_InsideAnInteractiveHandling_TheAuditRecordStaysBackgroundAsync, IntegrityCheckpointWorkerPriorityTests.RunCheckpointOnce_DoesNotLeaveTheBackgroundHandlingBehindAsync, IntegrityAuditWorkerPriorityTests.RunAuditOnce_LeavesNoBackgroundHandlingBehindAsync, RedeliveryPumpPriorityTests.Publish_InsideAnInteractiveHandling_TheBundleStaysBackgroundAsync}
+
+### Recovered dead letters keep their priority {#recovered-dead-letters}
+
+Dead-letter recovery is not background work. A recovered dead letter is the message it was, so it runs at
+the priority it was stored with. The dead-letter capture keeps the row's priority, and recovery re-enters
+the row through the same store a new arrival goes through: an outbox dead letter through
+`store_outbox_messages`, a perspective dead letter through `store_perspective_events`, and an inbox or
+broker dead letter through `store_inbox_messages`, where it takes a delivery's priority. Before migration
+241, `recover_dead_letter` re-created outbox and perspective rows as background.
+{verified: PriorityOnTheWireSqlTests.RecoverDeadLetter_OutboxRow_ReentersWithThePriorityItWasStoredWithAsync, PriorityOnTheWireSqlTests.RecoverDeadLetter_PerspectiveRow_ReentersWithThePriorityItWasStoredWithAsync}
 
 ## Producer boundaries outside the dispatcher {#producer-boundaries}
 

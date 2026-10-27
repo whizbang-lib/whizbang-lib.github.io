@@ -18,6 +18,9 @@ codeReferences:
   - src/Whizbang.Core/Resilience/SubscriptionState.cs
   - src/Whizbang.Core/Resilience/SubscriptionRetryHelper.cs
   - src/Whizbang.Core/Transports/ITransportWithRecovery.cs
+  - src/Whizbang.Core/Messaging/InboxReceiveDiscard.cs
+  - src/Whizbang.Core/Transports/ReceivedEnvelopeReader.cs
+  - src/Whizbang.Data.Postgres/Migrations/242_SkippedArrivalsAreStoredSettled.sql
 testReferences:
   - tests/Whizbang.Core.Tests/Workers/TransportConsumerBuilderExtensionsTests.cs
   - tests/Whizbang.Core.Tests/Workers/TransportConsumerBuilderExtensionsServiceNameTests.cs
@@ -29,6 +32,9 @@ testReferences:
   - tests/Whizbang.Core.Component.Tests/Workers/TransportBatchCollectorTests.cs
   - tests/Whizbang.Core.Component.Tests/Shutdown/BatcherShutdownTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/TransportConsumerWorkerBodyOffloadTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/TransportConsumerWorkerStoresBeforeSkippingTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/InboxDiscardedOnReceiveSqlTests.cs
+  - tests/Whizbang.Core.Tests/Transports/ReceivedEnvelopeReaderTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -171,6 +177,75 @@ services.AddWhizbang()
 
 The error occurs when resolving `TransportConsumerOptions` from the service provider, not at registration time.
 
+## Stored before settling {#batch-handler}
+
+Every received message whose body is a valid envelope is stored in the inbox before the broker is told
+anything. The transport hands each one to the consumer's batch handler, which stores it with
+`store_inbox_messages`; only when the handler returns does Azure Service Bus complete the message or
+RabbitMQ ack it. Nothing is acked and dropped on the way in.
+
+A message the transport cannot read as its typed envelope is still a valid envelope: a type no JSON
+context in this service describes, a body the typed read rejects, or a valid envelope with no
+`EnvelopeType` property or header. The transport reads it as received (`ReceivedEnvelopeReader`, an
+envelope of `JsonElement` under the type the producer named) and hands it on to be stored like any other.
+An opt-in raw receptor for the type runs once the message is stored.
+
+```mermaid{caption="Receive path: a valid envelope is stored before the broker is settled, a skip is stored settled with its reason, and only a body that is not an envelope goes to the broker's dead-letter queue." tests=["TransportConsumerWorkerStoresBeforeSkippingTests.AMessageNoLocalConsumerTakes_IsStoredAsync", "AsbReceiveStoresBeforeSettlingTests.Decide_ABodyThatIsNotAnEnvelope_IsDeadLetteredAsync"]}
+flowchart TD
+    R["Message received<br/>(Service Bus, RabbitMQ)"] --> E{"Body is a<br/>readable envelope?"}
+    E -->|"no"| D["Dead-lettered at the broker<br/>(the drain gives it custody)"]
+    E -->|"yes, typed or as received"| C{"Consumer processes it?"}
+    C -->|"yes"| S["Stored as new work"]
+    C -->|"no: skip reason"| K["Stored settled<br/>(DiscardedOnReceive)"]
+    S --> A["Broker settled<br/>(complete / ack)"]
+    K --> A
+
+    class R,C layer-command
+    class S,K layer-event
+    class E,A layer-core
+    class D layer-observability
+```
+
+### Skipped messages are stored settled {#skipped-messages}
+
+The consumer still decides not to process some messages. It no longer drops them before the store: it
+stores them already settled, with the reason in `InboxMessage.DiscardedOnReceive` (one of the
+`InboxReceiveDiscard` constants):
+
+| Reason | When |
+|---|---|
+| `no_local_consumer` | No receptor, lifecycle receptor, perspective or runtime receptor on this service consumes the message's type. Offloaded bodies and composites are exempt, since their consumers are known only after rehydration or fan-out. |
+| `foreign_target` | The envelope is directed at another service (its target names a different service). |
+| `owned_echo` | An event of a namespace this service owns, delivered back to it: its own event, already stored here (see [echo suppression](../../fundamentals/dispatcher/routing#transport-echo-suppression)). |
+| `self_echo` | A command of a namespace this service owns whose last hop is this service: its own send, delivered back. |
+| `unknown_event_type` | An event whose type was not among the event types this service knew when it started receiving. |
+
+`store_inbox_messages` stores a skipped message like every arrival (deduplication is counted and both rows
+are written) but settled: processed at arrival, with status Stored and Published, and
+`discarded on receive: <reason>` in `wh_inbox_state.error` (migration 242). A settled row is never
+claimed, copied into the event store or dispatched, so it rings no doorbell, pins no stream and is never
+returned as new work. It stays readable until maintenance purges completed inbox rows, or, in debug mode,
+until an operator removes it. Each skip is counted by `whizbang.transport.inbox.messages_discarded`,
+tagged `reason` and `message_type` (see [metrics](../../operations/observability/metrics#transport)).
+
+Expect more inbox rows than before: a service that receives many messages it does not consume now keeps a
+settled row for each until the next purge.
+
+The non-durable receive of the control class is unchanged: those messages are still handled without an
+inbox row.
+{verified: TransportConsumerWorkerStoresBeforeSkippingTests.AMessageNoLocalConsumerTakes_IsStoredAsync, TransportConsumerWorkerStoresBeforeSkippingTests.AMessageDirectedAtAnotherService_IsStoredAsync, TransportConsumerWorkerStoresBeforeSkippingTests.AnEchoOfThisServicesOwnEvent_IsHeldNotDroppedAsync, TransportConsumerWorkerStoresBeforeSkippingTests.AnEchoOfThisServicesOwnCommand_IsStoredAsync, TransportConsumerWorkerStoresBeforeSkippingTests.AnEventTheKnownEventFilterRejects_IsStoredAsync, TransportConsumerWorkerStoresBeforeSkippingTests.AnUnconsumedEventTheKnownEventFilterAlsoRejects_KeepsItsFirstReasonAsync, TransportConsumerWorkerStoresBeforeSkippingTests.AMessageThisServiceProcesses_IsStoredWithNoReasonAsync, TransportConsumerWorkerStoresBeforeSkippingTests.ASkip_IsCountedUnderItsReason_NotAsADuplicateAsync, InboxDiscardedOnReceiveSqlTests.AMessageDiscardedOnReceive_IsStoredSettled_WithItsReason_AndNeverClaimedOrCopiedAsync}
+
+### The one refusal {#refused-bodies}
+
+Only a body that is not a readable envelope is refused before storage: there is nothing to store it as.
+Both transports dead-letter it at the broker, where the
+[transport dead-letter drain](../../operations/dead-letter-queue/transport-recovery) gives it custody. An
+envelope whose message id is not a UUIDv7 is refused the same way. On RabbitMQ this also ends a hot loop: a
+body the deserializer threw on used to escape the batch flush, and the batch collector flushed that batch
+again on every window without ever acking or nacking it. The body is now dead-lettered and its neighbors
+are stored and acked.
+{verified: ReceivedEnvelopeReaderTests.TryRead_AValidEnvelope_ReturnsItAsReceivedAsync, ReceivedEnvelopeReaderTests.TryRead_ABodyThatIsNotAnEnvelope_ReturnsNullAsync, ReceivedEnvelopeReaderTests.TryRead_AnEnvelopeWhoseIdIsNotAMessageId_ReturnsNullAsync, AsbReceiveStoresBeforeSettlingTests.Decide_AValidEnvelopeOfATypeThisServiceDoesNotKnow_IsHandedOnAsReceivedAsync, AsbReceiveStoresBeforeSettlingTests.Decide_AValidEnvelopeTheTypedReadRejects_IsHandedOnAsReceivedAsync, AsbReceiveStoresBeforeSettlingTests.Decide_AnEnvelopeNoLocalConsumerTakes_IsHandedOnToBeStoredAsync, AsbReceiveStoresBeforeSettlingTests.Decide_AnEnvelopeARawReceptorTakes_IsHandedOnToBeStored_WithTheReceptorAsync, AsbReceiveStoresBeforeSettlingTests.Decide_AValidEnvelopeWithNoEnvelopeTypeProperty_IsHandedOnAsReceivedAsync, AsbReceiveStoresBeforeSettlingTests.Decide_AnEnvelopeWhoseIdIsNotAMessageId_IsDeadLetteredAsync, AsbReceiveStoresBeforeSettlingTests.Decide_ABodyThatIsNotAnEnvelope_IsDeadLetteredAsync, RabbitMQReceiveStoresBeforeSettlingTests.Flush_ABodyTheDeserializerThrowsOn_IsDeadLettered_AndItsNeighborsAreStoredAndAckedAsync, RabbitMQReceiveStoresBeforeSettlingTests.Flush_AnEnvelopeOfATypeThisServiceDoesNotKnow_IsHandedOnToBeStoredBeforeItIsAckedAsync, RabbitMQReceiveStoresBeforeSettlingTests.Deliver_AMessageNoLocalConsumerTakes_IsHandedOnToBeStoredBeforeItIsAckedAsync, RabbitMQReceiveStoresBeforeSettlingTests.Deliver_AnEnvelopeOfATypeThisServiceDoesNotKnow_IsHandedOnToBeStoredAsync, RabbitMQReceiveStoresBeforeSettlingTests.Flush_AValidEnvelopeWithNoEnvelopeTypeHeader_IsHandedOnWithNoTypeAsync, RabbitMQReceiveStoresBeforeSettlingTests.Deliver_AValidEnvelopeWithNoEnvelopeTypeHeader_IsHandedOnWithNoTypeAsync, RabbitMQReceiveStoresBeforeSettlingTests.Flush_AnEnvelopeWhoseIdIsNotAMessageId_IsDeadLettered_AndTheFlushCompletesAsync, RabbitMQReceiveStoresBeforeSettlingTests.Deliver_ABodyTheDeserializerThrowsOn_IsDeadLetteredNotLoopedAsync}
+
 ## Messages that cannot be stored {#unstorable-messages}
 
 Every received message becomes an inbox row before anything else happens to it. When
@@ -183,6 +258,7 @@ uses, and the rest of the batch is stored as usual:
 | Cause | Reason recorded | Body kept |
 |---|---|---|
 | The envelope cannot be serialized for the inbox (no JSON metadata for its payload in this service's options) | `SerializationError`, with the underlying exception | The envelope re-serialized against every context registered at that moment; if even that fails, a descriptor naming the message id, envelope type and failure |
+| A valid envelope that names no envelope type (no `EnvelopeType` property or header), so no row can be typed | `SerializationError`, with the underlying exception | The envelope |
 | An offloaded body downloads but cannot be read as its envelope type | `SerializationError` | The downloaded original body, verbatim |
 | An offloaded body cannot be obtained (unknown provider, integrity failure, unknown cipher) | The rehydrate reason, e.g. `BodyClaimProviderUnknown` | The claim envelope, which still locates the body in its store |
 

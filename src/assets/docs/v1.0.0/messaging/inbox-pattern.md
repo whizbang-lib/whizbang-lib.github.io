@@ -67,7 +67,7 @@ public async Task ProcessMessageAsync(OrderCreated @event, CancellationToken ct)
 
 ```mermaid{caption="Inbox pipeline — transport arrival, dedup-gated store, lease + stream-FIFO claim, then atomic handler commit." tests=["StoreInboxMessagesSqlTests.DuplicateMessageId_SecondCallNoOpsViaDedupTableAsync"]}
 flowchart TD
-    S1["1. Message arrives from transport<br/>(unsubscribed messages are discarded at the<br/>receive boundary — no inbox row at all)"]
+    S1["1. Message arrives from transport<br/>(stored before the broker is settled; a message<br/>this service skips is stored already settled)"]
     S2["2. store_inbox_messages:<br/>INSERT INTO wh_message_deduplication ... ON CONFLICT DO NOTHING<br/><br/>If conflict: SKIP (already seen!) — Exactly-once!<br/>If new: INSERT INTO wh_inbox (same transaction)"]
     S3["3. ClaimWorker leases the row;<br/>handlers invoked in stream order"]
     S4["4. Handler commit (commit_handler_batch):<br/>completion + emitted messages, atomic"]
@@ -147,7 +147,7 @@ Deduplication is **automatic** — you never write this code yourself. Two bound
 
 ### Boundary 1: The Receive Boundary
 
-`TransportConsumerWorker` discards messages that no receptor, perspective, or tag attribute subscribes to **before** any database work — no inbox row, no deserialization, no lifecycle. Only messages your service actually handles reach the inbox.
+`TransportConsumerWorker` stores every valid envelope it receives before the broker is settled, but it does not process all of them. A message no receptor, perspective, or tag attribute on this service subscribes to, one directed at another service, an echo of this service's own event or command, and an event of a type this service does not know are stored **already settled**, with the reason (`DiscardedOnReceive`): the row is never claimed, copied into the event store or dispatched, runs no lifecycle, and is purged by maintenance with other completed rows. The skip is durable and inspectable instead of a message that vanished. See [skipped messages](transports/transport-consumer#skipped-messages).
 
 ### Boundary 2: The Deduplication Table
 
@@ -212,7 +212,7 @@ public class ReserveInventoryReceptor(
 ```
 
 **Flow (all automatic)**:
-1. `TransportConsumerWorker` receives the message; unsubscribed messages are discarded at the boundary
+1. `TransportConsumerWorker` receives the message; one this service skips (unsubscribed, directed elsewhere, an echo, an unknown event) is stored already settled and never dispatched
 2. `StoreInboxMessagesAsync` → `store_inbox_messages`: dedup insert gates the inbox insert (duplicates skipped here)
 3. `ClaimWorker` leases the row; `InboxDrainWorker` fetches it in stream-FIFO order; `InboxDispatchWorker` fires lifecycle stages and invokes your receptor
 4. `InboxHandlerWorker` commits the result via `commit_handler_batch` — inbox completion + any events your receptor emitted, atomically

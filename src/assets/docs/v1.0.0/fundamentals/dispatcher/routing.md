@@ -11,7 +11,7 @@ description: >-
   Commands use a shared inbox topic with namespace filtering, while events publish to namespace-specific
   topics for pub/sub distribution with automatic subscription discovery. Owned-domain routing keeps a
   service's own commands local while its events still broadcast, with transport-layer echo suppression
-  discarding self-delivered copies.
+  storing self-delivered copies settled, never processed.
 tags: 'routing, namespace-routing, message-routing, inbox, topics, pub-sub, owned-domains, echo-suppression'
 codeReferences:
   - src/Whizbang.Core/Routing/RoutingOptions.cs
@@ -1555,11 +1555,14 @@ event back from the broker, which is where echo suppression comes in.
 ## Transport Echo Suppression {#transport-echo-suppression}
 
 Because owned events are broadcast, the transport (RabbitMQ, Azure Service Bus, …) delivers a copy back
-to the **originating** service. The `TransportConsumerWorker` discards these echoes at the consumer
-layer, before they reach the inbox, in `_shouldDiscardOwnedEcho`. Events and commands are suppressed by
-**different** rules:
+to the **originating** service. The `TransportConsumerWorker` recognizes these echoes at the consumer
+layer, in `_ownedEchoDiscard`, and stores each one **settled**: the inbox row records the reason
+(`owned_echo` or `self_echo`) and is never claimed, copied into the event store or dispatched (see
+[skipped messages](../../messaging/transports/transport-consumer#skipped-messages)). The echo is kept as a
+row so the broker is settled only after something durable holds the message, not dropped unstored as it
+was before. Events and commands are suppressed by **different** rules:
 
-| Message | Owned namespace? | Echo detection | Discarded? |
+| Message | Owned namespace? | Echo detection | Stored settled, not processed? |
 |---------|:----------------:|----------------|:----------:|
 | Event   | Yes | **Unconditional** — an event in your owned namespace can only have been published by you | Always |
 | Event   | No  | None — it's from another service | Never |
@@ -1571,14 +1574,14 @@ namespace is **not owned**, the message passes through untouched.
 
 ### Events: always echo
 
-An event whose type lives in an owned namespace is discarded **regardless of the hop's service name** —
+An event whose type lives in an owned namespace is suppressed **regardless of the hop's service name**,
 even if a hop claims the event came from another service. Only the namespace owner ever publishes events
 in that namespace, so any owned-namespace event arriving from the transport is a self-echo that was
 already processed locally.
 
 The worker decides "is this an event?" from the `IEventTypeProvider` registry
 (`_isKnownEventType(envelopeType)`), **not** from `payload is IEvent` — over the wire the payload is a
-`JsonElement`, so a runtime type check would not work. This unconditional-discard branch therefore
+`JsonElement`, so a runtime type check would not work. This unconditional branch therefore
 depends on an `IEventTypeProvider` being registered (every running service registers one); if none is,
 `_isKnownEventType` returns `false` and the owned event falls through to the same hop-based self-echo
 check that commands use.
@@ -1589,22 +1592,22 @@ A command in an owned namespace **may** legitimately arrive from another service
 dispatch — e.g. a BFF sending a command into another service's domain). So commands use a last-hop
 service-name check:
 
-- Last hop's service name **equals** this service → self-echo → discard.
+- Last hop's service name **equals** this service → self-echo → stored settled, not processed.
 - Last hop's service name **differs** → legitimate cross-service command → process.
 
-```mermaid{caption="Transport echo suppression: an owned-namespace event echoed back to the originating service is discarded unconditionally, while an owned-namespace command is discarded only on a self-echo (last hop equals this service); genuine cross-service commands pass through."}
+```mermaid{caption="Transport echo suppression: an owned-namespace event echoed back to the originating service is stored settled and never processed, unconditionally, while an owned-namespace command is suppressed only on a self-echo (last hop equals this service); genuine cross-service commands pass through." tests=["TransportConsumerWorkerStoresBeforeSkippingTests.AnEchoOfThisServicesOwnEvent_IsHeldNotDroppedAsync", "TransportConsumerWorkerStoresBeforeSkippingTests.AnEchoOfThisServicesOwnCommand_IsStoredAsync"]}
 graph TB
     E["Event published by OrderService (owns &quot;App.Contracts.Orders&quot;)"]
     EL["Local fast path: OrderService processes immediately"]
     ET["Transport broadcast"]
-    ET1["arrives at OrderService inbox → DISCARDED (owned event echo, unconditional)"]
+    ET1["arrives at OrderService inbox → STORED SETTLED (owned event echo, unconditional)"]
     ET2["arrives at BFF inbox → PROCESSED (cross-service delivery)"]
 
     CA["Command sent by BFF into OrderService's owned namespace"]
     CA1["arrives at OrderService inbox → PROCESSED (last hop = &quot;BFF&quot; ≠ &quot;OrderService&quot;)"]
 
     CB["Command emitted by OrderService into its own namespace, echoed back"]
-    CB1["arrives at OrderService inbox → DISCARDED (last hop = &quot;OrderService&quot;, self-echo)"]
+    CB1["arrives at OrderService inbox → STORED SETTLED (last hop = &quot;OrderService&quot;, self-echo)"]
 
     E --> EL
     E --> ET
@@ -1620,9 +1623,11 @@ graph TB
     style CB1 fill:#f8d7da,stroke:#dc3545
 ```
 
-Both discard paths log at `Debug`: an owned-event echo logs *"Owned event echo discarded: {MessageType}
-(owned events never arrive from external services)"*, and a command self-echo logs *"Self-echo
-discarded: {MessageType} from {ServiceName}"*.
+Both paths log at `Debug`: an owned-event echo logs *"Owned event echo stored settled without
+processing: {MessageType} (owned events never arrive from external services)"*, and a command self-echo
+logs *"Self-echo stored settled without processing: {MessageType} from {ServiceName}"*. Each is counted
+by `whizbang.transport.inbox.messages_discarded` with `reason` = `owned_echo` or `self_echo`.
+{verified: TransportConsumerWorkerStoresBeforeSkippingTests.AnEchoOfThisServicesOwnEvent_IsHeldNotDroppedAsync, TransportConsumerWorkerStoresBeforeSkippingTests.AnEchoOfThisServicesOwnCommand_IsStoredAsync}
 
 ### Explicit routing wrappers
 
@@ -1639,9 +1644,10 @@ transport — you do **not** need `Route.Outbox(...)`/`Route.Both(...)` to force
 - [Transport Consumer](../../messaging/transports/transport-consumer.md) — where the consumer-side echo
   check runs, plus subscription resilience and recovery.
 - Source: `Dispatcher._isOwnedNamespace` / `_dispatchByModeAsync` / `CascadeMessageAsync` /
-  `_resolveEventTopic` (`src/Whizbang.Core/Dispatcher.cs`); `TransportConsumerWorker._shouldDiscardOwnedEcho`
+  `_resolveEventTopic` (`src/Whizbang.Core/Dispatcher.cs`); `TransportConsumerWorker._ownedEchoDiscard`
   / `_isSelfEcho` / `_isKnownEventType` (`src/Whizbang.Core/Workers/TransportConsumerWorker.cs`).
-- Tests: `DispatcherOwnedDomainTests`, `TransportConsumerWorkerOwnedEventDiscardTests`.
+- Tests: `DispatcherOwnedDomainTests`, `TransportConsumerWorkerOwnedEventDiscardTests`,
+  `TransportConsumerWorkerStoresBeforeSkippingTests`.
 
 ## Command Ownership and Ownership Drift {#ownership-drift}
 

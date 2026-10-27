@@ -103,7 +103,7 @@ services.AddWhizbang(options => {
 
 `DeadLetter` is designed to preserve every offending row in `wh_dead_letters` with `failure_reason = MessageFailureReason.EmptyStreamId` (value `11`) — a forensic trail of producer bugs plus the option to replay rows after the producer is fixed. **Not yet wired at drain time** — see the shipped-behavior callout above; today this value behaves like `FallbackToMessageId`.
 
-Recovery is self-healing: `recover_dead_letter` (migration 051) normalizes `Guid.Empty` → `NULL` on the INSERT back into the source table, so a recovered row doesn't immediately re-stick. This normalization is implemented and applies to any `wh_dead_letters` row with an Empty `stream_id`, however it got there.
+Recovery is self-healing: `recover_dead_letter` (migration 051; since migration 241, `wh_recover_dead_letter`) normalizes `Guid.Empty` → `NULL` before the row re-enters its source table through its store, so a recovered row doesn't immediately re-stick. This normalization is implemented and applies to any `wh_dead_letters` row with an Empty `stream_id`, however it got there.
 
 ## Hard Purge: Purge
 
@@ -141,7 +141,7 @@ flowchart LR
 |---------|---------|---------------|
 | **Producer** | `EmptyStreamIdGuard.ThrowIfAnyHasEmptyStreamId` | INSERT time under `Reject` |
 | **Drainer** | `StreamIdCoalescer.Coalesce` — `Empty → WorkId` + Warning per row | Every `ClaimWorkAsync` call (unconditional) |
-| **DLQ replay** | `recover_dead_letter` normalizes `Empty → NULL` | On every `RecoverAsync` of an outbox/inbox source row |
+| **DLQ replay** | `wh_recover_dead_letter` normalizes `Empty → NULL` | On every `RecoverAsync` of an outbox or perspective source row |
 
 The structural canary in [Stuck Row Sentinel](../observability/stuck-row-sentinel.md) catches any future bug of the same shape ("row claimed but never drained") regardless of root cause.
 
