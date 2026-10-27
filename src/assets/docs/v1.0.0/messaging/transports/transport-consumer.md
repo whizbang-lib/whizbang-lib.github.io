@@ -16,6 +16,7 @@ codeReferences:
   - src/Whizbang.Core/Workers/TransportBatchOptions.cs
   - src/Whizbang.Core/Resilience/SubscriptionResilienceOptions.cs
   - src/Whizbang.Core/Resilience/SubscriptionState.cs
+  - src/Whizbang.Core/Resilience/SubscriptionStatusChangedEventArgs.cs
   - src/Whizbang.Core/Resilience/SubscriptionRetryHelper.cs
   - src/Whizbang.Core/Transports/ITransportWithRecovery.cs
   - src/Whizbang.Core/Messaging/InboxReceiveDiscard.cs
@@ -25,6 +26,7 @@ testReferences:
   - tests/Whizbang.Core.Tests/Workers/TransportConsumerBuilderExtensionsTests.cs
   - tests/Whizbang.Core.Tests/Workers/TransportConsumerBuilderExtensionsServiceNameTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/TransportConsumerWorkerResilienceTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/TransportConsumerWorkerSubscriptionStatusChangedTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/TransportConsumerWorkerConnectionRecoveryTests.cs
   - tests/Whizbang.Core.Component.Tests/Resilience/SubscriptionRetryHelperTests.cs
   - tests/Whizbang.Core.Tests/HealthChecks/SubscriptionHealthCheckTests.cs
@@ -419,6 +421,31 @@ For transports that support connection recovery (RabbitMQ, Azure Service Bus), s
 4. Retry loop re-establishes each subscription
 
 This ensures subscriptions survive both initial failures and runtime connection issues.
+
+### Subscription status changes {#subscription-status-changes}
+
+`TransportConsumerWorker.SubscriptionStatusChanged` reports every change in a destination's subscription status, one
+event per change, with the destination, the previous status and the new one:
+
+- `Pending` to `Healthy` when a subscription is established.
+- To `Recovering` on a failed attempt or a disconnect, and to `Failed` when the initial retries run out.
+- Back to `Pending` when the health monitor or a connection recovery retries the subscription.
+
+The event is raised synchronously on the thread that changed the status, after the last error, the attempt count
+and the subscription are recorded, so a handler that reads `State` sees them already set. Writing the status a
+destination already has raises nothing. A handler that throws is logged as a warning naming the destination and
+status; neither the subscription nor the other handlers are affected. Keep handlers short, because they run on the
+subscription path. With no handler attached, a change costs one null check.
+
+```csharp{title="Alert on subscription status changes" description="Log every destination whose subscription changes status" category="Operations" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Health", "Monitoring"] tests=["TransportConsumerWorkerSubscriptionStatusChangedTests.SubscriptionStatusChanged_EveryDestinationSubscribes_RaisedPendingToHealthyAfterTheStateIsRecordedAsync", "TransportConsumerWorkerSubscriptionStatusChangedTests.SubscriptionStatusChanged_SubscribeKeepsFailing_RaisedRecoveringThenFailedWithTheErrorRecordedAsync"]}
+var worker = app.Services.GetRequiredService<TransportConsumerWorker>();
+worker.SubscriptionStatusChanged += (_, e) =>
+  logger.LogWarning("Subscription {Destination}: {Previous} -> {Status}",
+    e.Destination.Address, e.PreviousStatus, e.Status);
+```
+
+`SubscriptionsReady` marks the end of the initial subscription pass, once; this event reports every later change
+per destination.
 
 ### Observability
 
