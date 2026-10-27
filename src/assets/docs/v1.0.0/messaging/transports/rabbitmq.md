@@ -29,6 +29,7 @@ testReferences:
   - tests/Whizbang.Transports.RabbitMQ.Tests/RabbitMQBatchSubscribeTests.cs
   - tests/Whizbang.Transports.RabbitMQ.Component.Tests/RabbitMQTransportBatchPathTests.cs
   - tests/Whizbang.Transports.RabbitMQ.Component.Tests/RabbitMQTransportFailurePathTests.cs
+  - tests/Whizbang.Transports.RabbitMQ.Component.Tests/RabbitMQReceiveStoresBeforeSettlingTests.cs
   - tests/Whizbang.Transports.RabbitMQ.Component.Tests/RabbitMQSubscriptionTests.cs
   - tests/Whizbang.Transports.RabbitMQ.Tests/RabbitMQHealthCheckTests.cs
   - tests/Whizbang.Transports.RabbitMQ.Tests/ServiceCollectionExtensionsTests.cs
@@ -144,7 +145,7 @@ flowchart TD
 flowchart TD
     Subscriber["Subscriber (Fulfillment Service)"]
     Transport["RabbitMQTransport<br/><br/>- Create dedicated channel<br/>- Set QoS prefetch (default: 200)<br/>- Declare exchange<br/>- Declare queue with DLX<br/>- Bind queue to exchange<br/>- Create AsyncEventingBasicConsumer"]
-    Handler["Batch Handler<br/><br/>- Check subscription.IsActive<br/>- Collect deliveries into a batch<br/>- Deserialize via EnvelopeType<br/>- Invoke batch handler<br/>- BasicAck each on success<br/>- BasicNack + requeue on failure<br/>- BasicNack → DLQ after max retries"]
+    Handler["Batch Handler<br/><br/>- Check subscription.IsActive<br/>- Collect deliveries into a batch<br/>- Deserialize via EnvelopeType, or as received<br/>- Invoke batch handler (stores first)<br/>- BasicAck each on success<br/>- BasicNack + requeue on failure<br/>- BasicNack → DLQ after max retries,<br/>or for a body that is not an envelope"]
 
     Subscriber -->|"1. SubscribeBatchAsync(batchHandler, destination, batchOptions)<br/>Destination.Address: #quot;orders#quot;<br/>Destination.RoutingKey: #quot;fulfillment-orders-queue#quot;"| Transport
     Transport -->|"2. Receive BasicDeliver event"| Handler
@@ -839,6 +840,34 @@ public class OrderProcessor {
     }
 }
 ```
+
+---
+
+## Receiving: stored before acking {#stored-before-acking}
+
+The transport acks a message only after the consumer's handler has stored it, on the batch path and the
+single-message path alike. Every body that is a valid envelope is handed to the handler: as its typed
+envelope when this service can read it, otherwise as received (an envelope of `JsonElement` with the type
+the producer named), including a type no JSON context here describes and a valid envelope with no
+`EnvelopeType` header. A payload no local receptor or perspective consumes is no longer acked unstored;
+the consumer stores it settled with the reason (see
+[skipped messages](./transport-consumer#skipped-messages)).
+
+Only a body that is not a readable envelope (or one whose message id is not a UUIDv7) is refused: it is
+nacked without requeue, so the queue's dead-letter exchange routes it to the dead-letter queue, where the
+[transport dead-letter drain](../../operations/dead-letter-queue/transport-recovery) gives it custody.
+Keep `AutoDeclareDeadLetterExchange` on (the default) or declare a dead-letter exchange yourself; without
+one, RabbitMQ discards a message nacked without requeue.
+
+:::updated
+Before this release the transport nacked an unresolvable type without requeue and acked a no-consumer
+message on the single-message path, both before anything stored them. A body the deserializer threw on
+escaped the batch flush, and the batch collector flushed that batch again on every window, so the message
+and its neighbors were never acked or nacked. Now that body is dead-lettered and its neighbors are stored
+and acked. The `discardPolicy` constructor parameter of `RabbitMQTransport` is kept for compatibility and
+is no longer consulted on receive.
+:::
+{verified: RabbitMQReceiveStoresBeforeSettlingTests.Flush_ABodyTheDeserializerThrowsOn_IsDeadLettered_AndItsNeighborsAreStoredAndAckedAsync, RabbitMQReceiveStoresBeforeSettlingTests.Flush_AnEnvelopeOfATypeThisServiceDoesNotKnow_IsHandedOnToBeStoredBeforeItIsAckedAsync, RabbitMQReceiveStoresBeforeSettlingTests.Deliver_AMessageNoLocalConsumerTakes_IsHandedOnToBeStoredBeforeItIsAckedAsync, RabbitMQReceiveStoresBeforeSettlingTests.Deliver_AnEnvelopeOfATypeThisServiceDoesNotKnow_IsHandedOnToBeStoredAsync, RabbitMQReceiveStoresBeforeSettlingTests.Flush_AValidEnvelopeWithNoEnvelopeTypeHeader_IsHandedOnWithNoTypeAsync, RabbitMQReceiveStoresBeforeSettlingTests.Deliver_AValidEnvelopeWithNoEnvelopeTypeHeader_IsHandedOnWithNoTypeAsync, RabbitMQReceiveStoresBeforeSettlingTests.Flush_AnEnvelopeWhoseIdIsNotAMessageId_IsDeadLettered_AndTheFlushCompletesAsync, RabbitMQReceiveStoresBeforeSettlingTests.Deliver_ABodyTheDeserializerThrowsOn_IsDeadLetteredNotLoopedAsync}
 
 ---
 

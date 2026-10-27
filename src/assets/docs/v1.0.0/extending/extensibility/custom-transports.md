@@ -1010,6 +1010,7 @@ public class KafkaTransportIntegrationTests {
 - ✅ **Support cancellation** via CancellationToken
 - ✅ **Add health checks** for transport status
 - ✅ **Test with real backends** (Docker containers)
+- ✅ **Store before settling**: hand every valid envelope to the batch handler (read it as received with `ReceivedEnvelopeReader` when the typed read fails) and ack or complete it only after the handler returns; dead-letter only a body that is not a readable envelope (see [stored before settling](../../messaging/transports/transport-consumer#batch-handler))
 
 ### DON'T ❌
 
@@ -1019,6 +1020,7 @@ public class KafkaTransportIntegrationTests {
 - ❌ Forget to dispose subscriptions (memory leaks)
 - ❌ Use reflection for serialization (breaks AOT)
 - ❌ Swallow exceptions silently (log errors!)
+- ❌ Ack and drop a message the service does not consume: the consumer stores it settled with the reason
 - ❌ Hardcode configuration (use options pattern)
 
 ---

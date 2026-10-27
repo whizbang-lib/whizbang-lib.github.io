@@ -101,7 +101,11 @@ The columns split into four groups:
    `error_fingerprint`) — captured at the move boundary so the original row can
    be reconstructed if recovery succeeds. For `wh_perspective_events` rows the
    envelope holds an `event_id` pointer that recovery rejoins against
-   `wh_event_store`.
+   `wh_event_store`. Since migration 241 the snapshot keeps every field the
+   source table's store needs, so recovery can re-enter the row through that
+   store: for an outbox row the envelope type, event flag, flags, scope,
+   priority, schedule and coalesce group, and for perspective work its
+   priority (see [outbox and perspective re-entry](./recovery#outbox-perspective-reentry)).
 2. **Generation** (`generation`, `retried_on_generations`) — used by the
    "we-shipped-a-fix" auto-replay: on every deploy, any row whose current
    generation isn't in `retried_on_generations` gets one free retry attempt.
