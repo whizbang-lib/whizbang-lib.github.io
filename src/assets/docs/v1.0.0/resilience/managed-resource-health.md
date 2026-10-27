@@ -27,6 +27,7 @@ codeReferences:
   - src/Whizbang.Transports.AzureServiceBus/AzureServiceBusTransport.cs
   - src/Whizbang.Core/Health/StartupPipelineHealthSource.cs
 testReferences:
+  - tests/Whizbang.Core.Component.Tests/Health/HealthProbeMustAlwaysAnswerTests.cs
   - tests/Whizbang.Core.Tests/Health/WhizbangHealthAggregatorTests.cs
   - tests/Whizbang.Core.Tests/Health/SchemaHealthSourceTests.cs
   - tests/Whizbang.Core.Tests/Health/WorkerHealthSourceTests.cs
@@ -182,6 +183,19 @@ stage has been entered yet. The ASP.NET liveness and readiness checks add it to 
 
 The keys are absent while there is no stage.
 {verified: WhizbangHealthAggregatorTests.Evaluate_CarriesTheStartupStage_ForEveryProbeAsync, WhizbangHealthAggregatorTests.Evaluate_WithoutAStageReporter_CarriesNoStageAsync, WhizbangManagedHealthCheckTests.Result_CarriesTheStartupStagesNumberNameAndMessageAsync, WhizbangManagedHealthCheckTests.Result_WithNoStage_CarriesNoStageKeysAsync}
+
+## A slow or blocked source {#slow-sources}
+
+The probe always answers. Each source is asked on its own thread-pool thread and given
+`WhizbangHealthOptions.SourceTimeout` (two seconds by default); a source that has not answered by then is
+reported `Faulted` and named in the result, and the others are unaffected. The deadlines run side by side,
+so several hanging sources cost one timeout, not one each. This holds even for a source that blocks inside
+`ReportAsync` before it returns a task: it never holds the caller's thread, so liveness keeps answering
+and the pod is not restarted for it.
+
+The deadline is measured on the `TimeProvider` registered in the container (`TimeProvider.System` when
+none is), so a test can drive it with a fake clock.
+{verified: HealthProbeMustAlwaysAnswerTests.SeveralHangingSourcesDoNotAddUpAsync, HealthProbeMustAlwaysAnswerTests.ASourceThatBlocksBeforeItReturnsIsTimedOutAsync, HealthProbeMustAlwaysAnswerTests.ATimedOutSourceIsReportedAsFaultedAndNamedAsync}
 
 ## Configuring / overriding
 
