@@ -57,7 +57,7 @@ updating and managing the extensions arrive in later releases.
 | `pg_trgm` | substring (trigram) indexes | yes | none |
 | `pg_squeeze` | online table rewrite without a long exclusive lock, driven by the library's table rewriter | yes | `shared_preload_libraries`, `wal_level = logical` |
 | `pg_repack` | online table rewrite through the `pg_repack` client, run in process or as an external job | yes | the `pg_repack` client program |
-| `pg_partman` | ledger partition management: `create_parent`, then `run_maintenance` from the library's maintenance worker (a built-in fallback exists) | yes | none (its background worker is optional) |
+| `pg_partman` | ledger partition creation under `Partitioning:Strategy` ([pg_partman](partitioned-ledgers#pg-partman)): `create_parent` once per table, then `run_maintenance` from the library's maintenance worker each cycle; the built-in manager is the fallback and always drops | yes | none (its background worker is not used) |
 | `pgstattuple` | exact table bloat measurement (otherwise estimated) | yes | none |
 | `pg_stat_statements` | query statistics, read by the expensive-predicate advice only while `Ready` ([readers](capabilities.md#readers)) | yes | `shared_preload_libraries` |
 | `pg_cron` | in-database scheduling | no (it lives in one database) | `shared_preload_libraries` |

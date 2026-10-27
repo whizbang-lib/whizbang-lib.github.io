@@ -44,11 +44,13 @@ codeReferences:
   - src/Whizbang.Core/Workers/MaintenanceRetentionOptions.cs
   - src/Whizbang.Core/Workers/MaintenancePartitioningOptions.cs
   - src/Whizbang.Core/Workers/TableRewriteStrategy.cs
+  - src/Whizbang.Core/Workers/PartitionManagementStrategy.cs
   - src/Whizbang.Core/Capabilities/CapabilityAutoProvision.cs
   - src/Whizbang.Core/Configuration/EphemeralPointerPruneOptions.cs
   - src/Whizbang.Data.Postgres/RetentionSettingsWriter.cs
 testReferences:
   - tests/Whizbang.Core.Tests/Workers/TableRewriteStrategyTests.cs
+  - tests/Whizbang.Core.Tests/Workers/PartitionManagementStrategyTests.cs
   - tests/Whizbang.Core.Tests/Capabilities/CapabilityAutoProvisionTests.cs
   - tests/Whizbang.Core.Tests/Configuration/UnknownConfigurationKeyCheckTests.cs
   - tests/Whizbang.Core.Component.Tests/Configuration/UnknownConfigurationKeyStartupValidatorTests.cs
@@ -1162,6 +1164,7 @@ Operator rung of the row-retention override ladder. **Configure:** bound automat
 | `Retention.IntegrityLedgerMaxEntries` | `int?` | unset (database: `100000`) | `Whizbang__Workers__Maintenance__Retention__IntegrityLedgerMaxEntries` | The most entries the integrity ledger keeps, most recently touched first. Publishes `integrity_ledger_max_entries` |
 | `Partitioning.Enabled` | `bool` | `false` | `Whizbang__Workers__Maintenance__Partitioning__Enabled` | Convert the framework's time-ordered tables (`wh_log`, `wh_signals`, `wh_lifecycle_completions`) to time partitions and keep them: create ahead, drop past the window ([partitioned ledgers](../infrastructure/partitioned-ledgers#enabling-it)). Publishes `partition_maintenance_enabled` |
 | `Partitioning.CreateAhead` | `int` | `3` | `Whizbang__Workers__Maintenance__Partitioning__CreateAhead` | Partition intervals past the current one each cycle makes sure exist; at least `1` |
+| `Partitioning.Strategy` | `PartitionManagementStrategy` | `Auto` | `Whizbang__Workers__Maintenance__Partitioning__Strategy` | Who creates partitions: `Auto` (pg_partman where it is already Ready, otherwise the built-in manager; never installs pg_partman), `BuiltIn`, or `PgPartman` (requires the extension, so start fails without it). Expired partitions are always dropped by the built-in manager ([pg_partman](../infrastructure/partitioned-ledgers#pg-partman)) {verified: PartitionManagementStrategyTests.Resolve_EachCellAsync, PartitionManagementStrategyTests.TheSetting_DefaultsToAuto_AndBindsFromConfigurationAsync} |
 
 The `Retention` windows are database-side settings: each cycle publishes the ones you set to `wh_settings` before
 the sweep reads them, and leaves the ones you do not set alone. See [Database-side settings](#database-side-settings).

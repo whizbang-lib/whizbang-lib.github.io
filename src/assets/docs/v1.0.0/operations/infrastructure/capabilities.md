@@ -36,6 +36,7 @@ codeReferences:
   - src/Whizbang.Core/Capabilities/CapabilityVersion.cs
   - src/Whizbang.Data.Postgres/PostgresCapabilityProvisioner.cs
   - src/Whizbang.Data.Postgres/Observability/PostgresTableStatisticsProvider.cs
+  - src/Whizbang.Core/Workers/PartitionManagementStrategy.cs
 testReferences:
   - tests/Whizbang.Core.Tests/Capabilities/CapabilityDescriptorTests.cs
   - tests/Whizbang.Core.Tests/Capabilities/CapabilityRegistryTests.cs
@@ -58,6 +59,7 @@ testReferences:
   - tests/Whizbang.Data.Dapper.Postgres.Tests/PostgresCapabilityProvisioningIntegrationTests.cs
   - tests/Whizbang.Core.Tests/Observability/StatementStatisticsCapabilityTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/TableStatisticsProviderTests.cs
+  - tests/Whizbang.Core.Tests/Workers/PartitionManagementStrategyTests.cs
 ---
 
 # Capabilities
@@ -125,7 +127,7 @@ at Information when the capability is Ready, Warning when it warns or degrades, 
 ```text
 capability postgres/pg_squeeze on 'orders': Ready, created 1.7.0. Required by: Online table rewrite (Whizbang:Workers:Maintenance:TableRewriteStrategy = PgSqueeze, explicit)
 capability postgres/pg_trgm on 'orders': Ready, already present 1.6. Required by: Substring indexes on perspective fields (OrderSearch, default)
-capability postgres/pg_partman on 'orders': NotPermitted; NotAllowlisted. Fix: add PG_PARTMAN to azure.extensions. Required by: Partition management (Whizbang:Workers:Maintenance:Partitioning:Strategy = Auto, default)
+capability postgres/pg_partman on 'orders': NotPermitted, 5.5.0; NotAllowlisted. Fix: add PG_PARTMAN to the server's extension allowlist (azure.extensions on Azure Database for PostgreSQL). Required by: Partition management (Whizbang:Workers:Maintenance:Partitioning:Strategy = PgPartman, explicit)
 ```
 
 A Ready capability says what [provisioning](#provisioning) did before its version: `created`, `already present`
@@ -565,6 +567,7 @@ probes.
 
 - [Postgres extensions](postgres-extensions.md), the first provider
 - [Storage maintenance: table rewrite strategy](storage-maintenance.md#table-rewrite-strategy), the first setting that requires a capability
+- [Partitioned ledgers: pg_partman](partitioned-ledgers.md#pg-partman), a setting whose default uses a capability only when it is already Ready and whose explicit value requires it
 - [Startup pipeline](../startup/startup-pipeline.md)
 - [Metrics reference: Whizbang.Capabilities](../observability/metrics.md#capabilities)
 - [Configuration reference](../configuration/configuration-reference.md#capabilities-options)
