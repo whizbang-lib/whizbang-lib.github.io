@@ -4,6 +4,8 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, readFileSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
+import { spawnSync } from 'child_process';
+import { fileURLToPath } from 'url';
 import { libraryPullRequestsToRecheck, formatOutput, run, MAX_DISPATCHES } from './library-review-recheck.mjs';
 
 /** A pull_request_target event, trimmed to the fields the script reads. */
@@ -99,4 +101,26 @@ test('run says so when there is nothing to re-check', () => {
 test('run fails without the event and output files', () => {
   assert.throws(() => run({ eventPath: '', outputPath: 'x', log: () => {} }), /GITHUB_EVENT_PATH and GITHUB_OUTPUT are required/);
   assert.throws(() => run({ eventPath: 'x', outputPath: undefined, log: () => {} }), /GITHUB_EVENT_PATH and GITHUB_OUTPUT are required/);
+});
+
+// --- as a script ------------------------------------------------------------------------------------------------
+
+const SCRIPT = fileURLToPath(new URL('./library-review-recheck.mjs', import.meta.url));
+
+test('as a script it writes the step output from the event file', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'review-recheck-'));
+  const eventPath = join(dir, 'event.json');
+  const outputPath = join(dir, 'output');
+  writeFileSync(eventPath, JSON.stringify(event({ action: 'reopened' })));
+  writeFileSync(outputPath, '');
+  const result = spawnSync(process.execPath, [SCRIPT], { env: { ...process.env, GITHUB_EVENT_PATH: eventPath, GITHUB_OUTPUT: outputPath }, encoding: 'utf8' });
+  assert.equal(result.status, 0);
+  assert.equal(readFileSync(outputPath, 'utf8'), 'numbers=[1805]\n');
+});
+
+test('as a script it fails, saying why, when the event cannot be read', () => {
+  const env = { ...process.env, GITHUB_EVENT_PATH: '', GITHUB_OUTPUT: '' };
+  const result = spawnSync(process.execPath, [SCRIPT], { env, encoding: 'utf8' });
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /could not read the event\. GITHUB_EVENT_PATH and GITHUB_OUTPUT are required/);
 });
