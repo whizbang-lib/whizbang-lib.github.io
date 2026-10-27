@@ -28,6 +28,7 @@ testReferences:
   - tests/Whizbang.Transports.Tests/TransportDestinationTests.cs
   - tests/Whizbang.Transports.Component.Tests/InProcessTransportTests.cs
   - tests/Whizbang.Transports.Tests/ISubscriptionTests.cs
+  - tests/Whizbang.Core.Component.Tests/Resilience/SubscriptionRetryHelperDisconnectWindowTests.cs
   - tests/Whizbang.Transports.Tests/BulkPublishTests.cs
   - tests/Whizbang.Transports.Component.Tests/SubscribeBatchTests.cs
   - tests/Whizbang.Core.Tests/Workers/TransportPublishStrategyTests.cs
@@ -242,6 +243,36 @@ subscription.Dispose();
 ```
 
 `TransportBatchOptions` defaults: `BatchSize = 200`, `SlideMs = 20`, `MaxWaitMs = 1000`.
+
+## Subscription Disconnects {#subscription-disconnects}
+
+A subscription reports an unexpected loss of its connection in two ways: it raises `ISubscription.OnDisconnected`,
+and it keeps the event arguments in `ISubscription.Disconnection` (`null` until it disconnects). The event reaches
+only the handlers attached when it is raised, and a broker connection can drop between the transport creating a
+subscription and the caller attaching its handler. Attach the handler first and then read `Disconnection`: either
+the handler hears the disconnect or the property already holds it. Treat the two as one disconnect.
+
+```csharp{title="Watch a subscription for a disconnect" description="Attach the handler, then read the recorded disconnect, so a drop before the handler was attached is not missed" category="Operations" difficulty="ADVANCED" tags=["Messaging", "Transports", "Resilience"] tests=["SubscriptionRetryHelperDisconnectWindowTests.SubscribeWithRetryAsync_DisconnectBeforeTheHandlerIsAttached_EndsRecoveringAndReconnectsAsync", "SubscriptionRetryHelperDisconnectWindowTests.SubscribeWithRetryAsync_DisconnectBothRecordedAndRaisedInTheWindow_ReconnectsOnceAsync"]}
+var subscription = await transport.SubscribeBatchAsync(handler, destination, batchOptions);
+var reported = 0;
+void OnDropped(SubscriptionDisconnectedEventArgs args) {
+    if (args.IsApplicationInitiated || Interlocked.Exchange(ref reported, 1) == 1) {
+        return; // a shutdown we asked for, or the same drop seen twice
+    }
+    ScheduleResubscribe(args.Reason);
+}
+
+subscription.OnDisconnected += (_, args) => OnDropped(args);
+if (subscription.Disconnection is { } missed) {
+    OnDropped(missed); // dropped before the handler was attached
+}
+```
+
+The transport consumer does this for every destination it subscribes to (see
+[Subscription status changes](transport-consumer.md#subscription-status-changes)). A transport that raises
+`OnDisconnected` records the arguments in `Disconnection` before raising the event, and only for a disconnect that is
+not `IsApplicationInitiated`; the RabbitMQ and Azure Service Bus subscriptions do. The interface's default returns
+`null`, which is right for a subscription that never disconnects, such as the in-process transport's.
 
 ## Transport Registration
 
