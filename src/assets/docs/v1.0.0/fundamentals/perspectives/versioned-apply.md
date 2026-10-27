@@ -68,6 +68,8 @@ UUIDv7 from `TrackedGuid.New()` orders lexicographically by emission time, so "n
 
 **A write at the stored EventId lands.** When a stream's later event reaches the row first, the runner folds the earlier event onto the row by rewinding the stream, and the corrected row records the stream's frontier, which is the EventId the row already holds. A strictly-greater check refused that correction, so the earlier event was reported applied and never reached the row ([#1608](https://github.com/whizbang-lib/whizbang/issues/1608)). Admitting the stored EventId lets the correction land. A live write the guard does refuse is re-folded from the batch's earliest event rather than reported applied.
 
+**A rebuild's write is not ordered on the EventId.** A rebuild re-derives the row from every event of the stream, folded from an empty model in stream-version order, so its write carries the EventId of the stream's last event by version. When events were appended out of EventId order, that id sorts below the one the stored row records, and the EventId check refused the only write that could repair the row ([#1819](https://github.com/whizbang-lib/whizbang/issues/1819)). A rebuild's write to an opted-in model therefore takes the default CommitSequence guard, which passes because a rebuild records the highest CommitSequence it folded. Live apply and the rewind keep the EventId check, and the row-version check still refuses a stale read in every mode.
+
 A redelivered event (a transport redelivery, a consumer retry) is still applied once: the runner's idempotency filter drops an event the row already carries before it reaches the store. A stale cross-pod read is still refused by the row-version check.
 
 ## Behavior summary
@@ -77,6 +79,7 @@ A redelivered event (a transport redelivery, a consumer retry) is still applied 
 | Newer event applied later | Wins | Wins |
 | Stale event applied later (older EventId) | **Wins (overwrites the row)** | **Skipped** |
 | Write at the row's own EventId (a rewind's correction) | Wins | Wins |
+| Rebuild write whose last event (by version) has an older EventId | Wins | **Wins** (CommitSequence guard) |
 | Same event redelivered | Dropped by the runner's idempotency filter | Dropped by the runner's idempotency filter |
 | Null `metadata.CommitSequence` on both sides | Last-writer-wins (current contract) | Falls back to EventId comparison |
 | Null `metadata.EventId` on existing row | Initial write proceeds | Initial write proceeds |
