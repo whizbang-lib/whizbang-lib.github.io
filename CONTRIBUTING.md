@@ -348,6 +348,11 @@ where `N` is the library pull request or issue. GitHub then shows the link on th
 
 The check **Gate · Linked change** enforces this. It looks each reference up, so a number that does not exist does not count, and text inside inline code or a code block does not count either, because GitHub does not link it. The check reads the description when it runs: after editing the description, re-run the check.
 
+Opening or reopening the pull request, or editing its description, also asks the library to re-run the
+review check of each library pull request it names (**Library review re-check**,
+`.github/workflows/library-review-recheck.yml`), so the library pull request goes green on its own once
+its docs exist. Nothing needs re-running by hand on the library side.
+
 Exempt: pull requests opened by a bot (the main-to-develop sync and the published test-status data), and the release pull request from a `release/*` branch into `main`.
 
 ### Example PR Description
