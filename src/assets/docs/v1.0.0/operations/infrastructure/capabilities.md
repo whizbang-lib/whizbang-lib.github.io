@@ -37,6 +37,7 @@ codeReferences:
   - src/Whizbang.Data.Postgres/PostgresCapabilityProvisioner.cs
   - src/Whizbang.Data.Postgres/Observability/PostgresTableStatisticsProvider.cs
   - src/Whizbang.Core/Workers/PartitionManagementStrategy.cs
+  - src/Whizbang.Core/Workers/TableRewriteStrategy.cs
 testReferences:
   - tests/Whizbang.Core.Tests/Capabilities/CapabilityDescriptorTests.cs
   - tests/Whizbang.Core.Tests/Capabilities/CapabilityRegistryTests.cs
@@ -60,6 +61,7 @@ testReferences:
   - tests/Whizbang.Core.Tests/Observability/StatementStatisticsCapabilityTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/TableStatisticsProviderTests.cs
   - tests/Whizbang.Core.Tests/Workers/PartitionManagementStrategyTests.cs
+  - tests/Whizbang.Core.Tests/Workers/TableRewriteStrategyTests.cs
 ---
 
 # Capabilities
@@ -98,7 +100,7 @@ flowchart LR
   provider, the scope and the reason. Nothing a provider does can stop startup.
 
 ## States {#states}
-{verified: CapabilityDescriptorTests.IsUsable_OnlyForReadyAndProvisionableAsync, CapabilityDescriptorTests.Remedy_UsesTheProvidersFixForTheStateAsync, CapabilityDescriptorTests.Remedy_FallsBackToAGenericFixWhenTheProviderGaveNoneAsync}
+{verified: CapabilityDescriptorTests.IsUsable_OnlyForReadyAndProvisionableAsync, CapabilityDescriptorTests.Remedy_UsesTheProvidersFixForTheStateAsync, CapabilityDescriptorTests.Remedy_FallsBackToAGenericFixWhenTheProviderGaveNoneAsync, CapabilityDescriptorTests.Remedy_WithADetailThatHasItsOwnFix_UsesThatFixAsync}
 
 | State | Meaning | Usable |
 |---|---|---|
@@ -111,7 +113,10 @@ flowchart LR
 | `Unknown` | Could not be determined: the probe failed, is turned off, or has not run yet. | no |
 
 Each provider keeps its own finer state as the status's detail (for Postgres, `NotAllowlisted` behind
-`NotPermitted`), and its descriptor gives the fix for each problem state.
+`NotPermitted`), and its descriptor gives the fix for each problem state. When two details share one state and need
+different fixes, the descriptor also gives a fix per detail (`DetailRemedies`), which the verdict and the report use
+before the state's: Postgres reads both `NeedsPreload` and `NeedsLogicalWalLevel` as `NeedsServerChange`, and the
+line names `shared_preload_libraries` for one and `wal_level` for the other.
 
 ## Verdict {#verdict}
 {verified: CapabilityVerdictTests.Explicit_Ready_ProceedsAsync, CapabilityVerdictTests.Explicit_KnownAndNotReady_FailsStartWithTheFixAsync, CapabilitiesStartupStepTests.ExplicitRequirement_OnACapabilityNotReady_IsAnErrorLine_AndTheVerdictIsPublishedAsync, CapabilityReportTests.Log_WritesOneBlockPairPerProviderAndScopeAsync}
@@ -272,6 +277,32 @@ Under the lock it reads the extension again: one another session created or upgr
 `already present`. The upgrade target is the server's default version (`pg_available_extensions.default_version`).
 An extension that only a privileged role can create still needs that role once; see the fixes on
 [Postgres extensions](postgres-extensions.md).
+
+### pg_squeeze, end to end {#pg-squeeze}
+{verified: TableRewriteStrategyTests.PgSqueeze_IsTheLibrarysFirstSettingDrivenRequirementAsync, TableRewriteStrategyTests.ExplicitPgSqueeze_OnAServerWithoutThePreload_FailsStartWithThePreloadFixAsync, TableRewriteStrategyTests.ExplicitPgSqueeze_OnAServerWithoutLogicalWal_FailsStartWithTheWalLevelFixAsync, TableRewriteStrategyTests.ExplicitPgSqueeze_OnAServerThatDoesNotAllowlistIt_FailsStartWithTheFixAsync}
+
+pg_squeeze is managed entirely by this pattern. `TableRewriteStrategy.PgSqueeze` carries
+`[RequiresPostgresExtension("pg_squeeze", Feature = "Online table rewrite")]`, so setting
+`Whizbang:Workers:Maintenance:TableRewriteStrategy = PgSqueeze` puts an explicit requirement in force, and the default
+`Auto` puts none. On each start:
+
+| What the probe finds | What happens |
+|---|---|
+| Installed, preloaded, logical WAL | `Ready, already present` (or `upgraded` when a newer version is on the server) |
+| Creatable, preloaded, logical WAL | created with `CREATE EXTENSION`, then `Ready, created` |
+| Not in the allowlist | start fails: add it to the allowlist and to `shared_preload_libraries`, then restart |
+| Not preloaded | start fails: add it to `shared_preload_libraries`, then restart |
+| Preloaded, `wal_level` not logical (below Postgres 19) | start fails: set `wal_level = logical`, then restart |
+| `AutoProvision` off for it and not created | start fails with the provisioning-off reason |
+
+The operator's part is the server: the allowlist, the preload, the WAL level, and a restart. The library's part is the
+extension in the database, and the [online rewrite](storage-maintenance.md#online-rewrite) that uses it from the
+maintenance cycle, which also checks the per-table prerequisites the probe cannot (a free replication slot, the role's
+`REPLICATION` attribute, table ownership) before each call.
+
+```text
+capability postgres/pg_squeeze on 'orders': NeedsServerChange, 1.9; NeedsLogicalWalLevel. Fix: set wal_level = logical (and max_replication_slots to at least one more than the slots in use), then restart the server. Required by: Online table rewrite (Whizbang:Workers:Maintenance:TableRewriteStrategy = PgSqueeze, explicit)
+```
 
 ### A provider's provisioner {#adding-a-provisioner}
 {verified: CapabilityServiceCollectionExtensionsTests.TheStep_RunsEveryRegisteredProvisionerAsync, CapabilityProvisioningTests.AProviderWithNoProvisioner_IsReportedAsSuchAsync, CapabilityProvisioningTests.ACapabilityTheLibraryNeverProvisions_IsLeftForTheOperatorAsync}
