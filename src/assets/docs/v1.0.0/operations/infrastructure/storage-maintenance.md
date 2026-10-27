@@ -220,6 +220,40 @@ flowchart TD
   Whizbang analyzes the table and measures it again.
 
 ```json{title="Rewrite tables online with pg_repack, run in process" description="Selects pg_repack and requires its client on the host; start fails with the fix when it is missing." category="Configuration" difficulty="INTERMEDIATE" tags=["storage", "table-rewrite", "pg_repack", "maintenance", "configuration"] tests=["PgRepackTests.Options_BindFromConfigurationThroughAddWhizbangWorkersAsync", "PgRepackTests.InProcess_WithNoClient_FailsAnExplicitRequirementAsync"]}
+{
+  "Whizbang": {
+    "Workers": {
+      "Maintenance": {
+        "TableRewriteStrategy": "PgRepack",
+        "TableRewrite": {
+          "PgRepack": {
+            "Mode": "InProcess",
+            "ClientPath": "/usr/lib/postgresql/16/bin/pg_repack"
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+On a host without the client, start then stops with:
+
+```text
+capability program/pg_repack on '/usr/lib/postgresql/16/bin/pg_repack': Missing: An error occurred trying to start process '/usr/lib/postgresql/16/bin/pg_repack' with working directory '/app'. No such file or directory. Fix: install the pg_repack client program, the same version as the pg_repack extension, on this host's PATH or set Whizbang:Workers:Maintenance:TableRewrite:PgRepack:ClientPath to it; or set Whizbang:Workers:Maintenance:TableRewrite:PgRepack:Mode = External and run it as a job. Required by: Online table rewrite, in process (pg_repack client) (Whizbang:Workers:Maintenance:TableRewrite:PgRepack:Mode = InProcess, explicit)
+```
+
+In `External` mode, a job lists the queue and runs the client the same way, with the connection in its environment:
+
+```bash{title="An external pg_repack job" description="Runs pg_repack against each table Whizbang has queued, with the connection in the environment." category="Operations" difficulty="ADVANCED" tags=["pg_repack", "table-rewrite", "external-job", "maintenance"] tests=["PgRepackTests.External_NeverStartsAProcess_NotToProbe_NotToRewriteAsync"]}
+export PGHOST=db.internal PGDATABASE=orders PGUSER=orders_owner PGPASSFILE=/run/secrets/pgpass
+for table in $(psql -Atc "SELECT table_name FROM wh_tables_needing_rewrite()"); do
+  pg_repack --no-superuser-check --no-kill-backend --table="public.$table"
+done
+```
+
+The next boot's `Rewrite` step re-measures, and a request whose table is lean again is no longer offered.
+
 ## Online rewrite through pg_squeeze {#online-rewrite}
 {verified: OnlineTableRewriteStepTests.Rewrites_TheLargestBloatRatioFirstAsync, OnlineTableRewriteStepTests.Budget_SkipsATableThatWouldOverrunIt_AndTakesASmallerOneThatFitsAsync, OnlineTableRewriteStepTests.NotImproved_LeavesTheRequestQueuedAsync, OnlineTableRewriteStepTests.PgSqueezeNotReadyOnEveryDatabase_RewritesNothing_AndSaysWhereAsync}
 
@@ -269,13 +303,6 @@ flowchart TD
   "Whizbang": {
     "Workers": {
       "Maintenance": {
-        "TableRewriteStrategy": "PgRepack",
-        "TableRewrite": {
-          "PgRepack": {
-            "Mode": "InProcess",
-            "ClientPath": "/usr/lib/postgresql/16/bin/pg_repack"
-          }
-        }
         "TableRewriteStrategy": "PgSqueeze",
         "OnlineRewriteMaxBytesPerCycle": 4294967296
       }
@@ -284,22 +311,6 @@ flowchart TD
 }
 ```
 
-On a host without the client, start then stops with:
-
-```text
-capability program/pg_repack on '/usr/lib/postgresql/16/bin/pg_repack': Missing: An error occurred trying to start process '/usr/lib/postgresql/16/bin/pg_repack' with working directory '/app'. No such file or directory. Fix: install the pg_repack client program, the same version as the pg_repack extension, on this host's PATH or set Whizbang:Workers:Maintenance:TableRewrite:PgRepack:ClientPath to it; or set Whizbang:Workers:Maintenance:TableRewrite:PgRepack:Mode = External and run it as a job. Required by: Online table rewrite, in process (pg_repack client) (Whizbang:Workers:Maintenance:TableRewrite:PgRepack:Mode = InProcess, explicit)
-```
-
-In `External` mode, a job lists the queue and runs the client the same way, with the connection in its environment:
-
-```bash{title="An external pg_repack job" description="Runs pg_repack against each table Whizbang has queued, with the connection in the environment." category="Operations" difficulty="ADVANCED" tags=["pg_repack", "table-rewrite", "external-job", "maintenance"] tests=["PgRepackTests.External_NeverStartsAProcess_NotToProbe_NotToRewriteAsync"]}
-export PGHOST=db.internal PGDATABASE=orders PGUSER=orders_owner PGPASSFILE=/run/secrets/pgpass
-for table in $(psql -Atc "SELECT table_name FROM wh_tables_needing_rewrite()"); do
-  pg_repack --no-superuser-check --no-kill-backend --table="public.$table"
-done
-```
-
-The next boot's `Rewrite` step re-measures, and a request whose table is lean again is no longer offered.
 A cycle ends with one line, for example
 `Online rewrite: 1 of 2 queued table(s) rewritten this cycle; 1 left queued`.
 
