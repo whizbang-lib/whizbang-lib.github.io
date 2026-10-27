@@ -201,7 +201,7 @@ public record OrderCreated : IEvent {
 }
 ```
 
-The property must be `Guid`, `Guid?`, or a WhizbangId type, and only **one** property per message type may carry `[StreamId]` (the attribute is inherited by derived message types).
+The property may be of any type (`Guid`, `Guid?`, `string` or a strongly typed ID; the extractor keys the stream by the value's string form), and only **one** property per message type may carry `[StreamId]`. The attribute is inherited by derived message types; a derived type that declares its own stream ID on purpose marks it `[StreamId(Override = true)]` (see [StreamId Attribute](../../extending/attributes/streamid#overriding-an-inherited-stream-id)).
 
 ### Comparison
 

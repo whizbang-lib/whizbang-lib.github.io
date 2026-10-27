@@ -13,12 +13,17 @@ tags: 'attributes, streamid, event-sourcing, source-generator, aggregates'
 codeReferences:
   - src/Whizbang.Core/StreamIdAttribute.cs
   - src/Whizbang.Generators/StreamIdGenerator.cs
+  - src/Whizbang.Generators/Utilities/StreamIdSelection.cs
+  - src/Whizbang.Generators/Analyzers/StreamIdAttributeAnalyzer.cs
   - src/Whizbang.Core/StreamIdResolver.cs
   - src/Whizbang.Core/StreamIdExtractor.cs
   - src/Whizbang.Core/IStreamIdExtractor.cs
 testReferences:
   - tests/Whizbang.Generators.Tests/StreamIdGeneratorTests.cs
   - tests/Whizbang.Generators.Tests/StreamIdGeneratorCoverageTests.cs
+  - tests/Whizbang.Generators.Tests/StreamIdOverrideGeneratorTests.cs
+  - tests/Whizbang.Generators.Tests/Analyzers/StreamIdAttributeAnalyzerTests.cs
+  - tests/Whizbang.Core.Tests/StreamKeyAttributeTests.cs
   - tests/Whizbang.Core.Tests/StreamIdExtractorTests.cs
   - tests/Whizbang.Core.Tests/Registry/StreamIdExtractorRegistryTests.cs
 lastMaintainedCommit: '01f07906'
@@ -64,10 +69,18 @@ The `[StreamId]` attribute serves two critical purposes:
 
 ## Requirements
 
-- **Property type**: Must be `Guid`, `Guid?`, or a WhizbangId type
-- **One per type**: Only one property per message type should have this attribute
-- **Inherited**: Attribute is inherited by derived message types
+- **Property type**: Any type. The extractor keys the stream by the value's string form, so `Guid`, `Guid?`, `string`
+  and strongly typed IDs all work
+- **One per type**: Only one property per message type should have this attribute ([WHIZ006](../../operations/diagnostics/whiz006))
+- **Inherited**: Attribute is inherited by derived message types; a derived type replaces an inherited one with
+  `Override = true` (see [Overriding an Inherited Stream ID](#overriding-an-inherited-stream-id))
 - **Accessible**: Property must have a `get` accessor
+
+## Properties
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `Override` | `bool` | `false` | Marks this stream ID as replacing the `[StreamId]` the type inherits, on purpose. It is used ahead of any inherited one, and hiding the inherited one is not reported as [WHIZ006](../../operations/diagnostics/whiz006). {verified: StreamKeyAttributeTests.StreamIdAttribute_Override_DefaultsToFalseAsync, StreamKeyAttributeTests.StreamIdAttribute_Override_CanBeSetAsync} |
 
 ## Basic Examples
 
@@ -102,6 +115,48 @@ public record ProductCreated(
     decimal Price
 ) : IEvent;
 ```
+
+## Overriding an Inherited Stream ID
+
+A base command or event often declares a default stream ID that most derived types use, while some derived types
+belong to a different stream and declare their own key. Mark the derived key `[StreamId(Override = true)]`:
+
+```csharp{title="Override an inherited stream ID" description="The base declares a default stream ID; a derived command declares its own key with Override = true, and that key is the stream ID." framework="NET10" category="Attributes" difficulty="INTERMEDIATE" tags=["StreamId", "Attributes", "Inheritance", "Override"] tests=["StreamIdAttributeAnalyzerTests.ADerivedOverridePropertyOverAnInheritedOne_IsNotReportedAsync", "StreamIdOverrideGeneratorTests.AnEventOverrideProperty_IsTheStreamIdAheadOfTheInheritedOneAsync"]}
+public abstract class CommandBase : ICommand {
+  [StreamId]
+  public virtual Guid StreamId { get; set; }
+}
+
+public class AcknowledgeAlert : CommandBase {
+  [StreamId(Override = true)]
+  public Guid AckId { get; set; }   // the stream ID for this command
+}
+
+// On a record's primary-constructor parameter
+public record LineAdded([StreamId(Override = true)] Guid LineId) : OrderEventBase;
+```
+
+How the stream ID is chosen
+{verified: StreamIdOverrideGeneratorTests.AnEventOverrideParameter_IsTheStreamIdAheadOfAnInheritedPropertyAsync, StreamIdOverrideGeneratorTests.AnOverrideOnAnIntermediateRecord_IsInheritedByTheLeafAsync, StreamIdOverrideGeneratorTests.ACommandOverrideParameter_IsTheStreamIdAheadOfAnInheritedPropertyAsync, StreamIdOverrideGeneratorTests.ACompositeOverrideParameter_IsTheStreamIdAheadOfTheCompositeBaseAsync}:
+
+1. The generator searches the type and then each base type, nearest first.
+2. At each level, a `[StreamId(Override = true)]` (on a property, or on a record's primary-constructor parameter) is
+   used first, then a plain `[StreamId]` property.
+3. Only when no level has either is the type's own plain `[StreamId]` constructor parameter used.
+
+So an override is used ahead of any inherited `[StreamId]`, including the case where an inherited property would
+otherwise beat a derived record's `[StreamId]` parameter, and an override on an intermediate base type is inherited by
+the types below it. The analyzer makes the same choice, so:
+
+- hiding an inherited `[StreamId]` with an override is not reported;
+- two `[StreamId]` declared on one type, override or not, or a hide without the option, is still
+  [WHIZ006](../../operations/diagnostics/whiz006);
+- an override where no base type declares a `[StreamId]` is [WHIZ016](../../operations/diagnostics/whiz016);
+- an event whose stream ID is an override is not [WHIZ031](../../operations/diagnostics/whiz031) in a perspective, and
+  the perspective runner keys it by the override
+  {verified: StreamIdOverrideGeneratorTests.APerspectiveEventWithAnOverride_IsNotReportedAsMultipleStreamIdsAsync, StreamIdOverrideGeneratorTests.APerspectiveRunner_ExtractsTheOverrideParameterAsync}.
+
+A plain `[StreamId]` is unchanged: `Override` defaults to `false`.
 
 ## How It Works
 
@@ -231,7 +286,8 @@ public record ValidEvent : IEvent {
 When an event feeds a perspective, `[StreamId]` becomes mandatory and is validated strictly:
 
 - **WHIZ030 (Error)**: Event used in a perspective has no `[StreamId]` property
-- **WHIZ031 (Error)**: Event has multiple properties marked with `[StreamId]` - only one is allowed
+- **WHIZ031 (Error)**: Event has multiple properties marked with `[StreamId]` - only one is allowed. An event whose
+  stream ID is a `[StreamId(Override = true)]` is not reported: the override replaces the inherited one
 
 ```csharp{title="Multiple StreamId Error" description="Error when multiple StreamId attributes are used" category="Diagnostics" difficulty="BEGINNER" tags=["StreamId", "Diagnostics", "Errors"] unverified="counter-example — WHIZ031 (multiple [StreamId]) is verified by PerspectiveDiscoveryGeneratorTests.PerspectiveDiscoveryGenerator_EventWithMultipleStreamIds_ReportsWHIZ031DiagnosticAsync, outside the current coverage map"}
 // Causes WHIZ031
@@ -251,6 +307,14 @@ public record ValidEvent : IEvent {
   public Guid CustomerId { get; init; }  // Related entity, not stream ID
 }
 ```
+
+### WHIZ006 and WHIZ016: Inherited Stream IDs
+
+- **[WHIZ006](../../operations/diagnostics/whiz006) (Warning)**: A type has more than one `[StreamId]`, counting the
+  inherited one, and only one is used. Mark a derived stream ID `Override = true` when it replaces the inherited one
+  on purpose.
+- **[WHIZ016](../../operations/diagnostics/whiz016) (Warning)**: `Override = true` where no base type declares a
+  `[StreamId]`; there is nothing to override.
 
 ### WHIZ033: Perspective Model Missing StreamId
 
