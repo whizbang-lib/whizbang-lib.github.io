@@ -35,6 +35,9 @@ codeReferences:
   - src/Whizbang.Core/Capabilities/CapabilityAutoProvision.cs
   - src/Whizbang.Core/Capabilities/CapabilityVersion.cs
   - src/Whizbang.Data.Postgres/PostgresCapabilityProvisioner.cs
+  - src/Whizbang.Data.Postgres/Observability/PostgresTableStatisticsProvider.cs
+  - src/Whizbang.Core/Workers/PartitionManagementStrategy.cs
+  - src/Whizbang.Core/Workers/TableRewriteStrategy.cs
 testReferences:
   - tests/Whizbang.Core.Tests/Capabilities/CapabilityDescriptorTests.cs
   - tests/Whizbang.Core.Tests/Capabilities/CapabilityRegistryTests.cs
@@ -55,6 +58,10 @@ testReferences:
   - tests/Whizbang.Core.Tests/Capabilities/CapabilityAutoProvisionTests.cs
   - tests/Whizbang.Core.Tests/Capabilities/CapabilityVersionTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/PostgresCapabilityProvisioningIntegrationTests.cs
+  - tests/Whizbang.Core.Tests/Observability/StatementStatisticsCapabilityTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/TableStatisticsProviderTests.cs
+  - tests/Whizbang.Core.Tests/Workers/PartitionManagementStrategyTests.cs
+  - tests/Whizbang.Core.Tests/Workers/TableRewriteStrategyTests.cs
 ---
 
 # Capabilities
@@ -93,7 +100,7 @@ flowchart LR
   provider, the scope and the reason. Nothing a provider does can stop startup.
 
 ## States {#states}
-{verified: CapabilityDescriptorTests.IsUsable_OnlyForReadyAndProvisionableAsync, CapabilityDescriptorTests.Remedy_UsesTheProvidersFixForTheStateAsync, CapabilityDescriptorTests.Remedy_FallsBackToAGenericFixWhenTheProviderGaveNoneAsync}
+{verified: CapabilityDescriptorTests.IsUsable_OnlyForReadyAndProvisionableAsync, CapabilityDescriptorTests.Remedy_UsesTheProvidersFixForTheStateAsync, CapabilityDescriptorTests.Remedy_FallsBackToAGenericFixWhenTheProviderGaveNoneAsync, CapabilityDescriptorTests.Remedy_WithADetailThatHasItsOwnFix_UsesThatFixAsync}
 
 | State | Meaning | Usable |
 |---|---|---|
@@ -106,7 +113,10 @@ flowchart LR
 | `Unknown` | Could not be determined: the probe failed, is turned off, or has not run yet. | no |
 
 Each provider keeps its own finer state as the status's detail (for Postgres, `NotAllowlisted` behind
-`NotPermitted`), and its descriptor gives the fix for each problem state.
+`NotPermitted`), and its descriptor gives the fix for each problem state. When two details share one state and need
+different fixes, the descriptor also gives a fix per detail (`DetailRemedies`), which the verdict and the report use
+before the state's: Postgres reads both `NeedsPreload` and `NeedsLogicalWalLevel` as `NeedsServerChange`, and the
+line names `shared_preload_libraries` for one and `wal_level` for the other.
 
 ## Verdict {#verdict}
 {verified: CapabilityVerdictTests.Explicit_Ready_ProceedsAsync, CapabilityVerdictTests.Explicit_KnownAndNotReady_FailsStartWithTheFixAsync, CapabilitiesStartupStepTests.ExplicitRequirement_OnACapabilityNotReady_IsAnErrorLine_AndTheVerdictIsPublishedAsync, CapabilityReportTests.Log_WritesOneBlockPairPerProviderAndScopeAsync}
@@ -122,7 +132,7 @@ at Information when the capability is Ready, Warning when it warns or degrades, 
 ```text
 capability postgres/pg_squeeze on 'orders': Ready, created 1.7.0. Required by: Online table rewrite (Whizbang:Workers:Maintenance:TableRewriteStrategy = PgSqueeze, explicit)
 capability postgres/pg_trgm on 'orders': Ready, already present 1.6. Required by: Substring indexes on perspective fields (OrderSearch, default)
-capability postgres/pg_partman on 'orders': NotPermitted; NotAllowlisted. Fix: add PG_PARTMAN to azure.extensions. Required by: Partition management (Whizbang:Workers:Maintenance:Partitioning:Strategy = Auto, default)
+capability postgres/pg_partman on 'orders': NotPermitted, 5.5.0; NotAllowlisted. Fix: add PG_PARTMAN to the server's extension allowlist (azure.extensions on Azure Database for PostgreSQL). Required by: Partition management (Whizbang:Workers:Maintenance:Partitioning:Strategy = PgPartman, explicit)
 ```
 
 A Ready capability says what [provisioning](#provisioning) did before its version: `created`, `already present`
@@ -268,6 +278,32 @@ Under the lock it reads the extension again: one another session created or upgr
 An extension that only a privileged role can create still needs that role once; see the fixes on
 [Postgres extensions](postgres-extensions.md).
 
+### pg_squeeze, end to end {#pg-squeeze}
+{verified: TableRewriteStrategyTests.PgSqueeze_IsTheLibrarysFirstSettingDrivenRequirementAsync, TableRewriteStrategyTests.ExplicitPgSqueeze_OnAServerWithoutThePreload_FailsStartWithThePreloadFixAsync, TableRewriteStrategyTests.ExplicitPgSqueeze_OnAServerWithoutLogicalWal_FailsStartWithTheWalLevelFixAsync, TableRewriteStrategyTests.ExplicitPgSqueeze_OnAServerThatDoesNotAllowlistIt_FailsStartWithTheFixAsync}
+
+pg_squeeze is managed entirely by this pattern. `TableRewriteStrategy.PgSqueeze` carries
+`[RequiresPostgresExtension("pg_squeeze", Feature = "Online table rewrite")]`, so setting
+`Whizbang:Workers:Maintenance:TableRewriteStrategy = PgSqueeze` puts an explicit requirement in force, and the default
+`Auto` puts none. On each start:
+
+| What the probe finds | What happens |
+|---|---|
+| Installed, preloaded, logical WAL | `Ready, already present` (or `upgraded` when a newer version is on the server) |
+| Creatable, preloaded, logical WAL | created with `CREATE EXTENSION`, then `Ready, created` |
+| Not in the allowlist | start fails: add it to the allowlist and to `shared_preload_libraries`, then restart |
+| Not preloaded | start fails: add it to `shared_preload_libraries`, then restart |
+| Preloaded, `wal_level` not logical (below Postgres 19) | start fails: set `wal_level = logical`, then restart |
+| `AutoProvision` off for it and not created | start fails with the provisioning-off reason |
+
+The operator's part is the server: the allowlist, the preload, the WAL level, and a restart. The library's part is the
+extension in the database, and the [online rewrite](storage-maintenance.md#online-rewrite) that uses it from the
+maintenance cycle, which also checks the per-table prerequisites the probe cannot (a free replication slot, the role's
+`REPLICATION` attribute, table ownership) before each call.
+
+```text
+capability postgres/pg_squeeze on 'orders': NeedsServerChange, 1.9; NeedsLogicalWalLevel. Fix: set wal_level = logical (and max_replication_slots to at least one more than the slots in use), then restart the server. Required by: Online table rewrite (Whizbang:Workers:Maintenance:TableRewriteStrategy = PgSqueeze, explicit)
+```
+
 ### A provider's provisioner {#adding-a-provisioner}
 {verified: CapabilityServiceCollectionExtensionsTests.TheStep_RunsEveryRegisteredProvisionerAsync, CapabilityProvisioningTests.AProviderWithNoProvisioner_IsReportedAsSuchAsync, CapabilityProvisioningTests.ACapabilityTheLibraryNeverProvisions_IsLeftForTheOperatorAsync}
 
@@ -336,6 +372,34 @@ A key present in configuration overrides a value set in code; an absent key leav
   }
 }
 ```
+
+## Features that read a capability {#readers}
+{verified: StatementStatisticsCapabilityTests.NotReady_AnswersEmpty_WithoutOpeningAConnectionAsync, StatementStatisticsCapabilityTests.Ready_ReadsTheStatementStatisticsAsync, StatementStatisticsCapabilityTests.WithoutARegistry_AnswersEmpty_WithoutOpeningAConnectionAsync, StatementStatisticsCapabilityTests.ADapperHost_AsksAboutItsOwnDatabaseAsync, PostgresDriverExtensionsTests.Postgres_TableStatistics_ConsultTheStatementStatisticsCapability_OfItsOwnDatabaseAsync, TableStatisticsProviderTests.ATaggedStatementIsReadBackFromTheStatisticsAsync, TableStatisticsProviderTests.StatementStatisticsAreEmptyRatherThanFatalWhenNotCollectedAsync}
+
+A feature that only gets better with a capability, rather than requiring it, reads the state the probe recorded
+instead of trying and catching the server's refusal. It asks `ICapabilityRegistry.GetState` for its capability in its
+own scope, uses the capability only when the answer is `Ready`, and otherwise does without it, without a round trip
+to the server.
+
+| Feature | Capability | When it is `Ready` | Otherwise |
+|---|---|---|---|
+| Expensive-predicate advice (`GetExpensivePredicatesAsync` on the Postgres table statistics) | `postgres/pg_stat_statements` | reads the recorded statements that filter a perspective table and names the filter | answers empty without opening a connection; the advice still names the table |
+
+```mermaid{caption="A feature that reads a capability: the state the probe recorded decides whether the server is asked at all." tests=["StatementStatisticsCapabilityTests.NotReady_AnswersEmpty_WithoutOpeningAConnectionAsync", "StatementStatisticsCapabilityTests.Ready_ReadsTheStatementStatisticsAsync"]}
+flowchart LR
+  A[Advice asks for statement statistics] --> B{pg_stat_statements Ready<br/>in this database's scope?}
+  B -- yes --> C[Read pg_stat_statements]
+  B -- "no, or no registry" --> D[Answer empty, no connection]
+```
+
+Both Postgres drivers hand their table statistics the registry and the name their database is probed under (the
+connection string's name for EF Core, the database name for Dapper). A provider constructed directly takes them as
+the `capabilities` and `capabilityScope` arguments, and without them reads no statement statistics.
+
+The state is the one recorded at startup, or at the registry's last `RefreshAsync`. With
+`Whizbang:Capabilities:ProbeOnStartup` set to `false`, every capability reads `Unknown`, so these features do without.
+A read that fails while the capability reads `Ready`, for example because the extension was dropped after the probe,
+is a fault and reaches the caller.
 
 ## Providers {#providers}
 
@@ -534,6 +598,7 @@ probes.
 
 - [Postgres extensions](postgres-extensions.md), the first provider
 - [Storage maintenance: table rewrite strategy](storage-maintenance.md#table-rewrite-strategy), the first setting that requires a capability
+- [Partitioned ledgers: pg_partman](partitioned-ledgers.md#pg-partman), a setting whose default uses a capability only when it is already Ready and whose explicit value requires it
 - [Startup pipeline](../startup/startup-pipeline.md)
 - [Metrics reference: Whizbang.Capabilities](../observability/metrics.md#capabilities)
 - [Configuration reference](../configuration/configuration-reference.md#capabilities-options)

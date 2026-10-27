@@ -8,16 +8,19 @@ description: >-
   The built-in partition manager: which framework tables are partitioned by time or by time-ordered id, how
   partitions are created ahead and dropped past the retention window, the maintainer-duty gate, how to enable it,
   how an existing table is converted once, the autovacuum settings each partition carries, how unconsumed signals are
-  carried past a drop, and what the row sweeps still do
+  carried past a drop, handing partition creation to pg_partman, and what the row sweeps still do
 tags: >-
   operations, partitioning, partitions, retention, wh_log, wh_signals, wh_lifecycle_completions, uuidv7, maintenance,
-  postgres, storage, vacuum, maintainer duty
+  postgres, storage, vacuum, maintainer duty, pg_partman, create_parent, run_maintenance
 codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/226_PartitionManager.sql
   - src/Whizbang.Data.Postgres/Migrations/233_PartitionSignalsAndLifecycleCompletions.sql
   - src/Whizbang.Data.Postgres/Migrations/237_PartitionsCarryTheLedgersAutovacuumSettings.sql
   - src/Whizbang.Data.Postgres/Migrations/238_LogSweepClearsTheDefaultPartition.sql
   - src/Whizbang.Data.Postgres/Migrations/239_PartitionDropsCarryUnconsumedSignals.sql
+  - src/Whizbang.Data.Postgres/Migrations/246_PartitionManagementByPgPartman.sql
+  - src/Whizbang.Core/Workers/PartitionManagementStrategy.cs
+  - src/Whizbang.Data.Postgres/PartitionStrategyAnnouncer.cs
   - src/Whizbang.Data.Postgres/PartitionedTable.cs
   - src/Whizbang.Data.Postgres/PartitionMaintenance.cs
   - src/Whizbang.Data.EFCore.Postgres/PartitionMaintenanceStep.cs
@@ -38,6 +41,9 @@ testReferences:
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperPartitionMaintenanceStepTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/PartitionedTableTests.cs
   - tests/Whizbang.Core.Tests/Workers/PartitioningOptionsTests.cs
+  - tests/Whizbang.Core.Tests/Workers/PartitionManagementStrategyTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Partitioning/PgPartmanPartitionSqlTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/PgPartmanPartitionMaintenanceTests.cs
 ---
 
 # Partitioned Ledgers
@@ -47,7 +53,9 @@ tuple until vacuum reclaims it, the indexes keep pointing at it, and the delete 
 range-partitioned by time does retention differently: when a whole partition is past the window, the partition is
 dropped. That is a catalog change, with no dead tuples, no index bloat and almost no WAL.
 
-The built-in partition manager does this for the framework's own time-ordered tables. It is off by default.
+The built-in partition manager does this for the framework's own time-ordered tables. It is off by default. Where
+pg_partman is installed, it can create the partitions instead ([pg_partman](#pg-partman)); expired partitions are
+always dropped by the built-in manager.
 
 ```mermaid{caption="A partitioned ledger: writers insert into the parent, maintenance creates partitions ahead and drops those wholly past the window, and the row sweep clears only the default partition while the table is managed." tests=["PartitionMaintainSqlTests.ACycle_CreatesTheCurrentAndAheadPartitions_AndASecondCreatesNothingAsync", "PartitionMaintainSqlTests.APartitionWhollyPastTheWindow_IsDropped_OneStraddlingItIsKeptAsync", "SignalPartitionConversionTests.OnceManaged_TheSweepLeavesPartitionsToTheDrop_AndClearsOnlyTheDefaultAsync", "LogPartitionConversionTests.OnceManaged_TheRowDeleteSweepsOnlyTheDefaultPartition_AndLeavesPartitionsToTheDropAsync"]}
 flowchart LR
@@ -85,6 +93,7 @@ second is a sliding window over streams rather than a time-rolling log.
 |---|---|---|---|
 | `Whizbang:Workers:Maintenance:Partitioning:Enabled` | `false` | `Whizbang__Workers__Maintenance__Partitioning__Enabled` | Convert and maintain the partitioned tables |
 | `Whizbang:Workers:Maintenance:Partitioning:CreateAhead` | `3` | `Whizbang__Workers__Maintenance__Partitioning__CreateAhead` | Intervals past the current one that each cycle makes sure exist; at least `1` |
+| `Whizbang:Workers:Maintenance:Partitioning:Strategy` | `Auto` | `Whizbang__Workers__Maintenance__Partitioning__Strategy` | Who creates partitions: `Auto`, `BuiltIn` or `PgPartman` ([pg_partman](#pg-partman)) |
 
 ```json{
 title: "Turn on the partition manager"
@@ -121,7 +130,7 @@ switched off, so a converted table stays bounded either way.
 {verified: PartitionMaintainSqlTests.ACycle_CreatesTheCurrentAndAheadPartitions_AndASecondCreatesNothingAsync, PartitionMaintainSqlTests.APartitionWhollyPastTheWindow_IsDropped_OneStraddlingItIsKeptAsync, PartitionMaintainSqlTests.TheDefaultPartition_IsNeverDroppedAsync, PartitionMaintainSqlTests.RowsInTheDefaultPartition_MoveIntoThePartitionCreatedForThemAsync, PartitionMaintainSqlTests.DebugMode_KeepsExpiredPartitionsAsync}
 
 The partition maintenance step runs last in each [maintenance cycle](../../fundamentals/workers/maintenance-steps).
-For each registered table it calls two SQL functions:
+For each registered table it calls two SQL functions (three where [pg_partman](#pg-partman) creates the partitions):
 
 1. `wh_partition_convert(table, column, interval, now)` converts a plain table, once (see below). On a converted
    table it returns at once.
@@ -170,6 +179,127 @@ An interval is a whole number of hours with no month part (a month is not a fixe
 UTC from Monday 2000-01-03, so a weekly partition starts on a Monday at 00:00 UTC and a daily one at midnight UTC.
 Partitions are named `<table>_p<yyyymmdd>` after the day they start, or `<table>_p<yyyymmdd>_<hhmm>` for an interval
 shorter than a day.
+
+## pg_partman {#pg-partman}
+
+{verified: PartitionManagementStrategyTests.Resolve_EachCellAsync, PgPartmanPartitionMaintenanceTests.Auto_WithPgPartmanReady_RunsItsPassUntilTheReboundIsDone_ThenTheBuiltInPassAsync, PgPartmanPartitionMaintenanceTests.Auto_WhenPgPartmanIsNotPermitted_KeepsTheBuiltInManager_AndSaysSoOnceAsync, PgPartmanPartitionMaintenanceTests.ExplicitPgPartman_WithoutTheExtension_FailsTheCycleNamingTheSettingAsync}
+
+`Whizbang:Workers:Maintenance:Partitioning:Strategy` decides who **creates** partitions. Whoever creates them, the
+built-in manager **drops** them.
+
+| Value | Creates partitions | When pg_partman cannot be used |
+|---|---|---|
+| `Auto` (default) | pg_partman where it is already Ready on every database probed, otherwise the built-in manager | The built-in manager, and the cycle says why. Auto never installs pg_partman |
+| `BuiltIn` | the built-in manager, even where pg_partman is Ready | n/a |
+| `PgPartman` | pg_partman | Start fails with the [capability verdict](capabilities#verdict)'s fix; a cycle that still cannot reach it fails |
+
+`PgPartman` declares `[RequiresPostgresExtension("pg_partman", Feature = "Partition management")]`, so choosing it
+is an explicit requirement: pg_partman is [provisioned](capabilities#provisioning) where the server allows it, and a
+server that does not allowlist it, or lacks it, stops start:
+
+```text
+capability postgres/pg_partman on 'orders': NotPermitted, 5.5.0. Fix: add PG_PARTMAN to the server's extension allowlist (azure.extensions on Azure Database for PostgreSQL). Required by: Partition management (Whizbang:Workers:Maintenance:Partitioning:Strategy = PgPartman, explicit)
+```
+
+`Auto` and `BuiltIn` put no requirement in force, so the default never installs or requires pg_partman. Where
+pg_partman is available but not installed, `Auto` keeps the built-in manager and says how to opt in.
+
+```json{
+title: "Hand partition creation to pg_partman"
+description: "Turns the partition manager on and makes pg_partman create the partitions; start fails with the fix where the server cannot provide it."
+category: "Configuration"
+difficulty: "INTERMEDIATE"
+tags: ["partitioning", "pg_partman", "maintenance", "capabilities"]
+tests: ["PartitionManagementStrategyTests.TheSetting_DefaultsToAuto_AndBindsFromConfigurationAsync", "PartitionManagementStrategyTests.ExplicitPgPartman_OnAServerThatDoesNotAllowlistIt_FailsStartWithTheFixAsync"]
+}
+{
+  "Whizbang": {
+    "Workers": {
+      "Maintenance": {
+        "Partitioning": {
+          "Enabled": true,
+          "Strategy": "PgPartman"
+        }
+      }
+    }
+  }
+}
+```
+
+### What a pg_partman cycle does {#pg-partman-cycle}
+
+{verified: PgPartmanPartitionSqlTests.TheFirstPass_RegistersTheTableOnce_FromTheFirstUncoveredInterval_AndMaintainsItAsync, PgPartmanPartitionSqlTests.AUuidKey_IsRegisteredWithTheVersion7EncoderAsync, PgPartmanPartitionSqlTests.RetentionSetOnTheTable_IsTurnedBackOff_SoTheBuiltInDropCarriesSignalsFirstAsync, PgPartmanPartitionMaintenanceTests.AReboundThatNeverCompletes_IsLeftAfterThreeStepsAsync}
+
+Between the conversion and the built-in pass, each table gets a pg_partman pass, `wh_partition_partman`:
+
+1. **Re-bound the oldest partition, once.** A converted table's oldest partition is bounded below by `MINVALUE`.
+   pg_partman cannot read that bound: its maintenance logs a `WARNING` and skips the whole table. The pass bounds it
+   from the smallest value of the key instead (`'-infinity'`, or `00000000-0000-0000-0000-000000000000` for a uuid
+   key), which holds exactly the same rows. It takes three steps, each committed on its own, and none holds a lock a
+   writer waits on during a scan: add a check of the new range without validating it, validate it (a scan under
+   `SHARE UPDATE EXCLUSIVE`), then detach and re-attach the partition under the new bound, which the validated check
+   lets PostgreSQL accept without scanning again. The step repeats the pass while it reports `rebounding`, at most
+   three times a cycle; a step whose lock is not free is `deferred` to the next cycle. Until the table is re-bounded
+   it is not given to pg_partman.
+2. **Register it, once.** `create_parent` with `p_premake` = `CreateAhead`, starting at the first interval no
+   partition covers (so pg_partman never overlaps a partition the conversion or the built-in manager made), no
+   default table of its own (the manager keeps `<table>_default`), automatic maintenance off, and, for a uuid key,
+   pg_partman's version-7 encoder and decoder. Reported as `registered`.
+3. **Keep its settings.** Every cycle `premake` follows `CreateAhead`, partitions are made from the clock rather than
+   from the newest row (`infinite_time_partitions`), and `retention` stays off. A change is reported as `configured`.
+4. **Maintain it.** `run_maintenance` for that table alone. Reported as `maintained`, at Debug.
+
+Then the built-in pass runs as before: it creates anything still missing, tunes [autovacuum
+settings](#autovacuum-settings) on the partitions pg_partman made, carries unconsumed signals and drops expired
+partitions.
+
+```mermaid{caption="A cycle where pg_partman creates partitions: the conversion, the pg_partman pass (re-bound once, register once, keep its settings, run_maintenance), then the built-in pass, which creates what pg_partman missed and drops expired partitions after carrying unconsumed signals." tests=["PgPartmanPartitionMaintenanceTests.Auto_WithPgPartmanReady_RunsItsPassUntilTheReboundIsDone_ThenTheBuiltInPassAsync", "PgPartmanPartitionSqlTests.AConvertedTablesOldestPartition_IsReboundedFromTheSmallestKey_InThreeStepsAsync", "PgPartmanPartitionSqlTests.TheFirstPass_RegistersTheTableOnce_FromTheFirstUncoveredInterval_AndMaintainsItAsync"]}
+sequenceDiagram
+  participant M as Maintenance step
+  participant C as wh_partition_convert
+  participant P as wh_partition_partman
+  participant G as pg_partman
+  participant B as wh_partition_maintain
+  M->>C: convert (once)
+  loop while rebounding, at most 3
+    M->>P: pass
+    P->>P: re-bound MINVALUE partition (one step)
+  end
+  P->>G: create_parent (once)
+  P->>G: part_config: premake, clock-made, no retention
+  P->>G: run_maintenance(table)
+  M->>B: built-in pass
+  B->>B: create what is missing (a miss is logged)
+  B->>B: carry unconsumed signals, then drop expired partitions
+```
+
+### Why the built-in manager still drops {#pg-partman-retention}
+
+{verified: PgPartmanPartitionSqlTests.RetentionSetOnTheTable_IsTurnedBackOff_SoTheBuiltInDropCarriesSignalsFirstAsync, SignalPartitionCarryForwardTests.ALiveInstanceBehindTheWindow_KeepsEveryUnconsumedSignalAcrossTheDrop_AndReceivesThemInOrderAsync}
+
+pg_partman's retention is kept off for every table it is given, and set back off if anyone sets it. pg_partman
+would drop a `wh_signals` partition by age alone, and with it the signals a live instance has not consumed yet; the
+built-in drop carries those signals into the current partition first ([signals](#signals)), in the same step and
+under the same locks. The built-in drop also reads each table's window from `wh_settings` every cycle, keeps every
+partition under `debug_mode`, and never waits for a lock. One drop path for every table keeps those guarantees in
+one place.
+
+### What it reports {#pg-partman-reporting}
+
+{verified: PgPartmanPartitionMaintenanceTests.Auto_WithPgPartmanReady_RunsItsPassUntilTheReboundIsDone_ThenTheBuiltInPassAsync, PgPartmanPartitionMaintenanceTests.Auto_WhenThePgPartmanPassFails_ReportsIt_AndTheBuiltInManagerKeepsTheTableAsync, PgPartmanPartitionMaintenanceTests.Auto_WhenPgPartmanIsNotPermitted_KeepsTheBuiltInManager_AndSaysSoOnceAsync}
+
+- `Partition management: <reason>`, at Information, when the choice is first made and whenever it changes, for
+  example `Partition management: Auto: pg_partman is NotPermitted, so the built-in manager creates and drops
+  partitions`.
+- `pg_partman reported for <table>: <message>`, at Warning, for every notice pg_partman raises. pg_partman reports a
+  table it skipped only as a `WARNING`, so this is how a skipped table becomes visible.
+- `pg_partman did not create <partition> of <table>; the built-in manager created it`, at Warning, for each
+  partition the built-in pass had to create after pg_partman maintained the table.
+- Under `Auto`, a pass that fails is logged at Warning with the error (`pg_partman pass failed for <table>; the
+  built-in manager keeps it this cycle`) and the built-in pass runs. Under `PgPartman` the error fails the cycle.
+
+pg_partman decides what to create from the database server's clock, not the cycle's moment. pg_partman 5.2 or later
+is needed for a uuid key (`wh_lifecycle_completions`), which uses its version-7 encoder.
 
 ## Locks, and why no writer waits {#locks}
 
