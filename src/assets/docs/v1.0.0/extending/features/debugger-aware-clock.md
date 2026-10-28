@@ -208,6 +208,10 @@ using var subscription = clock.OnPauseStateChanged(isPaused => {
 });
 ```
 
+Disposing the subscription stops delivery: once `Dispose()` returns, the handler is not called again, including for
+a change that was already queued. A call that is already running may finish; `Dispose()` does not wait for it, so
+releasing a subscription from inside its own handler, or from a thread the handler is waiting on, cannot deadlock.
+
 ### Performance Metrics
 
 ```csharp{title="Performance Metrics" description="Performance Metrics" category="Extensibility" difficulty="INTERMEDIATE" tags=["Extending", "Features", "Performance", "Metrics"] tests=["DebuggerAwareClockTests.IActiveStopwatch_Halt_FreezesElapsedTimeAsync", "DebuggerAwareClockTests.IActiveStopwatch_WallElapsed_AfterHalt_RemainsConstantAsync", "DebuggerAwareClockTests.IActiveStopwatch_ActiveElapsed_AfterHalt_RemainsConstantAsync", "DebuggerAwareClockTests.IActiveStopwatch_FrozenTime_IsZeroWhenNotFrozenAsync"]}
