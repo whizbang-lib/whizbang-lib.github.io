@@ -11,7 +11,7 @@ tags: 'work-coordinator, commit-sequence, ordering, stamper, leader-election'
 codeReferences:
   - src/Whizbang.Core/Notifications/CommitOrderStamperOptions.cs
   - src/Whizbang.Core/Notifications/CommitOrderStampSizer.cs
-  - src/Whizbang.Data.Postgres/Migrations/247_StampReadsOnlyTheBatchItStamps.sql
+  - src/Whizbang.Data.Postgres/Migrations/248_StampReadsOnlyTheBatchItStamps.sql
   - src/Whizbang.Data.Postgres/Notifications/PgCommitOrderStamperWorker.cs
 testReferences:
   - tests/Whizbang.Core.Component.Tests/Notifications/PgNotificationStackStartupGateTests.cs
