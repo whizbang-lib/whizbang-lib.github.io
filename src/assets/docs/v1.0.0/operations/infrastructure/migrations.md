@@ -51,6 +51,8 @@ codeReferences:
   - src/Whizbang.Core/Workers/VacuumFullTableRewriter.cs
   - src/Whizbang.Core/Workers/TableRewriteStrategy.cs
   - src/Whizbang.Data.Dapper.Postgres/PostgresColumnType.cs
+  - src/Whizbang.Data.Postgres/CatalogCheckedDdl.cs
+  - src/Whizbang.Data.Postgres/MigrationDeadlockRetry.cs
 testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/MigrationStepTransactionTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/TableRewritePolicyRetiredTests.cs
@@ -89,6 +91,10 @@ testReferences:
   - tests/Whizbang.Data.Dapper.Postgres.Tests/MigrationSchemaQualifierTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/MigrationSearchPathTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Partitioning/LogPartitionConversionTests.cs
+  - tests/Whizbang.Core.Tests/Schema/CatalogCheckedDdlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/CatalogCheckedDdlPostgresTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/MigrationAgainstRunningWorkersTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperSchemaAgainstRunningWorkersTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -351,6 +357,7 @@ Every step of a pass logs one fixed form, counted against the whole pass:
 | `Migration X of Y - Started : <name>` | Information | The step holds the lock and is running |
 | `Migration X of Y - Succeeded : <name> (<duration>)` | Information | It applied and committed; the duration is seconds to the millisecond, as in `1.234s` |
 | `Migration X of Y - Skipped : <name> (already current)` | Information | Nothing to do: either the plan did not owe it (no `Started` line before it) or its row read current under the lock (after a `Started` line) |
+| `Migration X of Y - Deadlocked : <name> : 40P01 <error>; retrying the step in <delay> (deadlock n of 5)` | Warning | The step lost a deadlock and runs again in place after the delay; see [a deadlock is retried in place](#a-deadlock-is-retried-in-place) |
 | `Migration X of Y - Failed : <name> : <SQLSTATE> <error>` | Error | It failed and rolled back; when the initializer will retry, the line ends `; retrying in <delay> at <time>` |
 | `Migration complete: Y of Y succeeded (N applied, M skipped) in <duration>` | Information | The pass finished |
 | `Migration stopped at X of Y: <name> : <error>` | Error | The pass stopped at that step; nothing after it ran in this attempt |
@@ -368,13 +375,16 @@ issues no DDL at all.
 
 Here is a pass that failed at a migration file and the retry that finished it:
 
-```text{title="A failed step and the retry that resumes at it" description="The first attempt stops at step 110 with a deadlock; every step before it stays committed. The retry skips them and starts again at step 110." tests=["StartupMigrationStepsTests.AFailedStep_KeepsWhatCommitted_RecordsItsError_AndTheRetryResumesThereAsync"]}
+```text{title="A failed step and the retry that resumes at it" description="The first attempt stops at step 110 after its fifth deadlock; every step before it stays committed. The retry skips them and starts again at step 110." tests=["StartupMigrationStepsTests.AFailedStep_KeepsWhatCommitted_RecordsItsError_AndTheRetryResumesThereAsync", "SchemaStepRunnerTests.ADeadlockThatKeepsHappening_FailsTheStep_OnceTheInPlaceRetriesAreSpentAsync"]}
 info:  Migration 1 of 226 - Started : core-infrastructure
 info:  Migration 1 of 226 - Succeeded : core-infrastructure (0.412s)
 info:  Migration 2 of 226 - Started : 000_MigrationTracking.sql
 info:  Migration 2 of 226 - Succeeded : 000_MigrationTracking.sql (0.031s)
 ...
 info:  Migration 110 of 226 - Started : 110_StandbyHandshake.sql
+warn:  Migration 110 of 226 - Deadlocked : 110_StandbyHandshake.sql : 40P01 deadlock detected; retrying the step in 0.127s (deadlock 1 of 5)
+...
+warn:  Migration 110 of 226 - Deadlocked : 110_StandbyHandshake.sql : 40P01 deadlock detected; retrying the step in 2.310s (deadlock 5 of 5)
 fail:  Migration 110 of 226 - Failed : 110_StandbyHandshake.sql : 40P01 deadlock detected; retrying in 4.000s at 2026-10-22T14:03:07.5120000+00:00
 fail:  Migration stopped at 110 of 226: 110_StandbyHandshake.sql : 40P01 deadlock detected
 
@@ -402,14 +412,64 @@ How to read it:
 - **Is anything stuck?** A pass that logs the same `Failed` step on every retry is failing on that file itself, not on
   anything before it; the error text says what to fix.
 
-### What is not covered yet {#step-transactions-not-covered}
+### A deadlock is retried in place {#a-deadlock-is-retried-in-place}
+{verified: SchemaStepRunnerTests.ADeadlock_IsRetriedInPlace_AfterAShortBackOff_AndSaidAtWarningAsync, SchemaStepRunnerTests.ADeadlockThatKeepsHappening_FailsTheStep_OnceTheInPlaceRetriesAreSpentAsync, SchemaStepRunnerTests.ADeadlockInAStepBeforeThePassBegins_IsSaidWithoutAPositionAsync, SchemaStepRunnerTests.TheDeadlockBackOffDoublesFromATenthOfASecond_ToTwoSeconds_WithJitterUnderHalfAsync, MigrationAgainstRunningWorkersTests.ADeadlockInAFreshPass_IsRetriedInPlace_AndThePassCompletesInTheSameAttemptAsync, DapperSchemaAgainstRunningWorkersTests.ADeadlockInAMigrationFile_IsRetriedInPlace_AndTheStartCompletesAsync, DapperSchemaAgainstRunningWorkersTests.ADeadlockThatKeepsHappening_FailsTheStart_OnceTheRetriesAreSpentAsync}
 
-- **A single file can still deadlock on its own.** Per-step commits stop a deadlock from discarding the steps before
-  it, and the retry resumes at the file; they do not change the order in which that file takes its locks relative to
-  the rest of a starting instance. A file that alters a table other sessions are using at startup can still meet a
-  `40P01` and need a retry.
-- **Startup stage ordering is tracked separately.** Ordering the startup stages so the schema pass does not contend
-  with the instance's own startup work, together with a numbered line per startup stage, is planned as its own change.
+A deadlock (`40P01`) is the server choosing one transaction as its victim, not a fault in the step. The step's
+transaction has already rolled back, so the step runs again in place, in the same attempt:
+
+- **Back-off.** 100 ms before the first retry, doubling to a 2 second cap, plus up to half again of jitter, so the two
+  sessions that deadlocked do not meet again at once.
+- **Up to five times.** After the fifth deadlock the step fails like any other failed step: an Error line, the
+  [failure record](#failure-record), and the initializer's own retry.
+- **Nothing before it re-runs.** Every step before it stays committed, and the pass continues from the retried step.
+- **Both drivers.** On the EF Core driver the unit is the step; on the Dapper driver it is the migration file, which is
+  its own transaction there.
+
+Each retry is logged at Warning, never Error:
+
+```text{title="A deadlocked step, retried in place" description="The Warning line each driver logs when a step or migration file loses a deadlock and is about to run again" category="Operations" difficulty="BEGINNER" tags=["Migrations","Logging","Deadlock"] tests=["SchemaStepRunnerTests.ADeadlock_IsRetriedInPlace_AfterAShortBackOff_AndSaidAtWarningAsync","SchemaStepRunnerTests.ADeadlockInAStepBeforeThePassBegins_IsSaidWithoutAPositionAsync","DapperSchemaAgainstRunningWorkersTests.ADeadlockInAMigrationFile_IsRetriedInPlace_AndTheStartCompletesAsync"]}
+EF Core, a counted step:
+warn:  Migration 110 of 226 - Deadlocked : 110_StandbyHandshake.sql : 40P01 deadlock detected; retrying the step in 0.127s (deadlock 1 of 5)
+
+EF Core, a step before the pass begins (not counted):
+warn:  Schema step <name> deadlocked : 40P01 deadlock detected; retrying the step in 0.127s (deadlock 1 of 5)
+
+Dapper, a migration file:
+warn:  Migration 110_StandbyHandshake.sql deadlocked : 40P01 deadlock detected; retrying it in 0.127s (deadlock 1 of 5)
+```
+
+Earlier releases failed a deadlocked step at Error and ended the attempt, so the whole initializer waited out its own
+back-off before resuming at that step, which is how a fresh database took minutes to come up.
+
+Fewer deadlocks happen to begin with: [idempotent DDL takes no lock](#idempotent-ddl-takes-no-lock) when there is
+nothing to do, and the instance's own workers [start at the stage they need](../startup/startup-status#what-runs-in-each-stage)
+instead of running against the tables the migration is changing.
+
+## Idempotent DDL takes no lock when there is nothing to do {#idempotent-ddl-takes-no-lock}
+{verified: CatalogCheckedDdlPostgresTests.Unguarded_AnAddColumnOfAColumnThatExists_StillWaitsForTheWorkerAsync, CatalogCheckedDdlPostgresTests.Guarded_AnAddColumnOfAColumnThatExists_TakesNoLock_SoTheWorkerDoesNotHoldItUpAsync, CatalogCheckedDdlPostgresTests.Guarded_AnIndexThatExists_TakesNoLockAsync, CatalogCheckedDdlPostgresTests.Guarded_AMissingColumnAndIndex_AreCreated_AsTheStatementsCreateThemAsync, CatalogCheckedDdlPostgresTests.Guarded_AMissingTable_FailsAsTheStatementFailsAsync, MigrationAgainstRunningWorkersTests.ARerun_WhileAWorkerHoldsTheInstanceAndRoleTables_CompletesWithoutWaitingForItAsync, DapperSchemaAgainstRunningWorkersTests.ARestart_WhileAWorkerHoldsTheInstanceAndRoleTables_DoesNotWaitForItAsync}
+
+PostgreSQL takes a table lock for `ALTER TABLE ... ADD COLUMN IF NOT EXISTS` (ACCESS EXCLUSIVE) and
+`CREATE INDEX IF NOT EXISTS` (SHARE) before it looks for the column or the index, so a statement with nothing to do
+still waits behind every transaction using the table, and every transaction after it waits behind the queued lock. A
+re-run of such a statement (the [redefinition closure](#how-it-works), the
+[bootstrap closure](#the-bootstrap-closure-is-applied-once-per-definition-never-per-start), the core tables' ensure)
+therefore stalled the running instances, and could deadlock with them.
+
+Each such statement now asks the catalog first and runs, exactly as written, only when a column or the index is
+missing. Asking the catalog takes no lock on the table, so a re-run with nothing to do takes no lock at all, and a run
+with something to do does exactly what the statement did. A missing table still fails as the statement fails.
+
+- **What is checked.** Top-level `ALTER TABLE [IF EXISTS] [ONLY] <table> ADD [COLUMN] IF NOT EXISTS ...` statements
+  whose every clause is such an `ADD`, and `CREATE [UNIQUE] INDEX IF NOT EXISTS <name> ON [ONLY] <table> ...`.
+  Everything else is sent as written: other statements, comments, and anything inside a function body, a `DO` block
+  or a string.
+- **Where.** Plain migration segments and the core tables on both drivers, the Dapper driver's bootstrap file, and the
+  bootstrap closure.
+- **Nothing to upgrade.** The check is applied to the SQL as it is sent, never to what is hashed. No migration file
+  changes, no ledger hash changes, and nothing re-runs because of it.
+
+{verified: CatalogCheckedDdlTests.AnAddColumnIfNotExists_RunsOnlyWhenTheCatalogLacksTheColumnAsync, CatalogCheckedDdlTests.ACreateIndexIfNotExists_RunsOnlyWhenNoRelationOfThatNameIsBesideTheTableAsync, CatalogCheckedDdlTests.AnythingElse_IsLeftAsItIsAsync, CatalogCheckedDdlTests.StatementsInsideBodiesStringsAndComments_AreNotStatementsAsync, CatalogCheckedDdlTests.GuardingTwice_ChangesNothingTheSecondTimeAsync}
 
 ## Strategy Detection
 
@@ -556,6 +616,10 @@ statement, no lock, no wait. A closure that changed (a new release with a differ
 region) has a different hash, so it runs in full once and records itself. The migration ledger is
 untouched by any of this; the bootstrap still claims nothing about migrations.
 {verified: SchemaBootstrapPhaseTests.ACurrentClosureIsNotAppliedAgainAsync, SchemaBootstrapPhaseTests.AChangedClosureIsAppliedAsync, SchemaBootstrapPhaseTests.TheBootstrapRecordsNothingInTheLedgerAsync}
+
+When the closure does run, each of its `ADD COLUMN IF NOT EXISTS` and `CREATE INDEX IF NOT EXISTS` statements
+[asks the catalog first](#idempotent-ddl-takes-no-lock), so one with nothing to do takes no lock while the rest of the
+closure's transaction runs.
 
 ### Database roles {#database-roles}
 {verified: SchemaInitConnectionTests.FromConfiguration_ReadsTheInitSuffixOfTheContextsNameAsync, IndexStatisticsMaintenanceStepTests.WithAnInitConnection_AnalyzesThroughItAsync, ManagedSchemaReconcileStepTests.UnderADataOnlyApplicationRole_TheInitConnectionDoesTheSchemaWorkAsync, TableRewriteUnderDataOnlyRoleTests.UnderADataOnlyApplicationRole_TheInitConnectionDoesTheRewriteAsync, DataOnlyRoleE2ETests.UnderADataOnlyRole_WithTheOwnerAsInit_TheServiceStartsAndMaintainsItselfAsync}

@@ -15,11 +15,13 @@ codeReferences:
   - src/Whizbang.Core/Signals/SignalTarget.cs
   - src/Whizbang.Core/Signals/InstanceLifecycleSignals.cs
   - src/Whizbang.Core/Signals/WorkAvailableSignals.cs
+  - src/Whizbang.Data.Postgres/Notifications/PgWorkAvailablePollSourceBase.cs
 testReferences:
   - tests/Whizbang.Core.Component.Tests/Signals/SignalBusProbeBackoffTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/PgDurableSignalRetentionWindowTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/PgDurableSignalRetentionIntegrationTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Partitioning/SignalPartitionCarryForwardTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/PgWorkAvailablePollSourceSchemaGateTests.cs
 ---
 
 # System Signal Bus
@@ -355,6 +357,11 @@ Push and pull are **transports for the same bus** (the pull side is implemented 
 - **NOTIFY healthy** — push carries latency; the pull source runs at a **relaxed** interval as the correctness backstop.
 - **NOTIFY down** — the pull source **tightens** to carry the load until push recovers.
 - **No NOTIFY at all** (e.g. SQLite) — the pull source is the **sole** transport; nothing changes for subscribers.
+
+The Postgres work-available pull sources also read the schema-ready gate: while it is closed a tick detects nothing
+and sends no query, because the tables they read may not exist yet and nothing claims work before the gate opens
+(see [what runs in each stage](../../operations/startup/startup-status#what-runs-in-each-stage)).
+{verified: PgWorkAvailablePollSourceSchemaGateTests.WhileTheSchemaGateIsClosed_ATickSendsNothing_AndOnceOpenItQueriesAsync, StartupStageWiringTests.EveryWorkAvailableProbe_ReadsTheSchemaReadyGateAsync}
 
 The single-direct-connection-per-pod topology and the gated/adaptive intervals (`WhizbangNotificationOptions`) are preserved — the difference is that polling now **raises bus signals** rather than living as separate per-worker reconciliation loops.
 

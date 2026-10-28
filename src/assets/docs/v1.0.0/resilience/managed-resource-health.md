@@ -26,6 +26,7 @@ codeReferences:
   - src/Whizbang.Core/Transports/IBacklogPeek.cs
   - src/Whizbang.Transports.AzureServiceBus/AzureServiceBusTransport.cs
   - src/Whizbang.Core/Health/StartupPipelineHealthSource.cs
+  - src/Whizbang.Core/Health/RoleAssignmentHealthSource.cs
 testReferences:
   - tests/Whizbang.Core.Component.Tests/Health/HealthProbeMustAlwaysAnswerTests.cs
   - tests/Whizbang.Core.Tests/Health/WhizbangHealthAggregatorTests.cs
@@ -39,6 +40,7 @@ testReferences:
   - tests/Whizbang.Hosting.AspNet.Tests/WhizbangManagedHealthCheckTests.cs
   - tests/Whizbang.Hosting.AspNet.Tests/AddWhizbangAspNetTurnkeyTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/EventStoreHealthSourceIntegrationTests.cs
+  - tests/Whizbang.Core.Tests/Health/RoleAssignmentHealthSourceTests.cs
 verifiedAgainstCommit: a64ba9a0
 verifiedDate: 2026-08-04
 ---
@@ -183,6 +185,16 @@ stage has been entered yet. The ASP.NET liveness and readiness checks add it to 
 
 The keys are absent while there is no stage.
 {verified: WhizbangHealthAggregatorTests.Evaluate_CarriesTheStartupStage_ForEveryProbeAsync, WhizbangHealthAggregatorTests.Evaluate_WithoutAStageReporter_CarriesNoStageAsync, WhizbangManagedHealthCheckTests.Result_CarriesTheStartupStagesNumberNameAndMessageAsync, WhizbangManagedHealthCheckTests.Result_WithNoStage_CarriesNoStageKeysAsync}
+
+## Roles {#roles}
+
+With [role assignment](../operations/startup/capabilities-and-duties#role-assignment-the-default), the `roles`
+component reports each duty: who holds it, its epoch and any owed work, or why it is vacant or lapsed. It reads the
+role assignments from the instance's [Elect stage](../operations/startup/startup-status#what-runs-in-each-stage) on.
+Before that the tables it reads may not exist yet, so it reads nothing and reports `Degraded` with the detail
+`role assignments are read from the Elect stage on; this instance is in an earlier one`. Like any intentional startup
+state, that is HTTP 200 on readiness under the default policy and never fails liveness.
+{verified: RoleAssignmentHealthSourceTests.BeforeTheElectionStage_NothingIsRead_AndTheRolesAreDegradedAsync, RoleAssignmentHealthSourceTests.FromTheElectionStageOn_TheAssignmentsAreReadAsync, StartupStageWiringTests.TheRolesHealthComponent_ReadsNothingBeforeElectAsync}
 
 ## A slow or blocked source {#slow-sources}
 

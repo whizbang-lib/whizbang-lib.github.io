@@ -34,6 +34,7 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/WorkEligibilitySqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/AliveVersusEligibleE2ETests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/AliveLockSourcePostgresTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/StartupStageWiringTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/AliveLockSourceRegistrationTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Performance/AliveLockRankCostScenarioTests.cs
   - tests/Whizbang.Core.Tests/Workers/HeartbeatWorkerAdaptiveCadenceTests.cs
@@ -96,6 +97,14 @@ Pooled instances are judged exactly as before this rule existed.
 `AddWhizbangPostgresNotifications` registers `PgSharedNotifyConnection` as the instance's `IInstanceAliveLockSource`. It replaces the core's `NullInstanceAliveLockSource` default whichever of the two is registered first, and a source the host registered itself is left in place.
 
 `PgSharedNotifyConnection.IsAliveLockHeld` is true only when the connection holds the alive-lock **and** is a dedicated connection of its own. Behind the pooled fallback it reports no lock, even if that session took one: its peers could not attribute the lock to the instance, so reporting it would put a pooled instance on the slow cadence and let its peers count it out between beats. A host without the Postgres notifications keeps the null default, holds no lock and beats on the fast cadence.
+
+The connection, and with it the alive-lock claim, starts at the end of the instance's Preflight
+[startup stage](../../operations/startup/startup-status#what-runs-in-each-stage), before the election that reads the
+lock. On a fresh database the function that claims the lock may not exist yet: the connection asks the catalog first,
+logs at Debug that the claim waits, and makes it on a later keepalive once the migration has created the function.
+`PgSharedNotifyConnection.OnAliveLockClaimed` is raised each time the claim is made. Until then the heartbeat is the
+instance's liveness signal, as for any instance not holding its lock.
+{verified: AliveLockSourcePostgresTests.OnADatabaseWithoutTheFunctionYet_TheClaimWaitsQuietly_AndAKeepaliveMakesItOnceItExistsAsync, StartupStageWiringTests.TheNotificationConnection_StartsAtTheEndOfPreflight_OnceAsync}
 
 :::updated
 Earlier releases took the alive-lock but never registered the shared connection as the lock source, so every instance beat on the fast cadence and the slow cadence below was dormant. Registering it is what puts direct instances on the slow cadence, and the rule above is what makes that safe: without it, a reader comparing heartbeat age against its own window would take a direct instance for dead between two slow beats.
