@@ -234,6 +234,9 @@ ORDER BY mean_exec_time DESC
 LIMIT 10;
 ```
 
+If the database is not the bottleneck, profile the process: see
+[Profiling a service running Whizbang](../performance/profiling.md).
+
 ### Solution 1: Missing Index
 
 **Problem**: Full table scan on large table.
@@ -473,6 +476,11 @@ dependencies
 
 ## Diagnostic Tools
 
+For a slow service rather than a broken one, start with
+[Profiling a service running Whizbang](../performance/profiling.md): the order to use these tools in,
+the Whizbang meters to watch for a slow outbox drain, an inbox backlog or perspective lag, lock
+contention and allocation traces, and runtime settings to measure.
+
 ### 1. dotnet-counters (Live Metrics)
 
 ```bash{title="dotnet-counters (Live Metrics)" description="dotnet-counters (Live Metrics)" category="Configuration" difficulty="INTERMEDIATE" tags=["Operations", "Deployment", "Dotnet-counters", "Live"]}
@@ -493,8 +501,8 @@ dotnet-counters monitor --process-id 1234
 ### 2. dotnet-trace (Performance Profiling)
 
 ```bash{title="dotnet-trace (Performance Profiling)" description="dotnet-trace (Performance Profiling)" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Dotnet-trace", "Performance"]}
-# Collect trace
-dotnet-trace collect --process-id 1234 --profile cpu-sampling
+# Collect trace (the default profiles sample CPU; cpu-sampling was removed)
+dotnet-trace collect --process-id 1234 --duration 00:00:00:30
 
 # Convert to speedscope format
 dotnet-trace convert trace.nettrace --format speedscope
