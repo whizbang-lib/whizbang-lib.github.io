@@ -931,3 +931,4 @@ Counters and up-down counters are registered on the meter as observable instrume
 - [OpenTelemetry Integration](./opentelemetry-integration) - Tag-based telemetry and metric hooks
 - [Diagnostics](./diagnostics) - System diagnostics and health monitoring
 - [Logging Categories](./logging-categories) - Configure log output verbosity
+- [Profiling a service running Whizbang](../performance/profiling.md) - Which of these meters to watch for a slow outbox drain, an inbox backlog or perspective lag

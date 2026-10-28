@@ -237,6 +237,10 @@ Whizbang's own queue tables stay small by design - completed `wh_outbox` / `wh_i
 
 ## Profiling
 
+[Profiling a service running Whizbang](../performance/profiling.md) covers profiling a running
+service end to end: dotnet-counters, dotnet-trace and Linux perf in that order, the Whizbang meters
+for each symptom, lock contention and allocation traces, and runtime settings to measure.
+
 ### 1. BenchmarkDotNet
 
 Benchmark critical paths:
@@ -286,10 +290,9 @@ dotnet run -c Release --project Benchmarks
 Profile production workloads:
 
 ```bash{title="dotnet-trace" description="Profile production workloads:" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Deployment", "Dotnet-trace"]}
-# Start tracing
-dotnet-trace collect --process-id 1234 --profile cpu-sampling
+# Trace for 30 seconds (the default profiles sample CPU; cpu-sampling was removed)
+dotnet-trace collect --process-id 1234 --duration 00:00:00:30
 
-# Stop after 30 seconds
 # Open trace file in PerfView or Visual Studio
 ```
 
