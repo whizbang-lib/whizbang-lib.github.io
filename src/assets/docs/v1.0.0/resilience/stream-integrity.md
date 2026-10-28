@@ -896,6 +896,7 @@ can repair:
 | Identity mismatch: equal counts, different folds | not a deficit | Never | No |
 | Local surplus: more events than the origin | not a deficit | Never | No |
 | Kind unknown (see below) | unknown | Never | No |
+| Deficit a redelivery [could not change](#unhealable-buckets) | deficit | Never, until its signature changes or it heals | No |
 
 The comparison states the kind when it reports the bucket, because the ledger row cannot work it out:
 it holds each side's fold digest, which is a hash of the event set, not a count. The kind follows the
