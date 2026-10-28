@@ -13,10 +13,14 @@ codeReferences:
   - src/Whizbang.Core/Workers/HeartbeatWorker.cs
   - src/Whizbang.Core/Notifications/WhizbangNotificationOptions.cs
   - src/Whizbang.Core/Workers/PerspectiveWorker.cs
+  - src/Whizbang.Core/Workers/InboxDrainWorker.cs
+  - src/Whizbang.Core/Workers/InboxDeserializeCacheOptions.cs
 testReferences:
   - tests/Whizbang.Core.Component.Tests/Workers/ClaimWorkerGateCadenceTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/ClaimWorkerAcquisitionBoundsTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/OutboxDrainWorkerStreamRunTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/InboxDrainWorkerGapTests.cs
+  - tests/Whizbang.Core.Tests/Workers/InboxDeserializeCacheByteBudgetTests.cs
 ---
 
 # Configuration reference
@@ -63,6 +67,19 @@ See [notifications-and-pgbouncer](notifications-and-pgbouncer.md) for sizing mat
 | `MaxPerStream` | int | 100 | Rows drained per stream per fetch, and the page a continuation round leases. |
 | `ContinueStreamRuns` | bool | true | Continue a stream from the lease it holds once its rows publish, instead of waiting for the next claim cycle. A stream with a failed publish is never continued. |
 | `MaxContinuationRounds` | int | 10 | Continuation rounds per drain cycle before the claim cycle takes the streams on. |
+
+## Inbox memory (`InboxDrainWorkerOptions`, `InboxDeserializeCacheOptions`) {#inbox-memory}
+
+Byte budgets on the inbox rows a process holds in memory. Payloads are measured as their UTF-8 JSON length.
+
+| Key | Type | Default | Notes |
+|---|---|---|---|
+| `Whizbang:Workers:InboxDrain:MaxHeldPayloadBytes` | long | 134217728 (128 MiB) | Payload bytes of the rows held for dispatch (queued, dispatching, awaiting commit). A row that would exceed it, and the rest of its stream in that fetch, are handed back with attempts refunded; with nothing held one row is always admitted. `0` or less turns it off. See [working-set budget](per-stream-drain.md#working-set-budget). |
+| `Whizbang:Workers:InboxDeserializeCache:MaxBytes` | long | 67108864 (64 MiB) | Payload bytes the deserialize cache may keep, alongside its entry cap. Past it the oldest entries are evicted; a payload larger than the whole budget is not cached; a row's entry is dropped when the row completes. An evicted entry is parsed again. |
+
+{verified: InboxDrainWorkerGapTests.WorkingSetFull_TheStreamIsNotQueued_AndIsHandedBackUnchargedAsync, InboxDrainWorkerGapTests.BudgetDisabled_EverythingIsQueuedAsync, InboxDeserializeCacheByteBudgetTests.Options_DefaultTheBudgetTo64MebibytesAsync, InboxDeserializeCacheByteBudgetTests.OverTheBudget_TheOldestEntriesAreEvictedUntilItFitsAsync, InboxDeserializeCacheByteBudgetTests.APayloadLargerThanTheWholeBudget_IsNotCachedAsync}
+
+The inbox lease keeper reads no key of its own: `Whizbang:Workers:LeaseRenewal:Enabled` and `LeaseSeconds`, and `Whizbang:Workers:LeaseHandle:MaxRenewalsPerWork` (default 6), govern it. See [held rows](inbox-dispatch.md#held-rows).
 
 ## `Whizbang:Workers:Heartbeat` (heartbeat worker tuning — `HeartbeatWorkerOptions`)
 
@@ -113,6 +130,9 @@ ConnectionStrings__appservice-db-direct=Host=postgres-primary:5432;...
 Whizbang__Workers__Claim__PollingIntervalMilliseconds=250
 Whizbang__Workers__Claim__PollingMaxIntervalMilliseconds=10000
 Whizbang__Workers__Heartbeat__IntervalSeconds=5
+
+Whizbang__Workers__InboxDrain__MaxHeldPayloadBytes=134217728
+Whizbang__Workers__InboxDeserializeCache__MaxBytes=67108864
 
 Whizbang__Database__PollingFallbackInterval=00:00:30
 Whizbang__Database__ListenReconnectMaxDelay=00:00:30

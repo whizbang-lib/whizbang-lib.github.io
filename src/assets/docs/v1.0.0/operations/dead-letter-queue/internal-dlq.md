@@ -26,6 +26,7 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/EFCoreDeadLetterStoreTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/InboxDispatchWorkerTests.cs
   - tests/Whizbang.Core.Tests/Workers/InboxDispatchWorkerDeadLetterTests.cs
+  - tests/Whizbang.Core.Tests/Workers/InboxDispatchWorkerControlPlaneDropLogTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/OutboxPublishWorkerDlqPromotionTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerDeadLetterFilterTests.cs
   - tests/Whizbang.Core.Tests/Workers/V502DefaultsTests.cs
@@ -181,6 +182,33 @@ fallback differs per worker:
 
 This keeps `wh_dead_letters` from silently swallowing rows when the DLQ
 surface itself is broken (DB unhealthy, schema mismatch, etc.).
+
+## Control-plane drops {#control-plane-drops}
+
+Control-plane messages (framework coordination traffic that is re-emitted on its own cadence) are
+never stored in `wh_dead_letters`. When an inbox control-plane row passes `MaxInboxAttempts`, the
+dispatch worker drops it: the row is completed terminally and counted in the dead-letter metrics
+under the `ControlPlaneDropped` reason. Storing it would only have the recovery worker replay a stale message
+on a later boot.
+
+Because nothing is stored, the drop log line is the only record of why the row failed. It is a
+Warning (EventId 11, category `Whizbang.Core.Workers.InboxDispatchWorker`) and carries the message
+id, type, attempts, the row's last recorded error, and the cause of that error:
+
+| Last cause | Meaning |
+|---|---|
+| `its lease lapsed without a reported outcome` | The last error is the stamp a claim writes when a lease expires with no outcome reported. The attempts were spent by lapsed leases, not by the message failing. See [claim backpressure](../workers/claim-backpressure.md). |
+| `a recorded failure` | Something reported a failure; the last error is that failure's text. |
+| `none recorded` | The row has no last error. |
+
+{verified: InboxDispatchWorkerControlPlaneDropLogTests.Drop_WithARecordedFailure_LogsTheErrorAndNamesItAsARecordedFailureAsync, InboxDispatchWorkerControlPlaneDropLogTests.Drop_AfterLeaseLapses_NamesTheLapseAsTheCauseAsync, InboxDispatchWorkerControlPlaneDropLogTests.Drop_WithNothingRecorded_SaysNoneRecordedAsync}
+
+```text{title="Control-plane drop line" description="The Warning logged when an inbox control-plane row is dropped at the attempt bound, here after its attempts were spent on lapsed leases" category="Dead Letter Queue" difficulty="INTERMEDIATE" tags=["dead-letter", "control-plane", "logging", "inbox"] tests=["InboxDispatchWorkerControlPlaneDropLogTests.Drop_AfterLeaseLapses_NamesTheLapseAsTheCauseAsync", "InboxDispatchWorkerControlPlaneDropLogTests.Drop_WithARecordedFailure_LogsTheErrorAndNamesItAsARecordedFailureAsync"]}
+InboxDispatchWorker DROPPED control-plane message <id> (<type>) after 11 attempt(s); last cause: its lease lapsed
+without a reported outcome; last error: Attempt 3 ended without a reported outcome: lease held by instance <id>
+expired. Control-plane traffic is re-emitted on its own cadence and is never durably dead-lettered, so this line
+is the only record of why it failed.
+```
 
 ## Defaults
 

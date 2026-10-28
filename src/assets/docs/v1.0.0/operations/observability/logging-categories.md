@@ -16,9 +16,17 @@ codeReferences:
   - src/Whizbang.Core/Workers/TransportConsumerWorker.cs
   - src/Whizbang.Core/Workers/OutboxPublishWorker.cs
   - src/Whizbang.Core/Workers/ClaimWorker.cs
+  - src/Whizbang.Core/Workers/InboxDrainWorker.cs
+  - src/Whizbang.Core/Workers/InboxDispatchWorker.cs
+  - src/Whizbang.Core/Workers/InboxHandlerWorker.cs
   - src/Whizbang.Core/Tags/MessageTagProcessor.cs
   - src/Whizbang.Core/Observability/WhizbangStartupLog.cs
   - src/Whizbang.Data.EFCore.Postgres/WhizbangHostExtensions.cs
+testReferences:
+  - tests/Whizbang.Core.Component.Tests/Workers/InboxDrainWorkerGapTests.cs
+  - tests/Whizbang.Core.Tests/Workers/InboxDispatchWorkerHeldLeaseTests.cs
+  - tests/Whizbang.Core.Tests/Workers/InboxDispatchWorkerControlPlaneDropLogTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/InboxHandlerWorkerTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -82,6 +90,9 @@ To temporarily re-enable a category for debugging, set it to `"Debug"`:
 | `Whizbang.Core.Workers.OutboxPublishWorker` | Outbox publish worker — startup/shutdown summary at `Information`; publish failures, DLQ promotions, and missing-transport conditions at `Warning`. | Information |
 | `Whizbang.Core.Workers.ClaimWorker` | Work-claim poller — startup/shutdown and NOTIFY-gate reconnects at `Information`; tick failures and heartbeat problems at `Warning`. | Information |
 | `Whizbang.Core.Workers.TransportConsumerWorker` | Transport consumer startup and subscription management. Logs a one-line summary at `Information` on start; per-destination and per-subscription detail at `Debug`. | Information |
+| `Whizbang.Core.Workers.InboxDrainWorker` | Inbox drain: turns claimed stream ids into queued inbox rows. Working-set budget hand-backs at `Information`; drain and hand-back failures at `Warning`. See [Inbox pipeline events](#inbox-pipeline-events). | Information |
+| `Whizbang.Core.Workers.InboxDispatchWorker` | Inbox dispatch and its lease keeper: dispatch failures, lease renewal failures, lapsed held rows and control-plane drops at `Warning`; skipped duplicate copies at `Debug`. | Information |
+| `Whizbang.Core.Workers.InboxHandlerWorker` | Batched inbox commits: each failed commit (first five per flush, then a summary) at `Warning`. | Information |
 
 ### Transport
 
@@ -145,6 +156,31 @@ trace every firing while you investigate, lower just this category:
   }
 }
 ```
+
+## Inbox Pipeline Events {#inbox-pipeline-events}
+
+The inbox drain, dispatch and commit workers log the events below about the rows a process holds and
+the commits it makes. See [Per-stream drain](../../fundamentals/work-coordinator/per-stream-drain#working-set-budget),
+[Inbox dispatch](../../fundamentals/work-coordinator/inbox-dispatch#held-rows) and
+[Handler commit](../../fundamentals/work-coordinator/handler-commit#commit-failures-logged) for what each
+means.
+
+| Category | EventId | Level | When |
+|---|---|---|---|
+| `InboxDrainWorker` | 62 | Information | The working set is full; fetched rows were handed back uncharged. |
+| `InboxDrainWorker` | 63 | Warning | Handing back rows the working-set budget turned away failed. |
+| `InboxDispatchWorker` | 11 | Warning | A control-plane message was dropped at the attempt bound; carries its last cause and last error. See [control-plane drops](../dead-letter-queue/internal-dlq#control-plane-drops). |
+| `InboxDispatchWorker` | 78 | Warning | Renewing the leases of held rows failed. |
+| `InboxDispatchWorker` | 79 | Warning | A held row used every lease renewal it is allowed in its state. |
+| `InboxDispatchWorker` | 80 | Warning | Summary of lapses in one keeper pass beyond the first five. |
+| `InboxDispatchWorker` | 81 | Warning | Handing back never-dispatched rows whose renewals ran out failed. |
+| `InboxDispatchWorker` | 82 | Debug | A duplicate copy of a row, or a copy of a row no longer held, was skipped. |
+| `InboxHandlerWorker` | 26 | Warning | A row's commit failed; carries the message id, type and error. |
+| `InboxHandlerWorker` | 27 | Warning | Summary of commit failures in one flush beyond the first five. |
+| `InboxHandlerWorker` | 28 | Warning | A commit failure names no request in the flush. |
+
+Categories are prefixed `Whizbang.Core.Workers.`. Every Warning above reaches the default `Information` level.
+{verified: InboxDrainWorkerGapTests.HandingBackFails_IsLoggedWithWhatItCostsAsync, InboxDispatchWorkerHeldLeaseTests.Keeper_ManyLapsesInOneSweep_LogTheFirstIndividually_ThenASummaryAsync, InboxDispatchWorkerControlPlaneDropLogTests.Drop_WithARecordedFailure_LogsTheErrorAndNamesItAsARecordedFailureAsync, InboxHandlerWorkerTests.ManyCommitFailuresInOneFlush_LogTheFirstIndividually_ThenOneSummaryOfTheRestAsync}
 
 ## Hierarchical Filtering {#hierarchy}
 
