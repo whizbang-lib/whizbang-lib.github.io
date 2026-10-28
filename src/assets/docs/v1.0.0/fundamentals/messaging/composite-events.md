@@ -35,6 +35,7 @@ codeReferences:
   - src/Whizbang.Generators/MessageJsonContextGenerator.cs
   - src/Whizbang.Core/Messaging/UnresolvedMessage.cs
   - src/Whizbang.Core/Serialization/JsonContextRegistry.cs
+  - src/Whizbang.Core/Routing/MessageDiscardPolicy.cs
 testReferences:
   - tests/Whizbang.Core.Tests/Messaging/CompositeEventContractTests.cs
   - tests/Whizbang.Core.Tests/Messaging/CompositeEventBaseTests.cs
@@ -503,6 +504,14 @@ event whatever the catalog says, and a raw child (a re-delivery bundle) is an
 event because it came from an event store. A catalog miss never demotes a child
 to a command.
 {verified: CompositeInboxFanoutIdentityAndSubscriptionTests.TryExpand_WithAConsumerPredicate_DropsChildrenNobodySubscribesTo_AndCountsThemAsync, CompositeInboxFanoutIdentityAndSubscriptionTests.TryExpand_TypedChildMissingFromTheCatalog_IsStillAnEvent_WhenItIsOneAsync, CompositeInboxFanoutIdentityAndSubscriptionTests.TryExpand_RawChildMissingFromTheCatalog_IsAnEventAsync}
+
+Whether a child is kept is the same question the consumer asks of a message on
+receive, so the expansion asks the discard policy's receive decision. A child in an
+[absorbed namespace](../dispatcher/routing#absorbed-namespaces) is therefore kept even
+when nothing on this service consumes it: it is stored, the claim copies it into the
+event store for a perspective added later to rebuild from, and the dispatch gate then
+settles its row on the first claim without dispatching, retrying or dead-lettering it.
+{verified: InboxDispatchWorkerCompositeCommitTests.Composite_ChildInAnAbsorbedNamespace_WithNoLocalConsumer_IsKeptAtExpansionAsync}
 
 ### Reading a stored composite at dispatch {#reading-a-stored-composite}
 

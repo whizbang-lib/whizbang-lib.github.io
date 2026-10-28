@@ -22,6 +22,9 @@ codeReferences:
   - src/Whizbang.Core/Messaging/InboxReceiveDiscard.cs
   - src/Whizbang.Core/Transports/ReceivedEnvelopeReader.cs
   - src/Whizbang.Data.Postgres/Migrations/242_SkippedArrivalsAreStoredSettled.sql
+  - src/Whizbang.Core/Workers/ReceiveConsumerGate.cs
+  - src/Whizbang.Core/Workers/ServiceBusConsumerWorker.cs
+  - src/Whizbang.Core/Routing/MessageDiscardPolicy.cs
 testReferences:
   - tests/Whizbang.Core.Tests/Workers/TransportConsumerBuilderExtensionsTests.cs
   - tests/Whizbang.Core.Tests/Workers/TransportConsumerBuilderExtensionsServiceNameTests.cs
@@ -39,6 +42,10 @@ testReferences:
   - tests/Whizbang.Core.Component.Tests/Workers/TransportConsumerWorkerStoresBeforeSkippingTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/InboxDiscardedOnReceiveSqlTests.cs
   - tests/Whizbang.Core.Tests/Transports/ReceivedEnvelopeReaderTests.cs
+  - tests/Whizbang.Core.Tests/Workers/ReceiveConsumerGateTests.cs
+  - tests/Whizbang.Core.Tests/Routing/MessageDiscardPolicyTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/ServiceBusConsumerWorkerDropGateTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/AbsorbedEventReachesEventStoreTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -218,7 +225,7 @@ stores them already settled, with the reason in `InboxMessage.DiscardedOnReceive
 
 | Reason | When |
 |---|---|
-| `no_local_consumer` | No receptor, lifecycle receptor, perspective or runtime receptor on this service consumes the message's type. Offloaded bodies and composites are exempt, since their consumers are known only after rehydration or fan-out. |
+| `no_local_consumer` | No receptor, lifecycle receptor, perspective or runtime receptor on this service consumes the message's type. Offloaded bodies and composites are exempt, since their consumers are known only after rehydration or fan-out. Events in an [absorbed namespace](../../fundamentals/dispatcher/routing#absorbed-namespaces) are exempt too, since they are kept for the event store with no consumer (see [below](#absorbed-events-on-receive)). |
 | `foreign_target` | The envelope is directed at another service (its target names a different service). |
 | `owned_echo` | An event of a namespace this service owns, delivered back to it: its own event, already stored here (see [echo suppression](../../fundamentals/dispatcher/routing#transport-echo-suppression)). |
 | `self_echo` | A command of a namespace this service owns whose last hop is this service: its own send, delivered back. |
@@ -237,6 +244,26 @@ settled row for each until the next purge.
 
 The non-durable receive of the control class is unchanged: those messages are still handled without an
 inbox row.
+
+#### Absorbed events are stored live {#absorbed-events-on-receive}
+
+The `no_local_consumer` skip does not apply to an event in an
+[absorbed namespace](../../fundamentals/dispatcher/routing#absorbed-namespaces). Such an event is stored as
+an ordinary inbox row even when nothing on this service consumes it, so the claim copies it into the event
+store and a perspective added later can rebuild from it. Nothing here takes it at dispatch, so the dispatch
+gate settles the row on its first claim: no handler runs, nothing is retried and nothing is dead-lettered.
+An unconsumed event in a namespace that is not absorbed is still stored settled as `no_local_consumer`.
+
+The transport consumer and the Service Bus consumer make this decision through one shared gate, so the two
+cannot drift apart. The gate asks the receptor registries first (compile-time consumers, runtime receptors
+and composites); when they find no consumer, it asks the registered message-discard policy, which owns the
+absorbed-namespace match. A host that registers no discard policy keeps the registry-only decision.
+
+At dispatch, the inbox gate logs the skip of an absorbed event as `NoLocalConsumer` at Debug, since it is
+the expected steady state of an absorbed namespace. `RegistryChanged` at Information now means only a row
+outside the absorbed namespaces that reached dispatch with no consumer registered: its consumer
+disappeared after it was stored, typically because a deploy removed a receptor.
+{verified: ReceiveConsumerGateTests.NoConsumer_InAnAbsorbedNamespace_KeepsTheMessageAsync, ReceiveConsumerGateTests.NoConsumer_OutsideTheAbsorbedNamespaces_IsUnconsumedAsync, ReceiveConsumerGateTests.NoConsumer_AndNoPolicy_IsUnconsumedAsync, ReceiveConsumerGateTests.BodyOffloadClaim_KeepsTheMessageAsync, ReceiveConsumerGateTests.Composite_KeepsTheMessageAsync, TransportConsumerWorkerStoresBeforeSkippingTests.AnUnconsumedEventInAnAbsorbedNamespace_IsStoredLive_SoTheEventStoreCapturesItAsync, TransportConsumerWorkerStoresBeforeSkippingTests.AnUnconsumedEventOutsideTheAbsorbedNamespaces_IsStillStoredSettledAsync, TransportConsumerWorkerStoresBeforeSkippingTests.AnAbsorbedEventWithALocalConsumer_IsStoredLiveAsBeforeAsync, ServiceBusConsumerWorkerDropGateTests.HandleMessage_UnconsumedEventInAnAbsorbedNamespace_IsStoredLive_SoTheEventStoreCapturesItAsync, ServiceBusConsumerWorkerDropGateTests.HandleMessage_UnconsumedEventOutsideTheAbsorbedNamespaces_IsStillStoredSettledAsync, MessageDiscardPolicyTests.EvaluateInbox_UnconsumedType_OnAbsorbedNamespace_IsSkippedAsRoutine_NotAsRegistryDriftAsync, MessageDiscardPolicyTests.EvaluateInbox_UnconsumedType_OnNonAbsorbedNamespace_IsStillRegistryDriftAsync, AbsorbedEventReachesEventStoreTests.AnUnconsumedEventInAnAbsorbedNamespace_IsCopiedIntoTheEventStoreAsync, AbsorbedEventReachesEventStoreTests.AnUnconsumedEventOutsideTheAbsorbedNamespaces_IsNotCopiedAsync}
 {verified: TransportConsumerWorkerStoresBeforeSkippingTests.AMessageNoLocalConsumerTakes_IsStoredAsync, TransportConsumerWorkerStoresBeforeSkippingTests.AMessageDirectedAtAnotherService_IsStoredAsync, TransportConsumerWorkerStoresBeforeSkippingTests.AnEchoOfThisServicesOwnEvent_IsHeldNotDroppedAsync, TransportConsumerWorkerStoresBeforeSkippingTests.AnEchoOfThisServicesOwnCommand_IsStoredAsync, TransportConsumerWorkerStoresBeforeSkippingTests.AnEventTheKnownEventFilterRejects_IsStoredAsync, TransportConsumerWorkerStoresBeforeSkippingTests.AnUnconsumedEventTheKnownEventFilterAlsoRejects_KeepsItsFirstReasonAsync, TransportConsumerWorkerStoresBeforeSkippingTests.AMessageThisServiceProcesses_IsStoredWithNoReasonAsync, TransportConsumerWorkerStoresBeforeSkippingTests.ASkip_IsCountedUnderItsReason_NotAsADuplicateAsync, InboxDiscardedOnReceiveSqlTests.AMessageDiscardedOnReceive_IsStoredSettled_WithItsReason_AndNeverClaimedOrCopiedAsync}
 
 ### The one refusal {#refused-bodies}
