@@ -34,6 +34,7 @@ testReferences:
   - tests/Whizbang.Core.Component.Tests/Schema/SchemaInitializationRunnersTests.cs
   - tests/Whizbang.Core.Tests/Schema/SchemaInitializationObserversTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/MigrationStepTransactionTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/StartupPreflightHostTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -150,6 +151,32 @@ await first.EnsureWhizbangInitializedAsync();   // initializes database A
 await second.EnsureWhizbangInitializedAsync();  // initializes database B — not "already initialized"
 await first.EnsureWhizbangInitializedAsync();   // no-op for the same host
 ```
+
+### A second call waits for the one in progress {#a-second-call-waits}
+{verified: DbContextInitializationRegistryTests.InitializeAllAsync_ASecondCallWhileTheFirstRuns_ReturnsOnlyOnceTheFirstHasFinishedAsync, DbContextInitializationRegistryTests.InitializeAllAsync_ASecondCallWhoseFirstFails_RunsItsOwnAttemptAsync, DbContextInitializationRegistryTests.InitializeAllAsync_TheHostsProviderAndItsRootScope_AreOneHostAsync, DbContextInitializationRegistryTests.InitializeAllAsync_ASecondCallsWait_EndsWithItsTokenAsync, StartupPreflightHostTests.ASecondInitialization_ReturnsOnlyOnceTheFirstHasFinishedAsync}
+
+A host makes one initialization attempt at a time. A call to `EnsureWhizbangInitializedAsync()` made while the host's
+own initialization (or any other call) is still running joins that attempt: it logs
+`Whizbang database initialization is in progress; waiting for it to finish` at Information and returns only once the
+attempt has finished, so the schema it returns to is the whole schema.
+
+- **The attempt succeeded.** The waiting call returns, having run nothing itself.
+- **The attempt failed.** The waiting call logs
+  `The Whizbang database initialization this call waited for failed; this call runs one of its own` at Warning and runs
+  an attempt of its own. A failed attempt never counts as initialized.
+- **The wait is canceled.** The call's own cancellation token ends its wait; the attempt it was waiting for carries on.
+
+The host's own provider (`app.Services`) and the root scope its hosted services are built from count as one host.
+Earlier releases told them apart, so a call from `app.Services` made while the hosted initializer was migrating ran a
+second initialization beside it, and a call made while one was in progress returned at once, before the schema was
+ready.
+
+:::note
+This applies to the host-level `EnsureWhizbangInitializedAsync()` and the hosted initializer. Calling the generated
+`EnsureWhizbangDatabaseInitializedAsync()` directly on a DbContext initializes that context without going through the
+host's attempt, so it neither waits for nor is waited for by one in progress. Prefer the host-level call while the
+host is running.
+:::
 
 ## Multi-Instance Initialization
 
