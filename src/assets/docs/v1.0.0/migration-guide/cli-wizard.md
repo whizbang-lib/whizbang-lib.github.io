@@ -402,7 +402,7 @@ tags: ["migration", "decision-file", "json", "reproducibility"]
   "project_path": "/src/MyProject",
   "generated_at": "2026-01-20T10:00:00Z",
   "state": {
-    "status": "in_progress",
+    "status": "InProgress",
     "started_at": "2026-01-18T14:30:00Z",
     "git_commit_before": "abc123def456",
     "completed_categories": ["routing", "handlers"],
@@ -485,6 +485,11 @@ The `routing` section captures:
 - **detected_domains**: All domains found in the codebase
 - **inbox_strategy**: `SharedTopic` or `DomainTopics`
 - **outbox_strategy**: `DomainTopics` or `SharedTopic`
+
+`state.status` is one of `NotStarted`, `InProgress`, `Completed` or `Reverted`, written exactly as shown (strategy
+values are written the same way). The example above shows the main sections; a saved file also carries the
+`schema`, `tenant`, `stream_id`, `preserve_packages` and JSON-migration decisions the wizard recorded. Saving the
+file with comments keeps every one of them, so it loads back with the same decisions.
 
 ### Generate for Manual Editing
 
