@@ -14,6 +14,8 @@ codeReferences:
   - src/Whizbang.Core/Workers/OutboxPublishWorker.cs
   - src/Whizbang.Core/Workers/OutboxCompletionFlushWorker.cs
   - src/Whizbang.Core/Workers/HeartbeatWorker.cs
+  - src/Whizbang.Core/Workers/LeaseRenewalWorker.cs
+  - src/Whizbang.Data.Postgres/Migrations/255_LeaseRenewalIsScopedToTheHolder.sql
 testReferences:
   - tests/Whizbang.Core.Component.Tests/Workers/InboxHandlerWorkerTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/OutboxPublishWorkerCoverageTests.cs
@@ -66,7 +68,7 @@ The work coordinator pumps messages through three queues — outbox (transport p
 | `PerspectiveProcessWorker` | Reads perspective channel, runs projection, signals completion. |
 | `PerspectiveCompletionFlushWorker` | Drains perspective-completion channel, batches, calls `complete_perspective`. |
 | `FailureFlushWorker` | Drains failure channel, batches per category, calls `report_failures`. |
-| `LeaseRenewalWorker` | Drains lease-renewal channel, batches per category, calls `renew_leases`. |
+| `LeaseRenewalWorker` | Drains lease-renewal channel, batches per category, calls `wh_renew_held_leases` as this instance. |
 
 ## The 11 SQL functions
 
@@ -78,7 +80,7 @@ The work coordinator pumps messages through three queues — outbox (transport p
 | `complete_outbox_published` | warm | Batched fire-and-forget. |
 | `complete_perspective` | warm | Cursor advance + event-row deletion. |
 | `report_failures` | warm | Per-category batched. |
-| `renew_leases` | cold | Per-category batched. |
+| `wh_renew_held_leases` | cold | Per-category batched; renews only the caller's leases and returns the ids it did not renew (migration 255, which leaves `renew_leases` unused for rolling deployments). |
 | `record_heartbeat` | cold | Decoupled UPSERT. |
 | `flush_completions` | warm | Composite multi-category. |
 | `resolve_sync_inquiries` | on-demand | Read-only. |

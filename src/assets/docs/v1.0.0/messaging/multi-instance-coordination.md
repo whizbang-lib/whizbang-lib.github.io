@@ -18,6 +18,7 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/012_CalculateInstanceRank.sql
   - src/Whizbang.Data.Postgres/Migrations/029_ProcessWorkBatch.sql
   - src/Whizbang.Data.Postgres/Migrations/148_ActiveStreamLeases.sql
+  - src/Whizbang.Data.Postgres/Migrations/255_LeaseRenewalIsScopedToTheHolder.sql
   - src/Whizbang.Core/Workers/HeartbeatWorker.cs
   - src/Whizbang.Core/Workers/ClaimWorker.cs
 testReferences:
@@ -48,7 +49,7 @@ Multi-instance coordination ensures reliable, ordered message processing across 
 
 {verified: ActiveStreamLeaseExpirySqlTests.ClaimOrphanedInbox_Steal_NeverTakesAStreamALiveSiblingOwns_EvenWithNoRowLeasedAsync, ActiveStreamLeaseExpirySqlTests.RenewLeases_ExtendsTheStreamLease_ForTheOwnersStreamsAsync}
 
-The lease is what makes the rule hold between rows: the acquisition functions write `wh_active_streams.lease_expiry` with every claim and `renew_leases` extends it with the row leases, so a stream stays owned while its owner is mid-handler even when none of its rows happens to be leased at that instant. See [stream leases](../operations/workers/process-work-batch-lease-semantics.md#stream-leases).
+The lease is what makes the rule hold between rows: the acquisition functions write `wh_active_streams.lease_expiry` with every claim and `wh_renew_held_leases` extends it with the row leases the owner holds, so a stream stays owned while its owner is mid-handler even when none of its rows happens to be leased at that instant. See [stream leases](../operations/workers/process-work-batch-lease-semantics.md#stream-leases).
 
 **Why This Matters**: Prevents out-of-order processing when messages from the same stream would otherwise be distributed across multiple instances.
 
@@ -697,6 +698,7 @@ Higher counts enable finer-grained distribution:
 The coordination logic lives in focused SQL functions:
 
 - `claim_work` + `record_heartbeat` + `renew_leases` — first defined in `029_ProcessWorkBatch.sql` (which also removes the legacy single orchestrator function) and redefined by later migrations; the latest definition is the one in effect
+- `wh_renew_held_leases` (`255_LeaseRenewalIsScopedToTheHolder.sql`): lease renewal for this release, which renews only the rows the calling instance holds; `renew_leases` is left unused so instances on the previous release keep renewing during a rolling deployment
 - `claim_orphaned_outbox` / `claim_orphaned_inbox` — `024_ClaimOrphanedOutbox.sql` / `025_ClaimOrphanedInbox.sql` (owner path, modulo path, scheduled-retry ordering gate)
 - `cleanup_stale_instances` — `011_CleanupStaleInstances.sql` (liveness-corroborated removal + lease release)
 - `calculate_instance_rank` — `012_CalculateInstanceRank.sql`
