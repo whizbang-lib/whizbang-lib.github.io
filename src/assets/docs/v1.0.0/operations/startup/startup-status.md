@@ -27,6 +27,14 @@ codeReferences:
   - src/Whizbang.Data.Postgres/SchemaInitializationStages.cs
   - src/Whizbang.Data.Postgres/Migrations/231_StartupStageRecord.sql
   - src/Whizbang.Data.Postgres/Migrations/244_HeartbeatNeverRollsThePhaseBack.sql
+  - src/Whizbang.Core/Startup/IStartupStageGate.cs
+  - src/Whizbang.Core/Startup/StartupStageGate.cs
+  - src/Whizbang.Core/Startup/StartupStageGatedService.cs
+  - src/Whizbang.Data.Postgres/Notifications/PostgresNotificationsServiceCollectionExtensions.cs
+  - src/Whizbang.Data.Postgres/Notifications/RoleAssignmentServiceCollectionExtensions.cs
+  - src/Whizbang.Data.Postgres/Notifications/PartitionAssignerRegistration.cs
+  - src/Whizbang.Data.Postgres/Notifications/PgSharedNotifyConnection.cs
+  - src/Whizbang.Data.Postgres/Notifications/PgWorkAvailablePollSourceBase.cs
 testReferences:
   - tests/Whizbang.Hosting.AspNet.Component.Tests/StartupStatusEndpointsTests.cs
   - tests/Whizbang.Transports.FastEndpoints.Tests/Unit/WhizbangStartupStatusEndpointBaseTests.cs
@@ -37,6 +45,14 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StartupStageSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StartupStageHostTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/HeartbeatPhaseOrderSqlTests.cs
+  - tests/Whizbang.Core.Tests/Startup/StartupStageGateTests.cs
+  - tests/Whizbang.Core.Component.Tests/Startup/StartupStageGatedServiceTests.cs
+  - tests/Whizbang.Core.Tests/Workers/WorkerPipelineStartupStageTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/StartupStageWiringTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/StartupPreflightHostTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/PgWorkAvailablePollSourceSchemaGateTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/AliveLockSourcePostgresTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperSchemaStartupTests.cs
 ---
 
 # The Startup Status Surface
@@ -187,9 +203,73 @@ FROM wh_instance_startup_stages();
 {verified: StartupStageHostTests.AFreshDatabase_EntersEveryStageInOrder_LogsEach_AndRecordsEachTheRowCanHoldAsync, StartupStageHostTests.ARestartOnACurrentDatabase_SkipsMigrate_AndRecordsFromRegistrationAsync}
 
 Elect, Migrate and Converge are reported by the EF Core driver's schema pass. A host on the Dapper driver logs
-Preflight, Coordinate, Accept commands, Running and the shutdown stages, without writing them to the row. The
+Preflight, Coordinate, Accept commands, Running and the shutdown stages, without writing them to the row. It holds no
+election, so once the database answers it logs Elect as skipped
+(`Stage 2 of 7: Elect - skipped: no election could be held, so this instance migrates under the schema lock`), which
+ends Preflight for it as for the EF Core driver. The
 [managed-resource health](../../resilience/managed-resource-health#startup-stage) `startup` component reports the same
 stage line.
+
+## What runs in each stage {#what-runs-in-each-stage}
+
+An instance's own workers start at the stage they need, not when the host starts. A worker that starts with the host
+reads and writes tables the migration may be altering in the same moment and, on a fresh database, tables and
+functions that do not exist yet. Starting each at its stage means nothing of the instance touches the database during
+Preflight, and a starting instance no longer deadlocks its own migration.
+
+| From | What starts | Why then |
+|---|---|---|
+| Elect (the end of Preflight) | The notification connection: its `LISTEN`s and the instance's [alive-lock](../../fundamentals/workers/instance-liveness#alive-lock-source) claim. The `roles` [health component](../../resilience/managed-resource-health#roles) reads role assignments from here on. | The election that follows reads the alive-lock. |
+| Coordinate | The duty holder (the maintainer vote, and the vacuum it runs on winning) and the [partition assigner](../../fundamentals/work-coordinator/partition-assignment). | Both vote and write against the instance and role tables, which the migration may still be changing until then. |
+| The schema-ready gate opens (the end of Coordinate) | The work-available probes send their first query. Until then each probe tick sends nothing. | The tables the probes read may not exist yet, and nothing claims work before the gate opens. |
+
+{verified: StartupStageWiringTests.TheNotificationConnection_StartsAtTheEndOfPreflight_OnceAsync, StartupStageWiringTests.TheDutyHolderAndThePartitionAssigner_StartAtCoordinateAsync, StartupStageWiringTests.EveryWorkAvailableProbe_ReadsTheSchemaReadyGateAsync, StartupStageWiringTests.TheRolesHealthComponent_ReadsNothingBeforeElectAsync, PgWorkAvailablePollSourceSchemaGateTests.WhileTheSchemaGateIsClosed_ATickSendsNothing_AndOnceOpenItQueriesAsync, StartupPreflightHostTests.NothingVotesBeforeCoordinate_AndNoWorkerAsksForAnObjectThatDoesNotExistYetAsync}
+
+The election for the migrator itself runs as before: it is what Elect is, run by schema initialization, and it waits
+for nothing.
+
+A stage counts as reached once the instance has entered or skipped it, or entered any later startup stage. Every stage
+up to Coordinate also counts as reached once the schema-ready gate is open, because the gate opens only at the end of
+Coordinate. A host whose schema is provisioned out of band has a gate that is open from the start, so its workers
+never wait. A shutdown stage reaches nothing: an instance that starts to drain before a worker's stage never starts
+that worker, and so never stops it.
+{verified: StartupStageGateTests.EnteringAStage_ReachesItAndEveryStageBeforeIt_ButNotTheOnesAfterAsync, StartupStageGateTests.ASkippedStage_IsReachedLikeAnEnteredOneAsync, StartupStageGateTests.TheSchemaReadyGate_ReachesEveryStageUpToCoordinate_AndNoLaterOneAsync, StartupStageGateTests.AnAlreadyOpenSchemaGate_MeansNoWaitAtAllAsync, StartupStageGateTests.AShutdownStage_ReachesNothing_SoAWorkerWaitingForItsStageNeverStartsAsync, StartupStageGatedServiceTests.StoppedBeforeItsStage_TheServiceIsNeverStartedOrStoppedAsync}
+
+### The alive-lock on a fresh database
+
+On a fresh database the notification connection can open before the migration that creates the alive-lock function
+has run. The connection asks the catalog first and, when the function does not exist yet, logs that at Debug and makes
+the claim on a later keepalive, once the function exists. `PgSharedNotifyConnection.OnAliveLockClaimed` is raised each
+time the claim is made. Earlier releases sent the call anyway, logged its failure (`42883`) at Warning, and did not
+claim the lock on that connection again until it was replaced.
+{verified: AliveLockSourcePostgresTests.OnADatabaseWithoutTheFunctionYet_TheClaimWaitsQuietly_AndAKeepaliveMakesItOnceItExistsAsync}
+
+### Starting your own hosted service at a stage
+
+`AddHostedServiceAtStage` registers a hosted service that starts once the instance reaches a startup stage. Use it
+for a service of your own that reads or writes the database as soon as it starts:
+
+```csharp{title="Start a hosted service at Coordinate" description="The host starts a wrapper with every other hosted service; the wrapper starts the service once the instance reaches its stage" category="Configuration" difficulty="INTERMEDIATE" tags=["Startup","Hosting","Workers"] tests=["StartupStageGatedServiceTests.Registration_WrapsTheServiceAtItsStage_OncePerServiceTypeAsync","StartupStageGatedServiceTests.TheServiceStarts_OnlyOnceItsStageIsReachedAsync","StartupStageGatedServiceTests.StoppedBeforeItsStage_TheServiceIsNeverStartedOrStoppedAsync"]}
+builder.Services.AddSingleton<OrderArchiveWorker>();
+builder.Services.AddHostedServiceAtStage(
+    StartupStage.Coordinate,
+    sp => sp.GetRequiredService<OrderArchiveWorker>());
+```
+
+- **When it starts.** The host starts a wrapper with every other hosted service; the wrapper waits for the stage in
+  the background and then starts the service. Only startup stages can be waited for.
+- **When it stops.** A service stopped before its stage is never started and never stopped. A started one is stopped
+  with the host.
+- **Failures.** A fault in a `BackgroundService`'s own loop is the wrapper's fault, so the host handles it exactly as
+  it would have handled the service's.
+- **Registering twice.** Registering the same service type again changes nothing.
+- **Without the worker pipeline.** A host composed without the worker pipeline records no stages and registers no
+  stage gate; there the service starts with the host, as it would unwrapped.
+
+{verified: StartupStageGatedServiceTests.AFailureOfTheServicesOwnLoop_IsTheWrappersSoTheHostSeesItAsync, StartupStageGatedServiceTests.AStoppedLoop_EndsTheWrapperWithoutAFaultAsync, StartupStageGatedServiceTests.WithNoGate_TheServiceStartsWithTheHostAsync, StartupStageGateTests.AShutdownStage_CannotBeWaitedForOrAskedAboutAsync, WorkerPipelineStartupStageTests.AddWhizbangWorkers_RegistersOneStageGate_TheReportersObserverAsync}
+
+`IStartupStageGate` is the same check for code that is not a hosted service: `HasReached(stage)` answers now, and
+`WaitForAsync(stage, cancellationToken)` completes once the stage is reached.
 
 ## Related
 
