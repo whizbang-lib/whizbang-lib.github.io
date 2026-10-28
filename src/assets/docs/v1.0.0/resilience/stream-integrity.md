@@ -45,6 +45,8 @@ codeReferences:
   - src/Whizbang.Core/Messaging/StreamIntegrityOptionsValidator.cs
   - src/Whizbang.Core/Messaging/IIntegrityRepairLedger.cs
   - src/Whizbang.Data.Postgres/Migrations/251_RepairDrainClaimsOnlyDeficits.sql
+  - src/Whizbang.Data.Postgres/Migrations/252_RepairRestoresWhatDeduplicationRemembers.sql
+  - src/Whizbang.Core/Messaging/CompositeInboxFanout.cs
 testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/AtMostOnceOccurrenceIntegrityTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/IntegrityCheckpointWorkerTests.cs
@@ -89,6 +91,8 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityManifestDrainAdmissionTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityRepairBacklogProbeSqlTests.cs
   - tests/Whizbang.Core.Tests/Messaging/StreamIntegrityOptionsValidatorTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/RedeliveredMissingEventRestoreSqlTests.cs
+  - tests/Whizbang.Core.Tests/Messaging/CompositeInboxFanoutIdentityAndSubscriptionTests.cs
 verifiedAgainstCommit: a64ba9a0
 verifiedDate: 2026-08-04
 ---
@@ -1156,7 +1160,8 @@ A changed signature (either side's digest moved) is a fresh incident: it lifts t
 attempt budget and reports again. A heal deletes the row. Only buckets the ledger already tracks are
 marked, so a redelivery nobody asked this ledger for leaves nothing behind. The usual causes of a bucket
 repair cannot change are an event stored under another origin or another stream; compare the stream on
-both sides.
+both sides. A bucket is also marked when the store refused to restore one of its events because the stream's
+earlier history was truncated here ([events deduplication remembers but the store lost](#remembered-but-missing)).
 
 The checkpoint path keys its ledger rows by type and window rather than by stream, and its
 [repair policy](#the-repair-decision-pipeline-as-wired) already stops a window whose count stopped
@@ -1553,6 +1558,58 @@ flowchart TD
 A redelivered event the receiver already holds still never reaches the inbox emit chain: the inbox
 deduplication or the chain's "already stored" test skips it, as before. The reconciliation runs beside the
 bundle's commit, not inside the store path, so live delivery pays nothing for it.
+
+### Events deduplication remembers but the store lost {#remembered-but-missing}
+
+{verified: RedeliveredMissingEventRestoreSqlTests.ARepairedEvent_DeduplicationRemembers_TheStoreLost_IsRestored_AndTheBucketHealsAsync, RedeliveredMissingEventRestoreSqlTests.ADuplicateOfAStoredEvent_IsStillDropped_EvenAsRepairTrafficAsync, RedeliveredMissingEventRestoreSqlTests.ARepairedEvent_OnAStreamWhoseEarlierHistoryWasTruncated_IsRefused_AndReportedAsync, RedeliveryReconcilerTests.Reconcile_ARestoreTheStoreRefused_MarksTheBucketUnhealableOnce_NamingTheReasonAsync}
+
+Inbox deduplication (`wh_message_deduplication`) records a message id when the message is received. The
+event-store row can be lost afterwards: a fan-out that failed or rolled back in an older version, manual
+cleanup, or an event store restored from an older backup while the deduplication table survived. Verification
+then counts the bucket short and repair asks the origin to redeliver, but deduplication alone would drop every
+redelivered copy, the bundle would store nothing, and the bucket would be asked for again on the terminal
+cadence forever.
+
+For repair traffic, deduplication is checked against the event store instead of being trusted alone
+(migration 252). The children of a redelivery bundle carry `InboxMessage.RestoreIfMissing`, and
+`store_inbox_messages` applies these rules to each one:
+
+| The child's id is | The store holds it | The inbox holds it | Outcome |
+|---|---|---|---|
+| new | n/a | n/a | Stored, as for any arrival |
+| remembered | yes | n/a | Dropped as a duplicate, as before |
+| remembered | no | yes (still pending) | Left alone: the pending row stores it on its next claim |
+| remembered | no | no | **Stored again, state only**, and the bucket heals once it is copied |
+| remembered | no | no, and the stream's earlier history was truncated here | **Refused**: stored settled with the reason, reported once |
+
+A restored event is stored **state only**: it is appended and projected, but trigger receptors do not run.
+Deduplication remembers the message, so the reactions to it already had their chance, and repair restores
+state without running a reaction twice. Ephemeral and at-most-once events are never restored, because
+verification never counts them and their absence is not a gap. Ordinary traffic, meaning anything that is
+not a redelivery child, keeps relying on deduplication alone, so a live duplicate is still dropped.
+
+One case is refused. [Truncating a stream prefix](../fundamentals/events/event-streams#truncating-a-stream-prefix)
+keeps the truncated events' deduplication rows on purpose, so a redelivered copy is not stored again below the
+truncation point, and a lost event cannot be told apart from a truncated one. When the stream's lowest stored
+version is above 1, the child is stored already settled (processed, never claimed or copied) with
+`repair refused: stream prefix truncated` in `wh_inbox_state.error`. The redelivery's reconciliation
+(`wh_reconcile_redelivered_bundle`) counts it per bucket as `RedeliveredBucketPresence.Refused`, and the bucket
+is marked as one [repair cannot change](#unhealable-buckets): one Warning names it and the truncation, and the
+`repairs_unhealable` counter counts it once.
+
+```mermaid{caption="How a redelivery child that deduplication remembers is stored." tests=["RedeliveredMissingEventRestoreSqlTests.ARepairedEvent_DeduplicationRemembers_TheStoreLost_IsRestored_AndTheBucketHealsAsync", "RedeliveredMissingEventRestoreSqlTests.ARepairedEvent_OnAStreamWhoseEarlierHistoryWasTruncated_IsRefused_AndReportedAsync"]}
+flowchart TD
+  A[Redelivery child, id already in deduplication] --> B{In the event store or the inbox?}
+  B -- yes --> C[Dropped as a duplicate]
+  B -- no --> D{Stream's earlier history truncated here?}
+  D -- no --> E[Stored again, state only]
+  E --> F[Copied to the event store; the bucket heals]
+  D -- yes --> G[Stored settled as refused]
+  G --> H[Bucket marked unhealable; reported once]
+```
+
+The extra checks run only for a redelivery child whose id deduplication has already seen, by primary key and by
+the stream's version index; live delivery evaluates one flag.
 
 ## Observability
 
