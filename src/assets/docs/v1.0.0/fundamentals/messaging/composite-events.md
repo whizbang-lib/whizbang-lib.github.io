@@ -85,7 +85,7 @@ flowchart TD
     Start["Producer wants to emit many events in one operation"]
     Q1{"Is the mutation uniform across a whole scope<br/>(no explicit id list)?"}
     Collective["ICollectiveEvent<br/>(scope is the descriptor; one SQL UPDATE)"]
-    Batch["The producer hand-crafts a specific batch of inner events<br/>(all inheriting the composite's single stream)"]
+    Batch["The producer hand-crafts a specific batch of inner events<br/>(each stored on its own stream)"]
     Q2{"Is per-message overhead (network hop, broker dispatch,<br/>outbox/inbox row, serialization framing)<br/>the cost you want to amortize?"}
     Composite["ICompositeEvent ← THIS<br/>one wire hop, N inner events"]
 
@@ -106,8 +106,8 @@ processing cost. Canonical cases:
 - Any batch operation that yields many domain events from one action.
 
 Composites sit **next to** [collective events](/v1.0.0/fundamentals/messaging/collective-events) —
-a composite is a hand-crafted batch of inner events (all landing on the
-composite's one stream); a collective event is a scope-wide uniform mutation
+a composite is a hand-crafted batch of inner events (each stored on the
+stream its producer stored it on); a collective event is a scope-wide uniform mutation
 applied as one SQL UPDATE. They share no inheritance and run on separate code
 paths; both can appear in the same workflow (a bulk import emits a composite; a
 tenant cleanup emits a collective event).
@@ -202,7 +202,7 @@ composite as an inbox row and the **dispatch worker** recognizes the typed
 
 | Question | Decision |
 |---|---|
-| Inner-event `StreamId` | All inner events inherit the composite's `StreamId`. Producers needing per-inner streams emit separate envelopes (no composite). |
+| Inner-event `StreamId` | Each inner event is stored on the stream its producer stored it on: the one the bundle recorded for it, else the one its own `[StreamId]` names, else the composite's. The composite is transport packaging, never a stream rewrite ([Stream identity](stream-identity.md)). |
 | Ordering | Producer-yielded order (the order `InnerEvents` enumerates). Matches single-row outbox storage semantics. |
 | Event-store replay | Composite is wire-only; only expanded inner events persist. Producers can stop emitting a composite type at any time without affecting historical replay. |
 | Lifecycle hooks | Fire per-inner-event. Downstream never sees the composite. |
@@ -231,7 +231,7 @@ var plans = mint.Composites.Create(new CompositeMintRequest<IMessage> {
   GroupKey = CompositeGroupKey.FromKey<IMessage>(_ => "order-import"), // all go to one destination
   MaxConstituentsPerComposite = 10_000,                        // the receiver's default cap
   BuildComposite = batch => new OrderBulkImportComposite {
-    StreamId = orderStreamId,                  // every inner event inherits this stream at the receiver
+    StreamId = orderStreamId,                  // the stream of every inner event that names none of its own
     Inner = [.. batch.Constituents],           // List<IMessage>, in producer-yielded order
   },
 });
@@ -247,7 +247,7 @@ discriminator; an interface-typed collection loses that on the source-gen
 path), an `init` `MaxInnerEventsAllowed` (default 10,000), and
 `EnsureWithinCap()` (throws `InvalidOperationException` when the inner count
 exceeds the cap). `InnerEvents` is a `[JsonIgnore]` computed view over `Inner`;
-inner events share the composite's stream.
+an inner event that names no stream of its own takes the composite's.
 {verified: CompositeEventBaseTests.StampsStreamId_AndYieldsInnerInProducerOrderAsync, CompositeEventBaseTests.MaxInnerEventsAllowed_DefaultsTo10K_AndIsOverridableAsync, CompositeEventBaseTests.EnsureWithinCap_ThrowsWhenInnerCountExceedsCapAsync, CompositeEventBaseTests.EnsureWithinCap_PassesWhenWithinCapAsync}
 
 The factory's count cap keeps every planned composite within the receiver's
@@ -470,7 +470,7 @@ event:
 | `Version`, `DispatchContext`, `SourceServiceId`, `SourceCommitSequence`, `CausedByServiceId`, `CausedByCommitSequence`, `StateOnly` | Copied from the composite envelope (re-delivery bundles may override the source service id / commit sequence with the original origin identity). |
 | `Hops` | A composite-lineage chain: a fresh creation hop whose `CausationId` is the composite's `MessageId` and `CausationType` is the composite type name, followed by the composite's own hops. Built once and shared by reference across the whole batch, so "these events came from composite X" is queryable. |
 | `MessageId` | Derived from the composite's id, the child's ordinal in the composite, and the child's type (`CompositeChildIdentity.Derive`), UUIDv7-shaped with the composite's time prefix, so a repeated expansion of the same composite produces the same rows and the inbox primary key absorbs it. Identity-preserving re-delivery composites keep each child's original id so consumer convergence rides the event-id conflict skip. |
-| `StreamId` | The composite's stream (recorded as the first hop's `AggregateId`), falling back to the child's own `MessageId` when absent. |
+| `StreamId` | The stream the child's producer stored it on: the one the bundle recorded for it (`InnerStreamIds`), else the one its payload's `[StreamId]` names, else the composite's own (its first hop's stream, then its own `[StreamId]`), and only then the composite envelope's id ([Stream identity](stream-identity.md)). |
 | `Flags` | Stamped `EventFlags.NoRebroadcast` on both the persisted inbox row and the in-memory envelope. |
 
 ### Deterministic child ids
