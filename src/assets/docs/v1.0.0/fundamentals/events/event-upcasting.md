@@ -229,12 +229,26 @@ the common case.
 ## Re-key re-routes on rebuild, not on live drain
 
 During a perspective **rebuild** the generated runner's `RunRebuildAsync` reads
-a physical stream's events (upcasted on the polymorphic read seam), partitions
-them by their **post-upcast** `[StreamId]` (`ResolveTargetStreamId`), and
-projects each partition onto its own row — so a re-keyed historical event lands
-on its new stream's row, not the stored one. When no event re-keys, every event
-maps back to the physical stream id: a single partition that behaves exactly
-like the un-partitioned rebuild.
+a physical stream's events (upcasted on the polymorphic read seam) and routes
+each through `RebuildRowRouting`: only an event an upcaster actually re-keyed
+(the read records it, whether the upcaster changed the event in place or
+returned a new one) leaves the stream it is stored on. An event whose payload
+merely names another stream, with no upcaster involved, stays on its stored
+stream's row, the row live apply and the rewind fold it onto. When no event
+re-keys, every event maps back to the physical stream id: a single partition
+that behaves exactly like the un-partitioned rebuild.
+
+A row that receives re-keyed events is folded from **its own stream's events**
+(less any re-keyed away) **and every re-keyed event the rebuild read for it**,
+merged in commit order (`RebuildRowRouting.Merge`: each stream keeps its own
+replay order, the lower commit sequence goes first across streams, never by
+event id), starting from an empty model. A rebuild run collects the re-keyed
+events while it reads its streams and folds each such row once, after reading
+them all, so two source streams re-keyed onto one target both reach it whatever
+order the streams are read in. A rebuild that does not read a source stream (a
+selected-streams rebuild of the target alone) cannot find the events re-keyed
+from it: the store has no index from a re-keyed row to its sources, so rebuild
+the sources with it.
 
 The **live drain** path is deliberately untouched: new events are already
 written to their correct stream, so only rebuild of historically mis-keyed

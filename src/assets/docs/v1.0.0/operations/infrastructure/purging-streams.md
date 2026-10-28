@@ -131,6 +131,49 @@ A dry run takes no claim.
 - The audit answers who removed what: `SELECT * FROM wh_stream_purge_audit WHERE purge_id = '...'`.
 - A perspective that reads the stream's events keeps working: the events are gone from the store, so a rebuild never meets them, and the purge marker keeps a rebuild from recreating a row out of anything that arrives later.
 
+## Refiling composite children {#refiling-composite-children}
+
+A receiver once filed the children of a composite under a stream other than the one their producer stored them on, so
+live apply folded each onto a row nobody reads (a ghost row) and the row the event is about never received it:
+
+- a typed composite's children were filed under the composite's stream, whatever stream each child's `[StreamId]` named;
+- the integrity re-delivery bundle named no stream at all, so every event it repaired was filed under the bundle
+  envelope's own id, a random stream.
+
+Receivers now file every child where its producer stored it (see [Stream identity](../../fundamentals/messaging/stream-identity.md)).
+`IFanoutChildRefiler`, registered by both Postgres drivers, repairs what was stored before:
+
+- a stored fan-out child whose payload names a stream is moved there, after that stream's tail, in producer order;
+- a stored fan-out child whose payload names no stream and that sits on its composite's envelope id (the cause its
+  lineage hop names) is moved onto its own id, where its producer stored it;
+- its integrity digest, inbox and applied-ledger rows move with it; its pending perspective work, both streams'
+  snapshots and any cursor naming it are dropped;
+- composite streams the move leaves empty are purged with their ghost rows, in the same transaction.
+
+```csharp{title="IFanoutChildRefiler" description="Refile misfiled composite children from inside a service" category="Operations" difficulty="INTERMEDIATE" tags=["Operations", "Infrastructure", "Purge", "IFanoutChildRefiler", "Composite events"] tests=["FanoutChildRefileSqlTests.Refile_MovesAChildToTheStreamItsPayloadNames_AfterThatStreamsTailAsync", "FanoutChildRefileSqlTests.Refile_ARedeliveredEventNamingNoStream_MovesOntoItsOwnIdAsync"]}
+public sealed class RefileEndpoint(IFanoutChildRefiler refiler, IDispatcher dispatcher) {
+  public async Task<string> RefileAsync(string operatorName, string reason, bool dryRun, string perspective) {
+    var report = await refiler.RefileAsync(new FanoutChildRefileRequest {
+      RequestedBy = operatorName,
+      Reason = reason,
+      DryRun = dryRun,      // a dry run does the whole repair and rolls it back, so its report is exact
+    });
+    if (!dryRun && report.StreamsToRebuild.Count > 0) {
+      // The moved events reach their rows only through a rebuild of those streams.
+      var rebuild = new RebuildPerspectiveCommand(
+        PerspectiveNames: [perspective], Mode: RebuildMode.InPlace, IncludeStreamIds: [.. report.StreamsToRebuild]);
+      foreach (var command in rebuild.SplitByStreams()) {   // a large selection is split across commands
+        await dispatcher.SendAsync(command);
+      }
+    }
+    return report.Format();
+  }
+}
+```
+
+Run a dry run first, then the repair, then the rebuild. It is safe to repeat: a child already on its own stream is left
+alone. Migration 247 adds `wh_refile_events`, the function that moves the events.
+
 ## Related
 
 - [Perspectives with Actions: purge stays purged](../../fundamentals/perspectives/perspectives-with-actions.md#purge-stays-purged)

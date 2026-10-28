@@ -922,6 +922,10 @@ var result = await rebuilder.RebuildInPlaceAsync("OrderPerspective");
 var result = await rebuilder.RebuildStreamsAsync("OrderPerspective", [orderId1, orderId2]);
 ```
 
+A rebuild folds every event onto the row of the stream it is stored on, the row live apply and the rewind fold it
+onto. The one exception is an event an [upcaster re-keyed](../events/event-upcasting.md#re-key-re-routes-on-rebuild-not-on-live-drain):
+it folds onto the row it now names, together with that row's own events, in commit order.
+
 #### RebuildPerspectiveCommand
 
 Trigger rebuilds across distributed services via system commands.
