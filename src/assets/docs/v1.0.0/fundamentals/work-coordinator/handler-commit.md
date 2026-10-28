@@ -12,10 +12,13 @@ codeReferences:
   - src/Whizbang.Core/Workers/FailureFlushWorker.cs
   - src/Whizbang.Core/Workers/BatchFlusher.cs
   - src/Whizbang.Core/Messaging/IWorkCoordinator.cs
+  - src/Whizbang.Core/Messaging/HandlerCommitRequest.cs
+  - src/Whizbang.Core/Workers/InboxDispatchWorker.cs
 testReferences:
   - tests/Whizbang.Core.Component.Tests/Workers/InboxHandlerWorkerTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/BatchFlusherRetryTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/FailureFlushWorkerTests.cs
+  - tests/Whizbang.Core.Tests/Workers/InboxDispatchWorkerControlPlaneDropLogTests.cs
 ---
 
 # Handler commit
@@ -119,6 +122,55 @@ foreach (var result in results) {
 
 This is the only place per-handler success/failure tracking exists. Worth the complexity for the throughput win.
 
+## Commit failures are logged {#commit-failures-logged}
+
+A row whose bundle fails in `commit_handler_batch` stays unprocessed, and the next claim re-delivers
+it. So that an operator can see which traffic is failing without reading the rows, each failure is
+logged at Warning with the message id, its message type and the error, then routed to the failure
+channel as before.
+
+One flush logs its first five failures individually and counts the rest in a single summary line, so
+a flush where every row fails stays readable. Routing is never capped: every failed row still reaches
+the failure channel, which records its error on the row. A failure result that names no request in
+the flush cannot be routed; it is logged too, and its row keeps its lease until it lapses.
+{verified: InboxHandlerWorkerTests.CommitFailure_IsLoggedAtWarning_WithTheMessageIdTypeAndErrorAsync, InboxHandlerWorkerTests.ManyCommitFailuresInOneFlush_LogTheFirstIndividually_ThenOneSummaryOfTheRestAsync, InboxHandlerWorkerTests.CommitFailure_ForAResultNamingNoRequest_IsStillLoggedAsync}
+
+The type comes from `HandlerCommitRequest.MessageType`, an init-only property the dispatch worker
+sets from the row it completes. It is used for logging only and is never part of the commit payload.
+A request built without it logs the type as `unknown`.
+{verified: InboxDispatchWorkerControlPlaneDropLogTests.Drop_CommitRequest_CarriesTheMessageTypeAsync}
+
+```csharp{
+title: "Naming the message type on a commit request"
+description: "MessageType is init-only on the positional record, so a request gains it with an initializer or a with expression; it reaches the failure log line and never the commit payload."
+framework: "NET10"
+category: "Workers"
+difficulty: "INTERMEDIATE"
+tags: ["handler-commit", "logging", "inbox"]
+tests: ["InboxHandlerWorkerTests.CommitFailure_IsLoggedAtWarning_WithTheMessageIdTypeAndErrorAsync", "InboxDispatchWorkerControlPlaneDropLogTests.Drop_CommitRequest_CarriesTheMessageTypeAsync"]
+}
+// request: a HandlerCommitRequest acknowledging one inbox row
+var named = request with { MessageType = "Contracts.Orders.OrderPlaced, Contracts" };
+await inboxHandlerWorker.EnqueueAsync(named, ct);
+
+// If this row's bundle fails, the Warning names it:
+// InboxHandlerWorker could not commit inbox message <id> (Contracts.Orders.OrderPlaced, Contracts): <error>. ...
+```
+
+Every row in a flush is released from this process's [held rows](inbox-dispatch.md#held-rows) when
+the flush ends, whether its commit landed or failed, so a failed row can be claimed again.
+{verified: InboxHandlerWorkerTests.CommitFlush_ReleasesTheHeldRow_WhetherItCommittedOrNotAsync, InboxHandlerWorkerTests.DisabledCommits_ReleaseTheHeldRow_TheyRefuseAsync}
+
+### Log events {#log-events}
+
+Category `Whizbang.Core.Workers.InboxHandlerWorker`.
+
+| EventId | Level | When |
+|---|---|---|
+| 26 | Warning | A row's commit failed. Carries the message id, message type and error. |
+| 27 | Warning | Summary of the failures in one flush beyond the first five. Carries the count and the flush size. |
+| 28 | Warning | A failure result names no request in the flush. Carries the handler id and error. |
+
 ## NOTIFY emission
 
 After a successful bundle commits, `pg_notify('wh_work', '<category>')` fires for each category that received new rows. Postgres dedups `(channel, payload)` pairs at COMMIT, so 10 000 outbox inserts in one bundle deliver exactly **one** notification — burst-tolerant by design.
@@ -130,3 +182,4 @@ Listeners on other instances wake immediately (see [Notifications and pgbouncer]
 - [Claim loop](claim-loop.md)
 - [Batched flushers](batched-flushers.md)
 - [Notifications and pgbouncer](notifications-and-pgbouncer.md)
+- [Inbox dispatch](inbox-dispatch.md)

@@ -14,6 +14,8 @@ pipeline. It is decomposed into focused functions and workers — each does one 
 - [Claim loop](claim-loop.md)
 - [Handler commit](handler-commit.md)
 - [Commit sequence](commit-sequence.md)
+- [Per-stream drain](per-stream-drain.md)
+- [Inbox dispatch](inbox-dispatch.md)
 - [Partition assignment](partition-assignment.md)
 - [Batched flushers](batched-flushers.md)
 - [Notifications and pgbouncer](notifications-and-pgbouncer.md)

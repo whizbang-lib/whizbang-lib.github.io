@@ -886,7 +886,7 @@ Legacy publish path (rollback escape hatch). **Configure:** bound automatically 
 
 ### InboxDrainWorkerOptions
 
-The only source of `InboxWork`. **Configure:** bound automatically from `Whizbang:Workers:InboxDrain` — no registration call needed. `services.Configure<InboxDrainWorkerOptions>(…)` still applies and runs before configuration, so a configuration key overrides it. **Details:** no dedicated page yet.
+The only source of `InboxWork`. **Configure:** bound automatically from `Whizbang:Workers:InboxDrain`, with no registration call needed. `services.Configure<InboxDrainWorkerOptions>(…)` still applies and runs before configuration, so a configuration key overrides it. **Details:** [Per-stream drain](../../fundamentals/work-coordinator/per-stream-drain).
 
 | Property | Type | Default | Environment variable | Purpose |
 |----------|------|---------|--------------------|---------|
@@ -899,6 +899,7 @@ The only source of `InboxWork`. **Configure:** bound automatically from `Whizban
 | `MaxRowsPerCycle` | `int` | `0` (derived) | `Whizbang__Workers__InboxDrain__MaxRowsPerCycle` | Rows one drain cycle may fetch across all streams. `0` derives it from stream count × `MaxPerStream`, the total the fixed cap implied, so an upgrade only redistributes it |
 | `MinRowsPerStream` | `int` | `100` | `Whizbang__Workers__InboxDrain__MinRowsPerStream` | Rows guaranteed to each admitted stream when the budget is divided. Keep it at or above the fetch floor: a smaller share would be rounded up and overspend, so the budget seats fewer streams instead and rotates the rest in next cycle |
 | `DepthHeadroomFactor` | `int` | `4` | `Whizbang__Workers__InboxDrain__DepthHeadroomFactor` | Multiplier on the derived budget so deep streams get more than the breadth guarantee. Ignored when `MaxRowsPerCycle` is set |
+| `MaxHeldPayloadBytes` | `long` | `134217728` (128 MiB) | `Whizbang__Workers__InboxDrain__MaxHeldPayloadBytes` | Payload bytes (UTF-8 JSON) of the inbox rows this process holds: queued, dispatching or awaiting commit. A row that would exceed it, and the rest of its stream in that fetch, are handed back with attempts refunded; with nothing held one row is always admitted. `0` or less disables. See [working-set budget](../../fundamentals/work-coordinator/per-stream-drain#working-set-budget) |
 
 ### InboxDispatchWorkerOptions
 
@@ -1026,6 +1027,7 @@ Per-stream debounce strategies for the inbox, outbox, and perspective-apply boun
 | `Enabled` | `bool` | `true` | `Whizbang__Workers__InboxDeserializeCache__Enabled` | Killswitch — false re-deserializes from JSON on every dispatch |
 | `TtlMinutes` | `int` | `2` | `Whizbang__Workers__InboxDeserializeCache__TtlMinutes` | Entry TTL; covers redelivery + lease re-claim cycles |
 | `MaxEntries` | `int` | `10000` | `Whizbang__Workers__InboxDeserializeCache__MaxEntries` | Hard cap; oldest ~10% evict on next insert when exceeded |
+| `MaxBytes` | `long` | `67108864` (64 MiB) | `Whizbang__Workers__InboxDeserializeCache__MaxBytes` | Byte budget (payload UTF-8 JSON) across resident entries; oldest evict first past it, a payload larger than the budget is not cached, and a row's entry is dropped when the row completes |
 
 ### RecentlyProcessedEventCacheOptions
 
