@@ -44,6 +44,7 @@ codeReferences:
   - src/Whizbang.Data.EFCore.Postgres/PerspectiveCoverageGapSql.cs
   - src/Whizbang.Core/Messaging/StreamIntegrityOptionsValidator.cs
   - src/Whizbang.Core/Messaging/IIntegrityRepairLedger.cs
+  - src/Whizbang.Data.Postgres/Migrations/251_RepairDrainClaimsOnlyDeficits.sql
 testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/AtMostOnceOccurrenceIntegrityTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/IntegrityCheckpointWorkerTests.cs
@@ -64,6 +65,8 @@ testReferences:
   - tests/Whizbang.Core.Component.Tests/MultiService/DirectedMessageE2ETests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/TransportConsumerWorkerDirectedTargetTests.cs
   - tests/Whizbang.Core.Tests/Observability/StreamIntegrityMetricsTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/PacedRepairDrainSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityRepairBacklogProbeSqlTests.cs
   - tests/Whizbang.Core.Tests/Security/ControlPlaneSecurityExemptionTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityCheckpointAdvanceTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityCheckpointReceptorTests.cs
@@ -855,10 +858,13 @@ flowchart TD
   with the counts and the current backlog, and `repairs_deferred` counts the buckets by origin and
   `reason` (`per_audit_cap`, `backlog_cap`). Deferred buckets still count in `divergences_detected`.
 - **Only deficits are admitted this way.** An identity mismatch or a local surplus is never repaired, so
-  it is recorded as before.
+  it is recorded as before, and the drain never claims its row (see
+  [which rows the drain claims](#drain-claims-deficits-only)).
 - **The backlog is read once per comparison**, in the same round trip that says which buckets are
   already tracked, and counted only up to the bound so the read stays cheap on a large ledger. It
-  covers every origin and leaves out the bulk-backfill lane, as the drain's claim does. Comparisons on
+  counts exactly the rows the drain's claim can take: deficits on a per-stream lane, every origin,
+  leaving out the bulk-backfill lane, mismatches, surpluses, rows of unknown kind and buckets marked as
+  ones repair cannot change. "Already tracked" means the ledger holds the bucket as a deficit. Comparisons on
   several replicas can each add up to one allowance past the bound before they see each other's rows.
 - **Without a backlog reading** (an engine that cannot provide one, or a read that failed, which is
   logged) the per-comparison cap alone applies and every bucket counts as new.
@@ -876,6 +882,46 @@ chunk into the ledger, so an operator who set the cap to 25 still had every dive
 and the ledger grew with the number of divergent streams and accumulated across audits. A field
 environment that had just upgraded across many migrations, with a large unstamped history, filled the
 ledger faster than the drain could empty it.
+:::
+
+### Which rows the drain claims {#drain-claims-deficits-only}
+
+A manifest comparison writes a ledger row for every divergence it reports, whatever its kind, because
+the ledger is the operator's record of what is divergent. The drain claims only the rows a redelivery
+can repair:
+
+| Divergence | Recorded kind | Claimed by the drain | Counted in the drain backlog |
+| --- | --- | --- | --- |
+| Deficit: this store holds fewer events than the origin | deficit | Yes | Yes |
+| Identity mismatch: equal counts, different folds | not a deficit | Never | No |
+| Local surplus: more events than the origin | not a deficit | Never | No |
+| Kind unknown (see below) | unknown | Never | No |
+
+The comparison states the kind when it reports the bucket, because the ledger row cannot work it out:
+it holds each side's fold digest, which is a hash of the event set, not a count. The kind follows the
+latest sighting, so a deficit that turns into a surplus leaves the drain, and returns to it if it
+becomes a deficit again.
+
+A row's kind is **unknown**, and the row is never claimed, in two cases:
+
+- **Rows recorded before the kind was** (an upgrade from a version without it). No backfill is
+  possible, for the reason above. The next comparison that sees the bucket records its kind; until
+  then the bucket is reported but not redelivered. After an upgrade, the drain therefore resumes for
+  existing deficits on the first audit that covers them, admitted under the [repair caps](#repair-caps).
+- **A report that does not carry the kind moved the bucket's signature.** That is the per-bucket
+  fallback the ledger takes when its batch call fails, and the only report a version older than this
+  one sends during a rolling upgrade. An unchanged signature keeps the kind already recorded, because
+  the kind is a property of the two event sets and the signature is their digest.
+
+The claim and the backlog count read a partial index that holds only the claimable rows, in the
+claim's order, so their cost does not grow with the number of mismatches and surpluses in the ledger.
+
+:::updated
+**Before this was fixed ([#1842](https://github.com/whizbang-lib/whizbang/issues/1842)),** the drain
+claimed every per-stream ledger row past its backoff, whatever its kind. Identity mismatches and local
+surpluses were re-requested from the origin at `RepairDrainRatePerSecond` on every backoff step, a
+redelivery that could not change them, and they counted toward `MaxRepairDrainBacklog`, so a store
+with many of them could fill the backlog and defer real deficits.
 :::
 
 ### Report-only is bilateral {#report-only-is-bilateral}
@@ -1187,7 +1233,8 @@ re-ships what the origin has, dedup drops what the consumer already holds, the f
 and the repair loop can never converge (observed live as an unbounded redelivery storm). A local
 *surplus* cannot be fixed by asking the origin for more, and local history is never auto-deleted
 on a remote's say-so. Both still **alarm** (ledger + report + `reason` metric tag:
-`deficit | identity_mismatch | local_extra`); neither mints a redelivery request. A deficit found
+`deficit | identity_mismatch | local_extra`); neither mints a redelivery request, and the paced
+drain never claims their ledger rows ([which rows the drain claims](#drain-claims-deficits-only)). A deficit found
 comparing a *windowed* manifest is a deficit **in that window** — the repair request carries the
 range, so the origin re-ships a slice, never a stream's whole history.
 
