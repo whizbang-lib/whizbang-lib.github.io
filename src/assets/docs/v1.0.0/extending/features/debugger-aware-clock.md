@@ -208,6 +208,13 @@ using var subscription = clock.OnPauseStateChanged(isPaused => {
 });
 ```
 
+Every subscription receives every pause change made after it subscribed, in order; earlier changes are not
+replayed. Each subscription has its own buffer of the ten most recent changes, so a slow or blocked handler delays
+only itself, and one that falls more than ten changes behind loses the oldest (its last change is still the current
+state). A handler that throws is logged at Error and stays subscribed; pass an `ILogger<DebuggerAwareClock>` to the
+`DebuggerAwareClock(options, logger)` constructor to receive those logs when constructing the clock yourself (the
+default registration supplies one).
+
 Disposing the subscription stops delivery: once `Dispose()` returns, the handler is not called again, including for
 a change that was already queued. A call that is already running may finish; `Dispose()` does not wait for it, so
 releasing a subscription from inside its own handler, or from a thread the handler is waiting on, cannot deadlock.
