@@ -36,6 +36,10 @@ codeReferences:
   - src/Whizbang.Core/SystemEvents/DigestExemptTypes.cs
   - src/Whizbang.Data.Postgres/Migrations/216_AuditRecordPositionAndDigestExemption.sql
   - src/Whizbang.Data.Postgres/Migrations/228_StreamsNeverMixEphemeralAndSourcedEvents.sql
+  - src/Whizbang.Core/Messaging/RedeliveryReconciliation.cs
+  - src/Whizbang.Core/Messaging/IntegrityRepairLedger.cs
+  - src/Whizbang.Data.EFCore.Postgres/CoordinatorIntegrityRepairLedger.cs
+  - src/Whizbang.Data.Postgres/Migrations/249_RedeliveredHistoryAdoptsItsOrigin.sql
 testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/AtMostOnceOccurrenceIntegrityTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/IntegrityCheckpointWorkerTests.cs
@@ -68,6 +72,12 @@ testReferences:
   - tests/Whizbang.Transports.AzureServiceBus.Integration.Tests/ControlPlaneSessionIntegrationTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/AuditDigestLaneSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/DirectAppendStreamDigestTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/RedeliveredOriginAdoptionSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityLedgerUnhealableSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/CoordinatorIntegrityRepairLedgerUnhealableTests.cs
+  - tests/Whizbang.Core.Tests/Messaging/RedeliveryReconcilerTests.cs
+  - tests/Whizbang.Core.Tests/Messaging/IntegrityRepairLedgerUnhealableTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/InboxDispatchWorkerCompositeCommitTests.cs
 verifiedAgainstCommit: a64ba9a0
 verifiedDate: 2026-08-04
 ---
@@ -428,7 +438,10 @@ re-bounds):
   every further attempt doubles the wait (`RepairRequestBackoffSeconds` base, default 300), and
   past `MaxRepairAttemptsPerBucket` (default 8) the requester stops asking — the divergence still
   re-reports at the cooldown cadence, but a repair that has not worked eight times needs operator
-  eyes, not an infinite loop. A signature change resets the budget.
+  eyes, not an infinite loop. A signature change resets the budget. Past the cap the ledger keeps
+  one ask per terminal interval (base x 2^6) for an origin that never answered, and stops at once,
+  with one report, for a bucket a redelivery answered without changing it
+  ([repair that cannot change a bucket](#unhealable-buckets)).
 - **Requests batch and are directed or not at all.** Divergent streams of one (tenant, type)
   batch into ONE `RequestRedeliveryCommand` (the origin's selection takes a stream set — per-stream
   commands multiplied wire volume by the stream count for nothing). And every integrity request —
@@ -947,6 +960,35 @@ requests served as an origin — repair + backfill flows), and `digest_buckets_v
 `digest_drift_healed` (the trust-but-verify sweep — any drift healed means an unaccounted write
 path touched audited rows and warrants investigation).
 
+### Repair that cannot change a bucket {#unhealable-buckets}
+
+{verified: IntegrityLedgerUnhealableSqlTests.TryBeginRepair_AnUnhealableBucket_IsRefusedPastItsTerminalCadenceAsync, IntegrityLedgerUnhealableSqlTests.ClaimRepairDrain_SkipsAnUnhealableBucketAsync, IntegrityLedgerUnhealableSqlTests.TryBeginReport_ASignatureChange_LiftsTheMarkAndRepairResumesAsync, RedeliveryReconcilerTests.Reconcile_EveryEventAlreadyPresentAndNothingAdopted_MarksTheBucketUnhealableOnceAsync}
+
+The ledger's attempt budget flattens to a terminal cadence rather than stopping, because a bucket whose
+origin never answered has no evidence against it: the origin may simply have been down. A bucket whose
+origin did answer is different. When a redelivery bundle commits and every event it carries was already
+stored under its origin, with nothing to adopt, the redelivery changed nothing, and the next one would
+ship the same events again.
+
+The receiver records that on the bucket's ledger row (`wh_integrity_ledger.unhealable_at`, through
+`IIntegrityRepairLedger.MarkUnhealableBatchAsync`). From then on:
+
+- neither the burst grant (`wh_integrity_try_begin_repair`) nor the paced drain
+  (`wh_integrity_claim_repair_drain`) asks for the bucket again;
+- the divergence cooldown stops re-reporting it;
+- one Warning names the bucket (event type, tenant, stream, origin) when it is marked, and the
+  `repairs_unhealable` counter counts it once.
+
+A changed signature (either side's digest moved) is a fresh incident: it lifts the mark, resets the
+attempt budget and reports again. A heal deletes the row. Only buckets the ledger already tracks are
+marked, so a redelivery nobody asked this ledger for leaves nothing behind. The usual causes of a bucket
+repair cannot change are an event stored under another origin or another stream; compare the stream on
+both sides.
+
+The checkpoint path keys its ledger rows by type and window rather than by stream, and its
+[repair policy](#the-repair-decision-pipeline-as-wired) already stops a window whose count stopped
+improving, so it is unaffected by the mark.
+
 ---
 
 ## Bounded reconciliation — epochs, negotiated scope, seals
@@ -1291,6 +1333,53 @@ excluded, since it never carries an origin. The count is two interlocked increme
 and needs no query. The usual causes are a producer running a version from before the origin stamp, or
 one whose outbox never resolved its service id; the producer logs the second case at startup.
 
+### History received before origins were recorded {#pre-stamp-history}
+
+{verified: RedeliveredOriginAdoptionSqlTests.Adopt_EventsStoredWithoutAnOrigin_TakeTheBundlesOriginAndSequencesAsync, RedeliveredOriginAdoptionSqlTests.Adopt_TheNextCheckpointCountsTheAdoptedEvents_InsteadOfAskingForThemAgainAsync, RedeliveryReconcilerTests.Reconcile_EventsStoredWithoutTheirOrigin_AdoptTheOriginTheBundleCarriesAsync}
+
+Migration 087 started writing `origin_service_id` and `origin_commit_sequence` on received events. Events a
+service received before it ran 087 have both columns empty, and their digests sit in the local lane, the
+lane this service advertises as its own. Origin-keyed verification therefore counts every one of them as
+missing: the checkpoint count windows on the origin commit sequence, and the audit compares the origin's
+digest lane, which holds none of them.
+
+Only the origin knows those sequences, so the receiver cannot backfill them from its own store. The
+redelivery that verification asks for is the source. When a redelivery bundle has committed, the receiver
+reconciles it with the events it already holds (`RedeliveryReconciler`, backed by
+`wh_adopt_redelivered_origin`, migration 249). For each event already stored:
+
+- an empty origin takes the bundle's origin, and an empty origin commit sequence takes the event's
+  sequence from the bundle. A recorded origin or sequence is never overwritten, an event recorded under
+  another origin is never re-attributed, and a bundle naming this service (or no service) adopts nothing;
+- an event that leaves the local lane takes its digest with it: its hash leaves the local bucket and joins
+  the origin's, under the same predicates every digest fold uses, and a local bucket left empty is removed;
+- the sealed [epochs](#epoch-seals-the-substrate) either lane holds over the moved events are refolded, and
+  when a sealed epoch of the local lane changed, the [origin generation](#origin-generation) advances so
+  this service's own consumers re-verify that history instead of alarming on it.
+
+The next checkpoint then counts those events and the next audit finds the origin's digest, so the bucket
+heals and its ledger row is deleted. Each piece of pre-087 history costs one redelivery, paced by the
+[repair drain](#the-repair-decision-pipeline-as-wired), and then verifies like any other. The
+`origins_adopted` counter rises while that happens and stops once the history has been redelivered once;
+an Information line per bundle names the origin and how many of its events adopted it.
+
+```mermaid{caption="A redelivery reconciled with the events the receiver already holds: history without an origin adopts it, and a bundle that changes nothing ends the asking." tests=["RedeliveredOriginAdoptionSqlTests.Adopt_EventsStoredWithoutAnOrigin_TakeTheBundlesOriginAndSequencesAsync", "RedeliveryReconcilerTests.Reconcile_EveryEventAlreadyPresentAndNothingAdopted_MarksTheBucketUnhealableOnceAsync", "InboxDispatchWorkerCompositeCommitTests.Redelivery_OnceCommitted_IsReconciledWithTheEventsTheStoreAlreadyHoldsAsync"]}
+flowchart TD
+  A[Verification counts a bucket short] --> B[Repair asks the origin]
+  B --> C[Redelivery bundle commits at the receiver]
+  C --> D{Events already stored?}
+  D -- some are not --> E[The bundle stores them]
+  D -- all are --> F{Any with an empty origin or sequence?}
+  F -- yes --> G[They adopt the bundle's origin; digest moves to the origin's lane]
+  G --> H[Next check counts them; the bucket heals]
+  E --> H
+  F -- no --> I[Bucket marked unhealable; reported once; never asked for again]
+```
+
+A redelivered event the receiver already holds still never reaches the inbox emit chain: the inbox
+deduplication or the chain's "already stored" test skips it, as before. The reconciliation runs beside the
+bundle's commit, not inside the store path, so live delivery pays nothing for it.
+
 ## Observability
 
 Everything the reconcile system does is visible on one meter: **`Whizbang.StreamIntegrity`**
@@ -1336,6 +1425,8 @@ patterns worth understanding before building a dashboard:
 | `compares_declined` (tag `origin`) | Manifest chunks declined at the non-queueing compare gate. Sustained growth = comparisons losing to arrivals; read alongside `manifest_compare_duration`. |
 | `manifest_pages_followed` / `manifest_pages_capped` (tag `origin`) | Windowed stream pages walked via the resume cursor, and follow chains stopped at `MaxManifestPagesPerAudit`. Persistent capping means lanes are wider than the per-audit page budget — raise the cap or accept the pace. |
 | `redelivery_events_shipped` | Events selected and shipped in redelivery bundles, as an origin. |
+| `origins_adopted` | Stored events whose empty origin columns a redelivery filled: [history received before origins were recorded](#pre-stamp-history), now verifiable. Rises while that history is redelivered once, then stops. |
+| `repairs_unhealable` | Buckets a redelivery could not change (every event already stored under its origin), counted once each. Repair stops asking for them; see [repair that cannot change a bucket](#unhealable-buckets). |
 | `manifests_requested`, `manifest_chunks_sent`, `drill_downs_requested`, `backfills_requested`, `redelivery_requests_received` | The exchange itself, hop by hop. |
 | `checkpoints_published` / `checkpoints_received`, `gaps_detected`, `coverage_gaps_detected`, `rebuilds_requested` | The continuity-checkpoint and coverage halves of the system. |
 | `digest_buckets_verified`, `digest_drift_healed` (tag `kind`) | The trust-but-verify sweep: buckets checked, and drift it healed (an unaccounted write path — investigate `kind`). |
@@ -1345,9 +1436,11 @@ patterns worth understanding before building a dashboard:
 A deficient service converging looks like: `repairs_requested` active → `redelivery_events_shipped`
 climbing at the origin → `unhealed_buckets` falling (heals deleting rows) with `bucket_heal_seconds`
 recording each one → `sealed_through` stepping upward as whole windows certify → everything quiet
-except the checkpoint heartbeat. The failure signatures: `repair_exhausted_buckets` rising (buckets
+except the checkpoint heartbeat. After an upgrade from a schema older than 087, `origins_adopted` rises first while
+pre-087 history is redelivered once. The failure signatures: `repair_exhausted_buckets` rising (buckets
 out of budget), `compares_declined` sustained (compare pressure), `manifest_pages_capped` persistent
-(page budget too small for the lane), or `sealed_through` frozen while `unhealed_buckets` is flat
+(page budget too small for the lane), `repairs_unhealable` non-zero (buckets repair cannot change; each was named
+once in a Warning), or `sealed_through` frozen while `unhealed_buckets` is flat
 and non-zero (a stuck lane).
 
 ## Future work
