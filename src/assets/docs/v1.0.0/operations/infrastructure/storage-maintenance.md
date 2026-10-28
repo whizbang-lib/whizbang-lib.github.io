@@ -7,7 +7,7 @@ order: 10
 description: >-
   How Whizbang keeps its own tables from bloating: autovacuum and fillfactor settings on the framework tables, and how
   a table that has already grown is rewritten, as the table rewrite strategy and AllowTableRewrite decide, including
-  the online rewrite through pg_squeeze that the maintenance cycle drives within a per-cycle byte budget
+  the online rewrite through pg_squeeze or pg_repack that the maintenance cycle drives within a per-cycle byte budget
 tags: >-
   operations, storage, autovacuum, fillfactor, hot, vacuum, bloat, toast, postgres, maintenance, table rewrite,
   pg_squeeze, pg_repack
@@ -110,7 +110,7 @@ whole duration with `VACUUM FULL`, so plan it for a quiet window or use an onlin
 a rewrite; the [table rewrite strategy](#table-rewrite-strategy) decides what happens to it.
 
 ## Table rewrite strategy {#table-rewrite-strategy}
-{verified: TableRewriteStrategyTests.Resolve_EachCellOfTheMatrixAsync, TableRewriteStrategyTests.TheSetting_DefaultsToAuto_AndBindsFromConfigurationAsync, TableRewriteStartupStepTests.PgSqueeze_IsLeftToTheMaintenanceCycle_NotRunAtBootAsync}
+{verified: TableRewriteStrategyTests.Resolve_EachCellOfTheMatrixAsync, TableRewriteStrategyTests.TheSetting_DefaultsToAuto_AndBindsFromConfigurationAsync, TableRewriteStartupStepTests.PgSqueeze_IsLeftToTheMaintenanceCycle_NotRunAtBootAsync, TableRewriteStartupStepTests.PgRepackInProcess_IsLeftToTheMaintenanceCycle_NotRunAtBootAsync}
 
 `Whizbang:Workers:Maintenance:TableRewriteStrategy` (default `Auto`) chooses how the post-ready `Rewrite` step
 reclaims the space of the tables the maintenance cycle recorded, together with `AllowTableRewrite` (default `false`),
@@ -122,14 +122,17 @@ the operator's permission for a blocking rewrite at boot:
 | `Auto` | no | `VACUUM FULL` at boot | detect and report only |
 | `PgSqueeze` | yes | [online rewrite](#online-rewrite) from the maintenance cycle | [online rewrite](#online-rewrite) from the maintenance cycle |
 | `PgSqueeze` | no | start fails with the capability verdict (it warns when the probe cannot tell) | start fails with the capability verdict (it warns when the probe cannot tell) |
-| `PgRepack` | either | online rewrite through pg_repack, [in process or by an external job](#pg-repack) | online rewrite through pg_repack, [in process or by an external job](#pg-repack) |
+| `PgRepack`, `InProcess` | either | [online rewrite](#online-rewrite) through [pg_repack](#pg-repack) from the maintenance cycle | [online rewrite](#online-rewrite) through [pg_repack](#pg-repack) from the maintenance cycle |
+| `PgRepack`, `External` | either | nothing is started; [your job runs pg_repack](#pg-repack) | nothing is started; [your job runs pg_repack](#pg-repack) |
 | `VacuumFull` | either | `VACUUM FULL` at boot | detect and report only |
 | `None` | either | nothing is rewritten | nothing is rewritten |
 
-```mermaid{caption="How the Rewrite step resolves the table rewrite strategy against AllowTableRewrite; Auto never starts an online rewrite." tests=["TableRewriteStrategyTests.Resolve_EachCellOfTheMatrixAsync","PgRepackTests.Resolve_PgRepack_IsTheExplicitChoice_WhateverElseHoldsAsync","TableRewriteStrategyTests.ExplicitPgSqueeze_OnAServerThatDoesNotAllowlistIt_FailsStartWithTheFixAsync","TableRewriteStartupStepTests.PgSqueeze_IsLeftToTheMaintenanceCycle_NotRunAtBootAsync"]}
+```mermaid{caption="How the Rewrite step resolves the table rewrite strategy against AllowTableRewrite; Auto never starts an online rewrite, and every online rewrite Whizbang runs comes from the maintenance cycle." tests=["TableRewriteStrategyTests.Resolve_EachCellOfTheMatrixAsync","PgRepackTests.Resolve_PgRepack_IsTheExplicitChoice_WhateverElseHoldsAsync","TableRewriteStrategyTests.ExplicitPgSqueeze_OnAServerThatDoesNotAllowlistIt_FailsStartWithTheFixAsync","TableRewriteStartupStepTests.PgSqueeze_IsLeftToTheMaintenanceCycle_NotRunAtBootAsync","TableRewriteStartupStepTests.PgRepackInProcess_IsLeftToTheMaintenanceCycle_NotRunAtBootAsync","PgRepackTests.External_TheRewriteStepSkips_AndStartsNothingAsync"]}
 flowchart TD
   S{TableRewriteStrategy} -->|None| N[Nothing rewritten]
-  S -->|PgRepack| P[Online rewrite<br/>through pg_repack]
+  S -->|PgRepack| M{PgRepack Mode}
+  M -->|InProcess| O
+  M -->|External| J[Your job runs pg_repack;<br/>tables stay queued for it]
   S -->|PgSqueeze| Q{pg_squeeze usable?}
   Q -->|no| F[Capability verdict<br/>stops start]
   Q -->|yes| O[Online rewrite from the<br/>maintenance cycle]
@@ -147,9 +150,11 @@ flowchart TD
   example the allowlist and `shared_preload_libraries` change it needs. Where the extension is available, it is
   [provisioned](./capabilities#provisioning) first. It never falls back to `VACUUM FULL`, and `AllowTableRewrite` does
   not gate it: choosing it is the opt-in.
-- **`PgSqueeze` is not run at boot.** The `Rewrite` step reports
-  `PgSqueeze: online rewrite through pg_squeeze; the maintenance cycle performs it, largest bloat first, up to Whizbang:Workers:Maintenance:OnlineRewriteMaxBytesPerCycle bytes per cycle`
-  and leaves the queue to the [online rewrite](#online-rewrite), so the rewrite is never unbounded.
+- **No online rewrite runs at boot.** For `PgSqueeze` the `Rewrite` step reports
+  `PgSqueeze: online rewrite through pg_squeeze; the maintenance cycle performs it, largest bloat first, up to Whizbang:Workers:Maintenance:OnlineRewriteMaxBytesPerCycle bytes per cycle`,
+  and for `PgRepack` in process the same with `PgRepack: online rewrite through pg_repack`. It leaves the queue to
+  the [online rewrite](#online-rewrite), so a rewrite after a long gap is spread over cycles rather than done all at
+  once.
 - **`None`** rewrites nothing; the maintenance cycle still records the tables that need it and reports the bloat.
 
 ```json{title="Opt in to online table rewrites" description="Selects pg_squeeze for table rewrites; start fails with the fix when the server does not allow the extension." category="Configuration" difficulty="INTERMEDIATE" tags=["storage", "table-rewrite", "pg_squeeze", "maintenance", "configuration"] tests=["TableRewriteStrategyTests.TheSetting_DefaultsToAuto_AndBindsFromConfigurationAsync", "TableRewriteStrategyTests.ExplicitPgSqueeze_OnAServerThatDoesNotAllowlistIt_FailsStartWithTheFixAsync"]}
@@ -184,23 +189,27 @@ outside the server may run.
 
 | Mode | Who runs the client | The client program | Whizbang starts a process |
 |---|---|---|---|
-| `InProcess` (default) | the instance holding the maintainer duty, in the post-ready `Rewrite` step, once per requested table | a probed prerequisite, `program/pg_repack`, found on `PATH` or at `ClientPath` | yes: `pg_repack --version` at startup, and one run per table |
+| `InProcess` (default) | the instance holding the maintainer duty, in the maintenance cycle's [online rewrite](#online-rewrite), once per requested table that fits the cycle's byte budget | a probed prerequisite, `program/pg_repack`, found on `PATH` or at `ClientPath` | yes: `pg_repack --version` at startup, and one run per table |
 | `External` | a job you run (a container or a scheduled task) against the tables `wh_tables_needing_rewrite()` lists | not needed on the Whizbang host | never |
 
-```mermaid{caption="Who runs pg_repack in each mode; in External mode Whizbang starts no process." tests=["PgRepackTests.External_NeverStartsAProcess_NotToProbe_NotToRewriteAsync","PgRepackTests.InProcess_WithNoClient_FailsAnExplicitRequirementAsync","PgRepackTests.InProcess_WithNoClient_DegradesAnImplicitRequirement_AndTheRewriterHoldsBackAsync"]}
+```mermaid{caption="Who runs pg_repack in each mode; in External mode Whizbang starts no process, and in process the maintenance cycle runs it within the byte budget." tests=["PgRepackTests.External_NeverStartsAProcess_NotToProbe_NotToRewriteAsync","PgRepackTests.InProcess_WithNoClient_FailsAnExplicitRequirementAsync","PgRepackTests.InProcess_WithNoClient_DegradesAnImplicitRequirement_AndTheRewriterHoldsBackAsync","OnlineTableRewriteStepTests.PgRepack_RewritesTheLargestBloatRatioFirst_WithinTheBudgetAsync","OnlineTableRewriteStepTests.PgRepack_External_DoesNothing_NotEvenScan_AndStartsNothingAsync"]}
 flowchart TD
   M{PgRepack Mode} -->|External| E[Rewrite step skips<br/>tables stay queued<br/>your job runs pg_repack]
   M -->|InProcess| P{pg_repack --version<br/>at startup}
-  P -->|answers| R[Ready: the Rewrite step runs<br/>pg_repack per requested table]
+  P -->|answers| R[Ready: the maintenance cycle runs<br/>pg_repack per queued table,<br/>largest bloat first, within the budget]
   P -->|missing, Mode set explicitly| F[Capability verdict<br/>stops start]
   P -->|missing, Mode left at default| D[Warning; tables stay queued]
 ```
 
 - **In process, the client is a prerequisite.** At startup Whizbang runs `pg_repack --version`. When the client is
   missing and `Mode` was set to `InProcess` explicitly, the [capability verdict](./capabilities#validation) stops the
-  host with the fix; when `Mode` was left at its default, the verdict warns, the `Rewrite` step skips, and the tables
-  stay queued. Install the client at the same version as the extension: pg_repack refuses to run against a different
+  host with the fix; when `Mode` was left at its default, the verdict warns, the maintenance cycle logs that the client
+  is not Ready and rewrites nothing, and the tables stay queued. Install the client at the same version as the extension: pg_repack refuses to run against a different
   one.
+- **In process, the maintenance cycle runs it.** The boot-time `Rewrite` step does not: the cycle's
+  [online rewrite](#online-rewrite) takes the queued tables largest bloat first within
+  `OnlineRewriteMaxBytesPerCycle`, the same budget as pg_squeeze, and only when both the `pg_repack` extension and the
+  `program/pg_repack` client are Ready.
 - **External mode never starts a process,** not even to read the client's version. The `Rewrite` step reports
   `pg_repack runs as an external job (...Mode = External): Whizbang does not start it, and requested tables stay
   queued for that job` and the maintenance cycle keeps recording which tables need it.
@@ -215,7 +224,8 @@ flowchart TD
   password file (`PGPASSFILE`, `~/.pgpass`) or service file.
 - **`--no-superuser-check`** lets the table's owner repack it, which managed servers require, and
   **`--no-kill-backend`** makes pg_repack give up on a table it cannot lock in time rather than end the application's
-  own sessions. A run that fails is logged with its exit code and error, and the table stays queued for the next boot.
+  own sessions. A run that fails is logged with its exit code and error, and the table stays queued for the next
+  cycle.
 - **The request is cleared only after the re-measure improves,** as for every strategy: after the client exits,
   Whizbang analyzes the table and measures it again.
 
@@ -252,42 +262,47 @@ for table in $(psql -Atc "SELECT table_name FROM wh_tables_needing_rewrite()"); 
 done
 ```
 
-The next boot's `Rewrite` step re-measures, and a request whose table is lean again is no longer offered.
+Candidates are re-measured whenever the queue is read, so a request whose table is lean again is no longer offered.
 
-## Online rewrite through pg_squeeze {#online-rewrite}
-{verified: OnlineTableRewriteStepTests.Rewrites_TheLargestBloatRatioFirstAsync, OnlineTableRewriteStepTests.Budget_SkipsATableThatWouldOverrunIt_AndTakesASmallerOneThatFitsAsync, OnlineTableRewriteStepTests.NotImproved_LeavesTheRequestQueuedAsync, OnlineTableRewriteStepTests.PgSqueezeNotReadyOnEveryDatabase_RewritesNothing_AndSaysWhereAsync}
+## Online rewrite from the maintenance cycle {#online-rewrite}
+{verified: OnlineTableRewriteStepTests.Rewrites_TheLargestBloatRatioFirstAsync, OnlineTableRewriteStepTests.Budget_SkipsATableThatWouldOverrunIt_AndTakesASmallerOneThatFitsAsync, OnlineTableRewriteStepTests.NotImproved_LeavesTheRequestQueuedAsync, OnlineTableRewriteStepTests.PgSqueezeNotReadyOnEveryDatabase_RewritesNothing_AndSaysWhereAsync, OnlineTableRewriteStepTests.PgRepack_RewritesTheLargestBloatRatioFirst_WithinTheBudgetAsync, OnlineTableRewriteStepTests.PgRepack_ClearsOnlyWhatImprovedAsync, OnlineTableRewriteStepTests.PgRepack_ClientNotReady_RewritesNothing_AndSaysWhyAsync}
 
-With `TableRewriteStrategy = PgSqueeze`, the maintenance cycle rewrites queued tables online through
-`squeeze.squeeze_table`, which copies the table while it stays readable and writable and holds an exclusive lock only
-for the final swap. It runs as a [maintenance step](../../fundamentals/workers/maintenance-steps) named
+With `TableRewriteStrategy = PgSqueeze`, or `PgRepack` with its client [in process](#pg-repack), the maintenance cycle
+rewrites queued tables online. pg_squeeze (`squeeze.squeeze_table`) copies the table while it stays readable and
+writable and holds an exclusive lock only for the final swap; pg_repack does the same from its client program, holding
+an ACCESS EXCLUSIVE lock only briefly at the start and the end. Both are bounded by the same budget. It runs as a [maintenance step](../../fundamentals/workers/maintenance-steps) named
 `online-table-rewrite`, so it runs where the rest of the cycle runs: on the holder of the maintainer duty, and only when
 the housekeeping gate admits the cycle (the service is idle, or the cycle was deferred too long).
 
 Each cycle:
 
-1. **Checks that pg_squeeze is Ready** on every database the [capability registry](./capabilities) probed. Anything
-   else (including `Provisionable`, an extension that provisioning is turned off for) rewrites nothing and logs why;
-   the queue is kept.
+1. **Checks that the strategy's capabilities are Ready**: pg_squeeze on every database the
+   [capability registry](./capabilities) probed; for pg_repack, the `pg_repack` extension on every database and the
+   `program/pg_repack` client on this host. Anything else (including `Provisionable`, an extension that provisioning
+   is turned off for, and a client the probe could not decide) rewrites nothing and logs why; the queue is kept.
+   pg_repack in `External` mode does nothing here, not even a scan.
 2. **Takes the queued tables** (`pending_table_rewrites`, which the cycle's bloat detection fills) that still measure
    over the bloat threshold, **largest bloat ratio first**, ties in name order.
 3. **Spends a byte budget.** A table is rewritten only when its heap fits what is left of
    `OnlineRewriteMaxBytesPerCycle`; one that does not fit is deferred to a later cycle, and the next smaller table that
    fits is taken. A table larger than the whole budget is never rewritten, and the log names the setting to raise.
-4. **Checks the [prerequisites](#online-rewrite-prerequisites) for each table**, then calls pg_squeeze, runs `ANALYZE`
-   and re-measures.
+4. **Rewrites each table and re-measures.** For pg_squeeze it checks the
+   [prerequisites](#online-rewrite-prerequisites) for the table, then calls pg_squeeze. For pg_repack it starts the
+   client with the connection in its environment, as [pg_repack](#pg-repack) describes. Either way it then runs
+   `ANALYZE` and re-measures.
 5. **Clears the request only when the rewrite improved the table**: the re-measured ratio is lower than the ratio that
    queued it. A rewrite that did not help, a table whose prerequisites were not met, and a call that failed all stay
    queued for the next cycle, each with a warning naming the table.
 
-```mermaid{caption="One maintenance cycle of the online rewrite: pg_squeeze must be Ready, tables go largest bloat first within the byte budget, and a request is cleared only when the rewrite improved the table." tests=["OnlineTableRewriteStepTests.PgSqueezeNotReadyOnEveryDatabase_RewritesNothing_AndSaysWhereAsync","OnlineTableRewriteStepTests.Rewrites_TheLargestBloatRatioFirstAsync","OnlineTableRewriteStepTests.Budget_SkipsATableThatWouldOverrunIt_AndTakesASmallerOneThatFitsAsync","OnlineTableRewriteStepTests.NotImproved_LeavesTheRequestQueuedAsync","OnlineTableRewriteStepTests.Improved_ClearsTheRequestAsync"]}
+```mermaid{caption="One maintenance cycle of the online rewrite: the strategy's capabilities must be Ready, tables go largest bloat first within the byte budget, and a request is cleared only when the rewrite improved the table." tests=["OnlineTableRewriteStepTests.PgSqueezeNotReadyOnEveryDatabase_RewritesNothing_AndSaysWhereAsync","OnlineTableRewriteStepTests.PgRepack_ClientNotReady_RewritesNothing_AndSaysWhyAsync","OnlineTableRewriteStepTests.Rewrites_TheLargestBloatRatioFirstAsync","OnlineTableRewriteStepTests.Budget_SkipsATableThatWouldOverrunIt_AndTakesASmallerOneThatFitsAsync","OnlineTableRewriteStepTests.NotImproved_LeavesTheRequestQueuedAsync","OnlineTableRewriteStepTests.Improved_ClearsTheRequestAsync","OnlineTableRewriteStepTests.PgRepack_ClearsOnlyWhatImprovedAsync"]}
 flowchart TD
-  R{pg_squeeze Ready<br/>on every database?} -->|no| K[Log why; queue kept]
+  R{pg_squeeze Ready, or<br/>pg_repack and its client Ready?} -->|no| K[Log why; queue kept]
   R -->|yes| Q[Queued tables,<br/>largest bloat ratio first]
   Q --> B{Fits the bytes left<br/>of the budget?}
   B -->|no| D[Deferred to a later cycle]
   B -->|yes| P{Prerequisites met?}
   P -->|no| L[Warn with the reason;<br/>stays queued]
-  P -->|yes| S[squeeze.squeeze_table,<br/>ANALYZE, re-measure]
+  P -->|yes| S[pg_squeeze or pg_repack,<br/>ANALYZE, re-measure]
   S --> I{Ratio lower than<br/>when it was queued?}
   I -->|yes| C[Request cleared]
   I -->|no| L
@@ -295,8 +310,8 @@ flowchart TD
 
 | Key | Environment variable | Default | Meaning |
 |---|---|---|---|
-| `Whizbang:Workers:Maintenance:TableRewriteStrategy` | `Whizbang__Workers__Maintenance__TableRewriteStrategy` | `Auto` | `PgSqueeze` turns the online rewrite on. |
-| `Whizbang:Workers:Maintenance:OnlineRewriteMaxBytesPerCycle` | `Whizbang__Workers__Maintenance__OnlineRewriteMaxBytesPerCycle` | `1073741824` (1 GiB) | The most heap bytes one cycle rewrites. pg_squeeze writes a full copy of each table, plus the WAL for it, so this bounds the extra disk and WAL one cycle can cause. `0` rewrites nothing. |
+| `Whizbang:Workers:Maintenance:TableRewriteStrategy` | `Whizbang__Workers__Maintenance__TableRewriteStrategy` | `Auto` | `PgSqueeze`, or `PgRepack` in process, turns the online rewrite on. |
+| `Whizbang:Workers:Maintenance:OnlineRewriteMaxBytesPerCycle` | `Whizbang__Workers__Maintenance__OnlineRewriteMaxBytesPerCycle` | `1073741824` (1 GiB) | The most heap bytes one cycle rewrites, through either tool. pg_squeeze and pg_repack each write a full copy of the table, plus the WAL for it, so this bounds the extra disk and WAL one cycle can cause. `0` rewrites nothing. |
 
 ```json{title="Online rewrite with a 4 GiB budget per cycle" description="Selects pg_squeeze for table rewrites and lets each maintenance cycle rewrite up to 4 GiB of queued tables." category="Configuration" difficulty="INTERMEDIATE" tags=["storage", "table-rewrite", "pg_squeeze", "maintenance", "configuration"] tests=["OnlineTableRewriteStepTests.TheBudget_DefaultsToOneGibibyte_AndBindsFromConfigurationAsync", "OnlineTableRewriteStepTests.Budget_SkipsATableThatWouldOverrunIt_AndTakesASmallerOneThatFitsAsync"]}
 {

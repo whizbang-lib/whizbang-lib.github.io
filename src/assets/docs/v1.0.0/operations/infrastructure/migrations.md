@@ -50,6 +50,7 @@ codeReferences:
   - src/Whizbang.Core/Workers/ITableRewriter.cs
   - src/Whizbang.Core/Workers/VacuumFullTableRewriter.cs
   - src/Whizbang.Core/Workers/TableRewriteStrategy.cs
+  - src/Whizbang.Data.Dapper.Postgres/PostgresColumnType.cs
 testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/MigrationStepTransactionTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/TableRewritePolicyRetiredTests.cs
@@ -74,6 +75,8 @@ testReferences:
   - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerDeepPathDrainTests.StoredForm.cs
   - tests/Whizbang.Core.Tests/Health/StoredFormHealthSourceTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/PostgresSchemaInitializerBranchTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/PostgresSchemaInitializerTypeCompareTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/PostgresColumnTypeTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/MigrationFunctionBodiesTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/StaleFunctionDefinitionSweepTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/SchemaCommandBoundaryTests.cs
@@ -417,6 +420,27 @@ When a perspective's hash changes and the table already exists, Whizbang auto-de
 | **DirectDDL** | New table or identical structure | Execute DDL directly |
 | **ColumnCopy** | Additive changes only (new columns) | Blue-green swap with data copy |
 | **EventReplay** | Destructive changes (type change, column removed) | Queue background rebuild |
+
+### How column types are compared {#column-type-comparison}
+
+A column's type counts as changed only when it names a different type. The existing columns are read from `pg_attribute` through `format_type`, and the new DDL's column types are cut at their first constraint keyword (`NOT NULL`, `PRIMARY KEY`, `DEFAULT` and the rest). Both sides are then put in the one spelling `format_type` reports, so an alias and its long form are the same type:
+
+| Written in the DDL | Compared as |
+|--------------------|-------------|
+| `TIMESTAMPTZ`, `TIMESTAMP WITH TIME ZONE` | `timestamp with time zone` |
+| `TIMESTAMP` | `timestamp without time zone` |
+| `VARCHAR(100)`, `CHARACTER VARYING(100)` | `character varying(100)` |
+| `INT`, `INT4`, `INTEGER`, `SERIAL` | `integer` |
+| `INT8`, `BIGINT`, `BIGSERIAL` | `bigint` |
+| `BOOL`, `BOOLEAN` | `boolean` |
+| `DECIMAL(10, 2)`, `NUMERIC(10,2)` | `numeric(10,2)` |
+| `FLOAT8`, `DOUBLE PRECISION` | `double precision` |
+| `TEXT[]`, `TEXT[3]` | `text[]` |
+| `public.vector(1536)` | `vector(1536)` |
+
+A length, precision, scale or time zone is part of the type: `VARCHAR(100)` to `VARCHAR(20)`, `TIMESTAMP` to `TIMESTAMPTZ` and `TEXT` to `INTEGER` are all type changes and take the **EventReplay** path. Adding a column to a table whose other columns keep their types is **ColumnCopy**, and re-spelling the same columns as aliases is **DirectDDL**. {verified: PostgresSchemaInitializerTypeCompareTests.AddedColumn_OnTableWithAliasedTypes_IsColumnCopyNotEventReplayAsync, PostgresSchemaInitializerTypeCompareTests.SameColumnsSpelledAsAliases_IsDirectDdlAsync, PostgresSchemaInitializerTypeCompareTests.TextToInteger_IsStillEventReplayAsync, PostgresSchemaInitializerTypeCompareTests.VarcharLengthChange_IsStillEventReplayAsync, PostgresColumnTypeTests.Canonicalize_AnAliasOrItsLongForm_IsTheFormatTypeSpellingAsync, PostgresColumnTypeTests.Canonicalize_DifferentTypes_StayDifferentAsync}
+
+Before this comparison, the database's `information_schema` spelling (`timestamp with time zone`) was compared with the DDL's (`TIMESTAMPTZ`) as text, so on the Dapper driver every change to a perspective table, adding one column included, took the EventReplay path. Strategy detection is the Dapper driver's: the EF Core driver does not choose a strategy from column types.
 
 ## Preview (Dry Run)
 
