@@ -503,7 +503,9 @@ On the reconnect, a deleted topic or subscription is created again, with its fil
 [auto-provisioning](#auto-provisioning) is on; otherwise subscribing fails and retries with backoff, and the
 destination reads `Recovering` until the entity exists. A disabled entity or an identity without access can still
 subscribe and only fails once it starts receiving, so until an operator fixes it the destination alternates between
-`Healthy` and `Recovering`.
+`Healthy` and `Recovering`, with a growing gap between attempts (1, 2, 4 ... up to `MaxRetryDelay`; see
+[Reconnecting after a disconnect](transport-consumer.md#reconnect-backoff)). It returns to quick reconnects once a
+subscription stays healthy for `ReconnectBackoffResetAfter`.
 
 ```csharp{title="Watch for an Azure Service Bus subscription that stopped" description="Alert when a destination's subscription disconnects because its processor stopped receiving for good" category="Operations" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Azure Service Bus", "Resilience"] tests=["AzureServiceBusProcessorStopsReceivingTests.ProcessorError_EntityGoneOrDisabled_ReportsAnUnexpectedDisconnectAsync", "AzureServiceBusProcessorStopsReceivingTests.ProcessorError_Unauthorized_ReportsAnUnexpectedDisconnectAsync", "AzureServiceBusProcessorStopsReceivingTests.ProcessorError_AFailureTheProcessorRecoversFrom_IsNotADisconnectAsync"]}
 var worker = app.Services.GetRequiredService<TransportConsumerWorker>();

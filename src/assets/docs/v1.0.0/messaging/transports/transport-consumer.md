@@ -30,6 +30,7 @@ testReferences:
   - tests/Whizbang.Core.Component.Tests/Workers/TransportConsumerWorkerConnectionRecoveryTests.cs
   - tests/Whizbang.Core.Component.Tests/Resilience/SubscriptionRetryHelperTests.cs
   - tests/Whizbang.Core.Component.Tests/Resilience/SubscriptionRetryHelperDisconnectWindowTests.cs
+  - tests/Whizbang.Core.Component.Tests/Resilience/SubscriptionRetryHelperReconnectBackoffTests.cs
   - tests/Whizbang.Core.Tests/HealthChecks/SubscriptionHealthCheckTests.cs
   - tests/Whizbang.Core.Tests/Observability/ServiceInstanceProviderTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/TransportBatchCollectorTests.cs
@@ -356,6 +357,7 @@ The retry system uses **exponential backoff**:
 | `InitialRetryAttempts` | 5 | Attempts before reducing log verbosity |
 | `RetryIndefinitely` | true | Never give up (recommended) |
 | `HealthCheckInterval` | 1 minute | Interval for health check sweeps |
+| `ReconnectBackoffResetAfter` | 30 seconds | How long a subscription must stay healthy before its next disconnect reconnects after `InitialRetryDelay` again; `TimeSpan.Zero` treats every disconnect as the first |
 | `AllowPartialSubscriptions` | true | Start with partial subscriptions |
 
 **How Exponential Backoff Works**:
@@ -371,6 +373,29 @@ Attempt 7: 64 seconds delay (32 * 2.0)
 Attempt 8: 120 seconds delay (64 * 2.0, capped at MaxRetryDelay)
 Attempt 9+: 120 seconds delay (continues at max)
 ```
+
+#### Reconnecting after a disconnect {#reconnect-backoff}
+
+The same backoff carries across disconnects of one destination. A subscription that disconnects before it has stayed
+healthy for `ReconnectBackoffResetAfter` waits the previous reconnect's delay times `BackoffMultiplier`, up to
+`MaxRetryDelay`, so a destination that fails right after every subscribe (a broker entity that stays disabled, an
+identity without access) reconnects after 1, 2, 4 ... 120 seconds instead of every second. A subscription that stayed
+healthy that long reconnects after `InitialRetryDelay`, so an ordinary one-off drop is as quick as before. Connection
+recovery and the health-monitor sweep do not reset the streak; the next disconnect is judged by how long the new
+subscription stayed healthy. The disconnect warning states the wait.
+
+```csharp{title="Reconnect backoff across disconnects" description="Tune how quickly a repeatedly failing destination is retried and when it counts as recovered" category="Configuration" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Resilience"] tests=["SubscriptionRetryHelperReconnectBackoffTests.SubscribeWithRetryAsync_DestinationDropsRightAfterEverySubscribe_EachReconnectWaitsLongerUpToTheCapAsync", "SubscriptionRetryHelperReconnectBackoffTests.SubscribeWithRetryAsync_SubscriptionStaysHealthyForTheResetPeriod_NextReconnectWaitsTheInitialDelayAgainAsync", "SubscriptionRetryHelperReconnectBackoffTests.SubscribeWithRetryAsync_ResetPeriodIsZero_EveryReconnectWaitsTheInitialDelayAsync"]}
+services.AddWhizbang()
+    .AddTransportConsumer(config => {
+        // A subscription that stays up for two minutes counts as recovered.
+        config.ResilienceOptions.ReconnectBackoffResetAfter = TimeSpan.FromMinutes(2);
+    });
+```
+
+The retry and reconnect waits run on the worker's `TimeProvider`: `TransportConsumerWorker` takes an optional
+`TimeProvider` (from DI when the host registers one, otherwise the system clock), and
+`SubscriptionRetryHelper.SubscribeWithRetryAsync` has an overload that takes one, so tests can drive them with a fake
+clock.
 
 ### Configuration
 
