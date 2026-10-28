@@ -10,12 +10,15 @@ description: >-
 tags: 'work-coordinator, commit-sequence, ordering, stamper, leader-election'
 codeReferences:
   - src/Whizbang.Core/Notifications/CommitOrderStamperOptions.cs
+  - src/Whizbang.Core/Notifications/CommitOrderStampSizer.cs
+  - src/Whizbang.Data.Postgres/Migrations/248_StampReadsOnlyTheBatchItStamps.sql
   - src/Whizbang.Data.Postgres/Notifications/PgCommitOrderStamperWorker.cs
 testReferences:
   - tests/Whizbang.Core.Component.Tests/Notifications/PgNotificationStackStartupGateTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/CommitSequenceStreamOrderSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Performance/RoleVoteBehindAHeldBackStampScenarioTests.cs
   - tests/Whizbang.Core.Tests/Notifications/CommitOrderStampBatchTests.cs
+  - tests/Whizbang.Core.Tests/Notifications/CommitOrderStampSizerTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/PgCommitOrderStamperWorkerIntegrationTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/EventStoreUpdateChurnSqlTests.cs
 ---
@@ -141,13 +144,40 @@ backlog is drained to the fence).
 
 Rows alone cannot bound a call, so the batch also answers to how long the last call took. The call
 budget is half the stamper role's renewal interval (2.5 s by default). A full call that ran past the
-budget halves the next one, down to a single row, and the batch does not grow back past that size
-until the backlog drains. A full call that took more than half the budget keeps its size, because
-doubling it would take about twice as long. Only a call well inside the budget grows. A slow call
-logs a warning naming the call, the budget and the next size, and raises `OnStampRanLong`.
-{verified: CommitOrderStampBatchTests.Next_AFullBatchThatRanPastTheBudget_HalvesAsync}
-{verified: CommitOrderStampBatchTests.Next_AFullBatchPastHalfTheBudget_HoldsItsSizeAsync}
+budget halves the next one. A full call that took more than half the budget keeps its size, because
+doubling it would take about twice as long. Only a call well inside the budget grows, and it grows
+past any size a slower call backed off to: a call that fits doubled shows that whatever slowed the
+earlier ones is over. A slow call logs a warning naming the call, the budget and the next size, and
+raises `OnStampRanLong`.
+{verified: CommitOrderStampSizerTests.AfterCall_AFirstFullCallPastTheBudget_HalvesAsync}
+{verified: CommitOrderStampSizerTests.AfterCall_AFullCallPastHalfTheBudget_HoldsItsSizeAsync}
+{verified: CommitOrderStampSizerTests.AfterCall_CheapCallsAfterSlowOnes_GrowPastTheSizeTheSlowOnesBackedOffToAsync}
 {verified: PgCommitOrderStamperWorkerIntegrationTests.Worker_AFullStampRunsPastTheCallBudget_HalvesTheBatchAndStillDrainsAsLeaderAsync}
+
+Part of what a call costs does not depend on its size: the round trip, the fence, and whatever else
+the database is busy with, such as another service's migration on the same server. Halving answers
+only the part that follows the size. When a halved call costs at least three quarters of what the
+call twice its size cost, nearly all of it is the fixed part, and a smaller batch would pay that part
+more often for the same rows. The batch stops shrinking there and holds that size through further
+slow calls, until a call is cheap again, a call times out, or the backlog drains. A cost that does
+follow the size keeps halving until a call fits.
+{verified: CommitOrderStampSizerTests.AfterCall_HalvingDidNotMakeTheCallCheaper_StopsShrinkingAsync}
+{verified: CommitOrderStampSizerTests.AfterCall_AFixedCostPastTheBudget_DoesNotCollapseToOneRowAsync}
+{verified: CommitOrderStampSizerTests.AfterCall_ACostThatFollowsTheSize_KeepsHalvingAsync}
+{verified: CommitOrderStampSizerTests.AfterCall_TheFloorEndsWithTheConditionsThatSetItAsync}
+
+```mermaid{caption="How the stamper sizes its next call from the last one: what it returned and how long it took." tests=["CommitOrderStampSizerTests.AfterCall_AShortCall_ReturnsToTheConfiguredSizeAsync","CommitOrderStampSizerTests.AfterCall_AFullCheapCall_GrowsAsync","CommitOrderStampSizerTests.AfterCall_AFullCallPastHalfTheBudget_HoldsItsSizeAsync","CommitOrderStampSizerTests.AfterCall_HalvingDidNotMakeTheCallCheaper_StopsShrinkingAsync","CommitOrderStampSizerTests.AfterCall_ACostThatFollowsTheSize_KeepsHalvingAsync"]}
+flowchart TD
+  call["A call returns"] --> short{"Fewer rows<br/>than asked?"}
+  short -- yes --> reset["Back to BatchSize"]
+  short -- no --> cheap{"Took at most<br/>half the budget?"}
+  cheap -- yes --> grow["Double, up to DrainBatchSize"]
+  cheap -- no --> over{"Took more than<br/>the budget?"}
+  over -- no --> hold["Keep the size"]
+  over -- yes --> fixed{"At the floor, or cost at least 3/4<br/>of the call twice its size?"}
+  fixed -- yes --> floor["Keep the size: the floor"]
+  fixed -- no --> halve["Halve"]
+```
 
 The budget exists because of the role. The holder renews its lease only between calls, and a call
 holds the role row for as long as it runs, so every other instance's vote waits behind it. A call
@@ -155,11 +185,11 @@ kept within half the renewal interval keeps each gap between renewals well insid
 
 A call that runs past the command timeout (or a server statement timeout) is canceled and rolls
 back everything it did, so the same size can never succeed. The leader halves the batch, down to a
-single row, and retries at once without giving up the stamper role. Until the backlog drains, the
-batch does not grow back past the size that completed, so a drain does not climb back into the
-timeout.
+single row, and retries at once without giving up the stamper role. The batch grows back only after
+a call well inside the budget, which a size that just timed out does not produce.
+{verified: CommitOrderStampSizerTests.AfterTimeout_HalvesAsync}
+{verified: CommitOrderStampSizerTests.AfterCall_CheapCallsAfterATimeout_GrowAgainAsync}
 {verified: CommitOrderStampBatchTests.AfterTimeout_FallsBelowTheConfiguredSizeAndStopsAtOneAsync}
-{verified: CommitOrderStampBatchTests.Next_AfterATimeout_DoesNotGrowBackToTheSizeThatTimedOutAsync}
 {verified: PgCommitOrderStamperWorkerIntegrationTests.Worker_AStampTimesOut_HalvesTheBatchAndKeepsStampingAsLeaderAsync}
 
 :::updated
@@ -171,6 +201,11 @@ The batch also used to be resized only after a call that returned. After a bulk 
 call that could not finish in time was canceled, the leader came back with the same size, and the
 stamper repeated the same timeout every 30 seconds until the service restarted. Nothing was stamped
 in that time, so none of the service's read models moved.
+
+Earlier versions always halved a call past the budget, and growth was capped at the halved size until
+the backlog drained. After an upgrade that left every historical event unstamped, calls slowed by
+migration I/O on the same server cost about 2.5 s however few rows they asked for, so the batch
+halved to a single row and the cap held it there for a backlog of hundreds of thousands of events.
 :::
 
 ## A held-back stamp reads nothing it cannot stamp {#held-back}
@@ -193,6 +228,40 @@ nothing eligible the walk never reached its batch, so every fenced retry read ev
 held back, stamped none, and held the role row while it did. Under bulk imports the role holder's
 renewal vote waited a median of 14.5 s, and up to 30 s, behind those calls. Batches are now chosen
 earliest writing transaction first, which is the cross-stream order described above.
+:::
+
+## A call costs what it stamps, whatever the statistics say {#any-plan}
+
+An upgrade from a version that predates the commit sequence leaves every historical event unstamped,
+and the columns the stamper plans on are written by the same migration pass that creates them, so the
+table's statistics know nothing about the backlog until the next `ANALYZE`. A long-lived stamper
+connection also settles on a generic plan after a few calls. The stamp is written so that neither
+changes what a call reads:
+
+- **The walk is its own statement, with sorting switched off for it.** The only plan that returns
+  unstamped rows in stamping order without a sort is the range scan of the index on the writing
+  transaction's id, which stops at the batch. No plan that reads and sorts the whole unstamped set
+  is available to it.
+- **No step joins the batch with itself.** The rows a call locked are matched to the stream
+  prefixes they came from by grouping the two lists together, and the insertion-order ranks are
+  handed to each stream's rows in version order by sorting both lists by stream and pairing them
+  by position. Grouping and sorting cost the batch at any estimate; a join of two sets the planner
+  believes are tiny was planned as every row against every row.
+- **The update reaches each row by its key**, with hash and merge joins switched off for that
+  statement alone.
+
+{verified: CommitSequenceStreamOrderSqlTests.Stamp_ABacklogTheStatisticsDoNotKnow_IsReadOnceThroughTheInsertXidIndexAsync}
+{verified: CommitSequenceStreamOrderSqlTests.Stamp_ABacklogTheStatisticsDoNotKnow_NeverComparesTheBatchWithItselfAsync}
+
+None of this changes the order: the fence, which rows a call takes, insertion order across a batch,
+version order within a stream, and rows held by another session are exactly as described above.
+{verified: CommitSequenceStreamOrderSqlTests.Stamp_ABacklogTheStatisticsDoNotKnow_DrainsInInsertionOrderBehindTheFenceAsync}
+
+:::updated
+The stamp was one statement of chained steps. On a backlog its statistics did not know, the planner
+joined the batch's intermediate sets by nested loop, so a call of 1,000 rows compared about a million
+pairs, twice, and cost the square of its size: 0.4 to 1.2 s a call once the plan was generic, where
+the rewritten stamp takes 0.03 to 0.2 s on the same backlog.
 :::
 
 ## The stamp is the only update an event row takes {#one-update-per-event}
