@@ -10,7 +10,7 @@ description: >-
   Automatic security context establishment for incoming messages in distributed
   systems. Covers security extractors, scope context population, transport
   metadata, and audit event emission for compliance.
-tags: 'message-security, security-context, extractors, distributed-security, scope-context, transport-metadata, audit, scope-markers'
+tags: 'message-security, security-context, extractors, distributed-security, scope-context, transport-metadata, audit, scope-markers, hop-scope, scope-extensions, claim-propagation'
 codeReferences:
   - src/Whizbang.Core/Security/IMessageSecurityContextProvider.cs
   - src/Whizbang.Core/Security/DefaultMessageSecurityContextProvider.cs
@@ -29,6 +29,9 @@ codeReferences:
   - src/Whizbang.Core/Observability/MessageHop.cs
   - src/Whizbang.Core/IMessageContext.cs
   - src/Whizbang.Core/Dispatch/DispatcherSecurityBuilder.cs
+  - src/Whizbang.Core/Security/HopScope.cs
+  - src/Whizbang.Core/Security/ScopeDelta.cs
+  - src/Whizbang.Transports.HotChocolate/Middleware/WhizbangScopeMiddleware.cs
 testReferences:
   - tests/Whizbang.Core.Tests/Security/MessageSecurityContextProviderTests.cs
   - tests/Whizbang.Core.Tests/Security/MessageSecurityIntegrationTests.cs
@@ -41,6 +44,12 @@ testReferences:
   - tests/Whizbang.Core.Tests/Dispatch/DispatcherSecurityBuilderTests.cs
   - tests/Whizbang.Core.Tests/Dispatch/SystemDispatcherBuilderTests.cs
   - tests/Whizbang.Core.Tests/Dispatch/ImpersonationDispatcherBuilderTests.cs
+  - tests/Whizbang.Core.Tests/Security/HopScopeTests.cs
+  - tests/Whizbang.Core.Tests/Security/HopScopeTwoHopWireTests.cs
+  - tests/Whizbang.Core.Tests/Dispatcher/HopScopeDispatchParityTests.cs
+  - tests/Whizbang.Core.Component.Tests/Security/HopScopeSourceGuardTests.cs
+  - tests/Whizbang.Transports.HotChocolate.Tests/Unit/ScopeHopPropagationTests.cs
+  - tests/Whizbang.Transports.HotChocolate.Tests/Unit/WhizbangScopeMiddlewareTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -336,6 +345,7 @@ The `MessageHopSecurityExtractor` is the default built-in extractor that reads s
 2. Merges the `ScopeDelta` from every `Current` hop (via `ScopeDelta.ApplyTo`) to rebuild the full scope
 3. Returns `null` when no scope is found, or when both `TenantId` and `UserId` are empty
 4. Otherwise creates a `SecurityExtraction` carrying the full merged context (scope, roles, permissions, principals, claims, impersonation info)
+5. Lists every restored claim in `SecurityExtraction.PropagatedClaimTypes`, so the claims the service was given travel on to the messages it dispatches (see [Hop Scope](#hop-scope))
 
 **Example**:
 
@@ -897,6 +907,7 @@ The established security context is wrapped in `ImmutableScopeContext`, which pr
 - **Source tracking**: Which extractor created it
 - **Timestamp**: When it was established
 - **Propagation flag**: Whether to include in outgoing messages
+- **Propagated claim types**: Which claims may cross a hop on outgoing messages (`PropagatedClaimTypes`, see [Hop Scope](#hop-scope-claims))
 
 ```csharp{title="ImmutableScopeContext" description="- Immutability: Cannot be modified after establishment - Source tracking: Which extractor created it - Timestamp: When" category="Best-Practices" difficulty="BEGINNER" tags=["Fundamentals", "Security", "ImmutableScopeContext", "Immutable-scope-context"] tests=["MessageSecurityContextProviderTests.EstablishContextAsync_ReturnsImmutableScopeContextAsync", "ImmutableScopeContextTests.Constructor_WithValidExtraction_CreatesContextAsync"]}
 var context = await provider.EstablishContextAsync(envelope, scopedProvider, ct);
@@ -913,9 +924,11 @@ if (context is ImmutableScopeContext immutable) {
 When `MessageSecurityOptions.PropagateToOutgoingMessages` is `true` (the default), the Dispatcher automatically attaches security context from the ambient scope to all outgoing message hops:
 
 1. **Dispatcher checks** `IScopeContextAccessor.Current` for an established security context
-2. **If** `ImmutableScopeContext.ShouldPropagate` is `true`, computes the scope changes as a `ScopeDelta`
+2. **If** `ImmutableScopeContext.ShouldPropagate` is `true`, builds the hop scope: the whole scope, its extensions included, and the claims the application listed for propagation
 3. **Populates** `MessageHop.Scope` on all outgoing envelopes
 4. **Downstream services** extract via `MessageHopSecurityExtractor` (which merges the hop deltas)
+
+What the hop scope carries, and which claims may cross, is described in [Hop Scope](#hop-scope).
 
 This enables seamless security context flow across service boundaries without manual propagation.
 
@@ -936,17 +949,17 @@ To disable security propagation, set `ShouldPropagate = false` when creating `Im
 
 ### How It Works
 
-```csharp{title="How It Works (2)" description="How It Works" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Works"] tests=["DispatcherSecurityBuilderTests.AsSystem_PropagatesContextToOutgoingHopsAsync"]}
+```csharp{title="How the dispatcher stamps the hop scope" description="Every dispatch path builds the outgoing hop scope through HopScope: the message context first, then the ambient scope context." category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Hop-scope", "Propagation"] tests=["DispatcherSecurityBuilderTests.AsSystem_PropagatesContextToOutgoingHopsAsync", "HopScopeDispatchParityTests.EveryPath_CarriesExtensionsAndOnlyListedClaimsAsync"]}
 // When a message is sent, the Dispatcher:
-// 1. Reads IScopeContextAccessor.Current
-// 2. If ImmutableScopeContext with ShouldPropagate=true, computes the scope delta
+// 1. Reads the explicit message context, then IScopeContextAccessor.Current
+// 2. If the ImmutableScopeContext has ShouldPropagate=true, builds the hop scope
 // 3. Attaches it to the outgoing MessageHop.Scope
 
 var hop = new MessageHop {
   Type = HopType.Current,
   ServiceInstance = serviceInstance,
-  // Full scope on the first hop; only the delta from the previous hop afterwards
-  Scope = ScopeDelta.CreateDelta(previousScope, scopeContext)
+  // The whole scope (extensions included) and the listed claims, or null with no tenant and no user
+  Scope = HopScope.FromMessageContext(context) ?? HopScope.FromAmbient()
 };
 ```
 
@@ -978,7 +991,7 @@ flowchart LR
         direction TB
         Middleware["WhizbangScopeMiddleware<br/>establishes IScopeContext"]
         Logic["Business logic calls<br/>dispatcher.SendAsync()"]
-        Hop["MessageHop.Scope (ScopeDelta)<br/>carries { UserId, TenantId }"]
+        Hop["MessageHop.Scope (ScopeDelta)<br/>carries the scope, its extensions<br/>and the listed claims"]
         Middleware --> Logic
         Logic -->|"Dispatcher attaches security"| Hop
     end
@@ -994,6 +1007,92 @@ flowchart LR
 
     Hop -->|"Message"| Consumer
 ```
+
+## Hop Scope {#hop-scope}
+
+{verified: HopScopeTests.FromAmbient_CarriesTheWholeScopeNotJustTenantAndUserAsync, HopScopeDispatchParityTests.EveryPath_CarriesExtensionsAndOnlyListedClaimsAsync, HopScopeTwoHopWireTests.ExtensionAndListedClaim_ReachAReceptorTwoHopsAway_AndTheEventItEmitsAsync}
+
+The hop scope is the security scope a message carries on its `MessageHop.Scope`. It is what a receiving service restores into its `IScopeContext`, so it decides what a receptor in another service, and every event that receptor emits, can see about the request that started the chain.
+
+```mermaid{caption="Hop scope across three services: the edge maps a claim to an extension and lists one claim; the scope and the listed claim cross each hop, the unlisted claim never leaves the first service." tests=["ScopeHopPropagationTests.ExtensionMappedAtTheEdge_ReachesAReceptorTwoHopsAway_AndTheEventItEmitsAsync", "HopScopeTwoHopWireTests.ExtensionAndListedClaim_ReachAReceptorTwoHopsAway_AndTheEventItEmitsAsync"]}
+flowchart LR
+    subgraph A["Service A (HTTP edge)"]
+        Claims["Claims: tenant, user,<br/>acting_admin, department, email"]
+        Scope["IScopeContext<br/>extension acting-admin<br/>PropagatedClaimTypes: department"]
+        Claims --> Scope
+    end
+    subgraph B["Service B"]
+        RB["Receptor sees extension<br/>and the department claim"]
+    end
+    subgraph C["Service C"]
+        RC["Receptor sees the same<br/>and its events carry them"]
+    end
+    Scope -->|"hop: scope + extensions + department"| RB
+    RB -->|"event hop: same scope and claim"| RC
+```
+
+### What crosses a hop {#hop-scope-contents}
+
+{verified: HopScopeDispatchParityTests.EveryPath_CarriesExtensionsAndOnlyListedClaimsAsync, HopScopeSourceGuardTests.HopScope_IsSerializedOnlyByTheHelperAsync}
+
+**The whole scope crosses every hop.** The hop carries the complete `PerspectiveScope` of the context the message is dispatched under:
+
+| Part of the scope | Crosses a hop | Read downstream from |
+|-------------------|---------------|----------------------|
+| Tenant and user ids | Always | `IScopeContext.Scope.TenantId`, `.UserId` |
+| Customer and organization ids | Always | `IScopeContext.Scope.CustomerId`, `.OrganizationId` |
+| Allowed principals | Always | `IScopeContext.Scope.AllowedPrincipals` |
+| Scope extensions (including ones mapped from claims with `ExtensionClaimMappings`) | Always | `IScopeContext.Scope.Extensions`, `IScopeContext.Scope.GetValue(key)` |
+| System and declared-unscoped [markers](#scope-markers) | Always | `IScopeContext.Scope` |
+| Claims | **Only types listed in `PropagatedClaimTypes`** | `IScopeContext.Claims` |
+
+This holds on every dispatch path: send (generic, untyped and with an explicit message context), send many, publish, publish many, scheduled and deferred messages, publishing from inside a receptor, local invokes and their cascades, the outbox, both transport bridges and the event-store decorator. Every one of them builds its hop scope through one helper, `HopScope`, and a source guard test fails when a new path builds one its own way. Roles, permissions, security principals and the actual and effective principals are not part of the hop scope.
+
+### Claims cross only when listed {#hop-scope-claims}
+
+A claim can be an access token, an email address or another personal value, so no claim crosses a hop by default. A claim crosses only when the application lists its claim type in `WhizbangScopeOptions.PropagatedClaimTypes` (configuration key `Whizbang:Scope:PropagatedClaimTypes:*`, matched by ordinal comparison, empty by default):
+
+```csharp{title="List a claim type for propagation" description="Opts the department claim in, so its value crosses each hop on the scope of the messages a request dispatches; every other claim stays in the process." category="Configuration" difficulty="INTERMEDIATE" tags=["Security", "Scope", "Claims", "Propagation"] tests=["WhizbangScopeMiddlewareTests.InvokeAsync_PropagatedClaimTypes_AreListedOnTheScopeContextAsync", "WhizbangScopeMiddlewareTests.InvokeAsync_NoPropagatedClaimTypes_ListsNoneAsync", "HopScopeTests.FromAmbient_AListedClaimCrossesAndAnUnlistedOneDoesNotAsync"]}
+builder.Services.AddWhizbangScope(options => {
+    // Only this claim's value leaves the process on outgoing messages
+    options.PropagatedClaimTypes.Add("department");
+});
+```
+
+:::warning
+**Never list an access token, a refresh token or a claim that holds personal data.** The value of every listed claim is written into message metadata on each hop, and so into the stored outbox, inbox and event rows and onto the transport. List only the claims a downstream service needs to make a decision.
+:::
+
+The HTTP scope middleware copies the list onto the scope context it establishes (`SecurityExtraction.PropagatedClaimTypes`, exposed as `ImmutableScopeContext.PropagatedClaimTypes`). The request itself still sees every claim; the list governs only what outgoing messages carry. A scope context that is not an `ImmutableScopeContext` sends no claims.
+
+### Receivers pass on what they received {#hop-scope-receivers}
+
+{verified: HopScopeTests.MessageHopSecurityExtractor_ListsEveryClaimItRestoresAsync, HopScopeTests.PromoteToPropagating_HopScope_ListsEveryClaimItCarriesAsync, HopScopeTests.PromoteToPropagating_ImmutableSource_KeepsItsListAsync, HopScopeTwoHopWireTests.ExtensionAndListedClaim_ReachAReceptorTwoHopsAway_AndTheEventItEmitsAsync}
+
+A receiving service restores the hop scope into its `IScopeContext`: the scope, with its extensions, into `IScopeContext.Scope`, and the claims into `IScopeContext.Claims`. Every claim restored from a hop was listed where the chain started, so the receiving service lists all of them for propagation in turn, and they keep travelling to the messages and events it dispatches. Promoting a context the edge established to a propagating one keeps the edge's list and never widens it.
+
+### Extensions and claims stay with their identity {#hop-scope-same-identity}
+
+{verified: HopScopeTests.FromMessageContext_OwnScopeContextOfTheSameIdentity_CarriesExtensionsAndListedClaimsAsync, HopScopeTests.FromMessageContext_AnotherIdentity_CarriesItsIdsWithoutTheAmbientExtensionsAsync, HopScopeTests.FromMessageContext_NonPropagatingScopeContext_CarriesItsIdsOnlyAsync}
+
+When a message is dispatched with an explicit message context that names a tenant or a user, those ids are authoritative. The context borrows extensions and claims from a scope (its own scope context, or the ambient one when it has none) **only when that scope names the same tenant and the same user**. A message dispatched for another identity carries that identity's ids and nothing from the current request, so one user's extensions and claims are never stamped onto a message sent on behalf of someone else.
+
+A scope context created with `ShouldPropagate = false` lends only the ids: the message carries the tenant and user of its message context, and no extensions or claims.
+
+### No tenant and no user, no hop scope {#hop-scope-no-authority}
+
+{verified: HopScopeTests.FromAmbient_ScopeWithNoTenantOrUser_ReturnsNullAsync, HopScopeTests.FromMessageContext_NoIds_ReturnsNullAsync}
+
+A scope that names neither a tenant nor a user still produces no hop scope, exactly as before. Traffic that carries no authority stays indistinguishable from traffic with no scope, so the [system and declared-unscoped markers](#scope-markers) still decide for it.
+
+### Known gap: two stored-event read-back paths {#hop-scope-known-gap}
+
+Two paths rebuild a hop scope from a stored row's tenant and user ids rather than from the message's hops:
+
+- the Dapper driver, when it reads a stored event whose row kept no envelope hops and restores the event's scope column onto a hop;
+- reconciliation on the EF Core driver, when it re-reads a stored row's tenant and user to re-run lifecycle stages.
+
+On those two paths, what runs sees only the tenant and user ids: the extensions, the customer and organization ids and the claims are not restored. Every live dispatch and delivery path carries the whole hop scope. This is tracked as [whizbang-lib/whizbang#1855](https://github.com/whizbang-lib/whizbang/issues/1855).
 
 ## Explicit Security Context API {#explicit-context}
 
@@ -1117,5 +1216,6 @@ The message security system is fully AOT-compatible:
 
 - [Security System](./security.md) - Permissions, roles, and scope context
 - [Scoping](./scoping.md) - PerspectiveScope and multi-tenancy
+- [Scope Propagation](./scope-propagation.md#extensions-and-claims) - Carrying scope extensions and claims to a receptor in another service
 - [System Events](../events/system-events.md) - Audit events
 - [Transport Consumer](../../messaging/transports/transport-consumer.md) - Message processing workers

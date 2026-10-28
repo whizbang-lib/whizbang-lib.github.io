@@ -8,7 +8,7 @@ category: Core Concepts
 order: 8
 description: >-
   Delta-based scope propagation across message hops with explicit tenant strategy enforcement for system and impersonation operations.
-tags: 'security, scope, tenant, multi-tenancy, system-operations, impersonation, delta, wire-format'
+tags: 'security, scope, tenant, multi-tenancy, system-operations, impersonation, delta, wire-format, scope-extensions, claim-propagation'
 codeReferences:
   - src/Whizbang.Core/Security/ScopeDelta.cs
   - src/Whizbang.Core/Security/ScopePropJsonConverter.cs
@@ -19,6 +19,9 @@ codeReferences:
   - src/Whizbang.Core/Observability/MessageEnvelope.cs
   - src/Whizbang.Core/Lenses/TenantConstants.cs
   - src/Whizbang.Core/Lenses/PerspectiveScope.cs
+  - src/Whizbang.Core/Security/HopScope.cs
+  - src/Whizbang.Core/Security/SecurityExtraction.cs
+  - src/Whizbang.Transports.HotChocolate/Middleware/WhizbangScopeMiddleware.cs
 testReferences:
   - tests/Whizbang.Core.Tests/Security/ScopeDeltaTests.cs
   - tests/Whizbang.Core.Tests/Security/ScopeDeltaApplyToTests.cs
@@ -27,6 +30,12 @@ testReferences:
   - tests/Whizbang.Core.Tests/Dispatch/DispatcherSecurityBuilderTests.cs
   - tests/Whizbang.Core.Tests/Dispatch/SystemDispatcherBuilderTests.cs
   - tests/Whizbang.Core.Tests/Dispatch/ImpersonationDispatcherBuilderTests.cs
+  - tests/Whizbang.Core.Tests/Security/HopScopeTests.cs
+  - tests/Whizbang.Core.Tests/Security/HopScopeTwoHopWireTests.cs
+  - tests/Whizbang.Core.Tests/Dispatcher/HopScopeDispatchParityTests.cs
+  - tests/Whizbang.Transports.HotChocolate.Tests/Unit/ScopeHopPropagationTests.cs
+  - tests/Whizbang.Transports.HotChocolate.Tests/Unit/WhizbangScopeMiddlewareTests.cs
+  - tests/Whizbang.Transports.HotChocolate.Tests/Unit/HotChocolateOptionsConfigurationBindingTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -166,6 +175,93 @@ if (fullScope?.HasPermission(Permission.Write("orders")) == true) {
 }
 ```
 
+## Scope Extensions and Claims Across Services {#extensions-and-claims}
+
+{verified: ScopeHopPropagationTests.ExtensionMappedAtTheEdge_ReachesAReceptorTwoHopsAway_AndTheEventItEmitsAsync, HopScopeTwoHopWireTests.ExtensionAndListedClaim_ReachAReceptorTwoHopsAway_AndTheEventItEmitsAsync}
+
+A fact established at the HTTP edge, such as "this caller is acting as an administrator", often decides what a receptor several services downstream may do. Map the fact into the scope as an **extension** at the edge, and it travels on every hop with the rest of the scope: a receptor in another service reads it from `IScopeContext.Scope.Extensions`, and every event that receptor emits carries it on. Claims are different: a claim crosses a hop only when its type is listed in `PropagatedClaimTypes`. The full rules are in [Message Security: Hop Scope](message-security.md#hop-scope).
+
+### 1. Map the claim at the edge
+
+In the service that receives the HTTP request, map the caller's claim to a scope extension with `ExtensionClaimMappings` (claim type to extension key), and list any claim a downstream service needs as a claim with `PropagatedClaimTypes`:
+
+```csharp{title="Map a claim to a scope extension at the HTTP edge" description="The edge service maps the acting_admin claim to the acting-admin scope extension and opts the department claim in for propagation; every other claim stays in the edge service." category="Configuration" difficulty="INTERMEDIATE" tags=["Security", "Scope", "Extensions", "Claims", "Propagation"] filename="Program.cs" usingStatements=["Whizbang.Transports.HotChocolate.Middleware"] tests=["ScopeHopPropagationTests.ExtensionMappedAtTheEdge_ReachesAReceptorTwoHopsAway_AndTheEventItEmitsAsync", "WhizbangScopeMiddlewareTests.InvokeAsync_PropagatedClaimTypes_AreListedOnTheScopeContextAsync"]}
+builder.Services.AddWhizbangScope(options => {
+    // The caller's acting_admin claim becomes the acting-admin scope extension,
+    // which travels with the scope to every downstream service
+    options.ExtensionClaimMappings["acting_admin"] = "acting-admin";
+
+    // The department claim's value crosses each hop; every other claim
+    // (tokens, email, ...) stays in this service
+    options.PropagatedClaimTypes.Add("department");
+});
+
+var app = builder.Build();
+app.UseWhizbangScope();
+```
+
+The same settings can come from configuration:
+
+```json{title="Scope mapping and claim propagation in appsettings.json" description="Binds the extension mapping and the propagated claim list from the Whizbang:Scope section." category="Configuration" difficulty="BEGINNER" tags=["Security", "Scope", "Configuration", "Claims"] tests=["HotChocolateOptionsConfigurationBindingTests.Scope_EveryKeyBindsAsync"]}
+{
+  "Whizbang": {
+    "Scope": {
+      "ExtensionClaimMappings": { "acting_admin": "acting-admin" },
+      "PropagatedClaimTypes": [ "department" ]
+    }
+  }
+}
+```
+
+:::warning
+List a claim in `PropagatedClaimTypes` only when a downstream service needs it. The value of each listed claim is written into message metadata on every hop, and so into the stored outbox, inbox and event rows. Never list an access token or a claim that holds personal data.
+:::
+
+### 2. Read it in a receptor in another service
+
+A request in the edge service dispatches a command; a receptor in another service handles it. That receptor reads the extension and the listed claim from its scope context, exactly as the edge established them:
+
+```csharp{title="Read a scope extension in a receptor in another service" description="A receptor two services from the HTTP edge reads the acting-admin extension and the propagated department claim from IScopeContext; the event it returns carries both on its hop." category="Messaging" difficulty="INTERMEDIATE" tags=["Security", "Scope", "Extensions", "Receptors", "Claims"] filename="ApproveRefundReceptor.cs" tests=["HopScopeTwoHopWireTests.ExtensionAndListedClaim_ReachAReceptorTwoHopsAway_AndTheEventItEmitsAsync", "ScopeHopPropagationTests.ExtensionMappedAtTheEdge_ReachesAReceptorTwoHopsAway_AndTheEventItEmitsAsync", "HopScopeDispatchParityTests.LocalReceptor_SeesTheExtensionAndTheEventItEmitsCarriesItAsync"]}
+using System;
+using System.Threading;
+using System.Threading.Tasks;
+using Whizbang.Core;
+using Whizbang.Core.Security;
+
+namespace Billing.Receptors;
+
+public class ApproveRefundReceptor : IReceptor<ApproveRefund, RefundApproved> {
+    private readonly IScopeContextAccessor _scopeContextAccessor;
+
+    public ApproveRefundReceptor(IScopeContextAccessor scopeContextAccessor) {
+        _scopeContextAccessor = scopeContextAccessor;
+    }
+
+    public ValueTask<RefundApproved> HandleAsync(ApproveRefund message, CancellationToken cancellationToken = default) {
+        var context = _scopeContextAccessor.Current
+            ?? throw new InvalidOperationException("ApproveRefund arrived without a scope");
+
+        // The extension the HTTP edge mapped from the caller's claim, services upstream
+        var actingAdmin = context.Scope.GetValue("acting-admin") == "true";
+
+        // A listed claim; a claim that was not listed never reaches this service
+        context.Claims.TryGetValue("department", out var department);
+
+        // The event returned here carries the same scope and claim on its hop
+        return ValueTask.FromResult(new RefundApproved(message.RefundId, actingAdmin, department));
+    }
+}
+```
+
+`context.Scope.Extensions` holds every extension as a list of key and value pairs; `GetValue(key)` returns one by key, or `null` when the request did not set it.
+
+### What does not travel
+
+- **Unlisted claims.** A claim whose type is not in `PropagatedClaimTypes` stays in the service that read it.
+- **Another identity's scope.** A message dispatched with an explicit message context for a different tenant or user carries that identity's ids and none of the current request's extensions or claims ([details](message-security.md#hop-scope-same-identity)).
+- **A non-propagating scope.** A scope context created with `ShouldPropagate = false` lends only the tenant and user ids.
+- **Two stored-event read-back paths** rebuild only the tenant and user ids for now ([known gap](message-security.md#hop-scope-known-gap), tracked as [whizbang-lib/whizbang#1855](https://github.com/whizbang-lib/whizbang/issues/1855)).
+
 ## Wire Format Reference
 
 ### Abbreviated Property Names
@@ -236,3 +332,4 @@ _dispatcher.RunAs(identity).ForAllTenants().SendAsync(cmd)
 - [Security Context Propagation](security-context-propagation.md) - End-to-end context flow
 - [Message Security](message-security.md) - Security context establishment
 - [Multi-Tenancy](multi-tenancy.md) - Tenant isolation patterns
+- [Message Security: Hop Scope](message-security.md#hop-scope) - What a message's hop scope carries and which claims cross

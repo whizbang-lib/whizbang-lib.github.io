@@ -36,6 +36,15 @@ codeReferences:
   - src/Whizbang.Core/SystemEvents/DigestExemptTypes.cs
   - src/Whizbang.Data.Postgres/Migrations/216_AuditRecordPositionAndDigestExemption.sql
   - src/Whizbang.Data.Postgres/Migrations/228_StreamsNeverMixEphemeralAndSourcedEvents.sql
+  - src/Whizbang.Core/Messaging/RedeliveryReconciliation.cs
+  - src/Whizbang.Core/Messaging/IntegrityRepairLedger.cs
+  - src/Whizbang.Data.EFCore.Postgres/CoordinatorIntegrityRepairLedger.cs
+  - src/Whizbang.Data.Postgres/Migrations/249_RedeliveredHistoryAdoptsItsOrigin.sql
+  - src/Whizbang.Data.Postgres/Migrations/250_TypeDigestWaitsForTheStamp.sql
+  - src/Whizbang.Data.EFCore.Postgres/PerspectiveCoverageGapSql.cs
+  - src/Whizbang.Core/Messaging/StreamIntegrityOptionsValidator.cs
+  - src/Whizbang.Core/Messaging/IIntegrityRepairLedger.cs
+  - src/Whizbang.Data.Postgres/Migrations/251_RepairDrainClaimsOnlyDeficits.sql
 testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/AtMostOnceOccurrenceIntegrityTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/IntegrityCheckpointWorkerTests.cs
@@ -56,6 +65,8 @@ testReferences:
   - tests/Whizbang.Core.Component.Tests/MultiService/DirectedMessageE2ETests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/TransportConsumerWorkerDirectedTargetTests.cs
   - tests/Whizbang.Core.Tests/Observability/StreamIntegrityMetricsTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/PacedRepairDrainSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityRepairBacklogProbeSqlTests.cs
   - tests/Whizbang.Core.Tests/Security/ControlPlaneSecurityExemptionTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityCheckpointAdvanceTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityCheckpointReceptorTests.cs
@@ -68,6 +79,16 @@ testReferences:
   - tests/Whizbang.Transports.AzureServiceBus.Integration.Tests/ControlPlaneSessionIntegrationTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/AuditDigestLaneSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/DirectAppendStreamDigestTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/RedeliveredOriginAdoptionSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityLedgerUnhealableSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/CoordinatorIntegrityRepairLedgerUnhealableTests.cs
+  - tests/Whizbang.Core.Tests/Messaging/RedeliveryReconcilerTests.cs
+  - tests/Whizbang.Core.Tests/Messaging/IntegrityRepairLedgerUnhealableTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/InboxDispatchWorkerCompositeCommitTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/EpochServedTypeDigestSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityManifestDrainAdmissionTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityRepairBacklogProbeSqlTests.cs
+  - tests/Whizbang.Core.Tests/Messaging/StreamIntegrityOptionsValidatorTests.cs
 verifiedAgainstCommit: a64ba9a0
 verifiedDate: 2026-08-04
 ---
@@ -359,6 +380,31 @@ gates to recognize runtime-registered receptors as consumers.
 What it cannot see: loss *after* successful receipt (case 2) and anything historical. That is the
 deep audit's job.
 
+#### Where counting starts: the history floor {#checkpoint-history-floor}
+
+{verified: IntegrityCheckpointAdvanceTests.Advance_HistoryStampedAfterTheBaseline_IsNotCountedAsALiveWindowAsync, IntegrityCheckpointAdvanceTests.Advance_AStoreBaselinedBeforeTheHistoryFloorExisted_TakesTheFloorOnceAsync, IntegrityCheckpointAdvanceTests.Advance_ANewBaseline_MovesTheHistoryFloorWithItAsync}
+
+The first checkpoint baselines: it records the highest stamped commit sequence as its watermark and counts nothing.
+A window holds the sequences above the watermark, but a sequence is not proof that an event is new. After an upgrade
+the history is unstamped, and the stamper hands it sequences over the following minutes or hours, all of them above
+the baseline. Those events were delivered long before, under no sequence, so no consumer can hold them under the one
+they get later, and counting them would turn every bucket of every window into a gap.
+
+So the baseline records a second value beside the watermark, the **history floor**: the last insertion-order value
+(`wh_event_store.insert_order`) handed out when counting began, kept in `wh_settings` as
+`integrity_checkpoint_history_floor`. A window counts only the events in its sequence range that were written after
+the floor. History below it is left to the [digests](#phase-a-digest-manifests), which compare event identities
+rather than sequence windows.
+
+| Case | What happens |
+|---|---|
+| First advance on a store | The watermark and the floor are written together by one statement, by the instance whose baseline wins |
+| A store an earlier version baselined (a watermark and no floor) | The next advance takes the floor at the current insertion order; whatever history is still being stamped is left out from then on |
+| The watermark is removed to restart counting | The next baseline takes the floor again with it |
+
+An event whose transaction drew its insertion order before the floor and committed after it is left out of the window
+as well. It is still covered by the digests.
+
 ### Phase S — subscription-expansion backfill (startup, on by default)
 
 The startup type-definition reconciler already diffs each service's catalog against its persisted
@@ -426,9 +472,12 @@ re-bounds):
   and a bucket that heals is forgotten entirely, so a later re-divergence is a brand-new incident.
 - **Repair requests back off.** Each divergent bucket's first repair request goes immediately;
   every further attempt doubles the wait (`RepairRequestBackoffSeconds` base, default 300), and
-  past `MaxRepairAttemptsPerBucket` (default 8) the requester stops asking — the divergence still
-  re-reports at the cooldown cadence, but a repair that has not worked eight times needs operator
-  eyes, not an infinite loop. A signature change resets the budget.
+  past `MaxRepairAttemptsPerBucket` (default 8) the wait stops growing. The divergence still
+  re-reports at the cooldown cadence, and a repair that has not worked eight times needs operator
+  eyes, not a tight loop. A signature change resets the budget. Past the cap the ledger keeps
+  one ask per terminal interval (base x 2^6) for an origin that never answered, and stops at once,
+  with one report, for a bucket a redelivery answered without changing it
+  ([repair that cannot change a bucket](#unhealable-buckets)).
 - **Requests batch and are directed or not at all.** Divergent streams of one (tenant, type)
   batch into ONE `RequestRedeliveryCommand` (the origin's selection takes a stream set — per-stream
   commands multiplied wire volume by the stream count for nothing). And every integrity request —
@@ -501,14 +550,49 @@ belongs to Phase B's checkpoints (one doorbell-sized ephemeral event per origin 
 tunable as emit-on-publish with a slow max-idle heartbeat — never fully silent, because
 checkpoint absence is the transport-liveness alarm.
 
-### Phase L — local perspective-coverage audit
+### Phase L — local perspective-coverage audit {#phase-l-local-perspective-coverage-audit}
 
 Entirely local, no manifest exchange: verify per (stream, perspective) that cursor coverage reaches
 the stream head and that the perspective's birth does not postdate history it should have folded
 (case 3/6). Remediation is the existing targeted rebuild — the same non-destructive
 "find only the broken streams and replay just those" shape proven by prior consumer-side repairs.
 
+{verified: StreamDigestTests.CoverageGaps_FindUncursoredPerspectiveHistoryAsync, StreamDigestTests.CoverageGaps_SkipEventsTheStamperHasNotSequencedAsync, StreamDigestTests.CoverageGaps_CountEachPerspective_LeavingOutPendingEphemeralAndUnsettledEventsAsync, StreamDigestTests.CoverageGaps_ReadWhatTheReportCapNeeds_NotTheWholeStoreAsync}
+
+A coverage gap is a (stream, perspective) pair where the perspective is registered for some of the stream's event
+types, has no cursor on the stream, and no work item is pending for those events. Only events that are settled (older
+than the settle window), durable (not ephemeral) and **stamped** count. An event without a commit sequence is held back
+from every perspective by the stamp fence until the stamper reaches it, so its missing cursor is the fence working, not
+a perspective that never folded it.
+
+The report cap (`MaxCoverageGapReportsPerAudit`) bounds what the query reads, not only what it returns. The query walks
+the store's streams one at a time through the `(stream_id, version)` index, reads each stream's events once, and stops
+as soon as it has found as many gaps as the cap allows. A store with many gaps costs the audit about the cap's worth of
+streams; a store with none still reads every stream once, since proving there is no gap needs that.
+
 ---
+
+### History the stamper has not reached {#unstamped-history}
+
+{verified: EpochServedTypeDigestSqlTests.LocalLane_AnUnstampedRow_IsLeftOutOfTheOpenWindowUntilItIsStampedAsync, EpochServedTypeDigestSqlTests.ReceivedLane_ARowWithNoOriginSequence_StillFoldsInTheOpenWindowAsync, IntegrityCheckpointAdvanceTests.Advance_HistoryStampedAfterTheBaseline_IsNotCountedAsALiveWindowAsync, StreamDigestTests.CoverageGaps_SkipEventsTheStamperHasNotSequencedAsync}
+
+The commit-order stamper gives every stored event its `commit_sequence` shortly after it commits. After an upgrade from
+a version that had no commit sequence, the whole history is unstamped at once, and the stamper works through it over
+the next minutes or hours. Until it is done, that history is old by its creation time and has no sequence. Stream
+integrity treats it as follows:
+
+| Phase | An event with no commit sequence |
+|---|---|
+| Checkpoints (Phase B) | Never in a window. Once stamped, it is counted only if it was written after the [history floor](#checkpoint-history-floor) |
+| Type-level digest, local lane | Left out of the open window until it is stamped, then folded wherever its sequence falls (migration 250). The windowed answer and the settled maximum already waited for the sequence |
+| Type-level digest, received lane | A received event with no origin sequence still folds in the open window: it may never get one (published before its stamp, or received before the origin columns existed), and the open window is the only place it can fold |
+| Coverage gaps (Phase L) | Never a gap; the stamp fence holds it back from the perspectives |
+
+The local lane waiting for the stamp means a consumer can, for a while, hold an event its origin does not yet count.
+That reads as a surplus, which raises an alarm and never a redelivery (see
+[Deficit repairs; mismatch alarms](#deficit-repairs-mismatch-alarms)), and it clears when the stamper reaches the event.
+Counting the history while it is unstamped did the opposite: a deficit, which is repaired, and with a whole history
+unstamped that was a repair storm.
 
 ### What is digested {#what-is-digested}
 
@@ -658,7 +742,8 @@ services.Configure<StreamIntegrityOptions>(o => {
   o.RepairTopic = null;                      // topic repair requests publish to AND bundles return on
                                              // (null = the consumer's first subscribed destination)
   o.MaxAutoRepairRequestsPerCheckpoint = 10;
-  o.MaxAutoRepairRequestsPerAudit = 25;
+  o.MaxAutoRepairRequestsPerAudit = 25;     // per manifest comparison; see "Repair caps" below
+  o.MaxRepairDrainBacklog = 10_000;          // total bound on the paced repair drain's ledger
   o.MaxAutoRebuildsPerAudit = 5;
   o.MaxCoverageGapReportsPerAudit = 100;     // both the query and the report loop are bounded
   o.MaxDrillDownTypesPerAudit = 10;
@@ -667,7 +752,7 @@ services.Configure<StreamIntegrityOptions>(o => {
   // Convergence bounding (the IntegrityRepairLedger's dials)
   o.DivergenceReportCooldownMinutes = 60;    // unchanged divergence re-reports once per hour, not per cycle
   o.RepairRequestBackoffSeconds = 300;       // per-bucket retry base; each attempt doubles the wait
-  o.MaxRepairAttemptsPerBucket = 8;          // then stop asking (reports continue); signature change resets
+  o.MaxRepairAttemptsPerBucket = 8;          // then one ask per terminal interval (reports continue); signature change resets
 
   // Phase S — subscription growth
   o.BackfillOnSubscriptionGrowth = true;
@@ -740,6 +825,105 @@ Measured in a real deployment: one consumer left on the default emitted roughly 
 the events its producer did, for a workload that had previously completed in minutes. Its five
 peers, pinned to `ReportOnly`, were unaffected. Pinning that consumer to `ReportOnly` dropped its
 event production by more than two orders of magnitude and drained its queue to empty.
+
+### Repair caps {#repair-caps}
+
+`MaxAutoRepairRequestsPerAudit` is a cap per **manifest comparison**: one received manifest chunk. A
+window followed across several pages, or several origins audited in one cycle, each get their own
+allowance. What it counts depends on who sends the repairs.
+
+| Mode | Who sends | What `MaxAutoRepairRequestsPerAudit` bounds | What bounds the total |
+| --- | --- | --- | --- |
+| Paced repair drain on (`RepairDrainEnabled`, the default) | The drain worker, from the repair ledger, at `RepairDrainRatePerSecond` | The **new** deficit buckets one comparison adds to the ledger | `MaxRepairDrainBacklog` (default 10,000 ledger rows) |
+| Burst path (`RepairDrainEnabled = false`) | The comparison itself | The repair requests the comparison sends | The per-bucket backoff and attempt cap |
+
+With the drain on, a ledger row **is** a queued repair: the drain claims rows, not requests. A
+comparison therefore decides, for each deficit bucket in manifest order, whether it may have a row:
+
+```mermaid {caption="Drain admission: which deficit buckets one comparison may add to the repair ledger" tests=["IntegrityManifestDrainAdmissionTests.DrainOn_TrackedDeficits_AreRefreshedWithoutSpendingTheCapAsync","IntegrityManifestDrainAdmissionTests.DrainOn_BacklogAtTheBound_AdmitsNoNewDeficit_ButRefreshesTrackedOnesAsync","IntegrityManifestDrainAdmissionTests.DrainOn_NewDeficitsPastThePerComparisonCap_AreNotAddedToTheLedgerAsync"]}
+flowchart TD
+  D[Deficit bucket] --> T{Already tracked<br/>by the ledger?}
+  T -- yes --> R[Refresh the row<br/>does not count]
+  T -- no --> B{Backlog below<br/>MaxRepairDrainBacklog?}
+  B -- no --> DB[Defer: backlog_cap]
+  B -- yes --> C{Fewer than MaxAutoRepairRequestsPerAudit<br/>new rows from this comparison?}
+  C -- no --> DC[Defer: per_audit_cap]
+  C -- yes --> A[Add the row<br/>the drain will dispatch it]
+```
+
+- **A tracked bucket never counts.** Re-admitting it adds nothing to the backlog, and counting it would
+  let a few stuck buckets at the head of every manifest take the whole allowance forever.
+- **Deferred is not dropped.** Nothing is written for a deferred bucket, so it stays divergent and a
+  later audit re-detects it once the drain has made room. Each comparison that defers logs one warning
+  with the counts and the current backlog, and `repairs_deferred` counts the buckets by origin and
+  `reason` (`per_audit_cap`, `backlog_cap`). Deferred buckets still count in `divergences_detected`.
+- **Only deficits are admitted this way.** An identity mismatch or a local surplus is never repaired, so
+  it is recorded as before, and the drain never claims its row (see
+  [which rows the drain claims](#drain-claims-deficits-only)).
+- **The backlog is read once per comparison**, in the same round trip that says which buckets are
+  already tracked, and counted only up to the bound so the read stays cheap on a large ledger. It
+  counts exactly the rows the drain's claim can take: deficits on a per-stream lane, every origin,
+  leaving out the bulk-backfill lane, mismatches, surpluses, rows of unknown kind and buckets marked as
+  ones repair cannot change. "Already tracked" means the ledger holds the bucket as a deficit. Comparisons on
+  several replicas can each add up to one allowance past the bound before they see each other's rows.
+- **Without a backlog reading** (an engine that cannot provide one, or a read that failed, which is
+  logged) the per-comparison cap alone applies and every bucket counts as new.
+
+`MaxRepairDrainBacklog` must be at least 1; host start fails otherwise, because a bound of zero would
+admit nothing to repair while every comparison logged a deferral. At the default drain rate of 5 rows
+per second, 10,000 rows is a little over half an hour of dispatch. The admission rule applies only at
+`AutoRepairCapped` with the drain on: at `ReportOnly` the drain sends nothing, and the burst path keeps
+its own cap.
+
+:::updated
+**Before this was fixed ([#1792](https://github.com/whizbang-lib/whizbang/issues/1792)),** the cap was
+consulted only on the burst path. With the drain on, a comparison wrote every deficit bucket of every
+chunk into the ledger, so an operator who set the cap to 25 still had every divergent stream queued,
+and the ledger grew with the number of divergent streams and accumulated across audits. A field
+environment that had just upgraded across many migrations, with a large unstamped history, filled the
+ledger faster than the drain could empty it.
+:::
+
+### Which rows the drain claims {#drain-claims-deficits-only}
+
+A manifest comparison writes a ledger row for every divergence it reports, whatever its kind, because
+the ledger is the operator's record of what is divergent. The drain claims only the rows a redelivery
+can repair:
+
+| Divergence | Recorded kind | Claimed by the drain | Counted in the drain backlog |
+| --- | --- | --- | --- |
+| Deficit: this store holds fewer events than the origin | deficit | Yes | Yes |
+| Identity mismatch: equal counts, different folds | not a deficit | Never | No |
+| Local surplus: more events than the origin | not a deficit | Never | No |
+| Kind unknown (see below) | unknown | Never | No |
+| Deficit a redelivery [could not change](#unhealable-buckets) | deficit | Never, until its signature changes or it heals | No |
+
+The comparison states the kind when it reports the bucket, because the ledger row cannot work it out:
+it holds each side's fold digest, which is a hash of the event set, not a count. The kind follows the
+latest sighting, so a deficit that turns into a surplus leaves the drain, and returns to it if it
+becomes a deficit again.
+
+A row's kind is **unknown**, and the row is never claimed, in two cases:
+
+- **Rows recorded before the kind was** (an upgrade from a version without it). No backfill is
+  possible, for the reason above. The next comparison that sees the bucket records its kind; until
+  then the bucket is reported but not redelivered. After an upgrade, the drain therefore resumes for
+  existing deficits on the first audit that covers them, admitted under the [repair caps](#repair-caps).
+- **A report that does not carry the kind moved the bucket's signature.** That is the per-bucket
+  fallback the ledger takes when its batch call fails, and the only report a version older than this
+  one sends during a rolling upgrade. An unchanged signature keeps the kind already recorded, because
+  the kind is a property of the two event sets and the signature is their digest.
+
+The claim and the backlog count read a partial index that holds only the claimable rows, in the
+claim's order, so their cost does not grow with the number of mismatches and surpluses in the ledger.
+
+:::updated
+**Before this was fixed ([#1842](https://github.com/whizbang-lib/whizbang/issues/1842)),** the drain
+claimed every per-stream ledger row past its backoff, whatever its kind. Identity mismatches and local
+surpluses were re-requested from the origin at `RepairDrainRatePerSecond` on every backoff step, a
+redelivery that could not change them, and they counted toward `MaxRepairDrainBacklog`, so a store
+with many of them could fill the backlog and defer real deficits.
+:::
 
 ### Report-only is bilateral {#report-only-is-bilateral}
 
@@ -910,9 +1094,11 @@ the memory that would have suppressed one. Composed, each covers the other's bli
 
 **What the pipeline deliberately does not do.** Detection is never gated: `GapsDetected` fires and
 the confirmation is logged before any repair decision, on every checkpoint. When repair is vetoed
-or exhausted, the system stops ASKING, never stops KNOWING. A gap that survived its attempt budget
-will not be fixed by one more request; it needs an operator, and it keeps surfacing in reports and
-metrics until someone acts.
+or exhausted, the system slows or stops ASKING, never stops KNOWING. A vetoed repair is not asked
+for at all; an exhausted one is asked for once per terminal interval, in case its origin was only
+unreachable, and a bucket a redelivery could not change is not asked for again. A gap that survived
+its attempt budget is unlikely to be fixed by one more request; it needs an operator, and it keeps
+surfacing in reports and metrics until someone acts.
 
 **Note the asymmetry with the deep audit,** which already guarded against exactly this:
 `AuditSettleWindowMinutes` (default 60) exists so that an in-flight delivery never reads as
@@ -946,6 +1132,35 @@ wire activity), `backfills_requested` (Phase S), `redelivery_requests_received` 
 requests served as an origin — repair + backfill flows), and `digest_buckets_verified` +
 `digest_drift_healed` (the trust-but-verify sweep — any drift healed means an unaccounted write
 path touched audited rows and warrants investigation).
+
+### Repair that cannot change a bucket {#unhealable-buckets}
+
+{verified: IntegrityLedgerUnhealableSqlTests.TryBeginRepair_AnUnhealableBucket_IsRefusedPastItsTerminalCadenceAsync, IntegrityLedgerUnhealableSqlTests.ClaimRepairDrain_SkipsAnUnhealableBucketAsync, IntegrityLedgerUnhealableSqlTests.TryBeginReport_ASignatureChange_LiftsTheMarkAndRepairResumesAsync, RedeliveryReconcilerTests.Reconcile_EveryEventAlreadyPresentAndNothingAdopted_MarksTheBucketUnhealableOnceAsync}
+
+The ledger's attempt budget flattens to a terminal cadence rather than stopping, because a bucket whose
+origin never answered has no evidence against it: the origin may simply have been down. A bucket whose
+origin did answer is different. When a redelivery bundle commits and every event it carries was already
+stored under its origin, with nothing to adopt, the redelivery changed nothing, and the next one would
+ship the same events again.
+
+The receiver records that on the bucket's ledger row (`wh_integrity_ledger.unhealable_at`, through
+`IIntegrityRepairLedger.MarkUnhealableBatchAsync`). From then on:
+
+- neither the burst grant (`wh_integrity_try_begin_repair`) nor the paced drain
+  (`wh_integrity_claim_repair_drain`) asks for the bucket again;
+- the divergence cooldown stops re-reporting it;
+- one Warning names the bucket (event type, tenant, stream, origin) when it is marked, and the
+  `repairs_unhealable` counter counts it once.
+
+A changed signature (either side's digest moved) is a fresh incident: it lifts the mark, resets the
+attempt budget and reports again. A heal deletes the row. Only buckets the ledger already tracks are
+marked, so a redelivery nobody asked this ledger for leaves nothing behind. The usual causes of a bucket
+repair cannot change are an event stored under another origin or another stream; compare the stream on
+both sides.
+
+The checkpoint path keys its ledger rows by type and window rather than by stream, and its
+[repair policy](#the-repair-decision-pipeline-as-wired) already stops a window whose count stopped
+improving, so it is unaffected by the mark.
 
 ---
 
@@ -1011,7 +1226,7 @@ never re-open verified history), and steady-state audits ask windowed **from the
 sweep deliberately asks full history — it is trust-but-verify for exactly the state the seals
 assume is fine, and a windowed sweep would be circular trust.
 
-### Deficit repairs; mismatch alarms
+### Deficit repairs; mismatch alarms {#deficit-repairs-mismatch-alarms}
 
 Only a **deficit** (`localCount < originCount`) is repairable. Equal counts with differing folds
 mean the consumer holds the same *number* of events with different *identity* — redelivery
@@ -1019,7 +1234,8 @@ re-ships what the origin has, dedup drops what the consumer already holds, the f
 and the repair loop can never converge (observed live as an unbounded redelivery storm). A local
 *surplus* cannot be fixed by asking the origin for more, and local history is never auto-deleted
 on a remote's say-so. Both still **alarm** (ledger + report + `reason` metric tag:
-`deficit | identity_mismatch | local_extra`); neither mints a redelivery request. A deficit found
+`deficit | identity_mismatch | local_extra`); neither mints a redelivery request, and the paced
+drain never claims their ledger rows ([which rows the drain claims](#drain-claims-deficits-only)). A deficit found
 comparing a *windowed* manifest is a deficit **in that window** — the repair request carries the
 range, so the origin re-ships a slice, never a stream's whole history.
 
@@ -1291,6 +1507,53 @@ excluded, since it never carries an origin. The count is two interlocked increme
 and needs no query. The usual causes are a producer running a version from before the origin stamp, or
 one whose outbox never resolved its service id; the producer logs the second case at startup.
 
+### History received before origins were recorded {#pre-stamp-history}
+
+{verified: RedeliveredOriginAdoptionSqlTests.Adopt_EventsStoredWithoutAnOrigin_TakeTheBundlesOriginAndSequencesAsync, RedeliveredOriginAdoptionSqlTests.Adopt_TheNextCheckpointCountsTheAdoptedEvents_InsteadOfAskingForThemAgainAsync, RedeliveryReconcilerTests.Reconcile_EventsStoredWithoutTheirOrigin_AdoptTheOriginTheBundleCarriesAsync}
+
+Migration 087 started writing `origin_service_id` and `origin_commit_sequence` on received events. Events a
+service received before it ran 087 have both columns empty, and their digests sit in the local lane, the
+lane this service advertises as its own. Origin-keyed verification therefore counts every one of them as
+missing: the checkpoint count windows on the origin commit sequence, and the audit compares the origin's
+digest lane, which holds none of them.
+
+Only the origin knows those sequences, so the receiver cannot backfill them from its own store. The
+redelivery that verification asks for is the source. When a redelivery bundle has committed, the receiver
+reconciles it with the events it already holds (`RedeliveryReconciler`, backed by
+`wh_adopt_redelivered_origin`, migration 249). For each event already stored:
+
+- an empty origin takes the bundle's origin, and an empty origin commit sequence takes the event's
+  sequence from the bundle. A recorded origin or sequence is never overwritten, an event recorded under
+  another origin is never re-attributed, and a bundle naming this service (or no service) adopts nothing;
+- an event that leaves the local lane takes its digest with it: its hash leaves the local bucket and joins
+  the origin's, under the same predicates every digest fold uses, and a local bucket left empty is removed;
+- the sealed [epochs](#epoch-seals-the-substrate) either lane holds over the moved events are refolded, and
+  when a sealed epoch of the local lane changed, the [origin generation](#origin-generation) advances so
+  this service's own consumers re-verify that history instead of alarming on it.
+
+The next checkpoint then counts those events and the next audit finds the origin's digest, so the bucket
+heals and its ledger row is deleted. Each piece of pre-087 history costs one redelivery, paced by the
+[repair drain](#the-repair-decision-pipeline-as-wired), and then verifies like any other. The
+`origins_adopted` counter rises while that happens and stops once the history has been redelivered once;
+an Information line per bundle names the origin and how many of its events adopted it.
+
+```mermaid{caption="A redelivery reconciled with the events the receiver already holds: history without an origin adopts it, and a bundle that changes nothing ends the asking." tests=["RedeliveredOriginAdoptionSqlTests.Adopt_EventsStoredWithoutAnOrigin_TakeTheBundlesOriginAndSequencesAsync", "RedeliveryReconcilerTests.Reconcile_EveryEventAlreadyPresentAndNothingAdopted_MarksTheBucketUnhealableOnceAsync", "InboxDispatchWorkerCompositeCommitTests.Redelivery_OnceCommitted_IsReconciledWithTheEventsTheStoreAlreadyHoldsAsync"]}
+flowchart TD
+  A[Verification counts a bucket short] --> B[Repair asks the origin]
+  B --> C[Redelivery bundle commits at the receiver]
+  C --> D{Events already stored?}
+  D -- some are not --> E[The bundle stores them]
+  D -- all are --> F{Any with an empty origin or sequence?}
+  F -- yes --> G[They adopt the bundle's origin; digest moves to the origin's lane]
+  G --> H[Next check counts them; the bucket heals]
+  E --> H
+  F -- no --> I[Bucket marked unhealable; reported once; never asked for again]
+```
+
+A redelivered event the receiver already holds still never reaches the inbox emit chain: the inbox
+deduplication or the chain's "already stored" test skips it, as before. The reconciliation runs beside the
+bundle's commit, not inside the store path, so live delivery pays nothing for it.
+
 ## Observability
 
 Everything the reconcile system does is visible on one meter: **`Whizbang.StreamIntegrity`**
@@ -1333,9 +1596,12 @@ patterns worth understanding before building a dashboard:
 | --- | --- |
 | `divergences_detected` (tags `origin`, `event_type`, `reason`) | Divergent buckets per comparison. `reason` carries the taxonomy: `deficit` (repairable), `identity_mismatch` / `local_extra` (alarm-only — see [the divergence taxonomy](#the-divergence-taxonomy)). |
 | `repairs_requested` (tags `source`, `origin`) | Directed repair asks. `source=audit` is the per-stream path; `source=bulk` is the threshold-triggered whole-window state-only backfill. |
+| `repairs_deferred` (tags `origin`, `reason`) | Deficit buckets a comparison deferred instead of adding to the paced repair drain's ledger: `per_audit_cap` (the comparison already added `MaxAutoRepairRequestsPerAudit`) or `backlog_cap` (the ledger holds `MaxRepairDrainBacklog` rows). Sustained growth means discovery outpaces the drain; raise `RepairDrainRatePerSecond` or accept the pace. See [repair caps](#repair-caps). |
 | `compares_declined` (tag `origin`) | Manifest chunks declined at the non-queueing compare gate. Sustained growth = comparisons losing to arrivals; read alongside `manifest_compare_duration`. |
 | `manifest_pages_followed` / `manifest_pages_capped` (tag `origin`) | Windowed stream pages walked via the resume cursor, and follow chains stopped at `MaxManifestPagesPerAudit`. Persistent capping means lanes are wider than the per-audit page budget — raise the cap or accept the pace. |
 | `redelivery_events_shipped` | Events selected and shipped in redelivery bundles, as an origin. |
+| `origins_adopted` | Stored events whose empty origin columns a redelivery filled: [history received before origins were recorded](#pre-stamp-history), now verifiable. Rises while that history is redelivered once, then stops. |
+| `repairs_unhealable` | Buckets a redelivery could not change (every event already stored under its origin), counted once each. Repair stops asking for them; see [repair that cannot change a bucket](#unhealable-buckets). |
 | `manifests_requested`, `manifest_chunks_sent`, `drill_downs_requested`, `backfills_requested`, `redelivery_requests_received` | The exchange itself, hop by hop. |
 | `checkpoints_published` / `checkpoints_received`, `gaps_detected`, `coverage_gaps_detected`, `rebuilds_requested` | The continuity-checkpoint and coverage halves of the system. |
 | `digest_buckets_verified`, `digest_drift_healed` (tag `kind`) | The trust-but-verify sweep: buckets checked, and drift it healed (an unaccounted write path — investigate `kind`). |
@@ -1345,9 +1611,11 @@ patterns worth understanding before building a dashboard:
 A deficient service converging looks like: `repairs_requested` active → `redelivery_events_shipped`
 climbing at the origin → `unhealed_buckets` falling (heals deleting rows) with `bucket_heal_seconds`
 recording each one → `sealed_through` stepping upward as whole windows certify → everything quiet
-except the checkpoint heartbeat. The failure signatures: `repair_exhausted_buckets` rising (buckets
+except the checkpoint heartbeat. After an upgrade from a schema older than 087, `origins_adopted` rises first while
+pre-087 history is redelivered once. The failure signatures: `repair_exhausted_buckets` rising (buckets
 out of budget), `compares_declined` sustained (compare pressure), `manifest_pages_capped` persistent
-(page budget too small for the lane), or `sealed_through` frozen while `unhealed_buckets` is flat
+(page budget too small for the lane), `repairs_unhealable` non-zero (buckets repair cannot change; each was named
+once in a Warning), or `sealed_through` frozen while `unhealed_buckets` is flat
 and non-zero (a stuck lane).
 
 ## Future work

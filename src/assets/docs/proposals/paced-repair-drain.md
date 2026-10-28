@@ -103,6 +103,14 @@ the idle-gate thresholds. Attempt caps, per-bucket backoff, the repair mode, and
 thresholds keep their meanings — they gate *eligibility*, which stays exactly where it is:
 in the ledger.
 
+:::updated
+**As built, the budget knob was kept and given a new job ([#1792](https://github.com/whizbang-lib/whizbang/issues/1792)).**
+With the drain on, `MaxAutoRepairRequestsPerAudit` caps the new deficit buckets one manifest
+comparison adds to the ledger, and `MaxRepairDrainBacklog` bounds the ledger's total, so discovery
+cannot outrun dispatch without bound. Over-cap buckets are deferred to a later audit, never dropped.
+See [repair caps](/v1.0.0/resilience/stream-integrity#repair-caps).
+:::
+
 ## Observability
 
 The drain exposes: current rate (gauge), tokens available, requests dispatched (by origin

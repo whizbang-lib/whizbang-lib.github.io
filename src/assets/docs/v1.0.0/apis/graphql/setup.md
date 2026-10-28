@@ -15,10 +15,12 @@ codeReferences:
   - src/Whizbang.Transports.HotChocolate/Extensions/HotChocolateWhizbangExtensions.cs
   - src/Whizbang.Transports.HotChocolate/Configuration/WhizbangGraphQLOptions.cs
   - src/Whizbang.Transports.HotChocolate/Middleware/ScopeMiddlewareExtensions.cs
+  - src/Whizbang.Transports.HotChocolate/Middleware/WhizbangScopeMiddleware.cs
 testReferences:
   - tests/Whizbang.Transports.HotChocolate.Tests/Unit/ServiceRegistrationTests.cs
   - tests/Whizbang.Transports.HotChocolate.Tests/Unit/WhizbangGraphQLOptionsTests.cs
   - tests/Whizbang.Transports.HotChocolate.Component.Tests/Unit/ScopeMiddlewareExtensionsTests.cs
+  - tests/Whizbang.Transports.HotChocolate.Tests/Unit/WhizbangScopeMiddlewareTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -130,6 +132,8 @@ builder.Services.AddWhizbangScope(options => {
 | `GroupsClaimTypes` | `["groups"]` | JWT claim types for group memberships |
 | `PermissionsClaimTypes` | `["permissions"]` | JWT claim types for permissions |
 | `CorrelationIdHeaderName` | `"X-Correlation-ID"` | Header whose Guid value is adopted as the inbound correlation ID |
+| `ExtensionClaimMappings`, `ExtensionHeaderMappings` | empty | Claim type (or opted-in header) to scope extension key; extensions travel with the scope on every message the request dispatches |
+| `PropagatedClaimTypes` | empty | Claim types whose values cross a hop on the messages the request dispatches; never list a token or personal data. See [Hop Scope](../../fundamentals/security/message-security#hop-scope-claims) |
 
 Each `*ClaimType` (singular) property still exists as a backwards-compatible shim: getting it reads the first entry of the corresponding `*ClaimTypes` list, and setting it replaces the list with a single value. Multi-valued claims (permissions, groups) honor a `ClaimAggregation` strategy (`PermissionsAggregation`/`GroupsAggregation`, default `FirstMatch`).
 
