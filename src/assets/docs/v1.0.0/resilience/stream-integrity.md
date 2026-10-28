@@ -42,6 +42,8 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/249_RedeliveredHistoryAdoptsItsOrigin.sql
   - src/Whizbang.Data.Postgres/Migrations/250_TypeDigestWaitsForTheStamp.sql
   - src/Whizbang.Data.EFCore.Postgres/PerspectiveCoverageGapSql.cs
+  - src/Whizbang.Core/Messaging/StreamIntegrityOptionsValidator.cs
+  - src/Whizbang.Core/Messaging/IIntegrityRepairLedger.cs
 testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/AtMostOnceOccurrenceIntegrityTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/IntegrityCheckpointWorkerTests.cs
@@ -81,6 +83,9 @@ testReferences:
   - tests/Whizbang.Core.Tests/Messaging/IntegrityRepairLedgerUnhealableTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/InboxDispatchWorkerCompositeCommitTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/EpochServedTypeDigestSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityManifestDrainAdmissionTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityRepairBacklogProbeSqlTests.cs
+  - tests/Whizbang.Core.Tests/Messaging/StreamIntegrityOptionsValidatorTests.cs
 verifiedAgainstCommit: a64ba9a0
 verifiedDate: 2026-08-04
 ---
@@ -734,7 +739,8 @@ services.Configure<StreamIntegrityOptions>(o => {
   o.RepairTopic = null;                      // topic repair requests publish to AND bundles return on
                                              // (null = the consumer's first subscribed destination)
   o.MaxAutoRepairRequestsPerCheckpoint = 10;
-  o.MaxAutoRepairRequestsPerAudit = 25;
+  o.MaxAutoRepairRequestsPerAudit = 25;     // per manifest comparison; see "Repair caps" below
+  o.MaxRepairDrainBacklog = 10_000;          // total bound on the paced repair drain's ledger
   o.MaxAutoRebuildsPerAudit = 5;
   o.MaxCoverageGapReportsPerAudit = 100;     // both the query and the report loop are bounded
   o.MaxDrillDownTypesPerAudit = 10;
@@ -816,6 +822,61 @@ Measured in a real deployment: one consumer left on the default emitted roughly 
 the events its producer did, for a workload that had previously completed in minutes. Its five
 peers, pinned to `ReportOnly`, were unaffected. Pinning that consumer to `ReportOnly` dropped its
 event production by more than two orders of magnitude and drained its queue to empty.
+
+### Repair caps {#repair-caps}
+
+`MaxAutoRepairRequestsPerAudit` is a cap per **manifest comparison**: one received manifest chunk. A
+window followed across several pages, or several origins audited in one cycle, each get their own
+allowance. What it counts depends on who sends the repairs.
+
+| Mode | Who sends | What `MaxAutoRepairRequestsPerAudit` bounds | What bounds the total |
+| --- | --- | --- | --- |
+| Paced repair drain on (`RepairDrainEnabled`, the default) | The drain worker, from the repair ledger, at `RepairDrainRatePerSecond` | The **new** deficit buckets one comparison adds to the ledger | `MaxRepairDrainBacklog` (default 10,000 ledger rows) |
+| Burst path (`RepairDrainEnabled = false`) | The comparison itself | The repair requests the comparison sends | The per-bucket backoff and attempt cap |
+
+With the drain on, a ledger row **is** a queued repair: the drain claims rows, not requests. A
+comparison therefore decides, for each deficit bucket in manifest order, whether it may have a row:
+
+```mermaid {caption="Drain admission: which deficit buckets one comparison may add to the repair ledger" tests=["IntegrityManifestDrainAdmissionTests.DrainOn_TrackedDeficits_AreRefreshedWithoutSpendingTheCapAsync","IntegrityManifestDrainAdmissionTests.DrainOn_BacklogAtTheBound_AdmitsNoNewDeficit_ButRefreshesTrackedOnesAsync","IntegrityManifestDrainAdmissionTests.DrainOn_NewDeficitsPastThePerComparisonCap_AreNotAddedToTheLedgerAsync"]}
+flowchart TD
+  D[Deficit bucket] --> T{Already tracked<br/>by the ledger?}
+  T -- yes --> R[Refresh the row<br/>does not count]
+  T -- no --> B{Backlog below<br/>MaxRepairDrainBacklog?}
+  B -- no --> DB[Defer: backlog_cap]
+  B -- yes --> C{Fewer than MaxAutoRepairRequestsPerAudit<br/>new rows from this comparison?}
+  C -- no --> DC[Defer: per_audit_cap]
+  C -- yes --> A[Add the row<br/>the drain will dispatch it]
+```
+
+- **A tracked bucket never counts.** Re-admitting it adds nothing to the backlog, and counting it would
+  let a few stuck buckets at the head of every manifest take the whole allowance forever.
+- **Deferred is not dropped.** Nothing is written for a deferred bucket, so it stays divergent and a
+  later audit re-detects it once the drain has made room. Each comparison that defers logs one warning
+  with the counts and the current backlog, and `repairs_deferred` counts the buckets by origin and
+  `reason` (`per_audit_cap`, `backlog_cap`). Deferred buckets still count in `divergences_detected`.
+- **Only deficits are admitted this way.** An identity mismatch or a local surplus is never repaired, so
+  it is recorded as before.
+- **The backlog is read once per comparison**, in the same round trip that says which buckets are
+  already tracked, and counted only up to the bound so the read stays cheap on a large ledger. It
+  covers every origin and leaves out the bulk-backfill lane, as the drain's claim does. Comparisons on
+  several replicas can each add up to one allowance past the bound before they see each other's rows.
+- **Without a backlog reading** (an engine that cannot provide one, or a read that failed, which is
+  logged) the per-comparison cap alone applies and every bucket counts as new.
+
+`MaxRepairDrainBacklog` must be at least 1; host start fails otherwise, because a bound of zero would
+admit nothing to repair while every comparison logged a deferral. At the default drain rate of 5 rows
+per second, 10,000 rows is a little over half an hour of dispatch. The admission rule applies only at
+`AutoRepairCapped` with the drain on: at `ReportOnly` the drain sends nothing, and the burst path keeps
+its own cap.
+
+:::updated
+**Before this was fixed ([#1792](https://github.com/whizbang-lib/whizbang/issues/1792)),** the cap was
+consulted only on the burst path. With the drain on, a comparison wrote every deficit bucket of every
+chunk into the ledger, so an operator who set the cap to 25 still had every divergent stream queued,
+and the ledger grew with the number of divergent streams and accumulated across audits. A field
+environment that had just upgraded across many migrations, with a large unstamped history, filled the
+ledger faster than the drain could empty it.
+:::
 
 ### Report-only is bilateral {#report-only-is-bilateral}
 
@@ -1485,6 +1546,7 @@ patterns worth understanding before building a dashboard:
 | --- | --- |
 | `divergences_detected` (tags `origin`, `event_type`, `reason`) | Divergent buckets per comparison. `reason` carries the taxonomy: `deficit` (repairable), `identity_mismatch` / `local_extra` (alarm-only — see [the divergence taxonomy](#the-divergence-taxonomy)). |
 | `repairs_requested` (tags `source`, `origin`) | Directed repair asks. `source=audit` is the per-stream path; `source=bulk` is the threshold-triggered whole-window state-only backfill. |
+| `repairs_deferred` (tags `origin`, `reason`) | Deficit buckets a comparison deferred instead of adding to the paced repair drain's ledger: `per_audit_cap` (the comparison already added `MaxAutoRepairRequestsPerAudit`) or `backlog_cap` (the ledger holds `MaxRepairDrainBacklog` rows). Sustained growth means discovery outpaces the drain; raise `RepairDrainRatePerSecond` or accept the pace. See [repair caps](#repair-caps). |
 | `compares_declined` (tag `origin`) | Manifest chunks declined at the non-queueing compare gate. Sustained growth = comparisons losing to arrivals; read alongside `manifest_compare_duration`. |
 | `manifest_pages_followed` / `manifest_pages_capped` (tag `origin`) | Windowed stream pages walked via the resume cursor, and follow chains stopped at `MaxManifestPagesPerAudit`. Persistent capping means lanes are wider than the per-audit page budget — raise the cap or accept the pace. |
 | `redelivery_events_shipped` | Events selected and shipped in redelivery bundles, as an origin. |

@@ -811,7 +811,7 @@ Self-healing continuity checking; the defaults are the recommended posture. **Co
 | `StartupAuditMaxJitterSeconds` | `int` | `300` | `Whizbang__StreamIntegrity__StartupAuditMaxJitterSeconds` | Max random splay added to the startup audit's 30s floor |
 | `AuditSettleWindowMinutes` | `int` | `60` | `Whizbang__StreamIntegrity__AuditSettleWindowMinutes` | Only events older than this are folded, so in-flight delivery never reads as divergence |
 | `MaxDigestsPerManifest` | `int` | `500` | `Whizbang__StreamIntegrity__MaxDigestsPerManifest` | Digest rows per manifest chunk |
-| `MaxAutoRepairRequestsPerAudit` | `int` | `25` | `Whizbang__StreamIntegrity__MaxAutoRepairRequestsPerAudit` | Storm cap on stream-scoped repair requests per manifest chunk |
+| `MaxAutoRepairRequestsPerAudit` | `int` | `25` | `Whizbang__StreamIntegrity__MaxAutoRepairRequestsPerAudit` | Storm cap per manifest comparison: with the paced repair drain on, the new deficit buckets one comparison may add to the drain's ledger (tracked buckets do not count; the rest are deferred to a later audit); with it off, the repair requests the comparison sends. See [repair caps](/v1.0.0/resilience/stream-integrity#repair-caps) |
 | `MaxManifestPagesPerAudit` | `int` | `8` | `Whizbang__StreamIntegrity__MaxManifestPagesPerAudit` | Pages of a windowed stream-level answer followed per burst |
 | `BulkBackfillThresholdEvents` | `int` | `1000` | `Whizbang__StreamIntegrity__BulkBackfillThresholdEvents` | Type-level deficit at/above which one bulk backfill replaces per-stream drill-down |
 | `MaxAutoRebuildsPerAudit` | `int` | `5` | `Whizbang__StreamIntegrity__MaxAutoRebuildsPerAudit` | Storm cap on local rebuilds dispatched per audit cycle |
@@ -828,6 +828,7 @@ Self-healing continuity checking; the defaults are the recommended posture. **Co
 | `RepairDrainEnabled` | `bool` | `true` | `Whizbang__StreamIntegrity__RepairDrainEnabled` | Paced repair drain from the durable ledger instead of per-audit bursts |
 | `RepairDrainRatePerSecond` | `double` | `5` | `Whizbang__StreamIntegrity__RepairDrainRatePerSecond` | Steady-state repair dispatch rate (token bucket, 2× burst) |
 | `RepairDrainBatchSize` | `int` | `50` | `Whizbang__StreamIntegrity__RepairDrainBatchSize` | Max ledger rows claimed per drain pass |
+| `MaxRepairDrainBacklog` | `int` | `10000` | `Whizbang__StreamIntegrity__MaxRepairDrainBacklog` | Total bound on the paced repair drain's backlog (per-stream ledger rows, every origin). At the bound, comparisons add no new deficit buckets and defer them to a later audit; tracked buckets keep draining. Must be at least 1 (checked at host start). See [repair caps](/v1.0.0/resilience/stream-integrity#repair-caps) |
 | `EpochClosureEnabled` | `bool` | `true` | `Whizbang__StreamIntegrity__EpochClosureEnabled` | Advance the digest-epoch closure frontier on the maintenance cadence |
 | `MaxEpochClosuresPerMaintenanceCycle` | `int` | `64` | `Whizbang__StreamIntegrity__MaxEpochClosuresPerMaintenanceCycle` | Max epochs closed per maintenance cycle |
 | `PublishReportEvents` | `bool` | `false` | `Whizbang__StreamIntegrity__PublishReportEvents` | Publish divergence/gap detections as durable events. Off (the default): unpublished report events are swept from the outbox each maintenance cycle |
