@@ -57,6 +57,8 @@ testReferences:
     tests/Whizbang.Transports.AzureServiceBus.Component.Tests/AsbAcceptorAdaptiveWiringTests.cs
   - >-
     tests/Whizbang.Transports.AzureServiceBus.Component.Tests/AzureServiceBusTransportThrottleAndAdaptiveTests.cs
+  - >-
+    tests/Whizbang.Transports.AzureServiceBus.Tests/AzureServiceBusProcessorStopsReceivingTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -472,6 +474,46 @@ Azure Service Bus SDK has built-in retry policies that handle transient failures
 The Azure SDK's built-in retry policy handles most runtime scenarios. Our connection retry is specifically for **initial connection establishment** when the service might not yet be available (e.g., emulator startup).
 
 **No Manual Reconnection Needed**: The Azure Service Bus SDK handles transient failures automatically. Your application code continues to work transparently after recovery
+
+### Processors that stop for good {#processor-stops}
+
+Some failures the SDK does not heal: the processor keeps hitting the same error and the destination never receives
+again. The transport reports these as a [subscription disconnect](transports.md#subscription-disconnects), and the
+transport consumer disposes the subscription and subscribes again. A processor error is a disconnect only when it
+comes from receiving (error source `Receive` or `AcceptSession`) and is one of:
+
+| Error | Meaning |
+|---|---|
+| `ServiceBusException` with reason `MessagingEntityNotFound`, not transient | The topic or subscription was deleted |
+| `ServiceBusException` with reason `MessagingEntityDisabled`, not transient | The topic or subscription was disabled |
+| `UnauthorizedAccessException` | The identity lost its rights to the entity |
+| `ObjectDisposedException` | The processor or its client was disposed underneath the subscription |
+
+Everything else is left to the SDK and the transport's existing defenses: transient reasons (communication problems,
+busy, timeouts) go through the SDK's retry policy, connection recovery and the
+[throttle pause](#namespace-throttling); per-message reasons (a lost message or session lock, a message not found, a
+session that cannot be locked), quota and general errors are not disconnects; nor are errors from a handler,
+settlement, lock renewal or closing a session.
+
+A subscription reports at most one disconnect. None is reported while the application has paused the subscription
+(a reconnect would hand back an active subscription and undo the pause), nor after the subscription or the transport
+is disposed.
+
+On the reconnect, a deleted topic or subscription is created again, with its filter rules, when
+[auto-provisioning](#auto-provisioning) is on; otherwise subscribing fails and retries with backoff, and the
+destination reads `Recovering` until the entity exists. A disabled entity or an identity without access can still
+subscribe and only fails once it starts receiving, so until an operator fixes it the destination alternates between
+`Healthy` and `Recovering`.
+
+```csharp{title="Watch for an Azure Service Bus subscription that stopped" description="Alert when a destination's subscription disconnects because its processor stopped receiving for good" category="Operations" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "Azure Service Bus", "Resilience"] tests=["AzureServiceBusProcessorStopsReceivingTests.ProcessorError_EntityGoneOrDisabled_ReportsAnUnexpectedDisconnectAsync", "AzureServiceBusProcessorStopsReceivingTests.ProcessorError_Unauthorized_ReportsAnUnexpectedDisconnectAsync", "AzureServiceBusProcessorStopsReceivingTests.ProcessorError_AFailureTheProcessorRecoversFrom_IsNotADisconnectAsync"]}
+var worker = app.Services.GetRequiredService<TransportConsumerWorker>();
+worker.SubscriptionStatusChanged += (_, e) => {
+  if (e.Status == SubscriptionStatus.Recovering) {
+    logger.LogWarning("Subscription {Destination} stopped receiving: {Error}",
+      e.Destination.Address, e.State.LastError?.Message);
+  }
+};
+```
 
 ### Subscription Name Derivation {#subscription-naming}
 
