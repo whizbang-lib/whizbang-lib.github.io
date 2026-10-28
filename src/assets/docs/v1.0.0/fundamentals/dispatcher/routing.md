@@ -11,8 +11,9 @@ description: >-
   Commands use a shared inbox topic with namespace filtering, while events publish to namespace-specific
   topics for pub/sub distribution with automatic subscription discovery. Owned-domain routing keeps a
   service's own commands local while its events still broadcast, with transport-layer echo suppression
-  storing self-delivered copies settled, never processed.
-tags: 'routing, namespace-routing, message-routing, inbox, topics, pub-sub, owned-domains, echo-suppression'
+  storing self-delivered copies settled, never processed. Absorbed namespaces keep events nothing here
+  consumes yet in the local event store, so a perspective added later can rebuild from them.
+tags: 'routing, namespace-routing, message-routing, inbox, topics, pub-sub, owned-domains, echo-suppression, absorbed-namespaces'
 codeReferences:
   - src/Whizbang.Core/Routing/RoutingOptions.cs
   - src/Whizbang.Core/Routing/NamespaceRoutingStrategy.cs
@@ -32,6 +33,10 @@ codeReferences:
   - src/Whizbang.Transports.AzureServiceBus/ServiceBusInfrastructureProvisioner.cs
   - src/Whizbang.Transports.RabbitMQ/RabbitMQInfrastructureProvisioner.cs
   - src/Whizbang.Generators/Analyzers/CommandOwnershipAnalyzer.cs
+  - src/Whizbang.Core/Workers/ReceiveConsumerGate.cs
+  - src/Whizbang.Core/Workers/ServiceBusConsumerWorker.cs
+  - src/Whizbang.Core/Workers/InboxDispatchWorker.cs
+  - src/Whizbang.Core/Routing/MessageDiscardPolicy.cs
 testReferences:
   - tests/Whizbang.Core.Tests/Dispatcher/DispatcherOwnedDomainTests.cs
   - tests/Whizbang.Core.Tests/Dispatcher/DispatcherCoverageSweepRoutedCascadeTests.cs
@@ -55,6 +60,12 @@ testReferences:
   - tests/Whizbang.Transports.AzureServiceBus.Tests/ServiceBusInfrastructureProvisionerManifestTests.cs
   - tests/Whizbang.Transports.RabbitMQ.Tests/RabbitMQInfrastructureProvisionerManifestTests.cs
   - tests/Whizbang.Generators.Tests/Analyzers/CommandOwnershipAnalyzerTests.cs
+  - tests/Whizbang.Core.Tests/Workers/ReceiveConsumerGateTests.cs
+  - tests/Whizbang.Core.Tests/Routing/MessageDiscardPolicyTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/TransportConsumerWorkerStoresBeforeSkippingTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/ServiceBusConsumerWorkerDropGateTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/InboxDispatchWorkerCompositeCommitTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/AbsorbedEventReachesEventStoreTests.cs
 lastMaintainedCommit: '62abd3a45'
 ---
 
@@ -1551,6 +1562,74 @@ handle — the command is dispatched to the local receptor directly and never ma
 Owned *events*, by contrast, must broadcast: other services (e.g. a BFF projecting the domain, a
 notifications service reacting to it) subscribe to them. The originating service also receives its own
 event back from the broker, which is where echo suppression comes in.
+
+## Absorbed namespaces {#absorbed-namespaces}
+
+`AbsorbNamespaces` declares event namespaces whose events this service keeps in its own event store
+whether or not anything here consumes them yet. The usual reason is a feature that has not shipped: a
+perspective added in a later release can rebuild from every event the service has received since the
+namespace was absorbed, instead of starting from the day it was deployed.
+
+```csharp{title="Absorb a namespace nothing here consumes yet" description="Events in an absorbed namespace are stored as live inbox rows and copied into the local event store even with no receptor or perspective for them, so a perspective added later can rebuild from them." category="Architecture" difficulty="INTERMEDIATE" tags=["Dispatcher", "Routing", "Absorb", "EventStore"] tests=["AbsorbedEventReachesEventStoreTests.AnUnconsumedEventInAnAbsorbedNamespace_IsCopiedIntoTheEventStoreAsync", "AbsorbedEventReachesEventStoreTests.AnUnconsumedEventOutsideTheAbsorbedNamespaces_IsNotCopiedAsync", "ReceiveConsumerGateTests.NoConsumer_InAnAbsorbedNamespace_KeepsTheMessageAsync"]}
+.WithRouting(routing => {
+  routing.SubscribeToNamespaceOf<OrderPlacedEvent>();   // consumed here today
+  routing.AbsorbNamespaces("app.contracts.shipping");   // no consumer yet; kept for a later perspective
+})
+```
+
+What absorption changes, from arrival to dispatch:
+
+- **On receive, the row is stored live.** An event nothing on the service consumes is normally stored
+  settled as `no_local_consumer` and never claimed (see
+  [skipped messages](../../messaging/transports/transport-consumer#skipped-messages)). An event in an
+  absorbed namespace is exempt: it is stored as an ordinary inbox row even when no receptor, lifecycle
+  receptor or perspective here consumes it.
+- **The claim copies it into the event store.** Claiming a live event row copies it into the local event
+  store, exactly as for an event with a consumer. That stored copy is what a perspective added later
+  rebuilds from.
+- **Composite children are kept.** A child of a [composite](../messaging/composite-events) whose type
+  is in an absorbed namespace is kept at expansion, so it reaches the event store too, instead of being
+  dropped as unsubscribed.
+- **At dispatch, the row is settled on its first claim.** With nothing to hand the event to, the
+  dispatch gate completes the row the first time it is claimed: no handler runs, nothing is retried and
+  nothing is dead-lettered. The skip is logged as `NoLocalConsumer` at Debug, because it is the expected
+  steady state of an absorbed namespace.
+
+Both consumer workers (the transport consumer and the Service Bus consumer) reach this decision through
+one shared gate. The gate first asks the receptor registries (compile-time consumers, runtime receptors
+and composites), and only when they find no consumer asks the shared message-discard policy, which owns
+the absorbed-namespace match. A host without the worker pipeline, and so without a discard policy, keeps
+the registry-only decision. The namespace is taken from the event's type name, not from the topic or
+queue it arrived on, so it matches the same way on every transport.
+{verified: ReceiveConsumerGateTests.NoConsumer_InAnAbsorbedNamespace_KeepsTheMessageAsync, ReceiveConsumerGateTests.NoConsumer_OutsideTheAbsorbedNamespaces_IsUnconsumedAsync, ReceiveConsumerGateTests.NoConsumer_AndNoPolicy_IsUnconsumedAsync, ReceiveConsumerGateTests.CompileTimeConsumer_KeepsTheMessageAsync, ReceiveConsumerGateTests.RuntimeReceptor_KeepsTheMessageAsync, ReceiveConsumerGateTests.Composite_KeepsTheMessageAsync, TransportConsumerWorkerStoresBeforeSkippingTests.AnUnconsumedEventInAnAbsorbedNamespace_IsStoredLive_SoTheEventStoreCapturesItAsync, TransportConsumerWorkerStoresBeforeSkippingTests.AnUnconsumedEventOutsideTheAbsorbedNamespaces_IsStillStoredSettledAsync, TransportConsumerWorkerStoresBeforeSkippingTests.AnAbsorbedEventWithALocalConsumer_IsStoredLiveAsBeforeAsync, ServiceBusConsumerWorkerDropGateTests.HandleMessage_UnconsumedEventInAnAbsorbedNamespace_IsStoredLive_SoTheEventStoreCapturesItAsync, ServiceBusConsumerWorkerDropGateTests.HandleMessage_UnconsumedEventOutsideTheAbsorbedNamespaces_IsStillStoredSettledAsync, ServiceBusConsumerWorkerDropGateTests.HandleMessage_AbsorbedEventWithALocalConsumer_IsStoredLiveAsBeforeAsync, InboxDispatchWorkerCompositeCommitTests.Composite_ChildInAnAbsorbedNamespace_WithNoLocalConsumer_IsKeptAtExpansionAsync, MessageDiscardPolicyTests.EvaluateInbox_UnconsumedType_OnAbsorbedNamespace_IsSkippedAsRoutine_NotAsRegistryDriftAsync}
+
+```mermaid{caption="An unconsumed event in an absorbed namespace is stored live, copied into the event store by the claim, and settled at dispatch on its first claim; outside an absorbed namespace it is stored settled and never copied." tests=["AbsorbedEventReachesEventStoreTests.AnUnconsumedEventInAnAbsorbedNamespace_IsCopiedIntoTheEventStoreAsync", "AbsorbedEventReachesEventStoreTests.AnUnconsumedEventOutsideTheAbsorbedNamespaces_IsNotCopiedAsync"]}
+flowchart TD
+    R["Event received"] --> C{"A consumer<br/>on this service?"}
+    C -->|"yes"| L["Stored live"]
+    C -->|"no"| A{"Namespace<br/>absorbed?"}
+    A -->|"yes"| L
+    A -->|"no"| S["Stored settled<br/>(no_local_consumer)"]
+    L --> E["Claim copies it<br/>into the event store"]
+    E --> D{"Consumer at dispatch?"}
+    D -->|"yes"| H["Dispatched"]
+    D -->|"no"| K["Settled on first claim<br/>(NoLocalConsumer, Debug)"]
+
+    class R,C,A layer-command
+    class L,E layer-event
+    class S,K layer-core
+    class D,H layer-core
+```
+
+**The contract assembly must be loaded.** Absorption assumes the assembly that defines the event's
+contract is referenced and loaded by this service, so the event's type is among the event types the
+service knows when it starts receiving. An event of a type the service does not know is still stored
+settled as `unknown_event_type` and never copied, absorbed or not; the event catalog, not the namespace
+declaration, is what makes a row an event the claim can store.
+
+Absorbed namespaces are also exempt from the owned-and-subscribed refusal (see
+[Owned and subscribed namespaces](#owned-and-subscribed)), and they are added to the subscription set
+after the owned-domain subtraction, so absorbing a namespace also creates its broker binding.
 
 ## Transport Echo Suppression {#transport-echo-suppression}
 

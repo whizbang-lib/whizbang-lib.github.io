@@ -1255,7 +1255,7 @@ Command and event routing. **Configure:** in code through `.WithRouting(options 
 | `RetireSharedInbox` | `bool` | retired | `Whizbang__Routing__RetireSharedInbox` | `false` keeps the legacy shared inbox subscribed (and provisioned) while publishers stay flipped: the dual-delivery rollback step |
 | `OwnedDomains` | `IReadOnlySet<string>` | empty | — *code-only* (`OwnDomains(…)`) | Command namespaces this service handles |
 | `SubscribedNamespaces` | `IReadOnlySet<string>` | empty | — *code-only* (`SubscribeTo(…)`) | Event namespaces subscribed in addition to the ones discovered from perspectives and receptors |
-| `AbsorbedNamespaces` | `IReadOnlySet<string>` | empty | — *code-only* (`AbsorbNamespaces(…)`) | Event namespaces stored locally even with no current consumer, so a later perspective can rebuild from them |
+| `AbsorbedNamespaces` | `IReadOnlySet<string>` | empty | — *code-only* (`AbsorbNamespaces(…)`) | Event namespaces stored locally even with no current consumer, so a later perspective can rebuild from them (see [absorbed namespaces](../../fundamentals/dispatcher/routing#absorbed-namespaces)) |
 
 ### ControlClassOptions
 
