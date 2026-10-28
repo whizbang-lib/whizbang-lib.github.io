@@ -1529,6 +1529,7 @@ Each claim type has a plural list and a singular convenience key. **The singular
 | `GroupsAggregation` | `ClaimAggregation` | `FirstMatch` | `Whizbang__Scope__GroupsAggregation` | First matching claim type, or the union of all |
 | `ExtensionClaimMappings:<key>` | `Dictionary<string,string>` | empty | `Whizbang__Scope__ExtensionClaimMappings__<key>` | Custom claim type → extension key |
 | `ExtensionHeaderMappings:<key>` | `Dictionary<string,string>` | empty | `Whizbang__Scope__ExtensionHeaderMappings__<key>` | Custom header → extension key |
+| `PropagatedClaimTypes` | `HashSet<string>` (ordinal) | empty | `Whizbang__Scope__PropagatedClaimTypes__<n>` | Claim types whose values cross a hop on the scope of the messages a request dispatches; every other claim stays in the process. Each listed value is written into message metadata and the stored outbox, inbox and event rows, so never list a token or personal data ([Hop Scope](../../fundamentals/security/message-security#hop-scope-claims)) |
 
 ## Tags and System Events
 
