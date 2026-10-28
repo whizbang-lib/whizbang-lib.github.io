@@ -277,6 +277,7 @@ Read models fall behind the events.
 
 | Instrument | Meter | What it tells you |
 |------------|-------|-------------------|
+| `whizbang.perspective.pending_events` | `Whizbang.Perspectives` | Events not yet applied, all perspectives. Refreshed about once a minute, so read it as a trend |
 | `whizbang.perspective.batch.duration` | `Whizbang.Perspectives` | One drain cycle, end to end |
 | `whizbang.perspective.claim.duration` | `Whizbang.Perspectives` | Claiming the work |
 | `whizbang.perspective.event_load.duration` | `Whizbang.Perspectives` | Loading the events to apply |
@@ -286,7 +287,7 @@ Read models fall behind the events.
 | `whizbang.perspective.empty_batches` | `Whizbang.Perspectives` | Cycles that found no work |
 | `whizbang.perspective.errors`, `rewinds` | `Whizbang.Perspectives` | Failures and rewinds that repeat work |
 
-Compare the parts with the whole. When claim, event load and checkpoint make up most of the batch
+Start with `pending_events`: if it keeps rising, the workers are falling behind. If it is flat or falling, the lag is catching up. Then compare the parts with the whole. When claim, event load and checkpoint make up most of the batch
 time, the database is the limit. When the runner dominates, the cost is in the perspective's own code
 or in saving its model; take a CPU trace and an [allocation trace](#allocations). Small batches with
 few events and a high rate of empty batches mean the worker is caught up and waking often, which is
