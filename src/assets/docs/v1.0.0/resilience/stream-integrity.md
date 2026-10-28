@@ -40,6 +40,8 @@ codeReferences:
   - src/Whizbang.Core/Messaging/IntegrityRepairLedger.cs
   - src/Whizbang.Data.EFCore.Postgres/CoordinatorIntegrityRepairLedger.cs
   - src/Whizbang.Data.Postgres/Migrations/249_RedeliveredHistoryAdoptsItsOrigin.sql
+  - src/Whizbang.Data.Postgres/Migrations/250_TypeDigestWaitsForTheStamp.sql
+  - src/Whizbang.Data.EFCore.Postgres/PerspectiveCoverageGapSql.cs
 testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/AtMostOnceOccurrenceIntegrityTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/IntegrityCheckpointWorkerTests.cs
@@ -78,6 +80,7 @@ testReferences:
   - tests/Whizbang.Core.Tests/Messaging/RedeliveryReconcilerTests.cs
   - tests/Whizbang.Core.Tests/Messaging/IntegrityRepairLedgerUnhealableTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/InboxDispatchWorkerCompositeCommitTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/EpochServedTypeDigestSqlTests.cs
 verifiedAgainstCommit: a64ba9a0
 verifiedDate: 2026-08-04
 ---
@@ -369,6 +372,31 @@ gates to recognize runtime-registered receptors as consumers.
 What it cannot see: loss *after* successful receipt (case 2) and anything historical. That is the
 deep audit's job.
 
+#### Where counting starts: the history floor {#checkpoint-history-floor}
+
+{verified: IntegrityCheckpointAdvanceTests.Advance_HistoryStampedAfterTheBaseline_IsNotCountedAsALiveWindowAsync, IntegrityCheckpointAdvanceTests.Advance_AStoreBaselinedBeforeTheHistoryFloorExisted_TakesTheFloorOnceAsync, IntegrityCheckpointAdvanceTests.Advance_ANewBaseline_MovesTheHistoryFloorWithItAsync}
+
+The first checkpoint baselines: it records the highest stamped commit sequence as its watermark and counts nothing.
+A window holds the sequences above the watermark, but a sequence is not proof that an event is new. After an upgrade
+the history is unstamped, and the stamper hands it sequences over the following minutes or hours, all of them above
+the baseline. Those events were delivered long before, under no sequence, so no consumer can hold them under the one
+they get later, and counting them would turn every bucket of every window into a gap.
+
+So the baseline records a second value beside the watermark, the **history floor**: the last insertion-order value
+(`wh_event_store.insert_order`) handed out when counting began, kept in `wh_settings` as
+`integrity_checkpoint_history_floor`. A window counts only the events in its sequence range that were written after
+the floor. History below it is left to the [digests](#phase-a-digest-manifests), which compare event identities
+rather than sequence windows.
+
+| Case | What happens |
+|---|---|
+| First advance on a store | The watermark and the floor are written together by one statement, by the instance whose baseline wins |
+| A store an earlier version baselined (a watermark and no floor) | The next advance takes the floor at the current insertion order; whatever history is still being stamped is left out from then on |
+| The watermark is removed to restart counting | The next baseline takes the floor again with it |
+
+An event whose transaction drew its insertion order before the floor and committed after it is left out of the window
+as well. It is still covered by the digests.
+
 ### Phase S — subscription-expansion backfill (startup, on by default)
 
 The startup type-definition reconciler already diffs each service's catalog against its persisted
@@ -514,14 +542,49 @@ belongs to Phase B's checkpoints (one doorbell-sized ephemeral event per origin 
 tunable as emit-on-publish with a slow max-idle heartbeat — never fully silent, because
 checkpoint absence is the transport-liveness alarm.
 
-### Phase L — local perspective-coverage audit
+### Phase L — local perspective-coverage audit {#phase-l-local-perspective-coverage-audit}
 
 Entirely local, no manifest exchange: verify per (stream, perspective) that cursor coverage reaches
 the stream head and that the perspective's birth does not postdate history it should have folded
 (case 3/6). Remediation is the existing targeted rebuild — the same non-destructive
 "find only the broken streams and replay just those" shape proven by prior consumer-side repairs.
 
+{verified: StreamDigestTests.CoverageGaps_FindUncursoredPerspectiveHistoryAsync, StreamDigestTests.CoverageGaps_SkipEventsTheStamperHasNotSequencedAsync, StreamDigestTests.CoverageGaps_CountEachPerspective_LeavingOutPendingEphemeralAndUnsettledEventsAsync, StreamDigestTests.CoverageGaps_ReadWhatTheReportCapNeeds_NotTheWholeStoreAsync}
+
+A coverage gap is a (stream, perspective) pair where the perspective is registered for some of the stream's event
+types, has no cursor on the stream, and no work item is pending for those events. Only events that are settled (older
+than the settle window), durable (not ephemeral) and **stamped** count. An event without a commit sequence is held back
+from every perspective by the stamp fence until the stamper reaches it, so its missing cursor is the fence working, not
+a perspective that never folded it.
+
+The report cap (`MaxCoverageGapReportsPerAudit`) bounds what the query reads, not only what it returns. The query walks
+the store's streams one at a time through the `(stream_id, version)` index, reads each stream's events once, and stops
+as soon as it has found as many gaps as the cap allows. A store with many gaps costs the audit about the cap's worth of
+streams; a store with none still reads every stream once, since proving there is no gap needs that.
+
 ---
+
+### History the stamper has not reached {#unstamped-history}
+
+{verified: EpochServedTypeDigestSqlTests.LocalLane_AnUnstampedRow_IsLeftOutOfTheOpenWindowUntilItIsStampedAsync, EpochServedTypeDigestSqlTests.ReceivedLane_ARowWithNoOriginSequence_StillFoldsInTheOpenWindowAsync, IntegrityCheckpointAdvanceTests.Advance_HistoryStampedAfterTheBaseline_IsNotCountedAsALiveWindowAsync, StreamDigestTests.CoverageGaps_SkipEventsTheStamperHasNotSequencedAsync}
+
+The commit-order stamper gives every stored event its `commit_sequence` shortly after it commits. After an upgrade from
+a version that had no commit sequence, the whole history is unstamped at once, and the stamper works through it over
+the next minutes or hours. Until it is done, that history is old by its creation time and has no sequence. Stream
+integrity treats it as follows:
+
+| Phase | An event with no commit sequence |
+|---|---|
+| Checkpoints (Phase B) | Never in a window. Once stamped, it is counted only if it was written after the [history floor](#checkpoint-history-floor) |
+| Type-level digest, local lane | Left out of the open window until it is stamped, then folded wherever its sequence falls (migration 250). The windowed answer and the settled maximum already waited for the sequence |
+| Type-level digest, received lane | A received event with no origin sequence still folds in the open window: it may never get one (published before its stamp, or received before the origin columns existed), and the open window is the only place it can fold |
+| Coverage gaps (Phase L) | Never a gap; the stamp fence holds it back from the perspectives |
+
+The local lane waiting for the stamp means a consumer can, for a while, hold an event its origin does not yet count.
+That reads as a surplus, which raises an alarm and never a redelivery (see
+[Deficit repairs; mismatch alarms](#deficit-repairs-mismatch-alarms)), and it clears when the stamper reaches the event.
+Counting the history while it is unstamped did the opposite: a deficit, which is repaired, and with a whole history
+unstamped that was a repair storm.
 
 ### What is digested {#what-is-digested}
 
@@ -1053,7 +1116,7 @@ never re-open verified history), and steady-state audits ask windowed **from the
 sweep deliberately asks full history — it is trust-but-verify for exactly the state the seals
 assume is fine, and a windowed sweep would be circular trust.
 
-### Deficit repairs; mismatch alarms
+### Deficit repairs; mismatch alarms {#deficit-repairs-mismatch-alarms}
 
 Only a **deficit** (`localCount < originCount`) is repairable. Equal counts with differing folds
 mean the consumer holds the same *number* of events with different *identity* — redelivery
