@@ -29,6 +29,7 @@ testReferences:
   - tests/Whizbang.Core.Component.Tests/Workers/TransportConsumerWorkerSubscriptionStatusChangedTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/TransportConsumerWorkerConnectionRecoveryTests.cs
   - tests/Whizbang.Core.Component.Tests/Resilience/SubscriptionRetryHelperTests.cs
+  - tests/Whizbang.Core.Component.Tests/Resilience/SubscriptionRetryHelperDisconnectWindowTests.cs
   - tests/Whizbang.Core.Tests/HealthChecks/SubscriptionHealthCheckTests.cs
   - tests/Whizbang.Core.Tests/Observability/ServiceInstanceProviderTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/TransportBatchCollectorTests.cs
@@ -443,6 +444,13 @@ worker.SubscriptionStatusChanged += (_, e) =>
   logger.LogWarning("Subscription {Destination}: {Previous} -> {Status}",
     e.Destination.Address, e.PreviousStatus, e.Status);
 ```
+
+A subscription that disconnects while it is still being established is not lost. The consumer attaches its
+disconnect handler before it records `Healthy` and then reads the subscription's recorded
+[disconnect](transports.md#subscription-disconnects), so a drop at any point after the transport created the
+subscription is reported as `Healthy` followed at once by `Recovering`, and a reconnect follows. Only the first
+disconnect of a subscription starts a reconnect, and a disconnect from a subscription that a later one has replaced
+changes nothing.
 
 `SubscriptionsReady` marks the end of the initial subscription pass, once; this event reports every later change
 per destination.
