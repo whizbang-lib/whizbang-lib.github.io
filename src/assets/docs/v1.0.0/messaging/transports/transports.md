@@ -274,6 +274,12 @@ The transport consumer does this for every destination it subscribes to (see
 not `IsApplicationInitiated`; the RabbitMQ and Azure Service Bus subscriptions do. The interface's default returns
 `null`, which is right for a subscription that never disconnects, such as the in-process transport's.
 
+Treat only the first report as the disconnect: an Azure Service Bus subscription raises it once, and the consumer
+ignores any later report from the same subscription. A subscription that reported a disconnect is never reused. The
+consumer disposes it, exactly once, and subscribes again. Azure Service Bus reports a disconnect only when its
+processor stops receiving for good; failures the Azure SDK retries on its own are not disconnects (see
+[Processors that stop for good](azure-service-bus.md#processor-stops)).
+
 ## Transport Registration
 
 Each transport package ships its own DI extension; the in-process transport is registered directly:

@@ -452,6 +452,12 @@ subscription is reported as `Healthy` followed at once by `Recovering`, and a re
 disconnect of a subscription starts a reconnect, and a disconnect from a subscription that a later one has replaced
 changes nothing.
 
+The reconnect releases the subscription that disconnected before it subscribes again: it detaches the disconnect
+handler, takes the subscription out of the destination's state and disposes it, so a destination that drops
+repeatedly does not leave a channel or processor behind for each drop. A dispose that throws is logged as a warning
+naming the destination, and the reconnect still runs. Connection recovery and shutdown take the subscription out of
+the state the same way, so whichever of the three gets a subscription disposes it, and none disposes it twice.
+
 `SubscriptionsReady` marks the end of the initial subscription pass, once; this event reports every later change
 per destination.
 
