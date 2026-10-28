@@ -469,9 +469,9 @@ re-bounds):
   and a bucket that heals is forgotten entirely, so a later re-divergence is a brand-new incident.
 - **Repair requests back off.** Each divergent bucket's first repair request goes immediately;
   every further attempt doubles the wait (`RepairRequestBackoffSeconds` base, default 300), and
-  past `MaxRepairAttemptsPerBucket` (default 8) the requester stops asking — the divergence still
-  re-reports at the cooldown cadence, but a repair that has not worked eight times needs operator
-  eyes, not an infinite loop. A signature change resets the budget. Past the cap the ledger keeps
+  past `MaxRepairAttemptsPerBucket` (default 8) the wait stops growing. The divergence still
+  re-reports at the cooldown cadence, and a repair that has not worked eight times needs operator
+  eyes, not a tight loop. A signature change resets the budget. Past the cap the ledger keeps
   one ask per terminal interval (base x 2^6) for an origin that never answered, and stops at once,
   with one report, for a bucket a redelivery answered without changing it
   ([repair that cannot change a bucket](#unhealable-buckets)).
@@ -749,7 +749,7 @@ services.Configure<StreamIntegrityOptions>(o => {
   // Convergence bounding (the IntegrityRepairLedger's dials)
   o.DivergenceReportCooldownMinutes = 60;    // unchanged divergence re-reports once per hour, not per cycle
   o.RepairRequestBackoffSeconds = 300;       // per-bucket retry base; each attempt doubles the wait
-  o.MaxRepairAttemptsPerBucket = 8;          // then stop asking (reports continue); signature change resets
+  o.MaxRepairAttemptsPerBucket = 8;          // then one ask per terminal interval (reports continue); signature change resets
 
   // Phase S — subscription growth
   o.BackfillOnSubscriptionGrowth = true;
@@ -1047,9 +1047,11 @@ the memory that would have suppressed one. Composed, each covers the other's bli
 
 **What the pipeline deliberately does not do.** Detection is never gated: `GapsDetected` fires and
 the confirmation is logged before any repair decision, on every checkpoint. When repair is vetoed
-or exhausted, the system stops ASKING, never stops KNOWING. A gap that survived its attempt budget
-will not be fixed by one more request; it needs an operator, and it keeps surfacing in reports and
-metrics until someone acts.
+or exhausted, the system slows or stops ASKING, never stops KNOWING. A vetoed repair is not asked
+for at all; an exhausted one is asked for once per terminal interval, in case its origin was only
+unreachable, and a bucket a redelivery could not change is not asked for again. A gap that survived
+its attempt budget is unlikely to be fixed by one more request; it needs an operator, and it keeps
+surfacing in reports and metrics until someone acts.
 
 **Note the asymmetry with the deep audit,** which already guarded against exactly this:
 `AuditSettleWindowMinutes` (default 60) exists so that an in-flight delivery never reads as

@@ -1231,7 +1231,7 @@ Self-healing continuity checking; the defaults are the recommended posture. **Co
 | `MaxDrillDownTypesPerAudit` | `int` | `10` | `Whizbang__StreamIntegrity__MaxDrillDownTypesPerAudit` | Storm cap on types escalated to stream-level requests |
 | `DivergenceReportCooldownMinutes` | `int` | `60` | `Whizbang__StreamIntegrity__DivergenceReportCooldownMinutes` | Minutes an unchanged divergence stays silent after reporting |
 | `RepairRequestBackoffSeconds` | `int` | `300` | `Whizbang__StreamIntegrity__RepairRequestBackoffSeconds` | Base seconds between repair requests per divergent bucket (doubles per attempt) |
-| `MaxRepairAttemptsPerBucket` | `int` | `8` | `Whizbang__StreamIntegrity__MaxRepairAttemptsPerBucket` | Repair attempts per bucket before the requester stops asking |
+| `MaxRepairAttemptsPerBucket` | `int` | `8` | `Whizbang__StreamIntegrity__MaxRepairAttemptsPerBucket` | Repair attempts per bucket before the retry wait stops growing; past it a bucket is asked for once per terminal interval (base x 2^6) |
 | `RepairDrainEnabled` | `bool` | `true` | `Whizbang__StreamIntegrity__RepairDrainEnabled` | Paced repair drain from the durable ledger instead of per-audit bursts |
 | `RepairDrainRatePerSecond` | `double` | `5` | `Whizbang__StreamIntegrity__RepairDrainRatePerSecond` | Steady-state repair dispatch rate (token bucket, 2× burst) |
 | `RepairDrainBatchSize` | `int` | `50` | `Whizbang__StreamIntegrity__RepairDrainBatchSize` | Max ledger rows claimed per drain pass |
