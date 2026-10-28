@@ -20,6 +20,7 @@ testReferences:
   - tests/Whizbang.Transports.HotChocolate.Component.Tests/Unit/ScopeMiddlewareExtensionsTests.cs
   - tests/Whizbang.Transports.HotChocolate.Tests/Unit/WhizbangScopeOptionsSymmetryTests.cs
   - tests/Whizbang.Transports.HotChocolate.Integration.Tests/ScopedQueryTests.cs
+  - tests/Whizbang.Transports.HotChocolate.Tests/Unit/ScopeHopPropagationTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -87,6 +88,12 @@ builder.Services.AddWhizbangScope(options => {
     options.ExtensionClaimMappings["department"] = "Department";
 });
 ```
+
+### Carrying scope to other services
+
+{verified: ScopeHopPropagationTests.ExtensionMappedAtTheEdge_ReachesAReceptorTwoHopsAway_AndTheEventItEmitsAsync, WhizbangScopeMiddlewareTests.InvokeAsync_PropagatedClaimTypes_AreListedOnTheScopeContextAsync, WhizbangScopeMiddlewareTests.InvokeAsync_NoPropagatedClaimTypes_ListsNoneAsync}
+
+The scope the middleware builds, including every extension mapped with `ExtensionClaimMappings`, travels on each message the request dispatches, so a receptor in another service reads the same extensions from `IScopeContext.Scope.Extensions`. Claims do not travel unless you list their types in `PropagatedClaimTypes` (empty by default). The request itself still sees every claim; the list governs only outgoing messages. Each listed claim's value is written into message metadata, so never list a token or personal data. See [Scope Extensions and Claims Across Services](../../fundamentals/security/scope-propagation#extensions-and-claims) for a full sample and [Hop Scope](../../fundamentals/security/message-security#hop-scope) for the rules.
 
 ### Trusted gateway headers
 
