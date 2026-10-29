@@ -91,6 +91,7 @@ public enum MessageFailureReason {
     MixedStreamRefused = 22,                   // WHIZ133: same event refused on a mixed stream
     OutboxStoreFailed = 23,                    // Outbox batcher could not store an accepted message
     InboxStoreFailed = 24,                     // Inbox batcher could not store an accepted message
+    StreamSealed = 25,                         // Event refused: its stream is sealed (finalized or ended)
     Unknown = 99                               // Default (not classified)
 }
 ```
