@@ -1,7 +1,7 @@
 ---
 title: Storage Dashboard
 pageType: guide
-verifiedAgainstCommit: d291c39e
+verifiedAgainstCommit: 9ea0fecd
 verifiedDate: 2026-10-29
 version: 1.0.0
 category: Observability
