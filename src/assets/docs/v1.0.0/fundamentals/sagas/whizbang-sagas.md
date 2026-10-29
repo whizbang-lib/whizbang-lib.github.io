@@ -19,6 +19,9 @@ codeReferences:
   - src/Whizbang.Sagas/Helpers/SagaCompletionGuard.cs
   - src/Whizbang.Sagas/Helpers/SagaItemCompletionReconciler.cs
   - src/Whizbang.Sagas/SagaItemStreams.cs
+  - src/Whizbang.Sagas/ISagaItemStreamIdDeriver.cs
+  - src/Whizbang.Sagas/SagaItemStreamIdDeriver.cs
+  - src/Whizbang.Sagas/SagaServiceCollectionExtensions.cs
   - src/Whizbang.Sagas.Generators/SagaGenerator.cs
   - src/Whizbang.Sagas.Contracts/SignalsOutcomeAttribute.cs
 testReferences:
@@ -26,6 +29,8 @@ testReferences:
   - tests/Whizbang.Sagas.Tests/SagaCompletionGuardTests.cs
   - tests/Whizbang.Sagas.Tests/SagaItemCompletionReconcilerTests.cs
   - tests/Whizbang.Sagas.Tests/SagaItemStreamsTests.cs
+  - tests/Whizbang.Sagas.Tests/SagaItemStreamIdDeriverTests.cs
+  - tests/Whizbang.Sagas.Component.Tests/SagaItemStreamNamespacePerHostTests.cs
   - tests/Whizbang.Sagas.Tests/SagaLiveProgressResolversTests.cs
   - tests/Whizbang.Sagas.Tests/SagaApplyHelperTests.cs
   - tests/Whizbang.Sagas.Tests/SagaHookApplyHelperTests.cs
@@ -117,7 +122,7 @@ receiver. See [Hand-written sagas](./completion-orchestration#hand-written-sagas
 
 ## What you get under the covers
 
-### Per-item streams (cross-pod-safe fan-out)
+### Per-item streams (cross-pod-safe fan-out) {#per-item-streams-cross-pod-safe-fan-out}
 
 Per-item events (`ItemStartedEvent`, `ItemCompletedEvent`, `ItemFailedEvent`) ride a **per-item stream** derived from the saga id and the item identifier via `SagaItemStreams.Of(sagaId, itemIdentifier)`. Concurrent items don't contend for the saga's stream lease — N pods can process N items in parallel without lost-update races on a single aggregate.
 
@@ -130,17 +135,97 @@ services.AddWhizbangSagas(opts =>
 
 The derivation is reproducible byte-for-byte in SQL via a canonical `saga_item_stream_id(uuid, text)` function (shipped by consumers as needed — handy for backfills; the library does not install it).
 
+#### Each host derives under its own namespace {#per-item-stream-namespace-per-host}
+
+:::updated
+`SagaItemStreams.AppDefaultNamespace` is one value for the whole process, and every `AddWhizbangSagas` call
+overwrites it. The framework's own per-item readers used to derive from it at call time, so in a process
+that builds several hosts (integration tests, a test server per service) the last registration decided the
+namespace for all of them. A host registered without the setting reset it to the default, and another host's
+stranded-item watchdog then derived ids for streams it never writes, read items whose terminal events were
+stored as not terminal, and failed them, with nothing logged. Each host now derives under its own namespace.
+:::
+
+`AddWhizbangSagas` registers an `ISagaItemStreamIdDeriver` in **each container**, built from that container's
+own `SagaOptions`:
+
+| Member | What it gives |
+|---|---|
+| `NamespaceId` | The namespace UUID this host derives under (its `PerItemStreamNamespace`, or the default) |
+| `StreamIdOf(sagaId, itemIdentifier)` | The per-item stream id under `NamespaceId`, byte-for-byte what `SagaItemStreams.Of(NamespaceId, sagaId, itemIdentifier)` returns |
+
+The framework's readers use the host's deriver: a saga service given its host's `SagaOptions` derives under
+that host's namespace in the watchdog's reconciliation, the stranded-item resolution and the unstarted-item
+completion. `SagaItemCompletionReconciler.ResolveCompletionCountsAsync` and `ReconcileTerminalCountsAsync`
+gain overloads that take the deriver.
+
+**Inject the deriver wherever your own code derives a per-item stream id** (an item event's stream id, a
+terminal-event lookup):
+
+```csharp{title="Derive per-item stream ids under the host's namespace" description="Takes the host's ISagaItemStreamIdDeriver from the container instead of calling the process-wide SagaItemStreams.Of" category="Sagas" difficulty="INTERMEDIATE" tags=["Sagas", "Per-item streams", "Dependency Injection"] tests=["SagaItemStreamIdDeriverTests.TwoContainers_EachResolveADeriverForTheirOwnNamespaceAsync", "SagaItemStreamIdDeriverTests.Of_DerivesUnderTheOptionsNamespaceAsync"]}
+public sealed class ImportItemLookup(ISagaItemStreamIdDeriver itemStreams, ISagaItemTerminalReader terminals) {
+  public Task<SagaItemTerminalOutcome> CheckAsync(Guid sagaId, string itemIdentifier, CancellationToken ct) =>
+    terminals.CheckAsync(itemStreams.StreamIdOf(sagaId, itemIdentifier), ct);
+}
+```
+
+**The static `SagaItemStreams.Of(sagaId, itemIdentifier)` is process-wide.** It stays, for code with no
+container, and it reads the one value the last `AddWhizbangSagas` call in the process set. In a process with
+a single host that is the host's namespace; in a process with several it is whichever registered last. The
+existing reconciler overloads without a deriver, and the overload `SagaItemStreams.Of(namespaceId, sagaId,
+itemIdentifier)` that names its namespace, behave exactly as before.
+
+**Options a service built by hand keep the process-wide namespace, on purpose.** A saga service is treated
+as deriving under its host's namespace only when it was given the `SagaOptions` instance a container's
+`AddWhizbangSagas` registered. A `new SagaOptions()` carries the framework default namespace unless it is set,
+so reading it as the host's would silently move a service whose host configured a namespace onto streams it
+never wrote. Hand-built options, and no options at all, keep the process-wide value the framework always used.
+
+**A hand-written saga takes `SagaOptions` from the container** and passes it to the constructor that takes
+options, so its watchdog reads the streams its own host writes:
+
+```csharp{title="A hand-written saga service that derives under its host's namespace" description="Takes SagaOptions from the container and passes it to BaseSagaService, so the watchdog and stranded-item resolution derive per-item stream ids under this host's namespace" category="Sagas" difficulty="INTERMEDIATE" tags=["Sagas", "Per-item streams", "Watchdog"] tests=["SagaItemStreamNamespacePerHostTests.TwoHostsWithDifferentNamespaces_EachHostsWatchdogReadsItsOwnItemsAsTerminalAsync", "SagaItemStreamIdDeriverTests.For_OptionsAContainerRegistered_DeriveUnderThoseOptionsAsync"]}
+public sealed class ImportSagaService(
+    ISagaEventEmitter emitter,
+    ISagaItemRepository itemRepository,
+    ISagaItemTerminalReader terminalReader,
+    SagaOptions options,                       // the instance AddWhizbangSagas registered
+    ILogger<ImportSagaService> logger)
+  : BaseSagaService<ImportInitiated, ImportItemsDispatched, ImportItemStarted, ImportItemCompleted,
+                    ImportItemFailed, ImportCompleted, ImportReset, ImportHookStarted, ImportHookCompleted>(
+      "import", emitter, itemRepository, terminalReader, options, logger) {
+  // Build*Event overrides and LoadProjectionAsync as before.
+}
+```
+
+{verified: SagaItemStreamIdDeriverTests.For_OptionsNotRegisteredByAContainer_OrNone_UseTheProcessWideNamespaceAsync, SagaItemStreamIdDeriverTests.ProcessWide_DerivesUnderTheNamespaceItReportsAsync, SagaItemStreamIdDeriverTests.Constructor_WithoutOptions_ThrowsAsync, SagaItemStreamIdDeriverTests.Reconciler_WithADeriver_ChecksTheStreamsItDerivesAsync, SagaItemStreamIdDeriverTests.Reconciler_WithoutADeriver_ThrowsAsync}
+
+**Upgrading.** Nothing changes for a process that builds one host, and a single-host deployment derives the
+same ids as before. To be safe in a process with several hosts:
+
+- Replace `SagaItemStreams.Of(sagaId, itemIdentifier)` in code that runs inside a host with an injected
+  `ISagaItemStreamIdDeriver`.
+- Pass the deriver to `SagaItemCompletionReconciler.ResolveCompletionCountsAsync` and
+  `ReconcileTerminalCountsAsync` when you call them yourself.
+- A hand-written saga that uses the constructor without options (or builds its own `SagaOptions`) should
+  take `SagaOptions` from the container and pass it through, as above.
+
 ### Atomic terminal-event emission
 
 When all items reach a terminal state, **N concurrent terminal handlers** may each conclude "I'm the last one" and try to emit `CompletedEvent`. The naive `if (!alreadyEmitted) PublishAsync(...)` has a check-to-commit window that collapses N duplicates to a few — but never to one.
 
 `BaseSagaService.CompleteSagaAsync` builds its claim key via `SagaCompletionGuard.ClaimKey` — the convention `"saga-completed:{sagaName}:{sagaId}"` — and calls `ISagaEventEmitter.PublishOnceAsync(claimKey, evt, ct)`; the default `DispatcherSagaEventEmitter` forwards to `IDispatcher.PublishOnceAsync`. (`SagaCompletionGuard.EmitOnceAsync` packages the same idiom for callers holding an `IDispatcher` directly.) The dispatcher's atomic `INSERT … ON CONFLICT DO NOTHING` against `wh_unique_emission_claims` gives **exactly-one** emission by construction. See [PublishOnceAsync](../dispatcher/publish-once) for the underlying mechanism.
 
-### Stranded-row reconciliation
+### Stranded-row reconciliation {#stranded-row-reconciliation}
 
 Per-item projection rows can still be left in a non-terminal state by a cross-pod lost-update: two pods apply the same per-item stream and a stale `ItemStartedEvent` write lands after the `ItemCompletedEvent` write, reverting the row to `Running` even though the terminal event committed to `wh_event_store`.
 
 `SagaItemCompletionReconciler.ResolveCompletionCountsAsync` walks the projection's non-terminal items and consults the durable event store via `ISagaItemTerminalReader`. If every item is terminal in the store, it returns the reconciled `(completed, failed)` counts; otherwise null (genuinely in progress). Saga completion handlers should call this on the slow path so a single stranded row doesn't strand the entire saga forever.
+
+Both `ResolveCompletionCountsAsync` and `ReconcileTerminalCountsAsync` have an overload that takes an
+`ISagaItemStreamIdDeriver`; pass your host's, so the store is asked about the streams this host writes (see
+[each host derives under its own namespace](#per-item-stream-namespace-per-host)). The overloads without one
+derive under the process-wide namespace.
 
 ### Dashboard live-progress resolvers
 

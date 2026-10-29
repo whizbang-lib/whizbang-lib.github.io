@@ -20,6 +20,7 @@ codeReferences:
   - src/Whizbang.Core/Observability/LifecycleCoordinatorMetrics.cs
   - src/Whizbang.Core/Observability/TransportMetrics.cs
   - src/Whizbang.Core/Observability/PerspectiveMetrics.cs
+  - src/Whizbang.Core/Workers/PendingEventsStatisticsRefresh.cs
   - src/Whizbang.Core/Observability/WorkCoordinatorMetrics.cs
   - src/Whizbang.Core/Observability/CompositeMetrics.cs
   - src/Whizbang.Core/Workers/InboxHandlerWorker.cs
@@ -56,6 +57,9 @@ testReferences:
   - tests/Whizbang.Core.Tests/Observability/TransportMetricsTests.cs
   - tests/Whizbang.Core.Tests/Observability/PerspectiveMetricsTests.cs
   - tests/Whizbang.Core.Tests/Observability/PerspectiveRewindMetricsTests.cs
+  - tests/Whizbang.Core.Tests/Workers/PendingEventsStatisticsRefreshTests.cs
+  - >-
+    tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerStartupAndMaintenanceTests.cs
   - tests/Whizbang.Core.Tests/Observability/WorkCoordinatorMetricsTests.cs
   - tests/Whizbang.Core.Tests/Messaging/WorkCoordinatorGateHolderDiagnosticsTests.cs
   - tests/Whizbang.Core.Tests/Observability/InboxMetricsTests.cs
@@ -477,14 +481,48 @@ release cycle. See [dates, times and durations](../../fundamentals/perspectives/
 
 | Metric Name | Unit / Type | Description |
 |-------------|-------------|-------------|
-| `whizbang.perspective.pending_events` | ObservableGauge | Pending perspective events awaiting processing |
-| `whizbang.perspective.rewinds` | Counter\<long\> | Rewind operations triggered |
+| `whizbang.perspective.pending_events` | ObservableGauge | Pending perspective events awaiting processing. Refreshed about once a minute; see [when the refresh fails](#pending-events-refresh-failures) |
+| `whizbang.perspective.pending_events_refresh_failures` | Counter\<long\> | Refreshes of the `pending_events` gauge whose statistics query failed, leaving the gauge at its last value |
+| `whizbang.perspective.rewinds` | Counter\<long\> | Rewind operations that completed. Tags: `perspective_name`, `has_snapshot`. The name is kept although it counts completions, not triggers, so existing panels keep reading |
+| `whizbang.perspective.rewinds_triggered` | Counter\<long\> | Rewinds started, counted before the replay runs. Tag: `perspective_name` |
+| `whizbang.perspective.rewinds_failed` | Counter\<long\> | Rewinds that threw. Tag: `perspective_name` |
+| `whizbang.perspective.rewinds_in_flight` | ObservableGauge | Rewinds running right now |
 | `whizbang.perspective.rewind.duration` | ms | Rewind replay duration |
 | `whizbang.perspective.rewind.events_replayed` | Histogram\<int\> | Events replayed per rewind |
 | `whizbang.perspective.rewind.events_behind` | Histogram\<int\> | Events behind cursor when rewind triggered |
 | `whizbang.perspective.stragglers_dropped` | Counter\<long\> | Late events an ephemeral perspective dropped instead of rewinding for them, because no readable snapshot floor preceded them. Counted once per event. Tag: `perspective_name`. The skipped rewind still counts in `rewinds`. See [ephemeral runtime guards](../../fundamentals/events/ephemeral-events.md#runtime-guards) |
 
 {verified: PerspectiveMetricsTests.PerspectiveMetrics_StragglersDropped_CountsUnderItsNameWithThePerspectiveTagAsync, PerspectiveWorkerDeepPathDrainTests.DrainMode_EphemeralStragglerWithNoSnapshotFloor_IsDroppedOnceAcrossLapsAsync}
+
+`rewinds_triggered` reads with `rewinds` and `rewinds_failed` as one identity: triggered = completed + failed
++ in flight. Completions lagging triggers means rewinds are failing or queueing. See
+[rewind metrics](../../fundamentals/perspectives/rewind.md#metrics).
+
+#### When the pending-events refresh fails {#pending-events-refresh-failures}
+
+:::new
+The perspective worker refreshes `whizbang.perspective.pending_events` about once a minute from the
+pending-events statistics query (`IWorkCoordinator.GatherStatisticsAsync`). A failed refresh used to be
+swallowed: the gauge kept its last value with nothing to explain it, and a frozen number read as real lag or
+real health. The failure is now reported.
+:::
+
+The worker keeps running when the query fails (a timeout, a missing permission, a function a partial
+migration never created); the gauge is not critical. What changes is that the stale gauge is visible:
+
+| When | What the worker does |
+|---|---|
+| The first refresh of a failure streak fails | Logs a **Warning** with the exception, naming the query and saying the `whizbang.perspective.pending_events` gauge keeps its last value |
+| Further refreshes in the same streak fail | Logs at **Debug** with the number of failed refreshes in a row, so an outage does not repeat the warning every minute |
+| Every failed refresh | Adds 1 to `whizbang.perspective.pending_events_refresh_failures` |
+| The first refresh that succeeds after a streak | Updates the gauge and logs at **Information** how many refreshes it missed |
+
+Cancellation is not a failure: it propagates to the worker loop, which handles shutdown.
+
+On a dashboard, `pending_events_refresh_failures` rising while `pending_events` holds still says the gauge
+is stale; the worker's warning names the cause.
+
+{verified: PendingEventsStatisticsRefreshTests.Success_SetsTheGauge_AndLogsNothingAsync, PendingEventsStatisticsRefreshTests.Failure_WarnsNamingTheQueryAndTheStaleGauge_KeepsTheLastValue_AndCountsItAsync, PendingEventsStatisticsRefreshTests.FailureStreak_WarnsOnce_ThenLogsAtDebug_AndCountsEveryFailureAsync, PendingEventsStatisticsRefreshTests.RecoveryAfterAStreak_ReportsTheGaugeCurrentAgain_AndTheNextFailureWarnsAgainAsync, PendingEventsStatisticsRefreshTests.Cancellation_IsNotAFailure_AndPropagatesAsync, PerspectiveWorkerStartupAndMaintenanceTests.Maintenance_StatisticsGatherFails_WarnsNamingTheQuery_AndCountsTheFailureAsync}
 
 ### Batch Composition Histograms
 

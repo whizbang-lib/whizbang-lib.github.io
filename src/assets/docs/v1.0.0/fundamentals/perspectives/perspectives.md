@@ -22,6 +22,7 @@ codeReferences:
   - src/Whizbang.Core/Perspectives/PerspectiveRowConflictException.cs
   - src/Whizbang.Data.EFCore.Postgres/PerspectiveRowVersionSql.cs
   - src/Whizbang.Generators/PerspectivePurityAnalyzer.cs
+  - src/Whizbang.Generators/Templates/PerspectiveRunnerTemplate.cs
   - src/Whizbang.Generators/Utilities/PerspectiveDiscoveryHelper.cs
   - >-
     samples/ECommerce/ECommerce.BFF.API/Perspectives/ProductCatalogPerspective.cs
@@ -31,6 +32,9 @@ testReferences:
   - tests/Whizbang.Core.Tests/Perspectives/IPerspectiveForTests.cs
   - tests/Whizbang.Generators.Tests/PerspectivePurityAnalyzerTests.cs
   - tests/Whizbang.Core.Tests/Perspectives/PerspectiveRowConflictRetryTests.cs
+  - tests/Whizbang.Core.Tests/Perspectives/PerspectiveRewindWriteCheckTests.cs
+  - >-
+    tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/PerspectiveLateEventApplyTests.cs
   - >-
     tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/PerspectiveRowVersionIntegrationTests.cs
 lastMaintainedCommit: '01f07906'
@@ -1070,9 +1074,36 @@ id guard), exactly as before; the version check sits on top of those guards and 
 
 The guard covers the **EF Core PostgreSQL** store. A custom `IPerspectiveStore<TModel>` that does not
 override `ReadForApplyAsync` reports `PerspectiveRowVersion.Unchecked`, and its reads and writes are
-exactly what they were. The Dapper PostgreSQL store does not check versions yet. A rewind's replay (and
-the re-fold that resurrects a reaped row) writes unconditionally, since it recomputes the row from a
-snapshot and the event log rather than from what it read.
+exactly what they were. The Dapper PostgreSQL store does not check versions yet.
+
+#### Rewinds are checked too {#concurrent-writers-rewinds}
+
+:::updated
+A [rewind](rewind.md) used to write its replayed row without a row version, so the ordering guard was
+the only check on it. When another writer folded a newer event into the row while the rewind replayed
+(after a lease expiry or an orphan sweep, for example), the rewind's frontier sorted below the row's
+stamp, the guard refused the write, and the rewind reported itself complete with its correction lost
+and nothing logged. A rewind's write is now checked like a per-stream apply's.
+:::
+
+A rewind replays the stream in memory from a restore point (the latest qualifying snapshot, or the
+stream's first event) and writes the row once at the end. It reads the row's version **before it reads
+any event**, and its write lands only on that version. A writer that committed before that read stored
+its event first, so the replay reads it; a writer that commits after it moves the version, and the
+rewind's write is refused. The same applies to the re-fold that rebuilds an evicted row when its stream
+wakes, which runs the rewind's replay.
+
+| What happened while the rewind replayed | Outcome |
+|---|---|
+| Nothing | The write lands, as before |
+| Another writer changed the row | The write is refused (`PerspectiveRowConflictException`, nothing written). The replay runs again from the **same** restore point (a snapshot is read again from its stored form, so nothing the refused replay folded carries over), now including the newer event, so the row ends with both the rewind's correction and the newer event |
+| The row moves under every replay | After 5 replays (the same bound as a per-stream apply's retry) the runner logs a warning and the rewind fails. The worker counts it on `whizbang.perspective.rewinds_failed` and retries it later. Nothing stale is written |
+| The row did not move, but the ordering guard refused the write | The row is already stamped past everything the replay read, so the correction is not in it. This is logged at Warning as `[diag.rewind.write.refused]`, naming the perspective, the stream and the frontier event, instead of passing as applied |
+
+Stores that track no row versions (`PerspectiveRowVersion.Unchecked`) write a rewind's row exactly as
+before.
+
+{verified: PerspectiveRewindWriteCheckTests.ARewind_WritesAgainstTheRowVersionItReadAsync, PerspectiveRewindWriteCheckTests.ARowThatMovesDuringTheRewind_IsReplayedAgain_AndHoldsTheCorrectionAndTheNewerEventAsync, PerspectiveRewindWriteCheckTests.ARowThatMovesUnderEveryRewindReplay_GivesUpLoudly_AndNeverWritesStaleAsync, PerspectiveRewindWriteCheckTests.ARewindFromASnapshot_ReplaysAgainFromTheSameSnapshot_WhenTheRowMovesAsync, PerspectiveRewindWriteCheckTests.ARewindWriteTheOrderingGuardRefusesOnAnUnmovedRow_IsLoggedAsAWarningAsync, PerspectiveLateEventApplyTests.ARowThatMovesWhileARewindReplays_EndsWithTheCorrectionAndTheNewerEventAsync}
 
 ---
 
