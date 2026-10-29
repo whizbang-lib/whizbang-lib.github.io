@@ -88,6 +88,7 @@ testReferences:
   - tests/Whizbang.Core.Tests/Messaging/RedeliveryReconcilerTests.cs
   - tests/Whizbang.Core.Tests/Messaging/IntegrityRepairLedgerUnhealableTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/InboxDispatchWorkerCompositeCommitTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/InboxDispatchWorkerCoverageTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/EpochServedTypeDigestSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityManifestDrainAdmissionTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityRepairBacklogProbeSqlTests.cs
@@ -1550,7 +1551,7 @@ an Information line per bundle names the origin and how many of its events adopt
 
 #### Events this service authored {#pre-stamp-history-first-hop}
 
-{verified: RedeliveredOriginAdoptionSqlTests.Adopt_AnEventWhoseFirstHopNamesTheBundlesOrigin_AdoptsAsync, RedeliveredOriginAdoptionSqlTests.Adopt_AnEventWhoseFirstHopNamesThisService_IsRefusedAndStaysLocalAsync, RedeliveredOriginAdoptionSqlTests.Adopt_AFirstHopWithoutAServiceIdentity_AdoptsAsync, RedeliveredOriginAdoptionSqlTests.Adopt_EmptyHops_AdoptsAsync, RedeliveredOriginAdoptionSqlTests.Adopt_AnEventAlreadyCarryingAnOrigin_IsUntouchedWhateverItsFirstHopNamesAsync, InboxDispatchWorkerCompositeCommitTests.Redelivery_IsReconciledUnderTheServiceNameOfTheBundlesFirstHopAsync}
+{verified: RedeliveredOriginAdoptionSqlTests.Adopt_AnEventWhoseFirstHopNamesTheBundlesOrigin_AdoptsAsync, RedeliveredOriginAdoptionSqlTests.Adopt_AnEventWhoseFirstHopNamesThisService_IsRefusedAndStaysLocalAsync, RedeliveredOriginAdoptionSqlTests.Adopt_AFirstHopWithoutAServiceIdentity_AdoptsAsync, RedeliveredOriginAdoptionSqlTests.Adopt_EmptyHops_AdoptsAsync, RedeliveredOriginAdoptionSqlTests.Adopt_AnEventAlreadyCarryingAnOrigin_IsUntouchedWhateverItsFirstHopNamesAsync, InboxDispatchWorkerCompositeCommitTests.Redelivery_IsReconciledUnderTheServiceNameOfTheBundlesFirstHopAsync, RedeliveredOriginAdoptionSqlTests.Adopt_WithoutTheOriginsName_AdoptsAsBeforeAsync, RedeliveredOriginAdoptionSqlTests.Adopt_ABlankOrUnknownOriginName_AdoptsAsBeforeAsync, RedeliveredOriginAdoptionSqlTests.Adopt_ServiceNamesCompareWithoutCase_AndAnotherServiceInAnyCaseIsRefusedAsync, RedeliveredOriginAdoptionSqlTests.Adopt_TheLegacyLongFormHop_IsReadAndComparedWithoutCaseAsync, RedeliveryReconcilerTests.OriginServiceNameOf_NoHops_IsNullAsync, RedeliveryReconcilerTests.OriginServiceNameOf_AFirstHopWithABlankServiceName_IsNullAsync, RedeliveryReconcilerTests.OriginServiceNameOf_TheUnknownSentinelInAnyCase_IsNullAsync}
 
 Empty origin columns cannot tell an event received before origins were recorded from an event this service
 authored: both have none. That matters when the exchange ran both ways before 087. The origin's own store
@@ -1560,15 +1561,23 @@ Nothing is lost if that happens, but the origin then alarms on a surplus it can 
 
 So before an empty origin is filled, the receiver reads the stored event's hops (the `Hops` of
 `wh_event_body.metadata`) and compares the first hop's service with the bundle's origin service, the service
-on the bundle's own publish hop (`RedeliveryReconciler.OriginServiceNameOf`). Names compare without case.
+on the bundle's own publish hop (`RedeliveryReconciler.OriginServiceNameOf`).
 
 | The stored event's first hop | Result |
 | --- | --- |
-| Names the bundle's origin service | Adopts the origin, as above. |
-| Names another service (this one, or a third) | Refused: the event keeps its empty origin, its digest stays in the local lane, and it is counted as refused. |
+| Names the bundle's origin service, in any case (`OrdersService` matches `ordersservice`) | Adopts the origin, as above. |
+| Names another service (this one, or a third), in any case | Refused: the event keeps its empty origin, its digest stays in the local lane, and it is counted as refused. |
 | Carries no service identity (the [slim stored form](../messaging/message-envelopes#stored-form) leaves it out, or it names `Unknown`) | Adopts, so that history still converges. |
 | No hops, or no stored body | Adopts, for the same reason. |
-| The bundle names no service | Adopts: there is nothing to compare. |
+| The bundle names no service (its envelope has no hop, a blank name, or `Unknown` in any case) | Adopts: there is nothing to compare. |
+
+**Names compare without case.** The transport consumer already compares service names that way, and one
+service's name can be configured with different casing on different hosts. A difference in case must not turn
+the origin into another service and leave its history refused.
+
+**A bundle that names no service adopts.** With no name there is nothing to compare, and refusing would leave
+history received before origins were recorded counted as missing and requested forever, which is the loop this
+reconciliation exists to end. A stored first hop without a service identity adopts for the same reason.
 
 An event that already carries an origin is not checked. Its recorded origin already says where it came
 from, and the rules above apply to it unchanged.
@@ -1610,7 +1619,7 @@ bundle's commit, not inside the store path, so live delivery pays nothing for it
 
 ### Events deduplication remembers but the store lost {#remembered-but-missing}
 
-{verified: RedeliveredMissingEventRestoreSqlTests.ARepairedEvent_DeduplicationRemembers_TheStoreLost_IsRestored_AndTheBucketHealsAsync, RedeliveredMissingEventRestoreSqlTests.ADuplicateOfAStoredEvent_IsStillDropped_EvenAsRepairTrafficAsync, RedeliveredMissingEventRestoreSqlTests.ARepairedEvent_OnAStreamWhoseEarlierHistoryWasTruncated_IsRefused_AndReportedAsync, RedeliveryReconcilerTests.Reconcile_ARestoreTheStoreRefused_MarksTheBucketUnhealableOnce_NamingTheReasonAsync}
+{verified: RedeliveredMissingEventRestoreSqlTests.ARepairedEvent_DeduplicationRemembers_TheStoreLost_IsRestored_AndTheBucketHealsAsync, RedeliveredMissingEventRestoreSqlTests.ADuplicateOfAStoredEvent_IsStillDropped_EvenAsRepairTrafficAsync, RedeliveredMissingEventRestoreSqlTests.ARepairedEvent_OnAStreamWhoseEarlierHistoryWasTruncated_IsRefused_AndReportedAsync, RedeliveryReconcilerTests.Reconcile_ARestoreTheStoreRefused_MarksTheBucketUnhealableOnce_NamingTheReasonAsync, RedeliveredMissingEventRestoreSqlTests.ARestoredEvent_IsStoredStateOnly_SoTriggerReceptorsThatRanOnItsFirstArrivalDoNotRunAgainAsync, InboxDispatchWorkerCoverageTests.StateOnlyDelivery_IsStored_ButRunsNoTriggerReceptorAsync, InboxDispatchWorkerCoverageTests.OrdinaryDelivery_RunsItsTriggerReceptorsAsync}
 
 Inbox deduplication (`wh_message_deduplication`) records a message id when the message is received. The
 event-store row can be lost afterwards: a fan-out that failed or rolled back in an older version, manual
@@ -1631,9 +1640,11 @@ For repair traffic, deduplication is checked against the event store instead of 
 | remembered | no | no | **Stored again, state only**, and the bucket heals once it is copied |
 | remembered | no | no, and the stream's earlier history was truncated here | **Refused**: stored settled with the reason, reported once |
 
-A restored event is stored **state only**: it is appended and projected, but trigger receptors do not run.
-Deduplication remembers the message, so the reactions to it already had their chance, and repair restores
-state without running a reaction twice. Ephemeral and at-most-once events are never restored, because
+A restored event is stored **state only**: it is appended and projected, but trigger receptors (the PreInbox
+and PostInbox stages) do not run. Deduplication remembers the message, so the reactions to it already had their
+chance, and repair restores state without running a reaction twice. The caveat is a fan-out that rolled back
+before its reactions ran: the event was lost before any reaction ran, and the restore does not run them either.
+Repair restores state, not side effects; a reaction that must still happen is the application's to re-drive. Ephemeral and at-most-once events are never restored, because
 verification never counts them and their absence is not a gap. Ordinary traffic, meaning anything that is
 not a redelivery child, keeps relying on deduplication alone, so a live duplicate is still dropped.
 
