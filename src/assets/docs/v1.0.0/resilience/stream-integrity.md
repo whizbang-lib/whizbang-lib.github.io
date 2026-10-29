@@ -45,6 +45,9 @@ codeReferences:
   - src/Whizbang.Core/Messaging/StreamIntegrityOptionsValidator.cs
   - src/Whizbang.Core/Messaging/IIntegrityRepairLedger.cs
   - src/Whizbang.Data.Postgres/Migrations/251_RepairDrainClaimsOnlyDeficits.sql
+  - src/Whizbang.Data.Postgres/Migrations/252_RepairRestoresWhatDeduplicationRemembers.sql
+  - src/Whizbang.Data.Postgres/Migrations/253_RedeliveredOriginChecksTheFirstHop.sql
+  - src/Whizbang.Core/Messaging/CompositeInboxFanout.cs
 testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/AtMostOnceOccurrenceIntegrityTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/IntegrityCheckpointWorkerTests.cs
@@ -85,10 +88,13 @@ testReferences:
   - tests/Whizbang.Core.Tests/Messaging/RedeliveryReconcilerTests.cs
   - tests/Whizbang.Core.Tests/Messaging/IntegrityRepairLedgerUnhealableTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/InboxDispatchWorkerCompositeCommitTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/InboxDispatchWorkerCoverageTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/EpochServedTypeDigestSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityManifestDrainAdmissionTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityRepairBacklogProbeSqlTests.cs
   - tests/Whizbang.Core.Tests/Messaging/StreamIntegrityOptionsValidatorTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/RedeliveredMissingEventRestoreSqlTests.cs
+  - tests/Whizbang.Core.Tests/Messaging/CompositeInboxFanoutIdentityAndSubscriptionTests.cs
 verifiedAgainstCommit: a64ba9a0
 verifiedDate: 2026-08-04
 ---
@@ -1156,7 +1162,8 @@ A changed signature (either side's digest moved) is a fresh incident: it lifts t
 attempt budget and reports again. A heal deletes the row. Only buckets the ledger already tracks are
 marked, so a redelivery nobody asked this ledger for leaves nothing behind. The usual causes of a bucket
 repair cannot change are an event stored under another origin or another stream; compare the stream on
-both sides.
+both sides. A bucket is also marked when the store refused to restore one of its events because the stream's
+earlier history was truncated here ([events deduplication remembers but the store lost](#remembered-but-missing)).
 
 The checkpoint path keys its ledger rows by type and window rather than by stream, and its
 [repair policy](#the-repair-decision-pipeline-as-wired) already stops a window whose count stopped
@@ -1509,7 +1516,7 @@ one whose outbox never resolved its service id; the producer logs the second cas
 
 ### History received before origins were recorded {#pre-stamp-history}
 
-{verified: RedeliveredOriginAdoptionSqlTests.Adopt_EventsStoredWithoutAnOrigin_TakeTheBundlesOriginAndSequencesAsync, RedeliveredOriginAdoptionSqlTests.Adopt_TheNextCheckpointCountsTheAdoptedEvents_InsteadOfAskingForThemAgainAsync, RedeliveryReconcilerTests.Reconcile_EventsStoredWithoutTheirOrigin_AdoptTheOriginTheBundleCarriesAsync}
+{verified: RedeliveredOriginAdoptionSqlTests.Adopt_EventsStoredWithoutAnOrigin_TakeTheBundlesOriginAndSequencesAsync, RedeliveredOriginAdoptionSqlTests.Adopt_TheNextCheckpointCountsTheAdoptedEvents_InsteadOfAskingForThemAgainAsync, RedeliveredOriginAdoptionSqlTests.Adopt_AnEventWhoseFirstHopNamesThisService_IsRefusedAndStaysLocalAsync, RedeliveryReconcilerTests.Reconcile_EventsStoredWithoutTheirOrigin_AdoptTheOriginTheBundleCarriesAsync, RedeliveryReconcilerTests.Reconcile_EventsWhoseFirstHopNamesAnotherService_AreCountedAndLoggedOnceAsync}
 
 Migration 087 started writing `origin_service_id` and `origin_commit_sequence` on received events. Events a
 service received before it ran 087 have both columns empty, and their digests sit in the local lane, the
@@ -1520,11 +1527,16 @@ digest lane, which holds none of them.
 Only the origin knows those sequences, so the receiver cannot backfill them from its own store. The
 redelivery that verification asks for is the source. When a redelivery bundle has committed, the receiver
 reconciles it with the events it already holds (`RedeliveryReconciler`, backed by
-`wh_adopt_redelivered_origin`, migration 249). For each event already stored:
+`wh_reconcile_redelivered_bundle_by_first_hop`, migration 253, which extends 249's `wh_adopt_redelivered_origin`
+and also reports the [children the store refused to restore](#remembered-but-missing)).
+For each event already stored:
 
 - an empty origin takes the bundle's origin, and an empty origin commit sequence takes the event's
   sequence from the bundle. A recorded origin or sequence is never overwritten, an event recorded under
   another origin is never re-attributed, and a bundle naming this service (or no service) adopts nothing;
+- an empty origin is filled only on an event the origin authored: the receiver reads the stored event's
+  hops and adopts only when the first hop names the bundle's origin service (see
+  [events this service authored](#pre-stamp-history-first-hop) below);
 - an event that leaves the local lane takes its digest with it: its hash leaves the local bucket and joins
   the origin's, under the same predicates every digest fold uses, and a local bucket left empty is removed;
 - the sealed [epochs](#epoch-seals-the-substrate) either lane holds over the moved events are refolded, and
@@ -1537,22 +1549,121 @@ heals and its ledger row is deleted. Each piece of pre-087 history costs one red
 `origins_adopted` counter rises while that happens and stops once the history has been redelivered once;
 an Information line per bundle names the origin and how many of its events adopted it.
 
-```mermaid{caption="A redelivery reconciled with the events the receiver already holds: history without an origin adopts it, and a bundle that changes nothing ends the asking." tests=["RedeliveredOriginAdoptionSqlTests.Adopt_EventsStoredWithoutAnOrigin_TakeTheBundlesOriginAndSequencesAsync", "RedeliveryReconcilerTests.Reconcile_EveryEventAlreadyPresentAndNothingAdopted_MarksTheBucketUnhealableOnceAsync", "InboxDispatchWorkerCompositeCommitTests.Redelivery_OnceCommitted_IsReconciledWithTheEventsTheStoreAlreadyHoldsAsync"]}
+#### Events this service authored {#pre-stamp-history-first-hop}
+
+{verified: RedeliveredOriginAdoptionSqlTests.Adopt_AnEventWhoseFirstHopNamesTheBundlesOrigin_AdoptsAsync, RedeliveredOriginAdoptionSqlTests.Adopt_AnEventWhoseFirstHopNamesThisService_IsRefusedAndStaysLocalAsync, RedeliveredOriginAdoptionSqlTests.Adopt_AFirstHopWithoutAServiceIdentity_AdoptsAsync, RedeliveredOriginAdoptionSqlTests.Adopt_EmptyHops_AdoptsAsync, RedeliveredOriginAdoptionSqlTests.Adopt_AnEventAlreadyCarryingAnOrigin_IsUntouchedWhateverItsFirstHopNamesAsync, InboxDispatchWorkerCompositeCommitTests.Redelivery_IsReconciledUnderTheServiceNameOfTheBundlesFirstHopAsync, RedeliveredOriginAdoptionSqlTests.Adopt_WithoutTheOriginsName_AdoptsAsBeforeAsync, RedeliveredOriginAdoptionSqlTests.Adopt_ABlankOrUnknownOriginName_AdoptsAsBeforeAsync, RedeliveredOriginAdoptionSqlTests.Adopt_ServiceNamesCompareWithoutCase_AndAnotherServiceInAnyCaseIsRefusedAsync, RedeliveredOriginAdoptionSqlTests.Adopt_TheLegacyLongFormHop_IsReadAndComparedWithoutCaseAsync, RedeliveryReconcilerTests.OriginServiceNameOf_NoHops_IsNullAsync, RedeliveryReconcilerTests.OriginServiceNameOf_AFirstHopWithABlankServiceName_IsNullAsync, RedeliveryReconcilerTests.OriginServiceNameOf_TheUnknownSentinelInAnyCase_IsNullAsync}
+
+Empty origin columns cannot tell an event received before origins were recorded from an event this service
+authored: both have none. That matters when the exchange ran both ways before 087. The origin's own store
+then holds events it received from this service, filed in its local lane as if it had written them, and its
+redelivery names itself as their origin. Adopting that origin would stamp it on events this service wrote.
+Nothing is lost if that happens, but the origin then alarms on a surplus it can never repair.
+
+So before an empty origin is filled, the receiver reads the stored event's hops (the `Hops` of
+`wh_event_body.metadata`) and compares the first hop's service with the bundle's origin service, the service
+on the bundle's own publish hop (`RedeliveryReconciler.OriginServiceNameOf`).
+
+| The stored event's first hop | Result |
+| --- | --- |
+| Names the bundle's origin service, in any case (`OrdersService` matches `ordersservice`) | Adopts the origin, as above. |
+| Names another service (this one, or a third), in any case | Refused: the event keeps its empty origin, its digest stays in the local lane, and it is counted as refused. |
+| Carries no service identity (the [slim stored form](../messaging/message-envelopes#stored-form) leaves it out, or it names `Unknown`) | Adopts, so that history still converges. |
+| No hops, or no stored body | Adopts, for the same reason. |
+| The bundle names no service (its envelope has no hop, a blank name, or `Unknown` in any case) | Adopts: there is nothing to compare. |
+
+**Names compare without case.** The transport consumer already compares service names that way, and one
+service's name can be configured with different casing on different hosts. A difference in case must not turn
+the origin into another service and leave its history refused.
+
+**A bundle that names no service adopts.** With no name there is nothing to compare, and refusing would leave
+history received before origins were recorded counted as missing and requested forever, which is the loop this
+reconciliation exists to end. A stored first hop without a service identity adopts for the same reason.
+
+An event that already carries an origin is not checked. Its recorded origin already says where it came
+from, and the rules above apply to it unchanged.
+
+The check reads one body row per present event whose origin is empty, by primary key. Those events exist only
+until the history from before 087 has been redelivered once, so the read happens during that one-time
+catch-up and not afterwards.
+
+A refusal is reported once per bundle: a Warning names the origin, its service name and how many of the
+bundle's events were refused, and the `origins_refused` counter adds them. A bundle whose present events were
+all refused or already stored under their origin also changes nothing, so its buckets are
+[marked as ones repair cannot change](#unhealable-buckets) and are not requested again.
+
+```mermaid{caption="A redelivery bundle at the receiver: missing events are stored or restored, history without an origin adopts it, and each refusal or a bundle that changes nothing ends the asking." tests=["RedeliveredOriginAdoptionSqlTests.Adopt_EventsStoredWithoutAnOrigin_TakeTheBundlesOriginAndSequencesAsync", "RedeliveredOriginAdoptionSqlTests.Adopt_AnEventWhoseFirstHopNamesThisService_IsRefusedAndStaysLocalAsync", "RedeliveredMissingEventRestoreSqlTests.ARepairedEvent_DeduplicationRemembers_TheStoreLost_IsRestored_AndTheBucketHealsAsync", "RedeliveredMissingEventRestoreSqlTests.ARepairedEvent_OnAStreamWhoseEarlierHistoryWasTruncated_IsRefused_AndReportedAsync", "RedeliveryReconcilerTests.Reconcile_EveryEventAlreadyPresentAndNothingAdopted_MarksTheBucketUnhealableOnceAsync", "RedeliveryReconcilerTests.Reconcile_EveryPresentEventRefused_MarksTheBucketUnhealable_AndReportsTheRefusalAsync", "RedeliveryReconcilerTests.Reconcile_ARestoreTheStoreRefused_MarksTheBucketUnhealableOnce_NamingTheReasonAsync", "InboxDispatchWorkerCompositeCommitTests.Redelivery_OnceCommitted_IsReconciledWithTheEventsTheStoreAlreadyHoldsAsync"]}
 flowchart TD
   A[Verification counts a bucket short] --> B[Repair asks the origin]
   B --> C[Redelivery bundle commits at the receiver]
-  C --> D{Events already stored?}
-  D -- some are not --> E[The bundle stores them]
-  D -- all are --> F{Any with an empty origin or sequence?}
-  F -- yes --> G[They adopt the bundle's origin; digest moves to the origin's lane]
-  G --> H[Next check counts them; the bucket heals]
-  E --> H
-  F -- no --> I[Bucket marked unhealable; reported once; never asked for again]
+  C --> D{Child already in the event store?}
+  D -- no, its id is new --> E[The bundle stores it]
+  D -- no, but deduplication remembers it --> T{Stream's earlier history truncated here?}
+  T -- no --> R[Stored again, state only]
+  T -- yes --> X[Refused as truncated: stored settled with the reason]
+  D -- yes --> F{Empty origin or sequence?}
+  F -- yes --> J{First hop names the origin, or no service?}
+  J -- yes --> G[Adopts the bundle's origin; digest moves to the origin's lane]
+  J -- no --> K[Refused as a foreign origin: stays local; counted and reported once]
+  F -- no --> U[Nothing to change]
+  E --> H[Next check counts them; the bucket heals]
+  R --> H
+  G --> H
+  X --> I[Bucket marked unhealable; reported once; never asked for again]
+  U -- every child --> I
+  K -- nothing adopted --> I
 ```
 
 A redelivered event the receiver already holds still never reaches the inbox emit chain: the inbox
 deduplication or the chain's "already stored" test skips it, as before. The reconciliation runs beside the
 bundle's commit, not inside the store path, so live delivery pays nothing for it.
+
+### Events deduplication remembers but the store lost {#remembered-but-missing}
+
+{verified: RedeliveredMissingEventRestoreSqlTests.ARepairedEvent_DeduplicationRemembers_TheStoreLost_IsRestored_AndTheBucketHealsAsync, RedeliveredMissingEventRestoreSqlTests.ADuplicateOfAStoredEvent_IsStillDropped_EvenAsRepairTrafficAsync, RedeliveredMissingEventRestoreSqlTests.ARepairedEvent_OnAStreamWhoseEarlierHistoryWasTruncated_IsRefused_AndReportedAsync, RedeliveryReconcilerTests.Reconcile_ARestoreTheStoreRefused_MarksTheBucketUnhealableOnce_NamingTheReasonAsync, RedeliveredMissingEventRestoreSqlTests.ARestoredEvent_IsStoredStateOnly_SoTriggerReceptorsThatRanOnItsFirstArrivalDoNotRunAgainAsync, InboxDispatchWorkerCoverageTests.StateOnlyDelivery_IsStored_ButRunsNoTriggerReceptorAsync, InboxDispatchWorkerCoverageTests.OrdinaryDelivery_RunsItsTriggerReceptorsAsync}
+
+Inbox deduplication (`wh_message_deduplication`) records a message id when the message is received. The
+event-store row can be lost afterwards: a fan-out that failed or rolled back in an older version, manual
+cleanup, or an event store restored from an older backup while the deduplication table survived. Verification
+then counts the bucket short and repair asks the origin to redeliver, but deduplication alone would drop every
+redelivered copy, the bundle would store nothing, and the bucket would be asked for again on the terminal
+cadence forever.
+
+For repair traffic, deduplication is checked against the event store instead of being trusted alone
+(migration 252). The children of a redelivery bundle carry `InboxMessage.RestoreIfMissing`, and
+`store_inbox_messages` applies these rules to each one:
+
+| The child's id is | The store holds it | The inbox holds it | Outcome |
+|---|---|---|---|
+| new | n/a | n/a | Stored, as for any arrival |
+| remembered | yes | n/a | Dropped as a duplicate, as before |
+| remembered | no | yes (still pending) | Left alone: the pending row stores it on its next claim |
+| remembered | no | no | **Stored again, state only**, and the bucket heals once it is copied |
+| remembered | no | no, and the stream's earlier history was truncated here | **Refused**: stored settled with the reason, reported once |
+
+A restored event is stored **state only**: it is appended and projected, but trigger receptors (the PreInbox
+and PostInbox stages) do not run. Deduplication remembers the message, so the reactions to it already had their
+chance, and repair restores state without running a reaction twice. The caveat is a fan-out that rolled back
+before its reactions ran: the event was lost before any reaction ran, and the restore does not run them either.
+Repair restores state, not side effects; a reaction that must still happen is the application's to re-drive. Ephemeral and at-most-once events are never restored, because
+verification never counts them and their absence is not a gap. Ordinary traffic, meaning anything that is
+not a redelivery child, keeps relying on deduplication alone, so a live duplicate is still dropped.
+
+One case is refused. [Truncating a stream prefix](../fundamentals/events/event-streams#truncating-a-stream-prefix)
+keeps the truncated events' deduplication rows on purpose, so a redelivered copy is not stored again below the
+truncation point, and a lost event cannot be told apart from a truncated one. When the stream's lowest stored
+version is above 1, the child is stored already settled (processed, never claimed or copied) with
+`repair refused: stream prefix truncated` in `wh_inbox_state.error`. The redelivery's reconciliation
+(`wh_reconcile_redelivered_bundle_by_first_hop`, migration 253) counts it per bucket as
+`RedeliveredBucketPresence.RefusedTruncated`, apart from the [first-hop refusals](#pre-stamp-history-first-hop)
+(`RefusedForeignOrigin`), and the bucket
+is marked as one [repair cannot change](#unhealable-buckets): one Warning names it and the truncation, and the
+`repairs_unhealable` counter counts it once.
+
+The [reconciliation diagram](#pre-stamp-history) shows where a restored or refused child sits beside origin
+adoption.
+
+The extra checks run only for a redelivery child whose id deduplication has already seen, by primary key and by
+the stream's version index; live delivery evaluates one flag.
 
 ## Observability
 
@@ -1601,7 +1712,8 @@ patterns worth understanding before building a dashboard:
 | `manifest_pages_followed` / `manifest_pages_capped` (tag `origin`) | Windowed stream pages walked via the resume cursor, and follow chains stopped at `MaxManifestPagesPerAudit`. Persistent capping means lanes are wider than the per-audit page budget — raise the cap or accept the pace. |
 | `redelivery_events_shipped` | Events selected and shipped in redelivery bundles, as an origin. |
 | `origins_adopted` | Stored events whose empty origin columns a redelivery filled: [history received before origins were recorded](#pre-stamp-history), now verifiable. Rises while that history is redelivered once, then stops. |
-| `repairs_unhealable` | Buckets a redelivery could not change (every event already stored under its origin), counted once each. Repair stops asking for them; see [repair that cannot change a bucket](#unhealable-buckets). |
+| `origins_refused` | Stored events with an empty origin that a redelivery did not adopt, because the event's first hop names another service than the bundle's origin: [events this service authored](#pre-stamp-history-first-hop) that the origin's store had filed as its own. Non-zero means an origin is redelivering events it did not author; the Warning logged once per bundle names it. |
+| `repairs_unhealable` | Buckets a redelivery could not change (every event already stored under its origin, or a child [refused as truncated](#remembered-but-missing)), counted once each. Repair stops asking for them; see [repair that cannot change a bucket](#unhealable-buckets). |
 | `manifests_requested`, `manifest_chunks_sent`, `drill_downs_requested`, `backfills_requested`, `redelivery_requests_received` | The exchange itself, hop by hop. |
 | `checkpoints_published` / `checkpoints_received`, `gaps_detected`, `coverage_gaps_detected`, `rebuilds_requested` | The continuity-checkpoint and coverage halves of the system. |
 | `digest_buckets_verified`, `digest_drift_healed` (tag `kind`) | The trust-but-verify sweep: buckets checked, and drift it healed (an unaccounted write path — investigate `kind`). |
