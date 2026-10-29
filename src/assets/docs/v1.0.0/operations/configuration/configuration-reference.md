@@ -990,7 +990,7 @@ Shared batching shape (drain signals). **Configure:** bound as the owning worker
 
 ### SlidingWindowInboxOptions / SlidingWindowOutboxOptions / SlidingWindowApplyOptions {#sliding-window-options}
 
-Per-stream debounce strategies for the inbox, outbox, and perspective-apply boundaries. **Configure:** the inbox and outbox shapes bind automatically from `Whizbang:Workers:InboxBatch` and `Whizbang:Workers:OutboxBatch` — no registration call needed, and `services.Configure<T>(…)` still applies and runs first. The apply shape (`SlidingWindowApplyOptions`) has no configuration section and is code-configured. **Details:** [outbox batch strategy](../../extending/internals/outbox-batch-strategy.md), [inbox batch strategy](../../extending/internals/inbox-batch-strategy.md).
+Per-stream debounce strategies for the inbox, outbox, and perspective-apply boundaries. **Configure:** the inbox and outbox shapes bind automatically from `Whizbang:Workers:InboxBatch` and `Whizbang:Workers:OutboxBatch` with no registration call needed, and `services.Configure<T>(…)` still applies and runs first. The apply shape (`SlidingWindowApplyOptions`) has no configuration section and is code-configured. **Details:** [outbox batch strategy](../../extending/internals/outbox-batch-strategy.md), [inbox batch strategy](../../extending/internals/inbox-batch-strategy.md).
 
 | Property | Type | Inbox default | Outbox default | Apply default | Environment variable (inbox / outbox) | Purpose |
 |----------|------|---------------|----------------|---------------|----------------------------------------|---------|
