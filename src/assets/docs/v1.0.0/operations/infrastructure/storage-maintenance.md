@@ -108,7 +108,7 @@ A new fillfactor applies only to pages written from then on. When the migration 
 holds rows, it also queues the table in the `pending_table_rewrites` setting (through `wh_request_table_rewrite`), and
 the table is rewritten after startup when the [table rewrite strategy](#table-rewrite-strategy) allows it (see
 [Table rewrites run post-ready](./migrations#table-rewrites-run-post-ready-under-the-maintainer-duty)). A perspective table that declares
-`[PerspectiveTableStorage(FillFactor = …)]` is queued the same way when its schema pass changes the value (see
+`[PerspectiveTableStorage(FillFactor = …)]` is queued the same way when a start changes the value (see
 [Physical Fields: free space for updates](../../fundamentals/perspectives/physical-fields#perspective-fillfactor)).
 The worker re-measures every queued table and rewrites only one whose size has crossed the bloat threshold, so a
 queued request on a compact table is left until it is worth a rewrite.

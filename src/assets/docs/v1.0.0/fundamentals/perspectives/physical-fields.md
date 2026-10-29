@@ -12,6 +12,9 @@ codeReferences:
   - src/Whizbang.Data.EFCore.Postgres/Functions/WhizbangSearchDbFunctions.cs
   - src/Whizbang.Generators.Shared/Models/PhysicalColumnSql.cs
   - src/Whizbang.Generators.Shared/Models/ColumnStorageSql.cs
+  - src/Whizbang.Data.Postgres/Schema/PerspectiveStorageParameters.cs
+  - src/Whizbang.Data.EFCore.Postgres/PerspectiveStorageReconcile.cs
+  - src/Whizbang.Data.Postgres/Migrations/259_PerspectiveStorageManualTables.sql
   - src/Whizbang.Data.EFCore.Postgres/QueryTranslation/PhysicalJsonbContainmentRewriter.cs
   - src/Whizbang.Data.EFCore.Postgres/QueryTranslation/JsonbDocument.cs
   - src/Whizbang.Data.EFCore.Postgres/Perspectives/PerspectiveDocumentSerialization.cs
@@ -52,6 +55,8 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/QueryTranslation/GraphQLJsonbContainmentIntegrationTests.cs
   - tests/Whizbang.Generators.Tests/PerspectiveModelArrayAnalyzerTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/JsonbColumnStorageIntegrationTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/Perspectives/DapperTableStorageResetTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/PerspectiveStorageParametersTests.cs
   - tests/Whizbang.Generators.Tests/PhysicalJsonbColumnGenerationTests.cs
   - tests/Whizbang.Generators.Tests/ColumnStorageSqlTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/Perspectives/DapperJsonbColumnTests.cs
@@ -842,19 +847,19 @@ public class ActiveSessionModel {
 | `ToastAutovacuumVacuumThreshold` | `toast.autovacuum_vacuum_threshold` | 0 or more |
 | `ToastAutovacuumVacuumScaleFactor` | `toast.autovacuum_vacuum_scale_factor` | 0 to 100 |
 
-Each property is negative by default, which keeps the server's setting. The insert settings start a
+Each property is negative by default, which means the server's setting. The insert settings start a
 vacuum after inserts alone; on a table that is mostly appended to, that keeps the visibility map
 current so index-only scans stay index-only. The `Toast` settings apply to the TOAST relation, which
 holds documents too large for the row and is vacuumed on its own schedule.
 
-Like the options above, each parameter is set only where the catalog holds a different value, so a
-restart takes no lock. A `toast.` parameter is compared against the TOAST relation, where PostgreSQL
-keeps it. Removing a property from the attribute does not reset the parameter; reset it by hand with
-`ALTER TABLE … RESET (…)`. A value outside the range is reported at build time as
-[WHIZ804](../../operations/diagnostics/whiz804) and left out of the schema pass, which would otherwise fail
-on PostgreSQL's own error.
+These are applied at every start, and only where the catalog holds a different value, so a start
+that finds them in place takes no lock. A `toast.` parameter is compared against the TOAST relation,
+where PostgreSQL keeps it. Removing a property from the attribute resets the parameter to the server's
+value (see [Removed settings](#removed-storage-settings)), unless the table is
+[managed by hand](#manually-managed-tables). A value outside the range is reported at build time as
+[WHIZ804](../../operations/diagnostics/whiz804) and left out, so PostgreSQL never refuses it at a start.
 
-{verified: ColumnStorageSqlTests.AutovacuumSettings_ReachBothSchemaGeneratorsAsync, ColumnStorageSqlTests.NegativeAutovacuumSettings_KeepTheServerDefaultsAsync, ColumnStorageSqlTests.StorageParameter_ComparesTheTableOrItsToastRelationAsync, JsonbColumnStorageIntegrationTests.DeclaredOptions_AreAppliedToTheTableAsync, JsonbColumnStorageIntegrationTests.TheStatements_RunAgain_AlterNothingAsync}
+{verified: ColumnStorageSqlTests.AutovacuumSettings_ReachBothSchemaGeneratorsAsync, ColumnStorageSqlTests.NegativeAutovacuumSettings_AreNotDeclaredAsync, JsonbColumnStorageIntegrationTests.DeclaredOptions_AreAppliedToTheTableAsync, JsonbColumnStorageIntegrationTests.AStart_WithNothingDiffering_IssuesNoAlterAsync}
 
 ### Free space for updates {#perspective-fillfactor}
 
@@ -868,7 +873,7 @@ A table's `fillfactor` (100 by default) is the share of each page an insert fill
 leaves room on every page for the updated versions of its rows. 70 to 90 suits a perspective whose rows
 are updated on most events:
 
-```csharp{title="Reserve page space for in-place updates" description="Each page is filled to 90%, leaving room for HOT updates of the rows on it." framework="NET10" category="Perspectives" difficulty="ADVANCED" tags=["perspectives", "fillfactor", "hot-updates", "storage", "bloat"] tests=["ColumnStorageSqlTests.FillFactor_ReachesBothSchemaGenerators_WithARewriteRequestAsync", "JsonbColumnStorageIntegrationTests.DeclaredOptions_AreAppliedToTheTableAsync"]}
+```csharp{title="Reserve page space for in-place updates" description="Each page is filled to 90%, leaving room for HOT updates of the rows on it." framework="NET10" category="Perspectives" difficulty="ADVANCED" tags=["perspectives", "fillfactor", "hot-updates", "storage", "bloat"] tests=["ColumnStorageSqlTests.FillFactor_IsDeclaredByBothSchemaGeneratorsAsync", "JsonbColumnStorageIntegrationTests.DeclaredOptions_AreAppliedToTheTableAsync"]}
 [PerspectiveTableStorage(FillFactor = 90)]
 public class ActiveSessionModel {
   [StreamId]
@@ -879,11 +884,12 @@ public class ActiveSessionModel {
 ```
 
 `FillFactor` accepts 10 to 100; a value outside that is reported as
-[WHIZ804](../../operations/diagnostics/whiz804). It is -1 by default, which keeps the server's value.
-Like the settings above, it is set only where the catalog holds a different value.
+[WHIZ804](../../operations/diagnostics/whiz804). It is -1 by default, which means the server's value
+(100); a fillfactor an earlier release of the model set is reset (see [Removed settings](#removed-storage-settings)).
+Like the settings above, it is set at every start, only where the catalog holds a different value.
 
 A changed fillfactor applies only to the pages written from then on: the rows already stored stay on
-pages packed to the old value. So when the schema pass changes it on a table that already holds rows, it
+pages packed to the old value. So when a start changes it on a table that already holds rows, it
 also queues a rewrite request for the table, which the maintenance worker performs under the operator's
 rewrite policy (see [Storage Maintenance](../../operations/infrastructure/storage-maintenance#fillfactor)).
 A table created empty queues nothing, and neither does a restart that finds the value already in place.
@@ -893,7 +899,138 @@ document stored out of line in TOAST is written to new TOAST chunks whenever it 
 fillfactor also means fewer rows per page, so a scan reads more pages; keep it at 100 for a table whose
 rows are inserted and never updated.
 
-{verified: ColumnStorageSqlTests.FillFactor_ReachesBothSchemaGenerators_WithARewriteRequestAsync, ColumnStorageSqlTests.SetFillFactor_QueuesARewriteOnlyWhenTheValueChangesOnATableWithPagesAsync, ColumnStorageSqlTests.FillFactor_NotDeclared_EmitsNothingAsync, JsonbColumnStorageIntegrationTests.DeclaredOptions_AreAppliedToTheTableAsync, JsonbColumnStorageIntegrationTests.AChangedFillFactor_OnATableWithRows_QueuesOneRewriteAsync}
+{verified: ColumnStorageSqlTests.FillFactor_IsDeclaredByBothSchemaGeneratorsAsync, JsonbColumnStorageIntegrationTests.DeclaredOptions_AreAppliedToTheTableAsync, JsonbColumnStorageIntegrationTests.AChangedFillFactor_OnATableWithRows_QueuesOneRewriteAsync}
+
+### Removed settings {#removed-storage-settings}
+
+The model is the authority for a perspective table's fillfactor and autovacuum settings. At every
+start, each instance compares every perspective table with its model and brings it in line: a
+declared value the table does not hold is set, and one of the seven parameters below that the model
+does not declare (the property removed, set back to its negative default, or the whole attribute
+removed) is reset to the server's value. Both drivers do the same.
+
+| Parameter the model governs | Property |
+|-----------------------------|----------|
+| `fillfactor` | `FillFactor` |
+| `autovacuum_vacuum_threshold`, `autovacuum_vacuum_scale_factor` | `AutovacuumVacuumThreshold`, `AutovacuumVacuumScaleFactor` |
+| `autovacuum_vacuum_insert_threshold`, `autovacuum_vacuum_insert_scale_factor` | `AutovacuumInsertThreshold`, `AutovacuumInsertScaleFactor` |
+| `toast.autovacuum_vacuum_threshold`, `toast.autovacuum_vacuum_scale_factor` | `ToastAutovacuumVacuumThreshold`, `ToastAutovacuumVacuumScaleFactor` |
+
+How it runs, and why:
+
+- **At every start, not only when the schema changes.** A perspective's schema statements run only
+  when its generated schema changes, which would leave a removed property, a value changed by hand or a
+  table taken off the [manual list](#manually-managed-tables) unseen until some unrelated change. So
+  the generated schema only declares these seven parameters, in a comment line
+  (`-- @whizbang:table-storage <table> fillfactor=90 ...`), and the start applies them.
+- **Cheaply.** The start reads every perspective table's `reloptions`, and its TOAST relation's, in
+  one catalog query. A table already in line is not altered and not locked, so a normal start issues
+  no `ALTER TABLE` at all.
+- **One statement per table.** A table that differs gets one `ALTER TABLE … SET (…), RESET (…)` in a
+  transaction of its own, which takes a `SHARE UPDATE EXCLUSIVE` lock. It waits at most 5 seconds for
+  that lock; a table busy past that (a long manual `VACUUM`, say) is skipped with a warning and tried
+  again at the next start, so a busy table never holds a start.
+- **A rewrite for a changed fillfactor.** When the fillfactor is set or reset on a table that holds
+  rows, a rewrite request is queued, because the rows already stored sit on pages packed to the old
+  value (see [Free space for updates](#perspective-fillfactor)). An autovacuum change alone, or a table
+  with no pages, queues nothing.
+- **Never fatal.** A start that cannot read the catalog or the setting logs a warning and goes on.
+
+**A value set by hand is reset too.** The catalog does not record who set a storage parameter, and
+Whizbang keeps no record of the values it set, so it cannot tell one it set from one an operator set
+with `ALTER TABLE`. On a perspective table, set these seven through `[PerspectiveTableStorage]`, or
+list the table as [managed by hand](#manually-managed-tables); otherwise the next start resets a
+hand-set value. That includes the first start on the release that introduced this.
+
+A parameter the attribute cannot set, such as `autovacuum_analyze_threshold`, `autovacuum_enabled` or
+`toast.autovacuum_vacuum_cost_delay`, is never touched. `toast_tuple_target`, `DataCompression` and
+the column options are applied by the schema statements as before and are not reset when removed:
+the decision covers the settings that govern maintenance, while those govern how new values are
+stored. Reset them by hand with `ALTER TABLE … RESET (toast_tuple_target)` or
+`ALTER COLUMN … SET COMPRESSION DEFAULT` if you remove them.
+
+{verified: ColumnStorageSqlTests.ARemovedSetting_IsLeftOutOfBothMarkersAsync, ColumnStorageSqlTests.ATableWithoutTheAttribute_GetsAMarkerDeclaringNothingAsync, ColumnStorageSqlTests.StorageMarker_ListsEachDeclaredParameterInOrderAsync, ColumnStorageSqlTests.ForTable_KeepsTheToastTargetStatement_OutsideTheMarkerAsync, PerspectiveStorageParametersTests.TheGeneratorsMarker_IsTheOneTheReconcileReadsAsync, PerspectiveStorageParametersTests.Plan_SetsWhatDiffers_AndResetsTheUndeclaredItHoldsAsync, PerspectiveStorageParametersTests.Plan_IsNull_WhenNothingDiffersAsync, PerspectiveStorageParametersTests.Plan_OfAnAutovacuumChange_DoesNotTouchTheFillFactorAsync, PerspectiveStorageParametersTests.Declarations_IgnoreAnUngovernedOrMalformedTokenAsync, JsonbColumnStorageIntegrationTests.AStart_ResetsAnUndeclaredSetting_AndLeavesTheRestAsync, JsonbColumnStorageIntegrationTests.AStart_WithNothingDiffering_IssuesNoAlterAsync, JsonbColumnStorageIntegrationTests.ARemovedFillFactor_IsResetOnce_AndQueuesARewriteForATableWithRowsAsync, JsonbColumnStorageIntegrationTests.ARemovedFillFactor_OnAnEmptyTable_QueuesNothingAsync, JsonbColumnStorageIntegrationTests.ATableLockedPastTheTimeout_IsSkippedWithAWarningAsync, JsonbColumnStorageIntegrationTests.AReconcileThatCannotRead_WarnsAndReturnsAsync, DapperTableStorageResetTests.AnUndeclaredSetting_IsReset_AndTheRestAreLeftAloneAsync}
+
+### Manually managed tables {#manually-managed-tables}
+
+Some tables are tuned by a DBA rather than by the model, for instance while autovacuum settings are
+being worked out against production load. List such a table in the `perspective_storage_manual_tables`
+setting and the start leaves its seven governed parameters alone: a value the model declares is not
+applied, and a value the model does not declare is not reset. Every other table still follows its
+model.
+
+The default is the other way round on purpose. A table that follows its model has the same settings
+in every environment and after every restore, and a value tuned by hand on one server is a drift
+nobody sees until that server behaves differently. Listing a table is an explicit, visible decision,
+logged at every start, rather than an accident the framework has to guess at.
+
+The setting is one `wh_settings` row in the service's schema, created empty. Its value is a
+comma-separated list of bare table names (as in `pg_class.relname`, without the schema), the same form
+`pending_table_rewrites` uses for its list of tables. Spaces around names are ignored.
+
+**To manage a table by hand:**
+
+```sql{title="List a perspective table as managed by hand" description="Appends the table to the override list, so starts stop setting or resetting its fillfactor and autovacuum settings." framework="NET10" category="Perspectives" difficulty="ADVANCED" tags=["perspectives", "autovacuum", "fillfactor", "storage", "operations"] tests=["JsonbColumnStorageIntegrationTests.AManuallyManagedTable_IsLeftAlone_UntilItIsTakenOffTheListAsync", "DapperTableStorageResetTests.AManuallyManagedTable_IsLeftAlone_UntilItIsTakenOffTheListAsync"]}
+UPDATE "my_service".wh_settings
+SET setting_value = concat_ws(',', NULLIF(setting_value, ''), 'wh_per_order'),
+    updated_at = now(), updated_by = 'dba: tuning autovacuum on wh_per_order'
+WHERE setting_key = 'perspective_storage_manual_tables';
+
+-- Then tune it by hand:
+ALTER TABLE "my_service".wh_per_order SET (autovacuum_vacuum_scale_factor = 0.01);
+```
+
+List the table first and tune it after: a start that runs between the two would otherwise reset the
+hand-set value. No restart is needed for the listing to protect the table, since only a start changes
+these parameters and every start reads the setting afresh. The next start of any instance logs it.
+
+**To hand a table back to its model:**
+
+```sql{title="Hand a perspective table back to its model" description="Removes the table from the override list; the next start applies the model's values and resets the undeclared ones." framework="NET10" category="Perspectives" difficulty="ADVANCED" tags=["perspectives", "autovacuum", "fillfactor", "storage", "operations"] tests=["JsonbColumnStorageIntegrationTests.AManuallyManagedTable_IsLeftAlone_UntilItIsTakenOffTheListAsync", "DapperTableStorageResetTests.AManuallyManagedTable_IsLeftAlone_UntilItIsTakenOffTheListAsync"]}
+UPDATE "my_service".wh_settings
+SET setting_value = array_to_string(
+      array_remove(string_to_array(replace(setting_value, ' ', ''), ','), 'wh_per_order'), ','),
+    updated_at = now(), updated_by = 'dba: wh_per_order back to its model'
+WHERE setting_key = 'perspective_storage_manual_tables';
+```
+
+Then restart one instance of the service (any instance; a rolling restart does it). The change takes
+effect when that instance starts: it sets the model's declared values and resets the governed
+parameters the model does not declare. The instances that start after it find the table already in
+line and issue nothing.
+
+**Who acts, and when.** Every instance runs the comparison at its own start, after its schema pass;
+it is not tied to the instance holding the migrator duty, and it does not wait for a schema change.
+It does not run between starts, by choice: changing a storage parameter takes a lock that conflicts
+with `VACUUM`, `ANALYZE` and `CREATE INDEX CONCURRENTLY`, so it happens at a start, when schema
+changes are expected and the operator chooses the moment, rather than at an arbitrary point in a
+maintenance cycle. During a rolling deploy that changes a model's declared values, an instance of the
+previous release that starts applies its own model's values; the new release's instances apply theirs
+as they start.
+
+**To check it took effect**, look for these lines in the start's log:
+
+| Level | Message | Means |
+|-------|---------|-------|
+| Information | `Perspective storage (my_service): wh_per_order are managed by hand through the perspective_storage_manual_tables setting; ...` | Once per start, listing every table on the list |
+| Warning | `Perspective storage (my_service.wh_per_order): the model declares fillfactor=90, which are not applied because the table is listed in the perspective_storage_manual_tables setting` | A listed table whose model declares values; one line per such table |
+| Information | `Perspective storage (my_service.wh_per_order): brought in line with the model; set fillfactor=90; reset autovacuum_vacuum_scale_factor; rewrite queued: True` | The start changed the table |
+| Warning | `Perspective storage (my_service.wh_per_order): could not apply the model's storage settings; the next start tries again: ...` | The table was busy past the lock timeout, or refused the change |
+
+and read the parameters the table holds:
+
+```sql{title="Read a perspective table's storage parameters" description="The table's reloptions and its TOAST relation's, as the start compares them with the model." framework="NET10" category="Perspectives" difficulty="ADVANCED" tags=["perspectives", "autovacuum", "fillfactor", "storage", "operations"] unverified="a catalog query for operators; the tests read the same columns"}
+SELECT c.relname, c.reloptions, t.reloptions AS toast_reloptions
+FROM pg_class c
+JOIN pg_namespace n ON n.oid = c.relnamespace
+LEFT JOIN pg_class t ON t.oid = c.reltoastrelid
+WHERE n.nspname = 'my_service' AND c.relname = 'wh_per_order';
+```
+
+A name on the list that is not a perspective table of this service changes nothing; it is still
+listed in the Information line, which is where a misspelled name shows up.
+
+{verified: JsonbColumnStorageIntegrationTests.AManuallyManagedTable_IsLeftAlone_UntilItIsTakenOffTheListAsync, DapperTableStorageResetTests.AManuallyManagedTable_IsLeftAlone_UntilItIsTakenOffTheListAsync, PerspectiveStorageParametersTests.ManualTables_AreReadFromACommaSeparatedListAsync}
 
 ## Search {#search}
 
