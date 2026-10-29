@@ -712,6 +712,10 @@ table brings forward the retries of the streams parked on it, and an index that 
 retyped key to its old type is dropped before the conversion and built again, concurrently, once the
 phase has committed.
 
+Before either, the phase moves stored keys that differ from a declared JSON name only in case to the declared
+spelling, so the migrations and the rewrite find every value under the name they address. See
+[keys stored in another case](../../fundamentals/perspectives/stored-form-migrations.md#declared-names).
+
 ### What it converts
 
 The rewrite is derived at runtime from the two things that read a document: the model Entity

@@ -24,6 +24,15 @@ codeReferences:
   - src/Whizbang.Data.Postgres/StoredFormIndexRebuild.cs
   - src/Whizbang.Data.Postgres/Migrations/176_StoredFormMigrations.sql
   - src/Whizbang.Data.Postgres/CanonicalTemporalRewritePhase.cs
+  - src/Whizbang.Data.Postgres/Perspectives/DeclaredKeySpellingPass.cs
+  - src/Whizbang.Data.Postgres/Perspectives/DeclaredKeySpellingDocument.cs
+  - src/Whizbang.Data.Postgres/Perspectives/DeclaredKeySpellingSql.cs
+  - src/Whizbang.Data.Postgres/Perspectives/DeclaredKeyShape.cs
+  - src/Whizbang.Data.Postgres/Perspectives/DeclaredKeyTable.cs
+  - src/Whizbang.Data.EFCore.Postgres/Perspectives/DeclaredKeyShapes.cs
+  - src/Whizbang.Core/Perspectives/PerspectiveDocumentModels.cs
+  - src/Whizbang.Core/Serialization/JsonContextRegistry.cs
+  - src/Whizbang.Generators/MessageJsonContextGenerator.cs
   - src/Whizbang.Generators.Shared/Models/StoredFormDiscovery.cs
   - src/Whizbang.Data.EFCore.Postgres.Generators/EFCoreServiceRegistrationGenerator.cs
   - src/Whizbang.Data.EFCore.Postgres.Generators/Templates/DbContextSchemaExtensionTemplate.cs
@@ -36,6 +45,12 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StoredFormMigrationWorkerTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StoredFormScalarMismatchWorkerTests.cs
   - tests/Whizbang.Generators.Tests/StoredFormMigrationGenerationTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/DeclaredNameSpellingIntegrationTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/DeclaredKeySpellingPassTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/DeclaredKeySpellingDocumentTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/DeclaredKeyShapesTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/Perspectives/DapperDeclaredNameSpellingTests.cs
+  - tests/Whizbang.Core.Tests/Serialization/DeclaredNameReadTests.cs
 ---
 
 # Stored-Form Migrations
@@ -186,6 +201,138 @@ retyped in the same release gets both, rename first. The tables run in name orde
 
 Stored-form migrations run **before** the canonical temporal rewrite. So a temporal value moved by a
 rename is converted to the canonical form in the same pass.
+
+## Keys stored in another case than the declared name {#declared-names}
+
+{verified: DeclaredNameSpellingIntegrationTests.RowsStoredWithCSharpNames_AreRewrittenOnStartup_AndReadBackWithTheirValuesAsync, DeclaredNameSpellingIntegrationTests.AnOpaqueRowStoredWithCSharpNames_IsRewrittenAndReadBackAsync, DapperDeclaredNameSpellingTests.RowsStoredWithCSharpNames_AreRewrittenAtHostStart_AndReadBackAsync, DeclaredKeySpellingDocumentTests.KeysInAnotherCase_MoveToTheDeclaredName_AtEveryDepthAsync}
+
+:::updated
+Releases before the message JSON context honored `[JsonPropertyName]` stored a property under its C# name.
+Where that differs from the declared name only in case (`"X"` stored for `[JsonPropertyName("x")] X`), Entity
+Framework's mapped reader matched the declared name exactly, found no key, and read the member's default with
+no error: the row loaded and every such value was zeroed. Those keys are now rewritten at startup, with no
+declaration needed.
+:::
+
+### What is rewritten {#declared-names-rewrite}
+
+Every perspective table is checked at startup, as the **first step** of the
+[stored-format rewrite phase](../../operations/infrastructure/migrations.md#the-stored-form-rewrite) on the EF
+Core driver (before your stored-form migrations and the temporal rewrite, which address declared names), and
+in the schema pass once the perspective tables exist on the Dapper driver.
+
+- A stored key that matches a declared JSON name **only case-insensitively** is moved to the declared
+  spelling. This happens **at any depth**: nested objects, and records inside collections, are reached too.
+  Values move exactly as stored.
+- The declared names come from what reads each document: Entity Framework's model for a mapped document, the
+  serializer's metadata for a document stored as a single serialized value. The Dapper driver learns each
+  table's model type from the generated schema, which registers it at load. Nothing is discovered by
+  reflection.
+- A table is walked in primary-key order in chunks of 1,000 rows. Only the rows that hold such a key are
+  returned and updated, and each update is conditioned on the row version it read, so a row written in the
+  meantime is never overwritten.
+- A row holding **both** spellings with the **same** value keeps the declared one; the two merge.
+- Each table rewritten is logged at Warning with the member paths and row counts:
+
+```text
+Rewrote stored keys to their declared spelling in public.wh_per_picture: 56 row(s) updated;
+data $.Objects[*].Points[*]: X -> x in 56 row(s)
+```
+
+{verified: DeclaredNameSpellingIntegrationTests.BothSpellingsWithTheSameValue_MergeAsync, DeclaredNameSpellingIntegrationTests.RowsAlreadyInTheDeclaredSpelling_AreNeverUpdatedAsync, DeclaredKeySpellingDocumentTests.ValuesKeepTheirExactTextAsync, DeclaredKeySpellingPassTests.EveryChunk_IsRewritten_AndNamesThatAreNotIdentifiers_MatchLiterallyAsync, DapperDeclaredNameSpellingTests.TheGeneratedSchema_RegistersTheModelItsTableStoresAsync}
+
+A key that differs from its declared name by **more than case** (a C# name `Points` declared `pts`) is not
+moved: that is a rename. Declare it with `[StoredForm(PreviousName = "Points")]` ([renames](#paths)).
+
+### A conflict stops startup {#declared-names-conflicts}
+
+A row is left exactly as it was when a key cannot be moved safely:
+
+- it holds both spellings with **different** values, or
+- a stored key matches **two** declared names.
+
+Every other row is still rewritten. Then startup stops with `StoredFormConversionBlockedException`, naming the
+table, the column, the row id and the path for up to ten conflicts (and how many more there are):
+
+```text
+1 stored key(s) cannot be rewritten to their declared spelling, so those rows were left as they were:
+public.wh_per_picture.data row 0199a1c4-...: $.Objects[0].Points[2] holds both "X" and "x" with different
+values; the declared spelling is "x". Keep the value under the declared name and remove the other key in
+each, then restart.
+```
+
+{verified: DeclaredNameSpellingIntegrationTests.ARowHoldingBothSpellings_StopsStartup_NamingItAsync, DapperDeclaredNameSpellingTests.ARowHoldingBothSpellings_StopsStartup_NamingItAsync, DeclaredKeySpellingDocumentTests.BothSpellingsWithDifferentValues_AreAConflict_AndTheDocumentIsLeftAloneAsync, DeclaredKeySpellingDocumentTests.AKeyMatchingTwoDeclaredNames_IsAConflictAsync, DeclaredKeySpellingPassTests.ManyConflicts_AreSampled_AndAnAmbiguousKeyIsNamedAsSuchAsync}
+
+Decide which value is right, keep it under the declared name, remove the other key from that row, and
+restart. Any other failure while checking a table (a lock timeout, for example) is logged at Warning, the
+other tables still run, and the next start tries that table again.
+
+### The journal entry {#declared-names-journal}
+
+Each table checked is recorded in [`wh_stored_form_migrations`](#journal) under the name
+`declared-names:<table>:<hash>`, where the hash covers the table's declared names and required members. It
+**settles** on the first pass that changes no row and finds no row missing a required member. A settled table
+is skipped with one lookup until its declarations change, which gives it a new name and one new scan.
+
+A pass that **changed rows is not settled**, so the next start scans the table once more. That second pass
+catches any row an instance of the previous release wrote in the old spelling while the deployment was rolling,
+and then settles. A table this release creates empty settles on its first check (Dapper) or its second start
+(EF Core).
+
+{verified: DeclaredNameSpellingIntegrationTests.ASecondStart_ChangesNoRow_AndSettlesTheTableAsync, DapperDeclaredNameSpellingTests.ASecondStart_ChangesNoRowAsync, DeclaredKeyShapesTests.TheJournalName_ChangesWithTheShapeAsync}
+
+### Required members of a read model {#declared-names-required}
+
+{verified: DeclaredNameSpellingIntegrationTests.ARequiredMemberMissingFromAMappedRow_IsReportedAtErrorAsync, DeclaredNameSpellingIntegrationTests.ARequiredMemberMissingFromAnOpaqueRow_FailsTheReadAsync, DapperDeclaredNameSpellingTests.ARequiredMemberMissing_FailsTheRead_AndIsReportedAtStartupAsync, DeclaredKeySpellingPassTests.MissingRequiredMembers_AreReported_WithABoundedSample_AndTheTableStaysOpenAsync}
+
+A perspective model member declared `required` (or `[JsonRequired]`) is enforced on stored read-model rows:
+
+- **Read through the serializer** (every Dapper read, and a document Entity Framework stores as a single
+  serialized value), a row missing the member fails its read with a `JsonException` instead of reading the
+  member's default.
+- **Read by Entity Framework's mapped reader**, a missing key cannot be refused at read time. The startup pass
+  reports instead: rows missing a required member are logged at **Error**, naming the table, the member path,
+  the row count and a few sample row ids. Startup continues, and the table stays unsettled, so the report
+  repeats on every start until the rows are filled.
+
+```text
+Stored documents in public.wh_per_picture lack a required member: data $.Title in 12 row(s) (for example
+0199a1c4-..., 0199a1c5-..., 0199a1c6-...). A reader that refuses a missing required member fails these rows,
+and Entity Framework's mapped reader reads the member's default. Fill them with
+[StoredForm(DefaultWhenMissing = ...)] or rebuild the perspective
+```
+
+A required member whose type admits null is not enforced, because the framework omits a null when it writes a
+document.
+
+**Events are not enforced.** A `required` member of an event type reads as its default when a stored event
+lacks it, as before, so old history keeps replaying. A type used both as an event (or inside one) and in a read
+model is not enforced either: it is treated as optional on every path.
+
+### Events read either spelling {#declared-names-events}
+
+{verified: DeclaredNameReadTests.AnEventStoredWithCSharpNames_ReadsItsValues_UnderEitherProfileAsync, DeclaredNameReadTests.TheDeclaredSpelling_IsStillWhatIsWrittenAsync, DapperDeclaredNameSpellingTests.AnEventStoredWithCSharpNames_ReplaysWithItsValuesAsync}
+
+Events are history and are never rewritten. Instead, the framework's shared serializer options read property
+names **case-insensitively**, so an event stored under its C# name replays with its values. Writing still uses
+the declared name.
+
+Because names are matched case-insensitively, a type with two members whose JSON names differ only in case now
+fails at first use with System.Text.Json's name-conflict error. Rename one with `[JsonPropertyName]`.
+
+### Upgrading {#declared-names-upgrade}
+
+- **The first start rewrites affected rows.** Deploy without a mixed fleet, or let a second start catch rows an
+  older instance wrote meanwhile: a pass that changed rows is not settled, so the next start scans again (see
+  [rolling upgrades](../../operations/startup/rolling-upgrades.md#stored-documents-written-mid-deploy)).
+- **A row holding both spellings with different values stops startup** until one key is removed from it.
+- **A required, non-nullable member missing from a stored read-model document** now fails its read (or, on
+  Entity Framework's mapped reader, is reported at Error on every start). Fill old documents with
+  `[StoredForm(DefaultWhenMissing = ...)]`, [rebuild](rebuild.md) the perspective, or drop the `required`
+  modifier.
+- **Two members whose JSON names differ only in case** fail at first use; rename one.
+- **A stored key that differs from its declared name by more than case** is not moved; declare it with
+  `[StoredForm(PreviousName = ...)]`.
 
 ## Custom migrations (the escape hatch) {#custom}
 
