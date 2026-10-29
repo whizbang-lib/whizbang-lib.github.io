@@ -39,6 +39,7 @@ testReferences:
   - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerDrainModeTests.cs
   - tests/Whizbang.Core.Tests/Workers/PerspectiveWorkerParallelismTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerAffinityHoldWatchdogTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerInjectedClockTests.cs
   - tests/Whizbang.Core.Tests/Workers/DrainRowsOutsideCooldownTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Diagnostics/MessageParseCountFlowTests.cs
 lastMaintainedCommit: '01f07906'
@@ -121,10 +122,11 @@ The consumer loop blocks on four wake sources simultaneously: the work channel, 
 // When the NOTIFY listener is wired, use the relaxed cadence
 // (safety-net only); otherwise fall back to the legacy tight cadence so a
 // NOTIFY outage doesn't introduce latency.
-var pollMs = _perspectiveNotificationListener is null
+var pollMs = !_perspectiveNotificationListener.IsConfigured
   ? _options.PollingIntervalMilliseconds
   : Math.Max(_options.PollingIntervalMilliseconds, _options.NotifyHealthyPollingIntervalMilliseconds);
-var idleTimeout = Task.Delay(pollMs, stoppingToken);
+// On the worker's injected clock, so the TimeProvider decides when the next idle poll comes round.
+var idleTimeout = Task.Delay(TimeSpan.FromMilliseconds(pollMs), _timeProvider, stoppingToken);
 
 await Task.WhenAny(workWait, drainWait, idleTimeout, perspectiveSignal);
 ```
@@ -132,6 +134,20 @@ await Task.WhenAny(workWait, drainWait, idleTimeout, perspectiveSignal);
 - With the multiplexed NOTIFY listener wired, every `wh_perspective_events` insert fires a `WorkSignalCategory.Perspective` signal — the worker wakes immediately on new work
 - The idle timeout is a **safety net** for missed signals (`NotifyHealthyPollingIntervalMilliseconds`, default **1000 ms**); without a listener the loop runs at `PollingIntervalMilliseconds` (default **1000 ms**)
 - `ClaimWorker` has its own independent cadence: 250 ms tight polling, relaxed to **5000 ms** (`ClaimWorkerOptions.NotifyHealthyPollingIntervalMilliseconds`, v0.684 default) while NOTIFY is verified healthy
+
+### The Worker's Clock {#worker-clock}
+
+{verified: PerspectiveWorkerInjectedClockTests.IdlePoll_WaitsOnTheInjectedClock_PollsAgainOnlyWhenThePollIntervalElapsesAsync, PerspectiveWorkerInjectedClockTests.BlockingRewindScan_RepollsOnTheInjectedClock_AndReportsTheWaitItMeasuredAsync, PerspectiveWorkerInjectedClockTests.LockKeepalive_WaitsOnTheInjectedClock_RenewsOnlyWhenTheIntervalElapsesAsync, PerspectiveWorkerInjectedClockTests.AffinityGateSweep_AgesGatesOnTheInjectedClockAsync, PerspectiveWorkerInjectedClockTests.CompletionBookkeeping_StampsSentAndStaleChecksWithTheInjectedClockAsync}
+
+The worker takes a `TimeProvider` and runs its waits and timestamps on it, not on the machine's clock:
+
+- the safety-net idle poll above
+- the [blocking startup rewind scan](../../fundamentals/perspectives/rewind.md)'s re-poll, and the scan duration it logs
+- the stream lock keepalive (`KeepAliveInterval`)
+- the activity timestamps the intra-pod [affinity gates](#lease-based-coordination) are aged by, and the idle-gate sweep that compares them
+- the time a completion is marked sent, and the check that resets a sent completion that was never acknowledged
+
+A host or test that registers its own `TimeProvider` (for example a `FakeTimeProvider`) decides when the worker polls again, renews a lock, sweeps an idle gate or ages a sent completion, so a test advances the clock instead of waiting. With no provider registered, `TimeProvider.System` is used and the behavior is the machine's clock, as before.
 
 ### Sliding-Window Drain Batching
 

@@ -26,6 +26,8 @@ testReferences:
   - tests/Whizbang.Core.Component.Tests/Perspectives/PerspectiveRewindCompletionGapTests.cs
   - tests/Whizbang.Core.Tests/Observability/PerspectiveRewindMetricsTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerRewindTests.cs
+  - tests/Whizbang.Core.Tests/Observability/PerspectiveMetricsTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerDeepPathDrainTests.StragglerDropped.cs
   - tests/Whizbang.Core.Tests/Events/System/StreamRewindEventTests.cs
 ---
 
@@ -276,8 +278,12 @@ Meter: **`Whizbang.Perspectives`** (defined in `PerspectiveMetrics`).
 | `whizbang.perspective.rewind.duration` | Histogram (ms) | `perspective_name` | Replay duration |
 | `whizbang.perspective.rewind.events_replayed` | Histogram | `perspective_name` | Events replayed per rewind |
 | `whizbang.perspective.rewind.events_behind` | Histogram | `perspective_name` | Events behind the cursor when the rewind triggered |
+| `whizbang.perspective.stragglers_dropped` | Counter | `perspective_name` | Late events an ephemeral perspective dropped instead of replaying, because no readable snapshot floor preceded them |
 
 The `has_snapshot` tag on the `rewinds` counter reflects snapshot-**store** availability, not actual usage (see [Snapshot-usage caveat](#snapshot-usage-caveat)). A failed rewind also increments the shared `whizbang.perspective.errors` counter.
+
+An ephemeral perspective that skips a rewind because no snapshot floor precedes the late event still counts it in `rewinds`; `stragglers_dropped` also counts it, once, so the two together tell a replay from a drop. See [Ephemeral Events](../events/ephemeral-events.md#runtime-guards).
+{verified: PerspectiveMetricsTests.PerspectiveMetrics_StragglersDropped_CountsUnderItsNameWithThePerspectiveTagAsync, PerspectiveWorkerDeepPathDrainTests.DrainMode_RewindThatCompletes_CountsNoDroppedStragglerAsync}
 
 ### OTel span tags
 

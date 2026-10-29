@@ -482,6 +482,9 @@ release cycle. See [dates, times and durations](../../fundamentals/perspectives/
 | `whizbang.perspective.rewind.duration` | ms | Rewind replay duration |
 | `whizbang.perspective.rewind.events_replayed` | Histogram\<int\> | Events replayed per rewind |
 | `whizbang.perspective.rewind.events_behind` | Histogram\<int\> | Events behind cursor when rewind triggered |
+| `whizbang.perspective.stragglers_dropped` | Counter\<long\> | Late events an ephemeral perspective dropped instead of rewinding for them, because no readable snapshot floor preceded them. Counted once per event. Tag: `perspective_name`. The skipped rewind still counts in `rewinds`. See [ephemeral runtime guards](../../fundamentals/events/ephemeral-events.md#runtime-guards) |
+
+{verified: PerspectiveMetricsTests.PerspectiveMetrics_StragglersDropped_CountsUnderItsNameWithThePerspectiveTagAsync, PerspectiveWorkerDeepPathDrainTests.DrainMode_EphemeralStragglerWithNoSnapshotFloor_IsDroppedOnceAcrossLapsAsync}
 
 ### Batch Composition Histograms
 
