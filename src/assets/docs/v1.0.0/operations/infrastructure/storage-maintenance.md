@@ -177,6 +177,71 @@ that removed them would not read as an improvement.
 The [`whizbang.table.bloat_ratio`](../observability/metrics#table-statistics) gauge carries the method as its
 `method` tag: every table's estimate is `estimate`, and a table the cycle measured is a second series, `approx`.
 
+### Why it works this way {#bloat-measurement-decisions}
+
+Each rule below is held by the tests named under it, which fail if the behavior is reversed.
+
+#### Measurements live beside the queue, and a missing one reads as the estimate {#bloat-queue-measurements}
+{verified: TableBloatMeasurementSqlTests.AMeasuredRequest_IsQueuedWithItsRatioAndMethod_AndTheQueueOrdersByTheMeasuredRatioAsync, TableBloatMeasurementSqlTests.AQueueRowWithoutAMethod_IsTheEstimate_AndAnUnknownMethodIsRefusedAsync}
+
+The queue itself is the `pending_table_rewrites` list in `wh_settings`, which migrations append to through
+`wh_request_table_rewrite`. Turning it into a table would change a contract every shipped migration relies on, so the
+measurement is a row beside it in `wh_table_rewrite_measurements`, keyed by table. Every request recorded before the
+method existed was queued from the estimate, so a queued table without a row, and a row written without a method, read
+as `estimate`. Only the three stable names may be stored, because readers map the name back to the method.
+
+#### The measured ratio is on the estimate's scale {#bloat-measured-ratio-scale}
+{verified: TableBloatMeasurementSqlTests.Approx_OnATableCarryingDroppedColumnBytes_ReadsBloated_AndItsRewriteReadsAsAnImprovementAsync, TableBloatMeasurementSqlTests.Approx_OnAStaleEstimate_MeasuresTheTableLeanAsync}
+
+The measured ratio is the heap's size over the live rows `pgstattuple_approx` counts, times the expected row width from
+`pg_stats`. It is not the heap over the live tuples' own bytes: a dropped column's bytes stay inside every row written
+before the drop, so that ratio would count them as live and call a table carrying them lean, and the rewrite that
+removes them would not read as an improvement, leaving its request queued forever.
+
+#### Disagreement is logged past a quarter of the estimate {#bloat-disagreement-tolerance}
+{verified: MaintenanceWorkerBloatMeasurementTests.TheDisagreementTolerance_IsAQuarterOfTheEstimate_EitherWayAsync, MaintenanceWorkerBloatMeasurementTests.WhenReady_AMeasurementThatDisagreesWithItsEstimate_IsLoggedWithBothFiguresAsync}
+
+A measurement more than 25% above or below its estimate is logged with both figures; exactly 25% is not. Closer than
+that is the ordinary difference between a sampled row width and a counted row; further apart means the estimate was
+reading stale statistics, which an operator should see.
+
+#### A failed measurement queues from the estimate {#bloat-measurement-failure}
+{verified: MaintenanceWorkerBloatMeasurementTests.WhenReady_AMeasurementThatFails_FallsBackToTheEstimate_AndSaysWhyAsync, TableBloatMeasurementSqlTests.Approx_WithoutTheExtension_FailsRatherThanAnsweringAsync}
+
+When `pgstattuple_approx` fails (a role without the right to call it, a timeout, an extension dropped since the probe),
+a warning names the table and the failure, and the table is queued from its estimate. That is exactly where the cycle
+would be without pgstattuple, so the failure costs the confirmation and nothing else. The database function raises
+rather than answering nothing when the extension is missing, so the failure is reported, never mistaken for a lean
+table.
+
+#### Ready means Ready on every probed database {#bloat-pgstattuple-ready}
+{verified: MaintenanceWorkerBloatMeasurementTests.WhenPgstattupleIsReadyOnOneDatabaseButNotAnother_NothingIsMeasuredAsync, MaintenanceWorkerBloatMeasurementTests.WhilePgstattupleIsNotReady_TheEstimateIsRecorded_AndNothingIsMeasuredAsync, MaintenanceWorkerBloatMeasurementTests.WithoutACapabilityRegistry_TheEstimateIsRecorded_AndNothingIsMeasuredAsync}
+
+The maintenance cycle does not know which probed database its work coordinator reads, so it measures only when
+pgstattuple is `Ready` on every database the registry probed, the same rule the online rewrite uses for its tools. One
+database without it, no registry, or a state the probe could not decide, and the cycle works from the estimate.
+
+#### A rejected estimate is measured again {#bloat-rejected-remeasured}
+{verified: MaintenanceWorkerBloatMeasurementTests.ARejectedFalsePositive_IsMeasuredAgainOnTheNextCycle_AndStillNotQueuedAsync, MaintenanceWorkerBloatMeasurementTests.WhenReady_AFalsePositiveEstimate_IsNotQueued_AndTheLogGivesBothFiguresAsync}
+
+A rejection is not remembered. While the estimate still shortlists the table, each cycle measures it again, so a table
+that does bloat later is queued on the next cycle that sees it. The cost is one `pgstattuple_approx` per cycle for such a
+table, and it ends once `ANALYZE` brings the estimate back under the threshold.
+
+#### Tables a migration requested are not measured {#bloat-requested-tables}
+{verified: MaintenanceWorkerBloatMeasurementTests.WhenReady_ATableAlreadyQueued_IsNotMeasuredAgainAsync, TableBloatMeasurementSqlTests.AMeasuredRequest_IsQueuedWithItsRatioAndMethod_AndTheQueueOrdersByTheMeasuredRatioAsync}
+
+A table already in the queue, including one a migration requested (for example after dropping a column), is not
+measured again before its rewrite and keeps the method it was queued with, `estimate` for a migration's request. The
+request is the decision; the rewrite's own re-measure is what judges it.
+
+#### The exact scan never runs {#bloat-exact-never-runs}
+{verified: TableBloatMeasurementSqlTests.Exact_IsNeverRunAsync, MaintenanceWorkerBloatMeasurementTests.WhenReady_ACandidateIsMeasuredWithApprox_AndQueuedWithTheMeasuredRatioAsync}
+
+`pgstattuple` reads every page of the table, which on a large table is the cost the estimate exists to avoid. The
+library asks only for `approx`, and the coordinator refuses `exact` with `NotSupportedException`. The `exact` name
+exists so a measurement an operator takes by hand can be recorded as what it is.
+
 ## Table rewrite strategy {#table-rewrite-strategy}
 {verified: TableRewriteStrategyTests.Resolve_EachCellOfTheMatrixAsync, TableRewriteStrategyTests.TheSetting_DefaultsToAuto_AndBindsFromConfigurationAsync, TableRewriteStartupStepTests.PgSqueeze_IsLeftToTheMaintenanceCycle_NotRunAtBootAsync, TableRewriteStartupStepTests.PgRepackInProcess_IsLeftToTheMaintenanceCycle_NotRunAtBootAsync}
 
