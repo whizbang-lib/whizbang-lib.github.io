@@ -314,7 +314,7 @@ if (result.Status != "truncated") {
 }
 ```
 
-Calling the coordinator truncates and nothing more. `IStreamPrefixTruncator.TruncateAsync(streamId, throughVersion, archive)` (registered by `AddWhizbangWorkers()`) wraps the same truncate in the destruction hook and the [destruction lifecycle stages](../lifecycle/lifecycle-stages#destruction), so receptors that preserve or announce the truncated events run around it; see [Truncating a stream on a schedule](ephemeral-events#scheduled-close).
+Calling the coordinator truncates and nothing more. `IStreamPrefixTruncator.TruncateAsync(streamId, throughVersion, archive)` (registered by `AddWhizbangWorkers()`) wraps the same truncate in the destruction hook and the [destruction lifecycle stages](../lifecycle/lifecycle-stages#destruction), so receptors that preserve or announce the truncated events run around it; see [Truncating a stream on a schedule](ephemeral-events#scheduled-close). With `archive: true` it writes through the registered [archive store](archive-store#the-prefix-truncate-archives-through-the-store), which keeps every column a restore needs and records where the prefix went on the stream's lifecycle row.
 
 The truncate is all or nothing. It returns one of these statuses:
 
@@ -352,6 +352,7 @@ The Dapper and EF Core schemas behave the same way.
 - [Events](events.md) - Event definition and EventId
 - [Stream ID](stream-id.md) - IHasStreamId and auto-generation
 - [Event Store](event-store.md) - Event persistence
+- [Stream End of Life](stream-end-of-life.md) - The stream lifecycle ledger: every stream's age, size and state without reading the event store
 - [Perspectives](../perspectives/perspectives.md) - Read model projections
 
 ---
