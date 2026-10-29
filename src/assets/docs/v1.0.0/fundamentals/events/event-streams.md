@@ -352,6 +352,7 @@ The Dapper and EF Core schemas behave the same way.
 - [Events](events.md) - Event definition and EventId
 - [Stream ID](stream-id.md) - IHasStreamId and auto-generation
 - [Event Store](event-store.md) - Event persistence
+- [Stream End of Life](stream-end-of-life.md) - The stream lifecycle ledger: every stream's age, size and state without reading the event store
 - [Perspectives](../perspectives/perspectives.md) - Read model projections
 
 ---
