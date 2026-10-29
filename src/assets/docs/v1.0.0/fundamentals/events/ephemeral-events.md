@@ -33,6 +33,7 @@ codeReferences:
   - src/Whizbang.Core/Messaging/MixedStreamEventException.cs
   - src/Whizbang.Core/Messaging/IWorkCoordinator.cs
   - src/Whizbang.Core/Observability/EnvelopeMetadata.cs
+  - src/Whizbang.Core/Observability/PerspectiveMetrics.cs
   - src/Whizbang.Core/Lifecycle/Destruction.cs
   - src/Whizbang.Core/Lifecycle/OnDestroyFailure.cs
   - src/Whizbang.Core/Lifecycle/IDestructionHook.cs
@@ -47,6 +48,7 @@ codeReferences:
   - src/Whizbang.Core/Archival/StreamCloseSchedule.cs
   - src/Whizbang.Core/Configuration/EphemeralOptions.cs
   - src/Whizbang.Core/Workers/MaintenanceWorker.cs
+  - src/Whizbang.Core/Workers/PerspectiveWorker.cs
   - src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs
   - src/Whizbang.Data.EFCore.Postgres/ScheduledStreamCloseReceptor.cs
   - src/Whizbang.Data.EFCore.Postgres/ScheduledStreamCloseReceptorRegistrar.cs
@@ -61,6 +63,8 @@ testReferences:
   - tests/Whizbang.Core.Tests/Ephemeral/EphemeralTtlDeriverTests.cs
   - tests/Whizbang.Core.Tests/Perspectives/PerspectiveRebuilderTests.cs
   - tests/Whizbang.Core.Tests/Perspectives/EvictedRowRebuildTests.cs
+  - tests/Whizbang.Core.Tests/Observability/PerspectiveMetricsTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerDeepPathDrainTests.StragglerDropped.cs
   - tests/Whizbang.Core.Tests/Perspectives/StreamCompactorTests.cs
   - tests/Whizbang.Core.Tests/Perspectives/FullHistoryPerspectiveRegistryTests.cs
   - tests/Whizbang.Core.Tests/Lifecycle/StreamPrefixTruncatorTests.cs
@@ -86,6 +90,8 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/MixedStreamGuardSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/ScheduledStreamCloseReceptorTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/TypeDefinitionReconcilerTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Cursors/PerspectiveCursorAdvanceSqlTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperWorkCoordinatorDeepPathTests.cs
 lastMaintainedCommit: '62abd3a45'
 ---
 
@@ -407,8 +413,31 @@ check refuses nothing.
 perspective restores its latest snapshot and replays from there. If no snapshot exists before the late
 event, a replay from the start would read reaped bodies and corrupt the model, so the runner skips the
 rewind, logs a warning, keeps the current model and leaves the cursor where it was. The late event's
-effect on earlier state is the accepted loss of arriving outside the grace window.
-{verified: PerspectiveRunnerGeneratorTests.PerspectiveRunnerGenerator_EphemeralPerspective_GuardsRewindFallbackAgainstReapedBodiesAsync, PerspectiveRunnerTemplateInvariantTests.EphemeralRewind_GuardsFullReplayFallbackAgainstReapedBodiesAsync}
+effect on earlier state is the accepted loss of arriving outside the grace window. A snapshot that cannot
+be read (one written under an older serialization version) is no floor either, and the event is dropped the
+same way.
+{verified: PerspectiveRunnerGeneratorTests.PerspectiveRunnerGenerator_EphemeralPerspective_GuardsRewindFallbackAgainstReapedBodiesAsync, PerspectiveRunnerTemplateInvariantTests.EphemeralRewind_GuardsFullReplayFallbackAgainstReapedBodiesAsync, EvictedRowRebuildTests.EphemeralPerspective_RewindWithNoReadableFloor_NamesTheDroppedStragglerAndLeavesRowAndCursorAsync}
+
+**A dropped straggler is dropped once.** The runner names the event it dropped, and the worker retires that
+event's pending work in the same pass: the work rows are completed with nothing applied, the cursor is not
+moved and nothing is replayed. The rest of the batch is still applied, and a second straggler in the same batch
+is dropped the same way. The worker also remembers the dropped event, so a re-delivery of it under a new work row
+is completed instead of dropped again. Each drop logs one Warning ("Straggler dropped: out-of-order rewind
+window exceeded") and no "performing full replay" warning, because no replay runs. Earlier releases left the
+dropped event's work pending, so every later claim found it again and logged the same drop without end; work
+left looping that way is retired at the first claim after upgrading, and the cursor's rewind flag clears once
+nothing is pending for it. The memory of dropped events lives in the process, so after a restart a straggler
+that is delivered again may be dropped once more, once per process.
+{verified: PerspectiveWorkerDeepPathDrainTests.DrainMode_EphemeralStragglerWithNoSnapshotFloor_IsDroppedOnceAcrossLapsAsync, PerspectiveWorkerDeepPathDrainTests.DrainMode_StragglersLeftPendingByAnOlderBuild_StopAfterOneClaimAsync, PerspectiveWorkerDeepPathDrainTests.DrainMode_RunThatDropsAStragglerBelowTheRow_RetiresItAndAppliesTheRestAsync, PerspectiveWorkerDeepPathDrainTests.DrainMode_RunReportsADropOutsideItsBatch_RetiresNothingAndDoesNotRunAgainAsync, PerspectiveRunnerTemplateInvariantTests.EphemeralRewind_SkippedRewindNamesTheStragglerItDropsAsync, PerspectiveCursorAdvanceSqlTests.CompletePerspective_ADroppedStragglersWork_RetiresItClearsTheRewindFlagAndLeavesTheCursorAsync, DapperWorkCoordinatorDeepPathTests.CompletePerspectiveAsync_DroppedStragglersWork_RetiresItClearsTheRewindFlagAndLeavesTheCursorAsync}
+
+**Watch `whizbang.perspective.stragglers_dropped`.** Every drop counts once on this counter, tagged with
+`perspective_name`. The skipped rewind still counts in `whizbang.perspective.rewinds` (and
+`whizbang.perspective.rewinds_triggered`), so a rewind count alone cannot tell a replay from a drop; this
+counter does. A count that keeps rising means late events are arriving later than the perspective's reorder
+window covers: snapshot more often (see [Snapshots](#snapshots)) or widen the rewind grace window (see
+[When the body is deleted](#reap-gates)) so those events find a floor and rewind instead of being dropped. A
+rewind that completes counts no drop.
+{verified: PerspectiveMetricsTests.PerspectiveMetrics_StragglersDropped_CountsUnderItsNameWithThePerspectiveTagAsync, PerspectiveWorkerDeepPathDrainTests.DrainMode_RewindThatCompletes_CountsNoDroppedStragglerAsync}
 
 **Evicted rows rebuild only from a snapshot.** When retention evicts an ephemeral perspective's row
 and a later event arrives, the row is restored from its snapshot and the events after it. With no
