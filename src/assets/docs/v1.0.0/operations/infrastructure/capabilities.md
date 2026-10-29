@@ -384,6 +384,7 @@ to the server.
 | Feature | Capability | When it is `Ready` | Otherwise |
 |---|---|---|---|
 | Expensive-predicate advice (`GetExpensivePredicatesAsync` on the Postgres table statistics) | `postgres/pg_stat_statements` | reads the recorded statements that filter a perspective table and names the filter | answers empty without opening a connection; the advice still names the table |
+| Bloat confirmation before a rewrite is queued, and the re-measure after it (maintenance cycle, online rewrite, boot `Rewrite` step) | `postgres/pgstattuple`, `Ready` on every database the registry probed | measures a shortlisted table with `pgstattuple_approx` and queues it only when the measurement is over the threshold ([how bloat is measured](storage-maintenance#how-bloat-is-measured)); a failed measurement is logged and the estimate stands in | works from the catalog estimate, without reading any table |
 
 ```mermaid{caption="A feature that reads a capability: the state the probe recorded decides whether the server is asked at all." tests=["StatementStatisticsCapabilityTests.NotReady_AnswersEmpty_WithoutOpeningAConnectionAsync", "StatementStatisticsCapabilityTests.Ready_ReadsTheStatementStatisticsAsync"]}
 flowchart LR
