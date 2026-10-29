@@ -1253,6 +1253,11 @@
               "slug": "v1.0.0/operations/observability/stuck-row-sentinel",
               "title": "Stuck Row Sentinel",
               "order": 8
+            },
+            {
+              "slug": "v1.0.0/operations/observability/storage-dashboard",
+              "title": "Storage Dashboard",
+              "order": 10
             }
           ],
           "children": []

@@ -677,6 +677,8 @@ Meter name: `Whizbang.TableStatistics` (`TableStatisticsMetrics`)
 
 How big every table is, what the size is made of, how many rows it holds, and how deep the queues are. Both PostgreSQL drivers report it: the EF Core driver and the Dapper driver register the same provider (`PostgresTableStatisticsProvider`), the meter and the collector with no extra call. {verified: DapperTableStatisticsTests.ADapperHost_ReportsTableStatisticsAsync, TableStatisticsRegistrationTests.RegisteringTwice_RunsOneCollectorAsync}
 
+A ready-made Grafana dashboard for these gauges, the maintenance meter and the capability state ships in the library repository: see [Storage Dashboard](storage-dashboard).
+
 Every gauge on this meter also carries a `database` tag, the name of the database it was read from, alongside the tags listed below. See [One series per database](#table-statistics-database).
 
 | Metric Name | Type | Tags | Description |
@@ -771,19 +773,62 @@ SELECT stats_reset FROM pg_stat_database WHERE datname = current_database();
 
 ### Bytes per event type {#event-type-bytes}
 
-The table sizes say how large the event store is; these say which event types the bytes belong to, and how much of each event is payload and how much is metadata. That is the reading behind the storage decisions an operator makes per type: exclude it from audit, mark it ephemeral, or slim its metadata.
+The table sizes say how large the event store is; these say which event types the bytes belong to, and where each event's bytes sit. That is the reading behind the storage decisions an operator makes per type: exclude it from audit, mark it ephemeral, or slim its metadata.
 
 | Metric Name | Type | Tags | Description |
 |-------------|------|------|-------------|
-| `whizbang.event_store.sampled_bytes_per_event` | ObservableGauge (bytes) | `event_type`, `part` | The mean stored size of one event of the type, after compression. `part` is `data` (the payload) or `metadata` (the envelope metadata, mostly hops) |
-| `whizbang.event_store.estimated_type_bytes` | ObservableGauge (bytes) | `event_type` | The payload and metadata bytes of every event of the type, extrapolated from the share sampled |
+| `whizbang.event_store.sampled_bytes_per_event` | ObservableGauge (bytes) | `event_type`, `part` | The mean stored size of one row of the part, after compression. See [Parts](#event-type-bytes-parts) |
+| `whizbang.event_store.estimated_type_bytes` | ObservableGauge (bytes) | `event_type`, `part` | The part's bytes for every event of the type, extrapolated from the share sampled. A sum by `event_type` is the type's whole footprint; a sum by `part` is where the store's bytes sit |
 
-{verified: TableStatisticsMetricsEventTypeTests.ASample_ReportsMeanBytesPerPartAndTheEstimatedTotalPerTypeAsync, PostgresTableStatisticsProviderTests.SampleEventTypeBytesAsync_AtAFullSample_ReportsEachTypesBytesAsync}
+{verified: TableStatisticsMetricsEventTypeTests.ASample_ReportsEveryPartOnBothGauges_UnderItsPartTagAsync, PostgresTableStatisticsProviderTests.SampleEventTypeBytesAsync_AtAFullSample_ReportsEachTypesBytesAsync, PostgresTableStatisticsProviderTests.SampleEventTypeBytesAsync_AtAFullSample_ReportsThePointerRowsAndTheOutboxMetadataAsPartsAsync}
 
-- **A sample, not a scan.** `EventTypeBytesSampler` reads `EventTypeSamplePercent` of the event body table's pages (`TABLESAMPLE SYSTEM`, default 1%) every `EventTypeSampleInterval` (default 15 minutes), so the cost is a small fraction of the table, never all of it. The total is the sampled bytes divided by that share; a type rare enough to miss the sample is not reported in that window. {verified: TableStatisticsMetricsEventTypeTests.Extrapolate_ScalesTheSampledBytesByTheShareReadAsync}
-- **One instance per window.** The window starts on a multiple of the interval, so every instance names it the same way; the instance that claims it in `wh_unique_emission_claims` samples, and every other instance clears its reading. One instance reports at a time, so a sum across instances does not count the store twice; `max()` by `event_type` reads the same value. {verified: EventTypeBytesSamplerTests.TheInstanceThatTakesTheWindow_ReportsItsSample_UnderTheWindowsClaimAsync, EventTypeBytesSamplerTests.AnInstanceThatDoesNotTakeTheNextWindow_ClearsItsReadingAsync, PostgresTableStatisticsProviderTests.SampleEventTypeBytesAsync_ASecondClaimOfTheWindow_ReadsNothingAsync}
+#### Parts {#event-type-bytes-parts}
+
+{verified: TableStatisticsMetricsEventTypeTests.ASample_ReportsEveryPartOnBothGauges_UnderItsPartTagAsync, TableStatisticsMetricsEventTypeTests.APartTheSampleReadNoRowsOf_IsNotReported_WhileOneItReadIsAsync, PostgresTableStatisticsProviderTests.SampleEventTypeBytesAsync_AtAFullSample_ReportsThePointerRowsAndTheOutboxMetadataAsPartsAsync}
+
+An event is stored in up to three places, and each place has its own remedy, so each is its own `part`:
+
+| `part` | Where | What it measures | Per row of |
+|--------|-------|------------------|------------|
+| `data` | `wh_event_body.event_data` | The payload | event with a stored body |
+| `metadata` | `wh_event_body.metadata` | The envelope metadata, mostly hops | event with a stored body |
+| `pointer` | `wh_event_store` | The whole event-store row: identity, stream, type, scope and ordering | event |
+| `outbox_metadata` | `wh_outbox.metadata` | The metadata an outbox row carries inline beside the event it publishes | outbox row holding an event |
+
+```mermaid{caption="One event's bytes, by part: the body in the body table, the pointer row in the event store, and the metadata the outbox carries inline until its row is purged." tests=["PostgresTableStatisticsProviderTests.SampleEventTypeBytesAsync_AtAFullSample_ReportsThePointerRowsAndTheOutboxMetadataAsPartsAsync", "TableStatisticsMetricsEventTypeTests.ASample_ReportsEveryPartOnBothGauges_UnderItsPartTagAsync"]}
+flowchart LR
+  E[One event of a type] --> B["wh_event_body<br/>part=data, part=metadata"]
+  E --> P["wh_event_store<br/>part=pointer"]
+  E --> O["wh_outbox<br/>part=outbox_metadata"]
+  B --> G["estimated_type_bytes<br/>sum by event_type = the type's footprint"]
+  P --> G
+  O --> G
+```
+
+Why each choice is what it is:
+
+- **The pointer is its own part.** Every event keeps its event-store row whatever becomes of its body, so a type whose bodies are reaped (an ephemeral type) still costs its pointers, and only this part shows it. It is measured as the stored width of the whole row (`pg_column_size` of the row), so a wide scope shows as a wide pointer. {verified: PostgresTableStatisticsProviderTests.SampleEventTypeBytesAsync_AtAFullSample_ReportsThePointerRowsAndTheOutboxMetadataAsPartsAsync}
+- **The outbox's metadata, not its payload.** The outbox carries the event's metadata a second time until its row is purged, and metadata (hops) is what grows with every hop and what slimming reduces, so it is the part reported. The outbox's own copy of the payload is not split out by type; it is in `wh_outbox`'s table size.
+- **Only outbox rows that hold an event.** A command waiting in the outbox is not an event type's bytes, so rows with `is_event` false are not read. The outbox's type names are normalized the same way as the event store's, so one type is one series whichever producer wrote it. {verified: PostgresTableStatisticsProviderTests.SampleEventTypeBytesAsync_AtAFullSample_ReportsThePointerRowsAndTheOutboxMetadataAsPartsAsync}
+- **The mean is per row of the part.** `outbox_metadata` is a mean over outbox rows, which exist only for events not yet purged, and `data` and `metadata` over events whose body is still stored; the estimated total of each part is what to add up, not the means.
+- **A part the sample read no rows of is not reported**, rather than reported as zero: it has no mean, and a zero would claim a measurement that was not made. A type whose bodies are all reaped reports `pointer` alone; one outbox row read is enough for `outbox_metadata` to report. {verified: TableStatisticsMetricsEventTypeTests.APartTheSampleReadNoRowsOf_IsNotReported_WhileOneItReadIsAsync}
+- **The total is split by part too.** `estimated_type_bytes` carries `part` as well, so a dashboard can stack a type's footprint by where it sits, and a sum by `event_type` is still the type's whole footprint.
+
+```promql{title="A type's footprint and where the store's bytes sit" description="Sums the extrapolated event-type bytes by type across every part, and by part across every type" category="Observability" difficulty="INTERMEDIATE" tags=["metrics", "event-store", "storage", "promql"]}
+# The ten largest event types, every part counted
+topk(10, sum by (event_type) (max by (database, event_type, part) (whizbang_event_store_estimated_type_bytes)))
+
+# Where the event types' bytes sit: data, metadata, pointer, outbox_metadata
+sum by (part) (max by (database, event_type, part) (whizbang_event_store_estimated_type_bytes))
+```
+
+#### How the sample is taken {#event-type-bytes-sample}
+
+- **A sample, not a scan.** `EventTypeBytesSampler` reads `EventTypeSamplePercent` of the pages (`TABLESAMPLE SYSTEM`, default 1%) every `EventTypeSampleInterval` (default 15 minutes), so the cost is a small fraction of each table, never all of it. The body table, the event store and the outbox are each sampled on their own at the same share, in one statement, and each part's total is that part's sampled bytes divided by the share; a type rare enough to miss the sample is not reported in that window. {verified: TableStatisticsMetricsEventTypeTests.Extrapolate_ScalesTheSampledBytesByTheShareReadAsync}
+- **Deterministic in tests.** The provider's tests sample 100% of the pages, which reads every row, so the expected values are the stored totals exactly and no random seed is involved. {verified: PostgresTableStatisticsProviderTests.SampleEventTypeBytesAsync_AtAFullSample_ReportsEachTypesBytesAsync, PostgresTableStatisticsProviderTests.SampleEventTypeBytesAsync_AtAFullSample_ReportsThePointerRowsAndTheOutboxMetadataAsPartsAsync}
+- **One instance per window.** The window starts on a multiple of the interval, so every instance names it the same way; the instance that claims it in `wh_unique_emission_claims` samples, and every other instance clears its reading. One instance reports at a time, so a sum across instances does not count the store twice; `max()` by `event_type` and `part` reads the same value. {verified: EventTypeBytesSamplerTests.TheInstanceThatTakesTheWindow_ReportsItsSample_UnderTheWindowsClaimAsync, EventTypeBytesSamplerTests.AnInstanceThatDoesNotTakeTheNextWindow_ClearsItsReadingAsync, PostgresTableStatisticsProviderTests.SampleEventTypeBytesAsync_ASecondClaimOfTheWindow_ReadsNothingAsync}
 - **Type names.** `event_type` is the stored wire form (`Namespace.Type, Assembly`), with any assembly version removed, so one type written by producers of different versions is one series. {verified: PostgresTableStatisticsProviderTests.SampleEventTypeBytesAsync_AtAFullSample_ReportsEachTypesBytesAsync}
-- **Cardinality.** The largest `MaxEventTypes` types by bytes (default 50) are reported by name; the rest are summed under `event_type="other"`, so totals stay right. At most 2 x (N + 1) series of `sampled_bytes_per_event` and N + 1 of `estimated_type_bytes`. {verified: PostgresTableStatisticsProviderTests.SampleEventTypeBytesAsync_PastTheCap_SumsTheSmallestUnderOtherAsync}
+- **Cardinality.** The largest `MaxEventTypes` types by bytes, every part counted (default 50), are reported by name; the rest are summed under `event_type="other"`, part by part, so every total stays right. At most 4 x (N + 1) series of each gauge. {verified: PostgresTableStatisticsProviderTests.SampleEventTypeBytesAsync_PastTheCap_SumsTheSmallestUnderOtherAsync}
 - **Failures and shutdown.** A failed sample is logged as a warning and costs that window only. An interval of `00:00:00` turns the sampler off. {verified: EventTypeBytesSamplerTests.AFailedSample_IsLogged_AndTheNextWindowIsStillSampledAsync, EventTypeBytesSamplerTests.AZeroInterval_NeverAsksTheProviderAsync}
 
 `EventTypeBytesSampler.SampleCompleted` is raised after each sample with whether this instance took the window, for a test or a health check that needs to wait on it rather than on time.
@@ -872,6 +917,10 @@ builder.Services.AddOpenTelemetry()
 // Expose /metrics endpoint
 app.MapPrometheusScrapingEndpoint();
 ```
+
+### Storage dashboard
+
+`dashboards/grafana/whizbang-storage.json` in the library repository charts table sizes, growth, bloat and rewrites, maintenance, bytes per event type by part, and storage extension state. [Storage Dashboard](storage-dashboard) covers importing it, its variables and every panel's query.
 
 ### Useful Grafana Queries
 

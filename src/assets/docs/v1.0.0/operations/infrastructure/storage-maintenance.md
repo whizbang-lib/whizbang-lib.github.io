@@ -7,10 +7,11 @@ order: 10
 description: >-
   How Whizbang keeps its own tables from bloating: autovacuum and fillfactor settings on the framework tables, and how
   a table that has already grown is rewritten, as the table rewrite strategy and AllowTableRewrite decide, including
-  the online rewrite through pg_squeeze or pg_repack that the maintenance cycle drives within a per-cycle byte budget
+  the online rewrite through pg_squeeze or pg_repack that the maintenance cycle drives within a per-cycle byte budget,
+  and the concurrent rebuild of bloated indexes on the queue tables that churn to empty
 tags: >-
   operations, storage, autovacuum, fillfactor, hot, vacuum, bloat, toast, postgres, maintenance, table rewrite,
-  pg_squeeze, pg_repack, pgstattuple
+  pg_squeeze, pg_repack, pgstattuple, brin, index, correlation, reindex, index bloat
 codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/088_ChurnTableAutovacuum.sql
   - src/Whizbang.Data.Postgres/Migrations/222_FrameworkTableAutovacuum.sql
@@ -33,6 +34,12 @@ codeReferences:
   - src/Whizbang.Core/Workers/ApproxBloatMeasurement.cs
   - src/Whizbang.Core/Workers/MaintenanceWorker.cs
   - src/Whizbang.Data.Postgres/Migrations/254_BloatMeasurementsRecordTheirMethod.sql
+  - src/Whizbang.Data.Postgres/Migrations/258_EventStoreCreatedAtBrin.sql
+  - src/Whizbang.Data.EFCore.Postgres/OrphanedLifecycleEventsSql.cs
+  - src/Whizbang.Core/Workers/QueueIndexReindexStep.cs
+  - src/Whizbang.Core/Workers/MaintenanceWorkerOptionsValidator.cs
+  - src/Whizbang.Core/Messaging/IWorkCoordinator.cs
+  - src/Whizbang.Data.EFCore.Postgres/QueueIndexSql.cs
 testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/FrameworkTableAutovacuumTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/PerspectiveCursorFillFactorTests.cs
@@ -51,6 +58,9 @@ testReferences:
   - tests/Whizbang.Core.Tests/Workers/MaintenanceWorkerBloatMeasurementTests.cs
   - tests/Whizbang.Core.Tests/Observability/BloatMeasurementMethodTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/TableBloatMeasurementSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/BrinIndexCandidatesTests.cs
+  - tests/Whizbang.Core.Tests/Workers/QueueIndexReindexStepTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/QueueIndexReindexSqlTests.cs
 ---
 
 # Storage Maintenance
@@ -106,6 +116,98 @@ queued request on a compact table is left until it is worth a rewrite.
 ```sql{title="Read the fillfactor and the queued rewrites" category="Operations" difficulty="BEGINNER"}
 SELECT relname, reloptions FROM pg_class WHERE relname = 'wh_perspective_cursors';
 SELECT setting_value FROM wh_settings WHERE setting_key = 'pending_table_rewrites';
+```
+
+## BRIN indexes {#brin-indexes}
+
+{verified: BrinIndexCandidatesTests.TheEventStore_InItsProductionWriteOrder_CorrelatesNearOneAsync, BrinIndexCandidatesTests.ARetentionTable_FallsBelowNearOne_AfterOneRetentionPassAsync, BrinIndexCandidatesTests.TheOrphanedLifecycleQuery_ReadsTheWindowThroughTheBrinIndexAsync, BrinIndexCandidatesTests.TheOrphanedLifecycleQuery_WithoutTheBrinIndex_ScansTheStoreAsync, BrinIndexCandidatesTests.TheEventStoreCreatedAtBrinIndex_ExistsAsync, BrinIndexCandidatesTests.NoOtherCandidate_HasABrinIndexAsync, BrinIndexCandidatesTests.TheExistingBTree_IsKeptAsync}
+
+A BRIN (block range) index stores one minimum and one maximum for each range of heap pages instead of one entry per
+row, so it is a few pages per gigabyte of table. It narrows a range query only as far as the table's physical order
+follows the column: PostgreSQL reports that order as `pg_stats.correlation`, from -1 to 1. Near 1, the rows of a time
+window sit together and the index points at the few ranges that hold them. Lower, every range holds a spread of values
+and the index points almost everywhere.
+
+Whizbang has one BRIN index, on `wh_event_store.created_at` (migration 258). Four tables were candidates. Each was
+seeded in the order production writes it and measured (`BrinIndexCandidatesTests`, which prints each figure in its run
+log):
+
+| Column | While the table grows | After one retention pass | Range query in the framework | Decision |
+|---|---|---|---|---|
+| `wh_event_store.created_at` | 0.98 | (no retention) | the startup orphaned-lifecycle window, last 30 minutes | **BRIN index** |
+| `wh_event_store.commit_sequence` | 0.98 | (no retention) | cursor reads, in `commit_sequence` order | B-tree kept, no BRIN |
+| `wh_log.logged_at` | 1.00 | 0.60 (14-day retention) | retention delete of the oldest rows | B-tree kept, no BRIN |
+| `wh_lifecycle_completions.completed_at` | 1.00 | 0.27 (7-day retention) | retention delete of the oldest rows | B-tree kept, no BRIN |
+| `wh_message_deduplication.first_seen_at` | 1.00 | 0.81 (30-day retention) | retention delete of the oldest rows | B-tree kept, no BRIN |
+
+### Near 1 means 0.9 or more {#brin-near-one-threshold}
+
+A column qualifies at a correlation of 0.9 or more and a range filter in the framework's own queries. Below that, the
+ranges overlap enough that the index reads most of the table, and the planner, which prices a BRIN scan by the same
+correlation, chooses the sequential scan anyway. The tests hold both sides: the event store measures at or above 0.9,
+each retention table measures at or above 0.9 before retention (so the harness can see a high value on that table) and
+below it after one pass.
+
+### The event store's created_at {#brin-event-store-created-at}
+
+Events are appended in time order. The one later write to an event row, the commit-order stamp, cannot be a heap-only
+update, so it writes a new version of the row elsewhere; it happens moments after the insert, so the new version lands
+near the tail, and the pages vacuum frees are refilled with rows only minutes younger. The seeded store, written through
+the emit chain and stamped after each batch with vacuum between batches, measures 0.98.
+
+On every start the perspective worker looks for events whose perspectives all finished but whose lifecycle never
+completed, within the last 30 minutes (`created_at >= window start`, `OrphanedLifecycleEventsSql`). No other index on
+`wh_event_store` leads with `created_at` for every event (`idx_event_store_ephemeral_reap` covers ephemeral events
+only), so that query read the whole store on every start. With the BRIN index the planner reads the store's tail
+through a bitmap scan; the test EXPLAINs the coordinator's own query text and asserts it, and a control on the same
+store without the index shows the sequential scan it replaces.
+
+A store whose events mostly leave (ephemeral pointers past their horizon, purged streams) frees old pages that new
+events refill, and its correlation falls the way a retention table's does. The index then reads more ranges, and once
+the planner prices it above a sequential scan it stops using it: the query is never worse than it was before the
+index.
+
+### The retention tables {#brin-retention-tables}
+
+`wh_log`, `wh_lifecycle_completions` and `wh_message_deduplication` lose their oldest rows to retention. Vacuum makes
+those pages free, and the next rows are written into them, so after each pass the newest rows sit at the start of the
+table and the order rotates. One pass at the default retention measured 0.60, 0.27 and 0.81: the shorter the
+retention, the larger the share each pass moves. Each keeps its B-tree, which serves the retention delete at any
+physical order. When the [partition manager](./partitioned-ledgers) keeps `wh_log` or `wh_lifecycle_completions`,
+expired partitions are dropped whole and a range query is pruned to the partitions it needs, so a BRIN index adds
+nothing there either.
+
+### commit_sequence {#brin-commit-sequence}
+
+`commit_sequence` follows the heap order as closely as `created_at` (0.98), but its readers walk it: a cursor asks
+for the events after its position in `commit_sequence` order, a few at a time. A BRIN index returns unordered pages,
+so every read would sort its whole range first. The partial B-tree `idx_event_store_commit_sequence` returns them in
+order and stops at the limit, so it stays and no BRIN index is added.
+
+### Nothing is replaced {#brin-nothing-replaced}
+
+No B-tree was dropped for a BRIN index. `idx_event_store_ephemeral_reap` stays because the ephemeral reap needs its
+order and its covered columns, and the retention tables' B-trees stay for the reasons above. Unused-index reporting
+(`whizbang.table.unused_index_bytes`) is where evidence for removing an index comes from; nothing is dropped on a guess.
+
+### How the index is built {#brin-pages-per-range}
+
+`pages_per_range` is the default 128, written out in the migration so the choice is visible: one range is 1 MB of
+heap, so the index stays a few pages per gigabyte of store and a 30-minute window reads a few ranges more than it
+needs. `autosummarize` stays off: the window is the store's newest pages, which are the unsummarized ones and which a
+BRIN scan always reads, and vacuum (kept running on this table by the stamper's updates) summarizes the ranges behind
+them. From PostgreSQL 16 a BRIN index does not prevent a heap-only update.
+
+The index is built inside the migration's transaction, as other event-store indexes are. A BRIN build is one
+sequential read of the table with no sort, the cheapest index build there is, and the first start of the release that
+carries migration 258 pays it once.
+
+```sql{title="Measure a column's physical order" category="Operations" difficulty="INTERMEDIATE"}
+ANALYZE wh_event_store;
+SELECT tablename, attname, correlation
+FROM pg_stats
+WHERE tablename IN ('wh_event_store', 'wh_log', 'wh_lifecycle_completions', 'wh_message_deduplication')
+  AND attname IN ('created_at', 'commit_sequence', 'logged_at', 'completed_at', 'first_seen_at');
 ```
 
 ## A table that has already grown {#already-grown}
@@ -510,10 +612,189 @@ managed service: check the role with `SELECT rolreplication FROM pg_roles WHERE 
 choosing `PgSqueeze`. Where the role cannot be given `REPLICATION`, the prerequisite check says so for each table and
 the queue is kept; `VacuumFull` in a maintenance window remains the alternative.
 
+## Rebuilding queue-table indexes {#queue-index-rebuild}
+{verified: QueueIndexReindexStepTests.Run_RebuildsOneIndexPerCycleAsync, QueueIndexReindexStepTests.Run_DropsEveryInvalidLeftoverFirst_ThenRebuildsAsync, QueueIndexReindexStepTests.Run_ARebuild_IsLoggedWithTheSizesAndTheEstimateAsync, QueueIndexReindexStepTests.Run_ARebuildThatDidNotRunOrFailed_IsLoggedAsync, QueueIndexReindexStepTests.Run_NothingOverTheLine_RebuildsNothingAsync, QueueIndexReindexSqlTests.TheStep_ShrinksABloatedQueueIndexAsync, QueueIndexReindexSqlTests.TheStep_DropsAnInvalidLeftover_AndStillRebuildsAsync}
+
+A queue table fills during a burst and drains back to empty. Autovacuum keeps its heap in check, but a B-tree index
+never returns its pages to the file: after a burst, an index on an empty table can stay the size it was at the peak,
+and every scan of it walks those empty pages. Only a rebuild gives them back, and `REINDEX INDEX CONCURRENTLY` does it
+while the table stays readable and writable.
+
+So the maintenance cycle runs a [maintenance step](../../fundamentals/workers/maintenance-steps#queue-index-rebuild)
+named `queue-index-reindex`. Each cycle:
+
+1. **Does nothing at all** when `ReindexBloatThreshold` is `0`.
+2. **Takes the window's claim,** so the fleet runs it once per window however many instances run maintenance. An
+   instance that loses the claim, or a host with no claim store, does nothing.
+3. **Surveys the B-tree indexes of the queue tables** in one catalog read: each index's size and the size a fresh index
+   over the same rows should have.
+4. **Stops if an index build is running on a queue table,** because an invalid index there may be that build's work in
+   progress.
+5. **Drops every invalid leftover** of an interrupted rebuild with `DROP INDEX CONCURRENTLY` ([leftovers](#queue-index-leftovers)).
+6. **Rebuilds at most one index:** of the valid indexes more than `ReindexBloatThreshold` times their expected size
+   and at least 1 MiB, the one with the most bytes to give back.
+
+```mermaid{caption="One maintenance cycle of the queue-index rebuild: one claim per window, nothing while a build runs, leftovers dropped first, then at most one rebuild." tests=["QueueIndexReindexStepTests.Run_AThresholdOfZero_DoesNothing_NotEvenASurveyAsync","QueueIndexReindexStepTests.Run_WhenTheClaimIsLost_NothingIsSurveyedOrRebuiltAsync","QueueIndexReindexStepTests.Run_WhileABuildIsInProgress_NothingIsDroppedOrRebuiltAsync","QueueIndexReindexStepTests.Run_DropsEveryInvalidLeftoverFirst_ThenRebuildsAsync","QueueIndexReindexStepTests.Run_RebuildsOneIndexPerCycleAsync"]}
+flowchart TD
+  T{ReindexBloatThreshold 0?} -->|yes| X[Nothing]
+  T -->|no| C{Won this window's claim?}
+  C -->|no| X
+  C -->|yes| S[Survey the queue-table indexes]
+  S --> B{Index build running<br/>on a queue table?}
+  B -->|yes| X
+  B -->|no| D[Drop every invalid leftover]
+  D --> O{Any valid index over the threshold<br/>and at least 1 MiB?}
+  O -->|no| X
+  O -->|yes| R[REINDEX INDEX CONCURRENTLY<br/>the one with the most bytes to give back]
+```
+
+A rebuild is logged twice. Before it starts, the index and why it was chosen, with how the ratio was obtained, so a
+long rebuild is visible while it runs:
+`Queue index rebuild: rebuilding wh_inbox_pkey on wh_inbox; it measured 5x its expected 8388608 bytes (estimate), over Whizbang:Workers:Maintenance:ReindexBloatThreshold (3)`.
+When it finishes, the sizes before and after:
+`Queue index rebuild: wh_inbox_pkey on wh_inbox rebuilt concurrently, 41943040 -> 8388608 bytes`.
+A rebuild that fails is logged with the index and the error and does not fail the cycle; the copy it left is dropped
+on the next one.
+
+| Key | Environment variable | Default | Meaning |
+|---|---|---|---|
+| `Whizbang:Workers:Maintenance:ReindexBloatThreshold` | `Whizbang__Workers__Maintenance__ReindexBloatThreshold` | `3.0` | How many times its expected size an index may grow before it is rebuilt. `0` turns the rebuild off; any other value must be finite and greater than 1. |
+
+```json{title="Rebuild queue indexes only past five times their expected size" description="Raises the queue-index rebuild threshold, so the maintenance cycle rebuilds an index on a queue table only once it is more than five times the size a fresh one would need." category="Configuration" difficulty="BEGINNER" tags=["storage", "reindex", "maintenance", "configuration"] tests=["QueueIndexReindexStepTests.TheThreshold_DefaultsToThree_AndBindsFromConfigurationAsync", "QueueIndexReindexStepTests.Run_TheThresholdIsTheOptionsAsync"]}
+{
+  "Whizbang": {
+    "Workers": {
+      "Maintenance": {
+        "ReindexBloatThreshold": 5.0
+      }
+    }
+  }
+}
+```
+
+The step runs with the EF Core driver's work coordinator. A coordinator that does not survey its indexes (the Dapper
+driver today) offers none, so the step does nothing there.
+
+### Leftovers of an interrupted rebuild {#queue-index-leftovers}
+{verified: QueueIndexReindexStepTests.Run_DropsEveryInvalidLeftoverFirst_ThenRebuildsAsync, QueueIndexReindexStepTests.Run_ALeftoverThatIsNotDropped_IsLogged_AndTheRebuildStillRunsAsync, QueueIndexReindexSqlTests.TheStep_DropsAnInvalidLeftover_AndStillRebuildsAsync}
+
+`REINDEX CONCURRENTLY` builds a copy of the index named `<index>_ccnew`, swaps it in, and retires the original as
+`<index>_ccold`. Interrupted part way (a restart, a canceled statement, a lost connection), it leaves one of them behind,
+marked invalid. An invalid index is never used for reads but is still kept up to date on every write, so it costs
+without helping. Each cycle drops every such leftover on the queue tables before it rebuilds anything. A leftover that
+was not dropped, or whose drop failed, is logged by name, and the rebuild still runs.
+
+To see them:
+
+```sql{title="Find invalid indexes left by an interrupted rebuild" category="Operations" difficulty="BEGINNER"}
+SELECT c.relname AS index_name, t.relname AS table_name, pg_relation_size(c.oid) AS bytes
+FROM pg_index i
+JOIN pg_class c ON c.oid = i.indexrelid
+JOIN pg_class t ON t.oid = i.indrelid
+WHERE NOT i.indisvalid;
+```
+
+### Why it works this way {#queue-index-decisions}
+
+Each rule below is held by the tests named under it, which fail if the behavior is reversed.
+
+#### Which tables are queue tables {#reindex-which-tables}
+{verified: QueueIndexReindexSqlTests.TheSurvey_CoversEveryQueueTable_AndNoOtherAsync}
+
+A queue table is one that churns to empty: a row is written per unit of work and deleted when that work completes, so
+the table drains to nothing whenever the service is idle. Read from the migrations, those are `wh_outbox` and
+`wh_inbox` (rows deleted on completion), `wh_inbox_state` (the inbox's work state, deleted with its inbox row),
+`wh_perspective_events` (one row per event and perspective, deleted once processed), `wh_active_streams` (a row per
+stream with work, removed when it completes) and `wh_doorbell_queue` (rows deleted as they are rung). The deduplication
+window `wh_message_deduplication` is left out: it holds a fixed working set for its retention period and never drains.
+The event-destruction hold is left out too: a cancel decision stays in it indefinitely. Only B-tree indexes are
+surveyed, because the expected size below is a B-tree's.
+
+#### The threshold: a line to cross, 3 by default, 0 to turn it off {#reindex-threshold}
+{verified: QueueIndexReindexStepTests.Choose_AnIndexIsChosenOnlyWhenItsRatioExceedsTheThresholdAsync, QueueIndexReindexStepTests.Run_TheThresholdIsTheOptionsAsync, QueueIndexReindexStepTests.Run_AThresholdOfZero_DoesNothing_NotEvenASurveyAsync, QueueIndexReindexStepTests.TheThreshold_DefaultsToThree_AndBindsFromConfigurationAsync, QueueIndexReindexStepTests.TheThreshold_IsValidatedAsync, QueueIndexReindexStepTests.AnInvalidThresholdInConfiguration_FailsWhenTheOptionsAreReadAsync}
+
+An index is rebuilt only when its ratio is strictly greater than the threshold; one exactly at it is not. The default,
+3, is the same line a table is queued for rewrite at, so an index and its table are judged alike. `0` turns the step
+off before it surveys anything or takes a claim. Any other value must be finite and greater than 1, and start fails
+otherwise, naming the key: a freshly built index measures about 1, so a line at or below it would rebuild the same index
+every cycle.
+
+#### Indexes under 1 MiB are left alone {#reindex-size-floor}
+{verified: QueueIndexReindexStepTests.Choose_TheSizeFloorAsync}
+
+On a drained queue the expected size is two pages, so an index of a few pages already reads as several times too
+large. Those pages are the noise in the estimate, not bloat worth a rebuild, and a rebuild would be undone by the next
+burst. An index is rebuilt only when it is at least 1 MiB; one a page under is not.
+
+#### The most bytes to give back first {#reindex-most-bytes-first}
+{verified: QueueIndexReindexStepTests.Choose_TheMostReclaimableBytesFirst_NotTheHighestRatioAsync, QueueIndexReindexStepTests.Choose_TiesAreTakenByNameAsync}
+
+Of the indexes over the line, the one rebuilt is the one whose size less its expected size is largest, not the one with
+the highest ratio: on a nearly empty queue every small index reads as hugely bloated, and the ratio alone would spend
+the cycle on a 2 MiB index while a 400 MiB one waits. Equal amounts are taken in name order, so the choice does not
+depend on the order the catalog returns them in.
+
+#### One index per cycle, once per fleet {#reindex-one-per-cycle}
+{verified: QueueIndexReindexStepTests.Run_RebuildsOneIndexPerCycleAsync, QueueIndexReindexStepTests.Run_WhenTheClaimIsLost_NothingIsSurveyedOrRebuiltAsync, QueueIndexReindexStepTests.Run_WithNoClaimStore_SkipsAndSaysWhyAsync, QueueIndexReindexStepTests.TheClaimWindow_IsHalfTheMaintenanceIntervalAsync, QueueIndexReindexStepTests.TheClaimKey_NamesTheWindowAsync}
+
+A rebuild reads the whole index and writes a new one, plus its WAL, so a cycle rebuilds at most one. The step runs where
+the maintenance cycle runs (on the maintainer duty's holder when duties are assigned), and on top of that each run takes
+a claim in `wh_unique_emission_claims` keyed by a window of half the maintenance interval (`IntervalMinutes`, at least
+one minute's worth), as the integrity audit's claim is. Instances whose cycles fall in the same window share one
+rebuild, and an instance's next cycle is never blocked by its own last claim. A host with no claim store skips the
+step and says so at debug level, rather than have every instance rebuild.
+
+#### Only invalid indexes named as a rebuild names its copies are dropped {#reindex-leftover-names}
+{verified: QueueIndexReindexStepTests.Run_DropsOnlyInvalidIndexesNamedAsALeftoverAsync, QueueIndexReindexStepTests.TheLeftoverName_IsWhatAConcurrentRebuildNamesItsCopiesAsync, QueueIndexReindexSqlTests.Drop_RefusesAValidIndex_AndOneOffTheQueueTablesAsync}
+
+A leftover is an index that is invalid and whose name ends in `_ccnew` or `_ccold`, optionally followed by digits
+(Postgres numbers the name when the plain one is taken). A valid index with such a name is in use and is kept; an
+invalid index with any other name is a failed build of some other kind, whose fix is the operator's, and is kept too.
+The step drops only what a concurrent rebuild could have made. The coordinator checks again against the catalog before
+it drops anything, and refuses a valid index, an index on any other table, and a name the catalog does not know.
+
+#### Nothing is dropped or rebuilt while a build runs {#reindex-build-in-progress}
+{verified: QueueIndexReindexStepTests.Run_WhileABuildIsInProgress_NothingIsDroppedOrRebuiltAsync, QueueIndexReindexSqlTests.WhileABuildIsRunning_TheSurveySaysSoAsync}
+
+A rebuild in flight has the same invalid `_ccnew` index an interrupted one leaves. When `pg_stat_progress_create_index`
+shows a build on a queue table, or a build in the database whose table this role is not allowed to see, the cycle
+skips both the drops and the rebuild and logs the table. A rebuild that outlasts the claim window is therefore never
+mistaken for a leftover by the next window's winner, and two rebuilds never wait on each other.
+
+#### The expected size, and when it is not known {#reindex-expected-size}
+{verified: QueueIndexReindexSqlTests.AnEmptyVacuumedQueueIndex_IsExpectedToNeedTwoPagesAsync, QueueIndexReindexSqlTests.AFreshlyBuiltIndex_ReadsAsAboutOneAsync, QueueIndexReindexSqlTests.AnIndexWithNoRowCount_HasNoExpectedSizeAsync, QueueIndexReindexStepTests.Choose_SkipsAnUnknownRatioAndAnInvalidIndexAsync, QueueIndexReindexStepTests.TheRatio_IsSizeOverExpected_AndUnknownWithoutAnExpectedSizeAsync}
+
+The expected size is the leaf pages the index's rows need at its fill factor (90 unless set), plus the metapage, and
+never less than two pages. A row's entry is an 8-byte header and the indexed columns' average widths from `pg_stats`
+(or the type's fixed length) rounded up to 8 bytes, plus a 4-byte line pointer; a page holds its size less its header
+and the B-tree's trailer. The row count is the index's own, which for a partial index counts only the rows it holds.
+A freshly built index reads as about 1. An index with no row count recorded (never vacuumed or analyzed), or a column
+with neither statistics nor a fixed width, has no expected size and is not judged until it has.
+
+#### The ratio is the catalog estimate {#reindex-estimate-only}
+{verified: QueueIndexReindexStepTests.Run_ARebuild_IsLoggedWithTheSizesAndTheEstimateAsync, QueueIndexReindexSqlTests.TheSurvey_CoversEveryQueueTable_AndNoOtherAsync}
+
+The ratio is always the [catalog estimate](#how-bloat-is-measured), method `estimate`, and the log says so. The
+pgstattuple extension's `pgstatindex` would measure an index exactly, but it reads every page of the index: the same
+reads as the rebuild it would decide, and the kind of whole-relation scan the library never runs on its own (as the
+`exact` table measurement is never run). On a drained queue the estimate is at its most reliable, since the row count
+it starts from is close to zero.
+
+#### The connection the rebuild runs on {#reindex-connection}
+{verified: QueueIndexReindexSqlTests.UnderADataOnlyApplicationRole_OnlyTheInitConnectionDropsAndRebuildsAsync}
+
+`REINDEX CONCURRENTLY` and `DROP INDEX CONCURRENTLY` cannot run inside a transaction and need the table owner's rights.
+They run on the [schema-initialization connection](./migrations#table-rewrites-run-post-ready-under-the-maintainer-duty)
+when one is configured, because its role owns the tables; otherwise on the application's connection, and only for a
+table its role owns. A table it does not own is logged with the table and the role, and nothing is touched. Neither
+statement has a timeout: a concurrent drop must wait for the transactions using the table, and one rebuild per cycle
+already bounds the work.
+
 ## Related
 
 - [Table rewrites run post-ready](./migrations#table-rewrites-run-post-ready-under-the-maintainer-duty)
 - [Capabilities](./capabilities)
 
 - [Maintenance steps: ledger retention](../../fundamentals/workers/maintenance-steps#ledger-retention)
+- [Maintenance steps: queue-index rebuild](../../fundamentals/workers/maintenance-steps#queue-index-rebuild)
 - [Database limits](./database-limits)
