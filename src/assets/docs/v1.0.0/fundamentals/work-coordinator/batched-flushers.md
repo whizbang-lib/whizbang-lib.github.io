@@ -22,6 +22,8 @@ codeReferences:
   - src/Whizbang.Core/Workers/InboxDispatchWorker.cs
 testReferences:
   - tests/Whizbang.Core.Component.Tests/Workers/BatchFlusherRetryTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/BatchFlusherTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/FlushWorkerClockWiringTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/OutboxCompletionFlushWorkerTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/LeaseRenewalWorkerCoverageTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Cursors/PerspectiveCursorAdvanceSqlTests.cs
@@ -71,9 +73,9 @@ Each flusher has `BatchFlusherOptions`:
 | `ChannelCapacity` | Bounded back-pressure when full. |
 | `MaxBatchSize` | Cap on items per flush call. |
 | `CoalesceWindowMs` | Max wait coalescing additional items after the first. |
-| `ImmediateFlushThreshold` | Flush early when batch reaches this size. |
+| `ImmediateFlushThreshold` | Flush early when batch reaches this size, the first item included. |
 
-Override via `Whizbang:Workers:<Worker>:Flusher:<Knob>`.
+Override via `Whizbang:Workers:<Worker>:Flusher:<Knob>`. The window, retry backoff and drain bound run on the host's registered `TimeProvider`; see [how the coalesce window runs](../../operations/configuration/configuration-reference.md#batch-flusher-window).
 
 ## Why this pattern wins
 

@@ -173,6 +173,8 @@ Transports deliver received messages to the consumer in batches. A transport's b
 `Enqueue` never blocks: the flushes run in the background, and `OnBatchFlushed` reports the size of each batch handed over. Disposing the collector stops its timers, waits for the flushes still running, and then flushes what is left, so no batch is handed to the handler after disposal returns ([#1721](https://github.com/whizbang-lib/whizbang/issues/1721)).
 {verified: TransportBatchCollectorTests.DisposeAsync_FlushesRemainingMessagesAsync, BatcherShutdownTests.ATransportBatchCollectorFlush_InFlight_DisposalWaitsForItAsync}
 
+The windows run on the transport's `TimeProvider`, and a flush starts without the ambient context of the caller that filled the batch ([Batch window clock](transports.md#batch-clock), [ambient context](../../extending/internals/outbox-batch-strategy.md#ambient-context)).
+
 The `TransportConsumerWorker` also waits, in its `StopAsync`, for the [active body cleanups](../../fundamentals/offloads/message-body-store.md#active-cleanup) it started in the background, so they finish before the host disposes the service provider. See [Detached Work When the Host Stops](../../fundamentals/lifecycle/lifecycle-stages.md#host-stop).
 {verified: TransportConsumerWorkerBodyOffloadTests.BatchHandler_ActiveCleanupInFlight_WorkerStopWaitsForItBeforeTheContainerIsDisposedAsync}
 
