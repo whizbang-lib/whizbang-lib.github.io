@@ -90,6 +90,7 @@ testReferences:
   - tests/Whizbang.Generators.Tests/EnumPhysicalFieldGenerationTests.cs
   - tests/Whizbang.Core.Tests/Perspectives/PerspectivePhysicalValuesTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/Collective/DapperCollectivePhysicalColumnIntegrationTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperMaintenanceStepNamedSchemaTests.cs
   - tests/Whizbang.Generators.Tests/PhysicalFieldHydratorInitOnlyTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/InitOnlyPhysicalFieldHydrationTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/SplitHydratorHookedWriteTests.cs
@@ -1185,6 +1186,12 @@ Both drivers register the step, so it runs wherever the maintenance worker does:
 driver, and the Dapper driver, which claims the window through the registered claim store or, without one,
 directly in the same claims table. A value the document holds that the column's type cannot take is
 reported as a warning, and the column stays watched.
+
+The Dapper step fills the perspective tables in the schema the host names, as the Dapper work coordinator resolves
+it (the connection string's `Search Path`, else the server's `current_schema()`), and takes and keys its claim in
+that schema {verified: DapperMaintenanceStepNamedSchemaTests.ThePhysicalColumnFillStep_FillsAndClaimsInTheHostsSchemaAsync}.
+Earlier releases named `public` outright; see
+[which schema the Dapper maintenance steps use](../../data/drivers#dapper-maintenance-schema).
 
 A Split promotion is different: the new release reads the field from the column, so a row the previous
 release writes has to have its column right at once, not ten minutes later. Its writes are synced; see

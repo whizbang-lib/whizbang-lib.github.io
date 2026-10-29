@@ -26,6 +26,7 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/PostgresDriverExtensionsTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperWorkCoordinatorNamedSchemaTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperCoordinatorSchemaTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperMaintenanceStepNamedSchemaTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperNamedSchemaRegistrationTests.cs
 lastMaintainedCommit: '01f07906'
 ---
@@ -207,6 +208,33 @@ services.AddWhizbangPostgres(connectionString, jsonOptions, initializeSchema: tr
 
 :::warning
 Before this release the registration rendered the migrations for `public` while the tables went wherever the session's search path pointed, and the readiness check looked only in `public`. A named schema ended up with functions in one schema and tables in another, or a startup that never became ready.
+:::
+
+### The Dapper maintenance steps use the same schema {#dapper-maintenance-schema}
+
+{verified: DapperMaintenanceStepNamedSchemaTests.ThePremise_PublicIsEmpty_AndTheServerResolvesTheSessionUsersSchemaAsync, DapperMaintenanceStepNamedSchemaTests.ThePartitionStep_ConvertsTheLogInTheHostsSchemaAsync, DapperMaintenanceStepNamedSchemaTests.ThePhysicalColumnFillStep_FillsAndClaimsInTheHostsSchemaAsync, DapperMaintenanceStepNamedSchemaTests.TheManagedSchemaReconcileStep_ClaimsInTheHostsSchemaAsync}
+
+The Dapper driver's maintenance steps act on the schema the host names, resolved exactly as the coordinator resolves
+it when no `schema` argument is given: the first schema the connection string's `Search Path` names, else the
+server's `current_schema()`. That covers:
+
+- the [partition maintenance step](../operations/infrastructure/partitioned-ledgers#the-duty-gate), which converts and
+  maintains the partitioned ledgers in that schema;
+- the [physical-column fill step](../fundamentals/perspectives/physical-fields#rows-written-during-a-rolling-deploy),
+  which fills the perspective tables in that schema;
+- the [managed-schema reconcile step](../fundamentals/perspectives/managed-schema-objects#every-later-start), which
+  reconciles that schema's managed objects.
+
+The fill and reconcile steps also take their once-per-fleet claim in that schema and key it by that schema, so the
+claim belongs to the services installed there rather than to whatever schema the session resolves first. A schema named only in
+`Search Path` is honored even on a pooled connection whose session does not carry that `search_path`, such as one
+behind a transaction-pooling PgBouncer.
+
+:::updated
+Before this release the partition and fill steps named `public` in every statement, and the reconcile step asked
+the server for `current_schema()`. On a host whose Whizbang tables live in another schema the first two found no
+tables (or another service's), and the reconcile step claimed and reconciled in whatever schema the session resolved
+first, such as the session user's own schema ahead of a `Search Path` of `"$user", orders`.
 :::
 
 ## Choosing a Driver
