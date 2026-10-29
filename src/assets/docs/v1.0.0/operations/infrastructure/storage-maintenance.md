@@ -648,8 +648,11 @@ flowchart TD
   O -->|yes| R[REINDEX INDEX CONCURRENTLY<br/>the one with the most bytes to give back]
 ```
 
-A rebuild is logged with the sizes and how the ratio was obtained, for example
-`Queue index rebuild: wh_inbox_pkey on wh_inbox rebuilt concurrently, 41943040 -> 8388608 bytes; it measured 5x its expected 8388608 bytes (estimate), over Whizbang:Workers:Maintenance:ReindexBloatThreshold (3)`.
+A rebuild is logged twice. Before it starts, the index and why it was chosen, with how the ratio was obtained, so a
+long rebuild is visible while it runs:
+`Queue index rebuild: rebuilding wh_inbox_pkey on wh_inbox; it measured 5x its expected 8388608 bytes (estimate), over Whizbang:Workers:Maintenance:ReindexBloatThreshold (3)`.
+When it finishes, the sizes before and after:
+`Queue index rebuild: wh_inbox_pkey on wh_inbox rebuilt concurrently, 41943040 -> 8388608 bytes`.
 A rebuild that fails is logged with the index and the error and does not fail the cycle; the copy it left is dropped
 on the next one.
 
