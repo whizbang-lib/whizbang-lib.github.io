@@ -16,6 +16,7 @@ codeReferences:
   - src/Whizbang.Core/Validation/StreamIdGuard.cs
 testReferences:
   - tests/Whizbang.Generators.Tests/GenerateStreamIdGeneratorTests.cs
+  - tests/Whizbang.Generators.Tests/StreamIdDerivedFirstGeneratorTests.cs
   - tests/Whizbang.Generators.Tests/StreamIdGeneratorTests.cs
   - tests/Whizbang.Core.Tests/Validation/StreamIdGuardTests.cs
 lastMaintainedCommit: '01f07906'
@@ -148,6 +149,13 @@ The guard distinguishes between:
 | `[GenerateStreamId]` | Controls whether the stream ID is AUTO-GENERATED |
 
 `[GenerateStreamId]` requires `[StreamId]` to be present (either on the same property or inherited from a base class).
+
+The policy lookup dispatches most-derived first, like every generated stream ID lookup, so a derived type's own
+`[GenerateStreamId]` is used ahead of its base's
+{verified: StreamIdDerivedFirstGeneratorTests.ADerivedTypesOwnGenerationPolicy_IsNotShadowedByTheBaseAsync}. A derived
+type that declares its own `[StreamId]` but no `[GenerateStreamId]` inherits the base's policy, and the generated ID is
+written to the derived property. See
+[A derived type's own stream ID is never shadowed by its base](streamid#derived-first-dispatch).
 
 ## Zero Reflection / AOT
 
