@@ -7,19 +7,22 @@ order: 11
 description: >-
   How a package adds work to the periodic maintenance cycle, and why work that
   reads or repairs stored state belongs there rather than on a timer of its own.
-tags: 'workers, maintenance, housekeeping, settledness, extension'
+tags: 'workers, maintenance, housekeeping, settledness, extension, reindex'
 codeReferences:
   - src/Whizbang.Core/Workers/IMaintenanceStep.cs
   - src/Whizbang.Core/Workers/MaintenanceWorker.cs
   - src/Whizbang.Data.Postgres/Migrations/221_LedgerRetention.sql
   - src/Whizbang.Data.Postgres/Migrations/238_LogSweepClearsTheDefaultPartition.sql
   - src/Whizbang.Core/Workers/RetentionSettingsBridge.cs
+  - src/Whizbang.Core/Workers/QueueIndexReindexStep.cs
 testReferences:
   - tests/Whizbang.Core.Tests/Workers/MaintenanceWorkerStepTests.cs
   - tests/Whizbang.Core.Tests/Workers/MaintenanceWorkerRetentionSyncTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/LedgerRetentionSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Partitioning/LogPartitionConversionTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperLedgerRetentionSqlTests.cs
+  - tests/Whizbang.Core.Tests/Workers/QueueIndexReindexStepTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/QueueIndexReindexSqlTests.cs
 ---
 
 # Maintenance steps {#maintenance-steps}
@@ -69,6 +72,21 @@ How steps run:
 - **Register with `TryAddEnumerable`** so a registration method called twice does not run the step twice.
 
 The saga package's [stranded-saga sweep](../sagas/completion-orchestration#stranded-sagas) is a step.
+
+## Queue-index rebuild {#queue-index-rebuild}
+
+{verified: QueueIndexReindexStepTests.Run_RebuildsOneIndexPerCycleAsync, QueueIndexReindexStepTests.Run_DropsEveryInvalidLeftoverFirst_ThenRebuildsAsync, QueueIndexReindexStepTests.AddWhizbangWorkers_RegistersTheStepOnceAsync, QueueIndexReindexSqlTests.TheStep_ShrinksABloatedQueueIndexAsync}
+
+The framework's own `queue-index-reindex` step rebuilds a bloated index on a queue table that churns to empty
+(the outbox, the inbox and its work state, perspective events, active streams, the doorbell queue) with
+`REINDEX INDEX CONCURRENTLY`. It is a step because it needs exactly what the cycle already decided: a settled
+service, a ready schema, and the maintainer duty. Each run drops any invalid leftover of an interrupted rebuild
+first, then rebuilds at most one index, the one with the most bytes to give back among those more than
+`Whizbang:Workers:Maintenance:ReindexBloatThreshold` times their expected size (default `3.0`; `0` turns it off).
+A claim per window keeps it to one rebuild per window across the fleet. `AddWhizbangWorkers` registers it once.
+
+[Storage maintenance: rebuilding queue-table indexes](../../operations/infrastructure/storage-maintenance#queue-index-rebuild)
+has the survey, the threshold, the leftovers and the reason for each rule.
 
 ## Ledger retention {#ledger-retention}
 
