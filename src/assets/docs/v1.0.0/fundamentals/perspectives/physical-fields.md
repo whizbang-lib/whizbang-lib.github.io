@@ -52,6 +52,7 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/QueryTranslation/GraphQLJsonbContainmentIntegrationTests.cs
   - tests/Whizbang.Generators.Tests/PerspectiveModelArrayAnalyzerTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/JsonbColumnStorageIntegrationTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/Perspectives/DapperTableStorageResetTests.cs
   - tests/Whizbang.Generators.Tests/PhysicalJsonbColumnGenerationTests.cs
   - tests/Whizbang.Generators.Tests/ColumnStorageSqlTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/Perspectives/DapperJsonbColumnTests.cs
@@ -842,15 +843,15 @@ public class ActiveSessionModel {
 | `ToastAutovacuumVacuumThreshold` | `toast.autovacuum_vacuum_threshold` | 0 or more |
 | `ToastAutovacuumVacuumScaleFactor` | `toast.autovacuum_vacuum_scale_factor` | 0 to 100 |
 
-Each property is negative by default, which keeps the server's setting. The insert settings start a
+Each property is negative by default, which means the server's setting. The insert settings start a
 vacuum after inserts alone; on a table that is mostly appended to, that keeps the visibility map
 current so index-only scans stay index-only. The `Toast` settings apply to the TOAST relation, which
 holds documents too large for the row and is vacuumed on its own schedule.
 
 Like the options above, each parameter is set only where the catalog holds a different value, so a
 restart takes no lock. A `toast.` parameter is compared against the TOAST relation, where PostgreSQL
-keeps it. Removing a property from the attribute does not reset the parameter; reset it by hand with
-`ALTER TABLE … RESET (…)`. A value outside the range is reported at build time as
+keeps it. Removing a property from the attribute resets the parameter to the server's value (see
+[Removed settings](#removed-storage-settings)). A value outside the range is reported at build time as
 [WHIZ804](../../operations/diagnostics/whiz804) and left out of the schema pass, which would otherwise fail
 on PostgreSQL's own error.
 
@@ -879,7 +880,8 @@ public class ActiveSessionModel {
 ```
 
 `FillFactor` accepts 10 to 100; a value outside that is reported as
-[WHIZ804](../../operations/diagnostics/whiz804). It is -1 by default, which keeps the server's value.
+[WHIZ804](../../operations/diagnostics/whiz804). It is -1 by default, which means the server's value
+(100); a fillfactor an earlier release of the model set is reset (see [Removed settings](#removed-storage-settings)).
 Like the settings above, it is set only where the catalog holds a different value.
 
 A changed fillfactor applies only to the pages written from then on: the rows already stored stay on
@@ -893,7 +895,43 @@ document stored out of line in TOAST is written to new TOAST chunks whenever it 
 fillfactor also means fewer rows per page, so a scan reads more pages; keep it at 100 for a table whose
 rows are inserted and never updated.
 
-{verified: ColumnStorageSqlTests.FillFactor_ReachesBothSchemaGenerators_WithARewriteRequestAsync, ColumnStorageSqlTests.SetFillFactor_QueuesARewriteOnlyWhenTheValueChangesOnATableWithPagesAsync, ColumnStorageSqlTests.FillFactor_NotDeclared_EmitsNothingAsync, JsonbColumnStorageIntegrationTests.DeclaredOptions_AreAppliedToTheTableAsync, JsonbColumnStorageIntegrationTests.AChangedFillFactor_OnATableWithRows_QueuesOneRewriteAsync}
+{verified: ColumnStorageSqlTests.FillFactor_ReachesBothSchemaGenerators_WithARewriteRequestAsync, ColumnStorageSqlTests.SetFillFactor_QueuesARewriteOnlyWhenTheValueChangesOnATableWithPagesAsync, ColumnStorageSqlTests.FillFactor_NotDeclared_IsResetNotSetAsync, JsonbColumnStorageIntegrationTests.DeclaredOptions_AreAppliedToTheTableAsync, JsonbColumnStorageIntegrationTests.AChangedFillFactor_OnATableWithRows_QueuesOneRewriteAsync}
+
+### Removed settings {#removed-storage-settings}
+
+When a model stops declaring an autovacuum setting or its fillfactor, whether one property is removed,
+set back to its negative default, or the whole attribute is removed, the schema pass resets the
+parameter, so the table matches the code. Both drivers' schema generators emit the same statement.
+
+The pass resets a parameter only when all of these hold:
+
+| Condition | Why |
+|-----------|-----|
+| It is one of the seven parameters the attribute can set: `fillfactor`, the four `autovacuum_vacuum_*` parameters in the table above, and the two `toast.autovacuum_vacuum_*` parameters | A parameter the attribute cannot set, such as `autovacuum_analyze_threshold`, `autovacuum_enabled` or `toast.autovacuum_vacuum_cost_delay`, is never the model's, so it is left as it was set |
+| The model does not declare it | A declared parameter is set to the declared value instead, and is never reset first |
+| The table (or, for a `toast.` parameter, its TOAST relation) holds it | The pass reads `reloptions` first, so a table already at the server's values issues no `ALTER TABLE` and takes no lock |
+
+Every parameter that qualifies is reset in one `ALTER TABLE … RESET (…)`, which takes the same
+`SHARE UPDATE EXCLUSIVE` lock as setting one. When the fillfactor is among them and the table holds
+rows, the pass also queues a rewrite request, exactly as for a changed fillfactor: the rows already
+stored sit on pages packed to the old value until the table is rewritten (see
+[Free space for updates](#perspective-fillfactor)). A table with no pages queues nothing, and neither
+does a reset of autovacuum parameters alone, which changes no pages.
+
+**A value set by hand is reset too.** The catalog does not record who set a storage parameter, and
+Whizbang keeps no record of the values it set, so it cannot tell one it set from one an operator set
+with `ALTER TABLE`. It treats the model as the authority for the seven parameters above: on a
+perspective table, set them through `[PerspectiveTableStorage]` rather than by hand, or the next schema
+pass that applies the table's statements resets them. The pass applies a perspective's statements when
+the perspective's schema changes, including the first start on a release that changes the generated
+schema, so a hand-set value can survive many restarts and still be reset by a later deploy.
+
+`toast_tuple_target`, `DataCompression` and the column options are not reset when removed: the decision
+covers the autovacuum and fillfactor settings, which govern maintenance, while those govern how new
+values are stored. Reset them by hand with `ALTER TABLE … RESET (toast_tuple_target)` or
+`ALTER COLUMN … SET COMPRESSION DEFAULT` if you remove them.
+
+{verified: ColumnStorageSqlTests.ARemovedSetting_IsResetByBothSchemaGeneratorsAsync, ColumnStorageSqlTests.ATableWithoutTheAttribute_ResetsEveryGovernedParameterAsync, ColumnStorageSqlTests.TheReset_NamesOnlyTheGovernedParametersAsync, ColumnStorageSqlTests.EveryGovernedParameterDeclared_EmitsNoResetAsync, ColumnStorageSqlTests.ResetStorageParameters_AltersOnlyWhatTheCatalogHoldsAsync, ColumnStorageSqlTests.ResetStorageParameters_WithoutTheFillFactor_QueuesNoRewriteAsync, JsonbColumnStorageIntegrationTests.AnUndeclaredSetting_IsReset_AndTheRestAreLeftAloneAsync, JsonbColumnStorageIntegrationTests.ARemovedFillFactor_IsResetOnce_AndQueuesARewriteForATableWithRowsAsync, JsonbColumnStorageIntegrationTests.ARemovedFillFactor_OnAnEmptyTable_QueuesNothingAsync, JsonbColumnStorageIntegrationTests.TheStatements_RunAgain_AlterNothingAsync, DapperTableStorageResetTests.AnUndeclaredSetting_IsReset_AndTheRestAreLeftAloneAsync}
 
 ## Search {#search}
 
