@@ -9,7 +9,7 @@ order: 4
 description: >-
   How the decomposed work pump (ClaimWorker, HeartbeatWorker,
   LeaseRenewalWorker) paces polling, renews work-row leases, and refreshes
-  instance heartbeats. Covers the renew_leases and record_heartbeat SQL
+  instance heartbeats. Covers the wh_renew_held_leases and record_heartbeat SQL
   functions, the adaptive poll-interval backoff, tuning knobs, and failover
   SLAs.
 tags: >-
@@ -24,6 +24,8 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/029_ProcessWorkBatch.sql
   - src/Whizbang.Data.Postgres/Migrations/011_CleanupStaleInstances.sql
   - src/Whizbang.Data.Postgres/Migrations/148_ActiveStreamLeases.sql
+  - src/Whizbang.Data.Postgres/Migrations/255_LeaseRenewalIsScopedToTheHolder.sql
+  - src/Whizbang.Core/Messaging/IWorkCoordinator.cs
 testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/ActiveStreamLeaseExpirySqlTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/ClaimWorkerTests.cs
@@ -33,6 +35,8 @@ testReferences:
   - tests/Whizbang.Core.Component.Tests/Workers/BatchFlusherRetryTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/ClaimWorkSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/RenewLeasesSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/HeldLeaseRenewalSqlTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/LeaseRenewalWorkerCoverageTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/RecordHeartbeatSqlTests.cs
 ---
 
@@ -45,7 +49,7 @@ The monolithic orchestrator SQL function the work pump used to call has been **d
 |---------|--------------|-----------|
 | Claiming + orphan reclaim | `claim_work` | `ClaimWorker` (the only caller of `IWorkCoordinator.ClaimWorkAsync`) |
 | Instance heartbeat | `record_heartbeat` | `HeartbeatWorker` (own timer, decoupled from polling) |
-| Lease renewal | `renew_leases` | `LeaseRenewalWorker` (coalesced batch flusher) |
+| Lease renewal | `wh_renew_held_leases` (migration 255; `renew_leases` before it) | `LeaseRenewalWorker` (coalesced batch flusher) |
 | Stale-instance eviction | `cleanup_stale_instances` | Opportunistic via `record_heartbeat` + `MaintenanceWorker` backstop |
 
 `WorkCoordinatorPublisherWorker` no longer exists; this page describes the shipped decomposition.
@@ -63,7 +67,7 @@ This page documents three contracts that shape the work pump's write volume and 
 
 - `wh_outbox` / `wh_inbox` rows, keyed by `message_id`
 - `wh_perspective_events` rows, keyed by `event_work_id`
-- `wh_receptor_processing` rows, keyed by `id` (done-ness tracked via `completed_at` rather than `processed_at`; leased by `claim_work` but not renewable through `renew_leases`)
+- `wh_receptor_processing` rows, keyed by `id` (done-ness tracked via `completed_at` rather than `processed_at`; leased by `claim_work` but not renewable through `wh_renew_held_leases`)
 
 A row is claimable by another instance only when it is unprocessed AND either unowned or expired — the orphan predicate used by the per-category guards inside `claim_work`:
 
@@ -84,17 +88,19 @@ IF EXISTS (
 END IF;
 ```
 
-### Renewal — `renew_leases`
+### Renewal: `wh_renew_held_leases` {#renewal}
 
-Long-running dispatches renew their leases through `renew_leases(p_category, p_ids, p_lease_seconds DEFAULT 300)`. It sets `lease_expiry = NOW() + p_lease_seconds` for the supplied ids in the chosen category table (`outbox`, `inbox`, or `perspective_event`), skips rows already processed, returns the rows-affected count, and raises on an unknown category.
+Long-running dispatches renew their leases through `wh_renew_held_leases(p_category, p_instance_id, p_ids, p_lease_seconds DEFAULT 300)` (migration 255). It sets `lease_expiry = NOW() + p_lease_seconds` for the supplied ids in the chosen category table (`outbox`, `inbox`, or `perspective_event`) that `p_instance_id` holds and that are not yet processed, extends the stream leases of their streams that the instance is assigned, returns the ids it did **not** renew, and raises on an unknown category. A row is returned when another instance claimed it after the caller's lease lapsed, when it completed, or when the store no longer has it. {verified: HeldLeaseRenewalSqlTests.RenewHeldLeases_Inbox_AFormerHolder_DoesNotExtendTheNewHoldersLease_AndReportsTheRowAsync, HeldLeaseRenewalSqlTests.RenewHeldLeases_ARowThatIsGoneOrCompleted_IsReportedNotRenewedAsync, HeldLeaseRenewalSqlTests.RenewHeldLeases_AnUnknownCategory_IsRefusedAsync}
 
-On the C# side, dispatch workers enqueue `(category, work_id)` pairs onto `ILeaseRenewalChannel`; `LeaseRenewalWorker` coalesces them through a `BatchFlusher` (defaults: max batch 200, coalesce window 200 ms, immediate-flush threshold 100, channel capacity 5 000) and calls `IWorkCoordinator.RenewLeasesAsync` per category. A renewal flush that fails is retried in place with the same batch (`FlushRetryBackoffMs`, default 250 ms, doubling per attempt up to `FlushRetryMaxBackoffMs`, default 5000 ms) and dropped only after `MaxFlushAttempts` consecutive failures (default 5), logged at Error. A dropped renewal batch is not silent loss: the rows it covered keep their current `lease_expiry`, lapse, and are re-offered by `claim_orphaned_*`, which is the consequence the Error names. {verified: BatchFlusherRetryTests.FlushFailsOnce_RetriesTheSameBatchAndDeliversItAsync, BatchFlusherRetryTests.FlushAlwaysFails_DropsAfterMaxAttemptsAndNamesTheConsequenceAsync}
+Before migration 255, renewal went through `renew_leases(p_category, p_ids, p_lease_seconds)`, which matched rows by id alone: a former holder could extend the lease of a row another instance had since claimed. `renew_leases` is left in the schema as it was and is not called by this release, so instances still on the previous release keep renewing during a rolling deployment.
+
+On the C# side, dispatch workers enqueue `(category, work_id)` pairs onto `ILeaseRenewalChannel`; `LeaseRenewalWorker` coalesces them through a `BatchFlusher` (defaults: max batch 200, coalesce window 200 ms, immediate-flush threshold 100, channel capacity 5 000) and calls `IWorkCoordinator.RenewHeldLeasesAsync(category, instanceId, ids, leaseSeconds)` per category as this instance. Each id the call returns is logged at Warning (`LeaseRenewalWorker` EventId 6); a handler still running on that row keeps running. {verified: LeaseRenewalWorkerCoverageTests.FlushBatchAsync_RowsTheRenewalDidNotCover_AreLoggedAsync} See [held lease renewal](../../fundamentals/work-coordinator/batched-flushers.md#held-lease-renewal) for what the other callers do with the ids returned. A renewal flush that fails is retried in place with the same batch (`FlushRetryBackoffMs`, default 250 ms, doubling per attempt up to `FlushRetryMaxBackoffMs`, default 5000 ms) and dropped only after `MaxFlushAttempts` consecutive failures (default 5), logged at Error. A dropped renewal batch is not silent loss: the rows it covered keep their current `lease_expiry`, lapse, and are re-offered by `claim_orphaned_*`, which is the consequence the Error names. {verified: BatchFlusherRetryTests.FlushFailsOnce_RetriesTheSameBatchAndDeliversItAsync, BatchFlusherRetryTests.FlushAlwaysFails_DropsAfterMaxAttemptsAndNamesTheConsequenceAsync}
 
 ### The renewal cap
 
 Every dispatch holds a `LeaseHandle` whose token cancels at `lease_expiry − LeaseGraceSeconds` (default **30 s** of grace). `LeaseRenewalWorker` consults the handle before each DB renewal:
 
-- `TryExtendDeadline` succeeds → the id is included in the `renew_leases` call.
+- `TryExtendDeadline` succeeds → the id is included in the `wh_renew_held_leases` call.
 - The handle has hit `MaxRenewalsPerWork` (default **6**) or is disposed → the id is *skipped*. The DB lease expires naturally, `claim_orphaned_*` re-issues the row with a bumped `attempts` count, and the hung handler surfaces through the standard failure path instead of being silently renewed forever.
 
 At the default 300 s lease and 6 renewals, a single dispatch gets up to ~30 minutes of extension budget.
@@ -114,7 +120,7 @@ The three acquisition functions write the stream lease from the row lease they g
 - The pin carries `lease_expiry`, so a stream is leased the moment its first row is.
 - A claim by the current owner renews the stream lease with the row leases.
 - On conflict the lease follows the assignment: a stream whose owner is gone from `wh_service_instances` moves to the claimant with a fresh lease, and a stream a live owner holds keeps both its owner and its lease.
-- `renew_leases` extends the stream lease alongside the row leases it renews, so a long handler keeps the whole stream and not only the row it is on.
+- `wh_renew_held_leases` extends the stream lease alongside the row leases it renews, for the streams the renewing instance is assigned, so a long handler keeps the whole stream and not only the row it is on. {verified: HeldLeaseRenewalSqlTests.RenewHeldLeases_Inbox_TheHolder_RenewsTheRowAndItsStreamAsync, HeldLeaseRenewalSqlTests.RenewHeldLeases_Outbox_TheHolder_RenewsTheRowAndItsStreamAsync, HeldLeaseRenewalSqlTests.RenewHeldLeases_PerspectiveEvent_TheHolder_RenewsTheRowAndItsStreamAsync}
 
 What this closes: without a writer for the stream lease, the guards could never be satisfied, so an idle instance stealing orphaned work could take a stream's next row between two rows of a live sibling, which is the one interleaving the stream pin exists to prevent. A steal now skips any stream a live sibling holds, even when none of that stream's rows is leased at that instant, and takes only streams no live instance holds.
 

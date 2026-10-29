@@ -19,6 +19,7 @@ codeReferences:
   - src/Whizbang.Core/Workers/HeartbeatWorker.cs
   - src/Whizbang.Core/Workers/LeaseRenewalWorker.cs
   - src/Whizbang.Data.Postgres/Migrations/029_ProcessWorkBatch.sql
+  - src/Whizbang.Data.Postgres/Migrations/255_LeaseRenewalIsScopedToTheHolder.sql
 testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/ClaimWorkSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/EFCoreClaimWorkTests.cs
@@ -26,6 +27,7 @@ testReferences:
   - tests/Whizbang.Core.Component.Tests/Workers/ClaimWorkerTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/HeartbeatWorkerTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/LeaseRenewalWorkerCapTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/HeldLeaseRenewalSqlTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -48,7 +50,7 @@ Messages are claimed using time-limited leases to prevent duplicate processing a
 - **Lease Expiry**: UTC timestamp when the lease expires
 - **Orphaned Work Recovery**: Messages with expired leases can be reclaimed by any active instance
 - **Atomic Claiming**: Lease acquisition happens atomically in the database via the `claim_work` function
-- **Lease Renewal**: `LeaseRenewalWorker` extends leases for in-flight work approaching expiry (via `renew_leases`), with a renewal cap so stuck work eventually re-orphans
+- **Lease Renewal**: `LeaseRenewalWorker` extends the leases this instance holds for in-flight work approaching expiry (via `wh_renew_held_leases`), with a renewal cap so stuck work eventually re-orphans
 
 ### Virtual Partition Distribution
 
@@ -166,7 +168,8 @@ The legacy single orchestrator function was decomposed into focused work-pump fu
 |---|---|---|
 | `claim_work` | `ClaimWorker` | Claims orphaned/unowned work, returns claimed stream ids (bodies fetched separately) |
 | `record_heartbeat` | `HeartbeatWorker` | UPSERTs `wh_service_instances`; opportunistically cleans up stale peers |
-| `renew_leases` | `LeaseRenewalWorker` | Batched lease extension per category (outbox/inbox/perspective_event) |
+| `wh_renew_held_leases` | `LeaseRenewalWorker` | Batched lease extension per category (outbox/inbox/perspective_event) for the rows the calling instance holds; returns the ids it did not renew (migration 255) |
+| `renew_leases` | (none in this release) | The id-only renewal before migration 255, left in place so instances on the previous release keep renewing during a rolling deployment |
 | `store_outbox_messages` / `store_inbox_messages` | Coordinator strategies | Stores new messages with partition assignment (+ inbox dedup) |
 | `fetch_outbox_batch` / `fetch_inbox_batch` | Drain workers | Pulls leased message bodies for one stream in FIFO order |
 | `complete_outbox_published` | `OutboxCompletionFlushWorker` | Deletes (prod) or stamps (debug) published outbox rows |
@@ -354,7 +357,7 @@ public interface IWorkCoordinator {
         ClaimWorkRequest request,
         CancellationToken cancellationToken = default
     );
-    // ... focused companions: RecordHeartbeatAsync, RenewLeasesAsync,
+    // ... focused companions: RecordHeartbeatAsync, RenewHeldLeasesAsync,
     // CompleteOutboxPublishedAsync, CommitHandlerBatchAsync, ReportFailuresAsync, ...
 }
 ```
@@ -363,7 +366,7 @@ For the full API surface, see [Work Coordinator](work-coordinator.md).
 
 ### PostgreSQL Implementation
 
-See: `029_ProcessWorkBatch.sql` (first defines `claim_work`, `record_heartbeat`, `renew_leases`, `commit_handler_result`/`batch`, `complete_outbox_published`, `complete_perspective`, `report_failures`, `flush_completions`) plus the storage/claiming migrations it depends on (020-027, 040). Later migrations redefine several of these (for example `claim_work`, `record_heartbeat`, `renew_leases`); the latest definition is the one in effect.
+See: `029_ProcessWorkBatch.sql` (first defines `claim_work`, `record_heartbeat`, `renew_leases`, `commit_handler_result`/`batch`, `complete_outbox_published`, `complete_perspective`, `report_failures`, `flush_completions`) plus the storage/claiming migrations it depends on (020-027, 040). Later migrations redefine several of these (for example `claim_work`, `record_heartbeat`, `renew_leases`); the latest definition is the one in effect. Migration 255 replaces `renew_leases` with `wh_renew_held_leases` for this release's callers.
 
 The PostgreSQL functions are the authoritative implementation of all coordination logic.
 

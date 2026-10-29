@@ -93,8 +93,9 @@ public interface IWorkCoordinator {
     CancellationToken cancellationToken = default);
   Task CompletePerspectiveAsync(IReadOnlyList<PerspectiveCursorCompletion> cursors,
     IReadOnlyList<Guid> eventWorkIds, bool debugMode, CancellationToken cancellationToken = default);
-  Task<int> RenewLeasesAsync(WorkCategory category, IReadOnlyList<Guid> ids,
-    int leaseSeconds = 300, CancellationToken cancellationToken = default);
+  // Renew only the leases instanceId holds; return the ids not renewed
+  Task<IReadOnlyList<Guid>> RenewHeldLeasesAsync(WorkCategory category, Guid instanceId,
+    IReadOnlyList<Guid> ids, int leaseSeconds = 300, CancellationToken cancellationToken = default);
   Task ReportFailuresAsync(WorkCategory category, IReadOnlyList<MessageFailure> failures,
     CancellationToken cancellationToken = default);
   Task FlushCompletionsAsync(FlushCompletionsRequest request,
@@ -194,7 +195,7 @@ public class RedisWorkCoordinator : IWorkCoordinator {
   // ... implement the remaining abstract members (DeregisterInstanceAsync,
   // GatherStatisticsAsync, StoreInboxMessagesAsync, perspective cursor reporting)
   // and override FetchOutboxBatchAsync / FetchInboxBatchAsync, RecordHeartbeatAsync,
-  // RenewLeasesAsync, ReportFailuresAsync, CommitHandlerBatchAsync for a
+  // RenewHeldLeasesAsync, ReportFailuresAsync, CommitHandlerBatchAsync for a
   // fully functional coordinator.
 }
 ```

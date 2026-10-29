@@ -175,12 +175,14 @@ means.
 | `InboxDispatchWorker` | 80 | Warning | Summary of lapses in one keeper pass beyond the first five. |
 | `InboxDispatchWorker` | 81 | Warning | Handing back never-dispatched rows whose renewals ran out failed. |
 | `InboxDispatchWorker` | 82 | Debug | A duplicate copy of a row, or a copy of a row no longer held, was skipped. |
+| `InboxDispatchWorker` | 83 | Warning | A held row was not renewed because another instance claimed it after this instance's lease lapsed, or it completed; it stops being held and is not dispatched here. |
+| `InboxDispatchWorker` | 84 | Warning | Summary of the rows in one keeper pass, beyond the first five, that the renewal did not cover. |
 | `InboxHandlerWorker` | 26 | Warning | A row's commit failed; carries the message id, type and error. |
 | `InboxHandlerWorker` | 27 | Warning | Summary of commit failures in one flush beyond the first five. |
 | `InboxHandlerWorker` | 28 | Warning | A commit failure names no request in the flush. |
 
 Categories are prefixed `Whizbang.Core.Workers.`. Every Warning above reaches the default `Information` level.
-{verified: InboxDrainWorkerGapTests.HandingBackFails_IsLoggedWithWhatItCostsAsync, InboxDispatchWorkerHeldLeaseTests.Keeper_ManyLapsesInOneSweep_LogTheFirstIndividually_ThenASummaryAsync, InboxDispatchWorkerControlPlaneDropLogTests.Drop_WithARecordedFailure_LogsTheErrorAndNamesItAsARecordedFailureAsync, InboxHandlerWorkerTests.ManyCommitFailuresInOneFlush_LogTheFirstIndividually_ThenOneSummaryOfTheRestAsync}
+{verified: InboxDrainWorkerGapTests.HandingBackFails_IsLoggedWithWhatItCostsAsync, InboxDispatchWorkerHeldLeaseTests.Keeper_ManyLapsesInOneSweep_LogTheFirstIndividually_ThenASummaryAsync, InboxDispatchWorkerHeldLeaseTests.Keeper_ManyRowsItsRenewalDidNotCover_LogTheFirstIndividually_ThenASummaryAsync, InboxDispatchWorkerControlPlaneDropLogTests.Drop_WithARecordedFailure_LogsTheErrorAndNamesItAsARecordedFailureAsync, InboxHandlerWorkerTests.ManyCommitFailuresInOneFlush_LogTheFirstIndividually_ThenOneSummaryOfTheRestAsync}
 
 ## Hierarchical Filtering {#hierarchy}
 
