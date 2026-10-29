@@ -677,6 +677,8 @@ Meter name: `Whizbang.TableStatistics` (`TableStatisticsMetrics`)
 
 How big every table is, what the size is made of, how many rows it holds, and how deep the queues are. Both PostgreSQL drivers report it: the EF Core driver and the Dapper driver register the same provider (`PostgresTableStatisticsProvider`), the meter and the collector with no extra call. {verified: DapperTableStatisticsTests.ADapperHost_ReportsTableStatisticsAsync, TableStatisticsRegistrationTests.RegisteringTwice_RunsOneCollectorAsync}
 
+A ready-made Grafana dashboard for these gauges, the maintenance meter and the capability state ships in the library repository: see [Storage Dashboard](storage-dashboard).
+
 Every gauge on this meter also carries a `database` tag, the name of the database it was read from, alongside the tags listed below. See [One series per database](#table-statistics-database).
 
 | Metric Name | Type | Tags | Description |
@@ -915,6 +917,10 @@ builder.Services.AddOpenTelemetry()
 // Expose /metrics endpoint
 app.MapPrometheusScrapingEndpoint();
 ```
+
+### Storage dashboard
+
+`dashboards/grafana/whizbang-storage.json` in the library repository charts table sizes, growth, bloat and rewrites, maintenance, bytes per event type by part, and storage extension state. [Storage Dashboard](storage-dashboard) covers importing it, its variables and every panel's query.
 
 ### Useful Grafana Queries
 
