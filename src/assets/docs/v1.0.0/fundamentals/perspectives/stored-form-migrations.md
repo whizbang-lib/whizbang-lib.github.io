@@ -283,7 +283,7 @@ and then settles. A table this release creates empty settles on its first check 
 
 ### Required members of a read model {#declared-names-required}
 
-{verified: DeclaredNameSpellingIntegrationTests.ARequiredMemberMissingFromAMappedRow_IsReportedAtErrorAsync, DeclaredNameSpellingIntegrationTests.ARequiredMemberMissingFromAnOpaqueRow_FailsTheReadAsync, DapperDeclaredNameSpellingTests.ARequiredMemberMissing_FailsTheRead_AndIsReportedAtStartupAsync, DeclaredKeySpellingPassTests.MissingRequiredMembers_AreReported_WithABoundedSample_AndTheTableStaysOpenAsync}
+{verified: DeclaredNameSpellingIntegrationTests.ARequiredMemberMissingFromAMappedRow_IsReportedAtErrorAsync, DeclaredNameSpellingIntegrationTests.ARequiredMemberMissingFromAnOpaqueRow_FailsTheReadAsync, DapperDeclaredNameSpellingTests.ARequiredMemberMissingFromATypeOnlyTheRowCarries_FailsTheRead_AndIsReportedAtStartupAsync, DeclaredKeySpellingPassTests.MissingRequiredMembers_AreReported_WithABoundedSample_AndTheTableStaysOpenAsync}
 
 A perspective model member declared `required` (or `[JsonRequired]`) is enforced on stored read-model rows:
 
@@ -305,9 +305,17 @@ and Entity Framework's mapped reader reads the member's default. Fill them with
 A required member whose type admits null is not enforced, because the framework omits a null when it writes a
 document.
 
-**Events are not enforced.** A `required` member of an event type reads as its default when a stored event
-lacks it, as before, so old history keeps replaying. A type used both as an event (or inside one) and in a read
-model is not enforced either: it is treated as optional on every path.
+**Events, commands and other messages are not enforced.** A `required` member of a message type reads as its
+default when a stored message lacks it, as before, so old history keeps replaying even after a later change
+adds `required`. The compiler still requires the member whenever new code creates the message.
+
+{verified: DeclaredNameReadTests.ARequiredMemberMissingFromAnEvent_ReadsAsItsDefaultAsync, DeclaredNameReadTests.ARequiredMemberMissingFromACommand_ReadsAsItsDefaultAsync, DapperDeclaredNameSpellingTests.AnEventStoredWithoutARequiredMember_ReplaysWithItsDefaultAsync, DapperDeclaredNameSpellingTests.ARequiredMemberMissingFromATypeAnEventAlsoCarries_IsReportedAtStartup_AndReadsAsItsDefaultAsync}
+
+**A type shared by a message and a read model** (a point record used inside both an event and the model, for
+example) reads tolerantly everywhere, because history must stay readable. Read-model rows missing one of its
+required members are still **reported at startup** at Error, like the mapped-reader case above: the generated
+startup code declares such types' required members to `DeclaredRequiredMembers`, and the startup check reads
+that alongside the serializer's metadata. Only a type that read models alone carry is refused on read.
 
 ### Events read either spelling {#declared-names-events}
 
