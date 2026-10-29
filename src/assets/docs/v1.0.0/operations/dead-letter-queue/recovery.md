@@ -21,6 +21,8 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/051_DeadLetterRecovery.sql
   - src/Whizbang.Data.Postgres/Migrations/056_DeadLetterReadyNotify.sql
   - src/Whizbang.Data.Postgres/Migrations/241_RecoveredWorkReentersThroughItsStore.sql
+  - src/Whizbang.Data.Postgres/Migrations/256_UnstoredOutboxMessagesAreDeadLettered.sql
+  - src/Whizbang.Data.Postgres/Migrations/257_UnstoredInboxMessagesAreDeadLettered.sql
   - src/Whizbang.Data.EFCore.Postgres/EFCoreDeadLetterRecoveryService.cs
 testReferences:
   - tests/Whizbang.Core.Component.Tests/Workers/DeadLetterRecoveryWorkerTests.cs
@@ -127,6 +129,10 @@ were stored as background work on partition 0.
 | `TransportNotReady` | MediumRetry | 3 | 30 min | PermanentlyFailed |
 | `Unknown` | OneShotThenHold | 1 | 1 h | HoldForReview |
 | `MixedStreamRefused` ([WHIZ133](../diagnostics/whiz133)) | HoldForReview | 0 | none | HoldForReview |
+| `OutboxStoreFailed` (23, [outbox batcher](../../extending/internals/outbox-batch-strategy.md#when-a-flush-fails)) | AggressiveRetry | 5 | 1 min | HoldForReview |
+| `InboxStoreFailed` (24, [inbox batcher](../../extending/internals/inbox-batch-strategy.md#when-a-flush-fails)) | AggressiveRetry | 5 | 1 min | HoldForReview |
+
+{verified: DefaultDeadLetterRecoveryPolicyTests.GetPolicy_OutboxStoreFailed_RetriesAggressivelyThenHoldsAsync, DefaultDeadLetterRecoveryPolicyTests.GetPolicy_InboxStoreFailed_RetriesAggressivelyThenHoldsAsync}
 
 "After exhaustion" is driven by `RecoveryPolicy.HoldForReviewAfterExhaustion`:
 once `recovery_attempts` reaches the policy's `MaxRecoveryAttempts`, the
@@ -152,6 +158,10 @@ entirely — they're held for an operator to look at. Reasons that indicate
 aggressively. `MaxAttemptsExceeded` gets one careful retry after a 6-hour
 cooldown — long enough that whatever caused the original attempt to fail
 has likely passed.
+`OutboxStoreFailed` and `InboxStoreFailed` are messages a batcher accepted
+and could not store, nearly always because the database was unreachable or out
+of connections for longer than the batcher's own retries, so they are re-driven
+soon and often, then held for review so a store that keeps refusing is visible.
 
 ## Custom policy
 
@@ -193,7 +203,7 @@ public sealed class MyCustomPolicy(
 }
 ```
 
-## Stream recovery modes
+## Stream recovery modes {#stream-recovery-modes}
 
 `StreamRecoveryMode` is the stream-coordination hint on the policy surface:
 

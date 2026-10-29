@@ -990,7 +990,7 @@ Shared batching shape (drain signals). **Configure:** bound as the owning worker
 
 ### SlidingWindowInboxOptions / SlidingWindowOutboxOptions / SlidingWindowApplyOptions {#sliding-window-options}
 
-Per-stream debounce strategies for the inbox, outbox, and perspective-apply boundaries. **Configure:** the inbox and outbox shapes bind automatically from `Whizbang:Workers:InboxBatch` and `Whizbang:Workers:OutboxBatch` — no registration call needed, and `services.Configure<T>(…)` still applies and runs first. The apply shape (`SlidingWindowApplyOptions`) has no configuration section and is code-configured. **Details:** no dedicated page yet.
+Per-stream debounce strategies for the inbox, outbox, and perspective-apply boundaries. **Configure:** the inbox and outbox shapes bind automatically from `Whizbang:Workers:InboxBatch` and `Whizbang:Workers:OutboxBatch` with no registration call needed, and `services.Configure<T>(…)` still applies and runs first. The apply shape (`SlidingWindowApplyOptions`) has no configuration section and is code-configured. **Details:** [outbox batch strategy](../../extending/internals/outbox-batch-strategy.md), [inbox batch strategy](../../extending/internals/inbox-batch-strategy.md).
 
 | Property | Type | Inbox default | Outbox default | Apply default | Environment variable (inbox / outbox) | Purpose |
 |----------|------|---------------|----------------|---------------|----------------------------------------|---------|
@@ -999,6 +999,17 @@ Per-stream debounce strategies for the inbox, outbox, and perspective-apply boun
 | `MaxSize` | `int` | 1000 | 100 | 1000 | `Whizbang__Workers__InboxBatch__MaxSize` / `Whizbang__Workers__OutboxBatch__MaxSize` | Max signals per stream batch |
 | `IdleEvictionWindow` | `TimeSpan` | 30s | 30s | 30s | `Whizbang__Workers__InboxBatch__IdleEvictionWindow` / `Whizbang__Workers__OutboxBatch__IdleEvictionWindow` | Evict a stream's buffer after this idle duration |
 | `IdleSweepInterval` | `TimeSpan` | 10s | 10s | 10s | `Whizbang__Workers__InboxBatch__IdleSweepInterval` / `Whizbang__Workers__OutboxBatch__IdleSweepInterval` | How often the idle sweep runs |
+| `MaxFlushAttempts` | `int` | 5 | 5 | n/a | `Whizbang__Workers__InboxBatch__MaxFlushAttempts` / `Whizbang__Workers__OutboxBatch__MaxFlushAttempts` | Attempts to store a stream's batch, the first included, before it is dead-lettered; only a transient database failure is retried. At least 1 |
+| `FlushRetryBackoff` | `TimeSpan` | 100ms | 100ms | n/a | `Whizbang__Workers__InboxBatch__FlushRetryBackoff` / `Whizbang__Workers__OutboxBatch__FlushRetryBackoff` | Wait before the first retry of a batch store; doubles per retry |
+| `FlushRetryMaxBackoff` | `TimeSpan` | 5s | 5s | n/a | `Whizbang__Workers__InboxBatch__FlushRetryMaxBackoff` / `Whizbang__Workers__OutboxBatch__FlushRetryMaxBackoff` | Longest wait between two attempts to store a batch |
+
+:::new
+`MaxFlushAttempts`, `FlushRetryBackoff` and `FlushRetryMaxBackoff` govern what the inbox and outbox batchers do
+when a stream's batch cannot be stored: retry a transient failure, then write the batch to the dead-letter
+table with reason `OutboxStoreFailed` (23) or `InboxStoreFailed` (24). See
+[outbox batch strategy](../../extending/internals/outbox-batch-strategy.md#when-a-flush-fails) and
+[inbox batch strategy](../../extending/internals/inbox-batch-strategy.md#when-a-flush-fails).
+:::
 
 ### PerStreamSerializerOptions
 
@@ -1797,6 +1808,7 @@ These settings have no option yet and are set in SQL only:
 |---|---|----------------------|---|
 | `notify_debounce_seconds` | `7` | — *code-only* | Doorbell debounce window (must stay below the C# `NotifyDrainLingerSeconds`, default 8). Non-positive disables |
 | `integrity_epoch_max_stall_seconds` | `3600` | — *code-only* | Digest-epoch stall escape: a lane whose frontier has not advanced this long closes its first blocked epoch anyway (once per sweep). Non-positive disables |
+| `perspective_storage_manual_tables` | empty | none, SQL only | Comma-separated perspective tables whose fillfactor and autovacuum settings are managed by hand: each start neither sets nor resets them, logs the list and warns of declared values it ignores. Read at every start. See [Manually managed tables](../../fundamentals/perspectives/physical-fields#manually-managed-tables) |
 
 ## Turnkey-bound options sections (complete sweep)
 

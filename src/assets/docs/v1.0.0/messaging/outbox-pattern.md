@@ -447,6 +447,7 @@ For end-to-end worker tests, use completion signals (lifecycle hooks, `TaskCompl
 **Messaging Patterns**:
 - [Inbox Pattern](inbox-pattern.md) - Exactly-once message processing
 - [Work Coordination](work-coordinator.md) - IWorkCoordinator deep dive
+- [Outbox Batch Strategy](../extending/internals/outbox-batch-strategy.md) - How returned and published events are buffered per stream, and what happens when a store fails
 - [Message Envelopes](message-envelopes.md) - Hop-based observability
 
 **Examples**:

@@ -20,6 +20,7 @@ codeReferences:
   - src/Whizbang.Core/Lenses/TenantConstants.cs
   - src/Whizbang.Core/Lenses/PerspectiveScope.cs
   - src/Whizbang.Core/Security/HopScope.cs
+  - src/Whizbang.Core/Security/StoredScope.cs
   - src/Whizbang.Core/Security/SecurityExtraction.cs
   - src/Whizbang.Transports.HotChocolate/Middleware/WhizbangScopeMiddleware.cs
 testReferences:
@@ -33,6 +34,7 @@ testReferences:
   - tests/Whizbang.Core.Tests/Security/HopScopeTests.cs
   - tests/Whizbang.Core.Tests/Security/HopScopeTwoHopWireTests.cs
   - tests/Whizbang.Core.Tests/Dispatcher/HopScopeDispatchParityTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperStoredScopeReadBackTests.cs
   - tests/Whizbang.Transports.HotChocolate.Tests/Unit/ScopeHopPropagationTests.cs
   - tests/Whizbang.Transports.HotChocolate.Tests/Unit/WhizbangScopeMiddlewareTests.cs
   - tests/Whizbang.Transports.HotChocolate.Tests/Unit/HotChocolateOptionsConfigurationBindingTests.cs
@@ -260,7 +262,8 @@ public class ApproveRefundReceptor : IReceptor<ApproveRefund, RefundApproved> {
 - **Unlisted claims.** A claim whose type is not in `PropagatedClaimTypes` stays in the service that read it.
 - **Another identity's scope.** A message dispatched with an explicit message context for a different tenant or user carries that identity's ids and none of the current request's extensions or claims ([details](message-security.md#hop-scope-same-identity)).
 - **A non-propagating scope.** A scope context created with `ShouldPropagate = false` lends only the tenant and user ids.
-- **Two stored-event read-back paths** rebuild only the tenant and user ids for now ([known gap](message-security.md#hop-scope-known-gap), tracked as [whizbang-lib/whizbang#1855](https://github.com/whizbang-lib/whizbang/issues/1855)).
+
+A stored event read back later (a replay, a rebuild, a redelivery or a reconciliation) keeps the scope it was stored with, extensions, allowed principals and markers included, on every driver path. Claims are the exception: they cross on the hop, not in the stored scope column, so an event stored without hops reads back without them ([details](message-security.md#hop-scope-stored-read-back)).
 
 ## Wire Format Reference
 

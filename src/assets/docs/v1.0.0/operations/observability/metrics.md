@@ -57,6 +57,8 @@ testReferences:
   - tests/Whizbang.Core.Tests/Observability/PerspectiveMetricsTests.cs
   - tests/Whizbang.Core.Tests/Observability/PerspectiveRewindMetricsTests.cs
   - tests/Whizbang.Core.Tests/Observability/WorkCoordinatorMetricsTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/SlidingWindowOutboxFlushFailureTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/SlidingWindowInboxFlushFailureTests.cs
   - tests/Whizbang.Core.Tests/Messaging/WorkCoordinatorGateHolderDiagnosticsTests.cs
   - tests/Whizbang.Core.Tests/Observability/InboxMetricsTests.cs
   - tests/Whizbang.Core.Tests/Observability/DeadLetterMetricsTests.cs
@@ -100,7 +102,7 @@ The six core meters cover the main request lifecycle:
 | `Whizbang.LifecycleCoordinator` | `LifecycleCoordinatorMetrics` | Coordinator state, WhenAll tracking, stage firing |
 | `Whizbang.Transport` | `TransportMetrics` | Inbox receive, outbox publish, event store, subscriptions, body offloads |
 | `Whizbang.Perspectives` | `PerspectiveMetrics` | Perspective worker batches, checkpoints, event loading, rewinds |
-| `Whizbang.WorkCoordinator` | `WorkCoordinatorMetrics` (+ `InboxMetrics`) | Strategy flushes, publisher worker, maintenance, gate holds, inbox dispatch |
+| `Whizbang.WorkCoordinator` | `WorkCoordinatorMetrics` (+ `InboxMetrics`) | Strategy flushes, batch store failures, publisher worker, maintenance, gate holds, inbox dispatch |
 
 Additional subsystem meters:
 
@@ -523,6 +525,27 @@ The `process_batch.*` (`duration`, `calls`, `errors`), `batch.*` (`outbox_messag
 | `whizbang.work_coordinator.outbox.emission_deduplicated` | Counter\<long\> | Outbox rows skipped because the same message id was already stored: the republishes a retry would have produced; tagged by `message_type`. Recorded by the EF Core coordinator (the Dapper coordinator deduplicates through the same primary key but does not count). Sustained non-zero points at the completion path, see [Emission identity](/v1.0.0/fundamentals/dispatcher/message-cascade#emission-identity) |
 
 {verified: WorkCoordinatorMetricsTests.WCMetrics_OutboxEmissionDeduplicated_CountsPerMessageTypeAsync, EFCoreOutboxEmissionDedupTests.StoreOutboxMessagesAsync_SameMessageStoredTwice_CountsTheSkippedRowByTypeAsync}
+
+### Batch store failures {#batch-store-failures}
+
+:::new
+Recorded by the outbox and inbox batchers when a stream's batch store fails. See
+[when an outbox flush fails](/v1.0.0/extending/internals/outbox-batch-strategy#when-a-flush-fails) and
+[when an inbox flush fails](/v1.0.0/extending/internals/inbox-batch-strategy#when-a-flush-fails).
+:::
+
+| Metric Name | Type | Description |
+|-------------|------|-------------|
+| `whizbang.work_coordinator.outbox_flush.retries` | Counter\<long\> | Retries of a stream's outbox batch after a transient database failure; tagged `reason` (`connection_lost`, `insufficient_resources`, `command_timeout`, `deadlock`, `serialization_failure`, `statement_canceled`, `lock_timeout`, `provider_transient`). A steady rate is a database or pool that cannot keep up with the concurrent per-stream stores |
+| `whizbang.work_coordinator.outbox_flush.failed_messages` | Counter\<long\> | Outbox messages the batcher accepted and could not store; tagged `cause` (`RetriesExhausted`, `NotRetryable`, `AbandonedAtShutdown`) and `outcome` (`dead_lettered`, or `not_recorded` when the dead-letter write failed too). Alert on any `not_recorded`: those messages exist only in the error log |
+| `whizbang.work_coordinator.inbox_flush.retries` | Counter\<long\> | The same retries for the inbox batcher; tagged `reason` |
+| `whizbang.work_coordinator.inbox_flush.failed_messages` | Counter\<long\> | Inbox messages the inbox batcher accepted and could not store; tagged `cause` and `outcome` as above |
+
+{verified: SlidingWindowOutboxFlushFailureTests.FlushFailsOnceForSomeStreams_EveryAcceptedMessageIsStoredAsync, SlidingWindowOutboxFlushFailureTests.FlushFailsTransientlyOnEveryAttempt_DeadLettersTheBatchAfterMaxFlushAttemptsAsync, SlidingWindowInboxFlushFailureTests.FlushFailsOnceForSomeStreams_EveryAcceptedMessageIsStoredAsync, SlidingWindowInboxFlushFailureTests.FlushFailsTransientlyOnEveryAttempt_DeadLettersTheBatchAfterMaxFlushAttemptsAsync}
+
+Both `failed_messages` counters report a zero point for each `outcome` from startup ([passive counters](#passive-counters)), so an alert on
+`not_recorded` has a series to watch before the first failure. The outbox and inbox batch stores also record
+`whizbang.gate.hold_duration_ms` under the callers `OutboxBatchFlush` and `InboxBatchFlush`.
 
 ### Publisher Worker
 

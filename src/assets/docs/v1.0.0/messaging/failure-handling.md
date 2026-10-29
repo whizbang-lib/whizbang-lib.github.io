@@ -83,6 +83,14 @@ public enum MessageFailureReason {
     BodyClaimIntegrityFailure = 14,            // Offloaded-body integrity check failed
     CompositeInnerEventLimitExceeded = 15,     // Composite exceeded inner-event cap
     CompositeExpansionFailure = 16,            // Composite fan-out failed
+    BrokerDeadLetter = 17,                     // Dead-lettered at the broker, imported by the drain
+    PoisonRedeliveryLoop = 18,                 // Same message redelivered past the poison bound
+    BodyClaimCipherUnknown = 19,               // Offloaded-body cipher unknown
+    MessagePayloadTooLarge = 20,               // Payload larger than the limit that applies
+    BodyClaimUnsealed = 21,                    // Unsealed body claim where sealed is required
+    MixedStreamRefused = 22,                   // WHIZ133: same event refused on a mixed stream
+    OutboxStoreFailed = 23,                    // Outbox batcher could not store an accepted message
+    InboxStoreFailed = 24,                     // Inbox batcher could not store an accepted message
     Unknown = 99                               // Default (not classified)
 }
 ```

@@ -504,6 +504,7 @@ For end-to-end tests, publish the same message twice through the transport and a
 **Messaging Patterns**:
 - [Outbox Pattern](outbox-pattern.md) - Reliable event publishing
 - [Work Coordination](work-coordinator.md) - IWorkCoordinator deep dive
+- [Inbox Batch Strategy](../extending/internals/inbox-batch-strategy.md) - The inbox batcher a consumer can append to, and what happens when a store fails
 - [Message Envelopes](message-envelopes.md) - Hop-based observability
 
 **Examples**:
