@@ -21,6 +21,8 @@ codeReferences:
   - src/Whizbang.Core/Messaging/StandbyRequest.cs
   - src/Whizbang.Data.EFCore.Postgres/EFCorePostgresStartupAssessor.cs
   - src/Whizbang.Data.Postgres/Migrations/110_StandbyHandshake.sql
+  - src/Whizbang.Data.Postgres/Perspectives/DeclaredKeySpellingPass.cs
+  - src/Whizbang.Data.Postgres/StoredFormMigrationJournal.cs
 testReferences:
   - tests/Whizbang.Core.Tests/Startup/AssessStartupStepTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/ColdBootJourneyE2ETests.cs
@@ -31,6 +33,7 @@ testReferences:
   - tests/Whizbang.Core.Component.Tests/Startup/StandbyWatcherTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/AliveLockLivenessSqlTests.cs
   - tests/Whizbang.Core.Component.Tests/Startup/StartupWiringAuditTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/DeclaredNameSpellingIntegrationTests.cs
 ---
 
 # Rolling Upgrades
@@ -126,6 +129,24 @@ A host gets the clock registered in its container. The worker pipeline registers
 Bounding the wait by liveness handles the *decision*; it does not handle the *process*, which may still be running — a pod paused by a long collection or a brief partition comes back and carries on against a schema that has moved. For a breaking migration that is not survivable, so the migrator (or an operator) **evicts** the unresponsive peer: a durable tombstone recording who issued it and when, delivered through the instance's own next heartbeat, and enforced where effect happens — [capability acquisition refuses an evicted instance](capabilities-and-duties#winning-a-duty). A restarted pod draws a new instance id and is unevicted; the zombie keeps its id and stays fenced.
 
 The full mechanics live in [Instance Liveness](../../fundamentals/workers/instance-liveness#eviction-reaping-is-a-fence-not-just-a-deletion).
+
+## Stored documents written mid-deploy {#stored-documents-written-mid-deploy}
+
+{verified: DeclaredNameSpellingIntegrationTests.ASecondStart_ChangesNoRow_AndSettlesTheTableAsync, DapperDeclaredNameSpellingTests.ASecondStart_ChangesNoRowAsync, StoredFormMigrationTests.ASecondRun_ChangesNothing_AndSettles_AndAThirdSkipsWithoutAScanAsync}
+
+A rewrite of stored perspective documents runs once, at the start of the new release, while instances of the
+previous release may still be serving and writing documents in the old form. The
+[declared-name rewrite](../../fundamentals/perspectives/stored-form-migrations.md#declared-names) (stored keys
+moved to their declared JSON spelling) and the generated
+[stored-form migrations](../../fundamentals/perspectives/stored-form-migrations.md#journal) handle this the same
+way: a pass that changed rows is **not settled** in `wh_stored_form_migrations`, so the next start scans the
+table again. That **second start catches the rows an older instance wrote mid-deploy**, and the table settles
+on the first pass that finds nothing left to change. After that, it is skipped with one lookup.
+
+So either deploy the release without a mixed fleet, or plan on a second start of the new release (a later
+rollout, a scale event or a restart) once every older instance is gone. Until then, a document an older
+instance wrote in the old form reads as it did before the upgrade: a key in the old spelling, for example,
+reads as its member's default.
 
 ## Verification
 
