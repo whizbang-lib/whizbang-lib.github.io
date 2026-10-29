@@ -14,11 +14,21 @@ codeReferences:
   - src/Whizbang.Core/Workers/OutboxCompletionFlushWorker.cs
   - src/Whizbang.Core/Workers/LeaseRenewalWorker.cs
   - src/Whizbang.Data.Postgres/Migrations/016_UpdatePerspectiveCheckpoints.sql
+  - src/Whizbang.Data.Postgres/Migrations/255_LeaseRenewalIsScopedToTheHolder.sql
+  - src/Whizbang.Core/Messaging/IWorkCoordinator.cs
+  - src/Whizbang.Core/Messaging/WorkCategory.cs
+  - src/Whizbang.Core/Workers/OutboxPublishWorker.cs
+  - src/Whizbang.Core/Workers/OutboxDrainWorker.cs
+  - src/Whizbang.Core/Workers/InboxDispatchWorker.cs
 testReferences:
   - tests/Whizbang.Core.Component.Tests/Workers/BatchFlusherRetryTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/OutboxCompletionFlushWorkerTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/LeaseRenewalWorkerCoverageTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Cursors/PerspectiveCursorAdvanceSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/HeldLeaseRenewalSqlTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/OutboxPublishWorkerHoldRenewalTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/OutboxDrainWorkerTransportReadinessTests.cs
+  - tests/Whizbang.Core.Tests/Workers/InboxDispatchWorkerHeldLeaseTests.cs
 ---
 
 # Batched flushers
@@ -48,7 +58,7 @@ Producer enqueues item     ─┘      ─ then coalesce additional items for Co
 | `OutboxCompletionFlushWorker` | `Guid` (outbox message id) | `complete_outbox_published` | 500 max / 10 ms / 250 immediate |
 | `PerspectiveCompletionFlushWorker` | `PerspectiveCompletionItem` (event_work_id OR cursor) | `complete_perspective` | 1000 max / 25 ms / 500 immediate |
 | `FailureFlushWorker` | `CategorizedFailure` (category + MessageFailure) | `report_failures` per category | 100 max / 100 ms / 50 immediate |
-| `LeaseRenewalWorker` | `CategorizedLeaseRenewal` (category + Guid) | `renew_leases` per category | 200 max / 200 ms / 100 immediate |
+| `LeaseRenewalWorker` | `CategorizedLeaseRenewal` (category + Guid) | `wh_renew_held_leases` per category | 200 max / 200 ms / 100 immediate |
 
 Each follows the same shape: a `BackgroundService` exposing a channel-writer interface, owning a `BatchFlusher<T>` that calls the appropriate `IWorkCoordinator` method per batch.
 
@@ -124,6 +134,35 @@ WHERE split_part(e.event_type, ',', 1) = ANY (:'handled'::text[])
 Both counts fall as the fixed release completes new work: each completion creates or advances its stream's cursor. A stream that receives no new events keeps its old cursor until it is next processed or rebuilt.
 
 **To repair rather than measure**, rebuild the affected records (`RebuildMode.SelectedStreams` with their stream ids). The rebuild replays each record on the instance that owns it and writes the cursor from what it applied, so it is exact where these queries can only estimate. Do not move cursors with SQL: a cursor set past an event the perspective has not applied makes that event look like a late arrival and triggers a replay, and SQL cannot tell which events were applied.
+
+## Held lease renewal {#held-lease-renewal}
+
+Every lease renewal goes through `IWorkCoordinator.RenewHeldLeasesAsync(category, instanceId, ids, leaseSeconds)`,
+which calls `wh_renew_held_leases` (migration 255). The caller names itself, and a row is renewed only
+while that instance holds it and it is unprocessed. The stream leases of the renewed rows' streams that
+the instance is assigned are extended with them. The call returns the ids it did **not** renew: a row
+another instance claimed after the caller's lease on it lapsed, a row that completed, or a row the
+store no longer has. An unknown category is refused.
+{verified: HeldLeaseRenewalSqlTests.RenewHeldLeases_Inbox_AFormerHolder_DoesNotExtendTheNewHoldersLease_AndReportsTheRowAsync, HeldLeaseRenewalSqlTests.RenewHeldLeases_Inbox_TheHolder_RenewsTheRowAndItsStreamAsync, HeldLeaseRenewalSqlTests.RenewHeldLeases_Outbox_AFormerHolder_DoesNotExtendTheNewHoldersLease_AndReportsTheRowAsync, HeldLeaseRenewalSqlTests.RenewHeldLeases_Outbox_TheHolder_RenewsTheRowAndItsStreamAsync, HeldLeaseRenewalSqlTests.RenewHeldLeases_PerspectiveEvent_AFormerHolder_DoesNotExtendTheNewHoldersLease_AndReportsTheRowAsync, HeldLeaseRenewalSqlTests.RenewHeldLeases_PerspectiveEvent_TheHolder_RenewsTheRowAndItsStreamAsync, HeldLeaseRenewalSqlTests.RenewHeldLeases_ARowThatIsGoneOrCompleted_IsReportedNotRenewedAsync, HeldLeaseRenewalSqlTests.RenewHeldLeases_AnUnknownCategory_IsRefusedAsync}
+
+Before migration 255, renewal matched rows by id alone. An instance whose lease had lapsed, and whose
+row another instance had since claimed, still had the row in memory, and its next renewal extended
+the new holder's row and stream leases. Both instances then treated the row as theirs.
+
+Every caller stops holding what the call returns:
+
+| Caller | What it does with a row it was not renewed for |
+|---|---|
+| Inbox lease keeper (`InboxDispatchWorker`) | Stops holding the row: a queued copy is not dispatched and a running handler's deadline is not extended. Logged at Warning, the first five individually, then a count. See [inbox dispatch](inbox-dispatch.md#renewal-not-covered). |
+| Outbox publisher, transport-not-ready hold (`OutboxPublishWorker`) | Stops re-buffering the row and tracking it in flight, so this instance does not publish it. Logged at Warning. |
+| Outbox drain, transport-not-ready hold (`OutboxDrainWorker`) | Stops reporting the row as held in its held-publish signal. |
+| `LeaseRenewalWorker` | Logs each row at Warning. A handler still running on the row keeps running. |
+
+{verified: InboxDispatchWorkerHeldLeaseTests.Keeper_ARowItsRenewalDidNotCover_StopsBeingHeld_AndIsNotDispatchedAsync, OutboxPublishWorkerHoldRenewalTests.Bulk_ARowItsRenewalDidNotCover_IsNoLongerHeldOrPublishedAsync, OutboxDrainWorkerTransportReadinessTests.NotReady_ARowItsRenewalDidNotCover_IsNotReportedHeldAsync, LeaseRenewalWorkerCoverageTests.FlushBatchAsync_RowsTheRenewalDidNotCover_AreLoggedAsync}
+
+`renew_leases`, the function renewal used before migration 255, is left in the schema unchanged and
+unused by this release. During a rolling deployment, instances still on the previous release keep
+renewing through it.
 
 ## Composite flush
 

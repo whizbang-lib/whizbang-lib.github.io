@@ -26,7 +26,7 @@ includes the new SQL function family + worker pipeline.
 
 1. **All services upgraded** to the Whizbang version that ships the new SQL functions:
    `claim_work`, `commit_handler_result`, `commit_handler_batch`, `complete_outbox_published`,
-   `record_heartbeat`, `complete_perspective`, `report_failures`, `renew_leases`,
+   `record_heartbeat`, `complete_perspective`, `report_failures`, `wh_renew_held_leases` (migration 255),
    `flush_completions`, `resolve_sync_inquiries`, plus `_emit_event_store_chain`.
 2. **Migrations applied** to each service database. Check by running `\df claim_work` in psql.
 3. **`AddWhizbang()` called** in each service's `Program.cs` — the worker pipeline

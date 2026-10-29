@@ -21,6 +21,7 @@ codeReferences:
   - src/Whizbang.Core/Messaging/WorkCoordinatorFlushHelper.cs
   - src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs
   - src/Whizbang.Data.Dapper.Postgres/DapperWorkCoordinator.cs
+  - src/Whizbang.Data.Postgres/Migrations/255_LeaseRenewalIsScopedToTheHolder.sql
 testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/EFCoreClaimWorkTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/EFCoreCommitHandlerTests.cs
@@ -28,6 +29,8 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/CompleteOutboxPublishedSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/CommitHandlerBatchSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/FlushCompletionsSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/HeldLeaseRenewalSqlTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/LeaseRenewalWorkerCoverageTests.cs
   - tests/Whizbang.Core.Tests/Messaging/WorkCoordinatorFlushHelperInboxCompletionTests.cs
 lastMaintainedCommit: '01f07906'
 ---
@@ -57,7 +60,7 @@ flowchart TD
         Commit["CommitHandlerBatchAsync — inbox completion + emitted messages, SAVEPOINT per handler"]
         Complete["CompleteOutboxPublishedAsync / CompletePerspectiveAsync — batched completions"]
         Fail["ReportFailuresAsync — batched failure reporting per category"]
-        Lease["RenewLeasesAsync — extend leases for in-flight work"]
+        Lease["RenewHeldLeasesAsync: extend the leases this instance holds"]
         Heart["RecordHeartbeatAsync / DeregisterInstanceAsync — instance lifecycle"]
     end
 
@@ -115,8 +118,9 @@ public interface IWorkCoordinator {
     Task ReportFailuresAsync(
         WorkCategory category, IReadOnlyList<MessageFailure> failures,
         CancellationToken cancellationToken = default);
-    Task<int> RenewLeasesAsync(
-        WorkCategory category, IReadOnlyList<Guid> ids,
+    // Renews only the leases instanceId holds; returns the ids it did not renew
+    Task<IReadOnlyList<Guid>> RenewHeldLeasesAsync(
+        WorkCategory category, Guid instanceId, IReadOnlyList<Guid> ids,
         int leaseSeconds = 300, CancellationToken cancellationToken = default);
 
     // Composite single-round-trip flusher (outbox completes + perspective completes
@@ -424,13 +428,18 @@ await coordinator.ReportFailuresAsync(WorkCategory.Outbox, pendingFailures, ct);
 
 ### Pattern 4: Lease Renewal (LeaseRenewalWorker)
 
-```csharp{title="Pattern 4: Lease Renewal" description="LeaseRenewalWorker extends leases for in-flight work approaching expiry" category="Architecture" difficulty="BEGINNER" tags=["Messaging", "C#", "Pattern", "Store", "Inbox"] unverified="verified by LeaseRenewalWorkerCapTests, which is outside the current coverage map"}
-// When in-flight items approach lease/3 from expiry, renew in batch per category
-var renewed = await coordinator.RenewLeasesAsync(
+```csharp{title="Pattern 4: Lease Renewal" description="LeaseRenewalWorker extends the leases this instance holds for in-flight work approaching expiry" category="Architecture" difficulty="BEGINNER" tags=["Messaging", "C#", "Pattern", "Store", "Inbox"] tests=["LeaseRenewalWorkerCoverageTests.FlushBatchAsync_RowsTheRenewalDidNotCover_AreLoggedAsync"]}
+// When in-flight items approach lease/3 from expiry, renew in batch per category,
+// as this instance: only the leases it still holds are extended
+var notHeld = await coordinator.RenewHeldLeasesAsync(
     WorkCategory.Inbox,
+    instanceProvider.InstanceId,
     inFlightMessageIds,
     leaseSeconds: 300,
     ct);
+
+// A row returned in notHeld was claimed by another instance after this one's
+// lease lapsed, or it completed: the caller stops holding it
 
 // A per-item renewal cap prevents stuck work from renewing forever —
 // once the cap is hit, the lease expires and claim_orphaned_* re-issues the work
@@ -455,7 +464,7 @@ Each coordinator method maps to a focused **PostgreSQL function** (most were fir
 | `CompleteOutboxPublishedAsync` | `complete_outbox_published` | `OutboxCompletionFlushWorker` |
 | `CompletePerspectiveAsync` | `complete_perspective` | `PerspectiveCompletionFlushWorker` |
 | `ReportFailuresAsync` | `report_failures` | `FailureFlushWorker` |
-| `RenewLeasesAsync` | `renew_leases` | `LeaseRenewalWorker` |
+| `RenewHeldLeasesAsync` | `wh_renew_held_leases` (migration 255; `renew_leases` is left unused for rolling deployments) | `LeaseRenewalWorker`, the inbox lease keeper, the outbox transport-not-ready holds |
 | `FlushCompletionsAsync` | `flush_completions` | — (composite surface; the per-category flush workers currently call the focused methods) |
 | `NotifyScheduledRetryDueAsync` | `notify_scheduled_retry_due` | Backup tick (`DefaultBackupTickRegistrar` / `BackupTickCoordinator`) |
 

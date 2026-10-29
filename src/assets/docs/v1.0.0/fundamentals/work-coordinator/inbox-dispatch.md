@@ -15,6 +15,8 @@ codeReferences:
   - src/Whizbang.Core/Workers/InboxHandlerWorker.cs
   - src/Whizbang.Core/Workers/LeaseHandleOptions.cs
   - src/Whizbang.Core/Workers/LeaseRenewalWorker.cs
+  - src/Whizbang.Core/Messaging/IWorkCoordinator.cs
+  - src/Whizbang.Data.Postgres/Migrations/255_LeaseRenewalIsScopedToTheHolder.sql
 testReferences:
   - tests/Whizbang.Core.Tests/Messaging/InboxChannelWriterHeldRowsTests.cs
   - tests/Whizbang.Core.Tests/Workers/InboxDispatchWorkerHeldLeaseTests.cs
@@ -45,19 +47,22 @@ A held row is in one of three states:
 | Dispatching | A consumer is running its receptors. | The dispatch ends: a completion handed to the commit channel moves it to awaiting commit; any other ending releases it. |
 | Awaiting commit | Dispatched; its completion waits in the batched commit channel. | The commit flush ends, whether the commit landed or failed. |
 
-A row also stops being held when its renewals run out (below), or when nothing has renewed it for
-600 seconds. {verified: InboxChannelWriterHeldRowsTests.EndDispatch_ReleasesTheRow_UnlessItsCommitIsPendingAsync, InboxChannelWriterHeldRowsTests.ARenewedRow_IsNotAgedOutOfTheHeldSetAsync, InboxHandlerWorkerTests.CommitFlush_ReleasesTheHeldRow_WhetherItCommittedOrNotAsync}
+A row also stops being held when its renewals run out (below), when a renewal does not cover it
+(below), or when nothing has renewed it for 600 seconds. {verified: InboxChannelWriterHeldRowsTests.EndDispatch_ReleasesTheRow_UnlessItsCommitIsPendingAsync, InboxChannelWriterHeldRowsTests.ARenewedRow_IsNotAgedOutOfTheHeldSetAsync, InboxHandlerWorkerTests.CommitFlush_ReleasesTheHeldRow_WhetherItCommittedOrNotAsync}
 
-```mermaid{caption="A held inbox row: queued by the drain, dispatched once, and released when its commit flush ends. In every state the lease keeper renews it until its renewals for that state run out." tests=["InboxChannelWriterHeldRowsTests.TheFirstCopyTakesTheDispatchTicket_ADuplicateCopyDoesNotAsync", "InboxChannelWriterHeldRowsTests.EndDispatch_ReleasesTheRow_UnlessItsCommitIsPendingAsync", "InboxDispatchWorkerHeldLeaseTests.Dispatch_HandingTheCommitOn_KeepsTheRowHeldUntilTheCommitLandsAsync", "InboxChannelWriterHeldRowsTests.Sweep_PastTheCap_ReleasesTheRowAndReportsItsStateAndTypeAsync"]}
+```mermaid{caption="A held inbox row: queued by the drain, dispatched once, and released when its commit flush ends. In every state the lease keeper renews it until its renewals for that state run out, or until a renewal does not cover it." tests=["InboxChannelWriterHeldRowsTests.TheFirstCopyTakesTheDispatchTicket_ADuplicateCopyDoesNotAsync", "InboxChannelWriterHeldRowsTests.EndDispatch_ReleasesTheRow_UnlessItsCommitIsPendingAsync", "InboxDispatchWorkerHeldLeaseTests.Dispatch_HandingTheCommitOn_KeepsTheRowHeldUntilTheCommitLandsAsync", "InboxChannelWriterHeldRowsTests.Sweep_PastTheCap_ReleasesTheRowAndReportsItsStateAndTypeAsync", "InboxDispatchWorkerHeldLeaseTests.Keeper_ARowItsRenewalDidNotCover_StopsBeingHeld_AndIsNotDispatchedAsync"]}
 stateDiagram-v2
   [*] --> Queued: drain writes the row
   Queued --> Dispatching: first copy takes the dispatch ticket
   Queued --> [*]: renewals run out (handed back, attempt refunded)
+  Queued --> [*]: renewal not covered (not dispatched, logged)
   Dispatching --> AwaitingCommit: completion handed to the commit channel
   Dispatching --> [*]: dispatch ends without a commit
   Dispatching --> [*]: renewals run out (lapse logged)
+  Dispatching --> [*]: renewal not covered (deadline not extended, logged)
   AwaitingCommit --> [*]: commit flush ends (landed or failed)
   AwaitingCommit --> [*]: renewals run out (lapse logged)
+  AwaitingCommit --> [*]: renewal not covered (logged)
 ```
 
 ### The lease keeper
@@ -78,6 +83,24 @@ new lease expiry, so lease-tied cancellation does not stop a handler whose lease
 
 A renewal that fails is logged and not thrown. The rows keep their current expiry, and the next pass
 tries again. {verified: InboxDispatchWorkerHeldLeaseTests.Keeper_RenewalFailure_IsLoggedWithWhatItCosts_NotThrownAsync}
+
+### A row the renewal does not cover {#renewal-not-covered}
+
+A renewal names this instance, and the store extends only the leases this instance still holds
+([`RenewHeldLeasesAsync`](batched-flushers.md#held-lease-renewal)). It returns the rows it did not
+renew: a row another instance claimed after this instance's lease on it lapsed, or a row that has
+completed. Before this check, a renewal by a former holder extended the new holder's lease, and both
+instances treated the row as theirs.
+
+A row the renewal did not cover stops being held here, whatever its state:
+
+- A queued copy is not dispatched: the row's dispatch ticket is gone with it.
+- A running handler's dispatch deadline is not extended past the lease this instance lost, and the
+  row is not renewed again.
+- The row is logged at Warning. One pass logs the first five individually and counts the rest in
+  one summary line.
+
+{verified: InboxDispatchWorkerHeldLeaseTests.Keeper_ARowItsRenewalDidNotCover_StopsBeingHeld_AndIsNotDispatchedAsync, InboxDispatchWorkerHeldLeaseTests.Keeper_ARowItsRenewalDidNotCover_KeepsItsDispatchDeadlineAsync, InboxDispatchWorkerHeldLeaseTests.Keeper_ManyRowsItsRenewalDidNotCover_LogTheFirstIndividually_ThenASummaryAsync, InboxDispatchWorkerLeaseKeeperTests.Keeper_ARowItsRenewalDidNotCover_IsNoLongerHeld_OrRenewedAgainAsync}
 
 ### The renewal cap
 
@@ -159,8 +182,10 @@ control-plane drop line.
 | 80 | Warning | Summary of the lapses in one pass beyond the first five. |
 | 81 | Warning | The keeper could not hand back never-dispatched rows whose renewals ran out; their next claim charges each an attempt. |
 | 82 | Debug | A copy of a row was skipped because the row is already dispatching, committing, or no longer held here. |
+| 83 | Warning | A held row was not renewed because this instance no longer holds it: another instance claimed it after this instance's lease lapsed, or it completed. It is not dispatched here again. |
+| 84 | Warning | Summary of the rows in one pass, beyond the first five, that the renewal did not cover. |
 
-{verified: InboxDispatchWorkerHeldLeaseTests.Keeper_RenewalFailure_IsLoggedWithWhatItCosts_NotThrownAsync, InboxDispatchWorkerHeldLeaseTests.Keeper_ManyLapsesInOneSweep_LogTheFirstIndividually_ThenASummaryAsync, InboxDispatchWorkerHeldLeaseTests.Keeper_ReleaseFailure_IsLoggedWithWhatItCosts_NotThrownAsync, InboxDispatchWorkerControlPlaneDropLogTests.Drop_WithARecordedFailure_LogsTheErrorAndNamesItAsARecordedFailureAsync}
+{verified: InboxDispatchWorkerHeldLeaseTests.Keeper_RenewalFailure_IsLoggedWithWhatItCosts_NotThrownAsync, InboxDispatchWorkerHeldLeaseTests.Keeper_ManyLapsesInOneSweep_LogTheFirstIndividually_ThenASummaryAsync, InboxDispatchWorkerHeldLeaseTests.Keeper_ManyRowsItsRenewalDidNotCover_LogTheFirstIndividually_ThenASummaryAsync, InboxDispatchWorkerHeldLeaseTests.Keeper_ReleaseFailure_IsLoggedWithWhatItCosts_NotThrownAsync, InboxDispatchWorkerControlPlaneDropLogTests.Drop_WithARecordedFailure_LogsTheErrorAndNamesItAsARecordedFailureAsync}
 
 ## Related
 
