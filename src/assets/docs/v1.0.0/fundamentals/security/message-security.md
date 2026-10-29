@@ -30,6 +30,7 @@ codeReferences:
   - src/Whizbang.Core/IMessageContext.cs
   - src/Whizbang.Core/Dispatch/DispatcherSecurityBuilder.cs
   - src/Whizbang.Core/Security/HopScope.cs
+  - src/Whizbang.Core/Security/StoredScope.cs
   - src/Whizbang.Core/Security/ScopeDelta.cs
   - src/Whizbang.Transports.HotChocolate/Middleware/WhizbangScopeMiddleware.cs
 testReferences:
@@ -48,6 +49,9 @@ testReferences:
   - tests/Whizbang.Core.Tests/Security/HopScopeTwoHopWireTests.cs
   - tests/Whizbang.Core.Tests/Dispatcher/HopScopeDispatchParityTests.cs
   - tests/Whizbang.Core.Component.Tests/Security/HopScopeSourceGuardTests.cs
+  - tests/Whizbang.Core.Tests/Security/StoredScopeTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperStoredScopeReadBackTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/EFCoreStoredScopeReadBackTests.cs
   - tests/Whizbang.Transports.HotChocolate.Tests/Unit/ScopeHopPropagationTests.cs
   - tests/Whizbang.Transports.HotChocolate.Tests/Unit/WhizbangScopeMiddlewareTests.cs
 lastMaintainedCommit: '01f07906'
@@ -1085,14 +1089,45 @@ A scope context created with `ShouldPropagate = false` lends only the ids: the m
 
 A scope that names neither a tenant nor a user still produces no hop scope, exactly as before. Traffic that carries no authority stays indistinguishable from traffic with no scope, so the [system and declared-unscoped markers](#scope-markers) still decide for it.
 
-### Known gap: two stored-event read-back paths {#hop-scope-known-gap}
+### Stored events read back with their whole scope {#hop-scope-stored-read-back}
 
-Two paths rebuild a hop scope from a stored row's tenant and user ids rather than from the message's hops:
+{verified: DapperStoredScopeReadBackTests.ReadAsync_HoplessRow_RestoresTheWholeStoredScopeAsync, DapperStoredScopeReadBackTests.ReadPolymorphicAsync_HoplessRow_RestoresTheWholeStoredScopeAsync, DapperStoredScopeReadBackTests.GetEventsBetweenPolymorphicAsync_HoplessRow_RestoresTheWholeStoredScopeAsync, EFCoreStoredScopeReadBackTests.GetOrphanedLifecycleEventsAsync_HoplessRow_RestoresTheWholeStoredScopeAsync, StoredScopeTests.RestoreInto_NoHops_SynthesizesOneCarryingTheWholeScopeAsync, StoredScopeTests.RestoreInto_AScopedFirstHop_IsLeftAsRecordedAsync, HopScopeSourceGuardTests.IdOnlyHopScopes_AreOnlyTheListedReadBacksAsync}
 
-- the Dapper driver, when it reads a stored event whose row kept no envelope hops and restores the event's scope column onto a hop;
-- reconciliation on the EF Core driver, when it re-reads a stored row's tenant and user to re-run lifecycle stages.
+:::updated
+A stored event read back without recorded hops now keeps its whole stored scope on every driver path. Before
+this release, four read-back paths rebuilt only part of it: the Dapper typed read kept the tenant and user ids,
+the Dapper polymorphic and checkpoint-range reads kept the four ids, and reconciliation on the EF Core driver kept
+the tenant and user ids. Allowed principals, scope extensions and the system and declared-unscoped markers were
+dropped, so a receptor or perspective that read them after a replay, rebuild, redelivery or reconciliation saw
+less than the original dispatch did.
+:::
 
-On those two paths, what runs sees only the tenant and user ids: the extensions, the customer and organization ids and the claims are not restored. Every live dispatch and delivery path carries the whole hop scope. This is tracked as [whizbang-lib/whizbang#1855](https://github.com/whizbang-lib/whizbang/issues/1855).
+An event row stores its scope in its own column. Most rows also keep the envelope's hops, and the first hop
+carries the scope it was dispatched with. When a row kept no hops, or its first hop recorded no scope, the
+driver rebuilds that hop from the stored scope column. Every path that does this reads the column through one
+reader, `StoredScope`, so each restores the same fields:
+
+| Read-back path | Driver |
+|----------------|--------|
+| Typed read of a stream (through the event envelope adapter) | Dapper |
+| Polymorphic read of a stream | Dapper |
+| Checkpoint-range read (also used by the SQLite store) | Dapper |
+| Reconciliation, re-reading a stored row to re-run lifecycle stages | EF Core |
+| Event store reads | EF Core (already restored the whole scope) |
+
+What is restored, and what is not:
+
+- **Restored:** the tenant, user, customer and organization ids, allowed principals, scope extensions, and the
+  [system and declared-unscoped markers](#scope-markers). Both stored formats are read: the current short-key
+  format and the older `tenant_id` / `user_id` format.
+- **A first hop that recorded its own scope keeps it.** The stored column fills in a missing scope; it never
+  replaces one the hop already carries.
+- **A row stored without a scope stays unscoped.** No empty hop is added for it.
+- **Claims are not restored**, on any path. Propagated claims cross on the hop, not in the stored scope
+  column, so a row without hops has none to give back. This is unchanged.
+
+The [source guard](#hop-scope-contents) that keeps every dispatch path on the one `HopScope` helper also
+allows no read-back path to build a tenant-and-user-only hop scope.
 
 ## Explicit Security Context API {#explicit-context}
 
