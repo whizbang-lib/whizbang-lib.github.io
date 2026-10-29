@@ -10,7 +10,7 @@ description: >-
   the online rewrite through pg_squeeze or pg_repack that the maintenance cycle drives within a per-cycle byte budget
 tags: >-
   operations, storage, autovacuum, fillfactor, hot, vacuum, bloat, toast, postgres, maintenance, table rewrite,
-  pg_squeeze, pg_repack
+  pg_squeeze, pg_repack, pgstattuple
 codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/088_ChurnTableAutovacuum.sql
   - src/Whizbang.Data.Postgres/Migrations/222_FrameworkTableAutovacuum.sql
@@ -29,6 +29,10 @@ codeReferences:
   - src/Whizbang.Core/Workers/PgSqueezeTableRewriter.cs
   - src/Whizbang.Data.Postgres/PgSqueezePrerequisites.cs
   - src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs
+  - src/Whizbang.Core/Observability/BloatMeasurement.cs
+  - src/Whizbang.Core/Workers/ApproxBloatMeasurement.cs
+  - src/Whizbang.Core/Workers/MaintenanceWorker.cs
+  - src/Whizbang.Data.Postgres/Migrations/254_BloatMeasurementsRecordTheirMethod.sql
 testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/FrameworkTableAutovacuumTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/PerspectiveCursorFillFactorTests.cs
@@ -44,6 +48,9 @@ testReferences:
   - tests/Whizbang.Core.Tests/Workers/OnlineTableRewriteStepTests.cs
   - tests/Whizbang.Core.Tests/PostgresExtensions/PgSqueezePrerequisitesTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/OnlineTableRewriteSqlTests.cs
+  - tests/Whizbang.Core.Tests/Workers/MaintenanceWorkerBloatMeasurementTests.cs
+  - tests/Whizbang.Core.Tests/Observability/BloatMeasurementMethodTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/TableBloatMeasurementSqlTests.cs
 ---
 
 # Storage Maintenance
@@ -108,6 +115,67 @@ these settings, or during an import, keeps its size until it is rewritten. A rew
 whole duration with `VACUUM FULL`, so plan it for a quiet window or use an online tool such as `pg_repack` or
 `pg_squeeze` (see [Postgres extensions](./postgres-extensions)). The maintenance cycle records each table that needs
 a rewrite; the [table rewrite strategy](#table-rewrite-strategy) decides what happens to it.
+
+## How bloat is measured {#how-bloat-is-measured}
+{verified: MaintenanceWorkerBloatMeasurementTests.WithoutACapabilityRegistry_TheEstimateIsRecorded_AndNothingIsMeasuredAsync, MaintenanceWorkerBloatMeasurementTests.WhenReady_ACandidateIsMeasuredWithApprox_AndQueuedWithTheMeasuredRatioAsync, MaintenanceWorkerBloatMeasurementTests.WhenReady_AFalsePositiveEstimate_IsNotQueued_AndTheLogGivesBothFiguresAsync, MaintenanceWorkerBloatMeasurementTests.WhenReady_AMeasurementThatDisagreesWithItsEstimate_IsLoggedWithBothFiguresAsync, MaintenanceWorkerBloatMeasurementTests.WhenReady_AMeasurementThatFails_FallsBackToTheEstimate_AndSaysWhyAsync, TableBloatMeasurementSqlTests.Approx_OnAStaleEstimate_MeasuresTheTableLeanAsync, TableBloatMeasurementSqlTests.AMeasuredRequest_IsQueuedWithItsRatioAndMethod_AndTheQueueOrdersByTheMeasuredRatioAsync, OnlineTableRewriteStepTests.WhenPgstattupleIsReady_TheReMeasureIsApprox_AndItDecidesTheClearAsync, TableRewriteStartupStepTests.WhenPgstattupleIsReady_TheReMeasureIsApprox_AndItDecidesTheClearAsync}
+
+The bloat ratio is the heap's size over its live rows times the width those rows should need; about 1.0 is lean. It is
+obtained one of three ways, and every stored or reported ratio says which:
+
+| Method | Obtained with | Cost | Used for |
+|---|---|---|---|
+| `estimate` | `pg_stats` row widths and the planner's row count | a catalog read | every table, every statistics pass; the shortlist |
+| `approx` | `pgstattuple_approx` | reads the visibility map and scans only the pages that are not all-visible | confirming a shortlisted table before it is queued, and the re-measure after its rewrite |
+| `exact` | `pgstattuple` | scans the whole table | never run by the library; the name exists so a measurement an operator takes can be recorded as one |
+
+The estimate guesses. Rows added since the last `ANALYZE` are not in the planner's row count, so a growing table can
+read as bloated when it is not. So while the [`pgstattuple` capability](./postgres-extensions) is `Ready` on every
+database the registry probed, the maintenance cycle measures each table the estimate puts over the rewrite threshold
+with `pgstattuple_approx` before it enters the queue:
+
+- **At or over the threshold:** queued with the measured ratio and the method `approx`. The queue is taken largest
+  measured ratio first.
+- **Under the threshold:** not queued, and the log gives both figures, for example
+  `Table wh_inbox was estimated at 4.2x but measures 1.3x by approx, under the rewrite threshold of 3x; it is not queued`.
+  The next cycle measures it again if the estimate still shortlists it.
+- **More than 25% from its estimate,** either way: logged with both figures, so an estimate that keeps reading stale
+  statistics is visible.
+- **The measurement fails** (the role may not call `pgstattuple_approx`, or the call times out): a warning names the
+  table and the failure, and the estimate stands in, exactly as without pgstattuple.
+
+After a rewrite, "did it shrink" is answered by `pgstattuple_approx` too, so a table queued by a measurement is judged
+by the same measurement. Without pgstattuple, or while it is anything other than `Ready`, nothing is measured and every
+step works from the estimate as it always has.
+
+```mermaid{caption="The estimate shortlists and pgstattuple_approx confirms: a table enters the rewrite queue only when the measurement agrees it is over the threshold." tests=["MaintenanceWorkerBloatMeasurementTests.WhenReady_ACandidateIsMeasuredWithApprox_AndQueuedWithTheMeasuredRatioAsync", "MaintenanceWorkerBloatMeasurementTests.WhenReady_AFalsePositiveEstimate_IsNotQueued_AndTheLogGivesBothFiguresAsync", "MaintenanceWorkerBloatMeasurementTests.WithoutACapabilityRegistry_TheEstimateIsRecorded_AndNothingIsMeasuredAsync"]}
+flowchart TD
+  E[Estimate over the threshold] --> R{pgstattuple Ready?}
+  R -->|no| Q1[Queued from the estimate<br/>method estimate]
+  R -->|yes| A[pgstattuple_approx]
+  A -->|at or over the threshold| Q2[Queued with the measured ratio<br/>method approx]
+  A -->|under the threshold| N[Not queued;<br/>both figures logged]
+  A -->|failed| Q1
+```
+
+The queue's measurements are in `wh_table_rewrite_measurements`, one row per queued table with its ratio, its method
+and the estimate it confirmed. A queued table with no row was queued from the estimate, as every request made before
+this table existed was. Clearing a request removes its row.
+
+```sql{title="Read the queued rewrites with their measurements" category="Operations" difficulty="BEGINNER"}
+SELECT r.table_name, r.requested, COALESCE(m.bloat_ratio, r.bloat_ratio) AS ratio,
+       COALESCE(m.method, 'estimate') AS method, m.estimated_ratio
+FROM wh_tables_needing_rewrite() r
+LEFT JOIN wh_table_rewrite_measurements m ON r.requested AND m.table_name = r.table_name
+ORDER BY ratio DESC;
+```
+
+The measured ratio is on the estimate's scale: the heap over the live rows times the expected width, with
+`pgstattuple_approx` counting the live rows. It is not the heap over the live tuples' own bytes, because the bytes of a
+dropped column stay inside every row written before the drop: that ratio would call such a table lean, and a rewrite
+that removed them would not read as an improvement.
+
+The [`whizbang.table.bloat_ratio`](../observability/metrics#table-statistics) gauge carries the method as its
+`method` tag: every table's estimate is `estimate`, and a table the cycle measured is a second series, `approx`.
 
 ## Table rewrite strategy {#table-rewrite-strategy}
 {verified: TableRewriteStrategyTests.Resolve_EachCellOfTheMatrixAsync, TableRewriteStrategyTests.TheSetting_DefaultsToAuto_AndBindsFromConfigurationAsync, TableRewriteStartupStepTests.PgSqueeze_IsLeftToTheMaintenanceCycle_NotRunAtBootAsync, TableRewriteStartupStepTests.PgRepackInProcess_IsLeftToTheMaintenanceCycle_NotRunAtBootAsync}
@@ -282,14 +350,16 @@ Each cycle:
    is turned off for, and a client the probe could not decide) rewrites nothing and logs why; the queue is kept.
    pg_repack in `External` mode does nothing here, not even a scan.
 2. **Takes the queued tables** (`pending_table_rewrites`, which the cycle's bloat detection fills) that still measure
-   over the bloat threshold, **largest bloat ratio first**, ties in name order.
+   over the bloat threshold, **largest bloat ratio first** (the [measured ratio](#how-bloat-is-measured) where the
+   table was queued with one), ties in name order.
 3. **Spends a byte budget.** A table is rewritten only when its heap fits what is left of
    `OnlineRewriteMaxBytesPerCycle`; one that does not fit is deferred to a later cycle, and the next smaller table that
    fits is taken. A table larger than the whole budget is never rewritten, and the log names the setting to raise.
 4. **Rewrites each table and re-measures.** For pg_squeeze it checks the
    [prerequisites](#online-rewrite-prerequisites) for the table, then calls pg_squeeze. For pg_repack it starts the
    client with the connection in its environment, as [pg_repack](#pg-repack) describes. Either way it then runs
-   `ANALYZE` and re-measures.
+   `ANALYZE` and re-measures, with `pgstattuple_approx` while pgstattuple is `Ready`
+   ([how bloat is measured](#how-bloat-is-measured)).
 5. **Clears the request only when the rewrite improved the table**: the re-measured ratio is lower than the ratio that
    queued it. A rewrite that did not help, a table whose prerequisites were not met, and a call that failed all stay
    queued for the next cycle, each with a warning naming the table.
