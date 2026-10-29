@@ -1797,6 +1797,7 @@ These settings have no option yet and are set in SQL only:
 |---|---|----------------------|---|
 | `notify_debounce_seconds` | `7` | — *code-only* | Doorbell debounce window (must stay below the C# `NotifyDrainLingerSeconds`, default 8). Non-positive disables |
 | `integrity_epoch_max_stall_seconds` | `3600` | — *code-only* | Digest-epoch stall escape: a lane whose frontier has not advanced this long closes its first blocked epoch anyway (once per sweep). Non-positive disables |
+| `perspective_storage_manual_tables` | empty | none, SQL only | Comma-separated perspective tables whose fillfactor and autovacuum settings are managed by hand: each start neither sets nor resets them, logs the list and warns of declared values it ignores. Read at every start. See [Manually managed tables](../../fundamentals/perspectives/physical-fields#manually-managed-tables) |
 
 ## Turnkey-bound options sections (complete sweep)
 
