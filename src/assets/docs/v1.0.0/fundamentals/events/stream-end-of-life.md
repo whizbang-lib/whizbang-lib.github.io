@@ -23,6 +23,7 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Performance/StreamLifecycleEmitCostScenarioTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Operations/StreamPurgeTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperStreamLifecycleLedgerTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/ArchiveStoreSqlTests.cs
 ---
 
 # Stream End of Life
@@ -54,7 +55,7 @@ the same transaction as the event, so the row is never behind the store.
 | `state` | `Active`, `Sealed` or `Archived`. Every stream starts `Active`. | end-of-life work, never an append |
 | `sealed_at` | When the stream was sealed. | finalization |
 | `disposition_due_at` | When the stream's disposition is due; null while none is scheduled. | scheduled disposition |
-| `archive_locator` | Where the archive store put the stream's archived events. | the archive store |
+| `archive_locator` | Where the [archive store](archive-store.md) put the stream's archived events. | the archive store |
 | `origin_generation` | The origin generation the stream's history was last mutated at; null until that happens. | the archive store |
 
 Why each of these is the way it is:
@@ -91,8 +92,8 @@ stream is gone, not archived, so no end-of-life sweep is left a row to act on.
 {verified: StreamPurgeTests.Purge_RemovesEveryRowOfTheStreams_AndLeavesOthersAsync}
 
 Prefix truncation (`wh_truncate_stream_prefix`) leaves the row as it is: the stream's newest version does not change,
-and `approx_bytes` keeps counting the truncated bodies until the archive and policy work that truncates on purpose
-adjusts it.
+and `approx_bytes` keeps counting the truncated bodies. An archiving truncate goes through the
+[archive store](archive-store.md#the-ledger-row), which subtracts the bytes it moved and adds them back on a restore.
 
 ### What gets no row {#what-gets-no-row}
 
@@ -227,6 +228,7 @@ logs at Debug when another instance holds the cursor, and says nothing on a cycl
 | `StreamLifecycleBackfillMaintenanceStepTests` | the EF Core step: runs to completion, stops at its round limit, idle when done, steps aside when busy, registered by the driver |
 | `DapperStreamLifecycleLedgerTests` | the Dapper store's direct append and the Dapper step |
 | `StreamPurgeTests` | a purge removes the stream's ledger row |
+| `ArchiveStoreSqlTests` | the archive store's tombstone, built from the events when the stream has no row yet; `approx_bytes` after an archive and a restore |
 | `StreamLifecycleEmitCostScenarioTests` | the cost of the ledger on the outbox emit chain, measured with and without it |
 
 ## Related
@@ -235,3 +237,4 @@ logs at Debug when another instance holds the cursor, and says nothing on a cycl
 - [Ephemeral Events](ephemeral-events.md): streams reaped by their time to live, which the ledger leaves out
 - [Purging Streams](../../operations/infrastructure/purging-streams.md)
 - [Stream Integrity](../../resilience/stream-integrity.md): the origin generation
+- [Archive Store](archive-store.md): where archived events go, the tombstone an archived stream keeps, and the restore

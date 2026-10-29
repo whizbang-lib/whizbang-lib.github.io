@@ -3,7 +3,7 @@ title: Archive Store
 pageType: concept
 version: 1.0.0
 category: Core Concepts
-order: 16
+order: 17
 description: >-
   IArchiveStore moves a stream's events out of the hot event store and back: copy then truncate in one
   transaction, a byte-identical read in version order, a tombstone that refuses version reuse, and an exact restore.
@@ -172,6 +172,20 @@ stream, its archived version and the refused one.
 | One check per insert statement over the inserted rows, not one per row. | The emit chains insert a batch in one statement; the check costs one join over that batch. | {verified: ArchiveStoreSqlTests.Tombstone_TheEmitChainCannotReuseAnArchivedVersion_EitherAsync} |
 | The refusal raises, so the whole write rolls back. | A backstop must never store a reused version. The friendly per-type answer to an append to an archived stream (refuse with a typed exception, restore first, or start a new generation) belongs to the write paths and comes with the append-to-archived policy; until then, archive a stream whole only when nothing will append to it. | {verified: ArchiveStoreSqlTests.Tombstone_TheEmitChainCannotReuseAnArchivedVersion_EitherAsync} |
 | The tombstone outlives a deleted archive. | The versions were seen downstream whether or not the archived copy still exists. | {verified: ArchiveStoreSqlTests.Delete_RemovesTheArchivedCopy_TheTombstoneStillBlocksReuseAsync} |
+
+### The ledger row {#the-ledger-row}
+
+{verified: ArchiveStoreSqlTests.Write_WholeStream_WithNoLedgerRowYet_BuildsTheTombstoneFromTheEventsAsync, ArchiveStoreSqlTests.ApproxBytes_ArchiveSubtractsWhatLeft_RestoreAddsItBackAsync}
+
+The archive store keeps the stream's [lifecycle ledger](stream-end-of-life#the-stream-lifecycle-ledger) row true to
+the hot store:
+
+| Choice | Reason | Verified |
+|---|---|---|
+| A stream with no ledger row yet (the backfill has not reached it) gets one built from its events by the ledger's own rules: the first event's type, tenant and time, the UTC hour of the newest event. A stream of only ephemeral events uses its first event. | The tombstone is what refuses version reuse, so it must exist whether or not the backfill got there first; reading the same rules as the ledger keeps the row identical to the one the backfill would have written. | {verified: ArchiveStoreSqlTests.Write_WholeStream_WithNoLedgerRowYet_BuildsTheTombstoneFromTheEventsAsync} |
+| A prefix archive subtracts the bytes it moved from `approx_bytes` (never below 0); a whole-stream archive sets it to 0; a restore adds the restored bytes back. | `approx_bytes` measures the hot store, which the per-tenant size policy reads; archived bytes no longer cost hot storage. Bytes are counted as stored, as the backfill counts them, so the figure stays approximate. | {verified: ArchiveStoreSqlTests.ApproxBytes_ArchiveSubtractsWhatLeft_RestoreAddsItBackAsync} |
+| A restore marks the stream `Active` before its events go back, and leaves the row with the stream's newest version. | The version-reuse guard reads the state, so the restore's own inserts pass it, and appends continue above the last version. | {verified: ArchiveStoreSqlTests.Restore_PutsTheStreamBackExactly_CursorsDigestsAndPositionsIncludedAsync, ArchiveStoreSqlTests.Write_WholeStream_WithNoLedgerRowYet_BuildsTheTombstoneFromTheEventsAsync} |
+| A [stream purge](../../operations/infrastructure/purging-streams) removes the archive, the parked cursors and the tombstone. | A purged stream never existed; nothing of it is left to restore or to guard. | {verified: ArchiveStoreSqlTests.Purge_AnArchivedStream_TakesItsArchiveParkedCursorsAndTombstoneAsync} |
 
 ## Locator format
 

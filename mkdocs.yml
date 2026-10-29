@@ -97,7 +97,6 @@ nav:
         - Events: fundamentals/events/events.md
         - Stream ID: fundamentals/events/stream-id.md
         - Event Streams: fundamentals/events/event-streams.md
-        - Archive Store: fundamentals/events/archive-store.md
         - Event Upcasting: fundamentals/events/event-upcasting.md
     - Dispatcher:
         - Dispatcher Deep Dive: fundamentals/dispatcher/dispatcher.md
