@@ -268,13 +268,16 @@ Rewind logs are split across **two logger categories** so their levels can be tu
 "Whizbang.Core.Workers.PerspectiveStartupScan": "Information"
 ```
 
-### OTel metrics
+### OTel metrics {#metrics}
 
 Meter: **`Whizbang.Perspectives`** (defined in `PerspectiveMetrics`).
 
 | Instrument | Type | Tags | Description |
 |-----------|------|------|-------------|
-| `whizbang.perspective.rewinds` | Counter | `perspective_name`, `has_snapshot` | Rewind operations triggered |
+| `whizbang.perspective.rewinds` | Counter | `perspective_name`, `has_snapshot` | Rewind operations that completed (the name is kept so existing panels keep reading) |
+| `whizbang.perspective.rewinds_triggered` | Counter | `perspective_name` | Rewinds started, counted before the replay runs |
+| `whizbang.perspective.rewinds_failed` | Counter | `perspective_name` | Rewinds that threw, including a rewind whose write was refused under every replay ([concurrent writers](perspectives.md#concurrent-writers-rewinds)) |
+| `whizbang.perspective.rewinds_in_flight` | Gauge | | Rewinds running right now |
 | `whizbang.perspective.rewind.duration` | Histogram (ms) | `perspective_name` | Replay duration |
 | `whizbang.perspective.rewind.events_replayed` | Histogram | `perspective_name` | Events replayed per rewind |
 | `whizbang.perspective.rewind.events_behind` | Histogram | `perspective_name` | Events behind the cursor when the rewind triggered |
