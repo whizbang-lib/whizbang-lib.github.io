@@ -15,6 +15,7 @@ codeReferences:
   - src/Whizbang.Core/Transports/TransportCapabilities.cs
   - src/Whizbang.Core/Transports/TransportDestination.cs
   - src/Whizbang.Core/Transports/InProcessTransport.cs
+  - src/Whizbang.Core/Workers/TransportBatchCollector.cs
   - src/Whizbang.Core/Transports/ITransportManager.cs
   - src/Whizbang.Core/Transports/ISubscription.cs
   - src/Whizbang.Core/Transports/IMessageSerializer.cs
@@ -31,6 +32,7 @@ testReferences:
   - tests/Whizbang.Core.Component.Tests/Resilience/SubscriptionRetryHelperDisconnectWindowTests.cs
   - tests/Whizbang.Transports.Tests/BulkPublishTests.cs
   - tests/Whizbang.Transports.Component.Tests/SubscribeBatchTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/TransportBatchCollectorTests.cs
   - tests/Whizbang.Core.Tests/Workers/TransportPublishStrategyTests.cs
   - tests/Whizbang.Core.Tests/Workers/MessagePublishStrategyTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/OutboxPublishWorkerTests.cs
@@ -243,6 +245,42 @@ subscription.Dispose();
 ```
 
 `TransportBatchOptions` defaults: `BatchSize = 200`, `SlideMs = 20`, `MaxWaitMs = 1000`.
+
+### Batch window clock {#batch-clock}
+
+{verified: SubscribeBatchTests.SubscribeBatchAsync_SlideWindowFlushesPartialBatchAsync, SubscribeBatchTests.Constructor_NullClock_ThrowsAsync, TransportBatchCollectorTests.Enqueue_FlushesOnSlidingWindowTimeoutAsync, TransportBatchCollectorTests.Enqueue_HardMaxIsNotPostponedByLaterArrivalsAsync, TransportBatchCollectorTests.Constructor_WithoutAClock_RunsOnTheSystemClockAsync}
+
+Every batch subscription buffers into a `TransportBatchCollector<T>`, whose sliding window (`SlideMs`) and hard maximum (`MaxWaitMs`) are timers on a `TimeProvider`. `InProcessTransport` has two constructors:
+
+| Constructor | Batch windows run on |
+|---|---|
+| `new InProcessTransport()` | `TimeProvider.System` |
+| `new InProcessTransport(TimeProvider timeProvider)` | The given clock. A null clock throws `ArgumentNullException` |
+
+A test that passes a fake clock closes a partial batch by advancing that clock, with no sleep and no timing budget:
+
+```csharp{title="Closing a batch window with a fake clock" description="An in-process transport on a fake clock: the partial batch is handed over only when the test moves time past SlideMs" category="Testing" difficulty="INTERMEDIATE" tags=["Messaging", "Transports", "In-Process", "TimeProvider", "Testing"] tests=["SubscribeBatchTests.SubscribeBatchAsync_SlideWindowFlushesPartialBatchAsync"]}
+var clock = new FakeTimeProvider(); // Microsoft.Extensions.TimeProvider.Testing
+var transport = new InProcessTransport(clock);
+await transport.InitializeAsync();
+
+var received = new TaskCompletionSource<int>(TaskCreationOptions.RunContinuationsAsynchronously);
+await transport.SubscribeBatchAsync(
+    batchHandler: (batch, ct) => { received.TrySetResult(batch.Count); return Task.CompletedTask; },
+    new TransportDestination("orders"),
+    new TransportBatchOptions { BatchSize = 100, SlideMs = 50, MaxWaitMs = 10_000 });
+
+await transport.PublishAsync(envelope, new TransportDestination("orders"));
+
+clock.Advance(TimeSpan.FromMilliseconds(50)); // closes the sliding window
+var count = await received.Task;               // 1
+```
+
+`TransportBatchCollector<T>` itself takes an optional trailing `TimeProvider` (`new TransportBatchCollector<T>(options, flushCallback, timeProvider)`). Null keeps the system clock. The RabbitMQ and Azure Service Bus transports pass their own clock to every collector they build, so a host's registered `TimeProvider` drives their batch windows too.
+
+:::updated
+Before this release the collector armed its windows on raw `System.Threading.Timer`s, so only real time could close a batch, and `InProcessTransport` had no way to take a clock. A batch flush and the collector's timers also start without the ambient (`AsyncLocal`) context of the caller that filled the batch or built the collector ([details](../../extending/internals/outbox-batch-strategy.md#ambient-context)).
+:::
 
 ## Subscription Disconnects {#subscription-disconnects}
 

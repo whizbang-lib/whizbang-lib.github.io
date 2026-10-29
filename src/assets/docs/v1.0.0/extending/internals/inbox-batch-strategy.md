@@ -72,7 +72,9 @@ Bound from `Whizbang:Workers:InboxBatch` with no registration call. The batching
 Each store holds a slot of the process-wide `WorkCoordinatorGate` (caller `InboxBatchFlush`), the same cap the
 [outbox batch stores](outbox-batch-strategy.md#connection-cap) take, so concurrent per-stream stores cannot
 open more connections than the gate allows. A stream's drain worker carries no ambient context from the code
-that appended first ([details](outbox-batch-strategy.md#ambient-context)).
+that appended first, and neither do the shared batch flushes and their timers upstream of it: the transport batch
+collector's and the `Batch` work coordinator strategy's flushes start without the ambient context of the caller that
+filled the batch or created them ([details](outbox-batch-strategy.md#ambient-context)).
 
 ## When a flush fails {#when-a-flush-fails}
 

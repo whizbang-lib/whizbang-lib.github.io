@@ -7,7 +7,7 @@ order: 3
 description: >-
   How the producer-side outbox batcher buffers each stream's messages and stores them after the caller
   has returned, what it does when a store fails (retry, then dead-letter, never drop), how to watch
-  for and recover those messages, and why its drain workers carry no ambient context.
+  for and recover those messages, and why its drain workers and shared batch flushes carry no ambient context.
 tags: >-
   outbox, batching, sliding-window, dead-letter-queue, retry, LocalInvokeAsync, OutboxStoreFailed,
   IOutboxFlushFailureObserver, ambient-context
@@ -24,6 +24,8 @@ codeReferences:
   - src/Whizbang.Core/Workers/BatchStoreRetry.cs
   - src/Whizbang.Core/Workers/TransientDatabaseFailure.cs
   - src/Whizbang.Core/Workers/AmbientFreeTask.cs
+  - src/Whizbang.Core/Workers/TransportBatchCollector.cs
+  - src/Whizbang.Core/Messaging/BatchWorkCoordinatorStrategy.cs
   - src/Whizbang.Core/Workers/WorkerPipelineExtensions.cs
   - src/Whizbang.Core/Observability/WorkCoordinatorMetrics.cs
   - src/Whizbang.Data.Postgres/Migrations/256_UnstoredOutboxMessagesAreDeadLettered.sql
@@ -217,18 +219,31 @@ for review.
 
 ## Drain workers carry no ambient context {#ambient-context}
 
-{verified: BatcherAmbientContextTests.OutboxFlush_DoesNotSeeTheFirstAppendersAmbientContextAsync, BatcherAmbientContextTests.InboxFlush_DoesNotSeeTheFirstAppendersAmbientContextAsync, BatcherAmbientContextTests.ApplyFlush_DoesNotSeeTheFirstAppendersAmbientContextAsync, BatcherAmbientContextTests.PerStreamSerializerProcessor_DoesNotSeeTheFirstEnqueuersAmbientContextAsync}
+{verified: BatcherAmbientContextTests.OutboxFlush_DoesNotSeeTheFirstAppendersAmbientContextAsync, BatcherAmbientContextTests.InboxFlush_DoesNotSeeTheFirstAppendersAmbientContextAsync, BatcherAmbientContextTests.ApplyFlush_DoesNotSeeTheFirstAppendersAmbientContextAsync, BatcherAmbientContextTests.PerStreamSerializerProcessor_DoesNotSeeTheFirstEnqueuersAmbientContextAsync, BatcherAmbientContextTests.CollectorSizeTriggeredFlush_DoesNotSeeTheEnqueuersAmbientContextAsync, BatcherAmbientContextTests.CollectorTimerFlush_DoesNotSeeTheConstructorsAmbientContextAsync, BatcherAmbientContextTests.StrategyBatchSizeFlush_DoesNotSeeTheQueuersAmbientContextAsync, BatcherAmbientContextTests.StrategyDebounceFlush_DoesNotSeeTheConstructorsAmbientContextAsync, BatcherAmbientContextTests.AmbientFreeTimer_CreatedWhileFlowIsAlreadySuppressed_RunsWithNoCapturedContextAsync, BatcherAmbientContextTests.AmbientFreeTimer_RestoresTheCallersFlowAfterTheCreateAsync}
 
 A stream's drain worker is started from inside the first append for that stream, but it does not inherit
 that caller's ambient (`AsyncLocal`) state: its pinned connection, scope, tenant or activity. Every store of
 the stream, whoever appended the messages in it, runs with no ambient state from the first appender. The same
 holds for the inbox and perspective-apply batchers and the per-stream serializer.
 
+The same rule covers the two shared batches: the transport [batch collector](../../messaging/transports/transport-consumer.md#batch-collector)
+and the [`Batch` work coordinator strategy](../../data/work-coordinator-strategies.md#batch). A flush started because a
+call filled the batch runs without that caller's ambient state, and their timers (the collector's sliding window and
+hard maximum, the strategy's debounce timer) are created with the flow suppressed, so a timer flush carries nothing
+from whoever built the collector or first resolved the strategy.
+
 :::updated
 Before this release, the worker was started with `Task.Run`, which copied the first appender's execution
 context. Every later store of the stream saw that caller's pinned connection after it had released it, or
 while it was still using it, and carried its scope, tenant and activity into stores of other callers'
 messages.
+:::
+
+:::updated
+Before this release, the batch collector and the `Batch` strategy also started a size-triggered flush with
+`Task.Run` from inside the call that filled the batch, and created their timers in the constructor. A flush ran with
+the pinned connection, scope or activity of the caller that crossed the threshold, or of whoever built the collector
+or first resolved the strategy ([#1868](https://github.com/whizbang-lib/whizbang/issues/1868)).
 :::
 
 ## Related
