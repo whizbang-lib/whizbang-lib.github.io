@@ -10,7 +10,7 @@ description: >-
   the online rewrite through pg_squeeze or pg_repack that the maintenance cycle drives within a per-cycle byte budget
 tags: >-
   operations, storage, autovacuum, fillfactor, hot, vacuum, bloat, toast, postgres, maintenance, table rewrite,
-  pg_squeeze, pg_repack, pgstattuple
+  pg_squeeze, pg_repack, pgstattuple, brin, index, correlation
 codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/088_ChurnTableAutovacuum.sql
   - src/Whizbang.Data.Postgres/Migrations/222_FrameworkTableAutovacuum.sql
@@ -33,6 +33,8 @@ codeReferences:
   - src/Whizbang.Core/Workers/ApproxBloatMeasurement.cs
   - src/Whizbang.Core/Workers/MaintenanceWorker.cs
   - src/Whizbang.Data.Postgres/Migrations/254_BloatMeasurementsRecordTheirMethod.sql
+  - src/Whizbang.Data.Postgres/Migrations/258_EventStoreCreatedAtBrin.sql
+  - src/Whizbang.Data.EFCore.Postgres/OrphanedLifecycleEventsSql.cs
 testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/FrameworkTableAutovacuumTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/PerspectiveCursorFillFactorTests.cs
@@ -51,6 +53,7 @@ testReferences:
   - tests/Whizbang.Core.Tests/Workers/MaintenanceWorkerBloatMeasurementTests.cs
   - tests/Whizbang.Core.Tests/Observability/BloatMeasurementMethodTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/TableBloatMeasurementSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/BrinIndexCandidatesTests.cs
 ---
 
 # Storage Maintenance
@@ -106,6 +109,98 @@ queued request on a compact table is left until it is worth a rewrite.
 ```sql{title="Read the fillfactor and the queued rewrites" category="Operations" difficulty="BEGINNER"}
 SELECT relname, reloptions FROM pg_class WHERE relname = 'wh_perspective_cursors';
 SELECT setting_value FROM wh_settings WHERE setting_key = 'pending_table_rewrites';
+```
+
+## BRIN indexes {#brin-indexes}
+
+{verified: BrinIndexCandidatesTests.TheEventStore_InItsProductionWriteOrder_CorrelatesNearOneAsync, BrinIndexCandidatesTests.ARetentionTable_FallsBelowNearOne_AfterOneRetentionPassAsync, BrinIndexCandidatesTests.TheOrphanedLifecycleQuery_ReadsTheWindowThroughTheBrinIndexAsync, BrinIndexCandidatesTests.TheOrphanedLifecycleQuery_WithoutTheBrinIndex_ScansTheStoreAsync, BrinIndexCandidatesTests.TheEventStoreCreatedAtBrinIndex_ExistsAsync, BrinIndexCandidatesTests.NoOtherCandidate_HasABrinIndexAsync, BrinIndexCandidatesTests.TheExistingBTree_IsKeptAsync}
+
+A BRIN (block range) index stores one minimum and one maximum for each range of heap pages instead of one entry per
+row, so it is a few pages per gigabyte of table. It narrows a range query only as far as the table's physical order
+follows the column: PostgreSQL reports that order as `pg_stats.correlation`, from -1 to 1. Near 1, the rows of a time
+window sit together and the index points at the few ranges that hold them. Lower, every range holds a spread of values
+and the index points almost everywhere.
+
+Whizbang has one BRIN index, on `wh_event_store.created_at` (migration 258). Four tables were candidates. Each was
+seeded in the order production writes it and measured (`BrinIndexCandidatesTests`, which prints each figure in its run
+log):
+
+| Column | While the table grows | After one retention pass | Range query in the framework | Decision |
+|---|---|---|---|---|
+| `wh_event_store.created_at` | 0.98 | (no retention) | the startup orphaned-lifecycle window, last 30 minutes | **BRIN index** |
+| `wh_event_store.commit_sequence` | 0.98 | (no retention) | cursor reads, in `commit_sequence` order | B-tree kept, no BRIN |
+| `wh_log.logged_at` | 1.00 | 0.60 (14-day retention) | retention delete of the oldest rows | B-tree kept, no BRIN |
+| `wh_lifecycle_completions.completed_at` | 1.00 | 0.27 (7-day retention) | retention delete of the oldest rows | B-tree kept, no BRIN |
+| `wh_message_deduplication.first_seen_at` | 1.00 | 0.81 (30-day retention) | retention delete of the oldest rows | B-tree kept, no BRIN |
+
+### Near 1 means 0.9 or more {#brin-near-one-threshold}
+
+A column qualifies at a correlation of 0.9 or more and a range filter in the framework's own queries. Below that, the
+ranges overlap enough that the index reads most of the table, and the planner, which prices a BRIN scan by the same
+correlation, chooses the sequential scan anyway. The tests hold both sides: the event store measures at or above 0.9,
+each retention table measures at or above 0.9 before retention (so the harness can see a high value on that table) and
+below it after one pass.
+
+### The event store's created_at {#brin-event-store-created-at}
+
+Events are appended in time order. The one later write to an event row, the commit-order stamp, cannot be a heap-only
+update, so it writes a new version of the row elsewhere; it happens moments after the insert, so the new version lands
+near the tail, and the pages vacuum frees are refilled with rows only minutes younger. The seeded store, written through
+the emit chain and stamped after each batch with vacuum between batches, measures 0.98.
+
+On every start the perspective worker looks for events whose perspectives all finished but whose lifecycle never
+completed, within the last 30 minutes (`created_at >= window start`, `OrphanedLifecycleEventsSql`). No other index on
+`wh_event_store` leads with `created_at` for every event (`idx_event_store_ephemeral_reap` covers ephemeral events
+only), so that query read the whole store on every start. With the BRIN index the planner reads the store's tail
+through a bitmap scan; the test EXPLAINs the coordinator's own query text and asserts it, and a control on the same
+store without the index shows the sequential scan it replaces.
+
+A store whose events mostly leave (ephemeral pointers past their horizon, purged streams) frees old pages that new
+events refill, and its correlation falls the way a retention table's does. The index then reads more ranges, and once
+the planner prices it above a sequential scan it stops using it: the query is never worse than it was before the
+index.
+
+### The retention tables {#brin-retention-tables}
+
+`wh_log`, `wh_lifecycle_completions` and `wh_message_deduplication` lose their oldest rows to retention. Vacuum makes
+those pages free, and the next rows are written into them, so after each pass the newest rows sit at the start of the
+table and the order rotates. One pass at the default retention measured 0.60, 0.27 and 0.81: the shorter the
+retention, the larger the share each pass moves. Each keeps its B-tree, which serves the retention delete at any
+physical order. When the [partition manager](./partitioned-ledgers) keeps `wh_log` or `wh_lifecycle_completions`,
+expired partitions are dropped whole and a range query is pruned to the partitions it needs, so a BRIN index adds
+nothing there either.
+
+### commit_sequence {#brin-commit-sequence}
+
+`commit_sequence` follows the heap order as closely as `created_at` (0.98), but its readers walk it: a cursor asks
+for the events after its position in `commit_sequence` order, a few at a time. A BRIN index returns unordered pages,
+so every read would sort its whole range first. The partial B-tree `idx_event_store_commit_sequence` returns them in
+order and stops at the limit, so it stays and no BRIN index is added.
+
+### Nothing is replaced {#brin-nothing-replaced}
+
+No B-tree was dropped for a BRIN index. `idx_event_store_ephemeral_reap` stays because the ephemeral reap needs its
+order and its covered columns, and the retention tables' B-trees stay for the reasons above. Unused-index reporting
+(`whizbang.table.unused_index_bytes`) is where evidence for removing an index comes from; nothing is dropped on a guess.
+
+### How the index is built {#brin-pages-per-range}
+
+`pages_per_range` is the default 128, written out in the migration so the choice is visible: one range is 1 MB of
+heap, so the index stays a few pages per gigabyte of store and a 30-minute window reads a few ranges more than it
+needs. `autosummarize` stays off: the window is the store's newest pages, which are the unsummarized ones and which a
+BRIN scan always reads, and vacuum (kept running on this table by the stamper's updates) summarizes the ranges behind
+them. From PostgreSQL 16 a BRIN index does not prevent a heap-only update.
+
+The index is built inside the migration's transaction, as other event-store indexes are. A BRIN build is one
+sequential read of the table with no sort, the cheapest index build there is, and the first start of the release that
+carries migration 258 pays it once.
+
+```sql{title="Measure a column's physical order" category="Operations" difficulty="INTERMEDIATE"}
+ANALYZE wh_event_store;
+SELECT tablename, attname, correlation
+FROM pg_stats
+WHERE tablename IN ('wh_event_store', 'wh_log', 'wh_lifecycle_completions', 'wh_message_deduplication')
+  AND attname IN ('created_at', 'commit_sequence', 'logged_at', 'completed_at', 'first_seen_at');
 ```
 
 ## A table that has already grown {#already-grown}
