@@ -172,8 +172,8 @@ public async Task Append_ShouldIncrementSequenceAsync() {
   await store.AppendAsync(streamId, new TestEvent());
   await store.AppendAsync(streamId, new TestEvent());
 
-  // Assert - sequences are per stream and monotonic
-  await Assert.That(await store.GetLastSequenceAsync(streamId)).IsEqualTo(1);
+  // Assert - sequences are per stream and monotonic; a new stream starts at 1
+  await Assert.That(await store.GetLastSequenceAsync(streamId)).IsEqualTo(2);
 
   var events = new List<MessageEnvelope<TestEvent>>();
   await foreach (var e in store.ReadAsync<TestEvent>(streamId, fromSequence: 0)) {

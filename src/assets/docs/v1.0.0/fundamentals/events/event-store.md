@@ -20,6 +20,9 @@ codeReferences:
   - src/Whizbang.Data.Dapper.Postgres/DapperPostgresEventStore.cs
   - src/Whizbang.Data.Postgres/Migrations/224_DirectAppendTakesTheStreamLock.sql
   - src/Whizbang.Data.Postgres/Migrations/230_ReceivedStreamsKeepTheProducersOrder.sql
+  - src/Whizbang.Data.Postgres/Migrations/267_DirectAppendsStartNewStreamsAtOne.sql
+  - src/Whizbang.Core/Messaging/InMemoryEventStore.cs
+  - src/Whizbang.Testing/Contracts/EventStoreContractTests.cs
 testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/ReceivedStreamOrderSqlTests.cs
   - tests/Whizbang.Core.Tests/Messaging/AppendAndWaitEventStoreDecoratorTests.cs
@@ -31,6 +34,8 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/EventStoreConcurrentAppendTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/BranchCoverage/EFCore/EventStoreAppendFailureTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperPostgresEventStore.RetryTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/SchemaInitializationTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/FirstEventInStreamReadTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -89,7 +94,7 @@ On PostgreSQL, both drivers append through one database function, `wh_append_eve
 
 | Situation | What happens | Verified |
 |---|---|---|
-| Many writers append to one stream at once | Each waits for the stream's lock; versions are 0, 1, 2, ... with no gap or duplicate | {verified: EventStoreConcurrentAppendTests.ParallelAppendsToOneStream_AllSucceed_WithVersionsZeroToNMinusOneAsync, DapperPostgresEventStoreRetryTests.AppendAsync_ParallelAppendsToOneStream_AllSucceedWithVersionsZeroToNMinusOneAsync} |
+| Many writers append to one stream at once | Each waits for the stream's lock; a new stream's versions are 1, 2, 3, ... with no gap or duplicate | {verified: EventStoreConcurrentAppendTests.ParallelAppendsToOneStream_AllSucceed_WithVersionsZeroToNMinusOneAsync, DapperPostgresEventStoreRetryTests.AppendAsync_ParallelAppendsToOneStream_AllSucceedWithVersionsZeroToNMinusOneAsync} |
 | An outbox or inbox emit holds the same stream | The direct append waits, then numbers after the emitted events | {verified: EventStoreConcurrentAppendTests.ADirectAppend_WaitsForTheEmitChainsStreamLockAsync} |
 | The caller has an open transaction (EF Core) | The append runs in it and the lock is held until it ends; a rollback removes the event | {verified: EventStoreConcurrentAppendTests.TheAppend_JoinsTheCallersTransactionAsync} |
 | The context has other pending changes (EF Core) | They are saved first, as an append always did | {verified: EventStoreConcurrentAppendTests.PendingTrackedChanges_AreStillSavedByTheAppendAsync} |
@@ -97,7 +102,34 @@ On PostgreSQL, both drivers append through one database function, `wh_append_eve
 
 The lock and the insert are separate statements inside the function on purpose: under PostgreSQL's default `READ COMMITTED` isolation each statement sees what was committed before it started, so the insert sees every append that committed while this one waited. Appending inside a `REPEATABLE READ` or `SERIALIZABLE` transaction keeps the snapshot from before the wait and can still fail on the stream's unique version; use the default isolation for transactions that append.
 
-A stream appended directly numbers its events from 0. A stream whose events arrive through the outbox numbers them from 1.
+## Stream versions {#stream-versions}
+
+:::updated
+A new stream now starts at **version 1** on every write path. A direct append used to start a new stream at 0.
+:::
+
+A stream's events are numbered by `version` (the sequence `GetLastSequenceAsync` returns and `ReadAsync(fromSequence:)` reads from). A **new stream starts at version 1** whichever path creates it, and each event takes the next version:
+
+| Write path | A new stream's first event |
+|---|---|
+| Dispatch through the outbox, or receipt through the inbox | version 1 |
+| A direct append (`IEventStore.AppendAsync`: system events, compaction, direct use), both Postgres drivers | version 1 |
+| `InMemoryEventStore` | version 1 |
+| The Sqlite store | version 1 |
+
+A stream with no events reports `-1` from `GetLastSequenceAsync`. After three appends to a new stream it reports `3`, and `ReadAsync(streamId, fromSequence: 3)` returns the third event; `fromSequence: 0` or `1` reads the whole stream.
+
+{verified: EventStoreContractTests.AppendAsync_ANewStream_StartsAtVersionOneAsync, EventStoreContractTests.GetLastSequenceAsync_AfterAppends_ShouldReturnCorrectSequenceAsync, EventStoreContractTests.GetLastSequenceAsync_EmptyStream_ShouldReturnMinusOneAsync, SchemaInitializationTests.EnsureWhizbangDatabaseInitialized_ADatabaseAlreadyPast267_StillApplies267_AndANewStreamStartsAtOneAsync}
+
+On PostgreSQL the change is migration **267**, which redefines `wh_append_event` to insert at `COALESCE(MAX(version), 0) + 1`; everything else the function does (the stream lock, sealing, the digest fold and the [lifecycle ledger](stream-end-of-life#the-stream-lifecycle-ledger)) is unchanged. The migration ledger records migrations by file name, so a database that has already applied later migrations still applies 267 when it arrives.
+
+**Existing streams keep their numbering.** Nothing is renumbered. A stream a direct append created at version 0 before 267 continues from its highest version, and its version 0 stays its first event (for [`ApplyContext.Current.IsFirstEventInStream`](../perspectives/perspectives-with-actions#first-event-in-stream), among others).
+
+{verified: FirstEventInStreamReadTests.DirectAppend_ToAStreamNumberedFromZero_ContinuesItsNumbering_AndItsVersionZeroStaysFirstAsync}
+
+:::updated
+**Upgrading:** code or tests that assumed a direct append starts a stream at 0 must expect 1. In practice: a `GetLastSequenceAsync` assertion after N appends to a new stream expects `N` (it expected `N - 1`); a test that seeds rows by hand after a real append starts them one higher; and a read or archive prefix that named version 0 as a new stream's first event names version 1. The event store contract (`EventStoreContractTests`) changed the same way, so a custom `IEventStore` that runs it must number a new stream from 1.
+:::
 
 ## Received streams keep the producer's order {#received-stream-order}
 
