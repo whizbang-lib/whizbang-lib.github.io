@@ -67,6 +67,8 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/RetentionSettingsSyncSqlTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperRetentionSettingsSyncTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/BatchFlusherRetryTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/BatchFlusherTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/FlushWorkerClockWiringTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerAffinityHoldWatchdogTests.cs
   - tests/Whizbang.Core.Tests/Configuration/ProcessWideOptionsBindingTests.cs
   - tests/Whizbang.Hosting.AspNet.Tests/AspNetOptionsConfigurationBindingTests.cs
@@ -952,13 +954,28 @@ Shared tuning shape for the flush workers above. **Configure:** bound as the own
 | `ChannelCapacity` | `int` | `10000` | `Whizbang__Workers__<Worker>__Flusher__ChannelCapacity` | Bounded channel capacity (back-pressure when full) |
 | `MaxBatchSize` | `int` | `500` | `Whizbang__Workers__<Worker>__Flusher__MaxBatchSize` | Max items per flush call |
 | `CoalesceWindowMs` | `int` | `25` | `Whizbang__Workers__<Worker>__Flusher__CoalesceWindowMs` | Max ms coalescing additional items after the first |
-| `ImmediateFlushThreshold` | `int` | `250` | `Whizbang__Workers__<Worker>__Flusher__ImmediateFlushThreshold` | Flush immediately if the batch reaches this first |
+| `ImmediateFlushThreshold` | `int` | `250` | `Whizbang__Workers__<Worker>__Flusher__ImmediateFlushThreshold` | Flush without waiting out the window once the batch holds this many items, the first item included (1 flushes each item as it arrives) |
 | `MaxFlushAttempts` | `int` | `5` | `Whizbang__Workers__<Worker>__Flusher__MaxFlushAttempts` | Consecutive failed flushes of one batch before it is dropped |
 | `FlushRetryBackoffMs` | `int` | `250` | `Whizbang__Workers__<Worker>__Flusher__FlushRetryBackoffMs` | Backoff before the first retry of a failed flush; doubles per attempt |
 | `FlushRetryMaxBackoffMs` | `int` | `5000` | `Whizbang__Workers__<Worker>__Flusher__FlushRetryMaxBackoffMs` | Cap on the retry backoff |
 | `DrainTimeoutMs` | `int` | `5000` | `Whizbang__Workers__<Worker>__Flusher__DrainTimeoutMs` | How long shutdown waits for queued items to flush before giving up; the remainder is dropped with a warning rather than blocking host shutdown |
 
 A flush that throws is retried in place with the same batch (Warning, EventId 1: `BatchFlusher flush failed for batch of {Count} (attempt {Attempt} of {MaxAttempts}); retrying the same batch in {BackoffMs}ms`) rather than discarded. The items are completions, lease renewals and failures, so a dropped batch leaves its rows leased until their lease expires, after which they are re-claimed and redone; that consequence is named in the Error (EventId 3) logged when `MaxFlushAttempts` is exhausted, and the count is visible on the flusher's `ItemsDropped` counter beside `ItemsFlushed`. {verified: BatchFlusherRetryTests.FlushFailsOnce_RetriesTheSameBatchAndDeliversItAsync, BatchFlusherRetryTests.FlushAlwaysFails_DropsAfterMaxAttemptsAndNamesTheConsequenceAsync}
+
+#### How the coalesce window runs {#batch-flusher-window}
+
+{verified: BatchFlusherTests.SingleItem_FlushesAfterCoalesceWindowAsync, BatchFlusherTests.ItemsArrivingWithinTheWindow_JoinTheBatchUntilTheWindowClosesAsync, BatchFlusherTests.FirstItemAtTheImmediateThreshold_FlushesWithoutOpeningAWindowAsync, BatchFlusherTests.NoCoalesceWindow_FlushesTheFirstItemWithoutWaitingAsync, BatchFlusherTests.DisposeAsync_WhileAWindowIsOpen_FlushesWithoutWaitingForTheWindowAsync, BatchFlusherTests.Constructor_WithoutAClock_RunsOnTheSystemClockAsync, FlushWorkerClockWiringTests.OutboxCompletionFlushWorker_RunsItsFlusherOnTheRegisteredClockAsync, FlushWorkerClockWiringTests.PerspectiveCompletionFlushWorker_RunsItsFlusherOnTheRegisteredClockAsync, FlushWorkerClockWiringTests.FailureFlushWorker_RunsItsFlusherOnTheRegisteredClockAsync, FlushWorkerClockWiringTests.LeaseRenewalWorker_RunsItsFlusherOnTheRegisteredClockAsync, FlushWorkerClockWiringTests.InboxHandlerWorker_RunsItsFlusherOnTheRegisteredClockAsync}
+
+The flusher waits for a first item, then keeps reading the channel until `CoalesceWindowMs` passes, `MaxBatchSize` is reached or the batch holds `ImmediateFlushThreshold` items, and flushes whatever it has.
+
+- A batch that already holds `ImmediateFlushThreshold` items, counting the first, flushes without opening a window. `CoalesceWindowMs = 0` also flushes the first item at once.
+- The window is a real wait on the channel, ended by a timer for `CoalesceWindowMs`. An idle window holds no thread.
+- The window, the retry backoff (`FlushRetryBackoffMs`, `FlushRetryMaxBackoffMs`) and the shutdown bound (`DrainTimeoutMs`) all run on the flusher's `TimeProvider`. The five flush workers (`OutboxCompletionFlush`, `PerspectiveCompletionFlush`, `FailureFlush`, `LeaseRenewal`, `InboxHandler`) take it from the host's registered `TimeProvider`, so a test that registers a fake clock drives every flusher with it. With no clock registered they use `TimeProvider.System`.
+- At shutdown, a batch whose window is still open is flushed at once instead of waiting out the window.
+
+:::updated
+`ImmediateFlushThreshold` now counts the first item. A threshold of 1 flushes each item as it arrives; before, the flusher still waited a full window for a second item. Every shipped default is 50 or more, so the default workers are not affected. The window used to spin on `Task.Yield` against `Environment.TickCount` until its deadline, and the backoff and drain bound ran on the real clock regardless of the host's `TimeProvider`; shutdown sat out an open window before flushing it ([#1868](https://github.com/whizbang-lib/whizbang/issues/1868)).
+:::
 
 ### MessageProcessingOptions
 

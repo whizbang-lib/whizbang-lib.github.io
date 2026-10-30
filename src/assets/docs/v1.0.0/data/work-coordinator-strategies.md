@@ -24,6 +24,7 @@ codeReferences:
   - src/Whizbang.Hosting.AspNet/WhizbangFlushMiddleware.cs
   - src/Whizbang.Core/Messaging/WorkCoordinatorFlushHelper.cs
 testReferences:
+  - tests/Whizbang.Core.Component.Tests/Workers/BatcherAmbientContextTests.cs
   - tests/Whizbang.Core.Tests/Messaging/FlushApiTests.cs
   - tests/Whizbang.Core.Component.Tests/Messaging/BatchWorkCoordinatorStrategyTests.cs
   - tests/Whizbang.Core.Tests/Messaging/WorkCoordinatorStrategyRegistrationTests.cs
@@ -129,7 +130,7 @@ services.Configure<WorkCoordinatorOptions>(o => {
 - **Use when**: Background workers with steady message throughput
 - **At host stop**: the timer is stopped, a timer flush still running is waited for, and what is queued is flushed before the service provider is disposed (see [Stopping the Host](#host-stop))
 
-### Batch
+### Batch {#batch}
 
 Combines **count-based** and **debounce-based** triggers. Flushes when either threshold is hit first:
 
@@ -150,6 +151,9 @@ services.Configure<WorkCoordinatorOptions>(o => {
 - **At host stop**: the debounce timer is stopped, a batch-size or debounce flush still running is waited for, and what is queued is flushed before the service provider is disposed (see [Stopping the Host](#host-stop))
 
 **Debounce behavior**: Each new `QueueOutboxMessage` or `QueueInboxMessage` call resets the debounce countdown. The timer only fires after messages stop arriving for the full `IntervalMilliseconds` window. This means continuous message flow keeps batching until `BatchSize` is hit, while gaps in the flow trigger timely partial flushes.
+
+**Ambient context**: a batch-size flush starts without the ambient (`AsyncLocal`) context of the call that filled the batch, and the debounce timer is created with the flow suppressed, so a debounce flush carries nothing from whoever first resolved the strategy ([details](../extending/internals/outbox-batch-strategy.md#ambient-context)).
+{verified: BatcherAmbientContextTests.StrategyBatchSizeFlush_DoesNotSeeTheQueuersAmbientContextAsync, BatcherAmbientContextTests.StrategyDebounceFlush_DoesNotSeeTheConstructorsAmbientContextAsync}
 
 ## Flush Events {#flush-events}
 
