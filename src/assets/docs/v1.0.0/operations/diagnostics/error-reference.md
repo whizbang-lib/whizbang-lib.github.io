@@ -407,6 +407,7 @@ Compile-time errors, warnings and notices from Whizbang's source generators and 
 | WHIZ104 | Warning | [Apply method should use event timestamps instead of reading the clock](whiz104.md) |
 | WHIZ105 | Warning | [Perspective injects non-pure service](whiz105.md) |
 | WHIZ106 | Error | [Collective apply must not query other perspectives at apply time](whiz106.md) |
+| WHIZ107 | Warning | [Apply never receives a null model](whiz107.md) |
 | WHIZ110 | Warning | [Message Missing [PinnedId]](whiz110.md) |
 | WHIZ111 | Warning | [Perspective Missing [PinnedId]](whiz111.md) |
 | WHIZ112 | Error | [Invalid [PinnedId] GUID](whiz112.md) |
