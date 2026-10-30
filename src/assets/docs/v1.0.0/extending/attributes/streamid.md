@@ -179,11 +179,15 @@ A derived type with no `[StreamId]` of its own still resolves and sets by the ba
 The `[GenerateStreamId]` policy is looked up the same way. A derived type that declares its own `[GenerateStreamId]`
 uses its own policy, not the base's
 {verified: StreamIdDerivedFirstGeneratorTests.ADerivedTypesOwnGenerationPolicy_IsNotShadowedByTheBaseAsync}.
-A derived type with its own `[StreamId]` but **no** `[GenerateStreamId]` has no policy entry of its own, so the base's
-check matches it and it inherits the base's `[GenerateStreamId]` policy: the dispatcher generates an ID and writes it to
-the **derived** property, because `SetStreamId` dispatches to the derived type. Add `[GenerateStreamId]` to the derived
-property to set its own policy, or move the base's `[GenerateStreamId]` off the base when derived types must not
-generate.
+A derived type with its own `[StreamId]` but **no** `[GenerateStreamId]` does not inherit the base's policy: the
+generator gives it an explicit do-not-generate entry, so it is not auto-generated. Add `[GenerateStreamId]` to it to
+auto-generate its own stream ID. A type with no `[StreamId]` of its own inherits the policy of its nearest base that
+declares one
+{verified: StreamIdDerivedFirstGeneratorTests.ADerivedTypeWithItsOwnStreamIdAndNoGenerateStreamId_DoesNotInheritTheBasesGenerateStreamIdAsync, StreamIdDerivedFirstGeneratorTests.ADerivedOverrideWithNoGenerateStreamId_DoesNotInheritTheBasesClassLevelGenerateStreamIdAsync, StreamIdDerivedFirstGeneratorTests.ATypeWithItsOwnStreamId_DoesNotInheritAGenerateStreamIdFromAnyLevelAboveAsync, StreamIdDerivedFirstGeneratorTests.ADerivedTypeWithItsOwnStreamIdAndGenerateStreamId_UsesItsOwnGenerationPolicyAsync, StreamIdDerivedFirstGeneratorTests.ATypeWithNoStreamIdOfItsOwn_InheritsTheGenerationPolicyOfItsNearestBaseAsync}.
+
+Within one assembly this is exact. When the base type is compiled in a different assembly from the derived type, the
+base assembly's lookup can still apply its policy to the derived instance; keep a base that declares
+`[GenerateStreamId]` in the same assembly as derived types that must not generate.
 
 :::updated
 **Upgrade note.** Before this change the chain followed discovery order, so a base type discovered before a derived
@@ -191,8 +195,9 @@ type with its own `[StreamId]` matched every derived instance first, and the der
 written. Whether a contract resolved correctly depended on how its namespace was spelled. Such a derived type now
 resolves and sets by its own `[StreamId]`, as [WHIZ006](../../operations/diagnostics/whiz006) already described. A
 caller that set only the inherited base property on that type now gets the derived property's value as the stream ID
-(often empty, or a newly generated ID under an inherited `[GenerateStreamId]`), so its messages can route to a different
-stream. Set the derived property, or remove the derived `[StreamId]` when the inherited one is the stream ID you mean.
+(often empty), so its messages can route to a different stream. Set the derived property, or remove the derived
+`[StreamId]` when the inherited one is the stream ID you mean. A derived type with its own `[StreamId]` also no longer
+inherits the base's `[GenerateStreamId]`; declare `[GenerateStreamId]` on it to keep auto-generation.
 :::
 
 ## How It Works

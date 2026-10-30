@@ -201,7 +201,7 @@ public record OrderCreated : IEvent {
 }
 ```
 
-The property may be of any type (`Guid`, `Guid?`, `string` or a strongly typed ID; the extractor keys the stream by the value's string form), and only **one** property per message type may carry `[StreamId]`. The attribute is inherited by derived message types; a derived type that declares its own stream ID on purpose marks it `[StreamId(Override = true)]` (see [StreamId Attribute](../../extending/attributes/streamid#overriding-an-inherited-stream-id)). A derived type's own `[StreamId]` is used ahead of its base's whatever the namespace order, because the generated lookups run most-derived first (see [derived-first dispatch](../../extending/attributes/streamid#derived-first-dispatch), which also covers how an inherited `[GenerateStreamId]` applies to a derived property).
+The property may be of any type (`Guid`, `Guid?`, `string` or a strongly typed ID; the extractor keys the stream by the value's string form), and only **one** property per message type may carry `[StreamId]`. The attribute is inherited by derived message types; a derived type that declares its own stream ID on purpose marks it `[StreamId(Override = true)]` (see [StreamId Attribute](../../extending/attributes/streamid#overriding-an-inherited-stream-id)). A derived type's own `[StreamId]` is used ahead of its base's whatever the namespace order, because the generated lookups run most-derived first (see [derived-first dispatch](../../extending/attributes/streamid#derived-first-dispatch), which also covers why a derived type with its own `[StreamId]` does not inherit the base's `[GenerateStreamId]`).
 
 ### Comparison
 

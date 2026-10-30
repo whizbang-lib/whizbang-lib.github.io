@@ -153,8 +153,10 @@ The guard distinguishes between:
 The policy lookup dispatches most-derived first, like every generated stream ID lookup, so a derived type's own
 `[GenerateStreamId]` is used ahead of its base's
 {verified: StreamIdDerivedFirstGeneratorTests.ADerivedTypesOwnGenerationPolicy_IsNotShadowedByTheBaseAsync}. A derived
-type that declares its own `[StreamId]` but no `[GenerateStreamId]` inherits the base's policy, and the generated ID is
-written to the derived property. See
+type that declares its own `[StreamId]` (plain or `Override = true`) but no `[GenerateStreamId]` does not inherit the
+base's policy and is not auto-generated; declare `[GenerateStreamId]` on it to auto-generate. A derived type with no
+`[StreamId]` of its own inherits the base's stream ID and policy
+{verified: StreamIdDerivedFirstGeneratorTests.ADerivedTypeWithItsOwnStreamIdAndNoGenerateStreamId_DoesNotInheritTheBasesGenerateStreamIdAsync, StreamIdDerivedFirstGeneratorTests.ADerivedTypeWithNoStreamIdOfItsOwn_InheritsTheBasesGenerateStreamIdAsync}. See
 [A derived type's own stream ID is never shadowed by its base](streamid#derived-first-dispatch).
 
 ## Zero Reflection / AOT
