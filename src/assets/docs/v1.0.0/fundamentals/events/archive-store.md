@@ -22,11 +22,13 @@ codeReferences:
   - src/Whizbang.Data.Dapper.Postgres/ServiceCollectionExtensions.cs
   - src/Whizbang.Data.Postgres/PostgresArchiveConnection.cs
   - src/Whizbang.Data.Postgres/Migrations/268_ArchiveManifest.sql
+  - src/Whizbang.Data.Postgres/Migrations/269_ArchiveObjectDeletionQueue.sql
   - src/Whizbang.Archive.AzureBlob/AzureBlobArchiveStore.cs
   - src/Whizbang.Archive.AzureBlob/AzureBlobArchiveOptions.cs
   - src/Whizbang.Archive.AzureBlob/AzureBlobArchiveServiceCollectionExtensions.cs
   - src/Whizbang.Archive.AzureBlob/ArchiveChunk.cs
   - src/Whizbang.Archive.AzureBlob/ArchiveObjectCorruptedException.cs
+  - src/Whizbang.Archive.AzureBlob/ArchiveObjectDeletionStep.cs
 testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StreamSealingSqlTests.cs
   - tests/Whizbang.Core.Tests/Archival/ArchiveBatchTests.cs
@@ -442,7 +444,7 @@ hashes.
 | An object is read from the container its locator names, even after `ContainerName` changes. | Changing the setting moves new archives only; older objects are never stranded. | {verified: AzureBlobArchiveStoreTests.Read_AnObjectInTheContainerItsLocatorNames_AfterTheSettingChangedAsync} |
 | A restore downloads and checks every object, stages its events back into `wh_event_archive`, removes the manifest rows and runs the table store's restore, all in one transaction under the stream's append lock. | The restore is the table store's own (exact versions and commit positions, digests, epochs, cursors, the tombstone back to `Active`), and it is all or nothing. | {verified: AzureBlobArchiveStoreTests.Restore_PutsTheStreamBackExactly_AndRemovesItsObjectsAsync} |
 | A `version_conflict` (or `nothing_archived`) restore keeps the manifest and the objects and leaves nothing staged. | A refused restore must leave the archive exactly as it was. | {verified: AzureBlobArchiveStoreTests.Restore_AVersionConflict_KeepsTheArchiveAndItsObjectsAsync} |
-| A restored or deleted archive's objects are removed after the commit, and an object that cannot be removed is logged as a warning naming it; the call still succeeds. | Once the manifest no longer names an object it is unreachable garbage, never data. Removing objects before the commit could leave a manifest naming objects that are gone. | {verified: AzureBlobArchiveStoreTests.Delete_AnObjectThatCannotBeRemoved_IsLogged_AndTheDeleteStillCompletesAsync} |
+| A restored or deleted archive's objects are queued for deletion in its transaction and deleted right after the commit; one that cannot be deleted is logged and stays queued for the [maintenance step](#purging-a-stream-archived-to-blob), and the call still succeeds. | Deleting objects before the commit could leave a manifest naming objects that are gone; queuing them in the transaction means none is ever left unreachable. | {verified: AzureBlobArchiveStoreTests.Delete_AnObjectThatCannotBeRemoved_IsLogged_AndTheDeleteStillCompletesAsync, AzureBlobArchiveStoreTests.Restore_PutsTheStreamBackExactly_AndRemovesItsObjectsAsync} |
 | A delete returns the events its objects held plus any the table store held, and the tombstone stays without a locator. | Same contract as the table store's delete: the versions were seen downstream and are never reused. | {verified: AzureBlobArchiveStoreTests.Delete_RemovesTheObjectsAndTheManifest_TheTombstoneStaysAsync} |
 
 ### The manifest {#the-archive-manifest}
@@ -457,7 +459,26 @@ The key is `(stream_id, first_version)`.
 |---|---|---|
 | The table is store-neutral: the locator names the store. | Another byte-stream store can list its objects the same way. | {verified: AzureBlobArchiveStoreTests.Write_WholeStream_ThenRead_ReturnsTheEventsByteIdenticalInVersionOrderAsync} |
 | Each row references its stream's lifecycle row, `ON DELETE CASCADE`; a row for a stream with no lifecycle row is refused. | Every archive writes the lifecycle row first, so an orphan row is a bug. A [stream purge](../../operations/infrastructure/purging-streams) deletes the lifecycle row, which takes the manifest rows with it, so a purged stream can never be restored from an object that outlived it. The purge report does not count the cascaded rows. The key of a lifecycle row never changes, so the append path's updates to it queue no check. | {verified: ArchiveStoreSqlTests.Purge_AStreamArchivedOutsideTheDatabase_TakesItsManifestRows_AndLeavesOthersAsync, ArchiveStoreSqlTests.Manifest_ARowForAStreamWithNoLifecycleRow_IsRefusedAsync, AzureBlobArchiveStoreTests.Purge_AStreamArchivedToBlob_TakesItsManifestRowsAsync} |
-| A purge removes the manifest rows, not the objects. | The purge is one SQL transaction in the service database and cannot reach blob storage. The objects are unreachable once their rows are gone; delete them by their stream prefix (`{stream}/`) when a purge must also remove the bytes. | {verified: AzureBlobArchiveStoreTests.Purge_AStreamArchivedToBlob_TakesItsManifestRowsAsync} |
+| A purge queues the stream's objects for deletion in its own transaction, and a maintenance step deletes them. | The purge is one SQL transaction and cannot reach blob storage, so it records what to delete and the step does it; see [Purging a stream archived to blob](#purging-a-stream-archived-to-blob). | {verified: AzureBlobArchiveStoreTests.Purge_QueuesTheObjects_AndTheStepDeletesThemAsync} |
+
+### Purging a stream archived to blob {#purging-a-stream-archived-to-blob}
+
+{verified: AzureBlobArchiveStoreTests.Purge_QueuesTheObjects_AndTheStepDeletesThemAsync, ArchiveStoreSqlTests.Purge_QueuesTheObjectsItsManifestRowsNamed_InItsOwnTransactionAsync}
+
+A [stream purge](../../operations/infrastructure/purging-streams) removes every byte of the stream, its archive objects
+included. Every object a manifest row stops naming is queued in `wh_archive_object_deletions` (migration 269), and the
+`archive-object-deletion` maintenance step that the package registers deletes the queued objects.
+
+| Choice | Reason | Verified |
+|---|---|---|
+| The queue is written by a trigger on `wh_archive_manifest`, in the transaction that removes the rows: a purge (by the cascade from the lifecycle row), a restore or a delete. A purge that rolls back queues nothing. | The objects to delete are recorded atomically with the rows that named them, so a committed purge always has them queued and a rolled-back one never does. The trigger covers every way a row can go without redefining `wh_purge_streams`. | {verified: ArchiveStoreSqlTests.Purge_QueuesTheObjectsItsManifestRowsNamed_InItsOwnTransactionAsync} |
+| Each queued row keeps the object's locator: the store, the container and the object name. | The step deletes from the container the object was written to, even after `ContainerName` changes. | {verified: ArchiveStoreSqlTests.Purge_QueuesTheObjectsItsManifestRowsNamed_InItsOwnTransactionAsync, AzureBlobArchiveStoreTests.Purge_QueuesTheObjects_AndTheStepDeletesThemAsync} |
+| The step runs in the maintenance cycle, so under the maintainer duty when role assignment manages it, and deletes at most 100 due objects per cycle. | Deleting is fleet-wide work on shared state, done by one instance; a purge of many streams drains over several cycles instead of holding one cycle for a long run of storage calls. | {verified: AzureBlobArchiveRegistrationTests.Registration_AddsTheObjectDeletionStep_OnlyWithThePackageAsync, AzureBlobArchiveStoreTests.Purge_QueuesTheObjects_AndTheStepDeletesThemAsync} |
+| A row is removed only once storage confirms the delete; an object that is already gone (404) counts as deleted. | Nothing is forgotten before it is really gone, and a delete that succeeded on a run whose confirmation was lost is not retried forever. | {verified: AzureBlobArchiveStoreTests.Step_AnObjectAlreadyGone_CountsAsDeletedAsync} |
+| A failed delete stays queued: the attempt is counted, the error kept and logged as a warning naming the object, and the next try waits one minute, doubling each failure, at most one hour. | A storage outage is retried without hammering the service, and an object that keeps failing is visible in the log and in `last_error`. An hour caps the wait so a recovered account is cleaned up the same day. | {verified: AzureBlobArchiveStoreTests.Step_AFailingDelete_StaysQueued_AndIsRetriedAfterItsBackoffAsync} |
+| An object whose stream's append lock is held (a write is archiving the stream) is left for a later cycle, without counting an attempt. | That write may be uploading an object of the same name: names follow content, so archiving the same events again after a restore writes the same name. | {verified: AzureBlobArchiveStoreTests.Step_AnObjectWhoseStreamIsBeingArchived_IsLeftForALaterRun_WithoutCountingAnAttemptAsync} |
+| A write takes the names it uploads back out of the queue, in its transaction and under the stream's lock. | An object that is live again must never be deleted. | {verified: AzureBlobArchiveStoreTests.Restore_ThenArchiveTheSameEventsAgain_KeepsTheLiveObject_OutOfTheQueueAsync} |
+| A service with only the Postgres-table store queues nothing and has no such step. | Its archive never leaves the database, so a purge already removed every byte. | {verified: ArchiveStoreSqlTests.Purge_OfATableStoreArchive_QueuesNothingAsync, AzureBlobArchiveRegistrationTests.Registration_AddsTheObjectDeletionStep_OnlyWithThePackageAsync} |
 
 ## Related
 
