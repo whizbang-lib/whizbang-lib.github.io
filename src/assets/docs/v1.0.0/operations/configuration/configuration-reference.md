@@ -22,6 +22,8 @@ codeReferences:
   - src/Whizbang.Core/ServiceCollectionExtensions.cs
   - src/Whizbang.Data.Postgres/Notifications/PostgresNotificationsServiceCollectionExtensions.cs
   - src/Whizbang.Offloads.AzureBlob/AzureBlobOffloadServiceCollectionExtensions.cs
+  - src/Whizbang.Archive.AzureBlob/AzureBlobArchiveServiceCollectionExtensions.cs
+  - src/Whizbang.Archive.AzureBlob/AzureBlobArchiveOptions.cs
   - src/Whizbang.Core/Workers/PinnedPoolServiceCollectionExtensions.cs
   - src/Whizbang.Core/Configuration/WhizbangCoreOptions.cs
   - src/Whizbang.Core/Messaging/WorkCoordinatorGateOptions.cs
@@ -192,6 +194,7 @@ Removed keys the library declares:
 | `Whizbang:BodyOffload` | `MessageBodyOffloadOptions` (every key) | Automatic (`AddWhizbangBodyOffload()`, which every provider helper calls) |
 | `Whizbang:BodyOffload:Cipher` | the built-in body cipher (`AesGcmEnvelopeCipher`) | Opt-in helper |
 | `Whizbang:Offloads:AzureBlob:<name>` | `AzureBlobOffloadOptions` | Opt-in helper |
+| `Whizbang:Archive:AzureBlob` | `AzureBlobArchiveOptions` | Opt-in helper (`AddWhizbangAzureBlobArchive`) |
 | `Whizbang:Workers:PinnedPool` | `WhizbangPinnedPoolOptions` | Automatic (`AddWhizbangPinnedPool()`) |
 | `Whizbang` | `WhizbangOptions` | Automatic (worker pipeline) |
 | `Whizbang:SchemaInitialization` | `SchemaInitializationOptions` | Automatic |
@@ -535,6 +538,36 @@ Read by the same helper (through `AddWhizbangBodyCipherFromConfiguration`) whene
 | `KeyEncryptionKey` | `string` (base64, 32 bytes) | required with a cipher name | `Whizbang__BodyOffload__Cipher__KeyEncryptionKey` | The current key encryption key; a secret, `openssl rand -base64 32` |
 | `PreviousKeyId` | `string?` | `null` | `Whizbang__BodyOffload__Cipher__PreviousKeyId` | During a rotation window, the label being retired; requires `PreviousKeyEncryptionKey` |
 | `PreviousKeyEncryptionKey` | `string?` (base64, 32 bytes) | `null` | `Whizbang__BodyOffload__Cipher__PreviousKeyEncryptionKey` | During a rotation window, the key being retired; a secret |
+
+## Opt-In Binding: Azure Blob Archive Store {#azure-blob-archive}
+
+Calling the helper reads `Whizbang:Archive:AzureBlob` and makes the Azure Blob store the service's archive store, in
+place of the Postgres-table store the drivers register; without the call the section is inert. A `ServiceUri`
+authenticates with the `TokenCredential` the host registers, so no secret is in configuration. **Details:**
+[Archive Store](../../fundamentals/events/archive-store#the-azure-blob-store).
+{verified: AzureBlobArchiveRegistrationTests.Configuration_BindsEverySetting_AndKeepsTheDefaultsForWhatIsAbsentAsync, AzureBlobArchiveRegistrationTests.Configuration_AValueThatCannotBeRead_IsRefused_NamingTheKeyAsync}
+
+```csharp{
+title: "Opt into the Azure Blob archive store from configuration"
+description: "One call reads Whizbang:Archive:AzureBlob and replaces the Postgres-table archive store; without it the section is inert."
+framework: "NET10"
+category: "Configuration"
+difficulty: "BEGINNER"
+tags: ["configuration", "archive", "azure-blob", "binding"]
+tests: ["AzureBlobArchiveStoreTests.Registration_TheDriversPrefixTruncate_ArchivesThroughTheBlobStoreAsync"]
+}
+builder.Services.AddWhizbangAzureBlobArchive(builder.Configuration);
+```
+
+### Whizbang:Archive:AzureBlob → AzureBlobArchiveOptions
+
+| Key | Type | Default | Environment variable | Purpose |
+|-----|------|---------|----------------------|---------|
+| `ServiceUri` | `Uri?` | `null` | `Whizbang__Archive__AzureBlob__ServiceUri` | Blob service endpoint; authenticates with the registered `TokenCredential`. Set this or `ConnectionString` |
+| `ConnectionString` | `string?` | `null` | `Whizbang__Archive__AzureBlob__ConnectionString` | Storage connection string (Azurite, or an account key from the host's secret store) |
+| `ContainerName` | `string` | `whizbang-archive` | `Whizbang__Archive__AzureBlob__ContainerName` | Container the archive objects are written to; created on the first write |
+| `CompressionLevel` | `int` | `4` | `Whizbang__Archive__AzureBlob__CompressionLevel` | Brotli quality, 0 to 11 ([why 4](../../fundamentals/events/archive-store#azure-blob-configuration)) |
+| `MaxEventsPerChunk` | `int` | `10000` | `Whizbang__Archive__AzureBlob__MaxEventsPerChunk` | Most events one archive object holds; 1 or more |
 
 ## Code-Configured Options: The Binding Recipe
 

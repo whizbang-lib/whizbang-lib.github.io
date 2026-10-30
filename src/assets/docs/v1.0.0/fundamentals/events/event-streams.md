@@ -18,6 +18,9 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/212_CloseStreamReanchorsCursorsAndSnapshots.sql
   - src/Whizbang.Data.Postgres/Migrations/240_TruncateStreamPrefix.sql
   - src/Whizbang.Core/Lifecycle/StreamPrefixTruncator.cs
+  - src/Whizbang.Core/Lifecycle/IStreamFinalizer.cs
+  - src/Whizbang.Core/Attributes/TerminalEventAttribute.cs
+  - src/Whizbang.Core/Messaging/StreamSealedException.cs
 testReferences:
   - tests/Whizbang.Core.Tests/Messaging/InMemoryEventStoreTests.cs
   - tests/Whizbang.Core.Tests/ValueObjects/IdentityValueObjectTests.cs
@@ -25,6 +28,8 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StreamDigestTableSqlTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperStreamCloseCompanionTests.cs
   - tests/Whizbang.Core.Tests/Messaging/WorkCoordinatorDefaultsTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/StreamSealingSqlTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperStreamSealingTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -352,12 +357,38 @@ Before migration 263, `wh_truncate_stream_prefix` read audit records into the ra
 
 The Dapper and EF Core schemas behave the same way.
 
+## Sealing a Stream {#sealing-a-stream}
+
+A stream that has ended can be sealed: it keeps every event and stays readable, but every later append is refused. Seal
+it explicitly with `IStreamFinalizer.FinalizeAsync(streamId, reason)`, or declare the event that ends it with
+`[TerminalEvent]`, which seals the stream in the transaction that stores the event. A direct append to a sealed stream
+throws `StreamSealedException`, and so does an outbox write its caller awaits (the immediate and scoped strategies);
+a write nobody awaits dead-letters the refused event and stores the rest of its batch. Sealing is a stream's first step toward its end of life; see
+[Stream End of Life](stream-end-of-life.md#sealing-a-stream) for the full behavior and every choice behind it.
+
+```csharp{title="Seal a stream, explicitly or with a terminal event" description="Finalizes an order's stream, or lets the event that ends it seal the stream as it is stored." category="Core Concepts" difficulty="INTERMEDIATE" tags=["event-streams", "sealing", "terminal-event", "finalize"] tests=["StreamSealingSqlTests.Finalize_SealsTheStream_WithTheTimeAndTheReasonAsync", "StreamSealingSqlTests.TerminalEvent_DirectAppend_SealsTheStream_AndTheNextAppendThrowsAsync", "StreamSealingSqlTests.DirectAppend_ToASealedStream_ThrowsStreamSealedException_AndStoresNothingAsync"]}
+// Explicitly: the order is archived, so its stream takes no more events.
+await finalizer.FinalizeAsync(orderId, "Order archived after delivery");
+
+try {
+  await eventStore.AppendAsync(orderId, new OrderNoteAdded(orderId, "late note"));
+} catch (StreamSealedException sealedStream) {
+  // sealedStream.SealedAt and sealedStream.Reason say when and why the stream ended.
+}
+
+// Declaratively: storing an OrderCancelled seals the order's stream in the same transaction.
+[TerminalEvent]
+public sealed record OrderCancelled([property: StreamId] Guid OrderId, string Reason) : IEvent;
+```
+
+{verified: StreamSealingSqlTests.Finalize_SealsTheStream_WithTheTimeAndTheReasonAsync, StreamSealingSqlTests.TerminalEvent_DirectAppend_SealsTheStream_AndTheNextAppendThrowsAsync, StreamSealingSqlTests.DirectAppend_ToASealedStream_ThrowsStreamSealedException_AndStoresNothingAsync, DapperStreamSealingTests.AppendAsync_TerminalEvent_SealsTheStream_AndTheNextAppendThrowsStreamSealedExceptionAsync}
+
 ## Related Documentation
 
 - [Events](events.md) - Event definition and EventId
 - [Stream ID](stream-id.md) - IHasStreamId and auto-generation
 - [Event Store](event-store.md) - Event persistence
-- [Stream End of Life](stream-end-of-life.md) - The stream lifecycle ledger: every stream's age, size and state without reading the event store
+- [Stream End of Life](stream-end-of-life.md) - The stream lifecycle ledger, and sealing a stream so it refuses appends
 - [Perspectives](../perspectives/perspectives.md) - Read model projections
 
 ---
