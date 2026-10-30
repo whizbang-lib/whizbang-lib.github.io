@@ -26,6 +26,7 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/ManagedSchemaReconcileStepTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StartupParity/StartupParityTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperManagedObjectsStartupTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperMaintenanceStepNamedSchemaTests.cs
 ---
 
 # Managed Schema Objects
@@ -48,7 +49,7 @@ The first start that sees an object records it in the ledger and changes nothing
 
 So the first deploy of a release with the ledger drops nothing, and neither does the first start after someone adds an index by hand.
 
-### Every later start
+### Every later start {#every-later-start}
 
 | The model… | The database… | Whizbang… |
 |---|---|---|
@@ -79,6 +80,12 @@ instances of one release see one another as reported and drop what none of them 
 on both drivers, and on the EF Core driver for every context, including one you registered with your own
 `AddDbContext`. The re-run claims its window through the claim store when one is registered and through the claim
 table otherwise, so it runs on one instance either way.
+
+The Dapper driver's re-run reconciles the schema the host names, resolved as the Dapper work coordinator resolves it
+(the connection string's `Search Path`, else the server's `current_schema()`), and takes and keys its claim in that
+schema {verified: DapperMaintenanceStepNamedSchemaTests.TheManagedSchemaReconcileStep_ClaimsInTheHostsSchemaAsync}.
+Earlier releases asked the server for `current_schema()`, which could name the session user's own schema ahead of
+the one in `Search Path`; see [which schema the Dapper maintenance steps use](../../data/drivers#dapper-maintenance-schema).
 
 :::updated
 Earlier releases ran the Dapper driver's reconcile inside `AddWhizbangPostgres`, before the host existed, with no

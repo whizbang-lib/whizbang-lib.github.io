@@ -22,6 +22,7 @@ testReferences:
   - tests/Whizbang.Core.Tests/Messaging/InMemoryEventStoreTests.cs
   - tests/Whizbang.Core.Tests/ValueObjects/IdentityValueObjectTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StreamCloseSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/StreamDigestTableSqlTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperStreamCloseCompanionTests.cs
   - tests/Whizbang.Core.Tests/Messaging/WorkCoordinatorDefaultsTests.cs
 lastMaintainedCommit: '01f07906'
@@ -343,7 +344,11 @@ Until #1731 this operation was named `close_stream` / `CloseStreamAsync` (with `
 - **Processed perspective work rows** for the truncated events are removed.
 - **Lapsed destruction holds** on truncated events are removed with them; active ones refuse the truncate (`held`).
 - **Deduplication entries** are kept on purpose. They are what turns away a redelivered copy of a truncated event, and they expire under their own retention.
-- **Stream integrity digests** subtract the truncated events in the same transaction, and the origin generation is bumped so consumers treat the change as deliberate. See [Stream Integrity](../../resilience/stream-integrity.md).
+- **Stream integrity digests** subtract the truncated events in the same transaction, and the origin generation is bumped so consumers treat the change as deliberate. See [Stream Integrity](../../resilience/stream-integrity.md). Only events that were folded into a digest are subtracted and refolded: digest-exempt audit records (`EventAudited`, `CommandAudited`) are left out exactly as every fold leaves them out, and the origin generation advances only when the truncate removes folded events. A prefix holding only audit records changes nothing a consumer verifies, so it neither refolds sealed epochs nor advances the generation {verified: StreamDigestTableSqlTests.TruncateStreamPrefix_APrefixOfOnlyAnAuditRecord_IsNotAMutationOfFoldedHistoryAsync, StreamDigestTableSqlTests.TruncateStreamPrefix_APrefixHoldingAnAuditRecord_LeavesTheDigestEqualToAFreshFoldAsync}.
+
+:::updated
+Before migration 263, `wh_truncate_stream_prefix` read audit records into the ranges it refolds and into its digest subtraction. A prefix holding only audit records therefore refolded sealed epochs and advanced the origin generation, so every consumer reset its seals and re-verified although no folded history had changed. Migration 263 applies the folds' exemption to both reads; nothing else about the truncate changes.
+:::
 
 The Dapper and EF Core schemas behave the same way.
 

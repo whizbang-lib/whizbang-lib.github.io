@@ -39,6 +39,7 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Partitioning/PartitionMaintenanceStepTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperPartitionManagerSqlTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperPartitionMaintenanceStepTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperMaintenanceStepNamedSchemaTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/PartitionedTableTests.cs
   - tests/Whizbang.Core.Tests/Workers/PartitioningOptionsTests.cs
   - tests/Whizbang.Core.Tests/Workers/PartitionManagementStrategyTests.cs
@@ -340,6 +341,12 @@ table's partitions at once.
 Changing a table needs its owner's rights. The EF Core driver runs the step on the schema-initialization connection
 (`ConnectionStrings:<name>-init`) when one is configured, as the startup migrations do
 ([database roles](migrations#database-roles)), and on the context's own connection otherwise.
+
+The Dapper driver's step finds the tables in the schema the host names, as the Dapper work coordinator does: the
+first schema the connection string's `Search Path` names, else the server's `current_schema()`
+{verified: DapperMaintenanceStepNamedSchemaTests.ThePartitionStep_ConvertsTheLogInTheHostsSchemaAsync}. Earlier
+releases named `public` outright, so a host installed in another schema had nothing converted or maintained. See
+[which schema the Dapper maintenance steps use](../../data/drivers#dapper-maintenance-schema).
 
 ### Time-ordered ids {#time-ordered-ids}
 
