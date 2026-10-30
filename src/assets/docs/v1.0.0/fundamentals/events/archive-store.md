@@ -8,7 +8,7 @@ description: >-
   IArchiveStore moves a stream's events out of the hot event store and back: copy then truncate in one
   transaction, a byte-identical read in version order, a tombstone that refuses version reuse, and an exact restore.
   The Postgres-table store is built in; the Azure Blob store is the production default.
-tags: 'archive, archive-store, stream-end-of-life, tombstone, origin-generation, wh_event_archive, azure-blob, brotli, wh_archive_manifest'
+tags: 'archive, archive-store, stream-end-of-life, tombstone, origin-generation, wh_event_archive, azure-blob, brotli, wh_archive_manifest, read-through, restore-request, append-to-archived'
 codeReferences:
   - src/Whizbang.Core/Archival/IArchiveStore.cs
   - src/Whizbang.Core/Archival/ArchiveBatch.cs
@@ -29,6 +29,19 @@ codeReferences:
   - src/Whizbang.Archive.AzureBlob/ArchiveChunk.cs
   - src/Whizbang.Archive.AzureBlob/ArchiveObjectCorruptedException.cs
   - src/Whizbang.Archive.AzureBlob/ArchiveObjectDeletionStep.cs
+  - src/Whizbang.Data.Postgres/Migrations/271_ArchiveReadThroughAndAppendPolicy.sql
+  - src/Whizbang.Core/Archival/ArchiveAwareEventStoreDecorator.cs
+  - src/Whizbang.Core/Archival/ArchivedStreamAutoRestore.cs
+  - src/Whizbang.Core/Archival/AppendToArchivedPolicy.cs
+  - src/Whizbang.Core/Archival/StreamArchivedException.cs
+  - src/Whizbang.Core/Archival/ArchiveOptions.cs
+  - src/Whizbang.Core/Archival/StreamLifecycleOptions.cs
+  - src/Whizbang.Core/Archival/ArchiveOptionsBinder.cs
+  - src/Whizbang.Core/Archival/StreamTypePolicy.cs
+  - src/Whizbang.Data.Postgres/StreamArchivedRefusal.cs
+  - src/Whizbang.Data.Postgres/StreamTypePolicyWriter.cs
+  - src/Whizbang.Data.Postgres/ArchiveRestoreRequestStep.cs
+  - src/Whizbang.Data.Postgres/SnapshotStreamOrderLookup.cs
 testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StreamSealingSqlTests.cs
   - tests/Whizbang.Core.Tests/Archival/ArchiveBatchTests.cs
@@ -40,6 +53,19 @@ testReferences:
   - tests/Whizbang.Archive.AzureBlob.Tests/AzureBlobArchiveRegistrationTests.cs
   - tests/Whizbang.Archive.AzureBlob.Tests/ArchiveObjectCorruptedExceptionTests.cs
   - tests/Whizbang.Archive.AzureBlob.Integration.Tests/AzureBlobArchiveStoreTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/ArchiveAppendPolicySqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/ArchiveRulesSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/ArchiveRestoreRequestSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/ArchiveReadThroughIntegrationTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Performance/ArchivedStreamEmitCostScenarioTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperArchiveAppendPolicyTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperArchiveReadThroughTests.cs
+  - tests/Whizbang.Core.Tests/Archival/ArchiveAwareEventStoreDecoratorTests.cs
+  - tests/Whizbang.Core.Tests/Archival/ArchiveReadThroughRegistrationTests.cs
+  - tests/Whizbang.Core.Tests/Archival/StreamArchivedRefusalTests.cs
+  - tests/Whizbang.Core.Tests/Archival/StreamLifecycleOptionsBinderTests.cs
+  - tests/Whizbang.Core.Tests/Workers/MaintenanceWorkerStreamTypePolicySyncTests.cs
+  - tests/Whizbang.Core.Tests/Perspectives/PerspectiveRewindWriteCheckTests.cs
 ---
 
 # Archive Store
@@ -80,7 +106,7 @@ Every store keeps four promises:
 |---|---|---|
 | A write copies, then truncates, and either both happen or neither does. | A failure must never lose an event or leave it half-archived; the stream stays fully hot. | {verified: ArchiveStoreSqlTests.Write_AFailureBetweenCopyAndTruncate_LeavesTheStreamFullyHotAsync} |
 | Every successful write bumps the origin generation. | Archiving changes the history a digest folds; without the bump, stream integrity would alarm on a deliberate change. | {verified: ArchiveStoreSqlTests.Write_WholeStream_LeavesATombstone_AndBumpsTheOriginGenerationAsync} |
-| A whole-stream write leaves a tombstone, and no append reuses a version at or below its last version. | Downstream consumers saw those versions; a second event at the same version would make every reader of the stream wrong. | {verified: ArchiveStoreSqlTests.Tombstone_AnAppendAtOrBelowTheArchivedVersion_IsRefused_AboveItIsStoredAsync} |
+| A whole-stream write leaves a tombstone, and no append reuses a version at or below its last version. | Downstream consumers saw those versions; a second event at the same version would make every reader of the stream wrong. | {verified: ArchiveStoreSqlTests.Tombstone_AnAppendAtOrBelowTheArchivedVersion_IsRefused_AboveItIsStoredAsync, ArchiveAppendPolicySqlTests.OutboxAppend_Refuse_DeadLettersThatEvent_AndTheRestOfTheBatchCommitsAsync} |
 | A read returns each event exactly as the hot store held it, in version order. | Read-through, rewind and rebuild must produce the same model from an archived stream as from a hot one. | {verified: ArchiveStoreSqlTests.Write_ThenRead_ReturnsTheEventsByteIdenticalInVersionOrderAsync} |
 
 ## Batches
@@ -110,7 +136,7 @@ if (!whole.Archived) {
 |---|---|---|
 | A batch never spans streams. | The stream is the unit the archive keeps atomic and the unit a tombstone describes; a sweep sends one batch per stream, so one stream's refusal never holds back another's. | {verified: ArchiveBatchTests.Prefix_CarriesItsVersion_AndIsNotAWholeStreamBatchAsync} |
 | Prefix and whole stream are separate requests, not "through the last version". | A prefix keeps the truncate's carry-forward guard, so it can never empty a stream by accident; only an explicit whole-stream request leaves a tombstone. | {verified: ArchiveStoreSqlTests.Write_ARefusedPrefix_KeepsTheTruncatesStatus_AndCopiesNothingAsync} |
-| A prefix version of 0 is accepted, a negative one refused. | A new stream starts at version 1, but a stream a direct append created before migration 267 started at version 0 (see [Stream versions](event-store#stream-versions)), so 0 is a real prefix; a negative version names nothing. | {verified: ArchiveBatchTests.Prefix_AcceptsVersionZero_RefusesANegativeVersionAsync} |
+| A prefix version of 0 is accepted by the batch, a negative one refused; the store then refuses any prefix below version 1 with `not_past_first_version`. | A negative version names nothing. A version of 0 is a real position (a stream a direct append created before migration 267 started there; see [Stream versions](event-store#stream-versions)), but a prefix through it would keep version 1 hot, and [read-through](#read-through) relies on every prefix archive removing version 1 (see [the archive rules](#the-archive-rules)). | {verified: ArchiveBatchTests.Prefix_AcceptsVersionZero_RefusesANegativeVersionAsync, ArchiveRulesSqlTests.Prefix_ThroughAVersionBelowOne_IsRefused_ThroughOneIsArchivedAsync} |
 | The empty stream id is refused. | It is the store's "no stream" row (commands, unstreamed events); archiving it would sweep unrelated events. | {verified: ArchiveBatchTests.TheEmptyStreamId_IsRefusedByBothFormsAsync} |
 | Chunking is the store's concern. | The Postgres store copies a batch in one statement; a blob store writes as many chunks as it needs before it truncates. The batch stays the same for both. | {verified: ArchiveStoreSqlTests.Write_ThenRead_ReturnsTheEventsByteIdenticalInVersionOrderAsync} |
 
@@ -156,6 +182,37 @@ itself:
 | Under `debug_mode` every write returns `debug_skipped`. | Debug mode keeps forensic history, as it does for the truncate and the reaper. | {verified: ArchiveStoreSqlTests.Write_DebugMode_KeepsEverythingHotAsync} |
 | A failure anywhere between the copy and the truncate rolls back both, and the generation is unchanged. | The copy and the truncate run in one transaction, so the detail is never lost and never half-archived. | {verified: ArchiveStoreSqlTests.Write_AFailureBetweenCopyAndTruncate_LeavesTheStreamFullyHotAsync} |
 
+## The archive rules {#the-archive-rules}
+
+{verified: ArchiveRulesSqlTests.Prefix_ThroughAVersionBelowOne_IsRefused_ThroughOneIsArchivedAsync, ArchiveRulesSqlTests.Prefix_ReachingAPerspectivesNewestSnapshot_IsRefused_StoppingBelowItIsArchivedAsync}
+
+Two rules make [read-through](#read-through) cheap and a rewind to the latest snapshot independent of the archive. Both
+are enforced by `wh_archive_stream` (migration 271), so every store that writes through it, the Postgres-table store
+and the Azure Blob store alike, keeps them.
+
+| Choice | Reason | Verified |
+|---|---|---|
+| A prefix always removes version 1: a prefix through a version below 1 is refused with `not_past_first_version`, and a prefix through version 1 takes versions 0 and 1 of a directly appended stream. | A stream's first version is 0 (a direct append) or 1 (the emit chains). With version 1 always archived, an archived stream always shows a gap at its start (its first hot version is above 1, or it has none), so a read from the start can tell it is archived from what it already read, without asking the archive. | {verified: ArchiveRulesSqlTests.Prefix_ThroughAVersionBelowOne_IsRefused_ThroughOneIsArchivedAsync} |
+| A prefix never includes the newest snapshot any perspective holds for the stream: one that reaches it is refused with `snapshot_in_range` and moves nothing. | The snapshot's event and everything after it stay hot, so a rewind to a perspective's latest snapshot never needs the archive. | {verified: ArchiveRulesSqlTests.Prefix_ReachingAPerspectivesNewestSnapshot_IsRefused_StoppingBelowItIsArchivedAsync} |
+| Refused, not shortened. | The caller gets exactly the archive it asked for or none, and chooses a cut below the snapshot itself; an archive that quietly moved less than asked would make the caller's own bookkeeping (and a later lifecycle policy's) wrong. | {verified: ArchiveRulesSqlTests.Prefix_ReachingAPerspectivesNewestSnapshot_IsRefused_StoppingBelowItIsArchivedAsync} |
+| Only each perspective's newest snapshot counts; an older one in the range may go. | An older snapshot is not where a rewind starts; the prefix truncate removes the ones below the cut as it always has. | {verified: ArchiveRulesSqlTests.Prefix_AnOlderSnapshotInTheRange_DoesNotBlockTheCut_OnlyTheNewestPerPerspectiveDoesAsync} |
+| A snapshot that records no version does not block a cut. | It cannot be placed in the stream, so no rewind selects it by version. | {verified: ArchiveRulesSqlTests.Prefix_ReachingAPerspectivesNewestSnapshot_IsRefused_StoppingBelowItIsArchivedAsync} |
+| A whole-stream archive takes every event, snapshots or not. | It is the stream's end, not a cut with a hot tail; a rewind of it reads through the archive. | {verified: ArchiveRulesSqlTests.WholeStream_MarksEverySnapshotWithItsLastVersionAsync} |
+
+### Snapshots record what an archive covers {#snapshots-record-what-an-archive-covers}
+
+{verified: ArchiveRulesSqlTests.Prefix_MarksTheSnapshotsAtOrBelowItsCut_AndLeavesTheNewestUnmarkedAsync, ArchiveRulesSqlTests.WholeStream_MarksEverySnapshotWithItsLastVersionAsync, ArchiveRulesSqlTests.Restore_ClearsEverySnapshotsArchiveMarkAsync}
+
+Every archive writes how far it reaches on the stream's snapshots it covers, in
+`wh_perspective_snapshots.archived_through_version`, so the engine knows a rewind from one of them must read through
+the archive.
+
+| Choice | Reason | Verified |
+|---|---|---|
+| A prefix marks the snapshots at or below its cut with the cut; a whole stream marks all of them with its last version. | The events after a marked snapshot may be archived; after an unmarked one they are all hot. | {verified: ArchiveRulesSqlTests.Prefix_MarksTheSnapshotsAtOrBelowItsCut_AndLeavesTheNewestUnmarkedAsync, ArchiveRulesSqlTests.WholeStream_MarksEverySnapshotWithItsLastVersionAsync} |
+| A restore clears the stream's marks, and only that stream's. | Everything the snapshots need is hot again. | {verified: ArchiveRulesSqlTests.Restore_ClearsEverySnapshotsArchiveMarkAsync} |
+| The column is nullable with no default, added by migration 271 where the table exists and by the schema definition where it is created. | No row is rewritten, and a fresh database gets it from the start. | {verified: ArchiveRulesSqlTests.WholeStream_MarksEverySnapshotWithItsLastVersionAsync} |
+
 ## Statuses
 
 | Status | Meaning |
@@ -164,6 +221,8 @@ itself:
 | `nothing_to_archive` | The batch named no hot event. |
 | `blocked`, `held`, `debug_skipped` | Refused; nothing moved. |
 | `no_carry_forward`, `cursor_behind` | A prefix the truncate refused; nothing moved. |
+| `not_past_first_version` | A prefix through a version below 1; nothing moved ([the archive rules](#the-archive-rules)). |
+| `snapshot_in_range` | A prefix that reaches the newest snapshot a perspective holds for the stream; nothing moved ([the archive rules](#the-archive-rules)). |
 | `restored`, `nothing_archived`, `version_conflict` | A restore's outcomes (below). |
 
 ## Tombstones
@@ -177,16 +236,17 @@ A whole-stream archive leaves the stream's [lifecycle](stream-end-of-life) row a
 {verified: ArchiveStoreSqlTests.Tombstone_AnAppendAtOrBelowTheArchivedVersion_IsRefused_AboveItIsStoredAsync, ArchiveStoreSqlTests.Tombstone_TheEmitChainCannotReuseAnArchivedVersion_EitherAsync}
 
 The emit chains and the direct append number a stream from its newest hot version. With nothing hot, the next
-append would start again at the bottom and reuse a version the archive holds. A statement-level trigger on
-`wh_event_store` refuses any insert at or below an archived stream's last version with SQLSTATE `WHA01`, naming the
-stream, its archived version and the refused one.
+append would start again at the bottom and reuse a version the archive holds. Every write path therefore refuses an
+append to a stream archived whole, per event, under the [policy its type declares](#appending-to-an-archived-stream).
+Migration 262 refused it with a statement trigger on `wh_event_store` that failed the whole batch; migration 271
+replaced the trigger with the per-event refusal below, so one archived stream never takes the other streams of a batch
+down with it.
 
 | Choice | Reason | Verified |
 |---|---|---|
-| The last archived version itself is refused; the next version is stored. | The archive holds the last version; anything above it is new history. | {verified: ArchiveStoreSqlTests.Tombstone_AnAppendAtOrBelowTheArchivedVersion_IsRefused_AboveItIsStoredAsync} |
-| The guard is a table trigger, so it covers the emit chains and the direct append alike. | It is the table's backstop, like the `(stream_id, version)` unique index: every write path is covered without each one repeating the check. | {verified: ArchiveStoreSqlTests.Tombstone_TheEmitChainCannotReuseAnArchivedVersion_EitherAsync} |
-| One check per insert statement over the inserted rows, not one per row. | The emit chains insert a batch in one statement; the check costs one join over that batch. | {verified: ArchiveStoreSqlTests.Tombstone_TheEmitChainCannotReuseAnArchivedVersion_EitherAsync} |
-| The refusal raises, so the whole write rolls back. | A backstop must never store a reused version. The friendly per-type answer to an append to an archived stream (refuse with a typed exception, restore first, or start a new generation) belongs to the write paths and comes with the append-to-archived policy; until then, archive a stream whole only when nothing will append to it. | {verified: ArchiveStoreSqlTests.Tombstone_TheEmitChainCannotReuseAnArchivedVersion_EitherAsync} |
+| A direct append to a stream archived through version N raises SQLSTATE `WHA01` naming N; once the stream is restored, the next append takes N + 1. | The archive holds the versions through N; anything above them is new history. | {verified: ArchiveStoreSqlTests.Tombstone_AnAppendAtOrBelowTheArchivedVersion_IsRefused_AboveItIsStoredAsync} |
+| The emit chain dead-letters the refused event alone and stores the rest of the batch. | A batch carries events of many streams; refusing the batch for one archived stream would stall unrelated ones (262's trigger did). | {verified: ArchiveStoreSqlTests.Tombstone_TheEmitChainCannotReuseAnArchivedVersion_EitherAsync, ArchiveAppendPolicySqlTests.OutboxAppend_Refuse_DeadLettersThatEvent_AndTheRestOfTheBatchCommitsAsync} |
+| A prefix-archived stream takes appends as before. | It stays `Active` with a hot tail, so it numbers from the tail and reuses nothing. | {verified: ArchiveAppendPolicySqlTests.PrefixArchivedStream_TakesAppendsAsUsual_OnEveryPathAsync} |
 | The tombstone outlives a deleted archive. | The versions were seen downstream whether or not the archived copy still exists. | {verified: ArchiveStoreSqlTests.Delete_RemovesTheArchivedCopy_TheTombstoneStillBlocksReuseAsync} |
 
 ### The ledger row {#the-ledger-row}
@@ -200,7 +260,7 @@ the hot store:
 |---|---|---|
 | A stream with no ledger row yet (the backfill has not reached it) gets one built from its events by the ledger's own rules: the first event's type, tenant and time, the UTC hour of the newest event. A stream of only ephemeral events uses its first event. | The tombstone is what refuses version reuse, so it must exist whether or not the backfill got there first; reading the same rules as the ledger keeps the row identical to the one the backfill would have written. | {verified: ArchiveStoreSqlTests.Write_WholeStream_WithNoLedgerRowYet_BuildsTheTombstoneFromTheEventsAsync} |
 | A prefix archive subtracts the bytes it moved from `approx_bytes` (never below 0); a whole-stream archive sets it to 0; a restore adds the restored bytes back. | `approx_bytes` measures the hot store, which the per-tenant size policy reads; archived bytes no longer cost hot storage. Bytes are counted as stored, as the backfill counts them, so the figure stays approximate. | {verified: ArchiveStoreSqlTests.ApproxBytes_ArchiveSubtractsWhatLeft_RestoreAddsItBackAsync} |
-| A restore marks the stream `Active` (`Sealed` when it was sealed) before its events go back, and leaves the row with the stream's newest version. | The version-reuse guard reads the state, so the restore's own inserts pass it, and appends continue above the last version. | {verified: ArchiveStoreSqlTests.Restore_PutsTheStreamBackExactly_CursorsDigestsAndPositionsIncludedAsync, ArchiveStoreSqlTests.Write_WholeStream_WithNoLedgerRowYet_BuildsTheTombstoneFromTheEventsAsync} |
+| A restore marks the stream `Active` (`Sealed` when it was sealed) and leaves the row with the stream's newest version. | The write paths refuse an append only while the state reads `Archived`, so appends resume above the last version as soon as the restore commits. | {verified: ArchiveStoreSqlTests.Restore_PutsTheStreamBackExactly_CursorsDigestsAndPositionsIncludedAsync, ArchiveStoreSqlTests.Write_WholeStream_WithNoLedgerRowYet_BuildsTheTombstoneFromTheEventsAsync} |
 | A [stream purge](../../operations/infrastructure/purging-streams) removes the archive, the parked cursors and the tombstone. | A purged stream never existed; nothing of it is left to restore or to guard. | {verified: ArchiveStoreSqlTests.Purge_AnArchivedStream_TakesItsArchiveParkedCursorsAndTombstoneAsync} |
 
 ## Locator format
@@ -280,6 +340,192 @@ await foreach (var archived in archive.ReadAsync(streamId, fromVersion: 2)) {
 tombstone stays, with its locator cleared, so the stream's versions are still never reused. It is an explicit
 request, so `debug_mode` does not skip it.
 {verified: ArchiveStoreSqlTests.Delete_RemovesTheArchivedCopy_TheTombstoneStillBlocksReuseAsync}
+
+## Read-through {#read-through}
+
+{verified: ArchiveReadThroughIntegrationTests.Load_AHotStream_AStreamArchivedWhole_AndOneArchivedThroughAPrefix_ReadTheSameEventsAsync, ArchiveReadThroughIntegrationTests.Rebuild_AHotStream_AndOneArchivedThroughAPrefix_FoldToTheSameRowAsync, DapperArchiveReadThroughTests.Load_AHotStream_AStreamArchivedWhole_AndOneArchivedThroughAPrefix_ReadTheSameEventsAsync}
+
+A load, a rebuild and a rewind of an archived stream return the same model as for the same stream never archived.
+(A rebuild of a stream archived whole is the exception: its rebuilt cursor would name an event the hot store no longer
+holds, which the EF Core schema's cursor foreign key refuses; restore the stream first.)
+The event store every driver registers wraps the driver's store in an archive seam (`ArchiveAwareEventStoreDecorator`)
+whenever an `IArchiveStore` is registered, innermost in its decorator chain, so upcasters and every other decorator see
+archived events exactly as they see hot ones, and every reader that goes through `IEventStore` (the perspective
+runner, the replay reader, the collective replay applier, lifecycle receptors) reads through the archive with no
+change of its own.
+
+```mermaid{caption="Read-through by gap detection: only a read from the start that sees a gap asks the archive." tests=["ArchiveAwareEventStoreDecoratorTests.AReadFromTheStart_PastAGap_ReturnsTheArchivedEventsFirst_ThenTheHotOnes_OnEveryReadPathAsync","ArchiveAwareEventStoreDecoratorTests.AReadThatResumesAfterAnEvent_NeverReadsTheArchive_OnAnyReadPathAsync"]}
+flowchart TD
+  R[Read] --> S{From the start of the stream?}
+  S -- "no: resumes after an event" --> H[Hot read only]
+  S -- yes --> H2[Hot read]
+  H2 --> G{Gap? no hot event, or first hot version above 1}
+  G -- no --> D[Hot events]
+  G -- yes --> A[Archived events below the first hot version] --> D2[then the hot events]
+```
+
+| Choice | Reason | Verified |
+|---|---|---|
+| A read from the start (a sequence read from version 0 or 1, an id read or a between-read with no starting event, a rebuild) asks the archive only when the hot read shows a gap: no hot event, or a first hot version above 1. | Zero added cost on a stream never archived: the gap is seen in what the hot read already returned. Every prefix archive removes version 1 ([the archive rules](#the-archive-rules)), so an archived stream always shows one. | {verified: ArchiveAwareEventStoreDecoratorTests.AReadFromTheStart_OfAStreamWithNoGap_NeverReadsTheArchiveAsync, ArchiveAwareEventStoreDecoratorTests.AReadFromTheStart_PastAGap_ReturnsTheArchivedEventsFirst_ThenTheHotOnes_OnEveryReadPathAsync} |
+| A read that resumes after an event never asks the archive. | Perspective catch-up resumes after an event it applied, and archiving refuses while any perspective owes an event of the range, so a resume point is never inside the archive. | {verified: ArchiveAwareEventStoreDecoratorTests.AReadThatResumesAfterAnEvent_NeverReadsTheArchive_OnAnyReadPathAsync} |
+| Measured: a resumed read and a from-the-start read of a stream never archived issue exactly the statements the undecorated store issues; a from-the-start read of an archived stream issues one more. | The promise is checked by counting the statements the driver runs, not inferred. | {verified: ArchiveReadThroughIntegrationTests.AResumedRead_IssuesNoStatementBeyondTheHotRead_AndAReadFromTheStartOfAnArchivedStreamIssuesOneMoreAsync} |
+| Archived events come first, then the hot ones; an archived event at or above the first hot version is never returned. | Every archive takes a stream's lowest versions, and a restore in flight may hold an event both places for a moment. | {verified: ArchiveAwareEventStoreDecoratorTests.ArchivedEvents_AtOrAboveTheFirstHotVersion_AreNeverReturnedTwiceAsync} |
+| Archived rows are decoded by the driver's own `DeserializeStreamEvents` (the drain's decoder) and carry their stream version and commit positions. | An archived event comes back exactly as a hot read returns it, and a replay orders archived and hot events together the way it ordered them before the archive. | {verified: ArchiveAwareEventStoreDecoratorTests.AnArchivedEvent_CarriesItsStreamPosition_SoAReplayOrdersItWithTheHotOnesAsync, DapperArchiveReadThroughTests.DeserializeStreamEvents_DecodesAStoredRow_AndSkipsATypeTheReaderDoesNotFoldAsync} |
+| Every driver read now carries the event's stream version (`LocalStreamVersion`). | The seam sees a gap from the versions the hot read returns; a store that returns no versions never triggers a read-through. | {verified: ArchiveAwareEventStoreDecoratorTests.AHotReadThatCarriesNoVersions_NeverReadsTheArchiveAsync, DapperArchiveReadThroughTests.Load_TypedReads_OfAnArchivedStream_ReturnItsEventsAsync} |
+| A read whose first event the reader skips (a type it does not fold, a reaped ephemeral body) asks the archive once and gets nothing back for a stream never archived. | The gap is judged on what the read returns; an extra probe on that rare read is cheaper than a probe on every read. | {verified: ArchiveAwareEventStoreDecoratorTests.AnArchivedRowWithoutABody_OrOfATypeTheReadDoesNotFold_IsSkippedAsync} |
+| A typed read (`ReadAsync<T>`, `GetEventsBetweenAsync<T>`) returns the archived events stored as `T`. | The archive is decoded by type like the drain; a typed read over a stream of mixed types fails on the hot side too. | {verified: ArchiveReadThroughIntegrationTests.Load_TypedReads_OfAnArchivedStream_ReturnItsEventsAsync, DapperArchiveReadThroughTests.Load_TypedReads_OfAnArchivedStream_ReturnItsEventsAsync} |
+| With no archive store registered, the store is not decorated. | A host without an archive pays nothing. | {verified: ArchiveReadThroughRegistrationTests.WithoutAnArchiveStore_TheStore_IsNotDecoratedAsync} |
+| `Whizbang:Archive:ReadThrough` (default `true`) turns reads through the archive off; appends still restore under AutoRestore. | Off returns only what is hot, for a host that reads archived streams some other way; the append policy belongs to the stream type, not to the read setting. | {verified: ArchiveReadThroughRegistrationTests.WithReadThroughOff_TheDecoratedStore_ReadsOnlyHotEvents_ButStillRestoresOnAppendAsync, ArchiveReadThroughIntegrationTests.Load_WithReadThroughOff_ReturnsOnlyTheHotEventsAsync} |
+
+### Rewind past an archived snapshot {#rewind-past-an-archived-snapshot}
+
+{verified: PerspectiveRewindWriteCheckTests.ARewindFromASnapshotTheArchiveCovers_ReadsThroughTheArchive_AboveTheSnapshotsVersionAsync, ArchiveReadThroughIntegrationTests.Rewind_WithoutASnapshot_OfAStreamArchivedWhole_FoldsToTheSameRowAsTheHotCopyAsync}
+
+A rewind restores a snapshot and replays the events after it, which is a read that resumes after an event. When an
+archive covers that snapshot (its `archived_through_version` is set), the events after it may be archived, so the
+rewind asks for them explicitly: `IEventStore.ReadPolymorphicThroughArchiveAsync` reads the archived events above the
+snapshot's version, then the hot events after its event. This is the rare, explicit path that does look the archive up.
+
+| Choice | Reason | Verified |
+|---|---|---|
+| The rewind's snapshot floor carries the archive mark (`IPerspectiveSnapshotStore.GetSnapshotFloorAsync`), on both drivers. | The runner decides from the snapshot it restores, with no second lookup. | {verified: SnapshotSelectionFollowsStreamOrderTests.GetSnapshotFloor_CarriesTheArchiveMark_WhenAnArchiveCoversTheSnapshotAsync, DapperPerspectiveSnapshotStoreTests.GetSnapshotFloor_CarriesTheArchiveMark_WhenAnArchiveCoversTheSnapshotAsync} |
+| Only the first replay pass reads through; a later pass resumes after the last event applied, which is hot. | The catch-up loop picks up appends made during the replay, never archived ones. | {verified: PerspectiveRewindWriteCheckTests.ARewindFromASnapshotTheArchiveCovers_ReadsThroughTheArchive_AboveTheSnapshotsVersionAsync} |
+| An unmarked snapshot reads only hot events. | The control: the archive is looked up only when it can matter. | {verified: PerspectiveRewindWriteCheckTests.ARewindFromASnapshotNoArchiveCovers_ReadsOnlyTheHotEventsAfterItAsync} |
+| A marked snapshot that records no version is not used; the rewind replays from the start, which reads through the archive by its gap. | Without a version there is no telling where the archived events after it begin, and folding events the snapshot already holds would count them twice. | {verified: PerspectiveRewindWriteCheckTests.AMarkedSnapshotWithNoVersion_IsNotUsed_TheRewindReplaysFromTheStartAsync} |
+| A rewind with no snapshot, and a rebuild, read from the start through the gap. | They are reads from the start. A rebuild of a stream archived whole cannot record its cursor (see above). | {verified: ArchiveReadThroughIntegrationTests.Rewind_WithoutASnapshot_OfAStreamArchivedWhole_FoldsToTheSameRowAsTheHotCopyAsync, ArchiveReadThroughIntegrationTests.Rebuild_AHotStream_AndOneArchivedThroughAPrefix_FoldToTheSameRowAsync} |
+| The upcasters apply to the explicit read as to the ordinary one. | An archived event is the likeliest to need an upcaster. | {verified: UpcastingEventStoreDecoratorTests.ReadPolymorphicThroughArchive_UpcastsLikeTheOrdinaryReadAsync} |
+
+## Appending to an archived stream {#appending-to-an-archived-stream}
+
+{verified: ArchiveAppendPolicySqlTests.DirectAppend_Refuse_ThrowsStreamArchivedException_AndStoresNothingAsync, ArchiveAppendPolicySqlTests.OutboxAppend_Refuse_DeadLettersThatEvent_AndTheRestOfTheBatchCommitsAsync, ArchiveAppendPolicySqlTests.OutboxAppend_AutoRestore_DeadLettersAwaitingRestore_AndQueuesOneRequestPerStreamAsync}
+
+What an append to a stream archived whole does is declared per stream type
+(`Whizbang:StreamLifecycle:Types:<StreamType>:AppendToArchived`). Every write path applies it per event, under the
+stream lock it already holds, the way a [sealed stream refuses](stream-end-of-life#a-sealed-stream-refuses-appends):
+
+| Write | `Refuse` (default) | `AutoRestore` |
+|---|---|---|
+| A direct append (`IEventStore.AppendAsync`) | `StreamArchivedException` (SQLSTATE `WHA01`), nothing stored | Restored inline through `IArchiveStore.RestoreAsync`, then retried once (SQLSTATE `WHA02` tells the driver) |
+| An awaited outbox write (immediate and scoped strategies) | `StreamArchivedException`, the whole write rolls back and is withdrawn | Restored inline, then the same write is stored once more |
+| An outbox or inbox write nobody awaits | The refused event alone is dead-lettered (`StreamArchived`, 26, held for review); the rest of the batch is stored | The refused event is dead-lettered (`AwaitingRestore`, 27) and the stream's [restore request](#restore-requests) is queued in the same transaction |
+
+```csharp{
+title: "Declare the append-to-archived policy of a stream type"
+description: "appsettings for a service whose order streams restore themselves when a late event arrives; every other type refuses."
+framework: "NET10"
+category: "Configuration"
+difficulty: "INTERMEDIATE"
+tags: ["archive", "append-to-archived", "auto-restore", "configuration"]
+unverified: "configuration shape; the binding is verified in StreamLifecycleOptionsBinderTests"
+}
+// appsettings.json
+// "Whizbang": {
+//   "StreamLifecycle": {
+//     "Types": {
+//       "Shop.Orders.OrderPlaced": { "AppendToArchived": "AutoRestore" }
+//     }
+//   }
+// }
+try {
+  await eventStore.AppendAsync(streamId, new CartAbandoned(streamId));
+} catch (StreamArchivedException ex) when (ex.Policy == AppendToArchivedPolicy.Refuse) {
+  logger.LogWarning("Stream {StreamId} is archived through version {Version}", ex.StreamId, ex.ArchivedThroughVersion);
+}
+```
+
+| Choice | Reason | Verified |
+|---|---|---|
+| The refusal is per event, never per batch. | A batch carries many streams; one archived stream must not stall the others. | {verified: ArchiveAppendPolicySqlTests.OutboxAppend_Refuse_DeadLettersThatEvent_AndTheRestOfTheBatchCommitsAsync, ArchiveAppendPolicySqlTests.InboxAppend_Refuse_DeadLettersTheRow_AndStoresTheRestAsync} |
+| The default is `Refuse`. | Restoring a whole stream is real work; a host opts a type into it knowingly. | {verified: ArchiveAppendPolicySqlTests.DirectAppend_Refuse_ThrowsStreamArchivedException_AndStoresNothingAsync, StreamLifecycleOptionsBinderTests.AppendToArchived_IsReadPerStreamType_IgnoringCase_AndAnUnlistedTypeRefusesAsync} |
+| The stream type is the ledger's `stream_type`: the type name of the stream's first event, without its assembly. | It is what every write path already reads under the stream lock, so no lookup is added. | {verified: ArchiveAppendPolicySqlTests.OutboxAppend_AutoRestore_DeadLettersAwaitingRestore_AndQueuesOneRequestPerStreamAsync} |
+| The policy is read from the SQLSTATE (`WHA01` Refuse, `WHA02` AutoRestore), never from the message text. | A rewording of the message can never flip what the caller does. | {verified: StreamArchivedRefusalTests.ToException_ThePolicyComesFromTheSqlState_NeverFromTheWordingAsync} |
+| An inline AutoRestore is retried once; a second refusal reaches the caller. | A restore that could not put the stream back (the archive was deleted, a version conflict) would refuse again; retrying in a loop would hide it. | {verified: ArchiveAwareEventStoreDecoratorTests.AnAppend_AutoRestore_WhoseRestoreDoesNotHelp_RaisesTheSecondRefusal_AfterOneRetryAsync} |
+| An awaited outbox flush restores through the archive store its scope reaches; with no scope factory the refusal reaches the caller. | The strategy has no other way to the archive store, and adding one would be a new optional dependency. | {verified: ScopedWorkCoordinatorStrategyTests.FlushAsync_AnAutoRestoreRefusal_RestoresThroughTheScopesArchiveStore_OrReachesTheCallerWithoutOneAsync, ImmediateWorkCoordinatorStrategyTests.FlushAsync_AnAutoRestoreRefusal_RestoresTheStream_AndStoresTheWriteOnceMoreAsync} |
+| A refused awaited write is withdrawn from the strategy, as a sealed one is. | The same write is refused until someone restores the stream; offering it to a later flush would fail that flush too. | {verified: ImmediateWorkCoordinatorStrategyTests.FlushAsync_RefusedForAnArchivedStream_TheNextFlushDoesNotWriteTheRefusedWorkAsync, ScopedWorkCoordinatorStrategyTests.FlushAsync_RefusedForAnArchivedStream_DisposalDoesNotWriteTheRefusedWorkAsync} |
+| A sealed stream that is archived is refused as sealed. | A stream that ended stays ended; restoring it would not let the append in. | {verified: ArchiveAppendPolicySqlTests.SealedAndArchived_TheSealsRefusalWinsAsync} |
+| `NewGeneration` is not a value yet; a configuration that names it fails the host's start with a message naming #1734. | Starting a new generation needs the final snapshot finalization takes, which ships with #1734; reading it as a default would silently refuse. | {verified: StreamLifecycleOptionsBinderTests.AppendToArchived_NewGeneration_IsRefusedAtStartup_Naming1734Async, StreamLifecycleOptionsBinderTests.Registration_APolicyThatCannotBeRead_FailsTheHostsStartupValidationAsync} |
+
+An inline restore and its one retry need the write to own its transaction. Inside a transaction the caller opened, the
+refusal has already aborted that transaction, so the retry cannot succeed in it; the restore itself runs on its own
+connection and commits, and the caller's retry of its whole transaction then succeeds.
+
+### The policy per stream type {#the-policy-per-stream-type}
+
+{verified: ArchiveRestoreRequestSqlTests.SyncPolicies_ReplacesTheStoredSetWhole_AndIsIdempotentAsync, MaintenanceWorkerStreamTypePolicySyncTests.EveryTick_StoresTheConfiguredPolicies_EvenWhenTheSweepIsDeferredAsync}
+
+A background write is refused inside the store, which cannot read this process's options, so the configured policies
+are stored in `wh_stream_type_policies` (`wh_sync_stream_type_policies`), as retention windows are stored in
+`wh_settings`.
+
+| Choice | Reason | Verified |
+|---|---|---|
+| The maintenance worker stores them on every tick, before the sweep's idle gate, under the maintainer duty. | A policy must be in force soon after a start even on a service too busy for the sweep; a configuration change lands without a restart. | {verified: MaintenanceWorkerStreamTypePolicySyncTests.EveryTick_StoresTheConfiguredPolicies_EvenWhenTheSweepIsDeferredAsync} |
+| Each write replaces the stored set whole; an empty configuration removes every row. | A type someone removed from configuration must stop restoring. | {verified: ArchiveRestoreRequestSqlTests.SyncPolicies_ReplacesTheStoredSetWhole_AndIsIdempotentAsync, MaintenanceWorkerStreamTypePolicySyncTests.NoTypesConfigured_StoresAnEmptySet_SoAStaleRowIsRemovedAsync} |
+| A failed write is logged with the policies it left unstored, and the tick goes on; cancellation propagates. | The stored set stays in force until a later tick succeeds. | {verified: MaintenanceWorkerStreamTypePolicySyncTests.AFailedWrite_IsLogged_AndTheCycleRunsOnAsync} |
+| The table admits only `Refuse` and `AutoRestore`. | A value the write paths do not know is refused where it is written. | {verified: ArchiveRestoreRequestSqlTests.SyncPolicies_ReplacesTheStoredSetWhole_AndIsIdempotentAsync} |
+| Both coordinators store through the same writer. | The two drivers store the same rows. | {verified: ArchiveRestoreRequestSqlTests.SyncPolicies_ThroughTheCoordinator_StoresTheConfiguredSetAsync, DapperArchiveAppendPolicyTests.SyncStreamTypePolicies_ThroughTheCoordinator_StoresTheConfiguredSetAsync} |
+
+### Restore requests {#restore-requests}
+
+{verified: ArchiveRestoreRequestSqlTests.Step_RestoresEachQueuedStream_AndItsDeadLettersBecomeDueAsync, ArchiveRestoreRequestSqlTests.AwaitingRestore_AfterTheRestore_TheRecoveryServiceRedrivesTheEventIntoTheStreamAsync}
+
+A background write under `AutoRestore` has no caller to wait for a restore, so it goes through the dead-letter queue
+with deterministic state, never text matching:
+
+```mermaid{caption="A restore request moves Pending, Restoring, then Restored or Failed; Restored makes its dead letters due." tests=["ArchiveRestoreRequestSqlTests.Claim_TakesTheOldestOpenRequests_AndALeftoverRestoringOneAsync","ArchiveRestoreRequestSqlTests.Restore_MarksTheRequestRestored_AndMakesItsDeadLettersDueAsync","ArchiveRestoreRequestSqlTests.Fail_MarksTheRequestFailed_AndLeavesItsDeadLettersHeldForReviewAsync"]}
+stateDiagram-v2
+  [*] --> Pending: background append refused (same transaction)
+  Pending --> Restoring: maintenance step claims it
+  Restoring --> Restored: any restore of the stream
+  Restoring --> Failed: restore did not put the stream back
+  Restored --> Pending: the stream is archived and refused again
+  Failed --> Restored: a later restore of the stream
+```
+
+| Choice | Reason | Verified |
+|---|---|---|
+| The refused event is dead-lettered with `AwaitingRestore` (27) and held by its request: `recovery_status` HoldForReview and `operator_disposition` HoldIndefinitely while the request is Pending or Restoring. | Neither the recovery scan, the generation replay nor a canary campaign may redrive it before the stream is back; it would only be refused again. | {verified: ArchiveAppendPolicySqlTests.OutboxAppend_AutoRestore_DeadLettersAwaitingRestore_AndQueuesOneRequestPerStreamAsync, ArchiveAppendPolicySqlTests.InboxAppend_AutoRestore_DeadLettersAwaitingRestore_AndQueuesTheRequestAsync} |
+| One request per stream (`wh_archive_restore_requests`, keyed by stream), queued in the transaction that dead-lettered the event. | A burst of writes to one archived stream restores it once; the request and the dead letter commit or roll back together. | {verified: ArchiveAppendPolicySqlTests.OutboxAppend_AutoRestore_DeadLettersAwaitingRestore_AndQueuesOneRequestPerStreamAsync} |
+| A Restored request starts over as Pending; a Pending or Restoring one keeps its place; a Failed one stays Failed until a restore of the stream succeeds. | The stream was archived again since its last restore; an open request is already queued; a failed restore waits for a person rather than being retried blind on every write. | {verified: ArchiveRestoreRequestSqlTests.Queue_ARestoredRequestStartsOver_AFailedOneStaysFailedAsync} |
+| A maintenance step (`ArchiveRestoreRequestStep`, registered by both drivers, maintainer duty) claims up to 20 open requests per cycle, oldest first, and restores each through `IArchiveStore`. | A table archive and a blob archive restore the same way; a restore copies a whole stream back, so a burst drains over a few cycles. | {verified: ArchiveRestoreRequestSqlTests.Step_RestoresEachQueuedStream_AndItsDeadLettersBecomeDueAsync, DapperArchiveAppendPolicyTests.AddWhizbangPostgres_RegistersTheRestoreRequestStep_AsAMaintenanceStepAsync} |
+| A Restoring request is claimed again by the next pass. | The step runs one pass at a time under the maintainer duty, so a Restoring request a pass finds was left by one that stopped, and a restore is idempotent. | {verified: ArchiveRestoreRequestSqlTests.Claim_TakesTheOldestOpenRequests_AndALeftoverRestoringOneAsync} |
+| Any restore of the stream completes its request (the step's, an inline one, an operator's): Restored, its AwaitingRestore dead letters due now for the recovery worker, its snapshots' marks cleared. A second restore of a stream already back completes it the same way. | The outcome is decided by the stream's state, whoever restored it. | {verified: ArchiveRestoreRequestSqlTests.Restore_MarksTheRequestRestored_AndMakesItsDeadLettersDueAsync, ArchiveRestoreRequestSqlTests.Restore_ASecondRestoreOfAStreamAlreadyBack_CompletesItsRequestAsync} |
+| The dead letters are redriven by the existing recovery worker (policy `AfterRestore`: 3 attempts, 1 minute apart, then held for review). | Recovery re-enters each message through its own store, so the event takes the next version of the restored stream. | {verified: ArchiveRestoreRequestSqlTests.AwaitingRestore_AfterTheRestore_TheRecoveryServiceRedrivesTheEventIntoTheStreamAsync, DefaultDeadLetterRecoveryPolicyTests.GetPolicy_AwaitingRestore_RedrivesSoonAfterTheRestore_ThenHoldsAsync} |
+| A restore that does not put the stream back marks the request Failed with the store's status (`nothing_archived`, `version_conflict`) or the exception's type and message, and its dead letters become ordinary held-for-review dead letters. | A person decides; the request records why. One stream's failure never holds back another's restore. | {verified: ArchiveRestoreRequestSqlTests.Fail_MarksTheRequestFailed_AndLeavesItsDeadLettersHeldForReviewAsync, ArchiveRestoreRequestSqlTests.Step_AnArchiveThatIsGone_FailsTheRequest_WithTheStoresStatusAsync, ArchiveRestoreRequestSqlTests.Step_ARestoreThatThrows_FailsThatRequest_AndStillRestoresTheNextAsync} |
+| A purge removes the stream's request with its lifecycle row (`ON DELETE CASCADE`). | A purged stream is never restored. | {verified: ArchiveRestoreRequestSqlTests.Purge_RemovesTheStreamsRestoreRequest_WithItsLifecycleRowAsync} |
+
+### What the append policy costs {#what-the-append-policy-costs}
+
+{verified: ArchivedStreamEmitCostScenarioTests.EmitChain_With266sProbeAndWith271s_ReportAsync}
+
+Every write path decides on one probe per batch of a partial index holding only the sealed and the archived streams
+(`idx_stream_lifecycle_closed`), which replaces the seal's own probe, so the common case (no stream of the batch sealed
+or archived) costs what the seal's check cost. Measured on a 500-event outbox batch against a ledger holding 2,000
+sealed and 2,000 archived streams, the chain as migration 271 defines it against the chain as 266 defined it,
+alternating three rounds, medians:
+
+| Batch | Blocks, 266 | Blocks, 271 | The probe | Execution, 266 | Execution, 271 |
+|---|---|---|---|---|---|
+| 50 existing streams, 10 events each | 32,211 | 32,237 | 2 blocks | 64.4 ms | 61.8 ms |
+| 500 new streams, one event each | 36,578 | 36,306 | 2 blocks | 68.4 ms | 67.3 ms |
+
+The whole-chain differences are within the spread between rounds; the probe is the only added read. A batch that does
+hold an archived stream pays for the refusal (a dead letter per refused event, and under AutoRestore one request row
+per stream).
+
+## Configuration {#configuration}
+
+{verified: StreamLifecycleOptionsBinderTests.ReadThrough_DefaultsToTrue_AndBindsFalseAsync, StreamLifecycleOptionsBinderTests.AppendToArchived_IsReadPerStreamType_IgnoringCase_AndAnUnlistedTypeRefusesAsync}
+
+| Key | Default | Environment variable | Purpose |
+|---|---|---|---|
+| `Whizbang:Archive:ReadThrough` | `true` | `Whizbang__Archive__ReadThrough` | A read from the start of a stream reads archived events back through its gap. |
+| `Whizbang:StreamLifecycle:Types:<StreamType>:AppendToArchived` | `Refuse` | `Whizbang__StreamLifecycle__Types__<StreamType>__AppendToArchived` | `Refuse` or `AutoRestore`; `NewGeneration` ships with #1734. |
+
+| Choice | Reason | Verified |
+|---|---|---|
+| Both are bound by hand and validated when the host starts; a value that is not a boolean, or not a policy name, fails the start naming the key. | A misread setting must fail where it is configured, not at the first archived write. | {verified: StreamLifecycleOptionsBinderTests.ReadThrough_AValueThatIsNotABoolean_IsRefusedNamingTheKeyAsync, StreamLifecycleOptionsBinderTests.Registration_APolicyThatCannotBeRead_FailsTheHostsStartupValidationAsync} |
+| Policy names are matched ignoring case; a number is refused. | A number would bind a policy by its position, which nobody reading the configuration can check. | {verified: StreamLifecycleOptionsBinderTests.AppendToArchived_AnUnknownValueOrANumber_IsRefusedNamingTheKeyAndTheValuesAsync} |
 
 ## The Postgres-table store
 
