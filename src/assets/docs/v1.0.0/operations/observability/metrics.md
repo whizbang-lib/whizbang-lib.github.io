@@ -18,6 +18,7 @@ codeReferences:
   - src/Whizbang.Core/Observability/DispatcherMetrics.cs
   - src/Whizbang.Core/Observability/LifecycleMetrics.cs
   - src/Whizbang.Core/Observability/LifecycleCoordinatorMetrics.cs
+  - src/Whizbang.Core/Lifecycle/LifecycleCoordinator.cs
   - src/Whizbang.Core/Observability/TransportMetrics.cs
   - src/Whizbang.Core/Observability/PerspectiveMetrics.cs
   - src/Whizbang.Core/Workers/PendingEventsStatisticsRefresh.cs
@@ -47,6 +48,7 @@ codeReferences:
   - src/Whizbang.Core/Observability/ProbeCadenceMetrics.cs
 testReferences:
   - tests/Whizbang.Core.Tests/Observability/InstanceLivenessMetricsTests.cs
+  - tests/Whizbang.Core.Tests/Lifecycle/LifecycleTrackingEndsTests.cs
   - tests/Whizbang.Core.Tests/Observability/ProbeCadenceMetricsTests.cs
   - tests/Whizbang.Core.Component.Tests/Observability/PassiveCounterTests.cs
   - tests/Whizbang.Core.Tests/Observability/PassiveCounterDriftLockTests.cs
@@ -332,6 +334,9 @@ Instruments for the coordinator that tracks active events through the lifecycle,
 | `whizbang.lifecycle_coordinator.active_tracked_events` | UpDownCounter\<int\> | Events currently in lifecycle tracking |
 | `whizbang.lifecycle_coordinator.pending_perspective_states` | UpDownCounter\<int\> | Events awaiting perspective WhenAll completion |
 | `whizbang.lifecycle_coordinator.pending_when_all_states` | UpDownCounter\<int\> | Events awaiting segment WhenAll completion |
+| `whizbang.lifecycle_coordinator.tracked_entries` | ObservableGauge\<int\> | Tracking entries the coordinator holds right now, read at every export. Steady under load in a healthy service; a climb that never falls back is a path that begins tracking without ending it |
+
+{verified: LifecycleTrackingEndsTests.TrackedEntriesGauge_ReportsTheLiveTrackedCountAsync}
 
 ### Completion Counters
 
@@ -355,7 +360,14 @@ Instruments for the coordinator that tracks active events through the lifecycle,
 | Metric Name | Type | Description |
 |-------------|------|-------------|
 | `whizbang.lifecycle_coordinator.stale_tracking_cleaned` | Counter\<long\> | Stale tracking entries cleaned by inactivity threshold |
-| `whizbang.lifecycle_coordinator.stale_tracking_preserved_partial_perspectives` | Counter\<long\> | Stale entries preserved because some perspectives had already completed |
+| `whizbang.lifecycle_coordinator.partial_tracking_ended` | Counter\<long\> | Partial entries the stale sweep ended: some expected perspectives reported, the rest never did within the inactivity bound, so PostAllPerspectives does not fire for the event in this process. Each end is also logged at Debug with the perspectives that never reported |
+| `whizbang.lifecycle_coordinator.completed_tracking_swept` | Counter\<long\> | Completed entries the stale sweep removed. Every path ends its entries at its exit, so a nonzero count names a path that skipped its exit |
+
+{verified: LifecycleTrackingEndsTests.Sweep_EndsAPartialEntry_OnceNoPerspectiveHasReportedForTheBound_NamingTheMissingPerspectivesAsync, LifecycleTrackingEndsTests.Sweep_NeverRetainsACompletedEntry_HoweverRecentAsync}
+
+:::updated
+`whizbang.lifecycle_coordinator.stale_tracking_preserved_partial_perspectives` was removed. The stale sweep no longer preserves partial entries; it ends them. Point dashboards and alerts that used it at `whizbang.lifecycle_coordinator.partial_tracking_ended`. See [Stale Tracking Cleanup](../../fundamentals/lifecycle/lifecycle-coordinator.md#stale-tracking-cleanup).
+:::
 
 ## Whizbang.Transport {#transport}
 
