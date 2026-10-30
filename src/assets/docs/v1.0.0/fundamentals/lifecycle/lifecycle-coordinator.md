@@ -21,6 +21,7 @@ codeReferences:
   - src/Whizbang.Core/Lifecycle/DebugAwareStopwatch.cs
   - src/Whizbang.Core/Lifecycle/StageRecord.cs
   - src/Whizbang.Core/Observability/LifecycleCoordinatorMetrics.cs
+  - src/Whizbang.Core/Workers/PerspectiveWorker.cs
 testReferences:
   - tests/Whizbang.Core.Component.Tests/Lifecycle/LifecycleCoordinatorTests.cs
   - tests/Whizbang.Core.Tests/Lifecycle/LifecycleCoordinatorSituationTests.cs
@@ -28,6 +29,10 @@ testReferences:
   - tests/Whizbang.Core.Component.Tests/Lifecycle/DebugAwareStopwatchTests.cs
   - tests/Whizbang.Core.Tests/Workers/PerspectiveWorkerPostLifecycleTests.cs
   - tests/Whizbang.Core.Tests/Workers/TransportConsumerWorkerPostLifecycleTests.cs
+  - tests/Whizbang.Core.Tests/Lifecycle/LifecycleTrackingEndsTests.cs
+  - tests/Whizbang.Core.Tests/Lifecycle/LifecycleCoordinatorDetachedRetentionTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerDrainModeLifecycleTests.TrackingEnds.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerStartupAndMaintenanceTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -58,14 +63,35 @@ See [Lifecycle Stages Pipeline](lifecycle-stages.md#pipeline-overview) for the f
 
 ## Core Concepts
 
-### Live Tracking
+### Live Tracking {#live-tracking}
 
-The coordinator only tracks events that are **live** — actively being processed in-memory. This prevents memory leaks and avoids tracking events across persistence boundaries.
+The coordinator only tracks events that are **live**: actively being processed in-memory. This prevents memory leaks and avoids tracking events across persistence boundaries.
 
 - **Entry points**: `BeginTracking()` when an event enters a worker (dispatch, DB load, transport receive)
 - **Exit points**: `AbandonTracking()` when an event leaves a worker (persisted to DB, sent to transport, processing complete)
 
 Between entry and exit, the worker advances the event through stages using `AdvanceToAsync()`.
+
+Every tracking entry has a defined end: the path that begins tracking ends it once the lifecycle it tracks is done. The [stale sweep](#stale-tracking-cleanup) is a safety net for an entry no exit ended, not what keeps memory stable. The `whizbang.lifecycle_coordinator.tracked_entries` gauge shows the live count (see [Observability](#observability)).
+
+For the perspective worker, the exit is explicit:
+
+- **Lifecycle complete**: once an event's perspective WhenAll gate is open, its PostAllPerspectives and PostLifecycle stages fire and its tracking ends.
+- **Receptor failure**: when a PostAllPerspectives or PostLifecycle receptor throws, the failure is isolated (it is not retried in memory) and the entry still ends.
+- **Cancellation**: when the stages are canceled mid-batch, every event whose gate is open has its tracking ended, and the cancellation propagates.
+- **Waiting events keep their entries**: an event still waiting on a perspective that has not reported stays tracked for a later batch.
+- **Ended events stay ended**: a cooled row that signals an event whose tracking already ended registers no new WhenAll expectation and fires nothing again.
+- **Orphan replay**: the startup orphan replay ends each entry it began, whether its stages succeed or throw.
+
+{verified: PerspectiveWorkerDrainModeLifecycleTests.DrainMode_EveryProjectedEventsTracking_EndsOnceItsLifecycleCompletesAsync, PerspectiveWorkerDrainModeLifecycleTests.DrainMode_AnEventWaitingOnAPerspectiveThatHasNotReported_StaysTrackedAsync, PerspectiveWorkerDrainModeLifecycleTests.DrainMode_APostAllPerspectivesReceptorThatThrows_StillEndsItsEventsTrackingAsync, PerspectiveWorkerDrainModeLifecycleTests.FirePostLifecycle_CanceledMidBatch_EndsEveryReadyEventsTrackingAsync, PerspectiveWorkerDrainModeLifecycleTests.FirePostLifecycle_AnEventWhoseTrackingEnded_IsNeitherRegisteredNorFiredAgainAsync, PerspectiveWorkerStartupAndMaintenanceTests.Startup_OrphanReplay_EndsEveryReplayedEventsTracking_WhetherItsStagesSucceedOrThrowAsync}
+
+An ended entry keeps only its detached stages that are still running, and releases each one when it finishes.
+
+{verified: LifecycleCoordinatorDetachedRetentionTests.EndedTracking_ReleasesItsDetachedStage_OnceTheStageFinishesAsync, LifecycleCoordinatorDetachedRetentionTests.EndedTracking_NeverRetainsADetachedStageThatAlreadyFinishedAsync}
+
+:::updated
+A re-delivered event whose earlier tracking entry has already ended now runs its PrePerspective and PostAllPerspectives receptors again, the same way the Dispatcher and transport paths already behave. Previously the perspective worker never ended its entries, so a leaked entry doubled as a per-process exactly-once guard. With the perspective worker's [cooldown cache](../../operations/workers/perspective-worker.md#cooldown-cache-capacity) on (the default), a re-delivered row is still skipped and nothing fires again. With the cooldown off, or after the cooldown TTL while the row is still pending, the event begins a new entry and its receptors run again. Make those receptors idempotent if they must not repeat.
+:::
 
 ### Exactly-Once Stage Firing
 
@@ -210,18 +236,27 @@ if (coordinator.AreAllPerspectivesComplete(eventId)) {
 
 ---
 
-## Stale Tracking Cleanup
+## Stale Tracking Cleanup {#stale-tracking-cleanup}
 
-Tracking entries that never complete (e.g., a perspective fails permanently) are cleaned up via a debounce-style inactivity threshold:
+Every path ends the entries it begins (see [Live Tracking](#live-tracking)), so the periodic sweep is a safety net for an entry no exit ended. It uses a debounce-style inactivity threshold read on the coordinator's clock:
 
-- **`LastActivityUtc`**: Set on creation, reset on every stage transition and perspective signal
-- **`CleanupStaleTracking(TimeSpan)`**: Removes entries inactive longer than the threshold
-- **PerspectiveWorker**: Runs cleanup every 10th batch cycle with a 5-minute inactivity threshold
-- **Complete entries preserved**: Entries marked `IsComplete` are never cleaned (they'll be abandoned normally)
+- **`LastActivityUtc`**: Set on creation, reset on every stage transition and perspective signal, so an entry still being reported for is never ended
+- **`CleanupStaleTracking(TimeSpan)`**: Ends entries inactive longer than the threshold and returns how many entries it removed
+- **Completed entries are removed**: an entry whose lifecycle completed is removed whatever its age, and counted in `whizbang.lifecycle_coordinator.completed_tracking_swept`. A nonzero count names a path that skipped its exit.
+- **Partial entries end**: an entry nothing has reported for within the threshold ends even when some of its expected perspectives reported. The end is counted in `whizbang.lifecycle_coordinator.partial_tracking_ended` and logged at Debug with the perspectives that never reported. PostAllPerspectives does not fire for that event in this process.
+- **Injected clock**: `LifecycleCoordinator` takes an optional `TimeProvider` (the system clock when omitted, resolved from DI when one is registered), so tests can move time past the threshold deterministically
+- **PerspectiveWorker**: Runs the sweep every 10th batch cycle with a 5-minute inactivity threshold
+- **Snapshot**: the sweep works on a snapshot and skips an entry another path ended in the meantime, so no entry is counted twice
+
+{verified: LifecycleTrackingEndsTests.Sweep_NeverRetainsACompletedEntry_HoweverRecentAsync, LifecycleTrackingEndsTests.Sweep_EndsAPartialEntry_OnceNoPerspectiveHasReportedForTheBound_NamingTheMissingPerspectivesAsync, LifecycleTrackingEndsTests.Sweep_KeepsAPartialEntry_WhilePerspectivesKeepReportingWithinTheBoundAsync, LifecycleTrackingEndsTests.Sweep_KeepsAnUnreportedEntry_UntilTheInjectedClockPassesTheBoundAsync}
+
+:::updated
+The sweep used to skip completed entries and preserve partial ones, so an entry the perspective worker never ended stayed for the life of the process. It now removes completed entries and ends partial ones, and the `stale_tracking_preserved_partial_perspectives` metric is gone (see [Observability](#observability)).
+:::
 
 ---
 
-## Observability
+## Observability {#observability}
 
 The coordinator emits OTel metrics via `LifecycleCoordinatorMetrics` (meter: `Whizbang.LifecycleCoordinator`):
 
@@ -238,10 +273,18 @@ The coordinator emits OTel metrics via `LifecycleCoordinatorMetrics` (meter: `Wh
 | `whizbang.lifecycle_coordinator.stage_transitions` | Counter | Stage transitions (tag: `stage`) |
 | `whizbang.lifecycle_coordinator.stale_tracking_cleaned` | Counter | Stale tracking entries cleaned by inactivity threshold |
 | `whizbang.lifecycle_coordinator.post_lifecycle_errors` | Counter | PostLifecycle stage errors that were isolated (per-event error isolation) |
-| `whizbang.lifecycle_coordinator.stale_tracking_preserved_partial_perspectives` | Counter | Stale entries preserved because perspectives were partially complete |
+| `whizbang.lifecycle_coordinator.tracked_entries` | Gauge | Tracking entries held right now; steady under load in a healthy service, a climb that never falls back is a path that begins tracking without ending it |
+| `whizbang.lifecycle_coordinator.partial_tracking_ended` | Counter | Partial entries the stale sweep ended because some expected perspectives never reported |
+| `whizbang.lifecycle_coordinator.completed_tracking_swept` | Counter | Completed entries the stale sweep removed: a path that skipped its exit |
+
+{verified: LifecycleTrackingEndsTests.TrackedEntriesGauge_ReportsTheLiveTrackedCountAsync}
 
 :::new
 Lifecycle coordinator metrics are automatically registered via `AddWhizbang()`.
+:::
+
+:::updated
+`whizbang.lifecycle_coordinator.stale_tracking_preserved_partial_perspectives` (`StaleTrackingPreservedPartialPerspectives`) was removed: the sweep no longer preserves partial entries. Point dashboards and alerts at `whizbang.lifecycle_coordinator.partial_tracking_ended` instead.
 :::
 
 ---
@@ -416,7 +459,7 @@ public class PerspectiveAuditReceptor : IReceptor<IEvent> {
 
 ### PerspectiveWorker (Game Loop)
 
-```csharp{title="PerspectiveWorker Integration" description="Batch-synchronized stage advancement" category="Architecture" difficulty="ADVANCED" tags=["Lifecycle", "PerspectiveWorker", "GameLoop"] unverified="verified by PerspectiveWorkerPostLifecycleTests, which is outside the current coverage map"}
+```csharp{title="PerspectiveWorker Integration" description="Batch-synchronized stage advancement" category="Architecture" difficulty="ADVANCED" tags=["Lifecycle", "PerspectiveWorker", "GameLoop"] unverified="simplified sketch of the worker's exit; the behavior is verified by PerspectiveWorkerDrainModeLifecycleTests, listed under Live Tracking"}
 // ENTRY: Begin tracking for each unique event in the batch
 foreach (var (eventId, (envelope, streamId)) in batchProcessedEvents) {
   coordinator.BeginTracking(eventId, envelope,
@@ -426,14 +469,24 @@ foreach (var (eventId, (envelope, streamId)) in batchProcessedEvents) {
 // Advance all events through stages together (game loop)
 // ... perspective processing ...
 
-// PostLifecycle: once per event (final stage)
+// Terminal stages: once per event whose WhenAll gate is open
 foreach (var (eventId, (envelope, streamId)) in batchProcessedEvents) {
-  var tracking = coordinator.GetTracking(eventId)!;
-  await tracking.AdvanceToAsync(LifecycleStage.PostLifecycleDetached, scopedProvider, ct);
-  await tracking.AdvanceToAsync(LifecycleStage.PostLifecycleInline, scopedProvider, ct);
-  coordinator.AbandonTracking(eventId);  // EXIT: processing complete
+  var tracking = coordinator.GetTracking(eventId);
+  if (tracking is null || !coordinator.AreAllPerspectivesComplete(eventId)) {
+    continue;  // still waiting on a perspective: keep the entry for a later batch
+  }
+  try {
+    await tracking.AdvanceToAsync(LifecycleStage.PostAllPerspectivesDetached, scopedProvider, ct);
+    await tracking.AdvanceToAsync(LifecycleStage.PostAllPerspectivesInline, scopedProvider, ct);
+    await tracking.AdvanceToAsync(LifecycleStage.PostLifecycleDetached, scopedProvider, ct);
+    await tracking.AdvanceToAsync(LifecycleStage.PostLifecycleInline, scopedProvider, ct);
+  } finally {
+    coordinator.AbandonTracking(eventId);  // EXIT: also on receptor failure and cancellation
+  }
 }
 ```
+
+The worker ends what it begins. The `finally` is why a failing terminal-stage receptor or a canceled batch still releases the entry; the startup orphan replay ends its entries the same way. See [Live Tracking](#live-tracking) for the full list of exits and the tests that lock them.
 
 ### Dispatcher (Independent)
 
