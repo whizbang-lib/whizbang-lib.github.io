@@ -60,9 +60,18 @@ The generated list of requirements covers every registration call in the compile
 calls that a given composition never makes. Validation therefore checks a requirement only when its
 implementation type is registered in the service collection being validated. A composition that
 calls `AddWhizbang()` and a storage driver but not `AddTransportConsumer()` does not register
-`TransportConsumerWorker`, so the `ITransport` that worker requires is not checked. A composition
-that calls `AddTransportConsumer()` without a transport still fails with
-`ITransport (required by TransportConsumerWorker)`.
+`TransportConsumerWorker`, so the `ITransport` that worker requires is not checked.
+
+:::updated
+A composition that calls `AddTransportConsumer()` without a transport no longer fails with
+`ITransport (required by TransportConsumerWorker)`: a host with no message broker is a supported
+composition, and the worker is built only when a transport is registered
+{verified: RealCompositionValidationTests.ATransportConsumerWithoutATransport_IsNotAGapAsync}.
+See [A host with no message broker](../../messaging/transports/transport-consumer#no-transport).
+The worker is registered through a `ServiceDescriptor` factory that this check does not read, so its
+other dependencies are not validated either; making the check understand factory registrations is
+tracked in [whizbang-lib/whizbang#1907](https://github.com/whizbang-lib/whizbang/issues/1907).
+:::
 
 An implementation type counts as registered when a service descriptor, keyed or not, names it as its
 service type, as its implementation type, or through the type of its instance.

@@ -159,6 +159,13 @@ base's policy and is not auto-generated; declare `[GenerateStreamId]` on it to a
 {verified: StreamIdDerivedFirstGeneratorTests.ADerivedTypeWithItsOwnStreamIdAndNoGenerateStreamId_DoesNotInheritTheBasesGenerateStreamIdAsync, StreamIdDerivedFirstGeneratorTests.ADerivedTypeWithNoStreamIdOfItsOwn_InheritsTheBasesGenerateStreamIdAsync}. See
 [A derived type's own stream ID is never shadowed by its base](streamid#derived-first-dispatch).
 
+The opt-out holds only when the base type is compiled in the same assembly as the derived type. A base in another
+assembly that declares `[GenerateStreamId]` still applies its policy to the derived type, and
+[WHIZ017](../../operations/diagnostics/whiz017) warns about it: declare `[GenerateStreamId]` on the derived type, or
+move the base into the same assembly
+{verified: StreamIdCrossAssemblyGenerationAnalyzerTests.OwnStreamId_UnderAGeneratingBaseInAnotherAssembly_ReportsWhiz017Async, StreamIdCrossAssemblyGenerationAnalyzerTests.OwnStreamId_UnderAGeneratingBaseInTheSameAssembly_IsNotReportedAsync}.
+Exact cross-assembly resolution is planned in [whizbang-lib/whizbang#1905](https://github.com/whizbang-lib/whizbang/issues/1905).
+
 ## Zero Reflection / AOT
 
 The `[GenerateStreamId]` attribute is fully AOT-compatible:

@@ -634,6 +634,7 @@ How the schema initializer runs at startup. **Configure:** bound automatically f
 | `NonBlockingSchemaInit` | `bool` | `true` | `Whizbang__SchemaInitialization__NonBlockingSchemaInit` | Initialize in the background; liveness answers while the ready gate stays closed (fail-closed) |
 | `MigrationTimeout` | `TimeSpan?` | `null` (none) | `Whizbang__SchemaInitialization__MigrationTimeout` | Hard ceiling per initialization attempt (non-blocking mode only) |
 | `InitRetryDelay` | `TimeSpan` | `00:00:30` | `Whizbang__SchemaInitialization__InitRetryDelay` | Delay between background init attempts after a failure; never gives up |
+| `DispatchMaxWait` | `TimeSpan` | `00:05:00` | `Whizbang__SchemaInitialization__DispatchMaxWait` | How long a dispatch made before the migration completes waits for it, then fails with `WhizbangNotReadyException`; `00:00:00` refuses at once, `Timeout.InfiniteTimeSpan` waits without a limit. See [Dispatch waits for the migration](../workers/database-readiness#dispatch-waits-for-the-migration) |
 
 ### EphemeralOptions
 

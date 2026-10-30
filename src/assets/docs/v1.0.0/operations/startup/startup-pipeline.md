@@ -166,7 +166,7 @@ See [Database Readiness](../workers/database-readiness#ready-is-more-than-the-ga
 
 ## Seams
 
-While the pipeline runs, the data plane holds **at its own seams** rather than at the HTTP edge: `IDispatcher` refuses until `Migrate` completes (a dispatch needs the event store and outbox), and lens resolution refuses until the **read-model barrier** releases (`Migrate` *plus* the perspective startup scan). Both throw `WhizbangNotReadyException`, which HTTP layers map to 503; both are inert when no gate is registered, so fixtures behave exactly as before.
+While the pipeline runs, the data plane holds **at its own seams** rather than at the HTTP edge: `IDispatcher` waits until `Migrate` completes (a dispatch needs the event store and outbox), up to `SchemaInitializationOptions.DispatchMaxWait`, and lens resolution refuses until the **read-model barrier** releases (`Migrate` *plus* the perspective startup scan). A refused read, and a dispatch whose wait runs out, throw `WhizbangNotReadyException`, which HTTP layers map to 503; both seams are inert when no gate is registered, so fixtures behave exactly as before.
 
 The two seams project onto the lifecycle ladder as [`LifecyclePhase.AcceptingCommands`](../../resilience/managed-resource-run-control#the-lifecycle-state-machine) — the write side live, the read side not yet. The seams themselves are documented in [Database Readiness](../workers/database-readiness#the-seam-level-barriers-reads-and-writes-hold-themselves).
 

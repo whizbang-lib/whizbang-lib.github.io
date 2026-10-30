@@ -188,6 +188,8 @@ declares one
 Within one assembly this is exact. When the base type is compiled in a different assembly from the derived type, the
 base assembly's lookup can still apply its policy to the derived instance; keep a base that declares
 `[GenerateStreamId]` in the same assembly as derived types that must not generate.
+[WHIZ017](../../operations/diagnostics/whiz017) warns when a derived type's opt-out cannot hold for this reason; exact
+cross-assembly resolution is planned in [whizbang-lib/whizbang#1905](https://github.com/whizbang-lib/whizbang/issues/1905).
 
 :::updated
 **Upgrade note.** Before this change the chain followed discovery order, so a base type discovered before a derived
