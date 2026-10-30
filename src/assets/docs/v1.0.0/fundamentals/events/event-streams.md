@@ -362,8 +362,8 @@ The Dapper and EF Core schemas behave the same way.
 A stream that has ended can be sealed: it keeps every event and stays readable, but every later append is refused. Seal
 it explicitly with `IStreamFinalizer.FinalizeAsync(streamId, reason)`, or declare the event that ends it with
 `[TerminalEvent]`, which seals the stream in the transaction that stores the event. A direct append to a sealed stream
-throws `StreamSealedException`; an outbox or inbox write dead-letters the refused event and stores the rest of its
-batch. Sealing is a stream's first step toward its end of life; see
+throws `StreamSealedException`, and so does an outbox write its caller awaits (the immediate and scoped strategies);
+a write nobody awaits dead-letters the refused event and stores the rest of its batch. Sealing is a stream's first step toward its end of life; see
 [Stream End of Life](stream-end-of-life.md#sealing-a-stream) for the full behavior and every choice behind it.
 
 ```csharp{title="Seal a stream, explicitly or with a terminal event" description="Finalizes an order's stream, or lets the event that ends it seal the stream as it is stored." category="Core Concepts" difficulty="INTERMEDIATE" tags=["event-streams", "sealing", "terminal-event", "finalize"] tests=["StreamSealingSqlTests.Finalize_SealsTheStream_WithTheTimeAndTheReasonAsync", "StreamSealingSqlTests.TerminalEvent_DirectAppend_SealsTheStream_AndTheNextAppendThrowsAsync", "StreamSealingSqlTests.DirectAppend_ToASealedStream_ThrowsStreamSealedException_AndStoresNothingAsync"]}

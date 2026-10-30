@@ -125,9 +125,9 @@ message {MessageId} — returning Throttled to failure channel
 Stream {streamId} was sealed at {sealedAt} and refuses appends. Reason: {reason}
 ```
 
-**Source**: `StreamSealedException` (thrown by `IEventStore.AppendAsync` on both Postgres drivers, from SQLSTATE `WHS01`); the same text is the error of a `StreamSealed` (25) dead letter.
+**Source**: `StreamSealedException` (thrown by `IEventStore.AppendAsync` and by an awaited outbox flush on both Postgres drivers, from SQLSTATE `WHS01`); the same text is the error of a `StreamSealed` (25) dead letter.
 
-**Trigger**: An event was appended to a stream that was sealed, either finalized with `IStreamFinalizer.FinalizeAsync` or ended by a `[TerminalEvent]`. A direct append throws and stores nothing; an event written through the outbox or received through the inbox is dead-lettered, and the rest of its batch is stored.
+**Trigger**: An event was appended to a stream that was sealed, either finalized with `IStreamFinalizer.FinalizeAsync` or ended by a `[TerminalEvent]`. A direct append, or an outbox write its caller awaits (the immediate and scoped strategies), throws and stores nothing; an event written by a background flush or received through the inbox is dead-lettered, and the rest of its batch is stored.
 
 **Fix**: A sealed stream has ended; append to a new stream. If the seal was a mistake, the dead letter keeps the whole message for an operator to decide. See [Stream End of Life](../../fundamentals/events/stream-end-of-life.md#a-sealed-stream-refuses-appends).
 
