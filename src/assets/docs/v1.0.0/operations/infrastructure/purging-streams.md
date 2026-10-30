@@ -45,6 +45,8 @@ Everything keyed by the listed streams, in one transaction per batch:
 
 Dead letters are left alone: maintenance settles a dead letter whose stream no longer exists.
 
+A stream archived to Azure Blob Storage also loses its archive manifest rows (`wh_archive_manifest`, by cascade from the lifecycle row; the purge report does not count them), and its archive objects are queued for deletion in the same transaction; the Azure Blob archive store's maintenance step deletes them from storage. See [Purging a stream archived to blob](../../fundamentals/events/archive-store.md#purging-a-stream-archived-to-blob).
+
 Then, so the purge holds:
 
 - **Every purged stream is marked purged for every perspective** (`wh_stream_purge_markers`, perspective `*`). A later event on it is skipped by every perspective instead of recreating a row; see [Purge stays purged](../../fundamentals/perspectives/perspectives-with-actions.md#purge-stays-purged). Only an Apply that returns `Resurrect` brings a row back.

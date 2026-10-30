@@ -241,3 +241,7 @@ See [Body Offload (Claim-Check Pattern)](/v1.0.0/fundamentals/offloads/message-b
 ## Integration tests
 
 The provider's integration test suite (`tests/Whizbang.Offloads.AzureBlob.Integration.Tests/`) uses `Testcontainers.Azurite` to spin up a real Azurite container per test class. Round-trip tests cover the upload/download/delete contract, hash verification, MaxBytes cap behavior, and idempotent delete semantics. The config-driven wiring is locked by `AzureBlobOffloadFromConfigurationTests` (provider discovery, `AccessTier`-from-string binding, no-op-when-empty, multi-provider, malformed-key skipping, and default fallbacks). The same code paths run against live Azure in production deployments.
+
+## Related
+
+- [Archive Store: the Azure Blob store](../../events/archive-store#the-azure-blob-store): archived event streams in the same kind of storage account, with their own container (`whizbang-archive`) and settings (`Whizbang:Archive:AzureBlob`).
