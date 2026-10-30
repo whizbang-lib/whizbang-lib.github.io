@@ -22,6 +22,7 @@ testReferences:
   - tests/Whizbang.Generators.Tests/StreamIdGeneratorTests.cs
   - tests/Whizbang.Generators.Tests/StreamIdGeneratorCoverageTests.cs
   - tests/Whizbang.Generators.Tests/StreamIdOverrideGeneratorTests.cs
+  - tests/Whizbang.Generators.Tests/StreamIdDerivedFirstGeneratorTests.cs
   - tests/Whizbang.Generators.Tests/Analyzers/StreamIdAttributeAnalyzerTests.cs
   - tests/Whizbang.Core.Tests/StreamKeyAttributeTests.cs
   - tests/Whizbang.Core.Tests/StreamIdExtractorTests.cs
@@ -157,6 +158,49 @@ the types below it. The analyzer makes the same choice, so:
   {verified: StreamIdOverrideGeneratorTests.APerspectiveEventWithAnOverride_IsNotReportedAsMultipleStreamIdsAsync, StreamIdOverrideGeneratorTests.APerspectiveRunner_ExtractsTheOverrideParameterAsync}.
 
 A plain `[StreamId]` is unchanged: `Override` defaults to `false`.
+
+### A derived type's own stream ID is never shadowed by its base {#derived-first-dispatch}
+
+The generated extractors pick the type's code with a chain of `message is T` checks. A base type's check also matches
+every type derived from it, so the order of the chain decides which stream ID a derived message gets. The generator
+orders every chain most-derived first: by inheritance depth, deepest first, and then by type name, so the generated
+file does not depend on the order in which types are discovered (file or namespace order). This holds for commands,
+events and composites, and for every generated entry point: `Resolve`, `TryResolveAsGuid`, `ExtractStreamId`,
+`SetStreamId` and the `[GenerateStreamId]` policy lookup
+{verified: StreamIdDerivedFirstGeneratorTests.ADerivedCommandInANamespaceAfterTheBase_ResolvesAndSetsByItsOwnStreamIdAsync, StreamIdDerivedFirstGeneratorTests.ADerivedCommandInANamespaceBeforeTheBase_ResolvesAndSetsByItsOwnStreamIdAsync, StreamIdDerivedFirstGeneratorTests.ADerivedCommandOverrideInANamespaceAfterTheBase_ResolvesAndSetsByTheOverrideAsync, StreamIdDerivedFirstGeneratorTests.ADerivedEventInANamespaceAfterTheBase_ResolvesAndSetsByItsOwnStreamIdAsync, StreamIdDerivedFirstGeneratorTests.TypesAtTheSameDepth_AreDispatchedInNameOrderWhateverTheDeclarationOrderAsync}.
+
+So a derived type that declares its own `[StreamId]`, plain or `Override = true`, is resolved by that property and has
+a generated ID written to that property, wherever its namespace sorts relative to its base's. With three or more
+levels, each type uses its nearest `[StreamId]`
+{verified: StreamIdDerivedFirstGeneratorTests.ThreeLevelsOfCommands_EachResolvesAndSetsByItsNearestStreamIdAsync, StreamIdDerivedFirstGeneratorTests.ThreeLevelsOfEvents_EachResolvesByItsNearestStreamIdAsync}.
+A derived type with no `[StreamId]` of its own still resolves and sets by the base's
+{verified: StreamIdDerivedFirstGeneratorTests.ADerivedCommandWithoutItsOwnStreamId_StillResolvesAndSetsByTheBaseAsync}.
+
+The `[GenerateStreamId]` policy is looked up the same way. A derived type that declares its own `[GenerateStreamId]`
+uses its own policy, not the base's
+{verified: StreamIdDerivedFirstGeneratorTests.ADerivedTypesOwnGenerationPolicy_IsNotShadowedByTheBaseAsync}.
+A derived type with its own `[StreamId]` but **no** `[GenerateStreamId]` does not inherit the base's policy: the
+generator gives it an explicit do-not-generate entry, so it is not auto-generated. Add `[GenerateStreamId]` to it to
+auto-generate its own stream ID. A type with no `[StreamId]` of its own inherits the policy of its nearest base that
+declares one
+{verified: StreamIdDerivedFirstGeneratorTests.ADerivedTypeWithItsOwnStreamIdAndNoGenerateStreamId_DoesNotInheritTheBasesGenerateStreamIdAsync, StreamIdDerivedFirstGeneratorTests.ADerivedOverrideWithNoGenerateStreamId_DoesNotInheritTheBasesClassLevelGenerateStreamIdAsync, StreamIdDerivedFirstGeneratorTests.ATypeWithItsOwnStreamId_DoesNotInheritAGenerateStreamIdFromAnyLevelAboveAsync, StreamIdDerivedFirstGeneratorTests.ADerivedTypeWithItsOwnStreamIdAndGenerateStreamId_UsesItsOwnGenerationPolicyAsync, StreamIdDerivedFirstGeneratorTests.ATypeWithNoStreamIdOfItsOwn_InheritsTheGenerationPolicyOfItsNearestBaseAsync}.
+
+Within one assembly this is exact. When the base type is compiled in a different assembly from the derived type, the
+base assembly's lookup can still apply its policy to the derived instance; keep a base that declares
+`[GenerateStreamId]` in the same assembly as derived types that must not generate.
+[WHIZ017](../../operations/diagnostics/whiz017) warns when a derived type's opt-out cannot hold for this reason; exact
+cross-assembly resolution is planned in [whizbang-lib/whizbang#1905](https://github.com/whizbang-lib/whizbang/issues/1905).
+
+:::updated
+**Upgrade note.** Before this change the chain followed discovery order, so a base type discovered before a derived
+type with its own `[StreamId]` matched every derived instance first, and the derived property was never read or
+written. Whether a contract resolved correctly depended on how its namespace was spelled. Such a derived type now
+resolves and sets by its own `[StreamId]`, as [WHIZ006](../../operations/diagnostics/whiz006) already described. A
+caller that set only the inherited base property on that type now gets the derived property's value as the stream ID
+(often empty), so its messages can route to a different stream. Set the derived property, or remove the derived
+`[StreamId]` when the inherited one is the stream ID you mean. A derived type with its own `[StreamId]` also no longer
+inherits the base's `[GenerateStreamId]`; declare `[GenerateStreamId]` on it to keep auto-generation.
+:::
 
 ## How It Works
 

@@ -25,6 +25,7 @@ testReferences:
   - tests/Whizbang.Generators.Tests/Analyzers/StreamIdAttributeAnalyzerTests.cs
   - tests/Whizbang.Generators.Tests/DiagnosticDescriptorsTests.cs
   - tests/Whizbang.Generators.Tests/StreamIdOverrideGeneratorTests.cs
+  - tests/Whizbang.Generators.Tests/StreamIdDerivedFirstGeneratorTests.cs
 lastMaintainedCommit: 'b0bc0d9e'
 ---
 
@@ -91,6 +92,12 @@ WHIZ006 is still reported where the option does not apply:
   {verified: StreamIdAttributeAnalyzerTests.AnOverrideOnAnIntermediateRecord_IsUsedAheadOfALeafParameterAsync}.
 
 An override with no inherited `[StreamId]` to replace is reported by [WHIZ016](whiz016).
+
+The generated code honors the derived choice whatever the namespace order: its type checks run most-derived first, so
+a base type's `[StreamId]` never matches a derived instance ahead of the derived type's own
+{verified: StreamIdDerivedFirstGeneratorTests.ADerivedCommandInANamespaceBeforeTheBase_ResolvesAndSetsByItsOwnStreamIdAsync, StreamIdDerivedFirstGeneratorTests.ADerivedCommandInANamespaceAfterTheBase_ResolvesAndSetsByItsOwnStreamIdAsync}.
+Earlier releases could match the base first when the base was discovered first; see the upgrade note in
+[StreamId Attribute](../../extending/attributes/streamid#derived-first-dispatch).
 
 ### Same-name redeclarations
 

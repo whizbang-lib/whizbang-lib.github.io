@@ -619,7 +619,11 @@ in `wh_stream_digests` and sealed into epochs as described in [Phase A](#phase-a
 The same rules hold in every place that folds: both emit chains, direct appends, epoch seals, the type-level and
 windowed answers, the stream recomputes, and the verification sweep that heals the table from a recompute. A row the
 store removes (the ephemeral reaper, `wh_truncate_stream_prefix` truncation, pointer pruning) is subtracted in the same transaction,
-so a deletion never reads as a loss. Payloads, metadata and the order of arrival play no part, which is why a
+so a deletion never reads as a loss. A removal subtracts only what was folded: a [prefix truncate](../fundamentals/events/event-streams#truncate-effects)
+leaves the exempt types out of its subtraction and of the epochs it refolds, and advances the
+[origin generation](#origin-generation) only when it removes folded events, so truncating a prefix of only audit
+records changes nothing consumers verify (migration 263)
+{verified: StreamDigestTableSqlTests.TruncateStreamPrefix_APrefixOfOnlyAnAuditRecord_IsNotAMutationOfFoldedHistoryAsync, StreamDigestTableSqlTests.TruncateStreamPrefix_APrefixHoldingAnAuditRecord_LeavesTheDigestEqualToAFreshFoldAsync}. Payloads, metadata and the order of arrival play no part, which is why a
 crypto-shredded or re-serialized event digests the same.
 
 ### How at-most-once events are excluded {#at-most-once-exclusion}
@@ -643,7 +647,7 @@ reset their seals instead of reporting drift.
 
 {verified: AuditDigestLaneSqlTests.InboxStoredAuditRecord_LeavesTheOriginsDigestLaneUntouched_WhileADomainEventFoldsAsync, AuditDigestLaneSqlTests.Reconciliation_AuditTraffic_OriginAndSubscriberAnswerTheSameAsync, AuditDigestLaneSqlTests.VerifyDigestTable_RemovesAnAuditBucketInsteadOfHealingItAsync, IntegrityCheckpointAdvanceTests.CheckpointCounts_LeaveAuditRecordsOut_OnBothSidesAsync}
 
-`EventAudited` and `CommandAudited` are left out of every integrity fold: both emit chains, epoch seals, the type-level and windowed answers, the stream recomputes and the verification sweep. They are matched on the type-name part of `event_type` against `DigestExemptTypes.TypeNames` (the SQL constant `__DIGEST_EXEMPT_TYPES__`).
+`EventAudited` and `CommandAudited` are left out of every integrity fold: both emit chains, epoch seals, the type-level and windowed answers, the stream recomputes and the verification sweep, and the [prefix truncate](../fundamentals/events/event-streams#truncate-effects), which neither subtracts nor refolds them (migration 263). They are matched on the type-name part of `event_type` against `DigestExemptTypes.TypeNames` (the SQL constant `__DIGEST_EXEMPT_TYPES__`).
 
 Audit records are a function of the origin's events and scope, and the origin does not store most of them, so folding them made the two sides disagree: a subscriber that stored fanned-out audit records counted them in the origin's lane, where the origin had nothing to match. Migration 216 removes the audit buckets and sealed epochs already stored, once.
 

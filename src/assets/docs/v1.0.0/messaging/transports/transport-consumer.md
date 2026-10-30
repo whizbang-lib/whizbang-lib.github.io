@@ -25,6 +25,7 @@ codeReferences:
   - src/Whizbang.Core/Workers/ReceiveConsumerGate.cs
   - src/Whizbang.Core/Workers/ServiceBusConsumerWorker.cs
   - src/Whizbang.Core/Routing/MessageDiscardPolicy.cs
+  - src/Whizbang.Core/Workers/NoTransportConfiguredNotice.cs
 testReferences:
   - tests/Whizbang.Core.Tests/Workers/TransportConsumerBuilderExtensionsTests.cs
   - tests/Whizbang.Core.Tests/Workers/TransportConsumerBuilderExtensionsServiceNameTests.cs
@@ -46,6 +47,8 @@ testReferences:
   - tests/Whizbang.Core.Tests/Routing/MessageDiscardPolicyTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/ServiceBusConsumerWorkerDropGateTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/AbsorbedEventReachesEventStoreTests.cs
+  - tests/Whizbang.Core.Tests/Workers/TransportConsumerWithoutATransportTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/TransportConsumerWithoutATransportStartupTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -59,7 +62,7 @@ The `AddTransportConsumer()` extension method:
 
 1. **Auto-generates subscriptions** from `RoutingOptions` configured via `WithRouting()`
 2. **Registers `TransportConsumerOptions`** with populated destinations
-3. **Starts `TransportConsumerWorker`** as a hosted service
+3. **Starts `TransportConsumerWorker`** as a hosted service when a transport is registered (see [A host with no message broker](#no-transport))
 
 ## Auto-Configuration {#auto-configuration}
 
@@ -157,6 +160,28 @@ The consumer configuration is transport-agnostic. The same `WithRouting()` and `
 - **In-Memory** (testing) - Direct message routing
 
 Transport-specific behavior is handled by the transport implementation registered separately.
+
+## A host with no message broker {#no-transport}
+
+:::updated
+A host that calls `AddTransportConsumer()` and registers no `ITransport` now starts. Before, startup failed validation because `TransportConsumerWorker` needs a transport, so a broker-less application had to register `InProcessTransport`, the in-process test transport, in production. Remove that registration: it is no longer needed outside tests.
+:::
+
+The consumer worker is built only when an `ITransport` is registered. With none, no consumer is built or started, and the host passes container validation (`ValidateOnBuild`) and Whizbang's registration validation
+{verified: TransportConsumerWithoutATransportTests.AddTransportConsumer_WithNoTransport_BuildsUnderContainerValidationAsync, TransportConsumerWithoutATransportTests.AddTransportConsumer_WithNoTransport_StartsNoConsumerAsync, RealCompositionValidationTests.ATransportConsumerWithoutATransport_IsNotAGapAsync}.
+A stand-in, `NoTransportConfiguredNotice`, takes the worker's place in the host and in [startup readiness](../../operations/workers/database-readiness#ready-is-more-than-the-gate). It has no subscriptions, so readiness does not wait for it
+{verified: TransportConsumerWithoutATransportTests.AddTransportConsumer_WithNoTransport_ReadinessDoesNotWaitForAConsumerAsync},
+and at startup it logs once, at Information, that cross-service messaging is off
+{verified: TransportConsumerWithoutATransportStartupTests.Startup_WithNoTransport_LogsOnceThatCrossServiceMessagingIsOffAsync}:
+
+```text
+Cross-service messaging is off: no transport is configured, so the transport consumer does not start and this service receives no messages from other services. Local dispatch is unaffected. Register a transport to turn cross-service messaging on.
+```
+
+Local dispatch is unaffected. Registering a transport, including `InProcessTransport` in a test that wants in-process delivery, starts the consumer exactly as before, as both the hosted service and the readiness contributor
+{verified: TransportConsumerWithoutATransportTests.AddTransportConsumer_WithTheInProcessTransport_StartsTheConsumerAsBeforeAsync}.
+
+**Trade-off.** The consumer worker is now registered through a `ServiceDescriptor` factory that builds it only when a transport is present, and the build-time registration check does not read that factory. Its own dependencies are therefore no longer validated at startup: a host that registers a transport but is missing another service the worker needs fails when the worker is resolved rather than with a named missing registration. Teaching the check to understand factory registrations is tracked in [whizbang-lib/whizbang#1907](https://github.com/whizbang-lib/whizbang/issues/1907). See [Registration Validation](../../operations/dependency-injection/registration-validation#which-requirements-are-checked).
 
 ## Batch Collector {#batch-collector}
 
@@ -562,7 +587,7 @@ builder.Services.AddSingleton<IServiceInstanceProvider>(sp =>
 
 Before calling `AddTransportConsumer()`:
 
-1. **Transport Registration** - Call `AddAzureServiceBusTransport()` or `AddRabbitMQTransport()`
+1. **Transport Registration** - Call `AddAzureServiceBusTransport()` or `AddRabbitMQTransport()` to consume from other services. Without one the host still starts, with cross-service messaging off (see [A host with no message broker](#no-transport))
 2. **Routing Configuration** - Call `WithRouting()` to configure routing options
 3. **Receptors** (optional) - Call `AddReceptors()` for message handlers
 

@@ -21,6 +21,8 @@ codeReferences:
   - src/Whizbang.Hosting.AspNet/DatabaseAvailabilityMiddleware.cs
   - src/Whizbang.Hosting.AspNet/AvailabilityGateMode.cs
   - src/Whizbang.Core/Workers/ClaimWorker.cs
+  - src/Whizbang.Core/Dispatch/SchemaReadyDispatchDeferral.cs
+  - src/Whizbang.Core/Dispatcher.cs
 testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/ColdBootJourneyE2ETests.cs
   - tests/Whizbang.Hosting.AspNet.Tests/DatabaseAvailabilityMiddlewareTests.cs
@@ -29,6 +31,8 @@ testReferences:
   - tests/Whizbang.Core.Tests/Workers/SchemaInitializationOptionsTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/WhizbangDatabaseInitializerServiceTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StartupParity/StartupParityTests.cs
+  - tests/Whizbang.Core.Tests/Dispatcher/DispatcherSchemaGateTests.cs
+  - tests/Whizbang.Core.Component.Tests/Dispatcher/DispatchExecutorParityComponentTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -340,10 +344,57 @@ For health, `ComponentState.Ready` sits between `Migrating` and `Operational` �
 
 The HTTP availability gate protects one edge; the data plane also holds **at its own seams**, so every surface inherits one check:
 
-- **Writes wait for the schema.** `IDispatcher` refuses with `WhizbangNotReadyException` while the schema gate is closed — a dispatch needs the event store and outbox, which `Migrate` provides. HTTP layers should map the exception to 503; writes resume the moment migrations complete.
+- **Writes wait for the schema.** A dispatch needs the event store and outbox, which `Migrate` provides, so a dispatch made while the schema gate is closed waits for the gate and runs when the migration completes. The wait is bounded by `SchemaInitializationOptions.DispatchMaxWait` (five minutes by default); past it the dispatch fails with `WhizbangNotReadyException`, which HTTP layers should map to 503. See [Dispatch waits for the migration](#dispatch-waits-for-the-migration).
 - **Reads wait for the read models.** Lens resolution refuses while the **read-model barrier** (`IReadModelsReadyGate`) is closed. The barrier releases when `Migrate` completes *and* the perspective startup scan — registry init, orphan reconcile, rewind repair — has run: later than `Migrate`, because a lens must not read perspectives a migration may have left mid-repair; earlier than the composite `Ready`, because reads never needed the transports. A host with no perspectives releases on the schema gate alone.
 
-Both seams are inert when no gate/barrier is registered, so test fixtures and partial hosts behave exactly as before. Both are fail-closed: a migration or startup repair that never finishes keeps the seam refusing, which is the honest answer while the data cannot be trusted.
+Both seams are inert when no gate/barrier is registered, so test fixtures and partial hosts behave exactly as before. Both are fail-closed: a migration or startup repair that never finishes keeps the read seam refusing and the write seam failing each dispatch once its wait runs out, which is the honest answer while the data cannot be trusted.
+
+### Dispatch waits for the migration {#dispatch-waits-for-the-migration}
+
+:::updated
+A dispatch made before the migration completes now **waits** for it instead of being refused. Before, a send, publish, local invoke or cascade that arrived while the schema gate was closed failed at once with `WhizbangNotReadyException: dispatch refused: the schema is not ready (Migrate has not completed)`, so a startup seed or a request served during the migration failed.
+:::
+
+Every dispatch entry (send, publish, local invoke, cascade, and their batch forms) checks the schema gate. While it is closed, the dispatch awaits the gate's own completion signal, with no polling, and runs as soon as the migration completes
+{verified: DispatcherSchemaGateTests.Send_WithTheGateClosed_DefersUntilTheMigrationCompletesAsync, DispatcherSchemaGateTests.Publish_WithTheGateClosed_DefersUntilTheMigrationCompletesAsync, DispatcherSchemaGateTests.Send_OnceTheGateOpens_ProceedsAsync, DispatchExecutorParityComponentTests.EveryEntry_WhileTheSchemaIsNotReady_DefersUntilTheMigrationCompletesAsync}.
+Once the gate is open the check costs nothing: the synchronous local-invoke entries keep their allocation-free path, and only a deferred call takes an asynchronous detour that waits and then re-enters.
+
+The wait has three exits:
+
+| Exit | What the caller sees |
+|------|----------------------|
+| The migration completes | The dispatch runs normally |
+| The caller's cancellation token fires | `OperationCanceledException`; the batch entries also honor the dispatch timeout |
+| `DispatchMaxWait` elapses first | `WhizbangNotReadyException`, before any receptor runs |
+
+{verified: DispatcherSchemaGateTests.DeferredDispatch_WhenTheCallerCancels_StopsWaitingAsync, DispatcherSchemaGateTests.DeferredDispatch_ByDefault_WaitsAtMostFiveMinutesThenThrowsNotReadyAsync, DispatcherSchemaGateTests.DeferredDispatch_WithAConfiguredMaxWait_ThrowsNotReadyWhenThatWaitElapsesAsync, DispatchExecutorParityComponentTests.EveryEntry_DeferredPastTheMaxWait_ThrowsNotReadyBeforeRunningAnythingAsync}
+
+The bound is `SchemaInitializationOptions.DispatchMaxWait`, configuration key `Whizbang:SchemaInitialization:DispatchMaxWait`, default five minutes. It exists so a dispatch made by startup work that the migration itself depends on cannot wait forever. `00:00:00` restores the old immediate refusal
+{verified: DispatcherSchemaGateTests.DeferredDispatch_WithAZeroMaxWait_RefusesAtOnceAsync},
+and `Timeout.InfiniteTimeSpan` waits without a limit.
+
+```json{title="Bounding the dispatch wait" description="How long a dispatch made before the migration completes waits for it; 00:00:00 refuses at once as before" category="Configuration" difficulty="BEGINNER" tags=["Operations", "Workers", "Dispatch", "Configuration"] tests=["DispatcherSchemaGateTests.DeferredDispatch_WithAConfiguredMaxWait_ThrowsNotReadyWhenThatWaitElapsesAsync", "DispatcherSchemaGateTests.DeferredDispatch_WithAZeroMaxWait_RefusesAtOnceAsync"]}
+{
+  "Whizbang": {
+    "SchemaInitialization": {
+      "DispatchMaxWait": "00:02:00"
+    }
+  }
+}
+```
+
+The first deferred dispatch logs once, at Information, and later ones made before the migration completes wait without logging again
+{verified: DispatcherSchemaGateTests.DeferredDispatch_LogsOnceThatDispatchIsDeferredUntilTheMigrationCompletesAsync}:
+
+```text
+Dispatch is deferred until the migration completes: a dispatch arrived before the schema was ready, so it waits (at most 00:05:00) and then runs. Later dispatches made before the migration completes wait too, without logging again.
+```
+
+Deferral is per dispatch. Holding the **whole application** until the schema is migrated stays opt-in: set `NonBlockingSchemaInit = false` and the host does not finish starting, so nothing dispatches, until the migration completes
+{verified: DispatcherSchemaGateTests.HoldingTheApplicationUntilMigrated_StaysOptInAsync}.
+See [Who Marks the Gate Ready](#who-marks-the-gate-ready).
+
+**Upgrade note.** Code that caught `WhizbangNotReadyException` at startup to retry a dispatch, or to skip a seed, now waits instead: the dispatch completes once the migration does, and the exception reaches it only after `DispatchMaxWait`. Remove the retry loop, or set `DispatchMaxWait` to `00:00:00` to keep the old behavior.
 
 The two seams project onto the lifecycle ladder as a phase of their own: `LifecyclePhase.AcceptingCommands` sits between `Migrating` and `Running`, the window where the **write side is fully live** — commands land durably, events flow, the transport delivers, and the perspective startup repair is itself perspective-writing — while lenses keep refusing. `Running` means the read-model barrier released too. A local command's receptor that reads a perspective inherits the read barrier at the lens seam, so each dispatch gets exactly the barrier its dependencies require. See [Managed-Resource Run Control](../../resilience/managed-resource-run-control) for the full ladder.
 
