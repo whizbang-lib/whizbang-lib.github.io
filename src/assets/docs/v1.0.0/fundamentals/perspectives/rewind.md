@@ -152,7 +152,7 @@ while (true) {
 
 This is the fix for an earlier defect: the original implementation read the event list **once** and applied that fixed set, so events appended between `PerspectiveRewindStarted` and `PerspectiveRewindCompleted` were silently dropped (a bulk import could complete the projection short a handful of items even though every event was durable). With the catch-up loop, the completed cursor reflects **HEAD-at-commit** rather than HEAD-when-the-replay-began. The behaviour is pinned by `PerspectiveRewindCompletionGapTests` (`FixedRewind_EventsAppendedDuringWindow_AreAppliedTooAsync` and `FixedRewind_NoLateAppends_StillTerminatesAsync`).
 
-### Replay ordering — slotting reconciled events {#replay-ordering}
+### Replay ordering: slotting reconciled events {#replay-ordering}
 
 Each apply pass sorts its batch with **one comparator, chosen by what the batch can prove**:
 
