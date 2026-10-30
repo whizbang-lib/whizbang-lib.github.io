@@ -35,6 +35,10 @@ The **in-memory transport** (`InProcessTransport`, part of `Whizbang.Core` — t
 `InProcessTransport` now delivers messages through the same **batch-subscribe** surface as the wire transports (`SubscribeBatchAsync` + `TransportBatchCollector`). The older per-message `SubscribeAsync`/synchronous-delivery model described in earlier versions of this page no longer exists on the public `ITransport` interface.
 :::
 
+:::updated
+A host with no message broker no longer needs `InProcessTransport` to start. `AddTransportConsumer()` without a registered transport now starts with cross-service messaging off and logs that once (see [A host with no message broker](transport-consumer#no-transport)). Register `InProcessTransport` only in tests, or other hosts, that want in-process delivery through the transport.
+:::
+
 ## Why In-Memory Transport?
 
 **In-memory** offers simplicity and speed for local scenarios:
@@ -51,7 +55,7 @@ The **in-memory transport** (`InProcessTransport`, part of `Whizbang.Core` — t
 **Use Cases**:
 - ✅ **Unit Testing** - Test receptors without external infrastructure
 - ✅ **Integration Testing** - Test message flows in-process
-- ✅ **Single-Process Apps** - Modular applications without distributed messaging
+- ✅ **Single-Process Apps** - Modular applications that want in-process delivery through the transport (a host that needs no transport at all can register none; see [A host with no message broker](transport-consumer#no-transport))
 - ✅ **Local Development** - No need for Service Bus/RabbitMQ during development
 - ✅ **Prototyping** - Quick experimentation with messaging patterns
 
@@ -526,6 +530,7 @@ await transport.PublishAsync(orderCreatedEnvelope, destination);
 ### DON'T ❌
 
 - ❌ Use for production distributed systems (use Azure Service Bus / RabbitMQ)
+- ❌ Register it in production just so a broker-less host starts (no transport is needed; see [A host with no message broker](transport-consumer#no-transport))
 - ❌ Rely on dead-lettering (not supported - handle failures in the handler)
 - ❌ Forget to dispose subscriptions (leaks collectors)
 - ❌ Assume synchronous delivery (handlers run when the batch collector flushes)
