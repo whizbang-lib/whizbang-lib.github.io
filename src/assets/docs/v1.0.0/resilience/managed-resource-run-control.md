@@ -48,7 +48,7 @@ every managed resource — workers, transport-consume, the write path, offload, 
 
 ## The lifecycle state machine
 
-```csharp{title="Lifecycle phases" description="The one state Whizbang owns and advances" category="Implementation" difficulty="BEGINNER" tags=["Resilience","RunControl"] tests=["LifecyclePhaseTests.TransitionalPhases_AreTransitional_NotSettledAsync","WhizbangLifecycleCoordinatorTests.Transition_BroadcastsToEveryParticipantAsync","ColdBootJourneyE2ETests.ColdBoot_TheSeamsRefuse_ThenTheLadderOpensInOrderAsync"]}
+```csharp{title="Lifecycle phases" description="The one state Whizbang owns and advances" category="Implementation" difficulty="BEGINNER" tags=["Resilience","RunControl"] tests=["LifecyclePhaseTests.TransitionalPhases_AreTransitional_NotSettledAsync","WhizbangLifecycleCoordinatorTests.Transition_BroadcastsToEveryParticipantAsync","ColdBootJourneyE2ETests.ColdBoot_DispatchWaitsForMigrateAndReadsRefuse_ThenTheLadderOpensInOrderAsync"]}
 public enum LifecyclePhase {
   Starting,           // process booted (transitional)
   Connecting,         // network warmup — DB/transport/offload connecting, before the migration (transitional)
@@ -79,6 +79,12 @@ its receptor immediately — its event-store writes are safe (the repair rewrite
 events), and if the receptor reads a perspective it inherits the read barrier at the lens seam and
 refuses. Each dispatch gets exactly the barrier its actual dependencies require — the point of
 seam-level gating over edge gating.
+
+Before `AcceptingCommands`, while the phase is still `Migrating`, a dispatch is not refused: it waits
+for the schema gate to open, bounded by `SchemaInitializationOptions.DispatchMaxWait`, and then runs
+(see [Database Readiness](../operations/workers/database-readiness#dispatch-waits-for-the-migration)).
+Lenses keep refusing until the read-model barrier releases
+{verified: ColdBootJourneyE2ETests.ColdBoot_DispatchWaitsForMigrateAndReadsRefuse_ThenTheLadderOpensInOrderAsync}.
 
 `StandingBy` is the rolling-upgrade rung: an older instance yields when a newer migrator requests
 standby, then either revives (rollback — straight to `Running`, both gates are sticky-open) or shuts
