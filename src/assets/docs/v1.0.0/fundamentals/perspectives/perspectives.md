@@ -783,7 +783,7 @@ public record IndexedTaggedOrderModel {
 }
 ```
 
-To keep a model with a collection of records indexable, declare the member as `List<T>`.
+To keep a model with a collection of records indexable, declare the member as `List<T>`. In a project that references the Entity Framework driver, [WHIZ200](../../operations/diagnostics/whiz200.md) warns at each array of records that stores a model opaquely; it can be suppressed per property or turned off for the project.
 
 {verified: MappedPathDiscoveryTests.AnArrayOfAComplexElementIsReportedAsync, MappedPathDiscoveryTests.AnArrayInsideACollectionElementIsNamedByItsPathAsync, MappedPathDiscoveryTests.AnArrayOfArraysIsReportedAsync, MappedPathDiscoveryTests.AnArrayOfPrimitivesIsNotReportedAsync, MappedPathDiscoveryTests.ACollectionTheMappedPathCanFillIsNotReportedAsync, MappedPathDiscoveryTests.ACollectionTheMappedPathCannotFillIsReportedAsync, RecordArrayRoundTripTests.ArraysOfRecords_TopLevelAndNested_ReadBackAsWrittenAsync, RecordArrayRoundTripTests.ArraysOfRecords_ReadThroughTheContextQuery_ReadBackAsWrittenAsync, RecordArrayRoundTripTests.ARowWrittenBeforeTheChange_StillReadsAsync, RecordArrayRoundTripTests.ArraysOfPrimitives_ReadBackAsWrittenAsync, DapperRecordArrayRoundTripTests.ArraysOfRecords_TopLevelAndNested_ReadBackAsWrittenAsync}
 

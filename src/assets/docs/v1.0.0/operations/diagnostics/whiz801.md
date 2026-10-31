@@ -83,8 +83,8 @@ public record ProductSearchModel {
 }
 ```
 
-A `float[]` property with `[VectorField]` is also exempt from the "use `List<T>` instead of an array" perspective
-model warning (WHIZ200), so the array type is the intended one.
+A `float[]` is an array of primitives, which the perspective model warning [WHIZ200](whiz200.md) does not report,
+so the array type is the intended one.
 
 ## Suppressing
 
