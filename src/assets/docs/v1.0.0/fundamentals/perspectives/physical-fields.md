@@ -683,10 +683,10 @@ ALTER TABLE wh_per_order_grid DROP COLUMN grid_filter_text_legacy;
 This applies to the Entity Framework schema pass, which adds columns to existing tables. The Dapper
 schema creates tables and does not alter existing ones.
 
-A promoted array is fine on a perspective model when its column is `jsonb`: WHIZ200, which asks for
-`List<T>` instead of an array, stays silent there because the column is read and written as one
-value rather than grown in place by the change tracker.
-{verified: PerspectiveModelArrayAnalyzerTests.Analyzer_ArrayPromotedToJsonb_IsSilent_OtherwiseFlaggedAsync}
+A promoted array of primitives is fine on a perspective model: [WHIZ200](../../operations/diagnostics/whiz200.md)
+reports only an array of records, which stores the model as one opaque document, and an array of
+primitives is a value the mapped path reads back.
+{verified: PerspectiveModelArrayAnalyzerTests.AnArrayOfPrimitives_IsNotReportedAsync}
 
 ### Filtering on a jsonb column {#jsonb-filters}
 

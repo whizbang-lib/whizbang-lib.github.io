@@ -89,6 +89,10 @@ public class EFCoreRecordHeartbeatTests : EFCoreTestBase {
 
 Adapt for your engine — the principle is "fresh schema per test, container reused across tests."
 
+Because every test process on a machine shares that one container, a test that terminates or cancels backends must end only its own database's: name the database (`datname`, `current_database()`, or an advisory lock's `database`) or end one backend whose pid it was handed, never every backend in the cluster. A cluster-wide termination ends other test processes' sessions, and they fail only when the suites run together. A guard test fails any termination that does neither.
+
+{verified: BackendTerminationScopeTests.EveryBackendTermination_EndsOnlyItsOwnDatabasesSessionsAsync}
+
 ## Conformance suite (future)
 
 The plan calls for an engine-agnostic conformance suite — a shared test project that any engine can run by providing a fixture. Today, Postgres is the only engine and tests live alongside it. When SQL Server or MySQL backends start, refactor the Postgres tests to depend on a shared `IWorkCoordinatorContractTests` base.
