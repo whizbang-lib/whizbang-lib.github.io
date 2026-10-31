@@ -39,7 +39,7 @@ testReferences:
   - tests/Whizbang.Generators.Tests/PerspectiveCurrentModelAnalyzerTests.cs
   - tests/Whizbang.Generators.Tests/PerspectiveWithActionsArityTests.cs
   - tests/Whizbang.Generators.Tests/PerspectiveApplyReturnShapeTests.cs
-  - tests/Whizbang.Generators.Tests/PerspectiveDecoyApplyTests.cs
+  - tests/Whizbang.Generators.Tests/PerspectiveDuplicateApplyTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -290,14 +290,14 @@ not the interface's `Apply`, so it compiles only beside an explicit `Order Apply
 what the runner calls: the row is kept. The build reports both methods
 ([WHIZ115](../../operations/diagnostics/whiz115), [WHIZ114](../../operations/diagnostics/whiz114)).
 
-{verified: PerspectiveApplyReturnShapeTests.ABareModelActionReturn_ForAnIPerspectiveForEvent_IsAnErrorNamingTheFixAsync, PerspectiveApplyReturnShapeTests.AShapeOnlyASuppressedWhiz115Allows_IsNeverWhatTheRunnerCallsAsync, PerspectiveDecoyApplyTests.AnExplicitApplyHiddenByAnOrdinaryApply_IsAnErrorAtTheExplicitOneAsync}
+{verified: PerspectiveApplyReturnShapeTests.ABareModelActionReturn_ForAnIPerspectiveForEvent_IsAnErrorNamingTheFixAsync, PerspectiveApplyReturnShapeTests.AShapeOnlyASuppressedWhiz115Allows_IsNeverWhatTheRunnerCallsAsync, PerspectiveDuplicateApplyTests.TheApplyBesideAnExplicitInterfaceApply_IsAnErrorAtTheOneThatNeverRunsAsync}
 
 ### Upgrading to the contract {#upgrading-to-the-contract}
 
 :::updated
 **Upgrading:** code that returns a shape no interface declares for its event (a bare `ModelAction`, the
-`(TModel?, ModelAction)` tuple, or `ApplyResult<TModel>` for an event only `IPerspectiveFor` lists), or that keeps a decoy
-explicit `Apply` to make such a method compile, now fails to build with [WHIZ115](../../operations/diagnostics/whiz115)
+`(TModel?, ModelAction)` tuple, or `ApplyResult<TModel>` for an event only `IPerspectiveFor` lists), or that keeps an
+explicit `Apply` beside another `Apply` for the same event, now fails to build with [WHIZ115](../../operations/diagnostics/whiz115)
 and [WHIZ114](../../operations/diagnostics/whiz114). An event listed only through a custom `IPerspectiveBase` marker fails
 with [WHIZ117](../../operations/diagnostics/whiz117). To migrate:
 
@@ -308,18 +308,20 @@ with [WHIZ117](../../operations/diagnostics/whiz117). To migrate:
 3. Delete the explicit implementation that existed only so the class compiled.
 :::
 
-```csharp{title="Before: a decoy that no longer builds" description="A ModelAction Apply for an IPerspectiveFor event, compiled only beside an explicit Order Apply that the runner calls instead" framework="NET10" category="Perspectives" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Upgrade", "WHIZ115", "WHIZ114"] tests=["PerspectiveApplyReturnShapeTests.ABareModelActionReturn_ForAnIPerspectiveForEvent_IsAnErrorNamingTheFixAsync", "PerspectiveDecoyApplyTests.AnExplicitApplyHiddenByAnOrdinaryApply_IsAnErrorAtTheExplicitOneAsync"]}
+```csharp{title="Before: two Apply methods for one event, which no longer builds" description="A ModelAction Apply for an IPerspectiveFor event, compiled only beside an explicit Order Apply that the runner calls instead" framework="NET10" category="Perspectives" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Upgrade", "WHIZ115", "WHIZ114"] tests=["PerspectiveApplyReturnShapeTests.ABareModelActionReturn_ForAnIPerspectiveForEvent_IsAnErrorNamingTheFixAsync", "PerspectiveDuplicateApplyTests.TheApplyBesideAnExplicitInterfaceApply_IsAnErrorAtTheOneThatNeverRunsAsync"]}
 public class OrderProjection : IPerspectiveFor<Order, OrderPlaced, OrderStatusChanged> {
   public Order Apply(Order current, OrderPlaced @event) => current;
 
-  public ModelAction Apply(Order current, OrderStatusChanged @event) => ModelAction.Purge;  // WHIZ115
+  // WHIZ115 and WHIZ114: never runs, because the runner calls the explicit implementation below
+  public ModelAction Apply(Order current, OrderStatusChanged @event) => ModelAction.Purge;
 
+  // The interface's implementation: the Apply the runner calls, and it keeps the row
   Order IPerspectiveFor<Order, OrderPlaced, OrderStatusChanged>.Apply(Order current, OrderStatusChanged @event) =>
-    current;  // WHIZ114
+    current;
 }
 ```
 
-```csharp{title="After: the event listed under IPerspectiveWithActionsFor" description="The purging event moves to IPerspectiveWithActionsFor, its Apply returns ApplyResult, and the explicit decoy is gone" framework="NET10" category="Perspectives" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Upgrade", "ApplyResult"] tests=["PerspectiveRunnerInterfaceDispatchTests.EachEvent_IsAppliedThroughTheInterfaceThatListsItAsync"]}
+```csharp{title="After: the event listed under IPerspectiveWithActionsFor" description="The purging event moves to IPerspectiveWithActionsFor, its Apply returns ApplyResult, and the explicit implementation is gone" framework="NET10" category="Perspectives" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Upgrade", "ApplyResult"] tests=["PerspectiveRunnerInterfaceDispatchTests.EachEvent_IsAppliedThroughTheInterfaceThatListsItAsync"]}
 public class OrderProjection :
     IPerspectiveFor<Order, OrderPlaced>,
     IPerspectiveWithActionsFor<Order, OrderStatusChanged> {
@@ -329,10 +331,10 @@ public class OrderProjection :
 }
 ```
 
-Earlier versions called the ordinary `Apply` by name, so the explicit one was dead code, and a typed applier from
-[`GetPerspectiveAssociations`](typed-associations.md#apply-through-the-interface) cast the returned `ModelAction` to the
-model and threw `InvalidCastException`. The runner and the appliers now call `Apply` through the interface, so the
-interface's implementation is the one that runs; the build error keeps the two from disagreeing.
+The runner and the typed appliers from
+[`GetPerspectiveAssociations`](typed-associations.md#apply-through-the-interface) call `Apply` through the interface, so
+the interface's implementation is the one that runs, and the build errors keep a second `Apply` for the same event from
+looking like the handler.
 
 ---
 

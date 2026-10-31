@@ -1,7 +1,7 @@
 ---
 title: 'WHIZ115: Apply returns a shape its interface does not declare'
 pageType: troubleshooting
-verifiedAgainstCommit: d13ea0d0
+verifiedAgainstCommit: '54643053'
 verifiedDate: 2026-10-31
 description: >-
   Error diagnostic when an Apply for a listed event returns something the interface that lists the event does not
@@ -25,7 +25,7 @@ codeReferences:
 testReferences:
   - tests/Whizbang.Generators.Tests/PerspectiveApplyReturnShapeTests.cs
   - tests/Whizbang.Core.Tests/Perspectives/ModelActionTests.cs
-lastMaintainedCommit: 'd13ea0d0'
+lastMaintainedCommit: '54643053'
 ---
 
 # WHIZ115: Apply returns a shape its interface does not declare
@@ -43,10 +43,10 @@ Each perspective interface declares what its `Apply` returns:
 | `IGlobalPerspectiveFor<TModel, TPartitionKey, ...>` | `TModel` |
 | `IPerspectiveWithActionsFor<TModel, ...>` | `ApplyResult<TModel>` |
 
-An `Apply` for a listed event that returns anything else is not the interface's implementation. It compiles only
-because something else satisfies the interface (usually an explicit implementation added for the purpose, reported as
-[WHIZ114](whiz114)), and that something else is what the generated runner calls. WHIZ115 reports the `Apply` at its
-name:
+An `Apply` for a listed event that returns anything else is not the interface's implementation. It compiles only beside
+an explicit implementation of the interface's `Apply`, and that explicit implementation is the `Apply` the generated
+runner calls, so this one never runs (the pair is also reported as [WHIZ114](whiz114)). WHIZ115 reports the `Apply` at
+its name:
 
 - a bare `ModelAction` return, or the `(TModel?, ModelAction)` tuple, for an event `IPerspectiveFor` lists;
 - the other family's return in either direction: `ApplyResult<TModel>` for an event only `IPerspectiveFor` lists, or
@@ -66,7 +66,7 @@ It is **not** reported for:
 ## Diagnostic Message
 
 ```text
-Apply{InheritedFrom} for '{EventType}' on perspective '{PerspectiveName}' returns '{ReturnType}', but the interface that lists '{EventType}' declares '{DeclaredReturn}', so this Apply is not the interface's and compiles only beside an explicit implementation that never runs. Return '{DeclaredReturn}'. To delete or purge, list '{EventType}' under IPerspectiveWithActionsFor<{ModelType}, ...> and return ApplyResult<{ModelType}>: 'return ModelAction.Purge;' converts implicitly.
+Apply{InheritedFrom} for '{EventType}' on perspective '{PerspectiveName}' returns '{ReturnType}', but the interface that lists '{EventType}' declares '{DeclaredReturn}', so this Apply is not the interface's: it compiles only beside an explicit implementation, which is the Apply the runner calls, so this one never runs. Return '{DeclaredReturn}'. To delete or purge, list '{EventType}' under IPerspectiveWithActionsFor<{ModelType}, ...> and return ApplyResult<{ModelType}>: 'return ModelAction.Purge;' converts implicitly.
 ```
 
 `{InheritedFrom}` is empty for the perspective's own method, and reads ` (inherited from '{BaseClass}')` for an
@@ -75,7 +75,7 @@ inherited one.
 ## Common Causes
 
 1. **A purge or delete returned from an `IPerspectiveFor` event.** `ModelAction` and the tuple look like natural
-   returns, and an earlier `ModelAction` documentation example showed exactly this shape.
+   returns.
 2. **An event moved between interface families** while its `Apply` kept the old return.
 3. **A base class of handlers** written before the perspective chose its interfaces.
 
@@ -95,7 +95,7 @@ the fix never needs a second perspective.
 
 ### Before (causes WHIZ115)
 
-```csharp{title="A bare ModelAction for an IPerspectiveFor event (causes WHIZ115)" description="IPerspectiveFor declares Order Apply, so the ModelAction Apply is not the interface's and compiles only beside an explicit decoy" framework="NET10" category="Diagnostics" difficulty="INTERMEDIATE" tags=["Diagnostics", "Perspectives", "ModelAction", "WHIZ115"] tests=["PerspectiveApplyReturnShapeTests.ABareModelActionReturn_ForAnIPerspectiveForEvent_IsAnErrorNamingTheFixAsync"]}
+```csharp{title="A bare ModelAction for an IPerspectiveFor event (causes WHIZ115)" description="IPerspectiveFor declares Order Apply, so the ModelAction Apply is not the interface's and compiles only beside an explicit implementation, which is what the runner calls" framework="NET10" category="Diagnostics" difficulty="INTERMEDIATE" tags=["Diagnostics", "Perspectives", "ModelAction", "WHIZ115"] tests=["PerspectiveApplyReturnShapeTests.ABareModelActionReturn_ForAnIPerspectiveForEvent_IsAnErrorNamingTheFixAsync"]}
 using Whizbang.Core;
 using Whizbang.Core.Perspectives;
 
@@ -103,9 +103,10 @@ public class OrderProjection : IPerspectiveFor<Order, OrderPlaced, OrderStatusCh
   public Order Apply(Order current, OrderPlaced @event) => current;
 
   // WHIZ115: returns ModelAction, but IPerspectiveFor declares Order
+  // WHIZ114: never runs, because the runner calls the explicit implementation below
   public ModelAction Apply(Order current, OrderStatusChanged @event) => ModelAction.Purge;
 
-  // WHIZ114: the explicit implementation the runner actually calls; it keeps the row
+  // The interface's implementation: the Apply the runner calls, and it keeps the row
   Order IPerspectiveFor<Order, OrderPlaced, OrderStatusChanged>.Apply(Order current, OrderStatusChanged @event) => current;
 }
 ```
@@ -134,6 +135,6 @@ purged.
 
 - [Perspectives with Actions: purging from a perspective that also returns models](../../fundamentals/perspectives/perspectives-with-actions#purge-beside-models)
 - [Perspectives: the interfaces are the contract](../../fundamentals/perspectives/perspectives#strongly-typed-contract)
-- [WHIZ114: Explicit interface Apply never runs](whiz114)
+- [WHIZ114: Two Apply methods handle the same event](whiz114)
 - [WHIZ117: Event is listed only by an interface that declares no Apply for it](whiz117)
 - [Error Reference](error-reference)

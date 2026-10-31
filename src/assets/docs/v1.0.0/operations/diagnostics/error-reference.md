@@ -428,7 +428,7 @@ Compile-time errors, warnings and notices from Whizbang's source generators and 
 | WHIZ111 | Warning | [Perspective Missing [PinnedId]](whiz111.md) |
 | WHIZ112 | Error | [Invalid [PinnedId] GUID](whiz112.md) |
 | WHIZ113 | Error | [Method looks like a misspelled Apply](whiz113.md) |
-| WHIZ114 | Error | [Explicit interface Apply never runs](whiz114.md) |
+| WHIZ114 | Error | [Two Apply methods handle the same event](whiz114.md) |
 | WHIZ115 | Error | [Apply returns a shape its interface does not declare](whiz115.md) |
 | WHIZ116 | Error | [Collective Apply does not match the shape the framework binds](whiz116.md) |
 | WHIZ117 | Error | [Event is listed only by an interface that declares no Apply for it](whiz117.md) |

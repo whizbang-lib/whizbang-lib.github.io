@@ -38,7 +38,7 @@ testReferences:
   - tests/Whizbang.Generators.Tests/PerspectivePurityAnalyzerTests.cs
   - tests/Whizbang.Generators.Tests/PerspectiveUnlistedApplyTests.cs
   - tests/Whizbang.Generators.Tests/PerspectiveApplyNearMissTests.cs
-  - tests/Whizbang.Generators.Tests/PerspectiveDecoyApplyTests.cs
+  - tests/Whizbang.Generators.Tests/PerspectiveDuplicateApplyTests.cs
   - tests/Whizbang.Generators.Tests/PerspectiveApplyReturnShapeTests.cs
   - tests/Whizbang.Generators.Tests/PerspectiveMarkerOnlyEventTests.cs
   - tests/Whizbang.Generators.Tests/PerspectiveRunnerInterfaceDispatchTests.cs
@@ -246,12 +246,12 @@ Six errors in the `Whizbang.Perspectives` category report code that compiles but
 |---|---|---|
 | **[WHIZ109](../../operations/diagnostics/whiz109)** | Error | An `Apply(TModel, TEvent)` (own or inherited, any accessibility) for an event no interface on the class lists for that model |
 | **[WHIZ113](../../operations/diagnostics/whiz113)** | Error | A method with an `Apply`'s parameters and return, a name one slip away from `Apply`, that nothing in the perspective calls |
-| **[WHIZ114](../../operations/diagnostics/whiz114)** | Error | An explicit interface `Apply` beside an ordinary `Apply` with the same parameters |
+| **[WHIZ114](../../operations/diagnostics/whiz114)** | Error | An explicit interface `Apply` and another `Apply` for the same event; the runner calls the explicit one, so the other never runs |
 | **[WHIZ115](../../operations/diagnostics/whiz115)** | Error | An `Apply` returning a shape the interface listing its event does not declare: a bare `ModelAction`, the `(TModel?, ModelAction)` tuple, or the other family's return |
 | **[WHIZ116](../../operations/diagnostics/whiz116)** | Error | A collective `Apply` that does not match the shape the generator binds |
 | **[WHIZ117](../../operations/diagnostics/whiz117)** | Error | An event listed only through `IPerspectiveBase` or a custom marker interface that declares no `Apply` for it |
 
-{verified: PerspectiveUnlistedApplyTests.AnApplyForAnEventNoInterfaceLists_IsAnErrorAtTheMethodAsync, PerspectiveApplyNearMissTests.AMisspelledApplyThatNothingCalls_IsAnErrorAtTheMethodAsync, PerspectiveDecoyApplyTests.AnExplicitApplyHiddenByAnOrdinaryApply_IsAnErrorAtTheExplicitOneAsync, PerspectiveApplyReturnShapeTests.ABareModelActionReturn_ForAnIPerspectiveForEvent_IsAnErrorNamingTheFixAsync, CollectiveApplyShapeAnalyzerTests.AnAttributedMethodThatDoesNotMatchTheShape_IsAnErrorNamingWhatIsWrongAsync, PerspectiveMarkerOnlyEventTests.AnEventListedOnlyByAMarkerWithNoApply_IsAnErrorAtThePerspectiveAsync}
+{verified: PerspectiveUnlistedApplyTests.AnApplyForAnEventNoInterfaceLists_IsAnErrorAtTheMethodAsync, PerspectiveApplyNearMissTests.AMisspelledApplyThatNothingCalls_IsAnErrorAtTheMethodAsync, PerspectiveDuplicateApplyTests.TheApplyBesideAnExplicitInterfaceApply_IsAnErrorAtTheOneThatNeverRunsAsync, PerspectiveApplyReturnShapeTests.ABareModelActionReturn_ForAnIPerspectiveForEvent_IsAnErrorNamingTheFixAsync, CollectiveApplyShapeAnalyzerTests.AnAttributedMethodThatDoesNotMatchTheShape_IsAnErrorNamingWhatIsWrongAsync, PerspectiveMarkerOnlyEventTests.AnEventListedOnlyByAMarkerWithNoApply_IsAnErrorAtThePerspectiveAsync}
 
 :::updated
 **Upgrading:** code that returned a bare `ModelAction` or the tuple from an `Apply` for an `IPerspectiveFor` event, kept

@@ -1,11 +1,11 @@
 ---
-title: 'WHIZ114: Explicit interface Apply never runs'
+title: 'WHIZ114: Two Apply methods handle the same event'
 pageType: troubleshooting
-verifiedAgainstCommit: d13ea0d0
+verifiedAgainstCommit: '54643053'
 verifiedDate: 2026-10-31
 description: >-
-  Error diagnostic when a perspective implements a perspective interface's Apply explicitly and also declares an
-  ordinary Apply with the same parameters. Two methods claim one event, and only one of them is ever the handler.
+  Error diagnostic when a perspective declares an explicit interface Apply and another Apply with the same parameters.
+  The runner calls the interface's implementation, so the other Apply is dead code that looks like the handler.
 version: 1.0.0
 category: Diagnostics
 severity: Error
@@ -20,54 +20,57 @@ codeReferences:
   - src/Whizbang.Generators/Analyzers/PerspectiveContractAnalyzer.cs
   - src/Whizbang.Generators/PerspectiveRunnerGenerator.cs
 testReferences:
-  - tests/Whizbang.Generators.Tests/PerspectiveDecoyApplyTests.cs
+  - tests/Whizbang.Generators.Tests/PerspectiveDuplicateApplyTests.cs
   - tests/Whizbang.Generators.Tests/PerspectiveRunnerInterfaceDispatchTests.cs
   - tests/Whizbang.Core.Tests/Perspectives/ExplicitApplyRunnerTests.cs
-lastMaintainedCommit: 'd13ea0d0'
+lastMaintainedCommit: '54643053'
 ---
 
-# WHIZ114: Explicit interface Apply never runs
+# WHIZ114: Two Apply methods handle the same event
 
 **Severity**: Error
 **Category**: Perspectives (`Whizbang.Perspectives`)
 
 ## Description
 
-A perspective declares an ordinary `Apply` for an event **and** an explicit interface implementation of `Apply`
-(`TModel IPerspectiveFor<TModel, TEvent>.Apply(...)`) with the same parameters. Two methods now claim one event, and
-which one runs depends on how it is called:
+A perspective declares an explicit interface implementation of `Apply`
+(`TModel IPerspectiveFor<TModel, TEvent>.Apply(...)`) **and** another `Apply` with the same parameters. The generated
+runner and the [typed appliers](../../fundamentals/perspectives/typed-associations#apply-through-the-interface) call
+`Apply` through the interface that lists the event, so they run the explicit implementation. The other `Apply` never
+runs: it is dead code that looks like the handler.
 
-- the generated runner and the [typed appliers](../../fundamentals/perspectives/typed-associations) call `Apply`
-  **through the interface that lists the event**, so they run the explicit implementation;
-- code that calls `perspective.Apply(model, @event)` on the class, a unit test for example, binds the ordinary method.
+The two often disagree. The usual shape is an `Apply` returning a bare `ModelAction` to purge the row, beside an
+explicit `TModel Apply` added only so that the class compiles, which keeps the row. The runner runs the explicit one,
+so the row is never purged, while a unit test that calls `perspective.Apply(model, @event)` on the class binds the
+other method and sees the purge.
 
-One of the two is a decoy that satisfies the compiler and does not do what production does. The pattern usually
-appears as an ordinary `Apply` returning a shape its interface does not declare (a bare `ModelAction` to purge the row)
-beside an explicit `TModel Apply` added only so that the class compiles, which keeps the row the ordinary one meant to
-purge. Earlier versions of the runner called the ordinary method by name, so the explicit one never ran, which is what
-the diagnostic's title and message describe. Either way, the class says two different things about one event, and the
-build now rejects it.
+WHIZ114 is reported at the name of the `Apply` that never runs, whatever either method returns. When that `Apply` is
+inherited from a base class, it is reported at the perspective's name and the message names the base class. An
+explicit implementation with no other `Apply` for its event is not reported: a perspective may implement every `Apply`
+explicitly.
 
-WHIZ114 is reported at the explicit implementation, whatever either method returns, and also when the ordinary
-`Apply` is inherited from a base class. An explicit implementation with no ordinary counterpart is the interface's own
-implementation and is not reported: a perspective may implement every `Apply` explicitly.
-
-{verified: PerspectiveDecoyApplyTests.AnExplicitApplyHiddenByAnOrdinaryApply_IsAnErrorAtTheExplicitOneAsync, PerspectiveDecoyApplyTests.AnExplicitApplyHiddenByAnOrdinaryApplyWithTheSameReturn_IsStillADecoyAsync, PerspectiveDecoyApplyTests.AnExplicitApplyHiddenByAnInheritedOrdinaryApply_IsADecoyAsync, PerspectiveDecoyApplyTests.AnExplicitImplementationWithNoOrdinaryCounterpart_IsNotADecoyAsync}
+{verified: PerspectiveDuplicateApplyTests.TheApplyBesideAnExplicitInterfaceApply_IsAnErrorAtTheOneThatNeverRunsAsync, PerspectiveDuplicateApplyTests.TheApplyBesideAnExplicitInterfaceApply_NeverRuns_WhateverItReturnsAsync, PerspectiveDuplicateApplyTests.AnInheritedApplyBesideAnExplicitInterfaceApply_IsAnErrorAtThePerspectiveAsync, PerspectiveDuplicateApplyTests.AnExplicitInterfaceApplyAlone_IsNotReportedAsync}
 
 ## Diagnostic Message
 
 ```text
-The explicit implementation of {InterfaceName}.Apply for '{EventType}' on perspective '{PerspectiveName}' never runs: the runner calls the perspective's own Apply for '{EventType}', which returns '{ReturnType}'. Keep one Apply per event, returning what the interface declares, and remove the explicit implementation.
+'{PerspectiveName}' has an explicit interface Apply and another Apply for '{EventType}'. The runner calls the interface's implementation ('{InterfaceName}.Apply'), so '{NeverRuns}' never runs. Keep one Apply per event.
+```
+
+`{NeverRuns}` is the method that never runs, as `<return> Apply(<model>, <event>)`, followed by
+` (inherited from '<BaseType>')` when it is inherited. For example:
+
+```text
+'PermissionProjection' has an explicit interface Apply and another Apply for 'OrderStatusChanged'. The runner calls the interface's implementation ('IPerspectiveFor<Order, OrderPlaced, OrderStatusChanged>.Apply'), so 'ModelAction Apply(Order, OrderStatusChanged)' never runs. Keep one Apply per event.
 ```
 
 ## Common Causes
 
 1. **A purge or delete written as a bare `ModelAction` return** for an event `IPerspectiveFor` lists. The compiler
-   demands a `TModel Apply` for the event, and an explicit one is added to satisfy it. The ordinary `Apply` is also
+   demands a `TModel Apply` for the event, and an explicit one is added to satisfy it. The `ModelAction` method is also
    reported as [WHIZ115](whiz115).
 2. **A refactor** that turned an explicit implementation into an ordinary method and left the old one behind.
-3. **A base class** that already declares an ordinary `Apply` for an event the derived perspective implements
-   explicitly.
+3. **A base class** that already declares an `Apply` for an event the derived perspective implements explicitly.
 
 ## How to Fix
 
@@ -80,24 +83,25 @@ Keep exactly one `Apply` per event, returning what the interface that lists the 
 
 ### Before (causes WHIZ114)
 
-```csharp{title="An explicit Apply beside an ordinary one (causes WHIZ114)" description="The explicit TModel Apply exists only so the class compiles beside an Apply that returns a bare ModelAction" framework="NET10" category="Diagnostics" difficulty="INTERMEDIATE" tags=["Diagnostics", "Perspectives", "Apply", "WHIZ114"] tests=["PerspectiveDecoyApplyTests.AnExplicitApplyHiddenByAnOrdinaryApply_IsAnErrorAtTheExplicitOneAsync"]}
+```csharp{title="Two Apply methods for one event (causes WHIZ114)" description="The runner calls the explicit Order Apply, so the ModelAction Apply beside it never runs and the row is never purged" framework="NET10" category="Diagnostics" difficulty="INTERMEDIATE" tags=["Diagnostics", "Perspectives", "Apply", "WHIZ114"] tests=["PerspectiveDuplicateApplyTests.TheApplyBesideAnExplicitInterfaceApply_IsAnErrorAtTheOneThatNeverRunsAsync"]}
 using Whizbang.Core;
 using Whizbang.Core.Perspectives;
 
 public class PermissionProjection : IPerspectiveFor<Order, OrderPlaced, OrderStatusChanged> {
   public Order Apply(Order current, OrderPlaced @event) => current;
 
+  // WHIZ114: never runs, because the runner calls the explicit implementation below
   // WHIZ115: IPerspectiveFor declares Order, not ModelAction
   public ModelAction Apply(Order current, OrderStatusChanged @event) => ModelAction.Purge;
 
-  // WHIZ114: a second Apply for OrderStatusChanged, which keeps the row the one above purges
+  // The interface's implementation: this is the Apply the runner calls, and it keeps the row
   Order IPerspectiveFor<Order, OrderPlaced, OrderStatusChanged>.Apply(Order current, OrderStatusChanged @event) => current;
 }
 ```
 
 ### After (no diagnostic)
 
-```csharp{title="One Apply per event, each returning its interface's shape" description="OrderStatusChanged moves to IPerspectiveWithActionsFor and returns ApplyResult, so return ModelAction.Purge converts implicitly and no explicit implementation is needed" framework="NET10" category="Diagnostics" difficulty="INTERMEDIATE" tags=["Diagnostics", "Perspectives", "Apply", "WHIZ114"] tests=["PerspectiveRunnerInterfaceDispatchTests.EachEvent_IsAppliedThroughTheInterfaceThatListsItAsync", "PerspectiveDecoyApplyTests.AnExplicitImplementationWithNoOrdinaryCounterpart_IsNotADecoyAsync"]}
+```csharp{title="One Apply per event, each returning its interface's shape" description="OrderStatusChanged moves to IPerspectiveWithActionsFor and returns ApplyResult, so return ModelAction.Purge converts implicitly and no explicit implementation is needed" framework="NET10" category="Diagnostics" difficulty="INTERMEDIATE" tags=["Diagnostics", "Perspectives", "Apply", "WHIZ114"] tests=["PerspectiveRunnerInterfaceDispatchTests.EachEvent_IsAppliedThroughTheInterfaceThatListsItAsync", "PerspectiveDuplicateApplyTests.AnExplicitInterfaceApplyAlone_IsNotReportedAsync"]}
 public class PermissionProjection :
     IPerspectiveFor<Order, OrderPlaced>,
     IPerspectiveWithActionsFor<Order, OrderStatusChanged> {
@@ -114,8 +118,8 @@ through its interface.
 
 ## If the Diagnostic Is Suppressed
 
-The runner runs the explicit implementation, the interface's own, and never the ordinary `Apply`. A unit test that
-calls the ordinary `Apply` directly then tests a method production never runs.
+The runner runs the explicit implementation, the interface's own, and never the other `Apply`. A unit test that calls
+the other `Apply` directly then tests a method production never runs.
 
 ## Related
 
