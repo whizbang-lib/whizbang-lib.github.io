@@ -16,6 +16,7 @@ codeReferences:
   - src/Whizbang.Generators/PerspectiveDiscoveryGenerator.cs
 testReferences:
   - tests/Whizbang.Generators.Tests/PerspectiveDiscoveryGeneratorTests.cs
+  - tests/Whizbang.Generators.Tests/PerspectiveAssociationApplierTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -145,7 +146,7 @@ public static IReadOnlyList<PerspectiveAssociationInfo<TModel, TEvent>>
                     var perspective = new ProductPerspective();
                     var typedModel = (ProductModel)((object)model);
                     var typedEvent = (ProductCreatedEvent)((object)evt);
-                    var result = perspective.Apply(typedModel, typedEvent);
+                    var result = ((IPerspectiveFor<ProductModel, ProductCreatedEvent>)perspective).Apply(typedModel, typedEvent);
                     return (TModel)((object)result);
                 }
             )
@@ -165,7 +166,7 @@ public static IReadOnlyList<PerspectiveAssociationInfo<TModel, TEvent>>
                     var perspective = new OrderPerspective();
                     var typedModel = (OrderModel)((object)model);
                     var typedEvent = (OrderCreatedEvent)((object)evt);
-                    var result = perspective.Apply(typedModel, typedEvent);
+                    var result = ((IPerspectiveFor<OrderModel, OrderCreatedEvent>)perspective).Apply(typedModel, typedEvent);
                     return (TModel)((object)result);
                 }
             )
@@ -177,13 +178,35 @@ public static IReadOnlyList<PerspectiveAssociationInfo<TModel, TEvent>>
 }
 ```
 
+### The applier calls `Apply` through the interface {#apply-through-the-interface}
+
+:::updated
+Each typed applier calls the perspective's `Apply` **through the interface that lists the event**, never through the
+class by the method's name, the same way the generated perspective runner does.
+:::
+
+The applier casts the perspective to the interface that lists the event (`IPerspectiveFor<TModel, TEvent>`, or
+`IPerspectiveWithActionsFor<TModel, TEvent>`) and calls its `Apply`. The result is therefore always the interface's
+declared return: the model, or an `ApplyResult<TModel>` whose `Model` the applier returns. The method that runs is the
+interface's implementation, explicit or not, so a perspective that implements `Apply` explicitly gets a working applier.
+
+Earlier versions called `perspective.Apply(...)` on the class. When a class declared an ordinary `Apply` returning a
+`ModelAction` beside an explicit `TModel` implementation, that call bound the ordinary method and the applier threw
+`InvalidCastException` casting the action to the model; the reverse pairing produced an applier that did not compile.
+Such a class now fails the build ([WHIZ114](../../operations/diagnostics/whiz114),
+[WHIZ115](../../operations/diagnostics/whiz115)), and the applier runs the interface's implementation either way.
+
+{verified: PerspectiveAssociationApplierTests.TheApplier_RunsTheIPerspectiveForImplementation_NotAnOrdinaryApplyThatReturnsAnActionAsync, PerspectiveAssociationApplierTests.TheApplier_RunsTheIPerspectiveWithActionsForImplementation_NotAnOrdinaryApplyThatReturnsTheModelAsync, PerspectiveAssociationApplierTests.TheApplier_RunsAnOrdinaryInterfaceImplementationAsBeforeAsync}
+
+See [the interfaces are the contract](perspectives.md#apply-through-the-interface) on the perspectives page.
+
 ### AOT Compatibility
 
 Key features ensuring AOT compatibility:
 
 1. **Compile-time type checking**: Uses `typeof()` comparisons
 2. **Direct instantiation**: Uses `new` keyword (no `Activator.CreateInstance`)
-3. **Direct method calls**: No `MethodInfo.Invoke`
+3. **Direct interface calls**: `Apply` is called through the interface that lists the event; no `MethodInfo.Invoke`
 4. **No reflection**: All types known at compile time
 5. **Trim-safe**: No dynamic type loading
 
