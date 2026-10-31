@@ -419,6 +419,13 @@ folded during replay and must be deterministic.
 | **WHIZ105** | Warning | A perspective constructor injects a service not marked `[PureService]` |
 | **WHIZ106** | Error | A `[CollectiveApplyFor]` method performs an apply-time cross-perspective query (`ICollectiveQuery.Of<>()`) |
 
+Two more checks on `Apply` sit beside the purity rules, in the `Whizbang.Perspectives` category:
+
+| ID | Severity | Rule |
+|---|---|---|
+| **[WHIZ107](../../operations/diagnostics/whiz107)** | Warning | `Apply` tests its current model for null, which it never is; use `ApplyContext.Current.IsFirstEventInStream` to detect a stream's first event |
+| **[WHIZ108](../../operations/diagnostics/whiz108)** | Warning | An `Apply` of an `[OverwriteOnly]` perspective reads its current model |
+
 ### WHIZ100 — Apply must be synchronous (Error)
 
 ```csharp{title="WHIZ100" description="Apply must return the model, not a Task" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "Purity", "WHIZ100"] tests=["PerspectivePurityAnalyzerTests.Analyzer_AsyncApplyMethod_ReportsWHIZ100ErrorAsync"]}
@@ -979,29 +986,25 @@ A row an Apply removed with `ApplyResult.Purge()` stays removed. The runner reco
 
 Since `Apply()` methods are pure functions with no I/O, they rarely throw exceptions. Common cases:
 
-```csharp{title="Pure Functions Don't Throw I/O Errors" description="Since Apply() methods are pure functions with no I/O, they rarely throw exceptions." category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Pure", "Functions"] unverified="domain illustration of defensive null handling in a pure Apply, not an isolated library API"}
+```csharp{title="Pure Functions Don't Throw I/O Errors" description="An Apply never receives a null model; an update that can arrive first on a stream reads ApplyContext instead of testing for null" category="Architecture" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Pure", "Functions"] unverified="domain illustration of an update that may open a stream, not an isolated library API"}
 public ProductDto Apply(ProductDto currentData, ProductUpdatedEvent @event) {
-    // Defensive: handle null current data
-    if (currentData == null) {
-        // Treat update as create
-        return new ProductDto {
-            ProductId = @event.ProductId,
-            Name = @event.Name ?? string.Empty,
-            Price = @event.Price ?? 0,
-            CreatedAt = @event.UpdatedAt
-        };
-    }
+    // currentData is never null: a stream with no row gets an empty model.
+    // An update that opens the stream sets what a create would have set.
+    var createdAt = ApplyContext.Current.IsFirstEventInStream
+        ? @event.UpdatedAt
+        : currentData.CreatedAt;
 
-    // Normal update
     return new ProductDto {
-        ProductId = currentData.ProductId,
+        ProductId = @event.ProductId,
         Name = @event.Name ?? currentData.Name,
         Price = @event.Price ?? currentData.Price,
-        CreatedAt = currentData.CreatedAt,
+        CreatedAt = createdAt,
         UpdatedAt = @event.UpdatedAt
     };
 }
 ```
+
+The runner never passes `Apply` a null model, so a `currentData == null` branch never runs (and is reported as [WHIZ107](../../operations/diagnostics/whiz107)). See [What Apply receives when there is no row](perspectives-with-actions#no-row-contract).
 
 ### Runner-Level Error Handling
 

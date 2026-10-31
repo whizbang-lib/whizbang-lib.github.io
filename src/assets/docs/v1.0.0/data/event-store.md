@@ -258,6 +258,7 @@ You never pass an expected version. Sequencing and conflict handling are built i
 - Concurrent writers to one stream therefore wait their turn and get consecutive versions; neither driver fails with a version conflict or retries. A duplicate event id fails at once with an `InvalidOperationException` saying the event is already stored
 - The **unique index on `(stream_id, version)`** remains as the backstop. See [Appending and concurrency](../fundamentals/events/event-store#appending-and-concurrency) for the details, including transaction behavior
 - Use `GetLastSequenceAsync(streamId)` if you need the current stream position (for example, to detect concurrent modification at the application level)
+- A new stream starts at version 1 on every write path (outbox, inbox, direct append, in-memory, Sqlite); a stream with no events reports `-1`. Streams created at version 0 by a direct append before migration 267 keep their numbering. See [Stream versions](../fundamentals/events/event-store#stream-versions)
 
 ---
 
@@ -266,7 +267,7 @@ You never pass an expected version. Sequencing and conflict handling are built i
 ### Read Full Stream
 
 ```csharp{title="Read Full Stream" description="Read Full Stream" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "C#", "Read", "Full", "Stream"] tests=["EFCoreEventStoreTests.ReadAsync_WithExistingEvents_ReturnsEventsInSequenceOrderAsync"]}
-// Strongly-typed read from the beginning (sequence 0), in order
+// Strongly-typed read of the whole stream, in order (a new stream starts at sequence 1)
 await foreach (var envelope in eventStore.ReadAsync<OrderCreated>(orderId, fromSequence: 0, ct)) {
     Console.WriteLine($"{envelope.MessageId}: {envelope.Payload}");
 }

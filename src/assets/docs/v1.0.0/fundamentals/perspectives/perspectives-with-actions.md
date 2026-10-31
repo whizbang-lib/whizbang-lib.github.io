@@ -20,6 +20,9 @@ codeReferences:
   - src/Whizbang.Core/Perspectives/IPerspectivePurgeMarkerStore.cs
   - src/Whizbang.Data.Postgres/PostgresPerspectivePurgeMarkerStore.cs
   - src/Whizbang.Core/Perspectives/PerspectiveRowWriteGuard.cs
+  - src/Whizbang.Core/Perspectives/ApplyContext.cs
+  - src/Whizbang.Generators/PerspectiveCurrentModelAnalyzer.cs
+  - src/Whizbang.Data.Postgres/Migrations/264_DrainSaysWhichEventIsFirstInItsStream.sql
 testReferences:
   - tests/Whizbang.Core.Tests/Perspectives/IPerspectiveWithActionsForTests.cs
   - tests/Whizbang.Core.Tests/Perspectives/ApplyResultTests.cs
@@ -29,6 +32,10 @@ testReferences:
   - tests/Whizbang.Core.Tests/Perspectives/DeclinedStreamLeavesNoRowTests.cs
   - tests/Whizbang.Core.Tests/Perspectives/PerspectiveRowWriteGuardTests.cs
   - tests/Whizbang.Generators.Tests/PerspectiveRunnerTemplateInvariantTests.cs
+  - tests/Whizbang.Core.Tests/Perspectives/ApplyContextTests.cs
+  - tests/Whizbang.Core.Tests/Perspectives/FirstEventInStreamTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/FirstEventInStreamReadTests.cs
+  - tests/Whizbang.Generators.Tests/PerspectiveCurrentModelAnalyzerTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -322,6 +329,64 @@ The runner **never passes `Apply` a null model**. When a stream has no row (a ne
 - every other property keeps the value of the model's own initializer, or its default.
 
 The runner saves a row only when an `Apply` returns a model (or the row already existed); a batch of `ApplyResult.None()` on a new stream writes nothing. This has a consequence that surprises people: a guard written as `current ??= new OrderView { ... }` **never runs**, because `current` is never null. A create-or-update `Apply` therefore cannot tell "no row yet" from "a row with default values" by checking for null, and on a missing row it builds a row out of the empty model. Test for a missing row explicitly (for example, the stream key is set but a field every created row has, such as `CreatedAt`, is still its default) if an event must not create one, and rely on the purge marker below for a row that was purged.
+
+The analyzer reports a null test of the current model (`current is null`, `current is not null`, `current == null`, `current != null`, with `null` on either side) as [WHIZ107](../../operations/diagnostics/whiz107): the test is never true, so the branch it guards is dead code.
+
+{verified: PerspectiveCurrentModelAnalyzerTests.EveryFormOfTheNullCheck_IsWarnedAsync, PerspectiveCurrentModelAnalyzerTests.ANullCheckOfAPropertyOrOfTheEvent_IsNotWarnedAsync}
+
+#### Detecting a stream's first event {#first-event-in-stream}
+
+:::new
+`ApplyContext.Current.IsFirstEventInStream` tells an `Apply` whether it is applying the first event of its stream, decided by the event's position and reproduced by every replay.
+:::
+
+An `Apply` that needs to know whether it is applying the **first event of its stream** (to set a `CreatedAt`, a first-seen value or an opening status) reads `ApplyContext.Current.IsFirstEventInStream`:
+
+```csharp{title="Set a first-seen value from the stream's first event" description="ApplyContext.Current.IsFirstEventInStream is true only for the event at the stream's first position, so the value is set once and every replay sets it the same way" framework="NET10" category="Core Concepts" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "ApplyContext", "First Event"] tests=["FirstEventInStreamTests.TheEventThatOpensAStream_IsTheFirstEventInStreamAsync", "FirstEventInStreamTests.ALaterEventOnAStreamWithNoRow_IsNotTheFirstEventInStreamAsync"]}
+using Whizbang.Core.Perspectives;
+
+public class OrderViewPerspective : IPerspectiveFor<OrderView, OrderPlaced> {
+  public OrderView Apply(OrderView current, OrderPlaced @event) =>
+    ApplyContext.Current.IsFirstEventInStream
+      ? current with { CreatedAt = @event.PlacedAt, Status = "Placed" }
+      : current with { Status = "Placed" };
+}
+```
+
+The fact is decided by the **event's own position in its stream**, never by the row the perspective holds. Row state is the wrong signal: a purge, an eviction, a rebuild or a replay changes it, so "no row yet" is true for many events that are not first, and false for a first event that is applied again in a rewind. The position does not change, so a live apply, a rewind, a rebuild and a replay of the stream all reach the same answer.
+
+- A stream's first event is the one at **version 1**, or at **version 0** for a stream whose numbering began there (a stream created by a direct append before new streams started at 1; see [Stream versions](../events/event-store#stream-versions)). A version-1 event of a stream that also holds a version 0 is not first.
+- The generated runner sets the fact around every `Apply` (and every resurrection check) on the thread the `Apply` runs on; an `Apply` is synchronous. Outside an `Apply` the context is empty and `IsFirstEventInStream` is `false`.
+- An event read from a store that does not record stream positions is never first.
+
+{verified: FirstEventInStreamTests.TheEventThatOpensAStream_IsTheFirstEventInStreamAsync, FirstEventInStreamTests.ALaterEventOnAStreamWithNoRow_IsNotTheFirstEventInStreamAsync, FirstEventInStreamTests.ARewind_ReproducesTheFirstEventFactAsync, FirstEventInStreamTests.AfterTheRun_TheFactIsNoLongerCurrentAsync, ApplyContextTests.OutsideAnApply_NoEventIsTheFirstInItsStreamAsync}
+
+**Where the fact comes from.** Every read a perspective folds from carries it on the envelope as `MessageEnvelope.IsFirstInLocalStream` (not serialized; derived from the local rows at read time): the polymorphic read on the EF Core and Dapper drivers and the in-memory store, and the live drain. For the drain, migration 264 adds an `out_first_in_stream` column to `get_stream_events`, which reaches the envelope through `StreamEventData.IsFirstInStream`. The check is one unique-index probe per stream, made only for a version-1 row. A reader running against a database that has not applied 264 reports no event as first.
+
+{verified: FirstEventInStreamReadTests.GetStreamEvents_ReturnsWhetherEachEventIsTheFirstInItsStreamAsync, FirstEventInStreamReadTests.DeserializeStreamEvents_CarriesTheFirstInStreamFactOntoTheEnvelopeAsync, FirstEventInStreamReadTests.ReadPolymorphicAsync_MarksOnlyTheEventAtTheStreamsFirstPositionAsFirstAsync, FirstEventInStreamTests.TheInMemoryStore_MarksOnlyTheStreamsFirstEventAsync}
+
+**Unit-testing an `Apply`.** A test that calls an `Apply` directly sets the fact with `ApplyContext.Enter`, which returns a scope that restores the previous facts when it is disposed:
+
+```csharp{title="Drive an Apply as the stream's first event in a unit test" description="ApplyContext.Enter makes the fact current until the scope is disposed" framework="NET10" category="Testing" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "ApplyContext", "Testing"] tests=["ApplyContextTests.Enter_MakesTheFactCurrentUntilTheScopeIsDisposedAsync", "ApplyContextTests.ANestedScope_RestoresTheEnclosingFactOnDisposeAsync"]}
+[Test]
+public async Task FirstOrderPlaced_SetsCreatedAtAsync() {
+  var perspective = new OrderViewPerspective();
+  var placed = new OrderPlaced { OrderId = orderId, PlacedAt = placedAt };
+
+  OrderView view;
+  using (ApplyContext.Enter(isFirstEventInStream: true)) {
+    view = perspective.Apply(new OrderView { OrderId = orderId }, placed);
+  }
+
+  await Assert.That(view.CreatedAt).IsEqualTo(placedAt);
+}
+```
+
+Keep the call inside the `using` block synchronous, as an `Apply` is: the facts belong to the thread.
+
+:::updated
+**Upgrading:** code that used `current is null` (or `== null`, `??=`) to detect a stream's first event never detected it, because the runner has always passed an empty model. Replace the check with `ApplyContext.Current.IsFirstEventInStream`; the build now reports the old form as [WHIZ107](../../operations/diagnostics/whiz107). Tests that called such an `Apply` with `null` should pass an empty model inside `ApplyContext.Enter(isFirstEventInStream: true)` instead.
+:::
 
 ### A declined stream gets no row {#declined-stream-no-row}
 

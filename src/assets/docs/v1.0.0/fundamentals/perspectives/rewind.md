@@ -20,6 +20,8 @@ codeReferences:
   - src/Whizbang.Core/Observability/PerspectiveMetrics.cs
   - src/Whizbang.Data.Postgres/Migrations/022_StorePerspectiveEvents.sql
   - src/Whizbang.Data.Postgres/Migrations/005_CreateCompletePerspectiveCheckpointFunction.sql
+  - src/Whizbang.Core/Attributes/OverwriteOnlyAttribute.cs
+  - src/Whizbang.Core/Perspectives/LastInReplayOrder.cs
 testReferences:
   - tests/Whizbang.Core.Tests/Perspectives/PerspectiveRewindOptionsTests.cs
   - tests/Whizbang.Core.Tests/Perspectives/PerspectiveSnapshotAndRewindTests.cs
@@ -29,6 +31,9 @@ testReferences:
   - tests/Whizbang.Core.Tests/Observability/PerspectiveMetricsTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerDeepPathDrainTests.StragglerDropped.cs
   - tests/Whizbang.Core.Tests/Events/System/StreamRewindEventTests.cs
+  - tests/Whizbang.Core.Tests/Perspectives/OverwriteOnlyRewindTests.cs
+  - tests/Whizbang.Core.Tests/Perspectives/LastInReplayOrderTests.cs
+  - tests/Whizbang.Generators.Tests/PerspectiveRunnerOverwriteOnlyTests.cs
 ---
 
 # Perspective Rewind
@@ -147,7 +152,7 @@ while (true) {
 
 This is the fix for an earlier defect: the original implementation read the event list **once** and applied that fixed set, so events appended between `PerspectiveRewindStarted` and `PerspectiveRewindCompleted` were silently dropped (a bulk import could complete the projection short a handful of items even though every event was durable). With the catch-up loop, the completed cursor reflects **HEAD-at-commit** rather than HEAD-when-the-replay-began. The behaviour is pinned by `PerspectiveRewindCompletionGapTests` (`FixedRewind_EventsAppendedDuringWindow_AreAppliedTooAsync` and `FixedRewind_NoLateAppends_StillTerminatesAsync`).
 
-### Replay ordering — slotting reconciled events
+### Replay ordering: slotting reconciled events {#replay-ordering}
 
 Each apply pass sorts its batch with **one comparator, chosen by what the batch can prove**:
 
@@ -183,6 +188,70 @@ The worker now remembers which events a completed rewind was run for, per stream
 ### Frontier checkpoint
 
 The replay checkpoints at the **frontier** — the *maximum* event id and *maximum* local `commit_sequence` applied — not the origin-order-last event's stamp. The idempotency floor's meaning is "everything at or below this is applied", and under origin-order replay the final event applied can carry a *lower* local stamp than a backfilled straggler it slotted. A below-floor checkpoint would also be refused by the perspective store's cross-pod lost-update guard, silently discarding the very correction the rewind computed. The catch-up anchor advances the same way (max id of the read window), so a refetch never re-serves the window's tail. Pinned by `ReconcileRewindScenarioTests` (`RewindReplay_BackfilledStraggler_SlotsIntoOriginOrder_NewerWriterWinsAsync`, `Reconcile_OlderConflictingWriterBackfilled_DeclaredRewindRestoresIntendedOrderAsync`, `Reconcile_LateInitializer_DeclaredRewindMergesBothWritersInOriginOrderAsync`) and `ReconcileRewindDeclarationSqlTests`.
+
+## Overwrite-only perspectives {#overwrite-only}
+
+:::new
+`[OverwriteOnly]` marks a perspective whose every `Apply` builds the row from its event alone. A rewind of it applies only the stream's last event instead of the whole stream.
+:::
+
+Some perspectives fold nothing. Each `Apply` builds the row from the event it is handed and ignores the current model, so the row after any event is that event's: a user's whole permission set, a document's latest published version, a device's last reported state. The runner cannot know that by itself, so every rewind of such a perspective (a late event, an event [below the row's position](#below-position), a refused write, a row waking after eviction) replayed the whole stream: it loaded every event's body and applied every one of them, to produce a row only the last one decides.
+
+That cost is linear in the stream's length, and it adds up. A service whose streams held hundreds of large events per user ran out of memory when several of those streams rewound side by side, each holding every event body to fold.
+
+Mark the perspective with `[OverwriteOnly]` (namespace `Whizbang.Core.Attributes`) to tell the runner:
+
+```csharp{title="An overwrite-only perspective" description="Every Apply builds the row from its event alone; the marker lets a rewind apply only the stream's last event" framework="NET10" category="Core Concepts" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Rewind", "OverwriteOnly"] tests=["OverwriteOnlyRewindTests.ARewindOfAnOverwriteOnlyPerspective_AppliesOnlyTheLastEvent_AndWritesTheRowAFullReplayWritesAsync", "PerspectiveRunnerOverwriteOnlyTests.AMarkedPerspective_IsOverwriteOnly_AndItsModelReturningAppliesDecideTheRowAloneAsync"]}
+using Whizbang.Core.Attributes;
+using Whizbang.Core.Perspectives;
+
+[OverwriteOnly]
+public sealed class PermissionSetPerspective : IPerspectiveFor<PermissionSetModel, PermissionsSet> {
+  // Builds the row from the event alone; never reads currentData.
+  public PermissionSetModel Apply(PermissionSetModel currentData, PermissionsSet @event) =>
+    new() { UserId = @event.UserId, Revision = @event.Revision, Permissions = @event.Permissions };
+}
+```
+
+The marker is **explicit**: the generator never infers it, even when no `Apply` of a perspective reads its model. An `Apply` of a marked perspective that does read its current-model parameter contradicts the marker and is reported as [WHIZ108](../../operations/diagnostics/whiz108).
+
+{verified: PerspectiveRunnerOverwriteOnlyTests.AnUnmarkedPerspective_IsNotOverwriteOnly_EvenWhenNoApplyReadsItsModelAsync, OverwriteOnlyAnalyzerTests.AnOverwriteOnlyApplyThatReadsItsCurrentModel_IsWarnedAsync}
+
+### What the rewind does {#overwrite-only-rewind}
+
+The rewind of a marked perspective still **reads every event** of the stream, from the snapshot or from the start, exactly as a full replay reads it. It **applies one**: the last event in the order a full replay folds the stream (origin order, stream order, commit order or event-id order, chosen by the same rules as [Replay ordering](#replay-ordering)), applied to an empty model. The events before it are counted, never held in memory or applied. The row is written through the same write a full replay ends with, cursor, frontier and snapshot included, so the row it writes is the row a full replay writes. Each [catch-up pass](#catch-up-loop) over events appended while the rewind runs applies its own last event.
+
+| A rewind of a 40-event stream | Unmarked perspective | `[OverwriteOnly]` perspective |
+|---|---|---|
+| Events read | 40 | 40 |
+| Event bodies held to fold | 40 | 1 |
+| `Apply` calls | 40 | 1 |
+| Row written | the last event's | the same row |
+
+The rewind still reports every event it read as replayed (`whizbang.perspective.rewind.events_replayed`, and the completion log's count), so the metric measures the stream, not the work saved.
+
+{verified: OverwriteOnlyRewindTests.ARewindOfAnOverwriteOnlyPerspective_AppliesOnlyTheLastEvent_AndWritesTheRowAFullReplayWritesAsync, OverwriteOnlyRewindTests.TheLastEvent_IsTheLastInTheOrderAFullReplayFolds_NotTheLastReadAsync, OverwriteOnlyRewindTests.ARewindFromASnapshot_WritesTheRowAFullReplayFromThatSnapshotWritesAsync, OverwriteOnlyRewindTests.AnEventAppendedWhileTheRewindRuns_IsAppliedByTheCatchUpPass_AsAFullReplayAppliesItAsync, LastInReplayOrderTests.Last_IsTheEventAFullReplayFoldsLastAsync}
+
+**Receptors of skipped events do not run.** A rewind rebuilds state; it does not re-deliver events. The events the rewind counts but does not apply run no receptor during the rewind.
+
+{verified: OverwriteOnlyRewindTests.ARewind_RunsNoReceptorForTheEventsItSkipsAsync}
+
+### When it replays in full {#overwrite-only-fallback}
+
+The last event cannot always decide the row alone. The rewind then folds the stream in full and writes the row a full replay always wrote, as if the perspective were unmarked:
+
+| The stream... | Why the last event is not enough |
+|---|---|
+| holds an event whose `Apply` returns an action, a tuple or an `ApplyResult<TModel>` | that `Apply` can purge or decline, which only a fold in order can honor |
+| ends with an event whose `Apply` returns no model | the row is then what the events before it left |
+| ends with an event whose `Apply` throws | the full fold logs and handles the failure as any replay does |
+| starts purged | only the fold knows whether a later `Apply` resurrects the row |
+
+The check happens before anything is written, so a rewind that falls back never writes a partial row.
+
+{verified: OverwriteOnlyRewindTests.AStreamHoldingAnEventThatCanPurge_IsReplayedInFull_AndEndsAsAFullReplayEndsAsync, OverwriteOnlyRewindTests.ALastEventWhoseApplyReturnsNoModel_IsReplayedInFull_AndWritesTheRowAFullReplayWritesAsync, PerspectiveRunnerOverwriteOnlyTests.AMarkedPerspectiveWhoseAppliesAllReturnActions_DecidesNothingAloneAsync}
+
+**An explicit rebuild still folds every event.** The marker shortens a rewind only. A [rebuild](rebuild.md) of an overwrite-only perspective reads and applies every event, because it must read every event anyway to route re-keyed ones.
 
 ## Configuration
 
