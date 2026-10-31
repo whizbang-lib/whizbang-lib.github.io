@@ -50,6 +50,8 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Collective/CollectiveApplyContention.cs
   - src/Whizbang.Data.EFCore.Postgres.Generators/EFCoreServiceRegistrationGenerator.cs
   - src/Whizbang.Generators/Analyzers/CollectivePredicateIndexAnalyzer.cs
+  - src/Whizbang.Generators/Analyzers/CollectiveApplyShapeAnalyzer.cs
+  - src/Whizbang.Generators/CollectiveApplyShape.cs
 testReferences:
   - tests/Whizbang.Core.Tests/Messaging/CollectiveEventContractTests.cs
   - tests/Whizbang.Core.Tests/Messaging/EventFlagsWireFormTests.cs
@@ -82,6 +84,7 @@ testReferences:
   - tests/Whizbang.Data.Dapper.Postgres.Tests/Collective/DapperCollectiveOrderingIntegrationTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/Collective/CollectivePredicateOrderingTests.cs
   - tests/Whizbang.Generators.Tests/PerspectiveRunnerPhysicalFieldRegistrationTests.cs
+  - tests/Whizbang.Generators.Tests/CollectiveApplyShapeAnalyzerTests.cs
 ---
 
 # Collective events
@@ -473,6 +476,20 @@ The generator binds a handler by its shape, not by an interface, and accepts two
 
 `TModel` comes from the return type and `TEvent` from the first parameter. A method with the attribute but another
 shape is not bound and its event is not registered.
+
+:::new
+The build reports a method meant to be a collective handler that does not match a bound shape:
+[WHIZ116](../../operations/diagnostics/whiz116), an error. Such a method used to be left out of the registry without a
+word, so its collective event never changed the model.
+:::
+
+WHIZ116 names what is wrong: a method carrying `[CollectiveApplyFor]` with no parameters or more than two, a first
+parameter that is not an `ICollectiveEvent`, a second that is not an `ICollectiveQuery`, or a return that is not
+`ICollectiveSpec<TModel>`. It also reports an implementation of `ICollectiveApplyFor<TModel, TEvent>.Apply` that does not
+carry `[CollectiveApplyFor]`: the interface documents the shape, but the attribute is how the generator finds the
+handler, so the implementation needs both.
+
+{verified: CollectiveApplyShapeAnalyzerTests.AnAttributedMethodThatDoesNotMatchTheShape_IsAnErrorNamingWhatIsWrongAsync, CollectiveApplyShapeAnalyzerTests.AnICollectiveApplyForImplementationWithoutTheAttribute_IsAnErrorAsync, CollectiveApplyShapeAnalyzerTests.AnICollectiveApplyForImplementationWithTheAttribute_IsNotReportedAsync, CollectiveApplyShapeAnalyzerTests.AHandlerThatMatchesTheShape_OrAMethodThatIsNotOne_IsNotReportedAsync}
 
 **Unused-parameter rules.** Declare `ICollectiveQuery` only when the handler reads it; leave it out otherwise, so no
 unused-parameter rule flags it. The event parameter is required even when the handler ignores the event (a constant

@@ -22,6 +22,7 @@ codeReferences:
   - src/Whizbang.Core/Perspectives/PerspectiveRowWriteGuard.cs
   - src/Whizbang.Core/Perspectives/ApplyContext.cs
   - src/Whizbang.Generators/PerspectiveCurrentModelAnalyzer.cs
+  - src/Whizbang.Generators/Analyzers/PerspectiveContractAnalyzer.cs
   - src/Whizbang.Data.Postgres/Migrations/264_DrainSaysWhichEventIsFirstInItsStream.sql
 testReferences:
   - tests/Whizbang.Core.Tests/Perspectives/IPerspectiveWithActionsForTests.cs
@@ -36,6 +37,9 @@ testReferences:
   - tests/Whizbang.Core.Tests/Perspectives/FirstEventInStreamTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/FirstEventInStreamReadTests.cs
   - tests/Whizbang.Generators.Tests/PerspectiveCurrentModelAnalyzerTests.cs
+  - tests/Whizbang.Generators.Tests/PerspectiveWithActionsArityTests.cs
+  - tests/Whizbang.Generators.Tests/PerspectiveApplyReturnShapeTests.cs
+  - tests/Whizbang.Generators.Tests/PerspectiveDuplicateApplyTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -76,6 +80,19 @@ public interface IPerspectiveWithActionsFor<TModel, TEvent> : IPerspectiveWithAc
 - `TEvent`: The event type this perspective handles
 
 **Key Difference from IPerspectiveFor**: The return type is `ApplyResult<TModel>` instead of `TModel`, enabling the perspective to signal deletion operations.
+
+### Up to 50 events per implementation {#arity}
+
+:::updated
+`IPerspectiveWithActionsFor` takes up to **50** events per implementation, the same as `IPerspectiveFor` (it stopped at
+10), so moving an event that may delete or purge into it never meets a smaller cap.
+:::
+
+`IPerspectiveWithActionsFor<TModel, TEvent1, ..., TEvent50>` declares one `ApplyResult<TModel> Apply` per event, and a
+perspective may implement it any number of times, beside any number of `IPerspectiveFor` implementations. See
+[the interfaces are the contract](perspectives.md#strongly-typed-contract).
+
+{verified: PerspectiveWithActionsArityTests.BothFamilies_TakeUpToFiftyEvents_AndNoMoreAsync}
 
 ---
 
@@ -249,6 +266,75 @@ public class OrderPerspective :
 ```
 
 **Pattern**: Use `IPerspectiveFor` for create/update events where the model always survives. Switch to `IPerspectiveWithActionsFor` only for events that might remove the model.
+
+### Purging from a perspective that also returns models {#purge-beside-models}
+
+A perspective whose events mostly return the model, and one or two of which must purge or delete the row, implements
+**both** families: `IPerspectiveFor` for the events that return the model, and `IPerspectiveWithActionsFor` for the ones
+that may purge or delete. Each event's `Apply` returns what the interface listing it declares. The purge itself stays one
+line, because `ApplyResult<TModel>` converts implicitly from `ModelAction` (and from the model, and from the
+`(TModel?, ModelAction)` tuple):
+
+```csharp{title="Purge beside model-returning events" description="OrderPlaced returns the model through IPerspectiveFor; OrderStatusChanged returns ApplyResult through IPerspectiveWithActionsFor, and ModelAction.Purge converts implicitly" framework="NET10" category="Perspectives" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Purge", "ApplyResult", "ModelAction"] tests=["PerspectiveRunnerInterfaceDispatchTests.EachEvent_IsAppliedThroughTheInterfaceThatListsItAsync", "IPerspectiveWithActionsForTests.Apply_ModelActionImplicitConversion_WorksAsync"]}
+public class OrderProjection :
+    IPerspectiveFor<Order, OrderPlaced>,
+    IPerspectiveWithActionsFor<Order, OrderStatusChanged> {
+  public Order Apply(Order current, OrderPlaced @event) => current with { Id = @event.OrderId };
+
+  public ApplyResult<Order> Apply(Order current, OrderStatusChanged @event) => ModelAction.Purge;
+}
+```
+
+Do **not** return a bare `ModelAction`, or the tuple, from an `Apply` for an event `IPerspectiveFor` lists. That method is
+not the interface's `Apply`, so it compiles only beside an explicit `Order Apply` implementation, and the explicit one is
+what the runner calls: the row is kept. The build reports both methods
+([WHIZ115](../../operations/diagnostics/whiz115), [WHIZ114](../../operations/diagnostics/whiz114)).
+
+{verified: PerspectiveApplyReturnShapeTests.ABareModelActionReturn_ForAnIPerspectiveForEvent_IsAnErrorNamingTheFixAsync, PerspectiveApplyReturnShapeTests.AShapeOnlyASuppressedWhiz115Allows_IsNeverWhatTheRunnerCallsAsync, PerspectiveDuplicateApplyTests.TheApplyBesideAnExplicitInterfaceApply_IsAnErrorAtTheOneThatNeverRunsAsync}
+
+### Upgrading to the contract {#upgrading-to-the-contract}
+
+:::updated
+**Upgrading:** code that returns a shape no interface declares for its event (a bare `ModelAction`, the
+`(TModel?, ModelAction)` tuple, or `ApplyResult<TModel>` for an event only `IPerspectiveFor` lists), or that keeps an
+explicit `Apply` beside another `Apply` for the same event, now fails to build with [WHIZ115](../../operations/diagnostics/whiz115)
+and [WHIZ114](../../operations/diagnostics/whiz114). An event listed only through a custom `IPerspectiveBase` marker fails
+with [WHIZ117](../../operations/diagnostics/whiz117). To migrate:
+
+1. List each such event under `IPerspectiveWithActionsFor<TModel, ...>` (beside the class's `IPerspectiveFor`
+   implementations; one class may implement both, each any number of times).
+2. Change its `Apply` to return `ApplyResult<TModel>`. The body usually does not change: `return ModelAction.Purge;`
+   and `return (current, ModelAction.Delete);` convert implicitly.
+3. Delete the explicit implementation that existed only so the class compiled.
+:::
+
+```csharp{title="Before: two Apply methods for one event, which no longer builds" description="A ModelAction Apply for an IPerspectiveFor event, compiled only beside an explicit Order Apply that the runner calls instead" framework="NET10" category="Perspectives" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Upgrade", "WHIZ115", "WHIZ114"] tests=["PerspectiveApplyReturnShapeTests.ABareModelActionReturn_ForAnIPerspectiveForEvent_IsAnErrorNamingTheFixAsync", "PerspectiveDuplicateApplyTests.TheApplyBesideAnExplicitInterfaceApply_IsAnErrorAtTheOneThatNeverRunsAsync"]}
+public class OrderProjection : IPerspectiveFor<Order, OrderPlaced, OrderStatusChanged> {
+  public Order Apply(Order current, OrderPlaced @event) => current;
+
+  // WHIZ115 and WHIZ114: never runs, because the runner calls the explicit implementation below
+  public ModelAction Apply(Order current, OrderStatusChanged @event) => ModelAction.Purge;
+
+  // The interface's implementation: the Apply the runner calls, and it keeps the row
+  Order IPerspectiveFor<Order, OrderPlaced, OrderStatusChanged>.Apply(Order current, OrderStatusChanged @event) =>
+    current;
+}
+```
+
+```csharp{title="After: the event listed under IPerspectiveWithActionsFor" description="The purging event moves to IPerspectiveWithActionsFor, its Apply returns ApplyResult, and the explicit implementation is gone" framework="NET10" category="Perspectives" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Upgrade", "ApplyResult"] tests=["PerspectiveRunnerInterfaceDispatchTests.EachEvent_IsAppliedThroughTheInterfaceThatListsItAsync"]}
+public class OrderProjection :
+    IPerspectiveFor<Order, OrderPlaced>,
+    IPerspectiveWithActionsFor<Order, OrderStatusChanged> {
+  public Order Apply(Order current, OrderPlaced @event) => current;
+
+  public ApplyResult<Order> Apply(Order current, OrderStatusChanged @event) => ModelAction.Purge;
+}
+```
+
+The runner and the typed appliers from
+[`GetPerspectiveAssociations`](typed-associations.md#apply-through-the-interface) call `Apply` through the interface, so
+the interface's implementation is the one that runs, and the build errors keep a second `Apply` for the same event from
+looking like the handler.
 
 ---
 
@@ -584,12 +670,14 @@ public class OrderPerspectiveTests {
 - Use `IPerspectiveWithActionsFor` only for events that may delete
 - Include `DateTimeOffset? DeletedAt` on models that support soft delete, and set it in `Apply`
 - Prefer `Delete()` over `Purge()` unless data retention is explicitly not required
-- Use implicit conversions for clean, readable Apply methods
+- Use implicit conversions for clean, readable Apply methods (`return ModelAction.Purge;` from an `ApplyResult<TModel>` Apply)
+- Implement `IPerspectiveFor` and `IPerspectiveWithActionsFor` side by side, each as many times as you like
 - Test each action type (update, delete, purge) independently
 
 ### DON'T
 
 - Don't use `IPerspectiveWithActionsFor` for every event type when only one or two need deletion
+- Don't return a bare `ModelAction` or a tuple from an `IPerspectiveFor` event's `Apply`, or add an explicit `Apply` to make one compile ([WHIZ115](../../operations/diagnostics/whiz115), [WHIZ114](../../operations/diagnostics/whiz114))
 - Don't perform I/O in Apply methods (they remain pure functions)
 - Don't expect a later event to bring a purged row back: return `Resurrect` from the event that should
 - Don't write a create-or-update Apply as a way to undo a purge; it is skipped on a purged stream
