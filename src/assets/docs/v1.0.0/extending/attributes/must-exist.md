@@ -276,6 +276,8 @@ public OrderView Apply(OrderView? current, OrderShipped @event) {
 }
 ```
 
+The build reports this hand-written test as [WHIZ107](../../operations/diagnostics/whiz107): the runner never passes `Apply` a null model, so the test is never true. To detect a stream's first event, read `ApplyContext.Current.IsFirstEventInStream` (see [Detecting a stream's first event](../../fundamentals/perspectives/perspectives-with-actions#first-event-in-stream)).
+
 ### With [MustExist] (Generated Null Check)
 
 ```csharp{

@@ -108,7 +108,7 @@ graph TB
 
 Each event has:
 - **StreamId**: Which stream it belongs to
-- **Sequence**: Position within the stream (0, 1, 2, ...; first event is sequence 0)
+- **Sequence**: Position within the stream (1, 2, 3, ...; a new stream's first event is sequence 1 on every write path, and a stream created by a direct append before migration 267 keeps the 0 it started at; see [Stream versions](event-store#stream-versions))
 - **EventId**: Globally unique event identifier
 
 ## Working with Streams
