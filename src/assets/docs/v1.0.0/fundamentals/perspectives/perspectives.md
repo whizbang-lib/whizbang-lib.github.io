@@ -22,8 +22,13 @@ codeReferences:
   - src/Whizbang.Core/Perspectives/PerspectiveRowConflictException.cs
   - src/Whizbang.Data.EFCore.Postgres/PerspectiveRowVersionSql.cs
   - src/Whizbang.Generators/PerspectivePurityAnalyzer.cs
+  - src/Whizbang.Generators/Analyzers/PerspectiveContractAnalyzer.cs
+  - src/Whizbang.Generators/Analyzers/PerspectiveApplyNearMissAnalyzer.cs
+  - src/Whizbang.Generators/Utilities/PerspectiveContract.cs
+  - src/Whizbang.Generators/PerspectiveRunnerGenerator.cs
   - src/Whizbang.Generators/Templates/PerspectiveRunnerTemplate.cs
   - src/Whizbang.Generators/Utilities/PerspectiveDiscoveryHelper.cs
+  - src/Whizbang.Generators.Shared/Models/MappedPathDiscovery.cs
   - >-
     samples/ECommerce/ECommerce.BFF.API/Perspectives/ProductCatalogPerspective.cs
   - >-
@@ -31,12 +36,26 @@ codeReferences:
 testReferences:
   - tests/Whizbang.Core.Tests/Perspectives/IPerspectiveForTests.cs
   - tests/Whizbang.Generators.Tests/PerspectivePurityAnalyzerTests.cs
+  - tests/Whizbang.Generators.Tests/PerspectiveUnlistedApplyTests.cs
+  - tests/Whizbang.Generators.Tests/PerspectiveApplyNearMissTests.cs
+  - tests/Whizbang.Generators.Tests/PerspectiveDuplicateApplyTests.cs
+  - tests/Whizbang.Generators.Tests/PerspectiveApplyReturnShapeTests.cs
+  - tests/Whizbang.Generators.Tests/PerspectiveMarkerOnlyEventTests.cs
+  - tests/Whizbang.Generators.Tests/PerspectiveRunnerInterfaceDispatchTests.cs
+  - tests/Whizbang.Generators.Tests/PerspectiveWithActionsArityTests.cs
+  - tests/Whizbang.Generators.Tests/GlobalPerspectiveArityTests.cs
+  - tests/Whizbang.Core.Tests/Perspectives/ExplicitApplyRunnerTests.cs
   - tests/Whizbang.Core.Tests/Perspectives/PerspectiveRowConflictRetryTests.cs
   - tests/Whizbang.Core.Tests/Perspectives/PerspectiveRewindWriteCheckTests.cs
   - >-
     tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/PerspectiveLateEventApplyTests.cs
   - >-
     tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/PerspectiveRowVersionIntegrationTests.cs
+  - tests/Whizbang.Generators.Tests/MappedPathDiscoveryTests.cs
+  - >-
+    tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/RecordArrayRoundTripTests.cs
+  - >-
+    tests/Whizbang.Data.Dapper.Postgres.Tests/Perspectives/DapperRecordArrayRoundTripTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -128,6 +147,119 @@ public class CustomerPerspective : IPerspectiveFor<CustomerModel, CustomerCreate
 ```
 
 See [Persistence](../persistence/persistence.md) for DbContext key configuration.
+
+---
+
+## The interfaces are the contract {#strongly-typed-contract}
+
+:::new
+The build now holds a perspective's `Apply` methods to the interfaces it implements, with six errors for code that
+compiled and never ran.
+:::
+
+**Design principle.** A perspective's interfaces (`IPerspectiveFor`, `IPerspectiveWithActionsFor` and
+`IGlobalPerspectiveFor`) are the **strongly-typed contract the compiler checks**. They list the events the perspective
+handles, and they declare each event's `Apply`, its parameters and its return. The generator routes exactly the events
+the interfaces list, through the `Apply` the interfaces declare, and **never routes an event to a method by its name
+alone**. A method called `Apply` that no interface declares is not a handler, and neither is one called `ApplyEvent`.
+
+This is deliberate. Routing by convention would let a misspelled name, a forgotten event or a wrong return compile and
+silently do nothing; with the interface as the contract, the compiler sees every handler, and the analyzers below report
+what the compiler cannot.
+
+{verified: PerspectiveRunnerInterfaceDispatchTests.EachEvent_IsAppliedThroughTheInterfaceThatListsItAsync, PerspectiveUnlistedApplyTests.AnApplyForAnEventNoInterfaceLists_IsAnErrorAtTheMethodAsync}
+
+### Group events however you like {#group-events}
+
+A perspective may implement `IPerspectiveFor`, `IPerspectiveWithActionsFor` and `IGlobalPerspectiveFor` **any number
+of times**, and one class may implement `IPerspectiveFor` and `IPerspectiveWithActionsFor` side by side. Each
+implementation of any of the three families takes **up to 50 events**. Group the events in whatever way reads best:
+one interface per event, one per lifecycle stage, or one long list. The generator merges the events of every
+implementation.
+
+| Family | `Apply` returns | Events per implementation |
+|---|---|---|
+| `IPerspectiveFor<TModel, TEvent1, ...>` | `TModel` | up to 50 |
+| `IPerspectiveWithActionsFor<TModel, TEvent1, ...>` | `ApplyResult<TModel>` | up to 50 |
+| `IGlobalPerspectiveFor<TModel, TPartitionKey, TEvent1, ...>` | `TModel` | up to 50 |
+
+{verified: PerspectiveWithActionsArityTests.BothFamilies_TakeUpToFiftyEvents_AndNoMoreAsync, GlobalPerspectiveArityTests.TheGlobalFamily_TakesUpToFiftyEvents_AndNoMoreAsync, PerspectiveUnlistedApplyTests.AnApplyForAListedEvent_IsNotReported_WhicheverInterfaceListsItAsync}
+
+```csharp{title="One perspective, several interface implementations" description="Events grouped across two IPerspectiveFor implementations and one IPerspectiveWithActionsFor; the generator routes all three" framework="NET10" category="Perspectives" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "IPerspectiveFor", "IPerspectiveWithActionsFor"] tests=["PerspectiveUnlistedApplyTests.AnApplyForAListedEvent_IsNotReported_WhicheverInterfaceListsItAsync", "PerspectiveRunnerInterfaceDispatchTests.EachEvent_IsAppliedThroughTheInterfaceThatListsItAsync"]}
+public class OrderProjection :
+    IPerspectiveFor<Order, OrderPlaced>,
+    IPerspectiveFor<Order, OrderUpdated>,
+    IPerspectiveWithActionsFor<Order, OrderStatusChanged> {
+  public Order Apply(Order current, OrderPlaced @event) => current with { Id = @event.OrderId };
+
+  public Order Apply(Order current, OrderUpdated @event) => current;
+
+  // Purges the row: ApplyResult<Order> converts implicitly from ModelAction
+  public ApplyResult<Order> Apply(Order current, OrderStatusChanged @event) => ModelAction.Purge;
+}
+```
+
+`ITemporalPerspectiveFor` is a separate, append-only family with its own `Transform` method and a cap of 10 events;
+see [Temporal Perspectives](temporal.md).
+
+### Why `Apply` is an instance method {#apply-is-an-instance-method}
+
+`Apply` is an instance method because interface members are: the interface declares `TModel Apply(TModel, TEvent)`,
+and a class implements it with an instance method. Making `Apply` `static` would not make it pure, and it is not how
+purity is enforced. Purity (synchronous, deterministic, no I/O) is enforced by the
+[purity analyzer](#purity-enforcement), which checks every `Apply` whatever kind of method it is. A `static` method
+named `Apply` is never a handler, and the contract checks below ignore it.
+
+{verified: PerspectiveUnlistedApplyTests.AStaticApplyForAnUnlistedEvent_IsNotReported_BecauseOnlyInstanceMethodsAreHandlersAsync}
+
+### The runner calls `Apply` through the interface {#apply-through-the-interface}
+
+The generated runner calls each event's `Apply` **through the interface that lists the event**: a direct interface
+call, with nothing allocated, never `perspective.Apply(...)` on the class by name. So:
+
+- **explicit interface implementations work.** A perspective may implement any or every `Apply` explicitly
+  (`Order IPerspectiveFor<Order, OrderPlaced>.Apply(...)`), and it builds and runs like any other;
+- **what runs is always the interface's implementation.** `[MustExist]`, and the runner's check for an `Apply` that
+  can only purge, are read off that implementation, explicit or not;
+- the typed appliers from [`GetPerspectiveAssociations<TModel, TEvent>()`](typed-associations.md#apply-through-the-interface)
+  call `Apply` the same way.
+
+{verified: ExplicitApplyRunnerTests.APerspectiveThatImplementsApplyOnlyExplicitly_IsRunThroughItsInterfacesAsync, PerspectiveRunnerInterfaceDispatchTests.APerspectiveThatImplementsApplyOnlyExplicitly_GeneratesARunnerThatCompilesAsync, PerspectiveRunnerInterfaceDispatchTests.MustExistAndAnUnconditionalPurge_AreReadOffTheExplicitImplementationAsync, PerspectiveRunnerInterfaceDispatchTests.AGlobalPerspective_IsAppliedThroughItsInterfaceAsync}
+
+```csharp{title="A perspective that implements Apply only explicitly" description="Both Apply methods are explicit interface implementations; the generated runner calls each through its interface" framework="NET10" category="Perspectives" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Explicit Interface", "Apply"] tests=["ExplicitApplyRunnerTests.APerspectiveThatImplementsApplyOnlyExplicitly_IsRunThroughItsInterfacesAsync"]}
+public sealed class TicketPerspective :
+    IPerspectiveFor<Ticket, TicketOpened>,
+    IPerspectiveWithActionsFor<Ticket, TicketRenamed> {
+  Ticket IPerspectiveFor<Ticket, TicketOpened>.Apply(Ticket current, TicketOpened @event) =>
+    current with { Id = @event.TicketId, Title = @event.Title };
+
+  ApplyResult<Ticket> IPerspectiveWithActionsFor<Ticket, TicketRenamed>.Apply(Ticket current, TicketRenamed @event) =>
+    current with { Title = @event.Title };
+}
+```
+
+### What the build reports {#contract-diagnostics}
+
+Six errors in the `Whizbang.Perspectives` category report code that compiles but that the contract never routes to:
+
+| ID | Severity | Reports |
+|---|---|---|
+| **[WHIZ109](../../operations/diagnostics/whiz109)** | Error | An `Apply(TModel, TEvent)` (own or inherited, any accessibility) for an event no interface on the class lists for that model |
+| **[WHIZ113](../../operations/diagnostics/whiz113)** | Error | A method with an `Apply`'s parameters and return, a name one slip away from `Apply`, that nothing in the perspective calls |
+| **[WHIZ114](../../operations/diagnostics/whiz114)** | Error | An explicit interface `Apply` and another `Apply` for the same event; the runner calls the explicit one, so the other never runs |
+| **[WHIZ115](../../operations/diagnostics/whiz115)** | Error | An `Apply` returning a shape the interface listing its event does not declare: a bare `ModelAction`, the `(TModel?, ModelAction)` tuple, or the other family's return |
+| **[WHIZ116](../../operations/diagnostics/whiz116)** | Error | A collective `Apply` that does not match the shape the generator binds |
+| **[WHIZ117](../../operations/diagnostics/whiz117)** | Error | An event listed only through `IPerspectiveBase` or a custom marker interface that declares no `Apply` for it |
+
+{verified: PerspectiveUnlistedApplyTests.AnApplyForAnEventNoInterfaceLists_IsAnErrorAtTheMethodAsync, PerspectiveApplyNearMissTests.AMisspelledApplyThatNothingCalls_IsAnErrorAtTheMethodAsync, PerspectiveDuplicateApplyTests.TheApplyBesideAnExplicitInterfaceApply_IsAnErrorAtTheOneThatNeverRunsAsync, PerspectiveApplyReturnShapeTests.ABareModelActionReturn_ForAnIPerspectiveForEvent_IsAnErrorNamingTheFixAsync, CollectiveApplyShapeAnalyzerTests.AnAttributedMethodThatDoesNotMatchTheShape_IsAnErrorNamingWhatIsWrongAsync, PerspectiveMarkerOnlyEventTests.AnEventListedOnlyByAMarkerWithNoApply_IsAnErrorAtThePerspectiveAsync}
+
+:::updated
+**Upgrading:** code that returned a bare `ModelAction` or the tuple from an `Apply` for an `IPerspectiveFor` event, kept
+an explicit `Apply` beside an ordinary one, or listed an event only through a custom marker interface, now fails to
+build. Move each such event to `IPerspectiveWithActionsFor<TModel, ...>`, return `ApplyResult<TModel>` from its `Apply`
+(`return ModelAction.Purge;` still compiles, through the implicit conversion), and delete the explicit implementation.
+See [Perspectives with Actions](perspectives-with-actions.md#upgrading-to-the-contract).
+:::
 
 ---
 
@@ -285,7 +417,7 @@ Whizbang automatically generates `IPerspectiveRunner` implementations for each p
 1. `PerspectiveWorker` polls `IWorkCoordinator` for streams with new events
 2. Worker resolves appropriate runner via `IPerspectiveRunnerRegistry` (zero-reflection, AOT-compatible)
 3. Runner reads the row's version and metadata (`ReadForApplyAsync`), then loads the current model from `IPerspectiveStore<TModel>` (or creates new)
-4. Runner applies **all new events** using perspective's pure `Apply()` methods
+4. Runner applies **all new events** using the perspective's pure `Apply()` methods, calling each through the interface that lists its event (see [The runner calls `Apply` through the interface](#apply-through-the-interface))
 5. Runner saves model + checkpoint **atomically** (unit of work pattern), on the row version it read (see [Concurrent writers](#concurrent-writers))
 
 **Generated code example**:
@@ -313,7 +445,8 @@ internal sealed class ProductCatalogPerspectiveRunner : IPerspectiveRunner {
         await foreach (var envelope in _eventStore.ReadAsync<IEvent>(streamId, lastProcessedEventId, cancellationToken)) {
             var @event = envelope.Payload;
 
-            // Apply event using perspective's pure Apply method
+            // Apply event through the interface that lists it, e.g.
+            // ((IPerspectiveFor<ProductDto, ProductCreatedEvent>)perspective).Apply(currentModel, typedEvent)
             currentModel = ApplyEvent(perspective, currentModel, @event);
             lastProcessedEventId = envelope.MessageId.Value;
         }
@@ -419,7 +552,7 @@ folded during replay and must be deterministic.
 | **WHIZ105** | Warning | A perspective constructor injects a service not marked `[PureService]` |
 | **WHIZ106** | Error | A `[CollectiveApplyFor]` method performs an apply-time cross-perspective query (`ICollectiveQuery.Of<>()`) |
 
-Two more checks on `Apply` sit beside the purity rules, in the `Whizbang.Perspectives` category:
+Two more checks on `Apply` sit beside the purity rules, in the `Whizbang.Perspectives` category (the checks that hold `Apply` to its interfaces are listed under [What the build reports](#contract-diagnostics)):
 
 | ID | Severity | Rule |
 |---|---|---|
@@ -598,7 +731,7 @@ public class ProductCatalogPerspective :
 
 **Pattern**: One read model, multiple events that update it over time.
 
-**Note**: `IPerspectiveFor` supports up to 20 event type parameters per perspective. For more events, create multiple perspectives targeting the same model.
+**Note**: each `IPerspectiveFor` implementation takes up to 50 event type parameters, and a perspective may implement it any number of times. For more events, or to group them differently, implement the interface again on the same class; see [Group events however you like](#group-events).
 
 ---
 
@@ -743,6 +876,47 @@ public record InventoryLevelsDto {
 ```
 
 Each read model has its own **perspective** and **table schema** optimized for its queries.
+
+### Collections in read models {#model-collections}
+
+On the Entity Framework driver a model is stored one of two ways. On the **mapped** path, Entity Framework maps the model property by property into the `data` column, so its fields can be indexed and filtered with [containment queries](jsonb-containment.md). When the mapped path cannot read a member back, the generator stores the whole model as one **opaque** document instead: it reads and writes correctly, but nothing inside it is a mapped property, so declared indexes on it are skipped and [WHIZ304](../../operations/diagnostics/whiz304.md) says why. The Dapper driver reads a model from its serialized document, so this choice is the Entity Framework driver's; arrays of records read back on both.
+
+How a collection member is declared decides which path the model takes:
+
+| Member | Storage | Indexable fields |
+|--------|---------|------------------|
+| An array of primitives (`string[]`, `Guid[]`, `int[]`, an enum array) | Mapped, as a value | Yes |
+| `List<T>`, `IList<T>` or `ImmutableList<T>` of records | Mapped | Yes |
+| An array of records (`T[]` of a non-primitive element), or an array of arrays, at any depth | Opaque | No |
+| `IReadOnlyList<T>`, `IReadOnlyCollection<T>`, `ICollection<T>` or `IEnumerable<T>` of records | Opaque | No |
+
+"At any depth" includes an array inside a collection element, such as a `Tag[]` on the records of a `List<Group>`: the whole model is stored opaquely.
+
+```csharp{title="Arrays and lists of records on a read model" description="An array of records stores the model as one opaque document; a List of records keeps it mapped and indexable." category="Perspectives" difficulty="INTERMEDIATE" tags=["Perspectives", "Read Models", "EF Core", "Collections"] tests=["MappedPathDiscoveryTests.AnArrayOfAComplexElementIsReportedAsync", "MappedPathDiscoveryTests.ACollectionTheMappedPathCanFillIsNotReportedAsync", "RecordArrayRoundTripTests.ArraysOfRecords_TopLevelAndNested_ReadBackAsWrittenAsync"]}
+public record Tag(Guid TagId, string Label);
+
+// Stored as one opaque document: reads back, but its fields are not indexable
+public record TaggedOrderModel {
+  [StreamId]
+  public Guid OrderId { get; init; }
+  public Tag[] Tags { get; init; } = [];
+}
+
+// Stays on the mapped path: reads back, and its fields can be indexed
+public record IndexedTaggedOrderModel {
+  [StreamId]
+  public Guid OrderId { get; init; }
+  public List<Tag> Tags { get; init; } = [];
+}
+```
+
+To keep a model with a collection of records indexable, declare the member as `List<T>`. In a project that references the Entity Framework driver, [WHIZ200](../../operations/diagnostics/whiz200.md) warns at each array of records that stores a model opaquely; it can be suppressed per property or turned off for the project.
+
+{verified: MappedPathDiscoveryTests.AnArrayOfAComplexElementIsReportedAsync, MappedPathDiscoveryTests.AnArrayInsideACollectionElementIsNamedByItsPathAsync, MappedPathDiscoveryTests.AnArrayOfArraysIsReportedAsync, MappedPathDiscoveryTests.AnArrayOfPrimitivesIsNotReportedAsync, MappedPathDiscoveryTests.ACollectionTheMappedPathCanFillIsNotReportedAsync, MappedPathDiscoveryTests.ACollectionTheMappedPathCannotFillIsReportedAsync, RecordArrayRoundTripTests.ArraysOfRecords_TopLevelAndNested_ReadBackAsWrittenAsync, RecordArrayRoundTripTests.ArraysOfRecords_ReadThroughTheContextQuery_ReadBackAsWrittenAsync, RecordArrayRoundTripTests.ARowWrittenBeforeTheChange_StillReadsAsync, RecordArrayRoundTripTests.ArraysOfPrimitives_ReadBackAsWrittenAsync, DapperRecordArrayRoundTripTests.ArraysOfRecords_TopLevelAndNested_ReadBackAsWrittenAsync}
+
+:::updated
+A model holding an array of records used to stay on the mapped path. Entity Framework accepted it while building the model and then refused it at the first read ("Collection navigations cannot be arrays") and when the change tracker took its snapshot ("Collection was of a fixed size"), with nothing at build time saying so. Such a model is now stored as one opaque document, so `T[]` of records reads back on both drivers with no change to the model, and rows written before the change still read. An array of primitives stays mapped. Switch the member to `List<T>` if you need its fields indexed.
+:::
 
 ---
 

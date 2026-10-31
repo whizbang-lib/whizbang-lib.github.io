@@ -17,6 +17,7 @@ codeReferences:
   - src/Whizbang.Data.EFCore.Postgres/EFCorePostgresPerspectiveStore.cs
 testReferences:
   - tests/Whizbang.Core.Tests/Perspectives/IGlobalPerspectiveForTests.cs
+  - tests/Whizbang.Generators.Tests/GlobalPerspectiveArityTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/EFCorePostgresPerspectiveStoreTests.cs
 lastMaintainedCommit: '01f07906'
 ---
@@ -247,9 +248,9 @@ public class TenantCustomerPerspective :
 
 ## Multiple Event Types
 
-Multi-stream perspectives can handle up to 3 event types (v1.0.0):
+Multi-stream perspectives can handle many event types: each `IGlobalPerspectiveFor` implementation takes up to 50, and a perspective may implement it any number of times:
 
-```csharp{title="Multiple Event Types" description="Multi-stream perspectives can handle up to 3 event types (v1." category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Perspectives", "Multiple", "Event"] tests=["IGlobalPerspectiveForTests.GlobalPerspective_MultipleEventTypes_HasGetPartitionKeyForEachAsync"]}
+```csharp{title="Multiple Event Types" description="A multi-stream perspective implementing IGlobalPerspectiveFor once per event, with a GetPartitionKey and an Apply for each" category="Architecture" difficulty="ADVANCED" tags=["Fundamentals", "Perspectives", "Multiple", "Event"] tests=["IGlobalPerspectiveForTests.GlobalPerspective_MultipleEventTypes_HasGetPartitionKeyForEachAsync"]}
 public class CustomerLifecyclePerspective :
   IGlobalPerspectiveFor<CustomerDto, Guid, CustomerRegisteredEvent>,
   IGlobalPerspectiveFor<CustomerDto, Guid, OrderCreatedEvent>,
@@ -296,9 +297,13 @@ public class CustomerLifecyclePerspective :
 }
 ```
 
-:::info Event Type Limits
-`IGlobalPerspectiveFor` currently supports a maximum of **3 event type parameters** per perspective in v1.0.0. This is lower than other perspective variants: `IPerspectiveFor` supports up to 50 event types, and `ITemporalPerspectiveFor`/`IPerspectiveWithActionsFor` support up to 10. Additional variants will be generated in a future release. For now, if you need more than 3 event types, create multiple perspectives targeting the same model.
+:::updated
+`IGlobalPerspectiveFor` takes up to **50 event type parameters** per implementation, the same as `IPerspectiveFor` and
+`IPerspectiveWithActionsFor` (it stopped at 3). A perspective may implement it any number of times, so events can be
+grouped however reads best. `ITemporalPerspectiveFor` stays at 10.
 :::
+
+{verified: GlobalPerspectiveArityTests.TheGlobalFamily_TakesUpToFiftyEvents_AndNoMoreAsync, GlobalPerspectiveArityTests.AGlobalPerspectiveWithFiftyEvents_CompilesAndRoutesEveryEventAsync}
 
 ---
 
@@ -639,12 +644,12 @@ public class CustomerStatisticsPerspectiveTests {
 
 ## Limitations (v1.0.0)
 
-1. **Maximum 3 event types** per multi-stream perspective (vs 50 for `IPerspectiveFor`, 10 for `ITemporalPerspectiveFor`/`IPerspectiveWithActionsFor`)
+1. **Up to 50 event types** per `IGlobalPerspectiveFor` implementation, the same as `IPerspectiveFor` and `IPerspectiveWithActionsFor`; implement it again for more
 2. **Partition key must be notnull** (`where TPartitionKey : notnull`)
 3. **Model must be class** (`where TModel : class`)
 4. **No built-in UI for v1.0.0** (manual perspective registration)
 
-**Workaround for >3 events**: Create multiple perspectives targeting the same model type.
+**More than 50 events**: implement `IGlobalPerspectiveFor` again on the same class; the generator merges every implementation's events.
 
 ---
 

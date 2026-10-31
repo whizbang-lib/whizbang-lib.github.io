@@ -81,7 +81,7 @@ public class OrderSummaryProjection : SingleStreamProjection<OrderSummary> {
 
 ```csharp{title="Whizbang Perspective" description="Whizbang Perspective" category="Reference" difficulty="ADVANCED" tags=["Migration-guide", "C#", "Whizbang", "Perspective"] tests=["IPerspectiveForTests.Perspective_ImplementingIPerspectiveFor_HasApplyMethodAsync", "IPerspectiveForTests.Perspective_ImplementingMultipleEventTypes_HasApplyForEachAsync", "IPerspectiveForTests.Perspective_ImplementingIPerspectiveFor_ApplyIsPureFunctionAsync"]}
 // Whizbang: Pure functions, returns new model
-// Event types must implement IEvent; up to 20 event types per perspective
+// Event types must implement IEvent; up to 50 event types per interface, implemented any number of times
 public class OrderSummaryPerspective :
     IPerspectiveFor<OrderSummary, OrderCreated, OrderItemAdded, OrderShipped, OrderCancelled> {
 
@@ -157,7 +157,7 @@ public class CustomerOrderStatsProjection :
 ```csharp{title="Whizbang Global Perspective" description="Whizbang Global Perspective" category="Reference" difficulty="INTERMEDIATE" tags=["Migration-guide", "C#", "Whizbang", "Global", "Perspective"] tests=["IGlobalPerspectiveForTests.GlobalPerspective_HasGetPartitionKeyMethod_ExtractsPartitionFromEventAsync", "IGlobalPerspectiveForTests.GlobalPerspective_MultipleEventTypes_HasGetPartitionKeyForEachAsync", "IGlobalPerspectiveForTests.GlobalPerspective_ApplyMethod_IsPureFunctionAsync"]}
 // Whizbang: Global perspective with partition key
 // GetPartitionKey mirrors Marten's Identity() method
-// (variants currently support up to 3 event types)
+// (up to 50 event types per interface, implemented any number of times)
 public class CustomerOrderStatsPerspective :
     IGlobalPerspectiveFor<CustomerOrderStats, Guid, OrderCreated, OrderCompleted> {
 

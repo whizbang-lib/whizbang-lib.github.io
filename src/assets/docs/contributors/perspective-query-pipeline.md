@@ -16,6 +16,7 @@ codeReferences:
   - src/Whizbang.Data.EFCore.Postgres/QueryTranslation/JsonIndexRegistry.cs
   - src/Whizbang.Data.EFCore.Postgres/QueryTranslation/ProviderCapabilities.cs
   - src/Whizbang.Data.Postgres/Migrations/152_JsonbContainmentSet.sql
+  - src/Whizbang.Generators.Shared/Models/MappedPathDiscovery.cs
 testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/QueryTranslation/ContainmentPostprocessorSpikeTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/QueryTranslation/JsonbContainmentSqlMatrixTests.cs
@@ -23,6 +24,7 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/QueryTranslation/GinContainmentIntegrationTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/QueryTranslation/JsonIndexStandDownTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/JsonbContainmentSetFunctionTests.cs
+  - tests/Whizbang.Generators.Tests/MappedPathDiscoveryTests.cs
 ---
 
 # The Perspective Query Pipeline
@@ -53,14 +55,20 @@ path.
 
 **Opaque.** The model holds an abstract member, or one marked `[JsonPolymorphic]`. Property-by-property
 mapping reconstructs the declared type on the way back and would lose the derived one, so the whole
-document is stored as a single serialized value that carries a type discriminator. Nothing inside it
+document is stored as a single serialized value that carries a type discriminator. A model also takes
+this path when it holds a member the mapped path cannot construct, at any depth: a collection of
+records declared as `IReadOnlyList<T>`, `IReadOnlyCollection<T>`, `ICollection<T>` or `IEnumerable<T>`;
+an array of records (`T[]` of a non-primitive element) or an array of arrays; a nested positional
+record whose only constructor takes a collection. `List<T>`, `IList<T>` and `ImmutableList<T>` of records stay
+mapped, and so does an array of primitives, which is stored as a value. Nothing inside it
 is a mapped property: no extraction to reshape, nothing for the rewrite to recognize, and nowhere to
 attach a conversion. Declared indexes are skipped and
 [WHIZ304](../v1.0.0/operations/diagnostics/whiz304.md) reports why. Fields that must be filtered are
 promoted to real columns.
 
-`PolymorphicModelDiscovery.IsPolymorphic` answers this, in the shared generator project rather than in
-either caller, because the generator that emits the configuration and the analyzer that reports an
+`MappedPathDiscovery.MustStoreOpaquely` answers this, combining `PolymorphicModelDiscovery.IsPolymorphic`
+with `MappedPathDiscovery.UnmappableMember`, in the shared generator project rather than in either
+caller, because the generator that emits the configuration and the analyzer that reports an
 unreachable index have to agree. Two copies of this question would disagree silently, and in the
 direction that is hardest to notice: an index emitted for a model that was told it would get none.
 
@@ -69,6 +77,18 @@ serializer already do. This was once not true, and the consequence was large: a 
 compiler-generated protected `EqualityContract` of type `System.Type`, `System.Type` is an abstract
 class, so every record answered "opaque" on its first member and sat outside indexing, containment
 and conversion alike, while an identical `class` did not.
+
+:::updated
+An array of records used to count as mapped, because the discovery skipped every member that is not a
+named type and an array is not one. Entity Framework builds a model with such a member and then refuses
+it at the first read ("Collection navigations cannot be arrays") and on the change tracker's snapshot
+("Collection was of a fixed size"), so the model never read back and nothing at build time said so.
+Arrays are now judged on their element: an array of a non-primitive element, at any depth, makes the
+model opaque, and an array of primitives stays mapped. The shapes are listed for users under
+[Collections in read models](../v1.0.0/fundamentals/perspectives/perspectives.md#model-collections).
+:::
+
+{verified: MappedPathDiscoveryTests.AnArrayOfAComplexElementIsReportedAsync, MappedPathDiscoveryTests.AnArrayInsideACollectionElementIsNamedByItsPathAsync, MappedPathDiscoveryTests.AnArrayOfPrimitivesIsNotReportedAsync, MappedPathDiscoveryTests.AnArrayOfArraysIsReportedAsync}
 
 ## Why Entity Framework and Dapper get different answers
 

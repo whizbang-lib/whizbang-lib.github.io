@@ -18,6 +18,7 @@ codeReferences:
   - src/Whizbang.Core/Lifecycle/ILifecycleTrackingContext.cs
   - src/Whizbang.Core/Lifecycle/ILifecyclePerspectiveStageContext.cs
   - src/Whizbang.Core/Lifecycle/LifecycleTrackingState.cs
+  - src/Whizbang.Core/Lifecycle/LifecycleTrackingPath.cs
   - src/Whizbang.Core/Lifecycle/DebugAwareStopwatch.cs
   - src/Whizbang.Core/Lifecycle/StageRecord.cs
   - src/Whizbang.Core/Observability/LifecycleCoordinatorMetrics.cs
@@ -33,6 +34,8 @@ testReferences:
   - tests/Whizbang.Core.Tests/Lifecycle/LifecycleCoordinatorDetachedRetentionTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerDrainModeLifecycleTests.TrackingEnds.cs
   - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerStartupAndMaintenanceTests.cs
+  - tests/Whizbang.Core.Tests/Lifecycle/LifecycleTrackingPathTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerDrainModeLifecycleTests.LocalDispatchOverlap.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -71,6 +74,32 @@ The coordinator only tracks events that are **live**: actively being processed i
 - **Exit points**: `AbandonTracking()` when an event leaves a worker (persisted to DB, sent to transport, processing complete)
 
 Between entry and exit, the worker advances the event through stages using `AdvanceToAsync()`.
+
+#### One entry per path {#tracking-paths}
+
+An event can be live on more than one path in the same process at once: a service can dispatch an event locally while its perspective worker projects the same event and its outbox publishes it. The coordinator keys each entry by the path that tracks the event together with the event id, so each path has an entry of its own, with its own stage guard and its own end.
+
+| `LifecycleTrackingPath` | Who tracks the event on it |
+|-------------------------|----------------------------|
+| `LocalDispatch` | The dispatcher's in-process run of a message, through its PostLifecycle after the local receptor |
+| `Perspective` | The perspective worker's projection of a stored event, through PostAllPerspectives and PostLifecycle |
+| `Outbox` | The outbox publish worker's publication of a message to the transport |
+| `Inbox` | A transport consumer's receipt of a message from the transport |
+
+- **Each path's entry is separate**: `BeginTracking` on two paths for the same event returns two handles, and the same path asking again for the same event gets the handle it already has.
+- **One path never ends another's**: `AbandonTracking(path, eventId)` ends only that path's entry. The stale sweep ending one path's entry leaves the others alone.
+- **The perspective gate belongs to the perspective path**: the event's [perspective WhenAll gate](#perspective-whenall) is held by the `Perspective` entry and ends only with it. Another path's end, or the sweep ending another path's entry, cannot open it.
+- **A segment latch fires on its own path**: `ExpectCompletionsFrom` and `SignalSegmentCompleteAsync` take the path whose entry fires PostLifecycle, and the latch ends with that entry.
+
+So PostAllPerspectives and the projection's PostLifecycle always fire for an event the process projects, even when the same process also dispatches that event locally and the local dispatch finishes first.
+
+{verified: LifecycleTrackingPathTests.EachPathTracksTheSameEventInAnEntryOfItsOwnAsync, LifecycleTrackingPathTests.EndingOnePathsTracking_NeverEndsAnotherPathsTrackingOfTheSameEventAsync, LifecycleTrackingPathTests.EndingAnotherPathsTracking_LeavesThePerspectiveGateClosedAsync, LifecycleTrackingPathTests.Sweep_EndingAnotherPathsStaleEntry_LeavesThePerspectiveGateClosedAsync, LifecycleTrackingPathTests.SegmentLatch_FiresPostLifecycleOnItsOwnPathsTracking_AndEndsWithItAsync, PerspectiveWorkerDrainModeLifecycleTests.LocalDispatchOfAnEventTheWorkerIsProjecting_BothPathsCompleteTheirOwnLifecycleAsync}
+
+:::updated
+Tracking used to be keyed by the event id alone. A local dispatch of an event the same process was projecting took the perspective worker's entry, fired its own PostLifecycle on it, and then ended it together with the event's perspective gate, so PostAllPerspectives and the projection's PostLifecycle never fired for that event in that process. Each path now tracks the event in an entry of its own.
+
+**Upgrading code that calls the coordinator directly**: `BeginTracking`, `GetTracking`, `AbandonTracking`, `ExpectCompletionsFrom` and `SignalSegmentCompleteAsync` now take a `LifecycleTrackingPath` as their first argument. Pass the path your code is acting as; a path only finds and ends entries it began. Receptors, `[FireAt]` stages and message tags need no change. The perspective WhenAll methods (`ExpectPerspectiveCompletions`, `SignalPerspectiveComplete`, `AreAllPerspectivesComplete`) still take the event id alone, because the gate always belongs to the `Perspective` entry.
+:::
 
 Every tracking entry has a defined end: the path that begins tracking ends it once the lifecycle it tracks is done. The [stale sweep](#stale-tracking-cleanup) is a safety net for an entry no exit ended, not what keeps memory stable. The `whizbang.lifecycle_coordinator.tracked_entries` gauge shows the live count (see [Observability](#observability)).
 
@@ -149,20 +178,20 @@ graph LR
 ### Usage
 
 ```csharp{title="WhenAll Pattern" description="Coordinating PostLifecycle across multiple processing paths" category="Architecture" difficulty="ADVANCED" tags=["Lifecycle", "Coordinator", "WhenAll"] tests=["LifecycleCoordinatorTests.WhenAll_LocalAlone_DoesNotFirePostLifecycleDetachedAsync", "LifecycleCoordinatorTests.WhenAll_BothComplete_FiresPostLifecycleOnceAsync"]}
-// At cascade time — register expected completions
-coordinator.ExpectCompletionsFrom(eventId,
+// At cascade time, register expected completions on the tracking path that fires PostLifecycle
+coordinator.ExpectCompletionsFrom(LifecycleTrackingPath.LocalDispatch, eventId,
   PostLifecycleCompletionSource.Local,
   PostLifecycleCompletionSource.Distributed);
 
-// In Dispatcher — signal local path complete
+// Signal the local segment complete
 await coordinator.SignalSegmentCompleteAsync(
-  eventId, PostLifecycleCompletionSource.Local, scopedProvider, ct);
-// PostLifecycle does NOT fire yet — waiting for Distributed
+  LifecycleTrackingPath.LocalDispatch, eventId, PostLifecycleCompletionSource.Local, scopedProvider, ct);
+// PostLifecycle does NOT fire yet: waiting for Distributed
 
-// Later, in PerspectiveWorker — signal distributed path complete
+// Later, signal the distributed segment complete
 await coordinator.SignalSegmentCompleteAsync(
-  eventId, PostLifecycleCompletionSource.Distributed, scopedProvider, ct);
-// NOW PostLifecycle fires — all paths complete
+  LifecycleTrackingPath.LocalDispatch, eventId, PostLifecycleCompletionSource.Distributed, scopedProvider, ct);
+// NOW PostLifecycle fires on the LocalDispatch entry: all segments complete
 ```
 
 ### Completion Sources
@@ -175,7 +204,7 @@ await coordinator.SignalSegmentCompleteAsync(
 
 ---
 
-## Perspective WhenAll
+## Perspective WhenAll {#perspective-whenall}
 
 When an event is processed by **multiple perspectives**, `PostAllPerspectivesDetached` must fire only after ALL perspectives complete. The coordinator tracks expected perspective completions per event:
 
@@ -295,27 +324,28 @@ Lifecycle coordinator metrics are automatically registered via `AddWhizbang()`.
 
 ```csharp{title="ILifecycleCoordinator Interface" description="Centralized lifecycle stage coordination" category="API" difficulty="INTERMEDIATE" tags=["Lifecycle", "Coordinator", "API"] unverified="interface declaration — API surface; the coordinator's methods are exercised by LifecycleCoordinatorTests"}
 public interface ILifecycleCoordinator {
-  // Begin tracking an event at the specified entry stage
+  // Begin one path's tracking of an event at the specified entry stage
   ILifecycleTracking BeginTracking(
-    Guid eventId, IMessageEnvelope envelope,
+    LifecycleTrackingPath path, Guid eventId, IMessageEnvelope envelope,
     LifecycleStage entryStage, MessageSource source,
     Guid? streamId = null, Type? perspectiveType = null);
 
-  // Get current tracking state for runtime inspection
-  ILifecycleTracking? GetTracking(Guid eventId);
+  // Get one path's current tracking of an event for runtime inspection
+  ILifecycleTracking? GetTracking(LifecycleTrackingPath path, Guid eventId);
 
-  // Register expected completions for WhenAll pattern
-  void ExpectCompletionsFrom(Guid eventId, params PostLifecycleCompletionSource[] sources);
+  // Register expected completions for WhenAll pattern, on the path whose tracking fires PostLifecycle
+  void ExpectCompletionsFrom(
+    LifecycleTrackingPath path, Guid eventId, params PostLifecycleCompletionSource[] sources);
 
-  // Signal a processing path completed
+  // Signal a processing segment completed
   ValueTask SignalSegmentCompleteAsync(
-    Guid eventId, PostLifecycleCompletionSource source,
+    LifecycleTrackingPath path, Guid eventId, PostLifecycleCompletionSource source,
     IServiceProvider scopedProvider, CancellationToken ct);
 
-  // Abandon tracking at exit point
-  void AbandonTracking(Guid eventId);
+  // End one path's tracking at its exit point; other paths' tracking of the event is untouched
+  void AbandonTracking(LifecycleTrackingPath path, Guid eventId);
 
-  // Register expected perspective completions for per-event WhenAll
+  // Register expected perspective completions for per-event WhenAll (held by the Perspective path's entry)
   void ExpectPerspectiveCompletions(Guid eventId, IReadOnlyList<string> perspectiveNames);
 
   // Signal a perspective completed — returns true when all complete
@@ -462,7 +492,7 @@ public class PerspectiveAuditReceptor : IReceptor<IEvent> {
 ```csharp{title="PerspectiveWorker Integration" description="Batch-synchronized stage advancement" category="Architecture" difficulty="ADVANCED" tags=["Lifecycle", "PerspectiveWorker", "GameLoop"] unverified="simplified sketch of the worker's exit; the behavior is verified by PerspectiveWorkerDrainModeLifecycleTests, listed under Live Tracking"}
 // ENTRY: Begin tracking for each unique event in the batch
 foreach (var (eventId, (envelope, streamId)) in batchProcessedEvents) {
-  coordinator.BeginTracking(eventId, envelope,
+  coordinator.BeginTracking(LifecycleTrackingPath.Perspective, eventId, envelope,
     LifecycleStage.PrePerspectiveDetached, MessageSource.Local, streamId);
 }
 
@@ -471,7 +501,7 @@ foreach (var (eventId, (envelope, streamId)) in batchProcessedEvents) {
 
 // Terminal stages: once per event whose WhenAll gate is open
 foreach (var (eventId, (envelope, streamId)) in batchProcessedEvents) {
-  var tracking = coordinator.GetTracking(eventId);
+  var tracking = coordinator.GetTracking(LifecycleTrackingPath.Perspective, eventId);
   if (tracking is null || !coordinator.AreAllPerspectivesComplete(eventId)) {
     continue;  // still waiting on a perspective: keep the entry for a later batch
   }
@@ -481,7 +511,7 @@ foreach (var (eventId, (envelope, streamId)) in batchProcessedEvents) {
     await tracking.AdvanceToAsync(LifecycleStage.PostLifecycleDetached, scopedProvider, ct);
     await tracking.AdvanceToAsync(LifecycleStage.PostLifecycleInline, scopedProvider, ct);
   } finally {
-    coordinator.AbandonTracking(eventId);  // EXIT: also on receptor failure and cancellation
+    coordinator.AbandonTracking(LifecycleTrackingPath.Perspective, eventId);  // EXIT: also on receptor failure and cancellation
   }
 }
 ```
@@ -493,14 +523,14 @@ The worker ends what it begins. The `finally` is why a failing terminal-stage re
 ```csharp{title="Dispatcher Integration" description="Independent lifecycle for local dispatch" category="Architecture" difficulty="INTERMEDIATE" tags=["Lifecycle", "Dispatcher", "Local"] unverified="verified by PostLifecyclePipelineTests, which is outside the current coverage map"}
 // ENTRY: Begin tracking
 var tracking = coordinator.BeginTracking(
-  messageId, envelope, LifecycleStage.PostLifecycleDetached, MessageSource.Local);
+  LifecycleTrackingPath.LocalDispatch, messageId, envelope, LifecycleStage.PostLifecycleDetached, MessageSource.Local);
 
 // Fire PostLifecycle
 await tracking.AdvanceToAsync(LifecycleStage.PostLifecycleDetached, scopedProvider, ct);
 await tracking.AdvanceToAsync(LifecycleStage.PostLifecycleInline, scopedProvider, ct);
 
-// EXIT: processing complete
-coordinator.AbandonTracking(messageId);
+// EXIT: processing complete; ends only the LocalDispatch entry, never the perspective worker's
+coordinator.AbandonTracking(LifecycleTrackingPath.LocalDispatch, messageId);
 ```
 
 ---
@@ -520,7 +550,7 @@ The coordinator supports two execution modes, matching the natural patterns of e
 
 The coordinator is a **singleton** registered in DI. It uses `ConcurrentDictionary` for tracking state and atomic operations for WhenAll completion signaling. Multiple workers can concurrently:
 
-- Begin/abandon tracking for different events
+- Begin/abandon tracking for different events, or for the same event on different paths
 - Advance different events through stages
 - Signal segment completion for WhenAll
 

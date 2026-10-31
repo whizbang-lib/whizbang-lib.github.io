@@ -423,9 +423,15 @@ Compile-time errors, warnings and notices from Whizbang's source generators and 
 | WHIZ106 | Error | [Collective apply must not query other perspectives at apply time](whiz106.md) |
 | WHIZ107 | Warning | [Apply never receives a null model](whiz107.md) |
 | WHIZ108 | Warning | [An overwrite-only perspective's Apply must not read its current model](whiz108.md) |
+| WHIZ109 | Error | [Apply handles an event no perspective interface lists](whiz109.md) |
 | WHIZ110 | Warning | [Message Missing [PinnedId]](whiz110.md) |
 | WHIZ111 | Warning | [Perspective Missing [PinnedId]](whiz111.md) |
 | WHIZ112 | Error | [Invalid [PinnedId] GUID](whiz112.md) |
+| WHIZ113 | Error | [Method looks like a misspelled Apply](whiz113.md) |
+| WHIZ114 | Error | [Two Apply methods handle the same event](whiz114.md) |
+| WHIZ115 | Error | [Apply returns a shape its interface does not declare](whiz115.md) |
+| WHIZ116 | Error | [Collective Apply does not match the shape the framework binds](whiz116.md) |
+| WHIZ117 | Error | [Event is listed only by an interface that declares no Apply for it](whiz117.md) |
 | WHIZ120 | Error | [Pinned Type Renamed Without Ledger Acknowledgment](whiz120.md) |
 | WHIZ121 | Warning | [Pinned-Type Ledger Entry Has No Living Type](whiz121.md) |
 | WHIZ122 | Warning | [Pinned-Type Ledger Could Not Be Parsed](whiz122.md) |
@@ -445,7 +451,7 @@ Compile-time errors, warnings and notices from Whizbang's source generators and 
 | WHIZ163 | Warning | [Type-Name Key Assigned From A Hand-Built String](whiz163.md) |
 | WHIZ170 | Warning | [[InheritScope] on a Perspective Class Has No Effect](whiz170.md) |
 | WHIZ171 | Info | [[InheritScope] With All-None Flags Gives Rows No Scope](whiz171.md) |
-| WHIZ200 | Warning | [Perspective model should use List<T> instead of array](whiz200.md) |
+| WHIZ200 | Warning | [An array of records stores the perspective model as one opaque document](whiz200.md) |
 | WHIZ300 | Error | [Inconsistent Perspective Model Types](whiz300.md) |
 | WHIZ302 | Warning | [Filtered Perspective Field Has No Index](whiz302.md) |
 | WHIZ303 | Warning | [Declared Index Cannot Be Built For This Field''s Type](whiz303.md) |
