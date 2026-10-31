@@ -25,7 +25,7 @@ lastMaintainedCommit: '01f07906'
 # Perspective Discovery
 
 :::updated
-**Interface renamed in the shipped library (verified at commit `0bc6065b`)**: perspectives implement **`IPerspectiveFor<TModel, TEvent1, ...>`** (model first, up to 20 event types) with **pure `Apply(TModel, TEvent) → TModel` functions** — not the earlier `IPerspectiveOf<TEvent>`/`UpdateAsync` design this page previously described. The framework owns persistence: your perspective never touches the database. Apply methods MUST be pure (no I/O, no side effects, deterministic) — the `PerspectivePurityAnalyzer` enforces this at build time (WHIZ100+ errors).
+**Interface renamed in the shipped library (verified at commit `0bc6065b`)**: perspectives implement **`IPerspectiveFor<TModel, TEvent1, ...>`** (model first, up to 50 event types per implementation) with **pure `Apply(TModel, TEvent) → TModel` functions**, not the earlier `IPerspectiveOf<TEvent>`/`UpdateAsync` design this page previously described. The framework owns persistence: your perspective never touches the database. Apply methods MUST be pure (no I/O, no side effects, deterministic); the `PerspectivePurityAnalyzer` enforces this at build time (WHIZ100+ errors).
 :::
 
 The **PerspectiveDiscoveryGenerator** discovers all `IPerspectiveFor<TModel, TEvent...>` implementations at compile-time and generates zero-reflection DI registration code. Perspectives are event-driven read models: pure functions that fold events into a denormalized model which the framework persists for you.
@@ -179,7 +179,7 @@ public sealed record PerspectiveAssociationInfo<TModel, TEvent>(
 ```
 
 **Key Observations**:
-- One perspective class can handle **multiple events** (one interface with up to 20 event type arguments)
+- One perspective class can handle **multiple events** (up to 50 event type arguments per interface, and the interface may be implemented any number of times)
 - Multiple perspectives can handle the **same event**
 - Registered as **Scoped** to match typical database-context lifetime
 - `AddWhizbangPerspectives()` returns a **`WhizbangPerspectiveBuilder`** so you can chain storage-provider configuration
