@@ -22,6 +22,8 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/005_CreateCompletePerspectiveCheckpointFunction.sql
   - src/Whizbang.Core/Attributes/OverwriteOnlyAttribute.cs
   - src/Whizbang.Core/Perspectives/LastInReplayOrder.cs
+  - src/Whizbang.Core/Perspectives/IPerspectiveSnapshotStore.cs
+  - src/Whizbang.Core/Archival/ArchiveAwareEventStoreDecorator.cs
 testReferences:
   - tests/Whizbang.Core.Tests/Perspectives/PerspectiveRewindOptionsTests.cs
   - tests/Whizbang.Core.Tests/Perspectives/PerspectiveSnapshotAndRewindTests.cs
@@ -123,6 +125,18 @@ Inside `RewindAndRunAsync`, the runner asks the [snapshot store](snapshots.md) f
 The runner logs the decision it actually made at **Warning** (`Restoring … from snapshot at …` versus `… performing full replay …`). This is the authoritative record of the snapshot-vs-full outcome — the worker-emitted `replay_source`/`has_snapshot` observability signals report something subtly different (see [Snapshot-usage caveat](#snapshot-usage-caveat)).
 
 Snapshots are created automatically during normal processing every `SnapshotEveryNEvents` events (default 100) and — during a rewind replay — at additional historical points every `RewindSnapshotIntervalEvents` events (default 10), so future rewinds for "very late" events still find something to roll back to. See [Perspective Snapshots](snapshots.md) for the store interface, `PerspectiveSnapshotOptions`, and tuning.
+
+### A snapshot an archive covers {#archived-snapshot}
+
+{verified: PerspectiveRewindWriteCheckTests.ARewindFromASnapshotTheArchiveCovers_ReadsThroughTheArchive_AboveTheSnapshotsVersionAsync, PerspectiveRewindWriteCheckTests.ARewindFromASnapshotNoArchiveCovers_ReadsOnlyTheHotEventsAfterItAsync, PerspectiveRewindWriteCheckTests.AMarkedSnapshotWithNoVersion_IsNotUsed_TheRewindReplaysFromTheStartAsync}
+
+When part of the stream has been [archived](../events/archive-store#read-through), the snapshot the runner restores may
+sit below the archive's cut: its row records how far the archive reaches (`archived_through_version`). The replay's
+first pass then reads the archived events above the snapshot's version before the hot events after it
+(`IEventStore.ReadPolymorphicThroughArchiveAsync`), so nothing between the snapshot and the cut is skipped. A snapshot no
+archive covers reads only hot events, and a covered snapshot that records no stream version is not used: the rewind
+replays from the start, which reads through the archive by its gap. A rewind to a perspective's latest snapshot never
+needs the archive, because a prefix archive never takes it ([the archive rules](../events/archive-store#the-archive-rules)).
 
 ### Catch-up loop
 

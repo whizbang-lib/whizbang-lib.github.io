@@ -34,6 +34,7 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/PerspectiveRebuilderIntegrationTests.cs
   - tests/Whizbang.Core.Tests/Commands/System/SystemCommandsTests.cs
   - tests/Whizbang.Core.Tests/Commands/System/RebuildPerspectiveCommandSplitTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/ArchiveReadThroughIntegrationTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -141,6 +142,16 @@ var result = await rebuilder.RebuildStreamsAsync("OrderPerspective", corruptedSt
 A rebuild folds each stream in the order it was written: its versions, as the [rewind](rewind) does. Folding by commit sequence was wrong for streams whose rows were stamped after the fact, because their sequences can run backward against their versions. Such a rebuild applied the last write first and left every field that a later event overwrote holding an older value, not only the field the rebuild was run to repair.
 
 The rebuilt row records the **highest commit sequence among the events it folded** as its position, as the rewind's frontier does, not the sequence of the last event it applied. In stream order the last event can carry the lowest sequence on the stream. The perspective store refuses a write whose position sits below the stored one, so recording that sequence would fold the right value and then fail to write it, which matters most when repairing a row a commit-order rebuild left behind.
+
+### Archived streams {#archived-streams}
+
+{verified: ArchiveReadThroughIntegrationTests.Rebuild_AHotStream_AndOneArchivedThroughAPrefix_FoldToTheSameRowAsync}
+
+A rebuild reads each stream from its start, so a stream archived through a prefix is read through the
+[archive](../events/archive-store#read-through) and folds to the same row as the same stream never archived. With
+`Whizbang:Archive:ReadThrough` set to `false`, a rebuild folds only what is hot. A stream archived whole has no hot
+event for the rebuilt cursor to name, and the EF Core schema's cursor foreign key refuses one; restore it before
+rebuilding it.
 
 ## RebuildResult {#reading-the-result}
 

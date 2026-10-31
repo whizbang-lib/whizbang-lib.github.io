@@ -14,6 +14,9 @@ tags: >-
   configuration, options, environment variables, appsettings, reference,
   binding
 codeReferences:
+  - src/Whizbang.Core/Archival/ArchiveOptions.cs
+  - src/Whizbang.Core/Archival/StreamLifecycleOptions.cs
+  - src/Whizbang.Core/Archival/ArchiveOptionsBinder.cs
   - src/Whizbang.Core/Configuration/UnknownConfigurationKeyCheck.cs
   - src/Whizbang.Core/Configuration/UnknownConfigurationKeyStartupValidator.cs
   - src/Whizbang.Core/Configuration/RemovedConfigurationKeyAttribute.cs
@@ -53,6 +56,7 @@ codeReferences:
   - src/Whizbang.Core/Configuration/EphemeralPointerPruneOptions.cs
   - src/Whizbang.Data.Postgres/RetentionSettingsWriter.cs
 testReferences:
+  - tests/Whizbang.Core.Tests/Archival/StreamLifecycleOptionsBinderTests.cs
   - tests/Whizbang.Core.Tests/Workers/TableRewriteStrategyTests.cs
   - tests/Whizbang.Core.Tests/Workers/PartitionManagementStrategyTests.cs
   - tests/Whizbang.Core.Tests/Workers/OnlineTableRewriteStepTests.cs
@@ -195,6 +199,8 @@ Removed keys the library declares:
 | `Whizbang:BodyOffload:Cipher` | the built-in body cipher (`AesGcmEnvelopeCipher`) | Opt-in helper |
 | `Whizbang:Offloads:AzureBlob:<name>` | `AzureBlobOffloadOptions` | Opt-in helper |
 | `Whizbang:Archive:AzureBlob` | `AzureBlobArchiveOptions` | Opt-in helper (`AddWhizbangAzureBlobArchive`) |
+| `Whizbang:Archive` (`ReadThrough`) | `ArchiveOptions` | Automatic (worker pipeline, event store decoration); see [Archive and stream lifecycle](#archive-and-stream-lifecycle-options) |
+| `Whizbang:StreamLifecycle` (`Types:<StreamType>:AppendToArchived`) | `StreamLifecycleOptions` | Automatic (worker pipeline); see [Archive and stream lifecycle](#archive-and-stream-lifecycle-options) |
 | `Whizbang:Workers:PinnedPool` | `WhizbangPinnedPoolOptions` | Automatic (`AddWhizbangPinnedPool()`) |
 | `Whizbang` | `WhizbangOptions` | Automatic (worker pipeline) |
 | `Whizbang:SchemaInitialization` | `SchemaInitializationOptions` | Automatic |
@@ -568,6 +574,16 @@ builder.Services.AddWhizbangAzureBlobArchive(builder.Configuration);
 | `ContainerName` | `string` | `whizbang-archive` | `Whizbang__Archive__AzureBlob__ContainerName` | Container the archive objects are written to; created on the first write |
 | `CompressionLevel` | `int` | `4` | `Whizbang__Archive__AzureBlob__CompressionLevel` | Brotli quality, 0 to 11 ([why 4](../../fundamentals/events/archive-store#azure-blob-configuration)) |
 | `MaxEventsPerChunk` | `int` | `10000` | `Whizbang__Archive__AzureBlob__MaxEventsPerChunk` | Most events one archive object holds; 1 or more |
+
+### Archive and stream lifecycle {#archive-and-stream-lifecycle-options}
+
+Bound by hand and validated when the host starts: a value that is not a boolean, or not a policy name, fails the start
+naming the key ([why](../../fundamentals/events/archive-store#configuration)).
+
+| Key | Type | Default | Environment variable | Purpose |
+|-----|------|---------|----------------------|---------|
+| `Whizbang:Archive:ReadThrough` | `bool` | `true` | `Whizbang__Archive__ReadThrough` | A read from the start of a stream reads archived events back when the hot store shows a gap ([read-through](../../fundamentals/events/archive-store#read-through)) |
+| `Whizbang:StreamLifecycle:Types:<StreamType>:AppendToArchived` | `AppendToArchivedPolicy` | `Refuse` | `Whizbang__StreamLifecycle__Types__<StreamType>__AppendToArchived` | What an append to a stream of that type archived whole does: `Refuse` or `AutoRestore` ([the policy](../../fundamentals/events/archive-store#appending-to-an-archived-stream)); `NewGeneration` ships with #1734 and fails the start until then |
 
 ## Code-Configured Options: The Binding Recipe
 
