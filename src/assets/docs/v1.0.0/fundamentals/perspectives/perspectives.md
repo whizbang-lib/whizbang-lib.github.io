@@ -24,6 +24,7 @@ codeReferences:
   - src/Whizbang.Generators/PerspectivePurityAnalyzer.cs
   - src/Whizbang.Generators/Templates/PerspectiveRunnerTemplate.cs
   - src/Whizbang.Generators/Utilities/PerspectiveDiscoveryHelper.cs
+  - src/Whizbang.Generators.Shared/Models/MappedPathDiscovery.cs
   - >-
     samples/ECommerce/ECommerce.BFF.API/Perspectives/ProductCatalogPerspective.cs
   - >-
@@ -37,6 +38,11 @@ testReferences:
     tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/PerspectiveLateEventApplyTests.cs
   - >-
     tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/PerspectiveRowVersionIntegrationTests.cs
+  - tests/Whizbang.Generators.Tests/MappedPathDiscoveryTests.cs
+  - >-
+    tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/RecordArrayRoundTripTests.cs
+  - >-
+    tests/Whizbang.Data.Dapper.Postgres.Tests/Perspectives/DapperRecordArrayRoundTripTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -743,6 +749,47 @@ public record InventoryLevelsDto {
 ```
 
 Each read model has its own **perspective** and **table schema** optimized for its queries.
+
+### Collections in read models {#model-collections}
+
+On the Entity Framework driver a model is stored one of two ways. On the **mapped** path, Entity Framework maps the model property by property into the `data` column, so its fields can be indexed and filtered with [containment queries](jsonb-containment.md). When the mapped path cannot read a member back, the generator stores the whole model as one **opaque** document instead: it reads and writes correctly, but nothing inside it is a mapped property, so declared indexes on it are skipped and [WHIZ304](../../operations/diagnostics/whiz304.md) says why. The Dapper driver reads a model from its serialized document, so this choice is the Entity Framework driver's; arrays of records read back on both.
+
+How a collection member is declared decides which path the model takes:
+
+| Member | Storage | Indexable fields |
+|--------|---------|------------------|
+| An array of primitives (`string[]`, `Guid[]`, `int[]`, an enum array) | Mapped, as a value | Yes |
+| `List<T>`, `IList<T>` or `ImmutableList<T>` of records | Mapped | Yes |
+| An array of records (`T[]` of a non-primitive element), or an array of arrays, at any depth | Opaque | No |
+| `IReadOnlyList<T>`, `IReadOnlyCollection<T>`, `ICollection<T>` or `IEnumerable<T>` of records | Opaque | No |
+
+"At any depth" includes an array inside a collection element, such as a `Tag[]` on the records of a `List<Group>`: the whole model is stored opaquely.
+
+```csharp{title="Arrays and lists of records on a read model" description="An array of records stores the model as one opaque document; a List of records keeps it mapped and indexable." category="Perspectives" difficulty="INTERMEDIATE" tags=["Perspectives", "Read Models", "EF Core", "Collections"] tests=["MappedPathDiscoveryTests.AnArrayOfAComplexElementIsReportedAsync", "MappedPathDiscoveryTests.ACollectionTheMappedPathCanFillIsNotReportedAsync", "RecordArrayRoundTripTests.ArraysOfRecords_TopLevelAndNested_ReadBackAsWrittenAsync"]}
+public record Tag(Guid TagId, string Label);
+
+// Stored as one opaque document: reads back, but its fields are not indexable
+public record TaggedOrderModel {
+  [StreamId]
+  public Guid OrderId { get; init; }
+  public Tag[] Tags { get; init; } = [];
+}
+
+// Stays on the mapped path: reads back, and its fields can be indexed
+public record IndexedTaggedOrderModel {
+  [StreamId]
+  public Guid OrderId { get; init; }
+  public List<Tag> Tags { get; init; } = [];
+}
+```
+
+To keep a model with a collection of records indexable, declare the member as `List<T>`.
+
+{verified: MappedPathDiscoveryTests.AnArrayOfAComplexElementIsReportedAsync, MappedPathDiscoveryTests.AnArrayInsideACollectionElementIsNamedByItsPathAsync, MappedPathDiscoveryTests.AnArrayOfArraysIsReportedAsync, MappedPathDiscoveryTests.AnArrayOfPrimitivesIsNotReportedAsync, MappedPathDiscoveryTests.ACollectionTheMappedPathCanFillIsNotReportedAsync, MappedPathDiscoveryTests.ACollectionTheMappedPathCannotFillIsReportedAsync, RecordArrayRoundTripTests.ArraysOfRecords_TopLevelAndNested_ReadBackAsWrittenAsync, RecordArrayRoundTripTests.ArraysOfRecords_ReadThroughTheContextQuery_ReadBackAsWrittenAsync, RecordArrayRoundTripTests.ARowWrittenBeforeTheChange_StillReadsAsync, RecordArrayRoundTripTests.ArraysOfPrimitives_ReadBackAsWrittenAsync, DapperRecordArrayRoundTripTests.ArraysOfRecords_TopLevelAndNested_ReadBackAsWrittenAsync}
+
+:::updated
+A model holding an array of records used to stay on the mapped path. Entity Framework accepted it while building the model and then refused it at the first read ("Collection navigations cannot be arrays") and when the change tracker took its snapshot ("Collection was of a fixed size"), with nothing at build time saying so. Such a model is now stored as one opaque document, so `T[]` of records reads back on both drivers with no change to the model, and rows written before the change still read. An array of primitives stays mapped. Switch the member to `List<T>` if you need its fields indexed.
+:::
 
 ---
 
