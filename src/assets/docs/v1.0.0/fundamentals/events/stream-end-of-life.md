@@ -360,7 +360,10 @@ partial index on `stream_id` holding only the sealed streams, so the probe is as
 streams, whatever the size of the ledger. The index is partial on `sealed_at`, which an append never writes, so an
 append's ledger update stays heap-only. The outbox chain notes whether the batch carries a terminal event in the read
 that finds the batch's streams for their locks, so nothing re-reads the batch; only a batch with a sealed stream or a
-terminal event pays for the refusal.
+terminal event pays for the refusal. Since migration 271 the same probe also answers whether a stream of the batch is
+[archived](archive-store#appending-to-an-archived-stream): it reads `idx_stream_lifecycle_closed`, a partial index holding
+the sealed and the archived streams, in place of `idx_stream_lifecycle_sealed`, so the check still costs one probe per
+stream of the batch.
 {verified: StreamSealingSqlTests.SealedProbe_ReadsOnlyThePartialIndexOfSealedStreamsAsync, StreamLifecycleLedgerSqlTests.AppendWithinTheHour_IsAHeapOnlyUpdate_WhileAnIndexedColumnChangeIsNotAsync, StreamLifecycleLedgerSqlTests.TheLedger_IndexesOnlyItsKeyStateAndDueTime_AndLeavesRoomOnEachPageAsync}
 
 Measured as the ledger was ([What it costs](#what-it-costs)): the same 500-event batches through the outbox chain with

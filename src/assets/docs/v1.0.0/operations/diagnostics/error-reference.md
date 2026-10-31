@@ -12,6 +12,7 @@ tags: 'errors, error-reference, troubleshooting, runtime, logs, dead-letter-queu
 codeReferences:
   - src/Whizbang.Core/ReceptorNotFoundException.cs
   - src/Whizbang.Core/Messaging/StreamSealedException.cs
+  - src/Whizbang.Core/Archival/StreamArchivedException.cs
   - src/Whizbang.Core/Dispatcher.cs
   - src/Whizbang.Core/Workers/TransportPublishStrategy.cs
   - src/Whizbang.Core/Workers/PerspectiveWorker.cs
@@ -130,6 +131,19 @@ Stream {streamId} was sealed at {sealedAt} and refuses appends. Reason: {reason}
 **Trigger**: An event was appended to a stream that was sealed, either finalized with `IStreamFinalizer.FinalizeAsync` or ended by a `[TerminalEvent]`. A direct append, or an outbox write its caller awaits (the immediate and scoped strategies), throws and stores nothing; an event written by a background flush or received through the inbox is dead-lettered, and the rest of its batch is stored.
 
 **Fix**: A sealed stream has ended; append to a new stream. If the seal was a mistake, the dead letter keeps the whole message for an operator to decide. See [Stream End of Life](../../fundamentals/events/stream-end-of-life.md#a-sealed-stream-refuses-appends).
+
+### Stream is archived and refuses appends
+
+```text
+Stream {streamId} is archived through version {lastVersion} and refuses appends (AppendToArchived Refuse).
+Stream {streamId} is archived through version {lastVersion}; the append waits for its restore (AppendToArchived AutoRestore).
+```
+
+**Source**: `StreamArchivedException` (thrown by `IEventStore.AppendAsync` and by an awaited outbox flush on both Postgres drivers, from SQLSTATE `WHA01` under `Refuse` or `WHA02` under `AutoRestore`; `Policy` says which); the same text is the error of a `StreamArchived` (26) or `AwaitingRestore` (27) dead letter.
+
+**Trigger**: An event was appended to a stream archived whole. Under `Refuse` (the default) a direct append or an awaited outbox write throws and stores nothing, and a background write is dead-lettered alone. Under `AutoRestore` the framework restores the stream and retries an awaited write once, so the exception reaches a caller only when that restore did not put the stream back; a background write is dead-lettered awaiting the restore it queues.
+
+**Fix**: Restore the stream (`IArchiveStore.RestoreAsync`) and recover the dead letters, or declare `AppendToArchived: AutoRestore` for the stream's type. See [Archive Store](../../fundamentals/events/archive-store.md#appending-to-an-archived-stream).
 
 ## Dispatch & Receptors
 

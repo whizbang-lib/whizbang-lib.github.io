@@ -132,8 +132,10 @@ were stored as background work on partition 0.
 | `OutboxStoreFailed` (23, [outbox batcher](../../extending/internals/outbox-batch-strategy.md#when-a-flush-fails)) | AggressiveRetry | 5 | 1 min | HoldForReview |
 | `InboxStoreFailed` (24, [inbox batcher](../../extending/internals/inbox-batch-strategy.md#when-a-flush-fails)) | AggressiveRetry | 5 | 1 min | HoldForReview |
 | `StreamSealed` (25, [a sealed stream](../../fundamentals/events/stream-end-of-life.md#a-sealed-stream-refuses-appends)) | HoldForReview | 0 | none | HoldForReview |
+| `StreamArchived` (26, [an archived stream under Refuse](../../fundamentals/events/archive-store.md#appending-to-an-archived-stream)) | HoldForReview | 0 | none | HoldForReview |
+| `AwaitingRestore` (27, [an archived stream under AutoRestore](../../fundamentals/events/archive-store.md#restore-requests); held by its restore request until the restore makes it due) | AfterRestore | 3 | 1 min | HoldForReview |
 
-{verified: DefaultDeadLetterRecoveryPolicyTests.GetPolicy_OutboxStoreFailed_RetriesAggressivelyThenHoldsAsync, DefaultDeadLetterRecoveryPolicyTests.GetPolicy_InboxStoreFailed_RetriesAggressivelyThenHoldsAsync, DefaultDeadLetterRecoveryPolicyTests.GetPolicy_StreamSealed_HoldsForReviewWithoutRetryAsync}
+{verified: DefaultDeadLetterRecoveryPolicyTests.GetPolicy_OutboxStoreFailed_RetriesAggressivelyThenHoldsAsync, DefaultDeadLetterRecoveryPolicyTests.GetPolicy_InboxStoreFailed_RetriesAggressivelyThenHoldsAsync, DefaultDeadLetterRecoveryPolicyTests.GetPolicy_StreamSealed_HoldsForReviewWithoutRetryAsync, DefaultDeadLetterRecoveryPolicyTests.GetPolicy_StreamArchived_HoldsForReviewWithoutRetryAsync, DefaultDeadLetterRecoveryPolicyTests.GetPolicy_AwaitingRestore_RedrivesSoonAfterTheRestore_ThenHoldsAsync}
 
 "After exhaustion" is driven by `RecoveryPolicy.HoldForReviewAfterExhaustion`:
 once `recovery_attempts` reaches the policy's `MaxRecoveryAttempts`, the

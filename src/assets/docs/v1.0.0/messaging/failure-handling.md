@@ -92,6 +92,8 @@ public enum MessageFailureReason {
     OutboxStoreFailed = 23,                    // Outbox batcher could not store an accepted message
     InboxStoreFailed = 24,                     // Inbox batcher could not store an accepted message
     StreamSealed = 25,                         // Event refused: its stream is sealed (finalized or ended)
+    StreamArchived = 26,                       // Event refused: its stream is archived and its type refuses appends
+    AwaitingRestore = 27,                      // Event refused: its stream is archived; held until its restore
     Unknown = 99                               // Default (not classified)
 }
 ```
