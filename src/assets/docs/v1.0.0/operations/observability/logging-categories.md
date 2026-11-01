@@ -19,6 +19,13 @@ codeReferences:
   - src/Whizbang.Core/Workers/InboxDrainWorker.cs
   - src/Whizbang.Core/Workers/InboxDispatchWorker.cs
   - src/Whizbang.Core/Workers/InboxHandlerWorker.cs
+  - src/Whizbang.Core/Workers/OutboxDrainWorker.cs
+  - src/Whizbang.Core/Workers/InboxFlushFailureRecorder.cs
+  - src/Whizbang.Core/Workers/OutboxFlushFailureRecorder.cs
+  - src/Whizbang.Core/Workers/DeadLetterLoggingOptions.cs
+  - src/Whizbang.Core/Observability/DeadLetterLog.cs
+  - src/Whizbang.Transports.AzureServiceBus/AzureServiceBusDeadLetterDrainer.cs
+  - src/Whizbang.Transports.RabbitMQ/RabbitMqDeadLetterDrainer.cs
   - src/Whizbang.Core/Tags/MessageTagProcessor.cs
   - src/Whizbang.Core/Observability/WhizbangStartupLog.cs
   - src/Whizbang.Data.EFCore.Postgres/WhizbangHostExtensions.cs
@@ -27,6 +34,23 @@ testReferences:
   - tests/Whizbang.Core.Tests/Workers/InboxDispatchWorkerHeldLeaseTests.cs
   - tests/Whizbang.Core.Tests/Workers/InboxDispatchWorkerControlPlaneDropLogTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/InboxHandlerWorkerTests.cs
+  - tests/Whizbang.Core.Tests/Observability/DeadLetterLogTests.cs
+  - tests/Whizbang.Core.Tests/Workers/DeadLetterLoggingOptionsTests.cs
+  - tests/Whizbang.Core.Tests/Workers/DeadLetterLoggingWiringTests.cs
+  - tests/Whizbang.Core.Tests/Workers/InboxDispatchWorkerDeadLetterLogTests.cs
+  - tests/Whizbang.Core.Tests/Workers/InboxDispatchWorkerUndeserializablePayloadTests.cs
+  - tests/Whizbang.Core.Tests/Workers/InboxFlushFailureRecorderTests.cs
+  - tests/Whizbang.Core.Tests/Workers/OutboxFlushFailureCallbackTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/InboxDispatchWorkerBranchCoverageTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/OutboxPublishWorkerDlqPromotionTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/PrePublishGateForensicPreservationTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerDeadLetterFilterTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/TransportConsumerWorkerUnstorableMessageTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/TransportConsumerWorkerPoisonQuarantineTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/SlidingWindowInboxFlushFailureTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/SlidingWindowOutboxFlushFailureTests.cs
+  - tests/Whizbang.Transports.AzureServiceBus.Tests/AzureServiceBusDeadLetterDrainerTests.cs
+  - tests/Whizbang.Transports.RabbitMQ.Tests/RabbitMqDeadLetterDrainerTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -87,11 +111,11 @@ To temporarily re-enable a category for debugging, set it to `"Debug"`:
 | Category | Description | Default Level |
 |----------|-------------|---------------|
 | `Whizbang.Core.Workers.PerspectiveWorker` | Perspective batch processing diagnostics — logs work item counts, stream/perspective grouping, and empty-batch warnings. | Debug |
-| `Whizbang.Core.Workers.OutboxPublishWorker` | Outbox publish worker — startup/shutdown summary at `Information`; publish failures, DLQ promotions, and missing-transport conditions at `Warning`. | Information |
+| `Whizbang.Core.Workers.OutboxPublishWorker` | Outbox publish worker: startup/shutdown summary at `Information`; publish failures below the attempt cap and missing-transport conditions at `Warning`; a message it dead-letters as the [dead-letter record](#dead-lettered-messages). | Information |
 | `Whizbang.Core.Workers.ClaimWorker` | Work-claim poller — startup/shutdown and NOTIFY-gate reconnects at `Information`; tick failures and heartbeat problems at `Warning`. | Information |
 | `Whizbang.Core.Workers.TransportConsumerWorker` | Transport consumer startup and subscription management. Logs a one-line summary at `Information` on start; per-destination and per-subscription detail at `Debug`. | Information |
 | `Whizbang.Core.Workers.InboxDrainWorker` | Inbox drain: turns claimed stream ids into queued inbox rows. Working-set budget hand-backs at `Information`; drain and hand-back failures at `Warning`. See [Inbox pipeline events](#inbox-pipeline-events). | Information |
-| `Whizbang.Core.Workers.InboxDispatchWorker` | Inbox dispatch and its lease keeper: dispatch failures, lease renewal failures, lapsed held rows and control-plane drops at `Warning`; skipped duplicate copies at `Debug`. | Information |
+| `Whizbang.Core.Workers.InboxDispatchWorker` | Inbox dispatch and its lease keeper: dispatch failures, lease renewal failures, lapsed held rows and control-plane drops at `Warning`; skipped duplicate copies at `Debug`; a message it dead-letters as the [dead-letter record](#dead-lettered-messages). | Information |
 | `Whizbang.Core.Workers.InboxHandlerWorker` | Batched inbox commits: each failed commit (first five per flush, then a summary) at `Warning`. | Information |
 
 ### Transport
@@ -184,6 +208,108 @@ means.
 Categories are prefixed `Whizbang.Core.Workers.`. Every Warning above reaches the default `Information` level.
 {verified: InboxDrainWorkerGapTests.HandingBackFails_IsLoggedWithWhatItCostsAsync, InboxDispatchWorkerHeldLeaseTests.Keeper_ManyLapsesInOneSweep_LogTheFirstIndividually_ThenASummaryAsync, InboxDispatchWorkerHeldLeaseTests.Keeper_ManyRowsItsRenewalDidNotCover_LogTheFirstIndividually_ThenASummaryAsync, InboxDispatchWorkerControlPlaneDropLogTests.Drop_WithARecordedFailure_LogsTheErrorAndNamesItAsARecordedFailureAsync, InboxHandlerWorkerTests.ManyCommitFailuresInOneFlush_LogTheFirstIndividually_ThenOneSummaryOfTheRestAsync}
 
+## Dead-Lettered Messages {#dead-lettered-messages}
+
+A message is dead-lettered when it will not be processed unless it is recovered: its attempts ran out, it
+cannot be read, or it could not be stored. Every path that dead-letters a message logs the same record for it,
+once, so one query or one alert finds every dead letter in the service whichever component gave up on it.
+
+{verified: DeadLetterLogTests.MessageDeadLettered_LogsTheDocumentedEventIdAndNameAsync, InboxDispatchWorkerDeadLetterLogTests.MaxAttempts_MovedToTheDeadLetterStore_LogsOneErrorRecordWithTypeAndLastErrorAsync}
+
+| Field | Value |
+|---|---|
+| EventId | `1901` |
+| Event name | `MessageDeadLettered` |
+| Level | `Error` by default; `Warning` when [`Whizbang:DeadLetterLogging:Level`](../configuration/configuration-reference#dead-letter-logging) says so |
+| Category | The category of the path that dead-lettered the message (the table below) |
+| `MessageId` | The dead-lettered message. For a perspective event, its event work id |
+| `MessageType` | The message's type; `unknown` when the path cannot tell |
+| `DeadLetterReason` | Why it was dead-lettered, usually a `MessageFailureReason` name such as `MaxAttemptsExceeded`; for a broker dead letter, the broker's reason, or `none given by the broker` |
+| `LastError` | The last failure's recorded text; `none recorded` when there is none |
+| Exception | The last failure's exception, when the path has it. A path that only has the stored error text logs no exception and puts the text in `LastError` |
+
+```text{title="The dead-letter record" description="The line every dead-letter path logs once for a message it dead-letters, here for an inbox message whose attempts ran out" category="Observability" difficulty="INTERMEDIATE" tags=["dead-letter", "logging", "MessageDeadLettered", "EventId 1901"] tests=["InboxDispatchWorkerDeadLetterLogTests.MaxAttempts_MovedToTheDeadLetterStore_LogsOneErrorRecordWithTypeAndLastErrorAsync", "DeadLetterLogTests.MessageDeadLettered_LogsTheDocumentedEventIdAndNameAsync"]}
+fail: Whizbang.Core.Workers.InboxDispatchWorker[1901]
+      Message <id> of type <type> was dead-lettered (MaxAttemptsExceeded) and will not be
+      processed unless it is recovered. Last error: <the row's last recorded error>
+```
+
+### Every path that logs it {#dead-letter-record-paths}
+
+| Path | Category (`Whizbang.Core.Workers.` unless named) | `DeadLetterReason` | Last failure carried | Verified |
+|---|---|---|---|---|
+| Inbox: attempts exhausted, moved to `wh_dead_letters` | `InboxDispatchWorker` | `MaxAttemptsExceeded` | The row's recorded error, or the exhausted attempts when none was recorded | {verified: InboxDispatchWorkerDeadLetterLogTests.MaxAttempts_MovedToTheDeadLetterStore_LogsOneErrorRecordWithTypeAndLastErrorAsync, InboxDispatchWorkerDeadLetterLogTests.MaxAttempts_NoRecordedError_RecordNamesTheExhaustedAttemptsAsync} |
+| Inbox: attempts exhausted, finished for good without a move (no dead-letter store, or the move failed) | `InboxDispatchWorker` | `MaxAttemptsExceeded` | As above. The message is not in `wh_dead_letters`, so the record is its only trace | {verified: InboxDispatchWorkerDeadLetterLogTests.MaxAttempts_NoDeadLetterStore_LogsTheRecordForTheTerminalCompletionAsync, InboxDispatchWorkerDeadLetterLogTests.MaxAttempts_DeadLetterMoveThrows_LogsTheRecordForTheTerminalCompletionAsync} |
+| Inbox: a payload the serializer refuses | `InboxDispatchWorker` | `SerializationError` | The serializer's exception | {verified: InboxDispatchWorkerUndeserializablePayloadTests.Dispatch_PayloadRefused_DeadLetterRecordCarriesTheRefusalAtErrorAsync} |
+| Inbox: a composite over its own cap or the consumer's budget, or a failed fan-out | `InboxDispatchWorker` | `CompositeInnerEventLimitExceeded` or `CompositeExpansionFailure` | The refusal text | {verified: InboxDispatchWorkerBranchCoverageTests.CompositeOverOwnCap_MovedToTheDeadLetterStore_LogsTheDeadLetterRecordAtErrorAsync, InboxDispatchWorkerBranchCoverageTests.CompositeOverOwnCap_NoDeadLetterStore_LogsTheRecordForTheTerminalCompletionAsync, InboxDispatchWorkerBranchCoverageTests.CompositeOverConsumerBudget_NoDeadLetterStore_LogsTheRecordForTheTerminalCompletionAsync} |
+| Outbox publish worker: attempts at the cap | `OutboxPublishWorker` | `MaxAttemptsExceeded` | The publish exception when one was thrown, else the publish result's error | {verified: OutboxPublishWorkerDlqPromotionTests.SingularPublish_AttemptsAtCap_LogsTheDeadLetterRecordAtErrorWithTypeAndErrorAsync, OutboxPublishWorkerDlqPromotionTests.SingularPublish_ThrowsAtCap_RecordCarriesTheExceptionAsync} |
+| Outbox drain worker: the pre-publish gate | `OutboxDrainWorker` | `MaxAttemptsExceeded` | The row's recorded error | {verified: PrePublishGateForensicPreservationTests.PrePublishGate_Promotes_LogsTheDeadLetterRecordAtErrorAsync} |
+| Perspective worker: apply failures above the bound | `PerspectiveWorker` | `MaxAttemptsExceeded` | The failure and lease counts, perspective, stream and event | {verified: PerspectiveWorkerDeadLetterFilterTests.FailuresAboveMax_MovedToDeadLetters_LogsTheDeadLetterRecordAtErrorAsync} |
+| Transport consumer: a received message it cannot store ([custody](../dead-letter-queue/transport-recovery#custody-record)) | `TransportConsumerWorker` | The cause, such as `SerializationError` | The cause's exception and description, and the destination it came from | {verified: TransportConsumerWorkerUnstorableMessageTests.SerializationFails_LogsTheDeadLetterRecordAtErrorWithTypeAndCauseAsync} |
+| Transport consumer: a redelivery loop it quarantines | `TransportConsumerWorker` | `PoisonRedeliveryLoop` | The poison verdict; the type comes from the batch, or `unknown` when the message is not in it | {verified: TransportConsumerWorkerPoisonQuarantineTests.Batch_RedeliveryLoopQuarantined_LogsTheDeadLetterRecordAtErrorWithTypeAsync, TransportConsumerWorkerPoisonQuarantineTests.Batch_RedeliveryLoopForAMessageNotInTheBatch_RecordHasNoTypeAsync} |
+| Inbox and outbox batchers: a batch that could not be stored and was dead-lettered | `InboxFlushFailureRecorder`, `OutboxFlushFailureRecorder` | `InboxStoreFailed`, `OutboxStoreFailed` | The store failure's exception, or why it was abandoned at shutdown. One record per message in the batch | {verified: InboxFlushFailureRecorderTests.RecordAsync_CoordinatorDeadLetters_LogsOneDeadLetterRecordPerMessageAtErrorAsync, OutboxFlushFailureCallbackTests.RecordAsync_CoordinatorDeadLetters_LogsOneDeadLetterRecordPerMessageAtErrorAsync, InboxFlushFailureRecorderTests.RecordAsync_AbandonedWithoutAnError_RecordSaysWhyAsync} |
+| Azure Service Bus and RabbitMQ dead-letter drains: a broker dead letter taken into custody | `Whizbang.Transports.AzureServiceBus.AzureServiceBusDeadLetterDrainer`, `Whizbang.Transports.RabbitMQ.RabbitMqDeadLetterDrainer` | The broker's reason | The broker's description and the queue it came from | {verified: AzureServiceBusDeadLetterDrainerTests.DrainDeadLetterQueueAsync_Imported_LogsTheDeadLetterRecordAtErrorAsync, RabbitMqDeadLetterDrainerTests.Drain_Imported_LogsTheDeadLetterRecordAtErrorAsync, RabbitMqDeadLetterDrainerTests.Drain_ImportedWithoutTypeOrReason_RecordSaysSoAsync} |
+
+These are found by machine: every caller of the entry points that write `wh_dead_letters`
+(`IDeadLetterStore.MoveAsync`, `IWorkCoordinator.ImportBrokerDeadLetterAsync` and the batchers'
+`Store{Inbox,Outbox}DeadLettersAsync`), checked against the dead-letter metrics, which count an arrival on each
+of the same paths.
+
+**What gets no record.** A failure that will be retried is not a dead letter: the inbox dispatch worker and the outbox publish worker
+each log it at Warning (EventId 4 in both categories), and neither logs the record until the attempts run out.
+A row another path already moved gets none, because that path logged it; a drain that finds a message already in
+custody settles the broker copy and logs it at Information. A dropped [control-plane
+message](../dead-letter-queue/internal-dlq#control-plane-drops) is never dead-lettered (it is re-issued on its own
+cadence) and keeps its own Warning, EventId 11. A dead-letter move that fails logs its own failure and no record, and the
+message is retried, except where the inbox finishes the row for good anyway (attempts exhausted, a refused
+composite: above). Refusals the database makes inside the store
+functions on a write nobody awaits (a mixed-kind, sealed or archived stream) dead-letter rows with no process-side
+point to log from; a write that is awaited throws to its caller instead.
+{verified: InboxDispatchWorkerDeadLetterLogTests.Dispatch_ThatThrowsBelowTheBound_LogsWarningAndNoRecordAsync, OutboxPublishWorkerDlqPromotionTests.SingularPublish_ThrowsBelowCap_LogsTheAttemptAtWarningAndNoRecordAsync, InboxDispatchWorkerDeadLetterLogTests.MaxAttempts_RowAlreadyGone_LogsNoRecordAsync, InboxDispatchWorkerDeadLetterLogTests.MaxAttempts_ControlPlaneDrop_LogsTheDropAtWarningAndNoRecordAsync, PerspectiveWorkerDeadLetterFilterTests.FailuresAboveMax_MoveThrows_LogsNoRecordAsync, InboxFlushFailureRecorderTests.RecordAsync_DeadLetterWriteFails_LogsNoDeadLetterRecordAsync}
+
+### Why it is logged this way {#dead-letter-record-design}
+
+- **Error by default.** A dead-lettered message's business effect will not happen unless someone recovers it,
+  so it is logged where a service that alerts on Error hears about it. Before, it was a Warning with no type and
+  no failure, indistinguishable from a retry, and the only way to get an Error was to catch, log and rethrow in
+  every handler. {verified: DeadLetterLoggingOptionsTests.Default_IsErrorAsync, DeadLetterLoggingOptionsTests.Turnkey_NoSetting_ResolvesErrorAsync, DeadLetterLoggingOptionsTests.LevelFrom_NoOptions_IsErrorAsync}
+- **One event for every path.** Each path logs under its own category, but with the same EventId and name, so
+  an alert keys on `1901` or `MessageDeadLettered` once instead of on one line per component.
+  {verified: DeadLetterLogTests.MessageDeadLettered_LogsTheDocumentedEventIdAndNameAsync}
+- **One record per message.** The path that moved the message logs it; a path that finds it already moved logs
+  nothing, and the batchers log one record per message plus an Information summary of the batch (below), so a
+  dead letter never raises two alerts. {verified: InboxDispatchWorkerDeadLetterLogTests.MaxAttempts_RowAlreadyGone_LogsNoRecordAsync, SlidingWindowInboxFlushFailureTests.FlushFailsTransientlyOnEveryAttempt_DeadLettersTheBatchAfterMaxFlushAttemptsAsync, SlidingWindowOutboxFlushFailureTests.FlushFailsTransientlyOnEveryAttempt_DeadLettersTheBatchAfterMaxFlushAttemptsAsync}
+- **Per-attempt failures stay at Warning.** A retry may still succeed, so an attempt that fails is not an alert.
+  {verified: InboxDispatchWorkerDeadLetterLogTests.Dispatch_ThatThrowsBelowTheBound_LogsWarningAndNoRecordAsync, OutboxPublishWorkerDlqPromotionTests.SingularPublish_ThrowsBelowCap_LogsTheAttemptAtWarningAndNoRecordAsync}
+- **The level is an option, Warning or Error.** A service whose alerting should not fire on dead letters sets
+  [`Whizbang:DeadLetterLogging:Level`](../configuration/configuration-reference#dead-letter-logging) to `Warning`.
+  Every path, including the ones the transports build for themselves, reads the same bound value.
+  {verified: DeadLetterLoggingWiringTests.AddWhizbangWorkers_ConfiguredWarning_TheFlushRecordersLogTheRecordAtWarningAsync, DeadLetterLoggingWiringTests.AddTransportConsumer_ConfiguredWarning_TheConsumerLogsDeadLettersAtWarningAsync, AsbDeadLetterDrainerWiringTests.AddAzureServiceBusTransport_ConfiguredWarning_TheDrainerLogsDeadLettersAtWarningAsync, ServiceCollectionExtensionsTests.AddRabbitMQTransport_DeadLetterDrainer_ReadsTheBoundDeadLetterLevelAsync}
+
+A category's own filter still applies to the record. A category set to `None`, or above the record's level, hides
+that component's dead letters along with the rest of its output: the
+[recommended development configuration](#recommended) silences `PerspectiveWorker` and `TransportConsumerWorker`,
+which is fine on a laptop and wrong in production.
+
+### Lines the record replaced {#dead-letter-record-upgrade}
+
+**Upgrade note.** The default level changes from Warning to Error, so an alert keyed on Error may start firing for
+dead letters. To keep the old severity, set `Whizbang:DeadLetterLogging:Level` to `Warning`. A log query keyed on
+the retired lines reads EventId 1901 instead:
+
+| Before | Now |
+|---|---|
+| `InboxDispatchWorker` EventId 5, Warning (`dead-lettered message … attempts > max`) | The record |
+| `OutboxPublishWorker` EventId 6, Warning (`dead-lettered … moved to wh_dead_letters`) | The record |
+| `OutboxDrainWorker` EventId 10, Warning (`dead-lettered message … attempts > max`) | The record |
+| `PerspectiveWorker` dead-letter Warning (`dead-lettered perspective event …`, no EventId) | The record; the failure counts and identities are in `LastError` |
+| `TransportConsumerWorker` Error for a message it could not store (`could not be stored in the inbox and was dead-lettered with its body`) | The record, carrying the cause's exception. When custody fails too, the Critical line now names the cause's description |
+| `InboxDispatchWorker` EventId 76 (undeserializable payload), Error | Warning; the record that follows carries the serializer's exception at the configured level |
+| Batchers' `written to wh_dead_letters` batch summary, Error | Information; each message gets its own record from the recorder |
+| Azure Service Bus and RabbitMQ drains' `imported message … into wh_dead_letters (duplicate=…)` Information | The record for an import; a duplicate keeps an Information line saying the broker copy was settled |
+
+{verified: InboxDispatchWorkerUndeserializablePayloadTests.Dispatch_PayloadRefused_DeadLetterRecordCarriesTheRefusalAtErrorAsync, SlidingWindowInboxFlushFailureTests.FlushFailsTransientlyOnEveryAttempt_DeadLettersTheBatchAfterMaxFlushAttemptsAsync, SlidingWindowOutboxFlushFailureTests.FlushFailsTransientlyOnEveryAttempt_DeadLettersTheBatchAfterMaxFlushAttemptsAsync, TransportConsumerWorkerUnstorableMessageTests.SerializationFails_LogsTheDeadLetterRecordAtErrorWithTypeAndCauseAsync}
+
 ## Hierarchical Filtering {#hierarchy}
 
 .NET logging categories are hierarchical. Setting a parent category affects all children:
@@ -213,14 +339,31 @@ This sets **all** categories starting with `Whizbang` to `Warning`, including `W
 
 ## Log Levels Reference {#levels}
 
-| Level | Use |
-|-------|-----|
-| `Trace` | Hot-path per-message breadcrumbs (e.g. `ImmediateWorkCoordinatorStrategy` dispatch steps) — off unless explicitly enabled |
-| `Debug` | Step-level detail (individual migrations, SQL operations, batch grouping, per-subscription info) |
-| `Information` | Summaries and milestones (initialization complete, worker started, batch sizes) |
-| `Warning` | Recoverable issues (schema drift, failed maintenance, connection retries) |
-| `Error` | Failures that abort an operation (migration failure, SQL errors) |
-| `None` | Completely silent |
+| Level | Use | What it means for a message |
+|-------|-----|-----------------------------|
+| `Trace` | Hot-path per-message breadcrumbs (e.g. `ImmediateWorkCoordinatorStrategy` dispatch steps), off unless explicitly enabled | |
+| `Debug` | Step-level detail (individual migrations, SQL operations, batch grouping, per-subscription info) | |
+| `Information` | Summaries and milestones (initialization complete, worker started, batch sizes) | A batch the batchers dead-lettered is summarized here; each of its messages has its own record |
+| `Warning` | Recoverable issues (schema drift, failed maintenance, connection retries) | An attempt failed and will be retried. Also the dead-letter record, when `Whizbang:DeadLetterLogging:Level` is `Warning` |
+| `Error` | Failures that abort an operation (migration failure, SQL errors) | The message was [dead-lettered](#dead-lettered-messages) and will not be processed unless it is recovered (the default level of the record) |
+| `Critical` | Failures that put the host or a message's custody at risk | A received message could be neither stored nor dead-lettered; its batch is failed so the broker delivers it again |
+| `None` | Completely silent | |
+
+{verified: InboxDispatchWorkerDeadLetterLogTests.Dispatch_ThatThrowsBelowTheBound_LogsWarningAndNoRecordAsync, InboxDispatchWorkerDeadLetterLogTests.MaxAttempts_MovedToTheDeadLetterStore_LogsOneErrorRecordWithTypeAndLastErrorAsync, InboxDispatchWorkerDeadLetterLogTests.MaxAttempts_ConfiguredWarning_LogsTheRecordAtWarningAsync, TransportConsumerWorkerUnstorableMessageTests.CustodyUnavailable_BatchFailsAfterStoringNeighborsAsync}
+
+Some per-attempt failures are still logged at Error, so an alert on Error alone also sees failures that will be
+retried:
+
+| Line | Category | What it is |
+|---|---|---|
+| EventId 7, `publish threw for <id>` | `Whizbang.Core.Workers.OutboxDrainWorker` | A whole publish batch threw; every row goes back to the failure channel and is retried |
+| EventId 14, `Error processing perspective cursor` | `Whizbang.Core.Workers.PerspectiveWorker` | A perspective's apply failed for a stream; its rows are parked with backoff and retried |
+| `Error processing message` and `Error processing session message` (no EventId) | `Whizbang.Transports.AzureServiceBus.AzureServiceBusTransport` | A delivery's processing threw; Service Bus abandons it for redelivery, or dead-letters it at the broker after `MaxDeliveryAttempts` |
+
+The batchers also log a batch they could not dead-letter either (`could not be written to wh_dead_letters either`)
+at Error, not Critical: those messages are lost unless their source sends them again.
+
+To alert on dead letters alone, key on EventId 1901 or the name `MessageDeadLettered` rather than on the level.
 
 ## Recommended Development Configuration {#recommended}
 

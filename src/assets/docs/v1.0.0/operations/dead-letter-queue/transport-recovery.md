@@ -20,6 +20,8 @@ codeReferences:
   - src/Whizbang.Transports.AzureServiceBus/AzureServiceBusFleetDeadLetterDrainer.cs
   - src/Whizbang.Transports.AzureServiceBus/AzureServiceBusNamespacesDeadLetterDrainer.cs
   - src/Whizbang.Transports.RabbitMQ/RabbitMqDeadLetterDrainer.cs
+  - src/Whizbang.Core/Observability/DeadLetterLog.cs
+  - src/Whizbang.Core/Workers/TransportConsumerWorker.cs
 testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/RecoveredBrokerDeadLetterDispatchIntegrationTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/BrokerDeadLetterImportSqlTests.cs
@@ -27,6 +29,8 @@ testReferences:
   - tests/Whizbang.Transports.AzureServiceBus.Tests/AzureServiceBusDeadLetterDrainerTests.cs
   - tests/Whizbang.Transports.AzureServiceBus.Tests/AsbNamespacesDeadLetterDrainerTests.cs
   - tests/Whizbang.Transports.RabbitMQ.Tests/RabbitMqDeadLetterDrainerTests.cs
+  - tests/Whizbang.Transports.AzureServiceBus.Tests/AsbDeadLetterDrainerWiringTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/TransportConsumerWorkerUnstorableMessageTests.cs
 ---
 
 # Transport DLQ Recovery
@@ -176,6 +180,36 @@ the no-consumer gates and the inbox drain unwrap an envelope-wrapped name to its
 
 Before this, every recovered broker dead letter was skipped by the inbox gate as `RegistryChanged`,
 because nothing consumes an envelope type.
+
+### The dead-letter record {#custody-record}
+
+A drain logs one record for each message it takes into custody: EventId 1901, `MessageDeadLettered`,
+the same record every other dead-letter path logs (see
+[dead-lettered messages](../observability/logging-categories#dead-lettered-messages)). It names the
+message id, the payload type the envelope type wraps (`unknown` when the broker message names none), the
+broker's reason as the dead-letter reason (`none given by the broker` when it gave none) and, as the last
+error, the broker's description followed by the queue it came from. It is logged at Error by default, or
+at Warning when [`Whizbang:DeadLetterLogging:Level`](../configuration/configuration-reference#dead-letter-logging)
+says so.
+
+A message the import finds already in custody (a duplicate) is settled on the broker and logged at
+Information without a record, so a message re-offered by the broker never raises a second alert. The
+transport consumer logs the same record when it gives custody to a message it cannot store, carrying the
+exception that stopped it; when custody fails too, it logs a Critical line naming the cause and fails the
+batch so the broker delivers the message again.
+
+{verified: AzureServiceBusDeadLetterDrainerTests.DrainDeadLetterQueueAsync_Imported_LogsTheDeadLetterRecordAtErrorAsync, AzureServiceBusDeadLetterDrainerTests.DrainDeadLetterQueueAsync_ConfiguredWarning_LogsTheRecordAtWarningAsync, RabbitMqDeadLetterDrainerTests.Drain_Imported_LogsTheDeadLetterRecordAtErrorAsync, RabbitMqDeadLetterDrainerTests.Drain_ImportedWithoutTypeOrReason_RecordSaysSoAsync, RabbitMqDeadLetterDrainerTests.Drain_ConfiguredWarning_LogsTheRecordAtWarningAsync, TransportConsumerWorkerUnstorableMessageTests.SerializationFails_LogsTheDeadLetterRecordAtErrorWithTypeAndCauseAsync, TransportConsumerWorkerUnstorableMessageTests.CustodyUnavailable_BatchFailsAfterStoringNeighborsAsync}
+
+The drainers `AddAzureServiceBusTransport` and `AddRabbitMQTransport` register read the configured level,
+for every namespace and queue they cover. A drainer you construct yourself, as in the registrations above,
+takes the level as its optional `deadLetterLogLevel` argument, which defaults to `Error` and does not read
+the option.
+{verified: AsbDeadLetterDrainerWiringTests.AddAzureServiceBusTransport_ConfiguredWarning_TheDrainerLogsDeadLettersAtWarningAsync, AsbNamespacesDeadLetterDrainerTests.Drain_BuildsEachFleetWithTheDeadLetterLevelAsync, ServiceCollectionExtensionsTests.AddRabbitMQTransport_DeadLetterDrainer_ReadsTheBoundDeadLetterLevelAsync, RabbitMqDeadLetterDrainerTests.Fleet_ConfiguredWarning_ItsQueueDrainersLogTheRecordAtWarningAsync}
+
+**Upgrade note.** The drains' `imported message … into wh_dead_letters` Information line is replaced by
+the record for an import, which is at Error by default; and the transport consumer's Error line for a
+message it could not store (`could not be stored in the inbox and was dead-lettered with its body`) is
+replaced by the record.
 
 ## Re-entry through the arrival path {#reentry}
 

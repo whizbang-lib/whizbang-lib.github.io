@@ -55,6 +55,7 @@ codeReferences:
   - src/Whizbang.Core/Capabilities/CapabilityAutoProvision.cs
   - src/Whizbang.Core/Configuration/EphemeralPointerPruneOptions.cs
   - src/Whizbang.Data.Postgres/RetentionSettingsWriter.cs
+  - src/Whizbang.Core/Workers/DeadLetterLoggingOptions.cs
 testReferences:
   - tests/Whizbang.Core.Tests/Archival/StreamLifecycleOptionsBinderTests.cs
   - tests/Whizbang.Core.Tests/Workers/TableRewriteStrategyTests.cs
@@ -89,6 +90,8 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/PostgresOptionsConfigurationTests.cs
   - tests/Whizbang.Core.Tests/Observability/TableStatisticsRegistrationTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperTableStatisticsDatabaseTests.cs
+  - tests/Whizbang.Core.Tests/Workers/DeadLetterLoggingOptionsTests.cs
+  - tests/Whizbang.Core.Tests/Workers/DeadLetterLoggingWiringTests.cs
 ---
 
 This page lists **every configuration surface Whizbang exposes**: the sections the library binds from `IConfiguration` automatically, the sections you can opt into binding with a helper, and the (much larger) set of options classes that are configured in code — plus the recipe for making any of them configuration-driven. Each options class lists its properties, types, defaults, and a link to the page that covers it in depth.
@@ -99,7 +102,7 @@ Whizbang follows the standard .NET configuration model ([Microsoft: Configuratio
 
 | Mechanism | What it means | Applies to |
 |-----------|---------------|------------|
-| **Bound automatically** | `AddWhizbang()` / the database driver registration reads these configuration sections with hand-rolled, AOT-safe binders. Setting a key in `appsettings.json` or as an environment variable just works. | **65 sections**: `Whizbang` itself, `Whizbang:Core`, `Whizbang:Tracing`, `Whizbang:SchemaInitialization`, `Whizbang:WorkCoordinator`, every `Whizbang:Workers:*` worker, `Whizbang:StreamIntegrity`, `Whizbang:DeadLetterRecovery`, `Whizbang:Redelivery`, `Whizbang:Perspectives:*`, `Whizbang:Temporal`, `Whizbang:Tags` and the rest listed in the [Quick Map](#quick-map); plus `Whizbang:AspNet:*` with ASP.NET hosting, `Whizbang:Sagas` with sagas, `Whizbang:Scope` and `Whizbang:StartupStatusGraph` with GraphQL, `Whizbang:Database*` with the Postgres driver, `Whizbang:Transports:AzureServiceBus` / `Whizbang:Transports:RabbitMQ` with those transports, the [per-instance sections](#per-instance-sections) keyed by breaker, transport, database and tag, and `Whizbang:ServiceName`, `Whizbang:ShowBanner`, `ConnectionStrings:*`, `ConnectionPool:*` |
+| **Bound automatically** | `AddWhizbang()` / the database driver registration reads these configuration sections with hand-rolled, AOT-safe binders. Setting a key in `appsettings.json` or as an environment variable just works. | **66 sections**: `Whizbang` itself, `Whizbang:Core`, `Whizbang:Tracing`, `Whizbang:SchemaInitialization`, `Whizbang:WorkCoordinator`, every `Whizbang:Workers:*` worker, `Whizbang:StreamIntegrity`, `Whizbang:DeadLetterRecovery`, `Whizbang:DeadLetterLogging`, `Whizbang:Redelivery`, `Whizbang:Perspectives:*`, `Whizbang:Temporal`, `Whizbang:Tags` and the rest listed in the [Quick Map](#quick-map); plus `Whizbang:AspNet:*` with ASP.NET hosting, `Whizbang:Sagas` with sagas, `Whizbang:Scope` and `Whizbang:StartupStatusGraph` with GraphQL, `Whizbang:Database*` with the Postgres driver, `Whizbang:Transports:AzureServiceBus` / `Whizbang:Transports:RabbitMQ` with those transports, the [per-instance sections](#per-instance-sections) keyed by breaker, transport, database and tag, and `Whizbang:ServiceName`, `Whizbang:ShowBanner`, `ConnectionStrings:*`, `ConnectionPool:*` |
 | **Opt-in binding helper** | A one-line registration call reads the section for you. Without that call, the section is inert. | `Whizbang:BodyOffload` + `Whizbang:Offloads:AzureBlob:<name>` (via `AddWhizbangAzureBlobOffloadsFromConfiguration`) |
 | **Code-configured** | The options class is configured through an `Action<TOptions>` lambda (or `services.Configure<TOptions>(...)`). The library never reads a configuration section for it — **a configuration key for one of these does nothing unless your service binds it**. Every table below carries an environment-variable column; these read `— *code-only*`, so a blank is always deliberate rather than an omission (see [the binding recipe](#code-configured-options-the-binding-recipe)). | The classes with no configuration section in the [Quick Map](#quick-map): `ServiceRegistrationOptions`, `PerStreamSerializerOptions`, `WhizbangGraphQLOptions`, and the keys a bound class marks *code-only* |
 
@@ -213,6 +216,7 @@ Removed keys the library declares:
 | `Whizbang:TableStatistics` | `TableStatisticsOptions` | Automatic (PostgreSQL driver, EF Core or Dapper) |
 | `Whizbang:StreamIntegrity` | `StreamIntegrityOptions` | Automatic |
 | `Whizbang:DeadLetterRecovery` | `DeadLetterRecoveryOptions` | Automatic |
+| `Whizbang:DeadLetterLogging` | `DeadLetterLoggingOptions` | Automatic (worker pipeline, and the transport consumer on its own); see [Dead-letter logging](#dead-letter-logging) |
 | `Whizbang:OrderedStreamProcessor` | `OrderedStreamProcessorOptions` | Automatic |
 | `Whizbang:PerspectiveRowRetention` | `PerspectiveRowRetentionOptions` | Automatic |
 | `Whizbang:Temporal` | `TemporalOptions` | Automatic |
@@ -1394,6 +1398,51 @@ The poison-message detector. On session-enabled entities a lock lost to connecti
 | `GenerationReplayStaggerMinutes` | `int` | `30` | `Whizbang__DeadLetterRecovery__GenerationReplayStaggerMinutes` | Window over which a new build's generation replay spreads its re-offers; `0` restores schedule-all-now (#669) |
 | `EnableGenerationReplay` | `bool` | `true` | `Whizbang__DeadLetterRecovery__EnableGenerationReplay` | Startup scan auto-replaying rows not yet retried on this build generation |
 | `PolicyByReason` | `Dictionary<MessageFailureReason, RecoveryPolicy>` | populated map | `Whizbang__DeadLetterRecovery__PolicyByReason__<Reason>__<Field>` | Per-failure-reason recovery rules (see the recovery page for the default map). `<Reason>` is a `MessageFailureReason` name, matched ignoring case; `<Field>` is `Name`, `MaxRecoveryAttempts`, `Cooldown` or `HoldForReviewAfterExhaustion`. A setting overrides only the field it names on that reason's policy; an unknown reason or an unreadable value changes nothing. {verified: DeadLetterRecoveryPolicyBindingTests.APartialEntry_KeepsTheFieldsItDoesNotNameAsync, DeadLetterRecoveryPolicyBindingTests.AnUnknownReason_ChangesNothingAsync} |
+
+### DeadLetterLoggingOptions {#dead-letter-logging}
+
+The level of the record every dead-letter path logs for a message it dead-letters: EventId 1901,
+`MessageDeadLettered`. **Configure:** bound automatically from `Whizbang:DeadLetterLogging` by the worker pipeline
+(`AddWhizbangWorkers`) and again by `AddTransportConsumer`, since a host can register the consumer without the
+pipeline; registering it twice is harmless. `services.Configure<DeadLetterLoggingOptions>(…)` also applies.
+**Details:** [Dead-lettered messages](../observability/logging-categories#dead-lettered-messages).
+
+| Property | Type | Default | Environment variable | Purpose |
+|----------|------|---------|----------------------|---------|
+| `Level` | `LogLevel` | `Error` | `Whizbang__DeadLetterLogging__Level` | The level of the dead-letter record on every path: the inbox, the outbox publish and drain workers, the perspective worker, the transport consumer, the batchers' flush failure recorders and the Azure Service Bus and RabbitMQ dead-letter drains. `Error` or `Warning`; any other value is refused when the host starts. {verified: DeadLetterLoggingOptionsTests.Default_IsErrorAsync, DeadLetterLoggingOptionsTests.Turnkey_NoSetting_ResolvesErrorAsync, DeadLetterLoggingOptionsTests.Turnkey_LevelWarning_BindsFromConfigurationAsync, DeadLetterLoggingOptionsTests.Validator_AcceptsWarningAndErrorAsync} |
+
+```json{title="Log dead letters at Warning" description="Keeps the dead-letter record below Error for a service whose alerting should not fire on dead letters" category="Configuration" difficulty="BEGINNER" tags=["dead-letter", "logging", "configuration", "DeadLetterLoggingOptions"] tests=["DeadLetterLoggingOptionsTests.Turnkey_LevelWarning_BindsFromConfigurationAsync"]}
+{
+  "Whizbang": {
+    "DeadLetterLogging": {
+      "Level": "Warning"
+    }
+  }
+}
+```
+
+**Why Error by default.** A dead-lettered message will not be processed unless it is recovered, so its record is
+logged where a service that alerts on Error hears about it. A service whose alerting should not fire on dead letters
+sets `Warning`, the level dead letters were logged at before. Failures that will be retried are not dead letters and
+stay at Warning whatever this says. {verified: DeadLetterLoggingOptionsTests.Default_IsErrorAsync, DeadLetterLoggingOptionsTests.LevelFrom_NoOptions_IsErrorAsync}
+
+**Why only Warning or Error, refused rather than clamped.** `Trace`, `Debug` or `Information` would put a message
+that will never succeed below the Warnings its own retried attempts log; `None` would hide it; `Critical` is kept for
+failures that put the host or a message's custody at risk. Any of them stops the host at startup with an options
+validation error naming the key and the two levels it accepts, for example `Whizbang:DeadLetterLogging:Level is
+Information; a dead-lettered message is logged at Error (the default) or Warning, and no other level is accepted.`
+It is refused instead of clamped so a setting that does not take effect is never mistaken for one that does.
+{verified: DeadLetterLoggingOptionsTests.Validator_RefusesEveryOtherLevel_NamingTheKeyAndTheChoicesAsync, DeadLetterLoggingOptionsTests.Turnkey_UnsupportedLevel_IsRefusedAtStartupAsync}
+
+**One value for every path.** The paths the transports build for themselves (the transport consumer and the Azure
+Service Bus and RabbitMQ dead-letter drains, including a drain per namespace or queue fleet) read the same bound
+value as the workers. A drainer you construct yourself takes the level as its `deadLetterLogLevel` argument, which
+defaults to `Error` and does not read this option.
+{verified: DeadLetterLoggingWiringTests.AddWhizbangWorkers_ConfiguredWarning_TheFlushRecordersLogTheRecordAtWarningAsync, DeadLetterLoggingWiringTests.AddTransportConsumer_ConfiguredWarning_TheConsumerLogsDeadLettersAtWarningAsync, AsbDeadLetterDrainerWiringTests.AddAzureServiceBusTransport_ConfiguredWarning_TheDrainerLogsDeadLettersAtWarningAsync, AsbNamespacesDeadLetterDrainerTests.Drain_BuildsEachFleetWithTheDeadLetterLevelAsync, ServiceCollectionExtensionsTests.AddRabbitMQTransport_DeadLetterDrainer_ReadsTheBoundDeadLetterLevelAsync, RabbitMqDeadLetterDrainerTests.Fleet_ConfiguredWarning_ItsQueueDrainersLogTheRecordAtWarningAsync}
+
+**Upgrade note.** Before this option, dead letters were logged at Warning. The default is now Error, so an alert keyed
+on Error may start firing for dead letters; set `Whizbang__DeadLetterLogging__Level=Warning` to keep the old
+severity.
 
 ### HousekeepingCoordinator.Settings
 
