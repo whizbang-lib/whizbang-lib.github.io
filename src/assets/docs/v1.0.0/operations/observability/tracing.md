@@ -19,11 +19,13 @@ codeReferences:
   - src/Whizbang.Core/Tracing/HandlerStatus.cs
   - src/Whizbang.Core/Tracing/WhizbangTraceAttribute.cs
   - src/Whizbang.Core/Observability/WhizbangActivitySource.cs
+  - src/Whizbang.Core/Messaging/ReceptorInvoker.cs
 testReferences:
   - tests/Whizbang.Observability.Tests/TracerTests.cs
   - tests/Whizbang.Observability.Tests/TracerPatternMatchingTests.cs
   - tests/Whizbang.Core.Tests/Tracing/TracingOptionsTests.cs
   - tests/Whizbang.Observability.Tests/WhizbangActivitySourceTests.cs
+  - tests/Whizbang.Core.Tests/Messaging/ReceptorInvokerBranchCoverageTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -348,14 +350,29 @@ All Whizbang spans include these tags:
 | `whizbang.handler.status` | `Success`, `Failed`, `EarlyReturn` (`HandlerStatus` enum) |
 | `whizbang.handler.duration_ms` | Execution duration in milliseconds |
 
-### Exception Recording
+### Exception Recording {#exception-recording}
 
-When handlers fail, the span records:
-- `ActivityStatusCode.Error` status
-- Exception event with:
-  - `exception.type` - Exception type name
-  - `exception.message` - Exception message
-  - `exception.stacktrace` - Full stack trace
+Each receptor invocation runs in its own span, `Receptor <receptor id>` on the `Whizbang.Tracing` source. When the
+receptor throws, its span records:
+
+- status `ActivityStatusCode.Error`, with the exception's message as the status description;
+- one OpenTelemetry `exception` span event (`Activity.AddException`) carrying:
+  - `exception.type`: the exception's full type name
+  - `exception.message`: the exception's message
+  - `exception.stacktrace`: the full stack trace
+
+A receptor that returns records no `exception` event.
+
+{verified: ReceptorInvokerBranchCoverageTests.InvokeAsync_SampledActivity_ThrowingReceptor_MarksTheSpanErrorAndRecordsOneExceptionEventAsync, ReceptorInvokerBranchCoverageTests.InvokeAsync_SampledActivity_SuccessfulReceptor_RecordsNoExceptionEventAsync}
+
+**Why an event, not tags.** The `exception` event is OpenTelemetry's convention for a failed operation, and backends
+key off it: Azure Monitor, for example, turns it into an exception record tied to the trace. It is also the only
+place the stack trace travels, so with it a handler no longer has to catch and log the exception itself to keep the
+trace and the stack trace together. The span's own `exception.type` and `exception.message` tags only duplicated the
+event's attributes and are no longer set.
+
+**Upgrade note.** A trace query that read the `exception.type` or `exception.message` tag on a receptor span reads
+the `exception` event's attributes of the same names instead; the values are the same.
 
 ## Best Practices
 

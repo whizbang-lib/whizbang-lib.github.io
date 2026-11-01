@@ -387,7 +387,7 @@ of streams does not quietly drop them.
 
 #### Rewinds and rebuilds from a snapshot {#collective-replay-from-a-start}
 
-{verified: CollectiveReplayRunnerTests.ARewindWithoutASnapshot_FoldsTheCollectivesFromTheStreamsStart_WithoutMovingTheCheckpointAsync, CollectiveReplayRunnerTests.ARewindFromASnapshot_FoldsTheCollectivesCommittedAfterTheSnapshotsEventAsync, CollectiveReplayRebuildIntegrationTests.Rewind_WithoutASnapshot_FoldsTheCollectives_AndCheckpointsOnTheRowsOwnEventAsync, CollectiveReplayRebuildIntegrationTests.Rewind_FromASnapshot_FoldsTheCollectivesCommittedAfterItAsync, CollectiveReplayRebuildIntegrationTests.Rewind_FromASnapshot_DoesNotFoldAgainACollectiveCommittedBeforeItAsync, CollectiveReplayRebuildIntegrationTests.Rebuild_ByDefault_FromTheNewestLiveSnapshot_FoldsACollectiveCommittedAfterItAsync}
+{verified: CollectiveReplayRunnerTests.ARewindWithoutASnapshot_FoldsTheCollectivesFromTheStreamsStart_WithoutMovingTheCheckpointAsync, CollectiveReplayRunnerTests.ARewindFromASnapshot_FoldsTheCollectivesCommittedAfterTheSnapshotsEventAsync, CollectiveReplayRebuildIntegrationTests.Rewind_WithoutASnapshot_FoldsTheCollectives_AndCheckpointsOnTheRowsOwnEventAsync, CollectiveReplayRebuildIntegrationTests.Rewind_FromASnapshot_FoldsTheCollectivesCommittedAfterItAsync, CollectiveReplayRebuildIntegrationTests.Rewind_FromASnapshot_DoesNotFoldAgainACollectiveCommittedBeforeItAsync, CollectiveReplayRebuildIntegrationTests.Rebuild_ByDefault_FromTheNewestLiveSnapshot_FoldsACollectiveCommittedAfterItAsync, CollectiveReplayRunnerTests.ARewindsCatchUpPasses_FoldEachCollectiveOnce_AndNeverAnchorTheReadOnOneAsync}
 
 A [rewind](../perspectives/rewind) replays one row, from a snapshot or from its stream's start. A default rebuild of a
 stream [archived through a prefix](../perspectives/rebuild#archived-data-per-stream) starts from the stream's newest
@@ -412,6 +412,7 @@ Collective streams [archived whole](#archived-collective-streams) follow the sam
 always, and a rebuild only under `IncludeAll`. A collective never anchors the rewind's [catch-up
 read](../perspectives/rewind#catch-up-loop), which re-reads the row's own stream, and each collective folds once
 across the catch-up passes.
+{verified: CollectiveReplayRunnerTests.ARewindsCatchUpPasses_FoldEachCollectiveOnce_AndNeverAnchorTheReadOnOneAsync}
 
 The replay applier provides the merge through `InterleaveAfterAsync`, and `CollectiveReplayStart` names where the
 replay starts and whose collectives it folds:
@@ -476,7 +477,7 @@ Both drivers hand the applier their database, so both list archived collective s
 
 #### A collective never moves the row's checkpoint {#collective-replay-checkpoint}
 
-{verified: CollectiveReplayRebuildIntegrationTests.Rebuild_IncludeAll_FoldsACollectiveArchivedWhole_ThatIsTheRowsLastEvent_AndCheckpointsOnTheRowsOwnEventAsync, CollectiveReplayRunnerTests.ARewindWithoutASnapshot_FoldsTheCollectivesFromTheStreamsStart_WithoutMovingTheCheckpointAsync, CollectiveReplayRebuildIntegrationTests.Rewind_WithoutASnapshot_FoldsTheCollectives_AndCheckpointsOnTheRowsOwnEventAsync, CollectiveReplayRunnerTests.ARebuild_ACollectiveAfterAPurge_LeavesTheCheckpointOnTheStreamsOwnEventAsync}
+{verified: CollectiveReplayRebuildIntegrationTests.Rebuild_IncludeAll_FoldsACollectiveArchivedWhole_ThatIsTheRowsLastEvent_AndCheckpointsOnTheRowsOwnEventAsync, CollectiveReplayRunnerTests.ARewindWithoutASnapshot_FoldsTheCollectivesFromTheStreamsStart_WithoutMovingTheCheckpointAsync, CollectiveReplayRebuildIntegrationTests.Rewind_WithoutASnapshot_FoldsTheCollectives_AndCheckpointsOnTheRowsOwnEventAsync, CollectiveReplayRunnerTests.ARebuild_ACollectiveAfterAPurge_LeavesTheCheckpointOnTheStreamsOwnEventAsync, CollectiveReplayRunnerTests.ARewindsCatchUpPasses_FoldEachCollectiveOnce_AndNeverAnchorTheReadOnOneAsync}
 
 In a rebuild or a rewind, a collective folds into the row but does not move the row's cursor. The cursor names the
 row's own last event; the row's recorded commit sequence is still the highest among the events it folded, collectives
@@ -487,7 +488,7 @@ own stream is not archived and would never be restored.
 
 | Choice | Reason | Verified |
 |---|---|---|
-| A rewind's collectives move neither the checkpoint nor the replay's frontier. | The frontier is the row's own position, and a collective is not one of the row's events. | {verified: CollectiveReplayRunnerTests.ARewindWithoutASnapshot_FoldsTheCollectivesFromTheStreamsStart_WithoutMovingTheCheckpointAsync, CollectiveReplayRebuildIntegrationTests.Rewind_WithoutASnapshot_FoldsTheCollectives_AndCheckpointsOnTheRowsOwnEventAsync} |
+| A rewind's collectives move neither the checkpoint nor the replay's frontier, and never anchor its catch-up read. | The frontier is the row's own position, and a collective is not one of the row's events. | {verified: CollectiveReplayRunnerTests.ARewindWithoutASnapshot_FoldsTheCollectivesFromTheStreamsStart_WithoutMovingTheCheckpointAsync, CollectiveReplayRebuildIntegrationTests.Rewind_WithoutASnapshot_FoldsTheCollectives_AndCheckpointsOnTheRowsOwnEventAsync, CollectiveReplayRunnerTests.ARewindsCatchUpPasses_FoldEachCollectiveOnce_AndNeverAnchorTheReadOnOneAsync} |
 | A collective the rebuild meets after the row's purge folds into nothing and still leaves the checkpoint on the stream's own event ([#1957](https://github.com/whizbang-lib/whizbang/issues/1957)). | A purged row has nothing to fold into, and the collective is still another stream's event, which may be archived. Before #1957 the rebuild took it as the row's last event and the completion's checkpoint named it. A collective is now recognized before the purged-row check, so it never reaches it. | {verified: CollectiveReplayRunnerTests.ARebuild_ACollectiveAfterAPurge_LeavesTheCheckpointOnTheStreamsOwnEventAsync} |
 
 Both drivers register this seam automatically:

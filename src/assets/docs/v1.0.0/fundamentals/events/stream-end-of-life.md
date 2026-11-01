@@ -78,7 +78,7 @@ the same transaction as the event, so the row is never behind the store.
 | `sealed_reason` | Why the stream was sealed: the finalizer's reason, or the terminal event that ended it. | with `sealed_at`, once |
 | `disposition_due_at` | When the stream's disposition is due; null while none is scheduled. | scheduled disposition |
 | `archive_locator` | Where the [archive store](archive-store.md) put the stream's archived events. | the archive store |
-| `archive_deleted_at` | When the stream's archive was [deleted](archive-store.md#deleting-an-archive); null when no archive of it ever was. Never cleared (migration 274). | the archive store's delete |
+| `archive_deleted_at` | When the stream's archive was [deleted](archive-store.md#deleting-an-archive); null when no archive of it ever was. Never cleared (migration 274), and not indexed, so an append's update stays heap-only {verified: StreamLifecycleLedgerSqlTests.TheLedger_IndexesOnlyItsKeyStateAndDueTime_AndLeavesRoomOnEachPageAsync}. | the archive store's delete |
 | `origin_generation` | The origin generation the stream's history was last mutated at; null until that happens. | the archive store |
 
 Why each of these is the way it is:

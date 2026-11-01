@@ -240,7 +240,7 @@ If no qualifying snapshot exists, the rewind replays from event zero. This is wh
 
 ### A replay's snapshot stops at its last event {#a-replays-snapshot-and-collectives}
 
-{verified: CollectiveReplayRunnerTests.ARewindsSnapshot_IsTheRowAtItsLastEvent_BeforeTheCollectivesCommittedAfterItAsync, CollectiveReplayRunnerTests.ARebuildsSnapshot_IsTheRowAtItsLastEvent_BeforeTheCollectivesCommittedAfterItAsync, PerspectiveRunnerSplitSnapshotTests.Runner_TakesTheSnapshotBeforeTheWriteAtBothWritesThatSnapshotAsync}
+{verified: CollectiveReplayRunnerTests.ARewindsSnapshot_IsTheRowAtItsLastEvent_BeforeTheCollectivesCommittedAfterItAsync, CollectiveReplayRunnerTests.ARebuildsSnapshot_IsTheRowAtItsLastEvent_BeforeTheCollectivesCommittedAfterItAsync, PerspectiveRunnerSplitSnapshotTests.Runner_TakesTheSnapshotBeforeTheWriteAtBothWritesThatSnapshotAsync, PerspectiveRunnerSplitSnapshotTests.Runner_CopiesTheRowAtItsLastEvent_OnlyWhenSnapshotsAreOnAsync}
 
 A rewind and a rebuild fold the row's [collective events](../messaging/collective-events#collective-replay-from-a-start)
 among the stream's events, so the row a replay writes can hold collectives committed after the stream's last event. A
@@ -249,6 +249,7 @@ snapshot a replay takes, the rewind's final snapshot and a rebuild's snapshot al
 before the collectives committed after it fold**. The row itself is written with them.
 The replay serializes that copy of the row when the first collective after a stream event folds, only when snapshots
 are on, and drops it at the next stream event, so it keeps one copy at most.
+{verified: PerspectiveRunnerSplitSnapshotTests.Runner_CopiesTheRowAtItsLastEvent_OnlyWhenSnapshotsAreOnAsync}
 
 | Choice | Reason | Verified |
 |---|---|---|
