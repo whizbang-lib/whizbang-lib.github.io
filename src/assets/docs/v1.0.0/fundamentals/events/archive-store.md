@@ -360,20 +360,23 @@ request, so `debug_mode` does not skip it.
 The delete is recorded on the stream's [ledger row](#the-ledger-row): `wh_delete_stream_archive` (migration 274) stamps
 `archive_deleted_at` whenever the row named an archive. Both stores delete through it, so the record is the same for a
 table archive and a blob archive.
+{verified: AzureBlobArchiveStoreTests.Delete_OfAPrefixArchive_StampsTheLedgersArchiveDeletedAtAsync}
 
 | Choice | Reason | Verified |
 |---|---|---|
 | A deleted archive is recorded, not just forgotten. | Clearing the locator alone left a stream archived through a prefix reading exactly like one never archived, because it stays `Active`. A rebuild then replayed it from its first hot event and wrote a partial history as the row (#1958). With the record, a rebuild [reports the stream instead](../perspectives/rebuild#archived-data-deleted). | {verified: ArchivedStreamRebuildSqlTests.Extents_TellAStreamWhoseArchiveWasDeleted_FromOneThatNeverHadAnArchiveAsync} |
-| `archive_deleted_at` is never cleared: nothing in the archive store writes it back to null, and a stream archived again after the delete still reads as deleted. | The deleted events are gone for good, so a stream archived again afterwards, or restored from that later archive, still lacks them. | {verified: ArchivedStreamRebuildSqlTests.Extents_TellAStreamWhoseArchiveWasDeleted_FromOneThatNeverHadAnArchiveAsync} |
+| `archive_deleted_at` is never cleared: nothing in the archive store writes it back to null, and a stream archived again after the delete still reads as deleted. | The deleted events are gone for good, so a stream archived again afterwards, or restored from that later archive, still lacks them. | {verified: ArchivedStreamRebuildSqlTests.Extents_TellAStreamWhoseArchiveWasDeleted_FromOneThatNeverHadAnArchiveAsync, ArchivedStreamRebuildSqlTests.Extents_AStreamRestoredFromALaterArchive_AfterItsEarlierArchiveWasDeleted_StillReadsPrefixDeletedAsync} |
 | A delete of a stream with no archive (never archived, or restored in full) deletes nothing and stamps nothing. | Nothing was lost, so the stream still reads as one never archived. | {verified: ArchivedStreamRebuildSqlTests.Extents_TellAStreamWhoseArchiveWasDeleted_FromOneThatNeverHadAnArchiveAsync} |
 
 The column is nullable with no default, and migration 274 adds no index: no row is rewritten, the rebuild looks the
 ledger up by its key, and an append never writes the column, so the ledger's updates on the append path stay
 heap-only.
+{verified: StreamLifecycleLedgerSqlTests.TheLedger_IndexesOnlyItsKeyStateAndDueTime_AndLeavesRoomOnEachPageAsync}
 
 A prefix archive deleted before migration 274 left no trace in the ledger and is not stamped by it, so it cannot be
 detected. A whole-stream archive deleted before 274 left its row `Archived` with no locator, which the rebuild's lookup
 reads as deleted too.
+{verified: ArchivedStreamRebuildSqlTests.Extents_AnArchivedRowWithNoLocator_ReadsWholeDeleted_EvenWithoutTheDeletionStampAsync}
 
 ## Read-through {#read-through}
 
