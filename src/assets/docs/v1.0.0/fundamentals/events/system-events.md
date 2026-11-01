@@ -220,7 +220,8 @@ Emitted when a domain event is appended to a stream (when `EnableEventAudit()` i
 [AuditEvent(Exclude = true, Reason = "System event - prevents infinite self-auditing loop")]
 public sealed record EventAudited : ISystemEvent {
   /// <summary>
-  /// Unique identifier for this audit event.
+  /// Identifier of this audit record, derived from the audited event: AuditLedger.RecordIdFor(OriginalEventId),
+  /// so a record derived again is the same record (see Audit Logging, "One record per audited event").
   /// </summary>
   [StreamId]
   public required Guid Id { get; init; }

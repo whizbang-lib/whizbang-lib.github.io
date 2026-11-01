@@ -14,12 +14,14 @@ codeReferences:
   - src/Whizbang.Data.EFCore.Postgres/PostgresDriverExtensions.cs
   - src/Whizbang.Data.EFCore.Postgres/EFCoreExtensions.cs
   - src/Whizbang.Data.Dapper.Postgres/ServiceCollectionExtensions.cs
+  - src/Whizbang.Data.Postgres/Migrations/290_EventBodyLz4Compression.sql
 testReferences:
   - tests/Whizbang.Data.Dapper.Postgres.Tests/PostgresConnectionRetryTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/PostgresDriverExtensionsTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/EFCoreExtensionsTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/PostgresDriverRegistrationTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperGateWiringTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/EventBodyCompressionTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -145,6 +147,39 @@ PostgreSQL is the recommended backend for the Whizbang event store:
 // Events stored in optimized JSONB columns
 await eventStore.AppendAsync(streamId, new OrderCreatedEvent(...));
 ```
+
+### Event body storage {#event-body-storage}
+
+{verified: EventBodyCompressionTests.BothBodyColumns_CompressWithLz4Async, EventBodyCompressionTests.TheBodyTable_KeepsTheServersToastTupleTargetAsync, EventBodyCompressionTests.ASecondBoot_LeavesTheCompressionAndTheTargetAsTheyAreAsync, EventBodyCompressionTests.ABodyInARowOverTheToastThreshold_IsStoredLz4CompressedAsync, EventBodyCompressionTests.ARowUnderTheToastThreshold_IsStoredUncompressedAsync}
+
+An event's body and stored metadata live in `wh_event_body` (`event_id`, `event_data` JSONB, `metadata` JSONB). Both body columns compress with **lz4**, and the table keeps the server's `toast_tuple_target`. Migration 290 sets this; each column is altered only when it is not lz4 already, so applying the migration again takes no lock, and a server built without lz4 keeps pglz and logs a warning instead of failing the migration pass. Only bodies written after the migration are compressed with lz4: a stored value keeps the method it was written with until its row is rewritten.
+
+**Why lz4, and why not a lower `toast_tuple_target`.** PostgreSQL considers compressing a row only once the whole row is over its toast threshold, about 2 KB, a constant compiled into the server. `toast_tuple_target` decides how far a row that is already over the threshold is shrunk; it never brings a smaller row into the toaster. Both were measured before the setting was chosen, on copies of `wh_event_body` loaded with the same generated rows (PostgreSQL 17; order-like JSON bodies of about 128 B to 8 KB of text, about 770 B of stored metadata per row):
+
+| Body text | Row text | Stored body (default) | Compressed at default | Compressed at any target down to 128 |
+|---|---|---|---|---|
+| 241 B | 1,009 B | 255 B | no | no |
+| 583 B | 1,352 B | 659 B | no | no |
+| 784 B | 1,553 B | 896 B | no | no |
+| 1,057 B | 1,825 B | 761 B | yes | yes |
+| 2,147 B | 2,915 B | 1,221 B | yes | yes |
+| 8,280 B | 9,048 B | 3,750 B | yes | yes |
+
+On a mix in which 69% of rows are under 2 KB, the whole table (heap, TOAST and primary key) compared as follows:
+
+| Setting | Total size | Full read of every body | Insert of every body | Buffers for 2,000 bodies read by id |
+|---|---|---|---|---|
+| pglz, default target (the server default) | 29.3 MB | 93 ms | 391 ms | 7,023 |
+| **lz4, default target (chosen)** | **28.9 MB (-1.1%)** | **83 ms (-11%)** | **288 ms (-26%)** | **6,728 (-4%)** |
+| lz4, target 1536 | 28.5 MB (-2.7%) | 89 ms | 282 ms | 7,848 (+12%) |
+| lz4, target 1024 | 28.5 MB (-2.6%) | 96 ms | 295 ms | 8,645 (+23%) |
+| lz4, target 512 to 128 | 28.8 MB (-1.7%) | 98 ms | 316 ms | 8,654 (+23%) |
+| pglz, target 128 | 29.9 MB (+2.3%) | 106 ms | 429 ms | 8,647 (+23%) |
+
+A lower target saves at most 1.6 points more than lz4 alone, and it does so by moving values out of line into the TOAST table, which every read of those events then pays for with extra buffers. lz4 alone is smaller, faster to write and faster to read, so it is the setting. Compressing the small rows, the majority of bodies, is not something a table setting can do; it belongs to dictionary compression, which is planned separately.
+
+- `EventBodyCompressionTests.BothBodyColumns_CompressWithLz4Async` and `TheBodyTable_KeepsTheServersToastTupleTargetAsync` lock the two settings; `ASecondBoot_LeavesTheCompressionAndTheTargetAsTheyAreAsync` applies the migration again and checks both.
+- `ABodyInARowOverTheToastThreshold_IsStoredLz4CompressedAsync` checks that a body in a row over the threshold is stored lz4-compressed and smaller than its text, and `ARowUnderTheToastThreshold_IsStoredUncompressedAsync` holds the measured limit: a 1 KB body with slim metadata is stored as it came.
 
 ### Perspectives
 

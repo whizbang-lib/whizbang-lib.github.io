@@ -25,6 +25,12 @@ codeReferences:
   - src/Whizbang.Core/Audit/AuditLevel.cs
   - src/Whizbang.Core/Attributes/AuditEventAttribute.cs
   - src/Whizbang.Core/SystemEvents/AuditLedger.cs
+  - src/Whizbang.Core/SystemEvents/AuditEligibility.cs
+  - src/Whizbang.Core/SystemEvents/AuditOutboxMessageBuilder.cs
+  - src/Whizbang.Core/SystemEvents/AuditLedgerRebuild.cs
+  - src/Whizbang.Core/SystemEvents/RequestAuditRebuildCommand.cs
+  - src/Whizbang.Data.EFCore.Postgres/AuditRebuildRequestReceptor.cs
+  - src/Whizbang.Data.EFCore.Postgres/RedeliveryRequestReceptorRegistrar.cs
 testReferences:
   - tests/Whizbang.Core.Tests/SystemEvents/CommandAuditListLengthsTests.cs
   - tests/Whizbang.Core.Tests/SystemEvents/EventAuditedTests.cs
@@ -40,6 +46,14 @@ testReferences:
   - tests/Whizbang.Core.Tests/SystemEvents/AuditLedgerTests.cs
   - tests/Whizbang.Core.Tests/SystemEvents/AuditDecisionHookCallSiteTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/AuditRecordStreamPositionSqlTests.cs
+  - tests/Whizbang.Core.Tests/SystemEvents/AuditEphemeralExclusionTests.cs
+  - tests/Whizbang.Core.Tests/SystemEvents/AuditOutboxMessageBuilderTests.cs
+  - tests/Whizbang.Core.Tests/SystemEvents/AuditDependencyInjectionWiringTests.cs
+  - tests/Whizbang.Core.Tests/SystemEvents/SystemEventEmitterRegistrationTests.cs
+  - tests/Whizbang.Core.Tests/SystemEvents/AuditLedgerRebuildTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/AuditRebuildRequestReceptorTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/RedeliveryRequestReceptorTests.cs
+  - tests/Whizbang.Core.Tests/Messaging/ControlPlaneTypeRegistryTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -227,7 +241,7 @@ The `EventAudited` event captures metadata about each domain event:
 
 ```csharp{title="EventAudited" description="The EventAudited event captures metadata about each domain event:" category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "EventAudited"] tests=["EventAuditedTests.EventAudited_CapturesOriginalEventType_ForAuditTrailAsync", "EventAuditedTests.EventAudited_CapturesStreamInfo_ForEventLocationAsync", "EventAuditedTests.EventAudited_CapturesOriginalBody_ForFullEventDataAsync", "EventAuditedTests.EventAudited_CapturesScopeInfo_ForComplianceQueriesAsync", "EventAuditedTests.EventAudited_CapturesAuditReason_WhenAttributePresentAsync"]}
 public sealed record EventAudited : ISystemEvent {
-  // Identity
+  // Identity: Id is AuditLedger.RecordIdFor(OriginalEventId), one record per audited event
   public required Guid Id { get; init; }
   public Guid OriginalEventId { get; init; }
 
@@ -278,6 +292,14 @@ Each tenant's audit records share one stream, `AuditLedger.StreamFor(tenantId)`.
 
 A coalesced bundle of audit records rides the ledger stream. Each record fanned out of it keeps its own id as its stream, so the audit perspective still holds one row per record rather than folding a tenant's whole trail into one row.
 
+### One record per audited event {#record-ids}
+
+{verified: AuditLedgerTests.RecordIdFor_KnownEvent_MatchesTheReferenceVectorAsync, AuditLedgerTests.RecordIdFor_SameEvent_IsTheSameRecordAsync, AuditLedgerTests.RecordIdFor_AnEventId_IsNeverTheEventIdItselfAsync, AuditOutboxMessageBuilderTests.TryBuildAuditMessage_TheRecordId_IsDerivedFromTheAuditedEventAsync, AuditOutboxMessageBuilderTests.TryBuildAuditMessage_BuiltTwiceForOneEvent_IsOneRecordAsync, AuditingEventStoreDecoratorTests.AppendAsync_TheRecordId_IsDerivedFromTheAuditedEventAsync, SystemEventEmitterTests.EmitEventAuditedAsync_TheRecordId_IsDerivedFromTheAuditedEventAsync}
+
+An audit record's `Id` is derived from the event it audits: `AuditLedger.RecordIdFor(originalEventId)`, a name-based (version 5) UUID of the event id, written in its 36-character lower-case form, under the namespace `UUIDv5(nil, "sys-audit-record")`. The outbox path, the event store decorator, the emitter and the [ledger rebuild](#rebuilding-the-audit-ledger) all use it. Postgres computes the same id with `uuid_generate_v5(uuid_generate_v5(uuid_nil(), 'sys-audit-record'), original_event_id::text)`.
+
+**Why.** An audit record is a function of the event it audits and that event's scope, so two records of one event are one fact. The built-in audit perspective keys a record by its `Id`, so a record delivered twice (by a retry, by two writers, or by a rebuild) replaces its row instead of adding one. The namespace is separate from the ledger's, so a record id is never a ledger stream id, and a record id is never the audited event's own id, because the record is stored as an event of its own. **Never change the derivation:** a rebuild must derive the ids the records already carry.
+
 ### The audit decision hook applies on every path {#audit-decision-hook}
 
 {verified: AuditDecisionHookCallSiteTests.Scoped_VetoingHook_SuppressesTheAuditRecordAsync, AuditDecisionHookCallSiteTests.Immediate_VetoingHook_SuppressesTheAuditRecordAsync, AuditDecisionHookCallSiteTests.StreamAffinity_VetoingHook_SuppressesTheAuditRecordAsync, AuditDecisionHookCallSiteTests.Factory_Scoped_PassesTheRegisteredHookAsync}
@@ -305,6 +327,31 @@ public record ProcessingStepCompleted(Guid WorkflowId, int Step) : IEvent;
 public record OrderCreated(Guid OrderId, Guid CustomerId) : IEvent;
 ```
 
+### Ephemeral events are not audited by default {#ephemeral-events}
+
+{verified: AuditEphemeralExclusionTests.AnEphemeralType_IsNotAuditedByDefaultAsync, AuditEphemeralExclusionTests.TheSameType_NotEphemeral_IsAuditedAsync, AuditEphemeralExclusionTests.AnEphemeralTypeMarkedForAudit_WithoutItsBody_IsStillNotAuditedAsync, AuditEphemeralExclusionTests.AnEphemeralTypeThatKeepsItsBody_IsAuditedAsync, AuditEphemeralExclusionTests.AHookThatRecordsEverything_DoesNotReopenAnEphemeralTypeAsync, AuditEphemeralExclusionTests.AHookThatRecordsEverything_IsHonoredForADurableTypeAsync, AuditOutboxMessageBuilderTests.TryBuildAuditMessage_AnEphemeralEvent_IsNotAuditedAsync, AuditOutboxMessageBuilderTests.TryBuildAuditMessage_TheDefaultSetToInclude_DoesNotOptInAnEphemeralEventAsync, AuditingEventStoreDecoratorTests.AppendAsync_AnEphemeralEvent_IsNotAuditedAsync, SystemEventEmitterTests.EmitEventAuditedAsync_AnEphemeralEvent_RecordsNothingAsync}
+
+An [ephemeral](../events/ephemeral-events.md) event type is not audited, whatever the mode, unless the type keeps its body with `[AuditEvent(IncludeBody = true)]`. Its origin reaps the event once it is consumed, and an audit record holds a pointer to the event by default, so a record of an ephemeral event would point at nothing. Keeping the body is the opt-in because it is the one thing that keeps such a record meaningful:
+
+```csharp{title="Auditing an ephemeral event type" description="An ephemeral type is audited only when its records keep its body, because its origin reaps the event they would point at." framework="NET10" category="Best-Practices" difficulty="INTERMEDIATE" tags=["audit", "ephemeral-events", "include-body"] tests=["AuditEphemeralExclusionTests.AnEphemeralTypeThatKeepsItsBody_IsAuditedAsync", "AuditOutboxMessageBuilderTests.TryBuildAuditMessage_AnEphemeralEventThatKeepsItsBody_IsAuditedWithItAsync"]}
+// Not audited: ephemeral, and its records would point at a reaped event.
+[Ephemeral]
+public record UserIsTyping(Guid ConversationId, Guid UserId) : IEvent;
+
+// Audited, with the body copied into every record.
+[Ephemeral]
+[AuditEvent(IncludeBody = true, Reason = "Session sign-in attempts are reviewed")]
+public record SignInAttempted(Guid SessionId, string Outcome) : IEvent;
+```
+
+The choices, each held by a test:
+
+- **Marking the type for audit is not the opt-in.** `[AuditEvent(Reason = ...)]` without `IncludeBody` still leaves an ephemeral type unaudited, even under `AuditMode.OptIn`, because its records would still dangle (`AnEphemeralTypeMarkedForAudit_WithoutItsBody_IsStillNotAuditedAsync`).
+- **The process-wide body default does not opt in.** `AuditBodyDefault = Include` keeps bodies for the types that are audited; it does not turn every high-churn ephemeral type (presence, typing, progress) into audit traffic at once (`TryBuildAuditMessage_TheDefaultSetToInclude_DoesNotOptInAnEphemeralEventAsync`).
+- **A decision hook cannot reopen an ephemeral type.** The exclusion is decided before the hook, as the self-audit exclusion is: a hook judges an occurrence but cannot keep its body (`AHookThatRecordsEverything_DoesNotReopenAnEphemeralTypeAsync`). Once a type has opted in, the hook decides its occurrences like any other type's (`AnEphemeralTypeThatKeepsItsBody_StillPassesThroughTheHookAsync`).
+- **Every path recognizes the same types.** The outbox path reads the ephemeral flag the dispatcher stamped on the message; the event store decorator and the emitter derive it from the payload with the ephemeral resolver, which recognizes a type declared ephemeral through a base record or interface. Both are given the resolver when the container composes them (`ComposedDecoratorReceivesTheRegisteredEphemeralResolverAsync`, `AddWhizbang_TheDefaultEmitter_IsGivenTheEphemeralResolverAsync`). A store decorator or emitter built by hand without one recognizes the `IEphemeralEvent` marker only.
+- **An unresolvable type** on the outbox path is audited as before unless the message is flagged ephemeral (`TryBuildAuditMessage_AnEphemeralEventOfAnUnresolvableType_IsNotAuditedAsync`).
+
 ### Adding Audit Context
 
 Use `[AuditEvent]` without `Exclude` to add context to audited events:
@@ -318,6 +365,44 @@ public record CustomerDataViewed(Guid CustomerId, string ViewedBy) : IEvent;
 [AuditEvent(Reason = "Financial transaction", Level = AuditLevel.Critical)]
 public record PaymentProcessedEvent(Guid OrderId, decimal Amount) : IEvent;
 ```
+
+---
+
+## Rebuilding the audit ledger {#rebuilding-the-audit-ledger}
+
+{verified: AuditLedgerRebuildTests.RunAsync_SelectsEveryStoredEvent_AndQueuesOnlyTheEligibleAsync, AuditLedgerRebuildTests.RunAsync_Twice_YieldsOneRecordPerOriginEventAsync, AuditLedgerRebuildTests.Rederive_ARecordTheLiveWriterMinted_IsTheSameRecordAsync, AuditRebuildRequestReceptorTests.Rebuild_FromTheStore_QueuesARecordForEachEligibleEventOnlyAsync, AuditRebuildRequestReceptorTests.Rebuild_Twice_YieldsOneRecordPerOriginEventAsync}
+
+Audit records can be derived again from the events the origin service stored, so a lost, truncated or never-received audit ledger can be rebuilt. Send `RequestAuditRebuildCommand` to the origin service, or dispatch it there as an operator:
+
+```csharp{title="Rebuild one tenant's audit records" description="The origin re-derives the audit records of its stored events for one tenant, from a commit sequence on." framework="NET10" category="Best-Practices" difficulty="INTERMEDIATE" tags=["audit", "rebuild", "audit-ledger", "redelivery"] tests=["AuditRebuildRequestReceptorTests.Rebuild_FromTheStore_QueuesARecordForEachEligibleEventOnlyAsync", "AuditLedgerRebuildTests.RunAsync_PassesTheSelectionThroughAsync"]}
+await dispatcher.SendAsync(new RequestAuditRebuildCommand {
+  TenantScope = "tenant-a",        // optional: one tenant
+  StreamIds = null,                // optional: named streams
+  FromCommitSequence = 1_250_000,  // optional: exclusive floor
+  ToCommitSequence = null,         // optional: inclusive ceiling
+  MaxEvents = 5_000,               // optional: lowers the origin's cap, never raises it
+});
+```
+
+The origin's built-in `AuditRebuildRequestReceptor` selects the stored events the way a [redelivery](../../resilience/stream-integrity.md) does, keeps the types audit eligibility admits, and queues each record to the outbox, from which it ships to the audit topic like any live audit record. It is registered at the same three stages as the redelivery receptor, so the command reaches it in process and over the inbox.
+
+What a rebuild does, and why:
+
+| Behavior | Why | Verified |
+|---|---|---|
+| Each record carries the id its live writer gave it, [`RecordIdFor(originalEventId)`](#record-ids). | The audit perspective keys a record by its id, so a rebuild, run once or many times, leaves one row per audited event. | {verified: AuditLedgerRebuildTests.Rederive_ARecordTheLiveWriterMinted_IsTheSameRecordAsync, AuditLedgerRebuildTests.RunAsync_Twice_YieldsOneRecordPerOriginEventAsync} |
+| Only eligible types are re-derived: the mode, `[AuditEvent]`, the self-audit exclusion and the [ephemeral exclusion](#ephemeral-events) apply as on the live paths. | A rebuild must not mint records the live paths would never have written. | {verified: AuditLedgerRebuildTests.Rederive_AnExcludedType_IsNoRecordAsync, AuditLedgerRebuildTests.Rederive_OptIn_AnUnmarkedType_IsNoRecordAsync, AuditLedgerRebuildTests.Rederive_AStoredAuditRecord_IsNoRecordAsync, AuditLedgerRebuildTests.Rederive_AnEphemeralEvent_IsNoRecordAsync, AuditLedgerRebuildTests.Rederive_AnEphemeralEventThatKeepsItsBody_IsARecordWithItAsync} |
+| The `IAuditDecisionHook` is not consulted. | A hook judges an event's payload, and a rebuild, like a redelivery, never rehydrates payloads (AOT metadata and upcast fidelity). An occurrence a hook vetoed live can therefore reappear in a rebuilt ledger. | {verified: AuditRebuildRequestReceptorTests.Rebuild_DoesNotConsultTheRegisteredDecisionHookAsync} |
+| A stored type this build does not know is audited under `OptOut` and not under `OptIn`. | Under `OptOut` nothing could have excluded it; under `OptIn` nothing could have marked it. | {verified: AuditLedgerRebuildTests.Rederive_AnUnknownType_IsARecordUnderOptOutAsync, AuditLedgerRebuildTests.Rederive_AnUnknownType_IsNoRecordUnderOptInAsync, AuditLedgerRebuildTests.Rederive_AnUnknownEphemeralType_IsNoRecordAsync} |
+| The record's time, correlation and causation come from the event's first stored hop; the rebuild's own time stands in only when the stored metadata has no hop to read. | An audit trail is read by when things happened; a rebuild must not move every record to the hour it ran. | {verified: AuditLedgerRebuildTests.Rederive_TheRecordTime_IsWhenTheEventHappenedNotWhenItWasRebuiltAsync, AuditLedgerRebuildTests.Rederive_CorrelationAndCausation_ComeFromTheStoredHopAsync, AuditLedgerRebuildTests.Rederive_NoStoredMetadata_StampsTheRebuildTimeAndNoChainAsync} |
+| Tenant and user come from the stored scope; the record rides that tenant's ledger. A row with no scope is on the no-tenant ledger. | The same ledger rule as the live paths. | {verified: AuditLedgerRebuildTests.Rederive_AnEligibleEvent_IsARecordOfItOnTheTenantLedgerAsync, AuditLedgerRebuildTests.Rederive_NoStoredScope_IsOnTheNoTenantLedgerAsync} |
+| The body is copied from the stored body only when the type or `AuditBodyDefault` keeps it. | The same body rule as the live paths. | {verified: AuditLedgerRebuildTests.Rederive_ByDefault_LeavesTheBodyOutAsync, AuditLedgerRebuildTests.Rederive_ATypeThatKeepsItsBody_CarriesTheStoredBodyAsync, AuditLedgerRebuildTests.Rederive_TheDefaultSetToInclude_CarriesEveryBodyAsync} |
+| Selection is capped by `RedeliveryPumpOptions.MaxEventsPerRequest` and read in pages of `SelectPageSize`; `MaxEvents` can lower the cap, never raise it. | The origin owns its storm cap, as for a redelivery; a page bounds the memory one rebuild holds. Page through a larger history with `FromCommitSequence`. | {verified: AuditLedgerRebuildTests.RunAsync_StopsAtTheEventCapAsync, AuditLedgerRebuildTests.RunAsync_ARequestedCap_IsClampedByTheOriginsCapAsync, AuditLedgerRebuildTests.RunAsync_PagesWithTheKeysetOfTheLastEventAsync} |
+| A service with event audit off selects nothing. | It writes no audit records, so it has no ledger to rebuild, and reading its store would be for nothing. | {verified: AuditLedgerRebuildTests.RunAsync_WithEventAuditOff_SelectsNothingAsync, AuditRebuildRequestReceptorTests.Rebuild_OnAServiceWithEventAuditOff_QueuesNothingAsync} |
+| A host without a work coordinator or the deferred outbox channel logs the request and drops it. | A rebuild is an operator action; it must never fail the inbox message that carried it. | {verified: AuditRebuildRequestReceptorTests.Rebuild_WithoutTheCoordinatorOrTheChannel_DoesNothingAsync} |
+| The command is control-plane traffic, and its own command audit keeps the number of streams it named, not the ids. | Like a redelivery request, it is a framework request with no user behind it, and its stream list is unbounded. | {verified: AuditLedgerRebuildTests.RequestAuditRebuildCommand_IsAuditedWithItsStreamCountAsync, ControlPlaneTypeRegistryTests.FrameworkControlPlaneTypes_AreRegisteredByDefaultAsync} |
+
+Reaped ephemeral events and at-most-once occurrences are never selected, as for any redelivery.
 
 ---
 

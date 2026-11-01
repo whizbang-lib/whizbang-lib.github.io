@@ -17,6 +17,7 @@ tags: >-
   events, ephemeral, destruction, transient-storage, ttl, rewind-grace, reaper, snapshots, composition,
   profiles, WHIZ130, WHIZ131, WHIZ132, WHIZ133, WHIZ134, compaction, stream-close, full-history
 codeReferences:
+  - src/Whizbang.Core/SystemEvents/AuditEligibility.cs
   - src/Whizbang.Core/Attributes/EphemeralAttribute.cs
   - src/Whizbang.Core/Attributes/Destruction.cs
   - src/Whizbang.Core/Attributes/TransientStorage.cs
@@ -57,6 +58,7 @@ codeReferences:
   - src/Whizbang.Generators/PerspectiveRunnerGenerator.cs
   - src/Whizbang.Generators/Templates/PerspectiveRunnerTemplate.cs
 testReferences:
+  - tests/Whizbang.Core.Tests/SystemEvents/AuditEphemeralExclusionTests.cs
   - tests/Whizbang.Core.Tests/Attributes/EphemeralAttributeTests.cs
   - tests/Whizbang.Core.Tests/Ephemeral/EphemeralModeResolverTests.cs
   - tests/Whizbang.Core.Tests/Ephemeral/EphemeralFlagDeriverTests.cs
@@ -320,6 +322,12 @@ frequent cadence: every `EphemeralSnapshotEveryNEvents` events (default 10), kee
 reaped history anyway). Sourced perspectives keep the standard cadence. See
 [Perspective Snapshots](../perspectives/snapshots#perspectivesnapshotoptions).
 {verified: PerspectiveRunnerGeneratorTests.PerspectiveRunnerGenerator_EphemeralPerspective_UsesAggressiveSnapshotSettingsAsync}
+
+### Audit {#audit}
+
+{verified: AuditEphemeralExclusionTests.AnEphemeralType_IsNotAuditedByDefaultAsync, AuditEphemeralExclusionTests.AnEphemeralTypeThatKeepsItsBody_IsAuditedAsync}
+
+An ephemeral type is not audited unless it keeps its body with `[AuditEvent(IncludeBody = true)]`: an audit record points at its event by default, and the event is reaped. See [Audit logging](../security/audit-logging#ephemeral-events) for the rule and the reasons behind each part of it.
 
 ## Build-time rules
 

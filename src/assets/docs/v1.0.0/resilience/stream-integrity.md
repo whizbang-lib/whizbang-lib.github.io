@@ -17,6 +17,8 @@ codeReferences:
   - src/Whizbang.Data.EFCore.Postgres/IntegrityCheckpointReceptor.cs
   - src/Whizbang.Data.EFCore.Postgres/IntegrityManifestReceptors.cs
   - src/Whizbang.Core/Messaging/Redelivery.cs
+  - src/Whizbang.Core/SystemEvents/AuditLedgerRebuild.cs
+  - src/Whizbang.Data.EFCore.Postgres/AuditRebuildRequestReceptor.cs
   - src/Whizbang.Core/Messaging/RedeliveryComposite.cs
   - src/Whizbang.Core/Messaging/RedeliveryPump.cs
   - src/Whizbang.Core/Workers/SubscriptionExpansionWorker.cs
@@ -50,6 +52,8 @@ codeReferences:
   - src/Whizbang.Core/Messaging/CompositeInboxFanout.cs
 testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/AtMostOnceOccurrenceIntegrityTests.cs
+  - tests/Whizbang.Core.Tests/SystemEvents/AuditLedgerRebuildTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/AuditRebuildRequestReceptorTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/IntegrityCheckpointWorkerTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/IntegrityAuditWorkerTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/SubscriptionExpansionWorkerTests.cs
@@ -652,6 +656,10 @@ reset their seals instead of reporting drift.
 Audit records are a function of the origin's events and scope, and the origin does not store most of them, so folding them made the two sides disagree: a subscriber that stored fanned-out audit records counted them in the origin's lane, where the origin had nothing to match. Migration 216 removes the audit buckets and sealed epochs already stored, once.
 
 The continuity checkpoints apply the same exclusion. The origin's checkpoint window and a subscriber's count of what it received from that origin both leave the audit types out, so audit traffic never reads as a count the origin did not declare.
+
+Because audit records never take part in digest sync, a lost or incomplete audit ledger is not repaired by redelivery. It is [rebuilt](../fundamentals/security/audit-logging#rebuilding-the-audit-ledger) instead: `RequestAuditRebuildCommand` makes the origin run the redelivery selection over its stored events, keep the types audit eligibility admits, and queue their records again under the ids their live writers gave them, so the audit perspective converges on one row per audited event however often the rebuild runs.
+
+{verified: AuditLedgerRebuildTests.RunAsync_Twice_YieldsOneRecordPerOriginEventAsync, AuditRebuildRequestReceptorTests.Rebuild_Twice_YieldsOneRecordPerOriginEventAsync}
 
 ### Direct appends are digested like emitted events {#direct-appends-digested}
 
