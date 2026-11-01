@@ -47,6 +47,7 @@ codeReferences:
   - src/Whizbang.Core/Observability/InstanceLivenessMetrics.cs
   - src/Whizbang.Core/Observability/ProbeCadenceMetrics.cs
 testReferences:
+  - tests/Whizbang.Core.Tests/Perspectives/CollectiveReplayRunnerTests.cs
   - tests/Whizbang.Core.Tests/Observability/InstanceLivenessMetricsTests.cs
   - tests/Whizbang.Core.Tests/Lifecycle/LifecycleTrackingEndsTests.cs
   - tests/Whizbang.Core.Tests/Observability/ProbeCadenceMetricsTests.cs
@@ -505,8 +506,9 @@ release cycle. See [dates, times and durations](../../fundamentals/perspectives/
 | `whizbang.perspective.rewind.events_replayed` | Histogram\<int\> | Events replayed per rewind |
 | `whizbang.perspective.rewind.events_behind` | Histogram\<int\> | Events behind cursor when rewind triggered |
 | `whizbang.perspective.stragglers_dropped` | Counter\<long\> | Late events an ephemeral perspective dropped instead of rewinding for them, because no readable snapshot floor preceded them. Counted once per event. Tag: `perspective_name`. The skipped rewind still counts in `rewinds`. See [ephemeral runtime guards](../../fundamentals/events/ephemeral-events.md#runtime-guards) |
+| `whizbang.perspective.snapshots_deferred` | Counter\<long\> | Snapshots of a row with collectives that were due and not taken, because a collective of the row was in flight when the row was read, or moved before the row was written. The snapshot stays due and the next apply takes it. A count that keeps rising for one perspective means its collectives are almost never at rest, so its rewinds start from older snapshots. Tag: `perspective_name`. See [snapshots of a row with collectives](../../fundamentals/perspectives/snapshots.md#collectives-deferred) |
 
-{verified: PerspectiveMetricsTests.PerspectiveMetrics_StragglersDropped_CountsUnderItsNameWithThePerspectiveTagAsync, PerspectiveWorkerDeepPathDrainTests.DrainMode_EphemeralStragglerWithNoSnapshotFloor_IsDroppedOnceAcrossLapsAsync}
+{verified: PerspectiveMetricsTests.PerspectiveMetrics_StragglersDropped_CountsUnderItsNameWithThePerspectiveTagAsync, PerspectiveWorkerDeepPathDrainTests.DrainMode_EphemeralStragglerWithNoSnapshotFloor_IsDroppedOnceAcrossLapsAsync, CollectiveReplayRunnerTests.ADeferredSnapshot_StaysDue_AndTheNextQuietApplyTakesItAsync}
 
 `rewinds_triggered` reads with `rewinds` and `rewinds_failed` as one identity: triggered = completed + failed
 + in flight. Completions lagging triggers means rewinds are failing or queueing. See
