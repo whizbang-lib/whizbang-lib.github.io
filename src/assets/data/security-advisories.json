@@ -1,7 +1,8 @@
 {
-  "fetchedAt": "2026-10-08T14:51:40.816Z",
+  "fetchedAt": "2026-11-01T13:40:47.148Z",
   "source": "api.osv.dev",
   "packages": [
+    "SoftwareExtravaganza.Whizbang.Archive.AzureBlob",
     "SoftwareExtravaganza.Whizbang.CLI",
     "SoftwareExtravaganza.Whizbang.Core",
     "SoftwareExtravaganza.Whizbang.Data.Dapper.Custom",
