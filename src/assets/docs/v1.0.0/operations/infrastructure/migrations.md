@@ -48,6 +48,7 @@ codeReferences:
   - src/Whizbang.Core/Workers/PerspectiveWorker.cs
   - src/Whizbang.Data.EFCore.Postgres/Perspectives/MappedDocumentReadFailure.cs
   - src/Whizbang.Data.Postgres/Migrations/226_PartitionManager.sql
+  - src/Whizbang.Data.Postgres/Migrations/277_PreflightInstanceAndRoleColumns.sql
   - src/Whizbang.Core/Startup/TableRewriteStartupStep.cs
   - src/Whizbang.Core/Workers/ITableRewriter.cs
   - src/Whizbang.Core/Workers/VacuumFullTableRewriter.cs
@@ -61,6 +62,7 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/SchemaStepRunnerTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/SchemaPassLedgerTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/SchemaBootstrapPhaseTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/PreflightInstanceColumnsTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/MigratorDutyStagingTests.cs
   - tests/Whizbang.Core.Tests/Schema/SchemaBootstrapRetryTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StartupPreflightHostTests.cs
@@ -626,6 +628,56 @@ untouched by any of this; the bootstrap still claims nothing about migrations.
 When the closure does run, each of its `ADD COLUMN IF NOT EXISTS` and `CREATE INDEX IF NOT EXISTS` statements
 [asks the catalog first](#idempotent-ddl-takes-no-lock), so one with nothing to do takes no lock while the rest of the
 closure's transaction runs.
+
+#### What the closure carries {#what-the-closure-carries}
+
+The closure is what an instance needs before the main pass: the core tables, the election's assignment table and
+functions (migration 184's region), and, since migration 277, every column a migration adds to the instance and role
+tables together with the function that records an instance's startup stage. Migration 277 is a bootstrap region from
+top to bottom, so it runs in Preflight:
+
+- the instance row's columns: `lifecycle_phase` and `library_version` (109), `connection_mode` (203), and
+  `startup_stage`, `startup_stage_message` and `startup_stage_entered_at` (231);
+- `evicted_by` on the eviction tombstones (110);
+- `wh_record_startup_stage`, exactly as migration 231 defines it.
+
+Registration ends Preflight and writes the stage the instance held until its row existed. Earlier releases created
+those columns and the recorder only in the main pass, so on a fresh database that write failed (logged at Debug and
+held), and the row recorded nothing until Converge. A fresh database's row now records its stage from registration,
+as a restart's always did (see [what a fresh database and a restart record](../startup/startup-status#what-a-fresh-database-and-a-restart-record)).
+In the main pass, 277 runs nothing outside its region and finds everything in place.
+{verified: SchemaBootstrapPhaseTests.AnEmptyDatabaseRecordsItsStageAtRegistrationAfterTheBootstrapAsync, StartupStageHostTests.AFreshDatabase_EntersEveryStageInOrder_LogsEach_AndRecordsEachTheRowCanHoldAsync, MigrationBootstrapRegionsTests.TheBootstrapSubsetIsTheMigrationsStartupNeedsAsync}
+
+Four rules keep the closure honest, each locked by a test:
+
+**Every column a migration adds to an instance or role table is added by the closure.** Registration, the electors,
+the heartbeat and the eviction fence read and write these tables in Preflight and Elect, before the main pass has run.
+A column that only the main pass adds is missing there on every fresh database. The test derives the list from the
+shipped SQL rather than from a list kept by hand, so a new migration that adds such a column outside a bootstrap region
+fails it.
+{verified: PreflightInstanceColumnsTests.EveryColumnAMigrationAddsToAnInstanceOrRoleTable_IsAddedByTheBootstrapClosureAsync}
+
+**Each column is added only when the catalog says it is missing.** `ADD COLUMN IF NOT EXISTS` takes an ACCESS
+EXCLUSIVE lock even when the column is already there, and running instances use these tables on every heartbeat and
+claim. The closure runs again whenever its hash changes, so on an existing database, where every column exists, 277
+takes no table lock at all.
+{verified: MigrationAgainstRunningWorkersTests.ARerun_WhileAWorkerHoldsTheInstanceAndRoleTables_CompletesWithoutWaitingForItAsync}
+
+**A column the closure adds is described as it is added.** Migration 231 describes its columns only inside the block
+that adds them. On a database the closure brought up, 231 no longer adds them, so a description left to it would never
+be written.
+{verified: SchemaBootstrapPhaseTests.TheColumnsTheBootstrapAdds_AreDescribedAsync}
+
+**Every function the closure defines is defined as its latest migration defines it.** The closure is applied again,
+before the main pass, whenever it changes. An older definition in it would put that older function back on every
+database it reached until the main pass replaced it again. So the stage recorder in 277 is 231's definition word for
+word: the closure makes it exist earlier and never makes it do something else. It has one signature, so it needs no
+guard against overloads, and a running instance's call never finds it dropped. A later migration that redefines a
+closure function carries the new definition into a bootstrap region of its own, as 198 did for 184.
+{verified: PreflightInstanceColumnsTests.TheBootstrapsStageRecorder_IsMigration231sDefinitionAsync, PreflightInstanceColumnsTests.EveryFunctionTheBootstrapDefines_IsDefinedAsItsLastWordAsync}
+
+The descriptor ensure does not declare these columns, so it neither adds them again nor contends with the closure for
+them. The Dapper driver has no closure and runs 277 as an ordinary migration.
 
 #### The bootstrap waits for the schema lock {#bootstrap-waits-for-the-lock}
 {verified: SchemaBootstrapPhaseTests.ABootstrapThatFindsTheLockHeld_WaitsForIt_ThenAppliesTheClosureAsync, SchemaBootstrapPhaseTests.AWaiterWhoseHolderAppliedTheClosureMeanwhile_AppliesNothingAsync, SchemaBootstrapPhaseTests.ABootstrapCanceledWhileItWaits_EndsWithTheCancellation_AndAppliesNothingAsync, SchemaInitializationStagesTests.TheBootstrapsWaitsAndFailure_AreProgressWithinPreflightAsync}

@@ -114,6 +114,56 @@ applied in three ways:
   When the latest definition of a function asks the caller's schema, the function is redefined whole in a new
   migration that names its schema. Migration 213 did this for the seven functions that needed it.
 
+## Instance and role tables, and functions in the bootstrap closure {#bootstrap-closure-rules}
+
+Some migrations hold `-- @whizbang:bootstrap-begin` / `-- @whizbang:bootstrap-end` regions. The marked regions of
+every migration, in order, are the
+[bootstrap closure](../../v1.0.0/operations/infrastructure/migrations.md#what-the-closure-carries) that every instance of
+the EF Core driver applies in Preflight, before the election and the main pass. Two authoring rules follow from it.
+
+**A new column on an instance or role table goes in a bootstrap region.** Registration, the electors, the heartbeat
+and the eviction fence use `wh_service_instances`, `wh_instance_evictions`, `wh_instance_capabilities`,
+`wh_role_assignments` and `wh_role_candidates` in Preflight and Elect,
+before the main pass, so a column only the main pass adds is missing there on every fresh database. That is how a
+fresh database's instance row once recorded no startup stage until Converge; migration 277 moved every such column
+into the closure. Inside the region the column is:
+
+- **catalog-checked:** added only when `pg_attribute` says it is missing, because `ADD COLUMN IF NOT EXISTS` takes an
+  ACCESS EXCLUSIVE lock even when the column exists, and running instances use these tables on every heartbeat;
+- **described in the same block:** the closure is the only place that adds the column on a database it brought up,
+  so a `COMMENT ON COLUMN` anywhere else may never run.
+
+```sql{
+title: "A column on an instance table, in a bootstrap region"
+description: "The column is added only when the catalog says it is missing, so an existing database takes no table lock, and it is described in the block that adds it."
+category: "Configuration"
+difficulty: "ADVANCED"
+tags: ["migrations", "bootstrap", "schema", "locking"]
+}
+-- @whizbang:bootstrap-begin
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_attribute
+                 WHERE attrelid = to_regclass('__SCHEMA__.wh_service_instances')
+                   AND attname = 'example_column'
+                   AND NOT attisdropped) THEN
+    ALTER TABLE __SCHEMA__.wh_service_instances ADD COLUMN IF NOT EXISTS example_column TEXT;
+
+    COMMENT ON COLUMN __SCHEMA__.wh_service_instances.example_column IS
+      'What the column holds and who writes it.';
+  END IF;
+END $$;
+-- @whizbang:bootstrap-end
+```
+
+**A migration that redefines a closure function carries the new definition into a region of its own.** The closure
+is applied again whenever its hash changes, before the main pass. When the latest definition of a function lives
+outside a region, the closure puts the older body back on every database it reaches, while the ledger skips the file
+that held the newer one. Migration 198 marked its redefinition of 184's `wh_end_lapsed_bridge` for this reason. The
+same holds in the other direction: a function the closure creates early is copied from its latest migration word for
+word, as 277 copies 231's `wh_record_startup_stage`, so the closure makes it exist earlier and never makes it do
+something else.
+
 ## Enforcement
 
 - `MigrationSchemaQualificationTests` fails the build if a new migration calls `current_schema()` in code,
@@ -124,5 +174,15 @@ applied in three ways:
   the run-time functions work on the named schema's own tables.
 - `MigrationSearchPathTests` and `MigrationSearchPathGenerationTests` check that the runner sets the migrated
   schema as `current_schema()` for each migration and restores the previous setting afterwards.
+- `PreflightInstanceColumnsTests` fails if a column a migration adds to an instance or role table is not also added
+  by the bootstrap closure (the list is derived from the shipped SQL), if the closure's stage recorder is not
+  231's definition, or if any function the closure defines differs from its latest migration definition.
+  {verified: PreflightInstanceColumnsTests.EveryColumnAMigrationAddsToAnInstanceOrRoleTable_IsAddedByTheBootstrapClosureAsync, PreflightInstanceColumnsTests.TheBootstrapsStageRecorder_IsMigration231sDefinitionAsync, PreflightInstanceColumnsTests.EveryFunctionTheBootstrapDefines_IsDefinedAsItsLastWordAsync}
+- `SchemaBootstrapPhaseTests` checks that every column the closure adds carries its description, and that an empty
+  database records its stage at registration after the bootstrap alone.
+  {verified: SchemaBootstrapPhaseTests.TheColumnsTheBootstrapAdds_AreDescribedAsync, SchemaBootstrapPhaseTests.AnEmptyDatabaseRecordsItsStageAtRegistrationAfterTheBootstrapAsync}
+- `MigrationAgainstRunningWorkersTests` re-applies the closure and every file that alters these tables while a worker
+  holds them, and fails if any of it waits for the worker.
+  {verified: MigrationAgainstRunningWorkersTests.ARerun_WhileAWorkerHoldsTheInstanceAndRoleTables_CompletesWithoutWaitingForItAsync}
 - `MigrationSchemaQualifierTests` covers each case of the qualification: literals, escape strings, doubled quotes,
   quoted identifiers, comments, dollar quotes and positional parameters.
