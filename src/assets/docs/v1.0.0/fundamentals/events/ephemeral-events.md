@@ -65,6 +65,7 @@ testReferences:
   - tests/Whizbang.Core.Tests/Perspectives/EvictedRowRebuildTests.cs
   - tests/Whizbang.Core.Tests/Observability/PerspectiveMetricsTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerDeepPathDrainTests.StragglerDropped.cs
+  - tests/Whizbang.Core.Tests/Perspectives/RewindDeletedArchiveTests.cs
   - tests/Whizbang.Core.Tests/Perspectives/StreamCompactorTests.cs
   - tests/Whizbang.Core.Tests/Perspectives/FullHistoryPerspectiveRegistryTests.cs
   - tests/Whizbang.Core.Tests/Lifecycle/StreamPrefixTruncatorTests.cs
@@ -430,13 +431,21 @@ nothing is pending for it. The memory of dropped events lives in the process, so
 that is delivered again may be dropped once more, once per process.
 {verified: PerspectiveWorkerDeepPathDrainTests.DrainMode_EphemeralStragglerWithNoSnapshotFloor_IsDroppedOnceAcrossLapsAsync, PerspectiveWorkerDeepPathDrainTests.DrainMode_StragglersLeftPendingByAnOlderBuild_StopAfterOneClaimAsync, PerspectiveWorkerDeepPathDrainTests.DrainMode_RunThatDropsAStragglerBelowTheRow_RetiresItAndAppliesTheRestAsync, PerspectiveWorkerDeepPathDrainTests.DrainMode_RunReportsADropOutsideItsBatch_RetiresNothingAndDoesNotRunAgainAsync, PerspectiveRunnerTemplateInvariantTests.EphemeralRewind_SkippedRewindNamesTheStragglerItDropsAsync, PerspectiveCursorAdvanceSqlTests.CompletePerspective_ADroppedStragglersWork_RetiresItClearsTheRewindFlagAndLeavesTheCursorAsync, DapperWorkCoordinatorDeepPathTests.CompletePerspectiveAsync_DroppedStragglersWork_RetiresItClearsTheRewindFlagAndLeavesTheCursorAsync}
 
+**A second source.** Dropping a straggler is not only an ephemeral path: a rewind of any perspective whose replay needs a
+[deleted archive](../perspectives/rewind#deleted-archive) also names its late event in `DroppedStragglers`, and the
+worker retires and counts it the same way. That drop logs its own Warning ("Refusing rewind of ..."), not the
+straggler line above.
+{verified: RewindDeletedArchiveTests.ARewindFromTheStreamsStart_OfAStreamWhoseArchiveWasDeleted_IsRefused_AndNamesTheLateEventDroppedAsync, PerspectiveRunnerTemplateInvariantTests.EphemeralRewind_SkippedRewindNamesTheStragglerItDropsAsync}
+
 **Watch `whizbang.perspective.stragglers_dropped`.** Every drop counts once on this counter, tagged with
-`perspective_name`. The skipped rewind still counts in `whizbang.perspective.rewinds` (and
+`perspective_name`, whichever source dropped it (an ephemeral rewind with no floor, or a rewind refused for a
+[deleted archive](../perspectives/rewind#deleted-archive)). The skipped rewind still counts in `whizbang.perspective.rewinds` (and
 `whizbang.perspective.rewinds_triggered`), so a rewind count alone cannot tell a replay from a drop; this
 counter does. A count that keeps rising means late events are arriving later than the perspective's reorder
 window covers: snapshot more often (see [Snapshots](#snapshots)) or widen the rewind grace window (see
 [When the body is deleted](#reap-gates)) so those events find a floor and rewind instead of being dropped. A
-rewind that completes counts no drop.
+drop refused for a deleted archive is told apart by its warning; neither setting changes it. A rewind that
+completes counts no drop.
 {verified: PerspectiveMetricsTests.PerspectiveMetrics_StragglersDropped_CountsUnderItsNameWithThePerspectiveTagAsync, PerspectiveWorkerDeepPathDrainTests.DrainMode_RewindThatCompletes_CountsNoDroppedStragglerAsync}
 
 **Evicted rows rebuild only from a snapshot.** When retention evicts an ephemeral perspective's row

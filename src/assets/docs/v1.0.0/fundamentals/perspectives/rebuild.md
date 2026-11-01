@@ -53,6 +53,7 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Collective/CollectiveReplayOrderingTests.cs
   - tests/Whizbang.Core.Tests/Perspectives/PerspectiveRewindWriteCheckTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/CollectiveReplayRebuildIntegrationTests.cs
+  - tests/Whizbang.Core.Tests/Perspectives/RewindDeletedArchiveTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -260,13 +261,9 @@ A stream skipped for a deleted archive is logged at Warning, naming the stream a
 | Under `Skip` such a stream still starts from its newest live snapshot, and is skipped with none. | `Skip` never reads the archive, so the deletion changes nothing it reads: the snapshot plus the hot events after it is still the stream. | {verified: PerspectiveRebuilderArchivedDataTests.Rebuild_ByDefault_StartsAStreamWhosePrefixArchiveWasDeleted_FromItsNewestLiveSnapshotAsync, ArchiveReadThroughIntegrationTests.Rebuild_ByDefault_StartsAStreamWhosePrefixArchiveWasDeleted_FromItsNewestLiveSnapshotAsync} |
 | A stream whose whole archive was deleted is skipped under every choice, with the warning. | There is nothing left to replay. Under `IncludeAll` it used to replay nothing and fail the rebuild. | {verified: PerspectiveRebuilderArchivedDataTests.Rebuild_SkipsAStreamWhoseWholeArchiveWasDeleted_WhateverItsChoiceAsync, ArchiveReadThroughIntegrationTests.Rebuild_IncludeAll_SkipsAStreamWhoseWholeArchiveWasDeleted_AndReportsItSkippedAsync} |
 
-**Known limits.**
-
-- A prefix archive deleted before migration 274 left no record in the ledger, so it is not detected: a rebuild still
-  reads that stream as one never archived. A whole-stream archive deleted before 274 is detected, because its row
-  stays `Archived` with no locator, which the lookup reads as `WholeDeleted` {verified: ArchivedStreamRebuildSqlTests.Extents_AnArchivedRowWithNoLocator_ReadsWholeDeleted_EvenWithoutTheDeletionStampAsync}.
-- A rewind does not consult the deletion record. A rewind with no snapshot can still replay a stream whose prefix
-  archive was deleted from its hot events alone ([#1964](https://github.com/whizbang-lib/whizbang/issues/1964)).
+**Known limit.** A prefix archive deleted before migration 274 left no record in the ledger, so it is not detected: a
+rebuild, and a rewind, still read that stream as one never archived. A whole-stream archive deleted before 274 is
+detected, because its row stays `Archived` with no locator, which the lookup reads as `WholeDeleted` {verified: ArchivedStreamRebuildSqlTests.Extents_AnArchivedRowWithNoLocator_ReadsWholeDeleted_EvenWithoutTheDeletionStampAsync}.
 
 ### The parked cursor {#archived-data-parked-cursor}
 
@@ -296,8 +293,11 @@ past an archived snapshot still reads the archived events above it
 row the live path has already built, so it must fold every event the row was built from. A rewind also folds the
 row's [collective events](../messaging/collective-events#collective-replay-from-a-start), as a rebuild does.
 
-A rewind does not yet check for a [deleted archive](#archived-data-deleted): with no snapshot, it can replay a stream
-whose prefix archive was deleted from its hot events alone (#1964).
+A rewind whose replay needs archived history (from the stream's start, or from a snapshot an archive covers) treats a
+[deleted archive](#archived-data-deleted) as a rebuild that opts in to archived data does: it refuses, leaves the row
+and the cursor as they are, and reports its late event dropped. It cannot start from the newest live snapshot as `Skip`
+does, because that snapshot sits after the late event. See [a deleted archive](rewind#deleted-archive).
+{verified: RewindDeletedArchiveTests.ARewindFromTheStreamsStart_OfAStreamWhoseArchiveWasDeleted_IsRefused_AndNamesTheLateEventDroppedAsync, ArchiveReadThroughIntegrationTests.Rewind_WithoutASnapshot_OfAStreamWhosePrefixArchiveWasDeleted_IsRefused_AndLeavesTheRowAsItWasAsync}
 
 With `Whizbang:Archive:ReadThrough` set to `false`, nothing reads through the archive, so a rebuild that opts in folds
 only what is hot.

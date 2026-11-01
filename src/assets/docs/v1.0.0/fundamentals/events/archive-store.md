@@ -69,6 +69,7 @@ testReferences:
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperArchiveAppendPolicyTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperArchiveReadThroughTests.cs
   - tests/Whizbang.Core.Tests/Archival/ArchiveAwareEventStoreDecoratorTests.cs
+  - tests/Whizbang.Core.Tests/Perspectives/RewindDeletedArchiveTests.cs
   - tests/Whizbang.Core.Tests/Archival/ArchiveReadThroughRegistrationTests.cs
   - tests/Whizbang.Core.Tests/Archival/StreamArchivedRefusalTests.cs
   - tests/Whizbang.Core.Tests/Archival/StreamLifecycleOptionsBinderTests.cs
@@ -367,6 +368,7 @@ table archive and a blob archive.
 | A deleted archive is recorded, not just forgotten. | Clearing the locator alone left a stream archived through a prefix reading exactly like one never archived, because it stays `Active`. A rebuild then replayed it from its first hot event and wrote a partial history as the row (#1958). With the record, a rebuild [reports the stream instead](../perspectives/rebuild#archived-data-deleted). | {verified: ArchivedStreamRebuildSqlTests.Extents_TellAStreamWhoseArchiveWasDeleted_FromOneThatNeverHadAnArchiveAsync} |
 | `archive_deleted_at` is never cleared: nothing in the archive store writes it back to null, and a stream archived again after the delete still reads as deleted. | The deleted events are gone for good, so a stream archived again afterwards, or restored from that later archive, still lacks them. | {verified: ArchivedStreamRebuildSqlTests.Extents_TellAStreamWhoseArchiveWasDeleted_FromOneThatNeverHadAnArchiveAsync, ArchivedStreamRebuildSqlTests.Extents_AStreamRestoredFromALaterArchive_AfterItsEarlierArchiveWasDeleted_StillReadsPrefixDeletedAsync} |
 | A delete of a stream with no archive (never archived, or restored in full) deletes nothing and stamps nothing. | Nothing was lost, so the stream still reads as one never archived. | {verified: ArchivedStreamRebuildSqlTests.Extents_TellAStreamWhoseArchiveWasDeleted_FromOneThatNeverHadAnArchiveAsync} |
+| A [rewind](../perspectives/rewind#deleted-archive) whose replay needs the deleted history (from the stream's start, or from a snapshot an archive covers) refuses: the row and the cursor stay as they are, one warning names the stream, the late event and the deleted extent, and the late event is reported dropped. A rewind from a snapshot no archive covers replays as before. | A rewind always reads through the archive, so it behaves like a rebuild that opts in to archived data, which skips the stream. It cannot fall back to the newest live snapshot as a default rebuild does, because that snapshot sits after the late event it must fold. | {verified: RewindDeletedArchiveTests.ARewindFromTheStreamsStart_OfAStreamWhoseArchiveWasDeleted_IsRefused_AndNamesTheLateEventDroppedAsync, RewindDeletedArchiveTests.ARewindFromASnapshotAnArchiveCovers_OfAStreamWhoseArchiveWasDeleted_IsRefusedAsync, RewindDeletedArchiveTests.ARewindFromASnapshotNoArchiveCovers_ReplaysTheHotEvents_EvenWhenThePrefixArchiveWasDeleted_AndAsksTheLedgerNothingAsync, ArchiveReadThroughIntegrationTests.Rewind_WithoutASnapshot_OfAStreamWhosePrefixArchiveWasDeleted_IsRefused_AndLeavesTheRowAsItWasAsync} |
 
 The column is nullable with no default, and migration 274 adds no index: no row is rewritten, the rebuild looks the
 ledger up by its key, and an append never writes the column, so the ledger's updates on the append path stay
@@ -374,8 +376,8 @@ heap-only.
 {verified: StreamLifecycleLedgerSqlTests.TheLedger_IndexesOnlyItsKeyStateAndDueTime_AndLeavesRoomOnEachPageAsync}
 
 A prefix archive deleted before migration 274 left no trace in the ledger and is not stamped by it, so it cannot be
-detected. A whole-stream archive deleted before 274 left its row `Archived` with no locator, which the rebuild's lookup
-reads as deleted too.
+detected. A whole-stream archive deleted before 274 left its row `Archived` with no locator, which the lookup a rebuild
+and a rewind make reads as deleted too.
 {verified: ArchivedStreamRebuildSqlTests.Extents_AnArchivedRowWithNoLocator_ReadsWholeDeleted_EvenWithoutTheDeletionStampAsync}
 
 ## Read-through {#read-through}
