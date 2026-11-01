@@ -1,13 +1,13 @@
 {
   "run": {
-    "runId": "41339184213",
-    "sha": "814252b0ac484222299282ca6887511b3ec2acaf",
+    "runId": "41340935916",
+    "sha": "39973b5cd52c13942cc767ec806fbe1bc4f81b32",
     "branch": "develop",
-    "libraryVersion": "0.2627.0-alpha.102",
-    "completedAt": "2026-11-01T19:28:47.407Z"
+    "libraryVersion": "0.2627.0-alpha.111",
+    "completedAt": "2026-11-01T19:49:23.166Z"
   },
   "total": {
-    "passed": 37366,
+    "passed": 37432,
     "failed": 0,
     "skipped": 12
   },
@@ -18,7 +18,7 @@
       "skipped": 0
     },
     "component": {
-      "passed": 5509,
+      "passed": 5525,
       "failed": 0,
       "skipped": 0
     },
@@ -58,7 +58,7 @@
       "skipped": 1
     },
     "unit": {
-      "passed": 20798,
+      "passed": 20848,
       "failed": 0,
       "skipped": 8
     }
@@ -162,7 +162,7 @@
     },
     "Whizbang.Core.Component.Tests": {
       "file": "Whizbang.Core.Component.Tests.json",
-      "passed": 4195,
+      "passed": 4211,
       "failed": 0,
       "skipped": 0
     },
@@ -174,7 +174,7 @@
     },
     "Whizbang.Core.Tests": {
       "file": "Whizbang.Core.Tests.json",
-      "passed": 13070,
+      "passed": 13110,
       "failed": 0,
       "skipped": 0
     },
@@ -408,7 +408,7 @@
     },
     "Whizbang.Transports.AzureServiceBus.Tests": {
       "file": "Whizbang.Transports.AzureServiceBus.Tests.json",
-      "passed": 596,
+      "passed": 601,
       "failed": 0,
       "skipped": 0
     },
@@ -468,7 +468,7 @@
     },
     "Whizbang.Transports.RabbitMQ.Tests": {
       "file": "Whizbang.Transports.RabbitMQ.Tests.json",
-      "passed": 141,
+      "passed": 146,
       "failed": 0,
       "skipped": 0
     },
