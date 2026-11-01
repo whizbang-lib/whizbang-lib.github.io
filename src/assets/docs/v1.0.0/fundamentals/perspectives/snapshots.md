@@ -20,6 +20,7 @@ codeReferences:
   - src/Whizbang.Data.Dapper.Postgres/DapperPerspectiveSnapshotStore.cs
   - src/Whizbang.Data.EFCore.Postgres/EFCorePerspectiveSnapshotStore.cs
   - src/Whizbang.Data.Schema/Schemas/PerspectiveSnapshotsSchema.cs
+  - src/Whizbang.Generators/Templates/PerspectiveRunnerTemplate.cs
 testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/EvictionCompanionCleanupSqlTests.cs
   - tests/Whizbang.Core.Tests/Perspectives/EvictedRowRebuildTests.cs
@@ -29,6 +30,8 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/EFCorePerspectiveSnapshotStoreTests.cs
   - tests/Whizbang.Data.Schema.Tests/Schemas/PerspectiveSnapshotsSchemaTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/SplitClassSnapshotRewindTests.cs
+  - tests/Whizbang.Core.Tests/Perspectives/CollectiveReplayRunnerTests.cs
+  - tests/Whizbang.Generators.Tests/PerspectiveRunnerSplitSnapshotTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -234,6 +237,27 @@ In distributed systems, events may arrive out of order due to:
 6. **Lock release**: The stream lock is released, and normal processing resumes.
 
 If no qualifying snapshot exists, the rewind replays from event zero. This is why snapshots are important for streams with many events -- they bound the replay cost.
+
+### A replay's snapshot stops at its last event {#a-replays-snapshot-and-collectives}
+
+{verified: CollectiveReplayRunnerTests.ARewindsSnapshot_IsTheRowAtItsLastEvent_BeforeTheCollectivesCommittedAfterItAsync, CollectiveReplayRunnerTests.ARebuildsSnapshot_IsTheRowAtItsLastEvent_BeforeTheCollectivesCommittedAfterItAsync, PerspectiveRunnerSplitSnapshotTests.Runner_TakesTheSnapshotBeforeTheWriteAtBothWritesThatSnapshotAsync}
+
+A rewind and a rebuild fold the row's [collective events](../messaging/collective-events#collective-replay-from-a-start)
+among the stream's events, so the row a replay writes can hold collectives committed after the stream's last event. A
+snapshot is recorded at an event, and a later rewind from it folds the collectives committed after that event. So the
+snapshot a replay takes, the rewind's final snapshot and a rebuild's snapshot alike, is the row **at its last event,
+before the collectives committed after it fold**. The row itself is written with them.
+The replay serializes that copy of the row when the first collective after a stream event folds, only when snapshots
+are on, and drops it at the next stream event, so it keeps one copy at most.
+
+| Choice | Reason | Verified |
+|---|---|---|
+| The snapshot holds no collective committed after its event. | A rewind from it folds those collectives; a snapshot that already held them would have them folded twice. | {verified: CollectiveReplayRunnerTests.ARewindsSnapshot_IsTheRowAtItsLastEvent_BeforeTheCollectivesCommittedAfterItAsync, CollectiveReplayRunnerTests.ARebuildsSnapshot_IsTheRowAtItsLastEvent_BeforeTheCollectivesCommittedAfterItAsync} |
+| Both writes that take a snapshot, the end of a rebuild's run and the end of a rewind, prefer the row at its last event, serialized before the write. | Each already captures its snapshot before the write; the row at the last event is the one to capture when collectives folded after it. | {verified: PerspectiveRunnerSplitSnapshotTests.Runner_TakesTheSnapshotBeforeTheWriteAtBothWritesThatSnapshotAsync} |
+
+A live snapshot is different: it is the row as the live apply read it, while the collective sink applies collectives
+asynchronously, so it can hold a collective committed just after its event or miss one committed just before. See the
+[known limit](../messaging/collective-events#collective-replay-from-a-start) (#1963).
 
 ### Bootstrap
 

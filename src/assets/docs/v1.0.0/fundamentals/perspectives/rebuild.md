@@ -30,6 +30,7 @@ codeReferences:
   - src/Whizbang.Core/Perspectives/IPerspectiveRunner.cs
   - src/Whizbang.Data.Postgres/PostgresArchivedStreamExtents.cs
   - src/Whizbang.Data.Postgres/Migrations/273_RebuildParksTheCursorOfAStreamArchivedWhole.sql
+  - src/Whizbang.Data.Postgres/Migrations/274_DeletedArchiveIsRecordedInTheLedger.sql
   - src/Whizbang.Data.EFCore.Postgres/EFCorePostgresPerspectiveCheckpointCompleter.cs
   - src/Whizbang.Data.Dapper.Postgres/DapperPostgresPerspectiveCheckpointCompleter.cs
   - src/Whizbang.Data.EFCore.Postgres/RebuildPerspectiveCommandReceptor.cs
@@ -51,6 +52,7 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/RebuildPerspectiveCommandReceptorCoverageTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Collective/CollectiveReplayOrderingTests.cs
   - tests/Whizbang.Core.Tests/Perspectives/PerspectiveRewindWriteCheckTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/CollectiveReplayRebuildIntegrationTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -199,8 +201,10 @@ var result = await rebuilder.RebuildStreamsAsync(
 | Stream | `Skip` (default) | `IncludeWhileLive` | `IncludeAll` |
 |---|---|---|---|
 | Nothing archived | Replays from its start | Same | Same |
-| Archived through a prefix (alive) | Restores its newest live snapshot and replays the hot events after it; **skipped** when it has no live snapshot | Replays from its start through the archive | Same as `IncludeWhileLive` |
+| Archived through a prefix (alive) | Restores its newest live snapshot and replays the hot events after it, folding the [collectives committed after the snapshot](../messaging/collective-events#collective-replay-from-a-start); **skipped** when it has no live snapshot | Replays from its start through the archive | Same as `IncludeWhileLive` |
 | Archived whole (not alive) | **Skipped** | **Skipped** | Replays from its start through the archive; its cursor is [parked](#archived-data-parked-cursor) |
+| Prefix archive [deleted](#archived-data-deleted) (alive) | Same as a prefix still archived: restores its newest live snapshot, **skipped** with none | **Skipped**, with a warning | **Skipped**, with a warning |
+| Whole archive [deleted](#archived-data-deleted) | **Skipped**, with a warning | **Skipped**, with a warning | **Skipped**, with a warning |
 
 A skipped stream's row is left as it is. It is counted in [`RebuildResult.StreamsSkipped`](#reading-the-result),
 never as a failure, and the rebuild logs how many streams it skipped and which choice skipped them. A host with no
@@ -213,6 +217,7 @@ archive registered rebuilds every stream from its start, as before.
 | The default is `Skip`, and `Skip` is 0. | Reading the archive costs a restore-sized read per stream and may reach cold storage, so a rebuild does not do it unasked. An unset value (a command or origin built before the option existed, or no origin at all) is the safe one. | {verified: PerspectiveRebuilderArchivedDataTests.RebuildArchivedData_DefaultsToSkip_OnTheEnumAndOnARebuildRequestAsync, PerspectiveRebuilderArchivedDataTests.Rebuild_WithNoOrigin_ReadsNoArchivedDataAsync} |
 | By default a stream archived whole is skipped and reported as skipped. | Its events are all archived, so rebuilding it would read only the archive. Skipping it also removes the cursor failure it used to cause. A rebuild of named streams that skipped them all succeeds, because nothing went wrong. | {verified: PerspectiveRebuilderArchivedDataTests.Rebuild_ByDefault_SkipsAStreamArchivedWhole_AndReportsItSkippedNotFailedAsync, ArchiveReadThroughIntegrationTests.Rebuild_WithoutIncludeAll_SkipsAStreamArchivedWhole_AndReportsItSkippedAsync} |
 | By default a stream archived through a prefix starts from its newest live snapshot and reads no archived event. | The newest snapshot is always live: an archive refuses a prefix that reaches the newest snapshot any perspective holds for the stream. The snapshot plus the hot events after it is the whole stream without the archive. It runs the rewind's replay from a model, under the apply lock. | {verified: PerspectiveRebuilderArchivedDataTests.Rebuild_ByDefault_StartsAStreamArchivedThroughAPrefix_FromItsNewestLiveSnapshotAsync, ArchiveReadThroughIntegrationTests.Rebuild_ByDefault_StartsAStreamArchivedThroughAPrefix_FromItsNewestLiveSnapshot_AndReadsNoArchivedEventAsync} |
+| That replay folds the row's collectives committed after the snapshot's event, in commit order among the hot events, even when no stream event follows the snapshot. | The snapshot holds the collectives committed before its event and none after; the rest are the row's news, as in a [rewind from a snapshot](../messaging/collective-events#collective-replay-from-a-start). | {verified: CollectiveReplayRebuildIntegrationTests.Rebuild_ByDefault_FromTheNewestLiveSnapshot_FoldsACollectiveCommittedAfterItAsync, CollectiveReplayRebuildIntegrationTests.Rebuild_ByDefault_FromASnapshotAtTheStreamsLastEvent_StillFoldsTheCollectivesCommittedAfterItAsync} |
 | A prefix stream with no live snapshot is skipped, not failed. | Without a snapshot the only start is the stream's start, which is archived. A hand-written runner that cannot start from a snapshot (the interface's default) skips such a stream the same way and keeps compiling. | {verified: PerspectiveRebuilderArchivedDataTests.Rebuild_ByDefault_SkipsAStreamArchivedThroughAPrefix_ThatHasNoLiveSnapshotAsync, PerspectiveRebuilderArchivedDataTests.Rebuild_ByDefault_WithARunnerThatCannotStartFromASnapshot_SkipsAPrefixArchivedStreamAsync, ArchiveReadThroughIntegrationTests.Rebuild_ByDefault_SkipsAStreamArchivedThroughAPrefix_WithNoLiveSnapshot_AndReportsItSkippedAsync} |
 | Under `Skip` the event store's archive seam returns only hot events, on every read from the start. | `Skip` means no archived event is read at all, whichever reader the rebuild calls. | {verified: ArchiveAwareEventStoreDecoratorTests.ARebuildThatSkipsArchivedData_ReadsOnlyTheHotEvents_OnEveryReadPathAsync} |
 | `IncludeWhileLive` replays a live stream from its start through the archive, and still skips a stream archived whole. | It is the rebuild an operator expects of a stream that is still in use: the same row as the stream never archived. A stream archived whole stays out, because rebuilding it means parking its cursor, which is a separate decision. | {verified: PerspectiveRebuilderArchivedDataTests.Rebuild_IncludeWhileLive_ReplaysAPrefixArchivedStreamFromItsStart_AndStillSkipsOneArchivedWholeAsync, ArchiveReadThroughIntegrationTests.Rebuild_IncludeWhileLive_AHotStream_AndOneArchivedThroughAPrefix_FoldToTheSameRowAsync, ArchiveReadThroughIntegrationTests.Rebuild_WithoutIncludeAll_SkipsAStreamArchivedWhole_AndReportsItSkippedAsync, ArchiveAwareEventStoreDecoratorTests.ARebuildThatIncludesArchivedData_ReadsThroughTheGapAsync} |
@@ -226,6 +231,42 @@ The tests live in `tests/Whizbang.Core.Tests/Perspectives/PerspectiveRebuilderAr
 `tests/Whizbang.Data.EFCore.Postgres.Tests/ArchivedStreamRebuildSqlTests.cs`,
 `tests/Whizbang.Data.EFCore.Postgres.Tests/RebuildPerspectiveCommandReceptorCoverageTests.cs` and
 `tests/Whizbang.Data.Dapper.Postgres.Tests/DapperArchivedStreamRebuildTests.cs`. Each fails if its choice flips.
+
+### A deleted archive {#archived-data-deleted}
+
+{verified: ArchivedStreamRebuildSqlTests.Extents_TellAStreamWhoseArchiveWasDeleted_FromOneThatNeverHadAnArchiveAsync, PerspectiveRebuilderArchivedDataTests.Rebuild_ThatReadsArchivedData_SkipsAStreamWhosePrefixArchiveWasDeleted_AndReportsItSkippedAsync, PerspectiveRebuilderArchivedDataTests.Rebuild_ByDefault_StartsAStreamWhosePrefixArchiveWasDeleted_FromItsNewestLiveSnapshotAsync, PerspectiveRebuilderArchivedDataTests.Rebuild_SkipsAStreamWhoseWholeArchiveWasDeleted_WhateverItsChoiceAsync}
+
+[Deleting an archive](../events/archive-store#deleting-an-archive) removes the archived events for good. A stream
+archived through a prefix stays alive, so once its archive was deleted, its hot events are only part of its history.
+Before migration 274 the ledger kept no record of the deletion, and a rebuild read such a stream as one never
+archived: it replayed it from its first hot event and wrote that partial history as the row
+([#1958](https://github.com/whizbang-lib/whizbang/issues/1958)).
+
+The ledger now records the deletion (`archive_deleted_at` on `wh_stream_lifecycle`), and the extents lookup reports
+two more values of `ArchivedStreamExtent`:
+
+| Extent | The stream |
+|---|---|
+| `PrefixDeleted` (3) | Was archived through a prefix, and that archive was deleted. It is alive, and the history its archive held is gone. |
+| `WholeDeleted` (4) | Was archived whole, and that archive was deleted. Nothing of it remains to replay. |
+
+A stream skipped for a deleted archive is logged at Warning, naming the stream and the deleted extent, and counted in
+[`RebuildResult.StreamsSkipped`](#reading-the-result), never as a failure. Its row is left as it is.
+
+| Choice | Reason | Verified |
+|---|---|---|
+| The ledger tells a deleted archive from no archive, and keeps telling it. A stream archived again after its archive was deleted still reads `PrefixDeleted`. A stream restored in full before its archive was deleted lost nothing and has no entry. | The deleted events are gone for good, whatever is archived or restored afterwards. | {verified: ArchivedStreamRebuildSqlTests.Extents_TellAStreamWhoseArchiveWasDeleted_FromOneThatNeverHadAnArchiveAsync} |
+| Under `IncludeWhileLive` and `IncludeAll` a stream whose prefix archive was deleted is skipped with a warning. | The caller asked for the stream's history from its start through the archive, and part of it no longer exists. A replay from the start would fold the hot events alone, and starting from the newest snapshot instead would silently change what the choice means. | {verified: PerspectiveRebuilderArchivedDataTests.Rebuild_ThatReadsArchivedData_SkipsAStreamWhosePrefixArchiveWasDeleted_AndReportsItSkippedAsync, ArchiveReadThroughIntegrationTests.Rebuild_ThatReadsArchivedData_SkipsAStreamWhosePrefixArchiveWasDeleted_AndReportsItSkippedAsync} |
+| Under `Skip` such a stream still starts from its newest live snapshot, and is skipped with none. | `Skip` never reads the archive, so the deletion changes nothing it reads: the snapshot plus the hot events after it is still the stream. | {verified: PerspectiveRebuilderArchivedDataTests.Rebuild_ByDefault_StartsAStreamWhosePrefixArchiveWasDeleted_FromItsNewestLiveSnapshotAsync, ArchiveReadThroughIntegrationTests.Rebuild_ByDefault_StartsAStreamWhosePrefixArchiveWasDeleted_FromItsNewestLiveSnapshotAsync} |
+| A stream whose whole archive was deleted is skipped under every choice, with the warning. | There is nothing left to replay. Under `IncludeAll` it used to replay nothing and fail the rebuild. | {verified: PerspectiveRebuilderArchivedDataTests.Rebuild_SkipsAStreamWhoseWholeArchiveWasDeleted_WhateverItsChoiceAsync, ArchiveReadThroughIntegrationTests.Rebuild_IncludeAll_SkipsAStreamWhoseWholeArchiveWasDeleted_AndReportsItSkippedAsync} |
+
+**Known limits.**
+
+- A prefix archive deleted before migration 274 left no record in the ledger, so it is not detected: a rebuild still
+  reads that stream as one never archived. A whole-stream archive deleted before 274 is detected, because its row
+  stays `Archived` with no locator, which the lookup reads as `WholeDeleted`.
+- A rewind does not consult the deletion record. A rewind with no snapshot can still replay a stream whose prefix
+  archive was deleted from its hot events alone ([#1964](https://github.com/whizbang-lib/whizbang/issues/1964)).
 
 ### The parked cursor {#archived-data-parked-cursor}
 
@@ -252,7 +293,11 @@ names, rather than one to work out again.
 The choice applies to rebuilds only. A [rewind](rewind) and a live read still read through the archive, and a rewind
 past an archived snapshot still reads the archived events above it
 ([rewind past an archived snapshot](../events/archive-store#rewind-past-an-archived-snapshot)). A rewind repairs a
-row the live path has already built, so it must fold every event the row was built from.
+row the live path has already built, so it must fold every event the row was built from. A rewind also folds the
+row's [collective events](../messaging/collective-events#collective-replay-from-a-start), as a rebuild does.
+
+A rewind does not yet check for a [deleted archive](#archived-data-deleted): with no snapshot, it can replay a stream
+whose prefix archive was deleted from its hot events alone (#1964).
 
 With `Whizbang:Archive:ReadThrough` set to `false`, nothing reads through the archive, so a rebuild that opts in folds
 only what is hot.
@@ -280,7 +325,7 @@ public record RebuildResult(
 | `StreamsRefused` | Streams left alone because they are state-based (ephemeral or compacted), so not a rebuildable source of truth. |
 | `StreamsProcessed` | Streams where events for this perspective were found and replayed. A named stream with no events does not count. |
 | `StreamsPurged` | Rebuilt rows that ended purged. See [terminal purges](#terminal-purges). |
-| `StreamsSkipped` | Streams left alone for their [archived data](#archived-data): under the default `Skip`, a stream archived whole or one archived through a prefix with no live snapshot; under `IncludeWhileLive`, a stream archived whole. Their rows are left as they are. |
+| `StreamsSkipped` | Streams left alone for their [archived data](#archived-data): under the default `Skip`, a stream archived whole or one archived through a prefix with no live snapshot; under `IncludeWhileLive`, a stream archived whole; under every choice, a stream whose whole archive was [deleted](#archived-data-deleted), and under `IncludeWhileLive` and `IncludeAll`, one whose prefix archive was deleted. Their rows are left as they are. |
 
 **Naming streams and rebuilding none of them is a failure.** A rebuild of selected streams that refuses every one,
 or finds no events for any, returns `Success = false` with an `Error` that says which. Read as a success, it hid 32
