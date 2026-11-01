@@ -18,9 +18,9 @@ codeReferences:
 
 # Security Advisories
 
-This page lists the published advisories that affect a Whizbang package, as of **2026-10-08**. It is generated from the [OSV database](https://osv.dev), the same records Dependabot and other scanners read. The authoritative, always-current list is the repository's [security advisories](https://github.com/whizbang-lib/whizbang/security/advisories).
+This page lists the published advisories that affect a Whizbang package, as of **2026-11-01**. It is generated from the [OSV database](https://osv.dev), the same records Dependabot and other scanners read. The authoritative, always-current list is the repository's [security advisories](https://github.com/whizbang-lib/whizbang/security/advisories).
 
-No published advisory affects any of the 30 Whizbang packages.
+No published advisory affects any of the 31 Whizbang packages.
 
 ## How you are warned
 
