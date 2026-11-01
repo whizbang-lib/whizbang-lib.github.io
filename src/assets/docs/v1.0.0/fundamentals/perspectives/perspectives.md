@@ -1134,9 +1134,21 @@ await dispatcher.SendAsync(new RebuildPerspectiveCommand(
     PerspectiveNames: ["OrderPerspective"],
     IncludeStreamIds: [orderId1, orderId2]));
 
+// Rebuild specific streams, including the archived prefix of a stream still in use
+await dispatcher.SendAsync(new RebuildPerspectiveCommand(
+    PerspectiveNames: ["OrderPerspective"],
+    IncludeStreamIds: [orderId1, orderId2]) {
+  ArchivedData = RebuildArchivedData.IncludeWhileLive
+});
+
 // Cancel an in-progress rebuild
 await dispatcher.SendAsync(new CancelPerspectiveRebuildCommand("OrderPerspective"));
 ```
+
+A rebuild reads no archived events unless the command opts in with `ArchivedData` (`Skip` by default,
+`IncludeWhileLive`, `IncludeAll`). By default a stream archived through a prefix restarts from its newest live
+snapshot, and a stream archived whole is skipped and reported in `RebuildResult.StreamsSkipped`. See
+**[Archived data](rebuild.md#archived-data)** for what each choice does and why.
 
 #### Automatic Migration Rebuilds
 

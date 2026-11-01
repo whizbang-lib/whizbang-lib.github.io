@@ -401,6 +401,10 @@ await dispatcher.SendAsync(new RebuildPerspectiveCommand(
 ));
 ```
 
+`ArchivedData` (an `init` property, default `RebuildArchivedData.Skip`) says what the rebuild may read of archived
+streams: nothing by default, the archived prefix of a stream still in use with `IncludeWhileLive`, or every archived
+event with `IncludeAll`. See [archived data](../perspectives/rebuild.md#archived-data).
+
 See [Perspectives](../perspectives/perspectives.md#rebuild) for details.
 
 ### CancelPerspectiveRebuildCommand
