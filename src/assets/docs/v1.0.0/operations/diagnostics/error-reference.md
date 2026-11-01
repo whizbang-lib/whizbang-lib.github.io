@@ -21,10 +21,14 @@ codeReferences:
   - src/Whizbang.Transports.AzureServiceBus/AzureServiceBusTransport.cs
   - src/Whizbang.Data.EFCore.Postgres/RebuildPerspectiveCommandReceptor.cs
   - src/Whizbang.Offloads.AzureBlob/AzureBlobMessageBodyStore.cs
+  - src/Whizbang.Data.Postgres/SchemaBootstrapException.cs
+  - src/Whizbang.Data.Postgres/SchemaBootstrapPhase.cs
 testReferences:
   - tests/Whizbang.Core.Component.Tests/Dispatcher/DispatcherTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StreamSealingSqlTests.cs
   - tests/Whizbang.Offloads.AzureBlob.Tests/AzureBlobMessageBodyStoreValidationTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/SchemaBootstrapPhaseTests.cs
+  - tests/Whizbang.Core.Tests/Schema/SchemaBootstrapRetryTests.cs
 ---
 
 # Runtime Error Reference
@@ -352,6 +356,26 @@ services.Configure<AzureBlobOffloadOptions>("azure-blob", opts => {
   opts.ContainerName = "whizbang-bodies";
 });
 ```
+
+---
+
+## Startup & Schema
+
+### Schema bootstrap failed at a step {#schema-bootstrap-exception}
+{verified: SchemaBootstrapPhaseTests.ANonTransientFailure_FailsStartupLoudly_NamingWhatFailedAsync, SchemaBootstrapPhaseTests.AConnectionRefusedForGood_FailsTheBootstrap_NamingTheConnectionAsync, SchemaBootstrapPhaseTests.AFailedBootstrapLeavesTheLockFreeForTheDdlPhaseAsync, SchemaBootstrapRetryTests.TheException_NamesTheSchemaAndTheStep_AndCarriesTheCauseAsync, StartupPreflightHostTests.ABootstrapThatCannotBeApplied_FailsTheInitialization_NamingWhatFailedAsync, DataOnlyRoleE2ETests.UnderADataOnlyRole_WithNoInitConnection_StartupCannotMigrateAsync}
+
+```text
+The schema bootstrap for {schema} failed at {step}, and the failure is not transient, so it is not retried: {inner message}
+Schema bootstrap for {Schema} failed at {Step} with an error that is not transient, so it is not retried: this initialization attempt fails in Preflight, before any election or migration
+```
+
+**Source**: `SchemaBootstrapException` (thrown by the EF Core driver's schema initialization; `Schema` and `Step` name what failed, and `InnerException` carries the database's own error). The second line is logged at Error just before it is thrown, and Preflight's stage message becomes `the bootstrap closure failed with an error that is not transient`.
+
+**Trigger**: The [bootstrap closure](../infrastructure/migrations#bootstrap-failures), applied in Preflight before the migrator election, failed for a reason that would fail the same way on every attempt: a script the server rejects, a missing permission (an application role that cannot create the schema and no `-init` connection), a database that does not exist, a `wh_bootstrap_closure` table in a shape it cannot read. `Step` is a bootstrap script's name, or one of `<connect>`, `<closure record>`, `<schema lock>`, `<search path>` and `<election probe>`. A transient failure (a deadlock, a dropped connection, a timeout) never ends up here: the bootstrap retries it itself, 1 second doubling to a 30 second cap, with no limit on attempts.
+
+**What happens next**: The initialization attempt fails in Preflight, before any election or migration, and the schema lock is left free. In the default background mode the initializer's next attempt starts after `InitRetryDelay`, and the schema-ready gate stays closed; in blocking mode the host's start fails. Earlier releases logged the same failure at Warning and carried on, migrating under the schema lock alone, so it surfaced only as an election that never happened.
+
+**Fix**: Read the inner exception and `Step`. A `<connect>` failure is the connection string or the database; a script or `<closure record>` failure under a data-only role needs the [`-init` connection](../infrastructure/migrations#database-roles) with schema rights; a script the server rejects names the bootstrap region to look at.
 
 ---
 

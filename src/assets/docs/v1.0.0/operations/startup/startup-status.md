@@ -25,6 +25,8 @@ codeReferences:
   - src/Whizbang.Core/Startup/StartupStageReporter.cs
   - src/Whizbang.Core/Startup/StartupStageHostLifecycle.cs
   - src/Whizbang.Data.Postgres/SchemaInitializationStages.cs
+  - src/Whizbang.Data.Postgres/SchemaBootstrapPhase.cs
+  - src/Whizbang.Data.Postgres/MigratorDutyStaging.cs
   - src/Whizbang.Data.Postgres/Migrations/231_StartupStageRecord.sql
   - src/Whizbang.Data.Postgres/Migrations/244_HeartbeatNeverRollsThePhaseBack.sql
   - src/Whizbang.Core/Startup/IStartupStageGate.cs
@@ -115,7 +117,7 @@ gaps, never a list position, so a stored value means the same thing in every rel
 
 | Number | Stage | Logged as | `lifecycle_phase` written | Entered by |
 |---|---|---|---|---|
-| 10 | Preflight | `Stage 1 of 7` | `Connecting` | the host lifecycle, as the host starts |
+| 10 | Preflight | `Stage 1 of 7` | `Connecting` | the host lifecycle, as the host starts; schema initialization reports the bootstrap closure and the instance's registration as progress within it |
 | 20 | Elect | `Stage 2 of 7` | `Migrating` | schema initialization: the vote for the migrator, then its result |
 | 30 | Migrate | `Stage 3 of 7` | `Migrating` | schema initialization: the schema pass, or skipped when the schema is current |
 | 40 | Converge | `Stage 4 of 7` | `Migrating` | schema initialization: index statistics and the managed-object reconcile |
@@ -133,7 +135,8 @@ Entering a stage logs one line at Information:
 
 ```text{title="Startup stage log lines" description="The line an instance logs as it enters each startup stage and each shutdown stage" category="Operations" difficulty="BEGINNER" tags=["Startup","Logging"] tests=["StartupStageReporterTests.Enter_AStartupStage_LogsStageXOfSeven_AtInformationAsync","StartupStageReporterTests.Enter_AShutdownStage_LogsAShutdownStageLineAsync","StartupStageHostTests.AFreshDatabase_EntersEveryStageInOrder_LogsEach_AndRecordsEachTheRowCanHoldAsync","StartupStageHostTests.AGracefulStop_RecordsDraining_ThenStoppedAsync"]}
 Stage 1 of 7: Preflight - host starting
-Stage 2 of 7: Elect - joining the registry and voting for the migrator duty
+Stage 1 of 7: Preflight - the bootstrap closure is in place; registering this instance
+Stage 2 of 7: Elect - voting for the migrator duty
 Stage 2 of 7: Elect - this instance migrates the schema
 Stage 4 of 7: Converge - analyzing new indexes and reconciling managed objects
 Stage 5 of 7: Coordinate - recomputing partitions before the schema-ready gate opens
@@ -147,6 +150,24 @@ The pattern is `Stage X of 7: <name> - <message>` for a startup stage and `Shutd
 Draining and Stopped. Stages only move forward: entering an earlier stage changes nothing. A new message within the
 current stage is progress: it logs the line again and keeps the stage's entry time. A skipped stage logs
 `skipped: <reason>` as its message.
+
+### Preflight's progress lines {#preflight-progress}
+{verified: SchemaInitializationStagesTests.TheBootstrapsWaitsAndFailure_AreProgressWithinPreflightAsync, SchemaInitializationStagesTests.Registering_IsTheLastStepOfPreflightAsync, StartupPreflightHostTests.TheInstanceRow_IsRegisteredAtTheEndOfPreflight_BeforeElectAsync}
+
+On the EF Core driver, schema initialization reports its Preflight work as progress within Preflight: the
+[bootstrap closure](../infrastructure/migrations#bootstrap-waits-for-the-lock), then the instance's registration.
+
+| Message | When |
+|---|---|
+| `waiting for the schema lock to apply the bootstrap closure` | Another session holds the schema lock; the bootstrap waits for it |
+| `the bootstrap closure met a transient database failure; retrying` | The bootstrap failed transiently and [retries after its delay](../infrastructure/migrations#bootstrap-failures) |
+| `the bootstrap closure failed with an error that is not transient` | The bootstrap failed for good; the attempt fails in Preflight with a [`SchemaBootstrapException`](../diagnostics/error-reference#schema-bootstrap-exception) |
+| `the bootstrap closure is in place; registering this instance` | Preflight's last step: the instance joins the registry, then Elect begins |
+
+**Why registration ends Preflight.** The instance row is written once the bootstrap closure and the instance and role
+tables are in place, so nothing registers before its tables are ready, and Elect only votes. Earlier releases entered
+Elect and then registered inside the election (`Stage 2 of 7: Elect - joining the registry and voting for the migrator
+duty`), so the row's first recorded stage was Elect and registration belonged to no stage.
 
 ### The instance row
 
@@ -196,8 +217,10 @@ FROM wh_instance_startup_stages();
 
 - **A fresh database:** Preflight, Elect and Migrate appear only in the log. The stage columns arrive with
   migration 231 during Migrate, so the row's first recorded stage is Converge (40).
-- **A restart on a current schema:** Elect is held until the election registers the row and is then written with
-  the election's result. Migrate is recorded as skipped (`Stage 3 of 7: Migrate - skipped: the schema is already
+- **A restart on a current schema:** Preflight is held until its last step registers the row, so the first stage the
+  row records is Preflight (10) with `the bootstrap closure is in place; registering this instance`; every stage line
+  before it is log-only. Elect is then recorded as it is entered, with the election's result. Migrate is recorded as
+  skipped (`Stage 3 of 7: Migrate - skipped: the schema is already
   current`), and every stage after it is recorded as it is entered.
 
 {verified: StartupStageHostTests.AFreshDatabase_EntersEveryStageInOrder_LogsEach_AndRecordsEachTheRowCanHoldAsync, StartupStageHostTests.ARestartOnACurrentDatabase_SkipsMigrate_AndRecordsFromRegistrationAsync}
@@ -214,16 +237,19 @@ stage line.
 
 An instance's own workers start at the stage they need, not when the host starts. A worker that starts with the host
 reads and writes tables the migration may be altering in the same moment and, on a fresh database, tables and
-functions that do not exist yet. Starting each at its stage means nothing of the instance touches the database during
-Preflight, and a starting instance no longer deadlocks its own migration.
+functions that do not exist yet. Starting each at its stage means no worker of the instance touches the database during
+Preflight, and a starting instance no longer deadlocks its own migration. Preflight's only database work is schema
+initialization's own: the [bootstrap closure](../infrastructure/migrations#bootstrap-waits-for-the-lock), then the
+instance's registration as Preflight's last step, so the notification connection, which starts at Elect, starts
+after the registration.
 
 | From | What starts | Why then |
 |---|---|---|
-| Elect (the end of Preflight) | The notification connection: its `LISTEN`s and the instance's [alive-lock](../../fundamentals/workers/instance-liveness#alive-lock-source) claim. The `roles` [health component](../../resilience/managed-resource-health#roles) reads role assignments from here on. | The election that follows reads the alive-lock. |
+| Elect (after Preflight registers the instance) | The notification connection: its `LISTEN`s and the instance's [alive-lock](../../fundamentals/workers/instance-liveness#alive-lock-source) claim. The `roles` [health component](../../resilience/managed-resource-health#roles) reads role assignments from here on. | The election that follows reads the alive-lock. |
 | Coordinate | The duty holder (the maintainer vote, and the vacuum it runs on winning) and the [partition assigner](../../fundamentals/work-coordinator/partition-assignment). | Both vote and write against the instance and role tables, which the migration may still be changing until then. |
 | The schema-ready gate opens (the end of Coordinate) | The work-available probes send their first query. Until then each probe tick sends nothing. | The tables the probes read may not exist yet, and nothing claims work before the gate opens. |
 
-{verified: StartupStageWiringTests.TheNotificationConnection_StartsAtTheEndOfPreflight_OnceAsync, StartupStageWiringTests.TheDutyHolderAndThePartitionAssigner_StartAtCoordinateAsync, StartupStageWiringTests.EveryWorkAvailableProbe_ReadsTheSchemaReadyGateAsync, StartupStageWiringTests.TheRolesHealthComponent_ReadsNothingBeforeElectAsync, PgWorkAvailablePollSourceSchemaGateTests.WhileTheSchemaGateIsClosed_ATickSendsNothing_AndOnceOpenItQueriesAsync, StartupPreflightHostTests.NothingVotesBeforeCoordinate_AndNoWorkerAsksForAnObjectThatDoesNotExistYetAsync}
+{verified: StartupStageWiringTests.TheNotificationConnection_StartsAtTheEndOfPreflight_OnceAsync, StartupStageWiringTests.TheDutyHolderAndThePartitionAssigner_StartAtCoordinateAsync, StartupStageWiringTests.EveryWorkAvailableProbe_ReadsTheSchemaReadyGateAsync, StartupStageWiringTests.TheRolesHealthComponent_ReadsNothingBeforeElectAsync, PgWorkAvailablePollSourceSchemaGateTests.WhileTheSchemaGateIsClosed_ATickSendsNothing_AndOnceOpenItQueriesAsync, StartupPreflightHostTests.NothingVotesBeforeCoordinate_AndNoWorkerAsksForAnObjectThatDoesNotExistYetAsync, StartupPreflightHostTests.TheInstanceRow_IsRegisteredAtTheEndOfPreflight_BeforeElectAsync}
 
 The election for the migrator itself runs as before: it is what Elect is, run by schema initialization, and it waits
 for nothing.
