@@ -658,6 +658,11 @@ closure. Applying it a second time would take each statement's lock on tables th
 nothing.
 {verified: SchemaBootstrapPhaseTests.AWaiterWhoseHolderAppliedTheClosureMeanwhile_AppliesNothingAsync}
 
+The generated initializer describes the bootstrap with a `SchemaBootstrapRequest`: the connection factory the lock
+and the scripts share, the schema lock key (the same one the DDL phase takes), the closure scripts in order, the target
+schema, and the timeout for one script and for one wait on the lock. Code that drives the bootstrap itself, such as a
+custom host, builds the same record.
+
 #### A transient failure is retried; any other fails Preflight {#bootstrap-failures}
 {verified: SchemaBootstrapPhaseTests.ATransientFailure_IsRetriedOnceItsDelayHasPassed_ThenTheClosureLandsAsync, SchemaBootstrapRetryTests.TheRetryDelay_DoublesFromOneSecond_ToAThirtySecondCapAsync, SchemaBootstrapPhaseTests.ANonTransientFailure_FailsStartupLoudly_NamingWhatFailedAsync, SchemaBootstrapPhaseTests.AConnectionRefusedForGood_FailsTheBootstrap_NamingTheConnectionAsync, StartupPreflightHostTests.ABootstrapThatCannotBeApplied_FailsTheInitialization_NamingWhatFailedAsync, DataOnlyRoleE2ETests.UnderADataOnlyRole_WithNoInitConnection_StartupCannotMigrateAsync}
 
