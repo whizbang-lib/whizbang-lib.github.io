@@ -32,6 +32,8 @@ codeReferences:
   - src/Whizbang.Data.Postgres/MigrationSqlNormalizer.cs
   - src/Whizbang.Data.Postgres/MigrationHashUpgrade.cs
   - src/Whizbang.Data.Postgres/SchemaBootstrapPhase.cs
+  - src/Whizbang.Data.Postgres/SchemaBootstrapException.cs
+  - src/Whizbang.Data.Postgres/MigratorDutyStaging.cs
   - src/Whizbang.Data.EFCore.Postgres/SchemaStepRunner.cs
   - src/Whizbang.Data.Postgres/SchemaPassLedger.cs
   - src/Whizbang.Data.EFCore.Postgres/SchemaInitializationLog.cs
@@ -58,6 +60,10 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/TableRewritePolicyRetiredTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/SchemaStepRunnerTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/SchemaPassLedgerTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/SchemaBootstrapPhaseTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/MigratorDutyStagingTests.cs
+  - tests/Whizbang.Core.Tests/Schema/SchemaBootstrapRetryTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/StartupPreflightHostTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StartupParity/StartupMigrationStepsTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/MigrationConstantsTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/NormalizeClrTypeNamesMigrationTests.cs
@@ -621,6 +627,89 @@ When the closure does run, each of its `ADD COLUMN IF NOT EXISTS` and `CREATE IN
 [asks the catalog first](#idempotent-ddl-takes-no-lock), so one with nothing to do takes no lock while the rest of the
 closure's transaction runs.
 
+#### The bootstrap waits for the schema lock {#bootstrap-waits-for-the-lock}
+{verified: SchemaBootstrapPhaseTests.ABootstrapThatFindsTheLockHeld_WaitsForIt_ThenAppliesTheClosureAsync, SchemaBootstrapPhaseTests.AWaiterWhoseHolderAppliedTheClosureMeanwhile_AppliesNothingAsync, SchemaBootstrapPhaseTests.ABootstrapCanceledWhileItWaits_EndsWithTheCancellation_AndAppliesNothingAsync, SchemaInitializationStagesTests.TheBootstrapsWaitsAndFailure_AreProgressWithinPreflightAsync}
+
+The closure is applied in [Preflight](../startup/startup-status#startup-stages), under the schema lock: the same
+transaction-scoped advisory key the DDL phase takes. An instance tries the lock first. When another session holds it,
+the instance:
+
+- logs `Schema bootstrap for <schema> is waiting for schema lock <key>, which another session holds` at Information;
+- reports it as progress within Preflight: `Stage 1 of 7: Preflight - waiting for the schema lock to apply the bootstrap closure`;
+- calls `ISchemaInitializationObserver.OnSchemaLockContendedAsync` (see
+  [Watching initialization](../../data/turnkey-initialization#watching-initialization));
+- waits for the lock, each wait bounded by the command timeout. A wait that runs out is a timeout, which is
+  transient, so it is [retried](#bootstrap-failures) on a fresh connection;
+- once it has the lock, reads the closure record again. When the session it waited for applied the same closure, it
+  logs `Schema bootstrap closure <hash> was applied to <schema> by the session this instance waited for; nothing applied here`
+  and applies nothing.
+
+A wait that is canceled ends with the cancellation and applies nothing.
+
+**Why wait instead of skip.** Earlier releases took the lock with a try, and an instance that did not get it applied
+nothing and went straight to asking whether an election was possible. Every instance needs the closure's objects
+before it [registers at the end of Preflight](#which-instance-migrates), so skipping only moved the wait somewhere
+less visible: on an empty database, an instance that skipped found nothing to elect with, gave up the election and
+migrated under the schema lock alone.
+{verified: SchemaBootstrapPhaseTests.ABootstrapThatFindsTheLockHeld_WaitsForIt_ThenAppliesTheClosureAsync}
+
+**Why read the record again under the lock.** The session this instance waited for has usually just applied the same
+closure. Applying it a second time would take each statement's lock on tables the running instances now use, for
+nothing.
+{verified: SchemaBootstrapPhaseTests.AWaiterWhoseHolderAppliedTheClosureMeanwhile_AppliesNothingAsync}
+
+#### A transient failure is retried; any other fails Preflight {#bootstrap-failures}
+{verified: SchemaBootstrapPhaseTests.ATransientFailure_IsRetriedOnceItsDelayHasPassed_ThenTheClosureLandsAsync, SchemaBootstrapRetryTests.TheRetryDelay_DoublesFromOneSecond_ToAThirtySecondCapAsync, SchemaBootstrapPhaseTests.ANonTransientFailure_FailsStartupLoudly_NamingWhatFailedAsync, SchemaBootstrapPhaseTests.AConnectionRefusedForGood_FailsTheBootstrap_NamingTheConnectionAsync, StartupPreflightHostTests.ABootstrapThatCannotBeApplied_FailsTheInitialization_NamingWhatFailedAsync, DataOnlyRoleE2ETests.UnderADataOnlyRole_WithNoInitConnection_StartupCannotMigrateAsync}
+
+A failed bootstrap attempt is classified as a
+[transient database failure](../../fundamentals/workers/transient-database-failures) (a deadlock, a dropped
+connection, a timeout, a lock wait that ran out) or not:
+
+- **Transient.** Logged at Warning with the step and SQLSTATE, then retried on a fresh connection after a delay of
+  1 second, doubling to a 30 second cap (1, 2, 4, 8, 16, 30, 30, ...), with no limit on attempts. Preflight reports
+  `the bootstrap closure met a transient database failure; retrying`, and
+  `ISchemaInitializationObserver.OnBootstrapRetryScheduledAsync` is called with the attempt number, the failure and
+  the delay.
+- **Anything else.** Logged at Error and thrown as a
+  [`SchemaBootstrapException`](../diagnostics/error-reference#schema-bootstrap-exception) naming the step that failed.
+  Preflight reports `the bootstrap closure failed with an error that is not transient`, and the initialization attempt
+  fails there, before any election or migration. In the default background mode the initializer's next attempt starts
+  after `InitRetryDelay`; in blocking mode the host's start fails.
+- **Cancellation** is never retried. A canceled statement reaches the bootstrap as SQLSTATE `57014`, which reads as
+  transient, so cancellation is set apart before the failure is classified.
+
+```text{title="The bootstrap's retry and failure lines" description="The Warning line a transient bootstrap failure logs before its retry, and the Error line a failure that is not transient logs before it fails Preflight" category="Operations" difficulty="BEGINNER" tags=["Migrations","Startup","Logging","Bootstrap"] tests=["SchemaBootstrapPhaseTests.ATransientFailure_IsRetriedOnceItsDelayHasPassed_ThenTheClosureLandsAsync","SchemaBootstrapPhaseTests.ANonTransientFailure_FailsStartupLoudly_NamingWhatFailedAsync"]}
+warn: Schema bootstrap for orders met a transient database failure at <schema lock> (SQLSTATE 40P01, attempt 1); retrying in 1000 ms, and Preflight does not finish until it lands
+fail: Schema bootstrap for orders failed at <closure record> with an error that is not transient, so it is not retried: this initialization attempt fails in Preflight, before any election or migration
+```
+
+The step names a bootstrap script, or one of the steps around the scripts in angle brackets:
+
+| Step | What the bootstrap was doing |
+|---|---|
+| `<connect>` | Opening its connection |
+| `<closure record>` | Reading or writing `wh_bootstrap_closure` |
+| `<schema lock>` | Taking, or waiting for, the schema lock |
+| `<search path>` | Pointing the transaction's search path at the target schema |
+| a script name | Applying that bootstrap script |
+| `<election probe>` | Asking the database whether an election is now possible |
+
+**Why no limit on attempts, and no jitter.** Startup lasts until the host stops it, and the cap keeps a database that
+stays unavailable asked at a bounded rate. Instances retrying together serialize on the schema lock anyway, so
+spreading them out buys nothing.
+{verified: SchemaBootstrapRetryTests.TheRetryDelay_DoublesFromOneSecond_ToAThirtySecondCapAsync}
+
+**Why fail instead of carrying on.** Earlier releases logged a bootstrap failure at Warning and carried on, migrating
+under the schema lock alone. A closure that could not be applied (a script the server rejects, a missing permission, a
+database that does not exist) then surfaced only as an election that never happened, with nothing saying why. A
+failure that is not transient fails the same way on every attempt, so the attempt stops in Preflight and names what
+failed.
+{verified: SchemaBootstrapPhaseTests.ANonTransientFailure_FailsStartupLoudly_NamingWhatFailedAsync, StartupPreflightHostTests.ABootstrapThatCannotBeApplied_FailsTheInitialization_NamingWhatFailedAsync}
+
+The election that follows keeps its own rule: nothing in it is fatal, and every failure there ends with the instance
+migrating under the schema lock alone (see [Which instance migrates](#which-instance-migrates)). The Dapper driver has
+no bootstrap closure; it keeps its lock-only start.
+
 ### Database roles {#database-roles}
 {verified: SchemaInitConnectionTests.FromConfiguration_ReadsTheInitSuffixOfTheContextsNameAsync, IndexStatisticsMaintenanceStepTests.WithAnInitConnection_AnalyzesThroughItAsync, ManagedSchemaReconcileStepTests.UnderADataOnlyApplicationRole_TheInitConnectionDoesTheSchemaWorkAsync, TableRewriteUnderDataOnlyRoleTests.UnderADataOnlyApplicationRole_TheInitConnectionDoesTheRewriteAsync, DataOnlyRoleE2ETests.UnderADataOnlyRole_WithTheOwnerAsInit_TheServiceStartsAndMaintainsItselfAsync}
 
@@ -662,7 +751,10 @@ Run the default-privilege statements before the first start, so every object the
 
 ### Which instance migrates {#which-instance-migrates}
 
-The migrator is a duty, held by [role assignment](../startup/capabilities-and-duties#role-assignment-the-default) by default. Its vote is part of the bootstrap closure (migration `184_RoleAssignmentResilience.sql` is a bootstrap region), so the assignment table and its functions exist before the first migration runs. Every instance joins the registry, then votes; the winner migrates and releases the duty when it returns, however it returns.
+The migrator is a duty, held by [role assignment](../startup/capabilities-and-duties#role-assignment-the-default) by default. Its vote is part of the bootstrap closure (migration `184_RoleAssignmentResilience.sql` is a bootstrap region), so the assignment table and its functions exist before the first migration runs. Every instance applies the [bootstrap closure](#bootstrap-waits-for-the-lock) and then joins the registry, both in Preflight, and votes in Elect; the winner migrates and releases the duty when it returns, however it returns.
+
+Registering is Preflight's last step, logged as `Stage 1 of 7: Preflight - the bootstrap closure is in place; registering this instance`, and Elect only votes (`Stage 2 of 7: Elect - voting for the migrator duty`). **Why register before Elect, and after the bootstrap.** The row is written once the instance and role tables it lives in are ready, and the capability function refuses an instance it cannot find, a refusal that would say nothing about contention. Earlier releases entered Elect and then registered as part of the election, so registration belonged to no stage. A registration that fails is logged, and the instance migrates under the schema lock alone without voting. See [what a restart records](../startup/startup-status#what-a-fresh-database-and-a-restart-record).
+{verified: StartupPreflightHostTests.TheInstanceRow_IsRegisteredAtTheEndOfPreflight_BeforeElectAsync, MigratorDutyStagingTests.Register_RunsTheRegistration_AndAnswersThatTheInstanceJoinedAsync, MigratorDutyStagingTests.Register_ThatFails_IsSaidAndAnsweredAsNotJoinedAsync, MigratorDutyStagingTests.Elect_AfterRegistering_AsksTheElectorOnce_AndHandsOverTheGrantAsync}
 
 An instance that lost the vote waits for the result instead of queuing behind the schema lock. It watches the migrator itself: its assignment row and, for a migrator on a release that still held the duty by session lock, that lock (`MigratorWatch`). The migrator renews its assignment between phases and marks the backend running its DDL, so one long migration statement does not lose the duty; its lease is 30 seconds by default (`RoleAssignmentOptions.RoleLeases`). If the migrator dies, its assignment lapses and a waiter goes on to do the schema work itself, still under the schema lock, which keeps DDL to one instance at a time whatever the duty says.
 {verified: MigratorWatchTests.AMigratorHoldingTheRole_IsMigrating_UntilItReleasesItAsync, MigratorWatchTests.AMigratorOnAnOlderRelease_HoldingTheDutysSessionLock_IsMigratingAsync, SchemaMigratorDeferralGenerationTests.AWaiterWatchesTheMigratorAsync, SchemaMigratorDeferralGenerationTests.TheMigratorRenewsItsRole_AndMarksTheBackendRunningTheMigrationAsync}
