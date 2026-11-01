@@ -24,6 +24,8 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/256_UnstoredOutboxMessagesAreDeadLettered.sql
   - src/Whizbang.Data.Postgres/Migrations/257_UnstoredInboxMessagesAreDeadLettered.sql
   - src/Whizbang.Data.EFCore.Postgres/EFCoreDeadLetterRecoveryService.cs
+  - src/Whizbang.Data.Postgres/PostgresDeadLetterRecoveryService.cs
+  - src/Whizbang.Data.Dapper.Postgres/ServiceCollectionExtensions.cs
 testReferences:
   - tests/Whizbang.Core.Component.Tests/Workers/DeadLetterRecoveryWorkerTests.cs
   - tests/Whizbang.Core.Tests/Messaging/DefaultDeadLetterRecoveryPolicyTests.cs
@@ -34,6 +36,7 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/RecoveredOutboxDeadLetterPublishTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/RecoveredPerspectiveDeadLetterApplyTests.cs
   - tests/Whizbang.Core.Tests/Observability/DeadLetterMetricsTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperArchiveRestoreRedriveTests.cs
 ---
 
 # Recovery Worker & Policy Matrix
@@ -53,6 +56,26 @@ re-entry](#outbox-perspective-reentry)). Besides the backstop poll, the worker a
 within milliseconds of a new DLQ row when the `DeadLetterReady` NOTIFY
 signal is wired — migration 056 adds an `AFTER INSERT` trigger on
 `wh_dead_letters` that fires it.
+
+## Both drivers register the recovery service {#recovery-drivers}
+
+{verified: DapperArchiveRestoreRedriveTests.AddWhizbangPostgres_AnAwaitingRestoreDeadLetter_IsRedrivenThroughTheOutbox_OnceItsRestoreCompletesAsync}
+
+The worker is driver-neutral: it drives whatever `IDeadLetterRecoveryService` the driver registers. Both
+Postgres drivers register one, and both run the same recovery SQL through one shared implementation:
+
+| Driver | Registration | Connection |
+|---|---|---|
+| EF Core | `EFCoreDeadLetterRecoveryService`, scoped | The context's connection, borrowed and left open for the context |
+| Dapper | Registered by `AddWhizbangPostgres` (both overloads), scoped | A connection opened for each call and closed when it ends |
+
+On either driver a recovered outbox or perspective row is stored with the claim's partition count
+(`ClaimWorkerOptions.PartitionCount`), and each call takes the work-coordinator gate's slot when one is registered.
+
+Before this, the Dapper driver registered no recovery service, so the worker redrove nothing there: no dead letter
+was retried, held or failed by policy, including an `AwaitingRestore` dead letter whose
+[restore](../../fundamentals/events/archive-store.md#restore-requests) had completed. On Dapper, the recovery worker
+now acts on dead letters by policy, as it does on EF Core.
 
 ## Outbox and perspective re-entry {#outbox-perspective-reentry}
 
@@ -99,7 +122,7 @@ message whose event is in the event store re-enters as that event, with its flag
 
 | Function | Use |
 |---|---|
-| `wh_recover_dead_letter(dead_letter_id uuid, partition_count integer)` | Re-enters an outbox or perspective dead letter, storing the row with the partition count every arrival is stored with. Returns whether the row re-entered. `EFCoreDeadLetterRecoveryService` calls it with `ClaimWorkerOptions.PartitionCount`. |
+| `wh_recover_dead_letter(dead_letter_id uuid, partition_count integer)` | Re-enters an outbox or perspective dead letter, storing the row with the partition count every arrival is stored with. Returns whether the row re-entered. The recovery service calls it with `ClaimWorkerOptions.PartitionCount` on both drivers. |
 | `recover_dead_letter(dead_letter_id uuid)` | Unchanged signature: calls `wh_recover_dead_letter` at the claim's default partition count (10000). Kept so scripts and older migrations replay. |
 
 Both decline an inbox or broker dead letter (those re-enter through `store_inbox_messages` from the
