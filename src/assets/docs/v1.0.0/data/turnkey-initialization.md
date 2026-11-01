@@ -13,6 +13,7 @@ description: >-
 tags: 'turnkey-initialization, database-setup, startup, ef-core, postgresql, schema-creation'
 codeReferences:
   - src/Whizbang.Data.EFCore.Postgres/DbContextInitializationRegistry.cs
+  - src/Whizbang.Data.EFCore.Postgres/SchemaInitializationBarrier.cs
   - src/Whizbang.Data.EFCore.Postgres/WhizbangHostExtensions.cs
   - src/Whizbang.Data.Postgres/WhizbangDatabaseInitializerService.cs
   - src/Whizbang.Data.Postgres/ISchemaInitializationRunner.cs
@@ -27,6 +28,7 @@ codeReferences:
   - src/Whizbang.Data.EFCore.Postgres.Generators/Templates/DbContextSchemaExtensionTemplate.cs
 testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/DbContextInitializationRegistryTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/SchemaInitializationBarrierTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/SchemaInitializationTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/SchemaInitializationConcurrencyTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StartupParity/StartupParityTests.cs
@@ -171,12 +173,44 @@ Earlier releases told them apart, so a call from `app.Services` made while the h
 second initialization beside it, and a call made while one was in progress returned at once, before the schema was
 ready.
 
-:::note
-This applies to the host-level `EnsureWhizbangInitializedAsync()` and the hosted initializer. Calling the generated
-`EnsureWhizbangDatabaseInitializedAsync()` directly on a DbContext initializes that context without going through the
-host's attempt, so it neither waits for nor is waited for by one in progress. Prefer the host-level call while the
-host is running.
-:::
+#### A direct DbContext call waits too {#a-direct-call-waits}
+{verified: SchemaInitializationBarrierTests.ASecondEntry_ForTheSameHostDatabaseAndSchema_WaitsForTheFirstToLeaveAsync, SchemaInitializationBarrierTests.EntriesForAnotherHostSchemaOrDatabase_DoNotWaitAsync, SchemaInitializationBarrierTests.NoHost_DoesNotWaitAsync, SchemaInitializationBarrierTests.ACanceledWait_LeavesTheBarrierAsItFoundItAsync, SchemaInitializationBarrierTests.AContext_IsBarriered_ByTheHostItWasBuiltFrom_ElseByThePassedProviderAsync, StartupPreflightHostTests.ADirectDbContextInitialization_WaitsForTheHostsOwn_AndAppliesNothingAsync}
+
+A call to the generated `dbContext.EnsureWhizbangDatabaseInitializedAsync()` does not go through the host's attempt,
+so the generated method has a barrier of its own: one initialization of a database and schema at a time per host,
+whoever calls. A direct call made while another initialization of the same database and schema runs in the same host
+(the hosted initializer's, or another direct call) logs
+`Whizbang schema initialization of <schema> in database <database> is already running in this host; waiting for it to finish`
+at Information, waits for it, then runs its own pass, which finds the schema current and returns on the fast path.
+
+- **The host** is the application service provider the context was built from (what `AddDbContext` gives it), or
+  the `serviceProvider` passed to the call when the context has none. Its scopes count as the same host.
+- **The database and schema** are the connection's data source and database, as its connection string names them,
+  and the schema being initialized. Another host, server, database or schema does not wait.
+- **A context built by hand**, with no application service provider and none passed in, has no host and is not held
+  by the barrier.
+- **The wait is canceled** by the call's own token, and leaves the barrier as it found it.
+
+```csharp{title="Initializing again from ApplicationStarted" description="A direct DbContext initialization made while the host's own is still running waits for it, then finds the schema current" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Initialization", "Hosting", "Startup"] tests=["StartupPreflightHostTests.ADirectDbContextInitialization_WaitsForTheHostsOwn_AndAppliesNothingAsync"]}
+app.Lifetime.ApplicationStarted.Register(() => _ = Task.Run(async () => {
+  await using var scope = app.Services.CreateAsyncScope();
+  var dbContext = scope.ServiceProvider.GetRequiredService<OrderDbContext>();
+  // Waits while the hosted initializer is still migrating, then returns on the fast path.
+  await dbContext.EnsureWhizbangDatabaseInitializedAsync();
+}));
+```
+
+**Why wait and then run a pass, not join.** The key comes from the connection string, which cannot prove that two
+calls target the same database, so a waiter does not take the first call's outcome as its own. When the schema is
+current its pass returns on the fast path, without taking the schema lock. Earlier releases ran the direct call's pass beside the host's, applying
+steps the host had not reached yet.
+{verified: StartupPreflightHostTests.ADirectDbContextInitialization_WaitsForTheHostsOwn_AndAppliesNothingAsync}
+
+**Why per host, not per process.** Two hosts in one process are two instances, as two processes are, and the
+[schema lock](#concurrent-starts) already keeps their DDL apart, one step at a time. A barrier per process would
+make a second instance wait for the first one's whole initialization instead of continuing a pass the first left part
+way through, and when the first is held mid-pass, neither finishes.
+{verified: SchemaInitializationBarrierTests.EntriesForAnotherHostSchemaOrDatabase_DoNotWaitAsync}
 
 ## Multi-Instance Initialization
 
@@ -222,7 +256,7 @@ call it. `SchemaInitializationOptions` (blocking or not, `MigrationTimeout`, `In
 | Blocking | `NonBlockingSchemaInit`, background by default | The same option |
 | Wait for the database | The initializer's retry loop | `PostgresOptions` connection retry, then the initializer's retry loop |
 | Lock | `pg_try_advisory_xact_lock` on the schema key, taken at the start of each step's own transaction | The same key, held transaction-scoped on a connection of its own while each migration file runs in its own transaction |
-| Register the instance | At start, before migrating | At start, before the lock is released |
+| Register the instance | At the end of Preflight, after the bootstrap closure and before Elect ([why](../operations/infrastructure/migrations#which-instance-migrates)) | At start, before the lock is released |
 | Managed-object cleanup | This instance's id, `Whizbang:Schema:Reconcile`, the host's logger; never fatal | The same |
 | Schema-ready gate | Opened after the last runner | The same |
 | Periodic cleanup re-run | A maintenance step, for every context including one you registered yourself | A maintenance step |
@@ -261,7 +295,7 @@ finds the lock held tells the registered observers, then waits for the holder to
 
 ## Watching initialization {#watching-initialization}
 
-{verified: StartupParityTests.ADatabaseThatComesUpLate_IsWaitedFor_ThenTheGateOpensAsync, SchemaInitializationObserversTests.LockContended_TellsEveryRegisteredObserverAsync}
+{verified: StartupParityTests.ADatabaseThatComesUpLate_IsWaitedFor_ThenTheGateOpensAsync, SchemaInitializationObserversTests.LockContended_TellsEveryRegisteredObserverAsync, SchemaBootstrapPhaseTests.ABootstrapThatFindsTheLockHeld_WaitsForIt_ThenAppliesTheClosureAsync}
 
 Register an `ISchemaInitializationObserver` to see what initialization is waiting on. Every method has a default
 that does nothing, so implement only what you watch:
@@ -283,7 +317,37 @@ builder.Services.AddSingleton<ISchemaInitializationObserver, StartupWatcher>();
 ```
 
 The initializer awaits each call before it carries on, so an observer that blocks holds startup; return promptly.
-`OnAttemptFailedAsync` fires in the non-blocking mode, before the `InitRetryDelay` wait.
+`OnAttemptFailedAsync` fires in the non-blocking mode, before the `InitRetryDelay` wait. On the EF Core driver,
+`OnSchemaLockContendedAsync` is also called when the [bootstrap closure](../operations/infrastructure/migrations#bootstrap-waits-for-the-lock)
+finds the schema lock held in Preflight.
+
+### Each bootstrap retry {#bootstrap-retry-scheduled}
+
+{verified: SchemaInitializationObserversTests.BootstrapRetryScheduled_TellsEveryRegisteredObserverTheAttemptAndTheDelayAsync, SchemaInitializationObserversTests.BootstrapRetryScheduled_WithNoProvider_TellsNobodyAsync, SchemaInitializationObserversTests.BootstrapRetryScheduled_IsANoOpForAnObserverThatDoesNotWatchItAsync, SchemaBootstrapPhaseTests.ATransientFailure_IsRetriedOnceItsDelayHasPassed_ThenTheClosureLandsAsync}
+
+On the EF Core driver, `OnBootstrapRetryScheduledAsync` is called each time the bootstrap closure meets a
+[transient database failure](../operations/infrastructure/migrations#bootstrap-failures) and is about to wait before
+its next attempt: with the schema, which attempt failed (from 1), the failure, and the delay (1 second, doubling to a
+30 second cap). Like the other methods it defaults to doing nothing. A failure that is not transient is not retried and
+calls no observer here: it fails the attempt with a `SchemaBootstrapException`, which `OnAttemptFailedAsync` sees.
+
+```csharp{title="Watching bootstrap retries" description="An observer that logs each transient bootstrap failure and the delay before the next attempt" category="Implementation" difficulty="INTERMEDIATE" tags=["Data", "Startup", "Observability", "Bootstrap"] tests=["SchemaInitializationObserversTests.BootstrapRetryScheduled_TellsEveryRegisteredObserverTheAttemptAndTheDelayAsync"]}
+public sealed class BootstrapRetries(ILogger<BootstrapRetries> logger) : ISchemaInitializationObserver {
+  public ValueTask OnBootstrapRetryScheduledAsync(
+      string schema, int attempt, Exception exception, TimeSpan delay, CancellationToken cancellationToken) {
+    logger.LogWarning(exception, "Bootstrap of {Schema} failed (attempt {Attempt}); retrying in {Delay}",
+      schema, attempt, delay);
+    return ValueTask.CompletedTask;
+  }
+}
+
+builder.Services.AddSingleton<ISchemaInitializationObserver, BootstrapRetries>();
+```
+
+**Why it is called before the wait.** The wait is already scheduled on the initializer's clock when the observer
+hears of it, so a test driving a fake clock can advance it by `delay` as soon as the call comes, and an observer sees
+every retry before it happens rather than after.
+{verified: SchemaBootstrapPhaseTests.ATransientFailure_IsRetriedOnceItsDelayHasPassed_ThenTheClosureLandsAsync}
 
 ### Each committed step {#step-committed}
 
