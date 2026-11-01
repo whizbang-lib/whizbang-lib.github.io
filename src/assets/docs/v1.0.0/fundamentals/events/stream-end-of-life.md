@@ -10,6 +10,7 @@ category: Core Concepts
 order: 16
 tags: 'event-streams, stream-lifecycle, end-of-life, archive, storage, event-store, sealing, terminal-event, finalize'
 codeReferences:
+  - src/Whizbang.Data.Postgres/Migrations/272_ArchivedStreamTypeIndex.sql
   - src/Whizbang.Data.Postgres/Migrations/260_StreamLifecycleLedger.sql
   - src/Whizbang.Data.Postgres/StreamLifecycleBackfill.cs
   - src/Whizbang.Data.EFCore.Postgres/StreamLifecycleBackfillMaintenanceStep.cs
@@ -25,6 +26,7 @@ codeReferences:
   - src/Whizbang.Data.Postgres/StreamSealedRefusal.cs
   - src/Whizbang.Generators/MessageTypeCatalogGenerator.cs
 testReferences:
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Collective/ArchivedCollectiveStreamsQueryPlanTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StreamLifecycleLedgerSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StreamLifecycleBackfillSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StreamLifecycleBackfillMaintenanceStepTests.cs
@@ -166,6 +168,17 @@ WHERE l.disposition_due_at <= @now
 ORDER BY l.disposition_due_at
 LIMIT @batch;
 ```
+
+### Finding the archived streams of a type {#finding-archived-streams-by-type}
+
+{verified: ArchivedCollectiveStreamsQueryPlanTests.ArchivedCollectiveStreams_OnALargeLedger_ReadTheArchivedStreamIndex_WithAndWithoutATenantAsync}
+
+A collective replay lists a tenant's collective streams that are archived whole, which have no row in the hot store
+(see [archived collective streams](../messaging/collective-events#archived-collective-streams)).
+`idx_stream_lifecycle_archived_type` (migration 272) answers it: an index over `(stream_type, tenant)`, partial on
+`state = 'Archived'`, so it holds only the archived rows the lookup asks for. A tenant is compared with `=` and no
+tenant with `IS NULL`, so each lookup is a range of the index. Only an archive and a restore change a row's state, and
+no append changes its type or tenant, so an append's ledger update stays heap-only.
 
 ### What it costs {#what-it-costs}
 

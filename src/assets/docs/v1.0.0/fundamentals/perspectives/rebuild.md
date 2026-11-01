@@ -24,6 +24,15 @@ codeReferences:
   - src/Whizbang.Core/Workers/PerspectiveMigrationWorker.cs
   - src/Whizbang.Core/Commands/System/SystemCommands.cs
   - src/Whizbang.Core/Events/System/SystemEvents.cs
+  - src/Whizbang.Core/Perspectives/RebuildArchivedData.cs
+  - src/Whizbang.Core/Archival/IArchivedStreamExtents.cs
+  - src/Whizbang.Core/Archival/ArchiveAwareEventStoreDecorator.cs
+  - src/Whizbang.Core/Perspectives/IPerspectiveRunner.cs
+  - src/Whizbang.Data.Postgres/PostgresArchivedStreamExtents.cs
+  - src/Whizbang.Data.Postgres/Migrations/273_RebuildParksTheCursorOfAStreamArchivedWhole.sql
+  - src/Whizbang.Data.EFCore.Postgres/EFCorePostgresPerspectiveCheckpointCompleter.cs
+  - src/Whizbang.Data.Dapper.Postgres/DapperPostgresPerspectiveCheckpointCompleter.cs
+  - src/Whizbang.Data.EFCore.Postgres/RebuildPerspectiveCommandReceptor.cs
 testReferences:
   - tests/Whizbang.Core.Tests/Perspectives/PerspectiveRebuilderTests.cs
   - tests/Whizbang.Core.Tests/Perspectives/RebuildProvenanceTests.cs
@@ -35,6 +44,13 @@ testReferences:
   - tests/Whizbang.Core.Tests/Commands/System/SystemCommandsTests.cs
   - tests/Whizbang.Core.Tests/Commands/System/RebuildPerspectiveCommandSplitTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/ArchiveReadThroughIntegrationTests.cs
+  - tests/Whizbang.Core.Tests/Perspectives/PerspectiveRebuilderArchivedDataTests.cs
+  - tests/Whizbang.Core.Tests/Archival/ArchiveAwareEventStoreDecoratorTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/ArchivedStreamRebuildSqlTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperArchivedStreamRebuildTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/RebuildPerspectiveCommandReceptorCoverageTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Collective/CollectiveReplayOrderingTests.cs
+  - tests/Whizbang.Core.Tests/Perspectives/PerspectiveRewindWriteCheckTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -143,19 +159,107 @@ A rebuild folds each stream in the order it was written: its versions, as the [r
 
 The rebuilt row records the **highest commit sequence among the events it folded** as its position, as the rewind's frontier does, not the sequence of the last event it applied. In stream order the last event can carry the lowest sequence on the stream. The perspective store refuses a write whose position sits below the stored one, so recording that sequence would fold the right value and then fail to write it, which matters most when repairing a row a commit-order rebuild left behind.
 
-### Archived streams {#archived-streams}
+## Archived data {#archived-data}
 
-{verified: ArchiveReadThroughIntegrationTests.Rebuild_AHotStream_AndOneArchivedThroughAPrefix_FoldToTheSameRowAsync}
+{verified: PerspectiveRebuilderArchivedDataTests.RebuildArchivedData_DefaultsToSkip_OnTheEnumAndOnARebuildRequestAsync, PerspectiveRebuilderArchivedDataTests.Rebuild_ByDefault_SkipsAStreamArchivedWhole_AndReportsItSkippedNotFailedAsync, PerspectiveRebuilderArchivedDataTests.Rebuild_IncludeWhileLive_ReplaysAPrefixArchivedStreamFromItsStart_AndStillSkipsOneArchivedWholeAsync, PerspectiveRebuilderArchivedDataTests.Rebuild_IncludeAll_ReplaysAStreamArchivedWhole_AndOneArchivedThroughAPrefix_FromTheirStartAsync}
 
-A rebuild reads each stream from its start, so a stream archived through a prefix is read through the
-[archive](../events/archive-store#read-through) and folds to the same row as the same stream never archived. With
-`Whizbang:Archive:ReadThrough` set to `false`, a rebuild folds only what is hot. A stream archived whole has no hot
-event for the rebuilt cursor to name, and the EF Core schema's cursor foreign key refuses one; restore it before
-rebuilding it.
+A rebuild re-derives rows from events, and some of a stream's events may be in the
+[archive](../events/archive-store). Whether a rebuild reaches into the archive is chosen per rebuild, with
+`RebuildArchivedData`. By default it does not.
+
+| Value | What the rebuild may read |
+|---|---|
+| `Skip` (0, the default) | Nothing archived. A stream archived through a prefix starts from its newest live snapshot; a stream archived whole is skipped. |
+| `IncludeWhileLive` (1) | The archived prefix of a stream that is still alive, read through the archive from the stream's start. A stream archived whole is still skipped. |
+| `IncludeAll` (2) | Every archived event, a stream archived whole included. |
+
+A stream is **alive** while it still has live (not archived) events, so only a prefix of it is archived. A stream
+archived whole is not alive. How much of each stream is archived comes from the stream lifecycle ledger, which the
+rebuild asks once per phase for the streams it is about to replay.
+
+Set the choice on the operator's command, or on the `RebuildOrigin` you pass to the rebuilder:
+
+```csharp{title="Choosing what a rebuild reads of the archive" description="A rebuild command and a direct rebuilder call that opt in to archived data; with neither set, the rebuild reads none." category="Perspectives" difficulty="INTERMEDIATE" tags=["Fundamentals", "Perspectives", "Rebuild", "Archive"] tests=["RebuildPerspectiveCommandReceptorCoverageTests.HandleAsync_CarriesTheCommandsArchivedDataChoice_OnTheOriginAsync", "PerspectiveRebuilderArchivedDataTests.Rebuild_IncludeWhileLive_ReplaysAPrefixArchivedStreamFromItsStart_AndStillSkipsOneArchivedWholeAsync", "PerspectiveRebuilderArchivedDataTests.Rebuild_IncludeAll_ReplaysAStreamArchivedWhole_AndOneArchivedThroughAPrefix_FromTheirStartAsync"]}
+// Through the system command: the receptor carries the choice onto the rebuild's origin.
+await dispatcher.SendAsync(new RebuildPerspectiveCommand(
+    PerspectiveNames: ["OrderPerspective"],
+    IncludeStreamIds: [orderId]) {
+  ArchivedData = RebuildArchivedData.IncludeWhileLive
+});
+
+// Directly on the rebuilder.
+var result = await rebuilder.RebuildStreamsAsync(
+    "OrderPerspective",
+    [orderId],
+    new RebuildOrigin(RequestedBy: "ops: incident 1234") { ArchivedData = RebuildArchivedData.IncludeAll });
+```
+
+### What each stream does {#archived-data-per-stream}
+
+| Stream | `Skip` (default) | `IncludeWhileLive` | `IncludeAll` |
+|---|---|---|---|
+| Nothing archived | Replays from its start | Same | Same |
+| Archived through a prefix (alive) | Restores its newest live snapshot and replays the hot events after it; **skipped** when it has no live snapshot | Replays from its start through the archive | Same as `IncludeWhileLive` |
+| Archived whole (not alive) | **Skipped** | **Skipped** | Replays from its start through the archive; its cursor is [parked](#archived-data-parked-cursor) |
+
+A skipped stream's row is left as it is. It is counted in [`RebuildResult.StreamsSkipped`](#reading-the-result),
+never as a failure, and the rebuild logs how many streams it skipped and which choice skipped them. A host with no
+archive registered rebuilds every stream from its start, as before.
+
+### Why each choice {#archived-data-reasons}
+
+| Choice | Reason | Verified |
+|---|---|---|
+| The default is `Skip`, and `Skip` is 0. | Reading the archive costs a restore-sized read per stream and may reach cold storage, so a rebuild does not do it unasked. An unset value (a command or origin built before the option existed, or no origin at all) is the safe one. | {verified: PerspectiveRebuilderArchivedDataTests.RebuildArchivedData_DefaultsToSkip_OnTheEnumAndOnARebuildRequestAsync, PerspectiveRebuilderArchivedDataTests.Rebuild_WithNoOrigin_ReadsNoArchivedDataAsync} |
+| By default a stream archived whole is skipped and reported as skipped. | Its events are all archived, so rebuilding it would read only the archive. Skipping it also removes the cursor failure it used to cause. A rebuild of named streams that skipped them all succeeds, because nothing went wrong. | {verified: PerspectiveRebuilderArchivedDataTests.Rebuild_ByDefault_SkipsAStreamArchivedWhole_AndReportsItSkippedNotFailedAsync, ArchiveReadThroughIntegrationTests.Rebuild_WithoutIncludeAll_SkipsAStreamArchivedWhole_AndReportsItSkippedAsync} |
+| By default a stream archived through a prefix starts from its newest live snapshot and reads no archived event. | The newest snapshot is always live: an archive refuses a prefix that reaches the newest snapshot any perspective holds for the stream. The snapshot plus the hot events after it is the whole stream without the archive. It runs the rewind's replay from a model, under the apply lock. | {verified: PerspectiveRebuilderArchivedDataTests.Rebuild_ByDefault_StartsAStreamArchivedThroughAPrefix_FromItsNewestLiveSnapshotAsync, ArchiveReadThroughIntegrationTests.Rebuild_ByDefault_StartsAStreamArchivedThroughAPrefix_FromItsNewestLiveSnapshot_AndReadsNoArchivedEventAsync} |
+| A prefix stream with no live snapshot is skipped, not failed. | Without a snapshot the only start is the stream's start, which is archived. A hand-written runner that cannot start from a snapshot (the interface's default) skips such a stream the same way and keeps compiling. | {verified: PerspectiveRebuilderArchivedDataTests.Rebuild_ByDefault_SkipsAStreamArchivedThroughAPrefix_ThatHasNoLiveSnapshotAsync, PerspectiveRebuilderArchivedDataTests.Rebuild_ByDefault_WithARunnerThatCannotStartFromASnapshot_SkipsAPrefixArchivedStreamAsync, ArchiveReadThroughIntegrationTests.Rebuild_ByDefault_SkipsAStreamArchivedThroughAPrefix_WithNoLiveSnapshot_AndReportsItSkippedAsync} |
+| Under `Skip` the event store's archive seam returns only hot events, on every read from the start. | `Skip` means no archived event is read at all, whichever reader the rebuild calls. | {verified: ArchiveAwareEventStoreDecoratorTests.ARebuildThatSkipsArchivedData_ReadsOnlyTheHotEvents_OnEveryReadPathAsync} |
+| `IncludeWhileLive` replays a live stream from its start through the archive, and still skips a stream archived whole. | It is the rebuild an operator expects of a stream that is still in use: the same row as the stream never archived. A stream archived whole stays out, because rebuilding it means parking its cursor, which is a separate decision. | {verified: PerspectiveRebuilderArchivedDataTests.Rebuild_IncludeWhileLive_ReplaysAPrefixArchivedStreamFromItsStart_AndStillSkipsOneArchivedWholeAsync, ArchiveReadThroughIntegrationTests.Rebuild_IncludeWhileLive_AHotStream_AndOneArchivedThroughAPrefix_FoldToTheSameRowAsync, ArchiveReadThroughIntegrationTests.Rebuild_WithoutIncludeAll_SkipsAStreamArchivedWhole_AndReportsItSkippedAsync, ArchiveAwareEventStoreDecoratorTests.ARebuildThatIncludesArchivedData_ReadsThroughTheGapAsync} |
+| `IncludeAll` also replays a stream archived whole, from its start through the archive. | For a rebuild that must cover every row a perspective holds, archived or not. | {verified: PerspectiveRebuilderArchivedDataTests.Rebuild_IncludeAll_ReplaysAStreamArchivedWhole_AndOneArchivedThroughAPrefix_FromTheirStartAsync, ArchiveReadThroughIntegrationTests.Rebuild_IncludeAll_RebuildsAStreamArchivedWhole_ParksItsCursor_AndTheRestoreBringsTheCursorBackAsync} |
+| The choice travels on the request (`RebuildOrigin.ArchivedData`, `RebuildPerspectiveCommand.ArchivedData`) and is held ambient while the rebuild replays (`RebuildArchivedDataAccessor.Current`). | `RebuildOrigin` already goes everywhere a rebuild does: the rebuilder overloads, a run recorded for the streams' owners, the background queue and the rebuild events. Holding it ambient lets the readers the rebuild calls (the archive seam, the collective replay) honor it with no new parameter on every read. It applies only while the processing mode is `Rebuild`, and the previous value is put back afterwards. | {verified: RebuildPerspectiveCommandReceptorCoverageTests.HandleAsync_CarriesTheCommandsArchivedDataChoice_OnTheOriginAsync, PerspectiveRebuilderArchivedDataTests.Rebuild_HoldsItsArchivedDataChoice_AmbientForItsReaders_AndRestoresItAfterwardsAsync} |
+| Both Postgres drivers register the ledger lookup (`IArchivedStreamExtents`). | The rebuild decides per stream from one lookup per phase, the same way on either driver. | {verified: ArchivedStreamRebuildSqlTests.TheDriver_RegistersTheArchivedStreamExtents_OnItsArchiveConnectionAsync, DapperArchivedStreamRebuildTests.AddWhizbangPostgres_RegistersTheArchivedStreamExtents_ThatNameTheStreamsArchivedWholeAndThroughAPrefixAsync} |
+
+The tests live in `tests/Whizbang.Core.Tests/Perspectives/PerspectiveRebuilderArchivedDataTests.cs`,
+`tests/Whizbang.Core.Tests/Archival/ArchiveAwareEventStoreDecoratorTests.cs`,
+`tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/ArchiveReadThroughIntegrationTests.cs`,
+`tests/Whizbang.Data.EFCore.Postgres.Tests/ArchivedStreamRebuildSqlTests.cs`,
+`tests/Whizbang.Data.EFCore.Postgres.Tests/RebuildPerspectiveCommandReceptorCoverageTests.cs` and
+`tests/Whizbang.Data.Dapper.Postgres.Tests/DapperArchivedStreamRebuildTests.cs`. Each fails if its choice flips.
+
+### The parked cursor {#archived-data-parked-cursor}
+
+{verified: ArchivedStreamRebuildSqlTests.Completer_TheCursorOfAStreamArchivedWhole_IsParked_AndTheRestoreBringsItBackAsync, ArchivedStreamRebuildSqlTests.Completer_TheCursorOfAHotStream_IsWrittenLive_AndNothingIsParkedAsync, DapperArchivedStreamRebuildTests.Completer_TheCursorOfAStreamArchivedWhole_IsParked_AndTheRestoreBringsItBackAsync, DapperArchivedStreamRebuildTests.Completer_TheCursorOfAHotStream_IsWrittenLiveAsync}
+
+A stream rebuilt under `IncludeAll` while it is archived whole ends on an archived event, which the live cursor table
+must not name: the EF Core schema's cursor foreign key refuses it, and on any schema the cursor would point at an
+event no read finds. An archive of the whole stream already parks the stream's cursors in
+`wh_event_archive_cursors`, and a restore puts them back, so the rebuilt cursor is written there.
+
+Both drivers' rebuild cursor completers call `wh_complete_rebuilt_cursor` (migration 273):
+
+- while the stream's lifecycle row is `Archived`, the rebuilt cursor moves the parked one to the rebuilt event, or
+  parks a new one;
+- for any other stream, it is upserted into `wh_perspective_cursors`, exactly as the completers wrote it before.
+
+Parking keeps the exact position, so a restore brings back the cursor the rebuild recorded, with the events it
+names, rather than one to work out again.
+
+### Rewinds are unchanged {#archived-data-rewinds}
+
+{verified: ArchiveAwareEventStoreDecoratorTests.ARewind_AndALiveRead_ReadThroughTheGap_WhateverARebuildWouldChooseAsync, CollectiveReplayOrderingTests.Interleave_InAReplay_ListsTheCollectiveStreamsArchivedWhole_WhateverARebuildWouldChooseAsync, ArchiveReadThroughIntegrationTests.Rewind_WithoutASnapshot_OfAStreamArchivedWhole_FoldsToTheSameRowAsTheHotCopyAsync, PerspectiveRewindWriteCheckTests.ARewindFromASnapshotTheArchiveCovers_ReadsThroughTheArchive_AboveTheSnapshotsVersionAsync}
+
+The choice applies to rebuilds only. A [rewind](rewind) and a live read still read through the archive, and a rewind
+past an archived snapshot still reads the archived events above it
+([rewind past an archived snapshot](../events/archive-store#rewind-past-an-archived-snapshot)). A rewind repairs a
+row the live path has already built, so it must fold every event the row was built from.
+
+With `Whizbang:Archive:ReadThrough` set to `false`, nothing reads through the archive, so a rebuild that opts in folds
+only what is hot.
 
 ## RebuildResult {#reading-the-result}
 
-```csharp{title="RebuildResult" description="What a rebuild did: streams requested, refused, rebuilt and purged" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "RebuildResult"] tests=["PerspectiveRebuilderTests.RebuildInPlaceAsync_WithRegisteredPerspective_ProcessesAllStreamsAsync", "PerspectiveRebuilderTests.RebuildStreamsAsync_WhenEveryNamedStreamIsRefused_ReportsTheRefusalsAsAFailureAsync", "PerspectiveRebuilderIntegrationTests.RebuildStreamsAsync_ReportsHowManyRequestedStreamsItActuallyFoundAsync"]}
+```csharp{title="RebuildResult" description="What a rebuild did: streams requested, refused, rebuilt and purged" category="Architecture" difficulty="BEGINNER" tags=["Fundamentals", "Perspectives", "RebuildResult"] tests=["PerspectiveRebuilderTests.RebuildInPlaceAsync_WithRegisteredPerspective_ProcessesAllStreamsAsync", "PerspectiveRebuilderTests.RebuildStreamsAsync_WhenEveryNamedStreamIsRefused_ReportsTheRefusalsAsAFailureAsync", "PerspectiveRebuilderIntegrationTests.RebuildStreamsAsync_ReportsHowManyRequestedStreamsItActuallyFoundAsync", "PerspectiveRebuilderArchivedDataTests.Rebuild_ByDefault_SkipsAStreamArchivedWhole_AndReportsItSkippedNotFailedAsync"]}
 public record RebuildResult(
     string PerspectiveName,
     int StreamsProcessed,
@@ -166,6 +270,7 @@ public record RebuildResult(
   public int StreamsRequested { get; init; }
   public int StreamsRefused { get; init; }
   public int StreamsPurged { get; init; }
+  public int StreamsSkipped { get; init; }
 }
 ```
 
@@ -175,10 +280,12 @@ public record RebuildResult(
 | `StreamsRefused` | Streams left alone because they are state-based (ephemeral or compacted), so not a rebuildable source of truth. |
 | `StreamsProcessed` | Streams where events for this perspective were found and replayed. A named stream with no events does not count. |
 | `StreamsPurged` | Rebuilt rows that ended purged. See [terminal purges](#terminal-purges). |
+| `StreamsSkipped` | Streams left alone for their [archived data](#archived-data): under the default `Skip`, a stream archived whole or one archived through a prefix with no live snapshot; under `IncludeWhileLive`, a stream archived whole. Their rows are left as they are. |
 
 **Naming streams and rebuilding none of them is a failure.** A rebuild of selected streams that refuses every one,
 or finds no events for any, returns `Success = false` with an `Error` that says which. Read as a success, it hid 32
-unrepaired rows behind a run that looked clean (#1162).
+unrepaired rows behind a run that looked clean (#1162). A stream skipped for its archived data is the exception: it is
+reported in `StreamsSkipped`, so a rebuild of named streams that skipped them all succeeds.
 
 ### Streams that end in a purge {#terminal-purges}
 
@@ -227,9 +334,19 @@ await dispatcher.SendAsync(new RebuildPerspectiveCommand(
     PerspectiveNames: ["OrderPerspective"],
     IncludeStreamIds: [orderId1, orderId2]));
 
+// Rebuild specific streams, replaying an archived prefix through the archive
+await dispatcher.SendAsync(new RebuildPerspectiveCommand(
+    PerspectiveNames: ["OrderPerspective"],
+    IncludeStreamIds: [orderId1, orderId2]) {
+  ArchivedData = RebuildArchivedData.IncludeWhileLive
+});
+
 // Cancel an in-progress rebuild
 await dispatcher.SendAsync(new CancelPerspectiveRebuildCommand("OrderPerspective"));
 ```
+
+`ArchivedData` (default `Skip`) says what the rebuild may read of archived streams; see
+[archived data](#archived-data).
 
 ### Large stream selections {#large-stream-selections}
 

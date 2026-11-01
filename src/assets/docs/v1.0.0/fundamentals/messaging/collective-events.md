@@ -48,6 +48,9 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/175_CollectiveSinkQueue.sql
   - src/Whizbang.Data.Postgres/Migrations/215_CollectiveSinkQueueReadsOnlyItsHead.sql
   - src/Whizbang.Data.Postgres/Collective/CollectiveApplyContention.cs
+  - src/Whizbang.Data.Postgres/Collective/ArchivedCollectiveStreams.cs
+  - src/Whizbang.Data.Postgres/Migrations/272_ArchivedStreamTypeIndex.sql
+  - src/Whizbang.Core/Perspectives/RebuildArchivedData.cs
   - src/Whizbang.Data.EFCore.Postgres.Generators/EFCoreServiceRegistrationGenerator.cs
   - src/Whizbang.Generators/Analyzers/CollectivePredicateIndexAnalyzer.cs
   - src/Whizbang.Generators/Analyzers/CollectiveApplyShapeAnalyzer.cs
@@ -85,6 +88,8 @@ testReferences:
   - tests/Whizbang.Data.Dapper.Postgres.Tests/Collective/CollectivePredicateOrderingTests.cs
   - tests/Whizbang.Generators.Tests/PerspectiveRunnerPhysicalFieldRegistrationTests.cs
   - tests/Whizbang.Generators.Tests/CollectiveApplyShapeAnalyzerTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/Collective/DapperArchivedCollectiveReplayTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Collective/ArchivedCollectiveStreamsQueryPlanTests.cs
 ---
 
 # Collective events
@@ -329,7 +334,7 @@ discipline event sourcing requires of a regular `Apply`. If you need a
 moment-in-time threshold, capture it on the event payload at write time
 (e.g. `e.OlderThan = clock.GetUtcNow()`), not at apply time.
 
-### Surviving a rebuild
+### Surviving a rebuild {#surviving-a-rebuild}
 
 Log replay — re-evaluating the predicate at the event's log position —
 is one path; a **perspective rebuild** is the other, and it takes a
@@ -375,6 +380,37 @@ For an operator this is the property that makes a targeted repair safe:
 replaying a known-stale row through its perspective reproduces the
 collective mutations that row received, so a repair scoped to a handful
 of streams does not quietly drop them.
+
+#### Archived collective streams {#archived-collective-streams}
+
+{verified: CollectiveReplayOrderingTests.Interleave_InAReplay_ListsTheCollectiveStreamsArchivedWhole_WhateverARebuildWouldChooseAsync, CollectiveReplayOrderingTests.Interleave_InARebuild_ListsTheCollectiveStreamsArchivedWhole_OnlyUnderIncludeAllAsync, CollectiveReplayRebuildIntegrationTests.Rebuild_IncludeAll_FoldsACollectiveArchivedWhole_ThatIsTheRowsLastEvent_AndCheckpointsOnTheRowsOwnEventAsync, CollectiveReplayRebuildIntegrationTests.Rebuild_ByDefault_LeavesOutACollectiveArchivedWhole_AndSucceedsAsync, DapperArchivedCollectiveReplayTests.AddCollectiveEventsDapper_TheReplayReadsTheTenantsArchivedCollectiveStreams_ListedFromTheLedgerAsync}
+
+A collective's stream can be [archived](../events/archive-store). A stream archived through a prefix keeps hot
+rows, so the replay finds it in the hot store and reads its archived prefix through the archive in the same read. A
+stream archived whole has no hot row, so the hot store cannot name it. The replay applier therefore also lists the
+tenant's archived streams of every registered collective type from the stream lifecycle ledger, then reads them
+through the event store's archive seam like the hot ones.
+
+| Choice | Reason | Verified |
+|---|---|---|
+| A rewind always folds the collectives whose stream is archived whole. | Rewinds read through the archive, so a rewound row gets every collective it received live. | {verified: CollectiveReplayOrderingTests.Interleave_InAReplay_ListsTheCollectiveStreamsArchivedWhole_WhateverARebuildWouldChooseAsync} |
+| A rebuild folds them only under [`RebuildArchivedData.IncludeAll`](../perspectives/rebuild#archived-data). By default the rebuild leaves them out and succeeds. | A rebuild reads the archive only when it opts in, and `IncludeAll` is the choice that includes streams archived whole. | {verified: CollectiveReplayOrderingTests.Interleave_InARebuild_ListsTheCollectiveStreamsArchivedWhole_OnlyUnderIncludeAllAsync, CollectiveReplayRebuildIntegrationTests.Rebuild_ByDefault_LeavesOutACollectiveArchivedWhole_AndSucceedsAsync} |
+| Every registered collective type is listed, not only the types of the model being rebuilt. | Collectives that share an [ordering key](#ordering-key) share a stream, and the ledger records a stream's type as its first event's, which can be another model's collective. | {verified: DapperArchivedCollectiveReplayTests.AddCollectiveEventsDapper_TheReplayReadsTheTenantsArchivedCollectiveStreams_ListedFromTheLedgerAsync} |
+| A key's collectives read back from the archive are put in commit order by the commit sequence their archived events carry. | They have no hot position to order by, and the archive keeps each event's commit sequence. | {verified: CollectiveReplayOrderingTests.Interleave_AKeysCollectives_InAStreamArchivedWhole_FoldInTheCommitOrderTheirEventsCarryAsync} |
+| The lookup reads an index of the archived streams by type and tenant (`idx_stream_lifecycle_archived_type`, migration 272). | A rebuild asks once per stream it replays, and the ledger has a row per stream, so the lookup must not scan it. | {verified: ArchivedCollectiveStreamsQueryPlanTests.ArchivedCollectiveStreams_OnALargeLedger_ReadTheArchivedStreamIndex_WithAndWithoutATenantAsync} |
+
+Both drivers hand the applier their database, so both list archived collective streams.
+
+#### A collective never moves the row's checkpoint {#collective-replay-checkpoint}
+
+{verified: CollectiveReplayRebuildIntegrationTests.Rebuild_IncludeAll_FoldsACollectiveArchivedWhole_ThatIsTheRowsLastEvent_AndCheckpointsOnTheRowsOwnEventAsync}
+
+In a rebuild or a rewind, a collective folds into the row but does not move the row's cursor. The cursor names the
+row's own last event; the row's recorded commit sequence is still the highest among the events it folded, collectives
+included. This matches the live path, where the set-based sink never touches a row's cursor. A collective is another
+stream's event, and that stream may be archived whole: a cursor naming it would name an event the hot store does not
+hold, which the EF Core schema's cursor foreign key refuses. Parking the cursor is no answer there, because the row's
+own stream is not archived and would never be restored.
 
 Both drivers register this seam automatically:
 `AddCollectiveEventsEFCore` / `AddCollectiveEventsDapper` register the
