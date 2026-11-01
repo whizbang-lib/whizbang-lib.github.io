@@ -582,6 +582,7 @@ builder.Services.AddWhizbangAzureBlobArchive(builder.Configuration);
 | `ContainerName` | `string` | `whizbang-archive` | `Whizbang__Archive__AzureBlob__ContainerName` | Container the archive objects are written to; created on the first write |
 | `CompressionLevel` | `int` | `4` | `Whizbang__Archive__AzureBlob__CompressionLevel` | Brotli quality, 0 to 11 ([why 4](../../fundamentals/events/archive-store#azure-blob-configuration)) |
 | `MaxEventsPerChunk` | `int` | `10000` | `Whizbang__Archive__AzureBlob__MaxEventsPerChunk` | Most events one archive object holds; 1 or more |
+| `AccessTier` | `AccessTier?` | `null` (the account's default) | `Whizbang__Archive__AzureBlob__AccessTier` | Tier every archive object is written at: `Hot`, `Cool` or `Cold`; `Archive` is refused at startup ([why](../../fundamentals/events/archive-store#access-tier)) |
 
 ### Archive and stream lifecycle {#archive-and-stream-lifecycle-options}
 
