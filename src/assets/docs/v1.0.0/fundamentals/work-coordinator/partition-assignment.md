@@ -19,6 +19,7 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/204_DirectInstancesAreLiveByTheirAliveLock.sql
   - src/Whizbang.Data.Postgres/Migrations/229_OnlyReadyInstancesAreEligibleForWork.sql
   - src/Whizbang.Data.Postgres/Migrations/231_StartupStageRecord.sql
+  - src/Whizbang.Data.Postgres/Migrations/278_OneWriterOfTheInstancePhase.sql
 testReferences:
   - tests/Whizbang.Partitioning.Tests/PartitionAssignerTests.cs
   - tests/Whizbang.Partitioning.Tests/PartitionAssignmentCacheTests.cs
@@ -29,6 +30,8 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/WorkEligibilitySqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/AliveVersusEligibleE2ETests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StartupStageSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/InstanceTransitionSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/HeartbeatPhaseOrderSqlTests.cs
 ---
 
 # Partition assignment
@@ -101,6 +104,15 @@ standing-by instance stays out even while its stage is Running. A row with no st
 or one written before the instance's first stage write) is judged by its phase alone, as above. A
 starting instance becomes a candidate exactly when its move into Accept commands is written, and a
 draining one drops out the moment Draining is written. {verified: StartupStageSqlTests.Eligible_EachRecordedStage_IsEligibleOnlyInAcceptCommandsOrRunningAsync, StartupStageSqlTests.Eligible_ARowThatRecordsNoStage_IsJudgedByItsPhaseAsync, StartupStageSqlTests.Eligible_ARunningInstanceThatIsPaused_IsNotEligibleAsync, StartupStageSqlTests.Candidates_FollowTheRecordedStageAsync}
+
+**Since migration 278 the stage and the phase are one write.** Eligibility reads one recorded phase, and the
+[stage record](/v1.0.0/operations/startup/startup-status#one-writer-of-the-phase) is its only writer: each transition
+writes the stage, its phase and the library version in one update, a pause or a stand-by writes its phase and keeps
+the stage, and a heartbeat or a registration fills the phase only on a row that records none. A candidate list is
+never read between a stage and its phase, and a heartbeat built before a pause or a stand-by can no longer write an
+eligible phase back over it, so a paused or standing-by instance stays out until the transition that ends it. A starting
+instance's row records `Connecting` from its registration, so it is never a candidate while it migrates.
+{verified: InstanceTransitionSqlTests.ATransition_IsOneUpdateOfTheRowAsync, InstanceTransitionSqlTests.APhaseOnlyWrite_KeepsTheStage_ItsMessage_AndWhenItWasEnteredAsync, HeartbeatPhaseOrderSqlTests.APhaseOffTheLadder_OnABeat_IsNotWritten_EitherWayAsync, WorkEligibilitySqlTests.BootstrapRegistration_RecordsTheInstanceAsConnecting_SoItIsNotACandidateAsync, AliveVersusEligibleE2ETests.AnInstanceHeldInStartup_IsAliveButNeverACandidateNorRanked_WhileAReadyPeerTakesAllWorkAsync}
 
 The decision lives in the database, in one function every reader shares, so an assigner on an older
 build that reads the candidates during a rolling upgrade leaves out the same instances a newer one

@@ -49,6 +49,7 @@ codeReferences:
   - src/Whizbang.Data.EFCore.Postgres/Perspectives/MappedDocumentReadFailure.cs
   - src/Whizbang.Data.Postgres/Migrations/226_PartitionManager.sql
   - src/Whizbang.Data.Postgres/Migrations/277_PreflightInstanceAndRoleColumns.sql
+  - src/Whizbang.Data.Postgres/Migrations/278_OneWriterOfTheInstancePhase.sql
   - src/Whizbang.Core/Startup/TableRewriteStartupStep.cs
   - src/Whizbang.Core/Workers/ITableRewriter.cs
   - src/Whizbang.Core/Workers/VacuumFullTableRewriter.cs
@@ -63,6 +64,7 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/SchemaPassLedgerTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/SchemaBootstrapPhaseTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/PreflightInstanceColumnsTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/WorkEligibilitySqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/MigratorDutyStagingTests.cs
   - tests/Whizbang.Core.Tests/Schema/SchemaBootstrapRetryTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StartupPreflightHostTests.cs
@@ -640,6 +642,18 @@ top to bottom, so it runs in Preflight:
   `startup_stage`, `startup_stage_message` and `startup_stage_entered_at` (231);
 - `evicted_by` on the eviction tombstones (110);
 - `wh_record_startup_stage`, exactly as migration 231 defines it.
+
+Since migration 278 the closure also carries `wh_record_instance_transition`, the one write of an instance's stage,
+phase and library version (see [one writer of the phase](../startup/startup-status#one-writer-of-the-phase)). 278's
+bootstrap region holds that function alone; the same file's `record_heartbeat` stays in the main pass.
+
+**Why 278's recorder is in the closure.** Registration, the last step of Preflight, writes through it on every
+database: it records Preflight's phase where the row records none, then writes the stage held until the row existed
+as that transition's one update. Outside the closure, an empty database would register before the function existed,
+and the registration that calls it would fail; a registration that skipped the write instead would leave a row with no
+phase, which reads as an older build, eligible for work during its own migration. Migration 278 is the function's only definition, so the closure's copy is its last word, as the rule
+below requires.
+{verified: MigrationBootstrapRegionsTests.TheBootstrapSubsetIsTheMigrationsStartupNeedsAsync, SchemaBootstrapPhaseTests.AnEmptyDatabaseRecordsATransitionAtRegistrationAfterTheBootstrapAsync, WorkEligibilitySqlTests.BootstrapRegistration_RecordsTheInstanceAsConnecting_SoItIsNotACandidateAsync, PreflightInstanceColumnsTests.EveryFunctionTheBootstrapDefines_IsDefinedAsItsLastWordAsync}
 
 Registration ends Preflight and writes the stage the instance held until its row existed. Earlier releases created
 those columns and the recorder only in the main pass, so on a fresh database that write failed (logged at Debug and

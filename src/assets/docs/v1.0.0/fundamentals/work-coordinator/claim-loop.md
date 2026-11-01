@@ -10,7 +10,7 @@ description: >-
   stuck instance, outbox stream runs with the immediate re-claim after a full
   outbox acquisition, how a claim keeps the queue tables' planner statistics
   true, how a claim ranks only the peers that are alive and eligible for work,
-  and how it keeps the caller's recorded lifecycle phase current.
+  and why a claim no longer announces the caller's lifecycle phase.
 tags: 'work-coordinator, claim-loop, claim-work, acquisition, backpressure, work-stealing, command-lane'
 codeReferences:
   - src/Whizbang.Core/Workers/ClaimWorker.cs
@@ -26,12 +26,14 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/204_DirectInstancesAreLiveByTheirAliveLock.sql
   - src/Whizbang.Data.Postgres/Migrations/207_ClaimRefreshesStaleQueueStatistics.sql
   - src/Whizbang.Data.Postgres/Migrations/229_OnlyReadyInstancesAreEligibleForWork.sql
+  - src/Whizbang.Data.Postgres/Migrations/278_OneWriterOfTheInstancePhase.sql
   - src/Whizbang.Core/Workers/OutboxDrainWorker.cs
   - src/Whizbang.Core/Signals/BasePollSignalSource.cs
   - src/Whizbang.Core/Signals/PollIdleBackoff.cs
 testReferences:
   - tests/Whizbang.Core.Component.Tests/ClaimWorkerLifecyclePhaseTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/WorkEligibilitySqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/HeartbeatPhaseOrderSqlTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/ClaimWorkerAcquisitionBoundsTests.cs
   - tests/Whizbang.Core.Tests/Workers/AdaptiveClaimWindowLatencyTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/BoundedAcquisitionRewriteSqlTests.cs
@@ -477,23 +479,34 @@ Since migration 229 a live peer is ranked only when it is also [eligible for wor
 ### The re-register notice and `p_alive_lock_held` {#re-register-notice}
 {verified: AliveLockLivenessSqlTests.Notice_ADirectCallerHoldingItsLock_IsNotAskedToRegisterBetweenSlowBeatsAsync, AliveLockLivenessSqlTests.Notice_ADirectCallerWithoutItsLock_IsAskedToRegisterAsync, AliveLockLivenessSqlTests.Notice_APooledCallerPastTheCutoff_IsStillAskedToRegisterAsync, AliveLockLivenessSqlTests.Notice_AMissingRegistration_IsReportedWhateverTheLockAsync, ClaimWorkerAliveLockTests.AClaim_WhileTheAliveLockIsHeld_SaysSoAsync, ClaimWorkerAliveLockTests.AClaim_WithoutTheAliveLock_SaysSoAsync, ClaimWorkerAliveLockTests.AClaim_WithNoAliveLockSourceRegistered_HoldsNoLockAsync}
 
-The claim reads its caller's registration and never writes it. When the row is missing, older than the cutoff, or records another lifecycle phase than the caller announces (see [below](#lifecycle-phase)), it raises `NOTICE 'whizbang.instance_registration_stale=true'` (`WorkBatch.InstanceRegistrationStale`) and the caller registers in a statement of its own.
+The claim reads its caller's registration and never writes it. When the row is missing or older than the cutoff (or, for a caller that passes a phase, records another one; see [below](#lifecycle-phase)), it raises `NOTICE 'whizbang.instance_registration_stale=true'` (`WorkBatch.InstanceRegistrationStale`) and the caller registers in a statement of its own.
 
 A direct instance holding its lock beats every 60 s, so its row is past the 30 s cutoff for half of every beat. To keep that from reading as stale, `ClaimWorker` resolves `IInstanceAliveLockSource` from the claim's scope and passes its answer as `ClaimWorkRequest.AliveLockHeld`. Both coordinators (EF Core and Dapper) send it as `claim_work`'s `p_alive_lock_held` parameter (default `FALSE`). A direct caller that holds its lock is not asked to re-register; a pooled caller past the cutoff still is; and a missing registration is reported whatever the lock says. A host without a lock source registered passes `false`, as before. {verified: AliveLockLivenessSqlTests.Coordinator_PassesTheCallersAliveLock_SoADirectCallerHoldingItIsNotReportedStaleAsync, DapperWorkCoordinatorBroadTests.ClaimWorkAsync_ADirectInstanceBetweenSlowBeats_IsReportedStaleOnlyWithoutItsLockAsync}
 
-### The caller's lifecycle phase and `p_lifecycle_phase` {#lifecycle-phase}
-{verified: WorkEligibilitySqlTests.Notice_ACallerWhoseRowRecordsAnotherPhase_IsAskedToRegisterAsync, WorkEligibilitySqlTests.Notice_ACallerWhoseRowRecordsItsPhase_IsNotAskedToRegisterAsync, WorkEligibilitySqlTests.Notice_ADrainingCallerWhoseRowSaysSo_IsNotAskedToRegisterAsync, WorkEligibilitySqlTests.Notice_ACallerThatSaysNothingOfItsPhase_IsJudgedAsBeforeAsync, WorkEligibilitySqlTests.Registration_CarryingThePhase_MakesTheRowCurrentForTheNextClaimAsync}
+### A claim announces no phase {#lifecycle-phase}
+{verified: ClaimWorkerLifecyclePhaseTests.AClaim_SaysNothingOfItsPhase_EvenWithALifecycleAsync, ClaimWorkerLifecyclePhaseTests.AClaim_WithNoLifecycleRegistered_SaysNothingOfItsPhaseAsync, WorkEligibilitySqlTests.ARegistration_NoLongerMovesARecordedPhase_TheStageRecordMakesTheRowCurrentAsync}
 
-Eligibility is read from the phase the instance's row records, so that phase has to be right. A ready instance whose row still records `Migrating` (a transition write that was lost, or overwritten by a heartbeat built before the transition) would be left out of every ranking while it claims.
+Eligibility is read from the phase the instance's row records. Since migration 278 that phase has
+[one writer, the stage record](/v1.0.0/operations/startup/startup-status#one-writer-of-the-phase), and the claim loop
+no longer checks it: `ClaimWorker` passes no phase (`ClaimWorkRequest.LifecyclePhase` is `null`), so a claim judges
+its caller's row by liveness alone.
 
-Each claim therefore carries the phase the instance announces, `ClaimWorkRequest.LifecyclePhase`, taken from `IWhizbangLifecycleState.AnnouncedPhase` (see [run-control](/v1.0.0/resilience/managed-resource-run-control#announced-phase)). Both coordinators send it as `claim_work`'s `p_lifecycle_phase` parameter (default `NULL`):
+The claim loop's registrations still carry the phase the instance announces (`IWhizbangLifecycleState.AnnouncedPhase`,
+see [run-control](/v1.0.0/resilience/managed-resource-run-control#announced-phase)), but `record_heartbeat` writes it
+only as a registration: on a row it inserts, where the row records none, or for a new process under the same instance
+id. A row that records a phase keeps it. A host without a lifecycle sends no phase at all.
+{verified: ClaimWorkerLifecyclePhaseTests.TheRegistrationBeforeTheFirstClaim_CarriesThePhaseAsync, ClaimWorkerLifecyclePhaseTests.TheRegistrationAfterAStaleClaim_WritesThePhaseAsync, ClaimWorkerLifecyclePhaseTests.TheRegistrations_WithNoLifecycleRegistered_KeepTheRecordedPhaseAsync, HeartbeatPhaseOrderSqlTests.ABeatOnARowThatRecordsNoPhaseOrVersion_FillsThemAsync}
 
-- When the row records a different phase, the claim reports the registration stale with the same `whizbang.instance_registration_stale=true` notice as a missing or old row.
-- The claim loop then registers in a statement of its own, and that registration carries the announced phase, so the row is corrected before the next claim.
-- When the row records the announced phase, nothing is reported. A draining caller whose row already says `Stopping` is not asked to register again.
-- A host without a lifecycle sends `NULL`; its row is judged by liveness alone, as before, and its registrations keep whatever phase is recorded.
+**Why the claim stopped announcing it.** Earlier releases sent the announced phase with every claim, and a row that
+recorded another one was reported stale so the claim loop's registration could overwrite it. That repaired a phase a
+lost transition write or an earlier heartbeat had left behind. With one writer neither can happen: the stage record
+holds a write it could not make and writes it again on the next accepted heartbeat, and a registration never
+overwrites a recorded phase. A claim that still compared the two would find a mismatch the registration could no
+longer fix, and report the row stale on every claim until the next transition.
 
-The check rides the primary-key probe the claim already makes for the stale notice, so it costs nothing extra. {verified: ClaimWorkerLifecyclePhaseTests.AClaim_CarriesThePhaseTheInstanceAnnouncesAsync, ClaimWorkerLifecyclePhaseTests.AClaim_WithNoLifecycleRegistered_SaysNothingOfItsPhaseAsync, ClaimWorkerLifecyclePhaseTests.TheRegistrationBeforeTheFirstClaim_CarriesThePhaseAsync, ClaimWorkerLifecyclePhaseTests.TheRegistrationAfterAStaleClaim_WritesThePhaseAsync, ClaimWorkerLifecyclePhaseTests.TheRegistrations_WithNoLifecycleRegistered_KeepTheRecordedPhaseAsync, WorkEligibilitySqlTests.Coordinator_PassesTheCallersPhase_SoARowRecordingAnotherIsReportedStaleAsync, DapperWorkCoordinatorBroadTests.ClaimWorkAsync_ARowRecordingAnotherPhaseThanTheCallers_IsReportedStaleAsync}
+`claim_work` keeps its `p_lifecycle_phase` parameter (default `NULL`), and its comparison, for older builds during a
+rolling upgrade: a caller that passes a phase whose row records another is still reported stale.
+{verified: WorkEligibilitySqlTests.Notice_ACallerWhoseRowRecordsAnotherPhase_IsAskedToRegisterAsync, WorkEligibilitySqlTests.Notice_ACallerThatSaysNothingOfItsPhase_IsJudgedAsBeforeAsync}
 
 The claim loop does not wait for the `AcceptingCommands` write to land before its first claim. Such a wait could hang a host that has no lifecycle driver, and a ready instance that claims early only overlaps its peers briefly, because a claimer always counts itself.
 
@@ -526,7 +539,7 @@ The notification listener exposes `IsHealthy` + `OnHealthChanged`; expose via `/
 | `ClaimWorkAsync` throws | Log warn, increment empty-poll counter (back off), retry on next tick. |
 | Pooled connection unreachable | Existing `WorkerRetryOptions` exponential backoff. |
 | Queue table statistics stale (autovacuum behind or stuck) | The claim analyzes the table first (see [The statistics follow the tables too](#the-statistics-follow-the-tables-too)); if it cannot within five seconds it logs a warning and claims anyway. |
-| A ready instance's row still records an earlier phase (a lost transition write) | The next claim reports the registration stale, and the claim loop's registration writes the announced phase; the instance is ranked again from the claim after (see [The caller's lifecycle phase](#lifecycle-phase)). |
+| A ready instance's row still records an earlier phase (a transition write that failed) | The stage record holds the write and makes it again on the next accepted heartbeat; the instance is ranked from the claim after that (see [A claim announces no phase](#lifecycle-phase)). |
 | Notification listener unhealthy | `OnHealthChanged(false)` fires; claim worker can flip to fast polling cadence (current implementation: subscribers can wire this; the default ClaimWorker doesn't yet). |
 
 ## Related

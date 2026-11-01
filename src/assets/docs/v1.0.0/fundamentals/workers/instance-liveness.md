@@ -23,6 +23,7 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/055_InstanceAliveAdvisoryLock.sql
   - src/Whizbang.Data.Postgres/Migrations/011_CleanupStaleInstances.sql
   - src/Whizbang.Data.Postgres/Migrations/147_HeartbeatRegistryBackfill.sql
+  - src/Whizbang.Data.Postgres/Migrations/278_OneWriterOfTheInstancePhase.sql
   - src/Whizbang.Data.Postgres/Notifications/PgSharedNotifyConnection.cs
   - src/Whizbang.Data.Postgres/Notifications/PgInstanceLifecycleMonitor.cs
   - src/Whizbang.Core/Workers/IInstanceAliveLockSource.cs
@@ -45,6 +46,8 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/PgInstanceLifecycleMonitorUnitTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/PgInstanceLifecycleMonitorIntegrationTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/RecordHeartbeatBackfillTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/HeartbeatPhaseOrderSqlTests.cs
+  - tests/Whizbang.Core.Tests/Startup/StartupStageReporterTests.cs
 ---
 
 # Instance liveness — advisory lock + heartbeat fallback
@@ -202,11 +205,23 @@ ORDER BY si.instance_id;
 
 **Stream ownership is unchanged too.** The orphan claims, and the multi-stream claim's test of whether a live sibling holds a stream's lease, decide which instance owns a stream, not who gets a share, so they read alive. A starting instance owns no streams, because its instance id is new for the process. A draining instance keeps the streams it holds until it finishes them or their leases lapse; see [Draining](/v1.0.0/fundamentals/work-coordinator/partition-assignment#draining).
 
-**Keeping the recorded phase right.** Eligibility is only as good as the phase the row records, so every writer of the row writes the phase the instance is entering:
+**Keeping the recorded phase right.** Eligibility is only as good as the phase the row records, so the phase has one
+writer: the [stage record](/v1.0.0/operations/startup/startup-status#one-writer-of-the-phase), which writes the stage,
+the phase and the library version in one update on every transition (migration 278).
 
-- the bootstrap registration made during the migrator election records `Migrating` (see [Capabilities and duties](/v1.0.0/operations/startup/capabilities-and-duties#bootstrap-registration-records-migrating));
-- the heartbeat and the claim loop's registrations carry `IWhizbangLifecycleState.AnnouncedPhase`, the phase being entered while a transition is in flight (see [run-control](/v1.0.0/resilience/managed-resource-run-control#announced-phase)), so a heartbeat built mid-transition cannot write the old phase back;
-- a claim whose row records a different phase than the caller announces reports the registration stale, and the claim loop rewrites it (see [Claim loop](/v1.0.0/fundamentals/work-coordinator/claim-loop#lifecycle-phase)).
+- The bootstrap registration at the end of Preflight records `Connecting` where the row records none (see
+  [Capabilities and duties](/v1.0.0/operations/startup/capabilities-and-duties#bootstrap-registration-records-a-phase)).
+- A pause or a stand-by is recorded by the stage record as a phase-only write that keeps the stage (see
+  [A pause and a stand-by keep the stage](/v1.0.0/operations/startup/startup-status#pause-and-standby)).
+- A heartbeat, and the claim loop's registration, record the phase only as a registration: on a row they insert, on a
+  row that records none, or for a new process under the same instance id. They never overwrite a recorded phase, and a
+  claim no longer compares the row with an announced phase (see [Claim loop](/v1.0.0/fundamentals/work-coordinator/claim-loop#lifecycle-phase)).
+
+**Why one writer.** A heartbeat is built before it is sent, so a beat that wrote the phase could carry one from
+before a transition and undo it; a pause or a stand-by, which are off the startup ladder, had no ordering to protect
+them. A write the stage record could not make is held and written again on the next accepted heartbeat, so nothing is
+left for a beat to repair.
+{verified: HeartbeatPhaseOrderSqlTests.ABeatAheadOfTheRow_DoesNotMoveThePhase_TheStageRecordIsItsOnlyWriterAsync, HeartbeatPhaseOrderSqlTests.APhaseOffTheLadder_OnABeat_IsNotWritten_EitherWayAsync, StartupStageReporterTests.AWriteThatFails_IsHeld_AndWrittenOnTheNextRegistrationSignalAsync, WorkEligibilitySqlTests.ARegistration_NoLongerMovesARecordedPhase_TheStageRecordMakesTheRowCurrentAsync}
 
 ## Adaptive HeartbeatWorker cadence
 
@@ -336,16 +351,16 @@ sequenceDiagram
 The retraction is logged at Warning: *a death that does not hold means the heartbeat was late, not absent; look for what stalled it.* A retraction is a symptom worth chasing (a long commit holding the writer's connection, a saturated pool), but the fleet has already healed itself. If publishing the retraction fails, the instance is put back into the announced set and the retraction is retried on the next tick, mirroring how a failed announcement is retried. {verified: PgInstanceLifecycleMonitorIntegrationTests.Tick_PublishFails_RetriesTheAnnouncementOnTheNextTickAsync}
 
 ## Migration 147: the heartbeat backfills the registry
-{verified: RecordHeartbeatBackfillTests.FirstBeat_CreatesTheRowWithPhaseAndVersionAsync, RecordHeartbeatBackfillTests.LaterBeat_BackfillsARowThatWasCreatedBlankAsync, RecordHeartbeatBackfillTests.BeatWithNulls_KeepsWhatTheRowAlreadyHoldsAsync, RecordHeartbeatBackfillTests.BeatWithANewPhase_OverwritesTheOldOneAsync, RecordHeartbeatBackfillTests.ExactlyOneOverloadExistsAsync}
+{verified: RecordHeartbeatBackfillTests.FirstBeat_CreatesTheRowWithPhaseAndVersionAsync, RecordHeartbeatBackfillTests.LaterBeat_BackfillsARowThatWasCreatedBlankAsync, RecordHeartbeatBackfillTests.BeatWithNulls_KeepsWhatTheRowAlreadyHoldsAsync, RecordHeartbeatBackfillTests.BeatWithANewPhase_KeepsTheRecordedOneAsync, RecordHeartbeatBackfillTests.ExactlyOneOverloadExistsAsync}
 
 Two gaps closed on the heartbeat write:
 
-1. **Blank registry rows.** `record_instance_state` (migration 109) is UPDATE-only and returns `false` when the row does not exist yet, which is expected during early startup. The row is then created by the first heartbeat, or by `claim_work`'s fallback INSERT, with `lifecycle_phase` and `library_version` NULL. If no later transition happens (the common case: the last transition to `Running` preceded the row), the columns stay blank for the life of the instance and every reader keyed on them treats the instance as unknown. `HeartbeatRequest` now carries `LifecyclePhase`, `LibraryVersion` and `StaleThresholdSeconds`, filled from `IWhizbangLifecycleState` and `ILibraryVersionProvider` when they are registered, and `record_heartbeat` backfills with `COALESCE(EXCLUDED.x, existing.x)`: a non-null value is the live truth from the process and wins; a null leaves what `record_instance_state` wrote. {verified: HeartbeatWorkerRequestFieldsTests.BuildRequest_CarriesThePhaseVersionAndDerivedThresholdAsync, HeartbeatWorkerRequestFieldsTests.BuildRequest_WithoutLifecycleOrVersionProviders_LeavesThemNullAsync}
+1. **Blank registry rows.** `record_instance_state` (migration 109) is UPDATE-only and returns `false` when the row does not exist yet, which is expected during early startup. The row is then created by the first heartbeat, or by `claim_work`'s fallback INSERT, with `lifecycle_phase` and `library_version` NULL. If no later transition happens (the common case: the last transition to `Running` preceded the row), the columns stay blank for the life of the instance and every reader keyed on them treats the instance as unknown. `HeartbeatRequest` now carries `LifecyclePhase`, `LibraryVersion` and `StaleThresholdSeconds`, filled from `IWhizbangLifecycleState` and `ILibraryVersionProvider`, which the heartbeat worker requires, and `record_heartbeat` backfills a blank row with them. Since migration 278 a beat writes the phase and version only as a registration (a row it inserts, a row that records none, a new process under the same instance id) and never over a recorded value; see [What a registration and a heartbeat write](/v1.0.0/operations/startup/startup-status#registration-writes). {verified: HeartbeatWorkerRequestFieldsTests.BuildRequest_CarriesThePhaseVersionAndDerivedThresholdAsync, HeartbeatWorkerRequestFieldsTests.Constructor_WithoutLifecycleOrVersionProviders_ThrowsAsync}
 2. **The opportunistic peer reap used the 30 s constant.** `record_heartbeat` reaps silent peers as a side effect of a beat. It compared them against 30 s, equal to the fast cadence, so a peer late by any latency at all could be tombstoned by a healthy neighbor on a host without the alive-lock (pooled connections). The cutoff is now `p_stale_threshold_seconds`, the caller's derived threshold; callers that pass nothing keep the old default. The definitive-dead bypass keeps its 5 minute floor but never falls below twice the stale threshold, so the two cutoffs cannot cross. {verified: RecordHeartbeatBackfillTests.PeerLateByFortySeconds_SurvivesABeatCarryingTheDerivedThresholdAsync, RecordHeartbeatBackfillTests.PeerPastTheDerivedThreshold_IsStillReapedAsync}
 
 ```sql{
 title: "record_heartbeat after migration 147"
-description: "Three optional parameters appended: the instance's lifecycle phase and library version backfill the registry row (non-null wins, null keeps), and the caller's derived stale threshold replaces the 30 s peer-reap constant. The previous overload is dropped first, so exactly one overload exists."
+description: "Three optional parameters appended: the instance's lifecycle phase and library version backfill the registry row (since migration 278, only as a registration, never over a recorded value), and the caller's derived stale threshold replaces the 30 s peer-reap constant. The previous overload is dropped first, so exactly one overload exists."
 category: "Workers"
 difficulty: "ADVANCED"
 tags: ["liveness", "heartbeat", "migration-147", "registry", "postgres"]
@@ -357,8 +372,8 @@ SELECT record_heartbeat(
   p_host_name               => 'host-a',
   p_process_id              => 4242,
   p_metadata                => '{}'::jsonb,
-  p_lifecycle_phase         => 'Running',   -- NULL keeps what record_instance_state wrote
-  p_library_version         => '1.0.0',     -- NULL keeps the recorded value
+  p_lifecycle_phase         => 'Running',   -- written only where the row records none (278)
+  p_library_version         => '1.0.0',     -- likewise; NULL keeps the recorded value
   p_stale_threshold_seconds => 150);        -- NULL keeps the pre-147 default of 30
 
 -- The legacy five-argument call still works through the defaults.
