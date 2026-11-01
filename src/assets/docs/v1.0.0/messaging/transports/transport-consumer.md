@@ -323,15 +323,17 @@ uses, and the rest of the batch is stored as usual:
 The record lands with `source_table = 'broker'`, the wire message id as its
 idempotency key, the subscription (`topic/subscription`) as its destination, and the
 reason in its error text. Dead-letter recovery re-emits it through the inbox once the
-consumer is fixed. Each one is logged at Error level and counted in
+consumer is fixed. Each one is logged as the
+[dead-letter record](../../operations/observability/logging-categories#dead-lettered-messages)
+(EventId 1901, Error by default, carrying the exception that stopped it) and counted in
 `whizbang.transport.inbox.messages_failed`.
 
 If custody itself cannot be given (the coordinator refuses the import), the message
-is logged at Critical level and the batch fails after every other message in the batch
+is logged at Critical level, naming the cause, and the batch fails after every other message in the batch
 is stored (see [failed batches](#failed-batches)). A failed download of an
 offloaded body is still thrown for redelivery, since the body is usually there on a
 later attempt.
-{verified: TransportConsumerWorkerUnstorableMessageTests.SerializationFails_MessageDeadLetteredWithBody_NeighborsStillStoredAsync, TransportConsumerWorkerUnstorableMessageTests.SerializationFails_PayloadNoContextKnows_DeadLetteredWithDescriptorAsync, TransportConsumerWorkerUnstorableMessageTests.OffloadedBodyUnreadable_DeadLetteredWithDownloadedBodyAsync, TransportConsumerWorkerUnstorableMessageTests.OffloadedBodyProviderUnknown_DeadLetteredWithClaimAsync, TransportConsumerWorkerUnstorableMessageTests.CustodyUnavailable_BatchFailsAfterStoringNeighborsAsync}
+{verified: TransportConsumerWorkerUnstorableMessageTests.SerializationFails_MessageDeadLetteredWithBody_NeighborsStillStoredAsync, TransportConsumerWorkerUnstorableMessageTests.SerializationFails_LogsTheDeadLetterRecordAtErrorWithTypeAndCauseAsync, TransportConsumerWorkerUnstorableMessageTests.SerializationFails_PayloadNoContextKnows_DeadLetteredWithDescriptorAsync, TransportConsumerWorkerUnstorableMessageTests.OffloadedBodyUnreadable_DeadLetteredWithDownloadedBodyAsync, TransportConsumerWorkerUnstorableMessageTests.OffloadedBodyProviderUnknown_DeadLetteredWithClaimAsync, TransportConsumerWorkerUnstorableMessageTests.CustodyUnavailable_BatchFailsAfterStoringNeighborsAsync}
 
 ### Messages that cannot be read back {#unreadable-messages}
 

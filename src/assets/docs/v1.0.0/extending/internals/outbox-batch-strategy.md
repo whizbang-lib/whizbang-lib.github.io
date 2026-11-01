@@ -112,7 +112,7 @@ flowchart TB
     A -->|"transient database failure,<br/>attempts left"| W["Wait the backoff<br/>(doubles up to FlushRetryMaxBackoff)"]
     W --> A
     A -->|"attempts used up, or an error<br/>a retry cannot fix"| DL["wh_store_outbox_dead_letters<br/>reason OutboxStoreFailed (23)"]
-    DL --> R["Counted, logged at Error,<br/>IOutboxFlushFailureObserver told"]
+    DL --> R["Counted, logged per message,<br/>IOutboxFlushFailureObserver told"]
     R --> REC["Dead-letter recovery stores it again"]
 ```
 
@@ -142,10 +142,12 @@ A batch whose attempts ran out, or whose store failed with an error a retry cann
 - Each message written is also logged in `wh_log` (source `outbox_flush`), in the same transaction.
 - A message that is already stored (an outbox row or an event-store event with its id: the store committed and
   only its reply was lost) or that already has a dead letter not yet recovered is skipped.
-- The batch is logged at Error with every message id and how to recover it. When the dead-letter write fails
-  too, the Error says the messages exist nowhere else and are lost unless their source sends them again.
+- Each message gets its own [dead-letter record](../../operations/observability/logging-categories#dead-lettered-messages)
+  (EventId 1901, Error by default, carrying the store failure), and the batch is summarized at Information with
+  every message id and how to recover it. When the dead-letter write fails too, no record is logged and an Error
+  says the messages exist nowhere else and are lost unless their source sends them again.
 
-{verified: OutboxFlushPoolExhaustionTests.StoreOutboxDeadLetters_WritesARecoverableDeadLetterAndALogRowPerMessageAsync, OutboxFlushPoolExhaustionTests.StoreOutboxDeadLetters_SkipsAMessageAlreadyStoredOrAlreadyDeadLetteredAsync, DapperOutboxDeadLetterTests.StoreOutboxDeadLetters_WritesARecoverableDeadLetterAndALogRowPerMessageAsync, SlidingWindowOutboxFlushFailureTests.FlushFailsWithANonTransientError_IsReportedAtOnceAndLoggedAsLostWhenNotDeadLetteredAsync, OutboxFlushFailureCallbackTests.RecordAsync_DeadLetterWriteFails_IsLoggedAndObserversAreToldItWasNotKeptAsync}
+{verified: OutboxFlushPoolExhaustionTests.StoreOutboxDeadLetters_WritesARecoverableDeadLetterAndALogRowPerMessageAsync, OutboxFlushPoolExhaustionTests.StoreOutboxDeadLetters_SkipsAMessageAlreadyStoredOrAlreadyDeadLetteredAsync, DapperOutboxDeadLetterTests.StoreOutboxDeadLetters_WritesARecoverableDeadLetterAndALogRowPerMessageAsync, SlidingWindowOutboxFlushFailureTests.FlushFailsWithANonTransientError_IsReportedAtOnceAndLoggedAsLostWhenNotDeadLetteredAsync, SlidingWindowOutboxFlushFailureTests.FlushFailsTransientlyOnEveryAttempt_DeadLettersTheBatchAfterMaxFlushAttemptsAsync, OutboxFlushFailureCallbackTests.RecordAsync_DeadLetterWriteFails_IsLoggedAndObserversAreToldItWasNotKeptAsync, OutboxFlushFailureCallbackTests.RecordAsync_CoordinatorDeadLetters_LogsOneDeadLetterRecordPerMessageAtErrorAsync, OutboxFlushFailureCallbackTests.RecordAsync_DeadLetterWriteFails_LogsNoDeadLetterRecordAsync}
 
 A dead-lettered batch does not hold up its stream: the stream's later batches are stored without waiting for
 it. Recovery puts it back on its stream in stream-aware order (see
@@ -195,7 +197,7 @@ apart, then held for review so a store that keeps refusing is visible.
 {verified: DefaultDeadLetterRecoveryPolicyTests.GetPolicy_OutboxStoreFailed_RetriesAggressivelyThenHoldsAsync}
 
 To recover them now, for example once the database is back, find the dead letters by the message ids in the
-Error log, or by reason:
+batch summary or the dead-letter records, or by reason:
 
 ```sql{
 title: "Find the outbox messages the batcher could not store"

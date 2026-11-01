@@ -21,6 +21,8 @@ codeReferences:
   - src/Whizbang.Core/Workers/OutboxDrainWorker.cs
   - src/Whizbang.Core/Workers/OutboxPublishWorker.cs
   - src/Whizbang.Core/Workers/PerspectiveWorker.cs
+  - src/Whizbang.Core/Observability/DeadLetterLog.cs
+  - src/Whizbang.Core/Workers/DeadLetterLoggingOptions.cs
 testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/MoveToDeadLettersSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/EFCoreDeadLetterStoreTests.cs
@@ -30,6 +32,8 @@ testReferences:
   - tests/Whizbang.Core.Component.Tests/Workers/OutboxPublishWorkerDlqPromotionTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerDeadLetterFilterTests.cs
   - tests/Whizbang.Core.Tests/Workers/V502DefaultsTests.cs
+  - tests/Whizbang.Core.Tests/Workers/InboxDispatchWorkerDeadLetterLogTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/PrePublishGateForensicPreservationTests.cs
 ---
 
 # Internal DLQ — `wh_dead_letters`
@@ -172,6 +176,8 @@ fallback differs per worker:
 
 - **Inbox**: falls back to the legacy terminal-commit path (row is marked
   terminal so it never re-claims — the retry budget is already exhausted).
+  The message is finished for good, so it still gets its
+  [dead-letter record](#dead-letter-record), which is then its only trace.
 - **Outbox (drain gate)**: falls through to the publish attempt — better to
   attempt delivery than leave the row stuck; the next failure cycle retries
   the DLQ move.
@@ -183,6 +189,25 @@ fallback differs per worker:
 This keeps `wh_dead_letters` from silently swallowing rows when the DLQ
 surface itself is broken (DB unhealthy, schema mismatch, etc.).
 
+## The dead-letter record {#dead-letter-record}
+
+Each caller above logs one record for a message it moves into `wh_dead_letters`: EventId 1901,
+`MessageDeadLettered`, under the caller's own category, with the message id and type, the reason and the
+last failure (the exception when the caller has it, otherwise the recorded error text). It is logged at
+Error by default, or at Warning when
+[`Whizbang:DeadLetterLogging:Level`](../configuration/configuration-reference#dead-letter-logging) says so.
+A failed attempt that will be retried is logged at Warning and gets no record; a move that returns `NULL`
+(another path moved the row first) gets no record, because that path logged its own. See
+[dead-lettered messages](../observability/logging-categories#dead-lettered-messages) for every path that
+logs it and the lines it replaced.
+
+{verified: InboxDispatchWorkerDeadLetterLogTests.MaxAttempts_MovedToTheDeadLetterStore_LogsOneErrorRecordWithTypeAndLastErrorAsync, InboxDispatchWorkerDeadLetterLogTests.MaxAttempts_RowAlreadyGone_LogsNoRecordAsync, InboxDispatchWorkerDeadLetterLogTests.MaxAttempts_DeadLetterMoveThrows_LogsTheRecordForTheTerminalCompletionAsync, PrePublishGateForensicPreservationTests.PrePublishGate_Promotes_LogsTheDeadLetterRecordAtErrorAsync, OutboxPublishWorkerDlqPromotionTests.SingularPublish_AttemptsAtCap_LogsTheDeadLetterRecordAtErrorWithTypeAndErrorAsync, PerspectiveWorkerDeadLetterFilterTests.FailuresAboveMax_MovedToDeadLetters_LogsTheDeadLetterRecordAtErrorAsync, PerspectiveWorkerDeadLetterFilterTests.FailuresAboveMax_MoveThrows_LogsNoRecordAsync}
+
+**Upgrade note.** The record replaces the inbox's EventId 5, the outbox publish worker's EventId 6, the
+outbox drain worker's EventId 10 and the perspective worker's dead-letter Warning, all of which were
+Warnings. An alert keyed on Error may now fire for dead letters; set `Whizbang:DeadLetterLogging:Level`
+to `Warning` to keep the old severity, and key a log query on EventId 1901 instead of the retired ones.
+
 ## Control-plane drops {#control-plane-drops}
 
 Control-plane messages (framework coordination traffic that is re-emitted on its own cadence) are
@@ -191,7 +216,8 @@ dispatch worker drops it: the row is completed terminally and counted in the dea
 under the `ControlPlaneDropped` reason. Storing it would only have the recovery worker replay a stale message
 on a later boot.
 
-Because nothing is stored, the drop log line is the only record of why the row failed. It is a
+Because nothing is stored, the drop log line is the only record of why the row failed, and the
+[dead-letter record](#dead-letter-record) is not logged for it. It is a
 Warning (EventId 11, category `Whizbang.Core.Workers.InboxDispatchWorker`) and carries the message
 id, type, attempts, the row's last recorded error, and the cause of that error:
 

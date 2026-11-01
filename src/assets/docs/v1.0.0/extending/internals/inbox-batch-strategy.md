@@ -103,12 +103,14 @@ does:
    reported twice.
 3. **Report it**: counted on `whizbang.work_coordinator.inbox_flush.failed_messages`, tagged `cause`
    (`RetriesExhausted`, `NotRetryable`, `AbandonedAtShutdown`) and `outcome` (`dead_lettered` or
-   `not_recorded`), logged at Error with every message id, and passed to every registered
-   `IInboxFlushFailureObserver` as an `InboxFlushFailure` with `DeadLettered` set. An observer that throws is
-   logged and does not stop the others. When the dead-letter write fails too, the Error says the messages are
-   lost unless their broker delivers them again.
+   `not_recorded`), logged as one
+   [dead-letter record](../../operations/observability/logging-categories#dead-lettered-messages) per message
+   (EventId 1901, Error by default) plus an Information summary with every message id, and passed to every
+   registered `IInboxFlushFailureObserver` as an `InboxFlushFailure` with `DeadLettered` set. An observer that
+   throws is logged and does not stop the others. When the dead-letter write fails too, no record is logged and
+   an Error says the messages are lost unless their broker delivers them again.
 
-{verified: InboxFlushDeadLetterTests.StoreInboxDeadLetters_WritesARecoverableDeadLetterAndALogRowPerMessageAsync, InboxFlushDeadLetterTests.StoreInboxDeadLetters_SkipsAMessageAlreadyStoredOrAlreadyDeadLetteredAsync, DapperInboxDeadLetterTests.StoreInboxDeadLetters_WritesARecoverableDeadLetterAndALogRowPerMessageAsync, InboxFlushFailureRecorderTests.RecordAsync_CoordinatorDeadLetters_CountsTheArrivalsAndTellsObserversItWasKeptAsync, InboxFlushFailureRecorderTests.RecordAsync_DeadLetterWriteFails_IsLoggedAndObserversAreToldItWasNotKeptAsync, InboxFlushFailureRecorderTests.RecordAsync_AnObserverThrows_TheOthersAreStillToldAndItIsLoggedAsync}
+{verified: InboxFlushDeadLetterTests.StoreInboxDeadLetters_WritesARecoverableDeadLetterAndALogRowPerMessageAsync, InboxFlushDeadLetterTests.StoreInboxDeadLetters_SkipsAMessageAlreadyStoredOrAlreadyDeadLetteredAsync, DapperInboxDeadLetterTests.StoreInboxDeadLetters_WritesARecoverableDeadLetterAndALogRowPerMessageAsync, InboxFlushFailureRecorderTests.RecordAsync_CoordinatorDeadLetters_CountsTheArrivalsAndTellsObserversItWasKeptAsync, InboxFlushFailureRecorderTests.RecordAsync_DeadLetterWriteFails_IsLoggedAndObserversAreToldItWasNotKeptAsync, InboxFlushFailureRecorderTests.RecordAsync_AnObserverThrows_TheOthersAreStillToldAndItIsLoggedAsync, InboxFlushFailureRecorderTests.RecordAsync_CoordinatorDeadLetters_LogsOneDeadLetterRecordPerMessageAtErrorAsync, InboxFlushFailureRecorderTests.RecordAsync_DeadLetterWriteFails_LogsNoDeadLetterRecordAsync, SlidingWindowInboxFlushFailureTests.FlushFailsTransientlyOnEveryAttempt_DeadLettersTheBatchAfterMaxFlushAttemptsAsync}
 
 ```csharp{title="Watch for inbox messages the batcher could not store" description="An observer the inbox batcher calls for every batch it could not store, after it tried to keep the batch in the dead-letter table." framework="NET10" category="Observability" difficulty="INTERMEDIATE" tags=["inbox", "dead-letter-queue", "observability", "IInboxFlushFailureObserver"] tests=["InboxFlushFailureRecorderTests.RecordAsync_CoordinatorDeadLetters_CountsTheArrivalsAndTellsObserversItWasKeptAsync", "InboxFlushFailureRecorderTests.RecordAsync_AnObserverThrows_TheOthersAreStillToldAndItIsLoggedAsync"]}
 public sealed class InboxFailureAlert(ILogger<InboxFailureAlert> logger) : IInboxFlushFailureObserver {
