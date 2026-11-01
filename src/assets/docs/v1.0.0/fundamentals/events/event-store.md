@@ -421,4 +421,5 @@ The decorators are applied automatically by `DecorateEventStoreWithSyncTracking(
 - [Dispatcher](../dispatcher/dispatch-patterns.md#local-invoke-and-sync) - LocalInvokeAndSyncAsync for request-response patterns
 - [Perspectives](../perspectives/perspectives.md) - Read model projections
 - [Event Store Query](./event-store-query) - Querying events
+- [Superseding Events](./superseding-events.md) - Event types that keep only the newest event of each key
 - [Message Security](../security/message-security.md) - Security context
