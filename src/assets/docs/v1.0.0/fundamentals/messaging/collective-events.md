@@ -21,6 +21,8 @@ codeReferences:
   - src/Whizbang.Core/Perspectives/PerspectiveMemberDefaultRegistry.cs
   - src/Whizbang.Core/Perspectives/ICollectiveQuery.cs
   - src/Whizbang.Core/Perspectives/ICollectiveReplayApplier.cs
+  - src/Whizbang.Core/Perspectives/CollectiveReplayStart.cs
+  - src/Whizbang.Generators/Templates/PerspectiveRunnerTemplate.cs
   - src/Whizbang.Core/Perspectives/IPerspectiveRebuilder.cs
   - src/Whizbang.Core/Perspectives/PerspectiveRebuilder.cs
   - src/Whizbang.Core/Perspectives/CollectiveApplyForAttribute.cs
@@ -90,6 +92,8 @@ testReferences:
   - tests/Whizbang.Generators.Tests/CollectiveApplyShapeAnalyzerTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/Collective/DapperArchivedCollectiveReplayTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Collective/ArchivedCollectiveStreamsQueryPlanTests.cs
+  - tests/Whizbang.Core.Tests/Perspectives/CollectiveReplayRunnerTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Collective/CollectiveReplayApplierCoverageTests.cs
 ---
 
 # Collective events
@@ -381,6 +385,75 @@ replaying a known-stale row through its perspective reproduces the
 collective mutations that row received, so a repair scoped to a handful
 of streams does not quietly drop them.
 
+#### Rewinds and rebuilds from a snapshot {#collective-replay-from-a-start}
+
+{verified: CollectiveReplayRunnerTests.ARewindWithoutASnapshot_FoldsTheCollectivesFromTheStreamsStart_WithoutMovingTheCheckpointAsync, CollectiveReplayRunnerTests.ARewindFromASnapshot_FoldsTheCollectivesCommittedAfterTheSnapshotsEventAsync, CollectiveReplayRebuildIntegrationTests.Rewind_WithoutASnapshot_FoldsTheCollectives_AndCheckpointsOnTheRowsOwnEventAsync, CollectiveReplayRebuildIntegrationTests.Rewind_FromASnapshot_FoldsTheCollectivesCommittedAfterItAsync, CollectiveReplayRebuildIntegrationTests.Rewind_FromASnapshot_DoesNotFoldAgainACollectiveCommittedBeforeItAsync, CollectiveReplayRebuildIntegrationTests.Rebuild_ByDefault_FromTheNewestLiveSnapshot_FoldsACollectiveCommittedAfterItAsync}
+
+A [rewind](../perspectives/rewind) replays one row, from a snapshot or from its stream's start. A default rebuild of a
+stream [archived through a prefix](../perspectives/rebuild#archived-data-per-stream) starts from the stream's newest
+live snapshot through the same replay. Both fold the row's collectives as a full rebuild does: merged among the
+stream's events in commit order, through the same merge. Where the replay starts decides which collectives it folds:
+
+| The replay starts | It folds |
+|---|---|
+| At the stream's start (no snapshot) | Every collective of the row's tenant for the model |
+| From a snapshot | Only the collectives committed after the snapshot's event |
+
+| Choice | Reason | Verified |
+|---|---|---|
+| A rewind folds the row's collectives, whatever the ambient processing mode. | A rewind is a replay. A row rebuilt without the collectives it received live loses every collective mutation, which is what a rewind did before #1956. | {verified: CollectiveReplayRunnerTests.ARewindWithoutASnapshot_FoldsTheCollectivesFromTheStreamsStart_WithoutMovingTheCheckpointAsync, CollectiveReplayRebuildIntegrationTests.Rewind_WithoutASnapshot_FoldsTheCollectives_AndCheckpointsOnTheRowsOwnEventAsync} |
+| A replay from a snapshot folds only the collectives committed after the snapshot's event. | The snapshot already holds the ones committed before it, so folding them again would apply them twice. | {verified: CollectiveReplayRunnerTests.ARewindFromASnapshot_FoldsTheCollectivesCommittedAfterTheSnapshotsEventAsync, CollectiveReplayRebuildIntegrationTests.Rewind_FromASnapshot_FoldsTheCollectivesCommittedAfterItAsync, CollectiveReplayRebuildIntegrationTests.Rewind_FromASnapshot_DoesNotFoldAgainACollectiveCommittedBeforeItAsync} |
+| "Committed after" compares commit sequences when the collective and the snapshot's event both carry one, and message ids otherwise. A replay from the stream's start folds every collective. | It is the order the merge already uses to place a collective among a stream's events, so the cut and the merge never disagree. | {verified: CollectiveReplayRunnerTests.AStart_ComparesCommitSequences_WhenBothCarryOneAsync, CollectiveReplayRunnerTests.AStart_ComparesMessageIds_WhenTheCollectiveCarriesNoCommitSequenceAsync, CollectiveReplayRunnerTests.AStart_ComparesMessageIds_WhenItCarriesNoCommitSequenceAsync, CollectiveReplayRunnerTests.AReplayFromTheStart_FollowsEveryCollectiveAsync} |
+| A default rebuild from the newest live snapshot folds the collectives committed after it, even when no stream event follows the snapshot. That first pass folds the collectives of the tenant the row is stored under. | The replay has no stream event to read the tenant from, and the collectives committed since the snapshot are still the row's news. The replay already reads the stored row for its version, which carries the tenant. | {verified: CollectiveReplayRebuildIntegrationTests.Rebuild_ByDefault_FromTheNewestLiveSnapshot_FoldsACollectiveCommittedAfterItAsync, CollectiveReplayRebuildIntegrationTests.Rebuild_ByDefault_FromASnapshotAtTheStreamsLastEvent_StillFoldsTheCollectivesCommittedAfterItAsync} |
+| A snapshot a replay takes at an event is the row at that event, before the collectives committed after it fold. This holds for the rewind's final snapshot and for a rebuild's snapshots. | A later rewind from that snapshot folds the collectives committed after its event, so a snapshot that already held them would have them folded twice. See [snapshots](../perspectives/snapshots#a-replays-snapshot-and-collectives). | {verified: CollectiveReplayRunnerTests.ARewindsSnapshot_IsTheRowAtItsLastEvent_BeforeTheCollectivesCommittedAfterItAsync, CollectiveReplayRunnerTests.ARebuildsSnapshot_IsTheRowAtItsLastEvent_BeforeTheCollectivesCommittedAfterItAsync, PerspectiveRunnerSplitSnapshotTests.Runner_TakesTheSnapshotBeforeTheWriteAtBothWritesThatSnapshotAsync} |
+| An [overwrite-only](../perspectives/rewind#overwrite-only) perspective whose model has collectives is rewound by a full fold. | A collective committed after the stream's last event changes the row the last event alone would write. A model with no collectives keeps the last-event-only rewind. | {verified: CollectiveReplayRunnerTests.ARewindOfAnOverwriteOnlyPerspective_WhoseModelHasCollectives_FoldsEveryEventAndTheCollectivesAsync, CollectiveReplayRunnerTests.ARewindOfAnOverwriteOnlyPerspective_WhoseModelHasNoCollectives_StillAppliesOnlyTheLastEventAsync} |
+
+Collective streams [archived whole](#archived-collective-streams) follow the same rule as before: a rewind folds them
+always, and a rebuild only under `IncludeAll`. A collective never anchors the rewind's [catch-up
+read](../perspectives/rewind#catch-up-loop), which re-reads the row's own stream, and each collective folds once
+across the catch-up passes.
+
+The replay applier provides the merge through `InterleaveAfterAsync`, and `CollectiveReplayStart` names where the
+replay starts and whose collectives it folds:
+
+```csharp{title="Merging the collectives committed after a replay's start" description="ICollectiveReplayApplier.InterleaveAfterAsync and CollectiveReplayStart: a rewind or a rebuild from a snapshot merges the row's collectives committed after where it starts" framework="NET10" category="Perspectives" difficulty="ADVANCED" tags=["Collective Events", "Rewind", "Replay", "Snapshots"] tests=["CollectiveReplayApplierCoverageTests.InterleaveAfterAsync_OutsideARebuild_MergesTheCollectivesAfterTheStart_OnlyAsync", "CollectiveReplayApplierCoverageTests.InterleaveAfterAsync_WithNoStreamEvents_ReturnsTheCollectivesAloneAsync", "CollectiveReplayRunnerTests.AnApplierWrittenBeforeRewindsFoldedCollectives_InterleavesNoneAfterAStartAsync", "CollectiveReplayRunnerTests.AStart_ComparesCommitSequences_WhenBothCarryOneAsync"]}
+namespace Whizbang.Core.Perspectives;
+
+// Where a replay of one row starts: after the snapshot's event, or at the stream's start (AfterEventId null).
+public sealed record CollectiveReplayStart(string? TenantId, Guid? AfterEventId = null, long? AfterCommitSequence = null) {
+  // True when the replay folds this collective: always from the stream's start; otherwise by commit
+  // sequence when both carry one, else by message id.
+  public bool Follows(MessageEnvelope<IEvent> collective);
+}
+
+public interface ICollectiveReplayApplier {
+  // ...
+
+  // The stream's events with the start's tenant's collectives for the model that it Follows merged in.
+  // Merges outside a rebuild too, and with no stream events returns the collectives alone.
+  // The default merges none, so an applier written before this replays as it always did.
+  Task<IReadOnlyList<MessageEnvelope<IEvent>>> InterleaveAfterAsync(
+      Type modelType,
+      IReadOnlyList<MessageEnvelope<IEvent>> streamEvents,
+      CollectiveReplayStart start,
+      CancellationToken cancellationToken) => Task.FromResult(streamEvents);
+}
+```
+
+| Choice | Reason | Verified |
+|---|---|---|
+| `InterleaveAfterAsync` is a separate member, not a change to `InterleaveForReplayAsync`. | A rewind runs in the live processing mode, and `InterleaveForReplayAsync` merges only in a rebuild and only when there are stream events to merge into. | {verified: CollectiveReplayApplierCoverageTests.InterleaveAfterAsync_OutsideARebuild_MergesTheCollectivesAfterTheStart_OnlyAsync, CollectiveReplayApplierCoverageTests.InterleaveAfterAsync_WithNoStreamEvents_ReturnsTheCollectivesAloneAsync} |
+| It is a default interface method that returns the stream's events unchanged. | An applier written before it keeps compiling and behaves as it did: it folds nothing on a rewind. | {verified: CollectiveReplayRunnerTests.AnApplierWrittenBeforeRewindsFoldedCollectives_InterleavesNoneAfterAStartAsync} |
+| `CollectiveReplayStart.Follows` holds the "committed after" rule. | The applier and any other caller share one rule, and it is testable on its own. A null collective is refused, as are null arguments to the default applier's `InterleaveAfterAsync`. | {verified: CollectiveReplayRunnerTests.AStart_RefusesANullCollectiveAsync, CollectiveReplayApplierCoverageTests.InterleaveAfterAsync_RefusesNullArgumentsAsync} |
+
+**Known limit: a rewind from a live snapshot ([#1963](https://github.com/whizbang-lib/whizbang/issues/1963)).** A live
+snapshot is the row as the live apply read it, and the collective sink applies collectives to rows asynchronously. A
+collective committed just after a snapshot's event can therefore already be in that snapshot, and one committed just
+before can still be missing from it. A rewind from such a snapshot decides by commit order alone, so it can fold that
+collective twice, or not at all. Before #1956 a rewind folded no collective, so the window is narrower than it was.
+Closing it exactly needs the snapshot to record which collectives it holds, a schema change tracked by #1963. Snapshots
+a replay takes are not affected: they are cut at their last event, as above.
+
 #### Archived collective streams {#archived-collective-streams}
 
 {verified: CollectiveReplayOrderingTests.Interleave_InAReplay_ListsTheCollectiveStreamsArchivedWhole_WhateverARebuildWouldChooseAsync, CollectiveReplayOrderingTests.Interleave_InARebuild_ListsTheCollectiveStreamsArchivedWhole_OnlyUnderIncludeAllAsync, CollectiveReplayRebuildIntegrationTests.Rebuild_IncludeAll_FoldsACollectiveArchivedWhole_ThatIsTheRowsLastEvent_AndCheckpointsOnTheRowsOwnEventAsync, CollectiveReplayRebuildIntegrationTests.Rebuild_ByDefault_LeavesOutACollectiveArchivedWhole_AndSucceedsAsync, DapperArchivedCollectiveReplayTests.AddCollectiveEventsDapper_TheReplayReadsTheTenantsArchivedCollectiveStreams_ListedFromTheLedgerAsync}
@@ -403,7 +476,7 @@ Both drivers hand the applier their database, so both list archived collective s
 
 #### A collective never moves the row's checkpoint {#collective-replay-checkpoint}
 
-{verified: CollectiveReplayRebuildIntegrationTests.Rebuild_IncludeAll_FoldsACollectiveArchivedWhole_ThatIsTheRowsLastEvent_AndCheckpointsOnTheRowsOwnEventAsync}
+{verified: CollectiveReplayRebuildIntegrationTests.Rebuild_IncludeAll_FoldsACollectiveArchivedWhole_ThatIsTheRowsLastEvent_AndCheckpointsOnTheRowsOwnEventAsync, CollectiveReplayRunnerTests.ARewindWithoutASnapshot_FoldsTheCollectivesFromTheStreamsStart_WithoutMovingTheCheckpointAsync, CollectiveReplayRebuildIntegrationTests.Rewind_WithoutASnapshot_FoldsTheCollectives_AndCheckpointsOnTheRowsOwnEventAsync, CollectiveReplayRunnerTests.ARebuild_ACollectiveAfterAPurge_LeavesTheCheckpointOnTheStreamsOwnEventAsync}
 
 In a rebuild or a rewind, a collective folds into the row but does not move the row's cursor. The cursor names the
 row's own last event; the row's recorded commit sequence is still the highest among the events it folded, collectives
@@ -411,6 +484,11 @@ included. This matches the live path, where the set-based sink never touches a r
 stream's event, and that stream may be archived whole: a cursor naming it would name an event the hot store does not
 hold, which the EF Core schema's cursor foreign key refuses. Parking the cursor is no answer there, because the row's
 own stream is not archived and would never be restored.
+
+| Choice | Reason | Verified |
+|---|---|---|
+| A rewind's collectives move neither the checkpoint nor the replay's frontier. | The frontier is the row's own position, and a collective is not one of the row's events. | {verified: CollectiveReplayRunnerTests.ARewindWithoutASnapshot_FoldsTheCollectivesFromTheStreamsStart_WithoutMovingTheCheckpointAsync, CollectiveReplayRebuildIntegrationTests.Rewind_WithoutASnapshot_FoldsTheCollectives_AndCheckpointsOnTheRowsOwnEventAsync} |
+| A collective the rebuild meets after the row's purge folds into nothing and still leaves the checkpoint on the stream's own event ([#1957](https://github.com/whizbang-lib/whizbang/issues/1957)). | A purged row has nothing to fold into, and the collective is still another stream's event, which may be archived. Before #1957 the rebuild took it as the row's last event and the completion's checkpoint named it. A collective is now recognized before the purged-row check, so it never reaches it. | {verified: CollectiveReplayRunnerTests.ARebuild_ACollectiveAfterAPurge_LeavesTheCheckpointOnTheStreamsOwnEventAsync} |
 
 Both drivers register this seam automatically:
 `AddCollectiveEventsEFCore` / `AddCollectiveEventsDapper` register the

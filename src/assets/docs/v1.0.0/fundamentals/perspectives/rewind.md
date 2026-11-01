@@ -24,6 +24,8 @@ codeReferences:
   - src/Whizbang.Core/Perspectives/LastInReplayOrder.cs
   - src/Whizbang.Core/Perspectives/IPerspectiveSnapshotStore.cs
   - src/Whizbang.Core/Archival/ArchiveAwareEventStoreDecorator.cs
+  - src/Whizbang.Core/Perspectives/ICollectiveReplayApplier.cs
+  - src/Whizbang.Core/Perspectives/CollectiveReplayStart.cs
 testReferences:
   - tests/Whizbang.Core.Tests/Perspectives/PerspectiveRewindOptionsTests.cs
   - tests/Whizbang.Core.Tests/Perspectives/PerspectiveSnapshotAndRewindTests.cs
@@ -36,6 +38,8 @@ testReferences:
   - tests/Whizbang.Core.Tests/Perspectives/OverwriteOnlyRewindTests.cs
   - tests/Whizbang.Core.Tests/Perspectives/LastInReplayOrderTests.cs
   - tests/Whizbang.Generators.Tests/PerspectiveRunnerOverwriteOnlyTests.cs
+  - tests/Whizbang.Core.Tests/Perspectives/CollectiveReplayRunnerTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/CollectiveReplayRebuildIntegrationTests.cs
 ---
 
 # Perspective Rewind
@@ -199,6 +203,22 @@ The rows that triggered a rewind stay pending until the completion flush deletes
 
 The worker now remembers which events a completed rewind was run for, per stream and perspective. When any of them comes back, it is taken out of the batch before the inversion check: its rows are completed and its lifecycle signaled with nothing applied, and the worker logs that the events were already replayed. Only those events are covered. An event the rewind was not run for keeps its own inversion check, even when it sorts below where the rewind left the stream. The memory is bounded per stream and perspective, and forgotten with the stream's other cached state.
 
+### Collective events in a rewind {#collective-events}
+
+{verified: CollectiveReplayRunnerTests.ARewindWithoutASnapshot_FoldsTheCollectivesFromTheStreamsStart_WithoutMovingTheCheckpointAsync, CollectiveReplayRunnerTests.ARewindFromASnapshot_FoldsTheCollectivesCommittedAfterTheSnapshotsEventAsync, CollectiveReplayRebuildIntegrationTests.Rewind_FromASnapshot_FoldsTheCollectivesCommittedAfterItAsync, CollectiveReplayRebuildIntegrationTests.Rewind_FromASnapshot_DoesNotFoldAgainACollectiveCommittedBeforeItAsync}
+
+A rewind folds the row's [collective events](../messaging/collective-events#collective-replay-from-a-start) as a
+rebuild does, merged among the stream's events in commit order. A rewind from the stream's start folds every one; a
+rewind from a snapshot folds only those committed after the snapshot's event, because the snapshot already holds the
+earlier ones. A collective moves neither the checkpoint nor the frontier below, and it never anchors the catch-up
+read, which re-reads the row's own stream. Each collective folds once across the catch-up passes. The snapshot a
+rewind ends with is the row at its last event, before the collectives committed after that event
+([why](snapshots#a-replays-snapshot-and-collectives)).
+
+A rewind from a live snapshot can still fold a collective committed right around the snapshot's event twice, or not
+at all, because the live snapshot does not record which collectives it holds. See the
+[known limit](../messaging/collective-events#collective-replay-from-a-start) (#1963).
+
 ### Frontier checkpoint
 
 The replay checkpoints at the **frontier** — the *maximum* event id and *maximum* local `commit_sequence` applied — not the origin-order-last event's stamp. The idempotency floor's meaning is "everything at or below this is applied", and under origin-order replay the final event applied can carry a *lower* local stamp than a backfilled straggler it slotted. A below-floor checkpoint would also be refused by the perspective store's cross-pod lost-update guard, silently discarding the very correction the rewind computed. The catch-up anchor advances the same way (max id of the read window), so a refetch never re-serves the window's tail. Pinned by `ReconcileRewindScenarioTests` (`RewindReplay_BackfilledStraggler_SlotsIntoOriginOrder_NewerWriterWinsAsync`, `Reconcile_OlderConflictingWriterBackfilled_DeclaredRewindRestoresIntendedOrderAsync`, `Reconcile_LateInitializer_DeclaredRewindMergesBothWritersInOriginOrderAsync`) and `ReconcileRewindDeclarationSqlTests`.
@@ -260,10 +280,18 @@ The last event cannot always decide the row alone. The rewind then folds the str
 | ends with an event whose `Apply` returns no model | the row is then what the events before it left |
 | ends with an event whose `Apply` throws | the full fold logs and handles the failure as any replay does |
 | starts purged | only the fold knows whether a later `Apply` resurrects the row |
+| belongs to a model that has [collective events](../messaging/collective-events#collective-replay-from-a-start) | a collective committed after the last event changes the row the last event alone would write |
 
 The check happens before anything is written, so a rewind that falls back never writes a partial row.
 
 {verified: OverwriteOnlyRewindTests.AStreamHoldingAnEventThatCanPurge_IsReplayedInFull_AndEndsAsAFullReplayEndsAsync, OverwriteOnlyRewindTests.ALastEventWhoseApplyReturnsNoModel_IsReplayedInFull_AndWritesTheRowAFullReplayWritesAsync, PerspectiveRunnerOverwriteOnlyTests.AMarkedPerspectiveWhoseAppliesAllReturnActions_DecidesNothingAloneAsync}
+
+**A model with collective events is folded in full.** The model has collectives when a collective replay applier is
+registered and names a collective event for it. The rewind then folds every event and merges the collectives as any
+rewind does, because the last event alone would drop the collectives committed after it. A marked perspective whose
+model has no collectives keeps the last-event-only rewind, even when the service registers an applier for other
+models.
+{verified: CollectiveReplayRunnerTests.ARewindOfAnOverwriteOnlyPerspective_WhoseModelHasCollectives_FoldsEveryEventAndTheCollectivesAsync, CollectiveReplayRunnerTests.ARewindOfAnOverwriteOnlyPerspective_WhoseModelHasNoCollectives_StillAppliesOnlyTheLastEventAsync}
 
 **An explicit rebuild still folds every event.** The marker shortens a rewind only. A [rebuild](rebuild.md) of an overwrite-only perspective reads and applies every event, because it must read every event anyway to route re-keyed ones.
 
