@@ -29,6 +29,7 @@ codeReferences:
   - src/Whizbang.Data.Postgres/MigratorDutyStaging.cs
   - src/Whizbang.Data.Postgres/Migrations/231_StartupStageRecord.sql
   - src/Whizbang.Data.Postgres/Migrations/244_HeartbeatNeverRollsThePhaseBack.sql
+  - src/Whizbang.Data.Postgres/Migrations/277_PreflightInstanceAndRoleColumns.sql
   - src/Whizbang.Core/Startup/IStartupStageGate.cs
   - src/Whizbang.Core/Startup/StartupStageGate.cs
   - src/Whizbang.Core/Startup/StartupStageGatedService.cs
@@ -52,6 +53,7 @@ testReferences:
   - tests/Whizbang.Core.Tests/Workers/WorkerPipelineStartupStageTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StartupStageWiringTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StartupPreflightHostTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/SchemaBootstrapPhaseTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/PgWorkAvailablePollSourceSchemaGateTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/AliveLockSourcePostgresTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperSchemaStartupTests.cs
@@ -172,7 +174,10 @@ duty`), so the row's first recorded stage was Elect and registration belonged to
 ### The instance row
 
 Each transition writes three columns on the instance's `wh_service_instances` row (migration 231), with
-`lifecycle_phase` set from the stage as in the table above:
+`lifecycle_phase` set from the stage as in the table above. The columns, `lifecycle_phase` and the function that
+writes them (`wh_record_startup_stage`) are part of the
+[bootstrap closure](../infrastructure/migrations#what-the-closure-carries) (migration 277), so they exist from Preflight
+on every database, fresh or current:
 
 | Column | Type | Meaning |
 |---|---|---|
@@ -181,8 +186,8 @@ Each transition writes three columns on the instance's `wh_service_instances` ro
 | `startup_stage_entered_at` | `TIMESTAMPTZ` | When the stage was entered, by the database's clock; progress keeps it |
 
 A stage entered before the instance's row exists is held and written when the instance registers. A write that
-fails or does not answer within 5 seconds is held until the next accepted heartbeat; it is never thrown into
-startup. Writing a stage is not a heartbeat.
+fails (from registration on, only when the database cannot be reached in time) or does not answer within 5 seconds is
+held until the next accepted heartbeat; it is never thrown into startup. Writing a stage is not a heartbeat.
 {verified: StartupStageSqlTests.Record_ARegisteredInstance_WritesTheStageMessageTimeAndPhaseAsync, StartupStageSqlTests.Record_ProgressWithinAStage_KeepsWhenItWasEntered_AndANewStageStartsItsOwnAsync, StartupStageReporterTests.Enter_BeforeTheInstanceRegisters_HoldsTheStage_AndWritesNothingAsync, StartupStageReporterTests.AWriteThatFails_IsHeld_AndWrittenOnTheNextRegistrationSignalAsync, StartupStageReporterTests.AWriteThatDoesNotAnswer_IsAbandonedAfterItsBudget_AndHeldAsync}
 
 The heartbeat also carries the instance's phase, read when the beat is built. A beat that lands after a stage or
@@ -215,15 +220,23 @@ FROM wh_instance_startup_stages();
 
 ### What a fresh database and a restart record
 
-- **A fresh database:** Preflight, Elect and Migrate appear only in the log. The stage columns arrive with
-  migration 231 during Migrate, so the row's first recorded stage is Converge (40).
-- **A restart on a current schema:** Preflight is held until its last step registers the row, so the first stage the
-  row records is Preflight (10) with `the bootstrap closure is in place; registering this instance`; every stage line
-  before it is log-only. Elect is then recorded as it is entered, with the election's result. Migrate is recorded as
-  skipped (`Stage 3 of 7: Migrate - skipped: the schema is already
-  current`), and every stage after it is recorded as it is entered.
+Both start the same way. Preflight is held until its last step registers the row, so the first stage the row records
+is Preflight (10) with `the bootstrap closure is in place; registering this instance`; every stage line before it
+(`host starting`, and any wait or retry of the bootstrap) is log-only. Elect is then recorded as it is entered, with
+the election's result, and every stage after it is recorded as it is entered. They differ only in Migrate:
 
-{verified: StartupStageHostTests.AFreshDatabase_EntersEveryStageInOrder_LogsEach_AndRecordsEachTheRowCanHoldAsync, StartupStageHostTests.ARestartOnACurrentDatabase_SkipsMigrate_AndRecordsFromRegistrationAsync}
+- **A fresh database:** Migrate is recorded with the schema pass it runs.
+- **A restart on a current schema:** Migrate is recorded as skipped (`Stage 3 of 7: Migrate - skipped: the schema is
+  already current`).
+
+**Why a fresh database records from registration.** The stage columns, the `lifecycle_phase` column the recorder
+writes beside them and the recorder itself are in the
+[bootstrap closure](../infrastructure/migrations#what-the-closure-carries), which Preflight applies before it
+registers. Earlier releases created them only in the main pass, so on a fresh database the registration's write
+failed, and Preflight, Elect and Migrate appeared in the log only; the row's first recorded stage was Converge (40).
+A fresh database is exactly when an operator most needs to see where startup is.
+
+{verified: StartupStageHostTests.AFreshDatabase_EntersEveryStageInOrder_LogsEach_AndRecordsEachTheRowCanHoldAsync, StartupStageHostTests.ARestartOnACurrentDatabase_SkipsMigrate_AndRecordsFromRegistrationAsync, SchemaBootstrapPhaseTests.AnEmptyDatabaseRecordsItsStageAtRegistrationAfterTheBootstrapAsync}
 
 Elect, Migrate and Converge are reported by the EF Core driver's schema pass. A host on the Dapper driver logs
 Preflight, Coordinate, Accept commands, Running and the shutdown stages, without writing them to the row. It holds no
