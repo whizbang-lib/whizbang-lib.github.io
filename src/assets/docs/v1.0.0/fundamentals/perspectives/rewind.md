@@ -26,6 +26,8 @@ codeReferences:
   - src/Whizbang.Core/Archival/ArchiveAwareEventStoreDecorator.cs
   - src/Whizbang.Core/Perspectives/ICollectiveReplayApplier.cs
   - src/Whizbang.Core/Perspectives/CollectiveReplayStart.cs
+  - src/Whizbang.Core/Archival/IArchivedStreamExtents.cs
+  - src/Whizbang.Core/Messaging/IWorkCoordinator.cs
 testReferences:
   - tests/Whizbang.Core.Tests/Perspectives/PerspectiveRewindOptionsTests.cs
   - tests/Whizbang.Core.Tests/Perspectives/PerspectiveSnapshotAndRewindTests.cs
@@ -40,6 +42,8 @@ testReferences:
   - tests/Whizbang.Generators.Tests/PerspectiveRunnerOverwriteOnlyTests.cs
   - tests/Whizbang.Core.Tests/Perspectives/CollectiveReplayRunnerTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/CollectiveReplayRebuildIntegrationTests.cs
+  - tests/Whizbang.Core.Tests/Perspectives/RewindDeletedArchiveTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/ArchiveReadThroughIntegrationTests.cs
 ---
 
 # Perspective Rewind
@@ -125,6 +129,7 @@ Inside `RewindAndRunAsync`, the runner asks the [snapshot store](snapshots.md) f
 - When the trigger's `commit_sequence` is known, it prefers `GetLatestSnapshotBeforeCommitSequenceAsync` (fully deterministic against the live-apply path).
 - Otherwise it falls back to `GetLatestSnapshotBeforeAsync(streamId, perspectiveName, triggeringEventId)`.
 - If no qualifying snapshot exists (or the snapshot's serialization version is stale), it performs a **full replay** from event zero.
+- When that replay needs archived history and the stream's archive was deleted, it refuses instead of replaying (see [A deleted archive](#deleted-archive)).
 
 The runner logs the decision it actually made at **Warning** (`Restoring … from snapshot at …` versus `… performing full replay …`). This is the authoritative record of the snapshot-vs-full outcome — the worker-emitted `replay_source`/`has_snapshot` observability signals report something subtly different (see [Snapshot-usage caveat](#snapshot-usage-caveat)).
 
@@ -141,6 +146,45 @@ first pass then reads the archived events above the snapshot's version before th
 archive covers reads only hot events, and a covered snapshot that records no stream version is not used: the rewind
 replays from the start, which reads through the archive by its gap. A rewind to a perspective's latest snapshot never
 needs the archive, because a prefix archive never takes it ([the archive rules](../events/archive-store#the-archive-rules)).
+
+### A deleted archive {#deleted-archive}
+
+{verified: RewindDeletedArchiveTests.ARewindFromTheStreamsStart_OfAStreamWhoseArchiveWasDeleted_IsRefused_AndNamesTheLateEventDroppedAsync, RewindDeletedArchiveTests.ARewindFromASnapshotAnArchiveCovers_OfAStreamWhoseArchiveWasDeleted_IsRefusedAsync, ArchiveReadThroughIntegrationTests.Rewind_WithoutASnapshot_OfAStreamWhosePrefixArchiveWasDeleted_IsRefused_AndLeavesTheRowAsItWasAsync}
+
+A rewind reads through the archive whenever its replay needs archived history:
+
+- **From the stream's start.** With no usable snapshot (none before the late event, one this build cannot read, a
+  covered one that records no version, or no snapshot store at all), the replay starts at the stream's first event,
+  and the event store reads the archived prefix back through the gap.
+- **From a snapshot an archive covers.** The replay reads the archived events after the snapshot explicitly
+  ([above](#archived-snapshot)).
+
+When the stream's archive was [deleted](../events/archive-store#deleting-an-archive), that history is gone, and a
+replay would fold the hot events alone and write a partial history as the row. So before it replays, the runner asks
+the stream lifecycle ledger (`IArchivedStreamExtents`) how much of the stream's archive remains. When the answer is
+`PrefixDeleted` or `WholeDeleted`, the rewind **refuses**:
+
+- The row and the cursor are left as they are. Nothing is replayed or written.
+- One Warning names the perspective, the stream, the late event and the deleted extent (`Refusing rewind of ... the
+  replay needs the stream's archived history and its archive was deleted (PrefixDeleted) ...`). No "performing full
+  replay" or "Restoring ... from snapshot" line is logged, because no replay runs.
+- The late event is reported dropped (`PerspectiveCursorCompletion.DroppedStragglers`). The worker retires its pending
+  work and counts it once on [`whizbang.perspective.stragglers_dropped`](#metrics), exactly as it does for an
+  [ephemeral straggler](../events/ephemeral-events#runtime-guards).
+
+| Choice | Reason | Verified |
+|---|---|---|
+| A rewind whose replay needs archived history refuses when that archive was deleted, whether it replays from the stream's start (no snapshot, a stale one, no snapshot store) or from a snapshot an archive covers, for a prefix and a whole deletion alike. | Rewinds always read through the archive (only rebuilds choose whether to), so a rewind behaves like a rebuild that opts in to archived data, and that rebuild [skips such a stream](rebuild#archived-data-deleted) and leaves its row as it is. Replaying the hot events alone would write part of the stream's history as the whole. | {verified: RewindDeletedArchiveTests.ARewindFromTheStreamsStart_OfAStreamWhoseArchiveWasDeleted_IsRefused_AndNamesTheLateEventDroppedAsync, RewindDeletedArchiveTests.ARewindFromASnapshotAnArchiveCovers_OfAStreamWhoseArchiveWasDeleted_IsRefusedAsync, ArchiveReadThroughIntegrationTests.Rewind_WithoutASnapshot_OfAStreamWhosePrefixArchiveWasDeleted_IsRefused_AndLeavesTheRowAsItWasAsync} |
+| The rewind does not fall back to the stream's newest live snapshot, as a default rebuild does. | That snapshot sits after the late event, so restoring it would skip the very event the rewind exists to fold. Applying the late event onto the current row without a replay would fold it out of order, the defect a rewind corrects. | {verified: RewindDeletedArchiveTests.ARewindFromTheStreamsStart_OfAStreamWhoseArchiveWasDeleted_IsRefused_AndNamesTheLateEventDroppedAsync} |
+| The late event is named in `DroppedStragglers`, so its work is retired and counted on `stragglers_dropped`. | Left pending, every claim would find the same event and refuse it again without end. The drop shares one completion with the ephemeral straggler's, so the worker treats both the same. | {verified: RewindDeletedArchiveTests.ARewindFromTheStreamsStart_OfAStreamWhoseArchiveWasDeleted_IsRefused_AndNamesTheLateEventDroppedAsync, PerspectiveRunnerTemplateInvariantTests.EphemeralRewind_SkippedRewindNamesTheStragglerItDropsAsync, PerspectiveWorkerDeepPathDrainTests.DrainMode_RunThatDropsAStragglerBelowTheRow_RetiresItAndAppliesTheRestAsync} |
+| A refusal logs exactly one Warning, and the lines that announce a replay are logged only once the rewind knows it replays. | One event, one line: a second line announcing a full replay that never runs would mislead the reader. | {verified: RewindDeletedArchiveTests.ARewindFromTheStreamsStart_OfAStreamWhoseArchiveWasDeleted_IsRefused_AndNamesTheLateEventDroppedAsync} |
+| A rewind from a snapshot no archive covers replays as before and never asks the ledger. | Every event after that snapshot is hot, so a deleted archive held nothing it needs, and a rewind that never reads the archive pays no lookup. | {verified: RewindDeletedArchiveTests.ARewindFromASnapshotNoArchiveCovers_ReplaysTheHotEvents_EvenWhenThePrefixArchiveWasDeleted_AndAsksTheLedgerNothingAsync} |
+| A stream whose archive is intact (`Prefix`, `Whole`) or that was never archived (`None`) replays from its start as before. | The archive still holds the history, and the read-through returns it. | {verified: RewindDeletedArchiveTests.ARewindFromTheStreamsStart_OfAStreamWhoseArchiveWasNotDeleted_ReplaysFromItsStartAsync} |
+| A host with no ledger registered (no archive) replays as before. | With no archive there is nothing to delete. | {verified: RewindDeletedArchiveTests.ARewindFromTheStreamsStart_InAHostWithNoArchiveLedger_ReplaysFromItsStartAsync} |
+
+To bring the row up to date after a refusal, restore the stream's history if a copy exists, or accept the row as it
+stands: the late event's effect on earlier state is lost with the deleted archive. A prefix archive deleted before
+migration 274 left no record in the ledger, so a rewind cannot detect it, as a [rebuild cannot](rebuild#archived-data-deleted).
 
 ### Catch-up loop
 
@@ -392,11 +436,11 @@ Meter: **`Whizbang.Perspectives`** (defined in `PerspectiveMetrics`).
 | `whizbang.perspective.rewind.duration` | Histogram (ms) | `perspective_name` | Replay duration |
 | `whizbang.perspective.rewind.events_replayed` | Histogram | `perspective_name` | Events replayed per rewind |
 | `whizbang.perspective.rewind.events_behind` | Histogram | `perspective_name` | Events behind the cursor when the rewind triggered |
-| `whizbang.perspective.stragglers_dropped` | Counter | `perspective_name` | Late events an ephemeral perspective dropped instead of replaying, because no readable snapshot floor preceded them |
+| `whizbang.perspective.stragglers_dropped` | Counter | `perspective_name` | Late events a rewind dropped instead of replaying: an ephemeral perspective's, because no readable snapshot floor preceded them, or any perspective's, because the replay needed an archive that was [deleted](#deleted-archive) |
 
 The `has_snapshot` tag on the `rewinds` counter reflects snapshot-**store** availability, not actual usage (see [Snapshot-usage caveat](#snapshot-usage-caveat)). A failed rewind also increments the shared `whizbang.perspective.errors` counter.
 
-An ephemeral perspective that skips a rewind because no snapshot floor precedes the late event still counts it in `rewinds`; `stragglers_dropped` also counts it, once, so the two together tell a replay from a drop. See [Ephemeral Events](../events/ephemeral-events.md#runtime-guards).
+A rewind that drops its late event (an ephemeral perspective with no snapshot floor before it, or a replay that needs a [deleted archive](#deleted-archive)) still counts in `rewinds`; `stragglers_dropped` also counts it, once, so the two together tell a replay from a drop. See [Ephemeral Events](../events/ephemeral-events.md#runtime-guards).
 {verified: PerspectiveMetricsTests.PerspectiveMetrics_StragglersDropped_CountsUnderItsNameWithThePerspectiveTagAsync, PerspectiveWorkerDeepPathDrainTests.DrainMode_RewindThatCompletes_CountsNoDroppedStragglerAsync}
 
 ### OTel span tags
