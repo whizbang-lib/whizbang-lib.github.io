@@ -253,15 +253,18 @@ The worker now remembers which events a completed rewind was run for, per stream
 
 A rewind folds the row's [collective events](../messaging/collective-events#collective-replay-from-a-start) as a
 rebuild does, merged among the stream's events in commit order. A rewind from the stream's start folds every one; a
-rewind from a snapshot folds only those committed after the snapshot's event, because the snapshot already holds the
-earlier ones. A collective moves neither the checkpoint nor the frontier below, and it never anchors the catch-up
+rewind from a snapshot folds only the ones the snapshot does not hold, as below. A collective moves neither the checkpoint nor the frontier below, and it never anchors the catch-up
 read, which re-reads the row's own stream. Each collective folds once across the catch-up passes. The snapshot a
 rewind ends with is the row at its last event, before the collectives committed after that event
 ([why](snapshots#a-replays-snapshot-and-collectives)).
 
-A rewind from a live snapshot can still fold a collective committed right around the snapshot's event twice, or not
-at all, because the live snapshot does not record which collectives it holds. See the
-[known limit](../messaging/collective-events#collective-replay-from-a-start) (#1963).
+A live snapshot of a row with collectives records a mark: every collective of the row stamped at or below it was
+complete when the snapshot was taken. A rewind from such a snapshot starts from the mark, not the snapshot's event: it
+folds the collectives stamped past the mark and every unstamped one, so a collective that was in flight when the
+snapshot was taken folds once, whichever side of the snapshot's event it committed on. A snapshot written before
+migration 275 records no mark and keeps the snapshot-event rule. See
+[snapshots of a row with collectives](snapshots#collectives) (#1963).
+{verified: CollectiveReplayRunnerTests.ARewindFromASnapshotThatRecordsItsCollectives_StartsFromItsMarkAsync, CollectiveReplayRebuildIntegrationTests.Rewind_FromASnapshotThatRecordsItsCollectives_FoldsACollectiveCommittedBeforeItsEvent_ThatWasInFlightAsync, CollectiveReplayRebuildIntegrationTests.Rewind_FromASnapshotThatRecordsItsCollectives_DoesNotFoldAgainACollectiveCommittedAfterItsEvent_ThatItHoldsAsync}
 
 ### Frontier checkpoint
 
