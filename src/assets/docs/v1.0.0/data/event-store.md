@@ -20,6 +20,16 @@ codeReferences:
   - src/Whizbang.Data.EFCore.Postgres/EFCoreEventStore.cs
   - src/Whizbang.Data.Postgres/Migrations/077_FullBodySplit.sql
   - src/Whizbang.Data.Postgres/Migrations/078_DropInlineBodyColumns.sql
+  - src/Whizbang.Data.Postgres/Migrations/285_StoredMetadataIsSlimAndStaged.sql
+  - src/Whizbang.Data.Postgres/Migrations/286_RoutesAndTraces.sql
+  - src/Whizbang.Core/Attributes/StoredMetadataAttribute.cs
+  - src/Whizbang.Core/Messaging/EventStoreMetadataOptions.cs
+  - src/Whizbang.Core/Messaging/EventStoreMetadataSettings.cs
+  - src/Whizbang.Core/Messaging/StoredMetadataRegistry.cs
+  - src/Whizbang.Core/Observability/RouteNormalizer.cs
+  - src/Whizbang.Generators/StoredMetadataRegistryGenerator.cs
+  - src/Whizbang.Data.Postgres/MetadataDistillationStep.cs
+  - src/Whizbang.Data.Postgres/PostgresRouteTraceStore.cs
 testReferences:
   - tests/Whizbang.Core.Tests/Messaging/InMemoryEventStoreTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/EFCoreEventStoreTests.cs
@@ -261,6 +271,265 @@ You never pass an expected version. Sequencing and conflict handling are built i
 - A new stream starts at version 1 on every write path (outbox, inbox, direct append, in-memory, Sqlite); a stream with no events reports `-1`. Streams created at version 0 by a direct append before migration 267 keep their numbering. See [Stream versions](../fundamentals/events/event-store#stream-versions)
 
 ---
+
+## Stored metadata {#stored-metadata}
+
+{verified: StoredMetadataWriteSqlTests.OutboxChain_DefaultForm_StoresTheSlimRow_AndStagesTheFullFormAsync, StoredMetadataWriteSqlTests.InboxChain_DefaultForm_StoresTheSlimRow_AndStagesTheFullFormAsync, StoredMetadataWriteSqlTests.DirectAppend_DefaultForm_StoresTheSlimRow_AndStagesTheFullFormAsync}
+
+Every event row keeps a metadata document next to its payload (`wh_event_body.metadata`). The envelope's hops, the
+record of every service, receptor and policy a message passed through, made it about 600 bytes per event, and almost
+nothing reads them back from a stored event. So each write path stores a **slim** form in the row by default, stamps the
+event's **route id**, and **stages** the full form for a short while in a separate table, from which maintenance
+distills [routes and traces](#routes-and-traces).
+
+The write paths are SQL: the outbox and inbox emit chains, and `wh_append_event`, which both drivers' direct appends
+call. They decide each event in the same statement that stores it, from settings read once per call, with no extra
+lookup per event.
+
+### The three write forms {#write-forms}
+
+| `WriteForm` | The row keeps | Staged full form | Routes and traces | Verified |
+|---|---|---|---|---|
+| `Linked` (default) | slim form + `rid` | yes, in `wh_event_metadata_staging` | distilled by maintenance | {verified: StoredMetadataWriteSqlTests.OutboxChain_DefaultForm_StoresTheSlimRow_AndStagesTheFullFormAsync} |
+| `Slim` | slim form + `rid` | no | none | {verified: StoredMetadataWriteSqlTests.WriteFormSlim_StoresSlimRows_AndStagesNothingAsync} |
+| `Full` | every hop as written + `rid` | no (the row holds it) | none | {verified: StoredMetadataWriteSqlTests.WriteFormFull_KeepsFullRows_AndStagesNothingAsync} |
+
+`Linked` is the default because it is the only form that saves the bytes without losing anything: the full form lives
+on in a trace for its retention window, and the route for much longer.
+
+### What the slim form keeps {#slim-form}
+
+{verified: StoredMetadataRouteCorpusTests.SlimForm_InSql_ReadsLikeToSlim_ForEveryCorpusEntryAsync, StoredMetadataWriteSqlTests.DirectAppend_KeysTheSlimFormDoesNotReduce_AreKeptAsWrittenAsync}
+
+The slim form is [`EnvelopeMetadata.ToSlim()`](../messaging/message-envelopes#stored-form), written in SQL
+(`_wh_slim_event_metadata`), plus the route id. Only the hop list is reduced, to one hop:
+
+| Kept | Why |
+|---|---|
+| The message id, and every top-level key except `dc` and `rin` | Each store reads its own keys back: the EF Core store's `MessageId`, the Dapper store's `message_id`, `correlation_id`, `causation_id` and `pri`, the ephemeral expiry the TTL reapers and the retry midpoint read (`ephemeral_expires_at`), the ephemeral TTL (`ett`). |
+| The first hop's timestamp, correlation id, causation id and stream id | Readers take the message time, correlation and causation from the first hop (`GetMessageTimestamp`, `GetCorrelationId`, `GetCausationId`). |
+| The first hop's trace parent (`tp`) | Perspective spans and perspective-stage receptor spans keep joining the trace the event started in. It stays inside the hop, where those readers already look. |
+| The scope, folded over every Current hop into one delta (`sc`) | Scope and security checks read it from the hops. One scoped hop (the usual case) is copied as it is; several are folded the way `ScopeDelta.ApplyTo` applies them. |
+| `rid`, the route id | Says how the event got here for as long as its route is kept, with no rewrite of the row. |
+
+Dropped: the dispatch context (`dc`), receptor invocations (`rin`), and from the hops every service instance, topic,
+partition, sequence, execution strategy, caller, duration, policy trail, hop metadata dictionary and causation hop.
+These matter while a message is delivered, and the outbox and inbox rows keep them for that. On a stored event, the
+envelope accessors that read hop detail (`GetCallerInfo`, `GetCurrentTopic` and the like) return what the slim form
+carries; the full picture comes from the [trace store](../fundamentals/persistence/observability#routes-and-traces).
+
+The slim hop keeps its scope rather than rebuilding it from the row's `scope` column on read: that column holds only
+the perspective scope (tenant, user, customer, organization, allowed principals, extensions), while the hop's delta
+also carries roles, permissions, principals, claims, the actual and effective principal and the context type, and the
+EF Core direct append writes no scope column at all. {verified: StoredMetadataRouteCorpusTests.SlimForm_InSql_ReadsLikeToSlim_ForEveryCorpusEntryAsync}
+
+### Keeping an event type full {#keeping-an-event-type-full}
+
+{verified: StoredMetadataWriteSqlTests.FullListedType_KeepsTheFullRow_ByTypeAndByNamespaceAsync, StoredMetadataWriteSqlTests.DebugMode_KeepsEveryRowFullAsync, StoredMetadataRegistryGeneratorTests.Generator_TheNearestDeclarationWins_AndAbstractOrInterfaceTypesAreNotListedAsync}
+
+A row stays full, whatever the write form, in three cases. The first that applies wins:
+
+1. **Debug mode** (`Whizbang:WorkCoordinator:DebugMode`): every row is full.
+2. **Configuration**: the type, or a namespace or containing type of it, is listed in
+   `Whizbang:EventStore:Metadata:FullFor`.
+3. **The attribute**: the type, a base class or an interface carries `[StoredMetadata(StoredMetadataForm.Full)]`.
+
+```csharp{title="Keep an event type's full metadata in its row" description="The attribute on an interface keeps every hop in the stored rows of its implementers; StoredMetadataForm.Default on a type takes it back to the write form." framework="NET10" category="Attributes" difficulty="INTERMEDIATE" tags=["event-store", "stored-metadata", "attributes", "source-generation"] tests=["StoredMetadataRegistryTests.TheGeneratedRegistration_ListsTheAttributedTestTypesAsync", "StoredMetadataRegistryGeneratorTests.Generator_ABaseOrInterfaceDeclaration_KeepsTheDerivedTypeFullAsync", "StoredMetadataRegistryGeneratorTests.Generator_TheNearestDeclarationWins_AndAbstractOrInterfaceTypesAreNotListedAsync"]}
+[StoredMetadata(StoredMetadataForm.Full)]
+public interface IPaymentEvent : IEvent;
+
+public record PaymentCaptured(Guid PaymentId, decimal Amount) : IPaymentEvent;   // kept full
+
+[StoredMetadata(StoredMetadataForm.Default)]
+public record PaymentViewed(Guid PaymentId) : IPaymentEvent;                     // back to the write form
+```
+
+The nearest declaration wins: the type's own, then its base classes from the nearest, then its interfaces. A source
+generator reads the attribute at build time and registers each kept type by name, so nothing is read by reflection and
+a private nested type is kept as well as any other. An abstract type, an interface and an open generic are never a
+stored event's type, so they are not listed themselves.
+
+A list entry matches a type when it is the type's name, or when the type's name continues it with `.` (a namespace) or
+`+` (a nested type): `MyApp.Payments` keeps `MyApp.Payments.Captured` and `MyApp.Payments.Refunds.Issued` full, but not
+`MyApp.PaymentsArchive.Moved`. An entry is trimmed and cut at its first comma, so an assembly-qualified name means its
+type.
+
+The configured list and the attribute's types reach the SQL through `wh_settings` (below), so a type is kept full from
+the first maintenance tick after a start. With maintenance disabled nothing is published, and the database defaults
+apply: `Linked`, and no type kept full.
+
+### How the settings reach the write paths {#metadata-settings}
+
+{verified: MaintenanceWorkerEventStoreMetadataSyncTests.EveryTick_PublishesTheSettings_EvenWhenTheSweepIsDeferredAsync, StoredMetadataWriteSqlTests.MissingSettings_BehaveAsTheDefaultAsync, StoredMetadataWriteSqlTests.UnreadableSettings_BehaveAsTheDefault_AndNeverFailTheWriteAsync}
+
+The maintenance worker publishes three `wh_settings` rows on every tick, ahead of its idle gate (a busy service still
+gets them), on the instance holding the maintainer duty:
+
+| Key | Value | Published | Verified |
+|---|---|---|---|
+| `metadata_write_form` | `Full`, `Slim` or `Linked` | always, so a form switched back takes effect | {verified: EventStoreMetadataSettingsTests.EachWriteForm_IsPublishedByNameAsync} |
+| `metadata_full_for` | type names and namespaces, one per line, sorted, each once | always, so a type removed from the list stops being kept full | {verified: EventStoreMetadataSettingsTests.FullFor_JoinsConfigurationAndAttributes_SortedOnce_AndCutAtTheCommaAsync} |
+| `metadata_staging_days` | whole days | only when `StagingDays` is set, so a window set in SQL stands | {verified: EventStoreMetadataSettingsTests.StagingDays_WhenSet_IsPublishedAsAnIntegerAsync} |
+
+A write path never fails on a setting. A missing row reads as the default; the form is read without case or surrounding
+spaces and anything else reads as `Linked`; a debug flag that is not a PostgreSQL boolean spelling reads as off. The list
+is plain lines rather than JSON because splitting lines cannot fail, so a value an operator types by hand can never
+fail an event's write.
+
+### Routes and traces {#routes-and-traces}
+
+{verified: RouteNormalizerTests.RouteId_IsStable_AcrossInstancesLinesAndPerMessageValuesAsync, RouteNormalizerTests.RouteId_Differs_WhenAServiceMemberTopicPolicyOrTypeDiffersAsync, StoredMetadataRouteCorpusTests.EveryCorpusEntry_HasTheSameRouteId_InSqlAndInCSharpAsync}
+
+A **route** is the path events of one type take: which services, receptors, topics and policies they pass through,
+stored once and counted. A **trace** is one event's trip along it, with only what varies per message. In a stable
+system the set of routes stops growing; only traces and counters grow.
+
+The **route id** is computed at write time from the event's type name (its name without the assembly) and its hops
+reduced to their route form. Per hop, in order, the route form keeps:
+
+| Kept | Never kept |
+|---|---|
+| the hop type (an event's own hop, or one carried from its cause) | instance ids, host names, process ids |
+| the service name | timestamps and durations |
+| the topic | partition and sequence |
+| the execution strategy | trace parent, correlation and causation ids |
+| the caller's class (its file's name, without folders or extension) and member | the caller's line and folder |
+| each policy decision's policy, rule and whether it matched | a decision's reason, configuration and time; scope; the hop metadata dictionary |
+
+So another pod, another release that moved a line, or another build folder is the same route, and another service,
+receptor member, topic, policy outcome or event type is another. The caller's class is its file's name because a hop
+records the member and the file, not the class.
+
+The id is the first 16 bytes of the SHA-256 of the canonical text (the type and each hop joined by U+001E, a hop's
+fields by U+001F, a decision's fields by U+001D, decisions by U+001C), read as a uuid. SHA-256 rather than PostgreSQL's
+`hashtext`, which C# cannot reproduce, or MD5, a weak hash. The same function exists twice: `_wh_route_id` on every write
+path, and `RouteNormalizer.RouteId` in C# (what the in-memory trace store answers `GetRouteIdAsync` with). One corpus of
+real hops runs through both, and every entry must give the same id.
+
+A row kept full carries its route id too, and under `Linked` it is still staged, so routes cover every event type.
+
+### Distillation {#distillation}
+
+{verified: MetadataDistillationSqlTests.Distill_WritesRoutesAndTraces_AndConsumesTheStagedRowsAsync, MetadataDistillationSqlTests.Distill_ARepeatedRoute_OnlyIncrementsItsCountersAsync, MetadataDistillationSqlTests.Distill_AddsDurationStatistics_InOneUpdatePerRouteAsync, MetadataDistillationSqlTests.Step_DistillsInBatches_UntilTheStagingIsEmptyAsync}
+
+The `metadata-distillation` maintenance step (both drivers) runs in the maintenance cycle, so it waits for the service
+to settle and runs only on the holder of the maintainer duty. It calls `wh_distill_event_metadata` in batches of 2,000
+staged rows, each its own transaction, until a batch comes back short or 50 batches (100,000 events) have run; a larger
+backlog drains over the next cycles. Each batch, in one statement:
+
+1. takes the oldest staged rows by event id and removes them, so each staged row is distilled exactly once with no
+   cursor to keep;
+2. inserts each new route, building its normalized hops once;
+3. adds the batch's occurrences, first and last seen, and duration statistics to each route with **one upsert per
+   route**, never a write per event;
+4. writes one trace per event.
+
+No event row is touched: its route id was stamped when it was written. Under `Full` and `Slim` nothing is distilled, and
+what was staged before ages out.
+
+An occurrence's duration is the sum of its hops' durations; an occurrence with none counts as an occurrence but not as a
+duration. The statistics are a count, sum, minimum and maximum, and six buckets: up to 1 ms, 10 ms, 100 ms, 1 s, 10 s,
+and longer. A value that does not parse (a timestamp, an id, a duration) reads as nothing and never stops a batch.
+
+A trace keeps each hop without what its route holds (the hop type, topic, execution strategy, caller member and service
+name), the dispatch context and receptor invocations the slim row dropped, the event's occurrence time (its first
+Current hop's), and its correlation and causation (its first hop's).
+
+### Reconstruction {#reconstruction}
+
+{verified: MetadataDistillationSqlTests.Reconstruct_WithinTheTraceWindow_IsLosslessAsync, MetadataDistillationSqlTests.Reconstruct_AfterTheTraceAgesOut_KeepsTheRouteAsync}
+
+`wh_trace_metadata` rebuilds an event's full metadata from the first source it still has:
+
+1. the staged form, before distillation;
+2. the row, its trace and its route: **lossless**, the exact document that was written;
+3. the row alone, once the trace has aged out: the slim form, whose route id still answers how the event got here.
+
+The [Postgres trace store](../fundamentals/persistence/observability#the-postgres-stores) reads through it.
+
+### Retention {#retention}
+
+{verified: MetadataDistillationSqlTests.Retention_EachWindow_RemovesOnlyWhatIsPastItAsync, MetadataDistillationSqlTests.Retention_DebugMode_RemovesNothingAsync}
+
+Each has its own window, read from `wh_settings` every cycle and skipped under debug mode:
+
+| What | Setting (`wh_settings`) | Default | How it is removed |
+|---|---|---|---|
+| Staged full forms | `metadata_staging_days` (`Whizbang:EventStore:Metadata:StagingDays`) | 2 days | partition drop when [partitioning](../operations/infrastructure/partitioned-ledgers) is enabled, otherwise the row sweep |
+| Traces | `trace_retention_days` (`Whizbang:Workers:Maintenance:Retention:TraceDays`) | 30 days | the same |
+| Routes | `route_idle_days` (`Whizbang:Workers:Maintenance:Retention:RouteIdleDays`) | 365 days after last taken | row sweep |
+
+Staging only has to outlast maintenance catching up. A route still taken is never removed, so only paths that left with
+old code age out. Both partitioned tables are created partitioned by day on `recorded_at` with a default partition, so a
+write never fails for want of a partition; the staging table's only index is its key, so the hot path writes one index
+entry per event.
+
+### Design choices {#metadata-design-choices}
+
+Each choice below is locked by the test beside it, which fails if the behavior flips.
+
+| Choice | Why | Verified |
+|---|---|---|
+| `Linked` is the default form | It saves the row's bytes and keeps the full form as a trace and a route | {verified: ProcessWideOptionsBindingTests.EventStoreMetadata_Unconfigured_IsLinkedWithNothingKeptFullAsync, StoredMetadataWriteSqlTests.MissingSettings_BehaveAsTheDefaultAsync} |
+| Debug mode, then the configured list, then the attribute keep a row full | An operator's switch outranks a developer's declaration | {verified: StoredMetadataWriteSqlTests.DebugMode_KeepsEveryRowFullAsync, StoredMetadataWriteSqlTests.FullListedType_KeepsTheFullRow_ByTypeAndByNamespaceAsync} |
+| The nearest `[StoredMetadata]` declaration wins; `Default` opts a derived type back | A type can leave a family that is kept full | {verified: StoredMetadataRegistryGeneratorTests.Generator_TheNearestDeclarationWins_AndAbstractOrInterfaceTypesAreNotListedAsync, StoredMetadataRegistryTests.TheGeneratedRegistration_ListsTheAttributedTestTypesAsync} |
+| Kept types are registered by name, private nested types included | The SQL matches names, so nothing has to be named from generated code | {verified: StoredMetadataRegistryGeneratorTests.Generator_APrivateNestedType_IsRegisteredByNameAsync} |
+| A list entry matches a type, a namespace (`.`) or a containing type (`+`), never a bare prefix | `MyApp.Payments` must not keep `MyApp.PaymentsArchive` full | {verified: StoredMetadataWriteSqlTests.FullListedType_KeepsTheFullRow_ByTypeAndByNamespaceAsync} |
+| List entries are trimmed, cut at a comma, sorted and published once | An assembly-qualified name means its type; the published value is stable | {verified: EventStoreMetadataSettingsTests.FullFor_JoinsConfigurationAndAttributes_SortedOnce_AndCutAtTheCommaAsync, EventStoreMetadataSettingsTests.FullFor_BlankAndNullEntries_AreSkippedAsync} |
+| The list is stored as lines, not JSON | Splitting lines cannot fail, so a hand-typed value never fails a write | {verified: StoredMetadataWriteSqlTests.FullListedType_KeepsTheFullRow_ByTypeAndByNamespaceAsync} |
+| Missing or unreadable settings read as the defaults; the form ignores case | A setting must never fail an event's write | {verified: StoredMetadataWriteSqlTests.UnreadableSettings_BehaveAsTheDefault_AndNeverFailTheWriteAsync} |
+| Form and list are published every tick, both directions, ahead of the idle gate | Every write depends on them, even on a service too busy for the sweep; a stale value would outlive its configuration | {verified: MaintenanceWorkerEventStoreMetadataSyncTests.EveryTick_PublishesTheSettings_EvenWhenTheSweepIsDeferredAsync, EventStoreMetadataSettingsTests.Defaults_PublishLinkedAndAnEmptyList_ButNoStagingWindowAsync} |
+| `StagingDays`, `TraceDays` and `RouteIdleDays` are published only when set | A window set in SQL stands, as for every retention window | {verified: EventStoreMetadataSettingsTests.Defaults_PublishLinkedAndAnEmptyList_ButNoStagingWindowAsync, RetentionSettingsBridgeTests.UnsetOptions_AreNotWritten_SoAValueSetInSqlStandsAsync} |
+| The route id is computed in SQL on every write path; C# mirrors it | Both direct appends call `wh_append_event`, so one SQL function serves all four paths; the in-memory trace store needs the same id | {verified: StoredMetadataRouteCorpusTests.EveryCorpusEntry_HasTheSameRouteId_InSqlAndInCSharpAsync, InMemoryTraceStoreTests.GetRouteIdAsync_HeldMessage_IsItsRouteId_AndAnUnknownOneIsNullAsync} |
+| The route includes the event type's name, not its assembly | "The routes a type takes" is a lookup; a renamed assembly is the same route | {verified: RouteNormalizerTests.RouteId_IsStable_AcrossInstancesLinesAndPerMessageValuesAsync, RouteNormalizerTests.RouteId_Differs_WhenAServiceMemberTopicPolicyOrTypeDiffersAsync} |
+| The id is 16 bytes of SHA-256, as a uuid | Reproducible in C#, not a weak hash | {verified: RouteNormalizerTests.RouteId_IsTheFirstSixteenBytesOfTheSha256_AsAUuidAsync} |
+| The caller's class is its file's name | A hop records the member and the file, not the class; a moved line or folder is the same route | {verified: RouteNormalizerTests.CallerClass_IsTheFileNameWithoutFoldersOrExtensionAsync} |
+| A decision's reason, configuration and time are not part of the route | They vary per message | {verified: RouteNormalizerTests.RouteId_IgnoresAPolicyDecisionsReasonConfigurationAndTimeAsync} |
+| The slim form reduces only the hop list and drops `dc` and `rin` | Each store's reader still finds its own keys (the Dapper store's `message_id`, `pri`) | {verified: StoredMetadataWriteSqlTests.DirectAppend_KeysTheSlimFormDoesNotReduce_AreKeptAsWrittenAsync} |
+| The trace parent stays in the slim hop | Perspective spans keep the event's trace, read where they already look | {verified: StoredMetadataWriteSqlTests.OutboxChain_DefaultForm_StoresTheSlimRow_AndStagesTheFullFormAsync} |
+| The slim hop keeps the folded scope | The row's scope column holds less than the hop's delta, and EF Core direct appends write none | {verified: StoredMetadataRouteCorpusTests.SlimForm_InSql_ReadsLikeToSlim_ForEveryCorpusEntryAsync} |
+| A full row carries `rid` and is still staged under `Linked` | Routes cover every type | {verified: StoredMetadataWriteSqlTests.FullListedType_KeepsTheFullRow_ByTypeAndByNamespaceAsync, StoredMetadataWriteSqlTests.DebugMode_KeepsEveryRowFullAsync} |
+| Distillation removes what it distills, oldest event id first | Each staged row counts once with no cursor; the key index serves the order | {verified: MetadataDistillationSqlTests.Distill_TakesAtMostTheBatch_OldestFirstAsync} |
+| 2,000 rows a batch, 50 batches a cycle | A transaction holds one batch; a backlog drains over cycles | {verified: MetadataDistillationSqlTests.Step_StopsAtTheCycleLimit_AndTheNextCycleGoesOnAsync} |
+| Nothing is distilled under `Full` or `Slim` | `Slim` drops the staged form without distilling it | {verified: MetadataDistillationSqlTests.Distill_UnderSlimOrFull_ConsumesNothingAsync} |
+| A duration is the sum of the hops'; none is not zero | An occurrence without timing must not pull the minimum to zero | {verified: MetadataDistillationSqlTests.Distill_AddsDurationStatistics_InOneUpdatePerRouteAsync} |
+| A malformed value reads as nothing | One bad hop must never stop maintenance | {verified: MetadataDistillationSqlTests.Distill_MalformedValues_ReadAsNothing_AndNeverStopTheBatchAsync} |
+| The trace store's `StoreAsync` does nothing | The write paths already stage every event | {verified: RouteTraceStoreTests.GetByMessageId_ReadsStaging_ThenTraceAndRoute_ThenTheRowAsync} |
+| Staging has one index | The hot path pays one index entry; the trace store scans staging for its non-key queries | {verified: RouteTraceStoreTests.TraceStore_AnswersEveryQuery_LikeTheInMemoryStore_OnTheSameCorpusAsync} |
+| Each store registers on its own | Use either without the other | {verified: RouteTraceStoreTests.Registration_EitherStoreAlone_NeedsNotTheOtherAsync} |
+
+### What slim metadata costs {#what-slim-metadata-costs}
+
+{verified: StoredMetadataEmitCostScenarioTests.EmitChain_FullAgainstLinked_ReportAsync}
+
+Measured on the outbox emit chain, the hottest write path, with 500-event batches whose events carry two hops each
+(about 1.5 KB of metadata, a dispatched event's usual shape), on one database, alternating the variants round by round:
+the chain before this change (the full metadata in the row), this chain under `Full` (the row plus the route id: what
+the settings read and the route hash cost alone), and this chain under `Linked` (the slim row plus the staged copy).
+Medians of five rounds on a shared build server:
+
+| Batch | Variant | Shared blocks | WAL bytes | Metadata in the row | Staged | Execution time |
+|---|---|---|---|---|---|---|
+| 50 existing streams, 10 events each | before | 34,061 | 2,475,376 | 1,476 B/event | none | 87 ms |
+| | `Full` | 33,925 | 2,502,464 | 1,520 B/event | none | 138 ms |
+| | `Linked` | 35,784 (+5%) | 2,831,320 (+14%) | 490 B/event (-67%) | 1,476 B/event | 177 ms |
+| 500 new streams, one event each | before | 38,245 | 2,727,464 | 1,476 B/event | none | 98 ms |
+| | `Full` | 38,275 | 2,743,600 | 1,520 B/event | none | 148 ms |
+| | `Linked` | 40,007 (+5%) | 3,085,184 (+13%) | 490 B/event (-67%) | 1,476 B/event | 203 ms |
+
+Blocks, WAL and sizes are stable from round to round; the times are not, because the build server's database is shared
+with other test runs (the before chain ranged from 80 to 178 ms over the same five rounds). On a quiet database, 500
+route ids take 3 ms and 500 slim forms 8 ms (about 6 and 17 microseconds an event). The staged copy is the write the
+`Linked` form adds: one heap tuple and one index entry per event, which the 13 to 14% more WAL is, until maintenance
+distills and removes it. The row keeps a third of what it kept, for good.
+
+An earlier version computed the route id in SQL functions with subqueries, which PostgreSQL does not inline, so each
+call ran the executor, and it computed the id twice per event: the chain cost about 0.6 ms more per event even under
+`Full`. The helpers are now loops and assignments that run no statement, and each event's route id is computed once.
+
+
+---
+
 
 ## Reading Event Streams
 

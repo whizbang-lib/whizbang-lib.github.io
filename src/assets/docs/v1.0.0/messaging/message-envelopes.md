@@ -418,11 +418,12 @@ delivery either way.
 | Message id | the metadata |
 | Ephemeral TTL | the metadata |
 | Message timestamp, correlation id, causation id, stream id | the first hop, where `GetMessageTimestamp`, `GetCorrelationId` and `GetCausationId` read them |
+| Trace parent | the first hop, so perspective and perspective-stage receptor spans keep joining the trace the event started in |
 | Scope | folded over every Current hop into one delta, so the scope read back is the same as from the full hops |
 
 Everything else is dropped: the dispatch context, receptor invocations, causation hops, and each hop's service
-instance, topic, partition, sequence, execution strategy, duration, trail, caller information, trace parent and
-metadata dictionary. The single hop's service instance is `ServiceInstanceInfo.Unknown`, which the hop writer
+instance, topic, partition, sequence, execution strategy, duration, trail, caller information and metadata
+dictionary. The single hop's service instance is `ServiceInstanceInfo.Unknown`, which the hop writer
 leaves out; a hop read without `si` comes back as `Unknown`. A document without a message id still fails to
 read.
 
@@ -433,9 +434,12 @@ var scope = EnvelopeContextExtractor.ExtractScope(slim.Hops);   // same as from 
 var correlation = slim.Hops[0].CorrelationId;                    // the first hop's, as GetCorrelationId reads it
 ```
 
-Nothing stores the slim form yet: readers accept it first, and a later release adds the setting that writes it.
+Every write path now stores this form by default: the outbox and inbox emit chains and both direct appends build it
+in SQL (`_wh_slim_event_metadata`), add the event's route id (`rid`), and stage the full form for routes and traces.
+A shared corpus pins the SQL form to `ToSlim()`. The write forms, the types kept full, and what the slim row keeps for
+each store are on the [event store page](../data/event-store#stored-metadata).
 
-{verified: EnvelopeMetadataSlimFormTests.ToSlim_KeepsWhatReadersTakeFromAStoredEventAsync, EnvelopeMetadataSlimFormTests.ToSlim_DropsEverythingElseAsync, EnvelopeMetadataSlimFormTests.SlimDocument_RoundTripsThroughTheGeneratedContextAsync, EnvelopeMetadataSlimFormTests.ADocumentWithoutAMessageId_StillFailsAsync, MessageHopCoverageTests.Read_MissingServiceInstance_ReadsAsUnknownAsync}
+{verified: StoredMetadataRouteCorpusTests.SlimForm_InSql_ReadsLikeToSlim_ForEveryCorpusEntryAsync, EnvelopeMetadataSlimFormTests.ToSlim_KeepsWhatReadersTakeFromAStoredEventAsync, EnvelopeMetadataSlimFormTests.ToSlim_DropsEverythingElseAsync, EnvelopeMetadataSlimFormTests.SlimDocument_RoundTripsThroughTheGeneratedContextAsync, EnvelopeMetadataSlimFormTests.ADocumentWithoutAMessageId_StillFailsAsync, MessageHopCoverageTests.Read_MissingServiceInstance_ReadsAsUnknownAsync}
 
 ---
 
