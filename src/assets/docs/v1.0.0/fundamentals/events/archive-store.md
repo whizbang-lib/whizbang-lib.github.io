@@ -50,6 +50,9 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Collective/ArchivedCollectiveStreams.cs
   - src/Whizbang.Data.Postgres/Collective/CollectiveReplayApplier.cs
   - src/Whizbang.Data.Postgres/PostgresDeadLetterRecoveryService.cs
+  - src/Whizbang.Data.Postgres/ArchivedStreamHistorySql.cs
+  - src/Whizbang.Data.EFCore.Postgres/EFCoreEventStore.cs
+  - src/Whizbang.Data.Dapper.Postgres/DapperPostgresEventStore.cs
 testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StreamSealingSqlTests.cs
   - tests/Whizbang.Core.Tests/Archival/ArchiveBatchTests.cs
@@ -82,6 +85,8 @@ testReferences:
   - tests/Whizbang.Data.Dapper.Postgres.Tests/Collective/DapperArchivedCollectiveReplayTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Collective/CollectiveReplayOrderingTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Collective/ArchivedCollectiveStreamsQueryPlanTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/ArchivedStreamHistoryProbeSqlTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperArchivedStreamHistoryProbeTests.cs
 ---
 
 # Archive Store
@@ -440,6 +445,26 @@ snapshot's version, then the hot events after its event. This is the rare, expli
 | A marked snapshot that records no version is not used; the rewind replays from the start, which reads through the archive by its gap. | Without a version there is no telling where the archived events after it begin, and folding events the snapshot already holds would count them twice. | {verified: PerspectiveRewindWriteCheckTests.AMarkedSnapshotWithNoVersion_IsNotUsed_TheRewindReplaysFromTheStartAsync} |
 | A rewind with no snapshot, and a rebuild that opts in to archived data, read from the start through the gap. | They are reads from the start. A rebuild reads the archive only under `IncludeWhileLive` or `IncludeAll`, and parks the cursor of a stream archived whole; see [archived data](../perspectives/rebuild#archived-data). | {verified: ArchiveReadThroughIntegrationTests.Rewind_WithoutASnapshot_OfAStreamArchivedWhole_FoldsToTheSameRowAsTheHotCopyAsync, ArchiveReadThroughIntegrationTests.Rebuild_IncludeWhileLive_AHotStream_AndOneArchivedThroughAPrefix_FoldToTheSameRowAsync} |
 | The upcasters apply to the explicit read as to the ordinary one. | An archived event is the likeliest to need an upcaster. | {verified: UpcastingEventStoreDecoratorTests.ReadPolymorphicThroughArchive_UpcastsLikeTheOrdinaryReadAsync} |
+
+### Version questions {#version-questions}
+
+{verified: ArchivedStreamHistoryProbeSqlTests.LastSequence_OfAStreamArchivedWhole_IsTheTombstonesLastVersion_AndTheSameAfterARestoreAsync, ArchivedStreamHistoryProbeSqlTests.Probe_AStreamArchivedThroughAPrefix_HasHistoryBeforeItsFirstHotEvent_OnBothFormsAsync, DapperArchivedStreamHistoryProbeTests.LastSequence_OfAStreamArchivedWhole_IsTheTombstonesLastVersionAsync}
+
+Two event store questions are answered from versions rather than by reading events: `GetLastSequenceAsync` (the
+stream's last version) and `HasStreamEventsBeforeAsync` (whether the stream holds history before an event, which a
+perspective whose rows can be evicted asks to tell a woken stream from a new one, see
+[row retention](../perspectives/row-retention)). Both read the stream's [lifecycle ledger](stream-end-of-life#the-stream-lifecycle-ledger)
+row in the same statement as the hot store (#1933), on both drivers, through one shared statement per question
+(`ArchivedStreamHistorySql`).
+
+| Choice | Reason | Verified |
+|---|---|---|
+| The last version of a stream archived whole is the last version its tombstone records, also after its archive is deleted; a prefix-archived stream answers its newest hot version; a stream that holds nothing anywhere answers -1. | The archived versions are taken: an answer of -1 would tell a caller the stream does not exist, and a numbering that trusted it would reuse versions the archive holds. | {verified: ArchivedStreamHistoryProbeSqlTests.LastSequence_OfAStreamArchivedWhole_IsTheTombstonesLastVersion_AndTheSameAfterARestoreAsync, ArchivedStreamHistoryProbeSqlTests.LastSequence_OfAStreamArchivedThroughAPrefix_IsItsNewestHotVersion_AndOfNoStreamMinusOneAsync, DapperArchivedStreamHistoryProbeTests.LastSequence_OfAStreamArchivedWhole_IsTheTombstonesLastVersionAsync} |
+| A stream has history before an event when a hot event precedes it, or when its ledger row is `Archived`, names an archive, or records a deleted one. | Every archive takes a stream's lowest versions, so archived history always precedes the hot events. A deleted archive counts: the history existed, and answering "no" would fold a woken row from its new events alone; answering "yes" sends it to the rewind, which [refuses and reports a deleted archive](../perspectives/rewind#deleted-archive). | {verified: ArchivedStreamHistoryProbeSqlTests.Probe_AStreamArchivedThroughAPrefix_HasHistoryBeforeItsFirstHotEvent_OnBothFormsAsync, ArchivedStreamHistoryProbeSqlTests.Probe_AStreamArchivedWhole_AndAfterItsArchiveIsDeleted_HasHistory_AndAfterARestoreOnlyItsHotEventsCountAsync} |
+| The typed probe (the event types a perspective folds) counts archived history for every perspective. | The ledger records that an archive exists, not the types it holds, and reading them would mean reading the archive (a blob download) on the apply path. A wrong "yes" costs one re-fold that reads through the archive and builds the right row; a wrong "no" builds a wrong one. | {verified: ArchivedStreamHistoryProbeSqlTests.Probe_AStreamArchivedThroughAPrefix_HasHistoryBeforeItsFirstHotEvent_OnBothFormsAsync, DapperArchivedStreamHistoryProbeTests.Probe_AStreamArchivedThroughAPrefix_HasHistoryBeforeItsFirstHotEvent_AndOneNeverArchivedDoesNotAsync} |
+| A restored stream answers from the hot store alone, and a stream never archived answers as it always did. | A restore puts every event back hot and clears the locator. The control tests show the probe still answers "no" before a stream's first event. | {verified: ArchivedStreamHistoryProbeSqlTests.Probe_AStreamNeverArchived_BeforeItsFirstEvent_HasNoHistory_OnBothFormsAsync, ArchivedStreamHistoryProbeSqlTests.Probe_AStreamArchivedWhole_AndAfterItsArchiveIsDeleted_HasHistory_AndAfterARestoreOnlyItsHotEventsCountAsync} |
+| Each question is one statement, so a stream never archived pays no extra round trip; the last-version question reads the ledger only when nothing is hot (`EXPLAIN ANALYZE` shows the ledger lookup "never executed" otherwise). | The probe runs on the apply path of every first contact; one statement per question is what it cost before. | {verified: ArchivedStreamHistoryProbeSqlTests.NeverArchived_EachQuestionIsOneStatement_AndTheLastSequenceReadsTheLedgerOnlyWhenNothingIsHotAsync} |
+| On the EF Core driver the questions run on the context's connection, in its current transaction. | As the append does, so a caller inside a transaction sees its own uncommitted archive or append. | {verified: ArchivedStreamHistoryProbeSqlTests.Questions_InsideTheContextsTransaction_SeeWhatItHasNotCommittedAsync} |
 
 ## Appending to an archived stream {#appending-to-an-archived-stream}
 
