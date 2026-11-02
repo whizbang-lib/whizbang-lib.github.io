@@ -281,7 +281,7 @@ Dispatch runs subscriber callbacks **synchronously on the shared notify connecti
 - The instance-routed `wh_work_i_<id>` fan-out (one NOTIFY per unique owner) stays a deliberate load reducer for the claim hot path.
 - Cold-stream-only NOTIFY during bulk imports is preserved to avoid notify storms.
 
-## Hosting, wire-route self-test & doorbell liveness
+## Hosting, wire-route self-test & doorbell liveness {#hosting-self-test-and-liveness}
 
 The bus is **hosted by the framework**: `AddWhizbangSignalBus` registers a `SignalBusHostedService`
 that starts every transport and pull source. It starts at the
