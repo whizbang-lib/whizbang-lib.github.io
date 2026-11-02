@@ -26,6 +26,12 @@ codeReferences:
   - src/Whizbang.Transports.HotChocolate/Security/FieldPermissionTypeInterceptor.cs
   - src/Whizbang.Transports.FastEndpoints/Security/FieldPermissionJson.cs
   - src/Whizbang.Core/Security/Exceptions/AccessDeniedException.cs
+  - src/Whizbang.Core/Security/IReceptorInterceptor.cs
+  - src/Whizbang.Core/Security/ReceptorInterceptorPipeline.cs
+  - src/Whizbang.Core/Security/ReceptorInterceptorGate.cs
+  - src/Whizbang.Core/Security/DefaultRequirePermissionInterceptor.cs
+  - src/Whizbang.Core/Security/Attributes/DeniedAction.cs
+  - src/Whizbang.Core/Security/Exceptions/ReceptorInvocationDeniedException.cs
   - src/Whizbang.Core/Lenses/IScopedLensFactory.cs
   - src/Whizbang.Core/Lenses/ScopeFilter.cs
   - src/Whizbang.Core/Lenses/PerspectiveScope.cs
@@ -45,6 +51,10 @@ testReferences:
   - tests/Whizbang.Core.Component.Tests/Security/ScopeContextAccessorTests.cs
   - tests/Whizbang.Core.Tests/Security/PermissionExtractorTests.cs
   - tests/Whizbang.Core.Tests/Security/AccessDeniedExceptionTests.cs
+  - tests/Whizbang.Core.Tests/Security/ReceptorInterceptorDispatchTests.cs
+  - tests/Whizbang.Core.Tests/Security/ReceptorInterceptorGateTests.cs
+  - tests/Whizbang.Core.Tests/Messaging/ReceptorInvokerInterceptorTests.cs
+  - tests/Whizbang.Core.Tests/Workers/InboxDispatchWorkerReceptorDenialTests.cs
   - tests/Whizbang.Core.Tests/Security/SecurityAttributeTests.cs
   - tests/Whizbang.Core.Tests/Security/FieldPermissionMaskingTests.cs
   - tests/Whizbang.Transports.HotChocolate.Tests/Unit/FieldPermissionTypeInterceptorTests.cs
@@ -766,6 +776,73 @@ public sealed record AccessGranted : ISystemEvent {
   public required DateTimeOffset Timestamp { get; init; }
 }
 ```
+
+## Receptor Permission Gate {#receptor-permission-gate}
+
+A receptor interceptor (`IReceptorInterceptor`) decides whether a receptor may handle a message before any of the receptor's code runs. Every registered interceptor is asked immediately before **every** receptor invocation:
+
+- local dispatch: `SendAsync`, `LocalInvokeAsync` and `PublishAsync`;
+- the receptors of a message another receptor returned (a cascade);
+- receptors registered at runtime;
+- every lifecycle stage, including inbox delivery from a transport.
+
+The interceptor receives the receptor type, the message envelope and the scope context the receptor would read through `IScopeContextAccessor`. Because the framework owns the call, a new receptor cannot forget the check.
+
+### Enforcing `[RequirePermission]`
+
+`DefaultRequirePermissionInterceptor` reads `[RequirePermission]` from the receptor class. Register it once:
+
+```csharp{title="Enforcing RequirePermission" description="Register the default interceptor so every [RequirePermission] is enforced on every dispatch path." category="Best-Practices" difficulty="INTERMEDIATE" tags=["Fundamentals", "Security", "Receptors", "Permissions"] tests=["ReceptorInterceptorDispatchTests.RequirePermission_MissingPermission_DeniesEndToEndAsync", "ReceptorInterceptorDispatchTests.RequirePermission_PermissionGranted_RunsEndToEndAsync"]}
+services.AddSingleton<IReceptorInterceptor, DefaultRequirePermissionInterceptor>();
+
+[RequirePermission("orders:approve")]
+public class ApproveOrderReceptor : IReceptor<ApproveOrder> {
+  public ValueTask HandleAsync(ApproveOrder message, CancellationToken ct = default) {
+    // Runs only when the caller's scope context holds orders:approve
+    return ValueTask.CompletedTask;
+  }
+}
+
+// A caller without orders:approve:
+await dispatcher.LocalInvokeAsync(new ApproveOrder(orderId));
+// throws ReceptorInvocationDeniedException (an UnauthorizedAccessException);
+// ApproveOrderReceptor never ran and appended nothing
+```
+
+`[RequirePermission]` is inert until an interceptor that reads it is registered. Before registering `DefaultRequirePermissionInterceptor` in an existing application, make sure the principals that reach annotated receptors hold the permissions those receptors declare.
+
+### Custom interceptors
+
+Interceptors are resolved once, as singletons, and compose: every interceptor must allow, and the first denial decides the action.
+
+```csharp{title="Custom Receptor Interceptor" description="An interceptor that denies receptors outside the caller's tenant." category="Best-Practices" difficulty="ADVANCED" tags=["Fundamentals", "Security", "Receptors", "Interceptors"] tests=["ReceptorInterceptorDispatchTests.LocalInvoke_DeniedReceptor_DoesNotRunAndAppendsNothingAsync", "ReceptorInterceptorDispatchTests.LocalInvoke_InterceptorSeesTheScopeContextTheReceptorSeesAsync"]}
+public sealed class TenantRequiredInterceptor : IReceptorInterceptor {
+  public ValueTask<InterceptorResult> CanInvokeAsync(
+      Type receptorType, IMessageEnvelope envelope, IScopeContext? context, CancellationToken ct = default) =>
+    new(context?.Scope.TenantId is null
+      ? InterceptorResult.Deny(DeniedAction.DeadLetter, "No tenant in scope")
+      : InterceptorResult.Allowed);
+}
+
+services.AddSingleton<IReceptorInterceptor, TenantRequiredInterceptor>();
+```
+
+With no interceptor registered, no dispatch path does any interceptor work. An interceptor that applies to a synchronous receptor (`ISyncReceptor`) must complete synchronously, because the receptor runs on the caller's thread.
+
+### What a denial does {#denied-action}
+
+A denied receptor does not run, so nothing it would have returned is appended or cascaded. The rest depends on the `DeniedAction`:
+
+| `DeniedAction` | Local dispatch | Inbox delivery |
+|----------------|----------------|----------------|
+| `DeadLetter` (default) | Throws `ReceptorInvocationDeniedException` to the caller | The message moves to the dead-letter store (reason `ReceptorDenied`), no retry |
+| `Quarantine` | Throws `ReceptorInvocationDeniedException` | The message is held in the dead-letter store under reason `ReceptorQuarantined` for review, no retry |
+| `Throw` | Throws `ReceptorInvocationDeniedException` | The attempt fails and the attempts bound retries it |
+| `DropQuiet` | The receptor is skipped with a warning; the call returns no result | The receptor is skipped with a warning; the message is acknowledged, no retry |
+
+Inbox delivery asks the interceptors about the message's inbox receptors before it completes the row, so a denied message is dead-lettered or retried rather than completed. Each receptor is asked again immediately before it runs. The default dead-letter recovery policy holds `ReceptorDenied` and `ReceptorQuarantined` for review: the same message under the same scope is denied the same way on every re-drive.
+
+`ReceptorInvocationDeniedException` carries the receptor type, the action and the interceptor's reason.
 
 ## Exceptions {#exceptions}
 
