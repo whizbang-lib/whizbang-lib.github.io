@@ -19,6 +19,7 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Notifications/PgRoleElector.cs
   - src/Whizbang.Data.Postgres/MigratorWatch.cs
   - src/Whizbang.Data.Postgres/SchemaBootstrapPhase.cs
+  - src/Whizbang.Data.Postgres/Migrations/278_OneWriterOfTheInstancePhase.sql
   - src/Whizbang.Data.Postgres/Migrations/184_RoleAssignmentResilience.sql
   - src/Whizbang.Data.Postgres/DutyLockKey.cs
   - src/Whizbang.Data.Postgres/Migrations/108_InstanceCapabilities.sql
@@ -27,6 +28,9 @@ codeReferences:
   - src/Whizbang.Core/Workers/WorkTableVacuumOnAcquisition.cs
 testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/WorkEligibilitySqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/InstanceTransitionSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/SchemaBootstrapPhaseTests.cs
+  - tests/Whizbang.Core.Component.Tests/Startup/StartupWiringAuditTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/DutyElectionE2ETests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/TableRewriteJourneyE2ETests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/InstanceCapabilitiesSqlTests.cs
@@ -70,14 +74,31 @@ These are two different problems and they use two different mechanisms:
 
 Liveness never decides an election. A holder that is alive but briefly slow would otherwise get declared dead by peers watching a timeout, a replacement elected, and two instances believing they hold the duty — for `migrator`, two instances running DDL at once. Heartbeats and `InstanceDiedSignal` only *prompt re-attempts*; the lock grants or refuses.
 
-### The bootstrap registration records `Migrating` {#bootstrap-registration-records-migrating}
-{verified: WorkEligibilitySqlTests.BootstrapRegistration_RecordsTheInstanceAsMigrating_SoItIsNotACandidateAsync}
+<a id="bootstrap-registration-records-migrating"></a>
 
-An instance has to be registered before it can vote for a duty, so the schema bootstrap registers it during the migrator election, before its migration pass. That registration also records the instance's lifecycle phase as `Migrating`.
+### The bootstrap registration records a phase {#bootstrap-registration-records-a-phase}
+{verified: WorkEligibilitySqlTests.BootstrapRegistration_RecordsTheInstanceAsConnecting_SoItIsNotACandidateAsync, InstanceTransitionSqlTests.Registration_RecordsThePhaseItRegistersIn_AndNeverOverwritesARecordedOneAsync}
 
-The phase matters because only an instance whose recorded phase is `AcceptingCommands` or `Running` is [eligible for work](../../fundamentals/workers/instance-liveness#alive-versus-eligible), while a row that records no phase reads as an older build, which is eligible whenever it is alive. In earlier releases the bootstrap row had no phase, so a starting instance looked like an older build and was handed a share of the partitions for its whole migration, a share nobody worked until it was ready. The lifecycle's own `Migrating` write runs before the row exists and finds nothing to update, which is why the registration writes the phase itself.
+An instance has to be registered before it can vote for a duty, so the schema bootstrap registers it as Preflight's
+last step, before the migrator election. That registration also records the instance's lifecycle phase as
+`Connecting`, Preflight's phase, and only where the row records none.
 
-On an empty database the bootstrap registers before the migration that adds the phase-recording function exists, so it records no phase there. With no older instance in the fleet, there is no peer to hand a share to anyway.
+The phase matters because only an instance whose recorded phase is `AcceptingCommands` or `Running` is
+[eligible for work](../../fundamentals/workers/instance-liveness#alive-versus-eligible), while a row that records no
+phase reads as an older build, which is eligible whenever it is alive. In earlier releases the bootstrap row had no
+phase, so a starting instance looked like an older build and was handed a share of the partitions for its whole
+migration, a share nobody worked until it was ready.
+
+**Why only where the row records none.** Since migration 278 the
+[stage record is the only writer of the phase](startup-status#one-writer-of-the-phase): the instance-state
+participant that used to write each lifecycle transition is gone, and every transition, a stand-by during the
+[standby handshake](rolling-upgrades) included, reaches the row through the stage record. A registration that
+overwrote the phase would be a second writer, so it fills the phase only where none is recorded, and the stage held
+until the row existed is then written as the Preflight transition's one update. The registration writes through the
+same recorder, `wh_record_instance_transition`, which is in the
+[bootstrap closure](../infrastructure/migrations#what-the-closure-carries), so an empty database records the phase at
+registration too.
+{verified: SchemaBootstrapPhaseTests.AnEmptyDatabaseRecordsATransitionAtRegistrationAfterTheBootstrapAsync, StartupWiringAuditTests.RunControlPlane_RecordsTheInstanceRow_ThroughTheStageParticipantAlone_WithTheLibraryVersionAsync}
 
 ## Winning a duty
 

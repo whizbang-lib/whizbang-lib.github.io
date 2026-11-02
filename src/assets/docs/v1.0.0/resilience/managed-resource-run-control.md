@@ -19,12 +19,15 @@ codeReferences:
   - src/Whizbang.Core/RunControl/WhizbangLifecycleOptions.cs
   - src/Whizbang.Core/RunControl/LifecycleAckTimeoutException.cs
   - src/Whizbang.Core/RunControl/LifecyclePhaseWorker.cs
+  - src/Whizbang.Core/Startup/StartupStageRunControl.cs
   - src/Whizbang.Core/RunControl/WhizbangRunControlServiceCollectionExtensions.cs
 testReferences:
   - tests/Whizbang.Core.Tests/RunControl/LifecyclePhaseTests.cs
   - tests/Whizbang.Core.Component.Tests/RunControl/WhizbangLifecycleCoordinatorTests.cs
   - tests/Whizbang.Core.Tests/RunControl/WhizbangLifecycleStateTests.cs
   - tests/Whizbang.Core.Tests/Workers/HeartbeatWorkerRequestFieldsTests.cs
+  - tests/Whizbang.Core.Tests/Startup/StartupStageRunControlTests.cs
+  - tests/Whizbang.Core.Component.Tests/Startup/StartupWiringAuditTests.cs
   - tests/Whizbang.Core.Tests/RunControl/WhizbangRunPermitTests.cs
   - tests/Whizbang.Core.Tests/RunControl/WhizbangKillswitchTests.cs
   - tests/Whizbang.Core.Tests/RunControl/WhizbangRunControlDiTests.cs
@@ -140,10 +143,9 @@ record, then reaches terminal `Halted`.
 
 `AdvanceToAsync` sets `AnnouncedPhase` before it broadcasts the change, and `Phase` after the acks. On the fault path both follow `Faulted` and then `Halted`. An implementation that does not track a separate announced phase gets the default, which returns `Phase`.
 
-The instance's registration row records the announced phase, and that is what decides whether the instance is [eligible for work](/v1.0.0/fundamentals/workers/instance-liveness#alive-versus-eligible). The instance-state participant writes the new phase during the transition, before `Phase` changes, so every other writer of the row reads `AnnouncedPhase` too:
+The instance's registration row records its phase, and that is what decides whether the instance is [eligible for work](/v1.0.0/fundamentals/workers/instance-liveness#alive-versus-eligible). The row's phase has one writer, the [stage record](/v1.0.0/operations/startup/startup-status#one-writer-of-the-phase): `StartupStageRunControl` is the run-control participant that records each transition, during the transition and before `Phase` changes, in one write of the stage, the phase and the library version. A phase that is a stage's own (`AcceptingCommands`, `Running`, `Stopping`, `Stopped`) enters that stage; a phase off the startup ladder (`Pausing`, `Paused`, `StandingBy`, `Resuming`, `Faulted`, `Halted`) is written alone and keeps the stage. {verified: StartupStageRunControlTests.APhaseThatIsAStage_EntersItAsync, StartupStageRunControlTests.APhaseOffTheLadder_IsAPhaseOnlyWrite_ThatKeepsTheStageAsync, StartupWiringAuditTests.RunControlPlane_RecordsTheInstanceRow_ThroughTheStageParticipantAlone_WithTheLibraryVersionAsync}
 
-- the heartbeat, so a beat built while a transition's acks are awaited does not write the phase before it back over the one the transition just recorded;
-- the claim loop, which sends it with every claim and with its registrations, so a row that records another phase is found stale and corrected (see [Claim loop](/v1.0.0/fundamentals/work-coordinator/claim-loop#lifecycle-phase)).
+The heartbeat and the claim loop's registrations still carry `AnnouncedPhase`, but only so that a row they create, or a row that records no phase, starts with the phase being entered rather than none. They never overwrite a recorded phase, and a claim no longer sends a phase at all (see [Claim loop](/v1.0.0/fundamentals/work-coordinator/claim-loop#lifecycle-phase)).
 
 Entering `AcceptingCommands` is therefore the moment an instance becomes eligible for work, and entering `Stopping` is the moment it stops being eligible, while its heartbeat is still fresh.
 
