@@ -60,6 +60,8 @@ codeReferences:
 testReferences:
   - tests/Whizbang.Core.Tests/SystemEvents/AuditEphemeralExclusionTests.cs
   - tests/Whizbang.Core.Tests/Attributes/EphemeralAttributeTests.cs
+  - tests/Whizbang.Core.Tests/Workers/MaintenanceWorkerDispositionTests.cs
+  - tests/Whizbang.Generators.Tests/UnshippedDestructionAnalyzerTests.cs
   - tests/Whizbang.Core.Tests/Ephemeral/EphemeralModeResolverTests.cs
   - tests/Whizbang.Core.Tests/Ephemeral/EphemeralFlagDeriverTests.cs
   - tests/Whizbang.Core.Tests/Ephemeral/EphemeralTtlDeriverTests.cs
@@ -263,14 +265,14 @@ per-type overrides are written to the database at startup.
 |---|---|
 | `WhenConsumed` | The default. The body is deleted once consumed and past the gates above. There is no age limit. |
 | `AfterTtl` | The type's `TtlSeconds` is stamped onto the event at dispatch and turned into an absolute expiry, `created_at + TtlSeconds`, using the database's clock and the event's stored creation time. The body is kept until that expiry has passed, **in addition to** the other gates: consumption does not release it early. |
-| `OnCompaction` | **Planned.** Declared for events whose detail is folded into a compacted summary; nothing acts on the mode yet, so the body is reaped like a `WhenConsumed` event. Compaction itself is started explicitly; see [Compacting a stream](#compaction). The mode is planned with the storage work on archive policies and closing the books. |
-| `Archived` | **Planned.** Declared for detail that moves to cold storage; nothing acts on the mode yet, so the body is reaped like a `WhenConsumed` event. Archiving happens through a stream close with `archive: true`; see [Closing a stream on a schedule](#scheduled-close). The mode is planned with the storage work on archive policies. |
+| `OnCompaction` | **Not shipped: naming it fails the build ([WHIZ137](../../operations/diagnostics/whiz137)).** The framework has no compaction handler for event bodies; a PreDestruction hook can return `Disposition.Compact` with an `ICompactionHandler` registered instead ([dispositions](stream-end-of-life#dispositions)). Compaction of a stream is started explicitly; see [Compacting a stream](#compaction). |
+| `Archived` | **Not shipped: naming it fails the build ([WHIZ137](../../operations/diagnostics/whiz137)).** The archive store moves a stream's prefix or whole stream, not event bodies; archive a stream through `IArchiveStore` or a prefix truncate with `Disposition.Archive`. An event-level archive is tracked as its own issue. |
 
 {verified: EphemeralAttributeTests.Destruction_HasTheFourStrategiesAsync, EphemeralTtlDeriverTests.Derive_AfterTtl_ReturnsTtlSecondsAsync, EphemeralTtlDeriverTests.Derive_WhenConsumed_NoTtl_IsNullAsync, EphemeralBodyReaperSqlTests.Reap_AfterTtl_StampedExpiry_HeldUntilPast_ThenReapedAsync, EphemeralBodyReaperSqlTests.Reap_ExpiryKeyIsTheDiscriminator_AfterTtlHeldWhileWhenConsumedReapsAsync}
 
 The expiry is derived from `TtlSeconds`, so give `AfterTtl` events a `TtlSeconds`; without one they
-reap like `WhenConsumed` events, as soon as they are consumed. That is deliberate, not a missing check. Declaring `OnCompaction` or `Archived` does not by itself compact or
-archive anything. On the receive side the TTL is resolved from the message's wire type name, so an
+reap like `WhenConsumed` events, as soon as they are consumed. That is deliberate, not a missing check. `OnCompaction`
+and `Archived` cannot be declared at all (WHIZ137), so no event compiles into a delete it did not ask for. On the receive side the TTL is resolved from the message's wire type name, so an
 `AfterTtl` event keeps its expiry when it crosses to another service.
 
 ## What happens to the read model {#read-model}
@@ -482,11 +484,13 @@ The hook returns a `DestructionResult`:
 
 | Result | Effect |
 |---|---|
-| `DestructionResult.Proceed()` | The batch is deleted. |
+| `DestructionResult.Proceed()` | The batch runs its declared disposition, which for an ephemeral batch is a delete. |
+| `DestructionResult.Proceed(Disposition.Compact)` | The registered `ICompactionHandler` runs over the batch, then the batch is deleted; with no handler registered the batch is held for the retry backoff and logged ([dispositions](stream-end-of-life#dispositions)). |
+| `DestructionResult.Proceed(Disposition.Archive)` or `(Disposition.CryptoShred)` | The reaper cannot carry either out for event bodies: the batch is held for the retry backoff and logged, never deleted. |
 | `DestructionResult.Canceled` | The whole batch is held indefinitely. Nothing is deleted and the after-hook does not run. |
 | `DestructionResult.Defer(until)` | The batch is held until `until`, then offered again. |
 
-{verified: MaintenanceWorkerDestructionHookTests.RunMaintenanceOnce_HookCancels_HoldsBatchFarFuture_NoPostDestructionAsync, MaintenanceWorkerDestructionHookTests.RunMaintenanceOnce_HookDefers_HoldsBatchUntilInstant_NoPostDestructionAsync, DestructionContractTests.DestructionResult_Proceed_DefaultsToDeleteAsync}
+{verified: MaintenanceWorkerDestructionHookTests.RunMaintenanceOnce_HookCancels_HoldsBatchFarFuture_NoPostDestructionAsync, MaintenanceWorkerDestructionHookTests.RunMaintenanceOnce_HookDefers_HoldsBatchUntilInstant_NoPostDestructionAsync, DestructionContractTests.DestructionResult_Proceed_WithoutADisposition_NamesNone_SoTheDeclaredOneRunsAsync, MaintenanceWorkerDispositionTests.Compact_RunsTheHandlerOverTheBatch_ThenReapsAsync, MaintenanceWorkerDispositionTests.Compact_WithNoHandler_HoldsTheBatchForTheBackoff_AndLogsWhyAsync, MaintenanceWorkerDispositionTests.CryptoShred_HoldsTheBatchForTheBackoff_AndLogsWhyAsync}
 
 If the hook throws, the batch is held for a backoff (`DestructionRetryBackoffSeconds`) and offered
 again, up to `MaxDestructionRetries` times. What happens after that is the `OnDestroyFailure` policy on the

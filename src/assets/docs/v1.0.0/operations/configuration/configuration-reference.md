@@ -589,13 +589,16 @@ builder.Services.AddWhizbangAzureBlobArchive(builder.Configuration);
 
 ### Archive and stream lifecycle {#archive-and-stream-lifecycle-options}
 
-Bound by hand and validated when the host starts: a value that is not a boolean, or not a policy name, fails the start
-naming the key ([why](../../fundamentals/events/archive-store#configuration)).
+Bound by hand and validated when the host starts: a value that is not a boolean, not a policy name, not a time span of
+zero or more, or not a whole number of one or more fails the start naming the key
+([why](../../fundamentals/events/archive-store#configuration)).
 
 | Key | Type | Default | Environment variable | Purpose |
 |-----|------|---------|----------------------|---------|
 | `Whizbang:Archive:ReadThrough` | `bool` | `true` | `Whizbang__Archive__ReadThrough` | A read from the start of a stream reads archived events back when the hot store shows a gap ([read-through](../../fundamentals/events/archive-store#read-through)) |
-| `Whizbang:StreamLifecycle:Types:<StreamType>:AppendToArchived` | `AppendToArchivedPolicy` | `Refuse` | `Whizbang__StreamLifecycle__Types__<StreamType>__AppendToArchived` | What an append to a stream of that type archived whole does: `Refuse` or `AutoRestore` ([the policy](../../fundamentals/events/archive-store#appending-to-an-archived-stream)); `NewGeneration` ships with #1734 and fails the start until then |
+| `Whizbang:StreamLifecycle:Types:<StreamType>:AppendToArchived` | `AppendToArchivedPolicy` | `Refuse` | `Whizbang__StreamLifecycle__Types__<StreamType>__AppendToArchived` | What an append to a stream of that type archived whole does: `Refuse`, `AutoRestore` or `NewGeneration` ([the policy](../../fundamentals/events/archive-store#appending-to-an-archived-stream), [new generation](../../fundamentals/events/archive-store#new-generation)) |
+| `Whizbang:StreamLifecycle:FinalizeGrace` | `TimeSpan` | `7.00:00:00` | `Whizbang__StreamLifecycle__FinalizeGrace` | How long a sealed stream stays hot before its disposition runs, counted from the later of the seal and the first maintenance cycle that sees it; zero or more ([scheduled disposition](../../fundamentals/events/stream-end-of-life#scheduled-disposition)) |
+| `Whizbang:StreamLifecycle:SweepBatchSize` | `int` | `500` | `Whizbang__StreamLifecycle__SweepBatchSize` | The most sealed streams one maintenance cycle schedules, and the most it disposes of; 1 or more |
 
 ## Code-Configured Options: The Binding Recipe
 

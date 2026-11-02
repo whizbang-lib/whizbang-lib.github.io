@@ -51,6 +51,7 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Collective/CollectiveReplayApplier.cs
   - src/Whizbang.Data.Postgres/PostgresDeadLetterRecoveryService.cs
   - src/Whizbang.Data.Postgres/ArchivedStreamHistorySql.cs
+  - src/Whizbang.Data.Postgres/Migrations/280_FinalSnapshotAndScheduledDisposition.sql
   - src/Whizbang.Data.EFCore.Postgres/EFCoreEventStore.cs
   - src/Whizbang.Data.Dapper.Postgres/DapperPostgresEventStore.cs
 testReferences:
@@ -87,6 +88,8 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Collective/ArchivedCollectiveStreamsQueryPlanTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/ArchivedStreamHistoryProbeSqlTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperArchivedStreamHistoryProbeTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/ArchiveNewGenerationSqlTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperStreamDispositionTests.cs
 ---
 
 # Archive Store
@@ -474,11 +477,14 @@ What an append to a stream archived whole does is declared per stream type
 (`Whizbang:StreamLifecycle:Types:<StreamType>:AppendToArchived`). Every write path applies it per event, under the
 stream lock it already holds, the way a [sealed stream refuses](stream-end-of-life#a-sealed-stream-refuses-appends):
 
-| Write | `Refuse` (default) | `AutoRestore` |
-|---|---|---|
-| A direct append (`IEventStore.AppendAsync`) | `StreamArchivedException` (SQLSTATE `WHA01`), nothing stored | Restored inline through `IArchiveStore.RestoreAsync`, then retried once (SQLSTATE `WHA02` tells the driver) |
-| An awaited outbox write (immediate and scoped strategies) | `StreamArchivedException`, the whole write rolls back and is withdrawn | Restored inline, then the same write is stored once more |
-| An outbox or inbox write nobody awaits | The refused event alone is dead-lettered (`StreamArchived`, 26, held for review); the rest of the batch is stored | The refused event is dead-lettered (`AwaitingRestore`, 27) and the stream's [restore request](#restore-requests) is queued in the same transaction |
+| Write | `Refuse` (default) | `AutoRestore` | `NewGeneration` |
+|---|---|---|---|
+| A direct append (`IEventStore.AppendAsync`) | `StreamArchivedException` (SQLSTATE `WHA01`), nothing stored | Restored inline through `IArchiveStore.RestoreAsync`, then retried once (SQLSTATE `WHA02` tells the driver) | Stored at the tombstone's last version plus one; the stream starts a [new generation](#new-generation) |
+| An awaited outbox write (immediate and scoped strategies) | `StreamArchivedException`, the whole write rolls back and is withdrawn | Restored inline, then the same write is stored once more | Stored, as a new generation |
+| An outbox or inbox write nobody awaits | The refused event alone is dead-lettered (`StreamArchived`, 26, held for review); the rest of the batch is stored | The refused event is dead-lettered (`AwaitingRestore`, 27) and the stream's [restore request](#restore-requests) is queued in the same transaction | Stored, as a new generation |
+
+`NewGeneration` needs a snapshot at the event every parked cursor names; without one it acts as `AutoRestore` (see
+[a new generation](#new-generation)).
 
 ```csharp{
 title: "Declare the append-to-archived policy of a stream type"
@@ -514,7 +520,36 @@ try {
 | An awaited outbox flush restores through the archive store its scope reaches; with no scope factory the refusal reaches the caller. | The strategy has no other way to the archive store, and adding one would be a new optional dependency. | {verified: ScopedWorkCoordinatorStrategyTests.FlushAsync_AnAutoRestoreRefusal_RestoresThroughTheScopesArchiveStore_OrReachesTheCallerWithoutOneAsync, ImmediateWorkCoordinatorStrategyTests.FlushAsync_AnAutoRestoreRefusal_RestoresTheStream_AndStoresTheWriteOnceMoreAsync} |
 | A refused awaited write is withdrawn from the strategy, as a sealed one is. | The same write is refused until someone restores the stream; offering it to a later flush would fail that flush too. | {verified: ImmediateWorkCoordinatorStrategyTests.FlushAsync_RefusedForAnArchivedStream_TheNextFlushDoesNotWriteTheRefusedWorkAsync, ScopedWorkCoordinatorStrategyTests.FlushAsync_RefusedForAnArchivedStream_DisposalDoesNotWriteTheRefusedWorkAsync} |
 | A sealed stream that is archived is refused as sealed. | A stream that ended stays ended; restoring it would not let the append in. | {verified: ArchiveAppendPolicySqlTests.SealedAndArchived_TheSealsRefusalWinsAsync} |
-| `NewGeneration` is not a value yet; a configuration that names it fails the host's start with a message naming #1734. | Starting a new generation needs the final snapshot finalization takes, which ships with #1734; reading it as a default would silently refuse. | {verified: StreamLifecycleOptionsBinderTests.AppendToArchived_NewGeneration_IsRefusedAtStartup_Naming1734Async, StreamLifecycleOptionsBinderTests.Registration_APolicyThatCannotBeRead_FailsTheHostsStartupValidationAsync} |
+| `NewGeneration` is a policy since #1734, bound by its name like the other two. | It needs the final snapshot the [scheduled disposition](stream-end-of-life#the-final-snapshot) takes, which shipped with it. | {verified: StreamLifecycleOptionsBinderTests.AppendToArchived_NewGeneration_IsAPolicy_AndIsStoredByItsNameAsync, StreamLifecycleOptionsBinderTests.Registration_APolicyThatCannotBeRead_FailsTheHostsStartupValidationAsync} |
+
+### A new generation {#new-generation}
+
+{verified: ArchiveNewGenerationSqlTests.DirectAppend_EveryParkedCursorHasItsSnapshot_StoresAtTheNextVersion_AndTheArchiveBecomesAPrefixAsync, ArchiveNewGenerationSqlTests.OutboxAppend_StoresTheEventAtTheNextVersion_AndDeadLettersNothingAsync, ArchiveNewGenerationSqlTests.InboxAppend_StoresTheReceivedEventAtTheNextVersionAsync, DapperStreamDispositionTests.AppendAsync_NewGeneration_ContinuesAtTheNextVersion_AndTheCoordinatorResumesFromTheParkedCursorAsync}
+
+Under `NewGeneration` (#1734, owner decision of 2026-11-01) an append to a stream archived whole does not wait for a
+restore: the stream lives on above its archive. The append is stored at the tombstone's last version plus one, the
+stream becomes `Active` with its archive kept as a prefix (the locator stays, so [read-through](#read-through) still
+reads the earlier generation from the start), and each perspective resumes where its cursor was parked.
+
+```mermaid{caption="NewGeneration: an archived stream takes an append above its archive when every parked cursor has its snapshot; otherwise the append waits for a restore." tests=["ArchiveNewGenerationSqlTests.DirectAppend_EveryParkedCursorHasItsSnapshot_StoresAtTheNextVersion_AndTheArchiveBecomesAPrefixAsync", "ArchiveNewGenerationSqlTests.DirectAppend_AParkedCursorWithoutASnapshotAtIt_FallsBackToAutoRestoreAsync"]}
+flowchart TD
+  A[Append to a stream archived whole, type declares NewGeneration] --> S{Sealed?}
+  S -- yes --> R[Refused as sealed]
+  S -- no --> C{Every parked cursor has a snapshot at its event?}
+  C -- yes --> G[Stream Active, archive kept as a prefix; append stored at last version + 1]
+  C -- no --> AR[Treated as AutoRestore]
+```
+
+| Choice | Reason | Verified |
+|---|---|---|
+| The append continues at the tombstone's last version plus one, and nothing archived is restored or reused. | The archived versions were seen downstream; the earlier generation stays archived and readable. | {verified: ArchiveNewGenerationSqlTests.DirectAppend_EveryParkedCursorHasItsSnapshot_StoresAtTheNextVersion_AndTheArchiveBecomesAPrefixAsync, ArchiveNewGenerationSqlTests.OutboxAppend_StoresTheEventAtTheNextVersion_AndDeadLettersNothingAsync, ArchiveNewGenerationSqlTests.StoreOutboxMessages_AnAwaitedWrite_IsStoredAtTheNextVersionAsync, ArchiveNewGenerationSqlTests.InboxAppend_StoresTheReceivedEventAtTheNextVersionAsync} |
+| The stream becomes `Active` with its locator kept, so its archive reads as a prefix. | Every reader already knows a prefix-archived stream: read-through, rebuilds and the version questions treat it as they treat any other. | {verified: ArchiveNewGenerationSqlTests.DirectAppend_EveryParkedCursorHasItsSnapshot_StoresAtTheNextVersion_AndTheArchiveBecomesAPrefixAsync} |
+| The parked cursors stay parked. A perspective with no live cursor resumes after the event its parked cursor names (`wh_perspective_resume_cursors`, read by both coordinators); once it applies the new event it has a live cursor, which wins. | A live cursor cannot point at an archived event (the EF Core schema's `fk_perspective_cursors_event` refuses it), and the perspective's row is already its state at that event, so it applies the new generation onto it. | {verified: ArchiveNewGenerationSqlTests.GetPerspectiveCursor_WithNoLiveCursor_ReadsTheParkedOne_AndALiveOneWinsAsync, DapperStreamDispositionTests.AppendAsync_NewGeneration_ContinuesAtTheNextVersion_AndTheCoordinatorResumesFromTheParkedCursorAsync} |
+| It needs a snapshot at the event every parked cursor names (the [final snapshot](stream-end-of-life#the-final-snapshot)); a perspective without one makes the append act as `AutoRestore`. | A snapshot at the cursor is the perspective's exact state where it stopped, so a rewind or an evicted row can start from it without the archive; a snapshot behind the cursor is not. Restoring loses nothing, so it is the safe fallback. | {verified: ArchiveNewGenerationSqlTests.DirectAppend_AParkedCursorWithoutASnapshotAtIt_FallsBackToAutoRestoreAsync, ArchiveNewGenerationSqlTests.OutboxAppend_AParkedCursorWithoutASnapshotAtIt_IsDeadLetteredAwaitingRestoreAsync} |
+| A stream no perspective ever consumed starts a new generation. | No parked cursor means nothing to resume. | {verified: ArchiveNewGenerationSqlTests.DirectAppend_NoPerspectiveEverConsumedTheStream_StartsANewGenerationAsync} |
+| A sealed stream that is archived is still refused as sealed. | A stream that ended stays ended, whatever its type's policy. | {verified: ArchiveNewGenerationSqlTests.DirectAppend_SealedAndArchived_TheSealStillRefusesAsync} |
+| The policy is decided in one place for every write path (`_wh_archived_stream_refusals`), and the write reads the ledger's last version only for a stream with nothing hot in a write that held an archived stream. | One decision cannot drift between paths, and every other write costs what it did. | {verified: ArchiveNewGenerationSqlTests.OutboxAppend_StoresTheEventAtTheNextVersion_AndDeadLettersNothingAsync, ArchiveAppendPolicySqlTests.PrefixArchivedStream_TakesAppendsAsUsual_OnEveryPathAsync} |
+| A whole-stream archive written straight through `IArchiveStore` takes no final snapshot; only the [scheduled disposition](stream-end-of-life#scheduled-disposition) takes one before it archives. | The archive store is the storage contract, below the perspective runners that write snapshots. Without the snapshots a NewGeneration append falls back to `AutoRestore`, so nothing is lost. | {verified: StreamDispositionStepTests.AReadyStream_GetsItsFinalSnapshot_ThenTheHook_ThenIsArchivedWhole_ThenItsScheduleIsClearedAsync, ArchiveNewGenerationSqlTests.DirectAppend_AParkedCursorWithoutASnapshotAtIt_FallsBackToAutoRestoreAsync} |
 
 An inline restore and its one retry need the write to own its transaction. Inside a transaction the caller opened, the
 refusal has already aborted that transaction, so the retry cannot succeed in it; the restore itself runs on its own
@@ -591,7 +626,7 @@ per stream).
 | Key | Default | Environment variable | Purpose |
 |---|---|---|---|
 | `Whizbang:Archive:ReadThrough` | `true` | `Whizbang__Archive__ReadThrough` | A read from the start of a stream reads archived events back through its gap. |
-| `Whizbang:StreamLifecycle:Types:<StreamType>:AppendToArchived` | `Refuse` | `Whizbang__StreamLifecycle__Types__<StreamType>__AppendToArchived` | `Refuse` or `AutoRestore`; `NewGeneration` ships with #1734. |
+| `Whizbang:StreamLifecycle:Types:<StreamType>:AppendToArchived` | `Refuse` | `Whizbang__StreamLifecycle__Types__<StreamType>__AppendToArchived` | `Refuse`, `AutoRestore` or `NewGeneration`. |
 
 | Choice | Reason | Verified |
 |---|---|---|

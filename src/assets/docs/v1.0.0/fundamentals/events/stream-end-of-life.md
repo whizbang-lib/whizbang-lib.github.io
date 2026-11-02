@@ -3,12 +3,13 @@ title: Stream End of Life
 pageType: concept
 description: >-
   How Whizbang knows every stream's age, size and state without reading the event store (the stream lifecycle
-  ledger, what writes it, what it costs on the append path, and the one-time backfill that seeds it), and how a stream
-  is sealed, by a finalizer or a terminal event, so it refuses every later append.
+  ledger, what writes it, what it costs on the append path, and the one-time backfill that seeds it), how a stream
+  is sealed, by a finalizer or a terminal event, so it refuses every later append, and how a sealed stream is disposed
+  of once its grace has passed: a final snapshot, the PreDestruction hook, then the disposition (archive by default).
 version: 1.0.0
 category: Core Concepts
 order: 16
-tags: 'event-streams, stream-lifecycle, end-of-life, archive, storage, event-store, sealing, terminal-event, finalize'
+tags: 'event-streams, stream-lifecycle, end-of-life, archive, storage, event-store, sealing, terminal-event, finalize, disposition, final-snapshot, compaction'
 codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/272_ArchivedStreamTypeIndex.sql
   - src/Whizbang.Data.Postgres/Migrations/260_StreamLifecycleLedger.sql
@@ -26,6 +27,17 @@ codeReferences:
   - src/Whizbang.Data.Postgres/PostgresStreamFinalizer.cs
   - src/Whizbang.Data.Postgres/StreamSealedRefusal.cs
   - src/Whizbang.Generators/MessageTypeCatalogGenerator.cs
+  - src/Whizbang.Core/Lifecycle/StreamDispositionStep.cs
+  - src/Whizbang.Core/Lifecycle/IStreamDispositionLedger.cs
+  - src/Whizbang.Data.Postgres/PostgresStreamDispositionLedger.cs
+  - src/Whizbang.Data.Postgres/Migrations/280_FinalSnapshotAndScheduledDisposition.sql
+  - src/Whizbang.Core/Archival/StreamLifecycleOptions.cs
+  - src/Whizbang.Core/Archival/ArchiveOptionsBinder.cs
+  - src/Whizbang.Core/Lifecycle/Destruction.cs
+  - src/Whizbang.Core/Lifecycle/ICompactionHandler.cs
+  - src/Whizbang.Core/Lifecycle/StreamPrefixTruncator.cs
+  - src/Whizbang.Core/Workers/MaintenanceWorker.cs
+  - src/Whizbang.Generators/UnshippedDestructionAnalyzer.cs
 testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Collective/ArchivedCollectiveStreamsQueryPlanTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StreamLifecycleLedgerSqlTests.cs
@@ -44,6 +56,14 @@ testReferences:
   - tests/Whizbang.Generators.Tests/MessageTypeCatalogGeneratorTests.cs
   - tests/Whizbang.Core.Tests/Messaging/ImmediateWorkCoordinatorStrategyTests.cs
   - tests/Whizbang.Core.Tests/Messaging/ScopedWorkCoordinatorStrategyTests.cs
+  - tests/Whizbang.Core.Tests/Lifecycle/StreamDispositionStepTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/StreamDispositionSqlTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperStreamDispositionTests.cs
+  - tests/Whizbang.Core.Tests/Archival/StreamLifecycleOptionsBinderTests.cs
+  - tests/Whizbang.Core.Tests/Lifecycle/StreamPrefixTruncatorDispositionTests.cs
+  - tests/Whizbang.Core.Tests/Lifecycle/DestructionContractTests.cs
+  - tests/Whizbang.Core.Tests/Workers/MaintenanceWorkerDispositionTests.cs
+  - tests/Whizbang.Generators.Tests/UnshippedDestructionAnalyzerTests.cs
 ---
 
 # Stream End of Life
@@ -53,9 +73,11 @@ for months, or past any reader's interest costs the same bytes, index entries an
 today. Ending a stream's life (sealing it, archiving it, purging it, closing its books) starts with knowing which
 streams are candidates, and answering that by reading the event store is the very cost the work exists to remove.
 
-This page describes the part that answers it, the **stream lifecycle ledger**, and the first step of a stream's end of
-life built on it: [sealing a stream](#sealing-a-stream), so it refuses every later append. Scheduled disposition,
-archiving and end-of-life policies build on the same row and are added to this page as they ship.
+This page describes the part that answers it, the **stream lifecycle ledger**, and the steps of a stream's end of life
+built on it: [sealing a stream](#sealing-a-stream), so it refuses every later append; the
+[scheduled disposition](#scheduled-disposition) of a sealed stream once its grace has passed; and the
+[dispositions](#dispositions) every destruction routes on. End-of-life policies build on the same row and are added to
+this page as they ship.
 
 ## The stream lifecycle ledger {#the-stream-lifecycle-ledger}
 
@@ -399,6 +421,113 @@ blocks per stream in the batch. The execution times are server-side, on a build 
 
 {verified: StreamSealingEmitCostScenarioTests.EmitChain_WithAndWithoutTheSealCheck_ReportAsync}
 
+## Scheduled disposition {#scheduled-disposition}
+
+{verified: StreamDispositionSqlTests.Step_ArchivesASealedStreamWhole_OnceItsGraceHasPassed_AndNotBeforeAsync, DapperStreamDispositionTests.AddWhizbangPostgres_RegistersTheLedgerAndTheStep_AndTheStepArchivesASealedStreamOnceItsGraceHasPassedAsync}
+
+A sealed stream stays hot for its grace (`Whizbang:StreamLifecycle:FinalizeGrace`, seven days by default), then its
+disposition runs: by default it is [archived whole](archive-store.md#the-whole-stream), so it leaves the hot store and
+stays readable through [read-through](archive-store.md#read-through). The `stream-disposition` maintenance step does
+this (`StreamDispositionStep`), registered by both Postgres drivers with its ledger (`PostgresStreamDispositionLedger`,
+migration 280). It runs in the maintenance cycle, so under the maintainer duty when role assignment manages it.
+
+```mermaid{caption="A sealed stream's scheduled disposition, from the seal to the archive." tests=["StreamDispositionStepTests.AReadyStream_GetsItsFinalSnapshot_ThenTheHook_ThenIsArchivedWhole_ThenItsScheduleIsClearedAsync", "StreamDispositionStepTests.ABlockedOrHeldStream_IsDeferredForTheBackoff_AndNothingElseRunsAsync", "StreamDispositionStepTests.AHookThatCancels_DefersForTheBackoff_AndOneThatDefers_MovesTheDueTimeToItsInstantAsync"]}
+flowchart TD
+  S[Sealed, no disposition] -->|scheduled: due = later of seal and now, plus FinalizeGrace| D[Due]
+  D -->|a perspective owes an event, or an active hold| W[Deferred for the retry backoff]
+  W --> D
+  D -->|ready| F[Final snapshot at every perspective's cursor]
+  F --> H{PreDestruction hook}
+  H -->|cancel or throw| W
+  H -->|defer until| D
+  H -->|proceed| X[Disposition: Archive by default]
+  X -->|ran| C[Schedule cleared, PostDestruction fires]
+  X -->|refused or unavailable| W
+```
+
+```csharp{title="Keep sealed order streams hot for thirty days" description="appsettings: sealed streams are archived thirty days after their seal, at most 200 per maintenance cycle." category="Configuration" difficulty="BEGINNER" tags=["stream-lifecycle", "end-of-life", "disposition", "configuration"] unverified="configuration shape; the binding is verified in StreamLifecycleOptionsBinderTests"}
+// appsettings.json
+// "Whizbang": {
+//   "StreamLifecycle": { "FinalizeGrace": "30.00:00:00", "SweepBatchSize": 200 }
+// }
+```
+
+| Choice | Reason | Verified |
+|---|---|---|
+| The default disposition of a sealed stream is to archive it whole (owner decision, 2026-11-01). | Archiving is reversible and keeps the stream readable; deleting Sourced history by default would lose data nobody chose to lose. A PreDestruction hook can still return another disposition. | {verified: StreamDispositionStepTests.AReadyStream_GetsItsFinalSnapshot_ThenTheHook_ThenIsArchivedWhole_ThenItsScheduleIsClearedAsync, StreamDispositionStepTests.TheHook_IsToldTheReason_TheStream_AndThatArchiveIsDeclaredAsync} |
+| It runs for every sealed stream, with no setting to turn it on. | Sealing is a developer's explicit statement that the stream has ended; the grace is the safety margin. | {verified: StreamDispositionSqlTests.ThePostgresDriver_RegistersTheLedgerAndTheStep_AsAMaintenanceStepAsync, DapperStreamDispositionTests.AddWhizbangPostgres_RegistersTheLedgerAndTheStep_AndTheStepArchivesASealedStreamOnceItsGraceHasPassedAsync} |
+| `FinalizeGrace` is seven days by default; zero is allowed and disposes on the next cycle; a negative or unreadable value fails the start naming the key. | A week covers a late correction or a weekend; zero is a deliberate choice for a host that wants streams out at once. | {verified: StreamLifecycleOptionsBinderTests.FinalizeGraceAndSweepBatchSize_DefaultToSevenDaysAnd500_AndBindAsync, StreamLifecycleOptionsBinderTests.FinalizeGraceOrSweepBatchSize_ThatCannotBeUsed_IsRefusedNamingTheKeyAsync} |
+| The grace counts from the later of the seal and the maintenance cycle that first schedules it, not from the seal alone. | A stream sealed before this release, or a sealed stream someone restored (its schedule is cleared by the archive), would otherwise be due at once; this gives each a full grace. The cost is at most one maintenance interval of extra grace on a fresh seal. | {verified: StreamDispositionSqlTests.Schedule_ASealedStreamWithNoSchedule_IsDueAGraceAfterTheLaterOfItsSealAndNow_AndNothingElseIsTouchedAsync} |
+| A second before the grace ends the stream stays hot; at the end it is archived. | The boundary is the documented one, on the host's `TimeProvider`. | {verified: StreamDispositionSqlTests.Step_ArchivesASealedStreamWhole_OnceItsGraceHasPassed_AndNotBeforeAsync} |
+| `SweepBatchSize` (500 by default, 1 or more) bounds both the streams a cycle schedules and the streams it disposes of, oldest due first. | A backlog of sealed streams drains over several cycles instead of holding one cycle for a long run of archives. | {verified: StreamDispositionSqlTests.Schedule_TakesAtMostItsLimit_AndTheNextCallTheRestAsync, StreamDispositionSqlTests.GetDue_ReturnsTheDueStreamsOldestFirst_WithWhetherEachCanGo_AndOnlyUpToItsLimitAsync, StreamDispositionStepTests.EachRun_SchedulesWithTheGraceAndBatchSize_OnTheHostsClock_AndTakesAtMostABatchAsync} |
+| A stream a perspective still owes events, or that an active destruction hold covers, is deferred for `MaintenanceWorkerOptions.DestructionRetryBackoffSeconds` (300 by default) and nothing else runs. | These are the whole-stream archive's own gates, read first so the final snapshot is taken only once every perspective has consumed the stream; the backoff is the one every other destruction retries on. | {verified: StreamDispositionStepTests.ABlockedOrHeldStream_IsDeferredForTheBackoff_AndNothingElseRunsAsync, StreamDispositionSqlTests.GetDue_ReturnsTheDueStreamsOldestFirst_WithWhetherEachCanGo_AndOnlyUpToItsLimitAsync} |
+| The PreDestruction hook is told the reason (`FinalizeGraceElapsed`), the stream, and that `Archive` is declared. A cancel defers for the backoff; a defer moves the due time to its instant; a throw defers. | A veto defers rather than ending the schedule: a sealed stream is meant to end, so it is offered again. A failed hook never lets the disposition run. | {verified: StreamDispositionStepTests.TheHook_IsToldTheReason_TheStream_AndThatArchiveIsDeclaredAsync, StreamDispositionStepTests.AHookThatCancels_DefersForTheBackoff_AndOneThatDefers_MovesTheDueTimeToItsInstantAsync, StreamDispositionStepTests.AHookThatThrows_Defers_AndNothingIsDisposedAsync} |
+| An archive the store refuses defers and logs its status; a disposition that ran clears the schedule and fires PostDestruction, whose failure is logged and changes nothing. | The schedule is cleared only once the stream is really gone from the hot store. | {verified: StreamDispositionStepTests.AnArchiveTheStoreRefuses_Defers_AndLogsItsStatusAsync, StreamDispositionStepTests.APostDestructionHookThatThrows_IsLogged_AndTheDispositionStaysDoneAsync} |
+| A stream that is due but no longer `Sealed` (already archived) only has its schedule cleared. | An archive between the schedule and the run already did the work. | {verified: StreamDispositionStepTests.AStreamThatIsDone_OnlyHasItsScheduleClearedAsync} |
+| One stream's failure is logged and deferred, and the next stream still runs; a shutdown propagates and defers nothing. | One broken stream must not hold back the sweep; cancellation is not a failure. | {verified: StreamDispositionStepTests.AFinalSnapshotThatFails_Defers_AndNothingIsDisposedAsync, StreamDispositionStepTests.Cancellation_Propagates_AndDefersNothingAsync} |
+| The step runs on the host's registered `TimeProvider` (the system clock otherwise). | The grace is the host's to measure, and a test host's fake clock decides it. | {verified: StreamDispositionStepTests.FromServices_UsesTheHostsClockAndLogger_OrTheSystemClockAndNoLogAsync} |
+
+### The final snapshot {#the-final-snapshot}
+
+{verified: StreamDispositionStepTests.AReadyStream_GetsItsFinalSnapshot_ThenTheHook_ThenIsArchivedWhole_ThenItsScheduleIsClearedAsync}
+
+Before a ready stream goes, every perspective with a cursor on it that this host can run snapshots its row at the
+cursor's event (the runner's `BootstrapSnapshotAsync`). That snapshot is the perspective's exact state where it stopped,
+which is what an append under [`NewGeneration`](archive-store.md#new-generation) resumes from.
+
+| Choice | Reason | Verified |
+|---|---|---|
+| The final snapshot is taken when the disposition runs, not at the moment of the seal. | Only then has every perspective consumed the stream (the consumption gate), so the snapshot is the stream's final state; a snapshot at the seal could miss events still in flight. | {verified: StreamDispositionStepTests.ABlockedOrHeldStream_IsDeferredForTheBackoff_AndNothingElseRunsAsync, StreamDispositionStepTests.AReadyStream_GetsItsFinalSnapshot_ThenTheHook_ThenIsArchivedWhole_ThenItsScheduleIsClearedAsync} |
+| A snapshot that fails defers the whole disposition. | Nothing leaves the hot store until the snapshots it may need are durable. | {verified: StreamDispositionStepTests.AFinalSnapshotThatFails_Defers_AndNothingIsDisposedAsync} |
+| A perspective this host has no runner for, a cursor at no event, and a host with no runner registry are skipped, and the stream still goes. | Another service owns that perspective; without the snapshot a later `NewGeneration` append falls back to `AutoRestore`, which loses nothing. | {verified: StreamDispositionStepTests.APerspectiveThisHostCannotRun_OrACursorAtNoEvent_IsNotSnapshotted_AndTheStreamStillGoesAsync, StreamDispositionStepTests.NoRunnerRegistry_TakesNoSnapshot_AndNoHook_ProceedsWithTheArchiveAsync} |
+
+### Finding the streams to schedule {#finding-the-streams-to-schedule}
+
+`idx_stream_lifecycle_unscheduled` (migration 280) is a partial index on `stream_id`, holding only the `Sealed` streams
+with no disposition scheduled, so the scheduler never visits a stream it already scheduled or one that is open. Its
+predicate's columns (`state`, `disposition_due_at`) are never written by an append, so an append's ledger update stays
+heap-only. The due streams are read from `idx_stream_lifecycle_due`, as [the due-stream query](#finding-the-due-streams)
+describes.
+{verified: StreamDispositionSqlTests.Schedule_ASealedStreamWithNoSchedule_IsDueAGraceAfterTheLaterOfItsSealAndNow_AndNothingElseIsTouchedAsync}
+
+## Dispositions {#dispositions}
+
+{verified: StreamPrefixTruncatorDispositionTests.Declared_Archive_WritesThroughTheStore_AndTheHookSeesItAsTheDeclaredDefaultAsync, MaintenanceWorkerDispositionTests.Compact_RunsTheHandlerOverTheBatch_ThenReapsAsync, StreamDispositionStepTests.Delete_PurgesTheStream_SayingWhoAndWhyAsync}
+
+Every destruction (the ephemeral reaper, the prefix truncate and the scheduled disposition) runs a `Disposition`: the
+one its caller declares, or the one its PreDestruction hook returns (#1735).
+
+| Disposition | Prefix truncate | Ephemeral reaper | Scheduled disposition of a sealed stream |
+|---|---|---|---|
+| `Delete` | Discards the prefix | Reaps the bodies (the declared default) | Purges the stream (`IStreamPurger`) |
+| `Archive` | Writes the prefix through `IArchiveStore` | Not available for event bodies: held for the retry backoff and logged | Archives the whole stream (the declared default) |
+| `Compact` | Runs the `ICompactionHandler`, then discards; with none, kept (`compaction_unavailable`) and logged | Runs the `ICompactionHandler` over the batch, then reaps; with none, held and logged | Runs the `ICompactionHandler`, then purges; with none, deferred and logged |
+| `CryptoShred` | Kept (`crypto_shred_unavailable`) and logged | Held and logged | Deferred and logged |
+
+```csharp{title="Compact a stream's prefix through a handler" description="A compaction handler writes the summary before the detail through version 120 is discarded." category="Core Concepts" difficulty="ADVANCED" tags=["disposition", "compaction", "prefix-truncate"] tests=["StreamPrefixTruncatorDispositionTests.Compact_RunsTheRegisteredHandler_ThenDiscardsTheDetailAsync"]}
+public sealed class LedgerCompactor(IEventStore events) : ICompactionHandler {
+  public async ValueTask CompactAsync(DestructionContext context, CancellationToken ct) {
+    // Fold the detail through context.ThroughVersion into one carry-forward event, durably, before it is discarded.
+    await events.AppendAsync(context.StreamId!.Value, new BalanceCarriedForward(context.StreamId.Value), ct);
+  }
+}
+
+// services.AddSingleton<ICompactionHandler, LedgerCompactor>();
+var result = await truncator.TruncateAsync(accountId, throughVersion: 120, Disposition.Compact, ct);
+```
+
+| Choice | Reason | Verified |
+|---|---|---|
+| A hook that proceeds without naming a disposition (`DestructionResult.Proceed()`) runs the declared one; it used to mean `Delete`. | A hook that only observes must never turn a declared `Archive` into a discard (owner decision, 2026-11-01). | {verified: StreamPrefixTruncatorDispositionTests.AHookThatProceedsWithoutNamingADisposition_KeepsTheDeclaredOne_NeverDeletesAnArchiveAsync, DestructionContractTests.DestructionResult_Proceed_WithoutADisposition_NamesNone_SoTheDeclaredOneRunsAsync} |
+| A hook that names a disposition overrides the declared one, either way. | The hook is the developer's runtime decision. | {verified: StreamPrefixTruncatorDispositionTests.AHookReturningArchive_OverridesADeclaredDelete_AndOneReturningDelete_OverridesADeclaredArchiveAsync, MaintenanceWorkerDispositionTests.Delete_AndAHookThatNamesNone_ReapAsBeforeAsync} |
+| `IStreamPrefixTruncator.TruncateAsync` takes a `Disposition` (default `Delete`) in place of its `archive` flag; the hook sees it as `DeclaredDefault` and the cut as `ThroughVersion`. | The flag could say only delete or archive; a stored schedule keeps its flag, read as `Archive` or `Delete`. | {verified: StreamPrefixTruncatorDispositionTests.Declared_Archive_WritesThroughTheStore_AndTheHookSeesItAsTheDeclaredDefaultAsync, ScheduledStreamCloseReceptorTests.Receptor_AnOccurrenceThatDoesNotArchive_AsksForADiscardAsync} |
+| The full-history guard checks the disposition that will run, after the hook. | A hook switching a declared archive to a discard must not strand a projection that replays from the start. | {verified: StreamPrefixTruncatorDispositionTests.AHookReturningDelete_IsStillRefused_WhenAFullHistoryProjectionConsumesTheRangeAsync} |
+| `Compact` is a developer-supplied `ICompactionHandler`, awaited before the discard; with none registered the data is kept and the reason logged; a handler that throws keeps the data too. | Compaction is the developer's in 1.0 (the plan's decision); discarding detail nothing folded would lose it. | {verified: StreamPrefixTruncatorDispositionTests.Compact_RunsTheRegisteredHandler_ThenDiscardsTheDetailAsync, StreamPrefixTruncatorDispositionTests.Compact_WithNoHandler_KeepsTheData_AndLogsWhyAsync, MaintenanceWorkerDispositionTests.Compact_AHandlerThatThrows_TakesTheFailurePath_AndNothingIsAnnouncedAsync, StreamDispositionStepTests.Compact_RunsTheHandler_ThenPurges_AndWithNoHandler_DefersAndLogsAsync} |
+| `CryptoShred` is refused everywhere: the data is kept and the reason logged. | Its phase has not shipped. | {verified: StreamPrefixTruncatorDispositionTests.CryptoShred_IsRefused_KeepsTheData_AndLogsWhyAsync, MaintenanceWorkerDispositionTests.CryptoShred_HoldsTheBatchForTheBackoff_AndLogsWhyAsync, StreamDispositionStepTests.CryptoShred_Defers_AndLogsAsync} |
+| The ephemeral reaper refuses `Archive` (owner decision, 2026-11-01): the batch is held for the retry backoff and logged. `Destruction.Archived` and `Destruction.OnCompaction` fail the build ([WHIZ137](../../operations/diagnostics/whiz137)). | The archive store moves a stream's prefix or whole stream, and a prefix reaching an ephemeral perspective's newest snapshot is refused, so the reaper cannot archive event bodies. An event-level archive is tracked as its own issue. | {verified: MaintenanceWorkerDispositionTests.Archive_HoldsTheBatchForTheBackoff_AndLogsWhy_BecauseTheReaperCannotArchiveEventBodiesAsync, UnshippedDestructionAnalyzerTests.OnCompaction_OnAnEphemeralEvent_IsAnErrorAsync, UnshippedDestructionAnalyzerTests.Archived_NamedAnywhere_IsAnErrorAsync} |
+| A batch the reaper holds is held on the host's `TimeProvider` (the system clock otherwise), for `DestructionRetryBackoffSeconds`. | A handler registered later picks the batch up on the next offer; the host's clock decides, as for every other hold. | {verified: MaintenanceWorkerDispositionTests.Compact_WithNoHandler_HoldsTheBatchForTheBackoff_AndLogsWhyAsync, MaintenanceWorkerDispositionTests.AHeldBatch_OnAHostWithNoClockRegistered_IsHeldOnTheSystemClockAsync} |
+| The scheduled disposition's `Delete` purges the stream with `RequestedBy = stream-disposition`. | A purge must say who asked and why. | {verified: StreamDispositionStepTests.Delete_PurgesTheStream_SayingWhoAndWhyAsync} |
+
 ## Tests {#tests}
 
 | Test class | What it locks |
@@ -415,6 +544,12 @@ blocks per stream in the batch. The execution times are server-side, on a build 
 | `StreamSealedRefusalTests` | `StreamSealedException` read back from the store's refusal, and from a message in another shape |
 | `TerminalEventsTests`, `MessageTypeCatalogGeneratorTests` | `[TerminalEvent]` registered by the generator, inherited, never on a command |
 | `StreamSealingEmitCostScenarioTests` | the cost of the sealed-stream check on the outbox emit chain, measured with and without it |
+| `StreamDispositionStepTests` | the scheduled disposition: scheduling, readiness, the final snapshot, the hook's veto, each disposition, failures and cancellation |
+| `StreamDispositionSqlTests` | the ledger's scheduling (later of seal and now), the due streams and their readiness, the step end to end, the driver's registration |
+| `DapperStreamDispositionTests` | the Dapper driver's ledger and step, a NewGeneration append and the parked cursor it resumes from |
+| `StreamLifecycleOptionsBinderTests` | `FinalizeGrace` and `SweepBatchSize`: defaults, edges and refusals |
+| `StreamPrefixTruncatorDispositionTests`, `MaintenanceWorkerDispositionTests`, `DestructionContractTests` | the prefix truncate's and the reaper's routing on the disposition, and `Proceed()` keeping the declared one |
+| `UnshippedDestructionAnalyzerTests` | WHIZ137 |
 
 ## Related
 
