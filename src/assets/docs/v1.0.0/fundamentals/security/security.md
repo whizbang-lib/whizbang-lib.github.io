@@ -32,6 +32,7 @@ codeReferences:
   - src/Whizbang.Core/Security/DefaultRequirePermissionInterceptor.cs
   - src/Whizbang.Core/Security/Attributes/DeniedAction.cs
   - src/Whizbang.Core/Security/Exceptions/ReceptorInvocationDeniedException.cs
+  - src/Whizbang.Core/Security/ReceptorDenial.cs
   - src/Whizbang.Core/Lenses/IScopedLensFactory.cs
   - src/Whizbang.Core/Lenses/ScopeFilter.cs
   - src/Whizbang.Core/Lenses/PerspectiveScope.cs
@@ -55,6 +56,8 @@ testReferences:
   - tests/Whizbang.Core.Tests/Security/ReceptorInterceptorGateTests.cs
   - tests/Whizbang.Core.Tests/Messaging/ReceptorInvokerInterceptorTests.cs
   - tests/Whizbang.Core.Tests/Workers/InboxDispatchWorkerReceptorDenialTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/ServiceBusConsumerWorkerReceptorDenialTests.cs
+  - tests/Whizbang.Transports.AzureServiceBus.Component.Tests/AzureServiceBusRawReceptorInterceptorTests.cs
   - tests/Whizbang.Core.Tests/Security/SecurityAttributeTests.cs
   - tests/Whizbang.Core.Tests/Security/FieldPermissionMaskingTests.cs
   - tests/Whizbang.Transports.HotChocolate.Tests/Unit/FieldPermissionTypeInterceptorTests.cs
@@ -783,8 +786,9 @@ A receptor interceptor (`IReceptorInterceptor`) decides whether a receptor may h
 
 - local dispatch: `SendAsync`, `LocalInvokeAsync` and `PublishAsync`;
 - the receptors of a message another receptor returned (a cascade);
-- receptors registered at runtime;
-- every lifecycle stage, including inbox delivery from a transport.
+- receptors registered at runtime, including the intake of a multi-stream command;
+- every lifecycle stage, including inbox delivery and the perspective worker's lifecycle receptors;
+- raw receptors (`IRawReceptor`), with the message's envelope and the scope it carries.
 
 The interceptor receives the receptor type, the message envelope and the scope context the receptor would read through `IScopeContextAccessor`. Because the framework owns the call, a new receptor cannot forget the check.
 
@@ -839,6 +843,10 @@ A denied receptor does not run, so nothing it would have returned is appended or
 | `Quarantine` | Throws `ReceptorInvocationDeniedException` | The message is held in the dead-letter store under reason `ReceptorQuarantined` for review, no retry |
 | `Throw` | Throws `ReceptorInvocationDeniedException` | The attempt fails and the attempts bound retries it |
 | `DropQuiet` | The receptor is skipped with a warning; the call returns no result | The receptor is skipped with a warning; the message is acknowledged, no retry |
+
+The table's inbox column holds for the inbox dispatch worker and for the Service Bus consumer worker; on the Service Bus consumer, `Throw` fails the delivery so the broker redelivers it. A raw receptor runs after its message is stored, so the broker settles the decision: `DeadLetter` and `Quarantine` dead-letter the message at the broker under the reasons `ReceptorDenied` and `ReceptorQuarantined`, `Throw` abandons it for redelivery, and `DropQuiet` completes it. A control-class message (a supersedable control signal received without an inbox row) whose comparison is denied is dropped whatever the action, as a failed comparison is: it is never stored, retried or dead-lettered, since the next cadence re-derives it.
+
+What is not gated: a perspective's `Apply`, which projects an event that is already stored and is not a receptor, and a multi-stream command's per-stream handler (`IMultiStreamCommandHandler`), which runs once the gated intake accepted the command and has no envelope of its own.
 
 Inbox delivery asks the interceptors about the message's inbox receptors before it completes the row, so a denied message is dead-lettered or retried rather than completed. Each receptor is asked again immediately before it runs. The default dead-letter recovery policy holds `ReceptorDenied` and `ReceptorQuarantined` for review: the same message under the same scope is denied the same way on every re-drive.
 
