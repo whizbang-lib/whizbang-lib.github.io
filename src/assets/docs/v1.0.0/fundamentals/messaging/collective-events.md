@@ -57,6 +57,12 @@ codeReferences:
   - src/Whizbang.Generators/Analyzers/CollectivePredicateIndexAnalyzer.cs
   - src/Whizbang.Generators/Analyzers/CollectiveApplyShapeAnalyzer.cs
   - src/Whizbang.Generators/CollectiveApplyShape.cs
+  - src/Whizbang.Core/Perspectives/CollectiveApplyEntry.cs
+  - src/Whizbang.Data.Postgres/Collective/CollectiveApplyProgress.cs
+  - src/Whizbang.Data.Postgres/Collective/CollectiveApplyReach.cs
+  - src/Whizbang.Data.Postgres/Collective/CollectiveApplyHookPlan.cs
+  - src/Whizbang.Data.Dapper.Postgres/Collective/DapperCollectiveEventApplier.cs
+  - src/Whizbang.Data.Postgres/Migrations/279_CollectiveApplyProgress.sql
 testReferences:
   - tests/Whizbang.Core.Tests/Messaging/CollectiveEventContractTests.cs
   - tests/Whizbang.Core.Tests/Messaging/EventFlagsWireFormTests.cs
@@ -94,6 +100,14 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Collective/ArchivedCollectiveStreamsQueryPlanTests.cs
   - tests/Whizbang.Core.Tests/Perspectives/CollectiveReplayRunnerTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Collective/CollectiveReplayApplierCoverageTests.cs
+  - tests/Whizbang.Core.Tests/Perspectives/CollectiveApplyEntryTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Collective/CollectiveApplyProgressEFCoreTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/Collective/DapperCollectiveApplyProgressTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Collective/CollectiveApplyProgressTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Collective/CollectiveApplyProgressSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Collective/CollectiveApplyReachTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Collective/CollectiveApplyHookPlanTests.cs
+  - tests/Whizbang.Generators.Tests/PerspectiveRunnerSplitSnapshotTests.cs
 ---
 
 # Collective events
@@ -207,9 +221,10 @@ self-heals on replay. A snapshot model (where the event carried the
 captured `[j₁..j₁₀]` set) would lock in the original execution's mistake
 forever.
 
-Re-applying is idempotent — the SET values are constant — and the apply
-progresses by keyset cursor (`id > @cursor`), so a partial or resumed
-run never skips or double-applies a row.
+The apply progresses by keyset cursor (`id > @cursor`), and the cursor is
+recorded with every committed batch, so an apply that is interrupted and
+retried resumes where it stopped: it never skips a row, and never applies
+the collective to a row twice. See [Resuming an apply](#resuming-an-apply).
 
 ### Ordering between collectives: the ordering key {#ordering-key}
 
@@ -460,6 +475,45 @@ only when no collective of the row is in flight, and a replay from it folds exac
 snapshot taken while a collective of the row is in flight is deferred to the next apply and counted in
 `whizbang.perspective.snapshots_deferred`. See [snapshots of a row with collectives](../perspectives/snapshots#collectives).
 Snapshots written before migration 275 record no mark and keep the snapshot-event rule.
+
+**How far each collective folds ([#1970](https://github.com/whizbang-lib/whizbang/issues/1970), [#1981](https://github.com/whizbang-lib/whizbang/issues/1981)).**
+Where the replay starts decides which collectives it folds (the first table in this section). Each one it folds goes only into the rows where the live row
+holds it, or never will. The live sink applies a collective one batch at a time and [records how far each handler's
+apply reached](#resuming-an-apply), so the replay reads those records (`wh_collective_apply_reach`, one call for every
+collective it merges in) and folds each handler's apply by them:
+
+| The handler's apply of the collective | Rows the replay folds it into |
+|---|---|
+| Completed | Every row |
+| Partway (its work row still pending) or abandoned by a [dead letter](#dead-lettered-collectives) | The rows up to its `through_id`, in Postgres uuid order: the rows its committed batches reached |
+| No record, and the collective is still queued (not started) | None: the live sink applies it to the replayed row afterwards, once |
+| No record, and a dead letter recorded that nothing else was applied | None |
+| No record otherwise (applied before migration 279, or its record was swept) | Every row |
+
+{verified: CollectiveApplyReachTests.ACompletedApply_ReachesEveryRowAsync, CollectiveApplyReachTests.AnApplyPartway_ReachesTheRowsUpToItsThroughId_OnlyAsync, CollectiveApplyReachTests.AnAbandonedApply_ReachesTheRowsUpToItsThroughId_OnlyAsync, CollectiveApplyReachTests.ARecordWithNoThroughId_ThatIsNotComplete_ReachesNoRowAsync, CollectiveApplyReachTests.AHandlerWithNoRecord_WhileTheCollectiveIsQueued_ReachesNoRowAsync, CollectiveApplyReachTests.AHandlerWithNoRecord_AfterADeadLetterRecordedNothingElseApplied_ReachesNoRowAsync, CollectiveApplyReachTests.AHandlerWithNoRecord_OtherwiseReachesEveryRowAsync, CollectiveApplyProgressSqlTests.Reach_ReadsEveryRecordOfTheEvents_AndWhichCollectivesAreStillQueuedAsync}
+
+**A replay that meets a collective still in flight takes no snapshot.** While a collective's sink work row is pending
+(queued, partway, or recovered from a dead letter), the live sink may yet apply it to rows the replay did not fold it
+into, and no mark can say which of them a snapshot would hold. So a rewind that folds such a collective writes the row
+without its final snapshot, and a rebuild takes no snapshot of the rows it folds one into. The next replay or live apply
+after the collective completes takes the snapshot. `ICollectiveReplayApplier.IsInFlight` tells the runner; it is a
+default interface method that answers `false`, so an applier written before it behaves as it did.
+
+| Choice | Reason | Verified |
+|---|---|---|
+| A replay folds each handler's apply of a collective only into the rows the live sink reached, read from the apply's progress record. | A collective dead-lettered partway leaves some live rows holding it and the rest not, and a rewind that folded it into every row (as it did after #1962) changed rows the live path never changed. | {verified: CollectiveReplayRebuildIntegrationTests.Rebuild_ACollectiveDeadLetteredPartway_FoldsOnlyIntoTheRowsItReachedAsync, CollectiveReplayApplierCoverageTests.ApplyInMemory_FoldsACollective_OnlyIntoTheRowsItsApplyReached_AndSaysItIsInFlightAsync} |
+| A collective dead-lettered before its first batch folds into no row. | It applied nothing live, and the dead letter records that (the `*` record), so folding it would give the replayed row a collective the live row never received. | {verified: CollectiveReplayRebuildIntegrationTests.Rebuild_ACollectiveDeadLetteredBeforeItsFirstBatch_FoldsIntoNoRowAsync} |
+| A collective still queued and not started folds into no row; one mid-apply folds only into the rows its committed batches reached. | The live sink applies the rest to the row afterwards. A rewind that folded it in full gave the rewound row a collective the live row did not yet hold, and the live sink then applied it to the row again (#1981: the live row held 105, the rewound row 115). | {verified: CollectiveReplayRebuildIntegrationTests.Rewind_WhileACollectiveIsQueuedAndNotStarted_DoesNotFoldIt_AsTheLiveRowDoesNotHoldItYetAsync, CollectiveReplayRebuildIntegrationTests.Rewind_WhileACollectiveIsMidApply_FoldsItOnlyIntoTheRowsItReachedAsync} |
+| A completed apply, and a collective with no record and no pending work row, fold into every row. | A completed apply reached every row of its cohort. A collective with no record was applied before records existed, or its record was swept after it finished, and either way it finished. | {verified: CollectiveReplayRebuildIntegrationTests.Rebuild_ACompletedCollective_AndOneWithNoRecord_FoldIntoEveryRowAsync} |
+| The reach is read once per replay, for the collectives it merges in, and not at all when the start follows none. | One read answers for every collective of the replay, by the progress table's primary key and the unprocessed-work index (migration 073); a replay that folds no collective pays nothing. | {verified: CollectiveReplayApplierCoverageTests.InterleaveAfterAsync_WhenTheStartFollowsNoCollective_ReadsNoReachAsync, CollectiveApplyProgressSqlTests.Reach_ReadsEveryRecordOfTheEvents_AndWhichCollectivesAreStillQueuedAsync} |
+| A rewind or a rebuild that folds a collective still in flight takes no snapshot; one that meets none takes its snapshots as before. | The snapshot would record a row the live sink is still changing, and a later rewind from it could not say which of the collective's rows it holds. | {verified: CollectiveReplayRebuildIntegrationTests.Rewind_ThatMeetsACollectiveStillInFlight_TakesNoSnapshotAsync, CollectiveReplayRebuildIntegrationTests.Rewind_ThatMeetsNoCollectiveInFlight_TakesItsSnapshotAsync, CollectiveReplayRebuildIntegrationTests.Rebuild_ThatFoldsACollectiveStillInFlight_TakesNoSnapshotOfTheRowsItFoldsItIntoAsync, CollectiveReplayRebuildIntegrationTests.Rebuild_ThatMeetsNoCollectiveInFlight_TakesItsSnapshotsAsync, PerspectiveRunnerSplitSnapshotTests.Runner_DecidesWhetherASnapshotIsDueBeforeTheWrite_AndSnapshotsOnThatDecisionAsync} |
+| `IsInFlight` is a default interface method that answers `false`. | An applier written before it keeps compiling and keeps taking its snapshots. | {verified: CollectiveReplayRunnerTests.AnApplierWrittenBeforeInFlightCollectivesWereKnown_SaysNoneIsInFlightAsync} |
+
+**A batch that commits while a rewind runs.** The rewind reads the records once, before it folds. A batch that commits
+after that read updates the live row, so the rewind's version-checked row write is refused and the rewind replays
+again, reading fresh progress. On the EF Core store the version is the row's `xmin`, which every `UPDATE` moves (see
+[Rows that also receive per-stream events](#rows-that-also-receive-per-stream-events)); the Dapper store does not check
+versions yet, so there a rewind that races a live batch is not caught.
 
 #### Archived collective streams {#archived-collective-streams}
 
@@ -1171,10 +1225,15 @@ sequenceDiagram
 
 ### Failure semantics
 
-- The SQL `UPDATE` either commits or rolls back — **no per-row
+- Each batch's SQL `UPDATE` either commits or rolls back, with **no per-row
   soft-fail** (there is no `ApplyResult.Delete`/`Purge` equivalent for
   the set-based path). The target use cases ("archive all in tenant T")
   don't want partial-row outcomes.
+- A failure between batches leaves the batches that committed in place. The
+  retry resumes after the last of them, so every row of the cohort ends up
+  holding the collective exactly once (see [Resuming an apply](#resuming-an-apply)).
+  A collective dead-lettered partway is recorded as such (see
+  [Dead-lettered collectives](#dead-lettered-collectives)).
 - A missing resolver or missing executor is a **handled** failure,
   logged with a structured error class on `EventCategoryMetrics.Errors`,
   not a crash.
@@ -1219,11 +1278,14 @@ hardened so a large cohort can never convoy locks or run away:
 - **Scope always binds.** The resolver's scope predicate is always
   AND-ed in, even under `Custom` (see the [ScopeHandling
   table](#per-perspective-projection-where)).
-- **Keyset batching.** The cohort is applied in
-  `CollectiveApplyOptions.BatchSize` chunks (default **1000**):
-  `… WHERE <pred> AND id > @cursor ORDER BY id LIMIT n` → a
-  `UPDATE … WHERE id = ANY(@ids)`, each in its own short transaction —
-  bounded lock holds, never materializes the whole cohort.
+- **Keyset batching, one statement per batch.** The cohort is applied in
+  `CollectiveApplyOptions.BatchSize` chunks (default **1000**), each in its
+  own short transaction: bounded lock holds, never the whole cohort in
+  memory. Each batch is one statement that reads the apply's
+  [progress record](#resuming-an-apply), selects the next
+  `… WHERE <pred> AND id > through_id ORDER BY id LIMIT n`, moves the record
+  and updates exactly those rows
+  {verified: CollectiveDispatcherEFCoreIntegrationTests.DispatchAsync_CohortLargerThanBatchSize_UpdatesAllInMultipleBatchesAsync, CollectiveDispatcherEFCoreIntegrationTests.DispatchAsync_RawPath_SelectsAreBoundedNoWholeCohortGatherAsync}.
 - **Server-side `statement_timeout`.** `SET LOCAL statement_timeout`
   per batch (via `set_config(..., true)` — the only form that survives
   PgBouncer transaction pooling) so a runaway batch is cancelled by
@@ -1244,8 +1306,8 @@ hardened so a large cohort can never convoy locks or run away:
   `CollectiveApplyLockBusyException` naming the table and the total wait.
 - **Busy is not failed.** The worker treats that exception as busy: it reports no
   failure (the failure count is what drives dead-lettering) and does not complete the
-  busy collective, so it is applied later, in full, even if some of its batches had
-  committed. `PerspectiveWorkerOptions.CollectiveLockBusyCountsAsFailure = true`
+  busy collective, so it is applied later, resuming after the last batch that committed
+  (see [Resuming an apply](#resuming-an-apply)). `PerspectiveWorkerOptions.CollectiveLockBusyCountsAsFailure = true`
   restores the older accounting, a busy lock reported like a failed apply.
 - **What applied is complete.** A collective is complete as soon as every one of its
   batches has committed in a run. When a later collective in the same run finds its lock
@@ -1281,6 +1343,151 @@ Per-handler knobs override the global `CollectiveApplyOptions` for a
 heavy or light handler:
 `[CollectiveApplyFor(BatchSize = …, StatementTimeoutSeconds = …)]`
 (`0` = inherit).
+
+### Resuming an apply {#resuming-an-apply}
+
+{verified: CollectiveApplyProgressEFCoreTests.AnApplyRetriedAfterABusyLock_ResumesAfterTheLastCommittedBatch_SoEveryRowHoldsItOnceAsync, DapperCollectiveApplyProgressTests.AnApplyRetriedAfterABusyLock_ResumesAfterTheLastCommittedBatch_SoEveryRowHoldsItOnceAsync, CollectiveApplyProgressEFCoreTests.AnApplyRetriedAfterItFailedBetweenBatches_ResumesAfterTheLastCommittedBatchAsync, DapperCollectiveApplyProgressTests.AnApplyRetriedAfterItFailedBetweenBatches_ResumesAfterTheLastCommittedBatchAsync, CollectiveApplyProgressTests.RunAsync_GoesOnFromWhereEachBatchLeftTheRecord_UntilItIsFinishedAsync}
+
+A collective is applied a batch at a time, each batch in a transaction of its own, so an apply can stop with some
+batches committed and the rest not: its apply lock stayed busy, a batch failed, the host was cancelled or crashed. Until
+[#1969](https://github.com/whizbang-lib/whizbang/issues/1969) the cursor lived only in memory, and every retry applied
+the collective again from its first row. The rows of the committed batches received it twice. A constant setter
+usually lands on the same value the second time, but not always: a stream event that changed the row between the two
+applications was overwritten, and `version` and `updated_at` moved twice.
+
+Each handler's apply of a collective now keeps a **progress record** in `wh_collective_apply_progress` (migration 279),
+one row per collective event and handler:
+
+| Column | Holds |
+|---|---|
+| `event_id` | The collective event |
+| `entry_key` | The handler's [entry key](#the-entry-key) |
+| `through_id` | The greatest row id the apply's committed batches reached |
+| `completed` | Every batch committed |
+| `abandoned` | The apply was [dead-lettered](#dead-lettered-collectives) before it completed |
+| `applied_at` | When the apply started; a resumed apply reuses it |
+
+**The record costs nothing per row.** Collectives exist for bulk-update speed: one event, one set-based `UPDATE`, no
+per-row tracking. So the record is written by the statement that applies each batch, not beside it. That statement
+reads the record, selects the next batch after `through_id`, moves the record and updates the batch, inside the
+batch's transaction and under the apply lock the batch already takes. It replaces the batch's earlier `SELECT` and
+`UPDATE`, so there is no extra round trip, no write per row and no new lock, and the table's primary key is its only
+index. A cohort of a million rows at the default batch size moves one record about a thousand times, and writes nothing else.
+
+```mermaid{caption="One batch statement: it reads the apply's progress record, selects the next batch after through_id, moves the record by compare-and-set, and updates the batch only when the record moved." tests=["CollectiveApplyProgressTests.Render_MovesTheRecord_OnlyFromTheThroughIdTheBatchStartedAfterAsync", "CollectiveApplyProgressTests.RunAsync_GoesOnFromWhereEachBatchLeftTheRecord_UntilItIsFinishedAsync", "CollectiveApplyProgressTests.RunAsync_ABatchThatLostTheRecord_AppliesNothing_AndTheNextReadsTheRecordAgainAsync"]}
+flowchart LR
+    R["Read the record<br/>(FOR UPDATE when applies<br/>are not serialized)"] --> F{"Completed?"}
+    F -->|yes| S["Select nothing,<br/>record nothing"]
+    F -->|no| B["Select the next batch<br/>id > through_id<br/>ORDER BY id LIMIT n"]
+    B --> M{"Move the record<br/>from the through_id<br/>the batch started after"}
+    M -->|moved| U["Update the batch's rows"]
+    M -->|another applier moved it| N["Update nothing;<br/>the next batch reads<br/>the record again"]
+
+    class R,B,M layer-core
+    class U layer-command
+    class S,N layer-event
+```
+
+Every retry path resumes after the last committed batch:
+
+| The apply stopped because | The retry |
+|---|---|
+| Its apply lock stayed busy past every renewal ([busy is not failed](#apply-execution-scoped-bounded-indexed)) | Resumes after `through_id` |
+| A batch failed, or the host was cancelled or crashed between batches | Resumes after `through_id` |
+| It finished, but the worker had not yet written the completion when the collective was delivered again | Finds the record completed and applies nothing |
+| One handler of a fan-out finished and a later one failed | Skips the finished handler and resumes the other |
+| It was dead-lettered, then recovered | Resumes after `through_id` and completes the rest once ([dead-lettered collectives](#dead-lettered-collectives)) |
+
+#### The entry key {#the-entry-key}
+
+The record is kept under `CollectiveApplyEntry.EntryKey`: the handler type, the method and the model, by name, for
+example `MyApp.OrderCollectivePerspective.ArchiveOrders:MyApp.OrderModel`. Two handlers that apply one event to one
+model keep their own progress, so a fan-out whose second handler failed does not run the first again.
+
+The key is built from names only, so it is the same after a restart or a redeploy, and the dispatcher's copy of an
+entry (with an invoker that records the changed properties) keeps it. **Renaming the handler type, the method or the
+model while a collective is partway through gives the retry a new key**, which has no record, so the retry applies
+the collective in full again and the rows of the committed batches receive it twice. Let pending collectives finish,
+or recover their dead letters, before you ship such a rename.
+
+#### What the record decides {#resuming-an-apply-rules}
+
+- **Compare-and-set.** A batch moves the record only from the `through_id` it started after, and updates its rows only
+  when the record moved. Two appliers that both believe they own the collective cannot both apply one range: the one
+  that loses applies nothing, reads the record again, and goes on from where the other got.
+- **`FOR UPDATE` without the apply lock.** With `SerializeApplies = true` (the default) the apply lock already
+  serializes the batches of one table and scope. With `SerializeApplies = false` the batch reads the record
+  `FOR UPDATE`, so a second applier waits on the record instead of computing a batch it would then lose.
+- **A finished apply is skipped.** Its record is completed, so the batch selects nothing and records nothing. An apply
+  whose cohort matches no row is recorded finished by its first batch and skipped the same way.
+- **One timestamp per apply.** A store column the apply stamps with its timestamp (`updated_at` under the default
+  `whizbang.timestamps` [apply hook](apply-hooks)) takes `applied_at` from the record, so the rows a resumed apply
+  reaches carry the time the apply started, not the time it resumed. Columns a hook sets to another value keep it.
+- **An apply with no event id** (`Guid.Empty`, a direct call to a driver's apply) records under an id of its own, so
+  it is never resumed and never skipped by an earlier apply.
+
+| Choice | Reason | Verified |
+|---|---|---|
+| The record moves inside the batch statement, under the batch's existing lock, with the primary key as the only index. | Collectives exist for bulk-update speed. A record written per row, or in a statement of its own, would add a write or a round trip to every batch of every collective. | {verified: CollectiveDispatcherEFCoreIntegrationTests.DispatchAsync_CohortLargerThanBatchSize_UpdatesAllInMultipleBatchesAsync, CollectiveDispatcherEFCoreIntegrationTests.DispatchAsync_RawPath_SelectsAreBoundedNoWholeCohortGatherAsync} |
+| Progress is kept per handler, not per collective. | A fan-out applies one collective through several handlers, and a retry must skip the ones that finished and resume the one that did not. | {verified: CollectiveApplyProgressEFCoreTests.AFanOutRetriedAfterItsSecondHandlerFailed_DoesNotApplyTheFirstAgain_AndResumesTheSecondAsync, DapperCollectiveApplyProgressTests.AFanOutRetriedAfterItsSecondHandlerFailed_DoesNotApplyTheFirstAgain_AndResumesTheSecondAsync, CollectiveApplyEntryTests.EntryKey_DiffersForTwoMethodsOfOneHandlerAsync} |
+| The key is names only, and a copy of the entry keeps it. | A retry can run in another process or after a redeploy, so the key must not depend on anything that changes between runs. | {verified: CollectiveApplyEntryTests.EntryKey_NamesTheHandlerTheMethodAndTheModelAsync, CollectiveApplyEntryTests.EntryKey_IsKeptByACopyWithAnotherInvokerAsync} |
+| A finished apply is skipped. | A collective can be delivered again in the window after its last batch committed and before the worker wrote its completion. | {verified: CollectiveApplyProgressEFCoreTests.AFinishedApply_AppliedAgain_ChangesNoRowAsync, DapperCollectiveApplyProgressTests.AFinishedApply_AppliedAgain_ChangesNoRowAsync, CollectiveApplyProgressTests.RunAsync_AnApplyFinishedBefore_RunsOneBatch_ThatAppliesNothingAsync} |
+| An apply that reaches no row is recorded finished. | Applying it again would find nothing either, and a finished record tells a replay the collective is complete. | {verified: DapperCollectiveApplyProgressTests.AnApplyThatReachesNoRow_IsRecordedFinished_AndIsSkippedWhenAppliedAgainAsync} |
+| The record moves by compare-and-set on the `through_id` the batch started after. | Two appliers can both believe they own a collective (a lease that lapsed under a long apply, for example), and they must never both apply one range. | {verified: CollectiveApplyProgressEFCoreTests.ABatch_WhoseRecordAnotherApplierMoved_AppliesNothing_AndGoesOnFromWhereTheOtherGotAsync, DapperCollectiveApplyProgressTests.ABatch_WhoseRecordAnotherApplierMoved_AppliesNothing_AndGoesOnFromWhereTheOtherGotAsync, CollectiveApplyProgressTests.Render_MovesTheRecord_OnlyFromTheThroughIdTheBatchStartedAfterAsync, CollectiveApplyProgressTests.RunAsync_ABatchThatLostTheRecord_AppliesNothing_AndTheNextReadsTheRecordAgainAsync} |
+| The record is read `FOR UPDATE` only when the apply lock does not serialize the applies. | Under the apply lock a second applier already waits; a row lock on top would cost a lock for nothing. Without it, waiting on the record is cheaper than computing a batch that loses the compare-and-set. | {verified: CollectiveApplyProgressTests.Render_WhenTheAppliesAreNotSerialized_LocksTheRecordItReadsAsync, CollectiveApplyProgressTests.Render_WhenTheApplyLockSerializesTheApplies_DoesNotLockTheRecordItReadsAsync} |
+| A resumed apply stamps its rows with `applied_at`, the time the apply started. | Every row of one apply should carry one timestamp, whichever attempt reached it, as an uninterrupted apply's rows do. | {verified: CollectiveApplyProgressEFCoreTests.AResumedApply_StampsTheRowsItReaches_WithTheTimeTheApplyStartedAsync, DapperCollectiveApplyProgressTests.AResumedApply_StampsTheRowsItReaches_WithTheTimeTheApplyStartedAsync, CollectiveApplyHookPlanTests.RenderStoreColumnSetTail_WithTheAppliedAtSql_StampsTheApplyTimestampColumnFromItAsync, CollectiveApplyHookPlanTests.RenderStoreColumnSetTail_AColumnSetToAnotherTime_KeepsItsOwnValueAsync, CollectiveApplyHookPlanTests.RenderStoreColumnSetTail_APlanWithNoApplyTimestamp_BindsEveryColumnAsync, CollectiveApplyHookPlanTests.RenderStoreColumnSetTail_WithNoAppliedAtSql_BindsEveryColumnAsync, CollectiveApplyHookPlanTests.Resolve_CarriesTheApplysTimestamp_SoAResumedApplyCanRecognizeItAsync} |
+| An apply with no event id records under an id of its own. | Without an event there is nothing to resume, and sharing `Guid.Empty` would let one direct call skip the next. | {verified: CollectiveApplyProgressEFCoreTests.AnApplyWithNoEventId_IsNeverSkipped_ByAnEarlierOneAsync, DapperCollectiveApplyProgressTests.AnApplyWithNoEventId_IsNeverSkipped_ByAnEarlierOneAsync} |
+
+Finished records are swept by maintenance after
+`Whizbang:Workers:Maintenance:Retention:CollectiveApplyProgressDays` (default 7), never while the collective's work row
+is pending; see [ledger retention](../workers/maintenance-steps#ledger-retention). A collective whose record was swept
+replays in full, which is right: it finished.
+
+**What it does not change yet.** Neither driver applies arithmetic computed setters live today (see
+[What the SET surface can express](#what-the-set-surface-can-express)), so before this change the double application
+showed as moved `version` and `updated_at` and as rows overwritten when an event changed them between the two
+applications, not yet as a doubled increment. The record makes the live apply exact for the setters that come later.
+
+### Dead-lettered collectives {#dead-lettered-collectives}
+
+{verified: CollectiveApplyProgressSqlTests.DeadLetteringACollectiveSinkRow_MarksItsUnfinishedApplyAbandoned_AndLeavesTheFinishedOneAsync, CollectiveApplyProgressSqlTests.DeadLetteringACollectiveThatAppliedNothing_RecordsThatNothingWasAppliedAsync, CollectiveApplyProgressSqlTests.DeadLetteringAnotherPerspectivesWorkRow_RecordsNothingAsync, CollectiveApplyProgressEFCoreTests.ARecoveredDeadLetter_ResumesTheAbandonedApply_AndCompletesTheRestOnceAsync, DapperCollectiveApplyProgressTests.ARecoveredDeadLetter_ResumesTheAbandonedApply_AndCompletesTheRestOnceAsync}
+
+A collective whose sink work row fails often enough is dead-lettered like any perspective work. When that happens
+after some of its batches committed, some live rows hold it and the rest do not. Until
+[#1970](https://github.com/whizbang-lib/whizbang/issues/1970) nothing recorded that: the collective counted as
+processed, and a rewind folded it into every row.
+
+A trigger on `wh_dead_letters` now records it whenever a `__collective__` work row is dead-lettered, by whatever path:
+
+- **Every unfinished record of the collective is marked `abandoned`.** It stops at its `through_id`, and a replay folds
+  that handler's apply only into the rows up to it ([how far each collective folds](#collective-replay-from-a-start)).
+- **A record under entry key `*` says that a handler with no record of its own applied nothing,** so a replay folds
+  it into no row.
+- **A finished record is left as it is.** That handler's apply reached every row.
+
+**Recovery resumes.** [Dead-letter recovery](../../operations/dead-letter-queue/recovery#outbox-perspective-reentry)
+re-queues the collective's work row. Its batches resume after each record's `through_id`, complete the rest once, and
+clear `abandoned` as they move the record. The `*` record stays until the dead letter is purged; it only answers for
+handlers with no record, which a completed recovery no longer has.
+
+**An abandoned record goes with its dead letter.** Maintenance never sweeps an abandoned record by age, nor a finished
+record of a collective that still has one. When the last dead letter of the collective is deleted (purged by an
+operator, or swept by [dead-letter retention](../../operations/dead-letter-queue/recovery#retention)), a second
+trigger deletes the collective's abandoned records. From then on a rewind folds that collective in full again, into
+rows the abandoned apply never reached.
+
+| Choice | Reason | Verified |
+|---|---|---|
+| A trigger on `wh_dead_letters` marks the records, for `__collective__` work rows only. | Every path that dead-letters a work row inserts into `wh_dead_letters`, so a trigger records it whichever path ran; other perspectives' dead letters have no collective record to mark. | {verified: CollectiveApplyProgressSqlTests.DeadLetteringACollectiveSinkRow_MarksItsUnfinishedApplyAbandoned_AndLeavesTheFinishedOneAsync, CollectiveApplyProgressSqlTests.DeadLetteringAnotherPerspectivesWorkRow_RecordsNothingAsync} |
+| A dead letter records under `*` that a handler with no record applied nothing. | A handler can be dead-lettered before its first batch committed, and without a record a replay could not tell that from an apply that finished before records existed. | {verified: CollectiveApplyProgressSqlTests.DeadLetteringACollectiveThatAppliedNothing_RecordsThatNothingWasAppliedAsync, CollectiveReplayRebuildIntegrationTests.Rebuild_ACollectiveDeadLetteredBeforeItsFirstBatch_FoldsIntoNoRowAsync} |
+| Recovery resumes the abandoned apply and completes the rest once. | The rows the apply reached already hold the collective; applying it to them again is the double application this record exists to prevent. | {verified: CollectiveApplyProgressEFCoreTests.ARecoveredDeadLetter_ResumesTheAbandonedApply_AndCompletesTheRestOnceAsync, DapperCollectiveApplyProgressTests.ARecoveredDeadLetter_ResumesTheAbandonedApply_AndCompletesTheRestOnceAsync} |
+| An abandoned record is deleted with the last dead letter of its collective, not by age (the owner's choice). | While the dead letter exists, the record is what makes a rewind agree with the live rows and what lets recovery resume. Once the dead letter is gone, nothing will resume the apply, and the record goes with the evidence it describes. | {verified: CollectiveApplyProgressSqlTests.PurgingTheDeadLetter_SweepsItsAbandonedRecords_AndKeepsTheFinishedOnesAsync, CollectiveApplyProgressSqlTests.PurgingADeadLetter_KeepsTheAbandonedRecords_WhileAnotherDeadLetterOfTheCollectiveRemainsAsync} |
+
+**Snapshots.** A dead-lettered collective has no pending work row, so the
+[snapshot fence](../perspectives/snapshots#collectives) treats it as complete. One gap remains: a snapshot taken while
+the collective is dead-lettered records it as held, and when recovery later completes the rows past `through_id`, a
+rewind from that snapshot does not fold it into them. See
+[snapshots of a row with collectives](../perspectives/snapshots#collectives-and-progress).
 
 ### Observability — traces + metrics
 
@@ -1345,6 +1552,21 @@ generated `CollectiveApplyRegistry.Entries`.
 |---|---|---|---|---|
 | **EF Core** (`Whizbang.Data.EFCore.Postgres`) | `CollectiveSettersRewriter` → nested `jsonb_set` | shared `CollectivePredicateSqlCompiler` | `EFCoreCollectiveAdapter` — keyset-batched predicate `UPDATE` (raw parameterized SQL via `ExecuteSqlRawAsync`) + advisory lock + `statement_timeout` | **Complete** |
 | **Dapper** (`Whizbang.Data.Dapper.Postgres`) | `DapperCollectiveSpecCompiler` → `jsonb_set` | shared `CollectivePredicateSqlCompiler` | `DapperCollectiveEventApplier` — keyset-batched + advisory lock + `statement_timeout` | **Parity** (no apply-completion log yet) |
+
+:::new{type="breaking"}
+**Upgrading: two driver signatures changed (#1969).** Code that goes through the dispatcher and the registered
+executors needs no change. Code that calls a driver's apply directly does:
+
+- `EFCoreCollectiveAdapter<TModel>.ExecuteAsync` takes a required `string entryKey` after `Guid collectiveEventId`.
+  Pass the handler entry's `CollectiveApplyEntry.EntryKey`, so the call keeps the same progress record as the sink.
+  Positional arguments after the event id move one place.
+- `DapperCollectiveEventApplier<TModel>.ApplyAsync` takes an optional `Guid collectiveEventId` after `onBatchApplied`.
+  Pass the collective's event id to resume and skip as the sink does; leave it out and the call records under an id
+  of its own, so it is never resumed or skipped.
+
+Both now return the rows the call updated, not the whole cohort: a resumed apply counts only the rows it reached, and
+an apply that was already finished returns `0`.
+:::
 
 Both drivers share **one** WHERE compiler
 (`CollectivePredicateSqlCompiler`, in `Whizbang.Data.Postgres`) and the

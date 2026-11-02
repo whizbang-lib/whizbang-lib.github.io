@@ -42,6 +42,8 @@ testReferences:
   - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerInjectedClockTests.cs
   - tests/Whizbang.Core.Tests/Workers/DrainRowsOutsideCooldownTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Diagnostics/MessageParseCountFlowTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerDeepPathChannelTests.RewindFailure.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerDeepPathDrainTests.UnreadableRows.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -711,6 +713,59 @@ stream_id                            | perspective_name        | status | error
 -------------------------------------|-------------------------|--------|------------------
 0197a3b2-...                         | OrderSummaryPerspective |      4 | Null reference exception: customerId
 ```
+
+### A Rewind That Fails {#rewind-failures}
+{verified: PerspectiveWorkerDeepPathChannelTests.Rewind_ThatThrows_FailsItsRowsForRetry_InsteadOfCompletingThemAsync, PerspectiveWorkerDeepPathChannelTests.Rewind_ThatThrows_LogsTheAttemptAtWarningWithItsExceptionAsync}
+
+A [rewind](../../fundamentals/perspectives/rewind#error-handling) that throws on the claimed per-event path fails
+the group's rows the same way any other failed apply does: the exception goes to the group's failure handler, which
+records the failure against each leased row, reports the cursor failure, and leaves the rows to be re-claimed after
+their backoff. Each failure counts toward `MaxPerspectiveEventAttempts`, so a rewind that keeps failing ends in a
+dead letter with the one [dead-letter record](../observability/logging-categories#dead-lettered-messages). The
+attempt is logged at Warning, `PerspectiveWorker` EventId 58, with the rewind's exception. The lock keepalive is
+stopped and the rewind lock released whichever way the rewind ends. The drain path already treated a rewind that
+throws this way.
+
+Before, the failure was logged at Error and the group carried on as though the rewind had applied nothing: its rows
+were completed (deleted) with nothing applied, no failure was recorded, and the cursor kept its rewind flag, so the
+next work on the stream tried the same rewind, failed again and discarded its rows too, with no bound.
+
+### Unreadable Stored Events {#unreadable-stored-events}
+{verified: PerspectiveWorkerDeepPathDrainTests.DrainMode_ReadThrowsForOneRow_AppliesTheRestAndFailsThatRowAsync, PerspectiveWorkerDeepPathDrainTests.DrainMode_StoreSkipsARowItCannotRead_FailsThatRowAsync}
+
+In drain mode the worker reads the fetched `wh_event_store` rows into typed envelopes before it applies them. A row
+whose stored event cannot be read is failed, not retried silently:
+
+- **The read throws for the batch.** The worker logs EventId 79 at Debug and reads the rows one at a time, so the
+  readable rows are still applied and each row whose read throws is identified with its own exception.
+- **Each unreadable row is failed** through the failure channel with `MessageFailureReason.SerializationError`,
+  whether its read threw or the event store skipped it as unreadable. The database records the failure and backs
+  the retry off, and the pre-apply dead-letter filter moves the row once its failures pass
+  `MaxPerspectiveEventAttempts`, with the dead-letter record.
+- **The readable events fetched with it are applied** in the same pass.
+- **One Warning per pass,** `PerspectiveWorker` EventId 78, gives the number of rows failed and the first one's
+  event id, type and exception.
+
+A row whose event type this service does not register is **not** failed. During a rolling deploy an older instance
+can lease an event whose type only the newer version knows; counting it toward the bound there would dead-letter an
+event that an instance able to read it is about to apply. It stays leased as before and is picked up again.
+
+| Case | Outcome | Verified |
+|---|---|---|
+| The read throws for one row | The other rows are applied; that row is failed (`SerializationError`); EventId 78 at Warning; nothing at Error | {verified: PerspectiveWorkerDeepPathDrainTests.DrainMode_ReadThrowsForOneRow_AppliesTheRestAndFailsThatRowAsync} |
+| The read throws for every row | The batch read once, then each row once; every row is failed and nothing is applied | {verified: PerspectiveWorkerDeepPathDrainTests.DrainMode_ReadThrowsForEveryRow_FailsEveryRowAsync} |
+| The store skips a row it cannot read | That row is failed (`SerializationError`); EventId 78 at Warning | {verified: PerspectiveWorkerDeepPathDrainTests.DrainMode_StoreSkipsARowItCannotRead_FailsThatRowAsync} |
+| The row's event type is not registered here | Not failed; left for an instance that can read it | {verified: PerspectiveWorkerDeepPathDrainTests.DrainMode_RowOfATypeThisServiceDoesNotKnow_IsNotFailedAsync} |
+
+Before, a read that threw dropped the whole fetch with an Error line (`Drain mode: DeserializeStreamEvents threw`),
+and a row the store skipped had no event and nothing recorded. Either way the rows' leases lapsed, they were claimed
+again and failed to read again, forever, and a read that threw held back every other row fetched with it.
+
+A **stored document** the perspective cannot read (EventId 65) is a different failure: the event is readable but the
+perspective's own row holds a stored form no reader of this release takes. Its rows are failed the same way and
+dead-lettered at the same bound, and EventId 65 stays at Error as the cue that a
+[stored-form rewrite](../../fundamentals/perspectives/stored-form-migrations#recovery) is needed; see
+[why it stays at Error](../observability/logging-categories#kept-at-error).
 
 ---
 

@@ -191,7 +191,7 @@ retried and dead-lettered at their bound, when the
 | `InboxDrainWorker` | Reports (event id 7 transient, 6 otherwise); the streams re-offer through the claim backstop | {verified: InboxDrainWorkerCoverageTests.DrainBatch_TransientDatabaseFailure_IsNamedAsSuchAndTheNextBatchDrainsAsync} |
 | `OutboxDrainWorker` | Reports (event id 53 transient, 54 otherwise); the streams re-offer through the claim backstop | {verified: OutboxDrainWorkerCoverageTests.DrainBatch_TransientDatabaseFailure_IsNamedAsSuchAndTheLoopTakesTheNextBatchAsync} |
 | Poll signal sources | Hand the failed tick to `OnTickError`, log at Warning, and keep the timer's schedule | {verified: PollSignalSourceTests.Tick_TransientDatabaseFailure_IsHandedToOnTickErrorAndTheScheduleSurvivesAsync} |
-| Flush workers | Retry inside `BatchFlusher`, then drop the batch with an Error line (event id 3) rather than fault; the rows behind it are claimed again when their leases expire. The drop has no bound or dead-letter yet, so it stays at Error ([unbounded retries](../../operations/observability/logging-categories#unbounded-retries)) | |
+| Flush workers | Retry inside `BatchFlusher`, then drop the batch with an Error line (event id 3) rather than fault; the rows behind it are claimed again when their leases expire. The drop is bounded by `MaxFlushAttempts` and has nothing to dead-letter (the items are bookkeeping, not messages); it stays at Error because that many consecutive failed flushes means the database cannot be reached ([failures that stay at Error](../../operations/observability/logging-categories#kept-at-error)) | |
 
 ## Retrying one operation {#deadlock-retry}
 
