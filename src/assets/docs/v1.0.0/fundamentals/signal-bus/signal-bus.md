@@ -12,12 +12,17 @@ codeReferences:
   - src/Whizbang.Core/Signals/ISignalBus.cs
   - src/Whizbang.Core/Signals/SignalBus.cs
   - src/Whizbang.Core/Signals/SignalBusOptions.cs
+  - src/Whizbang.Core/Signals/SignalBusServiceCollectionExtensions.cs
+  - src/Whizbang.Core/Signals/SignalBusHostedService.cs
   - src/Whizbang.Core/Signals/SignalTarget.cs
   - src/Whizbang.Core/Signals/InstanceLifecycleSignals.cs
   - src/Whizbang.Core/Signals/WorkAvailableSignals.cs
   - src/Whizbang.Data.Postgres/Notifications/PgWorkAvailablePollSourceBase.cs
 testReferences:
   - tests/Whizbang.Core.Component.Tests/Signals/SignalBusProbeBackoffTests.cs
+  - tests/Whizbang.Core.Component.Tests/Signals/SignalBusHostingTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/StartupStageWiringTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/StartupPreflightHostTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/PgDurableSignalRetentionWindowTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/PgDurableSignalRetentionIntegrationTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Partitioning/SignalPartitionCarryForwardTests.cs
@@ -279,14 +284,19 @@ Dispatch runs subscriber callbacks **synchronously on the shared notify connecti
 ## Hosting, wire-route self-test & doorbell liveness
 
 The bus is **hosted by the framework**: `AddWhizbangSignalBus` registers a `SignalBusHostedService`
-that starts every transport and pull source with the host lifecycle. No application code ever calls
+that starts every transport and pull source. It starts at the
+[Elect startup stage](../../operations/startup/startup-status#signal-bus-at-elect), once, together with the
+notification connection its Postgres transport listens on, not when the host starts: while Preflight runs, no
+transport is started and no self-test is sent. Registering the bus more than once still hosts it once, and a host
+composed without the worker pipeline (no stage gate) starts it with the host. No application code ever calls
 `SignalBus.StartAsync` — a bus that is registered but not started silently drops every wire doorbell
 (the transports never subscribe their channels), leaving all work pumps on polling cadence with no
 error anywhere. That failure mode is now impossible to miss, through two layers:
+{verified: StartupStageWiringTests.TheSignalBus_StartsAtElect_WithTheNotificationConnection_OnceAsync, StartupPreflightHostTests.HeldInPreflight_TheSignalBusStartsNoTransport_AndStartsItAtElectAsync, SignalBusHostingTests.AddWhizbangSignalBus_CalledTwice_HostedStartIsIdempotentAsync}
 
 ### Startup wire-route self-test
 
-After the transports start, the host probes the wire route **functionally**: each transport publishes
+After the transports start at Elect, the host probes the wire route **functionally**: each transport publishes
 a loopback `SignalBusProbeSignal` targeted at the *own* instance and must deliver it back through the
 full route — routing maps → wire → typed dispatch — within `SignalBusOptions.ProbeTimeoutMilliseconds`
 (default 5 s). Transports are probed **individually**, so the in-memory loopback can never vouch for a
