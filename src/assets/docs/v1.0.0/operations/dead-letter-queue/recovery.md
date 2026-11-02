@@ -26,6 +26,7 @@ codeReferences:
   - src/Whizbang.Data.EFCore.Postgres/EFCoreDeadLetterRecoveryService.cs
   - src/Whizbang.Data.Postgres/PostgresDeadLetterRecoveryService.cs
   - src/Whizbang.Data.Dapper.Postgres/ServiceCollectionExtensions.cs
+  - src/Whizbang.Data.Postgres/Migrations/279_CollectiveApplyProgress.sql
 testReferences:
   - tests/Whizbang.Core.Component.Tests/Workers/DeadLetterRecoveryWorkerTests.cs
   - tests/Whizbang.Core.Tests/Messaging/DefaultDeadLetterRecoveryPolicyTests.cs
@@ -37,6 +38,9 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/RecoveredPerspectiveDeadLetterApplyTests.cs
   - tests/Whizbang.Core.Tests/Observability/DeadLetterMetricsTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperArchiveRestoreRedriveTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Collective/CollectiveApplyProgressEFCoreTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Collective/CollectiveApplyProgressSqlTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/Collective/DapperCollectiveApplyProgressTests.cs
 ---
 
 # Recovery Worker & Policy Matrix
@@ -117,6 +121,27 @@ captured before migration 241 kept no priority and re-enters as background, as r
 It also kept no envelope type: it re-enters under the envelope type its message type names, and an outbox
 message whose event is in the event store re-enters as that event, with its flags and scope.
 {verified: RecoveredWorkReentrySqlTests.ARecoveredOutboxMessage_IsStoredInTheShapeItWasStoredInAsync, RecoveredWorkReentrySqlTests.AnOutboxEventRefusedBeforeItWasAppended_IsAppendedWhenRecovered_WithItsScopeAndFlagsAsync, RecoveredWorkReentrySqlTests.ARecoveredPerspectiveWorkRow_IsStoredInTheShapeTheEventStoreChainStoresItInAsync, RecoveredWorkReentrySqlTests.ARecoveredPerspectiveEvent_BehindItsCursor_FlagsTheCursorForRewindAsync, RecoveredWorkReentrySqlTests.ARecoveredOutboxMessage_DeadLetteredAgain_IsHeldForReview_NamingTheNewDeadLetterAsync, RecoveredWorkReentrySqlTests.ARecoveredPerspectiveWorkRow_DeadLetteredAgain_IsHeldForReview_NamingTheNewDeadLetterAsync, RecoveredWorkReentrySqlTests.ARecoveredPerspectiveEvent_NoLongerInTheEventStore_IsHeldForReview_AndNotReEnteredAsync, RecoveredWorkReentrySqlTests.ARecovery_OfAnOutboxMessageStillInTheOutbox_LeavesItsDeadLetterDueAsync, RecoveredWorkReentrySqlTests.ASecondRecovery_OfAnOutboxDeadLetterAlreadyRecovering_StoresNothingAsync, RecoveredOutboxDeadLetterPublishTests.ARecoveredOutboxEvent_IsPublishedAsTheEventItWasStoredAs_AndReadsRecoveredOncePublishedAsync, RecoveredOutboxDeadLetterPublishTests.AnOutboxDeadLetterCapturedBeforeItKeptTheEnvelopeType_IsPublishedUnderTheNameItsStoreWritesAsync, RecoveredPerspectiveDeadLetterApplyTests.ARecoveredPerspectiveWorkRow_IsApplied_AndReadsRecoveredOnceAppliedAsync}
+
+### Recovered collectives {#recovered-collectives}
+
+{verified: CollectiveApplyProgressEFCoreTests.ARecoveredDeadLetter_ResumesTheAbandonedApply_AndCompletesTheRestOnceAsync, DapperCollectiveApplyProgressTests.ARecoveredDeadLetter_ResumesTheAbandonedApply_AndCompletesTheRestOnceAsync, CollectiveApplyProgressSqlTests.DeadLetteringACollectiveSinkRow_MarksItsUnfinishedApplyAbandoned_AndLeavesTheFinishedOneAsync, CollectiveApplyProgressSqlTests.PurgingTheDeadLetter_SweepsItsAbandonedRecords_AndKeepsTheFinishedOnesAsync, CollectiveApplyProgressSqlTests.PurgingADeadLetter_KeepsTheAbandonedRecords_WhileAnotherDeadLetterOfTheCollectiveRemainsAsync}
+
+A [collective event](../../fundamentals/messaging/collective-events) is applied a batch at a time, so its sink work
+row can be dead-lettered after some batches committed. The dead letter marks the collective's unfinished
+[progress records](../../fundamentals/messaging/collective-events#resuming-an-apply) abandoned where they stopped, and
+records that a handler with no record applied nothing
+([dead-lettered collectives](../../fundamentals/messaging/collective-events#dead-lettered-collectives)).
+
+A recovered collective re-enters through `store_perspective_events` like any perspective dead letter. Its batches
+**resume after the last batch that committed** and complete the rest of the cohort once: the rows the first attempt
+reached are not applied again, and each handler that had finished is skipped.
+
+Keep the dead letter until you have decided. While it exists, the abandoned records make a rewind fold the collective
+only into the rows it reached, which is what the live rows hold. When the last dead letter of the collective is
+deleted (purged, or swept by [retention](#retention) once recovered), its abandoned records go with it, and a rewind
+of an unrecovered collective then folds it into every row again. A snapshot taken while the collective was
+dead-lettered is the one case recovery does not fix on its own; see
+[the known gap](../../fundamentals/perspectives/snapshots#collectives-and-progress).
 
 ### The SQL entry points {#recovery-sql}
 

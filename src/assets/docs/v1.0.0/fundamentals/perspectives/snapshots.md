@@ -26,6 +26,7 @@ codeReferences:
   - src/Whizbang.Data.Postgres/PostgresCollectiveSnapshotFence.cs
   - src/Whizbang.Data.Postgres/Migrations/275_SnapshotsRecordTheirCollectives.sql
   - src/Whizbang.Data.Postgres/Migrations/276_CollectiveSnapshotFence.sql
+  - src/Whizbang.Data.Postgres/Migrations/279_CollectiveApplyProgress.sql
 testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/EvictionCompanionCleanupSqlTests.cs
   - tests/Whizbang.Core.Tests/Perspectives/EvictedRowRebuildTests.cs
@@ -376,7 +377,7 @@ row holds, so that snapshot records no mark.
 | Choice | Reason | Verified |
 |---|---|---|
 | The fence is read before the row and again after the write, and the snapshot records the first read's mark. | The first read bounds what the row could hold when it was read; the second catches a collective that moved while the row was applied and written. Together they make the mark exact for the row as written, and the live write's row-version check already guarantees the snapshot is that row. | {verified: CollectiveReplayRunnerTests.ALiveSnapshot_OfARowWithCollectives_RecordsTheFencesMark_ReadBeforeTheRowAndAgainAfterItsWriteAsync, CollectiveReplayRebuildIntegrationTests.LiveApply_WithTheDriversFence_TakesASnapshotThatRecordsTheStoresMark_WhenNoCollectiveIsInFlightAsync} |
-| A snapshot is taken prior to an in-flight collective: deferred, never recorded holding part of one. | Collectives exist for bulk-update speed, so the sink's update path writes nothing for snapshots. Without a per-batch record, a row partway through a collective cannot be described by any mark. | {verified: CollectiveReplayRunnerTests.ALiveSnapshot_IsDeferred_WhenACollectiveOfTheRowIsInFlightBeforeTheReadAsync, CollectiveReplayRebuildIntegrationTests.LiveApply_WithTheDriversFence_DefersTheSnapshot_WhileACollectiveOfTheRowIsQueuedAsync} |
+| A snapshot is taken prior to an in-flight collective: deferred, never recorded holding part of one. | Collectives exist for bulk-update speed, so the sink's update path writes nothing for snapshots. The mark is one commit sequence for the whole row, and a collective partway through its batches has reached some rows and not others; the apply's [progress record](#collectives-and-progress) moves until it completes, so deferring keeps the mark exact without reading it on every snapshot. | {verified: CollectiveReplayRunnerTests.ALiveSnapshot_IsDeferred_WhenACollectiveOfTheRowIsInFlightBeforeTheReadAsync, CollectiveReplayRebuildIntegrationTests.LiveApply_WithTheDriversFence_DefersTheSnapshot_WhileACollectiveOfTheRowIsQueuedAsync} |
 | It always defers while a collective of the row is in flight, even one whose setters look idempotent. | Applying a collective twice is harmless only when the second application gives the same row as the first. A constant setter fails that when its `Where` reads a field another event changed between the two applications, and any collective fails it when it sits before events the row folded after it. The runner cannot prove either from the spec, so it does not try. | {verified: CollectiveReplayRunnerTests.ALiveSnapshot_IsDeferred_WhenACollectiveOfTheRowIsInFlightBeforeTheReadAsync, CollectiveReplayRunnerTests.ALiveSnapshot_IsDeferred_WhenACollectiveOfTheRowMovedByTheReadAfterTheWriteAsync} |
 | A deferral is counted, and the deferred snapshot stays due. | A model that never gets a snapshot must be visible, and the next quiet apply should take the snapshot rather than wait a whole cadence. | {verified: CollectiveReplayRunnerTests.ADeferredSnapshot_StaysDue_AndTheNextQuietApplyTakesItAsync} |
 | A store with no stamped event marks zero, and the second read looks past zero. | No collective was complete, so the snapshot holds none, and any collective stamped between the reads still counts as in flight. | {verified: CollectiveReplayRunnerTests.ALiveSnapshot_OfAStoreWithNoStampedEvent_RecordsAMarkOfZero_AndTheSecondReadLooksPastZeroAsync} |
@@ -393,11 +394,33 @@ row holds, so that snapshot records no mark.
 **Cost.** Two fence reads per snapshot taken, and only for a model with collectives in a host that registers the fence.
 The collective sink's update path pays nothing.
 
-**Known related defects on the live path.** Two sink behaviors that predate the mark make a live row differ from what a
-replay folds: a collective retried after the apply lock was busy is re-applied in full, so rows in batches that already
-committed get it twice ([#1969](https://github.com/whizbang-lib/whizbang/issues/1969)), and a collective dead-lettered
-after some batches committed is treated as complete by the fence while the live rows hold it in part
-([#1970](https://github.com/whizbang-lib/whizbang/issues/1970)).
+#### The fence and the apply's progress record {#collectives-and-progress}
+
+{verified: CollectiveReplayRebuildIntegrationTests.LiveApply_WithTheDriversFence_DefersTheSnapshot_WhileACollectiveOfTheRowIsQueuedAsync, CollectiveReplayRebuildIntegrationTests.Rewind_WhileACollectiveIsMidApply_FoldsItOnlyIntoTheRowsItReachedAsync, CollectiveReplayRebuildIntegrationTests.Rebuild_ACollectiveDeadLetteredPartway_FoldsOnlyIntoTheRowsItReachedAsync}
+
+The collective sink records how far each handler's apply of a collective reached, batch by batch
+([resuming an apply](../messaging/collective-events#resuming-an-apply), #1969), and a replay folds each collective only
+as far as that record says ([how far each collective folds](../messaging/collective-events#collective-replay-from-a-start)).
+The fence is unchanged, and the two agree:
+
+- **Partway is in flight.** The fence counts a collective as in flight while its `__collective__` work row is
+  unprocessed, which is exactly while a partway record exists: queued, mid-apply, or recovered from a dead letter. A
+  live snapshot of the row stays deferred until the apply completes, so it never holds part of a collective that is
+  still moving.
+- **A replay that folds a collective still in flight takes no snapshot,** for the same reason: the live sink may yet
+  apply it to rows the replay did not fold it into.
+- **A dead-lettered collective is complete to the fence.** It has no pending work row, so a snapshot taken after the
+  dead letter holds the row as the live row had it, reached or not. A rewind from that snapshot does not fold the
+  collective again, and a replay from before it folds it only into the rows its record says it reached. Both agree
+  with the live row.
+
+**Known gap: a snapshot taken while a collective is dead-lettered, then recovery.** That snapshot counts the
+collective as held. When [dead-letter recovery](../../operations/dead-letter-queue/recovery#recovered-collectives)
+later completes the rows past its `through_id`, those rows hold it live, but a rewind from that snapshot does not fold
+it into them, because the snapshot's mark says it is already held. A replay that starts before the snapshot (from the
+stream's start, or from an earlier snapshot) folds it into every row, since the record is completed by then. Closing
+the gap means the fence treating an abandoned record as in flight, which would defer snapshots of the tenant's rows
+until the dead letter is recovered or purged; that is an open decision, not yet made.
 
 ### Bootstrap
 

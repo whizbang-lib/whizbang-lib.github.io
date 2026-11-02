@@ -253,7 +253,11 @@ The worker now remembers which events a completed rewind was run for, per stream
 
 A rewind folds the row's [collective events](../messaging/collective-events#collective-replay-from-a-start) as a
 rebuild does, merged among the stream's events in commit order. A rewind from the stream's start folds every one; a
-rewind from a snapshot folds only the ones the snapshot does not hold, as below. A collective moves neither the checkpoint nor the frontier below, and it never anchors the catch-up
+rewind from a snapshot folds only the ones the snapshot does not hold, as below. Each one folds only as far as the
+live sink applied it: into every row once its apply completed, into the rows its committed batches reached while it is
+partway or dead-lettered, and into none while it is queued and not started
+([how far each collective folds](../messaging/collective-events#collective-replay-from-a-start)). A rewind that folds a
+collective still in flight takes no final snapshot {verified: CollectiveReplayRebuildIntegrationTests.Rewind_WhileACollectiveIsQueuedAndNotStarted_DoesNotFoldIt_AsTheLiveRowDoesNotHoldItYetAsync, CollectiveReplayRebuildIntegrationTests.Rewind_WhileACollectiveIsMidApply_FoldsItOnlyIntoTheRowsItReachedAsync, CollectiveReplayRebuildIntegrationTests.Rewind_ThatMeetsACollectiveStillInFlight_TakesNoSnapshotAsync}. A collective moves neither the checkpoint nor the frontier below, and it never anchors the catch-up
 read, which re-reads the row's own stream. Each collective folds once across the catch-up passes. The snapshot a
 rewind ends with is the row at its last event, before the collectives committed after that event
 ([why](snapshots#a-replays-snapshot-and-collectives)).
