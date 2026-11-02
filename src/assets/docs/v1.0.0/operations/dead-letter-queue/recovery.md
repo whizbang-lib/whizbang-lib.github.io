@@ -139,9 +139,9 @@ reached are not applied again, and each handler that had finished is skipped.
 Keep the dead letter until you have decided. While it exists, the abandoned records make a rewind fold the collective
 only into the rows it reached, which is what the live rows hold. When the last dead letter of the collective is
 deleted (purged, or swept by [retention](#retention) once recovered), its abandoned records go with it, and a rewind
-of an unrecovered collective then folds it into every row again. A snapshot taken while the collective was
-dead-lettered is the one case recovery does not fix on its own; see
-[the known gap](../../fundamentals/perspectives/snapshots#collectives-and-progress).
+of an unrecovered collective then folds it into every row again. While the collective is dead-lettered, snapshots
+of its tenant's rows wait, so none records it as held before recovery finishes it; see
+[the fence and the apply's progress record](../../fundamentals/perspectives/snapshots#collectives-and-progress).
 
 ### The SQL entry points {#recovery-sql}
 
