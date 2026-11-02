@@ -661,6 +661,7 @@ builder.Services.AddWhizbangAzureBlobArchive(builder.Configuration);
 | `Whizbang:Archive:AzureBlob:ContainerName` | `string` | `whizbang-archive` | `Whizbang__Archive__AzureBlob__ContainerName` | The container the objects are written to; created on the first write |
 | `Whizbang:Archive:AzureBlob:CompressionLevel` | `int` | `4` | `Whizbang__Archive__AzureBlob__CompressionLevel` | The Brotli quality, 0 (fastest) to 11 (smallest); a value outside the range fails when the store is built |
 | `Whizbang:Archive:AzureBlob:MaxEventsPerChunk` | `int` | `10000` | `Whizbang__Archive__AzureBlob__MaxEventsPerChunk` | The most events one object holds; 1 or more |
+| `Whizbang:Archive:AzureBlob:AccessTier` | `AccessTier?` | `null` (the account's default tier) | `Whizbang__Archive__AzureBlob__AccessTier` | The tier every object is written at: `Hot`, `Cool` or `Cold`, in any case ([access tier](#access-tier)) |
 
 | Choice | Reason | Verified |
 |---|---|---|
@@ -668,6 +669,48 @@ builder.Services.AddWhizbangAzureBlobArchive(builder.Configuration);
 | The quality range is Brotli's own, 0 to 11; 0 and 11 are accepted, -1 and 12 refused. | Anything else is not a Brotli quality. | {verified: AzureBlobArchiveRegistrationTests.Store_RefusesAQualityOrAChunkSizeOutOfRangeAsync, AzureBlobArchiveRegistrationTests.Store_AcceptsTheEdgesOfTheRangeAsync} |
 | At most 10,000 events per object by default; one is the smallest chunk. | Neither a write nor a read holds more than one object's events in memory (about 13 MB of JSON at the measured row size), and a long stream becomes several objects that read in order. | {verified: AzureBlobArchiveStoreTests.Write_WholeStream_ThenRead_ReturnsTheEventsByteIdenticalInVersionOrderAsync, AzureBlobArchiveRegistrationTests.Store_AcceptsTheEdgesOfTheRangeAsync} |
 | The container is created on the first write when it does not exist. | A fresh account or emulator starts without it, as the offload provider assumes too; the identity therefore needs the right to create the container (the Storage Blob Data Contributor role has it). | {verified: AzureBlobArchiveStoreTests.Write_WholeStream_ThenRead_ReturnsTheEventsByteIdenticalInVersionOrderAsync} |
+
+### Access tier {#access-tier}
+
+{verified: AzureBlobArchiveStoreTests.Write_WithAnAccessTier_StoresEveryObjectAtIt_WithoutOne_TheAccountDefaultAsync}
+
+Archives are written once and rarely read, so a colder tier usually stores them for less. Set `AccessTier` and every
+object the store writes is uploaded at that tier; leave it unset and objects take the storage account's default tier.
+
+```csharp{
+title: "Write archive objects at the Cool tier"
+description: "Every archive object is uploaded at Cool; a restore reads it back like any other object."
+framework: "NET10"
+category: "Core Concepts"
+difficulty: "BEGINNER"
+tags: ["archive", "azure-blob", "access-tier", "storage-cost"]
+nugetPackages: ["SoftwareExtravaganza.Whizbang.Archive.AzureBlob"]
+tests: ["AzureBlobArchiveStoreTests.Write_WithAnAccessTier_StoresEveryObjectAtIt_WithoutOne_TheAccountDefaultAsync", "AzureBlobArchiveRegistrationTests.Configuration_AccessTier_BindsHotCoolOrCold_InAnyCaseAsync"]
+}
+// appsettings: "Whizbang": { "Archive": { "AzureBlob": { "ServiceUri": "https://account.blob.core.windows.net", "AccessTier": "Cool" } } }
+builder.Services.AddWhizbangAzureBlobArchive(builder.Configuration);
+```
+
+What the tiers cost, so the choice is deliberate:
+
+| Tier | Storage | Reading | Deleting early |
+|---|---|---|---|
+| Hot | Highest per gigabyte | Lowest per read | No charge |
+| Cool | Lower | Higher per read | Charged for the rest of 30 days |
+| Cold | Lower still | Higher again | Charged for the rest of 90 days |
+| Archive | Lowest | Offline: the object must be rehydrated first, which takes hours | Charged for the rest of 180 days |
+
+A restore and a purge delete objects, and a restore reads them, so a stream restored soon after it was archived pays
+the colder tier's read price and its early-deletion charge.
+
+| Choice | Reason | Verified |
+|---|---|---|
+| Unset by default, so objects take the storage account's default tier. | Behavior is unchanged for a host that does not choose, and an account whose default is already Cool needs no setting. | {verified: AzureBlobArchiveStoreTests.Write_WithAnAccessTier_StoresEveryObjectAtIt_WithoutOne_TheAccountDefaultAsync, AzureBlobArchiveRegistrationTests.Configuration_BindsEverySetting_AndKeepsTheDefaultsForWhatIsAbsentAsync} |
+| `Hot`, `Cool` and `Cold` are accepted, in any case, and stored in the SDK's own spelling. | These are the tiers an object can be read from as soon as it is written. | {verified: AzureBlobArchiveRegistrationTests.Configuration_AccessTier_BindsHotCoolOrCold_InAnyCaseAsync, AzureBlobArchiveRegistrationTests.Store_AcceptsHotCoolColdOrTheAccountDefaultAsync} |
+| `Archive` is refused, with the reason in the message. | An object in the Archive tier cannot be read until it is rehydrated, which takes hours, so a read-through restore or a rebuild that reads the archive would fail. Move objects to Archive with a storage lifecycle rule only where those reads may wait. | {verified: AzureBlobArchiveRegistrationTests.Configuration_AnAccessTierTheStoreCannotWriteAt_IsRefused_NamingTheKeyAndWhyAsync, AzureBlobArchiveRegistrationTests.Store_RefusesATierItCannotReadBackFromAsync} |
+| Any other value (`Premium`, a page-blob tier such as `P10`, a misspelling) is refused naming the key. | A misread tier would otherwise fall back to a default nobody chose. | {verified: AzureBlobArchiveRegistrationTests.Configuration_AnAccessTierTheStoreCannotWriteAt_IsRefused_NamingTheKeyAndWhyAsync} |
+| The tier is validated three times: when the setting is bound, when the store is built, and when the host starts. | A tier set in code reaches no binder, so `ValidateOnStart` fails the host as it starts instead of on the first archive write hours later; a store built by hand is held to the same tiers. | {verified: AzureBlobArchiveRegistrationTests.Startup_AnArchiveTierSetInCode_FailsTheHostAtStart_ACoolTierDoesNotAsync, AzureBlobArchiveRegistrationTests.Store_RefusesATierItCannotReadBackFromAsync} |
+| The setting is named `AccessTier`, not `DefaultAccessTier` as on the body-offload provider. | Every archive object is written at it; there is no per-object override for it to be the default of. | {verified: AzureBlobArchiveRegistrationTests.Configuration_BindsEverySetting_AndKeepsTheDefaultsForWhatIsAbsentAsync} |
 
 ### How a write works {#azure-blob-writes}
 
