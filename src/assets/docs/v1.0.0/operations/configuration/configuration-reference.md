@@ -56,6 +56,7 @@ codeReferences:
   - src/Whizbang.Core/Configuration/EphemeralPointerPruneOptions.cs
   - src/Whizbang.Data.Postgres/RetentionSettingsWriter.cs
   - src/Whizbang.Core/Workers/DeadLetterLoggingOptions.cs
+  - src/Whizbang.Core/Workers/DatabaseFailureEscalationOptions.cs
 testReferences:
   - tests/Whizbang.Core.Tests/Archival/StreamLifecycleOptionsBinderTests.cs
   - tests/Whizbang.Core.Tests/Workers/TableRewriteStrategyTests.cs
@@ -92,6 +93,8 @@ testReferences:
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperTableStatisticsDatabaseTests.cs
   - tests/Whizbang.Core.Tests/Workers/DeadLetterLoggingOptionsTests.cs
   - tests/Whizbang.Core.Tests/Workers/DeadLetterLoggingWiringTests.cs
+  - tests/Whizbang.Core.Tests/Workers/DatabaseFailureEscalationOptionsTests.cs
+  - tests/Whizbang.Core.Tests/Workers/DatabaseFailureEscalationWiringTests.cs
 ---
 
 This page lists **every configuration surface Whizbang exposes**: the sections the library binds from `IConfiguration` automatically, the sections you can opt into binding with a helper, and the (much larger) set of options classes that are configured in code — plus the recipe for making any of them configuration-driven. Each options class lists its properties, types, defaults, and a link to the page that covers it in depth.
@@ -102,7 +105,7 @@ Whizbang follows the standard .NET configuration model ([Microsoft: Configuratio
 
 | Mechanism | What it means | Applies to |
 |-----------|---------------|------------|
-| **Bound automatically** | `AddWhizbang()` / the database driver registration reads these configuration sections with hand-rolled, AOT-safe binders. Setting a key in `appsettings.json` or as an environment variable just works. | **66 sections**: `Whizbang` itself, `Whizbang:Core`, `Whizbang:Tracing`, `Whizbang:SchemaInitialization`, `Whizbang:WorkCoordinator`, every `Whizbang:Workers:*` worker, `Whizbang:StreamIntegrity`, `Whizbang:DeadLetterRecovery`, `Whizbang:DeadLetterLogging`, `Whizbang:Redelivery`, `Whizbang:Perspectives:*`, `Whizbang:Temporal`, `Whizbang:Tags` and the rest listed in the [Quick Map](#quick-map); plus `Whizbang:AspNet:*` with ASP.NET hosting, `Whizbang:Sagas` with sagas, `Whizbang:Scope` and `Whizbang:StartupStatusGraph` with GraphQL, `Whizbang:Database*` with the Postgres driver, `Whizbang:Transports:AzureServiceBus` / `Whizbang:Transports:RabbitMQ` with those transports, the [per-instance sections](#per-instance-sections) keyed by breaker, transport, database and tag, and `Whizbang:ServiceName`, `Whizbang:ShowBanner`, `ConnectionStrings:*`, `ConnectionPool:*` |
+| **Bound automatically** | `AddWhizbang()` / the database driver registration reads these configuration sections with hand-rolled, AOT-safe binders. Setting a key in `appsettings.json` or as an environment variable just works. | **67 sections**: `Whizbang` itself, `Whizbang:Core`, `Whizbang:Tracing`, `Whizbang:SchemaInitialization`, `Whizbang:WorkCoordinator`, every `Whizbang:Workers:*` worker, `Whizbang:StreamIntegrity`, `Whizbang:DeadLetterRecovery`, `Whizbang:DeadLetterLogging`, `Whizbang:DatabaseFailureEscalation`, `Whizbang:Redelivery`, `Whizbang:Perspectives:*`, `Whizbang:Temporal`, `Whizbang:Tags` and the rest listed in the [Quick Map](#quick-map); plus `Whizbang:AspNet:*` with ASP.NET hosting, `Whizbang:Sagas` with sagas, `Whizbang:Scope` and `Whizbang:StartupStatusGraph` with GraphQL, `Whizbang:Database*` with the Postgres driver, `Whizbang:Transports:AzureServiceBus` / `Whizbang:Transports:RabbitMQ` with those transports, the [per-instance sections](#per-instance-sections) keyed by breaker, transport, database and tag, and `Whizbang:ServiceName`, `Whizbang:ShowBanner`, `ConnectionStrings:*`, `ConnectionPool:*` |
 | **Opt-in binding helper** | A one-line registration call reads the section for you. Without that call, the section is inert. | `Whizbang:BodyOffload` + `Whizbang:Offloads:AzureBlob:<name>` (via `AddWhizbangAzureBlobOffloadsFromConfiguration`) |
 | **Code-configured** | The options class is configured through an `Action<TOptions>` lambda (or `services.Configure<TOptions>(...)`). The library never reads a configuration section for it — **a configuration key for one of these does nothing unless your service binds it**. Every table below carries an environment-variable column; these read `— *code-only*`, so a blank is always deliberate rather than an omission (see [the binding recipe](#code-configured-options-the-binding-recipe)). | The classes with no configuration section in the [Quick Map](#quick-map): `ServiceRegistrationOptions`, `PerStreamSerializerOptions`, `WhizbangGraphQLOptions`, and the keys a bound class marks *code-only* |
 
@@ -217,6 +220,7 @@ Removed keys the library declares:
 | `Whizbang:StreamIntegrity` | `StreamIntegrityOptions` | Automatic |
 | `Whizbang:DeadLetterRecovery` | `DeadLetterRecoveryOptions` | Automatic |
 | `Whizbang:DeadLetterLogging` | `DeadLetterLoggingOptions` | Automatic (worker pipeline, and the transport consumer on its own); see [Dead-letter logging](#dead-letter-logging) |
+| `Whizbang:DatabaseFailureEscalation` | `DatabaseFailureEscalationOptions` | Automatic (worker pipeline); see [Database failure escalation](#database-failure-escalation) |
 | `Whizbang:OrderedStreamProcessor` | `OrderedStreamProcessorOptions` | Automatic |
 | `Whizbang:PerspectiveRowRetention` | `PerspectiveRowRetentionOptions` | Automatic |
 | `Whizbang:Temporal` | `TemporalOptions` | Automatic |
@@ -909,6 +913,50 @@ Completion retry with exponential backoff. **Configure:** via the owning worker'
 | `EnableExponentialBackoff` | `bool` | `true` | `Whizbang__Workers__Perspective__RetryOptions__EnableExponentialBackoff` | Grow the timeout 1s→2s→4s→…→cap |
 | `BackoffMultiplier` | `double` | `2.0` | `Whizbang__Workers__Perspective__RetryOptions__BackoffMultiplier` | `baseTimeout * multiplier^retryCount` |
 | `MaxBackoffSeconds` | `int` | `60` | `Whizbang__Workers__Perspective__RetryOptions__MaxBackoffSeconds` | Cap on retry timeout; keep low — failing messages block streams |
+
+
+### DatabaseFailureEscalationOptions {#database-failure-escalation}
+
+When a worker loop's run of transient database failures stops being a blip and logs one Error, EventId 1986
+`DatabaseFailurePersisting`, and later one Information line, EventId 1987 `DatabaseFailureRecovered`. Read by the
+claim worker, the inbox and outbox drain workers and the perspective worker. **Configure:** bound automatically from
+`Whizbang:DatabaseFailureEscalation` by the worker pipeline (`AddWhizbangWorkers`) and validated when the host starts;
+`services.Configure<DatabaseFailureEscalationOptions>(…)` also applies. **Details:**
+[When the database keeps failing](../../fundamentals/workers/transient-database-failures#when-the-database-keeps-failing).
+
+| Property | Type | Default | Environment variable | Purpose |
+|----------|------|---------|----------------------|---------|
+| `ConsecutiveFailures` | `int` | `3` | `Whizbang__DatabaseFailureEscalation__ConsecutiveFailures` | How many transient database failures in a row a worker meets before its run can escalate. At least `1`; `1` escalates on `FailingFor` alone. A value below `1` is refused when the host starts. {verified: DatabaseFailureEscalationOptionsTests.Defaults_AreThreeFailuresOverAMinuteAsync, DatabaseFailureEscalationOptionsTests.Turnkey_Settings_BindFromConfigurationAsync, DatabaseFailureEscalationTests.OneFailureAsTheCount_EscalatesOnTheTimeAloneAsync, DatabaseFailureEscalationOptionsTests.Validator_RefusesFewerThanOneFailure_NamingTheKeyAsync} |
+| `FailingFor` | `TimeSpan` | `00:01:00` | `Whizbang__DatabaseFailureEscalation__FailingFor` | How long a worker's run lasts, from its first failure, before it can escalate. Zero or more; `00:00:00` escalates on `ConsecutiveFailures` alone. A negative value is refused when the host starts. {verified: DatabaseFailureEscalationOptionsTests.Defaults_AreThreeFailuresOverAMinuteAsync, DatabaseFailureEscalationOptionsTests.Turnkey_Settings_BindFromConfigurationAsync, DatabaseFailureEscalationTests.AZeroTime_EscalatesOnTheCountAloneAsync, DatabaseFailureEscalationOptionsTests.Validator_RefusesANegativeTime_NamingTheKeyAsync} |
+
+```json{title="Escalate after two minutes and five failures" description="Raises both thresholds for a service whose database fails over more slowly" category="Configuration" difficulty="BEGINNER" tags=["workers", "logging", "configuration", "DatabaseFailureEscalationOptions"] tests=["DatabaseFailureEscalationOptionsTests.Turnkey_Settings_BindFromConfigurationAsync"]}
+{
+  "Whizbang": {
+    "DatabaseFailureEscalation": {
+      "ConsecutiveFailures": 5,
+      "FailingFor": "00:02:00"
+    }
+  }
+}
+```
+
+**Why both must be met.** A fast loop meets many failures in a short failover, so the count alone would raise an
+Error on a blip; a loop that rarely runs can see two failures ten minutes apart, so the time alone says little about
+the database. A run escalates only once it has lasted `FailingFor` *and* counted `ConsecutiveFailures`.
+{verified: DatabaseFailureEscalationTests.ManyFailuresInsideTheTime_DoNotEscalateAsync, DatabaseFailureEscalationTests.AFewFailuresOverALongTime_DoNotEscalateAsync}
+
+**Why these defaults.** Three failures, so a single lost statement or a pair of them never makes a run on its own; one
+minute, long enough that a failover of a few seconds logs only Warnings and short enough that a database that stays
+down is alerted on within about a minute.
+{verified: DatabaseFailureEscalationOptionsTests.Defaults_AreThreeFailuresOverAMinuteAsync, DatabaseFailureEscalationOptionsTests.Turnkey_NoSetting_ResolvesTheDefaultsAsync}
+
+**Refused, not clamped.** A value that cannot be met as written stops the host at startup with an options validation
+error naming the key, for example `Whizbang:DatabaseFailureEscalation:ConsecutiveFailures is 0; a run of failures is
+at least 1 long.` Both wrong names both keys.
+{verified: DatabaseFailureEscalationOptionsTests.Validator_RefusesFewerThanOneFailure_NamingTheKeyAsync, DatabaseFailureEscalationOptionsTests.Validator_RefusesANegativeTime_NamingTheKeyAsync, DatabaseFailureEscalationOptionsTests.Validator_BothWrong_NamesBothKeysAsync, DatabaseFailureEscalationOptionsTests.Turnkey_UnmeetableSetting_IsRefusedAtStartupAsync}
+
+**One value for every worker.** Each of the four workers, as the worker pipeline registers it, takes the bound value.
+{verified: DatabaseFailureEscalationWiringTests.ClaimWorker_TakesTheConfiguredThresholdAsync, DatabaseFailureEscalationWiringTests.InboxDrainWorker_TakesTheConfiguredThresholdAsync, DatabaseFailureEscalationWiringTests.OutboxDrainWorker_TakesTheConfiguredThresholdAsync, DatabaseFailureEscalationWiringTests.PerspectiveWorker_TakesTheConfiguredThresholdAsync, DatabaseFailureEscalationOptionsTests.Turnkey_ThePlainInstanceIsTheBoundOneAsync}
 
 ## Outbox and Inbox Pipeline
 
