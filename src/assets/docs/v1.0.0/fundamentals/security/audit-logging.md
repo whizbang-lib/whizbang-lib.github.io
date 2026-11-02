@@ -28,7 +28,7 @@ codeReferences:
   - src/Whizbang.Core/SystemEvents/AuditEligibility.cs
   - src/Whizbang.Core/SystemEvents/AuditOutboxMessageBuilder.cs
   - src/Whizbang.Core/SystemEvents/AuditLedgerRebuild.cs
-  - src/Whizbang.Core/SystemEvents/RequestAuditRebuildCommand.cs
+  - src/Whizbang.Core/Commands/System/RequestAuditRebuildCommand.cs
   - src/Whizbang.Data.EFCore.Postgres/AuditRebuildRequestReceptor.cs
   - src/Whizbang.Data.EFCore.Postgres/RedeliveryRequestReceptorRegistrar.cs
 testReferences:
@@ -54,6 +54,7 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/AuditRebuildRequestReceptorTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/RedeliveryRequestReceptorTests.cs
   - tests/Whizbang.Core.Tests/Messaging/ControlPlaneTypeRegistryTests.cs
+  - tests/Whizbang.Core.Tests/Tags/SystemControlTagTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -349,7 +350,7 @@ The choices, each held by a test:
 - **Marking the type for audit is not the opt-in.** `[AuditEvent(Reason = ...)]` without `IncludeBody` still leaves an ephemeral type unaudited, even under `AuditMode.OptIn`, because its records would still dangle (`AnEphemeralTypeMarkedForAudit_WithoutItsBody_IsStillNotAuditedAsync`).
 - **The process-wide body default does not opt in.** `AuditBodyDefault = Include` keeps bodies for the types that are audited; it does not turn every high-churn ephemeral type (presence, typing, progress) into audit traffic at once (`TryBuildAuditMessage_TheDefaultSetToInclude_DoesNotOptInAnEphemeralEventAsync`).
 - **A decision hook cannot reopen an ephemeral type.** The exclusion is decided before the hook, as the self-audit exclusion is: a hook judges an occurrence but cannot keep its body (`AHookThatRecordsEverything_DoesNotReopenAnEphemeralTypeAsync`). Once a type has opted in, the hook decides its occurrences like any other type's (`AnEphemeralTypeThatKeepsItsBody_StillPassesThroughTheHookAsync`).
-- **Every path recognizes the same types.** The outbox path reads the ephemeral flag the dispatcher stamped on the message; the event store decorator and the emitter derive it from the payload with the ephemeral resolver, which recognizes a type declared ephemeral through a base record or interface. Both are given the resolver when the container composes them (`ComposedDecoratorReceivesTheRegisteredEphemeralResolverAsync`, `AddWhizbang_TheDefaultEmitter_IsGivenTheEphemeralResolverAsync`). A store decorator or emitter built by hand without one recognizes the `IEphemeralEvent` marker only.
+- **Every path recognizes the same types.** The outbox path reads the ephemeral flag the dispatcher stamped on the message; the event store decorator and the emitter derive it from the payload with the ephemeral resolver, which recognizes a type declared ephemeral through a base record or interface. Both are given the resolver when the container composes them (`ComposedDecoratorReceivesTheRegisteredEphemeralResolverAsync`, `AddWhizbang_TheDefaultEmitter_IsGivenTheEphemeralResolverAsync`). The decorator's resolver is a required constructor argument, with the default `EphemeralModeResolver` registered by `TryAdd`, so a decorator built by hand cannot silently miss a type declared `[Ephemeral]` (`Constructor_WithNullEphemeralResolver_ThrowsArgumentNullExceptionAsync`); an optional dependency would be null wherever the type is built by hand. An emitter built with its public constructor has no resolver and recognizes the `IEphemeralEvent` marker only (`EmitEventAuditedAsync_TheSameTypeWithoutAResolver_IsRecordedAsync`).
 - **An unresolvable type** on the outbox path is audited as before unless the message is flagged ephemeral (`TryBuildAuditMessage_AnEphemeralEventOfAnUnresolvableType_IsNotAuditedAsync`).
 
 ### Adding Audit Context
@@ -372,7 +373,7 @@ public record PaymentProcessedEvent(Guid OrderId, decimal Amount) : IEvent;
 
 {verified: AuditLedgerRebuildTests.RunAsync_SelectsEveryStoredEvent_AndQueuesOnlyTheEligibleAsync, AuditLedgerRebuildTests.RunAsync_Twice_YieldsOneRecordPerOriginEventAsync, AuditLedgerRebuildTests.Rederive_ARecordTheLiveWriterMinted_IsTheSameRecordAsync, AuditRebuildRequestReceptorTests.Rebuild_FromTheStore_QueuesARecordForEachEligibleEventOnlyAsync, AuditRebuildRequestReceptorTests.Rebuild_Twice_YieldsOneRecordPerOriginEventAsync}
 
-Audit records can be derived again from the events the origin service stored, so a lost, truncated or never-received audit ledger can be rebuilt. Send `RequestAuditRebuildCommand` to the origin service, or dispatch it there as an operator:
+Audit records can be derived again from the events each service stored, so a lost, truncated or never-received audit ledger can be rebuilt. `RequestAuditRebuildCommand` (namespace `Whizbang.Core.Commands.System`) is a durable system command like `RebuildPerspectiveCommand`: dispatched in process it rebuilds that service's records, and sent it is broadcast so every service rebuilds the records of the events it stored:
 
 ```csharp{title="Rebuild one tenant's audit records" description="The origin re-derives the audit records of its stored events for one tenant, from a commit sequence on." framework="NET10" category="Best-Practices" difficulty="INTERMEDIATE" tags=["audit", "rebuild", "audit-ledger", "redelivery"] tests=["AuditRebuildRequestReceptorTests.Rebuild_FromTheStore_QueuesARecordForEachEligibleEventOnlyAsync", "AuditLedgerRebuildTests.RunAsync_PassesTheSelectionThroughAsync"]}
 await dispatcher.SendAsync(new RequestAuditRebuildCommand {
@@ -400,7 +401,7 @@ What a rebuild does, and why:
 | Selection is capped by `RedeliveryPumpOptions.MaxEventsPerRequest` and read in pages of `SelectPageSize`; `MaxEvents` can lower the cap, never raise it. | The origin owns its storm cap, as for a redelivery; a page bounds the memory one rebuild holds. Page through a larger history with `FromCommitSequence`. | {verified: AuditLedgerRebuildTests.RunAsync_StopsAtTheEventCapAsync, AuditLedgerRebuildTests.RunAsync_ARequestedCap_IsClampedByTheOriginsCapAsync, AuditLedgerRebuildTests.RunAsync_PagesWithTheKeysetOfTheLastEventAsync} |
 | A service with event audit off selects nothing. | It writes no audit records, so it has no ledger to rebuild, and reading its store would be for nothing. | {verified: AuditLedgerRebuildTests.RunAsync_WithEventAuditOff_SelectsNothingAsync, AuditRebuildRequestReceptorTests.Rebuild_OnAServiceWithEventAuditOff_QueuesNothingAsync} |
 | A host without a work coordinator or the deferred outbox channel logs the request and drops it. | A rebuild is an operator action; it must never fail the inbox message that carried it. | {verified: AuditRebuildRequestReceptorTests.Rebuild_WithoutTheCoordinatorOrTheChannel_DoesNothingAsync} |
-| The command is control-plane traffic, and its own command audit keeps the number of streams it named, not the ids. | Like a redelivery request, it is a framework request with no user behind it, and its stream list is unbounded. | {verified: AuditLedgerRebuildTests.RequestAuditRebuildCommand_IsAuditedWithItsStreamCountAsync, ControlPlaneTypeRegistryTests.FrameworkControlPlaneTypes_AreRegisteredByDefaultAsync} |
+| The command is control-plane traffic (no user security context; dropped rather than dead-lettered) but not in the supersedable `sys-control` class, and its own command audit keeps the number of streams it named, not the ids. | It is a framework request with no user behind it, but it is one-shot operator intent: the control class's short TTL would silently lose it, as it would a perspective rebuild. Its stream list is unbounded. | {verified: AuditLedgerRebuildTests.RequestAuditRebuildCommand_IsAuditedWithItsStreamCountAsync, ControlPlaneTypeRegistryTests.FrameworkControlPlaneTypes_AreRegisteredByDefaultAsync, SystemControlTagTests.DurableSystemCommands_DoNotCarryTheControlTagAsync} |
 
 Reaped ephemeral events and at-most-once occurrences are never selected, as for any redelivery.
 
