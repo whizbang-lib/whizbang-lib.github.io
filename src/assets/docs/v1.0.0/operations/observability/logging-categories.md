@@ -20,6 +20,12 @@ codeReferences:
   - src/Whizbang.Core/Workers/InboxDispatchWorker.cs
   - src/Whizbang.Core/Workers/InboxHandlerWorker.cs
   - src/Whizbang.Core/Workers/OutboxDrainWorker.cs
+  - src/Whizbang.Core/Workers/ServiceBusConsumerWorker.cs
+  - src/Whizbang.Core/Workers/TransportBatchGuard.cs
+  - src/Whizbang.Core/Messaging/OrderedStreamProcessor.cs
+  - src/Whizbang.Generators/Templates/PerspectiveRunnerTemplate.cs
+  - src/Whizbang.Transports.AzureServiceBus/AzureServiceBusTransport.cs
+  - src/Whizbang.Transports.RabbitMQ/RabbitMQTransport.cs
   - src/Whizbang.Core/Workers/InboxFlushFailureRecorder.cs
   - src/Whizbang.Core/Workers/OutboxFlushFailureRecorder.cs
   - src/Whizbang.Core/Workers/DeadLetterLoggingOptions.cs
@@ -51,6 +57,18 @@ testReferences:
   - tests/Whizbang.Core.Component.Tests/Workers/SlidingWindowOutboxFlushFailureTests.cs
   - tests/Whizbang.Transports.AzureServiceBus.Tests/AzureServiceBusDeadLetterDrainerTests.cs
   - tests/Whizbang.Transports.RabbitMQ.Tests/RabbitMqDeadLetterDrainerTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/OutboxDrainWorkerCoverageTests.AttemptLogLevel.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerDeepPathChannelTests.AttemptLogLevel.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerCollectiveSinkTests.AttemptLogLevel.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerDeepPathDrainTests.StoredForm.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/ServiceBusConsumerWorkerCoverageTests.cs
+  - tests/Whizbang.Core.Component.Tests/Messaging/OrderedStreamProcessorTests.cs
+  - tests/Whizbang.Core.Tests/Perspectives/PerspectiveRunnerAttemptFailureLogLevelTests.cs
+  - tests/Whizbang.Core.Tests/Workers/TransportBatchGuardTests.cs
+  - tests/Whizbang.Transports.AzureServiceBus.Tests/AzureServiceBusTransportReceiveGuardTests.cs
+  - tests/Whizbang.Transports.AzureServiceBus.Tests/AzureServiceBusTransportPublishPathTests.cs
+  - tests/Whizbang.Transports.RabbitMQ.Component.Tests/BranchCoverage/RabbitMQTransportLoggingBranchTests.cs
+  - tests/Whizbang.Transports.RabbitMQ.Component.Tests/BranchCoverage/RabbitMQTransportBatchFlushBranchTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -255,8 +273,10 @@ These are found by machine: every caller of the entry points that write `wh_dead
 `Store{Inbox,Outbox}DeadLettersAsync`), checked against the dead-letter metrics, which count an arrival on each
 of the same paths.
 
-**What gets no record.** A failure that will be retried is not a dead letter: the inbox dispatch worker and the outbox publish worker
-each log it at Warning (EventId 4 in both categories), and neither logs the record until the attempts run out.
+**What gets no record.** A failure that will be retried is not a dead letter: every path logs it at Warning with
+the attempt's exception (the inbox dispatch worker and the outbox publish worker as EventId 4 in both categories; the
+rest are listed under [retried attempts](#retried-attempts)), and none logs the record until the attempts run out. A
+few retries have no bound yet and are still logged at Error; they are the [known exceptions](#unbounded-retries).
 A row another path already moved gets none, because that path logged it; a drain that finds a message already in
 custody settles the broker copy and logs it at Information. A dropped [control-plane
 message](../dead-letter-queue/internal-dlq#control-plane-drops) is never dead-lettered (it is re-issued on its own
@@ -265,7 +285,7 @@ message is retried, except where the inbox finishes the row for good anyway (att
 composite: above). Refusals the database makes inside the store
 functions on a write nobody awaits (a mixed-kind, sealed or archived stream) dead-letter rows with no process-side
 point to log from; a write that is awaited throws to its caller instead.
-{verified: InboxDispatchWorkerDeadLetterLogTests.Dispatch_ThatThrowsBelowTheBound_LogsWarningAndNoRecordAsync, OutboxPublishWorkerDlqPromotionTests.SingularPublish_ThrowsBelowCap_LogsTheAttemptAtWarningAndNoRecordAsync, InboxDispatchWorkerDeadLetterLogTests.MaxAttempts_RowAlreadyGone_LogsNoRecordAsync, InboxDispatchWorkerDeadLetterLogTests.MaxAttempts_ControlPlaneDrop_LogsTheDropAtWarningAndNoRecordAsync, PerspectiveWorkerDeadLetterFilterTests.FailuresAboveMax_MoveThrows_LogsNoRecordAsync, InboxFlushFailureRecorderTests.RecordAsync_DeadLetterWriteFails_LogsNoDeadLetterRecordAsync}
+{verified: InboxDispatchWorkerDeadLetterLogTests.Dispatch_ThatThrowsBelowTheBound_LogsWarningAndNoRecordAsync, OutboxPublishWorkerDlqPromotionTests.SingularPublish_ThrowsBelowCap_LogsTheAttemptAtWarningAndNoRecordAsync, OutboxDrainWorkerCoverageTests.PublishOneAsync_PublishThrows_LogsTheAttemptAtWarningWithItsExceptionAsync, PerspectiveWorkerDeepPathChannelTests.Worker_RunnerThrows_LogsTheAttemptAtWarningWithItsExceptionAsync, InboxDispatchWorkerDeadLetterLogTests.MaxAttempts_RowAlreadyGone_LogsNoRecordAsync, InboxDispatchWorkerDeadLetterLogTests.MaxAttempts_ControlPlaneDrop_LogsTheDropAtWarningAndNoRecordAsync, PerspectiveWorkerDeadLetterFilterTests.FailuresAboveMax_MoveThrows_LogsNoRecordAsync, InboxFlushFailureRecorderTests.RecordAsync_DeadLetterWriteFails_LogsNoDeadLetterRecordAsync}
 
 ### Why it is logged this way {#dead-letter-record-design}
 
@@ -279,8 +299,12 @@ point to log from; a write that is awaited throws to its caller instead.
 - **One record per message.** The path that moved the message logs it; a path that finds it already moved logs
   nothing, and the batchers log one record per message plus an Information summary of the batch (below), so a
   dead letter never raises two alerts. {verified: InboxDispatchWorkerDeadLetterLogTests.MaxAttempts_RowAlreadyGone_LogsNoRecordAsync, SlidingWindowInboxFlushFailureTests.FlushFailsTransientlyOnEveryAttempt_DeadLettersTheBatchAfterMaxFlushAttemptsAsync, SlidingWindowOutboxFlushFailureTests.FlushFailsTransientlyOnEveryAttempt_DeadLettersTheBatchAfterMaxFlushAttemptsAsync}
-- **Per-attempt failures stay at Warning.** A retry may still succeed, so an attempt that fails is not an alert.
-  {verified: InboxDispatchWorkerDeadLetterLogTests.Dispatch_ThatThrowsBelowTheBound_LogsWarningAndNoRecordAsync, OutboxPublishWorkerDlqPromotionTests.SingularPublish_ThrowsBelowCap_LogsTheAttemptAtWarningAndNoRecordAsync}
+- **Per-attempt failures stay at Warning, on every path.** A retry may still succeed, so an attempt that fails is
+  not an alert. Every path that will retry a failed attempt logs it at Warning with the attempt's exception attached
+  (the [retried attempts](#retried-attempts) below), so a message that keeps failing produces Warnings and then one
+  Error, the record, when it is dead-lettered. Error then means a message was dead-lettered or the host has a
+  failure that retrying will not fix, and an alert on Error does not fire for a message whose retry succeeds.
+  {verified: InboxDispatchWorkerDeadLetterLogTests.Dispatch_ThatThrowsBelowTheBound_LogsWarningAndNoRecordAsync, OutboxPublishWorkerDlqPromotionTests.SingularPublish_ThrowsBelowCap_LogsTheAttemptAtWarningAndNoRecordAsync, OutboxDrainWorkerCoverageTests.PublishOneAsync_PublishThrows_LogsTheAttemptAtWarningWithItsExceptionAsync, PerspectiveWorkerDeepPathChannelTests.Worker_RunnerThrows_LogsTheAttemptAtWarningWithItsExceptionAsync, AzureServiceBusTransportReceiveGuardTests.ProcessMessage_WhenThePolicyNamesAnUnrecognizedAction_LeavesTheMessageUnsettledAsync, RabbitMQTransportLoggingBranchTests.Receive_HandlerThrowsBelowMaxWithLogger_LogsTheAttemptAndRetryAtWarningAsync, TransportBatchGuardTests.AnOrdinaryFaultFailsTheBatchTooAsync}
 - **The level is an option, Warning or Error.** A service whose alerting should not fire on dead letters sets
   [`Whizbang:DeadLetterLogging:Level`](../configuration/configuration-reference#dead-letter-logging) to `Warning`.
   Every path, including the ones the transports build for themselves, reads the same bound value.
@@ -290,6 +314,32 @@ A category's own filter still applies to the record. A category set to `None`, o
 that component's dead letters along with the rest of its output: the
 [recommended development configuration](#recommended) silences `PerspectiveWorker` and `TransportConsumerWorker`,
 which is fine on a laptop and wrong in production.
+
+### Retried attempts {#retried-attempts}
+
+Each line below reports one failed attempt of a message that is retried and dead-lettered only at its bound, where
+the record is logged, or that is rethrown to a caller that does so. Each is logged at Warning with the attempt's
+exception (where the line has one). The test beside each fails if its line returns to Error, and checks that nothing
+in the run logged at Error.
+
+| Line | Category | Why it is a retried attempt | Verified |
+|---|---|---|---|
+| EventId 7, `publish threw for <id>` (singular and bulk publish) | `Whizbang.Core.Workers.OutboxDrainWorker` | The row goes to the failure channel; its attempts are counted and the pre-publish gate dead-letters it at the bound | {verified: OutboxDrainWorkerCoverageTests.PublishOneAsync_PublishThrows_LogsTheAttemptAtWarningWithItsExceptionAsync, OutboxDrainWorkerCoverageTests.PublishBulkAsync_BatchPublishThrows_LogsEachAttemptAtWarningWithItsExceptionAsync} |
+| EventId 6, `failed to deserialize envelope for <id>` | `Whizbang.Core.Workers.OutboxDrainWorker` | The same: the row is failed, not dropped | {verified: OutboxDrainWorkerCoverageTests.PublishOneAsync_EnvelopeDoesNotDeserialize_LogsTheAttemptAtWarningWithItsExceptionAsync} |
+| EventId 14, `Error processing perspective cursor` (standard path and the collective sink's apply) | `Whizbang.Core.Workers.PerspectiveWorker` | The failure is recorded against the leased rows, which are backed off and dead-lettered at the bound | {verified: PerspectiveWorkerDeepPathChannelTests.Worker_RunnerThrows_LogsTheAttemptAtWarningWithItsExceptionAsync, PerspectiveWorkerCollectiveSinkTests.CollectiveSink_DispatchThrows_LogsTheAttemptAtWarningWithItsExceptionAsync} |
+| `Drain mode: Error processing perspective` (no EventId) | `Whizbang.Core.Workers.PerspectiveWorker` | The same, on the drain path: the leased rows are parked and retried | {verified: PerspectiveWorkerDeepPathDrainTests.DrainMode_OtherFailure_IsNotClassifiedAsStoredFormButParksItsRowsAsync} |
+| `Error processing first event ... no progress to save` and `Failed to save partial progress` (no EventId) | The generated perspective runner | The runner rethrows to the perspective worker, which logs EventId 14 and retries; the runner's other partial-progress line was already a Warning | {verified: PerspectiveRunnerAttemptFailureLogLevelTests.RunFailsBeforeAnyEventApplies_LogsNoProgressToSaveAtWarningWithItsExceptionAsync, PerspectiveRunnerAttemptFailureLogLevelTests.PartialProgressCannotBeSaved_LogsTheSaveFailureAtWarningWithItsExceptionAsync} |
+| `Error processing message` and `Error processing session message` (no EventId) | `Whizbang.Transports.AzureServiceBus.AzureServiceBusTransport` | Service Bus abandons the delivery for redelivery, or dead-letters it at `MaxDeliveryAttempts`; the record is logged when the [dead-letter drain](../dead-letter-queue/transport-recovery) takes it into custody | {verified: AzureServiceBusTransportReceiveGuardTests.ProcessMessage_WhenThePolicyNamesAnUnrecognizedAction_LeavesTheMessageUnsettledAsync, AzureServiceBusTransportReceiveGuardTests.ProcessSessionMessage_WhenThePolicyNamesAnUnrecognizedAction_LeavesTheMessageUnsettledAsync} |
+| `Failed to publish message` and the `SendMessageAsync timed out` line (no EventId) | `Whizbang.Transports.AzureServiceBus.AzureServiceBusTransport` | Logged and rethrown to the outbox, which retries the publish and dead-letters it at the bound | {verified: AzureServiceBusTransportPublishPathTests.PublishAsync_SendFails_LogsTheAttemptAtWarningWithItsExceptionAndRethrowsAsync, AzureServiceBusTransportPublishPathTests.PublishAsync_SendNeverCompletes_ThrowsTimeoutExceptionAsync} |
+| `Error processing message` and `Error processing batch ... NACKing for redelivery` (no EventId) | `Whizbang.Transports.RabbitMQ.RabbitMQTransport` | The message is requeued, or dead-lettered past the queue's delivery limit and recorded by the dead-letter drain | {verified: RabbitMQTransportLoggingBranchTests.Receive_HandlerThrowsBelowMaxWithLogger_LogsTheAttemptAndRetryAtWarningAsync, RabbitMQTransportBatchFlushBranchTests.Flush_HandlerThrowsGenericWithLogger_LogsAndNacksEachForRedeliveryAsync} |
+| `Failed to publish message` (no EventId) | `Whizbang.Transports.RabbitMQ.RabbitMQTransport` | Logged and rethrown to the outbox | {verified: RabbitMQTransportLoggingBranchTests.PublishAsync_GenericFailureWithLogger_LogsThePublishAttemptAtWarningAsync} |
+| EventIds 90 and 91, `Transport batch of <n> message(s) failed` | `Whizbang.Core.Workers.TransportConsumerWorker` | The batch is reported to the transport as [failed](../../messaging/transports/transport-consumer#failed-batches) and redelivered; the host stays up | {verified: TransportBatchGuardTests.AnOrdinaryFaultFailsTheBatchTooAsync, TransportBatchGuardTests.AStatementTimeoutFailsTheBatchAsATypedSignalNotACancellationAsync, TransportBatchGuardTests.ACanceledBATCHTokenIsStillContainedWhileTheHostIsAliveAsync} |
+| EventId 16, `Error processing message`, and EventId 14, `Queued failure` | `Whizbang.Core.Workers.ServiceBusConsumerWorker` | Rethrown for redelivery, or queued as an inbox failure under the attempts bound | {verified: ServiceBusConsumerWorkerCoverageTests.HandleMessage_WhenProcessingThrows_LogsTheAttemptAtWarningWithItsExceptionAsync, ServiceBusConsumerWorkerCoverageTests.HandleMessage_WhenAStreamFails_LogsTheQueuedFailureAtWarningAsync} |
+| EventIds 6 and 10, `Failed to process message` and `Failed to process outbox message` | `Whizbang.Core.Messaging.OrderedStreamProcessor` | The failure handler records the attempt | {verified: OrderedStreamProcessorTests.ProcessInboxWorkAsync_WithLogger_OnFailure_LogsFailureAndStopAsync, OrderedStreamProcessorTests.ProcessOutboxWorkAsync_WithLogger_OnFailure_LogsFailureAsync} |
+
+A failing post-apply receptor on the collective sink is not a retried attempt: the apply has committed and the
+receptor is not run again. It logs the perspective worker's lifecycle failure line, EventId 22, at Error.
+{verified: PerspectiveWorkerCollectiveSinkTests.CollectiveSink_PostApplyReceptorThrows_LogsTheLifecycleFailureAtErrorAsync}
 
 ### Lines the record replaced {#dead-letter-record-upgrade}
 
@@ -309,6 +359,28 @@ the retired lines reads EventId 1901 instead:
 | Azure Service Bus and RabbitMQ drains' `imported message … into wh_dead_letters (duplicate=…)` Information | The record for an import; a duplicate keeps an Information line saying the broker copy was settled |
 
 {verified: InboxDispatchWorkerUndeserializablePayloadTests.Dispatch_PayloadRefused_DeadLetterRecordCarriesTheRefusalAtErrorAsync, SlidingWindowInboxFlushFailureTests.FlushFailsTransientlyOnEveryAttempt_DeadLettersTheBatchAfterMaxFlushAttemptsAsync, SlidingWindowOutboxFlushFailureTests.FlushFailsTransientlyOnEveryAttempt_DeadLettersTheBatchAfterMaxFlushAttemptsAsync, TransportConsumerWorkerUnstorableMessageTests.SerializationFails_LogsTheDeadLetterRecordAtErrorWithTypeAndCauseAsync}
+
+### Lines lowered to Warning {#retried-attempt-upgrade}
+
+**Upgrade note.** The [retried attempts](#retried-attempts) were logged at Error before and are now logged at
+Warning, so an alert keyed on any of them at Error stops firing. Alert on the record instead: EventId 1901,
+`MessageDeadLettered`, logged once for each message that is dead-lettered, at the level
+`Whizbang:DeadLetterLogging:Level` sets (Error by default). A query keyed on these lines by their text or EventId
+still finds them, at Warning.
+
+| Before | Now |
+|---|---|
+| `OutboxDrainWorker` EventIds 6 and 7, Error | Warning, with the attempt's exception |
+| `PerspectiveWorker` EventId 14 and the drain-mode `Error processing perspective`, Error | Warning, with the attempt's exception |
+| The generated perspective runner's `no progress to save` and `Failed to save partial progress`, Error | Warning, with the exception; the worker's EventId 14 follows |
+| Azure Service Bus `Error processing message`, `Error processing session message`, `Failed to publish message` and the send timeout, Error | Warning, with the exception |
+| RabbitMQ `Error processing message`, `Error processing batch` and `Failed to publish message`, Error | Warning, with the exception |
+| `TransportConsumerWorker` EventIds 90 and 91 (the transport batch guard), Error | Warning, with the exception |
+| `ServiceBusConsumerWorker` EventIds 14 and 16, Error | Warning |
+| `OrderedStreamProcessor` EventIds 6 and 10, Error | Warning, with the exception |
+| The collective sink's failing post-apply receptor, `PerspectiveWorker` EventId 14, Error | `PerspectiveWorker` EventId 22, the lifecycle receptor failure line, still Error |
+
+The lines in [unbounded retries](#unbounded-retries) are unchanged and still logged at Error.
 
 ## Hierarchical Filtering {#hierarchy}
 
@@ -344,21 +416,28 @@ This sets **all** categories starting with `Whizbang` to `Warning`, including `W
 | `Trace` | Hot-path per-message breadcrumbs (e.g. `ImmediateWorkCoordinatorStrategy` dispatch steps), off unless explicitly enabled | |
 | `Debug` | Step-level detail (individual migrations, SQL operations, batch grouping, per-subscription info) | |
 | `Information` | Summaries and milestones (initialization complete, worker started, batch sizes) | A batch the batchers dead-lettered is summarized here; each of its messages has its own record |
-| `Warning` | Recoverable issues (schema drift, failed maintenance, connection retries) | An attempt failed and will be retried. Also the dead-letter record, when `Whizbang:DeadLetterLogging:Level` is `Warning` |
-| `Error` | Failures that abort an operation (migration failure, SQL errors) | The message was [dead-lettered](#dead-lettered-messages) and will not be processed unless it is recovered (the default level of the record) |
+| `Warning` | Recoverable issues (schema drift, failed maintenance, connection retries) | An attempt failed and will be retried; logged on [every path](#retried-attempts) with the attempt's exception. Also the dead-letter record, when `Whizbang:DeadLetterLogging:Level` is `Warning` |
+| `Error` | Failures that abort an operation or that retrying will not fix (migration failure, a worker loop's lost batch, a lifecycle receptor that threw) | The message was [dead-lettered](#dead-lettered-messages) and will not be processed unless it is recovered (the default level of the record) |
 | `Critical` | Failures that put the host or a message's custody at risk | A received message could be neither stored nor dead-lettered; its batch is failed so the broker delivers it again |
 | `None` | Completely silent | |
 
-{verified: InboxDispatchWorkerDeadLetterLogTests.Dispatch_ThatThrowsBelowTheBound_LogsWarningAndNoRecordAsync, InboxDispatchWorkerDeadLetterLogTests.MaxAttempts_MovedToTheDeadLetterStore_LogsOneErrorRecordWithTypeAndLastErrorAsync, InboxDispatchWorkerDeadLetterLogTests.MaxAttempts_ConfiguredWarning_LogsTheRecordAtWarningAsync, TransportConsumerWorkerUnstorableMessageTests.CustodyUnavailable_BatchFailsAfterStoringNeighborsAsync}
+{verified: InboxDispatchWorkerDeadLetterLogTests.Dispatch_ThatThrowsBelowTheBound_LogsWarningAndNoRecordAsync, InboxDispatchWorkerDeadLetterLogTests.MaxAttempts_MovedToTheDeadLetterStore_LogsOneErrorRecordWithTypeAndLastErrorAsync, InboxDispatchWorkerDeadLetterLogTests.MaxAttempts_ConfiguredWarning_LogsTheRecordAtWarningAsync, TransportConsumerWorkerUnstorableMessageTests.CustodyUnavailable_BatchFailsAfterStoringNeighborsAsync, OutboxDrainWorkerCoverageTests.PublishOneAsync_PublishThrows_LogsTheAttemptAtWarningWithItsExceptionAsync, PerspectiveWorkerCollectiveSinkTests.CollectiveSink_PostApplyReceptorThrows_LogsTheLifecycleFailureAtErrorAsync}
 
-Some per-attempt failures are still logged at Error, so an alert on Error alone also sees failures that will be
-retried:
+### Unbounded retries still logged at Error {#unbounded-retries}
 
-| Line | Category | What it is |
+A few failures are retried with no bound, so the work is never dead-lettered and no record is ever logged. Their
+Error line is their only signal, so they stay at Error until each has a bound
+([#1983](https://github.com/whizbang-lib/whizbang/issues/1983)). These are the known exceptions to "Error means
+dead-lettered":
+
+| Line | Category | Why it stays at Error |
 |---|---|---|
-| EventId 7, `publish threw for <id>` | `Whizbang.Core.Workers.OutboxDrainWorker` | A whole publish batch threw; every row goes back to the failure channel and is retried |
-| EventId 14, `Error processing perspective cursor` | `Whizbang.Core.Workers.PerspectiveWorker` | A perspective's apply failed for a stream; its rows are parked with backoff and retried |
-| `Error processing message` and `Error processing session message` (no EventId) | `Whizbang.Transports.AzureServiceBus.AzureServiceBusTransport` | A delivery's processing threw; Service Bus abandons it for redelivery, or dead-letters it at the broker after `MaxDeliveryAttempts` |
+| EventId 58, `Perspective rewind failed` | `Whizbang.Core.Workers.PerspectiveWorker` | The stream retries on the next cycle with no failure recorded |
+| EventId 65, `cannot read its stored document` | `Whizbang.Core.Workers.PerspectiveWorker` | Logged once per stream; the document needs a rewrite before it can be read |
+| `Drain mode: DeserializeStreamEvents threw` (no EventId) | `Whizbang.Core.Workers.PerspectiveWorker` | The pass is skipped and the same events are fetched again, without a failure being counted |
+| EventId 5, `failed to deserialize envelope` | `Whizbang.Core.Workers.InboxDrainWorker` | The row is skipped and fetched again, never failed |
+| EventId 73, composite `commit failed` | `Whizbang.Core.Workers.InboxDispatchWorker` | The composite is offered again without counting an attempt |
+| EventId 3, `BatchFlusher dropped a batch` | `Whizbang.Core.Workers.BatchFlusher` | The batch is dropped after its flush retries; the rows behind it are claimed again when their leases expire |
 
 The batchers also log a batch they could not dead-letter either (`could not be written to wh_dead_letters either`)
 at Error, not Critical: those messages are lost unless their source sends them again.
