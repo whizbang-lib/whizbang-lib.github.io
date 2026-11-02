@@ -13,6 +13,7 @@ codeReferences:
   - src/Whizbang.Core/Workers/MaintenanceWorker.cs
   - src/Whizbang.Data.Postgres/Migrations/221_LedgerRetention.sql
   - src/Whizbang.Data.Postgres/Migrations/238_LogSweepClearsTheDefaultPartition.sql
+  - src/Whizbang.Data.Postgres/Migrations/279_CollectiveApplyProgress.sql
   - src/Whizbang.Core/Workers/RetentionSettingsBridge.cs
   - src/Whizbang.Core/Workers/QueueIndexReindexStep.cs
 testReferences:
@@ -21,6 +22,7 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/LedgerRetentionSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Partitioning/LogPartitionConversionTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperLedgerRetentionSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Collective/CollectiveApplyProgressSqlTests.cs
   - tests/Whizbang.Core.Tests/Workers/QueueIndexReindexStepTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/QueueIndexReindexSqlTests.cs
 ---
@@ -100,6 +102,7 @@ The last task of the maintenance sweep bounds the framework ledgers that nothing
 | `wh_schedule_runs` | `purge_old_schedule_runs` | runs younger than the window, and **each schedule's newest run** whatever its age, so a dormant schedule keeps its last outcome | `ScheduleRunDays` (30 days) |
 | `wh_stream_purge_audit` | `purge_old_stream_purge_audit` | everything by default, because the audit records what a purge destroyed; set a window to bound it | `StreamPurgeAuditDays` (0, keep forever) |
 | `wh_integrity_ledger` | `trim_integrity_ledger` | the most recently touched entries, up to the cap | `IntegrityLedgerMaxEntries` (100000) |
+| `wh_collective_apply_progress` | `purge_collective_apply_progress` | unfinished and abandoned records, every record of a collective whose work row is pending or that has an abandoned record, and finished records younger than the window (by `applied_at`) | `CollectiveApplyProgressDays` (7 days) |
 
 Once `wh_log` is [partitioned](../../operations/infrastructure/partitioned-ledgers) and partition maintenance is
 enabled, the partition manager drops whole weeks past the same `LogDays` window, and `purge_old_log_entries` deletes
@@ -108,6 +111,24 @@ only from `wh_log`'s default partition, which holds the entries no weekly partit
 default partition only; expired partitions are dropped)`, or `skipped (partitioned: no default partition)` when that
 partition is missing. With partitioning switched off the row delete covers the whole table again, partitioned or not.
 {verified: LogPartitionConversionTests.OnceConverted_RetentionDropsPartitions_InsteadOfDeletingRowsAsync, LogPartitionConversionTests.OnceManaged_TheRowDeleteSweepsOnlyTheDefaultPartition_AndLeavesPartitionsToTheDropAsync, LogPartitionConversionTests.OnceManaged_WithoutADefaultPartition_TheRowDeleteSkipsAsync, LogPartitionConversionTests.AConvertedLog_WithPartitioningSwitchedOff_IsStillBoundedByTheRowDeleteAsync}
+
+**Collective apply progress** ([#1969](https://github.com/whizbang-lib/whizbang/issues/1969)). The collective sink
+keeps one [progress record](../messaging/collective-events#resuming-an-apply) per collective event and handler, so a
+retried apply resumes after its last committed batch. `purge_collective_apply_progress` deletes a finished record once
+it is past the window, with three exceptions, each for a reason:
+
+- **Never while the collective's work row is pending.** A collective re-delivered before its completion was written
+  must still find its finished record, or it would apply again from its first row.
+- **Never an abandoned record, and never a finished record of a collective that has one.** Those describe a
+  [dead-lettered collective](../messaging/collective-events#dead-lettered-collectives): they let recovery resume and
+  make a rewind fold the collective only into the rows it reached. They are deleted with the last dead letter of their
+  collective, by a trigger on `wh_dead_letters`, not by this sweep. After that, a rewind folds that collective in full
+  again.
+- **Nothing under `debug_mode`,** like every task here.
+
+A collective whose finished record was swept replays in full, which is right: it finished. The sweep adds no index: the
+table holds a row per collective and handler, not per projection row.
+{verified: CollectiveApplyProgressSqlTests.TheSweep_RemovesAFinishedRecordPastTheHorizon_AndKeepsAYoungerOneAsync, CollectiveApplyProgressSqlTests.TheSweep_HonorsTheConfiguredHorizonAsync, CollectiveApplyProgressSqlTests.TheSweep_KeepsAFinishedRecord_WhileItsWorkRowIsPendingAsync, CollectiveApplyProgressSqlTests.TheSweep_KeepsUnfinishedAndAbandonedRecords_AndTheFinishedRecordsOfADeadLetteredCollectiveAsync, CollectiveApplyProgressSqlTests.TheSweep_UnderDebugMode_KeepsEveryRecordAsync, CollectiveApplyProgressSqlTests.PurgingTheDeadLetter_SweepsItsAbandonedRecords_AndKeepsTheFinishedOnesAsync}
 
 Each setting lives under `Whizbang:Workers:Maintenance:Retention` and is published to `wh_settings` before the sweep reads it (next section); the keys are listed under [Database-side settings](../../operations/configuration/configuration-reference#database-side-settings).
 
