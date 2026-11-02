@@ -13,6 +13,7 @@ codeReferences:
   - src/Whizbang.Core/Workers/TransportConsumerBuilderExtensions.cs
   - src/Whizbang.Core/Workers/TransportConsumerWorker.cs
   - src/Whizbang.Core/Workers/TransportBatchCollector.cs
+  - src/Whizbang.Core/Workers/TransportBatchGuard.cs
   - src/Whizbang.Core/Workers/TransportBatchOptions.cs
   - src/Whizbang.Core/Resilience/SubscriptionResilienceOptions.cs
   - src/Whizbang.Core/Resilience/SubscriptionState.cs
@@ -38,6 +39,7 @@ testReferences:
   - tests/Whizbang.Core.Tests/HealthChecks/SubscriptionHealthCheckTests.cs
   - tests/Whizbang.Core.Tests/Observability/ServiceInstanceProviderTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/TransportBatchCollectorTests.cs
+  - tests/Whizbang.Core.Tests/Workers/TransportBatchGuardTests.cs
   - tests/Whizbang.Core.Component.Tests/Shutdown/BatcherShutdownTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/TransportConsumerWorkerBodyOffloadTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/TransportConsumerWorkerStoresBeforeSkippingTests.cs
@@ -353,9 +355,14 @@ still stores and reads what the transport can.
 ## Failed batches {#failed-batches}
 
 A batch can fail as a whole: the inbox store times out, or a message can be neither
-stored nor dead-lettered. The worker logs the failure at Error level (naming SQLSTATE
-57014 when the database canceled the statement) and reports it to the transport as a
-`TransportBatchFailedException`. It never swallows the failure, because every transport
+stored nor dead-lettered. The worker logs the failed batch at Warning with its exception
+(EventId 90, or EventId 91 naming SQLSTATE 57014 when the database canceled the statement)
+and reports it to the transport as a `TransportBatchFailedException`. The batch is
+delivered again, so the line reports a failed attempt, not a loss: a message the broker
+gives up on is logged at Error once, as the
+[dead-letter record](../../operations/observability/logging-categories#dead-lettered-messages),
+when the dead-letter drain takes it into custody, and a message that could be neither
+stored nor dead-lettered also gets the Critical custody line. It never swallows the failure, because every transport
 settles a message by whether its handler returned: a swallowed failure is completed and
 lost. The signal is never a cancellation, so a statement timeout cannot be mistaken for a
 shutdown, and the worker keeps running.
@@ -373,7 +380,7 @@ dead-letter queue, from which the
 gives it durable custody. RabbitMQ has no delivery count of its own for a requeued
 message: give the queue a delivery limit (a quorum queue with `x-delivery-limit` and a
 dead-letter exchange), or a batch that always fails is redelivered indefinitely. A real host shutdown propagates as itself and is never wrapped.
-{verified: TransportBatchGuardTests.AStatementTimeoutFailsTheBatchAsATypedSignalNotACancellationAsync, TransportConsumerWorkerBatchFailureTests.InboxStoreTimesOut_TransportToldBatchFailed_WorkerStaysUpAndStoresTheRedeliveryAsync, AzureServiceBusTransportBatchPipelineTests.NonSessionBatch_HandlerReportsBatchFailed_AbandonsNeverCompletesAsync, AzureServiceBusTransportBatchPipelineTests.NonSessionBatch_HandlerFailsAtMaxDeliveryCount_DeadLettersNeverCompletesAsync, AzureServiceBusTransportBatchPipelineTests.SessionBatch_HandlerReportsBatchFailedFromACancellation_AbandonsNeverCompletesAsync, RabbitMQTransportBatchPathTests.SubscribeBatchAsync_HandlerReportsBatchFailedFromACancellation_NacksNeverAcksAsync}
+{verified: TransportBatchGuardTests.AStatementTimeoutFailsTheBatchAsATypedSignalNotACancellationAsync, TransportBatchGuardTests.AnOrdinaryFaultFailsTheBatchTooAsync, TransportBatchGuardTests.ACanceledBATCHTokenIsStillContainedWhileTheHostIsAliveAsync, TransportConsumerWorkerBatchFailureTests.InboxStoreTimesOut_TransportToldBatchFailed_WorkerStaysUpAndStoresTheRedeliveryAsync, AzureServiceBusTransportBatchPipelineTests.NonSessionBatch_HandlerReportsBatchFailed_AbandonsNeverCompletesAsync, AzureServiceBusTransportBatchPipelineTests.NonSessionBatch_HandlerFailsAtMaxDeliveryCount_DeadLettersNeverCompletesAsync, AzureServiceBusTransportBatchPipelineTests.SessionBatch_HandlerReportsBatchFailedFromACancellation_AbandonsNeverCompletesAsync, RabbitMQTransportBatchPathTests.SubscribeBatchAsync_HandlerReportsBatchFailedFromACancellation_NacksNeverAcksAsync}
 
 ## Subscription Resilience {#subscription-resilience}
 
