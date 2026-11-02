@@ -26,6 +26,7 @@ codeReferences:
   - src/Whizbang.Generators/Templates/PerspectiveRunnerTemplate.cs
   - src/Whizbang.Transports.AzureServiceBus/AzureServiceBusTransport.cs
   - src/Whizbang.Transports.RabbitMQ/RabbitMQTransport.cs
+  - src/Whizbang.Core/Workers/BatchFlusher.cs
   - src/Whizbang.Core/Workers/InboxFlushFailureRecorder.cs
   - src/Whizbang.Core/Workers/OutboxFlushFailureRecorder.cs
   - src/Whizbang.Core/Workers/DeadLetterLoggingOptions.cs
@@ -69,6 +70,11 @@ testReferences:
   - tests/Whizbang.Transports.AzureServiceBus.Tests/AzureServiceBusTransportPublishPathTests.cs
   - tests/Whizbang.Transports.RabbitMQ.Component.Tests/BranchCoverage/RabbitMQTransportLoggingBranchTests.cs
   - tests/Whizbang.Transports.RabbitMQ.Component.Tests/BranchCoverage/RabbitMQTransportBatchFlushBranchTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/InboxDrainWorkerGapTests.UnreadableRows.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/InboxDispatchWorkerCompositeCommitTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerDeepPathChannelTests.RewindFailure.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerDeepPathDrainTests.UnreadableRows.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/BatchFlusherRetryTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -132,7 +138,7 @@ To temporarily re-enable a category for debugging, set it to `"Debug"`:
 | `Whizbang.Core.Workers.OutboxPublishWorker` | Outbox publish worker: startup/shutdown summary at `Information`; publish failures below the attempt cap and missing-transport conditions at `Warning`; a message it dead-letters as the [dead-letter record](#dead-lettered-messages). | Information |
 | `Whizbang.Core.Workers.ClaimWorker` | Work-claim poller — startup/shutdown and NOTIFY-gate reconnects at `Information`; tick failures and heartbeat problems at `Warning`. | Information |
 | `Whizbang.Core.Workers.TransportConsumerWorker` | Transport consumer startup and subscription management. Logs a one-line summary at `Information` on start; per-destination and per-subscription detail at `Debug`. | Information |
-| `Whizbang.Core.Workers.InboxDrainWorker` | Inbox drain: turns claimed stream ids into queued inbox rows. Working-set budget hand-backs at `Information`; drain and hand-back failures at `Warning`. See [Inbox pipeline events](#inbox-pipeline-events). | Information |
+| `Whizbang.Core.Workers.InboxDrainWorker` | Inbox drain: turns claimed stream ids into queued inbox rows. Working-set budget hand-backs at `Information`; drain and hand-back failures, and rows whose envelope cannot be read, at `Warning`; such a row past `MaxInboxAttempts` as the [dead-letter record](#dead-lettered-messages). See [Inbox pipeline events](#inbox-pipeline-events). | Information |
 | `Whizbang.Core.Workers.InboxDispatchWorker` | Inbox dispatch and its lease keeper: dispatch failures, lease renewal failures, lapsed held rows and control-plane drops at `Warning`; skipped duplicate copies at `Debug`; a message it dead-letters as the [dead-letter record](#dead-lettered-messages). | Information |
 | `Whizbang.Core.Workers.InboxHandlerWorker` | Batched inbox commits: each failed commit (first five per flush, then a summary) at `Warning`. | Information |
 
@@ -201,17 +207,20 @@ trace every firing while you investigate, lower just this category:
 
 ## Inbox Pipeline Events {#inbox-pipeline-events}
 
-The inbox drain, dispatch and commit workers log the events below about the rows a process holds and
-the commits it makes. See [Per-stream drain](../../fundamentals/work-coordinator/per-stream-drain#working-set-budget),
+The inbox drain, dispatch and commit workers log the events below about the rows a process holds, the rows it
+cannot read and the commits it makes. See [Per-stream drain](../../fundamentals/work-coordinator/per-stream-drain#working-set-budget),
 [Inbox dispatch](../../fundamentals/work-coordinator/inbox-dispatch#held-rows) and
 [Handler commit](../../fundamentals/work-coordinator/handler-commit#commit-failures-logged) for what each
 means.
 
 | Category | EventId | Level | When |
 |---|---|---|---|
+| `InboxDrainWorker` | 5 | Warning | A row's envelope could not be read; the row is failed with backoff, and dead-lettered past `MaxInboxAttempts`. See [unreadable rows](../workers/inbox-dispatch-worker#unreadable-rows). |
+| `InboxDrainWorker` | 64 | Warning | An unreadable row past `MaxInboxAttempts` could not be moved to the dead-letter store; it is failed and the move is tried again on its next attempt. |
 | `InboxDrainWorker` | 62 | Information | The working set is full; fetched rows were handed back uncharged. |
 | `InboxDrainWorker` | 63 | Warning | Handing back rows the working-set budget turned away failed. |
 | `InboxDispatchWorker` | 11 | Warning | A control-plane message was dropped at the attempt bound; carries its last cause and last error. See [control-plane drops](../dead-letter-queue/internal-dlq#control-plane-drops). |
+| `InboxDispatchWorker` | 73 | Warning | A composite's expansion commit failed; the row is failed with backoff, and dead-lettered past `MaxInboxAttempts`. See [transactional expansion](../../fundamentals/messaging/composite-events#transactional-expansion). |
 | `InboxDispatchWorker` | 78 | Warning | Renewing the leases of held rows failed. |
 | `InboxDispatchWorker` | 79 | Warning | A held row used every lease renewal it is allowed in its state. |
 | `InboxDispatchWorker` | 80 | Warning | Summary of lapses in one keeper pass beyond the first five. |
@@ -224,7 +233,7 @@ means.
 | `InboxHandlerWorker` | 28 | Warning | A commit failure names no request in the flush. |
 
 Categories are prefixed `Whizbang.Core.Workers.`. Every Warning above reaches the default `Information` level.
-{verified: InboxDrainWorkerGapTests.HandingBackFails_IsLoggedWithWhatItCostsAsync, InboxDispatchWorkerHeldLeaseTests.Keeper_ManyLapsesInOneSweep_LogTheFirstIndividually_ThenASummaryAsync, InboxDispatchWorkerHeldLeaseTests.Keeper_ManyRowsItsRenewalDidNotCover_LogTheFirstIndividually_ThenASummaryAsync, InboxDispatchWorkerControlPlaneDropLogTests.Drop_WithARecordedFailure_LogsTheErrorAndNamesItAsARecordedFailureAsync, InboxHandlerWorkerTests.ManyCommitFailuresInOneFlush_LogTheFirstIndividually_ThenOneSummaryOfTheRestAsync}
+{verified: InboxDrainWorkerGapTests.HandingBackFails_IsLoggedWithWhatItCostsAsync, InboxDispatchWorkerHeldLeaseTests.Keeper_ManyLapsesInOneSweep_LogTheFirstIndividually_ThenASummaryAsync, InboxDispatchWorkerHeldLeaseTests.Keeper_ManyRowsItsRenewalDidNotCover_LogTheFirstIndividually_ThenASummaryAsync, InboxDispatchWorkerControlPlaneDropLogTests.Drop_WithARecordedFailure_LogsTheErrorAndNamesItAsARecordedFailureAsync, InboxHandlerWorkerTests.ManyCommitFailuresInOneFlush_LogTheFirstIndividually_ThenOneSummaryOfTheRestAsync, InboxDrainWorkerGapTests.UnreadableRow_BelowTheAttemptBound_IsFailedForBackoff_AndLoggedAtWarningAsync, InboxDrainWorkerGapTests.UnreadableRow_PastTheAttemptBound_WhenTheMoveFails_IsFailedForAnotherTryAsync, InboxDispatchWorkerCompositeCommitTests.Composite_WhoseCommitFails_IsFailedForBackoffAndTheAttemptBound_AndLoggedAtWarningAsync}
 
 ## Dead-Lettered Messages {#dead-lettered-messages}
 
@@ -258,6 +267,7 @@ fail: Whizbang.Core.Workers.InboxDispatchWorker[1901]
 |---|---|---|---|---|
 | Inbox: attempts exhausted, moved to `wh_dead_letters` | `InboxDispatchWorker` | `MaxAttemptsExceeded` | The row's recorded error, or the exhausted attempts when none was recorded | {verified: InboxDispatchWorkerDeadLetterLogTests.MaxAttempts_MovedToTheDeadLetterStore_LogsOneErrorRecordWithTypeAndLastErrorAsync, InboxDispatchWorkerDeadLetterLogTests.MaxAttempts_NoRecordedError_RecordNamesTheExhaustedAttemptsAsync} |
 | Inbox: attempts exhausted, finished for good without a move (no dead-letter store, or the move failed) | `InboxDispatchWorker` | `MaxAttemptsExceeded` | As above. The message is not in `wh_dead_letters`, so the record is its only trace | {verified: InboxDispatchWorkerDeadLetterLogTests.MaxAttempts_NoDeadLetterStore_LogsTheRecordForTheTerminalCompletionAsync, InboxDispatchWorkerDeadLetterLogTests.MaxAttempts_DeadLetterMoveThrows_LogsTheRecordForTheTerminalCompletionAsync} |
+| Inbox: an envelope the drain cannot read, attempts exhausted ([unreadable rows](../workers/inbox-dispatch-worker#unreadable-rows)) | `InboxDrainWorker` | `MaxAttemptsExceeded` | The read failure, with the attempts and the bound; the read's exception | {verified: InboxDrainWorkerGapTests.UnreadableRow_PastTheAttemptBound_IsDeadLetteredWithOneRecord_AndNotFailedAgainAsync, InboxDrainWorkerGapTests.UnreadableRow_PastTheAttemptBound_LogsTheRecordAtTheConfiguredLevelAsync} |
 | Inbox: a payload the serializer refuses | `InboxDispatchWorker` | `SerializationError` | The serializer's exception | {verified: InboxDispatchWorkerUndeserializablePayloadTests.Dispatch_PayloadRefused_DeadLetterRecordCarriesTheRefusalAtErrorAsync} |
 | Inbox: a composite over its own cap or the consumer's budget, or a failed fan-out | `InboxDispatchWorker` | `CompositeInnerEventLimitExceeded` or `CompositeExpansionFailure` | The refusal text | {verified: InboxDispatchWorkerBranchCoverageTests.CompositeOverOwnCap_MovedToTheDeadLetterStore_LogsTheDeadLetterRecordAtErrorAsync, InboxDispatchWorkerBranchCoverageTests.CompositeOverOwnCap_NoDeadLetterStore_LogsTheRecordForTheTerminalCompletionAsync, InboxDispatchWorkerBranchCoverageTests.CompositeOverConsumerBudget_NoDeadLetterStore_LogsTheRecordForTheTerminalCompletionAsync} |
 | Outbox publish worker: attempts at the cap | `OutboxPublishWorker` | `MaxAttemptsExceeded` | The publish exception when one was thrown, else the publish result's error | {verified: OutboxPublishWorkerDlqPromotionTests.SingularPublish_AttemptsAtCap_LogsTheDeadLetterRecordAtErrorWithTypeAndErrorAsync, OutboxPublishWorkerDlqPromotionTests.SingularPublish_ThrowsAtCap_RecordCarriesTheExceptionAsync} |
@@ -275,8 +285,8 @@ of the same paths.
 
 **What gets no record.** A failure that will be retried is not a dead letter: every path logs it at Warning with
 the attempt's exception (the inbox dispatch worker and the outbox publish worker as EventId 4 in both categories; the
-rest are listed under [retried attempts](#retried-attempts)), and none logs the record until the attempts run out. A
-few retries have no bound yet and are still logged at Error; they are the [known exceptions](#unbounded-retries).
+rest are listed under [retried attempts](#retried-attempts)), and none logs the record until the attempts run out.
+Two bounded failures keep an Error line for the reasons under [failures that stay at Error](#kept-at-error).
 A row another path already moved gets none, because that path logged it; a drain that finds a message already in
 custody settles the broker copy and logs it at Information. A dropped [control-plane
 message](../dead-letter-queue/internal-dlq#control-plane-drops) is never dead-lettered (it is re-issued on its own
@@ -380,7 +390,9 @@ still finds them, at Warning.
 | `OrderedStreamProcessor` EventIds 6 and 10, Error | Warning, with the exception |
 | The collective sink's failing post-apply receptor, `PerspectiveWorker` EventId 14, Error | `PerspectiveWorker` EventId 22, the lifecycle receptor failure line, still Error |
 
-The lines in [unbounded retries](#unbounded-retries) are unchanged and still logged at Error.
+Four more failures that used to retry with no bound are now bounded and lowered to Warning; see
+[retries that now end in a dead letter](#bounded-retries). Two bounded failures
+[stay at Error](#kept-at-error).
 
 ## Hierarchical Filtering {#hierarchy}
 
@@ -423,26 +435,41 @@ This sets **all** categories starting with `Whizbang` to `Warning`, including `W
 
 {verified: InboxDispatchWorkerDeadLetterLogTests.Dispatch_ThatThrowsBelowTheBound_LogsWarningAndNoRecordAsync, InboxDispatchWorkerDeadLetterLogTests.MaxAttempts_MovedToTheDeadLetterStore_LogsOneErrorRecordWithTypeAndLastErrorAsync, InboxDispatchWorkerDeadLetterLogTests.MaxAttempts_ConfiguredWarning_LogsTheRecordAtWarningAsync, TransportConsumerWorkerUnstorableMessageTests.CustodyUnavailable_BatchFailsAfterStoringNeighborsAsync, OutboxDrainWorkerCoverageTests.PublishOneAsync_PublishThrows_LogsTheAttemptAtWarningWithItsExceptionAsync, PerspectiveWorkerCollectiveSinkTests.CollectiveSink_PostApplyReceptorThrows_LogsTheLifecycleFailureAtErrorAsync}
 
-### Unbounded retries still logged at Error {#unbounded-retries}
-
-A few failures are retried with no bound, so the work is never dead-lettered and no record is ever logged. Their
-Error line is their only signal, so they stay at Error until each has a bound
-([#1983](https://github.com/whizbang-lib/whizbang/issues/1983)). These are the known exceptions to "Error means
-dead-lettered":
-
-| Line | Category | Why it stays at Error |
-|---|---|---|
-| EventId 58, `Perspective rewind failed` | `Whizbang.Core.Workers.PerspectiveWorker` | The stream retries on the next cycle with no failure recorded |
-| EventId 65, `cannot read its stored document` | `Whizbang.Core.Workers.PerspectiveWorker` | Logged once per stream; the document needs a rewrite before it can be read |
-| `Drain mode: DeserializeStreamEvents threw` (no EventId) | `Whizbang.Core.Workers.PerspectiveWorker` | The pass is skipped and the same events are fetched again, without a failure being counted |
-| EventId 5, `failed to deserialize envelope` | `Whizbang.Core.Workers.InboxDrainWorker` | The row is skipped and fetched again, never failed |
-| EventId 73, composite `commit failed` | `Whizbang.Core.Workers.InboxDispatchWorker` | The composite is offered again without counting an attempt |
-| EventId 3, `BatchFlusher dropped a batch` | `Whizbang.Core.Workers.BatchFlusher` | The batch is dropped after its flush retries; the rows behind it are claimed again when their leases expire |
-
 The batchers also log a batch they could not dead-letter either (`could not be written to wh_dead_letters either`)
 at Error, not Critical: those messages are lost unless their source sends them again.
 
 To alert on dead letters alone, key on EventId 1901 or the name `MessageDeadLettered` rather than on the level.
+
+### Retries that now end in a dead letter {#bounded-retries}
+{verified: PerspectiveWorkerDeepPathChannelTests.Rewind_ThatThrows_FailsItsRowsForRetry_InsteadOfCompletingThemAsync, PerspectiveWorkerDeepPathDrainTests.DrainMode_ReadThrowsForOneRow_AppliesTheRestAndFailsThatRowAsync, InboxDrainWorkerGapTests.UnreadableRow_PastTheAttemptBound_IsDeadLetteredWithOneRecord_AndNotFailedAgainAsync, InboxDispatchWorkerCompositeCommitTests.Composite_WhoseCommitFails_IsFailedForBackoffAndTheAttemptBound_AndLoggedAtWarningAsync}
+
+Four failures used to be retried with no bound: nothing was recorded against the work, so it was never backed off,
+never counted and never dead-lettered, and its Error line was the only signal. Each failed attempt is now recorded
+against its work row, so the retry is backed off and counted, and the row is dead-lettered at the bound it already
+had, with the one [dead-letter record](#dead-lettered-messages). Their per-attempt lines are Warnings. No setting is
+new: the bounds are `MaxPerspectiveEventAttempts` and `MaxInboxAttempts`.
+
+| Line | Category | Level | What happens now | Verified |
+|---|---|---|---|---|
+| EventId 58, `Perspective rewind failed` | `Whizbang.Core.Workers.PerspectiveWorker` | Warning (was Error) | The rewind's rows are failed for retry and dead-lettered past `MaxPerspectiveEventAttempts`; see [a rewind that fails](../workers/perspective-worker#rewind-failures) | {verified: PerspectiveWorkerDeepPathChannelTests.Rewind_ThatThrows_FailsItsRowsForRetry_InsteadOfCompletingThemAsync, PerspectiveWorkerDeepPathChannelTests.Rewind_ThatThrows_LogsTheAttemptAtWarningWithItsExceptionAsync} |
+| EventId 78, `stored event row(s) could not be read` (new; replaces the drain-mode `DeserializeStreamEvents threw` Error) | `Whizbang.Core.Workers.PerspectiveWorker` | Warning | Each unreadable row is failed (`SerializationError`) and dead-lettered past `MaxPerspectiveEventAttempts`; the readable rows fetched with it are applied; see [unreadable stored events](../workers/perspective-worker#unreadable-stored-events) | {verified: PerspectiveWorkerDeepPathDrainTests.DrainMode_ReadThrowsForOneRow_AppliesTheRestAndFailsThatRowAsync, PerspectiveWorkerDeepPathDrainTests.DrainMode_StoreSkipsARowItCannotRead_FailsThatRowAsync} |
+| EventId 79, `reading them one at a time` (new) | `Whizbang.Core.Workers.PerspectiveWorker` | Debug | A batch read threw and is retried row by row to find the rows that cannot be read | {verified: PerspectiveWorkerDeepPathDrainTests.DrainMode_ReadThrowsForEveryRow_FailsEveryRowAsync} |
+| EventId 5, `failed to deserialize envelope` | `Whizbang.Core.Workers.InboxDrainWorker` | Warning (was Error) | The row is failed (`SerializationError`) and, past `MaxInboxAttempts`, dead-lettered by the drain; see [unreadable rows](../workers/inbox-dispatch-worker#unreadable-rows) | {verified: InboxDrainWorkerGapTests.UnreadableRow_BelowTheAttemptBound_IsFailedForBackoff_AndLoggedAtWarningAsync, InboxDrainWorkerGapTests.UnreadableRow_PastTheAttemptBound_IsDeadLetteredWithOneRecord_AndNotFailedAgainAsync} |
+| EventId 64, `could not dead-letter inbox row` (new) | `Whizbang.Core.Workers.InboxDrainWorker` | Warning | The move of an unreadable row failed; the row is failed and the move is tried again on its next attempt | {verified: InboxDrainWorkerGapTests.UnreadableRow_PastTheAttemptBound_WhenTheMoveFails_IsFailedForAnotherTryAsync} |
+| EventId 73, composite `commit failed` | `Whizbang.Core.Workers.InboxDispatchWorker` | Warning (was Error) | The row is failed through the failure channel, backed off, counted, and dead-lettered past `MaxInboxAttempts`; see [transactional expansion](../../fundamentals/messaging/composite-events#transactional-expansion) | {verified: InboxDispatchWorkerCompositeCommitTests.Composite_WhoseCommitFails_IsFailedForBackoffAndTheAttemptBound_AndLoggedAtWarningAsync, InboxDispatchWorkerBranchCoverageTests.CompositeCommitFails_WithoutCompositeMetrics_StillReleasesRowForRetryAsync} |
+
+**Upgrade note.** Alerts keyed on EventIds 5, 58 or 73 at Error, or on the drain-mode `DeserializeStreamEvents threw`
+line, stop firing. Alert on the dead-letter record, EventId 1901, which is logged once when the work is dead-lettered.
+
+### Failures that stay at Error {#kept-at-error}
+
+Error means a message was dead-lettered or the host has a failure that retrying will not fix. Two failures that are
+already bounded keep their Error line under that rule:
+
+| Line | Category | Why it stays at Error | Verified |
+|---|---|---|---|
+| EventId 65, `cannot read its stored document` | `Whizbang.Core.Workers.PerspectiveWorker` | Its rows are already bounded: each failure is recorded (`SerializationError`), backed off, and dead-lettered past `MaxPerspectiveEventAttempts` with the record. The line is logged once per stream (later failures are EventId 66, at Debug), and it is the operator's cue that a [stored-form rewrite](../../fundamentals/perspectives/stored-form-migrations#recovery) is needed, which a dead letter does not say. | {verified: PerspectiveWorkerDeepPathDrainTests.DrainMode_UnreadableStoredForm_IsAnnouncedCountedAndParkedAsync, PerspectiveWorkerDeepPathDrainTests.DrainMode_UnreadableStoredForm_AgainIsQuietAndRecoveryReleasesAsync} |
+| EventId 3, `BatchFlusher dropped a batch` | The worker that owns the flusher, which logs under its own category: `Whizbang.Core.Workers.FailureFlushWorker`, `InboxHandlerWorker`, `LeaseRenewalWorker`, `OutboxCompletionFlushWorker` or `PerspectiveCompletionFlushWorker` | Already bounded by `MaxFlushAttempts` (default 5). It fires only after that many consecutive failed flushes, which means the database cannot be reached: a host-level failure. No data is lost: the dropped items are bookkeeping (completions, failures, lease renewals or handler commits), not messages, so there is nothing to dead-letter; the rows behind them stay leased and unprocessed until their leases expire, then are claimed again and redone, each counting toward its own bound. | {verified: BatchFlusherRetryTests.FlushAlwaysFails_DropsAfterMaxAttemptsAndNamesTheConsequenceAsync} |
 
 ## Recommended Development Configuration {#recommended}
 

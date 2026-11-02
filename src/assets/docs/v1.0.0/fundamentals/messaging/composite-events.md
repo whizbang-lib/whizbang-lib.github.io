@@ -60,6 +60,7 @@ testReferences:
   - tests/Whizbang.Core.Tests/Minting/CompositeFactoryTests.cs
   - tests/Whizbang.Core.Tests/Minting/EventMintTests.cs
   - tests/Whizbang.Generators.Tests/Analyzers/MintedCompositeConstructionAnalyzerTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/InboxDispatchWorkerBranchCoverageTests.cs
 lastMaintainedCommit: '62abd3a45'
 ---
 
@@ -433,11 +434,25 @@ of every inner event, and the queued expansion results were most of the
 consumer's memory. The dispatcher now resolves the coordinator from the dispatch
 scope and awaits `CommitHandlerResultAsync` for the composite before it returns,
 so a composite is never in the "expanded but not committed" state the claim loop
-can see, and no child ever waits in memory between dispatch and commit. A commit
-that fails is logged and counted (`whizbang.composites.commit_failures`); the row
-stays leased and unprocessed for the re-offer to retry, and its in-flight entry is
-released so the retry is not filtered out.
-{verified: InboxDispatchWorkerCompositeCommitTests.Composite_IsExpandedAndCommittedInOneStep_ThroughTheCoordinator_NeverTheCommitChannelAsync, InboxDispatchWorkerCompositeCommitTests.Composite_WhoseCommitFails_ReleasesTheRowForRetry_AndCountsTheFailureAsync}
+can see, and no child ever waits in memory between dispatch and commit.
+{verified: InboxDispatchWorkerCompositeCommitTests.Composite_IsExpandedAndCommittedInOneStep_ThroughTheCoordinator_NeverTheCommitChannelAsync}
+
+A commit that fails is an attempt like any other failed dispatch. It is counted
+(`whizbang.composites.commit_failures`), logged at Warning
+(`InboxDispatchWorker` EventId 73, with the commit's exception), and recorded
+against the row through the failure channel, so the row's retry is backed off,
+its next claim counts the attempt, and the dispatch worker's attempt gate
+dead-letters it once its attempts pass `MaxInboxAttempts`, with the one
+[dead-letter record](../../operations/observability/logging-categories#dead-lettered-messages).
+Its in-flight entry is released so the retry is not filtered out, and the retry
+expands to the same [child ids](#deterministic-child-ids), so a repeat lands on
+the children the store already holds.
+{verified: InboxDispatchWorkerCompositeCommitTests.Composite_WhoseCommitFails_IsFailedForBackoffAndTheAttemptBound_AndLoggedAtWarningAsync, InboxDispatchWorkerCompositeCommitTests.Composite_WhoseCommitFails_ReleasesTheRowForRetry_AndCountsTheFailureAsync, InboxDispatchWorkerBranchCoverageTests.CompositeCommitFails_WithoutCompositeMetrics_StillReleasesRowForRetryAsync}
+
+Before, a failed commit left the row leased and unprocessed for the claim loop
+to re-offer on the next poll, with no backoff and no attempt counted, and logged
+it at Error each time, so a commit that kept failing was retried without a bound.
+An alert keyed on EventId 73 at Error stops firing; alert on EventId 1901.
 
 - **Recognition** — the source generator (`ReceptorRegistryQueryGenerator`)
   discovers every **concrete** `ICompositeEvent` type and lists it in
@@ -761,7 +776,7 @@ with its consumer.
 | Inner event is null / child serialization fails under `Independent` | — | Drop the bad child (logged), fan out the rest. |
 | Producer builds an over-cap composite | — | `EnsureWithinCap()` throws `InvalidOperationException`; at publish, `_fanOutCompositeLocallyAtPublishAsync` throws the same synchronously. |
 | The stored composite cannot be deserialized at dispatch (the serializer throws `JsonException` or `NotSupportedException`) | `SerializationError` | The row is dead-lettered with its body through the inbox dead-letter move. It is never completed. With no dead-letter store, or if the move fails, the failure is routed through the failure channel, so the row keeps its body and the attempts bound governs it. {verified: InboxDispatchWorkerUndeserializablePayloadTests.Dispatch_PayloadRefusedBySerializer_DeadLettersWithBody_AndNeverCompletesAsync, InboxDispatchWorkerUndeserializablePayloadTests.Dispatch_PayloadRefused_NoDeadLetterStore_RoutesFailure_AndNeverCompletesAsync} |
-| The synchronous commit of an expansion fails | — | Logged and counted; the row stays leased and unprocessed for the claim loop's re-offer to retry, and the in-flight entry is released so the retry is not filtered. The retry expands to the same child ids. |
+| The synchronous commit of an expansion fails | `MaxAttemptsExceeded` once the attempts run out | Counted and logged at Warning (EventId 73); the row is failed through the failure channel, so its retry is backed off and counted, and it is dead-lettered past `MaxInboxAttempts`. The in-flight entry is released so the retry is not filtered, and the retry expands to the same child ids. See [Transactional expansion](#transactional-expansion). {verified: InboxDispatchWorkerCompositeCommitTests.Composite_WhoseCommitFails_IsFailedForBackoffAndTheAttemptBound_AndLoggedAtWarningAsync} |
 | An inner event's type cannot be resolved by this consumer | — | Skipped as an unsubscribed child (both atomicities) and logged once per composite; see [Inner events this service cannot resolve](#unresolved-inner-events). |
 | The composite cannot be stored as an inbox row at all (serialization or offloaded-body rehydrate fails) | `SerializationError` and the rehydrate reasons | Dead-lettered at the transport edge with its body; see [transport consumer failure handling](../../messaging/transports/transport-consumer#unstorable-messages). |
 
@@ -774,7 +789,7 @@ with its consumer.
 | Construction outside the mint (WHIZ150) | `MintedCompositeConstructionAnalyzer` | `Generators.Tests/Analyzers/MintedCompositeConstructionAnalyzerTests.cs` |
 | Dispatch recognition (drop-gate) | `ReceptorRegistryQueryGenerator` (`_extractCompositeEntry` → `AnyConsumerTypes`) | `Generators.Tests/ReceptorRegistryQueryGeneratorTests.cs` (`Generator_WithCompositeEvent_HasAnyConsumerReturnsTrueAsync`) |
 | Dispatch-time fan-out | `CompositeInboxFanout`, `InboxDispatchWorker` | `Messaging/CompositeInboxFanoutTests.cs`, `Workers/InboxDispatchWorkerTests.cs` (`CompositeMessage_FansOut*`, `CompositeOverCap_DeadLetters*`) |
-| Transactional expansion, commit failure retry | `InboxDispatchWorker._fanoutCompositeAsync`, `IWorkCoordinator.CommitHandlerResultAsync` | `Workers/InboxDispatchWorkerCompositeCommitTests.cs` |
+| Transactional expansion, commit failure retry and its bound | `InboxDispatchWorker._fanoutCompositeAsync`, `InboxDispatchWorker._commitCompositeAsync`, `IWorkCoordinator.CommitHandlerResultAsync` | `Workers/InboxDispatchWorkerCompositeCommitTests.cs`, `Workers/InboxDispatchWorkerBranchCoverageTests.cs` (`CompositeCommitFails_*`) |
 | Deterministic child ids | `CompositeChildIdentity`, `CompositeInboxFanout` | `Messaging/CompositeChildIdentityTests.cs`, `Messaging/CompositeInboxFanoutIdentityAndSubscriptionTests.cs` |
 | Unsubscribed children dropped, positive classification | `CompositeInboxFanout.TryExpand(hasConsumer)`, `InboxDispatchWorker` | `Messaging/CompositeInboxFanoutIdentityAndSubscriptionTests.cs`, `Workers/InboxDispatchWorkerCompositeCommitTests.cs` |
 | Composite meters | `CompositeMetrics` | `Observability/CompositeMetricsTests.cs` |

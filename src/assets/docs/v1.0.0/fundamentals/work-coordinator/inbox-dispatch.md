@@ -23,6 +23,7 @@ testReferences:
   - tests/Whizbang.Core.Component.Tests/Workers/InboxDispatchWorkerLeaseKeeperTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/InboxHandlerWorkerTests.cs
   - tests/Whizbang.Core.Tests/Workers/InboxDispatchWorkerCacheLifetimeTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/InboxDispatchWorkerCompositeCommitTests.cs
 ---
 
 # Inbox dispatch
@@ -172,12 +173,14 @@ category. With it off, held rows keep only the lease their claim gave them.
 ## Log events {#log-events}
 
 Category `Whizbang.Core.Workers.InboxDispatchWorker`. The events below concern held rows, dead letters and
-the control-plane drop line.
+the control-plane drop line. A row whose envelope the drain cannot read never reaches this worker; the drain
+bounds it itself (see [unreadable rows](../../operations/workers/inbox-dispatch-worker.md#unreadable-rows)).
 
 | EventId | Level | When |
 |---|---|---|
 | 1901 | Error by default ([configurable](../../operations/configuration/configuration-reference.md#dead-letter-logging) to Warning) | A message this worker dead-letters, or finishes for good when it cannot move it: the [dead-letter record](../../operations/observability/logging-categories.md#dead-lettered-messages), with the message's type, reason and last error. |
 | 76 | Warning | A message's payload could not be deserialized, which a retry will not change; the row is dead-lettered with its body and the record that follows carries the serializer's exception. |
+| 73 | Warning | A composite's expansion commit failed; the row is failed with backoff and dead-lettered past `MaxInboxAttempts`. See [transactional expansion](../messaging/composite-events.md#transactional-expansion). |
 | 11 | Warning | A control-plane message was dropped at the attempt bound instead of dead-lettered. Carries the last cause and last error; see [Internal DLQ](../../operations/dead-letter-queue/internal-dlq.md#control-plane-drops). |
 | 78 | Warning | The keeper could not renew the leases of held rows. They lapse at their current expiry unless the next pass renews them. |
 | 79 | Warning | A held row used every renewal it is allowed in its state. Carries the id, message type, renewals and the consequence. |
@@ -187,7 +190,7 @@ the control-plane drop line.
 | 83 | Warning | A held row was not renewed because this instance no longer holds it: another instance claimed it after this instance's lease lapsed, or it completed. It is not dispatched here again. |
 | 84 | Warning | Summary of the rows in one pass, beyond the first five, that the renewal did not cover. |
 
-{verified: InboxDispatchWorkerDeadLetterLogTests.MaxAttempts_MovedToTheDeadLetterStore_LogsOneErrorRecordWithTypeAndLastErrorAsync, InboxDispatchWorkerUndeserializablePayloadTests.Dispatch_PayloadRefused_DeadLetterRecordCarriesTheRefusalAtErrorAsync, InboxDispatchWorkerHeldLeaseTests.Keeper_RenewalFailure_IsLoggedWithWhatItCosts_NotThrownAsync, InboxDispatchWorkerHeldLeaseTests.Keeper_ManyLapsesInOneSweep_LogTheFirstIndividually_ThenASummaryAsync, InboxDispatchWorkerHeldLeaseTests.Keeper_ManyRowsItsRenewalDidNotCover_LogTheFirstIndividually_ThenASummaryAsync, InboxDispatchWorkerHeldLeaseTests.Keeper_ReleaseFailure_IsLoggedWithWhatItCosts_NotThrownAsync, InboxDispatchWorkerControlPlaneDropLogTests.Drop_WithARecordedFailure_LogsTheErrorAndNamesItAsARecordedFailureAsync}
+{verified: InboxDispatchWorkerDeadLetterLogTests.MaxAttempts_MovedToTheDeadLetterStore_LogsOneErrorRecordWithTypeAndLastErrorAsync, InboxDispatchWorkerUndeserializablePayloadTests.Dispatch_PayloadRefused_DeadLetterRecordCarriesTheRefusalAtErrorAsync, InboxDispatchWorkerHeldLeaseTests.Keeper_RenewalFailure_IsLoggedWithWhatItCosts_NotThrownAsync, InboxDispatchWorkerHeldLeaseTests.Keeper_ManyLapsesInOneSweep_LogTheFirstIndividually_ThenASummaryAsync, InboxDispatchWorkerHeldLeaseTests.Keeper_ManyRowsItsRenewalDidNotCover_LogTheFirstIndividually_ThenASummaryAsync, InboxDispatchWorkerHeldLeaseTests.Keeper_ReleaseFailure_IsLoggedWithWhatItCosts_NotThrownAsync, InboxDispatchWorkerControlPlaneDropLogTests.Drop_WithARecordedFailure_LogsTheErrorAndNamesItAsARecordedFailureAsync, InboxDispatchWorkerCompositeCommitTests.Composite_WhoseCommitFails_IsFailedForBackoffAndTheAttemptBound_AndLoggedAtWarningAsync}
 
 ## Related
 

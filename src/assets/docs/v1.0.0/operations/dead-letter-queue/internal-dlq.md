@@ -18,6 +18,7 @@ codeReferences:
   - src/Whizbang.Core/Messaging/DeadLetterRecoveryTypes.cs
   - src/Whizbang.Data.Postgres/Migrations/050_WhDeadLetters.sql
   - src/Whizbang.Core/Workers/InboxDispatchWorker.cs
+  - src/Whizbang.Core/Workers/InboxDrainWorker.cs
   - src/Whizbang.Core/Workers/OutboxDrainWorker.cs
   - src/Whizbang.Core/Workers/OutboxPublishWorker.cs
   - src/Whizbang.Core/Workers/PerspectiveWorker.cs
@@ -34,6 +35,7 @@ testReferences:
   - tests/Whizbang.Core.Tests/Workers/V502DefaultsTests.cs
   - tests/Whizbang.Core.Tests/Workers/InboxDispatchWorkerDeadLetterLogTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/PrePublishGateForensicPreservationTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/InboxDrainWorkerGapTests.UnreadableRows.cs
 ---
 
 # Internal DLQ — `wh_dead_letters`
@@ -157,6 +159,7 @@ Callers:
 | Caller | Trigger | Cap option |
 |---|---|---|
 | `InboxDispatchWorker.ProcessOneInnerAsync` | `attempts > MaxInboxAttempts` (also composite fan-out failures, cap-independent) | `InboxDispatchWorkerOptions.MaxInboxAttempts` (default 10) |
+| `InboxDrainWorker` unreadable rows | `attempts > MaxInboxAttempts` on a row whose envelope it cannot read, which never reaches the dispatch worker ([unreadable rows](../workers/inbox-dispatch-worker#unreadable-rows)) | `InboxDispatchWorkerOptions.MaxInboxAttempts` (default 10) |
 | `OutboxDrainWorker` pre-publish gate | `attempts > MaxOutboxAttempts`, checked before any publish attempt | `OutboxDrainWorkerOptions.MaxOutboxAttempts` (default 10) |
 | `OutboxPublishWorker` post-failure promotion | `attempts >= MaxOutboxAttempts` after a publish failure | `OutboxPublishWorkerOptions.MaxOutboxAttempts` (default 10) |
 | `PerspectiveWorker.FilterDeadLetteredAsync` | `failures > MaxPerspectiveEventAttempts` (apply failures; `attempts` counts leases and is diagnostic only) | `PerspectiveWorkerOptions.MaxPerspectiveEventAttempts` (default 10) |
