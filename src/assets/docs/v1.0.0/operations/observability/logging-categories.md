@@ -36,6 +36,8 @@ codeReferences:
   - src/Whizbang.Core/Tags/MessageTagProcessor.cs
   - src/Whizbang.Core/Observability/WhizbangStartupLog.cs
   - src/Whizbang.Data.EFCore.Postgres/WhizbangHostExtensions.cs
+  - src/Whizbang.Core/Workers/DatabaseFailureEscalation.cs
+  - src/Whizbang.Core/Workers/DatabaseFailureEscalationOptions.cs
 testReferences:
   - tests/Whizbang.Core.Component.Tests/Workers/InboxDrainWorkerGapTests.cs
   - tests/Whizbang.Core.Tests/Workers/InboxDispatchWorkerHeldLeaseTests.cs
@@ -75,6 +77,13 @@ testReferences:
   - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerDeepPathChannelTests.RewindFailure.cs
   - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerDeepPathDrainTests.UnreadableRows.cs
   - tests/Whizbang.Core.Component.Tests/Workers/BatchFlusherRetryTests.cs
+  - tests/Whizbang.Core.Tests/Workers/DatabaseFailureEscalationTests.cs
+  - tests/Whizbang.Core.Tests/Workers/DatabaseFailureEscalationOptionsTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/ClaimWorkerCoverageTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/InboxDrainWorkerCoverageTests.TransientFailure.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/OutboxDrainWorkerCoverageTests.TransientFailure.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerDeepPathChannelTests.TransientFailure.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerDeepPathDrainTests.TransientFailure.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -136,9 +145,9 @@ To temporarily re-enable a category for debugging, set it to `"Debug"`:
 |----------|-------------|---------------|
 | `Whizbang.Core.Workers.PerspectiveWorker` | Perspective batch processing diagnostics — logs work item counts, stream/perspective grouping, and empty-batch warnings. | Debug |
 | `Whizbang.Core.Workers.OutboxPublishWorker` | Outbox publish worker: startup/shutdown summary at `Information`; publish failures below the attempt cap and missing-transport conditions at `Warning`; a message it dead-letters as the [dead-letter record](#dead-lettered-messages). | Information |
-| `Whizbang.Core.Workers.ClaimWorker` | Work-claim poller — startup/shutdown and NOTIFY-gate reconnects at `Information`; tick failures and heartbeat problems at `Warning`. | Information |
+| `Whizbang.Core.Workers.ClaimWorker` | Work-claim poller: startup/shutdown and NOTIFY-gate reconnects at `Information`; tick failures and heartbeat problems at `Warning`; a [database that keeps failing](#database-failure-escalation) at `Error`, once. | Information |
 | `Whizbang.Core.Workers.TransportConsumerWorker` | Transport consumer startup and subscription management. Logs a one-line summary at `Information` on start; per-destination and per-subscription detail at `Debug`. | Information |
-| `Whizbang.Core.Workers.InboxDrainWorker` | Inbox drain: turns claimed stream ids into queued inbox rows. Working-set budget hand-backs at `Information`; drain and hand-back failures, and rows whose envelope cannot be read, at `Warning`; such a row past `MaxInboxAttempts` as the [dead-letter record](#dead-lettered-messages). See [Inbox pipeline events](#inbox-pipeline-events). | Information |
+| `Whizbang.Core.Workers.InboxDrainWorker` | Inbox drain: turns claimed stream ids into queued inbox rows. Working-set budget hand-backs at `Information`; transient database failures, hand-back failures, and rows whose envelope cannot be read, at `Warning`; such a row past `MaxInboxAttempts` as the [dead-letter record](#dead-lettered-messages); a drain batch lost to a defect, and a [database that keeps failing](#database-failure-escalation) (once), at `Error`. See [Inbox pipeline events](#inbox-pipeline-events). | Information |
 | `Whizbang.Core.Workers.InboxDispatchWorker` | Inbox dispatch and its lease keeper: dispatch failures, lease renewal failures, lapsed held rows and control-plane drops at `Warning`; skipped duplicate copies at `Debug`; a message it dead-letters as the [dead-letter record](#dead-lettered-messages). | Information |
 | `Whizbang.Core.Workers.InboxHandlerWorker` | Batched inbox commits: each failed commit (first five per flush, then a summary) at `Warning`. | Information |
 
@@ -312,8 +321,9 @@ point to log from; a write that is awaited throws to its caller instead.
 - **Per-attempt failures stay at Warning, on every path.** A retry may still succeed, so an attempt that fails is
   not an alert. Every path that will retry a failed attempt logs it at Warning with the attempt's exception attached
   (the [retried attempts](#retried-attempts) below), so a message that keeps failing produces Warnings and then one
-  Error, the record, when it is dead-lettered. Error then means a message was dead-lettered or the host has a
-  failure that retrying will not fix, and an alert on Error does not fire for a message whose retry succeeds.
+  Error, the record, when it is dead-lettered. Error then means a message was dead-lettered, the host has a
+  failure that retrying will not fix, or the database has kept failing past the
+  [threshold](#database-failure-escalation), and an alert on Error does not fire for a message whose retry succeeds.
   {verified: InboxDispatchWorkerDeadLetterLogTests.Dispatch_ThatThrowsBelowTheBound_LogsWarningAndNoRecordAsync, OutboxPublishWorkerDlqPromotionTests.SingularPublish_ThrowsBelowCap_LogsTheAttemptAtWarningAndNoRecordAsync, OutboxDrainWorkerCoverageTests.PublishOneAsync_PublishThrows_LogsTheAttemptAtWarningWithItsExceptionAsync, PerspectiveWorkerDeepPathChannelTests.Worker_RunnerThrows_LogsTheAttemptAtWarningWithItsExceptionAsync, AzureServiceBusTransportReceiveGuardTests.ProcessMessage_WhenThePolicyNamesAnUnrecognizedAction_LeavesTheMessageUnsettledAsync, RabbitMQTransportLoggingBranchTests.Receive_HandlerThrowsBelowMaxWithLogger_LogsTheAttemptAndRetryAtWarningAsync, TransportBatchGuardTests.AnOrdinaryFaultFailsTheBatchTooAsync}
 - **The level is an option, Warning or Error.** A service whose alerting should not fire on dead letters sets
   [`Whizbang:DeadLetterLogging:Level`](../configuration/configuration-reference#dead-letter-logging) to `Warning`.
@@ -394,6 +404,57 @@ Four more failures that used to retry with no bound are now bounded and lowered 
 [retries that now end in a dead letter](#bounded-retries). Two bounded failures
 [stay at Error](#kept-at-error).
 
+## A Database That Keeps Failing {#database-failure-escalation}
+
+A transient database failure in a worker loop (a dropped connection, a timeout, a deadlock, a failover) puts its
+batch back and is retried, so nothing is lost. Each one is logged at Warning, with its reason and SQLSTATE. When
+the same worker keeps failing past a threshold, it logs one Error saying how long the database has been failing, and
+one Information line when the database answers again. A failover of a second or two therefore logs a few Warnings
+and no Error; a database that stays down logs one Error per worker. See
+[When the database keeps failing](../../fundamentals/workers/transient-database-failures#when-the-database-keeps-failing)
+for the run, the threshold and why it takes both a count and a time.
+
+| EventId | Name | Level | Category | When |
+|---|---|---|---|---|
+| `1986` | `DatabaseFailurePersisting` | Error | The worker's own | A worker's run of transient database failures has lasted at least [`FailingFor`](../configuration/configuration-reference#database-failure-escalation) (default one minute) and counted at least `ConsecutiveFailures` (default 3). Logged once per run, with the worker, how long, the count, the latest reason and SQLSTATE, and the latest exception |
+| `1987` | `DatabaseFailureRecovered` | Information | The worker's own | The success that ends an escalated run, with how long it lasted and how many failures it counted. A run that never escalated ends without a line |
+
+{verified: DatabaseFailureEscalationTests.ARunPastBothThresholds_LogsOneErrorNamingHowLongTheDatabaseHasBeenFailingAsync, DatabaseFailureEscalationTests.FailuresAfterTheEscalation_DoNotLogItAgainAsync, DatabaseFailureEscalationTests.ARecoveryAfterAnEscalation_LogsOneInformationLineAsync, DatabaseFailureEscalationTests.ARecoveryWithoutAnEscalation_LogsNothingAsync}
+
+Every worker logs both under its own category with the same EventIds and names, so one alert on `1986` covers the
+claim worker, the inbox and outbox drain workers and the perspective worker.
+{verified: ClaimWorkerCoverageTests.ClaimTick_TransientFailurePastTheThreshold_EscalatesOnceAndSaysWhenItRecoversAsync, InboxDrainWorkerCoverageTests.DrainBatch_TransientFailurePastTheThreshold_EscalatesOnceAndSaysWhenItRecoversAsync, OutboxDrainWorkerCoverageTests.DrainBatch_TransientFailurePastTheThreshold_EscalatesOnceAndSaysWhenItRecoversAsync, PerspectiveWorkerDeepPathChannelTests.Worker_TransientFailurePastTheThreshold_EscalatesOnceAndSaysWhenItRecoversAsync}
+
+The lines that make a run, each at Warning. The test beside each fails if its line returns to Error, and checks that
+nothing in the run logged at Error:
+
+| Line | Category | Verified |
+|---|---|---|
+| EventId 19, transient claim tick failure | `Whizbang.Core.Workers.ClaimWorker` | {verified: ClaimWorkerCoverageTests.ClaimTick_TransientDatabaseFailure_IsReportedWithItsReasonAndTheNextTickRunsAsync} |
+| EventId 7, inbox drain batch failed on a transient database failure | `Whizbang.Core.Workers.InboxDrainWorker` | {verified: InboxDrainWorkerCoverageTests.DrainBatch_TransientDatabaseFailure_IsNamedAsSuchAndTheNextBatchDrainsAsync} |
+| EventId 53, outbox drain batch failed on a transient database failure | `Whizbang.Core.Workers.OutboxDrainWorker` | {verified: OutboxDrainWorkerCoverageTests.DrainBatch_TransientDatabaseFailure_IsNamedAsSuchAndTheLoopTakesTheNextBatchAsync} |
+| EventId 67, perspective batch lost to a transient database failure (the consumer loop and its drain pass) | `Whizbang.Core.Workers.PerspectiveWorker` | {verified: PerspectiveWorkerDeepPathChannelTests.Worker_TransientDatabaseFailureInAChannelBatch_IsReportedOnceAndTheLoopTakesTheNextBatchAsync, PerspectiveWorkerDeepPathDrainTests.DrainMode_TransientDatabaseFailure_IsReportedOnceAndTheLoopContinuesAsync} |
+
+A batch lost to a failure that is not the database's is a defect and stays at Error: the inbox drain worker's
+EventId 6, the outbox drain worker's EventId 54 and the perspective worker's EventId 68. A defect neither counts
+toward a run nor ends one.
+{verified: OutboxDrainWorkerCoverageTests.DrainBatch_FailureThatIsNotTheDatabases_IsReportedAsADefectAndTheLoopContinuesAsync, PerspectiveWorkerDeepPathDrainTests.DrainMode_FailureThatIsNotTheDatabases_IsReportedAsADefectAndTheLoopContinuesAsync}
+
+### Lines lowered to Warning {#database-failure-escalation-upgrade}
+
+**Upgrade note.** The transient database failure lines below were logged at Error and are now logged at Warning, so
+an alert keyed on any of them at Error stops firing, and a one-second failover no longer raises one. **To alert on a
+database outage, key on EventId 1986, `DatabaseFailurePersisting`**: the one Error a worker logs when the database
+keeps failing past the threshold. EventId 1987, `DatabaseFailureRecovered`, says when it ended. A query keyed on the
+lowered lines by their text or EventId still finds them, at Warning.
+
+| Before | Now |
+|---|---|
+| `InboxDrainWorker` EventId 7, Error | Warning; counts toward the worker's run |
+| `OutboxDrainWorker` EventId 53, Error | Warning; counts toward the worker's run |
+| `PerspectiveWorker` EventId 67, Error | Warning; counts toward the worker's run |
+| `ClaimWorker` EventId 19, Warning | Unchanged; now counts toward the worker's run |
+
 ## Hierarchical Filtering {#hierarchy}
 
 .NET logging categories are hierarchical. Setting a parent category affects all children:
@@ -428,12 +489,12 @@ This sets **all** categories starting with `Whizbang` to `Warning`, including `W
 | `Trace` | Hot-path per-message breadcrumbs (e.g. `ImmediateWorkCoordinatorStrategy` dispatch steps), off unless explicitly enabled | |
 | `Debug` | Step-level detail (individual migrations, SQL operations, batch grouping, per-subscription info) | |
 | `Information` | Summaries and milestones (initialization complete, worker started, batch sizes) | A batch the batchers dead-lettered is summarized here; each of its messages has its own record |
-| `Warning` | Recoverable issues (schema drift, failed maintenance, connection retries) | An attempt failed and will be retried; logged on [every path](#retried-attempts) with the attempt's exception. Also the dead-letter record, when `Whizbang:DeadLetterLogging:Level` is `Warning` |
-| `Error` | Failures that abort an operation or that retrying will not fix (migration failure, a worker loop's lost batch, a lifecycle receptor that threw) | The message was [dead-lettered](#dead-lettered-messages) and will not be processed unless it is recovered (the default level of the record) |
+| `Warning` | Recoverable issues (schema drift, failed maintenance, connection retries, a worker loop's [transient database failure](#database-failure-escalation)) | An attempt failed and will be retried; logged on [every path](#retried-attempts) with the attempt's exception. Also the dead-letter record, when `Whizbang:DeadLetterLogging:Level` is `Warning` |
+| `Error` | Failures that abort an operation or that retrying will not fix (migration failure, a worker loop's batch lost to a defect, a lifecycle receptor that threw), and a database that has kept failing past the [threshold](#database-failure-escalation) (EventId 1986, once per run) | The message was [dead-lettered](#dead-lettered-messages) and will not be processed unless it is recovered (the default level of the record) |
 | `Critical` | Failures that put the host or a message's custody at risk | A received message could be neither stored nor dead-lettered; its batch is failed so the broker delivers it again |
 | `None` | Completely silent | |
 
-{verified: InboxDispatchWorkerDeadLetterLogTests.Dispatch_ThatThrowsBelowTheBound_LogsWarningAndNoRecordAsync, InboxDispatchWorkerDeadLetterLogTests.MaxAttempts_MovedToTheDeadLetterStore_LogsOneErrorRecordWithTypeAndLastErrorAsync, InboxDispatchWorkerDeadLetterLogTests.MaxAttempts_ConfiguredWarning_LogsTheRecordAtWarningAsync, TransportConsumerWorkerUnstorableMessageTests.CustodyUnavailable_BatchFailsAfterStoringNeighborsAsync, OutboxDrainWorkerCoverageTests.PublishOneAsync_PublishThrows_LogsTheAttemptAtWarningWithItsExceptionAsync, PerspectiveWorkerCollectiveSinkTests.CollectiveSink_PostApplyReceptorThrows_LogsTheLifecycleFailureAtErrorAsync}
+{verified: InboxDispatchWorkerDeadLetterLogTests.Dispatch_ThatThrowsBelowTheBound_LogsWarningAndNoRecordAsync, InboxDispatchWorkerDeadLetterLogTests.MaxAttempts_MovedToTheDeadLetterStore_LogsOneErrorRecordWithTypeAndLastErrorAsync, InboxDispatchWorkerDeadLetterLogTests.MaxAttempts_ConfiguredWarning_LogsTheRecordAtWarningAsync, TransportConsumerWorkerUnstorableMessageTests.CustodyUnavailable_BatchFailsAfterStoringNeighborsAsync, OutboxDrainWorkerCoverageTests.PublishOneAsync_PublishThrows_LogsTheAttemptAtWarningWithItsExceptionAsync, PerspectiveWorkerCollectiveSinkTests.CollectiveSink_PostApplyReceptorThrows_LogsTheLifecycleFailureAtErrorAsync, InboxDrainWorkerCoverageTests.DrainBatch_TransientDatabaseFailure_IsNamedAsSuchAndTheNextBatchDrainsAsync, DatabaseFailureEscalationTests.ARunPastBothThresholds_LogsOneErrorNamingHowLongTheDatabaseHasBeenFailingAsync}
 
 The batchers also log a batch they could not dead-letter either (`could not be written to wh_dead_letters either`)
 at Error, not Critical: those messages are lost unless their source sends them again.
