@@ -437,15 +437,16 @@ builder.Services.AddWhizbangLifecycleMessageDeserializer();
 builder.Services.AddScoped<IProductLens, ProductLens>();
 builder.Services.AddScoped<IInventoryLens, InventoryLens>();
 
-// Perspective worker - processes perspective checkpoints
+// Perspective worker options (the worker itself is hosted by the framework)
 builder.Services.AddOptions<PerspectiveWorkerOptions>()
   .Bind(builder.Configuration.GetSection("PerspectiveWorker"));
 
 // AOT-compatible polymorphic event deserialization
 builder.Services.AddSingleton<IEventTypeProvider, ECommerce.Contracts.ECommerceEventTypeProvider>();
 
-builder.Services.AddHostedService<PerspectiveWorker>();
-builder.Services.AddHostedService<Worker>();
+// The framework hosts its own workers (the perspective worker included) at their start point:
+// they need no registration here. The service's own worker is registered with its start point.
+builder.Services.AddWhizbangWorker<Worker>();
 
 var host = builder.Build();
 

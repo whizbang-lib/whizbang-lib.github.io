@@ -382,7 +382,8 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Configure services
 builder.Services.AddSingleton<IExecutionStrategy, SerialExecutor>();
-builder.Services.AddWhizbangWorker<PerspectiveWorker>();
+// PerspectiveWorker is hosted by the framework at its start point; it needs no registration.
+builder.Services.AddWhizbangWorker<MyOwnWorker>();
 
 var app = builder.Build();
 

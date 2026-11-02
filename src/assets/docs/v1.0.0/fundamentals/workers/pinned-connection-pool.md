@@ -121,7 +121,7 @@ difficulty: "INTERMEDIATE"
 tags: ["pinned-pool", "custom-worker", "eligibility", "hosted-service", "opt-in"]
 unverified: "verified by PinnedPoolRegistrationTests, which is outside the current coverage map"
 }
-services.AddHostedService<MyBulkImportPollingWorker>();
+services.AddWhizbangWorker<MyBulkImportPollingWorker>();
 services.AddPinnedWorker<MyBulkImportPollingWorker>();
 ```
 

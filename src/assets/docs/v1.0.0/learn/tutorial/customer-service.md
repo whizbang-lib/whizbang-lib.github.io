@@ -426,7 +426,8 @@ builder.Services.AddReceptors();
 builder.Services.AddPerspectiveRunners();
 builder.Services.AddScoped<ECommerce.CustomerService.API.Perspectives.OrderSummaryPerspective>();
 builder.Services.AddWhizbangDispatcher();
-builder.Services.AddHostedService<PerspectiveWorker>();
+// No AddHostedService<PerspectiveWorker>(): the framework hosts it at Accept commands.
+// A second, manual registration would start an unwrapped copy before the migration.
 
 // 6. Direct Npgsql connection for the custom customer_activity table
 builder.Services.AddScoped<NpgsqlConnection>(_ => {
