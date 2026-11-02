@@ -409,18 +409,16 @@ The fence is unchanged, and the two agree:
   still moving.
 - **A replay that folds a collective still in flight takes no snapshot,** for the same reason: the live sink may yet
   apply it to rows the replay did not fold it into.
-- **A dead-lettered collective is complete to the fence.** It has no pending work row, so a snapshot taken after the
-  dead letter holds the row as the live row had it, reached or not. A rewind from that snapshot does not fold the
-  collective again, and a replay from before it folds it only into the rows its record says it reached. Both agree
-  with the live row.
+- **A collective dead-lettered before it completed is still in flight to the fence** {verified: CollectiveSnapshotFenceSqlTests.Fence_WithACollectiveOfTheRowDeadLetteredPartway_IsInFlight}.
+  Its progress record is abandoned, so snapshots of the tenant's rows defer (counted in `snapshots_deferred`) until
+  the dead letter is [recovered](../../operations/dead-letter-queue/recovery#recovered-collectives), which completes
+  the rest of the rows and clears the abandoned marks, or purged, which removes the records.
 
-**Known gap: a snapshot taken while a collective is dead-lettered, then recovery.** That snapshot counts the
-collective as held. When [dead-letter recovery](../../operations/dead-letter-queue/recovery#recovered-collectives)
-later completes the rows past its `through_id`, those rows hold it live, but a rewind from that snapshot does not fold
-it into them, because the snapshot's mark says it is already held. A replay that starts before the snapshot (from the
-stream's start, or from an earlier snapshot) folds it into every row, since the record is completed by then. Closing
-the gap means the fence treating an abandoned record as in flight, which would defer snapshots of the tenant's rows
-until the dead letter is recovered or purged; that is an open decision, not yet made.
+  **Why (owner decision, 2026-11-01).** A snapshot taken while the collective was dead-lettered would count it as held.
+  When recovery later completed the rows past its `through_id`, those rows would hold it live, but a rewind from the
+  snapshot would not fold it into them. Deferring is exact, and a dead letter is rare and acted on anyway.
+  A collective dead-lettered after every handler had already finished also holds the fence open until recovery or
+  purge; that defers snapshots needlessly but never records a wrong one.
 
 ### Bootstrap
 
