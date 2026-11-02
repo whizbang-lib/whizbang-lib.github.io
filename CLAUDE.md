@@ -239,6 +239,7 @@ status: "released"
 
 ## Key Principles
 
+- **Gravity**: the path of least resistance must be the correct design. The core system owns a behavior through a pipeline or registration API, and a test or analyzer fails when it is bypassed, instead of every author remembering a helper. Docs describe and teach the gravity path first. See `src/assets/docs/contributors/gravity.md`.
 - **C# Code Style**: All examples MUST follow K&R/Egyptian braces (opening brace on same line)
 - **Documentation-First**: Write docs BEFORE implementation
 - **Test-Driven Examples**: All examples must have corresponding tests in library repo

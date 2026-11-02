@@ -42,6 +42,8 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Notifications/PartitionAssignerRegistration.cs
   - src/Whizbang.Data.Postgres/Notifications/PgSharedNotifyConnection.cs
   - src/Whizbang.Data.Postgres/Notifications/PgWorkAvailablePollSourceBase.cs
+  - src/Whizbang.Core/Signals/SignalBusServiceCollectionExtensions.cs
+  - src/Whizbang.Core/Signals/SignalBusHostedService.cs
 testReferences:
   - tests/Whizbang.Hosting.AspNet.Component.Tests/StartupStatusEndpointsTests.cs
   - tests/Whizbang.Transports.FastEndpoints.Tests/Unit/WhizbangStartupStatusEndpointBaseTests.cs
@@ -67,6 +69,8 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/PgWorkAvailablePollSourceSchemaGateTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/AliveLockSourcePostgresTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperSchemaStartupTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/StartupHostedServiceAuditTests.cs
+  - tests/Whizbang.Core.Component.Tests/Signals/SignalBusHostingTests.cs
 ---
 
 # The Startup Status Surface
@@ -368,11 +372,11 @@ after the registration.
 
 | From | What starts | Why then |
 |---|---|---|
-| Elect (after Preflight registers the instance) | The notification connection: its `LISTEN`s and the instance's [alive-lock](../../fundamentals/workers/instance-liveness#alive-lock-source) claim. The `roles` [health component](../../resilience/managed-resource-health#roles) reads role assignments from here on. | The election that follows reads the alive-lock. |
+| Elect (after Preflight registers the instance) | The notification connection: its `LISTEN`s and the instance's [alive-lock](../../fundamentals/workers/instance-liveness#alive-lock-source) claim. The [signal bus](../../fundamentals/signal-bus/signal-bus#hosting-self-test-and-liveness): its transports, its pull sources and its wire-route self-test. The `roles` [health component](../../resilience/managed-resource-health#roles) reads role assignments from here on. | The election that follows reads the alive-lock. The bus's self-test sends a loopback `NOTIFY` that comes back over the notification connection, so it can only pass once that connection is up. |
 | Coordinate | The duty holder (the maintainer vote, and the vacuum it runs on winning) and the [partition assigner](../../fundamentals/work-coordinator/partition-assignment). | Both vote and write against the instance and role tables, which the migration may still be changing until then. |
 | The schema-ready gate opens (the end of Coordinate) | The work-available probes send their first query. Until then each probe tick sends nothing. | The tables the probes read may not exist yet, and nothing claims work before the gate opens. |
 
-{verified: StartupStageWiringTests.TheNotificationConnection_StartsAtTheEndOfPreflight_OnceAsync, StartupStageWiringTests.TheDutyHolderAndThePartitionAssigner_StartAtCoordinateAsync, StartupStageWiringTests.EveryWorkAvailableProbe_ReadsTheSchemaReadyGateAsync, StartupStageWiringTests.TheRolesHealthComponent_ReadsNothingBeforeElectAsync, PgWorkAvailablePollSourceSchemaGateTests.WhileTheSchemaGateIsClosed_ATickSendsNothing_AndOnceOpenItQueriesAsync, StartupPreflightHostTests.NothingVotesBeforeCoordinate_AndNoWorkerAsksForAnObjectThatDoesNotExistYetAsync, StartupPreflightHostTests.TheInstanceRow_IsRegisteredAtTheEndOfPreflight_BeforeElectAsync}
+{verified: StartupStageWiringTests.TheNotificationConnection_StartsAtTheEndOfPreflight_OnceAsync, StartupStageWiringTests.TheSignalBus_StartsAtElect_WithTheNotificationConnection_OnceAsync, StartupPreflightHostTests.HeldInPreflight_TheSignalBusStartsNoTransport_AndStartsItAtElectAsync, StartupStageWiringTests.TheDutyHolderAndThePartitionAssigner_StartAtCoordinateAsync, StartupStageWiringTests.EveryWorkAvailableProbe_ReadsTheSchemaReadyGateAsync, StartupStageWiringTests.TheRolesHealthComponent_ReadsNothingBeforeElectAsync, PgWorkAvailablePollSourceSchemaGateTests.WhileTheSchemaGateIsClosed_ATickSendsNothing_AndOnceOpenItQueriesAsync, StartupPreflightHostTests.NothingVotesBeforeCoordinate_AndNoWorkerAsksForAnObjectThatDoesNotExistYetAsync, StartupPreflightHostTests.TheInstanceRow_IsRegisteredAtTheEndOfPreflight_BeforeElectAsync}
 
 The election for the migrator itself runs as before: it is what Elect is, run by schema initialization, and it waits
 for nothing.
@@ -383,6 +387,36 @@ Coordinate. A host whose schema is provisioned out of band has a gate that is op
 never wait. A shutdown stage reaches nothing: an instance that starts to drain before a worker's stage never starts
 that worker, and so never stops it.
 {verified: StartupStageGateTests.EnteringAStage_ReachesItAndEveryStageBeforeIt_ButNotTheOnesAfterAsync, StartupStageGateTests.ASkippedStage_IsReachedLikeAnEnteredOneAsync, StartupStageGateTests.TheSchemaReadyGate_ReachesEveryStageUpToCoordinate_AndNoLaterOneAsync, StartupStageGateTests.AnAlreadyOpenSchemaGate_MeansNoWaitAtAllAsync, StartupStageGateTests.AShutdownStage_ReachesNothing_SoAWorkerWaitingForItsStageNeverStartsAsync, StartupStageGatedServiceTests.StoppedBeforeItsStage_TheServiceIsNeverStartedOrStoppedAsync}
+
+### The signal bus starts at Elect {#signal-bus-at-elect}
+
+The signal bus is started at Elect, once, together with the notification connection. Earlier releases started it
+with the host, so its wire-route self-test sent `pg_notify` during Preflight, for a loopback that could only come back
+over a connection that did not exist yet. A long Preflight, such as a bootstrap waiting for another instance's schema
+lock, could then log the self-test as failed although nothing was wrong. Now, while Preflight is held, no signal
+transport is started at all, and the bus starts once the instance reaches Elect. Calling `AddWhizbangSignalBus` more
+than once still hosts the bus once. A host composed without the worker pipeline has no stage gate and starts the bus
+with the host, as before.
+{verified: StartupStageWiringTests.TheSignalBus_StartsAtElect_WithTheNotificationConnection_OnceAsync, StartupPreflightHostTests.HeldInPreflight_TheSignalBusStartsNoTransport_AndStartsItAtElectAsync, SignalBusHostingTests.AddWhizbangSignalBus_CalledTwice_HostedStartIsIdempotentAsync}
+
+### When each hosted service starts {#when-each-hosted-service-starts}
+
+Every hosted service a turnkey host registers has a stated answer to one question: when may it first touch the
+database? There are four answers.
+
+| Starts | Hosted services | How |
+|---|---|---|
+| At a stage, through the stage wrapper | Elect: the notification connection (`PgSharedNotifyConnection`) and the signal bus (`SignalBusHostedService`). Coordinate: the duty holder (`DutyHolderWorker`) and the partition assigner (`PartitionAssignerWorker`). | The host starts a wrapper; the wrapper starts the service once the instance reaches the stage. |
+| After the schema-ready gate, in the worker's own loop | The data plane and everything else that reads or writes the work tables: claim, inbox, outbox, perspective, drain, flush, lease renewal, maintenance, integrity, schedule, the commit-order stamper, the durable-signal workers, the instance-lifecycle monitor, the heartbeat, the standby watcher, the transport consumer, the statistics collectors and the reconcilers. | The worker starts with the host and waits for the gate, which opens at the end of Coordinate, before its first statement. |
+| Preflight itself | Schema initialization (`WhizbangDatabaseInitializerService`), the startup pipeline, the stage lifecycle and the ready service. | This is the work Preflight is made of. |
+| No database work at start | Configuration and registration checks and startup log lines; in-memory receptor, tick and hook registrars; subscriptions on the notification connection, which only listen once it starts at Elect; in-process sweeps; the transport backlog peek, which reads the transport's management plane rather than the database; the rebuild worker, which is fed only by a command receptor whose dispatch is deferred until the schema-ready gate opens; the health-check publisher, which runs checks only for a publisher the application registers; and the services that work only when the host stops. | The service starts with the host because it has nothing to wait for. |
+
+The table is enforced. A test composes a host the way an application does (the EF Core Postgres driver, its
+notification stack, the worker pipeline and a transport), lists every hosted service the host resolves, and fails
+naming any service with no place in the table, or any staged service registered directly rather than through the
+wrapper, or registered at a different stage. A new hosted service therefore fails that test until its author decides
+when it may first touch the database, rather than starting with the host by default.
+{verified: StartupHostedServiceAuditTests.EveryHostedService_HasAPlaceInTheStageTable_AndTheStagedOnesStartAtTheirStageAsync}
 
 ### The alive-lock on a fresh database
 

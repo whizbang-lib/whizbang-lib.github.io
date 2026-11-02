@@ -28,6 +28,7 @@ Whizbang follows a **documentation-first** philosophy: features are documented b
 
 ## Standards
 
+- **Gravity**: design so the path of least resistance is the correct design; the core system owns a behavior through a pipeline or registration and a test fails when it is bypassed, rather than every author remembering a helper. See [Gravity](gravity).
 - **Documentation authoring**: see `DOCUMENTATION-STANDARDS.md` in the repo root — page types (Diátaxis taxonomy), frontmatter schema, C# example style (K&R braces), code-block metadata.
 - **Branch flow**: feature branch → PR → `develop`; `develop` promotes to `main` for deploy. Never push directly to either.
 - **SQL migrations**: the twelve rules in `src/Whizbang.Data.Postgres/Migrations/README.md` of the library repo. The ones that bite: a function is modified by redefining it whole (the previous definition plus the delta); every framework object is `__SCHEMA__`-qualified; and a literal more than one migration or function needs is written as its token from `Migrations/constants.txt`, never spelled again (see [Constants](/v1.0.0/operations/infrastructure/migrations#constants)). `scripts/Lint-MigrationSql.ps1` and `MigrationConstantsTests` enforce the last two.
