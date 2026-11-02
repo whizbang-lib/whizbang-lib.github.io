@@ -24,6 +24,8 @@ codeReferences:
   - src/Whizbang.Core/Messaging/IWorkCoordinator.cs
   - src/Whizbang.Core/Lifecycle/StreamPrefixTruncator.cs
   - src/Whizbang.Data.Postgres/Migrations/112_StreamGroupCascadeAndApplyPathFold.sql
+  - src/Whizbang.Core/Observability/IRouteStore.cs
+  - src/Whizbang.Data.Postgres/PostgresRouteTraceStore.cs
 testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/ApplyStackQuerySqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/ApplyPathFoldSqlTests.cs
@@ -33,6 +35,7 @@ testReferences:
   - tests/Whizbang.Hosting.AspNet.Component.Tests/ApplyStackEndpointsTests.cs
   - tests/Whizbang.Transports.FastEndpoints.Tests/Unit/WhizbangApplyStackEndpointBaseTests.cs
   - tests/Whizbang.Transports.HotChocolate.Tests/Unit/ApplyStackQueryTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/RouteTraceStoreTests.cs
 ---
 
 # The Apply-Stack View
@@ -231,6 +234,29 @@ The settled fold runs at most once per claim window across the whole service. It
 | `SettledFoldClaimWindowHours` | 24 | Minimum hours between settled folds service-wide |
 
 {verified: ApplyPathFoldSqlTests.SettledFoldClaim_FirstInstanceWins_SiblingsSkipAsync}
+
+## Routes behind a path {#routes}
+
+{verified: RouteTraceStoreTests.GetRoutesForApplyPath_ReturnsEachTypesRoutes_InThePathsOrderAsync}
+
+A path signature says which event types built a stream, in order. The [routes](../../data/event-store#routes-and-traces)
+behind it say how events of each of those types travel: which services, receptors, topics and policies they pass
+through, how often, and how long they take. With a route store registered
+([`AddWhizbangPostgresRouteStore`](../../fundamentals/persistence/observability#the-postgres-stores)), pass a signature's
+path to `IRouteStore.GetRoutesForApplyPathAsync`: it returns the routes of every event type on the path, in the path's
+order, each type's most taken first, ignoring the run marker (`+`). Routes outlive their traces by about a year, so the
+routes behind a folded signature stay available after its streams are gone.
+
+```csharp{title="The routes behind an apply path" description="Read a path signature from the apply-stack query, then the routes of the event types on it from the route store." category="Observability" difficulty="INTERMEDIATE" tags=["apply-stacks","routes","lineage","route-store"] tests=["RouteTraceStoreTests.GetRoutesForApplyPath_ReturnsEachTypesRoutes_InThePathsOrderAsync"]}
+var signatures = await applyStackQuery.GetPathSignaturesAsync(new ApplyStackQueryOptions());
+var routes = await routeStore.GetRoutesForApplyPathAsync(signatures[0].Path);
+
+foreach (var route in routes) {
+    Console.WriteLine($"{route.EventType}: {route.Occurrences} times, {route.Hops.Count} hops");
+}
+```
+
+The HTTP and GraphQL surfaces above serve signatures and streams only; serving routes from them is not built yet.
 
 ## Drivers {#drivers}
 

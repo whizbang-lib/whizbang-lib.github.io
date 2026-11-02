@@ -16,9 +16,12 @@ codeReferences:
   - src/Whizbang.Core/Observability/MessageTracing.cs
   - src/Whizbang.Core/IDispatcher.cs
   - src/Whizbang.Core/Dispatcher.cs
+  - src/Whizbang.Core/Observability/RouteNormalizer.cs
 testReferences:
   - tests/Whizbang.Observability.Tests/MessageTracingTests.cs
   - tests/Whizbang.Observability.Tests/MessageHopTests.cs
+  - tests/Whizbang.Core.Tests/Observability/RouteNormalizerTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/MetadataDistillationSqlTests.cs
 ---
 
 # Caller information capture
@@ -78,6 +81,23 @@ under the older format still round-trip.
 > The XML doc comments on these fields describe them as enabling a future
 > "jump to line" VSCode extension. That tooling is an intended use, not a
 > shipped feature — treat it as forward-looking.
+
+## Caller information on stored events {#stored-events}
+
+{verified: StoredMetadataWriteSqlTests.OutboxChain_DefaultForm_StoresTheSlimRow_AndStagesTheFullFormAsync, MetadataDistillationSqlTests.Reconstruct_WithinTheTraceWindow_IsLosslessAsync, RouteNormalizerTests.CallerClass_IsTheFileNameWithoutFoldersOrExtensionAsync}
+
+The outbox and inbox rows keep every hop, caller information included, while a message is delivered. A stored event's
+row keeps the [slim form](../../data/event-store#slim-form) by default, which has no caller information, so:
+
+- a receptor invoked at a perspective stage reads `CallerInfo` as `null`, and the "called from" log and the
+  source-service log field read as unknown;
+- `GetCallerInfo` on an envelope read back from the event store returns what the slim hop carries, which is nothing.
+
+Nothing is lost. The caller's class (its file's name) and member are part of the event's
+[route](../../data/event-store#routes-and-traces), kept about a year after the route was last taken, and the full file
+path and line are in the event's trace for its retention window (30 days by default). The
+[Postgres trace store](./observability#the-postgres-stores) rebuilds the full hops, caller information included. To keep
+an event type's caller information in the row itself, [keep it full](../../data/event-store#keeping-an-event-type-full).
 
 ## How the framework captures it: the dispatcher path
 
