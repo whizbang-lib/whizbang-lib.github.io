@@ -38,6 +38,7 @@ testReferences:
   - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerDeepPathDrainTests.StragglerDropped.cs
   - tests/Whizbang.Core.Tests/Events/System/StreamRewindEventTests.cs
   - tests/Whizbang.Core.Tests/Perspectives/OverwriteOnlyRewindTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerDeepPathChannelTests.RewindFailure.cs
   - tests/Whizbang.Core.Tests/Perspectives/LastInReplayOrderTests.cs
   - tests/Whizbang.Generators.Tests/PerspectiveRunnerOverwriteOnlyTests.cs
   - tests/Whizbang.Core.Tests/Perspectives/CollectiveReplayRunnerTests.cs
@@ -407,7 +408,7 @@ Rewind logs are split across **two logger categories** so their levels can be tu
 |-------|---------|------|
 | Warning | 52 | `Perspective rewind required for {PerspectiveName} stream {StreamId} — cursor at {CursorEventId}, late event {TriggerEventId} ({EventsBehind} events behind)` |
 | Warning | 53 | `Perspective rewind completed for {PerspectiveName} stream {StreamId} — replayed {EventsReplayed} events in {DurationMs}ms (from {ReplaySource})` |
-| Error | 58 | `Perspective rewind failed for {PerspectiveName} stream {StreamId} — trigger event {TriggerEventId}. Stream will retry on next cycle.` |
+| Warning | 58 | `Perspective rewind failed for {PerspectiveName} stream {StreamId}, trigger event {TriggerEventId}. Its rows are failed and retried with backoff, and dead-lettered once their failures pass MaxPerspectiveEventAttempts.` See [Error Handling](#error-handling). |
 | Warning | 43 | `Failed to acquire stream lock for rewind on {PerspectiveName} stream {StreamId}, deferring` |
 
 > The EventId 53 `{ReplaySource}` token resolves to `"snapshot store available"` or `"no snapshot store"` — it reflects whether a snapshot store is configured, **not** whether this rewind actually restored from a snapshot (see [Snapshot-usage caveat](#snapshot-usage-caveat)). The *actual* snapshot-vs-full decision is on the runner's own Warning lines described under [Snapshot selection](#snapshot-selection).
@@ -484,14 +485,29 @@ Both are marked `[AuditEvent(Exclude = true)]` — they run in a background cont
 Two stream-level bracketing events — `StreamRewindStarted` and `StreamRewindCompleted` (carrying `PerspectiveNames[]` and `TotalEventsReplayed`) — are defined in `SystemEvents.cs` and have serialization + type tests, but at commit `0bc6065b` no publishing call site exists. They are reserved/not-yet-emitted rather than live observability signals.
 :::
 
-## Error Handling
+## Error Handling {#error-handling}
+{verified: PerspectiveWorkerDeepPathChannelTests.Rewind_ThatThrows_FailsItsRowsForRetry_InsteadOfCompletingThemAsync, PerspectiveWorkerDeepPathChannelTests.Rewind_ThatThrows_LogsTheAttemptAtWarningWithItsExceptionAsync}
 
-Rewind failures are **isolated per stream** — one stream's rewind throwing does not crash the perspective worker. In `_executeRewindPathAsync`, the call to `runner.RewindAndRunAsync` is wrapped in a `catch` for any non-cancellation exception, which:
+Rewind failures are **isolated per stream**: one stream's rewind throwing does not crash the perspective worker or
+the other groups in its batch. A rewind that throws (any exception other than cancellation):
 
-- Logs at **Error** (EventId 58) with perspective name, stream id, and trigger event id.
-- Increments `whizbang.perspective.errors`.
-- Sets `Error` status on the OTel span.
-- Returns a failure completion (`Status = None`) — the cursor's RewindRequired flag stays set, so the stream is retried on the next polling cycle.
+- Counts in `whizbang.perspective.rewinds_failed` and sets `Error` status on the rewind span, tagged
+  `whizbang.perspective.rewind.error`.
+- Logs the attempt at **Warning** (EventId 58) with the perspective name, stream id, trigger event id and the
+  exception.
+- Stops the lock keepalive and releases the rewind lock.
+- **Fails the group's rows for retry.** The exception reaches the group's failure handler, which records the failure
+  against every leased row, reports the cursor failure and increments `whizbang.perspective.errors`. The rows are
+  re-claimed after their backoff and the rewind is tried again; each failure counts toward
+  `MaxPerspectiveEventAttempts`, so a rewind that keeps failing ends in a dead letter with the one
+  [dead-letter record](../../operations/observability/logging-categories#dead-lettered-messages). The drain path
+  treats a rewind that throws the same way.
+
+Before, the per-event path logged the failure at Error and returned an empty completion: the group's rows were
+completed with nothing applied, no failure was recorded, and the cursor kept its RewindRequired flag, so the next
+work on the stream retried the rewind, failed again and discarded its rows too, with no bound. An alert keyed on
+EventId 58 at Error stops firing; alert on the dead-letter record, EventId 1901. See
+[Perspective Worker: a rewind that fails](../../operations/workers/perspective-worker#rewind-failures).
 
 ## Security Context
 

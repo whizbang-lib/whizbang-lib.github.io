@@ -695,7 +695,7 @@ A composite disappears once it is expanded (its row is completed and only its ch
 | `whizbang.composites.children_unsubscribed` | Counter\<long\> | Children dropped at expansion because this consumer has no subscription for their type; they are never stored |
 | `whizbang.composites.children_refused` | Counter\<long\> | Children refused by the consumer's expansion budget (`MaxCompositeChildrenPerExpansion`) |
 | `whizbang.composites.dead_lettered` | Counter\<long\> | Composite rows moved to the dead-letter store instead of being expanded |
-| `whizbang.composites.commit_failures` | Counter\<long\> | Expansions whose synchronous commit failed; the row stays leased and is retried on re-offer |
+| `whizbang.composites.commit_failures` | Counter\<long\> | Expansions whose synchronous commit failed; the row is failed, retried with backoff, and dead-lettered once its attempts pass `MaxInboxAttempts` (see [transactional expansion](../../fundamentals/messaging/composite-events#transactional-expansion)) |
 | `whizbang.collectives.received` | Counter\<long\> | Collective events the collective sink took up from a leased sink row |
 | `whizbang.collectives.applied` | Counter\<long\> | Collective events the sink applied through the collective dispatcher |
 | `whizbang.collectives.skipped` | Counter\<long\> | Leased sink rows completed without an apply because no collective event was behind them (the cursor had already passed, or a stale re-lease); a rising count is the re-lease loop showing itself |
