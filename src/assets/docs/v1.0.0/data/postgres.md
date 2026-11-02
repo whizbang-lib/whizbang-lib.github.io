@@ -132,9 +132,9 @@ acquire deadline and the full precedence order are in the
 
 ## Schema Readiness {#readiness}
 
-With the EF Core turnkey driver, schema initialization runs as a hosted service (`WhizbangDatabaseInitializerService`) during host startup. Workers await `ISchemaReadyGate` before issuing any SQL:
+With the EF Core turnkey driver, schema initialization runs as a hosted service (`WhizbangDatabaseInitializerService`) during host startup. Workers do not start before the gate it opens: the host starts each at its [registered start point](../operations/startup/startup-status#add-whizbang-worker), schema ready or Accept commands:
 
-- On successful migration, the gate is marked ready and workers proceed
+- On successful migration, the gate is marked ready and the host starts the workers
 - On migration failure, the gate is never marked ready — startup throws and the host aborts rather than running on a broken schema
 
 ## Features

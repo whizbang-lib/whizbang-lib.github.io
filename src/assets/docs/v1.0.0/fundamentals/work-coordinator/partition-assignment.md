@@ -20,6 +20,7 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/229_OnlyReadyInstancesAreEligibleForWork.sql
   - src/Whizbang.Data.Postgres/Migrations/231_StartupStageRecord.sql
   - src/Whizbang.Data.Postgres/Migrations/278_OneWriterOfTheInstancePhase.sql
+  - src/Whizbang.Data.Postgres/Migrations/300_AnIneligibleCallerClaimsNothing.sql
 testReferences:
   - tests/Whizbang.Partitioning.Tests/PartitionAssignerTests.cs
   - tests/Whizbang.Partitioning.Tests/PartitionAssignmentCacheTests.cs
@@ -127,7 +128,8 @@ during its own startup therefore does not hand itself partitions it cannot yet w
 **Nobody eligible: an empty assignment.** When no instance is a candidate, the assigner publishes an
 assignment with no members. A claimer that presents it finds itself absent and
 [ranks itself](claim-loop.md#ranking-who-counts-as-alive) among the eligible peers, counting itself, so
-claiming never stops for want of a member. {verified: PartitionAssignerTests.LiveMembers_WithNoCandidateAtAll_IsEmptyAsync, PartitionAssignmentSqlTests.ClaimWork_WhenNotAMemberOfTheCurrentAssignment_RanksItselfWithoutANoticeAsync}
+claiming never stops for want of a member. A claimer whose own row is not eligible is the exception: since migration
+300 it claims nothing at all, member or not ([why](claim-loop.md#ineligible-caller-claims-nothing)). {verified: PartitionAssignerTests.LiveMembers_WithNoCandidateAtAll_IsEmptyAsync, PartitionAssignmentSqlTests.ClaimWork_WhenNotAMemberOfTheCurrentAssignment_RanksItselfWithoutANoticeAsync}
 
 **Publishing.** Each tick of its tenure (one per role renewal interval) the assigner judges the
 registered instances and publishes when the live set changes: an alive-lock gained or lost, a
@@ -156,6 +158,11 @@ at once, while its heartbeat is still fresh. Two kinds of work are affected diff
 - **Its unclaimed share moves at once.** The next publish leaves it out of `Members`, and peers that
   rank themselves stop counting it on their next claim, so the partitions it would have claimed go to
   its peers without waiting for its heartbeat to lapse.
+- **It still claims its own share until the assigner republishes.** Migration 300 refuses a claim from a caller whose
+  row is not eligible, but keeps a draining caller claiming: under a published assignment its partitions stay its own
+  until the next publish, and refusing it would leave them unclaimed for that window. The overlap with its peers is
+  brief, and stream leases keep the work single.
+  {verified: WorkEligibilitySqlTests.Claim_ADrainingCaller_StillClaimsItsShareAsync}
 - **Streams it has already claimed stay with it.** A claim decides which instance owns a stream, not
   who gets a share, and ownership is left alone: the draining instance keeps the streams it holds
   until it finishes them or their leases lapse. Handing a stream that is mid-flight to a peer would

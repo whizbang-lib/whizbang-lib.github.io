@@ -41,6 +41,7 @@ testReferences:
   - tests/Whizbang.Hosting.AspNet.Tests/AddWhizbangAspNetTurnkeyTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/EventStoreHealthSourceIntegrationTests.cs
   - tests/Whizbang.Core.Tests/Health/RoleAssignmentHealthSourceTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/StartupHealthWhileMigratingTests.cs
 verifiedAgainstCommit: a64ba9a0
 verifiedDate: 2026-08-04
 ---
@@ -141,6 +142,30 @@ deployments back regardless of policy.
 Liveness never fails for an intentional state under any policy — an intentional or dependency-fault
 state must never restart the pod. A genuine `Faulted` (transport dropped while `Ready`, offload
 unreachable) still fails readiness — the policy never masks a real fault.
+
+## Probes during a migration {#probes-during-a-migration}
+{verified: StartupHealthWhileMigratingTests.HeldInMigrate_LivenessIsHealthy_AndReadinessSaysNotReadyWithTheStageAsync}
+
+A migration can take longer than any probe timeout, so what Kubernetes sees while one runs is a design choice, locked
+by a test that holds a real web host in Migrate (another session holds the schema lock) and probes it:
+
+| Probe | While the instance is held in Migrate | Once it reaches Running |
+|---|---|---|
+| Liveness | 200, Healthy | 200, Healthy |
+| Readiness, Lenient (the default) | 200, Degraded, naming the stage (`Migrate`) | 200, naming `Running` |
+| Readiness, Strict | 503, Unhealthy, naming the stage (`Migrate`) | 200, naming `Running` |
+
+- **Liveness is healthy, so a long migration is never restarted.** A migrating instance is alive; restarting it for not
+  being ready would restart the migration, and the next attempt would be just as long.
+- **Readiness answers at once.** The probes are answered before the host has finished starting: the ready service
+  waits in `StartedAsync`, after every `StartAsync` (the web server's included) has returned, and the initializer
+  migrates in the background (`NonBlockingSchemaInit`, the default). A probe never waits for the migration it reports.
+- **The stage is named.** Readiness carries the [startup stage](#startup-stage), so an operator sees "Migrate" rather
+  than an unexplained not-ready.
+
+This is what lets the heartbeat [stay on the schema-ready gate](../operations/startup/startup-status#add-whizbang-worker)
+rather than start before the migration: the instance tells Kubernetes it is alive and degraded from the first probe, so
+nothing depends on the heartbeat to keep the pod from being restarted while the schema is migrated.
 
 ## Backlog age {#backlog-age}
 

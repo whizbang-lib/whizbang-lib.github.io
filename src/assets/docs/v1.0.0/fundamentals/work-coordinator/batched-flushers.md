@@ -20,7 +20,10 @@ codeReferences:
   - src/Whizbang.Core/Workers/OutboxPublishWorker.cs
   - src/Whizbang.Core/Workers/OutboxDrainWorker.cs
   - src/Whizbang.Core/Workers/InboxDispatchWorker.cs
+  - src/Whizbang.Core/Workers/InboxHandlerWorker.cs
+  - src/Whizbang.Core/Startup/WhizbangWorkerServiceCollectionExtensions.cs
 testReferences:
+  - tests/Whizbang.Core.Component.Tests/Workers/BatchFlusherDeferredStartTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/BatchFlusherRetryTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/BatchFlusherTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/FlushWorkerClockWiringTests.cs
@@ -63,6 +66,24 @@ Producer enqueues item     ─┘      ─ then coalesce additional items for Co
 | `LeaseRenewalWorker` | `CategorizedLeaseRenewal` (category + Guid) | `wh_renew_held_leases` per category | 200 max / 200 ms / 100 immediate |
 
 Each follows the same shape: a `BackgroundService` exposing a channel-writer interface, owning a `BatchFlusher<T>` that calls the appropriate `IWorkCoordinator` method per batch.
+
+## When a flusher starts {#when-a-flusher-starts}
+{verified: BatchFlusherDeferredStartTests.AnUnstartedFlusher_FlushesNothing_AndStoppingItDropsWhatWasQueuedAsync, BatchFlusherDeferredStartTests.Starting_FlushesWhatWasQueuedBeforeItAsync, BatchFlusherDeferredStartTests.AFlusherStartedAtConstruction_StartingAgainChangesNothingAsync, StartupHostedServiceAuditTests.EveryHostedService_HasAPlaceInTheStageTable_AndTheStagedOnesStartAtTheirStageAsync}
+
+The five flush workers (the four above and `InboxHandlerWorker`) are [registered with their start
+point](../../operations/startup/startup-status#add-whizbang-worker), Accept commands, like the rest of the data plane.
+Their flusher starts with the worker, not when the worker is constructed:
+
+- **Constructed unstarted.** Each worker builds its `BatchFlusher<T>` with `started: false`, and its `StartAsync` calls
+  `Start()`. A flush therefore cannot run before the worker's start point, so the flush workers need no wait on the
+  schema-ready gate in each flush (earlier releases held one there).
+- **In `StartAsync`, not `ExecuteAsync`.** The host runs `ExecuteAsync` on the thread pool, and a stop that lands
+  before it runs would find a flusher that never started; `StartAsync` has returned before the host can stop the worker.
+- **What is enqueued earlier waits.** Items enqueued before the start wait in the channel and are flushed once the
+  flusher starts. A flusher whose worker never started flushes nothing, not even on the way out, and drops what was
+  queued when it is stopped: its worker was never past its start point, so there is nothing it may write yet.
+- **Starting twice changes nothing.** A second `Start()`, or one on a flusher started at construction (the default
+  constructor), is a no-op.
 
 ## Tuning knobs
 

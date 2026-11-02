@@ -125,8 +125,8 @@ builder.Services.AddSingleton<IDbConnectionFactory>(
 `AddWhizbangPostgres` never connects to the database. With `initializeSchema: true` it records what to initialize,
 and the shared schema initializer does it when the host starts, exactly as on the EF Core driver: it waits for the
 database with the `PostgresOptions` retry settings, migrates under the schema lock, registers this instance,
-runs the managed-object cleanup, and opens `ISchemaReadyGate`. The workers wait on that gate, and so should any
-code of yours that needs the schema. See [Turnkey Initialization](turnkey-initialization.md#both-drivers) for the
+runs the managed-object cleanup, and opens `ISchemaReadyGate`. The host starts no worker before that gate opens, and
+code of yours that needs the schema waits on it (a worker of your own is registered with `AddWhizbangWorker`). See [Turnkey Initialization](turnkey-initialization.md#both-drivers) for the
 stage-by-stage comparison and the upgrade note: before this release the schema was migrated inside
 `AddWhizbangPostgres`, and the gate never opened on a Dapper host.
 

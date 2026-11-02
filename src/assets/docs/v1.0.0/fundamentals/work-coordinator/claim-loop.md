@@ -10,6 +10,7 @@ description: >-
   stuck instance, outbox stream runs with the immediate re-claim after a full
   outbox acquisition, how a claim keeps the queue tables' planner statistics
   true, how a claim ranks only the peers that are alive and eligible for work,
+  why a caller that is not eligible claims nothing,
   and why a claim no longer announces the caller's lifecycle phase.
 tags: 'work-coordinator, claim-loop, claim-work, acquisition, backpressure, work-stealing, command-lane'
 codeReferences:
@@ -27,10 +28,14 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/207_ClaimRefreshesStaleQueueStatistics.sql
   - src/Whizbang.Data.Postgres/Migrations/229_OnlyReadyInstancesAreEligibleForWork.sql
   - src/Whizbang.Data.Postgres/Migrations/278_OneWriterOfTheInstancePhase.sql
+  - src/Whizbang.Data.Postgres/Migrations/300_AnIneligibleCallerClaimsNothing.sql
   - src/Whizbang.Core/Workers/OutboxDrainWorker.cs
   - src/Whizbang.Core/Signals/BasePollSignalSource.cs
   - src/Whizbang.Core/Signals/PollIdleBackoff.cs
 testReferences:
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/ClaimWorkRegistrationSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/CoalesceFoldCoordinatorSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/MultiStream/MultiStreamCommandStoreSqlTests.cs
   - tests/Whizbang.Core.Component.Tests/ClaimWorkerLifecyclePhaseTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/WorkEligibilitySqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/HeartbeatPhaseOrderSqlTests.cs
@@ -461,7 +466,7 @@ Unowned work is claimed by rank: `partition_number % active_instance_count = ran
 - a peer whose heartbeat is inside the 30 s cutoff is alive;
 - a peer recorded as `direct` whose alive-lock is held is alive whatever the age of its heartbeat, so a direct instance beating on the 60 s slow cadence is never counted out between beats;
 - a pooled peer, or one with no mode recorded, is judged by its heartbeat alone;
-- the calling instance always counts itself: it is running the claim.
+- the calling instance counts itself, since it is running the claim, provided its own row may claim; since migration 300 one whose row may not claims nothing ([below](#ineligible-caller-claims-nothing)).
 
 When a direct instance loses its lock, the next claim of any peer judges it by its heartbeat, so it is ranked out at once and the shares re-spread on that claim.
 
@@ -470,11 +475,46 @@ When a direct instance loses its lock, the next claim of any peer judges it by i
 
 Since migration 229 a live peer is ranked only when it is also [eligible for work](/v1.0.0/fundamentals/workers/instance-liveness#alive-versus-eligible): its recorded lifecycle phase is `AcceptingCommands` or `Running`, or it records no phase (an older build). A peer that is still starting, paused, standing by or draining is alive but is not counted, so the partitions it could not claim fall to the peers that can, on the very next claim. A direct peer holding its alive-lock while it migrates is alive by its lock and still not ranked.
 
-- **The caller still counts itself.** It is running the claim, so it is ranked whatever its own row says. A caller that is not yet eligible, or is draining, overlaps its peers briefly rather than leaving a gap, and stream leases keep the overlap from doing any work twice.
+- **A caller that may claim counts itself.** It is running the claim, so it is ranked whether or not its peers would
+  count it. Since migration 300 a caller whose own row says it may not claim is not ranked at all: it claims nothing
+  (see [An ineligible caller claims nothing](#ineligible-caller-claims-nothing)). A draining caller still claims, and
+  overlaps its peers briefly rather than leaving a gap; stream leases keep the overlap from doing any work twice.
 - **No extra cost.** The test is a filter on columns of the registration rows the ranking already reads, inlined into the same scan: no added table, function call or lock.
 - **The multi-stream claim ranks the same way.** See [Multi-stream commands](/v1.0.0/fundamentals/dispatcher/multi-stream-commands#ownership).
 
 **Cost.** The lock is read through `wh_direct_alive_lock_holders()` only for a direct row whose heartbeat is past the cutoff, and then once per claim as a hashed subplan. A claim whose peers all have fresh heartbeats, or are pooled, never reads `pg_locks`. With half of a direct fleet on the slow cadence, the measured cost is one pass over the registration table: 1 buffer at 20 instances, 6 at 400. {verified: AliveLockRankCostScenarioTests.SelfRankedClaim_WithHalfTheFleetOnTheSlowCadence_ReadsTheLocksOnce_ReportAsync}
+
+### An ineligible caller claims nothing {#ineligible-caller-claims-nothing}
+{verified: WorkEligibilitySqlTests.Rank_ACallerThatIsNotYetEligible_StillCountsItselfAsync, MultiStreamCommandStoreSqlTests.ClaimAsync_ACallerNotYetReady_ClaimsNothingAsync, CoalesceFoldCoordinatorSqlTests.FetchPendingCoalesce_ByACallerNotYetEligible_FetchesNothingAsync}
+
+Since migration 300, `claim_work` and `wh_claim_multi_stream_work` give nothing to a caller whose own row may not
+claim, and the coalesce shipper's fetch folds nothing for one. Whether an instance may claim is one function every
+reader shares, `wh_instance_may_claim`: the instance is [eligible for work](/v1.0.0/fundamentals/workers/instance-liveness#alive-versus-eligible),
+or it is draining.
+
+**Why.** The host already starts the data plane only once the row records Accept commands
+(see [the recorded transition](/v1.0.0/operations/startup/startup-status#data-plane-on-the-recorded-transition)); the
+database refuses such a caller as well, so a claim made in the window before the row says the instance is eligible,
+for example while a failed stage write is held, takes nothing. This reverses migration 229's rule that the caller
+counts itself whatever its row says. 229 counted the caller so that, ranked as absent, it would not fall to a solo rank
+and take every partition. Refusing it outright avoids that hazard too: it takes nothing rather than everything, and its
+share is already its peers', because they rank it out and the assigner leaves it out.
+
+Kept on purpose, each with its reason:
+
+| Case | What the claim does | Why | Locked by |
+|---|---|---|---|
+| A draining caller (stage Draining or phase `Stopping`) | Still claims its share | Under a published assignment its partitions stay its own until the assigner republishes; refusing it would leave them unclaimed for that window. Claiming overlaps its peers briefly, and stream leases keep the work single. | {verified: WorkEligibilitySqlTests.Claim_ADrainingCaller_StillClaimsItsShareAsync} |
+| A caller that records no stage and no phase (an older build) | Claims as before | During a rolling upgrade an older instance writes neither column; it is eligible whenever it is live, as 229 kept it. | {verified: WorkEligibilitySqlTests.Claim_ACallerThatRecordsNoPhase_StillClaimsItsShareAsync} |
+| A caller with no row at all | Served as before | A running instance whose row was reaped, or one not registered yet, re-registers on the claim's notice and is ranked as live meanwhile; so the missing row is repaired without the instance losing its share in the meantime. | {verified: ClaimWorkRegistrationSqlTests.ClaimWork_MissingOwnRegistration_StillRanksItselfAmongTheLiveAsync} |
+| A refused caller whose row is stale | Claims nothing, and is still asked to register | The re-register notice is how a stale row is repaired; refusing the claim must not also hide that the row needs writing. | {verified: WorkEligibilitySqlTests.Claim_ARefusedCallerWhoseRowIsStale_IsStillAskedToRegisterAsync} |
+
+`WorkEligibilitySqlTests.Rank_ACallerThatIsNotYetEligible_StillCountsItselfAsync` keeps its name, because migration 229
+links to it and a shipped migration is never edited; its assertion is the new rule.
+
+**Cost.** `claim_work` already probed the caller's row by primary key for its registration check; it now reads that row
+once and decides both from it, so the claim adds no lookup. The multi-stream claim and the coalesce fetch add one
+primary-key lookup of the caller's row each. Nothing here takes a lock.
 
 ### The re-register notice and `p_alive_lock_held` {#re-register-notice}
 {verified: AliveLockLivenessSqlTests.Notice_ADirectCallerHoldingItsLock_IsNotAskedToRegisterBetweenSlowBeatsAsync, AliveLockLivenessSqlTests.Notice_ADirectCallerWithoutItsLock_IsAskedToRegisterAsync, AliveLockLivenessSqlTests.Notice_APooledCallerPastTheCutoff_IsStillAskedToRegisterAsync, AliveLockLivenessSqlTests.Notice_AMissingRegistration_IsReportedWhateverTheLockAsync, ClaimWorkerAliveLockTests.AClaim_WhileTheAliveLockIsHeld_SaysSoAsync, ClaimWorkerAliveLockTests.AClaim_WithoutTheAliveLock_SaysSoAsync, ClaimWorkerAliveLockTests.AClaim_WithNoAliveLockSourceRegistered_HoldsNoLockAsync}
