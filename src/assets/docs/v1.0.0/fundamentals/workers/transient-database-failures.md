@@ -24,6 +24,8 @@ testReferences:
   - tests/Whizbang.Core.Component.Tests/Workers/WorkerLoopRecoveryTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerDeepPathDrainTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerDeepPathChannelTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerDeepPathChannelTests.AttemptLogLevel.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/PerspectiveWorkerDeepPathDrainTests.StoredForm.cs
   - tests/Whizbang.Core.Component.Tests/Workers/InboxDrainWorkerCoverageTests.cs
   - tests/Whizbang.Core.Component.Tests/Workers/OutboxDrainWorkerCoverageTests.cs
   - tests/Whizbang.Core.Component.Tests/Signals/PollSignalSourceTests.cs
@@ -171,6 +173,16 @@ and not the claimed per-event work that shares its batch.
 Event id 8, `Error processing perspective cursors`, is retired. It named no stream, said nothing
 about what had failed, and the line after it was the host stopping.
 
+These lines are about a whole batch the loop lost. A perspective whose apply fails for one stream
+inside a batch that otherwise ran is a different line: event id 14, `Error processing perspective
+cursor` (or `Drain mode: Error processing perspective` on the drain path), logged at **Warning** with
+the exception. That failure is recorded against the stream's leased rows, which are backed off,
+retried and dead-lettered at their bound, when the
+[dead-letter record](../../operations/observability/logging-categories#dead-lettered-messages)
+(event id 1901) is logged at Error. One failed attempt is not an alert; see
+[retried attempts](../../operations/observability/logging-categories#retried-attempts).
+{verified: PerspectiveWorkerDeepPathChannelTests.Worker_RunnerThrows_LogsTheAttemptAtWarningWithItsExceptionAsync, PerspectiveWorkerDeepPathDrainTests.DrainMode_OtherFailure_IsNotClassifiedAsStoredFormButParksItsRowsAsync}
+
 ### The other loops
 
 | Worker | On a failed batch or tick | Verified |
@@ -179,7 +191,7 @@ about what had failed, and the line after it was the host stopping.
 | `InboxDrainWorker` | Reports (event id 7 transient, 6 otherwise); the streams re-offer through the claim backstop | {verified: InboxDrainWorkerCoverageTests.DrainBatch_TransientDatabaseFailure_IsNamedAsSuchAndTheNextBatchDrainsAsync} |
 | `OutboxDrainWorker` | Reports (event id 53 transient, 54 otherwise); the streams re-offer through the claim backstop | {verified: OutboxDrainWorkerCoverageTests.DrainBatch_TransientDatabaseFailure_IsNamedAsSuchAndTheLoopTakesTheNextBatchAsync} |
 | Poll signal sources | Hand the failed tick to `OnTickError`, log at Warning, and keep the timer's schedule | {verified: PollSignalSourceTests.Tick_TransientDatabaseFailure_IsHandedToOnTickErrorAndTheScheduleSurvivesAsync} |
-| Flush workers | Retry inside `BatchFlusher`, then drop the batch with a line rather than fault | |
+| Flush workers | Retry inside `BatchFlusher`, then drop the batch with an Error line (event id 3) rather than fault; the rows behind it are claimed again when their leases expire. The drop has no bound or dead-letter yet, so it stays at Error ([unbounded retries](../../operations/observability/logging-categories#unbounded-retries)) | |
 
 ## Retrying one operation {#deadlock-retry}
 
@@ -211,6 +223,8 @@ await PostgresDeadlockRetry.ExecuteAsync(
   connection limit), while one at the moment a new instance initialized schema is expected.
 - **A 68 / 6 / 54 line is a defect** in the framework or in a consumer's handler, and it will repeat
   until someone fixes it.
+- **A 14 line is one failed apply attempt** for one stream, at Warning. It becomes an alert only when
+  the stream's rows reach their bound and are dead-lettered (event id 1901).
 - **A 70 line** means a lost batch's rows will wait out their lease before a sibling can take them:
   latency, not loss.
 - `BackgroundServiceExceptionBehavior` is deliberately left at its default. Do not set it to `Ignore`
