@@ -1,8 +1,8 @@
 ---
 title: Execution Lifecycle
 pageType: concept
-verifiedAgainstCommit: 0bc6065b
-verifiedDate: 2026-08-05
+verifiedAgainstCommit: eb145727
+verifiedDate: 2026-11-03
 version: 1.0.0
 category: Workers
 order: 2
@@ -15,12 +15,18 @@ tags: >-
 codeReferences:
   - src/Whizbang.Core/Execution/IExecutionStrategy.cs
   - src/Whizbang.Core/Execution/SerialExecutor.cs
+  - src/Whizbang.Core/Execution/ParallelExecutor.cs
   - src/Whizbang.Core/Workers/PerspectiveWorker.cs
   - src/Whizbang.Core/Workers/ISchemaReadyGate.cs
   - src/Whizbang.Core/Workers/BatchStrategyShutdownFlush.cs
 testReferences:
   - tests/Whizbang.Execution.Component.Tests/ExecutionStrategyContractTests.cs
   - tests/Whizbang.Execution.Component.Tests/SerialExecutorTests.cs
+  - tests/Whizbang.Execution.Component.Tests/SerialExecutorStopTests.cs
+  - tests/Whizbang.Execution.Component.Tests/SerialExecutorDrainAfterStopTests.cs
+  - tests/Whizbang.Execution.Component.Tests/SerialExecutorDrainCancellationTests.cs
+  - tests/Whizbang.Execution.Component.Tests/SerialExecutorEnqueueFailureTests.cs
+  - tests/Whizbang.Execution.Component.Tests/ParallelExecutorDrainTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -76,7 +82,7 @@ public interface IExecutionStrategy {
   Task StartAsync(CancellationToken ct = default);
 
   /// <summary>
-  /// Stops the execution strategy (stops accepting new work)
+  /// Stops the execution strategy (stops accepting new work; queued work is finished as canceled)
   /// </summary>
   Task StopAsync(CancellationToken ct = default);
 
@@ -89,14 +95,16 @@ public interface IExecutionStrategy {
 
 **Three Lifecycle Phases**:
 1. **StartAsync**: Initialize workers, channels, background tasks
-2. **StopAsync**: Stop accepting new work, signal shutdown
-3. **DrainAsync**: Wait for in-flight work to complete
+2. **DrainAsync**: Stop accepting new work and wait for everything already queued to run
+3. **StopAsync**: Stop accepting new work; the item already running finishes and anything still queued is finished as canceled
+
+**Order on shutdown: drain, then stop.** `StopAsync` does not run queued work, so a host that wants the queue run calls `DrainAsync` first and `StopAsync` after it. Stopping first and draining after runs nothing: the stop has already finished the queue as canceled, and a drain of a stopped executor returns at once. {verified: SerialExecutorStopTests.StopAsync_ItemQueuedBehindRunningWork_IsCanceledWithoutRunningAsync, SerialExecutorTests.DrainAsync_AfterStop_ReturnsWithoutDrainingAsync}
 
 ---
 
 ## Startup Lifecycle Flow
 
-```mermaid{caption="Host startup-to-shutdown lifecycle: schema provisioning gates worker startup, then IExecutionStrategy StartAsync → normal operation → StopAsync → DrainAsync coordinate a graceful drain." tests=["ExecutionStrategyContractTests.StartAsync_ShouldBeIdempotentAsync", "ExecutionStrategyContractTests.StopAsync_ShouldPreventNewExecutionsAsync", "ExecutionStrategyContractTests.DrainAsync_ShouldWaitForPendingWorkAsync"]}
+```mermaid{caption="Host startup-to-shutdown lifecycle: schema provisioning gates worker startup, then IExecutionStrategy StartAsync → normal operation → DrainAsync → StopAsync coordinate a graceful drain." tests=["ExecutionStrategyContractTests.StartAsync_ShouldBeIdempotentAsync", "ExecutionStrategyContractTests.DrainAsync_ShouldWaitForPendingWorkAsync", "ExecutionStrategyContractTests.StopAsync_ShouldPreventNewExecutionsAsync", "SerialExecutorStopTests.StopAsync_ItemQueuedBehindRunningWork_IsCanceledWithoutRunningAsync"]}
 sequenceDiagram
     participant App as Application
     participant Init as WhizbangDatabaseInitializerService
@@ -139,16 +147,17 @@ sequenceDiagram
 
     rect rgb(255, 240, 240)
         Note over App,W: Phase 5: Shutdown Signal
-        App->>ES: StopAsync() (SIGTERM received)
-        App->>W: StopAsync() (CancellationToken)
-        Note over W: Stop accepting<br/>new work
+        App->>W: StopAsync() (SIGTERM received, CancellationToken)
+        Note over W: Stop feeding<br/>new work
         W->>W: Complete current batch
     end
 
     rect rgb(255, 240, 255)
-        Note over App,W: Phase 6: Drain & Cleanup
+        Note over App,W: Phase 6: Drain, then Stop
         App->>ES: DrainAsync()
-        ES-->>App: All work complete
+        ES-->>App: Everything queued has run
+        App->>ES: StopAsync()
+        ES-->>App: Worker ended (nothing left to cancel)
         Note over App: Exit gracefully
     end
 ```
@@ -158,8 +167,8 @@ sequenceDiagram
 2. **Schema Provisioning**: Initializer runs migrations, then marks `ISchemaReadyGate` ready (on failure the gate stays closed and the host aborts)
 3. **Worker Startup**: Workers await the schema gate, then enter their main loops; the first claim cycle catches up on pre-existing work
 4. **Normal Operation**: NOTIFY-driven wake with safety-net polling
-5. **Shutdown Signal**: Stop accepting new work
-6. **Drain & Cleanup**: Wait for in-flight work, release resources
+5. **Shutdown Signal**: Workers stop feeding new work
+6. **Drain, then Stop**: `DrainAsync` runs everything queued, then `StopAsync` ends the executor (stopping first would cancel the queue instead of running it)
 
 ---
 
@@ -170,7 +179,7 @@ sequenceDiagram
 ### Execution Strategy Responsibilities
 
 **Example: SerialExecutor** (the built-in serial strategy):
-```csharp{title="Execution Strategy Responsibilities" description="Example: SerialExecutor StartAsync" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Execution", "Strategy"] tests=["SerialExecutorTests.StartAsync_AfterStop_ThrowsInvalidOperationExceptionAsync", "SerialExecutorTests.StateTransitions_IdempotentOperations_SucceedAsync", "ExecutionStrategyContractTests.StartAsync_ShouldBeIdempotentAsync"]}
+```csharp{title="Execution Strategy Responsibilities" description="Example: SerialExecutor StartAsync" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Execution", "Strategy"] tests=["SerialExecutorTests.StartAsync_AfterStop_ThrowsInvalidOperationExceptionAsync", "SerialExecutorTests.StateTransitions_IdempotentOperations_SucceedAsync", "ExecutionStrategyContractTests.StartAsync_ShouldBeIdempotentAsync", "SerialExecutorTests.ExecuteAsync_WorkCanceledWhileQueued_FaultsTheCallerInsteadOfHangingAsync", "SerialExecutorStopTests.StopAsync_ItemQueuedBehindRunningWork_IsCanceledWithoutRunningAsync"]}
 public Task StartAsync(CancellationToken ct = default) {
   lock (_stateLock) {
     if (_state == State.Running) {
@@ -183,16 +192,28 @@ public Task StartAsync(CancellationToken ct = default) {
 
     _state = State.Running;
     _workerCts = new CancellationTokenSource();
-    _workerTask = Task.Run(() => _processWorkItemsAsync(_workerCts.Token), _workerCts.Token);
+    var stopping = _workerCts.Token;
+    // Started without a token: the worker always runs, so items queued before an early stop
+    // still have a worker to finish them.
+    _workerTask = Task.Run(() => _processWorkItemsAsync(stopping), CancellationToken.None);
   }
 
   return Task.CompletedTask;
 }
 
-private async Task _processWorkItemsAsync(CancellationToken ct) {
-  await foreach (var workItem in _channel.Reader.ReadAllAsync(ct)) {
-    // Process work items serially
-    await workItem.ExecuteAsync();
+private async Task _processWorkItemsAsync(CancellationToken stopping) {
+  // The read takes no token: the loop ends when the channel is completed AND empty,
+  // so every accepted item reaches the body below.
+  await foreach (var workItem in _channel.Reader.ReadAllAsync(CancellationToken.None)) {
+    if (stopping.IsCancellationRequested) {
+      await workItem.CancelAsync(workItem.State, stopping); // stopping: finish as canceled
+      continue;
+    }
+    if (workItem.CancellationToken.IsCancellationRequested) {
+      await workItem.CancelAsync(workItem.State, workItem.CancellationToken); // caller gave up
+      continue;
+    }
+    await workItem.ExecuteAsync(workItem.State); // Process work items serially
   }
 }
 ```
@@ -237,16 +258,21 @@ protected override async Task ExecuteAsync(CancellationToken stoppingToken) {
 
 ## StopAsync: Shutdown Signal
 
-**Purpose**: Stop accepting new work and signal workers to begin shutdown.
+**Purpose**: Stop accepting new work and end the executor promptly, without running the queue.
 
 ### Execution Strategy Responsibilities
 
 **Example: SerialExecutor**:
-```csharp{title="Execution Strategy Responsibilities (2)" description="Example: SerialExecutor StopAsync" category="Implementation" difficulty="BEGINNER" tags=["Operations", "Workers", "Execution", "Strategy"] tests=["ExecutionStrategyContractTests.StopAsync_ShouldPreventNewExecutionsAsync", "SerialExecutorTests.ExecuteAsync_WhenNotRunning_ThrowsInvalidOperationExceptionAsync", "SerialExecutorTests.StateTransitions_IdempotentOperations_SucceedAsync"]}
+```csharp{title="Execution Strategy Responsibilities (2)" description="Example: SerialExecutor StopAsync" category="Implementation" difficulty="BEGINNER" tags=["Operations", "Workers", "Execution", "Strategy"] tests=["ExecutionStrategyContractTests.StopAsync_ShouldPreventNewExecutionsAsync", "SerialExecutorTests.ExecuteAsync_WhenNotRunning_ThrowsInvalidOperationExceptionAsync", "SerialExecutorTests.StateTransitions_IdempotentOperations_SucceedAsync", "SerialExecutorStopTests.StopAsync_ItemQueuedBehindRunningWork_IsCanceledWithoutRunningAsync", "SerialExecutorDrainAfterStopTests.DrainAsync_StopLandsWhileTheDrainAwaitsTheWorker_BothCompleteAndQueuedWorkIsCanceledAsync"]}
 public async Task StopAsync(CancellationToken ct = default) {
   lock (_stateLock) {
     if (_state == State.Stopped) {
       return; // Already stopped
+    }
+
+    if (_state == State.NotStarted) {
+      _state = State.Stopped;
+      return; // No worker to end
     }
 
     _state = State.Stopped;
@@ -258,28 +284,34 @@ public async Task StopAsync(CancellationToken ct = default) {
     }
   }
 
-  // Cancel + await the background worker so it exits its read loop
+  // Marks the executor stopping. Nothing waits on this token: the worker tests it
+  // before each item and finishes whatever is still queued as canceled.
   if (_workerCts != null) {
     await _workerCts.CancelAsync();
   }
+
+  // The worker ends normally once the completed channel is empty; there is no
+  // cancellation to catch.
   if (_workerTask != null) {
-    try {
-      await _workerTask;
-    } catch (OperationCanceledException) {
-      // Expected when cancelling worker
-    }
+    await _workerTask;
   }
 }
 ```
 
 **What happens**:
-- Close channels (no new writes accepted)
-- Flip internal state (`State.Stopped`) — subsequent `ExecuteAsync` calls throw `InvalidOperationException`
-- Signal background workers to stop after current work
-- Log shutdown initiated
+- Close the channel (no new writes accepted)
+- Flip internal state (`State.Stopped`): subsequent `ExecuteAsync` calls throw `InvalidOperationException`
+- The item already running finishes and its caller gets its result
+- Every item still queued is finished as canceled: its handler does not run, and its caller's `await` ends in `OperationCanceledException`. No caller is left waiting
+- The worker itself is not canceled: it ends normally once the channel is empty, and `StopAsync` returns after it
+- An `ExecuteAsync` call that races the stop (it passed the running check, or was waiting for room in a bounded channel, when the stop closed the channel) is canceled the same way: its caller gets `OperationCanceledException`, not `ChannelClosedException`, and its pooled execution state is returned. A caller whose own token cancels that wait gets its own cancellation, unchanged. {verified: SerialExecutorEnqueueFailureTests.ExecuteAsync_StopClosesTheChannelWhileTheWriteWaits_CallerIsCanceledAndStateReturnedAsync, SerialExecutorEnqueueFailureTests.ExecuteAsync_CallerCancelsWhileTheWriteWaits_CallerSeesItsCancellationAndStateReturnedAsync}
+
+**Why queued work is canceled rather than run**: `StopAsync` does not wait for work (that is `DrainAsync`), and a host calls it under its shutdown timeout, which a deep queue would overrun. A queued item whose own token is canceled before the worker reaches it already finishes the same way. To run the queue on shutdown, drain first, then stop. {verified: SerialExecutorStopTests.StopAsync_ItemQueuedBehindRunningWork_IsCanceledWithoutRunningAsync, SerialExecutorTests.ExecuteAsync_WorkCanceledWhileQueued_FaultsTheCallerInsteadOfHangingAsync}
+
+**A stop that overlaps a drain wins for work that has not started**: the drain and the stop both complete, the item already running finishes, and the items still queued are finished as canceled. {verified: SerialExecutorDrainAfterStopTests.DrainAsync_StopLandsWhileTheDrainAwaitsTheWorker_BothCompleteAndQueuedWorkIsCanceledAsync}
 
 **DO NOT**:
-- ❌ Wait for work to complete (that's `DrainAsync`)
+- ❌ Wait for queued work to run (that's `DrainAsync`; call it before `StopAsync`)
 - ❌ Forcefully terminate workers (allow graceful completion)
 - ❌ Throw exceptions (shutdown should always succeed)
 
@@ -339,12 +371,15 @@ t=250ms:  StopAsync() returns
 ### Execution Strategy Responsibilities
 
 **Example: SerialExecutor**:
-```csharp{title="Execution Strategy Responsibilities (3)" description="Example: SerialExecutor DrainAsync" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Execution", "Strategy"] tests=["SerialExecutorTests.DrainAsync_WaitsForAllInFlightWork_CompletesAsync", "SerialExecutorTests.DrainAsync_WhenNotRunning_ReturnsImmediatelyAsync", "SerialExecutorTests.DrainAsync_WithWorkerCancellation_HandlesOperationCanceledExceptionAsync", "ExecutionStrategyContractTests.DrainAsync_ShouldWaitForPendingWorkAsync"]}
+```csharp{title="Execution Strategy Responsibilities (3)" description="Example: SerialExecutor DrainAsync" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Execution", "Strategy"] tests=["SerialExecutorTests.DrainAsync_WaitsForAllInFlightWork_CompletesAsync", "SerialExecutorTests.DrainAsync_WhenNotRunning_ReturnsImmediatelyAsync", "SerialExecutorDrainAfterStopTests.DrainAsync_StopLandsWhileTheDrainAwaitsTheWorker_BothCompleteAndQueuedWorkIsCanceledAsync", "SerialExecutorDrainCancellationTests.DrainAsync_CanceledWhileWaiting_StopsWaitingAndTheQueueStillRunsAsync", "SerialExecutorDrainCancellationTests.DrainAsync_TokenAlreadyCanceled_LeavesTheExecutorAcceptingWorkAsync", "ExecutionStrategyContractTests.DrainAsync_ShouldWaitForPendingWorkAsync"]}
 public async Task DrainAsync(CancellationToken ct = default) {
   lock (_stateLock) {
     if (_state != State.Running) {
       return; // Nothing to drain
     }
+
+    // Before the channel is closed: a drain canceled before it starts changes nothing
+    ct.ThrowIfCancellationRequested();
 
     // Complete the channel writer to signal no more work
     if (!_channelCompleted) {
@@ -353,13 +388,11 @@ public async Task DrainAsync(CancellationToken ct = default) {
     }
   }
 
-  // Wait for worker to finish processing all items
+  // Wait for the worker to finish every item. It ends normally once the completed
+  // channel is empty, also when a stop lands while this drain waits, so there is no
+  // cancellation to absorb. The token bounds only this caller's wait.
   if (_workerTask != null) {
-    try {
-      await _workerTask;
-    } catch (OperationCanceledException) {
-      // Defensive: channel completes before worker cancellation
-    }
+    await _workerTask.WaitAsync(ct);
   }
 }
 ```
@@ -367,12 +400,23 @@ public async Task DrainAsync(CancellationToken ct = default) {
 **What happens**:
 - Complete the channel writer (no more work can be queued)
 - Await the background worker until it has processed everything already queued
+- If a stop lands while the drain waits, the drain still completes normally; the items the worker had not reached are finished as canceled
 - Log/trace drain completion
 
 **Timeout Handling**:
-- `DrainAsync` itself awaits completion; bound it with the `CancellationToken` (or `Task.WaitAsync(timeout)`) at the call site if your host imposes a shutdown budget
+- `DrainAsync` awaits completion; bound it with its `CancellationToken` if your host imposes a shutdown budget
+- A drain canceled while it waits stops waiting and throws `OperationCanceledException`. The token bounds only the caller's wait: the channel the drain closed stays closed, the worker keeps running the queue, and a later drain or stop completes as usual. {verified: SerialExecutorDrainCancellationTests.DrainAsync_CanceledWhileWaiting_StopsWaitingAndTheQueueStillRunsAsync}
+- A drain whose token is already canceled throws before it closes the channel, so it changes nothing and the executor keeps accepting work. {verified: SerialExecutorDrainCancellationTests.DrainAsync_TokenAlreadyCanceled_LeavesTheExecutorAcceptingWorkAsync}
 - Log a warning if the budget is exceeded
 - Allow shutdown to proceed (don't block forever)
+
+### ParallelExecutor: Concurrent and Canceled Drains
+
+`ParallelExecutor` has no queue: a drain proves nothing is running by holding every concurrency slot at once. The slots are taken one at a time, so drains pass through a one-at-a-time gate first. Two drains at once could otherwise each hold some of the slots and wait forever for the rest; with the gate, concurrent drains complete one after another. {verified: ParallelExecutorDrainTests.DrainAsync_TwoDrainsOverlap_BothCompleteAsync}
+
+- **A drain canceled part way gives its slots back**: every slot it had taken, and the gate, are released before the cancellation reaches its caller, so the executor keeps its full concurrency and later drains still complete. {verified: ParallelExecutorDrainTests.DrainAsync_CanceledAfterTakingSlots_GivesThemBackAsync, ParallelExecutorDrainTests.DrainAsync_CanceledBeforeTakingAnySlot_LeavesTheExecutorWholeAsync}
+- **A drain canceled while waiting for the gate releases nothing**: it never held the gate or a slot, so the drain that does hold them is left whole. {verified: ParallelExecutorDrainTests.DrainAsync_CanceledWaitingForTheGate_LeavesTheRunningDrainWholeAsync}
+
 
 ### Application Integration
 
@@ -401,15 +445,15 @@ await app.StartAsync();
 // Shutdown signal (SIGTERM, Ctrl+C, etc.)
 var lifetime = app.Services.GetRequiredService<IHostApplicationLifetime>();
 lifetime.ApplicationStopping.Register(() => {
-  // IExecutionStrategy.StopAsync() called
   // BackgroundService.StopAsync() sets CancellationToken
 });
 
 await app.WaitForShutdownAsync();
 
-// Lifecycle: DrainAsync called before final shutdown
-// - IExecutionStrategy.DrainAsync()
-// - BackgroundService awaits ExecuteAsync completion
+// Lifecycle: drain, then stop
+// - BackgroundService awaits ExecuteAsync completion (no new work is fed)
+// - IExecutionStrategy.DrainAsync()  runs everything queued
+// - IExecutionStrategy.StopAsync()   ends the executor; anything still queued is canceled
 
 await app.StopAsync();
 ```
@@ -821,6 +865,7 @@ public async Task DrainAsync(CancellationToken ct = default) {
 1. Worker exits immediately on cancellation
 2. `StopAsync()` kills worker instead of signaling
 3. `DrainAsync()` not awaited
+4. `StopAsync()` called before `DrainAsync()`: the stop finishes the executor's queued work as canceled instead of running it, and the drain that follows has nothing left to run. Drain first, then stop
 
 **Solution**: Complete current batch before exiting:
 ```csharp{title="Problem: Work Abandoned on Shutdown" description="Solution: Complete current batch before exiting:" category="Implementation" difficulty="ADVANCED" tags=["Operations", "Workers", "Problem:", "Work"] unverified="illustrative complete-current-batch pattern — generic BackgroundService loop, not a concrete Whizbang API"}
