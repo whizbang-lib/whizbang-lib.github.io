@@ -51,6 +51,8 @@ codeReferences:
   - src/Whizbang.Core/Workers/MaintenanceWorker.cs
   - src/Whizbang.Core/Workers/PerspectiveWorker.cs
   - src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs
+  - src/Whizbang.Data.Postgres/EphemeralDestructionSql.cs
+  - src/Whizbang.Data.Dapper.Postgres/DapperWorkCoordinator.EphemeralDestruction.cs
   - src/Whizbang.Data.Postgres/Migrations/310_EphemeralReapDeletesWhatTheHookSaw.sql
   - src/Whizbang.Data.EFCore.Postgres/ScheduledPrefixTruncateReceptor.cs
   - src/Whizbang.Data.EFCore.Postgres/ScheduledPrefixTruncateReceptorRegistrar.cs
@@ -103,6 +105,7 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/TypeDefinitionReconcilerTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Cursors/PerspectiveCursorAdvanceSqlTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperWorkCoordinatorDeepPathTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperEphemeralDestructionHookTests.cs
 lastMaintainedCommit: '62abd3a45'
 ---
 
@@ -531,7 +534,47 @@ is exactly when the reap deletes it. Offered, deleted and reported destroyed agr
 | The restriction holds whatever the hook decided: proceeded, canceled, deferred, refused or threw. An empty batch reaps nothing. | Held bodies are kept by their hold. When a hook keeps failing, the failure policy lifts the hold on the batch so the reap force-deletes it, and that deletion must reach only bodies the hook was offered. | {verified: MaintenanceWorkerReapScopeTests.AHeldBatch_CanceledDeferredOrUnavailable_StillRestrictsTheReapToItAsync, MaintenanceWorkerReapScopeTests.AHookThatThrows_RestrictsTheReapToTheBatch_SoAForcedDeleteReachesOnlyItAsync, MaintenanceWorkerReapScopeTests.AnEmptyBatch_RestrictsTheReapToNothingAsync} |
 | With no hook and no destruction-stage receptor registered, no batch is read and the reap is unrestricted. | Nothing is registered to see a body, so there is nothing to bypass. | {verified: MaintenanceWorkerReapScopeTests.WithNoHook_NoBatchIsRead_AndTheReapIsUnrestrictedAsync} |
 | The ids travel in the maintenance call itself, `wh_perform_maintenance(p_ephemeral_reap_event_ids)` (migration 310), so the cycle runs no extra statement. `perform_maintenance()` keeps its name and arity and calls it with no restriction. | `perform_maintenance` is a contract function that every engine and test calls; a second arity would add an overload beside every earlier definition. A whole redefinition of `perform_maintenance()` from an older migration fails a test, because the worker would no longer run it. | {verified: PerformMaintenanceDelegatesTests.PerformMaintenance_ItsNewestDefinition_OnlyCallsWhPerformMaintenanceAsync, PerformMaintenanceDelegatesTests.WhPerformMaintenance_ItsNewestDefinition_RestrictsTheEphemeralReapToTheGivenIdsAsync} |
-| An engine that implements only the unrestricted maintenance call runs it for the restricted one. | Such an engine has no ephemeral body offload, so its batch is always empty and it has nothing to restrict. The Dapper driver has no destruction-hook support yet and reaps as before. | {verified: MaintenanceWorkerReapScopeTests.TheRestrictedCall_OnAnEngineThatImplementsOnlyTheUnrestrictedOne_RunsItAsync} |
+| An engine that implements only the unrestricted maintenance call runs it for the restricted one. | Such an engine has no ephemeral body offload, so its batch is always empty and it has nothing to restrict. Both Postgres drivers implement the restricted call; see [destruction hooks on every data layer](#destruction-hooks-on-every-data-layer). | {verified: MaintenanceWorkerReapScopeTests.TheRestrictedCall_OnAnEngineThatImplementsOnlyTheUnrestrictedOne_RunsItAsync} |
+
+### Destruction hooks on every data layer {#destruction-hooks-on-every-data-layer}
+
+{verified: DapperEphemeralDestructionHookTests.AConsumedAgedBody_IsOfferedToTheHook_ThenReaped_AndAnnouncedAsync, DapperEphemeralDestructionHookTests.AHookThatCancels_KeepsTheBody_AndIsNotOfferedItAgainWhileTheHoldStandsAsync, DapperEphemeralDestructionHookTests.ABodyThatBecomesEligibleWhileTheHookRuns_SurvivesTheCycle_AndIsOfferedOnTheNextAsync, DapperEphemeralDestructionHookTests.AThrowingHook_HoldsTheBatchForRetry_ThenForcesTheDeletePastTheCapAsync, DapperEphemeralDestructionHookTests.EmptyBatches_OpenNothing_AndCountNoFailureAsync}
+
+The ephemeral reap honors a registered `IDestructionHook` on the Dapper Postgres driver exactly as it does on the
+EF Core driver: the hook is offered the bodies the reap then deletes, a `Canceled` or `Defer` holds them, a body that
+becomes eligible while the hook runs waits for the next cycle, and a throwing hook holds the batch for retry under the
+`OnDestroyFailure` policy (#2039).
+
+:::updated
+Earlier releases left the reap's destruction seam unimplemented on the Dapper driver. A Dapper host with a hook
+registered was offered nothing and never asked, while the maintenance cycle reaped every eligible body. A hook used for
+compliance or export saw none of the deleted bodies.
+:::
+
+| Choice | Reason | Verified |
+|---|---|---|
+| The Dapper driver runs the reap's destruction seam (the batch it offers, the hold a `Canceled` or `Defer` records, the failure count a throwing hook records, and the reap restricted to the batch) from the same SQL as the EF Core driver, one shared copy qualified with each driver's schema. | One copy cannot drift. The batch is the reap's own predicate read as a `SELECT`, so a second hand-written copy would sooner or later offer bodies the reap keeps or miss bodies it deletes, on one driver only. | {verified: DapperEphemeralDestructionHookTests.AConsumedAgedBody_IsOfferedToTheHook_ThenReaped_AndAnnouncedAsync, EphemeralDestructionTargetSqlTests.GetEphemeralBodiesAboutToReap_AnAfterTtlBodyNotYetExpired_IsNotOffered_AndOfferedMatchesDeletedAsync} |
+| The driver honors the hook rather than refusing to start when one is registered. | A host that chose Dapper should get the same compliance and export guarantee as one on EF Core; a startup refusal would only move the gap from silent to loud. | {verified: DapperEphemeralDestructionHookTests.AHookThatCancels_KeepsTheBody_AndIsNotOfferedItAgainWhileTheHoldStandsAsync, DapperEphemeralDestructionHookTests.AThrowingHook_HoldsTheBatchForRetry_ThenForcesTheDeletePastTheCapAsync} |
+| An empty batch (nothing to hold, no failure to count) returns before a connection is opened. | Most cycles have nothing to hold, and opening a connection to do nothing costs a pool slot on every one of them. | {verified: DapperEphemeralDestructionHookTests.EmptyBatches_OpenNothing_AndCountNoFailureAsync} |
+
+Each Dapper test has a twin on the EF Core driver, so the two drivers are held to one contract. Locked by
+[`DapperEphemeralDestructionHookTests`](https://github.com/whizbang-lib/whizbang/blob/develop/tests/Whizbang.Data.Dapper.Postgres.Tests/DapperEphemeralDestructionHookTests.cs),
+[`EphemeralDestructionTargetSqlTests`](https://github.com/whizbang-lib/whizbang/blob/develop/tests/Whizbang.Data.EFCore.Postgres.Tests/EphemeralDestructionTargetSqlTests.cs),
+[`EphemeralDestructionHoldSqlTests`](https://github.com/whizbang-lib/whizbang/blob/develop/tests/Whizbang.Data.EFCore.Postgres.Tests/EphemeralDestructionHoldSqlTests.cs)
+and [`EphemeralReapSeenSetTests`](https://github.com/whizbang-lib/whizbang/blob/develop/tests/Whizbang.Data.EFCore.Postgres.Tests/EphemeralReapSeenSetTests.cs).
+
+The other places a destruction hook is consulted, by driver:
+
+| Destruction path | EF Core driver | Dapper driver |
+|---|---|---|
+| Ephemeral body reap (this page) | Hook honored | Hook honored (#2039) |
+| [Scheduled disposition](stream-end-of-life#scheduled-disposition) of a sealed or policy-picked stream: archive, delete, compact | Hook honored | Hook honored: the step is shared code that both drivers register {verified: StreamDispositionStepTests.AHookThatCancels_DefersForTheBackoff_AndOneThatDefers_MovesTheDueTimeToItsInstantAsync, DapperStreamDispositionTests.AddWhizbangPostgres_RegistersTheLedgerAndTheStep_AndTheStepArchivesASealedStreamOnceItsGraceHasPassedAsync} |
+| Prefix truncate that archives (through the [archive store](archive-store)) | Hook honored | Hook honored |
+| Prefix truncate that discards the detail (a delete, a [compaction](#compaction), a version-cap cut) | Hook honored | **Not supported.** The hook is consulted, then the Dapper coordinator answers `unsupported` and nothing is truncated {verified: WorkCoordinatorDefaultsTests.TruncateStreamPrefixAsync_WithoutProviderSupport_UsesInheritedDefaultAsync} |
+| [Scheduled prefix truncate](#scheduled-close) | Hook honored | **Not registered** on the Dapper driver |
+
+The last two rows are gaps in the Dapper driver's truncate support, not in its hook support: the truncate primitive
+itself is implemented by the EF Core driver only.
 
 ## Compacting a stream {#compaction}
 

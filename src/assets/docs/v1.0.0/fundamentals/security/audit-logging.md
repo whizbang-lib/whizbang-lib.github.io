@@ -28,6 +28,7 @@ codeReferences:
   - src/Whizbang.Core/SystemEvents/AuditEligibility.cs
   - src/Whizbang.Core/SystemEvents/AuditOutboxMessageBuilder.cs
   - src/Whizbang.Core/SystemEvents/AuditLedgerRebuild.cs
+  - src/Whizbang.Core/SystemEvents/AuditTypeResolver.cs
   - src/Whizbang.Core/Commands/System/RequestAuditRebuildCommand.cs
   - src/Whizbang.Data.EFCore.Postgres/AuditRebuildRequestReceptor.cs
   - src/Whizbang.Data.EFCore.Postgres/RedeliveryRequestReceptorRegistrar.cs
@@ -51,6 +52,7 @@ testReferences:
   - tests/Whizbang.Core.Tests/SystemEvents/AuditDependencyInjectionWiringTests.cs
   - tests/Whizbang.Core.Tests/SystemEvents/SystemEventEmitterRegistrationTests.cs
   - tests/Whizbang.Core.Tests/SystemEvents/AuditLedgerRebuildTests.cs
+  - tests/Whizbang.Core.Tests/SystemEvents/AuditEventTypeResolutionTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/AuditRebuildRequestReceptorTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/RedeliveryRequestReceptorTests.cs
   - tests/Whizbang.Core.Tests/Messaging/ControlPlaneTypeRegistryTests.cs
@@ -357,13 +359,15 @@ The choices, each held by a test:
 
 {verified: AuditOutboxMessageBuilderTests.TryBuildAuditMessage_OptInMode_UnresolvableType_IsNotAuditedAsync, AuditOutboxMessageBuilderTests.TryBuildAuditMessage_OptInMode_UnresolvableType_WarnsThatItWasNotAuditedNamingTheTypeAsync, AuditOutboxMessageBuilderTests.TryBuildAuditMessage_OptOutMode_UnresolvableType_IsAuditedWithoutTheSkipWarningAsync, AuditLedgerRebuildTests.LiveAndRebuild_AgreeOnAnUnresolvableType_UnderEitherModeAsync, AuditLedgerRebuildTests.Rederive_AnUnknownTypeUnderOptIn_WarnsNamingTheTypeAsync}
 
-The outbox path decides audit from the event's type, resolved from the type name on the message. When that name
-cannot be resolved (a type renamed or removed, or an assembly this build does not load), the decision depends on the
-audit mode:
+The outbox path decides audit from the event's type, resolved from the type name on the message through the
+generated message-type catalog, the same catalog the [ledger rebuild](#rebuilding-the-audit-ledger) uses (see
+[one type resolution](#one-type-resolution)). When the catalog does not hold the type (a type renamed or removed, one
+owned by another service, or a type this build does not register as a message), the decision depends on the audit
+mode:
 
 | Mode | An unresolvable event type is | Logged |
 |---|---|---|
-| `AuditMode.OptOut` (default) | Audited. | A warning that the type could not be resolved. |
+| `AuditMode.OptOut` (default) | Audited. | A warning that the type could not be resolved: `Audit type name '<type name>' is not in the message-type catalog; it is audited under OptOut and not audited under OptIn.` |
 | `AuditMode.OptIn` | **Not audited.** | The same warning, and a second one for every event skipped this way, naming the type: `Event of type '<type name>' was not audited: the type could not be resolved, and under OptIn only a type marked [AuditEvent] is audited.` |
 
 The [ledger rebuild](#rebuilding-the-audit-ledger) decides a stored type it cannot resolve the same way, and also logs
@@ -380,9 +384,35 @@ and [`AuditLedgerRebuildTests`](https://github.com/whizbang-lib/whizbang/blob/de
 which fail if the live path goes back to auditing the type under `OptIn`, if a skip stops being reported, or if the
 live path and the rebuild stop agreeing.
 
-If you see the skip warning, the type name stored on the message no longer resolves in the service writing the audit
-record. Restore the type so its events can be judged, or switch to `OptOut` if events of
-types the service cannot load must still be audited.
+If you see the skip warning, the type name stored on the message is not in the message-type catalog of the service
+writing the audit record. Restore the type so its events can be judged, or switch to `OptOut` if events of
+types missing from the catalog must still be audited.
+
+#### One type resolution for both paths {#one-type-resolution}
+
+{verified: AuditLedgerRebuildTests.LiveAndRebuild_AgreeWhereTypeGetTypeAndTheCatalogDisagree_UnderEitherModeAsync}
+
+The live outbox path and the ledger rebuild resolve an event's type through one resolver built from the generated
+message-type catalog. Neither uses `Type.GetType`, so a type resolves on both paths or on neither, and a type neither
+resolves is decided by the audit mode alone, as the table above describes.
+
+| Choice | Reason | Verified |
+|---|---|---|
+| The live path resolves the event type through the message-type catalog, as the rebuild does, never by `Type.GetType` (#2040). | Two resolvers can disagree about a type: `Type.GetType` finds a loaded type the catalog does not hold, and the catalog finds a type stored by its full name alone that `Type.GetType` cannot load. Each disagreement made the live path and the rebuild decide differently whether the event is audited, so a rebuilt ledger could gain or lose records the live one had. With one resolver the two paths cannot disagree about a type. | {verified: AuditLedgerRebuildTests.LiveAndRebuild_AgreeWhereTypeGetTypeAndTheCatalogDisagree_UnderEitherModeAsync} |
+| One resolver is registered in the container, and every work-coordinator strategy the factory builds is given it. | A strategy built without it would resolve no type and judge every event by the audit mode alone, the very disagreement this removes. Built once from the catalog, it costs each event one or two dictionary probes and no reflection, so the path stays trimming and AOT safe. | {verified: AuditDecisionHookCallSiteTests.Factory_Scoped_PassesTheRegisteredHookAsync, AuditDecisionHookCallSiteTests.Factory_Immediate_PassesTheRegisteredHookAsync, AuditDecisionHookCallSiteTests.Factory_StreamAffinityWrap_PassesTheRegisteredHookAsync, AuditEventTypeResolutionTests.AResolvableEventType_TakesTheNormalDecisionPathAsync} |
+| A name that is malformed or that the catalog does not hold falls back to the audit mode and logs the warning; it never throws. | One unreadable type name must not stall the outbox drain behind it, and a silent fallback would make a resolution failure look like a type nobody audits. | {verified: AuditEventTypeResolutionTests.AMalformedTypeName_FallsBackRatherThanThrowingAsync, AuditEventTypeResolutionTests.AnUnresolvableEventType_IsStillAuditedAndSaidSoAsync} |
+
+Locked by [`AuditLedgerRebuildTests.LiveAndRebuild_AgreeWhereTypeGetTypeAndTheCatalogDisagree_UnderEitherModeAsync`](https://github.com/whizbang-lib/whizbang/blob/develop/tests/Whizbang.Core.Tests/SystemEvents/AuditLedgerRebuildTests.cs),
+which builds one event of each disagreement under both audit modes and fails if the live path and the rebuild
+decide either one differently.
+
+:::updated
+Earlier releases resolved the live path's event type with `Type.GetType` and the rebuild's through the catalog. A
+loaded type outside the catalog was then judged by its attributes live and by the audit mode alone on rebuild, and a
+catalog type stored by its full name alone the other way round. The warning that names an unresolved type now says
+`is not in the message-type catalog` instead of `Type.GetType returned null`, and the separate warning for a type name
+that threw during resolution is gone.
+:::
 
 ### Adding Audit Context
 
