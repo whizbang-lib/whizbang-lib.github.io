@@ -51,6 +51,7 @@ codeReferences:
   - src/Whizbang.Core/Workers/MaintenanceWorker.cs
   - src/Whizbang.Core/Workers/PerspectiveWorker.cs
   - src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs
+  - src/Whizbang.Data.Postgres/Migrations/300_EphemeralReapDeletesWhatTheHookSaw.sql
   - src/Whizbang.Data.EFCore.Postgres/ScheduledPrefixTruncateReceptor.cs
   - src/Whizbang.Data.EFCore.Postgres/ScheduledPrefixTruncateReceptorRegistrar.cs
   - src/Whizbang.Generators/EphemeralAnalyzer.cs
@@ -90,6 +91,9 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/EphemeralBodyOffloadSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/EphemeralBodyReaperSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/EphemeralDestructionHoldSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/EphemeralReapSeenSetTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/PerformMaintenanceDelegatesTests.cs
+  - tests/Whizbang.Core.Tests/Workers/MaintenanceWorkerReapScopeTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/EphemeralEventStoreReadTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/EphemeralSnapshotTargetSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/EphemeralStreamGuardSqlTests.cs
@@ -503,6 +507,24 @@ and the [destruction lifecycle stages](../lifecycle/lifecycle-stages#destruction
 
 A hook can preserve data or emit ephemeral events, but it cannot turn an ephemeral event back into a
 durable Sourced one; there is no "promote" result.
+
+### The reap deletes only what the hook saw {#reap-deletes-what-the-hook-saw}
+
+{verified: EphemeralReapSeenSetTests.Delete_ABodyThatBecomesEligibleWhileTheHookRuns_IsNotReapedUnseen_AndIsOfferedNextCycleAsync, EphemeralReapSeenSetTests.Compact_ABodyThatBecomesEligibleWhileTheHandlerRuns_IsNotReapedUncompacted_AndIsCompactedNextCycleAsync}
+
+The worker reads the batch, runs the hook (and a compaction handler) over it, and then the reap runs as a separate
+statement. A body can become eligible in between: its grace window or TTL passes, its perspective work finishes, or a
+snapshot comes to cover it. Such a body is not reaped in that cycle; the next cycle offers it to the hook like any other
+(#1999).
+
+| Choice | Reason | Verified |
+|---|---|---|
+| The worker passes the batch it read to the reap, which deletes only those bodies; every other gate still applies to them. | A hook's `Canceled`, `Defer` and holds, and a compaction, can only apply to bodies the hook was given. Reaping a body the hook never saw bypasses all of them, and for `Compact` discards detail no summary holds. | {verified: EphemeralReapSeenSetTests.Delete_ABodyThatBecomesEligibleWhileTheHookRuns_IsNotReapedUnseen_AndIsOfferedNextCycleAsync, EphemeralReapSeenSetTests.Compact_ABodyThatBecomesEligibleWhileTheHandlerRuns_IsNotReapedUncompacted_AndIsCompactedNextCycleAsync, EphemeralReapSeenSetTests.Reap_GivenIds_DeletesOnlyThose_AnEmptyListNothing_AndNullEveryEligibleBodyAsync} |
+| The batch is passed by event id, not as a cut-off instant. | An instant covers only the gates that depend on time. A body whose perspective work finished, or that a snapshot came to cover, after the read would still go unseen. | {verified: EphemeralReapSeenSetTests.Reap_GivenIds_DeletesOnlyThose_AnEmptyListNothing_AndNullEveryEligibleBodyAsync} |
+| The restriction holds whatever the hook decided: proceeded, canceled, deferred, refused or threw. An empty batch reaps nothing. | Held bodies are kept by their hold. When a hook keeps failing, the failure policy lifts the hold on the batch so the reap force-deletes it, and that deletion must reach only bodies the hook was offered. | {verified: MaintenanceWorkerReapScopeTests.AHeldBatch_CanceledDeferredOrUnavailable_StillRestrictsTheReapToItAsync, MaintenanceWorkerReapScopeTests.AHookThatThrows_RestrictsTheReapToTheBatch_SoAForcedDeleteReachesOnlyItAsync, MaintenanceWorkerReapScopeTests.AnEmptyBatch_RestrictsTheReapToNothingAsync} |
+| With no hook and no destruction-stage receptor registered, no batch is read and the reap is unrestricted. | Nothing is registered to see a body, so there is nothing to bypass. | {verified: MaintenanceWorkerReapScopeTests.WithNoHook_NoBatchIsRead_AndTheReapIsUnrestrictedAsync} |
+| The ids travel in the maintenance call itself, `wh_perform_maintenance(p_ephemeral_reap_event_ids)` (migration 300), so the cycle runs no extra statement. `perform_maintenance()` keeps its name and arity and calls it with no restriction. | `perform_maintenance` is a contract function that every engine and test calls; a second arity would add an overload beside every earlier definition. A whole redefinition of `perform_maintenance()` from an older migration fails a test, because the worker would no longer run it. | {verified: PerformMaintenanceDelegatesTests.PerformMaintenance_ItsNewestDefinition_OnlyCallsWhPerformMaintenanceAsync, PerformMaintenanceDelegatesTests.WhPerformMaintenance_ItsNewestDefinition_RestrictsTheEphemeralReapToTheGivenIdsAsync} |
+| An engine that implements only the unrestricted maintenance call runs it for the restricted one. | Such an engine has no ephemeral body offload, so its batch is always empty and it has nothing to restrict. The Dapper driver has no destruction-hook support yet and reaps as before. | {verified: MaintenanceWorkerReapScopeTests.TheRestrictedCall_OnAnEngineThatImplementsOnlyTheUnrestrictedOne_RunsItAsync} |
 
 ## Compacting a stream {#compaction}
 
