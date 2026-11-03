@@ -29,6 +29,7 @@ codeReferences:
   - src/Whizbang.Generators/Templates/PerspectiveRunnerTemplate.cs
   - src/Whizbang.Generators/Utilities/PerspectiveDiscoveryHelper.cs
   - src/Whizbang.Generators.Shared/Models/MappedPathDiscovery.cs
+  - src/Whizbang.Core/Attributes/ArchivedStreamRowsAttribute.cs
   - >-
     samples/ECommerce/ECommerce.BFF.API/Perspectives/ProductCatalogPerspective.cs
   - >-
@@ -56,6 +57,7 @@ testReferences:
     tests/Whizbang.Data.EFCore.Postgres.Tests/Perspectives/RecordArrayRoundTripTests.cs
   - >-
     tests/Whizbang.Data.Dapper.Postgres.Tests/Perspectives/DapperRecordArrayRoundTripTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/ArchivedStreamRowsSqlTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -1163,6 +1165,10 @@ For detailed rebuild operations, modes, system events, and status tracking, see 
 ### Purged rows stay purged {#purge-stays-purged}
 
 A row an Apply removed with `ApplyResult.Purge()` stays removed. The runner records the purge, and a later event on the stream (a delayed save point, a straggler written before the delete) is skipped, logged and counted in `whizbang.perspective.purged_events_skipped` instead of being applied to an empty model, which is how a create-or-update Apply used to bring back a row of defaults. Only an Apply that returns `ApplyResult.Resurrect(model)` recreates the row. A stream that was never purged is never affected, and a rebuild or rewind decides exactly as the live drain did. See **[Perspectives with Actions](perspectives-with-actions.md#purge-stays-purged)**, and [Purging streams](../../operations/infrastructure/purging-streams.md) for removing a whole stream as an operator.
+
+### Rows of archived streams {#archived-stream-rows}
+
+When a stream is [archived whole](../events/archive-store#the-whole-stream), a perspective's row for it stays in its table unless the perspective declares otherwise with `[ArchivedStreamRows]`: `Keep` (the default), `Drop` (the row goes, and is rebuilt from the latest snapshot and the history when the stream comes back) or `Archive` (the row moves beside the archived events and a restore brings it back). Configuration overrides the attribute per perspective. See **[Perspective rows](../events/archive-store#perspective-rows)**. {verified: ArchivedStreamRowsSqlTests.Drop_RemovesTheRow_ItsParkedCursors_AndAllButTheLatestSnapshot_AndLeavesAnotherModelAloneAsync, ArchivedStreamRowsSqlTests.Archive_MovesTheRowBesideTheEvents_AndARestoreBringsItBackExactlyAsync}
 
 ---
 

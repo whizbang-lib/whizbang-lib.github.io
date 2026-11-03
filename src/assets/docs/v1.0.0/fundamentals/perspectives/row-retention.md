@@ -27,6 +27,7 @@ codeReferences:
   - src/Whizbang.Generators.Shared/Utilities/PerspectiveRegistryPayload.cs
   - src/Whizbang.Generators/PerspectiveSchemaGenerator.cs
   - src/Whizbang.Data.Dapper.Postgres/PostgresSchemaInitializer.cs
+  - src/Whizbang.Core/Archival/ArchivedStreamRowPolicies.cs
 testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/EvictionCompanionCleanupSqlTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperEvictionCompanionCleanupTests.cs
@@ -41,6 +42,7 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/PerspectiveRowCapSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StreamGroupCascadeSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/RetentionAutoAdoptionTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/ArchivedStreamRowsSqlTests.cs
 ---
 
 # Perspective Row Retention
@@ -171,10 +173,19 @@ from an evicted row:
 | Earlier events, ephemeral history, no snapshot | Nothing can rebuild the row: it starts from the incoming event, and the runner logs a warning that the row is starting fresh |
 | Earlier events, ephemeral history, the surviving snapshot is in an older format | The same as no snapshot: the snapshot cannot be read and the history is reaped, so the row starts from the incoming event, the batch is applied and the cursor advances. The warning names the unreadable snapshot's event id and the event the row restarts from |
 
-The probe runs only for perspectives whose rows can be evicted, so a perspective that declares no
-retention and joins no group pays nothing on first contact. It is perspective-aware: a stream shared
+The probe runs only for perspectives whose rows can be evicted, or whose rows an archive removes (an
+[`[ArchivedStreamRows]`](../events/archive-store#perspective-rows) policy of `Drop` or `Archive`, declared or
+configured), so a perspective that declares none of these pays nothing on first contact. It is perspective-aware: a stream shared
 by several contracts holds history this perspective never folded, and that history is not a sign of
 an evicted row. {verified: EvictedRowRebuildTests.CappedPerspective_EvictedRow_NextEventRebuildsTheWholeRowFromHistoryAsync, EvictedRowRebuildTests.CappedPerspective_EvictedRowWithSnapshot_RestoresTheSnapshotAndReplaysTheTailAsync, EvictedRowRebuildTests.CascadedGroupMember_EvictedRow_NextEventRebuildsTheWholeRowFromHistoryAsync, EvictedRowRebuildTests.EphemeralPerspective_EvictedRowWithSnapshot_RestoresTheSnapshotAndReplaysTheTailAsync, EvictedRowRebuildTests.EphemeralPerspective_EvictedRowWithoutSnapshot_StartsFreshAndWarnsAsync, EvictedRowRebuildTests.EphemeralPerspective_EvictedRowWithStaleSnapshot_StartsFreshFromTheIncomingBatchAndWarnsAsync, EvictedRowRebuildTests.UnretainedPerspective_MissingRow_NeverProbesTheLogAsync, ResurrectionProbeIsPerspectiveAwareTests.FirstContact_OnStreamWithUnhandledHistory_CreatesRow_DoesNotRewindAsync}
+
+### Rows of archived streams {#archived-stream-rows}
+
+A whole-stream archive can drop a perspective's rows too, when the perspective declares
+[`[ArchivedStreamRows(ArchivedStreamRowPolicy.Drop)]`](../events/archive-store#perspective-rows). That drop is an
+eviction whose stream happens to be archived: it removes exactly what an eviction removes (the row, the cursors of the
+model's perspectives, parked by the archive, and every snapshot but the latest), and the stream's next event after a
+restore or a new generation rebuilds the row the same way. {verified: ArchivedStreamRowsSqlTests.Drop_RemovesTheRow_ItsParkedCursors_AndAllButTheLatestSnapshot_AndLeavesAnotherModelAloneAsync, EvictedRowRebuildTests.DroppedRowsPerspective_ARowDroppedWithItsArchivedStream_IsRebuiltFromHistoryAsync}
 
 ## Rebuild, rewind and replay
 
