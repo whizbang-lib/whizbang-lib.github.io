@@ -98,6 +98,48 @@ whenever a shipped file differs between the two releases. The guarded DDL then f
 `42701: column "source_service_id" of relation "wh_inbox" already exists`, or a repair silently does nothing. A
 run-time function that asks `current_schema()` looks for its tables in `public`.
 
+## Catalog existence checks inside a transaction {#catalog-existence-checks}
+
+A name lookup (`to_regclass`, `to_regprocedure`, a `'x'::regclass` cast) is answered from the session's catalog cache,
+and a session takes in other sessions' catalog changes only when a transaction starts, when a statement opens a
+relation, or when the parser fails to resolve a name. So inside one transaction, a lookup can keep a stale answer when
+all three of these hold:
+
+- the same name was looked up earlier in the same transaction;
+- another session then committed a create, drop or rename of it;
+- no statement between that commit and the second lookup opened a relation (an advisory lock, a sleep or a client
+  round trip does not count).
+
+Measured on PostgreSQL 17, `to_regclass` kept answering "missing" for a table another session had created, and
+"present" for one it had dropped. A read of `pg_class`, `pg_proc` or `pg_namespace` uses the statement's snapshot
+instead, which a read committed statement takes fresh, so it sees the commit.
+
+The rule for a new check, in C# or SQL:
+
+| Situation | Check with | Reason |
+|---|---|---|
+| A method takes its caller's connection, which may carry an open transaction, and turns the answer into a decision. | A catalog read: `CatalogPresence.RelationExistsAsync` for a relation, a `pg_proc` join for a function. | A stale answer here skips or repeats DDL, or names the wrong tables for a schema pass, with nothing to say it happened. |
+| The lookup is the first of its name in a transaction of its own: an autocommit statement, a single-command `DO` block, a function one statement calls, a migration step. | A name lookup is fine. | Nothing earlier in the transaction cached the name, so the answer is fresh. |
+| A stale answer can only fail toward the safe side: it runs an idempotent statement, refuses and retries next cycle, or raises. | A name lookup is fine; say so in a comment. | The worst outcome is a repeat of work that is safe to repeat. |
+| A statement of the same call that opens a relation always runs before the lookup. | A name lookup is fine, with a test that locks the ordering. | Opening the relation refreshes the cache first. |
+
+A test of a site that reads the catalog opens a transaction, looks once, commits the change from a second connection,
+and looks again. It fails with the name lookup and passes with the catalog read.
+{verified: SchemaBootstrapPhaseTests.InsideATransaction_ToRegclassMissesATableAnotherSessionCommitted_WhereAPgClassReadSeesItAsync, ManagedSchemaReconcilerTests.InsideATransactionThatBeganBeforeTheLedgerWasCommitted_NamesTheTableForRebuildingAsync, MigratorWatchTests.InsideATransactionThatBeganBeforeTheRoleObjectsWereCommitted_SeesTheMigratorAsync}
+
+- [`SchemaBootstrapPhaseTests.InsideATransaction_ToRegclassMissesATableAnotherSessionCommitted_WhereAPgClassReadSeesItAsync`](https://github.com/whizbang-lib/whizbang/blob/develop/tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/SchemaBootstrapPhaseTests.cs)
+  is the control: it fails if a server release stops showing the stale answer, which would make the rule unnecessary.
+- [`ManagedSchemaReconcilerTests.InsideATransactionThatBeganBeforeTheLedgerWasCommitted_NamesTheTableForRebuildingAsync`](https://github.com/whizbang-lib/whizbang/blob/develop/tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/ManagedSchemaReconcilerTests.cs)
+  locks the managed-object ledger check, which now reads `pg_class` (#2038). The check is public, takes its caller's
+  connection, and decides whether a start can skip the schema pass.
+- [`MigratorWatchTests.InsideATransactionThatBeganBeforeTheRoleObjectsWereCommitted_SeesTheMigratorAsync`](https://github.com/whizbang-lib/whizbang/blob/develop/tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/MigratorWatchTests.cs)
+  locks a site kept as a name lookup: its probe reads `pg_locks` before every lookup, which refreshes the cache, and
+  the test fails if the lookup ever runs first.
+
+Every other `to_regclass` and `::regclass` site in the library, generated SQL and migration functions was audited in
+#2038 and kept for one of the reasons above. The per-site verdicts are in
+[`ai-docs/catalog-existence-checks.md`](https://github.com/whizbang-lib/whizbang/blob/develop/ai-docs/catalog-existence-checks.md). No migration changed.
+
 ## Shipped migrations, new migrations and run-time functions
 
 A migration that has shipped is not edited; a change goes in the next-numbered file. The rule above is therefore
