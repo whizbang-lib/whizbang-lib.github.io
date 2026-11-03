@@ -286,6 +286,12 @@ Both drivers' rebuild cursor completers call `wh_complete_rebuilt_cursor` (migra
 Parking keeps the exact position, so a restore brings back the cursor the rebuild recorded, with the events it
 names, rather than one to work out again.
 
+The rebuilt row itself is written to the perspective's table, whatever the perspective's
+[policy for rows of archived streams](../events/archive-store#perspective-rows): `IncludeAll` is an explicit request to
+cover every row. Under `Archive`, a later restore keeps that row and discards the archived copy, as it keeps a cursor
+made since over its parked one. The default rebuild skips a stream archived whole, so a row an archive dropped or moved
+stays out of its table. {verified: ArchivedStreamRowsSqlTests.Archive_ARowWrittenSinceTheArchive_IsKeptByTheRestore_AndTheArchivedCopyGoesAsync, PerspectiveRebuilderArchivedDataTests.Rebuild_ByDefault_SkipsAStreamArchivedWhole_AndReportsItSkippedNotFailedAsync}
+
 ### Rewinds are unchanged {#archived-data-rewinds}
 
 {verified: ArchiveAwareEventStoreDecoratorTests.ARewind_AndALiveRead_ReadThroughTheGap_WhateverARebuildWouldChooseAsync, CollectiveReplayOrderingTests.Interleave_InAReplay_ListsTheCollectiveStreamsArchivedWhole_WhateverARebuildWouldChooseAsync, ArchiveReadThroughIntegrationTests.Rewind_WithoutASnapshot_OfAStreamArchivedWhole_FoldsToTheSameRowAsTheHotCopyAsync, PerspectiveRewindWriteCheckTests.ARewindFromASnapshotTheArchiveCovers_ReadsThroughTheArchive_AboveTheSnapshotsVersionAsync}

@@ -38,6 +38,7 @@ codeReferences:
   - src/Whizbang.Core/Lifecycle/StreamPrefixTruncator.cs
   - src/Whizbang.Core/Workers/MaintenanceWorker.cs
   - src/Whizbang.Generators/UnshippedDestructionAnalyzer.cs
+  - src/Whizbang.Data.Postgres/Migrations/299_ArchivedStreamRows.sql
 testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Collective/ArchivedCollectiveStreamsQueryPlanTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StreamLifecycleLedgerSqlTests.cs
@@ -64,6 +65,7 @@ testReferences:
   - tests/Whizbang.Core.Tests/Lifecycle/DestructionContractTests.cs
   - tests/Whizbang.Core.Tests/Workers/MaintenanceWorkerDispositionTests.cs
   - tests/Whizbang.Generators.Tests/UnshippedDestructionAnalyzerTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/ArchivedStreamRowsSqlTests.cs
 ---
 
 # Stream End of Life
@@ -455,6 +457,7 @@ flowchart TD
 | Choice | Reason | Verified |
 |---|---|---|
 | The default disposition of a sealed stream is to archive it whole (owner decision, 2026-11-01). | Archiving is reversible and keeps the stream readable; deleting Sourced history by default would lose data nobody chose to lose. A PreDestruction hook can still return another disposition. | {verified: StreamDispositionStepTests.AReadyStream_GetsItsFinalSnapshot_ThenTheHook_ThenIsArchivedWhole_ThenItsScheduleIsClearedAsync, StreamDispositionStepTests.TheHook_IsToldTheReason_TheStream_AndThatArchiveIsDeclaredAsync} |
+| Archiving the stream whole leaves its perspective rows in place unless a perspective declares otherwise: each perspective chooses `Keep` (the default), `Drop` or `Archive` for its rows of an archived stream ([perspective rows](archive-store.md#perspective-rows), #1739). | The disposition is about the event store's size; whether a read model of an ended stream is still worth its table space is the perspective's to say. | {verified: ArchivedStreamRowsSqlTests.Keep_TheRowStaysInItsTable_WithItsCursorsAndSnapshotsParkedAsBeforeAsync, ArchivedStreamRowsSqlTests.Drop_RemovesTheRow_ItsParkedCursors_AndAllButTheLatestSnapshot_AndLeavesAnotherModelAloneAsync, ArchivedStreamRowsSqlTests.Archive_MovesTheRowBesideTheEvents_AndARestoreBringsItBackExactlyAsync} |
 | It runs for every sealed stream, with no setting to turn it on. | Sealing is a developer's explicit statement that the stream has ended; the grace is the safety margin. | {verified: StreamDispositionSqlTests.ThePostgresDriver_RegistersTheLedgerAndTheStep_AsAMaintenanceStepAsync, DapperStreamDispositionTests.AddWhizbangPostgres_RegistersTheLedgerAndTheStep_AndTheStepArchivesASealedStreamOnceItsGraceHasPassedAsync} |
 | `FinalizeGrace` is seven days by default; zero is allowed and disposes on the next cycle; a negative or unreadable value fails the start naming the key. | A week covers a late correction or a weekend; zero is a deliberate choice for a host that wants streams out at once. | {verified: StreamLifecycleOptionsBinderTests.FinalizeGraceAndSweepBatchSize_DefaultToSevenDaysAnd500_AndBindAsync, StreamLifecycleOptionsBinderTests.FinalizeGraceOrSweepBatchSize_ThatCannotBeUsed_IsRefusedNamingTheKeyAsync} |
 | The grace counts from the later of the seal and the maintenance cycle that first schedules it, not from the seal alone. | A stream sealed before this release, or a sealed stream someone restored (its schedule is cleared by the archive), would otherwise be due at once; this gives each a full grace. The cost is at most one maintenance interval of extra grace on a fresh seal. | {verified: StreamDispositionSqlTests.Schedule_ASealedStreamWithNoSchedule_IsDueAGraceAfterTheLaterOfItsSealAndNow_AndNothingElseIsTouchedAsync} |
@@ -558,3 +561,4 @@ var result = await truncator.TruncateAsync(accountId, throughVersion: 120, Dispo
 - [Purging Streams](../../operations/infrastructure/purging-streams.md)
 - [Stream Integrity](../../resilience/stream-integrity.md): the origin generation
 - [Archive Store](archive-store.md): where archived events go, the tombstone an archived stream keeps, and the restore
+- [Perspective rows of archived streams](archive-store.md#perspective-rows): what each perspective's rows do when its stream is archived whole
