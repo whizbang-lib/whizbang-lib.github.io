@@ -103,7 +103,7 @@ testReferences:
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperArchivedStreamRowsTests.cs
   - tests/Whizbang.Core.Tests/Archival/ArchivedStreamRowPoliciesTests.cs
   - tests/Whizbang.Core.Tests/Archival/ArchivedStreamRowsOptionsBinderTests.cs
-  - tests/Whizbang.Core.Tests/Archival/ArchivedStreamRowsConfiguratorTests.cs
+  - tests/Whizbang.Core.Component.Tests/Archival/ArchivedStreamRowsConfiguratorTests.cs
   - tests/Whizbang.Core.Tests/Workers/MaintenanceWorkerArchivedStreamRowsSyncTests.cs
   - tests/Whizbang.Core.Tests/Perspectives/EvictedRowRebuildTests.cs
   - tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorArchivedStreamRowsTests.cs
