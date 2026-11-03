@@ -1,7 +1,7 @@
 ---
 title: Execution Lifecycle
 pageType: concept
-verifiedAgainstCommit: 7a5fbadc
+verifiedAgainstCommit: eb145727
 verifiedDate: 2026-11-03
 version: 1.0.0
 category: Workers
@@ -24,6 +24,8 @@ testReferences:
   - tests/Whizbang.Execution.Component.Tests/SerialExecutorTests.cs
   - tests/Whizbang.Execution.Component.Tests/SerialExecutorStopTests.cs
   - tests/Whizbang.Execution.Component.Tests/SerialExecutorDrainAfterStopTests.cs
+  - tests/Whizbang.Execution.Component.Tests/SerialExecutorDrainCancellationTests.cs
+  - tests/Whizbang.Execution.Component.Tests/SerialExecutorEnqueueFailureTests.cs
   - tests/Whizbang.Execution.Component.Tests/ParallelExecutorDrainTests.cs
 lastMaintainedCommit: '01f07906'
 ---
@@ -302,6 +304,7 @@ public async Task StopAsync(CancellationToken ct = default) {
 - The item already running finishes and its caller gets its result
 - Every item still queued is finished as canceled: its handler does not run, and its caller's `await` ends in `OperationCanceledException`. No caller is left waiting
 - The worker itself is not canceled: it ends normally once the channel is empty, and `StopAsync` returns after it
+- An `ExecuteAsync` call that races the stop (it passed the running check, or was waiting for room in a bounded channel, when the stop closed the channel) is canceled the same way: its caller gets `OperationCanceledException`, not `ChannelClosedException`, and its pooled execution state is returned. A caller whose own token cancels that wait gets its own cancellation, unchanged. {verified: SerialExecutorEnqueueFailureTests.ExecuteAsync_StopClosesTheChannelWhileTheWriteWaits_CallerIsCanceledAndStateReturnedAsync, SerialExecutorEnqueueFailureTests.ExecuteAsync_CallerCancelsWhileTheWriteWaits_CallerSeesItsCancellationAndStateReturnedAsync}
 
 **Why queued work is canceled rather than run**: `StopAsync` does not wait for work (that is `DrainAsync`), and a host calls it under its shutdown timeout, which a deep queue would overrun. A queued item whose own token is canceled before the worker reaches it already finishes the same way. To run the queue on shutdown, drain first, then stop. {verified: SerialExecutorStopTests.StopAsync_ItemQueuedBehindRunningWork_IsCanceledWithoutRunningAsync, SerialExecutorTests.ExecuteAsync_WorkCanceledWhileQueued_FaultsTheCallerInsteadOfHangingAsync}
 
@@ -368,12 +371,15 @@ t=250ms:  StopAsync() returns
 ### Execution Strategy Responsibilities
 
 **Example: SerialExecutor**:
-```csharp{title="Execution Strategy Responsibilities (3)" description="Example: SerialExecutor DrainAsync" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Execution", "Strategy"] tests=["SerialExecutorTests.DrainAsync_WaitsForAllInFlightWork_CompletesAsync", "SerialExecutorTests.DrainAsync_WhenNotRunning_ReturnsImmediatelyAsync", "SerialExecutorDrainAfterStopTests.DrainAsync_StopLandsWhileTheDrainAwaitsTheWorker_BothCompleteAndQueuedWorkIsCanceledAsync", "ExecutionStrategyContractTests.DrainAsync_ShouldWaitForPendingWorkAsync"]}
+```csharp{title="Execution Strategy Responsibilities (3)" description="Example: SerialExecutor DrainAsync" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Execution", "Strategy"] tests=["SerialExecutorTests.DrainAsync_WaitsForAllInFlightWork_CompletesAsync", "SerialExecutorTests.DrainAsync_WhenNotRunning_ReturnsImmediatelyAsync", "SerialExecutorDrainAfterStopTests.DrainAsync_StopLandsWhileTheDrainAwaitsTheWorker_BothCompleteAndQueuedWorkIsCanceledAsync", "SerialExecutorDrainCancellationTests.DrainAsync_CanceledWhileWaiting_StopsWaitingAndTheQueueStillRunsAsync", "SerialExecutorDrainCancellationTests.DrainAsync_TokenAlreadyCanceled_LeavesTheExecutorAcceptingWorkAsync", "ExecutionStrategyContractTests.DrainAsync_ShouldWaitForPendingWorkAsync"]}
 public async Task DrainAsync(CancellationToken ct = default) {
   lock (_stateLock) {
     if (_state != State.Running) {
       return; // Nothing to drain
     }
+
+    // Before the channel is closed: a drain canceled before it starts changes nothing
+    ct.ThrowIfCancellationRequested();
 
     // Complete the channel writer to signal no more work
     if (!_channelCompleted) {
@@ -384,9 +390,9 @@ public async Task DrainAsync(CancellationToken ct = default) {
 
   // Wait for the worker to finish every item. It ends normally once the completed
   // channel is empty, also when a stop lands while this drain waits, so there is no
-  // cancellation to absorb.
+  // cancellation to absorb. The token bounds only this caller's wait.
   if (_workerTask != null) {
-    await _workerTask;
+    await _workerTask.WaitAsync(ct);
   }
 }
 ```
@@ -397,6 +403,13 @@ public async Task DrainAsync(CancellationToken ct = default) {
 - If a stop lands while the drain waits, the drain still completes normally; the items the worker had not reached are finished as canceled
 - Log/trace drain completion
 
+**Timeout Handling**:
+- `DrainAsync` awaits completion; bound it with its `CancellationToken` if your host imposes a shutdown budget
+- A drain canceled while it waits stops waiting and throws `OperationCanceledException`. The token bounds only the caller's wait: the channel the drain closed stays closed, the worker keeps running the queue, and a later drain or stop completes as usual. {verified: SerialExecutorDrainCancellationTests.DrainAsync_CanceledWhileWaiting_StopsWaitingAndTheQueueStillRunsAsync}
+- A drain whose token is already canceled throws before it closes the channel, so it changes nothing and the executor keeps accepting work. {verified: SerialExecutorDrainCancellationTests.DrainAsync_TokenAlreadyCanceled_LeavesTheExecutorAcceptingWorkAsync}
+- Log a warning if the budget is exceeded
+- Allow shutdown to proceed (don't block forever)
+
 ### ParallelExecutor: Concurrent and Canceled Drains
 
 `ParallelExecutor` has no queue: a drain proves nothing is running by holding every concurrency slot at once. The slots are taken one at a time, so drains pass through a one-at-a-time gate first. Two drains at once could otherwise each hold some of the slots and wait forever for the rest; with the gate, concurrent drains complete one after another. {verified: ParallelExecutorDrainTests.DrainAsync_TwoDrainsOverlap_BothCompleteAsync}
@@ -404,10 +417,6 @@ public async Task DrainAsync(CancellationToken ct = default) {
 - **A drain canceled part way gives its slots back**: every slot it had taken, and the gate, are released before the cancellation reaches its caller, so the executor keeps its full concurrency and later drains still complete. {verified: ParallelExecutorDrainTests.DrainAsync_CanceledAfterTakingSlots_GivesThemBackAsync, ParallelExecutorDrainTests.DrainAsync_CanceledBeforeTakingAnySlot_LeavesTheExecutorWholeAsync}
 - **A drain canceled while waiting for the gate releases nothing**: it never held the gate or a slot, so the drain that does hold them is left whole. {verified: ParallelExecutorDrainTests.DrainAsync_CanceledWaitingForTheGate_LeavesTheRunningDrainWholeAsync}
 
-**Timeout Handling**:
-- `DrainAsync` itself awaits completion; bound it with the `CancellationToken` (or `Task.WaitAsync(timeout)`) at the call site if your host imposes a shutdown budget
-- Log a warning if the budget is exceeded
-- Allow shutdown to proceed (don't block forever)
 
 ### Application Integration
 
