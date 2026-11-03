@@ -29,6 +29,8 @@ codeReferences:
   - src/Whizbang.Core/Observability/RouteNormalizer.cs
   - src/Whizbang.Generators/StoredMetadataRegistryGenerator.cs
   - src/Whizbang.Data.Postgres/MetadataDistillationStep.cs
+  - src/Whizbang.Data.Postgres/Migrations/298_ConvertHistoricalMetadata.sql
+  - src/Whizbang.Data.Postgres/MetadataHistoryConversionStep.cs
   - src/Whizbang.Data.Postgres/PostgresRouteTraceStore.cs
 testReferences:
   - tests/Whizbang.Core.Tests/Messaging/InMemoryEventStoreTests.cs
@@ -36,6 +38,9 @@ testReferences:
   - tests/Whizbang.Data.Schema.Tests/Schemas/EventStoreSchemaTests.cs
   - tests/Whizbang.Core.Tests/Messaging/EventUpcasterPipelineTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperPostgresEventStore.RetryTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/MetadataHistoryConversionSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/Performance/MetadataHistoryConversionCostScenarioTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperStoredMetadataTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -464,6 +469,63 @@ old code age out. Both partitioned tables are created partitioned by day on `rec
 write never fails for want of a partition; the staging table's only index is its key, so the hot path writes one index
 entry per event.
 
+### History conversion {#history-conversion}
+
+{verified: MetadataHistoryConversionSqlTests.Convert_ARowWithoutARouteId_BecomesSlimWithItsRouteId_AndARowWithOneIsUntouchedAsync, MetadataHistoryConversionSqlTests.Convert_TakesAtMostTheBatch_ResumesFromItsCursor_AndCompletesAsync, MetadataHistoryConversionSqlTests.Step_ConvertsInBatches_UntilTheTableIsCompleteAsync}
+
+Rows written before slim metadata keep every hop in the row. Every row written since carries its route id (`rid`),
+slim or full, so a row without one is a row written before it. The `metadata-history-conversion` maintenance step (both
+drivers) converts those rows once: it rewrites each one to exactly what a write path stores for it now, the slim form
+plus its route id. It is the only place event rows are rewritten.
+
+It runs in the maintenance cycle, so it waits for the service to settle and runs only on the holder of the maintainer
+duty. It calls `wh_convert_event_metadata_history` in batches of 1,000 rows, each batch its own transaction, until a
+batch comes back short, a batch does not come back `ok`, or 20 batches (20,000 rows) have run. Each batch:
+
+1. reads the next rows past its cursor (`wh_metadata_history_conversion`) in event id order, through the key index;
+2. leaves alone a row that already has a route id, a row of a type [kept full](#keeping-an-event-type-full), a row whose
+   metadata is not a JSON object, and a body without its pointer (it has no type to compute a route from);
+3. rewrites each remaining row to the slim form plus its route id, computed from its type name and hops as every write
+   path computes it;
+4. under `Linked`, counts each converted event on its route with **one upsert per route**, first and last seen at the
+   time the event was stored, and writes its trace when the event is still inside the
+   [trace window](#retention), so [reconstruction](#reconstruction) of a recent event stays lossless;
+5. moves its cursor past what it read and reports `rows_affected`.
+
+When a batch reads to the end of the table, the conversion is complete and later cycles read nothing. On a database
+created at this version every row already carries its route id, so the first cycles only read the table once, when it
+is still small, and complete.
+
+| Status | Meaning | Verified |
+|---|---|---|
+| `ok` | a batch ran | {verified: MetadataHistoryConversionSqlTests.Convert_TakesAtMostTheBatch_ResumesFromItsCursor_AndCompletesAsync} |
+| `complete` | the table has been read to the end; nothing more to do | {verified: MetadataHistoryConversionSqlTests.Convert_TakesAtMostTheBatch_ResumesFromItsCursor_AndCompletesAsync} |
+| `held (n locked row(s) left for the next batch)` | another transaction held rows this batch needed; the cursor stops before the first, and the cycle ends | {verified: MetadataHistoryConversionSqlTests.Convert_ARowAnotherTransactionHolds_IsLeftForTheNextBatch_WithoutWaitingAsync, MetadataHistoryConversionSqlTests.Step_AHeldBatch_EndsTheCycleAsync} |
+| `skipped (another instance is converting)` | another instance holds the cursor | {verified: MetadataHistoryConversionSqlTests.Convert_WhileAnotherInstanceConverts_SkipsWithoutWaitingAsync} |
+| `skipped (debug_mode=true)` | debug mode keeps every row full, history included | {verified: MetadataHistoryConversionSqlTests.Convert_UnderDebugMode_SkipsTheTask_AndRunsOnceItIsOffAsync} |
+| `skipped (metadata_write_form=Full)` | under `Full` rows keep their full metadata | {verified: MetadataHistoryConversionSqlTests.Convert_UnderTheFullFormOrSwitchedOff_SkipsTheTaskAsync} |
+| `skipped (metadata_convert_history=false)` | `ConvertHistory` is off | {verified: MetadataHistoryConversionSqlTests.Convert_UnderTheFullFormOrSwitchedOff_SkipsTheTaskAsync} |
+
+`Whizbang:EventStore:Metadata:ConvertHistory` (default `true`) switches it, published as `metadata_convert_history` on
+every tick in both directions, so a conversion switched off stops on the next tick and one switched back on resumes from
+its cursor. Only an explicit off (`false`, `f`, `0`, `no`, `n`, `off`, in any case) turns it off; a missing or mistyped
+value is the default. {verified: EventStoreMetadataSettingsTests.ConvertHistory_IsPublishedEveryTime_InBothDirectionsAsync, MetadataHistoryConversionSqlTests.Convert_AnyOtherConvertHistoryValue_RunsTheTaskAsync}
+
+Under `Slim` the rows are converted and no route or trace is written, as `Slim` writes none for new events. An event
+older than the trace window gets no trace: retention would remove it in the same cycle, so writing it would only cost
+WAL; its row keeps its route id, which still says how it got here. {verified: MetadataHistoryConversionSqlTests.Convert_UnderSlim_WritesNoRoutesOrTracesAsync, MetadataHistoryConversionSqlTests.Convert_UnderLinked_CountsTheRoute_AndTracesOnlyWhatIsInsideTheTraceWindowAsync}
+
+**It never waits.** The cursor row is taken with `SKIP LOCKED`, so a second instance skips rather than queueing behind
+the first. Each event row is locked with `SKIP LOCKED` too: a row another transaction holds (a reaper deleting it, for
+example) is left, the cursor stops before it, and the next batch reads it again; the rows after it that this batch
+converted are passed over then, because they now carry a route id. The function locks no work table, so it takes no
+part in the work tables' lock order, and it upserts routes in route id order, as distillation does.
+
+**Starting over.** Deleting the row of `wh_metadata_history_conversion` starts the conversion from the first event on
+the next cycle; rows already converted are read and passed over. Do this after restoring archived streams that were
+archived before slim metadata, or after removing a type from the full list, since a completed conversion does not look
+at the table again. The row also shows the progress: `last_event_id`, `rows_converted` and `completed_at`.
+
 ### Design choices {#metadata-design-choices}
 
 Each choice below is locked by the test beside it, which fails if the behavior flips.
@@ -497,6 +559,23 @@ Each choice below is locked by the test beside it, which fails if the behavior f
 | The trace store's `StoreAsync` does nothing | The write paths already stage every event | {verified: RouteTraceStoreTests.GetByMessageId_ReadsStaging_ThenTraceAndRoute_ThenTheRowAsync} |
 | Staging has one index | The hot path pays one index entry; the trace store scans staging for its non-key queries | {verified: RouteTraceStoreTests.TraceStore_AnswersEveryQuery_LikeTheInMemoryStore_OnTheSameCorpusAsync} |
 | Each store registers on its own | Use either without the other | {verified: RouteTraceStoreTests.Registration_EitherStoreAlone_NeedsNotTheOtherAsync} |
+| History is the rows without a route id | Every row written since slim metadata carries one, slim or full, so no marker is needed and a converted row is never chosen again | {verified: MetadataHistoryConversionSqlTests.Convert_ARowWithoutARouteId_BecomesSlimWithItsRouteId_AndARowWithOneIsUntouchedAsync, MetadataHistoryConversionSqlTests.Convert_AConvertedRow_IsNotTouchedAgain_EvenFromTheStartAsync} |
+| A converted row is exactly what a write path stores for it now | One stored form, whenever the row was written | {verified: MetadataHistoryConversionSqlTests.Convert_ARowWithoutARouteId_BecomesSlimWithItsRouteId_AndARowWithOneIsUntouchedAsync, DapperStoredMetadataTests.AddWhizbangPostgres_RegistersTheHistoryConversionStep_ThatConvertsTheStoresOwnFormAsync} |
+| `ConvertHistory` is on by default | An upgraded database reclaims the space without an opt-in; the full form survives as a trace for recent events and as a route for all | {verified: ProcessWideOptionsBindingTests.EventStoreMetadata_Unconfigured_IsLinkedWithNothingKeptFullAsync, EventStoreMetadataSettingsTests.ConvertHistory_IsPublishedEveryTime_InBothDirectionsAsync} |
+| Only an explicit off turns the conversion off | A missing or mistyped value is the default, as every metadata setting reads | {verified: MetadataHistoryConversionSqlTests.Convert_AnyOtherConvertHistoryValue_RunsTheTaskAsync, MetadataHistoryConversionSqlTests.Convert_UnderTheFullFormOrSwitchedOff_SkipsTheTaskAsync} |
+| Skipped under debug mode and under `Full` | Both keep every row full; converting history would contradict them | {verified: MetadataHistoryConversionSqlTests.Convert_UnderDebugMode_SkipsTheTask_AndRunsOnceItIsOffAsync, MetadataHistoryConversionSqlTests.Convert_UnderTheFullFormOrSwitchedOff_SkipsTheTaskAsync} |
+| Rows of types kept full are left full | The full list says the row keeps every hop, whenever it was written | {verified: MetadataHistoryConversionSqlTests.Convert_ARowOfATypeKeptFull_IsSkipped_AndCountedAsKeptAsync} |
+| A row it cannot read is left alone | One bad row must never stop the conversion; a body without its pointer has no type for its route | {verified: MetadataHistoryConversionSqlTests.Convert_RowsItCannotRead_AreLeftAlone_AndNeverStopTheBatchAsync} |
+| A cursor in event id order, not a search for rows without a route id | A search re-reads every converted row on every batch, so the pass would be quadratic; the cursor reads each row once through the key index | {verified: MetadataHistoryConversionSqlTests.Convert_TakesAtMostTheBatch_ResumesFromItsCursor_AndCompletesAsync} |
+| A batch bounds rows read, not rows converted | A stretch of rows that need nothing costs one bounded batch too | {verified: MetadataHistoryConversionSqlTests.Convert_TakesAtMostTheBatch_ResumesFromItsCursor_AndCompletesAsync, MetadataHistoryConversionSqlTests.Convert_AConvertedRow_IsNotTouchedAgain_EvenFromTheStartAsync} |
+| 1,000 rows a batch, 20 batches a cycle | [Measured](#what-history-conversion-costs): the cost is per row, a batch is about a quarter of a second, and a cycle converts 20,000 rows in about five seconds with the WAL of storing as many events, so a large history spreads over idle cycles and autovacuum can reclaim between them | {verified: MetadataHistoryConversionSqlTests.Step_StopsAtTheCycleLimit_AndTheNextCycleGoesOnAsync, MetadataHistoryConversionCostScenarioTests.Conversion_OnACopiedHistory_ReportAsync} |
+| It never waits: `SKIP LOCKED` on the cursor and on each row | A rewrite must never stall a reaper or a second instance, and a statement that never waits cannot be half of a deadlock | {verified: MetadataHistoryConversionSqlTests.Convert_ARowAnotherTransactionHolds_IsLeftForTheNextBatch_WithoutWaitingAsync, MetadataHistoryConversionSqlTests.Convert_WhileAnotherInstanceConverts_SkipsWithoutWaitingAsync} |
+| The cursor stops before a held row, and a held batch ends the cycle | The held row is read again by the next batch; another batch this cycle would only read the same rows | {verified: MetadataHistoryConversionSqlTests.Convert_ARowAnotherTransactionHolds_IsLeftForTheNextBatch_WithoutWaitingAsync, MetadataHistoryConversionSqlTests.Step_AHeldBatch_EndsTheCycleAsync} |
+| Routes and traces are written directly, not staged | Staging would add a copy and a delete per row, and a staged row stamped with an old time would be past `StagingDays` before distillation reached it | {verified: MetadataHistoryConversionSqlTests.Convert_UnderLinked_CountsTheRoute_AndTracesOnlyWhatIsInsideTheTraceWindowAsync} |
+| First and last seen are the event's stored time | They say when the path was taken, not when the row was converted, so a path that left with old code still ages out | {verified: MetadataHistoryConversionSqlTests.Convert_UnderLinked_CountsTheRoute_AndTracesOnlyWhatIsInsideTheTraceWindowAsync, MetadataHistoryConversionSqlTests.Convert_AnExistingRoute_OnlyCountsAsync} |
+| A trace only inside the trace window | An older one would be removed in the same cycle, so writing it would only cost WAL | {verified: MetadataHistoryConversionSqlTests.Convert_UnderLinked_CountsTheRoute_AndTracesOnlyWhatIsInsideTheTraceWindowAsync} |
+| Under `Slim`, no routes or traces | `Slim` writes none for new events either | {verified: MetadataHistoryConversionSqlTests.Convert_UnderSlim_WritesNoRoutesOrTracesAsync} |
+| Complete once read to the end; deleting the cursor row starts over | A finished conversion costs nothing; a restore or a shorter full list is the operator's call to convert again | {verified: MetadataHistoryConversionSqlTests.Convert_TakesAtMostTheBatch_ResumesFromItsCursor_AndCompletesAsync, MetadataHistoryConversionSqlTests.Convert_AConvertedRow_IsNotTouchedAgain_EvenFromTheStartAsync} |
 
 ### What slim metadata costs {#what-slim-metadata-costs}
 
@@ -526,6 +605,43 @@ distills and removes it. The row keeps a third of what it kept, for good.
 An earlier version computed the route id in SQL functions with subqueries, which PostgreSQL does not inline, so each
 call ran the executor, and it computed the id twice per event: the chain cost about 0.6 ms more per event even under
 `Full`. The helpers are now loops and assignments that run no statement, and each event's route id is computed once.
+
+### What history conversion costs {#what-history-conversion-costs}
+
+{verified: MetadataHistoryConversionCostScenarioTests.Conversion_OnACopiedHistory_ReportAsync}
+
+Measured on copies of one history: 30,000 events written before slim metadata, one per stream, ids in time order, each
+with a 400-character payload and two hops (1,476 bytes of metadata a row, a dispatched event's usual shape), stored over
+the last sixty days so half are inside the trace window. Each batch size converts its own fresh copy until the
+conversion reports complete, after a checkpoint, so every batch pays the full-page images a long conversion pays. Under
+`Linked`, on a shared build server:
+
+| Batch | Batches | Execution time (median) | WAL a batch (median) | WAL a row | Shared blocks a batch |
+|---|---|---|---|---|---|
+| 500 rows | 60 | 124 ms | 2,080,248 B | 4,163 B | 10,866 |
+| 1,000 rows | 30 | 237 ms | 4,164,680 B | 4,169 B | 21,863 |
+| 2,000 rows | 15 | 487 ms | 8,326,280 B | 4,169 B | 42,923 |
+
+| Body table | Autovacuum off for the run | A vacuum every 5,000 rows |
+|---|---|---|
+| Metadata a row | 1,476 B, then 490 B (-67%) | the same |
+| Heap-only updates | 0% | 0% |
+| Dead tuples at the end | 30,000 (one a row) | 0 |
+| Table size | 61.5 MB, then 92.2 MB (+50%), and the same after `VACUUM` | 61.5 MB, then 66.6 MB (+8%) |
+
+What the numbers say:
+
+- **The cost is per row, so the batch size only sets the length of a transaction.** WAL and blocks grow linearly with
+  the batch. 1,000 rows is about a quarter of a second, a short transaction; a cycle of 20 batches converts 20,000 rows
+  in about five seconds of idle time and writes about 83 MB of WAL. A converted row costs about 4.2 KB of WAL here (5.8 KB
+  on a second build server), about what storing one new event costs (the outbox emit chain wrote 5.7 KB an event in
+  [the measurement above](#what-slim-metadata-costs)), so a cycle's WAL is that of storing 20,000 events.
+- **No update is heap-only.** An event row's page is full when it is written, and the old version stays on it until a
+  vacuum, so every new version goes to another page with a new key entry. Nothing in the conversion can change that.
+- **The dead versions are reclaimed by vacuum, and later batches reuse the space.** With the table vacuumed between
+  cycles, as autovacuum does while maintenance waits for its next cycle, the table grew 8% instead of 50%, and the space
+  each row no longer needs (about 1 KB) is free for new rows. Returning it to the operating system takes a
+  [table rewrite](../operations/infrastructure/storage-maintenance#table-rewrite-strategy).
 
 
 ---
