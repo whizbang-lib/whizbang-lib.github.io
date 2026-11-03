@@ -112,7 +112,7 @@ The framework registers its own steps through the same contract — the built-in
 
 | Step | Capability | Non-holders | Blocking | What it does |
 |---|---|---|---|---|
-| `Assess` | every instance | — | yes | Compares this binary's library version against the migration ledger and produces a [verdict](rolling-upgrades#assess) before anything changes. A `StandDown` verdict fails the step, which keeps the pipeline incomplete and readiness withheld — not-ready-while-alive. |
+| `Assess` | every instance | — | yes | Compares this binary's library version against the migration ledger and produces a [verdict](rolling-upgrades#assess) before anything changes: `Migrate`, `Serve`, `Current` (the schema is already up to date, so the election and the migration are skipped and no schema lock is taken) or `StandDown`. The schema initializer acts on the same verdict, read once per host. `Current` completes like `Serve`. A `StandDown` verdict fails the step, which keeps the pipeline incomplete and readiness withheld: not-ready-while-alive. {verified: AssessStartupStepTests.CurrentVerdict_CompletesWithTheReason_LikeServeAsync, StartupAssessmentSourceTests.TheDefaults_RegisterOneSourceOverTheRegisteredAssessor_AndTheAssessStepReadsThroughItAsync} |
 | `Migrate` | `migrator` (duty) | `Await` | yes | Schema initialization under the advisory lock; completes when the schema-ready gate opens. Depends on `Assess`. |
 | `Rewrite` | `maintainer` (duty) | `Skip` | **no** | [Requested table rewrites](../infrastructure/migrations#table-rewrites-run-post-ready-under-the-maintainer-duty) (`VACUUM FULL`) — post-ready and deliberately unbounded, because a half-finished rewrite is worse than a slow one. Nobody blocks on it. |
 

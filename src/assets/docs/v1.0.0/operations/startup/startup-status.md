@@ -25,6 +25,8 @@ codeReferences:
   - src/Whizbang.Core/Startup/StartupStageReporter.cs
   - src/Whizbang.Core/Startup/StartupStageHostLifecycle.cs
   - src/Whizbang.Core/Startup/StartupStageRunControl.cs
+  - src/Whizbang.Core/Startup/StartupStandDown.cs
+  - src/Whizbang.Core/Startup/StartupAssessmentSource.cs
   - src/Whizbang.Core/Startup/InstanceTransition.cs
   - src/Whizbang.Core/Messaging/IWorkCoordinator.cs
   - src/Whizbang.Data.Postgres/SchemaInitializationStages.cs
@@ -56,6 +58,8 @@ testReferences:
   - tests/Whizbang.Core.Tests/Startup/StartupStagesTests.cs
   - tests/Whizbang.Core.Tests/Startup/StartupStageReporterTests.cs
   - tests/Whizbang.Core.Tests/Schema/SchemaInitializationStagesTests.cs
+  - tests/Whizbang.Core.Tests/Startup/StartupStandDownTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/StartupParity/StartupParityTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StartupStageSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StartupStageHostTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/HeartbeatPhaseOrderSqlTests.cs
@@ -142,8 +146,8 @@ gaps, never a list position, so a stored value means the same thing in every rel
 
 | Number | Stage | Logged as | `lifecycle_phase` written | Entered by |
 |---|---|---|---|---|
-| 10 | Preflight | `Stage 1 of 7` | `Connecting` | the host lifecycle, as the host starts; schema initialization reports the bootstrap closure and the instance's registration as progress within it |
-| 20 | Elect | `Stage 2 of 7` | `Migrating` | schema initialization: the vote for the migrator, then its result |
+| 10 | Preflight | `Stage 1 of 7` | `Connecting` | the host lifecycle, as the host starts; schema initialization reports the [Assess](rolling-upgrades#assess) read, the bootstrap closure and the instance's registration as progress within it. A [stood-down instance](#stood-down) stays here |
+| 20 | Elect | `Stage 2 of 7` | `Migrating` | schema initialization: the vote for the migrator, then its result, or skipped when the schema is current |
 | 30 | Migrate | `Stage 3 of 7` | `Migrating` | schema initialization: the schema pass, or skipped when the schema is current |
 | 40 | Converge | `Stage 4 of 7` | `Migrating` | schema initialization: index statistics and the managed-object reconcile |
 | 50 | Coordinate | `Stage 5 of 7` | `Migrating` | the shared initializer, before the schema-ready gate opens |
@@ -188,6 +192,14 @@ On the EF Core driver, schema initialization reports its Preflight work as progr
 | `the bootstrap closure met a transient database failure; retrying` | The bootstrap failed transiently and [retries after its delay](../infrastructure/migrations#bootstrap-failures) |
 | `the bootstrap closure failed with an error that is not transient` | The bootstrap failed for good; the attempt fails in Preflight with a [`SchemaBootstrapException`](../diagnostics/error-reference#schema-bootstrap-exception) |
 | `the bootstrap closure is in place; registering this instance` | Preflight's last step: the instance joins the registry, then Elect begins |
+| `the schema is current; registering this instance` | Preflight's last step when the [Assess verdict](rolling-upgrades#current) is `Current`: no bootstrap is applied, the instance joins the registry, then Elect and Migrate are skipped |
+
+Before any of these, the [Assess](rolling-upgrades#assess) verdict is read, on either driver, and two more lines can appear:
+
+| Message | When |
+|---|---|
+| `the schema version record could not be read for a moment (<reason>); retrying` | The version record failed to read transiently; Assess [retries within Preflight](rolling-upgrades#unreadable-version-record) |
+| `the schema version record could not be read; this attempt stops here rather than migrate blind` | The failure is not transient; the attempt fails with a `StartupAssessmentException` and the next attempt reads again |
 
 **Why registration ends Preflight.** The instance row is written once the bootstrap closure and the instance and role
 tables are in place, so nothing registers before its tables are ready, and Elect only votes. Earlier releases entered
@@ -325,7 +337,27 @@ The SQL functions `record_instance_state` (migration 109) and `wh_record_startup
 schema, because older builds call them during a [rolling upgrade](rolling-upgrades).
 :::
 
-### Seeing every instance's stage
+### A stood-down instance stays in Preflight {#stood-down}
+
+An instance whose [Assess verdict](rolling-upgrades#standing-down) is `StandDown` (the schema is newer than its
+binary) never leaves Preflight. It records its stage as Preflight with the message `standing down: ` followed by the
+reason, which names the version the ledger records and the binary's own, and its phase as `StandingBy`, a phase-only
+write like any [stand-by](#pause-and-standby). It registers at once, keeps its row alive on the heartbeat interval
+until the host stops, and is never eligible for work. Elect, Migrate, Converge and Coordinate are never entered, and
+the schema-ready gate never opens, so readiness answers 503 while liveness stays healthy.
+
+```sql{title="Instances that stood down" description="Every instance held in Preflight because the schema is newer than its binary, with the reason" category="Operations" difficulty="BEGINNER" tags=["Startup","SQL","RollingUpgrades"] tests=["StartupStageSqlTests.Stages_ListEveryInstance_WithItsPositionMessageAndTimeInStageAsync","StartupStandDownTests.Record_StaysInPreflight_NamingTheReason_AndStandsByAsync"]}
+SELECT service_name, host_name, startup_stage_message, time_in_stage
+FROM wh_instance_startup_stages()
+WHERE startup_stage_message LIKE 'standing down: %';
+```
+
+**Why Preflight and not a stage of its own.** The stage says how far startup got, and a stood-down instance got no
+further than reading the verdict. The phase says why it is not serving. A new stage number would put a state that is
+not a step of startup on the startup ladder.
+{verified: StartupStandDownTests.Record_StaysInPreflight_NamingTheReason_AndStandsByAsync, StartupStandDownTests.KeepVisible_RegistersAtOnce_ThenOnEveryBeat_UntilTheHostStopsAsync, StartupParityTests.ANewerSchema_StandsDown_AppliesNothing_AndKeepsTheGateClosed_WhileVisibleAsync}
+
+### Seeing every instance's stage {#seeing-every-instances-stage}
 
 `wh_instance_startup_stages()` lists every registered instance, ordered by service, with its stage, the stage's
 name and `X of 7` position (`NULL` for a shutdown stage), message, entry time, time in stage, lifecycle phase and
@@ -337,16 +369,33 @@ SELECT service_name, host_name, stage_name, stage_position, stage_count,
 FROM wh_instance_startup_stages();
 ```
 
-### What a fresh database and a restart record
+### What a fresh database and a restart record {#what-a-fresh-database-and-a-restart-record}
 
-Both start the same way. Preflight is held until its last step registers the row, so the first stage the row records
-is Preflight (10) with `the bootstrap closure is in place; registering this instance`; every stage line before it
-(`host starting`, and any wait or retry of the bootstrap) is log-only. Elect is then recorded as it is entered, with
-the election's result, and every stage after it is recorded as it is entered. They differ only in Migrate:
+All three start the same way. Preflight is held until its last step registers the row, so the first stage the row
+records is Preflight (10); every stage line before it (`host starting`, and any wait or retry) is log-only. They
+differ in Elect and Migrate, which follow the [Assess verdict](rolling-upgrades#assess):
 
-- **A fresh database:** Migrate is recorded with the schema pass it runs.
-- **A restart on a current schema:** Migrate is recorded as skipped (`Stage 3 of 7: Migrate - skipped: the schema is
-  already current`).
+- **A fresh database** (`Migrate`): Preflight is recorded as `the bootstrap closure is in place; registering this
+  instance`, Elect with the election's result, and Migrate with the schema pass it runs.
+- **A restart whose schema is not yet shown current** (`Serve`): the same Preflight and Elect, and Migrate recorded as
+  skipped once the pass's fast path finds every hash matching (`Stage 3 of 7: Migrate - skipped: the schema is
+  already current`). The first restart after a fresh start is one of these on a model with stored forms, because
+  its pass is the one that [settles them](rolling-upgrades#current).
+- **A restart on a current schema** (`Current`): Preflight is recorded as `the schema is current; registering this
+  instance`, then Elect and Migrate are both skipped with the reason, and nothing takes the schema lock:
+
+```text{title="A restart on a current schema" description="The stage lines of an instance whose Assess verdict is Current: Elect and Migrate are skipped, Converge and Coordinate run" category="Operations" difficulty="BEGINNER" tags=["Startup","Logging","RollingUpgrades"] tests=["SchemaInitializationStagesTests.OnACurrentSchema_ElectAndMigrateAreSkipped_AfterRegisteringAsync","StartupParityTests.ARestartOnACurrentSchema_TakesNoSchemaLock_AndSkipsElectAndMigrateAsync"]}
+Stage 1 of 7: Preflight - the schema is current; registering this instance
+Stage 2 of 7: Elect - skipped: the schema is current; no migrator is needed
+Stage 3 of 7: Migrate - skipped: the schema is current
+Stage 4 of 7: Converge - analyzing new indexes and reconciling managed objects
+Stage 5 of 7: Coordinate - recomputing partitions before the schema-ready gate opens
+```
+
+**Why skip Elect too.** The election exists to pick the one instance that migrates. With nothing to migrate there is
+no migrator to pick, and a normal restart or scale-out should not wait on a lock that another instance's migration
+may be holding, so a current schema skips the election and the migration locks entirely.
+{verified: StartupParityTests.ARestartOnACurrentSchema_TakesNoSchemaLock_AndSkipsElectAndMigrateAsync, SchemaInitializationStagesTests.OnACurrentSchema_ElectAndMigrateAreSkipped_AfterRegisteringAsync}
 
 **Why a fresh database records from registration.** The stage columns, the `lifecycle_phase` and `library_version`
 columns the recorder writes beside them and the recorder itself are in the
@@ -365,7 +414,8 @@ written on that beat's registration signal. Earlier releases wrote no stage on t
 
 A Dapper host holds no election, so once the database answers it logs Elect as skipped
 (`Stage 2 of 7: Elect - skipped: no election could be held, so this instance migrates under the schema lock`), which
-ends Preflight for it as for the EF Core driver. The
+ends Preflight for it as for the EF Core driver. On a current schema it skips Elect and Migrate with the same reasons
+as the EF Core driver (`the schema is current; no migrator is needed`, `the schema is current`). The
 [managed-resource health](../../resilience/managed-resource-health#startup-stage) `startup` component reports the same
 stage line.
 

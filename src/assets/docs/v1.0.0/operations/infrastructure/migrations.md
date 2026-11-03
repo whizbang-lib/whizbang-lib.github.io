@@ -14,6 +14,8 @@ tags: >-
   migrations, schema, hash-tracking, blue-green, rollback, preview,
   database, ddl, perspective-tracking, data-migration, wh-settings
 codeReferences:
+  - src/Whizbang.Data.Postgres/StartupVerdictBinding.cs
+  - src/Whizbang.Data.Postgres/SchemaInitializationStages.cs
   - src/Whizbang.Data.Dapper.Postgres/PostgresSchemaInitializer.cs
   - src/Whizbang.Core/Data/IMigrationProvider.cs
   - src/Whizbang.Data.Postgres/Migrations/000_MigrationTracking.sql
@@ -58,6 +60,7 @@ codeReferences:
   - src/Whizbang.Data.Postgres/CatalogCheckedDdl.cs
   - src/Whizbang.Data.Postgres/MigrationDeadlockRetry.cs
 testReferences:
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/StartupParity/StartupParityTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/MigrationStepTransactionTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/TableRewritePolicyRetiredTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/SchemaStepRunnerTests.cs
@@ -842,6 +845,9 @@ Run the default-privilege statements before the first start, so every object the
 ### Which instance migrates {#which-instance-migrates}
 
 The migrator is a duty, held by [role assignment](../startup/capabilities-and-duties#role-assignment-the-default) by default. Its vote is part of the bootstrap closure (migration `184_RoleAssignmentResilience.sql` is a bootstrap region), so the assignment table and its functions exist before the first migration runs. Every instance applies the [bootstrap closure](#bootstrap-waits-for-the-lock) and then joins the registry, both in Preflight, and votes in Elect; the winner migrates and releases the duty when it returns, however it returns.
+
+**No election on a current schema.** The election runs only when the [Assess verdict](../startup/rolling-upgrades#assess) leaves something to migrate. When the verdict is [`Current`](../startup/rolling-upgrades#current), nothing is pending and every stored-form conversion has settled, so the instance applies no bootstrap closure, joins the registry as Preflight's last step (`the schema is current; registering this instance`), and skips Elect and Migrate (`Stage 2 of 7: Elect - skipped: the schema is current; no migrator is needed`). It takes neither the migrator duty nor the schema lock, so a restart or a scale-out never waits behind another instance's migration. A [stood-down](../startup/rolling-upgrades#standing-down) instance does not vote either: it applies nothing and stays in Preflight. **Why skip it rather than hold a quick one.** A vote is a write to the role tables and a wait on whoever holds the duty; with nothing to migrate there is no outcome worth waiting for. The check that found the schema current is made without a lock: the hash checks of the pass's own fast path, plus the stored-form settlement that the rewrite would otherwise take the schema lock to discover.
+{verified: StartupParityTests.ARestartOnACurrentSchema_TakesNoSchemaLock_AndSkipsElectAndMigrateAsync, SchemaInitializationStagesTests.OnACurrentSchema_ElectAndMigrateAreSkipped_AfterRegisteringAsync, AssessBindingSourceGuardTests.TheGeneratedPass_ReadsTheVerdict_BeforeItAppliesAnythingAsync}
 
 Registering is Preflight's last step, logged as `Stage 1 of 7: Preflight - the bootstrap closure is in place; registering this instance`, and Elect only votes (`Stage 2 of 7: Elect - voting for the migrator duty`). **Why register before Elect, and after the bootstrap.** The row is written once the instance and role tables it lives in are ready, and the capability function refuses an instance it cannot find, a refusal that would say nothing about contention. Earlier releases entered Elect and then registered as part of the election, so registration belonged to no stage. A registration that fails is logged, and the instance migrates under the schema lock alone without voting. See [what a restart records](../startup/startup-status#what-a-fresh-database-and-a-restart-record).
 {verified: StartupPreflightHostTests.TheInstanceRow_IsRegisteredAtTheEndOfPreflight_BeforeElectAsync, MigratorDutyStagingTests.Register_RunsTheRegistration_AndAnswersThatTheInstanceJoinedAsync, MigratorDutyStagingTests.Register_ThatFails_IsSaidAndAnsweredAsNotJoinedAsync, MigratorDutyStagingTests.Elect_AfterRegistering_AsksTheElectorOnce_AndHandsOverTheGrantAsync}
