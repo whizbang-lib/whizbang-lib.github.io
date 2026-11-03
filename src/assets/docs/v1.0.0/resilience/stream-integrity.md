@@ -50,6 +50,17 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/252_RepairRestoresWhatDeduplicationRemembers.sql
   - src/Whizbang.Data.Postgres/Migrations/253_RedeliveredOriginChecksTheFirstHop.sql
   - src/Whizbang.Core/Messaging/CompositeInboxFanout.cs
+  - src/Whizbang.Data.Postgres/Migrations/301_StreamDigestsAreFoundByStream.sql
+  - src/Whizbang.Data.Postgres/Migrations/302_IntegrityDeliveriesWaitForTheMaintainer.sql
+  - src/Whizbang.Core/Workers/IntegrityDeliveryWorker.cs
+  - src/Whizbang.Core/Workers/IntegrityAdmission.cs
+  - src/Whizbang.Core/Workers/RepairDrainWorker.cs
+  - src/Whizbang.Core/Workers/HousekeepingCoordinator.cs
+  - src/Whizbang.Core/Messaging/IntegrityDeferringReceptor.cs
+  - src/Whizbang.Core/Messaging/IntegrityDeliveryRegistration.cs
+  - src/Whizbang.Core/Messaging/IntegrityDeliveryRegistry.cs
+  - src/Whizbang.Core/Messaging/IntegrityDeliveryId.cs
+  - src/Whizbang.Core/Startup/MaintainerDuty.cs
 testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/AtMostOnceOccurrenceIntegrityTests.cs
   - tests/Whizbang.Core.Tests/SystemEvents/AuditLedgerRebuildTests.cs
@@ -99,6 +110,15 @@ testReferences:
   - tests/Whizbang.Core.Tests/Messaging/StreamIntegrityOptionsValidatorTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/RedeliveredMissingEventRestoreSqlTests.cs
   - tests/Whizbang.Core.Tests/Messaging/CompositeInboxFanoutIdentityAndSubscriptionTests.cs
+  - tests/Whizbang.Core.Tests/Workers/IntegrityDeliveryWorkerTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/IntegrityDeliveryWorkerLoopTests.cs
+  - tests/Whizbang.Core.Tests/Workers/IntegrityTimerWorkersOnTheMaintainerTests.cs
+  - tests/Whizbang.Core.Tests/Workers/HousekeepingIntegrityAdmissionTests.cs
+  - tests/Whizbang.Core.Tests/Messaging/IntegrityDeliveryDeferralTests.cs
+  - tests/Whizbang.Core.Tests/Messaging/RedeliveryReconcileDeferralTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityDeliverySqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityReceptorRegistrationEnforcementTests.cs
+  - tests/Whizbang.Core.Tests/Startup/MaintainerDutyTests.cs
 verifiedAgainstCommit: a64ba9a0
 verifiedDate: 2026-08-04
 ---
@@ -738,7 +758,11 @@ daily). There is no work-pump-depth check and no grace deadline yet: dogfooding 
 engine — recurring `ScheduleDefinition`s with a **pre-fire hook** supplying idle-or-force
 semantics (defer while busy, a configurable weekly **grace deadline** forcing the run
 regardless) — remains design intent, not yet wired as of a64ba9a. Continuity checkpoints
-are continuous (default interval 60s). Everything is standard options-pattern configuration:
+are continuous (default interval 60s). Each audit cycle runs only on the instance holding the
+maintainer duty and only once the housekeeping idle gate admits integrity work, forced through
+after `Whizbang:Housekeeping:MaxDeferral` (see
+[integrity work runs on the maintainer](#integrity-work-runs-on-the-maintainer)). Everything is
+standard options-pattern configuration:
 
 ```csharp{title="StreamIntegrityOptions" description="The shipped self-healing defaults and their storm caps" category="Configuration" difficulty="INTERMEDIATE" tags=["Resilience","StreamIntegrity"] tests=["StreamIntegrityOptionsDefaultsTests.Defaults_SelfHealingOutOfTheBoxAsync","StreamIntegrityOptionsDefaultsTests.Defaults_StormCapsBoundEveryRepairRungAsync"]}
 services.Configure<StreamIntegrityOptions>(o => {
@@ -771,6 +795,14 @@ services.Configure<StreamIntegrityOptions>(o => {
   o.DivergenceReportCooldownMinutes = 60;    // unchanged divergence re-reports once per hour, not per cycle
   o.RepairRequestBackoffSeconds = 300;       // per-bucket retry base; each attempt doubles the wait
   o.MaxRepairAttemptsPerBucket = 8;          // then one ask per terminal interval (reports continue); signature change resets
+
+  // The maintainer's integrity delivery drain (see "Integrity work runs on the maintainer")
+  o.IntegrityDeliveryIntervalSeconds = 15;   // how often the drain runs
+  o.IntegrityDeliveryBatchSize = 50;         // deliveries leased per round trip
+  o.MaxIntegrityDeliveriesPerPass = 500;     // bound on one admitted (or forced) pass
+  o.IntegrityDeliveryLeaseSeconds = 300;     // covers a duty failover that briefly overlaps two drains
+  o.MaxIntegrityDeliveryAttempts = 5;        // then the delivery is dropped with a warning
+  o.IntegrityDeliveryRetryBackoffSeconds = 30;  // doubles per attempt, capped at one hour
 
   // Phase S — subscription growth
   o.BackfillOnSubscriptionGrowth = true;
@@ -1183,6 +1215,158 @@ improving, so it is unaffected by the mark.
 
 ---
 
+## Integrity work runs on the maintainer {#integrity-work-runs-on-the-maintainer}
+
+{verified: IntegrityTimerWorkersOnTheMaintainerTests.TheAudit_OnAnInstanceThatDoesNotHoldTheMaintainerDuty_DoesNothingAsync, IntegrityTimerWorkersOnTheMaintainerTests.TheRepairDrain_OnAnInstanceThatDoesNotHoldTheMaintainerDuty_ClaimsNothingAsync, IntegrityTimerWorkersOnTheMaintainerTests.Checkpoints_OnAnInstanceThatDoesNotHoldTheMaintainerDuty_AreNotPublishedAsync, IntegrityDeliveryWorkerTests.OnAnInstanceThatDoesNotHoldTheMaintainerDuty_ThePassDoesNothingAsync, IntegrityDeliveryWorkerTests.WithoutRoleAssignment_EveryInstanceDrainsAsync, IntegrityReceptorRegistrationEnforcementTests.EveryIntegrityReceptor_IsRegisteredDeferred_AtEveryStageAsync}
+
+Stream-integrity work is fleet-wide background work, and it runs where the rest of that work runs: on the instance
+holding the [maintainer duty](../operations/startup/capabilities-and-duties#the-maintainer-duty-governs-fleet-wide-work).
+When role assignment does not manage that duty (no duty loop, or a loop without the `maintainer` role), every instance
+does the work, as the maintenance sweep does: there is no holder to defer to, and a gate that waited for one would
+disable what it gates. Every caller asks the same question through one helper, `MaintainerDuty.IsThisInstancesTurn`.
+
+The deferrable parts are also **idle-gated**: they ask the
+[housekeeping coordinator](../operations/workers/housekeeping-arbitration#integrity-is-idle-gated) for the integrity
+slot, are deferred while the service is busy or cooling down, and are forced through once they have been deferred for
+`Whizbang:Housekeeping:MaxDeferral` (one hour by default).
+
+| Integrity activity | Where it runs | Idle-gated |
+| --- | --- | --- |
+| Draining integrity deliveries (received checkpoints, manifest requests, manifest chunks, redelivery requests, bundle reconciles) | The maintainer, in the `IntegrityDeliveryWorker` | Yes |
+| The deep and local audit (`IntegrityAuditWorker`) | The maintainer | Yes |
+| The paced repair drain (`RepairDrainWorker`) | The maintainer | Yes |
+| Publishing continuity checkpoints (`IntegrityCheckpointWorker`) | The maintainer | **No**, see [checkpoints are not gated](#checkpoints-are-not-idle-gated) |
+| Storing a redelivery bundle's events | Whichever instance receives the bundle | No: that is ordinary event storage |
+
+**Why.** Nothing in stream integrity reads the same data twice: checkpoint windows are won by compare-and-swap, audit
+cycles and repair-drain rows are claimed, and each integrity message is leased to one instance. But with N instances,
+N instances put integrity work on the database at once, and the receive side is the expensive part: reconciling a
+redelivery bundle, comparing a manifest chunk, building a redelivery for another service. Each ran on whichever
+instance leased the message, alongside that instance's ordinary traffic and with no regard for how busy the service
+was. Integrity work verifies and repairs history; none of it has a deadline measured in seconds, and all of it
+competes for the same database as the traffic it verifies. The maintainer duty and the idle gate already existed for
+exactly this kind of work.
+
+### Integrity deliveries are queued {#integrity-deliveries-are-queued}
+
+{verified: IntegrityDeliveryDeferralTests.Registration_WrapsTheReceptorAtAllThreeStagesAsync, IntegrityDeliveryDeferralTests.OutsideTheDrain_EveryStageRecordsTheDelivery_AndDoesNotRunTheReceptorAsync, IntegrityDeliveryDeferralTests.OneMessageAtEveryStage_IsRecordedOnceAsync, IntegrityDeliveryDeferralTests.TheDeliveryId_IsAFunctionOfTypeAndPayloadAsync, IntegrityDeliveryDeferralTests.InsideTheDrain_TheWrapperRunsTheReceptorAsync, RedeliveryReconcileDeferralTests.Reconcile_WithTheQueue_IsRecordedForTheMaintainer_NotRunHereAsync, RedeliveryReconcileDeferralTests.TheDrain_ReconcilesWithExactlyWhatTheInlineReconcilePassesAsync, RedeliveryReconcileDeferralTests.Reconcile_ARedeliveredBundle_IsRecordedOnceAsync, IntegrityDeliverySqlTests.Enqueue_TheSameDeliveryTwice_RecordsItOnceAsync}
+
+Every integrity receptor (received checkpoints, manifest requests, manifest chunks, redelivery requests) is registered
+wrapped, through `IntegrityDeliveryRegistration.RegisterIntegrityReceptor`, at all three stages a framework receptor
+runs at: local dispatch, the sending service's outbox copy, and a copy received from another service. Invoked
+anywhere other than the maintainer's drain, the wrapper records the message as a row in `wh_integrity_deliveries`
+(migration 302) and returns without running the receptor. Inside the drain it runs the receptor it wraps.
+
+Reconciling a committed redelivery bundle is recorded the same way, under the delivery type
+`whizbang:redelivery-reconcile`, with the bundle's origin, the origin's name, the children's event ids and their origin
+sequences. The drain reconciles with exactly those, as the inline reconcile would have. The bundle's events are still
+stored at receipt, so only the reconcile waits.
+
+**A delivery is recorded once.** Its id is derived from its type and payload bytes (SHA-256 over the length-prefixed
+type and the payload, truncated to a version 8 UUID), and recording an id that is already present does nothing. The
+inbox, outbox and local copies of one message, a delivery retried after a failed commit, and a redelivered bundle with
+the same children all land as one row.
+
+A registration enforcement test finds every integrity receptor registrar in the Postgres driver by shape and fails,
+naming the receptor, if any integrity message is registered without the wrapper at any of the three stages. A receptor
+added the ordinary way would run its integrity work inline on whichever instance received the message, which is the
+load this design removes.
+
+### The integrity delivery drain {#the-integrity-delivery-drain}
+
+{verified: IntegrityDeliveryWorkerTests.TheDrain_HandlesDeliveriesInArrivalOrder_InsideTheDrain_AndCompletesEachAsync, IntegrityDeliveryWorkerTests.AFailedDelivery_IsRetriedAfterAnExponentialBackoffAsync, IntegrityDeliveryWorkerTests.TheBackoff_IsCappedAtAnHourAsync, IntegrityDeliveryWorkerTests.ADeliveryThatHasSpentItsAttempts_IsDropped_WithAWarningNamingItsTypeAndErrorAsync, IntegrityDeliveryWorkerTests.ADeliveryNoHandlerIsRegisteredFor_IsDropped_WithAWarningAsync, IntegrityDeliveryWorkerTests.APass_IsBoundedByMaxDeliveriesPerPass_LeasedInBatchesAsync, IntegrityDeliveryWorkerTests.APass_StopsWhenALeaseComesBackShortAsync, IntegrityDeliveryWorkerTests.EveryOutcome_IsCountedAsync, IntegrityDeliverySqlTests.Lease_ReturnsDueDeliveriesInArrivalOrder_AndPushesThemOutByTheLeaseAsync, IntegrityDeliverySqlTests.Lease_SkipsADeliveryAnotherDrainHoldsLockedAsync, IntegrityDeliverySqlTests.Fail_CountsTheAttempt_KeepsTheError_AndHoldsItForTheBackoffAsync, IntegrityDeliveryWorkerLoopTests.TheLoop_RunsAPassOnceTheSchemaIsReady_AndStopsCleanlyAsync, IntegrityDeliveryWorkerLoopTests.AFailedPass_IsLogged_AndTheNextIntervalRunsAgainAsync}
+
+The `IntegrityDeliveryWorker` waits for the schema, then runs a pass every `IntegrityDeliveryIntervalSeconds`
+(15 by default). A pass does nothing on an instance that is not the maintainer, and nothing while the idle gate defers
+integrity work. Once admitted, or forced through after `MaxDeferral`, it:
+
+1. leases due deliveries in arrival order, `IntegrityDeliveryBatchSize` at a time, skipping rows another drain holds
+   locked and pushing each leased row out of view for `IntegrityDeliveryLeaseSeconds`, so a drain that overlaps this
+   one during a maintainer-duty failover does not take the same rows;
+2. handles them one at a time, each in its own scope and inside the drain context, so the wrapped receptor does the
+   work instead of recording it again;
+3. deletes each delivery it handled;
+4. stops at `MaxIntegrityDeliveriesPerPass` deliveries, or as soon as a lease comes back short, and leaves the rest for
+   the next pass.
+
+**Failures back off, then drop.** A handler that throws is retried after `IntegrityDeliveryRetryBackoffSeconds`
+(30 by default), doubled on each further attempt and capped at one hour; the row keeps the latest error in
+`last_error` for an operator. A delivery that has spent `MaxIntegrityDeliveryAttempts` (5 by default) is deleted and
+logged as a Warning that names its type and its error. So is a delivery whose type no handler on this instance is
+registered for, such as one recorded by a different library version. Integrity traffic is control-plane traffic and
+is dropped at its bound rather than dead-lettered: the next checkpoint, audit or repair cycle asks again. A pass that
+fails as a whole is logged and leaves every delivery queued for the next pass.
+
+Because the drain handles deliveries one at a time on one instance, redelivery reconciles no longer run in parallel.
+Bundles for the same streams used to queue on the per-stream advisory locks inside the database, each waiting
+session holding a pooled connection that ordinary message work needed.
+
+The table needs no retention in maintenance: the drain deletes every delivery it handles and every delivery it drops.
+
+### When the store cannot queue {#integrity-inline-fallback}
+
+{verified: IntegrityDeliveryDeferralTests.ACoordinatorWithoutTheQueue_RunsTheReceptorInline_AsBeforeAsync, IntegrityDeliveryDeferralTests.AHostWithoutACoordinator_RunsTheReceptorInlineAsync, IntegrityDeliveryDeferralTests.AHostWithoutTheDrain_RunsTheReceptorInline_AndRecordsNothingAsync, RedeliveryReconcileDeferralTests.Reconcile_WithoutTheDrain_RunsInlineAsync}
+
+Recording a delivery that nothing will drain would lose it, so integrity work runs inline, where it arrives, as it did
+before, in three cases: the host has no drain registered, there is no work coordinator in scope, or the coordinator
+cannot record deliveries (a store without `wh_integrity_deliveries`, such as the Dapper coordinator, reports the
+queue as unsupported).
+
+### The idle gate, one budget per requester {#integrity-idle-gate}
+
+{verified: IntegrityTimerWorkersOnTheMaintainerTests.TheAudit_OnTheMaintainerOfAQuietService_RunsAndReleasesTheSlotAsync, IntegrityTimerWorkersOnTheMaintainerTests.TheAudit_OnABusyService_WaitsUntilMaxDeferral_ThenIsForcedThroughAsync, IntegrityTimerWorkersOnTheMaintainerTests.TheRepairDrain_OnTheMaintainerOfAQuietService_ClaimsAsync, IntegrityTimerWorkersOnTheMaintainerTests.TheRepairDrain_OnABusyService_WaitsUntilMaxDeferral_ThenIsForcedThroughAsync, IntegrityDeliveryWorkerTests.OnABusyService_ThePassIsDeferred_AndTheSlotIsNotHeldAsync, IntegrityDeliveryWorkerTests.AfterMaxDeferral_ThePassIsForcedThrough_AndDeferredSinceClearsAsync, IntegrityDeliveryWorkerTests.AnUnmeasuredService_DrainsAsBefore_AndTheFailureIsLoggedAsync, IntegrityDeliveryWorkerTests.WithoutTheHousekeepingCoordinator_DrainsUngatedAsync, HousekeepingIntegrityAdmissionTests.Integrity_EachRequesterSpendsAndRearmsItsOwnBudgetAsync}
+
+The drain, the audit and the repair drain each measure the service's settledness and ask the housekeeping coordinator
+for the integrity slot under their own name. The rule is the one dead-letter recovery uses, described in
+[housekeeping arbitration](../operations/workers/housekeeping-arbitration#integrity-is-idle-gated): deferred while the
+service is busy or still cooling down, forced through once deferred for `MaxDeferral`, and still ranked above the
+cleanup sweep and below dead-letter recovery.
+
+- **The audit** treats a cycle it could not run like a cycle that reached no origins: it retries on the startup window,
+  not a full `AuditIntervalMinutes` later.
+- **The repair drain** asks only once it has something to send, so an idle drain does not measure the backlog every
+  second. Its tokens keep accruing, up to the burst cap, while it waits.
+- **A reading that cannot be taken** is logged as a Warning and admitted unmeasured, and a host without a housekeeping
+  coordinator runs integrity work ungated: a gate that cannot measure must never silently disable what it gates.
+
+**Each requester has its own deferral budget.** The three requesters share one slot, but they tick at very different
+rates. With one shared budget, whichever requester asked first after the ceiling would take the forced pass and re-arm
+the ceiling for all of them, so a requester on a slower tick could be starved for as long as the load lasted. Each
+requester's ceiling is measured from its own first deferral and re-armed only by its own completed pass.
+
+### Checkpoints are not idle-gated {#checkpoints-are-not-idle-gated}
+
+{verified: IntegrityTimerWorkersOnTheMaintainerTests.Checkpoints_AreNotIdleGated_BecauseAMissingCheckpointIsTheConsumersLivenessAlarmAsync, IntegrityTimerWorkersOnTheMaintainerTests.TheLivenessCheck_AllowsForTheTimeReceivedCheckpointsWaitedInTheQueueAsync}
+
+Checkpoint publishing runs only on the maintainer (the watermark compare-and-swap still picks one winner per window
+when every instance publishes), but it never asks for the integrity slot. A consumer reads a missing checkpoint as its
+liveness alarm, so a checkpoint deferred because its origin is busy would make every busy service look dead to its
+consumers. Publishing one is a watermark advance and a publish, cheap enough to keep its cadence under any load.
+
+The receiving side is different: a received checkpoint is an integrity delivery and waits in the queue while the idle
+gate defers the drain. The stale-origin warning would then report a live origin as silent, so its bound widens by how
+long the drain has been deferred. The bound is three checkpoint intervals plus the time since the drain's current run
+of deferrals began (`IntegrityDeliveryWorker.DeferredSince`); once a pass is admitted, it returns to three intervals.
+
+### Options {#integrity-delivery-options}
+
+All bound from `Whizbang:StreamIntegrity`, like the rest of `StreamIntegrityOptions`; the full table is in the
+[configuration reference](../operations/configuration/configuration-reference#streamintegrityoptions).
+
+| Option | Default | Meaning |
+| --- | --- | --- |
+| `IntegrityDeliveryIntervalSeconds` | `15` | How often the maintainer's drain runs a pass |
+| `IntegrityDeliveryBatchSize` | `50` | Deliveries leased per round trip of the drain |
+| `MaxIntegrityDeliveriesPerPass` | `500` | The most deliveries one admitted or forced pass handles; the rest waits for the next pass |
+| `IntegrityDeliveryLeaseSeconds` | `300` | How long a leased delivery stays invisible to another drain; covers a maintainer-duty failover that briefly overlaps two drains |
+| `MaxIntegrityDeliveryAttempts` | `5` | Attempts before a delivery is dropped with a Warning naming its type and error |
+| `IntegrityDeliveryRetryBackoffSeconds` | `30` | The wait before retrying a failed delivery, doubled per further attempt and capped at one hour |
+
+The gate itself is configured under `Whizbang:Housekeeping` (`SettledCooldown`, `MaxDeferral`), shared with
+dead-letter recovery and maintenance.
+
+The four `deliveries_*` counters on this page's [meter](#observability) show the queue at work.
+
 ## Bounded reconciliation — epochs, negotiated scope, seals
 
 The phases above answer *"do two services hold the same events?"* correctly — but as originally
@@ -1561,6 +1745,27 @@ heals and its ledger row is deleted. Each piece of pre-087 history costs one red
 `origins_adopted` counter rises while that happens and stops once the history has been redelivered once;
 an Information line per bundle names the origin and how many of its events adopted it.
 
+The reconcile is integrity work, so it runs on the maintainer's
+[integrity delivery drain](#integrity-deliveries-are-queued), one bundle at a time, rather than on the inbox worker
+that committed the bundle.
+
+:::updated
+**Reconciling a bundle reads only the digests it changes ([#2000](https://github.com/whizbang-lib/whizbang/issues/2000)).**
+`wh_stream_digests` holds one row per lane, tenant, type and stream, and its only index was the primary key
+`(origin_service_id, scope_tenant, event_type, stream_id)`. A read or delete that names a stream without its tenant
+and type could use only the leading column, which matches a whole lane. The reconcile did exactly that when it moved
+digests out of the local lane: once per bundle, it read every bucket of this service's local lane, about half the
+table on a mature store. During the catch-up that fills in origins on this history, every consumer receives a steady
+stream of bundles, and that per-bundle read of the whole local lane held a shared database server's CPU at its
+ceiling.
+
+Migration 301 adds `idx_stream_digests_stream` on `(stream_id)`, so every stream-keyed digest read and delete (stream
+close, prefix truncation, supersession, fan-out filing and the reconcile) is an index lookup. `stream_id` never changes
+after insert, so the per-event digest updates stay heap-only and pay nothing for the index. The reconcile also names
+the streams the bundle moved when it subtracts from and deletes emptied local buckets, so the delete matches the full
+key and touches only the buckets the bundle changed.
+:::
+
 #### Events this service authored {#pre-stamp-history-first-hop}
 
 {verified: RedeliveredOriginAdoptionSqlTests.Adopt_AnEventWhoseFirstHopNamesTheBundlesOrigin_AdoptsAsync, RedeliveredOriginAdoptionSqlTests.Adopt_AnEventWhoseFirstHopNamesThisService_IsRefusedAndStaysLocalAsync, RedeliveredOriginAdoptionSqlTests.Adopt_AFirstHopWithoutAServiceIdentity_AdoptsAsync, RedeliveredOriginAdoptionSqlTests.Adopt_EmptyHops_AdoptsAsync, RedeliveredOriginAdoptionSqlTests.Adopt_AnEventAlreadyCarryingAnOrigin_IsUntouchedWhateverItsFirstHopNamesAsync, InboxDispatchWorkerCompositeCommitTests.Redelivery_IsReconciledUnderTheServiceNameOfTheBundlesFirstHopAsync, RedeliveredOriginAdoptionSqlTests.Adopt_WithoutTheOriginsName_AdoptsAsBeforeAsync, RedeliveredOriginAdoptionSqlTests.Adopt_ABlankOrUnknownOriginName_AdoptsAsBeforeAsync, RedeliveredOriginAdoptionSqlTests.Adopt_ServiceNamesCompareWithoutCase_AndAnotherServiceInAnyCaseIsRefusedAsync, RedeliveredOriginAdoptionSqlTests.Adopt_TheLegacyLongFormHop_IsReadAndComparedWithoutCaseAsync, RedeliveryReconcilerTests.OriginServiceNameOf_NoHops_IsNullAsync, RedeliveryReconcilerTests.OriginServiceNameOf_AFirstHopWithABlankServiceName_IsNullAsync, RedeliveryReconcilerTests.OriginServiceNameOf_TheUnknownSentinelInAnyCase_IsNullAsync}
@@ -1725,6 +1930,10 @@ patterns worth understanding before building a dashboard:
 | `redelivery_events_shipped` | Events selected and shipped in redelivery bundles, as an origin. |
 | `origins_adopted` | Stored events whose empty origin columns a redelivery filled: [history received before origins were recorded](#pre-stamp-history), now verifiable. Rises while that history is redelivered once, then stops. |
 | `origins_refused` | Stored events with an empty origin that a redelivery did not adopt, because the event's first hop names another service than the bundle's origin: [events this service authored](#pre-stamp-history-first-hop) that the origin's store had filed as its own. Non-zero means an origin is redelivering events it did not author; the Warning logged once per bundle names it. |
+| `deliveries_queued` (tag `type`) | Integrity deliveries recorded for the maintainer's drain. A copy already recorded is not counted again. See [integrity work runs on the maintainer](#integrity-work-runs-on-the-maintainer). |
+| `deliveries_processed` (tag `type`) | Integrity deliveries the drain handled. Falling behind `deliveries_queued` for long means the drain is deferred by the idle gate or bounded by `MaxIntegrityDeliveriesPerPass`. |
+| `deliveries_failed` (tag `type`) | Failed attempts at an integrity delivery, each retried after a backoff. |
+| `deliveries_dropped` (tags `type`, `reason`) | Integrity deliveries dropped: `attempts_exhausted` (spent `MaxIntegrityDeliveryAttempts`) or `no_handler` (no handler for the type on this instance, such as a delivery recorded by another version). Each drop is also a Warning naming the type. |
 | `repairs_unhealable` | Buckets a redelivery could not change (every event already stored under its origin, or a child [refused as truncated](#remembered-but-missing)), counted once each. Repair stops asking for them; see [repair that cannot change a bucket](#unhealable-buckets). |
 | `manifests_requested`, `manifest_chunks_sent`, `drill_downs_requested`, `backfills_requested`, `redelivery_requests_received` | The exchange itself, hop by hop. |
 | `checkpoints_published` / `checkpoints_received`, `gaps_detected`, `coverage_gaps_detected`, `rebuilds_requested` | The continuity-checkpoint and coverage halves of the system. |
@@ -1738,7 +1947,8 @@ recording each one → `sealed_through` stepping upward as whole windows certify
 except the checkpoint heartbeat. After an upgrade from a schema older than 087, `origins_adopted` rises first while
 pre-087 history is redelivered once. The failure signatures: `repair_exhausted_buckets` rising (buckets
 out of budget), `compares_declined` sustained (compare pressure), `manifest_pages_capped` persistent
-(page budget too small for the lane), `repairs_unhealable` non-zero (buckets repair cannot change; each was named
+(page budget too small for the lane), `deliveries_dropped` non-zero (integrity deliveries that kept failing; each
+Warning names the type and error), `repairs_unhealable` non-zero (buckets repair cannot change; each was named
 once in a Warning), or `sealed_through` frozen while `unhealed_buckets` is flat
 and non-zero (a stuck lane).
 
