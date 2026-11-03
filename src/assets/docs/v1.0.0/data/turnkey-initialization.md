@@ -161,12 +161,18 @@ await first.EnsureWhizbangInitializedAsync();   // no-op for the same host
 ```
 
 ### A second call waits for the one in progress {#a-second-call-waits}
-{verified: DbContextInitializationRegistryTests.InitializeAllAsync_ASecondCallWhileTheFirstRuns_ReturnsOnlyOnceTheFirstHasFinishedAsync, DbContextInitializationRegistryTests.InitializeAllAsync_ASecondCallWhoseFirstFails_RunsItsOwnAttemptAsync, DbContextInitializationRegistryTests.InitializeAllAsync_TheHostsProviderAndItsRootScope_AreOneHostAsync, DbContextInitializationRegistryTests.InitializeAllAsync_ASecondCallsWait_EndsWithItsTokenAsync, StartupPreflightHostTests.ASecondInitialization_ReturnsOnlyOnceTheFirstHasFinishedAsync}
+{verified: DbContextInitializationRegistryTests.InitializeAllAsync_ASecondCallWhileTheFirstRuns_ReturnsOnlyOnceTheFirstHasFinishedAsync, DbContextInitializationRegistryTests.InitializeAllAsync_ASecondCallWhoseFirstFails_RunsItsOwnAttemptAsync, DbContextInitializationRegistryTests.InitializeAllAsync_TheHostsProviderAndItsRootScope_AreOneHostAsync, DbContextInitializationRegistryTests.InitializeAllAsync_ASecondCallsWait_EndsWithItsTokenAsync, DbContextInitializationRegistryTests.InitializeAllAsync_TheFirstCallReleasesNoWaiter_UntilItHasReportedItsInitializationCompleteAsync, StartupPreflightHostTests.ASecondInitialization_ReturnsOnlyOnceTheFirstHasFinishedAsync}
 
 A host makes one initialization attempt at a time. A call to `EnsureWhizbangInitializedAsync()` made while the host's
 own initialization (or any other call) is still running joins that attempt: it logs
 `Whizbang database initialization is in progress; waiting for it to finish` at Information and returns only once the
 attempt has finished, so the schema it returns to is the whole schema.
+
+"Finished" includes the first call's own completion report: the first call logs that its initialization is complete
+and only then releases the calls waiting on it. A waiting call therefore never returns while the first call is still
+running, not even for its last log line. Earlier releases released the waiters first and logged afterward, which left
+a short window in which a waiting call had returned and the first had not (#2019). Locked by
+[`DbContextInitializationRegistryTests`](https://github.com/whizbang-lib/whizbang/blob/develop/tests/Whizbang.Data.EFCore.Postgres.Tests/DbContextInitializationRegistryTests.cs).
 
 - **The attempt succeeded.** The waiting call returns, having run nothing itself.
 - **The attempt failed.** The waiting call logs

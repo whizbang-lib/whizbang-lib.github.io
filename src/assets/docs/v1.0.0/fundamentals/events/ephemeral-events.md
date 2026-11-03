@@ -92,6 +92,7 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/EphemeralBodyReaperSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/EphemeralDestructionHoldSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/EphemeralReapSeenSetTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/EphemeralDestructionTargetSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/PerformMaintenanceDelegatesTests.cs
   - tests/Whizbang.Core.Tests/Workers/MaintenanceWorkerReapScopeTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/EphemeralEventStoreReadTests.cs
@@ -517,9 +518,15 @@ statement. A body can become eligible in between: its grace window or TTL passes
 snapshot comes to cover it. Such a body is not reaped in that cycle; the next cycle offers it to the hook like any other
 (#1999).
 
+The other direction holds too: the hook is offered only bodies the reap would delete. The batch is read with the reap's
+own gates, its TTL floor included, so an `AfterTtl` body is offered to the hook only once its expiry has passed, which
+is exactly when the reap deletes it. Offered, deleted and reported destroyed agree (#2018).
+{verified: EphemeralDestructionTargetSqlTests.GetEphemeralBodiesAboutToReap_AnAfterTtlBodyNotYetExpired_IsNotOffered_AndOfferedMatchesDeletedAsync}
+
 | Choice | Reason | Verified |
 |---|---|---|
 | The worker passes the batch it read to the reap, which deletes only those bodies; every other gate still applies to them. | A hook's `Canceled`, `Defer` and holds, and a compaction, can only apply to bodies the hook was given. Reaping a body the hook never saw bypasses all of them, and for `Compact` discards detail no summary holds. | {verified: EphemeralReapSeenSetTests.Delete_ABodyThatBecomesEligibleWhileTheHookRuns_IsNotReapedUnseen_AndIsOfferedNextCycleAsync, EphemeralReapSeenSetTests.Compact_ABodyThatBecomesEligibleWhileTheHandlerRuns_IsNotReapedUncompacted_AndIsCompactedNextCycleAsync, EphemeralReapSeenSetTests.Reap_GivenIds_DeletesOnlyThose_AnEmptyListNothing_AndNullEveryEligibleBodyAsync} |
+| The batch the hook is offered is read with every gate the reap applies, including the `AfterTtl` expiry: a body whose TTL has not passed is not offered. | A body offered and then kept by the reap was run through the hook and reported destroyed by the after-destruction notification while it survived. Reading with the reap's own gates makes "offered", "deleted" and "reported destroyed" the same set. Locked by [`EphemeralDestructionTargetSqlTests`](https://github.com/whizbang-lib/whizbang/blob/develop/tests/Whizbang.Data.EFCore.Postgres.Tests/EphemeralDestructionTargetSqlTests.cs). | {verified: EphemeralDestructionTargetSqlTests.GetEphemeralBodiesAboutToReap_AnAfterTtlBodyNotYetExpired_IsNotOffered_AndOfferedMatchesDeletedAsync} |
 | The batch is passed by event id, not as a cut-off instant. | An instant covers only the gates that depend on time. A body whose perspective work finished, or that a snapshot came to cover, after the read would still go unseen. | {verified: EphemeralReapSeenSetTests.Reap_GivenIds_DeletesOnlyThose_AnEmptyListNothing_AndNullEveryEligibleBodyAsync} |
 | The restriction holds whatever the hook decided: proceeded, canceled, deferred, refused or threw. An empty batch reaps nothing. | Held bodies are kept by their hold. When a hook keeps failing, the failure policy lifts the hold on the batch so the reap force-deletes it, and that deletion must reach only bodies the hook was offered. | {verified: MaintenanceWorkerReapScopeTests.AHeldBatch_CanceledDeferredOrUnavailable_StillRestrictsTheReapToItAsync, MaintenanceWorkerReapScopeTests.AHookThatThrows_RestrictsTheReapToTheBatch_SoAForcedDeleteReachesOnlyItAsync, MaintenanceWorkerReapScopeTests.AnEmptyBatch_RestrictsTheReapToNothingAsync} |
 | With no hook and no destruction-stage receptor registered, no batch is read and the reap is unrestricted. | Nothing is registered to see a body, so there is nothing to bypass. | {verified: MaintenanceWorkerReapScopeTests.WithNoHook_NoBatchIsRead_AndTheReapIsUnrestrictedAsync} |
