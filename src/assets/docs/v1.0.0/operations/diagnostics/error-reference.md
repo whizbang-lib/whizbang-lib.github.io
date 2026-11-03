@@ -383,6 +383,8 @@ Schema bootstrap for {Schema} failed at {Step} with an error that is not transie
 
 Compile-time errors, warnings and notices from Whizbang's source generators and analyzers use `WHIZ###` IDs and surface in build output and the IDE, not at runtime. Every ID has its own page; each ID means one thing. WHIZ060 to WHIZ063 are also covered together on the [Serializable Property Analyzer](serializable-property-analyzer.md) page. Ten IDs are **retired** (WHIZ003, WHIZ005, WHIZ020, WHIZ023, WHIZ042, WHIZ050, WHIZ051, WHIZ052, WHIZ057 and WHIZ803): they were declared but never reported, are no longer in the generator package, and are never reused. Their pages explain what each described; delete any suppression of them.
 
+WHIZ600 to WHIZ699 are checks on this repository's own code and tests and never ship in a package. They are listed in [Repository Checks and Diagnostic IDs](../../../contributors/repository-checks.md), with the registry every new ID is taken from.
+
 | ID | Severity | Page |
 |---|---|---|
 | WHIZ001 | Info | [Receptor Discovered](whiz001.md) |
