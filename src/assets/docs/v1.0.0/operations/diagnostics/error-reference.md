@@ -10,6 +10,8 @@ description: >-
 order: 1
 tags: 'errors, error-reference, troubleshooting, runtime, logs, dead-letter-queue, transport, perspectives, rebuild, serialization'
 codeReferences:
+  - src/Whizbang.Core/Startup/StartupAssessmentSource.cs
+  - src/Whizbang.Data.Postgres/StartupVerdictBinding.cs
   - src/Whizbang.Core/ReceptorNotFoundException.cs
   - src/Whizbang.Core/Messaging/StreamSealedException.cs
   - src/Whizbang.Core/Archival/StreamArchivedException.cs
@@ -376,6 +378,41 @@ Schema bootstrap for {Schema} failed at {Step} with an error that is not transie
 **What happens next**: The initialization attempt fails in Preflight, before any election or migration, and the schema lock is left free. In the default background mode the initializer's next attempt starts after `InitRetryDelay`, and the schema-ready gate stays closed; in blocking mode the host's start fails. Earlier releases logged the same failure at Warning and carried on, migrating under the schema lock alone, so it surfaced only as an election that never happened.
 
 **Fix**: Read the inner exception and `Step`. A `<connect>` failure is the connection string or the database; a script or `<closure record>` failure under a data-only role needs the [`-init` connection](../infrastructure/migrations#database-roles) with schema rights; a script the server rejects names the bootstrap region to look at.
+
+---
+
+### The schema version record could not be read {#startup-assessment-exception}
+{verified: StartupAssessmentSourceTests.AnyOtherFailure_FailsStartupLoudly_AndIsNotLatchedAsync, StartupAssessmentSourceTests.ATemporaryFailure_IsRetriedWithinPreflight_UntilTheVerdictLandsAsync, StartupAssessmentSourceTests.TheRefusal_CarriesItsStandardShapesAsync, SchemaInitializationRunnersTests.AnUnreadableVersionRecord_FailsTheAttemptLoudly_BeforeAnyRunnerAsync, StartupAssessorTests.AVersionRecordThatCannotBeRead_IsNeverTakenForABrandNewDatabaseAsync}
+
+```text
+The schema version record could not be read, so this instance cannot tell whether the schema is newer than its binary; startup stops in Preflight and never migrates blind. See the inner exception for what failed.
+The schema version record could not be read and the failure is not temporary; startup does not continue past Preflight on this attempt, because an instance that cannot tell whether the schema is newer than its binary must not migrate it
+```
+
+**Source**: `StartupAssessmentException` (namespace `Whizbang.Core.Startup`), thrown by `StartupAssessmentSource` when the [Assess](../startup/rolling-upgrades#unreadable-version-record) step reads the version record. `InnerException` carries the database's own error. The second line is logged at Error just before it is thrown, and Preflight's stage message becomes `the schema version record could not be read; this attempt stops here rather than migrate blind`.
+
+**Trigger**: The migration ledger exists but reading it failed for a reason that would fail the same way on every attempt: a missing permission, a ledger or version table altered by hand, a column that is not where the reader expects it. A brand-new database (no ledger) and a ledger with no version table never end up here; both are read as `Migrate`. A temporary failure never ends up here either: Assess retries it within Preflight, 1 second doubling to a 30 second cap, and says `the schema version record could not be read for a moment (<reason>); retrying` on each retry.
+
+**What happens next**: The initialization attempt fails in Preflight, before any runner starts, so nothing is bootstrapped, elected or migrated, and the schema-ready gate stays closed. The failure is never cached: in the default background mode the initializer's next attempt, after `InitRetryDelay`, reads the record again; in blocking mode the host's start fails. **Why not migrate anyway**: an instance that cannot tell whether the schema is newer than its binary cannot tell whether migrating it is a downgrade.
+
+**Fix**: Read the inner exception. Check that the application's database role can read `wh_schema_migrations` and `wh_schema_versions`, and that neither was altered by hand. Once the record can be read, the next attempt proceeds on its own.
+
+---
+
+### This instance stood down {#schema-stand-down-exception}
+{verified: StartupParityTests.TheTurnkeyCall_OnAStoodDownInstance_IsRefused_AndAppliesNothingAsync, StartupVerdictBindingTests.AStandDown_IsRefused_NamingTheReasonAsync, StartupVerdictBindingTests.TheRefusal_CarriesItsStandardShapesAsync, AssessBindingSourceGuardTests.TheGeneratedPass_ReadsTheVerdict_BeforeItAppliesAnythingAsync}
+
+```text
+This instance stood down, so no schema initialization runs on it and nothing is applied: {reason}
+```
+
+**Source**: `SchemaStandDownException` (namespace `Whizbang.Data.Postgres`, an `InvalidOperationException`), thrown by `StartupVerdictBinding` when a schema pass reads a `StandDown` verdict. `{reason}` is the [Assess](../startup/rolling-upgrades#standing-down) reason: normally the version the ledger records and this binary's own, or a missing or unreadable library version.
+
+**Trigger**: A direct `EnsureWhizbangInitializedAsync()`, or a DbContext's `EnsureWhizbangDatabaseInitializedAsync()`, on a host whose binary is older than the schema. The hosted start never throws it: there, a stand-down runs no runner at all, and the instance stays visible in Preflight with the `StandingBy` phase instead (see [A stood-down instance stays in Preflight](../startup/startup-status#stood-down)).
+
+**What happens next**: Nothing was applied: no bootstrap closure, no election, no stored-form rewrite, no pass. The verdict is the same one the hosted start acts on, so calling again gives the same answer until the binary is upgraded. **Why it throws rather than return**: code that called it expects the schema to be ready afterwards, and it is not, so it must not carry on as if it were.
+
+**Fix**: Deploy a binary at or above the version the ledger records. During a rolling deployment this is expected on the older instances: the orchestrator replaces them once the newer ones are ready. If no newer release should exist, `wh_schema_versions` lists every library version recorded against this database; find the deployment that ran the newer one.
 
 ---
 

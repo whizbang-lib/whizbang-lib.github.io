@@ -135,7 +135,7 @@ Plain `TryAddSingleton` would lose to the placeholder when your extension runs a
 | `IDeadLetterStore` | `NullDeadLetterStore` (`IsConfigured`) | a storage driver | No dead-letter queue; rows keep accumulating |
 | `IPerspectiveSnapshotStore` | `NullPerspectiveSnapshotStore` (`IsConfigured`) | a storage driver | Rewinds replay from the first event |
 | `IPerspectiveStreamLocker` | `NullPerspectiveStreamLocker` (`IsConfigured`) | a storage driver | Rewinds run unlocked |
-| `IStartupAssessor` | `NullStartupAssessor` (`IsConfigured`) | a storage driver | The assess step is skipped |
+| `IStartupAssessor` | `NullStartupAssessor` (`IsConfigured`) | a storage driver (both the EF Core and the Dapper Postgres drivers) | The assess step is skipped, and the schema initializer runs with no verdict, so it can neither skip the locks on a `Current` schema nor stand down on a newer one. A registered assessor is read once per host through `StartupAssessmentSource` ([Assess](../../operations/startup/rolling-upgrades#assess)) {verified: StartupVerdictBindingTests.WithNoHost_NoSource_OrNoAssessor_ThePassIsUnassessedAsync, StartupParityTests.EachDriver_SuppliesAnAssessor_ThatReadsTheVersionRecordAsync} |
 | `IDutyElector` | `NullDutyElector` (`IsConfigured`) | a notification transport | Exclusive startup duties run on every instance |
 | `IPinnedConnectionPool` | `NoOpPinnedConnectionPool` | a storage driver | No connection pinning |
 | `IOccurrencePublishGate` | `NoOpOccurrencePublishGate` | a notification transport | Every occurrence publishes |
