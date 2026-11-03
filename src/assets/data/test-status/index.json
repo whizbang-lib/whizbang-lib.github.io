@@ -1,13 +1,13 @@
 {
   "run": {
-    "runId": "41720735885",
-    "sha": "dd2b305f2d6b6c50d27e254025f12a509753df59",
+    "runId": "41738234805",
+    "sha": "364a462509a1221db69cb8f40c16a70e741d5818",
     "branch": "develop",
-    "libraryVersion": "0.2627.0-alpha.387",
-    "completedAt": "2026-11-03T21:34:36.867Z"
+    "libraryVersion": "0.2627.0-alpha.397",
+    "completedAt": "2026-11-03T23:52:40.138Z"
   },
   "total": {
-    "passed": 38338,
+    "passed": 38425,
     "failed": 0,
     "skipped": 12
   },
@@ -18,7 +18,7 @@
       "skipped": 0
     },
     "component": {
-      "passed": 5563,
+      "passed": 5585,
       "failed": 0,
       "skipped": 0
     },
@@ -58,7 +58,7 @@
       "skipped": 1
     },
     "unit": {
-      "passed": 21373,
+      "passed": 21438,
       "failed": 0,
       "skipped": 8
     }
@@ -162,7 +162,7 @@
     },
     "Whizbang.Core.Component.Tests": {
       "file": "Whizbang.Core.Component.Tests.json",
-      "passed": 4234,
+      "passed": 4249,
       "failed": 0,
       "skipped": 0
     },
@@ -174,7 +174,7 @@
     },
     "Whizbang.Core.Tests": {
       "file": "Whizbang.Core.Tests.json",
-      "passed": 13555,
+      "passed": 13617,
       "failed": 0,
       "skipped": 0
     },
@@ -234,7 +234,7 @@
     },
     "Whizbang.Generators.Tests": {
       "file": "Whizbang.Generators.Tests.json",
-      "passed": 3856,
+      "passed": 3859,
       "failed": 0,
       "skipped": 0
     },
@@ -396,7 +396,7 @@
     },
     "Whizbang.Transports.AzureServiceBus.Component.Tests": {
       "file": "Whizbang.Transports.AzureServiceBus.Component.Tests.json",
-      "passed": 140,
+      "passed": 147,
       "failed": 0,
       "skipped": 0
     },
