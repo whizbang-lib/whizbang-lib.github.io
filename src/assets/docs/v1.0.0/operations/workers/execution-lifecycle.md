@@ -98,7 +98,7 @@ public interface IExecutionStrategy {
 2. **DrainAsync**: Stop accepting new work and wait for everything already queued to run
 3. **StopAsync**: Stop accepting new work; the item already running finishes and anything still queued is finished as canceled
 
-**Order on shutdown: drain, then stop.** `StopAsync` does not run queued work, so a host that wants the queue run calls `DrainAsync` first and `StopAsync` after it. Stopping first and draining after runs nothing: the stop has already finished the queue as canceled, and a drain of a stopped executor returns at once. {verified: SerialExecutorStopTests.StopAsync_ItemQueuedBehindRunningWork_IsCanceledWithoutRunningAsync, SerialExecutorTests.DrainAsync_WithWorkerCancellation_HandlesOperationCanceledExceptionAsync}
+**Order on shutdown: drain, then stop.** `StopAsync` does not run queued work, so a host that wants the queue run calls `DrainAsync` first and `StopAsync` after it. Stopping first and draining after runs nothing: the stop has already finished the queue as canceled, and a drain of a stopped executor returns at once. {verified: SerialExecutorStopTests.StopAsync_ItemQueuedBehindRunningWork_IsCanceledWithoutRunningAsync, SerialExecutorTests.DrainAsync_AfterStop_ReturnsWithoutDrainingAsync}
 
 ---
 
