@@ -16,12 +16,12 @@ Every build diagnostic in this repository has one ID form, `WHIZ` and three digi
 
 | ID | Raised by | What it catches |
 |---|---|---|
-| WHIZ600 | `Directory.Build.targets` | A test project declares no `WhizbangTestTags`. |
-| WHIZ601 | `Directory.Build.targets` | A test project declares no `WhizbangTestType`. |
-| WHIZ602 | `Directory.Build.targets` | A test project declares a `WhizbangTestType` no test runner knows. |
-| WHIZ603 | `Whizbang.TestAnalyzers` | `IsNotNull()` on a `Nullable<T>` subject, an assertion that cannot fail under the pinned TUnit. |
-| WHIZ604 | `Whizbang.RepoAnalyzers` | A `JsonDocument` created and dropped without being disposed. |
-| WHIZ605 | `Whizbang.TestAnalyzers` | A test class in a sharded test project without exactly one `Shard*` category. |
+| [WHIZ600](../v1.0.0/operations/diagnostics/whiz600.md) | `Directory.Build.targets` | A test project declares no `WhizbangTestTags`. |
+| [WHIZ601](../v1.0.0/operations/diagnostics/whiz601.md) | `Directory.Build.targets` | A test project declares no `WhizbangTestType`. |
+| [WHIZ602](../v1.0.0/operations/diagnostics/whiz602.md) | `Directory.Build.targets` | A test project declares a `WhizbangTestType` no test runner knows. |
+| [WHIZ603](../v1.0.0/operations/diagnostics/whiz603.md) | `Whizbang.TestAnalyzers` | `IsNotNull()` on a `Nullable<T>` subject, an assertion that cannot fail under the pinned TUnit. |
+| [WHIZ604](../v1.0.0/operations/diagnostics/whiz604.md) | `Whizbang.RepoAnalyzers` | A `JsonDocument` created and dropped without being disposed. |
+| [WHIZ605](../v1.0.0/operations/diagnostics/whiz605.md) | `Whizbang.TestAnalyzers` | A test class in a sharded test project without exactly one `Shard*` category. |
 
 WHIZ600 to WHIZ604 were `WHZ0001` to `WHZ0005` until they moved into the single ID form. A suppression or severity setting that names an old ID no longer applies.
 
