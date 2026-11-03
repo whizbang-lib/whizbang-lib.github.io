@@ -351,7 +351,38 @@ The choices, each held by a test:
 - **The process-wide body default does not opt in.** `AuditBodyDefault = Include` keeps bodies for the types that are audited; it does not turn every high-churn ephemeral type (presence, typing, progress) into audit traffic at once (`TryBuildAuditMessage_TheDefaultSetToInclude_DoesNotOptInAnEphemeralEventAsync`).
 - **A decision hook cannot reopen an ephemeral type.** The exclusion is decided before the hook, as the self-audit exclusion is: a hook judges an occurrence but cannot keep its body (`AHookThatRecordsEverything_DoesNotReopenAnEphemeralTypeAsync`). Once a type has opted in, the hook decides its occurrences like any other type's (`AnEphemeralTypeThatKeepsItsBody_StillPassesThroughTheHookAsync`).
 - **Every path recognizes the same types.** The outbox path reads the ephemeral flag the dispatcher stamped on the message; the event store decorator and the emitter derive it from the payload with the ephemeral resolver, which recognizes a type declared ephemeral through a base record or interface. Both are given the resolver when the container composes them (`ComposedDecoratorReceivesTheRegisteredEphemeralResolverAsync`, `AddWhizbang_TheDefaultEmitter_IsGivenTheEphemeralResolverAsync`). The decorator's resolver is a required constructor argument, with the default `EphemeralModeResolver` registered by `TryAdd`, so a decorator built by hand cannot silently miss a type declared `[Ephemeral]` (`Constructor_WithNullEphemeralResolver_ThrowsArgumentNullExceptionAsync`); an optional dependency would be null wherever the type is built by hand. An emitter built with its public constructor has no resolver and recognizes the `IEphemeralEvent` marker only (`EmitEventAuditedAsync_TheSameTypeWithoutAResolver_IsRecordedAsync`).
-- **An unresolvable type** on the outbox path is audited as before unless the message is flagged ephemeral (`TryBuildAuditMessage_AnEphemeralEventOfAnUnresolvableType_IsNotAuditedAsync`).
+- **An unresolvable type** flagged ephemeral is not audited under either mode: it cannot have asked for its body (`TryBuildAuditMessage_AnEphemeralEventOfAnUnresolvableType_IsNotAuditedAsync`). For one that is not ephemeral, see [unresolvable event types](#unresolvable-event-types).
+
+### Unresolvable event types {#unresolvable-event-types}
+
+{verified: AuditOutboxMessageBuilderTests.TryBuildAuditMessage_OptInMode_UnresolvableType_IsNotAuditedAsync, AuditOutboxMessageBuilderTests.TryBuildAuditMessage_OptInMode_UnresolvableType_WarnsThatItWasNotAuditedNamingTheTypeAsync, AuditOutboxMessageBuilderTests.TryBuildAuditMessage_OptOutMode_UnresolvableType_IsAuditedWithoutTheSkipWarningAsync, AuditLedgerRebuildTests.LiveAndRebuild_AgreeOnAnUnresolvableType_UnderEitherModeAsync, AuditLedgerRebuildTests.Rederive_AnUnknownTypeUnderOptIn_WarnsNamingTheTypeAsync}
+
+The outbox path decides audit from the event's type, resolved from the type name on the message. When that name
+cannot be resolved (a type renamed or removed, or an assembly this build does not load), the decision depends on the
+audit mode:
+
+| Mode | An unresolvable event type is | Logged |
+|---|---|---|
+| `AuditMode.OptOut` (default) | Audited. | A warning that the type could not be resolved. |
+| `AuditMode.OptIn` | **Not audited.** | The same warning, and a second one for every event skipped this way, naming the type: `Event of type '<type name>' was not audited: the type could not be resolved, and under OptIn only a type marked [AuditEvent] is audited.` |
+
+The [ledger rebuild](#rebuilding-the-audit-ledger) decides a stored type it cannot resolve the same way, and also logs
+a warning for each type it skips under `OptIn`, so a rebuilt ledger holds exactly the records the live path wrote.
+
+| Choice | Reason | Verified |
+|---|---|---|
+| Under `OptIn`, an unresolvable type is not audited (owner decision, 2026-11-03). | It strictly honors `OptIn`: only a type marked `[AuditEvent]` is audited, and a type that cannot be resolved carries no mark anyone can read. It also keeps a rebuilt ledger identical to the live one; when the live path audited the type and the rebuild skipped it, a rebuild silently lost records. | {verified: AuditOutboxMessageBuilderTests.TryBuildAuditMessage_OptInMode_UnresolvableType_IsNotAuditedAsync, AuditLedgerRebuildTests.LiveAndRebuild_AgreeOnAnUnresolvableType_UnderEitherModeAsync} |
+| Every such skip logs a warning naming the type. | In the ledger, a record missing because its type could not be resolved looks exactly like a type nobody opted in. The warning keeps a resolution failure from being silent. | {verified: AuditOutboxMessageBuilderTests.TryBuildAuditMessage_OptInMode_UnresolvableType_WarnsThatItWasNotAuditedNamingTheTypeAsync, AuditLedgerRebuildTests.Rederive_AnUnknownTypeUnderOptIn_WarnsNamingTheTypeAsync, AuditLedgerRebuildTests.Rederive_AnUnknownTypeUnderOptOut_DoesNotWarnAsync} |
+| Under `OptOut`, an unresolvable type is audited, without the skip warning. | Under `OptOut` every event is audited unless its type excludes itself, and a type that cannot be resolved cannot have excluded itself. | {verified: AuditOutboxMessageBuilderTests.TryBuildAuditMessage_OptOutMode_UnresolvableType_IsAuditedWithoutTheSkipWarningAsync, AuditLedgerRebuildTests.LiveAndRebuild_AgreeOnAnUnresolvableType_UnderEitherModeAsync} |
+
+Locked by [`AuditOutboxMessageBuilderTests`](https://github.com/whizbang-lib/whizbang/blob/develop/tests/Whizbang.Core.Tests/SystemEvents/AuditOutboxMessageBuilderTests.cs)
+and [`AuditLedgerRebuildTests`](https://github.com/whizbang-lib/whizbang/blob/develop/tests/Whizbang.Core.Tests/SystemEvents/AuditLedgerRebuildTests.cs),
+which fail if the live path goes back to auditing the type under `OptIn`, if a skip stops being reported, or if the
+live path and the rebuild stop agreeing.
+
+If you see the skip warning, the type name stored on the message no longer resolves in the service writing the audit
+record. Restore the type so its events can be judged, or switch to `OptOut` if events of
+types the service cannot load must still be audited.
 
 ### Adding Audit Context
 
@@ -394,7 +425,7 @@ What a rebuild does, and why:
 | Each record carries the id its live writer gave it, [`RecordIdFor(originalEventId)`](#record-ids). | The audit perspective keys a record by its id, so a rebuild, run once or many times, leaves one row per audited event. | {verified: AuditLedgerRebuildTests.Rederive_ARecordTheLiveWriterMinted_IsTheSameRecordAsync, AuditLedgerRebuildTests.RunAsync_Twice_YieldsOneRecordPerOriginEventAsync} |
 | Only eligible types are re-derived: the mode, `[AuditEvent]`, the self-audit exclusion and the [ephemeral exclusion](#ephemeral-events) apply as on the live paths. | A rebuild must not mint records the live paths would never have written. | {verified: AuditLedgerRebuildTests.Rederive_AnExcludedType_IsNoRecordAsync, AuditLedgerRebuildTests.Rederive_OptIn_AnUnmarkedType_IsNoRecordAsync, AuditLedgerRebuildTests.Rederive_AStoredAuditRecord_IsNoRecordAsync, AuditLedgerRebuildTests.Rederive_AnEphemeralEvent_IsNoRecordAsync, AuditLedgerRebuildTests.Rederive_AnEphemeralEventThatKeepsItsBody_IsARecordWithItAsync} |
 | The `IAuditDecisionHook` is not consulted. | A hook judges an event's payload, and a rebuild, like a redelivery, never rehydrates payloads (AOT metadata and upcast fidelity). An occurrence a hook vetoed live can therefore reappear in a rebuilt ledger. | {verified: AuditRebuildRequestReceptorTests.Rebuild_DoesNotConsultTheRegisteredDecisionHookAsync} |
-| A stored type this build does not know is audited under `OptOut` and not under `OptIn`. | Under `OptOut` nothing could have excluded it; under `OptIn` nothing could have marked it. | {verified: AuditLedgerRebuildTests.Rederive_AnUnknownType_IsARecordUnderOptOutAsync, AuditLedgerRebuildTests.Rederive_AnUnknownType_IsNoRecordUnderOptInAsync, AuditLedgerRebuildTests.Rederive_AnUnknownEphemeralType_IsNoRecordAsync} |
+| A stored type this build does not know is audited under `OptOut` and not under `OptIn`, as on the live outbox path ([unresolvable event types](#unresolvable-event-types)). | Under `OptOut` nothing could have excluded it; under `OptIn` nothing could have marked it. | {verified: AuditLedgerRebuildTests.Rederive_AnUnknownType_IsARecordUnderOptOutAsync, AuditLedgerRebuildTests.Rederive_AnUnknownType_IsNoRecordUnderOptInAsync, AuditLedgerRebuildTests.Rederive_AnUnknownEphemeralType_IsNoRecordAsync} |
 | The record's time, correlation and causation come from the event's first stored hop; the rebuild's own time stands in only when the stored metadata has no hop to read. | An audit trail is read by when things happened; a rebuild must not move every record to the hour it ran. | {verified: AuditLedgerRebuildTests.Rederive_TheRecordTime_IsWhenTheEventHappenedNotWhenItWasRebuiltAsync, AuditLedgerRebuildTests.Rederive_CorrelationAndCausation_ComeFromTheStoredHopAsync, AuditLedgerRebuildTests.Rederive_NoStoredMetadata_StampsTheRebuildTimeAndNoChainAsync} |
 | Tenant and user come from the stored scope; the record rides that tenant's ledger. A row with no scope is on the no-tenant ledger. | The same ledger rule as the live paths. | {verified: AuditLedgerRebuildTests.Rederive_AnEligibleEvent_IsARecordOfItOnTheTenantLedgerAsync, AuditLedgerRebuildTests.Rederive_NoStoredScope_IsOnTheNoTenantLedgerAsync} |
 | The body is copied from the stored body only when the type or `AuditBodyDefault` keeps it. | The same body rule as the live paths. | {verified: AuditLedgerRebuildTests.Rederive_ByDefault_LeavesTheBodyOutAsync, AuditLedgerRebuildTests.Rederive_ATypeThatKeepsItsBody_CarriesTheStoredBodyAsync, AuditLedgerRebuildTests.Rederive_TheDefaultSetToInclude_CarriesEveryBodyAsync} |

@@ -66,6 +66,11 @@ public sealed class MonthEnd(IBookCloser closer) {
 }
 ```
 
+The opening event can also be a positional record, such as
+`public sealed record MonthOpened(decimal Balance) : OpeningBalance;`. The positional member is
+constructed and the framework's link members are set after it (see
+[constructors and positional records](../../extending/source-generators/json-contexts#constructors)).
+
 | Status | Meaning |
 |---|---|
 | `Closed` | The summary was appended, the stream sealed and the successor opened; `SuccessorStreamId` and `PredecessorFinalVersion` say where. |

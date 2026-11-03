@@ -22,6 +22,7 @@ codeReferences:
   - src/Whizbang.Sagas/ISagaItemStreamIdDeriver.cs
   - src/Whizbang.Sagas/SagaItemStreamIdDeriver.cs
   - src/Whizbang.Sagas/SagaServiceCollectionExtensions.cs
+  - src/Whizbang.Sagas/SagaItemStreamNamespaceConflictWarning.cs
   - src/Whizbang.Sagas.Generators/SagaGenerator.cs
   - src/Whizbang.Sagas.Contracts/SignalsOutcomeAttribute.cs
 testReferences:
@@ -30,6 +31,7 @@ testReferences:
   - tests/Whizbang.Sagas.Tests/SagaItemCompletionReconcilerTests.cs
   - tests/Whizbang.Sagas.Tests/SagaItemStreamsTests.cs
   - tests/Whizbang.Sagas.Tests/SagaItemStreamIdDeriverTests.cs
+  - tests/Whizbang.Sagas.Tests/SagaItemStreamsFirstRegistrationWinsTests.cs
   - tests/Whizbang.Sagas.Tests/Services/TryRecoverViaWatchdogTickAsyncTests.cs
   - tests/Whizbang.Sagas.Component.Tests/SagaItemStreamNamespacePerHostTests.cs
   - tests/Whizbang.Sagas.Tests/SagaLiveProgressResolversTests.cs
@@ -140,7 +142,7 @@ The derivation is reproducible byte-for-byte in SQL via a canonical `saga_item_s
 
 :::updated
 `SagaItemStreams.AppDefaultNamespace` is one value for the whole process, and every `AddWhizbangSagas` call
-overwrites it. The framework's own per-item readers used to derive from it at call time, so in a process
+overwrote it. The framework's own per-item readers used to derive from it at call time, so in a process
 that builds several hosts (integration tests, a test server per service) the last registration decided the
 namespace for all of them. A host registered without the setting reset it to the default, and another host's
 stranded-item watchdog then derived ids for streams it never writes, read items whose terminal events were
@@ -171,15 +173,17 @@ public sealed class ImportItemLookup(ISagaItemStreamIdDeriver itemStreams, ISaga
 ```
 
 **The static `SagaItemStreams.Of(sagaId, itemIdentifier)` is process-wide.** It stays, for code with no
-container, and it reads the one value the last `AddWhizbangSagas` call in the process set. In a process with
-a single host that is the host's namespace; in a process with several it is whichever registered last. The
+container, and it reads the one value the first `AddWhizbangSagas` call in the process set (see
+[first registration wins](#process-wide-namespace-first-registration-wins)). In a process with a single host that is
+the host's namespace; in a process with several it is whichever registered first. The
 existing reconciler overloads without a deriver, and the overload `SagaItemStreams.Of(namespaceId, sagaId,
 itemIdentifier)` that names its namespace, behave exactly as before.
 
-**In tests, derive through an explicit namespace.** Test frameworks run tests in parallel in one process, and
-every test that calls `AddWhizbangSagas` sets the process-wide value. A test that derives a per-item stream id
+**In tests, derive through an explicit namespace.** Test frameworks run tests in parallel in one process, so
+which test's `AddWhizbangSagas` call sets the process-wide value depends on the order the tests happen to run in,
+and a test that resets the value lets the next registration set it again. A test that derives a per-item stream id
 twice through it (once in the code under test, once to key a stub terminal reader) can read two different
-namespaces when another test registers in between, and fail on a stream id it did not expect. Give the code
+namespaces when another test resets and registers in between, and fail on a stream id it did not expect. Give the code
 under test a deriver or host-registered `SagaOptions` with a namespace of its own and key the stub with
 `SagaItemStreams.Of(namespaceId, sagaId, itemIdentifier)`, and keep the tests that assert on the process-wide
 value itself in one non-parallel group that restores it. The framework's own saga tests do this, and each one
@@ -221,6 +225,43 @@ same ids as before. To be safe in a process with several hosts:
   `ReconcileTerminalCountsAsync` when you call them yourself.
 - A hand-written saga that uses the constructor without options (or builds its own `SagaOptions`) should
   take `SagaOptions` from the container and pass it through, as above.
+
+#### The process-wide namespace is first-registration-wins {#process-wide-namespace-first-registration-wins}
+
+{verified: SagaItemStreamsFirstRegistrationWinsTests.ALaterRegistrationWithADifferentNamespace_DoesNotOverwriteTheFirstAsync, SagaItemStreamsFirstRegistrationWinsTests.ALaterRegistrationWithADifferentNamespace_WarnsAtStartNamingBothAsync, SagaItemStreamsFirstRegistrationWinsTests.ALaterRegistrationWithTheSameNamespace_IsSilentAsync, SagaItemStreamsFirstRegistrationWinsTests.TheFirstRegistration_IsAppliedAndIsSilentAsync, SagaItemStreamsFirstRegistrationWinsTests.ConcurrentRegistrations_SettleOnOneNamespace_ThatEveryRegistrationIsToldAsync}
+
+The first `AddWhizbangSagas` call in a process sets `SagaItemStreams.AppDefaultNamespace`, the value the
+namespace-less `SagaItemStreams.Of(sagaId, itemIdentifier)` reads. A later call with a different
+`PerItemStreamNamespace` leaves it unchanged, and that call's host logs a warning when it starts, naming both
+namespaces:
+
+```text
+This host's saga per-item stream namespace <requested> was not applied process-wide: an earlier AddWhizbangSagas
+registration set <process-wide>, and the first registration is kept. This host's saga services derive under
+<requested>; SagaItemStreams.Of without a namespace derives under <process-wide>.
+```
+
+A later call with the same namespace is silent. The value is set atomically, so hosts built in parallel settle on one
+namespace and every registration is told which one it is. Once set, it does not change between two reads.
+
+| Choice | Reason | Verified |
+|---|---|---|
+| The first registration's namespace is kept; a later one with a different namespace does not overwrite it (owner decision, 2026-11-03). | Two containers in one process (a test suite, or a host running two modules) raced on the value: the last registration silently won for every caller of the namespace-less overload, and a value read twice could change between the two reads. A value that never moves once set cannot re-route a caller to streams it never wrote. | {verified: SagaItemStreamsFirstRegistrationWinsTests.ALaterRegistrationWithADifferentNamespace_DoesNotOverwriteTheFirstAsync, SagaItemStreamsFirstRegistrationWinsTests.ConcurrentRegistrations_SettleOnOneNamespace_ThatEveryRegistrationIsToldAsync} |
+| A later registration that disagrees logs one warning at host start, naming the namespace that was kept and the one that was not. | Keeping the first value silently would only move the surprise to the later host; the warning makes the conflict findable. It is logged when the host starts because no logger exists yet while services are registered. | {verified: SagaItemStreamsFirstRegistrationWinsTests.ALaterRegistrationWithADifferentNamespace_WarnsAtStartNamingBothAsync} |
+| The first registration, and a later one that agrees, log nothing. | Nothing differs, so there is nothing to act on. | {verified: SagaItemStreamsFirstRegistrationWinsTests.ALaterRegistrationWithTheSameNamespace_IsSilentAsync, SagaItemStreamsFirstRegistrationWinsTests.TheFirstRegistration_IsAppliedAndIsSilentAsync} |
+| No API is removed or marked obsolete. | Steering every caller to the container would break code that derives a per-item stream id with no container at all. A host's own saga services are unaffected either way: they derive under their own options through `ISagaItemStreamIdDeriver`. | {verified: SagaItemStreamIdDeriverTests.TwoContainers_EachResolveADeriverForTheirOwnNamespaceAsync} |
+
+Locked by [`SagaItemStreamsFirstRegistrationWinsTests`](https://github.com/whizbang-lib/whizbang/blob/develop/tests/Whizbang.Sagas.Tests/SagaItemStreamsFirstRegistrationWinsTests.cs),
+which fails if the choice flips back to last-registration-wins or if a disagreement stops being reported.
+
+**Do not depend on which registration came first.** Code that runs inside a host injects `ISagaItemStreamIdDeriver`,
+which derives under that host's own namespace. Code with no container passes the namespace it means to
+`SagaItemStreams.Of(namespaceId, sagaId, itemIdentifier)`. Either way, the per-item stream id no longer depends on the
+order in which the process built its hosts.
+
+**Upgrading.** A process that relied on a later registration replacing the namespace now keeps the first one, and the
+later host logs the warning above. Inject `ISagaItemStreamIdDeriver`, or pass the namespace explicitly, wherever that
+code derives a per-item stream id.
 
 ### Atomic terminal-event emission
 
