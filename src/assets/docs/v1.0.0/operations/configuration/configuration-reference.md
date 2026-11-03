@@ -210,6 +210,7 @@ Removed keys the library declares:
 | `Whizbang:Archive:AzureBlob` | `AzureBlobArchiveOptions` | Opt-in helper (`AddWhizbangAzureBlobArchive`) |
 | `Whizbang:Archive` (`ReadThrough`) | `ArchiveOptions` | Automatic (worker pipeline, event store decoration); see [Archive and stream lifecycle](#archive-and-stream-lifecycle-options) |
 | `Whizbang:StreamLifecycle` (`Types:<StreamType>:AppendToArchived`) | `StreamLifecycleOptions` | Automatic (worker pipeline); see [Archive and stream lifecycle](#archive-and-stream-lifecycle-options) |
+| `Whizbang:Perspectives:ArchivedStreamRows` (`<Perspective>`) | `ArchivedStreamRowsOptions` | Automatic (worker pipeline); see [Archive and stream lifecycle](#archive-and-stream-lifecycle-options) |
 | `Whizbang:Workers:PinnedPool` | `WhizbangPinnedPoolOptions` | Automatic (`AddWhizbangPinnedPool()`) |
 | `Whizbang` | `WhizbangOptions` | Automatic (worker pipeline) |
 | `Whizbang:SchemaInitialization` | `SchemaInitializationOptions` | Automatic |
@@ -599,6 +600,7 @@ zero or more, or not a whole number of one or more fails the start naming the ke
 | `Whizbang:StreamLifecycle:Types:<StreamType>:AppendToArchived` | `AppendToArchivedPolicy` | `Refuse` | `Whizbang__StreamLifecycle__Types__<StreamType>__AppendToArchived` | What an append to a stream of that type archived whole does: `Refuse`, `AutoRestore` or `NewGeneration` ([the policy](../../fundamentals/events/archive-store#appending-to-an-archived-stream), [new generation](../../fundamentals/events/archive-store#new-generation)) |
 | `Whizbang:StreamLifecycle:FinalizeGrace` | `TimeSpan` | `7.00:00:00` | `Whizbang__StreamLifecycle__FinalizeGrace` | How long a sealed stream stays hot before its disposition runs, counted from the later of the seal and the first maintenance cycle that sees it; zero or more ([scheduled disposition](../../fundamentals/events/stream-end-of-life#scheduled-disposition)) |
 | `Whizbang:StreamLifecycle:SweepBatchSize` | `int` | `500` | `Whizbang__StreamLifecycle__SweepBatchSize` | The most sealed streams one maintenance cycle schedules, and the most it disposes of; 1 or more |
+| `Whizbang:Perspectives:ArchivedStreamRows:<Perspective>` | `ArchivedStreamRowPolicy` | the perspective's `[ArchivedStreamRows]`, else `Keep` | `Whizbang__Perspectives__ArchivedStreamRows__<Perspective>` | What a whole-stream archive does to the perspective's rows: `Keep`, `Drop` or `Archive`. `<Perspective>` is the perspective's CLR type name, a nested type written `Outer+Inner` ([perspective rows](../../fundamentals/events/archive-store#perspective-rows)) |
 
 ## Code-Configured Options: The Binding Recipe
 

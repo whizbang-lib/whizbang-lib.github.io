@@ -8,7 +8,7 @@ description: >-
   IArchiveStore moves a stream's events out of the hot event store and back: copy then truncate in one
   transaction, a byte-identical read in version order, a tombstone that refuses version reuse, and an exact restore.
   The Postgres-table store is built in; the Azure Blob store is the production default.
-tags: 'archive, archive-store, stream-end-of-life, tombstone, origin-generation, wh_event_archive, azure-blob, brotli, wh_archive_manifest, read-through, restore-request, append-to-archived'
+tags: 'archive, archive-store, stream-end-of-life, tombstone, origin-generation, wh_event_archive, azure-blob, brotli, wh_archive_manifest, read-through, restore-request, append-to-archived, perspective-rows, wh_event_archive_rows'
 codeReferences:
   - src/Whizbang.Core/Archival/IArchiveStore.cs
   - src/Whizbang.Core/Archival/ArchiveBatch.cs
@@ -55,6 +55,14 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/296_NewGenerationWritePaths.sql
   - src/Whizbang.Data.EFCore.Postgres/EFCoreEventStore.cs
   - src/Whizbang.Data.Dapper.Postgres/DapperPostgresEventStore.cs
+  - src/Whizbang.Data.Postgres/Migrations/299_ArchivedStreamRows.sql
+  - src/Whizbang.Core/Archival/ArchivedStreamRowPolicy.cs
+  - src/Whizbang.Core/Archival/ArchivedStreamRowPolicies.cs
+  - src/Whizbang.Core/Archival/ArchivedStreamRowsOptions.cs
+  - src/Whizbang.Core/Archival/ArchivedStreamRowsConfigurator.cs
+  - src/Whizbang.Core/Attributes/ArchivedStreamRowsAttribute.cs
+  - src/Whizbang.Generators/PerspectiveRunnerGenerator.cs
+  - src/Whizbang.Generators/Templates/PerspectiveRunnerTemplate.cs
 testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StreamSealingSqlTests.cs
   - tests/Whizbang.Core.Tests/Archival/ArchiveBatchTests.cs
@@ -91,6 +99,14 @@ testReferences:
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperArchivedStreamHistoryProbeTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/ArchiveNewGenerationSqlTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperStreamDispositionTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/ArchivedStreamRowsSqlTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperArchivedStreamRowsTests.cs
+  - tests/Whizbang.Core.Tests/Archival/ArchivedStreamRowPoliciesTests.cs
+  - tests/Whizbang.Core.Tests/Archival/ArchivedStreamRowsOptionsBinderTests.cs
+  - tests/Whizbang.Core.Tests/Archival/ArchivedStreamRowsConfiguratorTests.cs
+  - tests/Whizbang.Core.Tests/Workers/MaintenanceWorkerArchivedStreamRowsSyncTests.cs
+  - tests/Whizbang.Core.Tests/Perspectives/EvictedRowRebuildTests.cs
+  - tests/Whizbang.Generators.Tests/PerspectiveRunnerGeneratorArchivedStreamRowsTests.cs
 ---
 
 # Archive Store
@@ -621,6 +637,77 @@ The whole-chain differences are within the spread between rounds; the probe is t
 hold an archived stream pays for the refusal (a dead letter per refused event, and under AutoRestore one request row
 per stream).
 
+## Perspective rows {#perspective-rows}
+
+{verified: ArchivedStreamRowsSqlTests.Drop_RemovesTheRow_ItsParkedCursors_AndAllButTheLatestSnapshot_AndLeavesAnotherModelAloneAsync, ArchivedStreamRowsSqlTests.Archive_MovesTheRowBesideTheEvents_AndARestoreBringsItBackExactlyAsync, DapperArchivedStreamRowsTests.Drop_OnADapperMigratedDatabase_RemovesTheRowAndItsParkedCursorAsync, DapperArchivedStreamRowsTests.Archive_OnADapperMigratedDatabase_MovesTheRow_AndARestoreBringsItBackAsync}
+
+Archiving a stream whole moves its events out of the hot store; its rows in the perspective tables stay where they are
+unless the perspective says otherwise (#1739). Each perspective declares what happens to its row of a stream archived
+whole:
+
+| Policy | What a whole-stream archive does to the row | What brings it back |
+|---|---|---|
+| `Keep` (the default) | Nothing: the row stays in its table, readable as it was. | Nothing is needed. |
+| `Drop` | Deletes the row with the companions a [row eviction](../perspectives/row-retention#what-an-eviction-removes) removes: every snapshot but the latest, per perspective of the model, and the cursors the archive parked for those perspectives. | When the stream comes back (a restore or a [new generation](#new-generation)), its next event rebuilds the row from the latest snapshot and the history, as for an evicted row. |
+| `Archive` | Moves the row, as a whole row, into `wh_event_archive_rows` beside the archived events. Its cursors stay parked and every snapshot stays. | A [restore](#restoring-an-archive) or a new generation puts the row back exactly as it was. |
+
+```csharp{title="Declare what happens to a perspective's rows of archived streams" description="Order summaries leave their table with an archived order stream and come back with it; the audit view keeps its rows; a cache drops them." category="Core Concepts" difficulty="INTERMEDIATE" tags=["archive", "perspectives", "perspective-rows", "attributes"] tests=["PerspectiveRunnerGeneratorArchivedStreamRowsTests.ADeclaredPolicy_IsRegisteredUnderThePerspectivesClrTypeNameAsync", "ArchivedStreamRowsSqlTests.Archive_MovesTheRowBesideTheEvents_AndARestoreBringsItBackExactlyAsync"]}
+[ArchivedStreamRows(ArchivedStreamRowPolicy.Archive)]
+public sealed class OrderSummaryPerspective : IPerspectiveFor<OrderSummary, OrderPlaced, OrderShipped> {
+  // Apply methods...
+}
+
+[ArchivedStreamRows(ArchivedStreamRowPolicy.Drop)]
+public sealed class OrderLookupCachePerspective : IPerspectiveFor<OrderLookup, OrderPlaced> {
+  // Apply methods...
+}
+```
+
+Configuration overrides the attribute, per perspective, by its CLR type name (the form its cursors are keyed by; a
+nested type is written `Outer+Inner`):
+
+```csharp{title="Override a perspective's policy for rows of archived streams" description="appsettings: keep the order summaries in place after all, without a redeploy." category="Configuration" difficulty="BEGINNER" tags=["archive", "perspectives", "perspective-rows", "configuration"] unverified="configuration shape; the binding is verified in ArchivedStreamRowsOptionsBinderTests"}
+// appsettings.json
+// "Whizbang": {
+//   "Perspectives": {
+//     "ArchivedStreamRows": { "MyApp.Orders.OrderSummaryPerspective": "Keep" }
+//   }
+// }
+// Environment: Whizbang__Perspectives__ArchivedStreamRows__MyApp.Orders.OrderSummaryPerspective=Keep
+```
+
+```mermaid{caption="A whole-stream archive disposes of each perspective table's row by the policy its perspectives declare; a restore or a new generation brings an archived row back." tests=["ArchivedStreamRowsSqlTests.Drop_RemovesTheRow_ItsParkedCursors_AndAllButTheLatestSnapshot_AndLeavesAnotherModelAloneAsync", "ArchivedStreamRowsSqlTests.Archive_MovesTheRowBesideTheEvents_AndARestoreBringsItBackExactlyAsync", "ArchivedStreamRowsSqlTests.Archive_ANewGeneration_BringsTheArchivedRowBackAsync"]}
+flowchart TD
+  W[Whole-stream archive commits the tombstone] --> P{Policy of the table's perspectives}
+  P -- Keep --> K[Row stays in its table]
+  P -- Drop --> D[Row deleted; parked cursors and all but the latest snapshot go]
+  P -- Archive --> A[Row moved to wh_event_archive_rows]
+  D --> B[Stream back: next event rebuilds the row from the latest snapshot]
+  A --> R[Restore or new generation: row put back]
+```
+
+| Choice | Reason | Verified |
+|---|---|---|
+| `Keep` is the default, and an archive that names no policy changes no row. | Archiving is about the event store's size; a read model nobody chose to remove must not disappear with it. | {verified: ArchivedStreamRowsSqlTests.Keep_TheRowStaysInItsTable_WithItsCursorsAndSnapshotsParkedAsBeforeAsync, ArchivedStreamRowPoliciesTests.Resolve_APerspectiveThatDeclaresNothing_KeepsItsRowsAsync} |
+| Only a whole-stream archive applies the policy; a prefix archive leaves every row where it is. | A stream archived through a prefix is still alive, and its row is its current read model. | {verified: ArchivedStreamRowsSqlTests.APrefixArchive_LeavesTheRowWhereItIs_WhateverThePolicyAsync} |
+| `Drop` reuses the row eviction's cleanup (`_wh_evict_perspective_row_companions`) and also deletes the cursors the archive parked for the model's perspectives; the latest snapshot stays. | A dropped row is an evicted row whose stream happens to be archived: without its cursor the stream's return is not read as the continuation of a row that no longer exists, and the latest snapshot (the [final snapshot](stream-end-of-life#the-final-snapshot) when the scheduled disposition archived the stream) is the floor the rebuild restores from. Other models' cursors and snapshots on the stream are untouched. | {verified: ArchivedStreamRowsSqlTests.Drop_RemovesTheRow_ItsParkedCursors_AndAllButTheLatestSnapshot_AndLeavesAnotherModelAloneAsync, ArchivedStreamRowsSqlTests.Drop_ARestore_BringsTheEventsBack_ButNotTheRowAsync, DapperArchivedStreamRowsTests.Drop_OnADapperMigratedDatabase_RemovesTheRowAndItsParkedCursorAsync} |
+| A perspective whose policy is `Drop` or `Archive` probes a missing row for history and rebuilds it from the latest snapshot and the events after it, as a perspective with [row retention](../perspectives/row-retention#the-next-event-rebuilds-the-row) does. A perspective whose policy is `Keep` and that declares no retention never probes. | A dropped row is missing when its stream comes back, and an archived row can be missing if its table was replaced meanwhile; folding the next event onto an empty model would build a partial row nothing repairs. The probe costs a query on a missing row, so only a perspective whose rows an archive can remove pays it. | {verified: EvictedRowRebuildTests.DroppedRowsPerspective_ARowDroppedWithItsArchivedStream_IsRebuiltFromHistoryAsync, EvictedRowRebuildTests.ArchivedRowsPerspective_AMissingRow_IsRebuiltFromHistoryAsync, EvictedRowRebuildTests.AConfiguredPolicy_OnAPerspectiveThatDeclaresNone_TurnsTheProbeOn_AndWithoutItTheRowStartsFreshAsync} |
+| `Archive` keeps the row as a whole row (`to_jsonb`) in `wh_event_archive_rows`, in the service's database, whichever archive store holds the events; a restore writes it back over the table's current shape (`jsonb_populate_record`). | The cursors a whole-stream archive parks already live there for the same reason: the restore that brings the events back runs in the database, in one transaction, so the row returns with them or not at all. | {verified: ArchivedStreamRowsSqlTests.Archive_MovesTheRowBesideTheEvents_AndARestoreBringsItBackExactlyAsync, DapperArchivedStreamRowsTests.Archive_OnADapperMigratedDatabase_MovesTheRow_AndARestoreBringsItBackAsync} |
+| A new generation puts the archived rows back. | The stream continues from where its perspectives stopped, so their rows are live again; the parked cursors stay parked, as for any [new generation](#new-generation). | {verified: ArchivedStreamRowsSqlTests.Archive_ANewGeneration_BringsTheArchivedRowBackAsync} |
+| A row already in the table at the restore (one a rebuild that opts in to archived data wrote since) is kept, and the archived copy goes. | The row written since is the newer; the restore treats it as it treats a cursor a perspective made since. | {verified: ArchivedStreamRowsSqlTests.Archive_ARowWrittenSinceTheArchive_IsKeptByTheRestore_AndTheArchivedCopyGoesAsync} |
+| An archived row whose table no longer exists by the restore is discarded, and the restore still runs. | A removed model has nowhere to take its row, and that must never keep a stream's events archived. | {verified: ArchivedStreamRowsSqlTests.Archive_ARowWhoseTableIsGoneByTheRestore_IsDiscarded_AndTheRestoreStillRunsAsync} |
+| The policy belongs to the model: a table's policy is decided by the perspectives that fold its model and declare one, and when they disagree the least destructive wins (`Keep`, then `Archive`, then `Drop`). A perspective that declares nothing does not vote. | The row is one per model, shared by every perspective that folds it: no perspective loses a row another asked to keep, and a perspective with no opinion must not cancel one that has. | {verified: ArchivedStreamRowsSqlTests.PerspectivesOfOneModelThatDisagree_TheLeastDestructiveWinsAsync} |
+| An active [row hold](../perspectives/pre-destruction-holds) keeps the row in its table under `Drop` and `Archive`; a lapsed one does not. | A hold is a recorded decision to keep that row where it is until its time passes. | {verified: ArchivedStreamRowsSqlTests.AnActiveRowHold_KeepsTheRowInItsTable_AndALapsedOneDoesNotAsync} |
+| Deleting the archive deletes its archived rows; a purge removes them with the stream's lifecycle row. | An archived row is part of the archive: once the events are gone nothing can bring it back, and a purged stream never existed. | {verified: ArchivedStreamRowsSqlTests.DeletingTheArchive_DeletesTheArchivedRowWithItAsync, ArchivedStreamRowsSqlTests.PurgingTheStream_RemovesTheArchivedRowAsync} |
+| The attribute is registered by the perspective-runner generator under the perspective's CLR type name; configuration (`Whizbang:Perspectives:ArchivedStreamRows:<Perspective>`) outranks it, and an explicit `Keep` is a declaration. | No reflection, and the same name form the cursors, snapshots and registry use; configuration changes a policy without a redeploy; an explicit `Keep` must be able to outvote another perspective of the model. | {verified: PerspectiveRunnerGeneratorArchivedStreamRowsTests.ADeclaredPolicy_IsRegisteredUnderThePerspectivesClrTypeNameAsync, PerspectiveRunnerGeneratorArchivedStreamRowsTests.APerspectiveThatDeclaresNothing_RegistersNothing_ButItsProbeStillAsksTheRegistryAsync, ArchivedStreamRowPoliciesTests.ApplyRuntimeConfiguration_AnOverride_OutranksTheDeclaration_AndNullRestoresItAsync, ArchivedStreamRowsConfiguratorTests.StartAsync_AppliesTheConfiguredOverrides_AndStopAsyncDoesNothingAsync} |
+| The maintenance worker publishes the effective policies to `wh_settings` (`archived_stream_rows`, one `name=policy` per line) on every tick, before the sweep's idle gate, rewriting the whole value each time. A line that names no policy is ignored. | The archive runs inside the database, where this process's options cannot reach; rewriting the whole value makes a removed policy stop applying, and a hand edit can never fail an archive. Until the first tick of a new deployment an archive reads the policies stored before. | {verified: MaintenanceWorkerArchivedStreamRowsSyncTests.EveryTick_PublishesThePolicies_EvenWhenTheSweepIsDeferredAsync, ArchivedStreamRowPoliciesTests.SettingFor_WritesOneNameAndPolicyPerLine_UnderItsKeyAsync, ArchivedStreamRowsSqlTests.AHandEditedSetting_ThatNamesNoPolicy_KeepsTheRowAsync} |
+| A policy value is bound by its name only, ignoring case; a number, an unknown name, a nested section or a perspective name holding `=` or a line break fails the start naming the key. | A misread policy must fail where it is configured, not at the first archive. | {verified: ArchivedStreamRowsOptionsBinderTests.Bind_AValueThatNamesNoPolicy_IsRefusedNamingTheKeyAsync, ArchivedStreamRowsOptionsBinderTests.Bind_ASectionInPlaceOfAValue_IsRefusedNamingTheKeyAsync, ArchivedStreamRowsOptionsBinderTests.Bind_ANameTheStoredSettingCannotCarry_IsRefusedNamingTheKeyAsync} |
+
+**Known limits.** A row is written back over its table's current shape: a column added since the archive takes `NULL`,
+so a `NOT NULL` column added without a default makes the restore fail, and nothing is lost (the restore rolls back
+whole). Under the [Azure Blob store](#the-azure-blob-store) the archived rows stay in the service's database, as the
+parked cursors do; only the events move to objects.
+
 ## Configuration {#configuration}
 
 {verified: StreamLifecycleOptionsBinderTests.ReadThrough_DefaultsToTrue_AndBindsFalseAsync, StreamLifecycleOptionsBinderTests.AppendToArchived_IsReadPerStreamType_IgnoringCase_AndAnUnlistedTypeRefusesAsync}
@@ -629,6 +716,7 @@ per stream).
 |---|---|---|---|
 | `Whizbang:Archive:ReadThrough` | `true` | `Whizbang__Archive__ReadThrough` | A read from the start of a stream reads archived events back through its gap. |
 | `Whizbang:StreamLifecycle:Types:<StreamType>:AppendToArchived` | `Refuse` | `Whizbang__StreamLifecycle__Types__<StreamType>__AppendToArchived` | `Refuse`, `AutoRestore` or `NewGeneration`. |
+| `Whizbang:Perspectives:ArchivedStreamRows:<Perspective>` | the perspective's `[ArchivedStreamRows]`, else `Keep` | `Whizbang__Perspectives__ArchivedStreamRows__<Perspective>` | `Keep`, `Drop` or `Archive`: what a whole-stream archive does to the perspective's rows ([perspective rows](#perspective-rows)). |
 
 | Choice | Reason | Verified |
 |---|---|---|
