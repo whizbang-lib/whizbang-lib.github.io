@@ -7,14 +7,22 @@ version: 1.0.0
 category: Startup
 order: 3
 description: >-
-  Two versions against one schema — the Assess verdict, the standby handshake
-  for breaking migrations, eviction as the fence behind it, and revival by
-  re-entering the pipeline
+  Two versions against one schema: the one Assess verdict that binds startup
+  (Current skips the schema lock, StandDown applies nothing and stays visible),
+  the standby handshake for breaking migrations, eviction as the fence behind
+  it, and revival by re-entering the pipeline
 tags: >-
-  rolling-upgrades, assess, standby, handshake, eviction, semver, versioning,
-  migrations, multi-instance, deployment
+  rolling-upgrades, assess, verdict, current, stand-down, standby, handshake,
+  eviction, semver, versioning, migrations, multi-instance, deployment
 codeReferences:
   - src/Whizbang.Core/Startup/AssessStartupStep.cs
+  - src/Whizbang.Core/Startup/StartupAssessmentSource.cs
+  - src/Whizbang.Core/Startup/StartupStandDown.cs
+  - src/Whizbang.Data.Postgres/StartupVerdictBinding.cs
+  - src/Whizbang.Data.Postgres/PostgresStartupAssessment.cs
+  - src/Whizbang.Data.Postgres/StoredFormSettlement.cs
+  - src/Whizbang.Data.Postgres/WhizbangDatabaseInitializerService.cs
+  - src/Whizbang.Data.Dapper.Postgres/DapperPostgresStartupAssessor.cs
   - src/Whizbang.Core/Startup/StandbyWatcher.cs
   - src/Whizbang.Core/Startup/StandbyHandshake.cs
   - src/Whizbang.Core/Startup/StartupFleetStatus.cs
@@ -25,6 +33,15 @@ codeReferences:
   - src/Whizbang.Data.Postgres/StoredFormMigrationJournal.cs
 testReferences:
   - tests/Whizbang.Core.Tests/Startup/AssessStartupStepTests.cs
+  - tests/Whizbang.Core.Tests/Startup/StartupAssessmentSourceTests.cs
+  - tests/Whizbang.Core.Tests/Startup/StartupStandDownTests.cs
+  - tests/Whizbang.Core.Tests/Schema/StartupVerdictBindingTests.cs
+  - tests/Whizbang.Core.Component.Tests/Startup/AssessBindingSourceGuardTests.cs
+  - tests/Whizbang.Core.Component.Tests/Schema/SchemaInitializationRunnersTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/StartupParity/StartupParityTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/DbContextInitializationRegistryTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperStartupAssessorTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperSchemaCurrencyTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/ColdBootJourneyE2ETests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StartupAssessorTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StandbyHandshakeE2ETests.cs
@@ -46,18 +63,21 @@ Two rules anchor everything below:
 - **Never apply older content over newer.** Every applied migration already records the library version that applied it; an instance whose version is behind that record refuses to re-apply its own copy. This is what stops a restarted old pod from silently downgrading the schema through `CREATE OR REPLACE` — see [Version Auditing](../infrastructure/migrations#version-auditing).
 - **Every pending change from a newer version is treated as breaking.** A hash says *different*, never *incompatible*. Starting strict means the failure mode is an unnecessary, visible outage; starting permissive means silent corruption discovered later. Only one of those is safe to be wrong about. A release with **no** pending migration hits the fast path where every hash matches — code-only releases stay free.
 
-## Assess
+## Assess {#assess}
 
-`Assess` is the first pipeline step, runs on **every instance** (an instance that will never win the [migrator duty](capabilities-and-duties) still needs to know whether it is obsolete), and is a pure read of the ledger — no lock, no transaction, no DDL:
+`Assess` is the first stage of startup. It runs on **every instance** (an instance that will never win the [migrator duty](capabilities-and-duties) still needs to know whether it is obsolete), and it is a read of the version record: no lock, no transaction, no DDL. It produces **one verdict**, and everything that follows in startup acts on that verdict:
 
-| What the ledger says | Verdict | What the instance does |
+| What the version record says | Verdict | What the instance does |
 |---|---|---|
-| Nothing — fresh database | `Migrate` | Contend for the `migrator` duty |
-| Only versions older than or equal to mine | `Serve` / `Migrate` | Proceed; migrate only if there are changes to apply (after the handshake, when peers are live) |
-| Any version **newer** than mine | `StandDown` | Never apply anything; the step **fails**, readiness is withheld — not-ready-while-alive |
+| No migration ledger: a brand-new database | `Migrate` | Bootstraps, contends for the `migrator` duty and migrates. Safe, because nothing newer than this binary can exist yet |
+| A ledger with no version table, or no version recorded | `Migrate` | The same: nothing newer is recorded |
+| Nothing newer than mine, and the schema is [already current](#current) | `Current` | Skips the bootstrap, the election, the stored-form rewrite and the migration pass, so it takes **no schema lock**; Converge and Coordinate still run |
+| Nothing newer than mine, and the schema could not be shown current | `Serve` | Runs startup as it always has: the election, the pass under the schema lock (which finds nothing to do when every hash matches), Converge and Coordinate |
+| Any version **newer** than mine | `StandDown` | [Applies nothing and holds the data plane](#standing-down), while it stays alive and visible |
+| A ledger that exists and cannot be read | none | A temporary failure is retried within Preflight; any other [fails the attempt](#unreadable-version-record) |
 
-```csharp{title="The verdict" description="Decided before anything is changed" category="Implementation" difficulty="INTERMEDIATE" tags=["Startup","RollingUpgrades"] tests=["AssessStartupStepTests.StandDownVerdict_FailsTheBlockingStep_WhichIsNotReadyWhileAliveAsync","StartupAssessorTests.AnyNewerRecorded_VerdictIsStandDownAsync"]}
-public enum StartupVerdict { Serve, Migrate, StandDown }
+```csharp{title="The verdict" description="Decided once, before anything is changed, and read by every part of startup" category="Implementation" difficulty="INTERMEDIATE" tags=["Startup","RollingUpgrades"] tests=["AssessStartupStepTests.StandDownVerdict_FailsTheBlockingStep_WhichIsNotReadyWhileAliveAsync","AssessStartupStepTests.CurrentVerdict_CompletesWithTheReason_LikeServeAsync","StartupAssessorTests.AnyNewerRecorded_VerdictIsStandDownAsync","StartupAssessorTests.AnUpToDateSchema_IsCurrent_AndOneWithWorkPending_IsServeAsync"]}
+public enum StartupVerdict { Migrate, Serve, StandDown, Current }
 
 public sealed record StartupAssessment(StartupVerdict Verdict, string Reason);
 
@@ -66,11 +86,14 @@ public interface IStartupAssessor {
 }
 ```
 
-`StandDown` composes with machinery that already exists: the failed blocking step keeps the pipeline incomplete, readiness stays withheld, the data-plane seams keep refusing, and liveness stays healthy — precisely the state that tells an orchestrator to replace the instance and a load balancer to stop sending it traffic. The fence runs *backwards* on purpose: a migrating instance can never wait for older instances to be retired (the orchestrator will not retire them until the new instance is ready, which requires migrating first) — so the **older instance stands itself down** instead.
+:::updated
+**Upgrading: `StartupVerdict` has a fourth value, `Current`.** A `switch` that treats every value other than `StandDown` as "migrate or serve" still compiles and behaves as before. An exhaustive `switch` needs a `Current` arm, which behaves like `Serve` for readiness. The `Assess` step reports a current schema as completed, with a reason that ends `the schema is current: nothing to apply or convert`.
+:::
 
-**Ordering is semantic versioning**, with the details that are load-bearing rather than pedantic: pre-release precedence is the common path (`0.9.4-alpha.3` < `0.9.4-beta.1` < `0.9.4`), numeric pre-release identifiers compare numerically (`alpha.10` > `alpha.2`), and build metadata is ignored. An unparseable version is never guessed at — the instance refuses to migrate and reports the condition, because every wrong answer here is worse than stopping. The consumer's application version is recorded but takes no part in the ordering; requiring an application to be semantically versioned is not the framework's call to make.
+**Ordering is semantic versioning**, with the details that are load-bearing rather than pedantic: pre-release precedence is the common path (`0.9.4-alpha.3` < `0.9.4-beta.1` < `0.9.4`), numeric pre-release identifiers compare numerically (`alpha.10` > `alpha.2`), and build metadata is ignored. An unparseable version is never guessed at: the instance refuses to migrate and reports the condition, because every wrong answer here is worse than stopping. The consumer's application version is recorded but takes no part in the ordering; requiring an application to be semantically versioned is not the framework's call to make.
 
 **Where this binary's version comes from.** The assessor reads it from `ILibraryVersionProvider`. The Postgres driver registers that provider from a build-time constant (`$(Version)`, the same value the migration ledger records), whoever owns the DbContext: a host that registers its own `NpgsqlDataSource` and DbContext, which makes the driver skip its generated turnkey registration, still gets one. Registering your own provider first wins. A host with no provider at all, one that bypasses the driver entirely, stands down with a reason that names the missing registration, which is a different fact from an unparseable version and is reported as one.
+
 
 ```csharp{title="The library version is registered whoever owns the DbContext" description="A consumer that registers its own DbContext before .WithDriver.Postgres still gets ILibraryVersionProvider; an explicit registration wins; no provider at all is reported as the missing registration it is." category="Implementation" difficulty="INTERMEDIATE" tags=["Startup", "RollingUpgrades", "Drivers"] tests=["LibraryVersionRegistrationTests.Postgres_WhenTheConsumerRegisteredItsOwnDbContext_StillRegistersTheLibraryVersionAsync", "LibraryVersionRegistrationTests.Postgres_RegistersTheLibraryVersionAsTryAdd_SoAnExplicitRegistrationWinsAsync", "StartupAssessorTests.NoLibraryVersionProvider_StandsDownNamingTheMissingRegistrationAsync"]}
 services.AddDbContext<OrdersDbContext>(o => o.UseNpgsql(myDataSource));   // consumer-owned
@@ -78,7 +101,83 @@ services.AddWhizbang().WithEFCore<OrdersDbContext>().WithDriver.Postgres;  // sk
 // ... but ILibraryVersionProvider is registered all the same, so Assess can compare versions.
 ```
 
-The verdict is **not a startup-only fact**. An instance that was current when it booted becomes obsolete the moment a newer peer migrates underneath it — so a lightweight watcher re-checks on the same signal-plus-poll footing as capability re-attempt, and standing down is a state an instance can enter at any time.
+
+### One verdict binds startup {#one-verdict}
+
+`StartupAssessmentSource` reads the version record **once per host** and hands that one answer to every caller. Three readers take it, and none of them reads the schema again to decide:
+
+- the `Assess` startup step, which reports it;
+- the schema initializer, `WhizbangDatabaseInitializerService`, which asks for it **before any driver's runner starts**;
+- each driver's schema pass, through `StartupVerdictBinding`. On the EF Core driver that is the generated pass, so a direct `EnsureWhizbangInitializedAsync` or `EnsureWhizbangDatabaseInitializedAsync` call reads the same verdict as the hosted start (see [Both drivers](../../data/turnkey-initialization#both-drivers)).
+
+A caller that arrives while the first read is in progress waits for it. The standby watcher is the one deliberate exception: its [runtime re-check](#runtime-re-check) reads the driver's assessor directly, because a verdict that was right at boot can stop being right while the instance runs.
+
+{verified: StartupAssessmentSourceTests.EveryCaller_ReadsTheOneVerdict_AndTheRecordIsReadOnceAsync, StartupAssessmentSourceTests.CallersArrivingTogether_ShareOneReadAsync, StartupAssessmentSourceTests.TheDefaults_RegisterOneSourceOverTheRegisteredAssessor_AndTheAssessStepReadsThroughItAsync, SchemaInitializationRunnersTests.AnyOtherVerdict_RunsTheRunnersAfterTheVerdict_ThenOpensTheGateAsync, StartupVerdictBindingTests.AnyVerdictButStandDown_IsHandedToThePass_AndOnlyCurrentSkipsItAsync}
+
+**Why one verdict, read first.** Earlier releases reported the verdict from the `Assess` step only. The schema initializer ran its bootstrap, its election, the stored-form rewrite, the pass and the managed-object reconcile whatever the step had decided, so an instance could report `StandDown` and still change the schema, and a restart on a current schema still queued for the schema lock. Two facts, checked against the code before this change, made that more than a reporting gap:
+
+1. **The stored-form rewrite takes the schema lock on a current schema.** The rewrite phase filters nothing in advance. For any model with a temporal path, a stored-form migration or an enum physical column, it opens a transaction and takes `pg_try_advisory_xact_lock` on the schema key, waiting up to the command timeout while another session holds it, and only then finds each table settled. The migrator and every instance that is not staged did this on every start. That is why `Current` requires every stored-form conversion to be settled, not only every hash to match.
+   {verified: StartupParityTests.ARestartOnACurrentSchema_TakesNoSchemaLock_AndSkipsElectAndMigrateAsync, StartupAssessorTests.StoredForms_AreSettledOnlyWhenEveryLedgerSaysSoAsync}
+2. **The reconcile's fleet gate does not fully protect against an older binary.** It gates only the drop of a managed object. It counts only instances that heartbeated within the last two minutes, so a newer release whose instances are all gone (during a rollback, for example) has its declarations deleted by the older reconcile, which then drops them. It is off when `DropAfterFleetConverged` is `false`. It compares names, not versions. A missing object is re-created from the older model. And the perspective storage reconcile, the registries and the bootstrap closure are not fleet-gated at all; the bootstrap closure is keyed by hash alone, so an older closure would be applied again over newer definitions. A stood-down instance no longer reaches any of them.
+   {verified: StartupParityTests.ANewerSchema_StandsDown_AppliesNothing_AndKeepsTheGateClosed_WhileVisibleAsync, SchemaInitializationRunnersTests.StandDown_RunsNoRunner_KeepsTheGateClosed_AndRegistersTheInstanceVisiblyAsync}
+
+**No start path skips the decision.** A source guard fails the build's tests when a schema runner neither reads the verdict through `StartupVerdictBinding.ReadAsync` nor delegates to the generated pass, and when the generated pass applies the bootstrap, holds the election, runs the stored-form rewrite or begins the pass before it reads the verdict. A new runner cannot forget the decision.
+{verified: AssessBindingSourceGuardTests.EverySchemaRunner_ReadsTheVerdict_OrDelegatesToThePassThatDoesAsync, AssessBindingSourceGuardTests.TheGeneratedPass_ReadsTheVerdict_BeforeItAppliesAnythingAsync, StartupParityTests.TheTurnkeyCall_OnAStoodDownInstance_IsRefused_AndAppliesNothingAsync}
+
+### Current: the schema is already up to date {#current}
+
+`Current` is the verdict of a normal restart or scale-out. It applies when nothing newer than this binary is recorded and the schema needs nothing:
+
+- **EF Core:** every DbContext the host registers answers its generated `IsWhizbangSchemaCurrentAsync`, read without a lock: the hash checks of the migration's lock-free fast path pass, every declared object is present, and every stored-form conversion has settled (`StoredFormSettlement`: the temporal rewrite, the [stored-form migrations](../../fundamentals/perspectives/stored-form-migrations.md#journal), the declared-name spellings and the enum physical columns).
+- **Dapper:** every migration is recorded at its hash **and at this binary's version**, the perspective and application-object hashes match, the declared keys have settled and the managed objects are present. The Dapper driver's infrastructure schema is tied to the release that built it, so a release that has not yet run its own pass is not current even when every hash matches.
+
+A `Current` start skips the bootstrap, the election, the stored-form rewrite and the migration pass, so it takes no schema lock and cannot queue behind a migration another session is running. It still registers the instance (on EF Core, as Preflight's last step: `the schema is current; registering this instance`), reports Elect and Migrate as [skipped with the reason](startup-status#what-a-fresh-database-and-a-restart-record), and runs Converge and Coordinate.
+{verified: StartupParityTests.ARestartOnACurrentSchema_TakesNoSchemaLock_AndSkipsElectAndMigrateAsync, SchemaInitializationStagesTests.OnACurrentSchema_ElectAndMigrateAreSkipped_AfterRegisteringAsync, DapperStartupAssessorTests.AfterAStart_TheSchemaIsCurrentAsync, DapperSchemaCurrencyTests.OnACurrentSchema_TheStartConverges_WithoutAnInstanceToRegisterAsync}
+
+**A check that cannot answer is `Serve`, never `Current`.** A currency check that throws, a host with no check registered, and a stored-form conversion whose settlement cannot be read all give `Serve`, and the full path finds out for itself. A wrong `Current` would skip work that was owed; a wrong `Serve` costs only the lock it always took.
+{verified: StartupAssessorTests.ACurrencyCheckThatCannotAnswer_IsServe_NeverCurrent_AndACancellationPropagatesAsync, DbContextInitializationRegistryTests.IsSchemaCurrent_WithNoCheckRegistered_IsNotCurrentAsync, DbContextInitializationRegistryTests.IsSchemaCurrent_IsCurrentOnlyWhenEveryContextThisHostRegistersIsAsync, DapperStartupAssessorTests.AMigrationLastRecordedByAnotherRelease_IsServeAsync, DapperStartupAssessorTests.APerspectiveTableWhoseDefinitionChanged_IsServeAsync}
+
+Two cases that start as `Serve` and are expected to:
+
+- **The first restart after a fresh start.** A generated stored-form conversion settles only on a pass that finds nothing left to convert (see [Stored documents written mid-deploy](#stored-documents-written-mid-deploy)), so on a model with stored forms the restart that follows the first start makes that pass and settles. The start after it is `Current`.
+- **An application whose stored rows lack a required key.** A table with rows missing a [required member](../../fundamentals/perspectives/stored-form-migrations.md#declared-names-required) stays unsettled until the rows are filled, so that application never reaches `Current` and starts as `Serve` every time, exactly as it did before this verdict existed. That is safe; it only keeps taking the schema lock.
+
+### Standing down {#standing-down}
+
+A `StandDown` verdict means the schema is newer than this binary. The instance:
+
+- **applies nothing**: no bootstrap closure, no election, no stored-form rewrite, no pass, no managed-object reconcile;
+- **holds the data plane**: the schema-ready gate stays closed, so no worker that needs the schema starts, no claim is made, and readiness answers 503 while liveness stays healthy. The `Assess` step fails as a blocking step, which keeps the pipeline incomplete;
+- **stays visible**: it registers at once and records its stage as Preflight with the message `standing down: ` followed by the reason, which names the version the ledger records and this binary's own, and its phase as `StandingBy`. At stage Preflight it is never eligible for work;
+- **keeps its row alive** with the heartbeat's own call, on the heartbeat interval, until the host stops. The heartbeat worker itself starts when the schema-ready gate opens, which for this instance never happens. A beat that fails is logged and tried again on the next beat; a beat the registry refuses (the instance was evicted) ends the beating.
+
+**Why it registers and stays visible.** The tables exist, because the database is newer than the binary, so registering is safe without a bootstrap. An operator watching a rollout that does not progress sees each stood-down instance in [`wh_instance_startup_stages()`](startup-status#seeing-every-instances-stage) with the reason, instead of a pod that is not ready for no stated reason. A host with no instance identity logs the stand-down at Warning and still applies nothing.
+{verified: StartupParityTests.ANewerSchema_StandsDown_AppliesNothing_AndKeepsTheGateClosed_WhileVisibleAsync, SchemaInitializationRunnersTests.StandDown_RunsNoRunner_KeepsTheGateClosed_AndRegistersTheInstanceVisiblyAsync, SchemaInitializationRunnersTests.StandDown_WithNoInstanceIdentity_StillAppliesNothingAsync, StartupStandDownTests.Record_StaysInPreflight_NamingTheReason_AndStandsByAsync, StartupStandDownTests.KeepVisible_RegistersAtOnce_ThenOnEveryBeat_UntilTheHostStopsAsync, StartupStandDownTests.FromServices_BeatsOnTheHeartbeatCadence_AsTheRegisteredInstanceAsync, StartupStandDownTests.KeepVisible_AFailedBeat_IsRetriedOnTheNextBeatAsync, StartupStandDownTests.KeepVisible_WhenTheRegistryEvictedTheInstance_StopsBeatingAsync, AssessStartupStepTests.StandDown_ThroughTheRealPipeline_KeepsReadinessPendingForeverAsync}
+
+**A direct call is refused.** `EnsureWhizbangInitializedAsync` (or a DbContext's `EnsureWhizbangDatabaseInitializedAsync`) on a stood-down host throws `SchemaStandDownException`, naming the reason, and applies nothing.
+{verified: StartupParityTests.TheTurnkeyCall_OnAStoodDownInstance_IsRefused_AndAppliesNothingAsync, StartupVerdictBindingTests.AStandDown_IsRefused_NamingTheReasonAsync}
+
+The stand-down composes with machinery that already exists: readiness stays withheld, the data-plane seams keep refusing, and liveness stays healthy, which is precisely the state that tells an orchestrator to replace the instance and a load balancer to stop sending it traffic. The fence runs *backwards* on purpose: a migrating instance can never wait for older instances to be retired (the orchestrator will not retire them until the new instance is ready, which requires migrating first), so the **older instance stands itself down** instead.
+
+This covers an older instance **at its own start**. Older instances that are already running when a newer one comes online, standing down and handing the maintenance duty to the newer instance, are tracked in [#2022](https://github.com/whizbang-lib/whizbang/issues/2022) and are not part of this release.
+
+### When the version record cannot be read {#unreadable-version-record}
+
+The assessment probes the catalog before it reads the record:
+
+- **No migration ledger** is a brand-new database: `Migrate`. Nothing newer can exist, so the bootstrap that follows is safe.
+- **No version table** records no version: `Migrate`.
+- **A ledger that exists and cannot be read** never becomes either of those. A temporary failure (one `TransientDatabaseFailure` classifies as transient) is retried within Preflight, one second after the first failure and doubling to at most thirty, and each retry is said on the stage record (`the schema version record could not be read for a moment (<reason>); retrying`). Any other failure fails the attempt with a `StartupAssessmentException`, records `the schema version record could not be read; this attempt stops here rather than migrate blind`, and is handled like a [bootstrap that cannot be applied](../infrastructure/migrations#bootstrap-failures): the initializer's next attempt reads the record again, because a failure is never cached.
+
+**Why never migrate blind.** An instance that cannot tell whether the schema is newer than its binary cannot know whether migrating it is a downgrade. Stopping is visible and recoverable; an older binary applying its definitions over a newer schema is neither.
+{verified: StartupAssessmentSourceTests.ATemporaryFailure_IsRetriedWithinPreflight_UntilTheVerdictLandsAsync, StartupAssessmentSourceTests.RetryDelay_DoublesFromOneSecond_CappedAtThirtyAsync, StartupAssessmentSourceTests.AnyOtherFailure_FailsStartupLoudly_AndIsNotLatchedAsync, SchemaInitializationRunnersTests.AnUnreadableVersionRecord_FailsTheAttemptLoudly_BeforeAnyRunnerAsync, StartupAssessorTests.ABrandNewDatabase_HasNoVersionRecord_AndMigratesAsync, StartupAssessorTests.ALedgerWithNoVersionTable_RecordsNothingNewer_AndMigratesAsync, StartupAssessorTests.AVersionRecordThatCannotBeRead_IsNeverTakenForABrandNewDatabaseAsync}
+
+**The Dapper ledger is read whole.** The EF Core ledger has an `owner` column and is read for the framework's own rows; the Dapper ledger has none. Earlier releases took a missing `owner` column for a ledger still being created and answered `Migrate`, which on the Dapper driver would have migrated a newer schema. Both drivers now share one verdict table and one ledger read, and the Dapper driver registers its own assessor (`DapperPostgresStartupAssessor`).
+{verified: StartupAssessorTests.ALedgerWithoutAnOwnerColumn_IsReadWhole_SoANewerVersionStillStandsDownAsync, DapperStartupAssessorTests.ANewerRelease_StandsThisBinaryDownAsync, DapperStartupAssessorTests.ABrandNewDatabase_MigratesAsync, StartupParityTests.EachDriver_SuppliesAnAssessor_ThatReadsTheVersionRecordAsync}
+
+### Re-checking while running {#runtime-re-check}
+
+The verdict is **not a startup-only fact**. An instance that was current when it booted becomes obsolete the moment a newer peer migrates underneath it, so a lightweight watcher re-checks on the same signal-plus-poll footing as capability re-attempt (`ObsolescenceInterval`, see [the watcher's clock](#the-watchers-clock)), and standing down is a state an instance can enter at any time.
 
 ## The standby handshake
 
