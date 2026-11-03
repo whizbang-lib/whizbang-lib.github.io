@@ -7,6 +7,11 @@ tags: archival, compaction, closing-the-books, carry-forward, cold-storage, sour
 
 # Archival & Compaction (Closing the Books)
 
+:::updated
+Closing the books shipped in 1.0 as [Closing the Books](../v1.0.0/fundamentals/events/closing-the-books.md), onto a
+successor stream. This proposal is kept for its history.
+:::
+
 [Destruction Hooks & TTL](destruction-hooks-ttl) (E2) gave *ephemeral* events a self-destruct lifecycle. **A1 addresses the other side: durable, Sourced streams that must stay short without losing anything.** This is the classic **"close the month / close the books"** pattern — at a period boundary you emit a **carry-forward (closing) event** that captures the opening balance for the next period, move the period's raw detail out of the hot store, and keep the live stream lean.
 
 Two operations, deliberately orthogonal:
@@ -67,11 +72,14 @@ Now `Balance` **resumes** from `MonthClosed` (`Apply` → 140, then seq 902+). `
 - **Archive store = pluggable, Postgres archive-partition by default.** Archived events move to a partition / `is_archived` marker (reusing E1's offload plumbing and PG partition move), **filtered from hot reads** by default and retrievable for audit / full replay. Blob offload is the pluggable target for scale.
 - **Deliberate, opt-in log mutation.** Like Ephemeral, this bends "append-only forever" — the log is immutable *after* the close point (à la EventStoreDB scavenge / Kafka retention). Never a default; always a domain-triggered close.
 
-## Stream identity on close — recommendation
+## Stream identity on close (decided: successor stream)
 
-The one open design fork: after a close, does the entity's history live on **one stream** (archived-marker) or **a new stream per period**?
-
-**Recommendation — archived-marker on the same stream (default), new-stream-per-period as opt-in.** Keeping one `stream_id` per entity preserves the invariants everything else keys on: `UNIQUE(stream_id, version)`, the per-`(stream, perspective)` cursors and snapshots, and the cross-service `commit_sequence` / `origin_service_id` anchors all stay valid — only the *hot portion* of the one stream stays lean, exactly like Marten's `is_archived`. New-stream-per-period fragments an entity's identity across N streams, complicating cross-period reads, rebuilds, and cursor bookkeeping for a marginal benefit the archived-marker already delivers. Domains that genuinely want hard per-period isolation (e.g. a fresh stream each fiscal year for regulatory separation) opt in explicitly.
+**Decided (owner, 2026-11-02, #1741): closing the books opens a successor stream.** The closing summary is the
+predecessor's last event, the predecessor is sealed, and a new stream opens with the opening balance as its first event,
+carrying the predecessor's stream id and final version. The earlier recommendation in this proposal, an archived marker on
+the same stream, was not taken: a sealed predecessor ends cleanly and is disposed of by the ordinary sealed-stream path,
+and the new period starts at version 1. Prefix truncation remains the way to keep one stream lean without ending it.
+See [Closing the Books](../v1.0.0/fundamentals/events/closing-the-books.md).
 
 ## Safe-by-construction guard
 
