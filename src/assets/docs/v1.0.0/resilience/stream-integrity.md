@@ -1892,15 +1892,24 @@ patterns worth understanding before building a dashboard:
    only ever rises and says nothing about *now*. The backlog gauges read the ledger itself, and a
    heal **deletes** the ledger row — so the gauges fall on their own as repair works. Watch the
    gauge, alert on the counter's *rate* if you want arrival pressure.
-2. **The collector rides maintenance.** Gauge values are read once per maintenance cycle (the same
-   scope and cadence the reaper already uses) and swapped atomically into the meter's observation
-   callback — no dedicated poller, no extra connections, no half-updated readings.
+2. **The collector rides the maintenance tick, on every instance.** Gauge values are read at the start of every
+   maintenance tick (the same scope and cadence the reaper already uses) and swapped atomically into the meter's
+   observation callback: no dedicated poller, no extra connections, no half-updated readings. The read runs ahead of
+   the maintainer-duty check and the idle gate, so every instance reports the ledger even while the sweep itself is
+   deferred or belongs to another instance. Before #2024 it rode the sweep, and an instance that was not the
+   maintainer, or a busy service for up to `MaxDeferral` after a restart, reported 0 unhealed: the value of a fully
+   healed service.
 3. **Only natural measurements.** Every instrument measures work the system already does — a
    stopwatch around an existing handler, a counter at an existing branch, an age read back from a
    row a delete was already destroying. Nothing queries or stores anything *for the metric's sake*,
    so the meter can never become its own load problem.
 
 ### Convergence state (gauges)
+
+Every instance of a service reports the same ledger, so read these as one value per service (the maximum across its
+instances), never a sum.
+
+{verified: MaintenanceWorkerIntegrityGaugeTests.AnInstanceThatIsNotTheMaintainer_StillPublishesTheLedgerReadingAsync, MaintenanceWorkerIntegrityGaugeTests.ATickTheIdleGateDefers_StillPublishesTheLedgerReadingAsync}
 
 | Instrument | Meaning |
 | --- | --- |
