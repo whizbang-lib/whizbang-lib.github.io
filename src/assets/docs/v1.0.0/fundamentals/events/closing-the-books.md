@@ -20,14 +20,12 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/315_CloseTheBooks.sql
   - src/Whizbang.Data.EFCore.Postgres/EFCoreDirectAppendRowBuilder.cs
   - src/Whizbang.Data.Dapper.Postgres/DapperPostgresEventStore.cs
-  - src/Whizbang.Generators/MessageJsonContextGenerator.cs
 testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/CloseBooksSqlTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperCloseBooksTests.cs
   - tests/Whizbang.Core.Tests/Lifecycle/BookCloserTests.cs
   - tests/Whizbang.Core.Tests/Lifecycle/StreamDispositionStepTests.cs
   - tests/Whizbang.Core.Tests/Archival/StreamLifecycleOptionsBinderTests.cs
-  - tests/Whizbang.Generators.Tests/MessageJsonContextPositionalRecordTests.cs
 ---
 
 # Closing the Books
@@ -67,20 +65,6 @@ public sealed class MonthEnd(IBookCloser closer) {
   }
 }
 ```
-
-The opening event can also be a **positional record**. Its positional parameters carry the domain data, and the link
-members it inherits from `OpeningBalance` are filled in by the framework as before:
-
-```csharp{title="A positional opening balance" description="A positional record deriving from OpeningBalance: the constructor takes the domain data, and the inherited link members are set by the framework." category="Core Concepts" difficulty="INTERMEDIATE" tags=["closing-the-books", "opening-balance", "records", "serialization"] tests=["BookCloserTests.APositionalOpeningBalance_RoundTripsThroughTheGeneratedContext_WithItsLinkAsync", "MessageJsonContextPositionalRecordTests.Generator_PositionalRecordDerivingFromTheFrameworksOpeningBalance_CompilesAsync"]}
-public sealed record MonthOpened(decimal Balance) : OpeningBalance;
-
-var result = await closer.CloseBooksAsync(ledgerId, new MonthClosed(ledgerId, balance), new MonthOpened(balance), ct);
-```
-
-The same holds for any event or message that is a positional record deriving from a base record with properties of
-its own: the generated JSON context passes the positional parameters to the record's constructor and sets the
-inherited members by initializer. Earlier releases failed to compile the context for such a type (CS7036), so the
-property form was the only one that worked; both forms now compile and round-trip.
 
 | Status | Meaning |
 |---|---|
@@ -136,8 +120,7 @@ public sealed class LedgerBooks(ILedgerBalances balances) : IBookClosingHandler 
 |---|---|
 | `CloseBooksSqlTests` | the one-transaction close, the link, the rollback of a failed step 3, each refusal, the append lock, the predecessor's archive, the EF Core driver's registration |
 | `DapperCloseBooksTests` | the Dapper driver's closer and its stored events |
-| `BookCloserTests` | `OpeningBalance` (property and positional forms) and `BooksToClose` |
-| `MessageJsonContextPositionalRecordTests` | the generated JSON context for a positional record deriving from a base record with properties, as a message, a property type and a polymorphic derived type |
+| `BookCloserTests` | `OpeningBalance` and `BooksToClose` |
 | `StreamDispositionStepTests` (closing the books) | the handler, the closer, deferrals and refusals by policy |
 | `StreamLifecycleOptionsBinderTests` | `CloseBooks` as an action, and the start refused without a handler |
 
