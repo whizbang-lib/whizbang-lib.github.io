@@ -5,11 +5,12 @@ description: >-
   How Whizbang knows every stream's age, size and state without reading the event store (the stream lifecycle
   ledger, what writes it, what it costs on the append path, and the one-time backfill that seeds it), how a stream
   is sealed, by a finalizer or a terminal event, so it refuses every later append, and how a sealed stream is disposed
-  of once its grace has passed: a final snapshot, the PreDestruction hook, then the disposition (archive by default).
+  of once its grace has passed: a final snapshot, the PreDestruction hook, then the disposition (archive by default), and
+  the per-type policies (idle, age, tenant byte cap, version cap) that end streams nobody sealed.
 version: 1.0.0
 category: Core Concepts
 order: 16
-tags: 'event-streams, stream-lifecycle, end-of-life, archive, storage, event-store, sealing, terminal-event, finalize, disposition, final-snapshot, compaction'
+tags: 'event-streams, stream-lifecycle, end-of-life, archive, storage, event-store, sealing, terminal-event, finalize, disposition, final-snapshot, compaction, policies, idle-ttl, version-cap'
 codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/272_ArchivedStreamTypeIndex.sql
   - src/Whizbang.Data.Postgres/Migrations/260_StreamLifecycleLedger.sql
@@ -39,6 +40,8 @@ codeReferences:
   - src/Whizbang.Core/Workers/MaintenanceWorker.cs
   - src/Whizbang.Generators/UnshippedDestructionAnalyzer.cs
   - src/Whizbang.Data.Postgres/Migrations/299_ArchivedStreamRows.sql
+  - src/Whizbang.Data.Postgres/Migrations/297_StreamEndOfLifePolicies.sql
+  - src/Whizbang.Core/Archival/StreamLifecycleAction.cs
 testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Collective/ArchivedCollectiveStreamsQueryPlanTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StreamLifecycleLedgerSqlTests.cs
@@ -66,6 +69,7 @@ testReferences:
   - tests/Whizbang.Core.Tests/Workers/MaintenanceWorkerDispositionTests.cs
   - tests/Whizbang.Generators.Tests/UnshippedDestructionAnalyzerTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/ArchivedStreamRowsSqlTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/StreamEndOfLifePolicySqlTests.cs
 ---
 
 # Stream End of Life
@@ -78,8 +82,8 @@ streams are candidates, and answering that by reading the event store is the ver
 This page describes the part that answers it, the **stream lifecycle ledger**, and the steps of a stream's end of life
 built on it: [sealing a stream](#sealing-a-stream), so it refuses every later append; the
 [scheduled disposition](#scheduled-disposition) of a sealed stream once its grace has passed; and the
-[dispositions](#dispositions) every destruction routes on. End-of-life policies build on the same row and are added to
-this page as they ship.
+[dispositions](#dispositions) every destruction routes on; and the [policies](#policies) that end a stream nobody sealed:
+idle, too old, over its tenant's byte cap, or over its version cap.
 
 ## The stream lifecycle ledger {#the-stream-lifecycle-ledger}
 
@@ -531,6 +535,81 @@ var result = await truncator.TruncateAsync(accountId, throughVersion: 120, Dispo
 | A batch the reaper holds is held on the host's `TimeProvider` (the system clock otherwise), for `DestructionRetryBackoffSeconds`. | A handler registered later picks the batch up on the next offer; the host's clock decides, as for every other hold. | {verified: MaintenanceWorkerDispositionTests.Compact_WithNoHandler_HoldsTheBatchForTheBackoff_AndLogsWhyAsync, MaintenanceWorkerDispositionTests.AHeldBatch_OnAHostWithNoClockRegistered_IsHeldOnTheSystemClockAsync} |
 | The scheduled disposition's `Delete` purges the stream with `RequestedBy = stream-disposition`. | A purge must say who asked and why. | {verified: StreamDispositionStepTests.Delete_PurgesTheStream_SayingWhoAndWhyAsync} |
 
+## Policies {#policies}
+
+{verified: StreamEndOfLifePolicySqlTests.Step_WithAnIdlePolicy_ArchivesAStreamOnceItIsIdle_AndNotBefore_AndOnlyWhenEnabledAsync, DapperStreamDispositionTests.AddWhizbangPostgres_AnEnabledAgePolicyThatPurges_PurgesTheStreamOnceItIsOld_AndNotBeforeAsync}
+
+Sealing is a developer's statement that a stream has ended. Most streams never get one: a cart nobody checked out, an
+order delivered a year ago, a ledger that grows forever. An **end-of-life policy** says, per stream type, when such a
+stream's life is over and what happens to it then (#1740). The `stream-disposition` maintenance step evaluates the
+policies after the [scheduled disposition](#scheduled-disposition) of sealed streams, in the same cycle.
+
+A policy is configuration under `Whizbang:StreamLifecycle:Types:<StreamType>`, keyed by the stream type the
+[ledger](#the-stream-lifecycle-ledger) records (the type name of the stream's first event, without its assembly):
+
+| Trigger | Key | Picks an open stream when | What goes |
+|---|---|---|---|
+| Idle | `IdleTtl` | nothing has been appended for the time span, counted from the end of the hour of its newest append | the whole stream |
+| Age | `MaxAge` | its first append is the time span old | the whole stream |
+| Tenant byte cap | `TenantByteCap` | the open streams of the type in its tenant hold more bytes than the cap, and it is among the least recently appended that must go for the rest to fit | the whole stream |
+| Version cap | `KeepTailVersions` | it holds more hot versions than the tail | the prefix before the newest `KeepTailVersions` versions |
+| Finalized plus grace | ([sealing](#sealing-a-stream) and `FinalizeGrace`) | it was sealed and its grace has passed | the whole stream |
+
+`Action` says what happens to what goes: `Archive` (the default) writes it through the [archive store](archive-store.md),
+`Compact` runs the registered `ICompactionHandler` and then discards it, `Purge` purges the whole stream (or discards the
+prefix, for the version cap). The PreDestruction hook sees the action as the declared disposition and can return
+another, as for [every destruction](#dispositions).
+
+```csharp{title="Archive idle orders, keep a ledger's tail" description="appsettings: order streams idle for ninety days are archived whole; ledger streams keep their newest thousand versions hot and archive the rest." category="Configuration" difficulty="INTERMEDIATE" tags=["stream-lifecycle", "end-of-life", "policies", "configuration"] unverified="configuration shape; the binding is verified in StreamLifecycleOptionsBinderTests"}
+// appsettings.json
+// "Whizbang": {
+//   "StreamLifecycle": {
+//     "Enabled": true,
+//     "Types": {
+//       "Shop.Orders.OrderPlaced": { "IdleTtl": "90.00:00:00", "AppendToArchived": "AutoRestore" },
+//       "Shop.Ledger.LedgerOpened": { "KeepTailVersions": 1000 },
+//       "Shop.Carts.CartStarted": { "IdleTtl": "30.00:00:00", "Action": "Purge" }
+//     }
+//   }
+// }
+```
+
+```mermaid{caption="What one maintenance cycle does with a stream an end-of-life policy picks." tests=["StreamDispositionStepTests.APickedStream_GetsItsFinalSnapshot_ThenTheHookWithItsTriggersReason_ThenIsArchivedWhole_AndIsNotSealedAsync", "StreamDispositionStepTests.Purge_TheHookFirst_ThenTheStreamIsSealedIfUnchanged_ThenPurged_SayingWhichTriggerAsync", "StreamDispositionStepTests.TheVersionCap_TruncatesThePrefixThroughTheTruncator_WithItsReason_AndRecordsTheCutAsync"]}
+flowchart TD
+  L[Ledger: open streams of a policy's type] -->|idle, age or tenant cap| W{Ready?}
+  L -->|version cap| T[Prefix truncate with VersionCapExceeded]
+  T -->|truncated| R[Cut recorded]
+  T -->|blocked, held, refused| D[Deferred for the retry backoff]
+  W -->|a perspective owes an event, or a hold| D
+  W -->|ready| F[Final snapshot] --> H{PreDestruction hook}
+  H -->|cancel or defer| D
+  H -->|Archive| A[Archived whole, left unsealed]
+  H -->|Purge or Compact| S{Sealed at the version seen?}
+  S -->|appended since| K[Left open]
+  S -->|sealed| P[Compacted and purged, or purged]
+```
+
+| Choice | Reason | Verified |
+|---|---|---|
+| The policies run only when `Whizbang:StreamLifecycle:Enabled` is `true` (default `false`); a type with no trigger is not looked for. | A policy archives or purges streams nobody sealed, so nothing happens until a host turns it on; with no trigger there is nothing to read. | {verified: StreamDispositionStepTests.Policies_AreNotEvaluated_UntilEnabled_OrWhenNoTypeSetsATrigger_AndAreAskedWithTheClockAndBatchOnceEnabledAsync, StreamLifecycleOptionsBinderTests.Enabled_DefaultsToFalse_AndBindsTrue_AndAValueThatIsNotABoolean_IsRefusedNamingTheKeyAsync, StreamEndOfLifePolicySqlTests.Step_WithAnIdlePolicy_ArchivesAStreamOnceItIsIdle_AndNotBefore_AndOnlyWhenEnabledAsync} |
+| `Action` defaults to `Archive`. | Archiving is reversible and keeps the stream readable, the same reason the default disposition of a sealed stream is an archive. | {verified: StreamLifecycleOptionsBinderTests.EachTypesPolicy_BindsItsTriggersAndAction_AndATypeWithNoTrigger_HasNoPolicyAsync} |
+| A sealed stream's disposition is its type's `Action` (`Archive` for a type with none), whether or not `Enabled` is set. | Finalized plus grace is one of the type's triggers, so it ends the way the type says; `Enabled` turns on the triggers that read the ledger, not the type's action. | {verified: StreamDispositionStepTests.ASealedStreamsDisposition_IsItsTypesAction_AndArchiveForATypeWithNoneAsync, StreamEndOfLifePolicySqlTests.GetDue_CarriesEachStreamsType_SoItsDispositionIsTheTypesActionAsync} |
+| `IdleTtl` and `MaxAge` must be above zero, `KeepTailVersions` and `TenantByteCap` 1 or more; `Action` is a name (`Archive`, `Compact`, `Purge`). Anything else fails the start naming the key. | Zero would act on every stream of the type at once; to have no trigger, leave it unset. A number would pick an action by its position, which a reader cannot check. | {verified: StreamLifecycleOptionsBinderTests.APolicyValueThatCannotBeUsed_IsRefusedNamingTheKeyAndTheValueAsync, StreamLifecycleOptionsBinderTests.ThePolicyBoundaries_TheSmallestUsableValues_AreAcceptedAsync} |
+| `Action: CloseBooks` is refused at start, naming #1741. | Closing the books is planned and has not shipped; a host that names it must learn that, not have it read as another action. | {verified: StreamLifecycleOptionsBinderTests.Action_CloseBooks_IsRefusedUntilClosingTheBooksShips_NamingItsIssueAsync} |
+| The idle trigger counts from the end of the UTC hour of the newest append: a stream is picked a full `IdleTtl` after that hour ends, and not a second before. | The ledger keeps the newest append's hour, not its instant (so an append's update stays heap-only); within that hour the stream may have been written up to its last second, so it is certainly idle only from then. The cost is up to an hour more life. | {verified: StreamEndOfLifePolicySqlTests.IdleTtl_PicksAStreamOnceItsNewestAppendsHourIsAFullTtlOld_AndNotASecondBeforeAsync} |
+| The age trigger is exact: a stream is picked when its first append is `MaxAge` old. | The first append's time is stored exactly. | {verified: StreamEndOfLifePolicySqlTests.MaxAge_PicksAStreamWhoseFirstAppendIsAMaxAgeOld_AndNotAMicrosecondBeforeAsync} |
+| The version cap cuts through the newest version less `KeepTailVersions`, so exactly the tail stays hot, and records the cut (`truncated_through_version`, migration 297) once the prefix truncate reports `truncated`; the next cycle counts only the versions above it. | The ledger knew a stream's newest version but not how much of its prefix had left the hot store; without the recorded cut every cycle would pick the stream again. A prefix truncated by hand is picked once more, and that truncate removes nothing and records the cut. A restored prefix is not counted until the stream grows past the cut. | {verified: StreamEndOfLifePolicySqlTests.KeepTailVersions_PicksAStreamWithMoreHotVersions_ThroughTheVersionThatLeavesExactlyTheTail_AndTheTruncateLeavesItAsync, StreamEndOfLifePolicySqlTests.SetTruncatedThrough_RecordsTheCut_AndNeverMovesItBackAsync, StreamDispositionStepTests.TheVersionCap_TruncatesThePrefixThroughTheTruncator_WithItsReason_AndRecordsTheCutAsync} |
+| The version cap goes through `IStreamPrefixTruncator` with `DestructionReason.VersionCapExceeded`: `Archive` archives the prefix, `Purge` discards it, `Compact` runs the handler and discards it. A cut that does not happen (blocked, held, refused) or a host with no truncator defers the stream and logs why. | The truncator already owns the prefix's consumption gate, holds, full-history guard, hook and compaction; the hook is told the version cap is why. | {verified: StreamDispositionStepTests.TheVersionCap_TruncatesThePrefixThroughTheTruncator_WithItsReason_AndRecordsTheCutAsync, StreamDispositionStepTests.TheVersionCap_ATruncateThatDidNotHappen_DefersAndLogsItsStatus_AndNoTruncator_DefersAndLogsAsync, StreamPrefixTruncatorDispositionTests.AReasonGiven_IsTheReasonTheHookSees_AndWithoutOne_ATruncateIsAPeriodCloseAsync} |
+| The tenant byte cap is per stream type and tenant (streams with no tenant are one group); it keeps the most recently appended streams while they fit and picks the rest, so a single stream larger than the cap is picked too. A total exactly at the cap fits. | The cap bounds what a tenant holds hot; the streams least recently written are the ones least likely to be read. | {verified: StreamEndOfLifePolicySqlTests.TenantByteCap_PicksTheLeastRecentlyAppendedStreamsUntilTheRestFit_PerTenant_WithNoTenantAsOneGroupAsync} |
+| A trigger picks only `Active`, unsealed streams with no disposition scheduled; a stream that meets several triggers reports the first of idle, age, tenant cap, version cap. Picks come least recently appended first, at most `SweepBatchSize` per cycle. | A sealed stream is its seal's to dispose of, a scheduled one is waiting out a deferral, an archived one is gone; a whole-stream trigger subsumes the version cap. A backlog drains over several cycles. | {verified: StreamEndOfLifePolicySqlTests.Triggers_PickOnlyOpenUnscheduledStreamsOfAPolicysType_LeastRecentlyAppendedFirst_TheFirstTriggerWinning_UpToTheLimitAsync} |
+| Finding the picks reads the lifecycle ledger alone (`wh_stream_policy_candidates`, migration 297), with no new index. | Reading the event store to find candidates would cost what end of life exists to remove; an index on a column an append writes would cost every append its heap-only update. The query scans the ledger rows of the policies' types once per cycle when the policies are enabled. | {verified: StreamEndOfLifePolicySqlTests.PolicyCandidates_ReadOnlyTheLifecycleLedger_AndNoOtherTableAsync} |
+| A whole-stream pick goes the way a due sealed stream does: deferred for the retry backoff while a perspective owes one of its events or a hold covers one, then the final snapshot, then the hook with the trigger's reason (`IdleTtlElapsed`, `MaxAgeReached`, `TenantByteCapExceeded`). A deferral sets the stream's due time, which keeps it out of the picks until the backoff ends. | The same gates and the same veto as every other end of life; the reason tells the hook which trigger fired. | {verified: StreamDispositionStepTests.APickedStream_GetsItsFinalSnapshot_ThenTheHookWithItsTriggersReason_ThenIsArchivedWhole_AndIsNotSealedAsync, StreamDispositionStepTests.APickedStreamThatIsBlockedOrHeld_IsDeferredForTheBackoff_AndNothingElseRunsAsync, StreamDispositionStepTests.AHookThatCancels_DefersAPickedStreamForTheBackoff_AndOneThatDefers_UntilItsInstant_NeitherSealsAsync, StreamEndOfLifePolicySqlTests.GetReadiness_ReadsTheConsumptionGateAndTheHolds_PerStreamAsync} |
+| An archive by policy does not seal the stream. | An archive is reversible: an idle stream that comes back is appended to under its type's [`AppendToArchived`](archive-store.md#appending-to-an-archived-stream) policy. With the default `Refuse` an archived stream refuses appends until it is restored, so a type archived by `IdleTtl` usually wants `AutoRestore` or `NewGeneration`. An append that lands between the pick and the archive is archived with the rest, never lost. | {verified: StreamDispositionStepTests.APickedStream_GetsItsFinalSnapshot_ThenTheHookWithItsTriggersReason_ThenIsArchivedWhole_AndIsNotSealedAsync} |
+| A purge, or a compaction that will run, by policy seals the stream first, after the hook and only if its newest version is still the one the policy saw (`wh_seal_stream_if_unchanged`, under the append lock). A stream appended to since it was picked is left open, and the next cycle decides afresh. | An append between the pick and the purge would otherwise be purged unseen. Under the lock, an append is either stored first (and the seal refused) or refused by the seal. Asking the hook first means a veto leaves the stream open. | {verified: StreamDispositionStepTests.Purge_TheHookFirst_ThenTheStreamIsSealedIfUnchanged_ThenPurged_SayingWhichTriggerAsync, StreamDispositionStepTests.Purge_OfAStreamAppendedToSinceItWasPicked_IsLeftAlone_AndNothingIsPurgedAsync, StreamEndOfLifePolicySqlTests.SealIfUnchanged_SealsAnOpenStreamAtTheVersionSeen_AndNotOneAppendedSinceOrAlreadySealedAsync, StreamEndOfLifePolicySqlTests.SealIfUnchanged_WaitsForTheStreamsAppendLockAsync} |
+| `Compact` on a whole stream runs the `ICompactionHandler` and then purges, as for a sealed stream; with no handler the stream is deferred and logged, and not sealed. | Compaction is the developer's in 1.0. A stream that cannot be compacted is kept open: sealing it would refuse its appends for nothing. | {verified: StreamDispositionStepTests.Compact_RunsTheHandlerAfterTheSeal_ThenPurges_AndWithNoHandler_DefersWithoutSealingAsync} |
+| A purge by policy says who (`stream-disposition`) and why (the trigger). | A purge must say who asked and why. | {verified: StreamDispositionStepTests.Purge_TheHookFirst_ThenTheStreamIsSealedIfUnchanged_ThenPurged_SayingWhichTriggerAsync} |
+| One picked stream's failure is logged and deferred, and the next pick still runs. | One broken stream must not hold back the sweep. | {verified: StreamDispositionStepTests.APickedStreamThatFails_IsLoggedAndDeferred_AndTheNextPickStillRunsAsync} |
+
 ## Tests {#tests}
 
 | Test class | What it locks |
@@ -553,6 +632,8 @@ var result = await truncator.TruncateAsync(accountId, throughVersion: 120, Dispo
 | `StreamLifecycleOptionsBinderTests` | `FinalizeGrace` and `SweepBatchSize`: defaults, edges and refusals |
 | `StreamPrefixTruncatorDispositionTests`, `MaintenanceWorkerDispositionTests`, `DestructionContractTests` | the prefix truncate's and the reaper's routing on the disposition, and `Proceed()` keeping the declared one |
 | `UnshippedDestructionAnalyzerTests` | WHIZ137 |
+| `StreamEndOfLifePolicySqlTests` | each policy trigger at its boundary, read from the ledger alone; the version cap's cut; the tenant cap's order; the guarding seal; a due stream's type; a policy end to end |
+| `StreamDispositionStepTests` (policies) | `Enabled`, each trigger's reason, the seal before a purge or compaction, deferrals, the version cap through the truncator, a sealed stream's type action |
 
 ## Related
 
