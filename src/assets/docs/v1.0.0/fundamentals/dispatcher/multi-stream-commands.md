@@ -164,8 +164,16 @@ An instance claims a run's stream when it owns the stream, by the rule the work 
 2. **Otherwise, unless a live sibling holds the stream's lease, its partition decides.** A stream hashes to one of
    10,000 partitions, and the [published partition assignment](../work-coordinator/partition-assignment.md) gives each
    partition to one live instance that is eligible for work. Without a current assignment, the live instances that are
-   eligible for work rank themselves by id, exactly as the work claim's fallback does, and the claiming instance always
-   counts itself.
+   eligible for work rank themselves by id, exactly as the work claim's fallback does, and the claiming instance counts
+   itself.
+
+**A claiming instance that is not eligible claims nothing.** Since migration 300 `wh_claim_multi_stream_work` gives
+nothing to a caller whose own row may not claim, as `claim_work` does: one that is still starting claims no run until
+its row records Accept commands. A draining caller still claims, an older build that records no phase claims as
+before, and a caller with no row is served (see
+[An ineligible caller claims nothing](../work-coordinator/claim-loop.md#ineligible-caller-claims-nothing) for the
+reasons). The check is one primary-key lookup of the caller's row.
+{verified: MultiStreamCommandStoreSqlTests.ClaimAsync_ACallerNotYetReady_ClaimsNothingAsync}
 
 An expired lease, or a lease held by an instance with no heartbeat, is not ownership: the partition decides. The
 partition hash stays in the database, so the rule has one implementation.

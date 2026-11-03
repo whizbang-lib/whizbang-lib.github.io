@@ -125,9 +125,8 @@ sequenceDiagram
         Note over ES,W: Phase 3: Worker Startup
         App->>ES: StartAsync()
         Note over ES: Initialize channels,<br/>start background workers
-        App->>W: StartAsync() (BackgroundService)
-        W->>Gate: WaitForReadyAsync()
-        Gate-->>W: ready
+        App->>W: StartAsync() (the wrapper the worker is registered in)
+        Gate-->>W: ready (the wrapper starts the worker at its start point)
         Note over W: First claim cycle acts as<br/>startup catch-up for pre-existing work
     end
 
@@ -229,7 +228,7 @@ protected override async Task ExecuteAsync(CancellationToken stoppingToken) {
 ```
 
 **Best Practices**:
-- ✅ **Let upstream workers gate on dependencies** — `ClaimWorker` awaits `ISchemaReadyGate` before its first SQL; `PerspectiveWorker` consumes channels that only carry work after the gate opens
+- ✅ **Register workers with their start point** (`AddWhizbangWorker`): the host starts `ClaimWorker`, `PerspectiveWorker` and the rest of the data plane once the instance's row records Accept commands, so no worker waits on the gate itself
 - ✅ **Reconcile orphaned state on startup** (crashed-pod lifecycles, interrupted rewinds)
 - ✅ **Log startup events** for observability
 - ✅ **Handle startup exceptions** gracefully (don't crash worker)
@@ -383,7 +382,8 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Configure services
 builder.Services.AddSingleton<IExecutionStrategy, SerialExecutor>();
-builder.Services.AddHostedService<PerspectiveWorker>();
+// PerspectiveWorker is hosted by the framework at its start point; it needs no registration.
+builder.Services.AddWhizbangWorker<MyOwnWorker>();
 
 var app = builder.Build();
 
@@ -418,7 +418,7 @@ await app.StopAsync();
 
 ## Schema Readiness Coordination
 
-Workers coordinate startup with database availability through the **`ISchemaReadyGate`** signal:
+Workers coordinate startup with database availability through the **`ISchemaReadyGate`** signal, but they do not wait on it themselves: each worker is [registered with its start point](../startup/startup-status#add-whizbang-worker), and the wrapper that hosts it waits.
 
 ### Why Schema Readiness Matters
 
@@ -436,17 +436,13 @@ protected override async Task ExecuteAsync(CancellationToken ct) {
 }
 ```
 
-**With the gate**, workers wait once before their first SQL call:
-```csharp{title="Why Schema Readiness Matters (2)" description="With the gate:" category="Implementation" difficulty="ADVANCED" tags=["Operations", "Workers", "Why", "Database"] unverified="ISchemaReadyGate coordination — its verifier is outside the current coverage map"}
-// ✅ Worker holds off on any SQL until the schema is provisioned
-protected override async Task ExecuteAsync(CancellationToken stoppingToken) {
-  try {
-    await _schemaReadyGate.WaitForReadyAsync(stoppingToken);
-  } catch (OperationCanceledException) {
-    return;
-  }
+**With a start point**, the host starts the worker only once the instance reaches it, and the worker's loop holds no wait:
+```csharp{title="Why Schema Readiness Matters (2)" description="The worker is registered with its start point; its loop holds no gate code" category="Workers" difficulty="ADVANCED" tags=["Operations", "Workers", "Startup", "Registration"] tests=["WhizbangWorkerRegistrationTests.AddWhizbangWorker_StartsAtAcceptCommandsByDefault_AndHostsTheRegisteredSingletonAsync","WorkerStartGateSourceGuardTests.NoHostedService_DecidesItsOwnStartOnTheSchemaReadyGate_ButTheStartupMachineryAsync"]}
+// ✅ Registered with its start point: Accept commands unless another stage is named
+builder.Services.AddWhizbangWorker<MyClaimingWorker>();
 
-  // Schema is provisioned — safe to enter the main loop
+// The worker's loop starts only once the instance is eligible for work
+protected override async Task ExecuteAsync(CancellationToken stoppingToken) {
   while (!stoppingToken.IsCancellationRequested) {
     // ... claim and process work
   }
@@ -455,8 +451,8 @@ protected override async Task ExecuteAsync(CancellationToken stoppingToken) {
 
 **Benefits**:
 - ✅ **No startup/runtime ambiguity** — after the gate opens, database exceptions are genuine runtime failures
-- ✅ **Registration order stops mattering** — workers registered before the driver's initializer still wait
-- ✅ **One signal, many waiters** — no per-worker polling or table-existence probes
+- ✅ **Registration order stops mattering**: the host starts each worker at its start point, whatever order it was added in
+- ✅ **No gate code in any worker**: the wait lives in the wrapper, and a source guard fails if a library worker waits on the gate itself
 - ✅ **Fail-safe on migration failure** — the gate stays closed and the host aborts
 
 The gate is marked ready by `WhizbangDatabaseInitializerService` after migrations succeed. See [Database Readiness](database-readiness.md) for full details.
@@ -727,25 +723,22 @@ public async Task DrainAsync_ShouldWaitForPendingWorkAsync() {
 
 **Problem**: Worker needs database migrations before starting.
 
-**Solution** — await `ISchemaReadyGate` (signal-based, no polling):
-```csharp{title="Pattern 1: Initialization Dependencies" description="Pattern 1: Initialization Dependencies" category="Implementation" difficulty="ADVANCED" tags=["Operations", "Workers", "Pattern", "Initialization"] unverified="ISchemaReadyGate coordination — its verifier is outside the current coverage map"}
+**Solution**: register the worker with its start point; the host starts it there:
+```csharp{title="Pattern 1: Initialization Dependencies" description="Register the worker at the point it needs; the worker holds no wait of its own" category="Workers" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Pattern", "Initialization"] tests=["WhizbangWorkerRegistrationTests.AddWhizbangWorker_StartsAtAcceptCommandsByDefault_AndHostsTheRegisteredSingletonAsync","WhizbangWorkerRegistrationTests.AddWhizbangWorkerAtSchemaReady_HostsTheWorkerBehindTheSchemaReadyGateAsync"]}
+// Started once the instance is eligible for work (Accept commands)
+builder.Services.AddWhizbangWorker<MyDatabaseWorker>();
+
 public class MyDatabaseWorker : BackgroundService {
-  private readonly ISchemaReadyGate _schemaReadyGate;
-
   protected override async Task ExecuteAsync(CancellationToken ct) {
-    // Block until WhizbangDatabaseInitializerService marks the gate ready
-    // (returns immediately if migrations already completed)
-    await _schemaReadyGate.WaitForReadyAsync(ct);
-
-    _logger.LogInformation("Schema ready - starting processing");
-
-    // Begin normal operation
+    // The schema is provisioned and the instance is eligible before this runs
     while (!ct.IsCancellationRequested) {
       await ProcessBatchAsync(ct);
     }
   }
 }
 ```
+
+A worker that needs only the schema, not eligibility, uses `AddWhizbangWorkerAtSchemaReady<T>()` instead.
 
 ### Pattern 2: Multi-Phase Shutdown
 
@@ -791,14 +784,12 @@ app.MapHealthChecks("/health/ready", new HealthCheckOptions {
 
 **Symptoms**: Exceptions on startup, "relation does not exist" or "connection refused" errors.
 
-**Solution**: Await `ISchemaReadyGate` before the first SQL call:
-```csharp{title="Problem: Worker Starts Before Database Ready" description="Solution: Await ISchemaReadyGate before the first SQL call:" category="Implementation" difficulty="BEGINNER" tags=["Operations", "Workers", "Problem:", "Worker"] unverified="ISchemaReadyGate coordination — its verifier is outside the current coverage map"}
-try {
-  await _schemaReadyGate.WaitForReadyAsync(stoppingToken);
-} catch (OperationCanceledException) {
-  return;
-}
-// ... safe to issue SQL from here
+**Cause**: the worker was added with `AddHostedService`, so it starts with the host, before the migration.
+
+**Solution**: register it with its start point:
+```csharp{title="Problem: Worker Starts Before Database Ready" description="AddWhizbangWorker starts the worker at Accept commands instead of with the host" category="Workers" difficulty="BEGINNER" tags=["Operations", "Workers", "Startup", "Registration"] tests=["WhizbangWorkerRegistrationTests.AddWhizbangWorker_StartsAtAcceptCommandsByDefault_AndHostsTheRegisteredSingletonAsync"]}
+// Not: builder.Services.AddHostedService<MyDatabaseWorker>();
+builder.Services.AddWhizbangWorker<MyDatabaseWorker>();
 ```
 
 ### Problem: Shutdown Hangs Indefinitely

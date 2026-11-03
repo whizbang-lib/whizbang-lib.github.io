@@ -8,12 +8,14 @@ category: Workers
 order: 3
 description: >-
   Database dependency coordination - the ISchemaReadyGate signal, startup
-  ordering via WhizbangDatabaseInitializerService, worker gating, and HTTP
-  availability middleware
+  ordering via WhizbangDatabaseInitializerService, workers registered with
+  their start point, and HTTP availability middleware
 tags: >-
   database-readiness, schema-ready-gate, dependency-coordination, startup,
   migrations, health-checks
 codeReferences:
+  - src/Whizbang.Core/Startup/WhizbangWorkerServiceCollectionExtensions.cs
+  - src/Whizbang.Core/Startup/SchemaReadyGatedService.cs
   - src/Whizbang.Core/Workers/ISchemaReadyGate.cs
   - src/Whizbang.Core/Workers/SchemaInitializationOptions.cs
   - src/Whizbang.Data.Postgres/WhizbangDatabaseInitializerService.cs
@@ -24,6 +26,8 @@ codeReferences:
   - src/Whizbang.Core/Dispatch/SchemaReadyDispatchDeferral.cs
   - src/Whizbang.Core/Dispatcher.cs
 testReferences:
+  - tests/Whizbang.Core.Component.Tests/Startup/WhizbangWorkerRegistrationTests.cs
+  - tests/Whizbang.Core.Component.Tests/Startup/WorkerStartGateSourceGuardTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/ColdBootJourneyE2ETests.cs
   - tests/Whizbang.Hosting.AspNet.Tests/DatabaseAvailabilityMiddlewareTests.cs
   - tests/Whizbang.Hosting.AspNet.Tests/DatabaseAvailabilityMiddlewareExtensionsTests.cs
@@ -38,7 +42,7 @@ lastMaintainedCommit: '01f07906'
 
 # Database Readiness
 
-Whizbang coordinates workers with database availability through the **`ISchemaReadyGate`** — a signal-based gate that workers await before issuing any SQL. The schema initializer marks the gate ready exactly once, after migrations succeed; until then, every database-touching worker blocks at the top of its `ExecuteAsync`.
+Whizbang coordinates workers with database availability through the **`ISchemaReadyGate`**, a signal-based gate the schema initializer opens exactly once, after migrations succeed. Workers do not wait on it themselves: each is [registered with its start point](../startup/startup-status#add-whizbang-worker), and the host starts it there. The heartbeat and a few others start when the gate opens; the data plane and the transport consumer start later, once the instance's row records Accept commands.
 
 :::updated
 Earlier designs used a polling `IDatabaseReadinessCheck` interface that each worker invoked on every cycle. That interface has been removed. The shipped mechanism is the signal-based `ISchemaReadyGate` described on this page: workers wait once at startup instead of re-checking readiness per poll, and readiness is driven by the migration runner rather than by table-existence probes.
@@ -57,21 +61,21 @@ Earlier designs used a polling `IDatabaseReadinessCheck` interface that each wor
 **With `ISchemaReadyGate`**:
 
 - Workers hold off on all SQL until migrations have completed
-- Hosted-service **registration order stops mattering** — a worker whose `StartAsync` runs before the initializer still waits on the gate
+- Hosted-service **registration order stops mattering**: the host starts each worker at its registered start point, whatever order the hosted services were added in
 - Migration failure keeps the gate closed, so workers never run against a broken schema
-- One signal, many waiters — no polling, no per-worker readiness logic
+- One signal, many waiters, no polling, and no per-worker readiness logic: the wait lives in the wrapper that hosts the worker, not in the worker
 
 ---
 
 ## ISchemaReadyGate Interface
 
-```csharp{title="ISchemaReadyGate Interface" description="Signal-based gate workers await before issuing SQL" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "ISchemaReadyGate", "Interface"]}
+```csharp{title="ISchemaReadyGate Interface" description="Signal-based gate that opens once the schema is provisioned" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "ISchemaReadyGate", "Interface"]}
 /// <summary>
-/// Signal-based gate that workers await before issuing SQL against the database. The schema
-/// initializer (typically WhizbangDatabaseInitializerService in the EFCore Postgres
-/// driver) calls MarkReady after migrations succeed. Workers call
-/// WaitForReadyAsync at the top of their ExecuteAsync so they hold off
-/// on any SQL until the schema is provisioned.
+/// Signal-based gate that opens once the schema is provisioned. The schema initializer
+/// (WhizbangDatabaseInitializerService, which both Postgres drivers share) calls MarkReady
+/// after migrations succeed. Workers do not await it themselves: the wrapper that hosts a
+/// worker registered with AddWhizbangWorkerAtSchemaReady waits for it, and code that is not
+/// a hosted worker can await WaitForReadyAsync.
 /// </summary>
 public interface ISchemaReadyGate {
   /// <summary>
@@ -137,32 +141,48 @@ private async Task _runInitializationAsync(CancellationToken cancellationToken) 
 
 ## How Workers Use the Gate
 
-Database-touching workers await the gate once, at the top of `ExecuteAsync`, before their first SQL call. From `ClaimWorker`:
+A worker holds no gate code. It is registered with its start point, and the wrapper that hosts it waits for that point
+and then starts it:
 
-```csharp{title="ClaimWorker gate usage" description="Workers await the schema gate before their first SQL call" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "ClaimWorker", "Gate"]}
-// Hold off on any SQL until the schema is provisioned. The driver's initializer
-// (WhizbangDatabaseInitializerService) signals the gate after migrations succeed.
-// This decouples worker startup from hosted-service registration order — even if
-// this worker's StartAsync runs before the initializer, we still wait here.
-try {
-  await _schemaReadyGate.WaitForReadyAsync(stoppingToken);
-} catch (OperationCanceledException) {
-  return;
-}
+```csharp{title="Workers registered with their start point" description="The wrapper waits for the start point; the worker itself holds no wait on the gate" category="Workers" difficulty="INTERMEDIATE" tags=["Operations","Workers","Startup","Gate"] tests=["WhizbangWorkerRegistrationTests.AddWhizbangWorker_StartsAtAcceptCommandsByDefault_AndHostsTheRegisteredSingletonAsync","WhizbangWorkerRegistrationTests.AddWhizbangWorkerAtSchemaReady_HostsTheWorkerBehindTheSchemaReadyGateAsync"]}
+// Starts once the instance's row records Accept commands (the default).
+services.AddWhizbangWorker<OrderArchiveWorker>();
+
+// Starts when the schema-ready gate opens, at the end of Coordinate.
+services.AddWhizbangWorkerAtSchemaReady<InstanceMetricsWorker>();
 ```
 
-Every database-touching worker gates on schema readiness:
+Where each framework worker starts:
 
-- **Work coordination**: `ClaimWorker`, `HeartbeatWorker`, `MaintenanceWorker`, `LeaseRenewalWorker`
-- **Inbox/outbox drain and flush**: `InboxDrainWorker`, `InboxDispatchWorker`, `InboxHandlerWorker`, `OutboxDrainWorker`, `OutboxPublishWorker`, `OutboxCompletionFlushWorker`, `PerspectiveCompletionFlushWorker`, `FailureFlushWorker`, `DeadLetterRecoveryWorker`
-- **Perspectives and repair**: `PerspectiveWorker` (its startup scan — registry init, orphan reconcile, rewind repair — waits directly, not just implicitly through the gated `ClaimWorker`; see [Perspective Worker](perspective-worker.md)), `PerspectiveMigrationWorker`, `OrphanInboxJanitor`
-- **Transport consumers**: `ServiceBusConsumerWorker` and `TransportConsumerWorker` — subscribing lets the broker *deliver*, and delivery lands in inbox tables the migration creates, so nothing subscribes before the gate opens — plus `TransportDeadLetterDrainWorker` and `BackupTickCoordinator`
-- **Postgres notification stack**: `PgDurableSignalTailWorker` (its first act INSERTs this pod's cursor into `wh_signal_cursors`), `PgInstanceLifecycleMonitor` (death detection reads `wh_service_instances` — a death announced against a half-migrated fleet table would trigger takeover from garbage data), `PgDurableSignalRetentionWorker` (gated *before* its interval delay — the delay is a courtesy, not a barrier), and `PgCommitOrderStamperWorker` (its leader loop calls `stamp_pending_commit_sequences`, a function the migration defines)
-- **Startup reconciliation**: `TypeDefinitionReconcilerHostedService` and the Dapper driver's message-type registry reconciliation — the latter no longer populates inline in `StartAsync`, which both raced a non-blocking initializer and stalled every later hosted service behind database work
+- **When the gate opens (schema ready)**: `HeartbeatWorker`, `PgInstanceLifecycleMonitor` (death detection reads
+  `wh_service_instances`; a death announced against a half-migrated fleet table would trigger takeover from garbage
+  data), `StandbyWatcher`, the statistics collectors, `TypeDefinitionReconcilerHostedService`, the Dapper driver's
+  message-type registry reconciliation, and `WhizbangShutdownService` (deregistration). These keep an instance alive
+  and coordinated while it is not yet eligible for work.
+- **At Accept commands, once the row records it**: the data plane (`ClaimWorker`, `PerspectiveWorker`, the inbox and
+  outbox workers, the flush workers, `LeaseRenewalWorker`, `MaintenanceWorker`, `DeadLetterRecoveryWorker`,
+  integrity, repair, schedules, multi-stream commands, `OrphanInboxJanitor`, `PgCommitOrderStamperWorker`,
+  `PgDurableSignalTailWorker`, `PgDurableSignalRetentionWorker`, `BackupTickCoordinator`,
+  `TransportDeadLetterDrainWorker`) and the transport consumer (`TransportConsumerWorker`). Subscribing lets the broker
+  deliver, and delivery lands in inbox tables the migration creates, so nothing subscribes before then; the consumer
+  receives while the read models catch up rather than waiting for Running.
+- **Hosted by the application**: `ServiceBusConsumerWorker` and `PerspectiveMigrationWorker`. Register them with
+  `AddWhizbangWorker`; one added with `AddHostedService` starts with the host, before the schema is migrated.
 
-Two notification services are **deliberately not gated**: `PgSharedNotifyConnection` and `PgWorkNotificationListener` use only `LISTEN`/`NOTIFY` and the session advisory alive-lock — no schema required — and the shared connection is the liveness substrate (`wh_live_instances` joins `pg_stat_activity` on its `application_name`), which startup stages that run *before* migrations need. Purely in-memory workers (e.g. `RecentlyProcessedEventCacheSweepWorker`) don't gate either — there is nothing database-shaped to wait for.
+{verified: StartupHostedServiceAuditTests.EveryHostedService_HasAPlaceInTheStageTable_AndTheStagedOnesStartAtTheirStageAsync, StartupStageHostTests.TheDataPlane_StartsOnlyOnceTheRowRecordsAcceptCommandsAsync, WorkerStartGateSourceGuardTests.NoHostedService_DecidesItsOwnStartOnTheSchemaReadyGate_ButTheStartupMachineryAsync}
 
-**Key difference from polling designs**: readiness is checked **once**, not per cycle. After the gate opens, transient database failures during runtime surface as ordinary exceptions with retry/backoff in each worker's loop — they are not conflated with "schema not ready yet."
+The full table, the reasons for each start point and the upgrade note are in
+[What runs in each stage](../startup/startup-status#what-runs-in-each-stage).
+
+Two notification services are **deliberately not gated**: `PgSharedNotifyConnection` and `PgWorkNotificationListener`
+use only `LISTEN`/`NOTIFY` and the session advisory alive-lock (no schema required), and the shared connection is the
+liveness substrate (`wh_live_instances` joins `pg_stat_activity` on its `application_name`), which startup stages that
+run *before* migrations need; the connection starts at Elect. Purely in-memory workers (for example
+`RecentlyProcessedEventCacheSweepWorker`) start with the host: there is nothing database-shaped to wait for.
+
+**Key difference from polling designs**: readiness is checked **once**, by the wrapper, not per cycle. After a worker
+starts, transient database failures during runtime surface as ordinary exceptions with retry/backoff in each worker's
+loop; they are not conflated with "schema not ready yet."
 
 ---
 
@@ -260,44 +280,26 @@ spec:
 
 ## Testing
 
-Because the gate is a simple signal, tests wire workers with a pre-marked gate (or hold it closed to assert blocking behavior):
+A worker under test needs no gate. To test the start point itself, host the worker in its wrapper and wait on the
+wrapper's own signal (`GatedHostedService.Started`) rather than sleeping:
 
-```csharp{title="Testing with SchemaReadyGate" description="Tests mark the gate ready before starting workers" category="Implementation" difficulty="INTERMEDIATE" tags=["Operations", "Workers", "Testing", "Gate"] tests=["HeartbeatWorkerTests.ExecuteAsync_FirstTick_CallsRecordHeartbeatWithProviderIdentityAsync", "HeartbeatWorkerTests.ExecuteAsync_BlocksOnSchemaGate_UntilMarkedReadyAsync"]}
+```csharp{title="Testing a worker's start point" description="The wrapper starts the worker only once the gate opens; the test waits on the wrapper's Started signal" category="Workers" difficulty="INTERMEDIATE" tags=["Operations","Workers","Testing","Gate"] tests=["WhizbangWorkerRegistrationTests.AtSchemaReady_TheWorkerStartsOnlyOnceTheGateOpensAsync","WhizbangWorkerRegistrationTests.AtSchemaReady_StoppedBeforeTheGateOpens_TheWorkerIsNeverStartedAsync"]}
 [Test]
-public async Task Worker_WithReadyGate_ProcessesWorkAsync() {
-  // Arrange — gate ready, worker may issue SQL immediately
-  var gate = new SchemaReadyGate();
-  gate.MarkReady();
+public async Task Worker_StartsOnlyOnceTheSchemaIsReadyAsync(CancellationToken cancellationToken) {
+  var schemaReady = new SchemaReadyGate();
+  var worker = new InstanceMetricsWorker();
+  using var wrapper = new SchemaReadyGatedService<InstanceMetricsWorker>(worker, schemaReady);
 
-  var worker = new HeartbeatWorker(
-    _scopeFactory,
-    _instanceProvider,
-    gate,
-    Options.Create(new HeartbeatWorkerOptions { IntervalSeconds = 1 }),
-    NullLogger<HeartbeatWorker>.Instance);
+  await wrapper.StartAsync(cancellationToken);
+  schemaReady.MarkReady();
+  await wrapper.Started.WaitAsync(cancellationToken);
 
-  // Act / Assert — worker enters its main loop without blocking
-  await worker.StartAsync(CancellationToken.None);
-}
-
-[Test]
-public async Task Worker_WithClosedGate_DoesNotTouchDatabaseAsync() {
-  // Arrange — gate NEVER marked ready
-  var gate = new SchemaReadyGate();
-  var worker = new HeartbeatWorker(
-    _scopeFactory,
-    _instanceProvider,
-    gate,
-    Options.Create(new HeartbeatWorkerOptions()),
-    NullLogger<HeartbeatWorker>.Instance);
-
-  // Act
-  await worker.StartAsync(CancellationToken.None);
-
-  // Assert — no SQL was issued; the worker is parked on WaitForReadyAsync
-  await Assert.That(gate.IsReady).IsFalse();
+  await wrapper.StopAsync(cancellationToken);
 }
 ```
+
+A wrapper stopped before its start point never starts the worker, so a test of "nothing runs before the gate opens"
+stops the wrapper and asserts the worker was never started.
 
 ---
 
@@ -305,7 +307,7 @@ public async Task Worker_WithClosedGate_DoesNotTouchDatabaseAsync() {
 
 ### DO ✅
 
-- ✅ **Await the gate before any SQL** in custom database-touching hosted services
+- ✅ **Register custom database-touching workers with `AddWhizbangWorker`** (or `AddWhizbangWorkerAtSchemaReady`), so the host starts them at their start point
 - ✅ **Register the driver initializer** (done automatically by `AddWhizbang().WithDriver.Postgres`)
 - ✅ **Use `DatabaseAvailabilityMiddleware`** (or an equivalent health check) so HTTP traffic waits for the schema
 - ✅ **Let migration failures abort startup** — a closed gate is the safety mechanism, not a bug
@@ -313,7 +315,8 @@ public async Task Worker_WithClosedGate_DoesNotTouchDatabaseAsync() {
 
 ### DON'T ❌
 
-- ❌ Poll `IsReady` in a loop from workers — `WaitForReadyAsync` is the intended wait primitive
+- ❌ Wait on the gate inside a worker to decide when it starts: register it with its start point instead (a source guard enforces this for the library's own workers)
+- ❌ Add a worker with `AddHostedService`: it starts with the host, before the schema is migrated
 - ❌ Call `MarkReady` from application code — that is the initializer's job (tests excepted)
 - ❌ Treat post-ready database outages as a readiness concern — after the gate opens, failures are handled by each worker's retry/backoff
 - ❌ Rely on hosted-service registration order for startup sequencing — the gate exists precisely so order doesn't matter
@@ -427,7 +430,7 @@ Three properties are load-bearing:
 **Causes**:
 1. Migrations failed or hit `MigrationTimeout` — the gate was never marked ready (host startup aborts in blocking mode; the host stays alive-but-never-ready in the non-blocking default)
 2. The driver initializer is not registered (custom DI setup that bypasses `AddWhizbang().WithDriver.Postgres`)
-3. Test fixture constructed workers with a `SchemaReadyGate` that was never marked ready
+3. The instance never records Accept commands: the data plane waits for the row, so check the [startup stage](../startup/startup-status#startup-stages) the row records (a held write is written by the next accepted heartbeat)
 
 **Solution**:
 ```bash{title="Problem: Workers Never Start Processing" description="Check migration output and gate state" category="Implementation" difficulty="BEGINNER" tags=["Operations", "Workers", "Problem:", "Workers"]}
@@ -446,15 +449,13 @@ psql -h localhost -U postgres -d whizbang -c "\dt wh_*"
 **Symptoms**: "relation does not exist" errors on startup.
 
 **Causes**:
-1. A custom hosted service issues SQL without awaiting `ISchemaReadyGate`
+1. A custom worker was added with `AddHostedService`, so it starts with the host, before the migration
 2. Application code runs queries during `ConfigureServices`/startup before the host starts
 
-**Solution**: inject `ISchemaReadyGate` and await it first:
-```csharp{title="Problem: SQL Fired Against Unmigrated Database" description="Gate custom services on schema readiness" category="Implementation" difficulty="BEGINNER" tags=["Operations", "Workers", "Problem:", "SQL"]}
-protected override async Task ExecuteAsync(CancellationToken stoppingToken) {
-  await _schemaReadyGate.WaitForReadyAsync(stoppingToken);
-  // ... safe to issue SQL from here
-}
+**Solution**: register the worker with its start point:
+```csharp{title="Problem: SQL Fired Against Unmigrated Database" description="Register custom workers with their start point instead of AddHostedService" category="Workers" difficulty="BEGINNER" tags=["Operations", "Workers", "Startup", "SQL"] tests=["WhizbangWorkerRegistrationTests.AddWhizbangWorker_StartsAtAcceptCommandsByDefault_AndHostsTheRegisteredSingletonAsync"]}
+// Not: builder.Services.AddHostedService<OrderArchiveWorker>();
+builder.Services.AddWhizbangWorker<OrderArchiveWorker>();
 ```
 
 ---

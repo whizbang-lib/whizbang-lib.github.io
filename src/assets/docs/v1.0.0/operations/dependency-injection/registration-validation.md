@@ -31,7 +31,7 @@ exactly like behavior that was never requested. Whizbang turns that into a start
 ```
 WhizbangRegistrationException: Whizbang registration validation failed: 2 dependencies are
 declared but not registered.
-  - ISchemaReadyGate (required by PerspectiveWorker)
+  - IPerspectiveSnapshotStore (required by PerspectiveWorker)
   - IWorkChannelWriter (required by ClaimWorker)
 Register each service, or call the Add* extension that supplies its default.
 ```

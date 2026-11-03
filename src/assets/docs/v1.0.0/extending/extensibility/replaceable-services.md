@@ -111,7 +111,7 @@ Plain `TryAddSingleton` would lose to the placeholder when your extension runs a
 | `IReceptorRegistryQuery` | adapter over `IReceptorRegistry` | Answers "does anything handle this message at this stage?" |
 | `IMessageDiscardPolicy` | `MessageDiscardPolicy` | Drops messages no receptor consumes |
 | `IGenerationProvider` | `DefaultGenerationProvider` | The deployment generation stamped on dead letters |
-| `IReadModelsReadyGate`, `ISchemaReadyGate` | the startup gates | Hold workers until schema and read models are ready |
+| `IReadModelsReadyGate`, `ISchemaReadyGate` | the startup gates | Signal that the schema and the read models are ready; the host starts workers registered at schema ready on the schema gate (workers never wait on it themselves), and lens reads are refused while the read-model gate is closed |
 | `ILibraryVersionProvider` | the assembly version | The version an instance records and compares during rolling upgrades |
 | `IScopedEventTracker`, `ISyncEventTracker`, `IEventCompletionAwaiter`, `ITrackedEventTypeRegistry`, `IPerspectiveSyncSignaler` | the local sync machinery | Append-and-wait perspective synchronization |
 | `ILifecycleContextAccessor` | `AsyncLocalLifecycleContextAccessor` | The lifecycle stage of the current flow |

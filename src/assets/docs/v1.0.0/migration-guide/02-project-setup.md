@@ -188,7 +188,7 @@ using (var scope = app.Services.CreateScope()) {
 app.Run();
 ```
 
-**Dapper path** — pass `initializeSchema: true` at registration and the schema is initialized by the shared schema initializer at host start (registration itself never connects); wait on `ISchemaReadyGate` before using the schema from your own startup code:
+**Dapper path**: pass `initializeSchema: true` at registration and the schema is initialized by the shared schema initializer at host start (registration itself never connects); wait on `ISchemaReadyGate` before using the schema from your own startup code. A background worker of your own needs no wait: register it with `AddWhizbangWorker<T>()` and the host starts it once the instance is eligible for work ([why](../operations/startup/startup-status#add-whizbang-worker)):
 
 ```csharp{title="Initialize Whizbang Schema (Dapper)" description="Dapper registration with automatic schema initialization on startup" category="Reference" difficulty="BEGINNER" tags=["Migration-guide", "C#", "Initialize", "Dapper", "Schema"] tests=["ServiceCollectionExtensionsTests.AddWhizbangPostgres_InitializeSchemaTrue_NoPerspective_InitializesInfraOnlyAsync", "ServiceCollectionExtensionsTests.AddWhizbangPostgres_InitializeSchemaTrue_WithPerspective_InitializesBothAsync"]}
 builder.Services.AddWhizbangPostgres(
