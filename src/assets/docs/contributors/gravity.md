@@ -38,11 +38,31 @@ gravity was applied, about 41 places each wrote the same wait by hand: a null ch
 and a catch that returns on shutdown. Each copy was a chance to get it subtly wrong, and a new worker had to know to
 write it at all.
 
-With gravity, a worker is **registered with the stage it starts at**, and the host starts it only when startup reaches
-that stage. The worker contains no gate code. Two checks keep it that way: a test fails when a hosted service is
-registered without a stage, and a guard fails when worker code waits on the gate directly to decide when to start. The
-easiest way to add a worker is now also the only correct one. (Issue
-[#1636](https://github.com/whizbang-lib/whizbang/issues/1636), startup stages.)
+With gravity, a worker is **registered with the point it starts at**, and the host starts it there. The worker
+contains no gate code:
+
+```csharp{title="A worker registered with its start point" description="The host starts the worker once the instance is eligible for work; the worker holds no wait of its own" category="Workers" difficulty="BEGINNER" tags=["Gravity","Startup","Workers","Registration"] tests=["WhizbangWorkerRegistrationTests.AddWhizbangWorker_StartsAtAcceptCommandsByDefault_AndHostsTheRegisteredSingletonAsync"]}
+// Accept commands unless another stage is named: the safe default for anything that touches the message tables.
+services.AddWhizbangWorker<OrderArchiveWorker>();
+
+// The few that must run before the instance is eligible (the heartbeat, for one) start when the schema is ready.
+services.AddWhizbangWorkerAtSchemaReady<InstanceMetricsWorker>();
+```
+
+Every one of those hand-written waits was deleted. Two checks keep it that way:
+
+- **A test fails when a hosted service has no start point.** It composes a host the way an application does and fails,
+  naming the service, when any hosted service it resolves has no place in the start table.
+  {verified: StartupHostedServiceAuditTests.EveryHostedService_HasAPlaceInTheStageTable_AndTheStagedOnesStartAtTheirStageAsync}
+- **A guard fails when worker code waits on the gate to decide its own start.** It scans the library's hosted services
+  for the schema-ready gate and allows only the startup machinery that opens and drives it.
+  {verified: WorkerStartGateSourceGuardTests.NoHostedService_DecidesItsOwnStartOnTheSchemaReadyGate_ButTheStartupMachineryAsync}
+
+The default is the safe choice too: a worker named without a stage starts at Accept commands, once the instance's row
+says it is eligible for work. The easiest way to add a worker is now also the only correct one. See
+[Registering a worker with its start point](/v1.0.0/operations/startup/startup-status#add-whizbang-worker) for the
+API and the start of every framework worker (issue [#1636](https://github.com/whizbang-lib/whizbang/issues/1636),
+startup stages).
 
 ## Applying it
 

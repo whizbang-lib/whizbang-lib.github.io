@@ -12,6 +12,7 @@ description: >-
   application startup to prevent race conditions.
 tags: 'turnkey-initialization, database-setup, startup, ef-core, postgresql, schema-creation'
 codeReferences:
+  - src/Whizbang.Core/Startup/WhizbangWorkerServiceCollectionExtensions.cs
   - src/Whizbang.Data.EFCore.Postgres/DbContextInitializationRegistry.cs
   - src/Whizbang.Data.EFCore.Postgres/SchemaInitializationBarrier.cs
   - src/Whizbang.Data.EFCore.Postgres/WhizbangHostExtensions.cs
@@ -27,6 +28,7 @@ codeReferences:
   - src/Whizbang.Data.EFCore.Postgres/SchemaStepRunner.cs
   - src/Whizbang.Data.EFCore.Postgres.Generators/Templates/DbContextSchemaExtensionTemplate.cs
 testReferences:
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/StartupHostedServiceAuditTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/DbContextInitializationRegistryTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/SchemaInitializationBarrierTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/SchemaInitializationTests.cs
@@ -101,7 +103,7 @@ The source generator automatically registers each `[WhizbangDbContext]`-annotate
 
 This is AOT-compatible with no reflection - all registration happens via source-generated module initializers.
 
-In addition, `.WithDriver.Postgres` registers the `WhizbangDatabaseInitializerService` hosted service, which runs the same initialization and then signals `ISchemaReadyGate`. The Dapper driver registers the same service (see [Both drivers](#both-drivers)). Whizbang workers await this gate before issuing any SQL, so even if you forget the explicit `EnsureWhizbangInitializedAsync()` call, workers cannot race an uninitialized schema. The explicit call remains useful when your own startup code (seeding, health probes) needs the schema ready before `app.RunAsync()`.
+In addition, `.WithDriver.Postgres` registers the `WhizbangDatabaseInitializerService` hosted service, which runs the same initialization and then signals `ISchemaReadyGate`. The Dapper driver registers the same service (see [Both drivers](#both-drivers)). Whizbang workers are [registered with their start point](../operations/startup/startup-status#add-whizbang-worker), and the host starts none of them before this gate opens (the data plane starts later still, once the instance's row records Accept commands), so even if you forget the explicit `EnsureWhizbangInitializedAsync()` call, workers cannot race an uninitialized schema. A worker of your own gets the same guarantee when it is registered with `AddWhizbangWorker`; one added with `AddHostedService` starts with the host, before the migration. {verified: StartupHostedServiceAuditTests.EveryHostedService_HasAPlaceInTheStageTable_AndTheStagedOnesStartAtTheirStageAsync, StartupStageHostTests.TheDataPlane_StartsOnlyOnceTheRowRecordsAcceptCommandsAsync} The explicit call remains useful when your own startup code (seeding, health probes) needs the schema ready before `app.RunAsync()`.
 
 :::updated
 Non-blocking initialization is now the **turnkey default** (`SchemaInitializationOptions.NonBlockingSchemaInit = true`): the hosted service's `StartAsync` returns immediately and initialization runs in the **background**, so the host binds and answers liveness probes while migrations run. `ISchemaReadyGate` stays closed until initialization succeeds (fail-closed on failure), and the availability layer keeps the instance out of traffic in the meantime — `SchemaReadyHealthCheck` reports not-ready and `DatabaseAvailabilityMiddleware` returns 503 with a `Retry-After` header until the gate opens. Set `NonBlockingSchemaInit = false` to opt back into blocking inline initialization (host startup does not complete — no HTTP port, no workers — until migrations finish, and a migration failure aborts startup). An optional `MigrationTimeout` (default: none) caps a single background attempt so a hung migration fails the rollout instead of wedging forever.
@@ -259,6 +261,7 @@ call it. `SchemaInitializationOptions` (blocking or not, `MigrationTimeout`, `In
 | Register the instance | At the end of Preflight, after the bootstrap closure and before Elect ([why](../operations/infrastructure/migrations#which-instance-migrates)) | At start, before the lock is released |
 | Managed-object cleanup | This instance's id, `Whizbang:Schema:Reconcile`, the host's logger; never fatal | The same |
 | Schema-ready gate | Opened after the last runner | The same |
+| Workers | Started at their registered start point: schema ready, or Accept commands once the row records it | The same; both drivers keep instance rows (`RecordsInstanceTransitions`) |
 | Periodic cleanup re-run | A maintenance step, for every context including one you registered yourself | A maintenance step |
 | Once-per-fleet claim | The claim store when registered, the claim table otherwise | The same |
 

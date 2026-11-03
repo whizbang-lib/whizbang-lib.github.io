@@ -113,7 +113,7 @@ builder.Services
   .WithDriver.Postgres;        // wires IWorkCoordinator for the driver
 ```
 
-Don't add Whizbang worker classes with `AddHostedService<...>()` yourself - duplicate registrations cause competing pollers.
+Don't add Whizbang worker classes with `AddHostedService<...>()` yourself. The framework hosts each at its [start point](../startup/startup-status#add-whizbang-worker); a manual registration hosts a second, unwrapped copy that starts with the host, before the migration, and competes with the first. Register a worker of your own with `AddWhizbangWorker<T>()`.
 
 ### Solution 2: Transport Not Ready / Subscriptions Failed
 

@@ -203,7 +203,7 @@ At the top of `ExecuteAsync` the worker:
 
 The channel dependencies (`IPerspectiveChannelWriter`, `IPerspectiveCompletionChannel`, `IFailureChannel`) are **required at runtime** — they are wired automatically by `AddWhizbang()` (which invokes `AddWhizbangWorkers()`). If they are missing, `ExecuteAsync` throws `InvalidOperationException`; the worker has no polling path of its own, because `ClaimWorker` claims perspective work and hands it over on these channels.
 
-Database readiness is handled upstream: `ClaimWorker` and the flush workers await [`ISchemaReadyGate`](database-readiness.md) before their first SQL, so perspective work only starts flowing after migrations complete.
+Database readiness is handled by registration: the perspective worker, `ClaimWorker` and the flush workers are [registered with their start point](../startup/startup-status#add-whizbang-worker), Accept commands, so the host starts none of them before the instance's row says it is eligible for work, and perspective work only starts flowing after migrations complete.
 
 ### Immediate Poll {#immediate-poll}
 
@@ -657,7 +657,7 @@ Completions and failures leave the worker through bounded channels drained by de
 
 - **`PerspectiveCompletionFlushWorker`** (implements `IPerspectiveCompletionChannel`) batches event-work-id deletions and cursor advancements via `BatchFlusher<T>` and calls `IWorkCoordinator.CompletePerspectiveAsync(cursors, workIds, debugMode)` in one round-trip. After completions land, it opportunistically calls `CleanupCompletedStreamsAsync` so fully-drained streams exit `wh_active_streams` (the SQL self-checks pending work — passing a stream that still has work is a safe no-op).
 - **`FailureFlushWorker`** (implements `IFailureChannel`) coalesces failures per category and calls `IWorkCoordinator.ReportFailuresAsync`.
-- Both workers await `ISchemaReadyGate` before flushing.
+- Both workers start at Accept commands, and their flusher starts with the worker, so nothing is flushed before then (see [When a flusher starts](../../fundamentals/work-coordinator/batched-flushers#when-a-flusher-starts)).
 
 **Atomicity**: each flush batch persists in a single database call; unacknowledged items are retried with exponential backoff (`ResetStale`), so a crash mid-flush loses nothing — SQL re-delivers, and the dedup cache prevents double-apply.
 

@@ -37,6 +37,11 @@ codeReferences:
   - src/Whizbang.Core/Startup/IStartupStageGate.cs
   - src/Whizbang.Core/Startup/StartupStageGate.cs
   - src/Whizbang.Core/Startup/StartupStageGatedService.cs
+  - src/Whizbang.Core/Startup/GatedHostedService.cs
+  - src/Whizbang.Core/Startup/SchemaReadyGatedService.cs
+  - src/Whizbang.Core/Startup/WhizbangWorkerServiceCollectionExtensions.cs
+  - src/Whizbang.Core/Startup/IStartAbandonedObserver.cs
+  - src/Whizbang.Core/Workers/WhizbangShutdownService.cs
   - src/Whizbang.Data.Postgres/Notifications/PostgresNotificationsServiceCollectionExtensions.cs
   - src/Whizbang.Data.Postgres/Notifications/RoleAssignmentServiceCollectionExtensions.cs
   - src/Whizbang.Data.Postgres/Notifications/PartitionAssignerRegistration.cs
@@ -71,6 +76,10 @@ testReferences:
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperSchemaStartupTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StartupHostedServiceAuditTests.cs
   - tests/Whizbang.Core.Component.Tests/Signals/SignalBusHostingTests.cs
+  - tests/Whizbang.Core.Component.Tests/Startup/WhizbangWorkerRegistrationTests.cs
+  - tests/Whizbang.Core.Component.Tests/Startup/WorkerStartGateSourceGuardTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/StartupStopBeforeReadyTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/StartupHealthWhileMigratingTests.cs
 ---
 
 # The Startup Status Surface
@@ -365,7 +374,11 @@ stage line.
 An instance's own workers start at the stage they need, not when the host starts. A worker that starts with the host
 reads and writes tables the migration may be altering in the same moment and, on a fresh database, tables and
 functions that do not exist yet. Starting each at its stage means no worker of the instance touches the database during
-Preflight, and a starting instance no longer deadlocks its own migration. Preflight's only database work is schema
+Preflight, and a starting instance no longer deadlocks its own migration.
+
+A worker does not decide its start for itself. It is **registered with its start point**, and the host starts it
+there: the worker holds no wait of its own, so a new worker cannot start early by forgetting one (see
+[Registering a worker with its start point](#add-whizbang-worker)). Preflight's only database work is schema
 initialization's own: the [bootstrap closure](../infrastructure/migrations#bootstrap-waits-for-the-lock), then the
 instance's registration as Preflight's last step, so the notification connection, which starts at Elect, starts
 after the registration.
@@ -374,7 +387,8 @@ after the registration.
 |---|---|---|
 | Elect (after Preflight registers the instance) | The notification connection: its `LISTEN`s and the instance's [alive-lock](../../fundamentals/workers/instance-liveness#alive-lock-source) claim. The [signal bus](../../fundamentals/signal-bus/signal-bus#hosting-self-test-and-liveness): its transports, its pull sources and its wire-route self-test. The `roles` [health component](../../resilience/managed-resource-health#roles) reads role assignments from here on. | The election that follows reads the alive-lock. The bus's self-test sends a loopback `NOTIFY` that comes back over the notification connection, so it can only pass once that connection is up. |
 | Coordinate | The duty holder (the maintainer vote, and the vacuum it runs on winning) and the [partition assigner](../../fundamentals/work-coordinator/partition-assignment). | Both vote and write against the instance and role tables, which the migration may still be changing until then. |
-| The schema-ready gate opens (the end of Coordinate) | The work-available probes send their first query. Until then each probe tick sends nothing. | The tables the probes read may not exist yet, and nothing claims work before the gate opens. |
+| The schema-ready gate opens (the end of Coordinate) | The work-available probes send their first query; until then each probe tick sends nothing. The work that keeps the instance alive and coordinated while it is not yet eligible for work: the heartbeat, the instance-lifecycle monitor, the standby watcher, the statistics collectors (table statistics, event-type bytes, notify debounce), the type-definition and message-type registry reconcilers, and the shutdown deregistration. | The schema exists from here on. The heartbeat keeps the row fresh, so the fleet sees the instance as alive while it is still converging, and Kubernetes is told it is degraded rather than unresponsive (see [Probes during a migration](../../resilience/managed-resource-health#probes-during-a-migration)). |
+| Accept commands, once the instance's row records it | The data plane (claim, perspective, inbox dispatch, handler and drain, outbox publish and drain, the completion, failure and lease-renewal flushes, maintenance, coalesce ship, integrity, repair drain, subscription expansion, dead-letter recovery, the transport dead-letter drain, backup ticks, schedules, multi-stream commands, the orphan-inbox janitor, the commit-order stamper and the durable-signal workers) and the **transport consumer**. | Accept commands is the stage that makes the instance eligible for work, and the gate is told of it only after the row has been written, so nothing claims, drains or receives while the row still says the instance may not. The transport consumer receives while the read models catch up, rather than waiting for Running. |
 
 {verified: StartupStageWiringTests.TheNotificationConnection_StartsAtTheEndOfPreflight_OnceAsync, StartupStageWiringTests.TheSignalBus_StartsAtElect_WithTheNotificationConnection_OnceAsync, StartupPreflightHostTests.HeldInPreflight_TheSignalBusStartsNoTransport_AndStartsItAtElectAsync, StartupStageWiringTests.TheDutyHolderAndThePartitionAssigner_StartAtCoordinateAsync, StartupStageWiringTests.EveryWorkAvailableProbe_ReadsTheSchemaReadyGateAsync, StartupStageWiringTests.TheRolesHealthComponent_ReadsNothingBeforeElectAsync, PgWorkAvailablePollSourceSchemaGateTests.WhileTheSchemaGateIsClosed_ATickSendsNothing_AndOnceOpenItQueriesAsync, StartupPreflightHostTests.NothingVotesBeforeCoordinate_AndNoWorkerAsksForAnObjectThatDoesNotExistYetAsync, StartupPreflightHostTests.TheInstanceRow_IsRegisteredAtTheEndOfPreflight_BeforeElectAsync}
 
@@ -387,6 +401,109 @@ Coordinate. A host whose schema is provisioned out of band has a gate that is op
 never wait. A shutdown stage reaches nothing: an instance that starts to drain before a worker's stage never starts
 that worker, and so never stops it.
 {verified: StartupStageGateTests.EnteringAStage_ReachesItAndEveryStageBeforeIt_ButNotTheOnesAfterAsync, StartupStageGateTests.ASkippedStage_IsReachedLikeAnEnteredOneAsync, StartupStageGateTests.TheSchemaReadyGate_ReachesEveryStageUpToCoordinate_AndNoLaterOneAsync, StartupStageGateTests.AnAlreadyOpenSchemaGate_MeansNoWaitAtAllAsync, StartupStageGateTests.AShutdownStage_ReachesNothing_SoAWorkerWaitingForItsStageNeverStartsAsync, StartupStageGatedServiceTests.StoppedBeforeItsStage_TheServiceIsNeverStartedOrStoppedAsync}
+
+### The data plane starts on the recorded transition {#data-plane-on-the-recorded-transition}
+{verified: StartupStageHostTests.TheDataPlane_StartsOnlyOnceTheRowRecordsAcceptCommandsAsync, StartupStageGateTests.AnEligibleStage_WhoseRowWriteFailed_IsNotReachedUntilTheRowRecordsItAsync, WhizbangWorkerRegistrationTests.AFailedAcceptCommandsWrite_HoldsTheDataPlane_UntilTheNextHeartbeatWritesItAsync, WhizbangWorkerRegistrationTests.AHostWithNoStorage_StartsItsDataPlaneAtAcceptCommandsAsync, StartupStageReporterTests.WithoutAWorkCoordinator_ThereIsNothingToRecord_SoEachStageIsReportedAsCurrentAsync, StartupStageReporterTests.ACoordinatorThatKeepsNoInstanceRows_IsNotWritten_AndEachStageIsReportedAsCurrentAsync}
+
+The schema-ready gate opens at the end of Coordinate; the instance's row records Accept commands, the stage that makes
+it eligible for work, a moment later. Earlier releases started claim, drain, flush and the transport consumer on the
+gate, so they could claim inside that window, while the row still said the instance was not eligible. Now Accept
+commands counts as reached for a worker only once the [stage record](#the-instance-row) has written it:
+
+- **The gate follows the row.** The stage gate is told of Accept commands after the reporter has written the row, so no
+  data-plane worker starts before the row says the instance is eligible.
+- **A failed write holds the data plane, and recovers on its own.** A stage write that fails is held, as every stage
+  write is. The next accepted heartbeat's registration signal writes it, and that write opens the data plane. Holding
+  is the safe direction: a stage the row does not show yet keeps the instance out of work, and the heartbeat already
+  retries the write, so the instance is never stranded.
+- **A host with no storage opens at once.** A work coordinator says whether it keeps instance rows
+  (`IWorkCoordinator.RecordsInstanceTransitions`: false by default, true for the EF Core and Dapper drivers). With none,
+  there is no row to wait for, so every stage counts as recorded and the data plane starts at Accept commands with no
+  wait.
+
+The database refuses an ineligible caller as well, so a data-plane worker that somehow runs early still claims nothing:
+see [An ineligible caller claims nothing](../../fundamentals/work-coordinator/claim-loop#ineligible-caller-claims-nothing).
+
+### Registering a worker with its start point {#add-whizbang-worker}
+{verified: WhizbangWorkerRegistrationTests.AddWhizbangWorker_StartsAtAcceptCommandsByDefault_AndHostsTheRegisteredSingletonAsync, WhizbangWorkerRegistrationTests.AddWhizbangWorker_AtANamedStage_WithAFactory_HostsWhatTheFactoryReturnsAsync, WhizbangWorkerRegistrationTests.AddWhizbangWorkerAtSchemaReady_HostsTheWorkerBehindTheSchemaReadyGateAsync, WhizbangWorkerRegistrationTests.AtSchemaReady_TheWorkerStartsOnlyOnceTheGateOpensAsync, WhizbangWorkerRegistrationTests.EachWrapper_SaysWhatItStartsAndWhereAsync}
+
+`AddWhizbangWorker<TWorker>(stage)` is the path for every worker, the framework's and your own. It registers the worker
+as a singleton (unless one is registered already) and hosts it in a wrapper that the host starts with every other
+hosted service; the wrapper starts the worker once the instance reaches the stage, and stops it normally on shutdown.
+With no stage named, the worker starts at **Accept commands**, which is the safe point for anything that reads or writes
+the message tables. `AddWhizbangWorkerAtSchemaReady<TWorker>()` starts a worker when the schema-ready gate opens
+instead, for work that must run while the instance is alive but not yet eligible.
+
+```csharp{title="Register a worker with its start point" description="The host starts each worker at its registered start point; the worker holds no gate code of its own" category="Workers" difficulty="INTERMEDIATE" tags=["Startup","Hosting","Workers","Registration"] tests=["WhizbangWorkerRegistrationTests.AddWhizbangWorker_StartsAtAcceptCommandsByDefault_AndHostsTheRegisteredSingletonAsync","WhizbangWorkerRegistrationTests.AddWhizbangWorker_AtANamedStage_WithAFactory_HostsWhatTheFactoryReturnsAsync","WhizbangWorkerRegistrationTests.AddWhizbangWorkerAtSchemaReady_HostsTheWorkerBehindTheSchemaReadyGateAsync"]}
+// Reads and writes the message tables: starts at Accept commands (the default).
+builder.Services.AddWhizbangWorker<OrderArchiveWorker>();
+
+// Starts at a named stage instead.
+builder.Services.AddWhizbangWorker<FleetReportWorker>(StartupStage.Running);
+
+// Needs the schema, not eligibility: starts when the schema-ready gate opens.
+builder.Services.AddWhizbangWorkerAtSchemaReady<InstanceMetricsWorker>();
+```
+
+| Choice | Reason | Locked by |
+|---|---|---|
+| A worker named without a stage starts at Accept commands. | The default is the conservative one: a worker that touches the message tables cannot start before the instance is eligible for work, so taking the easy path is also the safe one. | {verified: WhizbangWorkerRegistrationTests.AddWhizbangWorker_StartsAtAcceptCommandsByDefault_AndHostsTheRegisteredSingletonAsync} |
+| No hosted service waits on the schema-ready gate to decide its own start, except the startup machinery. | About forty workers each held a hand-written wait at the top of their loop, each slightly different, and nothing made the next worker write one. Start is now part of the pipeline. A source guard fails when a hosted service in the library names the gate; the only exceptions are the initializer that opens it, the lifecycle and read-model drivers, the Migrate step and the two wrappers. | {verified: WorkerStartGateSourceGuardTests.NoHostedService_DecidesItsOwnStartOnTheSchemaReadyGate_ButTheStartupMachineryAsync} |
+| Every hosted service a turnkey host registers has a start point, or a stated reason it needs none. | A new hosted service fails the audit by name until its author decides when it may first touch the database. | {verified: StartupHostedServiceAuditTests.EveryHostedService_HasAPlaceInTheStageTable_AndTheStagedOnesStartAtTheirStageAsync} |
+| The heartbeat starts at schema ready, not Accept commands. | The heartbeat is what keeps the row fresh and writes a held stage, so it must run before the instance is eligible. It is safe to keep there because the probes tell Kubernetes the instance is alive and degraded at once during a long migration. | {verified: StartupHostedServiceAuditTests.EveryHostedService_HasAPlaceInTheStageTable_AndTheStagedOnesStartAtTheirStageAsync, StartupHealthWhileMigratingTests.HeldInMigrate_LivenessIsHealthy_AndReadinessSaysNotReadyWithTheStageAsync} |
+| Without a stage gate, a stage after Coordinate waits for the schema-ready gate. | A host composed without the worker pipeline records no stages; its workers still must not run before the schema exists. Coordinate and earlier start with the host there, as they did before they were wrapped. | {verified: WhizbangWorkerRegistrationTests.AnEligibleStage_WithNoStageGate_WaitsForTheSchemaReadyGateAsync, WhizbangWorkerRegistrationTests.AStageBeforeTheGate_WithNoStageGate_StartsWithTheHostAsync, WhizbangWorkerRegistrationTests.AnEligibleStage_WithAStageGate_IgnoresTheSchemaReadyGateAsync} |
+| A wrapper's schema-ready gate is never null. | A host with no schema to initialize hands the wrapper an already-open gate, so "no gate" can never be read as "a wait was forgotten". | {verified: WhizbangWorkerRegistrationTests.AtSchemaReady_WithNoSchemaToInitialize_TheWorkerStartsWithTheHostAsync, StartupStageGateTests.ANullSchemaGate_IsRefused_BecauseAMissingOneWouldBeAWaitThatNeverHappensAsync} |
+
+The perspective worker that the source generator registers is hosted through the same wrapper, so the generated and
+the core registrations deduplicate instead of starting two copies.
+{verified: PerspectiveRunnerRegistryGeneratorTests.Generator_HostsThePerspectiveWorkerAtAcceptCommandsAsync}
+
+#### A worker others wait on {#start-abandoned}
+{verified: WhizbangWorkerRegistrationTests.StoppedBeforeItsStartPoint_AWorkerThatAsksIsToldItsStartWasAbandonedAsync, WhizbangWorkerRegistrationTests.Started_AWorkerIsNeverToldItsStartWasAbandonedAsync, WhizbangWorkerRegistrationTests.AtSchemaReady_StoppedBeforeTheGateOpens_TheWorkerIsNeverStartedAsync, TransportConsumerWorkerCoverageTests.StoppedBeforeItsStartPoint_SettlesSubscriptionsReadyAsCanceledAsync, PerspectiveWorkerStartupGateTests.StoppedBeforeAcceptCommands_SettlesTheStartupScanSignalAsync}
+
+A host that stops before a worker's start point never starts the worker, and never stops it. When something else waits
+on that worker's startup, the wait must still end, so the worker implements `IStartAbandonedObserver`: the wrapper
+calls `OnStartAbandoned` once, on the stopping path, for a worker that was never started, and never for one that was.
+The transport and Service Bus consumers cancel their `SubscriptionsReady` signal this way, and the perspective worker
+its startup-scan signal, rather than leaving them pending for whoever awaits them.
+
+#### Upgrading: a worker added with `AddHostedService` {#upgrading-add-hosted-service}
+
+The `ISchemaReadyGate` constructor parameter is removed from every framework worker that had one; a worker no longer
+waits on the gate itself. A host that adds `ServiceBusConsumerWorker`, `PerspectiveMigrationWorker` or a worker of its
+own with `AddHostedService` therefore starts it with the host, before the schema is migrated. Register it with
+`AddWhizbangWorker` instead:
+
+```csharp{title="Move a hosted worker to AddWhizbangWorker" description="AddHostedService starts a worker with the host, before migration; AddWhizbangWorker starts it at Accept commands" category="Workers" difficulty="BEGINNER" tags=["Startup","Upgrade","Workers","Registration"] tests=["WhizbangWorkerRegistrationTests.AddWhizbangWorker_StartsAtAcceptCommandsByDefault_AndHostsTheRegisteredSingletonAsync"]}
+// Before: starts with the host, before the schema is migrated.
+// builder.Services.AddHostedService<ServiceBusConsumerWorker>();
+
+// After: starts once the instance's row records Accept commands.
+builder.Services.AddWhizbangWorker<ServiceBusConsumerWorker>();
+```
+
+#### Finding a hosted worker in a test {#finding-a-hosted-worker}
+
+Because every worker is hosted inside its stage wrapper, looking a worker up by its own type among
+`IEnumerable<IHostedService>` finds nothing. Tests use the one shared lookup in `Whizbang.Testing`, which looks
+through the wrapper, instead of unwrapping by hand:
+{verified: HostedWorkersTests.GetHostedWorker_FindsAStagedWorker_AndAPlainServiceByTypeAsync, HostedWorkersTests.GetHostedWorkers_LooksThroughEveryStageWrapper_AndKeepsAPlainServiceAsync, WorkerStartGateSourceGuardTests.AHostedWorker_IsFoundThroughHostedWorkers_NotByTypeAmongTheWrappersAsync}
+
+
+```csharp{title="Find a hosted worker through its stage wrapper" description="GetHostedWorker looks through the stage wrapper to the worker it hosts" category="Testing" difficulty="BEGINNER" tags=["Testing","Workers","Startup"]}
+var outbox = host.Services.GetHostedWorker<OutboxDrainWorker>();
+var all = host.Services.GetHostedWorkers();
+```
+
+A guard test fails when a fixture enumerates the hosted services and filters by a worker's type itself, so the shared
+lookup is the only way in.
+
+### A host stopped before its schema is ready {#stopped-before-schema-ready}
+{verified: StartupStopBeforeReadyTests.AHostStoppedInPreflight_DoesNotDeregister_AndLogsNoWarningOrErrorAsync}
+
+Shutdown deregistration is hosted at schema ready, like the heartbeat. A host stopped during Preflight or Migrate never
+started it, so it has nothing to deregister and ends quietly. Earlier releases ran the deregistration against instance
+tables that may not exist yet on a fresh database, and logged the failure at Warning.
 
 ### The signal bus starts at Elect {#signal-bus-at-elect}
 
@@ -402,20 +519,24 @@ with the host, as before.
 ### When each hosted service starts {#when-each-hosted-service-starts}
 
 Every hosted service a turnkey host registers has a stated answer to one question: when may it first touch the
-database? There are four answers.
+database? There are five answers.
 
 | Starts | Hosted services | How |
 |---|---|---|
-| At a stage, through the stage wrapper | Elect: the notification connection (`PgSharedNotifyConnection`) and the signal bus (`SignalBusHostedService`). Coordinate: the duty holder (`DutyHolderWorker`) and the partition assigner (`PartitionAssignerWorker`). | The host starts a wrapper; the wrapper starts the service once the instance reaches the stage. |
-| After the schema-ready gate, in the worker's own loop | The data plane and everything else that reads or writes the work tables: claim, inbox, outbox, perspective, drain, flush, lease renewal, maintenance, integrity, schedule, the commit-order stamper, the durable-signal workers, the instance-lifecycle monitor, the heartbeat, the standby watcher, the transport consumer, the statistics collectors and the reconcilers. | The worker starts with the host and waits for the gate, which opens at the end of Coordinate, before its first statement. |
-| Preflight itself | Schema initialization (`WhizbangDatabaseInitializerService`), the startup pipeline, the stage lifecycle and the ready service. | This is the work Preflight is made of. |
+| At Elect or Coordinate, through the stage wrapper | Elect: the notification connection (`PgSharedNotifyConnection`) and the signal bus (`SignalBusHostedService`). Coordinate: the duty holder (`DutyHolderWorker`) and the partition assigner (`PartitionAssignerWorker`). | The host starts a wrapper; the wrapper starts the service once the instance reaches the stage. |
+| At schema ready (`AddWhizbangWorkerAtSchemaReady`) | The heartbeat (`HeartbeatWorker`), the instance-lifecycle monitor, the standby watcher, the statistics collectors (`TableStatisticsCollector`, `EventTypeBytesSampler`, `NotifyDebounceStatsCollector`), the type-definition reconciler, the Dapper driver's message-type registry reconciler, and shutdown deregistration (`WhizbangShutdownService`). | The wrapper starts the worker when the schema-ready gate opens, at the end of Coordinate. |
+| At Accept commands (`AddWhizbangWorker`) | The data plane: claim, perspective, inbox dispatch, inbox handler, inbox drain, outbox publish, outbox drain, the outbox completion, perspective completion and failure flushes, lease renewal, maintenance, coalesce ship, integrity checkpoint, integrity audit, the integrity sweep scheduler, repair drain, subscription expansion, dead-letter recovery, the transport dead-letter drain, the backup-tick coordinator, schedules, multi-stream commands, the orphan-inbox janitor (opt-in), the commit-order stamper and the durable-signal tail and retention workers. And the transport consumer (`TransportConsumerWorker`). | The wrapper starts the worker once the instance's row records Accept commands. |
+| Preflight itself | Schema initialization (`WhizbangDatabaseInitializerService`), the startup pipeline, the stage lifecycle, the ready service, and the lifecycle and read-model drivers that move the instance into Accept commands and Running. | This is the work the stages are made of. |
 | No database work at start | Configuration and registration checks and startup log lines; in-memory receptor, tick and hook registrars; subscriptions on the notification connection, which only listen once it starts at Elect; in-process sweeps; the transport backlog peek, which reads the transport's management plane rather than the database; the rebuild worker, which is fed only by a command receptor whose dispatch is deferred until the schema-ready gate opens; the health-check publisher, which runs checks only for a publisher the application registers; and the services that work only when the host stops. | The service starts with the host because it has nothing to wait for. |
 
 The table is enforced. A test composes a host the way an application does (the EF Core Postgres driver, its
-notification stack, the worker pipeline and a transport), lists every hosted service the host resolves, and fails
-naming any service with no place in the table, or any staged service registered directly rather than through the
-wrapper, or registered at a different stage. A new hosted service therefore fails that test until its author decides
-when it may first touch the database, rather than starting with the host by default.
+notification stack, the worker pipeline, a transport and its consumer), lists every hosted service the host resolves,
+finds each worker through its wrapper, and fails naming any service with no place in the table, or a worker registered
+directly rather than through the wrapper, or at a different start point. A new hosted service therefore fails that test
+until its author decides when it may first touch the database, rather than starting with the host by default. The
+opt-in orphan-inbox janitor is checked by its own registration test, and `ServiceBusConsumerWorker` and
+`PerspectiveMigrationWorker` are hosted by the application (see
+[Upgrading](#upgrading-add-hosted-service)).
 {verified: StartupHostedServiceAuditTests.EveryHostedService_HasAPlaceInTheStageTable_AndTheStagedOnesStartAtTheirStageAsync}
 
 ### The alive-lock on a fresh database
@@ -429,8 +550,9 @@ claim the lock on that connection again until it was replaced.
 
 ### Starting your own hosted service at a stage
 
-`AddHostedServiceAtStage` registers a hosted service that starts once the instance reaches a startup stage. Use it
-for a service of your own that reads or writes the database as soon as it starts:
+Use [`AddWhizbangWorker`](#add-whizbang-worker) for a worker of your own. `AddHostedServiceAtStage` is the
+factory form underneath it, for a service resolved some other way; `AddWhizbangWorker(stage, factory)` is the same
+with the worker vocabulary:
 
 ```csharp{title="Start a hosted service at Coordinate" description="The host starts a wrapper with every other hosted service; the wrapper starts the service once the instance reaches its stage" category="Configuration" difficulty="INTERMEDIATE" tags=["Startup","Hosting","Workers"] tests=["StartupStageGatedServiceTests.Registration_WrapsTheServiceAtItsStage_OncePerServiceTypeAsync","StartupStageGatedServiceTests.TheServiceStarts_OnlyOnceItsStageIsReachedAsync","StartupStageGatedServiceTests.StoppedBeforeItsStage_TheServiceIsNeverStartedOrStoppedAsync"]}
 builder.Services.AddSingleton<OrderArchiveWorker>();
@@ -441,15 +563,16 @@ builder.Services.AddHostedServiceAtStage(
 
 - **When it starts.** The host starts a wrapper with every other hosted service; the wrapper waits for the stage in
   the background and then starts the service. Only startup stages can be waited for.
-- **When it stops.** A service stopped before its stage is never started and never stopped. A started one is stopped
-  with the host.
+- **When it stops.** A service stopped before its stage is never started and never stopped (a service that implements
+  [`IStartAbandonedObserver`](#start-abandoned) is told). A started one is stopped with the host.
 - **Failures.** A fault in a `BackgroundService`'s own loop is the wrapper's fault, so the host handles it exactly as
   it would have handled the service's.
 - **Registering twice.** Registering the same service type again changes nothing.
 - **Without the worker pipeline.** A host composed without the worker pipeline records no stages and registers no
-  stage gate; there the service starts with the host, as it would unwrapped.
+  stage gate. There a service at Coordinate or earlier starts with the host, as it would unwrapped, and one at a later
+  stage waits for the schema-ready gate, so it still never runs before the schema exists.
 
-{verified: StartupStageGatedServiceTests.AFailureOfTheServicesOwnLoop_IsTheWrappersSoTheHostSeesItAsync, StartupStageGatedServiceTests.AStoppedLoop_EndsTheWrapperWithoutAFaultAsync, StartupStageGatedServiceTests.WithNoGate_TheServiceStartsWithTheHostAsync, StartupStageGateTests.AShutdownStage_CannotBeWaitedForOrAskedAboutAsync, WorkerPipelineStartupStageTests.AddWhizbangWorkers_RegistersOneStageGate_TheReportersObserverAsync}
+{verified: StartupStageGatedServiceTests.AFailureOfTheServicesOwnLoop_IsTheWrappersSoTheHostSeesItAsync, StartupStageGatedServiceTests.AStoppedLoop_EndsTheWrapperWithoutAFaultAsync, StartupStageGatedServiceTests.WithNoGate_TheServiceStartsWithTheHostAsync, WhizbangWorkerRegistrationTests.AnEligibleStage_WithNoStageGate_WaitsForTheSchemaReadyGateAsync, StartupStageGateTests.AShutdownStage_CannotBeWaitedForOrAskedAboutAsync, WorkerPipelineStartupStageTests.AddWhizbangWorkers_RegistersOneStageGate_TheReportersObserverAsync}
 
 `IStartupStageGate` is the same check for code that is not a hosted service: `HasReached(stage)` answers now, and
 `WaitForAsync(stage, cancellationToken)` completes once the stage is reached.

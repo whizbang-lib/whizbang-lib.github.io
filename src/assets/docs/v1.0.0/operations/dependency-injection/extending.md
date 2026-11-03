@@ -101,6 +101,10 @@ services.AddSingleton<ISchemaReadyGate>(SchemaReadyGate.AlreadyReady());
 
 Both types exist for exactly this, and neither is registered as a default: a real composition
 quietly running anonymous, or quietly skipping a readiness wait, is the outcome the design prevents.
+Workers never take the gate themselves: the host starts each at its
+[registered start point](../startup/startup-status#add-whizbang-worker), and the wrapper that does so is handed an
+already-open gate on a host with no schema to initialize.
+{verified: WhizbangWorkerRegistrationTests.AtSchemaReady_WithNoSchemaToInitialize_TheWorkerStartsWithTheHostAsync}
 
 ## What the toolchain will tell you
 

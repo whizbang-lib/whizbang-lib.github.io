@@ -18,6 +18,7 @@ pipeline. It is decomposed into focused functions and workers — each does one 
 - [Inbox dispatch](inbox-dispatch.md)
 - [Partition assignment](partition-assignment.md)
 - [Batched flushers](batched-flushers.md)
+- [Startup ordering](startup-ordering.md)
 - [Notifications and pgbouncer](notifications-and-pgbouncer.md)
 - [App signals](app-signals.md)
 - [Configuration reference](configuration-reference.md)
