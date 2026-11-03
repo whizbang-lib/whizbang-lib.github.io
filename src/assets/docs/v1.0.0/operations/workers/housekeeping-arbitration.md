@@ -21,10 +21,18 @@ codeReferences:
   - src/Whizbang.Core/Workers/DeadLetterRecoveryWorker.cs
   - src/Whizbang.Core/Workers/MaintenanceWorker.cs
   - src/Whizbang.Core/Observability/HousekeepingMetrics.cs
+  - src/Whizbang.Core/Workers/IntegrityAdmission.cs
+  - src/Whizbang.Core/Workers/IntegrityDeliveryWorker.cs
+  - src/Whizbang.Core/Workers/IntegrityAuditWorker.cs
+  - src/Whizbang.Core/Workers/RepairDrainWorker.cs
+  - src/Whizbang.Core/Workers/IntegrityCheckpointWorker.cs
 testReferences:
   - tests/Whizbang.Core.Tests/Workers/HousekeepingCoordinatorTests.cs
   - tests/Whizbang.Core.Tests/Workers/HousekeepingCooldownTests.cs
   - tests/Whizbang.Core.Tests/Workers/HousekeepingDeferralCeilingTests.cs
+  - tests/Whizbang.Core.Tests/Workers/HousekeepingIntegrityAdmissionTests.cs
+  - tests/Whizbang.Core.Tests/Workers/IntegrityTimerWorkersOnTheMaintainerTests.cs
+  - tests/Whizbang.Core.Tests/Workers/IntegrityDeliveryWorkerTests.cs
 ---
 
 # Housekeeping Arbitration
@@ -54,19 +62,61 @@ higher one runs is refused (`HigherPriorityRunning`).
 
 ## The settledness gate
 
-Recovery and maintenance are gated on **service settledness**: the store's own backlog counts
+Every activity is gated on **service settledness**: the store's own backlog counts
 (unprocessed inbox rows, active leases, oldest-row age), measured by the same eligibility
 predicate the claim path uses. Rows parked with a future `scheduled_for` — operator
 quarantine, tag-bound coalescing — are deliberately not claimable, so they are not busy-ness:
 counting them once held recovery and maintenance on `ServiceBusy` for a day against a service
-that was genuinely idle.
+that was genuinely idle. Integrity work has been gated the same way since
+[#2001](https://github.com/whizbang-lib/whizbang/issues/2001); see
+[integrity is idle-gated](#integrity-is-idle-gated).
 
 A gate that cannot measure must not silently disable what it gates: when the backend reports
 no backlog measurement at all, the activity proceeds with the distinct `ProceedUnmeasured`
 verdict rather than waiting on evidence that will never arrive.
 
-Integrity is not settledness-gated here — its checkpoint path applies its own admission
-policy, which distinguishes a lagging consumer from a genuine deficit.
+### Integrity is idle-gated {#integrity-is-idle-gated}
+
+{verified: HousekeepingIntegrityAdmissionTests.Integrity_IsDeferredWhileTheServiceIsBusyAsync, HousekeepingIntegrityAdmissionTests.Integrity_IsDeferredWhileTheServiceIsCoolingDownAsync, HousekeepingIntegrityAdmissionTests.Integrity_ProceedsOnceTheServiceHasStayedQuietAsync, HousekeepingIntegrityAdmissionTests.Integrity_AnUnmeasuredReading_ProceedsAsBeforeAsync, HousekeepingIntegrityAdmissionTests.Integrity_IsForcedAtMaxDeferral_AndNotAMomentBeforeAsync, HousekeepingIntegrityAdmissionTests.Integrity_ACompletedPass_RearmsTheBudgetAsync, HousekeepingIntegrityAdmissionTests.Integrity_SpendsItsOwnBudget_NotTheSweepsAsync, HousekeepingIntegrityAdmissionTests.Integrity_EachRequesterSpendsAndRearmsItsOwnBudgetAsync, HousekeepingIntegrityAdmissionTests.Integrity_KeepsItsRankAboveTheSweepAsync, HousekeepingIntegrityAdmissionTests.Integrity_KeepsItsRankBelowRecoveryAsync, HousekeepingIntegrityAdmissionTests.Integrity_AStrayRelease_DoesNotRearmTheBudgetAsync, HousekeepingCooldownTests.IntegrityIsHeldByTheDwell_LikeRecoveryAsync, IntegrityTimerWorkersOnTheMaintainerTests.TheAudit_OnABusyService_WaitsUntilMaxDeferral_ThenIsForcedThroughAsync, IntegrityTimerWorkersOnTheMaintainerTests.TheRepairDrain_OnABusyService_WaitsUntilMaxDeferral_ThenIsForcedThroughAsync, IntegrityDeliveryWorkerTests.AfterMaxDeferral_ThePassIsForcedThrough_AndDeferredSinceClearsAsync}
+
+Integrity work asks for its slot under the same rule as dead-letter recovery: deferred while the
+service is busy or cooling down, admitted once it has stayed settled for `SettledCooldown`, and
+forced through once it has been deferred for `MaxDeferral`. Its rank does not change: it still
+yields to dead-letter recovery and still holds off the cleanup sweep.
+
+Three [stream-integrity](../../resilience/stream-integrity#integrity-work-runs-on-the-maintainer)
+activities ask, each on the instance holding the maintainer duty: the integrity delivery drain
+(`IntegrityDeliveryWorker`), the deep audit (`IntegrityAuditWorker`) and the paced repair drain
+(`RepairDrainWorker`). They go through one helper, `IntegrityAdmission`, which measures the backlog,
+asks for the slot under the requester's name, and releases it when the pass ends.
+
+**Each requester spends its own deferral budget.** The three share one slot but tick at very
+different rates. With one shared budget, whichever requester asked first after the ceiling would
+take the forced pass and re-arm the ceiling for all of them, starving a requester on a slower tick
+for as long as the load lasted. Each requester's ceiling runs from its own first deferral and is
+re-armed only by its own completed pass; a release by a requester that did not hold the slot
+re-arms nothing.
+
+**Why this changed.** Integrity was originally exempt, on the reasoning that it is
+correctness-bearing and that the checkpoint path applies its own rule (a lagging consumer is not a
+deficit). That rule still applies on top. The exemption was reversed because the receive side of
+integrity work (reconciling a redelivery bundle, comparing a manifest chunk, building a redelivery
+for another service) is the expensive part of the feature, and running it alongside ordinary
+traffic held a shared database's CPU at its ceiling. None of that work has a deadline measured in
+seconds; all of it competes for the same database as the traffic it verifies.
+
+### Checkpoints are exempt {#checkpoints-are-exempt}
+
+{verified: IntegrityTimerWorkersOnTheMaintainerTests.Checkpoints_AreNotIdleGated_BecauseAMissingCheckpointIsTheConsumersLivenessAlarmAsync, IntegrityTimerWorkersOnTheMaintainerTests.TheLivenessCheck_AllowsForTheTimeReceivedCheckpointsWaitedInTheQueueAsync}
+
+Publishing continuity checkpoints is the one integrity activity that never asks for the slot. A
+consumer reads a missing checkpoint as its liveness alarm, so deferring checkpoints while their
+origin is busy would make every busy service look dead to its consumers. A checkpoint is a
+watermark advance and a publish, cheap enough to keep its cadence under any load. It still runs
+only on the maintainer. A *received* checkpoint waits in the integrity delivery queue like any other
+integrity delivery, so the consumer's stale-origin warning widens its bound by how long the drain
+has been deferred; see
+[checkpoints are not idle-gated](../../resilience/stream-integrity#checkpoints-are-not-idle-gated).
 
 ## The starvation floor
 
@@ -75,14 +125,15 @@ fires. Without a floor, its dead letters defer forever — observed in productio
 rows behind a rule working exactly as written, on a service whose backlog never once touched
 zero.
 
-Both gated activities therefore carry a **bounded-deferral escape**: once `MaxDeferral` (default
+Every gated activity therefore carries a **bounded-deferral escape**: once `MaxDeferral` (default
 one hour) has passed since an activity's first deferral, its next request forces one pass through
 anyway. The ceiling is a time, not a count of ticks, so it stays put when an operator shortens or
 lengthens a scan interval. The forced pass is reported as `ProceedDeferralLimit`, distinct from
 `Proceed`, so a dashboard can tell "ran because idle" from "ran because it was never idle once all
 hour". The window re-arms when a pass completes, making the escape a bounded trickle under
 sustained load, never an open gate. The windows are per activity: recovery's deferrals cannot open
-maintenance's escape, and each measures from its own first deferral.
+maintenance's escape, and each measures from its own first deferral. Integrity goes one step
+further and keeps a window per requester (see [integrity is idle-gated](#integrity-is-idle-gated)).
 
 ### Tick, idle gate, and forced ceiling
 
@@ -96,7 +147,9 @@ Three settings decide when maintenance runs, and they answer different questions
 
 The forced pass lands on the first tick at or after the ceiling, so the actual wait is at most
 `MaxDeferral` plus one tick. Dead-letter recovery asks on its own tick
-(`Whizbang:DeadLetterRecovery:ScanIntervalMinutes`) and shares the same idle gate and ceiling.
+(`Whizbang:DeadLetterRecovery:ScanIntervalMinutes`) and shares the same idle gate and ceiling, and
+so do the integrity requesters, on theirs (`Whizbang:StreamIntegrity:IntegrityDeliveryIntervalSeconds`
+for the delivery drain, the audit interval, and the repair drain's one-second tick).
 
 ### Precedence over the legacy count
 
@@ -125,7 +178,7 @@ defaults):
 
 | section | key | default | meaning |
 |---------|-----|---------|---------|
-| `Whizbang:Housekeeping` | `MaxDeferral` | `01:00:00` | Longest time an activity can be deferred before a forced pass; the starvation floor for recovery and maintenance alike. Must be positive |
+| `Whizbang:Housekeeping` | `MaxDeferral` | `01:00:00` | Longest time an activity can be deferred before a forced pass; the starvation floor for recovery, integrity and maintenance alike. Must be positive |
 | `Whizbang:Housekeeping` | `SettledCooldown` | `00:02:00` | How long the service must read settled continuously before a pass is admitted |
 | `Whizbang:Housekeeping` | `MaxConsecutiveDeferrals` | `6` | Legacy fallback, used only when set and `MaxDeferral` is not: busy verdicts tolerated before a forced pass |
 | `Whizbang:DeadLetterRecovery` | `WaitForIdle` | `true` | Enrolls recovery in the arbitration at the highest rank |

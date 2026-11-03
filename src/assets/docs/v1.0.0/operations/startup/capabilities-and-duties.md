@@ -26,6 +26,7 @@ codeReferences:
   - src/Whizbang.Core/Startup/IDutyAcquisitionHandler.cs
   - src/Whizbang.Core/Startup/DutyHolderWorker.cs
   - src/Whizbang.Core/Workers/WorkTableVacuumOnAcquisition.cs
+  - src/Whizbang.Core/Startup/MaintainerDuty.cs
 testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/WorkEligibilitySqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/InstanceTransitionSqlTests.cs
@@ -38,6 +39,9 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Chaos/RoleAssignmentChaosTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Chaos/MaintainerAcquisitionVacuumTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/WorkTableVacuumTests.cs
+  - tests/Whizbang.Core.Tests/Startup/MaintainerDutyTests.cs
+  - tests/Whizbang.Core.Tests/Workers/IntegrityTimerWorkersOnTheMaintainerTests.cs
+  - tests/Whizbang.Core.Tests/Workers/IntegrityDeliveryWorkerTests.cs
   - tests/Whizbang.Core.Tests/Workers/WorkTableVacuumOnAcquisitionTests.cs
   - tests/Whizbang.Core.Component.Tests/Startup/DutyHolderWorkerTests.cs
 ---
@@ -219,6 +223,31 @@ tags: ["maintenance", "vacuum", "maintainer-duty", "configuration"]
 ```
 
 Turn `MaintainOnReassignment` off when hand-offs are frequent and the maintenance cycle is enough between them.
+
+## The maintainer duty governs fleet-wide work {#the-maintainer-duty-governs-fleet-wide-work}
+
+{verified: MaintainerDutyTests.WithTheMaintainerDutyAssigned_OnlyItsHolderHasATurnAsync, MaintainerDutyTests.WithoutRoleAssignment_EveryInstanceHasATurnAsync, MaintainerDutyTests.WithADutyLoopThatDoesNotManageTheMaintainerDuty_EveryInstanceHasATurnAsync, IntegrityTimerWorkersOnTheMaintainerTests.TheAudit_OnAnInstanceThatDoesNotHoldTheMaintainerDuty_DoesNothingAsync, IntegrityTimerWorkersOnTheMaintainerTests.TheRepairDrain_OnAnInstanceThatDoesNotHoldTheMaintainerDuty_ClaimsNothingAsync, IntegrityTimerWorkersOnTheMaintainerTests.Checkpoints_OnAnInstanceThatDoesNotHoldTheMaintainerDuty_AreNotPublishedAsync, IntegrityDeliveryWorkerTests.OnAnInstanceThatDoesNotHoldTheMaintainerDuty_ThePassDoesNothingAsync}
+
+Background work that touches tables the whole fleet shares runs on the instance holding the `maintainer` duty, so N
+instances do it once instead of N times:
+
+- the maintenance sweep (`MaintenanceWorker`);
+- claim pruning (emitted-event claims and saga claims);
+- partition maintenance;
+- stream-integrity work: the integrity delivery drain, the deep audit, the paced repair drain and checkpoint
+  publishing (see [integrity work runs on the maintainer](../../resilience/stream-integrity#integrity-work-runs-on-the-maintainer)).
+
+When role assignment does not manage the duty (no duty loop registered, or a loop without the `maintainer` role),
+**every instance** does the work, as before. There is no holder to defer to, and a check that waited for one would
+disable the work it guards.
+
+Every one of these callers asks the same question through one helper, `MaintainerDuty.IsThisInstancesTurn(services)`:
+true when this instance holds the duty, or when role assignment does not manage it. The rule used to be written out in
+each caller, and four copies of a three-clause condition were four chances for one to drift. With one helper, a new
+kind of fleet-wide work joins the rule by calling it, and a change to the rule reaches every caller at once.
+
+Holding the duty decides *where* the work runs, not *when*. The maintenance sweep and the deferrable integrity work
+also wait for the service to be idle, under [housekeeping arbitration](../workers/housekeeping-arbitration).
 
 ## The holder loop {#the-holder-loop}
 
