@@ -360,6 +360,30 @@ that add the attribute are affected; add it when a message is introduced, or han
 through an upcaster or migration.
 :::
 
+## Constructors and Positional Records {#constructors}
+
+The generated context builds a message through a public constructor when one takes the type's leading
+writable properties, in declaration order. Those properties are passed to the constructor; any
+remaining writable properties are set in an object initializer after it. This lets a positional record
+derive from a base record that contributes its own init members:
+
+```csharp{title="Positional record over a base with members" description="The positional member goes to the constructor; the base record's init members are set after it." category="Serialization" difficulty="INTERMEDIATE" tags=["Serialization","JSON","Records"] tests=["PositionalOpeningBalanceRoundTripTests.GeneratedContext_RoundTripsThePositionalMemberAndTheBaseMembersAsync", "MessageJsonContextPositionalRecordTests.Generator_APositionalRecordDerivingFromOpeningBalance_PassesThePositionalMemberAndInitializesTheBaseAsync"]}
+public sealed record AccountOpened(decimal Balance) : OpeningBalance;
+
+// Generated creator (shape):
+// static args => new AccountOpened((decimal)args[0]) {
+//   PredecessorFinalVersion = ..., PredecessorStreamId = ..., SuccessorStreamId = ...
+// }
+```
+
+| Behavior | Why | Verified by |
+|---|---|---|
+| A constructor is used only when its parameters are the type's leading writable properties, in order. Matching by name alone is not enough. | A constructor whose parameters were matched by name but not position could receive its arguments in the wrong slots; matching by position rules that out. | {verified: MessageJsonContextPositionalRecordTests.Generator_ConstructorsThatDoNotTakeTheLeadingProperties_AreNotUsedAsync} |
+| Writable properties the constructor does not take are set in an object initializer after it. | A base record's init members are not constructor parameters of the derived positional record, and they still have to be read back. | {verified: MessageJsonContextPositionalRecordTests.Generator_APositionalRecordWithAMemberContributingBase_CarriedByAMessage_CompilesAsync, MessageJsonContextPositionalRecordTests.Generator_APositionalDerivedTypeOfAPolymorphicBase_CompilesAsync} |
+
+Before this behavior, such a record failed to compile with CS7036, because the generator fell back to
+a parameterless constructor the record does not have. The property form still works unchanged.
+
 ## Discovery Patterns
 
 ### Pattern 1: Command/Event Discovery
