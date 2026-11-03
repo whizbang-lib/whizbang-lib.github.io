@@ -464,6 +464,9 @@ Compile-time errors, warnings and notices from Whizbang's source generators and 
 | WHIZ132 | Warning | [Receptor turns an ephemeral message into a Sourced event](whiz132.md) |
 | WHIZ133 | Error (runtime) | [Stream mixes ephemeral and Sourced events](whiz133.md) |
 | WHIZ134 | Error | [Ambiguous ephemeral composition](whiz134.md) |
+| WHIZ135 | Error | [Event type is both ephemeral and superseding](whiz135.md) |
+| WHIZ136 | Error | [Superseding event type has more than one key](whiz136.md) |
+| WHIZ137 | Error | [Destruction value has not shipped](whiz137.md) |
 | WHIZ140 | Warning | [Perspective shares stream event types with a group but joins none](whiz140.md) |
 | WHIZ141 | Warning | [Stream group has no announcing member with a row evictor](whiz141.md) |
 | WHIZ142 | Warning | [Bridge on a sole stream-group membership](whiz142.md) |

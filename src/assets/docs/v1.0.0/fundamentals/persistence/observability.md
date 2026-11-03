@@ -18,6 +18,9 @@ codeReferences:
   - src/Whizbang.Core/Observability/ITraceStore.cs
   - src/Whizbang.Core/Observability/InMemoryTraceStore.cs
   - src/Whizbang.Core/Observability/TraceStoreRegistration.cs
+  - src/Whizbang.Core/Observability/IRouteStore.cs
+  - src/Whizbang.Core/Observability/RouteNormalizer.cs
+  - src/Whizbang.Data.Postgres/PostgresRouteTraceStore.cs
   - src/Whizbang.Core/Policies/PolicyDecisionTrail.cs
   - src/Whizbang.Core/Policies/PolicyConfiguration.cs
 testReferences:
@@ -29,6 +32,8 @@ testReferences:
   - tests/Whizbang.Observability.Tests/DependencyInjection/TraceStoreRegistrationTests.cs
   - tests/Whizbang.Core.Component.Tests/Dispatcher/TraceStoreOptInComponentTests.cs
   - tests/Whizbang.Observability.Tests/PolicyDecisionTrailTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/RouteTraceStoreTests.cs
+  - tests/Whizbang.Core.Tests/Observability/RouteNormalizerTests.cs
 ---
 
 # Observability & Message Hops
@@ -311,7 +316,76 @@ builder.Services.AddWhizbangInMemoryTraceStore(capacity: 50_000);
 Before this change, `AddWhizbang` registered an unbounded `InMemoryTraceStore` by default, so every service kept every dispatched envelope for the life of the process. A host that queried `ITraceStore` must now opt in as shown above.
 :::
 
-A persistent trace store for production is planned. Until then, register your own `ITraceStore` implementation when traces must survive a restart.
+For production, the [Postgres trace store](#the-postgres-stores) reads the traces every Postgres write path already
+records, so it survives a restart and costs the dispatcher nothing.
+
+## Routes and traces {#routes-and-traces}
+
+{verified: RouteTraceStoreTests.TraceStore_AnswersEveryQuery_LikeTheInMemoryStore_OnTheSameCorpusAsync, RouteTraceStoreTests.GetRoute_ReturnsTheNormalizedPath_AndItsStatisticsAsync}
+
+Two stores answer two different questions:
+
+| Store | Answers | Kept | Verified |
+|---|---|---|---|
+| `IRouteStore` | how do events of this type travel: the normalized path (services, topics, execution strategies, caller class and member, policy decisions per hop), how often it is taken, first and last seen, durations | about a year after a route was last taken | {verified: RouteTraceStoreTests.GetRoutes_ByEventType_MostTakenFirstAsync} |
+| `ITraceStore` | what happened to this message: its full hops, its correlation, its causal chain, a time window | about 30 days | {verified: RouteTraceStoreTests.TraceStore_AnswersEveryQuery_LikeTheInMemoryStore_OnTheSameCorpusAsync} |
+
+A route is stored once and counted; a trace is one occurrence of a route, with only what varies per message. Every
+stored event row carries its route id from the moment it is written, so a trace steps to its route with
+`ITraceStore.GetRouteIdAsync(messageId)`, and after the trace has aged out the event still names its route. How routes
+are computed, distilled and reconstructed is on the [event store page](../../data/event-store#routes-and-traces).
+
+```csharp{title="IRouteStore and the step from a trace to its route" description="The route store's three queries, and GetRouteIdAsync, the one addition to ITraceStore: a default method returning null, so existing trace stores need no change." category="Observability" difficulty="INTERMEDIATE" tags=["route-store","trace-store","routes","lineage"] tests=["RouteTraceStoreTests.GetRoute_ReturnsTheNormalizedPath_AndItsStatisticsAsync", "RouteTraceStoreTests.GetRoutesForApplyPath_ReturnsEachTypesRoutes_InThePathsOrderAsync", "InMemoryTraceStoreTests.GetRouteIdAsync_OnAStoreWithoutRoutes_IsNullAsync", "InMemoryTraceStoreTests.GetRouteIdAsync_HeldMessage_IsItsRouteId_AndAnUnknownOneIsNullAsync"]}
+public interface IRouteStore {
+    Task<RouteInfo?> GetRouteAsync(Guid routeId, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<RouteInfo>> GetRoutesAsync(string eventType, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<RouteInfo>> GetRoutesForApplyPathAsync(IReadOnlyList<string> applyPath, CancellationToken cancellationToken = default);
+}
+
+// On ITraceStore, a default method: null unless the store knows routes
+Task<Guid?> GetRouteIdAsync(MessageId messageId, CancellationToken ct = default) => Task.FromResult<Guid?>(null);
+
+// How did this message get here?
+var routeId = await traces.GetRouteIdAsync(messageId);
+var route = routeId is { } id ? await routes.GetRouteAsync(id) : null;
+```
+
+- `GetRoutesAsync` takes a type name with or without its assembly and returns the type's routes, the most taken first.
+- `GetRoutesForApplyPathAsync` takes an [apply path](../../operations/observability/apply-stacks#signatures) and returns
+  the routes of every event type on it, in the path's order (a run marker, a trailing `+`, is ignored): the routes
+  behind a path.
+- The in-memory trace store answers `GetRouteIdAsync` with the same id the Postgres write paths stamp, computed by
+  `RouteNormalizer` from the payload's type and the hops.
+
+### The Postgres stores {#the-postgres-stores}
+
+{verified: RouteTraceStoreTests.Registration_EitherStoreAlone_NeedsNotTheOtherAsync, RouteTraceStoreTests.GetByMessageId_ReadsStaging_ThenTraceAndRoute_ThenTheRowAsync}
+
+`PostgresRouteTraceStore` implements both over the service's own database, on either Postgres driver. Each is
+registered on its own, so a host can use either alone:
+
+```csharp{title="Register the Postgres route and trace stores" description="Each registration stands alone: Postgres routes beside the in-memory trace store, or the Postgres trace store replacing it." category="Observability" difficulty="BEGINNER" tags=["route-store","trace-store","postgres","registration"] tests=["RouteTraceStoreTests.Registration_EitherStoreAlone_NeedsNotTheOtherAsync"]}
+builder.Services.AddWhizbangPostgres(connectionString);   // or the EF Core driver
+
+builder.Services.AddWhizbangPostgresRouteStore();   // IRouteStore
+builder.Services.AddWhizbangPostgresTraceStore();   // ITraceStore, replacing one registered earlier
+```
+
+The Postgres trace store is filled where events are stored, not by the dispatcher: under the default `Linked` write form
+every write path stages the event's full metadata, and maintenance distills it into a route and a trace. Its
+`StoreAsync` therefore does nothing. It holds the events with a staged form or a trace, so it answers only under
+`Linked`. A query reads:
+
+1. the staged full form, while maintenance has not distilled it yet;
+2. the event row, its trace and its route, rebuilding the full hops exactly, for the trace window (30 days by default);
+3. for `GetByMessageIdAsync`, the event row alone once the trace has aged out: the slim hop, with the route id.
+
+Envelopes come back as `MessageEnvelope<JsonElement>` with the stored payload (JSON `null` once the event itself is
+gone). It answers every query the in-memory store answers, on the same events, in the same order: by message id, by
+correlation, the causal chain (stopping at a missing parent and at a cycle, as the in-memory store does),
+and a time range by first `Current` hop. The correlation, causal-chain and time-range queries read the traces through
+their indexes and the not yet distilled staged rows by scanning them: the staging table has one index, its key, so the
+write path pays one index entry per event.
 
 ---
 

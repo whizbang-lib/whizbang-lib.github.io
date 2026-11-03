@@ -14,6 +14,8 @@ tags: >-
   configuration, options, environment variables, appsettings, reference,
   binding
 codeReferences:
+  - src/Whizbang.Core/Messaging/EventStoreMetadataOptions.cs
+  - src/Whizbang.Core/Messaging/EventStoreMetadataSettings.cs
   - src/Whizbang.Core/Archival/ArchiveOptions.cs
   - src/Whizbang.Core/Archival/StreamLifecycleOptions.cs
   - src/Whizbang.Core/Archival/ArchiveOptionsBinder.cs
@@ -70,6 +72,7 @@ testReferences:
   - tests/Whizbang.Core.Tests/ServiceCollectionExtensionsTests.cs
   - tests/Whizbang.Core.Tests/Messaging/WorkCoordinatorGateRegistrationTests.cs
   - tests/Whizbang.Core.Tests/Workers/RetentionSettingsBridgeTests.cs
+  - tests/Whizbang.Core.Tests/Messaging/EventStoreMetadataSettingsTests.cs
   - tests/Whizbang.Core.Tests/Workers/RetentionSettingsBindingTests.cs
   - tests/Whizbang.Core.Tests/Workers/RetentionSettingsValidationTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/RetentionSettingsSyncSqlTests.cs
@@ -582,16 +585,20 @@ builder.Services.AddWhizbangAzureBlobArchive(builder.Configuration);
 | `ContainerName` | `string` | `whizbang-archive` | `Whizbang__Archive__AzureBlob__ContainerName` | Container the archive objects are written to; created on the first write |
 | `CompressionLevel` | `int` | `4` | `Whizbang__Archive__AzureBlob__CompressionLevel` | Brotli quality, 0 to 11 ([why 4](../../fundamentals/events/archive-store#azure-blob-configuration)) |
 | `MaxEventsPerChunk` | `int` | `10000` | `Whizbang__Archive__AzureBlob__MaxEventsPerChunk` | Most events one archive object holds; 1 or more |
+| `AccessTier` | `AccessTier?` | `null` (the account's default) | `Whizbang__Archive__AzureBlob__AccessTier` | Tier every archive object is written at: `Hot`, `Cool` or `Cold`; `Archive` is refused at startup ([why](../../fundamentals/events/archive-store#access-tier)) |
 
 ### Archive and stream lifecycle {#archive-and-stream-lifecycle-options}
 
-Bound by hand and validated when the host starts: a value that is not a boolean, or not a policy name, fails the start
-naming the key ([why](../../fundamentals/events/archive-store#configuration)).
+Bound by hand and validated when the host starts: a value that is not a boolean, not a policy name, not a time span of
+zero or more, or not a whole number of one or more fails the start naming the key
+([why](../../fundamentals/events/archive-store#configuration)).
 
 | Key | Type | Default | Environment variable | Purpose |
 |-----|------|---------|----------------------|---------|
 | `Whizbang:Archive:ReadThrough` | `bool` | `true` | `Whizbang__Archive__ReadThrough` | A read from the start of a stream reads archived events back when the hot store shows a gap ([read-through](../../fundamentals/events/archive-store#read-through)) |
-| `Whizbang:StreamLifecycle:Types:<StreamType>:AppendToArchived` | `AppendToArchivedPolicy` | `Refuse` | `Whizbang__StreamLifecycle__Types__<StreamType>__AppendToArchived` | What an append to a stream of that type archived whole does: `Refuse` or `AutoRestore` ([the policy](../../fundamentals/events/archive-store#appending-to-an-archived-stream)); `NewGeneration` ships with #1734 and fails the start until then |
+| `Whizbang:StreamLifecycle:Types:<StreamType>:AppendToArchived` | `AppendToArchivedPolicy` | `Refuse` | `Whizbang__StreamLifecycle__Types__<StreamType>__AppendToArchived` | What an append to a stream of that type archived whole does: `Refuse`, `AutoRestore` or `NewGeneration` ([the policy](../../fundamentals/events/archive-store#appending-to-an-archived-stream), [new generation](../../fundamentals/events/archive-store#new-generation)) |
+| `Whizbang:StreamLifecycle:FinalizeGrace` | `TimeSpan` | `7.00:00:00` | `Whizbang__StreamLifecycle__FinalizeGrace` | How long a sealed stream stays hot before its disposition runs, counted from the later of the seal and the first maintenance cycle that sees it; zero or more ([scheduled disposition](../../fundamentals/events/stream-end-of-life#scheduled-disposition)) |
+| `Whizbang:StreamLifecycle:SweepBatchSize` | `int` | `500` | `Whizbang__StreamLifecycle__SweepBatchSize` | The most sealed streams one maintenance cycle schedules, and the most it disposes of; 1 or more |
 
 ## Code-Configured Options: The Binding Recipe
 
@@ -692,6 +699,16 @@ How the schema initializer runs at startup. **Configure:** bound automatically f
 | `MigrationTimeout` | `TimeSpan?` | `null` (none) | `Whizbang__SchemaInitialization__MigrationTimeout` | Hard ceiling per initialization attempt (non-blocking mode only) |
 | `InitRetryDelay` | `TimeSpan` | `00:00:30` | `Whizbang__SchemaInitialization__InitRetryDelay` | Delay between background init attempts after a failure; never gives up |
 | `DispatchMaxWait` | `TimeSpan` | `00:05:00` | `Whizbang__SchemaInitialization__DispatchMaxWait` | How long a dispatch made before the migration completes waits for it, then fails with `WhizbangNotReadyException`; `00:00:00` refuses at once, `Timeout.InfiniteTimeSpan` waits without a limit. See [Dispatch waits for the migration](../workers/database-readiness#dispatch-waits-for-the-migration) |
+
+### EventStoreMetadataOptions {#event-store-metadata-options}
+
+What an event row stores as its metadata, and what happens to the full form. **Configure:** bound automatically from `Whizbang:EventStore:Metadata`, with no registration call needed, and validated when the host starts. The write paths are SQL, so the maintenance worker publishes these to `wh_settings` on every tick, ahead of its idle gate. **Details:** [Stored metadata](../../data/event-store#stored-metadata).
+
+| Property | Type | Default | Environment variable | Purpose |
+|----------|------|---------|--------------------|---------|
+| `WriteForm` | `EventStoreMetadataWriteForm` | `Linked` | `Whizbang__EventStore__Metadata__WriteForm` | `Linked`: the row keeps the slim form and the route id, and the full form is staged and distilled into routes and traces. `Slim`: the slim row only. `Full`: every hop in the row, nothing staged. Publishes `metadata_write_form`, both directions {verified: EventStoreMetadataSettingsTests.EachWriteForm_IsPublishedByNameAsync, ProcessWideOptionsBindingTests.EventStoreMetadata_Unconfigured_IsLinkedWithNothingKeptFullAsync} |
+| `FullFor` | `List<string>` | empty | `Whizbang__EventStore__Metadata__FullFor__0` | Type names and namespaces whose rows keep their full metadata whatever the write form; joined with the types marked `[StoredMetadata(StoredMetadataForm.Full)]`. An entry is trimmed and cut at its first comma. Publishes `metadata_full_for`, both directions {verified: EventStoreMetadataSettingsTests.FullFor_JoinsConfigurationAndAttributes_SortedOnce_AndCutAtTheCommaAsync, StoredMetadataWriteSqlTests.FullListedType_KeepsTheFullRow_ByTypeAndByNamespaceAsync} |
+| `StagingDays` | `int?` | unset (database: `2`) | `Whizbang__EventStore__Metadata__StagingDays` | Days a staged full form is kept when maintenance has not distilled it; it only has to outlast maintenance catching up. Negative is rejected at startup. Publishes `metadata_staging_days` when set {verified: EventStoreMetadataSettingsTests.StagingDays_WhenSet_IsPublishedAsAnIntegerAsync, EventStoreMetadataSettingsTests.Validate_ANegativeStagingWindow_IsRejectedByNameAsync} |
 
 ### EphemeralOptions
 
@@ -1325,6 +1342,8 @@ Operator rung of the row-retention override ladder. **Configure:** bound automat
 | `Retention.StreamPurgeAuditDays` | `int?` | unset (database: `0`) | `Whizbang__Workers__Maintenance__Retention__StreamPurgeAuditDays` | Days a stream-purge audit entry is kept; `0` keeps the audit forever. Publishes `stream_purge_audit_retention_days` |
 | `Retention.IntegrityLedgerMaxEntries` | `int?` | unset (database: `100000`) | `Whizbang__Workers__Maintenance__Retention__IntegrityLedgerMaxEntries` | The most entries the integrity ledger keeps, most recently touched first. Publishes `integrity_ledger_max_entries` |
 | `Retention.CollectiveApplyProgressDays` | `int?` | unset (database: `7`) | `Whizbang__Workers__Maintenance__Retention__CollectiveApplyProgressDays` | Days a finished collective apply's progress record is kept; never swept while its collective's work row is pending, and an abandoned record goes with its dead letter instead ([ledger retention](../../fundamentals/workers/maintenance-steps#ledger-retention)). Publishes `collective_apply_progress_retention_days` |
+| `Retention.TraceDays` | `int?` | unset (database: `30`) | `Whizbang__Workers__Maintenance__Retention__TraceDays` | Days a trace (one event's trip, distilled from its staged metadata) is kept; within it the event's full metadata is rebuilt exactly ([retention](../../data/event-store#retention)). Publishes `trace_retention_days` {verified: RetentionSettingsBridgeTests.EachIntegerOption_PublishesItsKeyAsAnIntegerLiteralAsync, MetadataDistillationSqlTests.Retention_EachWindow_RemovesOnlyWhatIsPastItAsync} |
+| `Retention.RouteIdleDays` | `int?` | unset (database: `365`) | `Whizbang__Workers__Maintenance__Retention__RouteIdleDays` | Days a route is kept after it was last taken; a route still taken is never removed ([retention](../../data/event-store#retention)). Publishes `route_idle_days` {verified: RetentionSettingsBridgeTests.EachIntegerOption_PublishesItsKeyAsAnIntegerLiteralAsync, MetadataDistillationSqlTests.Retention_EachWindow_RemovesOnlyWhatIsPastItAsync} |
 | `Partitioning.Enabled` | `bool` | `false` | `Whizbang__Workers__Maintenance__Partitioning__Enabled` | Convert the framework's time-ordered tables (`wh_log`, `wh_signals`, `wh_lifecycle_completions`) to time partitions and keep them: create ahead, drop past the window ([partitioned ledgers](../infrastructure/partitioned-ledgers#enabling-it)). Publishes `partition_maintenance_enabled` |
 | `Partitioning.CreateAhead` | `int` | `3` | `Whizbang__Workers__Maintenance__Partitioning__CreateAhead` | Partition intervals past the current one each cycle makes sure exist; at least `1` |
 | `Partitioning.Strategy` | `PartitionManagementStrategy` | `Auto` | `Whizbang__Workers__Maintenance__Partitioning__Strategy` | Who creates partitions: `Auto` (pg_partman where it is already Ready, otherwise the built-in manager; never installs pg_partman), `BuiltIn`, or `PgPartman` (requires the extension, so start fails without it). Expired partitions are always dropped by the built-in manager ([pg_partman](../infrastructure/partitioned-ledgers#pg-partman)) {verified: PartitionManagementStrategyTests.Resolve_EachCellAsync, PartitionManagementStrategyTests.TheSetting_DefaultsToAuto_AndBindsFromConfigurationAsync} |
@@ -1932,6 +1951,11 @@ each service database, rather than from the host's options. Each setting below i
 | `MaintenanceWorkerOptions.Retention.StreamPurgeAuditDays` | `Whizbang__Workers__Maintenance__Retention__StreamPurgeAuditDays` | `0` | `stream_purge_audit_retention_days` |
 | `MaintenanceWorkerOptions.Retention.IntegrityLedgerMaxEntries` | `Whizbang__Workers__Maintenance__Retention__IntegrityLedgerMaxEntries` | `100000` | `integrity_ledger_max_entries` |
 | `MaintenanceWorkerOptions.Retention.CollectiveApplyProgressDays` | `Whizbang__Workers__Maintenance__Retention__CollectiveApplyProgressDays` | `7` | `collective_apply_progress_retention_days` |
+| `MaintenanceWorkerOptions.Retention.TraceDays` | `Whizbang__Workers__Maintenance__Retention__TraceDays` | `30` | `trace_retention_days` |
+| `MaintenanceWorkerOptions.Retention.RouteIdleDays` | `Whizbang__Workers__Maintenance__Retention__RouteIdleDays` | `365` | `route_idle_days` |
+| `EventStoreMetadataOptions.WriteForm` | `Whizbang__EventStore__Metadata__WriteForm` | `Linked` | `metadata_write_form` (always published, every tick) |
+| `EventStoreMetadataOptions.FullFor` (and `[StoredMetadata(Full)]` types) | `Whizbang__EventStore__Metadata__FullFor__0` | none | `metadata_full_for` (always published, every tick) |
+| `EventStoreMetadataOptions.StagingDays` | `Whizbang__EventStore__Metadata__StagingDays` | `2` | `metadata_staging_days` |
 | `MaintenanceWorkerOptions.Partitioning.Enabled` | `Whizbang__Workers__Maintenance__Partitioning__Enabled` | `false` | `partition_maintenance_enabled` (always published) |
 | `EphemeralOptions.RewindGraceSeconds` | `Whizbang__Ephemeral__RewindGraceSeconds` | `300` | `ephemeral_rewind_grace_seconds` |
 | `EphemeralOptions.PointerPrune.Enabled` | `Whizbang__Ephemeral__PointerPrune__Enabled` | `false` | `ephemeral_deep_maintenance_enabled` |
