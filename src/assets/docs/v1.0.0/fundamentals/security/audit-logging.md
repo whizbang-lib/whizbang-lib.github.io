@@ -355,7 +355,7 @@ The choices, each held by a test:
 
 ### Unresolvable event types {#unresolvable-event-types}
 
-{verified: AuditOutboxMessageBuilderTests.TryBuildAuditMessage_OptInMode_UnresolvableType_IsNotAuditedAsync, AuditOutboxMessageBuilderTests.TryBuildAuditMessage_OptInMode_UnresolvableType_WarnsThatItWasNotAuditedNamingTheTypeAsync, AuditOutboxMessageBuilderTests.TryBuildAuditMessage_OptOutMode_UnresolvableType_IsAuditedWithoutTheSkipWarningAsync, AuditLedgerRebuildTests.LiveAndRebuild_AgreeOnAnUnresolvableType_UnderEitherModeAsync}
+{verified: AuditOutboxMessageBuilderTests.TryBuildAuditMessage_OptInMode_UnresolvableType_IsNotAuditedAsync, AuditOutboxMessageBuilderTests.TryBuildAuditMessage_OptInMode_UnresolvableType_WarnsThatItWasNotAuditedNamingTheTypeAsync, AuditOutboxMessageBuilderTests.TryBuildAuditMessage_OptOutMode_UnresolvableType_IsAuditedWithoutTheSkipWarningAsync, AuditLedgerRebuildTests.LiveAndRebuild_AgreeOnAnUnresolvableType_UnderEitherModeAsync, AuditLedgerRebuildTests.Rederive_AnUnknownTypeUnderOptIn_WarnsNamingTheTypeAsync}
 
 The outbox path decides audit from the event's type, resolved from the type name on the message. When that name
 cannot be resolved (a type renamed or removed, or an assembly this build does not load), the decision depends on the
@@ -372,7 +372,7 @@ a warning for each type it skips under `OptIn`, so a rebuilt ledger holds exactl
 | Choice | Reason | Verified |
 |---|---|---|
 | Under `OptIn`, an unresolvable type is not audited (owner decision, 2026-11-03). | It strictly honors `OptIn`: only a type marked `[AuditEvent]` is audited, and a type that cannot be resolved carries no mark anyone can read. It also keeps a rebuilt ledger identical to the live one; when the live path audited the type and the rebuild skipped it, a rebuild silently lost records. | {verified: AuditOutboxMessageBuilderTests.TryBuildAuditMessage_OptInMode_UnresolvableType_IsNotAuditedAsync, AuditLedgerRebuildTests.LiveAndRebuild_AgreeOnAnUnresolvableType_UnderEitherModeAsync} |
-| Every such skip logs a warning naming the type. | In the ledger, a record missing because its type could not be resolved looks exactly like a type nobody opted in. The warning keeps a resolution failure from being silent. | {verified: AuditOutboxMessageBuilderTests.TryBuildAuditMessage_OptInMode_UnresolvableType_WarnsThatItWasNotAuditedNamingTheTypeAsync} |
+| Every such skip logs a warning naming the type. | In the ledger, a record missing because its type could not be resolved looks exactly like a type nobody opted in. The warning keeps a resolution failure from being silent. | {verified: AuditOutboxMessageBuilderTests.TryBuildAuditMessage_OptInMode_UnresolvableType_WarnsThatItWasNotAuditedNamingTheTypeAsync, AuditLedgerRebuildTests.Rederive_AnUnknownTypeUnderOptIn_WarnsNamingTheTypeAsync, AuditLedgerRebuildTests.Rederive_AnUnknownTypeUnderOptOut_DoesNotWarnAsync} |
 | Under `OptOut`, an unresolvable type is audited, without the skip warning. | Under `OptOut` every event is audited unless its type excludes itself, and a type that cannot be resolved cannot have excluded itself. | {verified: AuditOutboxMessageBuilderTests.TryBuildAuditMessage_OptOutMode_UnresolvableType_IsAuditedWithoutTheSkipWarningAsync, AuditLedgerRebuildTests.LiveAndRebuild_AgreeOnAnUnresolvableType_UnderEitherModeAsync} |
 
 Locked by [`AuditOutboxMessageBuilderTests`](https://github.com/whizbang-lib/whizbang/blob/develop/tests/Whizbang.Core.Tests/SystemEvents/AuditOutboxMessageBuilderTests.cs)
