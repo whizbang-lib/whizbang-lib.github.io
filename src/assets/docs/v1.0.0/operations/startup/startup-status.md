@@ -482,6 +482,22 @@ own with `AddHostedService` therefore starts it with the host, before the schema
 builder.Services.AddWhizbangWorker<ServiceBusConsumerWorker>();
 ```
 
+#### Finding a hosted worker in a test {#finding-a-hosted-worker}
+
+Because every worker is hosted inside its stage wrapper, looking a worker up by its own type among
+`IEnumerable<IHostedService>` finds nothing. Tests use the one shared lookup in `Whizbang.Testing`, which looks
+through the wrapper, instead of unwrapping by hand:
+{verified: HostedWorkersTests.GetHostedWorker_FindsAStagedWorker_AndAPlainServiceByTypeAsync, HostedWorkersTests.GetHostedWorkers_LooksThroughEveryStageWrapper_AndKeepsAPlainServiceAsync, WorkerStartGateSourceGuardTests.AHostedWorker_IsFoundThroughHostedWorkers_NotByTypeAmongTheWrappersAsync}
+
+
+```csharp{title="Find a hosted worker through its stage wrapper" description="GetHostedWorker looks through the stage wrapper to the worker it hosts" category="Testing" difficulty="BEGINNER" tags=["Testing","Workers","Startup"]}
+var outbox = host.Services.GetHostedWorker<OutboxDrainWorker>();
+var all = host.Services.GetHostedWorkers();
+```
+
+A guard test fails when a fixture enumerates the hosted services and filters by a worker's type itself, so the shared
+lookup is the only way in.
+
 ### A host stopped before its schema is ready {#stopped-before-schema-ready}
 {verified: StartupStopBeforeReadyTests.AHostStoppedInPreflight_DoesNotDeregister_AndLogsNoWarningOrErrorAsync}
 
