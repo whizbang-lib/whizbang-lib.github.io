@@ -383,6 +383,8 @@ Schema bootstrap for {Schema} failed at {Step} with an error that is not transie
 
 Compile-time errors, warnings and notices from Whizbang's source generators and analyzers use `WHIZ###` IDs and surface in build output and the IDE, not at runtime. Every ID has its own page; each ID means one thing. WHIZ060 to WHIZ063 are also covered together on the [Serializable Property Analyzer](serializable-property-analyzer.md) page. Ten IDs are **retired** (WHIZ003, WHIZ005, WHIZ020, WHIZ023, WHIZ042, WHIZ050, WHIZ051, WHIZ052, WHIZ057 and WHIZ803): they were declared but never reported, are no longer in the generator package, and are never reused. Their pages explain what each described; delete any suppression of them.
 
+WHIZ600 to WHIZ699 are checks on the Whizbang repository's own code and tests and never ship in a package; they have pages like every other ID and are listed together in [Repository Checks and Diagnostic IDs](../../../contributors/repository-checks.md), with the registry every new ID is taken from.
+
 | ID | Severity | Page |
 |---|---|---|
 | WHIZ001 | Info | [Receptor Discovered](whiz001.md) |
@@ -493,6 +495,12 @@ Compile-time errors, warnings and notices from Whizbang's source generators and 
 | WHIZ402 | Info | [Multi-Model ILensQuery Auto-Detected](whiz402.md) |
 | WHIZ500 | Warning | [Hand-Constructed Service Omits a Dependency](whiz500.md) |
 | WHIZ501 | Info | [Optional Injected Dependency](whiz501.md) |
+| WHIZ600 | Error | [Test Project Declares No WhizbangTestTags](whiz600.md) (repository check) |
+| WHIZ601 | Error | [Test Project Declares No WhizbangTestType](whiz601.md) (repository check) |
+| WHIZ602 | Error | [Test Project Declares an Unknown WhizbangTestType](whiz602.md) (repository check) |
+| WHIZ603 | Error | [IsNotNull() on a Nullable Value Cannot Fail](whiz603.md) (repository check) |
+| WHIZ604 | Error | [JsonDocument Created and Dropped Without Being Disposed](whiz604.md) (repository check) |
+| WHIZ605 | Error | [Test Class Without Exactly One Shard Category](whiz605.md) (repository check) |
 | WHIZ701 | Info | [EF Core Perspective Discovery](whiz701.md) |
 | WHIZ702 | Info | [EF Core Migration Files Discovery](whiz702.md) |
 | WHIZ703 | Info | [No DbContext Found](whiz703.md) |
