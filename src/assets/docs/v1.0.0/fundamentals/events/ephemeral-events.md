@@ -45,14 +45,14 @@ codeReferences:
   - src/Whizbang.Core/Perspectives/PerspectiveSnapshotOptions.cs
   - src/Whizbang.Core/Perspectives/PerspectiveTtlRegistry.cs
   - src/Whizbang.Core/Perspectives/FullHistoryPerspectiveRegistry.cs
-  - src/Whizbang.Core/Archival/ScheduledStreamClose.cs
-  - src/Whizbang.Core/Archival/StreamCloseSchedule.cs
+  - src/Whizbang.Core/Archival/ScheduledPrefixTruncate.cs
+  - src/Whizbang.Core/Archival/PrefixTruncateSchedule.cs
   - src/Whizbang.Core/Configuration/EphemeralOptions.cs
   - src/Whizbang.Core/Workers/MaintenanceWorker.cs
   - src/Whizbang.Core/Workers/PerspectiveWorker.cs
   - src/Whizbang.Data.EFCore.Postgres/EFCoreWorkCoordinator.cs
-  - src/Whizbang.Data.EFCore.Postgres/ScheduledStreamCloseReceptor.cs
-  - src/Whizbang.Data.EFCore.Postgres/ScheduledStreamCloseReceptorRegistrar.cs
+  - src/Whizbang.Data.EFCore.Postgres/ScheduledPrefixTruncateReceptor.cs
+  - src/Whizbang.Data.EFCore.Postgres/ScheduledPrefixTruncateReceptorRegistrar.cs
   - src/Whizbang.Generators/EphemeralAnalyzer.cs
   - src/Whizbang.Generators/Utilities/EphemeralResolver.cs
   - src/Whizbang.Generators/PerspectiveRunnerGenerator.cs
@@ -75,7 +75,8 @@ testReferences:
   - tests/Whizbang.Core.Tests/Lifecycle/StreamPrefixTruncatorTests.cs
   - tests/Whizbang.Core.Component.Tests/Lifecycle/StreamPrefixTruncatorDestructionStageComponentTests.cs
   - tests/Whizbang.Core.Tests/Lifecycle/DestructionContractTests.cs
-  - tests/Whizbang.Core.Tests/Archival/StreamCloseScheduleTests.cs
+  - tests/Whizbang.Core.Tests/Archival/PrefixTruncateScheduleTests.cs
+  - tests/Whizbang.Core.Tests/Archival/ScheduledPrefixTruncateRenameTests.cs
   - tests/Whizbang.Core.Tests/Workers/MaintenanceWorkerDestructionHookTests.cs
   - tests/Whizbang.Core.Tests/Workers/MaintenanceWorkerReapDrivenSnapshotTests.cs
   - tests/Whizbang.Core.Tests/Fingerprint/TypeDefinitionReconcilerBranchCoverageTests.cs
@@ -93,7 +94,7 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/EphemeralSnapshotTargetSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/EphemeralStreamGuardSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/MixedStreamGuardSqlTests.cs
-  - tests/Whizbang.Data.EFCore.Postgres.Tests/ScheduledStreamCloseReceptorTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/ScheduledPrefixTruncateReceptorTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/TypeDefinitionReconcilerTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Cursors/PerspectiveCursorAdvanceSqlTests.cs
   - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperWorkCoordinatorDeepPathTests.cs
@@ -540,26 +541,33 @@ perspective consumes is refused with status `full_history_blocked`; an archiving
 because the detail stays retrievable.
 {verified: StreamPrefixTruncatorTests.Truncate_DiscardWithFullHistoryConsumer_IsRefusedAsync, StreamPrefixTruncatorTests.Truncate_ArchiveWithFullHistoryConsumer_IsAllowedAsync, StreamPrefixTruncatorTests.Truncate_DiscardWithResumableConsumerOnly_ProceedsAsync}
 
-To close on a schedule ("close the month"), build a recurring schedule whose occurrences are
-`ScheduledStreamClose(StreamId, ThroughVersion, Archive)` commands. `StreamCloseSchedule.Recurring`
-takes a fixed interval and `StreamCloseSchedule.RecurringCron` a cron expression and optional time
-zone; pass the resulting `ScheduleDefinition` to `IScheduleManager.CreateAsync`. Keep the occurrences
-in a dedicated control stream, separate from the stream being closed. The close point,
-`ThroughVersion`, is yours to advance each period.
-{verified: StreamCloseScheduleTests.Recurring_BuildsIntervalDefinition_PayloadRoundTripsAsync, StreamCloseScheduleTests.RecurringCron_BuildsCronDefinitionAsync}
+### Scheduling a prefix truncate {#scheduling-a-prefix-truncate}
 
-```csharp{title="A monthly close schedule" description="A cron schedule that fires a ScheduledStreamClose at midnight on the first of each month, New York time." framework="NET10" category="Core Concepts" difficulty="ADVANCED" tags=["stream-close", "schedules", "archival", "close-the-books"] testFile="StreamCloseScheduleTests.cs" testMethod="RecurringCron_BuildsCronDefinitionAsync" githubUrl="https://github.com/whizbang-lib/whizbang/blob/develop/tests/Whizbang.Core.Tests/Archival/StreamCloseScheduleTests.cs" tests=["StreamCloseScheduleTests.RecurringCron_BuildsCronDefinitionAsync"]}
-var def = StreamCloseSchedule.RecurringCron(
-  "close-month", Guid.NewGuid(), new ScheduledStreamClose(Guid.NewGuid(), 100, false),
+To truncate on a schedule (every month, say), build a recurring schedule whose occurrences are
+`ScheduledPrefixTruncate(StreamId, ThroughVersion, Archive)` commands. `PrefixTruncateSchedule.Recurring`
+takes a fixed interval and `PrefixTruncateSchedule.RecurringCron` a cron expression and optional time
+zone; pass the resulting `ScheduleDefinition` to `IScheduleManager.CreateAsync`. Keep the occurrences
+in a dedicated control stream, separate from the stream being truncated. The cut, `ThroughVersion`, is
+yours to advance each period.
+{verified: PrefixTruncateScheduleTests.Recurring_BuildsIntervalDefinition_PayloadRoundTripsAsync, PrefixTruncateScheduleTests.RecurringCron_BuildsCronDefinitionAsync}
+
+```csharp{title="A monthly prefix-truncate schedule" description="A cron schedule that fires a ScheduledPrefixTruncate at midnight on the first of each month, New York time." framework="NET10" category="Core Concepts" difficulty="ADVANCED" tags=["prefix-truncate", "schedules", "archival"] testFile="PrefixTruncateScheduleTests.cs" testMethod="RecurringCron_BuildsCronDefinitionAsync" githubUrl="https://github.com/whizbang-lib/whizbang/blob/develop/tests/Whizbang.Core.Tests/Archival/PrefixTruncateScheduleTests.cs" tests=["PrefixTruncateScheduleTests.RecurringCron_BuildsCronDefinitionAsync"]}
+var def = PrefixTruncateSchedule.RecurringCron(
+  "truncate-month", Guid.NewGuid(), new ScheduledPrefixTruncate(Guid.NewGuid(), 100, false),
   "0 0 1 * *", Guid.NewGuid(), timeZone: "America/New_York");
 ```
 
-On the Postgres EF Core driver a built-in receptor handles each `ScheduledStreamClose` by calling
+On the Postgres EF Core driver a built-in receptor handles each `ScheduledPrefixTruncate` by calling
 `IStreamPrefixTruncator.TruncateAsync` with its values. It is registered at startup at the `LocalImmediateInline`,
 `PreOutboxInline` and `PostInboxInline` stages, so it runs whether the occurrence fires in this
 process or arrives from another service. With no `IStreamPrefixTruncator` registered it logs a warning and does
 nothing.
-{verified: ScheduledStreamCloseReceptorTests.Receptor_FiredOccurrence_CallsStreamPrefixTruncatorWithPayloadAsync, ScheduledStreamCloseReceptorTests.Registrar_RegistersReceptorAtThreeDefaultStagesAsync, ScheduledStreamCloseReceptorTests.Receptor_NoStreamPrefixTruncatorRegistered_IsInertAsync}
+{verified: ScheduledPrefixTruncateReceptorTests.Receptor_FiredOccurrence_CallsStreamPrefixTruncatorWithPayloadAsync, ScheduledPrefixTruncateReceptorTests.Registrar_RegistersReceptorAtThreeDefaultStagesAsync, ScheduledPrefixTruncateReceptorTests.Receptor_NoStreamPrefixTruncatorRegistered_IsInertAsync}
+
+| Choice | Reason | Verified |
+|---|---|---|
+| The types are named for what they do: `ScheduledPrefixTruncate`, `PrefixTruncateSchedule` and `ScheduledPrefixTruncateReceptor` (they were `ScheduledStreamClose`, `StreamCloseSchedule` and `ScheduledStreamCloseReceptor` until #1760). | "Close" belongs to closing the books, which ends a stream and opens its successor; these types only truncate a prefix. | {verified: ScheduledPrefixTruncateRenameTests.TheOccurrenceType_IsNamedForThePrefixTruncate_AndItsFormerName_StillResolvesToItAsync} |
+| The former name `Whizbang.Core.Archival.ScheduledStreamClose` is kept in the pinned-type ledger's `formerNames`, so it resolves to `ScheduledPrefixTruncate`; the payload's fields kept their names. | A schedule stores its occurrence's type name and payload; a schedule created before the rename must still fire. A new schedule stores the new name. | {verified: ScheduledPrefixTruncateRenameTests.AnOccurrenceStoredUnderTheFormerName_LoadsAsTheRenamedType_WithItsValues_AndANewScheduleStoresTheNewNameAsync} |
 
 ## Related
 

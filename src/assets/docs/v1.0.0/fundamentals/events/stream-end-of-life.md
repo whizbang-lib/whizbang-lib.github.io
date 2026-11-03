@@ -42,6 +42,8 @@ codeReferences:
   - src/Whizbang.Data.Postgres/Migrations/299_ArchivedStreamRows.sql
   - src/Whizbang.Data.Postgres/Migrations/297_StreamEndOfLifePolicies.sql
   - src/Whizbang.Core/Archival/StreamLifecycleAction.cs
+  - src/Whizbang.Core/Attributes/StreamEndOfLifeAttribute.cs
+  - src/Whizbang.Core/Archival/StreamEndOfLifeDeclarations.cs
 testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Collective/ArchivedCollectiveStreamsQueryPlanTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StreamLifecycleLedgerSqlTests.cs
@@ -70,6 +72,7 @@ testReferences:
   - tests/Whizbang.Generators.Tests/UnshippedDestructionAnalyzerTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/ArchivedStreamRowsSqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StreamEndOfLifePolicySqlTests.cs
+  - tests/Whizbang.Core.Tests/Archival/StreamEndOfLifeDeclarationsTests.cs
 ---
 
 # Stream End of Life
@@ -527,7 +530,7 @@ var result = await truncator.TruncateAsync(accountId, throughVersion: 120, Dispo
 |---|---|---|
 | A hook that proceeds without naming a disposition (`DestructionResult.Proceed()`) runs the declared one; it used to mean `Delete`. | A hook that only observes must never turn a declared `Archive` into a discard (owner decision, 2026-11-01). | {verified: StreamPrefixTruncatorDispositionTests.AHookThatProceedsWithoutNamingADisposition_KeepsTheDeclaredOne_NeverDeletesAnArchiveAsync, DestructionContractTests.DestructionResult_Proceed_WithoutADisposition_NamesNone_SoTheDeclaredOneRunsAsync} |
 | A hook that names a disposition overrides the declared one, either way. | The hook is the developer's runtime decision. | {verified: StreamPrefixTruncatorDispositionTests.AHookReturningArchive_OverridesADeclaredDelete_AndOneReturningDelete_OverridesADeclaredArchiveAsync, MaintenanceWorkerDispositionTests.Delete_AndAHookThatNamesNone_ReapAsBeforeAsync} |
-| `IStreamPrefixTruncator.TruncateAsync` takes a `Disposition` (default `Delete`) in place of its `archive` flag; the hook sees it as `DeclaredDefault` and the cut as `ThroughVersion`. | The flag could say only delete or archive; a stored schedule keeps its flag, read as `Archive` or `Delete`. | {verified: StreamPrefixTruncatorDispositionTests.Declared_Archive_WritesThroughTheStore_AndTheHookSeesItAsTheDeclaredDefaultAsync, ScheduledStreamCloseReceptorTests.Receptor_AnOccurrenceThatDoesNotArchive_AsksForADiscardAsync} |
+| `IStreamPrefixTruncator.TruncateAsync` takes a `Disposition` (default `Delete`) in place of its `archive` flag; the hook sees it as `DeclaredDefault` and the cut as `ThroughVersion`. | The flag could say only delete or archive; a stored schedule keeps its flag, read as `Archive` or `Delete`. | {verified: StreamPrefixTruncatorDispositionTests.Declared_Archive_WritesThroughTheStore_AndTheHookSeesItAsTheDeclaredDefaultAsync, ScheduledPrefixTruncateReceptorTests.Receptor_AnOccurrenceThatDoesNotArchive_AsksForADiscardAsync} |
 | The full-history guard checks the disposition that will run, after the hook. | A hook switching a declared archive to a discard must not strand a projection that replays from the start. | {verified: StreamPrefixTruncatorDispositionTests.AHookReturningDelete_IsStillRefused_WhenAFullHistoryProjectionConsumesTheRangeAsync} |
 | `Compact` is a developer-supplied `ICompactionHandler`, awaited before the discard; with none registered the data is kept and the reason logged; a handler that throws keeps the data too. | Compaction is the developer's in 1.0 (the plan's decision); discarding detail nothing folded would lose it. | {verified: StreamPrefixTruncatorDispositionTests.Compact_RunsTheRegisteredHandler_ThenDiscardsTheDetailAsync, StreamPrefixTruncatorDispositionTests.Compact_WithNoHandler_KeepsTheData_AndLogsWhyAsync, MaintenanceWorkerDispositionTests.Compact_AHandlerThatThrows_TakesTheFailurePath_AndNothingIsAnnouncedAsync, StreamDispositionStepTests.Compact_RunsTheHandler_ThenPurges_AndWithNoHandler_DefersAndLogsAsync} |
 | `CryptoShred` is refused everywhere: the data is kept and the reason logged. | Its phase has not shipped. | {verified: StreamPrefixTruncatorDispositionTests.CryptoShred_IsRefused_KeepsTheData_AndLogsWhyAsync, MaintenanceWorkerDispositionTests.CryptoShred_HoldsTheBatchForTheBackoff_AndLogsWhyAsync, StreamDispositionStepTests.CryptoShred_Defers_AndLogsAsync} |
@@ -544,7 +547,8 @@ order delivered a year ago, a ledger that grows forever. An **end-of-life policy
 stream's life is over and what happens to it then (#1740). The `stream-disposition` maintenance step evaluates the
 policies after the [scheduled disposition](#scheduled-disposition) of sealed streams, in the same cycle.
 
-A policy is configuration under `Whizbang:StreamLifecycle:Types:<StreamType>`, keyed by the stream type the
+A policy is configuration under `Whizbang:StreamLifecycle:Types:<StreamType>` (or a
+[`[StreamEndOfLife]` attribute](#declaring-a-policy-on-the-event-type) on the event type), keyed by the stream type the
 [ledger](#the-stream-lifecycle-ledger) records (the type name of the stream's first event, without its assembly):
 
 | Trigger | Key | Picks an open stream when | What goes |
@@ -573,6 +577,24 @@ another, as for [every destruction](#dispositions).
 //   }
 // }
 ```
+
+### Declaring a policy on the event type {#declaring-a-policy-on-the-event-type}
+
+A policy can also be declared in code, with `[StreamEndOfLife]` on the event type that opens the stream (a stream's type
+is the type of its first event). Each property is the configuration key of the same name; a key set in configuration wins.
+
+```csharp{title="Declare an end-of-life policy" description="Order streams are archived once idle for ninety days; configuration can still change any setting." category="Core Concepts" difficulty="BEGINNER" tags=["stream-lifecycle", "end-of-life", "policies", "attributes"] tests=["StreamEndOfLifeDeclarationsTests.AnAttributedEventTypeInThisAssembly_IsRegisteredByTheGenerator_Inherited_KeyedByItsLedgerStreamTypeAsync", "MessageTypeCatalogGeneratorTests.Generator_StreamEndOfLife_RegistersTheDeclarationOfEachEventType_InheritedAsync"]}
+[StreamEndOfLife(IdleTtl = "90.00:00:00", Action = StreamLifecycleAction.Archive)]
+public sealed record OrderPlaced([property: StreamId] Guid OrderId) : IEvent;
+```
+
+| Choice | Reason | Verified |
+|---|---|---|
+| The message-type catalog generator registers each declaration (`StreamEndOfLifeDeclarations`), keyed by the CLR name the ledger records as the stream type (`Ns.Outer+Nested` for a nested type), with no reflection. | The ledger's stream type is the first event's CLR name without its assembly, so that is the only key a policy can match on. | {verified: MessageTypeCatalogGeneratorTests.Generator_StreamEndOfLife_RegistersTheDeclarationOfEachEventType_InheritedAsync, StreamEndOfLifeDeclarationsTests.AnAttributedEventTypeInThisAssembly_IsRegisteredByTheGenerator_Inherited_KeyedByItsLedgerStreamTypeAsync} |
+| The attribute is inherited, and on a command it does nothing. | An event derived from an attributed event opens the same kind of stream; a command never opens a stream. | {verified: MessageTypeCatalogGeneratorTests.Generator_StreamEndOfLife_RegistersTheDeclarationOfEachEventType_InheritedAsync} |
+| Declarations apply first and configuration binds over them, key by key: a key configuration sets wins, a key it does not set keeps the declared value. | Configuration is the operator's override of what the developer declared, without restating the rest. | {verified: StreamEndOfLifeDeclarationsTests.Apply_SetsEachDeclaredTrigger_AndConfiguration_ThenWinsKeyByKeyAsync, StreamEndOfLifeDeclarationsTests.Registration_StartsFromTheGeneratedDeclarations_EvenWithNoConfigurationAsync} |
+| `IdleTtl` and `MaxAge` are time-span strings (attribute arguments cannot be `TimeSpan`); `KeepTailVersions` and `TenantByteCap` of 0 mean none. A declared value that cannot be used fails the start with `[StreamEndOfLife] on <StreamType>` and the setting. | The same rules as configuration, reported against the type that declared the value. | {verified: StreamEndOfLifeDeclarationsTests.Apply_ADeclaredValueThatCannotBeUsed_IsRefusedNamingTheTypeAndTheSettingAsync, StreamEndOfLifeDeclarationsTests.TheAttribute_DefaultsToNoTriggerAndArchive_AndKeepsEachValueSetAsync} |
+| A stream type registered twice keeps its first declaration. | Registration runs once per assembly load; a second registration is never a change of policy. | {verified: StreamEndOfLifeDeclarationsTests.Register_KeepsTheFirstDeclarationOfAStreamType_AndRefusesNullAsync} |
 
 ```mermaid{caption="What one maintenance cycle does with a stream an end-of-life policy picks." tests=["StreamDispositionStepTests.APickedStream_GetsItsFinalSnapshot_ThenTheHookWithItsTriggersReason_ThenIsArchivedWhole_AndIsNotSealedAsync", "StreamDispositionStepTests.Purge_TheHookFirst_ThenTheStreamIsSealedIfUnchanged_ThenPurged_SayingWhichTriggerAsync", "StreamDispositionStepTests.TheVersionCap_TruncatesThePrefixThroughTheTruncator_WithItsReason_AndRecordsTheCutAsync"]}
 flowchart TD
@@ -632,6 +654,7 @@ flowchart TD
 | `StreamLifecycleOptionsBinderTests` | `FinalizeGrace` and `SweepBatchSize`: defaults, edges and refusals |
 | `StreamPrefixTruncatorDispositionTests`, `MaintenanceWorkerDispositionTests`, `DestructionContractTests` | the prefix truncate's and the reaper's routing on the disposition, and `Proceed()` keeping the declared one |
 | `UnshippedDestructionAnalyzerTests` | WHIZ137 |
+| `StreamEndOfLifeDeclarationsTests` | `[StreamEndOfLife]`: registered by the generator, applied before configuration, refused naming the type |
 | `StreamEndOfLifePolicySqlTests` | each policy trigger at its boundary, read from the ledger alone; the version cap's cut; the tenant cap's order; the guarding seal; a due stream's type; a policy end to end |
 | `StreamDispositionStepTests` (policies) | `Enabled`, each trigger's reason, the seal before a purge or compaction, deferrals, the version cap through the truncator, a sealed stream's type action |
 
