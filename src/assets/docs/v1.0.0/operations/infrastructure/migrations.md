@@ -724,6 +724,25 @@ closure. Applying it a second time would take each statement's lock on tables th
 nothing.
 {verified: SchemaBootstrapPhaseTests.AWaiterWhoseHolderAppliedTheClosureMeanwhile_AppliesNothingAsync}
 
+**Why the record is found by reading the catalog, not by resolving its name.** On a fresh database the record table
+did not exist when the waiting instance first looked: only the holder's uncommitted transaction had created it. The
+waiter's session caches that "no such table". A session refreshes that cache when a transaction starts and when it
+locks a table, and waiting on the schema lock does neither, so asking `to_regclass` under the lock still answered "no
+such table", the record read as absent, and the waiter applied the closure a second time. Whether something else
+refreshed the cache first depended on how much the holder's commit sent and on other sessions on the server, so it
+happened only sometimes. The bootstrap therefore asks whether the record table exists by reading `pg_class` and
+`pg_namespace`, which a statement reads under its own snapshot and so sees every committed table. The election probe
+(`SchemaBootstrapPhase.CanElectAsync`) reads `pg_class` and `pg_proc` the same way, so a caller that probes from inside
+an open transaction gets the committed answer too.
+{verified: SchemaBootstrapPhaseTests.AWaiterWhoseSessionCachedTheRecordTableAsMissing_StillFindsTheHoldersRecord_AndAppliesNothingAsync, SchemaBootstrapPhaseTests.InsideATransaction_ToRegclassMissesATableAnotherSessionCommitted_WhereAPgClassReadSeesItAsync, SchemaBootstrapPhaseTests.CanElect_InsideATransactionThatBeganBeforeTheObjectsWereCommitted_SeesThemAsync}
+
+**Why the bootstrap's transaction is read committed, whatever the database's default.** The recheck can only see the
+holder's commit if its snapshot is taken after that commit. Under repeatable read or serializable, the snapshot is
+taken by the transaction's first statement, the try for the lock, before the holder committed, so the recheck would
+see neither the record nor its table. The bootstrap begins its transaction as read committed explicitly, so a
+`default_transaction_isolation` set on the database or the role does not change what it sees.
+{verified: SchemaBootstrapPhaseTests.AWaiterOnADatabaseDefaultingToRepeatableRead_StillFindsTheHoldersRecord_AndAppliesNothingAsync}
+
 The generated initializer describes the bootstrap with a `SchemaBootstrapRequest`: the connection factory the lock
 and the scripts share, the schema lock key (the same one the DDL phase takes), the closure scripts in order, the target
 schema, and the timeout for one script and for one wait on the lock. Code that drives the bootstrap itself, such as a
