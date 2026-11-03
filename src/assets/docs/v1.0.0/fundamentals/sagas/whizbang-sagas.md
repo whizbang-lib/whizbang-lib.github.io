@@ -30,6 +30,7 @@ testReferences:
   - tests/Whizbang.Sagas.Tests/SagaItemCompletionReconcilerTests.cs
   - tests/Whizbang.Sagas.Tests/SagaItemStreamsTests.cs
   - tests/Whizbang.Sagas.Tests/SagaItemStreamIdDeriverTests.cs
+  - tests/Whizbang.Sagas.Tests/Services/TryRecoverViaWatchdogTickAsyncTests.cs
   - tests/Whizbang.Sagas.Component.Tests/SagaItemStreamNamespacePerHostTests.cs
   - tests/Whizbang.Sagas.Tests/SagaLiveProgressResolversTests.cs
   - tests/Whizbang.Sagas.Tests/SagaApplyHelperTests.cs
@@ -174,6 +175,17 @@ container, and it reads the one value the last `AddWhizbangSagas` call in the pr
 a single host that is the host's namespace; in a process with several it is whichever registered last. The
 existing reconciler overloads without a deriver, and the overload `SagaItemStreams.Of(namespaceId, sagaId,
 itemIdentifier)` that names its namespace, behave exactly as before.
+
+**In tests, derive through an explicit namespace.** Test frameworks run tests in parallel in one process, and
+every test that calls `AddWhizbangSagas` sets the process-wide value. A test that derives a per-item stream id
+twice through it (once in the code under test, once to key a stub terminal reader) can read two different
+namespaces when another test registers in between, and fail on a stream id it did not expect. Give the code
+under test a deriver or host-registered `SagaOptions` with a namespace of its own and key the stub with
+`SagaItemStreams.Of(namespaceId, sagaId, itemIdentifier)`, and keep the tests that assert on the process-wide
+value itself in one non-parallel group that restores it. The framework's own saga tests do this, and each one
+registers sagas between its two derivations to prove the process-wide value can no longer move it.
+
+{verified: SagaItemCompletionReconcilerTests.ResolveCompletionCounts_StrandedItem_StoreSaysFailed_CountsAsFailedAsync, SagaItemCompletionReconcilerTests.ResolveCompletionCounts_StrandedItem_ButEventStoreSaysCompleted_ReconcilesAsync, TryRecoverViaWatchdogTickAsyncTests.MaxConsecutiveStalls_ItemsWithNoRowAndARowBehindTheStore_CountsWhatTheStoreRecordsAsync}
 
 **Options a service built by hand keep the process-wide namespace, on purpose.** A saga service is treated
 as deriving under its host's namespace only when it was given the `SagaOptions` instance a container's
