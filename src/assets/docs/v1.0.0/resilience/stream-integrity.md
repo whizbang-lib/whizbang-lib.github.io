@@ -518,7 +518,7 @@ re-bounds):
   ([what resets the repair ladder](#what-resets-the-repair-ladder)), and a bucket a redelivery
   answered without changing it stops at once, with one report
   ([repair that cannot change a bucket](#unhealable-buckets)). The in-memory ledger, used only
-  without a durable store, keeps one ask per terminal interval (base x 2^6) past the budget.
+  without a durable store, follows the same cap.
 - **Requests batch and are directed or not at all.** Divergent streams of one (tenant, type)
   batch into ONE `RequestRedeliveryCommand` (the origin's selection takes a stream set — per-stream
   commands multiplied wire volume by the stream count for nothing). And every integrity request —
@@ -1331,9 +1331,23 @@ either side reset the ladder and lifted the unhealable mark, so every audit of a
 stream started a fresh ladder and the budget never ran out. Reporting is unchanged: a changed signature
 on either side is still reported at once, so detection does not wait for the cooldown.
 
-These states and resets belong to the durable ledger the Postgres driver registers. The in-memory ledger, used only
-when no durable store is registered, has no answer states: past the budget it asks once per terminal interval
-(the backoff base doubled six times), and a change on either side resets it.
+The in-memory ledger, used only when no durable store is registered, keeps the same ladder, and one shared
+contract test runs against both ledgers so they cannot drift apart:
+
+- **The cap.** It is exhausted by the grant that spends the budget, with no terminal cadence.
+- **The pending answer.** It is kept until the answer arrives or the timeout passes.
+- **What resets it.** Only a local digest change or a grown deficit, and a reset clears the pending answer
+  too.
+- **The type-lane stand-down.** It applies while per-stream buckets of the type are pending.
+
+Two things differ, because only the durable store has them:
+
+- **Windowed type-lane marks.** In-memory buckets carry no window, so a type-lane mark with a window
+  marks none.
+- **The separate answered state.** Only the paced drain reads it, and the in-memory ledger has no drain.
+  There, an answer simply clears the pending answer.
+
+The integrity gauges are always read from the durable store.
 
 A reset also clears a pending answer, so a bucket whose local digest moved is claimable at once instead
 of waiting out the timeout for an answer to a question about a store that has since changed. Any
