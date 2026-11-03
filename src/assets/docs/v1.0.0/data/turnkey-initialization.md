@@ -24,6 +24,8 @@ codeReferences:
   - src/Whizbang.Data.Postgres/SchemaInitializationObservers.cs
   - src/Whizbang.Data.EFCore.Postgres/DbContextSchemaInitializationRunner.cs
   - src/Whizbang.Data.Dapper.Postgres/DapperSchemaInitializationRunner.cs
+  - src/Whizbang.Data.Dapper.Postgres/DapperPostgresStartupAssessor.cs
+  - src/Whizbang.Data.Postgres/StartupVerdictBinding.cs
   - src/Whizbang.Data.EFCore.Postgres/SchemaInitializationLog.cs
   - src/Whizbang.Data.EFCore.Postgres/SchemaStepRunner.cs
   - src/Whizbang.Data.EFCore.Postgres.Generators/Templates/DbContextSchemaExtensionTemplate.cs
@@ -39,6 +41,8 @@ testReferences:
   - tests/Whizbang.Core.Tests/Schema/SchemaInitializationObserversTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/MigrationStepTransactionTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/StartupPreflightHostTests.cs
+  - tests/Whizbang.Data.Dapper.Postgres.Tests/DapperStartupAssessorTests.cs
+  - tests/Whizbang.Core.Tests/Schema/StartupVerdictBindingTests.cs
 lastMaintainedCommit: '01f07906'
 ---
 
@@ -257,6 +261,9 @@ call it. `SchemaInitializationOptions` (blocking or not, `MigrationTimeout`, `In
 | When | Hosted service at host start | Hosted service at host start |
 | Blocking | `NonBlockingSchemaInit`, background by default | The same option |
 | Wait for the database | The initializer's retry loop | `PostgresOptions` connection retry, then the initializer's retry loop |
+| Assess verdict | `EFCorePostgresStartupAssessor`, read once; the initializer and the generated pass share the answer | `DapperPostgresStartupAssessor`, read once; the initializer and the Dapper runner share the answer |
+| Schema already current | No bootstrap, election, stored-form rewrite or pass; registers, then Converge | No pass; registers, then Converge |
+| Schema newer than the binary | No runner runs; the gate stays closed | The same |
 | Lock | `pg_try_advisory_xact_lock` on the schema key, taken at the start of each step's own transaction | The same key, held transaction-scoped on a connection of its own while each migration file runs in its own transaction |
 | Register the instance | At the end of Preflight, after the bootstrap closure and before Elect ([why](../operations/infrastructure/migrations#which-instance-migrates)) | At start, before the lock is released |
 | Managed-object cleanup | This instance's id, `Whizbang:Schema:Reconcile`, the host's logger; never fatal | The same |
@@ -268,6 +275,36 @@ call it. `SchemaInitializationOptions` (blocking or not, `MigrationTimeout`, `In
 The drivers still migrate with two engines: the EF Core driver generates its pass from the model, and the
 Dapper driver runs `PostgresSchemaInitializer`. They share the lock key, so instances of either driver starting
 together migrate one after the other.
+
+### The Assess verdict comes first, on both drivers {#assess-on-both-drivers}
+
+Before any runner starts, the initializer reads the host's one [Assess verdict](../operations/startup/rolling-upgrades#assess),
+and each driver's pass reads that same verdict as its input, through `StartupVerdictBinding`. The Dapper driver has its own
+assessor, `DapperPostgresStartupAssessor`, which shares the EF Core driver's verdict rules and ledger read, so a Dapper
+host stands down on a newer schema, skips the locks on a [current one](../operations/startup/rolling-upgrades#current)
+and never migrates blind when the version record cannot be read. On Dapper, `Current` also requires every migration
+to be recorded at this binary's version.
+
+**Why Dapper got an assessor.** The drivers are meant to start near-identically wherever they can. Earlier releases
+registered no assessor for the Dapper driver, so a Dapper host skipped Assess altogether: it could not stand down in
+front of a newer schema, and it could not tell that its schema was already current.
+{verified: StartupParityTests.EachDriver_SuppliesAnAssessor_ThatReadsTheVersionRecordAsync, StartupParityTests.ARestartOnACurrentSchema_TakesNoSchemaLock_AndSkipsElectAndMigrateAsync, StartupParityTests.ANewerSchema_StandsDown_AppliesNothing_AndKeepsTheGateClosed_WhileVisibleAsync, DapperStartupAssessorTests.ANewerRelease_StandsThisBinaryDownAsync, DapperStartupAssessorTests.AMigrationLastRecordedByAnotherRelease_IsServeAsync, AssessBindingSourceGuardTests.EverySchemaRunner_ReadsTheVerdict_OrDelegatesToThePassThatDoesAsync}
+
+**A direct call on a stood-down host is refused.** `EnsureWhizbangInitializedAsync`, or a DbContext's
+`EnsureWhizbangDatabaseInitializedAsync`, runs the generated pass, and the pass reads the verdict before it applies
+anything. On a host whose binary is older than the schema it throws `SchemaStandDownException`, naming the reason,
+and applies nothing: no bootstrap, no election, no pass. Calling it yourself is not a way around the decision the
+hosted start made.
+
+```csharp{title="A direct call on a stood-down host" description="The turnkey call reads the same Assess verdict as the hosted start and refuses on a stand-down" category="Implementation" difficulty="INTERMEDIATE" tags=["Data","Startup","RollingUpgrades"] tests=["StartupParityTests.TheTurnkeyCall_OnAStoodDownInstance_IsRefused_AndAppliesNothingAsync","StartupVerdictBindingTests.AStandDown_IsRefused_NamingTheReasonAsync"]}
+try {
+  await app.EnsureWhizbangInitializedAsync();
+} catch (SchemaStandDownException ex) {
+  // The schema is newer than this binary; nothing was applied. ex.Message says why.
+  logger.LogWarning(ex, "Standing down: a newer release owns the schema");
+  throw;
+}
+```
 
 :::breaking
 **Upgrading a Dapper host.** The schema is no longer migrated when `AddWhizbangPostgres(..., initializeSchema: true)`
