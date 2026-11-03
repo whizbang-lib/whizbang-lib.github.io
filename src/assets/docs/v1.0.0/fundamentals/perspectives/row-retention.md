@@ -238,6 +238,10 @@ A rebuild after eviction logs at Information ("is missing but the stream has his
 rewind, so it appears in the rewind span family and the rewind system events. A row that starts fresh
 because its ephemeral history is gone logs a Warning.
 
+The "does the stream have history" check also counts history an [archive](../events/archive-store#version-questions)
+holds: a stream whose earlier events were archived, or whose archive was deleted, is a woken stream, not a new one, so
+its row is rebuilt through the archive rather than folded from the new events alone (#1933).
+
 ## AOT
 
 Everything is source-generated or plain code. The attributes are read by the perspective-runner
