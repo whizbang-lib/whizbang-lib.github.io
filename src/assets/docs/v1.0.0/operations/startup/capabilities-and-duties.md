@@ -168,7 +168,7 @@ as usual; a stop is final.
 **A halted refusal is waited out, not failed.** Unlike `Unavailable` and `Refused`, `Halted` ends when the permit
 reopens, and the permit says when. So:
 
-- **An awaited startup step** refused as `Halted` reports itself waiting (`IStartupStepObserver.OnStepWaitingAsync`),
+- **An awaited startup step** refused as `Halted` reports itself waiting once, before the wait (`IStartupStepObserver.OnStepWaitingAsync`),
   waits on the elector's run permit to reopen, and votes again. The run's cancellation (host shutdown) ends the wait. A
   permit that is stopped instead fails the step: the instance is stopping, so the step cannot run. An elector with no
   permit to wait on is retried like a contention.
@@ -177,7 +177,7 @@ reopens, and the permit says when. So:
   canceled on a stopped permit. An elector with no permit is logged as halted and leaves the schema unstaged, as for
   any other refusal; the schema lock still guards.
 
-{verified: StartupPipelineRunnerHaltedDutyTests.AnAwaitedStepRefusedAsHalted_WaitsForThePermitToReopen_ThenRunsAsync, StartupPipelineRunnerHaltedDutyTests.AnAwaitedStepRefusedAsHalted_WhenThePermitIsStopped_FailsAsync, StartupPipelineRunnerHaltedDutyTests.AnAwaitedStepRefusedAsHalted_TheRunsCancellation_EndsTheWaitAsync, StartupPipelineRunnerHaltedDutyTests.AnAwaitedStepRefusedAsHalted_ByAnElectorWithNoPermit_IsRetriedLikeAContentionAsync, MigratorDutyStagingTests.AHaltedRefusal_WaitsForThePermitToReopen_ThenElectsAsync, MigratorDutyStagingTests.AHaltedRefusal_WhenThePermitIsStopped_EndsTheElectionAsCanceledAsync, MigratorDutyStagingTests.AHaltedRefusal_FromAnElectorWithNoPermit_IsLoggedAsHalted_AndUnstagedAsync}
+{verified: StartupPipelineRunnerHaltedDutyTests.AnAwaitedStepRefusedAsHalted_NarratesTheWaitOnce_BeforeWaitingForThePermitAsync, StartupPipelineRunnerHaltedDutyTests.AnAwaitedStepThatIsNotHalted_IsNeverNarratedAsWaitingAsync, StartupPipelineRunnerHaltedDutyTests.AnAwaitedStepRefusedAsHalted_WaitsForThePermitToReopen_ThenRunsAsync, StartupPipelineRunnerHaltedDutyTests.AnAwaitedStepRefusedAsHalted_WhenThePermitIsStopped_FailsAsync, StartupPipelineRunnerHaltedDutyTests.AnAwaitedStepRefusedAsHalted_TheRunsCancellation_EndsTheWaitAsync, StartupPipelineRunnerHaltedDutyTests.AnAwaitedStepRefusedAsHalted_ByAnElectorWithNoPermit_IsRetriedLikeAContentionAsync, MigratorDutyStagingTests.AHaltedRefusal_WaitsForThePermitToReopen_ThenElectsAsync, MigratorDutyStagingTests.AHaltedRefusal_WhenThePermitIsStopped_EndsTheElectionAsCanceledAsync, MigratorDutyStagingTests.AHaltedRefusal_FromAnElectorWithNoPermit_IsLoggedAsHalted_AndUnstagedAsync}
 
 **Why wait rather than fail.** A pause or a stand-down during startup is resumable. Failing the step would turn an
 operator's pause into a startup that never completes, and polling would vote against a permit that cannot answer
