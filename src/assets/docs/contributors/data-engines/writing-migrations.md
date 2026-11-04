@@ -133,8 +133,9 @@ and looks again. It fails with the name lookup and passes with the catalog read.
   locks the managed-object ledger check, which now reads `pg_class` (#2038). The check is public, takes its caller's
   connection, and decides whether a start can skip the schema pass.
 - [`MigratorWatchTests.InsideATransactionThatBeganBeforeTheRoleObjectsWereCommitted_SeesTheMigratorAsync`](https://github.com/whizbang-lib/whizbang/blob/develop/tests/Whizbang.Data.EFCore.Postgres.Tests/Migrations/MigratorWatchTests.cs)
-  locks a site kept as a name lookup: its probe reads `pg_locks` before every lookup, which refreshes the cache, and
-  the test fails if the lookup ever runs first.
+  locks the migrator watch, which now reads `pg_proc` for the role functions it calls. It was kept as a name lookup
+  while a session-lock probe read `pg_locks` before it; with no duty held by a lock that probe is gone, and the test
+  fails on a `to_regprocedure` check.
 
 Every other `to_regclass` and `::regclass` site in the library, generated SQL and migration functions was audited in
 #2038 and kept for one of the reasons above. The per-site verdicts are in
