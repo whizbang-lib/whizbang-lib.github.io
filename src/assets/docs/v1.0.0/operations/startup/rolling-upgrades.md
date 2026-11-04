@@ -148,7 +148,8 @@ A `StandDown` verdict means the schema is newer than this binary. The instance:
 
 - **applies nothing**: no bootstrap closure, no election, no stored-form rewrite, no pass, no managed-object reconcile;
 - **holds the data plane**: the schema-ready gate stays closed, so no worker that needs the schema starts, no claim is made, and readiness answers 503 while liveness stays healthy. The `Assess` step fails as a blocking step, which keeps the pipeline incomplete;
-- **stays visible**: it registers at once and records its stage as Preflight with the message `standing down: ` followed by the reason, which names the version the ledger records and this binary's own, and its phase as `StandingBy`. At stage Preflight it is never eligible for work;
+- **stands down through the one run-control path**: the same path, and the same code, as a stand-down while running, a pause or a stop (see [below](#stand-down-takes-the-run-control-path));
+- **stays visible**: it registers at once and records its stage as Preflight with the message `standing down: ` followed by the reason, which names the version the ledger records and this binary's own, and its phase as `Pausing`, then `StandingBy`. At stage Preflight it is never eligible for work;
 - **keeps its row alive** with the heartbeat's own call, on the heartbeat interval, until the host stops. The heartbeat worker itself starts when the schema-ready gate opens, which for this instance never happens. A beat that fails is logged and tried again on the next beat; a beat the registry refuses (the instance was evicted) ends the beating.
 
 **Why it registers and stays visible.** The tables exist, because the database is newer than the binary, so registering is safe without a bootstrap. An operator watching a rollout that does not progress sees each stood-down instance in [`wh_instance_startup_stages()`](startup-status#seeing-every-instances-stage) with the reason, instead of a pod that is not ready for no stated reason. A host with no instance identity logs the stand-down at Warning and still applies nothing.
@@ -159,7 +160,37 @@ A `StandDown` verdict means the schema is newer than this binary. The instance:
 
 The stand-down composes with machinery that already exists: readiness stays withheld, the data-plane seams keep refusing, and liveness stays healthy, which is precisely the state that tells an orchestrator to replace the instance and a load balancer to stop sending it traffic. The fence runs *backwards* on purpose: a migrating instance can never wait for older instances to be retired (the orchestrator will not retire them until the new instance is ready, which requires migrating first), so the **older instance stands itself down** instead.
 
-This covers an older instance **at its own start**. Older instances that are already running when a newer one comes online, standing down and handing the maintenance duty to the newer instance, are tracked in [#2022](https://github.com/whizbang-lib/whizbang/issues/2022) and are not part of this release.
+This covers an older instance **at its own start**. An older instance that is already running when a newer one comes online stands down through the [standby handshake](#the-standby-handshake) or its own [re-check](#runtime-re-check), on the same path.
+
+#### A stand-down takes the run-control path {#stand-down-takes-the-run-control-path}
+
+Standing down is "stop taking work and finish what it holds", which is what a pause and a host stop do too, so all
+three take the [one run-control path](../../resilience/managed-resource-run-control#one-run-control-path) with a
+reason. For a stand-down, at startup (`StartupStandDown`) or while running (`StandbyWatcher`):
+
+1. the run permit closes, so no worker claims and every transport consumer pauses its subscriptions;
+2. `Pausing` is recorded on the instance's row;
+3. the work in hand finishes, bounded by `Whizbang:Lifecycle:HeldWorkTimeout`; the leased streams no drain has started
+   are released, then every role this instance holds, so the newer instance can win the maintainer and migrator duties
+   at once;
+4. `StandingBy` is recorded.
+
+At Preflight nothing is held and no role is won, so the path closes the permit and writes the two phases. A revival
+lifts the stand-down and nothing else: when no other reason holds, `Resuming` is recorded, the permit reopens, and
+`Running` is recorded. An instance an operator also paused stays `Paused` after the revival, until the operator
+resumes it ([several reasons at once](../../resilience/managed-resource-run-control#several-reasons)). A host without the worker
+pipeline has no permit, no held work and no roles, and records `StandingBy` alone.
+{verified: StartupStandDownTests.Record_WithTheRunControlPath_StandsDownThroughItAsync, StartupStandDownTests.FromServices_TakesTheRegisteredRunControlPathAsync, StandbyWatcherTests.ANewerLivePeersRequest_StandsDownThroughTheRunControlPathAsync, StandbyWatcherTests.AWithdrawnRequestAndARollback_RevivesUsAsync, StandbyWatcherTests.ARevival_WhileAnOperatorsPauseHolds_LeavesTheInstancePausedAsync, CoordinationSourceGuardTests.HaltingPhases_AreWrittenOnlyByTheRunControlPathAsync}
+
+**Why `Pausing` comes before `StandingBy`.** `StandingBy` tells the migrator that this instance holds nothing and takes
+nothing. Writing it directly, as earlier releases did, said so while the workers were still claiming, because nothing
+closed the permit. `Pausing` is the honest phase for the window in which the permit is closed and the work in hand is
+still finishing.
+
+**Why one path.** Earlier releases had three: the standby watcher and the Assess stand-down wrote `StandingBy`
+directly, and host shutdown wrote its stages in one service and released roles in another, ordered only by
+registration. Three paths meant three chances for one to forget a step; a source guard now fails a halting phase
+written anywhere but the path.
 
 ### When the version record cannot be read {#unreadable-version-record}
 
@@ -208,7 +239,7 @@ Four properties keep the handshake from becoming its own outage — each carried
 - **Standby is not termination.** A standing-by instance stays alive and keeps passing liveness (`LifecyclePhase.StandingBy` is a settled phase); it simply stops serving. The orchestrator is never asked to retire anything, so the handshake completes without needing the very readiness it is blocking on.
 - **Only live peers must acknowledge.** A peer the rule calls dead stops counting, so the wait is bounded by lease expiry rather than by the goodwill of a process that may already be dead. Evicted and dead peers are skipped; peers already on the same or newer version have nothing to stand by for. Live is [the liveness rule](../../fundamentals/workers/instance-liveness#liveness-rule), read from the database as `FleetInstanceStatus.IsLive`: a direct peer holding its alive-lock counts between two of its slow beats, and a peer behind a transaction pooler counts inside its own window. {verified: StandbyHandshakeCoverageTests.AwaitPeersStandingByAsync_AnOlderPeerHoldingItsAliveLock_StillCountsAsync, StandbyHandshakeCoverageTests.AwaitPeersStandingByAsync_StaleHeartbeatAndNewerPeer_NeitherCountsAsBlockingAsync, AliveLockLivenessSqlTests.FleetSource_ReportsWhetherAPeersAliveLockIsHeldAsync}
 - **A standing-by instance watches the migrator.** If the migrator dies rather than failing cleanly, its instance record goes stale, the wait ends and revival begins. Every path out of standby is bounded: success, clean failure, or a dead migrator. The rule decides whether the requester is alive, and the request carries its answer (`StandbyRequest.RequesterIsLive`): a requester the rule calls live binds its peers (a direct migrator holding its alive-lock between slow beats included), and one it calls dead, or one with no row, voids its request. {verified: StandbyWatcherTests.ARequesterTheRuleCallsLive_BindsUs_AndOneItCallsDead_IsVoidAsync, StandbyWatcherTests.ADeadRequestersRequest_IsVoidAsync, AliveLockLivenessSqlTests.StandbyRequest_ReportsWhetherTheRequestersAliveLockIsHeldAsync}
-- **Revival is not a second pipeline.** The migration is one transaction: a rollback leaves the ledger exactly as the standing-by instances last read it. Coming out of standby is **re-entering the pipeline at `Assess`** — the verdict comes back *same as me*, `Migrate` finds matching hashes and no-ops, capabilities are re-acquired, the data plane reopens. The [pipeline runner](startup-pipeline) is re-entrant for exactly this reason.
+- **Revival is not a second pipeline.** The migration is one transaction: a rollback leaves the ledger exactly as the standing-by instances last read it. Coming out of standby is **re-entering the pipeline at `Assess`**: the verdict comes back *same as me*, `Migrate` finds matching hashes and no-ops, capabilities are re-acquired, and the run-control path lifts the stand-down: it writes `Resuming`, reopens the run permit and writes `Running`, so the data plane takes work again, unless an operator's pause still holds. The [pipeline runner](startup-pipeline) is re-entrant for exactly this reason.
 
 A peer's `StandingBy` reaches its row as a phase-only write of the [stage record](startup-status#pause-and-standby), the one writer of an instance's phase: the row keeps its stage (a peer standing by from Running still records Running), and no heartbeat built before the stand-by can write an earlier phase back over it while the migrator waits. {verified: StartupWiringAuditTests.RunControlPlane_RecordsTheInstanceRow_ThroughTheStageParticipantAlone_WithTheLibraryVersionAsync, HeartbeatPhaseOrderSqlTests.APhaseOffTheLadder_OnABeat_IsNotWritten_EitherWayAsync, StandbyHandshakeE2ETests.Handshake_CommitPath_PeersDrainAcknowledgeAndShutDownAsync}
 

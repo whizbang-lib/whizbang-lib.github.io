@@ -29,6 +29,7 @@ codeReferences:
   - src/Whizbang.Core/Startup/DutyHolderWorker.cs
   - src/Whizbang.Core/Workers/WorkTableVacuumOnAcquisition.cs
   - src/Whizbang.Core/Startup/MaintainerDuty.cs
+  - src/Whizbang.Core/RunControl/WhizbangRunPermit.cs
 testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/WorkEligibilitySqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/InstanceTransitionSqlTests.cs
@@ -127,6 +128,7 @@ public enum DutyRefusal {
   Contended,     // another instance holds it — retry; the holder's release frees it
   Unavailable,   // no coordination connection at all — a standing misconfiguration
   Refused,       // this instance is evicted/unregistered — needs an operator, not a retry
+  Halted,        // this instance's run permit is closed (paused, standing down, stopping); wait for it to reopen, then vote again
 }
 
 public sealed record DutyAttempt {   // exactly one of Grant / Refusal is present
@@ -148,10 +150,43 @@ public interface IDutyGrant : IAsyncDisposable {
 }
 ```
 
-The Postgres implementation, `PgRoleElector`, votes for the duty in one statement and holds it as a [role assignment](#role-assignment-the-default); no session stays open while the duty is held. Winning records the holding; a refusal carries its reason and the [pipeline](startup-pipeline) acts on it: `Skip` non-holders carry on; `Await` non-holders retry **only while the refusal is `Contended`**; an `Unavailable` or `Refused` duty fails the step immediately, naming the duty and the elector's detail, because boot failing loudly beats boot hanging silently. While a legitimate contended wait persists, the runner narrates it through `IStartupStepObserver.OnStepWaitingAsync` on a backoff, so a long wait is a story in the logs rather than silence.
+The Postgres implementation, `PgRoleElector`, votes for the duty in one statement and holds it as a [role assignment](#role-assignment-the-default); no session stays open while the duty is held. Winning records the holding; a refusal carries its reason and the [pipeline](startup-pipeline) acts on it: `Skip` non-holders carry on; `Await` non-holders retry **only while the refusal is `Contended`**; an `Unavailable` or `Refused` duty fails the step immediately (a [`Halted`](#halted-refusal) one waits for the run permit to reopen), naming the duty and the elector's detail, because boot failing loudly beats boot hanging silently. While a legitimate contended wait persists, the runner narrates it through `IStartupStepObserver.OnStepWaitingAsync` on a backoff, so a long wait is a story in the logs rather than silence.
 
 The **eviction fence reaches election**: an instance that has been [evicted](../../fundamentals/workers/instance-liveness#eviction-reaping-is-a-fence-not-just-a-deletion) is refused at acquisition, whoever holds the duty, and its renewal is refused too. That is what turns eviction from a request into a guarantee for exclusive work.
 {verified: DutyElectionE2ETests.EvictedInstance_IsRefusedAtAcquisition_EvenWithTheLockFreeAsync, RoleAssignmentElectorE2ETests.EvictedInstance_IsRefused_NotContendedAsync, RoleAssignmentSqlTests.Renew_ByATombstonedHolder_IsRefusedAsync}
+
+### A halted instance holds no role {#halted-refusal}
+
+While the instance's [run permit](../../resilience/managed-resource-run-control#one-run-control-path) is closed (it is
+paused, standing down or stopping), `PgRoleElector` refuses every vote as `DutyRefusal.Halted` without asking the
+database, the batched vote included. The [run-control path](../../resilience/managed-resource-run-control#halt-sequence)
+has already released the roles this instance held; the refusal keeps the holder loop, the partition assigner and the
+commit-order stamper from winning one back in the meantime. A resume reopens the permit and the next vote is answered
+as usual; a stop is final.
+{verified: RoleAssignmentElectorE2ETests.WhileTheRunPermitIsClosed_EveryVoteIsRefusedAsHalted_UntilItReopensAsync}
+
+**A halted refusal is waited out, not failed.** Unlike `Unavailable` and `Refused`, `Halted` ends when the permit
+reopens, and the permit says when. So:
+
+- **An awaited startup step** refused as `Halted` reports itself waiting once, before the wait (`IStartupStepObserver.OnStepWaitingAsync`),
+  waits on the elector's run permit to reopen, and votes again. The run's cancellation (host shutdown) ends the wait. A
+  permit that is stopped instead fails the step: the instance is stopping, so the step cannot run. An elector with no
+  permit to wait on is retried like a contention.
+- **The migrator election** waits the same way, logs the refusal at Information as halted (event id 8, `The migrator
+  duty for schema {Schema} was refused because this instance is halted`) rather than as unavailable, and ends as
+  canceled on a stopped permit. An elector with no permit is logged as halted and leaves the schema unstaged, as for
+  any other refusal; the schema lock still guards.
+
+{verified: StartupPipelineRunnerHaltedDutyTests.AnAwaitedStepRefusedAsHalted_NarratesTheWaitOnce_BeforeWaitingForThePermitAsync, StartupPipelineRunnerHaltedDutyTests.AnAwaitedStepThatIsNotHalted_IsNeverNarratedAsWaitingAsync, StartupPipelineRunnerHaltedDutyTests.AnAwaitedStepRefusedAsHalted_WaitsForThePermitToReopen_ThenRunsAsync, StartupPipelineRunnerHaltedDutyTests.AnAwaitedStepRefusedAsHalted_WhenThePermitIsStopped_FailsAsync, StartupPipelineRunnerHaltedDutyTests.AnAwaitedStepRefusedAsHalted_TheRunsCancellation_EndsTheWaitAsync, StartupPipelineRunnerHaltedDutyTests.AnAwaitedStepRefusedAsHalted_ByAnElectorWithNoPermit_IsRetriedLikeAContentionAsync, MigratorDutyStagingTests.AHaltedRefusal_WaitsForThePermitToReopen_ThenElectsAsync, MigratorDutyStagingTests.AHaltedRefusal_WhenThePermitIsStopped_EndsTheElectionAsCanceledAsync, MigratorDutyStagingTests.AHaltedRefusal_FromAnElectorWithNoPermit_IsLoggedAsHalted_AndUnstagedAsync}
+
+**Why wait rather than fail.** A pause or a stand-down during startup is resumable. Failing the step would turn an
+operator's pause into a startup that never completes, and polling would vote against a permit that cannot answer
+differently until it reopens. Waiting on the permit's own signal resumes the step the moment it can succeed; a stop is
+the one closed permit that never reopens, so only it fails the step.
+
+**Why a refusal of its own.** `Contended` says another instance holds the duty, and `Refused` says this instance needs
+an operator. A halted instance is neither: nobody else may hold the role, and nothing is wrong with the instance. It
+has chosen to hold nothing until it resumes, and a reason of its own lets a log line say so.
 
 ### When the elector itself fails
 
@@ -296,9 +331,18 @@ When role assignment does not manage the duty (no duty loop registered, or a loo
 disable the work it guards.
 
 Every one of these callers asks the same question through one helper, `MaintainerDuty.IsThisInstancesTurn(services)`:
-true when this instance holds the duty, or when role assignment does not manage it. The rule used to be written out in
+true when this instance's run permit is open and it holds the duty, or when its run permit is open and role assignment
+does not manage the duty. The rule used to be written out in
 each caller, and four copies of a three-clause condition were four chances for one to drift. With one helper, a new
 kind of fleet-wide work joins the rule by calling it, and a change to the rule reaches every caller at once.
+
+**No instance has a turn while its run permit is closed.** A paused, stood-down or stopping instance does no
+fleet-wide work, with role assignment or without it, even in the moment between the
+[run-control path](../../resilience/managed-resource-run-control#halt-sequence) releasing the maintainer role and the
+holder loop learning of it. Every maintenance worker and step asks this one question, so the permit is obeyed here once
+for all of them, and the [run-permit audit](../../resilience/managed-resource-run-control#run-permit-enforcement)
+places each maintenance worker by it.
+{verified: MaintainerDutyTests.WhileTheRunPermitIsClosed_NoInstanceHasATurnAsync, MaintainerDutyTests.WithoutRoleAssignment_AClosedPermit_StillHasNoTurnAsync, MaintainerDutyTests.AnOpenPermit_LeavesTheAnswerToTheDutyAsync}
 
 Holding the duty decides *where* the work runs, not *when*. The maintenance sweep and the deferrable integrity work
 also wait for the service to be idle, under [housekeeping arbitration](../workers/housekeeping-arbitration).

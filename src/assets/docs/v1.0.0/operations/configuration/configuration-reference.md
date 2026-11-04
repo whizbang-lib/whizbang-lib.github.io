@@ -766,12 +766,13 @@ Startup reconciliation of ephemeral-event settings drift. **Configure:** bound a
 
 ### WhizbangLifecycleOptions
 
-Coordinated lifecycle state machine tunables. **Configure:** the run-control registration lambda, then bound from `Whizbang:Lifecycle` over it. **Details:** [Managed Resource Run Control](../../resilience/managed-resource-run-control).
+Coordinated lifecycle state machine and run-control path tunables. **Configure:** the run-control registration lambda, then bound from `Whizbang:Lifecycle` over it. **Details:** [Managed Resource Run Control](../../resilience/managed-resource-run-control).
 
 | Property | Type | Default | Environment variable | Purpose |
 |----------|------|---------|----------------------|---------|
 | `TransitionAckTimeout` | `TimeSpan` | `00:00:30` | `Whizbang__Lifecycle__TransitionAckTimeout` | Per-resource acknowledgement budget per coordinated transition; exceeding faults the system |
 | `FaultRecordWindow` | `TimeSpan` | `00:00:05` | `Whizbang__Lifecycle__FaultRecordWindow` | How long the system stays Faulted (record/report) before Halted |
+| `HeldWorkTimeout` | `TimeSpan` | `00:00:20` | `Whizbang__Lifecycle__HeldWorkTimeout` | How long the [run-control path](../../resilience/managed-resource-run-control#held-work-timeout) waits for the work in hand to finish on a stand-down, a pause or a stop before it releases what is still held and confirms the halt; work still in hand after it keeps its leases, which lapse to a peer. The default leaves a host's default 30-second shutdown budget time to stop its workers and deregister |
 
 ### StandbyWatcherOptions
 

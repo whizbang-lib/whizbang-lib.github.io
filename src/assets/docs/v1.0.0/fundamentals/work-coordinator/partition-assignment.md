@@ -155,7 +155,11 @@ ranks itself as before. A claim never stops for want of an assignment.
 ## Draining {#draining}
 
 When an instance starts to drain (its lifecycle enters `Stopping`), it stops being eligible for work
-at once, while its heartbeat is still fresh. Two kinds of work are affected differently:
+at once, while its heartbeat is still fresh. It has already stopped claiming: `Stopping` is written by the
+[run-control path](/v1.0.0/resilience/managed-resource-run-control#halt-sequence) after it closes the run permit, and
+once the work in hand is finished the path releases the streams no drain has started and the instance's roles. The
+rules below are how its peers see it, and how the claim treats an instance on an older release that keeps claiming
+while it drains:
 
 - **Its unclaimed share moves at once.** The next publish leaves it out of `Members`, and peers that
   rank themselves stop counting it on their next claim, so the partitions it would have claimed go to
@@ -170,6 +174,9 @@ at once, while its heartbeat is still fresh. Two kinds of work are affected diff
   until it finishes them or their leases lapse. Handing a stream that is mid-flight to a peer would
   let two instances work it at once, out of order and twice. A starting instance owns no streams to
   begin with, because an instance id is new for each process.
+  What it gives back is only what it has not started: once nothing is in hand, the run-control path
+  [releases the streams of its last claim that no drain has begun](/v1.0.0/fundamentals/work-coordinator/claim-loop#release-on-halt),
+  so a peer takes those over at once rather than after their leases lapse.
 
 {verified: WorkEligibilitySqlTests.Candidates_ADrainingInstanceWithAFreshHeartbeat_IsLeftOutAtOnceAsync, WorkEligibilitySqlTests.Rank_ADrainingPeer_ItsShareMovesToTheCallerAtOnceAsync, AliveVersusEligibleE2ETests.ADrainingInstance_StopsBeingEligible_AndItsShareGoesToItsPeerAsync}
 
