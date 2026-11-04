@@ -213,7 +213,7 @@ The built-in mechanism that actually unblocks a stream today is dead-letter prom
 
 ### Cascade Release Sequence Diagram
 
-```mermaid{caption="Release on failure: the failure report retries the failed row with backoff and releases the rows behind it, which the claim's ordering rule then holds until the retry is due."}
+```mermaid{caption="Release on failure: the failure report retries the failed row with backoff and releases the rows behind it, which the claim's ordering rule then holds until the retry is due." tests=["OutboxStreamRunSqlTests.ProcessOutboxFailures_MidRun_ReleasesTheRestOfTheRunToBeRetriedInOrderAsync"]}
 sequenceDiagram
     participant D as OutboxDrainWorker
     participant F as FailureFlushWorker
