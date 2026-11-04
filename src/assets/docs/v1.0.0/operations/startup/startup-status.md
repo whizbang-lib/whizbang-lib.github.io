@@ -184,18 +184,19 @@ current stage is progress: it logs the line again and keeps the stage's entry ti
 ### Shutdown takes the run-control path {#shutdown-takes-the-run-control-path}
 
 When the host starts to stop, `StartupStageHostLifecycle.StoppingAsync` takes the
-[one run-control path](../../resilience/managed-resource-run-control#one-run-control-path) with the reason `Stop`,
-before any hosted service stops. The path, not the host lifecycle, writes both shutdown stages:
+[one run-control path](../../resilience/managed-resource-run-control#one-run-control-path) with the reason `Stop` and
+the host's stop token, before any hosted service stops. The path, not the host lifecycle, writes both shutdown stages:
 
 1. The run permit closes: no worker takes new work, and every transport consumer pauses its subscriptions.
 2. **Draining** is written with `stopping, finishing in-flight work`. The instance stops being eligible for work at
    once, while its heartbeat is still fresh.
 3. The work in hand is finished, bounded by [`Whizbang:Lifecycle:HeldWorkTimeout`](../configuration/configuration-reference#whizbanglifecycleoptions)
-   (20 seconds by default); the leased streams no drain has started are released, then every role this instance holds.
+   (20 seconds by default) and by the host's stop token; the leased streams no drain has started are released, then
+   every role this instance holds.
 4. **Stopped** is written with `stopped`.
 
 Only then do the hosted services stop. `StoppedAsync` writes nothing, because the path has already confirmed the stop.
-{verified: StartupStageHostLifecycleTests.Stopping_TakesTheRunControlPathToStop_EvenWhenTheStopBudgetIsSpentAsync, StartupStageHostLifecycleTests.Stopped_WritesNothing_ThePathAlreadyConfirmedTheStopAsync, StartupStageHostTests.AGracefulStop_RecordsDraining_ThenStoppedAsync, StartupStageRunControlTests.APhaseThatIsAStage_EntersItAsync}
+{verified: StartupStageHostLifecycleTests.Stopping_TakesTheRunControlPathToStop_BoundedByTheHostsStopTokenAsync, WhizbangRunControllerTests.Halt_WithTheCallersBudgetAlreadySpent_StillClosesThePermitAndWritesBothPhasesAsync, WhizbangRunControllerTests.Halt_AReleaseThatBlocksUntilCanceled_IsCutShortByTheCallersToken_AndTheHaltCompletesAsync, StartupStageHostLifecycleTests.Stopped_WritesNothing_ThePathAlreadyConfirmedTheStopAsync, StartupStageHostTests.AGracefulStop_RecordsDraining_ThenStoppedAsync, StartupStageRunControlTests.APhaseThatIsAStage_EntersItAsync}
 
 **Why Stopped is written before the workers stop.** `Stopped` says the instance has finished: nothing is in hand and
 nothing is held. The path knows that once it has released the work and the roles; waiting for every hosted service to
@@ -204,9 +205,12 @@ stop added nothing a peer could use and risked the write being cut off by the en
 **Why the messages no longer say "host".** The killswitch's stop takes the same path and writes the same two stages, so
 the message describes the stop, not who asked for it.
 
-**Why the path runs on its own bound.** The host passes a stop token that may already be spent; the path is called
-with no token and bounds its wait for work in hand with `HeldWorkTimeout` instead, so an expired stop budget cannot turn
-a graceful stop into an exception.
+**Why the host's stop token bounds the path.** Releasing work and roles against an unreachable database could
+otherwise wait out each command's timeout and run past `HostOptions.ShutdownTimeout`, so the process would end before
+`Stopped` was written. The stop token bounds every step instead: a step it cuts short is logged and the path moves on,
+and what it did not release lapses to a peer. Both phases are written on a token of their own, so even a stop whose
+budget is already spent closes the permit, records Draining and Stopped, and never turns a graceful stop into an
+exception.
 
 ### Preflight's progress lines {#preflight-progress}
 {verified: SchemaInitializationStagesTests.TheBootstrapsWaitsAndFailure_AreProgressWithinPreflightAsync, SchemaInitializationStagesTests.Registering_IsTheLastStepOfPreflightAsync, StartupPreflightHostTests.TheInstanceRow_IsRegisteredAtTheEndOfPreflight_BeforeElectAsync}

@@ -128,7 +128,7 @@ public enum DutyRefusal {
   Contended,     // another instance holds it — retry; the holder's release frees it
   Unavailable,   // no coordination connection at all — a standing misconfiguration
   Refused,       // this instance is evicted/unregistered — needs an operator, not a retry
-  Halted,        // this instance's run permit is closed (paused, standing down, stopping); a resume answers the next vote
+  Halted,        // this instance's run permit is closed (paused, standing down, stopping); wait for it to reopen, then vote again
 }
 
 public sealed record DutyAttempt {   // exactly one of Grant / Refusal is present
@@ -150,7 +150,7 @@ public interface IDutyGrant : IAsyncDisposable {
 }
 ```
 
-The Postgres implementation, `PgRoleElector`, votes for the duty in one statement and holds it as a [role assignment](#role-assignment-the-default); no session stays open while the duty is held. Winning records the holding; a refusal carries its reason and the [pipeline](startup-pipeline) acts on it: `Skip` non-holders carry on; `Await` non-holders retry **only while the refusal is `Contended`**; an `Unavailable` or `Refused` duty fails the step immediately, naming the duty and the elector's detail, because boot failing loudly beats boot hanging silently. While a legitimate contended wait persists, the runner narrates it through `IStartupStepObserver.OnStepWaitingAsync` on a backoff, so a long wait is a story in the logs rather than silence.
+The Postgres implementation, `PgRoleElector`, votes for the duty in one statement and holds it as a [role assignment](#role-assignment-the-default); no session stays open while the duty is held. Winning records the holding; a refusal carries its reason and the [pipeline](startup-pipeline) acts on it: `Skip` non-holders carry on; `Await` non-holders retry **only while the refusal is `Contended`**; an `Unavailable` or `Refused` duty fails the step immediately (a [`Halted`](#halted-refusal) one waits for the run permit to reopen), naming the duty and the elector's detail, because boot failing loudly beats boot hanging silently. While a legitimate contended wait persists, the runner narrates it through `IStartupStepObserver.OnStepWaitingAsync` on a backoff, so a long wait is a story in the logs rather than silence.
 
 The **eviction fence reaches election**: an instance that has been [evicted](../../fundamentals/workers/instance-liveness#eviction-reaping-is-a-fence-not-just-a-deletion) is refused at acquisition, whoever holds the duty, and its renewal is refused too. That is what turns eviction from a request into a guarantee for exclusive work.
 {verified: DutyElectionE2ETests.EvictedInstance_IsRefusedAtAcquisition_EvenWithTheLockFreeAsync, RoleAssignmentElectorE2ETests.EvictedInstance_IsRefused_NotContendedAsync, RoleAssignmentSqlTests.Renew_ByATombstonedHolder_IsRefusedAsync}
@@ -164,6 +164,25 @@ has already released the roles this instance held; the refusal keeps the holder 
 commit-order stamper from winning one back in the meantime. A resume reopens the permit and the next vote is answered
 as usual; a stop is final.
 {verified: RoleAssignmentElectorE2ETests.WhileTheRunPermitIsClosed_EveryVoteIsRefusedAsHalted_UntilItReopensAsync}
+
+**A halted refusal is waited out, not failed.** Unlike `Unavailable` and `Refused`, `Halted` ends when the permit
+reopens, and the permit says when. So:
+
+- **An awaited startup step** refused as `Halted` reports itself waiting (`IStartupStepObserver.OnStepWaitingAsync`),
+  waits on the elector's run permit to reopen, and votes again. The run's cancellation (host shutdown) ends the wait. A
+  permit that is stopped instead fails the step: the instance is stopping, so the step cannot run. An elector with no
+  permit to wait on is retried like a contention.
+- **The migrator election** waits the same way, logs the refusal at Information as halted (event id 8, `The migrator
+  duty for schema {Schema} was refused because this instance is halted`) rather than as unavailable, and ends as
+  canceled on a stopped permit. An elector with no permit is logged as halted and leaves the schema unstaged, as for
+  any other refusal; the schema lock still guards.
+
+{verified: StartupPipelineRunnerHaltedDutyTests.AnAwaitedStepRefusedAsHalted_WaitsForThePermitToReopen_ThenRunsAsync, StartupPipelineRunnerHaltedDutyTests.AnAwaitedStepRefusedAsHalted_WhenThePermitIsStopped_FailsAsync, StartupPipelineRunnerHaltedDutyTests.AnAwaitedStepRefusedAsHalted_TheRunsCancellation_EndsTheWaitAsync, StartupPipelineRunnerHaltedDutyTests.AnAwaitedStepRefusedAsHalted_ByAnElectorWithNoPermit_IsRetriedLikeAContentionAsync, MigratorDutyStagingTests.AHaltedRefusal_WaitsForThePermitToReopen_ThenElectsAsync, MigratorDutyStagingTests.AHaltedRefusal_WhenThePermitIsStopped_EndsTheElectionAsCanceledAsync, MigratorDutyStagingTests.AHaltedRefusal_FromAnElectorWithNoPermit_IsLoggedAsHalted_AndUnstagedAsync}
+
+**Why wait rather than fail.** A pause or a stand-down during startup is resumable. Failing the step would turn an
+operator's pause into a startup that never completes, and polling would vote against a permit that cannot answer
+differently until it reopens. Waiting on the permit's own signal resumes the step the moment it can succeed; a stop is
+the one closed permit that never reopens, so only it fails the step.
 
 **Why a refusal of its own.** `Contended` says another instance holds the duty, and `Refused` says this instance needs
 an operator. A halted instance is neither: nobody else may hold the role, and nothing is wrong with the instance. It

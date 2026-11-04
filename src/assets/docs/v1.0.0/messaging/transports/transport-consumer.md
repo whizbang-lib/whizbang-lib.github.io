@@ -423,8 +423,9 @@ default all the same: resolved from the container, it is given the instance's on
 registered it, and it pauses and resumes its subscriptions on each change exactly as above.
 
 Its public `PauseAllSubscriptionsAsync` and `ResumeAllSubscriptionsAsync` are kept, and are not a second path: when the
-registered run-control path closes this consumer's permit, they pause and resume **the instance** through that path
-(no claim, no receive, roles handed off). Only a consumer under no run-control path, or one given a permit the path
+registered run-control path closes this consumer's permit, they pause **the instance** through that path (no claim,
+no receive, roles handed off), and the resume lifts only that pause: an instance that is also standing by or stopped
+stays halted. Only a consumer under no run-control path, or one given a permit the path
 does not close, pauses its own subscriptions alone.
 {verified: ServiceBusConsumerWorkerRunPermitTests.AClose_PausesEverySubscriptionBeforeTheChangeCompletes_AndAReopeningResumesThemAsync, ServiceBusConsumerWorkerRunPermitTests.APermitClosedBeforeSubscribing_LeavesEverySubscriptionPausedAsync, ServiceBusConsumerWorkerRunPermitTests.ASubscriptionThatCannotBePaused_UnderAClosedPermit_IsLogged_AndTheConsumerStillStartsAsync, ServiceBusConsumerWorkerRunPermitTests.AfterStop_AChangeOfThePermit_TouchesNoSubscriptionAsync, ServiceBusConsumerWorkerRunPermitTests.PauseAll_WithTheRunControlPathRegistered_TakesThePath_AndResumeAllReopensItAsync, ServiceBusConsumerWorkerRunPermitTests.PauseAll_WithAPathOverAnotherPermit_PausesOnlyThisConsumersSubscriptionsAsync, RunPermitAuditTests.EveryHostedService_SaysHowItObeysTheRunPermit_AndTheObeyersHoldTheOnePermitAsync}
 
