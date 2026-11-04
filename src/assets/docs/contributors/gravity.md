@@ -64,6 +64,58 @@ says it is eligible for work. The easiest way to add a worker is now also the on
 API and the start of every framework worker (issue [#1636](https://github.com/whizbang-lib/whizbang/issues/1636),
 startup stages).
 
+## A worked example: one way to coordinate {#coordination-source-guard}
+
+Instances coordinate through the database: they say they are alive, hold duties, and wake one another. Before
+[#2027](https://github.com/whizbang-lib/whizbang/issues/2027) each feature did this its own way, and "alive" alone had
+about a dozen definitions: the partition assigner's two windows, the standby watcher's option, two fleet readers with
+2 minute windows, the claim's 30 s, the reap's caller cutoffs, the orphan claims' named connections and the doorbells'
+30 s and 5 minutes. Each was a helper someone chose to write, and the lifecycle monitor and the reap could disagree
+about the same instance at the same moment.
+
+With gravity there is **one rule**, defined once in SQL, and every reader asks it through `wh_live_instance_ids()` or
+`wh_instance_is_live(id)` (see [Instance liveness](/v1.0.0/fundamentals/workers/instance-liveness#liveness-rule)). The
+copies were deleted. What keeps them deleted is a source guard, `CoordinationSourceGuardTests`, which fails when one
+of three mechanisms appears outside an allowlist:
+
+| Mechanism | Where the guard looks | Ask instead |
+|---|---|---|
+| A raw notification channel (`LISTEN`, `NOTIFY`, `pg_notify`) | C# under `src`, and each SQL function's latest definition | The signal bus |
+| An advisory lock (any `pg_advisory_*` call in C#; a session lock in SQL) | The same | A role assignment with a lease and an epoch |
+| A liveness check (a comparison against `last_heartbeat_at` or `LastHeartbeatAt`, `is_instance_alive`, `pg_stat_activity`, `pg_locks`) | The same | The one liveness rule |
+
+The C# scan reads every source file under `src` with its comments removed. The SQL scan reads the migration corpus and
+judges only each function's **last** definition, the one a database runs, also without comments, so a history of old
+definitions and a comment that names `pg_stat_activity` are not offenders.
+{verified: CoordinationSourceGuardTests.NotifyAndListen_AppearOnlyInTheCoordinationFilesAsync, CoordinationSourceGuardTests.AdvisoryLocks_AppearOnlyInTheAllowlistedFilesAsync, CoordinationSourceGuardTests.LivenessChecks_AppearOnlyInTheAllowlistedFilesAsync, CoordinationSourceGuardTests.SqlLivenessChecks_AppearOnlyInTheRuleAndTheAllowlistedFunctionsAsync, CoordinationSourceGuardTests.SqlSessionAdvisoryLocks_AppearOnlyInTheAllowlistedFunctionsAsync, CoordinationSourceGuardTests.SqlNotifications_AppearOnlyInTheAllowlistedFunctionsAsync}
+
+**Every allowlist entry states its reason.** A file or function is allowed because it *is* the mechanism (the rule
+itself, the lock half of the rule, the one LISTEN connection, the signal bus's transport), because it only displays or
+throttles and judges nothing (a status report showing how long ago an instance beat, a write throttle on the beat
+itself), or because it holds a transaction-scoped lock for one statement or DDL pass, which is mutual exclusion and not
+a duty. Entries marked `PENDING` are mechanisms the standard has not folded in yet, and each names the later part of the
+work that removes it (advisory-lock duties move to role assignments; raw channels move to the signal bus).
+
+```csharp{title="An allowlist entry carries its reason" description="Each allowed file or SQL function maps to why it may use the mechanism; PENDING entries name the change that removes them." category="Testing" difficulty="INTERMEDIATE" tags=["Gravity", "Source guard", "Liveness", "Coordination"] tests=["CoordinationSourceGuardTests.SqlLivenessChecks_AppearOnlyInTheRuleAndTheAllowlistedFunctionsAsync", "CoordinationSourceGuardTests.EveryAllowlistEntry_StillMatchesAsync"]}
+private static readonly Dictionary<string, string> _sqlLivenessAllowlist = new(StringComparer.Ordinal) {
+  ["wh_instance_liveness"] = "THE liveness rule",
+  ["wh_direct_alive_lock_holders"] = "the lock half of the rule",
+  ["register_instance_heartbeat"] = "a write throttle on the beat itself; it judges no peer",
+  ["wh_vote_role"] = PENDING_DUTIES + " (the vote refuses while a legacy lock is held)",
+};
+```
+
+**The allowlist only shrinks.** An entry whose file or function no longer uses the mechanism fails
+`EveryAllowlistEntry_StillMatchesAsync`, so a stale entry cannot linger as a pre-approved hole for the next author;
+the commit that removes the last use removes the entry with it. And a guard that reads nothing passes everything, so
+`TheScans_SeeTheMechanismsTheyGuardAsync` proves each scan finds what it exists to find: the LISTEN connection, a
+schema lock, the rule itself and a sample heartbeat comparison, while `claim_work`, which asks the rule, is not flagged.
+{verified: CoordinationSourceGuardTests.EveryAllowlistEntry_StillMatchesAsync, CoordinationSourceGuardTests.TheScans_SeeTheMechanismsTheyGuardAsync}
+
+The failure message says what to use instead (for a liveness check: *ask the one rule, `wh_instance_is_live` or
+`wh_live_instance_ids`*), so an author who trips the guard falls toward the standard path, not toward a new allowlist
+entry.
+
 ## Applying it
 
 When you design or review a Whizbang change, ask:
