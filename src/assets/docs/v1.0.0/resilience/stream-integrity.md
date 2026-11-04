@@ -61,6 +61,8 @@ codeReferences:
   - src/Whizbang.Core/Messaging/IntegrityDeliveryRegistry.cs
   - src/Whizbang.Core/Messaging/IntegrityDeliveryId.cs
   - src/Whizbang.Core/Startup/MaintainerDuty.cs
+  - src/Whizbang.Data.Postgres/Migrations/320_RepairWaitsForItsAnswer.sql
+  - src/Whizbang.Core/Workers/MaintenanceWorker.cs
 testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/AtMostOnceOccurrenceIntegrityTests.cs
   - tests/Whizbang.Core.Tests/SystemEvents/AuditLedgerRebuildTests.cs
@@ -119,6 +121,11 @@ testReferences:
   - tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityDeliverySqlTests.cs
   - tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityReceptorRegistrationEnforcementTests.cs
   - tests/Whizbang.Core.Tests/Startup/MaintainerDutyTests.cs
+  - tests/Whizbang.Data.EFCore.Postgres.Tests/IntegrityRepairAnswerSqlTests.cs
+  - tests/Whizbang.Core.Tests/Messaging/RedeliveryReconcileCommitTimeTests.cs
+  - tests/Whizbang.Core.Component.Tests/Workers/RepairDrainWorkerTests.cs
+  - tests/Whizbang.Core.Tests/Observability/StreamIntegrityMetricsCoverageTests.cs
+  - tests/Whizbang.Core.Tests/Workers/MaintenanceWorkerIntegrityGaugeTests.cs
 verifiedAgainstCommit: a64ba9a0
 verifiedDate: 2026-08-04
 ---
@@ -502,12 +509,16 @@ re-bounds):
   and a bucket that heals is forgotten entirely, so a later re-divergence is a brand-new incident.
 - **Repair requests back off.** Each divergent bucket's first repair request goes immediately;
   every further attempt doubles the wait (`RepairRequestBackoffSeconds` base, default 300), and
-  past `MaxRepairAttemptsPerBucket` (default 8) the wait stops growing. The divergence still
-  re-reports at the cooldown cadence, and a repair that has not worked eight times needs operator
-  eyes, not a tight loop. A signature change resets the budget. Past the cap the ledger keeps
-  one ask per terminal interval (base x 2^6) for an origin that never answered, and stops at once,
-  with one report, for a bucket a redelivery answered without changing it
-  ([repair that cannot change a bucket](#unhealable-buckets)).
+  the doubling stops after six steps. In the durable ledger the Postgres driver registers, a sent
+  request waits for its answer before the bucket can be asked for again
+  ([repair waits for its answer](#repair-waits-for-its-answer)), and past
+  `MaxRepairAttemptsPerBucket` (default 8) the bucket is not asked for at all: a repair that has not
+  worked eight times needs operator eyes, not a loop. The divergence still re-reports at the
+  cooldown cadence. Only a change repair can act on resets the budget
+  ([what resets the repair ladder](#what-resets-the-repair-ladder)), and a bucket a redelivery
+  answered without changing it stops at once, with one report
+  ([repair that cannot change a bucket](#unhealable-buckets)). The in-memory ledger, used only
+  without a durable store, follows the same cap.
 - **Requests batch and are directed or not at all.** Divergent streams of one (tenant, type)
   batch into ONE `RequestRedeliveryCommand` (the origin's selection takes a stream set — per-stream
   commands multiplied wire volume by the stream count for nothing). And every integrity request —
@@ -794,7 +805,8 @@ services.Configure<StreamIntegrityOptions>(o => {
   // Convergence bounding (the IntegrityRepairLedger's dials)
   o.DivergenceReportCooldownMinutes = 60;    // unchanged divergence re-reports once per hour, not per cycle
   o.RepairRequestBackoffSeconds = 300;       // per-bucket retry base; each attempt doubles the wait
-  o.MaxRepairAttemptsPerBucket = 8;          // then one ask per terminal interval (reports continue); signature change resets
+  o.MaxRepairAttemptsPerBucket = 8;          // then the bucket is exhausted: no more asks (reports continue) until a local change or a grown deficit
+  o.RepairAnswerTimeoutMinutes = 180;        // a requested bucket waits this long for its answer before it may be asked for again
 
   // The maintainer's integrity delivery drain (see "Integrity work runs on the maintainer")
   o.IntegrityDeliveryIntervalSeconds = 15;   // how often the drain runs
@@ -946,7 +958,10 @@ can repair:
 | Identity mismatch: equal counts, different folds | not a deficit | Never | No |
 | Local surplus: more events than the origin | not a deficit | Never | No |
 | Kind unknown (see below) | unknown | Never | No |
-| Deficit a redelivery [could not change](#unhealable-buckets) | deficit | Never, until its signature changes or it heals | No |
+| Deficit a redelivery [could not change](#unhealable-buckets) | deficit | Never, until its local digest changes, its deficit grows, or it heals | No |
+| Deficit whose request is out, awaiting its [answer](#repair-waits-for-its-answer) | deficit | Not until the answer lands or `RepairAnswerTimeoutMinutes` passes | Yes |
+| Deficit a redelivery [answered](#repair-waits-for-its-answer), awaiting the next comparison | deficit | Not until a comparison sights it again | No |
+| Deficit past `MaxRepairAttemptsPerBucket` ([exhausted](#what-resets-the-repair-ladder)) | deficit | Never, until its local digest changes or its deficit grows | No |
 
 The comparison states the kind when it reports the bucket, because the ledger row cannot work it out:
 it holds each side's fold digest, which is a hash of the event set, not a count. The kind follows the
@@ -1145,8 +1160,9 @@ the memory that would have suppressed one. Composed, each covers the other's bli
 **What the pipeline deliberately does not do.** Detection is never gated: `GapsDetected` fires and
 the confirmation is logged before any repair decision, on every checkpoint. When repair is vetoed
 or exhausted, the system slows or stops ASKING, never stops KNOWING. A vetoed repair is not asked
-for at all; an exhausted one is asked for once per terminal interval, in case its origin was only
-unreachable, and a bucket a redelivery could not change is not asked for again. A gap that survived
+for at all; an exhausted one is not asked for again until a change repair can act on resets it
+([what resets the repair ladder](#what-resets-the-repair-ladder)), and a bucket a redelivery could
+not change is not asked for again. A gap that survived
 its attempt budget is unlikely to be fixed by one more request; it needs an operator, and it keeps
 surfacing in reports and metrics until someone acts.
 
@@ -1187,14 +1203,14 @@ path touched audited rows and warrants investigation).
 
 {verified: IntegrityLedgerUnhealableSqlTests.TryBeginRepair_AnUnhealableBucket_IsRefusedPastItsTerminalCadenceAsync, IntegrityLedgerUnhealableSqlTests.ClaimRepairDrain_SkipsAnUnhealableBucketAsync, IntegrityLedgerUnhealableSqlTests.TryBeginReport_ASignatureChange_LiftsTheMarkAndRepairResumesAsync, RedeliveryReconcilerTests.Reconcile_EveryEventAlreadyPresentAndNothingAdopted_MarksTheBucketUnhealableOnceAsync}
 
-The ledger's attempt budget flattens to a terminal cadence rather than stopping, because a bucket whose
-origin never answered has no evidence against it: the origin may simply have been down. A bucket whose
-origin did answer is different. When a redelivery bundle commits and every event it carries was already
-stored under its origin, with nothing to adopt, the redelivery changed nothing, and the next one would
-ship the same events again.
+A bucket whose origin never answered has spent its attempt budget against an origin that may simply
+have been down: it is [exhausted](#what-resets-the-repair-ladder), not marked. A bucket whose origin did
+answer is different. When a redelivery bundle commits and every event it carries was already stored
+under its origin, with nothing to adopt, the redelivery changed nothing, and the next one would ship the
+same events again.
 
-The receiver records that on the bucket's ledger row (`wh_integrity_ledger.unhealable_at`, through
-`IIntegrityRepairLedger.MarkUnhealableBatchAsync`). From then on:
+The receiver records that on the bucket's ledger row (`wh_integrity_ledger.unhealable_at`) when the
+bundle's children commit ([below](#unhealable-recorded-at-commit)). From then on:
 
 - neither the burst grant (`wh_integrity_try_begin_repair`) nor the paced drain
   (`wh_integrity_claim_repair_drain`) asks for the bucket again;
@@ -1202,8 +1218,9 @@ The receiver records that on the bucket's ledger row (`wh_integrity_ledger.unhea
 - one Warning names the bucket (event type, tenant, stream, origin) when it is marked, and the
   `repairs_unhealable` counter counts it once.
 
-A changed signature (either side's digest moved) is a fresh incident: it lifts the mark, resets the
-attempt budget and reports again. A heal deletes the row. Only buckets the ledger already tracks are
+A change in this store's digest of the bucket, or a deficit that grew, is a fresh incident: it lifts the
+mark, resets the attempt budget and reports again. New events at the origin alone do not lift it; see
+[what resets the repair ladder](#what-resets-the-repair-ladder). A heal deletes the row. Only buckets the ledger already tracks are
 marked, so a redelivery nobody asked this ledger for leaves nothing behind. The usual causes of a bucket
 repair cannot change are an event stored under another origin or another stream; compare the stream on
 both sides. A bucket is also marked when the store refused to restore one of its events because the stream's
@@ -1212,6 +1229,162 @@ earlier history was truncated here ([events deduplication remembers but the stor
 The checkpoint path keys its ledger rows by type and window rather than by stream, and its
 [repair policy](#the-repair-decision-pipeline-as-wired) already stops a window whose count stopped
 improving, so it is unaffected by the mark.
+
+### Repair waits for its answer {#repair-waits-for-its-answer}
+
+{verified: IntegrityRepairAnswerSqlTests.Claim_ABucketWithItsAnswerPending_IsNotClaimed_UntilTheAnswerTimeoutPassesAsync, IntegrityRepairAnswerSqlTests.TryBeginRepair_WhileItsOwnAnswerIsPending_IsRefusedAsync, IntegrityRepairAnswerSqlTests.RecordBundleAnswer_ClearsThePending_AndTheBucketWaitsForTheNextComparisonAsync, IntegrityRepairAnswerSqlTests.Claim_PastTheAttemptBudget_StopsForGood_AndCountsAsExhaustedAsync, IntegrityRepairAnswerSqlTests.TryBeginRepair_PastTheAttemptBudget_IsRefusedForGoodAsync, RepairDrainWorkerTests.DrainTick_MarksTheDispatchedBucketsAnswerPending_ButNotAGroupWhoseSendFailedAsync, StreamIntegrityOptionsValidatorTests.RepairAnswerTimeout_DefaultsToThreeHoursAsync}
+
+A repair request is answered by a redelivery bundle, and the answer takes time to arrive: the origin
+records the request for its maintainer, which handles it under the housekeeping idle gate, and the bundle
+then waits in this service's inbox like any other message. A request is not a reason to ask again, so
+every repair ledger row moves through explicit states:
+
+| State | How a bucket gets there | What repair does with it |
+| --- | --- | --- |
+| **Claimable** | A comparison reported a deficit, the bucket is under its attempt budget, and its backoff has passed | The paced drain may claim it (or the burst path may grant it) and send a request |
+| **Answer pending** | A request for the bucket was sent (`wh_integrity_ledger.answer_pending_until`) | Neither the drain nor the burst grant asks again until the answer lands or `RepairAnswerTimeoutMinutes` passes |
+| **Answered** | A redelivery bundle for the bucket committed (`answered_at`) | The drain does not claim it until the next comparison sights the bucket again; a heal deletes the row |
+| **Exhausted** | The claim or grant that spent the last of `MaxRepairAttemptsPerBucket` attempts (`exhausted_at`) | Never asked for again until a [reset](#what-resets-the-repair-ladder) |
+| **Unhealable** | A bundle for the bucket [changed nothing](#unhealable-buckets) | Never asked for again until a [reset](#what-resets-the-repair-ladder) |
+
+```mermaid{caption="The repair ladder of one ledger row: a request waits for its answer, an answered bucket waits for the next comparison, and only a local change or a grown deficit re-arms a bucket that spent its budget or that repair cannot change." tests=["IntegrityRepairAnswerSqlTests.Claim_ABucketWithItsAnswerPending_IsNotClaimed_UntilTheAnswerTimeoutPassesAsync", "IntegrityRepairAnswerSqlTests.RecordBundleAnswer_ClearsThePending_AndTheBucketWaitsForTheNextComparisonAsync", "IntegrityRepairAnswerSqlTests.RecordBundleAnswer_ABundleWhoseEventsWereAllStoredAlready_MarksTheBucketAtCommitAsync", "IntegrityRepairAnswerSqlTests.Claim_PastTheAttemptBudget_StopsForGood_AndCountsAsExhaustedAsync", "IntegrityRepairAnswerSqlTests.Report_TheLocalDigestMoved_ResetsTheLadder_AndLiftsTheMarkAsync", "IntegrityRepairAnswerSqlTests.Report_TheDeficitGrew_ResetsTheLadder_AndLiftsTheMarkAsync", "IntegrityRepairAnswerSqlTests.Report_OnlyTheOriginsDigestMoved_KeepsTheAttempts_AndTheMarkAsync"]}
+stateDiagram-v2
+  [*] --> Claimable: a comparison reports a deficit
+  Claimable --> AnswerPending: request sent (an attempt is spent)
+  AnswerPending --> Claimable: RepairAnswerTimeoutMinutes passes with no answer
+  AnswerPending --> Answered: a redelivery bundle commits
+  Answered --> Claimable: the next comparison still sees a deficit
+  Answered --> Unhealable: the bundle changed nothing (judged at commit)
+  AnswerPending --> Exhausted: the last attempt is spent and the bucket is not healed
+  Exhausted --> Claimable: re-armed by a local change or a grown deficit
+  Unhealable --> Claimable: re-armed by a local change or a grown deficit
+  Claimable --> Healed: a comparison finds both sides equal
+  Answered --> Healed: a comparison finds both sides equal
+  Healed --> [*]: the ledger row is deleted
+  classDef stopped fill:#f8d7da,stroke:#dc3545,stroke-width:2px
+  classDef healed fill:#d4edda,stroke:#28a745,stroke-width:2px
+  class Exhausted,Unhealable stopped
+  class Healed healed
+```
+
+**Answer pending.** The drain records every bucket of a request that left, and only those: a group
+whose send failed is not marked and is claimed again after its backoff. The mark lasts
+`Whizbang:StreamIntegrity:RepairAnswerTimeoutMinutes` (default **180**). The default is three hours
+because the answer can wait in the origin's integrity queue for up to `Whizbang:Housekeeping:MaxDeferral`
+(one hour by default) before a forced pass, and then in this service's inbox, so three hours covers both
+with room to spare. It also stays well inside the daily audit (`AuditIntervalMinutes`, 1440), so a
+request that was lost on the way is asked for again the same day rather than the next. The timeout must
+be at least one minute; host start fails otherwise, naming the key, because a timeout below a minute
+makes every requested bucket claimable again at once, which is the re-asking the timeout exists to
+stop. The attempt was spent when the request was sent, so a timeout followed by a new request counts
+against the budget like any other attempt.
+
+**Answered.** When a redelivery bundle's children commit, every ledger row it covered stops waiting and
+is marked answered, together with the type lane of its type. The drain then leaves the bucket alone
+until a comparison sights it again: either both sides now agree and the heal deletes the row, or the
+deficit remains and the bucket becomes claimable on its ladder. A received answer used to stop nothing,
+and the drain kept asking for the bucket on its backoff until the next audit healed it. The price of
+waiting is that a bundle that repaired only part of a bucket is asked for again after the next
+comparison, not before.
+
+**The budget is a real cap.** The claim or grant that spends the last of `MaxRepairAttemptsPerBucket`
+(default 8) attempts marks the bucket exhausted, and neither path asks for it again. It still re-reports
+at the divergence cooldown and counts in `repair_exhausted_buckets`. The last request still waits for its
+answer, and a bundle that lands for it can still heal the bucket. Before this, a bucket past its
+budget was asked for again at a terminal cadence (the backoff base doubled six times, every 5 h 20 m at
+the default base) for as long as it stayed divergent.
+
+**The type lane stands down for its streams.** A bulk backfill and a checkpoint gap request ask for a
+whole type over a window, on the type lane (the row with the empty stream id), and re-ship every stream
+of that type inside it. So:
+
+- while per-stream rows of the type await their answers, a type-lane grant is refused: those answers
+  already re-ship the events;
+- when a type-lane request is granted and sent, it marks its own row and every per-stream row of the
+  type whose window lies inside the request's window as answer pending, so the drain does not ask for
+  the same events stream by stream;
+- the checkpoint path's type-lane row is forgotten when its gap heals.
+
+**One request per window.** The drain groups the rows it claims by origin, tenant, event type and window,
+and sends one request per group. Before, it sent one request per origin, tenant and type over the union
+of the group's windows, which re-shipped every stream over the widest range any of them needed. Rows one
+comparison stamped share their window, so the change costs few extra requests. A row recorded before
+windows were (a null window) asks for the stream's whole history on its own, without widening its
+windowed neighbors.
+
+### What resets the repair ladder {#what-resets-the-repair-ladder}
+
+{verified: IntegrityRepairAnswerSqlTests.Report_TheLocalDigestMoved_ResetsTheLadder_AndLiftsTheMarkAsync, IntegrityRepairAnswerSqlTests.Report_TheDeficitGrew_ResetsTheLadder_AndLiftsTheMarkAsync, IntegrityRepairAnswerSqlTests.Report_OnlyTheOriginsDigestMoved_KeepsTheAttempts_AndTheMarkAsync, IntegrityManifestReceptorTests.ManifestReceptor_StreamLevelReport_CarriesEachDeficitsSize_SoTheLedgerCanTellAGrowingDeficitAsync}
+
+A bucket's ladder is its attempt count, its last attempt, its exhausted and unhealable marks and any
+pending answer. Exactly two things reset all of them:
+
+1. **This store's digest of the bucket moved.** Events arrived here, or were lost here, so what a
+   redelivery can do here has changed.
+2. **The deficit grew.** Each comparison records how many events the origin holds that this store does
+   not (`wh_integrity_ledger.deficit_events`); a later comparison that reports a larger deficit is a new
+   incident. An unknown size keeps the size already recorded.
+
+**New events at the origin alone do not reset it.** An active origin's digest moves with every event it
+appends, and that says nothing about whether a redelivery can repair this store. Before, a change on
+either side reset the ladder and lifted the unhealable mark, so every audit of a busy, still-divergent
+stream started a fresh ladder and the budget never ran out. Reporting is unchanged: a changed signature
+on either side is still reported at once, so detection does not wait for the cooldown.
+
+The in-memory ledger, used only when no durable store is registered, keeps the same ladder, and one shared
+contract test runs against both ledgers so they cannot drift apart:
+
+- **The cap.** It is exhausted by the grant that spends the budget, with no terminal cadence.
+- **The pending answer.** It is kept until the answer arrives or the timeout passes.
+- **What resets it.** Only a local digest change or a grown deficit, and a reset clears the pending answer
+  too.
+- **The type-lane stand-down.** It applies while per-stream buckets of the type are pending.
+
+Two things differ, because only the durable store has them:
+
+- **Windowed type-lane marks.** In-memory buckets carry no window, so a type-lane mark with a window
+  marks none.
+- **The separate answered state.** Only the paced drain reads it, and the in-memory ledger has no drain.
+  There, an answer simply clears the pending answer.
+
+The integrity gauges are always read from the durable store.
+
+A reset also clears a pending answer, so a bucket whose local digest moved is claimable at once instead
+of waiting out the timeout for an answer to a question about a store that has since changed. Any
+sighting by a comparison, changed or not, clears the answered state: the comparison has judged the
+answer.
+
+:::updated
+**Behavior change.** An exhausted bucket is re-armed by its next local change or by a grown deficit,
+never by time. A bucket whose budget burned against an origin that was unreachable stays exhausted
+after the origin comes back, until one of those resets happens or an operator repairs it (for example
+with an [operator redelivery](#operator-redelivery)). Raising `MaxRepairAttemptsPerBucket` does not
+revive buckets that are already exhausted, because the mark, not the count, keeps them out: they stay
+in `repair_exhausted_buckets` until a reset.
+:::
+
+#### Unhealable is recorded at commit {#unhealable-recorded-at-commit}
+
+{verified: IntegrityRepairAnswerSqlTests.RecordBundleAnswer_ABundleWhoseEventsWereAllStoredAlready_MarksTheBucketAtCommitAsync, IntegrityRepairAnswerSqlTests.RecordBundleAnswer_ChildrenTheBundleJustBrought_AreAbsentAtCommit_ThoughAReconcileAfterTheyAreStoredFindsThemPresentAsync, IntegrityRepairAnswerSqlTests.RecordBundleAnswer_AStoredEventWithoutItsOrigin_IsLeftForTheReconcile_NotMarkedAtCommitAsync, RedeliveryReconcileCommitTimeTests.Reconcile_RecordsTheAnswerAtCommit_AndReportsTheBucketsItMarked_BeforeDeferringTheRestAsync, RedeliveryReconcileCommitTimeTests.TheDrain_ChildrenAbsentAtCommit_AreNotJudgedUnchanged_ThoughStoredWhenTheReconcileRunsAsync, RedeliveryReconcileCommitTimeTests.Reconcile_RecordingTheAnswerFails_IsLogged_AndTheReconcileIsStillDeferredAsync}
+
+A redelivery bundle's answer is recorded when its children commit, with one small query keyed by the
+bundle's event ids: for each bucket, how many of its events the store already held, how many it did not
+(the bundle stores them), how many the store refused to restore, and how many present events could still
+take an origin. The covered rows become answered, and the buckets of a bundle that changed nothing are
+marked unhealable at once, each named in one Warning and counted once in `repairs_unhealable`. Adopting
+origins and moving digests stay with the maintainer's deferred reconcile; an event stored without its
+origin is left for that reconcile to adopt, not marked.
+
+Before, the mark waited for the deferred reconcile, which runs under the housekeeping idle gate and can
+wait up to `MaxDeferral` on a busy service, while the drain kept asking for the bucket.
+
+"Changed nothing" is judged on what the store held **at commit**, on purpose. By the time the deferred
+reconcile runs, the bundle's own children are stored, and they read as present: judged then, a bundle
+that had just repaired a bucket would look like one that changed nothing, and the bucket would be marked
+unhealable for the repair that worked. The commit-time view travels with the deferred reconcile, which
+uses it instead of its own reading. A reconcile recorded by a version without the commit-time answer
+judges by presence as before. If recording the answer fails, a Warning says so, the buckets wait out
+their answer timeout, and the reconcile judges the bundle without the commit's view.
 
 ---
 
@@ -1904,18 +2077,24 @@ patterns worth understanding before building a dashboard:
    row a delete was already destroying. Nothing queries or stores anything *for the metric's sake*,
    so the meter can never become its own load problem.
 
-### Convergence state (gauges)
+### Integrity gauges {#integrity-gauges}
 
-Every instance of a service reports the same ledger, so read these as one value per service (the maximum across its
-instances), never a sum.
+{verified: MaintenanceWorkerIntegrityGaugeTests.AnInstanceThatIsNotTheMaintainer_StillPublishesTheLedgerReadingAsync, MaintenanceWorkerIntegrityGaugeTests.ATickTheIdleGateDefers_StillPublishesTheLedgerReadingAsync, IntegrityRepairAnswerSqlTests.Summary_CountsBucketsAwaitingAnAnswer_AnsweredBuckets_AndTheIntegrityDeliveriesWaitingAsync, IntegrityRepairAnswerSqlTests.Summary_WithNoIntegrityDeliveries_ReportsNoneWaitingAsync, StreamIntegrityMetricsCoverageTests.AnswerAndDeliveryGauges_ReportLiveSnapshotValuesAsync}
 
-{verified: MaintenanceWorkerIntegrityGaugeTests.AnInstanceThatIsNotTheMaintainer_StillPublishesTheLedgerReadingAsync, MaintenanceWorkerIntegrityGaugeTests.ATickTheIdleGateDefers_StillPublishesTheLedgerReadingAsync}
+Every gauge on the `Whizbang.StreamIntegrity` meter is read in one round trip at the start of every maintenance tick,
+on every instance, ahead of the maintainer-duty check and the idle gate (see the collector, above). Every instance of a
+service therefore reports the same ledger and the same delivery queue, so read these as one value per service (the
+maximum across its instances), never a sum.
 
 | Instrument | Meaning |
 | --- | --- |
 | `unhealed_buckets` | Divergent `(origin, tenant, type, stream)` buckets currently tracked by the ledger — **the reconciliation backlog**. Falls as buckets heal (the heal deletes the row). |
-| `repair_exhausted_buckets` | Unhealed buckets that spent their repair budget (`MaxRepairAttemptsPerBucket`) and stopped asking. These need an operator, not patience — the one number worth an alert. |
+| `repair_exhausted_buckets` | Unhealed buckets that spent their repair budget (`MaxRepairAttemptsPerBucket`) and are no longer asked for until a local change or a grown deficit [resets them](#what-resets-the-repair-ladder). These need an operator, not patience: the one number worth an alert. Raising the budget does not lower it. |
 | `oldest_unhealed_age_seconds` | Age of the longest-standing unhealed divergence. Distinguishes a transient blip from a stuck bucket. |
+| `repair_answer_pending_buckets` | Buckets whose repair request is out and whose answer has not landed. They are not asked for again until the answer lands or `RepairAnswerTimeoutMinutes` passes ([repair waits for its answer](#repair-waits-for-its-answer)). A value that stays high for longer than the timeout means answers are not arriving: the origin is not serving requests (`ReportOnly`, or its own integrity queue is behind) or its bundles are not reaching this service. |
+| `repair_answered_buckets` | Buckets a redelivery bundle answered that wait for the next comparison to decide healed or still divergent. Rises after a repair burst and falls at the next audit; a value that never falls means comparisons are not running for those buckets. |
+| `deliveries_pending` | [Integrity deliveries](#integrity-deliveries-are-queued) recorded and waiting for the maintainer's drain: received checkpoints, manifest requests and chunks, redelivery requests and bundle reconciles. Near zero on a healthy service. |
+| `oldest_delivery_age_seconds` | How long the oldest waiting integrity delivery has waited (0 when none). Under load the drain is deferred by the idle gate for up to `Whizbang:Housekeeping:MaxDeferral`, so an age above that, or one that keeps climbing, means the drain is not running: check which instance holds the maintainer duty. |
 | `sealed_through` (tag `origin_service_id`) | The per-origin **verified watermark** — the exclusive end of the highest window that audited clean and complete. This is the top-level convergence needle: a lane is provably in sync exactly as far as its seal. Each origin is its own series; one aggregated number would hide a stuck lane. |
 
 ### Durations (histograms, seconds)
@@ -1954,8 +2133,11 @@ A deficient service converging looks like: `repairs_requested` active → `redel
 climbing at the origin → `unhealed_buckets` falling (heals deleting rows) with `bucket_heal_seconds`
 recording each one → `sealed_through` stepping upward as whole windows certify → everything quiet
 except the checkpoint heartbeat. After an upgrade from a schema older than 087, `origins_adopted` rises first while
-pre-087 history is redelivered once. The failure signatures: `repair_exhausted_buckets` rising (buckets
-out of budget), `compares_declined` sustained (compare pressure), `manifest_pages_capped` persistent
+pre-087 history is redelivered once. While repair works, `repair_answer_pending_buckets` rises with each paced batch and
+turns into `repair_answered_buckets` as bundles land, and both fall at the next audit. The failure signatures:
+`repair_exhausted_buckets` rising (buckets out of budget), `repair_answer_pending_buckets` held high past
+`RepairAnswerTimeoutMinutes` (answers not arriving), `oldest_delivery_age_seconds` climbing past `MaxDeferral` (the
+maintainer's integrity drain not running), `compares_declined` sustained (compare pressure), `manifest_pages_capped` persistent
 (page budget too small for the lane), `deliveries_dropped` non-zero (integrity deliveries that kept failing; each
 Warning names the type and error), `repairs_unhealable` non-zero (buckets repair cannot change; each was named
 once in a Warning), or `sealed_through` frozen while `unhealed_buckets` is flat
