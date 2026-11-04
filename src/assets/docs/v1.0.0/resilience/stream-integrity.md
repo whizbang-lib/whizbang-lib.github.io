@@ -1386,6 +1386,18 @@ uses it instead of its own reading. A reconcile recorded by a version without th
 judges by presence as before. If recording the answer fails, a Warning says so, the buckets wait out
 their answer timeout, and the reconcile judges the bundle without the commit's view.
 
+#### Per-bundle work keeps its working table for the connection {#per-bundle-work-table}
+
+{verified: RedeliveryBundleCatalogChurnSqlTests.RecordBundleAnswer_ASecondCallOnTheConnection_WritesNothingToTheSystemCatalogAsync, RedeliveryBundleCatalogChurnSqlTests.ReconcileBundle_ASecondCallOnTheConnection_WritesNothingToTheSystemCatalogAsync, RedeliveryBundleCatalogChurnSqlTests.RecordBundleAnswer_TwiceInOneTransaction_AnswersEachBundleForItsOwnEventsAsync, RedeliveryBundleCatalogChurnSqlTests.ReconcileBundle_TwiceInOneTransaction_StartsFromAnEmptyWorkingTableAsync}
+
+The commit-time answer and the deferred reconcile each gather a bundle's rows in a temporary working
+table. The table is created once per database connection and emptied at commit, not created and dropped
+by every call. A consumer can receive hundreds of small bundles a minute, and a table created per call
+cost far more than the bundle's own work: system catalog rows written and deleted on every bundle, cache
+invalidations sent to every other connection to the database, and every statement in the function planned
+again because each call's table was a new one. Each call empties the table before it starts, so a second
+bundle in the same transaction sees only its own rows.
+
 ---
 
 ## Integrity work runs on the maintainer {#integrity-work-runs-on-the-maintainer}
