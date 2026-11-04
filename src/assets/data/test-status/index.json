@@ -1,13 +1,13 @@
 {
   "run": {
-    "runId": "41788978590",
-    "sha": "1cd6a69d91d95e9591f0afbed333a76e1ce7619f",
+    "runId": "41795415296",
+    "sha": "f89b6016bc53b0bdbf19967911d54c9608a0c5a1",
     "branch": "develop",
-    "libraryVersion": "0.2627.0-alpha.417",
-    "completedAt": "2026-11-04T07:31:41.141Z"
+    "libraryVersion": "0.2627.0-alpha.433",
+    "completedAt": "2026-11-04T08:27:53.655Z"
   },
   "total": {
-    "passed": 38521,
+    "passed": 38593,
     "failed": 0,
     "skipped": 12
   },
@@ -18,7 +18,7 @@
       "skipped": 0
     },
     "component": {
-      "passed": 5587,
+      "passed": 5593,
       "failed": 0,
       "skipped": 0
     },
@@ -33,12 +33,12 @@
       "skipped": 3
     },
     "postgres-dapper": {
-      "passed": 1422,
+      "passed": 1425,
       "failed": 0,
       "skipped": 0
     },
     "postgres-efcore-": {
-      "passed": 9028,
+      "passed": 9060,
       "failed": 0,
       "skipped": 0
     },
@@ -58,7 +58,7 @@
       "skipped": 1
     },
     "unit": {
-      "passed": 21466,
+      "passed": 21497,
       "failed": 0,
       "skipped": 8
     }
@@ -162,7 +162,7 @@
     },
     "Whizbang.Core.Component.Tests": {
       "file": "Whizbang.Core.Component.Tests.json",
-      "passed": 4251,
+      "passed": 4257,
       "failed": 0,
       "skipped": 0
     },
@@ -174,19 +174,19 @@
     },
     "Whizbang.Core.Tests": {
       "file": "Whizbang.Core.Tests.json",
-      "passed": 13645,
+      "passed": 13681,
       "failed": 0,
       "skipped": 0
     },
     "Whizbang.Data.Dapper.Postgres.Tests": {
       "file": "Whizbang.Data.Dapper.Postgres.Tests.json",
-      "passed": 1422,
+      "passed": 1425,
       "failed": 0,
       "skipped": 0
     },
     "Whizbang.Data.EFCore.Postgres.Tests": {
       "file": "Whizbang.Data.EFCore.Postgres.Tests.json",
-      "passed": 9028,
+      "passed": 9060,
       "failed": 0,
       "skipped": 0
     },
@@ -330,7 +330,7 @@
     },
     "Whizbang.Partitioning.Tests": {
       "file": "Whizbang.Partitioning.Tests.json",
-      "passed": 68,
+      "passed": 63,
       "failed": 0,
       "skipped": 0
     },
